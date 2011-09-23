@@ -79,6 +79,8 @@ class SyncCallback : public CacheInterface::Callback {
 
 OutputResource::OutputResource(ResourceManager* resource_manager,
                                const StringPiece& resolved_base,
+                               const StringPiece& unmapped_base,
+                               const StringPiece& original_base,
                                const ResourceNamer& full_name,
                                const ContentType* type,
                                const RewriteOptions* options,
@@ -90,6 +92,8 @@ OutputResource::OutputResource(ResourceManager* resource_manager,
       cached_result_owned_(false),
       cached_result_(NULL),
       resolved_base_(resolved_base.data(), resolved_base.size()),
+      unmapped_base_(unmapped_base.data(), unmapped_base.size()),
+      original_base_(original_base.data(), original_base.size()),
       rewrite_options_(options),
       kind_(kind),
       written_using_rewrite_context_flow_(false) {
@@ -125,6 +129,7 @@ OutputResource::OutputWriter* OutputResource::BeginWrite(
     MessageHandler* handler) {
   value_.Clear();
   full_name_.ClearHash();
+  computed_url_.clear();  // Since dependent on full_name_.
   CHECK(!writing_complete_);
   CHECK(output_file_ == NULL);
   if (resource_manager_->store_outputs_in_file_system()) {
@@ -162,6 +167,7 @@ bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
   value_.SetHeaders(&response_headers_);
   Hasher* hasher = resource_manager_->hasher();
   full_name_.set_hash(hasher->Hash(contents()));
+  computed_url_.clear();  // Since dependent on full_name_.
   writing_complete_ = true;
   bool ret = true;
   if (output_file_ != NULL) {
@@ -213,6 +219,7 @@ void OutputResource::set_suffix(const StringPiece& ext) {
   } else {
     full_name_.set_ext(ext.substr(1));
   }
+  computed_url_.clear();  // Since dependent on full_name_.
 }
 
 GoogleString OutputResource::filename() const {
@@ -233,13 +240,21 @@ GoogleString OutputResource::name_key() const {
 // TODO(jmarantz): change the name to reflect the fact that it is not
 // just an accessor now.
 GoogleString OutputResource::url() const {
-  return resource_manager_->url_namer()->Encode(rewrite_options_, *this);
+  // Computing our URL is relatively expensive and it can be set externally,
+  // so we compute it the first time we're called and cache the result;
+  // computed_url_ is declared mutable.
+  if (computed_url_.empty()) {
+    computed_url_ = resource_manager()->url_namer()->Encode(rewrite_options_,
+                                                            *this);
+  }
+  return computed_url_;
 }
 
 void OutputResource::SetHash(const StringPiece& hash) {
   CHECK(!writing_complete_);
   CHECK(!has_hash());
   full_name_.set_hash(hash);
+  computed_url_.clear();  // Since dependent on full_name_.
 }
 
 bool OutputResource::Load(MessageHandler* handler) {
@@ -276,6 +291,13 @@ bool OutputResource::Load(MessageHandler* handler) {
   return writing_complete_;
 }
 
+GoogleString OutputResource::decoded_base() const {
+  GoogleUrl encoded_url(url());
+  GoogleUrl decoded_url(resource_manager()->url_namer()->Decode(encoded_url));
+  StringPiece url_base = decoded_url.AllExceptLeaf();
+  return url_base.as_string();
+}
+
 bool OutputResource::IsWritten() const {
   return writing_complete_;
 }
@@ -285,6 +307,7 @@ void OutputResource::SetType(const ContentType* content_type) {
   // TODO(jmaessen): The addition of 1 below avoids the leading ".";
   // make this convention consistent and fix all code.
   full_name_.set_ext(content_type->file_extension() + 1);
+  computed_url_.clear();  // Since dependent on full_name_.
 }
 
 bool OutputResource::LockForCreation(BlockingBehavior block) {
@@ -358,8 +381,6 @@ void OutputResource::FetchCachedResult(const GoogleString& name_key,
         // Note that the '.' must be included in the suffix
         // TODO(jmarantz): remove this from the suffix.
         set_suffix(StrCat(".", cached->extension()));
-        cached->set_optimizable(true);
-        cached->set_url(url());
         ok = true;
       }
     }

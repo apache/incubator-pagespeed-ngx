@@ -41,6 +41,7 @@ class CachedResult;
 class HTTPValue;
 class MessageHandler;
 class NamedLock;
+class RequestHeaders;
 class ResourceManager;
 class RewriteOptions;
 struct ContentType;
@@ -57,6 +58,8 @@ class OutputResource : public Resource {
   // domain makes no sense.
   OutputResource(ResourceManager* resource_manager,
                  const StringPiece& resolved_base,
+                 const StringPiece& unmapped_base, /* aka source domain */
+                 const StringPiece& original_base, /* aka cnamed domain */
                  const ResourceNamer& resource_id,
                  const ContentType* type,
                  const RewriteOptions* options,
@@ -96,11 +99,24 @@ class OutputResource : public Resource {
 
   // output-specific
   const GoogleString& resolved_base() const { return resolved_base_; }
+  const GoogleString& unmapped_base() const { return unmapped_base_; }
+  const GoogleString& original_base() const { return original_base_; }
   const ResourceNamer& full_name() const { return full_name_; }
   StringPiece name() const { return full_name_.name(); }
   GoogleString filename() const;
   StringPiece suffix() const;
   StringPiece filter_prefix() const { return full_name_.id(); }
+
+  // Some output resources have mangled names derived from input resource(s),
+  // such as when combining CSS files.  When we need to regenerate the output
+  // resource given just its URL we need to convert the URL back to its
+  // constituent input resource URLs.  Our url() method can return a modified
+  // version of the input resources' host and path if our resource manager
+  // has a non-standard url_namer(), so when trying to regenerate the input
+  // resources' URL we need to reverse that modification.  Note that the
+  // default UrlNamer class doesn't do any modification, and that the decoding
+  // of the leaf names is done separetly by the UrlMultipartEncoder class.
+  GoogleString decoded_base() const;
 
   // In a scalable installation where the sprites must be kept in a
   // database, we cannot serve HTML that references new resources
@@ -161,14 +177,6 @@ class OutputResource : public Resource {
     return ret;
   }
 
-  // Resources rewritten via a UrlPartnership will have a resolved
-  // base to use in lieu of the legacy UrlPrefix held by the resource
-  // manager.
-  void set_resolved_base(const StringPiece& base) {
-    base.CopyToString(&resolved_base_);
-    CHECK(EndsInSlash(base)) << "resolved_base must end in a slash.";
-  }
-
   OutputResourceKind kind() const { return kind_; }
 
   // TODO(jmarantz): get rid of this bool when RewriteContext is fully deployed.
@@ -192,6 +200,7 @@ class OutputResource : public Resource {
   friend class ResourceManager;
   friend class ResourceManagerTest;
   friend class ResourceManagerTestingPeer;
+  friend class RewriteDriver;
 
   class OutputWriter {
    public:
@@ -246,12 +255,31 @@ class OutputResource : public Resource {
   CachedResult* cached_result_;
 
   // The resolved_base_ is the domain as reported by UrlPartnership.
-  // It takes into account domain-mapping via
-  // ModPagespeedMapRewriteDomain.  However, the resolved base is
-  // not affected by sharding.  Shard-selection is done when url() is called,
-  // relying on the content hash.
+  //   It takes into account domain-mapping via ModPagespeedMapRewriteDomain.
+  //   However, the resolved base is not affected by sharding.  Shard-selection
+  //   is done when url() is called, relying on the content hash.
+  // The umapped_base_ is the same domain as resolved_base_ but before domain
+  //   mapping was applied; it is also known as the source domain since it is
+  //   the domain of the resource's link.
+  // The original_base_ is the domain of the page that contains the resource
+  //   link; it is also known as the CNAMEd domain since the page's URL is
+  //   one that we manage and is one that we are rwriting.
+  // For example, given an HTML page with URL http://www.example.com/index.html
+  // containing elements "<base href='http://static.example.com/'>" and
+  // "<link rel='stylesheet' href='styles.css'>", and also a rule rewriting
+  // static.example.com -> cdn.com/example/static, then the OutputResource for
+  // the link element's href will have:
+  //   resolved_base_ == http://cdn.com/example/static/
+  //   unmapped_base_ == http://static.example.com/
+  //   original_base_ == http://www.example.com/
   GoogleString resolved_base_;
+  GoogleString unmapped_base_;
+  GoogleString original_base_;
+
   ResourceNamer full_name_;
+
+  // Lazily evaluated and cached result of the url() method, which is const.
+  mutable GoogleString computed_url_;
 
   // Lock guarding resource creation.  Lazily initialized by LockForCreation,
   // unlocked on destruction, DropCreationLock or EndWrite.

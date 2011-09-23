@@ -154,7 +154,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       // not base URL location.
       bool use_async_flow = false;
       OutputResourcePtr output_resource(
-          driver_->CreateOutputResourceWithPath(
+          driver_->CreateOutputResourceWithUnmappedPath(
               driver_->google_url().AllExceptLeaf(), kFilterId, "_",
               &kContentTypeCss, kOutlinedResource, use_async_flow));
 

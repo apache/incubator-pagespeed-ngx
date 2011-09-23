@@ -252,7 +252,7 @@ OutputResourcePtr ResourceCombiner::Combine(const ContentType& content_type,
   // Start building up the combination.  At this point we are still
   // not committed to the combination, because the 'write' can fail.
   // TODO(jmaessen, jmarantz): encode based on partnership
-  combination.reset(rewrite_driver_->CreateOutputResourceWithPath(
+  combination.reset(rewrite_driver_->CreateOutputResourceWithBaseUrlPath(
       ResolvedBase(), filter_->id(), url_safe_id, &content_type,
       kRewrittenResource, filter_->HasAsyncFlow()));
   if (combination.get() != NULL) {
@@ -472,7 +472,7 @@ bool ResourceCombiner::Fetch(const OutputResourcePtr& combination,
     AggregateCombiner* combiner = new AggregateCombiner(
         this, message_handler, callback, combination, writer, response_headers);
 
-    StringPiece root = gurl.AllExceptLeaf();
+    GoogleString root = combination->decoded_base();
     for (int i = 0, n = urls.size(); ret && (i < n); ++i)  {
       GoogleString url = StrCat(root, urls[i]);
       // Safe since we use StrCat to absolutize the URL rather than

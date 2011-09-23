@@ -78,6 +78,8 @@
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
+#include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
@@ -304,10 +306,17 @@ bool RewriteDriver::IsDone(WaitMode wait_mode, bool deadline_reached) {
   }
 }
 
-// TODO(jmarantz): add callback version of this.
 void RewriteDriver::ExecuteFlushIfRequested() {
   if (flush_requested_) {
     Flush();
+  }
+}
+
+void RewriteDriver::ExecuteFlushIfRequestedAsync(Function* callback) {
+  if (flush_requested_) {
+    FlushAsync(callback);
+  } else {
+    callback->CallRun();
   }
 }
 
@@ -319,6 +328,7 @@ void RewriteDriver::Flush() {
 }
 
 void RewriteDriver::FlushAsync(Function* callback) {
+  flush_requested_ = false;
   for (int i = 0, n = pre_render_filters_.size(); i < n; ++i) {
     HtmlFilter* filter = pre_render_filters_[i];
     ApplyFilter(filter);
@@ -349,9 +359,6 @@ void RewriteDriver::FlushAsync(Function* callback) {
     for (int i = 0; i < num_rewrites; ++i) {
       RewriteContext* rewrite_context = rewrites_[i];
       if (!rewrite_context->chained()) {
-        // TODO(jmarantz): Eliminate these LOG(INFO) and/or convert them
-        // into message_handler()->Message(kInfo...).
-        LOG(INFO) << "Initiating rewrite: " << rewrite_context;
         rewrite_context->Initiate();
       }
     }
@@ -826,7 +833,7 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(const GoogleUrl& gurl,
   // activity.
   StringPiece base = gurl.AllExceptLeaf();
   OutputResourcePtr output_resource(new OutputResource(
-      resource_manager_, base, namer, NULL, NULL, kind));
+      resource_manager_, base, base, base, namer, NULL, NULL, kind));
   bool has_async_flow = false;
   if (*filter != NULL) {
     has_async_flow = (*filter)->HasAsyncFlow();
@@ -1196,6 +1203,10 @@ HTTPCache::FindResult RewriteDriver::ReadIfCachedWithStatus(
   return result;
 }
 
+GoogleString RewriteDriver::decoded_base() const {
+  return resource_manager()->url_namer()->Decode(base_url_);
+}
+
 bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
                                  const ContentType& content_type) {
   set_log_rewrite_timing(options()->log_rewrite_timing());
@@ -1257,7 +1268,7 @@ void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
 void RewriteDriver::ReportSlowRewrites(int num) {
   ScopedMutex lock(rewrite_mutex());
   possibly_quick_rewrites_ -= num;
-  CHECK_LE(0, possibly_quick_rewrites_);
+  CHECK_LE(0, possibly_quick_rewrites_) << base_url_.Spec();
   if ((possibly_quick_rewrites_ == 0) && waiting_for_render_) {
     scheduler_->Signal();
   }
@@ -1335,6 +1346,25 @@ void RewriteDriver::FinishParse() {
   Cleanup();
 }
 
+void RewriteDriver::FinishParseAsync(Function* callback) {
+  HtmlParse::BeginFinishParse();
+  FlushAsync(
+      MakeFunction(this, &RewriteDriver::QueueFinishParseAfterFlush, callback));
+}
+
+void RewriteDriver::QueueFinishParseAfterFlush(Function* user_callback) {
+  // Disconnected to relinquish the lock; might be a better idea to
+  // instead have a lockless version of cleanup?
+  html_worker_->Add(
+      MakeFunction(this, &RewriteDriver::FinishParseAfterFlush, user_callback));
+}
+
+void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
+  HtmlParse::EndFinishParse();
+  Cleanup();
+  user_callback->CallRun();
+}
+
 void RewriteDriver::InfoAt(RewriteContext* context, const char* msg, ...) {
   va_list args;
   va_start(args, msg);
@@ -1352,6 +1382,78 @@ void RewriteDriver::InfoAt(RewriteContext* context, const char* msg, ...) {
   }
 
   va_end(args);
+}
+
+// Constructs an output resource corresponding to the specified input resource
+// and encoded using the provided encoder.
+OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
+    const StringPiece& filter_id,
+    const UrlSegmentEncoder* encoder,
+    const ResourceContext* data,
+    const ResourcePtr& input_resource,
+    OutputResourceKind kind,
+    bool use_async_flow) {
+  OutputResourcePtr result;
+  if (input_resource.get() != NULL) {
+    // TODO(jmarantz): It would be more efficient to pass in the base
+    // document GURL or save that in the input resource.
+    GoogleUrl gurl(input_resource->url());
+    UrlPartnership partnership(options(), gurl);
+    if (partnership.AddUrl(input_resource->url(),
+                           resource_manager_->message_handler())) {
+      const GoogleUrl *mapped_gurl = partnership.FullPath(0);
+      GoogleString name;
+      StringVector v;
+      v.push_back(mapped_gurl->LeafWithQuery().as_string());
+      encoder->Encode(v, data, &name);
+      result.reset(CreateOutputResourceWithMappedPath(
+          mapped_gurl->AllExceptLeaf(), gurl.AllExceptLeaf(),
+          filter_id, name, input_resource->type(), kind, use_async_flow));
+    }
+  }
+  return result;
+}
+
+OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
+    const StringPiece& mapped_path,
+    const StringPiece& unmapped_path,
+    const StringPiece& base_url,
+    const StringPiece& filter_id,
+    const StringPiece& name,
+    const ContentType* content_type,
+    OutputResourceKind kind,
+    bool use_async_flow) {
+  ResourceNamer full_name;
+  full_name.set_id(filter_id);
+  full_name.set_name(name);
+  if (content_type != NULL) {
+    // TODO(jmaessen): The addition of 1 below avoids the leading ".";
+    // make this convention consistent and fix all code.
+    full_name.set_ext(content_type->file_extension() + 1);
+  }
+  OutputResourcePtr resource;
+
+  int leaf_size = full_name.EventualSize(*resource_manager_->hasher());
+  int url_size = mapped_path.size() + leaf_size;
+  if ((leaf_size <= options()->max_url_segment_size()) &&
+      (url_size <= options()->max_url_size())) {
+    OutputResource* output_resource = new OutputResource(
+        resource_manager_, mapped_path, unmapped_path, base_url,
+        full_name, content_type, options(), kind);
+    output_resource->set_written_using_rewrite_context_flow(use_async_flow);
+    resource.reset(output_resource);
+
+    // Determine whether this output resource is still valid by looking
+    // up by hash in the http cache.  Note that this cache entry will
+    // expire when any of the origin resources expire.
+    if ((kind != kOutlinedResource) && !use_async_flow) {
+      GoogleString name_key = StrCat(
+          ResourceManager::kCacheKeyResourceNamePrefix, resource->name_key());
+      resource->FetchCachedResult(name_key,
+                                  resource_manager_->message_handler());
+    }
+  }
+  return resource;
 }
 
 void RewriteDriver::SetBaseUrlIfUnset(const StringPiece& new_base) {

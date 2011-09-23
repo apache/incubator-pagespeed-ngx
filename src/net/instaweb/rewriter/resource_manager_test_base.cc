@@ -171,14 +171,16 @@ void ResourceManagerTestBase::AppendDefaultHeaders(
 
 void ResourceManagerTestBase::ServeResourceFromManyContexts(
     const GoogleString& resource_url,
-    const StringPiece& expected_content) {
+    const StringPiece& expected_content,
+    UrlNamer* new_rms_url_namer) {
   // TODO(sligocki): Serve the resource under several contexts. For example:
   //   1) With output-resource cached,
   //   2) With output-resource not cached, but in a file,
   //   3) With output-resource unavailable, but input-resource cached,
   //   4) With output-resource unavailable and input-resource not cached,
   //      but still fetchable,
-  ServeResourceFromNewContext(resource_url, expected_content);
+  ServeResourceFromNewContext(resource_url, expected_content,
+                              new_rms_url_namer);
   //   5) With nothing available (failure).
 }
 
@@ -186,13 +188,17 @@ void ResourceManagerTestBase::ServeResourceFromManyContexts(
 // been constructed.
 void ResourceManagerTestBase::ServeResourceFromNewContext(
     const GoogleString& resource_url,
-    const StringPiece& expected_content) {
+    const StringPiece& expected_content,
+    UrlNamer* new_rms_url_namer) {
 
   // New objects for the new server.
   SimpleStats stats;
   TestRewriteDriverFactory new_factory(GTestTempDir(), &mock_url_fetcher_);
   new_factory.SetStatistics(&statistics_);
   ResourceManager* new_resource_manager = new_factory.CreateResourceManager();
+  if (new_rms_url_namer != NULL) {
+    new_resource_manager->set_url_namer(new_rms_url_namer);
+  }
   new_resource_manager->set_hasher(resource_manager_->hasher());
   RewriteOptions* new_options = options_->Clone();
   RewriteDriver* new_rewrite_driver = MakeDriver(new_resource_manager,

@@ -315,6 +315,12 @@ class HtmlParse {
  protected:
   typedef std::vector<HtmlFilter*> FilterVector;
 
+  // HtmlParse::FinishParse() is equivalent to the sequence of
+  // BeginFinishParse(); Flush(); EndFinishParse().
+  // Split up to permit asynchronous versions.
+  void BeginFinishParse();
+  void EndFinishParse();
+
  private:
   void ApplyFilterHelper(HtmlFilter* filter);
   HtmlEventListIterator Last();  // Last element in queue

@@ -61,10 +61,9 @@ GoogleString UrlNamer::Encode(const RewriteOptions* rewrite_options,
   return StrCat(encoded_path, encoded_leaf);
 }
 
-GoogleString UrlNamer::Decode(const GoogleUrl& request_url,
-                              const RequestHeaders& request_headers,
-                              MessageHandler* handler) {
-  return "";
+GoogleString UrlNamer::Decode(const GoogleUrl& request_url) {
+  StringPiece url_as_is = request_url.UncheckedSpec();
+  return url_as_is.as_string();
 }
 
 RewriteOptions* UrlNamer::DecodeOptions(const GoogleUrl& request_url,

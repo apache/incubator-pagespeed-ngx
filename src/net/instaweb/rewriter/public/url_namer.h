@@ -45,10 +45,8 @@ class UrlNamer {
   virtual GoogleString Encode(const RewriteOptions* rewrite_options,
                               const OutputResource& output_resource);
 
-  // Given the request_url and request_headers, generate the orignial url.
-  virtual GoogleString Decode(const GoogleUrl& request_url,
-                              const RequestHeaders& request_headers,
-                              MessageHandler* handler);
+  // Given the request_url, generate the original url.
+  virtual GoogleString Decode(const GoogleUrl& request_url);
 
   // Given the request url and request headers, generate the rewrite options.
   virtual RewriteOptions* DecodeOptions(const GoogleUrl& request_url,

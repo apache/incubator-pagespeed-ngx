@@ -409,9 +409,8 @@ check [ $? != 0 ]
 check [ `stat -c %s $FETCHED` -lt 153 ]   # down from 157
 
 test_filter rewrite_css removes comments and saves a bunch of bytes.
+fetch_until $URL 'grep -c comment' 0
 check run_wget_with_args $URL
-grep "comment" $FETCHED                   # comment, should not find
-check [ $? != 0 ]
 check [ `stat -c %s $FETCHED` -lt 680 ]   # down from 689
 
 test_filter rewrite_images inlines, compresses, and resizes.

@@ -55,6 +55,7 @@ class ResponseHeaders;
 class RewriteDriverFactory;
 class RewriteFilter;
 class Statistics;
+class UrlNamer;
 class WaitUrlAsyncFetcher;
 struct ContentType;
 
@@ -106,13 +107,15 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                             GoogleString* text);
 
   void ServeResourceFromManyContexts(const GoogleString& resource_url,
-                                     const StringPiece& expected_content);
+                                     const StringPiece& expected_content,
+                                     UrlNamer* new_rms_url_namer = NULL);
 
   // Test that a resource can be served from an new server that has not already
   // constructed it.
   void ServeResourceFromNewContext(
       const GoogleString& resource_url,
-      const StringPiece& expected_content);
+      const StringPiece& expected_content,
+      UrlNamer* new_rms_url_namer = NULL);
 
   // This definition is required by HtmlParseTestBase which defines this as
   // pure abstract, so that the test subclass can define how it instantiates
@@ -295,6 +298,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   }
 
   ResourceManager* resource_manager() { return resource_manager_; }
+  ResourceManager* other_resource_manager() { return other_resource_manager_; }
   CountingUrlAsyncFetcher* counting_url_async_fetcher() {
     return factory_.counting_url_async_fetcher();
   }

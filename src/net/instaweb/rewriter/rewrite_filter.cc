@@ -41,14 +41,13 @@ ResourcePtr RewriteFilter::CreateInputResourceFromOutputResource(
   if (encoder()->Decode(output_resource->name(), &urls, &data,
                         driver_->message_handler()) &&
       (urls.size() == 1)) {
-    GoogleUrl base_gurl(output_resource->resolved_base());
+    GoogleUrl base_gurl(output_resource->decoded_base());
     GoogleUrl resource_url(base_gurl, urls[0]);
-    if (driver_->base_url().AllExceptLeaf() !=
-        output_resource->resolved_base()) {
-      if (driver_->MayRewriteUrl(base_gurl, resource_url)) {
-        input_resource = driver_->CreateInputResource(resource_url);
-      }
-    } else {
+    StringPiece output_base = output_resource->resolved_base();
+    if (output_base == driver_->base_url().AllExceptLeaf() ||
+        output_base == GoogleUrl(driver_->decoded_base()).AllExceptLeaf()) {
+      input_resource = driver_->CreateInputResource(resource_url);
+    } else if (driver_->MayRewriteUrl(base_gurl, resource_url)) {
       input_resource = driver_->CreateInputResource(resource_url);
     }
   }

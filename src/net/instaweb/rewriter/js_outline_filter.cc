@@ -151,7 +151,7 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
     // Create outline resource at the document location, not base URL location
     bool use_async_flow = false;
     OutputResourcePtr resource(
-        driver_->CreateOutputResourceWithPath(
+        driver_->CreateOutputResourceWithUnmappedPath(
             driver_->google_url().AllExceptLeaf(), kFilterId, "_",
             &kContentTypeJavascript, kOutlinedResource, use_async_flow));
     if (resource.get() != NULL &&

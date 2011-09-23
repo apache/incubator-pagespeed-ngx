@@ -1061,7 +1061,9 @@ void RewriteContext::MarkSlow() {
     }
   }
 
-  Driver()->ReportSlowRewrites(num_new_slow);
+  if (num_new_slow != 0) {
+    Driver()->ReportSlowRewrites(num_new_slow);
+  }
 }
 
 void RewriteContext::MarkTooBusy() {
@@ -1096,9 +1098,12 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
   GoogleUrl gurl(url);
   ResourceNamer namer;
   if (gurl.is_valid() && namer.Decode(gurl.LeafWithQuery())) {
-    output_resource->reset(new OutputResource(
-        Manager(), gurl.AllExceptLeaf(), namer, content_type,
-        Options(), kind()));
+    output_resource->reset(
+        new OutputResource(Manager(),
+                           gurl.AllExceptLeaf() /* resolved_base */,
+                           gurl.AllExceptLeaf() /* unmapped_base */,
+                           Driver()->base_url().Origin() /* original_base */,
+                           namer, content_type, Options(), kind()));
     (*output_resource)->set_written_using_rewrite_context_flow(true);
     ret = true;
   }
@@ -1149,8 +1154,7 @@ bool RewriteContext::Fetch(
   // Decode the URLs required to execute the rewrite.
   bool ret = false;
   StringVector urls;
-  GoogleUrl gurl(output_resource->url());
-  GoogleUrl base(gurl.AllExceptLeaf());
+  GoogleUrl base(output_resource->decoded_base());
   RewriteDriver* driver = Driver();
   driver->InitiateFetch(this);
   if (encoder()->Decode(output_resource->name(), &urls, resource_context_.get(),

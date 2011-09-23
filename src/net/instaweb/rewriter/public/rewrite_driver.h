@@ -269,10 +269,14 @@ class RewriteDriver : public HtmlParse {
   // Override HtmlParse's FinishParse to ensure that the
   // request-scoped cache is cleared immediately.
   //
-  // Note that the RewriteDriver can delete itslef in this method, if
-  // its not externally managed, and if all RewriteContexts have been
+  // Note that the RewriteDriver can delete itself in this method, if
+  // it's not externally managed, and if all RewriteContexts have been
   // completed.
   virtual void FinishParse();
+
+  // As above, but asynchronous. Note that the RewriteDriver may already be
+  // deleted at the point the callback is invoked.
+  void FinishParseAsync(Function* callback);
 
   // Report error message with description of context's location
   // (such as filenames and line numbers). context may be NULL, in which case
@@ -280,26 +284,91 @@ class RewriteDriver : public HtmlParse {
   void InfoAt(RewriteContext* context,
               const char* msg, ...) INSTAWEB_PRINTF_FORMAT(3, 4);
 
-  // See comments in resource_manager.h
+  // Creates a reference-counted pointer to a new OutputResource object.
+  //
+  // The content type is taken from the input_resource, but can be modified
+  // with SetType later if that is not correct (e.g. due to image transcoding).
+
+  // Constructs an output resource corresponding to the specified input resource
+  // and encoded using the provided encoder.  Assumes permissions checking
+  // occurred when the input resource was constructed, and does not do it again.
+  // To avoid if-chains, tolerates a NULL input_resource (by returning NULL).
+  // TODO(jmaessen, jmarantz): Do we want to permit NULL input_resources here?
+  // jmarantz has evinced a distaste.
   OutputResourcePtr CreateOutputResourceFromResource(
       const StringPiece& filter_prefix,
       const UrlSegmentEncoder* encoder,
       const ResourceContext* data,
       const ResourcePtr& input_resource,
       OutputResourceKind kind,
-      bool use_async_flow) {
-    return resource_manager_->CreateOutputResourceFromResource(
-        options(), filter_prefix, encoder, data, input_resource, kind,
-        use_async_flow);
+      bool use_async_flow);
+
+  // Creates an output resource where the name is provided.  The intent is to
+  // be able to derive the content from the name, for example, by encoding
+  // URLs and metadata.
+  //
+  // This method succeeds unless the filename is too long.
+  //
+  // This name is prepended with path for writing hrefs, and the resulting url
+  // is encoded and stored at file_prefix when working with the file system.
+  // So hrefs are:
+  //    $(PATH)/$(NAME).pagespeed.$(FILTER_PREFIX).$(HASH).$(CONTENT_TYPE_EXT)
+  //
+  // 'type' arg can be null if it's not known, or is not in our ContentType
+  // library.
+  //
+  // Could be private since you should use one of the versions below but put
+  // here with the rest like it and for documentation clarity.
+  OutputResourcePtr CreateOutputResourceWithPath(
+      const StringPiece& mapped_path, const StringPiece& unmapped_path,
+      const StringPiece& base_url, const StringPiece& filter_id,
+      const StringPiece& name, const ContentType* content_type,
+      OutputResourceKind kind, bool use_async_flow);
+
+  // Version of CreateOutputResourceWithPath where the unmapped path is given
+  // and the mapped path and base_url are this driver's base_url.
+  OutputResourcePtr CreateOutputResourceWithBaseUrlPath(
+      const StringPiece& path, const StringPiece& filter_id,
+      const StringPiece& name, const ContentType* content_type,
+      OutputResourceKind kind, bool use_async_flow) {
+    return CreateOutputResourceWithPath(path, base_url_.AllExceptLeaf(),
+                                        base_url_.AllExceptLeaf(),
+                                        filter_id, name, content_type, kind,
+                                        use_async_flow);
   }
 
-  // See comments in resource_manager.h
-  OutputResourcePtr CreateOutputResourceWithPath(
-      const StringPiece& path, const StringPiece& filter_prefix,
-      const StringPiece& name,  const ContentType* type,
+  // Version of CreateOutputResourceWithPath where the unmapped and mapped
+  // paths are the same and the base_url is this driver's base_url.
+  OutputResourcePtr CreateOutputResourceWithUnmappedPath(
+      const StringPiece& path, const StringPiece& filter_id,
+      const StringPiece& name, const ContentType* content_type,
       OutputResourceKind kind, bool use_async_flow) {
-    return resource_manager_->CreateOutputResourceWithPath(
-        options(), path, filter_prefix, name, type, kind, use_async_flow);
+    return CreateOutputResourceWithPath(path, path, base_url_.AllExceptLeaf(),
+                                        filter_id, name, content_type, kind,
+                                        use_async_flow);
+  }
+
+  // Version of CreateOutputResourceWithPath where the unmapped and mapped
+  // paths are different and the base_url is this driver's base_url.
+  OutputResourcePtr CreateOutputResourceWithMappedPath(
+      const StringPiece& mapped_path, const StringPiece& unmapped_path,
+      const StringPiece& filter_id, const StringPiece& name,
+      const ContentType* content_type, OutputResourceKind kind,
+      bool use_async_flow) {
+    return CreateOutputResourceWithPath(mapped_path, unmapped_path,
+                                        base_url_.AllExceptLeaf(),
+                                        filter_id, name, content_type, kind,
+                                        use_async_flow);
+  }
+
+  // Version of CreateOutputResourceWithPath where the unmapped and mapped
+  // paths and the base url are all the same. FOR TESTS ONLY.
+  OutputResourcePtr CreateOutputResourceWithPath(
+      const StringPiece& path, const StringPiece& filter_id,
+      const StringPiece& name, const ContentType* content_type,
+      OutputResourceKind kind, bool use_async_flow) {
+    return CreateOutputResourceWithPath(path, path, path, filter_id, name,
+                                        content_type, kind, use_async_flow);
   }
 
   // Creates an input resource based on input_url.  Returns NULL if
@@ -339,6 +408,11 @@ class RewriteDriver : public HtmlParse {
   // in the document.  Note that HtmlParse::google_url() is the URL
   // for the HTML file and is used for printing html syntax errors.
   const GoogleUrl& base_url() const { return base_url_; }
+
+  // Returns the decoded version of base_gurl() in case it was encoded by a
+  // non-default UrlNamer (for the default UrlNamer this returns the same value
+  // as base_url()).  Required when fetching a resource by its encoded name.
+  GoogleString decoded_base() const;
 
   const UrlSegmentEncoder* default_encoder() const { return &default_encoder_; }
 
@@ -454,6 +528,11 @@ class RewriteDriver : public HtmlParse {
   // network pause as an opportunity.
   void ExecuteFlushIfRequested();
 
+  // Asynchronous version of the above. Note that you should not
+  // attempt to write out any data until the callback is invoked.
+  // (If a flush is not needed, the callback will be invoked immediately).
+  void ExecuteFlushIfRequestedAsync(Function* callback);
+
   // Overrides HtmlParse::Flush so that it can happen in two phases:
   //    1. Pre-render chain runs, resulting in async rewrite activity
   //    2. async rewrite activity ends, calling callback, and post-render
@@ -519,6 +598,11 @@ class RewriteDriver : public HtmlParse {
 
   // Queues up invocation of FlushAsyncDone in our html_workers sequence.
   void QueueFlushAsyncDone(int num_rewrites, Function* callback);
+
+  // Called as part of implementation of FinishParseAsync, after the
+  // flush is complete.
+  void QueueFinishParseAfterFlush(Function* user_callback);
+  void FinishParseAfterFlush(Function* user_callback);
 
   // Must be called with rewrites_mutex_ held.
   bool RewritesComplete() const;

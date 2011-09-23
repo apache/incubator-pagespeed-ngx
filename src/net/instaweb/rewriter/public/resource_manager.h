@@ -195,45 +195,6 @@ class ResourceManager {
   // will be passed to the callback, with its contents and headers filled in.
   void ReadAsync(Resource::AsyncCallback* callback);
 
-  // Creates a reference-counted pointer to a new OutputResource object.
-  //
-  // The content type is taken from the input_resource, but can be modified
-  // with SetType later if that is not correct (e.g. due to image transcoding).
-
-  // Constructs an output resource corresponding to the specified input resource
-  // and encoded using the provided encoder.  Assumes permissions checking
-  // occurred when the input resource was constructed, and does not do it again.
-  // To avoid if-chains, tolerates a NULL input_resource (by returning NULL).
-  // TODO(jmaessen, jmarantz): Do we want to permit NULL input_resources here?
-  // jmarantz has evinced a distaste.
-  OutputResourcePtr CreateOutputResourceFromResource(
-      const RewriteOptions* options,
-      const StringPiece& filter_prefix,
-      const UrlSegmentEncoder* encoder,
-      const ResourceContext* data,
-      const ResourcePtr& input_resource,
-      OutputResourceKind kind,
-      bool use_async_flow);
-
-  // Creates an output resource where the name is provided by the rewriter.
-  // The intent is to be able to derive the content from the name, for example,
-  // by encoding URLs and metadata.
-  //
-  // This method succeeds unless the filename is too long.
-  //
-  // This name is prepended with path for writing hrefs, and the resulting url
-  // is encoded and stored at file_prefix when working with the file system.  So
-  // hrefs are:
-  //    $(PATH)/$(NAME).pagespeed.$(FILTER_PREFIX).$(HASH).$(CONTENT_TYPE_EXT)
-  //
-  // 'type' arg can be null if it's not known, or is not in our ContentType
-  // library.
-  OutputResourcePtr CreateOutputResourceWithPath(
-      const RewriteOptions* options, const StringPiece& path,
-      const StringPiece& filter_prefix, const StringPiece& name,
-      const ContentType* type, OutputResourceKind kind,
-      bool use_async_flow);
-
   // Allocate an NamedLock to guard the creation of the given resource.
   NamedLock* MakeCreationLock(const GoogleString& name);
 

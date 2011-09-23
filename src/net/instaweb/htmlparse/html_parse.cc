@@ -214,11 +214,21 @@ void HtmlParse::ShowProgress(const char* message) {
 }
 
 void HtmlParse::FinishParse() {
+  BeginFinishParse();
+  Flush();
+  EndFinishParse();
+}
+
+void HtmlParse::BeginFinishParse() {
   DCHECK(url_valid_) << "Invalid to call FinishParse on invalid input";
   if (url_valid_) {
     lexer_->FinishParse();
     AddEvent(new HtmlEndDocumentEvent(line_number_));
-    Flush();
+  }
+}
+
+void HtmlParse::EndFinishParse() {
+  if (url_valid_) {
     ClearElements();
     ShowProgress("FinishParse");
   }
