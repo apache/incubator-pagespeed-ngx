@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "net/instaweb/rewriter/public/rewrite_query.h"
-#include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
@@ -32,23 +32,6 @@ const char RewriteQuery::kModPagespeedDisableForBots[] =
 const char RewriteQuery::kModPagespeedFilters[] =
     "ModPagespeedFilters";
 
-namespace {
-
-RewriteOptions* GetOptions(scoped_ptr<RewriteOptions>* options) {
-  if (options->get() == NULL) {
-    // TODO(jmarantz): instead of newing a RewriteOptions here,
-    // require the caller of RewriteQuery::Scan to pass in constructed
-    // RewriteOptions.  This will be a little easier if we make the
-    // RewriteOptions constructor faster by using gperf rather than
-    // constructing maps at construction time.
-    options->reset(new RewriteOptions);
-    (*options)->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
-  }
-  return options->get();
-}
-
-}  // namespace
-
 // Scan for option-sets in query-params.  We will only allow a limited
 // number of options to be set.  In particular, some options are risky
 // to set per query, such as image inline threshold, which exposes a
@@ -57,69 +40,108 @@ RewriteOptions* GetOptions(scoped_ptr<RewriteOptions>* options) {
 // vulnerability.
 //
 // So we will check for explicit parameters we want to support.
-RewriteOptions* RewriteQuery::Scan(const QueryParams& query_params,
-                                   MessageHandler* handler) {
-  scoped_ptr<RewriteOptions> options;
-  bool ret = true;
+RewriteQuery::Status RewriteQuery::Scan(
+    const QueryParams& query_params,
+    const RequestHeaders& request_headers,
+    RewriteOptions* options,
+    MessageHandler* handler) {
+  Status status = kNoneFound;
 
   for (int i = 0; i < query_params.size(); ++i) {
-    const char* name = query_params.name(i);
     const GoogleString* value = query_params.value(i);
-    if (value == NULL) {
-      // Empty; all our options require a value, so skip.  It might be a
-      // perfectly legitimate query param for the underlying page.
-      continue;
+    if (value != NULL) {  // All query-params we care about have values.
+      switch (ScanNameValue(query_params.name(i), *value, options, handler)) {
+        case kNoneFound:
+          break;
+        case kSuccess:
+          status = kSuccess;
+          break;
+        case kInvalid:
+          return kInvalid;
+      }
     }
-    int64 int_val;
-    if (strcmp(name, kModPagespeed) == 0) {
-      bool is_on = (value->compare("on") == 0);
-      if (is_on || (value->compare("off") == 0)) {
-        GetOptions(&options)->set_enabled(is_on);
-      } else {
-        // TODO(sligocki): Return 404s instead of logging server errors here
-        // and below.
-        handler->Message(kWarning, "Invalid value for %s: %s "
-                         "(should be on or off)", name, value->c_str());
-        ret = false;
-      }
-    } else if (strcmp(name, kModPagespeedDisableForBots) == 0) {
-      bool is_on = (value->compare("on") == 0);
-      if (is_on || (value->compare("off") == 0)) {
-        GetOptions(&options)->set_botdetect_enabled(is_on);
-      } else {
-        handler->Message(kWarning, "Invalid value for %s: %s "
-                         "(should be on or off)", name, value->c_str());
-        ret = false;
-      }
-    } else if (strcmp(name, kModPagespeedFilters) == 0) {
-      // When using ModPagespeedFilters query param, only the
-      // specified filters should be enabled.
-      GetOptions(&options)->SetRewriteLevel(RewriteOptions::kPassThrough);
-      if (options->EnableFiltersByCommaSeparatedList(*value, handler)) {
-        options->DisableAllFiltersNotExplicitlyEnabled();
-      } else {
-        ret = false;
-      }
+  }
+
+  for (int i = 0, n = request_headers.NumAttributes(); i < n; ++i) {
+    switch (ScanNameValue(request_headers.Name(i), request_headers.Value(i),
+                          options, handler)) {
+      case kNoneFound:
+        break;
+      case kSuccess:
+        status = kSuccess;
+        break;
+      case kInvalid:
+        return kInvalid;
+    }
+  }
+
+  // This semantic provides for a mod_pagespeed server that has no rewriting
+  // options configured at all.  Turning the module on should some reasonable
+  // defaults.  Note that if any filters are explicitly set with
+  // ModPagespeedFilters=..., then the call to
+  // DisableAllFiltersNotExplicitlyEnabled() below will make the 'level'
+  // irrelevant.
+  if (status == kSuccess) {
+    options->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  }
+
+  return status;
+}
+
+RewriteQuery::Status RewriteQuery::ScanNameValue(
+    const StringPiece& name, const GoogleString& value,
+    RewriteOptions* options, MessageHandler* handler) {
+  Status status = kNoneFound;
+  if (name == kModPagespeed) {
+    bool is_on = value == "on";
+    if (is_on || (value == "off")) {
+      options->set_enabled(is_on);
+      status = kSuccess;
+    } else {
+      // TODO(sligocki): Return 404s instead of logging server errors here
+      // and below.
+      handler->Message(kWarning, "Invalid value for %s: %s "
+                       "(should be on or off)",
+                       name.as_string().c_str(),
+                       value.c_str());
+      status = kInvalid;
+    }
+  } else if (name == kModPagespeedDisableForBots) {
+    bool is_on = value == "on";
+    if (is_on || (value == "off")) {
+      options->set_botdetect_enabled(is_on);
+      status = kSuccess;
+    } else {
+      handler->Message(kWarning, "Invalid value for %s: %s "
+                       "(should be on or off)",
+                       name.as_string().c_str(),
+                       value.c_str());
+      status = kInvalid;
+    }
+  } else if (name == kModPagespeedFilters) {
+    // When using ModPagespeedFilters query param, only the
+    // specified filters should be enabled.
+    options->SetRewriteLevel(RewriteOptions::kPassThrough);
+    if (options->EnableFiltersByCommaSeparatedList(value, handler)) {
+      options->DisableAllFiltersNotExplicitlyEnabled();
+      status = kSuccess;
+    } else {
+      status = kInvalid;
+    }
     // TODO(jmarantz): add js inlinine threshold, outline threshold.
-    } else if (strcmp(name, kModPagespeedCssInlineMaxBytes) == 0) {
-      if (StringToInt64(*value, &int_val)) {
-        GetOptions(&options)->set_css_inline_max_bytes(int_val);
-      } else {
-        handler->Message(kWarning, "Invalid integer value for %s: %s",
-                         name, value->c_str());
-        ret = false;
-      }
+  } else if (name == kModPagespeedCssInlineMaxBytes) {
+    int64 int_val;
+    if (StringToInt64(value, &int_val)) {
+      options->set_css_inline_max_bytes(int_val);
+      status = kSuccess;
+    } else {
+      handler->Message(kWarning, "Invalid integer value for %s: %s",
+                       name.as_string().c_str(),
+                       value.c_str());
+      status = kInvalid;
     }
   }
-
-  // mod_pagespeed behavior is that if any options look like they are
-  // for ModPagespeed, but are bad in some way, then we don't ignore all
-  // the query-params, printing warnings to logs.
-  if (!ret) {
-    options.reset(NULL);
-  }
-
-  return options.release();
+  return status;
 }
 
 }  // namespace net_instaweb

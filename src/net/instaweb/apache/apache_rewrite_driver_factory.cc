@@ -124,7 +124,10 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
   ShutDown();
 
   apr_pool_destroy(pool_);
+
+  // We still have registered a pool deleter here, right?  This seems risky...
   STLDeleteElements(&uninitialized_managers_);
+
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
     ApacheCache* cache = p->second;
@@ -457,9 +460,9 @@ ApacheResourceManager* ApacheRewriteDriverFactory::MakeApacheResourceManager(
 }
 
 bool ApacheRewriteDriverFactory::PoolDestroyed(ApacheResourceManager* rm) {
-  int erased = uninitialized_managers_.erase(rm);
-  CHECK_EQ(1, erased);
-  delete rm;
+  if (uninitialized_managers_.erase(rm) == 1) {
+    delete rm;
+  }
   return uninitialized_managers_.empty();
 }
 

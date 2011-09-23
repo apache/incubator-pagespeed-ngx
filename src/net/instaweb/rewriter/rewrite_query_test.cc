@@ -19,7 +19,9 @@
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 
 #include <cstddef>                     // for NULL
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -30,10 +32,27 @@ namespace net_instaweb {
 
 class RewriteQueryTest : public ::testing::Test {
  protected:
-  RewriteOptions* ParseAndScan(const StringPiece& query) {
+  // Parses query-params &/or HTTP headers.  The HTTP headers are just in
+  // semicolon-separated format, alternating names & values.  There must be
+  // an even number of components, implying an odd number of semicolons.
+  RewriteOptions* ParseAndScan(const StringPiece& query,
+                               const StringPiece& header_string) {
     QueryParams params;
     params.Parse(query);
-    options_.reset(RewriteQuery::Scan(params, &handler_));
+    options_.reset(new RewriteOptions);
+
+    RequestHeaders request_headers;
+    StringPieceVector components;
+    SplitStringPieceToVector(header_string, ";", &components, true);
+    CHECK_EQ(0, components.size() % 2);
+    for (int i = 0, n = components.size(); i < n; i += 2) {
+      request_headers.Add(components[i], components[i + 1]);
+    }
+
+    if (RewriteQuery::Scan(params, request_headers, options_.get(), &handler_)
+        != RewriteQuery::kSuccess) {
+      options_.reset(NULL);
+    }
     return options_.get();
   }
 
@@ -42,17 +61,23 @@ class RewriteQueryTest : public ::testing::Test {
 };
 
 TEST_F(RewriteQueryTest, Empty) {
-  EXPECT_TRUE(ParseAndScan("") == NULL);
+  EXPECT_TRUE(ParseAndScan("", "") == NULL);
 }
 
-TEST_F(RewriteQueryTest, Off) {
-  RewriteOptions* options = ParseAndScan("ModPagespeed=off");
+TEST_F(RewriteQueryTest, OffQuery) {
+  RewriteOptions* options = ParseAndScan("ModPagespeed=off", "");
   ASSERT_TRUE(options != NULL);
   EXPECT_FALSE(options->enabled());
 }
 
-TEST_F(RewriteQueryTest, OnWithDefaultFilters) {
-  RewriteOptions* options = ParseAndScan("ModPagespeed=on");
+TEST_F(RewriteQueryTest, OffHeaders) {
+  RewriteOptions* options = ParseAndScan("", "ModPagespeed;off");
+  ASSERT_TRUE(options != NULL);
+  EXPECT_FALSE(options->enabled());
+}
+
+TEST_F(RewriteQueryTest, OnWithDefaultFiltersQuery) {
+  RewriteOptions* options = ParseAndScan("ModPagespeed=on", "");
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->enabled());
   EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCache));
@@ -62,8 +87,20 @@ TEST_F(RewriteQueryTest, OnWithDefaultFilters) {
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascript));
 }
 
-TEST_F(RewriteQueryTest, SetFilters) {
-  RewriteOptions* options = ParseAndScan("ModPagespeedFilters=remove_quotes");
+TEST_F(RewriteQueryTest, OnWithDefaultFiltersHeaders) {
+  RewriteOptions* options = ParseAndScan("", "ModPagespeed;on");
+  ASSERT_TRUE(options != NULL);
+  EXPECT_TRUE(options->enabled());
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCache));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kResizeImages));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteCss));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascript));
+}
+
+TEST_F(RewriteQueryTest, SetFiltersQuery) {
+  RewriteOptions* options = ParseAndScan("ModPagespeedFilters=remove_quotes",
+                                         "");
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->enabled());
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRemoveQuotes));
@@ -74,9 +111,42 @@ TEST_F(RewriteQueryTest, SetFilters) {
   EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascript));
 }
 
-TEST_F(RewriteQueryTest, Multiple) {
+TEST_F(RewriteQueryTest, SetFiltersHeaders) {
+  RewriteOptions* options = ParseAndScan("",
+                                         "ModPagespeedFilters;remove_quotes");
+  ASSERT_TRUE(options != NULL);
+  EXPECT_TRUE(options->enabled());
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRemoveQuotes));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kExtendCache));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kResizeImages));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteCss));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascript));
+}
+
+TEST_F(RewriteQueryTest, MultipleQuery) {
   RewriteOptions* options = ParseAndScan("ModPagespeedFilters=inline_css"
-                                         "&ModPagespeedCssInlineMaxBytes=10");
+                                         "&ModPagespeedCssInlineMaxBytes=10",
+                                         "");
+  ASSERT_TRUE(options != NULL);
+  EXPECT_TRUE(options->enabled());
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kInlineCss));
+  EXPECT_EQ(10, options->css_inline_max_bytes());
+}
+
+TEST_F(RewriteQueryTest, MultipleHeaders) {
+  RewriteOptions* options = ParseAndScan("",
+                                         "ModPagespeedFilters;inline_css;"
+                                         "ModPagespeedCssInlineMaxBytes;10");
+  ASSERT_TRUE(options != NULL);
+  EXPECT_TRUE(options->enabled());
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kInlineCss));
+  EXPECT_EQ(10, options->css_inline_max_bytes());
+}
+
+TEST_F(RewriteQueryTest, MultipleQueryAndHeaders) {
+  RewriteOptions* options = ParseAndScan("ModPagespeedFilters=inline_css",
+                                         "ModPagespeedCssInlineMaxBytes;10");
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->enabled());
   EXPECT_TRUE(options->Enabled(RewriteOptions::kInlineCss));
@@ -88,7 +158,8 @@ TEST_F(RewriteQueryTest, MultipleIgnoreUnrelated) {
                                          "&ModPagespeedCssInlineMaxBytes=10"
                                          "&Unrelated1"
                                          "&Unrelated2="
-                                         "&Unrelated3=value");
+                                         "&Unrelated3=value",
+                                         "");
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->enabled());
   EXPECT_TRUE(options->Enabled(RewriteOptions::kInlineCss));
@@ -98,15 +169,16 @@ TEST_F(RewriteQueryTest, MultipleIgnoreUnrelated) {
 TEST_F(RewriteQueryTest, MultipleBroken) {
   RewriteOptions* options = ParseAndScan("ModPagespeedFilters=inline_css"
                                          "&ModPagespeedCssInlineMaxBytes=10"
-                                         "&ModPagespeedFilters=bogus_filter");
+                                         "&ModPagespeedFilters=bogus_filter",
+                                         "");
   EXPECT_TRUE(options == NULL);
 }
 
 TEST_F(RewriteQueryTest, Bots) {
-  RewriteOptions* options = ParseAndScan("ModPagespeedDisableForBots=on");
+  RewriteOptions* options = ParseAndScan("ModPagespeedDisableForBots=on", "");
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->botdetect_enabled());
-  options = ParseAndScan("ModPagespeedDisableForBots=off");
+  options = ParseAndScan("ModPagespeedDisableForBots=off", "");
   ASSERT_TRUE(options != NULL);
   EXPECT_FALSE(options->botdetect_enabled());
 }

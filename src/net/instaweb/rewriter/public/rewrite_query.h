@@ -15,9 +15,13 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_QUERY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_QUERY_H_
 
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+
 namespace net_instaweb {
 
 class MessageHandler;
+class RequestHeaders;
 class RewriteOptions;
 class QueryParams;
 
@@ -29,17 +33,30 @@ class RewriteQuery {
   static const char kModPagespeedDisableForBots[];
   static const char kModPagespeedFilters[];
 
-  // Scans query parameters for "ModPagespeed" flags, returning a populated
-  // RewriteOptions object if there were any "ModPagespeed" flags found, and
-  // they were all parsed successfully.  If any were parsed unsuccessfully,
-  // or there were none found, then NULL is returned.
-  //
-  // The caller must delete the returned options when done.
+  enum Status {
+    kSuccess,
+    kInvalid,
+    kNoneFound
+  };
+
+  // Scans query parameters and request headers for "ModPagespeed"
+  // flags, populating 'options' if there were any "ModPagespeed"
+  // flags found, and they were all parsed successfully.  If any were
+  // parsed unsuccessfully kInvalid is returned.  If none found,
+  // kNoneFound is returned.
   //
   // TODO(jmarantz): consider allowing an alternative prefix to "ModPagespeed"
   // to accomodate other Page Speed Automatic applications that might want to
   // brand differently.
-  static RewriteOptions* Scan(const QueryParams& query_params,
+  static Status Scan(const QueryParams& query_params,
+                     const RequestHeaders& request_headers,
+                     RewriteOptions* options,
+                     MessageHandler* handler);
+
+ private:
+  static Status ScanNameValue(const StringPiece& name,
+                              const GoogleString& value,
+                              RewriteOptions* options,
                               MessageHandler* handler);
 };
 

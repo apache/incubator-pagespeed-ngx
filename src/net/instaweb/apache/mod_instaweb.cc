@@ -364,19 +364,28 @@ InstawebContext* build_context_for_request(request_rec* request) {
   const char* absolute_url = InstawebContext::MakeRequestUrl(request);
 
   // TODO(sligocki): Move inside PSA.
-  QueryParams query_params;
-  if (request->parsed_uri.query != NULL) {
-    query_params.Parse(request->parsed_uri.query);
-  }
-  scoped_ptr<RewriteOptions> query_options(
-      RewriteQuery::Scan(query_params, manager->message_handler()));
-  if (query_options.get() != NULL) {
-    use_custom_options = true;
-    RewriteOptions* merged_options = factory->NewRewriteOptions();
-    merged_options->Merge(*options, *query_options);
-    query_options.reset(NULL);
-    custom_options.reset(merged_options);
-    options = merged_options;
+  {
+    QueryParams query_params;
+    if (request->parsed_uri.query != NULL) {
+      query_params.Parse(request->parsed_uri.query);
+    }
+    RequestHeaders request_headers;
+    ApacheRequestToRequestHeaders(*request, &request_headers);
+    ApacheConfig query_options("query");
+    switch (RewriteQuery::Scan(query_params, request_headers, &query_options,
+                               manager->message_handler())) {
+      case RewriteQuery::kInvalid:
+        return NULL;
+      case RewriteQuery::kNoneFound:
+        break;
+      case RewriteQuery::kSuccess: {
+        use_custom_options = true;
+        RewriteOptions* merged_options = factory->NewRewriteOptions();
+        merged_options->Merge(*options, query_options);
+        custom_options.reset(merged_options);
+        options = merged_options;
+      }
+    }
   }
 
   // TODO(sligocki): Move inside PSA.
