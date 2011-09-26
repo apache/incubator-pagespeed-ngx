@@ -21,8 +21,10 @@
 #ifndef NET_INSTAWEB_UTIL_CACHE_TEST_BASE_H_
 #define NET_INSTAWEB_UTIL_CACHE_TEST_BASE_H_
 
-#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/cache_interface.h"
+
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
 

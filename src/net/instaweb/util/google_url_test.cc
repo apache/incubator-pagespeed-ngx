@@ -202,6 +202,17 @@ TEST_F(GoogleUrlTest, TestReset) {
   EXPECT_TRUE(url.UncheckedSpec().empty());
 }
 
+TEST_F(GoogleUrlTest, TestHostAndPort) {
+  const char kExpected5[] = "example.com:5";
+  EXPECT_EQ(kExpected5, GoogleUrl("http://example.com:5").HostAndPort());
+  EXPECT_EQ(kExpected5, GoogleUrl("http://example.com:5/a/b").HostAndPort());
+  EXPECT_EQ(kExpected5, GoogleUrl("https://example.com:5").HostAndPort());
+  const char kExpected[] = "example.com";
+  EXPECT_EQ(kExpected, GoogleUrl("http://example.com").HostAndPort());
+  EXPECT_EQ(kExpected, GoogleUrl("http://example.com/a/b").HostAndPort());
+  EXPECT_EQ(kExpected, GoogleUrl("https://example.com").HostAndPort());
+}
+
 TEST_F(GoogleUrlTest, TestPort) {
   EXPECT_EQ(5, GoogleUrl("http://example.com:5").IntPort());
   EXPECT_EQ(5, GoogleUrl("http://example.com:5").EffectiveIntPort());

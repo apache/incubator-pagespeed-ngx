@@ -252,9 +252,10 @@ OutputResourcePtr ResourceCombiner::Combine(const ContentType& content_type,
   // Start building up the combination.  At this point we are still
   // not committed to the combination, because the 'write' can fail.
   // TODO(jmaessen, jmarantz): encode based on partnership
-  combination.reset(rewrite_driver_->CreateOutputResourceWithBaseUrlPath(
-      ResolvedBase(), filter_->id(), url_safe_id, &content_type,
-      kRewrittenResource, filter_->HasAsyncFlow()));
+  combination.reset(rewrite_driver_->CreateOutputResourceWithMappedPath(
+      ResolvedBase(), partnership_.original_origin_and_path().Origin(),
+      filter_->id(), url_safe_id, &content_type, kRewrittenResource,
+      filter_->HasAsyncFlow()));
   if (combination.get() != NULL) {
     if (combination->cached_result() != NULL &&
         combination->cached_result()->optimizable()) {

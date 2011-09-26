@@ -257,6 +257,15 @@ StringPiece GoogleUrl::Host() const {
                      parsed.host.len);
 }
 
+StringPiece GoogleUrl::HostAndPort() const {
+  if (!gurl_.has_host()) {
+    return NULL;
+  }
+  url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();
+  return StringPiece(gurl_.spec().data() + parsed.host.begin,
+                     parsed.host.len + parsed.port.len + 1);  // Yes, it works.
+}
+
 StringPiece GoogleUrl::PathSansQuery() const {
   const std::string& spec = gurl_.spec();
   url_parse::Parsed parsed = gurl_.parsed_for_possibly_invalid_spec();

@@ -483,12 +483,14 @@ class SerfFetch : public PoolElement<SerfFetch> {
         serf_request_get_alloc(request), host);
     serf_bucket_t* hdrs_bkt = serf_bucket_request_get_headers(*req_bkt);
 
+    // Selectively add other useful headers from the caller's request.
     for (int i = 0; i < fetch->request_headers_.NumAttributes(); ++i) {
       const GoogleString& name = fetch->request_headers_.Name(i);
       const GoogleString& value = fetch->request_headers_.Value(i);
       if ((StringCaseEqual(name, HttpAttributes::kUserAgent)) ||
           (StringCaseEqual(name, HttpAttributes::kAcceptEncoding)) ||
-          (StringCaseEqual(name, HttpAttributes::kReferer))) {
+          (StringCaseEqual(name, HttpAttributes::kReferer)) ||
+          (StringCaseEqual(name, HttpAttributes::kCookie))) {
         serf_bucket_headers_setn(hdrs_bkt, name.c_str(), value.c_str());
       }
     }

@@ -102,6 +102,10 @@ class GoogleUrl {
 
   StringPiece Host() const;
 
+  // For "http://a.com/b/c.html" returns "a.com".
+  // For "http://a.com:1234/b/c.html" returns "a.com:1234".
+  StringPiece HostAndPort() const;
+
   // For "http://a.com/b/c/d?e=f/g returns "http://a.com"
   // without trailing slash
   // Returns a StringPiece, only valid for the lifetime of this object.

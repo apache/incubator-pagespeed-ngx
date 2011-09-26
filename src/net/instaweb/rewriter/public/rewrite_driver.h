@@ -325,18 +325,6 @@ class RewriteDriver : public HtmlParse {
       const StringPiece& name, const ContentType* content_type,
       OutputResourceKind kind, bool use_async_flow);
 
-  // Version of CreateOutputResourceWithPath where the unmapped path is given
-  // and the mapped path and base_url are this driver's base_url.
-  OutputResourcePtr CreateOutputResourceWithBaseUrlPath(
-      const StringPiece& path, const StringPiece& filter_id,
-      const StringPiece& name, const ContentType* content_type,
-      OutputResourceKind kind, bool use_async_flow) {
-    return CreateOutputResourceWithPath(path, base_url_.AllExceptLeaf(),
-                                        base_url_.AllExceptLeaf(),
-                                        filter_id, name, content_type, kind,
-                                        use_async_flow);
-  }
-
   // Version of CreateOutputResourceWithPath where the unmapped and mapped
   // paths are the same and the base_url is this driver's base_url.
   OutputResourcePtr CreateOutputResourceWithUnmappedPath(

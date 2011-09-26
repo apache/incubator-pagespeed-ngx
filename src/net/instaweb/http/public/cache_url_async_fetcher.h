@@ -29,7 +29,6 @@ class HTTPCache;
 class MessageHandler;
 class RequestHeaders;
 class ResponseHeaders;
-class Writer;
 
 // Composes an asynchronous URL fetcher with an http cache, to
 // generate an asynchronous caching URL fetcher.

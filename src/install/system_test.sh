@@ -49,6 +49,9 @@ MESSAGE_URL=http://$HOSTNAME/mod_pagespeed_message
 HTTPS_HOST=$2
 HTTPS_EXAMPLE_ROOT=https://$HTTPS_HOST/mod_pagespeed_example
 
+# This is the root of the URL of rewritten resources; by default, no change.
+REWRITTEN_ROOT=${REWRITTEN_ROOT:-$EXAMPLE_ROOT}
+
 # Setup wget proxy information
 export http_proxy=$3
 export https_proxy=$3
@@ -288,15 +291,15 @@ check run_wget_with_args $URL
 #test_resource_ext_corruption $URL $combine_css_filename
 
 echo TEST: combine_css without hash field should 404
-echo run_wget_with_args $EXAMPLE_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
-run_wget_with_args $EXAMPLE_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
+echo run_wget_with_args $REWRITTEN_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
+run_wget_with_args $REWRITTEN_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
 check grep '"404 Not Found"' $WGET_OUTPUT
 
 # Note: this large URL can only be processed by Apache if
 # ap_hook_map_to_storage is called to bypass the default
 # handler that maps URLs to filenames.
 echo TEST: Fetch large css_combine URL
-LARGE_URL="$EXAMPLE_ROOT/styles/yellow.css+blue.css+big.css+\
+LARGE_URL="$REWRITTEN_ROOT/styles/yellow.css+blue.css+big.css+\
 bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
 big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
 big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
@@ -340,17 +343,17 @@ echo about to test resource ext corruption...
 #test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 
 echo TEST: Attempt to fetch cache-extended image without hash should 404
-run_wget_with_args $EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce..jpg
+run_wget_with_args $REWRITTEN_ROOT/images/Puzzle.jpg.pagespeed.ce..jpg
 check grep '"404 Not Found"' $WGET_OUTPUT
 
 echo TEST: Cache-extended image should respond 304 to an If-Modified-Since.
-URL=$EXAMPLE_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
+URL=$REWRITTEN_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 DATE=`date -R`
 run_wget_with_args --header "If-Modified-Since: $DATE" $URL
 check grep '"304 Not Modified"' $WGET_OUTPUT
 
 echo TEST: Legacy format URLs should still work.
-URL=$EXAMPLE_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
+URL=$REWRITTEN_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
 # Note: Wget request is HTTP/1.0, so some servers respond back with
 # HTTP/1.0 and some respond back 1.1.
 check "$WGET_DUMP $URL | grep -qe 'HTTP/1\.. 200 OK'"
@@ -454,7 +457,7 @@ echo TEST: Last-modified is present
 echo "$IMG_HEADERS" | grep -qi 'Last-Modified'
 check [ $? = 0 ]
 
-BAD_IMG_URL=$EXAMPLE_ROOT/images/xBadName.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
+BAD_IMG_URL=$REWRITTEN_ROOT/images/xBadName.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
 echo TEST: rewrite_images fails broken image \"$BAD_IMG_URL\"
 echo run_wget_with_args $BAD_IMG_URL
 run_wget_with_args $BAD_IMG_URL  # fails
@@ -462,7 +465,7 @@ check grep '"404 Not Found"' $WGET_OUTPUT
 
 # [google] b/3328110
 echo "TEST: rewrite_images doesn't 500 on unoptomizable image"
-IMG_URL=$EXAMPLE_ROOT/images/xOptPuzzle.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
+IMG_URL=$REWRITTEN_ROOT/images/xOptPuzzle.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
 run_wget_with_args $IMG_URL
 check grep -e '"HTTP/1\.. 200 OK"' $WGET_OUTPUT
 
