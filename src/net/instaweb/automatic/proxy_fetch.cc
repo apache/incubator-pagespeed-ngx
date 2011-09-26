@@ -144,7 +144,8 @@ bool ProxyFetch::StartParse() {
   // Start parsing.
   // TODO(sligocki): Allow calling StartParse with GoogleUrl.
   if (!driver_->StartParse(url_)) {
-    LOG(INFO) << "Parse failed to start. Passing content through.";
+    // We don't expect this to ever fail.
+    LOG(ERROR) << "StartParse failed for URL: " << url_;
     return false;
   } else {
     if (request_user_agent_.get() != NULL) {
@@ -172,15 +173,18 @@ bool ProxyFetch::IsHtml() {
   return html;
 }
 
-RewriteOptions* ProxyFetch::Options() {
-  // Note that this is equivalent to driver_->options(), but this needs
-  // to be called before setting driver_.  In fact if query-params/headers
-  // turn off PSA, then we shouldn't even allocate a driver.
-  RewriteOptions* options = custom_options_.get();
-  if (options == NULL) {
-    options = resource_manager_->options();
+const RewriteOptions* ProxyFetch::Options() {
+  // If driver_ is not yet constructed, we need to use the ResoruceManager's
+  // default options or custom options supplied to us.
+  // However, if driver_ has been constructed, then custom_options gets
+  // reset to NULL, so the logic here is a bit complicated.
+  if (driver_ != NULL) {
+    return driver_->options();
+  } else if (custom_options_.get() != NULL) {
+    return custom_options_.get();
+  } else {
+    return resource_manager_->options();
   }
-  return options;
 }
 
 void ProxyFetch::HeadersComplete() {
@@ -189,7 +193,7 @@ void ProxyFetch::HeadersComplete() {
 
   // TODO(sligocki): Get these in the main flow.
   // Add, remove and update headers as appropriate.
-  RewriteOptions* options = Options();
+  const RewriteOptions* options = Options();
   if (IsHtml() && options->enabled()) {
     started_parse_ = StartParse();
     if (started_parse_) {
@@ -378,11 +382,14 @@ void ProxyFetch::Finish(bool success) {
       driver_->FinishParseAsync(
         MakeFunction(this, &ProxyFetch::CompleteFinishParse, success));
       return;
+
     } else {
+      // In the unlikely case that StartParse fails (invalid URL?)
+      // we must manually release driver_ (FinishParse usually does this).
       resource_manager_->ReleaseRewriteDriver(driver_);
+      driver_ = NULL;
     }
   }
-  driver_ = NULL;
 
   if (!pass_through_ && success) {
     rewrite_latency_histogram_->Add(

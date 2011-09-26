@@ -135,7 +135,7 @@ class ProxyFetch : public AsyncFetch {
   // Returns whether we started parsing successfully or not.
   bool StartParse();
   bool IsHtml();
-  RewriteOptions* Options();
+  const RewriteOptions* Options();
 
   // Handles buffered HTML writes, flushes, and done calls
   // in a QueuedWorkerPool::Sequence.
