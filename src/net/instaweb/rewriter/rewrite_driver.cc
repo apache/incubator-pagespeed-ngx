@@ -924,7 +924,8 @@ class CacheCallback : public HTTPCache::Callback {
         response_(response),
         writer_(writer),
         handler_(handler),
-        callback_(callback) {
+        callback_(callback),
+        did_locking_(false) {
     request_.CopyFrom(request);
   }
 
@@ -947,7 +948,7 @@ class CacheCallback : public HTTPCache::Callback {
       callback_->Done(success);
       driver_->FetchComplete();
       delete this;
-    } else if (output_resource_->has_lock()) {
+    } else if (did_locking_) {
       if (output_resource_->Load(handler_)) {
         // OutputResources can also be loaded while not in cache if
         // store_outputs_in_file_system() is true.
@@ -969,16 +970,16 @@ class CacheCallback : public HTTPCache::Callback {
         }
       }
       delete this;
-    } else if (output_resource_->LockForCreation(kMayBlock)) {
+    } else {
+      // Note that we purposefully continue here even if locking fails;
+      // which is also why we use did_locking_ above and not has_lock();
+      output_resource_->LockForCreation(kMayBlock);
+      did_locking_ = true;
+
       // See if the resource got created while we were waiting for the
       // lock.  (If it did, the lock will get released almost
       // immediately in our caller, as it will cleanup the resource).
       http_cache->Find(output_resource_->url(), handler_, this);
-    } else {
-      LOG(DFATAL) << "Failed to grab lock despite having passed kMayBlock";
-      callback_->Done(false);
-      driver_->FetchComplete();
-      delete this;
     }
   }
 
@@ -991,6 +992,7 @@ class CacheCallback : public HTTPCache::Callback {
   Writer* writer_;
   MessageHandler* handler_;
   UrlAsyncFetcher::Callback* callback_;
+  bool did_locking_;
 };
 
 }  // namespace

@@ -69,6 +69,9 @@ class NamedLock {
   // Relinquish lock.  Non-blocking.
   virtual void Unlock() = 0;
 
+  // Returns true if this lock is held by this particular lock object.
+  virtual bool Held() = 0;
+
   // The name the lock was created with, for debugging/logging purposes.
   virtual GoogleString name() = 0;
 };

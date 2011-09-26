@@ -654,7 +654,10 @@ void RewriteContext::FetchInputs(BlockingBehavior block) {
     lock_.reset(Manager()->MakeCreationLock(lock_name));
   }
 
-  if (Manager()->LockForCreation(block, lock_.get())) {
+  Manager()->LockForCreation(block, lock_.get());
+  // Note that in case of fetches we continue even if we didn't manage to
+  // steal the lock.
+  if (lock_->Held() || (block == kMayBlock)) {
     ++num_predecessors_;
 
     for (int i = 0, n = slots_.size(); i < n; ++i) {
@@ -705,6 +708,7 @@ void RewriteContext::FetchInputs(BlockingBehavior block) {
   } else {
     // TODO(jmarantz): bump stat for abandoned rewrites due to lock
     // contention.
+    ok_to_write_output_partitions_ = false;
   }
 
   Activate();  // TODO(jmarantz): remove.

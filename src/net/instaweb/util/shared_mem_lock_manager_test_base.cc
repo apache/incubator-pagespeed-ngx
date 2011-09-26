@@ -84,19 +84,28 @@ void SharedMemLockManagerTestBase::TestBasic() {
   ASSERT_TRUE(lock_a.get() != NULL);
   ASSERT_TRUE(lock_b.get() != NULL);
 
+  EXPECT_FALSE(lock_a->Held());
+  EXPECT_FALSE(lock_b->Held());
+
   // Can lock exactly once...
   EXPECT_TRUE(lock_a->TryLock());
   EXPECT_TRUE(lock_b->TryLock());
+  EXPECT_TRUE(lock_a->Held());
+  EXPECT_TRUE(lock_b->Held());
   EXPECT_FALSE(lock_a->TryLock());
   EXPECT_FALSE(lock_b->TryLock());
+  EXPECT_TRUE(lock_a->Held());
+  EXPECT_TRUE(lock_b->Held());
 
   // Unlocking lets one lock again
   lock_b->Unlock();
+  EXPECT_FALSE(lock_b->Held());
   EXPECT_FALSE(lock_a->TryLock());
   EXPECT_TRUE(lock_b->TryLock());
 
   // Now unlock A, and let kid confirm the state
   lock_a->Unlock();
+  EXPECT_FALSE(lock_a->Held());
   CreateChild(&SharedMemLockManagerTestBase::TestBasicChild);
   test_env_->WaitForChildren();
 
@@ -116,12 +125,12 @@ void SharedMemLockManagerTestBase::TestBasicChild() {
   }
 
   // A should lock fine
-  if (!lock_a->TryLock()) {
+  if (!lock_a->TryLock() || !lock_a->Held()) {
     test_env_->ChildFailed();
   }
 
   // B shouldn't lock fine.
-  if (lock_b->TryLock()) {
+  if (lock_b->TryLock() || lock_b->Held()) {
     test_env_->ChildFailed();
   }
 
@@ -150,6 +159,7 @@ void SharedMemLockManagerTestBase::TestSteal() {
   ASSERT_TRUE(lock_manager_.get() != NULL);
   scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
   EXPECT_TRUE(lock_a->TryLock());
+  EXPECT_TRUE(lock_a->Held());
   CreateChild(&SharedMemLockManagerTestBase::TestStealChild);
   test_env_->WaitForChildren();
 }
@@ -162,14 +172,14 @@ void SharedMemLockManagerTestBase::TestStealChild() {
   scoped_ptr<NamedLock> lock_a(lock_manager_->CreateNamedLock(kLockA));
 
   // First, attempting to steal should fail, as 'time' hasn't moved yet.
-  if (lock_a->TryLockStealOld(kStealTimeMs)) {
+  if (lock_a->TryLockStealOld(kStealTimeMs) || lock_a->Held()) {
     test_env_->ChildFailed();
   }
 
   timer_.AdvanceMs(kStealTimeMs + 1);
 
   // Now it should succeed.
-  if (!lock_a->TryLockStealOld(kStealTimeMs)) {
+  if (!lock_a->TryLockStealOld(kStealTimeMs) || !lock_a->Held()) {
     test_env_->ChildFailed();
   }
 }

@@ -89,20 +89,39 @@ TEST_F(FileSystemLockManagerTest, LockUnlock) {
   // Just do pairs of matched lock / unlock, making sure
   // we can't lock while the lock is held.
   EXPECT_TRUE(lock1->TryLock());
+  EXPECT_TRUE(lock1->Held());
   AllLocksFail(lock1.get());
+
   lock1->Unlock();
+  EXPECT_FALSE(lock1->Held());
+
   EXPECT_TRUE(lock1->TryLock());
+  EXPECT_TRUE(lock1->Held());
   AllLocksFail(lock1.get());
+
   lock1->Unlock();
+  EXPECT_FALSE(lock1->Held());
+
   EXPECT_TRUE(lock1->LockTimedWait(kWaitMs));
+  EXPECT_TRUE(lock1->Held());
   AllLocksFail(lock1.get());
+
   lock1->Unlock();
+  EXPECT_FALSE(lock1->Held());
+
   EXPECT_TRUE(lock1->TryLockStealOld(kTimeoutMs));
+  EXPECT_TRUE(lock1->Held());
   AllLocksFail(lock1.get());
+
   lock1->Unlock();
+  EXPECT_FALSE(lock1->Held());
+
   EXPECT_TRUE(lock1->LockTimedWaitStealOld(kWaitMs, kTimeoutMs));
+  EXPECT_TRUE(lock1->Held());
   AllLocksFail(lock1.get());
+
   lock1->Unlock();
+  EXPECT_FALSE(lock1->Held());
 }
 
 TEST_F(FileSystemLockManagerTest, DoubleLockUnlock) {
@@ -111,20 +130,44 @@ TEST_F(FileSystemLockManagerTest, DoubleLockUnlock) {
   // Just do pairs of matched lock / unlock, but make sure
   // we hold a separate lock object with the same lock name.
   EXPECT_TRUE(lock1->TryLock());
+  EXPECT_TRUE(lock1->Held());
+  EXPECT_FALSE(lock11->Held());
   AllLocksFail(lock11.get());
   lock1->Unlock();
+  EXPECT_FALSE(lock1->Held());
+  EXPECT_FALSE(lock11->Held());
+
   EXPECT_TRUE(lock1->TryLock());
   AllLocksFail(lock11.get());
+  EXPECT_TRUE(lock1->Held());
+  EXPECT_FALSE(lock11->Held());
   lock1->Unlock();
+  EXPECT_FALSE(lock1->Held());
+  EXPECT_FALSE(lock11->Held());
+
   EXPECT_TRUE(lock1->LockTimedWait(kWaitMs));
+  EXPECT_TRUE(lock1->Held());
+  EXPECT_FALSE(lock11->Held());
   AllLocksFail(lock11.get());
   lock1->Unlock();
+  EXPECT_FALSE(lock1->Held());
+  EXPECT_FALSE(lock11->Held());
+
   EXPECT_TRUE(lock1->TryLockStealOld(kTimeoutMs));
+  EXPECT_TRUE(lock1->Held());
+  EXPECT_FALSE(lock11->Held());
   AllLocksFail(lock11.get());
   lock1->Unlock();
+  EXPECT_FALSE(lock1->Held());
+  EXPECT_FALSE(lock11->Held());
+
   EXPECT_TRUE(lock1->LockTimedWaitStealOld(kWaitMs, kTimeoutMs));
+  EXPECT_TRUE(lock1->Held());
+  EXPECT_FALSE(lock11->Held());
   AllLocksFail(lock11.get());
   lock1->Unlock();
+  EXPECT_FALSE(lock1->Held());
+  EXPECT_FALSE(lock11->Held());
 }
 
 // From this point, we assume all the locking routines hold
@@ -158,8 +201,10 @@ TEST_F(FileSystemLockManagerTest, LockIndependence) {
 TEST_F(FileSystemLockManagerTest, TimeoutFail) {
   scoped_ptr<NamedLock> lock1(MakeLock(kLock1));
   EXPECT_TRUE(lock1->TryLock());
+  EXPECT_TRUE(lock1->Held());
   int64 start_ms = timer()->NowMs();
   EXPECT_FALSE(lock1->LockTimedWait(kWaitMs));
+  EXPECT_TRUE(lock1->Held());  // was never unlocked...
   int64 end_ms = timer()->NowMs();
   EXPECT_LE(start_ms + kWaitMs, end_ms);
 }
@@ -178,9 +223,11 @@ TEST_F(FileSystemLockManagerTest, StealOld) {
   EXPECT_FALSE(lock1->TryLockStealOld(kTimeoutMs));
   timer()->AdvanceMs(kTimeoutMs);
   EXPECT_FALSE(lock1->TryLockStealOld(kTimeoutMs));
+  EXPECT_TRUE(lock1->Held());  // was never unlocked...
   // But again expire after >kTimeoutMs elapses.
   timer()->AdvanceMs(1);
   EXPECT_TRUE(lock1->TryLockStealOld(kTimeoutMs));
+  EXPECT_TRUE(lock1->Held());  // was never unlocked...
 }
 
 TEST_F(FileSystemLockManagerTest, BlockingStealOld) {

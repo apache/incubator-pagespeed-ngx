@@ -39,10 +39,8 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
@@ -53,7 +51,6 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
 
@@ -449,14 +446,13 @@ NamedLock* ResourceManager::MakeCreationLock(const GoogleString& name) {
   return lock_manager_->CreateNamedLock(lock_name);
 }
 
-bool ResourceManager::LockForCreation(BlockingBehavior block,
+void ResourceManager::LockForCreation(BlockingBehavior block,
                                       NamedLock* creation_lock) {
   const int64 kBreakLockMs = 30 * Timer::kSecondMs;
   const int64 kBlockLockMs = 5 * Timer::kSecondMs;
-  bool result = true;
   switch (block) {
     case kNeverBlock:
-      result = creation_lock->TryLockStealOld(kBreakLockMs);
+      creation_lock->TryLockStealOld(kBreakLockMs);
       break;
     case kMayBlock:
       // TODO(jmaessen): It occurs to me that we probably ought to be
@@ -470,7 +466,6 @@ bool ResourceManager::LockForCreation(BlockingBehavior block,
       creation_lock->LockTimedWaitStealOld(kBlockLockMs, kBreakLockMs);
       break;
   }
-  return result;
 }
 
 bool ResourceManager::HandleBeacon(const StringPiece& unparsed_url) {

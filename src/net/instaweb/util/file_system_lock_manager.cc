@@ -62,6 +62,10 @@ class FileSystemLock : public SchedulerBasedAbstractLock {
     return name_;
   }
 
+  virtual bool Held() {
+    return held_;
+  }
+
  protected:
   virtual Scheduler* scheduler() const {
     return manager_->scheduler();

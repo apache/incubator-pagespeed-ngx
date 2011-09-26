@@ -29,7 +29,6 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
-#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -51,7 +50,6 @@ class MessageHandler;
 class NamedLock;
 class NamedLockManager;
 class QueuedWorkerPool;
-class ResourceContext;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteDriverFactory;
@@ -63,7 +61,6 @@ class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
 class UrlNamer;
-class UrlSegmentEncoder;
 
 typedef RefCountedPtr<OutputResource> OutputResourcePtr;
 typedef std::vector<OutputResourcePtr> OutputResourceVector;
@@ -198,11 +195,11 @@ class ResourceManager {
   // Allocate an NamedLock to guard the creation of the given resource.
   NamedLock* MakeCreationLock(const GoogleString& name);
 
-  // Attempt to obtain a named lock.  Return true if we do so.  If the
-  // object is expensive to create, this lock should be held during
-  // its creation to avoid multiple rewrites happening at once.  The
-  // lock will be unlocked when creation_lock is reset or destructed.
-  bool LockForCreation(BlockingBehavior block, NamedLock* creation_lock);
+  // Attempt to obtain a named lock.  If the object is expensive to create, this
+  // lock should be held during its creation to avoid multiple rewrites
+  // happening at once.  The lock will be unlocked when creation_lock is reset
+  // or destructed.
+  void LockForCreation(BlockingBehavior block, NamedLock* creation_lock);
 
   // Setters should probably only be used in testing.
   void set_hasher(Hasher* hasher) { hasher_ = hasher; }

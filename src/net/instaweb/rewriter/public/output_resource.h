@@ -41,7 +41,6 @@ class CachedResult;
 class HTTPValue;
 class MessageHandler;
 class NamedLock;
-class RequestHeaders;
 class ResourceManager;
 class RewriteOptions;
 struct ContentType;
@@ -187,7 +186,7 @@ class OutputResource : public Resource {
     written_using_rewrite_context_flow_ = x;
   }
 
-  bool has_lock() const { return locked_; }
+  bool has_lock() const;
 
   // This is called by CacheCallback::Done in rewrite_driver.cc.
   void set_written(bool written) { writing_complete_ = true; }
@@ -243,7 +242,6 @@ class OutputResource : public Resource {
 
   FileSystem::OutputFile* output_file_;
   bool writing_complete_;
-  bool locked_;
 
   // TODO(jmarantz): We have a complicated semantic for CachedResult
   // ownership as we transition from rewriting inline while html parsing

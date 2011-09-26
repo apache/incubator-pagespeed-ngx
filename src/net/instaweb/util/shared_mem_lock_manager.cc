@@ -148,6 +148,10 @@ class SharedMemLock : public SchedulerBasedAbstractLock {
     return name_;
   }
 
+  virtual bool Held() {
+    return (acquisition_time_ != Data::kNotAcquired);
+  }
+
  protected:
   virtual Scheduler* scheduler() const {
     return manager_->scheduler_;

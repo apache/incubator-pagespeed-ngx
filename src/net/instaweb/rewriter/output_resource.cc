@@ -30,12 +30,10 @@
 #include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/blocking_behavior.h"
-#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -48,7 +46,6 @@
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_hash.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
@@ -88,7 +85,6 @@ OutputResource::OutputResource(ResourceManager* resource_manager,
     : Resource(resource_manager, type),
       output_file_(NULL),
       writing_complete_(false),
-      locked_(false),
       cached_result_owned_(false),
       cached_result_(NULL),
       resolved_base_(resolved_base.data(), resolved_base.size()),
@@ -190,12 +186,7 @@ bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
 
     output_file_ = NULL;
   }
-  if (creation_lock_.get() != NULL) {
-    // We've created the data, never need to lock again.
-    creation_lock_->Unlock();
-    creation_lock_.reset(NULL);
-    locked_ = false;
-  }
+  DropCreationLock();
   return ret;
 }
 
@@ -310,20 +301,21 @@ void OutputResource::SetType(const ContentType* content_type) {
 }
 
 bool OutputResource::LockForCreation(BlockingBehavior block) {
-  if (!locked_) {
-    if (creation_lock_.get() == NULL) {
-      creation_lock_.reset(resource_manager_->MakeCreationLock(name_key()));
-    }
-    locked_ = resource_manager_->LockForCreation(block, creation_lock_.get());
+  if (has_lock()) {
+    // Already have access.
+    return true;
   }
-  return locked_;
+
+  if (creation_lock_.get() == NULL) {
+    creation_lock_.reset(resource_manager_->MakeCreationLock(name_key()));
+  }
+
+  resource_manager_->LockForCreation(block, creation_lock_.get());
+  return has_lock();
 }
 
 void OutputResource::DropCreationLock() {
-  if (locked_) {
-    creation_lock_.reset();
-    locked_ = false;
-  }
+  creation_lock_.reset();
 }
 
 void OutputResource::SaveCachedResult(const GoogleString& name_key,
@@ -424,6 +416,10 @@ void OutputResource::clear_cached_result() {
     cached_result_owned_ = false;
   }
   cached_result_ = NULL;
+}
+
+bool OutputResource::has_lock() const {
+  return ((creation_lock_.get() != NULL) && creation_lock_->Held());
 }
 
 }  // namespace net_instaweb

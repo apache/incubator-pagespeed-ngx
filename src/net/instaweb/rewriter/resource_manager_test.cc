@@ -211,7 +211,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
     {
       // Here we attempt to create the object with the hash and fetch it.
-      // The fetch fails (but returns after stealing the lock, however).
+      // The fetch fails as there is no active filter to resolve it
+      // (but returns after timing out the lock, however).
       ResourceNamer namer;
       namer.CopyFrom(nor->full_name());
       namer.set_hash("0");

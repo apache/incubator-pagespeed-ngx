@@ -62,10 +62,12 @@ class MockLockBase : public SchedulerBasedAbstractLock {
   virtual Scheduler* scheduler() const { return scheduler_; }
   // None of the mock locks actually implement locking, so
   // unlocking is a no-op.
-  virtual void Unlock() { }
+  virtual void Unlock() { held_ = false; }
+  virtual bool Held() { return held_; }
 
  protected:
   Scheduler* scheduler_;
+  bool held_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockLockBase);
@@ -77,9 +79,11 @@ class AlwaysLock : public MockLockBase {
   explicit AlwaysLock(Scheduler* scheduler) : MockLockBase(scheduler) { }
   virtual ~AlwaysLock() { }
   virtual bool TryLock() {
+    held_ = true;
     return true;
   }
   virtual bool TryLockStealOld(int64 timeout_ms) {
+    held_ = true;
     return true;
   }
   virtual GoogleString name() { return GoogleString("AlwaysLock"); }
@@ -115,6 +119,7 @@ class StealOnlyLock : public NeverLock {
     int64 now_ms = scheduler()->timer()->NowMs();
     if (timeout_time_ms <= now_ms) {
       last_hold_time_ms_ = now_ms;
+      held_ = true;
       return true;
     } else {
       return false;
