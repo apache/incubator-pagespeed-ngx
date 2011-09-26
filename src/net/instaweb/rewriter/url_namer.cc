@@ -46,14 +46,14 @@ GoogleString UrlNamer::Encode(const RewriteOptions* rewrite_options,
     const DomainLawyer* domain_lawyer = rewrite_options->domain_lawyer();
     GoogleUrl gurl(output_resource.resolved_base());
     GoogleString domain = StrCat(gurl.Origin(), "/");
-    GoogleString shard;
-    if (domain_lawyer->ShardDomain(domain, int_hash, &shard)) {
-      // The Path has a leading "/", and shard has a trailing "/".  So
-      // we need to perform some StringPiece substring arithmetic to
+    GoogleString sharded_domain;
+    if (domain_lawyer->ShardDomain(domain, int_hash, &sharded_domain)) {
+      // The Path has a leading "/", and sharded_domain has a trailing "/".
+      // So we need to perform some StringPiece substring arithmetic to
       // make them all fit together.  Note that we could have used
       // string's substr method but that would have made another temp
       // copy, which seems like a waste.
-      encoded_path = StrCat(shard, gurl.PathAndLeaf().substr(1));
+      encoded_path = StrCat(sharded_domain, gurl.PathAndLeaf().substr(1));
     } else {
       encoded_path = output_resource.resolved_base();
     }

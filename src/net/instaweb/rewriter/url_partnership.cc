@@ -119,8 +119,7 @@ void UrlPartnership::Reset(const GoogleUrl& original_request) {
   url_vector_.clear();
   common_components_.clear();
   if (original_request.is_valid()) {
-    GoogleUrl tmp(original_request.AllExceptLeaf());
-    original_origin_and_path_.Swap(&tmp);
+    original_origin_and_path_.Reset(original_request.AllExceptLeaf());
   }
 }
 

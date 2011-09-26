@@ -45,6 +45,7 @@
 #include "net/instaweb/spriter/public/image_spriter.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -809,8 +810,14 @@ class ImageCombineFilter::Context : public RewriteContext {
   // fetches in RewriteContext.  This may or may not cause cache misses
   // when we could have had hits. It should not cause any functional
   // errors.
+  // We hash the usual cache key, which is a list of the urls in the
+  // combination, in order to keep it short so it doesn't run up against
+  // filename length limits on apache.
+  // TODO(nforman): Figure out a way to test cache keys in general.
   virtual GoogleString CacheKey() const {
-    return StrCat(key_prefix_, RewriteContext::CacheKey());
+    GoogleString key = RewriteContext::CacheKey();
+    return StrCat(key_prefix_,
+                  Manager()->hasher()->Hash(key));
   }
 
   bool AddFuture(CssResourceSlotPtr slot) {

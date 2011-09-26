@@ -74,7 +74,7 @@ void DivStructureFilter::StartElement(HtmlElement* element) {
         if (google_url.is_valid()) {
           GoogleString param_value = GetDivCountStackEncoding(div_count_stack_);
           scoped_ptr<GoogleUrl> new_url(google_url.CopyAndAddQueryParam(
-              SharedMemRefererStatistics::kParamName, param_value.c_str()));
+              SharedMemRefererStatistics::kParamName, param_value));
           // new url should be valid, so we can use Spec()
           href->SetValue(new_url->Spec());
           div_count_stack_.back()++;

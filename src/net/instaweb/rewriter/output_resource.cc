@@ -294,8 +294,7 @@ bool OutputResource::Load(MessageHandler* handler) {
 GoogleString OutputResource::decoded_base() const {
   GoogleUrl encoded_url(url());
   GoogleUrl decoded_url(resource_manager()->url_namer()->Decode(encoded_url));
-  StringPiece url_base = decoded_url.AllExceptLeaf();
-  return url_base.as_string();
+  return decoded_url.AllExceptLeaf().as_string();
 }
 
 bool OutputResource::IsWritten() const {

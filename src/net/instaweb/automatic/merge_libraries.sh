@@ -40,9 +40,10 @@ ar=ar
 
 for lib in $*; do
   prefix=`expr $prefix + 1`
-  $ar -x $lib
-  for file in *.o; do
-    mv $file $prefix.$file
+  files=`$ar -t $lib`
+  for entry in $files; do
+    leaf=`basename $entry`.o
+    $ar p $lib $entry > $prefix.$leaf
   done
   $ar -q -S $output *.o
   echo Adding `ls -l *.o | wc -l` files from $lib ...

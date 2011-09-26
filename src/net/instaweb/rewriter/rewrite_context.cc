@@ -1187,15 +1187,15 @@ void RewriteContext::StartFetch() {
   FetchInputs(kMayBlock);
 }
 
-RewriteDriver* RewriteContext::Driver() {
-  RewriteContext* rc;
+RewriteDriver* RewriteContext::Driver() const {
+  const RewriteContext* rc;
   for (rc = this; rc->driver_ == NULL; rc = rc->parent_) {
     CHECK(rc != NULL);
   }
   return rc->driver_;
 }
 
-ResourceManager* RewriteContext::Manager() {
+ResourceManager* RewriteContext::Manager() const {
   return Driver()->resource_manager();
 }
 

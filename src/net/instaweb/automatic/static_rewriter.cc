@@ -132,8 +132,8 @@ int main(int argc, char** argv) {
   // port without extra copying of bytes.
   net_instaweb::StringWriter writer(&html_output_buffer);
   driver->SetWriter(&writer);
-  if (!driver->StartParseId(url, input_file_path.c_str(),
-                           net_instaweb::kContentTypeHtml)) {
+  if (!driver->StartParseId(url, input_file_path,
+                            net_instaweb::kContentTypeHtml)) {
     fprintf(stderr, "StartParseId failed on url %s\n", url.c_str());
     return 1;
   }

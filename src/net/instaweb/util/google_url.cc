@@ -28,6 +28,10 @@
 
 namespace net_instaweb {
 
+GoogleUrl::GoogleUrl()
+    : gurl_() {
+}
+
 GoogleUrl::GoogleUrl(const GURL& gurl)
     : gurl_(gurl) {
 }
@@ -39,26 +43,37 @@ GoogleUrl::GoogleUrl(const StringPiece& sp)
     : gurl_(sp.as_string()) {
 }
 
-GoogleUrl::GoogleUrl(const char *str)
+GoogleUrl::GoogleUrl(const char* str)
     : gurl_(str) {
 }
 
 // The following three constructors create a new GoogleUrl by resolving the
 // String(Piece) against the base.
 GoogleUrl::GoogleUrl(const GoogleUrl& base, const GoogleString& str) {
-  gurl_ = base.gurl_.Resolve(str);
+  Reset(base, str);
 }
 
 GoogleUrl::GoogleUrl(const GoogleUrl& base, const StringPiece& sp) {
-  gurl_ = base.gurl_.Resolve(sp.as_string());
+  Reset(base, sp);
 }
 
-GoogleUrl::GoogleUrl(const GoogleUrl& base, const char *str) {
+GoogleUrl::GoogleUrl(const GoogleUrl& base, const char* str) {
+  Reset(base, str);
+}
+
+bool GoogleUrl::Reset(const GoogleUrl& base, const GoogleString& str) {
   gurl_ = base.gurl_.Resolve(str);
+  return gurl_.is_valid();
 }
 
-GoogleUrl::GoogleUrl()
-    : gurl_() {
+bool GoogleUrl::Reset(const GoogleUrl& base, const StringPiece& sp) {
+  gurl_ = base.gurl_.Resolve(sp.as_string());
+  return gurl_.is_valid();
+}
+
+bool GoogleUrl::Reset(const GoogleUrl& base, const char* str) {
+  gurl_ = base.gurl_.Resolve(str);
+  return gurl_.is_valid();
 }
 
 GoogleUrl* GoogleUrl::CopyAndAddQueryParam(const StringPiece& name,

@@ -197,9 +197,9 @@ class RewriteContext {
   // Finds the ResourceManager associated with this context.  Note that
   // this method might have to climb up the parent-tree, but it's typically
   // not a deep tree.  Same with Driver() and Options().
-  ResourceManager* Manager();
+  ResourceManager* Manager() const;
   const RewriteOptions* Options();
-  RewriteDriver* Driver();
+  RewriteDriver* Driver() const;
   const ResourceContext* resource_context() { return resource_context_.get(); }
 
   // Check that an CachedResult is valid, specifically, that all the

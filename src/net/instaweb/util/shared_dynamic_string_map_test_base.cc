@@ -186,7 +186,7 @@ void SharedDynamicStringMapTestBase::TestFillSingleThread() {
   test_env_->WaitForChildren();
   // Each entry should have been incremented once.
   for (int i = 0; i < kTableSize; i++)
-    EXPECT_EQ(1, map->LookupElement(strings_[i].c_str()));
+    EXPECT_EQ(1, map->LookupElement(strings_[i]));
   EXPECT_EQ(kTableSize, map->GetNumberInserted());
   // One child increments the entire table.
   ASSERT_TRUE(CreateFillChild(&SharedDynamicStringMapTestBase::AddFillChild,
@@ -195,7 +195,7 @@ void SharedDynamicStringMapTestBase::TestFillSingleThread() {
   test_env_->WaitForChildren();
   // Each entry should have been incremented twice.
   for (int i = 0; i < kTableSize; i++)
-    EXPECT_EQ(2, map->LookupElement(strings_[i].c_str()));
+    EXPECT_EQ(2, map->LookupElement(strings_[i]));
   EXPECT_EQ(kTableSize, map->GetNumberInserted());
   // Once the table is full it should not accept additional strings.
   ASSERT_TRUE(CreateChild(&SharedDynamicStringMapTestBase::AddToFullTable));
@@ -215,7 +215,7 @@ void SharedDynamicStringMapTestBase::TestFillMultipleNonOverlappingThreads() {
                                 kTableSize / 4));
   test_env_->WaitForChildren();
   for (int i = 0; i < kTableSize; i++)
-    EXPECT_EQ(1, map->LookupElement(strings_[i].c_str()));
+    EXPECT_EQ(1, map->LookupElement(strings_[i]));
   EXPECT_EQ(kTableSize, map->GetNumberInserted());
   // Once the table is full it should not accept additional strings.
   ASSERT_TRUE(CreateChild(&SharedDynamicStringMapTestBase::AddToFullTable));
@@ -237,12 +237,12 @@ void SharedDynamicStringMapTestBase::TestFillMultipleOverlappingThreads() {
                                 kTableSize / 2));
   // In addition, the parent is going to fill up the entire table.
   for (int i = 0; i < kTableSize; i++)
-    ASSERT_NE(0, map->IncrementElement(strings_[i].c_str()));
+    ASSERT_NE(0, map->IncrementElement(strings_[i]));
   test_env_->WaitForChildren();
   EXPECT_EQ(kTableSize, map->GetNumberInserted());
   // Hence, we check that the values are equal to 3.
   for (int i = 0; i < kTableSize; i++)
-    EXPECT_EQ(3, map->LookupElement(strings_[i].c_str()));
+    EXPECT_EQ(3, map->LookupElement(strings_[i]));
   // Once the table is full it should not accept additional strings.
   ASSERT_TRUE(CreateChild(&SharedDynamicStringMapTestBase::AddToFullTable));
   test_env_->WaitForChildren();
@@ -255,7 +255,7 @@ void SharedDynamicStringMapTestBase::AddFillChild(int start,
                                                   int number_of_strings) {
   scoped_ptr<SharedDynamicStringMap> map(ChildInit());
   for (int i = 0; i < number_of_strings; i++) {
-    if (0 == map->IncrementElement(strings_[(i + start) % kTableSize].c_str()))
+    if (0 == map->IncrementElement(strings_[(i + start) % kTableSize]))
       test_env_->ChildFailed();
   }
 }

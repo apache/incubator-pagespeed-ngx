@@ -32,21 +32,23 @@ namespace net_instaweb {
 
 class GoogleUrl {
  public:
-  explicit GoogleUrl(const GURL& gurl);
   explicit GoogleUrl(const GoogleString& spec);
   explicit GoogleUrl(const StringPiece& sp);
-  explicit GoogleUrl(const char *str);
+  explicit GoogleUrl(const char* str);
   // The following three constructors create a new GoogleUrl by resolving the
   // String(Piece) against the base.
-  GoogleUrl(const GoogleUrl& base, const GoogleString& str);
-  GoogleUrl(const GoogleUrl& base, const StringPiece& sp);
-  GoogleUrl(const GoogleUrl& base, const char *str);
+  GoogleUrl(const GoogleUrl& base, const GoogleString& relative);
+  GoogleUrl(const GoogleUrl& base, const StringPiece& relative);
+  GoogleUrl(const GoogleUrl& base, const char* relative);
   GoogleUrl();
 
-  void Swap(GURL* gurl) { gurl_.Swap(gurl); }
   void Swap(GoogleUrl* google_url) { gurl_.Swap(&google_url->gurl_); }
+
   bool Reset(const StringPiece& new_url);
   bool Reset(const GoogleUrl& new_url);
+  bool Reset(const GoogleUrl& base, const GoogleString& relative);
+  bool Reset(const GoogleUrl& base, const StringPiece& relative);
+  bool Reset(const GoogleUrl& base, const char* relative);
 
   // Resets this URL to be invalid.
   void Clear();
@@ -131,39 +133,19 @@ class GoogleUrl {
     return gurl_.possibly_invalid_spec().c_str();
   }
 
-  int IntPort() const {
-    return gurl_.IntPort();
-  }
+  int IntPort() const { return gurl_.IntPort(); }
 
   // Returns the effective port number, which is dependent on the scheme.
-  int EffectiveIntPort() const {
-    return gurl_.EffectiveIntPort();
-  }
+  int EffectiveIntPort() const { return gurl_.EffectiveIntPort(); }
 
   // Returns validity of stored url.
-  bool is_valid() const {
-    return gurl_.is_valid();
-  }
+  bool is_valid() const { return gurl_.is_valid(); }
 
-  bool is_standard() const {
-    return gurl_.IsStandard();
-  }
-
-  bool is_empty() const {
-    return gurl_.is_empty();
-  }
-
-  bool has_scheme() const {
-    return gurl_.has_scheme();
-  }
-
-  bool has_path() const {
-    return gurl_.has_path();
-  }
-
-  bool has_query() const {
-    return gurl_.has_query();
-  }
+  bool is_standard() const { return gurl_.IsStandard(); }
+  bool is_empty() const { return gurl_.is_empty(); }
+  bool has_scheme() const { return gurl_.has_scheme(); }
+  bool has_path() const { return gurl_.has_path(); }
+  bool has_query() const { return gurl_.has_query(); }
 
   bool SchemeIs(const char* lower_ascii_scheme) const {
     return gurl_.SchemeIs(lower_ascii_scheme);
@@ -184,13 +166,16 @@ class GoogleUrl {
   }
 
  private:
-  GURL gurl_;
+  explicit GoogleUrl(const GURL& gurl);
+
   static size_t LeafEndPosition(const GURL &gurl);
   static size_t LeafStartPosition(const GURL &gurl);
   static size_t PathStartPosition(const GURL &gurl);
   size_t LeafEndPosition() const;
   size_t LeafStartPosition() const;
   size_t PathStartPosition() const;
+
+  GURL gurl_;
 
   DISALLOW_COPY_AND_ASSIGN(GoogleUrl);
 };  // class GoogleUrl

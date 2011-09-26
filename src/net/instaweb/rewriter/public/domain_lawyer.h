@@ -63,15 +63,20 @@ class DomainLawyer {
   // it is always accessible to rewrite resources in the same domain as the
   // original.
   //
-  // TODO(jmarantz): the mapped domain name will not incorporate any sharding.
-  // This must be handled by another mapping function which has not yet
-  // been implemented.
+  // Note: The mapped domain name will not incorporate any sharding.
+  // This is handled by ShardDomain().
   //
   // The returned mapped_domain_name will always end with a slash on success.
   // The returned resolved_request incorporates rewrite-domain mapping and
   // the original URL.
   //
   // Returns false on failure.
+  //
+  // This is used both for domain authorization and domain rewriting,
+  // but not domain sharding.
+  //
+  // TODO(sligocki): Refactor this code to have an authorization function
+  // and a function that figures out domain mapping.
   bool MapRequestToDomain(const GoogleUrl& original_request,
                           const StringPiece& resource_url,
                           GoogleString* mapped_domain_name,
@@ -128,8 +133,8 @@ class DomainLawyer {
                 MessageHandler* handler);
 
   // Computes a domain shard based on a passed-in hash, returning true
-  // if the domain was sharded.  Output argument 'shard' is only updated
-  // if when the return value is true.
+  // if the domain was sharded.  Output argument 'sharded_domain' is
+  // only updated if when the return value is true.
   //
   // The hash is an explicit uint32 so that we get the same shard for a
   // resource, whether the server is 32-bit or 64-bit.  If we have
@@ -137,7 +142,7 @@ class DomainLawyer {
   // shards on 32-bit and 64-bit machines and that would reduce cacheability
   // of the sharded resources.
   bool ShardDomain(const StringPiece& domain_name, uint32 hash,
-                   GoogleString* shard) const;
+                   GoogleString* sharded_domain) const;
 
   // Merge the domains declared in src into this.  There are no exclusions, so
   // this is really just aggregating the mappings and authorizations declared in

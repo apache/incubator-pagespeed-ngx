@@ -289,11 +289,8 @@ bool DomainLawyer::MapRequestToDomain(
     MessageHandler* handler) const {
   CHECK(original_request.is_valid());
   GoogleUrl original_origin(original_request.Origin());
-  GoogleUrl tmp_request(original_request, resource_url);
-  resolved_request->Swap(&tmp_request);
-  if (!resolved_request->is_valid()) {
-    return false;
-  }
+  resolved_request->Reset(original_request, resource_url);
+
   bool ret = false;
   // We can map a request to/from http/https.
   if (resolved_request->is_valid()) {
@@ -309,10 +306,12 @@ bool DomainLawyer::MapRequestToDomain(
       resolved_origin.Spec().CopyToString(mapped_domain_name);
       ret = true;
     } else if (resolved_domain != NULL && resolved_domain->authorized()) {
-      if (resolved_domain->IsWildcarded())
+      if (resolved_domain->IsWildcarded()) {
+        // This is a sharded domain. We do not do the sharding in this function.
         resolved_origin.Spec().CopyToString(mapped_domain_name);
-      else
+      } else {
         *mapped_domain_name = resolved_domain->name();
+      }
       ret = true;
     }
 
@@ -335,9 +334,12 @@ bool DomainLawyer::MapRequestToDomain(
         // returns), so remove the leading slash to make it relative so
         // domain of http://domain.com/path/ + path of [/]root/dir/leaf
         // gives http://domain.com/path/root/dir/leaf.
-        GoogleUrl tmp(mapped_domain_url,
-                      resolved_request->PathAndLeaf().substr(1));
-        resolved_request->Swap(&tmp);
+        //
+        // TODO(sligocki): Note, this will technically fail if path starts
+        // with "//", which is technically legal, but I've never seen it before
+        // in the wild.
+        resolved_request->Reset(mapped_domain_url,
+                                resolved_request->PathAndLeaf().substr(1));
       }
     }
   }
@@ -514,7 +516,7 @@ void DomainLawyer::Merge(const DomainLawyer& src) {
 
 bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
                                uint32 hash,
-                               GoogleString* shard) const {
+                               GoogleString* sharded_domain) const {
   GoogleUrl domain_gurl(NormalizeDomainName(domain_name));
   Domain* domain = FindDomain(domain_gurl);
   bool sharded = false;
@@ -522,7 +524,7 @@ bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
     if (domain->num_shards() != 0) {
       int shard_index = hash % domain->num_shards();
       domain = domain->shard(shard_index);
-      *shard = domain->name();
+      *sharded_domain = domain->name();
       sharded = true;
     }
   }

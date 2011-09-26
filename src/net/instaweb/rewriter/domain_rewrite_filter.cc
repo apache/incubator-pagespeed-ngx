@@ -110,12 +110,14 @@ bool DomainRewriteFilter::Rewrite(const StringPiece& url_to_rewrite,
   }
 
   // Next, apply any sharding.
-  GoogleString shard, domain = StrCat(resolved_request.Origin(), "/");
+  GoogleString sharded_domain;
+  GoogleString domain = StrCat(resolved_request.Origin(), "/");
   resolved_request.Spec().CopyToString(rewritten_url);
   uint32 int_hash = HashString<CasePreserve, uint32>(
       rewritten_url->data(), rewritten_url->size());
-  if (lawyer->ShardDomain(domain, int_hash, &shard)) {
-    *rewritten_url = StrCat(shard, resolved_request.PathAndLeaf().substr(1));
+  if (lawyer->ShardDomain(domain, int_hash, &sharded_domain)) {
+    *rewritten_url = StrCat(sharded_domain,
+                            resolved_request.PathAndLeaf().substr(1));
   }
 
   // Return true if really changed the url with this rewrite.

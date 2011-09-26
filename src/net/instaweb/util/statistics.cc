@@ -86,7 +86,7 @@ void Histogram::WriteRawHistogramData(Writer* writer, MessageHandler* handler) {
         StringPrintf(perc_style, cumulative_perc),
         StringPrintf(bar_style, (perc * kBarWidthTotal) / 100,
                      kBarHeightPerBucket));
-    writer->Write(output.c_str(), handler);
+    writer->Write(output, handler);
   }
   // Write suffix of the table.
   writer->Write("</table></div></div></div><hr style='clear:both;'/>",
@@ -99,7 +99,7 @@ void Histogram::Render(const StringPiece& title,
   MD5Hasher hasher;
   // Generate an id for the histogram graph.
   GoogleString div_id = hasher.Hash(title);
-  GoogleString id = StrCat("id", div_id.c_str());
+  GoogleString id = StrCat("id", div_id);
   // Title of the histogram graph.
   const GoogleString title_string = StrCat("<div><h3>", title, "</h3>",
                                            "<div style='float:left;'></div>");
@@ -118,7 +118,7 @@ void Histogram::Render(const StringPiece& title,
       id.c_str());
   GoogleString output = StrCat(title_string, raw_data_header, stat);
   // Write title, header and statistics.
-  writer->Write(output.c_str(), handler);
+  writer->Write(output, handler);
   // Write raw data table.
   WriteRawHistogramData(writer, handler);
 }
@@ -172,7 +172,7 @@ void Statistics::RenderTimedVariables(Writer* writer,
         "<input type=\"submit\" value = \"Reset Statistics\"</form></td>"
         "<th align=right>TenSec</th><th align=right>Minute</th>"
         "<th align=right>Hour</th><th align=right>Total</th></tr>");
-    writer->Write(begin.c_str(), message_handler);
+    writer->Write(begin, message_handler);
     // Write each statistic as a row in the table.
     for (int i = 0, n = p->second.size(); i < n; ++i) {
       timedvar = FindTimedVariable(p->second[i]);
@@ -184,10 +184,10 @@ void Statistics::RenderTimedVariables(Writer* writer,
       Integer64ToString(timedvar->Get(TimedVariable::MINUTE)).c_str(),
       Integer64ToString(timedvar->Get(TimedVariable::HOUR)).c_str(),
       Integer64ToString(timedvar->Get(TimedVariable::START)).c_str());
-      writer->Write(content.c_str(), message_handler);
+      writer->Write(content, message_handler);
     }
     // Write table ending part.
-    writer->Write(end.c_str(), message_handler);
+    writer->Write(end, message_handler);
   }
 }
 
