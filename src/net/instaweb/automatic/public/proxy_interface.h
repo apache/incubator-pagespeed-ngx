@@ -61,8 +61,7 @@ class ProxyInterface : public UrlAsyncFetcher {
   // TODO(sligocki): Simplify this by getting timer and handler from manager
   // or even just pass in the factory for everything?
   ProxyInterface(const StringPiece& hostname, int port,
-                 ResourceManager* manager, UrlAsyncFetcher* fetcher,
-                 Timer* timer, MessageHandler* handler, Statistics* stats);
+                 ResourceManager* manager, Statistics* stats);
   virtual ~ProxyInterface();
 
   // All requests use this interface. We decide internally whether the

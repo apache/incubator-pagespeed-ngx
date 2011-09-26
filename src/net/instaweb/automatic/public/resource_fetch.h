@@ -48,16 +48,12 @@ class Writer;
 // TODO(sligocki): Rename to ProxyResourceFetch or something else ...
 class ResourceFetch : public AsyncFetch {
  public:
-  // TODO(sligocki): Get some of these arguments (like MessageHandler and Timer)
-  // from ResourceManager, rather than passing all in.
   static void Start(ResourceManager* resource_manager,
                     const GoogleUrl& url,
                     const RequestHeaders& request_headers,
                     ResponseHeaders* response_headers,
                     Writer* response_writer,
                     MessageHandler* message_handler,
-                    UrlAsyncFetcher* fetcher,
-                    Timer* timer,
                     Histogram* fetch_latency_histogram,
                     TimedVariable* total_fetch_count,
                     UrlAsyncFetcher::Callback* callback);

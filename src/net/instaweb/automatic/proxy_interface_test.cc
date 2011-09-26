@@ -77,10 +77,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
         kHtmlCacheTimeSec * Timer::kSecondMs);
     ResourceManagerTestBase::SetUp();
     proxy_interface_.reset(
-        new ProxyInterface("localhost", 80, resource_manager(),
-                           counting_url_async_fetcher(),
-                           mock_timer(), message_handler(),
-                           statistics()));
+        new ProxyInterface("localhost", 80, resource_manager(), statistics()));
     start_time_ms_ = mock_timer()->NowMs();
   }
 

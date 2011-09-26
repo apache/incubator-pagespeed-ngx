@@ -58,23 +58,21 @@ class DriverFetcher : public UrlAsyncFetcher {
 
 }  // namespace
 
-void ResourceFetch::Start(ResourceManager* resource_manager,
+void ResourceFetch::Start(ResourceManager* manager,
                           const GoogleUrl& url,
                           const RequestHeaders& request_headers,
                           ResponseHeaders* response_headers,
                           Writer* response_writer,
                           MessageHandler* message_handler,
-                          UrlAsyncFetcher* fetcher,
-                          Timer* timer,
                           Histogram* fetch_latency_histogram,
                           TimedVariable* total_fetch_count,
                           UrlAsyncFetcher::Callback* callback) {
-  RewriteDriver* driver = resource_manager->NewRewriteDriver();
+  RewriteDriver* driver = manager->NewRewriteDriver();
   LOG(INFO) << "Fetch with RewriteDriver " << driver;
   DriverFetcher driver_fetcher(driver);
   ResourceFetch* resource_fetch = new ResourceFetch(
       url, request_headers, response_headers, response_writer,
-      message_handler, driver, fetcher, timer,
+      message_handler, driver, manager->url_async_fetcher(), manager->timer(),
       fetch_latency_histogram, total_fetch_count, callback);
   // TODO(sligocki): This will currently fail us on all non-pagespeed
   // resource requests. We should move the check somewhere else.

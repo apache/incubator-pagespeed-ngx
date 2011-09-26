@@ -63,14 +63,9 @@ const char kTotalRewriteLatencyInMs[] = "total_rewrite_count";
 
 ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
                                ResourceManager* manager,
-                               UrlAsyncFetcher* fetcher,
-                               Timer* timer,
-                               MessageHandler* handler,
                                Statistics* stats)
     : resource_manager_(manager),
-      fetcher_(fetcher),
-      timer_(timer),
-      handler_(handler),
+      handler_(manager->message_handler()),
       hostname_(hostname.as_string()),
       port_(port) {
   // Add histograms we want in Page Speed Automatic.
@@ -171,9 +166,8 @@ bool ProxyInterface::StreamingFetch(const GoogleString& requested_url_string,
       ResourceFetch::Start(resource_manager_,
                            requested_url, request_headers,
                            response_headers, response_writer,
-                           handler, fetcher_, timer_,
-                           fetch_latency_histogram_, total_fetch_count_,
-                           callback);
+                           handler, fetch_latency_histogram_,
+                           total_fetch_count_, callback);
       LOG(INFO) << "Serving URL as pagespeed resource";
     } else if (UrlAndPortMatchThisServer(requested_url)) {
       // Just respond with a 404 for now.
