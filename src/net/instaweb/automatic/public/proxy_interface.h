@@ -50,6 +50,7 @@ class ProxyFetchFactory;
 class RequestHeaders;
 class ResourceManager;
 class ResponseHeaders;
+class RewriteOptions;
 class Statistics;
 class TimedVariable;
 class Timer;
@@ -58,6 +59,8 @@ class Writer;
 // TODO(sligocki): Rename as per style-guide.
 class ProxyInterface : public UrlAsyncFetcher {
  public:
+  typedef std::pair<RewriteOptions*, bool> OptionsBoolPair;
+
   // TODO(sligocki): Simplify this by getting timer and handler from manager
   // or even just pass in the factory for everything?
   ProxyInterface(const StringPiece& hostname, int port,
@@ -79,6 +82,18 @@ class ProxyInterface : public UrlAsyncFetcher {
   Histogram* rewrite_latency_histogram() { return rewrite_latency_histogram_; }
   TimedVariable* total_fetch_count() { return total_fetch_count_; }
   TimedVariable* total_rewrite_count() { return total_rewrite_count_; }
+
+  // Returns any custom options required for this request, incorporating
+  // any domain-specific options from the UrlNamer, options set in query-params,
+  // and options set in request headers.  Possible return-value scenarios for
+  // the pair are:
+  //
+  // first==*, .second==false:  query-params or req-headers failed in parse.
+  // .first!=NULL, .second=true:  Custom options created, now owned by caller.
+  // .first==NULL, .second=true:  Use the global options for resource_manager.
+  OptionsBoolPair GetCustomOptions(const GoogleUrl& request_url,
+                                   const RequestHeaders& request_headers,
+                                   MessageHandler* handler);
 
  private:
   // Handle requests that are being proxied.

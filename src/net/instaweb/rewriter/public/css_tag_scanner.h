@@ -26,6 +26,8 @@
 
 namespace net_instaweb {
 
+class DomainRewriteFilter;
+class GoogleUrl;
 class HtmlParse;
 class MessageHandler;
 class Writer;
@@ -75,6 +77,22 @@ class CssTagScanner {
  private:
   DISALLOW_COPY_AND_ASSIGN(CssTagScanner);
 };
+
+// Transform URLs by resolving them against base_url and then mapping them
+// appropriately with domain_rewrite_filter.
+class RewriteDomainTransformer : public CssTagScanner::Transformer {
+ public:
+  RewriteDomainTransformer(const GoogleUrl* base_url,
+                           DomainRewriteFilter* domain_rewrite_filter);
+  virtual ~RewriteDomainTransformer();
+
+  virtual bool Transform(const StringPiece& in, GoogleString* out);
+
+ private:
+  const GoogleUrl* base_url_;
+  DomainRewriteFilter* domain_rewrite_filter_;
+};
+
 
 }  // namespace net_instaweb
 

@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
@@ -58,6 +59,20 @@ class AsyncExpectCallback : public ExpectCallback {
  private:
   WorkerTestBase::SyncPoint* notify_;
   DISALLOW_COPY_AND_ASSIGN(AsyncExpectCallback);
+};
+
+class MockUrlNamer : public UrlNamer {
+ public:
+  explicit MockUrlNamer(RewriteOptions* options) : options_(options) {}
+  virtual RewriteOptions* DecodeOptions(const GoogleUrl& request_url,
+                                        const RequestHeaders& request_headers,
+                                        MessageHandler* handler) {
+    return options_->Clone();
+  }
+
+ private:
+  RewriteOptions* options_;
+  DISALLOW_COPY_AND_ASSIGN(MockUrlNamer);
 };
 
 // TODO(morlovich): This currently relies on ResourceManagerTestBase to help
@@ -115,6 +130,19 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     EXPECT_EQ(HttpStatus::kOK, headers.status_code());
     EXPECT_STREQ(expect_type.mime_type(),
                  headers.Lookup1(HttpAttributes::kContentType));
+  }
+
+  RewriteOptions* GetCustomOptions(const StringPiece& url,
+                                   const RequestHeaders& request_headers) {
+    // The default url_namer does not yield any name-derived options, and we
+    // have not specified any URL params or request-headers, so there will be
+    // no custom options, and no errors.
+    GoogleUrl gurl(url);
+    ProxyInterface::OptionsBoolPair options_success =
+        proxy_interface_->GetCustomOptions(gurl, request_headers,
+                                           message_handler());
+    EXPECT_TRUE(options_success.second);
+    return options_success.first;
   }
 
   scoped_ptr<ProxyInterface> proxy_interface_;
@@ -193,6 +221,99 @@ TEST_F(ProxyInterfaceTest, ReconstructResource) {
   headers.ComputeCaching();
   EXPECT_LE(start_time_ms_ + Timer::kYearMs, headers.CacheExpirationTimeMs());
   EXPECT_EQ(kMinimizedCssContent, text);
+}
+
+TEST_F(ProxyInterfaceTest, CustomOptionsWithNoUrlNamerOptions) {
+  // The default url_namer does not yield any name-derived options, and we
+  // have not specified any URL params or request-headers, so there will be
+  // no custom options, and no errors.
+  RequestHeaders request_headers;
+  scoped_ptr<RewriteOptions> options(
+      GetCustomOptions("http://example.com/", request_headers));
+  ASSERT_TRUE(options.get() == NULL);
+
+  // Now put a query-param in, just turning on PageSpeed.  The core filters
+  // should be enabled.
+  options.reset(GetCustomOptions(
+      "http://example.com/?ModPagespeed=on",
+      request_headers));
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCache));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineJavascript));
+
+  // Now explicitly enable a filter, which should disable others.
+  options.reset(GetCustomOptions(
+      "http://example.com/?ModPagespeedFilters=extend_cache",
+      request_headers));
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCache));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineJavascript));
+
+  // Now put a request-header in, turning off pagespeed.  request-headers get
+  // priority over query-params.
+  request_headers.Add("ModPagespeed", "off");
+  options.reset(GetCustomOptions(
+      "http://example.com/?ModPagespeed=on",
+      request_headers));
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_FALSE(options->enabled());
+
+  // Now explicitly enable a bogus filter, which should will cause the
+  // options to be uncomputable.
+  GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
+  EXPECT_FALSE(proxy_interface_->GetCustomOptions(gurl, request_headers,
+                                                  message_handler()).second);
+}
+
+TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
+  // Inject a url-namer that will establish a domain configuration.
+  RewriteOptions namer_options;
+  namer_options.EnableFilter(RewriteOptions::kCombineJavascript);
+  MockUrlNamer mock_url_namer(&namer_options);
+  resource_manager()->set_url_namer(&mock_url_namer);
+
+  RequestHeaders request_headers;
+  scoped_ptr<RewriteOptions> options(
+      GetCustomOptions("http://example.com/", request_headers));
+  // Even with no query-params or request-headers, we get the custom
+  // options generated from the UrlNamer.
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kExtendCache));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineJavascript));
+
+  // Now combine with query params, which turns core-filters on.
+  options.reset(GetCustomOptions(
+      "http://example.com/?ModPagespeed=on",
+      request_headers));
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCache));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineJavascript));
+
+  // Explicitly enable a filter in query-params, which will turn off
+  // the core filters that have not been explicitly enabled.  Note
+  // that explicit filter-setting in query-params overrides completely
+  // the options set from the UrlNamer.
+  options.reset(GetCustomOptions(
+      "http://example.com/?ModPagespeedFilters=combine_css",
+      request_headers));
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kExtendCache));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineJavascript));
+
+  // Now explicitly enable a bogus filter, which should will cause the
+  // options to be uncomputable.
+  GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
+  EXPECT_FALSE(proxy_interface_->GetCustomOptions(gurl, request_headers,
+                                                  message_handler()).second);
 }
 
 }  // namespace

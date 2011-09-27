@@ -82,12 +82,15 @@ template<class Proto> class Headers {
   // attr: val3 (otherwise).
   virtual bool Remove(const StringPiece& name, const StringPiece& value);
 
-  // Remove all headers by name.  Return true if anything was removed.
+  // Removes all headers by name.  Return true if anything was removed.
   virtual bool RemoveAll(const StringPiece& name);
 
-  // Remove all headers whose name is in |names|.
+  // Removes all headers whose name is in |names|.
   // Return true if anything was removed.
   virtual bool RemoveAllFromSet(const StringSetInsensitive& names);
+
+  // Removes all headers whose name starts with prefix.
+  virtual void RemoveAllWithPrefix(const StringPiece& prefix);
 
   // Similar to RemoveAll followed by Add.  Note that the attribute
   // order may be changed as a side effect of this operation.

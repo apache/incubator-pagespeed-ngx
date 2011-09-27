@@ -264,6 +264,32 @@ template<class Proto> bool Headers<Proto>::RemoveAllFromSet(
   return removed_anything;
 }
 
+template<class Proto> void Headers<Proto>::RemoveAllWithPrefix(
+    const StringPiece& prefix) {
+  // Protobufs lack a convenient remove method for array elements, so
+  // we construct a new protobuf and swap them.
+
+  // Copy all headers that aren't slated for removal.
+  Proto temp_proto;
+  for (int i = 0, n = NumAttributes(); i < n; ++i) {
+    StringPiece name(Name(i));
+    if (!name.starts_with(prefix)) {
+      NameValue* name_value = temp_proto.add_header();
+      name_value->set_name(Name(i));
+      name_value->set_value(Value(i));
+    }
+  }
+
+  // Copy back to our protobuf.
+  map_.reset(NULL);  // Map must be repopulated before next lookup operation.
+  proto_->clear_header();
+  for (int i = 0, n = temp_proto.header_size(); i < n; ++i) {
+    NameValue* name_value = proto_->add_header();
+    name_value->set_name(temp_proto.header(i).name());
+    name_value->set_value(temp_proto.header(i).value());
+  }
+}
+
 template<class Proto> void Headers<Proto>::Replace(
     const StringPiece& name, const StringPiece& value) {
   // TODO(jmarantz): This could be arguably be implemented more efficiently.

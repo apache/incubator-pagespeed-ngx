@@ -215,11 +215,16 @@ class ResourceManager {
 
   RewriteDriver* decoding_driver() const { return decoding_driver_.get(); }
 
+  // Gets the options that are globally set on this resource manager.
+  //
   // Note this is overridden by ApacheResourceManager which has
   // apache-specific options.  In the base-class this is thread-unsafe
   // in its first call, when it lazily-initializes a RewriteOptions
   // scoped_ptr.
   virtual RewriteOptions* options();
+
+  // Makes a new, empty set of RewriteOptions.
+  RewriteOptions* NewOptions();
 
   // Generates a new managed RewriteDriver using the RewriteOptions
   // managed by this class.  Each RewriteDriver is not thread-safe,

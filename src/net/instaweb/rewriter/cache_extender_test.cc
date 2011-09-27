@@ -285,8 +285,8 @@ TEST_P(CacheExtenderTest, ConsistentHashWithRewrite) {
   InitTest(kShortTtlSec);
 
   // First do the HTML rewrite.
-  const char kHash[] = "UfiC1QHcaF";
-  GoogleString extended_css = Encode(kNewDomain, "ce", kHash, kCssFile, "css");
+  GoogleString hash = hasher()->Hash(kCssData);
+  GoogleString extended_css = Encode(kNewDomain, "ce", hash, kCssFile, "css");
   ValidateExpected("consistent_hash",
                    StringPrintf(kCssFormat, kCssFile),
                    StringPrintf(kCssFormat, extended_css.c_str()));
@@ -320,7 +320,6 @@ TEST_P(CacheExtenderTest, ConsistentHashWithRewrite) {
   GoogleString content;
   ASSERT_TRUE(ServeResourceUrl(extended_css, &content));
   EXPECT_EQ(kCssData, content);
-  EXPECT_EQ(kHash, hasher()->Hash(content));
 }
 
 TEST_P(CacheExtenderTest, ConsistentHashWithShard) {

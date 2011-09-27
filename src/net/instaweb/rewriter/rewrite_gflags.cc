@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gflags.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -65,6 +66,12 @@ DEFINE_int64(html_cache_time_ms,
              "Default Cache-Control TTL for HTML. This will be the max we "
              "set HTML TTL and also the min input resource TTL we allow "
              "rewriting for.");
+DEFINE_string(rewrite_domain_map, "",
+              "Semicolon-separated list of rewrite_domain maps. "
+              "Each domain-map is of the form dest=src1,src2,src3");
+DEFINE_string(shard_domain_map, "",
+              "Semicolon-separated list of shard_domain maps. "
+              "Each domain-map is of the form master=shard1,shard2,shard3");
 
 DEFINE_int32(lru_cache_size_bytes, 10 * 1000 * 1000, "LRU cache size");
 DEFINE_bool(force_caching, false,
@@ -74,6 +81,37 @@ DEFINE_bool(flush_html, false, "Pass fetcher-generated flushes through HTML");
 namespace net_instaweb {
 
 class MessageHandler;
+
+namespace {
+
+#define CALL_MEMBER_FN(object, var) (object->*(var))
+
+bool AddDomainMap(const StringPiece& flag_value, DomainLawyer* lawyer,
+                  bool (DomainLawyer::*fn)(const StringPiece& to_domain,
+                                           const StringPiece& from,
+                                           MessageHandler* handler),
+                  MessageHandler* message_handler) {
+  bool ret = true;
+  StringPieceVector maps;
+  // split "a=b,c,d=e:g,f" by semicolons.
+  SplitStringPieceToVector(flag_value, ";", &maps, true);
+  for (int i = 0, n = maps.size(); i < n; ++i) {
+    // parse "a=b,c,d" into "a" and "b,c,d"
+    StringPieceVector name_values;
+    SplitStringPieceToVector(maps[i], "=", &name_values, true);
+    if (name_values.size() != 2) {
+      message_handler->Message(kError, "Invalid rewrite_domain_map: %s",
+                               maps[i].as_string().c_str());
+      ret = false;
+    } else {
+      ret &= CALL_MEMBER_FN(lawyer, fn)(name_values[0], name_values[1],
+                                        message_handler);
+    }
+  }
+  return ret;
+}
+
+}  // namespace
 
 RewriteGflags::RewriteGflags(const char* progname, int* argc, char*** argv) {
   ParseCommandLineFlags(argc, argv, true);
@@ -137,6 +175,17 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
       ret = false;
     }
   }
+
+  if (WasExplicitlySet("rewrite_domain_map")) {
+    ret &= AddDomainMap(FLAGS_rewrite_domain_map, lawyer,
+                        &DomainLawyer::AddRewriteDomainMapping, handler);
+  }
+
+  if (WasExplicitlySet("shard_domain_map")) {
+    ret &= AddDomainMap(FLAGS_shard_domain_map, lawyer,
+                        &DomainLawyer::AddShard, handler);
+  }
+
   return ret;
 }
 

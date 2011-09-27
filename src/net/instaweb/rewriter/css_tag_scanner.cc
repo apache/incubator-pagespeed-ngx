@@ -22,6 +22,7 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
@@ -224,6 +225,20 @@ bool CssTagScanner::HasImport(const StringPiece& contents,
 
 bool CssTagScanner::HasUrl(const StringPiece& contents) {
   return (contents.find(CssTagScanner::kUriValue) != StringPiece::npos);
+}
+
+
+RewriteDomainTransformer::RewriteDomainTransformer(
+    const GoogleUrl* base_url, DomainRewriteFilter* domain_rewrite_filter)
+    : base_url_(base_url), domain_rewrite_filter_(domain_rewrite_filter) {
+}
+
+RewriteDomainTransformer::~RewriteDomainTransformer() {
+}
+
+bool RewriteDomainTransformer::Transform(const StringPiece& in,
+                                         GoogleString* out) {
+  return domain_rewrite_filter_->Rewrite(in, *base_url_, out);
 }
 
 }  // namespace net_instaweb

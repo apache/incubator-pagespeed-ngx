@@ -166,28 +166,6 @@ bool CacheExtender::ComputeOnTheFly() const {
   return true;
 }
 
-namespace {
-
-class RewriteDomainTransformer : public CssTagScanner::Transformer {
- public:
-  RewriteDomainTransformer(const GoogleUrl& base_url,
-                           DomainRewriteFilter* domain_rewrite_filter)
-      : base_url_(base_url), domain_rewrite_filter_(domain_rewrite_filter) {
-  }
-
-  virtual ~RewriteDomainTransformer() {}
-
-  virtual bool Transform(const StringPiece& in, GoogleString* out) {
-    return domain_rewrite_filter_->Rewrite(in, base_url_, out);
-  }
-
- private:
-  const GoogleUrl& base_url_;
-  DomainRewriteFilter* domain_rewrite_filter_;
-};
-
-}  // namespace
-
 void CacheExtender::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
@@ -225,7 +203,7 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   }
 
   StringPiece contents(input_resource->contents());
-  GoogleString absolutified;
+  GoogleString transformed_contents;
   GoogleUrl input_resource_gurl(input_resource->url());
   StringPiece input_dir = input_resource_gurl.AllExceptLeaf();
   const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
@@ -235,16 +213,23 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
        (input_dir != output_resource->resolved_base()))) {
     // Embedded URLs in the CSS must be evaluated with respect to
     // the CSS files rewritten domain, not the input domain.
+    //
+    // TODO(sligocki): Why? Consider this situation:
+    //   Original CSS URL: http://www.example.com/foo.css
+    //   Sharded CSS URL:  http://s2.example.com/foo.css
+    //   with image: bar.png
+    // bar.png originally referred to http://www.example.com/bar.png
+    // Why evaluate it as http://s2.example.com/bar.png here?
     GoogleUrl output_gurl(output_resource->resolved_base());
     if (output_gurl.is_valid()) {
       // TODO(jmarantz): find a mechanism to write this directly into
       // the HTTPValue so we can reduce the number of times that we
       // copy entire resources.
-      StringWriter writer(&absolutified);
-      RewriteDomainTransformer transformer(output_gurl, domain_rewriter_);
+      StringWriter writer(&transformed_contents);
+      RewriteDomainTransformer transformer(&output_gurl, domain_rewriter_);
       CssTagScanner::TransformUrls(contents, &writer, &transformer,
                                    message_handler);
-      contents = absolutified;
+      contents = transformed_contents;
     }
   }
 

@@ -606,4 +606,8 @@ RewriteOptions* ResourceManager::options() {
   return base_class_options_.get();
 }
 
+RewriteOptions* ResourceManager::NewOptions() {
+  return factory_->NewRewriteOptions();
+}
+
 }  // namespace net_instaweb

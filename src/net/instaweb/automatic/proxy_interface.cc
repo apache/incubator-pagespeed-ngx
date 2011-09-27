@@ -185,43 +185,56 @@ bool ProxyInterface::StreamingFetch(const GoogleString& requested_url_string,
   return done;
 }
 
+ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
+    const GoogleUrl& request_url, const RequestHeaders& request_headers,
+    MessageHandler* handler) {
+  RewriteOptions* options = resource_manager_->options();
+  scoped_ptr<RewriteOptions> custom_options;
+  scoped_ptr<RewriteOptions> domain_options(resource_manager_->url_namer()
+      ->DecodeOptions(request_url, request_headers, handler));
+  if (domain_options.get() != NULL) {
+    custom_options.reset(resource_manager_->NewOptions());
+    custom_options->Merge(*options, *domain_options.get());
+    options = custom_options.get();
+  }
+
+  // Check query params & reqeust-headers for
+  QueryParams params;
+  params.Parse(request_url.Query());
+  scoped_ptr<RewriteOptions> query_options(resource_manager_->NewOptions());
+  switch (RewriteQuery::Scan(params, request_headers, query_options.get(),
+                             handler)) {
+    case RewriteQuery::kInvalid:
+      return OptionsBoolPair(NULL, false);
+      break;
+    case RewriteQuery::kNoneFound:
+      break;
+    case RewriteQuery::kSuccess: {
+      // Subtle memory management to handle deleting any domain_options
+      // after the merge, and transferring ownership to the caller for
+      // the new merged options.
+      scoped_ptr<RewriteOptions> options_buffer(custom_options.release());
+      custom_options.reset(resource_manager_->NewOptions());
+      custom_options->Merge(*options, *query_options.get());
+      break;
+    }
+  }
+  return OptionsBoolPair(custom_options.release(), true);
+}
+
 void ProxyInterface::ProxyRequest(const GoogleUrl& request_url,
                                   const RequestHeaders& request_headers,
                                   ResponseHeaders* response_headers,
                                   Writer* response_writer,
                                   MessageHandler* handler,
                                   Callback* callback) {
-  RewriteOptions* custom_options = NULL;
-
-  scoped_ptr<RewriteOptions> domain_options(resource_manager_->url_namer()
-      ->DecodeOptions(request_url, request_headers, handler));
-
-  // Check query params & reqeust-headers for
-  QueryParams params;
-  params.Parse(request_url.Query());
-  scoped_ptr<RewriteOptions> query_options(
-      resource_manager_->options()->Clone());
-  switch (RewriteQuery::Scan(params, request_headers, query_options.get(),
-                             handler)) {
-    case RewriteQuery::kInvalid:
-      response_writer->Write("Invalid PageSpeed query-params/request headers",
-                             handler);
-      response_headers->SetStatusAndReason(HttpStatus::kMethodNotAllowed);
-      callback->Done(false);
-      return;
-      break;
-    case RewriteQuery::kNoneFound:
-      query_options.reset(NULL);
-      custom_options = domain_options.release();
-      break;
-    case RewriteQuery::kSuccess:
-      if (domain_options.get() == NULL) {
-        custom_options = query_options.release();
-      } else {
-        custom_options = resource_manager_->options()->Clone();
-        custom_options->Merge(*domain_options.get(), *query_options.get());
-      }
-      break;
+  OptionsBoolPair custom_options_success = GetCustomOptions(
+      request_url, request_headers, handler);
+  if (!custom_options_success.second) {
+    response_writer->Write("Invalid PageSpeed query-params/request headers",
+                           handler);
+    response_headers->SetStatusAndReason(HttpStatus::kMethodNotAllowed);
+    callback->Done(false);
   }
 
   RequestHeaders custom_headers;
@@ -233,10 +246,12 @@ void ProxyInterface::ProxyRequest(const GoogleUrl& request_url,
   // Note: We preserve the User-Agent and Cookies so that the origin servers
   // send us the correct HTML. We will need to consider this for caching HTML.
 
-  // Start fetch and rewrite.
+  // Start fetch and rewrite.  If GetCustomOptions found options for us,
+  // the RewriteDriver created by StartNewProxyFetch will take ownership.
   proxy_fetch_factory_->StartNewProxyFetch(
-      request_url.Spec().as_string(), custom_headers, custom_options,
-      response_headers, response_writer, callback);
+      request_url.Spec().as_string(), custom_headers,
+      custom_options_success.first, response_headers, response_writer,
+      callback);
 }
 
 }  // namespace net_instaweb
