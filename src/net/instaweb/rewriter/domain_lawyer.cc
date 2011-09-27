@@ -547,4 +547,27 @@ bool DomainLawyer::WillDomainChange(const StringPiece& domain_name) const {
   return false;
 }
 
+bool DomainLawyer::DoDomainsServeSameContent(
+    const StringPiece& domain1_name, const StringPiece& domain2_name) const {
+  GoogleUrl domain1_gurl(NormalizeDomainName(domain1_name));
+  Domain* domain1 = FindDomain(domain1_gurl);
+  GoogleUrl domain2_gurl(NormalizeDomainName(domain2_name));
+  Domain* domain2 = FindDomain(domain2_gurl);
+  if ((domain1 == NULL) || (domain2 == NULL)) {
+    return false;
+  }
+  if (domain1 == domain2) {
+    return true;
+  }
+  Domain* rewrite1 = domain1->rewrite_domain();
+  Domain* rewrite2 = domain2->rewrite_domain();
+  if ((rewrite1 == domain2) || (rewrite2 == domain1)) {
+    return true;
+  }
+  if ((rewrite1 != NULL) && (rewrite1 == rewrite2)) {
+    return true;
+  }
+  return false;
+}
+
 }  // namespace net_instaweb

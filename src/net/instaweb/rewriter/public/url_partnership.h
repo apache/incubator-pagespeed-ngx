@@ -54,10 +54,6 @@ class UrlPartnership {
   // Returns the number of URLs that have been successfully added.
   int num_urls() const { return url_vector_.size(); }
 
-  const GoogleUrl& original_origin_and_path() {
-    return original_origin_and_path_;
-  }
-
   // Returns the relative path of a particular URL that was added into
   // the partnership.  This requires that Resolve() be called first.
   GoogleString RelativePath(int index) const;

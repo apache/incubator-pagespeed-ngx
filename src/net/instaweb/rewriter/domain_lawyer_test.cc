@@ -120,6 +120,8 @@ TEST_F(DomainLawyerTest, ExternalDomainDeclared) {
   EXPECT_FALSE(MapRequest(
       orig_request_, StrCat(port_cdn_domain, "/", kResourceUrl),
       &mapped_domain_name));
+  EXPECT_FALSE(domain_lawyer_.DoDomainsServeSameContent(
+      port_cdn_domain, cdn_domain));
 }
 
 TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutScheme) {
@@ -258,6 +260,8 @@ TEST_F(DomainLawyerTest, MapHttpsAcrossSchemesAndPorts) {
 TEST_F(DomainLawyerTest, RewriteHttpsAcrossHosts) {
   ASSERT_TRUE(AddRewriteDomainMapping("http://insecure.nytimes.com",
                                       "https://secure.nytimes.com"));
+  EXPECT_TRUE(domain_lawyer_.DoDomainsServeSameContent(
+      "insecure.nytimes.com", "https://secure.nytimes.com"));
   EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
   GoogleString mapped_domain_name;
   GoogleUrl insecure_gurl("http://insecure.nytimes.com/index.html");
@@ -429,7 +433,11 @@ TEST_F(DomainLawyerTest, MapRewriteDomain) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("http://cdn.com/", &message_handler_));
   ASSERT_TRUE(domain_lawyer_.AddDomain("http://origin.com/",
                                        &message_handler_));
+  EXPECT_FALSE(domain_lawyer_.DoDomainsServeSameContent(
+      "cdn.com", "origin.com"));
   ASSERT_TRUE(AddRewriteDomainMapping("http://cdn.com", "http://origin.com"));
+  EXPECT_TRUE(domain_lawyer_.DoDomainsServeSameContent(
+      "cdn.com", "origin.com"));
   EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
   // First try the mapping from "origin.com" to "cdn.com".
   GoogleString mapped_domain_name;
@@ -535,6 +543,12 @@ TEST_F(DomainLawyerTest, Merge) {
   ASSERT_TRUE(AddOriginDomainMapping("http://dest1/", "http://common_src1"));
   ASSERT_TRUE(AddOriginDomainMapping("http://dest2/", "http://common_src2"));
   ASSERT_TRUE(AddShard("foo.com", "bar1.com,bar2.com"));
+  EXPECT_TRUE(domain_lawyer_.DoDomainsServeSameContent("foo.com", "bar1.com"));
+  EXPECT_TRUE(domain_lawyer_.DoDomainsServeSameContent("foo.com", "bar2.com"));
+  EXPECT_TRUE(domain_lawyer_.DoDomainsServeSameContent("bar1.com", "bar2.com"));
+  EXPECT_TRUE(domain_lawyer_.DoDomainsServeSameContent("bar1.com", "foo.com"));
+  EXPECT_TRUE(domain_lawyer_.DoDomainsServeSameContent("bar2.com", "foo.com"));
+  EXPECT_TRUE(domain_lawyer_.DoDomainsServeSameContent("bar2.com", "bar1.com"));
 
   // Now add a similar set of mappings for another lawyer.
   DomainLawyer merged;
@@ -588,6 +602,17 @@ TEST_F(DomainLawyerTest, Merge) {
   GoogleString shard;
   ASSERT_TRUE(merged.ShardDomain("http://foo.com/", 0, &shard));
   EXPECT_EQ(GoogleString("http://bar1.com/"), shard);
+
+  EXPECT_TRUE(merged.DoDomainsServeSameContent("foo.com", "bar1.com"));
+  EXPECT_TRUE(merged.DoDomainsServeSameContent("foo.com", "bar2.com"));
+  EXPECT_TRUE(merged.DoDomainsServeSameContent("bar1.com", "bar2.com"));
+  EXPECT_TRUE(merged.DoDomainsServeSameContent("bar1.com", "foo.com"));
+  EXPECT_TRUE(merged.DoDomainsServeSameContent("bar2.com", "foo.com"));
+  EXPECT_TRUE(merged.DoDomainsServeSameContent("bar2.com", "bar1.com"));
+
+  EXPECT_TRUE(merged.DoDomainsServeSameContent("cdn1.com", "www.o1.com"));
+  EXPECT_TRUE(merged.DoDomainsServeSameContent("cdn2.com", "www.o2.com"));
+  EXPECT_FALSE(merged.DoDomainsServeSameContent("cdn1.com", "cdn2.com"));
 }
 
 TEST_F(DomainLawyerTest, AddMappingFailures) {

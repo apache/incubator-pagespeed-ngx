@@ -200,6 +200,7 @@ void RewriteDriver::Clear() {
   cleanup_on_fetch_complete_ = false;
   base_url_.Clear();
   DCHECK(!base_url_.is_valid());
+  decoded_base_url_.Clear();
   resource_map_.clear();
   DCHECK(primary_rewrite_context_map_.empty());
   DCHECK(initiated_rewrites_.empty());
@@ -833,7 +834,9 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(const GoogleUrl& gurl,
   // activity.
   StringPiece base = gurl.AllExceptLeaf();
   OutputResourcePtr output_resource(new OutputResource(
-      resource_manager_, base, base, base, namer, NULL, NULL, kind));
+      resource_manager_, base, base, base, namer,
+      NULL,  // content_type
+      options(), kind));
   bool has_async_flow = false;
   if (*filter != NULL) {
     has_async_flow = (*filter)->HasAsyncFlow();
@@ -1103,12 +1106,12 @@ bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
 ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   ResourcePtr resource;
   bool may_rewrite = false;
-  if (base_url_.is_valid()) {
-    may_rewrite = MayRewriteUrl(base_url_, input_url);
+  if (decoded_base_url_.is_valid()) {
+    may_rewrite = MayRewriteUrl(decoded_base_url_, input_url);
   } else {
     // Shouldn't happen?
     message_handler()->Message(
-        kFatal, "invalid base_url_ for '%s'", input_url.spec_c_str());
+        kFatal, "invalid decoded_base_url_ for '%s'", input_url.spec_c_str());
     DLOG(FATAL);
   }
   if (may_rewrite) {
@@ -1205,10 +1208,6 @@ HTTPCache::FindResult RewriteDriver::ReadIfCachedWithStatus(
   return result;
 }
 
-GoogleString RewriteDriver::decoded_base() const {
-  return resource_manager()->url_namer()->Decode(base_url_);
-}
-
 bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
                                  const ContentType& content_type) {
   set_log_rewrite_timing(options()->log_rewrite_timing());
@@ -1222,9 +1221,16 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
     base_was_set_ = false;
     if (is_url_valid()) {
       base_url_.Reset(google_url());
+      SetDecodedUrlFromBase();
     }
   }
   return ret;
+}
+
+void RewriteDriver::SetDecodedUrlFromBase() {
+  UrlNamer* namer = resource_manager()->url_namer();
+  decoded_base_url_.Reset(namer->Decode(base_url_));
+  DCHECK(decoded_base_url_.is_valid());
 }
 
 void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
@@ -1473,6 +1479,7 @@ void RewriteDriver::SetBaseUrlIfUnset(const StringPiece& new_base) {
     } else {
       base_was_set_ = true;
       base_url_.Swap(&new_base_url);
+      decoded_base_url_.Reset(base_url_.Spec());
     }
   } else {
     InfoHere("Invalid base tag %s relative to %s",
@@ -1485,13 +1492,14 @@ void RewriteDriver::SetBaseUrlForFetch(const StringPiece& url) {
   // Set the base url for the resource fetch.  This corresponds to where the
   // fetched resource resides (which might or might not be where the original
   // resource lived).
-  if (!base_url_.is_valid()) {
+  if (!decoded_base_url_.is_valid()) {
     // TODO(jmaessen): we're re-constructing a GoogleUrl after having already
     // done so (repeatedly over several calls) in DecodeOutputResource!  Gah!
     // We at least assume that base_url_ is valid since it was checked when
     // output_resource was created.
     base_url_.Reset(url);
     DCHECK(base_url_.is_valid());
+    SetDecodedUrlFromBase();
     base_was_set_ = false;
   }
 }

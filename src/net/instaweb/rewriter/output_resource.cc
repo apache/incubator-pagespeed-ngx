@@ -93,6 +93,7 @@ OutputResource::OutputResource(ResourceManager* resource_manager,
       rewrite_options_(options),
       kind_(kind),
       written_using_rewrite_context_flow_(false) {
+  DCHECK(options != NULL);
   full_name_.CopyFrom(full_name);
   if (type == NULL) {
     GoogleString ext_with_dot = StrCat(".", full_name.ext());

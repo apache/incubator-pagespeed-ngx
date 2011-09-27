@@ -400,7 +400,7 @@ class RewriteDriver : public HtmlParse {
   // Returns the decoded version of base_gurl() in case it was encoded by a
   // non-default UrlNamer (for the default UrlNamer this returns the same value
   // as base_url()).  Required when fetching a resource by its encoded name.
-  GoogleString decoded_base() const;
+  StringPiece decoded_base() const { return decoded_base_url_.Spec(); }
 
   const UrlSegmentEncoder* default_encoder() const { return &default_encoder_; }
 
@@ -603,6 +603,10 @@ class RewriteDriver : public HtmlParse {
   // test code and from FetchResource.
   void SetBaseUrlForFetch(const StringPiece& url);
 
+  // Saves a decoding of the Base URL in decoded_base_url_.  Use this
+  // whenever updating base_url_.
+  void SetDecodedUrlFromBase();
+
   // The rewrite_mutex is owned by the scheduler.
   AbstractMutex* rewrite_mutex() { return scheduler_->mutex(); }
 
@@ -695,6 +699,7 @@ class RewriteDriver : public HtmlParse {
   int rewrites_to_delete_;       // protected by rewrite_mutex()
 
   GoogleUrl base_url_;
+  GoogleUrl decoded_base_url_;
   GoogleString user_agent_;
   StringFilterMap resource_filter_map_;
 

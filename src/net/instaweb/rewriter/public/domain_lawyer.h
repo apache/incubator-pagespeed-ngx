@@ -162,6 +162,11 @@ class DomainLawyer {
   // Visible for testing.
   int num_wildcarded_domains() const { return wildcarded_domains_.size(); }
 
+  // Determines whether two domains have been declared as serving the same
+  // content by the user, via Rewrite or Shard mapping.
+  bool DoDomainsServeSameContent(const StringPiece& domain1,
+                                 const StringPiece& domain2) const;
+
  private:
   class Domain;
 

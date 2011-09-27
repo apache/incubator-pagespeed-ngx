@@ -273,7 +273,7 @@ template<class Proto> void Headers<Proto>::RemoveAllWithPrefix(
   Proto temp_proto;
   for (int i = 0, n = NumAttributes(); i < n; ++i) {
     StringPiece name(Name(i));
-    if (!name.starts_with(prefix)) {
+    if (!StringCaseStartsWith(name, prefix)) {
       NameValue* name_value = temp_proto.add_header();
       name_value->set_name(Name(i));
       name_value->set_value(Value(i));

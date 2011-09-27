@@ -62,4 +62,15 @@ TEST_F(RequestHeadersTest, TestMethodStrings) {
   EXPECT_STREQ("CONNECT", CheckMethodString(RequestHeaders::kConnect));
 }
 
+TEST_F(RequestHeadersTest, RemoveAllWithPrefix) {
+  request_headers_.Add("Prefix-1", "val");
+  request_headers_.Add("PreFIX-2", "val");
+  request_headers_.Add("prefix-3", "val");
+  request_headers_.Add("something-4", "val");
+  request_headers_.RemoveAllWithPrefix("Prefix");
+  ASSERT_EQ(1, request_headers_.NumAttributes());
+  EXPECT_STREQ("something-4", request_headers_.Name(0));
+  EXPECT_STREQ("val", request_headers_.Value(0));
+}
+
 }  // namespace net_instaweb
