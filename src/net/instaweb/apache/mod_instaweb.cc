@@ -285,7 +285,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
       InstawebContext::ManagerFromServerRec(request->server);
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   scoped_ptr<RewriteOptions> custom_options;
-  const RewriteOptions* host_options = manager->options();
+  const RewriteOptions* host_options = manager->global_options();
   const RewriteOptions* options = host_options;
   bool use_custom_options = false;
 

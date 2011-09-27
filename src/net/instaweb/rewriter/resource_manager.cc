@@ -599,7 +599,7 @@ size_t ResourceManager::num_active_rewrite_drivers() {
   return active_rewrite_drivers_.size();
 }
 
-RewriteOptions* ResourceManager::options() {
+RewriteOptions* ResourceManager::global_options() {
   if (base_class_options_.get() == NULL) {
     base_class_options_.reset(factory_->NewRewriteOptions());
   }

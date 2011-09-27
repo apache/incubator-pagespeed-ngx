@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
 
   net_instaweb::ResourceManager* resource_manager =
       file_rewriter.CreateResourceManager();
-  if (!gflags.SetOptions(&file_rewriter, resource_manager->options())) {
+  if (!gflags.SetOptions(&file_rewriter, resource_manager->global_options())) {
     return 1;
   }
 

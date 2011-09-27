@@ -188,7 +188,7 @@ bool ProxyInterface::StreamingFetch(const GoogleString& requested_url_string,
 ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
     const GoogleUrl& request_url, const RequestHeaders& request_headers,
     MessageHandler* handler) {
-  RewriteOptions* options = resource_manager_->options();
+  RewriteOptions* options = resource_manager_->global_options();
   scoped_ptr<RewriteOptions> custom_options;
   scoped_ptr<RewriteOptions> domain_options(resource_manager_->url_namer()
       ->DecodeOptions(request_url, request_headers, handler));

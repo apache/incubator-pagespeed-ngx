@@ -58,7 +58,7 @@ ApacheResourceManager::~ApacheResourceManager() {
 // in the .cc file rather than the .h because we forward-declare
 // ApacheConfig in the .h and so the compiler doesn't know it's a
 // subclass.
-RewriteOptions* ApacheResourceManager::options() {
+RewriteOptions* ApacheResourceManager::global_options() {
   return config_.get();
 }
 

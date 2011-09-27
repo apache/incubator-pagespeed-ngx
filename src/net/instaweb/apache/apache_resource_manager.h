@@ -51,7 +51,7 @@ class ApacheResourceManager : public ResourceManager {
   void SetStatistics(SharedMemStatistics* x);
   ApacheRewriteDriverFactory* apache_factory() { return apache_factory_; }
   ApacheConfig* config() { return config_.get(); }
-  virtual RewriteOptions* options();
+  virtual RewriteOptions* global_options();
   bool InitFileCachePath();
 
   // Should be called after the child process is forked.

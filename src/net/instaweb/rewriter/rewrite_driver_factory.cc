@@ -345,7 +345,7 @@ void RewriteDriverFactory::InitResourceManager(
   // TODO(jmarantz): Refactor this code into something more functional
   // in the presence of multiple resource managers.
   if (temp_options_.get() != NULL) {
-    resource_manager->options()->CopyFrom(*temp_options_.get());
+    resource_manager->global_options()->CopyFrom(*temp_options_.get());
     temp_options_.reset(NULL);
   }
 }

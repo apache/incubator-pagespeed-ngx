@@ -87,8 +87,9 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   virtual ~ProxyInterfaceTest() {}
 
   virtual void SetUp() {
-    resource_manager()->options()->EnableFilter(RewriteOptions::kRewriteCss);
-    resource_manager()->options()->set_html_cache_time_ms(
+    resource_manager()->global_options()->EnableFilter(
+        RewriteOptions::kRewriteCss);
+    resource_manager()->global_options()->set_html_cache_time_ms(
         kHtmlCacheTimeSec * Timer::kSecondMs);
     ResourceManagerTestBase::SetUp();
     proxy_interface_.reset(

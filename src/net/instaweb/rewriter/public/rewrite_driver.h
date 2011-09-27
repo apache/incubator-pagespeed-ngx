@@ -259,7 +259,7 @@ class RewriteDriver : public HtmlParse {
   // Return the options used for this RewriteDriver.
   const RewriteOptions* options() const {
     return (has_custom_options() ? custom_options_.get()
-            : resource_manager_->options());
+            : resource_manager_->global_options());
   }
 
   // Override HtmlParse's StartParseId to propagate any required options.

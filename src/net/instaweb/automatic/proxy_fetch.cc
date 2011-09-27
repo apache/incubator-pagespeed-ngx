@@ -183,7 +183,7 @@ const RewriteOptions* ProxyFetch::Options() {
   } else if (custom_options_.get() != NULL) {
     return custom_options_.get();
   } else {
-    return resource_manager_->options();
+    return resource_manager_->global_options();
   }
 }
 

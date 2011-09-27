@@ -221,7 +221,7 @@ class ResourceManager {
   // apache-specific options.  In the base-class this is thread-unsafe
   // in its first call, when it lazily-initializes a RewriteOptions
   // scoped_ptr.
-  virtual RewriteOptions* options();
+  virtual RewriteOptions* global_options();
 
   // Makes a new, empty set of RewriteOptions.
   RewriteOptions* NewOptions();
