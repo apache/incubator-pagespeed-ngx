@@ -39,7 +39,6 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
-#include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
@@ -934,10 +933,13 @@ class CacheCallback : public HTTPCache::Callback {
 
   virtual ~CacheCallback() {}
 
-  virtual void Done(HTTPCache::FindResult find_result) {
+  void Find() {
     ResourceManager* resource_manager = driver_->resource_manager();
     HTTPCache* http_cache = resource_manager->http_cache();
+    http_cache->Find(output_resource_->url(), handler_, this);
+  }
 
+  virtual void Done(HTTPCache::FindResult find_result) {
     StringPiece content;
     if (find_result == HTTPCache::kFound) {
       HTTPValue* value = http_value();
@@ -957,6 +959,8 @@ class CacheCallback : public HTTPCache::Callback {
         // store_outputs_in_file_system() is true.
         content = output_resource_->contents();
         response_->CopyFrom(*output_resource_->response_headers());
+        ResourceManager* resource_manager = driver_->resource_manager();
+        HTTPCache* http_cache = resource_manager->http_cache();
         http_cache->Put(output_resource_->url(), response_, content, handler_);
         callback_->Done(writer_->Write(content, handler_));
         driver_->FetchComplete();
@@ -974,15 +978,25 @@ class CacheCallback : public HTTPCache::Callback {
       }
       delete this;
     } else {
-      // Note that we purposefully continue here even if locking fails;
-      // which is also why we use did_locking_ above and not has_lock();
-      output_resource_->LockForCreation(kMayBlock);
+      // Take creation lock and re-try operation (did_locking_ will hold and we
+      // won't get here again). Note that we purposefully continue here even if
+      // locking fails (so that stale locks not old enough to steal wouldn't
+      // cause us to needlessly fail fetches); which is also why we use
+      // did_locking_ above and not has_lock().
       did_locking_ = true;
-
-      // See if the resource got created while we were waiting for the
-      // lock.  (If it did, the lock will get released almost
-      // immediately in our caller, as it will cleanup the resource).
-      http_cache->Find(output_resource_->url(), handler_, this);
+      if (driver_->asynchronous_rewrites()) {
+        // The use of rewrite_worker() here is for more predictability in
+        // testing, as it keeps the individual lock ops ordered with respect
+        // to the rewrite graph state machine.
+        output_resource_->LockForCreation(
+            driver_->rewrite_worker(),
+            MakeFunction(this, &CacheCallback::Find, &CacheCallback::Find));
+      } else {
+        SchedulerBlockingFunction blocker(driver_->scheduler());
+        output_resource_->LockForCreation(driver_->rewrite_worker(), &blocker);
+        blocker.Block();
+        Find();
+      }
     }
   }
 
@@ -1055,12 +1069,10 @@ bool RewriteDriver::FetchOutputResource(
                                     message_handler(), callback);
       }
     } else {
-      HTTPCache::Callback* cache_callback = new CacheCallback(
+      CacheCallback* cache_callback = new CacheCallback(
           this, filter, output_resource, request_headers, response_headers,
           writer, message_handler(), callback);
-      HTTPCache* http_cache = resource_manager_->http_cache();
-      http_cache->Find(output_resource->url(), message_handler(),
-                       cache_callback);
+      cache_callback->Find();
       queued = true;
     }
   }

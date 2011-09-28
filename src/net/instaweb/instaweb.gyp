@@ -292,6 +292,7 @@
       'sources': [
         'util/pthread_condvar.cc',
         'util/pthread_mutex.cc',
+        'util/pthread_rw_lock.cc',
         'util/pthread_shared_mem.cc',
         'util/pthread_thread_system.cc',
       ],

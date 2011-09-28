@@ -29,7 +29,6 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -44,6 +43,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/proto_util.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -301,18 +301,32 @@ void OutputResource::SetType(const ContentType* content_type) {
   computed_url_.clear();  // Since dependent on full_name_.
 }
 
-bool OutputResource::LockForCreation(BlockingBehavior block) {
-  if (has_lock()) {
-    // Already have access.
-    return true;
-  }
-
+NamedLock* OutputResource::CreationLock() {
   if (creation_lock_.get() == NULL) {
     creation_lock_.reset(resource_manager_->MakeCreationLock(name_key()));
   }
+  return creation_lock_.get();
+}
 
-  resource_manager_->LockForCreation(block, creation_lock_.get());
-  return has_lock();
+bool OutputResource::has_lock() const {
+  return ((creation_lock_.get() != NULL) && creation_lock_->Held());
+}
+
+bool OutputResource::TryLockForCreation() {
+  if (has_lock()) {
+    return true;
+  } else {
+    return resource_manager_->TryLockForCreation(CreationLock());
+  }
+}
+
+void OutputResource::LockForCreation(QueuedWorkerPool::Sequence* worker,
+                                     Function* callback) {
+  if (has_lock()) {
+    worker->Add(callback);
+  } else {
+    resource_manager_->LockForCreation(CreationLock(), worker, callback);
+  }
 }
 
 void OutputResource::DropCreationLock() {
@@ -417,10 +431,6 @@ void OutputResource::clear_cached_result() {
     cached_result_owned_ = false;
   }
   cached_result_ = NULL;
-}
-
-bool OutputResource::has_lock() const {
-  return ((creation_lock_.get() != NULL) && creation_lock_->Held());
 }
 
 }  // namespace net_instaweb

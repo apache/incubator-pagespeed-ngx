@@ -30,7 +30,6 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
-#include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -446,26 +445,31 @@ NamedLock* ResourceManager::MakeCreationLock(const GoogleString& name) {
   return lock_manager_->CreateNamedLock(lock_name);
 }
 
-void ResourceManager::LockForCreation(BlockingBehavior block,
-                                      NamedLock* creation_lock) {
-  const int64 kBreakLockMs = 30 * Timer::kSecondMs;
-  const int64 kBlockLockMs = 5 * Timer::kSecondMs;
-  switch (block) {
-    case kNeverBlock:
-      creation_lock->TryLockStealOld(kBreakLockMs);
-      break;
-    case kMayBlock:
-      // TODO(jmaessen): It occurs to me that we probably ought to be
-      // doing something like this if we *really* care about lock aging:
-      // if (!creation_lock->LockTimedWaitStealOld(kBlockLockMs,
-      //                                           kBreakLockMs)) {
-      //   creation_lock->TryLockStealOld(0);  // Force lock steal
-      // }
-      // This updates the lock hold time so that another thread is less likely
-      // to steal the lock while we're doing the blocking rewrite.
-      creation_lock->LockTimedWaitStealOld(kBlockLockMs, kBreakLockMs);
-      break;
-  }
+namespace {
+// Constants governing resource lock timeouts.
+// TODO(jmaessen): Set more appropriately?
+const int64 kBreakLockMs = 30 * Timer::kSecondMs;
+const int64 kBlockLockMs = 5 * Timer::kSecondMs;
+}  // namespace
+
+bool ResourceManager::TryLockForCreation(NamedLock* creation_lock) {
+  return creation_lock->TryLockStealOld(kBreakLockMs);
+}
+
+void ResourceManager::LockForCreation(NamedLock* creation_lock,
+                                      QueuedWorkerPool::Sequence* worker,
+                                      Function* callback) {
+  // TODO(jmaessen): It occurs to me that we probably ought to be
+  // doing something like this if we *really* care about lock aging:
+  // if (!creation_lock->LockTimedWaitStealOld(kBlockLockMs,
+  //                                           kBreakLockMs)) {
+  //   creation_lock->TryLockStealOld(0);  // Force lock steal
+  // }
+  // This updates the lock hold time so that another thread is less likely
+  // to steal the lock while we're doing the blocking rewrite.
+  creation_lock->LockTimedWaitStealOld(
+      kBlockLockMs, kBreakLockMs,
+      new QueuedWorkerPool::Sequence::AddFunction(worker, callback));
 }
 
 bool ResourceManager::HandleBeacon(const StringPiece& unparsed_url) {

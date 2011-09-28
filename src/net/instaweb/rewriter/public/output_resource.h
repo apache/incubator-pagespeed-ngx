@@ -24,13 +24,13 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_writer.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -38,6 +38,7 @@
 namespace net_instaweb {
 
 class CachedResult;
+class Function;
 class HTTPValue;
 class MessageHandler;
 class NamedLock;
@@ -67,12 +68,20 @@ class OutputResource : public Resource {
   virtual bool Load(MessageHandler* message_handler);
   virtual GoogleString url() const;
 
-  // Attempt to obtain a named lock for the resource.  Return true if we do so.
-  // If the resource is expensive to create, this lock should be held during
-  // its creation to avoid multiple rewrites happening at once.
-  // The lock will be unlocked on destruction, DropCreationLock, or EndWrite
-  // (called from ResourceManager::Write)
-  bool LockForCreation(BlockingBehavior block);
+  // Lazily initialize and return creation_lock_.  If the resource is expensive
+  // to create, this lock should be held during its creation to avoid multiple
+  // rewrites happening at once.  The lock will be unlocked on destruction,
+  // DropCreationLock, or EndWrite (called from ResourceManager::Write)
+  NamedLock* CreationLock();
+
+  // Attempt to obtain a named lock for the resource without blocking.  Return
+  // true if we do so.
+  bool TryLockForCreation();
+
+  // Attempt to obtain a named lock for the resource, scheduling the callback in
+  // the provided worker if we do so and scheduling a cancellation if locking
+  // times out.
+  void LockForCreation(QueuedWorkerPool::Sequence* worker, Function* callback);
 
   // Drops the lock created by above, if any.
   void DropCreationLock();
@@ -279,7 +288,7 @@ class OutputResource : public Resource {
   // Lazily evaluated and cached result of the url() method, which is const.
   mutable GoogleString computed_url_;
 
-  // Lock guarding resource creation.  Lazily initialized by LockForCreation,
+  // Lock guarding resource creation.  Lazily initialized by CreationLock(),
   // unlocked on destruction, DropCreationLock or EndWrite.
   scoped_ptr<NamedLock> creation_lock_;
 

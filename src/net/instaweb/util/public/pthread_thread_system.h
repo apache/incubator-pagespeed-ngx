@@ -33,6 +33,8 @@ class PthreadThreadSystem : public ThreadSystem {
 
   virtual CondvarCapableMutex* NewMutex();
 
+  virtual RWLock* NewRWLock();
+
  protected:
   // This hook will get invoked by the implementation in the context of a
   // thread before invoking its Run() method.

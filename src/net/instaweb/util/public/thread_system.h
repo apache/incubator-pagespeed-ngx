@@ -52,6 +52,27 @@ class ThreadSystem {
     DISALLOW_COPY_AND_ASSIGN(CondvarCapableMutex);
   };
 
+  class RWLock : public AbstractMutex {
+   public:
+    RWLock() {}
+    virtual ~RWLock();
+
+    // ReaderLock/Unlock are different from normal locks. Reader locks are
+    // shared while normal locks are exclusive. Normal lock cannot happen when
+    // reader has a lock.
+    // Block until this Mutex is free, or shared, then acquire a share of it.
+    virtual void ReaderLock() = 0;
+    // Release a read share of this Mutex.
+    virtual void ReaderUnlock() = 0;
+
+    // Optionally checks that reader lock is held (for invariant checking
+    // purposes). Default implementation does no checking.
+    virtual void DCheckReaderLocked();
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(RWLock);
+  };
+
   enum ThreadFlags {
     kDetached = 0,
     kJoinable = 1
@@ -64,6 +85,11 @@ class ThreadSystem {
   //
   // See also CondvarCapableMutex::NewCondvar.
   virtual CondvarCapableMutex* NewMutex() = 0;
+
+  // This lock will provide following guarantee -
+  // - Reader reentrant safe.
+  // - Writer Priority, this ensures no writer starvation.
+  virtual RWLock* NewRWLock() = 0;
 
   // Creates an appropriate ThreadSystem for the platform.
   static ThreadSystem* CreateThreadSystem();

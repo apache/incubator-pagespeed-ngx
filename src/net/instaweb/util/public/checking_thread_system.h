@@ -23,6 +23,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/atomic_bool.h"
+#include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
@@ -70,11 +71,41 @@ class CheckingThreadSystem : public ThreadSystem {
     DISALLOW_COPY_AND_ASSIGN(Mutex);
   };
 
+  // We also expose CheckingThreadSystem::RWLock, which wraps a
+  // RWLock to provide read/write capable locks. This class
+  // can be used to wrap unchecked mutexes provided by other
+  // CheckingThreadSystems.
+  class RWLock : public ThreadSystem::RWLock {
+   public:
+    RWLock(ThreadSystem::RWLock* lock) : lock_(lock) { }
+    virtual ~RWLock();
+
+    virtual void Lock();
+    virtual void Unlock();
+    virtual void ReaderLock();
+    virtual void ReaderUnlock();
+
+    // This implementation of DCheckLocked CHECK-fails if lock is not held.
+    virtual void DCheckLocked();
+    virtual void DCheckReaderLocked();
+
+   private:
+    void TakeLockControl();
+    void DropLockControl();
+    void TakeReaderLockControl();
+    void DropReaderLockControl();
+
+    scoped_ptr<ThreadSystem::RWLock> lock_;
+    AtomicInt32 locked_;
+    DISALLOW_COPY_AND_ASSIGN(RWLock);
+  };
+
   CheckingThreadSystem(ThreadSystem* thread_system)
       : thread_system_(thread_system) { }
   virtual ~CheckingThreadSystem();
 
   virtual Mutex* NewMutex();
+  virtual RWLock* NewRWLock();
 
  private:
   friend class Mutex;

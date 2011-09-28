@@ -27,12 +27,12 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -44,12 +44,12 @@ class CacheInterface;
 class ContentType;
 class FileSystem;
 class FilenameEncoder;
+class Function;
 class GoogleUrl;
 class Hasher;
 class MessageHandler;
 class NamedLock;
 class NamedLockManager;
-class QueuedWorkerPool;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteDriverFactory;
@@ -192,14 +192,20 @@ class ResourceManager {
   // will be passed to the callback, with its contents and headers filled in.
   void ReadAsync(Resource::AsyncCallback* callback);
 
-  // Allocate an NamedLock to guard the creation of the given resource.
+  // Allocate an NamedLock to guard the creation of the given resource.  If the
+  // object is expensive to create, this lock should be held during its creation
+  // to avoid multiple rewrites happening at once.  The lock will be unlocked
+  // when creation_lock is reset or destructed.
   NamedLock* MakeCreationLock(const GoogleString& name);
 
-  // Attempt to obtain a named lock.  If the object is expensive to create, this
-  // lock should be held during its creation to avoid multiple rewrites
-  // happening at once.  The lock will be unlocked when creation_lock is reset
-  // or destructed.
-  void LockForCreation(BlockingBehavior block, NamedLock* creation_lock);
+  // Attempt to obtain a named lock without blocking.  Return true if we do so.
+  bool TryLockForCreation(NamedLock* creation_lock);
+
+  // Attempt to obtain a named lock. When the lock has been obtained, queue the
+  // callback on the  given worker Sequence.  If the lock times out, cancel the
+  // callback, running the cancel on the worker.
+  void LockForCreation(NamedLock* creation_lock,
+                       QueuedWorkerPool::Sequence* worker, Function* callback);
 
   // Setters should probably only be used in testing.
   void set_hasher(Hasher* hasher) { hasher_ = hasher; }

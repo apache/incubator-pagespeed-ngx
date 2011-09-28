@@ -549,6 +549,8 @@ class RewriteDriver : public HtmlParse {
     return low_priority_rewrite_worker_;
   }
 
+  Scheduler* scheduler() { return scheduler_; }
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;

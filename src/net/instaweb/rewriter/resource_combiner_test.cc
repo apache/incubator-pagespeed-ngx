@@ -192,6 +192,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
       CallFetcherCallbacks();
     }
 
+    rewrite_driver()->WaitForCompletion();
     EXPECT_TRUE(callback.done());
     return callback.success();
   }
@@ -652,6 +653,7 @@ TEST_F(ResourceCombinerTest, TestContinuingFetchWhenFastFailed) {
                                                 &response_headers, &writer,
                                                 &callback);
   EXPECT_TRUE(called);  // RewriteDriver took care of it after filter failure.
+  rewrite_driver()->WaitForCompletion();
   EXPECT_TRUE(callback.done());
   EXPECT_FALSE(callback.success());
   EXPECT_FALSE(response_headers.headers_complete());

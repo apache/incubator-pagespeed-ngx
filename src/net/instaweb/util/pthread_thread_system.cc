@@ -21,6 +21,7 @@
 #include <pthread.h>
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/pthread_rw_lock.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -97,6 +98,10 @@ PthreadThreadSystem::~PthreadThreadSystem() {
 
 ThreadSystem::CondvarCapableMutex* PthreadThreadSystem::NewMutex() {
   return new PthreadMutex;
+}
+
+ThreadSystem::RWLock* PthreadThreadSystem::NewRWLock() {
+  return new PthreadRWLock;
 }
 
 void PthreadThreadSystem::BeforeThreadRunHook() {

@@ -24,7 +24,6 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -73,7 +72,7 @@ struct ContentType;
 //
 // TODO(jmarantz): add support for controlling TTL on failures.
 //
-// RewriteContext utilizes two threads (via QueuedThreadPool::Sequence)
+// RewriteContext utilizes two threads (via QueuedWorkerPool::Sequence)
 // to do most of its work. The "high priority" thread is used to run the
 // dataflow graph: queue up fetches and cache requests, partition inputs,
 // render results, etc. The actual Rewrite() methods, however, are invoked
@@ -384,17 +383,19 @@ class RewriteContext {
   // enable successor rewrites to proceed.
   void Finalize();
 
+  // Get reference to lock_, lazy-initializing if necessary.
+  NamedLock* Lock();
+
   // Initiates an asynchronous fetch for the resources associated with
   // each slot, calling ResourceFetchDone() when complete.
   //
-  // To avoid concurrent fetches across multiple processes or threads,
-  // each input is locked by name, according to the specified blocking
-  // behavior.  Input fetches done on behalf of resource fetches must
-  // succeed to avoid sending 404s to clients, and so they will break
-  // locks.  Input fetches done for async rewrite initiations should
-  // fail fast to help avoid having multiple concurrent processes attempt
-  // the same rewrite.
-  void FetchInputs(BlockingBehavior block);
+  // To avoid concurrent fetches across multiple processes or threads, the
+  // caller must first lock each input by name, blocking or abandoning rewriting
+  // as necessary.  Input fetches done on behalf of resource fetches must
+  // succeed to avoid sending 404s to clients, and so they will break locks.
+  // Input fetches done for async rewrite initiations should fail fast to help
+  // avoid having multiple concurrent processes attempt the same rewrite.
+  void FetchInputs();
 
   // Generally a RewriteContext is waiting for one or more
   // asynchronous events to take place.  Activate is called
@@ -484,7 +485,7 @@ class RewriteContext {
   UrlSegmentEncoder default_encoder_;
 
   // Lock guarding output partitioning and rewriting.  Lazily initialized by
-  // LockForCreation, unlocked on destruction or the end of Finish().
+  // Lock(), unlocked on destruction or the end of Finish().
   scoped_ptr<NamedLock> lock_;
 
   // When this rewrite object is created on behalf of a fetch, we must

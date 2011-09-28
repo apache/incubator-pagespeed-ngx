@@ -94,12 +94,70 @@ ThreadSystem::Condvar* CheckingThreadSystem::Mutex::NewCondvar() {
   return new CheckingThreadSystem::CheckingCondvar(this, enclosed);
 }
 
+// Destructor and methods for CheckingThreadSystem::RWLock
+
+CheckingThreadSystem::RWLock::~RWLock() {
+  CHECK_EQ(locked_.value(), 0) << "Lock should not be held on destruction.";
+}
+
+void CheckingThreadSystem::RWLock::DCheckLocked() {
+  CHECK_EQ(locked_.value(), -1) << "Lock should have been held.";
+}
+
+void CheckingThreadSystem::RWLock::DCheckReaderLocked() {
+  CHECK_GT(locked_.value(), 0) << "Lock should have been held.";
+}
+
+void CheckingThreadSystem::RWLock::DropLockControl() {
+  DCheckLocked();
+  locked_.set_value(0);
+}
+
+void CheckingThreadSystem::RWLock::TakeLockControl() {
+  CHECK_EQ(locked_.value(), 0) << "Lock should have been available.";
+  locked_.set_value(-1);
+}
+
+void CheckingThreadSystem::RWLock::DropReaderLockControl() {
+  DCheckReaderLocked();
+  locked_.increment(-1);
+}
+
+void CheckingThreadSystem::RWLock::TakeReaderLockControl() {
+  CHECK_GE(locked_.value(), 0) << "Lock should have been available.";
+  locked_.increment(1);
+}
+
+void CheckingThreadSystem::RWLock::Lock() {
+  lock_->Lock();
+  TakeLockControl();
+}
+
+void CheckingThreadSystem::RWLock::Unlock() {
+  DropLockControl();
+  lock_->Unlock();
+}
+
+void CheckingThreadSystem::RWLock::ReaderLock() {
+  lock_->ReaderLock();
+  TakeReaderLockControl();
+}
+
+void CheckingThreadSystem::RWLock::ReaderUnlock() {
+  DropReaderLockControl();
+  lock_->ReaderUnlock();
+}
+
 // Destructor and methods for CheckingThreadSystem
 
 CheckingThreadSystem::~CheckingThreadSystem() { }
 
 CheckingThreadSystem::Mutex* CheckingThreadSystem::NewMutex() {
   return new Mutex(thread_system_->NewMutex());
+}
+
+CheckingThreadSystem::RWLock* CheckingThreadSystem::NewRWLock() {
+  return new RWLock(thread_system_->NewRWLock());
 }
 
 ThreadSystem::ThreadImpl* CheckingThreadSystem::NewThreadImpl(

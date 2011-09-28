@@ -526,6 +526,17 @@ check grep -qi "'Expires:'" $WGET_OUTPUT
 echo TEST: regression test for RewriteDriver leak
 $WGET -O /dev/null -o /dev/null $TEST_ROOT/_.pagespeed.jo.3tPymVdi9b.js
 
+# Combination rewrite in which the same URL occurred twice used to
+# lead to a large delay due to overly late lock release.
+echo TEST: regression test with same filtered input twice in combination
+PAGE=_,Mco.0.css+_,Mco.0.css.pagespeed.cc.0.css
+URL=$TEST_ROOT/$PAGE?ModPagespeedFilters=combine_css,outline_css
+echo $WGET -O /dev/null -o /dev/null --tries=1 --read-timeout=3 $URL
+$WGET -O /dev/null -o /dev/null --tries=1 --read-timeout=3 $URL
+# We want status code 8 (server-issued error) and not 4
+# (network failure/timeout)
+check [ $? = 8 ]
+
 # Helper to test directive ModPagespeedForBots
 # By default directive ModPagespeedForBots is off; otherwise image rewriting is
 # disabled for bots while other filters such as inline_css still work.

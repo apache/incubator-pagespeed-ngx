@@ -29,7 +29,13 @@ ThreadSystem::~ThreadSystem() {
 ThreadSystem::CondvarCapableMutex::~CondvarCapableMutex() {
 }
 
+ThreadSystem::RWLock::~RWLock() {
+}
+
 ThreadSystem::ThreadImpl::~ThreadImpl() {
+}
+
+void ThreadSystem::RWLock::DCheckReaderLocked() {
 }
 
 ThreadSystem* ThreadSystem::CreateThreadSystem() {

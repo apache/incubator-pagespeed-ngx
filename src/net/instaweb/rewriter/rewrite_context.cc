@@ -36,7 +36,6 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -594,7 +593,13 @@ void RewriteContext::OutputCacheHit(bool write_partitions) {
 void RewriteContext::OutputCacheMiss() {
   outputs_.clear();
   partitions_->Clear();
-  FetchInputs(kNeverBlock);
+  if (Manager()->TryLockForCreation(Lock())) {
+    FetchInputs();
+  } else {
+    // TODO(jmarantz): bump stat for abandoned rewrites due to lock contention.
+    ok_to_write_output_partitions_ = false;
+    Activate();
+  }
 }
 
 void RewriteContext::OutputCacheRevalidate(
@@ -638,79 +643,73 @@ void RewriteContext::RepeatedFailure() {
   WritePartition();
 }
 
-void RewriteContext::FetchInputs(BlockingBehavior block) {
-  // NOTE: This lock is based on hashes so if you use a MockHasher, you may
-  // only rewrite a single resource at a time (e.g. no rewriting resources
-  // inside resources, see css_image_rewriter_test.cc for examples.)
-  //
-  // TODO(jmarantz): In the multi-resource rewriters that can
-  // generate more than one partition, we create a lock based on the
-  // entire set of input URLs, plus a lock for each individual
-  // output.  However, in single-resource rewriters, we really only
-  // need one of these locks.  So figure out which one we'll go with
-  // and use that.
-  if (lock_.get() == NULL) {
+NamedLock* RewriteContext::Lock() {
+  NamedLock* result = lock_.get();
+  if (result == NULL) {
+    // NOTE: This lock is based on hashes so if you use a MockHasher, you may
+    // only rewrite a single resource at a time (e.g. no rewriting resources
+    // inside resources, see css_image_rewriter_test.cc for examples.)
+    //
+    // TODO(jmarantz): In the multi-resource rewriters that can generate more
+    // than one partition, we create a lock based on the entire set of input
+    // URLs, plus a lock for each individual output.  However, in
+    // single-resource rewriters, we really only need one of these locks.  So
+    // figure out which one we'll go with and use that.
     GoogleString lock_name = StrCat(kRewriteContextLockPrefix, partition_key_);
-    lock_.reset(Manager()->MakeCreationLock(lock_name));
+    result = Manager()->MakeCreationLock(lock_name);
+    lock_.reset(result);
   }
+  return result;
+}
 
-  Manager()->LockForCreation(block, lock_.get());
-  // Note that in case of fetches we continue even if we didn't manage to
-  // steal the lock.
-  if (lock_->Held() || (block == kMayBlock)) {
-    ++num_predecessors_;
+void RewriteContext::FetchInputs() {
+  ++num_predecessors_;
 
-    for (int i = 0, n = slots_.size(); i < n; ++i) {
-      const ResourceSlotPtr& slot = slots_[i];
-      ResourcePtr resource(slot->resource());
-      if (!(resource->loaded() && resource->ContentsValid())) {
-        ++outstanding_fetches_;
+  for (int i = 0, n = slots_.size(); i < n; ++i) {
+    const ResourceSlotPtr& slot = slots_[i];
+    ResourcePtr resource(slot->resource());
+    if (!(resource->loaded() && resource->ContentsValid())) {
+      ++outstanding_fetches_;
 
-        // In case of fetches, we may need to handle rewrites nested inside
-        // each other; so we want to pass them on to other rewrite tasks
-        // rather than try to fetch them over HTTP.
-        bool handled_internally = false;
-        if (fetch_.get() != NULL) {
-          GoogleUrl resource_gurl(resource->url());
-          if (Manager()->IsPagespeedResource(resource_gurl)) {
-            RewriteDriver* nested_driver = Driver()->Clone();
-            RewriteFilter* filter = NULL;
-            // We grab the filter now (and not just call DecodeOutputResource
-            // instead of IsPagespeedResource) so we get a filter that's bound
-            // to the new RewriteDriver.
-            OutputResourcePtr output_resource =
-                nested_driver->DecodeOutputResource(resource_gurl, &filter);
-            if (output_resource.get() != NULL) {
-              handled_internally = true;
-              slot->SetResource(ResourcePtr(output_resource));
-              ResourceReconstructCallback* callback =
-                  new ResourceReconstructCallback(
-                      nested_driver, this, output_resource, i);
-              nested_driver->FetchOutputResource(
-                  output_resource, filter,
-                  callback->request_headers(),
-                  callback->response_headers(),
-                  callback->writer(),
-                  callback);
-            } else {
-              Manager()->ReleaseRewriteDriver(nested_driver);
-            }
+      // In case of fetches, we may need to handle rewrites nested inside
+      // each other; so we want to pass them on to other rewrite tasks
+      // rather than try to fetch them over HTTP.
+      bool handled_internally = false;
+      if (fetch_.get() != NULL) {
+        GoogleUrl resource_gurl(resource->url());
+        if (Manager()->IsPagespeedResource(resource_gurl)) {
+          RewriteDriver* nested_driver = Driver()->Clone();
+          RewriteFilter* filter = NULL;
+          // We grab the filter now (and not just call DecodeOutputResource
+          // instead of IsPagespeedResource) so we get a filter that's bound
+          // to the new RewriteDriver.
+          OutputResourcePtr output_resource =
+              nested_driver->DecodeOutputResource(resource_gurl, &filter);
+          if (output_resource.get() != NULL) {
+            handled_internally = true;
+            slot->SetResource(ResourcePtr(output_resource));
+            ResourceReconstructCallback* callback =
+                new ResourceReconstructCallback(
+                    nested_driver, this, output_resource, i);
+            nested_driver->FetchOutputResource(
+                output_resource, filter,
+                callback->request_headers(),
+                callback->response_headers(),
+                callback->writer(),
+                callback);
+          } else {
+            Manager()->ReleaseRewriteDriver(nested_driver);
           }
         }
+      }
 
-        if (!handled_internally) {
-          Manager()->ReadAsync(new ResourceFetchCallback(this, resource, i));
-        }
+      if (!handled_internally) {
+        Manager()->ReadAsync(new ResourceFetchCallback(this, resource, i));
       }
     }
-
-    --num_predecessors_;
-  } else {
-    // TODO(jmarantz): bump stat for abandoned rewrites due to lock
-    // contention.
-    ok_to_write_output_partitions_ = false;
   }
 
+  --num_predecessors_;
   Activate();  // TODO(jmarantz): remove.
 }
 
@@ -1188,7 +1187,12 @@ bool RewriteContext::Fetch(
 }
 
 void RewriteContext::StartFetch() {
-  FetchInputs(kMayBlock);
+  // Note that in case of fetches we continue even if we didn't manage to
+  // steal the lock.
+  Manager()->LockForCreation(
+      Lock(), Driver()->rewrite_worker(),
+      MakeFunction(this, &RewriteContext::FetchInputs,
+                   &RewriteContext::FetchInputs));
 }
 
 RewriteDriver* RewriteContext::Driver() const {

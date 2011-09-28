@@ -34,7 +34,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/blocking_behavior.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -117,6 +116,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     EXPECT_TRUE(rewrite_driver()->FetchOutputResource(
         resource, null_filter, request, resource->response_headers(), writer,
         &callback));
+    rewrite_driver()->WaitForCompletion();
     EXPECT_TRUE(callback.done());
     return callback.success();
   }
@@ -205,7 +205,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
               kUrlPrefix, filter_prefix, name, content_type,
               kRewrittenResource, use_async_flow));
       ASSERT_TRUE(nor1.get() != NULL);
-      EXPECT_FALSE(nor1->LockForCreation(kNeverBlock));
+      EXPECT_FALSE(nor1->TryLockForCreation());
       EXPECT_FALSE(nor1->IsWritten());
     }
 
@@ -222,7 +222,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       ASSERT_TRUE(nor1.get() != NULL);
 
       // non-blocking
-      EXPECT_FALSE(nor1->LockForCreation(kNeverBlock));
+      EXPECT_FALSE(nor1->TryLockForCreation());
       // blocking but stealing
       EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(nor1));
     }
