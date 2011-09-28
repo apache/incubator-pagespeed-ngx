@@ -47,12 +47,6 @@
 
 namespace net_instaweb {
 
-// TODO(sligocki): Share these constants with Apache flow.
-const char kModPagespeed[] = "ModPagespeed";
-const char kModPagespeedFilters[] = "ModPagespeedFilters";
-// TODO(sligocki): What do we want here?
-const char kModPagespeedVersion[] = "VERSION_PLACEHOLDER";
-
 // Histogram names.
 const char kFetchLatencyHistogram[] = "Fetch Latency Histogram";
 const char kRewriteLatencyHistogram[] = "Rewrite Latency Histogram";
@@ -157,9 +151,9 @@ bool ProxyInterface::StreamingFetch(const GoogleString& requested_url_string,
   } else {
     LOG(INFO) << "Proxying URL: " << requested_url.Spec();
 
-    // Add X-Mod-Pagespeed header to all requests (should we only add this to
+    // Add X-Page-Speed header to all requests (should we only add this to
     // successful HTML requests like we do in Apache)?
-    response_headers->Add(kModPagespeedHeader, kModPagespeedVersion);
+    response_headers->Add(kPageSpeedHeader, version_string_);
 
     // Try to handle this as a .pagespeed. resource.
     if (resource_manager_->IsPagespeedResource(requested_url) && is_get) {

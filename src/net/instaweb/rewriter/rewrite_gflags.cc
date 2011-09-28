@@ -30,7 +30,7 @@
 
 using namespace google;  // NOLINT
 
-// TODO(sligocki): What is this used for these days?
+// This is used for prefixing file-based locks.
 DEFINE_string(filename_prefix, "/tmp/instaweb/",
               "Filesystem prefix for storing resources.");
 
@@ -77,10 +77,10 @@ DEFINE_int32(lru_cache_size_bytes, 10 * 1000 * 1000, "LRU cache size");
 DEFINE_bool(force_caching, false,
             "Ignore caching headers and cache everything.");
 DEFINE_bool(flush_html, false, "Pass fetcher-generated flushes through HTML");
+DEFINE_string(pagespeed_version, "", "Version number to put into X-Page-Speed "
+              "response header.");
 
 namespace net_instaweb {
-
-class MessageHandler;
 
 namespace {
 
@@ -122,6 +122,7 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   bool ret = true;
   factory->set_filename_prefix(FLAGS_filename_prefix);
   factory->set_force_caching(FLAGS_force_caching);
+  factory->set_version_string(FLAGS_pagespeed_version);
 
   if (WasExplicitlySet("css_outline_min_bytes")) {
     options->set_css_outline_min_bytes(FLAGS_css_outline_min_bytes);

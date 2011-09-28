@@ -201,7 +201,7 @@ echo $WGET_DUMP $EXAMPLE_ROOT/combine_css.html
 HTML_HEADERS=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
 
 echo Checking for X-Mod-Pagespeed header
-echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
+echo $HTML_HEADERS | egrep -q 'X-Mod-Pagespeed|X-Page-Speed'
 check [ $? = 0 ]
 
 echo Checking for lack of E-tag
@@ -247,7 +247,7 @@ check "$WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
 
 echo TEST: X-Mod-Pagespeed header added when ModPagespeed=on
 $WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=on \
-  | grep -i X-Mod-Pagespeed
+  | egrep 'X-Mod-Pagespeed|X-Page-Speed'
 check [ $? = 0 ]
 
 #echo TEST: X-Mod-Pagespeed header not added when ModPagespeed=off
@@ -597,7 +597,7 @@ if [ -n "$HTTPS_HOST" ]; then
   HTML_HEADERS=$($WGET_DUMP_HTTPS $URL)
 
   echo Checking for X-Mod-Pagespeed header
-  echo $HTML_HEADERS | grep -qi X-Mod-Pagespeed
+  echo $HTML_HEADERS | egrep -q 'X-Mod-Pagespeed|X-Page-Speed'
   check [ $? = 0 ]
 
   echo Checking for combined CSS URL

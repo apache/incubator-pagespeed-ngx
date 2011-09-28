@@ -203,6 +203,12 @@ class RewriteDriverFactory {
   // defaults appropriate to the factory subclass.
   virtual RewriteOptions* NewRewriteOptions();
 
+  // get/set the version placed into the X-[Mod-]Page(s|-S)peed header.
+  const GoogleString& version_string() const { return version_string_; }
+  void set_version_string(const StringPiece& version_string) {
+    version_string.CopyToString(&version_string_);
+  }
+
  protected:
   bool FetchersComputed() const;
   void StopCacheWrites();
@@ -317,6 +323,9 @@ class RewriteDriverFactory {
   // To assist with subclass destruction-order, subclasses can register
   // functions to run late in the destructor.
   std::vector<Function*> deferred_deletes_;
+
+  // Version string to put into HTTP response headers.
+  GoogleString version_string_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };
