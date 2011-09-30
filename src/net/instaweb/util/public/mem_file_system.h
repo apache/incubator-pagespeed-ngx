@@ -20,6 +20,8 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_MEM_FILE_SYSTEM_H_
 
 #include <map>
+
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/string.h"
@@ -27,19 +29,23 @@
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class MessageHandler;
 class MockTimer;
+class ThreadSystem;
+class Timer;
 
-// An in-memory implementation of the FileSystem interface, for use in
-// unit tests.  Does not fully support directories.  Not particularly efficient.
-// Not threadsafe.
+// An in-memory implementation of the FileSystem interface. This was originally
+// for use in unit tests; but can also host the lock manager if needed.
+// Does not fully support directories.  Not particularly efficient.
+// Not threadsafe except for lock methods.
 // TODO(abliss): add an ability to block writes for arbitrarily long, to
 // enable testing resilience to concurrency problems with real filesystems.
 //
 // TODO(jmarantz): make threadsafe.
 class MemFileSystem : public FileSystem {
  public:
-  explicit MemFileSystem(MockTimer* timer);
+  explicit MemFileSystem(ThreadSystem* threads, Timer* timer);
   virtual ~MemFileSystem();
 
   virtual InputFile* OpenInputFile(const char* filename,
@@ -85,7 +91,10 @@ class MemFileSystem : public FileSystem {
   // mock-time to examine millisecond-level timing, so we leave this
   // behavior off by default.
   bool advance_time_on_update() { return advance_time_on_update_; }
-  void set_advance_time_on_update(bool x) { advance_time_on_update_ = x; }
+  void set_advance_time_on_update(bool x, MockTimer* mock_timer) {
+    advance_time_on_update_ = x;
+    mock_timer_ = mock_timer;
+  }
 
   // Empties out the entire filesystem.  Should not be called while files
   // are open.
@@ -94,9 +103,6 @@ class MemFileSystem : public FileSystem {
   // Test-specific functionality to disable and re-enable the filesystem.
   void Disable() { enabled_ = false; }
   void Enable() { enabled_ = true; }
-
-  // Accessor for timer.  Timer is owned by mem_file_system.
-  MockTimer* timer() { return timer_; }
 
   // Access statistics.
   void ClearStats() {
@@ -119,9 +125,12 @@ class MemFileSystem : public FileSystem {
   inline void UpdateAtime(const StringPiece& path);
   inline void UpdateMtime(const StringPiece& path);
 
+  scoped_ptr<AbstractMutex> mutex_;
+
   bool enabled_;  // When disabled, OpenInputFile returns NULL.
   StringStringMap string_map_;
-  MockTimer* timer_;
+  Timer* timer_;
+  MockTimer* mock_timer_;  // used only for auto-advance functionality.
 
   // atime_map_ holds times (in s) that files were last opened/modified.  Each
   // time we do such an operation, timer() advances by 1s (so all ATimes are

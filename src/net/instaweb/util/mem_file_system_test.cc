@@ -18,15 +18,18 @@
 
 // Unit-test the in-memory filesystem
 
+#include "net/instaweb/util/public/mem_file_system.h"
+
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_test.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -35,8 +38,10 @@ class Timer;
 class MemFileSystemTest : public FileSystemTest {
  protected:
   MemFileSystemTest()
-      : timer_(0), mem_file_system_(&timer_) {
-    mem_file_system_.set_advance_time_on_update(true);
+      : thread_system_(ThreadSystem::CreateThreadSystem()),
+        timer_(0),
+        mem_file_system_(thread_system_.get(), &timer_) {
+    mem_file_system_.set_advance_time_on_update(true, &timer_);
   }
   virtual void DeleteRecursively(const StringPiece& filename) {
     mem_file_system_.Clear();
@@ -46,6 +51,7 @@ class MemFileSystemTest : public FileSystemTest {
   virtual GoogleString test_tmpdir() { return GTestTempDir(); }
 
  private:
+  scoped_ptr<ThreadSystem> thread_system_;
   MockTimer timer_;
   MemFileSystem mem_file_system_;
 

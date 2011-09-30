@@ -19,7 +19,9 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_STATS_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_STATS_H_
 
-#include "base/scoped_ptr.h"
+#include <vector>
+
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
@@ -58,8 +60,8 @@ class RewriteStats {
   }
   Variable* total_page_load_ms() { return total_page_load_ms_; }
   Variable* page_load_count() { return page_load_count_; }
-  Waveform* rewrite_thread_queue_depth() {
-    return rewrite_thread_queue_depth_.get();
+  Waveform* thread_queue_depth(RewriteDriverFactory::WorkerPoolName name) {
+    return thread_queue_depths_[name];
   }
 
  private:
@@ -76,7 +78,7 @@ class RewriteStats {
   Variable* slurp_404_count_;
   Variable* succeeded_filter_resource_fetches_;
   Variable* total_page_load_ms_;
-  scoped_ptr<Waveform> rewrite_thread_queue_depth_;
+  std::vector<Waveform*> thread_queue_depths_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteStats);
 };

@@ -171,7 +171,7 @@ RewriteDriver::~RewriteDriver() {
   }
   if (html_worker_ != NULL) {
     scheduler_->UnregisterWorker(html_worker_);
-    resource_manager_->rewrite_workers()->FreeSequence(html_worker_);
+    resource_manager_->html_workers()->FreeSequence(html_worker_);
   }
   if (low_priority_rewrite_worker_ != NULL) {
     scheduler_->UnregisterWorker(low_priority_rewrite_worker_);
@@ -456,7 +456,7 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   scheduler_ = resource_manager_->scheduler();
   set_timer(resource_manager->timer());
   rewrite_worker_ = resource_manager_->rewrite_workers()->NewSequence();
-  html_worker_ = resource_manager_->rewrite_workers()->NewSequence();
+  html_worker_ = resource_manager_->html_workers()->NewSequence();
   low_priority_rewrite_worker_ =
       resource_manager_->low_priority_rewrite_workers()->NewSequence();
   scheduler_->RegisterWorker(rewrite_worker_);

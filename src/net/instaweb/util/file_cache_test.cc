@@ -43,7 +43,7 @@ class FileCacheTest : public CacheTestBase {
       : thread_system_(ThreadSystem::CreateThreadSystem()),
         worker_(thread_system_.get()),
         mock_timer_(0),
-        file_system_(&mock_timer_),
+        file_system_(thread_system_.get(), &mock_timer_),
         kCleanIntervalMs(Timer::kMinuteMs),
         kTargetSize(12),  // Small enough to overflow with a few strings.
         cache_(GTestTempDir(), &file_system_, &worker_,
@@ -55,7 +55,7 @@ class FileCacheTest : public CacheTestBase {
     // explicit control of time.  For now, just mutex-protect the
     // MockTimer.
     mock_timer_.set_mutex(thread_system_->NewMutex());
-    file_system_.set_advance_time_on_update(true);
+    file_system_.set_advance_time_on_update(true, &mock_timer_);
   }
 
   void CheckCleanTimestamp(int64 min_time_ms) {

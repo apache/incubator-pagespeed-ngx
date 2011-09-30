@@ -138,7 +138,7 @@ UrlAsyncFetcher* TestRewriteDriverFactory::DefaultAsyncUrlFetcher() {
 FileSystem* TestRewriteDriverFactory::DefaultFileSystem() {
   DCHECK(mem_file_system_ == NULL);
   timer();  // ensures that mock_timer_ is initialized.
-  mem_file_system_ = new MemFileSystem(mock_timer_);
+  mem_file_system_ = new MemFileSystem(thread_system(), mock_timer_);
   return mem_file_system_;
 }
 

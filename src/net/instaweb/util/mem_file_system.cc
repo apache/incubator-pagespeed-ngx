@@ -22,6 +22,7 @@
 #include <map>
 #include <utility>
 
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -29,6 +30,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -102,9 +104,11 @@ class MemOutputFile : public FileSystem::OutputFile {
   DISALLOW_COPY_AND_ASSIGN(MemOutputFile);
 };
 
-MemFileSystem::MemFileSystem(MockTimer* timer)
-    : enabled_(true),
+MemFileSystem::MemFileSystem(ThreadSystem* threads, Timer* timer)
+    : mutex_(threads->NewMutex()),
+      enabled_(true),
       timer_(timer),
+      mock_timer_(NULL),
       temp_file_index_(0),
       atime_enabled_(true),
       advance_time_on_update_(false),
@@ -120,7 +124,7 @@ void MemFileSystem::UpdateAtime(const StringPiece& path) {
     int64 now_us = timer_->NowUs();
     int64 now_s = now_us / Timer::kSecondUs;
     if (advance_time_on_update_) {
-      timer_->AdvanceUs(Timer::kSecondUs);
+      mock_timer_->AdvanceUs(Timer::kSecondUs);
     }
     atime_map_[path.as_string()] = now_s;
   }
@@ -280,7 +284,8 @@ bool MemFileSystem::Size(const StringPiece& path, int64* size,
 
 BoolOrError MemFileSystem::TryLock(const StringPiece& lock_name,
                                    MessageHandler* handler) {
-  // Not actually threadsafe!  This is just for tests.
+  ScopedMutex lock(mutex_.get());
+
   if (lock_map_.count(lock_name.as_string()) != 0) {
     ++num_failed_locks_;
     return BoolOrError(false);
@@ -293,8 +298,8 @@ BoolOrError MemFileSystem::TryLock(const StringPiece& lock_name,
 BoolOrError MemFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
                                               int64 timeout_ms,
                                               MessageHandler* handler) {
-  // As above, not actually threadsafe (and quick-and-dirty rather than
-  // efficient; efficiency requires map::find).
+  ScopedMutex lock(mutex_.get());
+
   GoogleString name = lock_name.as_string();
   int64 now = timer_->NowMs();
   if (lock_map_.count(name) != 0 &&
@@ -309,6 +314,7 @@ BoolOrError MemFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
 
 bool MemFileSystem::Unlock(const StringPiece& lock_name,
                            MessageHandler* handler) {
+  ScopedMutex lock(mutex_.get());
   return (lock_map_.erase(lock_name.as_string()) == 1);
 }
 

@@ -47,7 +47,7 @@ class FileSystemLockManagerTest : public testing::Test {
       : timer_(0),
         thread_system_(ThreadSystem::CreateThreadSystem()),
         scheduler_(thread_system_.get(), &timer_),
-        file_system_(&timer_),
+        file_system_(thread_system_.get(), &timer_),
         manager_(&file_system_, GTestTempDir(), &scheduler_, &handler_) { }
   virtual ~FileSystemLockManagerTest() { }
 

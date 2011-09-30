@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/waveform.h"
 
 namespace {
@@ -103,12 +104,15 @@ RewriteStats::RewriteStats(Statistics* stats,
       succeeded_filter_resource_fetches_(
           stats->GetVariable(kResourceFetchConstructSuccesses)),
       total_page_load_ms_(
-          stats->GetVariable(kTotalPageLoadMs)),
-      rewrite_thread_queue_depth_(
-          new Waveform(thread_system, timer, kNumWaveformSamples)) {
+          stats->GetVariable(kTotalPageLoadMs)) {
+  for (int i = 0; i < RewriteDriverFactory::kNumWorkerPools; ++i) {
+    thread_queue_depths_.push_back(
+        new Waveform(thread_system, timer, kNumWaveformSamples));
+  }
 }
 
 RewriteStats::~RewriteStats() {
+  STLDeleteElements(&thread_queue_depths_);
 }
 
 }  // namespace net_instaweb

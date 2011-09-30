@@ -257,7 +257,7 @@ QueuedWorkerPool* RewriteDriverFactory::WorkerPool(WorkerPoolName pool) {
   if (worker_pools_[pool] == NULL) {
     worker_pools_[pool] = CreateWorkerPool(pool);
     worker_pools_[pool]->set_queue_size_stat(
-        rewrite_stats()->rewrite_thread_queue_depth());
+        rewrite_stats()->thread_queue_depth(pool));
   }
   return worker_pools_[pool];
 }
