@@ -53,9 +53,6 @@ class ResourceFetch : public AsyncFetch {
                     const RequestHeaders& request_headers,
                     ResponseHeaders* response_headers,
                     Writer* response_writer,
-                    MessageHandler* message_handler,
-                    Histogram* fetch_latency_histogram,
-                    TimedVariable* total_fetch_count,
                     UrlAsyncFetcher::Callback* callback);
 
   // Public interface from AsyncFetch.
@@ -73,8 +70,6 @@ class ResourceFetch : public AsyncFetch {
                          RewriteDriver* driver,
                          UrlAsyncFetcher* fetcher,
                          Timer* timer,
-                         Histogram* fetch_latency_histogram,
-                         TimedVariable* total_fetch_count,
                          UrlAsyncFetcher::Callback* callback);
   virtual ~ResourceFetch();
 
@@ -85,8 +80,6 @@ class ResourceFetch : public AsyncFetch {
   UrlAsyncFetcher* fetcher_;
   MessageHandler* message_handler_;
   RewriteDriver* driver_;
-  Histogram* fetch_latency_histogram_;
-  TimedVariable* total_fetch_count_;
   Timer* timer_;
   UrlAsyncFetcher::Callback* callback_;
 

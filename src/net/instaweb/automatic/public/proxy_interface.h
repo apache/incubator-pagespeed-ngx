@@ -77,12 +77,6 @@ class ProxyInterface : public UrlAsyncFetcher {
                               MessageHandler* handler,
                               Callback* callback);
 
-  // Accessors
-  Histogram* fetch_latency_histogram() { return fetch_latency_histogram_; }
-  Histogram* rewrite_latency_histogram() { return rewrite_latency_histogram_; }
-  TimedVariable* total_fetch_count() { return total_fetch_count_; }
-  TimedVariable* total_rewrite_count() { return total_rewrite_count_; }
-
   // Returns any custom options required for this request, incorporating
   // any domain-specific options from the UrlNamer, options set in query-params,
   // and options set in request headers.  Possible return-value scenarios for
@@ -122,12 +116,6 @@ class ProxyInterface : public UrlAsyncFetcher {
   UrlAsyncFetcher* fetcher_;              // thread-safe
   Timer* timer_;                          // thread-safe
   MessageHandler* handler_;               // thread-safe
-
-  // Statistics
-  Histogram* fetch_latency_histogram_;    // thread-safe
-  Histogram* rewrite_latency_histogram_;  // thread-safe
-  TimedVariable* total_fetch_count_;      // thread-safe
-  TimedVariable* total_rewrite_count_;    // thread-safe
 
   // This server's hostname and port (to avoid making circular requests).
   // TODO(sligocki): This assumes we will only be called as one hostname,

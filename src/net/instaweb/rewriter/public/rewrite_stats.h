@@ -26,8 +26,10 @@
 
 namespace net_instaweb {
 
+class Histogram;
 class Statistics;
 class ThreadSystem;
+class TimedVariable;
 class Timer;
 class Variable;
 class Waveform;
@@ -60,6 +62,13 @@ class RewriteStats {
   }
   Variable* total_page_load_ms() { return total_page_load_ms_; }
   Variable* page_load_count() { return page_load_count_; }
+
+  Histogram* fetch_latency_histogram() { return fetch_latency_histogram_; }
+  Histogram* rewrite_latency_histogram() { return rewrite_latency_histogram_; }
+
+  TimedVariable* total_fetch_count() { return total_fetch_count_; }
+  TimedVariable* total_rewrite_count() { return total_rewrite_count_; }
+
   Waveform* thread_queue_depth(RewriteDriverFactory::WorkerPoolName name) {
     return thread_queue_depths_[name];
   }
@@ -78,6 +87,13 @@ class RewriteStats {
   Variable* slurp_404_count_;
   Variable* succeeded_filter_resource_fetches_;
   Variable* total_page_load_ms_;
+
+  Histogram* fetch_latency_histogram_;
+  Histogram* rewrite_latency_histogram_;
+
+  TimedVariable* total_fetch_count_;
+  TimedVariable* total_rewrite_count_;
+
   std::vector<Waveform*> thread_queue_depths_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteStats);

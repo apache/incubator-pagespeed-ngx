@@ -21,6 +21,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -63,22 +64,19 @@ void ResourceFetch::Start(ResourceManager* manager,
                           const RequestHeaders& request_headers,
                           ResponseHeaders* response_headers,
                           Writer* response_writer,
-                          MessageHandler* message_handler,
-                          Histogram* fetch_latency_histogram,
-                          TimedVariable* total_fetch_count,
                           UrlAsyncFetcher::Callback* callback) {
   RewriteDriver* driver = manager->NewRewriteDriver();
   LOG(INFO) << "Fetch with RewriteDriver " << driver;
   DriverFetcher driver_fetcher(driver);
   ResourceFetch* resource_fetch = new ResourceFetch(
       url, request_headers, response_headers, response_writer,
-      message_handler, driver, manager->url_async_fetcher(), manager->timer(),
-      fetch_latency_histogram, total_fetch_count, callback);
+      manager->message_handler(), driver, manager->url_async_fetcher(),
+      manager->timer(), callback);
   // TODO(sligocki): This will currently fail us on all non-pagespeed
   // resource requests. We should move the check somewhere else.
   driver_fetcher.Fetch(url.Spec().as_string(), request_headers,
                        resource_fetch->response_headers_,
-                       message_handler, resource_fetch);
+                       manager->message_handler(), resource_fetch);
 }
 
 ResourceFetch::ResourceFetch(const GoogleUrl& url,
@@ -89,16 +87,12 @@ ResourceFetch::ResourceFetch(const GoogleUrl& url,
                              RewriteDriver* driver,
                              UrlAsyncFetcher* fetcher,
                              Timer* timer,
-                             Histogram* fetch_latency_histogram,
-                             TimedVariable* total_fetch_count,
                              UrlAsyncFetcher::Callback* callback)
     : response_headers_(response_headers),
       response_writer_(response_writer),
       fetcher_(fetcher),
       message_handler_(handler),
       driver_(driver),
-      fetch_latency_histogram_(fetch_latency_histogram),
-      total_fetch_count_(total_fetch_count),
       timer_(timer),
       callback_(callback),
       start_time_us_(timer->NowUs()),
@@ -145,8 +139,10 @@ void ResourceFetch::Done(bool success) {
 
     response_headers_->SetStatusAndReason(HttpStatus::kNotFound);
   }
-  fetch_latency_histogram_->Add((timer_->NowUs() - start_time_us_) / 1000.0);
-  total_fetch_count_->IncBy(1);
+  RewriteStats* stats = driver_->resource_manager()->rewrite_stats();
+  stats->fetch_latency_histogram()->Add(
+      (timer_->NowUs() - start_time_us_) / 1000.0);
+  stats->total_fetch_count()->IncBy(1);
   driver_->Cleanup();
   callback_->Done(success);
   delete this;

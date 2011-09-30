@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/queued_worker.h"
@@ -31,14 +32,10 @@
 
 namespace net_instaweb {
 
-ProxyFetchFactory::ProxyFetchFactory(ResourceManager* manager,
-                                     Histogram* rewrite_latency_histogram,
-                                     TimedVariable* total_rewrite_count)
+ProxyFetchFactory::ProxyFetchFactory(ResourceManager* manager)
     : manager_(manager),
       timer_(manager->timer()),
       handler_(manager->message_handler()),
-      rewrite_latency_histogram_(rewrite_latency_histogram),
-      total_rewrite_count_(total_rewrite_count),
       cache_fetcher_(new CacheUrlAsyncFetcher(manager->http_cache(),
                                               manager->url_async_fetcher())),
       outstanding_proxy_fetches_mutex_(manager->thread_system()->NewMutex()) {
@@ -61,9 +58,7 @@ void ProxyFetchFactory::StartNewProxyFetch(
     Writer* base_writer, UrlAsyncFetcher::Callback* callback) {
   ProxyFetch* fetch = new ProxyFetch(url, request_headers, custom_options,
                                      response_headers, base_writer,
-                                     manager_, rewrite_latency_histogram_,
-                                     total_rewrite_count_, timer_, callback,
-                                     this);
+                                     manager_, timer_, callback, this);
   Start(fetch);
   cache_fetcher_->Fetch(url, request_headers, fetch->response_headers_,
                         handler_, fetch);
@@ -85,8 +80,6 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
                        ResponseHeaders* response_headers,
                        Writer* base_writer,
                        ResourceManager* manager,
-                       Histogram* rewrite_latency_histogram,
-                       TimedVariable* total_rewrite_count,
                        Timer* timer, UrlAsyncFetcher::Callback* callback,
                        ProxyFetchFactory* factory)
     : url_(url),
@@ -97,8 +90,6 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       callback_(callback),
       pass_through_(true),
       started_parse_(false),
-      rewrite_latency_histogram_(rewrite_latency_histogram),
-      total_rewrite_count_(total_rewrite_count),
       start_time_us_(0),
       custom_options_(custom_options),
       driver_(NULL),  // Needs to be set in StartParse.
@@ -392,9 +383,10 @@ void ProxyFetch::Finish(bool success) {
   }
 
   if (!pass_through_ && success) {
-    rewrite_latency_histogram_->Add(
+    RewriteStats* stats = resource_manager_->rewrite_stats();
+    stats->rewrite_latency_histogram()->Add(
         (timer_->NowUs() - start_time_us_) / 1000.0);
-    total_rewrite_count_->IncBy(1);
+    stats->total_rewrite_count()->IncBy(1);
   }
 
   callback_->Done(success);

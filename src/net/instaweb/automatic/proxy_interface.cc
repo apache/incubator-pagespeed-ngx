@@ -47,14 +47,6 @@
 
 namespace net_instaweb {
 
-// Histogram names.
-const char kFetchLatencyHistogram[] = "Fetch Latency Histogram";
-const char kRewriteLatencyHistogram[] = "Rewrite Latency Histogram";
-
-// TimedVariable names.
-const char kTotalFetchLatencyInMs[] = "total_fetch_count";
-const char kTotalRewriteLatencyInMs[] = "total_rewrite_count";
-
 ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
                                ResourceManager* manager,
                                Statistics* stats)
@@ -62,28 +54,7 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
       handler_(manager->message_handler()),
       hostname_(hostname.as_string()),
       port_(port) {
-  // Add histograms we want in Page Speed Automatic.
-  stats->AddHistogram(kFetchLatencyHistogram);
-  stats->AddHistogram(kRewriteLatencyHistogram);
-  stats->AddTimedVariable(kTotalFetchLatencyInMs,
-                          ResourceManager::kStatisticsGroup);
-  stats->AddTimedVariable(kTotalRewriteLatencyInMs,
-                          ResourceManager::kStatisticsGroup);
-  fetch_latency_histogram_ = stats->GetHistogram(kFetchLatencyHistogram);
-  rewrite_latency_histogram_ = stats->GetHistogram(kRewriteLatencyHistogram);
-  // Timers are not guaranteed to go forward in time, however
-  // Histograms will CHECK-fail given a negative value unless
-  // EnableNegativeBuckets is called, allowing bars to be created with
-  // negative x-axis labels in the histogram.
-  fetch_latency_histogram_->EnableNegativeBuckets();
-  rewrite_latency_histogram_->EnableNegativeBuckets();
-
-  total_fetch_count_ = stats->GetTimedVariable(kTotalFetchLatencyInMs);
-  total_rewrite_count_ = stats->GetTimedVariable(kTotalRewriteLatencyInMs);
-
-  proxy_fetch_factory_.reset(
-      new ProxyFetchFactory(manager,
-                            rewrite_latency_histogram_, total_rewrite_count_));
+  proxy_fetch_factory_.reset(new ProxyFetchFactory(manager));
 }
 
 ProxyInterface::~ProxyInterface() {
@@ -159,9 +130,7 @@ bool ProxyInterface::StreamingFetch(const GoogleString& requested_url_string,
     if (resource_manager_->IsPagespeedResource(requested_url) && is_get) {
       ResourceFetch::Start(resource_manager_,
                            requested_url, request_headers,
-                           response_headers, response_writer,
-                           handler, fetch_latency_histogram_,
-                           total_fetch_count_, callback);
+                           response_headers, response_writer, callback);
       LOG(INFO) << "Serving URL as pagespeed resource";
     } else if (UrlAndPortMatchThisServer(requested_url)) {
       // Just respond with a 404 for now.

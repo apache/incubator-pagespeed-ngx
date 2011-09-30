@@ -17,6 +17,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/waveform.h"
@@ -49,6 +51,14 @@ const char kPageLoadCount[] = "page_load_count";
 
 const int kNumWaveformSamples = 200;
 
+// Histogram names.
+const char kFetchLatencyHistogram[] = "Fetch Latency Histogram";
+const char kRewriteLatencyHistogram[] = "Rewrite Latency Histogram";
+
+// TimedVariable names.
+const char kTotalFetchCount[] = "total_fetch_count";
+const char kTotalRewriteCount[] = "total_rewrite_count";
+
 }  // namespace
 
 namespace net_instaweb {
@@ -71,6 +81,12 @@ void RewriteStats::Initialize(Statistics* statistics) {
   statistics->AddVariable(kResourceFetchConstructSuccesses);
   statistics->AddVariable(kResourceFetchConstructFailures);
   statistics->AddVariable(kNumFlushes);
+  statistics->AddHistogram(kFetchLatencyHistogram);
+  statistics->AddHistogram(kRewriteLatencyHistogram);
+  statistics->AddTimedVariable(kTotalFetchCount,
+                               ResourceManager::kStatisticsGroup);
+  statistics->AddTimedVariable(kTotalRewriteCount,
+                               ResourceManager::kStatisticsGroup);
 }
 
 // This is called when a RewriteDriverFactory is created, and adds
@@ -104,7 +120,21 @@ RewriteStats::RewriteStats(Statistics* stats,
       succeeded_filter_resource_fetches_(
           stats->GetVariable(kResourceFetchConstructSuccesses)),
       total_page_load_ms_(
-          stats->GetVariable(kTotalPageLoadMs)) {
+          stats->GetVariable(kTotalPageLoadMs)),
+      fetch_latency_histogram_(
+          stats->GetHistogram(kFetchLatencyHistogram)),
+      rewrite_latency_histogram_(
+          stats->GetHistogram(kRewriteLatencyHistogram)),
+      total_fetch_count_(stats->GetTimedVariable(kTotalFetchCount)),
+      total_rewrite_count_(stats->GetTimedVariable(kTotalRewriteCount)) {
+  // Timers are not guaranteed to go forward in time, however
+  // Histograms will CHECK-fail given a negative value unless
+  // EnableNegativeBuckets is called, allowing bars to be created with
+  // negative x-axis labels in the histogram.
+  // TODO(sligocki): Any reason not to set this by default for all Histograms?
+  fetch_latency_histogram_->EnableNegativeBuckets();
+  rewrite_latency_histogram_->EnableNegativeBuckets();
+
   for (int i = 0; i < RewriteDriverFactory::kNumWorkerPools; ++i) {
     thread_queue_depths_.push_back(
         new Waveform(thread_system, timer, kNumWaveformSamples));

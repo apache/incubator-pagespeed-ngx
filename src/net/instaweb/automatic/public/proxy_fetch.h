@@ -49,9 +49,7 @@ class ProxyFetch;
 // ProxyFetches it creates.
 class ProxyFetchFactory {
  public:
-  ProxyFetchFactory(ResourceManager* manager,
-                    Histogram* rewrite_latency_histogram,
-                    TimedVariable* total_rewrite_count);
+  ProxyFetchFactory(ResourceManager* manager);
   ~ProxyFetchFactory();
 
   // Pass custom_options = NULL to use default options.
@@ -77,9 +75,6 @@ class ProxyFetchFactory {
   ResourceManager* manager_;
   Timer* timer_;
   MessageHandler* handler_;
-
-  Histogram* rewrite_latency_histogram_;
-  TimedVariable* total_rewrite_count_;
 
   // Used to support caching input HTML and un-rewritten resources.
   scoped_ptr<CacheUrlAsyncFetcher> cache_fetcher_;
@@ -125,8 +120,6 @@ class ProxyFetch : public AsyncFetch {
              RewriteOptions* custom_options,
              ResponseHeaders* response_headers,
              Writer* base_writer, ResourceManager* manager,
-             Histogram* rewrite_latency_histogram,
-             TimedVariable* total_rewrite_count,
              Timer* timer, UrlAsyncFetcher::Callback* callback,
              ProxyFetchFactory* factory);
   virtual ~ProxyFetch();
@@ -169,8 +162,6 @@ class ProxyFetch : public AsyncFetch {
   bool started_parse_;
 
   // Statistics
-  Histogram* rewrite_latency_histogram_;
-  TimedVariable* total_rewrite_count_;
   int64 start_time_us_;
 
   // If we're given custom options, we store them here until
