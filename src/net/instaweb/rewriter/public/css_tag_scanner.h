@@ -30,6 +30,8 @@ class DomainRewriteFilter;
 class GoogleUrl;
 class HtmlParse;
 class MessageHandler;
+class RewriteDriver;
+class UrlLeftTrimFilter;
 class Writer;
 
 class CssTagScanner {
@@ -54,18 +56,13 @@ class CssTagScanner {
   bool ParseCssElement(
       HtmlElement* element, HtmlElement::Attribute** href, const char** media);
 
-  // Performs an arbitrary mutation on all URLs in a CSS file.
+  // Scans the contents of a CSS file, looking for the pattern url(xxx).
+  // Performs an arbitrary mutation on all such URLs.
+  // If xxx is quoted with single-quotes or double-quotes, those are
+  // retained and the URL inside is transformed.
   static bool TransformUrls(
       const StringPiece& contents, Writer* writer, Transformer* transformer,
       MessageHandler* handler);
-
-  // Scans the contents of a CSS file, looking for the pattern url(xxx).
-  // If xxx is a relative URL, it absolutifies it based on the passed-in base
-  // path.  If xxx is quoted with single-quotes or double-quotes, those are
-  // retained and the URL inside is absolutified.
-  static bool AbsolutifyUrls(const StringPiece& contents,
-                             const StringPiece& base_url,
-                             Writer* writer, MessageHandler* handler);
 
   // Does this CSS file contain @import? If so, it cannot be combined with
   // previous CSS files. This may give false-positives, but no false-negatives.
@@ -78,19 +75,28 @@ class CssTagScanner {
   DISALLOW_COPY_AND_ASSIGN(CssTagScanner);
 };
 
-// Transform URLs by resolving them against base_url and then mapping them
-// appropriately with domain_rewrite_filter.
+// Transform URLs by:
+//   1 Resolving them against old_base_url,
+//   2 Mapping them appropriately with domain_rewrite_filter and then
+//   3 Trimming them against new_base_url.
 class RewriteDomainTransformer : public CssTagScanner::Transformer {
  public:
-  RewriteDomainTransformer(const GoogleUrl* base_url,
-                           DomainRewriteFilter* domain_rewrite_filter);
+  RewriteDomainTransformer(const GoogleUrl* old_base_url,
+                           const GoogleUrl* new_base_url,
+                           RewriteDriver* driver);
   virtual ~RewriteDomainTransformer();
 
   virtual bool Transform(const StringPiece& in, GoogleString* out);
 
  private:
-  const GoogleUrl* base_url_;
-  DomainRewriteFilter* domain_rewrite_filter_;
+  const GoogleUrl* old_base_url_;
+  const GoogleUrl* new_base_url_;
+
+  DomainRewriteFilter* domain_rewriter_;
+  UrlLeftTrimFilter* url_trim_filter_;
+  MessageHandler* handler_;
+
+  DISALLOW_COPY_AND_ASSIGN(RewriteDomainTransformer);
 };
 
 

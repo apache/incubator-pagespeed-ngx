@@ -91,8 +91,7 @@ CacheExtender::CacheExtender(RewriteDriver* driver, const char* filter_prefix)
     : RewriteSingleResourceFilter(driver, filter_prefix),
       tag_scanner_(driver_),
       extension_count_(NULL),
-      not_cacheable_count_(NULL),
-      domain_rewriter_(NULL) {
+      not_cacheable_count_(NULL) {
   Statistics* stats = resource_manager_->statistics();
   if (stats != NULL) {
     extension_count_ = stats->GetVariable(kCacheExtensions);
@@ -207,26 +206,17 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   GoogleUrl input_resource_gurl(input_resource->url());
   StringPiece input_dir = input_resource_gurl.AllExceptLeaf();
   const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
-  if ((domain_rewriter_ != NULL) &&
-      (input_resource->type() == &kContentTypeCss) &&
+  if ((input_resource->type() == &kContentTypeCss) &&
       (lawyer->WillDomainChange(input_resource_gurl.Origin()) ||
        (input_dir != output_resource->resolved_base()))) {
-    // Embedded URLs in the CSS must be evaluated with respect to
-    // the CSS files rewritten domain, not the input domain.
-    //
-    // TODO(sligocki): Why? Consider this situation:
-    //   Original CSS URL: http://www.example.com/foo.css
-    //   Sharded CSS URL:  http://s2.example.com/foo.css
-    //   with image: bar.png
-    // bar.png originally referred to http://www.example.com/bar.png
-    // Why evaluate it as http://s2.example.com/bar.png here?
-    GoogleUrl output_gurl(output_resource->resolved_base());
-    if (output_gurl.is_valid()) {
+    GoogleUrl output_base(output_resource->resolved_base());
+    if (output_base.is_valid()) {
       // TODO(jmarantz): find a mechanism to write this directly into
       // the HTTPValue so we can reduce the number of times that we
       // copy entire resources.
       StringWriter writer(&transformed_contents);
-      RewriteDomainTransformer transformer(&output_gurl, domain_rewriter_);
+      RewriteDomainTransformer transformer(&input_resource_gurl, &output_base,
+                                           driver_);
       CssTagScanner::TransformUrls(contents, &writer, &transformer,
                                    message_handler);
       contents = transformed_contents;

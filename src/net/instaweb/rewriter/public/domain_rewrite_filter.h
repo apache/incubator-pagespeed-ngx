@@ -48,10 +48,20 @@ class DomainRewriteFilter : public CommonFilter {
 
   virtual const char* Name() const { return "DomainRewrite"; }
 
+  enum RewriteResult {
+    kRewroteDomain,
+    kDomainUnchanged,
+    kFail,
+  };
+
   // Rewrites the specified URL (which might be relative to the base tag)
   // into an absolute sharded url.
-  bool Rewrite(const StringPiece& input_url, const GoogleUrl& base_url,
-               GoogleString* output_url);
+  //
+  // Absolute URL output_url will be set if kRewroteDomain or
+  // kDomainUnchanged returned.
+  RewriteResult Rewrite(const StringPiece& input_url,
+                        const GoogleUrl& base_url,
+                        GoogleString* output_url);
 
  private:
   ResourceTagScanner tag_scanner_;

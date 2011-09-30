@@ -23,6 +23,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -33,19 +34,11 @@
 
 namespace net_instaweb {
 
+namespace {
+
 class CssTagScannerTest : public testing::Test {
  protected:
-  CssTagScannerTest() : writer_(&output_buffer_) { }
-
-  void Check(const StringPiece& input, const StringPiece& expected) {
-    ASSERT_TRUE(CssTagScanner::AbsolutifyUrls(
-        input,  "http://base/dir/styles.css", &writer_, &message_handler_));
-    EXPECT_EQ(expected, output_buffer_);
-  }
-
-  void CheckNoChange(const StringPiece& value) {
-    Check(value, value);
-  }
+  CssTagScannerTest() {}
 
   void CheckGurlResolve(const GoogleUrl& base, const char* relative_path,
                         const char* abs_path) {
@@ -54,62 +47,11 @@ class CssTagScannerTest : public testing::Test {
     EXPECT_EQ(resolved.Spec(), abs_path);
   }
 
-  GoogleString output_buffer_;
-  StringWriter writer_;
   GoogleMessageHandler message_handler_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CssTagScannerTest);
 };
-
-TEST_F(CssTagScannerTest, TestAbsolutifyUrlsEmpty) {
-  CheckNoChange("");
-}
-
-TEST_F(CssTagScannerTest, TestAbsolutifyUrlsNoMatch) {
-  CheckNoChange("hello");
-}
-
-TEST_F(CssTagScannerTest, TestAbsolutifyUrlsAbsolute) {
-  const char css_with_abs_path[] = "a url(http://other_base/image.png) b";
-  CheckNoChange(css_with_abs_path);
-}
-
-TEST_F(CssTagScannerTest, TestAbsolutifyUrlsAbsoluteSQuote) {
-  const char css_with_abs_path[] = "a url('http://other_base/image.png') b";
-  CheckNoChange(css_with_abs_path);
-}
-
-TEST_F(CssTagScannerTest, TestAbsolutifyUrlsAbsoluteDQuote) {
-  CheckNoChange("a url(\"http://other_base/image.png\") b");
-}
-
-TEST_F(CssTagScannerTest, TestAbsolutifyUrlsRelative) {
-  Check("a url(subdir/image.png) b",
-        "a url(http://base/dir/subdir/image.png) b");
-}
-
-TEST_F(CssTagScannerTest, TestAbsolutifyUrlsRelativeSQuote) {
-  Check("a url('subdir/image.png') b",
-        "a url('http://base/dir/subdir/image.png') b");
-}
-
-// Testcase for Issue 60.
-TEST_F(CssTagScannerTest, TestAbsolutifyUrlsRelativeSQuoteSpaced) {
-  Check("a url( 'subdir/image.png' ) b",
-        "a url('http://base/dir/subdir/image.png') b");
-}
-
-TEST_F(CssTagScannerTest, TestAbsolutifyUrlsRelativeDQuote) {
-  Check("a url(\"subdir/image.png\") b",
-        "a url(\"http://base/dir/subdir/image.png\") b");
-}
-
-TEST_F(CssTagScannerTest, TestAbsolutifyUrls2Relative1Abs) {
-  Check("a url(s/1.png) b url(2.png) c url(http://a/3.png) d",
-        "a url(http://base/dir/s/1.png) b url(http://base/dir/2.png) c "
-        "url(http://a/3.png) d");
-}
 
 // This test verifies that we understand how Resolve works.
 TEST_F(CssTagScannerTest, TestGurl) {
@@ -203,5 +145,82 @@ TEST_F(CssTagScannerTest, TestHasImport) {
       "/* @import after rulesets is invalid */\n"
       "@import url('http://foo.com');\n", &message_handler_));
 }
+
+class RewriteDomainTransformerTest : public ResourceManagerTestBase {
+ public:
+  RewriteDomainTransformerTest()
+      : old_base_url_("http://old-base.com/"),
+        new_base_url_("http://new-base.com/") {
+  }
+
+  GoogleString Transform(const StringPiece& input) {
+    GoogleString output_buffer;
+    StringWriter output_writer(&output_buffer);
+    RewriteDomainTransformer transformer(&old_base_url_, &new_base_url_,
+                                         rewrite_driver());
+    EXPECT_TRUE(CssTagScanner::TransformUrls(
+        input, &output_writer, &transformer, message_handler()));
+    return output_buffer;
+  }
+
+ private:
+  GoogleUrl old_base_url_;
+  GoogleUrl new_base_url_;
+
+  DISALLOW_COPY_AND_ASSIGN(RewriteDomainTransformerTest);
+};
+
+TEST_F(RewriteDomainTransformerTest, Empty) {
+  EXPECT_STREQ("", Transform(""));
+}
+
+TEST_F(RewriteDomainTransformerTest, NoMatch) {
+  EXPECT_STREQ("hello", Transform("hello"));
+}
+
+TEST_F(RewriteDomainTransformerTest, Absolute) {
+  const char css_with_abs_path[] = "a url(http://other_base/image.png) b";
+  EXPECT_STREQ(css_with_abs_path, Transform(css_with_abs_path));
+}
+
+TEST_F(RewriteDomainTransformerTest, AbsoluteSQuote) {
+  const char css_with_abs_path[] = "a url('http://other_base/image.png') b";
+  EXPECT_STREQ(css_with_abs_path, Transform(css_with_abs_path));
+}
+
+TEST_F(RewriteDomainTransformerTest, AbsoluteDQuote) {
+  const char css_with_abs_path[] = "a url(\"http://other_base/image.png\") b";
+  EXPECT_STREQ(css_with_abs_path, Transform(css_with_abs_path));
+}
+
+TEST_F(RewriteDomainTransformerTest, Relative) {
+  EXPECT_STREQ("a url(http://old-base.com/subdir/image.png) b",
+               Transform("a url(subdir/image.png) b"));
+}
+
+TEST_F(RewriteDomainTransformerTest, RelativeSQuote) {
+  EXPECT_STREQ("a url('http://old-base.com/subdir/image.png') b",
+               Transform("a url('subdir/image.png') b"));
+}
+
+// Testcase for Issue 60.
+TEST_F(RewriteDomainTransformerTest, RelativeSQuoteSpaced) {
+  EXPECT_STREQ("a url('http://old-base.com/subdir/image.png') b",
+               Transform("a url( 'subdir/image.png' ) b"));
+}
+
+TEST_F(RewriteDomainTransformerTest, RelativeDQuote) {
+  EXPECT_STREQ("a url(\"http://old-base.com/subdir/image.png\") b",
+               Transform("a url(\"subdir/image.png\") b"));
+}
+
+TEST_F(RewriteDomainTransformerTest, 2Relative1Abs) {
+  const char input[] = "a url(s/1.png) b url(2.png) c url(http://a/3.png) d";
+  const char expected[] = "a url(http://old-base.com/s/1.png) b "
+      "url(http://old-base.com/2.png) c url(http://a/3.png) d";
+  EXPECT_STREQ(expected, Transform(input));
+}
+
+}  // namespace
 
 }  // namespace net_instaweb

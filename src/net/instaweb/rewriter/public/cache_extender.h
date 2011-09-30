@@ -58,10 +58,6 @@ class CacheExtender : public RewriteSingleResourceFilter {
 
   virtual const char* Name() const { return "CacheExtender"; }
 
-  void set_domain_rewriter(DomainRewriteFilter* domain_rewriter) {
-    domain_rewriter_ = domain_rewriter;
-  }
-
   // Creates a nested rewrite for given parent and slot, and returns it.
   // The result is not registered with the parent.
   RewriteContext* MakeNestedContext(RewriteContext* parent,
@@ -86,7 +82,6 @@ class CacheExtender : public RewriteSingleResourceFilter {
   ResourceTagScanner tag_scanner_;
   Variable* extension_count_;
   Variable* not_cacheable_count_;
-  DomainRewriteFilter* domain_rewriter_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheExtender);
 };

@@ -130,7 +130,7 @@ bool CssInlineFilter::ShouldInline(const StringPiece& contents) const {
   // Check that the file does not have imports, which we cannot yet
   // correct paths yet.
   //
-  // Remove this once CssTagScanner::AbsolutifyUrls handles imports.
+  // Remove this once CssTagScanner::TransformUrls handles imports.
   if (CssTagScanner::HasImport(contents, driver_->message_handler())) {
     return false;
   }
@@ -154,14 +154,15 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
   StringPiece input_dir = resource_url.AllExceptLeaf();
   StringPiece base_dir = base_url.AllExceptLeaf();
   bool written;
-  if (input_dir == base_dir) {
+  const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
+  if (lawyer->WillDomainChange(resource_url.Origin()) ||
+      input_dir != base_dir) {
+    RewriteDomainTransformer transformer(&resource_url, &base_url, driver_);
+    written = CssTagScanner::TransformUrls(contents, &writer, &transformer,
+                                           message_handler);
+  } else {
     // We don't need to absolutify URLs if input directory is same as base.
     written = writer.Write(contents, message_handler);
-  } else {
-    // If they are different directories, we need to absolutify.
-    // TODO(sligocki): Perhaps we should use the real CSS parser.
-    written = CssTagScanner::AbsolutifyUrls(contents, resource->url(),
-                                            &writer, message_handler);
   }
   if (!written) {
     return;

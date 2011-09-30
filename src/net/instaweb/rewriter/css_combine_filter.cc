@@ -472,14 +472,20 @@ bool CssCombineFilter::CssCombiner::WritePiece(
   if (resources().size() > 0 && resources()[0].get() != input) {
     StripUTF8BOM(&contents);
   }
-  if (input_dir == combination->resolved_base()) {
+  const DomainLawyer* lawyer = rewrite_driver_->options()->domain_lawyer();
+  if (lawyer->WillDomainChange(input_url.Origin()) ||
+      input_dir != combination->resolved_base()) {
+    // If they are different directories, we need to absolutify.
+    // Note: This is not actually the output URL, but the directory of that
+    // URL. This should be fine for our uses.
+    GoogleUrl output_base(combination->resolved_base());
+    RewriteDomainTransformer transformer(&input_url, &output_base,
+                                         rewrite_driver_);
+    return css_tag_scanner_->TransformUrls(contents, writer, &transformer,
+                                           handler);
+  } else {
     // We don't need to absolutify URLs if input directory is same as output.
     return writer->Write(contents, handler);
-  } else {
-    // If they are different directories, we need to absolutify.
-    // TODO(sligocki): Perhaps we should use the real CSS parser.
-    return css_tag_scanner_->AbsolutifyUrls(contents, input->url(), writer,
-                                            handler);
   }
 }
 

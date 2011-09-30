@@ -159,16 +159,20 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
               &kContentTypeCss, kOutlinedResource, use_async_flow));
 
       if (output_resource.get() != NULL) {
-        // Absolutify URLs in content.
-        GoogleString absolute_content;
-        StringWriter absolute_writer(&absolute_content);
+        // Rewrite URLs in content.
+        GoogleString transformed_content;
         StringPiece base_dir = base_url().AllExceptLeaf();
         bool content_valid = true;
-        if (base_dir != output_resource->resolved_base()) {
-          // TODO(sligocki): Use CssParser instead of CssTagScanner hack.
-          content_valid = CssTagScanner::AbsolutifyUrls(
-              content, base_url().Spec(), &absolute_writer, handler);
-          content = absolute_content;  // StringPiece point to the new string.
+        const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
+        if (lawyer->WillDomainChange(base_url().Origin()) ||
+            base_dir != output_resource->resolved_base()) {
+          GoogleUrl output_base(output_resource->resolved_base());
+          StringWriter writer(&transformed_content);
+          RewriteDomainTransformer transformer(&base_url(), &output_base,
+                                               driver_);
+          content_valid = CssTagScanner::TransformUrls(
+              content, &writer, &transformer, handler);
+          content = transformed_content;
         }
         if (content_valid &&
             WriteResource(content, output_resource.get(), handler)) {

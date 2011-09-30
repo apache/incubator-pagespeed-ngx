@@ -486,15 +486,9 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   RegisterRewriteFilter(cache_extender);
   RegisterRewriteFilter(image_combiner);
 
-  // When cache-extending CSS files, we must rewrite the embedded
-  // resource URLs (usually images) based on any rewriting rules
-  // that we have.
-  //
-  // Note we set this relationship here unconditionally.  Turning
-  // on the extend_cache filter and adding domains to rewrite is
-  // done separately.
+  // These filters are needed to rewrite and trim urls in modified CSS files.
   domain_rewriter_.reset(new DomainRewriteFilter(this, statistics()));
-  cache_extender->set_domain_rewriter(domain_rewriter_.get());
+  url_trim_filter_.reset(new UrlLeftTrimFilter(this, statistics()));
 }
 
 // If flag starts with key (a string ending in "="), call m on the remainder of
@@ -683,7 +677,7 @@ void RewriteDriver::AddPostRenderFilters() {
     // domains for resources in HTML files.  However, when we cache-extend
     // CSS files, we rewrite the domains in them whether this filter is
     // specified or not.
-    HtmlParse::AddFilter(domain_rewriter_.get());
+    AddUnownedPostRenderFilter(domain_rewriter_.get());
   }
   if (rewrite_options->Enabled(RewriteOptions::kDivStructure)) {
     // Adds a query parameter to each link roughly designating its position on
@@ -696,7 +690,7 @@ void RewriteDriver::AddPostRenderFilters() {
     // Trim extraneous prefixes from urls in attribute values.
     // Happens before RemoveQuotes but after everything else.  Note:
     // we Must left trim urls BEFORE quote removal.
-    AddOwnedPostRenderFilter(new UrlLeftTrimFilter(this, statistics()));
+    AddUnownedPostRenderFilter(url_trim_filter_.get());
   }
   if (rewrite_options->Enabled(RewriteOptions::kRemoveQuotes)) {
     // Remove extraneous quotes from html attributes.  Does this save
@@ -723,6 +717,10 @@ void RewriteDriver::AddOwnedPreRenderFilter(HtmlFilter* filter) {
 
 void RewriteDriver::AddOwnedPostRenderFilter(HtmlFilter* filter) {
   filters_to_delete_.push_back(filter);
+  AddUnownedPostRenderFilter(filter);
+}
+
+void RewriteDriver::AddUnownedPostRenderFilter(HtmlFilter* filter) {
   HtmlParse::AddFilter(filter);
 }
 

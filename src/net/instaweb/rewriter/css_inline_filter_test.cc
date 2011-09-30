@@ -127,35 +127,50 @@ TEST_P(CssInlineFilterTest, InlineCssCached) {
                 "", css, true, css);
 }
 
-TEST_P(CssInlineFilterTest, InlineCssAbsolutifyUrls1) {
+TEST_P(CssInlineFilterTest, InlineCssRewriteUrls1) {
   // CSS with a relative URL that needs to be changed:
   const GoogleString css1 =
       "BODY { background-image: url('bg.png'); }\n";
   const GoogleString css2 =
-      "BODY { background-image: "
-      "url('http://www.example.com/foo/bar/bg.png'); }\n";
+      "BODY { background-image: url('foo/bar/bg.png'); }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/foo/bar/baz.css",
                 "", css1, true, css2);
 }
 
-TEST_P(CssInlineFilterTest, InlineCssAbsolutifyUrls2) {
+TEST_P(CssInlineFilterTest, InlineCssRewriteUrls2) {
   // CSS with a relative URL, this time with ".." in it:
   const GoogleString css1 =
       "BODY { background-image: url('../quux/bg.png'); }\n";
   const GoogleString css2 =
-      "BODY { background-image: "
-      "url('http://www.example.com/foo/quux/bg.png'); }\n";
+      "BODY { background-image: url('foo/quux/bg.png'); }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/foo/bar/baz.css",
                 "", css1, true, css2);
 }
 
-TEST_P(CssInlineFilterTest, NoAbsolutifyUrlsSameDir) {
+TEST_P(CssInlineFilterTest, NoRewriteUrlsSameDir) {
   const GoogleString css = "BODY { background-image: url('bg.png'); }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/baz.css",
                 "", css, true, css);
+}
+
+TEST_P(CssInlineFilterTest, ShardSubresources) {
+  UseMd5Hasher();
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  lawyer->AddShard("www.example.com", "shard1.com,shard2.com",
+                   &message_handler_);
+
+  const GoogleString css_in =
+      ".p1 { background-image: url('b1.png'); }"
+      ".p2 { background-image: url('b2.png'); }";
+  const GoogleString css_out =
+      ".p1 { background-image: url('http://shard2.com/b1.png'); }"
+      ".p2 { background-image: url('http://shard1.com/b2.png'); }";
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/baz.css",
+                "", css_in, true, css_out);
 }
 
 TEST_P(CssInlineFilterTest, DoNotInlineCssWithMediaAttr) {

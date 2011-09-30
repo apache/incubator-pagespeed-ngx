@@ -64,6 +64,7 @@ class ResponseHeaders;
 class RewriteContext;
 class RewriteFilter;
 class Statistics;
+class UrlLeftTrimFilter;
 class Writer;
 
 // TODO(jmarantz): rename this class to RequestContext.  This extends
@@ -153,11 +154,13 @@ class RewriteDriver : public HtmlParse {
   // in RewriteOptions, via AddFilter(HtmlFilter* filter) (below).
   void AddFilters();
 
-  // Adds a filter to the post-render chain, taking ownership.
-  void AddOwnedPostRenderFilter(HtmlFilter* filter);
-
   // Adds a filter to the pre-render chain, taking ownership.
   void AddOwnedPreRenderFilter(HtmlFilter* filter);
+
+  // Adds a filter to the post-render chain, taking ownership.
+  void AddOwnedPostRenderFilter(HtmlFilter* filter);
+  // Same, without taking ownership.
+  void AddUnownedPostRenderFilter(HtmlFilter* filter);
 
   // Add a RewriteFilter to the pre-render chain and take ownership of
   // the filter.  This differs from AddOwnedPreRenderFilter in that
@@ -551,6 +554,11 @@ class RewriteDriver : public HtmlParse {
 
   Scheduler* scheduler() { return scheduler_; }
 
+  // Used by CacheExtender, CssCombineFilter, etc. for rewriting domains
+  // of sub-resources in CSS.
+  DomainRewriteFilter* domain_rewriter() { return domain_rewriter_.get(); }
+  UrlLeftTrimFilter* url_trim_filter() { return url_trim_filter_.get(); }
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -747,8 +755,10 @@ class RewriteDriver : public HtmlParse {
   AddInstrumentationFilter* add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
   UserAgentMatcher user_agent_matcher_;
+
   ScanFilter scan_filter_;
   scoped_ptr<DomainRewriteFilter> domain_rewriter_;
+  scoped_ptr<UrlLeftTrimFilter> url_trim_filter_;
 
   // Maps encoded URLs to output URLs.
   typedef std::map<GoogleString, ResourcePtr> ResourceMap;

@@ -925,7 +925,7 @@ TEST_P(CssCombineFilterTest, NoAbsolutifySameDir) {
   EXPECT_EQ(expected_combination, actual_combination);
 }
 
-TEST_P(CssCombineFilterTest, DoAbsolutifyDifferentDir) {
+TEST_P(CssCombineFilterTest, DoRewriteForDifferentDir) {
   CssLink::Vector css_in, css_out;
   css_in.Add("1.css", ".yellow {background-image: url('1.png');}\n", "", true);
   css_in.Add("foo/2.css", ".yellow {background-image: url('2.png');}\n",
@@ -933,14 +933,36 @@ TEST_P(CssCombineFilterTest, DoAbsolutifyDifferentDir) {
   BarrierTestHelper("combine_css_with_style", css_in, &css_out);
   EXPECT_EQ(1, css_out.size());
 
-  GoogleString expected_combination = StrCat(
+  GoogleString expected_combination =
       ".yellow {background-image: url('1.png');}\n"
-      ".yellow {background-image: url('", kTestDomain, "foo/2.png');}\n");
+      ".yellow {background-image: url('foo/2.png');}\n";
 
   // Check fetched resource.
   GoogleString actual_combination;
   EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
   // TODO(sligocki): Check headers?
+  EXPECT_EQ(expected_combination, actual_combination);
+}
+
+TEST_P(CssCombineFilterTest, ShardSubresources) {
+  UseMd5Hasher();
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  lawyer->AddShard(kTestDomain, "shard1.com,shard2.com", &message_handler_);
+
+  CssLink::Vector css_in, css_out;
+  css_in.Add("1.css", ".yellow {background-image: url('1.png');}\n", "", true);
+  css_in.Add("2.css", ".yellow {background-image: url('2.png');}\n", "", true);
+  BarrierTestHelper("combine_css_with_style", css_in, &css_out);
+  EXPECT_EQ(1, css_out.size());
+
+  // Note: the urls are sharded to absolute domains.
+  GoogleString expected_combination =
+      ".yellow {background-image: url('http://shard1.com/1.png');}\n"
+      ".yellow {background-image: url('http://shard2.com/2.png');}\n";
+
+  // Check fetched resource.
+  GoogleString actual_combination;
+  EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
   EXPECT_EQ(expected_combination, actual_combination);
 }
 

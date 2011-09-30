@@ -41,7 +41,7 @@ const char kDomainRewrites[] = "domain_rewrites";
 namespace net_instaweb {
 
 DomainRewriteFilter::DomainRewriteFilter(RewriteDriver* rewrite_driver,
-                                     Statistics *stats)
+                                         Statistics *stats)
     : CommonFilter(rewrite_driver),
       tag_scanner_(rewrite_driver),
       rewrite_count_(stats->GetVariable(kDomainRewrites)) {
@@ -65,7 +65,7 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
   if (attr != NULL) {
     StringPiece val(attr->value());
     GoogleString rewritten_val;
-    if (Rewrite(val, driver_->base_url(), &rewritten_val)) {
+    if (Rewrite(val, driver_->base_url(), &rewritten_val) == kRewroteDomain) {
       attr->SetValue(rewritten_val);
       rewrite_count_->Add(1);
     }
@@ -73,11 +73,11 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
 }
 
 // Resolve the url we want to rewrite, and then shard as appropriate.
-bool DomainRewriteFilter::Rewrite(const StringPiece& url_to_rewrite,
-                                  const GoogleUrl& base_url,
-                                  GoogleString* rewritten_url) {
+DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
+    const StringPiece& url_to_rewrite, const GoogleUrl& base_url,
+    GoogleString* rewritten_url) {
   if (url_to_rewrite.empty() || !BaseUrlIsValid()) {
-    return false;
+    return kFail;
   }
 
   GoogleUrl orig_url(base_url, url_to_rewrite);
@@ -85,12 +85,12 @@ bool DomainRewriteFilter::Rewrite(const StringPiece& url_to_rewrite,
   const RewriteOptions* options = driver_->options();
   if (!orig_url.is_valid() || !orig_url.is_standard() ||
       !options->IsAllowed(orig_spec)) {
-    return false;
+    return kFail;
   }
 
   // Don't rewrite a domain from an already-rewritten resource.
   if (resource_manager_->IsPagespeedResource(orig_url)) {
-    return false;
+    return kFail;
   }
 
   // Apply any domain rewrites.
@@ -106,7 +106,7 @@ bool DomainRewriteFilter::Rewrite(const StringPiece& url_to_rewrite,
   if (!lawyer->MapRequestToDomain(base_url, url_to_rewrite,
                                   &mapped_domain_name, &resolved_request,
                                   driver_->message_handler())) {
-    return false;
+    return kFail;
   }
 
   // Next, apply any sharding.
@@ -121,7 +121,11 @@ bool DomainRewriteFilter::Rewrite(const StringPiece& url_to_rewrite,
   }
 
   // Return true if really changed the url with this rewrite.
-  return orig_spec != *rewritten_url;
+  if (orig_spec == *rewritten_url) {
+    return kDomainUnchanged;
+  } else {
+    return kRewroteDomain;
+  }
 }
 
 }  // namespace net_instaweb

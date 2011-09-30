@@ -46,14 +46,22 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
                       const GoogleString& other_content,  // E.g. <base href>
                       const GoogleString& css_original_body,
                       bool expect_outline,
-                      const GoogleString& css_rewritten_body) {
+                      const GoogleString& css_rewritten_body,
+                      // css_url_base only needed if different than html_url,
+                      // e.g. domain rewriting.
+                      const GoogleString& css_url_base) {
     // TODO(sligocki): Test with outline threshold > 0.
 
     // Figure out outline_url.
     GoogleString hash = hasher()->Hash(css_rewritten_body);
-    GoogleUrl html_gurl(html_url);
+    GoogleUrl css_gurl_base;
+    if (css_url_base.empty()) {
+      css_gurl_base.Reset(html_url);
+    } else {
+      css_gurl_base.Reset(css_url_base);
+    }
     GoogleUrl outline_gurl(
-        html_gurl,
+        css_gurl_base,
         Encode("", CssOutlineFilter::kFilterId, hash, "_", "css"));
     StringPiece spec = outline_gurl.Spec();
     GoogleString outline_url(spec.data(), spec.length());
@@ -106,7 +114,7 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
     GoogleString html_url = StrCat("http://outline_style.test/", id, ".html");
     GoogleString style_text = "background_blue { background-color: blue; }\n"
                               "foreground_yellow { color: yellow; }\n";
-    TestOutlineCss(html_url, "", style_text, true, style_text);
+    TestOutlineCss(html_url, "", style_text, true, style_text, "");
   }
 };
 
@@ -124,7 +132,7 @@ TEST_F(CssOutlineFilterTest, OutlineStyleMD5) {
 TEST_F(CssOutlineFilterTest, NoAbsolutifySameDir) {
   const GoogleString css = "body { background-image: url('bg.png'); }";
   TestOutlineCss("http://outline_style.test/index.html", "",
-                 css, true, css);
+                 css, true, css, "");
 }
 
 TEST_F(CssOutlineFilterTest, AbsolutifyDifferentDir) {
@@ -133,7 +141,23 @@ TEST_F(CssOutlineFilterTest, AbsolutifyDifferentDir) {
       "body { background-image: url('http://other_site.test/foo/bg.png'); }";
   TestOutlineCss("http://outline_style.test/index.html",
                  "  <base href=\"http://other_site.test/foo/\">\n",
-                 css1, true, css2);
+                 css1, true, css2, "");
+}
+
+TEST_F(CssOutlineFilterTest, ShardSubresources) {
+  UseMd5Hasher();
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  lawyer->AddShard("outline_style.test", "shard1.com,shard2.com",
+                   &message_handler_);
+
+  const GoogleString css_in =
+      ".p1 { background-image: url('b1.png'); }"
+      ".p2 { background-image: url('b2.png'); }";
+  const GoogleString css_out =
+      ".p1 { background-image: url('http://shard2.com/b1.png'); }"
+      ".p2 { background-image: url('http://shard1.com/b2.png'); }";
+  TestOutlineCss("http://outline_style.test/index.html", "",
+                 css_in, true, css_out, "http://shard1.com/");
 }
 
 TEST_F(CssOutlineFilterTest, UrlTooLong) {
@@ -142,11 +166,11 @@ TEST_F(CssOutlineFilterTest, UrlTooLong) {
                             "foreground_yellow { color: yellow; }\n";
 
   // By default we succeed at outlining.
-  TestOutlineCss(html_url, "", style_text, true, style_text);
+  TestOutlineCss(html_url, "", style_text, true, style_text, "");
 
   // But if we set max_url_size too small, it will fail cleanly.
   options()->set_max_url_size(0);
-  TestOutlineCss(html_url, "", style_text, false, style_text);
+  TestOutlineCss(html_url, "", style_text, false, style_text, "");
 }
 
 }  // namespace

@@ -23,6 +23,8 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
@@ -115,51 +117,8 @@ bool ExtractQuote(GoogleString* url, char* quote) {
   return ret;
 }
 
-// Class to transform URLs by resolving them relative to a base that's
-// passed into the constructor.
-class AbsolutifyTransformer : public CssTagScanner::Transformer {
- public:
-  AbsolutifyTransformer(const StringPiece& base_url, MessageHandler* handler)
-      : base_gurl_(base_url),
-        handler_(handler) {
-  }
-
-  virtual ~AbsolutifyTransformer() {}
-
-  bool is_valid() { return base_gurl_.is_valid(); }
-
-  virtual bool Transform(const StringPiece& in, GoogleString* out) {
-    GoogleUrl resolved(base_gurl_, in);
-    if (resolved.is_valid()) {
-      resolved.Spec().CopyToString(out);
-      return true;
-    }
-    handler_->Message(kError, "CSS URL resolution failed, base=%s url=%s",
-                      base_gurl_.Spec().as_string().c_str(),
-                      in.as_string().c_str());
-    return false;
-  }
-
- private:
-  GoogleUrl base_gurl_;
-  MessageHandler* handler_;
-};
-
 }  // namespace
 
-bool CssTagScanner::AbsolutifyUrls(
-    const StringPiece& contents, const StringPiece& base_url,
-    Writer* writer, MessageHandler* handler) {
-  AbsolutifyTransformer transformer(base_url, handler);
-  bool ok = (transformer.is_valid() &&
-             TransformUrls(contents, writer, &transformer, handler));
-  return ok;
-}
-
-// TODO(jmarantz): replace this scan-and-replace-in-one-shot methdology with
-// a proper scanner/parser/filtering mechanism akin to HtmlParse/HtmlLexer.
-// See http://www.w3.org/Style/CSS/SAC/ for the C Parser.
-//
 // TODO(jmarantz): Add parsing & absolutification of @import.
 bool CssTagScanner::TransformUrls(
     const StringPiece& contents, Writer* writer, Transformer* transformer,
@@ -170,10 +129,6 @@ bool CssTagScanner::TransformUrls(
 
   // If the CSS url was specified with an absolute path, use that to
   // absolutify any URLs referenced in the CSS text.
-  //
-  // TODO(jmarantz): Consider pasting in any CSS resources found in an import
-  // statement, rather than merely absolutifying in the references.  This would
-  // require a few changes in this class API.
   //
   // TODO(jmarantz): Consider calling image optimization, if enabled, on any
   // images found.
@@ -229,8 +184,12 @@ bool CssTagScanner::HasUrl(const StringPiece& contents) {
 
 
 RewriteDomainTransformer::RewriteDomainTransformer(
-    const GoogleUrl* base_url, DomainRewriteFilter* domain_rewrite_filter)
-    : base_url_(base_url), domain_rewrite_filter_(domain_rewrite_filter) {
+    const GoogleUrl* old_base_url, const GoogleUrl* new_base_url,
+    RewriteDriver* driver)
+    : old_base_url_(old_base_url), new_base_url_(new_base_url),
+      domain_rewriter_(driver->domain_rewriter()),
+      url_trim_filter_(driver->url_trim_filter()),
+      handler_(driver->message_handler()) {
 }
 
 RewriteDomainTransformer::~RewriteDomainTransformer() {
@@ -238,7 +197,19 @@ RewriteDomainTransformer::~RewriteDomainTransformer() {
 
 bool RewriteDomainTransformer::Transform(const StringPiece& in,
                                          GoogleString* out) {
-  return domain_rewrite_filter_->Rewrite(in, *base_url_, out);
+  GoogleString rewritten;
+  if (domain_rewriter_->Rewrite(in, *old_base_url_, &rewritten)
+      == DomainRewriteFilter::kFail) {
+    return false;
+  }
+  // Note: Because of complications with sharding, we will cannot trim
+  // sharded resources against the final sharded domain of the CSS file.
+  // Specifically, that final domain depends upon the precise text of that
+  // we are altering here.
+  if (!url_trim_filter_->Trim(*new_base_url_, rewritten, out, handler_)) {
+    out->swap(rewritten);
+  }
+  return *out != in;
 }
 
 }  // namespace net_instaweb
