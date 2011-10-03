@@ -304,10 +304,16 @@ void RewriteOptions::Merge(const RewriteOptions& first,
     enabled_filters_.erase(filter);
   }
 
-  // Note that we can be merging RewriteOptions subclasses & superclasses,
-  // so don't read anything that doesn't exist.
+  // Note that from the perspective of this class, we can be merging
+  // RewriteOptions subclasses & superclasses, so don't read anything
+  // that doesn't exist.  However this is almost certainly the wrong
+  // thing to do -- we should ensure that within a system all the
+  // RewriteOptions that are instantiated are the same sublcass, so
+  // DCHECK that they have the same number of options.
   size_t options_to_read = std::max(first.all_options_.size(),
                                     second.all_options_.size());
+  DCHECK_EQ(first.all_options_.size(), second.all_options_.size());
+  DCHECK_EQ(options_to_read, all_options_.size());
   size_t options_to_merge = std::min(options_to_read, all_options_.size());
   for (size_t i = 0; i < options_to_merge; ++i) {
     // Be careful to merge only options that exist in all three.

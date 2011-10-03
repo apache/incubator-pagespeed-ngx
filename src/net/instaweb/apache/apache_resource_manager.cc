@@ -43,12 +43,7 @@ ApacheResourceManager::ApacheResourceManager(
       hostname_identifier_(StrCat(server->server_hostname, ":",
                                   IntegerToString(server->port))),
       initialized_(false),
-      config_(new ApacheConfig(hostname_identifier_)),
-      subresource_fetcher_(NULL) {
-  // In Apache, we default to using the "core filters". Note that this is not
-  // the only place the default is applied --- for directories with .htaccess
-  // files it is given in create_dir_config in mod_instaweb.cc
-  config_->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+      config_(new ApacheConfig(hostname_identifier_)) {
 }
 
 ApacheResourceManager::~ApacheResourceManager() {

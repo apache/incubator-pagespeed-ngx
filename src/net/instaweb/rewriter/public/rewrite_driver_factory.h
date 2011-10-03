@@ -69,6 +69,12 @@ class RewriteDriverFactory {
   // Initializes thread_system_ using ThreadSystem::ComputeThreadSystem().
   RewriteDriverFactory();
 
+  // Initializes default options we want to hard-code into the
+  // base-class to get consistency across deployments.  Subclasses
+  // that override NewRewriteOptions() should call this method from
+  // their constructor.  It is safe to call this multiple times.
+  void InitializeDefaultOptions();
+
   virtual ~RewriteDriverFactory();
 
   // The RewriteDriveFactory will create objects of default type through the
@@ -128,6 +134,7 @@ class RewriteDriverFactory {
   Hasher* hasher();
   FilenameEncoder* filename_encoder() { return filename_encoder_.get(); }
   UrlNamer* url_namer();
+  RewriteOptions* default_options() { return default_options_.get(); }
 
   // These accessors are *not* thread-safe.  They must be called once prior
   // to forking threads, e.g. via ComputeUrlFetcher().
@@ -155,6 +162,9 @@ class RewriteDriverFactory {
   // Initializes a ResourceManager that has been new'd directly.  This
   // allows 2-phase initialization if required.  There is no need to
   // call this if you use CreateResourceManager.
+  //
+  // This copies the default_options() from this class to the resource manager's
+  // global_options().
   void InitResourceManager(ResourceManager* resource_manager);
 
   // Provides an optional hook for adding rewrite passes that are
@@ -199,8 +209,10 @@ class RewriteDriverFactory {
   // Registers the directory as having been created by us.
   void AddCreatedDirectory(const GoogleString& dir);
 
-  // Creates a new RewriteOptions object, potentially populating it with
-  // defaults appropriate to the factory subclass.
+  // Creates a new empty RewriteOptions object, with no default settings.
+  // Note that InitResourceManager() will copy the factory's default_options()
+  // into the resource manager's global_options(), but this method just provides
+  // a blank set of options.
   virtual RewriteOptions* NewRewriteOptions();
 
   // get/set the version placed into the X-[Mod-]Page(s|-S)peed header.
@@ -291,12 +303,9 @@ class RewriteDriverFactory {
   ResourceManagerSet resource_managers_;
   scoped_ptr<AbstractMutex> resource_manager_mutex_;
 
-  // Prior to computing the resource manager, which requires some options
-  // to be set, we need a place to write the options.  These will be
-  // permanently transferred to the ResourceManager when it is created.
-  // This two-phase creation is needed to deal a variety of order-of-startup
-  // issues across tests, Apache, and internal Google infrastructure.
-  scoped_ptr<RewriteOptions> temp_options_;
+  // Stores options with hard-coded defaults and adjustments from
+  // the core system, subclasses, and command-line.
+  scoped_ptr<RewriteOptions> default_options_;
 
   // Caching support
   scoped_ptr<HTTPCache> http_cache_;

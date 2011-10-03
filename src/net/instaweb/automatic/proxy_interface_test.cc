@@ -87,10 +87,8 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   virtual ~ProxyInterfaceTest() {}
 
   virtual void SetUp() {
-    resource_manager()->global_options()->EnableFilter(
-        RewriteOptions::kRewriteCss);
-    resource_manager()->global_options()->set_html_cache_time_ms(
-        kHtmlCacheTimeSec * Timer::kSecondMs);
+    RewriteOptions* options = resource_manager()->global_options();
+    options->set_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
     ResourceManagerTestBase::SetUp();
     proxy_interface_.reset(
         new ProxyInterface("localhost", 80, resource_manager(), statistics()));
@@ -187,6 +185,9 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
   GoogleString text;
   ResponseHeaders headers;
 
+  RewriteOptions* options = resource_manager()->global_options();
+  options->SetRewriteLevel(RewriteOptions::kPassThrough);
+  options->EnableFilter(RewriteOptions::kRewriteCss);
   InitResponseHeaders("page.html", kContentTypeHtml,
                       CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
   InitResponseHeaders("a.css", kContentTypeCss, kCssContent,

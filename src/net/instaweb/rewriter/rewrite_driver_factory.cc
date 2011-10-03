@@ -72,6 +72,19 @@ void RewriteDriverFactory::Init() {
   SetStatistics(&null_statistics_);
   resource_manager_mutex_.reset(thread_system_->NewMutex());
   worker_pools_.assign(kNumWorkerPools, NULL);
+
+  // Pre-initializes the default options.  IMPORTANT: subclasses overridding
+  // NewRewriteOptions() should re-call this method from their constructor
+  // so that the correct rewrite_options_ object gets reset.
+  InitializeDefaultOptions();
+}
+
+void RewriteDriverFactory::InitializeDefaultOptions() {
+  // We default to using the "core filters". Note that this is not
+  // the only place the default is applied --- for directories with .htaccess
+  // files it is given in create_dir_config in mod_instaweb.cc
+  default_options_.reset(NewRewriteOptions());
+  default_options_->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
 }
 
 RewriteDriverFactory::~RewriteDriverFactory() {
@@ -305,6 +318,7 @@ ResourceManager* RewriteDriverFactory::CreateResourceManager() {
       << "RewriteDriverFactory::set_filename_prefix.";
 
   ResourceManager* resource_manager = new ResourceManager(this);
+  resource_manager->global_options()->CopyFrom(*default_options());
   InitResourceManager(resource_manager);
   return resource_manager;
 }
@@ -341,13 +355,6 @@ void RewriteDriverFactory::InitResourceManager(
   resource_manager->set_async_rewrites(async_rewrites_);
   resource_manager->InitWorkersAndDecodingDriver();
   resource_managers_.insert(resource_manager);
-
-  // TODO(jmarantz): Refactor this code into something more functional
-  // in the presence of multiple resource managers.
-  if (temp_options_.get() != NULL) {
-    resource_manager->global_options()->CopyFrom(*temp_options_.get());
-    temp_options_.reset(NULL);
-  }
 }
 
 void RewriteDriverFactory::AddPlatformSpecificRewritePasses(

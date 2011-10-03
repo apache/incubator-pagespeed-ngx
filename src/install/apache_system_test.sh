@@ -326,8 +326,8 @@ echo TEST: ModPagespeedShardDomain directive in .htaccess file
 rm -rf $OUTDIR
 mkdir $OUTDIR
 echo $WGET_DUMP $TEST_ROOT/shard/shard.html
-check $WGET_DUMP $TEST_ROOT/shard/shard.html \
-  > $OUTDIR/shard.out.html
+fetch_until $TEST_ROOT/shard/shard.html 'grep -c \.pagespeed\.' 4
+check $WGET_DUMP $TEST_ROOT/shard/shard.html > $OUTDIR/shard.out.html
 check [ `grep -ce href=\"http://shard1 $OUTDIR/shard.out.html` = 2 ];
 check [ `grep -ce href=\"http://shard2 $OUTDIR/shard.out.html` = 2 ];
 
