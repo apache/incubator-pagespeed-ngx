@@ -138,6 +138,8 @@ class ResourceManager {
   // shortly and should hence be proactively re-fetched.
   bool IsImminentlyExpiring(int64 start_date_ms, int64 expire_ms) const;
 
+  void ComputeSignature(RewriteOptions* rewrite_options);
+
   // TODO(jmarantz): check thread safety in Apache.
   Hasher* hasher() const { return hasher_; }
   const Hasher* lock_hasher() const { return &lock_hasher_; }

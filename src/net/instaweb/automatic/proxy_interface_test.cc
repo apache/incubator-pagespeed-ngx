@@ -74,7 +74,10 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     RewriteOptions* options = resource_manager()->global_options();
+    options->ClearSignatureForTesting();
+    options->EnableFilter(RewriteOptions::kRewriteCss);
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
+    resource_manager()->ComputeSignature(options);
     ResourceManagerTestBase::SetUp();
     proxy_interface_.reset(
         new ProxyInterface("localhost", 80, resource_manager(), statistics()));
@@ -175,8 +178,10 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
   ResponseHeaders headers;
 
   RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
   options->SetRewriteLevel(RewriteOptions::kPassThrough);
   options->EnableFilter(RewriteOptions::kRewriteCss);
+  resource_manager()->ComputeSignature(options);
   InitResponseHeaders("page.html", kContentTypeHtml,
                       CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
   InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
@@ -308,10 +313,12 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
 
 TEST_F(ProxyInterfaceTest, MinResourceTimeZero) {
   RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
   options->SetRewriteLevel(RewriteOptions::kPassThrough);
   options->EnableFilter(RewriteOptions::kRewriteCss);
   options->set_min_resource_cache_time_to_rewrite_ms(
       kHtmlCacheTimeSec * Timer::kSecondMs);
+  resource_manager()->ComputeSignature(options);
 
   InitResponseHeaders("page.html", kContentTypeHtml,
                       CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
@@ -326,10 +333,12 @@ TEST_F(ProxyInterfaceTest, MinResourceTimeZero) {
 
 TEST_F(ProxyInterfaceTest, MinResourceTimeLarge) {
   RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
   options->SetRewriteLevel(RewriteOptions::kPassThrough);
   options->EnableFilter(RewriteOptions::kRewriteCss);
   options->set_min_resource_cache_time_to_rewrite_ms(
       4 * kHtmlCacheTimeSec * Timer::kSecondMs);
+  resource_manager()->ComputeSignature(options);
 
   InitResponseHeaders("page.html", kContentTypeHtml,
                       CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);

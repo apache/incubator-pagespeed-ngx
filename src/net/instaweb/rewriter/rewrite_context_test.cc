@@ -1451,6 +1451,7 @@ TEST_F(RewriteContextTest, UltraQuickRewrite) {
       new TestNotifyFilter(rewrite_driver(), &sync));
   rewrite_driver()->AddOwnedPostRenderFilter(
       new TestWaitFilter(rewrite_driver(), &sync));
+  resource_manager()->ComputeSignature(options());
 
   ValidateExpected("trimmable.quick", CssLinkHref("a.css"),
                    CssLinkHref("a.css"));

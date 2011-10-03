@@ -21,6 +21,8 @@
 
 #include <set>
 #include <vector>
+
+#include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -30,6 +32,7 @@
 
 namespace net_instaweb {
 
+class Hasher;
 class MessageHandler;
 
 class RewriteOptions {
@@ -280,14 +283,14 @@ class RewriteOptions {
   // Registers a wildcard pattern for to be allowed, potentially overriding
   // previous Disallow wildcards.
   void Allow(const StringPiece& wildcard_pattern) {
-    modified_ = true;
+    Modify();
     allow_resources_.Allow(wildcard_pattern);
   }
 
   // Registers a wildcard pattern for to be disallowed, potentially overriding
   // previous Allow wildcards.
   void Disallow(const StringPiece& wildcard_pattern) {
-    modified_ = true;
+    Modify();
     allow_resources_.Disallow(wildcard_pattern);
   }
 
@@ -305,7 +308,7 @@ class RewriteOptions {
 
   // Adds a new comment wildcard pattern to be retained.
   void RetainComment(const StringPiece& comment) {
-    modified_ = true;
+    Modify();
     retain_comments_.Allow(comment);
   }
 
@@ -317,17 +320,43 @@ class RewriteOptions {
   }
 
   void CopyFrom(const RewriteOptions& src) {
+    frozen_ = false;
+    modified_ = false;
     Merge(src, src);  // We lack a better implementation of Copy.
   }
 
-  // Make an identical copy of these options and return it.
+  // Make an identical copy of these options and return it.  This does
+  // *not* copy the signature, and the returned options are not in
+  // a frozen state.
   virtual RewriteOptions* Clone() const;
+
+  // Computes a signature for the RewriteOptions object, including all
+  // contained classes (DomainLawyer, FileLoadPolicy, WildCardGroups).
+  //
+  // Computing a signature "freezes" the class instance.  Attempting
+  // to modify a RewriteOptions after freezing will DCHECK.
+  void ComputeSignature(const Hasher* hasher);
+
+  // Clears a computed signature, unfreezing the options object.  This
+  // is intended for testing.
+  void ClearSignatureForTesting() {
+    frozen_ = false;
+    signature_.clear();
+  }
+
+  // Returns the computed signature.
+  const GoogleString& signature() const {
+    DCHECK(frozen_);
+    return signature_;
+  }
 
  protected:
   class OptionBase {
    public:
     virtual ~OptionBase();
     virtual void Merge(const OptionBase* one, const OptionBase* two) = 0;
+    virtual bool was_set() const = 0;
+    virtual GoogleString Signature(const Hasher* hasher) const = 0;
   };
 
   // Helper class to represent an Option, whose value is held in some class T.
@@ -342,6 +371,8 @@ class RewriteOptions {
   template<class T> class Option : public OptionBase {
    public:
     Option() : was_set_(false) {}
+
+    virtual bool was_set() const { return was_set_; }
 
     void set(const T& val) {
       was_set_ = true;
@@ -374,6 +405,10 @@ class RewriteOptions {
       }
     }
 
+    virtual GoogleString Signature(const Hasher* hasher) const {
+      return RewriteOptions::OptionSignature(value_, hasher);
+    }
+
    private:
     T value_;
     bool was_set_;
@@ -397,8 +432,11 @@ class RewriteOptions {
   template<class T, class U>  // U must be assignable to T.
   void set_option(const U& new_value, Option<T>* option) {
     option->set(new_value);
-    modified_ = true;
+    Modify();
   }
+
+  // Marks the config as modified.
+  void Modify();
 
  private:
   typedef std::set<Filter> FilterSet;
@@ -408,7 +446,24 @@ class RewriteOptions {
       const StringPiece& filters, MessageHandler* handler, FilterSet* set);
   static Filter Lookup(const StringPiece& filter_name);
 
+  // These static methods enable us to generate signatures for all
+  // instantiated option-types from Option<T>::Signature().
+  static GoogleString OptionSignature(bool x, const Hasher* hasher) {
+    return x ? "T" : "F";
+  }
+  static GoogleString OptionSignature(int x, const Hasher* hasher) {
+    return IntegerToString(x);
+  }
+  static GoogleString OptionSignature(int64 x, const Hasher* hasher) {
+    return Integer64ToString(x);
+  }
+  static GoogleString OptionSignature(const GoogleString& x,
+                                      const Hasher* hasher);
+  static GoogleString OptionSignature(RewriteLevel x,
+                                      const Hasher* hasher);
+
   bool modified_;
+  bool frozen_;
   FilterSet enabled_filters_;
   FilterSet disabled_filters_;
 
@@ -455,6 +510,8 @@ class RewriteOptions {
 
   WildcardGroup allow_resources_;
   WildcardGroup retain_comments_;
+
+  GoogleString signature_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteOptions);
 };

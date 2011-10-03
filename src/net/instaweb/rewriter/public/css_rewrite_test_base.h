@@ -53,8 +53,8 @@ class CssRewriteTestBase : public ResourceManagerTestBase,
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
     SetAsynchronousRewrites(GetParam());
-    AddFilter(RewriteOptions::kRewriteCss);
     options()->set_always_rewrite_css(true);
+    AddFilter(RewriteOptions::kRewriteCss);
   }
 
   enum ValidationFlags {

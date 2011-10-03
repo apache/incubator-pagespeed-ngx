@@ -77,8 +77,8 @@ const char ResourceManagerTestBase::kXhtmlDtd[] =
 ResourceManagerTestBase::ResourceManagerTestBase()
     : factory_(GTestTempDir(), &mock_url_fetcher_),
       other_factory_(GTestTempDir(), &mock_url_fetcher_),
-      options_(new RewriteOptions),
-      other_options_(new RewriteOptions) {
+      options_(factory_.NewRewriteOptions()),
+      other_options_(other_factory_.NewRewriteOptions()) {
   RewriteDriverFactory::Initialize(&statistics_);
   factory_.SetStatistics(&statistics_);
   other_factory_.SetStatistics(&statistics_);
@@ -201,6 +201,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   }
   new_resource_manager->set_hasher(resource_manager_->hasher());
   RewriteOptions* new_options = options_->Clone();
+  resource_manager_->ComputeSignature(new_options);
   RewriteDriver* new_rewrite_driver = MakeDriver(new_resource_manager,
                                                  new_options);
   new_factory.SetupWaitFetcher();

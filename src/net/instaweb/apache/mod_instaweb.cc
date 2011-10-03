@@ -292,6 +292,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
   if ((directory_options != NULL) && directory_options->modified()) {
     custom_options.reset(factory->NewRewriteOptions());
     custom_options->Merge(*host_options, *directory_options);
+    manager->ComputeSignature(custom_options.get());
     options = custom_options.get();
     use_custom_options = true;
   }
@@ -382,6 +383,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
         use_custom_options = true;
         RewriteOptions* merged_options = factory->NewRewriteOptions();
         merged_options->Merge(*options, query_options);
+        manager->ComputeSignature(merged_options);
         custom_options.reset(merged_options);
         options = merged_options;
       }
@@ -621,35 +623,39 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
   // statistics enabled, if found, do the static initialization of
   // statistics to establish global memory segments.
   Statistics* statistics = NULL;
+  std::set<ApacheResourceManager*> managers_covered_;
   for (server_rec* server = server_list; server != NULL;
        server = server->next) {
     ApacheResourceManager* manager =
         InstawebContext::ManagerFromServerRec(server);
-    CHECK(manager);
-    ApacheConfig* config = manager->config();
+    if (managers_covered_.insert(manager).second) {
+      CHECK(manager);
+      ApacheConfig* config = manager->config();
+      manager->ComputeSignature(config);
 
-    if (config->enabled()) {
-      GoogleString file_cache_path = config->file_cache_path();
-      if (config->filename_prefix().empty() || file_cache_path.empty()) {
-        GoogleString buf = StrCat(
-            "mod_pagespeed is enabled.  "
-            "The following directives must not be NULL\n",
-            kModPagespeedFileCachePath, "=",
-            StrCat(
-                config->file_cache_path(), "\n",
-                kModPagespeedGeneratedFilePrefix, "=",
-                config->filename_prefix(), "\n"));
-        manager->message_handler()->Message(kError, "%s", buf.c_str());
-        return HTTP_INTERNAL_SERVER_ERROR;
+      if (config->enabled()) {
+        GoogleString file_cache_path = config->file_cache_path();
+        if (config->filename_prefix().empty() || file_cache_path.empty()) {
+          GoogleString buf = StrCat(
+              "mod_pagespeed is enabled.  "
+              "The following directives must not be NULL\n",
+              kModPagespeedFileCachePath, "=",
+              StrCat(
+                  config->file_cache_path(), "\n",
+                  kModPagespeedGeneratedFilePrefix, "=",
+                  config->filename_prefix(), "\n"));
+          manager->message_handler()->Message(kError, "%s", buf.c_str());
+          return HTTP_INTERNAL_SERVER_ERROR;
+        }
       }
-    }
 
-    // Lazily create shared-memory statistics if enabled in any
-    // config, even when mod_pagespeed is totally disabled.  This
-    // allows statistics to work if mod_pagespeed gets turned on via
-    // .htaccess or query param.
-    if ((statistics == NULL) && config->statistics_enabled()) {
-      statistics = factory->MakeSharedMemStatistics();
+      // Lazily create shared-memory statistics if enabled in any
+      // config, even when mod_pagespeed is totally disabled.  This
+      // allows statistics to work if mod_pagespeed gets turned on via
+      // .htaccess or query param.
+      if ((statistics == NULL) && config->statistics_enabled()) {
+        statistics = factory->MakeSharedMemStatistics();
+      }
     }
   }
 
@@ -1204,8 +1210,8 @@ void* create_dir_config(apr_pool_t* pool, char* dir) {
 // new_conf is the directory structure currently being processed.
 // This function returns the new per-directory structure created
 void* merge_dir_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
-  ApacheConfig* dir1 = static_cast<ApacheConfig*>(base_conf);
-  ApacheConfig* dir2 = static_cast<ApacheConfig*>(new_conf);
+  const ApacheConfig* dir1 = static_cast<const ApacheConfig*>(base_conf);
+  const ApacheConfig* dir2 = static_cast<const ApacheConfig*>(new_conf);
 
   // To make it easier to debug the merged configurations, we store
   // the name of both input configurations as the description for

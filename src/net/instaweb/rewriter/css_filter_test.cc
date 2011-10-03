@@ -20,6 +20,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -462,13 +463,17 @@ TEST_P(CssFilterTest, ComplexCssTest) {
 TEST_P(CssFilterTest, NoAlwaysRewriteCss) {
   // When we force always_rewrite_css, we can expand some statements.
   // Note: when this example is fixed in the minifier, this test will break :/
+  options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(true);
+  resource_manager()->ComputeSignature(options());
   ValidateRewrite("expanding_example",
                   "@import url(http://www.example.com)",
                   "@import url(http://www.example.com) ;");
   // With it set false, we do not expand CSS (as long as we didn't do anything
   // else, like rewrite sub-resources.
+  options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(false);
+  resource_manager()->ComputeSignature(options());
   ValidateRewrite("non_expanding_example",
                   "@import url(http://www.example.com)",
                   "@import url(http://www.example.com)",
@@ -477,11 +482,15 @@ TEST_P(CssFilterTest, NoAlwaysRewriteCss) {
   // actually expands the statement is not considered an error.)
 
   // When we force always_rewrite_css, we allow rewriting something to nothing.
+  options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(true);
+  resource_manager()->ComputeSignature(options());
   ValidateRewrite("contracting_example",     "  ", "");
   // With it set false, we do not allow something to be minified to nothing.
   // Note: We may allow this in the future if contents are all whitespace.
+  options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(false);
+  resource_manager()->ComputeSignature(options());
   ValidateRewrite("non_contracting_example", "  ", "  ",
                   kExpectNoChange | kExpectFailure);
 }
@@ -518,7 +527,9 @@ TEST_P(CssFilterTest, RewriteStyleAttribute) {
   ValidateNoChanges("RewriteStyleAttribute",
                     "<div style='background-color: #f00; color: yellow;'/>");
 
+  options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
+  resource_manager()->ComputeSignature(options());
 
   // Test no rewriting.
   ValidateNoChanges("no-rewriting",

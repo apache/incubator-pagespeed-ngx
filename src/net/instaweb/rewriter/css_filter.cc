@@ -291,21 +291,9 @@ GoogleString CssFilter::Context::CacheKey() const {
     key = SingleRewriteContext::CacheKey();
   }
 
-  // We want to incorporate various of our settings inside our cache key,
-  // so if our configuration changes (like due to a different .htaccess)
-  // we do not end up serving the wrong thing. We don't want it inside
-  // the URL, however, since it's not critical for reconstructing the resource.
-  //
   // TODO(morlovich): Make the quirks bit part of the actual output resource
   // name; as ignoring it on the fetch path is unsafe.
-  const RewriteOptions* options = driver_->options();
-  StrAppend(&key,
-            options->always_rewrite_css() ? "A" : "m",
-            driver_->doctype().IsXhtml() ? "X" : "h",
-            options->Enabled(RewriteOptions::kRecompressImages) ? "R" : "_",
-            options->Enabled(RewriteOptions::kLeftTrimUrls) ? "T" : "_",
-            options->Enabled(RewriteOptions::kExtendCache) ? "E" : "_",
-            options->Enabled(RewriteOptions::kSpriteImages) ? "S" : "_");
+  StrAppend(&key, driver_->doctype().IsXhtml() ? "X" : "h");
   return key;
 }
 

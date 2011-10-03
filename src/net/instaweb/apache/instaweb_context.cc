@@ -60,6 +60,7 @@ InstawebContext::InstawebContext(request_rec* request,
     // a reference to its options throughout its lifetime to refer to the
     // domain lawyer and other options.
     RewriteOptions* options = custom_options.Clone();
+    resource_manager_->ComputeSignature(options);
     rewrite_driver_ = resource_manager_->NewCustomRewriteDriver(options);
   } else {
     rewrite_driver_ = resource_manager_->NewRewriteDriver();

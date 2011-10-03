@@ -25,10 +25,28 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/wildcard_group.h"
+
+namespace {
+
+// This version index serves as global signature key.  Much of the
+// data emitted in signatures is based on the current enum layout,
+// which can change as we add new filters, etc.  So every time there
+// is a binary-incompatible change to the enumer level, we bump this
+// version.
+//
+// Updating this value will have the indirect effect of flushing the metadata
+// cache.
+//
+// This version number should be incremented if any default-values are changed,
+// either in the add_option() call or via options->set_default.
+const int kOptionsVersion = 1;
+
+}  // namespace
 
 namespace net_instaweb {
 
@@ -156,7 +174,9 @@ bool RewriteOptions::ParseRewriteLevel(
   return ret;
 }
 
-RewriteOptions::RewriteOptions() : modified_(false) {
+RewriteOptions::RewriteOptions()
+    : modified_(false),
+      frozen_(false) {
   // Sanity-checks -- will be active only when compiled for debug.
 #ifndef NDEBUG
   CheckFilterSetOrdering(kCoreFilterSet, arraysize(kCoreFilterSet));
@@ -220,12 +240,14 @@ void RewriteOptions::DisableAllFiltersNotExplicitlyEnabled() {
 }
 
 void RewriteOptions::EnableFilter(Filter filter) {
+  DCHECK(!frozen_);
   std::pair<FilterSet::iterator, bool> inserted =
       enabled_filters_.insert(filter);
   modified_ |= inserted.second;
 }
 
 void RewriteOptions::DisableFilter(Filter filter) {
+  DCHECK(!frozen_);
   std::pair<FilterSet::iterator, bool> inserted =
       disabled_filters_.insert(filter);
   modified_ |= inserted.second;
@@ -233,6 +255,7 @@ void RewriteOptions::DisableFilter(Filter filter) {
 
 bool RewriteOptions::AddCommaSeparatedListToFilterSet(
     const StringPiece& filters, MessageHandler* handler, FilterSet* set) {
+  DCHECK(!frozen_);
   StringPieceVector names;
   SplitStringPieceToVector(filters, ",", &names, true);
   bool ret = true;
@@ -290,6 +313,7 @@ bool RewriteOptions::Enabled(Filter filter) const {
 
 void RewriteOptions::Merge(const RewriteOptions& first,
                            const RewriteOptions& second) {
+  DCHECK(!frozen_);
   modified_ = first.modified_ || second.modified_;
   enabled_filters_ = first.enabled_filters_;
   disabled_filters_ = first.disabled_filters_;
@@ -371,6 +395,55 @@ RewriteOptions* RewriteOptions::Clone() const {
   RewriteOptions* options = new RewriteOptions;
   options->CopyFrom(*this);
   return options;
+}
+
+GoogleString RewriteOptions::OptionSignature(const GoogleString& x,
+                                             const Hasher* hasher) {
+  return hasher->Hash(x);
+}
+
+GoogleString RewriteOptions::OptionSignature(RewriteLevel level,
+                                             const Hasher* hasher) {
+  switch (level) {
+    case kPassThrough: return "p";
+    case kCoreFilters: return "c";
+    case kTestingCoreFilters: return "t";
+    case kAllFilters: return "a";
+  }
+  return "?";
+}
+
+void RewriteOptions::ComputeSignature(const Hasher* hasher) {
+  if (frozen_) {
+    return;
+  }
+  signature_ = IntegerToString(kOptionsVersion);
+  for (int i = kFirstFilter; i != kEndOfFilters; ++i) {
+    if (Enabled(static_cast<Filter>(i))) {
+      StrAppend(&signature_, "_", IntegerToString(static_cast<int>(i)));
+    }
+  }
+  signature_ += "O";
+  for (int i = 0, n = all_options_.size(); i < n; ++i) {
+    // Keep the signature relatively short by only including options
+    // with values overridden from the default.
+    OptionBase* option = all_options_[i];
+    if (option->was_set()) {
+      StrAppend(&signature_, IntegerToString(i), ":",
+                option->Signature(hasher), "_");
+    }
+  }
+  frozen_ = true;
+
+  // TODO(jmarantz): Incorporate signatures from the domain_lawyer,
+  // file_load_policy, allow_resources, and retain_comments.  However,
+  // the changes made here make our system strictly more correct than
+  // it was before, using an ad-hoc signature in css_filter.cc.
+}
+
+void RewriteOptions::Modify() {
+  DCHECK(!frozen_);
+  modified_ = true;
 }
 
 }  // namespace net_instaweb

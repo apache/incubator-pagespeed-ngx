@@ -146,14 +146,17 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
                                      &message_handler_).is_true());
 }
 
-TEST_F(JsOutlineFilterTest, UrlTooLong) {
+
+// By default we succeed at outlining.
+TEST_F(JsOutlineFilterTest, UrlNotTooLong) {
   SetupOutliner();
-
-  // By default we succeed at outlining.
   OutlineScript("url_not_too_long", true);
+}
 
-  // But if we set max_url_size too small, it will fail cleanly.
+// But if we set max_url_size too small, it will fail cleanly.
+TEST_F(JsOutlineFilterTest, UrlTooLong) {
   options()->set_max_url_size(0);
+  SetupOutliner();
   OutlineScript("url_too_long", false);
 }
 

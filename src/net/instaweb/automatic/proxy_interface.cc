@@ -231,6 +231,9 @@ void ProxyInterface::ProxyRequestCallback(GoogleUrl* request_url,
 
   // Start fetch and rewrite.  If GetCustomOptions found options for us,
   // the RewriteDriver created by StartNewProxyFetch will take ownership.
+  if (custom_options_success.first != NULL) {
+    resource_manager_->ComputeSignature(custom_options_success.first);
+  }
   proxy_fetch_factory_->StartNewProxyFetch(
       request_url->Spec().as_string(), custom_headers,
       custom_options_success.first, response_headers, response_writer,

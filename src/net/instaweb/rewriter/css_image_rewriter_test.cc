@@ -87,7 +87,9 @@ TEST_P(CssImageRewriterTest, CacheExtendsWhenCssGrows) {
   // the right decision when we do do the check in the case where the produced
   // CSS is actually larger, but contains rewritten resources.
   // (We want to rewrite the CSS in that case)
+  options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(false);
+  resource_manager()->ComputeSignature(options());
   InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
   static const char css_before[] =
       "body{background-image: url(foo.png)}";
@@ -176,7 +178,9 @@ TEST_P(CssImageRewriterTest, CacheExtendsImages) {
 }
 
 TEST_P(CssImageRewriterTest, TrimsImageUrls) {
+  options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
+  resource_manager()->ComputeSignature(options());
   InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
   static const char kCss[] =
       "body {\n"
@@ -196,7 +200,9 @@ TEST_P(CssImageRewriterTest, InlinePaths) {
   // inline CSS in different places. This is also a regression test for a bug
   // during development of async + inline case which caused us to do
   // null rewrites from cache.
+  options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
+  resource_manager()->ComputeSignature(options());
   InitResponseHeaders("dir/foo.png", kContentTypePng, kImageData, 100);
 
   static const char kCssBefore[] =
@@ -219,7 +225,9 @@ TEST_P(CssImageRewriterTest, InlinePaths) {
 
 TEST_P(CssImageRewriterTest, RewriteCached) {
   // Make sure we produce the same output from cache.
+  options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
+  resource_manager()->ComputeSignature(options());
   InitResponseHeaders("dir/foo.png", kContentTypePng, kImageData, 100);
 
   static const char kCssBefore[] =
@@ -265,7 +273,9 @@ TEST_P(CssImageRewriterTest, CacheInlineParseFailures) {
 }
 
 TEST_P(CssImageRewriterTest, RecompressImages) {
+  options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRecompressImages);
+  resource_manager()->ComputeSignature(options());
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
                         kContentTypePng, 100);
   static const char kCss[] =
@@ -324,7 +334,9 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesInStyleAttributes) {
   InitResponseHeaders("bar.png", kContentTypePng, kImageData, 100);
   InitResponseHeaders("baz.png", kContentTypePng, kImageData, 100);
 
+  options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
+  resource_manager()->ComputeSignature(options());
 
   ValidateExpected("cache_extend_images_simple",
                    "<div style=\""
@@ -384,17 +396,20 @@ TEST_P(CssImageRewriterTest, RecompressImagesInStyleAttributes) {
   // No rewriting if only one option is enabled.
   options()->CopyFrom(*default_options.get());
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
+  resource_manager()->ComputeSignature(options());
   ValidateNoChanges("recompress_images_disabled", div_before);
 
   // No rewriting if only one option is enabled.
   options()->CopyFrom(*default_options.get());
   options()->EnableFilter(RewriteOptions::kRecompressImages);
+  resource_manager()->ComputeSignature(options());
   ValidateNoChanges("rewrite_style_attrs_disabled", div_before);
 
   // Rewrite iff both options are enabled.
   options()->CopyFrom(*default_options.get());
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
   options()->EnableFilter(RewriteOptions::kRecompressImages);
+  resource_manager()->ComputeSignature(options());
   ValidateExpected("options_enabled", div_before, div_after);
 }
 

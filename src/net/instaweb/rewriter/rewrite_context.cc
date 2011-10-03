@@ -42,6 +42,7 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -421,7 +422,7 @@ void RewriteContext::Start() {
 
 void RewriteContext::SetPartitionKey() {
   partition_key_ = CacheKey();
-  StrAppend(&partition_key_, ":", id());
+  StrAppend(&partition_key_, ":", id(), Options()->signature());
 }
 
 // Check if this mapping from input to output URLs is still valid; and if not

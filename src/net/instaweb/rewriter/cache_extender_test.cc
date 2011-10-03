@@ -463,6 +463,9 @@ TEST_P(CacheExtenderTest, MadeOnTheFly) {
 TEST_P(CacheExtenderTest, RetainExtraHeaders) {
   GoogleString url = StrCat(kTestDomain, "retain.css");
   InitResponseHeaders(url, kContentTypeCss, kCssData, 300);
+  // We must explicitly call ComputeSignature here because we are not
+  // calling InitTest in this test.
+  resource_manager()->ComputeSignature(options());
   TestRetainExtraHeaders("retain.css", "retain.css", "ce", "css");
 }
 

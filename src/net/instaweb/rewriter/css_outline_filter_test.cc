@@ -19,12 +19,15 @@
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -169,7 +172,9 @@ TEST_F(CssOutlineFilterTest, UrlTooLong) {
   TestOutlineCss(html_url, "", style_text, true, style_text, "");
 
   // But if we set max_url_size too small, it will fail cleanly.
+  options()->ClearSignatureForTesting();
   options()->set_max_url_size(0);
+  resource_manager()->ComputeSignature(options());
   TestOutlineCss(html_url, "", style_text, false, style_text, "");
 }
 

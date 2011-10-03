@@ -85,6 +85,9 @@ void RewriteDriverFactory::InitializeDefaultOptions() {
   // files it is given in create_dir_config in mod_instaweb.cc
   default_options_.reset(NewRewriteOptions());
   default_options_->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  // Note that we do not need to compute a signature on the default options.
+  // We will never be serving requests with these options: they are just used
+  // as a source for merging.
 }
 
 RewriteDriverFactory::~RewriteDriverFactory() {
@@ -327,6 +330,7 @@ void RewriteDriverFactory::InitResourceManager(
     ResourceManager* resource_manager) {
   ScopedMutex lock(resource_manager_mutex_.get());
 
+  resource_manager->ComputeSignature(resource_manager->global_options());
   resource_manager->set_scheduler(scheduler());
   resource_manager->set_statistics(statistics());
   resource_manager->set_rewrite_stats(rewrite_stats());

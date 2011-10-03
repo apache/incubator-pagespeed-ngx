@@ -615,4 +615,8 @@ RewriteOptions* ResourceManager::NewOptions() {
   return factory_->NewRewriteOptions();
 }
 
+void ResourceManager::ComputeSignature(RewriteOptions* rewrite_options) {
+  rewrite_options->ComputeSignature(lock_hasher());
+}
+
 }  // namespace net_instaweb

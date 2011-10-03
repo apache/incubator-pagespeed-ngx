@@ -992,7 +992,9 @@ TEST_P(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
 
 // Verifies that we don't allow path-crossing URLs if that option is turned off.
 TEST_P(CssCombineFilterTest, CrossAcrossPathsDisallowed) {
+  options()->ClearSignatureForTesting();
   options()->set_combine_across_paths(false);
+  resource_manager()->ComputeSignature(options());
   CssLink::Vector css_in, css_out;
   css_in.Add("a/a.css", "a", "", true);
   css_in.Add("b/b.css", "b", "", true);

@@ -316,6 +316,8 @@ TEST_P(RewriteDriverTest, CreateOutputResourceTooLong) {
 }
 
 TEST_P(RewriteDriverTest, MultipleDomains) {
+  rewrite_driver()->AddFilters();
+
   // Make sure we authorize domains for resources properly. This is a regression
   // test for where loading things from a domain would prevent loads from an
   // another domain from the same RewriteDriver.
@@ -339,6 +341,8 @@ TEST_P(RewriteDriverTest, MultipleDomains) {
 // Test caching behavior for normal UrlInputResources.
 // This is the base case that LoadResourcesFromFiles below contrasts with.
 TEST_P(RewriteDriverTest, LoadResourcesFromTheWeb) {
+  rewrite_driver()->AddFilters();
+
   const char kStaticUrlPrefix[] = "http://www.example.com/";
   const char kResourceName[ ]= "foo.css";
   GoogleString resource_url = StrCat(kStaticUrlPrefix, kResourceName);
@@ -391,6 +395,8 @@ TEST_P(RewriteDriverTest, LoadResourcesFromTheWeb) {
 // file resources have the appropriate properties, such as being loaded from
 // file every time they are fetched (not being cached).
 TEST_P(RewriteDriverTest, LoadResourcesFromFiles) {
+  rewrite_driver()->AddFilters();
+
   const char kStaticUrlPrefix[] = "http://www.example.com/static/";
   const char kStaticFilenamePrefix[] = "/htmlcontent/static/";
   const char kResourceName[ ]= "foo.css";
@@ -431,6 +437,7 @@ TEST_P(RewriteDriverTest, LoadResourcesFromFiles) {
 }
 
 TEST_P(RewriteDriverTest, ResolveAnchorUrl) {
+  rewrite_driver()->AddFilters();
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
   GoogleUrl resolved(rewrite_driver()->base_url(), "#anchor");
   EXPECT_EQ("http://example.com/index.html#anchor", resolved.Spec());
@@ -459,6 +466,7 @@ TEST_P(RewriteDriverTest, DiagnosticsWithPercent) {
   // (make sure it actually shows up first, though).
   int prev_log_level = logging::GetMinLogLevel();
   logging::SetMinLogLevel(logging::LOG_INFO);
+  rewrite_driver()->AddFilters();
   MockRewriteContext context(rewrite_driver());
   ResourcePtr resource(rewrite_driver()->CreateInputResourceAbsoluteUnchecked(
       "http://www.example.com/%s%s%s%d%f"));

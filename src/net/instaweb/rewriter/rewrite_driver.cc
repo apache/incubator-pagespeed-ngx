@@ -186,6 +186,7 @@ RewriteDriver* RewriteDriver::Clone() {
   RewriteDriver* result;
   if (has_custom_options()) {
     RewriteOptions* options_copy = options()->Clone();
+    resource_manager_->ComputeSignature(options_copy);
     result = resource_manager_->NewCustomRewriteDriver(options_copy);
   } else {
     result = resource_manager_->NewRewriteDriver();
@@ -531,6 +532,9 @@ bool RewriteDriver::ParseKeyInt64(const StringPiece& key, SetInt64Method m,
 void RewriteDriver::AddFilters() {
   CHECK(html_writer_filter_ == NULL);
   CHECK(!filters_added_);
+  if (has_custom_options()) {
+    resource_manager_->ComputeSignature(custom_options_.get());
+  }
   filters_added_ = true;
 
   AddPreRenderFilters();
