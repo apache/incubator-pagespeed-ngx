@@ -118,9 +118,6 @@ class MemFileSystem : public FileSystem {
   int num_output_file_opens() const { return num_output_file_opens_; }
   int num_temp_file_opens() const { return num_temp_file_opens_; }
 
-  // returns number of times lock operations failed.
-  int num_failed_locks() const { return num_failed_locks_; }
-
  private:
   inline void UpdateAtime(const StringPiece& path);
   inline void UpdateMtime(const StringPiece& path);
@@ -153,7 +150,6 @@ class MemFileSystem : public FileSystem {
   int num_input_file_stats_;
   int num_output_file_opens_;
   int num_temp_file_opens_;
-  int num_failed_locks_;
 
   DISALLOW_COPY_AND_ASSIGN(MemFileSystem);
 };

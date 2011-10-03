@@ -36,6 +36,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -87,11 +88,22 @@ class ProxyInterface : public UrlAsyncFetcher {
   // .first==NULL, .second=true:  Use the global options for resource_manager.
   OptionsBoolPair GetCustomOptions(const GoogleUrl& request_url,
                                    const RequestHeaders& request_headers,
+                                   RewriteOptions* domain_options,
                                    MessageHandler* handler);
 
   void set_version_string(const StringPiece& version_string) {
     version_string.CopyToString(&version_string_);
   }
+
+  // Callback function passed to UrlNamer to finish handling requests once we
+  // have rewrite_options for requests that are being proxied.
+  void ProxyRequestCallback(GoogleUrl* request_url,
+                            RequestHeaders* request_headers,
+                            ResponseHeaders* response_headers,
+                            Writer* response_writer,
+                            MessageHandler* handler,
+                            Callback* callback,
+                            RewriteOptions* rewrite_options);
 
  private:
   // Handle requests that are being proxied.
@@ -128,6 +140,40 @@ class ProxyInterface : public UrlAsyncFetcher {
   GoogleString version_string_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyInterface);
+};
+
+// Provides a callback whose Done() function is executed once we have
+// rewrite options.
+class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
+ public:
+  ProxyInterfaceUrlNamerCallback(GoogleUrl* request_url,
+                                 RequestHeaders* request_headers,
+                                 ResponseHeaders* response_headers,
+                                 Writer* response_writer,
+                                 MessageHandler* handler,
+                                 UrlAsyncFetcher::Callback* callback,
+                                 ProxyInterface* proxy_interface)
+      : request_url_(request_url),
+        request_headers_(request_headers),
+        response_headers_(response_headers),
+        response_writer_(response_writer),
+        handler_(handler),
+        callback_(callback),
+        proxy_interface_(proxy_interface) {
+  }
+  virtual ~ProxyInterfaceUrlNamerCallback();
+  virtual void Done(RewriteOptions* rewrite_options);
+
+ private:
+  GoogleUrl* request_url_;
+  RequestHeaders* request_headers_;
+  ResponseHeaders* response_headers_;
+  Writer* response_writer_;
+  MessageHandler* handler_;
+  UrlAsyncFetcher::Callback* callback_;
+  ProxyInterface* proxy_interface_;
+
+  DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceUrlNamerCallback);
 };
 
 }  // namespace net_instaweb

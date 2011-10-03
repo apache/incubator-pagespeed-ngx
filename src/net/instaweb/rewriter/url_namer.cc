@@ -66,10 +66,14 @@ GoogleString UrlNamer::Decode(const GoogleUrl& request_url) {
   return url_as_is.as_string();
 }
 
-RewriteOptions* UrlNamer::DecodeOptions(const GoogleUrl& request_url,
-                                        const RequestHeaders& request_headers,
-                                        MessageHandler* handler) {
-  return NULL;
+void UrlNamer::DecodeOptions(const GoogleUrl& request_url,
+                             const RequestHeaders& request_headers,
+                             Callback* callback,
+                             MessageHandler* handler) {
+  callback->Done(NULL);
+}
+
+UrlNamer::Callback::~Callback() {
 }
 
 }  // namespace net_instaweb

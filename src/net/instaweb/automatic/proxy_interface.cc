@@ -150,14 +150,13 @@ bool ProxyInterface::StreamingFetch(const GoogleString& requested_url_string,
 
 ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
     const GoogleUrl& request_url, const RequestHeaders& request_headers,
-    MessageHandler* handler) {
+    RewriteOptions* domain_options, MessageHandler* handler) {
   RewriteOptions* options = resource_manager_->global_options();
   scoped_ptr<RewriteOptions> custom_options;
-  scoped_ptr<RewriteOptions> domain_options(resource_manager_->url_namer()
-      ->DecodeOptions(request_url, request_headers, handler));
-  if (domain_options.get() != NULL) {
+  scoped_ptr<RewriteOptions> scoped_domain_options(domain_options);
+  if (scoped_domain_options.get() != NULL) {
     custom_options.reset(resource_manager_->NewOptions());
-    custom_options->Merge(*options, *domain_options.get());
+    custom_options->Merge(*options, *scoped_domain_options.get());
     options = custom_options.get();
   }
 
@@ -191,8 +190,29 @@ void ProxyInterface::ProxyRequest(const GoogleUrl& request_url,
                                   Writer* response_writer,
                                   MessageHandler* handler,
                                   Callback* callback) {
+  GoogleUrl* url = new GoogleUrl;
+  url->Reset(request_url);
+  RequestHeaders* headers = new RequestHeaders;
+  headers->CopyFrom(request_headers);
+
+  ProxyInterfaceUrlNamerCallback* proxy_interface_url_namer_callback =
+      new ProxyInterfaceUrlNamerCallback(url, headers, response_headers,
+                                         response_writer, handler, callback,
+                                         this);
+  resource_manager_->url_namer() ->DecodeOptions(
+      request_url, request_headers,proxy_interface_url_namer_callback,
+      handler);
+}
+
+void ProxyInterface::ProxyRequestCallback(GoogleUrl* request_url,
+                                          RequestHeaders* request_headers,
+                                          ResponseHeaders* response_headers,
+                                          Writer* response_writer,
+                                          MessageHandler* handler,
+                                          Callback* callback,
+                                          RewriteOptions* domain_options) {
   OptionsBoolPair custom_options_success = GetCustomOptions(
-      request_url, request_headers, handler);
+      *request_url, *request_headers, domain_options, handler);
   if (!custom_options_success.second) {
     response_writer->Write("Invalid PageSpeed query-params/request headers",
                            handler);
@@ -201,7 +221,7 @@ void ProxyInterface::ProxyRequest(const GoogleUrl& request_url,
   }
 
   RequestHeaders custom_headers;
-  custom_headers.CopyFrom(request_headers);
+  custom_headers.CopyFrom(*request_headers);
 
   // Update request_headers.
   // We deal with encodings. So strip the users Accept-Encoding headers.
@@ -212,9 +232,21 @@ void ProxyInterface::ProxyRequest(const GoogleUrl& request_url,
   // Start fetch and rewrite.  If GetCustomOptions found options for us,
   // the RewriteDriver created by StartNewProxyFetch will take ownership.
   proxy_fetch_factory_->StartNewProxyFetch(
-      request_url.Spec().as_string(), custom_headers,
+      request_url->Spec().as_string(), custom_headers,
       custom_options_success.first, response_headers, response_writer,
       callback);
+  delete request_url;
+  delete request_headers;
+}
+
+ProxyInterfaceUrlNamerCallback::~ProxyInterfaceUrlNamerCallback() {
+}
+
+void ProxyInterfaceUrlNamerCallback::Done(RewriteOptions* domain_options) {
+  proxy_interface_->ProxyRequestCallback(
+      request_url_, request_headers_, response_headers_, response_writer_,
+      handler_, callback_, domain_options);
+  delete this;
 }
 
 }  // namespace net_instaweb

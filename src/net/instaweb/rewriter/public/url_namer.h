@@ -37,6 +37,18 @@ class RewriteOptions;
 // '.pagespeed.<filter>.<hash>.<extension>'
 class UrlNamer {
  public:
+  class Callback {
+   public:
+    Callback() {}
+    virtual ~Callback();
+    // Provide the Callback function which will be executed once we have
+    // rewrite_options. It is the responsibility of Done() function to
+    // delete the Callback.
+    virtual void Done(RewriteOptions* rewrite_options) = 0;
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(Callback);
+  };
   UrlNamer();
   virtual ~UrlNamer();
 
@@ -49,9 +61,10 @@ class UrlNamer {
   virtual GoogleString Decode(const GoogleUrl& request_url);
 
   // Given the request url and request headers, generate the rewrite options.
-  virtual RewriteOptions* DecodeOptions(const GoogleUrl& request_url,
-                                        const RequestHeaders& request_headers,
-                                        MessageHandler* handler);
+  virtual void DecodeOptions(const GoogleUrl& request_url,
+                             const RequestHeaders& request_headers,
+                             Callback* callback,
+                             MessageHandler* handler);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UrlNamer);

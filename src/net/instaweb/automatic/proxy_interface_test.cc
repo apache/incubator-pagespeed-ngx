@@ -61,20 +61,6 @@ class AsyncExpectCallback : public ExpectCallback {
   DISALLOW_COPY_AND_ASSIGN(AsyncExpectCallback);
 };
 
-class MockUrlNamer : public UrlNamer {
- public:
-  explicit MockUrlNamer(RewriteOptions* options) : options_(options) {}
-  virtual RewriteOptions* DecodeOptions(const GoogleUrl& request_url,
-                                        const RequestHeaders& request_headers,
-                                        MessageHandler* handler) {
-    return options_->Clone();
-  }
-
- private:
-  RewriteOptions* options_;
-  DISALLOW_COPY_AND_ASSIGN(MockUrlNamer);
-};
-
 // TODO(morlovich): This currently relies on ResourceManagerTestBase to help
 // setup fetchers; and also indirectly to prevent any rewrites from timing out
 // (as it runs the tests with real scheduler but mock timer). It would probably
@@ -132,14 +118,17 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   }
 
   RewriteOptions* GetCustomOptions(const StringPiece& url,
-                                   const RequestHeaders& request_headers) {
+                                   const RequestHeaders& request_headers,
+                                   RewriteOptions* domain_options) {
     // The default url_namer does not yield any name-derived options, and we
     // have not specified any URL params or request-headers, so there will be
     // no custom options, and no errors.
     GoogleUrl gurl(url);
+    RewriteOptions* copy_options = domain_options != NULL ?
+        domain_options->Clone() : NULL;
     ProxyInterface::OptionsBoolPair options_success =
         proxy_interface_->GetCustomOptions(gurl, request_headers,
-                                           message_handler());
+                                           copy_options, message_handler());
     EXPECT_TRUE(options_success.second);
     return options_success.first;
   }
@@ -231,14 +220,14 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithNoUrlNamerOptions) {
   // no custom options, and no errors.
   RequestHeaders request_headers;
   scoped_ptr<RewriteOptions> options(
-      GetCustomOptions("http://example.com/", request_headers));
+      GetCustomOptions("http://example.com/", request_headers, NULL));
   ASSERT_TRUE(options.get() == NULL);
 
   // Now put a query-param in, just turning on PageSpeed.  The core filters
   // should be enabled.
   options.reset(GetCustomOptions(
       "http://example.com/?ModPagespeed=on",
-      request_headers));
+      request_headers, NULL));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
   EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCache));
@@ -248,7 +237,7 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithNoUrlNamerOptions) {
   // Now explicitly enable a filter, which should disable others.
   options.reset(GetCustomOptions(
       "http://example.com/?ModPagespeedFilters=extend_cache",
-      request_headers));
+      request_headers, NULL));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCache));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
@@ -259,14 +248,14 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithNoUrlNamerOptions) {
   request_headers.Add("ModPagespeed", "off");
   options.reset(GetCustomOptions(
       "http://example.com/?ModPagespeed=on",
-      request_headers));
+      request_headers, NULL));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_FALSE(options->enabled());
 
   // Now explicitly enable a bogus filter, which should will cause the
   // options to be uncomputable.
   GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
-  EXPECT_FALSE(proxy_interface_->GetCustomOptions(gurl, request_headers,
+  EXPECT_FALSE(proxy_interface_->GetCustomOptions(gurl, request_headers, NULL,
                                                   message_handler()).second);
 }
 
@@ -274,14 +263,12 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
   // Inject a url-namer that will establish a domain configuration.
   RewriteOptions namer_options;
   namer_options.EnableFilter(RewriteOptions::kCombineJavascript);
-  MockUrlNamer mock_url_namer(&namer_options);
-  resource_manager()->set_url_namer(&mock_url_namer);
 
   RequestHeaders request_headers;
   scoped_ptr<RewriteOptions> options(
-      GetCustomOptions("http://example.com/", request_headers));
+      GetCustomOptions("http://example.com/", request_headers, &namer_options));
   // Even with no query-params or request-headers, we get the custom
-  // options generated from the UrlNamer.
+  // options as domain options provided as argument.
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
   EXPECT_FALSE(options->Enabled(RewriteOptions::kExtendCache));
@@ -291,7 +278,7 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
   // Now combine with query params, which turns core-filters on.
   options.reset(GetCustomOptions(
       "http://example.com/?ModPagespeed=on",
-      request_headers));
+      request_headers, &namer_options));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
   EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCache));
@@ -301,10 +288,10 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
   // Explicitly enable a filter in query-params, which will turn off
   // the core filters that have not been explicitly enabled.  Note
   // that explicit filter-setting in query-params overrides completely
-  // the options set from the UrlNamer.
+  // the options provided as a parameter.
   options.reset(GetCustomOptions(
       "http://example.com/?ModPagespeedFilters=combine_css",
-      request_headers));
+      request_headers, &namer_options));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
   EXPECT_FALSE(options->Enabled(RewriteOptions::kExtendCache));
@@ -315,6 +302,7 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
   // options to be uncomputable.
   GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
   EXPECT_FALSE(proxy_interface_->GetCustomOptions(gurl, request_headers,
+                                                  (&namer_options)->Clone(),
                                                   message_handler()).second);
 }
 
