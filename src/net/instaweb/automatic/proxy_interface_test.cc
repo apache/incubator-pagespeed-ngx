@@ -74,7 +74,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     RewriteOptions* options = resource_manager()->global_options();
-    options->set_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
+    options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
     ResourceManagerTestBase::SetUp();
     proxy_interface_.reset(
         new ProxyInterface("localhost", 80, resource_manager(), statistics()));
@@ -304,6 +304,42 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
   EXPECT_FALSE(proxy_interface_->GetCustomOptions(gurl, request_headers,
                                                   (&namer_options)->Clone(),
                                                   message_handler()).second);
+}
+
+TEST_F(ProxyInterfaceTest, MinResourceTimeZero) {
+  RewriteOptions* options = resource_manager()->global_options();
+  options->SetRewriteLevel(RewriteOptions::kPassThrough);
+  options->EnableFilter(RewriteOptions::kRewriteCss);
+  options->set_min_resource_cache_time_to_rewrite_ms(
+      kHtmlCacheTimeSec * Timer::kSecondMs);
+
+  InitResponseHeaders("page.html", kContentTypeHtml,
+                      CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
+  InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
+                      kHtmlCacheTimeSec * 2);
+
+  GoogleString text;
+  ResponseHeaders headers;
+  FetchFromProxy("page.html", true, &text, &headers);
+  EXPECT_EQ(CssLinkHref(AbsolutifyUrl("a.css.pagespeed.cf.0.css")), text);
+}
+
+TEST_F(ProxyInterfaceTest, MinResourceTimeLarge) {
+  RewriteOptions* options = resource_manager()->global_options();
+  options->SetRewriteLevel(RewriteOptions::kPassThrough);
+  options->EnableFilter(RewriteOptions::kRewriteCss);
+  options->set_min_resource_cache_time_to_rewrite_ms(
+      4 * kHtmlCacheTimeSec * Timer::kSecondMs);
+
+  InitResponseHeaders("page.html", kContentTypeHtml,
+                      CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
+  InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
+                      kHtmlCacheTimeSec * 2);
+
+  GoogleString text;
+  ResponseHeaders headers;
+  FetchFromProxy("page.html", true, &text, &headers);
+  EXPECT_EQ(CssLinkHref("a.css"), text);
 }
 
 }  // namespace

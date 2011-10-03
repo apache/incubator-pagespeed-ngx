@@ -191,7 +191,7 @@ void ProxyFetch::HeadersComplete() {
       pass_through_ = false;
       int64 ttl_ms;
       GoogleString cache_control_suffix;
-      if ((options->html_cache_time_ms() == 0) ||
+      if ((options->max_html_cache_time_ms() == 0) ||
           response_headers_->HasValue(
               HttpAttributes::kCacheControl, "no-cache") ||
           response_headers_->HasValue(
@@ -199,9 +199,8 @@ void ProxyFetch::HeadersComplete() {
         ttl_ms = 0;
         cache_control_suffix = ", no-cache, no-store";
       } else {
-        ttl_ms =
-          std::min(options->html_cache_time_ms(),
-                   response_headers_->cache_ttl_ms());
+        ttl_ms = std::min(options->max_html_cache_time_ms(),
+                          response_headers_->cache_ttl_ms());
         // TODO(sligocki): We defensively set Cache-Control: private, but if
         // original HTML was publicly cacheable, we should be able to set
         // the rewritten HTML as publicly cacheable likewise.

@@ -62,7 +62,10 @@ const int64 RewriteOptions::kDefaultJsInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultCssOutlineMinBytes = 3000;
 const int64 RewriteOptions::kDefaultJsOutlineMinBytes = 3000;
 
-const int64 RewriteOptions::kDefaultHtmlCacheTimeMs = 0;
+// TODO(sligocki): Change kDefaultMaxHtmlCacheTimeMs to 5min.
+const int64 RewriteOptions::kDefaultMaxHtmlCacheTimeMs = 0;
+const int64 RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs = 0;
+
 const int64 RewriteOptions::kDefaultCacheInvalidationTimestamp = -1;
 
 // Limit on concurrent ongoing image rewrites.
@@ -169,7 +172,9 @@ RewriteOptions::RewriteOptions() : modified_(false) {
   add_option(kDefaultJsInlineMaxBytes, &js_inline_max_bytes_);
   add_option(kDefaultCssOutlineMinBytes, &css_outline_min_bytes_);
   add_option(kDefaultJsOutlineMinBytes, &js_outline_min_bytes_);
-  add_option(kDefaultHtmlCacheTimeMs, &html_cache_time_ms_);
+  add_option(kDefaultMaxHtmlCacheTimeMs, &max_html_cache_time_ms_);
+  add_option(kDefaultMinResourceCacheTimeToRewriteMs,
+             &min_resource_cache_time_to_rewrite_ms_);
   add_option(kDefaultCacheInvalidationTimestamp,
              &cache_invalidation_timestamp_);
   add_option(kDefaultImageMaxRewritesAtOnce, &image_max_rewrites_at_once_);

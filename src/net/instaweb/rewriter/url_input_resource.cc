@@ -45,7 +45,7 @@ namespace net_instaweb {
 namespace {
 
 bool IsValidAndCacheableImpl(HTTPCache* http_cache,
-                             int64 html_cache_time_ms,
+                             int64 min_cache_time_to_rewrite_ms,
                              bool respect_vary,
                              const ResponseHeaders* headers) {
   if (headers->status_code() != HttpStatus::kOK) {
@@ -60,7 +60,7 @@ bool IsValidAndCacheableImpl(HTTPCache* http_cache,
   }
   // If we are setting a TTL for HTML, we cannot rewrite any resource
   // with a shorter TTL.
-  cacheable &= (headers->cache_ttl_ms() >= html_cache_time_ms);
+  cacheable &= (headers->cache_ttl_ms() >= min_cache_time_to_rewrite_ms);
 
   if (!cacheable && !http_cache->force_caching()) {
     return false;
@@ -83,7 +83,8 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
       domain_lawyer_(rewrite_options->domain_lawyer()),
       message_handler_(NULL),
       respect_vary_(rewrite_options->respect_vary()),
-      html_cache_time_ms_(rewrite_options->html_cache_time_ms()) {
+      resource_cutoff_ms_(
+          rewrite_options->min_resource_cache_time_to_rewrite_ms()) {
     // We intentionally do *not* keep a pointer to rewrite_options because
     // the pointer may not be valid at callback time.
   }
@@ -155,7 +156,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   bool AddToCache(bool success) {
     ResponseHeaders* headers = response_headers();
     if (success &&
-        IsValidAndCacheableImpl(http_cache(), html_cache_time_ms_,
+        IsValidAndCacheableImpl(http_cache(), resource_cutoff_ms_,
                                 respect_vary_, headers)) {
       HTTPValue* value = http_value();
       value->SetHeaders(headers);
@@ -207,7 +208,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
  private:
   scoped_ptr<NamedLock> lock_;
   const bool respect_vary_;
-  const int64 html_cache_time_ms_;
+  const int64 resource_cutoff_ms_;
   DISALLOW_COPY_AND_ASSIGN(UrlResourceFetchCallback);
 };
 
@@ -246,10 +247,10 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
 };
 
 bool UrlInputResource::IsValidAndCacheable() const {
-  return IsValidAndCacheableImpl(resource_manager()->http_cache(),
-                                 rewrite_options_->html_cache_time_ms(),
-                                 respect_vary_,
-                                 &response_headers_);
+  return IsValidAndCacheableImpl(
+      resource_manager()->http_cache(),
+      rewrite_options_->min_resource_cache_time_to_rewrite_ms(),
+      respect_vary_, &response_headers_);
 }
 
 bool UrlInputResource::Load(MessageHandler* handler) {

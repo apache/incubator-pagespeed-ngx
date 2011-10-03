@@ -101,7 +101,8 @@ class RewriteOptions {
   static const int64 kDefaultJsInlineMaxBytes;
   static const int64 kDefaultCssOutlineMinBytes;
   static const int64 kDefaultJsOutlineMinBytes;
-  static const int64 kDefaultHtmlCacheTimeMs;
+  static const int64 kDefaultMaxHtmlCacheTimeMs;
+  static const int64 kDefaultMinResourceCacheTimeToRewriteMs;
   static const int64 kDefaultCacheInvalidationTimestamp;
   static const GoogleString kDefaultBeaconUrl;
 
@@ -184,9 +185,17 @@ class RewriteOptions {
   void set_js_inline_max_bytes(int64 x) {
     set_option(x, &js_inline_max_bytes_);
   }
-  int64 html_cache_time_ms() const { return html_cache_time_ms_.value(); }
-  void set_html_cache_time_ms(int64 x) {
-    set_option(x, &html_cache_time_ms_);
+  int64 max_html_cache_time_ms() const {
+    return max_html_cache_time_ms_.value();
+  }
+  void set_max_html_cache_time_ms(int64 x) {
+    set_option(x, &max_html_cache_time_ms_);
+  }
+  int64 min_resource_cache_time_to_rewrite_ms() const {
+    return min_resource_cache_time_to_rewrite_ms_.value();
+  }
+  void set_min_resource_cache_time_to_rewrite_ms(int64 x) {
+    set_option(x, &min_resource_cache_time_to_rewrite_ms_);
   }
 
   // Cache invalidation timestamp is in milliseconds since 1970.
@@ -415,9 +424,10 @@ class RewriteOptions {
   Option<int64> js_inline_max_bytes_;
   Option<int64> css_outline_min_bytes_;
   Option<int64> js_outline_min_bytes_;
-  // Default Cache-Control TTL for HTML. This will be the max we set HTML TTL
-  // and also the min input resource TTL we allow rewriting for.
-  Option<int64> html_cache_time_ms_;
+  // The max Cache-Control TTL for HTML.
+  Option<int64> max_html_cache_time_ms_;
+  // Resources with Cache-Control TTL less than this will not be rewritten.
+  Option<int64> min_resource_cache_time_to_rewrite_ms_;
   Option<int64> cache_invalidation_timestamp_;
 
   Option<int> image_max_rewrites_at_once_;

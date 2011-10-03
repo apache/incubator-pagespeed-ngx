@@ -61,11 +61,17 @@ DEFINE_int32(image_max_rewrites_at_once,
              net_instaweb::RewriteOptions::kDefaultImageMaxRewritesAtOnce,
              "Maximum number of images that will be rewritten simultaneously.");
 DEFINE_bool(log_rewrite_timing, false, "Log time taken by rewrite filters.");
-DEFINE_int64(html_cache_time_ms,
-             net_instaweb::RewriteOptions::kDefaultHtmlCacheTimeMs,
-             "Default Cache-Control TTL for HTML. This will be the max we "
-             "set HTML TTL and also the min input resource TTL we allow "
-             "rewriting for.");
+
+DEFINE_int64(max_html_cache_time_ms,
+             net_instaweb::RewriteOptions::kDefaultMaxHtmlCacheTimeMs,
+             "Default Cache-Control TTL for HTML. "
+             "Cache-Control TTL will be set to the lower of this value "
+             "and the original TTL.");
+DEFINE_int64(
+    min_resource_cache_time_to_rewrite_ms,
+    net_instaweb::RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs,
+    "No resources with Cache-Control TTL less than this will be rewritten.");
+
 DEFINE_string(rewrite_domain_map, "",
               "Semicolon-separated list of rewrite_domain maps. "
               "Each domain-map is of the form dest=src1,src2,src3");
@@ -146,8 +152,12 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("log_rewrite_timing")) {
     options->set_log_rewrite_timing(FLAGS_log_rewrite_timing);
   }
-  if (WasExplicitlySet("html_cache_time_ms")) {
-    options->set_html_cache_time_ms(FLAGS_html_cache_time_ms);
+  if (WasExplicitlySet("max_html_cache_time_ms")) {
+    options->set_max_html_cache_time_ms(FLAGS_max_html_cache_time_ms);
+  }
+  if (WasExplicitlySet("min_resource_cache_time_to_rewrite_ms")) {
+    options->set_min_resource_cache_time_to_rewrite_ms(
+        FLAGS_min_resource_cache_time_to_rewrite_ms);
   }
   if (WasExplicitlySet("flush_html")) {
     options->set_flush_html(FLAGS_flush_html);
