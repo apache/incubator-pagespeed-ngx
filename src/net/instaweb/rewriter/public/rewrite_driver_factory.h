@@ -162,9 +162,6 @@ class RewriteDriverFactory {
   // Initializes a ResourceManager that has been new'd directly.  This
   // allows 2-phase initialization if required.  There is no need to
   // call this if you use CreateResourceManager.
-  //
-  // This copies the default_options() from this class to the resource manager's
-  // global_options().
   void InitResourceManager(ResourceManager* resource_manager);
 
   // Provides an optional hook for adding rewrite passes that are

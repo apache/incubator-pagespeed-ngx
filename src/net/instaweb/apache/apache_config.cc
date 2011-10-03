@@ -21,6 +21,14 @@ namespace net_instaweb {
 
 ApacheConfig::ApacheConfig(const StringPiece& description)
     : description_(description.data(), description.size()) {
+  Init();
+}
+
+ApacheConfig::ApacheConfig() {
+  Init();
+}
+
+void ApacheConfig::Init() {
   add_option("", &fetcher_proxy_);
   add_option("", &file_cache_path_);
   add_option("", &filename_prefix_);

@@ -321,7 +321,6 @@ ResourceManager* RewriteDriverFactory::CreateResourceManager() {
       << "RewriteDriverFactory::set_filename_prefix.";
 
   ResourceManager* resource_manager = new ResourceManager(this);
-  resource_manager->global_options()->CopyFrom(*default_options());
   InitResourceManager(resource_manager);
   return resource_manager;
 }

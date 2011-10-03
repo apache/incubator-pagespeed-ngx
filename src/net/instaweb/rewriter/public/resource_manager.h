@@ -226,10 +226,9 @@ class ResourceManager {
   // Gets the options that are globally set on this resource manager.
   //
   // Note this is overridden by ApacheResourceManager which has
-  // apache-specific options.  In the base-class this is thread-unsafe
-  // in its first call, when it lazily-initializes a RewriteOptions
-  // scoped_ptr.
-  virtual RewriteOptions* global_options();
+  // apache-specific options.  This is thread-unsafe in its first
+  // call, when it lazily-initializes a RewriteOptions scoped_ptr.
+  RewriteOptions* global_options();
 
   // Makes a new, empty set of RewriteOptions.
   RewriteOptions* NewOptions();

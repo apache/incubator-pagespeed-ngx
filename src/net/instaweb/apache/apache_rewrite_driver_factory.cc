@@ -456,7 +456,6 @@ void ApacheRewriteDriverFactory::AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
 ApacheResourceManager* ApacheRewriteDriverFactory::MakeApacheResourceManager(
     server_rec* server) {
   ApacheResourceManager* rm = new ApacheResourceManager(this, server, version_);
-  rm->global_options()->CopyFrom(*default_options());
   uninitialized_managers_.insert(rm);
   return rm;
 }

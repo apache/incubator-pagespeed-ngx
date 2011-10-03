@@ -43,45 +43,42 @@ ApacheResourceManager::ApacheResourceManager(
       hostname_identifier_(StrCat(server->server_hostname, ":",
                                   IntegerToString(server->port))),
       initialized_(false),
-      config_(new ApacheConfig(hostname_identifier_)) {
+      subresource_fetcher_(NULL) {
+  config()->set_description(hostname_identifier_);
 }
 
 ApacheResourceManager::~ApacheResourceManager() {
 }
 
-// Override the ResourceManager definition of RewriteOptions.  This is
-// in the .cc file rather than the .h because we forward-declare
-// ApacheConfig in the .h and so the compiler doesn't know it's a
-// subclass.
-RewriteOptions* ApacheResourceManager::global_options() {
-  return config_.get();
-}
-
 bool ApacheResourceManager::InitFileCachePath() {
-  if (file_system()->IsDir(config_->file_cache_path().c_str(),
+  GoogleString file_cache_path = config()->file_cache_path();
+  if (file_system()->IsDir(file_cache_path.c_str(),
                            message_handler()).is_true()) {
     return true;
   }
-  bool ok = file_system()->RecursivelyMakeDir(config_->file_cache_path(),
+  bool ok = file_system()->RecursivelyMakeDir(file_cache_path,
                                               message_handler());
   if (ok) {
-    apache_factory_->AddCreatedDirectory(config_->file_cache_path());
+    apache_factory_->AddCreatedDirectory(file_cache_path);
   }
   return ok;
+}
+
+ApacheConfig* ApacheResourceManager::config() {
+  return static_cast<ApacheConfig*>(global_options());
 }
 
 void ApacheResourceManager::ChildInit() {
   DCHECK(!initialized_);
   if (!initialized_) {
     initialized_ = true;
-    ApacheCache* cache = apache_factory_->GetCache(config_.get());
+    ApacheCache* cache = apache_factory_->GetCache(config());
     set_http_cache(cache->http_cache());
     set_metadata_cache(cache->cache());
     set_lock_manager(cache->lock_manager());
-    UrlPollableAsyncFetcher* fetcher = apache_factory_->GetFetcher(
-        config_.get());
+    UrlPollableAsyncFetcher* fetcher = apache_factory_->GetFetcher(config());
     set_url_async_fetcher(fetcher);
-    if (!config_->slurping_enabled_read_only()) {
+    if (!config()->slurping_enabled_read_only()) {
       subresource_fetcher_ = fetcher;
     }
     apache_factory_->InitResourceManager(this);

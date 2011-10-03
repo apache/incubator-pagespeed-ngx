@@ -50,8 +50,7 @@ class ApacheResourceManager : public ResourceManager {
   GoogleString hostname_identifier() { return hostname_identifier_; }
   void SetStatistics(SharedMemStatistics* x);
   ApacheRewriteDriverFactory* apache_factory() { return apache_factory_; }
-  ApacheConfig* config() { return config_.get(); }
-  virtual RewriteOptions* global_options();
+  ApacheConfig* config();
   bool InitFileCachePath();
 
   // Should be called after the child process is forked.
@@ -78,7 +77,6 @@ class ApacheResourceManager : public ResourceManager {
   GoogleString hostname_identifier_;
 
   bool initialized_;
-  scoped_ptr<ApacheConfig> config_;
 
   // A pollable fetcher provides a Poll() to wait for outstanding
   // fetches to complete.  This is used in

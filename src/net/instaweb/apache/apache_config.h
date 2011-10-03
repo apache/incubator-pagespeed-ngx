@@ -42,12 +42,14 @@ class ApacheConfig : public RewriteOptions {
       const StringPiece& in, RefererStatisticsOutputLevel* out);
 
   explicit ApacheConfig(const StringPiece& dir);
+  ApacheConfig();
   ~ApacheConfig() {}
 
   // Human-readable description of what this configuration is for.  This
   // may be a directory, or a string indicating a combination of directives
   // for multiple directories.
   StringPiece description() const { return description_; }
+  void set_description(const StringPiece& x) { x.CopyToString(&description_); }
 
   int64 file_cache_clean_interval_ms() const {
     return file_cache_clean_interval_ms_.value();
@@ -174,6 +176,8 @@ class ApacheConfig : public RewriteOptions {
   virtual RewriteOptions* Clone() const;
 
  private:
+  void Init();
+
   GoogleString description_;
   RewriteOptions options_;
 
