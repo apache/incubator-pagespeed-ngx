@@ -68,7 +68,7 @@ class WriteThroughCallback : public CacheInterface::Callback {
 
 
   WriteThroughCache* write_through_cache_;
-  const GoogleString& key_;
+  GoogleString key_;
   CacheInterface::Callback* callback_;
   bool trying_cache2_;
 };

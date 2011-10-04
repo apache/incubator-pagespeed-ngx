@@ -68,7 +68,6 @@ void RewriteDriverFactory::Init() {
   slurp_read_only_ = false;
   slurp_print_urls_ = false;
   async_rewrites_ = true;
-  http_cache_backend_ = NULL;
   SetStatistics(&null_statistics_);
   resource_manager_mutex_.reset(thread_system_->NewMutex());
   worker_pools_.assign(kNumWorkerPools, NULL);
@@ -302,9 +301,9 @@ StringPiece RewriteDriverFactory::filename_prefix() {
 
 HTTPCache* RewriteDriverFactory::http_cache() {
   if (http_cache_ == NULL) {
-    http_cache_backend_ = DefaultCacheInterface();
+    cache_backend_.reset(DefaultCacheInterface());
     http_cache_.reset(new HTTPCache(
-        http_cache_backend_, timer(), statistics()));
+        cache_backend_.get(), timer(), statistics()));
     http_cache_->set_force_caching(force_caching_);
   }
   return http_cache_.get();
@@ -339,7 +338,7 @@ void RewriteDriverFactory::InitResourceManager(
     resource_manager->set_http_cache(http_cache());
   }
   if (resource_manager->metadata_cache() == NULL) {
-    resource_manager->set_metadata_cache(http_cache_backend_);
+    resource_manager->set_metadata_cache(cache_backend_.get());
   }
   if (resource_manager->lock_manager() == NULL) {
     resource_manager->set_lock_manager(lock_manager());

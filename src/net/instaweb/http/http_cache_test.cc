@@ -72,8 +72,8 @@ class HTTPCacheTest : public testing::Test {
   }
 
   HTTPCacheTest() : mock_timer_(ParseDate(kStartDate)),
-                    http_cache_(new LRUCache(kMaxSize), &mock_timer_,
-                                simple_stats_) {
+                    lru_cache_(kMaxSize),
+                    http_cache_(&lru_cache_, &mock_timer_, simple_stats_) {
   }
 
   void InitHeaders(ResponseHeaders* headers, const char* cache_control) {
@@ -115,6 +115,7 @@ class HTTPCacheTest : public testing::Test {
   }
 
   MockTimer mock_timer_;
+  LRUCache lru_cache_;
   HTTPCache http_cache_;
   GoogleMessageHandler message_handler_;
   static SimpleStats* simple_stats_;

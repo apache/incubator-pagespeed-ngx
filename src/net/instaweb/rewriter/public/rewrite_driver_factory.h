@@ -305,8 +305,8 @@ class RewriteDriverFactory {
   scoped_ptr<RewriteOptions> default_options_;
 
   // Caching support
+  scoped_ptr<CacheInterface> cache_backend_;
   scoped_ptr<HTTPCache> http_cache_;
-  CacheInterface* http_cache_backend_;  // Pointer owned by http_cache_
 
   // Manage locks for output resources.
   scoped_ptr<NamedLockManager> lock_manager_;

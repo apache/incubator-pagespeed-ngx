@@ -47,7 +47,7 @@ class HTTPCache {
   static const char kCacheExpirations[];
   static const char kCacheInserts[];
 
-  // Takes over ownership of the cache.
+  // Does not take ownership of any inputs.
   HTTPCache(CacheInterface* cache, Timer* timer, Statistics* stats);
   ~HTTPCache();
 
@@ -155,7 +155,7 @@ class HTTPCache {
                  HTTPValue* value, MessageHandler* handler);
   void UpdateStats(FindResult result, int64 delta_us);
 
-  scoped_ptr<CacheInterface> cache_;
+  CacheInterface* cache_;  // Owned by the caller.
   Timer* timer_;
   bool force_caching_;
   Variable* cache_time_us_;

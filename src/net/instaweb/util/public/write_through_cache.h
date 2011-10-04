@@ -34,7 +34,7 @@ class WriteThroughCache : public CacheInterface {
  public:
   static const size_t kUnlimited;
 
-  // Takes ownership of both caches passed in.
+  // Does not take ownership of caches passed in.
   WriteThroughCache(CacheInterface* cache1, CacheInterface* cache2)
       : cache1_(cache1),
         cache2_(cache2),
@@ -52,15 +52,15 @@ class WriteThroughCache : public CacheInterface {
   // torward the size.
   void set_cache1_limit(size_t limit) { cache1_size_limit_ = limit; }
 
-  CacheInterface* cache1() { return cache1_.get(); }
-  CacheInterface* cache2() { return cache2_.get(); }
+  CacheInterface* cache1() { return cache1_; }
+  CacheInterface* cache2() { return cache2_; }
 
  private:
   void PutInCache1(const GoogleString& key, SharedString* value);
   friend class WriteThroughCallback;
 
-  scoped_ptr<CacheInterface> cache1_;
-  scoped_ptr<CacheInterface> cache2_;
+  CacheInterface* cache1_;
+  CacheInterface* cache2_;
   size_t cache1_size_limit_;
 
   DISALLOW_COPY_AND_ASSIGN(WriteThroughCache);

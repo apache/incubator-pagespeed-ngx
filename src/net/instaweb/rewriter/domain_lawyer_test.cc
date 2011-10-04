@@ -114,7 +114,8 @@ TEST_F(DomainLawyerTest, ExternalDomainDeclared) {
   // Make sure that we do not allow requests when the port is present; we've
   // only authorized origin "http://www.nytimes.com/",
   // not "http://www.nytimes.com:8080/".
-  GoogleString orig_cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
+  // The '-1' below is to strip the trailing slash.
+  GoogleString orig_cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix) - 1);
   GoogleString port_cdn_domain(cdn_domain.data(), cdn_domain.size() - 1);
   port_cdn_domain += ":8080/";
   EXPECT_FALSE(MapRequest(
@@ -122,6 +123,28 @@ TEST_F(DomainLawyerTest, ExternalDomainDeclared) {
       &mapped_domain_name));
   EXPECT_FALSE(domain_lawyer_.DoDomainsServeSameContent(
       port_cdn_domain, cdn_domain));
+}
+
+TEST_F(DomainLawyerTest, ExternalUpperCaseDomainDeclared) {
+  GoogleString cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix));
+  UpperString(&cdn_domain);   // will get normalized in AddDomain.
+  ASSERT_TRUE(domain_lawyer_.AddDomain(cdn_domain, &message_handler_));
+  GoogleString mapped_domain_name;
+  ASSERT_TRUE(MapRequest(
+      orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name));
+  LowerString(&cdn_domain);
+  EXPECT_EQ(cdn_domain, mapped_domain_name);
+
+  // Make sure that we do not allow requests when the port is present; we've
+  // only authorized origin "http://www.nytimes.com/",
+  // not "http://www.nytimes.com:8080/".
+  // The '-1' below is to strip the trailing slash.
+  GoogleString orig_cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix) - 1);
+  GoogleString port_cdn_domain(cdn_domain.data(), cdn_domain.size() - 1);
+  port_cdn_domain += ":8080/";
+  EXPECT_FALSE(MapRequest(
+      orig_request_, StrCat(port_cdn_domain, "/", kResourceUrl),
+      &mapped_domain_name));
 }
 
 TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutScheme) {
@@ -136,7 +159,8 @@ TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutScheme) {
 
 TEST_F(DomainLawyerTest, ExternalDomainDeclaredWithoutTrailingSlash) {
   StringPiece cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix));
-  StringPiece cdn_domain_no_slash(kCdnPrefix, sizeof(kCdnPrefix) - 2);
+  // The '-1' below is to strip the trailing slash.
+  StringPiece cdn_domain_no_slash(kCdnPrefix, STATIC_STRLEN(kCdnPrefix) - 1);
   ASSERT_TRUE(domain_lawyer_.AddDomain(cdn_domain_no_slash, &message_handler_));
   GoogleString mapped_domain_name;
   ASSERT_TRUE(MapRequest(
@@ -174,7 +198,7 @@ TEST_F(DomainLawyerTest, PortExternalDomainNotDeclared) {
 }
 
 TEST_F(DomainLawyerTest, PortExternalDomainDeclared) {
-  GoogleString port_cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
+  GoogleString port_cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix) - 1);
   port_cdn_domain += ":8080/";
   ASSERT_TRUE(domain_lawyer_.AddDomain(port_cdn_domain, &message_handler_));
   GoogleString mapped_domain_name;
@@ -186,14 +210,14 @@ TEST_F(DomainLawyerTest, PortExternalDomainDeclared) {
   // Make sure that we do not allow requests when the port is missing; we've
   // only authorized origin "http://www.nytimes.com:8080/",
   // not "http://www.nytimes.com:8080".
-  GoogleString orig_cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
+  GoogleString orig_cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix) - 1);
   orig_cdn_domain += "/";
   EXPECT_FALSE(MapRequest(port_request_, StrCat(orig_cdn_domain, kResourceUrl),
                           &mapped_domain_name));
 }
 
 TEST_F(DomainLawyerTest, PortWildcardDomainDeclared) {
-  GoogleString port_cdn_domain(kCdnPrefix, sizeof(kCdnPrefix) - 2);
+  GoogleString port_cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix) - 1);
   port_cdn_domain += ":8080/";
   ASSERT_TRUE(domain_lawyer_.AddDomain("*.nytimes.com:*", &message_handler_));
   GoogleString mapped_domain_name;

@@ -187,6 +187,7 @@ GoogleString DomainLawyer::NormalizeDomainName(const StringPiece& domain_name) {
   //     http://www.google.com
   //     www.google.com/
   //     http://www.google.com/
+  //     WWW.GOOGLE.COM/
   // all come out the same.
   GoogleString domain_name_str;
   if (domain_name.find("://") == GoogleString::npos) {
@@ -195,6 +196,7 @@ GoogleString DomainLawyer::NormalizeDomainName(const StringPiece& domain_name) {
     domain_name.CopyToString(&domain_name_str);
   }
   EnsureEndsInSlash(&domain_name_str);
+  LowerString(&domain_name_str);
   return domain_name_str;
 }
 
