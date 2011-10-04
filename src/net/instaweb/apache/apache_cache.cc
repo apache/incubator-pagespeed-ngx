@@ -74,11 +74,11 @@ ApacheCache::ApacheCache(const StringPiece& path,
     if (config.lru_cache_byte_limit() != 0) {
       write_through_cache->set_cache1_limit(config.lru_cache_byte_limit());
     }
-    cache_ = write_through_cache;
+    cache_.reset(write_through_cache);
   } else {
-    cache_ = file_cache_;
+    cache_.reset(file_cache_);
   }
-  http_cache_.reset(new HTTPCache(cache_, factory->timer(),
+  http_cache_.reset(new HTTPCache(cache_.get(), factory->timer(),
                                   factory->statistics()));
 }
 

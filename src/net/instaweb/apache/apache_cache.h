@@ -46,7 +46,7 @@ class ApacheCache {
               const ApacheConfig& config,
               ApacheRewriteDriverFactory* factory);
   ~ApacheCache();
-  CacheInterface* cache() { return cache_; }
+  CacheInterface* cache() { return cache_.get(); }
   NamedLockManager* lock_manager() { return lock_manager_; }
   HTTPCache* http_cache() { return http_cache_.get(); }
 
@@ -60,7 +60,7 @@ class ApacheCache {
   GoogleString path_;
 
   ApacheRewriteDriverFactory* factory_;
-  CacheInterface* cache_;
+  scoped_ptr<CacheInterface> cache_;
   scoped_ptr<SharedMemLockManager> shared_mem_lock_manager_;
   scoped_ptr<FileSystemLockManager> file_system_lock_manager_;
   NamedLockManager* lock_manager_;
