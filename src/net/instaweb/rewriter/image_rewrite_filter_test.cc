@@ -371,6 +371,33 @@ TEST_P(ImageRewriteTest, ResizeTest) {
                     kResizedDims, kResizedDims, true, false);
 }
 
+TEST_P(ImageRewriteTest, ResizeStyleTest) {
+  // Make sure we resize images, but don't optimize them in place.
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+  const char kResizedDims[] = " style=\"width:256px;height:192px;\"";
+  // Without explicit resizing, we leave the image alone.
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+                    "", "", false, false);
+  // With resizing, we optimize.
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+                    kResizedDims, kResizedDims, true, false);
+
+  const char kMixedDims[] = " width=\"256\" style=\"height:192px;\"";
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+                    kMixedDims, kMixedDims, true, false);
+
+  const char kMoreMixedDims[] =
+      " height=\"197\" style=\"width:256px;broken:true;\"";
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+                    kMoreMixedDims, kMoreMixedDims, true, false);
+
+  const char kUnparsableDims[] =
+      " style=\"width:256cm;height:192cm;\"";
+    TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+                      kUnparsableDims, kUnparsableDims, false, false);
+}
+
 TEST_P(ImageRewriteTest, InlineTest) {
   // Make sure we resize and inline images, but don't optimize them in place.
   options()->set_image_inline_max_bytes(10000);

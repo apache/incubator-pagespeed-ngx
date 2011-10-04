@@ -104,6 +104,14 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
   bool FinishRewriteImageUrl(const CachedResult* cached, HtmlElement* element,
                              HtmlElement::Attribute* src);
 
+  // Populates width and height with the attributes specified in the
+  // image tag (including in an inline style attribute).
+  bool GetDimensions(HtmlElement* element, int* width, int* height);
+
+  // Returns true if there is either a width or height attribute specified,
+  // even if they're not parsable.
+  bool HasAnyDimensions(HtmlElement* element);
+
   scoped_ptr<const ImageTagScanner> image_filter_;
   scoped_ptr<WorkBound> work_bound_;
   Variable* rewrite_count_;

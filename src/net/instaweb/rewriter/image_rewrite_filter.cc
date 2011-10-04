@@ -24,6 +24,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
@@ -347,8 +348,7 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
   const RewriteOptions* options = driver_->options();
 
   if (options->Enabled(RewriteOptions::kResizeImages) &&
-      element->IntAttributeValue(HtmlName::kWidth, &width) &&
-      element->IntAttributeValue(HtmlName::kHeight, &height)) {
+      GetDimensions(element, &width, &height)) {
     // Specific image size is called for.  Rewrite to that size.
     ImageDim* page_dim = resource_context->mutable_image_tag_dims();
     page_dim->set_width(width);
@@ -413,8 +413,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     }
 
     if (options->Enabled(RewriteOptions::kInsertImageDimensions) &&
-        !element->FindAttribute(HtmlName::kWidth) &&
-        !element->FindAttribute(HtmlName::kHeight) &&
+        !HasAnyDimensions(element) &&
         cached->has_image_file_dims() &&
         ImageUrlEncoder::HasValidDimensions(cached->image_file_dims())) {
       // Add image dimensions.  We don't bother if even a single image
@@ -432,6 +431,45 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   }
 
   return rewrote_url;
+}
+
+bool ImageRewriteFilter::HasAnyDimensions(HtmlElement* element) {
+  if (element->FindAttribute(HtmlName::kWidth)) {
+    return true;
+  }
+  if (element->FindAttribute(HtmlName::kHeight)) {
+    return true;
+  }
+  css_util::StyleExtractor extractor(element);
+  return extractor.HasAnyDimensions();
+}
+
+bool ImageRewriteFilter::GetDimensions(HtmlElement* element,
+                                       int* width, int* height) {
+  css_util::StyleExtractor extractor(element);
+  css_util::DimensionState state = extractor.state();
+  *width = extractor.width();
+  *height = extractor.height();
+  // If we didn't get a height dimension above, but there is a height
+  // value in the style attribute, that means there's a height value
+  // we can't process.  This height will tromp the height attribute in the
+  // image tag, so we need to avoid resizing.
+  // The same is true of width.
+  switch (state) {
+    case css_util::kHasBothDimensions:
+      return true;
+    case css_util::kNotParsable:
+      return false;
+    case css_util::kHasHeightOnly:
+      return element->IntAttributeValue(HtmlName::kWidth, width);
+    case css_util::kHasWidthOnly:
+      return element->IntAttributeValue(HtmlName::kHeight, height);
+    case css_util::kNoDimensions:
+      return (element->IntAttributeValue(HtmlName::kWidth, width) &&
+              element->IntAttributeValue(HtmlName::kHeight, height));
+    default:
+      return false;
+  }
 }
 
 bool ImageRewriteFilter::CanInline(

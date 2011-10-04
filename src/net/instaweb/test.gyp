@@ -82,6 +82,7 @@
         'rewriter/css_outline_filter_test.cc',
         'rewriter/css_rewrite_test_base.cc',
         'rewriter/css_tag_scanner_test.cc',
+        'rewriter/css_util_test.cc',
         'rewriter/div_structure_filter_test.cc',
         'rewriter/domain_lawyer_test.cc',
         'rewriter/domain_rewrite_filter_test.cc',

@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/css_resource_slot.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -1077,51 +1078,14 @@ bool ImageCombineFilter::Fetch(const OutputResourcePtr& resource,
 }
 
 // Get the dimensions of the declaration.  This is tricky.
+// If the element is larger than the image, spriting will not work correctly.
+// TODO(abliss): support same-sized vertically-repeating backgrounds in a
+// horizontal sprite, and horizontal ones in a vertical sprite.
 bool ImageCombineFilter::GetDeclarationDimensions(
     Css::Declarations* declarations, int* width, int* height) {
-  // If the element is larger than the image, spriting will not work correctly.
-  // TODO(abliss): support same-sized vertically-repeating backgrounds in a
-  // horizontal sprite, and horizontal ones in a vertical sprite.
-  *width = -1;
-  *height = -1;
-  bool no_dim = false;
-  for (Css::Declarations::iterator decl_iter = declarations->begin();
-       decl_iter != declarations->end() && !no_dim; ++decl_iter) {
-    Css::Declaration* decl = *decl_iter;
-    switch (decl->prop()) {
-      case Css::Property::WIDTH: {
-        const Css::Values* decl_values = decl->values();
-        for (Css::Values::const_iterator value_iter = decl_values->begin();
-             value_iter != decl_values->end(); ++value_iter) {
-          Css::Value* value = *value_iter;
-          if ((value->GetLexicalUnitType() == Css::Value::NUMBER)
-              && (value->GetDimension() == Css::Value::PX)) {
-            *width = value->GetIntegerValue();
-          } else {
-            no_dim = true;
-          }
-        }
-        break;
-      }
-      case Css::Property::HEIGHT: {
-        const Css::Values* decl_values = decl->values();
-        for (Css::Values::const_iterator value_iter = decl_values->begin();
-             value_iter != decl_values->end(); ++value_iter) {
-          Css::Value* value = *value_iter;
-          if ((value->GetLexicalUnitType() == Css::Value::NUMBER)
-              && (value->GetDimension() == Css::Value::PX)) {
-            *height = value->GetIntegerValue();
-          } else {
-            no_dim = true;
-          }
-        }
-        break;
-      }
-      default:
-        break;
-    }
-  }
-  return (*width != -1) && (*height != -1);
+  css_util::DimensionState state =
+      css_util::GetDimensions(declarations, width, height);
+  return (state == css_util::kHasBothDimensions);
 }
 
 // Must initialize context_ with appropriate parent before hand.

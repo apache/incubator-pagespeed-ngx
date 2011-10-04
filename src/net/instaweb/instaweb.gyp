@@ -428,7 +428,6 @@
       ],
       'sources': [
         'rewriter/image.cc',
-        'rewriter/image_rewrite_filter.cc',
         'rewriter/image_tag_scanner.cc',
         'rewriter/image_url_encoder.cc',
         'rewriter/webp_optimizer.cc',
@@ -487,6 +486,7 @@
         'rewriter/css_image_rewriter_async.cc',
         'rewriter/css_minify.cc',
         'rewriter/css_resource_slot.cc',
+        'rewriter/css_util.cc',
         'rewriter/image_combine_filter.cc',
       ],
       'include_dirs': [
@@ -533,6 +533,7 @@
         'rewriter/flush_html_filter.cc',
         'rewriter/google_analytics_filter.cc',
         'rewriter/inline_rewrite_context.cc',
+        'rewriter/image_rewrite_filter.cc',
         'rewriter/js_combine_filter.cc',
         'rewriter/js_inline_filter.cc',
         'rewriter/js_outline_filter.cc',
