@@ -51,6 +51,8 @@ class WaitUrlAsyncFetcher;
 // mock fetchers, and a memory-based file system.
 class TestRewriteDriverFactory : public RewriteDriverFactory {
  public:
+  static const int64 kStartTimeMs;  // Arbitrary time to start MockTimer.
+
   TestRewriteDriverFactory(const StringPiece& temp_dir,
                            MockUrlFetcher* mock_fetcher);
   virtual ~TestRewriteDriverFactory();

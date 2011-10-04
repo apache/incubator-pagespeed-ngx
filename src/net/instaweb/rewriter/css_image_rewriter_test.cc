@@ -457,8 +457,10 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
             kTestDomain, RewriteDriver::kCssFilterId, StrCat(id, ".css"),
             &kContentTypeCss, kRewrittenResource, use_async_flow));
     ASSERT_TRUE(output_resource.get() != NULL);
-    EXPECT_EQ(css_url, output_resource->url());
+    // output_resource's hash will not be set unless its cached_result could
+    // be loaded.
     ASSERT_TRUE(output_resource->cached_result() != NULL);
+    EXPECT_EQ(css_url, output_resource->url());
 
     EXPECT_EQ(expected_expire_ms,
               output_resource->cached_result()->origin_expiration_time_ms());
@@ -495,7 +497,8 @@ TEST_P(CssFilterSubresourceTest, SubResourceDepends) {
                              kExpectChange | kExpectSuccess);
 
   // 10 is the smaller of expiration times of a.png, b.png and ext.css
-  ValidateExpirationTime("ext", output.c_str(), kMinExpirationTimeMs);
+  ValidateExpirationTime("ext", output.c_str(),
+                         start_time_ms() + kMinExpirationTimeMs);
 }
 
 // Test to make sure we don't cache for long if the rewrite was based

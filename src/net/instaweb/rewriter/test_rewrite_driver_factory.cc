@@ -76,6 +76,9 @@ class ProxyUrlFetcher : public UrlFetcher {
 
 }  // namespace
 
+// TODO(sligocki): Use: MockTimer::kApr_5_2010_ms - 2 * Timer::kMonthMs;
+const int64 TestRewriteDriverFactory::kStartTimeMs = 0;
+
 TestRewriteDriverFactory::TestRewriteDriverFactory(
     const StringPiece& temp_dir, MockUrlFetcher* mock_fetcher)
   : mock_timer_(NULL),
@@ -144,7 +147,7 @@ FileSystem* TestRewriteDriverFactory::DefaultFileSystem() {
 
 Timer* TestRewriteDriverFactory::DefaultTimer() {
   DCHECK(mock_timer_ == NULL);
-  mock_timer_ = new MockTimer(0);
+  mock_timer_ = new MockTimer(kStartTimeMs);
   return mock_timer_;
 }
 

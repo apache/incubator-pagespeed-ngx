@@ -108,6 +108,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   // Fetches data (which is expected to exist) for given resource,
   // but making sure to go through the path that checks for its
   // non-existence and potentially doing locking, too.
+  // Note: resource must have hash set.
   bool FetchExtantOutputResourceHelper(const OutputResourcePtr& resource,
                                        Writer* writer) {
     MockCallback callback;
@@ -181,32 +182,32 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     const int64 origin_expire_time_ms = 100000;
     const ContentType* content_type = &kContentTypeText;
     bool use_async_flow = false;
-    OutputResourcePtr nor(
+    OutputResourcePtr output(
         rewrite_driver()->CreateOutputResourceWithPath(
             kUrlPrefix, filter_prefix, name, content_type,
             kRewrittenResource, use_async_flow));
-    ASSERT_TRUE(nor.get() != NULL);
+    ASSERT_TRUE(output.get() != NULL);
     // Check name_key against url_prefix/fp.name
-    GoogleString name_key = nor->name_key();
+    GoogleString name_key = output->name_key();
     RemoveUrlPrefix(&name_key);
-    EXPECT_EQ(nor->full_name().EncodeIdName(), name_key);
+    EXPECT_EQ(output->full_name().EncodeIdName(), name_key);
     // Make sure the resource hasn't already been created (and lock it for
     // creation). We do need to give it a hash for fetching to do anything.
-    ResourceManagerTestingPeer::SetHash(nor.get(), "42");
-    EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(nor));
-    EXPECT_FALSE(nor->IsWritten());
+    ResourceManagerTestingPeer::SetHash(output.get(), "42");
+    EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(output));
+    EXPECT_FALSE(output->IsWritten());
 
     {
       // Check that a non-blocking attempt to lock another resource
       // with the same name returns quickly. We don't need a hash in this
       // case since we're just trying to create the resource, not fetch it.
-      OutputResourcePtr nor1(
+      OutputResourcePtr output1(
           rewrite_driver()->CreateOutputResourceWithPath(
               kUrlPrefix, filter_prefix, name, content_type,
               kRewrittenResource, use_async_flow));
-      ASSERT_TRUE(nor1.get() != NULL);
-      EXPECT_FALSE(nor1->TryLockForCreation());
-      EXPECT_FALSE(nor1->IsWritten());
+      ASSERT_TRUE(output1.get() != NULL);
+      EXPECT_FALSE(output1->TryLockForCreation());
+      EXPECT_FALSE(output1->IsWritten());
     }
 
     {
@@ -214,49 +215,49 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       // The fetch fails as there is no active filter to resolve it
       // (but returns after timing out the lock, however).
       ResourceNamer namer;
-      namer.CopyFrom(nor->full_name());
+      namer.CopyFrom(output->full_name());
       namer.set_hash("0");
       namer.set_ext("txt");
       GoogleString name = StrCat(kUrlPrefix, namer.Encode());
-      OutputResourcePtr nor1(CreateOutputResourceForFetch(name));
-      ASSERT_TRUE(nor1.get() != NULL);
+      OutputResourcePtr output1(CreateOutputResourceForFetch(name));
+      ASSERT_TRUE(output1.get() != NULL);
 
       // non-blocking
-      EXPECT_FALSE(nor1->TryLockForCreation());
+      EXPECT_FALSE(output1->TryLockForCreation());
       // blocking but stealing
-      EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(nor1));
+      EXPECT_FALSE(TryFetchExtantOutputResourceOrLock(output1));
     }
 
     // Write some data
-    EXPECT_TRUE(ResourceManagerTestingPeer::HasHash(nor.get()));
-    EXPECT_EQ(kRewrittenResource, nor->kind());
-    EXPECT_TRUE(resource_manager()->Write(HttpStatus::kOK, contents, nor.get(),
-                                          origin_expire_time_ms,
+    ASSERT_TRUE(ResourceManagerTestingPeer::HasHash(output.get()));
+    EXPECT_EQ(kRewrittenResource, output->kind());
+    EXPECT_TRUE(resource_manager()->Write(HttpStatus::kOK, contents,
+                                          output.get(), origin_expire_time_ms,
                                           message_handler()));
-    EXPECT_TRUE(nor->IsWritten());
+    EXPECT_TRUE(output->IsWritten());
     // Check that hash and ext are correct.
-    EXPECT_EQ("0", nor->hash());
-    EXPECT_EQ("txt", nor->extension());
+    EXPECT_EQ("0", output->hash());
+    EXPECT_EQ("txt", output->extension());
 
-    // Retrieve the same NOR from the cache.
-    OutputResourcePtr nor2(rewrite_driver()->CreateOutputResourceWithPath(
+    // Retrieve the same OutputResource from the cache.
+    OutputResourcePtr output2(rewrite_driver()->CreateOutputResourceWithPath(
         kUrlPrefix, filter_prefix, name, &kContentTypeText,
         kRewrittenResource, use_async_flow));
-    ASSERT_TRUE(nor2.get() != NULL);
-    EXPECT_TRUE(ResourceManagerTestingPeer::HasHash(nor2.get()));
-    EXPECT_EQ(kRewrittenResource, nor2->kind());
-    EXPECT_FALSE(nor2->IsWritten());
+    ASSERT_TRUE(output2.get() != NULL);
+    ASSERT_TRUE(ResourceManagerTestingPeer::HasHash(output2.get()));
+    EXPECT_EQ(kRewrittenResource, output2->kind());
+    EXPECT_FALSE(output2->IsWritten());
 
     // Fetch its contents and make sure they match
-    EXPECT_EQ(contents, GetOutputResourceWithoutLock(nor2));
+    EXPECT_EQ(contents, GetOutputResourceWithoutLock(output2));
 
     // Try asynchronously too
-    VerifyContentsCallback callback(nor2, contents);
+    VerifyContentsCallback callback(output2, contents);
     rewrite_driver()->ReadAsync(&callback, message_handler());
     callback.AssertCalled();
 
     // Grab the URL and make sure we correctly decode its components
-    GoogleString url = nor2->url();
+    GoogleString url = output2->url();
     EXPECT_LT(0, url.length());
     RemoveUrlPrefix(&url);
     ResourceNamer full_name;
@@ -271,19 +272,19 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
     // But with the URL (which contains the hash), we can retrieve it
     // from the http_cache.
-    OutputResourcePtr nor4(CreateOutputResourceForFetch(nor->url()));
-    EXPECT_EQ(nor->url(), nor4->url());
-    EXPECT_EQ(contents, GetOutputResourceWithoutLock(nor4));
+    OutputResourcePtr output4(CreateOutputResourceForFetch(output->url()));
+    EXPECT_EQ(output->url(), output4->url());
+    EXPECT_EQ(contents, GetOutputResourceWithoutLock(output4));
 
     // If it's evicted from the http_cache, we can also retrieve it from the
     // filesystem.
     lru_cache()->Clear();
-    nor4.reset(CreateOutputResourceForFetch(nor->url()));
-    EXPECT_EQ(nor->url(), nor4->url());
-    EXPECT_EQ(contents, GetOutputResourceWithLock(nor4));
+    output4.reset(CreateOutputResourceForFetch(output->url()));
+    EXPECT_EQ(output->url(), output4->url());
+    EXPECT_EQ(contents, GetOutputResourceWithLock(output4));
     // This also works asynchronously.
     lru_cache()->Clear();
-    VerifyContentsCallback callback2(nor4, contents);
+    VerifyContentsCallback callback2(output4, contents);
     rewrite_driver()->ReadAsync(&callback2, message_handler());
     callback2.AssertCalled();
   }

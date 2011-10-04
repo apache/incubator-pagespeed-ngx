@@ -160,7 +160,7 @@ void ResourceManagerTestBase::AppendDefaultHeaders(
   ResponseHeaders header;
   int64 time = mock_timer()->NowUs();
   // Reset mock timer so synthetic headers match original.
-  mock_timer()->SetTimeUs(0);
+  mock_timer()->SetTimeUs(start_time_ms() * Timer::kMsUs);
   resource_manager_->SetDefaultLongCacheHeaders(&content_type, &header);
   // Then set it back.  Note that no alarms should fire at this point
   // because alarms work on absolute time.

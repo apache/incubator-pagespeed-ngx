@@ -290,6 +290,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // The scheduler used by rewrite_driver
   MockScheduler* mock_scheduler() { return factory_.mock_scheduler(); }
 
+  int64 start_time_ms() const { return factory_.kStartTimeMs; }
+
   bool ReadFile(const char* filename, GoogleString* contents) {
     return file_system()->ReadFile(filename, contents, message_handler());
   }
