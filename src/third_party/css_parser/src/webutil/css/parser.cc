@@ -36,7 +36,6 @@
 #include "webutil/css/string_util.h"
 #include "webutil/css/util.h"
 #include "webutil/css/value.h"
-#include "webutil/css/valuevalidator.h"
 
 
 namespace Css {
@@ -811,12 +810,11 @@ Values* Parser::ParseValues(Property::Prop prop) {
                         ParseAnyExpectingColor(allowed_chars) :
                         ParseAny(allowed_chars));
 
-    if (v.get() &&
-        (allow_all_values_ ||
-         ValueValidator::Get()->IsValidValue(prop, *v, quirks_mode_)))
+if (v.get()) {
       values->push_back(v.release());
-    else
+    } else {
       return NULL;
+    }
   }
   return values.release();
 }
