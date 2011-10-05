@@ -173,6 +173,73 @@ TEST_F(ProxyInterfaceTest, PassThroughResource) {
   EXPECT_EQ(kContent, text);
 }
 
+TEST_F(ProxyInterfaceTest, SetCookieNotCached) {
+  ResponseHeaders headers;
+  const char kContent[] = "A very compelling article";
+  SetDefaultLongCacheHeaders(&kContentTypeText, &headers);
+  headers.Add(HttpAttributes::kSetCookie, "cookie");
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.txt"), headers, kContent);
+
+  // The first response served by the fetcher has Set-Cookie headers.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.txt", true, &text, &response_headers);
+  EXPECT_STREQ("cookie", response_headers.Lookup1(HttpAttributes::kSetCookie));
+  EXPECT_EQ(kContent, text);
+
+  // The next response that is served from cache does not have any Set-Cookie
+  // headers.
+  GoogleString text2;
+  ResponseHeaders response_headers2;
+  FetchFromProxy("text.txt", true, &text2, &response_headers2);
+  EXPECT_EQ(NULL, response_headers2.Lookup1(HttpAttributes::kSetCookie));
+  EXPECT_EQ(kContent, text2);
+}
+
+TEST_F(ProxyInterfaceTest, SetCookie2NotCached) {
+  ResponseHeaders headers;
+  const char kContent[] = "A very compelling article";
+  SetDefaultLongCacheHeaders(&kContentTypeText, &headers);
+  headers.Add(HttpAttributes::kSetCookie2, "cookie");
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.txt"), headers, kContent);
+
+  // The first response served by the fetcher has Set-Cookie headers.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.txt", true, &text, &response_headers);
+  EXPECT_STREQ("cookie", response_headers.Lookup1(HttpAttributes::kSetCookie2));
+  EXPECT_EQ(kContent, text);
+
+  // The next response that is served from cache does not have any Set-Cookie
+  // headers.
+  GoogleString text2;
+  ResponseHeaders response_headers2;
+  FetchFromProxy("text.txt", true, &text2, &response_headers2);
+  EXPECT_EQ(NULL, response_headers2.Lookup1(HttpAttributes::kSetCookie2));
+  EXPECT_EQ(kContent, text2);
+}
+
+TEST_F(ProxyInterfaceTest, EatCookiesOnReconstructFailure) {
+  // Make sure we don't pass through a Set-Cookie[2] when reconstructing
+  // a resource on demand fails.
+  GoogleString abs_path = AbsolutifyUrl("a.css");
+  ResponseHeaders response_headers;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &response_headers);
+  response_headers.Add(HttpAttributes::kSetCookie, "a cookie");
+  response_headers.Add(HttpAttributes::kSetCookie2, "a weird old-time cookie");
+  response_headers.ComputeCaching();
+  SetFetchResponse(abs_path, response_headers, "broken_css{");
+
+  ResponseHeaders out_response_headers;
+  GoogleString text;
+  FetchFromProxy(AbsolutifyUrl("a.css.pagespeed.cf.0.css"), true,
+                 &text, &out_response_headers);
+  EXPECT_EQ(NULL, out_response_headers.Lookup1(HttpAttributes::kSetCookie));
+  EXPECT_EQ(NULL, out_response_headers.Lookup1(HttpAttributes::kSetCookie2));
+}
+
 TEST_F(ProxyInterfaceTest, RewriteHtml) {
   GoogleString text;
   ResponseHeaders headers;

@@ -158,6 +158,32 @@ TEST_F(HTTPCacheTest, PutGet) {
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheExpirations));
 }
 
+TEST_F(HTTPCacheTest, CookiesNotCached) {
+  simple_stats_->Clear();
+  ResponseHeaders meta_data_in, meta_data_out;
+  meta_data_in.Add(HttpAttributes::kSetCookie, "cookies!");
+  meta_data_in.Add(HttpAttributes::kSetCookie2, "more cookies!");
+  InitHeaders(&meta_data_in, "max-age=300");
+  http_cache_.Put("mykey", &meta_data_in, "content", &message_handler_);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
+  HTTPValue value;
+  HTTPCache::FindResult found = Find(
+      "mykey", &value, &meta_data_out, &message_handler_);
+  ASSERT_EQ(HTTPCache::kFound, found);
+  ASSERT_TRUE(meta_data_out.headers_complete());
+  StringPiece contents;
+  ASSERT_TRUE(value.ExtractContents(&contents));
+  ConstStringStarVector values;
+  ASSERT_TRUE(meta_data_out.Lookup("name", &values));
+  ASSERT_EQ(static_cast<size_t>(1), values.size());
+  EXPECT_EQ(GoogleString("value"), *(values[0]));
+  EXPECT_FALSE(meta_data_out.Lookup(HttpAttributes::kSetCookie, &values));
+  EXPECT_FALSE(meta_data_out.Lookup(HttpAttributes::kSetCookie2, &values));
+  EXPECT_EQ("content", contents);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));  // The "query" counts as a hit.
+}
+
 // Verifies that the cache will 'remember' that a fetch should not be
 // cached for 5 minutes.
 TEST_F(HTTPCacheTest, RememberFetchFailedOrNotCacheable) {

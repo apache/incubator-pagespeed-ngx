@@ -246,6 +246,15 @@ class RewriteContext::FetchContext {
         ResourcePtr input_resource(rewrite_context_->slot(0)->resource());
         if (input_resource.get() != NULL && input_resource->ContentsValid()) {
           response_headers_->CopyFrom(*input_resource->response_headers());
+          // We strip cookies here to get consistent behavior between cases
+          // where we cache things and cases where we don't.
+          // TODO(morlovich): It might make sense to only do this for
+          // cacheable resources; in that case however the DCHECK
+          // in automatic/resource_fetch.cc, ResourceFetch::HeadersComplete
+          // should be relaxed.
+          if (response_headers_->Sanitize()) {
+            response_headers_->ComputeCaching();
+          }
           ok = writer_->Write(input_resource->contents(), handler_);
         } else {
           GoogleString url = input_resource.get()->url();

@@ -202,7 +202,7 @@ bool RewriteDomainTransformer::Transform(const StringPiece& in,
       == DomainRewriteFilter::kFail) {
     return false;
   }
-  // Note: Because of complications with sharding, we will cannot trim
+  // Note: Because of complications with sharding, we cannot trim
   // sharded resources against the final sharded domain of the CSS file.
   // Specifically, that final domain depends upon the precise text of that
   // we are altering here.

@@ -140,7 +140,7 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
 ApacheCache* ApacheRewriteDriverFactory::GetCache(ApacheConfig* config) {
   const GoogleString& path = config->file_cache_path();
   std::pair<PathCacheMap::iterator, bool> result = path_cache_map_.insert(
-      PathCacheMap::value_type(path, NULL));
+      PathCacheMap::value_type(path, static_cast<ApacheCache*>(NULL)));
   PathCacheMap::iterator iter = result.first;
   if (result.second) {
     iter->second = new ApacheCache(path, *config, this);
@@ -210,7 +210,7 @@ UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(
   }
 
   std::pair<FetcherMap::iterator, bool> result = fetcher_map_.insert(
-      FetcherMap::value_type(key, NULL));
+      FetcherMap::value_type(key, static_cast<UrlPollableAsyncFetcher*>(NULL)));
   FetcherMap::iterator iter = result.first;
   if (result.second) {
     UrlPollableAsyncFetcher* fetcher = NULL;

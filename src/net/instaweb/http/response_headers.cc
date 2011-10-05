@@ -221,6 +221,12 @@ void ResponseHeaders::SetTimeHeader(const StringPiece& header, int64 time_ms) {
   }
 }
 
+bool ResponseHeaders::Sanitize() {
+  bool cookie = RemoveAll(HttpAttributes::kSetCookie);
+  bool cookie2 = RemoveAll(HttpAttributes::kSetCookie2);
+  return cookie || cookie2;
+}
+
 bool ResponseHeaders::VaryCacheable() const {
   if (IsCacheable()) {
     ConstStringStarVector values;

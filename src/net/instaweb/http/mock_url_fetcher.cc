@@ -117,7 +117,10 @@ bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,
           response_headers->SetDate(timer_->NowMs());
           response_headers->ComputeCaching();
         }
-        response_writer->Write(response->body(), message_handler);
+
+        if (!(response->body().empty() && omit_empty_writes_)) {
+          response_writer->Write(response->body(), message_handler);
+        }
       }
       ret = true;
     } else {

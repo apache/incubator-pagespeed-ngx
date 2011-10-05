@@ -108,6 +108,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
     SetTimeHeader(HttpAttributes::kLastModified, last_modified_ms);
   }
 
+  // Removes cookie headers, and returns true if any changes were made.
+  bool Sanitize();
+
   // TODO(jmarantz): consider an alternative representation
   bool headers_complete() const { return has_status_code(); }
 

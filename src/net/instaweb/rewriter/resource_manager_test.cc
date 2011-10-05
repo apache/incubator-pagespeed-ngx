@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/mock_resource_callback.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -987,6 +988,44 @@ TEST_F(ResourceManagerTest, IsPagespeedResource) {
 
   GoogleUrl normal("http://jqueryui.com/jquery-1.6.2.js");
   EXPECT_FALSE(resource_manager()->IsPagespeedResource(normal));
+}
+
+TEST_F(ResourceManagerTest, PartlyFailedFetch) {
+  // Regression test for invalid Resource state when the fetch physically
+  // succeeds but does not get added to cache due to invalid cacheability.
+  // In that case, we would end up with headers claiming successful fetch,
+  // but an HTTPValue without headers set (which would also crash on
+  // access if no data was emitted by fetcher via Write).
+  //
+  // This currently relies on us marking uncacheable resources as invalid.
+  // In case the behavior changes, this test should be changed to use a mock
+  // fetcher which outputs the headers before calling success(false)
+  static const char kCssName[] = "a.css";
+  GoogleString abs_url = AbsolutifyUrl(kCssName);
+  ResponseHeaders non_cacheable;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &non_cacheable);
+  non_cacheable.SetDateAndCaching(start_time_ms() /* date */, 0 /* ttl */,
+                                  "private, no-cache");
+  non_cacheable.ComputeCaching();
+  SetFetchResponse(abs_url, non_cacheable, "");
+
+  // We tell the fetcher to quash the zero-bytes writes, as that behavior
+  // (which Serf) has made the bug more severe, with not only
+  // loaded() and ContentsValid() lying, but also contents() crashing.
+  mock_url_fetcher()->set_omit_empty_writes(true);
+
+  GoogleUrl gurl(abs_url);
+  SetBaseUrlForFetch(abs_url);
+  ResourcePtr resource = rewrite_driver()->CreateInputResource(gurl);
+  ASSERT_TRUE(resource.get() != NULL);
+  MockResourceCallback callback(resource);
+  rewrite_driver()->ReadAsync(&callback, message_handler());
+  EXPECT_TRUE(callback.done());
+  EXPECT_FALSE(callback.success());
+  EXPECT_FALSE(resource->IsValidAndCacheable());
+  EXPECT_FALSE(resource->loaded());
+  EXPECT_FALSE(resource->ContentsValid())
+    << " Unexpectedly got access to resource contents:" << resource->contents();
 }
 
 }  // namespace net_instaweb

@@ -451,7 +451,7 @@
         'instaweb_rewriter_base',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/jsminify/js_minify.gyp:pagespeed_jsminify',
+        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/js/js.gyp:pagespeed_jsminify',
       ],
       'sources': [
         'rewriter/javascript_code_block.cc',

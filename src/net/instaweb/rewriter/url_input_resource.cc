@@ -305,7 +305,16 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
       // ResponseHeaders in resource_->response_headers_, we must explicitly
       // propagate the content-type to the resource_->type_.
       resource_->DetermineContentType();
+    } else {
+      // It's possible that the fetcher has read some of the headers into
+      // our response_headers (perhaps even a 200) before it called Done(false)
+      // or before we decided inside AddToCache() that we don't want to deal
+      // with this particular resource. In that case, make sure to clear the
+      // response_headers() so the various validity bits in Resource are
+      // accurate.
+      response_headers()->Clear();
     }
+
     callback_->Done(success);
   }
 

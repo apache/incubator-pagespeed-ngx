@@ -14,10 +14,10 @@
 
 vars = {
   "chromium_trunk": "http://src.chromium.org/svn/trunk",
-  "chromium_revision": "@74824",
+  "chromium_revision": "@90205",
   "chromium_deps_root": "src/third_party/chromium_deps",
 
-  "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.11.1.0",
+  "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.12.1.0",
   "libpagespeed_revision": "@head",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
 
@@ -49,6 +49,9 @@ vars = {
 
   "google_sparsehash_root": "http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.8.1/src",
   "google_sparsehash_revision": "@head",
+
+  "drp_src": "http://domain-registry-provider.googlecode.com/svn/trunk",
+  "drp_revision": "@22",
 }
 
 deps = {
@@ -96,6 +99,7 @@ deps = {
 
   "src/testing": From(Var("libpagespeed_deps_root")),
   "src/testing/gtest": From(Var("chromium_deps_root")),
+  "src/testing/gmock": From(Var("chromium_deps_root")),
 
   "src/third_party/apache":
     Var("mod_spdy_trunk") + "/src/third_party/apache" +
@@ -114,11 +118,23 @@ deps = {
     Var("apache_httpd_src") + "/os" + Var("apache_httpd_revision"),
 
   "src/third_party/chromium/src/base": From(Var("libpagespeed_deps_root")),
+
   "src/third_party/chromium/src/build": From(Var("libpagespeed_deps_root")),
   "src/third_party/chromium/src/chrome/tools/build":
     File(Var("chromium_trunk") + "/src/chrome/tools/build/version.py" +
          Var("chromium_revision")),
-  "src/third_party/chromium/src/net/base": From(Var("libpagespeed_deps_root")),
+
+  "src/third_party/chromium/src/net/base":
+     Var("chromium_trunk") + "/src/net/base" +
+     Var("chromium_revision"),
+
+  "src/third_party/chromium/src/base/memory":
+     Var("chromium_trunk") + "/src/base/memory" +
+     Var("chromium_revision"),
+
+  "src/third_party/chromium/src/base/threading":
+     Var("chromium_trunk") + "/src/base/threading" +
+     Var("chromium_revision"),
 
   "src/third_party/chromium/src/net/tools/dump_cache":
      Var("chromium_trunk") + "/src/net/tools/dump_cache" +
@@ -127,7 +143,10 @@ deps = {
   "src/third_party/gflags/src": Var("gflags_root") + Var("gflags_revision"),
   "src/third_party/google-sparsehash/src":
     Var("google_sparsehash_root") + Var("google_sparsehash_revision"),
-  "src/third_party/libjpeg": From(Var("libpagespeed_deps_root")),
+
+  "src/third_party/libjpeg":
+    (Var("libpagespeed_trunk") + "/src/third_party/libjpeg" +
+     Var("libpagespeed_revision")),
 
   "src/third_party/libpagespeed/src/build":
     (Var("libpagespeed_trunk") + "/src/build" +
@@ -144,8 +163,8 @@ deps = {
     (Var("libpagespeed_trunk") + "/src/pagespeed/image_compression" +
      Var("libpagespeed_revision")),
 
-  "src/third_party/libpagespeed/src/pagespeed/jsminify":
-    (Var("libpagespeed_trunk") + "/src/pagespeed/jsminify" +
+  "src/third_party/libpagespeed/src/pagespeed/js":
+    (Var("libpagespeed_trunk") + "/src/pagespeed/js" +
      Var("libpagespeed_revision")),
 
   "src/third_party/libpagespeed/src/pagespeed/l10n":
@@ -181,11 +200,20 @@ deps = {
 
   "src/third_party/libwebp": Var("libwebp_src") + Var("libwebp_revision"),
 
-  "src/third_party/zlib": From(Var("libpagespeed_deps_root")),
+  "src/third_party/zlib":
+    (Var("libpagespeed_trunk") + "/src/third_party/zlib" +
+     Var("libpagespeed_revision")),
 
   "src/tools/data_pack": From(Var("libpagespeed_deps_root")),
   "src/tools/grit": From(Var("libpagespeed_deps_root")),
   "src/tools/gyp": From(Var("chromium_deps_root")),
+
+  "src/third_party/modp_b64":
+    Var("chromium_trunk") + "/src/third_party/modp_b64" +
+      Var("chromium_revision"),
+
+  "src/third_party/domain_registry_provider/src":
+    Var("drp_src") + "/src" + Var("drp_revision"),
 }
 
 

@@ -22,5 +22,5 @@
 // Chromium library.  The easiest way to ensure they are compiled into
 // Instaweb is to include them in a new .cc file:
 
-#include "base/ref_counted.cc"
-#include "base/thread_collision_warner.cc"
+#include "base/memory/ref_counted.cc"
+#include "base/threading/thread_collision_warner.cc"

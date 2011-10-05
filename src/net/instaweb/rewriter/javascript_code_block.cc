@@ -25,7 +25,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "pagespeed/jsminify/js_minify.h"
+#include "pagespeed/js/js_minify.h"
 
 namespace net_instaweb {
 
@@ -91,7 +91,7 @@ void JavascriptCodeBlock::Rewrite() {
   // the rest of the universe.
   config_->AddBlock();
   if ((config_->minify() || config_->redirect())) {
-    if (!pagespeed::jsminify::MinifyJs(original_code_, &rewritten_code_)) {
+    if (!pagespeed::js::MinifyJs(original_code_, &rewritten_code_)) {
       handler_->Message(kInfo, "%s: Javascript minification failed.  "
                         "Preserving old code.", message_id_.c_str());
       config_->AddMinificationFailure();

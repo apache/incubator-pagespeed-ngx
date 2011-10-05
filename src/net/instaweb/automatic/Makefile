@@ -40,6 +40,7 @@ BUILDTYPE = Release
 # from the 'gyp' flow, rather than hand-entered here.
 BASE_LIBS = \
   base/libbase.a \
+  base/libbase_static.a \
   build/temp_gyp/libgoogleurl.a \
   net/instaweb/libautomatic_util.a \
   net/instaweb/libhttp_core.a \
@@ -60,8 +61,11 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_util_pthread.a \
   net/instaweb/libmem_clean_up.a \
   third_party/base64/libbase64.a \
+  third_party/chromium/src/base/third_party/dynamic_annotations/libdynamic_annotations.a \
   third_party/chromium/src/net/tools/liburl_to_filename_encoder.a \
   third_party/css_parser/libcss_parser.a \
+  third_party/css_parser/libutf.a \
+  third_party/domain_registry_provider/src/domain_registry/libdomain_registry_lib.a \
   third_party/gflags/libgflags.a \
   third_party/icu/libicudata.a \
   third_party/icu/libicuuc.a \
@@ -70,11 +74,12 @@ BASE_LIBS = \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_jpeg_optimizer.a \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_jpeg_reader.a \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_png_optimizer.a \
-  third_party/libpagespeed/src/pagespeed/jsminify/libpagespeed_jsminify.a \
+  third_party/libpagespeed/src/pagespeed/js/libpagespeed_jsminify.a \
   third_party/libpagespeed/src/pagespeed/proto/libpagespeed_output_pb.a \
+  third_party/libpagespeed/src/pagespeed/proto/libpagespeed_output_pb.a \
+  third_party/libpagespeed/src/pagespeed/proto/libtimeline_pb.a \
   third_party/libpagespeed/src/third_party/giflib/libdgiflib.a \
   third_party/libpagespeed/src/third_party/giflib/libgiflib_core.a \
-  third_party/libpagespeed/src/third_party/libjpeg_trans/libjpeg_trans.a \
   third_party/libpagespeed/src/third_party/optipng/libopngreduc.a \
   third_party/libpng/libpng.a \
   third_party/libwebp/libwebp_enc.a \
@@ -84,7 +89,7 @@ BASE_LIBS = \
   third_party/opencv/libhighgui.a \
   third_party/opencv/liblapack.a \
   third_party/protobuf/libprotobuf_lite.a \
-  third_party/zlib/libchrome_zlib.a
+  third_party/zlib/libzlib.a
 
 # The 'gclient' build flow uses 'xcodebuild' on Mac and 'make' on Linux.
 # To make matters worse, it puts all the intermediate libraries in the same

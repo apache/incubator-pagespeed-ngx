@@ -19,7 +19,6 @@
 #include "net/instaweb/http/public/http_cache.h"
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -240,8 +239,27 @@ void HTTPCache::PutHelper(const GoogleString& key, int64 now_us,
     return;
   }
 
-  SharedString* shared_string = value->share();
-  cache_->Put(key, shared_string);
+  // Clear out Set-Cookie headers before storing the response into cache.
+  ResponseHeaders headers;
+  bool success = value->ExtractHeaders(&headers, handler);
+  DCHECK(success);
+
+  if (headers.Sanitize()) {
+    // If the headers have to be mutated, we must copy the entire content so we
+    // can store a contiguous block.
+    StringPiece body;
+    success &= value->ExtractContents(&body);
+    HTTPValue new_value;
+    new_value.SetHeaders(&headers);
+    new_value.Write(body, handler);
+    DCHECK(success);
+    if (success) {
+      cache_->Put(key, new_value.share());
+    }
+  } else {
+    cache_->Put(key, value->share());
+  }
+
   if (cache_time_us_ != NULL) {
     int64 delta_us = timer_->NowUs() - now_us;
     cache_time_us_->Add(delta_us);

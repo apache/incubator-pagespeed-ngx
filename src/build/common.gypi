@@ -22,6 +22,8 @@
     # with Position-Independent Code.
     'linux_fpic': 1,
 
+    'instaweb_src_root': 'net/instaweb',
+
     # Define the overridable use_system_libs variable in its own
     # nested block, so it's available for use in the conditions block
     # below.
@@ -70,6 +72,12 @@
         ],
         'cflags_cc': [
           '-frtti',  # Hardy's g++ 4.2 <trl/function> uses typeid
+        ],
+        # Disable -z,defs in linker.
+        # This causes mod_pagespeed.so to fail because it doesn't link apache
+        # libraries.
+        'ldflags!': [
+          '-Wl,-z,defs',
         ],
       }],
       ['OS == "mac"', {

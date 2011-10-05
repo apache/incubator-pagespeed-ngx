@@ -167,7 +167,7 @@ ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
   switch (RewriteQuery::Scan(params, request_headers, query_options.get(),
                              handler)) {
     case RewriteQuery::kInvalid:
-      return OptionsBoolPair(NULL, false);
+      return OptionsBoolPair(static_cast<RewriteOptions*>(NULL), false);
       break;
     case RewriteQuery::kNoneFound:
       break;
