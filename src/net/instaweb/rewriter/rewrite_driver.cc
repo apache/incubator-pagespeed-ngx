@@ -829,10 +829,6 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(const GoogleUrl& gurl,
     return OutputResourcePtr();
   }
 
-  // The RewriteOptions* is not supplied when creating an output-resource
-  // on behalf of a fetch.  This is because that field is only used for
-  // domain sharding, which is a rewriting activity, not a fetching
-  // activity.
   StringPiece base = gurl.AllExceptLeaf();
   OutputResourcePtr output_resource(new OutputResource(
       resource_manager_, base, base, base, namer,
@@ -1493,7 +1489,7 @@ void RewriteDriver::SetBaseUrlIfUnset(const StringPiece& new_base) {
     } else {
       base_was_set_ = true;
       base_url_.Swap(&new_base_url);
-      decoded_base_url_.Reset(base_url_.Spec());
+      SetDecodedUrlFromBase();
     }
   } else {
     InfoHere("Invalid base tag %s relative to %s",
