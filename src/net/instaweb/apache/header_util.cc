@@ -55,6 +55,11 @@ void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
   request->proto_num =
       (response_headers.major_version() * 1000) +
       response_headers.minor_version();
+  AddResponseHeadersToRequest(response_headers, request);
+}
+
+void AddResponseHeadersToRequest(const ResponseHeaders& response_headers,
+                                 request_rec* request) {
   for (int i = 0, n = response_headers.NumAttributes(); i < n; ++i) {
     const GoogleString& name = response_headers.Name(i);
     const GoogleString& value = response_headers.Value(i);
@@ -98,7 +103,7 @@ void PrintHeaders(request_rec* request) {
   fprintf(stdout, "Input headers:\n");
   apr_table_do(PrintAttributeCallback, NULL, request->headers_in, NULL);
   fprintf(stdout, "Output headers:\n");
-  apr_table_do(PrintAttributeCallback, NULL, request->headers_in, NULL);
+  apr_table_do(PrintAttributeCallback, NULL, request->headers_out, NULL);
   fflush(stdout);
 }
 

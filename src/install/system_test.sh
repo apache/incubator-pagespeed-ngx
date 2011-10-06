@@ -649,6 +649,19 @@ if [ -n "$HTTPS_HOST" ]; then
   check [ $? = 0 ]
 fi
 
+# This filter convert the meta tags in the html into headers.
+test_filter convert_meta_tags
+echo $WGET -S -q -o $WGET_OUTPUT -O - --$URL > /dev/null
+$WGET -S -q -o $WGET_OUTPUT -O - -- $URL > /dev/null
+
+echo Checking for Content-Language header.
+grep -qi "CONTENT-LANGUAGE: en-US,fr" $WGET_OUTPUT
+check [ $? = 0 ]
+
+echo Checking for Charset header.
+grep -qi "CONTENT-TYPE: text/html;  charset=UTF-8" $WGET_OUTPUT
+check [ $? = 0 ]
+
 # Cleanup
 rm -rf $OUTDIR
 echo "PASS."

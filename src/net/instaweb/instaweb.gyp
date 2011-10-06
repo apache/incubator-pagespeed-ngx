@@ -537,6 +537,7 @@
         'rewriter/js_combine_filter.cc',
         'rewriter/js_inline_filter.cc',
         'rewriter/js_outline_filter.cc',
+        'rewriter/meta_tag_filter.cc',
         'rewriter/resource_combiner.cc',
         'rewriter/resource_slot.cc',
         'rewriter/resource_tag_scanner.cc',

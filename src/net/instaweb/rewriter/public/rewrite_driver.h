@@ -138,6 +138,20 @@ class RewriteDriver : public HtmlParse {
   inline void set_user_agent(const StringPiece& user_agent_string) {
     user_agent_string.CopyToString(&user_agent_);
   }
+
+  // Return a pointer to the response headers that filters can update
+  // before the frist flush.
+  ResponseHeaders* response_headers_ptr() {
+    return response_headers_;
+  }
+
+  // Set the pointer to the response headers that filters can update
+  // before the first flush.  RewriteDriver does NOT take ownership
+  // of this memory.
+  void set_response_headers_ptr(ResponseHeaders* headers) {
+    response_headers_ = headers;
+  }
+
   const UserAgentMatcher& user_agent_matcher() const {
     return user_agent_matcher_;
   }
@@ -712,6 +726,8 @@ class RewriteDriver : public HtmlParse {
   GoogleUrl decoded_base_url_;
   GoogleString user_agent_;
   StringFilterMap resource_filter_map_;
+
+  ResponseHeaders* response_headers_;
 
   // This group of rewrite-context-related variables is accessed
   // only in the main thread of RewriteDriver (aka the HTML thread).

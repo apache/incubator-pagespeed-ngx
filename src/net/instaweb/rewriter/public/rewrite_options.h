@@ -37,6 +37,8 @@ class MessageHandler;
 
 class RewriteOptions {
  public:
+  // If you add or remove anything from this list, you need to update the
+  // version number in rewrite_options.cc.
   enum Filter {
     kAddHead,  // Update kFirstFilter if you add something before this.
     kAddInstrumentation,
@@ -45,6 +47,7 @@ class RewriteOptions {
     kCombineHeads,
     kCombineJavascript,
     kConvertJpegToWebp,
+    kConvertMetaTags,
     kDivStructure,
     kElideAttributes,
     kExtendCache,

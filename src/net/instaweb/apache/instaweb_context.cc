@@ -52,7 +52,8 @@ InstawebContext::InstawebContext(request_rec* request,
       string_writer_(&output_),
       inflater_(NULL),
       content_detection_state_(kStart),
-      absolute_url_(absolute_url) {
+      absolute_url_(absolute_url),
+      sent_headers_(false) {
   if (use_custom_options) {
     // TODO(jmarantz): this is a temporary hack until we sort out better
     // memory management of RewriteOptions.  This will drag on performance.
@@ -102,6 +103,8 @@ InstawebContext::InstawebContext(request_rec* request,
   const char* user_agent = apr_table_get(request->headers_in,
                                          HttpAttributes::kUserAgent);
   rewrite_driver_->set_user_agent(user_agent);
+  response_headers_.Clear();
+  rewrite_driver_->set_response_headers_ptr(&response_headers_);
   // TODO(lsong): Bypass the string buffer, writer data directly to the next
   // apache bucket.
   rewrite_driver_->SetWriter(&string_writer_);

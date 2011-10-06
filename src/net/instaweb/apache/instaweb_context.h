@@ -34,6 +34,7 @@ namespace net_instaweb {
 
 class ApacheResourceManager;
 class GzipInflater;
+class ResponseHeaders;
 class RewriteOptions;
 
 const char kPagespeedOriginalUrl[] = "mod_pagespeed_original_url";
@@ -72,6 +73,13 @@ class InstawebContext {
   bool empty() const { return output_.empty(); }
   void clear() { output_.clear(); }  // TODO(jmarantz): needed?
 
+  ResponseHeaders* response_headers() {
+    return &response_headers_;
+  }
+
+  bool sent_headers() { return sent_headers_; }
+  void set_sent_headers(bool sent) { sent_headers_ = sent; }
+
   // Looks up the manager from the server rec.
   // TODO(jmarantz): Is there a better place to put this?  It needs to
   // be used by both mod_instaweb.cc and instaweb_handler.cc.
@@ -97,6 +105,8 @@ class InstawebContext {
   GoogleString buffer_;
   ContentDetectionState content_detection_state_;
   GoogleString absolute_url_;
+  ResponseHeaders response_headers_;
+  bool sent_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(InstawebContext);
 };

@@ -34,6 +34,11 @@ void ApacheRequestToRequestHeaders(const request_rec& request,
 void ResponseHeadersToApacheRequest(const ResponseHeaders& meta_data,
                                     request_rec* request);
 
+// Adds the name/value pairs in response_headers to the request's
+// response headers.
+void AddResponseHeadersToRequest(const ResponseHeaders& response_headers,
+                                 request_rec* request);
+
 // Remove downstream filters that might corrupt our caching headers.
 void DisableDownstreamHeaderFilters(request_rec* request);
 

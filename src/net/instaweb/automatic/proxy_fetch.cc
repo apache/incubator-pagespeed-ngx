@@ -131,6 +131,7 @@ bool ProxyFetch::StartParse() {
 
   driver_->SetWriter(base_writer_);
   sequence_ = driver_->html_worker();
+  driver_->set_response_headers_ptr(response_headers_);
 
   // Start parsing.
   // TODO(sligocki): Allow calling StartParse with GoogleUrl.

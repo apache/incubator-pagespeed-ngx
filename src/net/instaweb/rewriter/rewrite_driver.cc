@@ -62,6 +62,7 @@
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
 #include "net/instaweb/rewriter/public/js_outline_filter.h"
+#include "net/instaweb/rewriter/public/meta_tag_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
@@ -135,6 +136,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       cleanup_on_fetch_complete_(false),
       flush_requested_(false),
       rewrites_to_delete_(0),
+      response_headers_(NULL),
       pending_rewrites_(0),
       possibly_quick_rewrites_(0),
       file_system_(file_system),
@@ -210,6 +212,7 @@ void RewriteDriver::Clear() {
   DCHECK_EQ(0, pending_rewrites_);
   DCHECK_EQ(0, possibly_quick_rewrites_);
   DCHECK(!fetch_queued_);
+  response_headers_ = NULL;
 }
 
 // Must be called with rewrite_mutex() held.
@@ -446,6 +449,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     ImageCombineFilter::Initialize(statistics);
     JavascriptFilter::Initialize(statistics);
     JsCombineFilter::Initialize(statistics);
+    MetaTagFilter::Initialize(statistics);
     UrlLeftTrimFilter::Initialize(statistics);
   }
   CssFilter::Initialize(statistics);
@@ -708,7 +712,9 @@ void RewriteDriver::AddPostRenderFilters() {
         this, rewrite_options->beacon_url());
     AddOwnedPostRenderFilter(add_instrumentation_filter_);
   }
-
+  if (rewrite_options->Enabled(RewriteOptions::kConvertMetaTags)) {
+    AddOwnedPostRenderFilter(new MetaTagFilter(this));
+  }
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
   // doesn't, it probably should.  If it does, be sure to add it to the
   // Initialize() function above or it will break under Apache!

@@ -203,10 +203,20 @@ apr_bucket* rewrite_html(InstawebContext* context, request_rec* request,
     context->Finish();
   }
 
+  // Check to see if we've added in the headers already.  If not, add them,
+  // and make a note of it.
+  if (!context->sent_headers()) {
+    ResponseHeaders* headers = context->response_headers();
+    AddResponseHeadersToRequest(*headers, request);
+    headers->Clear();
+    context->set_sent_headers(true);
+  }
+
   const GoogleString& output = context->output();
   if (output.empty()) {
     return NULL;
   }
+
   // Use the rewritten content. Create in heap since output will
   // be emptied for reuse.
   apr_bucket* bucket = apr_bucket_heap_create(

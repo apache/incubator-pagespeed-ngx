@@ -33,6 +33,7 @@ struct HttpAttributes {
   static const char kAcceptEncoding[];
   static const char kCacheControl[];
   static const char kContentEncoding[];
+  static const char kContentLanguage[];
   static const char kContentLength[];
   static const char kContentType[];
   static const char kCookie[];
