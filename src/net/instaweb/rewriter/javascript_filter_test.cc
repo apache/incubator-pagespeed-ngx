@@ -216,6 +216,13 @@ TEST_P(JavascriptFilterTest, RetainExtraHeaders) {
   TestRetainExtraHeaders(kOrigJsName, kOrigJsName, "jm", "js");
 }
 
+// http://code.google.com/p/modpagespeed/issues/detail?id=327 -- we were
+// previously busting regexps with backslashes in them.
+TEST_P(JavascriptFilterTest, BackslashInRegexp) {
+  GoogleString input = StringPrintf(kInlineJs, "/http:\\/\\/[^/]+\\//");
+  ValidateNoChanges("backslash_in_regexp", input);
+}
+
 // We runs the test with GetParam() both true and false, in order to
 // test both the traditional and async flows.
 INSTANTIATE_TEST_CASE_P(JavascriptFilterTestInstance,
