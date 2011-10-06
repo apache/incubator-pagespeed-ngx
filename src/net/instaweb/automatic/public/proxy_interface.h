@@ -91,9 +91,7 @@ class ProxyInterface : public UrlAsyncFetcher {
                                    RewriteOptions* domain_options,
                                    MessageHandler* handler);
 
-  void set_version_string(const StringPiece& version_string) {
-    version_string.CopyToString(&version_string_);
-  }
+  void set_server_version(const StringPiece& server_version);
 
   // Callback function passed to UrlNamer to finish handling requests once we
   // have rewrite_options for requests that are being proxied.
@@ -136,8 +134,6 @@ class ProxyInterface : public UrlAsyncFetcher {
   const int port_;
 
   scoped_ptr<ProxyFetchFactory> proxy_fetch_factory_;
-
-  GoogleString version_string_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyInterface);
 };

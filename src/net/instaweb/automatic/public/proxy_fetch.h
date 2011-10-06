@@ -49,7 +49,7 @@ class ProxyFetch;
 // ProxyFetches it creates.
 class ProxyFetchFactory {
  public:
-  ProxyFetchFactory(ResourceManager* manager);
+  explicit ProxyFetchFactory(ResourceManager* manager);
   ~ProxyFetchFactory();
 
   // Pass custom_options = NULL to use default options.
@@ -61,6 +61,11 @@ class ProxyFetchFactory {
                           ResponseHeaders* response_headers,
                           Writer* base_writer,
                           UrlAsyncFetcher::Callback* callback);
+
+  void set_server_version(const StringPiece& server_version) {
+    server_version.CopyToString(&server_version_);
+  }
+  const GoogleString& server_version() const { return server_version_; }
 
  private:
   friend class ProxyFetch;
@@ -75,6 +80,7 @@ class ProxyFetchFactory {
   ResourceManager* manager_;
   Timer* timer_;
   MessageHandler* handler_;
+  GoogleString server_version_;
 
   // Used to support caching input HTML and un-rewritten resources.
   scoped_ptr<CacheUrlAsyncFetcher> cache_fetcher_;

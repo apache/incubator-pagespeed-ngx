@@ -328,10 +328,10 @@ $WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=on \
   | egrep 'X-Mod-Pagespeed|X-Page-Speed'
 check [ $? = 0 ]
 
-#echo TEST: X-Mod-Pagespeed header not added when ModPagespeed=off
-#$WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=off \
-#  | grep -i X-Mod-Pagespeed
-#check [ $? != 0 ]
+echo TEST: X-Mod-Pagespeed header not added when ModPagespeed=off
+$WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=off \
+  | egrep 'X-Mod-Pagespeed|X-Page-Speed'
+check [ $? != 0 ]
 
 
 # Individual filter tests, in alphabetical order

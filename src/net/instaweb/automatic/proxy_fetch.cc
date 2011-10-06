@@ -21,6 +21,7 @@
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
@@ -221,6 +222,8 @@ void ProxyFetch::HeadersComplete() {
       // TODO(sligocki): see mod_instaweb.cc line 528, which strips
       // Expires, Last-Modified and Content-MD5.  Perhaps we should
       // do that here as well.
+
+      response_headers_->Add(kPageSpeedHeader, factory_->server_version());
     }
   }
 }

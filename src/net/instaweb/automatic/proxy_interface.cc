@@ -29,7 +29,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -58,6 +57,10 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
 }
 
 ProxyInterface::~ProxyInterface() {
+}
+
+void ProxyInterface::set_server_version(const StringPiece& server_version) {
+  proxy_fetch_factory_->set_server_version(server_version);
 }
 
 bool ProxyInterface::IsWellFormedUrl(const GoogleUrl& url) {
@@ -121,10 +124,6 @@ bool ProxyInterface::StreamingFetch(const GoogleString& requested_url_string,
     done = true;
   } else {
     LOG(INFO) << "Proxying URL: " << requested_url.Spec();
-
-    // Add X-Page-Speed header to all requests (should we only add this to
-    // successful HTML requests like we do in Apache)?
-    response_headers->Add(kPageSpeedHeader, version_string_);
 
     // Try to handle this as a .pagespeed. resource.
     if (resource_manager_->IsPagespeedResource(requested_url) && is_get) {
