@@ -38,8 +38,12 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
+
+namespace {
 
 class HttpDumpUrlFetcherTest : public testing::Test {
  public:
@@ -99,5 +103,51 @@ TEST_F(HttpDumpUrlFetcherTest, TestReadUncompressedFromGzippedDump) {
   ASSERT_EQ(1, v.size());
   EXPECT_EQ(GoogleString("14450"), *(v[0]));
 }
+
+// Helper that checks the Date: field as it starts writing.
+class CheckDateHeaderWriter : public Writer {
+ public:
+  CheckDateHeaderWriter(const MockTimer* timer, ResponseHeaders* headers)
+      : write_called_(false), timer_(timer), headers_(headers) {}
+  virtual ~CheckDateHeaderWriter() {}
+
+  virtual bool Write(const StringPiece& content, MessageHandler* handler) {
+    write_called_ = true;
+    headers_->ComputeCaching();
+    EXPECT_EQ(timer_->NowMs(), headers_->fetch_time_ms());
+    return true;
+  }
+
+  virtual bool Flush(MessageHandler* handler) {
+    return true;
+  }
+
+  bool write_called() const { return write_called_; }
+
+ private:
+  bool write_called_;
+  const MockTimer* timer_;
+  ResponseHeaders* headers_;
+  DISALLOW_COPY_AND_ASSIGN(CheckDateHeaderWriter);
+};
+
+
+TEST_F(HttpDumpUrlFetcherTest, TestDateAdjustment) {
+  // Set a time in 2030s, which should be bigger than the time of the slurp,
+  // which is a prerequisite for date adjustment
+  mock_timer_.SetTimeUs(60 * Timer::kYearMs * Timer::kMsUs);
+
+  // Make sure that date fixing up works in time for first write ---
+  // which is needed for adapting it into an async fetcher.
+  RequestHeaders request;
+  ResponseHeaders response;
+  CheckDateHeaderWriter check_date(&mock_timer_, &response);
+  EXPECT_TRUE(http_dump_fetcher_.StreamingFetchUrl(
+      "http://www.google.com", request, &response, &check_date,
+      &message_handler_));
+  EXPECT_TRUE(check_date.write_called());
+}
+
+}  // namespace
 
 }  // namespace net_instaweb

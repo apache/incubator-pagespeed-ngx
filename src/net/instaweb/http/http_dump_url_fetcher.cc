@@ -37,6 +37,7 @@
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/stack_buffer.h"
@@ -239,7 +240,12 @@ bool HttpDumpUrlFetcher::StreamingFetchUrl(
       CharStarVector v;
       // TODO(jmarantz): handle 'deflate'.
       bool want_gzip = request_headers.AcceptsGzip();
-      HttpResponseWriter writer(url, want_gzip, response_writer,
+
+      // Note that we unfortunately need to buffer the output to properly
+      // set the content-length headers.
+      GoogleString output_buffer;
+      StringWriter buffer_writer(&output_buffer);
+      HttpResponseWriter writer(url, want_gzip, &buffer_writer,
                                 response_headers);
       HttpResponseParser response(response_headers, &writer, handler);
       if (response.ParseFile(file)) {
@@ -263,6 +269,7 @@ bool HttpDumpUrlFetcher::StreamingFetchUrl(
               writer.gzip_content_length()));
         }
         response_headers->ComputeCaching();
+        response_writer->Write(output_buffer, handler);
         ret = true;
       } else {
         handler->Message(kWarning,
