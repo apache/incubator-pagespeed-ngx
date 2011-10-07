@@ -24,6 +24,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -34,7 +35,6 @@ class AbstractMutex;
 class CacheInterface;
 class FileSystem;
 class FilenameEncoder;
-class Function;
 class Hasher;
 class HTTPCache;
 class MessageHandler;
@@ -55,6 +55,9 @@ class UrlNamer;
 // A base RewriteDriverFactory.
 class RewriteDriverFactory {
  public:
+  // Helper for users of defer_delete; see below.
+  template<class T> class Deleter;
+
   enum WorkerPoolName {
     kHtmlWorkers,
     kRewriteWorkers,
@@ -269,6 +272,9 @@ class RewriteDriverFactory {
   // filename_prefix()
   virtual StringPiece LockFilePrefix();
 
+  // Causes the given function to be Run after all the threads are shutdown,
+  // in order to do any needed resource cleanups. The Deleter<T> template below
+  // may be useful for object deletion cleanups.
   void defer_delete(Function* f) { deferred_deletes_.push_back(f); }
 
  private:
@@ -334,6 +340,17 @@ class RewriteDriverFactory {
   GoogleString version_string_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
+};
+
+// Helper for users of RewriterDriverFactory::defer_delete --- instantiates
+// into objects that call the appropriate delete operator when Run.
+template<class T> class RewriteDriverFactory::Deleter : public Function {
+ public:
+  explicit Deleter(T* obj) : obj_(obj) {}
+  virtual void Run() { delete obj_; }
+ private:
+  T* obj_;
+  DISALLOW_COPY_AND_ASSIGN(Deleter);
 };
 
 }  // namespace net_instaweb

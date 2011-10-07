@@ -63,16 +63,6 @@ const size_t kRefererStatisticsAverageUrlLength = 64;
 // Statistics histogram names.
 const char* kHtmlRewriteTimeHistogram = "Html Time us Histogram";
 
-template<class T>
-class Deleter : public Function {
- public:
-  explicit Deleter(T* obj) : obj_(obj) {}
-  virtual void Run() { delete obj_; }
- private:
-  T* obj_;
-  DISALLOW_COPY_AND_ASSIGN(Deleter);
-};
-
 }  // namespace
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
