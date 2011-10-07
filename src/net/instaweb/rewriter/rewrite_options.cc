@@ -120,6 +120,7 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kResizeImages,
   RewriteOptions::kRewriteCss,
   RewriteOptions::kRewriteJavascript,
+  RewriteOptions::kRewriteStyleAttributesWithUrl,
 };
 
 // Note: all Core filters are Test filters as well.  For maintainability,

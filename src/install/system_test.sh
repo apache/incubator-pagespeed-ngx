@@ -135,7 +135,7 @@ function fetch_until() {
   TIMEOUT=10
   START=`date +%s`
   STOP=$((START+$TIMEOUT))
-  echo "     " Fetching $REQUESTURL until '`'$COMMAND'`' = $RESULT
+  echo "     " Fetching $REQUESTURL $WGET_ARGS until '`'$COMMAND'`' = $RESULT
   WGET_HERE="$WGET -q $WGET_ARGS"
   while test -t; do
     if [ "$($WGET_HERE -O - $REQUESTURL 2>&1 | $COMMAND)" = "$RESULT" ]; then
@@ -556,6 +556,14 @@ FETCHED=$OUTDIR/$FILE
 fetch_until $URL 'grep -c .pagespeed.ce.' 1  # image cache extended
 check run_wget_with_args $URL
 
+# Rewrite images in styles.
+test_filter rewrite_images,rewrite_style_attributes_with_url optimizes images in style
+FILE=rewrite_css_image_inline_style.html
+URL=$EXAMPLE_ROOT/$FILE
+FETCHED=$OUTDIR/$FILE
+fetch_until $URL 'grep -c .pagespeed.ic.' 1  # image cache extended
+check run_wget_with_args $URL
+
 test_filter rewrite_css,rewrite_images rewrites images in CSS
 FILE=rewrite_css_images.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
@@ -651,8 +659,7 @@ fi
 
 # This filter convert the meta tags in the html into headers.
 test_filter convert_meta_tags
-echo $WGET -S -q -o $WGET_OUTPUT -O - --$URL > /dev/null
-$WGET -S -q -o $WGET_OUTPUT -O - -- $URL > /dev/null
+run_wget_with_args $URL > /dev/null
 
 echo Checking for Content-Language header.
 grep -qi "CONTENT-LANGUAGE: en-US,fr" $WGET_OUTPUT
