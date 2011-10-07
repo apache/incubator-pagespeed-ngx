@@ -408,8 +408,8 @@ class RewriteContext {
   //    if the driver has not been detached,
   //      the url+data->rewritten_resource is written into the rewrite
   //      driver's map, for each of the URLs.
-  void StartRewrite();
-  void FinishFetch();
+  void StartRewriteForHtml();
+  void StartRewriteForFetch();
 
   // Freshens resources proactively to avoid expiration in the near future.
   void Freshen(const CachedResult& group);
@@ -426,12 +426,20 @@ class RewriteContext {
   // of access to common slots.
   void RunSuccessors();
 
-  // Writes out the partition-table into the metadata cache.  This method
-  // may call 'delete this' so it should be the last call at its call-site.
+  // Writes out the partition-table into the metadata cache (checking
+  // ok_to_write_output_partitions_)
+  void WritePartition();
+
+  // Does all the bookkeeping needed after rewrite in HTML completes ---
+  // writes out cache data, notifies any repeated rewrites, queues up
+  // successors, cleans things up, etc.
+  //
+  // This method may call 'delete this' so it should be the last call at its
+  // call-site.
   //
   // It will *not* call 'delete this' if there is a live RewriteDriver,
   // waiting for a convenient point to render the rewrites into HTML.
-  void WritePartition();
+  void FinalizeRewriteForHtml();
 
   // Marks this job and any dependents slow as appropriate, notifying the
   // RewriteDriver of any changes.

@@ -55,14 +55,20 @@ class HTTPCacheTest : public testing::Test {
     Callback* Reset() {
       called_ = false;
       result_ = HTTPCache::kNotFound;
+      cache_valid_ = true;
       return this;
     }
     virtual void Done(HTTPCache::FindResult result) {
       called_ = true;
       result_ = result;
     }
+    virtual bool IsCacheValid(const ResponseHeaders& headers) {
+      // For unit testing we are simply stubbing IsCacheValid.
+      return cache_valid_;
+    }
     bool called_;
     HTTPCache::FindResult result_;
+    bool cache_valid_;
   };
 
   static int64 ParseDate(const char* start_date) {
@@ -101,10 +107,10 @@ class HTTPCacheTest : public testing::Test {
     testing::Test::TearDownTestCase();
   }
 
-  HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
-                             ResponseHeaders* headers,
-                             MessageHandler* handler) {
-    Callback callback;
+  HTTPCache::FindResult FindInternal(const GoogleString& key, HTTPValue* value,
+                                     ResponseHeaders* headers,
+                                     MessageHandler* handler,
+                                     Callback& callback) {
     http_cache_.Find(key, handler, &callback);
     EXPECT_TRUE(callback.called_);
     if (callback.result_ == HTTPCache::kFound) {
@@ -112,6 +118,21 @@ class HTTPCacheTest : public testing::Test {
     }
     headers->CopyFrom(*callback.response_headers());
     return callback.result_;
+  }
+
+  HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
+                             ResponseHeaders* headers,
+                             MessageHandler* handler) {
+    Callback callback;
+    return FindInternal(key, value, headers, handler, callback);
+  }
+
+  HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
+                             ResponseHeaders* headers,
+                             MessageHandler* handler, bool cache_valid) {
+    Callback callback;
+    callback.cache_valid_ = cache_valid;
+    return FindInternal(key, value, headers, handler, callback);
   }
 
   MockTimer mock_timer_;
@@ -236,6 +257,20 @@ TEST_F(HTTPCacheTest, UncacheablePrivate) {
       "mykey", &value, &meta_data_out, &message_handler_);
   ASSERT_EQ(HTTPCache::kNotFound, found);
   ASSERT_FALSE(meta_data_out.headers_complete());
+}
+
+// Unit testing cache invalidation.
+TEST_F(HTTPCacheTest, CacheInvalidation) {
+  ResponseHeaders meta_data_in, meta_data_out;
+  InitHeaders(&meta_data_in, "max-age=300");
+  http_cache_.Put("mykey", &meta_data_in, "content", &message_handler_);
+  HTTPValue value;
+  // Check with cache valid.
+  EXPECT_EQ(HTTPCache::kFound,
+            Find("mykey", &value, &meta_data_out, &message_handler_, true));
+  // Check with cache invalidated.
+  EXPECT_EQ(HTTPCache::kNotFound,
+            Find("mykey", &value, &meta_data_out, &message_handler_, false));
 }
 
 }  // namespace net_instaweb

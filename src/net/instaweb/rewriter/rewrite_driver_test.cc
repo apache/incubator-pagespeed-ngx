@@ -159,56 +159,151 @@ TEST_P(RewriteDriverTest, TestCacheUse) {
   const char kMinCss[] = "*{display:none}";
   InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
 
-  GoogleString cssMinifiedUrl =
+  GoogleString css_minified_url =
       Encode(kTestDomain, RewriteDriver::kCssFilterId,
              hasher()->Hash(kMinCss), "a.css", "css");
 
   // Cold load.
-  EXPECT_TRUE(TryFetchResource(cssMinifiedUrl));
+  EXPECT_TRUE(TryFetchResource(css_minified_url));
 
-  // We should have 2 or 3 things inserted, depending on the mode:
+  // We should have 3 things inserted:
   // 1) the source data
   // 2) the result
-  // 3) the rname entry for the result --- if sync; in async case
-  // we do not write out this mapping on resource reconstruction.
+  // 3) the rname entry for the result
   int cold_num_inserts = lru_cache()->num_inserts();
-  EXPECT_EQ(rewrite_driver()->asynchronous_rewrites() ? 2 : 3,
-            cold_num_inserts);
+  EXPECT_EQ(3, cold_num_inserts);
 
   // Warm load. This one should not change the number of inserts at all
-  EXPECT_TRUE(TryFetchResource(cssMinifiedUrl));
+  EXPECT_TRUE(TryFetchResource(css_minified_url));
   EXPECT_EQ(cold_num_inserts, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 }
 
-// Similar to the above, but with cache-extender which reconstructs on the fly.
-TEST_P(RewriteDriverTest, TestCacheUseOnTheFly) {
+// Extension of above with cache invalidation.
+TEST_P(RewriteDriverTest, TestCacheUseWithInvalidation) {
   bool async = rewrite_driver()->asynchronous_rewrites();
+  resource_manager()->set_store_outputs_in_file_system(false);
+  AddFilter(RewriteOptions::kRewriteCss);
+
+  const char kCss[] = "* { display: none; }";
+  const char kMinCss[] = "*{display:none}";
+  InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
+
+  GoogleString css_minified_url =
+      Encode(kTestDomain, RewriteDriver::kCssFilterId,
+             hasher()->Hash(kMinCss), "a.css", "css");
+
+  // Cold load.
+  EXPECT_TRUE(TryFetchResource(css_minified_url));
+
+  // We should have 3 things inserted:
+  // 1) the source data
+  // 2) the result
+  // 3) the rname entry for the result.
+  int cold_num_inserts = lru_cache()->num_inserts();
+  EXPECT_EQ(3, cold_num_inserts);
+
+  // Warm load. This one should not change the number of inserts at all
+  EXPECT_TRUE(TryFetchResource(css_minified_url));
+  EXPECT_EQ(cold_num_inserts, lru_cache()->num_inserts());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+
+  // Set cache invalidation timestamp (to now, so that response date header is
+  // in the "past") and load. Should get inserted again.
+  ClearStats();
+  int64 now_ms = mock_timer()->NowMs();
+  options()->ClearSignatureForTesting();
+  options()->set_cache_invalidation_timestamp(now_ms);
+  options()->ComputeSignature(hasher());
+  EXPECT_TRUE(TryFetchResource(css_minified_url));
+  if (async) {
+    // We expect: identical input a new rname entry (its version # changed),
+    // and the output which may not may not auto-advance due to MockTimer
+    // black magic.
+    EXPECT_EQ(1, lru_cache()->num_inserts());
+    EXPECT_EQ(2, lru_cache()->num_identical_reinserts());
+  } else {
+    // We expect: input, output, rname, to be all re-inserted without
+    // changes (as the legacy codepath doesn't understand option timestamps) ---
+    // except the date header on the revised result may auto-advance a bit
+    // due to mock timer/scheduler blocking on named lock acquisition.
+    EXPECT_EQ(3, lru_cache()->num_inserts() +
+                 lru_cache()->num_identical_reinserts());
+  }
+}
+
+// Similar to TestCacheUse, but with cache-extender which reconstructs on the
+// fly.
+TEST_P(RewriteDriverTest, TestCacheUseOnTheFly) {
   AddFilter(RewriteOptions::kExtendCache);
 
   const char kCss[] = "* { display: none; }";
   InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
 
-  GoogleString cacheExtendedUrl =
+  GoogleString cache_extended_url =
       Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
              hasher()->Hash(kCss), "a.css", "css");
 
   // Cold load.
-  EXPECT_TRUE(TryFetchResource(cacheExtendedUrl));
+  EXPECT_TRUE(TryFetchResource(cache_extended_url));
 
-  // We should have 1 or 2 things inserted:
+  // We should have 2 things inserted:
   // 1) the source data
   // 2) the rname entry for the result (only in sync)
   int cold_num_inserts = lru_cache()->num_inserts();
-  EXPECT_EQ(async ? 1 : 2, cold_num_inserts);
+  EXPECT_EQ(2, cold_num_inserts);
 
-  // Warm load. In sync, this one re-inserts in the rname entry,
-  // without changing it.
-  EXPECT_TRUE(TryFetchResource(cacheExtendedUrl));
+  // Warm load. This one re-inserts in the rname entry, without changing it.
+  EXPECT_TRUE(TryFetchResource(cache_extended_url));
   EXPECT_EQ(cold_num_inserts, lru_cache()->num_inserts());
-  EXPECT_EQ(async ? 0 : 1, lru_cache()->num_identical_reinserts());
+  EXPECT_EQ(1, lru_cache()->num_identical_reinserts());
 }
 
+// Extension of above with cache invalidation.
+TEST_P(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
+  bool async = rewrite_driver()->asynchronous_rewrites();
+  resource_manager()->set_store_outputs_in_file_system(false);
+  AddFilter(RewriteOptions::kExtendCache);
+
+  const char kCss[] = "* { display: none; }";
+  InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
+
+  GoogleString cache_extended_url =
+      Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
+             hasher()->Hash(kCss), "a.css", "css");
+
+  // Cold load.
+  EXPECT_TRUE(TryFetchResource(cache_extended_url));
+
+  // We should have 2 things inserted:
+  // 1) the source data
+  // 2) the rname entry for the result
+  int cold_num_inserts = lru_cache()->num_inserts();
+  EXPECT_EQ(2, cold_num_inserts);
+
+  // Warm load. This one re-inserts in the rname entry, without changing it.
+  EXPECT_TRUE(TryFetchResource(cache_extended_url));
+  EXPECT_EQ(cold_num_inserts, lru_cache()->num_inserts());
+  EXPECT_EQ(1, lru_cache()->num_identical_reinserts());
+
+  // Set cache invalidation timestamp (to now, so that response date header is
+  // in the "past") and load.
+  ClearStats();
+  int64 now_ms = mock_timer()->NowMs();
+  options()->ClearSignatureForTesting();
+  options()->set_cache_invalidation_timestamp(now_ms);
+  options()->ComputeSignature(hasher());
+  EXPECT_TRUE(TryFetchResource(cache_extended_url));
+  if (async) {
+    // We expect: input re-insert, new metadata key
+    EXPECT_EQ(1, lru_cache()->num_inserts());
+    EXPECT_EQ(1, lru_cache()->num_identical_reinserts());
+  } else {
+    // We expect: input, rname re-inserted without changes.
+    EXPECT_EQ(0, lru_cache()->num_inserts());
+    EXPECT_EQ(2, lru_cache()->num_identical_reinserts());
+  }
+}
 
 TEST_P(RewriteDriverTest, BaseTags) {
   // Starting the parse, the base-tag will be derived from the html url.

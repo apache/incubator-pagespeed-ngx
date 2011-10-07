@@ -45,6 +45,7 @@ class InputInfo;
 class MessageHandler;
 class Resource;
 class ResourceManager;
+class RewriteOptions;
 
 typedef RefCountedPtr<Resource> ResourcePtr;
 typedef std::vector<ResourcePtr> ResourceVector;
@@ -113,6 +114,14 @@ class Resource : public RefCounted<Resource> {
   virtual GoogleString url() const = 0;
 
   virtual void DetermineContentType();
+
+  // Obtain rewrite options for this. Currently overridden by only
+  // OutputResource and UrlInputResource (these have RewriteOptions*).
+  // Used in cache invalidation.
+  virtual const RewriteOptions* rewrite_options() const {
+    LOG(DFATAL) << "No rewrite options with base class Resource.";
+    return NULL;
+  }
 
   // We define a new Callback type here because we need to
   // pass in the Resource to the Done callback so it can

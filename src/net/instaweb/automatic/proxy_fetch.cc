@@ -315,6 +315,10 @@ void ProxyFetch::Done(bool success) {
   }
 }
 
+bool ProxyFetch::IsCachedResultValid(const ResponseHeaders& headers) {
+  return headers.IsDateLaterThan(Options()->cache_invalidation_timestamp());
+}
+
 void ProxyFetch::FlushDone() {
   ScopedMutex lock(mutex_.get());
   DCHECK(waiting_for_flush_to_finish_);

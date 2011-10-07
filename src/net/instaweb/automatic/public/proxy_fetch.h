@@ -118,6 +118,7 @@ class ProxyFetch : public AsyncFetch {
   virtual bool Write(const StringPiece& content, MessageHandler* handler);
   virtual bool Flush(MessageHandler* handler);
   virtual void Done(bool success);
+  virtual bool IsCachedResultValid(const ResponseHeaders& headers);
 
  private:
   friend class ProxyFetchFactory;

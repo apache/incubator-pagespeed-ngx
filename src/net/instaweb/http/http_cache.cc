@@ -108,7 +108,10 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     ResponseHeaders* headers = callback_->response_headers();
     if ((state == CacheInterface::kAvailable) &&
         callback_->http_value()->Link(value(), headers, handler_) &&
-        http_cache_->IsCurrentlyValid(*headers, now_ms)) {
+        http_cache_->IsCurrentlyValid(*headers, now_ms) &&
+        // TODO(sriharis) : Should we keep statistic for number of invalidated
+        // lookups, i.e., #times IsCacheValid returned false?
+        callback_->IsCacheValid(*headers)) {
       if (headers->status_code() ==
           HttpStatus::kRememberFetchFailedOrNotCacheableStatusCode) {
         int64 remember_not_found_time_ms = headers->CacheExpirationTimeMs()
@@ -267,6 +270,9 @@ void HTTPCache::PutHelper(const GoogleString& key, int64 now_us,
   }
 }
 
+// We do not check cache invalidation in Put. It is assumed that the date header
+// will be greater than the cache_invalidation_timestamp, if any, in domain
+// config.
 void HTTPCache::Put(const GoogleString& key, HTTPValue* value,
                     MessageHandler* handler) {
   PutHelper(key, timer_->NowUs(), value, handler);

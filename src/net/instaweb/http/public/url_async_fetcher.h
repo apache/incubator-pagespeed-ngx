@@ -62,6 +62,14 @@ class AsyncFetch {
   // Fetch complete.
   virtual void Done(bool success) = 0;
 
+  // Is the cache entry corresponding to headers valid? Default is that it is
+  // valid. Sub-classes can provide specific implementations, e.g., based on
+  // cache invalidation timestamp in domain specific options.
+  // Used by CacheUrlAsyncFetcher.
+  virtual bool IsCachedResultValid(const ResponseHeaders& headers) {
+    return true;
+  }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(AsyncFetch);
 };

@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -69,7 +70,8 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
  protected:
   static const int kHtmlCacheTimeSec = 5000;
 
-  ProxyInterfaceTest() {}
+  ProxyInterfaceTest() :
+    last_modified_time_("Sat, 03 Apr 2010 18:51:26 GMT") {}
   virtual ~ProxyInterfaceTest() {}
 
   virtual void SetUp() {
@@ -96,9 +98,17 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
                       bool expect_success,
                       GoogleString* string_out,
                       ResponseHeaders* headers_out) {
-    StringWriter writer(string_out);
     RequestHeaders request_headers;
+    FetchFromProxy(url, request_headers, expect_success, string_out,
+                   headers_out);
+  }
 
+  void FetchFromProxy(const StringPiece& url,
+                      const RequestHeaders& request_headers,
+                      bool expect_success,
+                      GoogleString* string_out,
+                      ResponseHeaders* headers_out) {
+    StringWriter writer(string_out);
     WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
     AsyncExpectCallback callback(expect_success, &sync);
     bool already_done =
@@ -138,6 +148,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
 
   scoped_ptr<ProxyInterface> proxy_interface_;
   int64 start_time_ms_;
+  const GoogleString last_modified_time_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceTest);
@@ -187,6 +198,8 @@ TEST_F(ProxyInterfaceTest, SetCookieNotCached) {
   FetchFromProxy("text.txt", true, &text, &response_headers);
   EXPECT_STREQ("cookie", response_headers.Lookup1(HttpAttributes::kSetCookie));
   EXPECT_EQ(kContent, text);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
 
   // The next response that is served from cache does not have any Set-Cookie
   // headers.
@@ -195,6 +208,8 @@ TEST_F(ProxyInterfaceTest, SetCookieNotCached) {
   FetchFromProxy("text.txt", true, &text2, &response_headers2);
   EXPECT_EQ(NULL, response_headers2.Lookup1(HttpAttributes::kSetCookie));
   EXPECT_EQ(kContent, text2);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, SetCookie2NotCached) {
@@ -211,6 +226,8 @@ TEST_F(ProxyInterfaceTest, SetCookie2NotCached) {
   FetchFromProxy("text.txt", true, &text, &response_headers);
   EXPECT_STREQ("cookie", response_headers.Lookup1(HttpAttributes::kSetCookie2));
   EXPECT_EQ(kContent, text);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
 
   // The next response that is served from cache does not have any Set-Cookie
   // headers.
@@ -219,6 +236,117 @@ TEST_F(ProxyInterfaceTest, SetCookie2NotCached) {
   FetchFromProxy("text.txt", true, &text2, &response_headers2);
   EXPECT_EQ(NULL, response_headers2.Lookup1(HttpAttributes::kSetCookie2));
   EXPECT_EQ(kContent, text2);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+}
+
+TEST_F(ProxyInterfaceTest, EtagMatching) {
+  ResponseHeaders headers;
+  const char kContent[] = "A very compelling article";
+  SetDefaultLongCacheHeaders(&kContentTypeText, &headers);
+  headers.Replace(HttpAttributes::kEtag, "etag");
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.txt"), headers, kContent);
+
+  // The first response served by the fetcher has an Etag in the response.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.txt", true, &text, &response_headers);
+  EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+  EXPECT_STREQ("etag", response_headers.Lookup1(HttpAttributes::kEtag));
+  EXPECT_EQ(kContent, text);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+
+  // The next response is served from cache.
+  GoogleString text2;
+  ResponseHeaders response_headers2;
+  FetchFromProxy("text.txt", true, &text2, &response_headers2);
+  EXPECT_EQ(HttpStatus::kOK, response_headers2.status_code());
+  EXPECT_STREQ("etag", response_headers2.Lookup1(HttpAttributes::kEtag));
+  EXPECT_EQ(kContent, text2);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+
+  // The Etag matches and a 304 is served out.
+  GoogleString text3;
+  ResponseHeaders response_headers3;
+  RequestHeaders request_headers;
+  request_headers.Add(HttpAttributes::kIfNoneMatch, "etag");
+  FetchFromProxy("text.txt", request_headers, true, &text3, &response_headers3);
+  EXPECT_EQ(HttpStatus::kNotModified, response_headers3.status_code());
+  EXPECT_STREQ(NULL, response_headers3.Lookup1(HttpAttributes::kEtag));
+  EXPECT_EQ("", text3);
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+
+  // The Etag doesn't match and the full response is returned.
+  GoogleString text4;
+  ResponseHeaders response_headers4;
+  request_headers.Replace(HttpAttributes::kIfNoneMatch, "mismatch");
+  FetchFromProxy("text.txt", request_headers, true, &text4, &response_headers4);
+  EXPECT_EQ(HttpStatus::kOK, response_headers4.status_code());
+  EXPECT_STREQ("etag", response_headers4.Lookup1(HttpAttributes::kEtag));
+  EXPECT_EQ(kContent, text4);
+  EXPECT_EQ(3, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+}
+
+TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
+  ResponseHeaders headers;
+  const char kContent[] = "A very compelling article";
+  SetDefaultLongCacheHeaders(&kContentTypeText, &headers);
+  headers.SetLastModified(MockTimer::kApr_5_2010_ms - 2 * Timer::kDayMs);
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.txt"), headers, kContent);
+
+  // The first response served by the fetcher has an Etag in the response.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.txt", true, &text, &response_headers);
+  EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+  EXPECT_STREQ(last_modified_time_,
+               response_headers.Lookup1(HttpAttributes::kLastModified));
+  EXPECT_EQ(kContent, text);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+
+  // The next response is served from cache.
+  GoogleString text2;
+  ResponseHeaders response_headers2;
+  FetchFromProxy("text.txt", true, &text2, &response_headers2);
+  EXPECT_EQ(HttpStatus::kOK, response_headers2.status_code());
+  EXPECT_STREQ(last_modified_time_,
+               response_headers2.Lookup1(HttpAttributes::kLastModified));
+  EXPECT_EQ(kContent, text2);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+
+  // The last modified timestamp matches and a 304 is served out.
+  GoogleString text3;
+  ResponseHeaders response_headers3;
+  RequestHeaders request_headers;
+  request_headers.Add(HttpAttributes::kIfModifiedSince, last_modified_time_);
+  FetchFromProxy("text.txt", request_headers, true, &text3, &response_headers3);
+  EXPECT_EQ(HttpStatus::kNotModified, response_headers3.status_code());
+  EXPECT_STREQ(NULL, response_headers3.Lookup1(HttpAttributes::kLastModified));
+  EXPECT_EQ("", text3);
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+
+  // The last modified timestamp doesn't match and the full response is
+  // returned.
+  GoogleString text4;
+  ResponseHeaders response_headers4;
+  request_headers.Replace(HttpAttributes::kIfModifiedSince,
+                          "Fri, 02 Apr 2010 18:51:26 GMT");
+  FetchFromProxy("text.txt", request_headers, true, &text4, &response_headers4);
+  EXPECT_EQ(HttpStatus::kOK, response_headers4.status_code());
+  EXPECT_STREQ(last_modified_time_,
+               response_headers4.Lookup1(HttpAttributes::kLastModified));
+  EXPECT_EQ(kContent, text4);
+  EXPECT_EQ(3, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, EatCookiesOnReconstructFailure) {

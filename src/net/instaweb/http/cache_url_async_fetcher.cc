@@ -21,6 +21,7 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -115,14 +116,23 @@ class CacheFindCallback : public HTTPCache::Callback {
       case HTTPCache::kFound: {
         VLOG(1) << "Found in cache: " << url_;
         http_value()->ExtractHeaders(response_headers_, handler_);
-        base_fetch_->HeadersComplete();
 
-        StringPiece contents;
-        http_value()->ExtractContents(&contents);
-        // TODO(sligocki): We are writing all the content in one shot, this
-        // fact might be useful to the HtmlParser if this is HTML. Perhaps
-        // we should add an API for conveying that information.
-        base_fetch_->Write(contents, handler_);
+        // Respond with a 304 if the If-Modified-Since / If-None-Match values
+        // are equal to those in the request.
+        if (ShouldReturn304()) {
+          response_headers_->Clear();
+          response_headers_->SetStatusAndReason(HttpStatus::kNotModified);
+          base_fetch_->HeadersComplete();
+        } else {
+          base_fetch_->HeadersComplete();
+
+          StringPiece contents;
+          http_value()->ExtractContents(&contents);
+          // TODO(sligocki): We are writing all the content in one shot, this
+          // fact might be useful to the HtmlParser if this is HTML. Perhaps
+          // we should add an API for conveying that information.
+          base_fetch_->Write(contents, handler_);
+        }
 
         base_fetch_->Done(true);
         break;
@@ -157,7 +167,34 @@ class CacheFindCallback : public HTTPCache::Callback {
     delete this;
   }
 
+  virtual bool IsCacheValid(const ResponseHeaders& headers) {
+    return base_fetch_->IsCachedResultValid(headers);
+  }
  private:
+  bool ShouldReturn304() const {
+    if (ConditionalHeadersMatch(HttpAttributes::kIfNoneMatch,
+                                HttpAttributes::kEtag)) {
+      // If the Etag matches, return a 304.
+      return true;
+    }
+    // Otherwise, return a 304 only if there was no If-None-Match header in the
+    // request and the last modified timestamp matches.
+    // (from http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html)
+    return request_headers_.Lookup1(HttpAttributes::kIfNoneMatch) == NULL &&
+        ConditionalHeadersMatch(HttpAttributes::kIfModifiedSince,
+                                HttpAttributes::kLastModified);
+  }
+
+  bool ConditionalHeadersMatch(const GoogleString& request_header,
+                               const GoogleString& response_header) const {
+    const char* request_header_value =
+        request_headers_.Lookup1(request_header);
+    const char* response_header_value =
+        response_headers_->Lookup1(response_header);
+    return request_header_value != NULL && response_header_value != NULL &&
+        strcmp(request_header_value, response_header_value) == 0;
+  }
+
   const GoogleString url_;
   RequestHeaders request_headers_;
   ResponseHeaders* response_headers_;

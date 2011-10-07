@@ -200,6 +200,10 @@ class OutputResource : public Resource {
   // This is called by CacheCallback::Done in rewrite_driver.cc.
   void set_written(bool written) { writing_complete_ = true; }
 
+  virtual const RewriteOptions* rewrite_options() const {
+    return rewrite_options_;
+  }
+
  protected:
   virtual ~OutputResource();
   REFCOUNT_FRIEND_DECLARATION(OutputResource);

@@ -455,6 +455,7 @@ class ResourceManagerHttpCallback : public HTTPCache::Callback {
   }
   virtual ~ResourceManagerHttpCallback();
   virtual void Done(HTTPCache::FindResult find_result);
+  virtual bool IsCacheValid(const ResponseHeaders& headers);
 
  private:
   Resource::AsyncCallback* resource_callback_;

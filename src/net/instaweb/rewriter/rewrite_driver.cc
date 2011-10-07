@@ -1004,6 +1004,11 @@ class CacheCallback : public HTTPCache::Callback {
     }
   }
 
+  virtual bool IsCacheValid(const ResponseHeaders& headers) {
+    return headers.IsDateLaterThan(driver_->options()->
+                                   cache_invalidation_timestamp());
+  }
+
  private:
   RewriteDriver* driver_;
   RewriteFilter* filter_;

@@ -901,7 +901,7 @@ TEST_F(RewriteContextTest, TrimFetchOnTheFly) {
   EXPECT_EQ("a", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_misses());   // 1 because output is not saved
-  EXPECT_EQ(1, lru_cache()->num_inserts());  // ditto
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // input, metadata
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   ClearStats();
   content.clear();
@@ -934,7 +934,7 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
   // get the lock or was able to acquire it immediately to avoid the
   // second cache lookup.
   EXPECT_EQ(3, lru_cache()->num_misses());   // output resource(twice), input
-  EXPECT_EQ(2, lru_cache()->num_inserts());  // output resource(once), input
+  EXPECT_EQ(3, lru_cache()->num_inserts());  // output resource, input, metadata
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   ClearStats();
   content.clear();
@@ -947,6 +947,82 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(RewriteContextTest, TrimFetchSeedsCache) {
+  // Make sure that rewriting on resource request also caches it for
+  // future use for HTML.
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  // The input URL is not in cache, but the fetch should work.
+  GoogleString content;
+  EXPECT_TRUE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
+                            "css", &content));
+  EXPECT_EQ("a", content);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  // We did the output_resource lookup twice: once before acquiring the lock,
+  // and the second time after acquiring the lock, because presumably whoever
+  // released the lock has now written the resource.
+  EXPECT_EQ(3, lru_cache()->num_misses());   // output resource(twice), input
+  EXPECT_EQ(3, lru_cache()->num_inserts());  // output resource, input, metadata
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  ClearStats();
+
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(1, lru_cache()->num_hits());  // Just metadata
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, trim_filter_->num_rewrites());  // cached.
+}
+
+TEST_F(RewriteContextTest, TrimFetchRewriteFailureSeedsCache) {
+  // Make sure that rewriting on resource request also caches it for
+  // future use for HTML, in the case where the rewrite fails.
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  // The input URL is not in cache, but the fetch should work.
+  GoogleString content;
+  EXPECT_TRUE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "b.css",
+                            "css", &content));
+  EXPECT_EQ("b", content);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_misses());   // output resource(twice), input
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // input, metadata
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  ClearStats();
+
+  ValidateNoChanges("nontrimmable", CssLinkHref("b.css"));
+  EXPECT_EQ(1, lru_cache()->num_hits());  // Just metadata
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, trim_filter_->num_rewrites());  // cached.
+}
+
+TEST_F(RewriteContextTest, TrimFetch404SeedsCache) {
+  // Check that we cache a 404, and cache it for a reasonable amount of time.
+  InitTrimFilters(kRewrittenResource);
+  SetFetchResponse404("404.css");
+
+  GoogleString content;
+  EXPECT_FALSE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "404.css",
+                             "css", &content));
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Should cache immediately...
+  ValidateNoChanges("404", CssLinkHref("404.css"));
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // ... but not for too long.
+  mock_timer()->AdvanceMs(Timer::kDayMs);
+  ValidateNoChanges("404", CssLinkHref("404.css"));
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 }
 
 TEST_F(RewriteContextTest, FetchColdCacheOnTheFly) {
@@ -1029,7 +1105,7 @@ TEST_F(RewriteContextTest, FetchColdCacheOnTheFlyNotFound) {
                             "css", &content));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_misses());
-  EXPECT_EQ(1, lru_cache()->num_inserts());  // We "remember" the fetch failure
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // fetch failure, metadata.
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   ClearStats();
 
@@ -1058,9 +1134,8 @@ TEST_F(RewriteContextTest, FetchColdCacheRewrittenNotFound) {
   // We lookup the output resource twice plus the inputs.
   EXPECT_EQ(3, lru_cache()->num_misses());
 
-  // We currently "remember" the fetch failure, but *not* the failed
-  // rewrite.
-  EXPECT_EQ(1, lru_cache()->num_inserts());
+  // We remember the fetch failure, and the failed rewrite.
+  EXPECT_EQ(2, lru_cache()->num_inserts());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   ClearStats();
 
@@ -1241,9 +1316,7 @@ TEST_F(RewriteContextTest, CombinationFetch) {
       << "2 misses for the output.  1 before we acquire the lock, "
       << "and one after we acquire the lock.  Then we miss on the two inputs.";
 
-  // TODO(jmarantz): add another Insert to write partition-table for filters
-  // that always make exactly one partition.
-  EXPECT_EQ(3, lru_cache()->num_inserts()) << "2 inputs, 1 output.";
+  EXPECT_EQ(4, lru_cache()->num_inserts()) << "2 inputs, 1 output, 1 metadata.";
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   ClearStats();
   content.clear();

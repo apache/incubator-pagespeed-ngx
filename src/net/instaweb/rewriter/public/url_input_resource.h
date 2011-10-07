@@ -47,7 +47,9 @@ class UrlInputResource : public Resource {
 
   virtual bool IsValidAndCacheable() const;
   virtual GoogleString url() const { return url_; }
-  const RewriteOptions* rewrite_options() const { return rewrite_options_; }
+  virtual const RewriteOptions* rewrite_options() const {
+    return rewrite_options_;
+  }
 
   void Freshen(MessageHandler* handler);
 

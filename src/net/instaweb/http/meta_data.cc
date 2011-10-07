@@ -35,6 +35,7 @@ const char HttpAttributes::kExpires[] = "Expires";
 const char HttpAttributes::kGzip[] = "gzip";
 const char HttpAttributes::kHost[] = "Host";
 const char HttpAttributes::kIfModifiedSince[] = "If-Modified-Since";
+const char HttpAttributes::kIfNoneMatch[] = "If-None-Match";
 const char HttpAttributes::kLastModified[] = "Last-Modified";
 const char HttpAttributes::kLocation[] = "Location";
 const char HttpAttributes::kNoCache[] = "max-age=0, no-cache, no-store";

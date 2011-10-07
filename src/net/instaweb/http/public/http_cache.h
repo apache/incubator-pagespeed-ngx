@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_HTTP_CACHE_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_CACHE_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/atomic_bool.h"
@@ -64,6 +63,15 @@ class HTTPCache {
    public:
     virtual ~Callback();
     virtual void Done(FindResult find_result) = 0;
+    // A method that allows client Callbacks to apply invalidation checks.  We
+    // first (in http_cache.cc) check whether the entry is expired using normal
+    // http semantics, and if it is not expired, then this check is called --
+    // thus callbacks can apply any further invalidation semantics it wants on
+    // otherwise valid entries. But there's no way for a callback to override
+    // when the HTTP semantics say the entry is expired.
+    virtual bool IsCacheValid(const ResponseHeaders& headers) {
+      return true;
+    }
 
     HTTPValue* http_value() { return &http_value_; }
     ResponseHeaders* response_headers() { return &response_headers_; }

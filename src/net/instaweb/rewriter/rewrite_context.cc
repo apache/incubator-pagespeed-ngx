@@ -233,14 +233,12 @@ class RewriteContext::FetchContext {
   void FetchDone() {
     GoogleString output;
     bool ok = false;
+    rewrite_context_->WritePartition();
     if (success_) {
       // TODO(sligocki): It might be worth streaming this.
       response_headers_->CopyFrom(*(output_resource_->response_headers()));
       ok = writer_->Write(output_resource_->contents(), handler_);
     } else {
-      // TODO(jmarantz): implement this:
-      // CacheRewriteFailure();
-
       // Rewrite failed. If we have a single original, write it out instead.
       if (rewrite_context_->num_slots() == 1) {
         ResourcePtr input_resource(rewrite_context_->slot(0)->resource());
@@ -650,7 +648,7 @@ void RewriteContext::RepeatedFailure() {
   CHECK_EQ(0, num_output_partitions());
   rewrite_done_ = true;
   ok_to_write_output_partitions_ = false;
-  WritePartition();
+  FinalizeRewriteForHtml();
 }
 
 NamedLock* RewriteContext::Lock() {
@@ -774,14 +772,14 @@ void RewriteContext::Activate() {
   if (ReadyToRewrite()) {
     if (fetch_.get() == NULL) {
       DCHECK(started_);
-      StartRewrite();
+      StartRewriteForHtml();
     } else {
-      FinishFetch();
+      StartRewriteForFetch();
     }
   }
 }
 
-void RewriteContext::StartRewrite() {
+void RewriteContext::StartRewriteForHtml() {
   CHECK(has_parent() || slow_) << "slow_ not set on a rewriting job?";
   if (!Partition(partitions_.get(), &outputs_)) {
     partitions_->clear_partition();
@@ -790,6 +788,7 @@ void RewriteContext::StartRewrite() {
 
   outstanding_rewrites_ = partitions_->partition_size();
   if (outstanding_rewrites_ == 0) {
+    DCHECK(fetch_.get() == NULL);
     // The partitioning succeeded, but yielded zero rewrites.  Write out the
     // empty partition table and let any successor Rewrites run.
     rewrite_done_ = true;
@@ -798,7 +797,7 @@ void RewriteContext::StartRewrite() {
     // since there may be partial failures in cases of multiple inputs which
     // we do not see here.
     AddRecheckDependency();
-    WritePartition();
+    FinalizeRewriteForHtml();
   } else {
     // We will let the Rewrites complete prior to writing the
     // OutputPartitions, which contain not just the partition table
@@ -825,20 +824,6 @@ void RewriteContext::StartRewrite() {
 }
 
 void RewriteContext::WritePartition() {
-  DCHECK(fetch_.get() == NULL);
-
-  bool partition_ok = (partitions_->partition_size() != 0);
-  // Tells each of the repeated rewrites of the same thing if we have a valid
-  // result or not.
-  for (int c = 0, n = repeated_.size(); c < n; ++c) {
-    if (partition_ok) {
-      repeated_[c]->RepeatedSuccess(this);
-    } else {
-      repeated_[c]->RepeatedFailure();
-    }
-  }
-  Driver()->DeregisterForPartitionKey(partition_key_, this);
-
   ResourceManager* manager = Manager();
   if (ok_to_write_output_partitions_ &&
       !manager->metadata_cache_readonly()) {
@@ -855,6 +840,24 @@ void RewriteContext::WritePartition() {
     // being too busy, then cancel all successors.
   }
   lock_.reset();
+}
+
+void RewriteContext::FinalizeRewriteForHtml() {
+  DCHECK(fetch_.get() == NULL);
+
+  bool partition_ok = (partitions_->partition_size() != 0);
+  // Tells each of the repeated rewrites of the same thing if we have a valid
+  // result or not.
+  for (int c = 0, n = repeated_.size(); c < n; ++c) {
+    if (partition_ok) {
+      repeated_[c]->RepeatedSuccess(this);
+    } else {
+      repeated_[c]->RepeatedFailure();
+    }
+  }
+  Driver()->DeregisterForPartitionKey(partition_key_, this);
+  WritePartition();
+
   if (parent_ != NULL) {
     DCHECK(driver_ == NULL);
     Propagate(true);
@@ -995,12 +998,11 @@ void RewriteContext::Propagate(bool render_slots) {
 
 void RewriteContext::Finalize() {
   rewrite_done_ = true;
-  if (num_pending_nested_ == 0) {
-    if (fetch_.get() != NULL) {
-      fetch_->FetchDone();
-    } else {
-      WritePartition();
-    }
+  DCHECK_EQ(0, num_pending_nested_);
+  if (fetch_.get() != NULL) {
+    fetch_->FetchDone();
+  } else {
+    FinalizeRewriteForHtml();
   }
 }
 
@@ -1033,7 +1035,7 @@ void RewriteContext::RunSuccessors() {
   }
 }
 
-void RewriteContext::FinishFetch() {
+void RewriteContext::StartRewriteForFetch() {
   // Make a fake partition that has all the inputs, since we are
   // performing the rewrite for only one output resource.
   CachedResult* partition = partitions_->add_partition();
@@ -1052,6 +1054,7 @@ void RewriteContext::FinishFetch() {
   if (ok_to_rewrite) {
     Rewrite(0, partition, output);
   } else {
+    AddRecheckDependency();
     RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
   }
 }

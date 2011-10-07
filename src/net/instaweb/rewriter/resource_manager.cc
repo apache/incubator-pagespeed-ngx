@@ -418,6 +418,17 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
   delete this;
 }
 
+bool ResourceManagerHttpCallback::IsCacheValid(const ResponseHeaders& headers) {
+  const RewriteOptions* rewrite_options =
+      resource_callback_->resource()->rewrite_options();
+  if (rewrite_options == NULL) {
+    return true;
+  } else {
+    int64 timestamp_ms = rewrite_options->cache_invalidation_timestamp();
+    return headers.IsDateLaterThan(timestamp_ms);
+  }
+}
+
 // TODO(sligocki): Move into Resource? This would allow us to treat
 // file- and URL-based resources differently as far as cacheability, etc.
 // Specifically, we are now making a cache request for file-based resources
