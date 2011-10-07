@@ -26,8 +26,9 @@
 
 namespace net_instaweb {
 
-class MessageHandler;
+struct ContentType;
 class HttpResponseHeaders;
+class MessageHandler;
 class Writer;
 
 // Read/write API for HTTP response headers.
@@ -144,6 +145,10 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Determines whether a response header is marked as gzipped.
   bool IsGzipped() const;
   bool WasGzippedLast() const;
+
+  // Get ContentType. NULL if none set or it isn't in our predefined set of
+  // known content types.
+  const ContentType* DetermineContentType() const;
 
   // Parses a date header such as HttpAttributes::kDate or
   // HttpAttributes::kExpires, returning the timestamp as

@@ -20,6 +20,7 @@
 
 #include <cstddef>                     // for size_t
 #include <algorithm>
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes
 #include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -704,6 +705,26 @@ TEST_F(ResponseHeadersTest, RemoveAllCaseInsensitivity) {
   EXPECT_EQ(NULL, headers.Lookup1("content-encoding"));
   EXPECT_EQ(NULL, headers.Lookup1("Content-Encoding"));
   EXPECT_EQ(0, headers.NumAttributes()) << headers.Name(0);
+}
+
+TEST_F(ResponseHeadersTest, DetermineContentType) {
+  const char headers[] =
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: image/png\r\n"
+      "\r\n";
+  response_headers_.Clear();
+  ParseHeaders(headers);
+  EXPECT_EQ(&kContentTypePng, response_headers_.DetermineContentType());
+}
+
+TEST_F(ResponseHeadersTest, DetermineContentTypeWithCharset) {
+  const char headers[] =
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/html; charset=UTF-8\r\n"
+      "\r\n";
+  response_headers_.Clear();
+  ParseHeaders(headers);
+  EXPECT_EQ(&kContentTypeHtml, response_headers_.DetermineContentType());
 }
 
 }  // namespace net_instaweb

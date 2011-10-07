@@ -16,13 +16,14 @@
 
 #include "net/instaweb/http/public/response_headers.h"
 
-#include <cstdio>                      // for fprintf, stderr, snprintf
+#include <cstdio>  // for fprintf, stderr, snprintf
 #include <map>
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
-#include "net/instaweb/http/public/headers.h"  // for Headers
+#include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -30,7 +31,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/time_util.h"
-#include "net/instaweb/util/public/timer.h"  // for Timer
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 #include "pagespeed/core/resource_util.h"
 
@@ -382,6 +383,26 @@ bool ResponseHeaders::WasGzippedLast() const {
   }
   return false;
 }
+
+// TODO(sligocki): Perhaps we should take in a URL here and use that to
+// guess Content-Type as well. See Resource::DetermineContentType().
+const ContentType* ResponseHeaders::DetermineContentType() const {
+  const ContentType* content_type = NULL;
+
+  ConstStringStarVector content_types;
+  if (Lookup(HttpAttributes::kContentType, &content_types)) {
+    for (int i = 0, n = content_types.size(); (i < n) && (content_type == NULL);
+         ++i) {
+      if (content_types[i] != NULL) {
+        content_type = MimeTypeToContentType(*(content_types[i]));
+      }
+    }
+  }
+
+  return content_type;
+}
+
+
 
 bool ResponseHeaders::ParseDateHeader(
     const StringPiece& attr, int64* date_ms) const {

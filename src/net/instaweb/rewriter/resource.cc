@@ -94,24 +94,13 @@ void Resource::SetType(const ContentType* type) {
   type_ = type;
 }
 
+// Try to determine the content type from the URL extension, or
+// the response headers.
 void Resource::DetermineContentType() {
-  // Try to determine the content type from the URL extension, or
-  // the response headers.
-  ConstStringStarVector content_types;
-  ResponseHeaders* headers = response_headers();
-  const ContentType* content_type = NULL;
-  if (headers->Lookup(HttpAttributes::kContentType, &content_types)) {
-    for (int i = 0, n = content_types.size(); (i < n) && (content_type == NULL);
-         ++i) {
-      if (content_types[i] != NULL) {
-        content_type = MimeTypeToContentType(*(content_types[i]));
-      }
-    }
-  }
-
+  // First try the HTTP headers, the definitive source of Content-Type.
+  const ContentType* content_type = response_headers()->DetermineContentType();
+  // If there is no content type in headers, then guess from extension.
   if (content_type == NULL) {
-    // If there is no content type in input headers, then try to
-    // determine it from the name.
     GoogleString trimmed_url;
     TrimWhitespace(url(), &trimmed_url);
     content_type = NameExtensionToContentType(trimmed_url);

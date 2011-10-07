@@ -152,20 +152,6 @@ bool ProxyFetch::StartParse() {
   }
 }
 
-bool ProxyFetch::IsHtml() {
-  CHECK(response_headers_ != NULL);
-  ConstStringStarVector v;
-  bool html = (response_headers_->Lookup(HttpAttributes::kContentType, &v) &&
-               (v.size() == 1) && (v[0] != NULL) &&
-               (strstr(v[0]->data(), "text/html") != NULL));
-  if (html) {
-    LOG(INFO) << "Response appears to be HTML. Rewriting content.";
-  } else {
-    LOG(INFO) << "Response appears not to be HTML. Passing content through.";
-  }
-  return html;
-}
-
 const RewriteOptions* ProxyFetch::Options() {
   // If driver_ is not yet constructed, we need to use the ResoruceManager's
   // default options or custom options supplied to us.
@@ -187,7 +173,8 @@ void ProxyFetch::HeadersComplete() {
   // TODO(sligocki): Get these in the main flow.
   // Add, remove and update headers as appropriate.
   const RewriteOptions* options = Options();
-  if (IsHtml() && options->enabled()) {
+  bool is_html = response_headers_->DetermineContentType() == &kContentTypeHtml;
+  if (is_html && options->enabled()) {
     started_parse_ = StartParse();
     if (started_parse_) {
       pass_through_ = false;
