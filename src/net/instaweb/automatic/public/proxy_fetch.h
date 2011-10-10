@@ -77,13 +77,20 @@ class ProxyFetchFactory {
   void Start(ProxyFetch* proxy_fetch);
   void Finish(ProxyFetch* proxy_fetch);
 
+  // Choose which cache_fetcher to use based upon options.
+  UrlAsyncFetcher* ChooseCacheFetcher(const RewriteOptions* options);
+
   ResourceManager* manager_;
   Timer* timer_;
   MessageHandler* handler_;
   GoogleString server_version_;
 
   // Used to support caching input HTML and un-rewritten resources.
-  scoped_ptr<CacheUrlAsyncFetcher> cache_fetcher_;
+  // We keep 2, one for each possible value of options->respect_vary().
+  //
+  // TODO(sligocki): Validate for vary cacheability in Srihari's callback.
+  scoped_ptr<CacheUrlAsyncFetcher> cache_fetcher_respect_vary_;
+  scoped_ptr<CacheUrlAsyncFetcher> cache_fetcher_no_respect_vary_;
 
   scoped_ptr<AbstractMutex> outstanding_proxy_fetches_mutex_;
   std::set<ProxyFetch*> outstanding_proxy_fetches_;
@@ -134,7 +141,6 @@ class ProxyFetch : public AsyncFetch {
   // Sets up driver_, registering the writer and start parsing url.
   // Returns whether we started parsing successfully or not.
   bool StartParse();
-  bool IsHtml();
   const RewriteOptions* Options();
 
   // Handles buffered HTML writes, flushes, and done calls

@@ -546,6 +546,116 @@ TEST_F(ProxyInterfaceTest, MinResourceTimeLarge) {
   EXPECT_EQ(CssLinkHref("a.css"), text);
 }
 
+TEST_F(ProxyInterfaceTest, CacheRequests) {
+  ResponseHeaders html_headers;
+  DefaultResponseHeaders(kContentTypeHtml, kHtmlCacheTimeSec, &html_headers);
+  SetFetchResponse(AbsolutifyUrl("page.html"), html_headers, "1");
+  ResponseHeaders resource_headers;
+  DefaultResponseHeaders(kContentTypeCss, kHtmlCacheTimeSec, &resource_headers);
+  SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "a");
+
+  GoogleString text;
+  ResponseHeaders actual_headers;
+  FetchFromProxy("page.html", true, &text, &actual_headers);
+  EXPECT_EQ("1", text);
+  text.clear();
+  FetchFromProxy("style.css", true, &text, &actual_headers);
+  EXPECT_EQ("a", text);
+
+  SetFetchResponse(AbsolutifyUrl("page.html"), html_headers, "2");
+  SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "b");
+
+  // Original response is still cached in both cases, so we do not
+  // fetch the new values.
+  text.clear();
+  FetchFromProxy("page.html", true, &text, &actual_headers);
+  EXPECT_EQ("1", text);
+  text.clear();
+  FetchFromProxy("style.css", true, &text, &actual_headers);
+  EXPECT_EQ("a", text);
+}
+
+// No matter what options->respect_vary() is set to we will respect HTML Vary
+// headers.
+TEST_F(ProxyInterfaceTest, NoCacheVaryHtml) {
+  RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_respect_vary(false);
+  resource_manager()->ComputeSignature(options);
+
+  ResponseHeaders html_headers;
+  DefaultResponseHeaders(kContentTypeHtml, kHtmlCacheTimeSec, &html_headers);
+  html_headers.Add(HttpAttributes::kVary, HttpAttributes::kUserAgent);
+  html_headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("page.html"), html_headers, "1");
+  ResponseHeaders resource_headers;
+  DefaultResponseHeaders(kContentTypeCss, kHtmlCacheTimeSec, &resource_headers);
+  resource_headers.Add(HttpAttributes::kVary, HttpAttributes::kUserAgent);
+  resource_headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "a");
+
+  GoogleString text;
+  ResponseHeaders actual_headers;
+  FetchFromProxy("page.html", true, &text, &actual_headers);
+  EXPECT_EQ("1", text);
+  text.clear();
+  FetchFromProxy("style.css", true, &text, &actual_headers);
+  EXPECT_EQ("a", text);
+
+  SetFetchResponse(AbsolutifyUrl("page.html"), html_headers, "2");
+  SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "b");
+
+  // HTML was not cached because of Vary: User-Agent header.
+  // So we do fetch the new value.
+  text.clear();
+  FetchFromProxy("page.html", true, &text, &actual_headers);
+  EXPECT_EQ("2", text);
+  // Resource was cached because we have respect_vary == false.
+  // So we serve the old value.
+  text.clear();
+  FetchFromProxy("style.css", true, &text, &actual_headers);
+  EXPECT_EQ("a", text);
+}
+
+// Respect Vary for resources if options tell us to.
+TEST_F(ProxyInterfaceTest, NoCacheVaryAll) {
+  RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_respect_vary(true);
+  resource_manager()->ComputeSignature(options);
+
+  ResponseHeaders html_headers;
+  DefaultResponseHeaders(kContentTypeHtml, kHtmlCacheTimeSec, &html_headers);
+  html_headers.Add(HttpAttributes::kVary, HttpAttributes::kUserAgent);
+  html_headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("page.html"), html_headers, "1");
+  ResponseHeaders resource_headers;
+  DefaultResponseHeaders(kContentTypeCss, kHtmlCacheTimeSec, &resource_headers);
+  resource_headers.Add(HttpAttributes::kVary, HttpAttributes::kUserAgent);
+  resource_headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "a");
+
+  GoogleString text;
+  ResponseHeaders actual_headers;
+  FetchFromProxy("page.html", true, &text, &actual_headers);
+  EXPECT_EQ("1", text);
+  text.clear();
+  FetchFromProxy("style.css", true, &text, &actual_headers);
+  EXPECT_EQ("a", text);
+
+  SetFetchResponse(AbsolutifyUrl("page.html"), html_headers, "2");
+  SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "b");
+
+  // Original response was not cached in either case, so we do fetch the
+  // new value.
+  text.clear();
+  FetchFromProxy("page.html", true, &text, &actual_headers);
+  EXPECT_EQ("2", text);
+  text.clear();
+  FetchFromProxy("style.css", true, &text, &actual_headers);
+  EXPECT_EQ("b", text);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

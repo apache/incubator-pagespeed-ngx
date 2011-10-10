@@ -122,12 +122,17 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // HtmlParse.
   virtual RewriteDriver* html_parse() { return rewrite_driver_; }
 
-  // Initializes a resource for mock fetching.
-  void InitResponseHeaders(const StringPiece& resource_name,
+  // Set default headers for a resource with content_type and Cache ttl_sec.
+  void DefaultResponseHeaders(const ContentType& content_type, int64 ttl_sec,
+                              ResponseHeaders* response_headers);
+
+  // Add content to mock fetcher (with default headers).
+  void InitResponseHeaders(const StringPiece& relative_url,
                            const ContentType& content_type,
                            const StringPiece& content,
                            int64 ttl_sec);
 
+  // Add the contents of a file to mock fetcher (with default headers).
   void AddFileToMockFetcher(const StringPiece& url,
                             const StringPiece& filename,
                             const ContentType& content_type, int64 ttl_sec);

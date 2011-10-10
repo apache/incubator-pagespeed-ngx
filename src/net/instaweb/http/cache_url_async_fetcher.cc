@@ -19,6 +19,7 @@
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -36,19 +37,23 @@ namespace {
 class CachePutFetch : public AsyncFetch {
  public:
   CachePutFetch(const GoogleString& url, ResponseHeaders* response_headers,
-                AsyncFetch* base_fetch,
+                AsyncFetch* base_fetch, bool respect_vary,
                 HTTPCache* cache, MessageHandler* handler)
-      : url_(url), response_headers_(response_headers),
-        base_fetch_(base_fetch), cache_(cache), handler_(handler),
+      : url_(url), response_headers_(response_headers), base_fetch_(base_fetch),
+        respect_vary_(respect_vary), cache_(cache), handler_(handler),
         cacheable_(false) {}
   virtual ~CachePutFetch() {}
 
   virtual void HeadersComplete() {
     response_headers_->ComputeCaching();
-    // TODO(sligocki): Consider appropriate Vary semantics.
-    // We need to deal with HTML and other resources differently.
-    // IsProxyCacheable() does not consider Vary.
+
     cacheable_ = response_headers_->IsProxyCacheable();
+    bool is_html = (response_headers_->DetermineContentType()
+                    == &kContentTypeHtml);
+    if (cacheable_ && (respect_vary_ || is_html)) {
+      cacheable_ = response_headers_->VaryCacheable();
+    }
+
     if (cacheable_) {
       cache_value_.SetHeaders(response_headers_);
     }
@@ -84,6 +89,7 @@ class CachePutFetch : public AsyncFetch {
   const GoogleString url_;
   ResponseHeaders* response_headers_;
   AsyncFetch* base_fetch_;
+  bool respect_vary_;
   HTTPCache* cache_;
   MessageHandler* handler_;
 
@@ -99,6 +105,7 @@ class CacheFindCallback : public HTTPCache::Callback {
                     const RequestHeaders& request_headers,
                     ResponseHeaders* response_headers,
                     AsyncFetch* base_fetch,
+                    bool respect_vary,
                     bool ignore_recent_fetch_failed,
                     HTTPCache* cache,
                     UrlAsyncFetcher* fetcher,
@@ -106,6 +113,7 @@ class CacheFindCallback : public HTTPCache::Callback {
       : url_(url),
         response_headers_(response_headers), base_fetch_(base_fetch),
         cache_(cache), fetcher_(fetcher), handler_(handler),
+        respect_vary_(respect_vary),
         ignore_recent_fetch_failed_(ignore_recent_fetch_failed) {
     request_headers_.CopyFrom(request_headers);
   }
@@ -157,7 +165,7 @@ class CacheFindCallback : public HTTPCache::Callback {
         VLOG(1) << "Did not find in cache: " << url_;
         CachePutFetch* put_fetch =
             new CachePutFetch(url_, response_headers_,
-                              base_fetch_, cache_, handler_);
+                              base_fetch_, respect_vary_, cache_, handler_);
         fetcher_->Fetch(url_, request_headers_,
                         response_headers_, handler_, put_fetch);
         break;
@@ -203,6 +211,7 @@ class CacheFindCallback : public HTTPCache::Callback {
   UrlAsyncFetcher* fetcher_;
   MessageHandler* handler_;
 
+  bool respect_vary_;
   bool ignore_recent_fetch_failed_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheFindCallback);
@@ -231,7 +240,7 @@ bool CacheUrlAsyncFetcher::Fetch(
 
   CacheFindCallback* find_callback =
       new CacheFindCallback(url, request_headers, response_headers, base_fetch,
-                            ignore_recent_fetch_failed_,
+                            respect_vary_, ignore_recent_fetch_failed_,
                             http_cache_, fetcher_, handler);
   http_cache_->Find(url, handler, find_callback);
   // Cache interface does not tell us if the request was immediately resolved,

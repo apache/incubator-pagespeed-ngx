@@ -19,6 +19,7 @@
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
@@ -37,10 +38,13 @@ ProxyFetchFactory::ProxyFetchFactory(ResourceManager* manager)
     : manager_(manager),
       timer_(manager->timer()),
       handler_(manager->message_handler()),
-      cache_fetcher_(new CacheUrlAsyncFetcher(manager->http_cache(),
-                                              manager->url_async_fetcher())),
+      cache_fetcher_respect_vary_(new CacheUrlAsyncFetcher(
+          manager->http_cache(), manager->url_async_fetcher(), true)),
+      cache_fetcher_no_respect_vary_(new CacheUrlAsyncFetcher(
+          manager->http_cache(), manager->url_async_fetcher(), false)),
       outstanding_proxy_fetches_mutex_(manager->thread_system()->NewMutex()) {
-  cache_fetcher_->set_ignore_recent_fetch_failed(true);
+  cache_fetcher_respect_vary_->set_ignore_recent_fetch_failed(true);
+  cache_fetcher_no_respect_vary_->set_ignore_recent_fetch_failed(true);
 }
 
 ProxyFetchFactory::~ProxyFetchFactory() {
@@ -61,8 +65,18 @@ void ProxyFetchFactory::StartNewProxyFetch(
                                      response_headers, base_writer,
                                      manager_, timer_, callback, this);
   Start(fetch);
-  cache_fetcher_->Fetch(url, request_headers, fetch->response_headers_,
-                        handler_, fetch);
+  UrlAsyncFetcher* fetcher = ChooseCacheFetcher(fetch->Options());
+  fetcher->Fetch(url, request_headers, fetch->response_headers_, handler_,
+                 fetch);
+}
+
+UrlAsyncFetcher* ProxyFetchFactory::ChooseCacheFetcher(
+    const RewriteOptions* options) {
+  if (options->respect_vary()) {
+    return cache_fetcher_respect_vary_.get();
+  } else {
+    return cache_fetcher_no_respect_vary_.get();
+  }
 }
 
 void ProxyFetchFactory::Start(ProxyFetch* fetch) {

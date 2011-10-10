@@ -260,20 +260,26 @@ GoogleString ResourceManagerTestBase::AbsolutifyUrl(
   return name;
 }
 
+void ResourceManagerTestBase::DefaultResponseHeaders(
+    const ContentType& content_type, int64 ttl_sec,
+    ResponseHeaders* response_headers) {
+  SetDefaultLongCacheHeaders(&content_type, response_headers);
+  response_headers->Replace(HttpAttributes::kCacheControl,
+                           StrCat("public, max-age=",
+                                  Integer64ToString(ttl_sec)));
+  response_headers->ComputeCaching();
+}
+
 // Initializes a resource for mock fetching.
 void ResourceManagerTestBase::InitResponseHeaders(
     const StringPiece& resource_name,
     const ContentType& content_type,
     const StringPiece& content,
     int64 ttl_sec) {
-  GoogleString name = AbsolutifyUrl(resource_name);
+  GoogleString url = AbsolutifyUrl(resource_name);
   ResponseHeaders response_headers;
-  SetDefaultLongCacheHeaders(&content_type, &response_headers);
-  response_headers.Replace(HttpAttributes::kCacheControl,
-                           StrCat("public, max-age=",
-                                  Integer64ToString(ttl_sec)));
-  response_headers.ComputeCaching();
-  SetFetchResponse(name, response_headers, content);
+  DefaultResponseHeaders(content_type, ttl_sec, &response_headers);
+  SetFetchResponse(url, response_headers, content);
 }
 
 void ResourceManagerTestBase::SetFetchResponse404(

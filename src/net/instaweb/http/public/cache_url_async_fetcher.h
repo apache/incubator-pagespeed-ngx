@@ -42,9 +42,11 @@ class ResponseHeaders;
 // we'd need to integrate resource locking in this class. Do we want that?
 class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
-  CacheUrlAsyncFetcher(HTTPCache* cache, UrlAsyncFetcher* fetcher)
+  CacheUrlAsyncFetcher(HTTPCache* cache, UrlAsyncFetcher* fetcher,
+                       bool respect_vary)
       : http_cache_(cache),
         fetcher_(fetcher),
+        respect_vary_(respect_vary),
         ignore_recent_fetch_failed_(false) {
   }
   virtual ~CacheUrlAsyncFetcher();
@@ -64,6 +66,7 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
   HTTPCache* http_cache_;
   UrlAsyncFetcher* fetcher_;
 
+  bool respect_vary_;
   bool ignore_recent_fetch_failed_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheUrlAsyncFetcher);
