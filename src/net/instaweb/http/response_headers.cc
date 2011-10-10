@@ -332,6 +332,14 @@ void ResponseHeaders::ComputeCaching() {
         }
       }
     }
+    if (resource.GetResourceType() == pagespeed::HTML &&
+        (Lookup1(HttpAttributes::kSetCookie) != NULL ||
+         Lookup1(HttpAttributes::kSetCookie2) != NULL)) {
+      // Do not cache HTML with Set-Cookie / Set-Cookie2 headers even though it
+      // has explicit caching directives. This is to prevent the caching of user
+      // sensitive data due to misconfigured caching headers.
+      proto_->set_proxy_cacheable(false);
+    }
   } else {
     proto_->set_expiration_time_ms(0);
     proto_->set_proxy_cacheable(false);

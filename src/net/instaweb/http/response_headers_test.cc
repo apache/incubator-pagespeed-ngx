@@ -292,6 +292,60 @@ TEST_F(ResponseHeadersTest, TestImplicitCache) {
   EXPECT_FALSE(ComputeImplicitCaching(204, "image/png"));
 }
 
+TEST_F(ResponseHeadersTest, TestSetCookieCacheabilityForHtml) {
+  // HTML is cacheable if there are explicit caching directives, but no
+  // Set-Cookie headers.
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+               "Content-Type: text/html\r\n"
+               "Cache-control: max-age=300\r\n\r\n");
+  EXPECT_TRUE(response_headers_.IsCacheable());
+  EXPECT_TRUE(response_headers_.IsProxyCacheable());
+
+  response_headers_.Clear();
+  // HTML is not cacheable if there is a Set-Cookie header even though there are
+  // explicit caching directives.
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+               "Content-Type: text/html\r\n"
+               "Set-Cookie: cookie\r\n"
+               "Cache-control: max-age=300\r\n\r\n");
+  EXPECT_TRUE(response_headers_.IsCacheable());
+  EXPECT_FALSE(response_headers_.IsProxyCacheable());
+
+  response_headers_.Clear();
+  // HTML is not cacheable if there is a Set-Cookie2 header even though there
+  // are explicit caching directives.
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+               "Content-Type: text/html\r\n"
+               "Set-Cookie2: cookie\r\n"
+               "Cache-control: max-age=300\r\n\r\n");
+  EXPECT_TRUE(response_headers_.IsCacheable());
+  EXPECT_FALSE(response_headers_.IsProxyCacheable());
+}
+
+TEST_F(ResponseHeadersTest, TestSetCookieCacheabilityForNonHtml) {
+  // CSS is cacheable if there are explicit caching directives, but no
+  // Set-Cookie headers.
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+               "Content-Type: text/css\r\n"
+               "Cache-control: max-age=300\r\n\r\n");
+  EXPECT_TRUE(response_headers_.IsCacheable());
+  EXPECT_TRUE(response_headers_.IsProxyCacheable());
+
+  response_headers_.Clear();
+  // CSS is still cacheable even if there is a Set-Cookie.
+  ParseHeaders("HTTP/1.0 200 OK\r\n"
+               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+               "Content-Type: text/css\r\n"
+               "Set-Cookie: cookie\r\n"
+               "Cache-control: max-age=300\r\n\r\n");
+  EXPECT_TRUE(response_headers_.IsCacheable());
+  EXPECT_TRUE(response_headers_.IsProxyCacheable());
+}
+
 TEST_F(ResponseHeadersTest, TestRemoveAll) {
   ParseHeaders("HTTP/1.0 200 OK\r\n"
                "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"

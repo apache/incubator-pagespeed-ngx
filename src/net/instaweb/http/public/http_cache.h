@@ -38,7 +38,6 @@ class Variable;
 // retention of the originally served cache headers.
 class HTTPCache {
  public:
-
   // Names of statistics variables: exported for tests.
   static const char kCacheTimeUs[];
   static const char kCacheHits[];
@@ -48,7 +47,7 @@ class HTTPCache {
 
   // Does not take ownership of any inputs.
   HTTPCache(CacheInterface* cache, Timer* timer, Statistics* stats);
-  ~HTTPCache();
+  virtual ~HTTPCache();
 
   // When a lookup is done in the HTTP Cache, it returns one of these values.
   enum FindResult {
@@ -82,39 +81,41 @@ class HTTPCache {
   };
 
   // Makes the cache ignore all put requests.
-  void SetReadOnly();
+  virtual void SetReadOnly();
 
   // Non-blocking Find.  Calls callback when done.  'handler' must all
   // stay valid until callback->Done() is called.
-  void Find(const GoogleString& key, MessageHandler* handler,
-            Callback* callback);
+  virtual void Find(const GoogleString& key, MessageHandler* handler,
+                    Callback* callback);
 
   // Blocking Find.  This method is deprecated for transition to strictly
   // non-blocking cache usage.
   //
   // TODO(jmarantz): remove this when blocking callers of HTTPCache::Find
   // are removed from the codebase.
-  HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
-                             ResponseHeaders* headers, MessageHandler* handler);
+  virtual HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
+                                     ResponseHeaders* headers,
+                                     MessageHandler* handler);
 
   // Note that Put takes a non-const pointer for HTTPValue so it can
   // bump the reference count.
-  void Put(const GoogleString& key, HTTPValue* value, MessageHandler* handler);
+  virtual void Put(const GoogleString& key, HTTPValue* value,
+                   MessageHandler* handler);
 
   // Note that Put takes a non-const pointer for ResponseHeaders* so it
   // can update the caching fields prior to storing.
-  void Put(const GoogleString& key, ResponseHeaders* headers,
-           const StringPiece& content, MessageHandler* handler);
+  virtual void Put(const GoogleString& key, ResponseHeaders* headers,
+                   const StringPiece& content, MessageHandler* handler);
 
   // Deprecated method to make a blocking query for the state of an
   // element in the cache.
   // TODO(jmarantz): remove this interface when blocking callers are removed.
-  CacheInterface::KeyState Query(const GoogleString& key);
+  virtual CacheInterface::KeyState Query(const GoogleString& key);
 
   // Deletes an element in the cache.
-  void Delete(const GoogleString& key);
+  virtual void Delete(const GoogleString& key);
 
-  void set_force_caching(bool force) { force_caching_ = force; }
+  virtual void set_force_caching(bool force) { force_caching_ = force; }
   bool force_caching() const { return force_caching_; }
   Timer* timer() const { return timer_; }
 
@@ -138,8 +139,8 @@ class HTTPCache {
   // that the original resource 404'd and not ping the server again.
   // However, if the resource was not cacheable, we should definitely
   // refetch it and proxy it.
-  void RememberFetchFailedOrNotCacheable(const GoogleString& key,
-                                         MessageHandler * handler);
+  virtual void RememberFetchFailedOrNotCacheable(const GoogleString& key,
+                                                 MessageHandler * handler);
 
   // Initialize statistics variables for the cache
   static void Initialize(Statistics* statistics);
