@@ -84,6 +84,7 @@ void RewriteDriverFactory::InitializeDefaultOptions() {
   // files it is given in create_dir_config in mod_instaweb.cc
   default_options_.reset(NewRewriteOptions());
   default_options_->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  default_options_->DisallowTroublesomeResources();
   // Note that we do not need to compute a signature on the default options.
   // We will never be serving requests with these options: they are just used
   // as a source for merging.

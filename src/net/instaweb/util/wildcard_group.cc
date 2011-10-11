@@ -26,7 +26,12 @@
 namespace net_instaweb {
 
 WildcardGroup::~WildcardGroup() {
+  Clear();
+}
+
+void WildcardGroup::Clear() {
   STLDeleteElements(&wildcards_);
+  allow_.clear();
 }
 
 void WildcardGroup::Allow(const StringPiece& expr) {
@@ -56,8 +61,7 @@ bool WildcardGroup::Match(const StringPiece& str, bool allow) const {
 }
 
 void WildcardGroup::CopyFrom(const WildcardGroup& src) {
-  wildcards_.clear();
-  allow_.clear();
+  Clear();
   AppendFrom(src);
 }
 

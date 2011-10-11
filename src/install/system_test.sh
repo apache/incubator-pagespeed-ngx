@@ -30,19 +30,6 @@ if [ $? != 0 ]; then
   exit 1
 fi
 
-# Ditto for curl.
-if [ "$CURL" == "" ]; then
-  CURL=curl
-else
-  echo CURL = $CURL
-fi
-
-$CURL --version > /dev/null 2>&1
-if [ $? != 0 ]; then
-  echo "curl ($CURL) is not installed."
-  exit 1
-fi
-
 # We need to set a wgetrc file because of the stupid way that the bash deals
 # with strings and variable expansion.
 mkdir -p $TEMPDIR || exit 1
@@ -163,6 +150,37 @@ function fetch_until() {
     sleep 0.1
   done;
 }
+
+# Same as fetch_until only end condition is status code == 0, rather than
+# that it prints a specific string to stdout.
+#
+# TODO(sligocki): Cut out common code with fetch_until.
+function fetch_until_succeeds() {
+  # Should not user URL as PARAM here, it rewrites value of URL for
+  # the rest tests.
+  REQUESTURL=$1
+  COMMAND=$2
+
+  TIMEOUT=10
+  START=`date +%s`
+  STOP=$((START+$TIMEOUT))
+  WGET_HERE="$WGET -q"
+  echo "     " Fetching $REQUESTURL until "'$COMMAND'" succeeds
+  while test -t; do
+    $WGET_HERE -O - $REQUESTURL 2>&1 | $COMMAND
+    if [ $? == 0 ]; then
+      /bin/echo ".";
+      return;
+    fi;
+    if [ `date +%s` -gt $STOP ]; then
+      /bin/echo "FAIL."
+      exit 1;
+    fi;
+    /bin/echo -n "."
+    sleep 0.1
+  done;
+}
+
 
 # Helper to set up most filter tests.  Alternate between using query-params
 # and request-headers to enable the filter, so we know they both work.
@@ -366,7 +384,7 @@ echo "TEST: Make sure 404s aren't rewritten"
 # easiest to detect which changes every page
 THIS_BAD_URL=$BAD_RESOURCE_URL?ModPagespeedFilters=add_instrumentation
 # We use curl, because wget does not save 404 contents
-$CURL --silent $THIS_BAD_URL | grep /mod_pagespeed_beacon
+curl --silent $THIS_BAD_URL | grep /mod_pagespeed_beacon
 check [ $? != 0 ]
 
 test_filter collapse_whitespace removes whitespace, but not from pre tags.
@@ -452,6 +470,21 @@ URL=$REWRITTEN_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
 # Note: Wget request is HTTP/1.0, so some servers respond back with
 # HTTP/1.0 and some respond back 1.1.
 check "$WGET_DUMP $URL | grep -qe 'HTTP/1\.. 200 OK'"
+
+echo TEST: Filters do not rewrite blacklisted JavaScript files.
+URL=$TEST_ROOT/blacklist/blacklist.html?ModPagespeedFilters=extend_cache,rewrite_javascript,trim_urls
+FETCHED=$OUTDIR/blacklist.html
+fetch_until_succeeds $URL 'grep .js.pagespeed.'
+$WGET_DUMP $URL > $FETCHED
+cat $FETCHED
+check grep "'<script src=\".*normal\.js\.pagespeed\..*\.js\">'" $FETCHED
+check grep "'<script src=\"js_tinyMCE\.js\"></script>'" $FETCHED
+check grep "'<script src=\"tiny_mce\.js\"></script>'" $FETCHED
+check grep "'<script src=\"tinymce\.js\"></script>'" $FETCHED
+check grep "'<script src=\".*jquery.*\.pagespeed\..*\.js\">'" $FETCHED
+check grep "'<script src=\".*ckeditor\.js\.pagespeed\..*\.js\">'" $FETCHED
+check grep "'<script src=\".*swfobject\.js\.pagespeed\..*\.js\">'" $FETCHED
+check grep "'<script src=\".*another_normal\.js\.pagespeed\..*\.js\">'" $FETCHED
 
 test_filter move_css_to_head does what it says on the tin.
 check run_wget_with_args $URL

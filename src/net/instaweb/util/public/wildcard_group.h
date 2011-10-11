@@ -65,6 +65,8 @@ class WildcardGroup {
   void AppendFrom(const WildcardGroup& src);
 
  private:
+  void Clear();
+
   // To avoid having to new another structure we use two parallel
   // vectors.  Note that vector<bool> is special-case implemented
   // in STL to be bit-packed.

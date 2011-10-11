@@ -297,6 +297,10 @@ class RewriteOptions {
     allow_resources_.Disallow(wildcard_pattern);
   }
 
+  // Blacklist of javascript files that don't like their names changed.
+  // This should be called for root options to set defaults.
+  void DisallowTroublesomeResources();
+
   DomainLawyer* domain_lawyer() { return &domain_lawyer_; }
   const DomainLawyer* domain_lawyer() const { return &domain_lawyer_; }
 

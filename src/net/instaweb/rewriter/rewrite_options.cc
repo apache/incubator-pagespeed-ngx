@@ -219,6 +219,35 @@ RewriteOptions::OptionBase::~OptionBase() {
 }
 
 
+void RewriteOptions::DisallowTroublesomeResources() {
+  // http://code.google.com/p/modpagespeed/issues/detail?id=38
+  Disallow("*js_tinyMCE*");  // js_tinyMCE.js
+  // Official timeMCE URLs: tiny_mce.js, tiny_mce_src.js, tiny_mce_gzip.php, ...
+  Disallow("*tiny_mce*");
+  // I've also seen tinymce.js
+  Disallow("*tinymce*");
+
+  // http://code.google.com/p/modpagespeed/issues/detail?id=207
+  // jquery-ui-1.8.2.custom.min.js, jquery-1.4.4.min.js, jquery.fancybox-...
+  //
+  // TODO(sligocki): Is jquery actually a problem? Perhaps specific
+  // jquery libraries (like tiny MCE). Investigate before disabling.
+  //Disallow("*jquery*");
+
+  // http://code.google.com/p/modpagespeed/issues/detail?id=186
+  // ckeditor.js, ckeditor_basic.js, ckeditor_basic_source.js, ...
+  // Appears to be fixed upstream. Leaving here for reference.
+  //Disallow("*ckeditor*");
+
+  // http://code.google.com/p/modpagespeed/issues/detail?id=216
+  // Appears to be an issue with old version of jsminify.
+  //Disallow("*swfobject*");  // swfobject.js
+
+  // TODO(sligocki): Add disallow for the JS broken in:
+  // http://code.google.com/p/modpagespeed/issues/detail?id=142
+  // Not clear which JS file is broken and proxying is not working correctly.
+}
+
 bool RewriteOptions::EnableFiltersByCommaSeparatedList(
     const StringPiece& filters, MessageHandler* handler) {
   return AddCommaSeparatedListToFilterSet(

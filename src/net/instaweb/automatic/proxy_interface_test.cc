@@ -656,6 +656,24 @@ TEST_F(ProxyInterfaceTest, NoCacheVaryAll) {
   EXPECT_EQ("b", text);
 }
 
+TEST_F(ProxyInterfaceTest, Blacklist) {
+  const char content[] =
+      "<html>\n"
+      "  <head/>\n"
+      "  <body>\n"
+      "    <script src='tiny_mce.js'></script>\n"
+      "  </body>\n"
+      "</html>\n";
+  InitResponseHeaders("tiny_mce.js", kContentTypeJavascript, "", 100);
+  ValidateNoChanges("blacklist", content);
+
+  InitResponseHeaders("page.html", kContentTypeHtml, content, 0);
+  GoogleString text_out;
+  ResponseHeaders headers_out;
+  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  EXPECT_STREQ(content, text_out);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb
