@@ -15,9 +15,14 @@
 // Author: sligocki@google.com (Shawn Ligocki)
 
 #include "net/instaweb/apache/apache_message_handler.h"
+
+#include <unistd.h>
+#include <signal.h>
+
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/log_message_handler.h"
 #include "net/instaweb/util/public/time_util.h"
+#include "net/instaweb/util/public/debug.h"
 
 #include "httpd.h"
 // When HAVE_SYSLOG is defined, apache http_log.h will include syslog.h, which
@@ -31,6 +36,24 @@ namespace {
 // smaller if people think it's too long.  In my opinion it's probably OK,
 // and it would be good to let people know where messages are coming from.
 const char kModuleName[] = "mod_pagespeed";
+
+const server_rec* global_server;
+
+}
+
+extern "C" {
+static void signal_handler(int sig) {
+  // Try to output the backtrace to the log file. The alarm() causes us
+  // to abort if we don't otherwise.
+
+  alarm(2);
+  ap_log_error(APLOG_MARK, APLOG_ALERT, APR_SUCCESS, global_server,
+               "[@%ld] CRASH with signal:%d at %s",
+               static_cast<long>(getpid()), sig, net_instaweb::StackTraceString().c_str());
+  kill(getpid(), 9);
+}
+
+pid_t set = -1;
 
 }
 
@@ -55,6 +78,8 @@ ApacheMessageHandler::ApacheMessageHandler(const server_rec* server,
   // TODO(jmarantz): consider making this a little terser by default.
   // The string we expect in is something like "0.9.1.1-171" and we will
   // may be able to pick off some of the 5 fields that prove to be boring.
+
+  global_server = server_rec_;
 }
 
 bool ApacheMessageHandler::Dump(Writer* writer) {
@@ -86,6 +111,11 @@ int ApacheMessageHandler::GetApacheLogLevel(MessageType type) {
 void ApacheMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                         va_list args) {
   int log_level = GetApacheLogLevel(type);
+  if (set != getpid()) {
+    signal(6, signal_handler);
+    signal(11, signal_handler);
+    set = getpid();
+  }
   GoogleString formatted_message = Format(msg, args);
   ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
                "[%s %s @%ld] %s",

@@ -80,17 +80,22 @@ const char kRewriteContextLockPrefix[] = "rc:";
 // on the metadata returned.
 class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
  public:
-  explicit OutputCacheCallback(RewriteContext* rc) : rewrite_context_(rc) {}
+  typedef void (RewriteContext::*CacheResultHandlerFunction)(
+      CacheInterface::KeyState, SharedString value);
+
+  OutputCacheCallback(RewriteContext* rc, CacheResultHandlerFunction function)
+      : rewrite_context_(rc), function_(function) {}
   virtual ~OutputCacheCallback() {}
   virtual void Done(CacheInterface::KeyState state) {
     RewriteDriver* rewrite_driver = rewrite_context_->Driver();
     rewrite_driver->AddRewriteTask(MakeFunction(
-        rewrite_context_, &RewriteContext::OutputCacheDone, state, *value()));
+        rewrite_context_, function_, state, *value()));
     delete this;
   }
 
  private:
   RewriteContext* rewrite_context_;
+  CacheResultHandlerFunction function_;
 };
 
 // Common code for invoking RewriteContext::ResourceFetchDone for use
@@ -267,6 +272,10 @@ class RewriteContext::FetchContext {
     callback_->Done(ok);
   }
 
+  void set_requested_hash(const StringPiece& hash) {
+    hash.CopyToString(&requested_hash_);
+  }
+
   void set_success(bool success) { success_ = success; }
   OutputResourcePtr output_resource() { return output_resource_; }
 
@@ -276,6 +285,7 @@ class RewriteContext::FetchContext {
   UrlAsyncFetcher::Callback* callback_;
   OutputResourcePtr output_resource_;
   MessageHandler* handler_;
+  GoogleString requested_hash_;  // hash we were requested as. May be empty.
   bool success_;
 };
 
@@ -418,7 +428,9 @@ void RewriteContext::Start() {
       Driver()->RegisterForPartitionKey(partition_key_, this);
   if (previous_handler == NULL) {
     // When the cache lookup is finished, OutputCacheDone will be called.
-    metadata_cache->Get(partition_key_, new OutputCacheCallback(this));
+    metadata_cache->Get(
+        partition_key_, new OutputCacheCallback(
+            this, &RewriteContext::OutputCacheDone));
   } else {
     if (previous_handler->slow()) {
       MarkSlow();
@@ -513,68 +525,74 @@ bool RewriteContext::IsInputValid(const InputInfo& input_info) {
   return false;
 }
 
+bool RewriteContext::TryDecodeCacheResult(CacheInterface::KeyState state,
+                                          const SharedString& value,
+                                          bool* can_revalidate,
+                                          InputInfoStarVector* revalidate) {
+  if (state != CacheInterface::kAvailable) {
+    Manager()->rewrite_stats()->cached_output_misses()->Add(1);
+    *can_revalidate = false;
+    return false;
+  }
+
+  // We've got a hit on the output metadata; the contents should
+  // be a protobuf.  Try to parse it.
+  const GoogleString* val_str = value.get();
+  ArrayInputStream input(val_str->data(), val_str->size());
+  if (partitions_->ParseFromZeroCopyStream(&input) &&
+      IsOtherDependencyValid(partitions_.get())) {
+    bool ok = true;
+    *can_revalidate = true;
+    for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
+      CachedResult* partition = partitions_->mutable_partition(i);
+      bool can_revalidate_resource;
+      if (!IsCachedResultValid(partition, &can_revalidate_resource,
+                               revalidate)) {
+        ok = false;
+        *can_revalidate = *can_revalidate && can_revalidate_resource;
+      }
+    }
+    return ok;
+  } else {
+    // This case includes both corrupt protobufs and the case where
+    // external dependencies are invalid. We do not attempt to reuse
+    // rewrite results by input content hashes even in the second
+    // case as that would require us to try to re-fetch those URLs as well.
+    // TODO(jmarantz): count cache corruptions in a stat?
+    *can_revalidate = false;
+    return false;
+  }
+}
+
 void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
                                      SharedString value) {
   DCHECK_LE(0, outstanding_fetches_);
   DCHECK_EQ(static_cast<size_t>(0), outputs_.size());
 
-  bool can_revalidate = true;
+  bool cache_ok, can_revalidate;
   InputInfoStarVector revalidate;
+  cache_ok = TryDecodeCacheResult(state, value, &can_revalidate, &revalidate);
+  // If OK or worth rechecking, set things up for the cache hit case.
+  if (cache_ok || can_revalidate) {
+    for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
+      const CachedResult& partition = partitions_->partition(i);
+      OutputResourcePtr output_resource;
+      const ContentType* content_type = NameExtensionToContentType(
+          StrCat(".", partition.extension()));
 
-  if (state == CacheInterface::kAvailable) {
-    // We've got a hit on the output metadata; the contents should
-    // be a protobuf.  Try to parse it.
-    const GoogleString* val_str = value.get();
-    ArrayInputStream input(val_str->data(), val_str->size());
-    if (partitions_->ParseFromZeroCopyStream(&input) &&
-        IsOtherDependencyValid(partitions_.get())) {
-      // Go through and figure out if the cached results for each partition are
-      // valid, and if not it's worth trying to salvage them by re-checking if
-      // the resources have -really- changed.
-      for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
-        CachedResult* partition = partitions_->mutable_partition(i);
-        bool can_revalidate_resource;
-        if (!IsCachedResultValid(partition, &can_revalidate_resource,
-                                 &revalidate)) {
-          state = CacheInterface::kNotFound;
-          can_revalidate = can_revalidate && can_revalidate_resource;
-        }
+      if (partition.optimizable() &&
+          CreateOutputResourceForCachedOutput(
+              partition.url(), content_type, &output_resource)) {
+        outputs_.push_back(output_resource);
+      } else {
+        outputs_.push_back(OutputResourcePtr(NULL));
       }
-
-      // If OK or worth rechecking, set things up for the cache hit case.
-      if ((state == CacheInterface::kAvailable) || can_revalidate) {
-        for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
-          const CachedResult& partition = partitions_->partition(i);
-          OutputResourcePtr output_resource;
-          const ContentType* content_type = NameExtensionToContentType(
-              StrCat(".", partition.extension()));
-
-          if (partition.optimizable() &&
-              CreateOutputResourceForCachedOutput(
-                  partition.url(), content_type, &output_resource)) {
-            outputs_.push_back(output_resource);
-          } else {
-            outputs_.push_back(OutputResourcePtr(NULL));
-          }
-        }
-      }
-    } else {
-      // This case includes both corrupt protobufs and the case where
-      // external dependencies are invalid. We do not attempt to reuse
-      // rewrite results by input content hashes even in the second
-      // case as that would require us to try to re-fetch those URLs as well.
-      can_revalidate = false;
-      state = CacheInterface::kNotFound;
-      // TODO(jmarantz): count cache corruptions in a stat?
     }
-  } else {
-    can_revalidate = false;
-    Manager()->rewrite_stats()->cached_output_misses()->Add(1);
   }
 
   // If the cache gave a miss, or yielded unparsable data, then acquire a lock
   // and start fetching the input resources.
-  if (state == CacheInterface::kAvailable) {
+  if (cache_ok) {
     OutputCacheHit(false /* no need to write back to cache*/);
   } else {
     MarkSlow();
@@ -1193,8 +1211,10 @@ bool RewriteContext::Fetch(
     fetch_.reset(
         new FetchContext(this, response_writer, response_headers, callback,
                          output_resource, message_handler));
-    Driver()->AddRewriteTask(new MemberFunction0<RewriteContext>(
-        &RewriteContext::StartFetch, this));
+    if (output_resource->has_hash()) {
+      fetch_->set_requested_hash(output_resource->hash());
+    }
+    Driver()->AddRewriteTask(MakeFunction(this, &RewriteContext::StartFetch));
     ret = true;
   }
   return ret;
@@ -1202,7 +1222,7 @@ bool RewriteContext::Fetch(
 
 void RewriteContext::StartFetch() {
   // Note that in case of fetches we continue even if we didn't manage to
-  // steal the lock.
+  // take the lock.
   Manager()->LockForCreation(
       Lock(), Driver()->rewrite_worker(),
       MakeFunction(this, &RewriteContext::FetchInputs,

@@ -250,6 +250,22 @@ class RewriteContext {
   // May be called from any thread.
   void StartNestedTasks();
 
+  // Tries to decode result of a cache lookup (which may or may not have
+  // succeeded) into partitions_, and also checks the dependency tables.
+  //
+  // Returns true if cache hit, and all dependencies checked out.
+  //
+  // May also return false, but set *can_revalidate to true and
+  // output a list of inputs to re-check if the situation may be
+  // salvageable if inputs did not change.
+  //
+  // Will return false with *can_revalidate = false if the cached
+  // result is entirely unsalvageable.
+  bool TryDecodeCacheResult(CacheInterface::KeyState state,
+                            const SharedString& value,
+                            bool* can_revalidate,
+                            InputInfoStarVector* revalidate);
+
   // Deconstructs a URL by name and creates an output resource that
   // corresponds to it.
   bool CreateOutputResourceForCachedOutput(const StringPiece& url,

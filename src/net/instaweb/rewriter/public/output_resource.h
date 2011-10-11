@@ -114,6 +114,8 @@ class OutputResource : public Resource {
   GoogleString filename() const;
   StringPiece suffix() const;
   StringPiece filter_prefix() const { return full_name_.id(); }
+  StringPiece hash() const { return full_name_.hash(); }
+  bool has_hash() const { return !hash().empty(); }
 
   // Some output resources have mangled names derived from input resource(s),
   // such as when combining CSS files.  When we need to regenerate the output
@@ -236,8 +238,6 @@ class OutputResource : public Resource {
 
   void SetHash(const StringPiece& hash);
   StringPiece extension() const { return full_name_.ext(); }
-  StringPiece hash() const { return full_name_.hash(); }
-  bool has_hash() const { return !hash().empty(); }
   GoogleString TempPrefix() const;
 
   OutputWriter* BeginWrite(MessageHandler* message_handler);
