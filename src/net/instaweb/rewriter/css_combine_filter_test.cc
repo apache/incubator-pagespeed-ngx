@@ -1089,6 +1089,20 @@ TEST_P(CssCombineFilterTest, TwoCombinationsTwice) {
   BarrierTestHelper("two_comb", input_css_links, &output_css_links);
 }
 
+TEST_P(CssCombineFilterTest, InvalidFetchCache) {
+  // Regression test for crashes when we're asked to do an invalid
+  // fetch and then repeat it for a rewriter inside an XHTML-DTD page.
+  SetFetchResponse404("404a.css");
+  SetFetchResponse404("404b.css");
+
+  EXPECT_FALSE(
+      TryFetchResource("http://test.com/404a.css+404b.css.pagespeed.cc.0.css"));
+  ValidateNoChanges("invalid",
+                    StrCat(kXhtmlDtd,
+                           CssLinkHref("404a.css"),
+                           CssLinkHref("404b.css")));
+}
+
 class CssFilterWithCombineTest : public CssCombineFilterTest {
  protected:
   virtual void SetUp() {

@@ -33,6 +33,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -43,6 +44,7 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/proto_util.h"
@@ -267,6 +269,10 @@ class CssCombineFilter::Context : public RewriteContext {
     // rewrite_context.cc.  But we still need to delete slots 1-N.
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
       CachedResult* partition = output_partition(p);
+      if (partition->input_size() == 0) {
+        continue;
+      }
+
       if (filter_->driver()->doctype().IsXhtml()) {
         int first_element_index = partition->input(0).index();
         HtmlElement* first_element = elements_[first_element_index];

@@ -1054,6 +1054,7 @@ void RewriteContext::StartRewriteForFetch() {
   if (ok_to_rewrite) {
     Rewrite(0, partition, output);
   } else {
+    partition->clear_input();
     AddRecheckDependency();
     RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
   }

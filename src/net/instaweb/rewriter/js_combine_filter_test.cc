@@ -567,6 +567,27 @@ TEST_P(JsCombineFilterTest, TestCombineShard) {
   EXPECT_EQ(src1, src2);
 }
 
+TEST_P(JsCombineFilterTest, PartlyInvalidFetchCache) {
+  // Regression test where a combination involving a 404 gets fetched,
+  // and then rewritten --- incorrectly.
+  // Note: arguably this shouldn't get cached at all; but it certainly
+  // should not result in an inappropriate result.
+  if (!rewrite_driver()->asynchronous_rewrites()) {
+    // Legacy path doesn't cache at all (so it does a more sensible rewrite)
+    return;
+  }
+  SetFetchResponse404("404.js");
+  InitResponseHeaders("a.js", kContentTypeJavascript, "var a;", 100);
+  InitResponseHeaders("b.js", kContentTypeJavascript, "var b;", 100);
+  EXPECT_FALSE(
+      TryFetchResource(
+          "http://test.com/a.js+b.js+404.js.pagespeed.jc.0.js"));
+  ValidateNoChanges("partly_invalid",
+                    StrCat("<script src=a.js></script>",
+                           "<script src=b.js></script>"
+                           "<script src=404.js></script>"));
+}
+
 INSTANTIATE_TEST_CASE_P(JsCombineFilterTestInstance, JsCombineFilterTest,
                         ::testing::Bool());
 INSTANTIATE_TEST_CASE_P(
