@@ -29,6 +29,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/wildcard_group.h"
 
 namespace {
@@ -80,8 +81,7 @@ const int64 RewriteOptions::kDefaultJsInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultCssOutlineMinBytes = 3000;
 const int64 RewriteOptions::kDefaultJsOutlineMinBytes = 3000;
 
-// TODO(sligocki): Change kDefaultMaxHtmlCacheTimeMs to 5min.
-const int64 RewriteOptions::kDefaultMaxHtmlCacheTimeMs = 0;
+const int64 RewriteOptions::kDefaultMaxHtmlCacheTimeMs = 5 * Timer::kMinuteMs;
 const int64 RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs = 0;
 
 const int64 RewriteOptions::kDefaultCacheInvalidationTimestamp = -1;

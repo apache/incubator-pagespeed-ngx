@@ -193,6 +193,12 @@ echo TEST: mod_pagespeed is defaulting to more than PassThrough
 check [ ! -f $APACHE_HTDOCS/mod_pagespeed_test/.htaccess ]
 fetch_until $TEST_ROOT/bot_test.html 'grep -c \.pagespeed\.' 2
 
+# Note: This is in flux, we are now allowing cacheable HTML and this test will
+# need to be updated when this is turned on in mod_pagespeed.
+echo Checking for presence of Cache-Control: max-age=0, no-cache, no-store
+echo $HTML_HEADERS | grep -qi 'Cache-Control: max-age=0, no-cache, no-store'
+check [ $? = 0 ]
+
 # Determine whether statistics are enabled or not.  If not, don't test them,
 # but do an additional regression test that tries harder to get a cache miss.
 grep "# ModPagespeedStatistics off" $APACHE_DEBUG_PAGESPEED_CONF > /dev/null
