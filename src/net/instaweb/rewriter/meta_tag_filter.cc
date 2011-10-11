@@ -60,9 +60,9 @@ void MetaTagFilter::EndElementImpl(HtmlElement* element) {
       // We want only meta tags with http header equivalents.
       HtmlElement::Attribute* equiv = element->FindAttribute(
           HtmlName::kHttpEquiv);
-      if (equiv != NULL) {
-        HtmlElement::Attribute* value = element->FindAttribute(
-            HtmlName::kContent);
+      HtmlElement::Attribute* value = element->FindAttribute(
+          HtmlName::kContent);
+      if (equiv != NULL && value != NULL) {
         // Check to see if we have this value already.  If we do,
         // there's no need to add it in again.
         ConstStringStarVector values;

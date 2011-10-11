@@ -86,6 +86,11 @@ TEST_F(MetaTagFilterTest, TestDoubleTags) {
   EXPECT_TRUE(StringCaseEqual(values[0]->c_str(), "en-US,fr"));
 }
 
+TEST_F(MetaTagFilterTest, TestEquivNoValue) {
+  // Make sure we don't crash when a meta http-equiv has no content given.
+  ValidateNoChanges("no_value", "<meta http-equiv='NoValue'>");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb
