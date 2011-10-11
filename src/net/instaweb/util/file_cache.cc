@@ -28,6 +28,7 @@
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/shared_string.h"
@@ -97,6 +98,7 @@ FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
       filename_encoder_(filename_encoder),
       message_handler_(handler),
       cache_policy_(policy),
+      path_length_limit_(file_system_->MaxPathLength(path)),
       clean_time_path_(path) {
   // NOTE(abliss): We don't want all the caches racing for the
   // lock at startup, so each one gets a random offset.
@@ -155,6 +157,14 @@ bool FileCache::EncodeFilename(const GoogleString& key,
   // about trailing slashes.
   EnsureEndsInSlash(&prefix);
   filename_encoder_->Encode(prefix, key, filename);
+
+  // Make sure the length isn't too big for filesystem to handle; if it is
+  // just name the object using a hash.
+  if (static_cast<int>(filename->length()) > path_length_limit_) {
+    filename_encoder_->Encode(prefix, cache_policy_->hasher->Hash(key),
+                              filename);
+  }
+
   return true;
 }
 

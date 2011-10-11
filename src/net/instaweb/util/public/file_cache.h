@@ -27,6 +27,7 @@
 namespace net_instaweb {
 class FileSystem;
 class FilenameEncoder;
+class Hasher;
 class MessageHandler;
 class SharedString;
 class SlowWorker;
@@ -37,10 +38,12 @@ class FileCache : public CacheInterface {
  public:
 
   struct CachePolicy {
-    CachePolicy(Timer* timer, int64 clean_interval_ms, int64 target_size)
-        : timer(timer), clean_interval_ms(clean_interval_ms),
+    CachePolicy(Timer* timer, Hasher* hasher,
+                int64 clean_interval_ms, int64 target_size)
+        : timer(timer), hasher(hasher), clean_interval_ms(clean_interval_ms),
           target_size(target_size) {}
     const Timer* timer;
+    const Hasher* hasher;
     const int64 clean_interval_ms;
     const int64 target_size;
    private:
@@ -92,6 +95,7 @@ class FileCache : public CacheInterface {
   MessageHandler* message_handler_;
   const scoped_ptr<CachePolicy> cache_policy_;
   int64 next_clean_ms_;
+  int path_length_limit_;  // Maximum total length of path file_system_ supports
   // The full path to our cleanup timestamp file.
   GoogleString clean_time_path_;
   bool last_conditional_clean_result_;

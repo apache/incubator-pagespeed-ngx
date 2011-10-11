@@ -17,6 +17,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include <cstddef>
+
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -38,6 +39,10 @@ FileSystem::InputFile::~InputFile() {
 }
 
 FileSystem::OutputFile::~OutputFile() {
+}
+
+int FileSystem::MaxPathLength(const StringPiece& base) const {
+  return 8192;
 }
 
 bool FileSystem::ReadFile(const char* filename, GoogleString* buffer,

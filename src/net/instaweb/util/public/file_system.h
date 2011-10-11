@@ -115,6 +115,13 @@ class FileSystem {
     virtual ~OutputFile();
   };
 
+  // Returns the maximum possible length of a path in a given directory.
+  // Note that this is the total, and there may be further constraints
+  // on each level. It also depends on the base path.
+  //
+  // Default implementation defensively returns 8192.
+  virtual int MaxPathLength(const StringPiece& base) const;
+
   // High level support to read/write entire files in one shot.
   virtual bool ReadFile(const char* filename,
                         GoogleString* buffer,

@@ -22,9 +22,11 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <limits>
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -156,6 +158,21 @@ class StdioOutputFile : public FileSystem::OutputFile {
 };
 
 StdioFileSystem::~StdioFileSystem() {
+}
+
+int StdioFileSystem::MaxPathLength(const StringPiece& base) const {
+  const int kMaxInt = std::numeric_limits<int>::max();
+
+  long limit = pathconf(base.as_string().c_str(), _PC_PATH_MAX);
+  if (limit < 0) {
+    // pathconf failed.
+    return FileSystem::MaxPathLength(base);
+  } else if (limit > kMaxInt) {
+    // As pathconf returns a long, we may have to clamp it.
+    return kMaxInt;
+  } else {
+    return static_cast<int>(limit);
+  }
 }
 
 FileSystem::InputFile* StdioFileSystem::OpenInputFile(

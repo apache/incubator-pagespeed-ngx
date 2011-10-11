@@ -52,6 +52,7 @@ ApacheCache::ApacheCache(const StringPiece& path,
 
   FileCache::CachePolicy* policy = new FileCache::CachePolicy(
       factory->timer(),
+      factory->hasher(),
       config.file_cache_clean_interval_ms(),
       config.file_cache_clean_size_kb());
   file_cache_ = new FileCache(

@@ -34,6 +34,8 @@ class StdioFileSystem : public FileSystem {
   StdioFileSystem() {}
   virtual ~StdioFileSystem();
 
+  virtual int MaxPathLength(const StringPiece& base) const;
+
   virtual InputFile* OpenInputFile(const char* filename,
                                    MessageHandler* message_handler);
   virtual OutputFile* OpenOutputFileHelper(const char* filename,

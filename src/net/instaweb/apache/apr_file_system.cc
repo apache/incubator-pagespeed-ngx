@@ -27,6 +27,7 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/debug.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/stack_buffer.h"
@@ -194,6 +195,11 @@ AprFileSystem::AprFileSystem(apr_pool_t* pool, ThreadSystem* thread_system)
 
 AprFileSystem::~AprFileSystem() {
   apr_pool_destroy(pool_);
+}
+
+int AprFileSystem::MaxPathLength(const StringPiece& base) const {
+  // We delegate to StdioFileSystem for simplicity.
+  return StdioFileSystem().MaxPathLength(base);
 }
 
 FileSystem::InputFile* AprFileSystem::OpenInputFile(

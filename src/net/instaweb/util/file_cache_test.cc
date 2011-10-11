@@ -27,6 +27,7 @@
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/slow_worker.h"
@@ -49,7 +50,7 @@ class FileCacheTest : public CacheTestBase {
         cache_(GTestTempDir(), &file_system_, &worker_,
                &filename_encoder_,
                new FileCache::CachePolicy(
-                   &mock_timer_, kCleanIntervalMs, kTargetSize),
+                   &mock_timer_, &hasher_, kCleanIntervalMs, kTargetSize),
                &message_handler_) {
     // TODO(jmarantz): consider using mock_thread_system if we want
     // explicit control of time.  For now, just mutex-protect the
@@ -87,6 +88,7 @@ class FileCacheTest : public CacheTestBase {
 
  protected:
   scoped_ptr<ThreadSystem> thread_system_;
+  MD5Hasher hasher_;
   SlowWorker worker_;
   MockTimer mock_timer_;
   MemFileSystem file_system_;

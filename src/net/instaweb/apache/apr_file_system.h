@@ -39,6 +39,7 @@ class AprFileSystem : public FileSystem {
   AprFileSystem(apr_pool_t* pool, ThreadSystem* thread_system);
   ~AprFileSystem();
 
+  virtual int MaxPathLength(const StringPiece& base) const;
   virtual InputFile* OpenInputFile(
       const char* file, MessageHandler* message_handler);
   virtual OutputFile* OpenOutputFileHelper(

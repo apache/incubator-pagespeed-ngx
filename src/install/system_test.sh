@@ -247,7 +247,7 @@ function CheckBots() {
 # whether the system is settled yet.
 function CheckBotTest() {
   WGET_ARGS=""
-  
+
   echo "$1: UserAgent is a bot; ModPagespeedDisableForBots=off"
   CheckBots 'off' '-lt' 'Googlebot/2.1' "$1"
   echo "$1: UserAgent is a bot; ModPagespeedDisableForBots=on"
@@ -399,6 +399,10 @@ check [ $LARGE_URL_LINE_COUNT -gt 900 ]
 test_filter combine_javascript combines 2 JS files into 1.
 fetch_until $URL 'grep -c src=' 1
 check run_wget_with_args $URL
+
+echo TEST: combine_javascript with long URL still works
+URL=$TEST_ROOT/combine_js_very_many.html?ModPagespeedFilters=combine_javascript
+fetch_until $URL 'grep -c src=' 4
 
 test_filter combine_heads combines 2 heads into 1
 check run_wget_with_args $URL
@@ -624,7 +628,7 @@ $WGET -O /dev/null -o /dev/null --tries=1 --read-timeout=3 $URL
 check [ $? = 8 ]
 
 CheckBotTest "test"
-  
+
 WGET_ARGS=""
 
 # Simple test that https is working.
