@@ -914,7 +914,7 @@ class FilterFetch : public UrlAsyncFetcher::Callback {
   UrlAsyncFetcher::Callback* callback_;
 };
 
-class CacheCallback : public HTTPCache::Callback {
+class CacheCallback : public OptionsAwareHTTPCacheCallback {
  public:
   CacheCallback(RewriteDriver* driver,
                 RewriteFilter* filter,
@@ -924,7 +924,8 @@ class CacheCallback : public HTTPCache::Callback {
                 Writer* writer,
                 MessageHandler* handler,
                 UrlAsyncFetcher::Callback* callback)
-      : driver_(driver),
+      : OptionsAwareHTTPCacheCallback(driver->options()),
+        driver_(driver),
         filter_(filter),
         output_resource_(output_resource),
         response_(response),
@@ -1002,11 +1003,6 @@ class CacheCallback : public HTTPCache::Callback {
         Find();
       }
     }
-  }
-
-  virtual bool IsCacheValid(const ResponseHeaders& headers) {
-    return headers.IsDateLaterThan(driver_->options()->
-                                   cache_invalidation_timestamp());
   }
 
  private:
@@ -1594,6 +1590,18 @@ void RewriteDriver::AddRewriteTask(Function* task) {
 
 void RewriteDriver::AddLowPriorityRewriteTask(Function* task) {
   low_priority_rewrite_worker_->Add(task);
+}
+
+OptionsAwareHTTPCacheCallback::OptionsAwareHTTPCacheCallback(
+    const RewriteOptions* rewrite_options)
+    : cache_invalidation_timestamp_ms_(
+          rewrite_options->cache_invalidation_timestamp()) {}
+
+OptionsAwareHTTPCacheCallback::~OptionsAwareHTTPCacheCallback() {}
+
+bool OptionsAwareHTTPCacheCallback::IsCacheValid(
+    const ResponseHeaders& headers) {
+  return headers.IsDateLaterThan(cache_invalidation_timestamp_ms_);
 }
 
 }  // namespace net_instaweb

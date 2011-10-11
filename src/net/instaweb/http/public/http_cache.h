@@ -68,9 +68,10 @@ class HTTPCache {
     // thus callbacks can apply any further invalidation semantics it wants on
     // otherwise valid entries. But there's no way for a callback to override
     // when the HTTP semantics say the entry is expired.
-    virtual bool IsCacheValid(const ResponseHeaders& headers) {
-      return true;
-    }
+    //
+    // See also OptionsAwareHTTPCacheCallback in rewrite_driver.h for an
+    // implementation you probably want to use.
+    virtual bool IsCacheValid(const ResponseHeaders& headers) = 0;
 
     HTTPValue* http_value() { return &http_value_; }
     ResponseHeaders* response_headers() { return &response_headers_; }

@@ -446,22 +446,6 @@ class ResourceManager {
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };
 
-class ResourceManagerHttpCallback : public HTTPCache::Callback {
- public:
-  ResourceManagerHttpCallback(Resource::AsyncCallback* resource_callback,
-                              ResourceManager* resource_manager)
-      : resource_callback_(resource_callback),
-        resource_manager_(resource_manager) {
-  }
-  virtual ~ResourceManagerHttpCallback();
-  virtual void Done(HTTPCache::FindResult find_result);
-  virtual bool IsCacheValid(const ResponseHeaders& headers);
-
- private:
-  Resource::AsyncCallback* resource_callback_;
-  ResourceManager* resource_manager_;
-};
-
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_

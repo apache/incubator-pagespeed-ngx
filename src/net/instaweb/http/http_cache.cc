@@ -172,6 +172,11 @@ class SynchronizingCallback : public HTTPCache::Callback {
     called_ = true;
   }
 
+  virtual bool IsCacheValid(const ResponseHeaders& headers) {
+    // We don't support custom invalidation policy on the legacy sync path.
+    return true;
+  }
+
  private:
   bool called_;
   HTTPCache::FindResult result_;

@@ -115,13 +115,10 @@ class Resource : public RefCounted<Resource> {
 
   virtual void DetermineContentType();
 
-  // Obtain rewrite options for this. Currently overridden by only
-  // OutputResource and UrlInputResource (these have RewriteOptions*).
-  // Used in cache invalidation.
-  virtual const RewriteOptions* rewrite_options() const {
-    LOG(DFATAL) << "No rewrite options with base class Resource.";
-    return NULL;
-  }
+  // Obtain rewrite options for this. Any resources which return true
+  // for IsCacheable() but don't unconditionally return true for loaded()
+  // must override this in a useful way. Used in cache invalidation.
+  virtual const RewriteOptions* rewrite_options() const = 0;
 
   // We define a new Callback type here because we need to
   // pass in the Resource to the Done callback so it can

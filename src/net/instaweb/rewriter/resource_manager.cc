@@ -117,6 +117,18 @@ const char ResourceManager::kCacheKeyResourceNamePrefix[] = "rname/";
 // alters them.
 const char ResourceManager::kResourceEtagValue[] = "W/0";
 
+class ResourceManagerHttpCallback : public OptionsAwareHTTPCacheCallback {
+ public:
+  ResourceManagerHttpCallback(Resource::AsyncCallback* resource_callback,
+                              ResourceManager* resource_manager);
+  virtual ~ResourceManagerHttpCallback();
+  virtual void Done(HTTPCache::FindResult find_result);
+
+ private:
+  Resource::AsyncCallback* resource_callback_;
+  ResourceManager* resource_manager_;
+};
+
 ResourceManager::ResourceManager(RewriteDriverFactory* factory)
     : thread_system_(factory->thread_system()),
       rewrite_stats_(NULL),
@@ -383,6 +395,16 @@ void ResourceManager::RefreshIfImminentlyExpiring(
   }
 }
 
+ResourceManagerHttpCallback::ResourceManagerHttpCallback(
+    Resource::AsyncCallback* resource_callback,
+    ResourceManager* resource_manager)
+    : OptionsAwareHTTPCacheCallback(
+          resource_callback->resource()->rewrite_options()),
+      resource_callback_(resource_callback),
+      resource_manager_(resource_manager) {
+  }
+
+
 ResourceManagerHttpCallback::~ResourceManagerHttpCallback() {
 }
 
@@ -416,17 +438,6 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
       break;
   }
   delete this;
-}
-
-bool ResourceManagerHttpCallback::IsCacheValid(const ResponseHeaders& headers) {
-  const RewriteOptions* rewrite_options =
-      resource_callback_->resource()->rewrite_options();
-  if (rewrite_options == NULL) {
-    return true;
-  } else {
-    int64 timestamp_ms = rewrite_options->cache_invalidation_timestamp();
-    return headers.IsDateLaterThan(timestamp_ms);
-  }
 }
 
 // TODO(sligocki): Move into Resource? This would allow us to treat

@@ -807,6 +807,21 @@ class RewriteDriver : public HtmlParse {
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };
 
+// Subclass of HTTPCache::Callback that incorporates a given RewriteOptions'
+// invalidation policy.
+class OptionsAwareHTTPCacheCallback : public HTTPCache::Callback {
+ public:
+  virtual ~OptionsAwareHTTPCacheCallback();
+  virtual bool IsCacheValid(const ResponseHeaders& headers);
+
+ protected:
+  explicit OptionsAwareHTTPCacheCallback(const RewriteOptions* rewrite_options);
+
+ private:
+  int64 cache_invalidation_timestamp_ms_;
+  DISALLOW_COPY_AND_ASSIGN(OptionsAwareHTTPCacheCallback);
+};
+
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_DRIVER_H_

@@ -31,11 +31,13 @@
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
+#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/mock_resource_callback.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -1026,6 +1028,31 @@ TEST_F(ResourceManagerTest, PartlyFailedFetch) {
   EXPECT_FALSE(resource->loaded());
   EXPECT_FALSE(resource->ContentsValid())
     << " Unexpectedly got access to resource contents:" << resource->contents();
+}
+
+TEST_F(ResourceManagerTest, LoadFromFileReadAsync) {
+  // This reads a resource twice, to make sure that there is no misbehavior
+  // (read: check failures or crashes) when cache invalidation logic tries to
+  // deal with FileInputResource.
+  const char kContents[] = "lots of bits of data";
+  options()->file_load_policy()->Associate("http://test.com/", "/test/");
+
+  GoogleUrl test_url("http://test.com/a.css");
+
+  // Init file resources.
+  WriteFile("/test/a.css", kContents);
+
+  SetBaseUrlForFetch("http://test.com");
+  ResourcePtr resource(
+      rewrite_driver()->CreateInputResource(test_url));
+  VerifyContentsCallback callback(resource, kContents);
+  rewrite_driver()->ReadAsync(&callback, message_handler());
+  callback.AssertCalled();
+
+  resource = rewrite_driver()->CreateInputResource(test_url);
+  VerifyContentsCallback callback2(resource, kContents);
+  rewrite_driver()->ReadAsync(&callback2, message_handler());
+  callback2.AssertCalled();
 }
 
 }  // namespace net_instaweb

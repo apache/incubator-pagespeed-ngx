@@ -59,6 +59,9 @@ class FileInputResource : public Resource {
   virtual void FillInPartitionInputInfo(InputInfo* input);
 
   virtual GoogleString url() const { return url_; }
+  virtual const RewriteOptions* rewrite_options() const {
+    return rewrite_options_;
+  }
 
  protected:
   void SetDefaultHeaders(const ContentType* content_type,
