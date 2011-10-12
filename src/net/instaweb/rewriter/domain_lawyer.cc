@@ -348,6 +348,21 @@ bool DomainLawyer::MapRequestToDomain(
   return ret;
 }
 
+bool DomainLawyer::IsDomainAuthorized(const GoogleUrl& original_request,
+                                      const GoogleUrl& domain_to_check) const {
+  bool ret = false;
+  if (domain_to_check.is_valid()) {
+    if (original_request.is_valid() &&
+        (original_request.Origin() == domain_to_check.Origin())) {
+      ret = true;
+    } else {
+      Domain* path_domain = FindDomain(domain_to_check);
+      ret = (path_domain != NULL) && path_domain->authorized();
+    }
+  }
+  return ret;
+}
+
 bool DomainLawyer::MapOrigin(const StringPiece& in, GoogleString* out) const {
   bool ret = false;
   GoogleUrl gurl(in);

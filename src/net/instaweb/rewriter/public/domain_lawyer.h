@@ -75,13 +75,23 @@ class DomainLawyer {
   // This is used both for domain authorization and domain rewriting,
   // but not domain sharding.
   //
-  // TODO(sligocki): Refactor this code to have an authorization function
-  // and a function that figures out domain mapping.
+  // See also IsDomainAuthorized, which can be used to determine
+  // domain authorization without performing a mapping.
   bool MapRequestToDomain(const GoogleUrl& original_request,
                           const StringPiece& resource_url,
                           GoogleString* mapped_domain_name,
                           GoogleUrl* resolved_request,
                           MessageHandler* handler) const;
+
+  // Given the context of an HTTP request to 'original_request',
+  // checks whether 'domain_to_check' is authorized for rewriting.
+  //
+  // For example, if we are rewriting http://www.myhost.com/index.html,
+  // then all resources from www.myhost.com are implicitly authorized
+  // for rewriting.  Additionally, any domains specified via
+  // AddDomain() are also authorized.
+  bool IsDomainAuthorized(const GoogleUrl& original_request,
+                          const GoogleUrl& domain_to_check) const;
 
   // Maps an origin resource; just prior to fetching it.  This fails
   // if the input URL is not valid.  It succeeds even if there is no

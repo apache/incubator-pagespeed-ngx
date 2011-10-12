@@ -105,7 +105,16 @@ TEST_F(DomainLawyerTest, ExternalDomainNotDeclared) {
 
 TEST_F(DomainLawyerTest, ExternalDomainDeclared) {
   StringPiece cdn_domain(kCdnPrefix, STATIC_STRLEN(kCdnPrefix));
+
+  // Any domain is authorized with respect to an HTML from the same domain.
+  GoogleUrl orig_domain(orig_request_.Origin());
+  EXPECT_TRUE(domain_lawyer_.IsDomainAuthorized(orig_request_, orig_domain));
+
+  // But to pull in a resource from another domain, we must first authorize it.
+  GoogleUrl cdn_gurl(cdn_domain);
+  EXPECT_FALSE(domain_lawyer_.IsDomainAuthorized(orig_request_, cdn_gurl));
   ASSERT_TRUE(domain_lawyer_.AddDomain(cdn_domain, &message_handler_));
+  EXPECT_TRUE(domain_lawyer_.IsDomainAuthorized(orig_request_, cdn_gurl));
   GoogleString mapped_domain_name;
   ASSERT_TRUE(MapRequest(
       orig_request_, StrCat(kCdnPrefix, kResourceUrl), &mapped_domain_name));

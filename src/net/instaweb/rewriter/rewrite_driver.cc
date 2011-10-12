@@ -1106,15 +1106,8 @@ bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
   bool ret = false;
   if (domain_url.is_valid()) {
     if (options()->IsAllowed(input_url.Spec())) {
-      scoped_ptr<GoogleUrl> resolved_request(new GoogleUrl());
-      GoogleString mapped_domain_name;
-      // TODO(nforman): MapRequestToDomain() may be heavier-weight than we need.
-      // Replace it with something that does less copying.
-      if (options()->domain_lawyer()->MapRequestToDomain(
-              domain_url, input_url.Spec(), &mapped_domain_name,
-              resolved_request.get(), message_handler())) {
-        ret = true;
-      }
+      ret = options()->domain_lawyer()->IsDomainAuthorized(
+          domain_url, input_url);
     }
   }
   return ret;
