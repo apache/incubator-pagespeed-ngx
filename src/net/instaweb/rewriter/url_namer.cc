@@ -15,6 +15,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 
 #include "base/logging.h"               // for COMPACT_GOOGLE_LOG_FATAL, etc
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -35,7 +36,7 @@ UrlNamer::~UrlNamer() {
 
 // Moved from OutputResource::url()
 GoogleString UrlNamer::Encode(const RewriteOptions* rewrite_options,
-                              const OutputResource& output_resource) {
+                              const OutputResource& output_resource) const {
   GoogleString encoded_leaf(output_resource.full_name().Encode());
   GoogleString encoded_path;
   if (rewrite_options == NULL) {
@@ -63,15 +64,21 @@ GoogleString UrlNamer::Encode(const RewriteOptions* rewrite_options,
   return StrCat(encoded_path, encoded_leaf);
 }
 
-GoogleString UrlNamer::Decode(const GoogleUrl& request_url) {
-  StringPiece url_as_is = request_url.UncheckedSpec();
-  return url_as_is.as_string();
+bool UrlNamer::Decode(const GoogleUrl& request_url,
+                      GoogleUrl* owner_domain,
+                      GoogleString* decoded) const {
+  return false;
+}
+
+bool UrlNamer::IsAuthorized(const GoogleUrl& request_url,
+                            const RewriteOptions& options) const {
+  return true;
 }
 
 void UrlNamer::DecodeOptions(const GoogleUrl& request_url,
                              const RequestHeaders& request_headers,
                              Callback* callback,
-                             MessageHandler* handler) {
+                             MessageHandler* handler) const {
   callback->Done(NULL);
 }
 

@@ -198,8 +198,8 @@ void ProxyInterface::ProxyRequest(const GoogleUrl& request_url,
       new ProxyInterfaceUrlNamerCallback(url, headers, response_headers,
                                          response_writer, handler, callback,
                                          this);
-  resource_manager_->url_namer() ->DecodeOptions(
-      request_url, request_headers,proxy_interface_url_namer_callback,
+  resource_manager_->url_namer()->DecodeOptions(
+      request_url, request_headers, proxy_interface_url_namer_callback,
       handler);
 }
 

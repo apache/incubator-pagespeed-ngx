@@ -33,6 +33,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/worker_test_base.h"
 
@@ -61,6 +62,65 @@ class AsyncExpectCallback : public ExpectCallback {
   WorkerTestBase::SyncPoint* notify_;
   DISALLOW_COPY_AND_ASSIGN(AsyncExpectCallback);
 };
+
+// This class creates a proxy URL naming rule that encodes an "owner" domain
+// and an "origin" domain, all inside a fixed proxy-domain.
+class ProxyUrlNamer : public UrlNamer {
+ public:
+  static const char kProxyHost[];
+
+  ProxyUrlNamer() : authorized_(true) {}
+
+  virtual GoogleString Encode(const RewriteOptions* rewrite_options,
+                              const OutputResource& output_resource) const {
+    LOG(DFATAL) << "We don't actually encode URLs in this test yet";
+    return "";
+  }
+
+  // Given the request_url, generate the original url.
+  virtual bool Decode(const GoogleUrl& gurl,
+                      GoogleUrl* domain,
+                      GoogleString* decoded) const {
+    if (gurl.Host() != kProxyHost) {
+      return false;
+    }
+    StringPieceVector path_vector;
+    SplitStringPieceToVector(gurl.PathAndLeaf(), "/", &path_vector, false);
+    if (path_vector.size() < 3) {
+      return false;
+    }
+    if (domain != NULL) {
+      domain->Reset(StrCat("http://", path_vector[1]));
+    }
+
+    // [0] is "" because PathAndLeaf returns a string with a leading slash
+    *decoded = StrCat(gurl.Scheme(), ":/");
+    for (size_t i = 2, n = path_vector.size(); i < n; ++i) {
+      StrAppend(decoded, "/", path_vector[i]);
+    }
+    return true;
+  }
+
+  virtual bool IsAuthorized(const GoogleUrl& gurl,
+                            const RewriteOptions& options) const {
+    return authorized_;
+  }
+
+  // Given the request url and request headers, generate the rewrite options.
+  virtual void DecodeOptions(const GoogleUrl& request_url,
+                             const RequestHeaders& request_headers,
+                             Callback* callback,
+                             MessageHandler* handler) const {
+    callback->Done(NULL);
+  }
+
+  void set_authorized(bool authorized) { authorized_ = authorized; }
+
+ private:
+  bool authorized_;
+};
+
+const char ProxyUrlNamer::kProxyHost[] = "proxy_host.com";
 
 // TODO(morlovich): This currently relies on ResourceManagerTestBase to help
 // setup fetchers; and also indirectly to prevent any rewrites from timing out
@@ -672,6 +732,45 @@ TEST_F(ProxyInterfaceTest, Blacklist) {
   ResponseHeaders headers_out;
   FetchFromProxy("page.html", true, &text_out, &headers_out);
   EXPECT_STREQ(content, text_out);
+}
+
+TEST_F(ProxyInterfaceTest, RepairMismappedResource) {
+  // Teach the mock fetcher to serve origin content for
+  // "http://test.com/foo.js".
+  const char kContent[] = "function f() {alert('foo');}";
+  InitResponseHeaders("foo.js", kContentTypeHtml, kContent,
+                      kHtmlCacheTimeSec * 2);
+
+  // Set up a Mock Namer that will mutate output resources to
+  // be served on proxy_host.com, encoding the origin URL.
+  ProxyUrlNamer url_namer;
+  ResponseHeaders headers;
+  GoogleString text;
+  resource_manager()->set_url_namer(&url_namer);
+
+  // Now fetch the origin content.  This will simply hit the
+  // mock fetcher and always worked.
+  FetchFromProxy("foo.js", true, &text, &headers);
+  EXPECT_EQ(kContent, text);
+
+  // Now make a weird URL encoding of the origin resource using the
+  // proxy host.  This may happen via javascript that detects its
+  // own path and initiates a 'load()' of another js file from the
+  // same path.  In this variant, the resource is served from the
+  // "source domain", so it is automatically whitelisted.
+  text.clear();
+  FetchFromProxy(
+      StrCat("http://", ProxyUrlNamer::kProxyHost, "/test.com/test.com/foo.js"),
+      true, &text, &headers);
+  EXPECT_EQ(kContent, text);
+
+  // In the next case, the resource is served from a different domain.  This
+  // is an open-proxy vulnerability and thus should fail.
+  text.clear();
+  url_namer.set_authorized(false);
+  FetchFromProxy(
+      StrCat("http://", ProxyUrlNamer::kProxyHost, "/test.com/evil.com/foo.js"),
+      false, &text, &headers);
 }
 
 }  // namespace

@@ -55,17 +55,34 @@ class UrlNamer {
 
   // Given an output resource and an optional set of options, generate the URL
   // that will be embedded in the rewritten page.
+  //
+  // Note: the default implementation returns the url of the output resource.
   virtual GoogleString Encode(const RewriteOptions* rewrite_options,
-                              const OutputResource& output_resource);
+                              const OutputResource& output_resource) const;
 
-  // Given the request_url, generate the original url.
-  virtual GoogleString Decode(const GoogleUrl& request_url);
+  // Given the request_url, generate the original url.  If the URL naming
+  // syntax supports an "owner" domain, and 'owner_domain' is non-null, then
+  // this method writes the owner domain into that pointer.
+  //
+  // Returns 'false' if request_url was not encoded via this namer.
+  //
+  // Note: the default implementation always returns false.
+  virtual bool Decode(const GoogleUrl& request_url,
+                      GoogleUrl* owner_domain,
+                      GoogleString* decoded) const;
+
+  // Determines whether the provided request URL is authorized given the
+  // RewriteOptions.
+  //
+  // The default implementation always return 'true'.
+  virtual bool IsAuthorized(const GoogleUrl& request_url,
+                            const RewriteOptions& options) const;
 
   // Given the request url and request headers, generate the rewrite options.
   virtual void DecodeOptions(const GoogleUrl& request_url,
                              const RequestHeaders& request_headers,
                              Callback* callback,
-                             MessageHandler* handler);
+                             MessageHandler* handler) const;
 
   // Modifies the request prior to dispatch to the underlying fetcher.
   virtual void PrepareRequest(const RewriteOptions* rewrite_options,

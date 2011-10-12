@@ -1246,7 +1246,12 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
 
 void RewriteDriver::SetDecodedUrlFromBase() {
   UrlNamer* namer = resource_manager()->url_namer();
-  decoded_base_url_.Reset(namer->Decode(base_url_));
+  GoogleString decoded_base;
+  if (namer->Decode(base_url_, NULL, &decoded_base)) {
+    decoded_base_url_.Reset(decoded_base);
+  } else {
+    decoded_base_url_.Reset(base_url_);
+  }
   DCHECK(decoded_base_url_.is_valid());
 }
 

@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
@@ -59,12 +60,52 @@ ProxyFetchFactory::~ProxyFetchFactory() {
 }
 
 void ProxyFetchFactory::StartNewProxyFetch(
-    const GoogleString& url, const RequestHeaders& request_headers,
+    const GoogleString& url_in, const RequestHeaders& request_headers_in,
     RewriteOptions* custom_options, ResponseHeaders* response_headers,
     Writer* base_writer, UrlAsyncFetcher::Callback* callback) {
-  ProxyFetch* fetch = new ProxyFetch(url, request_headers, custom_options,
-                                     response_headers, base_writer,
-                                     manager_, timer_, callback, this);
+  const GoogleString* url_to_fetch = &url_in;
+  const RequestHeaders* request_headers_to_fetch = &request_headers_in;
+
+  // Check whether this an encoding of a non-rewritten resource served
+  // from a proxied domain.
+  UrlNamer* namer = manager_->url_namer();
+  GoogleString decoded_resource;
+  RequestHeaders stripped_request_headers;
+  GoogleUrl gurl(url_in), request_origin;
+  DCHECK(!manager_->IsPagespeedResource(gurl))
+      << "expect ResourceFetch called for pagespeed resources, not ProxyFetch";
+  if (gurl.is_valid()) {
+    if (namer->Decode(gurl, &request_origin, &decoded_resource)) {
+      const RewriteOptions* options = (custom_options == NULL)
+          ? manager_->global_options()
+          : custom_options;
+      if (namer->IsAuthorized(gurl, *options)) {
+        // The URL is proxied, but is not rewritten as a pagespeed resource,
+        // so don't try to do the cache-lookup or URL fetch without stripping
+        // the proxied portion.
+        url_to_fetch = &decoded_resource;
+        stripped_request_headers.CopyFrom(request_headers_in);
+
+        // In a proxy configuration, the host header is likely set to
+        // the proxy host rather than the origin host.  Depending on
+        // the origin, this will not work: it will not expect to see
+        // the Proxy Host in its headers.
+        stripped_request_headers.RemoveAll(HttpAttributes::kHost);
+        request_headers_to_fetch = &stripped_request_headers;
+      } else {
+        response_headers->SetStatusAndReason(HttpStatus::kForbidden);
+        if (custom_options != NULL) {
+          delete custom_options;
+        }
+        callback->Done(false);
+        return;
+      }
+    }
+  }
+
+  ProxyFetch* fetch = new ProxyFetch(
+      *url_to_fetch, *request_headers_to_fetch, custom_options,
+      response_headers, base_writer, manager_, timer_, callback, this);
   Start(fetch);
   fetch->StartFetch();
 }
