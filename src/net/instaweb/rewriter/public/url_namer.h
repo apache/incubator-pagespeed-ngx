@@ -24,6 +24,7 @@
 
 namespace net_instaweb {
 
+class Function;
 class GoogleUrl;
 class OutputResource;
 class MessageHandler;
@@ -65,6 +66,13 @@ class UrlNamer {
                              const RequestHeaders& request_headers,
                              Callback* callback,
                              MessageHandler* handler);
+
+  // Modifies the request prior to dispatch to the underlying fetcher.
+  virtual void PrepareRequest(const RewriteOptions* rewrite_options,
+                              GoogleString* url,
+                              RequestHeaders* request_headers,
+                              bool* success,
+                              Function* func, MessageHandler* handler);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UrlNamer);

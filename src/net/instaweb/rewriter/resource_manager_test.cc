@@ -848,7 +848,7 @@ TEST_F(ResourceFreshenTest, TestFreshenImminentlyExpiringResources) {
   mock_timer()->AdvanceMs((max_age_sec + 1) * Timer::kSecondMs);
   expirations_->Clear();
   EXPECT_FALSE(ResourceIsCached());
-  EXPECT_EQ(1, expirations_->Get());
+  EXPECT_EQ(2, expirations_->Get());
   expirations_->Clear();
   CallFetcherCallbacks();
   EXPECT_TRUE(ResourceIsCached());

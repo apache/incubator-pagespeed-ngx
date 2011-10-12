@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/queued_worker.h"
@@ -65,9 +66,7 @@ void ProxyFetchFactory::StartNewProxyFetch(
                                      response_headers, base_writer,
                                      manager_, timer_, callback, this);
   Start(fetch);
-  UrlAsyncFetcher* fetcher = ChooseCacheFetcher(fetch->Options());
-  fetcher->Fetch(url, request_headers, fetch->response_headers_, handler_,
-                 fetch);
+  fetch->StartFetch();
 }
 
 UrlAsyncFetcher* ProxyFetchFactory::ChooseCacheFetcher(
@@ -115,10 +114,12 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       done_outstanding_(false),
       done_result_(false),
       waiting_for_flush_to_finish_(false),
-      factory_(factory) {
+      factory_(factory),
+      prepare_success_(false) {
   if (const char* ua = request_headers.Lookup1(HttpAttributes::kUserAgent)) {
     request_user_agent_.reset(new GoogleString(ua));
   }
+  request_headers_.CopyFrom(request_headers);
 }
 
 ProxyFetch::~ProxyFetch() {
@@ -226,6 +227,23 @@ void ProxyFetch::HeadersComplete() {
 
       response_headers_->Add(kPageSpeedHeader, factory_->server_version());
     }
+  }
+}
+
+void ProxyFetch::StartFetch() {
+  factory_->manager_->url_namer()->PrepareRequest(Options(),
+      &url_, &request_headers_, &prepare_success_,
+      MakeFunction(this, &ProxyFetch::DoFetch),
+      factory_->handler_);
+}
+
+void ProxyFetch::DoFetch() {
+  if (prepare_success_) {
+    UrlAsyncFetcher* fetcher = factory_->ChooseCacheFetcher(Options());
+    fetcher->Fetch(url_, request_headers_, response_headers_,
+        factory_->handler_, this);
+  } else {
+    Done(false);
   }
 }
 

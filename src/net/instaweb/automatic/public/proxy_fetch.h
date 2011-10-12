@@ -26,6 +26,7 @@
 #include <deque>
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/string.h"
@@ -143,6 +144,12 @@ class ProxyFetch : public AsyncFetch {
   bool StartParse();
   const RewriteOptions* Options();
 
+  // Start the fetch which includes preparing the request.
+  void StartFetch();
+
+  // Actually do the fetch, called from callback of StartFetch.
+  void DoFetch();
+
   // Handles buffered HTML writes, flushes, and done calls
   // in a QueuedWorkerPool::Sequence.
   void ExecuteQueued();
@@ -164,7 +171,8 @@ class ProxyFetch : public AsyncFetch {
   // it's done with its work.
   void FlushDone();
 
-  const GoogleString url_;
+  GoogleString url_;
+  RequestHeaders request_headers_;
   ResponseHeaders* response_headers_;
   Writer* base_writer_;
   ResourceManager* resource_manager_;
@@ -223,6 +231,9 @@ class ProxyFetch : public AsyncFetch {
   bool waiting_for_flush_to_finish_;
 
   ProxyFetchFactory* factory_;
+
+  // Whether PrepareRequest() to url_namer succeeded.
+  bool prepare_success_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyFetch);
 };

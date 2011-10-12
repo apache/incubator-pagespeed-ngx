@@ -15,10 +15,12 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 
 #include "base/logging.h"               // for COMPACT_GOOGLE_LOG_FATAL, etc
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_hash.h"
 #include "net/instaweb/util/public/string_util.h"  // for StrCat, etc
@@ -71,6 +73,29 @@ void UrlNamer::DecodeOptions(const GoogleUrl& request_url,
                              Callback* callback,
                              MessageHandler* handler) {
   callback->Done(NULL);
+}
+
+void UrlNamer::PrepareRequest(const RewriteOptions* rewrite_options,
+                              GoogleString* url,
+                              RequestHeaders* request_headers,
+                              bool* success,
+                              Function* func,
+                              MessageHandler* handler) {
+  *success = false;
+  if (rewrite_options == NULL) {
+    *success = true;
+  } else {
+    GoogleString url_copy = *url;
+    GoogleUrl gurl(url_copy);
+    if (gurl.is_valid()) {
+      request_headers->Replace(HttpAttributes::kHost, gurl.Host());
+      const DomainLawyer* domain_lawyer = rewrite_options->domain_lawyer();
+      if (domain_lawyer->MapOrigin(url_copy, url)) {
+        *success = true;
+      }
+    }
+  }
+  func->CallRun();
 }
 
 UrlNamer::Callback::~Callback() {

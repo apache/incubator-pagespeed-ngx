@@ -31,6 +31,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -80,8 +81,10 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   UrlResourceFetchCallback(ResourceManager* resource_manager,
                            const RewriteOptions* rewrite_options) :
       resource_manager_(resource_manager),
-      domain_lawyer_(rewrite_options->domain_lawyer()),
+      rewrite_options_(rewrite_options),
       message_handler_(NULL),
+      success_(false),
+      fetcher_(NULL),
       respect_vary_(rewrite_options->respect_vary()),
       resource_cutoff_ms_(
           rewrite_options->min_resource_cache_time_to_rewrite_ms()) {
@@ -91,9 +94,6 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   virtual ~UrlResourceFetchCallback() {}
 
   bool Fetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
-    // TODO(jmarantz): consider request_headers.  E.g. will we ever
-    // get different resources depending on user-agent?
-    RequestHeaders request_headers;
     message_handler_ = handler;
     GoogleString lock_name =
         StrCat(resource_manager_->lock_hasher()->Hash(url()), ".lock");
@@ -126,31 +126,17 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
                                 url().c_str(), lock_name.c_str());
     }
 
-    GoogleString origin_url;
-    bool ret = false;
+    fetch_url_ = url();
 
-    if (domain_lawyer_->MapOrigin(url(), &origin_url)) {
-      // We shouldn't use domain_lawyer_ in callbacks (as it
-      // could potentially have been deleted by then), so clear
-      // the pointer now to guard against that.
-      domain_lawyer_ = NULL;
-      if (origin_url != url()) {
-        // If mapping the URL changes its host, then add a 'Host' header
-        // pointing to the origin URL's hostname.
-        GoogleUrl gurl(url());
-        if (gurl.is_valid()) {
-          request_headers.Add(HttpAttributes::kHost, gurl.Host());
-        }
-      }
-      // TODO(sligocki): Allow ConditionalFetch here
-      ResponseHeaders* headers = response_headers();
-      ret = fetcher->StreamingFetch(
-          origin_url, request_headers, headers, http_value(),
-          handler, this);
-    } else {
-      delete this;
-    }
-    return ret;
+    UrlNamer* url_namer = resource_manager_->url_namer();
+
+    fetcher_ = fetcher;
+
+    url_namer->PrepareRequest(rewrite_options_, &fetch_url_, &request_headers_,
+        &success_,
+        MakeFunction(this, &UrlResourceFetchCallback::StartFetchInternal),
+        message_handler_);
+    return true;
   }
 
   bool AddToCache(bool success) {
@@ -166,6 +152,16 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
       http_cache()->RememberFetchFailedOrNotCacheable(url(), message_handler_);
       return false;
     }
+  }
+
+  void StartFetchInternal() {
+    if (!success_) {
+      return;
+    }
+    // TODO(sligocki): Allow ConditionalFetch here
+    fetcher_->StreamingFetch(
+        fetch_url_, request_headers_, response_headers(), http_value(),
+        message_handler_, this);
   }
 
   virtual void Done(bool success) {
@@ -202,10 +198,17 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   }
 
   ResourceManager* resource_manager_;
-  const DomainLawyer* domain_lawyer_;
+  const RewriteOptions* rewrite_options_;
   MessageHandler* message_handler_;
 
  private:
+  // TODO(jmarantz): consider request_headers.  E.g. will we ever
+  // get different resources depending on user-agent?
+  RequestHeaders request_headers_;
+  bool success_;
+  UrlAsyncFetcher* fetcher_;
+  GoogleString fetch_url_;
+
   scoped_ptr<NamedLock> lock_;
   const bool respect_vary_;
   const int64 resource_cutoff_ms_;

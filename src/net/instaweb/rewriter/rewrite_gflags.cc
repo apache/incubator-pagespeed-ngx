@@ -72,6 +72,9 @@ DEFINE_int64(
     net_instaweb::RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs,
     "No resources with Cache-Control TTL less than this will be rewritten.");
 
+DEFINE_string(origin_domain_map, "",
+              "Semicolon-separated list of origin_domain maps. "
+              "Each domain-map is of the form dest=src1,src2,src3");
 DEFINE_string(rewrite_domain_map, "",
               "Semicolon-separated list of rewrite_domain maps. "
               "Each domain-map is of the form dest=src1,src2,src3");
@@ -195,6 +198,11 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("shard_domain_map")) {
     ret &= AddDomainMap(FLAGS_shard_domain_map, lawyer,
                         &DomainLawyer::AddShard, handler);
+  }
+
+  if (WasExplicitlySet("origin_domain_map")) {
+    ret &= AddDomainMap(FLAGS_origin_domain_map, lawyer,
+                        &DomainLawyer::AddOriginDomainMapping, handler);
   }
 
   return ret;

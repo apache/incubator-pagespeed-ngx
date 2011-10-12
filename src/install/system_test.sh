@@ -30,6 +30,19 @@ if [ $? != 0 ]; then
   exit 1
 fi
 
+# Ditto for curl.
+if [ "$CURL" == "" ]; then
+  CURL=curl
+else
+  echo CURL = $CURL
+fi
+
+$CURL --version > /dev/null 2>&1
+if [ $? != 0 ]; then
+  echo "curl ($CURL) is not installed."
+  exit 1
+fi
+
 # We need to set a wgetrc file because of the stupid way that the bash deals
 # with strings and variable expansion.
 mkdir -p $TEMPDIR || exit 1
@@ -386,7 +399,7 @@ echo "TEST: Make sure 404s aren't rewritten"
 # easiest to detect which changes every page
 THIS_BAD_URL=$BAD_RESOURCE_URL?ModPagespeedFilters=add_instrumentation
 # We use curl, because wget does not save 404 contents
-curl --silent $THIS_BAD_URL | grep /mod_pagespeed_beacon
+$CURL --silent $THIS_BAD_URL | grep /mod_pagespeed_beacon
 check [ $? != 0 ]
 
 test_filter collapse_whitespace removes whitespace, but not from pre tags.
