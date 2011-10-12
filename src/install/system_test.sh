@@ -164,36 +164,6 @@ function fetch_until() {
   done;
 }
 
-# Same as fetch_until only end condition is status code == 0, rather than
-# that it prints a specific string to stdout.
-#
-# TODO(sligocki): Cut out common code with fetch_until.
-function fetch_until_succeeds() {
-  # Should not user URL as PARAM here, it rewrites value of URL for
-  # the rest tests.
-  REQUESTURL=$1
-  COMMAND=$2
-
-  TIMEOUT=10
-  START=`date +%s`
-  STOP=$((START+$TIMEOUT))
-  WGET_HERE="$WGET -q"
-  echo "     " Fetching $REQUESTURL until "'$COMMAND'" succeeds
-  while test -t; do
-    $WGET_HERE -O - $REQUESTURL 2>&1 | $COMMAND
-    if [ $? == 0 ]; then
-      /bin/echo ".";
-      return;
-    fi;
-    if [ `date +%s` -gt $STOP ]; then
-      /bin/echo "FAIL."
-      exit 1;
-    fi;
-    /bin/echo -n "."
-    sleep 0.1
-  done;
-}
-
 
 # Helper to set up most filter tests.  Alternate between using query-params
 # and request-headers to enable the filter, so we know they both work.
@@ -489,14 +459,14 @@ check "$WGET_DUMP $URL | grep -qe 'HTTP/1\.. 200 OK'"
 echo TEST: Filters do not rewrite blacklisted JavaScript files.
 URL=$TEST_ROOT/blacklist/blacklist.html?ModPagespeedFilters=extend_cache,rewrite_javascript,trim_urls
 FETCHED=$OUTDIR/blacklist.html
-fetch_until_succeeds $URL 'grep .js.pagespeed.'
+fetch_until $URL 'grep -c .js.pagespeed.' 5
 $WGET_DUMP $URL > $FETCHED
 cat $FETCHED
 check grep "'<script src=\".*normal\.js\.pagespeed\..*\.js\">'" $FETCHED
 check grep "'<script src=\"js_tinyMCE\.js\"></script>'" $FETCHED
 check grep "'<script src=\"tiny_mce\.js\"></script>'" $FETCHED
 check grep "'<script src=\"tinymce\.js\"></script>'" $FETCHED
-check grep "'<script src=\".*jquery.*\.pagespeed\..*\.js\">'" $FETCHED
+check grep "'<script src=\".*jquery.*\.js\.pagespeed\..*\.js\">'" $FETCHED
 check grep "'<script src=\".*ckeditor\.js\.pagespeed\..*\.js\">'" $FETCHED
 check grep "'<script src=\".*swfobject\.js\.pagespeed\..*\.js\">'" $FETCHED
 check grep "'<script src=\".*another_normal\.js\.pagespeed\..*\.js\">'" $FETCHED
