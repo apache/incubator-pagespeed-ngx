@@ -39,6 +39,8 @@ namespace net_instaweb {
 
 class MessageHandler;
 
+const int64 ResponseHeaders::kImplicitCacheTtlMs;
+
 ResponseHeaders::ResponseHeaders() {
   proto_.reset(new HttpResponseHeaders);
   Clear();

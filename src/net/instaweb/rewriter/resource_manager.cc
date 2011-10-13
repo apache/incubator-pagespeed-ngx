@@ -128,6 +128,7 @@ class ResourceManagerHttpCallback : public OptionsAwareHTTPCacheCallback {
  private:
   Resource::AsyncCallback* resource_callback_;
   ResourceManager* resource_manager_;
+  DISALLOW_COPY_AND_ASSIGN(ResourceManagerHttpCallback);
 };
 
 ResourceManager::ResourceManager(RewriteDriverFactory* factory)

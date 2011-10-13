@@ -61,6 +61,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
@@ -75,15 +76,31 @@ const char ResourceManagerTestBase::kXhtmlDtd[] =
     "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">";
 
 ResourceManagerTestBase::ResourceManagerTestBase()
-    : factory_(GTestTempDir(), &mock_url_fetcher_),
-      other_factory_(GTestTempDir(), &mock_url_fetcher_),
-      options_(factory_.NewRewriteOptions()),
-      other_options_(other_factory_.NewRewriteOptions()) {
+    : factory_(new TestRewriteDriverFactory(GTestTempDir(),
+                                            &mock_url_fetcher_)),
+      other_factory_(new TestRewriteDriverFactory(GTestTempDir(),
+                                                  &mock_url_fetcher_)),
+      options_(factory_->NewRewriteOptions()),
+      other_options_(other_factory_->NewRewriteOptions()) {
+  Init();
+}
+
+ResourceManagerTestBase::ResourceManagerTestBase(
+    TestRewriteDriverFactory* factory,
+    TestRewriteDriverFactory* other_factory)
+    : factory_(factory),
+      other_factory_(other_factory),
+      options_(factory_->NewRewriteOptions()),
+      other_options_(other_factory_->NewRewriteOptions()) {
+  Init();
+}
+
+void ResourceManagerTestBase::Init() {
   RewriteDriverFactory::Initialize(&statistics_);
-  factory_.SetStatistics(&statistics_);
-  other_factory_.SetStatistics(&statistics_);
-  resource_manager_ = factory_.CreateResourceManager();
-  other_resource_manager_ = other_factory_.CreateResourceManager();
+  factory_->SetStatistics(&statistics_);
+  other_factory_->SetStatistics(&statistics_);
+  resource_manager_ = factory_->CreateResourceManager();
+  other_resource_manager_ = other_factory_->CreateResourceManager();
   other_rewrite_driver_ = MakeDriver(other_resource_manager_, other_options_);
 }
 
@@ -99,11 +116,11 @@ void ResourceManagerTestBase::SetUp() {
 
 void ResourceManagerTestBase::TearDown() {
   rewrite_driver_->WaitForCompletion();
-  factory_.ShutDown();
+  factory_->ShutDown();
   rewrite_driver_->Clear();
   delete rewrite_driver_;
   other_rewrite_driver_->WaitForCompletion();
-  other_factory_.ShutDown();
+  other_factory_->ShutDown();
   other_rewrite_driver_->Clear();
   delete other_rewrite_driver_;
   HtmlParseTestBaseNoAlloc::TearDown();
@@ -575,11 +592,11 @@ GoogleString ResourceManagerTestBase::Encode(
 }
 
 void ResourceManagerTestBase::SetupWaitFetcher() {
-  factory_.SetupWaitFetcher();
+  factory_->SetupWaitFetcher();
 }
 
 void ResourceManagerTestBase::CallFetcherCallbacks() {
-  factory_.CallFetcherCallbacksForDriver(rewrite_driver_);
+  factory_->CallFetcherCallbacksForDriver(rewrite_driver_);
 }
 
 RewriteDriver* ResourceManagerTestBase::MakeDriver(
@@ -644,7 +661,7 @@ void ResourceManagerTestBase::ClearStats() {
 }
 
 void ResourceManagerTestBase::SetCacheDelayUs(int64 delay_us) {
-  factory_.mock_time_cache()->set_delay_us(delay_us);
+  factory_->mock_time_cache()->set_delay_us(delay_us);
 }
 
 // Logging at the INFO level slows down tests, adds to the noise, and

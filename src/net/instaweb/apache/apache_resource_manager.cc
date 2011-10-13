@@ -65,7 +65,7 @@ bool ApacheResourceManager::InitFileCachePath() {
 }
 
 ApacheConfig* ApacheResourceManager::config() {
-  return static_cast<ApacheConfig*>(global_options());
+  return ApacheConfig::DynamicCast(global_options());
 }
 
 void ApacheResourceManager::ChildInit() {

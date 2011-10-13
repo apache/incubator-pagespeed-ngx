@@ -105,6 +105,8 @@ const int RewriteOptions::kDefaultMaxUrlSegmentSize = 1024;
 const GoogleString RewriteOptions::kDefaultBeaconUrl =
     "/mod_pagespeed_beacon?ets=";
 
+const char RewriteOptions::kClassName[] = "RewriteOptions";
+
 namespace {
 
 const RewriteOptions::Filter kCoreFilterSet[] = {
@@ -474,6 +476,10 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
 void RewriteOptions::Modify() {
   DCHECK(!frozen_);
   modified_ = true;
+}
+
+const char* RewriteOptions::class_name() const {
+  return RewriteOptions::kClassName;
 }
 
 }  // namespace net_instaweb

@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -32,7 +33,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"        // for StringPiece
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
@@ -49,7 +49,6 @@ class RewriteOptions;
 class SharedString;
 class Statistics;
 class Writer;
-struct ContentType;
 
 // A RewriteContext is all the contextual information required to
 // perform one or more Rewrites.  Member data in the ResourceContext
@@ -268,8 +267,7 @@ class RewriteContext {
 
   // Deconstructs a URL by name and creates an output resource that
   // corresponds to it.
-  bool CreateOutputResourceForCachedOutput(const StringPiece& url,
-                                           const ContentType* content_type,
+  bool CreateOutputResourceForCachedOutput(const CachedResult* cached_result,
                                            OutputResourcePtr* output_resource);
 
   // Partitions the input resources into one or more outputs.  Return
@@ -350,6 +348,16 @@ class RewriteContext {
   // that way too (though we don't at the moment).
   virtual OutputResourceKind kind() const = 0;
 
+  // Called during fetch path when we have given up on taking shortcuts
+  // with help of metadata & http caches, and are going to do full
+  // on-demand reconstruction.
+  //
+  // The base implementation will do an asynchronous locking attempt,
+  // scheduling to run FetchInputs when complete. Subclasses may override
+  // this method to preload inputs in a different manner, and may delay
+  // calling of base version until that is complete.
+  virtual void StartFetchReconstruction();
+
   // Accessors for the nested rewrites.
   int num_nested() const { return nested_.size(); }
   RewriteContext* nested(int i) const { return nested_[i]; }
@@ -359,7 +367,9 @@ class RewriteContext {
 
  private:
   class OutputCacheCallback;
+  class HTTPCacheCallback;
   friend class OutputCacheCallback;
+  friend class HTTPCacheCallback;
   class ResourceCallbackUtils;
   class ResourceFetchCallback;
   class ResourceReconstructCallback;
@@ -478,6 +488,19 @@ class RewriteContext {
   // Actual implementation of StartNestedTasks that's queued to run in
   // high-priority rewrite thread.
   void StartNestedTasksImpl();
+
+  // Callback for metadata lookup on fetch path.
+  void FetchCacheDone(CacheInterface::KeyState state, SharedString value);
+
+  // Attempts to fetch a given URL from HTTP cache, and serves it
+  // (with shortened HTTP headers) if available. If not, fallback to normal
+  // full reconstruction path.
+  void FetchTryFallback(const GoogleString& url);
+
+  // Callback for HTTP lookup on fetch path where the metadata cache suggests
+  // we should try either serving a different path or the original.
+  void FetchFallbackCacheDone(HTTPCache::FindResult result,
+                              HTTPCache::Callback* data);
 
   // To perform a rewrite, we need to have data for all of its input slots.
   ResourceSlotVector slots_;

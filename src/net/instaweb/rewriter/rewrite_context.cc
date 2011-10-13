@@ -32,6 +32,8 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -96,6 +98,32 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
  private:
   RewriteContext* rewrite_context_;
   CacheResultHandlerFunction function_;
+};
+
+// Bridge class for routing cache callbacks to RewriteContext methods
+// in rewrite thread. Note that the receiver will have to delete the callback
+// (which we pass to provide access to data without copying it)
+class RewriteContext::HTTPCacheCallback : public OptionsAwareHTTPCacheCallback {
+ public:
+  typedef void (RewriteContext::*HTTPCacheResultHandlerFunction)(
+      HTTPCache::FindResult, HTTPCache::Callback* data);
+
+  HTTPCacheCallback(RewriteContext* rc, HTTPCacheResultHandlerFunction function)
+      : OptionsAwareHTTPCacheCallback(rc->Options()),
+        rewrite_context_(rc),
+        function_(function) {}
+  virtual ~HTTPCacheCallback() {}
+  virtual void Done(HTTPCache::FindResult find_result) {
+    RewriteDriver* rewrite_driver = rewrite_context_->Driver();
+    rewrite_driver->AddRewriteTask(MakeFunction(
+        rewrite_context_, function_, find_result,
+        static_cast<HTTPCache::Callback*>(this)));
+  }
+
+ private:
+  RewriteContext* rewrite_context_;
+  HTTPCacheResultHandlerFunction function_;
+  DISALLOW_COPY_AND_ASSIGN(HTTPCacheCallback);
 };
 
 // Common code for invoking RewriteContext::ResourceFetchDone for use
@@ -269,6 +297,27 @@ class RewriteContext::FetchContext {
       }
     }
 
+    callback_->Done(ok);
+  }
+
+  // This is used in case we used a metadata cache to find an alternative URL
+  // to serve --- either a version with a different hash, or that we should
+  // serve the original. In this case, we serve it out, but with shorter headers
+  // than usual.
+  void FetchFallbackDone(ResponseHeaders* headers,
+                         const StringPiece& contents) {
+    response_headers_->CopyFrom(*headers);
+    response_headers_->Sanitize();
+
+    // Shorten cache length, and prevent proxies caching this, as it's under
+    // the "wrong" URL.
+    const int64 kMaxWrongHashTtlMs = ResponseHeaders::kImplicitCacheTtlMs;
+    response_headers_->SetDateAndCaching(
+        headers->fetch_time_ms(),
+        std::min(headers->cache_ttl_ms(), kMaxWrongHashTtlMs),
+        ", private");
+    response_headers_->ComputeCaching();
+    bool ok = writer_->Write(contents, handler_);
     callback_->Done(ok);
   }
 
@@ -577,12 +626,8 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
     for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
       const CachedResult& partition = partitions_->partition(i);
       OutputResourcePtr output_resource;
-      const ContentType* content_type = NameExtensionToContentType(
-          StrCat(".", partition.extension()));
-
       if (partition.optimizable() &&
-          CreateOutputResourceForCachedOutput(
-              partition.url(), content_type, &output_resource)) {
+          CreateOutputResourceForCachedOutput(&partition, &output_resource)) {
         outputs_.push_back(output_resource);
       } else {
         outputs_.push_back(OutputResourcePtr(NULL));
@@ -1127,10 +1172,13 @@ void RewriteContext::CollectDependentTopLevel(ContextSet* contexts) {
 }
 
 bool RewriteContext::CreateOutputResourceForCachedOutput(
-    const StringPiece& url, const ContentType* content_type,
+    const CachedResult* cached_result,
     OutputResourcePtr* output_resource) {
   bool ret = false;
-  GoogleUrl gurl(url);
+  GoogleUrl gurl(cached_result->url());
+  const ContentType* content_type =
+      NameExtensionToContentType(StrCat(".", cached_result->extension()));
+
   ResourceNamer namer;
   if (gurl.is_valid() && namer.Decode(gurl.LeafWithQuery())) {
     output_resource->reset(
@@ -1220,9 +1268,88 @@ bool RewriteContext::Fetch(
   return ret;
 }
 
+void RewriteContext::FetchCacheDone(
+    CacheInterface::KeyState state, SharedString value) {
+  // If we have metadata during a resource fetch, we see if we can use it
+  // to find a pre-existing result in HTTP cache we can serve. This is done
+  // by sanity-checking the metadata here, then doing an async cache lookup via
+  // FetchTryFallback, which in turn calls FetchFallbackCacheDone.
+  // If we're successful at that point FetchContext::FetchFallbackDone
+  // serves out the bits with a shortened TTL; if we fail at any point
+  // we call StartFetchReconstruction which will invoke the normal process of
+  // locking things, fetching inputs, rewriting, and so on.
+
+  // Note that we don't try to revalidate inputs on fetch reconstruct,
+  // so these two are ignored.
+  bool can_revalidate = false;
+  InputInfoStarVector revalidate;
+  if (TryDecodeCacheResult(state, value, &can_revalidate, &revalidate) &&
+      (num_output_partitions() == 1)) {
+    CachedResult* result = output_partition(0);
+    OutputResourcePtr output_resource;
+    if (result->optimizable() &&
+        CreateOutputResourceForCachedOutput(result, &output_resource)) {
+      if (fetch_->requested_hash_ != output_resource->hash()) {
+        // Try to do a cache look up on the proper hash; if it's available,
+        // we can serve it.
+        FetchTryFallback(output_resource->url());
+        return;
+      }
+    } else if (num_slots() == 1) {
+      // The result is not optimizable, and there is only one input.
+      // Try serving the original. (For simplicity, we will do an another
+      // rewrite attempt if it's not in the cache).
+      FetchTryFallback(slot(0)->resource()->url());
+      return;
+    }
+  }
+
+  // Didn't figure out anything clever; so just rewrite on demand.
+  StartFetchReconstruction();
+}
+
+void RewriteContext::FetchTryFallback(const GoogleString& url) {
+  Manager()->http_cache()->Find(
+      url,
+      Manager()->message_handler(),
+      new HTTPCacheCallback(
+          this, &RewriteContext::FetchFallbackCacheDone));
+}
+
+void RewriteContext::FetchFallbackCacheDone(HTTPCache::FindResult result,
+                                            HTTPCache::Callback* data) {
+  scoped_ptr<HTTPCache::Callback> cleanup_callback(data);
+
+  StringPiece contents;
+  if ((result == HTTPCache::kFound) &&
+      data->http_value()->ExtractContents(&contents) &&
+      (data->response_headers()->status_code() == HttpStatus::kOK)) {
+    // We want to serve the found result, with short cache lifetime.
+    fetch_->FetchFallbackDone(data->response_headers(), contents);
+  } else {
+    StartFetchReconstruction();
+  }
+}
+
 void RewriteContext::StartFetch() {
+  // If we have an on-the-fly resource, we almost always want to reconstruct it
+  // --- there will be no shortcuts in the metadata cache unless the rewrite
+  // fails, and it's ultra-cheap to reconstruct anyway.
+  if (kind() == kOnTheFlyResource) {
+    StartFetchReconstruction();
+  } else {
+    // Try to lookup metadata, as it may mark the result as non-optimizable
+    // or point us to the right hash.
+    Manager()->metadata_cache()->Get(
+        partition_key_,
+        new OutputCacheCallback(this, &RewriteContext::FetchCacheDone));
+  }
+}
+
+void RewriteContext::StartFetchReconstruction() {
   // Note that in case of fetches we continue even if we didn't manage to
   // take the lock.
+  partitions_->Clear();
   Manager()->LockForCreation(
       Lock(), Driver()->rewrite_worker(),
       MakeFunction(this, &RewriteContext::FetchInputs,

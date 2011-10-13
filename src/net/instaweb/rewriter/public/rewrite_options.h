@@ -124,6 +124,8 @@ class RewriteOptions {
   // but is Apache specific.
   static const int kDefaultMaxUrlSegmentSize;
 
+  static const char kClassName[];
+
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
 
   RewriteOptions();
@@ -356,6 +358,9 @@ class RewriteOptions {
     DCHECK(frozen_);
     return signature_;
   }
+
+  // Name of the actual type of this instance as a poor man's RTTI.
+  virtual const char* class_name() const;
 
  protected:
   class OptionBase {

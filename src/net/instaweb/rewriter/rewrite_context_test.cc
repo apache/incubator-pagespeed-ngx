@@ -933,7 +933,7 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
   // TODO(jmarantz): have the lock-code return whether it had to wait to
   // get the lock or was able to acquire it immediately to avoid the
   // second cache lookup.
-  EXPECT_EQ(3, lru_cache()->num_misses());   // output resource(twice), input
+  EXPECT_EQ(4, lru_cache()->num_misses());  // 2x output, metadata, input
   EXPECT_EQ(3, lru_cache()->num_inserts());  // output resource, input, metadata
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   ClearStats();
@@ -964,7 +964,7 @@ TEST_F(RewriteContextTest, TrimFetchSeedsCache) {
   // We did the output_resource lookup twice: once before acquiring the lock,
   // and the second time after acquiring the lock, because presumably whoever
   // released the lock has now written the resource.
-  EXPECT_EQ(3, lru_cache()->num_misses());   // output resource(twice), input
+  EXPECT_EQ(4, lru_cache()->num_misses());   // 2x output, metadata, input
   EXPECT_EQ(3, lru_cache()->num_inserts());  // output resource, input, metadata
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, trim_filter_->num_rewrites());
@@ -991,7 +991,7 @@ TEST_F(RewriteContextTest, TrimFetchRewriteFailureSeedsCache) {
                             "css", &content));
   EXPECT_EQ("b", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(3, lru_cache()->num_misses());   // output resource(twice), input
+  EXPECT_EQ(4, lru_cache()->num_misses());   // 2x output, metadata, input
   EXPECT_EQ(2, lru_cache()->num_inserts());  // input, metadata
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, trim_filter_->num_rewrites());
@@ -1034,6 +1034,84 @@ TEST_F(RewriteContextTest, FetchColdCacheOnTheFly) {
   TestServeFiles(&kContentTypeCss, kTrimWhitespaceFilterId, "css",
                  "a.css", " a ",
                  "a.css", "a");
+}
+
+TEST_F(RewriteContextTest, TrimFetchWrongHash) {
+  // Test to see that fetches from wrong hash can fallback to the
+  // correct one mentioned in metadata correctly.
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  // First rewrite a page to get the right hash remembered
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+  ClearStats();
+
+  // Now try fetching it with the wrong hash)
+  GoogleString contents;
+  ResponseHeaders headers;
+  EXPECT_TRUE(ServeResourceUrl("http://test.com/a.css.pagespeed.tw.1.css",
+                               &contents, &headers));
+  EXPECT_STREQ("a", contents);
+  // Should not need any rewrites or fetches.
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  // Should have 2 hits: metadata and .0., and 2 misses on wrong-hash version
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+
+  // Make sure the TTL is correct, and the result is private..
+  EXPECT_EQ(ResponseHeaders::kImplicitCacheTtlMs, headers.cache_ttl_ms());
+  EXPECT_FALSE(headers.IsProxyCacheable());
+  EXPECT_TRUE(headers.IsCacheable());
+}
+
+TEST_F(RewriteContextTest, TrimFetchHashFailed) {
+  // Test to see that if we try to fetch a rewritten version (with a pagespeed
+  // resource URL) when metadata cache indicates rewrite of original failed
+  // that we will quickly fallback to original without attempting rewrite.
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+  ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
+  ClearStats();
+
+  GoogleString contents;
+  ResponseHeaders headers;
+  EXPECT_TRUE(ServeResourceUrl("http://test.com/b.css.pagespeed.tw.1.css",
+                               &contents, &headers));
+  EXPECT_STREQ("b", contents);
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  // Should have 2 hits: metadata and .0., and 2 misses on wrong-hash version
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+
+  // Make sure the TTL is correct, and the result is private..
+  EXPECT_EQ(ResponseHeaders::kImplicitCacheTtlMs, headers.cache_ttl_ms());
+  EXPECT_FALSE(headers.IsProxyCacheable());
+  EXPECT_TRUE(headers.IsCacheable());
+}
+
+TEST_F(RewriteContextTest, TrimFetchHashFailedShortTtl) {
+  // Variation of TrimFetchHashFailed, where the input's TTL is very short.
+  const int kTestTtlSec = 5;
+  InitTrimFilters(kRewrittenResource);
+  InitResponseHeaders("d.css", kContentTypeCss, "d", kTestTtlSec);
+  ValidateNoChanges("no_trimmable", CssLinkHref("d.css"));
+  ClearStats();
+
+  GoogleString contents;
+  ResponseHeaders headers;
+  EXPECT_TRUE(ServeResourceUrl("http://test.com/d.css.pagespeed.tw.1.css",
+                               &contents, &headers));
+  EXPECT_STREQ("d", contents);
+  EXPECT_EQ(kTestTtlSec * Timer::kSecondMs, headers.cache_ttl_ms());
+  EXPECT_FALSE(headers.IsProxyCacheable());
+  EXPECT_TRUE(headers.IsCacheable());
 }
 
 TEST_F(RewriteContextTest, FetchColdCacheRewritten) {
@@ -1131,21 +1209,25 @@ TEST_F(RewriteContextTest, FetchColdCacheRewrittenNotFound) {
                             "css", &content));
   EXPECT_EQ(0, lru_cache()->num_hits());
 
-  // We lookup the output resource twice plus the inputs.
-  EXPECT_EQ(3, lru_cache()->num_misses());
+  // We lookup the output resource twice plus the inputs and metadata.
+  EXPECT_EQ(4, lru_cache()->num_misses());
 
   // We remember the fetch failure, and the failed rewrite.
   EXPECT_EQ(2, lru_cache()->num_inserts());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   ClearStats();
 
-  // Try it again with a warm cache.  We'll get a 'hit' which will inform us
-  // that this resource is not fetchable.
+  // Try it again with a warm cache.  We'll get a number of hits which will
+  // inform us that this resource is not fetchable:
+  // - a metadata entry stating there is no successful rewrite.
+  // - HTTP cache entry for resource fetch of original failing
+  // - 2nd access of it when we give up on fast path.
+  // TODO(morlovich): Should we propagate the 404 directly?
   EXPECT_FALSE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
                             "css", &content));
-  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_hits());
 
-  // Because we don't (currently) remember the failed output cache lookup we
+  // Because we don't write out under failed output resource name,
   // will get two new cache misses here as well: once before we try to acquire
   // the lock, and the second after having acquired the lock.
   EXPECT_EQ(2, lru_cache()->num_misses());
@@ -1312,9 +1394,10 @@ TEST_F(RewriteContextTest, CombinationFetch) {
   EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
   EXPECT_EQ(" a b", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(4, lru_cache()->num_misses())
+  EXPECT_EQ(5, lru_cache()->num_misses())
       << "2 misses for the output.  1 before we acquire the lock, "
-      << "and one after we acquire the lock.  Then we miss on the two inputs.";
+      << "and one after we acquire the lock.  Then we miss on the metadata "
+      << "and the two inputs.";
 
   EXPECT_EQ(4, lru_cache()->num_inserts()) << "2 inputs, 1 output, 1 metadata.";
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());

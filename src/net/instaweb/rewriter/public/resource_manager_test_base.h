@@ -23,6 +23,7 @@
 
 #include <vector>
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -65,6 +66,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   static const char kXhtmlDtd[];    // DOCTYPE string for claming XHTML
 
   ResourceManagerTestBase();
+  ResourceManagerTestBase(TestRewriteDriverFactory* factory,
+                          TestRewriteDriverFactory* other_factory);
   virtual ~ResourceManagerTestBase();
 
   virtual void SetUp();
@@ -99,7 +102,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   ResourcePtr CreateResource(const StringPiece& base, const StringPiece& url);
 
-  MockTimer* mock_timer() { return factory_.mock_timer(); }
+  MockTimer* mock_timer() { return factory_->mock_timer(); }
 
   void DeleteFileIfExists(const GoogleString& filename);
 
@@ -227,7 +230,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Removes the output resource from the file system.
   void RemoveOutputResourceFile(const StringPiece& url);
 
-  RewriteDriverFactory* factory() { return &factory_; }
+  RewriteDriverFactory* factory() { return factory_.get(); }
+  RewriteDriverFactory* other_factory() { return other_factory_.get(); }
 
   void UseMd5Hasher() {
     resource_manager_->set_hasher(&md5_hasher_);
@@ -266,20 +270,20 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   virtual void ClearStats();
 
   void EncodeFilename(const StringPiece& url, GoogleString* filename) {
-    factory_.filename_encoder()->Encode(factory_.filename_prefix(), url,
-                                        filename);
+    factory_->filename_encoder()->Encode(factory_->filename_prefix(), url,
+                                         filename);
   }
 
   MockUrlFetcher* mock_url_fetcher() {
     return &mock_url_fetcher_;
   }
   Hasher* hasher() { return resource_manager_->hasher(); }
-  LRUCache* lru_cache() { return factory_.lru_cache(); }
-  Statistics* statistics() { return factory_.statistics(); }
-  MemFileSystem* file_system() { return factory_.mem_file_system(); }
-  HTTPCache* http_cache() { return factory_.http_cache(); }
+  LRUCache* lru_cache() { return factory_->lru_cache(); }
+  Statistics* statistics() { return factory_->statistics(); }
+  MemFileSystem* file_system() { return factory_->mem_file_system(); }
+  HTTPCache* http_cache() { return factory_->http_cache(); }
   MockMessageHandler* message_handler() {
-    return factory_.mock_message_handler();
+    return factory_->mock_message_handler();
   }
 
   // TODO(jmarantz): These abstractions are not satisfactory long-term
@@ -293,9 +297,9 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   RewriteDriver* other_rewrite_driver() { return other_rewrite_driver_; }
 
   // The scheduler used by rewrite_driver
-  MockScheduler* mock_scheduler() { return factory_.mock_scheduler(); }
+  MockScheduler* mock_scheduler() { return factory_->mock_scheduler(); }
 
-  int64 start_time_ms() const { return factory_.kStartTimeMs; }
+  int64 start_time_ms() const { return factory_->kStartTimeMs; }
 
   bool ReadFile(const char* filename, GoogleString* contents) {
     return file_system()->ReadFile(filename, contents, message_handler());
@@ -307,11 +311,11 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   ResourceManager* resource_manager() { return resource_manager_; }
   ResourceManager* other_resource_manager() { return other_resource_manager_; }
   CountingUrlAsyncFetcher* counting_url_async_fetcher() {
-    return factory_.counting_url_async_fetcher();
+    return factory_->counting_url_async_fetcher();
   }
 
   void SetMockHashValue(const GoogleString& value) {
-    factory_.mock_hasher()->set_hash_value(value);
+    factory_->mock_hasher()->set_hash_value(value);
   }
 
   void SetCacheDelayUs(int64 delay_us);
@@ -341,7 +345,9 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                               const StringPiece& filter_id,
                               const StringPiece& ext);
 
- private:
+ protected:
+  void Init();
+
   // Calls callbacks on given wait fetcher, making sure to properly synchronize
   // with async rewrite flows given driver.
   void CallFetcherCallbacksForDriver(WaitUrlAsyncFetcher* fetcher,
@@ -356,8 +362,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   //
   // Server A runs rewrite_driver_ and will be used to rewrite pages and
   // serves the rewritten resources.
-  TestRewriteDriverFactory factory_;
-  TestRewriteDriverFactory other_factory_;
+  scoped_ptr<TestRewriteDriverFactory> factory_;
+  scoped_ptr<TestRewriteDriverFactory> other_factory_;
   ResourceManager* resource_manager_;
   RewriteDriver* rewrite_driver_;
   ResourceManager* other_resource_manager_;

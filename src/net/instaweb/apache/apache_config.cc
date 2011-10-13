@@ -19,6 +19,8 @@
 
 namespace net_instaweb {
 
+const char ApacheConfig::kClassName[] = "ApacheConfig";
+
 ApacheConfig::ApacheConfig(const StringPiece& description)
     : description_(description.data(), description.size()) {
   Init();
@@ -76,6 +78,24 @@ RewriteOptions* ApacheConfig::Clone() const {
   ApacheConfig* options = new ApacheConfig(description_);
   options->CopyFrom(*this);
   return options;
+}
+
+const ApacheConfig* ApacheConfig::DynamicCast(const RewriteOptions* instance) {
+  return (instance == NULL ||
+          instance->class_name() != ApacheConfig::kClassName
+          ? NULL
+          : static_cast<const ApacheConfig*>(instance));
+}
+
+ApacheConfig* ApacheConfig::DynamicCast(RewriteOptions* instance) {
+  return (instance == NULL ||
+          instance->class_name() != ApacheConfig::kClassName
+          ? NULL
+          : static_cast<ApacheConfig*>(instance));
+}
+
+const char* ApacheConfig::class_name() const {
+  return ApacheConfig::kClassName;
 }
 
 }  // namespace net_instaweb

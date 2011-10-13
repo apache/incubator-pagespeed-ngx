@@ -38,6 +38,8 @@ class ApacheConfig : public RewriteOptions {
     kOrganized,
   };
 
+  static const char kClassName[];
+
   static bool ParseRefererStatisticsOutputLevel(
       const StringPiece& in, RefererStatisticsOutputLevel* out);
 
@@ -174,6 +176,14 @@ class ApacheConfig : public RewriteOptions {
 
   // Make an identical copy of these options and return it.
   virtual RewriteOptions* Clone() const;
+
+  // Returns a suitably down cast version of 'instance' if it is an instance
+  // of this class, NULL if not.
+  static const ApacheConfig* DynamicCast(const RewriteOptions* instance);
+  static ApacheConfig* DynamicCast(RewriteOptions* instance);
+
+  // Name of the actual type of this instance as a poor man's RTTI.
+  virtual const char* class_name() const;
 
  private:
   void Init();
