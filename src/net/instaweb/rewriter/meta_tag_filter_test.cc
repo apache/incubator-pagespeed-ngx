@@ -91,6 +91,17 @@ TEST_F(MetaTagFilterTest, TestEquivNoValue) {
   ValidateNoChanges("no_value", "<meta http-equiv='NoValue'>");
 }
 
+const char kMetaTagDoNothing[] =
+    "<html><head>"
+    "<meta http-equiv=\"\" content=\"\">"
+    "<meta http-equiv=\"Content-Length\" content=\"123\">"
+    "</head><body></body></html>";
+
+TEST_F(MetaTagFilterTest, TestDoNothing) {
+  ValidateNoChanges("do_nothing", kMetaTagDoNothing);
+  ASSERT_EQ(0, headers()->NumAttributes());
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

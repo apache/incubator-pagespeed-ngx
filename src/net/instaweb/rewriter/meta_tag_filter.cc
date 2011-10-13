@@ -23,6 +23,7 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -63,13 +64,24 @@ void MetaTagFilter::EndElementImpl(HtmlElement* element) {
       HtmlElement::Attribute* value = element->FindAttribute(
           HtmlName::kContent);
       if (equiv != NULL && value != NULL) {
+        StringPiece attribute = equiv->value();
+        StringPiece content = value->value();
+        // It doesn't make sense to have nothing in HttpEquiv, but that means
+        // it is in fact lurking out there.  Some of these other values
+        // don't make sense either.
+        if (attribute.empty() ||
+            StringCaseEqual(attribute, HttpAttributes::kContentLength) ||
+            StringCaseEqual(attribute, HttpAttributes::kContentEncoding)) {
+          return;
+        }
+
         // Check to see if we have this value already.  If we do,
         // there's no need to add it in again.
         ConstStringStarVector values;
-        headers->Lookup(equiv->value(), &values);
+        headers->Lookup(attribute, &values);
         for (int i = 0, n = values.size(); i < n; ++i) {
           StringPiece val(*values[i]);
-          if (StringCaseCompare(val, value->value()) == 0) {
+          if (StringCaseEqual(val, content)) {
             return;
           }
         }

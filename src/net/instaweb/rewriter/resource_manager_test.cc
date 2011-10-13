@@ -741,6 +741,18 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 }
 
+TEST_F(ResourceManagerTest, TestHandleBeaconNoLoadParam) {
+  ASSERT_FALSE(resource_manager()->HandleBeacon("/index.html"));
+}
+
+TEST_F(ResourceManagerTest, TestHandleBeaconInvalidLoadParam) {
+  ASSERT_FALSE(resource_manager()->HandleBeacon("/beacon?ets=asd"));
+}
+
+TEST_F(ResourceManagerTest, TestHandleBeacon) {
+  ASSERT_TRUE(resource_manager()->HandleBeacon("/beacon?ets=load:34"));
+}
+
 TEST_F(ResourceManagerTest, TestNotGenerated) {
   const int kLongExpireMs = 50000;
 

@@ -23,6 +23,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -45,7 +46,8 @@ const char kHeadScript[] =
 const char kTailScriptFormat[] =
     "<script type='text/javascript'>"
     "function g(){new Image().src='%s%s'+"
-    "(Number(new Date())-window.mod_pagespeed_start);};"
+    "(Number(new Date())-window.mod_pagespeed_start)+'&url='+"
+    "encodeURIComponent('%s');};"
     "var f=window.addEventListener;if(f){f('load',g,false);}else{"
     "f=window.attachEvent;if(f){f('onload',g);}}"
     "</script>";
@@ -88,8 +90,10 @@ void AddInstrumentationFilter::EndElement(HtmlElement* element) {
     // assured by add_head_filter.
     CHECK(found_head_) << "Reached end of document without finding <head>."
         "  Please turn on the add_head filter.";
+    GoogleString html_url(html_parse_->google_url().Spec().as_string());
     GoogleString tailScript = StringPrintf(kTailScriptFormat,
-                                           beacon_url_.c_str(), kLoadTag);
+                                           beacon_url_.c_str(), kLoadTag,
+                                           html_url.c_str());
     HtmlCharactersNode* script =
         html_parse_->NewCharactersNode(element, tailScript);
     html_parse_->InsertElementBeforeCurrent(script);

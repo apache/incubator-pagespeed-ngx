@@ -29,7 +29,6 @@
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -42,7 +41,9 @@
 #include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"          // for STLDeleteElements
@@ -495,17 +496,37 @@ void ResourceManager::LockForCreation(NamedLock* creation_lock,
 }
 
 bool ResourceManager::HandleBeacon(const StringPiece& unparsed_url) {
-  GoogleString url = unparsed_url.as_string();
-  // TODO(abliss): proper query parsing
-  size_t index = url.find(AddInstrumentationFilter::kLoadTag);
-  if (index == GoogleString::npos) {
+  // The url HandleBeacon recieves is a relative url, so adding some dummy
+  // host to make it complete url so that i can use GoogleUrl for parsing.
+  GoogleUrl base("http://www.example.com");
+  GoogleUrl url(base, unparsed_url);
+
+  if (!url.is_valid() && url.has_query()) {
     return false;
   }
-  url = url.substr(index + strlen(AddInstrumentationFilter::kLoadTag));
-  int value = 0;
-  if (!StringToInt(url, &value)) {
+
+  // Beacon urls are of the form http://a.com/xyz/beacon?ets=load:xxx&url=....
+  // So the below code tries to extract the onload time.
+  QueryParams query_params;
+  query_params.Parse(url.Query());
+  int value = -1;
+
+  StringPiece load_time_str;
+  ConstStringStarVector param_values;
+  if (query_params.Lookup("ets", &param_values) && param_values.size() == 1 &&
+      param_values[0] != NULL) {
+    StringPiece param_value_str(*param_values[0]);
+    size_t index = param_value_str.find(":");
+    if (index < param_value_str.size()) {
+      load_time_str = param_value_str.substr(index + 1);
+      StringToInt(load_time_str.as_string(), &value);
+    }
+  }
+
+  if (value < 0) {
     return false;
   }
+
   rewrite_stats_->total_page_load_ms()->Add(value);
   rewrite_stats_->page_load_count()->Add(1);
   return true;
