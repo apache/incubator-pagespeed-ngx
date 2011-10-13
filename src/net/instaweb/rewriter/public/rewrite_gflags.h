@@ -23,6 +23,7 @@
 
 namespace net_instaweb {
 
+class MessageHandler;
 class RewriteDriverFactory;
 class RewriteOptions;
 
@@ -46,6 +47,18 @@ class RewriteGflags {
   // Determines whether a flag was explicitly set, as opposed to having its
   // default value.
   bool WasExplicitlySet(const char* name) const;
+
+  // Sets the rewrite level/list passed on the specified option names
+  // & values.  The flag names are passed in to provide better error
+  // messages.
+  //
+  // False is returned if the values cannot be parsed.
+  bool SetRewriters(const char* rewriters_flag_name,
+                    const char* rewriters_value,
+                    const char* rewrite_level_flag_name,
+                    const char* rewrite_level_value,
+                    RewriteOptions* options,
+                    MessageHandler* handler) const;
 
  private:
   // There is no data in this class because the underlying gflags

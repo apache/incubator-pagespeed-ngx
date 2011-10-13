@@ -205,6 +205,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
                         &DomainLawyer::AddOriginDomainMapping, handler);
   }
 
+  ret &= SetRewriters("rewriters", FLAGS_rewriters.c_str(),
+                      "rewrite_level", FLAGS_rewrite_level.c_str(),
+                      options, handler);
   return ret;
 }
 
@@ -217,6 +220,30 @@ bool RewriteGflags::WasExplicitlySet(const char* name) const {
   CommandLineFlagInfo flag_info;
   CHECK(GetCommandLineFlagInfo(name, &flag_info));
   return !flag_info.is_default;
+}
+
+bool RewriteGflags::SetRewriters(const char* rewriters_flag_name,
+                                 const char* rewriters_value,
+                                 const char* rewrite_level_flag_name,
+                                 const char* rewrite_level_value,
+                                 RewriteOptions* options,
+                                 MessageHandler* handler) const {
+  bool ret = true;
+  RewriteOptions::RewriteLevel rewrite_level;
+  if (options->ParseRewriteLevel(rewrite_level_value, &rewrite_level)) {
+    options->SetRewriteLevel(rewrite_level);
+  } else {
+    LOG(ERROR) << "Invalid --" << rewrite_level_flag_name
+               << ": " << rewrite_level_value;
+    ret = false;
+  }
+
+  if (!options->EnableFiltersByCommaSeparatedList(rewriters_value, handler)) {
+    LOG(ERROR) << "Invalid --" << rewriters_flag_name
+               << rewriters_flag_name << ": " << rewriters_value;
+    ret = false;
+  }
+  return ret;
 }
 
 }  // namespace
