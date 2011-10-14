@@ -348,9 +348,10 @@ class RewriteContext {
   // that way too (though we don't at the moment).
   virtual OutputResourceKind kind() const = 0;
 
-  // Called during fetch path when we have given up on taking shortcuts
-  // with help of metadata & http caches, and are going to do full
-  // on-demand reconstruction.
+  // Called in fetch path if we have not found the resource available
+  // in HTTP cache under an alternate location suggested by metadata cache
+  // such as a different hash or the original, and thus need to fully
+  // reconstruct it.
   //
   // The base implementation will do an asynchronous locking attempt,
   // scheduling to run FetchInputs when complete. Subclasses may override
@@ -367,13 +368,13 @@ class RewriteContext {
 
  private:
   class OutputCacheCallback;
-  class HTTPCacheCallback;
   friend class OutputCacheCallback;
+  class HTTPCacheCallback;
   friend class HTTPCacheCallback;
   class ResourceCallbackUtils;
+  friend class ResourceCallbackUtils;
   class ResourceFetchCallback;
   class ResourceReconstructCallback;
-  friend class ResourceCallbackUtils;
   class ResourceRevalidateCallback;
   friend class ResourceRevalidateCallback;
   class InvokeRewriteFunction;

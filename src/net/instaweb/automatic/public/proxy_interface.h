@@ -68,6 +68,9 @@ class ProxyInterface : public UrlAsyncFetcher {
                  ResourceManager* manager, Statistics* stats);
   virtual ~ProxyInterface();
 
+  // Initializes statistics variables associated with this class.
+  static void Initialize(Statistics* statistics);
+
   // All requests use this interface. We decide internally whether the
   // request is a pagespeed resource, HTML page to be rewritten or another
   // resource to be proxied directly.
@@ -132,6 +135,12 @@ class ProxyInterface : public UrlAsyncFetcher {
   // there could be multiple DNS entries pointing at us.
   const GoogleString hostname_;
   const int port_;
+
+  // Varz variables
+  // Total requests.
+  TimedVariable* all_requests_;
+  // Total Pagespeed requests.
+  TimedVariable* pagespeed_requests_;
 
   scoped_ptr<ProxyFetchFactory> proxy_fetch_factory_;
 

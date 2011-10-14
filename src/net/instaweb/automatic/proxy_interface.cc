@@ -44,6 +44,12 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 
+namespace {
+// Names for Statistics variables.
+const char kTotalRequestCount[] = "all-requests";
+const char kPagespeedRequestCount[] = "pagespeed-requests";
+}  // namespace
+
 namespace net_instaweb {
 
 ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
@@ -52,11 +58,24 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
     : resource_manager_(manager),
       handler_(manager->message_handler()),
       hostname_(hostname.as_string()),
-      port_(port) {
+      port_(port),
+      all_requests_(NULL),
+      pagespeed_requests_(NULL) {
   proxy_fetch_factory_.reset(new ProxyFetchFactory(manager));
+  if (stats != NULL) {
+    all_requests_ = stats->GetTimedVariable(kTotalRequestCount);
+    pagespeed_requests_ = stats->GetTimedVariable(kPagespeedRequestCount);
+  }
 }
 
 ProxyInterface::~ProxyInterface() {
+}
+
+void ProxyInterface::Initialize(Statistics* statistics) {
+  statistics->AddTimedVariable(kTotalRequestCount,
+                               ResourceManager::kStatisticsGroup);
+  statistics->AddTimedVariable(kPagespeedRequestCount,
+                               ResourceManager::kStatisticsGroup);
 }
 
 void ProxyInterface::set_server_version(const StringPiece& server_version) {
@@ -117,6 +136,8 @@ bool ProxyInterface::StreamingFetch(const GoogleString& requested_url_string,
   const bool is_get = request_headers.method() == RequestHeaders::kGet;
 
   bool done = false;
+
+  all_requests_->IncBy(1);
   if (!(requested_url.is_valid() && IsWellFormedUrl(requested_url))) {
     LOG(ERROR) << "Bad URL, failing request: " << requested_url_string;
     response_headers->SetStatusAndReason(HttpStatus::kNotFound);
@@ -127,6 +148,7 @@ bool ProxyInterface::StreamingFetch(const GoogleString& requested_url_string,
 
     // Try to handle this as a .pagespeed. resource.
     if (resource_manager_->IsPagespeedResource(requested_url) && is_get) {
+      pagespeed_requests_->IncBy(1);
       ResourceFetch::Start(resource_manager_,
                            requested_url, request_headers,
                            response_headers, response_writer, callback);

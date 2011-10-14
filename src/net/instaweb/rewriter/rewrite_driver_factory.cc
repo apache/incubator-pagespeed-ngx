@@ -32,6 +32,7 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/filename_encoder.h"
@@ -301,13 +302,18 @@ StringPiece RewriteDriverFactory::filename_prefix() {
 }
 
 HTTPCache* RewriteDriverFactory::http_cache() {
-  if (http_cache_ == NULL) {
+  if (http_cache_.get() == NULL) {
     cache_backend_.reset(DefaultCacheInterface());
-    http_cache_.reset(new HTTPCache(
-        cache_backend_.get(), timer(), statistics()));
-    http_cache_->set_force_caching(force_caching_);
+    http_cache_.reset(ComputeHTTPCache());
   }
   return http_cache_.get();
+}
+
+HTTPCache* RewriteDriverFactory::ComputeHTTPCache() {
+  HTTPCache* http_cache = new HTTPCache(
+      cache_backend_.get(), timer(), statistics());
+  http_cache->set_force_caching(force_caching_);
+  return http_cache;
 }
 
 void RewriteDriverFactory::SetAsyncRewrites(bool x) {

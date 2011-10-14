@@ -940,13 +940,19 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
   content.clear();
 
   // Now fetch it again: the output URL is cached.
+  ResponseHeaders headers;
   EXPECT_TRUE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
-                            "css", &content));
+                            "css", &content, &headers));
   EXPECT_EQ("a", content);
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+
+  // Make sure headers are nice and long.
+  EXPECT_EQ(Timer::kYearMs, headers.cache_ttl_ms());
+  EXPECT_TRUE(headers.IsProxyCacheable());
+  EXPECT_TRUE(headers.IsCacheable());
 }
 
 TEST_F(RewriteContextTest, TrimFetchSeedsCache) {
@@ -1062,7 +1068,25 @@ TEST_F(RewriteContextTest, TrimFetchWrongHash) {
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
-  // Make sure the TTL is correct, and the result is private..
+  // Make sure the TTL is correct, and the result is private.
+  EXPECT_EQ(ResponseHeaders::kImplicitCacheTtlMs, headers.cache_ttl_ms());
+  EXPECT_FALSE(headers.IsProxyCacheable());
+  EXPECT_TRUE(headers.IsCacheable());
+}
+
+TEST_F(RewriteContextTest, TrimFetchWrongHashColdCache) {
+  // Tests fetch with wrong hash when we did not originally create
+  // the version with the right hash.
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  GoogleString contents;
+  ResponseHeaders headers;
+  EXPECT_TRUE(ServeResourceUrl("http://test.com/a.css.pagespeed.tw.1.css",
+                               &contents, &headers));
+  EXPECT_STREQ("a", contents);
+
+  // Make sure the TTL is correct (short), and the result is private.
   EXPECT_EQ(ResponseHeaders::kImplicitCacheTtlMs, headers.cache_ttl_ms());
   EXPECT_FALSE(headers.IsProxyCacheable());
   EXPECT_TRUE(headers.IsCacheable());
@@ -1090,7 +1114,7 @@ TEST_F(RewriteContextTest, TrimFetchHashFailed) {
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
-  // Make sure the TTL is correct, and the result is private..
+  // Make sure the TTL is correct, and the result is private.
   EXPECT_EQ(ResponseHeaders::kImplicitCacheTtlMs, headers.cache_ttl_ms());
   EXPECT_FALSE(headers.IsProxyCacheable());
   EXPECT_TRUE(headers.IsCacheable());

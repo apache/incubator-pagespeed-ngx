@@ -34,6 +34,9 @@ namespace net_instaweb {
 
 const int64 UrlAsyncFetcher::kUnspecifiedTimeout = 0;
 
+// Statistics group names.
+const char UrlAsyncFetcher::kStatisticsGroup[] = "Statistics";
+
 UrlAsyncFetcher::~UrlAsyncFetcher() {
 }
 

@@ -268,9 +268,16 @@ class RewriteContext::FetchContext {
     bool ok = false;
     rewrite_context_->WritePartition();
     if (success_) {
-      // TODO(sligocki): It might be worth streaming this.
-      response_headers_->CopyFrom(*(output_resource_->response_headers()));
-      ok = writer_->Write(output_resource_->contents(), handler_);
+      if (output_resource_->hash() == requested_hash_) {
+        response_headers_->CopyFrom(*(output_resource_->response_headers()));
+        ok = writer_->Write(output_resource_->contents(), handler_);
+      } else {
+        // Our rewrite produced a different hash than what was requested;
+        // we better not give it an ultra-long TTL.
+        FetchFallbackDone(output_resource_->response_headers(),
+                          output_resource_->contents());
+        return;
+      }
     } else {
       // Rewrite failed. If we have a single original, write it out instead.
       if (rewrite_context_->num_slots() == 1) {

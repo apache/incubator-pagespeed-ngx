@@ -141,6 +141,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
     resource_manager()->ComputeSignature(options);
     ResourceManagerTestBase::SetUp();
+    ProxyInterface::Initialize(statistics());
     proxy_interface_.reset(
         new ProxyInterface("localhost", 80, resource_manager(), statistics()));
     start_time_ms_ = mock_timer()->NowMs();

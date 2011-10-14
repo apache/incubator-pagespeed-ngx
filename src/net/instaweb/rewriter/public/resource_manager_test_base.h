@@ -146,6 +146,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   bool ServeResource(const StringPiece& path, const StringPiece& filter_id,
                      const StringPiece& name, const StringPiece& ext,
                      GoogleString* content);
+  bool ServeResource(const StringPiece& path, const StringPiece& filter_id,
+                     const StringPiece& name, const StringPiece& ext,
+                     GoogleString* content, ResponseHeaders* response);
+
 
   bool ServeResourceUrl(const StringPiece& url, GoogleString* content,
                         ResponseHeaders* response);

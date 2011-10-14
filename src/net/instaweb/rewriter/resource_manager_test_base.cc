@@ -332,10 +332,17 @@ void ResourceManagerTestBase::AddFileToMockFetcher(
 bool ResourceManagerTestBase::ServeResource(
     const StringPiece& path, const StringPiece& filter_id,
     const StringPiece& name, const StringPiece& ext,
-    GoogleString* content) {
+    GoogleString* content, ResponseHeaders* response) {
   GoogleString url = Encode(path, filter_id, "0", name, ext);
+  return ServeResourceUrl(url, content, response);
+}
+
+bool ResourceManagerTestBase::ServeResource(
+    const StringPiece& path, const StringPiece& filter_id,
+    const StringPiece& name, const StringPiece& ext,
+    GoogleString* content) {
   ResponseHeaders response;
-  return ServeResourceUrl(url, content, &response);
+  return ServeResource(path, filter_id, name, ext, content, &response);
 }
 
 bool ResourceManagerTestBase::ServeResourceUrl(

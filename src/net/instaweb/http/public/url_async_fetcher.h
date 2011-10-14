@@ -77,6 +77,10 @@ class AsyncFetch {
 class UrlAsyncFetcher {
  public:
   static const int64 kUnspecifiedTimeout;
+
+  // Default statistics group name.
+  static const char kStatisticsGroup[];
+
   class Callback {
    public:
     Callback() : modified_(true) {}

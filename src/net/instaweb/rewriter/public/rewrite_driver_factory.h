@@ -156,6 +156,9 @@ class RewriteDriverFactory {
   virtual UrlFetcher* ComputeUrlFetcher();
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
 
+  // Computes the HTTPCache using the CacheInterface.  This is not thread-safe.
+  virtual HTTPCache* ComputeHTTPCache();
+
   // Threadsafe mechanism to create a managed ResourceManager.  The
   // ResourceManager is owned by the factory, and should not be
   // deleted directly.  Currently it is not possible to delete a
