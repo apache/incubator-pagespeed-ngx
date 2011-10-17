@@ -420,23 +420,6 @@ bool ResponseHeaders::ParseDateHeader(
   return (date_string != NULL) && ConvertStringToTime(date_string, date_ms);
 }
 
-bool ResponseHeaders::IsDateLaterThan(int64 time_ms) const {
-  int64 date_ms;
-  if (!ParseDateHeader(HttpAttributes::kDate, &date_ms)) {
-    LOG(DFATAL) << "Could not obtain date header.";
-    return true;  // If no date header return true;
-  }
-  return date_ms > time_ms;
-}
-
-void ResponseHeaders::UpdateDateHeader(const StringPiece& attr, int64 date_ms) {
-  RemoveAll(attr);
-  GoogleString buf;
-  if (ConvertTimeToString(date_ms, &buf)) {
-    Add(attr, buf);
-  }
-}
-
 // TODO(sligocki): Unite this with parsing code in ResponseHeadersParser.
 void ResponseHeaders::ParseFirstLine(const StringPiece& first_line) {
   int major_version, minor_version, status;

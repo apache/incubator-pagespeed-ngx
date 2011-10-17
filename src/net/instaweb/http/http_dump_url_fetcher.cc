@@ -21,7 +21,7 @@
 #include <cstdio>
 #include <cstddef>                     // for size_t
 #include <set>
-#include <utility>                      // for pair
+#include <utility>                     // for pair
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_response_parser.h"
@@ -54,7 +54,7 @@ void ApplyTimeDelta(const char* attr, int64 delta_ms,
                     ResponseHeaders* headers) {
   int64 time_ms;
   if (headers->ParseDateHeader(attr, &time_ms) && (time_ms > delta_ms)) {
-    headers->UpdateDateHeader(attr, time_ms + delta_ms);
+    headers->SetTimeHeader(attr, time_ms + delta_ms);
   }
 }
 
@@ -68,7 +68,7 @@ void CorrectDateHeaders(int64 now_ms, ResponseHeaders* headers) {
   if (headers->ParseDateHeader(HttpAttributes::kDate, &date_ms) &&
       (date_ms < now_ms)) {
     int64 delta_ms = now_ms - date_ms;
-    headers->UpdateDateHeader(HttpAttributes::kDate, now_ms);
+    headers->SetDate(now_ms);
     ApplyTimeDelta(HttpAttributes::kExpires, delta_ms, headers);
     ApplyTimeDelta(HttpAttributes::kLastModified, delta_ms, headers);
   }

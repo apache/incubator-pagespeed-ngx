@@ -157,11 +157,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
 
   // Returns true if the date header is later than time_ms. Used in invalidation
   // of http cache.
-  bool IsDateLaterThan(int64 time_ms) const;
-
-  // Updates a date header using time specified as a number of milliseconds
-  // since 1970.
-  void UpdateDateHeader(const StringPiece& attr, int64 date_ms);
+  bool IsDateLaterThan(int64 time_ms) const {
+    return fetch_time_ms() > time_ms;
+  }
 
   void ParseFirstLine(const StringPiece& first_line);
   // Set whole first line.

@@ -236,7 +236,7 @@ void HTTPCache::RememberFetchFailedOrNotCacheable(const GoogleString& key,
   headers.Add(HttpAttributes::kCacheControl,
               kRememberFetchFailedOrNotCacheableCacheControl);
   int64 now_ms = timer_->NowMs();
-  headers.UpdateDateHeader(HttpAttributes::kDate, now_ms);
+  headers.SetDate(now_ms);
   headers.ComputeCaching();
   Put(key, &headers, "", handler);
 }
