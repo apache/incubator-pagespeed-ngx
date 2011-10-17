@@ -1424,7 +1424,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
     UrlPartnership partnership(options(), gurl);
     if (partnership.AddUrl(input_resource->url(),
                            resource_manager_->message_handler())) {
-      const GoogleUrl *mapped_gurl = partnership.FullPath(0);
+      const GoogleUrl* mapped_gurl = partnership.FullPath(0);
       GoogleString name;
       StringVector v;
       v.push_back(mapped_gurl->LeafWithQuery().as_string());

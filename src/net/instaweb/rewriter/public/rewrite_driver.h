@@ -361,7 +361,7 @@ class RewriteDriver : public HtmlParse {
       const ContentType* content_type, OutputResourceKind kind,
       bool use_async_flow) {
     return CreateOutputResourceWithPath(mapped_path, unmapped_path,
-                                        base_url_.AllExceptLeaf(),
+                                        decoded_base_url_.AllExceptLeaf(),
                                         filter_id, name, content_type, kind,
                                         use_async_flow);
   }
@@ -417,6 +417,7 @@ class RewriteDriver : public HtmlParse {
   // Returns the decoded version of base_gurl() in case it was encoded by a
   // non-default UrlNamer (for the default UrlNamer this returns the same value
   // as base_url()).  Required when fetching a resource by its encoded name.
+  const GoogleUrl& decoded_base_url() const { return decoded_base_url_; }
   StringPiece decoded_base() const { return decoded_base_url_.Spec(); }
 
   const UrlSegmentEncoder* default_encoder() const { return &default_encoder_; }
@@ -722,8 +723,15 @@ class RewriteDriver : public HtmlParse {
   // that will decrement this counter.
   int rewrites_to_delete_;       // protected by rewrite_mutex()
 
+  // URL of the HTML pages being rewritten in the HTML flow or the
+  // of the resource being rewritten in the resource flow.
   GoogleUrl base_url_;
+
+  // In the resource flow, the URL requested may not have the same
+  // base as the original resource. decoded_base_url_ stores the base
+  // of the original (un-rewritten) resource.
   GoogleUrl decoded_base_url_;
+
   GoogleString user_agent_;
   StringFilterMap resource_filter_map_;
 

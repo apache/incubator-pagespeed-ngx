@@ -114,7 +114,8 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
       rewrite_inline_char_node_(NULL),
       rewrite_inline_attribute_(NULL),
       in_text_size_(-1) {
-  css_base_gurl_.Reset(filter_->base_url());
+  css_base_gurl_.Reset(filter_->decoded_base_url());
+  DCHECK(css_base_gurl_.is_valid());
 }
 
 CssFilter::Context::~Context() {
@@ -186,6 +187,19 @@ void CssFilter::Context::RewriteSingle(
     const OutputResourcePtr& output_resource) {
   input_resource_ = input_resource;
   output_resource_ = output_resource;
+  // The base URL used when absolutifying sub-resources must be the input
+  // URL of this rewrite.
+  //
+  // The only exception is the case of inline CSS, where we define the
+  // input URL to be a data: URL. In this case the base URL is the URL of
+  // the HTML page set in the constructor.
+  //
+  // When our input is the output of CssCombiner, the css_base_gurl_ here
+  // is stale (it's the first input to the combination). It ought to be
+  // the URL of the output of the combination.
+  if (!StringPiece(input_resource_->url()).starts_with("data:")) {
+    css_base_gurl_.Reset(input_resource_->url());
+  }
   TimedBool result = filter_->RewriteCssText(
       this, css_base_gurl_, input_resource->contents(),
       IsInlineAttribute() /* text_is_declarations */,

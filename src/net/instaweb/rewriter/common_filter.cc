@@ -127,4 +127,8 @@ const GoogleUrl& CommonFilter::base_url() const {
   return driver_->base_url();
 }
 
+const GoogleUrl& CommonFilter::decoded_base_url() const {
+  return driver_->decoded_base_url();
+}
+
 }  // namespace net_instaweb

@@ -269,7 +269,7 @@ class OutputResource : public Resource {
   //   It takes into account domain-mapping via ModPagespeedMapRewriteDomain.
   //   However, the resolved base is not affected by sharding.  Shard-selection
   //   is done when url() is called, relying on the content hash.
-  // The umapped_base_ is the same domain as resolved_base_ but before domain
+  // The unmapped_base_ is the same domain as resolved_base_ but before domain
   //   mapping was applied; it is also known as the source domain since it is
   //   the domain of the resource's link.
   // The original_base_ is the domain of the page that contains the resource

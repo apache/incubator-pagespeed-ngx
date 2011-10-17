@@ -47,7 +47,14 @@ class CommonFilter : public EmptyHtmlFilter {
   virtual ~CommonFilter();
 
   // Getters
+
+  // URL of the requested HTML or resource.
   const GoogleUrl& base_url() const;
+
+  // For rewritten resources, decoded_base_url() is the base of the original
+  // (un-rewritten) resource's URL.
+  const GoogleUrl& decoded_base_url() const;
+
   HtmlElement* noscript_element() const { return noscript_element_; }
 
   // Note: Don't overload these methods, overload the implementers instead!
