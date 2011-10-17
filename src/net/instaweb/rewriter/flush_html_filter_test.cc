@@ -39,8 +39,9 @@ const char kScriptFormat[] = "<script type=text/javascript src='%s'></script>";
 class FlushFilterTest : public ResourceManagerTestBase  {
  protected:
   virtual void SetUp() {
+    options()->set_flush_html(true);
     ResourceManagerTestBase::SetUp();
-    AddFilter(RewriteOptions::kFlushHtml);
+    rewrite_driver()->AddFilters();
     SetupWriter();
     html_parse()->StartParse("http://example.com");
   }

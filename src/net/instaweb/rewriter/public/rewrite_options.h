@@ -51,7 +51,6 @@ class RewriteOptions {
     kDivStructure,
     kElideAttributes,
     kExtendCache,
-    kFlushHtml,
     kInlineCss,
     kInlineImages,
     kInlineJavascript,

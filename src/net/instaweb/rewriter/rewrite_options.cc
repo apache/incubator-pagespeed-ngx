@@ -45,7 +45,7 @@ namespace {
 //
 // This version number should be incremented if any default-values are changed,
 // either in the add_option() call or via options->set_default.
-const int kOptionsVersion = 2;
+const int kOptionsVersion = 3;
 
 }  // namespace
 
@@ -129,7 +129,6 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
 // this is managed in the c++ switch statement.
 const RewriteOptions::Filter kTestFilterSet[] = {
   RewriteOptions::kConvertJpegToWebp,
-  RewriteOptions::kFlushHtml,
   RewriteOptions::kMakeGoogleAnalyticsAsync,
   RewriteOptions::kRewriteDomains,
 };

@@ -559,7 +559,7 @@ void RewriteDriver::AddPreRenderFilters() {
   // and boolean parameter settings to filters.
   const RewriteOptions* rewrite_options = options();
 
-  if (rewrite_options->Enabled(RewriteOptions::kFlushHtml)) {
+  if (rewrite_options->flush_html()) {
     // Note that this does not get hooked into the normal html-parse
     // filter-chain as it gets run immediately after every call to
     // ParseText, possibly inducing the system to trigger a Flush

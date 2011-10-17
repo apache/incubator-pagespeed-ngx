@@ -36,7 +36,6 @@ struct FilterMap {
 "div_structure",                     RewriteOptions::kDivStructure
 "elide_attributes",                  RewriteOptions::kElideAttributes
 "extend_cache",                      RewriteOptions::kExtendCache
-"flush_html",                        RewriteOptions::kFlushHtml
 "inline_css",                        RewriteOptions::kInlineCss
 "inline_images",                     RewriteOptions::kInlineImages
 "inline_javascript",                 RewriteOptions::kInlineJavascript
