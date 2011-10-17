@@ -35,6 +35,7 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
@@ -130,8 +131,13 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
  protected:
   static const int kHtmlCacheTimeSec = 5000;
 
-  ProxyInterfaceTest() :
-    last_modified_time_("Sat, 03 Apr 2010 18:51:26 GMT") {}
+  ProxyInterfaceTest() : max_age_300_("max-age=300") {
+    ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
+    ConvertTimeToString(MockTimer::kApr_5_2010_ms + 5 * Timer::kMinuteMs,
+                        &start_time_plus_300s_string_);
+    ConvertTimeToString(MockTimer::kApr_5_2010_ms - 2 * Timer::kDayMs,
+                        &old_time_string_);
+  }
   virtual ~ProxyInterfaceTest() {}
 
   virtual void SetUp() {
@@ -209,7 +215,10 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
 
   scoped_ptr<ProxyInterface> proxy_interface_;
   int64 start_time_ms_;
-  const GoogleString last_modified_time_;
+  GoogleString start_time_string_;
+  GoogleString start_time_plus_300s_string_;
+  GoogleString old_time_string_;
+  const GoogleString max_age_300_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceTest);
@@ -301,6 +310,77 @@ TEST_F(ProxyInterfaceTest, SetCookie2NotCached) {
   EXPECT_EQ(1, lru_cache()->num_misses());
 }
 
+TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
+  ResponseHeaders headers;
+  const char kContent[] = "A very compelling article";
+  headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
+  headers.SetDate(MockTimer::kApr_5_2010_ms);
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.css"), headers, kContent);
+
+  // The first response served by the fetcher has caching headers.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.css", true, &text, &response_headers);
+  EXPECT_STREQ(max_age_300_,
+               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_300s_string_,
+               response_headers.Lookup1(HttpAttributes::kExpires));
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_EQ(kContent, text);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+
+  // Fetch again from cache. It has the same caching headers.
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.css", true, &text, &response_headers);
+  EXPECT_STREQ(max_age_300_,
+               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_300s_string_,
+               response_headers.Lookup1(HttpAttributes::kExpires));
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_EQ(kContent, text);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+}
+
+TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
+  ResponseHeaders headers;
+  const char kContent[] = "A very compelling article";
+  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  headers.SetDate(MockTimer::kApr_5_2010_ms);
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.html"), headers, kContent);
+
+  // The first response served by the fetcher does not have implicit caching
+  // headers.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.html", true, &text, &response_headers);
+  EXPECT_STREQ(NULL, response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_EQ(kContent, text);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+
+  // Fetch again. Not found in cache.
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.html", true, &text, &response_headers);
+  EXPECT_EQ(NULL, response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_EQ(kContent, text);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+}
+
 TEST_F(ProxyInterfaceTest, EtagMatching) {
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";
@@ -357,7 +437,7 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";
   SetDefaultLongCacheHeaders(&kContentTypeText, &headers);
-  headers.SetLastModified(MockTimer::kApr_5_2010_ms - 2 * Timer::kDayMs);
+  headers.SetLastModified(MockTimer::kApr_5_2010_ms);
   headers.ComputeCaching();
   SetFetchResponse(AbsolutifyUrl("text.txt"), headers, kContent);
 
@@ -366,7 +446,7 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
   ResponseHeaders response_headers;
   FetchFromProxy("text.txt", true, &text, &response_headers);
   EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
-  EXPECT_STREQ(last_modified_time_,
+  EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kLastModified));
   EXPECT_EQ(kContent, text);
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -377,7 +457,7 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
   ResponseHeaders response_headers2;
   FetchFromProxy("text.txt", true, &text2, &response_headers2);
   EXPECT_EQ(HttpStatus::kOK, response_headers2.status_code());
-  EXPECT_STREQ(last_modified_time_,
+  EXPECT_STREQ(start_time_string_,
                response_headers2.Lookup1(HttpAttributes::kLastModified));
   EXPECT_EQ(kContent, text2);
   EXPECT_EQ(1, lru_cache()->num_hits());
@@ -387,7 +467,7 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
   GoogleString text3;
   ResponseHeaders response_headers3;
   RequestHeaders request_headers;
-  request_headers.Add(HttpAttributes::kIfModifiedSince, last_modified_time_);
+  request_headers.Add(HttpAttributes::kIfModifiedSince, start_time_string_);
   FetchFromProxy("text.txt", request_headers, true, &text3, &response_headers3);
   EXPECT_EQ(HttpStatus::kNotModified, response_headers3.status_code());
   EXPECT_STREQ(NULL, response_headers3.Lookup1(HttpAttributes::kLastModified));
@@ -403,7 +483,7 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
                           "Fri, 02 Apr 2010 18:51:26 GMT");
   FetchFromProxy("text.txt", request_headers, true, &text4, &response_headers4);
   EXPECT_EQ(HttpStatus::kOK, response_headers4.status_code());
-  EXPECT_STREQ(last_modified_time_,
+  EXPECT_STREQ(start_time_string_,
                response_headers4.Lookup1(HttpAttributes::kLastModified));
   EXPECT_EQ(kContent, text4);
   EXPECT_EQ(3, lru_cache()->num_hits());

@@ -30,13 +30,20 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"  // for Timer
 
 namespace net_instaweb {
 
 class ResponseHeadersTest : public testing::Test {
  protected:
-  ResponseHeadersTest() : parser_(&response_headers_) { }
+  ResponseHeadersTest()
+      : parser_(&response_headers_),
+        max_age_300_("max-age=300") {
+    ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
+    ConvertTimeToString(MockTimer::kApr_5_2010_ms + 5 * Timer::kMinuteMs,
+                        &start_time_plus_300s_string_);
+  }
 
   void CheckGoogleHeaders(const ResponseHeaders& response_headers) {
     EXPECT_EQ(200, response_headers.status_code());
@@ -81,12 +88,22 @@ class ResponseHeadersTest : public testing::Test {
   bool ComputeImplicitCaching(int status_code, const char* content_type) {
     GoogleString header_text =
         StringPrintf("HTTP/1.0 %d OK\r\n"
-                     "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+                     "Date: %s\r\n"
                      "Content-type: %s\r\n\r\n",
-                     status_code, content_type);
+                     status_code, start_time_string_.c_str(), content_type);
     response_headers_.Clear();
     ParseHeaders(header_text);
-    return response_headers_.IsCacheable();
+    bool cacheable = response_headers_.IsCacheable();
+    if (!cacheable) {
+      EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kCacheControl));
+      EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kExpires));
+    } else {
+      EXPECT_STREQ(max_age_300_,
+                   response_headers_.Lookup1(HttpAttributes::kCacheControl));
+      EXPECT_STREQ(start_time_plus_300s_string_,
+                   response_headers_.Lookup1(HttpAttributes::kExpires));
+    }
+    return cacheable;
   }
 
   // At the end of every test, check to make sure that clearing the
@@ -105,6 +122,10 @@ class ResponseHeadersTest : public testing::Test {
   GoogleMessageHandler message_handler_;
   ResponseHeaders response_headers_;
   ResponseHeadersParser parser_;
+
+  GoogleString start_time_string_;
+  GoogleString start_time_plus_300s_string_;
+  const GoogleString max_age_300_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ResponseHeadersTest);

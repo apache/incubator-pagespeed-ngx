@@ -284,6 +284,22 @@ void RewriteOptions::DisableFilter(Filter filter) {
   modified_ |= inserted.second;
 }
 
+void RewriteOptions::EnableFilters(
+    const RewriteOptions::FilterSet& filter_set) {
+  for (RewriteOptions::FilterSet::const_iterator iter = filter_set.begin();
+       iter != filter_set.end(); ++iter) {
+    EnableFilter(*iter);
+  }
+}
+
+void RewriteOptions::DisableFilters(
+    const RewriteOptions::FilterSet& filter_set) {
+  for (RewriteOptions::FilterSet::const_iterator iter = filter_set.begin();
+       iter != filter_set.end(); ++iter) {
+    DisableFilter(*iter);
+  }
+}
+
 bool RewriteOptions::AddCommaSeparatedListToFilterSet(
     const StringPiece& filters, MessageHandler* handler, FilterSet* set) {
   DCHECK(!frozen_);

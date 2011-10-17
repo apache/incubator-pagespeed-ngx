@@ -77,6 +77,9 @@ class RewriteOptions {
   // Used for enumerating over all entries in the Filter enum.
   static const Filter kFirstFilter = kAddHead;
 
+  // Convenience name for a set of rewrite filters.
+  typedef std::set<Filter> FilterSet;
+
   enum RewriteLevel {
     // Enable no filters. Parse HTML but do not perform any
     // transformations. This is the default value. Most users should
@@ -164,6 +167,8 @@ class RewriteOptions {
 
   void EnableFilter(Filter filter);
   void DisableFilter(Filter filter);
+  void EnableFilters(const FilterSet& filter_set);
+  void DisableFilters(const FilterSet& filter_set);
 
   bool Enabled(Filter filter) const;
 
@@ -450,8 +455,6 @@ class RewriteOptions {
   void Modify();
 
  private:
-  typedef std::set<Filter> FilterSet;
-
   void SetUp();
   bool AddCommaSeparatedListToFilterSet(
       const StringPiece& filters, MessageHandler* handler, FilterSet* set);

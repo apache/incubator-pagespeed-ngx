@@ -342,6 +342,14 @@ void ResponseHeaders::ComputeCaching() {
       // sensitive data due to misconfigured caching headers.
       proto_->set_proxy_cacheable(false);
     }
+
+    if (proto_->proxy_cacheable() && !explicit_cacheable) {
+      // If the resource is proxy cacheable but it does not have explicit
+      // caching headers, explicitly set the caching headers.
+      DCHECK(has_date);
+      DCHECK(cache_ttl_ms == kImplicitCacheTtlMs);
+      SetDateAndCaching(date, cache_ttl_ms);
+    }
   } else {
     proto_->set_expiration_time_ms(0);
     proto_->set_proxy_cacheable(false);
@@ -411,8 +419,6 @@ const ContentType* ResponseHeaders::DetermineContentType() const {
 
   return content_type;
 }
-
-
 
 bool ResponseHeaders::ParseDateHeader(
     const StringPiece& attr, int64* date_ms) const {
