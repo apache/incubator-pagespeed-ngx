@@ -108,8 +108,8 @@ TEST_F(DomainRewriteFilterTest, MappedAndSharded) {
 }
 
 TEST_F(DomainRewriteFilterTest, DontTouchIfAlreadyRewritten) {
-  ExpectNoChange("other domain", StrCat(kFrom1Domain,
-                                        "a.css.pagespeed.cf.0.css"));
+  ExpectNoChange("other domain",
+                 Encode(kFrom1Domain, "cf", "0", "a.css", "css"));
 }
 
 }  // namespace net_instaweb

@@ -509,9 +509,16 @@ TEST_P(ImageRewriteTest, FetchInvalid) {
   // calling Done(false).
   AddFilter(RewriteOptions::kRecompressImages);
   GoogleString out;
-  EXPECT_FALSE(
-      ServeResourceUrl(
-          "http://www.example.com/70x53x,.pagespeed.ic.ABCDEFGHIJ.jpg", &out));
+  GoogleString encoded_url = Encode("http://www.example.com/", "ic",
+                                    "ABCDEFGHIJ", "70x53x,", "jpg");
+  // The comma at the end is encoded into two commas, which needs to be undone
+  // because otherwise we end up trying to fetch "http://www.example.com/,"
+  // [note the comma at the end] instead of the full URL. I spent an hour
+  // looking into why but couldn't work it out and in the end decided to just
+  // force the URL to be exactly what it was previously.
+  // TODO(matterbury):  Find out why and fix it if it's actually a problem.
+  GlobalReplaceSubstring("70x53x,,", "70x53x,", &encoded_url);
+  EXPECT_FALSE(ServeResourceUrl(encoded_url, &out));
 }
 
 TEST_P(ImageRewriteTest, Rewrite404) {
@@ -560,7 +567,9 @@ TEST_P(ImageRewriteTest, RewriteCacheExtendInteraction) {
   InitResponseHeaders("a.png", kContentTypePng, "Not a PNG", 600);
 
   ValidateExpected("cache_extend_fallback", "<img src=a.png>",
-                   "<img src=http://test.com/a.png.pagespeed.ce.0.png>");
+                   StrCat("<img src=",
+                          Encode("http://test.com/", "ce", "0", "a.png", "png"),
+                          ">"));
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?id=324
@@ -599,10 +608,9 @@ TEST_P(ImageRewriteTest, NestedConcurrentRewritesLimit) {
   GoogleString in_css = StringPrintf(kCssTemplate, kPngFile);
   InitResponseHeaders(kCssFile,  kContentTypeCss, in_css, 100);
 
-  GoogleString out_css_url =
-      AbsolutifyUrl(StrCat(kCssFile, ".pagespeed.cf.0.css"));
-  GoogleString out_png_url =
-      AbsolutifyUrl(StrCat("x", kPngFile, ".pagespeed.ic.0.png"));
+  GoogleString out_css_url = Encode(kTestDomain, "cf", "0", kCssFile, "css");
+  GoogleString out_png_url = Encode(kTestDomain, "ic", "0",
+                                    StrCat("x", kPngFile), "png");
 
   // Set the current # of rewrites very high, so we stop doing more
   // due to "load".

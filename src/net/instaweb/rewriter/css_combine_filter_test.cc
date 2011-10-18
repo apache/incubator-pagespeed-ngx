@@ -354,8 +354,8 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
     SetFetchResponse(a_css_url, default_css_header, "A");
     SetFetchResponse(b_css_url, default_css_header, "B");
 
-    GoogleString combined_url =
-        StrCat(kTestDomain, "a.css+b.css.pagespeed.cc.0.css");
+    GoogleString combined_url = Encode(kTestDomain, "cc", "0",
+                                       "a.css+b.css", "css");
 
     SetupWriter();
     rewrite_driver()->StartParse(kTestDomain);
@@ -457,7 +457,8 @@ TEST_P(CssCombineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
       "  <script type='text/javascript' src='c.js'></script>"     // 'in' <link>
       "  ", Link("b.css")));
   GoogleString combination(StrCat(
-      "  ", Link("http://test.com/a.css+b.css.pagespeed.cc.0.css", "", true),
+      "  ", Link(Encode(kTestDomain, "cc", "0", "a.css+b.css", "css"),
+                 "", true),
       "\n"
       "  <script type='text/javascript' src='c.js'></script>  "));
 
@@ -486,7 +487,8 @@ TEST_P(CssCombineFilterTest, XhtmlCombineLinkClosed) {
   GoogleString links(StrCat(
       Link("a.css", "screen", true), Link("b.css", "screen", true)));
   GoogleString combination(
-      Link("http://test.com/a.css+b.css.pagespeed.cc.0.css", "screen", true));
+      Link(Encode(kTestDomain, "cc", "0", "a.css+b.css", "css"),
+           "screen", true));
 
   // Put original CSS files into our fetcher.
   ResponseHeaders default_css_header;
@@ -715,7 +717,8 @@ TEST_P(CssCombineFilterTest, CombineCssBaseUrlOutOfOrder) {
       "  \n"
       "</head>\n"));
   EXPECT_EQ(2UL, css_urls.size());
-  EXPECT_EQ("http://other_domain.test/foo/b.css+c.css.pagespeed.cc.0.css",
+  EXPECT_EQ(Encode("http://other_domain.test/", "cc", "0",
+                   "foo/b.css+c.css", "css"),
             css_urls[1]);
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
   EXPECT_TRUE(GoogleUrl(css_urls[1]).is_valid());
@@ -740,7 +743,8 @@ TEST_P(CssCombineFilterTest, CombineCssAbsoluteBaseUrlOutOfOrder) {
       "  \n"
       "</head>\n"));
   EXPECT_EQ(1UL, css_urls.size());
-  EXPECT_EQ("http://other_domain.test/foo/a.css+b.css.pagespeed.cc.0.css",
+  EXPECT_EQ(Encode("http://other_domain.test/", "cc", "0",
+                   "foo/a.css+b.css", "css"),
             css_urls[0]);
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
   EXPECT_TRUE(GoogleUrl(css_urls[0]).is_valid());
@@ -766,7 +770,8 @@ TEST_P(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
       "</head>\n"));
   EXPECT_EQ(1UL, css_urls.size());
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
-  EXPECT_EQ("http://other_domain.test/foo/a.css+b.css.pagespeed.cc.0.css",
+  EXPECT_EQ(Encode("http://other_domain.test/", "cc", "0",
+                   "foo/a.css+b.css", "css"),
             css_urls[0]);
   EXPECT_TRUE(GoogleUrl(css_urls[0]).is_valid());
 }
@@ -1021,7 +1026,7 @@ TEST_P(CssCombineFilterTest, CrossMappedDomain) {
   EXPECT_EQ(1, css_out.size());
   GoogleString actual_combination;
   EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
-  EXPECT_EQ(StringPiece("http://a.com/1.css+2.css.pagespeed.cc.0.css"),
+  EXPECT_EQ(Encode("http://a.com/", "cc", "0", "1.css+2.css", "css"),
             css_out[0]->url_);
   EXPECT_EQ(StrCat(kYellow, kBlue), actual_combination);
 }
@@ -1074,10 +1079,10 @@ TEST_P(CssCombineFilterTest, TwoCombinationsTwice) {
   BarrierTestHelper("two_comb", input_css_links, &output_css_links);
 
   ASSERT_EQ(3, output_css_links.size());
-  EXPECT_EQ("http://test.com/a.css+b.css.pagespeed.cc.0.css",
+  EXPECT_EQ(Encode(kTestDomain, "cc", "0", "a.css+b.css", "css"),
             output_css_links[0]->url_);
   EXPECT_EQ("404.css", output_css_links[1]->url_);
-  EXPECT_EQ("http://test.com/c.css+d.css.pagespeed.cc.0.css",
+  EXPECT_EQ(Encode(kTestDomain, "cc", "0", "c.css+d.css", "css"),
             output_css_links[2]->url_);
 
   // Get rid of the "modern" cache key, while keeping the old one.
@@ -1095,8 +1100,8 @@ TEST_P(CssCombineFilterTest, InvalidFetchCache) {
   SetFetchResponse404("404a.css");
   SetFetchResponse404("404b.css");
 
-  EXPECT_FALSE(
-      TryFetchResource("http://test.com/404a.css+404b.css.pagespeed.cc.0.css"));
+  EXPECT_FALSE(TryFetchResource(
+      Encode(kTestDomain, "cc", "0", "404a.css+404b.css", "css")));
   ValidateNoChanges("invalid",
                     StrCat(kXhtmlDtd,
                            CssLinkHref("404a.css"),
@@ -1118,7 +1123,9 @@ TEST_P(CssFilterWithCombineTest, TestFollowCombine) {
   // in rewrite filter.
   const char kCssA[] = "a.css";
   const char kCssB[] = "b.css";
-  const char kCssOut[] = "a.css+b.css,Mcc.0.css.pagespeed.cf.0.css";
+  const GoogleString kCssOut =
+      Encode(kTestDomain, "cf", "0",
+             Encode("", "cc", "0", "a.css+b.css", "css"), "css");
   const char kCssText[] = " div {    } ";
   const char kCssTextOptimized[] = "div{}";
 
@@ -1128,10 +1135,10 @@ TEST_P(CssFilterWithCombineTest, TestFollowCombine) {
   ValidateExpected(
       "follow_combine",
       StrCat(Link(kCssA), Link(kCssB)),
-      Link(StrCat(kTestDomain, kCssOut)));
+      Link(kCssOut));
 
   GoogleString content;
-  EXPECT_TRUE(ServeResourceUrl(StrCat(kTestDomain, kCssOut), &content));
+  EXPECT_TRUE(ServeResourceUrl(kCssOut, &content));
   EXPECT_EQ(StrCat(kCssTextOptimized, kCssTextOptimized), content);
 }
 

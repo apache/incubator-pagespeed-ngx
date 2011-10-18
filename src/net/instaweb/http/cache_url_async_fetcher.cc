@@ -27,8 +27,10 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -38,13 +40,26 @@ class CachePutFetch : public AsyncFetch {
  public:
   CachePutFetch(const GoogleString& url, ResponseHeaders* response_headers,
                 AsyncFetch* base_fetch, bool respect_vary,
-                HTTPCache* cache, MessageHandler* handler)
+                HTTPCache* cache, Histogram* backend_first_byte_latency,
+                MessageHandler* handler)
       : url_(url), response_headers_(response_headers), base_fetch_(base_fetch),
-        respect_vary_(respect_vary), cache_(cache), handler_(handler),
-        cacheable_(false) {}
+        respect_vary_(respect_vary), cache_(cache),
+        backend_first_byte_latency_(backend_first_byte_latency),
+        handler_(handler), cacheable_(false) {
+    if (backend_first_byte_latency_ != NULL) {
+      start_time_ms_ = cache_->timer()->NowMs();
+    }
+  }
+
   virtual ~CachePutFetch() {}
 
   virtual void HeadersComplete() {
+    // We compute the latency here as it's the spot where we're doing an
+    // actual backend fetch and not potentially using the cache.
+    if (backend_first_byte_latency_ != NULL) {
+      backend_first_byte_latency_->Add(
+          cache_->timer()->NowMs() - start_time_ms_);
+    }
     response_headers_->ComputeCaching();
 
     cacheable_ = response_headers_->IsProxyCacheable();
@@ -91,10 +106,12 @@ class CachePutFetch : public AsyncFetch {
   AsyncFetch* base_fetch_;
   bool respect_vary_;
   HTTPCache* cache_;
+  Histogram* backend_first_byte_latency_;
   MessageHandler* handler_;
 
   bool cacheable_;
   HTTPValue cache_value_;
+  int64 start_time_ms_;  // only used if backend_first_byte_latency_ != NULL
 
   DISALLOW_COPY_AND_ASSIGN(CachePutFetch);
 };
@@ -105,16 +122,18 @@ class CacheFindCallback : public HTTPCache::Callback {
                     const RequestHeaders& request_headers,
                     ResponseHeaders* response_headers,
                     AsyncFetch* base_fetch,
-                    bool respect_vary,
-                    bool ignore_recent_fetch_failed,
-                    HTTPCache* cache,
-                    UrlAsyncFetcher* fetcher,
+                    CacheUrlAsyncFetcher* owner,
                     MessageHandler* handler)
       : url_(url),
-        response_headers_(response_headers), base_fetch_(base_fetch),
-        cache_(cache), fetcher_(fetcher), handler_(handler),
-        respect_vary_(respect_vary),
-        ignore_recent_fetch_failed_(ignore_recent_fetch_failed) {
+        response_headers_(response_headers),
+        base_fetch_(base_fetch),
+        cache_(owner->http_cache()),
+        fetcher_(owner->fetcher()),
+        backend_first_byte_latency_(
+            owner->backend_first_byte_latency_histogram()),
+        handler_(handler),
+        respect_vary_(owner->respect_vary()),
+        ignore_recent_fetch_failed_(owner->ignore_recent_fetch_failed()) {
     request_headers_.CopyFrom(request_headers);
   }
   virtual ~CacheFindCallback() {}
@@ -164,8 +183,9 @@ class CacheFindCallback : public HTTPCache::Callback {
       case HTTPCache::kNotFound: {
         VLOG(1) << "Did not find in cache: " << url_;
         CachePutFetch* put_fetch =
-            new CachePutFetch(url_, response_headers_,
-                              base_fetch_, respect_vary_, cache_, handler_);
+            new CachePutFetch(url_, response_headers_, base_fetch_,
+                              respect_vary_, cache_,
+                              backend_first_byte_latency_, handler_);
         fetcher_->Fetch(url_, request_headers_,
                         response_headers_, handler_, put_fetch);
         break;
@@ -209,6 +229,7 @@ class CacheFindCallback : public HTTPCache::Callback {
   AsyncFetch* base_fetch_;
   HTTPCache* cache_;
   UrlAsyncFetcher* fetcher_;
+  Histogram* backend_first_byte_latency_;
   MessageHandler* handler_;
 
   bool respect_vary_;
@@ -240,8 +261,7 @@ bool CacheUrlAsyncFetcher::Fetch(
 
   CacheFindCallback* find_callback =
       new CacheFindCallback(url, request_headers, response_headers, base_fetch,
-                            respect_vary_, ignore_recent_fetch_failed_,
-                            http_cache_, fetcher_, handler);
+                            this, handler);
   http_cache_->Find(url, handler, find_callback);
   // Cache interface does not tell us if the request was immediately resolved,
   // so we must say that it wasn't.

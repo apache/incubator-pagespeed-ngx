@@ -454,6 +454,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     GoogleString escaped_abs;
     UrlEscaper::EncodeToUrlSegment(name, &escaped_abs);
     // Do not use Encode, which will make the URL non-evil.
+    // TODO(matterbury):  Rewrite this for a non-standard UrlNamer?
     return StrCat("http://", host, "/dir/123/", escaped_abs,
                   ".pagespeed.jm.0.js");
   }
@@ -551,7 +552,7 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
   resource_manager()->Write(HttpStatus::kOK, StringPiece(kStyleContent),
                             output.get(), kOriginTtlSec * Timer::kSecondMs,
                             message_handler());
-  EXPECT_EQ(GoogleString("http://cdn.com/style.css.pagespeed.ce.0.css"),
+  EXPECT_EQ(Encode("http://cdn.com/", "ce", "0", "style.css", "css"),
             output->url());
 }
 
@@ -963,7 +964,7 @@ TEST_F(ResourceManagerShardedTest, TestNamed) {
   // hasher for the content hash.  Note that the sharding sensitivity
   // to the hash value is tested in DomainLawyerTest.Shard, and will
   // also be covered in a system test.
-  EXPECT_EQ("http://shard0.com/dir/orig.js.pagespeed.jm.0.js",
+  EXPECT_EQ(Encode("http://shard0.com/", "jm", "0", "dir/orig.js", "js"),
             output_resource->url());
 }
 
@@ -997,7 +998,8 @@ TEST_F(ResourceManagerTest, ShutDownAssumptions) {
 }
 
 TEST_F(ResourceManagerTest, IsPagespeedResource) {
-  GoogleUrl rewritten("http://shard0.com/dir/orig.js.pagespeed.jm.0.js");
+  GoogleUrl rewritten(Encode("http://shard0.com/", "jm", "0",
+                             "dir/orig.js", "js"));
   EXPECT_TRUE(resource_manager()->IsPagespeedResource(rewritten));
 
   GoogleUrl normal("http://jqueryui.com/jquery-1.6.2.js");

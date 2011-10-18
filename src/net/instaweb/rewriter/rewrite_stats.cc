@@ -52,8 +52,10 @@ const char kPageLoadCount[] = "page_load_count";
 const int kNumWaveformSamples = 200;
 
 // Histogram names.
-const char kFetchLatencyHistogram[] = "Fetch Latency Histogram";
+const char kFetchLatencyHistogram[] = "Pagespeed Resource Latency Histogram";
 const char kRewriteLatencyHistogram[] = "Rewrite Latency Histogram";
+const char kBackendLatencyHistogram[] =
+    "Backend Fetch First Byte Latency Histogram";
 
 // TimedVariable names.
 const char kTotalFetchCount[] = "total_fetch_count";
@@ -83,6 +85,7 @@ void RewriteStats::Initialize(Statistics* statistics) {
   statistics->AddVariable(kNumFlushes);
   statistics->AddHistogram(kFetchLatencyHistogram);
   statistics->AddHistogram(kRewriteLatencyHistogram);
+  statistics->AddHistogram(kBackendLatencyHistogram);
   statistics->AddTimedVariable(kTotalFetchCount,
                                ResourceManager::kStatisticsGroup);
   statistics->AddTimedVariable(kTotalRewriteCount,
@@ -125,6 +128,8 @@ RewriteStats::RewriteStats(Statistics* stats,
           stats->GetHistogram(kFetchLatencyHistogram)),
       rewrite_latency_histogram_(
           stats->GetHistogram(kRewriteLatencyHistogram)),
+      backend_latency_histogram_(
+          stats->GetHistogram(kBackendLatencyHistogram)),
       total_fetch_count_(stats->GetTimedVariable(kTotalFetchCount)),
       total_rewrite_count_(stats->GetTimedVariable(kTotalRewriteCount)) {
   // Timers are not guaranteed to go forward in time, however
@@ -134,6 +139,7 @@ RewriteStats::RewriteStats(Statistics* stats,
   // TODO(sligocki): Any reason not to set this by default for all Histograms?
   fetch_latency_histogram_->EnableNegativeBuckets();
   rewrite_latency_histogram_->EnableNegativeBuckets();
+  backend_latency_histogram_->EnableNegativeBuckets();
 
   for (int i = 0; i < RewriteDriverFactory::kNumWorkerPools; ++i) {
     thread_queue_depths_.push_back(

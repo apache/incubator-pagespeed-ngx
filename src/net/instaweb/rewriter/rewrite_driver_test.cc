@@ -112,42 +112,50 @@ TEST_P(RewriteDriverTest, TestLegacyUrl) {
 TEST_P(RewriteDriverTest, TestInferContentType) {
   rewrite_driver()->AddFilters();
   SetBaseUrlForFetch("http://example.com/dir/123/index.html");
-  EXPECT_TRUE(DecodeContentType("http://example.com/z.pagespeed.jm.0.unknown")
-              == NULL);
+  EXPECT_TRUE(DecodeContentType(
+      Encode("http://example.com/", "jm", "0", "z", "unknown")) == NULL);
   EXPECT_EQ(&kContentTypeJavascript,
-            DecodeContentType("http://example.com/orig.pagespeed.jm.0.js"));
+            DecodeContentType(
+                Encode("http://example.com/", "jm", "0", "orig", "js")));
   EXPECT_EQ(&kContentTypeCss,
-            DecodeContentType("http://example.com/orig.pagespeed.cf.0.css"));
+            DecodeContentType(
+                Encode("http://example.com/", "cf", "0", "orig", "css")));
   EXPECT_EQ(&kContentTypeJpeg,
-            DecodeContentType("http://example.com/xorig.pagespeed.ic.0.jpg"));
+            DecodeContentType(
+                Encode("http://example.com/", "ic", "0", "xorig", "jpg")));
   EXPECT_EQ(&kContentTypePng,
-            DecodeContentType("http://example.com/orig.pagespeed.ce.0.png"));
+            DecodeContentType(
+                Encode("http://example.com/", "ce", "0", "orig", "png")));
   EXPECT_EQ(&kContentTypeGif,
-            DecodeContentType("http://example.com/dir/xy.pagespeed.ic.0.gif"));
+            DecodeContentType(
+                Encode("http://example.com/", "ic", "0", "dir/xy", "gif")));
 }
 
 TEST_P(RewriteDriverTest, TestModernUrl) {
   rewrite_driver()->AddFilters();
 
   // Sanity-check on a valid one
-  EXPECT_TRUE(
-      CanDecodeUrl("http://example.com/Puzzle.jpg.pagespeed.ce.HASH.jpg"));
+  EXPECT_TRUE(CanDecodeUrl(
+      Encode("http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpg")));
 
   // Query is OK, too.
-  EXPECT_TRUE(
-      CanDecodeUrl("http://example.com/Puzzle.jpg.pagespeed.ce.HASH.jpg?s=ok"));
+  EXPECT_TRUE(CanDecodeUrl(
+      StrCat(Encode("http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpg"),
+             "?s=ok")));
 
   // Invalid filter code
-  EXPECT_FALSE(
-      CanDecodeUrl("http://example.com/Puzzle.jpg.pagespeed.nf.HASH.jpg"));
+  EXPECT_FALSE(CanDecodeUrl(
+      Encode("http://example.com/", "nf", "HASH", "Puzzle.jpg", "jpg")));
 
   // Nonsense extension
-  EXPECT_FALSE(
-      CanDecodeUrl("http://example.com/Puzzle.jpg.pagespeed.ce.HASH.jpgif"));
+  EXPECT_FALSE(CanDecodeUrl(
+      Encode("http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpgif")));
 
   // No hash
-  EXPECT_FALSE(
-      CanDecodeUrl("http://example.com/Puzzle.jpg.pagespeed.ce..jpg"));
+  GoogleString encoded_url(Encode("http://example.com/", "ce", "123456789",
+                                  "Puzzle.jpg", "jpg"));
+  GlobalReplaceSubstring("123456789", "", &encoded_url);
+  EXPECT_FALSE(CanDecodeUrl(encoded_url));
 }
 
 // Test to make sure we do not put in extra things into the cache.

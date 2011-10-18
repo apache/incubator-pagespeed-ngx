@@ -25,6 +25,7 @@
 
 namespace net_instaweb {
 
+class Histogram;
 class HTTPCache;
 class MessageHandler;
 class RequestHeaders;
@@ -46,6 +47,7 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
                        bool respect_vary)
       : http_cache_(cache),
         fetcher_(fetcher),
+        backend_first_byte_latency_(NULL),
         respect_vary_(respect_vary),
         ignore_recent_fetch_failed_(false) {
   }
@@ -57,14 +59,32 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
                      MessageHandler* message_handler,
                      AsyncFetch* base_fetch);
 
+  HTTPCache* http_cache() const { return http_cache_; }
+  UrlAsyncFetcher* fetcher() const { return fetcher_; }
+
+  void set_backend_first_byte_latency_histogram(Histogram* x) {
+    backend_first_byte_latency_ = x;
+  }
+
+  Histogram* backend_first_byte_latency_histogram() const {
+    return backend_first_byte_latency_;
+  }
+
+  bool respect_vary() const { return respect_vary_; }
+
   void set_ignore_recent_fetch_failed(bool x) {
     ignore_recent_fetch_failed_ = x;
+  }
+
+  bool ignore_recent_fetch_failed() const {
+    return ignore_recent_fetch_failed_;
   }
 
  private:
   // Not owned by CacheUrlAsyncFetcher.
   HTTPCache* http_cache_;
   UrlAsyncFetcher* fetcher_;
+  Histogram* backend_first_byte_latency_;  // may be NULL.
 
   bool respect_vary_;
   bool ignore_recent_fetch_failed_;

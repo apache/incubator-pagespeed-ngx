@@ -25,6 +25,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -43,6 +44,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/mem_file_system.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -51,6 +53,8 @@
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 namespace {
 
@@ -155,7 +159,7 @@ TEST_F(LoadFromFileSyncTest, OnTheFly) {
   // First time we load and rewrite the resource (blocking fetch).
   ClearStats();
   ValidateExpected("trimmable", CssLinkHref("a.css"),
-                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+                   CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, file_system()->num_input_file_opens());
@@ -163,7 +167,7 @@ TEST_F(LoadFromFileSyncTest, OnTheFly) {
   // Second time we just get a cache hit, no rewrites or fetches.
   ClearStats();
   ValidateExpected("trimmable", CssLinkHref("a.css"),
-                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+                   CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, file_system()->num_input_file_opens());
@@ -179,7 +183,7 @@ TEST_F(LoadFromFileSyncTest, Rewritten) {
   // First time we load and rewrite the resource (blocking fetch).
   ClearStats();
   ValidateExpected("trimmable", CssLinkHref("a.css"),
-                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+                   CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, file_system()->num_input_file_opens());
@@ -187,14 +191,14 @@ TEST_F(LoadFromFileSyncTest, Rewritten) {
   // Second time we just get a cache hit, no rewrites or fetches.
   ClearStats();
   ValidateExpected("trimmable", CssLinkHref("a.css"),
-                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+                   CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, file_system()->num_input_file_opens());
 }
 
 TEST_F(LoadFromFileSyncTest, LoadFromFileOnTheFly) {
-  options()->file_load_policy()->Associate("http://test.com/", "/test/");
+  options()->file_load_policy()->Associate(kTestDomain, "/test/");
   InitTrimFilters(kOnTheFlyResource);
 
   // Init file resources.
@@ -203,7 +207,7 @@ TEST_F(LoadFromFileSyncTest, LoadFromFileOnTheFly) {
   // First time we load and rewrite the resource (blocking filesystem load).
   ClearStats();
   ValidateExpected("trimmable", CssLinkHref("a.css"),
-                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+                   CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, file_system()->num_input_file_opens());
@@ -211,14 +215,14 @@ TEST_F(LoadFromFileSyncTest, LoadFromFileOnTheFly) {
   // Second time we just get a cache hit, no rewrites or loads.
   ClearStats();
   ValidateExpected("trimmable", CssLinkHref("a.css"),
-                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+                   CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, file_system()->num_input_file_opens());
 }
 
 TEST_F(LoadFromFileSyncTest, LoadFromFileRewritten) {
-  options()->file_load_policy()->Associate("http://test.com/", "/test/");
+  options()->file_load_policy()->Associate(kTestDomain, "/test/");
   InitTrimFilters(kRewrittenResource);
 
   // Init file resources.
@@ -227,7 +231,7 @@ TEST_F(LoadFromFileSyncTest, LoadFromFileRewritten) {
   // First time we load and rewrite the resource (blocking filesystem load).
   ClearStats();
   ValidateExpected("trimmable", CssLinkHref("a.css"),
-                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+                   CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, file_system()->num_input_file_opens());
@@ -235,7 +239,7 @@ TEST_F(LoadFromFileSyncTest, LoadFromFileRewritten) {
   // Second time we just get a cache hit, no rewrites or loads.
   ClearStats();
   ValidateExpected("trimmable", CssLinkHref("a.css"),
-                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+                   CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, file_system()->num_input_file_opens());
@@ -245,7 +249,6 @@ TEST_F(LoadFromFileSyncTest, LoadFromFileRewritten) {
 class LoadFromFileResourceUpdateTest : public LoadFromFileSyncTest {
  protected:
   static const char kOriginalUrl[];
-  static const char kRewrittenUrlFormat[];
 
   LoadFromFileResourceUpdateTest() {
     FetcherUpdateDateHeaders();
@@ -288,8 +291,6 @@ class LoadFromFileResourceUpdateTest : public LoadFromFileSyncTest {
 };
 
 const char LoadFromFileResourceUpdateTest::kOriginalUrl[] = "a.css";
-const char LoadFromFileResourceUpdateTest::kRewrittenUrlFormat[] =
-    "http://test.com/a.css.pagespeed.tw.%s.css";
 
 TEST_F(LoadFromFileResourceUpdateTest, OnTheFly) {
   InitTrimFilters(kOnTheFlyResource);
@@ -377,7 +378,7 @@ TEST_F(LoadFromFileResourceUpdateTest, Rewritten) {
 }
 
 TEST_F(LoadFromFileResourceUpdateTest, LoadFromFileOnTheFly) {
-  options()->file_load_policy()->Associate("http://test.com/", "/test/");
+  options()->file_load_policy()->Associate(kTestDomain, "/test/");
   InitTrimFilters(kOnTheFlyResource);
 
   int64 ttl_ms = 5 * Timer::kMinuteMs;
@@ -427,7 +428,7 @@ TEST_F(LoadFromFileResourceUpdateTest, LoadFromFileOnTheFly) {
 }
 
 TEST_F(LoadFromFileResourceUpdateTest, LoadFromFileRewritten) {
-  options()->file_load_policy()->Associate("http://test.com/", "/test/");
+  options()->file_load_policy()->Associate(kTestDomain, "/test/");
   InitTrimFilters(kRewrittenResource);
 
   int64 ttl_ms = 5 * Timer::kMinuteMs;

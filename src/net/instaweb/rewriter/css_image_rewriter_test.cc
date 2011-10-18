@@ -69,8 +69,10 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesSimple) {
       "body {\n"
       "  background-image: url(foo.png);\n"
       "}\n";
-  static const char css_after[] =
-      "body{background-image:url(http://test.com/foo.png.pagespeed.ce.0.png)}";
+  const GoogleString css_after =
+      StrCat("body{background-image:url(",
+             Encode(kTestDomain, "ce", "0", "foo.png", "png"),
+             ")}");
 
   ValidateRewriteInlineCss("cache_extends_images-inline",
                            css_before, css_after,
@@ -93,8 +95,10 @@ TEST_P(CssImageRewriterTest, CacheExtendsWhenCssGrows) {
   InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
   static const char css_before[] =
       "body{background-image: url(foo.png)}";
-  static const char css_after[] =
-      "body{background-image:url(http://test.com/foo.png.pagespeed.ce.0.png)}";
+  const GoogleString css_after =
+      StrCat("body{background-image:url(",
+             Encode(kTestDomain, "ce", "0", "foo.png", "png)"),
+             "}");
 
   ValidateRewriteInlineCss("cache_extends_images_growcheck-inline",
                            css_before, css_after,
@@ -109,11 +113,12 @@ TEST_P(CssImageRewriterTest, CacheExtendsRepeatedTopLevel) {
   // Test to make sure that if we cache extend inside CSS we can do it
   // for the same image in HTML at the same time.
   const char kImg[] = "img.png";
-  const char kExtendedImg[] = "http://test.com/img.png.pagespeed.ce.0.png";
+  const GoogleString kExtendedImg =
+      Encode(kTestDomain, "ce", "0", "img.png", "png");
 
   const char kCss[] = "stylesheet.css";
-  const char kRewrittenCss[] =
-      "http://test.com/stylesheet.css.pagespeed.cf.0.css";
+  const GoogleString kRewrittenCss =
+      Encode(kTestDomain, "cf", "0", "stylesheet.css", "css");
   const char kCssTemplate[] = "body{background-image:url(%s)}";
 
   InitResponseHeaders(kImg, kContentTypePng, kImageData, 100);
@@ -126,11 +131,13 @@ TEST_P(CssImageRewriterTest, CacheExtendsRepeatedTopLevel) {
 
   ValidateExpected("repeated_top_level",
                    StringPrintf(kHtmlTemplate, kCss, kImg),
-                   StringPrintf(kHtmlTemplate, kRewrittenCss, kExtendedImg));
+                   StringPrintf(kHtmlTemplate,
+                                kRewrittenCss.c_str(),
+                                kExtendedImg.c_str()));
 
   GoogleString css_out;
   EXPECT_TRUE(ServeResourceUrl(kRewrittenCss, &css_out));
-  EXPECT_EQ(StringPrintf(kCssTemplate, kExtendedImg), css_out);
+  EXPECT_EQ(StringPrintf(kCssTemplate, kExtendedImg.c_str()), css_out);
 }
 
 TEST_P(CssImageRewriterTest, CacheExtendsImages) {
@@ -153,17 +160,25 @@ TEST_P(CssImageRewriterTest, CacheExtendsImages) {
       "OHwAAAABJRU5ErkJggg==);"
       "  -proprietary-background-property: url(foo.png);\n"
       "}";
-  static const char css_after[] =
-      "body{background-image:url(http://test.com/foo.png.pagespeed.ce.0.png);"
-      "list-style-image:url(http://test.com/bar.png.pagespeed.ce.0.png)}"
+  const GoogleString css_after = StrCat(StrCat(
+      "body{background-image:url(",
+      Encode(kTestDomain, "ce", "0", "foo.png", "png"),
+      ");"
+      "list-style-image:url(",
+      Encode(kTestDomain, "ce", "0", "bar.png", "png"),
+      ")}"
       ".titlebar p.cfoo,#end p{"
-      "background:url(http://test.com/baz.png.pagespeed.ce.0.png);"
-      "list-style:url(http://test.com/foo.png.pagespeed.ce.0.png)}"
+      "background:url(",
+      Encode(kTestDomain, "ce", "0", "baz.png", "png"),
+      ");"
+      "list-style:url(",
+      Encode(kTestDomain, "ce", "0", "foo.png", "png")),
+      ")}"
       ".other{"  // data: URLs and unknown properties are not rewritten.
       "background-image:url(data:image/png;base64\\,iVBORw0KGgoAAAANSUhEUgAAA"
       "AUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4"
       "OHwAAAABJRU5ErkJggg==);"
-      "-proprietary-background-property:url(foo.png)}";
+      "-proprietary-background-property:url(foo.png)}");
 
   // Can't serve from new contexts yet, because we're using mock_fetcher_.
   // TODO(sligocki): Resolve that and the just have:
@@ -187,8 +202,10 @@ TEST_P(CssImageRewriterTest, TrimsImageUrls) {
       "  background-image: url(foo.png);\n"
       "}\n";
 
-  static const char kCssAfter[] =
-      "body{background-image:url(foo.png.pagespeed.ce.0.png)}";
+  const GoogleString kCssAfter = StrCat(
+      "body{background-image:url(",
+      Encode("", "ce", "0", "foo.png", "png"),
+      ")}");
 
   ValidateRewriteExternalCss("trims_css_urls", kCss, kCssAfter,
                               kExpectChange | kExpectSuccess |
@@ -210,14 +227,18 @@ TEST_P(CssImageRewriterTest, InlinePaths) {
       "  background-image: url(http://test.com/dir/foo.png);\n"
       "}\n";
 
-  static const char kCssAfter[] =
-      "body{background-image:url(dir/foo.png.pagespeed.ce.0.png)}";
+  const GoogleString kCssAfter = StrCat(
+      "body{background-image:url(dir/",
+      Encode("", "ce", "0", "foo.png", "png"),
+      ")}");
   ValidateRewriteInlineCss("nosubdir",
                            kCssBefore, kCssAfter,
                            kExpectChange | kExpectSuccess);
 
-  static const char kCssAfterRel[] =
-      "body{background-image:url(foo.png.pagespeed.ce.0.png)}";
+  const GoogleString kCssAfterRel = StrCat(
+      "body{background-image:url(",
+      Encode("", "ce", "0", "foo.png", "png"),
+      ")}");
   ValidateRewriteInlineCss("dir/yessubdir",
                            kCssBefore, kCssAfterRel,
                            kExpectChange | kExpectSuccess);
@@ -235,8 +256,10 @@ TEST_P(CssImageRewriterTest, RewriteCached) {
       "  background-image: url(http://test.com/dir/foo.png);\n"
       "}\n";
 
-  static const char kCssAfter[] =
-      "body{background-image:url(dir/foo.png.pagespeed.ce.0.png)}";
+  const GoogleString kCssAfter = StrCat(
+      "body{background-image:url(dir/",
+      Encode("", "ce", "0", "foo.png", "png"),
+      ")}");
   ValidateRewriteInlineCss("nosubdir",
                            kCssBefore, kCssAfter,
                            kExpectChange | kExpectSuccess);
@@ -283,8 +306,10 @@ TEST_P(CssImageRewriterTest, RecompressImages) {
       "  background-image: url(foo.png);\n"
       "}\n";
 
-  static const char kCssAfter[] =
-      "body{background-image:url(http://test.com/xfoo.png.pagespeed.ic.0.png)}";
+  const GoogleString kCssAfter = StrCat(
+      "body{background-image:url(",
+      Encode(kTestDomain, "ic", "0", "xfoo.png", "png"),
+      ")}");
 
   ValidateRewriteExternalCss("recompress_css_images", kCss, kCssAfter,
                               kExpectChange | kExpectSuccess |
@@ -343,22 +368,32 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesInStyleAttributes) {
                    "  background-image: url(foo.png);\n"
                    "  list-style-image: url('bar.png');\n"
                    "\"/>",
+                   StrCat(
                    "<div style=\""
                    "background-image:"
-                   "url(http://test.com/foo.png.pagespeed.ce.0.png);"
+                   "url(",
+                   Encode(kTestDomain, "ce", "0", "foo.png", "png"),
+                   ");",
                    "list-style-image:"
-                   "url(http://test.com/bar.png.pagespeed.ce.0.png)"
-                   "\"/>");
+                   "url(",
+                   Encode(kTestDomain, "ce", "0", "bar.png", "png"),
+                   ")",
+                   "\"/>"));
 
   ValidateExpected("cache_extend_images",
                    "<div style=\""
                    "  background: url(baz.png);\n"
                    "  list-style: url('foo.png');\n"
                    "\"/>",
+                   StrCat(
                    "<div style=\""
-                   "background:url(http://test.com/baz.png.pagespeed.ce.0.png);"
-                   "list-style:url(http://test.com/foo.png.pagespeed.ce.0.png)"
-                   "\"/>");
+                   "background:url(",
+                   Encode(kTestDomain, "ce", "0", "baz.png", "png"),
+                   ");"
+                   "list-style:url(",
+                   Encode(kTestDomain, "ce", "0", "foo.png", "png"),
+                   ")"
+                   "\"/>"));
 
   ValidateExpected("dont_cache_extend_data_urls",
                    "<div style=\""
@@ -380,10 +415,12 @@ TEST_P(CssImageRewriterTest, RecompressImagesInStyleAttributes) {
       "<div style=\""
       "background-image:url(foo.png)"
       "\"/>";
-  static const char div_after[] =
+  const GoogleString div_after = StrCat(
       "<div style=\""
-      "background-image:url(http://test.com/xfoo.png.pagespeed.ic.0.png)"
-      "\"/>";
+      "background-image:url(",
+      Encode(kTestDomain, "ic", "0", "xfoo.png", "png"),
+      ")"
+      "\"/>");
 
   scoped_ptr<RewriteOptions> default_options(factory()->NewRewriteOptions());
   default_options.get()->DisableFilter(RewriteOptions::kExtendCache);

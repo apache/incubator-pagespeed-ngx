@@ -55,9 +55,9 @@ class CssImageCombineTest : public CssRewriteTestBase {
   }
   void TestSpriting(const char* bike_position, const char* expected_position,
                     bool should_sprite) {
-    const GoogleString sprite_string = StrCat(kTestDomain, kCuppaPngFile, "+",
-                                              kBikePngFile,
-                                              ".pagespeed.is.0.png");
+    const GoogleString sprite_string =
+        Encode(kTestDomain, "is", "0",
+               StrCat(kCuppaPngFile, "+", kBikePngFile), "png");
     const char* sprite = sprite_string.c_str();
     // The JPEG will not be included in the sprite because we only handle PNGs.
     const char* html = "<head><style>"
@@ -146,8 +146,8 @@ TEST_P(CssImageCombineTest, SpritesMultiple) {
   // duplication.
   before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 10,
                         kCuppaPngFile, 0);
-  sprite = StrCat(kTestDomain, kBikePngFile, "+", kCuppaPngFile,
-                  ".pagespeed.is.0.png").c_str();
+  sprite = Encode(kTestDomain, "is", "0",
+                  StrCat(kBikePngFile, "+", kCuppaPngFile), "png").c_str();
   after = StringPrintf(html, sprite.c_str(),
                        sprite.c_str(), 0, 10, sprite.c_str(), -100);
   ValidateExpected("sprite_2_bikes_1_cuppa", before, after);
@@ -217,9 +217,9 @@ TEST_P(CssImageCombineTest, SpritesImagesExternal) {
   CallFetcherCallbacks();
 
   // On the second run, we get spriting.
-  const GoogleString sprite = StrCat(kTestDomain, kCuppaPngFile, "+",
-                                     kBikePngFile,
-                                     ".pagespeed.is.0.png");
+  const GoogleString sprite =
+      Encode(kTestDomain, "is", "0",
+             StrCat(kCuppaPngFile, "+", kBikePngFile), "png");
   const GoogleString spriteCss = StrCat(
       "#div1{background-image:url(", sprite, ");"
       "width:10px;height:10px;"
@@ -259,8 +259,10 @@ TEST_P(CssImageCombineTest, SpritesOkAfter404) {
   Parse("sprite_with_404", html);  // Parse
   EXPECT_NE(GoogleString::npos,
             output_buffer_.find(
-                StrCat(kBikePngFile, "+", kCuppaPngFile,
-                       "+bike2.png+bike3.png.pagespeed.is.0.png")));
+                Encode("", "is", "0",
+                       StrCat(kBikePngFile, "+", kCuppaPngFile,
+                              "+bike2.png+bike3.png"),
+                       "png")));
 }
 
 TEST_P(CssImageCombineTest, SpritesMultiSite) {
@@ -293,13 +295,13 @@ TEST_P(CssImageCombineTest, SpritesMultiSite) {
   Parse("sprite_multi_site", html);
   EXPECT_NE(GoogleString::npos,
             output_buffer_.find(
-                StrCat(kTestDomain, kBikePngFile, "+", kCuppaPngFile,
-                       ".pagespeed.is.0.png")));
+                Encode(kTestDomain, "is", "0",
+                       StrCat(kBikePngFile, "+", kCuppaPngFile), "png")));
 
   EXPECT_NE(GoogleString::npos,
             output_buffer_.find(
-                StrCat(kAltDomain, kBikePngFile, "+", kCuppaPngFile,
-                       ".pagespeed.is.0.png")));
+                Encode(kAltDomain, "is", "0",
+                       StrCat(kBikePngFile, "+", kCuppaPngFile), "png")));
 }
 
 // TODO(nforman): Add a testcase that synthesizes a spriting situation where
@@ -308,8 +310,9 @@ TEST_P(CssImageCombineTest, SpritesMultiSite) {
 // (1024).
 TEST_P(CssImageCombineTest, ServeFiles) {
   CSS_XFAIL_SYNC();
-  GoogleString sprite_str = StrCat(kTestDomain, kCuppaPngFile, "+",
-                                    kBikePngFile, ".pagespeed.is.0.png");
+  GoogleString sprite_str =
+      Encode(kTestDomain, "is", "0",
+             StrCat(kCuppaPngFile, "+", kBikePngFile), "png");
   GoogleString output;
   EXPECT_EQ(true, ServeResourceUrl(sprite_str, &output));
   ServeResourceFromManyContexts(sprite_str, output);
@@ -335,7 +338,7 @@ TEST_P(CssImageCombineTest, CombineManyFiles) {
   StringVector combinations;
   int image_index = 0;
   while (image_index < kNumImages) {
-    GoogleString combo = kTestDomain;
+    GoogleString combo;
     int end_index = std::min(image_index + kImagesInCombination, kNumImages);
     while (image_index < end_index) {
       combo.append(StringPrintf("%.02d%s", image_index, kBikePngFile));
@@ -343,7 +346,7 @@ TEST_P(CssImageCombineTest, CombineManyFiles) {
       ++image_index;
     }
     combo.resize(combo.size() - 1);
-    combo.append(".pagespeed.is.0.png");
+    combo = Encode(kTestDomain, "is", "0", combo, "png");
     combinations.push_back(combo);
   }
 
@@ -399,8 +402,8 @@ TEST_P(CssImageMultiFilterTest, SpritesAndNonSprites) {
   // duplication.
   before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 10,
                         kCuppaPngFile, 0);
-  sprite = StrCat(kTestDomain, kBikePngFile, "+", kCuppaPngFile,
-                  ".pagespeed.is.0.png").c_str();
+  sprite = Encode(kTestDomain, "is", "0",
+                  StrCat(kBikePngFile, "+", kCuppaPngFile), "png").c_str();
   after = StringPrintf(html, sprite.c_str(),
                        sprite.c_str(), 0, 10, sprite.c_str(), -100);
   ValidateExpected("sprite_2_bikes_1_cuppa", before, after);

@@ -56,7 +56,6 @@ const char kHtmlFormat[] =
 // Instead we must ensure that the content-type is discovered from the
 // input resource response headers.
 const char kCssFile[]       = "sub/a.css?v=1";
-const char kCssFileQuoted[] = "sub/a.css,qv=1";
 const char kCssDataFormat[] = ".blue {color: blue; src: url(%sembedded.png);}";
 const char kFilterId[]      = "ce";
 const char kImageData[]     = "Not really JPEG but irrelevant for this test";
@@ -178,9 +177,9 @@ TEST_P(CacheExtenderTest, ExtendIfSharded) {
   ValidateExpected("extend_if_sharded",
                    GenerateHtml(kCssFile, "b.jpg", "c.js"),
                    GenerateHtml(
-                       "http://shard0.com/sub/a.css,qv=1.pagespeed.ce.0.css",
-                       "http://shard0.com/b.jpg.pagespeed.ce.0.jpg",
-                       "http://shard0.com/c.js.pagespeed.ce.0.js"));
+                       Encode("http://shard0.com/", "ce", "0", kCssFile, "css"),
+                       Encode("http://shard0.com/", "ce", "0", "b.jpg", "jpg"),
+                       Encode("http://shard0.com/", "ce", "0", "c.js", "js")));
 }
 
 TEST_P(CacheExtenderTest, ExtendIfOriginMappedHttps) {
@@ -192,9 +191,9 @@ TEST_P(CacheExtenderTest, ExtendIfOriginMappedHttps) {
                                 "https://cdn.com/b.jpg",
                                 "https://cdn.com/c.js"),
                    GenerateHtml(
-                       "https://cdn.com/sub/a.css,qv=1.pagespeed.ce.0.css",
-                       "https://cdn.com/b.jpg.pagespeed.ce.0.jpg",
-                       "https://cdn.com/c.js.pagespeed.ce.0.js"));
+                       Encode("https://cdn.com/", "ce", "0", kCssFile, "css"),
+                       Encode("https://cdn.com/", "ce", "0", "b.jpg", "jpg"),
+                       Encode("https://cdn.com/", "ce", "0", "c.js", "js")));
 }
 
 TEST_P(CacheExtenderTest, ExtendIfRewritten) {
@@ -205,9 +204,9 @@ TEST_P(CacheExtenderTest, ExtendIfRewritten) {
   ValidateExpected("extend_if_rewritten",
                    GenerateHtml(kCssFile, "b.jpg", "c.js"),
                    GenerateHtml(
-                       "http://cdn.com/sub/a.css,qv=1.pagespeed.ce.0.css",
-                       "http://cdn.com/b.jpg.pagespeed.ce.0.jpg",
-                       "http://cdn.com/c.js.pagespeed.ce.0.js"));
+                       Encode("http://cdn.com/", "ce", "0", kCssFile, "css"),
+                       Encode("http://cdn.com/", "ce", "0", "b.jpg", "jpg"),
+                       Encode("http://cdn.com/", "ce", "0", "c.js", "js")));
 }
 
 TEST_P(CacheExtenderTest, ExtendIfShardedAndRewritten) {
@@ -224,9 +223,9 @@ TEST_P(CacheExtenderTest, ExtendIfShardedAndRewritten) {
   ValidateExpected("extend_if_sharded_and_rewritten",
                    GenerateHtml(kCssFile, "b.jpg", "c.js"),
                    GenerateHtml(
-                       "http://shard0.com/sub/a.css,qv=1.pagespeed.ce.0.css",
-                       "http://shard0.com/b.jpg.pagespeed.ce.0.jpg",
-                       "http://shard0.com/c.js.pagespeed.ce.0.js"));
+                       Encode("http://shard0.com/", "ce", "0", kCssFile, "css"),
+                       Encode("http://shard0.com/", "ce", "0", "b.jpg", "jpg"),
+                       Encode("http://shard0.com/", "ce", "0", "c.js", "js")));
 }
 
 TEST_P(CacheExtenderTest, ExtendIfShardedToHttps) {
@@ -246,9 +245,9 @@ TEST_P(CacheExtenderTest, ExtendIfShardedToHttps) {
                                 "https://test.com/b.jpg",
                                 "https://test.com/c.js"),
                    GenerateHtml(
-                       "https://shard0.com/sub/a.css,qv=1.pagespeed.ce.0.css",
-                       "https://shard0.com/b.jpg.pagespeed.ce.0.jpg",
-                       "https://shard0.com/c.js.pagespeed.ce.0.js"));
+                       Encode("https://shard0.com/", "ce", "0", kCssFile,"css"),
+                       Encode("https://shard0.com/", "ce", "0", "b.jpg", "jpg"),
+                       Encode("https://shard0.com/", "ce", "0", "c.js", "js")));
 }
 
 // TODO(jmarantz): consider implementing and testing the sharding and

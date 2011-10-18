@@ -65,6 +65,7 @@ class RewriteStats {
 
   Histogram* fetch_latency_histogram() { return fetch_latency_histogram_; }
   Histogram* rewrite_latency_histogram() { return rewrite_latency_histogram_; }
+  Histogram* backend_latency_histogram() { return backend_latency_histogram_; }
 
   TimedVariable* total_fetch_count() { return total_fetch_count_; }
   TimedVariable* total_rewrite_count() { return total_rewrite_count_; }
@@ -90,6 +91,7 @@ class RewriteStats {
 
   Histogram* fetch_latency_histogram_;
   Histogram* rewrite_latency_histogram_;
+  Histogram* backend_latency_histogram_;
 
   TimedVariable* total_fetch_count_;
   TimedVariable* total_rewrite_count_;

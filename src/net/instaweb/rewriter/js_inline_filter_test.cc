@@ -270,7 +270,7 @@ TEST_P(JsInlineFilterTest, InlineMinimizeInteraction) {
       StrCat(kTestDomain, "minimize_but_not_inline.html"),
       "",  // No doctype
       StrCat(kTestDomain, "a.js"),
-      StrCat(kTestDomain, "a.js.pagespeed.jm.0.js"),
+      Encode(kTestDomain, "jm", "0", "a.js", "js"),
       "",  // No inline body in,
       "var answer = 42; // const is non-standard",  // out-of-line body
       "",  // No inline body out,

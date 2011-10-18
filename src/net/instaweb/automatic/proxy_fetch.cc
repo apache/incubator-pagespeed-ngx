@@ -47,6 +47,10 @@ ProxyFetchFactory::ProxyFetchFactory(ResourceManager* manager)
       outstanding_proxy_fetches_mutex_(manager->thread_system()->NewMutex()) {
   cache_fetcher_respect_vary_->set_ignore_recent_fetch_failed(true);
   cache_fetcher_no_respect_vary_->set_ignore_recent_fetch_failed(true);
+  cache_fetcher_respect_vary_->set_backend_first_byte_latency_histogram(
+      manager->rewrite_stats()->backend_latency_histogram());
+  cache_fetcher_no_respect_vary_->set_backend_first_byte_latency_histogram(
+      manager->rewrite_stats()->backend_latency_histogram());
 }
 
 ProxyFetchFactory::~ProxyFetchFactory() {

@@ -235,8 +235,12 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
     // Now check the actual contents. These might change slightly
     // during implementation changes, requiring update of the test;
     // but this is also not dependent on VarName working right.
-    GoogleString combined_path = StrCat(
-        combined_name, ".pagespeed.jc.", combined_hash, ".js");
+    GoogleString combined_path =
+        Encode("", "jc", combined_hash, combined_name, "js");
+    // We can be be given URLs with ',M' in them, which are URL escaped to have
+    // two commas, which is not what we want, so reverse that. We can be given
+    // such URLs because it's too hard to do the encoding programatically.
+    GlobalReplaceSubstring(",,M", ",M", &combined_path);
     EXPECT_STREQ(AddHtmlBody(
         StrCat("<script src=\"", domain, combined_path, "\"></script>"
                "<script>eval(mod_pagespeed_", hash1, ");</script>"
@@ -364,12 +368,16 @@ TEST_P(JsCombineFilterTest, TestBarriers) {
 // This used to crash under async flow.
 TEST_P(JsFilterAndCombineFilterTest, TestScriptInlineTextRollback) {
   ValidateExpected("rollback1",
-      StrCat("<script src=", kJsUrl1, "></script>",
-             "<script src=", kJsUrl2, ">TEXT HERE</script>"),
-      StrCat("<script src=http://test.com/a.js.pagespeed.jm.FUEwDOA7jh.js>",
-             "</script>",
-             "<script src=http://test.com/b.js.pagespeed.jm.Y1kknPfzVs.js>",
-             "TEXT HERE</script>"));
+                   StrCat("<script src=", kJsUrl1, "></script>",
+                          "<script src=", kJsUrl2, ">TEXT HERE</script>"),
+                   StrCat("<script src=",
+                          Encode(kTestDomain, "jm", "FUEwDOA7jh", "a.js", "js"),
+                          ">",
+                          "</script>",
+                          "<script src=",
+                          Encode(kTestDomain, "jm", "Y1kknPfzVs", "b.js", "js"),
+                          ">",
+                          "TEXT HERE</script>"));
 }
 
 // Things between scripts that should not prevent combination
@@ -552,7 +560,8 @@ TEST_P(JsCombineFilterTest, TestCombineStats) {
 TEST_P(JsCombineFilterTest, TestCombineShard) {
   // Make sure we produce consistent output when sharding/serving off a
   // different host.
-  GoogleString path = StrCat(kJsUrl1, "+", kJsUrl2, ".pagespeed.jc.0.js");
+  GoogleString path =
+      Encode("", "jc", "0", StrCat(kJsUrl1, "+", kJsUrl2), "js");
 
   GoogleString src1;
   EXPECT_TRUE(ServeResourceUrl(StrCat(kTestDomain, path), &src1));
@@ -581,7 +590,7 @@ TEST_P(JsCombineFilterTest, PartlyInvalidFetchCache) {
   InitResponseHeaders("b.js", kContentTypeJavascript, "var b;", 100);
   EXPECT_FALSE(
       TryFetchResource(
-          "http://test.com/a.js+b.js+404.js.pagespeed.jc.0.js"));
+          Encode(kTestDomain, "jc", "0", "a.js+b.js+404.js", "js")));
   ValidateNoChanges("partly_invalid",
                     StrCat("<script src=a.js></script>",
                            "<script src=b.js></script>"

@@ -18,7 +18,9 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -268,7 +270,7 @@ TEST_P(CssInlineFilterTest, InlineMinimizeInteraction) {
   TestInlineCssWithOutputUrl(
       StrCat(kTestDomain, "minimize_but_not_inline.html"),
       StrCat(kTestDomain, "a.css"),
-      StrCat(kTestDomain, "a.css.pagespeed.cf.0.css"),
+      Encode(kTestDomain, "cf", "0", "a.css", "css"),
       "", /* no other attributes*/
       "div{display: none;}",
       false,

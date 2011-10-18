@@ -138,9 +138,10 @@ TEST_P(JavascriptFilterTest, InvalidInputMimetype) {
   const char* kNotJsFile = "script.notjs";
 
   InitResponseHeaders(kNotJsFile, not_java_script, kJsData, 100);
-  ValidateExpected("wrong_mime", GenerateHtml(kNotJsFile),
-                   GenerateHtml(StrCat(
-                       kTestDomain, kNotJsFile, ".pagespeed.jm.0.js").c_str()));
+  ValidateExpected("wrong_mime",
+                   GenerateHtml(kNotJsFile),
+                   GenerateHtml(Encode(kTestDomain, "jm", "0",
+                                       kNotJsFile, "js").c_str()));
 }
 
 TEST_P(JavascriptFilterTest, RewriteJs404) {
@@ -175,7 +176,8 @@ TEST_P(JavascriptFilterTest, StripInlineWhitespace) {
   ValidateExpected(
       "StripInlineWhitespace",
       StrCat("<script src='", kOrigJsName, "'>   \t\n   </script>"),
-      StrCat("<script src='", kTestDomain, kOrigJsName, ".pagespeed.jm.0.js",
+      StrCat("<script src='",
+             Encode(kTestDomain, "jm", "0", kOrigJsName, "js"),
              "'></script>"));
 }
 
@@ -184,8 +186,9 @@ TEST_P(JavascriptFilterTest, RetainInlineData) {
   InitTest(100);
   ValidateExpected("StripInlineWhitespace",
                    StrCat("<script src='", kOrigJsName, "'> data </script>"),
-                   StrCat("<script src='", kTestDomain, kOrigJsName,
-                          ".pagespeed.jm.0.js", "'> data </script>"));
+                   StrCat("<script src='",
+                          Encode(kTestDomain, "jm", "0", kOrigJsName, "js"),
+                          "'> data </script>"));
 }
 
 TEST_P(JavascriptFilterTest, CdataJavascript) {
