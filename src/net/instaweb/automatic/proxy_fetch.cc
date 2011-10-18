@@ -258,7 +258,7 @@ void ProxyFetch::HeadersComplete() {
         cache_control_suffix = ", private";
       }
       response_headers_->SetDateAndCaching(
-          response_headers_->fetch_time_ms(), ttl_ms, cache_control_suffix);
+          response_headers_->date_ms(), ttl_ms, cache_control_suffix);
       // TODO(sligocki): Support Etags.
       response_headers_->RemoveAll(HttpAttributes::kEtag);
       start_time_us_ = resource_manager_->timer()->NowUs();

@@ -122,8 +122,8 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   void set_reason_phrase(const StringPiece& reason_phrase);
 
   int64 last_modified_time_ms() const;
-  int64 fetch_time_ms() const;  // Timestamp from Date header.
-  bool has_fetch_time_ms() const;
+  int64 date_ms() const;  // Timestamp from Date header.
+  bool has_date_ms() const;
   int64 cache_ttl_ms() const;
 
   GoogleString ToString() const;
@@ -158,7 +158,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Returns true if the date header is later than time_ms. Used in invalidation
   // of http cache.
   bool IsDateLaterThan(int64 time_ms) const {
-    return fetch_time_ms() > time_ms;
+    return date_ms() > time_ms;
   }
 
   void ParseFirstLine(const StringPiece& first_line);

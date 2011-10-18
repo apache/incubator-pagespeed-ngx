@@ -389,7 +389,7 @@ void ResourceManager::RefreshIfImminentlyExpiring(
     Resource* resource, MessageHandler* handler) const {
   if (!http_cache_->force_caching() && resource->IsCacheable()) {
     const ResponseHeaders* headers = resource->response_headers();
-    int64 start_date_ms = headers->fetch_time_ms();
+    int64 start_date_ms = headers->date_ms();
     int64 expire_ms = headers->CacheExpirationTimeMs();
     if (IsImminentlyExpiring(start_date_ms, expire_ms)) {
       resource->Freshen(handler);

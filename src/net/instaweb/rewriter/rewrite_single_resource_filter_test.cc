@@ -580,7 +580,7 @@ TEST_P(RewriteSingleResourceFilterTest, FetchGoodCache2) {
   // Make sure the above also cached the timestamp
   scoped_ptr<CachedResult> cached(CachedResultForInput("a.tst"));
   ASSERT_TRUE(cached.get() != NULL);
-  EXPECT_TRUE(cached->has_input_fetch_time_ms());
+  EXPECT_TRUE(cached->has_input_date_ms());
 }
 
 // Regression test: Fetch() should update cache version, too.

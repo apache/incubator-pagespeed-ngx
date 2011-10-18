@@ -114,7 +114,7 @@ class CheckDateHeaderWriter : public Writer {
   virtual bool Write(const StringPiece& content, MessageHandler* handler) {
     write_called_ = true;
     headers_->ComputeCaching();
-    EXPECT_EQ(timer_->NowMs(), headers_->fetch_time_ms());
+    EXPECT_EQ(timer_->NowMs(), headers_->date_ms());
     return true;
   }
 

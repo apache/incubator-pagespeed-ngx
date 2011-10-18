@@ -73,7 +73,7 @@ void Resource::FillInPartitionInputInfo(InputInfo* input) {
   input->set_type(InputInfo::CACHED);
   input->set_last_modified_time_ms(response_headers_.last_modified_time_ms());
   input->set_expiration_time_ms(response_headers_.CacheExpirationTimeMs());
-  input->set_fetch_time_ms(response_headers_.fetch_time_ms());
+  input->set_date_ms(response_headers_.date_ms());
   // TODO(morlovich) This is wasteful for the cache extender, is there
   // a way of avoiding this other than passing a param all over the place?
   if (IsValidAndCacheable()) {

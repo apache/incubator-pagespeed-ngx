@@ -320,7 +320,7 @@ class RewriteContext::FetchContext {
     // the "wrong" URL.
     const int64 kMaxWrongHashTtlMs = ResponseHeaders::kImplicitCacheTtlMs;
     response_headers_->SetDateAndCaching(
-        headers->fetch_time_ms(),
+        headers->date_ms(),
         std::min(headers->cache_ttl_ms(), kMaxWrongHashTtlMs),
         ", private");
     response_headers_->ComputeCaching();
@@ -1209,9 +1209,9 @@ void RewriteContext::Freshen(const CachedResult& partition) {
     const InputInfo& input_info = partition.input(i);
     if ((input_info.type() == InputInfo::CACHED) &&
         input_info.has_expiration_time_ms() &&
-        input_info.has_fetch_time_ms() &&
+        input_info.has_date_ms() &&
         input_info.has_index()) {
-      if (Manager()->IsImminentlyExpiring(input_info.fetch_time_ms(),
+      if (Manager()->IsImminentlyExpiring(input_info.date_ms(),
                                           input_info.expiration_time_ms())) {
         ResourcePtr resource(slots_[input_info.index()]->resource());
         resource->Freshen(Manager()->message_handler());

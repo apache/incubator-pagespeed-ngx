@@ -64,7 +64,7 @@ message InputInfo {
 
   // For CACHED resources, we keep track of the original fetch time so we
   // can freshen.
-  optional int64 fetch_time_ms = 6;
+  optional int64 date_ms = 6;
 
   // For CACHED resources, we also store a hash of the input, so that we
   // we can reuse optimization results if it did not change, even if it
@@ -129,7 +129,7 @@ message CachedResult {
 
   // The timestamp of the input resource.
   // Used by rewrite_single_resource_filter.
-  optional int64 input_fetch_time_ms = 8;
+  optional int64 input_date_ms = 8;
 
   // Cache format key version.
   // Used by rewrite_single_resource_filter.

@@ -62,7 +62,7 @@ void ResponseHeaders::Clear() {
   proto_->set_cacheable(false);
   proto_->set_proxy_cacheable(false);   // accurate only if !cache_fields_dirty_
   proto_->clear_expiration_time_ms();
-  proto_->clear_fetch_time_ms();
+  proto_->clear_date_ms();
   proto_->clear_last_modified_time_ms();
   proto_->clear_status_code();
   proto_->clear_reason_phrase();
@@ -98,10 +98,10 @@ int64 ResponseHeaders::last_modified_time_ms() const {
   return proto_->last_modified_time_ms();
 }
 
-int64 ResponseHeaders::fetch_time_ms() const {
+int64 ResponseHeaders::date_ms() const {
   DCHECK(!cache_fields_dirty_)
-      << "Call ComputeCaching() before fetch_time_ms()";
-  return proto_->fetch_time_ms();
+      << "Call ComputeCaching() before date_ms()";
+  return proto_->date_ms();
 }
 
 int64 ResponseHeaders::cache_ttl_ms() const {
@@ -110,8 +110,8 @@ int64 ResponseHeaders::cache_ttl_ms() const {
   return proto_->cache_ttl_ms();
 }
 
-bool ResponseHeaders::has_fetch_time_ms() const {
-  return proto_->has_fetch_time_ms();
+bool ResponseHeaders::has_date_ms() const {
+  return proto_->has_date_ms();
 }
 
 void ResponseHeaders::Add(const StringPiece& name, const StringPiece& value) {
@@ -261,7 +261,7 @@ void ResponseHeaders::ComputeCaching() {
   bool has_date = ParseDateHeader(HttpAttributes::kDate, &date);
   // Compute the timestamp if we can find it
   if (has_date) {
-    proto_->set_fetch_time_ms(date);
+    proto_->set_date_ms(date);
   }
 
   // TODO(jmarantz): Should we consider as cacheable a resource
@@ -293,7 +293,7 @@ void ResponseHeaders::ComputeCaching() {
   int64 cache_ttl_ms;
   bool explicit_cacheable =
       pagespeed::resource_util::GetFreshnessLifetimeMillis(
-          resource, &cache_ttl_ms) && has_fetch_time_ms();
+          resource, &cache_ttl_ms) && has_date_ms();
 
   proto_->set_cacheable(has_date &&
                         !explicit_no_cache &&
@@ -311,7 +311,7 @@ void ResponseHeaders::ComputeCaching() {
       cache_ttl_ms = kImplicitCacheTtlMs;
     }
     proto_->set_cache_ttl_ms(cache_ttl_ms);
-    proto_->set_expiration_time_ms(proto_->fetch_time_ms() + cache_ttl_ms);
+    proto_->set_expiration_time_ms(proto_->date_ms() + cache_ttl_ms);
 
     // Assume it's proxy cacheable.  Then iterate over all the headers
     // with key HttpAttributes::kCacheControl, and all the comma-separated
@@ -458,8 +458,8 @@ void ResponseHeaders::DebugPrint() const {
             Integer64ToString(proto_->expiration_time_ms()).c_str());
     fprintf(stderr, "last_modified_time_ms_ = %s\n",
             Integer64ToString(last_modified_time_ms()).c_str());
-    fprintf(stderr, "fetch_time_ms_ = %s\n",
-            Integer64ToString(proto_->fetch_time_ms()).c_str());
+    fprintf(stderr, "date_ms_ = %s\n",
+            Integer64ToString(proto_->date_ms()).c_str());
     fprintf(stderr, "cacheable_ = %s\n", BoolToString(proto_->cacheable()));
     fprintf(stderr, "proxy_cacheable_ = %s\n",
             BoolToString(proto_->proxy_cacheable()));

@@ -249,7 +249,7 @@ TEST_F(ResponseHeadersTest, TestCachingPublic) {
   EXPECT_TRUE(response_headers_.IsProxyCacheable());
   EXPECT_EQ(300 * 1000,
             response_headers_.CacheExpirationTimeMs() -
-            response_headers_.fetch_time_ms());
+            response_headers_.date_ms());
 }
 
 // Private caching
@@ -261,7 +261,7 @@ TEST_F(ResponseHeadersTest, TestCachingPrivate) {
   EXPECT_FALSE(response_headers_.IsProxyCacheable());
   EXPECT_EQ(10 * 1000,
             response_headers_.CacheExpirationTimeMs() -
-            response_headers_.fetch_time_ms());
+            response_headers_.date_ms());
 }
 
 // Default caching (when in doubt, it's public)
@@ -273,7 +273,7 @@ TEST_F(ResponseHeadersTest, TestCachingDefault) {
   EXPECT_TRUE(response_headers_.IsProxyCacheable());
   EXPECT_EQ(100 * 1000,
             response_headers_.CacheExpirationTimeMs() -
-            response_headers_.fetch_time_ms());
+            response_headers_.date_ms());
 }
 
 // Test that we don't erroneously cache a 204.
