@@ -45,7 +45,7 @@ namespace {
 //
 // This version number should be incremented if any default-values are changed,
 // either in the add_option() call or via options->set_default.
-const int kOptionsVersion = 3;
+const int kOptionsVersion = 4;
 
 }  // namespace
 
@@ -85,6 +85,7 @@ const int64 RewriteOptions::kDefaultMaxHtmlCacheTimeMs = 5 * Timer::kMinuteMs;
 const int64 RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs = 0;
 
 const int64 RewriteOptions::kDefaultCacheInvalidationTimestamp = -1;
+const int64 RewriteOptions::kDefaultIdleFlushTimeMs = 10;
 
 // Limit on concurrent ongoing image rewrites.
 // TODO(jmaessen): Determine a sane default for this value.
@@ -199,6 +200,7 @@ RewriteOptions::RewriteOptions()
              &min_resource_cache_time_to_rewrite_ms_);
   add_option(kDefaultCacheInvalidationTimestamp,
              &cache_invalidation_timestamp_);
+  add_option(kDefaultIdleFlushTimeMs, &idle_flush_time_ms_);
   add_option(kDefaultImageMaxRewritesAtOnce, &image_max_rewrites_at_once_);
   add_option(kDefaultMaxUrlSegmentSize, &max_url_segment_size_);
   add_option(kMaxUrlSize, &max_url_size_);

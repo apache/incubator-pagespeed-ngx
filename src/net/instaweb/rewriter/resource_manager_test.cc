@@ -182,7 +182,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // origin_expire_time_ms should be considerably longer than the various
     // timeouts for resource locking, since we hit those timeouts in various
     // places.
-    const int64 origin_expire_time_ms = 100000;
+    const int64 kTtlMs = 100000;
+    const int64 origin_expire_time_ms = start_time_ms() + kTtlMs;
     const ContentType* content_type = &kContentTypeText;
     bool use_async_flow = false;
     OutputResourcePtr output(
@@ -271,7 +272,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
     // Now expire it from the HTTP cache.  Since we don't know its hash, we
     // cannot fetch it (even though the contents are still in the filesystem).
-    mock_timer()->AdvanceMs(2 * origin_expire_time_ms);
+    mock_timer()->AdvanceMs(2 * kTtlMs);
 
     // But with the URL (which contains the hash), we can retrieve it
     // from the http_cache.
@@ -378,21 +379,21 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     ASSERT_TRUE(output.get() != NULL);
     EXPECT_EQ(NULL, output->cached_result());
 
-    const int kTtlMs = 100000;
-    mock_timer()->SetTimeUs(0);
+    const int64 kTtlMs = 100000;
+    const int64 expiry_ms = start_time_ms() + kTtlMs;
 
     output->EnsureCachedResultCreated()->set_auto_expire(auto_expire);
     if (test_meta_data) {
       StoreCustomMetadata(output.get());
     }
 
-    resource_manager()->Write(HttpStatus::kOK, "PNGnotreally",
-                              output.get(), kTtlMs, message_handler());
+    resource_manager()->Write(HttpStatus::kOK, "PNGnotreally", output.get(),
+                              expiry_ms, message_handler());
     GoogleString producedUrl = output->url();
 
     // Make sure the cached_result object is in OK state after write.
     VerifyValidCachedResult("initial", test_meta_data, output.get(),
-                            producedUrl, kTtlMs);
+                            producedUrl, expiry_ms);
 
     // Transfer ownership of it here and delete it --- should not blow up.
     delete output->ReleaseCachedResult();
@@ -407,7 +408,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     EXPECT_TRUE(resource_without_content_type->type() == NULL);
     output.reset(CreateTestOutputResource(resource_without_content_type));
     VerifyValidCachedResult("initial cached", test_meta_data, output.get(),
-                            producedUrl, kTtlMs);
+                            producedUrl, expiry_ms);
 
     // Fast-forward the time, to make sure the entry's TTL passes.
     mock_timer()->AdvanceMs(kTtlMs + 1);
@@ -417,7 +418,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       EXPECT_EQ(NULL, output->cached_result());
     } else {
       VerifyValidCachedResult("non-autoexpire still cached", test_meta_data,
-                              output.get(), producedUrl, kTtlMs);
+                              output.get(), producedUrl, expiry_ms);
     }
 
     // Write that it's unoptimizable this time.
@@ -427,16 +428,16 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       StoreCustomMetadata(output.get());
     }
 
-    int next_expire = mock_timer()->NowMs() + kTtlMs;
-    resource_manager()->WriteUnoptimizable(output.get(), next_expire,
+    const int64 next_expiry_ms = mock_timer()->NowMs() + kTtlMs;
+    resource_manager()->WriteUnoptimizable(output.get(), next_expiry_ms,
                                            message_handler());
     VerifyUnoptimizableCachedResult(
-        "initial unopt", test_meta_data, output.get(), next_expire);
+        "initial unopt", test_meta_data, output.get(), next_expiry_ms);
 
     // Make a new resource, test for cached data getting fetched
     output.reset(CreateTestOutputResource(resource_without_content_type));
     VerifyUnoptimizableCachedResult(
-        "unopt cached", test_meta_data, output.get(), next_expire);
+        "unopt cached", test_meta_data, output.get(), next_expiry_ms);
 
     // Now test expiration
     mock_timer()->AdvanceMs(kTtlMs);
@@ -446,7 +447,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     } else {
       VerifyUnoptimizableCachedResult("non-autoexpire unopt cached",
                                       test_meta_data, output.get(),
-                                      next_expire);
+                                      next_expiry_ms);
     }
   }
 
@@ -656,7 +657,8 @@ TEST_F(ResourceManagerTest, TestVaryOption) {
 }
 
 TEST_F(ResourceManagerTest, TestOutlined) {
-  const int kLongExpireMs = 50000;
+  const int64 kLongTtlMs = 50000;
+  const int64 long_expiry_ms = start_time_ms() + kLongTtlMs;
 
   // Outliner resources should not produce extra cache traffic
   // due to rname/ entries we can't use anyway.
@@ -677,7 +679,7 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   resource_manager()->Write(HttpStatus::kOK, "", output_resource.get(),
-                           kLongExpireMs, message_handler());
+                           long_expiry_ms, message_handler());
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -700,7 +702,8 @@ TEST_F(ResourceManagerTest, TestOutlined) {
 TEST_F(ResourceManagerTest, TestOnTheFly) {
   // Test to make sure that an on-fly insert does not insert the data,
   // just the rname/
-  const int kLongExpireMs = 50000;
+  const int64 kLongTtlMs = 50000;
+  const int64 long_expiry_ms = start_time_ms() + kLongTtlMs;
 
   // For derived resources we can and should use the rewrite
   // summary/metadata cache
@@ -722,7 +725,7 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   resource_manager()->Write(HttpStatus::kOK, "", output_resource.get(),
-                            kLongExpireMs, message_handler());
+                            long_expiry_ms, message_handler());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_misses());
@@ -755,7 +758,8 @@ TEST_F(ResourceManagerTest, TestHandleBeacon) {
 }
 
 TEST_F(ResourceManagerTest, TestNotGenerated) {
-  const int kLongExpireMs = 50000;
+  const int64 kLongTtlMs = 50000;
+  const int64 long_expiry_ms = start_time_ms() + kLongTtlMs;
 
   // For derived resources we can and should use the rewrite
   // summary/metadata cache
@@ -777,7 +781,7 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   resource_manager()->Write(HttpStatus::kOK, "", output_resource.get(),
-                           kLongExpireMs, message_handler());
+                           long_expiry_ms, message_handler());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_misses());

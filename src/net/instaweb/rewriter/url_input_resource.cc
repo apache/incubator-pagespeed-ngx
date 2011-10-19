@@ -165,6 +165,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
   }
 
   virtual void Done(bool success) {
+    VLOG(2) << response_headers()->ToString();
     bool cached = AddToCache(success);
     success = cached;
     if (lock_.get() != NULL) {

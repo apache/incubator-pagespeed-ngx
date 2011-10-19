@@ -159,7 +159,7 @@ int64 CssImageRewriter::ExpirationTimeMs(CachedResult* cached_result) {
     // but will likely be able to do so shortly, so we want to expire
     // "almost immediately". We use 1 second as it's the smallest TTL
     // we can reliably represent, anyway.
-    int now_ms = driver_->resource_manager()->timer()->NowMs();
+    int64 now_ms = driver_->resource_manager()->timer()->NowMs();
     return now_ms + Timer::kSecondMs;
   } else {
     return cached_result->origin_expiration_time_ms();

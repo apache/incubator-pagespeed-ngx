@@ -568,7 +568,7 @@ TEST_P(CssFilterSubresourceTest, SubResourceDependsNotYetLoaded) {
 
   // Since resources haven't loaded, the output cache should have a very small
   // expiration time.
-  ValidateExpirationTime("wip", kOutput, Timer::kSecondMs);
+  ValidateExpirationTime("wip", kOutput, start_time_ms() + Timer::kSecondMs);
 
   // Make sure the subresource callbacks fire for leak cleanliness
   CallFetcherCallbacks();

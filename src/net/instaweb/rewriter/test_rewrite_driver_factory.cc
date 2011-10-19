@@ -33,6 +33,7 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -76,8 +77,8 @@ class ProxyUrlFetcher : public UrlFetcher {
 
 }  // namespace
 
-// TODO(sligocki): Use: MockTimer::kApr_5_2010_ms - 2 * Timer::kMonthMs;
-const int64 TestRewriteDriverFactory::kStartTimeMs = 0;
+const int64 TestRewriteDriverFactory::kStartTimeMs =
+    MockTimer::kApr_5_2010_ms - 2 * Timer::kMonthMs;
 
 TestRewriteDriverFactory::TestRewriteDriverFactory(
     const StringPiece& temp_dir, MockUrlFetcher* mock_fetcher)

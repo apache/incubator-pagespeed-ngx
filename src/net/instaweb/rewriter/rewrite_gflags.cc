@@ -86,6 +86,10 @@ DEFINE_int32(lru_cache_size_bytes, 10 * 1000 * 1000, "LRU cache size");
 DEFINE_bool(force_caching, false,
             "Ignore caching headers and cache everything.");
 DEFINE_bool(flush_html, false, "Pass fetcher-generated flushes through HTML");
+DEFINE_int32(psa_idle_flush_time_ms,
+             net_instaweb::RewriteOptions::kDefaultIdleFlushTimeMs,
+             "If the input HTML stops coming in for this many ms, a flush"
+             " will be injected. Use a value <= 0 to disable.");
 DEFINE_string(pagespeed_version, "", "Version number to put into X-Page-Speed "
               "response header.");
 
@@ -164,6 +168,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("flush_html")) {
     options->set_flush_html(FLAGS_flush_html);
+  }
+  if (WasExplicitlySet("psa_idle_flush_time_ms")) {
+    options->set_idle_flush_time_ms(FLAGS_psa_idle_flush_time_ms);
   }
 
   RewriteOptions::RewriteLevel rewrite_level;

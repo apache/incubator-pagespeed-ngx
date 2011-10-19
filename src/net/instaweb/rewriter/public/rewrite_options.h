@@ -112,6 +112,7 @@ class RewriteOptions {
   static const int64 kDefaultMaxHtmlCacheTimeMs;
   static const int64 kDefaultMinResourceCacheTimeToRewriteMs;
   static const int64 kDefaultCacheInvalidationTimestamp;
+  static const int64 kDefaultIdleFlushTimeMs;
   static const GoogleString kDefaultBeaconUrl;
 
   // IE limits URL size overall to about 2k characters.  See
@@ -216,6 +217,15 @@ class RewriteOptions {
   }
   int64 cache_invalidation_timestamp() const {
     return cache_invalidation_timestamp_.value();
+  }
+
+  // How much inactivity of HTML input will result in PSA introducing a flush.
+  // Values <= 0 disable the feature.
+  int64 idle_flush_time_ms() const {
+    return idle_flush_time_ms_.value();
+  }
+  void set_idle_flush_time_ms(int64 x) {
+    set_option(x, &idle_flush_time_ms_);
   }
 
   // The maximum length of a URL segment.
@@ -498,6 +508,7 @@ class RewriteOptions {
   // Resources with Cache-Control TTL less than this will not be rewritten.
   Option<int64> min_resource_cache_time_to_rewrite_ms_;
   Option<int64> cache_invalidation_timestamp_;
+  Option<int64> idle_flush_time_ms_;
 
   Option<int> image_max_rewrites_at_once_;
   Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")

@@ -157,8 +157,10 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       network_flush_outstanding_(false),
       sequence_(NULL),
       done_outstanding_(false),
+      finishing_(false),
       done_result_(false),
       waiting_for_flush_to_finish_(false),
+      idle_alarm_(NULL),
       factory_(factory),
       prepare_success_(false) {
   if (const char* ua = request_headers.Lookup1(HttpAttributes::kUserAgent)) {
@@ -424,10 +426,23 @@ void ProxyFetch::ExecuteQueued() {
     delete str;
   }
   if (do_flush) {
+    if (driver_->flush_requested()) {
+      // A flush is about to happen, so we don't want to redundantly
+      // flush due to idleness.
+      CancelIdleAlarm();
+    } else {
+      // We will not actually flush, just run through the state-machine, so
+      // we want to just advance the idleness timeout.
+      QueueIdleAlarm();
+    }
     driver_->ExecuteFlushIfRequestedAsync(
         MakeFunction(this, &ProxyFetch::FlushDone));
   } else if (do_finish) {
+    CancelIdleAlarm();
     Finish(done_result);
+  } else {
+    // Advance timeout.
+    QueueIdleAlarm();
   }
 }
 
@@ -437,6 +452,7 @@ void ProxyFetch::Finish(bool success) {
     ScopedMutex lock(mutex_.get());
     DCHECK(!waiting_for_flush_to_finish_);
     done_outstanding_ = false;
+    finishing_ = true;
   }
 
   if (driver_ != NULL) {
@@ -471,6 +487,55 @@ void ProxyFetch::CompleteFinishParse(bool success) {
   driver_ = NULL;
   // Have to call directly -- sequence is gone with driver.
   Finish(success);
+}
+
+void ProxyFetch::CancelIdleAlarm() {
+  Scheduler* scheduler = driver_->scheduler();
+  if (idle_alarm_ != NULL) {
+    // Note: we don't have to worry about a dangling idle_alarm_
+    // since it will only be deleted after the alarm handler is
+    // invoked.
+    ScopedMutex lock(scheduler->mutex());
+    scheduler->CancelAlarm(idle_alarm_);
+    idle_alarm_ = NULL;
+  }
+}
+
+void ProxyFetch::QueueIdleAlarm() {
+  const RewriteOptions* options = Options();
+  if (!options->flush_html() || (options->idle_flush_time_ms() <= 0)) {
+    return;
+  }
+
+  CancelIdleAlarm();
+  idle_alarm_ = driver_->scheduler()->AddAlarm(
+      timer_->NowUs() + Options()->idle_flush_time_ms() * Timer::kMsUs,
+      new QueuedWorkerPool::Sequence::AddFunction(
+        sequence_, MakeFunction(this, &ProxyFetch::HandleIdleAlarm)));
+}
+
+void ProxyFetch::HandleIdleAlarm() {
+  // Caution: while the body of this method is serialized vs. other things
+  // that run in the context of sequence_, the alarm is initially dispatched
+  // in the scheduler thread, so it's possible that ExecuteQueued's
+  // cancellation of us will get run in between the initial alarm firing
+  // and this routine running. In that case, idle_alarm_ will be NULL,
+  // so we will honor that.
+  if (idle_alarm_ == NULL) {
+    return;
+  }
+
+  if (waiting_for_flush_to_finish_ || done_outstanding_ || finishing_) {
+    return;
+  }
+
+  // Clear references to us as we're about to be deleted.
+  idle_alarm_ = NULL;
+
+  // Inject an own flush, and queue up its dispatch.
+  driver_->ShowProgress("- Flush injected due to input idleness -");
+  driver_->RequestFlush();
+  Flush(factory_->message_handler());
 }
 
 }  // namespace net_instaweb

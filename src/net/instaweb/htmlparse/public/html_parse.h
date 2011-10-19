@@ -283,6 +283,10 @@ class HtmlParse {
   void ErrorHere(const char* msg, ...) INSTAWEB_PRINTF_FORMAT(2, 3);
   void FatalErrorHere(const char* msg, ...) INSTAWEB_PRINTF_FORMAT(2, 3);
 
+  // If set_log_rewrite_timing(true) has been called, logs the given message
+  // at info level with a timeset offset from the parsing start time,
+  void ShowProgress(const char* message);
+
   void InfoHereV(const char *msg, va_list args) {
     InfoV(id_.c_str(), line_number_, msg, args);
   }
@@ -337,7 +341,6 @@ class HtmlParse {
                   const HtmlEventListIterator& end_inclusive,
                   HtmlElement* new_parent);
   void CoalesceAdjacentCharactersNodes();
-  void ShowProgress(const char* message);
   void ClearEvents();
 
 

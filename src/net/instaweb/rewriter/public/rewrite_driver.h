@@ -520,6 +520,7 @@ class RewriteDriver : public HtmlParse {
   // Indicates that a Flush through the HTML parser chain should happen
   // soon, e.g. once the network pauses its incoming byte stream.
   void RequestFlush() { flush_requested_ = true; }
+  bool flush_requested() const { return flush_requested_; }
 
   // Executes an Flush() if RequestFlush() was called, e.g. from the
   // Listener Filter (see set_event_listener below).  Consider an HTML

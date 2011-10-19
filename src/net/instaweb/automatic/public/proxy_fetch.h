@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
+#include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -67,6 +68,8 @@ class ProxyFetchFactory {
     server_version.CopyToString(&server_version_);
   }
   const GoogleString& server_version() const { return server_version_; }
+
+  MessageHandler* message_handler() const { return handler_; }
 
  private:
   friend class ProxyFetch;
@@ -151,7 +154,7 @@ class ProxyFetch : public AsyncFetch {
   void DoFetch();
 
   // Handles buffered HTML writes, flushes, and done calls
-  // in a QueuedWorkerPool::Sequence.
+  // in the QueuedWorkerPool::Sequence sequence_.
   void ExecuteQueued();
 
   // Schedules the task to run any buffered work, if needed. Assumes mutex
@@ -170,6 +173,18 @@ class ProxyFetch : public AsyncFetch {
   // Callback we give to ExecuteFlushIfRequestedAsync to notify us when
   // it's done with its work.
   void FlushDone();
+
+  // Management functions for idle_alarm_. Must only be called from
+  // within sequence_.
+
+  // Cancels any previous alarm.
+  void CancelIdleAlarm();
+
+  // Cancels previous alarm and starts next one.
+  void QueueIdleAlarm();
+
+  // Handler for the alarm; run in sequence_.
+  void HandleIdleAlarm();
 
   GoogleString url_;
   RequestHeaders request_headers_;
@@ -221,6 +236,10 @@ class ProxyFetch : public AsyncFetch {
   // invoke Finish yet.
   bool done_outstanding_;
 
+  // Finish is true if we started Finish, perhaps doing FinishParseAsync.
+  // Accessed only from within context of sequence_.
+  bool finishing_;
+
   // done_result_ is used to store the result of ::Done if we're deferring
   // handling it until the driver finishes handling a Flush.
   bool done_result_;
@@ -229,6 +248,10 @@ class ProxyFetch : public AsyncFetch {
   // and getting the callback called. In that case, we want to hold off
   // on actually dispatching things queued up above.
   bool waiting_for_flush_to_finish_;
+
+  // Alarm used to keep track of inactivity, in order to help issue
+  // flushes. Must only be accessed from the thread context of sequence_
+  Scheduler::Alarm* idle_alarm_;
 
   ProxyFetchFactory* factory_;
 

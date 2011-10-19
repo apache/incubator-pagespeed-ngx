@@ -1849,7 +1849,7 @@ class ResourceUpdateTest : public RewriteContextTest {
     StringVector css_urls;
     CollectCssLinks(StrCat(id, "-collect"), output_buffer_, &css_urls);
     EXPECT_EQ(1UL, css_urls.size());
-    const GoogleString& rewritten_url = css_urls[0];
+    const GoogleString& rewritten_url = AbsolutifyUrl(css_urls[0]);
 
     // Fetch rewritten resource
     return FetchUrlAndCheckHash(rewritten_url);
@@ -1886,11 +1886,11 @@ TEST_F(ResourceUpdateTest, TestExpire404) {
   // Trying to rewrite it should not do anything..
   ValidateNoChanges("404", CssLinkHref(kOriginalUrl));
 
-  // Now move forward 40 years and upload a new version. We should
+  // Now move forward 20 years and upload a new version. We should
   // be ready to optimize at that point.
-  // "And thus Moses wandered the desert for only 40 years, because of a
+  // "And thus Moses wandered the desert for only 20 years, because of a
   // limitation in the implementation of time_t."
-  mock_timer()->AdvanceMs(40 * Timer::kYearMs);
+  mock_timer()->AdvanceMs(20 * Timer::kYearMs);
   InitResponseHeaders(kOriginalUrl, kContentTypeCss, " init ", 100);
   EXPECT_EQ("init", RewriteSingleResource("200"));
 }
