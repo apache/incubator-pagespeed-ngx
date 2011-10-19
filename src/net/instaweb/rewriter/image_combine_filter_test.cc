@@ -69,8 +69,9 @@ class CssImageCombineTest : public CssRewriteTestBase {
         "</style></head>";
     GoogleString before = StringPrintf(
         html, kCuppaPngFile, kBikePngFile, bike_position, kPuzzleJpgFile);
+    GoogleString abs_puzzle = AbsolutifyUrl(kPuzzleJpgFile);
     GoogleString after = StringPrintf(
-        html, sprite, sprite, expected_position, kPuzzleJpgFile);
+        html, sprite, sprite, expected_position, abs_puzzle.c_str());
 
     ValidateExpected("sprites_images", before, should_sprite ? after : before);
 
@@ -86,7 +87,7 @@ class CssImageCombineTest : public CssRewriteTestBase {
     before = StringPrintf(
         html2, kCuppaPngFile, kBikePngFile, bike_position, kPuzzleJpgFile);
     after = StringPrintf(
-        html2, sprite, sprite, expected_position, kPuzzleJpgFile);
+        html2, sprite, sprite, expected_position, abs_puzzle.c_str());
 
     ValidateExpected("sprites_images", before, should_sprite ? after : before);
   }
@@ -140,7 +141,10 @@ TEST_P(CssImageCombineTest, SpritesMultiple) {
   // With the same image present 3 times, there should be no sprite.
   before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 10,
                         kBikePngFile, 0);
-  ValidateExpected("no_sprite_3_bikes", before, before);
+  GoogleString abs_bike = AbsolutifyUrl(kBikePngFile);
+  after = StringPrintf(html, abs_bike.c_str(), abs_bike.c_str(), 0, 10,
+                       abs_bike.c_str(), 0);
+  ValidateExpected("no_sprite_3_bikes", before, after);
 
   // With 2 of the same and 1 different, there should be a sprite without
   // duplication.
@@ -156,7 +160,10 @@ TEST_P(CssImageCombineTest, SpritesMultiple) {
   // larger than the image), then don't sprite anything.
   before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 999,
                         kCuppaPngFile, 0);
-  ValidateExpected("sprite_none_dimmensions", before, before);
+  GoogleString abs_cuppa = AbsolutifyUrl(kCuppaPngFile);
+  after = StringPrintf(html, abs_bike.c_str(), abs_bike.c_str(), 0, 999,
+                       abs_cuppa.c_str(), 0);
+  ValidateExpected("sprite_none_dimmensions", before, after);
 }
 
 // Try the last test from SpritesMultiple with a cold cache.
@@ -170,8 +177,13 @@ TEST_P(CssImageCombineTest, NoSpritesMultiple) {
   GoogleString text;
   // If the second occurence of the image is unspriteable (e.g. if the div is
   // larger than the image), then don't sprite anything.
-  text = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 999,
-                        kCuppaPngFile, 0);
+  GoogleString in_text =
+      StringPrintf(html, kBikePngFile, kBikePngFile, 0, 999, kCuppaPngFile, 0);
+  GoogleString abs_bike = AbsolutifyUrl(kBikePngFile);
+  GoogleString abs_cuppa = AbsolutifyUrl(kCuppaPngFile);
+  GoogleString out_text =
+      StringPrintf(html, abs_bike.c_str(), abs_bike.c_str(), 0, 999,
+                         abs_cuppa.c_str(), 0);
   ValidateExpected("no_sprite", text, text);
 }
 

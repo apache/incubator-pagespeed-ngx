@@ -43,6 +43,7 @@ class GoogleUrl;
 class CssResourceSlot : public ResourceSlot {
  public:
   virtual void Render();
+  virtual void Finished();
   virtual GoogleString LocationString();
 
   Css::Values* values() const { return values_; }

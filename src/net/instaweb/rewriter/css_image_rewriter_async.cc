@@ -94,9 +94,11 @@ void CssImageRewriterAsync::RewriteImage(
         cache_extender_->MakeNestedContext(context_, ResourceSlotPtr(slot)));
   }
 
-  // TODO(morlovich) trimming without cache extending or image rewriting?
-  // this may be the wrong spot.
-  if (options->Enabled(RewriteOptions::kLeftTrimUrls)) {
+  // TODO(sligocki): DomainRewriter or is this done automatically?
+
+  if (options->trim_urls_in_css() &&
+      options->Enabled(RewriteOptions::kLeftTrimUrls)) {
+    // TODO(sligocki): Make sure this is the correct (final) URL of the CSS.
     slot->EnableTrim(base_url);
   }
 }

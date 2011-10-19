@@ -623,9 +623,11 @@ TEST_P(ImageRewriteTest, NestedConcurrentRewritesLimit) {
 
   GoogleString out_css;
   EXPECT_TRUE(ServeResourceUrl(out_css_url, &out_css));
-  // During this time, the out_css should be unchanged, and a dropped
+  // During this time, the out_css should only be absolutified, and a dropped
   // image rewrite be recorded.
-  EXPECT_EQ(in_css, out_css);
+  GoogleString abs_png_url = AbsolutifyUrl(kPngFile);
+  GoogleString abs_css = StringPrintf(kCssTemplate, abs_png_url.c_str());
+  EXPECT_EQ(abs_css, out_css);
   TimedVariable* drops = statistics()->GetTimedVariable(
       ImageRewriteFilter::kImageRewritesDroppedDueToLoad);
   EXPECT_EQ(1, drops->Get(TimedVariable::START));

@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -30,6 +31,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/value.h"
 
@@ -42,20 +44,36 @@ void CssResourceSlot::Render() {
   if (disable_rendering()) {
     return;  // nothing done here.
   } else {
-    GoogleString url = resource()->url();
+    GoogleString rel_url = resource()->url();
+#ifndef NDEBUG
+    // Check that it's an absolute URL.
+    GoogleUrl rel_gurl(rel_url);
+    DCHECK(rel_gurl.is_valid());
+#endif  // NDEBUG
+
+    // Trim URL.
+    StringPiece url(rel_url);
+    GoogleString trimmed_url;
     if (trim_base_.get() != NULL) {
-      GoogleString trimmed_url;
       if (UrlLeftTrimFilter::Trim(
-          *trim_base_, url, &trimmed_url,
-          resource()->resource_manager()->message_handler())) {
+              *trim_base_, url, &trimmed_url,
+              resource()->resource_manager()->message_handler())) {
         url = trimmed_url;
       }
     }
 
+    // Update CSS.
     delete (*values_)[value_index_];
     (*values_)[value_index_] =
-        new Css::Value(Css::Value::URI, UTF8ToUnicodeText(url));
+        new Css::Value(Css::Value::URI,
+                       UTF8ToUnicodeText(url.data(), url.size()));
   }
+}
+
+void CssResourceSlot::Finished() {
+  // We always want to Render CssResourceSlots (even if the sub-resource was
+  // not optimizable), because the URLs need to be absolutified.
+  Render();
 }
 
 GoogleString CssResourceSlot::LocationString() {

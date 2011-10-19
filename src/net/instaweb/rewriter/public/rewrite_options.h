@@ -291,6 +291,9 @@ class RewriteOptions {
     set_option(GoogleString(p.data(), p.size()), &beacon_url_);
   }
 
+  // Return false in a subclass if you want to disallow all URL trimming in CSS.
+  virtual bool trim_urls_in_css() const { return true; }
+
   // Merge together two source RewriteOptions to populate this.  The order
   // is significant: the second will override the first.  One semantic
   // subject to interpretation is when a core-filter is disabled in the

@@ -97,6 +97,11 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // owns the DOM or CSS file.
   virtual void Render() = 0;
 
+  // Called after all contexts have had a chance to Render.
+  // This is especially useful for cases where Render was never called
+  // but you want something to be done to all slots.
+  virtual void Finished() {}
+
   // Return the last context to have been added to this slot.  Returns NULL
   // if no context has been added to the slot so far.
   RewriteContext* LastContext() const;

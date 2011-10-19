@@ -1063,6 +1063,12 @@ void RewriteContext::Propagate(bool render_slots) {
     }
   }
 
+  if (successors_.empty()) {
+    for (int i = 0, n = slots_.size(); i < n; ++i) {
+      slots_[i]->Finished();
+    }
+  }
+
   RunSuccessors();
 }
 

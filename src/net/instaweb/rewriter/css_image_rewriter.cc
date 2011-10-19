@@ -133,23 +133,33 @@ TimedBool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
         ret.value = true;
       }
     }
+  }
 
-    // Try trimming the URL.
-    if (options->Enabled(RewriteOptions::kLeftTrimUrls)) {
-      StringPiece url_to_trim;
-      if (ret.value) {
-        url_to_trim = *new_url;
-      } else {
-        url_to_trim = old_rel_url;
-      }
-      GoogleString trimmed_url;
-      if (UrlLeftTrimFilter::Trim(base_url, url_to_trim,
-                                  &trimmed_url, handler)) {
-        *new_url = trimmed_url;
-        ret.value = true;
-      }
+  // Try trimming the URL.
+  if (options->trim_urls_in_css() &&
+      options->Enabled(RewriteOptions::kLeftTrimUrls)) {
+    StringPiece url_to_trim;
+    if (ret.value) {
+      url_to_trim = *new_url;
+    } else {
+      url_to_trim = old_rel_url;
+    }
+    GoogleString trimmed_url;
+    if (UrlLeftTrimFilter::Trim(base_url, url_to_trim,
+                                &trimmed_url, handler)) {
+      *new_url = trimmed_url;
+      ret.value = true;
     }
   }
+
+  // Absolutify URL if nothing else.
+  if (!ret.value) {
+    resource_url.Spec().CopyToString(new_url);
+    ret.value = true;
+    // TODO(sligocki): We always return true now, might be worth refactoring,
+    // except that this code will be deleted soon when we go to async.
+  }
+
   return ret;
 }
 

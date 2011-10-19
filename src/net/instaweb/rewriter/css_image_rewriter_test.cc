@@ -551,8 +551,8 @@ TEST_P(CssFilterSubresourceTest, SubResourceDependsNotYetLoaded) {
 
   const char kInput[] = "div { background-image: url(a.png); }"
                         "span { background-image: url(b.png); }";
-  const char kOutput[] = "div{background-image:url(a.png)}"
-                        "span{background-image:url(b.png)}";
+  const char kOutput[] = "div{background-image:url(http://test.com/a.png)}"
+                         "span{background-image:url(http://test.com/b.png)}";
 
   // At first try, not even the CSS gets loaded, so nothing gets
   // changed at all.
