@@ -283,7 +283,7 @@ class Statistics {
   virtual void Clear() = 0;
 
  protected:
-  virtual Histogram* NewHistogram();
+  virtual Histogram* NewHistogram(const StringPiece& name);
   virtual TimedVariable* NewTimedVariable(const StringPiece& name, int index);
   virtual Variable* NewVariable(const StringPiece& name, int index) = 0;
 };

@@ -364,7 +364,7 @@ SharedMemVariable* SharedMemStatistics::NewVariable(const StringPiece& name,
   }
 }
 
-SharedMemHistogram* SharedMemStatistics::NewHistogram() {
+SharedMemHistogram* SharedMemStatistics::NewHistogram(const StringPiece& name) {
   if (frozen_) {
     LOG(ERROR) << "Cannot add histogram after SharedMemStatistics is frozen!";
     return NULL;

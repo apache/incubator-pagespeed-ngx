@@ -179,7 +179,7 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
 
  protected:
   virtual SharedMemVariable* NewVariable(const StringPiece& name, int index);
-  virtual SharedMemHistogram* NewHistogram();
+  virtual SharedMemHistogram* NewHistogram(const StringPiece& name);
 
  private:
   GoogleString SegmentName() const;

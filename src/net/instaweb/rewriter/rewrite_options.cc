@@ -113,6 +113,7 @@ namespace {
 const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kAddHead,
   RewriteOptions::kCombineCss,
+  RewriteOptions::kConvertMetaTags,
   RewriteOptions::kExtendCache,
   RewriteOptions::kInlineCss,
   RewriteOptions::kInlineImages,

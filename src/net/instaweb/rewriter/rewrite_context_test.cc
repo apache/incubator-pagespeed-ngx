@@ -652,6 +652,12 @@ class RewriteContextTest : public ResourceManagerTestBase {
         expected_nested_rewrite_result);
   }
 
+  void SetCacheInvalidationTimestamp() {
+    options()->ClearSignatureForTesting();
+    options()->set_cache_invalidation_timestamp(mock_timer()->NowMs());
+    options()->ComputeSignature(hasher());
+  }
+
   virtual void ClearStats() {
     ResourceManagerTestBase::ClearStats();
     if (trim_filter_ != NULL) {
@@ -703,6 +709,48 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
+TEST_F(RewriteContextTest, TrimOnTheFlyOptimizableCacheInvalidation) {
+  InitTrimFilters(kOnTheFlyResource);
+  InitResources();
+
+  // The first rewrite was successful because we got an 'instant' url
+  // fetch, not because we did any cache lookups. We'll have 2 cache
+  // misses: one for the OutputPartitions, one for the fetch.  We
+  // should need two items in the cache: the element and the resource
+  // mapping (OutputPartitions).  The output resource should not be
+  // stored.
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // 2 because it's kOnTheFlyResource
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  // The second time we request this URL, we should find no additional
+  // cache inserts or fetches.  The rewrite should complete using a
+  // single cache hit for the metadata.  No cache misses will occur.
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  // The third time we invalidate the cache and then request the URL.
+  SetCacheInvalidationTimestamp();
+  ValidateExpected("trimmable", CssLinkHref("a.css"),
+                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+  // Setting the cache invalidation timestamp causes the partition key to change
+  // and hence we get a cache miss (and insert) on the metadata. The resource is
+  // then obtained from http cache.
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+}
+
 TEST_F(RewriteContextTest, TrimOnTheFlyNonOptimizable) {
   InitTrimFilters(kOnTheFlyResource);
   InitResources();
@@ -724,6 +772,39 @@ TEST_F(RewriteContextTest, TrimOnTheFlyNonOptimizable) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
+TEST_F(RewriteContextTest, TrimOnTheFlyNonOptimizableCacheInvalidation) {
+  InitTrimFilters(kOnTheFlyResource);
+  InitResources();
+
+  // In this case, the resource is not optimizable.  The cache pattern is
+  // exactly the same as when the resource was optimizable.
+  ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  // We should have cached the failed rewrite, no misses, fetches, or inserts.
+  ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
+  EXPECT_EQ(1, lru_cache()->num_hits());  // partition
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  // The third time we invalidate the cache and then request the URL.
+  SetCacheInvalidationTimestamp();
+  ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
+  // Setting the cache invalidation timestamp causes the partition key to change
+  // and hence we get a cache miss (and insert) on the metadata. The resource is
+  // then obtained from http cache.
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+}
+
 // In this variant, we use the same whitespace trimmer, but we pretend that this
 // is an expensive operation, so we want to cache the output resource.  This
 // means we will do an extra cache insert on the first iteration for each input.
@@ -734,9 +815,8 @@ TEST_F(RewriteContextTest, TrimRewrittenOptimizable) {
   // The first rewrite was successful because we got an 'instant' url
   // fetch, not because we did any cache lookups. We'll have 2 cache
   // misses: one for the OutputPartitions, one for the fetch.  We
-  // should need two items in the cache: the element and the resource
-  // mapping (OutputPartitions).  The output resource should not be
-  // stored.
+  // should need three items in the cache: the element, the resource
+  // mapping (OutputPartitions) and the output resource.
   ValidateExpected("trimmable", CssLinkHref("a.css"),
                    CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -747,7 +827,7 @@ TEST_F(RewriteContextTest, TrimRewrittenOptimizable) {
 
   // The second cache time we request this URL, we should find no additional
   // cache inserts or fetches.  The rewrite should complete using a single
-  // cache hit for the metadata.  No cache misses will occur.
+  // cache hit for the metadata (or output?).  No cache misses will occur.
   ValidateExpected("trimmable", CssLinkHref("a.css"),
                    CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(1, lru_cache()->num_hits());
@@ -761,9 +841,9 @@ TEST_F(RewriteContextTest, TrimRewrittenNonOptimizable) {
   InitResources();
 
   // In this case, the resource is not optimizable.  The cache pattern is
-  // exactly the same as when the resource was optimizable.  We'll cache
-  // the successfully fetched resource, and the OutputPartitions which
-  // indicates the unsuccessful optimization.
+  // exactly the same as when the resource was on-the-fly and optimizable.
+  // We'll cache the successfully fetched resource, and the OutputPartitions
+  // which indicates the unsuccessful optimization.
   ValidateNoChanges("no_trimmable", CssLinkHref("b.css"));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());

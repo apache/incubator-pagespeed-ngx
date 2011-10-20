@@ -126,7 +126,7 @@ void Histogram::Render(const StringPiece& title,
 Statistics::~Statistics() {
 }
 
-Histogram* Statistics::NewHistogram() {
+Histogram* Statistics::NewHistogram(const StringPiece& name) {
   return new NullHistogram();
 }
 

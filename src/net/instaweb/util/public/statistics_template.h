@@ -143,7 +143,7 @@ template<class Var, class Hist, class TimedVar> class StatisticsTemplate
   virtual Histogram* AddHistogramInternal(const StringPiece& name) {
     Histogram* hist = FindHistogramInternal(name);
     if (hist == NULL) {
-      hist = NewHistogram();
+      hist = NewHistogram(name);
       histograms_.push_back(hist);
       histogram_names_.push_back(name.as_string());
       histogram_map_[GoogleString(name.data(), name.size())] = hist;
