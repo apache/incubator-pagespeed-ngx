@@ -238,6 +238,13 @@ void TrimWhitespace(StringPiece* str) {
   }
 }
 
+void TrimLeadingWhitespace(StringPiece* str) {
+  while (str->size() && isspace(str->data()[0])) {
+    str->remove_prefix(1);
+  }
+}
+
+
 // TODO(jmarantz): This is a very slow implementation.  But strncasecmp
 // will fail test StringCaseTest.Locale.  If this shows up as a performance
 // bottleneck then an SSE implementation would be better.
@@ -257,6 +264,36 @@ int StringCaseCompare(const StringPiece& s1, const StringPiece& s2) {
     return 1;
   }
   return 0;
+}
+
+namespace {
+
+// From Hypertext Transfer Protocol -- HTTP/1.1
+// CTL            = <any US-ASCII control character
+//                  (octets 0 - 31) and DEL (127)>
+// SP             = <US-ASCII SP, space (32)>
+// HT             = <US-ASCII HT, horizontal-tab (9)>
+//        token          = 1*<any CHAR except CTLs or separators>
+//        separators     = "(" | ")" | "<" | ">" | "@"
+//                       | "," | ";" | ":" | "\" | <">
+//                       | "/" | "[" | "]" | "?" | "="
+//                       | "{" | "}" | SP | HT
+const char separators[] = "()<>@,;:\\\"/[]?={}";
+
+} // namespace
+
+bool HasIllicitTokenCharacter(const StringPiece& str) {
+  for (int i = 0, n = str.size(); i < n; ++i) {
+    if (str[i] <= 32 || str[i] == 127) {
+      return true;
+    }
+    for (int j = 0, m = STATIC_STRLEN(separators); j < m; ++j) {
+      if (str[i] == separators[j]) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 const StringPiece EmptyString::kEmptyString;

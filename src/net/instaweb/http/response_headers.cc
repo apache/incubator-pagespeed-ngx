@@ -119,6 +119,65 @@ void ResponseHeaders::Add(const StringPiece& name, const StringPiece& value) {
   cache_fields_dirty_ = true;
 }
 
+// Return true if Content type field changed.
+// If there's already a content type specified, leave it.
+// If there's already a mime type or a charset specified,
+// leave that and fill in the missing piece (if specified).
+bool ResponseHeaders::CombineContentTypes(const StringPiece& orig,
+                                          const StringPiece& fresh) {
+  bool ret = false;
+  GoogleString mime_type, charset;
+  ret = ParseContentType(orig, &mime_type, &charset);
+  if (!ret) {
+    Replace(HttpAttributes::kContentType, fresh);
+    ret = true;
+  } else if (charset.empty() || mime_type.empty()) {
+    GoogleString fresh_mime_type, fresh_charset;
+    ret = ParseContentType(fresh, &fresh_mime_type, &fresh_charset);
+    if (ret) {
+      if (charset.empty()) {
+        charset = fresh_charset;
+      }
+      if (mime_type.empty()) {
+        mime_type = fresh_mime_type;
+      }
+      GoogleString full_type = StringPrintf(
+          "%s;%s%s",
+          mime_type.c_str(),
+          charset.empty()? "" : " charset=",
+          charset.c_str());
+      Replace(HttpAttributes::kContentType, full_type);
+      ret = true;
+    }
+  }
+  if (ret) {
+    cache_fields_dirty_ = true;
+  }
+  return ret;
+}
+
+bool ResponseHeaders::MergeContentType(const StringPiece& content_type) {
+  bool ret = false;
+  ConstStringStarVector old_values;
+  Lookup(HttpAttributes::kContentType, &old_values);
+  // If there aren't any content-type headers, we can just add this one.
+  // If there is exactly one content-type header, then try to merge it
+  // with what we were passed.
+  // If there is already more than one content-type header, it's
+  // unclear what exactly should happen, so don't change anything.
+  if (old_values.size() < 1) {
+    Add(HttpAttributes::kContentType, content_type);
+    ret = true;
+  } else if (old_values.size() == 1) {
+    StringPiece old_val(*old_values[0]);
+    ret = CombineContentTypes(old_val, content_type);
+  }
+  if (ret) {
+    cache_fields_dirty_ = true;
+  }
+  return ret;
+}
+
 bool ResponseHeaders::Remove(const StringPiece& name,
                              const StringPiece& value) {
   if (Headers<HttpResponseHeaders>::Remove(name, value)) {

@@ -134,4 +134,39 @@ const ContentType* MimeTypeToContentType(const StringPiece& mime_type) {
   return res;
 }
 
+bool ParseContentType(const StringPiece& content_type_str,
+                      GoogleString* mime_type,
+                      GoogleString* charset) {
+  StringPiece content_type = content_type_str;
+  // Set default values
+  mime_type->clear();
+  charset->clear();
+
+  if (content_type.empty()) {
+    return false;
+  }
+
+  // Mime type is in the form: "\w+/\w+ *;(.*;)* *charset *= *\w+"
+  StringPieceVector semi_split;
+  SplitStringPieceToVector(content_type, ";", &semi_split, false);
+  if (semi_split.size() == 0) {
+    return false;
+  }
+  semi_split[0].CopyToString(mime_type);
+  for (int i = 1, n = semi_split.size(); i < n; ++i) {
+    StringPieceVector eq_split;
+    SplitStringPieceToVector(semi_split[i], "=", &eq_split, false);
+    if (eq_split.size() == 2) {
+      TrimWhitespace(&eq_split[0]);
+      if (StringCaseEqual(eq_split[0], "charset")) {
+        TrimWhitespace(&eq_split[1]);
+        eq_split[1].CopyToString(charset);
+        break;
+      }
+    }
+  }
+
+  return !mime_type->empty() || !charset->empty();
+}
+
 }  // namespace net_instaweb

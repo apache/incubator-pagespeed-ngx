@@ -18,6 +18,7 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/time_util.h"
@@ -36,6 +37,13 @@ int AddAttributeCallback(void *rec, const char *key, const char *value) {
   return 1;
 }
 
+int AddResponseAttributeCallback(void *rec, const char *key,
+                                 const char *value) {
+  ResponseHeaders* response_headers = static_cast<ResponseHeaders*>(rec);
+  response_headers->Add(key, value);
+  return 1;
+}
+
 }  // namespace
 
 void ApacheRequestToRequestHeaders(const request_rec& request,
@@ -46,6 +54,12 @@ void ApacheRequestToRequestHeaders(const request_rec& request,
     request_headers->set_minor_version(request.proto_num % 1000);
   }
   apr_table_do(AddAttributeCallback, request_headers, request.headers_in, NULL);
+}
+
+void ApacheRequestToResponseHeaders(const request_rec& request,
+                                    ResponseHeaders* response_headers) {
+  apr_table_do(AddResponseAttributeCallback, response_headers,
+               request.headers_out, NULL);
 }
 
 void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,

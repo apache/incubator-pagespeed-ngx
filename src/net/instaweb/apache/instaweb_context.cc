@@ -53,7 +53,8 @@ InstawebContext::InstawebContext(request_rec* request,
       inflater_(NULL),
       content_detection_state_(kStart),
       absolute_url_(absolute_url),
-      sent_headers_(false) {
+      sent_headers_(false),
+      populated_headers_(false) {
   if (use_custom_options) {
     // TODO(jmarantz): this is a temporary hack until we sort out better
     // memory management of RewriteOptions.  This will drag on performance.
@@ -143,6 +144,13 @@ void InstawebContext::Finish() {
     rewrite_driver_->FinishParse();
   } else {
     rewrite_driver_->Cleanup();
+  }
+}
+
+void InstawebContext::PopulateHeaders(request_rec* request) {
+  if (!populated_headers_) {
+    ApacheRequestToResponseHeaders(*request, &response_headers_);
+    populated_headers_ = true;
   }
 }
 

@@ -193,7 +193,8 @@ apr_bucket* rewrite_html(InstawebContext* context, request_rec* request,
     return NULL;
   }
   if (buf != NULL) {
-      context->Rewrite(buf, len);
+    context->PopulateHeaders(request);
+    context->Rewrite(buf, len);
   }
   if (operation == REWRITE) {
     return NULL;

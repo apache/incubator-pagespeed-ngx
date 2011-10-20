@@ -21,6 +21,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_CONTENT_TYPE_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_CONTENT_TYPE_H_
 
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -81,6 +82,15 @@ extern const ContentType& kContentTypeWebp;
 // corresponding to a particular content type.
 const ContentType* NameExtensionToContentType(const StringPiece& name);
 const ContentType* MimeTypeToContentType(const StringPiece& mime_type);
+
+// Extracts mime_type and charset from a string of the form
+// "<mime_type>; charset=<charset>".
+// If mime_type or charset is not specified, they will be populated
+// with the empty string.
+// Returns true if either a mime_type or a charset was extracted.
+bool ParseContentType(const StringPiece& content_type_str,
+                      GoogleString* mime_type,
+                      GoogleString* charset);
 
 }  // namespace net_instaweb
 

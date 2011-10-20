@@ -91,11 +91,47 @@ TEST_F(MetaTagFilterTest, TestEquivNoValue) {
   ValidateNoChanges("no_value", "<meta http-equiv='NoValue'>");
 }
 
+const char kMetaTagConflictDoc[] =
+    "<html><head>"
+    "<meta http-equiv=\"Content-Type\" content=\"text/html;  charset=UTF-8\">"
+    "<meta http-equiv=\"Content-Type\" content=\"text/xml;  charset=UTF-16\">"
+    "<meta http-equiv=\"Content-Type\" content=\"text/xml\">"
+    "</head><body></body></html>";
+
+
+TEST_F(MetaTagFilterTest, TestConflictingTags) {
+  ValidateNoChanges("convert_tags_first", kMetaTagConflictDoc);
+  ConstStringStarVector values;
+  EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
+  ASSERT_EQ(1, values.size());
+  EXPECT_TRUE(StringCaseEqual(values[0]->c_str(), "text/html;  charset=UTF-8"));
+}
+
+const char kMetaTagCharset[] =
+    "<html><head>"
+    "<meta http-equiv=\"Content-Type\" content=\"text/html\">"
+    "<meta charset=\"UTF-8\">"
+    "<meta http-equiv=\"Content-Type\" content=\"text/xml; charset=UTF-16\">"
+    "</head><body></body></html>";
+
+
+TEST_F(MetaTagFilterTest, TestCharset) {
+  ValidateNoChanges("convert_charset", kMetaTagCharset);
+  ConstStringStarVector values;
+  EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
+  ASSERT_EQ(1, values.size());
+  const GoogleString* val = values[0];
+  EXPECT_TRUE(StringCaseEqual(val->c_str(), "text/html; charset=UTF-8"));
+}
+
 const char kMetaTagDoNothing[] =
     "<html><head>"
     "<meta http-equiv=\"\" content=\"\">"
+    "<meta http-equiv=\"  \" content=\"\">"
+    "<meta http-equiv=\"  :\" content=\"\">"
     "<meta http-equiv=\"Content-Length\" content=\"123\">"
     "</head><body></body></html>";
+
 
 TEST_F(MetaTagFilterTest, TestDoNothing) {
   ValidateNoChanges("do_nothing", kMetaTagDoNothing);

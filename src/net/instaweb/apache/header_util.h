@@ -30,6 +30,9 @@ namespace net_instaweb {
 void ApacheRequestToRequestHeaders(const request_rec& request,
                                    RequestHeaders* meta_data);
 
+void ApacheRequestToResponseHeaders(const request_rec& request,
+                                    ResponseHeaders* meta_data);
+
 // Converts ResponseHeaders into an Apache request.
 void ResponseHeadersToApacheRequest(const ResponseHeaders& meta_data,
                                     request_rec* request);

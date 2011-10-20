@@ -50,6 +50,7 @@ class HtmlName {
     kBody,
     kBr,
     kButton,
+    kCharset,
     kChecked,
     kClass,
     kCol,

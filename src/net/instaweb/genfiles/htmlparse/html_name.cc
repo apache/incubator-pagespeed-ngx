@@ -43,12 +43,12 @@ namespace net_instaweb {
 struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 #include <string.h>
 
-#define TOTAL_KEYWORDS 111
+#define TOTAL_KEYWORDS 112
 #define MIN_WORD_LENGTH 1
 #define MAX_WORD_LENGTH 15
-#define MIN_HASH_VALUE 4
-#define MAX_HASH_VALUE 190
-/* maximum key range = 187, duplicates = 0 */
+#define MIN_HASH_VALUE 7
+#define MAX_HASH_VALUE 187
+/* maximum key range = 181, duplicates = 0 */
 
 #ifndef GPERF_DOWNCASE
 #define GPERF_DOWNCASE 1
@@ -108,32 +108,32 @@ KeywordMapper::hash (register const char *str, register unsigned int len)
 {
   static const unsigned char asso_values[] =
     {
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191,   6,  19,  19,  91,   9,   0,
-       50,  43,  64,  22,  44,   4,  57,  61,  19,   7,
-       29,  40,  75,   1,   4,  28,   3,   4,  26,  43,
-      191, 191, 191, 191, 191, 191, 191,  19,  19,  91,
-        9,   0,  50,  43,  64,  22,  44,   4,  57,  61,
-       19,   7,  29,  40,  75,   1,   4,  28,   3,   4,
-       26,  43, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191, 191, 191, 191,
-      191, 191, 191, 191, 191, 191, 191
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188,   3,  19,  38,  99,   6,   1,
+       27,  20,  35,  21,  94,   6,  71,  73,  20,   6,
+       24,  72,  83,   7,   4,  29,   4,  38,  16,  30,
+      188, 188, 188, 188, 188, 188, 188,  19,  38,  99,
+        6,   1,  27,  20,  35,  21,  94,   6,  71,  73,
+       20,   6,  24,  72,  83,   7,   4,  29,   4,  38,
+       16,  30, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
+      188, 188, 188, 188, 188, 188, 188
     };
   register int hval = len;
 
@@ -155,256 +155,263 @@ KeywordMapper::hash (register const char *str, register unsigned int len)
 
 static const struct KeywordMap kHtmlNameTable[] =
   {
-    {""}, {""}, {""}, {""},
-#line 106 "htmlparse/html_name.gperf"
-    {"rel",                  HtmlName::kRel},
-#line 52 "htmlparse/html_name.gperf"
-    {"defer",                HtmlName::kDefer},
-#line 57 "htmlparse/html_name.gperf"
+    {""}, {""}, {""}, {""}, {""}, {""}, {""},
+#line 58 "htmlparse/html_name.gperf"
     {"dt",                   HtmlName::kDt},
-#line 111 "htmlparse/html_name.gperf"
-    {"rt",                   HtmlName::kRt},
-    {""},
-#line 108 "htmlparse/html_name.gperf"
-    {"reversed",             HtmlName::kReversed},
-#line 116 "htmlparse/html_name.gperf"
-    {"select",               HtmlName::kSelect},
-#line 48 "htmlparse/html_name.gperf"
-    {"dd",                   HtmlName::kDd},
-#line 117 "htmlparse/html_name.gperf"
-    {"selected",             HtmlName::kSelected},
-    {""}, {""}, {""},
-#line 109 "htmlparse/html_name.gperf"
-    {"rowspan",              HtmlName::kRowspan},
-    {""},
-#line 105 "htmlparse/html_name.gperf"
-    {"readonly",             HtmlName::kReadonly},
-#line 42 "htmlparse/html_name.gperf"
-    {"col",                  HtmlName::kCol},
-#line 28 "htmlparse/html_name.gperf"
-    {"a",                    HtmlName::kA},
-    {""},
-#line 92 "htmlparse/html_name.gperf"
-    {"noresize",             HtmlName::kNoresize},
-    {""},
-#line 44 "htmlparse/html_name.gperf"
-    {"colspan",              HtmlName::kColspan},
-#line 56 "htmlparse/html_name.gperf"
-    {"div",                  HtmlName::kDiv},
 #line 53 "htmlparse/html_name.gperf"
-    {"details",              HtmlName::kDetails},
-#line 46 "htmlparse/html_name.gperf"
-    {"content",              HtmlName::kContent},
-#line 47 "htmlparse/html_name.gperf"
-    {"controls",             HtmlName::kControls},
+    {"defer",                HtmlName::kDefer},
+#line 49 "htmlparse/html_name.gperf"
+    {"dd",                   HtmlName::kDd},
     {""},
-#line 90 "htmlparse/html_name.gperf"
-    {"name",                 HtmlName::kName},
-#line 134 "htmlparse/html_name.gperf"
-    {"video",                HtmlName::kVideo},
-#line 110 "htmlparse/html_name.gperf"
-    {"rp",                   HtmlName::kRp},
-#line 50 "htmlparse/html_name.gperf"
-    {"defaultchecked",       HtmlName::kDefaultchecked},
-#line 51 "htmlparse/html_name.gperf"
-    {"defaultselected",      HtmlName::kDefaultselected},
-#line 65 "htmlparse/html_name.gperf"
-    {"head",                 HtmlName::kHead},
-#line 126 "htmlparse/html_name.gperf"
-    {"test",                 HtmlName::kTest},
 #line 107 "htmlparse/html_name.gperf"
-    {"required",             HtmlName::kRequired},
-#line 101 "htmlparse/html_name.gperf"
+    {"rel",                  HtmlName::kRel},
+#line 117 "htmlparse/html_name.gperf"
+    {"select",               HtmlName::kSelect},
+#line 112 "htmlparse/html_name.gperf"
+    {"rt",                   HtmlName::kRt},
+#line 118 "htmlparse/html_name.gperf"
+    {"selected",             HtmlName::kSelected},
+#line 43 "htmlparse/html_name.gperf"
+    {"col",                  HtmlName::kCol},
+    {""},
+#line 109 "htmlparse/html_name.gperf"
+    {"reversed",             HtmlName::kReversed},
+    {""}, {""}, {""},
+#line 93 "htmlparse/html_name.gperf"
+    {"noresize",             HtmlName::kNoresize},
+#line 106 "htmlparse/html_name.gperf"
+    {"readonly",             HtmlName::kReadonly},
+#line 47 "htmlparse/html_name.gperf"
+    {"content",              HtmlName::kContent},
+#line 48 "htmlparse/html_name.gperf"
+    {"controls",             HtmlName::kControls},
+#line 57 "htmlparse/html_name.gperf"
+    {"div",                  HtmlName::kDiv},
+#line 45 "htmlparse/html_name.gperf"
+    {"colspan",              HtmlName::kColspan},
+#line 110 "htmlparse/html_name.gperf"
+    {"rowspan",              HtmlName::kRowspan},
+#line 54 "htmlparse/html_name.gperf"
+    {"details",              HtmlName::kDetails},
+#line 61 "htmlparse/html_name.gperf"
+    {"for",                  HtmlName::kFor},
+#line 91 "htmlparse/html_name.gperf"
+    {"name",                 HtmlName::kName},
+    {""},
+#line 66 "htmlparse/html_name.gperf"
+    {"head",                 HtmlName::kHead},
+#line 111 "htmlparse/html_name.gperf"
+    {"rp",                   HtmlName::kRp},
+#line 102 "htmlparse/html_name.gperf"
     {"other",                HtmlName::kOther},
-#line 125 "htmlparse/html_name.gperf"
+#line 51 "htmlparse/html_name.gperf"
+    {"defaultchecked",       HtmlName::kDefaultchecked},
+#line 52 "htmlparse/html_name.gperf"
+    {"defaultselected",      HtmlName::kDefaultselected},
+#line 126 "htmlparse/html_name.gperf"
     {"td",                   HtmlName::kTd},
 #line 127 "htmlparse/html_name.gperf"
-    {"textarea",             HtmlName::kTextarea},
-#line 102 "htmlparse/html_name.gperf"
-    {"p",                    HtmlName::kP},
-#line 86 "htmlparse/html_name.gperf"
-    {"meta",                 HtmlName::kMeta},
-#line 94 "htmlparse/html_name.gperf"
+    {"test",                 HtmlName::kTest},
+#line 28 "htmlparse/html_name.gperf"
+    {"a",                    HtmlName::kA},
+#line 44 "htmlparse/html_name.gperf"
+    {"colgroup",             HtmlName::kColgroup},
+#line 95 "htmlparse/html_name.gperf"
     {"novalidate",           HtmlName::kNovalidate},
+#line 128 "htmlparse/html_name.gperf"
+    {"textarea",             HtmlName::kTextarea},
+    {""},
+#line 87 "htmlparse/html_name.gperf"
+    {"meta",                 HtmlName::kMeta},
+#line 108 "htmlparse/html_name.gperf"
+    {"required",             HtmlName::kRequired},
+#line 137 "htmlparse/html_name.gperf"
+    {"width",                HtmlName::kWidth},
+#line 85 "htmlparse/html_name.gperf"
+    {"media",                HtmlName::kMedia},
+#line 67 "htmlparse/html_name.gperf"
+    {"height",               HtmlName::kHeight},
+#line 55 "htmlparse/html_name.gperf"
+    {"disabled",             HtmlName::kDisabled},
+    {""},
+#line 124 "htmlparse/html_name.gperf"
+    {"tag",                  HtmlName::kTag},
+#line 121 "htmlparse/html_name.gperf"
+    {"span",                 HtmlName::kSpan},
+#line 56 "htmlparse/html_name.gperf"
+    {"display",              HtmlName::kDisplay},
+#line 86 "htmlparse/html_name.gperf"
+    {"menu",                 HtmlName::kMenu},
+#line 90 "htmlparse/html_name.gperf"
+    {"muted",                HtmlName::kMuted},
+#line 60 "htmlparse/html_name.gperf"
+    {"event",                HtmlName::kEvent},
+#line 136 "htmlparse/html_name.gperf"
+    {"wbr",                  HtmlName::kWbr},
+#line 59 "htmlparse/html_name.gperf"
+    {"enctype",              HtmlName::kEnctype},
+#line 71 "htmlparse/html_name.gperf"
+    {"http-equiv",           HtmlName::kHttpEquiv},
+    {""},
+#line 89 "htmlparse/html_name.gperf"
+    {"multiple",             HtmlName::kMultiple},
+#line 88 "htmlparse/html_name.gperf"
+    {"method",               HtmlName::kMethod},
+    {""},
+#line 133 "htmlparse/html_name.gperf"
+    {"type",                 HtmlName::kType},
+#line 135 "htmlparse/html_name.gperf"
+    {"video",                HtmlName::kVideo},
+#line 130 "htmlparse/html_name.gperf"
+    {"th",                   HtmlName::kTh},
+#line 129 "htmlparse/html_name.gperf"
+    {"tfoot",                HtmlName::kTfoot},
+#line 119 "htmlparse/html_name.gperf"
+    {"shape",                HtmlName::kShape},
+#line 96 "htmlparse/html_name.gperf"
+    {"object",               HtmlName::kObject},
 #line 31 "htmlparse/html_name.gperf"
     {"async",                HtmlName::kAsync},
     {""},
-#line 84 "htmlparse/html_name.gperf"
-    {"media",                HtmlName::kMedia},
+#line 99 "htmlparse/html_name.gperf"
+    {"open",                 HtmlName::kOpen},
+#line 103 "htmlparse/html_name.gperf"
+    {"p",                    HtmlName::kP},
     {""},
-#line 135 "htmlparse/html_name.gperf"
-    {"wbr",                  HtmlName::kWbr},
-#line 54 "htmlparse/html_name.gperf"
-    {"disabled",             HtmlName::kDisabled},
-#line 123 "htmlparse/html_name.gperf"
-    {"tag",                  HtmlName::kTag},
-#line 85 "htmlparse/html_name.gperf"
-    {"menu",                 HtmlName::kMenu},
-#line 89 "htmlparse/html_name.gperf"
-    {"muted",                HtmlName::kMuted},
-#line 60 "htmlparse/html_name.gperf"
-    {"for",                  HtmlName::kFor},
-#line 95 "htmlparse/html_name.gperf"
-    {"object",               HtmlName::kObject},
-#line 71 "htmlparse/html_name.gperf"
-    {"id",                   HtmlName::kId},
-#line 120 "htmlparse/html_name.gperf"
-    {"span",                 HtmlName::kSpan},
-#line 136 "htmlparse/html_name.gperf"
-    {"width",                HtmlName::kWidth},
-#line 55 "htmlparse/html_name.gperf"
-    {"display",              HtmlName::kDisplay},
-#line 88 "htmlparse/html_name.gperf"
-    {"multiple",             HtmlName::kMultiple},
-#line 133 "htmlparse/html_name.gperf"
-    {"valuetype",            HtmlName::kValuetype},
-#line 124 "htmlparse/html_name.gperf"
+#line 101 "htmlparse/html_name.gperf"
+    {"option",               HtmlName::kOption},
+#line 100 "htmlparse/html_name.gperf"
+    {"optgroup",             HtmlName::kOptgroup},
+    {""},
+#line 125 "htmlparse/html_name.gperf"
     {"tbody",                HtmlName::kTbody},
+    {""},
+#line 50 "htmlparse/html_name.gperf"
+    {"declare",              HtmlName::kDeclare},
 #line 35 "htmlparse/html_name.gperf"
     {"autoplay",             HtmlName::kAutoplay},
 #line 34 "htmlparse/html_name.gperf"
     {"autofocus",            HtmlName::kAutofocus},
-#line 49 "htmlparse/html_name.gperf"
-    {"declare",              HtmlName::kDeclare},
-#line 70 "htmlparse/html_name.gperf"
-    {"http-equiv",           HtmlName::kHttpEquiv},
+#line 79 "htmlparse/html_name.gperf"
+    {"keytype",              HtmlName::kKeytype},
+#line 123 "htmlparse/html_name.gperf"
+    {"style",                HtmlName::kStyle},
 #line 33 "htmlparse/html_name.gperf"
     {"autocomplete",         HtmlName::kAutocomplete},
-#line 43 "htmlparse/html_name.gperf"
-    {"colgroup",             HtmlName::kColgroup},
-#line 78 "htmlparse/html_name.gperf"
-    {"keytype",              HtmlName::kKeytype},
-#line 76 "htmlparse/html_name.gperf"
-    {"ismap",                HtmlName::kIsmap},
-#line 122 "htmlparse/html_name.gperf"
-    {"style",                HtmlName::kStyle},
-#line 66 "htmlparse/html_name.gperf"
-    {"height",               HtmlName::kHeight},
-#line 41 "htmlparse/html_name.gperf"
-    {"class",                HtmlName::kClass},
-#line 115 "htmlparse/html_name.gperf"
+#line 116 "htmlparse/html_name.gperf"
     {"seamless",             HtmlName::kSeamless},
+    {""},
+#line 131 "htmlparse/html_name.gperf"
+    {"thead",                HtmlName::kThead},
+#line 42 "htmlparse/html_name.gperf"
+    {"class",                HtmlName::kClass},
+#line 122 "htmlparse/html_name.gperf"
+    {"src",                  HtmlName::kSrc},
+    {""},
+#line 46 "htmlparse/html_name.gperf"
+    {"command",              HtmlName::kCommand},
 #line 32 "htmlparse/html_name.gperf"
     {"audio",                HtmlName::kAudio},
-#line 132 "htmlparse/html_name.gperf"
-    {"type",                 HtmlName::kType},
-#line 74 "htmlparse/html_name.gperf"
-    {"indeterminate",        HtmlName::kIndeterminate},
-#line 59 "htmlparse/html_name.gperf"
-    {"event",                HtmlName::kEvent},
-    {""},
-#line 29 "htmlparse/html_name.gperf"
-    {"alt",                  HtmlName::kAlt},
-#line 58 "htmlparse/html_name.gperf"
-    {"enctype",              HtmlName::kEnctype},
-#line 98 "htmlparse/html_name.gperf"
-    {"open",                 HtmlName::kOpen},
-#line 121 "htmlparse/html_name.gperf"
-    {"src",                  HtmlName::kSrc},
-#line 103 "htmlparse/html_name.gperf"
-    {"param",                HtmlName::kParam},
-#line 45 "htmlparse/html_name.gperf"
-    {"command",              HtmlName::kCommand},
-#line 81 "htmlparse/html_name.gperf"
-    {"li",                   HtmlName::kLi},
-#line 100 "htmlparse/html_name.gperf"
-    {"option",               HtmlName::kOption},
-#line 69 "htmlparse/html_name.gperf"
-    {"html",                 HtmlName::kHtml},
-#line 96 "htmlparse/html_name.gperf"
-    {"ol",                   HtmlName::kOl},
-#line 87 "htmlparse/html_name.gperf"
-    {"method",               HtmlName::kMethod},
-#line 128 "htmlparse/html_name.gperf"
-    {"tfoot",                HtmlName::kTfoot},
-#line 82 "htmlparse/html_name.gperf"
-    {"link",                 HtmlName::kLink},
-#line 119 "htmlparse/html_name.gperf"
-    {"source",               HtmlName::kSource},
 #line 27 "htmlparse/html_name.gperf"
     {"?xml",                 HtmlName::kXml},
-#line 129 "htmlparse/html_name.gperf"
-    {"th",                   HtmlName::kTh},
-#line 91 "htmlparse/html_name.gperf"
-    {"nohref",               HtmlName::kNohref},
-#line 75 "htmlparse/html_name.gperf"
-    {"input",                HtmlName::kInput},
-    {""}, {""},
-#line 67 "htmlparse/html_name.gperf"
-    {"hr",                   HtmlName::kHr},
-    {""},
-#line 83 "htmlparse/html_name.gperf"
-    {"loop",                 HtmlName::kLoop},
-#line 118 "htmlparse/html_name.gperf"
-    {"shape",                HtmlName::kShape},
-    {""}, {""},
-#line 131 "htmlparse/html_name.gperf"
-    {"tr",                   HtmlName::kTr},
-#line 77 "htmlparse/html_name.gperf"
-    {"keygen",               HtmlName::kKeygen},
-    {""},
-#line 73 "htmlparse/html_name.gperf"
-    {"img",                  HtmlName::kImg},
-#line 99 "htmlparse/html_name.gperf"
-    {"optgroup",             HtmlName::kOptgroup},
-    {""},
-#line 114 "htmlparse/html_name.gperf"
-    {"scrolling",            HtmlName::kScrolling},
+#line 134 "htmlparse/html_name.gperf"
+    {"valuetype",            HtmlName::kValuetype},
+#line 82 "htmlparse/html_name.gperf"
+    {"li",                   HtmlName::kLi},
 #line 97 "htmlparse/html_name.gperf"
-    {"onclick",              HtmlName::kOnclick},
-#line 93 "htmlparse/html_name.gperf"
-    {"noscript",             HtmlName::kNoscript},
-#line 36 "htmlparse/html_name.gperf"
-    {"base",                 HtmlName::kBase},
-#line 61 "htmlparse/html_name.gperf"
-    {"form",                 HtmlName::kForm},
-#line 130 "htmlparse/html_name.gperf"
-    {"thead",                HtmlName::kThead},
-#line 30 "htmlparse/html_name.gperf"
-    {"area",                 HtmlName::kArea},
-#line 104 "htmlparse/html_name.gperf"
-    {"pre",                  HtmlName::kPre},
+    {"ol",                   HtmlName::kOl},
+#line 78 "htmlparse/html_name.gperf"
+    {"keygen",               HtmlName::kKeygen},
+#line 120 "htmlparse/html_name.gperf"
+    {"source",               HtmlName::kSource},
+#line 70 "htmlparse/html_name.gperf"
+    {"html",                 HtmlName::kHtml},
+#line 92 "htmlparse/html_name.gperf"
+    {"nohref",               HtmlName::kNohref},
 #line 72 "htmlparse/html_name.gperf"
-    {"iframe",               HtmlName::kIframe},
-    {""}, {""}, {""},
-#line 113 "htmlparse/html_name.gperf"
-    {"script",               HtmlName::kScript},
-    {""},
+    {"id",                   HtmlName::kId},
 #line 62 "htmlparse/html_name.gperf"
-    {"formnovalidate",       HtmlName::kFormnovalidate},
+    {"form",                 HtmlName::kForm},
+#line 83 "htmlparse/html_name.gperf"
+    {"link",                 HtmlName::kLink},
     {""},
-#line 79 "htmlparse/html_name.gperf"
+#line 68 "htmlparse/html_name.gperf"
+    {"hr",                   HtmlName::kHr},
+#line 84 "htmlparse/html_name.gperf"
+    {"loop",                 HtmlName::kLoop},
+    {""}, {""}, {""}, {""},
+#line 29 "htmlparse/html_name.gperf"
+    {"alt",                  HtmlName::kAlt},
+#line 63 "htmlparse/html_name.gperf"
+    {"formnovalidate",       HtmlName::kFormnovalidate},
+#line 132 "htmlparse/html_name.gperf"
+    {"tr",                   HtmlName::kTr},
+#line 104 "htmlparse/html_name.gperf"
+    {"param",                HtmlName::kParam},
+#line 80 "htmlparse/html_name.gperf"
     {"lang",                 HtmlName::kLang},
     {""},
+#line 115 "htmlparse/html_name.gperf"
+    {"scrolling",            HtmlName::kScrolling},
+#line 94 "htmlparse/html_name.gperf"
+    {"noscript",             HtmlName::kNoscript},
+#line 81 "htmlparse/html_name.gperf"
+    {"language",             HtmlName::kLanguage},
+    {""},
+#line 98 "htmlparse/html_name.gperf"
+    {"onclick",              HtmlName::kOnclick},
+#line 36 "htmlparse/html_name.gperf"
+    {"base",                 HtmlName::kBase},
+    {""},
+#line 77 "htmlparse/html_name.gperf"
+    {"ismap",                HtmlName::kIsmap},
+    {""},
+#line 138 "htmlparse/html_name.gperf"
+    {"wrap",                 HtmlName::kWrap},
+#line 75 "htmlparse/html_name.gperf"
+    {"indeterminate",        HtmlName::kIndeterminate},
+    {""},
+#line 114 "htmlparse/html_name.gperf"
+    {"script",               HtmlName::kScript},
+#line 40 "htmlparse/html_name.gperf"
+    {"charset",              HtmlName::kCharset},
+    {""},
+#line 113 "htmlparse/html_name.gperf"
+    {"scoped",               HtmlName::kScoped},
+    {""},
+#line 69 "htmlparse/html_name.gperf"
+    {"href",                 HtmlName::kHref},
+    {""}, {""},
 #line 39 "htmlparse/html_name.gperf"
     {"button",               HtmlName::kButton},
-#line 112 "htmlparse/html_name.gperf"
-    {"scoped",               HtmlName::kScoped},
-#line 80 "htmlparse/html_name.gperf"
-    {"language",             HtmlName::kLanguage},
-    {""}, {""},
-#line 137 "htmlparse/html_name.gperf"
-    {"wrap",                 HtmlName::kWrap},
-    {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""},
-    {""},
 #line 37 "htmlparse/html_name.gperf"
     {"body",                 HtmlName::kBody},
-    {""}, {""}, {""}, {""}, {""},
-#line 68 "htmlparse/html_name.gperf"
-    {"href",                 HtmlName::kHref},
+    {""}, {""}, {""}, {""},
+#line 30 "htmlparse/html_name.gperf"
+    {"area",                 HtmlName::kArea},
+    {""},
+#line 73 "htmlparse/html_name.gperf"
+    {"iframe",               HtmlName::kIframe},
+#line 41 "htmlparse/html_name.gperf"
+    {"checked",              HtmlName::kChecked},
+#line 76 "htmlparse/html_name.gperf"
+    {"input",                HtmlName::kInput},
     {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""},
-    {""}, {""}, {""}, {""}, {""}, {""}, {""},
+#line 105 "htmlparse/html_name.gperf"
+    {"pre",                  HtmlName::kPre},
+    {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""},
+    {""}, {""},
+#line 74 "htmlparse/html_name.gperf"
+    {"img",                  HtmlName::kImg},
+    {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""},
+    {""},
+#line 64 "htmlparse/html_name.gperf"
+    {"frame",                HtmlName::kFrame},
+    {""}, {""},
 #line 38 "htmlparse/html_name.gperf"
     {"br",                   HtmlName::kBr},
     {""}, {""},
-#line 40 "htmlparse/html_name.gperf"
-    {"checked",              HtmlName::kChecked},
-    {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""},
-    {""}, {""}, {""},
-#line 63 "htmlparse/html_name.gperf"
-    {"frame",                HtmlName::kFrame},
-    {""}, {""}, {""}, {""}, {""},
-#line 64 "htmlparse/html_name.gperf"
+#line 65 "htmlparse/html_name.gperf"
     {"frameborder",          HtmlName::kFrameborder}
   };
 
@@ -425,7 +432,7 @@ KeywordMapper::Lookup (register const char *str, register unsigned int len)
     }
   return 0;
 }
-#line 138 "htmlparse/html_name.gperf"
+#line 139 "htmlparse/html_name.gperf"
 
 
 HtmlName::Keyword HtmlName::Lookup(const StringPiece& keyword) {

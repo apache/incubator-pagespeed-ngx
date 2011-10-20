@@ -80,6 +80,9 @@ class InstawebContext {
   bool sent_headers() { return sent_headers_; }
   void set_sent_headers(bool sent) { sent_headers_ = sent; }
 
+  // Populated response_headers_ with the request's headers_out table.
+  void PopulateHeaders(request_rec* request);
+
   // Looks up the manager from the server rec.
   // TODO(jmarantz): Is there a better place to put this?  It needs to
   // be used by both mod_instaweb.cc and instaweb_handler.cc.
@@ -107,6 +110,7 @@ class InstawebContext {
   GoogleString absolute_url_;
   ResponseHeaders response_headers_;
   bool sent_headers_;
+  bool populated_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(InstawebContext);
 };

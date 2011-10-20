@@ -172,6 +172,9 @@ inline void TrimWhitespace(const StringPiece& in, GoogleString* output) {
 
 void TrimWhitespace(StringPiece* str);
 
+// Trims only whitespace at the beginning of the string.
+void TrimLeadingWhitespace(StringPiece* str);
+
 // Accumulates a decimal value from 'c' into *value.
 // Returns false and leaves *value unchanged if c is not a decimal digit.
 bool AccumulateDecimalValue(char c, int* value);
@@ -233,6 +236,10 @@ void ParseShellLikeString(const StringPiece& input,
 // disjoint occurrences of the substring.
 // For example: "aaa" appears in "aaaaa" 3 times, not once
 int CountSubstring(const StringPiece& text, const StringPiece& substring);
+
+// Returns true if the string contains a character that is not legal
+// in an http header.
+bool HasIllicitTokenCharacter(const StringPiece& str);
 
 }  // namespace net_instaweb
 

@@ -79,13 +79,7 @@ const char* kExcludedAttributes[] = {
   HttpAttributes::kVary
 };
 
-bool IsExcludedAttribute(const char* attribute) {
-  const char** end = kExcludedAttributes + arraysize(kExcludedAttributes);
-  return std::binary_search(kExcludedAttributes, end, attribute,
-                            CharStarCompareInsensitive());
-}
-
-}  // namespace
+} // namespace
 
 // Statistics group names.
 const char ResourceManager::kStatisticsGroup[] = "Statistics";
@@ -661,6 +655,12 @@ RewriteOptions* ResourceManager::NewOptions() {
 
 void ResourceManager::ComputeSignature(RewriteOptions* rewrite_options) {
   rewrite_options->ComputeSignature(lock_hasher());
+}
+
+bool ResourceManager::IsExcludedAttribute(const char* attribute) {
+  const char** end = kExcludedAttributes + arraysize(kExcludedAttributes);
+  return std::binary_search(kExcludedAttributes, end, attribute,
+                            CharStarCompareInsensitive());
 }
 
 }  // namespace net_instaweb

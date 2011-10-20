@@ -49,6 +49,10 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Add a new header.
   virtual void Add(const StringPiece& name, const StringPiece& value);
 
+  // Merge the new content_type with what is already in the headers.
+  // Returns true if the existing content-type header was changed.
+  bool MergeContentType(const StringPiece& content_type);
+
   // Remove headers by name and value.
   virtual bool Remove(const StringPiece& name, const StringPiece& value);
 
@@ -180,6 +184,14 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   bool FindContentLength(int64* content_length);
 
  private:
+
+  // Parse the original and fresh content types, and add a new header based
+  // on the two of them, giving preference to the original.
+  // e.g. if the original specified charset=UTF-8 and the new one specified
+  // charset=UTF-16, the resulting header would have charset=UTF-8.
+  // Returns true if the headers were changed.
+  bool CombineContentTypes(const StringPiece& orig, const StringPiece& fresh);
+
   friend class ResponseHeadersTest;
   bool cache_fields_dirty_;
 

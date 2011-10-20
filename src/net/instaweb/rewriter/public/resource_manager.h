@@ -351,6 +351,10 @@ class ResourceManager {
   // a RewriteDriver used just for quickly decoding (but not serving) URLs.
   void InitWorkersAndDecodingDriver();
 
+  // Returns whether or not this attribute can be merged into headers
+  // without additional considerations.
+  static bool IsExcludedAttribute(const char* attribute);
+
  private:
   friend class ResourceManagerTest;
   typedef std::set<RewriteDriver*> RewriteDriverSet;

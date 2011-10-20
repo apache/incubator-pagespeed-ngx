@@ -23,10 +23,13 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace {
@@ -58,20 +61,27 @@ void MetaTagFilter::EndElementImpl(HtmlElement* element) {
   if (headers != NULL) {
     // Figure out if this is a meta tag.  If it is, move to headers.
     if (element->keyword() == HtmlName::kMeta) {
-      // We want only meta tags with http header equivalents.
+      // We want meta tags with http header equivalents.
       HtmlElement::Attribute* equiv = element->FindAttribute(
           HtmlName::kHttpEquiv);
       HtmlElement::Attribute* value = element->FindAttribute(
           HtmlName::kContent);
+
       if (equiv != NULL && value != NULL) {
         StringPiece attribute = equiv->value();
         StringPiece content = value->value();
         // It doesn't make sense to have nothing in HttpEquiv, but that means
         // it is in fact lurking out there.  Some of these other values
         // don't make sense either.
-        if (attribute.empty() ||
-            StringCaseEqual(attribute, HttpAttributes::kContentLength) ||
-            StringCaseEqual(attribute, HttpAttributes::kContentEncoding)) {
+        TrimWhitespace(&attribute);
+
+        // We don't want to add any of the excluded attributes in as headers
+        // because they either don't make sense in this context, or because
+        // they may write over the real headers.
+        if (attribute.empty() || HasIllicitTokenCharacter(attribute) ||
+            (!StringCaseEqual(attribute, HttpAttributes::kContentType) &&
+             ResourceManager::IsExcludedAttribute(
+                 attribute.as_string().c_str()))) {
           return;
         }
 
@@ -85,9 +95,41 @@ void MetaTagFilter::EndElementImpl(HtmlElement* element) {
             return;
           }
         }
-        headers->Add(equiv->value(), value->value());
-        if (converted_meta_tag_count_ != NULL) {
-          converted_meta_tag_count_->Add(1);
+
+        // If this value is a content type or charset that doesn't make sense,
+        // i.e. we shouldn't have been able to get this far if it were correct,
+        // then don't add it to the headers, lest things get extra screwy.
+        if (StringCaseEqual(attribute, HttpAttributes::kContentType)) {
+          if (!content.empty()) {
+            GoogleString mime_type;
+            GoogleString charset;
+            if (ParseContentType(content, &mime_type, &charset)) {
+              if (!mime_type.empty()) {
+                const ContentType* type = MimeTypeToContentType(mime_type);
+                if (type == NULL || !type->IsHtmlLike()) {
+                  return;
+                }
+              }
+            }
+            if (headers->MergeContentType(content)) {
+              converted_meta_tag_count_->Add(1);
+            }
+          }
+          return;
+        }
+
+        headers->Add(attribute, content);
+        converted_meta_tag_count_->Add(1);
+        return;
+      } else {
+        // Also handle the <meta charset=''> case.
+        HtmlElement::Attribute* charset = element->FindAttribute(
+            HtmlName::kCharset);
+        if (charset != NULL) {
+          GoogleString type = StrCat("; charset=", charset->value());
+          if (headers->MergeContentType(type)) {
+            converted_meta_tag_count_->Add(1);
+          }
         }
       }
     }

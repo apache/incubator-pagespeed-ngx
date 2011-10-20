@@ -701,7 +701,7 @@ grep -qi "CONTENT-LANGUAGE: en-US,fr" $WGET_OUTPUT
 check [ $? = 0 ]
 
 echo Checking for Charset header.
-grep -qi "CONTENT-TYPE: text/html;  charset=UTF-8" $WGET_OUTPUT
+grep -qi "CONTENT-TYPE: text/html; *charset=UTF-8" $WGET_OUTPUT
 check [ $? = 0 ]
 
 # Cleanup
