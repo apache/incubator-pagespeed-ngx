@@ -37,6 +37,7 @@ class RequestHeaders;
 class ResponseHeaders;
 class ResourceManager;
 class RewriteDriver;
+class RewriteOptions;
 class TimedVariable;
 class Timer;
 class UrlAsyncFetcher;
@@ -51,6 +52,7 @@ class ResourceFetch : public AsyncFetch {
   static void Start(ResourceManager* resource_manager,
                     const GoogleUrl& url,
                     const RequestHeaders& request_headers,
+                    RewriteOptions* custom_options,
                     ResponseHeaders* response_headers,
                     Writer* response_writer,
                     UrlAsyncFetcher::Callback* callback);

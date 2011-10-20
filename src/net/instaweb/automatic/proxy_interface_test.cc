@@ -70,13 +70,7 @@ class ProxyUrlNamer : public UrlNamer {
  public:
   static const char kProxyHost[];
 
-  ProxyUrlNamer() : authorized_(true) {}
-
-  virtual GoogleString Encode(const RewriteOptions* rewrite_options,
-                              const OutputResource& output_resource) const {
-    LOG(DFATAL) << "We don't actually encode URLs in this test yet";
-    return "";
-  }
+  ProxyUrlNamer() : authorized_(true), options_(NULL) {}
 
   // Given the request_url, generate the original url.
   virtual bool Decode(const GoogleUrl& gurl,
@@ -112,13 +106,15 @@ class ProxyUrlNamer : public UrlNamer {
                              const RequestHeaders& request_headers,
                              Callback* callback,
                              MessageHandler* handler) const {
-    callback->Done(NULL);
+    callback->Done((options_ == NULL) ? NULL : options_->Clone());
   }
 
   void set_authorized(bool authorized) { authorized_ = authorized; }
+  void set_options(RewriteOptions* options) { options_ = options; }
 
  private:
   bool authorized_;
+  RewriteOptions* options_;
 };
 
 const char ProxyUrlNamer::kProxyHost[] = "proxy_host.com";
@@ -553,6 +549,56 @@ TEST_F(ProxyInterfaceTest, ReconstructResource) {
   headers.ComputeCaching();
   EXPECT_LE(start_time_ms_ + Timer::kYearMs, headers.CacheExpirationTimeMs());
   EXPECT_EQ(kMinimizedCssContent, text);
+}
+
+TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
+  const char kCssWithEmbeddedImage[] = "*{background-image:url(%s)}";
+  const char kBackgroundImage[] = "1.png";
+  const GoogleString kExtendedBackgroundImage =
+      Encode(kTestDomain, "ce", "0", kBackgroundImage, "png");
+
+  GoogleString text;
+  ResponseHeaders headers;
+
+  // We're not going to image-compress so we don't need our mock image
+  // to really be an image.
+  InitResponseHeaders(kBackgroundImage, kContentTypePng, "image",
+                      kHtmlCacheTimeSec * 2);
+  GoogleString orig_css = StringPrintf(kCssWithEmbeddedImage, kBackgroundImage);
+  InitResponseHeaders("embedded.css", kContentTypeCss,
+                      orig_css, kHtmlCacheTimeSec * 2);
+
+  // By default, cache extension is off in the default options.
+  resource_manager()->global_options()->SetDefaultRewriteLevel(
+      RewriteOptions::kPassThrough);
+  ASSERT_FALSE(options()->Enabled(RewriteOptions::kExtendCache));
+  ASSERT_EQ(RewriteOptions::kPassThrough, options()->level());
+
+  // Because cache-extension was turned off, the image in the CSS file
+  // will not be changed.
+  FetchFromProxy("embedded.css.pagespeed.cf.0.css", true, &text, &headers);
+  EXPECT_EQ(orig_css, text);
+
+  // Now turn on cache-extension for custom options.  Invalidate cache entries
+  // up to and including the current timestamp and advance by 1ms, otherwise
+  // the previously stored embedded.css.pagespeed.cf.0.css will get re-used.
+  scoped_ptr<RewriteOptions> custom_options(factory()->NewRewriteOptions());
+  custom_options->EnableFilter(RewriteOptions::kExtendCache);
+  custom_options->set_cache_invalidation_timestamp(mock_timer()->NowMs());
+  mock_timer()->AdvanceUs(Timer::kMsUs);
+
+  // Inject the custom options into the flow via a custom URL namer.
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  resource_manager()->set_url_namer(&url_namer);
+
+  // Now when we fetch the options, we'll find the image in the CSS
+  // cache-extended.
+  text.clear();
+  FetchFromProxy("embedded.css.pagespeed.cf.0.css", true, &text, &headers);
+  EXPECT_EQ(StringPrintf(kCssWithEmbeddedImage,
+                         kExtendedBackgroundImage.c_str()),
+            text);
 }
 
 TEST_F(ProxyInterfaceTest, CustomOptionsWithNoUrlNamerOptions) {

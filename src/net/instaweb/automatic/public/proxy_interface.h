@@ -98,7 +98,8 @@ class ProxyInterface : public UrlAsyncFetcher {
 
   // Callback function passed to UrlNamer to finish handling requests once we
   // have rewrite_options for requests that are being proxied.
-  void ProxyRequestCallback(GoogleUrl* request_url,
+  void ProxyRequestCallback(bool is_resource_fetch,
+                            GoogleUrl* request_url,
                             RequestHeaders* request_headers,
                             ResponseHeaders* response_headers,
                             Writer* response_writer,
@@ -110,7 +111,8 @@ class ProxyInterface : public UrlAsyncFetcher {
   // Handle requests that are being proxied.
   // * HTML requests are rewritten.
   // * Resource requests are proxied verbatim.
-  void ProxyRequest(const GoogleUrl& requested_url,
+  void ProxyRequest(bool is_resource_fetch,
+                    const GoogleUrl& requested_url,
                     const RequestHeaders& request_headers,
                     ResponseHeaders* response_headers,
                     Writer* response_writer,
@@ -145,40 +147,6 @@ class ProxyInterface : public UrlAsyncFetcher {
   scoped_ptr<ProxyFetchFactory> proxy_fetch_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyInterface);
-};
-
-// Provides a callback whose Done() function is executed once we have
-// rewrite options.
-class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
- public:
-  ProxyInterfaceUrlNamerCallback(GoogleUrl* request_url,
-                                 RequestHeaders* request_headers,
-                                 ResponseHeaders* response_headers,
-                                 Writer* response_writer,
-                                 MessageHandler* handler,
-                                 UrlAsyncFetcher::Callback* callback,
-                                 ProxyInterface* proxy_interface)
-      : request_url_(request_url),
-        request_headers_(request_headers),
-        response_headers_(response_headers),
-        response_writer_(response_writer),
-        handler_(handler),
-        callback_(callback),
-        proxy_interface_(proxy_interface) {
-  }
-  virtual ~ProxyInterfaceUrlNamerCallback();
-  virtual void Done(RewriteOptions* rewrite_options);
-
- private:
-  GoogleUrl* request_url_;
-  RequestHeaders* request_headers_;
-  ResponseHeaders* response_headers_;
-  Writer* response_writer_;
-  MessageHandler* handler_;
-  UrlAsyncFetcher::Callback* callback_;
-  ProxyInterface* proxy_interface_;
-
-  DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceUrlNamerCallback);
 };
 
 }  // namespace net_instaweb

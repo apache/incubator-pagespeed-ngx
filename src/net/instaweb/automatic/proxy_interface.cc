@@ -44,13 +44,57 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 
+namespace net_instaweb {
+
 namespace {
+
 // Names for Statistics variables.
 const char kTotalRequestCount[] = "all-requests";
 const char kPagespeedRequestCount[] = "pagespeed-requests";
-}  // namespace
 
-namespace net_instaweb {
+// Provides a callback whose Done() function is executed once we have
+// rewrite options.
+class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
+ public:
+  ProxyInterfaceUrlNamerCallback(bool is_resource_fetch,
+                                 GoogleUrl* request_url,
+                                 RequestHeaders* request_headers,
+                                 ResponseHeaders* response_headers,
+                                 Writer* response_writer,
+                                 MessageHandler* handler,
+                                 UrlAsyncFetcher::Callback* callback,
+                                 ProxyInterface* proxy_interface)
+      : is_resource_fetch_(is_resource_fetch),
+        request_url_(request_url),
+        request_headers_(request_headers),
+        response_headers_(response_headers),
+        response_writer_(response_writer),
+        handler_(handler),
+        callback_(callback),
+        proxy_interface_(proxy_interface) {
+  }
+  virtual ~ProxyInterfaceUrlNamerCallback() {}
+  virtual void Done(RewriteOptions* rewrite_options) {
+    proxy_interface_->ProxyRequestCallback(
+        is_resource_fetch_, request_url_, request_headers_, response_headers_,
+        response_writer_, handler_, callback_, rewrite_options);
+    delete this;
+  }
+
+ private:
+  bool is_resource_fetch_;
+  GoogleUrl* request_url_;
+  RequestHeaders* request_headers_;
+  ResponseHeaders* response_headers_;
+  Writer* response_writer_;
+  MessageHandler* handler_;
+  UrlAsyncFetcher::Callback* callback_;
+  ProxyInterface* proxy_interface_;
+
+  DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceUrlNamerCallback);
+};
+
+}  // namespace
 
 ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
                                ResourceManager* manager,
@@ -149,9 +193,8 @@ bool ProxyInterface::StreamingFetch(const GoogleString& requested_url_string,
     // Try to handle this as a .pagespeed. resource.
     if (resource_manager_->IsPagespeedResource(requested_url) && is_get) {
       pagespeed_requests_->IncBy(1);
-      ResourceFetch::Start(resource_manager_,
-                           requested_url, request_headers,
-                           response_headers, response_writer, callback);
+      ProxyRequest(true, requested_url, request_headers,
+                   response_headers, response_writer, handler, callback);
       LOG(INFO) << "Serving URL as pagespeed resource";
     } else if (UrlAndPortMatchThisServer(requested_url)) {
       // Just respond with a 404 for now.
@@ -161,7 +204,7 @@ bool ProxyInterface::StreamingFetch(const GoogleString& requested_url_string,
     } else {
       // Otherwise we proxy it (rewriting if it is HTML).
       LOG(INFO) << "Proxying URL normally";
-      ProxyRequest(requested_url, request_headers,
+      ProxyRequest(false, requested_url, request_headers,
                    response_headers, response_writer, handler, callback);
     }
   }
@@ -205,7 +248,8 @@ ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
   return OptionsBoolPair(custom_options.release(), true);
 }
 
-void ProxyInterface::ProxyRequest(const GoogleUrl& request_url,
+void ProxyInterface::ProxyRequest(bool is_resource_fetch,
+                                  const GoogleUrl& request_url,
                                   const RequestHeaders& request_headers,
                                   ResponseHeaders* response_headers,
                                   Writer* response_writer,
@@ -217,15 +261,16 @@ void ProxyInterface::ProxyRequest(const GoogleUrl& request_url,
   headers->CopyFrom(request_headers);
 
   ProxyInterfaceUrlNamerCallback* proxy_interface_url_namer_callback =
-      new ProxyInterfaceUrlNamerCallback(url, headers, response_headers,
-                                         response_writer, handler, callback,
-                                         this);
+      new ProxyInterfaceUrlNamerCallback(is_resource_fetch, url, headers,
+                                         response_headers, response_writer,
+                                         handler, callback, this);
   resource_manager_->url_namer()->DecodeOptions(
       request_url, request_headers, proxy_interface_url_namer_callback,
       handler);
 }
 
-void ProxyInterface::ProxyRequestCallback(GoogleUrl* request_url,
+void ProxyInterface::ProxyRequestCallback(bool is_resource_fetch,
+                                          GoogleUrl* request_url,
                                           RequestHeaders* request_headers,
                                           ResponseHeaders* response_headers,
                                           Writer* response_writer,
@@ -255,22 +300,20 @@ void ProxyInterface::ProxyRequestCallback(GoogleUrl* request_url,
   if (custom_options_success.first != NULL) {
     resource_manager_->ComputeSignature(custom_options_success.first);
   }
-  proxy_fetch_factory_->StartNewProxyFetch(
-      request_url->Spec().as_string(), custom_headers,
-      custom_options_success.first, response_headers, response_writer,
-      callback);
+
+  if (is_resource_fetch) {
+    ResourceFetch::Start(resource_manager_,
+                         *request_url, *request_headers,
+                         custom_options_success.first,
+                         response_headers, response_writer, callback);
+  } else {
+    proxy_fetch_factory_->StartNewProxyFetch(
+        request_url->Spec().as_string(), custom_headers,
+        custom_options_success.first, response_headers, response_writer,
+        callback);
+  }
   delete request_url;
   delete request_headers;
-}
-
-ProxyInterfaceUrlNamerCallback::~ProxyInterfaceUrlNamerCallback() {
-}
-
-void ProxyInterfaceUrlNamerCallback::Done(RewriteOptions* domain_options) {
-  proxy_interface_->ProxyRequestCallback(
-      request_url_, request_headers_, response_headers_, response_writer_,
-      handler_, callback_, domain_options);
-  delete this;
 }
 
 }  // namespace net_instaweb

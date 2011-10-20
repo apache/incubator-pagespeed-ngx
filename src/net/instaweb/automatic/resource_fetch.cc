@@ -62,10 +62,13 @@ class DriverFetcher : public UrlAsyncFetcher {
 void ResourceFetch::Start(ResourceManager* manager,
                           const GoogleUrl& url,
                           const RequestHeaders& request_headers,
+                          RewriteOptions* custom_options,
                           ResponseHeaders* response_headers,
                           Writer* response_writer,
                           UrlAsyncFetcher::Callback* callback) {
-  RewriteDriver* driver = manager->NewRewriteDriver();
+  RewriteDriver* driver = (custom_options == NULL)
+      ? manager->NewRewriteDriver()
+      : manager->NewCustomRewriteDriver(custom_options);
   LOG(INFO) << "Fetch with RewriteDriver " << driver;
   DriverFetcher driver_fetcher(driver);
   ResourceFetch* resource_fetch = new ResourceFetch(
