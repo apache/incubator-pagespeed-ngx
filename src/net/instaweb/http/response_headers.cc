@@ -344,8 +344,8 @@ void ResponseHeaders::ComputeCaching() {
   // 304 Not Modified is not cacheable since as an intermediate server, we have
   // no context.
   bool status_cacheable =
-      ((status_code() ==
-        HttpStatus::kRememberFetchFailedOrNotCacheableStatusCode) ||
+      ((status_code() == HttpStatus::kRememberNotCacheableStatusCode) ||
+       (status_code() == HttpStatus::kRememberFetchFailedStatusCode) ||
        (status_code() != HttpStatus::kNotModified &&
         pagespeed::resource_util::IsCacheableResourceStatusCode(
             status_code())));

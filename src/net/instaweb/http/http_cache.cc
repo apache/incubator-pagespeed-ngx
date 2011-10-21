@@ -19,6 +19,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -35,12 +36,12 @@ namespace net_instaweb {
 
 namespace {
 
-// Remember that a Fetch failed for 5 minutes.
-// TODO(jmarantz): consider allowing this to be configurable.
+// Remember that a Fetch failed for 5 minutes by default.
 //
 // TODO(jmarantz): We could handle cc-private a little differently:
 // in this case we could arguably remember it using the original cc-private ttl.
-const char kRememberFetchFailedOrNotCacheableCacheControl[] = "max-age=300";
+const int kRememberNotCacheableTtl = 300;
+const int kRememberFetchFailedTtl = 300;
 
 }  // namespace
 
@@ -60,6 +61,8 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Statistics* stats)
       cache_misses_(stats->GetVariable(kCacheMisses)),
       cache_expirations_(stats->GetVariable(kCacheExpirations)),
       cache_inserts_(stats->GetVariable(kCacheInserts)) {
+  remember_not_cacheable_ttl_seconds_ = kRememberNotCacheableTtl;
+  remember_fetch_failed_ttl_seconds_ = kRememberFetchFailedTtl;
 }
 
 HTTPCache::~HTTPCache() {}
@@ -112,8 +115,9 @@ class HTTPCacheCallback : public CacheInterface::Callback {
         // TODO(sriharis) : Should we keep statistic for number of invalidated
         // lookups, i.e., #times IsCacheValid returned false?
         callback_->IsCacheValid(*headers)) {
-      if (headers->status_code() ==
-          HttpStatus::kRememberFetchFailedOrNotCacheableStatusCode) {
+      int http_status = headers->status_code();
+      if (http_status == HttpStatus::kRememberNotCacheableStatusCode ||
+          http_status == HttpStatus::kRememberFetchFailedStatusCode) {
         int64 remember_not_found_time_ms = headers->CacheExpirationTimeMs()
             - start_ms_;
         if (handler_ != NULL) {
@@ -228,48 +232,64 @@ void HTTPCache::UpdateStats(FindResult result, int64 delta_us) {
   }
 }
 
-void HTTPCache::RememberFetchFailedOrNotCacheable(const GoogleString& key,
-                                                  MessageHandler* handler) {
+void HTTPCache::RememberNotCacheable(const GoogleString& key,
+                                     MessageHandler* handler) {
+  RememberFetchFailedorNotCacheableHelper(key, handler,
+      HttpStatus::kRememberNotCacheableStatusCode,
+      remember_not_cacheable_ttl_seconds_);
+}
+
+void HTTPCache::RememberFetchFailed(const GoogleString& key,
+                                    MessageHandler* handler) {
+  RememberFetchFailedorNotCacheableHelper(key, handler,
+      HttpStatus::kRememberFetchFailedStatusCode,
+      remember_fetch_failed_ttl_seconds_);
+}
+
+void HTTPCache::RememberFetchFailedorNotCacheableHelper(const GoogleString& key,
+    MessageHandler* handler, HttpStatus::Code code, int64 ttl_sec) {
   ResponseHeaders headers;
-  headers.set_status_code(
-      HttpStatus::kRememberFetchFailedOrNotCacheableStatusCode);
-  headers.Add(HttpAttributes::kCacheControl,
-              kRememberFetchFailedOrNotCacheableCacheControl);
+  headers.set_status_code(code);
   int64 now_ms = timer_->NowMs();
-  headers.SetDate(now_ms);
+  headers.SetDateAndCaching(now_ms, ttl_sec * 1000);
   headers.ComputeCaching();
   Put(key, &headers, "", handler);
 }
 
-void HTTPCache::PutHelper(const GoogleString& key, int64 now_us,
-                          HTTPValue* value, MessageHandler* handler) {
+HTTPValue* HTTPCache::ApplyHeaderChangesForPut(
+    const GoogleString& key, int64 start_us, const StringPiece* content,
+    ResponseHeaders* headers, HTTPValue* value, MessageHandler* handler) {
   if (readonly_.value()) {
-    return;
+    return NULL;
   }
+  DCHECK(value != NULL || content != NULL);
 
   // Clear out Set-Cookie headers before storing the response into cache.
-  ResponseHeaders headers;
-  bool success = value->ExtractHeaders(&headers, handler);
-  DCHECK(success);
+  bool headers_mutated = headers->Sanitize();
+  // TODO(sriharis): Modify date headers.
+  // TODO(nikhilmadan): Set etags from hash of content.
 
-  if (headers.Sanitize()) {
-    // If the headers have to be mutated, we must copy the entire content so we
-    // can store a contiguous block.
-    StringPiece body;
-    success &= value->ExtractContents(&body);
-    HTTPValue new_value;
-    new_value.SetHeaders(&headers);
-    new_value.Write(body, handler);
-    DCHECK(success);
-    if (success) {
-      cache_->Put(key, new_value.share());
+  if (headers_mutated || value == NULL) {
+    HTTPValue* new_value = new HTTPValue;  // Will be deleted by calling Put.
+    new_value->SetHeaders(headers);
+    if (content == NULL) {
+      StringPiece new_content;
+      bool success = value->ExtractContents(&new_content);
+      DCHECK(success);
+      new_value->Write(new_content, handler);
+    } else {
+      new_value->Write(*content, handler);
     }
-  } else {
-    cache_->Put(key, value->share());
+    return new_value;
   }
+  return value;
+}
 
+void HTTPCache::PutInternal(const GoogleString& key, int64 start_us,
+                            HTTPValue* value) {
+  cache_->Put(key, value->share());
   if (cache_time_us_ != NULL) {
-    int64 delta_us = timer_->NowUs() - now_us;
+    int64 delta_us = timer_->NowUs() - start_us;
     cache_time_us_->Add(delta_us);
     cache_inserts_->Add(1);
   }
@@ -280,22 +300,40 @@ void HTTPCache::PutHelper(const GoogleString& key, int64 now_us,
 // config.
 void HTTPCache::Put(const GoogleString& key, HTTPValue* value,
                     MessageHandler* handler) {
-  PutHelper(key, timer_->NowUs(), value, handler);
+  int64 start_us = timer_->NowUs();
+  // Extract headers and contents.
+  ResponseHeaders headers;
+  bool success = value->ExtractHeaders(&headers, handler);
+  DCHECK(success);
+  // Apply header changes.
+  HTTPValue* new_value = ApplyHeaderChangesForPut(key, start_us, NULL,
+                                                  &headers, value, handler);
+  // Put into underlying cache.
+  if (new_value != NULL) {
+    PutInternal(key, start_us, new_value);
+    // Delete new_value if it is newly allocated.
+    if (new_value != value) {
+      delete new_value;
+    }
+  }
 }
 
 void HTTPCache::Put(const GoogleString& key, ResponseHeaders* headers,
-                    const StringPiece& content,
-                    MessageHandler* handler) {
+                    const StringPiece& content, MessageHandler* handler) {
   int64 start_us = timer_->NowUs();
   int64 now_ms = start_us / 1000;
   if (!IsCurrentlyValid(*headers, now_ms)) {
     return;
   }
-
-  HTTPValue value;
-  value.SetHeaders(headers);
-  value.Write(content, handler);
-  PutHelper(key, start_us, &value, handler);
+  // Apply header changes.
+  // Takes ownership of the returned HTTPValue, which is guaranteed to have been
+  // allocated by ApplyHeaderChangesForPut.
+  scoped_ptr<HTTPValue> value(ApplyHeaderChangesForPut(
+      key, start_us, &content, headers, NULL, handler));
+  // Put into underlying cache.
+  if (value.get() != NULL) {
+    PutInternal(key, start_us, value.get());
+  }
 }
 
 void HTTPCache::Delete(const GoogleString& key) {

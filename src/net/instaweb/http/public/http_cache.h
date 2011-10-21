@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_CACHE_H_
 
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -120,28 +121,23 @@ class HTTPCache {
   bool force_caching() const { return force_caching_; }
   Timer* timer() const { return timer_; }
 
-  // Tell the HTTP Cache to remember that a particular key is not cacheable.
-  // This may be due to the associated URL failing Fetch, or it may be because
-  // the URL was fetched but was marked with Cache-Control 'nocache' or
-  // Cache-Control 'private'.  In any case we would like to avoid DOSing
-  // the origin server or spinning our own wheels trying to re-fetch this
-  // resource.
+  // Tell the HTTP Cache to remember that a particular key is not cacheable
+  // because the URL was marked with Cache-Control 'nocache' or Cache-Control
+  // 'private'. We would like to avoid DOSing the origin server or spinning our
+  // own wheels trying to re-fetch this resource.
   //
-  // The not-cacheable setting will be 'remembered' for 5 minutes -- currently
-  // hard-coded in http_cache.cc.
+  // The not-cacheable setting will be 'remembered' for
+  // remember_not_cacheable_ttl_seconds_.
+  virtual void RememberNotCacheable(const GoogleString& key,
+                                    MessageHandler * handler);
+
+  // Tell the HTTP Cache to remember that a particular key is not cacheable
+  // because the associated URL failing Fetch.
   //
-  // TODO(jmarantz): if fetch failed, maybe we should try back soon,
-  // but if it is Cache-Control: private, we can probably assume that
-  // it still will be in 5 minutes.
-  //
-  // TODO(sligocki): I think we want to distinguish fetch failure from
-  // non-cacheability in general. For example, when caching proxied
-  // resources (say an un-rewritten CSS file), we may want to remember
-  // that the original resource 404'd and not ping the server again.
-  // However, if the resource was not cacheable, we should definitely
-  // refetch it and proxy it.
-  virtual void RememberFetchFailedOrNotCacheable(const GoogleString& key,
-                                                 MessageHandler * handler);
+  // The not-cacheable setting will be 'remembered' for
+  // remember_fetch_failed_ttl_seconds_.
+  virtual void RememberFetchFailed(const GoogleString& key,
+                                   MessageHandler * handler);
 
   // Initialize statistics variables for the cache
   static void Initialize(Statistics* statistics);
@@ -157,13 +153,46 @@ class HTTPCache {
   Variable* cache_expirations() { return cache_expirations_; }
   Variable* cache_inserts()     { return cache_inserts_; }
 
+  int64 remember_not_cacheable_ttl_seconds() {
+    return remember_not_cacheable_ttl_seconds_;
+  }
+
+  void set_remember_not_cacheable_ttl_seconds(int64 value) {
+    if (value >= 0) {
+      remember_not_cacheable_ttl_seconds_ = value;
+    }
+  }
+
+  int64 remember_fetch_failed_ttl_seconds() {
+    return remember_fetch_failed_ttl_seconds_;
+  }
+
+  void set_remember_fetch_failed_ttl_seconds(int64 value) {
+    if (value >= 0) {
+      remember_fetch_failed_ttl_seconds_ = value;
+    }
+  }
+
+ protected:
+  virtual void PutInternal(const GoogleString& key, int64 start_us,
+                           HTTPValue* value);
+
  private:
   friend class HTTPCacheCallback;
+  friend class WriteThroughHTTPCache;
 
   bool IsCurrentlyValid(const ResponseHeaders& headers, int64 now_ms);
-  void PutHelper(const GoogleString& key, int64 now_us,
-                 HTTPValue* value, MessageHandler* handler);
+  // Requires either content or value to be non-NULL.
+  // Applies changes to headers. If the headers are actually changed or if value
+  // is NULL then it builds and returns a new HTTPValue. If content is NULL
+  // then content is extracted from value.
+  HTTPValue* ApplyHeaderChangesForPut(
+      const GoogleString& key, int64 start_us, const StringPiece* content,
+      ResponseHeaders* headers, HTTPValue* value, MessageHandler* handler);
   void UpdateStats(FindResult result, int64 delta_us);
+  void RememberFetchFailedorNotCacheableHelper(
+      const GoogleString& key, MessageHandler* handler, HttpStatus::Code code,
+      int64 ttl_sec);
 
   CacheInterface* cache_;  // Owned by the caller.
   Timer* timer_;
@@ -173,6 +202,8 @@ class HTTPCache {
   Variable* cache_misses_;
   Variable* cache_expirations_;
   Variable* cache_inserts_;
+  int64 remember_not_cacheable_ttl_seconds_;
+  int64 remember_fetch_failed_ttl_seconds_;
   AtomicBool readonly_;
 
   DISALLOW_COPY_AND_ASSIGN(HTTPCache);

@@ -111,7 +111,8 @@ enum Code {
   // Instaweb-specific response codes: these are intentionally chosen to be
   // outside the normal HTTP range, but we consider these response codes
   // to be 'cacheable' in our own cache.
-  kRememberFetchFailedOrNotCacheableStatusCode = 10001,
+  kRememberFetchFailedStatusCode = 10001,
+  kRememberNotCacheableStatusCode = 10002,
 };
 
 // Transform a status code into the equivalent reason phrase.

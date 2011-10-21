@@ -27,13 +27,12 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
@@ -141,17 +140,20 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
 
   bool AddToCache(bool success) {
     ResponseHeaders* headers = response_headers();
-    if (success &&
-        IsValidAndCacheableImpl(http_cache(), resource_cutoff_ms_,
-                                respect_vary_, headers)) {
-      HTTPValue* value = http_value();
-      value->SetHeaders(headers);
-      http_cache()->Put(url(), value, message_handler_);
-      return true;
+    if (success) {
+      if (IsValidAndCacheableImpl(http_cache(), resource_cutoff_ms_,
+                                  respect_vary_, headers)) {
+        HTTPValue* value = http_value();
+        value->SetHeaders(headers);
+        http_cache()->Put(url(), value, message_handler_);
+        return true;
+      } else {
+        http_cache()->RememberNotCacheable(url(), message_handler_);
+      }
     } else {
-      http_cache()->RememberFetchFailedOrNotCacheable(url(), message_handler_);
-      return false;
+      http_cache()->RememberFetchFailed(url(), message_handler_);
     }
+    return false;
   }
 
   void StartFetchInternal() {
