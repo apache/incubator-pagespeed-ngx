@@ -17,7 +17,7 @@ vars = {
   "chromium_revision": "@90205",
   "chromium_deps_root": "src/third_party/chromium_deps",
 
-  "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.12.1.0",
+  "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.12.2.0",
   "libpagespeed_revision": "@head",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
 
