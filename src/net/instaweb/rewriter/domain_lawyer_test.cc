@@ -942,4 +942,24 @@ TEST_F(DomainLawyerTest, WildcardOrder) {
   EXPECT_EQ("http://host3/x", mapped);
 }
 
+TEST_F(DomainLawyerTest, ComputeSignatureTest) {
+  DomainLawyer first_lawyer, second_lawyer;
+  ASSERT_TRUE(first_lawyer.AddOriginDomainMapping("host1", "*abc*.com",
+                                                  &message_handler_));
+
+  ASSERT_TRUE(second_lawyer.AddRewriteDomainMapping("cdn.com",
+                                                    "myhost1.com,myhost2.com",
+                                                    &message_handler_));
+  EXPECT_EQ("D:http://*abc*.com/__a_O:http://host1/_-D:http://host1/__n_-",
+            first_lawyer.Signature());
+  EXPECT_EQ("D:http://cdn.com/__a_-D:http://myhost1.com/__a_R:http://cdn.com/_"
+            "-D:http://myhost2.com/__a_R:http://cdn.com/_-",
+            second_lawyer.Signature());
+
+  EXPECT_TRUE(first_lawyer.AddShard("domain1", "shard", &message_handler_));
+  EXPECT_EQ("D:http://*abc*.com/__a_O:http://host1/_-D:http://domain1/__a_S:"
+            "http://shard/_-D:http://host1/__n_-D:http://shard/__a_R:"
+            "http://domain1/_-", first_lawyer.Signature());
+}
+
 }  // namespace net_instaweb

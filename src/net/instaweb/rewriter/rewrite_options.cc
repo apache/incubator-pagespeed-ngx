@@ -157,6 +157,46 @@ bool IsInSet(const RewriteOptions::Filter* filters, int num,
 
 }  // namespace
 
+const char * RewriteOptions::FilterName(
+    const RewriteOptions::Filter filter) const {
+  switch (filter) {
+    case kAddHead:                         return "Add Head";
+    case kAddInstrumentation:              return "Add Instrumentation";
+    case kCollapseWhitespace:              return "Collapse Whitespace";
+    case kCombineCss:                      return "Combine Css";
+    case kCombineHeads:                    return "Combine Heads";
+    case kCombineJavascript:               return "Combine Javascript";
+    case kConvertJpegToWebp:               return "Convert Jpeg To Webp";
+    case kConvertMetaTags:                 return "Convert Meta Tags";
+    case kDivStructure:                    return "Div Structure";
+    case kElideAttributes:                 return "Elide Attributes";
+    case kExtendCache:                     return "Extend Cache";
+    case kInlineCss:                       return "Inline Css";
+    case kInlineImages:                    return "Inline Images";
+    case kInlineJavascript:                return "Inline Javascript";
+    case kInsertImageDimensions:           return "Insert Image Dimensions";
+    case kLeftTrimUrls:                    return "Left Trim Urls";
+    case kMakeGoogleAnalyticsAsync:        return "Make Google Analytics Async";
+    case kMoveCssToHead:                   return "Move Css To Head";
+    case kOutlineCss:                      return "Outline Css";
+    case kOutlineJavascript:               return "Outline Javascript";
+    case kRecompressImages:                return "Recompress Images";
+    case kRemoveComments:                  return "Remove Comments";
+    case kRemoveQuotes:                    return "Remove Quotes";
+    case kResizeImages:                    return "Resize Images";
+    case kRewriteCss:                      return "Rewrite Css";
+    case kRewriteDomains:                  return "Rewrite Domains";
+    case kRewriteJavascript:               return "Rewrite Javascript";
+    case kRewriteStyleAttributes:          return "Rewrite Style Attributes";
+    case kRewriteStyleAttributesWithUrl:
+      return "Rewrite Style Attributes With Url";
+    case kSpriteImages:                    return "Sprite Images";
+    case kStripScripts:                    return "Strip Scripts";
+    case kEndOfFilters:                    return "End of Filters";
+  }
+  return "Unknown Filter";
+}
+
 bool RewriteOptions::ParseRewriteLevel(
     const StringPiece& in, RewriteLevel* out) {
   bool ret = false;
@@ -236,16 +276,16 @@ void RewriteOptions::DisallowTroublesomeResources() {
   //
   // TODO(sligocki): Is jquery actually a problem? Perhaps specific
   // jquery libraries (like tiny MCE). Investigate before disabling.
-  //Disallow("*jquery*");
+  // Disallow("*jquery*");
 
   // http://code.google.com/p/modpagespeed/issues/detail?id=186
   // ckeditor.js, ckeditor_basic.js, ckeditor_basic_source.js, ...
   // Appears to be fixed upstream. Leaving here for reference.
-  //Disallow("*ckeditor*");
+  // Disallow("*ckeditor*");
 
   // http://code.google.com/p/modpagespeed/issues/detail?id=216
   // Appears to be an issue with old version of jsminify.
-  //Disallow("*swfobject*");  // swfobject.js
+  // Disallow("*swfobject*");  // swfobject.js
 
   // TODO(sligocki): Add disallow for the JS broken in:
   // http://code.google.com/p/modpagespeed/issues/detail?id=142
@@ -483,12 +523,46 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
                 option->Signature(hasher), "_");
     }
   }
+  StrAppend(&signature_, domain_lawyer_.Signature(), "_");
   frozen_ = true;
 
   // TODO(jmarantz): Incorporate signatures from the domain_lawyer,
   // file_load_policy, allow_resources, and retain_comments.  However,
   // the changes made here make our system strictly more correct than
   // it was before, using an ad-hoc signature in css_filter.cc.
+}
+
+GoogleString RewriteOptions::ToString(RewriteLevel level) {
+  switch (level) {
+    case kPassThrough: return "Pass Through";
+    case kCoreFilters: return "Core Filters";
+    case kTestingCoreFilters: return "Testing Core Filters";
+    case kAllFilters: return "All Filters";
+  }
+  return "?";
+}
+
+GoogleString RewriteOptions::ToString() const {
+  GoogleString output;
+  StrAppend(&output, "Version: ", IntegerToString(kOptionsVersion), "\n\n");
+  output += "Filters\n";
+  for (int i = kFirstFilter; i != kEndOfFilters; ++i) {
+    if (Enabled(static_cast<Filter>(i))) {
+      StrAppend(&output, IntegerToString(i), "\t",
+                FilterName(static_cast<Filter>(i)), "\n");
+    }
+  }
+  output += "\nOptions\n";
+  for (int i = 0, n = all_options_.size(); i < n; ++i) {
+    // Only including options with values overridden from the default.
+    OptionBase* option = all_options_[i];
+    if (option->was_set()) {
+      StrAppend(&output, IntegerToString(i), "\t", option->ToString(), "\n");
+    }
+  }
+  // TODO(mmohabey): Incorporate ToString() from the domain_lawyer,
+  // file_load_policy, allow_resources, and retain_comments.
+  return output;
 }
 
 void RewriteOptions::Modify() {

@@ -177,6 +177,10 @@ class DomainLawyer {
   bool DoDomainsServeSameContent(const StringPiece& domain1,
                                  const StringPiece& domain2) const;
 
+  // Computes a signature for the DomainLawyer object including containing
+  // classes (Domain).
+  GoogleString Signature() const;
+
  private:
   class Domain;
 
@@ -204,6 +208,8 @@ class DomainLawyer {
 
   Domain* FindDomain(const GoogleUrl& gurl) const;
 
+  // Map-order is important as ordering is taken into consideration while
+  // constructing the signature of the domain lawyer.
   typedef std::map<GoogleString, Domain*> DomainMap;  // see AddDomainHelper
   DomainMap domain_map_;
   typedef std::vector<Domain*> DomainVector;          // see AddDomainHelper

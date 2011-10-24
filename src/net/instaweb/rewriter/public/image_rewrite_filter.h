@@ -35,6 +35,7 @@ class CachedResult;
 class ContentType;
 class Image;
 class ImageTagScanner;
+class ResourceContext;
 class RewriteContext;
 class RewriteDriver;
 class Statistics;
@@ -101,8 +102,9 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
 
 
   // Returns true if it rewrote the URL.
-  bool FinishRewriteImageUrl(const CachedResult* cached, HtmlElement* element,
-                             HtmlElement::Attribute* src);
+  bool FinishRewriteImageUrl(
+      const CachedResult* cached, const ResourceContext* resource_context,
+      HtmlElement* element, HtmlElement::Attribute* src);
 
   // Populates width and height with the attributes specified in the
   // image tag (including in an inline style attribute).

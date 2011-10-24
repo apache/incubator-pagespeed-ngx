@@ -38,7 +38,7 @@ class MessageHandler;
 class RewriteOptions {
  public:
   // If you add or remove anything from this list, you need to update the
-  // version number in rewrite_options.cc.
+  // version number in rewrite_options.cc and FilterName().
   enum Filter {
     kAddHead,  // Update kFirstFilter if you add something before this.
     kAddInstrumentation,
@@ -73,6 +73,8 @@ class RewriteOptions {
     kStripScripts,
     kEndOfFilters
   };
+  // Return the appropriate human-readable filter name for the given filter
+  const char* FilterName(const Filter filter) const;
 
   // Used for enumerating over all entries in the Filter enum.
   static const Filter kFirstFilter = kAddHead;
@@ -376,6 +378,8 @@ class RewriteOptions {
     return signature_;
   }
 
+  GoogleString ToString() const;
+
   // Name of the actual type of this instance as a poor man's RTTI.
   virtual const char* class_name() const;
 
@@ -386,6 +390,7 @@ class RewriteOptions {
     virtual void Merge(const OptionBase* one, const OptionBase* two) = 0;
     virtual bool was_set() const = 0;
     virtual GoogleString Signature(const Hasher* hasher) const = 0;
+    virtual GoogleString ToString() const = 0;
   };
 
   // Helper class to represent an Option, whose value is held in some class T.
@@ -438,6 +443,10 @@ class RewriteOptions {
       return RewriteOptions::OptionSignature(value_, hasher);
     }
 
+    virtual GoogleString ToString() const {
+      return RewriteOptions::ToString(value_);
+    }
+
    private:
     T value_;
     bool was_set_;
@@ -488,6 +497,22 @@ class RewriteOptions {
                                       const Hasher* hasher);
   static GoogleString OptionSignature(RewriteLevel x,
                                       const Hasher* hasher);
+
+  // These static methods enable us to generate strings for all
+  // instantiated option-types from Option<T>::Signature().
+  static GoogleString ToString(bool x) {
+    return x ? "True" : "False";
+  }
+  static GoogleString ToString(int x) {
+    return IntegerToString(x);
+  }
+  static GoogleString ToString(int64 x) {
+    return Integer64ToString(x);
+  }
+  static GoogleString ToString(const GoogleString& x) {
+    return x;
+  }
+  static GoogleString ToString(RewriteLevel x);
 
   bool modified_;
   bool frozen_;

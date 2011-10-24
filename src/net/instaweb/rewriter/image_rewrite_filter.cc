@@ -126,7 +126,8 @@ void ImageRewriteFilter::Context::Render() {
     const CachedResult* result = output_partition(0);
     HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(slot(0).get());
     bool rewrote_url = filter_->FinishRewriteImageUrl(
-        result, html_slot->element(), html_slot->attribute());
+        result, resource_context(),
+        html_slot->element(), html_slot->attribute());
     // If we wrote out the URL ourselves, don't let the default handling
     // mess it up (in particular replacing data: with out-of-line version)
     if (rewrote_url) {
@@ -384,14 +385,14 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     scoped_ptr<CachedResult> cached(RewriteWithCaching(src->value(),
                                                        resource_context.get()));
     if (cached.get() != NULL) {
-      FinishRewriteImageUrl(cached.get(), element, src);
+      FinishRewriteImageUrl(cached.get(), resource_context.get(), element, src);
     }
   }
 }
 
 bool ImageRewriteFilter::FinishRewriteImageUrl(
-    const CachedResult* cached, HtmlElement* element,
-    HtmlElement::Attribute* src) {
+    const CachedResult* cached, const ResourceContext* resource_context,
+    HtmlElement* element, HtmlElement::Attribute* src) {
   const RewriteOptions* options = driver_->options();
   bool rewrote_url = false;
 
@@ -399,9 +400,16 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   if (cached->has_inlined_data() &&
       driver_->UserAgentSupportsImageInlining()) {
     src->SetValue(cached->inlined_data());
-    // Delete dimensions, as they ought to be redundant given inline image data.
-    element->DeleteAttribute(HtmlName::kWidth);
-    element->DeleteAttribute(HtmlName::kHeight);
+    if (cached->has_image_file_dims() &&
+        (!resource_context->has_image_tag_dims() ||
+         ((cached->image_file_dims().width() ==
+           resource_context->image_tag_dims().width()) &&
+          (cached->image_file_dims().height() ==
+           resource_context->image_tag_dims().height())))) {
+      // Delete dimensions, as they they match the given inline image data.
+      element->DeleteAttribute(HtmlName::kWidth);
+      element->DeleteAttribute(HtmlName::kHeight);
+    }
     inline_count_->Add(1);
     rewrote_url = true;
   } else {

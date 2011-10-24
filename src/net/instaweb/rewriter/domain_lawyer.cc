@@ -141,6 +141,26 @@ class DomainLawyer::Domain {
 
   Domain* shard(int shard_index) const { return shards_[shard_index]; }
 
+  GoogleString Signature() const {
+    GoogleString signature;
+    StrAppend(&signature, name_, "_",
+              authorized_ ? "_a" : "_n", "_");
+    // Assuming that there will be no cycle of Domains like Domain A has a
+    // rewrite domain to domain B which in turn have the original domain as A.
+    if (rewrite_domain_ != NULL) {
+      StrAppend(&signature, "R:", rewrite_domain_->name(), "_");
+    }
+    if (origin_domain_ != NULL) {
+      StrAppend(&signature, "O:", origin_domain_->name(), "_");
+    }
+    for (int index = 0; index < num_shards(); ++index) {
+      if (shards_[index] != NULL) {
+        StrAppend(&signature, "S:", shards_[index]->name(), "_");
+      }
+    }
+    return signature;
+  }
+
  private:
   bool authorized_;
   Wildcard wildcard_;
@@ -585,6 +605,17 @@ bool DomainLawyer::DoDomainsServeSameContent(
     return true;
   }
   return false;
+}
+
+GoogleString DomainLawyer::Signature() const {
+  GoogleString signature;
+
+  for (DomainMap::const_iterator iterator = domain_map_.begin();
+      iterator != domain_map_.end(); ++iterator) {
+    StrAppend(&signature, "D:", iterator->second->Signature(), "-");
+  }
+
+  return signature;
 }
 
 }  // namespace net_instaweb

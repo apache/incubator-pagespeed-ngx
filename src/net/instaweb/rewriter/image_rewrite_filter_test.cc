@@ -54,6 +54,7 @@ namespace {
 const char kBikePngFile[] = "BikeCrashIcn.png";
 const char kPuzzleJpgFile[] = "Puzzle.jpg";
 const char kChefGifFile[] = "IronChef2.gif";
+const char kCuppaTPngFile[] = "CuppaT.png";
 
 class ImageRewriteTest : public ResourceManagerTestBase,
                          public ::testing::WithParamInterface<bool> {
@@ -431,6 +432,22 @@ TEST_P(ImageRewriteTest, InlineNoRewrite) {
   // dimension information because that is not explicitly enabled.
   TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
                     "", "", false, false);
+}
+
+TEST_P(ImageRewriteTest, InlineNoResize) {
+  // Make sure we inline an image if it meets the inlining threshold but can't
+  // be resized.  Make sure we retain sizing information when this happens.
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+  const char kOrigDims[] = " width=65 height=70";
+  const char kResizedDims[] = " width=26 height=28";
+  // At natural size, we should inline and erase dimensions.
+  TestSingleRewrite(kCuppaTPngFile, kContentTypePng,
+                    kOrigDims, "", false, true);
+  // Image is inlined but not resized, so preserve dimensions.
+  TestSingleRewrite(kCuppaTPngFile, kContentTypePng,
+                    kResizedDims, kResizedDims, false, true);
 }
 
 TEST_P(ImageRewriteTest, RespectsBaseUrl) {
