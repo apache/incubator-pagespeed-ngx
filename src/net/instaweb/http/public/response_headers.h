@@ -42,6 +42,12 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   ResponseHeaders();
   virtual ~ResponseHeaders();
 
+  // This will set Date and (if supplied in the first place, Expires)
+  // header to now if the delta of date header wrt now_ms is more than
+  // a tolerance.  Leaves the ComputeCaching state dirty if it came in
+  // dirty, or clean if it came in clean.
+  void FixDateHeaders(int64 now_ms);
+
   virtual void Clear();
 
   void CopyFrom(const ResponseHeaders& other);

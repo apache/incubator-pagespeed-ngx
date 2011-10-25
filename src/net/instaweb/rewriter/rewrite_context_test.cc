@@ -59,12 +59,19 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "net/instaweb/util/worker_test_base.h"
+
+namespace net_instaweb {
+
+class MessageHandler;
+class RequestHeaders;
+class Writer;
 
 namespace {
 
@@ -84,13 +91,9 @@ const int64 kRewriteDelayMs = 47;
 const bool kExpectNestedRewritesSucceed = true;
 const bool kExpectNestedRewritesFail = false;
 
+const int64 kOriginTtlMs = 5 * Timer::kMinuteMs;
+
 }  // namespace
-
-namespace net_instaweb {
-
-class MessageHandler;
-class RequestHeaders;
-class Writer;
 
 // Simple test filter just trims whitespace from the input resource.
 class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
@@ -601,6 +604,10 @@ class RewriteContextTest : public ResourceManagerTestBase {
   void InitResources() {
     ResponseHeaders default_css_header;
     SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+    int64 now_ms = http_cache()->timer()->NowMs();
+    default_css_header.SetDateAndCaching(now_ms, kOriginTtlMs);
+    default_css_header.ComputeCaching();
+
     // trimmable
     SetFetchResponse("http://test.com/a.css", default_css_header, " a ");
     // not trimmable
@@ -690,23 +697,51 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   // should need two items in the cache: the element and the resource
   // mapping (OutputPartitions).  The output resource should not be
   // stored.
-  ValidateExpected("trimmable", CssLinkHref("a.css"),
-                   CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
+  GoogleString input_html(CssLinkHref("a.css"));
+  GoogleString output_html(CssLinkHref(
+      Encode(kTestDomain, "tw", "0", "a.css", "css")));
+  ValidateExpected("trimmable", input_html, output_html);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());  // 2 because it's kOnTheFlyResource
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
   ClearStats();
 
   // The second time we request this URL, we should find no additional
   // cache inserts or fetches.  The rewrite should complete using a
   // single cache hit for the metadata.  No cache misses will occur.
-  ValidateExpected("trimmable", CssLinkHref("a.css"),
-                   CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
+  ValidateExpected("trimmable", input_html, output_html);
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
+  ClearStats();
+
+  // The third time we request this URL, we've advanced time so that the origin
+  // resource TTL has expired.  The data will be re-fetched, and the Date
+  // corrected.   See url_input_resource.cc, AddToCache().  The http cache will
+  // miss, but we'll re-insert.  We won't need to do any more rewrites because
+  // the data did not actually change.
+  mock_timer()->AdvanceMs(2 * kOriginTtlMs);
+  ValidateExpected("trimmable", input_html, output_html);
+  EXPECT_EQ(2, lru_cache()->num_hits());     // 1 expired hit, 1 valid hit.
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // re-inserts after expiration.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_expirations()->Get());
+  ClearStats();
+
+  // The fourth time we request this URL, the cache is in good shape despite
+  // the expired date header from the origin.
+  ValidateExpected("trimmable", input_html, output_html);
+  EXPECT_EQ(1, lru_cache()->num_hits());     // 1 expired hit, 1 valid hit.
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());  // re-inserts after expiration.
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
+  ClearStats();
 }
 
 TEST_F(RewriteContextTest, TrimOnTheFlyOptimizableCacheInvalidation) {
@@ -1546,6 +1581,31 @@ TEST_F(RewriteContextTest, CombinationFetchNestedMalformed) {
       kTestDomain, kCombiningFilterId, "0",
       "a.pagespeed.nosuchfilter.0.css+b.pagespeed.nosuchfilter.0.css", "css");
   EXPECT_FALSE(TryFetchResource(combined_url));
+}
+
+TEST_F(RewriteContextTest, CombinationFetchSeedsCache) {
+  // Make sure that fetching a combination seeds cache for future rewrites
+  // properly.
+  InitCombiningFilter(0 /* no rewrite delay*/);
+  InitResources();
+
+  // First fetch it..
+  GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
+                                     "a.css+b.css", "css");
+  GoogleString content;
+  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  EXPECT_EQ(" a b", content);
+  ClearStats();
+
+  // Then use from HTML.
+  ValidateExpected(
+      "hopefully_hashed",
+      StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+      CssLinkHref(combined_url));
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
 // Test that rewriting works correctly when input resource is loaded from disk.

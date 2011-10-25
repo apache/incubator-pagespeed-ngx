@@ -309,6 +309,7 @@ TEST_F(ProxyInterfaceTest, SetCookie2NotCached) {
 TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";
+  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
   headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
   headers.SetDate(MockTimer::kApr_5_2010_ms);
   headers.SetStatusAndReason(HttpStatus::kOK);
@@ -348,6 +349,7 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";
   headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
   headers.SetDate(MockTimer::kApr_5_2010_ms);
   headers.SetStatusAndReason(HttpStatus::kOK);
   headers.ComputeCaching();

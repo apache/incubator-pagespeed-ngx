@@ -28,8 +28,6 @@
 
 namespace net_instaweb {
 
-class RewriteDriver;
-
 SingleRewriteContext::SingleRewriteContext(RewriteDriver* driver,
                                            RewriteContext* parent,
                                            ResourceContext* resource_context)
@@ -70,7 +68,7 @@ void SingleRewriteContext::Rewrite(int partition_index,
   CHECK(resource->loaded());
   CHECK(resource->ContentsValid());
   if (output_resource.get() != NULL) {
-    output_resource->set_cached_result(partition);
+    DCHECK_EQ(output_resource->cached_result(), partition);
   }
   RewriteSingle(resource, output_resource);
 }

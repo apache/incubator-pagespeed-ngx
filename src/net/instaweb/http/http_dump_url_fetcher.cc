@@ -50,30 +50,6 @@ static const char kErrorHtml[] =
     "<html><head><title>HttpDumpUrlFetcher Error</title></head>"
     "<body><h1>HttpDumpUrlFetcher Error</h1></body></html>";
 
-void ApplyTimeDelta(const char* attr, int64 delta_ms,
-                    ResponseHeaders* headers) {
-  int64 time_ms;
-  if (headers->ParseDateHeader(attr, &time_ms) && (time_ms > delta_ms)) {
-    headers->SetTimeHeader(attr, time_ms + delta_ms);
-  }
-}
-
-// The slurped files we read off the disk will contain a Date header from the
-// time we did the slurp.  They may have an Expires header shortly after that.
-// As part of the dump-fetching process, we will want to correct the Date
-// header based on the current time, and also update the Expires header by
-// the same delta.
-void CorrectDateHeaders(int64 now_ms, ResponseHeaders* headers) {
-  int64 date_ms;
-  if (headers->ParseDateHeader(HttpAttributes::kDate, &date_ms) &&
-      (date_ms < now_ms)) {
-    int64 delta_ms = now_ms - date_ms;
-    headers->SetDate(now_ms);
-    ApplyTimeDelta(HttpAttributes::kExpires, delta_ms, headers);
-    ApplyTimeDelta(HttpAttributes::kLastModified, delta_ms, headers);
-  }
-}
-
 }  // namespace
 
 const char HttpDumpUrlFetcher::kGzipContentLengthAttribute[] =
@@ -260,7 +236,7 @@ bool HttpDumpUrlFetcher::StreamingFetchUrl(
           //
           // TODO(jmarantz): make this conditional based on a flag.
           int64 now_ms = timer_->NowMs();
-          CorrectDateHeaders(now_ms, response_headers);
+          response_headers->FixDateHeaders(now_ms);
           response_headers->Replace(HttpAttributes::kContentLength,
                                     IntegerToString(writer.content_length()));
         }

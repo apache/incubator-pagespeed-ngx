@@ -140,6 +140,7 @@ class UrlResourceFetchCallback : public UrlAsyncFetcher::Callback {
 
   bool AddToCache(bool success) {
     ResponseHeaders* headers = response_headers();
+    headers->FixDateHeaders(http_cache()->timer()->NowMs());
     if (success) {
       if (IsValidAndCacheableImpl(http_cache(), resource_cutoff_ms_,
                                   respect_vary_, headers)) {

@@ -443,11 +443,32 @@ TEST_P(RewriteSingleResourceFilterTest, CacheExpire) {
   EXPECT_EQ(2, filter_->num_cached_results());
   EXPECT_EQ(2, filter_->num_optimizable());
 
-  // ... but not once we get past the ttl, when we don't rewrite since the data
-  // will have expiration time in the past, making it uncacheable for us.
+  // ... but not once we get past the ttl, we will have to re-fetch the
+  // input resource from the cache, which will correct the date.
+  // reuse_by_content_hash is off in this run, so we must rewrite again.
+  // See CacheExpireWithReuseEnabled for expiration behavior but with
+  // reuse enabled.
   mock_timer()->AdvanceMs(TtlMs() * 2);
-  ValidateNoChanges("expire", in_tag_);
+  ValidateExpected("expire", in_tag_, out_tag_);
+  EXPECT_EQ(2, filter_->num_rewrites_called());
+  EXPECT_EQ(3, filter_->num_cached_results());
+  EXPECT_EQ(3, filter_->num_optimizable());
+}
+
+TEST_P(RewriteSingleResourceFilterTest, CacheExpireWithReuseEnabled) {
+  filter_->set_reuse_by_content_hash(true);
+
+  // Make sure we don't cache past the TTL.
+  ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
+  EXPECT_EQ(1, filter_->num_cached_results());
+  EXPECT_EQ(1, filter_->num_optimizable());
+
+  // Everything expires out of the cache but has the same content hash,
+  // so no more rewrites should be needed.
+  mock_timer()->AdvanceMs(TtlMs() * 2);
+  ValidateExpected("expire", in_tag_, out_tag_);
+  EXPECT_EQ(1, filter_->num_rewrites_called());  // no second rewrite.
   EXPECT_EQ(2, filter_->num_cached_results());
   EXPECT_EQ(2, filter_->num_optimizable());
 }

@@ -266,6 +266,7 @@ class RewriteContext::FetchContext {
   void FetchDone() {
     GoogleString output;
     bool ok = false;
+    DCHECK_EQ(1, rewrite_context_->num_output_partitions());
     rewrite_context_->WritePartition();
     if (success_) {
       if (output_resource_->hash() == requested_hash_) {
@@ -900,6 +901,16 @@ void RewriteContext::WritePartition() {
     CacheInterface* metadata_cache = manager->metadata_cache();
     SharedString buf;
     {
+#ifndef NDEBUG
+      for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
+        const CachedResult& partition = partitions_->partition(i);
+        if (partition.optimizable() && !partition.has_inlined_data()) {
+          GoogleUrl gurl(partition.url());
+          DCHECK(gurl.is_valid());
+        }
+      }
+#endif
+
       StringOutputStream sstream(buf.get());
       partitions_->SerializeToZeroCopyStream(&sstream);
       // destructor of sstream prepares *buf.get()
@@ -1126,6 +1137,11 @@ void RewriteContext::StartRewriteForFetch() {
     }
   }
   OutputResourcePtr output(fetch_->output_resource());
+
+  // During normal rewrite path, Partition() is responsible for syncing up
+  // the output resource's CachedResult and the partition tables. As it does
+  // not get run for fetches, we take care of the syncing here.
+  output->set_cached_result(partition);
   ++outstanding_rewrites_;
   if (ok_to_rewrite) {
     Rewrite(0, partition, output);

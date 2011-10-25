@@ -56,10 +56,11 @@ class CachePutFetch : public AsyncFetch {
   virtual void HeadersComplete() {
     // We compute the latency here as it's the spot where we're doing an
     // actual backend fetch and not potentially using the cache.
+    int64 now_ms = cache_->timer()->NowMs();
     if (backend_first_byte_latency_ != NULL) {
-      backend_first_byte_latency_->Add(
-          cache_->timer()->NowMs() - start_time_ms_);
+      backend_first_byte_latency_->Add(now_ms - start_time_ms_);
     }
+    response_headers_->FixDateHeaders(now_ms);
     response_headers_->ComputeCaching();
 
     cacheable_ = response_headers_->IsProxyCacheable();

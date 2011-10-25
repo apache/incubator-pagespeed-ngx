@@ -42,7 +42,9 @@ class ResponseHeadersTest : public testing::Test {
         max_age_300_("max-age=300") {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
     ConvertTimeToString(MockTimer::kApr_5_2010_ms + 5 * Timer::kMinuteMs,
-                        &start_time_plus_300s_string_);
+                        &start_time_plus_5_minutes_string_);
+    ConvertTimeToString(MockTimer::kApr_5_2010_ms + 6 * Timer::kMinuteMs,
+                        &start_time_plus_6_minutes_string_);
   }
 
   void CheckGoogleHeaders(const ResponseHeaders& response_headers) {
@@ -67,11 +69,11 @@ class ResponseHeadersTest : public testing::Test {
                            "expires=Tue, 05-Oct-2010 18:49:46 GMT; path=/; "
                            "domain=.google.com; HttpOnly"),
               *(values[1]));
-    EXPECT_EQ(15, response_headers.NumAttributes());
+    EXPECT_EQ(12, response_headers.NumAttributes());
     EXPECT_EQ(GoogleString("X-Google-GFE-Response-Body-Transformations"),
-              GoogleString(response_headers.Name(14)));
+              GoogleString(response_headers.Name(11)));
     EXPECT_EQ(GoogleString("gunzipped"),
-              GoogleString(response_headers.Value(14)));
+              GoogleString(response_headers.Value(11)));
   }
 
   void ParseHeaders(const StringPiece& headers) {
@@ -100,7 +102,7 @@ class ResponseHeadersTest : public testing::Test {
     } else {
       EXPECT_STREQ(max_age_300_,
                    response_headers_.Lookup1(HttpAttributes::kCacheControl));
-      EXPECT_STREQ(start_time_plus_300s_string_,
+      EXPECT_STREQ(start_time_plus_5_minutes_string_,
                    response_headers_.Lookup1(HttpAttributes::kExpires));
     }
     return cacheable;
@@ -124,7 +126,8 @@ class ResponseHeadersTest : public testing::Test {
   ResponseHeadersParser parser_;
 
   GoogleString start_time_string_;
-  GoogleString start_time_plus_300s_string_;
+  GoogleString start_time_plus_5_minutes_string_;
+  GoogleString start_time_plus_6_minutes_string_;
   const GoogleString max_age_300_;
 
  private:
@@ -133,14 +136,13 @@ class ResponseHeadersTest : public testing::Test {
 
 // Parse the headers from google.com
 TEST_F(ResponseHeadersTest, TestParseAndWrite) {
-  static const char http_data[] =
+  const GoogleString http_data = StrCat(
       "HTTP/1.0 200 OK\r\n"
-      "X-Google-Experiment: 23729,24249,24253\r\n"
-      "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
+      "X-Google-Experiment: 23729,24249,24253\r\n",
+      "Date: ", start_time_string_, "\r\n",
       "Expires: -1\r\n"
       "Cache-Control: private, max-age=0\r\n"
       "Content-Type: text/html; charset=ISO-8859-1\r\n"
-      "X-Google-GFE-Backend-Request-Info: eid=yjC6S9qRCYmUnAe_mKVd\r\n"
       "Set-Cookie: PREF=ID=3935f510d83d2a7a:TM=1270493386:LM=1270493386:S="
       "u_18e6r8aJ83N6P1; expires=Wed, 04-Apr-2012 18:49:46 GMT; path=/; do"
       "main=.google.com\r\n"
@@ -150,24 +152,21 @@ TEST_F(ResponseHeadersTest, TestParseAndWrite) {
       "n=.google.com; HttpOnly\r\n"
       "Server: gws\r\n"
       "X-XSS-Protection: 0\r\n"
-      "X-Google-Backends: /bns/ib/borg/ib/bns/gws-prod/staticweb.staticfro"
       "ntend.gws/50,qyva4:80\r\n"
-      "X-Google-GFE-Request-Trace: qyva4:80,/bns/ib/borg/ib/bns/gws-prod/s"
       "taticweb.staticfrontend.gws/50,qyva4:80\r\n"
-      "X-Google-GFE-Service-Trace: home\r\n"
-      "X-Google-Service: home\r\n"
       "X-Google-GFE-Response-Body-Transformations: gunzipped\r\n"
       "\r\n"
-      "<!doctype html><html><head><meta http-equiv=\"content-type\" content=\"";
+      "<!doctype html><html><head>"
+      "<meta http-equiv=\"content-type\" content=\"");
 
   // Make a small buffer to test that we will successfully parse headers
   // that are split across buffers.  This is from
   //     wget --save-headers http://www.google.com
   const int bufsize = 100;
   int num_consumed = 0;
-  for (int i = 0, n = STATIC_STRLEN(http_data); i < n; i += bufsize) {
+  for (int i = 0, n = http_data.size(); i < n; i += bufsize) {
     int size = std::min(bufsize, n - i);
-    num_consumed += parser_.ParseChunk(StringPiece(http_data + i, size),
+    num_consumed += parser_.ParseChunk(StringPiece(http_data).substr(i, size),
                                        &message_handler_);
     if (parser_.headers_complete()) {
       break;
@@ -179,7 +178,7 @@ TEST_F(ResponseHeadersTest, TestParseAndWrite) {
   // so this should not be mistaken for a content decoder, such as the
   // net/instaweb/latencylabs/http_response_serializer.h.
   static const char start_of_doc[] = "<!doctype html>";
-  EXPECT_EQ(0, strncmp(start_of_doc, http_data + num_consumed,
+  EXPECT_EQ(0, strncmp(start_of_doc, http_data.c_str() + num_consumed,
                        STATIC_STRLEN(start_of_doc)));
   CheckGoogleHeaders(response_headers_);
 
@@ -242,9 +241,9 @@ TEST_F(ResponseHeadersTest, TestNoContentTypeCacheNoDate) {
 TEST_F(ResponseHeadersTest, TestCachingPublic) {
   // In this test we'll leave the explicit "public" flag in to make sure
   // we can parse it.
-  ParseHeaders("HTTP/1.0 200 OK\r\n"
-               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
-               "Cache-control: public, max-age=300\r\n\r\n");
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: public, max-age=300\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsCacheable());
   EXPECT_TRUE(response_headers_.IsProxyCacheable());
   EXPECT_EQ(300 * 1000,
@@ -254,9 +253,9 @@ TEST_F(ResponseHeadersTest, TestCachingPublic) {
 
 // Private caching
 TEST_F(ResponseHeadersTest, TestCachingPrivate) {
-  ParseHeaders("HTTP/1.0 200 OK\r\n"
-               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
-               "Cache-control: private, max-age=10\r\n\r\n");
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: private, max-age=10\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsCacheable());
   EXPECT_FALSE(response_headers_.IsProxyCacheable());
   EXPECT_EQ(10 * 1000,
@@ -266,9 +265,9 @@ TEST_F(ResponseHeadersTest, TestCachingPrivate) {
 
 // Default caching (when in doubt, it's public)
 TEST_F(ResponseHeadersTest, TestCachingDefault) {
-  ParseHeaders("HTTP/1.0 200 OK\r\n"
-               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
-               "Cache-control: max-age=100\r\n\r\n");
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: max-age=100\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsCacheable());
   EXPECT_TRUE(response_headers_.IsProxyCacheable());
   EXPECT_EQ(100 * 1000,
@@ -278,17 +277,17 @@ TEST_F(ResponseHeadersTest, TestCachingDefault) {
 
 // Test that we don't erroneously cache a 204.
 TEST_F(ResponseHeadersTest, TestCachingInvalidStatus) {
-  ParseHeaders("HTTP/1.0 204 OK\r\n"
-               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
-               "Cache-control: max-age=300\r\n\r\n");
+  ParseHeaders(StrCat("HTTP/1.0 204 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: max-age=300\r\n\r\n"));
   EXPECT_FALSE(response_headers_.IsCacheable());
 }
 
 // Test that we don't erroneously cache a 304.
 TEST_F(ResponseHeadersTest, TestCachingNotModified) {
-  ParseHeaders("HTTP/1.0 304 OK\r\n"
-               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
-               "Cache-control: max-age=300\r\n\r\n");
+  ParseHeaders(StrCat("HTTP/1.0 304 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: max-age=300\r\n\r\n"));
   EXPECT_FALSE(response_headers_.IsCacheable());
   EXPECT_FALSE(response_headers_.IsProxyCacheable());
 }
@@ -316,32 +315,32 @@ TEST_F(ResponseHeadersTest, TestImplicitCache) {
 TEST_F(ResponseHeadersTest, TestSetCookieCacheabilityForHtml) {
   // HTML is cacheable if there are explicit caching directives, but no
   // Set-Cookie headers.
-  ParseHeaders("HTTP/1.0 200 OK\r\n"
-               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
-               "Content-Type: text/html\r\n"
-               "Cache-control: max-age=300\r\n\r\n");
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Content-Type: text/html\r\n"
+                      "Cache-control: max-age=300\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsCacheable());
   EXPECT_TRUE(response_headers_.IsProxyCacheable());
 
   response_headers_.Clear();
   // HTML is not cacheable if there is a Set-Cookie header even though there are
   // explicit caching directives.
-  ParseHeaders("HTTP/1.0 200 OK\r\n"
-               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
-               "Content-Type: text/html\r\n"
-               "Set-Cookie: cookie\r\n"
-               "Cache-control: max-age=300\r\n\r\n");
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Content-Type: text/html\r\n"
+                      "Set-Cookie: cookie\r\n"
+                      "Cache-control: max-age=300\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsCacheable());
   EXPECT_FALSE(response_headers_.IsProxyCacheable());
 
   response_headers_.Clear();
   // HTML is not cacheable if there is a Set-Cookie2 header even though there
   // are explicit caching directives.
-  ParseHeaders("HTTP/1.0 200 OK\r\n"
-               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
-               "Content-Type: text/html\r\n"
-               "Set-Cookie2: cookie\r\n"
-               "Cache-control: max-age=300\r\n\r\n");
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Content-Type: text/html\r\n"
+                      "Set-Cookie2: cookie\r\n"
+                      "Cache-control: max-age=300\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsCacheable());
   EXPECT_FALSE(response_headers_.IsProxyCacheable());
 }
@@ -349,35 +348,35 @@ TEST_F(ResponseHeadersTest, TestSetCookieCacheabilityForHtml) {
 TEST_F(ResponseHeadersTest, TestSetCookieCacheabilityForNonHtml) {
   // CSS is cacheable if there are explicit caching directives, but no
   // Set-Cookie headers.
-  ParseHeaders("HTTP/1.0 200 OK\r\n"
-               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
-               "Content-Type: text/css\r\n"
-               "Cache-control: max-age=300\r\n\r\n");
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Content-Type: text/css\r\n"
+                      "Cache-control: max-age=300\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsCacheable());
   EXPECT_TRUE(response_headers_.IsProxyCacheable());
 
   response_headers_.Clear();
   // CSS is still cacheable even if there is a Set-Cookie.
-  ParseHeaders("HTTP/1.0 200 OK\r\n"
-               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
-               "Content-Type: text/css\r\n"
-               "Set-Cookie: cookie\r\n"
-               "Cache-control: max-age=300\r\n\r\n");
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Content-Type: text/css\r\n"
+                      "Set-Cookie: cookie\r\n"
+                      "Cache-control: max-age=300\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsCacheable());
   EXPECT_TRUE(response_headers_.IsProxyCacheable());
 }
 
 TEST_F(ResponseHeadersTest, TestRemoveAll) {
-  ParseHeaders("HTTP/1.0 200 OK\r\n"
-               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
-               "Set-Cookie: CG=US:CA:Mountain+View\r\n"
-               "Set-Cookie: UA=chrome\r\n"
-               "Cache-Control: max-age=100\r\n"
-               "Set-Cookie: path=/\r\n"
-               "Vary: User-Agent\r\n"
-               "Set-Cookie: LA=1275937193\r\n"
-               "Vary: Accept-Encoding\r\n"
-               "\r\n");
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Set-Cookie: CG=US:CA:Mountain+View\r\n"
+                      "Set-Cookie: UA=chrome\r\n"
+                      "Cache-Control: max-age=100\r\n"
+                      "Set-Cookie: path=/\r\n"
+                      "Vary: User-Agent\r\n"
+                      "Set-Cookie: LA=1275937193\r\n"
+                      "Vary: Accept-Encoding\r\n"
+                      "\r\n"));
   ConstStringStarVector vs;
   ExpectSizes(8, 4);
 
@@ -415,16 +414,16 @@ TEST_F(ResponseHeadersTest, TestRemoveAll) {
 }
 
 TEST_F(ResponseHeadersTest, TestRemoveAllFromSet) {
-  ParseHeaders("HTTP/1.0 200 OK\r\n"
-               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
-               "Set-Cookie: CG=US:CA:Mountain+View\r\n"
-               "Set-Cookie: UA=chrome\r\n"
-               "Cache-Control: max-age=100\r\n"
-               "Set-Cookie: path=/\r\n"
-               "Vary: User-Agent\r\n"
-               "Set-Cookie: LA=1275937193\r\n"
-               "Vary: Accept-Encoding\r\n"
-               "\r\n");
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Set-Cookie: CG=US:CA:Mountain+View\r\n"
+                      "Set-Cookie: UA=chrome\r\n"
+                      "Cache-Control: max-age=100\r\n"
+                      "Set-Cookie: path=/\r\n"
+                      "Vary: User-Agent\r\n"
+                      "Set-Cookie: LA=1275937193\r\n"
+                      "Vary: Accept-Encoding\r\n"
+                      "\r\n"));
   ConstStringStarVector vs;
   ExpectSizes(8, 4);
 
@@ -554,33 +553,33 @@ TEST_F(ResponseHeadersTest, TestUpdateFrom) {
 }
 
 TEST_F(ResponseHeadersTest, TestCachingVaryStar) {
-  ParseHeaders("HTTP/1.0 200 OK\r\n"
-               "Date: Mon, 05 Apr 2010 18:49:46 GMT\r\n"
-               "Cache-control: public, max-age=300\r\n"
-               "Vary: *\r\n\r\n\r\n");
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: public, max-age=300\r\n"
+                      "Vary: *\r\n\r\n\r\n"));
   EXPECT_FALSE(response_headers_.IsCacheable());
 }
 
 TEST_F(ResponseHeadersTest, TestSetDateAndCaching) {
   response_headers_.SetDateAndCaching(MockTimer::kApr_5_2010_ms,
                                       6 * Timer::kMinuteMs);
-  const char expected_headers[] =
+  const GoogleString expected_headers = StrCat(
       "HTTP/1.0 0 (null)\r\n"
-      "Date: Mon, 05 Apr 2010 18:51:26 GMT\r\n"
-      "Expires: Mon, 05 Apr 2010 18:57:26 GMT\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Expires: ", start_time_plus_6_minutes_string_, "\r\n"
       "Cache-Control: max-age=360\r\n"
-      "\r\n";
+      "\r\n");
   EXPECT_EQ(expected_headers, response_headers_.ToString());
 }
 
 TEST_F(ResponseHeadersTest, TestReserializingCommaValues) {
-  const char comma_headers[] =
+  const GoogleString comma_headers = StrCat(
       "HTTP/1.0 0 (null)\r\n"
-      "Date: Mon, 05 Apr 2010 18:51:26 GMT\r\n"
-      "Expires: Mon, 05 Apr 2010 18:57:26 GMT\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Expires: ", start_time_plus_6_minutes_string_, "\r\n"
       "Cache-Control: max-age=360, private, must-revalidate\r\n"
       "Vary: Accept-Encoding, User-Agent\r\n"
-      "\r\n";
+      "\r\n");
   response_headers_.Clear();
   ParseHeaders(comma_headers);
   ConstStringStarVector values;
@@ -699,13 +698,13 @@ TEST_F(ResponseHeadersTest, TestKeepTogetherCommaValues) {
 }
 
 TEST_F(ResponseHeadersTest, TestGzipped) {
-  const char comma_headers[] =
+  const GoogleString comma_headers = StrCat(
       "HTTP/1.0 0 (null)\r\n"
-      "Date: Mon, 05 Apr 2010 18:51:26 GMT\r\n"
-      "Expires: Mon, 05 Apr 2010 18:57:26 GMT\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Expires: ", start_time_plus_6_minutes_string_, "\r\n"
       "Cache-Control: max-age=360\r\n"
       "Content-Encoding: deflate, gzip\r\n"
-      "\r\n";
+      "\r\n");
   response_headers_.Clear();
   ParseHeaders(comma_headers);
   ConstStringStarVector values;
@@ -716,13 +715,13 @@ TEST_F(ResponseHeadersTest, TestGzipped) {
 }
 
 TEST_F(ResponseHeadersTest, TestGzippedNotLast) {
-  const char comma_headers[] =
+  const GoogleString comma_headers = StrCat(
       "HTTP/1.0 0 (null)\r\n"
-      "Date: Mon, 05 Apr 2010 18:51:26 GMT\r\n"
-      "Expires: Mon, 05 Apr 2010 18:57:26 GMT\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Expires: ", start_time_plus_6_minutes_string_, "\r\n"
       "Cache-Control: max-age=360\r\n"
       "Content-Encoding: gzip, deflate\r\n"
-      "\r\n";
+      "\r\n");
   response_headers_.Clear();
   ParseHeaders(comma_headers);
   ConstStringStarVector values;
@@ -733,20 +732,20 @@ TEST_F(ResponseHeadersTest, TestGzippedNotLast) {
 }
 
 TEST_F(ResponseHeadersTest, TestRemove) {
-  const char headers[] =
+  const GoogleString headers = StrCat(
       "HTTP/1.0 0 (null)\r\n"
-      "Date: Mon, 05 Apr 2010 18:51:26 GMT\r\n"
-      "Expires: Mon, 05 Apr 2010 18:57:26 GMT\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Expires: ", start_time_plus_6_minutes_string_, "\r\n"
       "Cache-Control: max-age=360\r\n"
       "Content-Encoding: chunked, deflate, chunked, gzip\r\n"
-      "\r\n";
-  const char headers_removed[] =
+      "\r\n");
+  const GoogleString headers_removed = StrCat(
       "HTTP/1.0 0 (null)\r\n"
-      "Date: Mon, 05 Apr 2010 18:51:26 GMT\r\n"
-      "Expires: Mon, 05 Apr 2010 18:57:26 GMT\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Expires: ", start_time_plus_6_minutes_string_, "\r\n"
       "Cache-Control: max-age=360\r\n"
       "Content-Encoding: chunked, deflate, gzip\r\n"
-      "\r\n";
+      "\r\n");
   response_headers_.Clear();
   ParseHeaders(headers);
   EXPECT_TRUE(response_headers_.Remove(HttpAttributes::kContentEncoding,
@@ -783,7 +782,7 @@ TEST_F(ResponseHeadersTest, RemoveAllCaseInsensitivity) {
 }
 
 TEST_F(ResponseHeadersTest, DetermineContentType) {
-  const char headers[] =
+  static const char headers[] =
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: image/png\r\n"
       "\r\n";
@@ -793,7 +792,7 @@ TEST_F(ResponseHeadersTest, DetermineContentType) {
 }
 
 TEST_F(ResponseHeadersTest, DetermineContentTypeWithCharset) {
-  const char headers[] =
+  static const char headers[] =
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/html; charset=UTF-8\r\n"
       "\r\n";
@@ -801,5 +800,123 @@ TEST_F(ResponseHeadersTest, DetermineContentTypeWithCharset) {
   ParseHeaders(headers);
   EXPECT_EQ(&kContentTypeHtml, response_headers_.DetermineContentType());
 }
+
+TEST_F(ResponseHeadersTest, FixupMissingDate) {
+  static const char headers[] =
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/html; charset=UTF-8\r\n"
+      "\r\n";
+  response_headers_.Clear();
+  ParseHeaders(headers);
+  response_headers_.FixDateHeaders(MockTimer::kApr_5_2010_ms);
+  response_headers_.ComputeCaching();
+  EXPECT_EQ(MockTimer::kApr_5_2010_ms, response_headers_.date_ms());
+  EXPECT_TRUE(response_headers_.Lookup1(HttpAttributes::kExpires) == NULL);
+}
+
+TEST_F(ResponseHeadersTest, DoNotCorrectValidDate) {
+  const GoogleString headers = StrCat(
+      "HTTP/1.1 200 OK\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Content-Type: text/html; charset=UTF-8\r\n"
+      "\r\n");
+  response_headers_.Clear();
+  ParseHeaders(headers);
+  response_headers_.ComputeCaching();
+
+  // Setting clock back by 1 second will not affect the date.
+  int64 prev_date = response_headers_.date_ms();
+  response_headers_.FixDateHeaders(prev_date - 1000);
+  EXPECT_EQ(prev_date, response_headers_.date_ms());
+  EXPECT_TRUE(response_headers_.Lookup1(HttpAttributes::kExpires) == NULL);
+}
+
+TEST_F(ResponseHeadersTest, FixupStaleDate) {
+  const GoogleString headers = StrCat(
+      "HTTP/1.1 200 OK\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Content-Type: text/html; charset=UTF-8\r\n"
+      "\r\n");
+  response_headers_.Clear();
+  ParseHeaders(headers);
+  response_headers_.ComputeCaching();
+
+  // Setting clock *forward* by 1 second *will* affect the date.
+  int64 new_date = response_headers_.date_ms() + 1000;
+  response_headers_.FixDateHeaders(new_date);
+  EXPECT_EQ(new_date, response_headers_.date_ms());
+  EXPECT_TRUE(response_headers_.Lookup1(HttpAttributes::kExpires) == NULL);
+}
+
+TEST_F(ResponseHeadersTest, FixupStaleDateWithExpires) {
+  const GoogleString headers = StrCat(
+      "HTTP/1.1 200 OK\r\n"
+      "Date:    ", start_time_string_, "\r\n"
+      "Expires: ", start_time_plus_5_minutes_string_, "\r\n"
+      "Content-Type: text/html; charset=UTF-8\r\n"
+      "\r\n");
+  response_headers_.Clear();
+  ParseHeaders(headers);
+  response_headers_.ComputeCaching();
+
+  // Setting clock *forward* by 1 second *will* affect the date, and
+  // also push the Expires along with it.
+  int64 orig_date = response_headers_.date_ms();
+  ASSERT_EQ(orig_date + 5 * Timer::kMinuteMs,
+            response_headers_.CacheExpirationTimeMs());
+  int64 new_date = orig_date + 1000;
+
+  response_headers_.FixDateHeaders(new_date);
+  EXPECT_EQ(new_date, response_headers_.date_ms());
+  EXPECT_TRUE(response_headers_.Lookup1(HttpAttributes::kExpires) != NULL);
+  EXPECT_EQ(new_date + 5 * Timer::kMinuteMs,
+            response_headers_.CacheExpirationTimeMs());
+}
+
+TEST_F(ResponseHeadersTest, FixupStaleDateWithMaxAge) {
+  const GoogleString headers = StrCat(
+      "HTTP/1.1 200 OK\r\n"
+      "Date:    ", start_time_string_, "\r\n"
+      "Cache-Control: max-age=300\r\n"
+      "Content-Type: text/html; charset=UTF-8\r\n"
+      "\r\n");
+  response_headers_.Clear();
+  ParseHeaders(headers);
+  response_headers_.ComputeCaching();
+
+  // Setting clock *forward* by 1 second *will* affect the date, and
+  // also push the Expires along with it.
+  int64 orig_date = response_headers_.date_ms();
+  ASSERT_EQ(orig_date + 5 * Timer::kMinuteMs,
+            response_headers_.CacheExpirationTimeMs());
+  ASSERT_TRUE(response_headers_.Lookup1(HttpAttributes::kExpires) == NULL);
+  int64 new_date = orig_date + 1000;
+
+  response_headers_.FixDateHeaders(new_date);
+  EXPECT_EQ(new_date, response_headers_.date_ms());
+
+  // Still no Expires entry, but the cache expiration time is still 5 minutes.
+  EXPECT_TRUE(response_headers_.Lookup1(HttpAttributes::kExpires) == NULL);
+  EXPECT_EQ(new_date + 5 * Timer::kMinuteMs,
+            response_headers_.CacheExpirationTimeMs());
+}
+
+TEST_F(ResponseHeadersTest, MissingDateRemoveExpires) {
+  const GoogleString headers = StrCat(
+      "HTTP/1.1 200 OK\r\n"
+      "Expires: ", start_time_plus_5_minutes_string_, "\r\n"
+      "Content-Type: text/html; charset=UTF-8\r\n"
+      "\r\n");
+  response_headers_.Clear();
+  ParseHeaders(headers);
+  response_headers_.ComputeCaching();
+
+  EXPECT_TRUE(response_headers_.Lookup1(HttpAttributes::kDate) == NULL);
+  EXPECT_TRUE(response_headers_.Lookup1(HttpAttributes::kExpires) != NULL);
+  response_headers_.FixDateHeaders(MockTimer::kApr_5_2010_ms);
+  EXPECT_TRUE(response_headers_.Lookup1(HttpAttributes::kDate) != NULL);
+  EXPECT_TRUE(response_headers_.Lookup1(HttpAttributes::kExpires) == NULL);
+}
+
 
 }  // namespace net_instaweb

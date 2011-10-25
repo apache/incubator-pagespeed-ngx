@@ -16,7 +16,7 @@
 
 #include "net/instaweb/http/public/response_headers.h"
 
-#include <cstdio>  // for fprintf, stderr, snprintf
+#include <cstdio>     // for fprintf, stderr, snprintf
 #include <map>
 
 #include "base/logging.h"
@@ -37,6 +37,12 @@
 
 namespace net_instaweb {
 
+// Specifies the maximum amount of forward drift we'll allow for a Date
+// timestamp.  E.g. if it's 3:00:00 and the Date header says its 3:01:00,
+// we'll leave the date-header in the future.  But if it's 3:03:01 then
+// we'll set it back to 3:00:00 exactly in FixDateHeaders.
+const int64 kMaxAllowedDateDriftMs = 3L * net_instaweb::Timer::kMinuteMs;
+
 class MessageHandler;
 
 const int64 ResponseHeaders::kImplicitCacheTtlMs;
@@ -48,6 +54,88 @@ ResponseHeaders::ResponseHeaders() {
 
 ResponseHeaders::~ResponseHeaders() {
   Clear();
+}
+
+namespace {
+
+void ApplyTimeDelta(const char* attr, int64 delta_ms,
+                    ResponseHeaders* headers) {
+  int64 time_ms;
+  if (headers->ParseDateHeader(attr, &time_ms)) {
+    int64 adjusted_time_ms = time_ms + delta_ms;
+    if (adjusted_time_ms > 0) {
+      headers->SetTimeHeader(attr, time_ms + delta_ms);
+    }
+  }
+}
+
+}  // namespace
+
+void ResponseHeaders::FixDateHeaders(int64 now_ms) {
+  int64 date_ms = 0;
+  bool has_date = true;
+
+  if (cache_fields_dirty_) {
+    // We don't want to call ComputeCaching() right here because it's expensive,
+    // and if we decide we need to alter the Date header then we'll have to
+    // recompute Caching later anyway.
+    has_date = ParseDateHeader(HttpAttributes::kDate, &date_ms);
+  } else if (proto_->has_date_ms()) {
+    date_ms = proto_->date_ms();
+  } else {
+    has_date = false;
+  }
+
+  // If the Date is missing, set one.  If the Date is present but is older
+  // than now_ms, correct it.  Also correct it if it's more than a fixed
+  // amount in the future.
+  if (!has_date || (date_ms < now_ms) ||
+      (date_ms > now_ms + kMaxAllowedDateDriftMs)) {
+    bool recompute_caching = !cache_fields_dirty_;
+    SetDate(now_ms);
+    if (has_date) {
+      int64 delta_ms = now_ms - date_ms;
+      ApplyTimeDelta(HttpAttributes::kExpires, delta_ms, this);
+
+      // TODO(jmarantz): This code was refactored from http_dump_url_fetcher.cc,
+      // which was adjusting the LastModified header when the date was fixed.
+      // I wrote that code originally and can't think now why that would make
+      // sense, so I'm commenting this out for now.  If this turns out to be
+      // a problem replaying old Slurps then this code should be re-instated,
+      // possibly based on a flag passed in.
+      //     ApplyTimeDelta(HttpAttributes::kLastModified, delta_ms, this);
+    } else {
+      SetDate(now_ms);
+      // TODO(jmarantz): see above.
+      //     SetTimeHeader(HttpAttributes::kLastModified, now_ms);
+
+      // If there was no Date header, there cannot possibly be any rationality
+      // to an Expires header.  So remove it for now.  We can always add it in
+      // if Page Speed computed a TTL.
+      RemoveAll(HttpAttributes::kExpires);
+
+      // If Expires was previously set, but there was no date, then
+      // try to compute it from the TTL & the current time.  If there
+      // was no TTL then we should just remove the Expires headers.
+      int64 expires_ms;
+      if (ParseDateHeader(HttpAttributes::kExpires, &expires_ms)) {
+        ComputeCaching();
+
+        // Page Speed's caching libraries will now compute the expires
+        // for us based on the TTL and the date we just set, so we can
+        // set a corrected expires header.
+        if (proto_->has_expiration_time_ms()) {
+          SetTimeHeader(HttpAttributes::kExpires, proto_->expiration_time_ms());
+        }
+        cache_fields_dirty_ = false;
+        recompute_caching = false;
+      }
+    }
+
+    if (recompute_caching) {
+      ComputeCaching();
+    }
+  }
 }
 
 void ResponseHeaders::CopyFrom(const ResponseHeaders& other) {
@@ -343,6 +431,14 @@ void ResponseHeaders::ComputeCaching() {
   // to try again until some time has passed.
   // 304 Not Modified is not cacheable since as an intermediate server, we have
   // no context.
+  //
+  // Note, http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html has an
+  // algorithm for computing cache TTL that incorporates HTTP Age attributes
+  // and a clock-skew correction.  GetFreshnessLifetimeMillis does not take
+  // arguments that would allow it to correct for clock skew, so we may
+  // have to compute that out-of-band.  In fact, this method does not
+  // have enough data either: we need to keep track of the time when the
+  // request is made.
   bool status_cacheable =
       ((status_code() == HttpStatus::kRememberNotCacheableStatusCode) ||
        (status_code() == HttpStatus::kRememberFetchFailedStatusCode) ||
