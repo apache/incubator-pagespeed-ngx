@@ -27,9 +27,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -40,6 +38,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -116,7 +115,11 @@ bool CacheExtender::ShouldRewriteResource(
     // This also includes the case where a previous filter rewrote this.
     return true;
   }
+  UrlNamer* url_namer = driver_->resource_manager()->url_namer();
   GoogleUrl origin_gurl(url);
+  if (url_namer->ProxyMode()) {
+    return !url_namer->IsProxyEncoded(origin_gurl);
+  }
   StringPiece origin = origin_gurl.Origin();
   const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
   return lawyer->WillDomainChange(origin);
@@ -203,23 +206,23 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
 
   StringPiece contents(input_resource->contents());
   GoogleString transformed_contents;
+  StringWriter writer(&transformed_contents);
   GoogleUrl input_resource_gurl(input_resource->url());
-  StringPiece input_dir = input_resource_gurl.AllExceptLeaf();
-  const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
-  if ((input_resource->type() == &kContentTypeCss) &&
-      (lawyer->WillDomainChange(input_resource_gurl.Origin()) ||
-       (input_dir != output_resource->resolved_base()))) {
-    GoogleUrl output_base(output_resource->resolved_base());
-    if (output_base.is_valid()) {
-      // TODO(jmarantz): find a mechanism to write this directly into
-      // the HTTPValue so we can reduce the number of times that we
-      // copy entire resources.
-      StringWriter writer(&transformed_contents);
-      RewriteDomainTransformer transformer(&input_resource_gurl, &output_base,
-                                           driver_);
-      CssTagScanner::TransformUrls(contents, &writer, &transformer,
-                                   message_handler);
-      contents = transformed_contents;
+  if ((output_resource->type() == &kContentTypeCss)) {
+    switch (driver_->ResolveCssUrls(input_resource_gurl,
+                                    output_resource->resolved_base(),
+                                    contents, &writer, message_handler)) {
+      case RewriteDriver::kNoResolutionNeeded:
+        break;
+      case RewriteDriver::kWriteFailed:
+        LOG(DFATAL) << "Write Failed while resolving CSS";
+        break;
+      case RewriteDriver::kSuccess:
+        // TODO(jmarantz): find a mechanism to write this directly into
+        // the HTTPValue so we can reduce the number of times that we
+        // copy entire resources.
+        contents = transformed_contents;
+        break;
     }
   }
 

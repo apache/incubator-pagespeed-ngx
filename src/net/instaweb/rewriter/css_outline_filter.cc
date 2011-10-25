@@ -22,7 +22,6 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -161,18 +160,20 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       if (output_resource.get() != NULL) {
         // Rewrite URLs in content.
         GoogleString transformed_content;
-        StringPiece base_dir = base_url().AllExceptLeaf();
+        StringWriter writer(&transformed_content);
         bool content_valid = true;
-        const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
-        if (lawyer->WillDomainChange(base_url().Origin()) ||
-            base_dir != output_resource->resolved_base()) {
-          GoogleUrl output_base(output_resource->resolved_base());
-          StringWriter writer(&transformed_content);
-          RewriteDomainTransformer transformer(&base_url(), &output_base,
-                                               driver_);
-          content_valid = CssTagScanner::TransformUrls(
-              content, &writer, &transformer, handler);
-          content = transformed_content;
+        switch (driver_->ResolveCssUrls(base_url(),
+                                        output_resource->resolved_base(),
+                                        content,
+                                        &writer, handler)) {
+          case RewriteDriver::kNoResolutionNeeded:
+            break;
+          case RewriteDriver::kWriteFailed:
+            content_valid = false;
+            break;
+          case RewriteDriver::kSuccess:
+            content = transformed_content;
+            break;
         }
         if (content_valid &&
             WriteResource(content, output_resource.get(), handler)) {

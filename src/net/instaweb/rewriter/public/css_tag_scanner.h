@@ -88,6 +88,8 @@ class RewriteDomainTransformer : public CssTagScanner::Transformer {
 
   virtual bool Transform(const StringPiece& in, GoogleString* out);
 
+  void set_trim_urls(bool x) { trim_urls_ = x; }
+
  private:
   const GoogleUrl* old_base_url_;
   const GoogleUrl* new_base_url_;
@@ -95,6 +97,7 @@ class RewriteDomainTransformer : public CssTagScanner::Transformer {
   DomainRewriteFilter* domain_rewriter_;
   UrlLeftTrimFilter* url_trim_filter_;
   MessageHandler* handler_;
+  bool trim_urls_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDomainTransformer);
 };

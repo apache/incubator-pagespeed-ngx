@@ -151,23 +151,19 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
   GoogleString rewritten_contents;
   StringWriter writer(&rewritten_contents);
   GoogleUrl resource_url(resource->url());
-  StringPiece input_dir = resource_url.AllExceptLeaf();
-  StringPiece base_dir = base_url.AllExceptLeaf();
-  bool written;
-  const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
-  if (lawyer->WillDomainChange(resource_url.Origin()) ||
-      input_dir != base_dir) {
-    RewriteDomainTransformer transformer(&resource_url, &base_url, driver_);
-    written = CssTagScanner::TransformUrls(contents, &writer, &transformer,
-                                           message_handler);
-  } else {
-    // We don't need to absolutify URLs if input directory is same as base.
-    written = writer.Write(contents, message_handler);
+  switch (driver_->ResolveCssUrls(resource_url, base_url.Spec(), contents,
+                                  &writer, message_handler)) {
+    case RewriteDriver::kNoResolutionNeeded:
+      // We don't need to absolutify URLs if input directory is same as base.
+      if (!writer.Write(contents, message_handler)) {
+        return;
+      }
+      break;
+    case RewriteDriver::kWriteFailed:
+      return;
+    case RewriteDriver::kSuccess:
+      break;
   }
-  if (!written) {
-    return;
-  }
-
   // Inline the CSS.
   HtmlElement* style_element =
       driver_->NewElement(element->parent(), HtmlName::kStyle);

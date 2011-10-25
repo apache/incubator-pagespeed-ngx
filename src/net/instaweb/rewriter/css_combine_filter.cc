@@ -33,7 +33,6 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
-#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -44,7 +43,6 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/proto_util.h"
@@ -478,21 +476,19 @@ bool CssCombineFilter::CssCombiner::WritePiece(
   if (resources().size() > 0 && resources()[0].get() != input) {
     StripUTF8BOM(&contents);
   }
-  const DomainLawyer* lawyer = rewrite_driver_->options()->domain_lawyer();
-  if (lawyer->WillDomainChange(input_url.Origin()) ||
-      input_dir != combination->resolved_base()) {
-    // If they are different directories, we need to absolutify.
-    // Note: This is not actually the output URL, but the directory of that
-    // URL. This should be fine for our uses.
-    GoogleUrl output_base(combination->resolved_base());
-    RewriteDomainTransformer transformer(&input_url, &output_base,
-                                         rewrite_driver_);
-    return css_tag_scanner_->TransformUrls(contents, writer, &transformer,
-                                           handler);
-  } else {
-    // We don't need to absolutify URLs if input directory is same as output.
-    return writer->Write(contents, handler);
+  bool ret = false;
+  switch (rewrite_driver_->ResolveCssUrls(
+      input_url, combination->resolved_base(), contents, writer, handler)) {
+    case RewriteDriver::kNoResolutionNeeded:
+      ret = writer->Write(contents, handler);
+      break;
+    case RewriteDriver::kWriteFailed:
+      break;
+    case RewriteDriver::kSuccess:
+      ret = true;
+      break;
   }
+  return ret;
 }
 
 bool CssCombineFilter::Fetch(const OutputResourcePtr& resource,

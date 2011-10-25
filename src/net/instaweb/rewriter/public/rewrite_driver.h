@@ -75,6 +75,13 @@ class Writer;
 // it no longer contains much logic about resources.
 class RewriteDriver : public HtmlParse {
  public:
+  // Status return-code for ResolveCssUrls.
+  enum CssResolutionStatus {
+    kWriteFailed,
+    kNoResolutionNeeded,
+    kSuccess
+  };
+
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
   static const char kCacheExtenderId[];
@@ -574,6 +581,19 @@ class RewriteDriver : public HtmlParse {
   // of sub-resources in CSS.
   DomainRewriteFilter* domain_rewriter() { return domain_rewriter_.get(); }
   UrlLeftTrimFilter* url_trim_filter() { return url_trim_filter_.get(); }
+
+  // Rewrites CSS content to absolutify any relative embedded URLs, streaming
+  // the results to the writer.  Returns 'false' if the writer returns false
+  // or if the content was not rewritten because the domains of the gurl
+  // and resolved_base match.
+  //
+  // input_css_base contains the path where the CSS text came from.
+  // output_css_base contains the path where the CSS will be written.
+  CssResolutionStatus ResolveCssUrls(const GoogleUrl& input_css_base,
+                                     const StringPiece& output_css_base,
+                                     const StringPiece& contents,
+                                     Writer* writer,
+                                     MessageHandler* handler);
 
  private:
   friend class ResourceManagerTestBase;

@@ -25,8 +25,6 @@
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
@@ -189,7 +187,8 @@ RewriteDomainTransformer::RewriteDomainTransformer(
     : old_base_url_(old_base_url), new_base_url_(new_base_url),
       domain_rewriter_(driver->domain_rewriter()),
       url_trim_filter_(driver->url_trim_filter()),
-      handler_(driver->message_handler()) {
+      handler_(driver->message_handler()),
+      trim_urls_(true) {
 }
 
 RewriteDomainTransformer::~RewriteDomainTransformer() {
@@ -206,7 +205,8 @@ bool RewriteDomainTransformer::Transform(const StringPiece& in,
   // sharded resources against the final sharded domain of the CSS file.
   // Specifically, that final domain depends upon the precise text of that
   // we are altering here.
-  if (!url_trim_filter_->Trim(*new_base_url_, rewritten, out, handler_)) {
+  if (!trim_urls_ ||
+      !url_trim_filter_->Trim(*new_base_url_, rewritten, out, handler_)) {
     out->swap(rewritten);
   }
   return *out != in;

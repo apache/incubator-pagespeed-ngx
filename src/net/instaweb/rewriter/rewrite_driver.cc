@@ -46,6 +46,7 @@
 #include "net/instaweb/rewriter/public/css_inline_filter.h"
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
+#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/div_structure_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -1601,5 +1602,45 @@ bool OptionsAwareHTTPCacheCallback::IsCacheValid(
     const ResponseHeaders& headers) {
   return headers.IsDateLaterThan(cache_invalidation_timestamp_ms_);
 }
+
+RewriteDriver::CssResolutionStatus RewriteDriver::ResolveCssUrls(
+    const GoogleUrl& input_css_base,
+    const StringPiece& output_css_base,
+    const StringPiece& contents,
+    Writer* writer,
+    MessageHandler* handler) {
+  UrlNamer* url_namer = resource_manager_->url_namer();
+  bool proxy_mode = url_namer->ProxyMode();
+  const DomainLawyer* domain_lawyer = options()->domain_lawyer();
+  StringPiece input_dir = input_css_base.AllExceptLeaf();
+  if ((proxy_mode && !url_namer->IsProxyEncoded(input_css_base)) ||
+      (!proxy_mode &&
+       (domain_lawyer->WillDomainChange(input_css_base.Origin()) ||
+        (input_dir != output_css_base)))) {
+    // If they are different directories, we need to absolutify.
+    // Note: This is not actually the output URL, but the directory of that
+    // URL. This should be fine for our uses.
+    GoogleUrl output_base(output_css_base);
+    RewriteDomainTransformer transformer(&input_css_base, &output_base, this);
+    if (proxy_mode) {
+      // If URLs are being rewritten to a proxy domain, then trimming
+      // them based purely on the domain-lawyer mappings is going to
+      // relativize them so that they cannot be resolved properly in
+      // their intended context.
+      //
+      // TODO(jmarantz): Consider merging the url_namer with DomainLawyer
+      // so that DomainLawyer::WillDomainChange will be accurate.
+      transformer.set_trim_urls(false);
+    }
+    if (CssTagScanner::TransformUrls(contents, writer, &transformer,
+                                     handler)) {
+      return kSuccess;
+    } else {
+      return kWriteFailed;
+    }
+  }
+  return kNoResolutionNeeded;
+}
+
 
 }  // namespace net_instaweb

@@ -91,6 +91,14 @@ class UrlNamer {
                               bool* success,
                               Function* func, MessageHandler* handler);
 
+  // Determines whether the naming policy incorporates proxying resources
+  // using a central proxy domain.
+  virtual bool ProxyMode() const { return false; }
+
+  // Determines whether the specified URL has been mapped to that central
+  // proxy domain.
+  virtual bool IsProxyEncoded(const GoogleUrl& url) const { return false; }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(UrlNamer);
 };
