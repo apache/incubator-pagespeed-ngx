@@ -697,12 +697,21 @@ void RewriteContext::OutputCacheRevalidate(
 void RewriteContext::RepeatedSuccess(const RewriteContext* primary) {
   CHECK(outputs_.empty());
   CHECK_EQ(num_slots(), primary->num_slots());
+  CHECK_EQ(primary->outputs_.size(),
+           static_cast<size_t>(primary->num_output_partitions()));
   // Copy over partition tables, outputs, and render_slot_ (as well as
   // was_optimized) information --- everything we can set in normal
   // OutputCacheDone.
   partitions_->CopyFrom(*primary->partitions_.get());
   for (int i = 0, n = primary->outputs_.size(); i < n; ++i) {
     outputs_.push_back(primary->outputs_[i]);
+    if ((outputs_[i].get() != NULL) && !outputs_[i]->loaded()) {
+      // We cannot safely alias resources that are not loaded, as the loading
+      // process is threaded, and would therefore race. Therefore, recreate
+      // another copy matching the cache data.
+      CreateOutputResourceForCachedOutput(
+          &partitions_->partition(i), &outputs_[i]);
+    }
   }
 
   for (int i = 0, n = primary->num_slots(); i < n; ++i) {
@@ -750,35 +759,35 @@ void RewriteContext::FetchInputs() {
     if (!(resource->loaded() && resource->ContentsValid())) {
       ++outstanding_fetches_;
 
-      // In case of fetches, we may need to handle rewrites nested inside
-      // each other; so we want to pass them on to other rewrite tasks
-      // rather than try to fetch them over HTTP.
+      // Sometimes we can end up needing pagespeed resources as inputs.
+      // This can happen because we are doing a fetch of something produced
+      // by chained rewrites, or when handling a 2nd (or further) step of a
+      // chain during an HTML rewrite if we don't have the bits inside the
+      // resource object (e.g. if we got a metadata hit on the previous step).
       bool handled_internally = false;
-      if (fetch_.get() != NULL) {
-        GoogleUrl resource_gurl(resource->url());
-        if (Manager()->IsPagespeedResource(resource_gurl)) {
-          RewriteDriver* nested_driver = Driver()->Clone();
-          RewriteFilter* filter = NULL;
-          // We grab the filter now (and not just call DecodeOutputResource
-          // instead of IsPagespeedResource) so we get a filter that's bound
-          // to the new RewriteDriver.
-          OutputResourcePtr output_resource =
-              nested_driver->DecodeOutputResource(resource_gurl, &filter);
-          if (output_resource.get() != NULL) {
-            handled_internally = true;
-            slot->SetResource(ResourcePtr(output_resource));
-            ResourceReconstructCallback* callback =
-                new ResourceReconstructCallback(
-                    nested_driver, this, output_resource, i);
-            nested_driver->FetchOutputResource(
-                output_resource, filter,
-                callback->request_headers(),
-                callback->response_headers(),
-                callback->writer(),
-                callback);
-          } else {
-            Manager()->ReleaseRewriteDriver(nested_driver);
-          }
+      GoogleUrl resource_gurl(resource->url());
+      if (Manager()->IsPagespeedResource(resource_gurl)) {
+        RewriteDriver* nested_driver = Driver()->Clone();
+        RewriteFilter* filter = NULL;
+        // We grab the filter now (and not just call DecodeOutputResource
+        // earlier instead of IsPagespeedResource) so we get a filter that's
+        // bound to the new RewriteDriver.
+        OutputResourcePtr output_resource =
+            nested_driver->DecodeOutputResource(resource_gurl, &filter);
+        if (output_resource.get() != NULL) {
+          handled_internally = true;
+          slot->SetResource(ResourcePtr(output_resource));
+          ResourceReconstructCallback* callback =
+              new ResourceReconstructCallback(
+                  nested_driver, this, output_resource, i);
+          nested_driver->FetchOutputResource(
+              output_resource, filter,
+              callback->request_headers(),
+              callback->response_headers(),
+              callback->writer(),
+              callback);
+        } else {
+          Manager()->ReleaseRewriteDriver(nested_driver);
         }
       }
 

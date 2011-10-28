@@ -717,8 +717,9 @@ TEST_P(CssCombineFilterTest, CombineCssBaseUrlOutOfOrder) {
       "  \n"
       "</head>\n"));
   EXPECT_EQ(2UL, css_urls.size());
-  EXPECT_EQ(Encode("http://other_domain.test/", "cc", "0",
-                   "foo/b.css+c.css", "css"),
+  EXPECT_EQ(EncodeWithBase("http://other_domain.test/",
+                           "http://other_domain.test/", "cc", "0",
+                           "foo/b.css+c.css", "css"),
             css_urls[1]);
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
   EXPECT_TRUE(GoogleUrl(css_urls[1]).is_valid());
@@ -743,8 +744,9 @@ TEST_P(CssCombineFilterTest, CombineCssAbsoluteBaseUrlOutOfOrder) {
       "  \n"
       "</head>\n"));
   EXPECT_EQ(1UL, css_urls.size());
-  EXPECT_EQ(Encode("http://other_domain.test/", "cc", "0",
-                   "foo/a.css+b.css", "css"),
+  EXPECT_EQ(EncodeWithBase("http://other_domain.test/",
+                           "http://other_domain.test/", "cc", "0",
+                           "foo/a.css+b.css", "css"),
             css_urls[0]);
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
   EXPECT_TRUE(GoogleUrl(css_urls[0]).is_valid());
@@ -770,8 +772,9 @@ TEST_P(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
       "</head>\n"));
   EXPECT_EQ(1UL, css_urls.size());
   EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
-  EXPECT_EQ(Encode("http://other_domain.test/", "cc", "0",
-                   "foo/a.css+b.css", "css"),
+  EXPECT_EQ(EncodeWithBase("http://other_domain.test/",
+                           "http://other_domain.test/", "cc", "0",
+                           "foo/a.css+b.css", "css"),
             css_urls[0]);
   EXPECT_TRUE(GoogleUrl(css_urls[0]).is_valid());
 }
@@ -830,13 +833,14 @@ TEST_P(CssCombineFilterTest, CombineCssManyFiles) {
   StringVector segments;
   ASSERT_TRUE(css_out[0]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
-  EXPECT_EQ(StrCat(kTestDomain, "styles/"), base);
+  GoogleUrl dummy_encoded(Encode(kTestDomain, "x", "0", "styles/x", "x"));
+  EXPECT_EQ(dummy_encoded.AllExceptLeaf(), base);
   EXPECT_EQ(kNumCssInCombination, segments.size());
 
   segments.clear();
   ASSERT_TRUE(css_out[1]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
-  EXPECT_EQ(StrCat(kTestDomain, "styles/"), base);
+  EXPECT_EQ(dummy_encoded.AllExceptLeaf(), base);
   EXPECT_EQ(kNumCssLinks - kNumCssInCombination, segments.size());
 }
 
@@ -862,7 +866,8 @@ TEST_P(CssCombineFilterTest, CombineCssManyFilesOneOrphan) {
   StringVector segments;
   ASSERT_TRUE(css_out[0]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
-  EXPECT_EQ(StrCat(kTestDomain, "styles/"), base);
+  GoogleUrl dummy_encoded(Encode(kTestDomain, "x", "0", "styles/x", "x"));
+  EXPECT_EQ(dummy_encoded.AllExceptLeaf(), base);
   EXPECT_EQ(kNumCssInCombination, segments.size());
   EXPECT_EQ("styles/last_one.css", css_out[1]->url_);
 }
@@ -988,7 +993,9 @@ TEST_P(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
   GoogleUrl gurl(css_out[0]->url_);
   ASSERT_TRUE(gurl.is_valid());
-  EXPECT_EQ("/" + long_name + "/", gurl.PathSansLeaf());
+  GoogleUrl dummy_encoded(Encode(kTestDomain, "x", "0",
+                                 StrCat(long_name, "/x"), "x"));
+  EXPECT_EQ(dummy_encoded.PathSansLeaf(), gurl.PathSansLeaf());
   ResourceNamer namer;
   ASSERT_TRUE(namer.Decode(gurl.LeafWithQuery()));
   EXPECT_EQ("a.css+b.css", namer.name());

@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 
-#include <cstddef>                     // for NULL
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/request_headers.h"

@@ -49,18 +49,26 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/resource_manager_testing_peer.h"
+#include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_writer.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/threadsafe_cache.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
 
@@ -77,6 +85,7 @@ const size_t kUrlPrefixLength = STATIC_STRLEN(kUrlPrefix);
 
 namespace net_instaweb {
 
+class SharedString;
 class Writer;
 
 class VerifyContentsCallback : public Resource::AsyncCallback {
@@ -150,9 +159,9 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
   // Asserts that the given url starts with an appropriate prefix;
   // then cuts off that prefix.
-  virtual void RemoveUrlPrefix(GoogleString* url) {
-    EXPECT_TRUE(StringPiece(*url).starts_with(kUrlPrefix));
-    url->erase(0, kUrlPrefixLength);
+  virtual void RemoveUrlPrefix(const GoogleString& prefix, GoogleString* url) {
+    EXPECT_TRUE(StringPiece(*url).starts_with(prefix));
+    url->erase(0, prefix.length());
   }
 
   OutputResourcePtr CreateOutputResourceForFetch(const StringPiece& url) {
@@ -193,7 +202,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     ASSERT_TRUE(output.get() != NULL);
     // Check name_key against url_prefix/fp.name
     GoogleString name_key = output->name_key();
-    RemoveUrlPrefix(&name_key);
+    RemoveUrlPrefix(kUrlPrefix, &name_key);
     EXPECT_EQ(output->full_name().EncodeIdName(), name_key);
     // Make sure the resource hasn't already been created (and lock it for
     // creation). We do need to give it a hash for fetching to do anything.
@@ -261,9 +270,11 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     callback.AssertCalled();
 
     // Grab the URL and make sure we correctly decode its components
+    GoogleUrl encoded_prefix(
+        EncodeWithBase(kUrlPrefix, kUrlPrefix, "x", "0", "x", "x"));
     GoogleString url = output2->url();
     EXPECT_LT(0, url.length());
-    RemoveUrlPrefix(&url);
+    RemoveUrlPrefix(encoded_prefix.AllExceptLeaf().as_string(), &url);
     ResourceNamer full_name;
     ASSERT_TRUE(full_name.Decode(url));
     EXPECT_EQ(content_type, full_name.ContentTypeFromExt());
@@ -473,8 +484,9 @@ TEST_F(ResourceManagerTest, TestNamed) {
 }
 
 TEST_F(ResourceManagerTest, TestOutputInputUrl) {
-  GoogleString url = Encode("http://example.com/dir/123/",
-                            RewriteDriver::kJavascriptMinId, "0", "orig", "js");
+  GoogleString url = Encode("http://example.com/",
+                            RewriteDriver::kJavascriptMinId,
+                            "0", "dir/123/orig", "js");
   OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   RewriteFilter* filter = rewrite_driver()->FindFilter(
@@ -559,8 +571,8 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
 
 // DecodeOutputResource should drop query
 TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
-  GoogleString url = Encode("http://example.com/dir/123/",
-                            "jm", "0", "orig", "js");
+  GoogleString url = Encode("http://example.com/",
+                            "jm", "0", "dir/123/orig", "js");
   RewriteFilter* dummy;
   GoogleUrl gurl(StrCat(url, "?query"));
   OutputResourcePtr output_resource(
@@ -949,8 +961,8 @@ class ResourceManagerShardedTest : public ResourceManagerTest {
 };
 
 TEST_F(ResourceManagerShardedTest, TestNamed) {
-  GoogleString url = Encode("http://example.com/dir/123/",
-                            "jm", "0", "orig", "js");
+  GoogleString url = Encode("http://example.com/",
+                            "jm", "0", "dir/123/orig", "js");
   bool use_async_flow = false;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
@@ -1071,6 +1083,167 @@ TEST_F(ResourceManagerTest, LoadFromFileReadAsync) {
   VerifyContentsCallback callback2(resource, kContents);
   rewrite_driver()->ReadAsync(&callback2, message_handler());
   callback2.AssertCalled();
+}
+
+namespace {
+
+// This is an adapter cache class that distributes cache operations
+// on multiple threads, in order to help test thread safety with
+// multi-threaded caches.
+class ThreadAlternatingCache : public CacheInterface {
+ public:
+  ThreadAlternatingCache(Scheduler* scheduler,
+                         CacheInterface* backend,
+                         QueuedWorkerPool* pool)
+      : scheduler_(scheduler), backend_(backend), pool_(pool) {
+    sequence1_ = pool->NewSequence();
+    sequence2_ = pool->NewSequence();
+    scheduler_->RegisterWorker(sequence1_);
+    scheduler_->RegisterWorker(sequence2_);
+  }
+
+  virtual ~ThreadAlternatingCache() {
+    scheduler_->UnregisterWorker(sequence1_);
+    scheduler_->UnregisterWorker(sequence2_);
+    pool_->ShutDown();
+  }
+
+  virtual void Get(const GoogleString& key, Callback* callback) {
+    int32 pos = position_.increment(1);
+    QueuedWorkerPool::Sequence* site = (pos & 1) ? sequence1_ : sequence2_;
+    GoogleString key_copy(key);
+    site->Add(MakeFunction(
+        this, &ThreadAlternatingCache::GetImpl, key_copy, callback));
+  }
+
+  virtual void Put(const GoogleString& key, SharedString* value) {
+    backend_->Put(key, value);
+  }
+
+  virtual void Delete(const GoogleString& key) {
+    backend_->Delete(key);
+  }
+
+ private:
+  void GetImpl(GoogleString key, Callback* callback) {
+    backend_->Get(key, callback);
+  }
+
+  AtomicInt32 position_;
+  Scheduler* scheduler_;
+  scoped_ptr<CacheInterface> backend_;
+  scoped_ptr<QueuedWorkerPool> pool_;
+  QueuedWorkerPool::Sequence* sequence1_;
+  QueuedWorkerPool::Sequence* sequence2_;
+
+  DISALLOW_COPY_AND_ASSIGN(ThreadAlternatingCache);
+};
+
+// Hooks up an instances of a ThreadAlternatingCache as the http cache
+// on resource_manager()
+class ResourceManagerTestThreadedCache : public ResourceManagerTest {
+ public:
+  ResourceManagerTestThreadedCache()
+      : threads_(ThreadSystem::CreateThreadSystem()),
+        cache_backend_(new LRUCache(100000)),
+        cache_(new ThreadAlternatingCache(
+            mock_scheduler(),
+            new ThreadsafeCache(cache_backend_, threads_->NewMutex()),
+            new QueuedWorkerPool(2, threads_.get()))),
+        http_cache_(new HTTPCache(cache_.get(), mock_timer(), statistics())) {
+  }
+
+  virtual void SetUp() {
+    ResourceManagerTest::SetUp();
+    resource_manager()->set_http_cache(http_cache_.get());
+  }
+
+  void ClearHTTPCache() { cache_backend_->Clear(); }
+
+  ThreadSystem* threads() { return threads_.get(); }
+
+ private:
+  scoped_ptr<ThreadSystem> threads_;
+  LRUCache* cache_backend_;
+  scoped_ptr<CacheInterface> cache_;
+  scoped_ptr<HTTPCache> http_cache_;
+};
+
+} // namespace
+
+TEST_F(ResourceManagerTestThreadedCache, RepeatedFetches) {
+  // Test of a crash scenario where we were aliasing resources between
+  // many slots due to repeated rewrite handling, and then doing fetches on
+  // all copies, which is not safe as the cache might be threaded (as it is in
+  // this case), as can be the fetches.
+  options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+  options()->EnableFilter(RewriteOptions::kCombineJavascript);
+  rewrite_driver()->AddFilters();
+  SetupWaitFetcher();
+
+  GoogleString a_url = AbsolutifyUrl("a.js");
+  GoogleString b_url = AbsolutifyUrl("b.js");
+
+  const char kScriptA[] = "<script src=a.js></script>";
+  const char kScriptB[] = "<script src=b.js></script>";
+
+  // This used to reproduce a failure in a single iteration virtually all the
+  // time, but we do ten runs for extra caution.
+  for (int run = 0; run < 10; ++run) {
+    lru_cache()->Clear();
+    ClearHTTPCache();
+    InitResponseHeaders(a_url, kContentTypeJavascript, "var a = 42  ;", 1000);
+    InitResponseHeaders(b_url, kContentTypeJavascript, "var b = 42  ;", 1);
+
+    // First rewrite try --- this in particular caches the minifications of
+    // A and B.
+    ValidateNoChanges(
+        "par",
+        StrCat(kScriptA, kScriptA, kScriptB, kScriptA, kScriptA));
+    CallFetcherCallbacks();
+
+    // Make sure all cache ops finish.
+    mock_scheduler()->AwaitQuiescence();
+
+    // At this point, we advance the clock to force invalidation of B, and
+    // hence the combination; while the minified version of A is still OK.
+    // Further, make sure that B will simply not be available, so we will not
+    // include it in combinations here and below.
+    mock_timer()->AdvanceMs(2 * Timer::kSecondMs);
+    SetFetchResponse404(b_url);
+
+    // Here we will be rewriting the combination with its input
+    // coming in from cached previous rewrites, which have repeats.
+    GoogleString minified_a(
+        StrCat("<script src=", Encode(kTestDomain, "jm", "0", "a.js", "js"),
+               "></script>"));
+    ValidateExpected(
+        "par",
+        StrCat(kScriptA, kScriptA, kScriptB, kScriptA, kScriptA),
+        StrCat(minified_a, minified_a, kScriptB, minified_a, minified_a));
+    CallFetcherCallbacks();
+
+    // Make sure all cache ops finish.
+    mock_scheduler()->AwaitQuiescence();
+
+    // Now make sure that the last rewrite in the chain (the combiner)
+    // produces the expected output (suggesting that its inputs are at least
+    // somewhat sane).
+    GoogleString minified_a_leaf(Encode("", "jm", "0", "a.js", "js"));
+    GoogleString combination(
+      StrCat("<script src=\"",
+             Encode(kTestDomain, "jc", "0",
+                    StrCat(minified_a_leaf, "+", minified_a_leaf), "js"),
+             "\"></script>"));
+    const char kEval[] = "<script>eval(mod_pagespeed_0);</script>";
+    ValidateExpected(
+        "par",
+        StrCat(kScriptA, kScriptA, kScriptB, kScriptA, kScriptA),
+        StrCat(combination, kEval, kEval, kScriptB, combination, kEval, kEval));
+
+    // Make sure all cache ops finish, so we can clear them next time.
+    mock_scheduler()->AwaitQuiescence();
+  }
 }
 
 }  // namespace net_instaweb

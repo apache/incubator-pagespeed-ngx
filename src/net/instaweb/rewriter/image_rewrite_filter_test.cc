@@ -16,8 +16,6 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include <cstddef>
-
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -74,7 +72,9 @@ class ImageRewriteTest : public ResourceManagerTestBase,
     rewrite_driver()->AddFilters();
 
     // URLs and content for HTML document and resources.
-    const char domain[] = "http://rewrite_image.test/";
+    const GoogleUrl domain(EncodeWithBase("http://rewrite_image.test/",
+                                          "http://rewrite_image.test/",
+                                          "x", "0", "x", "x"));
     const char html_url[] = "http://rewrite_image.test/RewriteImage.html";
     const char image_url[] = "http://rewrite_image.test/Puzzle.jpg";
 
@@ -90,17 +90,15 @@ class ImageRewriteTest : public ResourceManagerTestBase,
     CollectImgSrcs("RewriteImage/collect_sources", output_buffer_, &img_srcs);
     // output_buffer_ should have exactly one image file (Puzzle.jpg).
     EXPECT_EQ(1UL, img_srcs.size());
-    const GoogleString& src_string = img_srcs[0];
     // Make sure the next two checks won't abort().
-    ASSERT_LT(strlen(domain) + 4, src_string.size());
-    EXPECT_EQ(domain, src_string.substr(0, strlen(domain)));
-    const char* extension = content_type.file_extension();
-    size_t extension_size = strlen(extension);
-    EXPECT_EQ(extension, src_string.substr(src_string.size() - extension_size,
-                                           extension_size));
+    EXPECT_LT(domain.AllExceptLeaf().size() + 4, img_srcs[0].size());
+    const GoogleUrl img_gurl(img_srcs[0]);
+    EXPECT_TRUE(img_gurl.is_valid());
+    EXPECT_EQ(domain.AllExceptLeaf(), img_gurl.AllExceptLeaf());
+    EXPECT_TRUE(img_gurl.LeafSansQuery().ends_with(
+        content_type.file_extension()));
 
-    GoogleString rewritten_data;
-
+    const GoogleString& src_string = img_srcs[0];
     const GoogleString expected_output =
         StrCat("<head/><body><", tag_string, " src=\"", src_string,
                "\" width=\"1023\" height=\"766\"/></body>");
@@ -500,25 +498,24 @@ TEST_P(ImageRewriteTest, RespectsBaseUrl) {
 
   GoogleUrl new_png_gurl(new_png_url);
   EXPECT_TRUE(new_png_gurl.is_valid());
-  if (new_png_gurl.is_valid()) {
-    // Will fail otherwise.
-    EXPECT_EQ("other_domain.test", new_png_gurl.Host());
-    EXPECT_EQ("/foo/bar/", new_png_gurl.PathSansLeaf());
-  }
+  GoogleUrl encoded_png_gurl(EncodeWithBase("http://other_domain.test/",
+                                            "http://other_domain.test/",
+                                            "x", "0", "foo/bar/a.png", "x"));
+  EXPECT_EQ(encoded_png_gurl.AllExceptLeaf(), new_png_gurl.AllExceptLeaf());
 
   GoogleUrl new_jpeg_gurl(new_jpeg_url);
   EXPECT_TRUE(new_jpeg_gurl.is_valid());
-  if (new_jpeg_gurl.is_valid()) {
-    EXPECT_EQ("other_domain.test", new_jpeg_gurl.Host());
-    EXPECT_EQ("/baz/", new_jpeg_gurl.PathSansLeaf());
-  }
+  GoogleUrl encoded_jpeg_gurl(EncodeWithBase("http://other_domain.test/",
+                                             "http://other_domain.test/",
+                                             "x", "0", "baz/b.jpeg", "x"));
+  EXPECT_EQ(encoded_jpeg_gurl.AllExceptLeaf(), new_jpeg_gurl.AllExceptLeaf());
 
   GoogleUrl new_gif_gurl(new_gif_url);
   EXPECT_TRUE(new_gif_gurl.is_valid());
-  if (new_gif_gurl.is_valid()) {
-    EXPECT_EQ("other_domain.test", new_gif_gurl.Host());
-    EXPECT_EQ("/foo/", new_gif_gurl.PathSansLeaf());
-  }
+  GoogleUrl encoded_gif_gurl(EncodeWithBase("http://other_domain.test/",
+                                            "http://other_domain.test/",
+                                            "x", "0", "foo/c.gif", "x"));
+  EXPECT_EQ(encoded_gif_gurl.AllExceptLeaf(), new_gif_gurl.AllExceptLeaf());
 }
 
 TEST_P(ImageRewriteTest, FetchInvalid) {

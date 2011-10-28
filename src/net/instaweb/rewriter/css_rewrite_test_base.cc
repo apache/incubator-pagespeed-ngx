@@ -86,16 +86,15 @@ GoogleString CssRewriteTestBase::ExpectedRewrittenUrl(
     const StringPiece& filter_id,
     const ContentType& content_type) {
   GoogleUrl original_gurl(original_url);
-  StringPiece dir = original_gurl.AllExceptLeaf();
-  StringPiece leaf = original_gurl.LeafWithQuery();
-
-  ResourceNamer namer;
-  namer.set_id(filter_id);
-  namer.set_hash(hasher()->Hash(expected_contents));
-  namer.set_ext(content_type.file_extension() + 1);  // +1 to skip '.'
-  namer.set_name(leaf);
-
-  return StrCat(dir, namer.Encode());
+  StringPiece path_and_leaf(original_gurl.PathAndLeaf());
+  GoogleString origin = original_gurl.Origin().as_string();
+  // EncodeWithBase needs the origin to end with a slash and the path to
+  // not start with one.
+  EnsureEndsInSlash(&origin);
+  path_and_leaf.remove_prefix(1);
+  return EncodeWithBase(origin, origin, filter_id,
+                        hasher()->Hash(expected_contents), path_and_leaf,
+                        content_type.file_extension() + 1);  // +1 to skip '.'
 }
 
 
@@ -110,7 +109,8 @@ void CssRewriteTestBase::GetNamerForCss(const StringPiece& id,
 
 GoogleString CssRewriteTestBase::ExpectedUrlForNamer(
     const ResourceNamer& namer) {
-  return StrCat(kTestDomain, namer.Encode());
+  return Encode(kTestDomain, namer.id(), namer.hash(), namer.name(),
+                namer.ext());
 }
 
 GoogleString CssRewriteTestBase::ExpectedUrlForCss(

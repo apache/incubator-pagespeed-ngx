@@ -600,16 +600,20 @@ TEST_F(ResourceCombinerTest, TestFetchFailAsync2) {
 }
 
 TEST_F(ResourceCombinerTest, TestFetchFailSevere) {
-  // Test the case where we can't even create resources (wrong protocol)
-  GoogleString url = Encode("slwy://example.com/", kTestCombinerId, "0",
-                            "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
+  // Test the case where we can't even create resources (wrong protocol).
+  // Since the TestUrlNamer can only encode protocols http and https,
+  // force normal encoding here to allow the test to pass.
+  GoogleString url = EncodeNormal("slwy://example.com/", kTestCombinerId, "0",
+                                  "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
   GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchNormal));
 }
 
 TEST_F(ResourceCombinerTest, TestFetchFailSevereAsync) {
-  GoogleString url = Encode("slwy://example.com/", kTestCombinerId, "0",
-                            "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
+  // Since the TestUrlNamer can only encode protocols http and https,
+  // force normal encoding here to allow the test to pass.
+  GoogleString url = EncodeNormal("slwy://example.com/", kTestCombinerId, "0",
+                                  "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
   GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchAsync));
 }

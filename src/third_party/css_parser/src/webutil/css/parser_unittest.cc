@@ -1616,4 +1616,42 @@ TEST_F(ParserTest, Counter) {
             declarations->ToString());
 }
 
+TEST_F(ParserTest, ParseSingleImport) {
+  scoped_ptr<Parser> parser(new Parser(
+      "@IMPORT url(assets/style.css) screen,printer"));
+  scoped_ptr<Import> import(parser->ParseAsSingleImport());
+  EXPECT_TRUE(import.get() != NULL);
+  if (import.get() != NULL) {
+    EXPECT_EQ("assets/style.css", UnicodeTextToUTF8(import->link));
+  }
+
+  parser.reset(new Parser("\n\t@import \"mystyle.css\" all; \n"));
+  import.reset(parser->ParseAsSingleImport());
+  EXPECT_TRUE(import.get() != NULL);
+  if (import.get() != NULL) {
+    EXPECT_EQ("mystyle.css", UnicodeTextToUTF8(import->link));
+  }
+
+  parser.reset(new Parser("\n\t@import url(\"mystyle.css\"); \n"));
+  import.reset(parser->ParseAsSingleImport());
+  EXPECT_TRUE(import.get() != NULL);
+  if (import.get() != NULL) {
+    EXPECT_EQ("mystyle.css", UnicodeTextToUTF8(import->link));
+  }
+
+  parser.reset(new Parser("*border: 0px"));
+  import.reset(parser->ParseAsSingleImport());
+  EXPECT_TRUE(import.get() == NULL);
+
+  parser.reset(new Parser("@import \"mystyle.css\" all;\n"
+                          "@import url(\"mystyle.css\" );\n"));
+  import.reset(parser->ParseAsSingleImport());
+  EXPECT_TRUE(import.get() == NULL);
+
+  parser.reset(new Parser("@charset \"ISO-8859-1\";\n"
+                          "@import \"mystyle.css\" all;"));
+  import.reset(parser->ParseAsSingleImport());
+  EXPECT_TRUE(import.get() == NULL);
+}
+
 }  // namespace

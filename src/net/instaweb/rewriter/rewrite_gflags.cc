@@ -51,6 +51,10 @@ DEFINE_int64(js_outline_min_bytes,
 DEFINE_int64(image_inline_max_bytes,
              net_instaweb::RewriteOptions::kDefaultImageInlineMaxBytes,
              "Number of bytes below which images will be inlined.");
+DEFINE_int32(image_jpeg_recompress_quality,
+             net_instaweb::RewriteOptions::kDefaultImageJpegRecompressQuality,
+             "Quality parameter to use while recompressing the jpeg images."
+             "This should be in range [0,100], 100 refers to best quality.");
 DEFINE_int64(js_inline_max_bytes,
              net_instaweb::RewriteOptions::kDefaultJsInlineMaxBytes,
              "Number of bytes below which javascript will be inlined.");
@@ -172,7 +176,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("psa_idle_flush_time_ms")) {
     options->set_idle_flush_time_ms(FLAGS_psa_idle_flush_time_ms);
   }
-
+  if (WasExplicitlySet("image_jpeg_recompress_quality")) {
+    options->set_image_jpeg_recompress_quality(
+        FLAGS_image_jpeg_recompress_quality);
+  }
   RewriteOptions::RewriteLevel rewrite_level;
   if (options->ParseRewriteLevel(FLAGS_rewrite_level, &rewrite_level)) {
     options->SetRewriteLevel(rewrite_level);

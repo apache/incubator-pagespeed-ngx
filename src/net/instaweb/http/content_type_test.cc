@@ -18,7 +18,6 @@
 
 #include "net/instaweb/http/public/content_type.h"
 
-#include <cstddef>
 #include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {

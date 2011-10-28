@@ -18,20 +18,27 @@
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 
+#include <algorithm>
+
+#include "base/logging.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/queued_worker.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {

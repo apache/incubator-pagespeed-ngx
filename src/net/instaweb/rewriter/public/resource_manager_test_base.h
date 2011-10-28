@@ -52,6 +52,7 @@ class LRUCache;
 class MessageHandler;
 class MockScheduler;
 class MockTimer;
+class ResourceNamer;
 class ResponseHeaders;
 class RewriteDriverFactory;
 class RewriteFilter;
@@ -195,11 +196,36 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   void CollectCssLinks(const StringPiece& id, const StringPiece& html,
                        CssLink::Vector* css_links);
 
+  // Encode the given name (path + leaf) using the given pagespeed attributes.
+  void EncodePathAndLeaf(const StringPiece& filter_id,
+                         const StringPiece& hash,
+                         const StringPiece& name,
+                         const StringPiece& ext,
+                         ResourceNamer* namer);
 
-  // Helper function to encode a resource name from its pieces.
+  // Helper function to encode a resource name from its pieces using whatever
+  // encoding we are testing, either UrlNamer or TestUrlNamer.
   GoogleString Encode(const StringPiece& path,
-                      const StringPiece& filter_id, const StringPiece& hash,
-                      const StringPiece& name, const StringPiece& ext);
+                      const StringPiece& filter_id,
+                      const StringPiece& hash,
+                      const StringPiece& name,
+                      const StringPiece& ext);
+
+  // Same as Encode but specifically using UrlNamer not TestUrlNamer.
+  GoogleString EncodeNormal(const StringPiece& path,
+                            const StringPiece& filter_id,
+                            const StringPiece& hash,
+                            const StringPiece& name,
+                            const StringPiece& ext);
+
+  // Same as Encode but specifying the base URL (which is used by TestUrlNamer
+  // but is unused by UrlNamer so for it results in exactly the same as Encode).
+  GoogleString EncodeWithBase(const StringPiece& base,
+                              const StringPiece& path,
+                              const StringPiece& filter_id,
+                              const StringPiece& hash,
+                              const StringPiece& name,
+                              const StringPiece& ext);
 
   // Overrides the async fetcher on the primary context to be a
   // wait fetcher which permits delaying callback invocation.

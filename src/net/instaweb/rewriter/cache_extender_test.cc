@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -263,7 +264,11 @@ TEST_P(CacheExtenderTest, ServeFiles) {
   GoogleString content;
 
   InitTest(kShortTtlSec);
-  ASSERT_TRUE(ServeResource(kTestDomain, kFilterId, kCssFile, "css", &content));
+  // To ensure there's no absolutification (below) of embedded.png's URL in
+  // the served CSS file, we have to serve it from test.com and not from
+  // cdn.com which TestUrlNamer does when it's being used.
+  ASSERT_TRUE(ServeResourceUrl(
+      Encode(kTestDomain, kFilterId, "0", kCssFile, "css"), &content));
   EXPECT_EQ(kCssData, content);  // no absolutification
   ASSERT_TRUE(ServeResource(kTestDomain, kFilterId, "b.jpg", "jpg", &content));
   EXPECT_EQ(GoogleString(kImageData), content);
@@ -396,8 +401,11 @@ TEST_P(CacheExtenderTest, ServeFilesWithShard) {
 
 TEST_P(CacheExtenderTest, ServeFilesFromDelayedFetch) {
   InitTest(kShortTtlSec);
-  ServeResourceFromManyContexts(Encode(kTestDomain, "ce", "0", kCssFile, "css"),
-                                kCssData);
+  // To ensure there's no absolutification (below) of embedded.png's URL in
+  // the served CSS file, we have to serve it from test.com and not from
+  // cdn.com which TestUrlNamer does when it's being used.
+  ServeResourceFromManyContexts(
+      EncodeNormal(kTestDomain, "ce", "0", kCssFile, "css"), kCssData);
   ServeResourceFromManyContexts(Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
                                 kImageData);
   ServeResourceFromManyContexts(Encode(kTestDomain, "ce", "0", "c.js", "js"),
@@ -471,6 +479,10 @@ TEST_P(CacheExtenderTest, RetainExtraHeaders) {
 TEST_P(CacheExtenderTest, TrimUrlInteraction) {
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
   InitTest(kMediumTtlSec);
+
+  // Force all URL encoding to use normal encoding so that the relative URL
+  // trimming logic can work and give us a relative URL result as expected.
+  TestUrlNamer::UseNormalEncoding(true);
 
   GoogleString a_ext = Encode("", "ce", "0", kCssFile, "css");
   ValidateExpected("ce_then_trim",

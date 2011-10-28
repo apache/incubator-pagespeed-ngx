@@ -46,7 +46,7 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
 
   // Test general situations.
   void TestOutlineCss(const GoogleString& html_url,
-                      const GoogleString& other_content,  // E.g. <base href>
+                      const GoogleString& base_ref,
                       const GoogleString& css_original_body,
                       bool expect_outline,
                       const GoogleString& css_rewritten_body,
@@ -63,16 +63,29 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
     } else {
       css_gurl_base.Reset(css_url_base);
     }
-    GoogleUrl outline_gurl(
-        css_gurl_base,
-        Encode("", CssOutlineFilter::kFilterId, hash, "_", "css"));
-    StringPiece spec = outline_gurl.Spec();
-    GoogleString outline_url(spec.data(), spec.length());
+    GoogleUrl base_ref_gurl;
+    if (base_ref.empty()) {
+      base_ref_gurl.Reset(html_url);
+    } else {
+      base_ref_gurl.Reset(base_ref);
+    }
+    GoogleString css_gurl_base_origin = StrCat(css_gurl_base.Origin(), "/");
+    GoogleString base_ref_gurl_origin = StrCat(base_ref_gurl.Origin(), "/");
+    GoogleString outline_url = EncodeWithBase(base_ref_gurl_origin,
+                                              css_gurl_base_origin,
+                                              CssOutlineFilter::kFilterId,
+                                              hash, "_", "css");
     // Figure out outline_filename.
     GoogleString outline_filename;
     EncodeFilename(outline_url, &outline_filename);
     // Make sure the file we check later was written this time, rm any old one.
     DeleteFileIfExists(outline_filename);
+
+    // Add a base href to the HTML iff specified.
+    GoogleString other_content;
+    if (!base_ref.empty()) {
+      other_content = StrCat("  <base href=\"", base_ref, "\">\n");
+    }
 
     const GoogleString html_input =
         "<head>\n" +
@@ -143,8 +156,7 @@ TEST_F(CssOutlineFilterTest, AbsolutifyDifferentDir) {
   const GoogleString css2 =
       "body { background-image: url('http://other_site.test/foo/bg.png'); }";
   TestOutlineCss("http://outline_style.test/index.html",
-                 "  <base href=\"http://other_site.test/foo/\">\n",
-                 css1, true, css2, "");
+                 "http://other_site.test/foo/", css1, true, css2, "");
 }
 
 TEST_F(CssOutlineFilterTest, ShardSubresources) {

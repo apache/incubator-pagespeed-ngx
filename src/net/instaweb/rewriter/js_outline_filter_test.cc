@@ -109,7 +109,8 @@ TEST_F(JsOutlineFilterTest, OutlineScriptWithBase) {
   GoogleString expected_output =
       StrCat("<base href='http://cdn.example.com/file.html'>",
              "<script src=\"",
-             Encode(kTestDomain, "jo", "0", "_", "js"),
+             EncodeWithBase("http://cdn.example.com/", kTestDomain,
+                            "jo", "0", "_", "js"),
              "\"></script>");
   ValidateExpected("test.html", kInput, expected_output);
 }

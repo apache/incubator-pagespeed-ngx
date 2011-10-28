@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <vector>
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"

@@ -16,15 +16,21 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
+#include <cstdlib>                     // for getenv
+
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 
 #include "base/logging.h"
+#include "base/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"  // for UrlFetcher
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/test_url_namer.h"
+#include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
@@ -32,14 +38,21 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"  // for StrCat, etc
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
+class CacheInterface;
+class FileSystem;
+class Hasher;
+class MessageHandler;
 class RequestHeaders;
 class ResponseHeaders;
 class Scheduler;
+class UrlAsyncFetcher;
+class UrlNamer;
 class Writer;
 
 namespace {
@@ -79,6 +92,8 @@ class ProxyUrlFetcher : public UrlFetcher {
 
 const int64 TestRewriteDriverFactory::kStartTimeMs =
     MockTimer::kApr_5_2010_ms - 2 * Timer::kMonthMs;
+
+const char TestRewriteDriverFactory::kUrlNamerScheme[] = "URL_NAMER_SCHEME";
 
 TestRewriteDriverFactory::TestRewriteDriverFactory(
     const StringPiece& temp_dir, MockUrlFetcher* mock_fetcher)
@@ -164,6 +179,11 @@ Hasher* TestRewriteDriverFactory::NewHasher() {
   return mock_hasher_;
 }
 
+bool TestRewriteDriverFactory::UsingTestUrlNamer() {
+  return (getenv(kUrlNamerScheme) != NULL &&
+          strcmp(getenv(kUrlNamerScheme), "test") == 0);
+}
+
 MessageHandler* TestRewriteDriverFactory::DefaultMessageHandler() {
   DCHECK(mock_message_handler_ == NULL);
   mock_message_handler_ = new MockMessageHandler;
@@ -174,6 +194,12 @@ MessageHandler* TestRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
   DCHECK(mock_html_message_handler_ == NULL);
   mock_html_message_handler_ = new MockMessageHandler;
   return mock_html_message_handler_;
+}
+
+UrlNamer* TestRewriteDriverFactory::DefaultUrlNamer() {
+  return (UsingTestUrlNamer()
+          ? new TestUrlNamer()
+          : RewriteDriverFactory::DefaultUrlNamer());
 }
 
 Scheduler* TestRewriteDriverFactory::CreateScheduler() {

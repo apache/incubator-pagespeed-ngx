@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/image_data_lookup.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/webp_optimizer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -72,6 +73,7 @@ const size_t kGifDimStart = kGifHeaderLength + 2;
 const size_t kGifIntSize = 2;
 
 const size_t kJpegIntSize = 2;
+const int kMaxJpegQuality = 100;
 
 }  // namespace ImageHeaders
 
@@ -79,13 +81,14 @@ const size_t kJpegIntSize = 2;
 
 class ImageImpl : public Image {
  public:
+  ImageImpl(int width, int height, Type type,
+            const StringPiece& tmp_dir, MessageHandler* handler);
   ImageImpl(const StringPiece& original_contents,
             const GoogleString& url,
             const StringPiece& file_prefix,
             bool webp_preferred,
+            int jpeg_quality,
             MessageHandler* handler);
-  ImageImpl(int width, int height, Type type,
-            const StringPiece& tmp_dir, MessageHandler* handler);
 
   virtual void Dimensions(ImageDim* natural_dim);
   virtual bool ResizeTo(const ImageDim& new_dim);
@@ -145,6 +148,7 @@ class ImageImpl : public Image {
   const GoogleString url_;
   ImageDim dims_;
   bool webp_preferred_;
+  int jpeg_quality_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageImpl);
 };
@@ -159,6 +163,7 @@ ImageImpl::ImageImpl(const StringPiece& original_contents,
                      const GoogleString& url,
                      const StringPiece& file_prefix,
                      bool webp_preferred,
+                     int jpeg_quality,
                      MessageHandler* handler)
     : Image(original_contents),
       file_prefix_(file_prefix.data(), file_prefix.size()),
@@ -167,15 +172,17 @@ ImageImpl::ImageImpl(const StringPiece& original_contents,
       opencv_load_possible_(true),
       changed_(false),
       url_(url),
-      webp_preferred_(webp_preferred) { }
+      webp_preferred_(webp_preferred),
+      jpeg_quality_(jpeg_quality) { }
 
 Image* NewImage(const StringPiece& original_contents,
                 const GoogleString& url,
                 const StringPiece& file_prefix,
                 bool webp_preferred,
+                int jpeg_quality,
                 MessageHandler* handler) {
   return new ImageImpl(original_contents, url, file_prefix, webp_preferred,
-                       handler);
+                       jpeg_quality, handler);
 }
 
 Image::Image(Type type)
@@ -193,7 +200,8 @@ ImageImpl::ImageImpl(int width, int height, Type type,
       opencv_load_possible_(true),
       changed_(false),
       url_(),
-      webp_preferred_(false) {
+      webp_preferred_(false),
+      jpeg_quality_(RewriteOptions::kDefaultImageJpegRecompressQuality) {
   dims_.set_width(width);
   dims_.set_height(height);
 }
@@ -670,9 +678,16 @@ bool ImageImpl::ComputeOutputContents() {
           if (ok) {  // && webp_preferred, which is implied.
             image_type_ = IMAGE_WEBP;
           } else {
-            ok = pagespeed::image_compression::OptimizeJpeg(
-                string_for_image,
-                &output_contents_);
+            if (jpeg_quality_ > 0) {
+              ok = pagespeed::image_compression::OptimizeJpegLossy(
+                  string_for_image,
+                  &output_contents_,
+                  std::min(ImageHeaders::kMaxJpegQuality, jpeg_quality_));
+            } else {
+              ok = pagespeed::image_compression::OptimizeJpeg(
+                  string_for_image,
+                  &output_contents_);
+            }
           }
           break;
         case IMAGE_PNG: {

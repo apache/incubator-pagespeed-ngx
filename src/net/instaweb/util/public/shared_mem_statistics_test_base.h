@@ -27,8 +27,6 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-class SharedMemStatistics;
-
 class SharedMemStatisticsTestBase : public testing::Test {
  protected:
   typedef void (SharedMemStatisticsTestBase::*TestMethod)();

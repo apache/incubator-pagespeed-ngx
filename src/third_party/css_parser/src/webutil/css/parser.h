@@ -135,6 +135,11 @@ class Parser {
   // consume anything up to the declaration starting '{' or the end of document.
   Selectors* ParseSelectors();
 
+  // Parse the document as a single @import statement. If it's not exactly
+  // one of these, or there's a syntax error, NULL is returned. Added for
+  // mod_pagespeed's conversion to a link of this inside a style element.
+  Import* ParseAsSingleImport();
+
   // current position in the parse.
   const char* getpos() const { return in_; }
 

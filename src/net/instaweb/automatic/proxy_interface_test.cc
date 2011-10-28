@@ -20,25 +20,38 @@
 
 #include "net/instaweb/automatic/public/proxy_interface.h"
 
+#include <cstddef>
+
+#include "base/scoped_ptr.h"            // for scoped_ptr
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/time_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 namespace {
 
@@ -501,7 +514,7 @@ TEST_F(ProxyInterfaceTest, EatCookiesOnReconstructFailure) {
 
   ResponseHeaders out_response_headers;
   GoogleString text;
-  FetchFromProxy(AbsolutifyUrl("a.css.pagespeed.cf.0.css"), true,
+  FetchFromProxy(Encode(kTestDomain, "cf", "0", "a.css", "css"), true,
                  &text, &out_response_headers);
   EXPECT_EQ(NULL, out_response_headers.Lookup1(HttpAttributes::kSetCookie));
   EXPECT_EQ(NULL, out_response_headers.Lookup1(HttpAttributes::kSetCookie2));
@@ -523,14 +536,14 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
 
   FetchFromProxy("page.html", true, &text, &headers);
   CheckHeaders(headers, kContentTypeHtml);
-  EXPECT_EQ(CssLinkHref(AbsolutifyUrl("a.css.pagespeed.cf.0.css")), text);
+  EXPECT_EQ(CssLinkHref(Encode(kTestDomain, "cf", "0", "a.css", "css")), text);
   headers.ComputeCaching();
   EXPECT_LE(start_time_ms_ + kHtmlCacheTimeSec * Timer::kSecondMs,
             headers.CacheExpirationTimeMs());
 
   // Fetch the rewritten resource as well.
   text.clear();
-  FetchFromProxy(AbsolutifyUrl("a.css.pagespeed.cf.0.css"), true,
+  FetchFromProxy(Encode(kTestDomain, "cf", "0", "a.css", "css"), true,
                  &text, &headers);
   CheckHeaders(headers, kContentTypeCss);
   headers.ComputeCaching();
@@ -546,7 +559,7 @@ TEST_F(ProxyInterfaceTest, ReconstructResource) {
   // after an HTML rewrite.
   InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
                       kHtmlCacheTimeSec * 2);
-  FetchFromProxy("a.css.pagespeed.cf.0.css", true, &text, &headers);
+  FetchFromProxy(Encode("", "cf", "0", "a.css", "css"), true, &text, &headers);
   CheckHeaders(headers, kContentTypeCss);
   headers.ComputeCaching();
   EXPECT_LE(start_time_ms_ + Timer::kYearMs, headers.CacheExpirationTimeMs());
@@ -556,8 +569,6 @@ TEST_F(ProxyInterfaceTest, ReconstructResource) {
 TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
   const char kCssWithEmbeddedImage[] = "*{background-image:url(%s)}";
   const char kBackgroundImage[] = "1.png";
-  const GoogleString kExtendedBackgroundImage =
-      Encode(kTestDomain, "ce", "0", kBackgroundImage, "png");
 
   GoogleString text;
   ResponseHeaders headers;
@@ -593,6 +604,10 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
   resource_manager()->set_url_namer(&url_namer);
+
+  // Use EncodeNormal because it matches the logic used by ProxyUrlNamer.
+  const GoogleString kExtendedBackgroundImage =
+      EncodeNormal(kTestDomain, "ce", "0", kBackgroundImage, "png");
 
   // Now when we fetch the options, we'll find the image in the CSS
   // cache-extended.
@@ -712,7 +727,7 @@ TEST_F(ProxyInterfaceTest, MinResourceTimeZero) {
   GoogleString text;
   ResponseHeaders headers;
   FetchFromProxy("page.html", true, &text, &headers);
-  EXPECT_EQ(CssLinkHref(AbsolutifyUrl("a.css.pagespeed.cf.0.css")), text);
+  EXPECT_EQ(CssLinkHref(Encode(kTestDomain, "cf", "0", "a.css", "css")), text);
 }
 
 TEST_F(ProxyInterfaceTest, MinResourceTimeLarge) {

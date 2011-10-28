@@ -245,6 +245,7 @@
         'http/mock_url_fetcher.cc',
         'rewriter/resource_manager_test_base.cc',
         'rewriter/test_rewrite_driver_factory.cc',
+        'rewriter/test_url_namer.cc',
         'util/file_system_test.cc',
         'util/gtest.cc',
         'util/mem_file_system.cc',

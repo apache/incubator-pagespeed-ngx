@@ -29,7 +29,6 @@
 
 namespace net_instaweb {
 
-class DomainRewriteFilter;
 class HtmlElement;
 class ResponseHeaders;
 class RewriteContext;

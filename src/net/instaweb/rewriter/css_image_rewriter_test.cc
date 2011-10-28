@@ -29,6 +29,8 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -227,9 +229,13 @@ TEST_P(CssImageRewriterTest, InlinePaths) {
       "  background-image: url(http://test.com/dir/foo.png);\n"
       "}\n";
 
+  // Force all URL encoding to use normal encoding so that the relative URL
+  // trimming logic can work and give us a relative URL result as expected.
+  TestUrlNamer::UseNormalEncoding(true);
+
   const GoogleString kCssAfter = StrCat(
-      "body{background-image:url(dir/",
-      Encode("", "ce", "0", "foo.png", "png"),
+      "body{background-image:url(",
+      Encode("", "ce", "0", "dir/foo.png", "png"),
       ")}");
   ValidateRewriteInlineCss("nosubdir",
                            kCssBefore, kCssAfter,
@@ -256,9 +262,16 @@ TEST_P(CssImageRewriterTest, RewriteCached) {
       "  background-image: url(http://test.com/dir/foo.png);\n"
       "}\n";
 
+  GoogleString kBaseDomain;
+  // If using the TestUrlNamer, the rewritten URL won't be relative so
+  // set things up so that we check for the correct URL below.
+  if (TestRewriteDriverFactory::UsingTestUrlNamer()) {
+    kBaseDomain = kTestDomain;
+  }
+
   const GoogleString kCssAfter = StrCat(
-      "body{background-image:url(dir/",
-      Encode("", "ce", "0", "foo.png", "png"),
+      "body{background-image:url(",
+      Encode(kBaseDomain, "ce", "0", "dir/foo.png", "png"),
       ")}");
   ValidateRewriteInlineCss("nosubdir",
                            kCssBefore, kCssAfter,

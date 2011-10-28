@@ -358,8 +358,9 @@ void FileSystemTest::TestLockTimeout() {
   // Acquire the lock
   EXPECT_TRUE(file_system()->TryLockWithTimeout(lock_name, Timer::kSecondMs,
                                                 &handler_).is_true());
-  // Immediate re-acquire should fail
-  EXPECT_TRUE(file_system()->TryLockWithTimeout(lock_name, Timer::kSecondMs,
+  // Immediate re-acquire should fail.  Steal time deliberately long so we don't
+  // steal by mistake (since we're running in non-mock time).
+  EXPECT_TRUE(file_system()->TryLockWithTimeout(lock_name, Timer::kMinuteMs,
                                                 &handler_).is_false());
   // Wait 1 second so that we're definitely different from ctime.
   // Now we should seize lock.

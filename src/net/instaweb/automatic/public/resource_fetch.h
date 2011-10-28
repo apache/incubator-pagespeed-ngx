@@ -26,21 +26,18 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class GoogleUrl;
-class Histogram;
 class MessageHandler;
-class RequestHeaders;
 class ResponseHeaders;
 class ResourceManager;
 class RewriteDriver;
 class RewriteOptions;
-class TimedVariable;
 class Timer;
-class UrlAsyncFetcher;
 class Writer;
 
 // Manages a single fetch of a pagespeed rewritten resource.

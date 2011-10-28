@@ -40,6 +40,7 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/spriter/image_library_interface.h"
 #include "net/instaweb/spriter/public/image_spriter.h"
@@ -564,13 +565,16 @@ class Library : public spriter::ImageLibraryInterface {
   // call to Clear().
   bool Register(Resource* resource) {
     bool prefer_webp = false;  // Not working with jpg/webp at all.
+    // TODO(satyanarayana): Use approriate quality param for spriting.
+    int jpeg_quality = RewriteOptions::kDefaultImageJpegRecompressQuality;
     net_instaweb::Image* image = fake_fs_[resource->url()];
     if (image != NULL) {
       // Already registered
       return (image->EnsureLoaded());
     }
     image = net_instaweb::NewImage(
-        resource->contents(), resource->url(), tmp_dir_, prefer_webp, handler_);
+        resource->contents(), resource->url(), tmp_dir_, prefer_webp,
+        jpeg_quality, handler_);
     if (image->EnsureLoaded()) {
       Register(resource->url(), image);
       return true;

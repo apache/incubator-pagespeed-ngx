@@ -49,6 +49,7 @@
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -755,7 +756,7 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizableCacheInvalidation) {
   // mapping (OutputPartitions).  The output resource should not be
   // stored.
   ValidateExpected("trimmable", CssLinkHref("a.css"),
-                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+                   CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());  // 2 because it's kOnTheFlyResource
@@ -766,7 +767,7 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizableCacheInvalidation) {
   // cache inserts or fetches.  The rewrite should complete using a
   // single cache hit for the metadata.  No cache misses will occur.
   ValidateExpected("trimmable", CssLinkHref("a.css"),
-                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+                   CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -776,7 +777,7 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizableCacheInvalidation) {
   // The third time we invalidate the cache and then request the URL.
   SetCacheInvalidationTimestamp();
   ValidateExpected("trimmable", CssLinkHref("a.css"),
-                   CssLinkHref("http://test.com/a.css.pagespeed.tw.0.css"));
+                   CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   // Setting the cache invalidation timestamp causes the partition key to change
   // and hence we get a cache miss (and insert) on the metadata. The resource is
   // then obtained from http cache.
@@ -2332,13 +2333,18 @@ TEST_F(NestedResourceUpdateTest, TestExpireNested404) {
   EXPECT_TRUE(ServeResourceUrl(kOutUrl, &contents));
   EXPECT_EQ("http://test.com/a.css\n", contents);
 
+  // Determine if we're using the TestUrlNamer, for the hash later.
+  bool test_url_namer = TestRewriteDriverFactory::UsingTestUrlNamer();
+
   // Now move forward two decades, and upload a new version. We should
   // be ready to optimize at that point, but input should not be expired.
   mock_timer()->AdvanceMs(2 * kDecadeMs);
   InitResponseHeaders("a.css", kContentTypeCss, " lowercase ", 100);
   ReconfigureNestedFilter(kExpectNestedRewritesSucceed);
-  const GoogleString kFullOutUrl = Encode(kTestDomain, "nf", "wtz1oZ56O0",
-                                          "main.txt", "css");
+  const GoogleString kFullOutUrl =
+      Encode(kTestDomain, "nf",
+             test_url_namer ? "ddCLaqHYwR" : "wtz1oZ56O0",
+             "main.txt", "css");
   const GoogleString kInnerUrl = StrCat(Encode(kTestDomain, "nf", "N4LKMOq9ms",
                                                "a.css", "css"), "\n");
   ValidateExpected("nested_404", CssLinkHref("main.txt"),

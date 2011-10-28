@@ -50,7 +50,7 @@ class ImageTest : public testing::Test {
                          const GoogleString& name,
                          const GoogleString& contents) {
     return NewImage(contents, name, GTestTempDir(),
-                    output_type == Image::IMAGE_WEBP, &handler_);
+                    output_type == Image::IMAGE_WEBP, -1, &handler_);
   }
 
   void ExpectDimensions(Image::Type image_type, int size,

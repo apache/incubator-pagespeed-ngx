@@ -116,6 +116,7 @@ class RewriteOptions {
   static const int64 kDefaultCacheInvalidationTimestamp;
   static const int64 kDefaultIdleFlushTimeMs;
   static const GoogleString kDefaultBeaconUrl;
+  static const int kDefaultImageJpegRecompressQuality;
 
   // IE limits URL size overall to about 2k characters.  See
   // http://support.microsoft.com/kb/208427/EN-US
@@ -295,6 +296,13 @@ class RewriteOptions {
 
   // Return false in a subclass if you want to disallow all URL trimming in CSS.
   virtual bool trim_urls_in_css() const { return true; }
+
+  int image_jpeg_recompress_quality() const {
+    return image_jpeg_recompress_quality_.value();
+  }
+  void set_image_jpeg_recompress_quality(int x) {
+    set_option(x, &image_jpeg_recompress_quality_);
+  }
 
   // Merge together two source RewriteOptions to populate this.  The order
   // is significant: the second will override the first.  One semantic
@@ -538,6 +546,9 @@ class RewriteOptions {
   Option<int64> cache_invalidation_timestamp_;
   Option<int64> idle_flush_time_ms_;
 
+  // Options related to jpeg compression.
+  Option<int> image_jpeg_recompress_quality_;
+
   Option<int> image_max_rewrites_at_once_;
   Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")
   Option<int> max_url_size_;          // but this is strlen("http://a/b/c.d")
@@ -552,6 +563,7 @@ class RewriteOptions {
   Option<bool> flush_html_;
 
   Option<GoogleString> beacon_url_;
+
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,
   // Compare.

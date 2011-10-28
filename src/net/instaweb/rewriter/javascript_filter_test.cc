@@ -21,7 +21,6 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -62,12 +61,8 @@ class JavascriptFilterTest : public ResourceManagerTestBase,
     ResourceManagerTestBase::SetUp();
     SetAsynchronousRewrites(GetParam());
     AddFilter(RewriteOptions::kRewriteJavascript);
-    ResourceNamer namer;
-    namer.set_id(kFilterId);
-    namer.set_name(kRewrittenJsName);
-    namer.set_ext("js");
-    namer.set_hash("0");
-    expected_rewritten_path_ = StrCat(kTestDomain, namer.Encode());
+    expected_rewritten_path_ = Encode(kTestDomain, kFilterId, "0",
+                                      kRewrittenJsName, "js");
   }
 
   void InitTest(int64 ttl) {

@@ -1675,6 +1675,33 @@ Selectors* Parser::ParseSelectors() {
     return NULL;
 }
 
+Import* Parser::ParseAsSingleImport() {
+  Tracer trace(__func__, &in_);
+
+  SkipSpace();
+  if (Done()) return NULL;
+  DCHECK_LT(in_, end_);
+  if (*in_ != '@') return NULL;
+  ++in_;
+
+  UnicodeText ident = ParseIdent();
+
+  // @import string|uri medium-list ? ;
+  if (ident.utf8_length() != 6 ||
+      memcasecmp(ident.utf8_data(), "import", 6) != 0) {
+    return NULL;
+  }
+
+  Import* import = ParseImport();
+
+  SkipSpace();
+  if (Done()) return import;
+
+  // There's something after the @import, which is expressly disallowed.
+  delete import;
+  return NULL;
+}
+
 Ruleset* Parser::ParseRuleset() {
   Tracer trace(__func__, &in_);
 

@@ -21,6 +21,7 @@
 
 #include "base/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/mock_time_cache.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string_util.h"        // for StringPiece
@@ -45,6 +46,7 @@ class Scheduler;
 class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
+class UrlNamer;
 class WaitUrlAsyncFetcher;
 
 // RewriteDriverFactory implementation for use in tests, using mock time,
@@ -52,6 +54,7 @@ class WaitUrlAsyncFetcher;
 class TestRewriteDriverFactory : public RewriteDriverFactory {
  public:
   static const int64 kStartTimeMs;  // Arbitrary time to start MockTimer.
+  static const char kUrlNamerScheme[];  // Env.var URL_NAMER_SCHEME
 
   TestRewriteDriverFactory(const StringPiece& temp_dir,
                            MockUrlFetcher* mock_fetcher);
@@ -74,6 +77,8 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   MockMessageHandler* mock_message_handler() { return mock_message_handler_; }
   MockScheduler* mock_scheduler() { return mock_scheduler_; }
 
+  static bool UsingTestUrlNamer();
+
  protected:
   virtual Hasher* NewHasher();
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
@@ -83,6 +88,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
   virtual CacheInterface* DefaultCacheInterface();
+  virtual UrlNamer* DefaultUrlNamer();
   virtual bool ShouldWriteResourcesToFileSystem() { return true; }
   virtual Scheduler* CreateScheduler();
 

@@ -241,7 +241,7 @@ class RewriteSingleResourceFilterTest
   }
 
   GoogleString ComputeOutTag() {
-    return StrCat("<tag src=\"", kTestDomain, OutputName("a.tst"), "\"></tag>");
+    return StrCat("<tag src=\"", OutputName(kTestDomain, "a.tst"), "\"></tag>");
   }
 
   // Create a resource with given data and TTL
@@ -261,12 +261,14 @@ class RewriteSingleResourceFilterTest
 
   // Returns the filename our test filter will produces for the given
   // input filename
-  GoogleString OutputName(const StringPiece& in_name) {
+  GoogleString OutputName(const StringPiece& in_domain,
+                          const StringPiece& in_name) {
     if (filter_->create_custom_encoder()) {
-      return Encode("", kTestFilterPrefix, hasher()->Hash(""),
+      return Encode(in_domain, kTestFilterPrefix, hasher()->Hash(""),
                     StrCat(kTestEncoderUrlExtra, in_name), "txt");
     } else {
-      return Encode("", kTestFilterPrefix, hasher()->Hash(""), in_name, "txt");
+      return Encode(in_domain, kTestFilterPrefix, hasher()->Hash(""),
+                    in_name, "txt");
     }
   }
 
@@ -571,7 +573,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheFreshen) {
 // Make sure that fetching normal content works
 TEST_P(RewriteSingleResourceFilterTest, FetchGood) {
   GoogleString out;
-  ASSERT_TRUE(ServeRelativeUrl(OutputName("a.tst"), &out));
+  ASSERT_TRUE(ServeRelativeUrl(OutputName("", "a.tst"), &out));
   EXPECT_EQ("goodgood", out);
   EXPECT_EQ(1, filter_->num_rewrites_called());
 }
@@ -583,14 +585,14 @@ TEST_P(RewriteSingleResourceFilterTest, FetchGoodCache1) {
   EXPECT_EQ(1, filter_->num_rewrites_called());
 
   GoogleString out;
-  ASSERT_TRUE(ServeRelativeUrl(OutputName("a.tst"), &out));
+  ASSERT_TRUE(ServeRelativeUrl(OutputName("", "a.tst"), &out));
   EXPECT_EQ("goodgood", out);
   EXPECT_EQ(1, filter_->num_rewrites_called());
 }
 
 TEST_P(RewriteSingleResourceFilterTest, FetchGoodCache2) {
   GoogleString out;
-  ASSERT_TRUE(ServeRelativeUrl(OutputName("a.tst"), &out));
+  ASSERT_TRUE(ServeRelativeUrl(OutputName("", "a.tst"), &out));
   EXPECT_EQ("goodgood", out);
   EXPECT_EQ(1, filter_->num_rewrites_called());
 
@@ -611,7 +613,7 @@ TEST_P(RewriteSingleResourceFilterTest, FetchGoodCache2) {
 TEST_P(RewriteSingleResourceFilterTest, FetchFirstVersioned) {
   filter_->set_format_version(1);
   GoogleString out;
-  ASSERT_TRUE(ServeRelativeUrl(OutputName("a.tst"), &out));
+  ASSERT_TRUE(ServeRelativeUrl(OutputName("", "a.tst"), &out));
   EXPECT_EQ("goodgood", out);
   EXPECT_EQ(1, filter_->num_rewrites_called());
 
@@ -624,7 +626,7 @@ TEST_P(RewriteSingleResourceFilterTest, FetchFirstVersioned) {
 // unchanged
 TEST_P(RewriteSingleResourceFilterTest, FetchRewriteFailed) {
   GoogleString out;
-  ASSERT_TRUE(ServeRelativeUrl(OutputName("bad.tst"), &out));
+  ASSERT_TRUE(ServeRelativeUrl(OutputName("", "bad.tst"), &out));
   EXPECT_EQ("bad", out);
   EXPECT_EQ(1, filter_->num_rewrites_called());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
@@ -638,7 +640,7 @@ TEST_P(RewriteSingleResourceFilterTest, FetchRewriteFailed) {
 // Rewriting a 404 however propagates error
 TEST_P(RewriteSingleResourceFilterTest, Fetch404) {
   GoogleString out;
-  ASSERT_FALSE(ServeRelativeUrl(OutputName("404.tst"), &out));
+  ASSERT_FALSE(ServeRelativeUrl(OutputName("", "404.tst"), &out));
 
   // Make sure the above also cached the failure.
   scoped_ptr<CachedResult> cached(CachedResultForInput("404.tst"));

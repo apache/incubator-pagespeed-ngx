@@ -23,12 +23,13 @@
 #ifndef NET_INSTAWEB_AUTOMATIC_PUBLIC_PROXY_FETCH_H_
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_PROXY_FETCH_H_
 
-#include <deque>
+#include <set>
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -37,13 +38,13 @@ namespace net_instaweb {
 
 class AbstractMutex;
 class CacheUrlAsyncFetcher;
-class Histogram;
-class QueuedWorker;
+class MessageHandler;
 class ResourceManager;
+class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
-class TimedVariable;
 class Timer;
+class Writer;
 
 class ProxyFetch;
 

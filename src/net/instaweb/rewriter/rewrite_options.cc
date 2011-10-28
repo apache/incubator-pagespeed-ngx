@@ -45,7 +45,7 @@ namespace {
 //
 // This version number should be incremented if any default-values are changed,
 // either in the add_option() call or via options->set_default.
-const int kOptionsVersion = 4;
+const int kOptionsVersion = 5;
 
 }  // namespace
 
@@ -94,6 +94,10 @@ const int RewriteOptions::kDefaultImageMaxRewritesAtOnce = 8;
 // IE limits URL size overall to about 2k characters.  See
 // http://support.microsoft.com/kb/208427/EN-US
 const int RewriteOptions::kMaxUrlSize = 2083;
+
+// Jpeg quality that needs to be used while recompressing. If set to -1, we
+// use source image quality parameters, and is lossless.
+const int RewriteOptions::kDefaultImageJpegRecompressQuality = -1;
 
 // See http://code.google.com/p/modpagespeed/issues/detail?id=9.  By
 // default, Apache evidently limits each URL path segment (between /)
@@ -254,6 +258,8 @@ RewriteOptions::RewriteOptions()
   add_option(false, &respect_vary_);
   add_option(false, &flush_html_);
   add_option(kDefaultBeaconUrl, &beacon_url_);
+  add_option(kDefaultImageJpegRecompressQuality,
+             &image_jpeg_recompress_quality_);
 }
 
 RewriteOptions::~RewriteOptions() {

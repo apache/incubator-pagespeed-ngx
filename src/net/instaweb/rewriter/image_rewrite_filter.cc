@@ -196,10 +196,13 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
   if (!encoder_.Decode(result->name(), &urls, &context, message_handler)) {
     return kRewriteFailed;
   }
+
+  const RewriteOptions* options = driver_->options();
   scoped_ptr<Image> image(
       NewImage(input_resource->contents(), input_resource->url(),
                resource_manager_->filename_prefix(),
-               context.attempt_webp(), message_handler));
+               context.attempt_webp(), options->image_jpeg_recompress_quality(),
+               message_handler));
   if (image->image_type() == Image::IMAGE_UNKNOWN) {
     message_handler->Error(result->name().as_string().c_str(), 0,
                            "Unrecognized image content type.");
@@ -218,7 +221,6 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
   if (work_bound_->TryToWork()) {
     rewrite_result = kRewriteFailed;
     bool resized = false;
-    const RewriteOptions* options = driver_->options();
     // Begin by resizing the image if necessary
     const ImageDim& page_dim = context.image_tag_dims();
     const ImageDim* post_resize_dim = &image_dim;

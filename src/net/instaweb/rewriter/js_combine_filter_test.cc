@@ -35,9 +35,11 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -53,7 +55,9 @@ const char kJsUrl3[] = "c.js";
 const char kStrictUrl1[] = "strict1.js";
 const char kStrictUrl2[] = "strict2.js";
 const char kJsText1[] = "// script1\nvar a=\"hello\\nsecond line\"";
+const char kMinifiedJs1[] = "var a=\"hello\\nsecond line\"";
 const char kJsText2[] = "// script2\r\nvar b=42;\n";
+const char kMinifiedJs2[] = "var b=42;";
 const char kJsText3[] = "var x = 42;\nvar y = 31459;\n";
 const char kStrictText1[] = "'use strict'; var x = 32;";
 const char kStrictText2[] = "\"use strict\"; var x = 42;";
@@ -174,12 +178,16 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
   }
 
   // Makes sure that the script looks like a combination.
-  void VerifyCombinedOnDomain(const StringPiece& domain, const ScriptInfo& info,
+  void VerifyCombinedOnDomain(const StringPiece& base_url,
+                              const StringPiece& domain,
+                              const ScriptInfo& info,
                               const StringPiece& name) {
     EXPECT_FALSE(info.url.empty());
+    // We need to check against the encoded form of the given domain.
+    GoogleUrl encoded(EncodeWithBase(base_url, domain, "x", "0", "x", "x"));
     // The combination url should incorporate both names...
     GoogleUrl combination_url(info.url);
-    EXPECT_STREQ(domain, combination_url.AllExceptLeaf());
+    EXPECT_STREQ(encoded.AllExceptLeaf(), combination_url.AllExceptLeaf());
     ResourceNamer namer;
     EXPECT_TRUE(namer.Decode(combination_url.LeafWithQuery()));
     EXPECT_STREQ(RewriteDriver::kJavascriptCombinerId, namer.id());
@@ -188,7 +196,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
   }
 
   void VerifyCombined(const ScriptInfo& info, const StringPiece& name) {
-    VerifyCombinedOnDomain(kTestDomain, info, name);
+    VerifyCombinedOnDomain(kTestDomain, kTestDomain, info, name);
   }
 
   // Make sure the script looks like it was rewritten for a use of given URL
@@ -226,7 +234,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
     // This should produce 3 script elements, with the first one referring to
     // the combination, and the second and third using eval.
     ASSERT_EQ(3, scripts.size());
-    VerifyCombinedOnDomain(domain, scripts[0], combined_name);
+    VerifyCombinedOnDomain(domain, domain, scripts[0], combined_name);
     if (!minified) {
       VerifyUse(scripts[1], kJsUrl1);
       VerifyUse(scripts[2], kJsUrl2);
@@ -237,12 +245,14 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
     // but this is also not dependent on VarName working right.
     GoogleString combined_path =
         Encode("", "jc", combined_hash, combined_name, "js");
+    GoogleUrl encoded_domain(Encode(domain, "x", "0", "x", "x"));
     // We can be be given URLs with ',M' in them, which are URL escaped to have
     // two commas, which is not what we want, so reverse that. We can be given
     // such URLs because it's too hard to do the encoding programatically.
     GlobalReplaceSubstring(",,M", ",M", &combined_path);
     EXPECT_STREQ(AddHtmlBody(
-        StrCat("<script src=\"", domain, combined_path, "\"></script>"
+        StrCat("<script src=\"", encoded_domain.AllExceptLeaf(),
+               combined_path, "\"></script>"
                "<script>eval(mod_pagespeed_", hash1, ");</script>"
                "<script>eval(mod_pagespeed_", hash2, ");</script>")),
         output_buffer_);
@@ -283,9 +293,14 @@ TEST_P(JsCombineFilterTest, CombineJs) {
 }
 
 TEST_P(JsFilterAndCombineFilterTest, MinifyCombineJs) {
+  // These hashes depend on the URL, which is different when using the
+  // test url namer, so handle the difference.
+  bool test_url_namer = TestRewriteDriverFactory::UsingTestUrlNamer();
   TestCombineJs("a.js,Mjm.FUEwDOA7jh.js+b.js,Mjm.Y1kknPfzVs.js",
-                "FA3Pqioukh", "S$0tgbTH0O", "ose8Vzgyj9", true,
-                kTestDomain);
+                test_url_namer ? "8erozavBF5" : "FA3Pqioukh",
+                test_url_namer ? "JO0ZTfFSfI" : "S$0tgbTH0O",
+                test_url_namer ? "8QmSuIkgv_" : "ose8Vzgyj9",
+                true, kTestDomain);
 }
 
 // Issue 308: ModPagespeedShardDomain disables combine_js.  Actually
@@ -304,6 +319,39 @@ TEST_P(JsFilterAndCombineFilterTest, MinifyShardCombineJs) {
 
   TestCombineJs("a.js,Mjm.FUEwDOA7jh.js+b.js,Mjm.Y1kknPfzVs.js", "FA3Pqioukh",
                 "S$0tgbTH0O", "ose8Vzgyj9", true, "http://b.com/");
+}
+
+TEST_P(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
+  // Broken in sync.
+  if (!rewrite_driver()->asynchronous_rewrites()) {
+    return;
+  }
+
+  // Testcase for case where we have cached metadata for results of JS rewrite,
+  // but not its contents easily available.
+  resource_manager()->set_store_outputs_in_file_system(false);
+  SimulateJsResource(kJsUrl1, kJsText1);
+  SimulateJsResource(kJsUrl2, kJsText2);
+
+  // Fetch the result of the JS filter (which runs first) filter applied,
+  // to pre-cache them.
+  GoogleString out_url1(Encode(kTestDomain, "jm", "FUEwDOA7jh", kJsUrl1, "js"));
+  GoogleString content;
+  EXPECT_TRUE(ServeResourceUrl(out_url1, &content));
+  EXPECT_STREQ(kMinifiedJs1, content);
+
+  GoogleString out_url2(Encode(kTestDomain, "jm", "Y1kknPfzVs", kJsUrl2, "js"));
+  EXPECT_TRUE(ServeResourceUrl(out_url2, &content));
+  EXPECT_STREQ(kMinifiedJs2, content);
+
+  // Make sure the data isn't available in the HTTP cache (while the metadata
+  // still is).
+  lru_cache()->Delete(out_url1);
+  lru_cache()->Delete(out_url2);
+
+  // Now try to get a combination.
+  TestCombineJs("a.js,Mjm.FUEwDOA7jh.js+b.js,Mjm.Y1kknPfzVs.js", "FA3Pqioukh",
+                "S$0tgbTH0O", "ose8Vzgyj9", true /*minified*/, kTestDomain);
 }
 
 // Various things that prevent combining
@@ -492,7 +540,7 @@ TEST_P(JsCombineFilterTest, TestBase) {
                                "<script src=", kJsUrl1, "></script>"
                                "<script src=", kJsUrl2, "></script>"));
   ASSERT_EQ(3, scripts.size());
-  VerifyCombinedOnDomain(other_domain_, scripts[0],
+  VerifyCombinedOnDomain(other_domain_, other_domain_, scripts[0],
                          StrCat(kJsUrl1, "+", kJsUrl2));
   VerifyUseOnDomain(other_domain_, scripts[1], kJsUrl1);
   VerifyUseOnDomain(other_domain_, scripts[2], kJsUrl2);
@@ -537,7 +585,7 @@ TEST_P(JsCombineFilterTest, TestCrossDomainRecover) {
   VerifyUse(scripts[1], kJsUrl1);
   VerifyUse(scripts[2], kJsUrl2);
 
-  VerifyCombinedOnDomain(other_domain_, scripts[3],
+  VerifyCombinedOnDomain(kTestDomain, other_domain_, scripts[3],
                          StrCat(kJsUrl1, "+", kJsUrl2));
   VerifyUseOnDomain(other_domain_, scripts[4], kJsUrl1);
   VerifyUseOnDomain(other_domain_, scripts[5], kJsUrl2);

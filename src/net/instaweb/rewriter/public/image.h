@@ -134,10 +134,15 @@ class Image {
 // than jpg, unless webp creation fails for any reason (in which case jpg is
 // used as a fallback).  It has no effect if original_contents are a non-jpg or
 // non-webp image format.
+//
+// The jpeg_quality flag indicates what quality to use while recompressing jpeg
+// images. Quality value of 75 is used as default for web images by most of the
+// image libraries. Recommended setting for this is 85.
 Image* NewImage(const StringPiece& original_contents,
                 const GoogleString& url,
                 const StringPiece& file_prefix,
                 bool webp_preferred,
+                int jpeg_quality,
                 MessageHandler* handler);
 
 // Creates a blank image of the given dimensions and type.

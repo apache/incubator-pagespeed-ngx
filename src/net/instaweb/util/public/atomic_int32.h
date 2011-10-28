@@ -43,9 +43,9 @@ class AtomicInt32 {
     return base::subtle::Acquire_Load(&value_);
   }
 
-  void increment(int32 amount) {
+  int32 increment(int32 amount) {
     // TODO(jmaessen): Please review the semantics of this.
-    base::subtle::NoBarrier_AtomicIncrement(&value_, amount);
+    return base::subtle::NoBarrier_AtomicIncrement(&value_, amount);
   }
 
   void set_value(int32 value) {

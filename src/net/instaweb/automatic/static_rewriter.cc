@@ -16,21 +16,37 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
+#include <cstdio>
+
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/wget_url_fetcher.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_gflags.h"
+#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
-#include "net/instaweb/util/public/pthread_thread_system.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+
+namespace net_instaweb {
+
+class CacheInterface;
+class Hasher;
+class MessageHandler;
+class Statistics;
+class Timer;
+class UrlAsyncFetcher;
+class UrlFetcher;
+
+}  // namespace net_instaweb
 
 // The purpose of this class is to help us test that pagespeed_automatic.a
 // contains all that's needed to successfully link a rewriter using standard
