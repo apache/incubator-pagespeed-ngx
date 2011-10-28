@@ -61,7 +61,7 @@ ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
                                    RewriteFilter* filter)
     : resource_manager_(driver->resource_manager()),
       rewrite_driver_(driver),
-      partnership_(driver->options()),
+      partnership_(driver),
       prev_num_components_(0),
       accumulated_leaf_size_(0),
       // TODO(jmarantz): The URL overhead computation is arguably fragile.

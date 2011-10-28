@@ -1422,7 +1422,8 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
     // TODO(jmarantz): It would be more efficient to pass in the base
     // document GURL or save that in the input resource.
     GoogleUrl gurl(input_resource->url());
-    UrlPartnership partnership(options(), gurl);
+    UrlPartnership partnership(this);
+    partnership.Reset(gurl);
     if (partnership.AddUrl(input_resource->url(),
                            resource_manager_->message_handler())) {
       const GoogleUrl* mapped_gurl = partnership.FullPath(0);

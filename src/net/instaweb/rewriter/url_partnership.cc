@@ -22,6 +22,8 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -31,14 +33,9 @@
 
 namespace net_instaweb {
 
-UrlPartnership::UrlPartnership(const RewriteOptions* rewrite_options)
-    : rewrite_options_(rewrite_options) {
-}
-
-UrlPartnership::UrlPartnership(const RewriteOptions* rewrite_options,
-                               const GoogleUrl& original_request)
-    : rewrite_options_(rewrite_options) {
-  Reset(original_request);
+UrlPartnership::UrlPartnership(const RewriteDriver* driver)
+    : rewrite_options_(driver->options()),
+      url_namer_(driver->resource_manager()->url_namer()) {
 }
 
 UrlPartnership::~UrlPartnership() {

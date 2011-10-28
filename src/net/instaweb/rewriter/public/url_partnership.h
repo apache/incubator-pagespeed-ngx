@@ -27,7 +27,9 @@
 namespace net_instaweb {
 
 class MessageHandler;
+class RewriteDriver;
 class RewriteOptions;
+class UrlNamer;
 
 // A URL partnership should be established in order to combine resources,
 // such as in CSS combination, JS combination, or image spriting.  This
@@ -38,9 +40,7 @@ class RewriteOptions;
 //   3. What are the unique suffices for the elements.
 class UrlPartnership {
  public:
-  explicit UrlPartnership(const RewriteOptions* options);
-  UrlPartnership(const RewriteOptions* options,
-                 const GoogleUrl& original_request);
+  explicit UrlPartnership(const RewriteDriver* driver);
   virtual ~UrlPartnership();
 
   // Adds a URL to a combination.  If it can be legally added, consulting
@@ -64,6 +64,9 @@ class UrlPartnership {
   // Removes the last URL that was added to the partnership.
   void RemoveLast();
 
+  // Establish a new URL as the original request, which is used for
+  // domain authorization and mapping of URLs as they are added to the
+  // partnership.
   virtual void Reset(const GoogleUrl& original_request);
 
   // Returns the number of common path components for all resources
@@ -80,6 +83,7 @@ class UrlPartnership {
   GurlVector url_vector_;
   GoogleString domain_;
   const RewriteOptions* rewrite_options_;
+  const UrlNamer* url_namer_;
   GoogleUrl original_origin_and_path_;
 
   // common_components_ is updated while adding Urls to support incremental
