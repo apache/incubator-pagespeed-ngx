@@ -243,6 +243,7 @@
         'util/null_mutex.cc',
         'util/null_statistics.cc',
         'util/null_writer.cc',
+        'util/queued_alarm.cc',
         'util/queued_worker.cc',
         'util/queued_worker_pool.cc',
         'util/ref_counted.cc',

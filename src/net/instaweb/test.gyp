@@ -154,6 +154,7 @@
         'util/pthread_thread_system_test.cc',
         'util/pool_test.cc',
         'util/query_params_test.cc',
+        'util/queued_alarm_test.cc',
         'util/queued_worker_test.cc',
         'util/queued_worker_pool_test.cc',
         'util/ref_counted_owner_test.cc',

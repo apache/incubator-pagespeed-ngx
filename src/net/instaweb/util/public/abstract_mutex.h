@@ -41,9 +41,17 @@ class ScopedMutex {
     mutex_->Lock();
   }
 
-  ~ScopedMutex() {
-    mutex_->Unlock();
+  void Release() {
+    if (mutex_ != NULL) {
+      mutex_->Unlock();
+      mutex_ = NULL;
+    }
   }
+
+  ~ScopedMutex() {
+    Release();
+  }
+
  private:
   AbstractMutex* mutex_;
 

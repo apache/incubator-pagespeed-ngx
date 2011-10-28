@@ -114,6 +114,9 @@ class Scheduler {
   // and the scheduler want to agree on the passage of time.
   Timer* timer() { return timer_; }
 
+  // Obtain the thread system used by the scheduler.
+  ThreadSystem* thread_system() { return thread_system_; }
+
   // Internal method to kick the system because something of interest to the
   // overridden AwaitWakeup method has happened.  Exported here because C++
   // naming hates you.

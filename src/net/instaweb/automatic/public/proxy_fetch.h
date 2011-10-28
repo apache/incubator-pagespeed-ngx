@@ -30,7 +30,6 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -39,6 +38,7 @@ namespace net_instaweb {
 class AbstractMutex;
 class CacheUrlAsyncFetcher;
 class MessageHandler;
+class QueuedAlarm;
 class ResourceManager;
 class ResponseHeaders;
 class RewriteDriver;
@@ -252,7 +252,7 @@ class ProxyFetch : public AsyncFetch {
 
   // Alarm used to keep track of inactivity, in order to help issue
   // flushes. Must only be accessed from the thread context of sequence_
-  Scheduler::Alarm* idle_alarm_;
+  QueuedAlarm* idle_alarm_;
 
   ProxyFetchFactory* factory_;
 

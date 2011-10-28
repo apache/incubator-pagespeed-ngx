@@ -55,7 +55,7 @@ class QueuedWorkerPool {
   class Sequence {
    public:
     // AddFunction is a callback that when invoked queues another callback on
-    // the given sequence, and when cancelled queues a cancel call to the
+    // the given sequence, and when canceled queues a cancel call to the
     // sequence instead.  The cancellation behavior is what makes this different
     // from a simple call to MakeFunction(sequence, &Sequence::Add, callback).
     class AddFunction : public Function {
