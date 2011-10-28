@@ -216,7 +216,8 @@ class JsCombineFilter::Context : public RewriteContext {
         if (partition == NULL) {
           partition = partitions->add_partition();
         }
-        resource->AddInputInfoToPartition(i, partition);
+        resource->AddInputInfoToPartition(
+            Resource::kIncludeInputHash, i, partition);
       }
     }
     FinalizePartition(partitions, partition, outputs);

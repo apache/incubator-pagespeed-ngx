@@ -52,6 +52,11 @@ typedef std::vector<ResourcePtr> ResourceVector;
 
 class Resource : public RefCounted<Resource> {
  public:
+  enum HashHint {
+    kOmitInputHash,
+    kIncludeInputHash
+  };
+
   Resource(ResourceManager* resource_manager, const ContentType* type);
 
   // Common methods across all deriviations
@@ -80,14 +85,21 @@ class Resource : public RefCounted<Resource> {
 
   // Adds a new InputInfo object representing this resource to CachedResult,
   // assigning the index supplied.
-  void AddInputInfoToPartition(int index, CachedResult* partition);
+  void AddInputInfoToPartition(HashHint suggest_include_content_hash,
+                               int index, CachedResult* partition);
 
   // Set CachedResult's input info used for expiration validation.
+  // If include_content_hash is kIncludeInputHash, and it makes sense for
+  // the Resource type to check if resource changed based by content hash
+  // (e.g. it would be pointless for data:), the hash of resource's
+  // contents should also be set on 'input'.
   //
-  // Default one sets resource type as CACHED and sets an expiration timestamp.
+  // Default one sets resource type as CACHED and sets an expiration timestamp,
+  // last modified, date, and, if requested, content hash.
   // If a derived class has a different criterion for validity, override
   // this method.
-  virtual void FillInPartitionInputInfo(InputInfo* input);
+  virtual void FillInPartitionInputInfo(HashHint suggest_include_content_hash,
+                                        InputInfo* input);
 
   // Returns 0 if resource is not cacheable.
   // TODO(sligocki): Look through callsites and make sure this is being

@@ -60,24 +60,26 @@ GoogleString Resource::ContentsHash() const {
   return resource_manager_->contents_hasher()->Hash(contents());
 }
 
-void Resource::AddInputInfoToPartition(int index, CachedResult* partition) {
+void Resource::AddInputInfoToPartition(HashHint suggest_include_content_hash,
+                                       int index, CachedResult* partition) {
   InputInfo* input = partition->add_input();
   input->set_index(index);
   // FillInPartitionInputInfo can be specialized based on resource type.
-  FillInPartitionInputInfo(input);
+  FillInPartitionInputInfo(suggest_include_content_hash, input);
 }
 
 // Default version.
-void Resource::FillInPartitionInputInfo(InputInfo* input) {
+void Resource::FillInPartitionInputInfo(HashHint include_content_hash,
+                                        InputInfo* input) {
   CHECK(loaded());
   input->set_type(InputInfo::CACHED);
   input->set_last_modified_time_ms(response_headers_.last_modified_time_ms());
   input->set_expiration_time_ms(response_headers_.CacheExpirationTimeMs());
   input->set_date_ms(response_headers_.date_ms());
-  // TODO(morlovich) This is wasteful for the cache extender, is there
-  // a way of avoiding this other than passing a param all over the place?
-  if (IsValidAndCacheable()) {
+  if ((include_content_hash == kIncludeInputHash) && IsValidAndCacheable()) {
     input->set_input_content_hash(ContentsHash());
+  } else {
+    input->clear_input_content_hash();
   }
 }
 

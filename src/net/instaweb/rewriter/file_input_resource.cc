@@ -44,7 +44,8 @@ bool FileInputResource::IsValidAndCacheable() const {
   return response_headers_.status_code() == HttpStatus::kOK;
 }
 
-void FileInputResource::FillInPartitionInputInfo(InputInfo* input) {
+void FileInputResource::FillInPartitionInputInfo(
+    HashHint include_content_hash, InputInfo* input) {
   CHECK(loaded());
   input->set_type(InputInfo::FILE_BASED);
   input->set_last_modified_time_ms(last_modified_time_sec_ * Timer::kSecondMs);

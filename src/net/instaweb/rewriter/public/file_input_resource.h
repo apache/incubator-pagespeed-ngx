@@ -56,7 +56,8 @@ class FileInputResource : public Resource {
   virtual bool IsValidAndCacheable() const;
 
   // Set OutputPartition's input info used for expiration validation.
-  virtual void FillInPartitionInputInfo(InputInfo* input);
+  virtual void FillInPartitionInputInfo(HashHint include_content_hash,
+                                        InputInfo* input);
 
   virtual GoogleString url() const { return url_; }
   virtual const RewriteOptions* rewrite_options() const {

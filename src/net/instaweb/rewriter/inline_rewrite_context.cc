@@ -63,7 +63,7 @@ bool InlineRewriteContext::Partition(OutputPartitions* partitions,
   ResourcePtr resource(slot(0)->resource());
   if (resource->IsValidAndCacheable() && ShouldInline(resource->contents())) {
     CachedResult* partition = partitions->add_partition();
-    resource->AddInputInfoToPartition(0, partition);
+    resource->AddInputInfoToPartition(Resource::kOmitInputHash, 0, partition);
     partition->set_inlined_data(resource->contents().as_string());
     outputs->push_back(OutputResourcePtr(NULL));
   }

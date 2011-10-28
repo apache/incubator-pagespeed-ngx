@@ -280,8 +280,10 @@ bool CssFilter::Context::Partition(OutputPartitions* partitions,
   } else {
     // In case where we're rewriting inline CSS, we don't want an output
     // resource but still want a non-trivial partition.
+    // We use kOmitInputHash here as this is for inline content.
     CachedResult* partition = partitions->add_partition();
-    slot(0)->resource()->AddInputInfoToPartition(0, partition);
+    slot(0)->resource()->AddInputInfoToPartition(
+        Resource::kOmitInputHash, 0, partition);
     outputs->push_back(OutputResourcePtr(NULL));
     return true;
   }

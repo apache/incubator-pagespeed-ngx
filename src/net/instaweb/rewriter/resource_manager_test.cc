@@ -1087,6 +1087,52 @@ TEST_F(ResourceManagerTest, LoadFromFileReadAsync) {
 
 namespace {
 
+void CheckMatchesHeaders(const ResponseHeaders& headers,
+                         const InputInfo& input) {
+  ASSERT_TRUE(input.has_type());
+  EXPECT_EQ(InputInfo::CACHED, input.type());
+
+  ASSERT_TRUE(input.has_last_modified_time_ms());
+  EXPECT_EQ(headers.last_modified_time_ms(), input.last_modified_time_ms());
+
+  ASSERT_TRUE(input.has_expiration_time_ms());
+  EXPECT_EQ(headers.CacheExpirationTimeMs(), input.expiration_time_ms());
+
+  ASSERT_TRUE(input.has_date_ms());
+  EXPECT_EQ(headers.date_ms(), input.date_ms());
+}
+
+}  // namespace
+
+TEST_F(ResourceManagerTest, FillInPartitionInputInfo) {
+  // Test for Resource::FillInPartitionInputInfo.
+  const char kUrl[] = "http://example.com/page.html";
+  const char kContents[] = "bits";
+  SetBaseUrlForFetch("http://example.com/");
+
+  ResponseHeaders headers;
+  SetDefaultLongCacheHeaders(&kContentTypeHtml, &headers);
+  headers.ComputeCaching();
+  SetFetchResponse(kUrl, headers, kContents);
+  GoogleUrl gurl(kUrl);
+  ResourcePtr resource(rewrite_driver()->CreateInputResource(gurl));
+  VerifyContentsCallback callback(resource, kContents);
+  rewrite_driver()->ReadAsync(&callback, message_handler());
+  callback.AssertCalled();
+
+  InputInfo with_hash, without_hash;
+  resource->FillInPartitionInputInfo(Resource::kIncludeInputHash, &with_hash);
+  resource->FillInPartitionInputInfo(Resource::kOmitInputHash, &without_hash);
+
+  CheckMatchesHeaders(headers, with_hash);
+  CheckMatchesHeaders(headers, without_hash);
+  ASSERT_TRUE(with_hash.has_input_content_hash());
+  EXPECT_STREQ("zEEebBNnDlISRim4rIP30", with_hash.input_content_hash());
+  EXPECT_FALSE(without_hash.has_input_content_hash());
+}
+
+namespace {
+
 // This is an adapter cache class that distributes cache operations
 // on multiple threads, in order to help test thread safety with
 // multi-threaded caches.

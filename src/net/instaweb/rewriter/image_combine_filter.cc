@@ -962,7 +962,8 @@ class ImageCombineFilter::Context : public RewriteContext {
     virtual ~ImageCombination() { }
 
     void AddResourceToPartition(Resource* resource, int index) {
-      resource->AddInputInfoToPartition(index, partition_);
+      resource->AddInputInfoToPartition(
+          Resource::kIncludeInputHash, index, partition_);
     }
 
     void set_partition(CachedResult* partition) { partition_ = partition; }
@@ -1042,6 +1043,7 @@ class ImageCombineFilter::Context : public RewriteContext {
       }
       bool added = false;
       // Don't add the same url to a combination twice.
+
       std::map<GoogleString, ImageCombination*>::iterator it;
       it = urls_to_combos.find(resource_url);
       if (it != urls_to_combos.end()) {

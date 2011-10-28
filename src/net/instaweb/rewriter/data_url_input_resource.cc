@@ -34,7 +34,8 @@ bool DataUrlInputResource::IsValidAndCacheable() const {
   return response_headers_.status_code() == HttpStatus::kOK;
 }
 
-void DataUrlInputResource::FillInPartitionInputInfo(InputInfo* input) {
+void DataUrlInputResource::FillInPartitionInputInfo(
+    HashHint include_content_hash, InputInfo* input) {
   input->set_type(InputInfo::ALWAYS_VALID);
 }
 

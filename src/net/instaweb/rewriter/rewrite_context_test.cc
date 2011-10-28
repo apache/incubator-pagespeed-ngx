@@ -443,7 +443,8 @@ class CombiningFilter : public RewriteFilter {
       MessageHandler* handler = Driver()->message_handler();
       CachedResult* partition = partitions->add_partition();
       for (int i = 0, n = num_slots(); i < n; ++i) {
-        slot(i)->resource()->AddInputInfoToPartition(i, partition);
+        slot(i)->resource()->AddInputInfoToPartition(
+            Resource::kIncludeInputHash, i, partition);
         if (!combiner_.AddResourceNoFetch(slot(i)->resource(), handler).value) {
           return false;
         }
@@ -2456,7 +2457,10 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   EXPECT_EQ(" B2 ", result_vector[1]);
   EXPECT_EQ(" C2 ", result_vector[2]);
   EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
-  EXPECT_EQ(1, nested_filter_->num_sub_rewrites());  // a.css (c.css unchanged)
+
+  // a.css; and c.css gets rewritten while unchanged as it is an on-the-fly
+  // resource.
+  EXPECT_EQ(2, nested_filter_->num_sub_rewrites());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // a.css, c.css
   EXPECT_EQ(1, file_system()->num_input_file_opens());  // rewritten a.css
   EXPECT_EQ(1, file_system()->num_input_file_stats());  // check b.css (nested)

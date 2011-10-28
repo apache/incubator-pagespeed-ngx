@@ -827,7 +827,8 @@ void RewriteContext::ResourceRevalidateDone(InputInfo* input_info,
       ok = (resource->ContentsHash() == input_info->input_content_hash());
 
       // Patch up the input_info with the latest cache information on resource.
-      resource->FillInPartitionInputInfo(input_info);
+      resource->FillInPartitionInputInfo(
+          Resource::kIncludeInputHash, input_info);
     }
   }
 
@@ -1139,7 +1140,10 @@ void RewriteContext::StartRewriteForFetch() {
   for (int i = 0, n = slots_.size(); i < n; ++i) {
     ResourcePtr resource(slot(i)->resource());
     if (resource->loaded() && resource->ContentsValid()) {
-      resource->AddInputInfoToPartition(i, partition);
+      Resource::HashHint hash_hint =
+          (kind() == kOnTheFlyResource) ?
+              Resource::kOmitInputHash : Resource::kIncludeInputHash;
+      resource->AddInputInfoToPartition(hash_hint, i, partition);
     } else {
       ok_to_rewrite = false;
       break;

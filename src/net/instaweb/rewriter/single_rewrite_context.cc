@@ -21,6 +21,7 @@
 #include "base/logging.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -50,7 +51,10 @@ bool SingleRewriteContext::Partition(OutputPartitions* partitions,
               resource, kind(), true /* async flow */));
       if (output_resource.get() != NULL) {
         CachedResult* partition = partitions->add_partition();
-        resource->AddInputInfoToPartition(0, partition);
+        Resource::HashHint hash_hint =
+            (kind() == kOnTheFlyResource) ?
+                Resource::kOmitInputHash : Resource::kIncludeInputHash;
+        resource->AddInputInfoToPartition(hash_hint, 0, partition);
         output_resource->set_cached_result(partition);
         outputs->push_back(output_resource);
       }
