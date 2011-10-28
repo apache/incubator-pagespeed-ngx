@@ -121,6 +121,7 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kExtendCache,
   RewriteOptions::kInlineCss,
   RewriteOptions::kInlineImages,
+  RewriteOptions::kInlineImportToLink,
   RewriteOptions::kInlineJavascript,
   RewriteOptions::kInsertImageDimensions,
   RewriteOptions::kLeftTrimUrls,
@@ -177,6 +178,7 @@ const char * RewriteOptions::FilterName(
     case kExtendCache:                     return "Extend Cache";
     case kInlineCss:                       return "Inline Css";
     case kInlineImages:                    return "Inline Images";
+    case kInlineImportToLink:              return "Inline @import to Link";
     case kInlineJavascript:                return "Inline Javascript";
     case kInsertImageDimensions:           return "Insert Image Dimensions";
     case kLeftTrimUrls:                    return "Left Trim Urls";

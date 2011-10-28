@@ -44,6 +44,7 @@
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_inline_filter.h"
+#include "net/instaweb/rewriter/public/css_inline_import_to_link_filter.h"
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
@@ -454,6 +455,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     UrlLeftTrimFilter::Initialize(statistics);
   }
   CssFilter::Initialize(statistics);
+  CssInlineImportToLinkFilter::Initialize(statistics);
 }
 
 void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
@@ -581,6 +583,12 @@ void RewriteDriver::AddPreRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kStripScripts)) {
     // Experimental filter that blindly strips all scripts from a page.
     AddOwnedPreRenderFilter(new StripScriptsFilter(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink)) {
+    // If we're converting simple embedded CSS @imports into a href link
+    // then we need to do that before any other CSS processing.
+    AddOwnedPreRenderFilter(new CssInlineImportToLinkFilter(this,
+                                                            statistics()));
   }
   if (rewrite_options->Enabled(RewriteOptions::kOutlineCss)) {
     // Cut out inlined styles and make them into external resources.
