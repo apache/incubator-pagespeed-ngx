@@ -37,6 +37,13 @@ namespace {
 const char kBikePngFile[] = "BikeCrashIcn.png";
 const char kCuppaPngFile[] = "Cuppa.png";
 const char kPuzzleJpgFile[] = "Puzzle.jpg";
+const char kChefGifFile[] = "IronChef2.gif";
+
+const char* kHtmlTemplate3Divs = "<head><style>"
+    "#div1{background:url(%s) 0px 0px;width:10px;height:10px}"
+    "#div2{background:url(%s) 0px %dpx;width:%dpx;height:10px}"
+    "#div3{background:url(%s) 0px %dpx;width:10px;height:10px}"
+    "</style></head>";
 
 // Image spriting tests.
 class CssImageCombineTest : public CssRewriteTestBase {
@@ -52,6 +59,8 @@ class CssImageCombineTest : public CssRewriteTestBase {
                          kContentTypePng, 100);
     AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
                          kContentTypeJpeg, 100);
+    AddFileToMockFetcher(StrCat(kTestDomain, kChefGifFile), kChefGifFile,
+                         kContentTypeGif, 100);
   }
   void TestSpriting(const char* bike_position, const char* expected_position,
                     bool should_sprite) {
@@ -132,58 +141,49 @@ TEST_P(CssImageCombineTest, SpritesImages) {
 
 TEST_P(CssImageCombineTest, SpritesMultiple) {
   CSS_XFAIL_SYNC();
-  const char* html = "<head><style>"
-      "#div1{background:url(%s) 0px 0px;width:10px;height:10px}"
-      "#div2{background:url(%s) 0px %dpx;width:%dpx;height:10px}"
-      "#div3{background:url(%s) 0px %dpx;width:10px;height:10px}"
-      "</style></head>";
   GoogleString before, after, sprite;
   // With the same image present 3 times, there should be no sprite.
-  before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 10,
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 10,
                         kBikePngFile, 0);
   GoogleString abs_bike = AbsolutifyUrl(kBikePngFile);
-  after = StringPrintf(html, abs_bike.c_str(), abs_bike.c_str(), 0, 10,
-                       abs_bike.c_str(), 0);
+  after = StringPrintf(kHtmlTemplate3Divs, abs_bike.c_str(), abs_bike.c_str(),
+                       0, 10, abs_bike.c_str(), 0);
   ValidateExpected("no_sprite_3_bikes", before, after);
 
   // With 2 of the same and 1 different, there should be a sprite without
   // duplication.
-  before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 10,
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 10,
                         kCuppaPngFile, 0);
   sprite = Encode(kTestDomain, "is", "0",
                   StrCat(kBikePngFile, "+", kCuppaPngFile), "png").c_str();
-  after = StringPrintf(html, sprite.c_str(),
+  after = StringPrintf(kHtmlTemplate3Divs, sprite.c_str(),
                        sprite.c_str(), 0, 10, sprite.c_str(), -100);
   ValidateExpected("sprite_2_bikes_1_cuppa", before, after);
 
   // If the second occurrence of the image is unspriteable (e.g. if the div is
   // larger than the image), then don't sprite anything.
-  before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 999,
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 999,
                         kCuppaPngFile, 0);
   GoogleString abs_cuppa = AbsolutifyUrl(kCuppaPngFile);
-  after = StringPrintf(html, abs_bike.c_str(), abs_bike.c_str(), 0, 999,
-                       abs_cuppa.c_str(), 0);
+  after = StringPrintf(kHtmlTemplate3Divs, abs_bike.c_str(), abs_bike.c_str(),
+                       0, 999, abs_cuppa.c_str(), 0);
   ValidateExpected("sprite_none_dimmensions", before, after);
 }
 
 // Try the last test from SpritesMultiple with a cold cache.
 TEST_P(CssImageCombineTest, NoSpritesMultiple) {
   CSS_XFAIL_SYNC();
-  const char* html = "<head><style>"
-      "#div1{background:url(%s) 0px 0px;width:10px;height:10px}"
-      "#div2{background:url(%s) 0px %dpx;width:%dpx;height:10px}"
-      "#div3{background:url(%s) 0px %dpx;width:10px;height:10px}"
-      "</style></head>";
   GoogleString text;
   // If the second occurence of the image is unspriteable (e.g. if the div is
   // larger than the image), then don't sprite anything.
   GoogleString in_text =
-      StringPrintf(html, kBikePngFile, kBikePngFile, 0, 999, kCuppaPngFile, 0);
+      StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 999,
+                   kCuppaPngFile, 0);
   GoogleString abs_bike = AbsolutifyUrl(kBikePngFile);
   GoogleString abs_cuppa = AbsolutifyUrl(kCuppaPngFile);
   GoogleString out_text =
-      StringPrintf(html, abs_bike.c_str(), abs_bike.c_str(), 0, 999,
-                         abs_cuppa.c_str(), 0);
+      StringPrintf(kHtmlTemplate3Divs, abs_bike.c_str(), abs_bike.c_str(),
+                   0, 999, abs_cuppa.c_str(), 0);
   ValidateExpected("no_sprite", text, text);
 }
 
@@ -293,27 +293,49 @@ TEST_P(CssImageCombineTest, SpritesMultiSite) {
                         kContentTypePng, 100);
 
   const char kHtmlTemplate[] = "<head><style>"
-      "#div1{background:url(%s);width:10px;height:10px}"
-      "#div2{background:url(%s);width:10px;height:10px}"
-      "#div3{background:url(%s);width:10px;height:10px}"
-      "#div4{background:url(%s);width:10px;height:10px}"
+      "#div1{background:url(%s);width:10px;height:10px%s}"
+      "#div2{background:url(%s);width:10px;height:10px%s}"
+      "#div3{background:url(%s);width:10px;height:10px%s}"
+      "#div4{background:url(%s);width:10px;height:10px%s}"
       "</style></head>";
 
-  GoogleString html = StringPrintf(kHtmlTemplate,
-                                   StrCat(kTestDomain, kBikePngFile).c_str(),
-                                   StrCat(kTestDomain, kCuppaPngFile).c_str(),
-                                   StrCat(kAltDomain, kBikePngFile).c_str(),
-                                   StrCat(kAltDomain, kCuppaPngFile).c_str());
-  Parse("sprite_multi_site", html);
-  EXPECT_NE(GoogleString::npos,
-            output_buffer_.find(
-                Encode(kTestDomain, "is", "0",
-                       StrCat(kBikePngFile, "+", kCuppaPngFile), "png")));
+  GoogleString test_bike = StrCat(kTestDomain, kBikePngFile);
+  GoogleString alt_bike = StrCat(kAltDomain, kBikePngFile);
+  GoogleString test_cup = StrCat(kTestDomain, kCuppaPngFile);
+  GoogleString alt_cup = StrCat(kAltDomain, kCuppaPngFile);
+  GoogleString test_sprite = Encode(
+      kTestDomain, "is", "0", StrCat(kBikePngFile, "+", kCuppaPngFile), "png");
+  GoogleString alt_sprite = Encode(
+      kAltDomain, "is", "0", StrCat(kBikePngFile, "+", kCuppaPngFile), "png");
 
-  EXPECT_NE(GoogleString::npos,
-            output_buffer_.find(
-                Encode(kAltDomain, "is", "0",
-                       StrCat(kBikePngFile, "+", kCuppaPngFile), "png")));
+  GoogleString before = StringPrintf(kHtmlTemplate,
+                                     test_bike.c_str(), "",
+                                     alt_bike.c_str(), "",
+                                     test_cup.c_str(), "",
+                                     alt_cup.c_str(), "");
+
+  GoogleString after = StringPrintf(
+      kHtmlTemplate,
+      test_sprite.c_str(), ";background-position:0px 0px",
+      alt_sprite.c_str(), ";background-position:0px 0px",
+      test_sprite.c_str(), ";background-position:0px -100px",
+      alt_sprite.c_str(), ";background-position:0px -100px");
+  ValidateExpected("multi_site", before, after);
+
+  // For this test, a partition should get created for the alt_bike image,
+  // but it should end up getting canceled and deleted since the partition
+  // will have only one image in it.
+  before = StringPrintf(kHtmlTemplate,
+                        alt_bike.c_str(), "",
+                        test_bike.c_str(), "",
+                        test_cup.c_str(), "",
+                        test_bike.c_str(), "");
+  after = StringPrintf(kHtmlTemplate,
+                       alt_bike.c_str(), "",
+                       test_sprite.c_str(), ";background-position:0px 0px",
+                       test_sprite.c_str(), ";background-position:0px -100px",
+                       test_sprite.c_str(), ";background-position:0px 0px");
+  ValidateExpected("multi_site_one_sprite", before, after);
 }
 
 // TODO(nforman): Add a testcase that synthesizes a spriting situation where
@@ -380,6 +402,49 @@ TEST_P(CssImageCombineTest, CombineManyFiles) {
   ValidateExpected("manymanyimages", html, result);
 }
 
+TEST_P(CssImageCombineTest, SpritesBrokenUp) {
+  // Make sure we include all spritable images, even if there are
+  // un-spritable images in between.
+  CSS_XFAIL_SYNC();
+  GoogleString before, after;
+
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kPuzzleJpgFile, 0, 10,
+                        kCuppaPngFile, 0);
+
+  GoogleString abs_puzzle = AbsolutifyUrl(kPuzzleJpgFile);
+  const GoogleString sprite_string =
+      Encode(kTestDomain, "is", "0",
+             StrCat(kBikePngFile, "+", kCuppaPngFile), "png");
+  const char* sprite = sprite_string.c_str();
+
+  after = StringPrintf(kHtmlTemplate3Divs, sprite, abs_puzzle.c_str(), 0, 10,
+                       sprite, -100);
+  ValidateExpected("sprite_broken_up", before, after);
+}
+
+TEST_P(CssImageCombineTest, SpritesGifsWithPngs) {
+  // Make sure we include all spritable images, even if there are
+  // un-spritable images in between.
+  CSS_XFAIL_SYNC();
+  GoogleString before, after;
+
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kChefGifFile, 0, 10,
+                        kCuppaPngFile, 0);
+
+  const GoogleString sprite_string =
+      Encode(kTestDomain, "is", "0",
+             StrCat(kBikePngFile, "+", kChefGifFile, "+", kCuppaPngFile),
+             "png");
+  const char* sprite = sprite_string.c_str();
+
+  // The BikePng is 100px tall, the ChefGif is 256px tall, so we
+  // expect the Chef to be offset by -100, and the CuppaPng to be
+  // offset by -356.
+  after = StringPrintf(kHtmlTemplate3Divs, sprite, sprite, -100, 10,
+                       sprite, -356);
+  ValidateExpected("sprite_with_gif", before, after);
+}
+
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(CssImageCombineTestInstance,
                         CssImageCombineTest,
@@ -396,37 +461,32 @@ class CssImageMultiFilterTest : public CssImageCombineTest {
 
 TEST_P(CssImageMultiFilterTest, SpritesAndNonSprites) {
   CSS_XFAIL_SYNC();
-  const char* html = "<head><style>"
-      "#div1{background:url(%s) 0px 0px;width:10px;height:10px}"
-      "#div2{background:url(%s) 0px %dpx;width:%dpx;height:10px}"
-      "#div3{background:url(%s) 0px %dpx;width:10px;height:10px}"
-      "</style></head>";
   GoogleString before, after, encoded, cuppa_encoded, sprite;
   // With the same image present 3 times, there should be no sprite.
-  before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 10,
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 10,
                         kBikePngFile, 0);
   encoded = Encode(kTestDomain, "ce", "0", kBikePngFile, "png");
-  after = StringPrintf(html, encoded.c_str(), encoded.c_str(), 0, 10,
-                       encoded.c_str(), 0);
+  after = StringPrintf(kHtmlTemplate3Divs, encoded.c_str(), encoded.c_str(),
+                       0, 10, encoded.c_str(), 0);
   ValidateExpected("no_sprite_3_bikes", before, after);
 
   // With 2 of the same and 1 different, there should be a sprite without
   // duplication.
-  before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 10,
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 10,
                         kCuppaPngFile, 0);
   sprite = Encode(kTestDomain, "is", "0",
                   StrCat(kBikePngFile, "+", kCuppaPngFile), "png").c_str();
-  after = StringPrintf(html, sprite.c_str(),
+  after = StringPrintf(kHtmlTemplate3Divs, sprite.c_str(),
                        sprite.c_str(), 0, 10, sprite.c_str(), -100);
   ValidateExpected("sprite_2_bikes_1_cuppa", before, after);
 
   // If the second occurrence of the image is unspriteable (e.g. if the div is
   // larger than the image), we shouldn't sprite any of them.
-  before = StringPrintf(html, kBikePngFile, kBikePngFile, 0, 999,
+  before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 999,
                         kCuppaPngFile, 0);
   cuppa_encoded = Encode(kTestDomain, "ce", "0", kCuppaPngFile, "png");
-  after = StringPrintf(html, encoded.c_str(), encoded.c_str(), 0, 999,
-                       cuppa_encoded.c_str());
+  after = StringPrintf(kHtmlTemplate3Divs, encoded.c_str(), encoded.c_str(),
+                       0, 999, cuppa_encoded.c_str());
   ValidateExpected("sprite_none_dimmensions", before, after);
 }
 

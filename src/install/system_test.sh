@@ -612,7 +612,8 @@ FILE=sprite_images.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 echo $WGET_DUMP $URL
-fetch_until $URL 'grep -c ic.pagespeed.is' 1
+fetch_until $URL \
+'grep -c Cuppa.png.*BikeCrashIcn.png.*IronChef2.gif.*.pagespeed.is.*.png' 1
 
 # This test is only valid for async.
 test_filter rewrite_css,sprite_images sprites images in CSS
@@ -676,20 +677,16 @@ if [ -n "$HTTPS_HOST" ]; then
   check [ $? = 0 ]
 
   echo Checking for combined CSS URL
-  EXPECTED='<link rel="stylesheet" type="text/css" href="'
-  EXPECTED="$EXPECTED"'styles/yellow\.css+blue\.css+big\.css+bold\.css'
+  EXPECTED='href="styles/yellow\.css+blue\.css+big\.css+bold\.css'
   EXPECTED="$EXPECTED"'\.pagespeed\.cc\..*\.css">'
-  $WGET_DUMP_HTTPS "$URL?ModPagespeedFilters=combine_css,trim_urls" | \
-    grep -qi "$EXPECTED"
-  check [ $? = 0 ]
+  fetch_until "$URL?ModPagespeedFilters=combine_css,trim_urls" \
+      "grep -ic $EXPECTED" 1
 
   echo Checking for combined CSS URL without URL trimming
-  EXPECTED='<link rel="stylesheet" type="text/css" href="'
-  EXPECTED="$EXPECTED""$HTTPS_EXAMPLE_ROOT/"
+  EXPECTED="href=\"$HTTPS_EXAMPLE_ROOT/"
   EXPECTED="$EXPECTED"'styles/yellow\.css+blue\.css+big\.css+bold\.css'
   EXPECTED="$EXPECTED"'\.pagespeed\.cc\..*\.css">'
-  $WGET_DUMP_HTTPS "$URL?ModPagespeedFilters=combine_css" | grep -qi "$EXPECTED"
-  check [ $? = 0 ]
+  fetch_until "$URL?ModPagespeedFilters=combine_css" "grep -ic $EXPECTED" 1
 fi
 
 # This filter convert the meta tags in the html into headers.

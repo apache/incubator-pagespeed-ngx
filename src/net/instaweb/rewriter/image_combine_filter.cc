@@ -19,7 +19,10 @@
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
 
 #include <cstddef>                     // for size_t
+#include <iterator>
 #include <map>
+#include <set>
+#include <utility>
 #include <vector>
 
 #include "base/logging.h"
@@ -509,7 +512,7 @@ class Library : public spriter::ImageLibraryInterface {
                                             tmp_dir, handler));
     }
 
-    virtual ~Canvas() {}
+    virtual ~Canvas() { }
 
     virtual bool DrawImage(const Image* image, int x, int y) {
       const SpriterImage* spriter_image
@@ -639,9 +642,11 @@ class ImageCombineFilter::Combiner
     // effectiveness by combining highly cacheable shared resources with
     // transient ones.
 
-    // We only handle PNGs for now.
-    if (resource->type() && (resource->type()->type() != ContentType::kPng)) {
-      handler->Message(kInfo, "Cannot sprite: not PNG, %s",
+    // We only handle PNGs and GIFs (which are converted to PNGs) for now.
+    if (resource->type() != NULL &&
+        !(resource->type()->type() == ContentType::kPng ||
+          resource->type()->type() == ContentType::kGif)) {
+      handler->Message(kInfo, "Cannot sprite: not PNG or GIF, %s",
                        resource->url().c_str());
       return false;
     }
@@ -786,6 +791,8 @@ typedef RefCountedPtr<SpriteFutureSlot> SpriteFutureSlotPtr;
 
 class ImageCombineFilter::Context : public RewriteContext {
  public:
+  // TODO(jmaessen): The addition of 1 below avoids the leading ".";
+  // make this convention consistent and fix all code.
   Context(ImageCombineFilter* filter, RewriteContext* parent,
           const GoogleUrl& css_url, const StringPiece& css_text)
       : RewriteContext(NULL, parent, NULL),
@@ -913,6 +920,9 @@ class ImageCombineFilter::Context : public RewriteContext {
           if (clip_rect != NULL) {
             future->Realize(new_url_cstr, clip_rect->x_pos(),
                             clip_rect->y_pos());
+            MessageHandler* handler = filter_->driver()->message_handler();
+            handler->Message(kInfo, "Inserted sprite, url: %s\n",
+                             new_url_cstr);
             replaced_urls.insert(future->old_url());
             sprite_slot->set_may_sprite(true);
           }
@@ -940,6 +950,32 @@ class ImageCombineFilter::Context : public RewriteContext {
   }
 
  private:
+  // Class that associates a list of urls and a partition with a combiner.
+  class ImageCombination : public ImageCombineFilter::Combiner {
+   public:
+    ImageCombination(const StringPiece& extension,
+                     RewriteDriver* driver,
+                     ImageCombineFilter* filter)
+        : ImageCombineFilter::Combiner(driver, extension, filter),
+          partition_(NULL) { }
+
+    virtual ~ImageCombination() { }
+
+    void AddResourceToPartition(Resource* resource, int index) {
+      resource->AddInputInfoToPartition(index, partition_);
+    }
+
+    void set_partition(CachedResult* partition) { partition_ = partition; }
+
+    CachedResult* partition() { return partition_; }
+
+   private:
+    CachedResult* partition_;  // Does not own memory.
+    DISALLOW_COPY_AND_ASSIGN(ImageCombination);
+  };
+
+  typedef std::vector<ImageCombination*> ImageCombinationVector;
+
   // Returns true iff declarations were setup properly, and the image
   // are smaller than the specified div dimensions.
   bool SetupSpriteDimensions(SpriteFuture* future) {
@@ -991,12 +1027,11 @@ class ImageCombineFilter::Context : public RewriteContext {
   void CollectSlots(OutputPartitions* partitions,
                     OutputResourceVector* outputs,
                     StringSet* no_sprite) {
-    StringSet urls;
-    CachedResult* partition = NULL;
+    ImageCombinationVector combinations;
     MessageHandler* handler = filter_->driver()->message_handler();
+    std::map<GoogleString, ImageCombination*> urls_to_combos;
 
     for (int i = 0, n = num_slots(); i < n; ++i) {
-      bool add_input = false;
       ResourcePtr resource(slot(i)->resource());
       SpriteFutureSlot* sprite_slot =
               static_cast<SpriteFutureSlot*>(slot(i).get());
@@ -1005,47 +1040,81 @@ class ImageCombineFilter::Context : public RewriteContext {
       if (no_sprite->find(resource_url) != no_sprite->end()) {
         continue;
       }
+      bool added = false;
       // Don't add the same url to a combination twice.
-      if (urls.find(resource_url) != urls.end()) {
-        if (partition != NULL) {
-          resource->AddInputInfoToPartition(i, partition);
-        }
-        continue;
+      std::map<GoogleString, ImageCombination*>::iterator it;
+      it = urls_to_combos.find(resource_url);
+      if (it != urls_to_combos.end()) {
+        ImageCombination* combo = it->second;
+        DCHECK(combo != NULL) << "Combination points to NULL partition.";
+        combo->AddResourceToPartition(resource.get(), i);
+        added = true;
       }
-      if (combiner_.AddElementNoFetch(future, resource, handler).value) {
-        add_input = true;
-      } else if (partition != NULL) {
-        FinalizePartition(partitions, partition, outputs);
-        urls.clear();
-        partition = NULL;
-        if (combiner_.AddResourceNoFetch(resource, handler).value) {
-          add_input = true;
+      // If it wasn't already in the combination, see if we can add it.
+      // Even if the image is spritable, it may not be able to be sprited
+      // in a particular combination due to domain lawyer restrictions,
+      // or (perhaps in the future) image type.
+      if (!added) {
+        for (int j = 0, m = combinations.size(); j < m; ++j) {
+          ImageCombination* combo = combinations[j];
+          if (combo->AddElementNoFetch(future, resource, handler).value) {
+            combo->AddResourceToPartition(resource.get(), i);
+            urls_to_combos[resource_url] = combo;
+            added = true;
+            break;
+          }
         }
-      }
-      if (add_input) {
-        urls.insert(resource_url);
-        if (partition == NULL) {
-          partition = partitions->add_partition();
+        // If we couldn't add this resource to any of the existing partitions,
+        // try making a new one and adding it there.  We may still not be able
+        // to do that if the resource isn't spritable at all.
+        if (!added) {
+          scoped_ptr<ImageCombination> combo(new ImageCombination(
+              kContentTypePng.file_extension() + 1, Driver(), filter_));
+          if (combo->AddElementNoFetch(future, resource, handler).value) {
+            combo->set_partition(partitions->add_partition());
+            combo->AddResourceToPartition(resource.get(), i);
+            urls_to_combos[resource_url] = combo.get();
+            combinations.push_back(combo.release());
+          } else {
+            no_sprite->insert(resource_url);
+          }
         }
-        resource->AddInputInfoToPartition(i, partition);
       }
     }
-    FinalizePartition(partitions, partition, outputs);
+    FinalizePartitions(combinations, partitions, outputs);
+    STLDeleteElements(&combinations);
+    Reset();
   }
 
-
-  void FinalizePartition(OutputPartitions* partitions,
-                         CachedResult* partition,
-                         OutputResourceVector* outputs) {
-    if (partition != NULL) {
-      OutputResourcePtr combination_output(combiner_.MakeOutput());
-      if (combination_output.get() == NULL) {
-        partitions->mutable_partition()->RemoveLast();
-      } else {
-        combination_output->UpdateCachedResultPreservingInputInfo(partition);
-        outputs->push_back(combination_output);
+  // Write the output for the combinations.  If a combination can not be
+  // written (e.g. it has only one element), then remove its partition.
+  void FinalizePartitions(const ImageCombinationVector& combinations,
+                          OutputPartitions* partitions,
+                          OutputResourceVector* outputs) {
+    std::set<int> remove_indices;
+    for (int i = 0, n = combinations.size(); i < n; ++i) {
+      ImageCombination* combination = combinations[i];
+      CachedResult* partition = combination->partition();
+      if (partition != NULL) {
+        OutputResourcePtr combination_output(combination->MakeOutput());
+        if (combination_output.get() == NULL) {
+          remove_indices.insert(i);
+        } else {
+          combination_output->UpdateCachedResultPreservingInputInfo(partition);
+          outputs->push_back(combination_output);
+        }
       }
-      Reset();
+    }
+    // We can re-arrange the partitions at this point only because we are
+    // about to delete the ImageCombinations (and with them, their pointers
+    // to those partitions).
+    std::set<int>::reverse_iterator rit;
+    for (rit = remove_indices.rbegin(); rit != remove_indices.rend(); rit++) {
+      int last_partition = partitions->partition_size() - 1;
+      if (*rit != last_partition) {
+        partitions->mutable_partition()->SwapElements(*rit, last_partition);
+      }
+      partitions->mutable_partition()->RemoveLast();
     }
   }
 
@@ -1055,8 +1124,6 @@ class ImageCombineFilter::Context : public RewriteContext {
   GoogleString key_prefix_;
 };
 
-// TODO(jmaessen): The addition of 1 below avoids the leading ".";
-// make this convention consistent and fix all code.
 ImageCombineFilter::ImageCombineFilter(RewriteDriver* driver,
                                        const char* filter_prefix)
     : RewriteFilter(driver, filter_prefix),
