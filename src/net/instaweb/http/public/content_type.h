@@ -55,6 +55,9 @@ struct ContentType {
   // some other XML).
   bool IsXmlLike() const;
 
+  // Return true iff this content type is Image.
+  bool IsImage() const;
+
   // These fields should be private; we leave them public only so we can use
   // struct literals in content_type.cc.  Other code should use the above
   // accessor methods instead of accessing these fields directly.

@@ -90,6 +90,18 @@ bool ContentType::IsXmlLike() const {
   }
 }
 
+bool ContentType::IsImage() const {
+  switch (type_) {
+    case kPng:
+    case kGif:
+    case kJpeg:
+    case kWebp:
+      return true;
+    default:
+      return false;
+  }
+}
+
 const ContentType* NameExtensionToContentType(const StringPiece& name) {
   // Get the name from the extension.
   StringPiece::size_type ext_pos = name.rfind('.');
