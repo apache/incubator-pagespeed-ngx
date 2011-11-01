@@ -27,7 +27,6 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
@@ -265,7 +264,7 @@ TEST_P(CssImageRewriterTest, RewriteCached) {
   GoogleString kBaseDomain;
   // If using the TestUrlNamer, the rewritten URL won't be relative so
   // set things up so that we check for the correct URL below.
-  if (TestRewriteDriverFactory::UsingTestUrlNamer()) {
+  if (factory()->use_test_url_namer()) {
     kBaseDomain = kTestDomain;
   }
 

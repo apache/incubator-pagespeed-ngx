@@ -2335,7 +2335,7 @@ TEST_F(NestedResourceUpdateTest, TestExpireNested404) {
   EXPECT_EQ("http://test.com/a.css\n", contents);
 
   // Determine if we're using the TestUrlNamer, for the hash later.
-  bool test_url_namer = TestRewriteDriverFactory::UsingTestUrlNamer();
+  bool test_url_namer = factory_->use_test_url_namer();
 
   // Now move forward two decades, and upload a new version. We should
   // be ready to optimize at that point, but input should not be expired.

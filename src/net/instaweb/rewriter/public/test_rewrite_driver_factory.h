@@ -76,8 +76,8 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   void CallFetcherCallbacksForDriver(RewriteDriver* driver);
   MockMessageHandler* mock_message_handler() { return mock_message_handler_; }
   MockScheduler* mock_scheduler() { return mock_scheduler_; }
-
-  static bool UsingTestUrlNamer();
+  bool use_test_url_namer() const { return use_test_url_namer_; }
+  void set_use_test_url_namer(bool x) { use_test_url_namer_ = x; }
 
  protected:
   virtual Hasher* NewHasher();
@@ -107,6 +107,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   SimpleStats simple_stats_;
   MockMessageHandler* mock_message_handler_;
   MockMessageHandler* mock_html_message_handler_;
+  bool use_test_url_namer_;
 };
 
 }  // namespace net_instaweb
