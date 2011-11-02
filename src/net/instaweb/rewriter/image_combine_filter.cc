@@ -593,15 +593,25 @@ class Library : public spriter::ImageLibraryInterface {
   }
 
  private:
+  typedef std::map<const GoogleString, net_instaweb::Image*> ImageMap;
   void Register(const StringPiece& key, net_instaweb::Image* image) {
-    fake_fs_[key.as_string()] = image;
+    std::pair<ImageMap::iterator, bool> result(
+        fake_fs_.insert(std::make_pair(key.as_string(), image)));
+    if (!result.second) {
+      // Already existed.
+      ImageMap::iterator iter = result.first;
+      if (iter->second != image) {
+        delete iter->second;
+        iter->second = image;
+      }
+    }
   }
 
   // The spriter expects a filesystem interface for accessing images, but we
   // don't want to hit the disk excessively.  We keep here an in-memory map from
   // a "pathname" to its Image (which contains both the encoded input and the
-  // decoded raster) for quick access.
-  std::map<const GoogleString, net_instaweb::Image*> fake_fs_;
+  // decoded raster) for quick access. Owns the Image objects.
+  ImageMap fake_fs_;
   GoogleString tmp_dir_;
   MessageHandler* handler_;
 };
@@ -611,24 +621,15 @@ class Library : public spriter::ImageLibraryInterface {
 using spriter_binding::Library;
 using spriter_binding::SpriteFuture;
 
-// The Combiner does all the work of spriting.  Each combiner takes an image of
-// a certain type (e.g. PNGs) and produces a single sprite as a combination.
+// The Combiner does all the work of spriting.  Each combiner takes a set of
+// images and produces a single sprite as a combination.
 class ImageCombineFilter::Combiner
     : public ResourceCombinerTemplate<SpriteFuture*> {
  public:
-  Combiner(RewriteDriver* driver, const StringPiece& extension,
-           ImageCombineFilter* filter)
-      : ResourceCombinerTemplate<SpriteFuture*>(driver, extension, filter),
-        library_(NULL,
-                 driver->resource_manager()->filename_prefix(),
-                 driver->message_handler()),
-        image_file_count_reduction_(NULL) {
-    Statistics* stats = driver->resource_manager()->statistics();
-    if (stats != NULL) {
-      image_file_count_reduction_ =
-          stats->GetVariable(kImageFileCountReduction);
-    }
-  }
+  Combiner(ImageCombineFilter* filter, Library* library)
+      : ResourceCombinerTemplate<SpriteFuture*>(
+            filter->driver(), kContentTypePng.file_extension() + 1, filter),
+        library_(library) { }
 
   virtual ~Combiner() {
     // Note that the superclass's dtor will not call our overridden Clear.
@@ -651,7 +652,7 @@ class ImageCombineFilter::Combiner
       return false;
     }
     // Need to make sure our image library can handle this image.
-    if (!library_.Register(resource)) {
+    if (!library_->Register(resource)) {
       handler->Message(kInfo, "Cannot sprite: not decodable (transparent?)");
       return false;
     }
@@ -662,7 +663,7 @@ class ImageCombineFilter::Combiner
       const ResourceVector& combine_resources,
       const OutputResourcePtr& combination,
       MessageHandler* handler) {
-    spriter::ImageSpriter spriter(&library_);
+    spriter::ImageSpriter spriter(library_);
 
     spriter::SpriterInput input;
     input.set_id(0);
@@ -689,7 +690,7 @@ class ImageCombineFilter::Combiner
       return false;
     }
     scoped_ptr<Library::SpriterImage> result_image(
-        library_.ReadFromFile(result->output_image_path()));
+        library_->ReadFromFile(result->output_image_path()));
     if (result_image.get() == NULL) {
       handler->Error(UrlSafeId().c_str(), 0,
                      "Could not read sprited image.");
@@ -715,42 +716,16 @@ class ImageCombineFilter::Combiner
 
   virtual void Clear() {
     ResourceCombinerTemplate<SpriteFuture*>::Clear();
-    library_.Clear();
     added_urls_.clear();
-  }
-
-  // Returns true if the image at url has already been added to the collection
-  // and is at least as large as the given dimensions.
-  bool GetImageDimensions(const GoogleString& url, int* width, int* height) {
-    scoped_ptr<Library::SpriterImage> image(library_.ReadFromFile(url));
-    if (image.get() == NULL) {
-      return false;
-    }
-    return image->GetDimensions(width, height);
   }
 
   bool Write(const ResourceVector& in, const OutputResourcePtr& out) {
     return WriteCombination(in, out, rewrite_driver_->message_handler());
   }
 
-  void AddFilesReducedStat(int reduced) {
-    if (image_file_count_reduction_ != NULL) {
-      image_file_count_reduction_->Add(reduced);
-    }
-  }
-
-  // Put this resource in the library.
-  bool RegisterResource(Resource* resource) {
-    return library_.Register(resource);
-  }
-
  private:
   StringSet added_urls_;
-  Library library_;
-  Variable* image_file_count_reduction_;
-  // Whether the last call to AddResource actually called through to super.
-  // TODO(abliss): this is pretty ugly.  Should replace RemoveLast* with a
-  // better API.
+  Library* library_;
 };
 
 // Special resource slot that has a future_ pointer.
@@ -796,9 +771,9 @@ class ImageCombineFilter::Context : public RewriteContext {
   Context(ImageCombineFilter* filter, RewriteContext* parent,
           const GoogleUrl& css_url, const StringPiece& css_text)
       : RewriteContext(NULL, parent, NULL),
-        combiner_(filter->driver(),
-                  kContentTypePng.file_extension() + 1,
-                  filter),
+        library_(NULL,
+                 filter->driver()->resource_manager()->filename_prefix(),
+                 filter->driver()->message_handler()),
         filter_(filter) {
     MD5Hasher hasher;
     GoogleString prefix = StrCat("css-key:", hasher.Hash(css_text),
@@ -808,15 +783,14 @@ class ImageCombineFilter::Context : public RewriteContext {
 
   Context(RewriteDriver* driver, ImageCombineFilter* filter)
       : RewriteContext(driver, NULL, NULL),
-        combiner_(Driver(), kContentTypePng.file_extension() + 1,
-                  filter),
+        library_(NULL,
+                 filter->driver()->resource_manager()->filename_prefix(),
+                 filter->driver()->message_handler()),
         filter_(filter) {
     key_prefix_ = "";
   }
 
-  ~Context() {
-    combiner_.Clear();
-  }
+  virtual ~Context() {}
 
   // This cache key will no longer match the partition key generated for
   // fetches in RewriteContext.  This may or may not cause cache misses
@@ -839,16 +813,12 @@ class ImageCombineFilter::Context : public RewriteContext {
     return true;
   }
 
-  ImageCombineFilter::Combiner* combiner() {
-    return &combiner_;
-  }
-
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
   virtual const char* id() const { return filter_->id().c_str(); }
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
 
   void Reset() {
-    combiner_.Reset();
+    library_.Clear();
   }
 
  protected:
@@ -862,14 +832,15 @@ class ImageCombineFilter::Context : public RewriteContext {
       // when only one partition should be in use --- in the rewrite path
       // we should have already written everything out in Partition().
       DCHECK_EQ(0, partition_index);
+      ImageCombineFilter::Combiner combiner(filter_, &library_);
 
       ResourceVector resources;
       for (int i = 0, n = num_slots(); i < n; ++i) {
         ResourcePtr resource(slot(i)->resource());
         resources.push_back(resource);
-        combiner_.RegisterResource(resource.get());
+        RegisterResource(resource.get());
       }
-      if (!combiner_.Write(resources, output)) {
+      if (!combiner.Write(resources, output)) {
         result = RewriteSingleResourceFilter::kRewriteFailed;
       }
     }
@@ -928,7 +899,7 @@ class ImageCombineFilter::Context : public RewriteContext {
           }
         }
         int sprited = replaced_urls.size();
-        combiner_.AddFilesReducedStat(sprited - 1);
+        filter_->AddFilesReducedStat(sprited - 1);
       }
     }
     Reset();
@@ -953,10 +924,8 @@ class ImageCombineFilter::Context : public RewriteContext {
   // Class that associates a list of urls and a partition with a combiner.
   class ImageCombination : public ImageCombineFilter::Combiner {
    public:
-    ImageCombination(const StringPiece& extension,
-                     RewriteDriver* driver,
-                     ImageCombineFilter* filter)
-        : ImageCombineFilter::Combiner(driver, extension, filter),
+    ImageCombination(ImageCombineFilter* filter, Library* library)
+        : ImageCombineFilter::Combiner(filter, library),
           partition_(NULL) { }
 
     virtual ~ImageCombination() { }
@@ -977,12 +946,26 @@ class ImageCombineFilter::Context : public RewriteContext {
 
   typedef std::vector<ImageCombination*> ImageCombinationVector;
 
+  // Put this resource in the library.
+  bool RegisterResource(Resource* resource) {
+    return library_.Register(resource);
+  }
+
+  // Returns true if the image at url has already been added to the collection
+  // and is at least as large as the given dimensions.
+  bool GetImageDimensions(const GoogleString& url, int* width, int* height) {
+    scoped_ptr<Library::SpriterImage> image(library_.ReadFromFile(url));
+    if (image.get() == NULL) {
+      return false;
+    }
+    return image->GetDimensions(width, height);
+  }
+
   // Returns true iff declarations were setup properly, and the image
   // are smaller than the specified div dimensions.
   bool SetupSpriteDimensions(SpriteFuture* future) {
     int image_width, image_height;
-    if (!combiner_.GetImageDimensions(future->old_url(),
-                                      &image_width, &image_height)) {
+    if (!GetImageDimensions(future->old_url(), &image_width, &image_height)) {
       return false;
     }
     if (image_width < future->width() || image_height < future->height()) {
@@ -1011,7 +994,7 @@ class ImageCombineFilter::Context : public RewriteContext {
           // sure we can sprite here.
           // TODO(nforman): cheaper image dimension checking.
           if (seen_urls.find(resource_url) == seen_urls.end()) {
-            combiner_.RegisterResource(resource.get());
+            RegisterResource(resource.get());
             seen_urls.insert(resource_url);
           }
           if (!SetupSpriteDimensions(future)) {
@@ -1071,7 +1054,7 @@ class ImageCombineFilter::Context : public RewriteContext {
         // to do that if the resource isn't spritable at all.
         if (!added) {
           scoped_ptr<ImageCombination> combo(new ImageCombination(
-              kContentTypePng.file_extension() + 1, Driver(), filter_));
+              filter_, &library_));
           if (combo->AddElementNoFetch(future, resource, handler).value) {
             combo->set_partition(partitions->add_partition());
             combo->AddResourceToPartition(resource.get(), i);
@@ -1120,7 +1103,7 @@ class ImageCombineFilter::Context : public RewriteContext {
     }
   }
 
-  ImageCombineFilter::Combiner combiner_;
+  Library library_;
   ImageCombineFilter* filter_;
   UrlMultipartEncoder encoder_;
   GoogleString key_prefix_;
@@ -1130,6 +1113,8 @@ ImageCombineFilter::ImageCombineFilter(RewriteDriver* driver,
                                        const char* filter_prefix)
     : RewriteFilter(driver, filter_prefix),
       context_(NULL) {
+  Statistics* stats = driver->resource_manager()->statistics();
+  image_file_count_reduction_ = stats->GetVariable(kImageFileCountReduction);
 }
 
 ImageCombineFilter::~ImageCombineFilter() {
@@ -1145,9 +1130,8 @@ bool ImageCombineFilter::Fetch(const OutputResourcePtr& resource,
                                ResponseHeaders* response_headers,
                                MessageHandler* message_handler,
                                UrlAsyncFetcher::Callback* callback) {
-  return context_->combiner()->Fetch(resource, writer, request_header,
-                                     response_headers, message_handler,
-                                     callback);
+  CHECK(false) << "Fetch should not get called in Async flow";
+  return false;
 }
 
 // Get the dimensions of the declaration.  This is tricky.
@@ -1217,6 +1201,12 @@ RewriteContext* ImageCombineFilter::MakeRewriteContext() {
 
 bool ImageCombineFilter::HasAsyncFlow() const {
   return driver_->asynchronous_rewrites();
+}
+
+void ImageCombineFilter::AddFilesReducedStat(int reduced) {
+  if (image_file_count_reduction_ != NULL) {
+    image_file_count_reduction_->Add(reduced);
+  }
 }
 
 }  // namespace net_instaweb
