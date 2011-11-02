@@ -74,7 +74,7 @@ class UrlNamer {
   // Determines whether the provided request URL is authorized given the
   // RewriteOptions.
   //
-  // The default implementation always return 'true'.
+  // The default implementation uses the domain lawyer in the options.
   virtual bool IsAuthorized(const GoogleUrl& request_url,
                             const RewriteOptions& options) const;
 
