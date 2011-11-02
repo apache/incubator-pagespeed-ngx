@@ -80,7 +80,7 @@ ApacheCache::ApacheCache(const StringPiece& path,
     cache_.reset(file_cache_);
   }
   http_cache_.reset(new HTTPCache(cache_.get(), factory->timer(),
-                                  factory->hasher(), factory->statistics()));
+                                  factory->statistics()));
 }
 
 ApacheCache::~ApacheCache() {

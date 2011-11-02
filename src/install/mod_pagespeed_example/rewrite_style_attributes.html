@@ -1,0 +1,14 @@
+<html>
+  <head>
+    <title>rewrite_style_attributes</title>
+  </head>
+  <body>
+    <div style="    background-color:    yellow    ">
+      The containing div's CSS should have its spaces removed and 'yellow'
+      changed to '#ff0' by rewrite_style_attributes but not by
+      rewrite_style_attributes_with_url.
+    </div>
+    <p>The image should be rewritten/compressed.</p>
+    <div style="background-image: url(images/BikeCrashIcn.png);height:100px"/>
+  </body>
+</html>

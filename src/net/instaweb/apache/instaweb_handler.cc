@@ -401,6 +401,8 @@ apr_status_t save_url_hook(request_rec *request) {
     RewriteDriver* rewrite_driver = manager->decoding_driver();
     RewriteFilter* filter;
     GoogleUrl gurl(url);
+    // TODO: All we care is that it CAN be decoded - is there a cheaper way?
+    //       And are there no side effects of DecodeOutputResource?
     OutputResourcePtr output_resource(
         rewrite_driver->DecodeOutputResource(gurl, &filter));
     if (output_resource.get() != NULL) {

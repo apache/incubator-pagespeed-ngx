@@ -77,18 +77,7 @@ class UrlPartnership {
   const RewriteOptions* rewrite_options() const { return rewrite_options_; }
 
  private:
-  // Every time we add a new URL to a partnership we incrementally update
-  // the common_components which helps us track how long the combined URL
-  // will be and avoid exceeding URL limits.
   void IncrementalResolve(int index);
-
-  // Based on the UrlNamer and DomainLawyer, find the domain
-  // associated with a request, removing any proxy prefix that may
-  // have been added by the UrlNamer.  The meaning of "associated" is
-  // defined by the UrlNamer implementation.
-  bool FindResourceDomain(GoogleUrl* resource,
-                          GoogleString* domain,
-                          MessageHandler* handler) const;
 
   typedef std::vector<GoogleUrl*> GurlVector;
   GurlVector url_vector_;

@@ -54,6 +54,7 @@ class MockScheduler;
 class MockTimer;
 class ResourceNamer;
 class ResponseHeaders;
+class RewriteDriverFactory;
 class RewriteFilter;
 class Statistics;
 class UrlNamer;
@@ -259,8 +260,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Removes the output resource from the file system.
   void RemoveOutputResourceFile(const StringPiece& url);
 
-  TestRewriteDriverFactory* factory() { return factory_.get(); }
-  TestRewriteDriverFactory* other_factory() { return other_factory_.get(); }
+  RewriteDriverFactory* factory() { return factory_.get(); }
+  RewriteDriverFactory* other_factory() { return other_factory_.get(); }
 
   void UseMd5Hasher() {
     resource_manager_->set_hasher(&md5_hasher_);

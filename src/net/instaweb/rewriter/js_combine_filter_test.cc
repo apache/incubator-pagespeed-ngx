@@ -22,7 +22,6 @@
 
 #include <vector>
 
-#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -67,7 +66,6 @@ const char kEscapedJs1[] =
 const char kEscapedJs2[] = "\"// script2\\r\\nvar b=42;\\n\"";
 const char kMinifiedEscapedJs1[] = "\"var a=\\\"hello\\\\nsecond line\\\"\"";
 const char kMinifiedEscapedJs2[] = "\"var b=42;\"";
-const char kAlternateDomain[] = "http://alternate.com/";
 
 }  // namespace
 
@@ -140,7 +138,6 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
     SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_js_header_);
     SimulateJsResource(kJsUrl1, kJsText1);
     SimulateJsResource(kJsUrl2, kJsText2);
-    SimulateJsResourceOnDomain(kAlternateDomain, kJsUrl2, kJsText2);
     SimulateJsResource(kJsUrl3, kJsText3);
     SimulateJsResource(kStrictUrl1, kStrictText1);
     SimulateJsResource(kStrictUrl2, kStrictText2);
@@ -298,7 +295,7 @@ TEST_P(JsCombineFilterTest, CombineJs) {
 TEST_P(JsFilterAndCombineFilterTest, MinifyCombineJs) {
   // These hashes depend on the URL, which is different when using the
   // test url namer, so handle the difference.
-  bool test_url_namer = factory()->use_test_url_namer();
+  bool test_url_namer = TestRewriteDriverFactory::UsingTestUrlNamer();
   TestCombineJs("a.js,Mjm.FUEwDOA7jh.js+b.js,Mjm.Y1kknPfzVs.js",
                 test_url_namer ? "8erozavBF5" : "FA3Pqioukh",
                 test_url_namer ? "JO0ZTfFSfI" : "S$0tgbTH0O",
@@ -322,70 +319,6 @@ TEST_P(JsFilterAndCombineFilterTest, MinifyShardCombineJs) {
 
   TestCombineJs("a.js,Mjm.FUEwDOA7jh.js+b.js,Mjm.Y1kknPfzVs.js", "FA3Pqioukh",
                 "S$0tgbTH0O", "ose8Vzgyj9", true, "http://b.com/");
-}
-
-TEST_P(JsFilterAndCombineFilterTest, MinifyCombineAcrossHosts) {
-  ScriptInfoVector scripts;
-  PrepareToCollectScriptsInto(&scripts);
-  GoogleString js_url_2(StrCat(kAlternateDomain, kJsUrl2));
-  options()->domain_lawyer()->AddDomain(kAlternateDomain, message_handler());
-  ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
-                               "<script src=", js_url_2, "></script>"));
-  ASSERT_EQ(2, scripts.size());
-  ServeResourceFromManyContexts(scripts[0].url, kMinifiedJs1);
-  ServeResourceFromManyContexts(scripts[1].url, kMinifiedJs2);
-}
-
-class JsFilterAndCombineProxyTest : public JsFilterAndCombineFilterTest {
- public:
-  JsFilterAndCombineProxyTest() {
-    factory()->set_use_test_url_namer(true);
-  }
-};
-
-TEST_P(JsFilterAndCombineProxyTest, MinifyCombineSameHostProxy) {
-  // TODO(jmarantz): This more intrusive test-helper fails.  I'd like
-  // to look at it with Matt in the context of the new TestUrlNamer
-  // infrastructure.  However that should not block the point of this
-  // test which is that the combination should be made if the
-  // hosts do match, unlike MinifyCombineAcrossHostsProxy below.
-  //
-  // Specifically, VerifyCombinedOnDomain appears not to know about
-  // TestUrlNamer.
-  //
-  // bool test_url_namer = factory()->use_test_url_namer();
-  // DCHECK(test_url_namer);
-  // TestCombineJs("a.js,Mjm.FUEwDOA7jh.js+b.js,Mjm.Y1kknPfzVs.js",
-  //               test_url_namer ? "8erozavBF5" : "FA3Pqioukh",
-  //               test_url_namer ? "JO0ZTfFSfI" : "S$0tgbTH0O",
-  //               test_url_namer ? "8QmSuIkgv_" : "ose8Vzgyj9",
-  //               true, kTestDomain);
-
-  ScriptInfoVector scripts;
-  PrepareToCollectScriptsInto(&scripts);
-  resource_manager()->set_store_outputs_in_file_system(false);
-  other_resource_manager()->set_store_outputs_in_file_system(false);
-  ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
-                               "<script src=", kJsUrl2, "></script>"));
-  ASSERT_EQ(3, scripts.size()) << "successful combination yields 3 scripts";
-}
-
-TEST_P(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
-  ScriptInfoVector scripts;
-  PrepareToCollectScriptsInto(&scripts);
-  GoogleString js_url_2(StrCat(kAlternateDomain, kJsUrl2));
-  options()->domain_lawyer()->AddDomain(kAlternateDomain, message_handler());
-  resource_manager()->set_store_outputs_in_file_system(false);
-  other_resource_manager()->set_store_outputs_in_file_system(false);
-  ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
-                               "<script src=", js_url_2, "></script>"));
-  ASSERT_EQ(2, scripts.size()) << "If combination fails, we get 2 scripts";
-  ServeResourceFromManyContexts(scripts[0].url, kMinifiedJs1);
-  EXPECT_EQ(EncodeNormal(kTestDomain, "jm", "FUEwDOA7jh", kJsUrl1, "js"),
-            scripts[0].url);
-  ServeResourceFromManyContexts(scripts[1].url, kMinifiedJs2);
-  EXPECT_EQ(EncodeNormal(kAlternateDomain, "jm", "Y1kknPfzVs", kJsUrl2, "js"),
-            scripts[1].url);
 }
 
 TEST_P(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
@@ -712,15 +645,10 @@ TEST_P(JsCombineFilterTest, PartlyInvalidFetchCache) {
                            "<script src=404.js></script>"));
 }
 
-INSTANTIATE_TEST_CASE_P(JsCombineFilterTestInstance,
-                        JsCombineFilterTest,
+INSTANTIATE_TEST_CASE_P(JsCombineFilterTestInstance, JsCombineFilterTest,
                         ::testing::Bool());
-INSTANTIATE_TEST_CASE_P(JsCombineFilterTestInstance,
-                        JsFilterAndCombineFilterTest,
-                        ::testing::Bool());
-
-INSTANTIATE_TEST_CASE_P(JsFilterAndCombineProxyTestInstance,
-                        JsFilterAndCombineProxyTest,
-                        ::testing::Bool());
+INSTANTIATE_TEST_CASE_P(
+    JsCombineFilterTestInstance, JsFilterAndCombineFilterTest,
+    ::testing::Bool());
 
 }  // namespace net_instaweb

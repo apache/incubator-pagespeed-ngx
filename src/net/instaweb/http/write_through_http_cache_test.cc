@@ -29,7 +29,6 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -86,7 +85,7 @@ class WriteThroughHTTPCacheTest : public testing::Test {
   WriteThroughHTTPCacheTest() :
     mock_timer_(ParseDate(kStartDate)),
     cache1_(kMaxSize), cache2_(kMaxSize),
-    http_cache_(&cache1_, &cache2_, &mock_timer_, &mock_hasher_, simple_stats_),
+    http_cache_(&cache1_, &cache2_, &mock_timer_, simple_stats_),
     key_("mykey"), content_("content"), header_name_("name"),
     header_value_("value") {
   }
@@ -177,7 +176,6 @@ class WriteThroughHTTPCacheTest : public testing::Test {
   }
 
   MockTimer mock_timer_;
-  MockHasher mock_hasher_;
   LRUCache cache1_;
   LRUCache cache2_;
   WriteThroughHTTPCache http_cache_;
@@ -243,11 +241,11 @@ TEST_F(WriteThroughHTTPCacheTest, PutGet) {
 // Check size-limits for the small cache
 TEST_F(WriteThroughHTTPCacheTest, SizeLimit) {
   ClearStats();
-  http_cache_.set_cache1_limit(150);  // Empirically based.
+  http_cache_.set_cache1_limit(130);  // Empirically based.
   ResponseHeaders headers_in;
   InitHeaders(&headers_in, "max-age=300");
 
-  // This one will fit. (The key is 5 bytes and the HTTPValue is 139 bytes).
+  // This one will fit. (The key is 5 bytes and the HTTPValue is 122bytes).
   http_cache_.Put(key_, &headers_in, "Name", &message_handler_);
   CheckStats(0 /* HTTP cache hits */, 0/* HTTP cache misses */,
              0 /* HTTP cache expirations */, 1 /* HTTP cache inserts */,
@@ -256,7 +254,7 @@ TEST_F(WriteThroughHTTPCacheTest, SizeLimit) {
              0 /* Cache 2 hits */, 0 /* Cache 2 misses */,
              1 /* Cache 2 inserts */, 0 /* Cache 2 deletes */);
 
-  // This one will not. (The key is 3 bytes and the HTTPValue is 148 bytes).
+  // This one will not. (The key is 3 bytes and the HTTPValue is 133bytes).
   http_cache_.Put("new", &headers_in, "TooBigForCache1", &message_handler_);
   CheckStats(0 /* HTTP cache hits */, 0/* HTTP cache misses */,
              0 /* HTTP cache expirations */, 2 /* HTTP cache inserts */,

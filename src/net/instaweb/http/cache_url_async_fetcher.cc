@@ -187,15 +187,6 @@ class CacheFindCallback : public HTTPCache::Callback {
             new CachePutFetch(url_, response_headers_, base_fetch_,
                               respect_vary_, cache_,
                               backend_first_byte_latency_, handler_);
-
-        // Remove any Etags added by us before sending the request out.
-        const char* etag = request_headers_.Lookup1(
-            HttpAttributes::kIfNoneMatch);
-        if (etag != NULL &&
-            StringCaseStartsWith(etag, HTTPCache::kEtagPrefix)) {
-          request_headers_.RemoveAll(HttpAttributes::kIfNoneMatch);
-        }
-
         fetcher_->Fetch(url_, request_headers_,
                         response_headers_, handler_, put_fetch);
         break;

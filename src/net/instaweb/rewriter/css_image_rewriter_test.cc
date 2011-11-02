@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
@@ -74,76 +75,6 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesSimple) {
       StrCat("body{background-image:url(",
              Encode(kTestDomain, "ce", "0", "foo.png", "png"),
              ")}");
-
-  ValidateRewriteInlineCss("cache_extends_images-inline",
-                           css_before, css_after,
-                           kExpectChange | kExpectSuccess);
-  ValidateRewriteExternalCss("cache_extends_images-external",
-                             css_before, css_after,
-                             kExpectChange | kExpectSuccess |
-                             kNoOtherContexts | kNoClearFetcher);
-}
-
-TEST_P(CssImageRewriterTest, CacheExtendsImagesEmbeddedComma) {
-  // Makes sure image-URL rewriting doesn't corrupt URLs with embedded
-  // commas.  Earlier, we were escaping commas in URLs by backslashing
-  // the "," and IE8 interprets those backslashes as forward slashes,
-  // making the URL incorrect.
-  static const char kImageUrl[] = "foo,bar.png";
-  InitResponseHeaders(kImageUrl, kContentTypePng, kImageData, 100);
-
-  static const char css_before[] =
-      "body {\n"
-      "  background-image: url(foo,bar.png);\n"
-      "}\n";
-  const GoogleString css_after =
-      StrCat("body{background-image:url(",
-             Encode(kTestDomain, "ce", "0", kImageUrl, "png"),
-             ")}");
-
-  ValidateRewriteInlineCss("cache_extends_images-inline",
-                           css_before, css_after,
-                           kExpectChange | kExpectSuccess);
-  ValidateRewriteExternalCss("cache_extends_images-external",
-                             css_before, css_after,
-                             kExpectChange | kExpectSuccess |
-                             kNoOtherContexts | kNoClearFetcher);
-}
-
-TEST_P(CssImageRewriterTest, CacheExtendsImagesEmbeddedSpace) {
-  // Note that GoogleUrl will, internal to our system, convert the space to
-  // a %20, so we'll be fetching the percentified form.
-  InitResponseHeaders("foo%20bar.png", kContentTypePng, kImageData, 100);
-
-  static const char css_before[] =
-      "body {\n"
-      "  background-image: url('foo bar.png');\n"
-      "}\n";
-  const GoogleString css_after =
-      StrCat("body{background-image:url(",
-             Encode(kTestDomain, "ce", "0", "foo%20bar.png", "png"),
-             ")}");
-
-  ValidateRewriteInlineCss("cache_extends_images-inline",
-                           css_before, css_after,
-                           kExpectChange | kExpectSuccess);
-  ValidateRewriteExternalCss("cache_extends_images-external",
-                             css_before, css_after,
-                             kExpectChange | kExpectSuccess |
-                             kNoOtherContexts | kNoClearFetcher);
-}
-
-TEST_P(CssImageRewriterTest, MinifyImagesEmbeddedSpace) {
-  options()->ClearSignatureForTesting();
-  options()->DisableFilter(RewriteOptions::kExtendCache);
-  resource_manager()->ComputeSignature(options());
-
-  static const char css_before[] =
-      "body {\n"
-      "  background-image: url('foo bar.png');\n"
-      "}\n";
-  static const char css_after[] =
-      "body{background-image:url(foo bar.png)}";
 
   ValidateRewriteInlineCss("cache_extends_images-inline",
                            css_before, css_after,
@@ -246,7 +177,7 @@ TEST_P(CssImageRewriterTest, CacheExtendsImages) {
       Encode(kTestDomain, "ce", "0", "foo.png", "png")),
       ")}"
       ".other{"  // data: URLs and unknown properties are not rewritten.
-      "background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA"
+      "background-image:url(data:image/png;base64\\,iVBORw0KGgoAAAANSUhEUgAAA"
       "AUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4"
       "OHwAAAABJRU5ErkJggg==);"
       "-proprietary-background-property:url(foo.png)}");
@@ -334,7 +265,7 @@ TEST_P(CssImageRewriterTest, RewriteCached) {
   GoogleString kBaseDomain;
   // If using the TestUrlNamer, the rewritten URL won't be relative so
   // set things up so that we check for the correct URL below.
-  if (factory()->use_test_url_namer()) {
+  if (TestRewriteDriverFactory::UsingTestUrlNamer()) {
     kBaseDomain = kTestDomain;
   }
 
@@ -485,7 +416,7 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesInStyleAttributes) {
                    "  -proprietary-background-property: url(foo.png);\n"
                    "\"/>",
                    "<div style=\""
-                   "background-image:url(data:image/png;base64,"
+                   "background-image:url(data:image/png;base64\\,"
                    "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P"
                    "4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==);"
                    "-proprietary-background-property:url(foo.png)"

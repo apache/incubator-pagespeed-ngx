@@ -43,7 +43,6 @@ class ResponseHeaders;
 class RewriteContext;
 class RewriteDriver;
 class Statistics;
-class Variable;
 class Writer;
 
 /*
@@ -96,15 +95,12 @@ class ImageCombineFilter : public RewriteFilter {
   class Combiner;
   class Context;
 
+  Context* context_;
   virtual RewriteContext* MakeRewriteContext();
   Context* MakeNestedContext(RewriteContext* parent, const GoogleUrl& css_url,
                              const StringPiece& css_text);
   bool GetDeclarationDimensions(Css::Declarations* declarations,
                                 int* width, int* height);
-  void AddFilesReducedStat(int reduced);
-
-  Variable* image_file_count_reduction_;
-  Context* context_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageCombineFilter);
 };

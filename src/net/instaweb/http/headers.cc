@@ -190,14 +190,13 @@ template<class Proto> bool Headers<Proto>::Remove(const StringPiece& name,
       StringVector new_vals;
       bool concat = IsCommaSeparatedField(name);
       GoogleString combined;
-      StringPiece separator("", 0);  // change to "," after first entry.
+      const char kSeparator[] = ", ";
       for (int i = 0, n = values.size(); i < n; ++i) {
         if (values[i] != NULL) {
           StringPiece val(*values[i]);
           if (i != val_index && !val.empty()) {
             if (concat) {
-              StrAppend(&combined, separator, val);
-              separator = ", ";
+              StrAppend(&combined, val, kSeparator);
             } else {
               new_vals.push_back(val.as_string());
             }
@@ -206,9 +205,9 @@ template<class Proto> bool Headers<Proto>::Remove(const StringPiece& name,
       }
       RemoveAll(name);
       if (concat) {
-        if (!combined.empty()) {
-          Add(name, StringPiece(combined.data(), combined.size()));
-        }
+        combined.erase(combined.length() - STATIC_STRLEN(kSeparator),
+                       STATIC_STRLEN(kSeparator));
+        Add(name, StringPiece(combined.data(), combined.size()));
       } else {
         for (int i = 0, n = new_vals.size(); i < n; ++i) {
           Add(name, new_vals[i]);

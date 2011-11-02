@@ -44,7 +44,8 @@ class TestUrlNamer : public UrlNamer {
 
   virtual bool Decode(const GoogleUrl& request_url,
                       GoogleUrl* owner_domain,
-                      GoogleString* decoded) const;
+                      GoogleString* decoded,
+                      MessageHandler* handler) const;
 
   static GoogleString EncodeUrl(const StringPiece& original_base,
                                 const StringPiece& unmapped_base,
@@ -56,6 +57,8 @@ class TestUrlNamer : public UrlNamer {
   static void UseNormalEncoding(bool yes) {
     use_normal_encoding_ = yes;
   }
+
+  static bool UsingNormalEncoding() { return use_normal_encoding_; }
 
  private:
   bool IsOriginEncoded(const GoogleUrl& url) const;

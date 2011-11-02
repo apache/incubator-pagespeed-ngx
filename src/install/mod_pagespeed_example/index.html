@@ -339,6 +339,50 @@ remove_comments
 
 <tr>
   <td class="code">
+    <a href="http://code.google.com/speed/page-speed/docs/filter-rewrite-style-attributes.html">
+rewrite_style_attributes
+    </a>
+  </td>
+  <td class="desc">
+    Rewrite the CSS in style attributes by applying the configured rewrite_css
+    filter to it.
+  </td>
+  <td class="before">
+    <a href="rewrite_style_attributes.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="rewrite_style_attributes.html?ModPagespeed=on&ModPagespeedFilters=rewrite_style_attributes,rewrite_css,rewrite_images">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="http://code.google.com/speed/page-speed/docs/filter-rewrite-style-attributes.html">
+rewrite_style_attributes_with_url
+    </a>
+  </td>
+  <td class="desc">
+    Rewrite the CSS in style attributes by applying the configured rewrite_css
+    filter to it, but only if the attribute contains the text 'url('.
+  </td>
+  <td class="before">
+    <a href="rewrite_style_attributes.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="rewrite_style_attributes.html?ModPagespeed=on&ModPagespeedFilters=rewrite_style_attributes_with_url,rewrite_css,rewrite_images">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
     <a href="http://code.google.com/speed/page-speed/docs/filter-trim-urls.html">
 trim_urls
     </a>

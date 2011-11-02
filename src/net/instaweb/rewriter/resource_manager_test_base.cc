@@ -620,7 +620,7 @@ GoogleString ResourceManagerTestBase::EncodeWithBase(const StringPiece& base,
                                                      const StringPiece& hash,
                                                      const StringPiece& name,
                                                      const StringPiece& ext) {
-  if (factory()->use_test_url_namer() &&
+  if (TestRewriteDriverFactory::UsingTestUrlNamer() &&
       !options()->domain_lawyer()->can_rewrite_domains() &&
       !path.empty()) {
     ResourceNamer namer;

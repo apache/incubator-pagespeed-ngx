@@ -593,7 +593,7 @@ check run_wget_with_args $URL
 
 # Rewrite images in styles.
 test_filter rewrite_images,rewrite_style_attributes_with_url optimizes images in style
-FILE=rewrite_css_image_inline_style.html
+FILE=rewrite_style_attributes.html
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 fetch_until $URL 'grep -c .pagespeed.ic.' 1  # image cache extended

@@ -180,8 +180,7 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     "a{filter:progid:DXImageTransform.Microsoft.Alpha(Opacity=80)}",
     // Found in the wild:
     "a{width:overflow:hidden}",
-    "body{font-family:font\\,1,font\\,2}",
-  };
+    };
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
     GoogleString id = StringPrintf("distilled_css_good%d", i);

@@ -76,8 +76,9 @@ GoogleString TestUrlNamer::Encode(const RewriteOptions* rewrite_options,
 }
 
 bool TestUrlNamer::Decode(const GoogleUrl& request_url,
-                         GoogleUrl* owner_domain,
-                         GoogleString* decoded) const {
+                          GoogleUrl* owner_domain,
+                          GoogleString* decoded,
+                          MessageHandler* handler) const {
   if (!IsPathEncoded(request_url)) {
     return false;
   }

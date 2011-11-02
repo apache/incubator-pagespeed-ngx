@@ -25,7 +25,6 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -51,14 +50,11 @@ const char HTTPCache::kCacheHits[] = "cache_hits";
 const char HTTPCache::kCacheMisses[] = "cache_misses";
 const char HTTPCache::kCacheExpirations[] = "cache_expirations";
 const char HTTPCache::kCacheInserts[] = "cache_inserts";
-const char HTTPCache::kEtagPrefix[] = "W/PSA-";
 
 
-HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
-                     Statistics* stats)
+HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Statistics* stats)
     : cache_(cache),
       timer_(timer),
-      hasher_(hasher),
       force_caching_(false),
       cache_time_us_(stats->GetVariable(kCacheTimeUs)),
       cache_hits_(stats->GetVariable(kCacheHits)),
@@ -273,25 +269,11 @@ HTTPValue* HTTPCache::ApplyHeaderChangesForPut(
   // TODO(sriharis): Modify date headers.
   // TODO(nikhilmadan): Set etags from hash of content.
 
-  StringPiece new_content;
-
-  // Add an Etag if the original response didn't have any.
-  if (headers->Lookup1(HttpAttributes::kEtag) == NULL) {
-    GoogleString hash;
-    if (content == NULL) {
-      bool success = value->ExtractContents(&new_content);
-      DCHECK(success);
-      content = &new_content;
-    }
-    hash = hasher_->Hash(*content);
-    headers->Add(HttpAttributes::kEtag, kEtagPrefix + hash);
-    headers_mutated = true;
-  }
-
   if (headers_mutated || value == NULL) {
     HTTPValue* new_value = new HTTPValue;  // Will be deleted by calling Put.
     new_value->SetHeaders(headers);
     if (content == NULL) {
+      StringPiece new_content;
       bool success = value->ExtractContents(&new_content);
       DCHECK(success);
       new_value->Write(new_content, handler);

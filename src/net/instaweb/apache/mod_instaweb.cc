@@ -111,8 +111,6 @@ const char* kModPagespeedImageInlineMaxBytes =
     "ModPagespeedImageInlineMaxBytes";
 const char* kModPagespeedImageMaxRewritesAtOnce =
     "ModPagespeedImageMaxRewritesAtOnce";
-const char* kModPagespeedJpegRecompressQuality =
-    "ModPagespeedJpegRecompressionQuality";
 const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
 const char* kModPagespeedJsOutlineMinBytes = "ModPagespeedJsOutlineMinBytes";
 const char* kModPagespeedLRUCacheByteLimit = "ModPagespeedLRUCacheByteLimit";
@@ -816,27 +814,6 @@ const char* ParseIntOption(Options* options, cmd_parms* cmd,
   return ret;
 }
 
-template<class Options>
-const char* ParseIntBoundedOption(Options* options, cmd_parms* cmd,
-                                  void (Options::*fn)(int val),
-                                  const char* arg,
-                                  int lower, int upper) {
-  int val;
-  const char* ret = NULL;
-  if (StringToInt(arg, &val) &&
-      val >= lower &&
-      val <= upper) {
-    (options->*fn)(val);
-  } else {
-    GoogleString message = StringPrintf(
-        " must specify a 32-bit integer between %d and %d",
-        lower, upper);
-    ret = apr_pstrcat(cmd->pool, cmd->directive->directive, message.c_str(),
-                      NULL);
-  }
-  return ret;
-}
-
 void warn_deprecated(cmd_parms* cmd, const char* remedy) {
   ap_log_error(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, cmd->server,
                "%s is deprecated.  %s",
@@ -958,12 +935,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     // TODO(sligocki): Convert to ParseInt64Option for consistency?
     ret = ParseIntOption(options,
         cmd, &RewriteOptions::set_image_max_rewrites_at_once, arg);
-  } else if (StringCaseEqual(directive,
-                             kModPagespeedJpegRecompressQuality)) {
-    ret = ParseIntBoundedOption(
-        options,
-        cmd, &RewriteOptions::set_image_jpeg_recompress_quality, arg,
-        -1, 100);
   } else if (StringCaseEqual(directive, kModPagespeedJsInlineMaxBytes)) {
     ret = ParseInt64Option(options,
         cmd, &RewriteOptions::set_js_inline_max_bytes, arg);
@@ -1182,10 +1153,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedImageMaxRewritesAtOnce,
         "Set bound on number of images being rewritten at one time "
         "(0 = unbounded)."),
-  APACHE_CONFIG_OPTION(kModPagespeedJpegRecompressQuality,
-                       "Set quality parameter for recompressing jpeg "
-                       "images [-1,100], 100 refers to best quality, "
-                       "-1 disables lossy compression."),
   APACHE_CONFIG_OPTION(kModPagespeedLRUCacheByteLimit,
         "Set the maximum byte size entry to store in the per-process "
         "in-memory LRU cache"),

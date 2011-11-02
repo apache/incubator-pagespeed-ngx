@@ -30,7 +30,6 @@
 
 namespace net_instaweb {
 
-class Hasher;
 class MessageHandler;
 class Statistics;
 class Timer;
@@ -47,12 +46,8 @@ class HTTPCache {
   static const char kCacheExpirations[];
   static const char kCacheInserts[];
 
-  // The prefix to be added to Etags.
-  static const char kEtagPrefix[];
-
   // Does not take ownership of any inputs.
-  HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
-            Statistics* stats);
+  HTTPCache(CacheInterface* cache, Timer* timer, Statistics* stats);
   virtual ~HTTPCache();
 
   // When a lookup is done in the HTTP Cache, it returns one of these values.
@@ -201,7 +196,6 @@ class HTTPCache {
 
   CacheInterface* cache_;  // Owned by the caller.
   Timer* timer_;
-  Hasher* hasher_;
   bool force_caching_;
   Variable* cache_time_us_;
   Variable* cache_hits_;
