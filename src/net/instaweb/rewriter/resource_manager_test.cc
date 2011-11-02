@@ -55,6 +55,7 @@
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
@@ -1196,7 +1197,8 @@ class ResourceManagerTestThreadedCache : public ResourceManagerTest {
             mock_scheduler(),
             new ThreadsafeCache(cache_backend_, threads_->NewMutex()),
             new QueuedWorkerPool(2, threads_.get()))),
-        http_cache_(new HTTPCache(cache_.get(), mock_timer(), statistics())) {
+        http_cache_(new HTTPCache(cache_.get(), mock_timer(), hasher(),
+                                  statistics())) {
   }
 
   virtual void SetUp() {

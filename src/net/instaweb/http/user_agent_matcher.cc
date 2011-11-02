@@ -50,11 +50,11 @@ const char* kImageInliningBlacklist[] = {
   "*Opera?5*",
   "*Opera?6*"
 };
-// For webp rewriting, we whitelist Chrome and Opera, but blacklist
-// older versions of either browser that are not webp capable.  As
-// other browsers roll out webp support we will need to update this
-// list to include them.
+// For webp rewriting, we whitelist Android, Chrome and Opera, but blacklist
+// older versions of the browsers that are not webp capable.  As other browsers
+// roll out webp support we will need to update this list to include them.
 const char* kWebpWhitelist[] = {
+  "*Android *",
   "*Chrome/*",
   "*Opera/9.80*Version/??.*",
   "*Opera???.*",
@@ -62,6 +62,10 @@ const char* kWebpWhitelist[] = {
   "webp",
 };
 const char* kWebpBlacklist[] = {
+  "*Android 0.*",
+  "*Android 1.*",
+  "*Android 2.*",
+  "*Android 3.*",
   "*Chrome/0.*",
   "*Chrome/1.*",
   "*Chrome/2.*",

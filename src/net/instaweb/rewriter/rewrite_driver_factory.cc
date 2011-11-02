@@ -311,7 +311,7 @@ HTTPCache* RewriteDriverFactory::http_cache() {
 
 HTTPCache* RewriteDriverFactory::ComputeHTTPCache() {
   HTTPCache* http_cache = new HTTPCache(
-      cache_backend_.get(), timer(), statistics());
+      cache_backend_.get(), timer(), hasher(), statistics());
   http_cache->set_force_caching(force_caching_);
   return http_cache;
 }

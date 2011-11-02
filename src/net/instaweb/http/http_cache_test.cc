@@ -29,6 +29,7 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -77,10 +78,10 @@ class HTTPCacheTest : public testing::Test {
     return time_ms;
   }
 
-  HTTPCacheTest() : mock_timer_(ParseDate(kStartDate)),
-                    lru_cache_(kMaxSize),
-                    http_cache_(&lru_cache_, &mock_timer_, simple_stats_) {
-  }
+  HTTPCacheTest()
+      : mock_timer_(ParseDate(kStartDate)),
+        lru_cache_(kMaxSize),
+        http_cache_(&lru_cache_, &mock_timer_, &mock_hasher_, simple_stats_) { }
 
   void InitHeaders(ResponseHeaders* headers, const char* cache_control) {
     headers->Add("name", "value");
@@ -136,6 +137,7 @@ class HTTPCacheTest : public testing::Test {
   }
 
   MockTimer mock_timer_;
+  MockHasher mock_hasher_;
   LRUCache lru_cache_;
   HTTPCache http_cache_;
   GoogleMessageHandler message_handler_;
@@ -177,6 +179,57 @@ TEST_F(HTTPCacheTest, PutGet) {
   ASSERT_FALSE(meta_data_out.headers_complete());
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheExpirations));
+}
+
+TEST_F(HTTPCacheTest, EtagsAddedIfAbsent) {
+  simple_stats_->Clear();
+  ResponseHeaders meta_data_in, meta_data_out;
+  InitHeaders(&meta_data_in, "max-age=300");
+  http_cache_.Put("mykey", &meta_data_in, "content", &message_handler_);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
+
+  HTTPValue value;
+  HTTPCache::FindResult found = Find(
+      "mykey", &value, &meta_data_out, &message_handler_);
+  ASSERT_EQ(HTTPCache::kFound, found);
+  ASSERT_TRUE(meta_data_out.headers_complete());
+
+  StringPiece contents;
+  ASSERT_TRUE(value.ExtractContents(&contents));
+  ConstStringStarVector values;
+  ASSERT_TRUE(meta_data_out.Lookup("name", &values));
+  ASSERT_EQ(static_cast<size_t>(1), values.size());
+  EXPECT_EQ(GoogleString("value"), *(values[0]));
+  EXPECT_STREQ("W/PSA-0", meta_data_out.Lookup1(HttpAttributes::kEtag));
+  EXPECT_EQ("content", contents);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));  // The "query" counts as a hit.
+}
+
+TEST_F(HTTPCacheTest, EtagsNotAddedIfPresent) {
+  simple_stats_->Clear();
+  ResponseHeaders meta_data_in, meta_data_out;
+  meta_data_in.Add(HttpAttributes::kEtag, "Etag!");
+  InitHeaders(&meta_data_in, "max-age=300");
+  http_cache_.Put("mykey", &meta_data_in, "content", &message_handler_);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
+
+  HTTPValue value;
+  HTTPCache::FindResult found = Find(
+      "mykey", &value, &meta_data_out, &message_handler_);
+  ASSERT_EQ(HTTPCache::kFound, found);
+  ASSERT_TRUE(meta_data_out.headers_complete());
+
+  StringPiece contents;
+  ASSERT_TRUE(value.ExtractContents(&contents));
+  ConstStringStarVector values;
+  ASSERT_TRUE(meta_data_out.Lookup("name", &values));
+  ASSERT_EQ(static_cast<size_t>(1), values.size());
+  EXPECT_EQ(GoogleString("value"), *(values[0]));
+  EXPECT_STREQ("Etag!", meta_data_out.Lookup1(HttpAttributes::kEtag));
+  EXPECT_EQ("content", contents);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));  // The "query" counts as a hit.
 }
 
 TEST_F(HTTPCacheTest, CookiesNotCached) {
