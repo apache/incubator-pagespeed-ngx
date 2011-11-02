@@ -39,9 +39,14 @@ static string CSSEscapeString(const StringPiece& src) {
 
   for (const char* p = src.data(); p < src_end; p++) {
     switch (*p) {
-      case '\n': dest[used++] = '\\'; dest[used++] = 'n';  break;
-      case '\r': dest[used++] = '\\'; dest[used++] = 'r';  break;
-      case '\t': dest[used++] = '\\'; dest[used++] = 't';  break;
+      // Note: CSS does not use standard \n, \r and \t escapes.
+      // Generic hex escapes are used instead.
+      case '\n':
+        dest[used++] = '\\'; dest[used++] = 'A'; dest[used++] = ' '; break;
+      case '\r':
+        dest[used++] = '\\'; dest[used++] = 'D'; dest[used++] = ' '; break;
+      case '\t':
+        dest[used++] = '\\'; dest[used++] = '9'; dest[used++] = ' '; break;
       case '\"': case '\'': case '\\': case ',': case '(': case ')':
           dest[used++] = '\\';
           dest[used++] = *p;

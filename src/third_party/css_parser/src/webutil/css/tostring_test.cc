@@ -92,4 +92,10 @@ TEST_F(ToStringTest, misc) {
             stylesheet->ToString());
 }
 
+TEST_F(ToStringTest, SpecialChars) {
+  Css::Parser parser("content: \"Special chars: \\n\\r\\t\\A \\D \\9\"");
+  scoped_ptr<Css::Declarations> decls(parser.ParseDeclarations());
+  EXPECT_EQ("content: \"Special chars: nrt\\A \\D \\9 \"", decls->ToString());
+}
+
 }  // namespace

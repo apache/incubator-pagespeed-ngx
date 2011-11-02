@@ -37,8 +37,10 @@ namespace net_instaweb {
 
 namespace {
 
-// Escape [(), \t\r\n\\'"]
-GoogleString CSSEscapeString(const StringPiece& src) {
+// Escape [() \t\r\n\\'"].  Also escape , for non-URLs.  Escaping , in
+// URLs causes IE8 to interpret the backslash as a forward slash.
+//
+GoogleString CSSEscapeString(const StringPiece& src, bool in_url) {
   const int dest_length = src.size() * 2 + 1;  // Maximum possible expansion
   scoped_array<char> dest(new char[dest_length]);
 
@@ -47,12 +49,27 @@ GoogleString CSSEscapeString(const StringPiece& src) {
 
   for (const char* p = src.data(); p < src_end; p++) {
     switch (*p) {
-      case '\n': dest[used++] = '\\'; dest[used++] = 'n';  break;
-      case '\r': dest[used++] = '\\'; dest[used++] = 'r';  break;
-      case '\t': dest[used++] = '\\'; dest[used++] = 't';  break;
-      case '\"': case '\'': case '\\': case ',': case '(': case ')':
-          dest[used++] = '\\';
+      // Note: CSS does not use standard \n, \r and \t escapes.
+      // Generic hex escapes are used instead.
+      // See: http://www.w3.org/TR/CSS2/syndata.html#strings
+      //
+      // Note: Hex escapes in CSS must end in space.
+      // See: http://www.w3.org/TR/CSS2/syndata.html#characters
+      case '\n':
+        dest[used++] = '\\'; dest[used++] = 'A'; dest[used++] = ' '; break;
+      case '\r':
+        dest[used++] = '\\'; dest[used++] = 'D'; dest[used++] = ' '; break;
+      case '\t':
+        dest[used++] = '\\'; dest[used++] = '9'; dest[used++] = ' '; break;
+      case ',':
+        if (in_url) {
           dest[used++] = *p;
+          break;
+        }
+        // fall through -- we are escaping commas for non-URLs.
+      case '\"': case '\'': case '\\': case '(': case ')':
+        dest[used++] = '\\';
+        dest[used++] = *p;
           break;
       default: dest[used++] = *p; break;
     }
@@ -61,8 +78,9 @@ GoogleString CSSEscapeString(const StringPiece& src) {
   return GoogleString(dest.get(), used);
 }
 
-GoogleString CSSEscapeString(const UnicodeText& src) {
-  return CSSEscapeString(StringPiece(src.utf8_data(), src.utf8_length()));
+GoogleString CSSEscapeString(const UnicodeText& src, bool in_url) {
+  return CSSEscapeString(StringPiece(src.utf8_data(), src.utf8_length()),
+                         in_url);
 }
 
 }  // namespace
@@ -125,7 +143,7 @@ void CssMinify::JoinMediaMinify(const Container& container,
     if (iter != container.begin()) {
       Write(sep);
     }
-    Write(CSSEscapeString(*iter));
+    Write(CSSEscapeString(*iter, false));
   }
 }
 
@@ -148,7 +166,7 @@ void CssMinify::Minify(const Css::Charsets& charsets) {
   for (Css::Charsets::const_iterator iter = charsets.begin();
        iter != charsets.end(); ++iter) {
     Write("@charset \"");
-    Write(CSSEscapeString(*iter));
+    Write(CSSEscapeString(*iter, false));
     Write("\";");
   }
 }
@@ -156,7 +174,7 @@ void CssMinify::Minify(const Css::Charsets& charsets) {
 void CssMinify::Minify(const Css::Import& import) {
   Write("@import url(");
   // TODO(sligocki): Make a URL printer method that absolutifies and prints.
-  Write(CSSEscapeString(import.link));
+  Write(CSSEscapeString(import.link, true));
   Write(") ");
   JoinMediaMinify(import.media, ",");
   Write(";");
@@ -285,11 +303,11 @@ void CssMinify::Minify(const Css::Value& value) {
     case Css::Value::URI:
       // TODO(sligocki): Make a URL printer method that absolutifies and prints.
       Write("url(");
-      Write(CSSEscapeString(value.GetStringValue()));
+      Write(CSSEscapeString(value.GetStringValue(), true));
       Write(")");
       break;
     case Css::Value::FUNCTION:
-      Write(CSSEscapeString(value.GetFunctionName()));
+      Write(CSSEscapeString(value.GetFunctionName(), false));
       Write("(");
       Minify(*value.GetParametersWithSeparators());
       Write(")");
@@ -307,11 +325,11 @@ void CssMinify::Minify(const Css::Value& value) {
       break;
     case Css::Value::STRING:
       Write("\"");
-      Write(CSSEscapeString(value.GetStringValue()));
+      Write(CSSEscapeString(value.GetStringValue(), false));
       Write("\"");
       break;
     case Css::Value::IDENT:
-      Write(CSSEscapeString(value.GetIdentifierText()));
+      Write(CSSEscapeString(value.GetIdentifierText(), false));
       break;
     case Css::Value::UNKNOWN:
       handler_->Message(kError, "Unknown attribute");

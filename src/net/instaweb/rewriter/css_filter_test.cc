@@ -163,7 +163,8 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=121
     "a{color:inherit}",
     // Added for code coverage.
-    // TODO(sligocki): Get rid of the " ;"?
+    // TODO(sligocki): Get rid of the space at end?
+    // ";" may be needed for some browsers.
     "@import url(http://www.example.com) ;",
     "@media a,b{a{color:red}}",
     "a{content:\"Odd chars: \\(\\)\\,\\\"\\\'\"}",
@@ -178,9 +179,11 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     "a{-moz-transform:rotate(7deg)}",
     // Microsoft syntax values.
     "a{filter:progid:DXImageTransform.Microsoft.Alpha(Opacity=80)}",
+    // Make sure we keep "\," distinguished from ",".
+    "body{font-family:font\\,1,font\\,2}",
     // Found in the wild:
     "a{width:overflow:hidden}",
-    };
+  };
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
     GoogleString id = StringPrintf("distilled_css_good%d", i);
@@ -427,6 +430,11 @@ TEST_P(CssFilterTest, ComplexCssTest) {
     { "#foo { z-index: 123456789012345678901234567890; }",
       // TODO(sligocki): "#foo{z-index:12345678901234567890}" },
       "#foo{z-index:1.234567890123457e+29}" },
+
+    // Parse and serialize "\n" correctly as "n" and "\A " correctly as newline.
+    { "a { content: \"Special chars: \\n\\r\\t\\A \\D \\9\" }",
+      "a{content:\"Special chars: nrt\\A \\D \\9 \"}" }
+
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
