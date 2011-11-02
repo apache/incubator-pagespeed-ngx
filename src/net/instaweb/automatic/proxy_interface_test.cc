@@ -88,8 +88,7 @@ class ProxyUrlNamer : public UrlNamer {
   // Given the request_url, generate the original url.
   virtual bool Decode(const GoogleUrl& gurl,
                       GoogleUrl* domain,
-                      GoogleString* decoded,
-                      MessageHandler* handler) const {
+                      GoogleString* decoded) const {
     if (gurl.Host() != kProxyHost) {
       return false;
     }
@@ -280,6 +279,7 @@ TEST_F(ProxyInterfaceTest, SetCookieNotCached) {
   EXPECT_EQ(kContent, text);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_misses());
+  ClearStats();
 
   // The next response that is served from cache does not have any Set-Cookie
   // headers.
@@ -289,7 +289,7 @@ TEST_F(ProxyInterfaceTest, SetCookieNotCached) {
   EXPECT_EQ(NULL, response_headers2.Lookup1(HttpAttributes::kSetCookie));
   EXPECT_EQ(kContent, text2);
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, SetCookie2NotCached) {
@@ -308,6 +308,7 @@ TEST_F(ProxyInterfaceTest, SetCookie2NotCached) {
   EXPECT_EQ(kContent, text);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_misses());
+  ClearStats();
 
   // The next response that is served from cache does not have any Set-Cookie
   // headers.
@@ -317,7 +318,7 @@ TEST_F(ProxyInterfaceTest, SetCookie2NotCached) {
   EXPECT_EQ(NULL, response_headers2.Lookup1(HttpAttributes::kSetCookie2));
   EXPECT_EQ(kContent, text2);
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
@@ -343,6 +344,7 @@ TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
   EXPECT_EQ(kContent, text);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_misses());
+  ClearStats();
 
   // Fetch again from cache. It has the same caching headers.
   text.clear();
@@ -356,7 +358,7 @@ TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
@@ -380,6 +382,7 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
   EXPECT_EQ(kContent, text);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_misses());
+  ClearStats();
 
   // Fetch again. Not found in cache.
   text.clear();
@@ -390,7 +393,51 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+}
+
+TEST_F(ProxyInterfaceTest, EtagsAddedWhenAbsent) {
+  ResponseHeaders headers;
+  const char kContent[] = "A very compelling article";
+  SetDefaultLongCacheHeaders(&kContentTypeText, &headers);
+  headers.RemoveAll(HttpAttributes::kEtag);
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.txt"), headers, kContent);
+
+  // The first response served by the fetcher has no Etag in the response.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.txt", true, &text, &response_headers);
+  EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+  EXPECT_EQ(NULL, response_headers.Lookup1(HttpAttributes::kEtag));
+  EXPECT_EQ(kContent, text);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  ClearStats();
+
+  // An Etag is added before writing to cache. The next response is served from
+  // cache and has an Etag.
+  GoogleString text2;
+  ResponseHeaders response_headers2;
+  FetchFromProxy("text.txt", true, &text2, &response_headers2);
+  EXPECT_EQ(HttpStatus::kOK, response_headers2.status_code());
+  EXPECT_STREQ("W/PSA-0", response_headers2.Lookup1(HttpAttributes::kEtag));
+  EXPECT_EQ(kContent, text2);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  ClearStats();
+
+  // The Etag matches and a 304 is served out.
+  GoogleString text3;
+  ResponseHeaders response_headers3;
+  RequestHeaders request_headers;
+  request_headers.Add(HttpAttributes::kIfNoneMatch, "W/PSA-0");
+  FetchFromProxy("text.txt", request_headers, true, &text3, &response_headers3);
+  EXPECT_EQ(HttpStatus::kNotModified, response_headers3.status_code());
+  EXPECT_STREQ(NULL, response_headers3.Lookup1(HttpAttributes::kEtag));
+  EXPECT_EQ("", text3);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, EtagMatching) {
@@ -410,6 +457,7 @@ TEST_F(ProxyInterfaceTest, EtagMatching) {
   EXPECT_EQ(kContent, text);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_misses());
+  ClearStats();
 
   // The next response is served from cache.
   GoogleString text2;
@@ -419,7 +467,8 @@ TEST_F(ProxyInterfaceTest, EtagMatching) {
   EXPECT_STREQ("etag", response_headers2.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ(kContent, text2);
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  ClearStats();
 
   // The Etag matches and a 304 is served out.
   GoogleString text3;
@@ -430,8 +479,9 @@ TEST_F(ProxyInterfaceTest, EtagMatching) {
   EXPECT_EQ(HttpStatus::kNotModified, response_headers3.status_code());
   EXPECT_STREQ(NULL, response_headers3.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ("", text3);
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  ClearStats();
 
   // The Etag doesn't match and the full response is returned.
   GoogleString text4;
@@ -441,8 +491,8 @@ TEST_F(ProxyInterfaceTest, EtagMatching) {
   EXPECT_EQ(HttpStatus::kOK, response_headers4.status_code());
   EXPECT_STREQ("etag", response_headers4.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ(kContent, text4);
-  EXPECT_EQ(3, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
@@ -463,6 +513,7 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
   EXPECT_EQ(kContent, text);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_misses());
+  ClearStats();
 
   // The next response is served from cache.
   GoogleString text2;
@@ -473,7 +524,8 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
                response_headers2.Lookup1(HttpAttributes::kLastModified));
   EXPECT_EQ(kContent, text2);
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  ClearStats();
 
   // The last modified timestamp matches and a 304 is served out.
   GoogleString text3;
@@ -484,8 +536,9 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
   EXPECT_EQ(HttpStatus::kNotModified, response_headers3.status_code());
   EXPECT_STREQ(NULL, response_headers3.Lookup1(HttpAttributes::kLastModified));
   EXPECT_EQ("", text3);
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  ClearStats();
 
   // The last modified timestamp doesn't match and the full response is
   // returned.
@@ -498,8 +551,8 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
   EXPECT_STREQ(start_time_string_,
                response_headers4.Lookup1(HttpAttributes::kLastModified));
   EXPECT_EQ(kContent, text4);
-  EXPECT_EQ(3, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, EatCookiesOnReconstructFailure) {

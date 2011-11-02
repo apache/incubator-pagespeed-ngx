@@ -50,6 +50,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
@@ -57,6 +58,7 @@ namespace net_instaweb {
 class HtmlElement;
 class MessageHandler;
 class OutputResource;
+class UrlSegmentEncoder;
 
 namespace {
 
@@ -127,8 +129,11 @@ class TestCombineFilter : public RewriteFilter {
                            message_handler, callback);
   }
   TestCombineFilter::TestCombiner* combiner() { return &combiner_; }
+  virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
+
  private:
   TestCombineFilter::TestCombiner combiner_;
+  UrlMultipartEncoder encoder_;
 };
 
 // Test fixture.
@@ -546,7 +551,8 @@ TEST_F(ResourceCombinerTest, TestMaxUrlOverflow2) {
 TEST_F(ResourceCombinerTest, TestFetch) {
   // Test if we can reconstruct from pieces.
   GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
-                            "piece1.tcc+piece2.tcc+piece3.tcc", "txt");
+                            MultiUrl("piece1.tcc", "piece2.tcc", "piece3.tcc"),
+                            "txt");
 
   GoogleString out;
   EXPECT_TRUE(FetchResource(url, &out, kFetchNormal));
@@ -556,7 +562,8 @@ TEST_F(ResourceCombinerTest, TestFetch) {
 TEST_F(ResourceCombinerTest, TestFetchAsync) {
   // Test if we can reconstruct from pieces, with callback happening async
   GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
-                            "piece1.tcc+piece2.tcc+piece3.tcc", "txt");
+                            MultiUrl("piece1.tcc", "piece2.tcc", "piece3.tcc"),
+                            "txt");
   GoogleString out;
   EXPECT_TRUE(FetchResource(url, &out, kFetchAsync));
   EXPECT_EQ("piece1|piec2|pie3|", out);
@@ -565,7 +572,8 @@ TEST_F(ResourceCombinerTest, TestFetchAsync) {
 TEST_F(ResourceCombinerTest, TestFetchFail) {
   // Test if we can handle failure properly
   GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
-                            "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
+                            MultiUrl("piece1.tcc", "nopiece.tcc", "piece2.tcc"),
+                            "txt");
 
   GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchNormal));
@@ -576,7 +584,8 @@ TEST_F(ResourceCombinerTest, TestFetchFail2) {
   // This is slightly different from above, as we get a complete
   // fetch failure rather than a 404.
   GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
-                            "piece1.tcc+weird.tcc+piece2.tcc", "txt");
+                            MultiUrl("piece1.tcc", "weird.tcc", "piece2.tcc"),
+                            "txt");
 
   GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchNormal));
@@ -584,7 +593,8 @@ TEST_F(ResourceCombinerTest, TestFetchFail2) {
 
 TEST_F(ResourceCombinerTest, TestFetchFailAsync) {
   GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
-                            "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
+                            MultiUrl("piece1.tcc", "nopiece.tcc", "piece2.tcc"),
+                            "txt");
 
   GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchAsync));
@@ -593,7 +603,8 @@ TEST_F(ResourceCombinerTest, TestFetchFailAsync) {
 TEST_F(ResourceCombinerTest, TestFetchFailAsync2) {
   SetFetchFailOnUnexpected(false);
   GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
-                            "piece1.tcc+weird.tcc+piece2.tcc", "txt");
+                            MultiUrl("piece1.tcc", "weird.tcc", "piece2.tcc"),
+                            "txt");
 
   GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchAsync));
@@ -604,7 +615,8 @@ TEST_F(ResourceCombinerTest, TestFetchFailSevere) {
   // Since the TestUrlNamer can only encode protocols http and https,
   // force normal encoding here to allow the test to pass.
   GoogleString url = EncodeNormal("slwy://example.com/", kTestCombinerId, "0",
-                                  "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
+                                  MultiUrl("piece1.tcc", "nopiece.tcc",
+                                           "piece2.tcc"), "txt");
   GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchNormal));
 }
@@ -613,7 +625,8 @@ TEST_F(ResourceCombinerTest, TestFetchFailSevereAsync) {
   // Since the TestUrlNamer can only encode protocols http and https,
   // force normal encoding here to allow the test to pass.
   GoogleString url = EncodeNormal("slwy://example.com/", kTestCombinerId, "0",
-                                  "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
+                                  MultiUrl("piece1.tcc", "nopiece.tcc",
+                                           "piece2.tcc"), "txt");
   GoogleString out;
   EXPECT_FALSE(FetchResource(url, &out, kFetchAsync));
 }
@@ -647,7 +660,8 @@ TEST_F(ResourceCombinerTest, TestContinuingFetchWhenFastFailed) {
   // we will quickly notice failure, and on third one we will
   // notice we've failed already.
   GoogleString url = Encode(kTestDomain, kTestCombinerId, "0",
-                            "piece1.tcc+nopiece.tcc+piece2.tcc", "txt");
+                            MultiUrl("piece1.tcc", "nopiece.tcc", "piece2.tcc"),
+                            "txt");
   GoogleString content;
   RequestHeaders request_headers;
   ResponseHeaders response_headers;

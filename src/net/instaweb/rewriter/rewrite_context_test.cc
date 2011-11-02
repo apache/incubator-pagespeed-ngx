@@ -1474,7 +1474,7 @@ TEST_F(RewriteContextTest, CombinationRewrite) {
   InitCombiningFilter(0);
   InitResources();
   GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
-                                     "a.css+b.css", "css");
+                                     MultiUrl("a.css", "b.css"), "css");
   ValidateExpected(
       "combination_rewrite", StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
       CssLinkHref(combined_url));
@@ -1500,7 +1500,7 @@ TEST_F(RewriteContextTest, CombinationRewriteWithDelay) {
   InitCombiningFilter(kRewriteDelayMs);
   InitResources();
   GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
-                                     "a.css+b.css", "css");
+                                     MultiUrl("a.css", "b.css"), "css");
   ValidateNoChanges("xx", StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(3, lru_cache()->num_misses());   // partition, and 2 inputs.
@@ -1540,7 +1540,7 @@ TEST_F(RewriteContextTest, CombinationFetch) {
   InitResources();
 
   GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
-                                     "a.css+b.css", "css");
+                                     MultiUrl("a.css", "b.css"), "css");
 
   // The input URLs are not in cache, but the fetch should work.
   GoogleString content;
@@ -1570,7 +1570,7 @@ TEST_F(RewriteContextTest, CombinationFetchMissing) {
   InitCombiningFilter(0);
   SetFetchFailOnUnexpected(false);
   GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
-                                     "a.css+b.css", "css");
+                                     MultiUrl("a.css", "b.css"), "css");
   EXPECT_FALSE(TryFetchResource(combined_url));
 }
 
@@ -1581,7 +1581,8 @@ TEST_F(RewriteContextTest, CombinationFetchNestedMalformed) {
   SetFetchFailOnUnexpected(false);
   GoogleString combined_url = Encode(
       kTestDomain, kCombiningFilterId, "0",
-      "a.pagespeed.nosuchfilter.0.css+b.pagespeed.nosuchfilter.0.css", "css");
+      MultiUrl("a.pagespeed.nosuchfilter.0.css",
+               "b.pagespeed.nosuchfilter.0.css"), "css");
   EXPECT_FALSE(TryFetchResource(combined_url));
 }
 
@@ -1593,7 +1594,7 @@ TEST_F(RewriteContextTest, CombinationFetchSeedsCache) {
 
   // First fetch it..
   GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
-                                     "a.css+b.css", "css");
+                                     MultiUrl("a.css", "b.css"), "css");
   GoogleString content;
   EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
   EXPECT_EQ(" a b", content);
@@ -2335,7 +2336,7 @@ TEST_F(NestedResourceUpdateTest, TestExpireNested404) {
   EXPECT_EQ("http://test.com/a.css\n", contents);
 
   // Determine if we're using the TestUrlNamer, for the hash later.
-  bool test_url_namer = TestRewriteDriverFactory::UsingTestUrlNamer();
+  bool test_url_namer = factory_->use_test_url_namer();
 
   // Now move forward two decades, and upload a new version. We should
   // be ready to optimize at that point, but input should not be expired.

@@ -286,8 +286,7 @@ bool OutputResource::Load(MessageHandler* handler) {
 GoogleString OutputResource::decoded_base() const {
   GoogleUrl gurl(url());
   GoogleString decoded_url;
-  if (resource_manager()->url_namer()->Decode(
-          gurl, NULL, &decoded_url, resource_manager()->message_handler())) {
+  if (resource_manager()->url_namer()->Decode(gurl, NULL, &decoded_url)) {
     gurl.Reset(decoded_url);
   }
   return gurl.AllExceptLeaf().as_string();

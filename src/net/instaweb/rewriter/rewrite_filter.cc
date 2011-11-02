@@ -45,8 +45,9 @@ ResourcePtr RewriteFilter::CreateInputResourceFromOutputResource(
     GoogleUrl resource_url(base_gurl, urls[0]);
     StringPiece output_base = output_resource->resolved_base();
     if (output_base == driver_->base_url().AllExceptLeaf() ||
-        output_base == GoogleUrl(driver_->decoded_base()).AllExceptLeaf() ||
-        driver_->MayRewriteUrl(base_gurl, resource_url)) {
+        output_base == GoogleUrl(driver_->decoded_base()).AllExceptLeaf()) {
+      input_resource = driver_->CreateInputResource(resource_url);
+    } else if (driver_->MayRewriteUrl(base_gurl, resource_url)) {
       input_resource = driver_->CreateInputResource(resource_url);
     }
   }

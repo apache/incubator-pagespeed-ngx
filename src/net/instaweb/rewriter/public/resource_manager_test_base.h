@@ -41,6 +41,7 @@
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/url_segment_encoder.h"
 
 
 namespace net_instaweb {
@@ -54,7 +55,6 @@ class MockScheduler;
 class MockTimer;
 class ResourceNamer;
 class ResponseHeaders;
-class RewriteDriverFactory;
 class RewriteFilter;
 class Statistics;
 class UrlNamer;
@@ -199,9 +199,41 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Encode the given name (path + leaf) using the given pagespeed attributes.
   void EncodePathAndLeaf(const StringPiece& filter_id,
                          const StringPiece& hash,
-                         const StringPiece& name,
+                         const StringVector& name_vector,
                          const StringPiece& ext,
                          ResourceNamer* namer);
+
+  StringVector MultiUrl(const StringPiece& url1) {
+    StringVector v;
+    v.push_back(url1.as_string());
+    return v;
+  }
+
+  StringVector MultiUrl(const StringPiece& url1, const StringPiece& url2) {
+    StringVector v;
+    v.push_back(url1.as_string());
+    v.push_back(url2.as_string());
+    return v;
+  }
+
+  StringVector MultiUrl(const StringPiece& url1, const StringPiece& url2,
+                        const StringPiece& url3) {
+    StringVector v;
+    v.push_back(url1.as_string());
+    v.push_back(url2.as_string());
+    v.push_back(url3.as_string());
+    return v;
+  }
+
+  StringVector MultiUrl(const StringPiece& url1, const StringPiece& url2,
+                        const StringPiece& url3, const StringPiece& url4) {
+    StringVector v;
+    v.push_back(url1.as_string());
+    v.push_back(url2.as_string());
+    v.push_back(url3.as_string());
+    v.push_back(url4.as_string());
+    return v;
+  }
 
   // Helper function to encode a resource name from its pieces using whatever
   // encoding we are testing, either UrlNamer or TestUrlNamer.
@@ -209,6 +241,13 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                       const StringPiece& filter_id,
                       const StringPiece& hash,
                       const StringPiece& name,
+                      const StringPiece& ext) {
+    return Encode(path, filter_id, hash, MultiUrl(name), ext);
+  }
+  GoogleString Encode(const StringPiece& path,
+                      const StringPiece& filter_id,
+                      const StringPiece& hash,
+                      const StringVector& name_vector,
                       const StringPiece& ext);
 
   // Same as Encode but specifically using UrlNamer not TestUrlNamer.
@@ -216,6 +255,13 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                             const StringPiece& filter_id,
                             const StringPiece& hash,
                             const StringPiece& name,
+                            const StringPiece& ext) {
+    return EncodeNormal(path, filter_id, hash, MultiUrl(name), ext);
+  }
+  GoogleString EncodeNormal(const StringPiece& path,
+                            const StringPiece& filter_id,
+                            const StringPiece& hash,
+                            const StringVector& name_vector,
                             const StringPiece& ext);
 
   // Same as Encode but specifying the base URL (which is used by TestUrlNamer
@@ -225,6 +271,14 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                               const StringPiece& filter_id,
                               const StringPiece& hash,
                               const StringPiece& name,
+                              const StringPiece& ext) {
+    return EncodeWithBase(base, path, filter_id, hash, MultiUrl(name), ext);
+  }
+  GoogleString EncodeWithBase(const StringPiece& base,
+                              const StringPiece& path,
+                              const StringPiece& filter_id,
+                              const StringPiece& hash,
+                              const StringVector& name_vector,
                               const StringPiece& ext);
 
   // Overrides the async fetcher on the primary context to be a
@@ -260,8 +314,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Removes the output resource from the file system.
   void RemoveOutputResourceFile(const StringPiece& url);
 
-  RewriteDriverFactory* factory() { return factory_.get(); }
-  RewriteDriverFactory* other_factory() { return other_factory_.get(); }
+  TestRewriteDriverFactory* factory() { return factory_.get(); }
+  TestRewriteDriverFactory* other_factory() { return other_factory_.get(); }
 
   void UseMd5Hasher() {
     resource_manager_->set_hasher(&md5_hasher_);
@@ -375,6 +429,11 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                               const StringPiece& filter_id,
                               const StringPiece& ext);
 
+  // Find the segment-encoder for the filter found via 'id'.  Some
+  // test filters are not registered with RewriteDriver so for those
+  // we use the default encoder.
+  const UrlSegmentEncoder* FindEncoder(const StringPiece& id) const;
+
  protected:
   void Init();
 
@@ -403,6 +462,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   RewriteOptions* options_;  // owned by rewrite_driver_.
   RewriteOptions* other_options_;  // owned by other_rewrite_driver_.
+  UrlSegmentEncoder default_encoder_;
 };
 
 }  // namespace net_instaweb

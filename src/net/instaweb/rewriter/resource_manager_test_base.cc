@@ -32,6 +32,7 @@
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/mem_clean_up.h"
@@ -562,9 +563,12 @@ void ResourceManagerTestBase::CollectCssLinks(
 
 void ResourceManagerTestBase::EncodePathAndLeaf(const StringPiece& id,
                                                 const StringPiece& hash,
-                                                const StringPiece& name,
+                                                const StringVector& name_vector,
                                                 const StringPiece& ext,
                                                 ResourceNamer* namer) {
+  namer->set_id(id);
+  namer->set_hash(hash);
+
   // We only want to encode the last path-segment of 'name'.
   // Note that this block of code could be avoided if all call-sites
   // put subdirectory info in the 'path' argument, but it turns out
@@ -572,63 +576,65 @@ void ResourceManagerTestBase::EncodePathAndLeaf(const StringPiece& id,
   // in the 'name' argument for this method, so the one-time effort of
   // teasing out the leaf and encoding that saves a whole lot of clutter
   // in, at least, CacheExtenderTest.
-  namer->set_id(id);
-  namer->set_hash(hash);
-
-  StringPieceVector path_vector;
-  SplitStringPieceToVector(name, "/", &path_vector, false);
-  UrlSegmentEncoder encoder;
-  GoogleString encoded_name;
-  StringVector v;
-  CHECK_LT(0U, path_vector.size());
-  v.push_back(path_vector[path_vector.size() - 1].as_string());
-  encoder.Encode(v, NULL, &encoded_name);
-
-  // Now reconstruct the path.
-  GoogleString pathname;
-  for (int i = 0, n = path_vector.size() - 1; i < n; ++i) {
-    path_vector[i].AppendToString(&pathname);
-    pathname += "/";
+  //
+  // Note that this can only be done for 1-element name_vectors.
+  for (int i = 0, n = name_vector.size(); i < n; ++i) {
+    const GoogleString& name = name_vector[i];
+    CHECK(name.find('/') == GoogleString::npos) << "No slashes should be "
+        "found in " << name << " but we found at least one.  "
+        "Put it in the path";
   }
-  pathname += encoded_name;
 
-  namer->set_name(pathname);
+  ResourceContext context;
+  const UrlSegmentEncoder* encoder = FindEncoder(id);
+  GoogleString encoded_name;
+  encoder->Encode(name_vector, &context, &encoded_name);
+  namer->set_name(encoded_name);
   namer->set_ext(ext);
+}
+
+const UrlSegmentEncoder* ResourceManagerTestBase::FindEncoder(
+    const StringPiece& id) const {
+  RewriteFilter* filter = rewrite_driver_->FindFilter(id);
+  ResourceContext context;
+  return (filter == NULL) ? &default_encoder_ : filter->encoder();
 }
 
 GoogleString ResourceManagerTestBase::Encode(const StringPiece& path,
                                              const StringPiece& id,
                                              const StringPiece& hash,
-                                             const StringPiece& name,
+                                             const StringVector& name_vector,
                                              const StringPiece& ext) {
-  return EncodeWithBase(kTestDomain, path, id, hash, name, ext);
+  return EncodeWithBase(kTestDomain, path, id, hash, name_vector, ext);
 }
 
-GoogleString ResourceManagerTestBase::EncodeNormal(const StringPiece& path,
-                                                   const StringPiece& id,
-                                                   const StringPiece& hash,
-                                                   const StringPiece& name,
-                                                   const StringPiece& ext) {
+GoogleString ResourceManagerTestBase::EncodeNormal(
+    const StringPiece& path,
+    const StringPiece& id,
+    const StringPiece& hash,
+    const StringVector& name_vector,
+    const StringPiece& ext) {
   ResourceNamer namer;
-  EncodePathAndLeaf(id, hash, name, ext, &namer);
+  EncodePathAndLeaf(id, hash, name_vector, ext, &namer);
   return StrCat(path, namer.Encode());
 }
 
-GoogleString ResourceManagerTestBase::EncodeWithBase(const StringPiece& base,
-                                                     const StringPiece& path,
-                                                     const StringPiece& id,
-                                                     const StringPiece& hash,
-                                                     const StringPiece& name,
-                                                     const StringPiece& ext) {
-  if (TestRewriteDriverFactory::UsingTestUrlNamer() &&
+GoogleString ResourceManagerTestBase::EncodeWithBase(
+    const StringPiece& base,
+    const StringPiece& path,
+    const StringPiece& id,
+    const StringPiece& hash,
+    const StringVector& name_vector,
+    const StringPiece& ext) {
+  if (factory()->use_test_url_namer() &&
       !options()->domain_lawyer()->can_rewrite_domains() &&
       !path.empty()) {
     ResourceNamer namer;
-    EncodePathAndLeaf(id, hash, name, ext, &namer);
+    EncodePathAndLeaf(id, hash, name_vector, ext, &namer);
     return TestUrlNamer::EncodeUrl(base, path, "/", namer);
   }
 
-  return EncodeNormal(path, id, hash, name, ext);
+  return EncodeNormal(path, id, hash, name_vector, ext);
 }
 
 void ResourceManagerTestBase::SetupWaitFetcher() {

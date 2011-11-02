@@ -499,22 +499,22 @@ TEST_P(ImageRewriteTest, RespectsBaseUrl) {
   GoogleUrl new_png_gurl(new_png_url);
   EXPECT_TRUE(new_png_gurl.is_valid());
   GoogleUrl encoded_png_gurl(EncodeWithBase("http://other_domain.test/",
-                                            "http://other_domain.test/",
-                                            "x", "0", "foo/bar/a.png", "x"));
+                                            "http://other_domain.test/foo/bar/",
+                                            "x", "0", "a.png", "x"));
   EXPECT_EQ(encoded_png_gurl.AllExceptLeaf(), new_png_gurl.AllExceptLeaf());
 
   GoogleUrl new_jpeg_gurl(new_jpeg_url);
   EXPECT_TRUE(new_jpeg_gurl.is_valid());
   GoogleUrl encoded_jpeg_gurl(EncodeWithBase("http://other_domain.test/",
-                                             "http://other_domain.test/",
-                                             "x", "0", "baz/b.jpeg", "x"));
+                                             "http://other_domain.test/baz/",
+                                             "x", "0", "b.jpeg", "x"));
   EXPECT_EQ(encoded_jpeg_gurl.AllExceptLeaf(), new_jpeg_gurl.AllExceptLeaf());
 
   GoogleUrl new_gif_gurl(new_gif_url);
   EXPECT_TRUE(new_gif_gurl.is_valid());
   GoogleUrl encoded_gif_gurl(EncodeWithBase("http://other_domain.test/",
-                                            "http://other_domain.test/",
-                                            "x", "0", "foo/c.gif", "x"));
+                                            "http://other_domain.test/foo/",
+                                            "x", "0", "c.gif", "x"));
   EXPECT_EQ(encoded_gif_gurl.AllExceptLeaf(), new_gif_gurl.AllExceptLeaf());
 }
 
@@ -523,15 +523,14 @@ TEST_P(ImageRewriteTest, FetchInvalid) {
   // calling Done(false).
   AddFilter(RewriteOptions::kRecompressImages);
   GoogleString out;
+
+  // We are trying to test with an invalid encoding. By construction,
+  // Encode cannot make an invalid encoding.  However we can make one
+  // using a PlaceHolder string and then mutating it.
+  const char kPlaceholder[] = "PlaceHolder";
   GoogleString encoded_url = Encode("http://www.example.com/", "ic",
-                                    "ABCDEFGHIJ", "70x53x,", "jpg");
-  // The comma at the end is encoded into two commas, which needs to be undone
-  // because otherwise we end up trying to fetch "http://www.example.com/,"
-  // [note the comma at the end] instead of the full URL. I spent an hour
-  // looking into why but couldn't work it out and in the end decided to just
-  // force the URL to be exactly what it was previously.
-  // TODO(matterbury):  Find out why and fix it if it's actually a problem.
-  GlobalReplaceSubstring("70x53x,,", "70x53x,", &encoded_url);
+                                    "ABCDEFGHIJ", kPlaceholder, "jpg");
+  GlobalReplaceSubstring(kPlaceholder, "70x53x,", &encoded_url);
   EXPECT_FALSE(ServeResourceUrl(encoded_url, &out));
 }
 
@@ -594,9 +593,7 @@ TEST_P(ImageRewriteTest, RetainExtraHeaders) {
   // Store image contents into fetcher.
   AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
-  TestRetainExtraHeaders(kPuzzleJpgFile,
-                         StrCat("x", kPuzzleJpgFile),
-                         "ic", "jpg");
+  TestRetainExtraHeaders(kPuzzleJpgFile, kPuzzleJpgFile, "ic", "jpg");
 }
 
 TEST_P(ImageRewriteTest, NestedConcurrentRewritesLimit) {
@@ -623,8 +620,7 @@ TEST_P(ImageRewriteTest, NestedConcurrentRewritesLimit) {
   InitResponseHeaders(kCssFile,  kContentTypeCss, in_css, 100);
 
   GoogleString out_css_url = Encode(kTestDomain, "cf", "0", kCssFile, "css");
-  GoogleString out_png_url = Encode(kTestDomain, "ic", "0",
-                                    StrCat("x", kPngFile), "png");
+  GoogleString out_png_url = Encode(kTestDomain, "ic", "0", kPngFile, "png");
 
   // Set the current # of rewrites very high, so we stop doing more
   // due to "load".

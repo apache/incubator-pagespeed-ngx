@@ -66,6 +66,7 @@ const char kEscapedJs1[] =
 const char kEscapedJs2[] = "\"// script2\\r\\nvar b=42;\\n\"";
 const char kMinifiedEscapedJs1[] = "\"var a=\\\"hello\\\\nsecond line\\\"\"";
 const char kMinifiedEscapedJs2[] = "\"var b=42;\"";
+const char kAlternateDomain[] = "http://alternate.com/";
 
 }  // namespace
 
@@ -138,6 +139,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
     SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_js_header_);
     SimulateJsResource(kJsUrl1, kJsText1);
     SimulateJsResource(kJsUrl2, kJsText2);
+    SimulateJsResourceOnDomain(kAlternateDomain, kJsUrl2, kJsText2);
     SimulateJsResource(kJsUrl3, kJsText3);
     SimulateJsResource(kStrictUrl1, kStrictText1);
     SimulateJsResource(kStrictUrl2, kStrictText2);
@@ -181,7 +183,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
   void VerifyCombinedOnDomain(const StringPiece& base_url,
                               const StringPiece& domain,
                               const ScriptInfo& info,
-                              const StringPiece& name) {
+                              const StringVector& name_vector) {
     EXPECT_FALSE(info.url.empty());
     // We need to check against the encoded form of the given domain.
     GoogleUrl encoded(EncodeWithBase(base_url, domain, "x", "0", "x", "x"));
@@ -191,11 +193,15 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
     ResourceNamer namer;
     EXPECT_TRUE(namer.Decode(combination_url.LeafWithQuery()));
     EXPECT_STREQ(RewriteDriver::kJavascriptCombinerId, namer.id());
-    EXPECT_STREQ(name, namer.name());
+    GoogleString encoding;
+    for (int i = 0, n = name_vector.size(); i < n; ++i) {
+      StrAppend(&encoding, (i == 0) ? "" : "+", name_vector[i]);
+    }
+    EXPECT_STREQ(encoding, namer.name());
     EXPECT_STREQ("js", namer.ext());
   }
 
-  void VerifyCombined(const ScriptInfo& info, const StringPiece& name) {
+  void VerifyCombined(const ScriptInfo& info, const StringVector& name) {
     VerifyCombinedOnDomain(kTestDomain, kTestDomain, info, name);
   }
 
@@ -220,7 +226,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
   // Note that we must use the MD5 hasher for this test because the
   // combiner generates local javascript variable names using the
   // content-hasher.
-  void TestCombineJs(const StringPiece& combined_name,
+  void TestCombineJs(const StringVector& combined_name,
                      const StringPiece& combined_hash,
                      const StringPiece& hash1,
                      const StringPiece& hash2,
@@ -288,15 +294,15 @@ class JsFilterAndCombineFilterTest : public JsCombineFilterTest {
 
 // Test for basic operation, including escaping and fetch reconstruction.
 TEST_P(JsCombineFilterTest, CombineJs) {
-  TestCombineJs("a.js+b.js", "g2Xe9o4bQ2", "KecOGCIjKt", "dzsx6RqvJJ", false,
-                kTestDomain);
+  TestCombineJs(MultiUrl("a.js", "b.js"), "g2Xe9o4bQ2", "KecOGCIjKt",
+                "dzsx6RqvJJ", false, kTestDomain);
 }
 
 TEST_P(JsFilterAndCombineFilterTest, MinifyCombineJs) {
   // These hashes depend on the URL, which is different when using the
   // test url namer, so handle the difference.
-  bool test_url_namer = TestRewriteDriverFactory::UsingTestUrlNamer();
-  TestCombineJs("a.js,Mjm.FUEwDOA7jh.js+b.js,Mjm.Y1kknPfzVs.js",
+  bool test_url_namer = factory()->use_test_url_namer();
+  TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
                 test_url_namer ? "8erozavBF5" : "FA3Pqioukh",
                 test_url_namer ? "JO0ZTfFSfI" : "S$0tgbTH0O",
                 test_url_namer ? "8QmSuIkgv_" : "ose8Vzgyj9",
@@ -317,8 +323,73 @@ TEST_P(JsFilterAndCombineFilterTest, MinifyShardCombineJs) {
   SimulateJsResourceOnDomain("http://b.com/", kJsUrl1, kJsText1);
   SimulateJsResourceOnDomain("http://b.com/", kJsUrl2, kJsText2);
 
-  TestCombineJs("a.js,Mjm.FUEwDOA7jh.js+b.js,Mjm.Y1kknPfzVs.js", "FA3Pqioukh",
-                "S$0tgbTH0O", "ose8Vzgyj9", true, "http://b.com/");
+  TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
+                "FA3Pqioukh", "S$0tgbTH0O", "ose8Vzgyj9", true,
+                "http://b.com/");
+}
+
+TEST_P(JsFilterAndCombineFilterTest, MinifyCombineAcrossHosts) {
+  ScriptInfoVector scripts;
+  PrepareToCollectScriptsInto(&scripts);
+  GoogleString js_url_2(StrCat(kAlternateDomain, kJsUrl2));
+  options()->domain_lawyer()->AddDomain(kAlternateDomain, message_handler());
+  ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
+                               "<script src=", js_url_2, "></script>"));
+  ASSERT_EQ(2, scripts.size());
+  ServeResourceFromManyContexts(scripts[0].url, kMinifiedJs1);
+  ServeResourceFromManyContexts(scripts[1].url, kMinifiedJs2);
+}
+
+class JsFilterAndCombineProxyTest : public JsFilterAndCombineFilterTest {
+ public:
+  JsFilterAndCombineProxyTest() {
+    factory()->set_use_test_url_namer(true);
+  }
+};
+
+TEST_P(JsFilterAndCombineProxyTest, MinifyCombineSameHostProxy) {
+  // TODO(jmarantz): This more intrusive test-helper fails.  I'd like
+  // to look at it with Matt in the context of the new TestUrlNamer
+  // infrastructure.  However that should not block the point of this
+  // test which is that the combination should be made if the
+  // hosts do match, unlike MinifyCombineAcrossHostsProxy below.
+  //
+  // Specifically, VerifyCombinedOnDomain appears not to know about
+  // TestUrlNamer.
+  //
+  // bool test_url_namer = factory()->use_test_url_namer();
+  // DCHECK(test_url_namer);
+  // TestCombineJs("a.js,Mjm.FUEwDOA7jh.js+b.js,Mjm.Y1kknPfzVs.js",
+  //               test_url_namer ? "8erozavBF5" : "FA3Pqioukh",
+  //               test_url_namer ? "JO0ZTfFSfI" : "S$0tgbTH0O",
+  //               test_url_namer ? "8QmSuIkgv_" : "ose8Vzgyj9",
+  //               true, kTestDomain);
+
+  ScriptInfoVector scripts;
+  PrepareToCollectScriptsInto(&scripts);
+  resource_manager()->set_store_outputs_in_file_system(false);
+  other_resource_manager()->set_store_outputs_in_file_system(false);
+  ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
+                               "<script src=", kJsUrl2, "></script>"));
+  ASSERT_EQ(3, scripts.size()) << "successful combination yields 3 scripts";
+}
+
+TEST_P(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
+  ScriptInfoVector scripts;
+  PrepareToCollectScriptsInto(&scripts);
+  GoogleString js_url_2(StrCat(kAlternateDomain, kJsUrl2));
+  options()->domain_lawyer()->AddDomain(kAlternateDomain, message_handler());
+  resource_manager()->set_store_outputs_in_file_system(false);
+  other_resource_manager()->set_store_outputs_in_file_system(false);
+  ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
+                               "<script src=", js_url_2, "></script>"));
+  ASSERT_EQ(2, scripts.size()) << "If combination fails, we get 2 scripts";
+  ServeResourceFromManyContexts(scripts[0].url, kMinifiedJs1);
+  EXPECT_EQ(EncodeNormal(kTestDomain, "jm", "FUEwDOA7jh", kJsUrl1, "js"),
+            scripts[0].url);
+  ServeResourceFromManyContexts(scripts[1].url, kMinifiedJs2);
+  EXPECT_EQ(EncodeNormal(kAlternateDomain, "jm", "Y1kknPfzVs", kJsUrl2, "js"),
+            scripts[1].url);
 }
 
 TEST_P(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
@@ -350,8 +421,9 @@ TEST_P(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
   lru_cache()->Delete(out_url2);
 
   // Now try to get a combination.
-  TestCombineJs("a.js,Mjm.FUEwDOA7jh.js+b.js,Mjm.Y1kknPfzVs.js", "FA3Pqioukh",
-                "S$0tgbTH0O", "ose8Vzgyj9", true /*minified*/, kTestDomain);
+  TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
+                "FA3Pqioukh", "S$0tgbTH0O", "ose8Vzgyj9", true /*minified*/,
+                kTestDomain);
 }
 
 // Various things that prevent combining
@@ -430,7 +502,7 @@ TEST_P(JsFilterAndCombineFilterTest, TestScriptInlineTextRollback) {
 
 // Things between scripts that should not prevent combination
 TEST_P(JsCombineFilterTest, TestNonBarriers) {
-  GoogleString combined_url = StrCat(kJsUrl1, "+", kJsUrl2);
+  StringVector combined_url = MultiUrl(kJsUrl1, kJsUrl2);
 
   // Intervening text
   ScriptInfoVector scripts;
@@ -485,7 +557,7 @@ TEST_P(JsCombineFilterTest, TestFlushMiddle1) {
 
   ASSERT_EQ(4, scripts.size());
   EXPECT_EQ(kJsUrl1, scripts[0].url);
-  VerifyCombined(scripts[1], StrCat(kJsUrl2, "+", kJsUrl3));
+  VerifyCombined(scripts[1], MultiUrl(kJsUrl2, kJsUrl3));
   VerifyUse(scripts[2], kJsUrl2);
   VerifyUse(scripts[3], kJsUrl3);
 }
@@ -524,7 +596,7 @@ TEST_P(JsCombineFilterTest, TestFlushMiddle3) {
   html_parse()->FinishParse();
 
   ASSERT_EQ(4, scripts.size());
-  VerifyCombined(scripts[0], StrCat(kJsUrl1, "+", kJsUrl2));
+  VerifyCombined(scripts[0], MultiUrl(kJsUrl1, kJsUrl2));
   VerifyUse(scripts[1], kJsUrl1);
   VerifyUse(scripts[2], kJsUrl2);
   EXPECT_EQ(kJsUrl3, scripts[3].url);
@@ -541,7 +613,7 @@ TEST_P(JsCombineFilterTest, TestBase) {
                                "<script src=", kJsUrl2, "></script>"));
   ASSERT_EQ(3, scripts.size());
   VerifyCombinedOnDomain(other_domain_, other_domain_, scripts[0],
-                         StrCat(kJsUrl1, "+", kJsUrl2));
+                         MultiUrl(kJsUrl1, kJsUrl2));
   VerifyUseOnDomain(other_domain_, scripts[1], kJsUrl1);
   VerifyUseOnDomain(other_domain_, scripts[2], kJsUrl2);
 }
@@ -581,12 +653,12 @@ TEST_P(JsCombineFilterTest, TestCrossDomainRecover) {
   html_parse()->FinishParse();
 
   ASSERT_EQ(6, scripts.size());
-  VerifyCombined(scripts[0], StrCat(kJsUrl1, "+", kJsUrl2));
+  VerifyCombined(scripts[0], MultiUrl(kJsUrl1, kJsUrl2));
   VerifyUse(scripts[1], kJsUrl1);
   VerifyUse(scripts[2], kJsUrl2);
 
   VerifyCombinedOnDomain(kTestDomain, other_domain_, scripts[3],
-                         StrCat(kJsUrl1, "+", kJsUrl2));
+                         MultiUrl(kJsUrl1, kJsUrl2));
   VerifyUseOnDomain(other_domain_, scripts[4], kJsUrl1);
   VerifyUseOnDomain(other_domain_, scripts[5], kJsUrl2);
 }
@@ -609,7 +681,7 @@ TEST_P(JsCombineFilterTest, TestCombineShard) {
   // Make sure we produce consistent output when sharding/serving off a
   // different host.
   GoogleString path =
-      Encode("", "jc", "0", StrCat(kJsUrl1, "+", kJsUrl2), "js");
+      Encode("", "jc", "0", MultiUrl(kJsUrl1, kJsUrl2), "js");
 
   GoogleString src1;
   EXPECT_TRUE(ServeResourceUrl(StrCat(kTestDomain, path), &src1));
@@ -638,17 +710,23 @@ TEST_P(JsCombineFilterTest, PartlyInvalidFetchCache) {
   InitResponseHeaders("b.js", kContentTypeJavascript, "var b;", 100);
   EXPECT_FALSE(
       TryFetchResource(
-          Encode(kTestDomain, "jc", "0", "a.js+b.js+404.js", "js")));
+          Encode(kTestDomain, "jc", "0", MultiUrl("a.js", "b.js", "404.js"),
+                 "js")));
   ValidateNoChanges("partly_invalid",
                     StrCat("<script src=a.js></script>",
                            "<script src=b.js></script>"
                            "<script src=404.js></script>"));
 }
 
-INSTANTIATE_TEST_CASE_P(JsCombineFilterTestInstance, JsCombineFilterTest,
+INSTANTIATE_TEST_CASE_P(JsCombineFilterTestInstance,
+                        JsCombineFilterTest,
                         ::testing::Bool());
-INSTANTIATE_TEST_CASE_P(
-    JsCombineFilterTestInstance, JsFilterAndCombineFilterTest,
-    ::testing::Bool());
+INSTANTIATE_TEST_CASE_P(JsCombineFilterTestInstance,
+                        JsFilterAndCombineFilterTest,
+                        ::testing::Bool());
+
+INSTANTIATE_TEST_CASE_P(JsFilterAndCombineProxyTestInstance,
+                        JsFilterAndCombineProxyTest,
+                        ::testing::Bool());
 
 }  // namespace net_instaweb

@@ -122,13 +122,13 @@ TEST_P(RewriteDriverTest, TestInferContentType) {
                 Encode("http://example.com/", "cf", "0", "orig", "css")));
   EXPECT_EQ(&kContentTypeJpeg,
             DecodeContentType(
-                Encode("http://example.com/", "ic", "0", "xorig", "jpg")));
+                Encode("http://example.com/", "ic", "0", "orig", "jpg")));
   EXPECT_EQ(&kContentTypePng,
             DecodeContentType(
                 Encode("http://example.com/", "ce", "0", "orig", "png")));
   EXPECT_EQ(&kContentTypeGif,
             DecodeContentType(
-                Encode("http://example.com/", "ic", "0", "dir/xy", "gif")));
+                Encode("http://example.com/dir/", "ic", "0", "xy", "gif")));
 }
 
 TEST_P(RewriteDriverTest, TestModernUrl) {

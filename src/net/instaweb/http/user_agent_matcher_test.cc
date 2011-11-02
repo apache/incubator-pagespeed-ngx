@@ -23,6 +23,12 @@ namespace {
 // Chrome: http://www.useragentstring.com/pages/Chrome/
 // And there are many more.
 
+const char kAndroidHCUserAgent[] =
+    "Mozilla/5.0 (Linux; U; Android 3.2; en-us; Sony Tablet S Build/THMAS11000) "
+    "AppleWebKit/534.13 (KHTML, like Gecko) Version/4.0 Safari/534.13";
+const char kAndroidICSUserAgent[] =
+    "Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; Galaxy Nexus Build/ICL27) "
+    "AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30";
 const char kChromeUserAgent[] =
     "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) "
     "AppleWebKit/525.13 (KHTML, like Gecko) Chrome/0.A.B.C Safari/525.13";
@@ -65,8 +71,8 @@ const char kOpera8UserAgent[] =
 const char kPSPUserAgent[] =
     "Mozilla/4.0 (PSP (PlayStation Portable); 2.00)";
 const char kSafariUserAgent[] =
-    "Safari/525.20.1 Java/Jbed/7.0 Profile/MIDP-2.1 Configuration/"
-    "CLDC-1.1 MMS/LG-Android-MMS-V1.0/1.2";
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.51.22 "
+    "(KHTML, like Gecko) Version/5.1.1 Safari/534.51.22";
 }  // namespace
 
 namespace net_instaweb {
@@ -101,11 +107,12 @@ TEST_F(UserAgentMatcherTest, IsNotIeTest) {
 }
 
 TEST_F(UserAgentMatcherTest, SupportsImageInlining) {
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kAndroidHCUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kAndroidICSUserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kIe9UserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kChromeUserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kFirefoxUserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kOpera8UserAgent));
-  EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kOpera5UserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kSafariUserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(kIPhoneUserAgent));
 }
@@ -114,11 +121,13 @@ TEST_F(UserAgentMatcherTest, NotSupportsImageInlining) {
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kIe6UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kFirefox1UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kNokiaUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kOpera5UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kPSPUserAgent));
 }
 
 
 TEST_F(UserAgentMatcherTest, SupportsWebp) {
+  EXPECT_TRUE(user_agent_matcher_.SupportsWebp(kAndroidICSUserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsWebp(kChrome12UserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsWebp(kOpera1110UserAgent));
 }
@@ -126,6 +135,7 @@ TEST_F(UserAgentMatcherTest, SupportsWebp) {
 TEST_F(UserAgentMatcherTest, DoesntSupportWebp) {
   // The most interesting tests here are the recent but slightly older versions
   // of Chrome and Opera that can't display webp.
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kAndroidHCUserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kChromeUserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kChrome9UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kOpera1101UserAgent));

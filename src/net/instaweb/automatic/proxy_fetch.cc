@@ -87,8 +87,7 @@ void ProxyFetchFactory::StartNewProxyFetch(
   DCHECK(!manager_->IsPagespeedResource(gurl))
       << "expect ResourceFetch called for pagespeed resources, not ProxyFetch";
   if (gurl.is_valid()) {
-    if (namer->Decode(gurl, &request_origin, &decoded_resource,
-                      manager_->message_handler())) {
+    if (namer->Decode(gurl, &request_origin, &decoded_resource)) {
       const RewriteOptions* options = (custom_options == NULL)
           ? manager_->global_options()
           : custom_options;

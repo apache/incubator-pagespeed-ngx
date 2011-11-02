@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -74,9 +75,9 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
       handler->Message(kInfo,
                        "Rewriting URL %s is disallowed via configuration",
                        resolved_request->spec_c_str());
-    } else if (rewrite_options_->domain_lawyer()->MapRequestToDomain(
-        original_origin_and_path_, resource_url, &mapped_domain_name,
-        resolved_request.get(), handler)) {
+    } else if (FindResourceDomain(resolved_request.get(),
+                                  &mapped_domain_name,
+                                  handler)) {
       if (url_vector_.empty()) {
         domain_.swap(mapped_domain_name);
         ret = true;
@@ -93,6 +94,23 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
         IncrementalResolve(index);
       }
     }
+  }
+  return ret;
+}
+
+bool UrlPartnership::FindResourceDomain(GoogleUrl* resource,
+                                        GoogleString* domain,
+                                        MessageHandler* handler) const {
+  bool ret = false;
+  GoogleString resource_url;
+  if (url_namer_->Decode(*resource, NULL, &resource_url)) {
+    resource->Reset(resource_url);
+    ret = resource->is_valid();
+    resource->Origin().CopyToString(domain);
+  } else {
+    ret = rewrite_options_->domain_lawyer()->MapRequestToDomain(
+        original_origin_and_path_, resource->Spec(), domain,
+        resource, handler);
   }
   return ret;
 }

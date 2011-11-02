@@ -110,6 +110,8 @@ TestRewriteDriverFactory::TestRewriteDriverFactory(
     mock_message_handler_(NULL),
     mock_html_message_handler_(NULL) {
   set_filename_prefix(StrCat(temp_dir, "/"));
+  use_test_url_namer_ = (getenv(kUrlNamerScheme) != NULL &&
+                         strcmp(getenv(kUrlNamerScheme), "test") == 0);
 }
 
 TestRewriteDriverFactory::~TestRewriteDriverFactory() {
@@ -179,11 +181,6 @@ Hasher* TestRewriteDriverFactory::NewHasher() {
   return mock_hasher_;
 }
 
-bool TestRewriteDriverFactory::UsingTestUrlNamer() {
-  return (getenv(kUrlNamerScheme) != NULL &&
-          strcmp(getenv(kUrlNamerScheme), "test") == 0);
-}
-
 MessageHandler* TestRewriteDriverFactory::DefaultMessageHandler() {
   DCHECK(mock_message_handler_ == NULL);
   mock_message_handler_ = new MockMessageHandler;
@@ -197,7 +194,7 @@ MessageHandler* TestRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
 }
 
 UrlNamer* TestRewriteDriverFactory::DefaultUrlNamer() {
-  return (UsingTestUrlNamer()
+  return (use_test_url_namer_
           ? new TestUrlNamer()
           : RewriteDriverFactory::DefaultUrlNamer());
 }

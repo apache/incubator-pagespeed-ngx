@@ -484,9 +484,9 @@ TEST_F(ResourceManagerTest, TestNamed) {
 }
 
 TEST_F(ResourceManagerTest, TestOutputInputUrl) {
-  GoogleString url = Encode("http://example.com/",
+  GoogleString url = Encode("http://example.com/dir/123/",
                             RewriteDriver::kJavascriptMinId,
-                            "0", "dir/123/orig", "js");
+                            "0", "orig", "js");
   OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   RewriteFilter* filter = rewrite_driver()->FindFilter(
@@ -571,8 +571,8 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
 
 // DecodeOutputResource should drop query
 TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
-  GoogleString url = Encode("http://example.com/",
-                            "jm", "0", "dir/123/orig", "js");
+  GoogleString url = Encode("http://example.com/dir/123/",
+                            "jm", "0", "orig", "js");
   RewriteFilter* dummy;
   GoogleUrl gurl(StrCat(url, "?query"));
   OutputResourcePtr output_resource(
@@ -961,8 +961,8 @@ class ResourceManagerShardedTest : public ResourceManagerTest {
 };
 
 TEST_F(ResourceManagerShardedTest, TestNamed) {
-  GoogleString url = Encode("http://example.com/",
-                            "jm", "0", "dir/123/orig", "js");
+  GoogleString url = Encode("http://example.com/dir/123/",
+                            "jm", "0", "orig", "js");
   bool use_async_flow = false;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
@@ -980,7 +980,7 @@ TEST_F(ResourceManagerShardedTest, TestNamed) {
   // hasher for the content hash.  Note that the sharding sensitivity
   // to the hash value is tested in DomainLawyerTest.Shard, and will
   // also be covered in a system test.
-  EXPECT_EQ(Encode("http://shard0.com/", "jm", "0", "dir/orig.js", "js"),
+  EXPECT_EQ(Encode("http://shard0.com/dir/", "jm", "0", "orig.js", "js"),
             output_resource->url());
 }
 
@@ -1014,8 +1014,8 @@ TEST_F(ResourceManagerTest, ShutDownAssumptions) {
 }
 
 TEST_F(ResourceManagerTest, IsPagespeedResource) {
-  GoogleUrl rewritten(Encode("http://shard0.com/", "jm", "0",
-                             "dir/orig.js", "js"));
+  GoogleUrl rewritten(Encode("http://shard0.com/dir/", "jm", "0",
+                             "orig.js", "js"));
   EXPECT_TRUE(resource_manager()->IsPagespeedResource(rewritten));
 
   GoogleUrl normal("http://jqueryui.com/jquery-1.6.2.js");
@@ -1196,7 +1196,8 @@ class ResourceManagerTestThreadedCache : public ResourceManagerTest {
             mock_scheduler(),
             new ThreadsafeCache(cache_backend_, threads_->NewMutex()),
             new QueuedWorkerPool(2, threads_.get()))),
-        http_cache_(new HTTPCache(cache_.get(), mock_timer(), statistics())) {
+        http_cache_(new HTTPCache(cache_.get(), mock_timer(), hasher(),
+                                  statistics())) {
   }
 
   virtual void SetUp() {
@@ -1279,7 +1280,7 @@ TEST_F(ResourceManagerTestThreadedCache, RepeatedFetches) {
     GoogleString combination(
       StrCat("<script src=\"",
              Encode(kTestDomain, "jc", "0",
-                    StrCat(minified_a_leaf, "+", minified_a_leaf), "js"),
+                    MultiUrl(minified_a_leaf,  minified_a_leaf), "js"),
              "\"></script>"));
     const char kEval[] = "<script>eval(mod_pagespeed_0);</script>";
     ValidateExpected(

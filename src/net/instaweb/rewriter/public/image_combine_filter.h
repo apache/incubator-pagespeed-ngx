@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/url_multipart_encoder.h"
 
 namespace Css {
 
@@ -43,6 +44,8 @@ class ResponseHeaders;
 class RewriteContext;
 class RewriteDriver;
 class Statistics;
+class UrlSegmentEncoder;
+class Variable;
 class Writer;
 
 /*
@@ -91,16 +94,23 @@ class ImageCombineFilter : public RewriteFilter {
              const StringPiece& css_text);
   virtual bool HasAsyncFlow() const;
 
+ protected:
+  virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
+
  private:
   class Combiner;
   class Context;
 
-  Context* context_;
   virtual RewriteContext* MakeRewriteContext();
   Context* MakeNestedContext(RewriteContext* parent, const GoogleUrl& css_url,
                              const StringPiece& css_text);
   bool GetDeclarationDimensions(Css::Declarations* declarations,
                                 int* width, int* height);
+  void AddFilesReducedStat(int reduced);
+
+  Variable* image_file_count_reduction_;
+  Context* context_;
+  UrlMultipartEncoder encoder_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageCombineFilter);
 };

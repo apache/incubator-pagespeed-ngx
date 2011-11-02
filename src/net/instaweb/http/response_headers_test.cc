@@ -753,6 +753,23 @@ TEST_F(ResponseHeadersTest, TestRemove) {
   EXPECT_EQ(headers_removed, response_headers_.ToString());
 }
 
+TEST_F(ResponseHeadersTest, TestRemoveConcat) {
+  const GoogleString headers = StrCat(
+      "HTTP/1.0 0 (null)\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Content-Encoding: gzip\r\n"
+      "\r\n");
+  const GoogleString headers_removed = StrCat(
+      "HTTP/1.0 0 (null)\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "\r\n");
+  response_headers_.Clear();
+  ParseHeaders(headers);
+  EXPECT_TRUE(response_headers_.Remove(HttpAttributes::kContentEncoding,
+                                       "gzip"));
+  EXPECT_EQ(headers_removed, response_headers_.ToString());
+}
+
 TEST_F(ResponseHeadersTest, TestParseFirstLineOk) {
   response_headers_.ParseFirstLine("HTTP/1.0 200 OK");
   EXPECT_EQ(1, response_headers_.major_version());

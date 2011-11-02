@@ -18,7 +18,6 @@
 
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 
-#include "base/logging.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -47,8 +46,6 @@ UrlMultipartEncoder::~UrlMultipartEncoder() {
 void UrlMultipartEncoder::Encode(const StringVector& urls,
                                  const ResourceContext* data,
                                  GoogleString* encoding) const {
-  DCHECK(data == NULL)
-      << "Unexpected non-null data passed to UrlMultipartEncodeer";
   GoogleString buf;
 
   // Encoding is a two-part process.  First we take the array of

@@ -66,14 +66,15 @@ GoogleString UrlNamer::Encode(const RewriteOptions* rewrite_options,
 
 bool UrlNamer::Decode(const GoogleUrl& request_url,
                       GoogleUrl* owner_domain,
-                      GoogleString* decoded,
-                      MessageHandler* handler) const {
+                      GoogleString* decoded) const {
   return false;
 }
 
 bool UrlNamer::IsAuthorized(const GoogleUrl& request_url,
                             const RewriteOptions& options) const {
-  return true;
+  GoogleUrl invalid_request;
+  const DomainLawyer* lawyer = options.domain_lawyer();
+  return lawyer->IsDomainAuthorized(invalid_request, request_url);
 }
 
 void UrlNamer::DecodeOptions(const GoogleUrl& request_url,

@@ -69,13 +69,12 @@ class UrlNamer {
   // Note: the default implementation always returns false.
   virtual bool Decode(const GoogleUrl& request_url,
                       GoogleUrl* owner_domain,
-                      GoogleString* decoded,
-                      MessageHandler* handler) const;
+                      GoogleString* decoded) const;
 
   // Determines whether the provided request URL is authorized given the
   // RewriteOptions.
   //
-  // The default implementation always return 'true'.
+  // The default implementation uses the domain lawyer in the options.
   virtual bool IsAuthorized(const GoogleUrl& request_url,
                             const RewriteOptions& options) const;
 

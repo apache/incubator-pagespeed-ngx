@@ -33,7 +33,6 @@ UrlSegmentEncoder::~UrlSegmentEncoder() {
 void UrlSegmentEncoder::Encode(const StringVector& urls,
                                const ResourceContext* data,
                                GoogleString* url_segment) const {
-  DCHECK(data == NULL) << "non-null data passed to default SegmentEncoder";
   DCHECK_EQ(1U, urls.size());
   UrlEscaper::EncodeToUrlSegment(urls[0], url_segment);
 }
