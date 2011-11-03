@@ -527,7 +527,7 @@ TEST_P(CssFilterTest, NoQuirksModeForXhtml) {
 TEST_P(CssFilterTest, RetainExtraHeaders) {
   GoogleString url = StrCat(kTestDomain, "retain.css");
   InitResponseHeaders(url, kContentTypeCss, kInputStyle, 300);
-  TestRetainExtraHeaders("retain.css", "retain.css", "cf", "css");
+  TestRetainExtraHeaders("retain.css", "cf", "css");
 }
 
 TEST_P(CssFilterTest, RewriteStyleAttribute) {

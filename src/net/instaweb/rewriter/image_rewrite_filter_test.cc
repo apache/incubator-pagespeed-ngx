@@ -593,7 +593,7 @@ TEST_P(ImageRewriteTest, RetainExtraHeaders) {
   // Store image contents into fetcher.
   AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFile), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
-  TestRetainExtraHeaders(kPuzzleJpgFile, kPuzzleJpgFile, "ic", "jpg");
+  TestRetainExtraHeaders(kPuzzleJpgFile, "ic", "jpg");
 }
 
 TEST_P(ImageRewriteTest, NestedConcurrentRewritesLimit) {

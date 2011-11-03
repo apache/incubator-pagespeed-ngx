@@ -667,10 +667,10 @@ RewriteDriver* ResourceManagerTestBase::MakeDriver(
 
 void ResourceManagerTestBase::TestRetainExtraHeaders(
     const StringPiece& name,
-    const StringPiece& encoded_name,
     const StringPiece& filter_id,
     const StringPiece& ext) {
   GoogleString url = AbsolutifyUrl(name);
+  GoogleUrl gurl(url);
 
   // Add some extra headers.
   AddToResponse(url, HttpAttributes::kEtag, "Custom-Etag");
@@ -679,8 +679,18 @@ void ResourceManagerTestBase::TestRetainExtraHeaders(
 
   GoogleString content;
   ResponseHeaders response;
-  GoogleString rewritten_url = Encode(kTestDomain, filter_id, "0",
-                                      encoded_name, ext);
+
+  // Consider the following scenario:
+  //    name (passed in as formal) = "foo/bar.js"
+  //    gurl = http://test.com/foo/bar.js"
+  //    path = "foo"
+  //    leaf = "bar.js"
+  //    encoded = "bar.js.pagespeed.ce.0.js"
+  //    rewritten_url = "foo/bar.js.pagespeed.ce.0.js"
+  StringPiece path(gurl.PathSansLeaf().substr(1));
+  StringPiece leaf(gurl.LeafWithQuery());
+  GoogleString encoded = Encode(kTestDomain, filter_id, "0", leaf, ext);
+  GoogleString rewritten_url = StrCat(path, encoded);
   ASSERT_TRUE(ServeResourceUrl(rewritten_url, &content, &response));
 
   // Extra non-blacklisted header is preserved.

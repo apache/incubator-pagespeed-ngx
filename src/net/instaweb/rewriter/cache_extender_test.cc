@@ -485,7 +485,7 @@ TEST_P(CacheExtenderTest, RetainExtraHeaders) {
   // We must explicitly call ComputeSignature here because we are not
   // calling InitTest in this test.
   resource_manager()->ComputeSignature(options());
-  TestRetainExtraHeaders("retain.css", "retain.css", "ce", "css");
+  TestRetainExtraHeaders("retain.css", "ce", "css");
 }
 
 TEST_P(CacheExtenderTest, TrimUrlInteraction) {

@@ -211,7 +211,7 @@ TEST_P(JavascriptFilterTest, XHtmlInlineJavascript) {
 TEST_P(JavascriptFilterTest, RetainExtraHeaders) {
   GoogleString url = StrCat(kTestDomain, kOrigJsName);
   InitResponseHeaders(url, kContentTypeJavascript, kJsData, 300);
-  TestRetainExtraHeaders(kOrigJsName, kOrigJsName, "jm", "js");
+  TestRetainExtraHeaders(kOrigJsName, "jm", "js");
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?id=327 -- we were

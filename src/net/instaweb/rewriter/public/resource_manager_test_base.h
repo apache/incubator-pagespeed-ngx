@@ -417,15 +417,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Tests that non-caching-related response-header attributes are propagated
   // to output resources.
   //
-  // 'name' is the original name of the resource.
-  // 'encoded_name' is the result of encoding the resource with the relevant
-  // filter.
-  //
-  // TODO(jmarantz): the 'encoded_name' arg could be removed if the filter_id
-  // is used to lookup the relevant filter in the RewriteDriver, to find
-  // its UrlSegmentEncoder*.
+  // 'name' is the name of the resource.
   void TestRetainExtraHeaders(const StringPiece& name,
-                              const StringPiece& encoded_name,
                               const StringPiece& filter_id,
                               const StringPiece& ext);
 
