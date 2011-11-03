@@ -631,7 +631,9 @@ GoogleString ResourceManagerTestBase::EncodeWithBase(
       !path.empty()) {
     ResourceNamer namer;
     EncodePathAndLeaf(id, hash, name_vector, ext, &namer);
-    return TestUrlNamer::EncodeUrl(base, path, "/", namer);
+    GoogleUrl path_gurl(path);
+    return TestUrlNamer::EncodeUrl(base, path_gurl.Origin(),
+                                   path_gurl.PathSansLeaf(), namer);
   }
 
   return EncodeNormal(path, id, hash, name_vector, ext);
