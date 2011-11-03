@@ -45,6 +45,9 @@ ApacheResourceManager::ApacheResourceManager(
       initialized_(false),
       subresource_fetcher_(NULL) {
   config()->set_description(hostname_identifier_);
+  // We may need the message handler for error messages very early, before
+  // we get to InitResourceManager in ChildInit().
+  set_message_handler(apache_factory_->message_handler());
 }
 
 ApacheResourceManager::~ApacheResourceManager() {
