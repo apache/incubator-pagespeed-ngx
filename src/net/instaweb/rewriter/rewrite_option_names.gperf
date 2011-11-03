@@ -38,6 +38,7 @@ struct FilterMap {
 "extend_cache",                      RewriteOptions::kExtendCache
 "inline_css",                        RewriteOptions::kInlineCss
 "inline_images",                     RewriteOptions::kInlineImages
+"inline_images_in_css",              RewriteOptions::kInlineImagesInCss
 "inline_import_to_link",             RewriteOptions::kInlineImportToLink
 "inline_javascript",                 RewriteOptions::kInlineJavascript
 "insert_img_dimensions",             RewriteOptions::kInsertImageDimensions

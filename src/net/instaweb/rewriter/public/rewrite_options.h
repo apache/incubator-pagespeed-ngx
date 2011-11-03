@@ -53,6 +53,7 @@ class RewriteOptions {
     kExtendCache,
     kInlineCss,
     kInlineImages,
+    kInlineImagesInCss,
     kInlineImportToLink,
     kInlineJavascript,
     kInsertImageDimensions,

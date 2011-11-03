@@ -45,7 +45,7 @@ namespace {
 //
 // This version number should be incremented if any default-values are changed,
 // either in the add_option() call or via options->set_default.
-const int kOptionsVersion = 5;
+const int kOptionsVersion = 6;
 
 }  // namespace
 
@@ -143,6 +143,7 @@ const RewriteOptions::Filter kTestFilterSet[] = {
 // Note: These filters should not be included even if the level is "All".
 const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kDivStructure,
+  RewriteOptions::kInlineImagesInCss,  // TODO(jmaessen): Make it safe
   RewriteOptions::kStripScripts,
 };
 
@@ -178,6 +179,7 @@ const char * RewriteOptions::FilterName(
     case kExtendCache:                     return "Extend Cache";
     case kInlineCss:                       return "Inline Css";
     case kInlineImages:                    return "Inline Images";
+    case kInlineImagesInCss:               return "Inline Images in Css";
     case kInlineImportToLink:              return "Inline @import to Link";
     case kInlineJavascript:                return "Inline Javascript";
     case kInsertImageDimensions:           return "Insert Image Dimensions";

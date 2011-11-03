@@ -24,6 +24,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/css_resource_slot.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
@@ -122,19 +123,27 @@ void ImageRewriteFilter::Context::Render() {
   // We use automatic rendering for CSS, as we merely write out the improved
   // URL, and manual for HTML, as we have to consider whether to inline, and
   // may also add in width and height attributes.
+  const CachedResult* result = output_partition(0);
+  bool rewrote_url = false;
+  ResourceSlot* resource_slot = slot(0).get();
   if (!has_parent()) {
-    const CachedResult* result = output_partition(0);
-    HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(slot(0).get());
-    bool rewrote_url = filter_->FinishRewriteImageUrl(
+    // We use manual rendering for HTML, as we have to consider whether to
+    // inline, and may also pass in width and height attributes.
+    HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(resource_slot);
+    rewrote_url = filter_->FinishRewriteImageUrl(
         result, resource_context(),
         html_slot->element(), html_slot->attribute());
-    // If we wrote out the URL ourselves, don't let the default handling
-    // mess it up (in particular replacing data: with out-of-line version)
-    if (rewrote_url) {
-      html_slot->set_disable_rendering(true);
-    }
   } else {
-    filter_->rewrite_count_->Add(1);
+    // We assume the only kind of nesting that occurs is for CSS resources.
+    // If that's not true we will need to pass in creation context to
+    // distinguish other nested resources somehow.
+    CssResourceSlot* css_slot = static_cast<CssResourceSlot*>(resource_slot);
+    rewrote_url = filter_->FinishRewriteCssImageUrl(result, css_slot);
+  }
+  if (rewrote_url) {
+    // We wrote out the URL ourselves; don't let the default handling mess it up
+    // (in particular replacing data: with out-of-line version)
+    resource_slot->set_disable_rendering(true);
   }
 }
 
@@ -390,6 +399,26 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
       FinishRewriteImageUrl(cached.get(), resource_context.get(), element, src);
     }
   }
+}
+
+bool ImageRewriteFilter::FinishRewriteCssImageUrl(
+    const CachedResult* cached, CssResourceSlot* slot) {
+  if (cached->has_inlined_data() &&
+      driver_->options()->Enabled(RewriteOptions::kInlineImagesInCss) &&
+      driver_->UserAgentSupportsImageInlining()) {
+    // TODO(jmaessen): UNSAFE.  We don't differentiate whether the user-agent
+    // supports image inlining when producing the CSS file, so this cached CSS
+    // file will get served for all subsequent requests, even for
+    // non-inline-capable browsers.
+    slot->UpdateUrlInCss(cached->inlined_data());
+    inline_count_->Add(1);
+    return true;
+  } else if (cached->optimizable()) {
+    rewrite_count_->Add(1);
+  }
+  // Fall back to nested rewriting, which will also left trim the url if that
+  // is required.
+  return false;
 }
 
 bool ImageRewriteFilter::FinishRewriteImageUrl(

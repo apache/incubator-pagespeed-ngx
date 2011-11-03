@@ -32,6 +32,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace Css { class Values; }
 
@@ -51,6 +52,10 @@ class CssResourceSlot : public ResourceSlot {
 
   // Enables trimming of URLs versus a given base.
   void EnableTrim(const GoogleUrl& base_url);
+
+  // Update the resource slot's url, without doing
+  // any absolutification or trimming.
+  void UpdateUrlInCss(const StringPiece& url);
 
  protected:
   CssResourceSlot(const ResourcePtr& resource, Css::Values* values,

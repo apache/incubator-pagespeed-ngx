@@ -61,12 +61,7 @@ void CssResourceSlot::Render() {
         url = trimmed_url;
       }
     }
-
-    // Update CSS.
-    delete (*values_)[value_index_];
-    (*values_)[value_index_] =
-        new Css::Value(Css::Value::URI,
-                       UTF8ToUnicodeText(url.data(), url.size()));
+    UpdateUrlInCss(url);
   }
 }
 
@@ -84,6 +79,13 @@ GoogleString CssResourceSlot::LocationString() {
 void CssResourceSlot::EnableTrim(const GoogleUrl& base_url) {
   trim_base_.reset(new GoogleUrl);
   trim_base_->Reset(base_url);
+}
+
+void CssResourceSlot::UpdateUrlInCss(const StringPiece& url) {
+  delete (*values_)[value_index_];
+  (*values_)[value_index_] =
+      new Css::Value(Css::Value::URI,
+                     UTF8ToUnicodeText(url.data(), url.size()));
 }
 
 bool CssResourceSlotFactory::SlotComparator::operator()(

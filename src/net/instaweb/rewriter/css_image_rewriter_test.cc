@@ -26,16 +26,20 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -398,6 +402,38 @@ TEST_P(CssImageRewriterTest, RecompressImages) {
                               kNoOtherContexts | kNoClearFetcher);
 }
 
+TEST_P(CssImageRewriterTest, InlineImages) {
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kInlineImagesInCss);
+  options()->set_image_inline_max_bytes(2000);
+  resource_manager()->ComputeSignature(options());
+  AddFileToMockFetcher(StrCat(kTestDomain, "Cuppa.png"), kCuppaPngFile,
+                       kContentTypePng, 100);
+  static const char kCss[] =
+      "body {\n"
+      "  background-image: url(Cuppa.png);\n"
+      "}\n";
+
+  // Read original image file and create data url for comparison purposes.
+  GoogleString contents;
+  StdioFileSystem stdio_file_system;
+  GoogleString filename = StrCat(GTestSrcDir(), kTestData, kCuppaPngFile);
+  ASSERT_TRUE(stdio_file_system.ReadFile(
+      filename.c_str(), &contents, message_handler()));
+  GoogleString data_url;
+  DataUrl(kContentTypePng, BASE64, contents, &data_url);
+
+  GoogleString kCssAfter = StrCat("body{background-image:url(", data_url, ")}");
+
+  // Here we skip the stat check because we are *increasing* the size of the CSS
+  // (which causes the check to fail).  That eliminates a resource fetch, so it
+  // should normally be a net win in practice.
+  ValidateRewrite("inline_css_images", kCss, kCssAfter,
+                  kExpectChange | kExpectSuccess |
+                  kNoClearFetcher | kNoStatCheck);
+}
+
 TEST_P(CssImageRewriterTest, UseCorrectBaseUrl) {
   // Initialize resources.
   static const char css_url[] = "http://www.example.com/bar/style.css";
@@ -551,7 +587,6 @@ static const int kExpireBPngSec = 20;
 // These tests are to make sure our TTL considers that of subresources.
 class CssFilterSubresourceTest : public CssRewriteTestBase {
  public:
-
   virtual void SetUp() {
     // We setup the options before the upcall so that the
     // CSS filter is created aware of these.
