@@ -308,11 +308,11 @@ echo Checking for absence of Last-Modified
 echo $HTML_HEADERS | grep -qi 'Last-Modified'
 check [ $? != 0 ]
 
-# TODO(sligocki): This is in flux, we are now allowing cacheable HTML.
-# We should figure out a reasonable thing to test for.
-#echo Checking for presence of Cache-Control: max-age=0, no-cache, no-store
-#echo $HTML_HEADERS | grep -qi 'Cache-Control: max-age=0, no-cache, no-store'
-#check [ $? = 0 ]
+# Note: This is in flux, we can now allow cacheable HTML and this test will
+# need to be updated if this is turned on by default.
+echo Checking for presence of Cache-Control: max-age=0, no-cache
+echo $HTML_HEADERS | grep -qi 'Cache-Control: max-age=0, no-cache'
+check [ $? = 0 ]
 
 # TODO(sligocki): We should have Expires headers in HTML just like resources.
 #echo Checking for absense of Expires

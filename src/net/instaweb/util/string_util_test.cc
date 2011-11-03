@@ -379,6 +379,39 @@ TEST(BasicUtilsTest, CountSubstringTest) {
   EXPECT_EQ(3, CountSubstring(text3, abab));
 }
 
+TEST(BasicUtilsTest, JoinStringStar) {
+  const GoogleString foo = "foo";
+  const GoogleString bar = "bar";
+  const GoogleString empty = "";
+  const GoogleString symbols = "# , #";
+
+  ConstStringStarVector nothing, single, foobar, barfoobar, blah;
+  EXPECT_STREQ("", JoinStringStar(nothing, ""));
+  EXPECT_STREQ("", JoinStringStar(nothing, ", "));
+
+  single.push_back(&foo);
+  EXPECT_STREQ("foo", JoinStringStar(single, ""));
+  EXPECT_STREQ("foo", JoinStringStar(single, ", "));
+
+  foobar.push_back(&foo);
+  foobar.push_back(&bar);
+  EXPECT_STREQ("foobar", JoinStringStar(foobar, ""));
+  EXPECT_STREQ("foo, bar", JoinStringStar(foobar, ", "));
+
+  barfoobar.push_back(&bar);
+  barfoobar.push_back(&foo);
+  barfoobar.push_back(&bar);
+  EXPECT_STREQ("barfoobar", JoinStringStar(barfoobar, ""));
+  EXPECT_STREQ("bar##foo##bar", JoinStringStar(barfoobar, "##"));
+
+  blah.push_back(&bar);
+  blah.push_back(&empty);
+  blah.push_back(&symbols);
+  blah.push_back(&empty);
+  EXPECT_STREQ("bar# , #", JoinStringStar(blah, ""));
+  EXPECT_STREQ("bar, , # , #, ", JoinStringStar(blah, ", "));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

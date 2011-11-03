@@ -31,8 +31,8 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -44,7 +44,6 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
@@ -221,6 +220,30 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     EXPECT_TRUE(options_success.second);
     return options_success.first;
   }
+
+  // Serve a trivial HTML page with initial Cache-Control header set to
+  // input_cache_control and return the Cache-Control header after running
+  // through ProxyInterface.
+  //
+  // A unique id must be set to assure different websites are requested.
+  // id is put in a URL, so it probably shouldn't have spaces and other
+  // special chars.
+  GoogleString RewriteHtmlCacheHeader(const StringPiece& id,
+                                      const StringPiece& input_cache_control) {
+    GoogleString url = StrCat("http://www.example.com/", id, ".html");
+    ResponseHeaders input_headers;
+    DefaultResponseHeaders(kContentTypeHtml, 100, &input_headers);
+    input_headers.Replace(HttpAttributes::kCacheControl, input_cache_control);
+    SetFetchResponse(url, input_headers, "");
+
+    GoogleString body;
+    ResponseHeaders output_headers;
+    FetchFromProxy(url, true, &body, &output_headers);
+    ConstStringStarVector values;
+    output_headers.Lookup(HttpAttributes::kCacheControl, &values);
+    return JoinStringStar(values, ", ");
+  }
+
 
   scoped_ptr<ProxyInterface> proxy_interface_;
   int64 start_time_ms_;
@@ -969,6 +992,28 @@ TEST_F(ProxyInterfaceTest, RepairMismappedResource) {
   FetchFromProxy(
       StrCat("http://", ProxyUrlNamer::kProxyHost, "/test.com/evil.com/foo.js"),
       false, &text, &headers);
+}
+
+// Test that we serve "Cache-Control: no-store" only when original page did.
+TEST_F(ProxyInterfaceTest, NoStore) {
+  RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_max_html_cache_time_ms(0);
+  resource_manager()->ComputeSignature(options);
+
+  // Most headers get converted to "no-cache, max-age=0".
+  EXPECT_STREQ("max-age=0, no-cache",
+               RewriteHtmlCacheHeader("empty", ""));
+  EXPECT_STREQ("max-age=0, no-cache",
+               RewriteHtmlCacheHeader("private", "private, max-age=100"));
+  EXPECT_STREQ("max-age=0, no-cache",
+               RewriteHtmlCacheHeader("no-cache", "no-cache"));
+
+  // Headers with "no-store", preserve that header as well.
+  EXPECT_STREQ("max-age=0, no-cache, no-store",
+               RewriteHtmlCacheHeader("no-store", "no-cache, no-store"));
+  EXPECT_STREQ("max-age=0, no-cache, no-store",
+               RewriteHtmlCacheHeader("no-store2", "no-store, max-age=300"));
 }
 
 }  // namespace

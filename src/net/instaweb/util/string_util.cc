@@ -161,6 +161,32 @@ int GlobalReplaceSubstring(const StringPiece& substring,
   return num_replacements;
 }
 
+GoogleString JoinStringStar(const ConstStringStarVector& vector,
+                            const StringPiece& delim) {
+  GoogleString result;
+
+  if (vector.size() > 0) {
+    // Precompute resulting length so we can reserve() memory in one shot.
+    int length = delim.size() * (vector.size() - 1);
+    for (ConstStringStarVector::const_iterator iter = vector.begin();
+         iter < vector.end(); ++iter) {
+      length += (*iter)->size();
+    }
+    result.reserve(length);
+
+    // Now combine everything.
+    for (ConstStringStarVector::const_iterator iter = vector.begin();
+         iter < vector.end(); ++iter) {
+      if (iter != vector.begin()) {
+        result.append(delim.data(), delim.size());
+      }
+      result.append(**iter);
+    }
+  }
+
+  return result;
+}
+
 bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2) {
   return ((s1.size() == s2.size()) && (0 == StringCaseCompare(s1, s2)));
 }

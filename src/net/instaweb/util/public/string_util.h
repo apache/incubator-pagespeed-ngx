@@ -135,6 +135,11 @@ int GlobalReplaceSubstring(const StringPiece& substring,
                            const StringPiece& replacement,
                            GoogleString* s);
 
+// Output a string which is the combination of all values in vector, separated
+// by delim. Does not ignore empty strings in vector. So:
+// JoinStringStar({"foo", "", "bar"}, ", ") == "foo, , bar". (Pseudocode)
+GoogleString JoinStringStar(const ConstStringStarVector& vector,
+                            const StringPiece& delim);
 
 // See also: ./src/third_party/css_parser/src/strings/ascii_ctype.h
 // We probably don't want our core string header file to have a

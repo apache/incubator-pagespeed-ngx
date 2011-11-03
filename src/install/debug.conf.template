@@ -11,7 +11,7 @@
     # defeats this behavior.
     <FilesMatch "\.(html|htm)$">
       Header unset Etag
-      Header set Cache-control "max-age=0, no-cache, no-store"
+      Header set Cache-control "max-age=0, no-cache"
     </FilesMatch>
 
     # Images, styles, and javascript are all cache-extended for
