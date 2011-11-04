@@ -217,20 +217,17 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
                            "Unrecognized image content type.");
     return kRewriteFailed;
   }
-  ImageDim image_dim;
-  image->Dimensions(&image_dim);
-
-  // Don't rewrite beacons
-  if (!ImageUrlEncoder::HasValidDimensions(image_dim) ||
-      (image_dim.width() <= 1 && image_dim.height() <= 1)) {
-    return kRewriteFailed;
-  }
+  // We used to reject beacon images based on their size (1x1 or less) here, but
+  // now rely on caching headers instead as this was missing a lot of padding
+  // images that were ripe for inlining.
 
   RewriteResult rewrite_result = kTooBusy;
   if (work_bound_->TryToWork()) {
     rewrite_result = kRewriteFailed;
     bool resized = false;
     // Begin by resizing the image if necessary
+    ImageDim image_dim;
+    image->Dimensions(&image_dim);
     const ImageDim& page_dim = context.image_tag_dims();
     const ImageDim* post_resize_dim = &image_dim;
     if (options->Enabled(RewriteOptions::kResizeImages) &&
