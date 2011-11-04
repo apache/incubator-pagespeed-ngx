@@ -206,10 +206,12 @@ apr_bucket* rewrite_html(InstawebContext* context, request_rec* request,
     context->Finish();
   }
 
-  // Check to see if we've added in the headers already.  If not, add them,
+  // Check to see if we've added in the headers already.  If not,
+  // clear out the existing headers (to avoid duplication), add them,
   // and make a note of it.
   if (!context->sent_headers()) {
     ResponseHeaders* headers = context->response_headers();
+    apr_table_clear(request->headers_out);
     AddResponseHeadersToRequest(*headers, request);
     headers->Clear();
     context->set_sent_headers(true);

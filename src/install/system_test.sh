@@ -280,7 +280,6 @@ function CheckBotTest() {
 
 echo TEST: Page Speed Automatic is running and writes the expected header.
 echo $WGET_DUMP $EXAMPLE_ROOT/combine_css.html
-HTML_HEADERS=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
 
 # Due to the extreme pickiness of our metadata cache, and the negative
 # checks done in bot-testing (checking for the absense of image rewrites)
@@ -292,35 +291,48 @@ HTML_HEADERS=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
 # contents of RewriteOptions.
 CheckBotTest "Dry Run"
 
+HTTP_FILE=$OUTDIR/http_file
+# Note: We pipe this to a file instead of storing it in a variable because
+# saving strings to variables converts "\n" -> " " inexplicably.
+$WGET_DUMP $EXAMPLE_ROOT/combine_css.html > $HTTP_FILE
+
 echo Checking for X-Mod-Pagespeed header
-echo $HTML_HEADERS | egrep -q 'X-Mod-Pagespeed|X-Page-Speed'
+egrep -q 'X-Mod-Pagespeed|X-Page-Speed' $HTTP_FILE
 check [ $? = 0 ]
 
+echo "Checking that we don't have duplicate X-Mod-Pagespeed headers"
+check [ `egrep -c 'X-Mod-Pagespeed|X-Page-Speed' $HTTP_FILE` = 1 ]
+
+echo "Checking that we don't have duplicate headers"
+# Note: uniq -d prints only repeated lines. So this should only != "" if
+# There are repeated lines in header.
+check [ "$(sort $HTTP_FILE | uniq -d)" = "" ]
+
 echo Checking for lack of E-tag
-echo $HTML_HEADERS | grep -qi Etag
+grep -qi Etag $HTTP_FILE
 check [ $? != 0 ]
 
 echo Checking for presence of Vary.
-echo $HTML_HEADERS | grep -qi 'Vary: Accept-Encoding'
+grep -qi 'Vary: Accept-Encoding' $HTTP_FILE
 check [ $? = 0 ]
 
 echo Checking for absence of Last-Modified
-echo $HTML_HEADERS | grep -qi 'Last-Modified'
+grep -qi 'Last-Modified' $HTTP_FILE
 check [ $? != 0 ]
 
 # Note: This is in flux, we can now allow cacheable HTML and this test will
 # need to be updated if this is turned on by default.
 echo Checking for presence of Cache-Control: max-age=0, no-cache
-echo $HTML_HEADERS | grep -qi 'Cache-Control: max-age=0, no-cache'
+grep -qi 'Cache-Control: max-age=0, no-cache' $HTTP_FILE
 check [ $? = 0 ]
 
 # TODO(sligocki): We should have Expires headers in HTML just like resources.
 #echo Checking for absense of Expires
-#echo $HTML_HEADERS | grep -qi 'Expires'
+#grep -qi 'Expires' $HTTP_FILE
 #check [ $? != 0 ]
 
 echo Checking for absense of X-Frame-Options: SAMEORIGIN
-echo $HTML_HEADERS | grep -i "X-Frame-Options"
+grep -i "X-Frame-Options" $HTTP_FILE
 check [ $? != 0 ]
 
 # This tests whether fetching "/" gets you "/index.html".  With async
