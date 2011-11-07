@@ -63,6 +63,7 @@ class ResourceNamer;
 class ResponseHeaders;
 class RewriteContext;
 class RewriteFilter;
+class ScopedMutex;
 class Statistics;
 class UrlLeftTrimFilter;
 class Writer;
@@ -80,6 +81,16 @@ class RewriteDriver : public HtmlParse {
     kWriteFailed,
     kNoResolutionNeeded,
     kSuccess
+  };
+
+  // Mode for BoundedWaitForCompletion
+  enum WaitMode {
+    kNoWait, // Used internally. Do not pass in.
+    kWaitForCompletion,   // wait for everything to complete (up to deadline)
+    kWaitForCachedRender, // wait for at least cached rewrites to complete,
+                          // and anything else that finishes within deadline.
+    kWaitForShutDown      // Makes sure that all work, including any that's
+                          // being done in background, finishes.
   };
 
   static const char kCssCombinerId[];
@@ -202,6 +213,10 @@ class RewriteDriver : public HtmlParse {
   // TODO(jmarantz): fix this in the implementation so that the caller can
   // install filters in any order and the writer will always be last.
   void SetWriter(Writer* writer);
+
+  Writer* writer() const {
+    return writer_;
+  }
 
   // Initiates an async fetch for a rewritten resource with the specified name.
   // If resource matches the pattern of what the driver is authorized to serve,
@@ -469,11 +484,17 @@ class RewriteDriver : public HtmlParse {
   void Cleanup();
 
   // Wait for outstanding Rewrite to complete.  Once the rewrites are
-  // complete they can be rendered or deleted.
+  // complete they can be rendered.
   void WaitForCompletion();
 
-  // As above, but with a time bound. Non-positive values of timeout disable it.
-  void BoundedWaitForCompletion(int64 timeout_ms);
+  // Wait for outstanding rewrite to complete, including any background
+  // work that may be ongoing even after results were reported.
+  void WaitForShutDown();
+
+  // As above, but with a time bound, and taking a mode parameter to decide
+  // between WaitForCompletion or WaitForShutDown behavior.
+  // If timeout_ms <= 0, no time bound will be used.
+  void BoundedWaitFor(WaitMode mode, int64 timeout_ms);
 
   // Renders any completed rewrites back into the DOM.
   void Render();
@@ -491,8 +512,18 @@ class RewriteDriver : public HtmlParse {
   // more like servers.
   void set_externally_managed(bool x) { externally_managed_ = x; }
 
-  // Called by RewriteContext when an async fetch is complete, allowing
-  // the RewriteDriver to be recycled.
+  // Called by RewriteContext to let RewriteDriver know it will be continuing
+  // on the fetch in background, and so it should defer doing full cleanup
+  // sequences until DetachedFetchComplete() is called.
+  void DetachFetch();
+
+  // Called by RewriteContext when a detached async fetch is complete, allowing
+  // the RewriteDriver to be recycled if FetchComplete() got invoked as well.
+  void DetachedFetchComplete();
+
+  // Cleans up the driver and any fetch rewrite contexts, unless the fetch
+  // rewrite got detached by a call to DetachFetch(), in which case a call to
+  // DetachedFetchComplete() must also be performed.
   void FetchComplete();
 
   // Deletes the specified RewriteContext.  If this is the last RewriteContext
@@ -508,6 +539,7 @@ class RewriteDriver : public HtmlParse {
   // release, or whether it's been detected as running on valgrind
   // at runtime.
   void set_rewrite_deadline_ms(int x) { rewrite_deadline_ms_ = x; }
+  int rewrite_deadline_ms() { return rewrite_deadline_ms_; }
 
   // Tries to register the given rewrite context as working on
   // its partition key. If this context is the first one to try to handle it,
@@ -603,11 +635,11 @@ class RewriteDriver : public HtmlParse {
   typedef void (RewriteDriver::*SetStringMethod)(const StringPiece& value);
   typedef void (RewriteDriver::*SetInt64Method)(int64 value);
 
-  enum WaitMode {
-    kWaitForCompletion,   // wait for everything to complete (upto deadline)
-    kWaitForCachedRender  // wait for at least cached rewrites to complete,
-                          // and anything else that finishes within deadline.
-  };
+  // Backend for both FetchComplete() and DetachedFetchComplete().
+  // If 'signal' is true will wake up those waiting for completion on the
+  // scheduler. It assumes that rewrite_mutex() will be held via
+  // the lock parameter; and releases it when done.
+  void FetchCompleteImpl(bool signal, ScopedMutex* lock);
 
   // Checks whether outstanding rewrites are completed in a satisfactory
   // fashion with respect to given wait_mode and timeout, and invokes
@@ -640,6 +672,12 @@ class RewriteDriver : public HtmlParse {
 
   // Must be called with rewrites_mutex_ held.
   bool RewritesComplete() const;
+
+  // Returns true if there is a trailing background portion of a detached
+  // rewrite for a fetch going on, even if a preliminary answer has
+  // already been given.
+  // Must be called with rewrites_mutex_ held.
+  bool HaveBackgroundFetchRewrite() const;
 
   // Sets the base GURL in response to a base-tag being parsed.  This
   // should only be called by ScanFilter.
@@ -717,17 +755,29 @@ class RewriteDriver : public HtmlParse {
   // has called FetchComplete().
   bool fetch_queued_;            // protected by rewrite_mutex()
 
+  // Indicates that a RewriteContext handling a fetch has elected to
+  // return early with unoptimized results and continue rewriting in the
+  // background. In this case, the driver (and the context) will not
+  // be released until DetachedFetchComplete() has been called.
+  bool fetch_detached_;     // protected by rewrite_mutex()
+
+  // For detached fetches, two things have to finish before we can clean them
+  // up: the path that answers quickly, and the background path that finishes
+  // up the rewrite and writes into the cache. We need to keep track of them
+  // carefully since it's not impossible that the "slow" background path
+  // might just finish before the "fast" main path in weird thread schedules.
+  // Protected by rewrite_mutex()
+  bool detached_fetch_main_path_complete_;
+  bool detached_fetch_detached_path_complete_;
+
   // Indicates that the rewrite driver is currently parsing the HTML,
   // and thus should not be recycled under FinishParse() is called.
   bool parsing_;  // protected by rewrite_mutex()
 
-  // Indicates that WaitForCompletion() has been called in the HTML thread,
-  // and we are now blocked on a condition variable in that function.  Thus
-  // it only makes sense to examine this from the Rewrite thread.
-  bool waiting_for_completion_;  // protected by rewrite_mutex()
-
-  // Likewise for Render() (except when that's emulating WaitForCompletion)
-  bool waiting_for_render_;  //  protected by rewrite_mutex()
+  // If not kNoWait, indicates that WaitForCompletion or similar method
+  // have been called, and an another thread is waiting for us to notify it of
+  // everything having been finished in a given mode.
+  WaitMode waiting_; // protected by rewrite_mutex()
 
   // If this is true, this RewriteDriver should Cleanup() itself when it
   // finishes handling the current fetch.
@@ -832,6 +882,8 @@ class RewriteDriver : public HtmlParse {
   QueuedWorkerPool::Sequence* html_worker_;
   QueuedWorkerPool::Sequence* rewrite_worker_;
   QueuedWorkerPool::Sequence* low_priority_rewrite_worker_;
+
+  Writer* writer_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

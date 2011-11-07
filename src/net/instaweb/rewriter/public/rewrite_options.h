@@ -51,6 +51,7 @@ class RewriteOptions {
     kDivStructure,
     kElideAttributes,
     kExtendCache,
+    kHtmlWriterFilter,
     kInlineCss,
     kInlineImages,
     kInlineImagesInCss,
@@ -312,7 +313,7 @@ class RewriteOptions {
   // first set and not in the second.  In this case, my judgement is that
   // the 'disable' from the first should override the core-set membership
   // in the second, but not an 'enable' in the second.
-  void Merge(const RewriteOptions& first, const RewriteOptions& second);
+  virtual void Merge(const RewriteOptions& first, const RewriteOptions& second);
 
   // Registers a wildcard pattern for to be allowed, potentially overriding
   // previous Disallow wildcards.

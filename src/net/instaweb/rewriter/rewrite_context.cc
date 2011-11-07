@@ -56,6 +56,7 @@
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/proto_util.h"
+#include "net/instaweb/util/public/queued_alarm.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -259,15 +260,68 @@ class RewriteContext::FetchContext {
         callback_(callback),
         output_resource_(output_resource),
         handler_(handler),
-        success_(false) {
+        deadline_alarm_(NULL),
+        success_(false),
+        detached_(false) {
+  }
+
+  void SetupDeadlineAlarm() {
+    // No point in doing this for on-the-fly resources.
+    if (rewrite_context_->kind() == kOnTheFlyResource) {
+      return;
+    }
+
+    // Can't do this if a subclass forced us to be detached already.
+    if (detached_) {
+      return;
+    }
+    RewriteDriver* driver = rewrite_context_->Driver();
+    Timer* timer = rewrite_context_->Manager()->timer();
+
+    // Startup an alarm which will cause us to return unrewritten content
+    // rather than hold up the fetch too long on firing. We use a longer
+    // deadline here than for rendering because we are being asked for the
+    // rewritten version, so the tradeoff is shifted a bit more towards
+    // rewriting.
+    deadline_alarm_ =
+        new QueuedAlarm(
+            driver->scheduler(), driver->rewrite_worker(),
+            timer->NowUs() + 2 * driver->rewrite_deadline_ms() * Timer::kMsUs,
+            MakeFunction(this, &FetchContext::HandleDeadline));
+  }
+
+  // Must be invoked from main rewrite thread.
+  void CancelDeadlineAlarm() {
+    if (deadline_alarm_ != NULL) {
+      deadline_alarm_->CancelAlarm();
+      deadline_alarm_ = NULL;
+    }
+  }
+
+  // Fired by QueuedAlarm in main rewrite thread.
+  void HandleDeadline() {
+    deadline_alarm_ = NULL;  // avoid dangling reference.
+    rewrite_context_->DetachFetch();
+    ResourcePtr input(rewrite_context_->slot(0)->resource());
+    FetchFallbackDoneImpl(input->contents(), input->response_headers());
   }
 
   // Note that the callback is called from the RewriteThread.
   void FetchDone() {
-    GoogleString output;
-    bool ok = false;
+    CancelDeadlineAlarm();
+
+    // Cache our results.
     DCHECK_EQ(1, rewrite_context_->num_output_partitions());
     rewrite_context_->WritePartition();
+
+    // If we're running in background, that's basically all we will do.
+    if (detached_) {
+      rewrite_context_->Driver()->DetachedFetchComplete();
+      return;
+    }
+
+    GoogleString output;
+    bool ok = false;
     if (success_) {
       if (output_resource_->hash() == requested_hash_) {
         response_headers_->CopyFrom(*(output_resource_->response_headers()));
@@ -275,8 +329,8 @@ class RewriteContext::FetchContext {
       } else {
         // Our rewrite produced a different hash than what was requested;
         // we better not give it an ultra-long TTL.
-        FetchFallbackDone(output_resource_->response_headers(),
-                          output_resource_->contents());
+        FetchFallbackDone(output_resource_->contents(),
+                          output_resource_->response_headers());
         return;
       }
     } else {
@@ -312,8 +366,21 @@ class RewriteContext::FetchContext {
   // to serve --- either a version with a different hash, or that we should
   // serve the original. In this case, we serve it out, but with shorter headers
   // than usual.
-  void FetchFallbackDone(ResponseHeaders* headers,
-                         const StringPiece& contents) {
+  void FetchFallbackDone(const StringPiece& contents,
+                         ResponseHeaders* headers) {
+    CancelDeadlineAlarm();
+    if (detached_) {
+      rewrite_context_->Driver()->DetachedFetchComplete();
+      return;
+    }
+
+    FetchFallbackDoneImpl(contents, headers);
+  }
+
+  // Backend for FetchFallbackCacheDone, but can be also invoked
+  // for main rewrite when background rewrite is detached.
+  void FetchFallbackDoneImpl(const StringPiece& contents,
+                             ResponseHeaders* headers) {
     response_headers_->CopyFrom(*headers);
     response_headers_->Sanitize();
 
@@ -343,7 +410,10 @@ class RewriteContext::FetchContext {
   OutputResourcePtr output_resource_;
   MessageHandler* handler_;
   GoogleString requested_hash_;  // hash we were requested as. May be empty.
+  QueuedAlarm* deadline_alarm_;
+
   bool success_;
+  bool detached_;
 };
 
 // Helper for running filter's Rewrite method in low-priority rewrite thread,
@@ -886,16 +956,18 @@ void RewriteContext::StartRewriteForHtml() {
     // rewrite before calling WritePartition.
 
     // Note that we run the actual rewrites in the "low priority" thread except
-    // if we're serving a fetch, since we do not want to fail it due to
-    // load shedding.
-    bool is_fetch = (fetch_.get() != NULL) ||
-                    ((parent_ != NULL) && (parent_->fetch_.get() != NULL));
+    // if we're serving an attached fetch, since we do not want to fail it due
+    // to load shedding. Of course, we're only inside this method for a fetch
+    // if it's a nested rewrite for one, since its top-level will be
+    // handled by StartRewriteForFetch().
+    bool is_fetch = ((parent_ != NULL) && (parent_->fetch_.get() != NULL));
+    bool is_detached_fetch = is_fetch && parent_->fetch_->detached_;
 
     CHECK_EQ(outstanding_rewrites_, static_cast<int>(outputs_.size()));
     for (int i = 0, n = outstanding_rewrites_; i < n; ++i) {
       InvokeRewriteFunction* invoke_rewrite =
           new InvokeRewriteFunction(this, i);
-      if (is_fetch) {
+      if (is_fetch && !is_detached_fetch) {
         Driver()->AddRewriteTask(invoke_rewrite);
       } else {
         Driver()->AddLowPriorityRewriteTask(invoke_rewrite);
@@ -1157,6 +1229,13 @@ void RewriteContext::StartRewriteForFetch() {
   output->set_cached_result(partition);
   ++outstanding_rewrites_;
   if (ok_to_rewrite) {
+    // We do not use a deadline for combining filters since we can't
+    // just substitute in an input as a fallback, we have to wait for
+    // them to actually make the combination.
+    if (num_slots() == 1) {
+      fetch_->SetupDeadlineAlarm();
+    }
+
     Rewrite(0, partition, output);
   } else {
     partition->clear_input();
@@ -1367,7 +1446,7 @@ void RewriteContext::FetchFallbackCacheDone(HTTPCache::FindResult result,
       data->http_value()->ExtractContents(&contents) &&
       (data->response_headers()->status_code() == HttpStatus::kOK)) {
     // We want to serve the found result, with short cache lifetime.
-    fetch_->FetchFallbackDone(data->response_headers(), contents);
+    fetch_->FetchFallbackDone(contents, data->response_headers());
   } else {
     StartFetchReconstruction();
   }
@@ -1396,6 +1475,12 @@ void RewriteContext::StartFetchReconstruction() {
       Lock(), Driver()->rewrite_worker(),
       MakeFunction(this, &RewriteContext::FetchInputs,
                    &RewriteContext::FetchInputs));
+}
+
+void RewriteContext::DetachFetch() {
+  CHECK(fetch_.get() != NULL);
+  fetch_->detached_ = true;
+  Driver()->DetachFetch();
 }
 
 RewriteDriver* RewriteContext::Driver() const {

@@ -133,8 +133,10 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       filters_added_(false),
       externally_managed_(false),
       fetch_queued_(false),
-      waiting_for_completion_(false),
-      waiting_for_render_(false),
+      fetch_detached_(false),
+      detached_fetch_main_path_complete_(false),
+      detached_fetch_detached_path_complete_(false),
+      waiting_(kNoWait),
       cleanup_on_fetch_complete_(false),
       flush_requested_(false),
       rewrites_to_delete_(0),
@@ -215,6 +217,9 @@ void RewriteDriver::Clear() {
   DCHECK_EQ(0, possibly_quick_rewrites_);
   DCHECK(!fetch_queued_);
   response_headers_ = NULL;
+  fetch_detached_ = false;
+  detached_fetch_detached_path_complete_ = false;
+  detached_fetch_main_path_complete_ = false;
 }
 
 // Must be called with rewrite_mutex() held.
@@ -223,17 +228,27 @@ bool RewriteDriver::RewritesComplete() const {
           detached_rewrites_.empty() && (rewrites_to_delete_ == 0));
 }
 
-void RewriteDriver::WaitForCompletion() {
-  BoundedWaitForCompletion(-1);
+bool RewriteDriver::HaveBackgroundFetchRewrite() const {
+  return (fetch_detached_ &&
+          !(detached_fetch_main_path_complete_ &&
+            detached_fetch_detached_path_complete_));
 }
 
-void RewriteDriver::BoundedWaitForCompletion(int64 timeout_ms) {
+void RewriteDriver::WaitForCompletion() {
+  BoundedWaitFor(kWaitForCompletion, -1);
+}
+
+void RewriteDriver::WaitForShutDown() {
+  BoundedWaitFor(kWaitForShutDown, -1);
+}
+
+void RewriteDriver::BoundedWaitFor(WaitMode mode, int64 timeout_ms) {
   if (asynchronous_rewrites_) {
     SchedulerBlockingFunction wait(scheduler_);
 
     {
       ScopedMutex lock(rewrite_mutex());
-      CheckForCompletionAsync(kWaitForCompletion, timeout_ms, &wait);
+      CheckForCompletionAsync(mode, timeout_ms, &wait);
     }
     wait.Block();
   }
@@ -243,11 +258,9 @@ void RewriteDriver::CheckForCompletionAsync(WaitMode wait_mode,
                                             int64 timeout_ms,
                                             Function* done) {
   scheduler_->DCheckLocked();
-  if (wait_mode == kWaitForCompletion) {
-    waiting_for_completion_ = true;
-  } else {
-    waiting_for_render_ = true;
-  }
+  DCHECK(wait_mode != kNoWait);
+  DCHECK(waiting_ == kNoWait);
+  waiting_ = wait_mode;
 
   int64 end_time_ms;
   if (timeout_ms <= 0) {
@@ -288,8 +301,7 @@ void RewriteDriver::TryCheckForCompletion(
                      wait_mode, end_time_ms, done));
   } else {
     // Done.
-    waiting_for_completion_ = false;
-    waiting_for_render_ = false;
+    waiting_ = kNoWait;
     done->CallRun();
   }
 }
@@ -297,7 +309,8 @@ void RewriteDriver::TryCheckForCompletion(
 bool RewriteDriver::IsDone(WaitMode wait_mode, bool deadline_reached) {
   // Before deadline, we're happy only if we're 100% done.
   if (!deadline_reached) {
-    return RewritesComplete();
+    return RewritesComplete() &&
+           !((wait_mode == kWaitForShutDown) && HaveBackgroundFetchRewrite());
   } else {
     // When we've reached the deadline, if we're Render()'ing
     // we also give the jobs we can serve from cache a chance to finish
@@ -772,12 +785,15 @@ void RewriteDriver::SetAsynchronousRewrites(bool async_rewrites) {
 }
 
 void RewriteDriver::SetWriter(Writer* writer) {
+  writer_ = writer;
   if (html_writer_filter_ == NULL) {
-    HtmlWriterFilter* writer_filter = new HtmlWriterFilter(this);
-    html_writer_filter_.reset(writer_filter);
-    HtmlParse::AddFilter(writer_filter);
-    writer_filter->set_case_fold(options()->lowercase_html_names());
+    html_writer_filter_.reset(new HtmlWriterFilter(this));
+    html_writer_filter_->set_case_fold(options()->lowercase_html_names());
+    if (options()->Enabled(RewriteOptions::kHtmlWriterFilter)) {
+      HtmlParse::AddFilter(html_writer_filter_.get());
+    }
   }
+
   html_writer_filter_->set_writer(writer);
 }
 
@@ -1094,14 +1110,51 @@ bool RewriteDriver::FetchOutputResource(
 }
 
 void RewriteDriver::FetchComplete() {
-  {
-    ScopedMutex lock(rewrite_mutex());
-    DCHECK(fetch_queued_);
-    fetch_queued_ = false;
-    DCHECK_EQ(0, pending_rewrites_);
-    STLDeleteElements(&rewrites_);
+  ScopedMutex lock(rewrite_mutex());
+  if (!fetch_detached_) {
+    FetchCompleteImpl(true /* want to signal*/, &lock);
+  } else {
+    DCHECK(!detached_fetch_main_path_complete_);
+    detached_fetch_main_path_complete_ = true;
+    if (detached_fetch_detached_path_complete_) {
+      FetchCompleteImpl(true /* want to signal*/, &lock);
+    } else {
+      // Make sure to mark us as having no active fetch for
+      // purposes of RewritesComplete()
+      fetch_queued_ = false;
+      scheduler_->Signal();
+    }
+  }
+}
+
+void RewriteDriver::DetachFetch() {
+  ScopedMutex lock(rewrite_mutex());
+  fetch_detached_ = true;
+}
+
+void RewriteDriver::DetachedFetchComplete() {
+  ScopedMutex lock(rewrite_mutex());
+
+  DCHECK(fetch_detached_);
+  DCHECK(!detached_fetch_detached_path_complete_);
+  detached_fetch_detached_path_complete_ = true;
+  if (detached_fetch_main_path_complete_) {
+    FetchCompleteImpl(false, /* do not signal, was done on FetchComplete*/
+                      &lock);
+  }
+}
+
+void RewriteDriver::FetchCompleteImpl(bool signal, ScopedMutex* lock) {
+  DCHECK_EQ(fetch_queued_, signal);
+  DCHECK_EQ(0, pending_rewrites_);
+
+  fetch_queued_ = false;
+  STLDeleteElements(&rewrites_);
+  if (signal) {
     scheduler_->Signal();
   }
+  lock->Release();
+
   if (cleanup_on_fetch_complete_) {
     // If cleanup_on_fetch_complete_ is set, the main thread has already tried
     // to call Cleanup on us, so it's not going to be touching us any more ---
@@ -1270,7 +1323,8 @@ void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
     --pending_rewrites_;
     if (!rewrite_context->slow()) {
       --possibly_quick_rewrites_;
-      if ((possibly_quick_rewrites_ == 0) && waiting_for_render_) {
+      if ((possibly_quick_rewrites_ == 0) &&
+          (waiting_ == kWaitForCachedRender)) {
         signal = true;
       }
     }
@@ -1283,7 +1337,8 @@ void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
     CHECK_EQ(1, erased) << " rewrite_context " << rewrite_context
                         << " not in either detached_rewrites or "
                         << "initiated_rewrites_";
-    if (waiting_for_completion_ && detached_rewrites_.empty()) {
+    if ((waiting_ == kWaitForCompletion || waiting_ == kWaitForShutDown) &&
+        detached_rewrites_.empty()) {
       signal = true;
     }
   }
@@ -1301,7 +1356,7 @@ void RewriteDriver::ReportSlowRewrites(int num) {
   ScopedMutex lock(rewrite_mutex());
   possibly_quick_rewrites_ -= num;
   CHECK_LE(0, possibly_quick_rewrites_) << base_url_.Spec();
-  if ((possibly_quick_rewrites_ == 0) && waiting_for_render_) {
+  if ((possibly_quick_rewrites_ == 0) && (waiting_ == kWaitForCachedRender)) {
     scheduler_->Signal();
   }
 }
@@ -1314,7 +1369,7 @@ void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
     --rewrites_to_delete_;
     delete rewrite_context;
     if (RewritesComplete()) {
-      if (waiting_for_completion_ || waiting_for_render_) {
+      if (waiting_ != kNoWait) {
         scheduler_->Signal();
       } else {
         ready_to_recycle = !externally_managed_ && !parsing_;
@@ -1364,6 +1419,13 @@ void RewriteDriver::Cleanup() {
           // Asynchronous resource fetch we gave up on --- make sure to cleanup
           // ourselves when we are done.
           cleanup_on_fetch_complete_ = true;
+        }
+      } else {
+        // Even if we're finished, we may still have a fetch job trying to do
+        // some work in the background.
+        if (HaveBackgroundFetchRewrite()) {
+          cleanup_on_fetch_complete_ = true;
+          done = false;
         }
       }
     }

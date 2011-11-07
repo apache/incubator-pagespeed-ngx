@@ -1002,11 +1002,11 @@ TEST_F(ResourceManagerTest, ShutDownAssumptions) {
   // in practice, this test exercises them.
   RewriteDriver* driver = resource_manager()->NewRewriteDriver();
   EnableRewriteDriverCleanupMode(true);
-  driver->WaitForCompletion();
-  driver->WaitForCompletion();
+  driver->WaitForShutDown();
+  driver->WaitForShutDown();
   driver->Cleanup();
   driver->Cleanup();
-  driver->WaitForCompletion();
+  driver->WaitForShutDown();
 
   EnableRewriteDriverCleanupMode(false);
   // Should actually clean it up this time.

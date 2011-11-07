@@ -66,13 +66,13 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
+#include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
 class RequestHeaders;
-class Writer;
 
 namespace {
 
@@ -418,6 +418,17 @@ class CombiningFilter : public RewriteFilter {
     bool Write(const ResourceVector& in, const OutputResourcePtr& out) {
       return WriteCombination(in, out, rewrite_driver_->message_handler());
     }
+
+    virtual bool WritePiece(const Resource* input, OutputResource* combination,
+                            Writer* writer, MessageHandler* handler) {
+      writer->Write(prefix_, handler);
+      return ResourceCombiner::WritePiece(input, combination, writer, handler);
+    }
+
+    void set_prefix(const GoogleString& prefix) { prefix_ = prefix; }
+
+   private:
+    GoogleString prefix_;
   };
 
   class Context : public RewriteContext {
@@ -429,6 +440,7 @@ class CombiningFilter : public RewriteFilter {
           scheduler_(scheduler),
           time_at_start_of_rewrite_us_(scheduler_->timer()->NowUs()),
           filter_(filter) {
+      combiner_.set_prefix(filter_->prefix_);
     }
 
     void AddElement(HtmlElement* element, HtmlElement::Attribute* href,
@@ -469,18 +481,15 @@ class CombiningFilter : public RewriteFilter {
       } else {
         int64 wakeup_us = time_at_start_of_rewrite_us_ +
             1000 * filter_->rewrite_delay_ms();
-        Function* closure =
-            new MemberFunction3<Context, int, CachedResult*,
-                                 const OutputResourcePtr&>(
-                &Context::DoRewrite, this, partition_index,
-                partition, output);
+        Function* closure = MakeFunction(
+            this, &Context::DoRewrite, partition_index, partition, output);
         scheduler_->AddAlarm(wakeup_us, closure);
       }
     }
 
     void DoRewrite(int partition_index,
                    CachedResult* partition,
-                   const OutputResourcePtr& output) {
+                   OutputResourcePtr output) {
       ++filter_->num_rewrites_;
       // resource_combiner.cc takes calls WriteCombination as part
       // of Combine.  But if we are being called on behalf of a
@@ -567,6 +576,9 @@ class CombiningFilter : public RewriteFilter {
   void ClearStats() { num_rewrites_ = 0; }
   int64 rewrite_delay_ms() const { return rewrite_delay_ms_; }
 
+  // Each entry in combination will be prefixed with this.
+  void set_prefix(const GoogleString& prefix) { prefix_ = prefix; }
+
  private:
   friend class Context;
 
@@ -575,6 +587,7 @@ class CombiningFilter : public RewriteFilter {
   MockScheduler* scheduler_;
   int num_rewrites_;
   int64 rewrite_delay_ms_;
+  GoogleString prefix_;
 
   DISALLOW_COPY_AND_ASSIGN(CombiningFilter);
 };
@@ -596,8 +609,9 @@ class RewriteContextTest : public ResourceManagerTestBase {
     rewrite_driver()->set_rewrite_deadline_ms(kRewriteDeadlineMs);
     other_rewrite_driver()->set_rewrite_deadline_ms(kRewriteDeadlineMs);
   }
+
   virtual void TearDown() {
-    rewrite_driver()->WaitForCompletion();
+    rewrite_driver()->WaitForShutDown();
     ResourceManagerTestBase::TearDown();
   }
 
@@ -1510,7 +1524,8 @@ TEST_F(RewriteContextTest, CombinationRewriteWithDelay) {
   // The delay was too large so we were not able to complete the
   // Rewrite.  Now give it more time so it will complete.
 
-  rewrite_driver()->BoundedWaitForCompletion(kRewriteDelayMs);
+  rewrite_driver()->BoundedWaitFor(
+      RewriteDriver::kWaitForCompletion, kRewriteDelayMs);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(1, lru_cache()->num_inserts());  // finally we cache the output.
@@ -1560,6 +1575,63 @@ TEST_F(RewriteContextTest, CombinationFetch) {
   // Now fetch it again.  This time the output resource is cached.
   EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
   EXPECT_EQ(" a b", content);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(RewriteContextTest, FetchDeadlineTest) {
+  // This tests that deadlines on fetches are functional.
+  // This uses a combining filter with one input, as it has the needed delay
+  // functionality.
+  InitCombiningFilter(Timer::kMonthMs);
+  InitResources();
+  combining_filter_->set_prefix("|");
+
+  GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
+                                     "a.css", "css");
+
+  GoogleString content;
+  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  // Should not get a |, as 1 month is way bigger than the rendering deadline.
+  EXPECT_EQ(" a ", content);
+  EXPECT_EQ(3, lru_cache()->num_inserts()); // input, output, metadata
+
+  // However, due to mock scheduler auto-advance, it should finish
+  // everything now, and be able to do it from cache.
+  content.clear();
+  ClearStats();
+  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  EXPECT_EQ("| a ", content);
+
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(RewriteContextTest, FetchDeadlineTestBeforeDeadline) {
+  // As above, but rewrite finishes quickly. This time we should see the |
+  // immediately
+  InitCombiningFilter(1 /*ms*/);
+  InitResources();
+  combining_filter_->set_prefix("|");
+
+  GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
+                                     "a.css", "css");
+
+  GoogleString content;
+  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  // Should get a |, as 1 ms is smaller than the rendering deadline.
+  EXPECT_EQ("| a ", content);
+
+  // And of course it's nicely cached.
+  content.clear();
+  ClearStats();
+  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  EXPECT_EQ("| a ", content);
+
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());

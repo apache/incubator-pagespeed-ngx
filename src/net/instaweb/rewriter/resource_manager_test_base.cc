@@ -118,11 +118,11 @@ void ResourceManagerTestBase::SetUp() {
 }
 
 void ResourceManagerTestBase::TearDown() {
-  rewrite_driver_->WaitForCompletion();
+  rewrite_driver_->WaitForShutDown();
   factory_->ShutDown();
   rewrite_driver_->Clear();
   delete rewrite_driver_;
-  other_rewrite_driver_->WaitForCompletion();
+  other_rewrite_driver_->WaitForShutDown();
   other_factory_->ShutDown();
   other_rewrite_driver_->Clear();
   delete other_rewrite_driver_;
@@ -363,10 +363,9 @@ bool ResourceManagerTestBase::ServeResourceUrl(
   bool fetched = rewrite_driver_->FetchResource(
       url, request_headers, response, &writer, &callback);
 
-  // We call WaitForCompletion when testing the serving of rewritten
-  // resources, because that's how the server will work.  It will
-  // complete the Rewrite independent of how long it takes.
-  rewrite_driver_->WaitForCompletion();
+  // Make sure we let the rewrite complete, and also wait for the driver to be
+  // idle so we can reuse it safely.
+  rewrite_driver_->WaitForShutDown();
   rewrite_driver_->Clear();
 
   // The callback should be called if and only if FetchResource returns true.

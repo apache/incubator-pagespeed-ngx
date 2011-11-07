@@ -77,8 +77,8 @@ TEST_F(RewriteOptionsTest, BotDetectDisable) {
   ASSERT_FALSE(options_.botdetect_enabled());
 }
 
-TEST_F(RewriteOptionsTest, NoneEnabledByDefault) {
-  ASSERT_TRUE(NoneEnabled());
+TEST_F(RewriteOptionsTest, DefaultEnabledFilters) {
+  ASSERT_TRUE(OnlyEnabled(RewriteOptions::kHtmlWriterFilter));
 }
 
 TEST_F(RewriteOptionsTest, InstrumentationDisabled) {
@@ -96,12 +96,13 @@ TEST_F(RewriteOptionsTest, InstrumentationDisabled) {
 }
 
 TEST_F(RewriteOptionsTest, DisableTrumpsEnable) {
+  // Disable the default filter.
+  options_.DisableFilter(RewriteOptions::kHtmlWriterFilter);
   for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
        f < RewriteOptions::kEndOfFilters;
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
     options_.DisableFilter(f);
     options_.EnableFilter(f);
-    ASSERT_TRUE(NoneEnabled());
   }
 }
 
@@ -127,6 +128,7 @@ TEST_F(RewriteOptionsTest, Enable) {
        f < RewriteOptions::kEndOfFilters;
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
     s.insert(f);
+    s.insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
     options_.EnableFilter(f);
     ASSERT_TRUE(OnlyEnabled(s));
   }
@@ -136,6 +138,7 @@ TEST_F(RewriteOptionsTest, CommaSeparatedList) {
   FilterSet s;
   s.insert(RewriteOptions::kAddInstrumentation);
   s.insert(RewriteOptions::kLeftTrimUrls);
+  s.insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
   const char* kList = "add_instrumentation,trim_urls";
   NullMessageHandler handler;
   ASSERT_TRUE(
@@ -143,7 +146,7 @@ TEST_F(RewriteOptionsTest, CommaSeparatedList) {
   ASSERT_TRUE(OnlyEnabled(s));
   ASSERT_TRUE(
       options_.DisableFiltersByCommaSeparatedList(kList, &handler));
-  ASSERT_TRUE(NoneEnabled());
+  ASSERT_TRUE(OnlyEnabled(RewriteOptions::kHtmlWriterFilter));  // default
 }
 
 TEST_F(RewriteOptionsTest, CompoundFlag) {
@@ -154,6 +157,7 @@ TEST_F(RewriteOptionsTest, CompoundFlag) {
   s.insert(RewriteOptions::kInsertImageDimensions);
   s.insert(RewriteOptions::kRecompressImages);
   s.insert(RewriteOptions::kResizeImages);
+  s.insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
   const char* kList = "rewrite_images";
   NullMessageHandler handler;
   ASSERT_TRUE(
@@ -161,7 +165,7 @@ TEST_F(RewriteOptionsTest, CompoundFlag) {
   ASSERT_TRUE(OnlyEnabled(s));
   ASSERT_TRUE(
       options_.DisableFiltersByCommaSeparatedList(kList, &handler));
-  ASSERT_TRUE(NoneEnabled());
+  ASSERT_TRUE(OnlyEnabled(RewriteOptions::kHtmlWriterFilter));  // default
 }
 
 TEST_F(RewriteOptionsTest, ParseRewriteLevel) {
@@ -408,6 +412,9 @@ TEST_F(RewriteOptionsTest, DisableAllFiltersNotExplicitlyEnabled) {
 }
 
 TEST_F(RewriteOptionsTest, DisableAllFiltersOverrideFilterLevel) {
+  // Disable the default enabled filter.
+  options_.DisableFilter(RewriteOptions::kHtmlWriterFilter);
+
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
   options_.EnableFilter(RewriteOptions::kAddHead);
   options_.DisableAllFiltersNotExplicitlyEnabled();

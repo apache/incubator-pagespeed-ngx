@@ -359,6 +359,13 @@ class RewriteContext {
   // calling of base version until that is complete.
   virtual void StartFetchReconstruction();
 
+  // Makes the rest of a fetch run in background, not producing
+  // a result or invoking callbacks. Will arrange for appropriate
+  // memory management with the rewrite driver itself; but the caller
+  // is responsible for delivering results itself and invoking the
+  // callback.
+  void DetachFetch();
+
   // Accessors for the nested rewrites.
   int num_nested() const { return nested_.size(); }
   RewriteContext* nested(int i) const { return nested_[i]; }

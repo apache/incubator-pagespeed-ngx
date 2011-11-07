@@ -118,6 +118,7 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kCombineCss,
   RewriteOptions::kConvertMetaTags,
   RewriteOptions::kExtendCache,
+  RewriteOptions::kHtmlWriterFilter,
   RewriteOptions::kInlineCss,
   RewriteOptions::kInlineImages,
   RewriteOptions::kInlineImportToLink,
@@ -176,6 +177,7 @@ const char * RewriteOptions::FilterName(
     case kDivStructure:                    return "Div Structure";
     case kElideAttributes:                 return "Elide Attributes";
     case kExtendCache:                     return "Extend Cache";
+    case kHtmlWriterFilter:                return "Flushes html";
     case kInlineCss:                       return "Inline Css";
     case kInlineImages:                    return "Inline Images";
     case kInlineImagesInCss:               return "Inline Images in Css";
@@ -263,6 +265,9 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultBeaconUrl, &beacon_url_);
   add_option(kDefaultImageJpegRecompressQuality,
              &image_jpeg_recompress_quality_);
+
+  // Enable HtmlWriterFilter by default.
+  EnableFilter(kHtmlWriterFilter);
 }
 
 RewriteOptions::~RewriteOptions() {

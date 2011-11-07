@@ -550,6 +550,9 @@ RewriteDriver* ResourceManager::NewCustomRewriteDriver(
   }
   rewrite_driver->set_custom_options(options);
   rewrite_driver->AddFilters();
+  if (factory_ != NULL) {
+    factory_->AddPlatformSpecificRewritePasses(rewrite_driver);
+  }
   return rewrite_driver;
 }
 
@@ -558,9 +561,6 @@ RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver() {
       message_handler_, file_system_, url_async_fetcher_);
   rewrite_driver->SetAsynchronousRewrites(async_rewrites_);
   rewrite_driver->SetResourceManager(this);
-  if (factory_ != NULL) {
-    factory_->AddPlatformSpecificRewritePasses(rewrite_driver);
-  }
   return rewrite_driver;
 }
 
@@ -574,6 +574,9 @@ RewriteDriver* ResourceManager::NewRewriteDriver() {
   } else {
     rewrite_driver = NewUnmanagedRewriteDriver();
     rewrite_driver->AddFilters();
+    if (factory_ != NULL) {
+      factory_->AddPlatformSpecificRewritePasses(rewrite_driver);
+    }
   }
   active_rewrite_drivers_.insert(rewrite_driver);
   return rewrite_driver;
@@ -630,7 +633,7 @@ void ResourceManager::ShutDownDrivers() {
     // trying_to_cleanup_rewrite_drivers_ is true.
     // ResourceManagerTest.ShutDownAssumptions() exists to cover this scenario.
     RewriteDriver* active = *i;
-    active->BoundedWaitForCompletion(Timer::kSecondMs);
+    active->BoundedWaitFor(RewriteDriver::kWaitForShutDown, Timer::kSecondMs);
     active->Cleanup();  // Note: only cleans up if the rewrites are complete.
     // TODO(jmarantz): rename RewriteDriver::Cleanup to CleanupIfDone.
   }
