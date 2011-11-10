@@ -47,10 +47,9 @@ const char kPassThroughChars[] = "._=+-";
 bool ReplaceSubstring(const StringPiece& search, const char* replacement,
                       StringPiece* src, GoogleString* out) {
   bool ret = false;
-  if ((src->size() >= search.size()) &&
-      (memcmp(src->data(), search.data(), search.size()) == 0)) {
+  if (src->starts_with(search)) {
     out->append(replacement);
-    *src = src->substr(search.size());
+    src->remove_prefix(search.size());
     ret = true;
   }
   return ret;
@@ -61,30 +60,51 @@ bool ReplaceSubstring(const StringPiece& search, const char* replacement,
 void UrlEscaper::EncodeToUrlSegment(const StringPiece& in,
                                     GoogleString* url_segment) {
   for (StringPiece src = in; src.size() != 0; ) {
-    // We need to check for common prefixes that begin with pass-through
-    // characters before doing the isalnum check.
-    if (!ReplaceSubstring("http://", ",h", &src, url_segment) &&
-        !ReplaceSubstring(".pagespeed.", ",M", &src, url_segment)) {
-      char c = src[0];
-      if (isalnum(c) || (strchr(kPassThroughChars, c) != NULL)) {
-        url_segment->append(1, c);
-        src = src.substr(1);
-      } else if (
-          // TODO(jmarantz): put these in a static table and generate
-          // an FSM so we don't have so much lookahed scanning, and we
-          // don't have to work hard to keep the encoder and decoder
-          // in sync.
-          !ReplaceSubstring("^", ",u", &src, url_segment) &&
-          !ReplaceSubstring("%", ",P", &src, url_segment) &&
-          !ReplaceSubstring("/", ",_", &src, url_segment) &&
-          !ReplaceSubstring("\\", ",-", &src, url_segment) &&
-          !ReplaceSubstring(",", ",,", &src, url_segment) &&
-          !ReplaceSubstring("?", ",q", &src, url_segment) &&
-          !ReplaceSubstring("&", ",a", &src, url_segment)) {
-        StringAppendF(url_segment, ",%02X",
-                      static_cast<unsigned char>(c));
-        src = src.substr(1);
-      }
+    char c = src[0];
+    src.remove_prefix(1);
+    // TODO(jmarantz): put these in a static table, to make it
+    // faster and so we don't have to work hard to keep the encoder
+    // and decoder in sync.
+    switch (c) {
+      case '^':
+        url_segment->append(",u");
+        break;
+      case '%':
+        url_segment->append(",P");
+        break;
+      case '/':
+        url_segment->append(",_");
+        break;
+      case '\\':
+        url_segment->append(",-");
+        break;
+      case ',':
+        url_segment->append(",,");
+        break;
+      case '?':
+        url_segment->append(",q");
+        break;
+      case '&':
+        url_segment->append(",a");
+        break;
+      case 'h':
+        if (!ReplaceSubstring("ttp://", ",h", &src, url_segment)) {
+          // Just pass-through 'h'
+          url_segment->push_back('h');
+        }
+        break;
+      case '.':
+        // . is a passthrough char, but .pagespeed. is special
+        if (!ReplaceSubstring("pagespeed.", ",M", &src, url_segment)) {
+          url_segment->push_back('.');
+        }
+        break;
+      default:
+        if (isalnum(c) || (strchr(kPassThroughChars, c) != NULL)) {
+          url_segment->push_back(c);
+        } else {
+          StringAppendF(url_segment, ",%02X", static_cast<unsigned char>(c));
+        }
     }
   }
 }
