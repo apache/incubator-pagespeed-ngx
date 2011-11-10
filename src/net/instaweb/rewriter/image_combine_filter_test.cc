@@ -442,6 +442,37 @@ TEST_P(CssImageCombineTest, SpritesGifsWithPngs) {
   ValidateExpected("sprite_with_gif", before, after);
 }
 
+TEST_P(CssImageCombineTest, SpriteWrongMime) {
+  CSS_XFAIL_SYNC();
+  // Make sure that a server messing up the content-type doesn't prevent
+  // spriting.
+  GoogleString wrong_bike = StrCat(kTestDomain, "w", kBikePngFile);
+  GoogleString wrong_cuppa = StrCat(kTestDomain, "w", kCuppaPngFile);
+
+  AddFileToMockFetcher(wrong_bike, kBikePngFile, kContentTypeJpeg, 100);
+  AddFileToMockFetcher(wrong_cuppa, kCuppaPngFile,
+                       kContentTypeJpeg, 100);
+
+  const GoogleString sprite_string =
+      Encode(kTestDomain, "is", "0",
+             MultiUrl(StrCat("w", kBikePngFile),
+                      StrCat("w", kCuppaPngFile),
+                      kCuppaPngFile),
+             "png");
+  const char* sprite = sprite_string.c_str();
+
+  GoogleString before, after;
+  before = StringPrintf(kHtmlTemplate3Divs, wrong_bike.c_str(),
+                        wrong_cuppa.c_str(), 0, 10, kCuppaPngFile, 0);
+
+  // The BikePng is 100px tall, the cuppa is 70px tall, so we
+  // expect the cuppa to be offset by -100, and the right-path cuppa to be
+  // offset by -170.
+  after = StringPrintf(kHtmlTemplate3Divs, sprite, sprite, -100, 10,
+                       sprite, -170);
+  ValidateExpected("wrong_mime", before, after);
+}
+
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(CssImageCombineTestInstance,
                         CssImageCombineTest,

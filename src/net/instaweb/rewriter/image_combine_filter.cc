@@ -526,7 +526,7 @@ class Library : public spriter::ImageLibraryInterface {
       if (format != spriter::PNG) {
         return false;
       }
-      lib_->Register(write_path, image_.release());
+      lib_->RegisterImage(write_path, image_.release());
       return true;
     }
 
@@ -563,28 +563,33 @@ class Library : public spriter::ImageLibraryInterface {
   }
 
   // Does not take ownership of the resource.  Returns true if the image could
-  // be loaded, in which case we'll keep our own pointer to the image backed by
-  // the resource, meaning that resource must not be destroyed before the next
-  // call to Clear().
-  bool Register(Resource* resource) {
+  // be detected as a valid format, in which case we'll keep our own pointer to
+  // the image backed by the resource, meaning that resource must not be
+  // destroyed before the next call to Clear().
+  bool Register(Resource* resource, MessageHandler* handler) {
     bool prefer_webp = false;  // Not working with jpg/webp at all.
     // TODO(satyanarayana): Use approriate quality param for spriting.
     int jpeg_quality = RewriteOptions::kDefaultImageJpegRecompressQuality;
-    net_instaweb::Image* image = fake_fs_[resource->url()];
-    if (image != NULL) {
+    net_instaweb::Image* prev_image = fake_fs_[resource->url()];
+    if (prev_image != NULL) {
       // Already registered
-      return (image->EnsureLoaded());
-    }
-    image = net_instaweb::NewImage(
-        resource->contents(), resource->url(), tmp_dir_, prefer_webp,
-        jpeg_quality, handler_);
-    if (image->EnsureLoaded()) {
-      Register(resource->url(), image);
       return true;
-    } else {
-      delete image;
+    }
+
+    scoped_ptr<net_instaweb::Image> image(net_instaweb::NewImage(
+        resource->contents(), resource->url(), tmp_dir_, prefer_webp,
+        jpeg_quality, handler_));
+
+    // We only handle PNGs and GIFs (which are converted to PNGs) for now.
+    net_instaweb::Image::Type image_type = image->image_type();
+    if ((image_type != net_instaweb::Image::IMAGE_PNG) &&
+        (image_type != net_instaweb::Image::IMAGE_GIF)) {
+      handler->Message(kInfo, "Cannot sprite: not PNG or GIF, %s",
+                       resource->url().c_str());
       return false;
     }
+    RegisterImage(resource->url(), image.release());
+    return true;
   }
 
   void Clear() {
@@ -594,7 +599,7 @@ class Library : public spriter::ImageLibraryInterface {
 
  private:
   typedef std::map<const GoogleString, net_instaweb::Image*> ImageMap;
-  void Register(const StringPiece& key, net_instaweb::Image* image) {
+  void RegisterImage(const StringPiece& key, net_instaweb::Image* image) {
     std::pair<ImageMap::iterator, bool> result(
         fake_fs_.insert(std::make_pair(key.as_string(), image)));
     if (!result.second) {
@@ -635,28 +640,6 @@ class ImageCombineFilter::Combiner
     // Note that the superclass's dtor will not call our overridden Clear.
     // Fortunately there's no harm in calling Clear() several times.
     Clear();
-  }
-
-  virtual bool ResourceCombinable(Resource* resource, MessageHandler* handler) {
-    // TODO(abliss) We exhibit zero intelligence about which images files to
-    // combine; we combine whatever is possible.  This can reduce cache
-    // effectiveness by combining highly cacheable shared resources with
-    // transient ones.
-
-    // We only handle PNGs and GIFs (which are converted to PNGs) for now.
-    if (resource->type() != NULL &&
-        !(resource->type()->type() == ContentType::kPng ||
-          resource->type()->type() == ContentType::kGif)) {
-      handler->Message(kInfo, "Cannot sprite: not PNG or GIF, %s",
-                       resource->url().c_str());
-      return false;
-    }
-    // Need to make sure our image library can handle this image.
-    if (!library_->Register(resource)) {
-      handler->Message(kInfo, "Cannot sprite: not decodable (transparent?)");
-      return false;
-    }
-    return true;
   }
 
   virtual bool WriteCombination(
@@ -837,12 +820,14 @@ class ImageCombineFilter::Context : public RewriteContext {
       ImageCombineFilter::Combiner combiner(filter_, &library_);
 
       ResourceVector resources;
-      for (int i = 0, n = num_slots(); i < n; ++i) {
+      bool ok = true;
+      for (int i = 0, n = num_slots(); (i < n) && ok; ++i) {
         ResourcePtr resource(slot(i)->resource());
         resources.push_back(resource);
         RegisterResource(resource.get());
+        ok = EnsureLoaded(resource->url());
       }
-      if (!combiner.Write(resources, output)) {
+      if (!ok || !combiner.Write(resources, output)) {
         result = RewriteSingleResourceFilter::kRewriteFailed;
       }
     }
@@ -961,7 +946,16 @@ class ImageCombineFilter::Context : public RewriteContext {
 
   // Put this resource in the library.
   bool RegisterResource(Resource* resource) {
-    return library_.Register(resource);
+    return library_.Register(resource, filter_->driver()->message_handler());
+  }
+
+  bool EnsureLoaded(const GoogleString& url) {
+    scoped_ptr<Library::SpriterImage> spriter_image(library_.ReadFromFile(url));
+    if (spriter_image.get() == NULL) {
+      return false;
+    }
+
+    return spriter_image->image()->EnsureLoaded();
   }
 
   // Returns true if the image at url has already been added to the collection
@@ -990,6 +984,11 @@ class ImageCombineFilter::Context : public RewriteContext {
   // Walk through and find any resources that won't be able to be
   // sprited.  If we can't sprite them, add the url to the no-sprite
   // set.
+  //
+  // TODO(abliss) We exhibit zero intelligence about which image files to
+  // combine; we combine whatever is possible.  This can reduce cache
+  // effectiveness by combining highly cacheable shared resources with
+  // transient ones.
   void FindUnspritable(StringSet* no_sprite) {
     StringSet seen_urls;
     for (int i = 0, n = num_slots(); i < n; ++i) {
@@ -1010,7 +1009,7 @@ class ImageCombineFilter::Context : public RewriteContext {
             RegisterResource(resource.get());
             seen_urls.insert(resource_url);
           }
-          if (!SetupSpriteDimensions(future)) {
+          if (!SetupSpriteDimensions(future) || !EnsureLoaded(resource_url)) {
             no_sprite->insert(resource_url);
           }
         }
