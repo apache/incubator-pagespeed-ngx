@@ -28,6 +28,8 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -52,7 +54,6 @@ class ImageRewriteFilter;
 class MessageHandler;
 class OutputPartitions;
 class RewriteContext;
-class RewriteDriver;
 class Statistics;
 class Variable;
 
@@ -107,7 +108,8 @@ class CssFilter : public RewriteSingleResourceFilter {
   Context* MakeContext();
 
   TimedBool RewriteCssText(Context* context,
-                           const GoogleUrl& css_gurl,
+                           const GoogleUrl& css_base_gurl,
+                           const GoogleUrl& css_trim_gurl,
                            const StringPiece& in_text,
                            bool text_is_declarations,
                            GoogleString* out_text,
@@ -119,7 +121,8 @@ class CssFilter : public RewriteSingleResourceFilter {
   bool SerializeCss(RewriteContext* context,
                     int64 in_text_size,
                     const Css::Stylesheet* stylesheet,
-                    const GoogleUrl& css_gurl,
+                    const GoogleUrl& css_base_gurl,
+                    const GoogleUrl& css_trim_gurl,
                     bool previously_optimized,
                     bool stylesheet_is_declarations,
                     GoogleString* out_text,
@@ -206,6 +209,19 @@ class CssFilter::Context : public SingleRewriteContext {
     return (rewrite_inline_attribute_ != NULL);
   }
 
+  // Determine the appropriate image inlining threshold based upon whether we're
+  // in an html file (<style> tag or style= attribute) or in an external css
+  // file.
+  int64 ImageInlineMaxBytes() const {
+    if (rewrite_inline_element_ != NULL) {
+      // We're in an html context.
+      return driver_->options()->ImageInlineMaxBytes();
+    } else {
+      // We're in a standalone CSS file.
+      return driver_->options()->CssImageInlineMaxBytes();
+    }
+  }
+
   CssFilter* filter_;
   RewriteDriver* driver_;
   scoped_ptr<CssImageRewriterAsync> image_rewriter_;
@@ -231,6 +247,7 @@ class CssFilter::Context : public SingleRewriteContext {
   int64 in_text_size_;
   scoped_ptr<Css::Stylesheet> stylesheet_;
   GoogleUrl css_base_gurl_;
+  GoogleUrl css_trim_gurl_;
   ResourcePtr input_resource_;
   OutputResourcePtr output_resource_;
 

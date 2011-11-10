@@ -214,6 +214,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   // New objects for the new server.
   SimpleStats stats;
   TestRewriteDriverFactory new_factory(GTestTempDir(), &mock_url_fetcher_);
+  new_factory.SetUseTestUrlNamer(factory_->use_test_url_namer());
   new_factory.SetStatistics(&statistics_);
   ResourceManager* new_resource_manager = new_factory.CreateResourceManager();
   if (new_rms_url_namer != NULL) {
@@ -626,13 +627,18 @@ GoogleString ResourceManagerTestBase::EncodeWithBase(
     const StringVector& name_vector,
     const StringPiece& ext) {
   if (factory()->use_test_url_namer() &&
+      !TestUrlNamer::UseNormalEncoding() &&
       !options()->domain_lawyer()->can_rewrite_domains() &&
       !path.empty()) {
     ResourceNamer namer;
     EncodePathAndLeaf(id, hash, name_vector, ext, &namer);
     GoogleUrl path_gurl(path);
-    return TestUrlNamer::EncodeUrl(base, path_gurl.Origin(),
-                                   path_gurl.PathSansLeaf(), namer);
+    if (path_gurl.is_valid()) {
+      return TestUrlNamer::EncodeUrl(base, path_gurl.Origin(),
+                                     path_gurl.PathSansLeaf(), namer);
+    } else {
+      return TestUrlNamer::EncodeUrl(base, "", path, namer);
+    }
   }
 
   return EncodeNormal(path, id, hash, name_vector, ext);
@@ -669,7 +675,6 @@ void ResourceManagerTestBase::TestRetainExtraHeaders(
     const StringPiece& filter_id,
     const StringPiece& ext) {
   GoogleString url = AbsolutifyUrl(name);
-  GoogleUrl gurl(url);
 
   // Add some extra headers.
   AddToResponse(url, HttpAttributes::kEtag, "Custom-Etag");
@@ -679,17 +684,7 @@ void ResourceManagerTestBase::TestRetainExtraHeaders(
   GoogleString content;
   ResponseHeaders response;
 
-  // Consider the following scenario:
-  //    name (passed in as formal) = "foo/bar.js"
-  //    gurl = http://test.com/foo/bar.js"
-  //    path = "foo"
-  //    leaf = "bar.js"
-  //    encoded = "bar.js.pagespeed.ce.0.js"
-  //    rewritten_url = "foo/bar.js.pagespeed.ce.0.js"
-  StringPiece path(gurl.PathSansLeaf().substr(1));
-  StringPiece leaf(gurl.LeafWithQuery());
-  GoogleString encoded = Encode(kTestDomain, filter_id, "0", leaf, ext);
-  GoogleString rewritten_url = StrCat(path, encoded);
+  GoogleString rewritten_url = Encode(kTestDomain, filter_id, "0", name, ext);
   ASSERT_TRUE(ServeResourceUrl(rewritten_url, &content, &response));
 
   // Extra non-blacklisted header is preserved.
@@ -719,6 +714,13 @@ void ResourceManagerTestBase::ClearStats() {
 
 void ResourceManagerTestBase::SetCacheDelayUs(int64 delay_us) {
   factory_->mock_time_cache()->set_delay_us(delay_us);
+}
+
+void ResourceManagerTestBase::SetUseTestUrlNamer(bool use_test_url_namer) {
+  factory_->SetUseTestUrlNamer(use_test_url_namer);
+  resource_manager_->set_url_namer(factory_->url_namer());
+  other_factory_->SetUseTestUrlNamer(use_test_url_namer);
+  other_resource_manager_->set_url_namer(other_factory_->url_namer());
 }
 
 // Logging at the INFO level slows down tests, adds to the noise, and

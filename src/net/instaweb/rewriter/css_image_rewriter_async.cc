@@ -71,7 +71,8 @@ bool CssImageRewriterAsync::RewritesEnabled() const {
 }
 
 void CssImageRewriterAsync::RewriteImage(
-    const GoogleUrl& base_url,
+    int64 image_inline_max_bytes,
+    const GoogleUrl& trim_url,
     const GoogleUrl& original_url,
     Css::Values* values, size_t value_index,
     MessageHandler* handler) {
@@ -85,9 +86,10 @@ void CssImageRewriterAsync::RewriteImage(
       context_->slot_factory()->GetSlot(resource, values, value_index));
 
   if (options->Enabled(RewriteOptions::kRecompressImages) ||
-      options->Enabled(RewriteOptions::kInlineImagesInCss)) {
+      image_inline_max_bytes > 0) {
     context_->RegisterNested(
-        image_rewriter_->MakeNestedContext(context_, ResourceSlotPtr(slot)));
+        image_rewriter_->MakeNestedContext(image_inline_max_bytes,
+                                           context_, ResourceSlotPtr(slot)));
   }
 
   if (options->Enabled(RewriteOptions::kExtendCache)) {
@@ -100,17 +102,20 @@ void CssImageRewriterAsync::RewriteImage(
   if (options->trim_urls_in_css() &&
       options->Enabled(RewriteOptions::kLeftTrimUrls)) {
     // TODO(sligocki): Make sure this is the correct (final) URL of the CSS.
-    slot->EnableTrim(base_url);
+    slot->EnableTrim(trim_url);
   }
 }
 
-void CssImageRewriterAsync::RewriteCssImages(
-    const GoogleUrl& base_url, const StringPiece& contents,
-    Css::Stylesheet* stylesheet, MessageHandler* handler) {
+void CssImageRewriterAsync::RewriteCssImages(int64 image_inline_max_bytes,
+                                             const GoogleUrl& base_url,
+                                             const GoogleUrl& trim_url,
+                                             const StringPiece& contents,
+                                             Css::Stylesheet* stylesheet,
+                                             MessageHandler* handler) {
   const RewriteOptions* options = driver_->options();
   bool spriting_ok = options->Enabled(RewriteOptions::kSpriteImages);
 
-  if (RewritesEnabled()) {
+  if (RewritesEnabled() || image_inline_max_bytes > 0) {
     handler->Message(kInfo, "Starting to rewrite images in CSS in %s",
                      base_url.spec_c_str());
     if (spriting_ok) {
@@ -164,8 +169,8 @@ void CssImageRewriterAsync::RewriteCssImages(
                       original_url, values, value_index, context_,
                       &decls, handler);
                 }
-                RewriteImage(base_url, original_url, values,
-                             value_index, handler);
+                RewriteImage(image_inline_max_bytes, trim_url, original_url,
+                             values, value_index, handler);
               }
             }
             break;

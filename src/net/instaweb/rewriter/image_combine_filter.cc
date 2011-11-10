@@ -49,6 +49,7 @@
 #include "net/instaweb/spriter/public/image_spriter.h"
 #include "net/instaweb/spriter/public/image_spriter.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/md5_hasher.h"
@@ -907,18 +908,29 @@ class ImageCombineFilter::Context : public RewriteContext {
   }
 
   // Partition the slots by what can get sprited and what can't.
-  // Currently, there is only one partition made for all the
-  // spriteable resources.  We skip over slots that point to images
+  // Currently, we greedily combine everything that can be combined
+  // in as few partitions as possible. We skip over slots that point to images
   // that are too small for the context they're in.
-  // TODO(nforman): create multiple partitions with images that
-  // can be combined with each other (but not necessarily with
-  // everything else.  Also, separate by color map.
-  virtual bool Partition(OutputPartitions* partitions,
-                         OutputResourceVector* outputs) {
+  // TODO(nforman): Consider separating by color map to group things smarter.
+  virtual void PartitionAsync(OutputPartitions* partitions,
+                              OutputResourceVector* outputs) {
+    // Partitioning here requires image decompression, so we want to
+    // move it to a different thread.
+    Driver()->AddLowPriorityRewriteTask(MakeFunction(
+        this, &Context::PartitionImpl, &Context::PartitionCancel,
+        partitions, outputs));
+  }
+
+  void PartitionImpl(OutputPartitions* partitions,
+                     OutputResourceVector* outputs) {
     StringSet no_sprite;
     FindUnspritable(&no_sprite);
     CollectSlots(partitions, outputs, &no_sprite);
-    return (partitions->partition_size() != 0);
+    CrossThreadPartitionDone(partitions->partition_size() != 0);
+  }
+
+  void PartitionCancel() {
+    CrossThreadPartitionDone(false);
   }
 
  private:

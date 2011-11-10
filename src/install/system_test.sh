@@ -615,7 +615,7 @@ test_filter rewrite_css,rewrite_images rewrites images in CSS
 FILE=rewrite_css_images.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
-fetch_until $URL 'grep -c .pagespeed.ic.' 1  # image rewritten
+fetch_until $URL 'grep -c url.data:image/png;base64,' 1  # image inlined
 check run_wget_with_args $URL
 
 # This test is only valid for async.

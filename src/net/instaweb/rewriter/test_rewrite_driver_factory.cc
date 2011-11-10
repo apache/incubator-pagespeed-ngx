@@ -199,6 +199,11 @@ UrlNamer* TestRewriteDriverFactory::DefaultUrlNamer() {
           : RewriteDriverFactory::DefaultUrlNamer());
 }
 
+void TestRewriteDriverFactory::SetUseTestUrlNamer(bool x) {
+  use_test_url_namer_ = x;
+  set_url_namer(DefaultUrlNamer());
+}
+
 Scheduler* TestRewriteDriverFactory::CreateScheduler() {
   DCHECK(mock_scheduler_ == NULL);
   timer();  // make sure mock_timer_ is created.

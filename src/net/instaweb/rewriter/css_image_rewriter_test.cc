@@ -267,7 +267,41 @@ TEST_P(CssImageRewriterTest, CacheExtendsImages) {
                              kNoOtherContexts | kNoClearFetcher);
 }
 
+// See TrimsImageUrls below: change one, change them both!
 TEST_P(CssImageRewriterTest, TrimsImageUrls) {
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
+  resource_manager()->ComputeSignature(options());
+  InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
+  static const char kCss[] =
+      "body {\n"
+      "  background-image: url(foo.png);\n"
+      "}\n";
+
+  const GoogleString kCssAfter = StrCat(
+      "body{background-image:url(",
+      Encode("", "ce", "0", "foo.png", "png"),
+      ")}");
+
+  ValidateRewriteExternalCss("trims_css_urls", kCss, kCssAfter,
+                              kExpectChange | kExpectSuccess |
+                              kNoOtherContexts | kNoClearFetcher);
+}
+
+class CssImageRewriterTestUrlNamer : public CssImageRewriterTest {
+ public:
+  CssImageRewriterTestUrlNamer() {
+    SetUseTestUrlNamer(true);
+  }
+};
+
+// See TrimsImageUrls above: change one, change them both!
+TEST_P(CssImageRewriterTestUrlNamer, TrimsImageUrls) {
+  // Check that we really are using TestUrlNamer and not UrlNamer.
+  EXPECT_NE(Encode(kTestDomain, "ce", "0", "foo.png", "png"),
+            EncodeNormal(kTestDomain, "ce", "0", "foo.png", "png"));
+
+  // A verbatim copy of the test above but using TestUrlNamer.
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
   resource_manager()->ComputeSignature(options());
@@ -403,11 +437,17 @@ TEST_P(CssImageRewriterTest, RecompressImages) {
 }
 
 TEST_P(CssImageRewriterTest, InlineImages) {
+  // Make sure we can inline images in any kind of CSS.
+  CSS_XFAIL_SYNC();
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kInlineImages);
   options()->EnableFilter(RewriteOptions::kInlineImagesInCss);
   options()->set_image_inline_max_bytes(2000);
+  options()->set_css_image_inline_max_bytes(2000);
+  EXPECT_EQ(2000, options()->ImageInlineMaxBytes());
+  EXPECT_EQ(2000, options()->CssImageInlineMaxBytes());
   resource_manager()->ComputeSignature(options());
+  // Here Cuppa.png is 1763 bytes, so should be inlined.
   AddFileToMockFetcher(StrCat(kTestDomain, "Cuppa.png"), kCuppaPngFile,
                        kContentTypePng, 100);
   static const char kCss[] =
@@ -432,6 +472,52 @@ TEST_P(CssImageRewriterTest, InlineImages) {
   ValidateRewrite("inline_css_images", kCss, kCssAfter,
                   kExpectChange | kExpectSuccess |
                   kNoClearFetcher | kNoStatCheck);
+}
+
+TEST_P(CssImageRewriterTest, InlineImageOnlyInOutlineCss) {
+  // Make sure that we use image_inline_max_bytes to determine image inlining in
+  // inline css (css that occurs in an html file), but that we use
+  // css_image_inline_max_bytes for standalone css.
+  CSS_XFAIL_SYNC();
+  options()->ClearSignatureForTesting();
+  // Do inline in CSS file but not in inline CSS.
+  options()->EnableFilter(RewriteOptions::kInlineImagesInCss);
+  options()->set_image_inline_max_bytes(2000);
+  options()->set_css_image_inline_max_bytes(2000);
+  EXPECT_EQ(0, options()->ImageInlineMaxBytes());  // This is disabled...
+  ASSERT_EQ(2000, options()->CssImageInlineMaxBytes());  // But this is enabled.
+  resource_manager()->ComputeSignature(options());
+  // Here Cuppa.png is 1763 bytes, so should be inlined.
+  AddFileToMockFetcher(StrCat(kTestDomain, "Cuppa.png"), kCuppaPngFile,
+                       kContentTypePng, 100);
+  static const char kCss[] =
+      "body {\n"
+      "  background-image: url(Cuppa.png);\n"
+      "}\n";
+
+  // Read original image file and create data url for comparison purposes.
+  GoogleString contents;
+  StdioFileSystem stdio_file_system;
+  GoogleString filename = StrCat(GTestSrcDir(), kTestData, kCuppaPngFile);
+  ASSERT_TRUE(stdio_file_system.ReadFile(
+      filename.c_str(), &contents, message_handler()));
+  GoogleString data_url;
+  DataUrl(kContentTypePng, BASE64, contents, &data_url);
+
+  GoogleString kCssInlineAfter =
+      StrCat("body{background-image:url(",
+             Encode(kTestDomain, "ce", "0", "Cuppa.png", "png"),
+             ")}");
+  GoogleString kCssExternalAfter =
+      StrCat("body{background-image:url(", data_url, ")}");
+
+  ValidateRewriteInlineCss(
+      "no_inline_in_inline", kCss, kCssInlineAfter,
+      kExpectChange | kExpectSuccess | kNoClearFetcher);
+  // Again skip the stat check because we are *increasing* the size of the CSS
+  ValidateRewriteExternalCss(
+      "inline_in_outline", kCss, kCssExternalAfter,
+      kExpectChange | kExpectSuccess | kNoClearFetcher | kNoStatCheck);
 }
 
 TEST_P(CssImageRewriterTest, UseCorrectBaseUrl) {
@@ -501,7 +587,7 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesInStyleAttributes) {
   ValidateExpected("cache_extend_images",
                    "<div style=\""
                    "  background: url(baz.png);\n"
-                   "  list-style: url('foo.png');\n"
+                   "  list-style: url(&quot;foo.png&quot;);\n"
                    "\"/>",
                    StrCat(
                    "<div style=\""
@@ -571,6 +657,10 @@ TEST_P(CssImageRewriterTest, RecompressImagesInStyleAttributes) {
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(CssImageRewriterTestInstance,
                         CssImageRewriterTest,
+                        ::testing::Bool());
+
+INSTANTIATE_TEST_CASE_P(CssImageRewriterTestUrlNamerInstance,
+                        CssImageRewriterTestUrlNamer,
                         ::testing::Bool());
 
 // Note that these values of "10" and "20" are very tight.  This is a

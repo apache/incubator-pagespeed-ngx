@@ -280,8 +280,32 @@ class RewriteContext {
   // an empty inputs-array in OutputPartitions and leave
   // 'outputs' unmodified.  'false' is only returned if the subclass
   // skipped the rewrite attempt due to a lock conflict.
+  //
+  // You must override one of Partition() or PartitionAsync(). Partition()
+  // is normally fine unless you need to do computations that can take a
+  // noticeable amount of time, since there are some scenarios under which
+  // page output may end up being held up for a partitioning step. If you
+  // do need to do something computationally expensive in partitioning steps,
+  // override PartitionAsync() instead.
   virtual bool Partition(OutputPartitions* partitions,
-                         OutputResourceVector* outputs) = 0;
+                         OutputResourceVector* outputs);
+
+  // As above, but you report the result asynchronously by calling
+  // PartitionDone(), which must be done from the main rewrite
+  // sequence. One of Partition or PartitionAsync() must be overridden in
+  // the subclass. The default implementation is implemented in terms of
+  // Partition().
+  virtual void PartitionAsync(OutputPartitions* partitions,
+                              OutputResourceVector* outputs);
+
+  // Call this from the main rewrite sequence to report results of
+  // PartitionAsync. If the client is not in the main rewrite sequence,
+  // use CrossThreadPartitionDone() instead.
+  void PartitionDone(bool result);
+
+  // Helper for queuing invocation of PartitionDone to run in the
+  // main rewrite sequence.
+  void CrossThreadPartitionDone(bool result);
 
   // Takes a completed rewrite partition and rewrites it.  When
   // complete calls RewriteDone with

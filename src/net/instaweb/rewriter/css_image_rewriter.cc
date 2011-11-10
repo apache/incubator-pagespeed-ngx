@@ -89,16 +89,14 @@ void CssImageRewriter::Initialize(Statistics* statistics) {
 
 bool CssImageRewriter::RewritesEnabled() const {
   const RewriteOptions* options = driver_->options();
-  // TODO(jmaessen): Enable webp conversion and image inlining in
-  // css files.  These are user-agent sensitive.
   return (options->Enabled(RewriteOptions::kRecompressImages) ||
-          options->Enabled(RewriteOptions::kInlineImagesInCss) ||
           options->Enabled(RewriteOptions::kLeftTrimUrls) ||
           options->Enabled(RewriteOptions::kExtendCache) ||
           options->Enabled(RewriteOptions::kSpriteImages));
 }
 
 TimedBool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
+                                            const GoogleUrl& trim_url,
                                             const StringPiece& old_rel_url,
                                             GoogleString* new_url,
                                             MessageHandler* handler) {
@@ -121,19 +119,10 @@ TimedBool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
           input_resource, &dim));
       ret.expiration_ms = ExpirationTimeMs(rewrite_info.get());
       if (rewrite_info.get() != NULL) {
-        if (rewrite_info->has_inlined_data() &&
-            options->Enabled(RewriteOptions::kInlineImagesInCss) &&
-            driver_->UserAgentSupportsImageInlining()) {
-          // Image can be inlined; do so unconditionally.
-          // TODO(jmaessen): This is unsafe!  We don't create a different CSS
-          // file for browsers that are not capable of image inlining!  So right
-          // now this is for testing purposes ONLY.
-          image_inlines_->Add(1);
-          *new_url = rewrite_info->inlined_data();
-          ret.value = true;
-          trim = false;
-        } else if (rewrite_info->optimizable() &&
-                   options->Enabled(RewriteOptions::kRecompressImages)) {
+        // Note: we used to inline here, but as this code path is dead in actual
+        // usage jmaessen stripped it out during subsequent inlining fixes
+        if (rewrite_info->optimizable() &&
+            options->Enabled(RewriteOptions::kRecompressImages)) {
           image_rewrites_->Add(1);
           *new_url = rewrite_info->url();
           ret.value = true;
@@ -166,7 +155,7 @@ TimedBool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
       url_to_trim = old_rel_url;
     }
     GoogleString trimmed_url;
-    if (UrlLeftTrimFilter::Trim(base_url, url_to_trim,
+    if (UrlLeftTrimFilter::Trim(trim_url, url_to_trim,
                                 &trimmed_url, handler)) {
       *new_url = trimmed_url;
       ret.value = true;
@@ -198,6 +187,7 @@ int64 CssImageRewriter::ExpirationTimeMs(CachedResult* cached_result) {
 }
 
 TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
+                                             const GoogleUrl& trim_url,
                                              Css::Stylesheet* stylesheet,
                                              MessageHandler* handler) {
   bool edited = false;
@@ -243,7 +233,7 @@ TimedBool CssImageRewriter::RewriteCssImages(const GoogleUrl& base_url,
                 TimedBool result = {kint64max, false};
                 expire_at_ms = std::min(expire_at_ms, result.expiration_ms);
                 GoogleString new_url;
-                result = RewriteImageUrl(base_url, rel_url, &new_url,
+                result = RewriteImageUrl(base_url, trim_url, rel_url, &new_url,
                                          handler);
                 expire_at_ms = std::min(expire_at_ms, result.expiration_ms);
                 if (result.value) {

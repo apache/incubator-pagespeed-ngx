@@ -67,6 +67,7 @@ class OutputResource : public Resource {
 
   virtual bool Load(MessageHandler* message_handler);
   virtual GoogleString url() const;
+  GoogleString UrlEvenIfLeafInvalid();
 
   // Lazily initialize and return creation_lock_.  If the resource is expensive
   // to create, this lock should be held during its creation to avoid multiple

@@ -44,7 +44,7 @@ namespace {
 //
 // This version number should be incremented if any default-values are changed,
 // either in the add_option() call or via options->set_default.
-const int kOptionsVersion = 6;
+const int kOptionsVersion = 7;
 
 }  // namespace
 
@@ -75,7 +75,10 @@ namespace net_instaweb {
 //
 // jmaessen: For the moment, there's a separate threshold for image inline.
 const int64 RewriteOptions::kDefaultCssInlineMaxBytes = 2048;
+// TODO(jmaessen): Adjust these thresholds in a subsequent CL
+// (Will require re-golding tests.)
 const int64 RewriteOptions::kDefaultImageInlineMaxBytes = 2048;
+const int64 RewriteOptions::kDefaultCssImageInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultJsInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultCssOutlineMinBytes = 3000;
 const int64 RewriteOptions::kDefaultJsOutlineMinBytes = 3000;
@@ -242,6 +245,7 @@ RewriteOptions::RewriteOptions()
   add_option(kPassThrough, &level_);
   add_option(kDefaultCssInlineMaxBytes, &css_inline_max_bytes_);
   add_option(kDefaultImageInlineMaxBytes, &image_inline_max_bytes_);
+  add_option(kDefaultCssImageInlineMaxBytes, &css_image_inline_max_bytes_);
   add_option(kDefaultJsInlineMaxBytes, &js_inline_max_bytes_);
   add_option(kDefaultCssOutlineMinBytes, &css_outline_min_bytes_);
   add_option(kDefaultJsOutlineMinBytes, &js_outline_min_bytes_);
@@ -413,6 +417,37 @@ bool RewriteOptions::Enabled(Filter filter) const {
       break;
   }
   return enabled_filters_.find(filter) != enabled_filters_.end();
+}
+
+int64 RewriteOptions::ImageInlineMaxBytes() const {
+  if (Enabled(kInlineImages)) {
+    return image_inline_max_bytes_.value();
+  } else {
+    return 0;
+  }
+}
+
+void RewriteOptions::set_image_inline_max_bytes(int64 x) {
+  set_option(x, &image_inline_max_bytes_);
+  if (!css_image_inline_max_bytes_.was_set() &&
+      x > css_image_inline_max_bytes_.value()) {
+    // Make sure css_image_inline_max_bytes is at least image_inline_max_bytes
+    // if it has not been explicitly configured.
+    css_image_inline_max_bytes_.set(x);
+  }
+}
+
+int64 RewriteOptions::CssImageInlineMaxBytes() const {
+  if (Enabled(kInlineImagesInCss)) {
+    return css_image_inline_max_bytes_.value();
+  } else {
+    return 0;
+  }
+}
+
+int64 RewriteOptions::MaxImageInlineMaxBytes() const {
+  return std::max(ImageInlineMaxBytes(),
+                  CssImageInlineMaxBytes());
 }
 
 void RewriteOptions::Merge(const RewriteOptions& first,

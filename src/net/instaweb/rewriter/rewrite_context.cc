@@ -932,7 +932,11 @@ void RewriteContext::Activate() {
 
 void RewriteContext::StartRewriteForHtml() {
   CHECK(has_parent() || slow_) << "slow_ not set on a rewriting job?";
-  if (!Partition(partitions_.get(), &outputs_)) {
+  PartitionAsync(partitions_.get(), &outputs_);
+}
+
+void RewriteContext::PartitionDone(bool result) {
+  if (!result) {
     partitions_->clear_partition();
     outputs_.clear();
   }
@@ -1312,6 +1316,23 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
     ret = true;
   }
   return ret;
+}
+
+bool RewriteContext::Partition(OutputPartitions* partitions,
+                               OutputResourceVector* outputs) {
+  LOG(FATAL) << "RewriteContext subclasses must reimplement one of "
+                "PartitionAsync or Partition";
+  return false;
+}
+
+void RewriteContext::PartitionAsync(OutputPartitions* partitions,
+                                    OutputResourceVector* outputs) {
+  PartitionDone(Partition(partitions, outputs));
+}
+
+void RewriteContext::CrossThreadPartitionDone(bool result) {
+  Driver()->AddRewriteTask(
+      MakeFunction(this, &RewriteContext::PartitionDone, result));
 }
 
 void RewriteContext::Freshen(const CachedResult& partition) {

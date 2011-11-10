@@ -57,6 +57,8 @@ class TestUrlNamer : public UrlNamer {
     use_normal_encoding_ = yes;
   }
 
+  static bool UseNormalEncoding() { return use_normal_encoding_; }
+
  private:
   bool IsOriginEncoded(const GoogleUrl& url) const;
   bool IsPathEncoded(const GoogleUrl& url) const;

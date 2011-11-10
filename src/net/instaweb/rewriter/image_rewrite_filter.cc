@@ -84,9 +84,11 @@ const char ImageRewriteFilter::kImageRewritesDroppedDueToLoad[] =
 
 class ImageRewriteFilter::Context : public SingleRewriteContext {
  public:
-  Context(ImageRewriteFilter* filter, RewriteDriver* driver,
+  Context(int64 css_image_inline_max_bytes,
+          ImageRewriteFilter* filter, RewriteDriver* driver,
           RewriteContext* parent, ResourceContext* resource_context)
       : SingleRewriteContext(driver, parent, resource_context),
+        css_image_inline_max_bytes_(css_image_inline_max_bytes),
         filter_(filter),
         driver_(driver) {}
   virtual ~Context() {}
@@ -99,6 +101,7 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   virtual const UrlSegmentEncoder* encoder() const;
 
  private:
+  int64 css_image_inline_max_bytes_;
   ImageRewriteFilter* filter_;
   RewriteDriver* driver_;
   DISALLOW_COPY_AND_ASSIGN(Context);
@@ -138,7 +141,8 @@ void ImageRewriteFilter::Context::Render() {
     // If that's not true we will need to pass in creation context to
     // distinguish other nested resources somehow.
     CssResourceSlot* css_slot = static_cast<CssResourceSlot*>(resource_slot);
-    rewrote_url = filter_->FinishRewriteCssImageUrl(result, css_slot);
+    rewrote_url = filter_->FinishRewriteCssImageUrl(css_image_inline_max_bytes_,
+                                                    result, css_slot);
   }
   if (rewrote_url) {
     // We wrote out the URL ourselves; don't let the default handling mess it up
@@ -212,7 +216,8 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
                resource_manager_->filename_prefix(),
                context.attempt_webp(), options->image_jpeg_recompress_quality(),
                message_handler));
-  if (image->image_type() == Image::IMAGE_UNKNOWN) {
+  Image::Type original_image_type = image->image_type();
+  if (original_image_type == Image::IMAGE_UNKNOWN) {
     message_handler->Error(result->name().as_string().c_str(), 0,
                            "Unrecognized image content type.");
     return kRewriteFailed;
@@ -262,11 +267,6 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
       dims->set_height(post_resize_dim->height());
     }
 
-    // We will consider whether to inline the image regardless of whether we
-    // optimize it or not, so set up the necessary state for that.
-    GoogleString inlined_url;
-    int64 image_inline_max_bytes = options->image_inline_max_bytes();
-
     // Now re-compress the (possibly resized) image, and decide if it's
     // saved us anything.
     if ((resized || options->Enabled(RewriteOptions::kRecompressImages)) &&
@@ -276,11 +276,7 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
 
       // Consider inlining output image (no need to check input, it's bigger)
       // This needs to happen before Write to persist.
-      if (options->Enabled(RewriteOptions::kInlineImages) &&
-          CanInline(image_inline_max_bytes, image->Contents(),
-                    result->type(), &inlined_url)) {
-        cached->set_inlined_data(inlined_url);
-      }
+      SaveIfInlinable(image->Contents(), image->image_type(), cached);
 
       int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
       resource_manager_->MergeNonCachingResponseHeaders(input_resource, result);
@@ -314,11 +310,8 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
     }
 
     // Try inlining input image if output hasn't been inlined already.
-    if (inlined_url.empty() &&
-        options->Enabled(RewriteOptions::kInlineImages) &&
-        CanInline(image_inline_max_bytes, input_resource->contents(),
-                  input_resource->type(), &inlined_url)) {
-      cached->set_inlined_data(inlined_url);
+    if (!cached->has_inlined_data()) {
+      SaveIfInlinable(input_resource->contents(), original_image_type, cached);
     }
     work_bound_->WorkComplete();
   } else {
@@ -335,6 +328,23 @@ int ImageRewriteFilter::FilterCacheFormatVersion() const {
 
 bool ImageRewriteFilter::ReuseByContentHash() const {
   return true;
+}
+
+void ImageRewriteFilter::SaveIfInlinable(const StringPiece& contents,
+                                         const Image::Type image_type,
+                                         CachedResult* cached) {
+  // We retain inlining information if the image size is >= the largest possible
+  // inlining threshold, as an image might be used in both html and css and we
+  // may see it first from the one with a smaller threshold.  Note that this can
+  // cause us to save inline information for an image that won't ever actually
+  // be inlined (because it's too big to inline in html, say, and doesn't occur
+  // in css).
+  int64 image_inline_max_bytes =
+      driver_->options()->MaxImageInlineMaxBytes();
+  if (static_cast<int64>(contents.size()) < image_inline_max_bytes) {
+    cached->set_inlined_data(contents.data(), contents.size());
+    cached->set_inlined_image_type(static_cast<int>(image_type));
+  }
 }
 
 // Convert (possibly NULL) Image* to corresponding (possibly NULL) ContentType*
@@ -383,7 +393,8 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
   if (HasAsyncFlow()) {
     ResourcePtr input_resource = CreateInputResource(src->value());
     if (input_resource.get() != NULL) {
-      Context* context = new Context(this, driver_, NULL /*not nested */,
+      Context* context = new Context(0 /* No CSS inlining, it's html */,
+                                     this, driver_, NULL /*not nested */,
                                      resource_context.release());
       ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
       context->AddSlot(slot);
@@ -399,15 +410,16 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
 }
 
 bool ImageRewriteFilter::FinishRewriteCssImageUrl(
+    int64 css_image_inline_max_bytes,
     const CachedResult* cached, CssResourceSlot* slot) {
-  if (cached->has_inlined_data() &&
-      driver_->options()->Enabled(RewriteOptions::kInlineImagesInCss) &&
-      driver_->UserAgentSupportsImageInlining()) {
+  GoogleString data_url;
+  if (driver_->UserAgentSupportsImageInlining() &&
+      TryInline(css_image_inline_max_bytes, cached, &data_url)) {
     // TODO(jmaessen): UNSAFE.  We don't differentiate whether the user-agent
     // supports image inlining when producing the CSS file, so this cached CSS
     // file will get served for all subsequent requests, even for
     // non-inline-capable browsers.
-    slot->UpdateUrlInCss(cached->inlined_data());
+    slot->UpdateUrlInCss(data_url);
     inline_count_->Add(1);
     return true;
   } else if (cached->optimizable()) {
@@ -425,9 +437,13 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   bool rewrote_url = false;
 
   // See if we have a data URL, and if so use it if the browser can handle it
-  if (cached->has_inlined_data() &&
-      driver_->UserAgentSupportsImageInlining()) {
-    src->SetValue(cached->inlined_data());
+  // TODO(jmaessen): get rid of a string copy here.  Tricky because ->SetValue()
+  // copies implicitly.
+  GoogleString data_url;
+  if (driver_->UserAgentSupportsImageInlining() &&
+      TryInline(driver_->options()->ImageInlineMaxBytes(),
+                cached, &data_url)) {
+    src->SetValue(data_url);
     if (cached->has_image_file_dims() &&
         (!resource_context->has_image_tag_dims() ||
          ((cached->image_file_dims().width() ==
@@ -508,16 +524,21 @@ bool ImageRewriteFilter::GetDimensions(HtmlElement* element,
   }
 }
 
-bool ImageRewriteFilter::CanInline(
-    int image_inline_max_bytes, const StringPiece& contents,
-    const ContentType* content_type, GoogleString* data_url) {
-  bool ok = false;
-  if (content_type != NULL &&
-      static_cast<int>(contents.size()) <= image_inline_max_bytes) {
-    DataUrl(*content_type, BASE64, contents, data_url);
-    ok = true;
+bool ImageRewriteFilter::TryInline(
+    int64 image_inline_max_bytes, const CachedResult* cached_result,
+    GoogleString* data_url) {
+  if (!cached_result->has_inlined_data()) {
+    return false;
   }
-  return ok;
+  StringPiece data = cached_result->inlined_data();
+  if (static_cast<int64>(data.size()) >= image_inline_max_bytes) {
+    return false;
+  }
+  DataUrl(
+      *Image::TypeToContentType(
+          static_cast<Image::Type>(cached_result->inlined_image_type())),
+      BASE64, data, data_url);
+  return true;
 }
 
 void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
@@ -543,13 +564,16 @@ bool ImageRewriteFilter::HasAsyncFlow() const {
 }
 
 RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
-  return new Context(this, driver_, NULL /*not nested */,
+  return new Context(0 /*No CSS inlining, it's html */,
+                     this, driver_, NULL /*not nested */,
                      new ResourceContext());
 }
 
 RewriteContext* ImageRewriteFilter::MakeNestedContext(
+    int64 css_image_inline_max_bytes,
     RewriteContext* parent, const ResourceSlotPtr& slot) {
-  Context* context = new Context(this, NULL /* driver*/, parent,
+  Context* context = new Context(css_image_inline_max_bytes,
+                                 this, NULL /* driver*/, parent,
                                  new ResourceContext);
   context->AddSlot(slot);
   return context;

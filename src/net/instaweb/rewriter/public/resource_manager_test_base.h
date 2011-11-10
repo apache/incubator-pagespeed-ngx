@@ -427,6 +427,9 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // we use the default encoder.
   const UrlSegmentEncoder* FindEncoder(const StringPiece& id) const;
 
+  // Switch url namers as specified.
+  void SetUseTestUrlNamer(bool use_test_url_namer);
+
  protected:
   void Init();
 

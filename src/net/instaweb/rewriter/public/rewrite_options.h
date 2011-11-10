@@ -111,6 +111,7 @@ class RewriteOptions {
 
   static const int64 kDefaultCssInlineMaxBytes;
   static const int64 kDefaultImageInlineMaxBytes;
+  static const int64 kDefaultCssImageInlineMaxBytes;
   static const int64 kDefaultJsInlineMaxBytes;
   static const int64 kDefaultCssOutlineMinBytes;
   static const int64 kDefaultJsOutlineMinBytes;
@@ -190,12 +191,16 @@ class RewriteOptions {
   void set_js_outline_min_bytes(int64 x) {
     set_option(x, &js_outline_min_bytes_);
   }
-  int64 image_inline_max_bytes() const {
-    return image_inline_max_bytes_.value();
+  // Retrieve the image inlining threshold, but return 0 if it's disabled.
+  int64 ImageInlineMaxBytes() const;
+  void set_image_inline_max_bytes(int64 x);
+  // Retrieve the css image inlining threshold, but return 0 if it's disabled.
+  int64 CssImageInlineMaxBytes() const;
+  void set_css_image_inline_max_bytes(int64 x) {
+    set_option(x, &css_image_inline_max_bytes_);
   }
-  void set_image_inline_max_bytes(int64 x) {
-    set_option(x, &image_inline_max_bytes_);
-  }
+  // The larger of ImageInlineMaxBytes and CssImageInlineMaxBytes.
+  int64 MaxImageInlineMaxBytes() const;
   int64 css_inline_max_bytes() const { return css_inline_max_bytes_.value(); }
   void set_css_inline_max_bytes(int64 x) {
     set_option(x, &css_inline_max_bytes_);
@@ -539,6 +544,7 @@ class RewriteOptions {
 
   Option<int64> css_inline_max_bytes_;
   Option<int64> image_inline_max_bytes_;
+  Option<int64> css_image_inline_max_bytes_;
   Option<int64> js_inline_max_bytes_;
   Option<int64> css_outline_min_bytes_;
   Option<int64> js_outline_min_bytes_;

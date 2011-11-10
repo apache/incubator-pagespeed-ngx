@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/image.h"
 
+#include <algorithm>
 #include <cstddef>
 
 #include "base/logging.h"
@@ -361,9 +362,9 @@ void ImageImpl::ComputeImageType() {
   }
 }
 
-const ContentType* Image::content_type() {
+const ContentType* Image::TypeToContentType(Type image_type) {
   const ContentType* res = NULL;
-  switch (image_type()) {
+  switch (image_type) {
     case IMAGE_UNKNOWN:
       break;
     case IMAGE_JPEG:
@@ -607,9 +608,9 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
         // Inlined from: cvResize(opencv_image_, rescaled_image, CV_INTER_AREA);
         cv::Mat src = cv::cvarrToMat(opencv_image_);
         cv::Mat dst = cv::cvarrToMat(rescaled_image);
-        DCHECK( src.type() == dst.type() );
-        cv::resize(src, dst, dst.size(), (double)dst.cols/src.cols,
-                   (double)dst.rows/src.rows, CV_INTER_AREA);
+        DCHECK(src.type() == dst.type());
+        cv::resize(src, dst, dst.size(), static_cast<double>(dst.cols)/src.cols,
+                   static_cast<double>(dst.rows)/src.rows, CV_INTER_AREA);
       }
 #else
       cvResize(opencv_image_, rescaled_image, CV_INTER_AREA);

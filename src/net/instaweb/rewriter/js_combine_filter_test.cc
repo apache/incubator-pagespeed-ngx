@@ -343,7 +343,7 @@ TEST_P(JsFilterAndCombineFilterTest, MinifyCombineAcrossHosts) {
 class JsFilterAndCombineProxyTest : public JsFilterAndCombineFilterTest {
  public:
   JsFilterAndCombineProxyTest() {
-    factory()->set_use_test_url_namer(true);
+    SetUseTestUrlNamer(true);
   }
 };
 
@@ -385,10 +385,10 @@ TEST_P(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
                                "<script src=", js_url_2, "></script>"));
   ASSERT_EQ(2, scripts.size()) << "If combination fails, we get 2 scripts";
   ServeResourceFromManyContexts(scripts[0].url, kMinifiedJs1);
-  EXPECT_EQ(EncodeNormal(kTestDomain, "jm", "FUEwDOA7jh", kJsUrl1, "js"),
+  EXPECT_EQ(Encode(kTestDomain, "jm", "FUEwDOA7jh", kJsUrl1, "js"),
             scripts[0].url);
   ServeResourceFromManyContexts(scripts[1].url, kMinifiedJs2);
-  EXPECT_EQ(EncodeNormal(kAlternateDomain, "jm", "Y1kknPfzVs", kJsUrl2, "js"),
+  EXPECT_EQ(Encode(kAlternateDomain, "jm", "Y1kknPfzVs", kJsUrl2, "js"),
             scripts[1].url);
 }
 
@@ -421,9 +421,12 @@ TEST_P(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
   lru_cache()->Delete(out_url2);
 
   // Now try to get a combination.
+  bool test_url_namer = factory()->use_test_url_namer();
   TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
-                "FA3Pqioukh", "S$0tgbTH0O", "ose8Vzgyj9", true /*minified*/,
-                kTestDomain);
+                test_url_namer ? "8erozavBF5" : "FA3Pqioukh",
+                test_url_namer ? "JO0ZTfFSfI" : "S$0tgbTH0O",
+                test_url_namer ? "8QmSuIkgv_" : "ose8Vzgyj9",
+                true /*minified*/, kTestDomain);
 }
 
 // Various things that prevent combining

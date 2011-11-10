@@ -18,11 +18,11 @@
 
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/data_url.h"
 
 namespace net_instaweb {
@@ -40,11 +40,22 @@ void DataUrlInputResource::FillInPartitionInputInfo(
 }
 
 bool DataUrlInputResource::Load(MessageHandler* message_handler) {
+  if (loaded()) {
+    return true;
+  }
+
   if (DecodeDataUrlContent(encoding_, encoded_contents_,
                            &decoded_contents_) &&
       value_.Write(decoded_contents_, message_handler)) {
-    // TODO(sligocki): Should we be doing this?
-    resource_manager_->SetDefaultLongCacheHeaders(type_, &response_headers_);
+    // Note that we do not set caching headers here.
+    // This is because they are expensive to compute; and should not be used
+    // for this resource anyway, as it has IsCacheable() false, and provides
+    // IsValidAndCacheable() and an ALWAYS_VALID output of
+    // FillInPartitionInputInfo.
+    response_headers_.set_major_version(1);
+    response_headers_.set_minor_version(1);
+    response_headers_.SetStatusAndReason(HttpStatus::kOK);
+    response_headers_.Add(HttpAttributes::kContentType, type_->mime_type());
     value_.SetHeaders(&response_headers_);
   }
   return loaded();

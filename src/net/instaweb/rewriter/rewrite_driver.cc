@@ -81,7 +81,6 @@
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
-#include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
@@ -140,6 +139,9 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       cleanup_on_fetch_complete_(false),
       flush_requested_(false),
       rewrites_to_delete_(0),
+      user_agent_is_bot_(kNotSet),
+      user_agent_supports_image_inlining_(kNotSet),
+      user_agent_supports_webp_(kNotSet),
       response_headers_(NULL),
       pending_rewrites_(0),
       possibly_quick_rewrites_(0),
@@ -549,6 +551,22 @@ bool RewriteDriver::ParseKeyInt64(const StringPiece& key, SetInt64Method m,
   }
 }
 
+bool RewriteDriver::UserAgentSupportsImageInlining() const {
+  if (user_agent_supports_image_inlining_ == kNotSet) {
+    user_agent_supports_image_inlining_ =
+        user_agent_matcher_.SupportsImageInlining(user_agent_) ?
+        kTrue : kFalse;
+  }
+  return (user_agent_supports_image_inlining_ == kTrue);
+}
+bool RewriteDriver::UserAgentSupportsWebp() const {
+  if (user_agent_supports_webp_ == kNotSet) {
+    user_agent_supports_webp_ =
+        user_agent_matcher_.SupportsWebp(user_agent_) ? kTrue : kFalse;
+  }
+  return (user_agent_supports_webp_ == kTrue);
+}
+
 void RewriteDriver::AddFilters() {
   CHECK(html_writer_filter_ == NULL);
   CHECK(!filters_added_);
@@ -804,7 +822,7 @@ Statistics* RewriteDriver::statistics() const {
 bool RewriteDriver::DecodeOutputResourceName(const GoogleUrl& gurl,
                                              ResourceNamer* namer_out,
                                              OutputResourceKind* kind_out,
-                                             RewriteFilter** filter_out) {
+                                             RewriteFilter** filter_out) const {
   // First, we can't handle anything that's not a valid URL nor is named
   // properly as our resource.
   if (!gurl.is_valid()) {
@@ -828,7 +846,7 @@ bool RewriteDriver::DecodeOutputResourceName(const GoogleUrl& gurl,
   // resource kind.
   StringPiece id = namer_out->id();
   *kind_out = kRewrittenResource;
-  StringFilterMap::iterator p = resource_filter_map_.find(
+  StringFilterMap::const_iterator p = resource_filter_map_.find(
       GoogleString(id.data(), id.size()));
   if (p != resource_filter_map_.end()) {
     *filter_out = p->second;
@@ -852,8 +870,9 @@ bool RewriteDriver::DecodeOutputResourceName(const GoogleUrl& gurl,
   return true;
 }
 
-OutputResourcePtr RewriteDriver::DecodeOutputResource(const GoogleUrl& gurl,
-                                                      RewriteFilter** filter) {
+OutputResourcePtr RewriteDriver::DecodeOutputResource(
+    const GoogleUrl& gurl,
+    RewriteFilter** filter) const {
   ResourceNamer namer;
   OutputResourceKind kind;
   if (!DecodeOutputResourceName(gurl, &namer, &kind, filter)) {
@@ -1180,6 +1199,21 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   bool may_rewrite = false;
   if (decoded_base_url_.is_valid()) {
     may_rewrite = MayRewriteUrl(decoded_base_url_, input_url);
+    // TODO(matterbury): This code is triggered ONLY in synchronous mode (no,
+    // I don't know why), so when we rip that out this should go too. I have
+    // added an explicit test of that here so that we fail if that changes.
+    if (!may_rewrite && !asynchronous_rewrites_) {
+      // Check if the decoded form of the URL may be rewritten. input_url will
+      // be encoded if we are creating an input resource from an output resource
+      // created by an earlier filter, such as the combine followed by rewrite
+      // in CssFilterWithCombineTest.TestFollowCombine.
+      UrlNamer* namer = resource_manager()->url_namer();
+      GoogleString decoded_input;
+      if (namer->Decode(input_url, NULL, &decoded_input)) {
+        GoogleUrl decoded_url(decoded_input);
+        may_rewrite = MayRewriteUrl(decoded_base_url_, decoded_url);
+      }
+    }
   } else {
     // Shouldn't happen?
     message_handler()->Message(
@@ -1492,17 +1526,19 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
     // TODO(jmarantz): It would be more efficient to pass in the base
     // document GURL or save that in the input resource.
     GoogleUrl gurl(input_resource->url());
-    UrlPartnership partnership(this);
-    partnership.Reset(gurl);
-    if (partnership.AddUrl(input_resource->url(),
-                           resource_manager_->message_handler())) {
-      const GoogleUrl* mapped_gurl = partnership.FullPath(0);
+    GoogleString mapped_domain;
+    GoogleUrl mapped_gurl;
+    // Get the domain and URL after any domain lawyer rewriting.
+    if (options()->IsAllowed(gurl.Spec()) &&
+        options()->domain_lawyer()->MapRequestToDomain(
+            gurl, gurl.Spec(), &mapped_domain, &mapped_gurl,
+            resource_manager_->message_handler())) {
       GoogleString name;
       StringVector v;
-      v.push_back(mapped_gurl->LeafWithQuery().as_string());
+      v.push_back(mapped_gurl.LeafWithQuery().as_string());
       encoder->Encode(v, data, &name);
       result.reset(CreateOutputResourceWithMappedPath(
-          mapped_gurl->AllExceptLeaf(), gurl.AllExceptLeaf(),
+          mapped_gurl.AllExceptLeaf(), gurl.AllExceptLeaf(),
           filter_id, name, input_resource->type(), kind, use_async_flow));
     }
   }
@@ -1651,7 +1687,14 @@ void RewriteDriver::InitiateFetch(RewriteContext* rewrite_context) {
 }
 
 bool RewriteDriver::ShouldNotRewriteImages() const {
-  return (options()->botdetect_enabled() && BotChecker::Lookup(user_agent_));
+  if (user_agent_is_bot_ == kNotSet) {
+    if (options()->botdetect_enabled() && BotChecker::Lookup(user_agent_)) {
+      user_agent_is_bot_ = kTrue;
+    } else {
+      user_agent_is_bot_ = kFalse;
+    }
+  }
+  return (user_agent_is_bot_ == kTrue);
 }
 
 void RewriteDriver::AddRewriteTask(Function* task) {

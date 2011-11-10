@@ -118,11 +118,14 @@ class ImageTest : public testing::Test {
     }
 
     // Construct data url, then decode it and check for match.
+    CachedResult cached;
     GoogleString data_url;
-    EXPECT_FALSE(NULL == image->content_type());
-    EXPECT_TRUE(ImageRewriteFilter::CanInline(
-        image->output_size(), image->Contents(), image->content_type(),
-        &data_url));
+    EXPECT_NE(Image::IMAGE_UNKNOWN, image->image_type());
+    StringPiece image_contents = image->Contents();
+    cached.set_inlined_data(image_contents.data(), image_contents.size());
+    cached.set_inlined_image_type(static_cast<int>(image->image_type()));
+    EXPECT_TRUE(ImageRewriteFilter::TryInline(
+        image->output_size() + 1, &cached, &data_url));
     GoogleString data_header("data:");
     data_header.append(image->content_type()->mime_type());
     data_header.append(";base64,");

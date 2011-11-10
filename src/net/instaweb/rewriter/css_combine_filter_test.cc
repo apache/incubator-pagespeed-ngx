@@ -1131,9 +1131,45 @@ class CssFilterWithCombineTest : public CssCombineFilterTest {
   }
 };
 
+// See TestFollowCombine below: change one, change them both!
 TEST_P(CssFilterWithCombineTest, TestFollowCombine) {
   // Make sure we don't regress dealing with combiner deleting things sanely
   // in rewrite filter.
+  const char kCssA[] = "a.css";
+  const char kCssB[] = "b.css";
+  const GoogleString kCssOut =
+      Encode(kTestDomain, "cf", "0",
+             Encode("", "cc", "0", MultiUrl("a.css", "b.css"), "css"), "css");
+  const char kCssText[] = " div {    } ";
+  const char kCssTextOptimized[] = "div{}";
+
+  InitResponseHeaders(kCssA, kContentTypeCss, kCssText, 300);
+  InitResponseHeaders(kCssB, kContentTypeCss, kCssText, 300);
+
+  ValidateExpected(
+      "follow_combine",
+      StrCat(Link(kCssA), Link(kCssB)),
+      Link(kCssOut));
+
+  GoogleString content;
+  EXPECT_TRUE(ServeResourceUrl(kCssOut, &content));
+  EXPECT_EQ(StrCat(kCssTextOptimized, kCssTextOptimized), content);
+}
+
+class CssFilterWithCombineTestUrlNamer : public CssFilterWithCombineTest {
+ public:
+  CssFilterWithCombineTestUrlNamer() {
+    SetUseTestUrlNamer(true);
+  }
+};
+
+// See TestFollowCombine above: change one, change them both!
+TEST_P(CssFilterWithCombineTestUrlNamer, TestFollowCombine) {
+  // Check that we really are using TestUrlNamer and not UrlNamer.
+  EXPECT_NE(Encode(kTestDomain, "cc", "0", "a.css", "css"),
+            EncodeNormal(kTestDomain, "cc", "0", "a.css", "css"));
+
+  // A verbatim copy of the test above but using TestUrlNamer.
   const char kCssA[] = "a.css";
   const char kCssB[] = "b.css";
   const GoogleString kCssOut =
@@ -1173,6 +1209,10 @@ INSTANTIATE_TEST_CASE_P(CssCombineFilterTestInstance, CssCombineFilterTest,
 
 INSTANTIATE_TEST_CASE_P(CssFilterWithCombineTestInstance,
                         CssFilterWithCombineTest,
+                        ::testing::Bool());
+
+INSTANTIATE_TEST_CASE_P(CssFilterWithCombineTestUrlNamerInstance,
+                        CssFilterWithCombineTestUrlNamer,
                         ::testing::Bool());
 
 }  // namespace

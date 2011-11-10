@@ -21,6 +21,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -34,7 +35,6 @@ namespace net_instaweb {
 class CachedResult;
 class CssResourceSlot;
 class ContentType;
-class Image;
 class ImageTagScanner;
 class ResourceContext;
 class RewriteContext;
@@ -61,13 +61,14 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
 
   // Can we inline resource?  If so, encode its contents into the data_url,
   // otherwise leave data_url alone.
-  static bool CanInline(
-      int image_inline_max_bytes, const StringPiece& contents,
-      const ContentType* content_type, GoogleString* data_url);
+  static bool TryInline(
+      int64 image_inline_max_bytes, const CachedResult* cached_result,
+      GoogleString* data_url);
 
   // Creates a nested rewrite for given parent and slot, and returns it.
   // The result is not registered with the parent.
-  RewriteContext* MakeNestedContext(RewriteContext* parent,
+  RewriteContext* MakeNestedContext(int64 css_image_inline_max_bytes,
+                                    RewriteContext* parent,
                                     const ResourceSlotPtr& slot);
 
   // name for statistic used to bound rewriting work.
@@ -103,12 +104,18 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
 
   // Returns true if it rewrote (ie inlined) the URL.
   bool FinishRewriteCssImageUrl(
+      int64 css_image_inline_max_bytes,
       const CachedResult* cached, CssResourceSlot* slot);
 
   // Returns true if it rewrote the URL.
   bool FinishRewriteImageUrl(
       const CachedResult* cached, const ResourceContext* resource_context,
       HtmlElement* element, HtmlElement::Attribute* src);
+
+  // Save image contents in cached if the image is inlinable.
+  void SaveIfInlinable(const StringPiece& contents,
+                       const Image::Type image_type,
+                       CachedResult* cached);
 
   // Populates width and height with the attributes specified in the
   // image tag (including in an inline style attribute).

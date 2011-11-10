@@ -107,6 +107,11 @@ void UrlNamer::PrepareRequest(const RewriteOptions* rewrite_options,
   func->CallRun();
 }
 
+void UrlNamer::ConfigureCustomOptions(const GoogleUrl& request_url,
+                                      const RequestHeaders& request_headers,
+                                      RewriteOptions* options) {
+}
+
 UrlNamer::Callback::~Callback() {
 }
 

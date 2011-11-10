@@ -116,6 +116,7 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
       in_text_size_(-1) {
   css_base_gurl_.Reset(filter_->decoded_base_url());
   DCHECK(css_base_gurl_.is_valid());
+  css_trim_gurl_.Reset(css_base_gurl_);
 }
 
 CssFilter::Context::~Context() {
@@ -174,6 +175,7 @@ void CssFilter::Context::StartExternalRewrite(HtmlElement* link,
   ResourcePtr input_resource(filter_->CreateInputResource(src->value()));
   if (input_resource.get() != NULL) {
     css_base_gurl_.Reset(input_resource->url());
+    css_trim_gurl_.Reset(css_base_gurl_);
     ResourceSlotPtr slot(driver_->GetSlot(input_resource, link, src));
     AddSlot(slot);
     driver_->InitiateRewrite(this);
@@ -196,12 +198,14 @@ void CssFilter::Context::RewriteSingle(
   //
   // When our input is the output of CssCombiner, the css_base_gurl_ here
   // is stale (it's the first input to the combination). It ought to be
-  // the URL of the output of the combination.
+  // the URL of the output of the combination. Similary the css_trim_gurl_
+  // needs to be set from the ultimate output resource.
   if (!StringPiece(input_resource_->url()).starts_with("data:")) {
     css_base_gurl_.Reset(input_resource_->url());
+    css_trim_gurl_.Reset(output_resource_->UrlEvenIfLeafInvalid());
   }
   TimedBool result = filter_->RewriteCssText(
-      this, css_base_gurl_, input_resource->contents(),
+      this, css_base_gurl_, css_trim_gurl_, input_resource->contents(),
       IsInlineAttribute() /* text_is_declarations */,
       NULL /* out_text --- not written in RewriteCssText in async case */,
       driver_->message_handler());
@@ -223,8 +227,10 @@ void CssFilter::Context::RewriteImages(int64 in_text_size,
   in_text_size_ = in_text_size;
   stylesheet_.reset(stylesheet);
 
-  image_rewriter_->RewriteCssImages(css_base_gurl_, input_resource_->contents(),
-                                    stylesheet, driver_->message_handler());
+  image_rewriter_->RewriteCssImages(ImageInlineMaxBytes(),
+                                    css_base_gurl_, css_trim_gurl_,
+                                    input_resource_->contents(), stylesheet,
+                                    driver_->message_handler());
 }
 
 void CssFilter::Context::RegisterNested(RewriteContext* nested) {
@@ -247,7 +253,7 @@ void CssFilter::Context::Harvest() {
   }
 
   bool ok = filter_->SerializeCss(
-      this, in_text_size_, stylesheet_.get(), css_base_gurl_,
+      this, in_text_size_, stylesheet_.get(), css_base_gurl_, css_trim_gurl_,
       previously_optimized,
       IsInlineAttribute() /* stylesheet_is_declarations */,
       &out_text, driver_->message_handler());
@@ -401,7 +407,8 @@ void CssFilter::StartElementImpl(HtmlElement* element) {
           context->StartAttributeRewrite(element, element_style);
         } else {
           GoogleString new_content;
-          if (RewriteCssText(NULL /* no async context*/, driver_->base_url(),
+          if (RewriteCssText(NULL /* no async context*/,
+                             driver_->base_url(), driver_->base_url(),
                              element_style->value(),
                              true /* text_is_declarations */,
                              &new_content, driver_->message_handler()).value) {
@@ -437,7 +444,8 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
       if (HasAsyncFlow()) {
         Context* context = MakeContext();
         context->StartInlineRewrite(element, style_char_node_);
-      } else if (RewriteCssText(NULL /* no async context*/, driver_->base_url(),
+      } else if (RewriteCssText(NULL /* no async context*/,
+                                driver_->base_url(), driver_->base_url(),
                                 style_char_node_->contents(),
                                 false /* text_is_declarations */,
                                 &new_content,
@@ -477,13 +485,15 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
 
 // Return value answers the question: May we rewrite?
 // If return false, out_text is undefined.
-// css_gurl is the URL used to resolve relative URLs in the CSS.
+// css_base_gurl is the URL used to resolve relative URLs in the CSS.
+// css_trim_gurl is the URL used to trim absolute URLs to relative URLs.
 // Specifically, it should be the address of the CSS document itself for
 // external CSS or the HTML document that the CSS is in for inline CSS.
 // The expiry of the answer is the minimum of the expiries of all subresources
 // in the stylesheet, or kint64max if there are none or the sheet is invalid.
 TimedBool CssFilter::RewriteCssText(Context* context,
-                                    const GoogleUrl& css_gurl,
+                                    const GoogleUrl& css_base_gurl,
+                                    const GoogleUrl& css_trim_gurl,
                                     const StringPiece& in_text,
                                     bool text_is_declarations,
                                     GoogleString* out_text,
@@ -519,7 +529,8 @@ TimedBool CssFilter::RewriteCssText(Context* context,
   if (stylesheet.get() == NULL ||
       parser.errors_seen_mask() != Css::Parser::kNoError) {
     ret.value = false;
-    driver_->InfoAt(context, "CSS parsing error in %s", css_gurl.spec_c_str());
+    driver_->InfoAt(context, "CSS parsing error in %s",
+                    css_base_gurl.spec_c_str());
     num_parse_failures_->Add(1);
   } else {
     // Edit stylesheet.
@@ -532,12 +543,13 @@ TimedBool CssFilter::RewriteCssText(Context* context,
       return ret;
     } else {
       TimedBool result = image_rewriter_->RewriteCssImages(
-                             css_gurl, stylesheet.get(), handler);
+          css_base_gurl, css_trim_gurl, stylesheet.get(), handler);
       ret.expiration_ms = result.expiration_ms;
       RewriteContext* no_rewrite_context = NULL;
       ret.value = SerializeCss(no_rewrite_context, in_text_size,
-                               stylesheet.get(), css_gurl, result.value,
-                               text_is_declarations, out_text, handler);
+                               stylesheet.get(), css_base_gurl, css_trim_gurl,
+                               result.value, text_is_declarations, out_text,
+                               handler);
     }
   }
   return ret;
@@ -546,7 +558,8 @@ TimedBool CssFilter::RewriteCssText(Context* context,
 bool CssFilter::SerializeCss(RewriteContext* context,
                              int64 in_text_size,
                              const Css::Stylesheet* stylesheet,
-                             const GoogleUrl& css_gurl,
+                             const GoogleUrl& css_base_gurl,
+                             const GoogleUrl& css_trim_gurl,
                              bool previously_optimized,
                              bool stylesheet_is_declarations,
                              GoogleString* out_text,
@@ -571,7 +584,7 @@ bool CssFilter::SerializeCss(RewriteContext* context,
     if (!previously_optimized && bytes_saved <= 0) {
       ret = false;
       driver_->InfoAt(context, "CSS parser increased size of CSS file %s by %s "
-                      "bytes.", css_gurl.spec_c_str(),
+                      "bytes.", css_base_gurl.spec_c_str(),
                       Integer64ToString(-bytes_saved).c_str());
     }
     // Don't rewrite if we blanked the CSS file! (This is a parse error)
@@ -579,7 +592,7 @@ bool CssFilter::SerializeCss(RewriteContext* context,
     if (out_text_size == 0 && in_text_size != 0) {
       ret = false;
       driver_->InfoAt(context, "CSS parsing error in %s",
-                      css_gurl.spec_c_str());
+                      css_base_gurl.spec_c_str());
       num_parse_failures_->Add(1);
     }
   }
@@ -587,7 +600,7 @@ bool CssFilter::SerializeCss(RewriteContext* context,
   // Statistics
   if (ret) {
     driver_->InfoAt(context, "Successfully rewrote CSS file %s saving %s "
-                    "bytes.", css_gurl.spec_c_str(),
+                    "bytes.", css_base_gurl.spec_c_str(),
                     Integer64ToString(bytes_saved).c_str());
     num_files_minified_->Add(1);
     minified_bytes_saved_->Add(bytes_saved);
@@ -683,10 +696,11 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
     StringPiece in_contents = input_resource->contents();
     GoogleString out_contents;
     // TODO(sligocki): Store the GURL in the input_resource.
-    GoogleUrl css_gurl(input_resource->url());
-    if (css_gurl.is_valid()) {
+    GoogleUrl css_base_gurl(input_resource->url());
+    GoogleUrl css_trim_gurl(output_resource->UrlEvenIfLeafInvalid());
+    if (css_base_gurl.is_valid() && css_trim_gurl.is_valid()) {
       TimedBool result = RewriteCssText(
-          NULL /* no context*/, css_gurl, in_contents,
+          NULL /* no context*/, css_base_gurl, css_trim_gurl, in_contents,
           false /* text_is_declarations -- it's a style element */,
           &out_contents, driver_->message_handler());
       if (result.value) {

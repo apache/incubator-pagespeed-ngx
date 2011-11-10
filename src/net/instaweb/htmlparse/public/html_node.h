@@ -114,7 +114,7 @@ class HtmlLeafNode : public HtmlNode {
 class HtmlCdataNode : public HtmlLeafNode {
  public:
   virtual ~HtmlCdataNode();
-  const GoogleString& contents() { return contents_; }
+  const GoogleString& contents() const { return contents_; }
   friend class HtmlParse;
 
  protected:
@@ -135,7 +135,7 @@ class HtmlCdataNode : public HtmlLeafNode {
 class HtmlCharactersNode : public HtmlLeafNode {
  public:
   virtual ~HtmlCharactersNode();
-  const GoogleString& contents() { return contents_; }
+  const GoogleString& contents() const { return contents_; }
   GoogleString* mutable_contents() { return &contents_; }
   void Append(const StringPiece& str) {
     contents_.append(str.data(), str.size());
@@ -160,7 +160,7 @@ class HtmlCharactersNode : public HtmlLeafNode {
 class HtmlCommentNode : public HtmlLeafNode {
  public:
   virtual ~HtmlCommentNode();
-  const GoogleString& contents() { return contents_; }
+  const GoogleString& contents() const { return contents_; }
   friend class HtmlParse;
 
  protected:
@@ -181,7 +181,7 @@ class HtmlCommentNode : public HtmlLeafNode {
 class HtmlIEDirectiveNode : public HtmlLeafNode {
  public:
   virtual ~HtmlIEDirectiveNode();
-  const GoogleString& contents() { return contents_; }
+  const GoogleString& contents() const { return contents_; }
   friend class HtmlParse;
 
  protected:
@@ -202,7 +202,7 @@ class HtmlIEDirectiveNode : public HtmlLeafNode {
 class HtmlDirectiveNode : public HtmlLeafNode {
  public:
   virtual ~HtmlDirectiveNode();
-  const GoogleString& contents() { return contents_; }
+  const GoogleString& contents() const { return contents_; }
   friend class HtmlParse;
 
  protected:

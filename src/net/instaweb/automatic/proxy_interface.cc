@@ -241,6 +241,11 @@ ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
       break;
     }
   }
+
+  // Add custom options based on the request.
+  resource_manager_->url_namer()->ConfigureCustomOptions(request_url,
+                                                         request_headers,
+                                                         custom_options.get());
   return OptionsBoolPair(custom_options.release(), true);
 }
 

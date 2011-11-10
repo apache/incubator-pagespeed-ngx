@@ -29,7 +29,7 @@
 				
 			</a>
 <td>
-<img height=1 width=1 src=extensionless_gif alt=""/>
+<img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAEBMgA7" alt=""/>
 <!-- img with long script url (gets truncated?) -->
 <img alt="" id=livestats src="o.gif?Nonsensical~but~very~long/and~slashy~CGI~URL~"/>
 </td><td valign=top class=gffffff width=14><img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" width=14 height=1 alt="" border=0 vspace=0 hspace=0></td>

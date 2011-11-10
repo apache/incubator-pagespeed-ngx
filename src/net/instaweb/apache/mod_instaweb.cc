@@ -111,6 +111,8 @@ const char* kModPagespeedImageInlineMaxBytes =
     "ModPagespeedImageInlineMaxBytes";
 const char* kModPagespeedImageMaxRewritesAtOnce =
     "ModPagespeedImageMaxRewritesAtOnce";
+const char* kModPagespeedCssImageInlineMaxBytes =
+    "ModPagespeedCssImageInlineMaxBytes";
 const char* kModPagespeedJpegRecompressQuality =
     "ModPagespeedJpegRecompressionQuality";
 const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
@@ -960,6 +962,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     // TODO(sligocki): Convert to ParseInt64Option for consistency?
     ret = ParseIntOption(options,
         cmd, &RewriteOptions::set_image_max_rewrites_at_once, arg);
+  } else if (StringCaseEqual(directive, kModPagespeedCssImageInlineMaxBytes)) {
+    ret = ParseInt64Option(options,
+        cmd, &RewriteOptions::set_css_image_inline_max_bytes, arg);
   } else if (StringCaseEqual(directive,
                              kModPagespeedJpegRecompressQuality)) {
     ret = ParseIntBoundedOption(

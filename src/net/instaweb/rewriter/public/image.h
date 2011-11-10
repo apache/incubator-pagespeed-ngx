@@ -54,6 +54,9 @@ class Image {
 
   virtual ~Image();
 
+  // static method to convert Type to mime type.
+  static const ContentType* TypeToContentType(Type t);
+
   // Stores the image dimensions in natural_dim (on success, sets
   // natural_dim->{width, height} and
   // ImageUrlEncoder::HasValidDimensions(natural_dim) == true).  This
@@ -94,7 +97,9 @@ class Image {
 
   // Returns image-appropriate content type, or NULL if no content type is
   // known.  Result is a top-level const pointer and should not be deleted etc.
-  const ContentType* content_type();
+  const ContentType* content_type() {
+    return TypeToContentType(image_type());
+  }
 
   // Returns the best known image contents.  If image type is not understood,
   // then Contents() will have NULL data().

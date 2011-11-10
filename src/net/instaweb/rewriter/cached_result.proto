@@ -147,15 +147,13 @@ message CachedResult {
 
   // Filters that produce inlined data --- either due to inlining an external
   // resource or rewriting one that's already inline --- use this field to
-  // cache either their input or the output.
+  // cache either their input or the output.  In either case the raw bytes are
+  // cached without any encoding.
   //
   // The input is cached in filters that have very cheap rewrites, and
   // vary the output based on things like the base URL. Output is cached
   // when the rewrite is expensive, with different base URLs being instead
   // incorporated into the key.
-  //
-  // In case of images, this is the base64-encoded data: URI; in other cases
-  // it's the raw data.
   optional string inlined_data = 12;
 
   // The result of a spriting operation, containing x/y coordinates for each
@@ -166,6 +164,11 @@ message CachedResult {
   // Info about the input resources used to create the OutputResource that
   // this CachedResult is based off of.
   repeated InputInfo input = 14;
+
+  // The image type is actually a net_instaweb::Image::Type.  It permits image
+  // inlining to create an appropriate data: url from this and the inlined_data.
+  // It's set only if inlined_data contains an image.
+  optional int32 inlined_image_type = 15;
 }
 
 // Contains the mapping of input URLs to output URLs.  In the general

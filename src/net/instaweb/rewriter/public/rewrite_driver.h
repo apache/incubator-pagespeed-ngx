@@ -93,6 +93,13 @@ class RewriteDriver : public HtmlParse {
                           // being done in background, finishes.
   };
 
+  // Lazily-initialized boolean value
+  enum LazyBool {
+    kNotSet = -1,
+    kFalse = 0,
+    kTrue = 1
+  };
+
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
   static const char kCacheExtenderId[];
@@ -153,8 +160,11 @@ class RewriteDriver : public HtmlParse {
   const GoogleString& user_agent() const {
     return user_agent_;
   }
-  inline void set_user_agent(const StringPiece& user_agent_string) {
+  void set_user_agent(const StringPiece& user_agent_string) {
     user_agent_string.CopyToString(&user_agent_);
+    user_agent_is_bot_ = kNotSet;
+    user_agent_supports_image_inlining_ = kNotSet;
+    user_agent_supports_webp_ = kNotSet;
   }
 
   // Return a pointer to the response headers that filters can update
@@ -173,12 +183,8 @@ class RewriteDriver : public HtmlParse {
   const UserAgentMatcher& user_agent_matcher() const {
     return user_agent_matcher_;
   }
-  bool UserAgentSupportsImageInlining() const {
-    return user_agent_matcher_.SupportsImageInlining(user_agent_);
-  }
-  bool UserAgentSupportsWebp() const {
-    return user_agent_matcher_.SupportsWebp(user_agent_);
-  }
+  bool UserAgentSupportsImageInlining() const;
+  bool UserAgentSupportsWebp() const;
 
   // Adds the filters from the options, specified by name in enabled_filters.
   // This must be called explicitly after object construction to provide an
@@ -267,7 +273,7 @@ class RewriteDriver : public HtmlParse {
   // ourselves).
   // TODO(jmaessen): add url hash & check thereof.
   OutputResourcePtr DecodeOutputResource(const GoogleUrl& url,
-                                         RewriteFilter** filter);
+                                         RewriteFilter** filter) const;
 
   // As above, but does not actually create a resource object,
   // and instead outputs the decoded information into the various out
@@ -275,7 +281,7 @@ class RewriteDriver : public HtmlParse {
   bool DecodeOutputResourceName(const GoogleUrl& url,
                                 ResourceNamer* name_out,
                                 OutputResourceKind* kind_out,
-                                RewriteFilter** filter_out);
+                                RewriteFilter** filter_out) const;
 
   FileSystem* file_system() { return file_system_; }
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }
@@ -804,6 +810,11 @@ class RewriteDriver : public HtmlParse {
   GoogleUrl decoded_base_url_;
 
   GoogleString user_agent_;
+  // Properties of the user_agent_ that are computed once and cached.
+  mutable LazyBool user_agent_is_bot_;
+  mutable LazyBool user_agent_supports_image_inlining_;
+  mutable LazyBool user_agent_supports_webp_;
+
   StringFilterMap resource_filter_map_;
 
   ResponseHeaders* response_headers_;

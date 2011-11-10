@@ -51,6 +51,9 @@ DEFINE_int64(js_outline_min_bytes,
 DEFINE_int64(image_inline_max_bytes,
              net_instaweb::RewriteOptions::kDefaultImageInlineMaxBytes,
              "Number of bytes below which images will be inlined.");
+DEFINE_int64(css_image_inline_max_bytes,
+             net_instaweb::RewriteOptions::kDefaultCssImageInlineMaxBytes,
+             "Number of bytes below which images in CSS will be inlined.");
 DEFINE_int32(image_jpeg_recompress_quality,
              net_instaweb::RewriteOptions::kDefaultImageJpegRecompressQuality,
              "Quality parameter to use while recompressing the jpeg images."
@@ -149,6 +152,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("image_inline_max_bytes")) {
     options->set_image_inline_max_bytes(FLAGS_image_inline_max_bytes);
+  }
+  if (WasExplicitlySet("css_image_inline_max_bytes")) {
+    options->set_css_image_inline_max_bytes(FLAGS_css_image_inline_max_bytes);
   }
   if (WasExplicitlySet("css_inline_max_bytes")) {
     options->set_css_inline_max_bytes(FLAGS_css_inline_max_bytes);

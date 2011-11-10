@@ -279,7 +279,7 @@ TEST_P(CacheExtenderTest, ServeFiles) {
   // the served CSS file, we have to serve it from test.com and not from
   // cdn.com which TestUrlNamer does when it's being used.
   ASSERT_TRUE(ServeResourceUrl(
-      Encode(kCssPath, kFilterId, "0", kCssTail, "css"), &content));
+      EncodeNormal(kCssPath, kFilterId, "0", kCssTail, "css"), &content));
   EXPECT_EQ(kCssData, content);  // no absolutification
   ASSERT_TRUE(ServeResource(kTestDomain, kFilterId, "b.jpg", "jpg", &content));
   EXPECT_EQ(GoogleString(kImageData), content);

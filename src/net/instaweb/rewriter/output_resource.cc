@@ -242,6 +242,18 @@ GoogleString OutputResource::url() const {
   return computed_url_;
 }
 
+GoogleString OutputResource::UrlEvenIfLeafInvalid() {
+  GoogleString result;
+  if (full_name_.hash().empty()) {
+    full_name_.set_hash("0");
+    result = resource_manager()->url_namer()->Encode(rewrite_options_, *this);
+    full_name_.ClearHash();
+  } else {
+    result = url();
+  }
+  return result;
+}
+
 void OutputResource::SetHash(const StringPiece& hash) {
   CHECK(!writing_complete_);
   CHECK(!has_hash());
