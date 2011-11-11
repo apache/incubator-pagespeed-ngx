@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_MINIFY_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace Css {
@@ -52,6 +53,10 @@ class CssMinify {
   static bool Declarations(const Css::Declarations& declarations,
                            Writer* writer,
                            MessageHandler* handler);
+
+  // Escape [() \t\r\n\\'"].  Also escape , for non-URLs.  Escaping , in
+  // URLs causes IE8 to interpret the backslash as a forward slash.
+  static GoogleString EscapeString(const StringPiece& src, bool in_url);
 
  private:
   CssMinify(Writer* writer, MessageHandler* handler);

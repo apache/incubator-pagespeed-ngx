@@ -22,6 +22,7 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
@@ -102,62 +103,247 @@ bool CssTagScanner::ParseCssElement(
 
 namespace {
 
-bool ExtractQuote(GoogleString* url, char* quote) {
-  bool ret = false;
-  int size = url->size();
-  if (size > 2) {
-    *quote = (*url)[0];
-    if (((*quote == '\'') || (*quote == '"')) && (*quote == (*url)[size - 1])) {
-      ret = true;
-      *url = url->substr(1, size - 2);
+// Removes the first character from *in, and puts it into *c.
+// Returns true if successful
+inline bool PopFirst(StringPiece* in, char* c) {
+  if (!in->empty()) {
+    *c = (*in)[0];
+    in->remove_prefix(1);
+    return true;
+  } else {
+    return false;
+  }
+}
+
+// If in starts with expected, returns true and consumes it.
+inline bool EatLiteral(const StringPiece& expected, StringPiece* in) {
+  if (in->starts_with(expected)) {
+    in->remove_prefix(expected.size());
+    return true;
+  } else {
+    return false;
+  }
+}
+
+inline bool IsCssWhitespace(char c) {
+ // As specified in CSS2.1,  G.2, production 's'
+  return (c == ' ') || (c == '\t') || (c == '\r') || (c == '\n') || (c == '\f');
+}
+
+void EatCssWhiteSpace(StringPiece* in) {
+  while (!in->empty() && IsCssWhitespace((*in)[0])) {
+    in->remove_prefix(1);
+  }
+}
+
+// Extract string- or identifier-like content from CSS until reaching the
+// given terminator (which will not be included in the output), handling simple
+// escapes along the way. in will be modified to skip over the bytes consumed,
+// regardless of whether successful or not (to avoid backtracking).
+// If is_string is true, will handle non-termination by truncating content
+// at end of line (which is the CSS behavior for unclosed strings).
+// Returns whether the content could be successfully extracted.
+bool CssExtractUntil(bool is_string, char term,
+                     StringPiece* in, GoogleString* out, bool* found_term) {
+  bool found_error = false;
+  *found_term = false;
+
+  char c;
+  out->clear();
+  while (PopFirst(in, &c)) {
+    if (c == term) {
+      *found_term = true;
+      break;
+    } else if (c == '\\') {
+      // See if it's an escape we recognize.
+      // TODO(morlovich): handle hex escapes here as well. For now we just match
+      // the non-whitespace stuff we ourselves produce.
+      char escape_val;
+      if (PopFirst(in, &escape_val)) {
+        switch (escape_val) {
+          case ',':
+          case '\"':
+          case '\'':
+          case '\\':
+          case '(':
+          case ')':
+            out->push_back(escape_val);
+            break;
+          case '\n':
+            // \ before newline in strings simply disappears; for everything
+            // else we fallthrough to below.
+            if (is_string) {
+              break;
+            }
+          default:
+            // We can't parse it but it's not clear that ignoring it is the
+            // safest thing, so we just pass it through unmodified
+            out->push_back(c);
+            out->push_back(escape_val);
+        };
+      } else {
+        found_error = true;
+      }
+    } else {
+      out->push_back(c);
     }
   }
-  return ret;
+
+  if (is_string && !*found_term) {
+    // Unclosed strings have a special rule -- they're terminated at first
+    // newline.
+    size_t pos = out->find('\n');
+    if (pos != GoogleString::npos) {
+      size_t full_len = out->size();
+
+      // Truncate stuff till before the new line
+      out->resize(pos);
+
+      // Rollback the position to point to the newline. While this does
+      // mean we will be re-scanning, it can't be too bad since there can't be
+      // another quote of this same type again.
+      const char* begin = in->data() - (full_len - out->size());
+      const char* end = in->data() + in->size();
+      *in = StringPiece(begin, end - begin);
+    }
+
+    return !found_error;
+  }
+
+  return *found_term && !found_error;
+}
+
+
+// Tries to extract a string from current position into out.
+// quote_out will contain its delimeter.
+bool CssExtractString(StringPiece* in, GoogleString* out, char* quote_out,
+                      bool* found_term) {
+  if (EatLiteral("\'", in)) {
+    if (CssExtractUntil(true, '\'', in, out, found_term)) {
+      *quote_out = '\'';
+      return true;
+    }
+  } else if (EatLiteral("\"", in)) {
+    if (CssExtractUntil(true, '\"', in, out, found_term)) {
+      *quote_out = '\"';
+      return true;
+    }
+  }
+  return false;
+}
+
+bool WriteRange(const char* out_begin, const char* out_end,
+                Writer* writer, MessageHandler* handler) {
+  if (out_end > out_begin) {
+    return writer->Write(StringPiece(out_begin, out_end - out_begin), handler);
+  } else {
+    return true;
+  }
 }
 
 }  // namespace
 
-// TODO(jmarantz): Add parsing & absolutification of @import.
 bool CssTagScanner::TransformUrls(
     const StringPiece& contents, Writer* writer, Transformer* transformer,
     MessageHandler* handler) {
-  size_t pos = 0;
-  size_t prev_pos = 0;
   bool ok = true;
 
-  // If the CSS url was specified with an absolute path, use that to
-  // absolutify any URLs referenced in the CSS text.
-  //
-  // TODO(jmarantz): Consider calling image optimization, if enabled, on any
-  // images found.
-  while (ok && ((pos = contents.find(kUriValue, pos)) != StringPiece::npos)) {
-    ok = writer->Write(contents.substr(prev_pos, pos - prev_pos), handler);
-    prev_pos = pos;
-    pos += 4;
-    size_t end_of_url = contents.find(')', pos);
-    GoogleString transformed;
-    if ((end_of_url != StringPiece::npos) && (end_of_url != pos)) {
-      GoogleString url;
-      TrimWhitespace(contents.substr(pos, end_of_url - pos), &url);
-      char quote;
-      bool is_quoted = ExtractQuote(&url, &quote);
-      if (transformer->Transform(url, &transformed)) {
-        ok = writer->Write(kUriValue, handler);
-        if (is_quoted) {
-          writer->Write(StringPiece(&quote, 1), handler);
+  // Keeps track of which portion of input we should write out in
+  // the next output batch. This an iterator-style interval, i.e.
+  // [out_begin, out_end)
+  const char* out_begin = contents.data();
+  const char* out_end = contents.data();
+
+  char c;
+  GoogleString url;
+  StringPiece remaining = contents;
+  while (PopFirst(&remaining, &c)) {
+    enum { kNone, kImport, kUrl} have_url = kNone;
+    bool is_quoted = false;
+    bool have_term_quote = false;
+    bool have_term_paren = false;
+    char quote = '?';
+
+    if (c == '@') {
+      // See if we are at an @import. We provisionally set an
+      // end point for batch write to exclude the @, so if we
+      // write out with transformed URL, we should start with
+      // @import.
+      if (EatLiteral("import", &remaining)) {
+        EatCssWhiteSpace(&remaining);
+        // The code here handles @import "foo" and @import 'foo';
+        // for @import url(... we simply pass the @import through and let
+        // the code that handles url( below take care of it.
+        if (CssExtractString(&remaining, &url, &quote, &have_term_quote)) {
+          have_url = kImport;
+          is_quoted = true;
         }
-        ok = writer->Write(transformed, handler);
-        if (is_quoted) {
-          writer->Write(StringPiece(&quote, 1), handler);
+      }
+    } else if (c == 'u') {
+      // See if we are at url(. Also provisionally set an
+      // end point for batch write to exclude the u, so if we
+      // write out with transformed URL, we should start with
+      // url(
+      GoogleString wrapped_url;
+      if (EatLiteral("rl(", &remaining)) {
+        EatCssWhiteSpace(&remaining);
+        // Note if we have a quoted URL inside url(), it needs to be
+        // parsed as such.
+        if (CssExtractString(&remaining, &url, &quote, &have_term_quote)) {
+          EatCssWhiteSpace(&remaining);
+          if (EatLiteral(")", &remaining)) {
+            have_url = kUrl;
+            is_quoted = true;
+            have_term_paren = true;
+          }
+        } else if (CssExtractUntil(false, ')', &remaining, &wrapped_url,
+                                   &have_term_paren)) {
+          TrimWhitespace(wrapped_url, &url);
+          have_url = kUrl;
         }
-        ok = writer->Write(")", handler);
-        prev_pos = end_of_url + 1;
       }
     }
+
+    if (have_url != kNone) {
+      // See if we actually have to do something. If the transformer
+      // wants to leave the URL alone, we will just pass the bytes through.
+      GoogleString transformed;
+      if (transformer->Transform(url, &transformed)) {
+        // Write out the buffered up part of input.
+        ok = ok && WriteRange(out_begin, out_end, writer, handler);
+
+        if (have_url == kImport) {
+          ok = ok && writer->Write("@import ", handler);
+        } else {
+          ok = ok && writer->Write("url(", handler);
+        }
+
+        if (is_quoted) {
+          ok = ok && writer->Write(StringPiece(&quote, 1), handler);
+        }
+        ok = ok && writer->Write(
+            CssMinify::EscapeString(transformed, true /*in_url*/), handler);
+        if (have_term_quote) {
+          ok = ok && writer->Write(StringPiece(&quote, 1), handler);
+        }
+
+        if (have_term_paren) {
+          ok = ok && writer->Write(")", handler);
+        }
+
+        // Begin accumulating input again starting from next byte.
+        out_begin = remaining.data();
+      }
+    }
+
+    // remaining.data() points to the next byte to read, which is exactly
+    // right after the last byte we want to output.
+    out_end = remaining.data();
   }
-  if (ok) {
-    ok = writer->Write(contents.substr(prev_pos), handler);
-  }
+
+  // Write out whatever got buffered at the end.
+  ok = ok && WriteRange(out_begin, out_end, writer, handler);
+
   return ok;
 }
 

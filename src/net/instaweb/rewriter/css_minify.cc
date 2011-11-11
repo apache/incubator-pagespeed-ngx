@@ -37,10 +37,35 @@ namespace net_instaweb {
 
 namespace {
 
+GoogleString CSSEscapeString(const UnicodeText& src, bool in_url) {
+  return CssMinify::EscapeString(
+      StringPiece(src.utf8_data(), src.utf8_length()), in_url);
+}
+
+}  // namespace
+
+bool CssMinify::Stylesheet(const Css::Stylesheet& stylesheet,
+                           Writer* writer,
+                           MessageHandler* handler) {
+  // Get an object to encapsulate writing.
+  CssMinify minifier(writer, handler);
+  minifier.Minify(stylesheet);
+  return minifier.ok_;
+}
+
+bool CssMinify::Declarations(const Css::Declarations& declarations,
+                             Writer* writer,
+                             MessageHandler* handler) {
+  // Get an object to encapsulate writing.
+  CssMinify minifier(writer, handler);
+  minifier.JoinMinify(declarations, ";");
+  return minifier.ok_;
+}
+
 // Escape [() \t\r\n\\'"].  Also escape , for non-URLs.  Escaping , in
 // URLs causes IE8 to interpret the backslash as a forward slash.
 //
-GoogleString CSSEscapeString(const StringPiece& src, bool in_url) {
+GoogleString CssMinify::EscapeString(const StringPiece& src, bool in_url) {
   const int dest_length = src.size() * 2 + 1;  // Maximum possible expansion
   scoped_array<char> dest(new char[dest_length]);
 
@@ -76,31 +101,6 @@ GoogleString CSSEscapeString(const StringPiece& src, bool in_url) {
   }
 
   return GoogleString(dest.get(), used);
-}
-
-GoogleString CSSEscapeString(const UnicodeText& src, bool in_url) {
-  return CSSEscapeString(StringPiece(src.utf8_data(), src.utf8_length()),
-                         in_url);
-}
-
-}  // namespace
-
-bool CssMinify::Stylesheet(const Css::Stylesheet& stylesheet,
-                           Writer* writer,
-                           MessageHandler* handler) {
-  // Get an object to encapsulate writing.
-  CssMinify minifier(writer, handler);
-  minifier.Minify(stylesheet);
-  return minifier.ok_;
-}
-
-bool CssMinify::Declarations(const Css::Declarations& declarations,
-                             Writer* writer,
-                             MessageHandler* handler) {
-  // Get an object to encapsulate writing.
-  CssMinify minifier(writer, handler);
-  minifier.JoinMinify(declarations, ";");
-  return minifier.ok_;
 }
 
 CssMinify::CssMinify(Writer* writer, MessageHandler* handler)
