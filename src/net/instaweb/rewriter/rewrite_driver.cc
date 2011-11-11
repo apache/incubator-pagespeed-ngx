@@ -1376,8 +1376,6 @@ void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
       signal = true;
     }
   }
-  LOG(INFO) << "rewrite_context " << rewrite_context << " complete "
-            << (attached ? "(attached)" : "(detached)");
   rewrite_context->Propagate(attached);
   ++rewrites_to_delete_;
   if (signal) {
