@@ -412,6 +412,35 @@ void HtmlParse::ClearEvents() {
   need_coalesce_characters_ = false;
 }
 
+size_t HtmlParse::GetEventQueueSize() {
+  return queue_.size();
+}
+
+void HtmlParse::AppendEventsToQueue(HtmlEventList* extra_events) {
+  queue_.splice(queue_.end(), *extra_events);
+}
+
+HtmlEvent* HtmlParse::SplitQueueOnFirstEventInSet(
+    const ConstHtmlEventSet& event_set,
+    HtmlEventList* tail) {
+  for (HtmlEventListIterator it = queue_.begin(); it != queue_.end(); ++it) {
+    if (event_set.find(*it) != event_set.end()) {
+      tail->splice(tail->end(), queue_, it, queue_.end());
+      return *it;
+    }
+  }
+  return NULL;
+}
+
+HtmlEvent* HtmlParse::GetEndElementEvent(const HtmlElement* element) {
+  DCHECK (element != NULL);
+  if (element->end() == queue_.end()) {
+    return NULL;
+  } else {
+    return *(element->end());
+  }
+}
+
 void HtmlParse::InsertElementBeforeElement(const HtmlNode* existing_node,
                                            HtmlNode* new_node) {
   // begin() == queue_.end() -> this is an invalid element.

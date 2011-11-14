@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
+#include "net/instaweb/htmlparse/html_event.h"
+#include "net/instaweb/htmlparse/html_testing_peer.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -37,8 +39,11 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -582,6 +587,118 @@ TEST_P(RewriteDriverTest, DiagnosticsWithPercent) {
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(RewriteDriverTestInstance,
                         RewriteDriverTest,
+                        ::testing::Bool());
+
+class RewriteDriverInhibitTest : public RewriteDriverTest {
+ protected:
+  RewriteDriverInhibitTest() {}
+
+  void SetUpDocument() {
+    SetupWriter();
+    ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
+
+    // Set up a document: <html><body><p/></body></html>.
+    html_ = rewrite_driver()->NewElement(NULL, HtmlName::kHtml);
+    body_ = rewrite_driver()->NewElement(html_, HtmlName::kBody);
+    par_ = rewrite_driver()->NewElement(body_, HtmlName::kP);
+    HtmlCharactersNode* start = rewrite_driver()->NewCharactersNode(NULL, "");
+    HtmlTestingPeer::AddEvent(rewrite_driver(),
+                              new HtmlCharactersEvent(start, -1));
+    rewrite_driver()->InsertElementAfterElement(start, html_);
+    rewrite_driver()->AppendChild(html_, body_);
+    rewrite_driver()->AppendChild(body_, par_);
+  }
+
+  // Uninhibits the EndEvent for element, and waits for the necessary flush
+  // to complete.
+  void UninhibitEndElementAndWait(HtmlElement* element) {
+    rewrite_driver()->UninhibitEndElementFlushless(element);
+    ASSERT_TRUE(!rewrite_driver()->EndElementIsInhibited(element));
+    rewrite_driver()->Flush();
+  }
+
+  // A callback for FinishParseAsync.
+  void ParseFinished() {
+  }
+
+  HtmlElement* html_;
+  HtmlElement* body_;
+  HtmlElement* par_;
+
+  DISALLOW_COPY_AND_ASSIGN(RewriteDriverInhibitTest);
+};
+
+// Tests that we stop the flush immediately before the EndElementEvent for an
+// inhibited element, and resume it when that element is uninhibited.
+TEST_P(RewriteDriverInhibitTest, InhibitEndElement) {
+  SetUpDocument();
+
+  // Inhibit </body>.
+  rewrite_driver()->InhibitEndElement(body_);
+  ASSERT_TRUE(rewrite_driver()->EndElementIsInhibited(body_));
+
+  // Verify that we do not flush </body> or beyond, even on a second flush.
+  rewrite_driver()->Flush();
+  EXPECT_EQ("<html><body><p/>", output_buffer_);
+  rewrite_driver()->Flush();
+  EXPECT_EQ("<html><body><p/>", output_buffer_);
+
+  // Verify that we flush the entire document once </body> is uninhibited.
+  UninhibitEndElementAndWait(body_);
+  EXPECT_EQ("<html><body><p/></body></html>", output_buffer_);
+}
+
+// Tests that we can inhibit and uninhibit the flush in multiple places.
+TEST_P(RewriteDriverInhibitTest, MultipleInhibitEndElement) {
+  SetUpDocument();
+
+  // Inhibit </body> and </html>.
+  rewrite_driver()->InhibitEndElement(body_);
+  ASSERT_TRUE(rewrite_driver()->EndElementIsInhibited(body_));
+  rewrite_driver()->InhibitEndElement(html_);
+  ASSERT_TRUE(rewrite_driver()->EndElementIsInhibited(html_));
+
+  // Verify that we will not flush </body> or beyond.
+  rewrite_driver()->Flush();
+  EXPECT_EQ("<html><body><p/>", output_buffer_);
+
+  // Uninhibit </body> and verify that we flush it.
+  UninhibitEndElementAndWait(body_);
+  EXPECT_EQ("<html><body><p/></body>", output_buffer_);
+
+  // Verify that we will flush the entire document once </html> is uninhibited.
+  UninhibitEndElementAndWait(html_);
+  EXPECT_EQ("<html><body><p/></body></html>", output_buffer_);
+}
+
+// Tests that FinishParseAsync respects inhibits.
+TEST_P(RewriteDriverInhibitTest, InhibitWithFinishParse) {
+  SetUpDocument();
+
+  // Inhibit </body>.
+  rewrite_driver()->InhibitEndElement(body_);
+  ASSERT_TRUE(rewrite_driver()->EndElementIsInhibited(body_));
+
+  // Start finishing the parse.
+  SchedulerBlockingFunction wait(rewrite_driver()->scheduler());
+  rewrite_driver()->FinishParseAsync(&wait);
+
+  // Busy wait until the resulting async flush completes.
+  mock_scheduler()->AwaitQuiescence();
+  EXPECT_EQ("<html><body><p/>", output_buffer_);
+
+  // Uninhibit </body> and wait for FinishParseAsync to call back.
+  rewrite_driver()->UninhibitEndElement(body_);
+  ASSERT_TRUE(!rewrite_driver()->EndElementIsInhibited(body_));
+  wait.Block();
+
+  // Verify that we flush the entire document once </body> is uninhibited.
+  EXPECT_EQ("<html><body><p/></body></html>", output_buffer_);
+}
+
+// We test with asynchronous_rewrites() == GetParam() as both true and false.
+INSTANTIATE_TEST_CASE_P(RewriteDriverInhibitTestInstance,
+                        RewriteDriverInhibitTest,
                         ::testing::Bool());
 
 }  // namespace net_instaweb

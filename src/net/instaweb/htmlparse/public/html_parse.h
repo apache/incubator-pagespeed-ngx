@@ -40,6 +40,8 @@ class DocType;
 class MessageHandler;
 class Timer;
 
+typedef std::set <const HtmlEvent*> ConstHtmlEventSet;
+
 // TODO(jmarantz): rename HtmlParse to HtmlContext.  The actual
 // parsing occurs in HtmlLexer, and this class is dominated by methods
 // to manipulate DOM as it streams through.
@@ -324,6 +326,21 @@ class HtmlParse {
   // Split up to permit asynchronous versions.
   void BeginFinishParse();
   void EndFinishParse();
+
+  // Returns the number of events on the event queue.
+  size_t GetEventQueueSize();
+
+  // Move the entire contents of extra_events onto the end of the event queue.
+  void AppendEventsToQueue(HtmlEventList* extra_events);
+
+  // Move the entire event queue after the first event in event_set to the end
+  // of tail.  Return that event, or NULL if there was none.
+  HtmlEvent* SplitQueueOnFirstEventInSet(const ConstHtmlEventSet& event_set,
+                                         HtmlEventList* tail);
+
+  // Return the EndElementEvent for this element, or NULL if it doesn't exist
+  // yet.
+  HtmlEvent* GetEndElementEvent(const HtmlElement* element);
 
  private:
   void ApplyFilterHelper(HtmlFilter* filter);

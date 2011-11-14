@@ -25,54 +25,17 @@
   },
   'targets': [
     {
-      'target_name': 'instaweb_spriter_genproto',
-      'type': 'none',
+      'target_name': 'instaweb_spriter_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/spriter/public/',
+      },
       'sources': [
         'spriter/public/image_spriter.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/image_spriter.pb.cc',
       ],
-      'rules': [
-        {
-            'rule_name': 'genproto',
-            'extension': 'proto',
-            'inputs': [
-                '<(protoc_executable)',
-                ],
-            'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
-
-          'outputs': [
-            '<(protoc_out_dir)/net/instaweb/spriter/public/<(RULE_INPUT_ROOT).pb.h',
-            '<(protoc_out_dir)/net/instaweb/spriter/public/<(RULE_INPUT_ROOT).pb.cc',
-          ],
-          'action': [
-            '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
-            '--proto_path=<(instaweb_root)',
-            '<(instaweb_root)/net/instaweb/spriter/public/<(RULE_INPUT_NAME)',
-            '--cpp_out=<(protoc_out_dir)',
-          ],
-        },
+      'includes': [
+        'protoc.gypi',
       ],
-    },
-    {
-      'target_name': 'instaweb_spriter_pb',
-      'type': '<(library)',
-      'hard_dependency': 1,
-      'dependencies': [
-        'instaweb_spriter_genproto',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-       ],
-      'sources': [
-        '<(protoc_out_dir)/net/instaweb/spriter/public/image_spriter.pb.cc',
-      ],
-      'include_dirs': [
-        '<(protoc_out_dir)',
-      ],
-      'export_dependent_settings': [
-        'instaweb_spriter_genproto',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-      ],
-      'all_dependent_settings': {
-        'hard_dependency': 1,
-      },
     },
     {
       'target_name': 'instaweb_spriter',
@@ -85,60 +48,17 @@
           'spriter/libpng_image_library.cc',
           'spriter/image_library_interface.cc',
           'spriter/image_spriter.cc',
-          'spriter/public/image_spriter.proto',
       ],
       'include_dirs': [
         '<(instaweb_root)',
         '<(DEPTH)',
-        '<(protoc_out_dir)',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
           '<(instaweb_root)',
           '<(DEPTH)',
-          '<(protoc_out_dir)',
         ],
       },
-    },
-    {
-      'target_name': 'instaweb_rewriter_genproto',
-      'type': 'none',
-      'sources': [
-        'rewriter/cached_result.proto',
-      ],
-      'rules': [
-        {
-            'rule_name': 'genproto',
-            'extension': 'proto',
-            'inputs': [
-                '<(protoc_executable)',
-                ],
-          'outputs': [
-            '<(protoc_out_dir)/net/instaweb/rewriter/<(RULE_INPUT_ROOT).pb.h',
-            '<(protoc_out_dir)/net/instaweb/rewriter/<(RULE_INPUT_ROOT).pb.cc',
-          ],
-          'action': [
-            '<(protoc_executable)',
-            '--proto_path=<(instaweb_root)',
-            '<(instaweb_root)/net/instaweb/rewriter/<(RULE_INPUT_NAME)',
-            '--cpp_out=<(protoc_out_dir)',
-          ],
-          'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
-        },
-      ],
-      'dependencies': [
-        'instaweb_spriter_genproto',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protoc#host',
-      ],
-      'all_dependent_settings': {
-        'include_dirs': [
-          '<(protoc_out_dir)',
-        ]
-      },
-      'export_dependent_settings': [
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-      ],
     },
     {
       'target_name': 'instaweb_spriter_test',
@@ -147,7 +67,7 @@
         'instaweb_spriter',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/testing/gmock.gyp:gmock',
-        'instaweb_spriter_genproto',
+        'instaweb_spriter_pb',
         '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protoc#host',
@@ -162,22 +82,16 @@
     },
     {
       'target_name': 'instaweb_rewriter_pb',
-      'type': '<(library)',
-      'hard_dependency': 1,
-      'dependencies': [
-        'instaweb_rewriter_genproto',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-       ],
-      'sources': [
-        '<(protoc_out_dir)/net/instaweb/rewriter/cached_result.pb.cc',
-      ],
-      'export_dependent_settings': [
-        'instaweb_rewriter_genproto',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-      ],
-      'all_dependent_settings': {
-        'hard_dependency': 1,
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter/',
       },
+      'sources': [
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/cached_result.pb.cc',
+        'rewriter/cached_result.proto',
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
     },
     {
       # TODO: break this up into sub-libs (mocks, real, etc)
@@ -402,7 +316,6 @@
       ],
       'include_dirs': [
         '<(instaweb_root)',
-        '<(protoc_out_dir)',
         '<(DEPTH)',
       ],
       'direct_dependent_settings': {
@@ -436,7 +349,6 @@
       ],
       'include_dirs': [
         '<(instaweb_root)',
-        '<(protoc_out_dir)',
         '<(DEPTH)',
       ],
       'direct_dependent_settings': {
@@ -462,7 +374,6 @@
       ],
       'include_dirs': [
         '<(instaweb_root)',
-        '<(protoc_out_dir)',
         '<(DEPTH)',
       ],
       'direct_dependent_settings': {
@@ -495,7 +406,6 @@
       ],
       'include_dirs': [
         '<(instaweb_root)',
-        '<(protoc_out_dir)',
         '<(DEPTH)',
         '<(DEPTH)/third_party/css_parser/src',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
@@ -565,7 +475,6 @@
       ],
       'include_dirs': [
         '<(instaweb_root)',
-        '<(protoc_out_dir)',
         '<(DEPTH)',
       ],
       'direct_dependent_settings': {
@@ -576,62 +485,17 @@
       },
     },
     {
-      'target_name': 'instaweb_http_genproto',
-      'type': 'none',
+      'target_name': 'instaweb_http_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/http/',
+      },
       'sources': [
         'http/http.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/http.pb.cc',
       ],
-      'rules': [
-        {
-            'rule_name': 'genproto',
-            'extension': 'proto',
-            'inputs': [
-                '<(protoc_executable)',
-                ],
-          'outputs': [
-            '<(protoc_out_dir)/net/instaweb/http/<(RULE_INPUT_ROOT).pb.h',
-            '<(protoc_out_dir)/net/instaweb/http/<(RULE_INPUT_ROOT).pb.cc',
-          ],
-          'action': [
-            '<(protoc_executable)',
-            '--proto_path=<(instaweb_root)',
-            '<(instaweb_root)/net/instaweb/http/<(RULE_INPUT_NAME)',
-            '--cpp_out=<(protoc_out_dir)',
-          ],
-          'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
-        },
+      'includes': [
+        'protoc.gypi',
       ],
-      'dependencies': [
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protoc#host',
-      ],
-      'direct_dependent_settings': {
-        'include_dirs': [
-          '<(protoc_out_dir)',
-        ]
-      },
-      'export_dependent_settings': [
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-      ],
-    },
-    {
-      'target_name': 'instaweb_http_pb',
-      'type': '<(library)',
-      'hard_dependency': 1,
-      'dependencies': [
-        'instaweb_http_genproto',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-       ],
-      'sources': [
-        '<(protoc_out_dir)/net/instaweb/http/http.pb.cc',
-      ],
-      'export_dependent_settings': [
-        'instaweb_http_genproto',
-        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-      ],
-      'all_dependent_settings': {
-        'hard_dependency': 1,
-      }
     },
     {
       'target_name': 'instaweb_automatic',

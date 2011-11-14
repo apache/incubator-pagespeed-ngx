@@ -25,6 +25,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
@@ -54,6 +55,7 @@ class CommonFilter;
 class DomainRewriteFilter;
 class FileSystem;
 class Function;
+class HtmlEvent;
 class HtmlFilter;
 class HtmlWriterFilter;
 class MessageHandler;
@@ -322,6 +324,32 @@ class RewriteDriver : public HtmlParse {
   // As above, but asynchronous. Note that the RewriteDriver may already be
   // deleted at the point the callback is invoked.
   void FinishParseAsync(Function* callback);
+
+  // Prevent the EndElementEvent for element from flushing.  If it has already
+  // flushed, this has no effect.  Should only be called from an event listener.
+  // Useful for giving an active filter time to complete an RPC that provides
+  // data to append to element.
+  void InhibitEndElement(const HtmlElement* element);
+
+  // Permits the EndElementEvent for element to flush.  If it was not previously
+  // prevented from doing so by InhibitEndElement, this has no effect.  Should
+  // only be called from an active filter, in coordination with an event
+  // listener that called InhibitEndElement.  If we are currently flushing,
+  // another flush will be scheduled as soon as this one finishes.  If we are
+  // not, another flush will be scheduled immediately.
+  void UninhibitEndElement(const HtmlElement* element);
+
+  // Like UninhibitEndElement, but will not schedule a flush.  Returns 1 if
+  // element was previously inhibited, and 0 otherwise.
+  int UninhibitEndElementFlushless(const HtmlElement* element);
+
+  // Returns true if the EndElementEvent for element is inhibited from flushing.
+  bool EndElementIsInhibited(const HtmlElement* element);
+
+  // Will return true if the EndElementEvent of element is inhibited from
+  // flushing, and that event determined the size of the current flush.  Will
+  // return false if a flush is not currently in progress.
+  bool EndElementIsStoppingFlush(const HtmlElement* element);
 
   // Report error message with description of context's location
   // (such as filenames and line numbers). context may be NULL, in which case
@@ -731,6 +759,12 @@ class RewriteDriver : public HtmlParse {
   void AddPreRenderFilters();
   void AddPostRenderFilters();
 
+  // After removing an inhibition, finish the parse if necessary.
+  void UninhibitFlushDone(Function* user_callback);
+
+  // Move anything on queue_ after the first inhibited event to deferred_queue_.
+  void SplitQueueIfNecessary();
+
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
   // tag, if one exists.  See
@@ -790,6 +824,15 @@ class RewriteDriver : public HtmlParse {
   bool cleanup_on_fetch_complete_;
 
   bool flush_requested_;
+
+  scoped_ptr<AbstractMutex> inhibits_mutex_;
+  typedef std::set <const HtmlElement*> ConstHtmlElementSet;
+  ConstHtmlElementSet end_elements_inhibited_;  // protected by inhibits_mutex_
+  HtmlEventList deferred_queue_;                // protected by inhibits_mutex_
+  Function* finish_parse_on_hold_;              // protected by inhibits_mutex_
+  HtmlEvent* inhibiting_event_;                 // protected by inhibits_mutex_
+  bool flush_in_progress_;                      // protected by inhibits_mutex_
+  bool uninhibit_reflush_requested_;            // protected by inhibits_mutex_
 
   // Tracks the number of RewriteContexts that have been completed,
   // but not yet deleted.  Once RewriteComplete has been called,
