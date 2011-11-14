@@ -184,22 +184,22 @@ bool ProxyInterface::StreamingFetch(const GoogleString& requested_url_string,
     callback->Done(false);
     done = true;
   } else {
-    LOG(INFO) << "Proxying URL: " << requested_url.Spec();
-
     // Try to handle this as a .pagespeed. resource.
     if (resource_manager_->IsPagespeedResource(requested_url) && is_get) {
       pagespeed_requests_->IncBy(1);
       ProxyRequest(true, requested_url, request_headers,
                    response_headers, response_writer, handler, callback);
-      LOG(INFO) << "Serving URL as pagespeed resource";
+      LOG(INFO) << "Serving URL as pagespeed resource: "
+                << requested_url.Spec();
     } else if (UrlAndPortMatchThisServer(requested_url)) {
       // Just respond with a 404 for now.
       response_headers->SetStatusAndReason(HttpStatus::kNotFound);
+      LOG(INFO) << "Returning 404 for URL: " << requested_url.Spec();
       callback->Done(false);
       done = true;
     } else {
       // Otherwise we proxy it (rewriting if it is HTML).
-      LOG(INFO) << "Proxying URL normally";
+      LOG(INFO) << "Proxying URL normally: " << requested_url.Spec();
       ProxyRequest(false, requested_url, request_headers,
                    response_headers, response_writer, handler, callback);
     }

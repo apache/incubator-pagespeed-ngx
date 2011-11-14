@@ -62,6 +62,7 @@
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
+#include "net/instaweb/rewriter/public/js_defer_filter.h"
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
 #include "net/instaweb/rewriter/public/js_outline_filter.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
@@ -739,6 +740,10 @@ void RewriteDriver::AddPostRenderFilters() {
     // Happens before RemoveQuotes but after everything else.  Note:
     // we Must left trim urls BEFORE quote removal.
     AddUnownedPostRenderFilter(url_trim_filter_.get());
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
+    // Defers javascript download and execution to post onload.
+    AddOwnedPostRenderFilter(new JsDeferFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kRemoveQuotes)) {
     // Remove extraneous quotes from html attributes.  Does this save

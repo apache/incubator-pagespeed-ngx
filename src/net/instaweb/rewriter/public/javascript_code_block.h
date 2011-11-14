@@ -117,6 +117,12 @@ class JavascriptCodeBlock {
   // block for which .recognized() is false.
   const JavascriptLibraryId ComputeJavascriptLibrary();
 
+  // Converts a regular string to what can be used in Javascript directly. Note
+  // that output also contains starting and ending quotes, to facilitate
+  // embedding.
+  static void ToJsStringLiteral(const StringPiece& original,
+                                GoogleString* escaped);
+
  private:
   void RewriteIfNecessary() {
     if (!rewritten_) {

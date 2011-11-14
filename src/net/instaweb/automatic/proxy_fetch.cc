@@ -197,8 +197,8 @@ bool ProxyFetch::StartParse() {
     driver_ =
         resource_manager_->NewCustomRewriteDriver(custom_options_.release());
   }
-  LOG(INFO) << "Attaching RewriteDriver " << driver_
-            << " to HtmlRewriter " << this;
+  VLOG(1) << "Attaching RewriteDriver " << driver_
+          << " to HtmlRewriter " << this;
 
   driver_->SetWriter(base_writer_);
   sequence_ = driver_->html_worker();
@@ -212,12 +212,12 @@ bool ProxyFetch::StartParse() {
     return false;
   } else {
     if (request_user_agent_.get() != NULL) {
-      LOG(INFO) << "Setting user-agent to " << *request_user_agent_;
+      VLOG(1) << "Setting user-agent to " << *request_user_agent_;
       driver_->set_user_agent(*request_user_agent_);
     } else {
-      LOG(INFO) << "User-agent empty";
+      VLOG(1) << "User-agent empty for url: " << url_;
     }
-    LOG(INFO) << "Parse successfully started.";
+    VLOG(1) << "Parse successfully started.";
     return true;
   }
 }
@@ -377,8 +377,8 @@ void ProxyFetch::Done(bool success) {
 
   bool finish = true;
   if (success) {
-    LOG(INFO) << "Fetch succeeded " << url_
-              << " : " << response_headers_->status_code();
+    VLOG(1) << "Fetch succeeded " << url_
+            << " : " << response_headers_->status_code();
     if (!pass_through_) {
       ScopedMutex lock(mutex_.get());
       done_outstanding_ = true;

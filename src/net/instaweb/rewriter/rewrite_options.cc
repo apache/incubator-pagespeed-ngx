@@ -44,7 +44,7 @@ namespace {
 //
 // This version number should be incremented if any default-values are changed,
 // either in the add_option() call or via options->set_default.
-const int kOptionsVersion = 7;
+const int kOptionsVersion = 8;
 
 }  // namespace
 
@@ -145,6 +145,7 @@ const RewriteOptions::Filter kTestFilterSet[] = {
 
 // Note: These filters should not be included even if the level is "All".
 const RewriteOptions::Filter kDangerousFilterSet[] = {
+  RewriteOptions::kDeferJavascript,
   RewriteOptions::kDivStructure,
   RewriteOptions::kInlineImagesInCss,  // TODO(jmaessen): Make it safe
   RewriteOptions::kStripScripts,
@@ -177,6 +178,7 @@ const char * RewriteOptions::FilterName(
     case kCombineJavascript:               return "Combine Javascript";
     case kConvertJpegToWebp:               return "Convert Jpeg To Webp";
     case kConvertMetaTags:                 return "Convert Meta Tags";
+    case kDeferJavascript:                 return "Defer Javascript";
     case kDivStructure:                    return "Div Structure";
     case kElideAttributes:                 return "Elide Attributes";
     case kExtendCache:                     return "Extend Cache";
