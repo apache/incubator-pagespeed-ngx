@@ -24,6 +24,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/css_resource_slot.h"
+#include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
@@ -53,8 +54,10 @@ class ImageCombineFilter;
 class ImageRewriteFilter;
 class MessageHandler;
 class OutputPartitions;
+class ResourceContext;
 class RewriteContext;
 class Statistics;
+class UrlSegmentEncoder;
 class Variable;
 
 // Find and parse all CSS in the page and apply transformations including:
@@ -102,6 +105,7 @@ class CssFilter : public RewriteSingleResourceFilter {
  protected:
   virtual bool HasAsyncFlow() const;
   virtual RewriteContext* MakeRewriteContext();
+  virtual const UrlSegmentEncoder* encoder() const;
 
  private:
   friend class Context;
@@ -155,6 +159,7 @@ class CssFilter : public RewriteSingleResourceFilter {
   Variable* num_files_minified_;
   Variable* minified_bytes_saved_;
   Variable* num_parse_failures_;
+  CssUrlEncoder encoder_;
 
   DISALLOW_COPY_AND_ASSIGN(CssFilter);
 };
@@ -165,7 +170,8 @@ class CssFilter::Context : public SingleRewriteContext {
   Context(CssFilter* filter, RewriteDriver* driver,
           CacheExtender* cache_extender,
           ImageRewriteFilter* image_rewriter,
-          ImageCombineFilter* image_combiner);
+          ImageCombineFilter* image_combiner,
+          ResourceContext* context);
   virtual ~Context();
 
   // Starts the asynchronous rewrite process for inline CSS inside
@@ -200,6 +206,7 @@ class CssFilter::Context : public SingleRewriteContext {
   virtual const char* id() const { return filter_->id().c_str(); }
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
   virtual GoogleString CacheKey() const;
+  virtual const UrlSegmentEncoder* encoder() const;
 
  private:
   // Used by the asynchronous rewrite callbacks (RewriteSingle + Harvest) to

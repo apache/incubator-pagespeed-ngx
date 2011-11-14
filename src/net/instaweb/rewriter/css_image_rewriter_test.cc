@@ -698,7 +698,8 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
     bool use_async_flow = false;
     OutputResourcePtr output_resource(
         rewrite_driver()->CreateOutputResourceWithPath(
-            kTestDomain, RewriteDriver::kCssFilterId, StrCat(id, ".css"),
+            kTestDomain, RewriteDriver::kCssFilterId,
+            EncodeCssName(StrCat(id, ".css"), false, true),
             &kContentTypeCss, kRewrittenResource, use_async_flow));
     ASSERT_TRUE(output_resource.get() != NULL);
     // output_resource's hash will not be set unless its cached_result could

@@ -430,6 +430,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Switch url namers as specified.
   void SetUseTestUrlNamer(bool use_test_url_namer);
 
+  // Helper function which instantiates an encoder, collects the
+  // required arguments and calls the virtual Encode().
+  GoogleString EncodeCssName(const StringPiece& name,
+                             bool supports_webp,
+                             bool can_inline);
+
  protected:
   void Init();
 

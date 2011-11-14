@@ -666,7 +666,7 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
 
   // Because cache-extension was turned off, the image in the CSS file
   // will not be changed.
-  FetchFromProxy("embedded.css.pagespeed.cf.0.css", true, &text, &headers);
+  FetchFromProxy("I.embedded.css.pagespeed.cf.0.css", true, &text, &headers);
   EXPECT_EQ(orig_css, text);
 
   // Now turn on cache-extension for custom options.  Invalidate cache entries
@@ -689,7 +689,7 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
   // Now when we fetch the options, we'll find the image in the CSS
   // cache-extended.
   text.clear();
-  FetchFromProxy("embedded.css.pagespeed.cf.0.css", true, &text, &headers);
+  FetchFromProxy("I.embedded.css.pagespeed.cf.0.css", true, &text, &headers);
   EXPECT_EQ(StringPrintf(kCssWithEmbeddedImage,
                          kExtendedBackgroundImage.c_str()),
             text);

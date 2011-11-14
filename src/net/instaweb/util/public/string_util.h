@@ -246,6 +246,12 @@ int CountSubstring(const StringPiece& text, const StringPiece& substring);
 // in an http header.
 bool HasIllicitTokenCharacter(const StringPiece& str);
 
+// Appends new empty string to a StringVector and returns a pointer to it.
+inline GoogleString* StringVectorAdd(StringVector* v) {
+  v->push_back(GoogleString());
+  return &v->back();
+}
+
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_STRING_UTIL_H_

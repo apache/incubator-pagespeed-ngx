@@ -33,6 +33,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/mem_clean_up.h"
@@ -642,6 +643,22 @@ GoogleString ResourceManagerTestBase::EncodeWithBase(
   }
 
   return EncodeNormal(path, id, hash, name_vector, ext);
+}
+
+// Helper function which instantiates an encoder, collects the
+// required arguments and calls the virtual Encode().
+GoogleString ResourceManagerTestBase::EncodeCssName(const StringPiece& name,
+                                                    bool supports_webp,
+                                                    bool can_inline) {
+  CssUrlEncoder encoder;
+  ResourceContext resource_context;
+  resource_context.set_inline_images(can_inline);
+  resource_context.set_attempt_webp(supports_webp);
+  StringVector urls;
+  GoogleString encoded_url;
+  name.CopyToString(StringVectorAdd(&urls));
+  encoder.Encode(urls, &resource_context, &encoded_url);
+  return encoded_url;
 }
 
 void ResourceManagerTestBase::SetupWaitFetcher() {

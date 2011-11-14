@@ -489,6 +489,7 @@
         'rewriter/css_inline_import_to_link_filter.cc',
         'rewriter/css_minify.cc',
         'rewriter/css_resource_slot.cc',
+        'rewriter/css_url_encoder.cc',
         'rewriter/css_util.cc',
         'rewriter/image_combine_filter.cc',
       ],
@@ -497,6 +498,7 @@
         '<(protoc_out_dir)',
         '<(DEPTH)',
         '<(DEPTH)/third_party/css_parser/src',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
       ],
       'direct_dependent_settings': {
         'include_dirs': [
@@ -665,6 +667,7 @@
       'dependencies': [
         '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
         'instaweb_rewriter',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
        ],
       'sources': [
         'rewriter/mem_clean_up.cc',

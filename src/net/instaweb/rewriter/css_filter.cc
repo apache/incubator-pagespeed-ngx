@@ -71,6 +71,7 @@ class CacheExtender;
 class ImageCombineFilter;
 class ImageRewriteFilter;
 class MessageHandler;
+class UrlSegmentEncoder;
 
 namespace {
 
@@ -101,9 +102,9 @@ const char CssFilter::kParseFailures[] = "css_filter_parse_failures";
 CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
                             CacheExtender* cache_extender,
                             ImageRewriteFilter* image_rewriter,
-                            ImageCombineFilter* image_combiner)
-    : SingleRewriteContext(driver, NULL /* no parent */,
-                           NULL /* no resource context */),
+                            ImageCombineFilter* image_combiner,
+                            ResourceContext* context)
+    : SingleRewriteContext(driver, NULL /* no parent */, context),
       filter_(filter),
       driver_(driver),
       image_rewriter_(
@@ -678,7 +679,11 @@ bool CssFilter::LoadAllSubStylesheets(
 // Read an external CSS file, rewrite it and write a new external CSS file.
 bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
                                    GoogleString* out_url) {
-  scoped_ptr<CachedResult> rewrite_info(RewriteWithCaching(in_url, NULL));
+  ResourceContext resource_context;
+  resource_context.set_inline_images(driver_->UserAgentSupportsImageInlining());
+  resource_context.set_attempt_webp(driver_->UserAgentSupportsWebp());
+  scoped_ptr<CachedResult> rewrite_info(RewriteWithCaching(in_url,
+                                                           &resource_context));
   if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
     *out_url = rewrite_info->url();
     return true;
@@ -728,12 +733,24 @@ bool CssFilter::HasAsyncFlow() const {
 }
 
 CssFilter::Context* CssFilter::MakeContext() {
+  ResourceContext* resource_context = new ResourceContext;
+  resource_context->set_inline_images(
+      driver_->UserAgentSupportsImageInlining());
+  resource_context->set_attempt_webp(driver_->UserAgentSupportsWebp());
   return new Context(this, driver_, cache_extender_,
-                     image_rewrite_filter_, image_combiner_);
+                     image_rewrite_filter_, image_combiner_, resource_context);
 }
 
 RewriteContext* CssFilter::MakeRewriteContext() {
   return MakeContext();
+}
+
+const UrlSegmentEncoder* CssFilter::encoder() const {
+  return &encoder_;
+}
+
+const UrlSegmentEncoder* CssFilter::Context::encoder() const {
+  return filter_->encoder();
 }
 
 }  // namespace net_instaweb

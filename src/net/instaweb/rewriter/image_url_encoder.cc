@@ -115,11 +115,8 @@ bool ImageUrlEncoder::Decode(const StringPiece& encoded,
     data->set_attempt_webp(true);
   }
 
-  // Avoid even more string copies by decoding url directly into urls->back().
-  GoogleString empty;
-  urls->push_back(empty);
-  GoogleString& url = urls->back();
-  if (UrlEscaper::DecodeFromUrlSegment(remaining, &url)) {
+  GoogleString* url = StringVectorAdd(urls);
+  if (UrlEscaper::DecodeFromUrlSegment(remaining, url)) {
     return true;
   } else {
     urls->pop_back();
