@@ -62,9 +62,11 @@ CssImageRewriterAsync::CssImageRewriterAsync(CssFilter::Context* context,
 
 CssImageRewriterAsync::~CssImageRewriterAsync() {}
 
-bool CssImageRewriterAsync::RewritesEnabled() const {
+bool CssImageRewriterAsync::RewritesEnabled(
+    int64 image_inline_max_bytes) const {
   const RewriteOptions* options = driver_->options();
-  return (options->Enabled(RewriteOptions::kRecompressImages) ||
+  return (image_inline_max_bytes > 0 ||
+          options->Enabled(RewriteOptions::kRecompressImages) ||
           options->Enabled(RewriteOptions::kLeftTrimUrls) ||
           options->Enabled(RewriteOptions::kExtendCache) ||
           options->Enabled(RewriteOptions::kSpriteImages));
@@ -115,7 +117,7 @@ void CssImageRewriterAsync::RewriteCssImages(int64 image_inline_max_bytes,
   const RewriteOptions* options = driver_->options();
   bool spriting_ok = options->Enabled(RewriteOptions::kSpriteImages);
 
-  if (RewritesEnabled() || image_inline_max_bytes > 0) {
+  if (RewritesEnabled(image_inline_max_bytes)) {
     handler->Message(kInfo, "Starting to rewrite images in CSS in %s",
                      base_url.spec_c_str());
     if (spriting_ok) {

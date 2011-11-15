@@ -44,7 +44,7 @@ namespace {
 //
 // This version number should be incremented if any default-values are changed,
 // either in the add_option() call or via options->set_default.
-const int kOptionsVersion = 8;
+const int kOptionsVersion = 9;
 
 }  // namespace
 
@@ -101,6 +101,12 @@ const int RewriteOptions::kMaxUrlSize = 2083;
 // use source image quality parameters, and is lossless.
 const int RewriteOptions::kDefaultImageJpegRecompressQuality = -1;
 
+// Percentage savings in order to retain rewritten images; these default
+// to 100% so that we always attempt to resize downsized images, and
+// unconditionally retain images if they save any bytes at all.
+const int RewriteOptions::kDefaultImageLimitOptimizedPercent = 100;
+const int RewriteOptions::kDefaultImageLimitResizeAreaPercent = 100;
+
 // See http://code.google.com/p/modpagespeed/issues/detail?id=9.  By
 // default, Apache evidently limits each URL path segment (between /)
 // to about 256 characters.  This is not a fundamental URL limitation
@@ -147,7 +153,6 @@ const RewriteOptions::Filter kTestFilterSet[] = {
 const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kDeferJavascript,
   RewriteOptions::kDivStructure,
-  RewriteOptions::kInlineImagesInCss,  // TODO(jmaessen): Make it safe
   RewriteOptions::kStripScripts,
 };
 
@@ -185,7 +190,6 @@ const char * RewriteOptions::FilterName(
     case kHtmlWriterFilter:                return "Flushes html";
     case kInlineCss:                       return "Inline Css";
     case kInlineImages:                    return "Inline Images";
-    case kInlineImagesInCss:               return "Inline Images in Css";
     case kInlineImportToLink:              return "Inline @import to Link";
     case kInlineJavascript:                return "Inline Javascript";
     case kInsertImageDimensions:           return "Insert Image Dimensions";
@@ -272,6 +276,10 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultBeaconUrl, &beacon_url_);
   add_option(kDefaultImageJpegRecompressQuality,
              &image_jpeg_recompress_quality_);
+  add_option(kDefaultImageLimitOptimizedPercent,
+             &image_limit_optimized_percent_);
+  add_option(kDefaultImageLimitResizeAreaPercent,
+             &image_limit_resize_area_percent_);
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
@@ -441,7 +449,7 @@ void RewriteOptions::set_image_inline_max_bytes(int64 x) {
 }
 
 int64 RewriteOptions::CssImageInlineMaxBytes() const {
-  if (Enabled(kInlineImagesInCss)) {
+  if (Enabled(kInlineImages)) {
     return css_image_inline_max_bytes_.value();
   } else {
     return 0;

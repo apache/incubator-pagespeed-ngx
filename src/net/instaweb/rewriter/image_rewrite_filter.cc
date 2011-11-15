@@ -55,17 +55,6 @@ struct ContentType;
 
 namespace {
 
-// Rewritten image must be < kMaxRewrittenRatio * origSize to be worth
-// redirecting references to it.
-// TODO(jmaessen): Make this ratio adjustable.
-const double kMaxRewrittenRatio = 1.0;
-
-// Re-scale image if area / originalArea < kMaxAreaRatio
-// Should probably be much less than 1 due to jpeg quality loss.
-// Might need to differ depending upon image format.
-// TODO(jmaessen): Make adjustable.
-const double kMaxAreaRatio = 1.0;
-
 // names for Statistics variables.
 const char kImageRewrites[] = "image_rewrites";
 const char kImageRewriteSavedBytes[] = "image_rewrite_saved_bytes";
@@ -243,7 +232,8 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
           static_cast<int64>(page_dim.width()) * page_dim.height();
       int64 image_area =
           static_cast<int64>(image_dim.width()) * image_dim.height();
-      if (page_area < image_area * kMaxAreaRatio) {
+      if (page_area * 100 <
+          image_area * options->image_limit_resize_area_percent()) {
         const char* message;  // Informational message for logging only.
         if (image->ResizeTo(page_dim)) {
           post_resize_dim = &page_dim;
@@ -271,7 +261,8 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
     // Now re-compress the (possibly resized) image, and decide if it's
     // saved us anything.
     if ((resized || options->Enabled(RewriteOptions::kRecompressImages)) &&
-        (image->output_size() < image->input_size() * kMaxRewrittenRatio)) {
+        (image->output_size() * 100 <
+         image->input_size() * options->image_limit_optimized_percent())) {
       // here output image type could potentially be different from input type.
       result->SetType(ImageToContentType(input_resource->url(), image.get()));
 
@@ -417,10 +408,8 @@ bool ImageRewriteFilter::FinishRewriteCssImageUrl(
   GoogleString data_url;
   if (driver_->UserAgentSupportsImageInlining() &&
       TryInline(css_image_inline_max_bytes, cached, &data_url)) {
-    // TODO(jmaessen): UNSAFE.  We don't differentiate whether the user-agent
-    // supports image inlining when producing the CSS file, so this cached CSS
-    // file will get served for all subsequent requests, even for
-    // non-inline-capable browsers.
+    // TODO(jmaessen): Can we make output URL reflect actual *usage*
+    // of image inlining and/or webp images?
     slot->UpdateUrlInCss(data_url);
     inline_count_->Add(1);
     return true;

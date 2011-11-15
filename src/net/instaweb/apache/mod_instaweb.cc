@@ -115,6 +115,10 @@ const char* kModPagespeedCssImageInlineMaxBytes =
     "ModPagespeedCssImageInlineMaxBytes";
 const char* kModPagespeedJpegRecompressQuality =
     "ModPagespeedJpegRecompressionQuality";
+const char* kModPagespeedImageLimitOptimizedPercent =
+    "ModPagespeedImageLimitOptimizedPercent";
+const char* kModPagespeedImageLimitResizeAreaPercent =
+    "ModPagespeedImageLimitResizeAreaPercent";
 const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
 const char* kModPagespeedJsOutlineMinBytes = "ModPagespeedJsOutlineMinBytes";
 const char* kModPagespeedLRUCacheByteLimit = "ModPagespeedLRUCacheByteLimit";
@@ -971,6 +975,18 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
         options,
         cmd, &RewriteOptions::set_image_jpeg_recompress_quality, arg,
         -1, 100);
+  } else if (StringCaseEqual(directive,
+                             kModPagespeedImageLimitOptimizedPercent)) {
+    ret = ParseIntBoundedOption(
+        options,
+        cmd, &RewriteOptions::set_image_limit_optimized_percent, arg,
+        0, 100);
+  } else if (StringCaseEqual(directive,
+                             kModPagespeedImageLimitResizeAreaPercent)) {
+    ret = ParseIntBoundedOption(
+        options,
+        cmd, &RewriteOptions::set_image_limit_resize_area_percent, arg,
+        0, 100);
   } else if (StringCaseEqual(directive, kModPagespeedJsInlineMaxBytes)) {
     ret = ParseInt64Option(options,
         cmd, &RewriteOptions::set_js_inline_max_bytes, arg);

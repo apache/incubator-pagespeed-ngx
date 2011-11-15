@@ -111,7 +111,7 @@ TimedBool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
     scoped_ptr<CachedResult> rewrite_info;
     // Try image rewriting.
     if (options->Enabled(RewriteOptions::kRecompressImages) ||
-        options->Enabled(RewriteOptions::kInlineImagesInCss)) {
+        options->Enabled(RewriteOptions::kInlineImages)) {
       handler->Message(kInfo, "Attempting to rewrite image %s",
                        old_rel_url_str.c_str());
       ResourceContext dim;

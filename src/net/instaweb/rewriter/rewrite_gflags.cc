@@ -58,6 +58,17 @@ DEFINE_int32(image_jpeg_recompress_quality,
              net_instaweb::RewriteOptions::kDefaultImageJpegRecompressQuality,
              "Quality parameter to use while recompressing the jpeg images."
              "This should be in range [0,100], 100 refers to best quality.");
+DEFINE_int32(
+    image_limit_optimized_percent,
+    net_instaweb::RewriteOptions::kDefaultImageLimitOptimizedPercent,
+    "Optimized images will be used only if they are less than this percent "
+    "size of the original image size.  100 retains any smaller image.");
+DEFINE_int32(
+    image_limit_resize_area_percent,
+    net_instaweb::RewriteOptions::kDefaultImageLimitResizeAreaPercent,
+    "Only attempt to shrink an image on the server if its area is less than "
+    "this percent of the original image area.  100 always shrinks the image "
+    "if its dimensions are smaller.");
 DEFINE_int64(js_inline_max_bytes,
              net_instaweb::RewriteOptions::kDefaultJsInlineMaxBytes,
              "Number of bytes below which javascript will be inlined.");
@@ -188,6 +199,14 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("image_jpeg_recompress_quality")) {
     options->set_image_jpeg_recompress_quality(
         FLAGS_image_jpeg_recompress_quality);
+  }
+  if (WasExplicitlySet("image_limit_optimized_percent")) {
+    options->set_image_limit_optimized_percent(
+        FLAGS_image_limit_optimized_percent);
+  }
+  if (WasExplicitlySet("image_limit_resize_area_percent")) {
+    options->set_image_limit_resize_area_percent(
+        FLAGS_image_limit_resize_area_percent);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

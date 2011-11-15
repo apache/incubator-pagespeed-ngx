@@ -66,7 +66,7 @@ class CssImageRewriterAsync {
                         MessageHandler* handler);
 
   // Are any rewrites enabled?
-  bool RewritesEnabled() const;
+  bool RewritesEnabled(int64 image_inline_max_bytes) const;
 
  private:
   void RewriteImage(int64 image_inline_max_bytes,

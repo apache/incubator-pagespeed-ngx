@@ -441,7 +441,6 @@ TEST_P(CssImageRewriterTest, InlineImages) {
   CSS_XFAIL_SYNC();
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kInlineImages);
-  options()->EnableFilter(RewriteOptions::kInlineImagesInCss);
   options()->set_image_inline_max_bytes(2000);
   options()->set_css_image_inline_max_bytes(2000);
   EXPECT_EQ(2000, options()->ImageInlineMaxBytes());
@@ -480,9 +479,9 @@ TEST_P(CssImageRewriterTest, InlineImageOnlyInOutlineCss) {
   // css_image_inline_max_bytes for standalone css.
   CSS_XFAIL_SYNC();
   options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kInlineImages);
   // Do inline in CSS file but not in inline CSS.
-  options()->EnableFilter(RewriteOptions::kInlineImagesInCss);
-  options()->set_image_inline_max_bytes(2000);
+  options()->set_image_inline_max_bytes(0);
   options()->set_css_image_inline_max_bytes(2000);
   EXPECT_EQ(0, options()->ImageInlineMaxBytes());  // This is disabled...
   ASSERT_EQ(2000, options()->CssImageInlineMaxBytes());  // But this is enabled.

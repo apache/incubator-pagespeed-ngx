@@ -55,7 +55,6 @@ class RewriteOptions {
     kHtmlWriterFilter,
     kInlineCss,
     kInlineImages,
-    kInlineImagesInCss,
     kInlineImportToLink,
     kInlineJavascript,
     kInsertImageDimensions,
@@ -122,6 +121,8 @@ class RewriteOptions {
   static const int64 kDefaultIdleFlushTimeMs;
   static const GoogleString kDefaultBeaconUrl;
   static const int kDefaultImageJpegRecompressQuality;
+  static const int kDefaultImageLimitOptimizedPercent;
+  static const int kDefaultImageLimitResizeAreaPercent;
 
   // IE limits URL size overall to about 2k characters.  See
   // http://support.microsoft.com/kb/208427/EN-US
@@ -319,6 +320,19 @@ class RewriteOptions {
   }
   void set_image_jpeg_recompress_quality(int x) {
     set_option(x, &image_jpeg_recompress_quality_);
+  }
+
+  int image_limit_optimized_percent() const {
+    return image_limit_optimized_percent_.value();
+  }
+  void set_image_limit_optimized_percent(int x) {
+    set_option(x, &image_limit_optimized_percent_);
+  }
+  int image_limit_resize_area_percent() const {
+    return image_limit_resize_area_percent_.value();
+  }
+  void set_image_limit_resize_area_percent(int x) {
+    set_option(x, &image_limit_resize_area_percent_);
   }
 
   // Merge together two source RewriteOptions to populate this.  The order
@@ -566,6 +580,10 @@ class RewriteOptions {
 
   // Options related to jpeg compression.
   Option<int> image_jpeg_recompress_quality_;
+
+  // Options governing when to retain optimized images vs keep original
+  Option<int> image_limit_optimized_percent_;
+  Option<int> image_limit_resize_area_percent_;
 
   Option<int> image_max_rewrites_at_once_;
   Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")
