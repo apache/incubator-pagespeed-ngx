@@ -265,6 +265,14 @@ class RewriteOptions {
   }
   bool enabled() const { return enabled_.value(); }
 
+  void set_ajax_rewriting_enabled(bool x) {
+    set_option(x, &ajax_rewriting_enabled_);
+  }
+
+  bool ajax_rewriting_enabled() const {
+    return ajax_rewriting_enabled_.value();
+  }
+
   void set_botdetect_enabled(bool x) {
     set_option(x, &botdetect_enabled_);
   }
@@ -564,6 +572,7 @@ class RewriteOptions {
   Option<int> max_url_size_;          // but this is strlen("http://a/b/c.d")
 
   Option<bool> enabled_;
+  Option<bool> ajax_rewriting_enabled_;  // Should ajax rewriting be enabled?
   Option<bool> botdetect_enabled_;
   Option<bool> combine_across_paths_;
   Option<bool> log_rewrite_timing_;   // Should we time HtmlParser?

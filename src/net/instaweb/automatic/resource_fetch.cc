@@ -21,10 +21,10 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -33,59 +33,26 @@
 
 namespace net_instaweb {
 
-namespace {
-
-// TODO(sligocki): Stick this in rewrite_driver.h?
-class DriverFetcher : public UrlAsyncFetcher {
- public:
-  DriverFetcher(RewriteDriver* driver) : driver_(driver) {}
-  virtual ~DriverFetcher() {}
-
-  virtual bool StreamingFetch(const GoogleString& url,
-                              const RequestHeaders& request_headers,
-                              ResponseHeaders* response_headers,
-                              Writer* response_writer,
-                              MessageHandler* message_handler,
-                              Callback* callback) {
-    if (!driver_->FetchResource(url, request_headers, response_headers,
-                                response_writer, callback)) {
-      // FetchResource does not call callback if it returns false. (false
-      // means that the resource was not the right format to be a pagespeed
-      // resource.)
-      callback->Done(false);
-    }
-    return false;
-  }
-
- private:
-  RewriteDriver* driver_;
-
-  DISALLOW_COPY_AND_ASSIGN(DriverFetcher);
-};
-
-}  // namespace
-
 void ResourceFetch::Start(ResourceManager* manager,
                           const GoogleUrl& url,
                           const RequestHeaders& request_headers,
                           RewriteOptions* custom_options,
                           ResponseHeaders* response_headers,
                           Writer* response_writer,
-                          UrlAsyncFetcher::Callback* callback) {
+                          UrlAsyncFetcher::Callback* callback,
+                          const GoogleString& version) {
   RewriteDriver* driver = (custom_options == NULL)
       ? manager->NewRewriteDriver()
       : manager->NewCustomRewriteDriver(custom_options);
   LOG(INFO) << "Fetch with RewriteDriver " << driver;
-  DriverFetcher driver_fetcher(driver);
   ResourceFetch* resource_fetch = new ResourceFetch(
       url, request_headers, response_headers, response_writer,
       manager->message_handler(), driver, manager->url_async_fetcher(),
-      manager->timer(), callback);
+      manager->timer(), callback, version);
   // TODO(sligocki): This will currently fail us on all non-pagespeed
   // resource requests. We should move the check somewhere else.
-  driver_fetcher.Fetch(url.Spec().as_string(), request_headers,
-                       resource_fetch->response_headers_,
-                       manager->message_handler(), resource_fetch);
+  driver->FetchResource(url.Spec().as_string(), request_headers,
+                        response_headers, resource_fetch);
 }
 
 ResourceFetch::ResourceFetch(const GoogleUrl& url,
@@ -96,7 +63,8 @@ ResourceFetch::ResourceFetch(const GoogleUrl& url,
                              RewriteDriver* driver,
                              UrlAsyncFetcher* fetcher,
                              Timer* timer,
-                             UrlAsyncFetcher::Callback* callback)
+                             UrlAsyncFetcher::Callback* callback,
+                             const GoogleString& version)
     : response_headers_(response_headers),
       response_writer_(response_writer),
       fetcher_(fetcher),
@@ -104,6 +72,7 @@ ResourceFetch::ResourceFetch(const GoogleUrl& url,
       driver_(driver),
       timer_(timer),
       callback_(callback),
+      version_(version),
       start_time_us_(timer->NowUs()),
       redirect_count_(0) {
   resource_url_.Reset(url);
@@ -125,6 +94,8 @@ void ResourceFetch::HeadersComplete() {
   // "Vary: Accept-Encoding" for all resources that are transmitted compressed.
   // Server ought to set these, I suppose.
   //response_headers_->Add(HttpAttributes::kVary, "Accept-Encoding");
+
+  response_headers_->Add(kPageSpeedHeader, version_);
 }
 
 bool ResourceFetch::Write(const StringPiece& content, MessageHandler* handler) {

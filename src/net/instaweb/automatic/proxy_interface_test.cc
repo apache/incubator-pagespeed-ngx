@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -41,11 +42,12 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
@@ -153,6 +155,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     options->ClearSignatureForTesting();
     options->EnableFilter(RewriteOptions::kRewriteCss);
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
+    options->set_ajax_rewriting_enabled(true);
     resource_manager()->ComputeSignature(options);
     ResourceManagerTestBase::SetUp();
     ProxyInterface::Initialize(statistics());
@@ -195,6 +198,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     } else {
       sync.Wait();
     }
+    mock_scheduler()->AwaitQuiescence();
   }
 
   void CheckHeaders(const ResponseHeaders& headers,
@@ -300,10 +304,13 @@ TEST_F(ProxyInterfaceTest, SetCookieNotCached) {
   FetchFromProxy("text.txt", true, &text, &response_headers);
   EXPECT_STREQ("cookie", response_headers.Lookup1(HttpAttributes::kSetCookie));
   EXPECT_EQ(kContent, text);
+  // One lookup for ajax metadata and one for the HTTP response. Neither are
+  // found.
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
-  ClearStats();
 
+  ClearStats();
   // The next response that is served from cache does not have any Set-Cookie
   // headers.
   GoogleString text2;
@@ -311,8 +318,11 @@ TEST_F(ProxyInterfaceTest, SetCookieNotCached) {
   FetchFromProxy("text.txt", true, &text2, &response_headers2);
   EXPECT_EQ(NULL, response_headers2.Lookup1(HttpAttributes::kSetCookie));
   EXPECT_EQ(kContent, text2);
+  // The HTTP response is found but the ajax metadata is not found.
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
 }
 
 TEST_F(ProxyInterfaceTest, SetCookie2NotCached) {
@@ -329,10 +339,13 @@ TEST_F(ProxyInterfaceTest, SetCookie2NotCached) {
   FetchFromProxy("text.txt", true, &text, &response_headers);
   EXPECT_STREQ("cookie", response_headers.Lookup1(HttpAttributes::kSetCookie2));
   EXPECT_EQ(kContent, text);
+  // One lookup for ajax metadata and one for the HTTP response. Neither are
+  // found.
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
-  ClearStats();
 
+  ClearStats();
   // The next response that is served from cache does not have any Set-Cookie
   // headers.
   GoogleString text2;
@@ -340,8 +353,11 @@ TEST_F(ProxyInterfaceTest, SetCookie2NotCached) {
   FetchFromProxy("text.txt", true, &text2, &response_headers2);
   EXPECT_EQ(NULL, response_headers2.Lookup1(HttpAttributes::kSetCookie2));
   EXPECT_EQ(kContent, text2);
+  // The HTTP response is found but the ajax metadata is not found.
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
 }
 
 TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
@@ -358,6 +374,7 @@ TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
   GoogleString text;
   ResponseHeaders response_headers;
   FetchFromProxy("text.css", true, &text, &response_headers);
+
   EXPECT_STREQ(max_age_300_,
                response_headers.Lookup1(HttpAttributes::kCacheControl));
   EXPECT_STREQ(start_time_plus_300s_string_,
@@ -365,14 +382,18 @@ TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
+  // One lookup for ajax metadata, one for the HTTP response and one by the css
+  // filter which looks up metadata while rewriting. None are found.
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
-  ClearStats();
 
+  ClearStats();
   // Fetch again from cache. It has the same caching headers.
   text.clear();
   response_headers.Clear();
   FetchFromProxy("text.css", true, &text, &response_headers);
+
   EXPECT_STREQ(max_age_300_,
                response_headers.Lookup1(HttpAttributes::kCacheControl));
   EXPECT_STREQ(start_time_plus_300s_string_,
@@ -380,7 +401,9 @@ TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
-  EXPECT_EQ(1, lru_cache()->num_hits());
+  // One hit for ajax metadata and one for the HTTP response.
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, lru_cache()->num_misses());
 }
 
@@ -403,10 +426,13 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
+  // One lookup for ajax metadata and one for the HTTP response. Neither are
+  // found.
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
-  ClearStats();
 
+  ClearStats();
   // Fetch again. Not found in cache.
   text.clear();
   response_headers.Clear();
@@ -415,8 +441,11 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
+  // One lookup for ajax metadata and one for the HTTP response. Neither are
+  // found.
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, EtagsAddedWhenAbsent) {
@@ -434,8 +463,11 @@ TEST_F(ProxyInterfaceTest, EtagsAddedWhenAbsent) {
   EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
   EXPECT_EQ(NULL, response_headers.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ(kContent, text);
+  // One lookup for ajax metadata and one for the HTTP response. Neither are
+  // found.
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
   ClearStats();
 
   // An Etag is added before writing to cache. The next response is served from
@@ -446,8 +478,12 @@ TEST_F(ProxyInterfaceTest, EtagsAddedWhenAbsent) {
   EXPECT_EQ(HttpStatus::kOK, response_headers2.status_code());
   EXPECT_STREQ("W/PSA-0", response_headers2.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ(kContent, text2);
+  // One lookup for ajax metadata and one for the HTTP response. The metadata is
+  // not found but the HTTP response is found.
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   ClearStats();
 
   // The Etag matches and a 304 is served out.
@@ -459,8 +495,12 @@ TEST_F(ProxyInterfaceTest, EtagsAddedWhenAbsent) {
   EXPECT_EQ(HttpStatus::kNotModified, response_headers3.status_code());
   EXPECT_STREQ(NULL, response_headers3.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ("", text3);
+  // One lookup for ajax metadata and one for the HTTP response. The metadata is
+  // not found but the HTTP response is found.
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
 }
 
 TEST_F(ProxyInterfaceTest, EtagMatching) {
@@ -478,10 +518,14 @@ TEST_F(ProxyInterfaceTest, EtagMatching) {
   EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
   EXPECT_STREQ("etag", response_headers.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ(kContent, text);
+  // One lookup for ajax metadata and one for the HTTP response. Neither are
+  // found.
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
-  ClearStats();
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
 
+  ClearStats();
   // The next response is served from cache.
   GoogleString text2;
   ResponseHeaders response_headers2;
@@ -489,8 +533,12 @@ TEST_F(ProxyInterfaceTest, EtagMatching) {
   EXPECT_EQ(HttpStatus::kOK, response_headers2.status_code());
   EXPECT_STREQ("etag", response_headers2.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ(kContent, text2);
+  // One lookup for ajax metadata and one for the HTTP response. The metadata is
+  // not found but the HTTP response is found.
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   ClearStats();
 
   // The Etag matches and a 304 is served out.
@@ -502,10 +550,14 @@ TEST_F(ProxyInterfaceTest, EtagMatching) {
   EXPECT_EQ(HttpStatus::kNotModified, response_headers3.status_code());
   EXPECT_STREQ(NULL, response_headers3.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ("", text3);
+  // One lookup for ajax metadata and one for the HTTP response. The metadata is
+  // not found but the HTTP response is found.
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  ClearStats();
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
 
+  ClearStats();
   // The Etag doesn't match and the full response is returned.
   GoogleString text4;
   ResponseHeaders response_headers4;
@@ -514,8 +566,12 @@ TEST_F(ProxyInterfaceTest, EtagMatching) {
   EXPECT_EQ(HttpStatus::kOK, response_headers4.status_code());
   EXPECT_STREQ("etag", response_headers4.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ(kContent, text4);
+  // One lookup for ajax metadata and one for the HTTP response. The metadata is
+  // not found but the HTTP response is found.
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
 }
 
 TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
@@ -534,10 +590,14 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kLastModified));
   EXPECT_EQ(kContent, text);
+  // One lookup for ajax metadata and one for the HTTP response. Neither are
+  // found.
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_misses());
-  ClearStats();
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
 
+  ClearStats();
   // The next response is served from cache.
   GoogleString text2;
   ResponseHeaders response_headers2;
@@ -546,10 +606,14 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
   EXPECT_STREQ(start_time_string_,
                response_headers2.Lookup1(HttpAttributes::kLastModified));
   EXPECT_EQ(kContent, text2);
+  // One lookup for ajax metadata and one for the HTTP response. The metadata is
+  // not found but the HTTP response is found.
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  ClearStats();
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
 
+  ClearStats();
   // The last modified timestamp matches and a 304 is served out.
   GoogleString text3;
   ResponseHeaders response_headers3;
@@ -559,10 +623,14 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
   EXPECT_EQ(HttpStatus::kNotModified, response_headers3.status_code());
   EXPECT_STREQ(NULL, response_headers3.Lookup1(HttpAttributes::kLastModified));
   EXPECT_EQ("", text3);
+  // One lookup for ajax metadata and one for the HTTP response. The metadata is
+  // not found but the HTTP response is found.
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  ClearStats();
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
 
+  ClearStats();
   // The last modified timestamp doesn't match and the full response is
   // returned.
   GoogleString text4;
@@ -574,7 +642,58 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
   EXPECT_STREQ(start_time_string_,
                response_headers4.Lookup1(HttpAttributes::kLastModified));
   EXPECT_EQ(kContent, text4);
+  // One lookup for ajax metadata and one for the HTTP response. The metadata is
+  // not found but the HTTP response is found.`
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+}
+
+TEST_F(ProxyInterfaceTest, AjaxRewritingForCss) {
+  ResponseHeaders headers;
+  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
+  headers.SetDate(MockTimer::kApr_5_2010_ms);
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.css"), headers, kCssContent);
+
+  // The first response served by the fetcher and is not rewritten. An ajax
+  // rewrite is triggered.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.css", true, &text, &response_headers);
+
+  EXPECT_STREQ(max_age_300_,
+               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_300s_string_,
+               response_headers.Lookup1(HttpAttributes::kExpires));
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_EQ(kCssContent, text);
+  // One lookup for ajax metadata, one for the HTTP response and one by the css
+  // filter which looks up metadata while rewriting. None are found.
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+
+  ClearStats();
+  // The rewrite is complete and the optimized version is served.
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.css", true, &text, &response_headers);
+
+  EXPECT_STREQ(max_age_300_,
+               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_300s_string_,
+               response_headers.Lookup1(HttpAttributes::kExpires));
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_EQ(kMinimizedCssContent, text);
+  // One hit for ajax metadata and one for the rewritten HTTP response.
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, lru_cache()->num_misses());
 }
 

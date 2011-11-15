@@ -359,7 +359,7 @@ class RewriteContext::FetchContext {
       }
     }
 
-    callback_->Done(ok);
+    rewrite_context_->FetchCallbackDone(ok);
   }
 
   // This is used in case we used a metadata cache to find an alternative URL
@@ -381,19 +381,11 @@ class RewriteContext::FetchContext {
   // for main rewrite when background rewrite is detached.
   void FetchFallbackDoneImpl(const StringPiece& contents,
                              ResponseHeaders* headers) {
-    response_headers_->CopyFrom(*headers);
-    response_headers_->Sanitize();
+    rewrite_context_->FixFetchFallbackHeaders(headers);
 
-    // Shorten cache length, and prevent proxies caching this, as it's under
-    // the "wrong" URL.
-    const int64 kMaxWrongHashTtlMs = ResponseHeaders::kImplicitCacheTtlMs;
-    response_headers_->SetDateAndCaching(
-        headers->date_ms(),
-        std::min(headers->cache_ttl_ms(), kMaxWrongHashTtlMs),
-        ", private");
-    response_headers_->ComputeCaching();
+    response_headers_->CopyFrom(*headers);
     bool ok = writer_->Write(contents, handler_);
-    callback_->Done(ok);
+    rewrite_context_->FetchCallbackDone(ok);
   }
 
   void set_requested_hash(const StringPiece& hash) {
@@ -457,7 +449,8 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     ok_to_write_output_partitions_(true),
     was_too_busy_(false),
     slow_(false),
-    revalidate_ok_(true) {
+    revalidate_ok_(true),
+    notify_driver_on_fetch_done_(false) {
   partitions_.reset(new OutputPartitions);
 }
 
@@ -1370,6 +1363,23 @@ GoogleString RewriteContext::CacheKey() const {
   return key;
 }
 
+bool RewriteContext::DecodeFetchUrls(
+    const OutputResourcePtr& output_resource,
+    MessageHandler* message_handler,
+    GoogleUrlStarVector* url_vector) {
+  GoogleUrl base(output_resource->decoded_base());
+  StringVector urls;
+  if (encoder()->Decode(output_resource->name(), &urls, resource_context_.get(),
+                        message_handler)) {
+    for (int i = 0, n = urls.size(); i < n; ++i) {
+      GoogleUrl* url = new GoogleUrl(base, urls[i]);
+      url_vector->push_back(url);
+    }
+    return true;
+  }
+  return false;
+}
+
 bool RewriteContext::Fetch(
     const OutputResourcePtr& output_resource,
     Writer* response_writer,
@@ -1378,25 +1388,31 @@ bool RewriteContext::Fetch(
     UrlAsyncFetcher::Callback* callback) {
   // Decode the URLs required to execute the rewrite.
   bool ret = false;
-  StringVector urls;
-  GoogleUrl base(output_resource->decoded_base());
   RewriteDriver* driver = Driver();
   driver->InitiateFetch(this);
-  if (encoder()->Decode(output_resource->name(), &urls, resource_context_.get(),
-                        message_handler)) {
-    for (int i = 0, n = urls.size(); i < n; ++i) {
-      GoogleUrl url(base, urls[i]);
-      if (!url.is_valid()) {
-        return false;
+  GoogleUrlStarVector url_vector;
+  if (DecodeFetchUrls(output_resource, message_handler, &url_vector)) {
+    bool is_valid = true;
+    for (int i = 0, n = url_vector.size(); i < n; ++i) {
+      GoogleUrl* url = url_vector[i];
+      if (!url->is_valid()) {
+        is_valid = false;
+        break;
       }
-      ResourcePtr resource(driver->CreateInputResource(url));
+      ResourcePtr resource(driver->CreateInputResource(*url));
       if (resource.get() == NULL) {
         // TODO(jmarantz): bump invalid-input-resource count
-        return false;
+         is_valid = false;
+         break;
       }
       ResourceSlotPtr slot(new FetchResourceSlot(resource));
       AddSlot(slot);
     }
+    STLDeleteContainerPointers(url_vector.begin(), url_vector.end());
+    if (!is_valid) {
+      return false;
+    }
+
     SetPartitionKey();
     fetch_.reset(
         new FetchContext(this, response_writer, response_headers, callback,
@@ -1473,6 +1489,15 @@ void RewriteContext::FetchFallbackCacheDone(HTTPCache::FindResult result,
   }
 }
 
+void RewriteContext::FetchCallbackDone(bool success) {
+  RewriteDriver* notify_driver =
+      notify_driver_on_fetch_done_ ? Driver() : NULL;
+  fetch_callback()->Done(success);
+  if (notify_driver != NULL) {
+    notify_driver->FetchComplete();
+  }
+}
+
 void RewriteContext::StartFetch() {
   // If we have an on-the-fly resource, we almost always want to reconstruct it
   // --- there will be no shortcuts in the metadata cache unless the rewrite
@@ -1518,6 +1543,40 @@ ResourceManager* RewriteContext::Manager() const {
 
 const RewriteOptions* RewriteContext::Options() {
   return Driver()->options();
+}
+
+void RewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
+  if (headers->Sanitize()) {
+    headers->ComputeCaching();
+  }
+
+  // Shorten cache length, and prevent proxies caching this, as it's under
+  // the "wrong" URL.
+  headers->SetDateAndCaching(
+      headers->date_ms(),
+      std::min(headers->cache_ttl_ms(), ResponseHeaders::kImplicitCacheTtlMs),
+      ",private");
+  headers->ComputeCaching();
+}
+
+Writer* RewriteContext::fetch_writer() {
+  DCHECK(fetch_.get() != NULL);
+  return fetch_->writer_;
+}
+
+ResponseHeaders* RewriteContext::fetch_response_headers() {
+  DCHECK(fetch_.get() != NULL);
+  return fetch_->response_headers_;
+}
+
+UrlAsyncFetcher::Callback* RewriteContext::fetch_callback() {
+  DCHECK(fetch_.get() != NULL);
+  return fetch_->callback_;
+}
+
+MessageHandler* RewriteContext::fetch_message_handler() {
+  DCHECK(fetch_.get() != NULL);
+  return fetch_->handler_;
 }
 
 }  // namespace net_instaweb

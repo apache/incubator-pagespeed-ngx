@@ -23,6 +23,7 @@
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -109,10 +110,18 @@ class RewriteFilter : public CommonFilter {
   virtual bool HasAsyncFlow() const;
 
   // Generates a RewriteContext appropriate for this filter.  This will only
-  // be called if in asynchronous mode, for filters that support asynchrous
+  // be called if in asynchronous mode, for filters that support asynchronous
   // mode.  Default implementation return NULL.  This must be overridden by
   // filters when they add async support.  This is used to implement Fetch.
   virtual RewriteContext* MakeRewriteContext();
+
+  // Generates a nested RewriteContext appropriate for this filter.  This will
+  // only be called if in asynchronous mode, for filters that support
+  // asynchronous mode.  Default implementation returns NULL.  This must be
+  // overridden by filters when they add async support.  This is used to
+  // implement ajax rewriting.
+  virtual RewriteContext* MakeNestedRewriteContext(
+      RewriteContext* parent, const ResourceSlotPtr& slot);
 
  protected:
   GoogleString filter_prefix_;  // Prefix that should be used in front of all

@@ -100,16 +100,17 @@ const char CssFilter::kMinifiedBytesSaved[] = "css_filter_minified_bytes_saved";
 const char CssFilter::kParseFailures[] = "css_filter_parse_failures";
 
 CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
+                            RewriteContext* parent,
                             CacheExtender* cache_extender,
                             ImageRewriteFilter* image_rewriter,
                             ImageCombineFilter* image_combiner,
                             ResourceContext* context)
-    : SingleRewriteContext(driver, NULL /* no parent */, context),
+    : SingleRewriteContext(driver, parent, context),
       filter_(filter),
       driver_(driver),
       image_rewriter_(
-          new CssImageRewriterAsync(
-              this, driver, cache_extender, image_rewriter, image_combiner)),
+          new CssImageRewriterAsync(this, filter->driver_, cache_extender,
+                                    image_rewriter, image_combiner)),
       have_nested_rewrites_(false),
       rewrite_inline_element_(NULL),
       rewrite_inline_char_node_(NULL),
@@ -118,6 +119,12 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
   css_base_gurl_.Reset(filter_->decoded_base_url());
   DCHECK(css_base_gurl_.is_valid());
   css_trim_gurl_.Reset(css_base_gurl_);
+
+  if (parent != NULL) {
+    // If the context is nested.
+    DCHECK(driver_ == NULL);
+    driver_ = filter_->driver_;
+  }
 }
 
 CssFilter::Context::~Context() {
@@ -316,7 +323,10 @@ GoogleString CssFilter::Context::CacheKey() const {
 
   // TODO(morlovich): Make the quirks bit part of the actual output resource
   // name; as ignoring it on the fetch path is unsafe.
-  StrAppend(&key, driver_->doctype().IsXhtml() ? "X" : "h");
+  // TODO(nikhilmadan): For ajax rewrites, be conservative and assume its XHTML.
+  // Is this right?
+  StrAppend(&key, has_parent() ||
+            driver_->doctype().IsXhtml() ? "X" : "h");
   return key;
 }
 
@@ -404,7 +414,7 @@ void CssFilter::StartElementImpl(HtmlElement* element) {
       if (element_style != NULL &&
           (!check_for_url || CssTagScanner::HasUrl(element_style->value()))) {
         if (HasAsyncFlow()) {
-          Context* context = MakeContext();
+          Context* context = MakeContext(driver_, NULL);
           context->StartAttributeRewrite(element, element_style);
         } else {
           GoogleString new_content;
@@ -443,7 +453,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
       GoogleString new_content;
 
       if (HasAsyncFlow()) {
-        Context* context = MakeContext();
+        Context* context = MakeContext(driver_, NULL);
         context->StartInlineRewrite(element, style_char_node_);
       } else if (RewriteCssText(NULL /* no async context*/,
                                 driver_->base_url(), driver_->base_url(),
@@ -469,7 +479,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
       if (element_href != NULL) {
         // If it has a href= attribute
         if (HasAsyncFlow()) {
-          Context* context = MakeContext();
+          Context* context = MakeContext(driver_, NULL);
           context->StartExternalRewrite(element, element_href);
         } else {
           GoogleString new_url;
@@ -507,7 +517,10 @@ TimedBool CssFilter::RewriteCssText(Context* context,
   // If we think this is XHTML, turn off quirks-mode so that we don't "fix"
   // things we shouldn't.
   // TODO(sligocki): We might need to do this in other cases too.
-  if (driver_->doctype().IsXhtml()) {
+  // TODO(nikhilmadan): For ajax rewrites, be conservative and assume its XHTML.
+  // Is this right?
+  if ((context != NULL && context->has_parent()) ||
+      driver_->doctype().IsXhtml()) {
     parser.set_quirks_mode(false);
   }
   // Create a stylesheet even if given declarations so that we don't need
@@ -732,17 +745,18 @@ bool CssFilter::HasAsyncFlow() const {
   return driver_->asynchronous_rewrites();
 }
 
-CssFilter::Context* CssFilter::MakeContext() {
+CssFilter::Context* CssFilter::MakeContext(RewriteDriver* driver,
+                                           RewriteContext* parent) {
   ResourceContext* resource_context = new ResourceContext;
   resource_context->set_inline_images(
       driver_->UserAgentSupportsImageInlining());
   resource_context->set_attempt_webp(driver_->UserAgentSupportsWebp());
-  return new Context(this, driver_, cache_extender_,
+  return new Context(this, driver, parent, cache_extender_,
                      image_rewrite_filter_, image_combiner_, resource_context);
 }
 
 RewriteContext* CssFilter::MakeRewriteContext() {
-  return MakeContext();
+  return MakeContext(driver_, NULL);
 }
 
 const UrlSegmentEncoder* CssFilter::encoder() const {
@@ -751,6 +765,13 @@ const UrlSegmentEncoder* CssFilter::encoder() const {
 
 const UrlSegmentEncoder* CssFilter::Context::encoder() const {
   return filter_->encoder();
+}
+
+RewriteContext* CssFilter::MakeNestedRewriteContext(
+    RewriteContext* parent, const ResourceSlotPtr& slot) {
+  RewriteContext* context = MakeContext(NULL, parent);
+  context->AddSlot(slot);
+  return context;
 }
 
 }  // namespace net_instaweb

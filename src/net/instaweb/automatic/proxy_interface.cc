@@ -306,7 +306,8 @@ void ProxyInterface::ProxyRequestCallback(bool is_resource_fetch,
     ResourceFetch::Start(resource_manager_,
                          *request_url, *request_headers,
                          custom_options_success.first,
-                         response_headers, response_writer, callback);
+                         response_headers, response_writer, callback,
+                         proxy_fetch_factory_->server_version());
   } else {
     proxy_fetch_factory_->StartNewProxyFetch(
         request_url->Spec().as_string(), custom_headers,

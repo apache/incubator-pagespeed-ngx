@@ -261,6 +261,7 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultMaxUrlSegmentSize, &max_url_segment_size_);
   add_option(kMaxUrlSize, &max_url_size_);
   add_option(true, &enabled_);
+  add_option(false, &ajax_rewriting_enabled_);
   add_option(false, &botdetect_enabled_);
   add_option(true, &combine_across_paths_);
   add_option(false, &log_rewrite_timing_);

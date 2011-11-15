@@ -158,8 +158,6 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       pass_through_(true),
       started_parse_(false),
       start_time_us_(0),
-      custom_options_(custom_options),
-      driver_(NULL),  // Needs to be set in StartParse.
       queue_run_job_created_(false),
       mutex_(manager->thread_system()->NewMutex()),
       network_flush_outstanding_(false),
@@ -171,10 +169,26 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       idle_alarm_(NULL),
       factory_(factory),
       prepare_success_(false) {
-  if (const char* ua = request_headers.Lookup1(HttpAttributes::kUserAgent)) {
-    request_user_agent_.reset(new GoogleString(ua));
-  }
   request_headers_.CopyFrom(request_headers);
+  // Set RewriteDriver.
+  if (custom_options == NULL) {
+    driver_ = resource_manager_->NewRewriteDriver();
+  } else {
+    // NewCustomRewriteDriver takes ownership of custom_options_.
+    driver_ =
+        resource_manager_->NewCustomRewriteDriver(custom_options);
+  }
+
+  const char* user_agent = request_headers.Lookup1(HttpAttributes::kUserAgent);
+  if (user_agent != NULL) {
+    VLOG(1) << "Setting user-agent to " << user_agent;
+    driver_->set_user_agent(user_agent);
+  } else {
+    VLOG(1) << "User-agent empty";
+  }
+
+  VLOG(1) << "Attaching RewriteDriver " << driver_
+          << " to HtmlRewriter " << this;
 }
 
 ProxyFetch::~ProxyFetch() {
@@ -187,19 +201,6 @@ ProxyFetch::~ProxyFetch() {
 }
 
 bool ProxyFetch::StartParse() {
-  DCHECK(driver_ == NULL);
-
-  // Set RewriteDriver.
-  if (custom_options_ == NULL) {
-    driver_ = resource_manager_->NewRewriteDriver();
-  } else {
-    // NewCustomRewriteDriver takes ownership of custom_options_.
-    driver_ =
-        resource_manager_->NewCustomRewriteDriver(custom_options_.release());
-  }
-  VLOG(1) << "Attaching RewriteDriver " << driver_
-          << " to HtmlRewriter " << this;
-
   driver_->SetWriter(base_writer_);
   sequence_ = driver_->html_worker();
   driver_->set_response_headers_ptr(response_headers_);
@@ -211,29 +212,13 @@ bool ProxyFetch::StartParse() {
     LOG(ERROR) << "StartParse failed for URL: " << url_;
     return false;
   } else {
-    if (request_user_agent_.get() != NULL) {
-      VLOG(1) << "Setting user-agent to " << *request_user_agent_;
-      driver_->set_user_agent(*request_user_agent_);
-    } else {
-      VLOG(1) << "User-agent empty for url: " << url_;
-    }
     VLOG(1) << "Parse successfully started.";
     return true;
   }
 }
 
 const RewriteOptions* ProxyFetch::Options() {
-  // If driver_ is not yet constructed, we need to use the ResoruceManager's
-  // default options or custom options supplied to us.
-  // However, if driver_ has been constructed, then custom_options gets
-  // reset to NULL, so the logic here is a bit complicated.
-  if (driver_ != NULL) {
-    return driver_->options();
-  } else if (custom_options_.get() != NULL) {
-    return custom_options_.get();
-  } else {
-    return resource_manager_->global_options();
-  }
+  return driver_->options();
 }
 
 void ProxyFetch::HeadersComplete() {
@@ -243,53 +228,55 @@ void ProxyFetch::HeadersComplete() {
   // TODO(sligocki): Get these in the main flow.
   // Add, remove and update headers as appropriate.
   const RewriteOptions* options = Options();
-  bool is_html = response_headers_->DetermineContentType() == &kContentTypeHtml;
-  if (is_html && options->enabled()) {
-    started_parse_ = StartParse();
-    if (started_parse_) {
-      pass_through_ = false;
-      int64 ttl_ms;
-      GoogleString cache_control_suffix;
-      if ((options->max_html_cache_time_ms() == 0) ||
-          response_headers_->HasValue(
-              HttpAttributes::kCacheControl, "no-cache") ||
-          response_headers_->HasValue(
-              HttpAttributes::kCacheControl, "must-revalidate")) {
-        ttl_ms = 0;
-        cache_control_suffix = ", no-cache";
-        // We don't want to add no-store unless we have to.
-        // TODO(sligocki): Stop special-casing no-store, just preserve all
-        // Cache-Control identifiers except for restricting max-age and
-        // private/no-cache level.
-        if (response_headers_->HasValue(
-                HttpAttributes::kCacheControl, "no-store")) {
-          cache_control_suffix += ", no-store";
+  if (options->enabled()) {
+    bool is_html =
+        response_headers_->DetermineContentType() == &kContentTypeHtml;
+    if (is_html) {
+      started_parse_ = StartParse();
+      if (started_parse_) {
+        pass_through_ = false;
+        int64 ttl_ms;
+        GoogleString cache_control_suffix;
+        if ((options->max_html_cache_time_ms() == 0) ||
+            response_headers_->HasValue(
+                HttpAttributes::kCacheControl, "no-cache") ||
+            response_headers_->HasValue(
+                HttpAttributes::kCacheControl, "must-revalidate")) {
+          ttl_ms = 0;
+          cache_control_suffix = ", no-cache";
+          // We don't want to add no-store unless we have to.
+          // TODO(sligocki): Stop special-casing no-store, just preserve all
+          // Cache-Control identifiers except for restricting max-age and
+          // private/no-cache level.
+          if (response_headers_->HasValue(
+                  HttpAttributes::kCacheControl, "no-store")) {
+            cache_control_suffix += ", no-store";
+          }
+        } else {
+          ttl_ms = std::min(options->max_html_cache_time_ms(),
+                            response_headers_->cache_ttl_ms());
+          // TODO(sligocki): We defensively set Cache-Control: private, but if
+          // original HTML was publicly cacheable, we should be able to set
+          // the rewritten HTML as publicly cacheable likewise.
+          // NOTE: If we do allow "public", we need to deal with other
+          // Cache-Control quantifiers, like "proxy-revalidate".
+          cache_control_suffix = ", private";
         }
-      } else {
-        ttl_ms = std::min(options->max_html_cache_time_ms(),
-                          response_headers_->cache_ttl_ms());
-        // TODO(sligocki): We defensively set Cache-Control: private, but if
-        // original HTML was publicly cacheable, we should be able to set
-        // the rewritten HTML as publicly cacheable likewise.
-        // NOTE: If we do allow "public", we need to deal with other
-        // Cache-Control quantifiers, like "proxy-revalidate".
-        cache_control_suffix = ", private";
+        response_headers_->SetDateAndCaching(
+            response_headers_->date_ms(), ttl_ms, cache_control_suffix);
+        // TODO(sligocki): Support Etags.
+        response_headers_->RemoveAll(HttpAttributes::kEtag);
+        start_time_us_ = resource_manager_->timer()->NowUs();
+
+        // HTML sizes are likely to be altered by HTML rewriting.
+        response_headers_->RemoveAll(HttpAttributes::kContentLength);
+
+        // TODO(sligocki): see mod_instaweb.cc line 528, which strips
+        // Expires, Last-Modified and Content-MD5.  Perhaps we should
+        // do that here as well.
       }
-      response_headers_->SetDateAndCaching(
-          response_headers_->date_ms(), ttl_ms, cache_control_suffix);
-      // TODO(sligocki): Support Etags.
-      response_headers_->RemoveAll(HttpAttributes::kEtag);
-      start_time_us_ = resource_manager_->timer()->NowUs();
-
-      // HTML sizes are likely to be altered by HTML rewriting.
-      response_headers_->RemoveAll(HttpAttributes::kContentLength);
-
-      // TODO(sligocki): see mod_instaweb.cc line 528, which strips
-      // Expires, Last-Modified and Content-MD5.  Perhaps we should
-      // do that here as well.
-
-      response_headers_->Add(kPageSpeedHeader, factory_->server_version());
     }
+    response_headers_->Add(kPageSpeedHeader, factory_->server_version());
   }
 }
 
@@ -303,8 +290,13 @@ void ProxyFetch::StartFetch() {
 void ProxyFetch::DoFetch() {
   if (prepare_success_) {
     UrlAsyncFetcher* fetcher = factory_->ChooseCacheFetcher(Options());
-    fetcher->Fetch(url_, request_headers_, response_headers_,
-        factory_->handler_, this);
+    if (driver_->options()->ajax_rewriting_enabled()) {
+      driver_->set_async_fetcher(fetcher);
+      driver_->FetchResource(url_, request_headers_, response_headers_, this);
+    } else {
+      fetcher->Fetch(url_, request_headers_, response_headers_,
+                     factory_->handler_, this);
+    }
   } else {
     Done(false);
   }
@@ -478,9 +470,9 @@ void ProxyFetch::Finish(bool success) {
       return;
 
     } else {
-      // In the unlikely case that StartParse fails (invalid URL?)
-      // we must manually release driver_ (FinishParse usually does this).
-      resource_manager_->ReleaseRewriteDriver(driver_);
+      // In the unlikely case that StartParse fails (invalid URL?) or the
+      // resource is not HTML, we must manually mark the driver for cleanup.
+      driver_->Cleanup();
       driver_ = NULL;
     }
   }

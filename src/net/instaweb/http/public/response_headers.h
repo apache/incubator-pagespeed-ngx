@@ -119,6 +119,11 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
     SetTimeHeader(HttpAttributes::kLastModified, last_modified_ms);
   }
 
+  // Sets the cache-control max-age to the specified value leaving the remaining
+  // Cache-Control attributes the same. This also updates the Expires header
+  // appropriately. Note that all existing max-age values are removed.
+  void SetCacheControlMaxAge(int64 ttl_ms);
+
   // Removes cookie headers, and returns true if any changes were made.
   bool Sanitize();
 

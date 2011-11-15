@@ -212,6 +212,7 @@ function test_resource_ext_corruption() {
 # directive ModPagespeedForBots is off; otherwise image rewriting is
 # disabled for bots while other filters such as inline_css still work.
 function CheckBots() {
+  WGET_ARGS=""
   ON=$1
   COMPARE=$2
   USER_AGENT=$3
@@ -260,8 +261,6 @@ function CheckBots() {
 # use a statistics 'rewrite_cached_output_missed_deadline' to determine
 # whether the system is settled yet.
 function CheckBotTest() {
-  WGET_ARGS=""
-
   echo "$1: UserAgent is a bot; ModPagespeedDisableForBots=off"
   CheckBots 'off' '-lt' 'Googlebot/2.1' "$1"
   echo "$1: UserAgent is a bot; ModPagespeedDisableForBots=on"

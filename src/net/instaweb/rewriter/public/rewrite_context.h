@@ -38,6 +38,7 @@
 namespace net_instaweb {
 
 class CachedResult;
+class GoogleUrl;
 class InputInfo;
 class MessageHandler;
 class NamedLock;
@@ -187,8 +188,12 @@ class RewriteContext {
   // from metadata cache (including all prerequisites).
   bool slow() const { return slow_; }
 
+  // Returns true if this is a nested rewriter.
+  bool has_parent() const { return parent_ != NULL; }
+
  protected:
   typedef std::vector<InputInfo*> InputInfoStarVector;
+  typedef std::vector<GoogleUrl*> GoogleUrlStarVector;
 
   // The following methods are provided for the benefit of subclasses.
 
@@ -390,12 +395,42 @@ class RewriteContext {
   // callback.
   void DetachFetch();
 
+  // Decodes the output resource to find the resources to be fetched. The
+  // default behavior decodes the output resource name into multiple paths and
+  // absolutifies them with respect to the output resource base. Returns true if
+  // the decoding is successful and false otherwise.
+  virtual bool DecodeFetchUrls(const OutputResourcePtr& output_resource,
+                               MessageHandler* message_handler,
+                               GoogleUrlStarVector* url_vector);
+
+  // Fixes the headers resulting from a fetch fallback. This is called when a
+  // fetch fallback is found in cache. The default implementation strips cookies
+  // and sets the cache ttl to ResponseHeaders::kImplicitCacheTtlMs.
+  virtual void FixFetchFallbackHeaders(ResponseHeaders* headers);
+
   // Accessors for the nested rewrites.
   int num_nested() const { return nested_.size(); }
   RewriteContext* nested(int i) const { return nested_[i]; }
 
-  // Returns true if this is a nested rewriter.
-  bool has_parent() const { return parent_ != NULL; }
+  OutputPartitions* partitions() { return partitions_.get(); }
+
+  void set_notify_driver_on_fetch_done(bool value) {
+    notify_driver_on_fetch_done_ = value;
+  }
+
+  // Note that the following must only be called in the fetch flow.
+
+  // The writer for the fetch.
+  Writer* fetch_writer();
+
+  // The response headers for the fetch.
+  ResponseHeaders* fetch_response_headers();
+
+  // The callback for the fetch.
+  UrlAsyncFetcher::Callback* fetch_callback();
+
+  // The message handler for the fetch.
+  MessageHandler* fetch_message_handler();
 
  private:
   class OutputCacheCallback;
@@ -534,6 +569,10 @@ class RewriteContext {
   void FetchFallbackCacheDone(HTTPCache::FindResult result,
                               HTTPCache::Callback* data);
 
+  // Callback once the fetch is done. This calls Driver()->FetchComplete() if
+  // notify_driver_on_fetch_done is true.
+  void FetchCallbackDone(bool success);
+
   // To perform a rewrite, we need to have data for all of its input slots.
   ResourceSlotVector slots_;
 
@@ -647,6 +686,10 @@ class RewriteContext {
 
   // Starts at true, set to false if any content-change checks failed.
   bool revalidate_ok_;
+
+  // Boolean to indicate that the context should call driver()->FetchComplete()
+  // once fetch is done.
+  bool notify_driver_on_fetch_done_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };

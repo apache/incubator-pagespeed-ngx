@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/lru_cache.h"
@@ -209,6 +210,12 @@ Scheduler* TestRewriteDriverFactory::CreateScheduler() {
   timer();  // make sure mock_timer_ is created.
   mock_scheduler_ = new MockScheduler(thread_system(), mock_timer_);
   return mock_scheduler_;
+}
+
+RewriteOptions* TestRewriteDriverFactory::NewRewriteOptions() {
+  RewriteOptions* options = RewriteDriverFactory::NewRewriteOptions();
+  options->set_ajax_rewriting_enabled(false);
+  return options;
 }
 
 }  // namespace net_instaweb

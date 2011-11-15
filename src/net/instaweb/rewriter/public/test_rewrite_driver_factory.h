@@ -42,6 +42,7 @@ class MockScheduler;
 class MockTimer;
 class MockUrlFetcher;
 class RewriteDriver;
+class RewriteOptions;
 class Scheduler;
 class Timer;
 class UrlAsyncFetcher;
@@ -78,6 +79,9 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   MockScheduler* mock_scheduler() { return mock_scheduler_; }
   bool use_test_url_namer() const { return use_test_url_namer_; }
   void SetUseTestUrlNamer(bool x);
+
+  // Note that this disables ajax rewriting by default.
+  virtual RewriteOptions* NewRewriteOptions();
 
  protected:
   virtual Hasher* NewHasher();

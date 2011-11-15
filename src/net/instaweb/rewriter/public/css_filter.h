@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
@@ -106,10 +107,13 @@ class CssFilter : public RewriteSingleResourceFilter {
   virtual bool HasAsyncFlow() const;
   virtual RewriteContext* MakeRewriteContext();
   virtual const UrlSegmentEncoder* encoder() const;
+  virtual RewriteContext* MakeNestedRewriteContext(
+      RewriteContext* parent, const ResourceSlotPtr& slot);
 
  private:
   friend class Context;
-  Context* MakeContext();
+  Context* MakeContext(RewriteDriver* driver,
+                       RewriteContext* parent);
 
   TimedBool RewriteCssText(Context* context,
                            const GoogleUrl& css_base_gurl,
@@ -168,6 +172,7 @@ class CssFilter : public RewriteSingleResourceFilter {
 class CssFilter::Context : public SingleRewriteContext {
  public:
   Context(CssFilter* filter, RewriteDriver* driver,
+          RewriteContext* parent,
           CacheExtender* cache_extender,
           ImageRewriteFilter* image_rewriter,
           ImageCombineFilter* image_combiner,

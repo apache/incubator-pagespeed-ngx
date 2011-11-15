@@ -935,5 +935,47 @@ TEST_F(ResponseHeadersTest, MissingDateRemoveExpires) {
   EXPECT_TRUE(response_headers_.Lookup1(HttpAttributes::kExpires) == NULL);
 }
 
+TEST_F(ResponseHeadersTest, TestSetCacheControlMaxAge) {
+  response_headers_.SetStatusAndReason(HttpStatus::kOK);
+  response_headers_.SetDate(MockTimer::kApr_5_2010_ms);
+  response_headers_.Add(HttpAttributes::kCacheControl, "max-age=0, no-cache");
+  response_headers_.ComputeCaching();
+
+  response_headers_.SetCacheControlMaxAge(300000);
+
+  const GoogleString expected_headers = StrCat(
+      "HTTP/1.0 200 OK\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Expires: ", start_time_plus_5_minutes_string_, "\r\n"
+      "Cache-Control: max-age=300,no-cache\r\n"
+      "\r\n");
+  EXPECT_EQ(expected_headers, response_headers_.ToString());
+
+  response_headers_.RemoveAll(HttpAttributes::kCacheControl);
+  response_headers_.ComputeCaching();
+
+  response_headers_.SetCacheControlMaxAge(360000);
+  GoogleString expected_headers2 = StrCat(
+      "HTTP/1.0 200 OK\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Expires: ", start_time_plus_6_minutes_string_, "\r\n"
+      "Cache-Control: max-age=360\r\n"
+      "\r\n");
+  EXPECT_EQ(expected_headers2, response_headers_.ToString());
+
+  response_headers_.RemoveAll(HttpAttributes::kCacheControl);
+  response_headers_.Add(HttpAttributes::kCacheControl,
+                        "max-age=10,private,no-cache,max-age=20,max-age=30");
+  response_headers_.ComputeCaching();
+
+  response_headers_.SetCacheControlMaxAge(360000);
+  GoogleString expected_headers3 = StrCat(
+      "HTTP/1.0 200 OK\r\n"
+      "Date: ", start_time_string_, "\r\n"
+      "Expires: ", start_time_plus_6_minutes_string_, "\r\n"
+      "Cache-Control: max-age=360,private,no-cache\r\n"
+      "\r\n");
+  EXPECT_EQ(expected_headers3, response_headers_.ToString());
+}
 
 }  // namespace net_instaweb

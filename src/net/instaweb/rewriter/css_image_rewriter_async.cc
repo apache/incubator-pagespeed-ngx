@@ -88,8 +88,8 @@ void CssImageRewriterAsync::RewriteImage(
   if (options->Enabled(RewriteOptions::kRecompressImages) ||
       image_inline_max_bytes > 0) {
     context_->RegisterNested(
-        image_rewriter_->MakeNestedContext(image_inline_max_bytes,
-                                           context_, ResourceSlotPtr(slot)));
+        image_rewriter_->MakeNestedRewriteContextForCss(image_inline_max_bytes,
+            context_, ResourceSlotPtr(slot)));
   }
 
   if (options->Enabled(RewriteOptions::kExtendCache)) {

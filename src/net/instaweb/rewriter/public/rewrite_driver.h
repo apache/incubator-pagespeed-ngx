@@ -255,6 +255,12 @@ class RewriteDriver : public HtmlParse {
                      Writer* writer,
                      UrlAsyncFetcher::Callback* callback);
 
+  // Same as above, but accepts an AsyncFetch instead of a writer and callback.
+  bool FetchResource(const StringPiece& url,
+                     const RequestHeaders& request_headers,
+                     ResponseHeaders* response_headers,
+                     AsyncFetch* fetch);
+
   // See FetchResource.  There are two differences:
   //   1. It takes an OutputResource instead of a URL.
   //   2. It returns whether a fetch was queued or not.  This is safe
@@ -287,6 +293,7 @@ class RewriteDriver : public HtmlParse {
 
   FileSystem* file_system() { return file_system_; }
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }
+  UrlAsyncFetcher* async_fetcher() { return url_async_fetcher_; }
 
   ResourceManager* resource_manager() const { return resource_manager_; }
   Statistics* statistics() const;

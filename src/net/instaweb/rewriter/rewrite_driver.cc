@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 #include <cstdarg>
-#include <list>
 #include <map>
 #include <set>
 #include <utility>  // for std::pair
@@ -41,6 +40,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
+#include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
@@ -1127,7 +1127,41 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
   bool did_locking_;
 };
 
+class DriverFetcher : public UrlAsyncFetcher {
+ public:
+  explicit DriverFetcher(RewriteDriver* driver) : driver_(driver) {}
+  virtual ~DriverFetcher() {}
+
+  virtual bool StreamingFetch(const GoogleString& url,
+                              const RequestHeaders& request_headers,
+                              ResponseHeaders* response_headers,
+                              Writer* response_writer,
+                              MessageHandler* handler,
+                              Callback* callback) {
+    if (!driver_->FetchResource(url, request_headers, response_headers,
+                                response_writer, callback)) {
+      callback->Done(false);
+    }
+    return false;
+  }
+
+ private:
+  RewriteDriver* driver_;
+
+  DISALLOW_COPY_AND_ASSIGN(DriverFetcher);
+};
+
 }  // namespace
+
+bool RewriteDriver::FetchResource(
+    const StringPiece& url,
+    const RequestHeaders& request_headers,
+    ResponseHeaders* response_headers,
+    AsyncFetch* fetch) {
+  DriverFetcher driver_fetcher(this);
+  return driver_fetcher.Fetch(url.data(), request_headers, response_headers,
+                              message_handler(), fetch);
+}
 
 bool RewriteDriver::FetchResource(
     const StringPiece& url,
@@ -1149,6 +1183,19 @@ bool RewriteDriver::FetchResource(
     handled = true;
     FetchOutputResource(output_resource, filter, request_headers,
                         response_headers, writer, callback);
+  } else if (options()->ajax_rewriting_enabled()) {
+    // This is an ajax resource.
+    handled = true;
+    StringPiece base = gurl.AllExceptLeaf();
+    ResourceNamer namer;
+    output_resource.reset(new OutputResource(resource_manager_, base, base,
+        base, namer, NULL, options(), kRewrittenResource));
+    SetBaseUrlForFetch(url);
+    fetch_queued_ = true;
+    AjaxRewriteContext* context = new AjaxRewriteContext(this, url.data(),
+                                                         request_headers);
+    context->Fetch(output_resource, writer, response_headers,
+                   message_handler(), callback);
   }
   return handled;
 }

@@ -86,11 +86,13 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
  public:
   Context(int64 css_image_inline_max_bytes,
           ImageRewriteFilter* filter, RewriteDriver* driver,
-          RewriteContext* parent, ResourceContext* resource_context)
+          RewriteContext* parent, ResourceContext* resource_context,
+          bool is_css)
       : SingleRewriteContext(driver, parent, resource_context),
         css_image_inline_max_bytes_(css_image_inline_max_bytes),
         filter_(filter),
-        driver_(driver) {}
+        driver_(driver),
+        is_css_(is_css) {}
   virtual ~Context() {}
 
   virtual void Render();
@@ -104,6 +106,7 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   int64 css_image_inline_max_bytes_;
   ImageRewriteFilter* filter_;
   RewriteDriver* driver_;
+  bool is_css_;
   DISALLOW_COPY_AND_ASSIGN(Context);
 };
 
@@ -123,26 +126,24 @@ void ImageRewriteFilter::Context::Render() {
 
   CHECK_EQ(1, num_slots());
 
-  // We use automatic rendering for CSS, as we merely write out the improved
-  // URL, and manual for HTML, as we have to consider whether to inline, and
-  // may also add in width and height attributes.
   const CachedResult* result = output_partition(0);
   bool rewrote_url = false;
   ResourceSlot* resource_slot = slot(0).get();
-  if (!has_parent()) {
-    // We use manual rendering for HTML, as we have to consider whether to
-    // inline, and may also pass in width and height attributes.
-    HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(resource_slot);
-    rewrote_url = filter_->FinishRewriteImageUrl(
-        result, resource_context(),
-        html_slot->element(), html_slot->attribute());
-  } else {
-    // We assume the only kind of nesting that occurs is for CSS resources.
-    // If that's not true we will need to pass in creation context to
-    // distinguish other nested resources somehow.
+  if (is_css_) {
     CssResourceSlot* css_slot = static_cast<CssResourceSlot*>(resource_slot);
     rewrote_url = filter_->FinishRewriteCssImageUrl(css_image_inline_max_bytes_,
                                                     result, css_slot);
+  } else {
+    if (!has_parent()) {
+      // We use manual rendering for HTML, as we have to consider whether to
+      // inline, and may also pass in width and height attributes.
+      HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(
+          resource_slot);
+      rewrote_url = filter_->FinishRewriteImageUrl(
+          result, resource_context(),
+          html_slot->element(), html_slot->attribute());
+    }
+    // Use standard rendering in case the rewrite is nested and not inside CSS.
   }
   if (rewrote_url) {
     // We wrote out the URL ourselves; don't let the default handling mess it up
@@ -395,7 +396,8 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     if (input_resource.get() != NULL) {
       Context* context = new Context(0 /* No CSS inlining, it's html */,
                                      this, driver_, NULL /*not nested */,
-                                     resource_context.release());
+                                     resource_context.release(),
+                                     false /*not css */);
       ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
       context->AddSlot(slot);
       driver_->InitiateRewrite(context);
@@ -566,15 +568,24 @@ bool ImageRewriteFilter::HasAsyncFlow() const {
 RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
   return new Context(0 /*No CSS inlining, it's html */,
                      this, driver_, NULL /*not nested */,
-                     new ResourceContext());
+                     new ResourceContext(), false /*not css */);
 }
 
-RewriteContext* ImageRewriteFilter::MakeNestedContext(
+RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
     int64 css_image_inline_max_bytes,
     RewriteContext* parent, const ResourceSlotPtr& slot) {
   Context* context = new Context(css_image_inline_max_bytes,
                                  this, NULL /* driver*/, parent,
-                                 new ResourceContext);
+                                 new ResourceContext, true /*is css */);
+  context->AddSlot(slot);
+  return context;
+}
+
+RewriteContext* ImageRewriteFilter::MakeNestedRewriteContext(
+    RewriteContext* parent, const ResourceSlotPtr& slot) {
+  Context* context = new Context(0 /*No Css inling */, this, NULL /* driver*/,
+                                 parent, new ResourceContext,
+                                 false /*not css */);
   context->AddSlot(slot);
   return context;
 }

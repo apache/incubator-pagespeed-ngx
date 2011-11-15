@@ -596,6 +596,34 @@ void ResponseHeaders::ParseFirstLine(const StringPiece& first_line) {
   }
 }
 
+void ResponseHeaders::SetCacheControlMaxAge(int64 ttl_ms) {
+  // If the cache fields were not dirty before this call, recompute caching
+  // before returning.
+  bool recompute_caching = !cache_fields_dirty_;
+
+  SetTimeHeader(HttpAttributes::kExpires, date_ms() + ttl_ms);
+
+  ConstStringStarVector values;
+  Lookup(HttpAttributes::kCacheControl, &values);
+
+  GoogleString new_cache_control_value =
+      StrCat("max-age=", Integer64ToString(ttl_ms / Timer::kSecondMs));
+
+  for (int i = 0, n = values.size(); i < n; ++i) {
+    if (values[i] != NULL) {
+      StringPiece val(*values[i]);
+      if (!val.empty() && !StringCaseStartsWith(val, "max-age")) {
+        StrAppend(&new_cache_control_value, ",", val);
+      }
+    }
+  }
+  Replace(HttpAttributes::kCacheControl, new_cache_control_value);
+
+  if (recompute_caching) {
+    ComputeCaching();
+  }
+}
+
 namespace {
 
 const char* BoolToString(bool b) {

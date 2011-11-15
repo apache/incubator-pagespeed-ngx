@@ -434,6 +434,7 @@
       'sources': [
         'rewriter/add_head_filter.cc',
         'rewriter/add_instrumentation_filter.cc',
+        'rewriter/ajax_rewrite_context.cc',
         'rewriter/cache_extender.cc',
         'rewriter/common_filter.cc',
         'rewriter/css_combine_filter.cc',

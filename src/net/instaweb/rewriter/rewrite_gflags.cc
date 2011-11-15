@@ -67,6 +67,8 @@ DEFINE_int64(css_inline_max_bytes,
 DEFINE_int32(image_max_rewrites_at_once,
              net_instaweb::RewriteOptions::kDefaultImageMaxRewritesAtOnce,
              "Maximum number of images that will be rewritten simultaneously.");
+DEFINE_bool(ajax_rewriting_enabled, false, "Boolean to indicate whether ajax "
+            "rewriting is enabled.");
 DEFINE_bool(log_rewrite_timing, false, "Log time taken by rewrite filters.");
 
 DEFINE_int64(max_html_cache_time_ms,
@@ -166,6 +168,7 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_image_max_rewrites_at_once(
         FLAGS_image_max_rewrites_at_once);
   }
+
   if (WasExplicitlySet("log_rewrite_timing")) {
     options->set_log_rewrite_timing(FLAGS_log_rewrite_timing);
   }
@@ -186,6 +189,12 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_image_jpeg_recompress_quality(
         FLAGS_image_jpeg_recompress_quality);
   }
+
+  // TODO(nikhilmadan): Check if this is explicitly set. Since this has been
+  // disabled by default because of potential conflicts with Apache, we are
+  // forcing this to be set in the default options.
+  options->set_ajax_rewriting_enabled(FLAGS_ajax_rewriting_enabled);
+
   RewriteOptions::RewriteLevel rewrite_level;
   if (options->ParseRewriteLevel(FLAGS_rewrite_level, &rewrite_level)) {
     options->SetRewriteLevel(rewrite_level);

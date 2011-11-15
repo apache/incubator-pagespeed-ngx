@@ -201,14 +201,6 @@ class ProxyFetch : public AsyncFetch {
   // Statistics
   int64 start_time_us_;
 
-  // If we're given custom options, we store them here until
-  // we hand them over to the rewrite driver.
-  scoped_ptr<RewriteOptions> custom_options_;
-
-  // Similarly if we have a UA string in RequestHeaders, we'll store it here.
-  // (If not, this will be null).
-  scoped_ptr<GoogleString> request_user_agent_;
-
   // ProxyFetch is responsible for getting RewriteDrivers from the pool and
   // putting them back.
   RewriteDriver* driver_;

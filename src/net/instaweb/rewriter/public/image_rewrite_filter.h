@@ -65,11 +65,18 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
       int64 image_inline_max_bytes, const CachedResult* cached_result,
       GoogleString* data_url);
 
-  // Creates a nested rewrite for given parent and slot, and returns it.
-  // The result is not registered with the parent.
-  RewriteContext* MakeNestedContext(int64 css_image_inline_max_bytes,
-                                    RewriteContext* parent,
-                                    const ResourceSlotPtr& slot);
+  // Creates a nested rewrite for an image inside a CSS file with the given
+  // parent and slot, and returns it. The result is not registered with the
+  // parent.
+  RewriteContext* MakeNestedRewriteContextForCss(
+      int64 css_image_inline_max_bytes,
+      RewriteContext* parent,
+      const ResourceSlotPtr& slot);
+
+  // Creates a nested rewrite for the given parent and slot and returns it. The
+  // result is not registered with the parent.
+  virtual RewriteContext* MakeNestedRewriteContext(RewriteContext* parent,
+                                                   const ResourceSlotPtr& slot);
 
   // name for statistic used to bound rewriting work.
   static const char kImageOngoingRewrites[];
