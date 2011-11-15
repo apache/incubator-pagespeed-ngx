@@ -21,7 +21,6 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 
 #include <cstddef>                     // for size_t
-#include <cstdlib>
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
@@ -334,12 +333,16 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     cached->set_inlined_data(kResourceUrl);
   }
 
+  // Note: std::abs isn't portably applicable to 64-bits, due to the
+  // usual 'long long isn't C++' shenanigans.
+  static int64 Abs64(int64 v) {
+    return v >= 0 ? v : -v;
+  }
+
   // Expiration times are not entirely precise as some cache headers
   // have a 1 second resolution, so this permits such a difference.
   void VerifyWithinSecond(int64 time_a_ms, int64 time_b_ms) {
-    // Note: need to pass in 1 * since otherwise we get a link failure
-    // due to conversion of compile-time constant to const reference
-    EXPECT_GE(1 * Timer::kSecondMs, std::abs(time_a_ms - time_b_ms));
+    EXPECT_GE(Timer::kSecondMs, Abs64(time_a_ms - time_b_ms));
   }
 
   void VerifyValidCachedResult(const char* subtest_name, bool test_meta_data,

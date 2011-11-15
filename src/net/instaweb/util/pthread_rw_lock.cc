@@ -27,8 +27,10 @@ PthreadRWLock::PthreadRWLock() {
   // New writer lock call is given preference over existing reader lock calls,
   // so that writer lock call will never get starved. However, it is not allowed
   // if there exists any recursive reader lock call to prevent deadlocks.
+#ifdef linux
   pthread_rwlockattr_setkind_np(&attr_,
                                 PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);
+#endif
   pthread_rwlock_init(&rwlock_, &attr_);
 }
 
