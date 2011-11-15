@@ -382,9 +382,9 @@ void RewriteDriver::Flush() {
 }
 
 void RewriteDriver::FlushAsync(Function* callback) {
-  DCHECK(!flush_in_progress_);
   {
     ScopedMutex lock(inhibits_mutex_.get());
+    DCHECK(!flush_in_progress_);
     flush_in_progress_ = true;
   }
   flush_requested_ = false;
@@ -488,6 +488,7 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
   AppendEventsToQueue(&deferred_queue_);
   {
     ScopedMutex lock(inhibits_mutex_.get());
+    DCHECK(flush_in_progress_);
     flush_in_progress_ = false;
     inhibiting_event_ = NULL;
     if (uninhibit_reflush_requested_) {
