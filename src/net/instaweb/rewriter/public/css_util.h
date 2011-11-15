@@ -23,8 +23,14 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_UTIL_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_UTIL_H_
 
+#include <vector>
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+
+class UnicodeText;
 
 namespace Css {
 class Declarations;
@@ -81,6 +87,37 @@ class StyleExtractor {
   DimensionState state_;
   DISALLOW_COPY_AND_ASSIGN(StyleExtractor);
 };
+
+// Utility functions for handling CSS media types as vectors of strings.
+// There is an argument to use StringPiece's rather than GoogleString's here,
+// but CssFilter::FlattenImportsContext cannot use StringPiece's because it
+// doesn't keep the original strings, so copies in GoogleString's are required.
+
+// Convert a media string, from either a media attribute or after @import, to
+// a vector of media types. If any of the input media types are 'all' then an
+// empty vector is returned: 'all' means all media types are accepted so it
+// subsumes all other types, and an empty vector representation is most useful.
+void VectorizeMediaAttribute(const StringPiece& input_media,
+                             StringVector* output_vector);
+
+// Convert a vector of media types to a media string. If the input vector is
+// empty then the answer is 'all', the inverse of the vectorizing function
+// above; if you want the empty string then test the vector yourself. Otherwise
+// the answer is a comma-separated list of media types.
+GoogleString StringifyMediaVector(const StringVector& import_media);
+
+// Convert a vector of UnicodeText's (from Css::Import.media) to a vector of
+// UTF-8 GoogleString's for use of the above functions. Elements are trimmed
+// and any empty elements are ignored.
+void ConvertUnicodeVectorToStringVector(
+    const std::vector<UnicodeText>& in_vector,
+    StringVector* out_vector);
+
+// Convert a vector of UTF-8 GoogleString's to UnicodeText's. Elements are
+// trimmed and any empty elements are ignored.
+void ConvertStringVectorToUnicodeVector(
+    const StringVector& in_vector,
+    std::vector<UnicodeText>* out_vector);
 
 }  // css_util
 

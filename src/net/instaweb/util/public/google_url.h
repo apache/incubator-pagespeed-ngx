@@ -168,12 +168,18 @@ class GoogleUrl {
  private:
   explicit GoogleUrl(const GURL& gurl);
 
-  static size_t LeafEndPosition(const GURL &gurl);
-  static size_t LeafStartPosition(const GURL &gurl);
-  static size_t PathStartPosition(const GURL &gurl);
+  static size_t LeafEndPosition(const GURL& gurl);
+  static size_t LeafStartPosition(const GURL& gurl);
+  static size_t PathStartPosition(const GURL& gurl);
   size_t LeafEndPosition() const;
   size_t LeafStartPosition() const;
   size_t PathStartPosition() const;
+
+  // Resolves a URL against a base.  If the resultant URL has a path that starts
+  // with "//" this will "fix" the resolution by removing one of the slashes.
+  //
+  // Returns whether the resolution worked.
+  inline bool ResolveHelper(const GURL& base, const std::string& path_and_leaf);
 
   GURL gurl_;
 

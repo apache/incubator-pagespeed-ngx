@@ -61,19 +61,32 @@ GoogleUrl::GoogleUrl(const GoogleUrl& base, const char* str) {
   Reset(base, str);
 }
 
+bool GoogleUrl::ResolveHelper(const GURL& base, const std::string& url) {
+  gurl_ = base.Resolve(url);
+  bool ret = gurl_.is_valid();
+  if (ret) {
+    const StringPiece& path_and_leaf = PathAndLeaf();
+    if (path_and_leaf.starts_with("//")) {
+      GURL origin(Origin().as_string());
+      if (origin.is_valid()) {
+        gurl_ = origin.Resolve(path_and_leaf.substr(1).as_string());
+        ret = gurl_.is_valid();
+      }
+    }
+  }
+  return ret;
+}
+
 bool GoogleUrl::Reset(const GoogleUrl& base, const GoogleString& str) {
-  gurl_ = base.gurl_.Resolve(str);
-  return gurl_.is_valid();
+  return ResolveHelper(base.gurl_, str);
 }
 
 bool GoogleUrl::Reset(const GoogleUrl& base, const StringPiece& sp) {
-  gurl_ = base.gurl_.Resolve(sp.as_string());
-  return gurl_.is_valid();
+  return ResolveHelper(base.gurl_, sp.as_string());
 }
 
 bool GoogleUrl::Reset(const GoogleUrl& base, const char* str) {
-  gurl_ = base.gurl_.Resolve(str);
-  return gurl_.is_valid();
+  return ResolveHelper(base.gurl_, str);
 }
 
 GoogleUrl* GoogleUrl::CopyAndAddQueryParam(const StringPiece& name,

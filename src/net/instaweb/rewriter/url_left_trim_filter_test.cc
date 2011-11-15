@@ -282,8 +282,7 @@ TEST_F(UrlLeftTrimFilterTest, DoubleSlashPath) {
 
 TEST_F(UrlLeftTrimFilterTest, DoubleSlashBeginningPath) {
   SetFilterBaseUrl("http://foo.bar/index.html");
-  // TODO(jmaessen): strip protocol given user-agent-sensitive trimming
-  OneTrim(false, "http://foo.bar//other.html", "http://foo.bar//other.html");
+  OneTrim(true, "http://foo.bar//other.html", "other.html");
 }
 
 TEST_F(UrlLeftTrimFilterTest, TripleSlashPath) {

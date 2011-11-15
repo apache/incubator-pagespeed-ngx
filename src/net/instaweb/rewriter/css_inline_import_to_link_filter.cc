@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/css_inline_import_to_link_filter.h"
 
+#include <cstddef>
 #include <algorithm>
 #include <vector>
 
@@ -28,6 +29,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -47,70 +49,6 @@ const char kCssImportsToLinks[] = "css_imports_to_links";
 // check to see if it's an @import, because URLs are generally considered to
 // be at most 2083 bytes (an IE limitation).
 const size_t kMaxCssToSave = 4096;
-
-void ConvertUnicodeVectorToStringPieceVector(
-    const std::vector<UnicodeText>& in_vector,
-    StringPieceVector* out_vector) {
-  std::vector<UnicodeText>::const_iterator iter;
-  for (iter = in_vector.begin(); iter != in_vector.end(); ++iter) {
-    out_vector->push_back(StringPiece(iter->utf8_data(), iter->utf8_length()));
-  }
-}
-
-void VectorizeMediaAttribute(const StringPiece& input_media,
-                             StringPieceVector* output_vector) {
-  // Split on commas, trim whitespace from each element found.
-  SplitStringPieceToVector(
-      input_media, ",", output_vector, false);
-  for (std::vector<StringPiece>::iterator iter = output_vector->begin();
-       iter != output_vector->end(); ++iter) {
-    TrimWhitespace(&(*iter));
-  }
-  return;
-}
-
-bool CompareMediaVectors(const StringPieceVector& style_media,
-                         const StringPieceVector& import_media) {
-  // No import media is ok since we'll just use whatever the style has.
-  if (import_media.empty()) return true;
-
-  // Otherwise, sort both lists and compare elements, ignoring empty elements.
-  StringPieceVector style_copy(style_media);
-  StringPieceVector import_copy(import_media);
-  std::sort(style_copy.begin(), style_copy.end());
-  std::sort(import_copy.begin(), import_copy.end());
-  std::vector<StringPiece>::iterator style_iter = style_copy.begin();
-  std::vector<StringPiece>::iterator import_iter = import_copy.begin();
-  while (style_iter != style_copy.end() && import_iter != import_copy.end()) {
-    if (style_iter->empty()) {
-      ++style_iter;
-    } else if (import_iter->empty()) {
-      ++import_iter;
-    } else if (*style_iter == *import_iter) {
-      ++style_iter;
-      ++import_iter;
-    } else {
-      return false;
-    }
-  }
-  while (style_iter != style_copy.end() && style_iter->empty()) {
-    ++style_iter;
-  }
-  while (import_iter != import_copy.end() && import_iter->empty()) {
-    ++import_iter;
-  }
-  return (style_iter == style_copy.end() && import_iter == import_copy.end());
-}
-
-GoogleString StringifyMediaVector(const StringPieceVector& import_media) {
-  if (import_media.empty()) return "";
-  StringPieceVector::const_iterator iter = import_media.begin();
-  GoogleString result(iter->data(), iter->length());
-  for (++iter; iter != import_media.end(); ++iter) {
-    result = StrCat(result, ",", *iter);
-  }
-  return result;
-}
 
 }  // namespace
 
@@ -214,17 +152,21 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
         } else {
           // If the style has media then the @import may specify no media or the
           // same media; if the style has no media use the @import's, if any.
-          StringPieceVector import_media;
-          ConvertUnicodeVectorToStringPieceVector(import->media, &import_media);
-
+          StringVector import_media;
+          css_util::ConvertUnicodeVectorToStringVector(import->media,
+                                                       &import_media);
           if (media_attribute != NULL) {
-            StringPieceVector style_media;
-            VectorizeMediaAttribute(media_attribute->value(), &style_media);
-            import_media_ok = CompareMediaVectors(style_media, import_media);
+            StringVector style_media;
+            css_util::VectorizeMediaAttribute(media_attribute->value(),
+                                              &style_media);
+            std::sort(import_media.begin(), import_media.end());
+            std::sort(style_media.begin(), style_media.end());
+            import_media_ok = (style_media == import_media);
           } else {
             import_media_ok = true;
             // Set the media in the style so it's copied to the link below.
-            GoogleString media_text = StringifyMediaVector(import_media);
+            GoogleString media_text =
+                css_util::StringifyMediaVector(import_media);
             driver_->AddAttribute(style_element_, HtmlName::kMedia, media_text);
           }
         }

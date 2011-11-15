@@ -224,4 +224,14 @@ TEST_F(GoogleUrlTest, TestPort) {
   EXPECT_EQ(443, GoogleUrl("https://example.com").EffectiveIntPort());
 }
 
+TEST_F(GoogleUrlTest, TestExtraSlash) {
+  GoogleUrl base("http://www.example.com");
+  GoogleUrl example_extra_slash(
+      base, "http://www.example.com//extra_slash/index.html");
+  GoogleUrl a_extra_slash(base, "http://a.com//extra_slash/index.html");
+  EXPECT_STREQ("http://www.example.com/extra_slash/index.html",
+               example_extra_slash.Spec());
+  EXPECT_STREQ("http://a.com/extra_slash/index.html", a_extra_slash.Spec());
+}
+
 }  // namespace net_instaweb

@@ -49,6 +49,7 @@
         '<(DEPTH)/third_party/protobuf/src',
         '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
         '<(DEPTH)',
+        '<(DEPTH)/third_party/css_parser/src',
       ],
       'sources': [
         'automatic/proxy_interface_test.cc',
