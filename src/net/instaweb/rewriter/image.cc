@@ -530,7 +530,8 @@ bool ImageImpl::LoadOpenCvFromBuffer(const StringPiece& data) {
 bool ImageImpl::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
   // This is preferable to cvEncodeImage as it makes it easy to avoid a copy.
   // Note: period included with the extension on purpose.
-  return cv::imencode(content_type()->file_extension(), opencv_image_, *buf);
+  return cv::imencode(content_type()->file_extension(), cv::Mat(opencv_image_),
+                      *buf);
 }
 
 #else

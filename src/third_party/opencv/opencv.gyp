@@ -17,7 +17,6 @@
     'opencv_root': '<(DEPTH)/third_party/opencv',
     'opencv_src': '<(opencv_root)/src',
     'opencv_gen': '<(DEPTH)/third_party/opencv/gen/arch/<(OS)/<(target_arch)',
-    'opencv_system_include%': '/usr/include/opencv',
     'use_system_opencv%': 0,
   },
   'conditions': [
@@ -504,8 +503,8 @@
             'defines': [
               'USE_SYSTEM_OPENCV',
             ],
-            'include_dirs': [
-              '<(opencv_system_include)',
+            'cflags+': [
+              '<!@(pkg-config --cflags-only-I opencv)',
             ],
           },
           'defines': [
