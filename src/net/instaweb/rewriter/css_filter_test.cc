@@ -433,8 +433,32 @@ TEST_P(CssFilterTest, ComplexCssTest) {
 
     // Parse and serialize "\n" correctly as "n" and "\A " correctly as newline.
     { "a { content: \"Special chars: \\n\\r\\t\\A \\D \\9\" }",
-      "a{content:\"Special chars: nrt\\A \\D \\9 \"}" }
+      "a{content:\"Special chars: nrt\\A \\D \\9 \"}" },
 
+    // Test some interesting combinations of @media.
+    {
+      "@media screen {"
+      "  body { counter-reset:section }"
+      "  h1 { counter-reset:subsection }"
+      "}"
+      "@media screen,printer { a { color:red } }"
+      "@media screen,printer { b { color:green } }"
+      "@media screen,printer { c { color:blue } }"
+      "@media screen         { d { color:black } }"
+      "@media screen,printer { e { color:white } }",
+
+      "@media screen{"
+      "body{counter-reset:section}"
+      "h1{counter-reset:subsection}"
+      "}"
+      "@media screen,printer{"
+      "a{color:red}"
+      "b{color:green}"
+      "c{color:#00f}"
+      "}"
+      "@media screen{d{color:#000}}"
+      "@media screen,printer{e{color:#fff}}",
+    },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

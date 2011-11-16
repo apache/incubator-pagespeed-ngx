@@ -135,6 +135,28 @@ void CssMinify::JoinMinifyIter(const Iterator& begin, const Iterator& end,
   }
 }
 
+template<>
+void CssMinify::JoinMinifyIter<Css::Rulesets::const_iterator>(
+    const Css::Rulesets::const_iterator& begin,
+    const Css::Rulesets::const_iterator& end,
+    const StringPiece& sep) {
+  // Go through the list of rulesets finding the contiguous subsets with the
+  // same set of media (f.ex [a b b b a a] -> [a] [b b b] [a a]). For each
+  // such subset, emit the start of the @media rule (if required), then emit
+  // each ruleset without an @media rule, separating them by the given 'sep',
+  // then emit the end of the @media rule (if required).
+  for (Css::Rulesets::const_iterator iter = begin; iter != end; ) {
+    Css::Rulesets::const_iterator first = iter;
+    MinifyRulesetMediaStart(**first);
+    MinifyRulesetIgnoringMedia(**first);
+    for (++iter; iter != end && (*first)->media() == (*iter)->media(); ++iter) {
+      Write(sep);
+      MinifyRulesetIgnoringMedia(**iter);
+    }
+    MinifyRulesetMediaEnd(**first);
+  }
+}
+
 template<typename Container>
 void CssMinify::JoinMediaMinify(const Container& container,
                                 const StringPiece& sep) {
@@ -180,18 +202,22 @@ void CssMinify::Minify(const Css::Import& import) {
   Write(";");
 }
 
-void CssMinify::Minify(const Css::Ruleset& ruleset) {
+void CssMinify::MinifyRulesetIgnoringMedia(const Css::Ruleset& ruleset) {
+  JoinMinify(ruleset.selectors(), ",");
+  Write("{");
+  JoinMinify(ruleset.declarations(), ";");
+  Write("}");
+}
+
+void CssMinify::MinifyRulesetMediaStart(const Css::Ruleset& ruleset) {
   if (!ruleset.media().empty()) {
     Write("@media ");
     JoinMediaMinify(ruleset.media(), ",");
     Write("{");
   }
+}
 
-  JoinMinify(ruleset.selectors(), ",");
-  Write("{");
-  JoinMinify(ruleset.declarations(), ";");
-  Write("}");
-
+void CssMinify::MinifyRulesetMediaEnd(const Css::Ruleset& ruleset) {
   if (!ruleset.media().empty()) {
     Write("}");
   }

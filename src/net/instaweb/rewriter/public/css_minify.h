@@ -77,13 +77,24 @@ class CssMinify {
   void Minify(const Css::Stylesheet& stylesheet);
   void Minify(const Css::Charsets& charsets);
   void Minify(const Css::Import& import);
-  void Minify(const Css::Ruleset& ruleset);
   void Minify(const Css::Selector& selector);
   void Minify(const Css::SimpleSelectors& sselectors, bool isfirst = false);
   void Minify(const Css::SimpleSelector& sselector);
   void Minify(const Css::Declaration& declaration);
   void Minify(const Css::Value& value);
   void Minify(const Css::FunctionParameters& parameters);
+
+  // Specializations for Ruleset to handle common @media rules.
+  // Start followed by Ignoring followed by End gives the same result as the
+  // Ruleset version of Minify above.
+
+  // Emits the ruleset's selectors and declarations without wrapping them in
+  // an @media rule.
+  void MinifyRulesetIgnoringMedia(const Css::Ruleset& ruleset);
+  // Emits the start of the @media rule iff required (non-empty media set).
+  void MinifyRulesetMediaStart(const Css::Ruleset& ruleset);
+  // Emits the end of the @media rule iff required (non-empty media set).
+  void MinifyRulesetMediaEnd(const Css::Ruleset& ruleset);
 
   Writer* writer_;
   MessageHandler* handler_;
