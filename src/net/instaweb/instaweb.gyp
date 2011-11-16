@@ -89,6 +89,9 @@
         '<(protoc_out_dir)/<(instaweb_protoc_subdir)/cached_result.pb.cc',
         'rewriter/cached_result.proto',
       ],
+      'dependencies': [
+        'instaweb_spriter_pb',
+      ],
       'includes': [
         'protoc.gypi',
       ],
