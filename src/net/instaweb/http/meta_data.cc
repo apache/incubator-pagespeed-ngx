@@ -39,6 +39,7 @@ const char HttpAttributes::kIfNoneMatch[] = "If-None-Match";
 const char HttpAttributes::kLastModified[] = "Last-Modified";
 const char HttpAttributes::kLocation[] = "Location";
 const char HttpAttributes::kNoCache[] = "max-age=0, no-cache";
+const char HttpAttributes::kPragma[] = "Pragma";
 const char HttpAttributes::kReferer[] = "Referer";  // sic
 const char HttpAttributes::kServer[] = "Server";
 const char HttpAttributes::kSetCookie[] = "Set-Cookie";
