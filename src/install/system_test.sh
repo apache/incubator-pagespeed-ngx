@@ -281,7 +281,7 @@ echo TEST: Page Speed Automatic is running and writes the expected header.
 echo $WGET_DUMP $EXAMPLE_ROOT/combine_css.html
 
 # Due to the extreme pickiness of our metadata cache, and the negative
-# checks done in bot-testing (checking for the absense of image rewrites)
+# checks done in bot-testing (checking for the absence of image rewrites)
 # we need to warm the metadata cache with a dry run.  Here we do all the
 # bot tests, but we don't expect the outputs to be correct yet.  We will
 # need to perform new image compressions for every option-change.
@@ -326,11 +326,11 @@ grep -qi 'Cache-Control: max-age=0, no-cache' $HTTP_FILE
 check [ $? = 0 ]
 
 # TODO(sligocki): We should have Expires headers in HTML just like resources.
-#echo Checking for absense of Expires
+#echo Checking for absence of Expires
 #grep -qi 'Expires' $HTTP_FILE
 #check [ $? != 0 ]
 
-echo Checking for absense of X-Frame-Options: SAMEORIGIN
+echo Checking for absence of X-Frame-Options: SAMEORIGIN
 grep -i "X-Frame-Options" $HTTP_FILE
 check [ $? != 0 ]
 
