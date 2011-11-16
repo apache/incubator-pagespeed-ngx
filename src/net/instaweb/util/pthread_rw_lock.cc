@@ -24,9 +24,13 @@ namespace net_instaweb {
 
 PthreadRWLock::PthreadRWLock() {
   pthread_rwlockattr_init(&attr_);
-  // New writer lock call is given preference over existing reader lock calls,
-  // so that writer lock call will never get starved. However, it is not allowed
-  // if there exists any recursive reader lock call to prevent deadlocks.
+  // POSIX does not provide any sort of guarantee that prevents writer
+  // starvation for reader-writer locks. On, Linux one can avoid
+  // writer starvation as long as readers are non-recursive via the
+  // call below. (PTHREAD_RWLOCK_PREFER_WRITER_NP does not work).
+  //
+  // Other OS's (FreeBSD, Darwin, OpenSolaris) documentation suggests
+  // that they prefer writers by default.
 #ifdef linux
   pthread_rwlockattr_setkind_np(&attr_,
                                 PTHREAD_RWLOCK_PREFER_WRITER_NONRECURSIVE_NP);

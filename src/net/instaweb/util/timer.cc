@@ -22,8 +22,17 @@
 
 namespace net_instaweb {
 
-const int64 Timer::kYearMs;
 const int64 Timer::kSecondMs;
+const int64 Timer::kMsUs;
+const int64 Timer::kSecondUs;
+const int64 Timer::kSecondNs;
+const int64 Timer::kMinuteMs;
+const int64 Timer::kMinuteUs;
+const int64 Timer::kHourMs;
+const int64 Timer::kDayMs;
+const int64 Timer::kWeekMs;
+const int64 Timer::kMonthMs;
+const int64 Timer::kYearMs;
 
 Timer::~Timer() {
 }
