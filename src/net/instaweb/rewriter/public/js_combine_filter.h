@@ -28,10 +28,10 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 
 namespace net_instaweb {
@@ -71,11 +71,14 @@ class JsCombineFilter : public RewriteFilter {
 
   // rewrite_driver is the context owning us, and filter_id is the ID we
   // are registered under.
-  JsCombineFilter(RewriteDriver* rewrite_driver, const StringPiece& filter_id);
+  explicit JsCombineFilter(RewriteDriver* rewrite_driver);
   virtual ~JsCombineFilter();
 
   // Registers the provided statistics variable names with 'statistics'.
   static void Initialize(Statistics* statistics);
+  virtual const char* id() const {
+    return RewriteOptions::kJavascriptCombinerId;
+  }
 
  protected:
   // RewriteFilter overrides --- HTML parsing event handlers.

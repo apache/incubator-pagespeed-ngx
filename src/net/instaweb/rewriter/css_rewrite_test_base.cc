@@ -98,7 +98,7 @@ GoogleString CssRewriteTestBase::ExpectedRewrittenUrl(
 void CssRewriteTestBase::GetNamerForCss(const StringPiece& id,
                                         const GoogleString& expected_css_output,
                                         ResourceNamer* namer) {
-  namer->set_id(RewriteDriver::kCssFilterId);
+  namer->set_id(RewriteOptions::kCssFilterId);
   namer->set_hash(hasher()->Hash(expected_css_output));
   namer->set_ext("css");
   namer->set_name(StrCat(id, ".css"));

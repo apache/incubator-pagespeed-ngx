@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -50,14 +51,14 @@ class WorkBound;
 //     rewritten urls, when in general those urls will be in a different domain.
 class ImageRewriteFilter : public RewriteSingleResourceFilter {
  public:
-  ImageRewriteFilter(RewriteDriver* driver,
-                     StringPiece path_prefix);
+  explicit ImageRewriteFilter(RewriteDriver* driver);
   virtual ~ImageRewriteFilter();
   static void Initialize(Statistics* statistics);
   virtual void StartDocumentImpl() {}
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "ImageRewrite"; }
+  virtual const char* id() const { return RewriteOptions::kImageCompressionId; }
 
   // Can we inline resource?  If so, encode its contents into the data_url,
   // otherwise leave data_url alone.

@@ -102,14 +102,6 @@ class RewriteDriver : public HtmlParse {
     kTrue = 1
   };
 
-  static const char kCssCombinerId[];
-  static const char kCssFilterId[];
-  static const char kCacheExtenderId[];
-  static const char kImageCombineId[];
-  static const char kImageCompressionId[];
-  static const char kJavascriptCombinerId[];
-  static const char kJavascriptMinId[];
-
   // A list of HTTP request headers.  These are the headers which
   // should be passed through from the client request into the
   // ResponseHeaders request_headers sent to the rewrite driver.

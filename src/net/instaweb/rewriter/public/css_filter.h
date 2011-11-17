@@ -75,7 +75,7 @@ class CssFilter : public RewriteSingleResourceFilter {
  public:
   class Context;
 
-  CssFilter(RewriteDriver* driver, const StringPiece& filter_prefix,
+  CssFilter(RewriteDriver* driver,
             // TODO(sligocki): Temporary pattern until we figure out a better
             // way to do this without passing all filters around everywhere.
             CacheExtender* cache_extender,
@@ -97,6 +97,7 @@ class CssFilter : public RewriteSingleResourceFilter {
   virtual void EndElementImpl(HtmlElement* element);
 
   virtual const char* Name() const { return "CssFilter"; }
+  virtual const char* id() const { return RewriteOptions::kCssFilterId; }
   virtual int FilterCacheFormatVersion() const;
 
   static const char kFilesMinified[];
@@ -208,7 +209,7 @@ class CssFilter::Context : public SingleRewriteContext {
                          OutputResourceVector* outputs);
   virtual void RewriteSingle(const ResourcePtr& input,
                              const OutputResourcePtr& output);
-  virtual const char* id() const { return filter_->id().c_str(); }
+  virtual const char* id() const { return filter_->id(); }
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
   virtual GoogleString CacheKey() const;
   virtual const UrlSegmentEncoder* encoder() const;

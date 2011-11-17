@@ -34,21 +34,33 @@
 namespace {
 
 // This version index serves as global signature key.  Much of the
-// data emitted in signatures is based on the current enum layout,
-// which can change as we add new filters, etc.  So every time there
-// is a binary-incompatible change to the enumer level, we bump this
+// data emitted in signatures is based on the option ordering, which
+// can change as we add new options.  So every time there is a
+// binary-incompatible change to the option ordering, we bump this
 // version.
+//
+// Note: we now use a two-letter code for identifying enabled filters, so
+// there is no need bump the option version when changing the filter enum.
 //
 // Updating this value will have the indirect effect of flushing the metadata
 // cache.
 //
 // This version number should be incremented if any default-values are changed,
 // either in the add_option() call or via options->set_default.
-const int kOptionsVersion = 9;
+const int kOptionsVersion = 10;
 
 }  // namespace
 
 namespace net_instaweb {
+
+// RewriteFilter prefixes
+const char RewriteOptions::kCssCombinerId[] = "cc";
+const char RewriteOptions::kCssFilterId[] = "cf";
+const char RewriteOptions::kCacheExtenderId[] = "ce";
+const char RewriteOptions::kImageCombineId[] = "is";
+const char RewriteOptions::kImageCompressionId[] = "ic";
+const char RewriteOptions::kJavascriptCombinerId[] = "jc";
+const char RewriteOptions::kJavascriptMinId[] = "jm";
 
 // TODO(jmarantz): consider merging this threshold with the image-inlining
 // threshold, which is currently defaulting at 2000, so we have a single
@@ -172,8 +184,7 @@ bool IsInSet(const RewriteOptions::Filter* filters, int num,
 
 }  // namespace
 
-const char * RewriteOptions::FilterName(
-    const RewriteOptions::Filter filter) const {
+const char* RewriteOptions::FilterName(Filter filter) {
   switch (filter) {
     case kAddHead:                         return "Add Head";
     case kAddInstrumentation:              return "Add Instrumentation";
@@ -215,6 +226,50 @@ const char * RewriteOptions::FilterName(
   return "Unknown Filter";
 }
 
+const char* RewriteOptions::FilterId(Filter filter) {
+  switch (filter) {
+    case kAddHead:                         return "ah";
+    case kAddInstrumentation:              return "ai";
+    case kCollapseWhitespace:              return "cw";
+    case kCombineCss:                      return kCssCombinerId;
+    case kCombineHeads:                    return "ch";
+    case kCombineJavascript:               return kJavascriptCombinerId;
+    case kConvertJpegToWebp:               return "jw";
+    case kConvertMetaTags:                 return "mc";
+    case kDeferJavascript:                 return "dj";
+    case kDivStructure:                    return "ds";
+    case kElideAttributes:                 return "ea";
+    case kExtendCache:                     return kCacheExtenderId;
+    case kHtmlWriterFilter:                return "hw";
+    case kInlineCss:                       return "ci";
+    case kInlineImages:                    return "ii";
+    case kInlineImportToLink:              return "il";
+    case kInlineJavascript:                return "ji";
+    case kInsertImageDimensions:           return "id";
+    case kLeftTrimUrls:                    return "tu";
+    case kMakeGoogleAnalyticsAsync:        return "ga";
+    case kMoveCssToHead:                   return "cm";
+    case kOutlineCss:                      return "co";
+    case kOutlineJavascript:               return "jo";
+    case kRecompressImages:                return "ir";
+    case kRemoveComments:                  return "rc";
+    case kRemoveQuotes:                    return "rq";
+    case kResizeImages:                    return "ri";
+    case kRewriteCss:                      return kCssFilterId;
+    case kRewriteDomains:                  return "rd";
+    case kRewriteJavascript:               return kJavascriptMinId;
+    case kRewriteStyleAttributes:          return "cs";
+    case kRewriteStyleAttributesWithUrl:   return "cu";
+    case kSpriteImages:                    return kImageCombineId;
+    case kStripScripts:                    return "ss";
+    case kEndOfFilters:
+      LOG(DFATAL) << "EndOfFilters passed as code: " << filter;
+      return "EF";
+  }
+  LOG(DFATAL) << "Unknown filter code: " << filter;
+  return "UF";
+}
+
 bool RewriteOptions::ParseRewriteLevel(
     const StringPiece& in, RewriteLevel* out) {
   bool ret = false;
@@ -244,6 +299,15 @@ RewriteOptions::RewriteOptions()
   CheckFilterSetOrdering(kCoreFilterSet, arraysize(kCoreFilterSet));
   CheckFilterSetOrdering(kTestFilterSet, arraysize(kTestFilterSet));
   CheckFilterSetOrdering(kDangerousFilterSet, arraysize(kDangerousFilterSet));
+
+  // Ensure that all filters of unique IDs.
+  StringSet id_set;
+  for (int i = 0; i < static_cast<int>(kEndOfFilters); ++i) {
+    Filter filter = static_cast<Filter>(i);
+    const char* id = FilterId(filter);
+    std::pair<StringSet::iterator, bool> insertion = id_set.insert(id);
+    DCHECK(insertion.second) << "Duplicate RewriteOption id: " << id;
+  }
 #endif
 
   // TODO(jmarantz): consider adding these on demand so that the cost of
@@ -569,8 +633,9 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
   }
   signature_ = IntegerToString(kOptionsVersion);
   for (int i = kFirstFilter; i != kEndOfFilters; ++i) {
-    if (Enabled(static_cast<Filter>(i))) {
-      StrAppend(&signature_, "_", IntegerToString(static_cast<int>(i)));
+    Filter filter = static_cast<Filter>(i);
+    if (Enabled(filter)) {
+      StrAppend(&signature_, "_", FilterId(filter));
     }
   }
   signature_ += "O";

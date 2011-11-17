@@ -799,7 +799,7 @@ class ImageCombineFilter::Context : public RewriteContext {
   virtual const UrlSegmentEncoder* encoder() const {
     return filter_->encoder();
   }
-  virtual const char* id() const { return filter_->id().c_str(); }
+  virtual const char* id() const { return filter_->id(); }
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
 
   void Reset() {
@@ -1120,9 +1120,8 @@ class ImageCombineFilter::Context : public RewriteContext {
   GoogleString key_prefix_;
 };
 
-ImageCombineFilter::ImageCombineFilter(RewriteDriver* driver,
-                                       const char* filter_prefix)
-    : RewriteFilter(driver, filter_prefix),
+ImageCombineFilter::ImageCombineFilter(RewriteDriver* driver)
+    : RewriteFilter(driver),
       context_(NULL) {
   Statistics* stats = driver->resource_manager()->statistics();
   image_file_count_reduction_ = stats->GetVariable(kImageFileCountReduction);

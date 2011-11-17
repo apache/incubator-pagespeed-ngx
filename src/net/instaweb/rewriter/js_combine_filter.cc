@@ -286,12 +286,8 @@ class JsCombineFilter::Context : public RewriteContext {
   virtual const UrlSegmentEncoder* encoder() const {
     return filter_->encoder();
   }
-  virtual const char* id() const {
-    return filter_->id().c_str();
-  }
-  virtual OutputResourceKind kind() const {
-    return kRewrittenResource;
-  }
+  virtual const char* id() const { return filter_->id(); }
+  virtual OutputResourceKind kind() const { return kRewrittenResource; }
 
  private:
   // If we can combine, put the result into outputs and then reset
@@ -428,9 +424,8 @@ bool JsCombineFilter::JsCombiner::WritePiece(
   return true;
 }
 
-JsCombineFilter::JsCombineFilter(RewriteDriver* driver,
-                                 const StringPiece& filter_id)
-    : RewriteFilter(driver, filter_id),
+JsCombineFilter::JsCombineFilter(RewriteDriver* driver)
+    : RewriteFilter(driver),
       script_scanner_(driver),
       script_depth_(0),
       current_js_script_(NULL),

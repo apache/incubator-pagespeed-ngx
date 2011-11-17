@@ -20,6 +20,8 @@
 
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/html_testing_peer.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -34,14 +36,13 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/string.h"
@@ -173,7 +174,7 @@ TEST_P(RewriteDriverTest, TestCacheUse) {
   InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
 
   GoogleString css_minified_url =
-      Encode(kTestDomain, RewriteDriver::kCssFilterId,
+      Encode(kTestDomain, RewriteOptions::kCssFilterId,
              hasher()->Hash(kMinCss), "a.css", "css");
 
   // Cold load.
@@ -203,7 +204,7 @@ TEST_P(RewriteDriverTest, TestCacheUseWithInvalidation) {
   InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
 
   GoogleString css_minified_url =
-      Encode(kTestDomain, RewriteDriver::kCssFilterId,
+      Encode(kTestDomain, RewriteOptions::kCssFilterId,
              hasher()->Hash(kMinCss), "a.css", "css");
 
   // Cold load.
@@ -254,7 +255,7 @@ TEST_P(RewriteDriverTest, TestCacheUseOnTheFly) {
   InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
 
   GoogleString cache_extended_url =
-      Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
+      Encode(kTestDomain, RewriteOptions::kCacheExtenderId,
              hasher()->Hash(kCss), "a.css", "css");
 
   // Cold load.
@@ -282,7 +283,7 @@ TEST_P(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
   InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
 
   GoogleString cache_extended_url =
-      Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
+      Encode(kTestDomain, RewriteOptions::kCacheExtenderId,
              hasher()->Hash(kCss), "a.css", "css");
 
   // Cold load.
@@ -435,10 +436,11 @@ TEST_P(RewriteDriverTest, MultipleDomains) {
   InitResponseHeaders(StrCat(kTestDomain, "a.css"), kContentTypeCss, kCss, 100);
   InitResponseHeaders(StrCat(kAltDomain, "b.css"), kContentTypeCss, kCss, 100);
 
-  GoogleString rewritten1 = Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
+  GoogleString rewritten1 = Encode(kTestDomain,
+                                   RewriteOptions::kCacheExtenderId,
                                    hasher()->Hash(kCss), "a.css", "css");
 
-  GoogleString rewritten2 = Encode(kAltDomain, RewriteDriver::kCacheExtenderId,
+  GoogleString rewritten2 = Encode(kAltDomain, RewriteOptions::kCacheExtenderId,
                                    hasher()->Hash(kCss), "b.css", "css");
 
   EXPECT_TRUE(TryFetchResource(rewritten1));

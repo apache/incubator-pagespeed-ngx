@@ -23,6 +23,7 @@
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
@@ -49,29 +50,21 @@ class Variable;
 class Writer;
 
 /*
- * The ImageCombineFilter combines multiple images into a single image (a process
- * called "spriting".  This reduces the total number of round-trips, and reduces
- * bytes downloaded by consolidating image headers and improving compression.
+ * The ImageCombineFilter combines multiple images into a single image
+ * (a process called "spriting".  This reduces the total number of
+ * round-trips, and reduces bytes downloaded by consolidating image
+ * headers and improving compression.
  *
- * Right now this is only used on CSS background-images, so it doesn't need to
- * be in the HTML filter chain.  In the future it will rewrite img tags as well.
+ * Right now this is only used on CSS background-images, so it doesn't
+ * need to be in the HTML filter chain.  In the future it will rewrite
+ * img tags as well.
  */
 class ImageCombineFilter : public RewriteFilter {
  public:
-  ImageCombineFilter(RewriteDriver* rewrite_driver, const char* path_prefix);
+  explicit ImageCombineFilter(RewriteDriver* rewrite_driver);
   virtual ~ImageCombineFilter();
 
   static void Initialize(Statistics* statistics);
-  virtual const char* Name() const { return "ImageCombine"; }
-  virtual bool Fetch(const OutputResourcePtr& resource,
-                     Writer* writer,
-                     const RequestHeaders& request_header,
-                     ResponseHeaders* response_headers,
-                     MessageHandler* message_handler,
-                     UrlAsyncFetcher::Callback* callback);
-  virtual void StartDocumentImpl() {}
-  virtual void StartElementImpl(HtmlElement* element) {}
-  virtual void EndElementImpl(HtmlElement* element) {}
 
   // Attempt to add the CSS background image with (resolved) url original_url to
   // this partnership.  We do not take ownership of declarations; it must live
@@ -96,6 +89,19 @@ class ImageCombineFilter : public RewriteFilter {
 
  protected:
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
+  virtual const char* Name() const { return "ImageCombine"; }
+  virtual bool Fetch(const OutputResourcePtr& resource,
+                     Writer* writer,
+                     const RequestHeaders& request_header,
+                     ResponseHeaders* response_headers,
+                     MessageHandler* message_handler,
+                     UrlAsyncFetcher::Callback* callback);
+  virtual void StartDocumentImpl() {}
+  virtual void StartElementImpl(HtmlElement* element) {}
+  virtual void EndElementImpl(HtmlElement* element) {}
+
+  // Image rewriting was originally, but is no longer, a single CSS.
+  virtual const char* id() const { return RewriteOptions::kImageCombineId; }
 
  private:
   class Combiner;

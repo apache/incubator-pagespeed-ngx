@@ -70,6 +70,10 @@ class WriteThroughHTTPCache : public HTTPCache {
 
   virtual void set_force_caching(bool force);
 
+  virtual void set_remember_not_cacheable_ttl_seconds(int64 value);
+
+  virtual void set_remember_fetch_failed_ttl_seconds(int64 value);
+
   virtual void RememberNotCacheable(const GoogleString& key,
                                     MessageHandler * handler);
 

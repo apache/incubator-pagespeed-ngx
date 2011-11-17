@@ -81,9 +81,8 @@ void CleanupWhitespaceScriptBody(
 
 class RewriteContext;
 class Statistics;
-JavascriptFilter::JavascriptFilter(RewriteDriver* driver,
-                                   const StringPiece& path_prefix)
-    : RewriteSingleResourceFilter(driver, path_prefix),
+JavascriptFilter::JavascriptFilter(RewriteDriver* driver)
+    : RewriteSingleResourceFilter(driver),
       script_in_progress_(NULL),
       script_src_(NULL),
       some_missing_scripts_(false),
@@ -152,7 +151,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
 
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
 
-  virtual const char* id() const { return RewriteDriver::kJavascriptMinId; }
+  virtual const char* id() const { return RewriteOptions::kJavascriptMinId; }
 
  private:
   // Take script_out, which is derived from the script at script_url,

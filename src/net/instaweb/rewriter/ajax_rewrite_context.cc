@@ -186,16 +186,16 @@ void AjaxRewriteContext::RewriteSingle(const ResourcePtr& input,
     ContentType::Type type = input->type()->type();
     if (type == ContentType::kCss &&
         options->Enabled(RewriteOptions::kRewriteCss)) {
-      filter = driver_->FindFilter(RewriteDriver::kCssFilterId);
+      filter = driver_->FindFilter(RewriteOptions::kCssFilterId);
     } else if (type == ContentType::kJavascript &&
                options->Enabled(RewriteOptions::kRewriteJavascript)) {
-      filter = driver_->FindFilter(RewriteDriver::kJavascriptMinId);
+      filter = driver_->FindFilter(RewriteOptions::kJavascriptMinId);
     } else if ((type == ContentType::kPng || type == ContentType::kJpeg) &&
                options->Enabled(RewriteOptions::kRecompressImages) &&
                !driver_->ShouldNotRewriteImages()) {
       // TODO(nikhilmadan): This converts one image format to another. We
       // shouldn't do inter-conversion since we can't change the file extension.
-      filter = driver_->FindFilter(RewriteDriver::kImageCompressionId);
+      filter = driver_->FindFilter(RewriteOptions::kImageCompressionId);
     }
     if (filter != NULL) {
       ResourceSlotPtr ajax_slot(

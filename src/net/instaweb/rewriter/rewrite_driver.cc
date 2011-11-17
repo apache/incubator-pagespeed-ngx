@@ -116,15 +116,6 @@ const int kTestTimeoutMs = 10000;
 
 class FileSystem;
 
-// RewriteFilter prefixes
-const char RewriteDriver::kCssCombinerId[] = "cc";
-const char RewriteDriver::kCssFilterId[] = "cf";
-const char RewriteDriver::kCacheExtenderId[] = "ce";
-const char RewriteDriver::kImageCombineId[] = "is";
-const char RewriteDriver::kImageCompressionId[] = "ic";
-const char RewriteDriver::kJavascriptCombinerId[] = "jc";
-const char RewriteDriver::kJavascriptMinId[] = "jm";
-
 RewriteDriver::RewriteDriver(MessageHandler* message_handler,
                              FileSystem* file_system,
                              UrlAsyncFetcher* url_async_fetcher)
@@ -556,18 +547,15 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   // 'rewriters' specification.  We still use the passed-in options
   // to determine whether they get added to the html parse filter chain.
   // Note: RegisterRewriteFilter takes ownership of these filters.
-  CacheExtender* cache_extender = new CacheExtender(this, kCacheExtenderId);
-  ImageCombineFilter* image_combiner = new ImageCombineFilter(this,
-                                                              kImageCombineId);
-  ImageRewriteFilter* image_rewriter =
-      new ImageRewriteFilter(this, kImageCompressionId);
+  CacheExtender* cache_extender = new CacheExtender(this);
+  ImageCombineFilter* image_combiner = new ImageCombineFilter(this);
+  ImageRewriteFilter* image_rewriter = new ImageRewriteFilter(this);
 
-  RegisterRewriteFilter(new CssCombineFilter(this, kCssCombinerId));
+  RegisterRewriteFilter(new CssCombineFilter(this));
   RegisterRewriteFilter(
-      new CssFilter(this, kCssFilterId, cache_extender, image_rewriter,
-                    image_combiner));
-  RegisterRewriteFilter(new JavascriptFilter(this, kJavascriptMinId));
-  RegisterRewriteFilter(new JsCombineFilter(this, kJavascriptCombinerId));
+      new CssFilter(this, cache_extender, image_rewriter, image_combiner));
+  RegisterRewriteFilter(new JavascriptFilter(this));
+  RegisterRewriteFilter(new JsCombineFilter(this));
   RegisterRewriteFilter(image_rewriter);
   RegisterRewriteFilter(cache_extender);
   RegisterRewriteFilter(image_combiner);
@@ -707,10 +695,10 @@ void RewriteDriver::AddPreRenderFilters() {
     // Combine external CSS resources after we've outlined them.
     // CSS files in html document.  This can only be called
     // once and requires a resource_manager to be set.
-    EnableRewriteFilter(kCssCombinerId);
+    EnableRewriteFilter(RewriteOptions::kCssCombinerId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kRewriteCss)) {
-    EnableRewriteFilter(kCssFilterId);
+    EnableRewriteFilter(RewriteOptions::kCssFilterId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync)) {
     // Converts sync loads of Google Analytics javascript to async loads.
@@ -721,13 +709,13 @@ void RewriteDriver::AddPreRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kRewriteJavascript)) {
     // Rewrite (minify etc.) JavaScript code to reduce time to first
     // interaction.
-    EnableRewriteFilter(kJavascriptMinId);
+    EnableRewriteFilter(RewriteOptions::kJavascriptMinId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kCombineJavascript)) {
     // Combine external JS resources. Done after minification and analytics
     // detection, as it converts script sources into string literals, making
     // them opaque to analysis.
-    EnableRewriteFilter(kJavascriptCombinerId);
+    EnableRewriteFilter(RewriteOptions::kJavascriptCombinerId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineCss)) {
     // Inline small CSS files.  Give CssCombineFilter and CSS minification a
@@ -746,7 +734,7 @@ void RewriteDriver::AddPreRenderFilters() {
       rewrite_options->Enabled(RewriteOptions::kInsertImageDimensions) ||
       rewrite_options->Enabled(RewriteOptions::kRecompressImages) ||
       rewrite_options->Enabled(RewriteOptions::kResizeImages)) {
-    EnableRewriteFilter(kImageCompressionId);
+    EnableRewriteFilter(RewriteOptions::kImageCompressionId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kRemoveComments)) {
     AddOwnedPreRenderFilter(new RemoveCommentsFilter(this, rewrite_options));
@@ -763,11 +751,11 @@ void RewriteDriver::AddPreRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kExtendCache)) {
     // Extend the cache lifetime of resources.
-    EnableRewriteFilter(kCacheExtenderId);
+    EnableRewriteFilter(RewriteOptions::kCacheExtenderId);
   }
 
   if (rewrite_options->Enabled(RewriteOptions::kSpriteImages)) {
-    EnableRewriteFilter(kImageCombineId);
+    EnableRewriteFilter(RewriteOptions::kImageCombineId);
   }
 }
 
@@ -844,7 +832,7 @@ void RewriteDriver::AddUnownedPostRenderFilter(HtmlFilter* filter) {
 // This is used exclusively in tests.
 void RewriteDriver::AddRewriteFilter(RewriteFilter* filter) {
   RegisterRewriteFilter(filter);
-  EnableRewriteFilter(filter->id().c_str());
+  EnableRewriteFilter(filter->id());
 }
 
 void RewriteDriver::EnableRewriteFilter(const char* id) {

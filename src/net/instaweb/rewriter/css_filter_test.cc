@@ -598,9 +598,9 @@ TEST_P(CssFilterTest, RewriteStyleAttribute) {
 }
 
 TEST_P(CssFilterTest, DontAbsolutifyCssImportUrls) {
-  // Complement to PssUrlNamerTest/AbsolutifyCssImportUrls. Since we are not
-  // using a proxy URL namer (TestUrlNamer) nor any domain rewriting/sharding,
-  // we expect the relative URLs in the @import's to be passed though untouched.
+  // Since we are not using a proxy URL namer (TestUrlNamer) nor any
+  // domain rewriting/sharding, we expect the relative URLs in
+  // the @import's to be passed though untouched.
   const char styles_filename[] = "styles.css";
   const char styles_css[] =
       ".background_red{background-color:red}"

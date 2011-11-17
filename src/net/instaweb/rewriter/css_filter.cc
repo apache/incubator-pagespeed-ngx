@@ -337,11 +337,11 @@ GoogleString CssFilter::Context::CacheKey() const {
   return key;
 }
 
-CssFilter::CssFilter(RewriteDriver* driver, const StringPiece& path_prefix,
+CssFilter::CssFilter(RewriteDriver* driver,
                      CacheExtender* cache_extender,
                      ImageRewriteFilter* image_rewriter,
                      ImageCombineFilter* image_combiner)
-    : RewriteSingleResourceFilter(driver, path_prefix),
+    : RewriteSingleResourceFilter(driver),
       in_style_element_(false),
       image_rewriter_(new CssImageRewriter(driver, cache_extender,
                                            image_rewriter)),

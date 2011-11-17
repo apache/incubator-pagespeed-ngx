@@ -146,12 +146,9 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
 
     rewrite_driver()->SetAsynchronousRewrites(async_rewrites);
     if (use_js_filter) {
-      AddRewriteFilter(
-          new JavascriptFilter(rewrite_driver(),
-                               RewriteDriver::kJavascriptMinId));
+      AddRewriteFilter(new JavascriptFilter(rewrite_driver()));
     }
-    filter_ = new JsCombineFilter(rewrite_driver(),
-                                  RewriteDriver::kJavascriptCombinerId);
+    filter_ = new JsCombineFilter(rewrite_driver());
     AddRewriteFilter(filter_);
     rewrite_driver()->AddFilters();
     // Some tests need an another domain, with (different)source files on it as
@@ -192,7 +189,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
     EXPECT_STREQ(encoded.AllExceptLeaf(), combination_url.AllExceptLeaf());
     ResourceNamer namer;
     EXPECT_TRUE(namer.Decode(combination_url.LeafWithQuery()));
-    EXPECT_STREQ(RewriteDriver::kJavascriptCombinerId, namer.id());
+    EXPECT_STREQ(RewriteOptions::kJavascriptCombinerId, namer.id());
     GoogleString encoding;
     for (int i = 0, n = name_vector.size(); i < n; ++i) {
       StrAppend(&encoding, (i == 0) ? "" : "+", name_vector[i]);

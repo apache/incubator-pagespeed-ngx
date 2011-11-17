@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -65,8 +66,7 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
  public:
   typedef std::vector<HtmlCharactersNode*> HtmlCharNodeVector;
 
-  JavascriptFilter(RewriteDriver* rewrite_driver,
-                   const StringPiece& path_prefix);
+  explicit JavascriptFilter(RewriteDriver* rewrite_driver);
   virtual ~JavascriptFilter();
   static void Initialize(Statistics* statistics);
 
@@ -84,7 +84,7 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
   }
 
   virtual const char* Name() const { return "Javascript"; }
-
+  virtual const char* id() const { return RewriteOptions::kJavascriptMinId; }
   virtual RewriteContext* MakeRewriteContext();
 
  protected:

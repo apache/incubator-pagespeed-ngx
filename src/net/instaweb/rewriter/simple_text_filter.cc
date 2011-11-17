@@ -31,7 +31,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -44,7 +43,7 @@ SimpleTextFilter::Rewriter::~Rewriter() {
 }
 
 SimpleTextFilter::SimpleTextFilter(Rewriter* rewriter, RewriteDriver* driver)
-    : RewriteFilter(driver, rewriter->id()),
+    : RewriteFilter(driver),
       rewriter_(rewriter) {
 }
 

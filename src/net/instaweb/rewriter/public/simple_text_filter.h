@@ -112,7 +112,7 @@ class SimpleTextFilter : public RewriteFilter {
       RewriteContext* parent, const ResourceSlotPtr& slot);
 
  protected:
-  virtual GoogleString id() const { return rewriter_->id(); }
+  virtual const char* id() const { return rewriter_->id(); }
   virtual const char* Name() const { return rewriter_->name(); }
   virtual bool HasAsyncFlow() const;
   virtual bool ComputeOnTheFly() const {

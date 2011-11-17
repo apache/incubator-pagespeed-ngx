@@ -21,7 +21,6 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -76,7 +75,7 @@ TEST_F(RewriterTest, HandlingOfInvalidUrls) {
   // TODO(sligocki): This will need to be regolded if naming format changes.
   GoogleString hash = hasher()->Hash(kMinimizedCssData);
   GoogleString good_url =
-      Encode(kTestDomain, RewriteDriver::kCssFilterId, hash, "a.css", "css");
+      Encode(kTestDomain, RewriteOptions::kCssFilterId, hash, "a.css", "css");
   EXPECT_TRUE(TryFetchResource(good_url));
 
   // Querying with an appended query should work fine, too, and cause a cache
@@ -93,12 +92,12 @@ TEST_F(RewriterTest, HandlingOfInvalidUrls) {
   // Changing hash still works.
   // Note: If any of these switch from true to false, that's probably fine.
   // We'd just like to keep track of what causes errors and what doesn't.
-  EXPECT_TRUE(TryFetchResource(Encode(kTestDomain, RewriteDriver::kCssFilterId,
+  EXPECT_TRUE(TryFetchResource(Encode(kTestDomain, RewriteOptions::kCssFilterId,
                                       "foobar", "a.css", "css")));
 
   // ... however fetches with invalid extensions should fail
   EXPECT_FALSE(
-      TryFetchResource(Encode(kTestDomain, RewriteDriver::kCssFilterId, hash,
+      TryFetchResource(Encode(kTestDomain, RewriteOptions::kCssFilterId, hash,
                               "a.css", "ext")));
 
   // Changing other fields can lead to error.

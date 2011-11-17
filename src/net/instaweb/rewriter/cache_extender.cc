@@ -77,7 +77,7 @@ class CacheExtender::Context : public SingleRewriteContext {
   virtual void Render();
   virtual void RewriteSingle(const ResourcePtr& input,
                              const OutputResourcePtr& output);
-  virtual const char* id() const { return extender_->id().c_str(); }
+  virtual const char* id() const { return extender_->id(); }
   virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
 
  private:
@@ -86,8 +86,8 @@ class CacheExtender::Context : public SingleRewriteContext {
   DISALLOW_COPY_AND_ASSIGN(Context);
 };
 
-CacheExtender::CacheExtender(RewriteDriver* driver, const char* filter_prefix)
-    : RewriteSingleResourceFilter(driver, filter_prefix),
+CacheExtender::CacheExtender(RewriteDriver* driver)
+    : RewriteSingleResourceFilter(driver),
       tag_scanner_(driver_),
       extension_count_(NULL),
       not_cacheable_count_(NULL) {

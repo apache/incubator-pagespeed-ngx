@@ -184,7 +184,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
   // Tests for the lifecycle and various flows of a named output resource.
   void TestNamed() {
-    const char* filter_prefix = RewriteDriver::kCssFilterId;
+    const char* filter_prefix = RewriteOptions::kCssFilterId;
     const char* name = "name";
     const char* contents = "contents";
     // origin_expire_time_ms should be considerably longer than the various
@@ -488,12 +488,12 @@ TEST_F(ResourceManagerTest, TestNamed) {
 
 TEST_F(ResourceManagerTest, TestOutputInputUrl) {
   GoogleString url = Encode("http://example.com/dir/123/",
-                            RewriteDriver::kJavascriptMinId,
+                            RewriteOptions::kJavascriptMinId,
                             "0", "orig", "js");
   OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   RewriteFilter* filter = rewrite_driver()->FindFilter(
-      RewriteDriver::kJavascriptMinId);
+      RewriteOptions::kJavascriptMinId);
   ASSERT_TRUE(filter != NULL);
   ResourcePtr input_resource(
       filter->CreateInputResourceFromOutputResource(output_resource.get()));
@@ -505,7 +505,7 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlEvil) {
   OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   RewriteFilter* filter = rewrite_driver()->FindFilter(
-      RewriteDriver::kJavascriptMinId);
+      RewriteOptions::kJavascriptMinId);
   ASSERT_TRUE(filter != NULL);
   ResourcePtr input_resource(
       filter->CreateInputResourceFromOutputResource(output_resource.get()));
@@ -520,7 +520,7 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlBusy) {
   OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
   RewriteFilter* filter = rewrite_driver()->FindFilter(
-      RewriteDriver::kJavascriptMinId);
+      RewriteOptions::kJavascriptMinId);
   ASSERT_TRUE(filter != NULL);
   ResourcePtr input_resource(
       filter->CreateInputResourceFromOutputResource(output_resource.get()));
@@ -559,7 +559,7 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
   bool use_async_flow = false;
   OutputResourcePtr output(
       rewrite_driver()->CreateOutputResourceFromResource(
-          RewriteDriver::kCacheExtenderId, rewrite_driver()->default_encoder(),
+          RewriteOptions::kCacheExtenderId, rewrite_driver()->default_encoder(),
           NULL, input, kRewrittenResource, use_async_flow));
   ASSERT_TRUE(output.get() != NULL);
 
@@ -729,7 +729,7 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   bool use_async_flow = false;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
-          kUrlPrefix, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
+          kUrlPrefix, RewriteOptions::kCssFilterId, "_", &kContentTypeCss,
           kOnTheFlyResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
@@ -750,7 +750,7 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
 
   // Now try fetching again. Should hit in cache for rname.
   output_resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-      kUrlPrefix, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
+      kUrlPrefix, RewriteOptions::kCssFilterId, "_", &kContentTypeCss,
       kOnTheFlyResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_TRUE(output_resource->cached_result() != NULL);
@@ -785,7 +785,7 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   bool use_async_flow = false;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
-          kUrlPrefix, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
+          kUrlPrefix, RewriteOptions::kCssFilterId, "_", &kContentTypeCss,
           kRewrittenResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
@@ -805,7 +805,7 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
 
   // Now try fetching again. Should hit in cache
   output_resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-      kUrlPrefix, RewriteDriver::kCssFilterId, "_", &kContentTypeCss,
+      kUrlPrefix, RewriteOptions::kCssFilterId, "_", &kContentTypeCss,
       kRewrittenResource, use_async_flow));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_TRUE(output_resource->cached_result() != NULL);

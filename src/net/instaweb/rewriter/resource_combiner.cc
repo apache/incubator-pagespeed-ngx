@@ -71,7 +71,7 @@ ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
       // Another option too is to just instantiate a ResourceNamer and a
       // hasher put in the correct ID and EXT and leave the name blank and
       // take size of that.
-      url_overhead_(filter->id().size() + ResourceNamer::kOverhead +
+      url_overhead_(strlen(filter->id()) + ResourceNamer::kOverhead +
                     extension.size()),
       filter_(filter) {
   // This CHECK is here because RewriteDriver is constructed with its

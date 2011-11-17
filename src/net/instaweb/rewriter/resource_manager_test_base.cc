@@ -144,12 +144,12 @@ void ResourceManagerTestBase::AddOtherFilter(RewriteOptions::Filter filter) {
 
 void ResourceManagerTestBase::AddRewriteFilter(RewriteFilter* filter) {
   rewrite_driver_->RegisterRewriteFilter(filter);
-  rewrite_driver_->EnableRewriteFilter(filter->id().c_str());
+  rewrite_driver_->EnableRewriteFilter(filter->id());
 }
 
 void ResourceManagerTestBase::AddOtherRewriteFilter(RewriteFilter* filter) {
   other_rewrite_driver_->RegisterRewriteFilter(filter);
-  other_rewrite_driver_->EnableRewriteFilter(filter->id().c_str());
+  other_rewrite_driver_->EnableRewriteFilter(filter->id());
 }
 
 void ResourceManagerTestBase::SetBaseUrlForFetch(const StringPiece& url) {
@@ -497,7 +497,7 @@ bool ResourceManagerTestBase::CssLink::DecomposeCombinedUrl(
     gurl.AllExceptLeaf().CopyToString(base);
     ResourceNamer namer;
     if (namer.Decode(gurl.LeafWithQuery()) &&
-        (namer.id() == RewriteDriver::kCssCombinerId)) {
+        (namer.id() == RewriteOptions::kCssCombinerId)) {
       UrlMultipartEncoder multipart_encoder;
       GoogleString segment;
       ret = multipart_encoder.Decode(namer.name(), segments, NULL, handler);

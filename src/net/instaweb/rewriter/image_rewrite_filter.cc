@@ -87,7 +87,7 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   virtual void Render();
   virtual void RewriteSingle(const ResourcePtr& input,
                              const OutputResourcePtr& output);
-  virtual const char* id() const { return filter_->id().c_str(); }
+  virtual const char* id() const { return filter_->id(); }
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
   virtual const UrlSegmentEncoder* encoder() const;
 
@@ -145,9 +145,8 @@ const UrlSegmentEncoder* ImageRewriteFilter::Context::encoder() const {
   return filter_->encoder();
 }
 
-ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver,
-                                       StringPiece path_prefix)
-    : RewriteSingleResourceFilter(driver, path_prefix),
+ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
+    : RewriteSingleResourceFilter(driver),
       image_filter_(new ImageTagScanner(driver)),
       rewrite_count_(NULL),
       inline_count_(NULL),

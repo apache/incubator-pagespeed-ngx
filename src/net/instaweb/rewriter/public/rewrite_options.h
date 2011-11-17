@@ -76,8 +76,22 @@ class RewriteOptions {
     kStripScripts,
     kEndOfFilters
   };
-  // Return the appropriate human-readable filter name for the given filter
-  const char* FilterName(const Filter filter) const;
+
+  static const char kCssCombinerId[];
+  static const char kCssFilterId[];
+  static const char kCacheExtenderId[];
+  static const char kImageCombineId[];
+  static const char kImageCompressionId[];
+  static const char kJavascriptCombinerId[];
+  static const char kJavascriptMinId[];
+
+  // Return the appropriate human-readable filter name for the given filter,
+  // e.g. "CombineCss".
+  static const char* FilterName(Filter filter);
+
+  // Returns a two-letter id code for this filter, used for for encoding
+  // URLs.
+  static const char* FilterId(Filter filter);
 
   // Used for enumerating over all entries in the Filter enum.
   static const Filter kFirstFilter = kAddHead;
@@ -359,7 +373,8 @@ class RewriteOptions {
 
   // Blacklist of javascript files that don't like their names changed.
   // This should be called for root options to set defaults.
-  void DisallowTroublesomeResources();
+  // TODO(sligocki): Rename to allow for more general initialization.
+  virtual void DisallowTroublesomeResources();
 
   DomainLawyer* domain_lawyer() { return &domain_lawyer_; }
   const DomainLawyer* domain_lawyer() const { return &domain_lawyer_; }

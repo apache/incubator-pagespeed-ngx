@@ -108,7 +108,7 @@ class TestCombineFilter : public RewriteFilter {
   };
 
   explicit TestCombineFilter(RewriteDriver* driver)
-      : RewriteFilter(driver, kTestCombinerId),
+      : RewriteFilter(driver),
         combiner_(driver, this) {
   }
 
@@ -119,6 +119,7 @@ class TestCombineFilter : public RewriteFilter {
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual void EndElementImpl(HtmlElement* element) {}
   virtual const char* Name() const { return "TestCombine"; }
+  virtual const char* id() const { return kTestCombinerId; }
   virtual bool Fetch(const OutputResourcePtr& resource,
                      Writer* writer,
                      const RequestHeaders& request_header,

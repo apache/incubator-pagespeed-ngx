@@ -144,9 +144,23 @@ void WriteThroughHTTPCache::Delete(const GoogleString& key) {
 }
 
 void WriteThroughHTTPCache::set_force_caching(bool force) {
-  HTTPCache::set_force_caching(true);
+  HTTPCache::set_force_caching(force);
   cache1_->set_force_caching(force);
   cache2_->set_force_caching(force);
+}
+
+void WriteThroughHTTPCache::set_remember_not_cacheable_ttl_seconds(
+    int64 value) {
+  HTTPCache::set_remember_not_cacheable_ttl_seconds(value);
+  cache1_->set_remember_not_cacheable_ttl_seconds(value);
+  cache2_->set_remember_not_cacheable_ttl_seconds(value);
+}
+
+void WriteThroughHTTPCache::set_remember_fetch_failed_ttl_seconds(
+    int64 value) {
+  HTTPCache::set_remember_fetch_failed_ttl_seconds(value);
+  cache1_->set_remember_fetch_failed_ttl_seconds(value);
+  cache2_->set_remember_fetch_failed_ttl_seconds(value);
 }
 
 void WriteThroughHTTPCache::RememberNotCacheable(

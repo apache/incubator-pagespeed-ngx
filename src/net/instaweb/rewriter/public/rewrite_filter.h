@@ -25,8 +25,6 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 class MessageHandler;
@@ -40,9 +38,8 @@ class Writer;
 
 class RewriteFilter : public CommonFilter {
  public:
-  explicit RewriteFilter(RewriteDriver* driver, StringPiece filter_prefix)
-      : CommonFilter(driver),
-        filter_prefix_(filter_prefix.data(), filter_prefix.size()) {
+  explicit RewriteFilter(RewriteDriver* driver)
+      : CommonFilter(driver) {
   }
   virtual ~RewriteFilter();
 
@@ -81,7 +78,7 @@ class RewriteFilter : public CommonFilter {
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback) = 0;
 
-  const GoogleString& id() const { return filter_prefix_; }
+  virtual const char* id() const = 0;
 
   // Create an input resource by decoding output_resource using the
   // filter's. Assures legality by explicitly permission-checking the result.
@@ -105,7 +102,7 @@ class RewriteFilter : public CommonFilter {
   // Determines whether this filter supports the asynchronous writing flow,
   // and the RewriteDriver is in async mode.
   //
-  // TODO(jmarnatz): remove this method once all filters use the async
+  // TODO(jmarantz): remove this method once all filters use the async
   // writing flow.
   virtual bool HasAsyncFlow() const;
 
@@ -123,9 +120,6 @@ class RewriteFilter : public CommonFilter {
   virtual RewriteContext* MakeNestedRewriteContext(
       RewriteContext* parent, const ResourceSlotPtr& slot);
 
- protected:
-  GoogleString filter_prefix_;  // Prefix that should be used in front of all
-                                // rewritten URLs
  private:
   DISALLOW_COPY_AND_ASSIGN(RewriteFilter);
 };

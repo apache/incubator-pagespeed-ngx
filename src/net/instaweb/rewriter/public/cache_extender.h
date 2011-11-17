@@ -23,6 +23,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -46,7 +47,7 @@ class Variable;
 // RenameUrlFilter or ProxyUrlFilter.
 class CacheExtender : public RewriteSingleResourceFilter {
  public:
-  CacheExtender(RewriteDriver* driver, const char* path_prefix);
+  explicit CacheExtender(RewriteDriver* driver);
   virtual ~CacheExtender();
 
   static void Initialize(Statistics* statistics);
@@ -56,6 +57,7 @@ class CacheExtender : public RewriteSingleResourceFilter {
   virtual void EndElementImpl(HtmlElement* element) {}
 
   virtual const char* Name() const { return "CacheExtender"; }
+  virtual const char* id() const { return RewriteOptions::kCacheExtenderId; }
 
   // Creates a nested rewrite for given parent and slot, and returns it.
   // The result is not registered with the parent.

@@ -65,13 +65,14 @@ class TrimFilter : public RewriteSingleResourceFilter {
  public:
   TrimFilter(OutputResourceKind kind,
              RewriteDriver* driver, MessageHandler* handler)
-      : RewriteSingleResourceFilter(driver, kTrimFilterPrefix),
+      : RewriteSingleResourceFilter(driver),
         kind_(kind), driver_(driver), handler_(handler) {
     ClearStats();
   }
   virtual ~TrimFilter() {}
 
   virtual const char* Name() const { return "TrimFilter"; }
+  virtual const char* id() const { return kTrimFilterPrefix; }
 
   virtual bool ComputeOnTheFly() const { return kind_ == kOnTheFlyResource; }
 

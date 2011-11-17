@@ -165,9 +165,9 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
     bad_headers.SetDate(start_time_ms());
     mock_url_fetcher()->SetResponse(bad_url_, bad_headers, bad_body_);
 
-    img_filter_ = new MockRewriter(RewriteDriver::kImageCompressionId);
-    js_filter_ = new MockRewriter(RewriteDriver::kJavascriptMinId);
-    css_filter_ = new MockRewriter(RewriteDriver::kCssFilterId);
+    img_filter_ = new MockRewriter(RewriteOptions::kImageCompressionId);
+    js_filter_ = new MockRewriter(RewriteOptions::kJavascriptMinId);
+    css_filter_ = new MockRewriter(RewriteOptions::kCssFilterId);
 
     rewrite_driver()->AddRewriteFilter(
         new SimpleTextFilter(img_filter_, rewrite_driver()));

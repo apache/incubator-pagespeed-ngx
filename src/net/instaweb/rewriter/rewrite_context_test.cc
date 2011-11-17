@@ -177,7 +177,7 @@ class UpperCaseRewriter : public SimpleTextFilter::Rewriter {
 class NestedFilter : public RewriteFilter {
  public:
   explicit NestedFilter(RewriteDriver* driver, bool expected_nested_result)
-      : RewriteFilter(driver, kNestedFilterId), chain_(false),
+      : RewriteFilter(driver), chain_(false),
         expected_nested_rewrite_result_(expected_nested_result) {
     ClearStats();
   }
@@ -399,7 +399,7 @@ class CombiningFilter : public RewriteFilter {
   CombiningFilter(RewriteDriver* driver,
                   MockScheduler* scheduler,
                   int64 rewrite_delay_ms)
-    : RewriteFilter(driver, kCombiningFilterId),
+    : RewriteFilter(driver),
       scheduler_(scheduler),
       rewrite_delay_ms_(rewrite_delay_ms) {
     ClearStats();
@@ -430,6 +430,8 @@ class CombiningFilter : public RewriteFilter {
    private:
     GoogleString prefix_;
   };
+
+  virtual const char* id() const { return kCombiningFilterId; }
 
   class Context : public RewriteContext {
    public:

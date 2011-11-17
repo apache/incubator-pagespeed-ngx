@@ -78,7 +78,7 @@ int TtlMs() {
 class TestRewriter : public RewriteSingleResourceFilter {
  public:
   TestRewriter(RewriteDriver* driver, bool create_custom_encoder)
-      : RewriteSingleResourceFilter(driver, kTestFilterPrefix),
+      : RewriteSingleResourceFilter(driver),
         format_version_(0),
         num_cached_results_(0),
         num_optimizable_(0),
@@ -103,6 +103,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
   }
 
   virtual const char* Name() const { return "TestRewriter"; }
+  virtual const char* id() const { return kTestFilterPrefix; }
 
   // Number of times RewriteLoadedResource got called
   int num_rewrites_called() const { return num_rewrites_called_; }

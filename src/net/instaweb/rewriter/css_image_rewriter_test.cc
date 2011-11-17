@@ -529,7 +529,7 @@ TEST_P(CssImageRewriterTest, UseCorrectBaseUrl) {
 
   // Construct URL for rewritten image.
   GoogleString expected_image_url = ExpectedRewrittenUrl(
-      image_url, kImageData, RewriteDriver::kCacheExtenderId,
+      image_url, kImageData, RewriteOptions::kCacheExtenderId,
       kContentTypePng);
 
   GoogleString css_after = StrCat(
@@ -537,7 +537,7 @@ TEST_P(CssImageRewriterTest, UseCorrectBaseUrl) {
 
   // Construct URL for rewritten CSS.
   GoogleString expected_css_url = ExpectedRewrittenUrl(
-      css_url, css_after, RewriteDriver::kCssFilterId, kContentTypeCss);
+      css_url, css_after, RewriteOptions::kCssFilterId, kContentTypeCss);
 
   static const char html_before[] =
       "<head>\n"
@@ -697,7 +697,7 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
     bool use_async_flow = false;
     OutputResourcePtr output_resource(
         rewrite_driver()->CreateOutputResourceWithPath(
-            kTestDomain, RewriteDriver::kCssFilterId,
+            kTestDomain, RewriteOptions::kCssFilterId,
             EncodeCssName(StrCat(id, ".css"), false, true),
             &kContentTypeCss, kRewrittenResource, use_async_flow));
     ASSERT_TRUE(output_resource.get() != NULL);
@@ -712,7 +712,7 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
 
   GoogleString ExpectedUrlForPng(const StringPiece& name,
                                  const GoogleString& expected_output) {
-    return Encode(kTestDomain, RewriteDriver::kCacheExtenderId,
+    return Encode(kTestDomain, RewriteOptions::kCacheExtenderId,
                   hasher()->Hash(expected_output),
                   name, "png");
   }
