@@ -1917,18 +1917,9 @@ RewriteDriver::CssResolutionStatus RewriteDriver::ResolveCssUrls(
     const StringPiece& contents,
     Writer* writer,
     MessageHandler* handler) {
-  UrlNamer* url_namer = resource_manager_->url_namer();
-  bool proxy_mode = url_namer->ProxyMode();
-  const DomainLawyer* domain_lawyer = options()->domain_lawyer();
-  StringPiece input_dir = input_css_base.AllExceptLeaf();
-  if ((proxy_mode && !url_namer->IsProxyEncoded(input_css_base)) ||
-      (!proxy_mode &&
-       (domain_lawyer->WillDomainChange(input_css_base.Origin()) ||
-        (input_dir != output_css_base)))) {
-    // If they are different directories, we need to absolutify.
-    // Note: This is not actually the output URL, but the directory of that
-    // URL. This should be fine for our uses.
-    GoogleUrl output_base(output_css_base);
+  GoogleUrl output_base(output_css_base);
+  bool proxy_mode;
+  if (ShouldAbsolutifyUrl(input_css_base, output_base, &proxy_mode)) {
     RewriteDomainTransformer transformer(&input_css_base, &output_base, this);
     if (proxy_mode) {
       // If URLs are being rewritten to a proxy domain, then trimming
@@ -1940,8 +1931,7 @@ RewriteDriver::CssResolutionStatus RewriteDriver::ResolveCssUrls(
       // so that DomainLawyer::WillDomainChange will be accurate.
       transformer.set_trim_urls(false);
     }
-    if (CssTagScanner::TransformUrls(contents, writer, &transformer,
-                                     handler)) {
+    if (CssTagScanner::TransformUrls(contents, writer, &transformer, handler)) {
       return kSuccess;
     } else {
       return kWriteFailed;
@@ -1950,5 +1940,27 @@ RewriteDriver::CssResolutionStatus RewriteDriver::ResolveCssUrls(
   return kNoResolutionNeeded;
 }
 
+bool RewriteDriver::ShouldAbsolutifyUrl(const GoogleUrl& input_base,
+                                        const GoogleUrl& output_base,
+                                        bool* proxy_mode) const {
+  bool result = false;
+  const UrlNamer* url_namer = resource_manager_->url_namer();
+  bool proxying = url_namer->ProxyMode();
+
+  if (proxying) {
+    result = !url_namer->IsProxyEncoded(input_base);
+  } else if (input_base.AllExceptLeaf() != output_base.AllExceptLeaf()) {
+    result = true;
+  } else {
+    const DomainLawyer* domain_lawyer = options()->domain_lawyer();
+    result = domain_lawyer->WillDomainChange(input_base.Origin());
+  }
+
+  if (proxy_mode != NULL) {
+    *proxy_mode = proxying;
+  }
+
+  return result;
+}
 
 }  // namespace net_instaweb

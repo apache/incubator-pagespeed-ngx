@@ -668,6 +668,17 @@ class RewriteDriver : public HtmlParse {
                                      Writer* writer,
                                      MessageHandler* handler);
 
+  // Determines if an URL relative to the given input_base needs to be
+  // absolutified given that it will end up under output_base:
+  // - If we are proxying and input_base isn't proxy encoded, then yes.
+  // - If we aren't proxying and input_base != output_base, then yes.
+  // - If we aren't proxying and the domain lawyer will shard or rewrite
+  //   input_base, then yes.
+  // If not NULL also set *proxy_mode to whether proxy mode is active or not.
+  bool ShouldAbsolutifyUrl(const GoogleUrl& input_base,
+                           const GoogleUrl& output_base,
+                           bool* proxy_mode) const;
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;

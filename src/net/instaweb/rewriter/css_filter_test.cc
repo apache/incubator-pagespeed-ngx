@@ -597,6 +597,34 @@ TEST_P(CssFilterTest, RewriteStyleAttribute) {
                    "<style style='background-color: #f00; color: yellow;'/>");
 }
 
+TEST_P(CssFilterTest, DontAbsolutifyCssImportUrls) {
+  // Complement to PssUrlNamerTest/AbsolutifyCssImportUrls. Since we are not
+  // using a proxy URL namer (TestUrlNamer) nor any domain rewriting/sharding,
+  // we expect the relative URLs in the @import's to be passed though untouched.
+  const char styles_filename[] = "styles.css";
+  const char styles_css[] =
+      ".background_red{background-color:red}"
+      ".foreground_yellow{color:#ff0}";
+  const GoogleString css_in = StrCat(
+      "@import url(media/print.css) print;",
+      "@import url(media/screen.css) screen;",
+      styles_css);
+  InitResponseHeaders(styles_filename, kContentTypeCss, css_in, 100);
+
+  static const char html_prefix[] =
+      "<head>\n"
+      "  <title>Example style outline</title>\n"
+      "  <!-- Style starts here -->\n"
+      "  <style type='text/css'>";
+  static const char html_suffix[] = "</style>\n"
+      "  <!-- Style ends here -->\n"
+      "</head>";
+
+  GoogleString html = StrCat(html_prefix, css_in,  html_suffix);
+
+  ValidateNoChanges("dont_absolutify_css_import_urls", html);
+}
+
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(CssFilterTestInstance,
                         CssFilterTest,

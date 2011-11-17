@@ -39,6 +39,7 @@ class FunctionParameters;
 
 namespace net_instaweb {
 
+class GoogleUrl;
 class MessageHandler;
 class Writer;
 
@@ -53,6 +54,12 @@ class CssMinify {
   static bool Declarations(const Css::Declarations& declarations,
                            Writer* writer,
                            MessageHandler* handler);
+
+  // Absolutify all relative URLs in the stylesheet's imports using the given
+  // base URL. The Import structures are modified in-situ. Returns true if any
+  // URLs were absolutified, false if not.
+  static bool AbsolutifyImports(Css::Stylesheet* stylesheet,
+                                const GoogleUrl& base);
 
   // Escape [() \t\r\n\\'"].  Also escape , for non-URLs.  Escaping , in
   // URLs causes IE8 to interpret the backslash as a forward slash.

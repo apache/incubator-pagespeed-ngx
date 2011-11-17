@@ -168,6 +168,17 @@ TEST_F(GoogleUrlTest, TestTrivialAllExceptLeaf) {
   EXPECT_EQ(GoogleString("http://a.com/b/c/"), queryful.AllExceptLeaf());
 }
 
+TEST_F(GoogleUrlTest, TestAllExceptLeafIsIdempotent) {
+  // In various places the code takes either a full URL or the URL's
+  // AllExceptLeaf and depends on the fact that calling AllExceptLeaf on either
+  // gives you the same thing. This test is catch any breakage to that.
+  GoogleUrl queryless("http://a.com/b/c/d.ext");
+  StringPiece all_except_leaf(queryless.AllExceptLeaf());
+  GoogleUrl all_except_leaf_url(all_except_leaf);
+  EXPECT_TRUE(all_except_leaf_url.is_valid());
+  EXPECT_EQ(all_except_leaf, all_except_leaf_url.AllExceptLeaf());
+}
+
 TEST_F(GoogleUrlTest, TestTrivialLeafSansQuery) {
   GoogleUrl queryless("http://a.com/b/c/d.ext");
   EXPECT_EQ(GoogleString("d.ext"), queryless.LeafSansQuery());

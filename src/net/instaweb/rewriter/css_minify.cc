@@ -22,6 +22,7 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -60,6 +61,24 @@ bool CssMinify::Declarations(const Css::Declarations& declarations,
   CssMinify minifier(writer, handler);
   minifier.JoinMinify(declarations, ";");
   return minifier.ok_;
+}
+
+bool CssMinify::AbsolutifyImports(Css::Stylesheet* stylesheet,
+                                  const GoogleUrl& base) {
+  bool result = false;
+  const Css::Imports& imports = stylesheet->imports();
+  Css::Imports::const_iterator iter;
+  for (iter = imports.begin(); iter != imports.end(); ++iter) {
+    Css::Import* import = *iter;
+    StringPiece url(import->link.utf8_data(), import->link.utf8_length());
+    GoogleUrl gurl(base, url);
+    if (gurl.is_valid() && gurl.Spec() != url) {
+      url = gurl.Spec();
+      import->link.CopyUTF8(url.data(), url.length());
+      result = true;
+    }
+  }
+  return result;
 }
 
 // Escape [() \t\r\n\\'"].  Also escape , for non-URLs.  Escaping , in
@@ -195,7 +214,8 @@ void CssMinify::Minify(const Css::Charsets& charsets) {
 
 void CssMinify::Minify(const Css::Import& import) {
   Write("@import url(");
-  // TODO(sligocki): Make a URL printer method that absolutifies and prints.
+  // TODO(sligocki): Make a URL printer method that absolutifies and prints,
+  // though can be obviated by timely use of AbsolutifyImports above.
   Write(CSSEscapeString(import.link, true));
   Write(") ");
   JoinMediaMinify(import.media, ",");

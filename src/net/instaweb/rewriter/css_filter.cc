@@ -260,9 +260,16 @@ void CssFilter::Context::Harvest() {
     }
   }
 
+  // May need to absolutify @imports.
+  bool absolutified_imports = false;
+  if (Driver()->ShouldAbsolutifyUrl(css_base_gurl_, css_trim_gurl_, NULL)) {
+    absolutified_imports =
+        CssMinify::AbsolutifyImports(stylesheet_.get(), css_base_gurl_);
+  }
+
   bool ok = filter_->SerializeCss(
       this, in_text_size_, stylesheet_.get(), css_base_gurl_, css_trim_gurl_,
-      previously_optimized,
+      previously_optimized || absolutified_imports,
       IsInlineAttribute() /* stylesheet_is_declarations */,
       &out_text, driver_->message_handler());
   if (ok) {
@@ -560,10 +567,16 @@ TimedBool CssFilter::RewriteCssText(Context* context,
           css_base_gurl, css_trim_gurl, stylesheet.get(), handler);
       ret.expiration_ms = result.expiration_ms;
       RewriteContext* no_rewrite_context = NULL;
+      // May need to absolutify @imports.
+      bool absolutified_imports = false;
+      if (driver_->ShouldAbsolutifyUrl(css_base_gurl, css_trim_gurl, NULL)) {
+        absolutified_imports =
+            CssMinify::AbsolutifyImports(stylesheet.get(), css_base_gurl);
+      }
       ret.value = SerializeCss(no_rewrite_context, in_text_size,
                                stylesheet.get(), css_base_gurl, css_trim_gurl,
-                               result.value, text_is_declarations, out_text,
-                               handler);
+                               result.value || absolutified_imports,
+                               text_is_declarations, out_text, handler);
     }
   }
   return ret;
