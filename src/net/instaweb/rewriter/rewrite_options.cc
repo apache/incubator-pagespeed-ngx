@@ -413,6 +413,18 @@ void RewriteOptions::EnableFilter(Filter filter) {
   modified_ |= inserted.second;
 }
 
+void RewriteOptions::ForceEnableFilter(Filter filter) {
+  DCHECK(!frozen_);
+
+  // insert into set of enabled filters.
+  std::pair<FilterSet::iterator, bool> inserted =
+      enabled_filters_.insert(filter);
+  modified_ |= inserted.second;
+
+  // remove from set of disabled filters.
+  modified_ |= disabled_filters_.erase(filter);
+}
+
 void RewriteOptions::DisableFilter(Filter filter) {
   DCHECK(!frozen_);
   std::pair<FilterSet::iterator, bool> inserted =

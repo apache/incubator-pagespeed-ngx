@@ -106,6 +106,15 @@ TEST_F(RewriteOptionsTest, DisableTrumpsEnable) {
   }
 }
 
+TEST_F(RewriteOptionsTest, ForceEnableFilter) {
+  options_.DisableFilter(RewriteOptions::kHtmlWriterFilter);
+  options_.EnableFilter(RewriteOptions::kHtmlWriterFilter);
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kHtmlWriterFilter));
+
+  options_.ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kHtmlWriterFilter));
+}
+
 TEST_F(RewriteOptionsTest, CoreFilters) {
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
   FilterSet s;

@@ -189,7 +189,12 @@ class RewriteOptions {
   // Which implies that all filters not listed should be disabled.
   void DisableAllFiltersNotExplicitlyEnabled();
 
+  // Adds the filter to the list of enabled filters. However, if the filter
+  // is also present in the list of disabled filters, that takes precedence.
   void EnableFilter(Filter filter);
+  // Guarantees that a filter would be enabled even if it is present in the list
+  // of disabled filters by removing it from disabled filter list.
+  void ForceEnableFilter(Filter filter);
   void DisableFilter(Filter filter);
   void EnableFilters(const FilterSet& filter_set);
   void DisableFilters(const FilterSet& filter_set);
