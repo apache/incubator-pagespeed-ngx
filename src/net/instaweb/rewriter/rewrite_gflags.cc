@@ -214,19 +214,7 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   // forcing this to be set in the default options.
   options->set_ajax_rewriting_enabled(FLAGS_ajax_rewriting_enabled);
 
-  RewriteOptions::RewriteLevel rewrite_level;
-  if (options->ParseRewriteLevel(FLAGS_rewrite_level, &rewrite_level)) {
-    options->SetRewriteLevel(rewrite_level);
-  } else {
-    LOG(ERROR) << "Invalid --rewrite_level: " << FLAGS_rewrite_level;
-    ret = false;
-  }
-
   MessageHandler* handler = factory->message_handler();
-  if (!options->EnableFiltersByCommaSeparatedList(FLAGS_rewriters, handler)) {
-    LOG(ERROR) << "Invalid filters-list: " << FLAGS_rewriters;
-    ret = false;
-  }
 
   StringPieceVector domains;
   SplitStringPieceToVector(FLAGS_domains, ",", &domains, true);
@@ -288,7 +276,7 @@ bool RewriteGflags::SetRewriters(const char* rewriters_flag_name,
 
   if (!options->EnableFiltersByCommaSeparatedList(rewriters_value, handler)) {
     LOG(ERROR) << "Invalid --" << rewriters_flag_name
-               << rewriters_flag_name << ": " << rewriters_value;
+               << ": " << rewriters_value;
     ret = false;
   }
   return ret;
