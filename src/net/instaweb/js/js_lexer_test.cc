@@ -304,57 +304,49 @@ const char* kJsMinExampleTokens[] =  {
   NULL
 };
 
-// Class to be used to receive Lexer events and record them in a vector
-// for comparison against an expected gold array.
-class LexerSpew : public JsLexer::Callback {
- public:
-  explicit LexerSpew(JsLexer* lexer) : lexer_(lexer) {}
-  ~LexerSpew() {}
-  virtual void Keyword(JsKeywords::Keyword keyword) {
-    output_.push_back(StrCat("Keyword: ", lexer_->keyword_string(keyword)));
-  }
-  virtual void Comment(const StringPiece& comment) {
-    output_.push_back(StrCat("Comment: ", comment));
-  }
-  virtual void Whitespace(const StringPiece& whitespace) {
-    output_.push_back(StrCat("Whitespace: ", whitespace));
-  }
-  virtual void Regex(const StringPiece& regex) {
-    output_.push_back(StrCat("Regex: ", regex));
-  }
-  virtual void StringLiteral(const StringPiece& string_literal) {
-    output_.push_back(StrCat("StringLiteral: ", string_literal));
-  }
-  virtual void Number(const StringPiece& number) {
-    output_.push_back(StrCat("Number: ", number));
-  }
-  virtual void Operator(const StringPiece& op) {
-    output_.push_back(StrCat("Operator: ", op));
-  }
-  virtual void Identifier(const StringPiece& identifier) {
-    output_.push_back(StrCat("Identifier: ", identifier));
-  }
-
-  int num_tokens() const { return output_.size(); }
-  const GoogleString token(int i) { return output_[i]; }
-  void Clear() {
-    output_.clear();
-    Callback::Clear();
-  }
-
- private:
-  StringVector output_;
-  JsLexer* lexer_;
-};
-
 class JsLexerTest : public testing::Test {
  public:
-  JsLexerTest() : spew_(&lexer_) {}
   bool TestTokens(const char** expected_tokens, const char* js_input) {
-    spew_.Clear();
-    bool ret = lexer_.Lex(js_input, &spew_);
+    output_.clear();
+    lexer_.Lex(js_input);
 
-    int num_expected_tokens = 0;
+    StringPiece token;
+    JsKeywords::Keyword keyword;
+    JsLexer::Type type;
+    do {
+      type = lexer_.NextToken(&token, &keyword);
+      switch (type) {
+        case JsLexer::kKeyword:
+          output_.push_back(StrCat("Keyword: ",
+                                   lexer_.keyword_string(keyword)));
+          break;
+        case JsLexer::kComment:
+          output_.push_back(StrCat("Comment: ", token));
+          break;
+        case JsLexer::kWhitespace:
+          output_.push_back(StrCat("Whitespace: ", token));
+          break;
+        case JsLexer::kRegex:
+          output_.push_back(StrCat("Regex: ", token));
+          break;
+        case JsLexer::kStringLiteral:
+          output_.push_back(StrCat("StringLiteral: ", token));
+          break;
+        case JsLexer::kNumber:
+          output_.push_back(StrCat("Number: ", token));
+          break;
+        case JsLexer::kOperator:
+          output_.push_back(StrCat("Operator: ", token));
+          break;
+        case JsLexer::kIdentifier:
+          output_.push_back(StrCat("Identifier: ", token));
+          break;
+        case JsLexer::kEndOfInput:
+          break;
+      }
+    } while (type != JsLexer::kEndOfInput);
+
+    size_t num_expected_tokens = 0;
     if (expected_tokens == NULL) {
       expected_tokens = &js_input;
       num_expected_tokens = 1;
@@ -363,18 +355,18 @@ class JsLexerTest : public testing::Test {
         ++num_expected_tokens;
       }
     }
-    EXPECT_EQ(num_expected_tokens, spew_.num_tokens());
-    for (int i = 0, n = std::max(num_expected_tokens, spew_.num_tokens());
+    EXPECT_EQ(num_expected_tokens, output_.size());
+    for (size_t i = 0, n = std::max(num_expected_tokens, output_.size());
          i < n; ++i) {
-      const GoogleString& actual = (i < spew_.num_tokens())
-          ? spew_.token(i)
+      const GoogleString& actual = (i < output_.size())
+          ? output_[i].c_str()
           : "(null)";
       const char* expected = (i < num_expected_tokens)
           ? expected_tokens[i]
           : "(null)";
       EXPECT_STREQ(expected, actual) << ": index=" << i;
     }
-    return ret;
+    return !lexer_.error();
   }
 
   bool TestSingleToken(const char* type, const char* js_input) {
@@ -386,7 +378,7 @@ class JsLexerTest : public testing::Test {
   }
 
   JsLexer lexer_;
-  LexerSpew spew_;
+  StringVector output_;
 };
 
 TEST_F(JsLexerTest, Basic) {

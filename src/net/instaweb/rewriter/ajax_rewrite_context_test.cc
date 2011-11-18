@@ -216,8 +216,7 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
 
     rewrite_driver()->Clear();
     rewrite_driver()->set_async_fetcher(counting_url_async_fetcher());
-    RequestHeaders dummy_headers;
-    rewrite_driver()->FetchResource(url, dummy_headers,
+    rewrite_driver()->FetchResource(url, RequestHeaders(),
         mock_fetch.response_headers(), &mock_fetch);
     sync.Wait();
     rewrite_driver()->WaitForShutDown();

@@ -202,10 +202,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
         EXPECT_EQ(HttpStatus::kNoContent,
                   response_headers_[idx]->status_code());
       } else {
-        EXPECT_LT(static_cast<size_t>(0), contents_[idx]->size())
-            << urls_[idx];
-        EXPECT_EQ(HttpStatus::kOK, response_headers_[idx]->status_code())
-            << urls_[idx];
+        EXPECT_LT(static_cast<size_t>(0), contents_[idx]->size());
+        EXPECT_EQ(HttpStatus::kOK, response_headers_[idx]->status_code());
       }
       EXPECT_EQ(content_starts_[idx],
                 contents_[idx]->substr(0, content_starts_[idx].size()));

@@ -175,7 +175,6 @@ class Parser {
   static const uint64 kSkippedTokenError = 1ULL << 9; // 512
   static const uint64 kCharsetError     = 1ULL << 10; // 1024
   static const uint64 kBlockError       = 1ULL << 11; // 2048
-  static const uint64 kNumberError      = 1ULL << 12; // 4096
   uint64 errors_seen_mask() const { return errors_seen_mask_; }
 
   friend class ParserTest;  // we need to unit test private Parse functions.
@@ -606,7 +605,6 @@ class Ruleset {
   const Declaration& declaration(int i) const { return *declarations_->at(i); }
 
   Selectors& mutable_selectors() { return *selectors_; }
-  std::vector<UnicodeText>& mutable_media() { return media_; }
   Declarations& mutable_declarations() { return *declarations_; }
 
   // set_media copies input media.
