@@ -421,6 +421,28 @@
       },
     },
     {
+      'target_name': 'instaweb_javascript',
+      'type': '<(library)',
+      'dependencies': [
+        'instaweb_util',
+        '<(DEPTH)/base/base.gyp:base',
+      ],
+      'sources': [
+        'genfiles/js/js_keywords.cc',
+        'js/js_lexer.cc',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+        '<(DEPTH)',
+      ],
+      'direct_dependent_settings': {
+        'include_dirs': [
+          '<(instaweb_root)',
+          '<(DEPTH)',
+        ],
+      },
+    },
+    {
       'target_name': 'instaweb_rewriter',
       'type': '<(library)',
       'dependencies': [

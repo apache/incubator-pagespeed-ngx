@@ -1,0 +1,115 @@
+%{
+// js_keywords.cc is automatically generated from js_keywords.gperf.
+// Author: jmarantz@google.com
+
+#include "base/logging.h"
+#include "net/instaweb/js/public/js_keywords.h"
+#include "net/instaweb/util/public/string_util.h"
+
+namespace net_instaweb {
+%}
+%compare-strncmp
+%define class-name JsKeywordMapper
+%define lookup-function-name Lookup
+%define word-array-name kJsKeywordsTable
+%global-table
+%includes
+%language=C++
+%readonly-tables
+%struct-type
+
+struct JsKeywordMap {
+  const char* name;
+  net_instaweb::JsKeywords::Keyword keyword;
+  net_instaweb::JsKeywords::Flag flag;
+};
+%%
+### literals
+"null",         JsKeywords::kNull,            JsKeywords::kIsValue
+"true",         JsKeywords::kTrue,            JsKeywords::kIsValue
+"false",        JsKeywords::kFalse,           JsKeywords::kIsValue
+### keywords
+"break",        JsKeywords::kBreak,           JsKeywords::kNone
+"case",         JsKeywords::kCase,            JsKeywords::kNone
+"catch",        JsKeywords::kCatch,           JsKeywords::kNone
+"const",        JsKeywords::kConst,           JsKeywords::kNone
+"default",      JsKeywords::kDefault,         JsKeywords::kNone
+"finally",      JsKeywords::kFinally,         JsKeywords::kNone
+"for",          JsKeywords::kFor,             JsKeywords::kNone
+"instanceof",   JsKeywords::kInstanceof,      JsKeywords::kNone
+"new",          JsKeywords::kNew,             JsKeywords::kNone
+"var",          JsKeywords::kVar,             JsKeywords::kNone
+"continue",     JsKeywords::kContinue,        JsKeywords::kNone
+"function",     JsKeywords::kFunction,        JsKeywords::kNone
+"return",       JsKeywords::kReturn,          JsKeywords::kNone
+"void",         JsKeywords::kVoid,            JsKeywords::kNone
+"delete",       JsKeywords::kDelete,          JsKeywords::kNone
+"if",           JsKeywords::kIf,              JsKeywords::kNone
+"this",         JsKeywords::kThis,            JsKeywords::kNone
+"do",           JsKeywords::kDo,              JsKeywords::kNone
+"while",        JsKeywords::kWhile,           JsKeywords::kNone
+"else",         JsKeywords::kElse,            JsKeywords::kNone
+"in",           JsKeywords::kIn,              JsKeywords::kNone
+"switch",       JsKeywords::kSwitch,          JsKeywords::kNone
+"throw",        JsKeywords::kThrow,           JsKeywords::kNone
+"try",          JsKeywords::kTry,             JsKeywords::kNone
+"typeof",       JsKeywords::kTypeof,          JsKeywords::kNone
+"with",         JsKeywords::kWith,            JsKeywords::kNone
+"debugger",     JsKeywords::kDebugger,        JsKeywords::kNone
+### reserved for future use
+"class",        JsKeywords::kClass,           JsKeywords::kIsReservedNonStrict
+"enum",         JsKeywords::kEnum,            JsKeywords::kIsReservedNonStrict
+"export",       JsKeywords::kExport,          JsKeywords::kIsReservedNonStrict
+"extends",      JsKeywords::kExtends,         JsKeywords::kIsReservedNonStrict
+"import",       JsKeywords::kImport,          JsKeywords::kIsReservedNonStrict
+"super",        JsKeywords::kSuper,           JsKeywords::kIsReservedNonStrict
+### reserved for future use in strict code
+"implements",   JsKeywords::kImplements,      JsKeywords::kIsReservedStrict
+"interface",    JsKeywords::kInterface,       JsKeywords::kIsReservedStrict
+"let",          JsKeywords::kLet,             JsKeywords::kIsReservedStrict
+"package",      JsKeywords::kPackage,         JsKeywords::kIsReservedStrict
+"private",      JsKeywords::kPrivate,         JsKeywords::kIsReservedStrict
+"protected",    JsKeywords::kProtected,       JsKeywords::kIsReservedStrict
+"public",       JsKeywords::kPublic,          JsKeywords::kIsReservedStrict
+"static",       JsKeywords::kStatic,          JsKeywords::kIsReservedStrict
+"yield",        JsKeywords::kYield,           JsKeywords::kIsReservedStrict
+%%
+
+JsKeywords::Keyword JsKeywords::Lookup(const StringPiece& keyword,
+                                       JsKeywords::Flag* flag) {
+  const JsKeywordMap* keyword_map =
+      JsKeywordMapper::Lookup(keyword.data(), keyword.size());
+  if (keyword_map != NULL) {
+    *flag = keyword_map->flag;
+    return keyword_map->keyword;
+  }
+  return JsKeywords::kNotAKeyword;
+}
+
+bool JsKeywords::Iterator::AtEnd() const {
+  return index_ > MAX_HASH_VALUE;
+}
+
+void JsKeywords::Iterator::Next() {
+  DCHECK(!AtEnd());
+  ++index_;
+  while (!AtEnd() && (*(kJsKeywordsTable[index_].name) == '\0')) {
+    ++index_;
+  }
+}
+
+const char* JsKeywords::Iterator::name() const {
+  DCHECK(!AtEnd());
+  return kJsKeywordsTable[index_].name;
+}
+
+JsKeywords::Keyword JsKeywords::Iterator::keyword() const {
+  DCHECK(!AtEnd());
+  return kJsKeywordsTable[index_].keyword;
+}
+
+int JsKeywords::num_keywords() {
+  return TOTAL_KEYWORDS;
+}
+
+}  // namespace net_instaweb

@@ -39,6 +39,7 @@
       'dependencies': [
         'test_infrastructure',
         'instaweb.gyp:instaweb_automatic',
+        'instaweb.gyp:instaweb_javascript',
         'instaweb.gyp:instaweb_spriter_test',
         'instaweb.gyp:instaweb_util_pthread',
         '<(DEPTH)/testing/gmock.gyp:gmock',
@@ -73,6 +74,7 @@
         'http/user_agent_matcher_test.cc',
         'http/wait_url_async_fetcher_test.cc',
         'http/write_through_http_cache_test.cc',
+        'js/js_lexer_test.cc',
         'rewriter/add_instrumentation_filter_test.cc',
         'rewriter/ajax_rewrite_context_test.cc',
         'rewriter/cache_extender_test.cc',
