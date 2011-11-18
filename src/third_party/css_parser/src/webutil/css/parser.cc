@@ -53,6 +53,7 @@ const uint64 Parser::kRulesetError;
 const uint64 Parser::kSkippedTokenError;
 const uint64 Parser::kCharsetError;
 const uint64 Parser::kBlockError;
+const uint64 Parser::kNumberError;
 
 
 // Using isascii with signed chars is unfortunately undefined.
@@ -283,6 +284,7 @@ UnicodeText Parser::ParseIdent(const StringPiece& allowed_chars) {
 // \abcdef => codepoint 0xabcdef.  also consumes whitespace afterwards.
 // \(UTF8-encoded unicode character) => codepoint for that character
 char32 Parser::ParseEscape() {
+  Tracer trace(__func__, &in_);
   SkipSpace();
   DCHECK_LT(in_, end_);
   DCHECK_EQ(*in_, '\\');
@@ -404,6 +406,8 @@ Value* Parser::ParseNumber() {
   }
   double num = 0;
   if (in_ == begin || !ParseDouble(begin, in_ - begin, &num)) {
+    ReportParsingError(kNumberError, StringPrintf(
+        "Failed to parse number %s", string(begin, in_ - begin).c_str()));
     return NULL;
   }
   if (*in_ == '%') {
@@ -763,7 +767,10 @@ Value* Parser::ParseAny(const StringPiece& allowed_chars) {
     }
   }
   // Deadlock prevention: always make progress even if nothing can be parsed.
-  if (toret == NULL && in_ == oldin) ++in_;
+  if (toret == NULL && in_ == oldin) {
+    ReportParsingError(kValueError, "Ignoring chars in value.");
+    ++in_;
+  }
   return toret;
 }
 

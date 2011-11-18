@@ -253,6 +253,8 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     "a { font:bold verdana 10px; }",
     "}}",
     "a { color: red; }}}",
+    "a { foo: +bar: }",
+    "a { color: rgb(foo,+,); }",
     };
 
   for (int i = 0; i < arraysize(fail_examples); ++i) {
