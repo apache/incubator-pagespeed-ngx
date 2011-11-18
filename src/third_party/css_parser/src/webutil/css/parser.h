@@ -605,6 +605,7 @@ class Ruleset {
   const Declaration& declaration(int i) const { return *declarations_->at(i); }
 
   Selectors& mutable_selectors() { return *selectors_; }
+  std::vector<UnicodeText>& mutable_media() { return media_; }
   Declarations& mutable_declarations() { return *declarations_; }
 
   // set_media copies input media.
