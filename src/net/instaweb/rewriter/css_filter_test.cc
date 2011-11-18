@@ -167,6 +167,7 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     // ";" may be needed for some browsers.
     "@import url(http://www.example.com) ;",
     "@media a,b{a{color:red}}",
+    "@charset \"foobar\";",
     "a{content:\"Odd chars: \\(\\)\\,\\\"\\\'\"}",
     "img{clip:rect(0px,60px,200px,0px)}",
     // CSS3-style pseudo-elements.
@@ -196,7 +197,7 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     "@media screen and (max-width: 290px) { a { color:red } }",
 
     // Slashes in value list.
-    ".border8 { border-radius: 36px / 12px; }"
+    ".border8 { border-radius: 36px / 12px; }",
 
     // http://code.google.com/p/modpagespeed/issues/detail?id=220
     // See https://developer.mozilla.org/en/CSS/-moz-transition-property
@@ -210,8 +211,43 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     // Parameterized pseudo-selector.
     "div:nth-child(1n) { color: red; }",
 
-    // @charsets aren't parsed yet.
-    "@charset \"UTF-8\";"
+    // Things from Alexa-100 that we get parsing errors for. Most are illegal
+    // syntax/typos. Some are CSS3 constructs.
+
+    // kDeclarationError from Alexa-100
+    // Comma in values
+    "a { webkit-transition-property: color, background-color; }",
+    // Special chars in property
+    "a { //display: inline-block }",
+    ".ad_300x250{/margin-top:-120px;}",
+    // Properties with no value
+    "a { background-repeat;no-repeat }",
+    // Typos
+    "a { margin-right:0;width:113px;*/ }",
+    "a {z-i ndex:19}",
+    "a { width:352px; height62px; display:block; }",
+    "a { color: #5552; }",
+    "a { 1font-family:Tahoma, Arial, sans-serif; }",
+    "a { text align:center; }",
+
+    // kSelectorError from Alexa-100
+    // Selector list ends in comma
+    ".hp .col ul, { display: inline }",
+    // Parameters for pseudoclass
+    "body:not(:target) { color: red }",
+    "a:not(.button):hover { color: red }",
+    // Typos
+    "# new_results_notification{font-size:12px;}",
+    "a { color: red }\n */",
+    "a { color: red }\n // Comment",
+
+    // kFunctionError from Alexa-100
+    // Expression
+    "a { _top: expression(0+((e=document.documen))) }",
+    "a { width:expression(this.width > 120 ? 120:tr) }",
+    // Equals in function
+    "a { progid:DXImageTransform.Microsoft.AlphaImageLoader"
+    "(src=/images/lb/internet_e) }",
 
     // Should fail (bad syntax):
     "a { font:bold verdana 10px; }",
@@ -459,6 +495,12 @@ TEST_P(CssFilterTest, ComplexCssTest) {
       "@media screen{d{color:#000}}"
       "@media screen,printer{e{color:#fff}}",
     },
+
+    // Charsets
+    { "@charset \"UTF-8\";\n"
+      "a { color: red }\n",
+
+      "@charset \"UTF-8\";a{color:red}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
