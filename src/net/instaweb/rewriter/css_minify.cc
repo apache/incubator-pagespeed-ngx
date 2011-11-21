@@ -268,7 +268,7 @@ void CssMinify::Minify(const Css::SimpleSelectors& sselectors, bool isfirst) {
 
 void CssMinify::Minify(const Css::SimpleSelector& sselector) {
   // SimpleSelector::ToString is already basically minified.
-  Write(sselector.ToString());
+  Write(EscapeString(sselector.ToString(), false));
 }
 
 namespace {
@@ -306,7 +306,7 @@ GoogleString FontToString(const Css::Values& font_values) {
 }  // namespace
 
 void CssMinify::Minify(const Css::Declaration& declaration) {
-  Write(declaration.prop_text());
+  Write(EscapeString(declaration.prop_text(), false));
   Write(":");
   switch (declaration.prop()) {
     case Css::Property::FONT_FAMILY:
@@ -337,15 +337,15 @@ void CssMinify::Minify(const Css::Declaration& declaration) {
 
 void CssMinify::Minify(const Css::Value& value) {
   switch (value.GetLexicalUnitType()) {
-    case Css::Value::NUMBER:
+    case Css::Value::NUMBER: {
       // TODO(sligocki): Minify number
       // TODO(sligocki): Check that exponential notation is appropriate.
       // TODO(sligocki): Distinguish integers from float and print differently.
       // We use .16 to get most precission without getting rounding artifacts.
-      Write(StringPrintf("%.16g%s",
-                         value.GetFloatValue(),
-                         value.GetDimensionUnitText().c_str()));
+      GoogleString unit = EscapeString(value.GetDimensionUnitText(), false);
+      Write(StringPrintf("%.16g%s", value.GetFloatValue(), unit.c_str()));
       break;
+    }
     case Css::Value::URI:
       // TODO(sligocki): Make a URL printer method that absolutifies and prints.
       Write("url(");

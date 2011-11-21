@@ -184,6 +184,12 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     "body{font-family:font\\,1,font\\,2}",
     // Found in the wild:
     "a{width:overflow:hidden}",
+    // IE hack: \9
+    "div{margin:100px\\9 }",
+    "div{margin\\9 :100px}",
+    "div\\9 {margin:100px}",
+    "a{color:red\\9 }",
+    "a{background:none\\9 }",
   };
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
