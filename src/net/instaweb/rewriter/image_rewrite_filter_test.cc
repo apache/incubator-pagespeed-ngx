@@ -572,7 +572,7 @@ TEST_P(ImageRewriteTest, RewriteCacheExtendInteraction) {
   // There was a bug in async mode where rewriting failing would prevent
   // cache extension from working as well.
   options()->EnableFilter(RewriteOptions::kRecompressImages);
-  options()->EnableFilter(RewriteOptions::kExtendCache);
+  options()->EnableFilter(RewriteOptions::kExtendCacheImages);
   rewrite_driver()->AddFilters();
 
   // Provide a non-image file, so image rewrite fails (but cache extension

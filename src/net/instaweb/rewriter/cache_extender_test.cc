@@ -82,7 +82,8 @@ class CacheExtenderTest : public ResourceManagerTestBase,
   }
 
   void InitTest(int64 ttl) {
-    AddFilter(RewriteOptions::kExtendCache);
+    options()->EnableExtendCacheFilters();
+    rewrite_driver()->AddFilters();
     InitResponseHeaders(kCssFile, kContentTypeCss, kCssData, ttl);
     InitResponseHeaders("b.jpg", kContentTypeJpeg, kImageData, ttl);
     InitResponseHeaders("c.js", kContentTypeJavascript, kJsData, ttl);
@@ -134,6 +135,22 @@ TEST_P(CacheExtenderTest, DoExtend) {
   }
 }
 
+TEST_P(CacheExtenderTest, DoExtendForImagesOnly) {
+  AddFilter(RewriteOptions::kExtendCacheImages);
+  InitResponseHeaders(kCssFile, kContentTypeCss, kCssData, kShortTtlSec);
+  InitResponseHeaders("b.jpg", kContentTypeJpeg, kImageData, kShortTtlSec);
+  InitResponseHeaders("c.js", kContentTypeJavascript, kJsData, kShortTtlSec);
+
+  for (int i = 0; i < 3; i++) {
+    ValidateExpected(
+        "do_extend",
+        GenerateHtml(kCssFile, "b.jpg", "c.js"),
+        GenerateHtml(kCssFile,
+                     Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
+                     "c.js"));
+  }
+}
+
 TEST_P(CacheExtenderTest, Handle404) {
   // Test to make sure that a missing input is handled well.
   SetFetchResponse404("404.css");
@@ -144,7 +161,8 @@ TEST_P(CacheExtenderTest, Handle404) {
 }
 
 TEST_P(CacheExtenderTest, UrlTooLong) {
-  AddFilter(RewriteOptions::kExtendCache);
+  options()->EnableExtendCacheFilters();
+  rewrite_driver()->AddFilters();
 
   // Make the filename too long.
   GoogleString long_string(options()->max_url_segment_size() + 1, 'z');
@@ -431,7 +449,7 @@ TEST_P(CacheExtenderTest, ServeFilesFromDelayedFetch) {
 
 TEST_P(CacheExtenderTest, MinimizeCacheHits) {
   options()->EnableFilter(RewriteOptions::kOutlineCss);
-  options()->EnableFilter(RewriteOptions::kExtendCache);
+  options()->EnableFilter(RewriteOptions::kExtendCacheCss);
   options()->set_css_outline_min_bytes(1);
   rewrite_driver()->AddFilters();
   GoogleString html_input = StrCat("<style>", kCssData, "</style>");

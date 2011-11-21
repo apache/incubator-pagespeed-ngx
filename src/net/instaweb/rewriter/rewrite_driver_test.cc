@@ -249,7 +249,7 @@ TEST_P(RewriteDriverTest, TestCacheUseWithInvalidation) {
 // Similar to TestCacheUse, but with cache-extender which reconstructs on the
 // fly.
 TEST_P(RewriteDriverTest, TestCacheUseOnTheFly) {
-  AddFilter(RewriteOptions::kExtendCache);
+  AddFilter(RewriteOptions::kExtendCacheCss);
 
   const char kCss[] = "* { display: none; }";
   InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
@@ -277,7 +277,7 @@ TEST_P(RewriteDriverTest, TestCacheUseOnTheFly) {
 TEST_P(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
   bool async = rewrite_driver()->asynchronous_rewrites();
   resource_manager()->set_store_outputs_in_file_system(false);
-  AddFilter(RewriteOptions::kExtendCache);
+  AddFilter(RewriteOptions::kExtendCacheCss);
 
   const char kCss[] = "* { display: none; }";
   InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);

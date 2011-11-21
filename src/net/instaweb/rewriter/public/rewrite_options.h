@@ -52,7 +52,9 @@ class RewriteOptions {
     kDisableJavascript,
     kDivStructure,
     kElideAttributes,
-    kExtendCache,
+    kExtendCacheCss,
+    kExtendCacheImages,
+    kExtendCacheScripts,
     kHtmlWriterFilter,
     kInlineCss,
     kInlineImages,
@@ -199,6 +201,9 @@ class RewriteOptions {
   void DisableFilter(Filter filter);
   void EnableFilters(const FilterSet& filter_set);
   void DisableFilters(const FilterSet& filter_set);
+
+  // Enables all three extend_cache filters.
+  void EnableExtendCacheFilters();
 
   bool Enabled(Filter filter) const;
 

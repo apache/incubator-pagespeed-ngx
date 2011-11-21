@@ -750,11 +750,12 @@ void RewriteDriver::AddPreRenderFilters() {
     // that's necessary
     AddOwnedPreRenderFilter(new ElideAttributesFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kExtendCache)) {
+  if (rewrite_options->Enabled(RewriteOptions::kExtendCacheCss) ||
+      rewrite_options->Enabled(RewriteOptions::kExtendCacheImages) ||
+      rewrite_options->Enabled(RewriteOptions::kExtendCacheScripts)) {
     // Extend the cache lifetime of resources.
     EnableRewriteFilter(RewriteOptions::kCacheExtenderId);
   }
-
   if (rewrite_options->Enabled(RewriteOptions::kSpriteImages)) {
     EnableRewriteFilter(RewriteOptions::kImageCombineId);
   }
@@ -1881,6 +1882,19 @@ bool RewriteDriver::ShouldNotRewriteImages() const {
     }
   }
   return (user_agent_is_bot_ == kTrue);
+}
+
+bool RewriteDriver::MayCacheExtendCss() const {
+  return options()->Enabled(RewriteOptions::kExtendCacheCss);
+}
+
+bool RewriteDriver::MayCacheExtendImages() const {
+  return options()->Enabled(RewriteOptions::kExtendCacheImages) &&
+      !ShouldNotRewriteImages();
+}
+
+bool RewriteDriver::MayCacheExtendScripts() const {
+  return options()->Enabled(RewriteOptions::kExtendCacheScripts);
 }
 
 void RewriteDriver::AddRewriteTask(Function* task) {

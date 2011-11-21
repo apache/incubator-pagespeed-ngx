@@ -68,7 +68,7 @@ bool CssImageRewriterAsync::RewritesEnabled(
   return (image_inline_max_bytes > 0 ||
           options->Enabled(RewriteOptions::kRecompressImages) ||
           options->Enabled(RewriteOptions::kLeftTrimUrls) ||
-          options->Enabled(RewriteOptions::kExtendCache) ||
+          options->Enabled(RewriteOptions::kExtendCacheImages) ||
           options->Enabled(RewriteOptions::kSpriteImages));
 }
 
@@ -94,7 +94,7 @@ void CssImageRewriterAsync::RewriteImage(
             context_, ResourceSlotPtr(slot)));
   }
 
-  if (options->Enabled(RewriteOptions::kExtendCache)) {
+  if (driver_->MayCacheExtendImages()) {
     context_->RegisterNested(
         cache_extender_->MakeNestedContext(context_, ResourceSlotPtr(slot)));
   }

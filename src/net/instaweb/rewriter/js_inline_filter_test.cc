@@ -215,7 +215,7 @@ TEST_P(JsInlineFilterTest, CachedWithSuccesors) {
   // the source attribute which the inliner deleted while using
   // cached filter results.
   options()->EnableFilter(RewriteOptions::kInlineJavascript);
-  options()->EnableFilter(RewriteOptions::kExtendCache);
+  options()->EnableFilter(RewriteOptions::kExtendCacheScripts);
   rewrite_driver()->AddFilters();
 
   const char kJsUrl[] = "script.js";

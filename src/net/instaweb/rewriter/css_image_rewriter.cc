@@ -91,7 +91,7 @@ bool CssImageRewriter::RewritesEnabled() const {
   const RewriteOptions* options = driver_->options();
   return (options->Enabled(RewriteOptions::kRecompressImages) ||
           options->Enabled(RewriteOptions::kLeftTrimUrls) ||
-          options->Enabled(RewriteOptions::kExtendCache) ||
+          options->Enabled(RewriteOptions::kExtendCacheImages) ||
           options->Enabled(RewriteOptions::kSpriteImages));
 }
 
@@ -130,7 +130,7 @@ TimedBool CssImageRewriter::RewriteImageUrl(const GoogleUrl& base_url,
       }
     }
     // Try cache extending.
-    if (!ret.value && options->Enabled(RewriteOptions::kExtendCache)) {
+    if (!ret.value && options->Enabled(RewriteOptions::kExtendCacheImages)) {
       handler->Message(kInfo, "Attempting to cache extend image %s",
                        old_rel_url_str.c_str());
       rewrite_info.reset(

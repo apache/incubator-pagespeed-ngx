@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -128,11 +129,34 @@ bool CacheExtender::ShouldRewriteResource(
 void CacheExtender::StartElementImpl(HtmlElement* element) {
   // Disable extend_cache for img if ModPagespeedDisableForBots is on
   // and the user-agent is a bot.
-  if (element->keyword() == HtmlName::kImg &&
-      driver_->ShouldNotRewriteImages()) {
+  HtmlName::Keyword keyword = element->keyword();
+  bool may_rewrite = false;
+  switch (keyword) {
+    case HtmlName::kLink: {
+      may_rewrite = driver_->MayCacheExtendCss();
+      break;
+    }
+    case HtmlName::kImg:
+    case HtmlName::kInput: {
+      may_rewrite = driver_->MayCacheExtendImages();
+      break;
+    }
+    case HtmlName::kScript: {
+      may_rewrite = driver_->MayCacheExtendScripts();
+      break;
+    }
+    default:
+      break;
+  }
+  if (!may_rewrite) {
     return;
   }
+
   HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
+  if (href == NULL) {
+    ImageTagScanner image_scanner(driver_);
+    href = image_scanner.ParseImageElement(element);
+  }
 
   // TODO(jmarantz): We ought to be able to domain-shard even if the
   // resources are non-cacheable or privately cacheable.

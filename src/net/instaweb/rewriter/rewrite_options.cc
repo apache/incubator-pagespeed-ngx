@@ -47,7 +47,7 @@ namespace {
 //
 // This version number should be incremented if any default-values are changed,
 // either in the add_option() call or via options->set_default.
-const int kOptionsVersion = 10;
+const int kOptionsVersion = 11;
 
 }  // namespace
 
@@ -138,7 +138,9 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kAddHead,
   RewriteOptions::kCombineCss,
   RewriteOptions::kConvertMetaTags,
-  RewriteOptions::kExtendCache,
+  RewriteOptions::kExtendCacheCss,
+  RewriteOptions::kExtendCacheImages,
+  RewriteOptions::kExtendCacheScripts,
   RewriteOptions::kHtmlWriterFilter,
   RewriteOptions::kInlineCss,
   RewriteOptions::kInlineImages,
@@ -199,7 +201,9 @@ const char* RewriteOptions::FilterName(Filter filter) {
         return "Disables scripts by placing them inside noscript tags";
     case kDivStructure:                    return "Div Structure";
     case kElideAttributes:                 return "Elide Attributes";
-    case kExtendCache:                     return "Extend Cache";
+    case kExtendCacheCss:                  return "Cache Extend Css";
+    case kExtendCacheImages:               return "Cache Extend Images";
+    case kExtendCacheScripts:              return "Cache Extend Scripts";
     case kHtmlWriterFilter:                return "Flushes html";
     case kInlineCss:                       return "Inline Css";
     case kInlineImages:                    return "Inline Images";
@@ -242,7 +246,9 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kDisableJavascript:               return "jd";
     case kDivStructure:                    return "ds";
     case kElideAttributes:                 return "ea";
-    case kExtendCache:                     return kCacheExtenderId;
+    case kExtendCacheCss:                  return "ec";
+    case kExtendCacheImages:               return "ei";
+    case kExtendCacheScripts:              return "es";
     case kHtmlWriterFilter:                return "hw";
     case kInlineCss:                       return "ci";
     case kInlineImages:                    return "ii";
@@ -428,6 +434,12 @@ void RewriteOptions::ForceEnableFilter(Filter filter) {
   modified_ |= disabled_filters_.erase(filter);
 }
 
+void RewriteOptions::EnableExtendCacheFilters() {
+  EnableFilter(kExtendCacheCss);
+  EnableFilter(kExtendCacheImages);
+  EnableFilter(kExtendCacheScripts);
+}
+
 void RewriteOptions::DisableFilter(Filter filter) {
   DCHECK(!frozen_);
   std::pair<FilterSet::iterator, bool> inserted =
@@ -469,6 +481,10 @@ bool RewriteOptions::AddCommaSeparatedListToFilterSet(
         set->insert(kInsertImageDimensions);
         set->insert(kRecompressImages);
         set->insert(kResizeImages);
+      } else if (option == "extend_cache") {
+        set->insert(kExtendCacheCss);
+        set->insert(kExtendCacheImages);
+        set->insert(kExtendCacheScripts);
       } else {
         handler->Message(kWarning, "Invalid filter name: %s",
                          option.as_string().c_str());

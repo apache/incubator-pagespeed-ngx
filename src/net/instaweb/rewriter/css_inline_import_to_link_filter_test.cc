@@ -176,7 +176,7 @@ TEST_F(CssInlineImportToLinkFilterTest, DoNotConvertBadStyle) {
 
 TEST_F(CssInlineImportToLinkFilterTest, ConvertThenCacheExtend) {
   options()->EnableFilter(RewriteOptions::kInlineImportToLink);
-  options()->EnableFilter(RewriteOptions::kExtendCache);
+  options()->EnableFilter(RewriteOptions::kExtendCacheCss);
   rewrite_driver()->AddFilters();
   InitResponseHeaders(kCssFile, kContentTypeCss, kCssData, 100);  // 100ms
 
@@ -190,7 +190,7 @@ TEST_F(CssInlineImportToLinkFilterTest, ConvertThenCacheExtend) {
 
 TEST_F(CssInlineImportToLinkFilterTest, DontConvertButCacheExtend) {
   options()->EnableFilter(RewriteOptions::kInlineImportToLink);
-  options()->EnableFilter(RewriteOptions::kExtendCache);
+  options()->EnableFilter(RewriteOptions::kExtendCacheCss);
   rewrite_driver()->AddFilters();
   InitResponseHeaders(kCssFile, kContentTypeCss, kCssData, 100);  // 100ms
 

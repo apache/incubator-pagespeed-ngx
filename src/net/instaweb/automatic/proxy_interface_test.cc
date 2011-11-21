@@ -248,6 +248,11 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     return JoinStringStar(values, ", ");
   }
 
+  void CheckExtendCache(RewriteOptions* options, bool x) {
+    EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheCss));
+    EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheImages));
+    EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheScripts));
+  }
 
   scoped_ptr<ProxyInterface> proxy_interface_;
   int64 start_time_ms_;
@@ -780,7 +785,9 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
   // By default, cache extension is off in the default options.
   resource_manager()->global_options()->SetDefaultRewriteLevel(
       RewriteOptions::kPassThrough);
-  ASSERT_FALSE(options()->Enabled(RewriteOptions::kExtendCache));
+  ASSERT_FALSE(options()->Enabled(RewriteOptions::kExtendCacheCss));
+  ASSERT_FALSE(options()->Enabled(RewriteOptions::kExtendCacheImages));
+  ASSERT_FALSE(options()->Enabled(RewriteOptions::kExtendCacheScripts));
   ASSERT_EQ(RewriteOptions::kPassThrough, options()->level());
 
   // Because cache-extension was turned off, the image in the CSS file
@@ -792,7 +799,9 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
   // up to and including the current timestamp and advance by 1ms, otherwise
   // the previously stored embedded.css.pagespeed.cf.0.css will get re-used.
   scoped_ptr<RewriteOptions> custom_options(factory()->NewRewriteOptions());
-  custom_options->EnableFilter(RewriteOptions::kExtendCache);
+  custom_options->EnableFilter(RewriteOptions::kExtendCacheCss);
+  custom_options->EnableFilter(RewriteOptions::kExtendCacheImages);
+  custom_options->EnableFilter(RewriteOptions::kExtendCacheScripts);
   custom_options->set_cache_invalidation_timestamp(mock_timer()->NowMs());
   mock_timer()->AdvanceUs(Timer::kMsUs);
 
@@ -830,7 +839,7 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithNoUrlNamerOptions) {
       request_headers, NULL));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
-  EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCache));
+  CheckExtendCache(options.get(), true);
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineJavascript));
 
@@ -839,7 +848,7 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithNoUrlNamerOptions) {
       "http://example.com/?ModPagespeedFilters=extend_cache",
       request_headers, NULL));
   ASSERT_TRUE(options.get() != NULL);
-  EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCache));
+  CheckExtendCache(options.get(), true);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineJavascript));
 
@@ -871,7 +880,7 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
   // options as domain options provided as argument.
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kExtendCache));
+  CheckExtendCache(options.get(), false);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineJavascript));
 
@@ -881,7 +890,7 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
       request_headers, &namer_options));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
-  EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCache));
+  CheckExtendCache(options.get(), true);
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineJavascript));
 
@@ -894,7 +903,7 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
       request_headers, &namer_options));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kExtendCache));
+  CheckExtendCache(options.get(), false);
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineJavascript));
 

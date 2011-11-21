@@ -150,6 +150,11 @@ class RewriteDriver : public HtmlParse {
   //   supporting-relcanonical-http-headers.html
   bool ShouldNotRewriteImages() const;
 
+  // Returns true if we may cache extend Css, Images or Scripts respectively.
+  bool MayCacheExtendCss() const;
+  bool MayCacheExtendImages() const;
+  bool MayCacheExtendScripts() const;
+
   void RememberResource(const StringPiece& url, const ResourcePtr& resource);
   const GoogleString& user_agent() const {
     return user_agent_;

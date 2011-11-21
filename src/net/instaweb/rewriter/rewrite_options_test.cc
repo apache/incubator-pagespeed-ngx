@@ -84,7 +84,8 @@ TEST_F(RewriteOptionsTest, DefaultEnabledFilters) {
 TEST_F(RewriteOptionsTest, InstrumentationDisabled) {
   // Make sure the kCoreFilters enables some filters.
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  ASSERT_TRUE(options_.Enabled(RewriteOptions::kExtendCache));
+  ASSERT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheCss));
+  ASSERT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheImages));
 
   // Now disable all filters and make sure none are enabled.
   for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
@@ -267,49 +268,49 @@ TEST_F(RewriteOptionsTest, MergeCoreFilter) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
   options_.Merge(one, two);
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCache));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheCss));
 }
 
 TEST_F(RewriteOptionsTest, MergeCoreFilterEnaOne) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  one.EnableFilter(RewriteOptions::kExtendCache);
+  one.EnableFilter(RewriteOptions::kExtendCacheCss);
   options_.Merge(one, two);
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCache));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheCss));
 }
 
 TEST_F(RewriteOptionsTest, MergeCoreFilterEnaTwo) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  two.EnableFilter(RewriteOptions::kExtendCache);
+  two.EnableFilter(RewriteOptions::kExtendCacheCss);
   options_.Merge(one, two);
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCache));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheCss));
 }
 
 TEST_F(RewriteOptionsTest, MergeCoreFilterEnaOneDisTwo) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  one.EnableFilter(RewriteOptions::kExtendCache);
-  two.DisableFilter(RewriteOptions::kExtendCache);
+  one.EnableFilter(RewriteOptions::kExtendCacheImages);
+  two.DisableFilter(RewriteOptions::kExtendCacheImages);
   options_.Merge(one, two);
-  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCache));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheImages));
 }
 
 TEST_F(RewriteOptionsTest, MergeCoreFilterDisOne) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  one.DisableFilter(RewriteOptions::kExtendCache);
+  one.DisableFilter(RewriteOptions::kExtendCacheCss);
   options_.Merge(one, two);
-  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCache));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheCss));
 }
 
 TEST_F(RewriteOptionsTest, MergeCoreFilterDisOneEnaTwo) {
   RewriteOptions one, two;
   one.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  one.DisableFilter(RewriteOptions::kExtendCache);
-  two.EnableFilter(RewriteOptions::kExtendCache);
+  one.DisableFilter(RewriteOptions::kExtendCacheScripts);
+  two.EnableFilter(RewriteOptions::kExtendCacheScripts);
   options_.Merge(one, two);
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCache));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheScripts));
 }
 
 TEST_F(RewriteOptionsTest, MergeThresholdDefault) {
@@ -411,13 +412,13 @@ TEST_F(RewriteOptionsTest, MergeAllow) {
 TEST_F(RewriteOptionsTest, DisableAllFiltersNotExplicitlyEnabled) {
   RewriteOptions one, two;
   one.EnableFilter(RewriteOptions::kAddHead);
-  two.EnableFilter(RewriteOptions::kExtendCache);
+  two.EnableFilter(RewriteOptions::kExtendCacheCss);
   two.DisableAllFiltersNotExplicitlyEnabled();  // Should disable AddHead.
   options_.Merge(one, two);
 
   // Make sure AddHead enabling didn't leak through.
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kAddHead));
-  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCache));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheCss));
 }
 
 TEST_F(RewriteOptionsTest, DisableAllFiltersOverrideFilterLevel) {

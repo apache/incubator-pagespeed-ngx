@@ -55,6 +55,12 @@ class RewriteQueryTest : public ::testing::Test {
     return options_.get();
   }
 
+  void CheckExtendCache(RewriteOptions* options, bool x) {
+    EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheCss));
+    EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheImages));
+    EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheScripts));
+  }
+
   GoogleMessageHandler handler_;
   scoped_ptr<RewriteOptions> options_;
 };
@@ -79,7 +85,7 @@ TEST_F(RewriteQueryTest, OnWithDefaultFiltersQuery) {
   RewriteOptions* options = ParseAndScan("ModPagespeed=on", "");
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->enabled());
-  EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCache));
+  CheckExtendCache(options, true);
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteCss));
@@ -90,7 +96,7 @@ TEST_F(RewriteQueryTest, OnWithDefaultFiltersHeaders) {
   RewriteOptions* options = ParseAndScan("", "ModPagespeed;on");
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->enabled());
-  EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCache));
+  CheckExtendCache(options, true);
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteCss));
@@ -103,7 +109,7 @@ TEST_F(RewriteQueryTest, SetFiltersQuery) {
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->enabled());
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRemoveQuotes));
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kExtendCache));
+  CheckExtendCache(options, false);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteCss));
@@ -116,7 +122,7 @@ TEST_F(RewriteQueryTest, SetFiltersHeaders) {
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->enabled());
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRemoveQuotes));
-  EXPECT_FALSE(options->Enabled(RewriteOptions::kExtendCache));
+  CheckExtendCache(options, false);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteCss));

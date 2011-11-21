@@ -60,7 +60,7 @@ class CssImageRewriterTest : public CssRewriteTestBase {
   virtual void SetUp() {
     // We setup the options before the upcall so that the
     // CSS filter is created aware of these.
-    options()->EnableFilter(RewriteOptions::kExtendCache);
+    options()->EnableFilter(RewriteOptions::kExtendCacheImages);
     CssRewriteTestBase::SetUp();
   }
 };
@@ -139,7 +139,7 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesEmbeddedSpace) {
 
 TEST_P(CssImageRewriterTest, MinifyImagesEmbeddedSpace) {
   options()->ClearSignatureForTesting();
-  options()->DisableFilter(RewriteOptions::kExtendCache);
+  options()->DisableFilter(RewriteOptions::kExtendCacheImages);
   resource_manager()->ComputeSignature(options());
 
   static const char css_before[] =
@@ -626,7 +626,7 @@ TEST_P(CssImageRewriterTest, RecompressImagesInStyleAttributes) {
       "\"/>");
 
   scoped_ptr<RewriteOptions> default_options(factory()->NewRewriteOptions());
-  default_options.get()->DisableFilter(RewriteOptions::kExtendCache);
+  default_options.get()->DisableFilter(RewriteOptions::kExtendCacheImages);
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
                        kContentTypePng, 100);
 
@@ -679,7 +679,7 @@ class CssFilterSubresourceTest : public CssRewriteTestBase {
   virtual void SetUp() {
     // We setup the options before the upcall so that the
     // CSS filter is created aware of these.
-    options()->EnableFilter(RewriteOptions::kExtendCache);
+    options()->EnableFilter(RewriteOptions::kExtendCacheImages);
     options()->EnableFilter(RewriteOptions::kRecompressImages);
     CssRewriteTestBase::SetUp();
 

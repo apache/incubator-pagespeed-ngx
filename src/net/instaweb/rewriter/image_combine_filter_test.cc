@@ -482,7 +482,7 @@ class CssImageMultiFilterTest : public CssImageCombineTest {
   virtual void SetUp() {
     // We setup the options before the upcall so that the
     // CSS filter is created aware of these.
-    options()->EnableFilter(RewriteOptions::kExtendCache);
+    options()->EnableFilter(RewriteOptions::kExtendCacheImages);
     CssImageCombineTest::SetUp();
   }
 };

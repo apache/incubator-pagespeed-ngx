@@ -442,7 +442,8 @@ check [ $? != 0 ]
 grep "type=" $FETCHED       # default, should not find
 check [ $? != 0 ]
 
-test_filter extend_cache rewrites an image tag.
+test_filter extend_cache_images rewrites an image tag.
+URL=$EXAMPLE_ROOT/extend_cache.html?ModPagespeedFilters=extend_cache_images
 fetch_until $URL 'grep -c src.*/Puzzle.jpg.pagespeed.ce.*.jpg' 1
 check run_wget_with_args $URL
 echo about to test resource ext corruption...
