@@ -165,6 +165,9 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // known content types.
   const ContentType* DetermineContentType() const;
 
+  // Get the charset. Empty string if none set in a Content-Type header.
+  GoogleString DetermineCharset() const;
+
   // Parses a date header such as HttpAttributes::kDate or
   // HttpAttributes::kExpires, returning the timestamp as
   // number of milliseconds since 1970.

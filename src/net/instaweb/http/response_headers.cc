@@ -575,6 +575,22 @@ const ContentType* ResponseHeaders::DetermineContentType() const {
   return content_type;
 }
 
+GoogleString ResponseHeaders::DetermineCharset() const {
+  GoogleString charset;
+
+  // Per the logic in DetermineContentType above we take the first charset
+  // specified and ignore Content-Type headers without a charset.
+  ConstStringStarVector content_types;
+  if (Lookup(HttpAttributes::kContentType, &content_types)) {
+    for (int i = 0, n = content_types.size(); i < n && charset.empty(); ++i) {
+      GoogleString mime_type;
+      ParseContentType(*(content_types[i]), &mime_type, &charset);
+    }
+  }
+
+  return charset;
+}
+
 bool ResponseHeaders::ParseDateHeader(
     const StringPiece& attr, int64* date_ms) const {
   const char* date_string = Lookup1(attr);

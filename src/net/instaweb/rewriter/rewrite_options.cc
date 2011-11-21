@@ -168,6 +168,7 @@ const RewriteOptions::Filter kTestFilterSet[] = {
 // Note: These filters should not be included even if the level is "All".
 const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kDeferJavascript,
+  RewriteOptions::kDisableJavascript,
   RewriteOptions::kDivStructure,
   RewriteOptions::kStripScripts,
 };

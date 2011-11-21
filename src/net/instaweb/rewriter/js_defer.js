@@ -32,15 +32,41 @@ pagespeed.DeferJs = function() {
    * @private
    */
   this.queue_ = [];
-}
+
+  /**
+   * @type {Array.<string>}
+   * @export
+   */
+  this.logs = [];
+
+  /**
+   * @type {number}
+   * @private
+   */
+  this.next_ = 0;
+};
+
+/**
+ * Add to defer_logs if logs are enabled.
+ * @param {!string} line line to be added to log.
+ */
+pagespeed.DeferJs.prototype.log = function(line) {
+  if (this.logs) {
+    this.logs.push('' + line);
+  }
+};
 
 /**
  * Defers execution of 'str', by adding it to the queue.
  * @param {string} str valid javascript snippet.
  */
 pagespeed.DeferJs.prototype.addStr = function(str) {
+  var me = this; // capture closure.
   this.queue_.push(function() {
     window.eval(str);
+    me.log('Evaluated: ' + str);
+    // TODO(atulvasu): Detach stack here to prevent recursion issues.
+    me.runNext();
   });
 };
 
@@ -49,38 +75,55 @@ pagespeed.DeferJs.prototype.addStr = function(str) {
  * @param {string} url returns javascript when fetched.
  */
 pagespeed.DeferJs.prototype.addUrl = function(url) {
+  var me = this; // capture closure.
   this.queue_.push(function() {
     var script = document.createElement('script');
     script.setAttribute('src', url);
     script.setAttribute('type', 'text/javascript');
+    pagespeed.addOnload(script, function() {
+      me.log('Executed: ' + url);
+      me.runNext();
+    });
     document.body.appendChild(script);
   });
 };
 
 /**
- * Executes all the deferred scripts.
+ * Schedules the next task in the queue.
  */
-pagespeed.DeferJs.prototype.run = function() {
-  var len = this.queue_.length;
-  for (var i = 0; i < len; i++) {
+pagespeed.DeferJs.prototype.runNext = function() {
+  if (this.next_ < this.queue_.length) {
+    // Done here to prevent another _run_next() in stack from
+    // seeing the same value of next, and get into infinite
+    // loop.
+    this.next_++;
     try {
-      this.queue_[i].call(window);
-    } catch (err) {}
+      this.queue_[this.next_ - 1].call(window);
+    } catch (err) {
+    }
   }
 };
 
 /**
+ * Starts the execution of all the deferred scripts.
+ */
+pagespeed.DeferJs.prototype.run = function() {
+  this.runNext();
+};
+
+/**
  * Runs the function when page is loaded.
+ * @param {Element} elem Element to attach handler.
  * @param {function()} func New onload handler.
  */
-pagespeed.addOnload = function(func) {
-  if (window.addEventListener) {
-    window.addEventListener('load', func, false);
+pagespeed.addOnload = function(elem, func) {
+  if (elem.addEventListener) {
+    elem.addEventListener('load', func, false);
   } else if (window.attachEvent) {
-    window.attachEvent('onload', func);
+    elem.attachEvent('onload', func);
   } else {
-    var oldHandler = window.onload;
-    window.onload = function() {
+    var oldHandler = elem.onload;
+    elem.onload = function() {
       func.call(this);
       if (oldHandler) {
         oldHandler.call(this);
@@ -94,7 +137,7 @@ pagespeed.addOnload = function(func) {
  */
 pagespeed.deferInit = function() {
   pagespeed.deferJs = new pagespeed.DeferJs();
-  pagespeed.addOnload(function() {
+  pagespeed.addOnload(window, function() {
     pagespeed.deferJs.run();
   });
 };

@@ -368,20 +368,21 @@ void ProxyFetch::Done(bool success) {
   // possibly by calling Finish(false).
 
   bool finish = true;
-  if (success) {
-    VLOG(1) << "Fetch succeeded " << url_
-            << " : " << response_headers_->status_code();
-    if (!pass_through_) {
-      ScopedMutex lock(mutex_.get());
-      done_outstanding_ = true;
-      done_result_ = success;
-      ScheduleQueueExecutionIfNeeded();
-      finish = false;
-    }
-  } else {
+
+  if (!success) {
     // This is a fetcher failure, like connection refused, not just an error
     // status code.
     response_headers_->SetStatusAndReason(HttpStatus::kNotFound);
+  }
+
+  VLOG(1) << "Fetch result:" << success << " " << url_
+          << " : " << response_headers_->status_code();
+  if (!pass_through_) {
+    ScopedMutex lock(mutex_.get());
+    done_outstanding_ = true;
+    done_result_ = success;
+    ScheduleQueueExecutionIfNeeded();
+    finish = false;
   }
 
   if (finish) {

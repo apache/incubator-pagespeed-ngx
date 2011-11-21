@@ -818,6 +818,41 @@ TEST_F(ResponseHeadersTest, DetermineContentTypeWithCharset) {
   EXPECT_EQ(&kContentTypeHtml, response_headers_.DetermineContentType());
 }
 
+TEST_F(ResponseHeadersTest, DetermineCharset) {
+  static const char headers_no_charset[] =
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: image/png\r\n"
+      "Content-Type: image/png\r\n"
+      "Content-Type: image/png\r\n"
+      "\r\n";
+  response_headers_.Clear();
+  ParseHeaders(headers_no_charset);
+  EXPECT_TRUE(response_headers_.DetermineCharset().empty());
+
+  static const char headers_with_charset[] =
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: image/png\r\n"
+      "Content-Type: image/png; charset=utf-8\r\n"
+      "Content-Type: image/png\r\n"
+      "\r\n";
+  response_headers_.Clear();
+  ParseHeaders(headers_with_charset);
+  EXPECT_EQ("utf-8", response_headers_.DetermineCharset());
+
+  // We take the first charset specified.
+  static const char multiple_headers_with_charset[] =
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: image/png\r\n"
+      "Content-Type: image/png; charset=iso-8859-1\r\n"
+      "Content-Type: image/png\r\n"
+      "Content-Type: image/png; charset=utf-8\r\n"
+      "Content-Type: image/png\r\n"
+      "\r\n";
+  response_headers_.Clear();
+  ParseHeaders(multiple_headers_with_charset);
+  EXPECT_EQ("iso-8859-1", response_headers_.DetermineCharset());
+}
+
 TEST_F(ResponseHeadersTest, FixupMissingDate) {
   static const char headers[] =
       "HTTP/1.1 200 OK\r\n"

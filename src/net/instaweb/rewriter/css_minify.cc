@@ -38,9 +38,9 @@ namespace net_instaweb {
 
 namespace {
 
-GoogleString CSSEscapeString(const UnicodeText& src, bool in_url) {
+GoogleString CSSEscapeString(const UnicodeText& src) {
   return CssMinify::EscapeString(
-      StringPiece(src.utf8_data(), src.utf8_length()), in_url);
+      StringPiece(src.utf8_data(), src.utf8_length()), false);
 }
 
 }  // namespace
@@ -50,6 +50,16 @@ bool CssMinify::Stylesheet(const Css::Stylesheet& stylesheet,
                            MessageHandler* handler) {
   // Get an object to encapsulate writing.
   CssMinify minifier(writer, handler);
+  minifier.Minify(stylesheet);
+  return minifier.ok_;
+}
+
+bool CssMinify::Stylesheet(const Css::Stylesheet& stylesheet,
+                           const GoogleUrl& base_url,
+                           Writer* writer,
+                           MessageHandler* handler) {
+  // Get an object to encapsulate writing.
+  CssMinify minifier(base_url, writer, handler);
   minifier.Minify(stylesheet);
   return minifier.ok_;
 }
@@ -122,6 +132,13 @@ GoogleString CssMinify::EscapeString(const StringPiece& src, bool in_url) {
   return GoogleString(dest.get(), used);
 }
 
+CssMinify::CssMinify(const GoogleUrl& base_url,
+                     Writer* writer, MessageHandler* handler)
+    : base_url_(base_url.UncheckedSpec()),
+      writer_(writer), handler_(handler), ok_(true) {
+  DCHECK(base_url_.is_valid());
+}
+
 CssMinify::CssMinify(Writer* writer, MessageHandler* handler)
     : writer_(writer), handler_(handler), ok_(true) {
 }
@@ -134,6 +151,18 @@ void CssMinify::Write(const StringPiece& str) {
   if (ok_) {
     ok_ &= writer_->Write(str, handler_);
   }
+}
+
+void CssMinify::WriteURL(const UnicodeText& url) {
+  StringPiece string_url(url.utf8_data(), url.utf8_length());
+  GoogleUrl abs_url;
+  if (!string_url.empty() && base_url_.is_valid()) {
+    abs_url.Reset(base_url_, string_url);
+    if (abs_url.is_valid()) {
+      string_url = abs_url.Spec();
+    }
+  }
+  Write(EscapeString(string_url, true));
 }
 
 // Write out minified version of each element of vector using supplied function
@@ -184,7 +213,7 @@ void CssMinify::JoinMediaMinify(const Container& container,
     if (iter != container.begin()) {
       Write(sep);
     }
-    Write(CSSEscapeString(*iter, false));
+    Write(CSSEscapeString(*iter));
   }
 }
 
@@ -207,16 +236,14 @@ void CssMinify::Minify(const Css::Charsets& charsets) {
   for (Css::Charsets::const_iterator iter = charsets.begin();
        iter != charsets.end(); ++iter) {
     Write("@charset \"");
-    Write(CSSEscapeString(*iter, false));
+    Write(CSSEscapeString(*iter));
     Write("\";");
   }
 }
 
 void CssMinify::Minify(const Css::Import& import) {
   Write("@import url(");
-  // TODO(sligocki): Make a URL printer method that absolutifies and prints,
-  // though can be obviated by timely use of AbsolutifyImports above.
-  Write(CSSEscapeString(import.link, true));
+  WriteURL(import.link);
   Write(") ");
   JoinMediaMinify(import.media, ",");
   Write(";");
@@ -347,13 +374,12 @@ void CssMinify::Minify(const Css::Value& value) {
       break;
     }
     case Css::Value::URI:
-      // TODO(sligocki): Make a URL printer method that absolutifies and prints.
       Write("url(");
-      Write(CSSEscapeString(value.GetStringValue(), true));
+      WriteURL(value.GetStringValue());
       Write(")");
       break;
     case Css::Value::FUNCTION:
-      Write(CSSEscapeString(value.GetFunctionName(), false));
+      Write(CSSEscapeString(value.GetFunctionName()));
       Write("(");
       Minify(*value.GetParametersWithSeparators());
       Write(")");
@@ -371,11 +397,11 @@ void CssMinify::Minify(const Css::Value& value) {
       break;
     case Css::Value::STRING:
       Write("\"");
-      Write(CSSEscapeString(value.GetStringValue(), false));
+      Write(CSSEscapeString(value.GetStringValue()));
       Write("\"");
       break;
     case Css::Value::IDENT:
-      Write(CSSEscapeString(value.GetIdentifierText(), false));
+      Write(CSSEscapeString(value.GetIdentifierText()));
       break;
     case Css::Value::UNKNOWN:
       handler_->Message(kError, "Unknown attribute");
