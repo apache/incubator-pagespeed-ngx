@@ -96,6 +96,27 @@ TEST_F(DomainRewriteFilterTest, DontTouch) {
   ExpectNoChange("disallow2", StrCat(kFrom2Domain, "dont_shard.css"));
 }
 
+TEST_F(DomainRewriteFilterTest, RelativeUpReferenceRewrite) {
+  ExpectNoChange("subdir/relative", "under_subdir.css");
+  ExpectNoChange("subdir/relative", "../under_top.css");
+
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  lawyer->AddRewriteDomainMapping(kTo1Domain, kHtmlDomain, &message_handler_);
+  ExpectChange("subdir/relative", "under_subdir.css",
+               StrCat(kTo1Domain, "subdir/under_subdir.css"));
+  ExpectChange("subdir/relative", "../under_top2.css",
+               StrCat(kTo1Domain, "under_top2.css"));
+}
+
+TEST_F(DomainRewriteFilterTest, RelativeUpReferenceShard) {
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  lawyer->AddRewriteDomainMapping(kTo2Domain, kHtmlDomain, &message_handler_);
+  ExpectChange("subdir/relative", "under_subdir.css",
+               StrCat(kTo2ADomain, "subdir/under_subdir.css"));
+  ExpectChange("subdir/relative", "../under_top1.css",
+               StrCat(kTo2BDomain, "under_top1.css"));
+}
+
 TEST_F(DomainRewriteFilterTest, MappedAndSharded) {
   ExpectChange("rewrite", StrCat(kFrom1Domain, "absolute.css"),
                StrCat(kTo1Domain, "absolute.css"));

@@ -737,7 +737,7 @@ void HtmlLexer::StartParse(const StringPiece& id,
   attr_quote_ = "";
   state_ = START;
   element_stack_.clear();
-  element_stack_.push_back(NULL);
+  element_stack_.push_back(static_cast<HtmlElement*>(0));
   element_ = NULL;
   token_.clear();
   attr_name_.clear();
@@ -777,7 +777,7 @@ void HtmlLexer::FinishParse() {
     }
   }
   element_stack_.clear();
-  element_stack_.push_back(NULL);
+  element_stack_.push_back(static_cast<HtmlElement*>(0));
   element_ = NULL;
 }
 
