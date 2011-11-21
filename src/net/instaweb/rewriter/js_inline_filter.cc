@@ -48,13 +48,7 @@ class JsInlineFilter::Context : public InlineRewriteContext {
     filter_->RenderInline(resource, text, element);
   }
 
-  virtual const char* id() const {
-    // Unlike filters with output resources, which use their ID as part of URLs
-    // they make, we are not constrained to 2 characters, so we make our
-    // name (used for our cache key) nice and long so at not to worry about
-    // someone else using it.
-    return "js_inline";
-  }
+  virtual const char* id() const { return RewriteOptions::kJavascriptInlineId; }
 
  private:
   JsInlineFilter* filter_;

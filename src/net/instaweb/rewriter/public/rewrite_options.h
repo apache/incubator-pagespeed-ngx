@@ -82,10 +82,12 @@ class RewriteOptions {
 
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
+  static const char kCssInlineId[];
   static const char kCacheExtenderId[];
   static const char kImageCombineId[];
   static const char kImageCompressionId[];
   static const char kJavascriptCombinerId[];
+  static const char kJavascriptInlineId[];
   static const char kJavascriptMinId[];
 
   // Return the appropriate human-readable filter name for the given filter,
@@ -451,11 +453,19 @@ class RewriteOptions {
  protected:
   class OptionBase {
    public:
+    OptionBase() : id_(NULL) {}
     virtual ~OptionBase();
     virtual void Merge(const OptionBase* one, const OptionBase* two) = 0;
     virtual bool was_set() const = 0;
     virtual GoogleString Signature(const Hasher* hasher) const = 0;
     virtual GoogleString ToString() const = 0;
+    void set_id(const char* id) { id_ = id; }
+    const char* id() {
+      DCHECK(id_);
+      return id_;
+    }
+   private:
+    const char* id_;
   };
 
   // Helper class to represent an Option, whose value is held in some class T.
@@ -524,8 +534,9 @@ class RewriteOptions {
   // want to use a compile-time constant (e.g. Timer::kHourMs) which
   // does not have a linkable address.
   template<class T, class U>  // U must be assignable to T.
-  void add_option(U default_value, Option<T>* option) {
+  void add_option(U default_value, Option<T>* option, const char* id) {
     option->set_default(default_value);
+    option->set_id(id);
     all_options_.push_back(option);
   }
 
@@ -632,6 +643,14 @@ class RewriteOptions {
   // Compare.
 
   std::vector<OptionBase*> all_options_;
+
+  // When compiled for debug, we lazily check whether the all the Option<>
+  // member variables in all_options have unique IDs.
+  //
+  // Note that we include this member-variable in the structrue even under
+  // optimization as otherwise it might be very bad news indeed if someone
+  // mixed debug/opt object files in an executable.
+  bool options_uniqueness_checked_;
 
   DomainLawyer domain_lawyer_;
   FileLoadPolicy file_load_policy_;

@@ -56,11 +56,13 @@ namespace net_instaweb {
 // RewriteFilter prefixes
 const char RewriteOptions::kCssCombinerId[] = "cc";
 const char RewriteOptions::kCssFilterId[] = "cf";
+const char RewriteOptions::kCssInlineId[] = "ci";
 const char RewriteOptions::kCacheExtenderId[] = "ce";
 const char RewriteOptions::kImageCombineId[] = "is";
 const char RewriteOptions::kImageCompressionId[] = "ic";
 const char RewriteOptions::kJavascriptCombinerId[] = "jc";
 const char RewriteOptions::kJavascriptMinId[] = "jm";
+const char RewriteOptions::kJavascriptInlineId[] = "ji";
 
 // TODO(jmarantz): consider merging this threshold with the image-inlining
 // threshold, which is currently defaulting at 2000, so we have a single
@@ -250,10 +252,10 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kExtendCacheImages:               return "ei";
     case kExtendCacheScripts:              return "es";
     case kHtmlWriterFilter:                return "hw";
-    case kInlineCss:                       return "ci";
+    case kInlineCss:                       return kCssInlineId;
     case kInlineImages:                    return "ii";
     case kInlineImportToLink:              return "il";
-    case kInlineJavascript:                return "ji";
+    case kInlineJavascript:                return kJavascriptInlineId;
     case kInsertImageDimensions:           return "id";
     case kLeftTrimUrls:                    return "tu";
     case kMakeGoogleAnalyticsAsync:        return "ga";
@@ -302,57 +304,64 @@ bool RewriteOptions::ParseRewriteLevel(
 
 RewriteOptions::RewriteOptions()
     : modified_(false),
-      frozen_(false) {
+      frozen_(false),
+      options_uniqueness_checked_(false) {
   // Sanity-checks -- will be active only when compiled for debug.
 #ifndef NDEBUG
   CheckFilterSetOrdering(kCoreFilterSet, arraysize(kCoreFilterSet));
   CheckFilterSetOrdering(kTestFilterSet, arraysize(kTestFilterSet));
   CheckFilterSetOrdering(kDangerousFilterSet, arraysize(kDangerousFilterSet));
 
-  // Ensure that all filters of unique IDs.
+  // Ensure that all filters have unique IDs.
   StringSet id_set;
   for (int i = 0; i < static_cast<int>(kEndOfFilters); ++i) {
     Filter filter = static_cast<Filter>(i);
     const char* id = FilterId(filter);
     std::pair<StringSet::iterator, bool> insertion = id_set.insert(id);
-    DCHECK(insertion.second) << "Duplicate RewriteOption id: " << id;
+    DCHECK(insertion.second) << "Duplicate RewriteOption filter id: " << id;
   }
+
+  // We can't check options uniqueness until additional extra
+  // options are added by subclasses.  We could do this in the
+  // destructor I suppose, but we defer it till ComputeSignature.
 #endif
 
   // TODO(jmarantz): consider adding these on demand so that the cost of
   // initializing an empty RewriteOptions object is closer to zero.
-  add_option(kPassThrough, &level_);
-  add_option(kDefaultCssInlineMaxBytes, &css_inline_max_bytes_);
-  add_option(kDefaultImageInlineMaxBytes, &image_inline_max_bytes_);
-  add_option(kDefaultCssImageInlineMaxBytes, &css_image_inline_max_bytes_);
-  add_option(kDefaultJsInlineMaxBytes, &js_inline_max_bytes_);
-  add_option(kDefaultCssOutlineMinBytes, &css_outline_min_bytes_);
-  add_option(kDefaultJsOutlineMinBytes, &js_outline_min_bytes_);
-  add_option(kDefaultMaxHtmlCacheTimeMs, &max_html_cache_time_ms_);
+  add_option(kPassThrough, &level_, "l");
+  add_option(kDefaultCssInlineMaxBytes, &css_inline_max_bytes_, "ci");
+  add_option(kDefaultImageInlineMaxBytes, &image_inline_max_bytes_, "ii");
+  add_option(kDefaultCssImageInlineMaxBytes, &css_image_inline_max_bytes_,
+             "cii");
+  add_option(kDefaultJsInlineMaxBytes, &js_inline_max_bytes_, "ji");
+  add_option(kDefaultCssOutlineMinBytes, &css_outline_min_bytes_, "co");
+  add_option(kDefaultJsOutlineMinBytes, &js_outline_min_bytes_, "jo");
+  add_option(kDefaultMaxHtmlCacheTimeMs, &max_html_cache_time_ms_, "hc");
   add_option(kDefaultMinResourceCacheTimeToRewriteMs,
-             &min_resource_cache_time_to_rewrite_ms_);
+             &min_resource_cache_time_to_rewrite_ms_, "rc");
   add_option(kDefaultCacheInvalidationTimestamp,
-             &cache_invalidation_timestamp_);
-  add_option(kDefaultIdleFlushTimeMs, &idle_flush_time_ms_);
-  add_option(kDefaultImageMaxRewritesAtOnce, &image_max_rewrites_at_once_);
-  add_option(kDefaultMaxUrlSegmentSize, &max_url_segment_size_);
-  add_option(kMaxUrlSize, &max_url_size_);
-  add_option(true, &enabled_);
-  add_option(false, &ajax_rewriting_enabled_);
-  add_option(false, &botdetect_enabled_);
-  add_option(true, &combine_across_paths_);
-  add_option(false, &log_rewrite_timing_);
-  add_option(false, &lowercase_html_names_);
-  add_option(false, &always_rewrite_css_);
-  add_option(false, &respect_vary_);
-  add_option(false, &flush_html_);
-  add_option(kDefaultBeaconUrl, &beacon_url_);
+             &cache_invalidation_timestamp_, "it");
+  add_option(kDefaultIdleFlushTimeMs, &idle_flush_time_ms_, "if");
+  add_option(kDefaultImageMaxRewritesAtOnce, &image_max_rewrites_at_once_,
+             "im");
+  add_option(kDefaultMaxUrlSegmentSize, &max_url_segment_size_, "uss");
+  add_option(kMaxUrlSize, &max_url_size_, "us");
+  add_option(true, &enabled_, "e");
+  add_option(false, &ajax_rewriting_enabled_, "ar");
+  add_option(false, &botdetect_enabled_, "be");
+  add_option(true, &combine_across_paths_, "cp");
+  add_option(false, &log_rewrite_timing_, "lr");
+  add_option(false, &lowercase_html_names_, "lh");
+  add_option(false, &always_rewrite_css_, "arc");
+  add_option(false, &respect_vary_, "rv");
+  add_option(false, &flush_html_, "fh");
+  add_option(kDefaultBeaconUrl, &beacon_url_, "bu");
   add_option(kDefaultImageJpegRecompressQuality,
-             &image_jpeg_recompress_quality_);
+             &image_jpeg_recompress_quality_, "iq");
   add_option(kDefaultImageLimitOptimizedPercent,
-             &image_limit_optimized_percent_);
+             &image_limit_optimized_percent_, "ip");
   add_option(kDefaultImageLimitResizeAreaPercent,
-             &image_limit_resize_area_percent_);
+             &image_limit_resize_area_percent_, "ia");
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
@@ -662,6 +671,19 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
   if (frozen_) {
     return;
   }
+
+#ifndef NDEBUG
+  if (!options_uniqueness_checked_) {
+    options_uniqueness_checked_ = true;
+    StringSet id_set;
+    for (int i = 0, n = all_options_.size(); i < n; ++i) {
+      const char* id = all_options_[i]->id();
+      std::pair<StringSet::iterator, bool> insertion = id_set.insert(id);
+      DCHECK(insertion.second) << "Duplicate RewriteOption option id: " << id;
+    }
+  }
+#endif
+
   signature_ = IntegerToString(kOptionsVersion);
   for (int i = kFirstFilter; i != kEndOfFilters; ++i) {
     Filter filter = static_cast<Filter>(i);
@@ -675,8 +697,7 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
     // with values overridden from the default.
     OptionBase* option = all_options_[i];
     if (option->was_set()) {
-      StrAppend(&signature_, IntegerToString(i), ":",
-                option->Signature(hasher), "_");
+      StrAppend(&signature_, option->id(), ":", option->Signature(hasher), "_");
     }
   }
   StrAppend(&signature_, domain_lawyer_.Signature(), "_");
@@ -703,9 +724,9 @@ GoogleString RewriteOptions::ToString() const {
   StrAppend(&output, "Version: ", IntegerToString(kOptionsVersion), "\n\n");
   output += "Filters\n";
   for (int i = kFirstFilter; i != kEndOfFilters; ++i) {
-    if (Enabled(static_cast<Filter>(i))) {
-      StrAppend(&output, IntegerToString(i), "\t",
-                FilterName(static_cast<Filter>(i)), "\n");
+    Filter filter = static_cast<Filter>(i);
+    if (Enabled(filter)) {
+      StrAppend(&output, FilterId(filter), "\t", FilterName(filter), "\n");
     }
   }
   output += "\nOptions\n";
@@ -713,7 +734,7 @@ GoogleString RewriteOptions::ToString() const {
     // Only including options with values overridden from the default.
     OptionBase* option = all_options_[i];
     if (option->was_set()) {
-      StrAppend(&output, IntegerToString(i), "\t", option->ToString(), "\n");
+      StrAppend(&output, "  ", option->id(), "\t", option->ToString(), "\n");
     }
   }
   // TODO(mmohabey): Incorporate ToString() from the domain_lawyer,

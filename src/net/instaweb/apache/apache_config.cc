@@ -31,29 +31,29 @@ ApacheConfig::ApacheConfig() {
 }
 
 void ApacheConfig::Init() {
-  add_option("", &fetcher_proxy_);
-  add_option("", &file_cache_path_);
-  add_option("", &filename_prefix_);
-  add_option("", &slurp_directory_);
+  add_option("", &fetcher_proxy_, "afp");
+  add_option("", &file_cache_path_, "afcp");
+  add_option("", &filename_prefix_, "afnp");
+  add_option("", &slurp_directory_, "asd");
 
-  add_option(kOrganized, &referer_statistics_output_level_);
+  add_option(kOrganized, &referer_statistics_output_level_, "arso");
 
-  add_option(false, &collect_referer_statistics_);
-  add_option(false, &hash_referer_statistics_);
-  add_option(true, &statistics_enabled_);
-  add_option(false, &test_proxy_);
-  add_option(false, &use_shared_mem_locking_);
-  add_option(false, &slurp_read_only_);
+  add_option(false, &collect_referer_statistics_, "acrs");
+  add_option(false, &hash_referer_statistics_, "ahrs");
+  add_option(true, &statistics_enabled_, "ase");
+  add_option(false, &test_proxy_, "atp");
+  add_option(false, &use_shared_mem_locking_, "ausml");
+  add_option(false, &slurp_read_only_, "asro");
 
-  add_option(5 * Timer::kSecondMs, &fetcher_time_out_ms_);
-  add_option(Timer::kHourMs, &file_cache_clean_interval_ms_);
+  add_option(5 * Timer::kSecondMs, &fetcher_time_out_ms_, "afto");
+  add_option(Timer::kHourMs, &file_cache_clean_interval_ms_, "afcci");
 
-  add_option(100 * 1024, &file_cache_clean_size_kb_);  // 100 megabytes
-  add_option(0, &lru_cache_byte_limit_);
-  add_option(0, &lru_cache_kb_per_process_);
-  add_option(0, &slurp_flush_limit_);
+  add_option(100 * 1024, &file_cache_clean_size_kb_, "afc");  // 100 megabytes
+  add_option(0, &lru_cache_byte_limit_, "alcb");
+  add_option(0, &lru_cache_kb_per_process_, "alcp");
+  add_option(0, &slurp_flush_limit_, "asfl");
 
-  add_option(100 * 1024, &message_buffer_size_);  // 100 kbytes
+  add_option(100 * 1024, &message_buffer_size_, "ambs");  // 100 kbytes
 }
 
 bool ApacheConfig::ParseRefererStatisticsOutputLevel(
