@@ -113,9 +113,17 @@ void SplitStringPieceToVector(const StringPiece& sp, const char* separator,
                               StringPieceVector* components,
                               bool omit_empty_strings);
 
+// Splits string 'full' using substr by searching it incrementally from
+// left. Empty tokens are removed from the final result.
+void SplitStringUsingSubstr(const GoogleString& full,
+                            const GoogleString& substr,
+                            StringVector* result);
+
 void BackslashEscape(const StringPiece& src,
                      const StringPiece& to_escape,
                      GoogleString* dest);
+
+GoogleString CEscape(const StringPiece& src);
 
 // TODO(jmarantz): Eliminate these definitions of HasPrefixString,
 // UpperString, and LowerString, and re-add dependency on protobufs

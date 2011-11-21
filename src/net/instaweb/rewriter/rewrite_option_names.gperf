@@ -33,7 +33,8 @@ struct FilterMap {
 "combine_heads",                     RewriteOptions::kCombineHeads
 "convert_jpeg_to_webp",              RewriteOptions::kConvertJpegToWebp
 "convert_meta_tags",                 RewriteOptions::kConvertMetaTags
-"defer_js",                          RewriteOptions::kDeferJavascript
+"defer_javascript",                  RewriteOptions::kDeferJavascript
+"disable_javascript",                RewriteOptions::kDisableJavascript
 "div_structure",                     RewriteOptions::kDivStructure
 "elide_attributes",                  RewriteOptions::kElideAttributes
 "extend_cache",                      RewriteOptions::kExtendCache

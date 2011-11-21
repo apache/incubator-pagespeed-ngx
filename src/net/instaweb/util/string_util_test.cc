@@ -412,6 +412,40 @@ TEST(BasicUtilsTest, JoinStringStar) {
   EXPECT_STREQ("bar, , # , #, ", JoinStringStar(blah, ", "));
 }
 
+TEST(BasicUtilsTest, CEscape) {
+  EXPECT_EQ("Hello,\\n\\tWorld.\\n", CEscape("Hello,\n\tWorld.\n"));
+
+  char not_ascii_1 = 30;
+  char not_ascii_2 = 200;
+  EXPECT_EQ("abc\\036\\310",
+            CEscape(GoogleString("abc") + not_ascii_1 + not_ascii_2));
+}
+
+TEST(BasicUtilsTest, SplitStringUsingSubstr1) {
+  StringVector components;
+  SplitStringUsingSubstr("word1abword2abword3", "ab", &components);
+  EXPECT_EQ(3, components.size());
+  EXPECT_EQ("word1", components[0]);
+  EXPECT_EQ("word2", components[1]);
+  EXPECT_EQ("word3", components[2]);
+}
+
+TEST(BasicUtilsTest, SplitStringUsingSubstr2) {
+  StringVector components;
+  SplitStringUsingSubstr("word1ababword3", "ab", &components);
+  EXPECT_EQ(2, components.size());
+  EXPECT_EQ("word1", components[0]);
+  EXPECT_EQ("word3", components[1]);
+}
+
+TEST(BasicUtilsTest, SplitStringUsingSubstr3) {
+  StringVector components;
+  SplitStringUsingSubstr("abaaac", "aa", &components);
+  EXPECT_EQ(2, components.size());
+  EXPECT_EQ("ab", components[0]);
+  EXPECT_EQ("ac", components[1]);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

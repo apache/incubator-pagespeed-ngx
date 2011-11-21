@@ -28,32 +28,10 @@
 
 namespace net_instaweb {
 
+extern const char* JS_js_defer;
+
 // TODO(atulvasu): Minify this script if minify is turned on.
-const char* JsDeferFilter::kDeferJsCode =
-    "pagespeed = pagespeed ? pagespeed : {};\n"
-    "pagespeed.defer_queue = [];\n"
-    "pagespeed.defer_str = function(str) {\n"
-    "  pagespeed.defer_queue.push(function() {\n"
-    "    window.eval(str);\n"
-    "  });\n"
-    "};\n"
-    "pagespeed.defer_url = function(url) {\n"
-    "  pagespeed.defer_queue.push(function() {\n"
-    "      var script = document.createElement(\"script\");\n"
-    "      script.setAttribute(\"src\", url);\n"
-    "      script.setAttribute(\"type\", \"text/javascript\");\n"
-    "      document.body.appendChild(script);\n"
-    "  });\n"
-    "};\n"
-    "pagespeed.defer_run = function() {\n"
-    "  var len = pagespeed.defer_queue.length;\n"
-    "  for (var i = 0; i < len; i++) {\n"
-    "    try {\n"
-    "      pagespeed.defer_queue[i].call(window);\n"
-    "    } catch (err) {}\n"
-    "  }\n"
-    "};\n"
-    "window.onload = pagespeed.defer_run;\n";
+const char* JsDeferFilter::kDeferJsCode = JS_js_defer;
 
 JsDeferFilter::JsDeferFilter(HtmlParse* html_parse)
     : html_parse_(html_parse),

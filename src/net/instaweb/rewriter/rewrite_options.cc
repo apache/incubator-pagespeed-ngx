@@ -195,6 +195,8 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kConvertJpegToWebp:               return "Convert Jpeg To Webp";
     case kConvertMetaTags:                 return "Convert Meta Tags";
     case kDeferJavascript:                 return "Defer Javascript";
+    case kDisableJavascript:
+        return "Disables scripts by placing them inside noscript tags";
     case kDivStructure:                    return "Div Structure";
     case kElideAttributes:                 return "Elide Attributes";
     case kExtendCache:                     return "Extend Cache";
@@ -237,6 +239,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kConvertJpegToWebp:               return "jw";
     case kConvertMetaTags:                 return "mc";
     case kDeferJavascript:                 return "dj";
+    case kDisableJavascript:               return "jd";
     case kDivStructure:                    return "ds";
     case kElideAttributes:                 return "ea";
     case kExtendCache:                     return kCacheExtenderId;

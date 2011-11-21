@@ -49,6 +49,7 @@ class RewriteOptions {
     kConvertJpegToWebp,
     kConvertMetaTags,
     kDeferJavascript,
+    kDisableJavascript,
     kDivStructure,
     kElideAttributes,
     kExtendCache,

@@ -88,6 +88,25 @@ void SplitStringPieceToVector(const StringPiece& sp, const char* separator,
   }
 }
 
+void SplitStringUsingSubstr(const GoogleString& full,
+                            const GoogleString& substr,
+                            StringVector* result) {
+  GoogleString::size_type begin_index = 0;
+  while (true) {
+    const GoogleString::size_type end_index = full.find(substr, begin_index);
+    if (end_index == GoogleString::npos) {
+      const GoogleString term = full.substr(begin_index);
+      result->push_back(term);
+      return;
+    }
+    const GoogleString term = full.substr(begin_index, end_index - begin_index);
+    if (!term.empty()) {
+      result->push_back(term);
+    }
+    begin_index = end_index + substr.size();
+  }
+}
+
 void BackslashEscape(const StringPiece& src,
                      const StringPiece& to_escape,
                      GoogleString* dest) {
@@ -99,6 +118,36 @@ void BackslashEscape(const StringPiece& src,
     }
     dest->push_back(*p);
   }
+}
+
+GoogleString CEscape(const StringPiece& src) {
+  int len = src.length();
+  const char* read = src.data();
+  const char* end = read + len;
+  int used = 0;
+  char* dest = new char[len * 4 + 1];
+  for (; read != end; ++read) {
+    unsigned char ch = static_cast<unsigned char>(*read);
+    switch (ch) {
+      case '\n': dest[used++] = '\\'; dest[used++] = 'n'; break;
+      case '\r': dest[used++] = '\\'; dest[used++] = 'r'; break;
+      case '\t': dest[used++] = '\\'; dest[used++] = 't'; break;
+      case '\"': dest[used++] = '\\'; dest[used++] = '\"'; break;
+      case '\'': dest[used++] = '\\'; dest[used++] = '\''; break;
+      case '\\': dest[used++] = '\\'; dest[used++] = '\\'; break;
+      default:
+        if (ch < 32 || ch >= 127) {
+          std::snprintf(dest + used, 5, "\\%03o", ch);
+          used += 4;
+        } else {
+          dest[used++] = ch;
+        }
+        break;
+    }
+  }
+  GoogleString final(dest, used);
+  delete[] dest;
+  return final;
 }
 
 // From src/third_party/protobuf/src/google/protobuf/stubs/strutil.h

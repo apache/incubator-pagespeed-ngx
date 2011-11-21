@@ -18,12 +18,44 @@
     'protoc_out_dir': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
     'protoc_executable':
         '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
+    'data2c_out_dir': '<(SHARED_INTERMEDIATE_DIR)/data2c_out/instaweb',
+    'data2c_exe': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)instaweb_data2c' +
+                  '<(EXECUTABLE_SUFFIX)',
     # Setting chromium_code to 1 turns on extra warnings. Also, if the compiler
     # is whitelisted in our common.gypi, those warnings will get treated as
     # errors.
     'chromium_code': 1,
   },
   'targets': [
+    {
+      'target_name': 'instaweb_data2c',
+      'type': 'executable',
+      'sources': [
+         'js/data_to_c.cc',
+       ],
+      'dependencies': [
+        'instaweb_util',
+        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
+        '<(DEPTH)/base/base.gyp:base',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+        '<(DEPTH)',
+      ],
+    },
+    {
+      'target_name': 'instaweb_js_defer_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter/',
+        'var_name': 'js_defer',
+      },
+      'sources': [
+        'rewriter/js_defer.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
     {
       'target_name': 'instaweb_spriter_pb',
       'variables': {
@@ -446,9 +478,10 @@
       'target_name': 'instaweb_rewriter',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_rewriter_base',
         'instaweb_core.gyp:instaweb_rewriter_html',
         'instaweb_http',
+        'instaweb_js_defer_data2c',
+        'instaweb_rewriter_base',
         'instaweb_rewriter_css',
         'instaweb_rewriter_image',
         'instaweb_rewriter_javascript',
@@ -477,6 +510,7 @@
         'rewriter/image_rewrite_filter.cc',
         'rewriter/js_combine_filter.cc',
         'rewriter/js_defer_filter.cc',
+        'rewriter/js_disable_filter.cc',
         'rewriter/js_inline_filter.cc',
         'rewriter/js_outline_filter.cc',
         'rewriter/meta_tag_filter.cc',

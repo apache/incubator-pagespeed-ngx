@@ -65,6 +65,7 @@
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
 #include "net/instaweb/rewriter/public/js_defer_filter.h"
+#include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
 #include "net/instaweb/rewriter/public/js_outline_filter.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
@@ -809,6 +810,9 @@ void RewriteDriver::AddPostRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kConvertMetaTags)) {
     AddOwnedPostRenderFilter(new MetaTagFilter(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kDisableJavascript)) {
+    AddOwnedPostRenderFilter(new JsDisableFilter(this));
   }
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
   // doesn't, it probably should.  If it does, be sure to add it to the

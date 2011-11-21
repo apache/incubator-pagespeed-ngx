@@ -106,6 +106,7 @@
         'rewriter/javascript_filter_test.cc',
         'rewriter/js_combine_filter_test.cc',
         'rewriter/js_defer_filter_test.cc',
+        'rewriter/js_disable_filter_test.cc',
         'rewriter/js_inline_filter_test.cc',
         'rewriter/js_outline_filter_test.cc',
         'rewriter/load_from_file_sync_test.cc',
