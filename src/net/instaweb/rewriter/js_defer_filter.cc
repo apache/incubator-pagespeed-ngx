@@ -43,7 +43,7 @@ JsDeferFilter::JsDeferFilter(HtmlParse* html_parse)
 JsDeferFilter::~JsDeferFilter() { }
 
 void JsDeferFilter::StartDocument() {
-  defer_js_ = kDeferJsCode;
+  defer_js_ = StrCat(kDeferJsCode, "\npagespeed.deferInit();\n");
 }
 
 void JsDeferFilter::StartElement(HtmlElement* element) {
@@ -109,14 +109,14 @@ void JsDeferFilter::RewriteInlineScript() {
   if (buffer_size > 0) {
     // First buffer up script data and wrap it around defer function.
     GoogleString script_buffer;
-    AddDeferJsFunc("pagespeed.defer_str", FlattenBuffer(&script_buffer));
+    AddDeferJsFunc("pagespeed.deferJs.addStr", FlattenBuffer(&script_buffer));
   }
 }
 
 // External script; replace with a function call to defer this url.
 void JsDeferFilter::RewriteExternalScript() {
   html_parse_->DeleteElement(script_in_progress_);
-  AddDeferJsFunc("pagespeed.defer_url", script_src_->value());
+  AddDeferJsFunc("pagespeed.deferJs.addUrl", script_src_->value());
 }
 
 // Reset state at end of script.

@@ -50,9 +50,10 @@ TEST_F(JsDeferFilterTest, DeferScript) {
       StrCat("<head></head><body>Hello, world!"
              "<script type=\"text/javascript\">",
              JsDeferFilter::kDeferJsCode,
-             "pagespeed.defer_url("
+             "\npagespeed.deferInit();\n",
+             "pagespeed.deferJs.addUrl("
              "\"http://www.google.com/javascript/ajax_apis.js\");\n"
-             "pagespeed.defer_str(\" func(); \");\n"
+             "pagespeed.deferJs.addStr(\" func(); \");\n"
              "</script></body>"));
 }
 
@@ -66,12 +67,13 @@ TEST_F(JsDeferFilterTest, DeferScriptMultiBody) {
       StrCat("<head></head><body>Hello, world!"
              "<script type=\"text/javascript\">",
              JsDeferFilter::kDeferJsCode,
-             "pagespeed.defer_url("
+             "\npagespeed.deferInit();\n",
+             "pagespeed.deferJs.addUrl("
              "\"http://www.google.com/javascript/ajax_apis.js\");\n"
-             "pagespeed.defer_str(\" func(); \");\n"
+             "pagespeed.deferJs.addStr(\" func(); \");\n"
              "</script></body><body> "
              "<script type=\"text/javascript\">"
-             "pagespeed.defer_str(\" func2(); \");\n"
+             "pagespeed.deferJs.addStr(\" func2(); \");\n"
              "</script></body>"));
 }
 

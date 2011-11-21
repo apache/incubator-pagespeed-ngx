@@ -23,15 +23,23 @@
 
 var pagespeed = pagespeed || {};
 
-/** @type {Array.<function()>} */
-pagespeed.defer_queue = [];
+/**
+ * @constructor
+ */
+pagespeed.DeferJs = function() {
+  /**
+   * @type {Array.<function()>}
+   * @private
+   */
+  this.queue_ = [];
+}
 
 /**
- * Defers execution of 'str'.
+ * Defers execution of 'str', by adding it to the queue.
  * @param {string} str valid javascript snippet.
  */
-pagespeed.defer_str = function(str) {
-  pagespeed.defer_queue.push(function() {
+pagespeed.DeferJs.prototype.addStr = function(str) {
+  this.queue_.push(function() {
     window.eval(str);
   });
 };
@@ -40,26 +48,53 @@ pagespeed.defer_str = function(str) {
  * Defers execution of contents of 'url'.
  * @param {string} url returns javascript when fetched.
  */
-pagespeed.defer_url = function(url) {
-  pagespeed.defer_queue.push(function() {
-      var script = document.createElement('script');
-      script.setAttribute('src', url);
-      script.setAttribute('type', 'text/javascript');
-      document.body.appendChild(script);
+pagespeed.DeferJs.prototype.addUrl = function(url) {
+  this.queue_.push(function() {
+    var script = document.createElement('script');
+    script.setAttribute('src', url);
+    script.setAttribute('type', 'text/javascript');
+    document.body.appendChild(script);
   });
 };
 
 /**
  * Executes all the deferred scripts.
  */
-pagespeed.defer_run = function() {
-  var len = pagespeed.defer_queue.length;
+pagespeed.DeferJs.prototype.run = function() {
+  var len = this.queue_.length;
   for (var i = 0; i < len; i++) {
     try {
-      pagespeed.defer_queue[i].call(window);
+      this.queue_[i].call(window);
     } catch (err) {}
   }
 };
 
-/** Setting the window onload. */
-window.onload = pagespeed.defer_run;
+/**
+ * Runs the function when page is loaded.
+ * @param {function()} func New onload handler.
+ */
+pagespeed.addOnload = function(func) {
+  if (window.addEventListener) {
+    window.addEventListener('load', func, false);
+  } else if (window.attachEvent) {
+    window.attachEvent('onload', func);
+  } else {
+    var oldHandler = window.onload;
+    window.onload = function() {
+      func.call(this);
+      if (oldHandler) {
+        oldHandler.call(this);
+      }
+    }
+  }
+};
+
+/**
+ * Initialize defer javascript.
+ */
+pagespeed.deferInit = function() {
+  pagespeed.deferJs = new pagespeed.DeferJs();
+  pagespeed.addOnload(function() {
+    pagespeed.deferJs.run();
+  });
+};
