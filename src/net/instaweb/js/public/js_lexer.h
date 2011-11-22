@@ -32,6 +32,7 @@ class JsLexer {
     kKeyword,
     kComment,
     kWhitespace,
+    kLineSeparator,
     kRegex,
     kStringLiteral,
     kNumber,
@@ -78,6 +79,7 @@ class JsLexer {
                StringPiece* token);
 
   bool IsSpace(uint8 ch, int index);
+  bool IsLineSeparator(uint8 ch, int index);
   bool IsNumber(uint8 ch, int index);
   bool InBlockComment(uint8 ch, int index);
   bool InSingleLineComment(uint8 ch, int index);

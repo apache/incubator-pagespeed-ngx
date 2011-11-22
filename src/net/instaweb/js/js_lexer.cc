@@ -112,7 +112,11 @@ void JsLexer::Consume(LexicalPredicate predicate,
 }
 
 bool JsLexer::IsSpace(uint8 ch, int index) {
-  return (strchr(" \n\r\t\f", ch) != NULL);
+  return (strchr(" \t\f", ch) != NULL);
+}
+
+bool JsLexer::IsLineSeparator(uint8 ch, int index) {
+  return (strchr("\n\r", ch) != NULL);
 }
 
 bool JsLexer::IsNumber(uint8 ch, int index) {
@@ -248,6 +252,9 @@ JsLexer::Type JsLexer::NextToken(StringPiece* token,
     Consume(&JsLexer::IsSpace, false, true, token);
     return kWhitespace;
     // last_token_may_end_value_ does not change.
+  } else if (IsLineSeparator(ch, 0)) {
+    Consume(&JsLexer::IsLineSeparator, false, true, token);
+    return kLineSeparator;
   } else if (IsNumber(ch, 0)) {
     seen_a_dot_ = (ch == '.');
     Consume(&JsLexer::IsNumber, false, true, token);

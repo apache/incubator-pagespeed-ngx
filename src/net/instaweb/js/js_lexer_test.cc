@@ -71,27 +71,27 @@ const char kJsMinExample[] =
 
 const char* kJsMinExampleTokens[] =  {
   "Comment: // is.js",
-  "Whitespace: \n\n",
+  "LineSep: \n\n",
   "Comment: // (c) 2001 Douglas Crockford",
-  "Whitespace: \n",
+  "LineSep: \n",
   "Comment: // 2001 June 3",
-  "Whitespace: \n\n\n",
+  "LineSep: \n\n\n",
   "Comment: // is",
-  "Whitespace: \n\n",
+  "LineSep: \n\n",
   "Comment: // The -is- object is used to identify the browser.  Every browser"
   " edition",
-  "Whitespace: \n",
+  "LineSep: \n",
   "Comment: // identifies itself, but there is no standard way of doing it, an"
   "d some of",
-  "Whitespace: \n",
+  "LineSep: \n",
   "Comment: // the identification is deceptive. This is because the authors of"
   " web",
-  "Whitespace: \n",
+  "LineSep: \n",
   "Comment: // browsers are liars. For example, Microsoft's IE browsers claim "
   "to be",
-  "Whitespace: \n",
+  "LineSep: \n",
   "Comment: // Mozilla 4. Netscape 6 claims to be version 5.",
-  "Whitespace: \n\n",
+  "LineSep: \n\n",
   "Keyword: var",
   "Whitespace:  ",
   "Identifier: is",
@@ -99,7 +99,8 @@ const char* kJsMinExampleTokens[] =  {
   "Operator: =",
   "Whitespace:  ",
   "Operator: {",
-  "Whitespace: \n    ",
+  "LineSep: \n",
+  "Whitespace:     ",
   "Identifier: ie",
   "Operator: :",
   "Whitespace:       ",
@@ -112,7 +113,8 @@ const char* kJsMinExampleTokens[] =  {
   "Whitespace:  ",
   "StringLiteral: 'Microsoft Internet Explorer'",
   "Operator: ,",
-  "Whitespace: \n    ",
+  "LineSep: \n",
+  "Whitespace:     ",
   "Identifier: java",
   "Operator: :",
   "Whitespace:     ",
@@ -122,7 +124,8 @@ const char* kJsMinExampleTokens[] =  {
   "Operator: (",
   "Operator: )",
   "Operator: ,",
-  "Whitespace: \n    ",
+  "LineSep: \n",
+  "Whitespace:     ",
   "Identifier: ns",
   "Operator: :",
   "Whitespace:       ",
@@ -135,7 +138,8 @@ const char* kJsMinExampleTokens[] =  {
   "Whitespace:  ",
   "StringLiteral: 'Netscape'",
   "Operator: ,",
-  "Whitespace: \n    ",
+  "LineSep: \n",
+  "Whitespace:     ",
   "Identifier: ua",
   "Operator: :",
   "Whitespace:       ",
@@ -147,7 +151,8 @@ const char* kJsMinExampleTokens[] =  {
   "Operator: (",
   "Operator: )",
   "Operator: ,",
-  "Whitespace: \n    ",
+  "LineSep: \n",
+  "Whitespace:     ",
   "Identifier: version",
   "Operator: :",
   "Whitespace:  ",
@@ -165,7 +170,8 @@ const char* kJsMinExampleTokens[] =  {
   "Whitespace:  ",
   "Operator: |",
   "Operator: |",
-  "Whitespace: \n             ",
+  "LineSep: \n",
+  "Whitespace:              ",
   "Identifier: parseFloat",
   "Operator: (",
   "Identifier: navigator",
@@ -173,7 +179,8 @@ const char* kJsMinExampleTokens[] =  {
   "Identifier: appVersion",
   "Operator: )",
   "Operator: ,",
-  "Whitespace: \n    ",
+  "LineSep: \n",
+  "Whitespace:     ",
   "Identifier: win",
   "Operator: :",
   "Whitespace:      ",
@@ -185,9 +192,9 @@ const char* kJsMinExampleTokens[] =  {
   "Operator: =",
   "Whitespace:  ",
   "StringLiteral: 'Win32'",
-  "Whitespace: \n",
+  "LineSep: \n",
   "Operator: }",
-  "Whitespace: \n",
+  "LineSep: \n",
   "Identifier: is",
   "Operator: .",
   "Identifier: mac",
@@ -208,7 +215,7 @@ const char* kJsMinExampleTokens[] =  {
   "Whitespace:  ",
   "Number: 0",
   "Operator: ;",
-  "Whitespace: \n",
+  "LineSep: \n",
   "Keyword: if",
   "Whitespace:  ",
   "Operator: (",
@@ -228,7 +235,8 @@ const char* kJsMinExampleTokens[] =  {
   "Operator: )",
   "Whitespace:  ",
   "Operator: {",
-  "Whitespace: \n    ",
+  "LineSep: \n",
+  "Whitespace:     ",
   "Identifier: is",
   "Operator: .",
   "Identifier: ie",
@@ -243,7 +251,8 @@ const char* kJsMinExampleTokens[] =  {
   "Whitespace:  ",
   "Keyword: false",
   "Operator: ;",
-  "Whitespace: \n    ",
+  "LineSep: \n",
+  "Whitespace:     ",
   "Identifier: is",
   "Operator: .",
   "Identifier: opera",
@@ -252,9 +261,9 @@ const char* kJsMinExampleTokens[] =  {
   "Whitespace:  ",
   "Keyword: true",
   "Operator: ;",
-  "Whitespace: \n",
+  "LineSep: \n",
   "Operator: }",
-  "Whitespace: \n",
+  "LineSep: \n",
   "Keyword: if",
   "Whitespace:  ",
   "Operator: (",
@@ -274,7 +283,8 @@ const char* kJsMinExampleTokens[] =  {
   "Operator: )",
   "Whitespace:  ",
   "Operator: {",
-  "Whitespace: \n    ",
+  "LineSep: \n",
+  "Whitespace:     ",
   "Identifier: is",
   "Operator: .",
   "Identifier: ie",
@@ -289,7 +299,8 @@ const char* kJsMinExampleTokens[] =  {
   "Whitespace:  ",
   "Keyword: false",
   "Operator: ;",
-  "Whitespace: \n    ",
+  "LineSep: \n",
+  "Whitespace:     ",
   "Identifier: is",
   "Operator: .",
   "Identifier: gecko",
@@ -298,9 +309,9 @@ const char* kJsMinExampleTokens[] =  {
   "Whitespace:  ",
   "Keyword: true",
   "Operator: ;",
-  "Whitespace: \n",
+  "LineSep: \n",
   "Operator: }",
-  "Whitespace: \n",
+  "LineSep: \n",
   NULL
 };
 
@@ -325,6 +336,9 @@ class JsLexerTest : public testing::Test {
           break;
         case JsLexer::kWhitespace:
           output_.push_back(StrCat("Whitespace: ", token));
+          break;
+        case JsLexer::kLineSeparator:
+          output_.push_back(StrCat("LineSep: ", token));
           break;
         case JsLexer::kRegex:
           output_.push_back(StrCat("Regex: ", token));
@@ -565,7 +579,7 @@ TEST_F(JsLexerTest, SgmlComments) {
 
   static const char* kComment[] = {
     "Comment: <!--/*Hello*/ ",
-    "Whitespace: \n",
+    "LineSep: \n",
     NULL
   };
   EXPECT_TRUE(TestTokens(kComment, "<!--/*Hello*/ \n"));
@@ -589,7 +603,8 @@ TEST_F(JsLexerTest, TrickyRegexLiteral) {
     "Regex: / b /",
     "Identifier: i",
     "Operator: ;",
-    "Whitespace: \n ",
+    "LineSep: \n",
+    "Whitespace:  ",
     "Keyword: var",
     "Whitespace:  ",
     "Identifier: y",
@@ -684,7 +699,7 @@ TEST_F(JsLexerTest, ReturnRegex2) {
     "Operator: .",
     "Identifier: test",
     "Operator: (",
-    "Whitespace: \n",
+    "LineSep: \n",
     "StringLiteral: '#24'",
     "Whitespace:  ",
     "Operator: )",
@@ -714,13 +729,13 @@ TEST_F(JsLexerTest, NumbersAndDotsAndIdentifiersAndKeywords) {
 
 TEST_F(JsLexerTest, HtmlScriptTerminatorInComment) {
   static const char* kTokens[] = {
-    "Whitespace: \n",
+    "LineSep: \n",
     "Comment: <!--",
-    "Whitespace: \n",
+    "LineSep: \n",
     "Identifier: Stuff",
-    "Whitespace: \n",
+    "LineSep: \n",
     "Comment: // -->",
-    "Whitespace: \n",
+    "LineSep: \n",
     NULL
   };
   // See test case http://code.google.com/p/page-speed/issues/detail?id=242
