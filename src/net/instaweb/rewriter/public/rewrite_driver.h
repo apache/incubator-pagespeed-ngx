@@ -587,6 +587,10 @@ class RewriteDriver : public HtmlParse {
   RewriteContext* RegisterForPartitionKey(const GoogleString& partition_key,
                                           RewriteContext* candidate);
 
+  // Sets whether panel filter is still in progress and hence rewrite driver
+  // shouldn't be deleted.
+  void SetPanelFilterIncomplete(bool panel_filter_incomplete);
+
   // Must be called after all other rewrites that are currently relying on this
   // one have had their RepeatedSuccess or RepeatedFailure methods called.
   //
@@ -839,6 +843,10 @@ class RewriteDriver : public HtmlParse {
   bool cleanup_on_fetch_complete_;
 
   bool flush_requested_;
+
+  // Whether panel filter has still not completed and the rewrite driver
+  // should be kept alive.
+  bool panel_filter_incomplete_;
 
   scoped_ptr<AbstractMutex> inhibits_mutex_;
   typedef std::set <const HtmlElement*> ConstHtmlElementSet;

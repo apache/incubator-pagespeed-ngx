@@ -84,6 +84,7 @@ ResourceManagerTestBase::ResourceManagerTestBase()
                                             &mock_url_fetcher_)),
       other_factory_(new TestRewriteDriverFactory(GTestTempDir(),
                                                   &mock_url_fetcher_)),
+      use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
       other_options_(other_factory_->NewRewriteOptions()) {
   Init();
@@ -94,6 +95,7 @@ ResourceManagerTestBase::ResourceManagerTestBase(
     TestRewriteDriverFactory* other_factory)
     : factory_(factory),
       other_factory_(other_factory),
+      use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
       other_options_(other_factory_->NewRewriteOptions()) {
   Init();
@@ -119,10 +121,12 @@ void ResourceManagerTestBase::SetUp() {
 }
 
 void ResourceManagerTestBase::TearDown() {
-  rewrite_driver_->WaitForShutDown();
+  if (!use_managed_rewrite_drivers_) {
+    rewrite_driver_->WaitForShutDown();
+    rewrite_driver_->Clear();
+    delete rewrite_driver_;
+  }
   factory_->ShutDown();
-  rewrite_driver_->Clear();
-  delete rewrite_driver_;
   other_rewrite_driver_->WaitForShutDown();
   other_factory_->ShutDown();
   other_rewrite_driver_->Clear();
@@ -669,6 +673,11 @@ void ResourceManagerTestBase::CallFetcherCallbacks() {
   factory_->CallFetcherCallbacksForDriver(rewrite_driver_);
 }
 
+void ResourceManagerTestBase::SetUseManagedRewriteDrivers(
+    bool use_managed_rewrite_drivers) {
+  use_managed_rewrite_drivers_ = use_managed_rewrite_drivers;
+}
+
 RewriteDriver* ResourceManagerTestBase::MakeDriver(
     ResourceManager* resource_manager, RewriteOptions* options) {
   // We use unmanaged drivers rather than NewCustomDriver here so
@@ -677,13 +686,18 @@ RewriteDriver* ResourceManagerTestBase::MakeDriver(
   //
   // TODO(jmarantz): change call-sites to make this use a more
   // standard flow.
-  RewriteDriver* rd = resource_manager->NewUnmanagedRewriteDriver();
-  rd->set_custom_options(options);
+  RewriteDriver* rd;
+  if (!use_managed_rewrite_drivers_) {
+    rd = resource_manager->NewUnmanagedRewriteDriver();
+    rd->set_externally_managed(true);
+    rd->set_custom_options(options);
+  } else {
+    rd = resource_manager->NewCustomRewriteDriver(options);
+  }
   // As we are using mock time, we need to set a consistent deadline here,
   // as otherwise when running under Valgrind some tests will finish
   // with different HTML headers than expected.
   rd->set_rewrite_deadline_ms(20);
-  rd->set_externally_managed(true);
   return rd;
 }
 

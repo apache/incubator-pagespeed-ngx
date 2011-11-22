@@ -133,6 +133,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       waiting_(kNoWait),
       cleanup_on_fetch_complete_(false),
       flush_requested_(false),
+      panel_filter_incomplete_(false),
       inhibits_mutex_(NULL),
       finish_parse_on_hold_(NULL),
       inhibiting_event_(NULL),
@@ -222,12 +223,19 @@ void RewriteDriver::Clear() {
   fetch_detached_ = false;
   detached_fetch_detached_path_complete_ = false;
   detached_fetch_main_path_complete_ = false;
+  panel_filter_incomplete_ = false;
 }
 
 // Must be called with rewrite_mutex() held.
 bool RewriteDriver::RewritesComplete() const {
   return ((pending_rewrites_ == 0) && !fetch_queued_ &&
-          detached_rewrites_.empty() && (rewrites_to_delete_ == 0));
+          detached_rewrites_.empty() && (rewrites_to_delete_ == 0) &&
+          !panel_filter_incomplete_);
+}
+
+void RewriteDriver::SetPanelFilterIncomplete(bool panel_filter_incomplete) {
+  ScopedMutex lock(rewrite_mutex());
+  panel_filter_incomplete_ = panel_filter_incomplete;
 }
 
 bool RewriteDriver::HaveBackgroundFetchRewrite() const {

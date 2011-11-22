@@ -159,6 +159,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Just check if we can fetch a resource successfully, ignore response.
   bool TryFetchResource(const StringPiece& url);
 
+  // Use managed rewrite drivers for the test so that we see the same behavior
+  // in tests that we see in real servers. By default, tests use unmanaged
+  // drivers so that _test.cc files can add options after the driver was created
+  // and before the filters are added.
+  void SetUseManagedRewriteDrivers(bool use_managed_rewrite_drivers);
+
   GoogleString CssLinkHref(const StringPiece& url) {
     return StrCat("<link rel=stylesheet href=", url, ">");
   }
@@ -459,6 +465,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   RewriteDriver* rewrite_driver_;
   ResourceManager* other_resource_manager_;
   RewriteDriver* other_rewrite_driver_;
+  bool use_managed_rewrite_drivers_;
 
   MD5Hasher md5_hasher_;
 

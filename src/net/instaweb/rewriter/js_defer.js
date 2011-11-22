@@ -49,10 +49,14 @@ pagespeed.DeferJs = function() {
 /**
  * Add to defer_logs if logs are enabled.
  * @param {!string} line line to be added to log.
+ * @param {!Error} opt_ex optional exception to pass to log.
  */
-pagespeed.DeferJs.prototype.log = function(line) {
+pagespeed.DeferJs.prototype.log = function(line, opt_ex) {
   if (this.logs) {
     this.logs.push('' + line);
+    if (opt_ex) {
+      this.logs.push(opt_ex);
+    }
   }
 };
 
@@ -63,7 +67,11 @@ pagespeed.DeferJs.prototype.log = function(line) {
 pagespeed.DeferJs.prototype.addStr = function(str) {
   var me = this; // capture closure.
   this.queue_.push(function() {
-    window.eval(str);
+    try {
+      window.eval(str);
+    } catch (err) {
+      me.log('Exception while evaluating.', err);
+    }
     me.log('Evaluated: ' + str);
     // TODO(atulvasu): Detach stack here to prevent recursion issues.
     me.runNext();
@@ -80,10 +88,12 @@ pagespeed.DeferJs.prototype.addUrl = function(url) {
     var script = document.createElement('script');
     script.setAttribute('src', url);
     script.setAttribute('type', 'text/javascript');
-    pagespeed.addOnload(script, function() {
+    var runNextHandler = function() {
       me.log('Executed: ' + url);
       me.runNext();
-    });
+    };
+    pagespeed.addOnload(script, runNextHandler);
+    pagespeed.addHandler(script, 'error', runNextHandler);
     document.body.appendChild(script);
   });
 };
@@ -97,10 +107,7 @@ pagespeed.DeferJs.prototype.runNext = function() {
     // seeing the same value of next, and get into infinite
     // loop.
     this.next_++;
-    try {
-      this.queue_[this.next_ - 1].call(window);
-    } catch (err) {
-    }
+    this.queue_[this.next_ - 1].call(window);
   }
 };
 
@@ -112,18 +119,28 @@ pagespeed.DeferJs.prototype.run = function() {
 };
 
 /**
- * Runs the function when page is loaded.
- * @param {Element} elem Element to attach handler.
+ * Runs the function when element is loaded.
+ * @param {Window|Element} elem Element to attach handler.
  * @param {function()} func New onload handler.
  */
 pagespeed.addOnload = function(elem, func) {
+  pagespeed.addHandler(elem, 'load', func);
+};
+
+/**
+ * Runs the function when event is triggered.
+ * @param {Window|Element} elem Element to attach handler.
+ * @param {string} ev Name of the event.
+ * @param {function()} func New onload handler.
+ */
+pagespeed.addHandler = function(elem, ev, func) {
   if (elem.addEventListener) {
-    elem.addEventListener('load', func, false);
+    elem.addEventListener(ev, func, false);
   } else if (window.attachEvent) {
-    elem.attachEvent('onload', func);
+    elem.attachEvent('on' + ev, func);
   } else {
-    var oldHandler = elem.onload;
-    elem.onload = function() {
+    var oldHandler = elem['on' + ev];
+    elem['on' + ev] = function() {
       func.call(this);
       if (oldHandler) {
         oldHandler.call(this);
