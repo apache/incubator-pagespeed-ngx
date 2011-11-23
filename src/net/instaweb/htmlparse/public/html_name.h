@@ -146,6 +146,7 @@ class HtmlName {
     kType,
     kValuetype,
     kVideo,
+    kXmp,
     kWbr,
     kWidth,
     kWrap,

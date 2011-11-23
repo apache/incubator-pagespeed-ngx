@@ -70,6 +70,7 @@ const HtmlName::Keyword kNonBriefTerminatedTags[] = {
   HtmlName::kSpan,
   HtmlName::kStyle,
   HtmlName::kTextarea,
+  HtmlName::kXmp,
 };
 
 // These tags cause the text inside them to retained literally
@@ -79,6 +80,7 @@ const HtmlName::Keyword kLiteralTags[] = {
   HtmlName::kScript,
   HtmlName::kStyle,
   HtmlName::kTextarea,
+  HtmlName::kXmp,
 };
 
 // These tags do not need to be explicitly closed, but can be.  See

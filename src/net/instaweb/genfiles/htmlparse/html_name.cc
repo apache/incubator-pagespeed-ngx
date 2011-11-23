@@ -43,7 +43,7 @@ namespace net_instaweb {
 struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 #include <string.h>
 
-#define TOTAL_KEYWORDS 112
+#define TOTAL_KEYWORDS 113
 #define MIN_WORD_LENGTH 1
 #define MAX_WORD_LENGTH 15
 #define MIN_HASH_VALUE 7
@@ -114,13 +114,13 @@ KeywordMapper::hash (register const char *str, register unsigned int len)
       188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
       188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
       188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
-      188, 188, 188, 188,   3,  19,  38,  99,   6,   1,
+      188, 188, 188, 188,   4,  19,  38,  99,   6,   1,
        27,  20,  35,  21,  94,   6,  71,  73,  20,   6,
-       24,  72,  83,   7,   4,  29,   4,  38,  16,  30,
+       24,  72,  83,   7,   4,  29,   4,  37,  16,  45,
       188, 188, 188, 188, 188, 188, 188,  19,  38,  99,
         6,   1,  27,  20,  35,  21,  94,   6,  71,  73,
-       20,   6,  24,  72,  83,   7,   4,  29,   4,  38,
-       16,  30, 188, 188, 188, 188, 188, 188, 188, 188,
+       20,   6,  24,  72,  83,   7,   4,  29,   4,  37,
+       16,  45, 188, 188, 188, 188, 188, 188, 188, 188,
       188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
       188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
       188, 188, 188, 188, 188, 188, 188, 188, 188, 188,
@@ -225,7 +225,7 @@ static const struct KeywordMap kHtmlNameTable[] =
     {"meta",                 HtmlName::kMeta},
 #line 108 "htmlparse/html_name.gperf"
     {"required",             HtmlName::kRequired},
-#line 137 "htmlparse/html_name.gperf"
+#line 138 "htmlparse/html_name.gperf"
     {"width",                HtmlName::kWidth},
 #line 85 "htmlparse/html_name.gperf"
     {"media",                HtmlName::kMedia},
@@ -246,7 +246,7 @@ static const struct KeywordMap kHtmlNameTable[] =
     {"muted",                HtmlName::kMuted},
 #line 60 "htmlparse/html_name.gperf"
     {"event",                HtmlName::kEvent},
-#line 136 "htmlparse/html_name.gperf"
+#line 137 "htmlparse/html_name.gperf"
     {"wbr",                  HtmlName::kWbr},
 #line 59 "htmlparse/html_name.gperf"
     {"enctype",              HtmlName::kEnctype},
@@ -258,10 +258,9 @@ static const struct KeywordMap kHtmlNameTable[] =
 #line 88 "htmlparse/html_name.gperf"
     {"method",               HtmlName::kMethod},
     {""},
-#line 133 "htmlparse/html_name.gperf"
-    {"type",                 HtmlName::kType},
 #line 135 "htmlparse/html_name.gperf"
     {"video",                HtmlName::kVideo},
+    {""},
 #line 130 "htmlparse/html_name.gperf"
     {"th",                   HtmlName::kTh},
 #line 129 "htmlparse/html_name.gperf"
@@ -285,7 +284,8 @@ static const struct KeywordMap kHtmlNameTable[] =
     {""},
 #line 125 "htmlparse/html_name.gperf"
     {"tbody",                HtmlName::kTbody},
-    {""},
+#line 133 "htmlparse/html_name.gperf"
+    {"type",                 HtmlName::kType},
 #line 50 "htmlparse/html_name.gperf"
     {"declare",              HtmlName::kDeclare},
 #line 35 "htmlparse/html_name.gperf"
@@ -312,10 +312,10 @@ static const struct KeywordMap kHtmlNameTable[] =
     {"command",              HtmlName::kCommand},
 #line 32 "htmlparse/html_name.gperf"
     {"audio",                HtmlName::kAudio},
-#line 27 "htmlparse/html_name.gperf"
-    {"?xml",                 HtmlName::kXml},
 #line 134 "htmlparse/html_name.gperf"
     {"valuetype",            HtmlName::kValuetype},
+#line 27 "htmlparse/html_name.gperf"
+    {"?xml",                 HtmlName::kXml},
 #line 82 "htmlparse/html_name.gperf"
     {"li",                   HtmlName::kLi},
 #line 97 "htmlparse/html_name.gperf"
@@ -357,7 +357,8 @@ static const struct KeywordMap kHtmlNameTable[] =
     {"noscript",             HtmlName::kNoscript},
 #line 81 "htmlparse/html_name.gperf"
     {"language",             HtmlName::kLanguage},
-    {""},
+#line 136 "htmlparse/html_name.gperf"
+    {"xmp",                  HtmlName::kXmp},
 #line 98 "htmlparse/html_name.gperf"
     {"onclick",              HtmlName::kOnclick},
 #line 36 "htmlparse/html_name.gperf"
@@ -366,7 +367,7 @@ static const struct KeywordMap kHtmlNameTable[] =
 #line 77 "htmlparse/html_name.gperf"
     {"ismap",                HtmlName::kIsmap},
     {""},
-#line 138 "htmlparse/html_name.gperf"
+#line 139 "htmlparse/html_name.gperf"
     {"wrap",                 HtmlName::kWrap},
 #line 75 "htmlparse/html_name.gperf"
     {"indeterminate",        HtmlName::kIndeterminate},
@@ -384,9 +385,7 @@ static const struct KeywordMap kHtmlNameTable[] =
     {""}, {""},
 #line 39 "htmlparse/html_name.gperf"
     {"button",               HtmlName::kButton},
-#line 37 "htmlparse/html_name.gperf"
-    {"body",                 HtmlName::kBody},
-    {""}, {""}, {""}, {""},
+    {""}, {""}, {""}, {""}, {""},
 #line 30 "htmlparse/html_name.gperf"
     {"area",                 HtmlName::kArea},
     {""},
@@ -396,7 +395,10 @@ static const struct KeywordMap kHtmlNameTable[] =
     {"checked",              HtmlName::kChecked},
 #line 76 "htmlparse/html_name.gperf"
     {"input",                HtmlName::kInput},
-    {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""},
+    {""}, {""}, {""}, {""}, {""},
+#line 37 "htmlparse/html_name.gperf"
+    {"body",                 HtmlName::kBody},
+    {""}, {""}, {""},
 #line 105 "htmlparse/html_name.gperf"
     {"pre",                  HtmlName::kPre},
     {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""},
@@ -432,7 +434,7 @@ KeywordMapper::Lookup (register const char *str, register unsigned int len)
     }
   return 0;
 }
-#line 139 "htmlparse/html_name.gperf"
+#line 140 "htmlparse/html_name.gperf"
 
 
 HtmlName::Keyword HtmlName::Lookup(const StringPiece& keyword) {

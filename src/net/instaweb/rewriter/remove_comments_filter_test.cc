@@ -77,4 +77,13 @@ TEST_F(RemoveCommentsFilterTest, Retain) {
                    "<body>hello </body>");
 }
 
+TEST_F(RemoveCommentsFilterTest, CommentInTag) {
+  ValidateExpected("comment_in_tag", "<div><!--</div>-->", "<div>");
+}
+
+TEST_F(RemoveCommentsFilterTest, CommentInXmp) {
+  ValidateNoChanges("comment_in_xmp", "<xmp><!-- keep me --></xmp>");
+  ValidateNoChanges("comment_in_overlapping_xmp", "<xmp><!--</xmp>-->");
+}
+
 }  // namespace net_instaweb

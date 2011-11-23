@@ -133,6 +133,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "type",                 HtmlName::kType
 "valuetype",            HtmlName::kValuetype
 "video",                HtmlName::kVideo
+"xmp",                  HtmlName::kXmp
 "wbr",                  HtmlName::kWbr
 "width",                HtmlName::kWidth
 "wrap",                 HtmlName::kWrap

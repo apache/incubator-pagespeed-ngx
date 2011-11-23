@@ -221,6 +221,7 @@ void HtmlWriterFilter::StartDocument() {
 }
 
 void HtmlWriterFilter::EndDocument() {
+  EmitBytes("");  // flushes any lazily closed elements at end of the document.
 }
 
 void HtmlWriterFilter::Flush() {
