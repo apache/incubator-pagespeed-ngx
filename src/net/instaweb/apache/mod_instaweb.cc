@@ -85,6 +85,7 @@ const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
 const char* kModPagespeedCollectRefererStatistics =
     "ModPagespeedCollectRefererStatistics";
 const char* kModPagespeedCombineAcrossPaths = "ModPagespeedCombineAcrossPaths";
+const char* kModPagespeedCssInlineMaxBytes = "ModPagespeedCssInlineMaxBytes";
 const char* kModPagespeedCssOutlineMinBytes = "ModPagespeedCssOutlineMinBytes";
 const char* kModPagespeedDisableFilters = "ModPagespeedDisableFilters";
 const char* kModPagespeedDisallow = "ModPagespeedDisallow";
@@ -895,8 +896,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedCombineAcrossPaths)) {
     ret = ParseBoolOption(options, cmd,
                           &RewriteOptions::set_combine_across_paths, arg);
-  } else if (StringCaseEqual(directive,
-                             RewriteQuery::kModPagespeedCssInlineMaxBytes)) {
+  } else if (StringCaseEqual(directive, kModPagespeedCssInlineMaxBytes)) {
     ret = ParseInt64Option(options,
         cmd, &RewriteOptions::set_css_inline_max_bytes, arg);
   } else if (StringCaseEqual(directive, kModPagespeedCssOutlineMinBytes)) {
@@ -1138,7 +1138,7 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Track page, resource, and div location referrals for prefetching."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCombineAcrossPaths,
         "Allow combining resources from different paths"),
-  APACHE_CONFIG_DIR_OPTION(RewriteQuery::kModPagespeedCssInlineMaxBytes,
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedCssInlineMaxBytes,
         "Number of bytes below which stylesheets will be inlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCssOutlineMinBytes,
         "Number of bytes above which inline CSS resources will be outlined."),

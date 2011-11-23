@@ -109,7 +109,10 @@ void StrAppend(GoogleString* target,
                const StringPiece& g = EmptyString::kEmptyString,
                const StringPiece& h = EmptyString::kEmptyString);
 
-void SplitStringPieceToVector(const StringPiece& sp, const char* separator,
+// Split sp into pieces that are separated by any character in the given string
+// of separators, and push those pieces in order onto components.
+void SplitStringPieceToVector(const StringPiece& sp,
+                              const StringPiece& separators,
                               StringPieceVector* components,
                               bool omit_empty_strings);
 

@@ -234,8 +234,21 @@ bool RewriteDriver::RewritesComplete() const {
 }
 
 void RewriteDriver::SetPanelFilterIncomplete(bool panel_filter_incomplete) {
-  ScopedMutex lock(rewrite_mutex());
-  panel_filter_incomplete_ = panel_filter_incomplete;
+  bool clean = false;
+  {
+    // TODO(jmarantz): We'd like to make 'parsing_' symmetric with the other
+    // booleans checked for in RewritesComplete(), but it does not work that
+    // way now.  In non-panel-related flows, Cleanup() is used to indicate
+    // that parsing is complete, hence parsing_ is set to false *in* Cleanup.
+    //
+    // I think this code would be cleaner with a refactor toward this symmetry.
+    ScopedMutex lock(rewrite_mutex());
+    clean = panel_filter_incomplete_ && !panel_filter_incomplete && !parsing_;
+    panel_filter_incomplete_ = panel_filter_incomplete;
+  }
+  if (clean) {
+    Cleanup();
+  }
 }
 
 bool RewriteDriver::HaveBackgroundFetchRewrite() const {

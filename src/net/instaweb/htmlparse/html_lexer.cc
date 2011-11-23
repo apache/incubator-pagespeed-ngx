@@ -256,18 +256,18 @@ bool HtmlLexer::IsLegalTagFirstChar(char c) {
 // to parse all HTML on the web.
 bool HtmlLexer::IsLegalTagChar(char c) {
   return (IsI18nChar(c) ||
-          (isalnum(c) || (c == '-') || (c == '#') || (c == '_') || (c == ':')));
+          (isalnum(c) || (c == '<') || (c == '-') || (c == '#') ||
+          (c == '_') || (c == ':')));
 }
 
 bool HtmlLexer::IsLegalAttrNameChar(char c) {
   return (IsI18nChar(c) ||
-          ((c != '=') && (c != '>') && (c != '/') && (c != '<') &&
-           !isspace(c)));
+          ((c != '=') && (c != '>') && (c != '/') && !isspace(c)));
 }
 
 bool HtmlLexer::IsLegalAttrValChar(char c) {
   return (IsI18nChar(c) ||
-          ((c != '=') && (c != '>') && (c != '/') && (c != '<') &&
+          ((c != '=') && (c != '>') && (c != '/') &&
            (c != '"') && (c != '\'') && !isspace(c)));
 }
 
@@ -295,12 +295,6 @@ void HtmlLexer::EvalTagOpen(char c) {
     token_ += c;
   } else if (c == '>') {
     EmitTagOpen(true);
-  } else if (c == '<') {
-    // Chrome transforms "<tag<tag>" into "<tag><tag>";
-    SyntaxError("Invalid tag syntax: expected close tag before opener");
-    EmitTagOpen(true);
-    literal_ = "<";  // will be removed by EvalStart.
-    EvalStart(c);
   } else if (c == '/') {
     state_ = TAG_BRIEF_CLOSE;
   } else if (isspace(c)) {
@@ -401,7 +395,7 @@ void HtmlLexer::EvalTagClose(char c) {
       // the tag-name to begin.
     } else {
       // "</a ".  Now we are in a state where we can only
-      // accept more whitesapce or a close.
+      // accept more whitespace or a close.
       state_ = TAG_CLOSE_TERMINATE;
     }
   } else if (c == '>') {
@@ -444,7 +438,7 @@ void HtmlLexer::EvalCommentStart1(char c) {
     state_ = COMMENT_START2;
   } else if (c == '[') {
     state_ = CDATA_START1;
-  } else if (IsLegalTagChar(c)) {  // "<!DOCTYPE ... >"
+  } else if (IsLegalTagChar(c) && (c != '<')) {  // "<!DOCTYPE ... >"
     state_ = DIRECTIVE;
     EvalDirective(c);
   } else {
@@ -807,8 +801,6 @@ void HtmlLexer::EvalAttribute(char c) {
   attr_value_.clear();
   if (c == '>') {
     EmitTagOpen(true);
-  } else if (c == '<') {
-    FinishAttribute(c, false, false);
   } else if (c == '/') {
     state_ = TAG_BRIEF_CLOSE_ATTR;
   } else if (IsLegalAttrNameChar(c)) {
@@ -856,7 +848,7 @@ void HtmlLexer::FinishAttribute(char c, bool has_value, bool brief_close) {
     // hold off completing the attribute till we see the
     // next character.
     state_ = TAG_BRIEF_CLOSE_ATTR;
-  } else if ((c == '<') || (c == '>')) {
+  } else if (c == '>') {
     if (!attr_name_.empty()) {
       if (!brief_close &&
           (strcmp(attr_name_.c_str(), "/") == 0) && !has_value) {
@@ -872,12 +864,6 @@ void HtmlLexer::FinishAttribute(char c, bool has_value, bool brief_close) {
       EmitTagBriefClose();
     }
 
-    if (c == '<') {
-      // Chrome transforms "<tag a<tag>" into "<tag a><tag>"; we should too.
-      SyntaxError("Invalid tag syntax: expected close tag before opener");
-      literal_ += '<';
-      EvalStart(c);
-    }
     has_attr_value_ = false;
   } else {
     // Some other funny character within a tag.  Probably can't
@@ -908,7 +894,7 @@ void HtmlLexer::EvalAttrEq(char c) {
 }
 
 void HtmlLexer::EvalAttrVal(char c) {
-  if (isspace(c) || (c == '>') || (c == '<')) {
+  if (isspace(c) || (c == '>')) {
     FinishAttribute(c, true, false);
   } else {
     attr_value_ += c;

@@ -70,13 +70,13 @@ void StrAppend(GoogleString* target,
   h.AppendToString(target);
 }
 
-void SplitStringPieceToVector(const StringPiece& sp, const char* separator,
+void SplitStringPieceToVector(const StringPiece& sp,
+                              const StringPiece& separators,
                               StringPieceVector* components,
                               bool omit_empty_strings) {
   size_t prev_pos = 0;
   size_t pos = 0;
-  StringPiece sep(separator);
-  while ((pos = sp.find_first_of(sep, pos)) != StringPiece::npos) {
+  while ((pos = sp.find_first_of(separators, pos)) != StringPiece::npos) {
     if (!omit_empty_strings || (pos > prev_pos)) {
       components->push_back(sp.substr(prev_pos, pos - prev_pos));
     }

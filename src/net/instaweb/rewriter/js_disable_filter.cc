@@ -33,9 +33,8 @@ JsDisableFilter::~JsDisableFilter() {
 }
 
 void JsDisableFilter::StartElement(HtmlElement* element) {
-  if (element->keyword() == HtmlName::kScript) {
-    rewrite_driver_->InhibitEndElement(element);
-  }
+  // TODO(gagansingh): Make sure Flush does not happen before this element's end
+  // event is reached.
 }
 
 void JsDisableFilter::EndElement(HtmlElement* element) {

@@ -25,12 +25,29 @@ namespace net_instaweb {
 
 const char RewriteQuery::kModPagespeed[] =
     "ModPagespeed";
-const char RewriteQuery::kModPagespeedCssInlineMaxBytes[] =
-    "ModPagespeedCssInlineMaxBytes";
 const char RewriteQuery::kModPagespeedDisableForBots[] =
     "ModPagespeedDisableForBots";
 const char RewriteQuery::kModPagespeedFilters[] =
     "ModPagespeedFilters";
+
+// static array of query params that have setters taking a single int64 arg.
+// TODO(matterbury): Accept or solve the problem that the query parameter
+// names are duplicated here and in apache/mod_instaweb.cc.
+typedef void (RewriteOptions::*RewriteOptionsInt64PMF)(int64);
+struct Int64QueryParam {
+  const char* name_;
+  RewriteOptionsInt64PMF method_;
+};
+static struct Int64QueryParam int64_query_params_[] = {
+  { "ModPagespeedCssInlineMaxBytes",
+    &RewriteOptions::set_css_inline_max_bytes },
+  { "ModPagespeedImageInlineMaxBytes",
+    &RewriteOptions::set_image_inline_max_bytes },
+  { "ModPagespeedCssImageInlineMaxBytes",
+    &RewriteOptions::set_css_image_inline_max_bytes },
+  { "ModPagespeedJsInlineMaxBytes",
+    &RewriteOptions::set_js_inline_max_bytes }
+};
 
 // Scan for option-sets in query-params.  We will only allow a limited
 // number of options to be set.  In particular, some options are risky
@@ -128,19 +145,24 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     } else {
       status = kInvalid;
     }
-    // TODO(jmarantz): add js inlinine threshold, outline threshold.
-  } else if (name == kModPagespeedCssInlineMaxBytes) {
-    int64 int_val;
-    if (StringToInt64(value, &int_val)) {
-      options->set_css_inline_max_bytes(int_val);
-      status = kSuccess;
-    } else {
-      handler->Message(kWarning, "Invalid integer value for %s: %s",
-                       name.as_string().c_str(),
-                       value.c_str());
-      status = kInvalid;
+  } else {
+    for (unsigned i = 0; i < arraysize(int64_query_params_); ++i) {
+      if (name == int64_query_params_[i].name_) {
+        int64 int_val;
+        if (StringToInt64(value, &int_val)) {
+          RewriteOptionsInt64PMF method = int64_query_params_[i].method_;
+          (options->*method)(int_val);
+          status = kSuccess;
+        } else {
+          handler->Message(kWarning, "Invalid integer value for %s: %s",
+                           name.as_string().c_str(), value.c_str());
+          status = kInvalid;
+        }
+        break;
+      }
     }
   }
+
   return status;
 }
 

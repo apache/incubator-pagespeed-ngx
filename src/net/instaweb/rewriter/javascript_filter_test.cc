@@ -221,6 +221,13 @@ TEST_P(JavascriptFilterTest, BackslashInRegexp) {
   ValidateNoChanges("backslash_in_regexp", input);
 }
 
+TEST_P(JavascriptFilterTest, WeirdSrcCrash) {
+  // These used to crash due to bugs in the lexer breaking invariants some
+  // filters relied on.
+  ValidateNoChanges("weird_attr", "<script src=foo<bar>Content");
+  ValidateNoChanges("weird_tag", "<script<foo>");
+}
+
 // We runs the test with GetParam() both true and false, in order to
 // test both the traditional and async flows.
 INSTANTIATE_TEST_CASE_P(JavascriptFilterTestInstance,

@@ -73,10 +73,16 @@ TEST_F(HtmlParseTest, CorrectTaggify) {
   // Don't turn <2 -> <2>
   ValidateNoChanges("no_taggify_digit", "<p>1<2</p>");
   ValidateNoChanges("no_taggify_unicode", "<p>☃<☕</p>");
-  ValidateExpected("taggify_letter", "<p>x<y</p>", "<p>x<y></p>");
 
-  ValidateExpected("taggify_letter+digit", "<p>x1<y2</p>", "<p>x1<y2></p>");
-  ValidateExpected("taggify_letter+unicode", "<p>x☃<y☕</p>", "<p>x☃<y☕></p>");
+  // Under HTML5 rules (and recent Chrome and FF practice), something like
+  // <foo<bar> actually makes an element named <foo<bar>.
+  // (See 13.2.4.10 Tag name state). We don't entirely identify it reliably
+  // if a / is also present, but we don't damage it, either, which is
+  // good enough for our purpose.
+  ValidateNoChanges("letter", "<p>x<y</p>");
+
+  ValidateNoChanges("taggify_letter+digit", "<p>x1<y2</p>");
+  ValidateNoChanges("taggify_letter+unicode", "<p>x☃<y☕</p>");
 
   ValidateNoChanges("no_taggify_digit+letter", "<p>1x<2y</p>");
   ValidateNoChanges("no_taggify_unicode+letter", "<p>☃x<☕y</p>");
@@ -217,58 +223,51 @@ TEST_F(HtmlParseTest, ImplicitExplicitClose) {
 }
 
 TEST_F(HtmlParseTest, OpenBracketAfterQuote) {
-  // '<' after '"' in attr value
+  // Note: even though it looks like two input elements, in practice
+  // it's parsed as one.
   const char input[] =
       "<input type=\"text\" name=\"username\""
       "<input type=\"password\" name=\"password\"/>";
   const char expected[] =
-      "<input type=\"text\" name=\"username\">"  // note added '>'
-      "<input type=\"password\" name=\"password\"/>";
+      "<input type=\"text\" name=\"username\""
+      " <input type=\"password\" name=\"password\"/>";
+      // Extra space 'between' attributes'
   ValidateExpected("open_bracket_after_quote", input, expected);
 }
 
 TEST_F(HtmlParseTest, OpenBracketUnquoted) {
-  // '<' after after unquoted attr value
+  // '<' after unquoted attr value.
+  // This is just a malformed attribute name, not a start of a new tag.
   const char input[] =
       "<input type=\"text\" name=username"
       "<input type=\"password\" name=\"password\"/>";
-  const char expected[] =
-      "<input type=\"text\" name=username>"  // note added '>'
-      "<input type=\"password\" name=\"password\"/>";
-  ValidateExpected("open_bracket_unquoted", input, expected);
+  ValidateNoChanges("open_bracket_unquoted", input);
 }
 
 TEST_F(HtmlParseTest, OpenBracketAfterEquals) {
-  // '<' after after unquoted attr value
+  // '<' after equals sign. This is actually an attribute value,
+  // not a start of a new tag.
   const char input[] =
       "<input type=\"text\" name="
       "<input type=\"password\" name=\"password\"/>";
-  const char expected[] =
-      "<input type=\"text\" name=>"  // note added '>'
-      "<input type=\"password\" name=\"password\"/>";
-  ValidateExpected("open_brack_after_equals", input, expected);
+  ValidateNoChanges("open_brack_after_equals", input);
 }
 
 TEST_F(HtmlParseTest, OpenBracketAfterName) {
-  // '<' after after unquoted attr value
+  // '<' after after attr name.
   const char input[] =
       "<input type=\"text\" name"
       "<input type=\"password\" name=\"password\"/>";
-  const char expected[] =
-      "<input type=\"text\" name>"  // note added '>'
-      "<input type=\"password\" name=\"password\"/>";
-  ValidateExpected("open_brack_after_name", input, expected);
+  ValidateNoChanges("open_brack_after_name", input);
 }
 
 TEST_F(HtmlParseTest, OpenBracketAfterSpace) {
-  // '<' after after unquoted attr value
+  // '<' after after unquoted attr value. Here name<input is an attribute
+  // name.
   const char input[] =
       "<input type=\"text\" "
       "<input type=\"password\" name=\"password\"/>";
-  const char expected[] =
-      "<input type=\"text\">"  // note added '>'
-      "<input type=\"password\" name=\"password\"/>";
-  ValidateExpected("open_brack_after_name", input, expected);
+  ValidateNoChanges("open_brack_after_name", input);
 }
 
 TEST_F(HtmlParseTest, MakeName) {

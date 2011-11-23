@@ -45,7 +45,7 @@ void HtmlParseTestBaseNoAlloc::ValidateExpected(const StringPiece& case_id,
                                                 const GoogleString& expected) {
   Parse(case_id, html_input);
   GoogleString xbody = doctype_string_ + AddHtmlBody(expected);
-  EXPECT_EQ(xbody, output_buffer_);
+  EXPECT_EQ(xbody, output_buffer_) << "Test id:" << case_id;
   output_buffer_.clear();
 }
 
@@ -55,7 +55,7 @@ void HtmlParseTestBaseNoAlloc::ValidateExpectedUrl(
     const GoogleString& expected) {
   ParseUrl(url, html_input);
   GoogleString xbody = doctype_string_ + AddHtmlBody(expected);
-  EXPECT_EQ(xbody, output_buffer_);
+  EXPECT_EQ(xbody, output_buffer_) << "Test url:" << url;
   output_buffer_.clear();
 }
 
@@ -65,7 +65,7 @@ void HtmlParseTestBaseNoAlloc::ValidateExpectedFail(
     const GoogleString& expected) {
   Parse(case_id, html_input);
   GoogleString xbody = AddHtmlBody(expected);
-  EXPECT_NE(xbody, output_buffer_);
+  EXPECT_NE(xbody, output_buffer_) << "Test id:" << case_id;
   output_buffer_.clear();
 }
 
