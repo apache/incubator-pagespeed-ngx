@@ -121,12 +121,18 @@ void ResourceManagerTestBase::SetUp() {
 }
 
 void ResourceManagerTestBase::TearDown() {
-  if (!use_managed_rewrite_drivers_) {
+  if (use_managed_rewrite_drivers_) {
+    factory_->ShutDown();
+  } else {
     rewrite_driver_->WaitForShutDown();
+
+    // We need to make sure we shutdown the threads here before
+    // deleting the driver, as the last task on the rewriter's job
+    // queue may still be wrapping up some cleanups and notifications.
+    factory_->ShutDown();
     rewrite_driver_->Clear();
     delete rewrite_driver_;
   }
-  factory_->ShutDown();
   other_rewrite_driver_->WaitForShutDown();
   other_factory_->ShutDown();
   other_rewrite_driver_->Clear();
