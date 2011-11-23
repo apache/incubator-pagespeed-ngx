@@ -58,7 +58,7 @@ const int kHttpsGoogleFavicon = 5;
 
 class SerfTestCallback : public UrlAsyncFetcher::Callback {
  public:
-  explicit SerfTestCallback(AbstractMutex* mutex, const GoogleString& url)
+  SerfTestCallback(AbstractMutex* mutex, const GoogleString& url)
       : done_(false),
         mutex_(mutex),
         url_(url),
@@ -169,13 +169,16 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     callbacks_.push_back(new SerfTestCallback(mutex_.get(), url));
   }
 
+  void StartFetch(int idx) {
+    serf_url_async_fetcher_->StreamingFetch(
+        urls_[idx], *request_headers_[idx], response_headers_[idx],
+        writers_[idx], &message_handler_, callbacks_[idx]);
+  }
+
   void StartFetches(size_t first, size_t last, bool enable_threaded) {
     for (size_t idx = first; idx <= last; ++idx) {
-      SerfTestCallback* callback = callbacks_[idx];
-      callback->set_enable_threaded(enable_threaded);
-      serf_url_async_fetcher_->StreamingFetch(
-          urls_[idx], *request_headers_[idx], response_headers_[idx],
-          writers_[idx], &message_handler_, callback);
+      callbacks_[idx]->set_enable_threaded(enable_threaded);
+      StartFetch(idx);
     }
   }
 
@@ -197,6 +200,18 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   void ValidateFetches(size_t first, size_t last) {
     for (size_t idx = first; idx <= last; ++idx) {
       ASSERT_TRUE(callbacks_[idx]->IsDone());
+
+      for (int i = 0; !callbacks_[idx]->success() && (i < 10); ++i) {
+        // We've started to see some flakiness in this test requesting
+        // google.com/favicon, so try, at most 10 times, to re-issue
+        // the request and sleep.
+        usleep(50 * Timer::kMsUs);
+        LOG(ERROR) << "Serf retrying flaky url " << urls_[idx];
+        StartFetch(idx);
+        WaitTillDone(idx, idx, kMaxMs);
+      }
+      EXPECT_TRUE(callbacks_[idx]->success());
+
       if (content_starts_[idx].empty()) {
         EXPECT_TRUE(contents_[idx]->empty());
         EXPECT_EQ(HttpStatus::kNoContent,

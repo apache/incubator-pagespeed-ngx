@@ -527,6 +527,10 @@ class RewriteDriver : public HtmlParse {
 
   // Wait for outstanding rewrite to complete, including any background
   // work that may be ongoing even after results were reported.
+  //
+  // Note: while this guarantees that the result of the computation is
+  // known, the thread that performed it may still be running for a
+  // little bit and accessing the driver.
   void WaitForShutDown();
 
   // As above, but with a time bound, and taking a mode parameter to decide
