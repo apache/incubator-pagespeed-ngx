@@ -28,27 +28,14 @@ namespace net_instaweb {
 // Lexical analysis class for Javascript.
 class JsLexer {
  public:
-  enum Type {
-    kKeyword,
-    kComment,
-    kWhitespace,
-    kLineSeparator,
-    kRegex,
-    kStringLiteral,
-    kNumber,
-    kOperator,
-    kIdentifier,
-    kEndOfInput
-  };
-
   JsLexer();
   void Lex(const StringPiece& contents);
-  const char* keyword_string(JsKeywords::Keyword keyword) {
+  const char* keyword_string(JsKeywords::Type keyword) {
     return keyword_vector_[static_cast<int>(keyword)];
   }
 
   // Grabs the next token from the stream.
-  Type NextToken(StringPiece* token, JsKeywords::Keyword* keyword);
+  JsKeywords::Type NextToken(StringPiece* token);
 
   // Was there an error in the stream?
   bool error() const { return error_; }
@@ -58,9 +45,8 @@ class JsLexer {
   // Lexer state.
   typedef bool (JsLexer::*LexicalPredicate)(uint8 ch, int index);
 
-  Type IdentifierOrKeyword(const StringPiece& name,
-                           JsKeywords::Keyword* keyword);
-  Type NumberOrDot(const StringPiece& number_or_dot);
+  JsKeywords::Type IdentifierOrKeyword(const StringPiece& name);
+  JsKeywords::Type NumberOrDot(const StringPiece& number_or_dot);
 
   // Walks through input text looking for the end of the current token.
   // When predicate(char, index) returns false, the token is over, and
@@ -96,7 +82,7 @@ class JsLexer {
   // lexical context.
   bool ProcessBackslash(uint8 ch);
 
-  Type ConsumeSlash(StringPiece* token);
+  JsKeywords::Type ConsumeSlash(StringPiece* token);
 
   StringPiece input_;
   int index_;

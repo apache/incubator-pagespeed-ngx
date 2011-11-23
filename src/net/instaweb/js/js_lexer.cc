@@ -57,22 +57,21 @@ JsLexer::JsLexer() {
   keyword_vector_[JsKeywords::kNotAKeyword] = NULL;
 }
 
-JsLexer::Type JsLexer::IdentifierOrKeyword(const StringPiece& name,
-                                           JsKeywords::Keyword* keyword) {
+JsKeywords::Type JsLexer::IdentifierOrKeyword(const StringPiece& name) {
   JsKeywords::Flag flag;
-  *keyword = JsKeywords::Lookup(name, &flag);
-  if (*keyword == JsKeywords::kNotAKeyword) {
+  JsKeywords::Type type = JsKeywords::Lookup(name, &flag);
+  if (type == JsKeywords::kNotAKeyword) {
     last_token_may_end_value_ = true;
-    return kIdentifier;
+    return JsKeywords::kIdentifier;
   }
   last_token_may_end_value_ = (flag == JsKeywords::kIsValue);
-  return kKeyword;
+  return type;
 }
 
-JsLexer::Type JsLexer::NumberOrDot(const StringPiece& number_or_dot) {
+JsKeywords::Type JsLexer::NumberOrDot(const StringPiece& number_or_dot) {
   if (number_or_dot == ".") {
     last_token_may_end_value_ = false;
-    return kOperator;
+    return JsKeywords::kOperator;
   }
 #ifndef NDEBUG
   int num_dots = 0;
@@ -84,7 +83,7 @@ JsLexer::Type JsLexer::NumberOrDot(const StringPiece& number_or_dot) {
   DCHECK_GE(1, num_dots);
 #endif
   last_token_may_end_value_ = true;
-  return kNumber;
+  return JsKeywords::kNumber;
 }
 
 void JsLexer::Consume(LexicalPredicate predicate,
@@ -234,11 +233,10 @@ void JsLexer::Lex(const StringPiece& input) {
   seen_a_dot_ = false;
 }
 
-JsLexer::Type JsLexer::NextToken(StringPiece* token,
-                                 JsKeywords::Keyword* keyword) {
+JsKeywords::Type JsLexer::NextToken(StringPiece* token) {
   bool end_of_input = (index_ >= static_cast<int>(input_.size()));
   if (end_of_input || error_) {
-    return kEndOfInput;
+    return JsKeywords::kEndOfInput;
   }
 
   uint8 ch = input_[index_];
@@ -250,37 +248,38 @@ JsLexer::Type JsLexer::NextToken(StringPiece* token,
   // this would probably be the first thing to do.
   if (IsSpace(ch, 0)) {
     Consume(&JsLexer::IsSpace, false, true, token);
-    return kWhitespace;
+    return JsKeywords::kWhitespace;
     // last_token_may_end_value_ does not change.
   } else if (IsLineSeparator(ch, 0)) {
     Consume(&JsLexer::IsLineSeparator, false, true, token);
-    return kLineSeparator;
+    return JsKeywords::kLineSeparator;
   } else if (IsNumber(ch, 0)) {
     seen_a_dot_ = (ch == '.');
     Consume(&JsLexer::IsNumber, false, true, token);
     seen_a_dot_ = false;
     return NumberOrDot(*token);
   } else if (ch == '/') {
-    return ConsumeSlash(token);  // decide whether this is a comment or a regex.
+    // Decide whether this is a comment or a regex.
+    return ConsumeSlash(token);
   } else if ((ch == '"') || (ch == '\'')) {
     token_start_ = ch;
     Consume(&JsLexer::InString, true, false, token);
     last_token_may_end_value_ = true;
-    return kStringLiteral;
+    return JsKeywords::kStringLiteral;
   } else if (IdentifierStart(ch)) {
     Consume(&JsLexer::InIdentifier, false, true, token);
-    return IdentifierOrKeyword(*token, keyword);
+    return IdentifierOrKeyword(*token);
   } else if (input_.substr(index_, 4) == "<!--") {
     Consume(&JsLexer::InSingleLineComment, false, true, token);
-    return kComment;
+    return JsKeywords::kComment;
   }
   // all other punctuation is a token.
   token_start_ = ch;
   Consume(&JsLexer::InOperator, false, true, token);
-  return kOperator;
+  return JsKeywords::kOperator;
 }
 
-JsLexer::Type JsLexer::ConsumeSlash(StringPiece* token) {
+JsKeywords::Type JsLexer::ConsumeSlash(StringPiece* token) {
   // A slash could herald a line comment, a block comment, a regex literal,
   // or a mere division operator; we need to figure out which it is.
   // Differentiating between division and regexes is mostly impossible
@@ -289,21 +288,21 @@ JsLexer::Type JsLexer::ConsumeSlash(StringPiece* token) {
     char next = input_[index_ + 1];
     if (next == '/') {
       Consume(&JsLexer::InSingleLineComment, false, true, token);
-      return kComment;
+      return JsKeywords::kComment;
     } else if (next == '*') {
       Consume(&JsLexer::InBlockComment, true, false, token);
-      return kComment;
+      return JsKeywords::kComment;
     } else if (last_token_may_end_value_) {
       last_token_may_end_value_ = false;
     } else {
       within_brackets_ = false;
       Consume(&JsLexer::InRegex, true, false, token);
-      return kRegex;
+      return JsKeywords::kRegex;
     }
   }
   Consume(&JsLexer::InOperator, false, true, token);
   last_token_may_end_value_ = false;
-  return kOperator;
+  return JsKeywords::kOperator;
 }
 
 }  // namespace net_instaweb

@@ -42,7 +42,7 @@ namespace net_instaweb {
 #line 21 "js/js_keywords.gperf"
 struct JsKeywordMap {
   const char* name;
-  net_instaweb::JsKeywords::Keyword keyword;
+  net_instaweb::JsKeywords::Type keyword;
   net_instaweb::JsKeywords::Flag flag;
 };
 #include <string.h>
@@ -213,7 +213,7 @@ JsKeywordMapper::Lookup (register const char *str, register unsigned int len)
 #line 76 "js/js_keywords.gperf"
 
 
-JsKeywords::Keyword JsKeywords::Lookup(const StringPiece& keyword,
+JsKeywords::Type JsKeywords::Lookup(const StringPiece& keyword,
                                        JsKeywords::Flag* flag) {
   const JsKeywordMap* keyword_map =
       JsKeywordMapper::Lookup(keyword.data(), keyword.size());
@@ -241,7 +241,7 @@ const char* JsKeywords::Iterator::name() const {
   return kJsKeywordsTable[index_].name;
 }
 
-JsKeywords::Keyword JsKeywords::Iterator::keyword() const {
+JsKeywords::Type JsKeywords::Iterator::keyword() const {
   DCHECK(!AtEnd());
   return kJsKeywordsTable[index_].keyword;
 }

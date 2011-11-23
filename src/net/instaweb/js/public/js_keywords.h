@@ -26,7 +26,7 @@ namespace net_instaweb {
 
 class JsKeywords {
  public:
-  enum Keyword {
+  enum Type {
     // literals
     kNull,
     kTrue,
@@ -80,8 +80,22 @@ class JsKeywords {
     kStatic,
     kYield,
 
-    kNotAKeyword
+    // Sentinel value for gperf.
+    kNotAKeyword,
+
+    // Other types of lexical tokens; returned by lexer, but not gperf.
+    kComment,
+    kWhitespace,
+    kLineSeparator,
+    kRegex,
+    kStringLiteral,
+    kNumber,
+    kOperator,
+    kIdentifier,
+    kEndOfInput
   };
+
+  static bool IsAKeyword(Type type) { return type < kNotAKeyword; }
 
   enum Flag {
     kNone,
@@ -91,8 +105,9 @@ class JsKeywords {
   };
 
   // Finds a Keyword based on a keyword string.  If not found, returns
-  // kNotAKeyword.
-  static Keyword Lookup(const StringPiece& name, Flag* flag);
+  // kNotAKeyword.  Otherwise, this always returns a Type for which
+  // IsAKeyword is true.
+  static Type Lookup(const StringPiece& name, Flag* flag);
 
  private:
   friend class JsLexer;
@@ -106,7 +121,7 @@ class JsKeywords {
     Iterator() : index_(-1) { Next(); }
     bool AtEnd() const;
     void Next();
-    Keyword keyword() const;
+    Type keyword() const;
     const char* name() const;
 
    private:

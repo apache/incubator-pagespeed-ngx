@@ -20,7 +20,7 @@ namespace net_instaweb {
 
 struct JsKeywordMap {
   const char* name;
-  net_instaweb::JsKeywords::Keyword keyword;
+  net_instaweb::JsKeywords::Type keyword;
   net_instaweb::JsKeywords::Flag flag;
 };
 %%
@@ -75,7 +75,7 @@ struct JsKeywordMap {
 "yield",        JsKeywords::kYield,           JsKeywords::kIsReservedStrict
 %%
 
-JsKeywords::Keyword JsKeywords::Lookup(const StringPiece& keyword,
+JsKeywords::Type JsKeywords::Lookup(const StringPiece& keyword,
                                        JsKeywords::Flag* flag) {
   const JsKeywordMap* keyword_map =
       JsKeywordMapper::Lookup(keyword.data(), keyword.size());
@@ -103,7 +103,7 @@ const char* JsKeywords::Iterator::name() const {
   return kJsKeywordsTable[index_].name;
 }
 
-JsKeywords::Keyword JsKeywords::Iterator::keyword() const {
+JsKeywords::Type JsKeywords::Iterator::keyword() const {
   DCHECK(!AtEnd());
   return kJsKeywordsTable[index_].keyword;
 }

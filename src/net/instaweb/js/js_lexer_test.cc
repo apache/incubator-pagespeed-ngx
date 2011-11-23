@@ -322,43 +322,45 @@ class JsLexerTest : public testing::Test {
     lexer_.Lex(js_input);
 
     StringPiece token;
-    JsKeywords::Keyword keyword;
-    JsLexer::Type type;
+    JsKeywords::Type type;
     do {
-      type = lexer_.NextToken(&token, &keyword);
+      type = lexer_.NextToken(&token);
       switch (type) {
-        case JsLexer::kKeyword:
-          output_.push_back(StrCat("Keyword: ",
-                                   lexer_.keyword_string(keyword)));
-          break;
-        case JsLexer::kComment:
+        case JsKeywords::kComment:
           output_.push_back(StrCat("Comment: ", token));
           break;
-        case JsLexer::kWhitespace:
+        case JsKeywords::kWhitespace:
           output_.push_back(StrCat("Whitespace: ", token));
           break;
-        case JsLexer::kLineSeparator:
+        case JsKeywords::kLineSeparator:
           output_.push_back(StrCat("LineSep: ", token));
           break;
-        case JsLexer::kRegex:
+        case JsKeywords::kRegex:
           output_.push_back(StrCat("Regex: ", token));
           break;
-        case JsLexer::kStringLiteral:
+        case JsKeywords::kStringLiteral:
           output_.push_back(StrCat("StringLiteral: ", token));
           break;
-        case JsLexer::kNumber:
+        case JsKeywords::kNumber:
           output_.push_back(StrCat("Number: ", token));
           break;
-        case JsLexer::kOperator:
+        case JsKeywords::kOperator:
           output_.push_back(StrCat("Operator: ", token));
           break;
-        case JsLexer::kIdentifier:
+        case JsKeywords::kIdentifier:
           output_.push_back(StrCat("Identifier: ", token));
           break;
-        case JsLexer::kEndOfInput:
+        case JsKeywords::kEndOfInput:
+          break;
+        case JsKeywords::kNotAKeyword:
+          DCHECK(false) << "kNotAKeyword is not a valid lexer return value.";
+          break;
+        default:
+          DCHECK(JsKeywords::IsAKeyword(type));
+          output_.push_back(StrCat("Keyword: ", lexer_.keyword_string(type)));
           break;
       }
-    } while (type != JsLexer::kEndOfInput);
+    } while (type != JsKeywords::kEndOfInput);
 
     size_t num_expected_tokens = 0;
     if (expected_tokens == NULL) {
