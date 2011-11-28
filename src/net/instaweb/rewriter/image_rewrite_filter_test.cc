@@ -30,7 +30,6 @@
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
@@ -38,7 +37,6 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -395,6 +393,14 @@ TEST_P(ImageRewriteTest, ResizeStyleTest) {
       " style=\"width:256cm;height:192cm;\"";
     TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
                       kUnparsableDims, kUnparsableDims, false, false);
+}
+
+TEST_P(ImageRewriteTest, NullResizeTest) {
+  // Make sure we don't crash on a value-less style attribute.
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+                    " style", " style", false, false);
 }
 
 TEST_P(ImageRewriteTest, InlineTest) {

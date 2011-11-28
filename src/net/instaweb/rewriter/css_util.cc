@@ -22,7 +22,6 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "util/utf8/public/unicodetext.h"
@@ -102,7 +101,7 @@ StyleExtractor::~StyleExtractor() {}
 // there is no style, return NULL.
 Css::Declarations* StyleExtractor::GetDeclsFromElement(HtmlElement* element) {
   HtmlElement::Attribute* style = element->FindAttribute(HtmlName::kStyle);
-  if (style != NULL) {
+  if ((style != NULL) && (style->value() != NULL)) {
     Css::Parser parser(style->value());
     return parser.ParseDeclarations();
   }
