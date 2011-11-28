@@ -21,6 +21,8 @@
 
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/html_testing_peer.h"
+#include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/htmlparse/public/explicit_close_tag.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -351,6 +353,14 @@ TEST_F(HtmlParseTest, AutoClose) {
 
   ExpectAutoClose("tr", "tr");
   ExpectNoAutoClose("tr", "td");
+}
+
+TEST_F(HtmlParseTest, UnbalancedMarkup) {
+  ExplicitCloseTag close_tags;
+  html_parse_.AddFilter(&close_tags);
+  ValidateExpected("unbalanced_markup",
+                   "<font><tr><i><font></i></font><tr></font>",
+                   "<font><tr><i><font></font></i></tr><tr></tr></font>");
 }
 
 TEST_F(HtmlParseTest, MakeName) {

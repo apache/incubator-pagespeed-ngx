@@ -833,6 +833,7 @@ void HtmlLexer::StartParse(const StringPiece& id,
   attr_name_.clear();
   attr_value_.clear();
   literal_.clear();
+  missing_close_tag_bag_.clear();
   // clear buffers
 }
 
@@ -1014,13 +1015,27 @@ void HtmlLexer::EvalAttrValSq(char c) {
 }
 
 void HtmlLexer::EmitTagClose(HtmlElement::CloseStyle close_style) {
-  HtmlElement* element = PopElementMatchingTag(token_);
-  if (element != NULL) {
-    element->set_end_line_number(line_);
-    html_parse_->CloseElement(element, close_style, line_);
+  // TODO(jmarantz): consider clearing the tag-bag when the parent
+  // of a forgotten close element is closed.
+  TagBag::iterator p = missing_close_tag_bag_.find(token_);
+  if (p != missing_close_tag_bag_.end()) {
+    int implicit_closes_for_this_tag = p->second - 1;
+    if (implicit_closes_for_this_tag == 0) {
+      missing_close_tag_bag_.erase(p);
+    } else {
+      p->second = implicit_closes_for_this_tag;
+    }
+    SyntaxError("Close-tag `%s', appears to be misplaced", token_.c_str());
   } else {
-    SyntaxError("Unexpected close-tag `%s', no tags are open", token_.c_str());
-    EmitLiteral();
+    HtmlElement* element = PopElementMatchingTag(token_);
+    if (element != NULL) {
+      element->set_end_line_number(line_);
+      html_parse_->CloseElement(element, close_style, line_);
+    } else {
+      SyntaxError("Unexpected close-tag `%s', no tags are open",
+                  token_.c_str());
+      EmitLiteral();
+    }
   }
 
   literal_.clear();
@@ -1143,6 +1158,7 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(const StringPiece& tag) {
         if (!IsOptionallyClosedTag(skipped->keyword())) {
           html_parse_->Info(id_.c_str(), skipped->begin_line_number(),
                             "Unclosed element `%s'", skipped->name_str());
+          ++missing_close_tag_bag_[skipped->name_str()];
         }
         // Before closing the skipped element, pop it off the stack.  Otherwise,
         // the parent redundancy check in HtmlParse::AddEvent will fail.

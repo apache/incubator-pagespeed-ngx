@@ -215,6 +215,9 @@ class HtmlLexer {
   GoogleString id_;
   GoogleString literal_close_;  // specific tag go close, e.g </script>
 
+  typedef std::map<GoogleString, int> TagBag;
+  TagBag missing_close_tag_bag_;
+
   ContentType content_type_;
   DocType doctype_;
 
