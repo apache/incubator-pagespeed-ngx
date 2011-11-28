@@ -212,6 +212,12 @@ void RewriteDriver::Clear() {
   DCHECK(!base_url_.is_valid());
   decoded_base_url_.Clear();
   resource_map_.clear();
+  DCHECK(end_elements_inhibited_.empty());
+  DCHECK(deferred_queue_.empty());
+  DCHECK(inhibiting_event_ == NULL);
+  DCHECK(finish_parse_on_hold_ == NULL);
+  DCHECK(!flush_in_progress_);
+  DCHECK(!uninhibit_reflush_requested_);
   DCHECK(primary_rewrite_context_map_.empty());
   DCHECK(initiated_rewrites_.empty());
   DCHECK(detached_rewrites_.empty());

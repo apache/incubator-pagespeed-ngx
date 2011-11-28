@@ -69,6 +69,7 @@
         'genfiles/htmlparse/html_name.cc',
         'htmlparse/doctype.cc',
         'htmlparse/empty_html_filter.cc',
+        'htmlparse/explicit_close_tag.cc',
         'htmlparse/html_element.cc',
         'htmlparse/html_event.cc',
         'htmlparse/html_filter.cc',
