@@ -32,6 +32,13 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+extern "C" {
+#ifdef USE_SYSTEM_LIBWEBP
+#include "webp/decode.h"
+#else
+#include "third_party/libwebp/webp/decode.h"
+#endif
+}
 #ifdef USE_SYSTEM_OPENCV
 #include "cv.h"
 #include "highgui.h"
@@ -95,6 +102,8 @@ class ImageImpl : public Image {
   virtual bool ResizeTo(const ImageDim& new_dim);
   virtual bool DrawImage(Image* image, int x, int y);
   virtual bool EnsureLoaded();
+  virtual void SetTransformToLowRes();
+  virtual void SetQuality(Type image_type, int quality);
 
  private:
   // byte buffer type most convenient for working with given OpenCV version
@@ -117,6 +126,7 @@ class ImageImpl : public Image {
   void FindJpegSize();
   void FindPngSize();
   void FindGifSize();
+  void FindWebpSize();
   bool HasTransparency(const StringPiece& buf);
   bool LoadOpenCv();
   void CleanOpenCv();
@@ -150,9 +160,35 @@ class ImageImpl : public Image {
   ImageDim dims_;
   bool webp_preferred_;
   int jpeg_quality_;
+  int webp_quality_;
+  bool low_quality_enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageImpl);
 };
+
+void ImageImpl::SetTransformToLowRes() {
+  low_quality_enabled_ = true;
+  webp_quality_ = 20;
+  jpeg_quality_ = 20;
+}
+
+void ImageImpl::SetQuality(Type image_type, int quality) {
+  if (quality < 1) {
+    quality = 1;
+  } else if (quality > 100) {
+    quality = 100;
+  }
+  switch (image_type) {
+    case IMAGE_JPEG:
+      jpeg_quality_ = quality;
+      break;
+    case IMAGE_WEBP:
+      webp_quality_ = quality;
+      break;
+    default:
+      break;
+  }
+}
 
 Image::Image(const StringPiece& original_contents)
     : image_type_(IMAGE_UNKNOWN),
@@ -174,7 +210,9 @@ ImageImpl::ImageImpl(const StringPiece& original_contents,
       changed_(false),
       url_(url),
       webp_preferred_(webp_preferred),
-      jpeg_quality_(jpeg_quality) { }
+      jpeg_quality_(jpeg_quality),
+      webp_quality_(RewriteOptions::kDefaultImageWebpRecompressQuality),
+      low_quality_enabled_(false) { }
 
 Image* NewImage(const StringPiece& original_contents,
                 const GoogleString& url,
@@ -202,7 +240,9 @@ ImageImpl::ImageImpl(int width, int height, Type type,
       changed_(false),
       url_(),
       webp_preferred_(false),
-      jpeg_quality_(RewriteOptions::kDefaultImageJpegRecompressQuality) {
+      jpeg_quality_(RewriteOptions::kDefaultImageJpegRecompressQuality),
+      webp_quality_(RewriteOptions::kDefaultImageWebpRecompressQuality),
+      low_quality_enabled_(false) {
   dims_.set_width(width);
   dims_.set_height(height);
 }
@@ -312,6 +352,18 @@ void ImageImpl::FindGifSize() {
   }
 }
 
+void ImageImpl::FindWebpSize() {
+  const uint8* webp = reinterpret_cast<const uint8*>(original_contents_.data());
+  const int webp_size = original_contents_.size();
+  int width = 0, height = 0;
+  if (WebPGetInfo(webp, webp_size, &width, &height) > 0) {
+    dims_.set_width(width);
+    dims_.set_height(height);
+  } else {
+    handler_->Error(url_.c_str(), 0, "Couldn't find webp dimensions ");
+  }
+}
+
 // Looks at image data in order to determine image type, and also fills in any
 // dimension information it can (setting image_type_ and dims_).
 void ImageImpl::ComputeImageType() {
@@ -353,9 +405,16 @@ void ImageImpl::ComputeImageType() {
           FindGifSize();
         }
         break;
-      // TODO(jmaessen): Recognize webp files in original site, auto-downgrade
-      // to jpg if necessary.  Right now we don't identify webp on input, we
-      // only create webp from jpeg on output.
+      case 'R':
+        // Possible Webp
+        // Detailed explanation on parsing webp format is available at
+        // http://code.google.com/speed/webp/docs/riff_container.html
+        if (buf.size() >= 20 && buf.substr(1, 3) == "IFF" &&
+            buf.substr(8, 4) == "WEBP") {
+          image_type_ = IMAGE_WEBP;
+          FindWebpSize();
+        }
+        break;
       default:
         break;
     }
@@ -663,9 +722,13 @@ bool ImageImpl::ComputeOutputContents() {
         case IMAGE_UNKNOWN:
           break;
         case IMAGE_WEBP:
+            ok = ReduceWebpImageQuality(string_for_image, webp_quality_,
+                                        &output_contents_);
+            // TODO(pulkitg): Convert a webp image to jpeg image if
+            // web_preferred_ is false.
           break;
         case IMAGE_JPEG:
-          if (webp_preferred_) {
+          if (webp_preferred_ && !low_quality_enabled_) {
             // Right now we just compute the webp, and assume that it'll be
             // smaller than the equivalent re-compressed jpg.  Doing jpg
             // recompression *as well* and picking the smaller file is very
@@ -693,17 +756,29 @@ bool ImageImpl::ComputeOutputContents() {
           }
           break;
         case IMAGE_PNG: {
-          pagespeed::image_compression::PngReader png_reader;
-          ok = PngOptimizer::OptimizePngBestCompression
-              (png_reader, string_for_image, &output_contents_);
+          if (low_quality_enabled_) {
+            // Currently, png to jpeg conversion is not present in the pagespeed
+            // library.
+            ok = false;
+          } else {
+            pagespeed::image_compression::PngReader png_reader;
+            ok = PngOptimizer::OptimizePngBestCompression
+                (png_reader, string_for_image, &output_contents_);
+          }
           break;
         }
         case IMAGE_GIF: {
-          pagespeed::image_compression::GifReader gif_reader;
-          ok = PngOptimizer::OptimizePngBestCompression
-              (gif_reader, string_for_image, &output_contents_);
-          if (ok) {
-            image_type_ = IMAGE_PNG;
+          if (low_quality_enabled_) {
+            // Currently, gif to jpeg conversion is not present in pagespeed
+            // library.
+            ok = false;
+          } else {
+            pagespeed::image_compression::GifReader gif_reader;
+            ok = PngOptimizer::OptimizePngBestCompression
+                (gif_reader, string_for_image, &output_contents_);
+            if (ok) {
+              image_type_ = IMAGE_PNG;
+            }
           }
           break;
         }

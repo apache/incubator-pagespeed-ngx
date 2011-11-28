@@ -43,7 +43,11 @@ JsDeferFilter::JsDeferFilter(HtmlParse* html_parse)
 JsDeferFilter::~JsDeferFilter() { }
 
 void JsDeferFilter::StartDocument() {
-  defer_js_ = StrCat(kDeferJsCode, "\npagespeed.deferInit();\n");
+  defer_js_ = StrCat(kDeferJsCode, "\n",
+                     "pagespeed.deferInit();\n"
+                     "pagespeed.addOnload(window, function() {\n"
+                     "  pagespeed.deferJs.run();\n"
+                     "});\n");
 }
 
 void JsDeferFilter::StartElement(HtmlElement* element) {
@@ -131,7 +135,7 @@ void JsDeferFilter::EndElement(HtmlElement* element) {
       html_parse_->IsRewritable(script_in_progress_) &&
       html_parse_->IsRewritable(element)) {
     if (element->keyword() == HtmlName::kScript) {
-      // TODO(atulvasu): Do scripts have both src and inline script?    
+      // TODO(atulvasu): Do scripts have both src and inline script?
       if (script_src_ == NULL) {
         RewriteInlineScript();
       } else {

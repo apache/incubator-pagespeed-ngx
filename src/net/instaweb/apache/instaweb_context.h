@@ -20,6 +20,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/string.h"
@@ -105,10 +106,10 @@ class InstawebContext {
   RewriteDriver* rewrite_driver_;
   StringWriter string_writer_;
   scoped_ptr<GzipInflater> inflater_;
-  GoogleString buffer_;
-  ContentDetectionState content_detection_state_;
+  HtmlDetector html_detector_;
   GoogleString absolute_url_;
   ResponseHeaders response_headers_;
+  bool started_parse_;
   bool sent_headers_;
   bool populated_headers_;
 

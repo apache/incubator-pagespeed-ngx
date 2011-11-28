@@ -360,6 +360,8 @@ $WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=off \
   | egrep 'X-Mod-Pagespeed|X-Page-Speed'
 check [ $? != 0 ]
 
+echo TEST: We behave sanely on whitespace served as HTML
+check "$WGET_DUMP $TEST_ROOT/whitespace.html | grep -qe 'HTTP/1\.. 200 OK'"
 
 # Individual filter tests, in alphabetical order
 

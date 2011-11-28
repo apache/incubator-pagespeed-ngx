@@ -31,6 +31,7 @@
         '<(DEPTH)/third_party/apache/httpd/httpd.gyp:include',
         '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
         '<(DEPTH)/third_party/serf/serf.gyp:serf',
+        '<(instaweb_root)/instaweb.gyp:instaweb_automatic',
         '<(instaweb_root)/instaweb.gyp:instaweb_htmlparse',
         '<(instaweb_root)/instaweb.gyp:instaweb_http',
         '<(instaweb_root)/instaweb.gyp:instaweb_rewriter',

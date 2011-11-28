@@ -53,6 +53,7 @@
         '<(DEPTH)/third_party/css_parser/src',
       ],
       'sources': [
+        'automatic/html_detector_test.cc',
         'automatic/proxy_interface_test.cc',
         'htmlparse/html_keywords_test.cc',
         'htmlparse/html_name_test.cc',
@@ -90,6 +91,7 @@
         'rewriter/css_rewrite_test_base.cc',
         'rewriter/css_tag_scanner_test.cc',
         'rewriter/css_util_test.cc',
+        'rewriter/delay_images_filter_test.cc',
         'rewriter/div_structure_filter_test.cc',
         'rewriter/domain_lawyer_test.cc',
         'rewriter/domain_rewrite_filter_test.cc',

@@ -45,17 +45,22 @@ class Image {
   // disrupting any of its clients.
 
   enum Type {
+    // Update kImageTypeStart if you add something before this.
     IMAGE_UNKNOWN = 0,
     IMAGE_JPEG,
     IMAGE_PNG,
     IMAGE_GIF,
-    IMAGE_WEBP,
+    IMAGE_WEBP,  // Update kImageTypeEnd if you add something after this.
   };
 
   virtual ~Image();
 
   // static method to convert Type to mime type.
   static const ContentType* TypeToContentType(Type t);
+
+  // Used for checking valid ImageType enum integer.
+  static const Type kImageTypeStart = IMAGE_UNKNOWN;
+  static const Type kImageTypeEnd = IMAGE_WEBP;
 
   // Stores the image dimensions in natural_dim (on success, sets
   // natural_dim->{width, height} and
@@ -94,6 +99,17 @@ class Image {
   // image processing on the image, and return false if the image processing
   // fails.  Otherwise the image contents and type can change.
   virtual bool ResizeTo(const ImageDim& new_dim) = 0;
+
+  // Set the quality of the output image for a particular image type.
+  // Currently, quality for only jpegs & webps is supported.
+  // Jpeg quality varies from 1 to 100 where 1 is minimum and 100 is maximum.
+  // WebP quality varies from 1 to 100 where 1 is minimum and 100 is maximum.
+  virtual void SetQuality(Type image_type, int quality) = 0;
+
+  // Enable the transformation to low res image. If low res image is enabled,
+  // all jpeg images are transformed to low quality jpeg images and all webp
+  // images to low quality webp images, if possible.
+  virtual void SetTransformToLowRes() = 0;
 
   // Returns image-appropriate content type, or NULL if no content type is
   // known.  Result is a top-level const pointer and should not be deleted etc.

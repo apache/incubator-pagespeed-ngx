@@ -51,6 +51,7 @@
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
+#include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/div_structure_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
@@ -752,6 +753,7 @@ void RewriteDriver::AddPreRenderFilters() {
     AddOwnedPreRenderFilter(new JsInlineFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kConvertJpegToWebp) ||
+      rewrite_options->NeedLowResImages() ||
       rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
       rewrite_options->Enabled(RewriteOptions::kInsertImageDimensions) ||
       rewrite_options->Enabled(RewriteOptions::kRecompressImages) ||
@@ -835,6 +837,10 @@ void RewriteDriver::AddPostRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kDisableJavascript)) {
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kDelayImages)) {
+    // kInsertImageDimensions should be enabled to avoid drastic reflows.
+    AddOwnedPostRenderFilter(new DelayImagesFilter(this));
   }
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
   // doesn't, it probably should.  If it does, be sure to add it to the

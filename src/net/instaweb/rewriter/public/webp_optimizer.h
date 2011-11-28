@@ -30,6 +30,12 @@ namespace net_instaweb {
 bool OptimizeWebp(const GoogleString& original_jpeg,
                   GoogleString* compressed_webp);
 
+// Reduce the quality of the webp image. Indicates failure by returning false.
+// WebP quality varies from 1 to 100. Original image will be returned if input
+// quality is <1.
+bool ReduceWebpImageQuality(const GoogleString& original_webp,
+                            int quality, GoogleString* compressed_webp);
+
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_REWRITER_PUBLIC_WEBP_OPTIMIZER_H_

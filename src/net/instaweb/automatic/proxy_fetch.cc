@@ -290,7 +290,8 @@ void ProxyFetch::StartFetch() {
 void ProxyFetch::DoFetch() {
   if (prepare_success_) {
     UrlAsyncFetcher* fetcher = factory_->ChooseCacheFetcher(Options());
-    if (driver_->options()->ajax_rewriting_enabled()) {
+    if (driver_->options()->ajax_rewriting_enabled() &&
+        driver_->options()->IsAllowed(url_)) {
       driver_->set_async_fetcher(fetcher);
       driver_->FetchResource(url_, request_headers_, response_headers_, this);
     } else {

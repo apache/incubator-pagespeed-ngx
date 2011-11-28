@@ -501,6 +501,7 @@
         'rewriter/css_outline_filter.cc',
         'rewriter/css_tag_scanner.cc',
         'rewriter/data_url_input_resource.cc',
+        'rewriter/delay_images_filter.cc',
         'rewriter/div_structure_filter.cc',
         'rewriter/domain_rewrite_filter.cc',
         'rewriter/file_input_resource.cc',
@@ -567,6 +568,7 @@
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [
+        'automatic/html_detector.cc',
         'automatic/proxy_fetch.cc',
         'automatic/proxy_interface.cc',
         'automatic/resource_fetch.cc',

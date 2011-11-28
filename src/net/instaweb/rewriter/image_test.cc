@@ -30,6 +30,7 @@ const char kIronChef[] = "IronChef2.gif";
 const char kCradle[] = "CradleAnimation.gif";
 const char kPuzzle[] = "Puzzle.jpg";
 const char kLarge[] = "Large.png";
+const char kScenery[] = "Scenery.webp";
 
 }  // namespace
 
@@ -191,6 +192,23 @@ class ImageTest : public testing::Test {
 
 TEST_F(ImageTest, EmptyImageUnidentified) {
   CheckInvalid("Empty string", "", Image::IMAGE_UNKNOWN, Image::IMAGE_UNKNOWN);
+}
+
+TEST_F(ImageTest, InputWebpTest) {
+  CheckImageFromFile(
+      kScenery, Image::IMAGE_WEBP, Image::IMAGE_WEBP,
+      20,  // Min bytes to bother checking file type at all.
+      30,
+      550, 368,
+      30320, false);
+}
+
+TEST_F(ImageTest, WebpLowResTest) {
+  GoogleString contents;
+  ImagePtr image(ReadImageFromFile(Image::IMAGE_WEBP, kScenery, &contents));
+  int filesize = 30320;
+  image->SetTransformToLowRes();
+  EXPECT_GT(filesize, image->output_size());
 }
 
 TEST_F(ImageTest, PngTest) {

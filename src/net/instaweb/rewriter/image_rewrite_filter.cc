@@ -304,6 +304,29 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
     if (!cached->has_inlined_data()) {
       SaveIfInlinable(input_resource->contents(), original_image_type, cached);
     }
+
+    if (options->NeedLowResImages() &&
+        !cached->has_low_resolution_inlined_data()) {
+      // TODO(pulkitg): Add a check to generate low quality image only if image
+      // fulfills certain conditions. Conditions may include all images above
+      // 100KB or all images above the fold & size >20KB etc. This will require
+      // adding additional data to rewrite_context, so that it can be propagated
+      // from the point of rewriting to the point of optimization.
+      scoped_ptr<Image> low_image(
+          NewImage(image->Contents(), input_resource->url(),
+                   resource_manager_->filename_prefix(), false,
+                   options->image_jpeg_recompress_quality(), message_handler));
+      low_image->SetTransformToLowRes();
+      if (image->Contents().size() > low_image->Contents().size()) {
+        // TODO(pulkitg): Add a some sort of guarantee on how small inline
+        // images will be.
+        cached->set_low_resolution_inlined_data(low_image->Contents().data(),
+                                                low_image->Contents().size());
+        cached->set_low_resolution_inlined_image_type(
+            static_cast<int>(low_image->image_type()));
+      }
+    }
+
     work_bound_->WorkComplete();
   } else {
     image_rewrites_dropped_->IncBy(1);
@@ -425,6 +448,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     HtmlElement* element, HtmlElement::Attribute* src) {
   const RewriteOptions* options = driver_->options();
   bool rewrote_url = false;
+  bool image_inlined = false;
 
   // See if we have a data URL, and if so use it if the browser can handle it
   // TODO(jmaessen): get rid of a string copy here.  Tricky because ->SetValue()
@@ -446,6 +470,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     }
     inline_count_->Add(1);
     rewrote_url = true;
+    image_inlined = true;
   } else {
     if (cached->optimizable()) {
       // Rewritten HTTP url
@@ -472,6 +497,23 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     }
   }
 
+  if (driver_->UserAgentSupportsImageInlining() && !image_inlined &&
+      options->NeedLowResImages() &&
+      cached->has_low_resolution_inlined_data()) {
+    GoogleString data_url;
+    int image_type = cached->low_resolution_inlined_image_type();
+    bool valid_image_type = Image::kImageTypeStart <= image_type &&
+        Image::kImageTypeEnd >= image_type;
+    DCHECK(valid_image_type) << "Invalid Image Type";
+
+    if (!valid_image_type) {
+      LOG(ERROR) << "Invalid low res image type in cache.";
+    } else {
+      DataUrl(*Image::TypeToContentType(static_cast<Image::Type>(image_type)),
+              BASE64, cached->low_resolution_inlined_data(), &data_url);
+      driver_->AddAttribute(element, HtmlName::kPagespeedLowResSrc, data_url);
+    }
+  }
   return rewrote_url;
 }
 

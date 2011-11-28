@@ -51,6 +51,9 @@ TEST_F(JsDeferFilterTest, DeferScript) {
              "<script type=\"text/javascript\">",
              JsDeferFilter::kDeferJsCode,
              "\npagespeed.deferInit();\n",
+             "pagespeed.addOnload(window, function() {\n"
+             "  pagespeed.deferJs.run();\n"
+             "});\n"
              "pagespeed.deferJs.addUrl("
              "\"http://www.google.com/javascript/ajax_apis.js\");\n"
              "pagespeed.deferJs.addStr(\" func(); \");\n"
@@ -68,6 +71,9 @@ TEST_F(JsDeferFilterTest, DeferScriptMultiBody) {
              "<script type=\"text/javascript\">",
              JsDeferFilter::kDeferJsCode,
              "\npagespeed.deferInit();\n",
+             "pagespeed.addOnload(window, function() {\n"
+             "  pagespeed.deferJs.run();\n"
+             "});\n"
              "pagespeed.deferJs.addUrl("
              "\"http://www.google.com/javascript/ajax_apis.js\");\n"
              "pagespeed.deferJs.addStr(\" func(); \");\n"

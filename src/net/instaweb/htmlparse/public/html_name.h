@@ -114,6 +114,8 @@ class HtmlName {
     kOption,
     kOther,
     kP,
+    kPagespeedHighResSrc,
+    kPagespeedLowResSrc,
     kParam,
     kPre,
     kReadonly,

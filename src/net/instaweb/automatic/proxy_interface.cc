@@ -281,38 +281,38 @@ void ProxyInterface::ProxyRequestCallback(bool is_resource_fetch,
   OptionsBoolPair custom_options_success = GetCustomOptions(
       *request_url, *request_headers, domain_options, handler);
   if (!custom_options_success.second) {
+    response_headers->SetStatusAndReason(HttpStatus::kMethodNotAllowed);
     response_writer->Write("Invalid PageSpeed query-params/request headers",
                            handler);
-    response_headers->SetStatusAndReason(HttpStatus::kMethodNotAllowed);
     callback->Done(false);
-  }
-
-  RequestHeaders custom_headers;
-  custom_headers.CopyFrom(*request_headers);
-
-  // Update request_headers.
-  // We deal with encodings. So strip the users Accept-Encoding headers.
-  custom_headers.RemoveAll(HttpAttributes::kAcceptEncoding);
-  // Note: We preserve the User-Agent and Cookies so that the origin servers
-  // send us the correct HTML. We will need to consider this for caching HTML.
-
-  // Start fetch and rewrite.  If GetCustomOptions found options for us,
-  // the RewriteDriver created by StartNewProxyFetch will take ownership.
-  if (custom_options_success.first != NULL) {
-    resource_manager_->ComputeSignature(custom_options_success.first);
-  }
-
-  if (is_resource_fetch) {
-    ResourceFetch::Start(resource_manager_,
-                         *request_url, *request_headers,
-                         custom_options_success.first,
-                         response_headers, response_writer, callback,
-                         proxy_fetch_factory_->server_version());
   } else {
-    proxy_fetch_factory_->StartNewProxyFetch(
-        request_url->Spec().as_string(), custom_headers,
-        custom_options_success.first, response_headers, response_writer,
-        callback);
+    RequestHeaders custom_headers;
+    custom_headers.CopyFrom(*request_headers);
+
+    // Update request_headers.
+    // We deal with encodings. So strip the users Accept-Encoding headers.
+    custom_headers.RemoveAll(HttpAttributes::kAcceptEncoding);
+    // Note: We preserve the User-Agent and Cookies so that the origin servers
+    // send us the correct HTML. We will need to consider this for caching HTML.
+
+    // Start fetch and rewrite.  If GetCustomOptions found options for us,
+    // the RewriteDriver created by StartNewProxyFetch will take ownership.
+    if (custom_options_success.first != NULL) {
+      resource_manager_->ComputeSignature(custom_options_success.first);
+    }
+
+    if (is_resource_fetch) {
+      ResourceFetch::Start(resource_manager_,
+                           *request_url, *request_headers,
+                           custom_options_success.first,
+                           response_headers, response_writer, callback,
+                           proxy_fetch_factory_->server_version());
+    } else {
+      proxy_fetch_factory_->StartNewProxyFetch(
+          request_url->Spec().as_string(), custom_headers,
+          custom_options_success.first, response_headers, response_writer,
+          callback);
+    }
   }
   delete request_url;
   delete request_headers;

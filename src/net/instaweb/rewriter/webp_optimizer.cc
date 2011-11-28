@@ -20,8 +20,10 @@
 
 #include <csetjmp>
 #include <cstddef>
+#include <cstdlib>
 
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "pagespeed/image_compression/jpeg_reader.h"
@@ -33,8 +35,10 @@ extern "C" {
 #endif
 #ifdef USE_SYSTEM_LIBWEBP
 #include "webp/encode.h"
+#include "webp/decode.h"
 #else
 #include "third_party/libwebp/webp/encode.h"
+#include "third_party/libwebp/webp/decode.h"
 #endif
 // TODO(jmaessen): open source imports & build of libwebp.
 }
@@ -353,6 +357,37 @@ bool OptimizeWebp(const GoogleString& original_jpeg,
                   GoogleString* compressed_webp) {
   WebpOptimizer optimizer;
   return optimizer.CreateOptimizedWebp(original_jpeg, compressed_webp);
+}
+
+bool ReduceWebpImageQuality(const GoogleString& original_webp,
+                            int quality, GoogleString* compressed_webp) {
+  if (quality < 1) {
+    // No compression.
+    *compressed_webp = original_webp;
+    return true;
+  } else if (quality > 100) {
+    quality = 100;
+  }
+
+  const uint8* webp = reinterpret_cast<const uint8*>(original_webp.data());
+  const int webp_size = original_webp.size();
+  int width = 0, height = 0;
+  scoped_ptr_malloc<uint8> rgb(
+      WebPDecodeRGBA(webp, webp_size, &width, &height));
+  if (rgb == NULL) {
+    // Webp decode function is not able to decode the provided images.
+    return false;
+  }
+  int stride = width * 4;
+  uint8* buf;
+  size_t size = WebPEncodeRGBA(rgb.get(), width, height, stride, quality, &buf);
+  if (size == 0) {
+    // Webp Encode failed.
+    return false;
+  }
+  compressed_webp->append(reinterpret_cast<const char*>(buf), size);
+  free(buf);
+  return true;
 }
 
 }  // namespace net_instaweb

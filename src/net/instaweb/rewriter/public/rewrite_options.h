@@ -49,6 +49,7 @@ class RewriteOptions {
     kConvertJpegToWebp,
     kConvertMetaTags,
     kDeferJavascript,
+    kDelayImages,
     kDisableJavascript,
     kDivStructure,
     kElideAttributes,
@@ -142,6 +143,7 @@ class RewriteOptions {
   static const int kDefaultImageJpegRecompressQuality;
   static const int kDefaultImageLimitOptimizedPercent;
   static const int kDefaultImageLimitResizeAreaPercent;
+  static const int kDefaultImageWebpRecompressQuality;
 
   // IE limits URL size overall to about 2k characters.  See
   // http://support.microsoft.com/kb/208427/EN-US
@@ -362,6 +364,13 @@ class RewriteOptions {
     set_option(x, &image_limit_resize_area_percent_);
   }
 
+  int image_webp_recompress_quality() const {
+    return image_webp_recompress_quality_.value();
+  }
+  void set_image_webp_recompress_quality(int x) {
+    set_option(x, &image_webp_recompress_quality_);
+  }
+
   // Merge together two source RewriteOptions to populate this.  The order
   // is significant: the second will override the first.  One semantic
   // subject to interpretation is when a core-filter is disabled in the
@@ -449,6 +458,11 @@ class RewriteOptions {
 
   // Name of the actual type of this instance as a poor man's RTTI.
   virtual const char* class_name() const;
+
+  // Returns true if generation low res images is required.
+  bool NeedLowResImages() const {
+    return Enabled(kDelayImages);
+  }
 
  protected:
   class OptionBase {
@@ -621,6 +635,9 @@ class RewriteOptions {
   // Options governing when to retain optimized images vs keep original
   Option<int> image_limit_optimized_percent_;
   Option<int> image_limit_resize_area_percent_;
+
+  // Options related to webp compression.
+  Option<int> image_webp_recompress_quality_;
 
   Option<int> image_max_rewrites_at_once_;
   Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")

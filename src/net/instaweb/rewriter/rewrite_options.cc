@@ -121,6 +121,10 @@ const int RewriteOptions::kDefaultImageJpegRecompressQuality = -1;
 const int RewriteOptions::kDefaultImageLimitOptimizedPercent = 100;
 const int RewriteOptions::kDefaultImageLimitResizeAreaPercent = 100;
 
+// WebP quality that needs to be used while recompressing. If set to -1, we
+// use source image quality parameters.
+const int RewriteOptions::kDefaultImageWebpRecompressQuality = -1;
+
 // See http://code.google.com/p/modpagespeed/issues/detail?id=9.  By
 // default, Apache evidently limits each URL path segment (between /)
 // to about 256 characters.  This is not a fundamental URL limitation
@@ -200,6 +204,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kConvertJpegToWebp:               return "Convert Jpeg To Webp";
     case kConvertMetaTags:                 return "Convert Meta Tags";
     case kDeferJavascript:                 return "Defer Javascript";
+    case kDelayImages:                     return "Delay Images";
     case kDisableJavascript:
         return "Disables scripts by placing them inside noscript tags";
     case kDivStructure:                    return "Div Structure";
@@ -246,6 +251,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kConvertJpegToWebp:               return "jw";
     case kConvertMetaTags:                 return "mc";
     case kDeferJavascript:                 return "dj";
+    case kDelayImages:                     return "di";
     case kDisableJavascript:               return "jd";
     case kDivStructure:                    return "ds";
     case kElideAttributes:                 return "ea";
@@ -363,6 +369,8 @@ RewriteOptions::RewriteOptions()
              &image_limit_optimized_percent_, "ip");
   add_option(kDefaultImageLimitResizeAreaPercent,
              &image_limit_resize_area_percent_, "ia");
+  add_option(kDefaultImageWebpRecompressQuality,
+             &image_webp_recompress_quality_, "iw");
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);

@@ -169,6 +169,16 @@ message CachedResult {
   // inlining to create an appropriate data: url from this and the inlined_data.
   // It's set only if inlined_data contains an image.
   optional int32 inlined_image_type = 15;
+
+  // This contains low resolution/quality image contents. This will be set only
+  // if DelayImagesFilter is enabled.
+  optional string low_resolution_inlined_data = 16;
+
+  // The image type is actually a net_instaweb::Image::Type.  It permits image
+  // inlining to create an appropriate data: url from this and the
+  // low_resolution_inlined_data. It's set only if low_resolution_inlined_data
+  // contains an image.
+  optional int32 low_resolution_inlined_image_type = 17;
 }
 
 // Contains the mapping of input URLs to output URLs.  In the general
