@@ -26,14 +26,18 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 ### rewriting.
 "?xml",                   HtmlName::kXml
 "a",                      HtmlName::kA
+"address",                HtmlName::kAddress,
 "alt",                    HtmlName::kAlt
 "area",                   HtmlName::kArea
+"article",                HtmlName::kArticle
+"aside",                  HtmlName::kAside,
 "async",                  HtmlName::kAsync
 "audio",                  HtmlName::kAudio
 "autocomplete",           HtmlName::kAutocomplete
 "autofocus",              HtmlName::kAutofocus
 "autoplay",               HtmlName::kAutoplay
 "base",                   HtmlName::kBase
+"blockquote",             HtmlName::kBlockquote
 "body",                   HtmlName::kBody
 "br",                     HtmlName::kBr
 "button",                 HtmlName::kButton
@@ -52,19 +56,31 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "defaultselected",        HtmlName::kDefaultselected
 "defer",                  HtmlName::kDefer
 "details",                HtmlName::kDetails
+"dir",                    HtmlName::kDir
 "disabled",               HtmlName::kDisabled
 "display",                HtmlName::kDisplay
 "div",                    HtmlName::kDiv
+"dl",                     HtmlName::kDl
 "dt",                     HtmlName::kDt
 "enctype",                HtmlName::kEnctype
 "event",                  HtmlName::kEvent
+"fieldset",               HtmlName::kFieldset
+"footer",                 HtmlName::kFooter
 "for",                    HtmlName::kFor
 "form",                   HtmlName::kForm
 "formnovalidate",         HtmlName::kFormnovalidate
 "frame",                  HtmlName::kFrame
 "frameborder",            HtmlName::kFrameborder
+"h1",                     HtmlName::kH1
+"h2",                     HtmlName::kH2
+"h3",                     HtmlName::kH3
+"h4",                     HtmlName::kH4
+"h5",                     HtmlName::kH5
+"h6",                     HtmlName::kH6
 "head",                   HtmlName::kHead
+"header",                 HtmlName::kHeader
 "height",                 HtmlName::kHeight
+"hgroup",                 HtmlName::kHgroup
 "hr",                     HtmlName::kHr
 "href",                   HtmlName::kHref
 "html",                   HtmlName::kHtml
@@ -89,6 +105,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "multiple",               HtmlName::kMultiple
 "muted",                  HtmlName::kMuted
 "name",                   HtmlName::kName
+"nav",                    HtmlName::kNav
 "nohref",                 HtmlName::kNohref
 "noresize",               HtmlName::kNoresize
 "noscript",               HtmlName::kNoscript
@@ -116,6 +133,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "script",                 HtmlName::kScript
 "scrolling",              HtmlName::kScrolling
 "seamless",               HtmlName::kSeamless
+"section",                HtmlName::kSection
 "select",                 HtmlName::kSelect
 "selected",               HtmlName::kSelected
 "shape",                  HtmlName::kShape
@@ -123,6 +141,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "span",                   HtmlName::kSpan
 "src",                    HtmlName::kSrc
 "style",                  HtmlName::kStyle
+"table",                  HtmlName::kTable
 "tag",                    HtmlName::kTag
 "tbody",                  HtmlName::kTbody
 "td",                     HtmlName::kTd
@@ -133,12 +152,13 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "thead",                  HtmlName::kThead
 "tr",                     HtmlName::kTr
 "type",                   HtmlName::kType
+"ul",                     HtmlName::kUl
 "valuetype",              HtmlName::kValuetype
 "video",                  HtmlName::kVideo
-"xmp",                    HtmlName::kXmp
 "wbr",                    HtmlName::kWbr
 "width",                  HtmlName::kWidth
 "wrap",                   HtmlName::kWrap
+"xmp",                    HtmlName::kXmp
 %%
 
 HtmlName::Keyword HtmlName::Lookup(const StringPiece& keyword) {

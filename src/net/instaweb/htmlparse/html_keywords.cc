@@ -18,10 +18,10 @@
 
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 
-#include <cstddef>
 #include <map>
 #include <utility>
 
+#include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/util/public/string.h"
@@ -186,6 +186,7 @@ HtmlKeywords::HtmlKeywords() {
   // given an iterator.
   keyword_vector_.resize(HtmlName::num_keywords() + 1);
   for (HtmlName::Iterator iter; !iter.AtEnd(); iter.Next()) {
+    DCHECK_GE(HtmlName::num_keywords(), iter.keyword());
     keyword_vector_[iter.keyword()] = iter.name();
   }
   keyword_vector_[HtmlName::kNotAKeyword] = NULL;

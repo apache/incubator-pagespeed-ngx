@@ -19,16 +19,15 @@
 // Unit-test the html reader/writer to ensure that a few tricky
 // constructs come through without corruption.
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/html_testing_peer.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/htmlparse/public/explicit_close_tag.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -40,6 +39,33 @@ namespace net_instaweb {
 
 class HtmlParseTest : public HtmlParseTestBase {
  protected:
+  // Returns the contents wrapped in a Div.
+  GoogleString Div(const StringPiece& text) {
+    return StrCat("<div>", text, "</div>");
+  }
+
+  // For tag-pairs that auto-close, we expect the appearance
+  // of tag2 to automatically close tag1.
+  void ExpectAutoClose(const char* tag1, const char* tag2) {
+    GoogleString test_case = StrCat(tag1, "_", tag2);
+    ValidateExpected(
+        test_case,
+        Div(StrCat("<", tag1, ">x<", tag2, ">y")),
+        Div(StrCat("<", tag1, ">x</", tag1, "><",
+                   StrCat(tag2, ">y</", tag2, ">"))));
+  }
+
+  // For 2 tags that do not have a specified auto-close relationship,
+  // we expect the appearance of tag2 to nest inside tag1.
+  void ExpectNoAutoClose(const char* tag1, const char* tag2) {
+    GoogleString test_case = StrCat(tag1, "_", tag2);
+    ValidateExpected(
+        test_case,
+        Div(StrCat("<", tag1, ">x<", tag2, ">y")),
+        Div(StrCat("<", tag1, ">x<", tag2, ">y</",
+                   StrCat(tag2, "></", tag1, ">"))));
+  }
+
   virtual bool AddBody() const { return true; }
 };
 
@@ -268,6 +294,63 @@ TEST_F(HtmlParseTest, OpenBracketAfterSpace) {
       "<input type=\"text\" "
       "<input type=\"password\" name=\"password\"/>";
   ValidateNoChanges("open_brack_after_name", input);
+}
+
+TEST_F(HtmlParseTest, AutoClose) {
+  ExplicitCloseTag close_tags;
+  html_parse_.AddFilter(&close_tags);
+
+  // Cover the simple cases.  E.g. dd is closed by tr, but not dd.
+  ExpectNoAutoClose("dd", "tr");
+  ExpectAutoClose("dd", "dd");
+
+  ExpectAutoClose("dt", "dd");
+  ExpectAutoClose("dt", "dt");
+  ExpectNoAutoClose("dt", "rp");
+
+  ExpectAutoClose("li", "li");
+  ExpectNoAutoClose("li", "dt");
+
+  ExpectAutoClose("optgroup", "optgroup");
+  ExpectNoAutoClose("optgroup", "rp");
+
+  // <p> has an outrageous number of tags that auto-close it.
+  ExpectNoAutoClose("p", "tr");  // tr is not listed in the auto-closers for p.
+  ExpectAutoClose("p", "address");  // first closer of 28.
+  ExpectAutoClose("p", "h2");       // middle closer of 28.
+  ExpectAutoClose("p", "ul");       // last closer of 28.
+
+  // Cover the remainder of the cases.
+  ExpectAutoClose("rp", "rt");
+  ExpectAutoClose("rp", "rp");
+  ExpectNoAutoClose("rp", "dd");
+
+  ExpectAutoClose("rt", "rt");
+  ExpectAutoClose("rt", "rp");
+  ExpectNoAutoClose("rt", "dd");
+
+  ExpectAutoClose("tbody", "tbody");
+  ExpectAutoClose("tbody", "tfoot");
+  ExpectNoAutoClose("tbody", "dd");
+
+  ExpectAutoClose("td", "td");
+  ExpectAutoClose("td", "th");
+  ExpectNoAutoClose("td", "rt");
+
+  ExpectAutoClose("tfoot", "tbody");
+  ExpectNoAutoClose("tfoot", "tfoot");
+  ExpectNoAutoClose("tfoot", "dd");
+
+  ExpectAutoClose("th", "td");
+  ExpectAutoClose("th", "th");
+  ExpectNoAutoClose("th", "rt");
+
+  ExpectAutoClose("thead", "tbody");
+  ExpectAutoClose("thead", "tfoot");
+  ExpectNoAutoClose("thead", "dd");
+
+  ExpectAutoClose("tr", "tr");
+  ExpectNoAutoClose("tr", "td");
 }
 
 TEST_F(HtmlParseTest, MakeName) {
