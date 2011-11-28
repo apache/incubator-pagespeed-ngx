@@ -81,6 +81,11 @@ class SerfTestCallback : public UrlAsyncFetcher::Callback {
   }
   void set_enable_threaded(bool b) { enable_threaded_ = b; }
   bool success() const { return success_; }
+  void Reset() {
+    done_ = false;
+    success_ = false;
+  }
+
  private:
   bool done_;
   AbstractMutex* mutex_;
@@ -207,6 +212,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
         // the request and sleep.
         usleep(50 * Timer::kMsUs);
         LOG(ERROR) << "Serf retrying flaky url " << urls_[idx];
+        callbacks_[idx]->Reset();
         StartFetch(idx);
         WaitTillDone(idx, idx, kMaxMs);
       }
