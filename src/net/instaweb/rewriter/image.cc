@@ -744,10 +744,14 @@ bool ImageImpl::ComputeOutputContents() {
             image_type_ = IMAGE_WEBP;
           } else {
             if (jpeg_quality_ > 0) {
-              ok = pagespeed::image_compression::OptimizeJpegLossy(
+              pagespeed::image_compression::JpegCompressionOptions options;
+              options.lossy = true;
+              options.quality =
+                  std::min(ImageHeaders::kMaxJpegQuality, jpeg_quality_);
+              ok = pagespeed::image_compression::OptimizeJpegWithOptions(
                   string_for_image,
                   &output_contents_,
-                  std::min(ImageHeaders::kMaxJpegQuality, jpeg_quality_));
+                  &options);
             } else {
               ok = pagespeed::image_compression::OptimizeJpeg(
                   string_for_image,

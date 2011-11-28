@@ -49,6 +49,12 @@
             'include_dirs': [
               '.',
             ],
+            'defines': [
+              # We end up including setjmp.h directly, but libpng
+              # doesn't like that. This define tells libpng to not
+              # complain about our inclusion of setjmp.h.
+              'PNG_SKIP_SETJMP_CHECK',
+            ],
           },
           'export_dependent_settings': [
             '../zlib/zlib.gyp:zlib',
@@ -94,6 +100,11 @@
             ],
             'defines': [
               'USE_SYSTEM_LIBPNG',
+
+              # We end up including setjmp.h directly, but libpng
+              # doesn't like that. This define tells libpng to not
+              # complain about our inclusion of setjmp.h.
+              'PNG_SKIP_SETJMP_CHECK',
             ],
           },
           'link_settings': {
