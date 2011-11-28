@@ -239,7 +239,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     ResponseHeaders input_headers;
     DefaultResponseHeaders(kContentTypeHtml, 100, &input_headers);
     input_headers.Replace(HttpAttributes::kCacheControl, input_cache_control);
-    SetFetchResponse(url, input_headers, "");
+    SetFetchResponse(url, input_headers, "<body>Foo</body>");
 
     GoogleString body;
     ResponseHeaders output_headers;
@@ -799,6 +799,22 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
   headers.ComputeCaching();
   EXPECT_LE(start_time_ms_ + Timer::kYearMs, headers.CacheExpirationTimeMs());
   EXPECT_EQ(kMinimizedCssContent, text);
+}
+
+TEST_F(ProxyInterfaceTest, DontRewriteMislabeledAsHtml) {
+  // Make sure we don't rewrite things that claim to be HTML, but aren't.
+  GoogleString text;
+  ResponseHeaders headers;
+
+  InitResponseHeaders("page.js", kContentTypeHtml,
+                      StrCat("//", CssLinkHref("a.css")),
+                      kHtmlCacheTimeSec * 2);
+  InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
+                      kHtmlCacheTimeSec * 2);
+
+  FetchFromProxy("page.js", true, &text, &headers);
+  CheckHeaders(headers, kContentTypeHtml);
+  EXPECT_EQ(StrCat("//", CssLinkHref("a.css")), text);
 }
 
 TEST_F(ProxyInterfaceTest, ReconstructResource) {

@@ -82,6 +82,11 @@ class HtmlDetector {
   // HtmlDetector's internal buffers are cleared.
   void ReleaseBuffered(GoogleString* out_buffer);
 
+  // Forces already_decided() to true, and probable_html() to match is_html.
+  //
+  // Precondition: !already_decided()
+  void ForceDecision(bool is_html);
+
  private:
   GoogleString buffer_;
   bool already_decided_;

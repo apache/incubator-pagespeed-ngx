@@ -79,4 +79,10 @@ void HtmlDetector::ReleaseBuffered(GoogleString* out_buffer) {
   buffer_.clear();
 }
 
+void HtmlDetector::ForceDecision(bool is_html) {
+  DCHECK(!already_decided_);
+  already_decided_ = true;
+  probable_html_ = is_html;
+}
+
 }  // namespace net_instaweb

@@ -44,6 +44,8 @@
 
 namespace net_instaweb {
 
+class UrlNamer;
+
 ProxyFetchFactory::ProxyFetchFactory(ResourceManager* manager)
     : manager_(manager),
       timer_(manager->timer()),
@@ -156,6 +158,7 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       timer_(timer),
       callback_(callback),
       pass_through_(true),
+      claims_html_(false),
       started_parse_(false),
       start_time_us_(0),
       queue_run_job_created_(false),
@@ -223,60 +226,63 @@ const RewriteOptions* ProxyFetch::Options() {
 
 void ProxyFetch::HeadersComplete() {
   // Figure out semantic info from response_headers_.
-  DCHECK(pass_through_);  // default until HTML detected.
+  claims_html_ = response_headers_->DetermineContentType() == &kContentTypeHtml;
+}
 
-  // TODO(sligocki): Get these in the main flow.
-  // Add, remove and update headers as appropriate.
+void ProxyFetch::AddPagespeedHeader() {
+  if (Options()->enabled()) {
+    response_headers_->Add(kPageSpeedHeader, factory_->server_version());
+  }
+}
+
+void ProxyFetch::SetupForHtml() {
   const RewriteOptions* options = Options();
   if (options->enabled()) {
-    bool is_html =
-        response_headers_->DetermineContentType() == &kContentTypeHtml;
-    if (is_html) {
-      started_parse_ = StartParse();
-      if (started_parse_) {
-        pass_through_ = false;
-        int64 ttl_ms;
-        GoogleString cache_control_suffix;
-        if ((options->max_html_cache_time_ms() == 0) ||
-            response_headers_->HasValue(
-                HttpAttributes::kCacheControl, "no-cache") ||
-            response_headers_->HasValue(
-                HttpAttributes::kCacheControl, "must-revalidate")) {
-          ttl_ms = 0;
-          cache_control_suffix = ", no-cache";
-          // We don't want to add no-store unless we have to.
-          // TODO(sligocki): Stop special-casing no-store, just preserve all
-          // Cache-Control identifiers except for restricting max-age and
-          // private/no-cache level.
-          if (response_headers_->HasValue(
-                  HttpAttributes::kCacheControl, "no-store")) {
-            cache_control_suffix += ", no-store";
-          }
-        } else {
-          ttl_ms = std::min(options->max_html_cache_time_ms(),
-                            response_headers_->cache_ttl_ms());
-          // TODO(sligocki): We defensively set Cache-Control: private, but if
-          // original HTML was publicly cacheable, we should be able to set
-          // the rewritten HTML as publicly cacheable likewise.
-          // NOTE: If we do allow "public", we need to deal with other
-          // Cache-Control quantifiers, like "proxy-revalidate".
-          cache_control_suffix = ", private";
+    started_parse_ = StartParse();
+    if (started_parse_) {
+      pass_through_ = false;
+      // TODO(sligocki): Get these in the main flow.
+      // Add, remove and update headers as appropriate.
+      int64 ttl_ms;
+      GoogleString cache_control_suffix;
+      if ((options->max_html_cache_time_ms() == 0) ||
+          response_headers_->HasValue(
+              HttpAttributes::kCacheControl, "no-cache") ||
+          response_headers_->HasValue(
+              HttpAttributes::kCacheControl, "must-revalidate")) {
+        ttl_ms = 0;
+        cache_control_suffix = ", no-cache";
+        // We don't want to add no-store unless we have to.
+        // TODO(sligocki): Stop special-casing no-store, just preserve all
+        // Cache-Control identifiers except for restricting max-age and
+        // private/no-cache level.
+        if (response_headers_->HasValue(
+                HttpAttributes::kCacheControl, "no-store")) {
+          cache_control_suffix += ", no-store";
         }
-        response_headers_->SetDateAndCaching(
-            response_headers_->date_ms(), ttl_ms, cache_control_suffix);
-        // TODO(sligocki): Support Etags.
-        response_headers_->RemoveAll(HttpAttributes::kEtag);
-        start_time_us_ = resource_manager_->timer()->NowUs();
-
-        // HTML sizes are likely to be altered by HTML rewriting.
-        response_headers_->RemoveAll(HttpAttributes::kContentLength);
-
-        // TODO(sligocki): see mod_instaweb.cc line 528, which strips
-        // Expires, Last-Modified and Content-MD5.  Perhaps we should
-        // do that here as well.
+      } else {
+        ttl_ms = std::min(options->max_html_cache_time_ms(),
+                          response_headers_->cache_ttl_ms());
+        // TODO(sligocki): We defensively set Cache-Control: private, but if
+        // original HTML was publicly cacheable, we should be able to set
+        // the rewritten HTML as publicly cacheable likewise.
+        // NOTE: If we do allow "public", we need to deal with other
+        // Cache-Control quantifiers, like "proxy-revalidate".
+        cache_control_suffix = ", private";
       }
+      response_headers_->SetDateAndCaching(
+          response_headers_->date_ms(), ttl_ms, cache_control_suffix);
+      // TODO(sligocki): Support Etags.
+      response_headers_->RemoveAll(HttpAttributes::kEtag);
+      start_time_us_ = resource_manager_->timer()->NowUs();
+
+      // HTML sizes are likely to be altered by HTML rewriting.
+      response_headers_->RemoveAll(HttpAttributes::kContentLength);
+
+      // TODO(sligocki): see mod_instaweb.cc line 528, which strips
+      // Expires, Last-Modified and Content-MD5.  Perhaps we should
+      // do that here as well.
     }
-    response_headers_->Add(kPageSpeedHeader, factory_->server_version());
   }
 }
 
@@ -324,6 +330,33 @@ void ProxyFetch::ScheduleQueueExecutionIfNeeded() {
 bool ProxyFetch::Write(const StringPiece& str,
                        MessageHandler* message_handler) {
   // TODO(jmarantz): check if the server is being shut down and punt.
+
+  if (claims_html_ && !html_detector_.already_decided()) {
+    if (html_detector_.ConsiderInput(str)) {
+      // Figured out whether really HTML or not.
+      if (html_detector_.probable_html()) {
+        SetupForHtml();
+      }
+
+      // Now we're done mucking about with headers, add one noting our
+      // involvement.
+      AddPagespeedHeader();
+
+      // If we buffered up any bytes in previous calls, make sure to
+      // release them.
+      GoogleString buffer;
+      html_detector_.ReleaseBuffered(&buffer);
+      if (!buffer.empty()) {
+        // Recurse on initial buffer of whitespace before processing
+        // this call's input below.
+        Write(buffer, message_handler);
+      }
+    } else {
+      // Don't know whether HTML or not --- wait for more data.
+      return true;
+    }
+  }
+
   bool ret = true;
   if (!pass_through_) {
     // Buffer up all text & flushes until our worker-thread gets a chance
@@ -346,6 +379,10 @@ bool ProxyFetch::Write(const StringPiece& str,
 
 bool ProxyFetch::Flush(MessageHandler* message_handler) {
   // TODO(jmarantz): check if the server is being shut down and punt.
+
+  if (claims_html_ && !html_detector_.already_decided()) {
+    return true;
+  }
 
   bool ret = true;
   if (!pass_through_) {
@@ -370,7 +407,17 @@ void ProxyFetch::Done(bool success) {
 
   bool finish = true;
 
-  if (!success) {
+  if (success) {
+    if (claims_html_ && !html_detector_.already_decided()) {
+      // This is an all-whitespace document, so we couldn't figure out
+      // if it's HTML or not. Handle as pass-through.
+      html_detector_.ForceDecision(false /* not html */);
+      GoogleString buffered;
+      html_detector_.ReleaseBuffered(&buffered);
+      AddPagespeedHeader();
+      Write(buffered, resource_manager_->message_handler());
+    }
+  } else {
     // This is a fetcher failure, like connection refused, not just an error
     // status code.
     response_headers_->SetStatusAndReason(HttpStatus::kNotFound);

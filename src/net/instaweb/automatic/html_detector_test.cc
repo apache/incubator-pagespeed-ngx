@@ -102,6 +102,20 @@ TEST_F(HtmlDetectorTest, BufferedJs) {
   EXPECT_EQ(buf, "\t\t  ");
 }
 
+TEST_F(HtmlDetectorTest, ForceDecisionTrue) {
+  EXPECT_FALSE(html_detector_.already_decided());
+  html_detector_.ForceDecision(true);
+  EXPECT_TRUE(html_detector_.already_decided());
+  EXPECT_TRUE(html_detector_.probable_html());
+}
+
+TEST_F(HtmlDetectorTest, ForceDecisionFalse) {
+  EXPECT_FALSE(html_detector_.already_decided());
+  html_detector_.ForceDecision(false);
+  EXPECT_TRUE(html_detector_.already_decided());
+  EXPECT_FALSE(html_detector_.probable_html());
+}
+
 }  // namespace
 
 }  // namespace net_instaweb
