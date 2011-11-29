@@ -703,6 +703,27 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingForCss) {
   EXPECT_EQ(0, lru_cache()->num_misses());
 }
 
+TEST_F(ProxyInterfaceTest, AjaxRewritingDisabledByGlobalDisable) {
+  RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_enabled(false);
+  resource_manager()->ComputeSignature(options);
+
+  InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
+                      kHtmlCacheTimeSec * 2);
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("a.css", true, &text, &response_headers);
+  // First fetch will not get rewritten no matter what.
+  EXPECT_STREQ(kCssContent, text);
+
+  // Second fetch would get minified if ajax rewriting were on; but
+  // it got disabled by the global toggle.
+  text.clear();
+  FetchFromProxy("a.css", true, &text, &response_headers);
+  EXPECT_STREQ(kCssContent, text);
+}
+
 TEST_F(ProxyInterfaceTest, AjaxRewritingSkippedIfBlacklisted) {
   ResponseHeaders headers;
   mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);

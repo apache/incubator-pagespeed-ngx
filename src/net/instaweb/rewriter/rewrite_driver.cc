@@ -69,6 +69,7 @@
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
 #include "net/instaweb/rewriter/public/js_outline_filter.h"
+#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -825,6 +826,10 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
     // Defers javascript download and execution to post onload.
     AddOwnedPostRenderFilter(new JsDeferFilter(this));
+  }
+  // TODO(nikhilmadan): Should we disable this for bots?
+  if (rewrite_options->Enabled(RewriteOptions::kLazyloadImages)) {
+    AddOwnedPostRenderFilter(new LazyloadImagesFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kRemoveQuotes)) {
     // Remove extraneous quotes from html attributes.  Does this save

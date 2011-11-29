@@ -174,6 +174,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kDeferJavascript,
   RewriteOptions::kDisableJavascript,
   RewriteOptions::kDivStructure,
+  RewriteOptions::kLazyloadImages,
   RewriteOptions::kStripScripts,
 };
 
@@ -218,6 +219,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kInlineImportToLink:              return "Inline @import to Link";
     case kInlineJavascript:                return "Inline Javascript";
     case kInsertImageDimensions:           return "Insert Image Dimensions";
+    case kLazyloadImages:                  return "Lazyload Images";
     case kLeftTrimUrls:                    return "Left Trim Urls";
     case kMakeGoogleAnalyticsAsync:        return "Make Google Analytics Async";
     case kMoveCssToHead:                   return "Move Css To Head";
@@ -264,6 +266,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kInlineImportToLink:              return "il";
     case kInlineJavascript:                return kJavascriptInlineId;
     case kInsertImageDimensions:           return "id";
+    case kLazyloadImages:                  return "ll";
     case kLeftTrimUrls:                    return "tu";
     case kMakeGoogleAnalyticsAsync:        return "ga";
     case kMoveCssToHead:                   return "cm";

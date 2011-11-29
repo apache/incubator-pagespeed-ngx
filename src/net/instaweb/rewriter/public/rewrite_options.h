@@ -62,6 +62,7 @@ class RewriteOptions {
     kInlineImportToLink,
     kInlineJavascript,
     kInsertImageDimensions,
+    kLazyloadImages,
     kLeftTrimUrls,
     kMakeGoogleAnalyticsAsync,
     kMoveCssToHead,

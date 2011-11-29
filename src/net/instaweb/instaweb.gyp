@@ -57,6 +57,19 @@
       ]
     },
     {
+      'target_name': 'instaweb_lazyload_images_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter/',
+        'var_name': 'lazyload_images',
+      },
+      'sources': [
+        'rewriter/lazyload_images.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_spriter_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/spriter/public/',
@@ -481,6 +494,7 @@
         'instaweb_core.gyp:instaweb_rewriter_html',
         'instaweb_http',
         'instaweb_js_defer_data2c',
+        'instaweb_lazyload_images_data2c',
         'instaweb_rewriter_base',
         'instaweb_rewriter_css',
         'instaweb_rewriter_image',
@@ -514,6 +528,7 @@
         'rewriter/js_disable_filter.cc',
         'rewriter/js_inline_filter.cc',
         'rewriter/js_outline_filter.cc',
+        'rewriter/lazyload_images_filter.cc',
         'rewriter/meta_tag_filter.cc',
         'rewriter/resource_combiner.cc',
         'rewriter/resource_slot.cc',

@@ -113,12 +113,14 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "object",                 HtmlName::kObject
 "ol",                     HtmlName::kOl
 "onclick",                HtmlName::kOnclick
+"onload",                 HtmlName::kOnload
 "open",                   HtmlName::kOpen
 "optgroup",               HtmlName::kOptgroup
 "option",                 HtmlName::kOption
 "other",                  HtmlName::kOther
 "p",                      HtmlName::kP
 "pagespeed_high_res_src", HtmlName::kPagespeedHighResSrc
+"pagespeed_lazy_src",     HtmlName::kPagespeedLazySrc
 "pagespeed_low_res_src",  HtmlName::kPagespeedLowResSrc
 "param",                  HtmlName::kParam
 "pre",                    HtmlName::kPre

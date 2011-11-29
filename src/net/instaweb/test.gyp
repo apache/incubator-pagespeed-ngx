@@ -111,6 +111,7 @@
         'rewriter/js_disable_filter_test.cc',
         'rewriter/js_inline_filter_test.cc',
         'rewriter/js_outline_filter_test.cc',
+        'rewriter/lazyload_images_filter_test.cc',
         'rewriter/load_from_file_sync_test.cc',
         'rewriter/meta_tag_filter_test.cc',
         'rewriter/mock_resource_callback.cc',

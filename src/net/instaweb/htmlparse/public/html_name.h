@@ -126,12 +126,14 @@ class HtmlName {
     kObject,
     kOl,
     kOnclick,
+    kOnload,
     kOpen,
     kOptgroup,
     kOption,
     kOther,
     kP,
     kPagespeedHighResSrc,
+    kPagespeedLazySrc,
     kPagespeedLowResSrc,
     kParam,
     kPre,
@@ -172,7 +174,6 @@ class HtmlName {
     kWidth,
     kWrap,
     kXmp,
-
     kNotAKeyword
   };
 
