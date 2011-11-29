@@ -76,8 +76,9 @@ Parser::Parser(const char* utf8text, const char* textend)
       in_(begin_),
       end_(textend),
       quirks_mode_(true),
-      allow_all_values_(false),
-      errors_seen_mask_(kNoError) {
+      preservation_mode_(false),
+      errors_seen_mask_(kNoError),
+      unparseable_sections_seen_mask_(kNoError) {
 }
 
 Parser::Parser(const char* utf8text)
@@ -85,8 +86,9 @@ Parser::Parser(const char* utf8text)
       in_(begin_),
       end_(utf8text + strlen(utf8text)),
       quirks_mode_(true),
-      allow_all_values_(false),
-      errors_seen_mask_(kNoError) {
+      preservation_mode_(false),
+      errors_seen_mask_(kNoError),
+      unparseable_sections_seen_mask_(kNoError) {
 }
 
 Parser::Parser(StringPiece s)
@@ -94,8 +96,9 @@ Parser::Parser(StringPiece s)
       in_(begin_),
       end_(s.end()),
       quirks_mode_(true),
-      allow_all_values_(false),
-      errors_seen_mask_(kNoError) {
+      preservation_mode_(false),
+      errors_seen_mask_(kNoError),
+      unparseable_sections_seen_mask_(kNoError) {
 }
 
 const int Parser::kErrorContext = 20;
@@ -525,6 +528,11 @@ FunctionParameters* Parser::ParseFunction() {
         separator = FunctionParameters::COMMA_SEPARATED;
         in_++;
         break;
+      case ' ':
+        // The only purpose of spaces between identifiers is as a separator.
+        // Note: separator defaults to SPACE_SEPARATED.
+        in_++;
+        break;
       default: {
         // TODO(sligocki): Should we parse Opacity=80 as a single value?
         const StringPiece allowed_chars("=");
@@ -532,6 +540,11 @@ FunctionParameters* Parser::ParseFunction() {
         if (!val.get()) {
           ReportParsingError(kFunctionError,
                              "Cannot parse parameter in function");
+          return NULL;
+        }
+        if (!Done() && *in_ != ' ' && *in_ != ',' && *in_ != ')') {
+          ReportParsingError(kFunctionError, StringPrintf(
+              "Function parameter contains unexpected char '%c'", *in_));
           return NULL;
         }
         params->AddSepValue(separator, val.release());
@@ -1305,6 +1318,10 @@ Declarations* Parser::ParseRawDeclarations() {
 
   Declarations* declarations = new Declarations();
   while (in_ < end_) {
+    // decl_start is saved so that we may pass through verbatim text
+    // in case declaration could not be parsed correctly.
+    const char* decl_start = in_;
+    const uint64 start_errors_seen_mask = errors_seen_mask_;
     bool ignore_this_decl = false;
     switch (*in_) {
       case ';':
@@ -1369,10 +1386,9 @@ Declarations* Parser::ParseRawDeclarations() {
         }
 
         if (vals == NULL) {
-          ReportParsingError(kDeclarationError,
-                             StringPrintf(
-                                 "Failed to parse values for property %s",
-                                 prop.prop_text().c_str()));
+          ReportParsingError(kDeclarationError, StringPrintf(
+              "Failed to parse values for property %s",
+              prop.prop_text().c_str()));
           ignore_this_decl = true;
           break;
         }
@@ -1400,6 +1416,19 @@ Declarations* Parser::ParseRawDeclarations() {
           in_++;
           SkipSpace();
         }
+      }
+      if (preservation_mode_) {
+        // Add pseudo-declaration of verbatim text because we failed to parse
+        // this declaration correctly. This is saved so that it can be
+        // serialized back out in case it was actually meaningful even though
+        // we could not understand it.
+        StringPiece text_in_original_buffer(decl_start, in_ - decl_start);
+        declarations->push_back(new Declaration(text_in_original_buffer));
+        // All errors that occurred sinse we started this declaration are
+        // demoted to unparseable sections now that we've saved the dummy
+        // element.
+        unparseable_sections_seen_mask_ |= errors_seen_mask_;
+        errors_seen_mask_ = start_errors_seen_mask;
       }
     }
   }

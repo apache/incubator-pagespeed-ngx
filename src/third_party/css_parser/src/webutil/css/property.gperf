@@ -207,6 +207,7 @@ scrollbar-track-color, Property::SCROLLBAR_TRACK_COLOR
 scrollbar-arrow-color, Property::SCROLLBAR_ARROW_COLOR
 -webkit-text-decorations-in-effect, Property::_WEBKIT_TEXT_DECORATIONS_IN_EFFECT
 -webkit-rtl-ordering, Property::_WEBKIT_RTL_ORDERING
+/*verbatim text*/, Property::UNPARSEABLE
 %%
 
 //

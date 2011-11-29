@@ -231,6 +231,11 @@ string Selectors::ToString() const {
 string Declaration::ToString() const {
   string result = prop_text() + ": ";
   switch (prop()) {
+    case Property::UNPARSEABLE:
+      result = "/* Unparsed declaration: */ ";
+      text_in_original_buffer().AppendToString(&result);
+      return result;
+      break;
     case Property::FONT_FAMILY:
       result += JoinElementStrings(*values(), ",");
       break;

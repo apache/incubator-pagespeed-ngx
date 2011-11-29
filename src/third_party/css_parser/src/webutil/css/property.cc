@@ -60,7 +60,7 @@ struct props {
 };
 enum
   {
-    TOTAL_KEYWORDS = 178,
+    TOTAL_KEYWORDS = 179,
     MIN_WORD_LENGTH = 3,
     MAX_WORD_LENGTH = 43,
     MIN_HASH_VALUE = 17,
@@ -131,7 +131,7 @@ PropertyMapper::hash (register const char *str, register unsigned int len)
       564, 564, 564, 564, 564, 564, 564, 564, 564, 564,
       564, 564, 564, 564, 564, 564, 564, 564, 564, 564,
       564, 564, 564, 564, 564, 564, 564, 564, 564, 564,
-      564, 564, 564, 564, 564,   0, 564, 564, 564, 564,
+      564, 564,   0, 564, 564,   0, 564,   5, 564, 564,
       564, 564, 564, 564, 564, 564, 564, 564, 564, 564,
       564, 564, 564, 564, 564,  50,  25, 130, 140,   0,
       144,  60, 155, 150, 564,   0, 130,  70, 105,  10,
@@ -191,6 +191,8 @@ static const struct props wordlist[] =
     {"-webkit-line-break", Property::_WEBKIT_LINE_BREAK},
 #line 30 "webutil/css/property.gperf"
     {"-webkit-border-image", Property::_WEBKIT_BORDER_IMAGE},
+#line 194 "webutil/css/property.gperf"
+    {"/*verbatim text*/", Property::UNPARSEABLE},
 #line 142 "webutil/css/property.gperf"
     {"text-overline", Property::TEXT_OVERLINE},
 #line 148 "webutil/css/property.gperf"
@@ -566,527 +568,530 @@ PropertyMapper::in_word_set (register const char *str, register unsigned int len
               case 8:
                 resword = &wordlist[3];
                 goto compare;
-              case 11:
+              case 10:
                 resword = &wordlist[4];
                 goto compare;
-              case 14:
+              case 11:
                 resword = &wordlist[5];
                 goto compare;
-              case 16:
+              case 14:
                 resword = &wordlist[6];
                 goto compare;
-              case 17:
+              case 16:
                 resword = &wordlist[7];
                 goto compare;
-              case 21:
+              case 17:
                 resword = &wordlist[8];
                 goto compare;
-              case 22:
+              case 21:
                 resword = &wordlist[9];
                 goto compare;
-              case 24:
+              case 22:
                 resword = &wordlist[10];
                 goto compare;
-              case 26:
+              case 24:
                 resword = &wordlist[11];
                 goto compare;
-              case 27:
+              case 26:
                 resword = &wordlist[12];
                 goto compare;
-              case 30:
+              case 27:
                 resword = &wordlist[13];
                 goto compare;
-              case 31:
+              case 30:
                 resword = &wordlist[14];
                 goto compare;
-              case 33:
+              case 31:
                 resword = &wordlist[15];
                 goto compare;
-              case 36:
+              case 33:
                 resword = &wordlist[16];
                 goto compare;
-              case 37:
+              case 36:
                 resword = &wordlist[17];
                 goto compare;
-              case 39:
+              case 37:
                 resword = &wordlist[18];
                 goto compare;
-              case 41:
+              case 39:
                 resword = &wordlist[19];
                 goto compare;
-              case 42:
+              case 41:
                 resword = &wordlist[20];
                 goto compare;
-              case 44:
+              case 42:
                 resword = &wordlist[21];
                 goto compare;
-              case 45:
+              case 44:
                 resword = &wordlist[22];
                 goto compare;
-              case 46:
+              case 45:
                 resword = &wordlist[23];
                 goto compare;
-              case 49:
+              case 46:
                 resword = &wordlist[24];
                 goto compare;
-              case 56:
+              case 49:
                 resword = &wordlist[25];
                 goto compare;
-              case 58:
+              case 56:
                 resword = &wordlist[26];
                 goto compare;
-              case 61:
+              case 58:
                 resword = &wordlist[27];
                 goto compare;
-              case 63:
+              case 61:
                 resword = &wordlist[28];
                 goto compare;
-              case 65:
+              case 63:
                 resword = &wordlist[29];
                 goto compare;
-              case 68:
+              case 65:
                 resword = &wordlist[30];
                 goto compare;
-              case 70:
+              case 68:
                 resword = &wordlist[31];
                 goto compare;
-              case 71:
+              case 70:
                 resword = &wordlist[32];
                 goto compare;
-              case 72:
+              case 71:
                 resword = &wordlist[33];
                 goto compare;
-              case 75:
+              case 72:
                 resword = &wordlist[34];
                 goto compare;
-              case 76:
+              case 75:
                 resword = &wordlist[35];
                 goto compare;
-              case 78:
+              case 76:
                 resword = &wordlist[36];
                 goto compare;
-              case 79:
+              case 78:
                 resword = &wordlist[37];
                 goto compare;
-              case 80:
+              case 79:
                 resword = &wordlist[38];
                 goto compare;
-              case 81:
+              case 80:
                 resword = &wordlist[39];
                 goto compare;
-              case 83:
+              case 81:
                 resword = &wordlist[40];
                 goto compare;
-              case 84:
+              case 83:
                 resword = &wordlist[41];
                 goto compare;
-              case 85:
+              case 84:
                 resword = &wordlist[42];
                 goto compare;
-              case 86:
+              case 85:
                 resword = &wordlist[43];
                 goto compare;
-              case 88:
+              case 86:
                 resword = &wordlist[44];
                 goto compare;
-              case 89:
+              case 88:
                 resword = &wordlist[45];
                 goto compare;
-              case 90:
+              case 89:
                 resword = &wordlist[46];
                 goto compare;
-              case 94:
+              case 90:
                 resword = &wordlist[47];
                 goto compare;
-              case 95:
+              case 94:
                 resword = &wordlist[48];
                 goto compare;
-              case 99:
+              case 95:
                 resword = &wordlist[49];
                 goto compare;
-              case 102:
+              case 99:
                 resword = &wordlist[50];
                 goto compare;
-              case 106:
+              case 102:
                 resword = &wordlist[51];
                 goto compare;
-              case 107:
+              case 106:
                 resword = &wordlist[52];
                 goto compare;
-              case 108:
+              case 107:
                 resword = &wordlist[53];
                 goto compare;
-              case 109:
+              case 108:
                 resword = &wordlist[54];
                 goto compare;
-              case 111:
+              case 109:
                 resword = &wordlist[55];
                 goto compare;
-              case 112:
+              case 111:
                 resword = &wordlist[56];
                 goto compare;
-              case 113:
+              case 112:
                 resword = &wordlist[57];
                 goto compare;
-              case 114:
+              case 113:
                 resword = &wordlist[58];
                 goto compare;
-              case 115:
+              case 114:
                 resword = &wordlist[59];
                 goto compare;
-              case 116:
+              case 115:
                 resword = &wordlist[60];
                 goto compare;
-              case 117:
+              case 116:
                 resword = &wordlist[61];
                 goto compare;
-              case 119:
+              case 117:
                 resword = &wordlist[62];
                 goto compare;
-              case 122:
+              case 119:
                 resword = &wordlist[63];
                 goto compare;
-              case 123:
+              case 122:
                 resword = &wordlist[64];
                 goto compare;
-              case 125:
+              case 123:
                 resword = &wordlist[65];
                 goto compare;
-              case 128:
+              case 125:
                 resword = &wordlist[66];
                 goto compare;
-              case 129:
+              case 128:
                 resword = &wordlist[67];
                 goto compare;
-              case 130:
+              case 129:
                 resword = &wordlist[68];
                 goto compare;
-              case 131:
+              case 130:
                 resword = &wordlist[69];
                 goto compare;
-              case 132:
+              case 131:
                 resword = &wordlist[70];
                 goto compare;
-              case 135:
+              case 132:
                 resword = &wordlist[71];
                 goto compare;
-              case 139:
+              case 135:
                 resword = &wordlist[72];
                 goto compare;
-              case 141:
+              case 139:
                 resword = &wordlist[73];
                 goto compare;
-              case 142:
+              case 141:
                 resword = &wordlist[74];
                 goto compare;
-              case 144:
+              case 142:
                 resword = &wordlist[75];
                 goto compare;
-              case 145:
+              case 144:
                 resword = &wordlist[76];
                 goto compare;
-              case 146:
+              case 145:
                 resword = &wordlist[77];
                 goto compare;
-              case 147:
+              case 146:
                 resword = &wordlist[78];
                 goto compare;
-              case 148:
+              case 147:
                 resword = &wordlist[79];
                 goto compare;
-              case 150:
+              case 148:
                 resword = &wordlist[80];
                 goto compare;
-              case 154:
+              case 150:
                 resword = &wordlist[81];
                 goto compare;
-              case 155:
+              case 154:
                 resword = &wordlist[82];
                 goto compare;
-              case 156:
+              case 155:
                 resword = &wordlist[83];
                 goto compare;
-              case 158:
+              case 156:
                 resword = &wordlist[84];
                 goto compare;
-              case 159:
+              case 158:
                 resword = &wordlist[85];
                 goto compare;
-              case 160:
+              case 159:
                 resword = &wordlist[86];
                 goto compare;
-              case 161:
+              case 160:
                 resword = &wordlist[87];
                 goto compare;
-              case 162:
+              case 161:
                 resword = &wordlist[88];
                 goto compare;
-              case 163:
+              case 162:
                 resword = &wordlist[89];
                 goto compare;
-              case 164:
+              case 163:
                 resword = &wordlist[90];
                 goto compare;
-              case 165:
+              case 164:
                 resword = &wordlist[91];
                 goto compare;
-              case 166:
+              case 165:
                 resword = &wordlist[92];
                 goto compare;
-              case 168:
+              case 166:
                 resword = &wordlist[93];
                 goto compare;
-              case 171:
+              case 168:
                 resword = &wordlist[94];
                 goto compare;
-              case 172:
+              case 171:
                 resword = &wordlist[95];
                 goto compare;
-              case 173:
+              case 172:
                 resword = &wordlist[96];
                 goto compare;
-              case 174:
+              case 173:
                 resword = &wordlist[97];
                 goto compare;
-              case 175:
+              case 174:
                 resword = &wordlist[98];
                 goto compare;
-              case 177:
+              case 175:
                 resword = &wordlist[99];
                 goto compare;
-              case 178:
+              case 177:
                 resword = &wordlist[100];
                 goto compare;
-              case 179:
+              case 178:
                 resword = &wordlist[101];
                 goto compare;
-              case 182:
+              case 179:
                 resword = &wordlist[102];
                 goto compare;
-              case 185:
+              case 182:
                 resword = &wordlist[103];
                 goto compare;
-              case 189:
+              case 185:
                 resword = &wordlist[104];
                 goto compare;
-              case 190:
+              case 189:
                 resword = &wordlist[105];
                 goto compare;
-              case 191:
+              case 190:
                 resword = &wordlist[106];
                 goto compare;
-              case 192:
+              case 191:
                 resword = &wordlist[107];
                 goto compare;
-              case 194:
+              case 192:
                 resword = &wordlist[108];
                 goto compare;
-              case 195:
+              case 194:
                 resword = &wordlist[109];
                 goto compare;
-              case 197:
+              case 195:
                 resword = &wordlist[110];
                 goto compare;
-              case 198:
+              case 197:
                 resword = &wordlist[111];
                 goto compare;
-              case 199:
+              case 198:
                 resword = &wordlist[112];
                 goto compare;
-              case 202:
+              case 199:
                 resword = &wordlist[113];
                 goto compare;
-              case 203:
+              case 202:
                 resword = &wordlist[114];
                 goto compare;
-              case 204:
+              case 203:
                 resword = &wordlist[115];
                 goto compare;
-              case 206:
+              case 204:
                 resword = &wordlist[116];
                 goto compare;
-              case 207:
+              case 206:
                 resword = &wordlist[117];
                 goto compare;
-              case 208:
+              case 207:
                 resword = &wordlist[118];
                 goto compare;
-              case 211:
+              case 208:
                 resword = &wordlist[119];
                 goto compare;
-              case 213:
+              case 211:
                 resword = &wordlist[120];
                 goto compare;
-              case 214:
+              case 213:
                 resword = &wordlist[121];
                 goto compare;
-              case 217:
+              case 214:
                 resword = &wordlist[122];
                 goto compare;
-              case 218:
+              case 217:
                 resword = &wordlist[123];
                 goto compare;
-              case 219:
+              case 218:
                 resword = &wordlist[124];
                 goto compare;
-              case 220:
+              case 219:
                 resword = &wordlist[125];
                 goto compare;
-              case 223:
+              case 220:
                 resword = &wordlist[126];
                 goto compare;
-              case 228:
+              case 223:
                 resword = &wordlist[127];
                 goto compare;
-              case 229:
+              case 228:
                 resword = &wordlist[128];
                 goto compare;
-              case 233:
+              case 229:
                 resword = &wordlist[129];
                 goto compare;
-              case 245:
+              case 233:
                 resword = &wordlist[130];
                 goto compare;
-              case 248:
+              case 245:
                 resword = &wordlist[131];
                 goto compare;
-              case 249:
+              case 248:
                 resword = &wordlist[132];
                 goto compare;
-              case 254:
+              case 249:
                 resword = &wordlist[133];
                 goto compare;
-              case 256:
+              case 254:
                 resword = &wordlist[134];
                 goto compare;
-              case 259:
+              case 256:
                 resword = &wordlist[135];
                 goto compare;
-              case 260:
+              case 259:
                 resword = &wordlist[136];
                 goto compare;
-              case 262:
+              case 260:
                 resword = &wordlist[137];
                 goto compare;
-              case 265:
+              case 262:
                 resword = &wordlist[138];
                 goto compare;
-              case 267:
+              case 265:
                 resword = &wordlist[139];
                 goto compare;
-              case 268:
+              case 267:
                 resword = &wordlist[140];
                 goto compare;
-              case 271:
+              case 268:
                 resword = &wordlist[141];
                 goto compare;
-              case 273:
+              case 271:
                 resword = &wordlist[142];
                 goto compare;
-              case 276:
+              case 273:
                 resword = &wordlist[143];
                 goto compare;
-              case 277:
+              case 276:
                 resword = &wordlist[144];
                 goto compare;
-              case 278:
+              case 277:
                 resword = &wordlist[145];
                 goto compare;
-              case 280:
+              case 278:
                 resword = &wordlist[146];
                 goto compare;
-              case 281:
+              case 280:
                 resword = &wordlist[147];
                 goto compare;
-              case 282:
+              case 281:
                 resword = &wordlist[148];
                 goto compare;
-              case 289:
+              case 282:
                 resword = &wordlist[149];
                 goto compare;
-              case 292:
+              case 289:
                 resword = &wordlist[150];
                 goto compare;
-              case 294:
+              case 292:
                 resword = &wordlist[151];
                 goto compare;
-              case 298:
+              case 294:
                 resword = &wordlist[152];
                 goto compare;
-              case 299:
+              case 298:
                 resword = &wordlist[153];
                 goto compare;
-              case 304:
+              case 299:
                 resword = &wordlist[154];
                 goto compare;
-              case 320:
+              case 304:
                 resword = &wordlist[155];
                 goto compare;
-              case 322:
+              case 320:
                 resword = &wordlist[156];
                 goto compare;
-              case 323:
+              case 322:
                 resword = &wordlist[157];
                 goto compare;
-              case 329:
+              case 323:
                 resword = &wordlist[158];
                 goto compare;
-              case 330:
+              case 329:
                 resword = &wordlist[159];
                 goto compare;
-              case 339:
+              case 330:
                 resword = &wordlist[160];
                 goto compare;
-              case 343:
+              case 339:
                 resword = &wordlist[161];
                 goto compare;
-              case 349:
+              case 343:
                 resword = &wordlist[162];
                 goto compare;
-              case 358:
+              case 349:
                 resword = &wordlist[163];
                 goto compare;
-              case 367:
+              case 358:
                 resword = &wordlist[164];
                 goto compare;
-              case 373:
+              case 367:
                 resword = &wordlist[165];
                 goto compare;
-              case 387:
+              case 373:
                 resword = &wordlist[166];
                 goto compare;
-              case 396:
+              case 387:
                 resword = &wordlist[167];
                 goto compare;
-              case 397:
+              case 396:
                 resword = &wordlist[168];
                 goto compare;
-              case 464:
+              case 397:
                 resword = &wordlist[169];
                 goto compare;
-              case 465:
+              case 464:
                 resword = &wordlist[170];
                 goto compare;
-              case 478:
+              case 465:
                 resword = &wordlist[171];
                 goto compare;
-              case 488:
+              case 478:
                 resword = &wordlist[172];
                 goto compare;
-              case 490:
+              case 488:
                 resword = &wordlist[173];
                 goto compare;
-              case 509:
+              case 490:
                 resword = &wordlist[174];
                 goto compare;
-              case 514:
+              case 509:
                 resword = &wordlist[175];
                 goto compare;
-              case 543:
+              case 514:
                 resword = &wordlist[176];
                 goto compare;
-              case 546:
+              case 543:
                 resword = &wordlist[177];
+                goto compare;
+              case 546:
+                resword = &wordlist[178];
                 goto compare;
             }
           return 0;
@@ -1101,7 +1106,7 @@ PropertyMapper::in_word_set (register const char *str, register unsigned int len
     }
   return 0;
 }
-#line 194 "webutil/css/property.gperf"
+#line 195 "webutil/css/property.gperf"
 
 
 //

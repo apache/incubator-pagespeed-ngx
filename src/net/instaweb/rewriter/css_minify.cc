@@ -333,32 +333,36 @@ GoogleString FontToString(const Css::Values& font_values) {
 }  // namespace
 
 void CssMinify::Minify(const Css::Declaration& declaration) {
-  Write(EscapeString(declaration.prop_text(), false));
-  Write(":");
-  switch (declaration.prop()) {
-    case Css::Property::FONT_FAMILY:
-      JoinMinify(*declaration.values(), ",");
-      break;
-    case Css::Property::FONT:
-      // font: menu special case.
-      if (declaration.values()->size() == 1) {
+  if (declaration.prop() == Css::Property::UNPARSEABLE) {
+    Write(declaration.text_in_original_buffer());
+  } else {
+    Write(EscapeString(declaration.prop_text(), false));
+    Write(":");
+    switch (declaration.prop()) {
+      case Css::Property::FONT_FAMILY:
+        JoinMinify(*declaration.values(), ",");
+        break;
+      case Css::Property::FONT:
+        // font: menu special case.
+        if (declaration.values()->size() == 1) {
+          JoinMinify(*declaration.values(), " ");
+          // Normal font notation.
+        } else if (declaration.values()->size() >= 5) {
+          Write(FontToString(*declaration.values()));
+        } else {
+          handler_->Message(kError, "Unexpected number of values in "
+                            "font declaration: %d",
+                            static_cast<int>(declaration.values()->size()));
+          ok_ = false;
+        }
+        break;
+      default:
         JoinMinify(*declaration.values(), " ");
-      // Normal font notation.
-      } else if (declaration.values()->size() >= 5) {
-        Write(FontToString(*declaration.values()));
-      } else {
-        handler_->Message(kError, "Unexpected number of values in "
-                          "font declaration: %d",
-                          static_cast<int>(declaration.values()->size()));
-        ok_ = false;
-      }
-      break;
-    default:
-      JoinMinify(*declaration.values(), " ");
-      break;
-  }
-  if (declaration.IsImportant()) {
-    Write("!important");
+        break;
+    }
+    if (declaration.IsImportant()) {
+      Write("!important");
+    }
   }
 }
 

@@ -1526,7 +1526,7 @@ TEST_F(ParserTest, AcceptCorrectValues) {
 
 TEST_F(ParserTest, AcceptAllValues) {
   Parser p("display: -moz-inline-box");
-  p.set_allow_all_values(true);
+  p.set_preservation_mode(true);
   scoped_ptr<Declarations> declarations(p.ParseDeclarations());
   EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
   ASSERT_EQ(1, declarations->size());
@@ -1539,11 +1539,36 @@ TEST_F(ParserTest, AcceptAllValues) {
   EXPECT_EQ("display: -moz-inline-box", declarations->ToString());
 
   Parser p2("display: -moz-inline-box");
-  p2.set_allow_all_values(false);
+  p2.set_preservation_mode(false);
   declarations.reset(p2.ParseDeclarations());
   EXPECT_EQ(Parser::kDeclarationError, p2.errors_seen_mask());
   EXPECT_EQ(0, declarations->size());
   EXPECT_EQ("", declarations->ToString());
+}
+
+TEST_F(ParserTest, VerbatimDeclarations) {
+  Parser p("color: red; z-i ndex: 42; width: 1px");
+  p.set_preservation_mode(false);
+  scoped_ptr<Declarations> declarations(p.ParseDeclarations());
+  EXPECT_EQ(Parser::kDeclarationError, p.errors_seen_mask());
+  ASSERT_EQ(2, declarations->size());
+  EXPECT_EQ(Property::COLOR, declarations->at(0)->prop());
+  EXPECT_EQ(Property::WIDTH, declarations->at(1)->prop());
+  // Unparsed declartion is ignored.
+  EXPECT_EQ("color: #ff0000; width: 1px", declarations->ToString());
+
+  Parser p2("color: red; z-i ndex: 42; width: 1px");
+  p2.set_preservation_mode(true);
+  declarations.reset(p2.ParseDeclarations());
+  EXPECT_EQ(Parser::kNoError, p2.errors_seen_mask());
+  EXPECT_EQ(Parser::kDeclarationError, p2.unparseable_sections_seen_mask());
+  ASSERT_EQ(3, declarations->size());
+  EXPECT_EQ(Property::COLOR, declarations->at(0)->prop());
+  EXPECT_EQ(Property::UNPARSEABLE, declarations->at(1)->prop());
+  EXPECT_EQ("z-i ndex: 42", declarations->at(1)->text_in_original_buffer());
+  EXPECT_EQ(Property::WIDTH, declarations->at(2)->prop());
+  EXPECT_EQ("color: #ff0000; /* Unparsed declaration: */ z-i ndex: 42; "
+            "width: 1px", declarations->ToString());
 }
 
 TEST_F(ParserTest, CssHacks) {

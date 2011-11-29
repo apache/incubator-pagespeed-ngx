@@ -190,6 +190,54 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     "div\\9 {margin:100px}",
     "a{color:red\\9 }",
     "a{background:none\\9 }",
+
+    // Recovered parse errors:
+    // Slashes in value list.
+    ".border8{border-radius: 36px / 12px }",
+
+    // http://code.google.com/p/modpagespeed/issues/detail?id=220
+    // See https://developer.mozilla.org/en/CSS/-moz-transition-property
+    // and http://www.webkit.org/blog/138/css-animation/
+    "a{-webkit-transition-property:opacity,-webkit-transform }",
+
+    // IE8 Hack \0/
+    // See http://dimox.net/personal-css-hacks-for-ie6-ie7-ie8/
+    "a{color: red\\0/ ;background-color:green}",
+
+    "a{font:bold verdana 10px }",
+    "a{foo: +bar }",
+    "a{color: rgb(foo,+,) }",
+
+    // Things from Alexa-100 that we get parsing errors for. Most are illegal
+    // syntax/typos. Some are CSS3 constructs.
+
+    // kDeclarationError from Alexa-100
+    // Comma in values
+    "a{webkit-transition-property: color, background-color }",
+    // Special chars in property
+    "a{//display: inline-block }",
+    ".ad_300x250{/margin-top:-120px }",
+    // Properties with no value
+    "a{background-repeat;no-repeat }",
+    // Typos
+    "a{margin-right:0;width:113px;*/ }",
+    "a{z-i ndex:19 }",
+    "a{width:352px;height62px ;display:block}",
+    "a{color: #5552 }",
+    "a{1font-family:Tahoma, Arial, sans-serif }",
+    "a{text align:center }",
+
+    // kFunctionError from Alexa-100
+    // Expression
+    "a{_top: expression(0+((e=document.documen))) }",
+    "a{width: expression(this.width > 120 ? 120:tr) }",
+    // Equals in function
+    "a{progid:DXImageTransform.Microsoft.AlphaImageLoader"
+    "(src=/images/lb/internet_e) }",
+    "a{progid:DXImageTransform.Microsoft.AlphaImageLoader"
+    "(src=\"/images/lb/internet_e)\" }",
+    "a{progid:DXImageTransform.Microsoft.AlphaImageLoader"
+    "(src='/images/lb/internet_e)' }",
   };
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
@@ -202,39 +250,11 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=50
     "@media screen and (max-width: 290px) { a { color:red } }",
 
-    // Slashes in value list.
-    ".border8 { border-radius: 36px / 12px; }",
-
-    // http://code.google.com/p/modpagespeed/issues/detail?id=220
-    // See https://developer.mozilla.org/en/CSS/-moz-transition-property
-    // and http://www.webkit.org/blog/138/css-animation/
-    "a { -webkit-transition-property:opacity,-webkit-transform; }",
-
-    // IE8 Hack \0/
-    // See http://dimox.net/personal-css-hacks-for-ie6-ie7-ie8/
-    "a { color: red\\0/; }",
-
     // Parameterized pseudo-selector.
     "div:nth-child(1n) { color: red; }",
 
     // Things from Alexa-100 that we get parsing errors for. Most are illegal
     // syntax/typos. Some are CSS3 constructs.
-
-    // kDeclarationError from Alexa-100
-    // Comma in values
-    "a { webkit-transition-property: color, background-color; }",
-    // Special chars in property
-    "a { //display: inline-block }",
-    ".ad_300x250{/margin-top:-120px;}",
-    // Properties with no value
-    "a { background-repeat;no-repeat }",
-    // Typos
-    "a { margin-right:0;width:113px;*/ }",
-    "a {z-i ndex:19}",
-    "a { width:352px; height62px; display:block; }",
-    "a { color: #5552; }",
-    "a { 1font-family:Tahoma, Arial, sans-serif; }",
-    "a { text align:center; }",
 
     // kSelectorError from Alexa-100
     // Selector list ends in comma
@@ -247,21 +267,10 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     "a { color: red }\n */",
     "a { color: red }\n // Comment",
 
-    // kFunctionError from Alexa-100
-    // Expression
-    "a { _top: expression(0+((e=document.documen))) }",
-    "a { width:expression(this.width > 120 ? 120:tr) }",
-    // Equals in function
-    "a { progid:DXImageTransform.Microsoft.AlphaImageLoader"
-    "(src=/images/lb/internet_e) }",
-
     // Should fail (bad syntax):
-    "a { font:bold verdana 10px; }",
     "}}",
     "a { color: red; }}}",
-    "a { foo: +bar: }",
-    "a { color: rgb(foo,+,); }",
-    };
+  };
 
   for (int i = 0; i < arraysize(fail_examples); ++i) {
     GoogleString id = StringPrintf("distilled_css_fail%d", i);
@@ -509,6 +518,156 @@ TEST_P(CssFilterTest, ComplexCssTest) {
       "a { color: red }\n",
 
       "@charset \"UTF-8\";a{color:red}" },
+
+    // Recovered parse errors:
+    // http://code.google.com/p/modpagespeed/issues/detail?id=220
+    { ".mui-navbar-wrap, .mui-navbar-clone {"
+      "opacity:1;-webkit-transform:translateX(0);"
+      "-webkit-transition-property:opacity,-webkit-transform;"
+      "-webkit-transition-duration:400ms;}",
+
+      ".mui-navbar-wrap,.mui-navbar-clone{"
+      "opacity:1;-webkit-transform:translateX(0);"
+      "-webkit-transition-property:opacity,-webkit-transform;"
+      "-webkit-transition-duration:400ms}" },
+
+    // IE 8 hack \0/.
+    { ".gbxms{background-color:#ccc;display:block;position:absolute;"
+      "z-index:1;top:-1px;left:-2px;right:-2px;bottom:-2px;opacity:.4;"
+      "-moz-border-radius:3px;"
+      "filter:progid:DXImageTransform.Microsoft.Blur(pixelradius=5);"
+      "*opacity:1;*top:-2px;*left:-5px;*right:5px;*bottom:4px;"
+      "-ms-filter:\"progid:DXImageTransform.Microsoft.Blur(pixelradius=5)\";"
+      "opacity:1\\0/;top:-4px\\0/;left:-6px\\0/;right:5px\\0/;bottom:4px\\0/}",
+
+      ".gbxms{background-color:#ccc;display:block;position:absolute;"
+      "z-index:1;top:-1px;left:-2px;right:-2px;bottom:-2px;opacity:0.4;"
+      "-moz-border-radius:3px;"
+      "filter:progid:DXImageTransform.Microsoft.Blur(pixelradius=5);"
+      "*opacity:1;*top:-2px;*left:-5px;*right:5px;*bottom:4px;-ms-filter:"
+      "\"progid:DXImageTransform.Microsoft.Blur\\(pixelradius=5\\)\";"
+      "opacity:1\\0/;top:-4px\\0/;left:-6px\\0/;right:5px\\0/;bottom:4px\\0/}"},
+
+    // Alexa-100 with parse errors (illegal syntax or CSS3).
+    // Comma in values
+    { ".cnn_html_slideshow_controls > .cnn_html_slideshow_pager_container >"
+      " .cnn_html_slideshow_pager > li\n"
+      "{\n"
+      "  font-size: 16px;\n"
+      "  -webkit-transition-property: color, background-color;\n"
+      "  -webkit-transition-duration: 0.5s;\n"
+      "}\n",
+
+      ".cnn_html_slideshow_controls>.cnn_html_slideshow_pager_container>"
+      ".cnn_html_slideshow_pager>li{"
+      "font-size:16px;-webkit-transition-property: color, background-color;"
+      "-webkit-transition-duration:0.5s}" },
+
+    { "a.login,a.home{position:absolute;right:15px;top:15px;display:block;"
+      "float:right;height:29px;line-height:27px;font-size:15px;"
+      "font-weight:bold;color:rgba(255,255,255,0.7)!important;color:#fff;"
+      "text-shadow:0 -1px 0 rgba(0,0,0,0.2);background:#607890;padding:0 12px;"
+      "opacity:.9;text-decoration:none;border:1px solid #2e4459;"
+      "-moz-border-radius:6px;-webkit-border-radius:6px;border-radius:6px;"
+      "-moz-box-shadow:0 1px 0 rgba(255,255,255,0.15),0 1px 0"
+      " rgba(255,255,255,0.15) inset;-webkit-box-shadow:0 1px 0 "
+      "rgba(255,255,255,0.15),0 1px 0 rgba(255,255,255,0.15) inset;"
+      "box-shadow:0 1px 0 rgba(255,255,255,0.15),0 1px 0 "
+      "rgba(255,255,255,0.15) inset}",
+
+      "a.login,a.home{position:absolute;right:15px;top:15px;display:block;"
+      "float:right;height:29px;line-height:27px;font-size:15px;"
+      "font-weight:bold;color:rgba(255,255,255,0.7)!important;color:#fff;"
+      "text-shadow:0 -1px 0 rgba(0,0,0,0.2);background:#607890;padding:0 12px;"
+      "opacity:0.9;text-decoration:none;border:1px solid #2e4459;"
+      "-moz-border-radius:6px;-webkit-border-radius:6px;border-radius:6px;"
+      "-moz-box-shadow:0 1px 0 rgba(255,255,255,0.15),0 1px 0"
+      " rgba(255,255,255,0.15) inset;-webkit-box-shadow:0 1px 0 "
+      "rgba(255,255,255,0.15),0 1px 0 rgba(255,255,255,0.15) inset;"
+      "box-shadow:0 1px 0 rgba(255,255,255,0.15),0 1px 0 "
+      "rgba(255,255,255,0.15) inset}" },
+
+    // Special chars in property
+    { ".authorization .mail .login input, .authorization .pswd input {"
+      "float: left; width: 100%; font-size: 75%; -moz-box-sizing: border-box; "
+      "-webkit-box-sizing: border-box; box-sizing: border-box; height: 21px; "
+      "padding: 2px; #height: 13px}\n"
+      ".authorization .mail .domain select {float: right; width: 97%; "
+      "#width: 88%; font-size: 75%; height: 21px; -moz-box-sizing: border-box; "
+      "-webkit-box-sizing: border-box; box-sizing: border-box}\n"
+      ".weather_review .main img.attention {position: absolute; z-index: 5; "
+      "left: -10px; top: 6px; width: 29px; height: 26px; \n"
+      "background: url('http://limg3.imgsmail.ru/r/weather_new/ico_attention."
+      "png'); \n"
+      "//background-image: none; \n"
+      "filter: progid:DXImageTransform.Microsoft.AlphaImageLoader("
+      "src=\"http://limg3.imgsmail.ru/r/weather_new/ico_attention.png\", "
+      "sizingMethod=\"crop\"); \n"
+      "} \n"
+      ".rb_body {font-size: 12px; padding: 0 0 0 10px; overflow: hidden; "
+      "text-align: left; //display: inline-block;}\n"
+      ".rb_h4 {border-bottom: 1px solid #0857A6; color: #0857A6; "
+      "font-size: 17px; font-weight: bold; text-decoration: none;}\n",
+
+      ".authorization .mail .login input,.authorization .pswd input{"
+      "float:left;width:100%;font-size:75%;-moz-box-sizing:border-box;"
+      "-webkit-box-sizing:border-box;box-sizing:border-box;height:21px;"
+      "padding:2px;#height: 13px}"
+      ".authorization .mail .domain select{float:right;width:97%;"
+      "#width: 88%;font-size:75%;height:21px;-moz-box-sizing:border-box;"
+      "-webkit-box-sizing:border-box;box-sizing:border-box}"
+      ".weather_review .main img.attention{position:absolute;z-index:5;"
+      "left:-10px;top:6px;width:29px;height:26px;"
+      "background:url(http://limg3.imgsmail.ru/r/weather_new/ico_attention."
+      "png);"
+      "//background-image: none;"
+      "filter: progid:DXImageTransform.Microsoft.AlphaImageLoader("
+      "src=\"http://limg3.imgsmail.ru/r/weather_new/ico_attention.png\", "
+      "sizingMethod=\"crop\")}"
+      ".rb_body{font-size:12px;padding:0 0 0 10px;overflow:hidden;"
+      "text-align:left;//display: inline-block}"
+      ".rb_h4{border-bottom:1px solid #0857a6;color:#0857a6;"
+      "font-size:17px;font-weight:bold;text-decoration:none}" },
+
+    // Expression
+    { ".file_manager .loading { _position: absolute;_top: expression(0+((e=doc"
+      "ument.documentElement.scrollTop)?e:document.body.scrollTop)+'px'); "
+      "color: red; }\n"
+      ".connect_widget .page_stream img{max-width:120px;"
+      "width:expression(this.width > 120 ? 120:true); color: red; }\n",
+
+      ".file_manager .loading{_position:absolute;_top: expression(0+((e=doc"
+      "ument.documentElement.scrollTop)?e:document.body.scrollTop)+'px');"
+      "color:red}"
+      ".connect_widget .page_stream img{max-width:120px;"
+      "width:expression(this.width > 120 ? 120:true);color:red}" },
+
+    // Equals in function
+    { ".imdb_lb .header{width:726px;width=728px;height:12px;padding:1px;"
+      "border-bottom:1px #000000 solid;background:#eeeeee;font-size:10px;"
+      "text-align:left;}"
+      ".cboxIE #cboxTopLeft{background:transparent;filter:progid:"
+      "DXImageTransform.Microsoft.AlphaImageLoader(src=/images/lb/"
+      "internet_explorer/borderTopLeft.png, sizingMethod='scale');}",
+
+      ".imdb_lb .header{width:726px;width=728px;height:12px;padding:1px;"
+      "border-bottom:1px #000 solid;background:#eee;font-size:10px;"
+      "text-align:left}"
+      ".cboxIE #cboxTopLeft{background:transparent;filter:progid:"
+      "DXImageTransform.Microsoft.AlphaImageLoader(src=/images/lb/"
+      "internet_explorer/borderTopLeft.png, sizingMethod='scale')}" },
+
+    // Special chars in values
+    { ".login-form .input-text{ width:144px;padding:6px 3px; "
+      "background-color:#fff;background-position:0 -170px;"
+      "background-repeat;no-repeat}"
+      "td.pop_content .dialog_body{padding:10px;border-bottom:1px# solid #ccc}",
+
+      ".login-form .input-text{width:144px;padding:6px 3px;"
+      "background-color:#fff;background-position:0 -170px;"
+      "background-repeat;no-repeat}"
+      "td.pop_content .dialog_body{padding:10px;border-bottom:1px# solid #ccc}"
+    },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
@@ -517,21 +676,61 @@ TEST_P(CssFilterTest, ComplexCssTest) {
   }
 
   const char* parse_fail_examples[] = {
-    // http://code.google.com/p/modpagespeed/issues/detail?id=220
-    ".mui-navbar-wrap, .mui-navbar-clone {"
-    "opacity:1;-webkit-transform:translateX(0);"
-    "-webkit-transition-property:opacity,-webkit-transform;"
-    "-webkit-transition-duration:400ms;}",
+    // kSelectorError from Alexa-100
+    // Selector list ends in comma
+    ".hp .col ul, {\n"
+    "  display: inline !important;\n"
+    "  zoom: 1;\n"
+    "  vertical-align: top;\n"
+    "  margin-left: -10px;\n"
+    "  position: relative;\n"
+    "}\n",
 
-    // IE 8 hack \0/.
-    ".gbxms{background-color:#ccc;display:block;position:absolute;"
-    "z-index:1;top:-1px;left:-2px;right:-2px;bottom:-2px;opacity:.4;"
-    "-moz-border-radius:3px;"
-    "filter:progid:DXImageTransform.Microsoft.Blur(pixelradius=5);"
-    "*opacity:1;*top:-2px;*left:-5px;*right:5px;*bottom:4px;"
-    "-ms-filter:\"progid:DXImageTransform.Microsoft.Blur(pixelradius=5)\";"
-    "opacity:1\\0/;top:-4px\\0/;left:-6px\\0/;right:5px\\0/;bottom:4px\\0/}",
-    };
+    // Parameters for pseudoclass
+    "/* Opera（＋Firefox、Safari） */\n"
+    "body:not(:target) .sh_heading_main_b, body:not(:target) "
+    ".sh_heading_main_b_wide{\n  background:url(\"data:image/png;base64,iVBORw"
+    "0KGgoAAAANSUhEUgAAAAEAAAAoCAYAAAA/tpB3AAAAQ0lEQVR42k3EMQLAIAgEMP//WkRQVMB"
+    "2YLgMae/XMhOLCMzdq3svds7B9t6VmWFrLWzOWakqJiLYGKNiZqz3jhHR+wBZbpvd95zR6QAA"
+    "AABJRU5ErkJggg==\") repeat-x left top;\n"
+    "}\n"
+    "/* Firefox（＋Google Chrome2） */\n"
+    "html:not([lang*=""]) .sh_heading_main_b,\n"
+    "html:not([lang*=""]) .sh_heading_main_b_wide{\n"
+    "\t/* For Mozilla/Gecko (Firefox etc) */\n"
+    "\tbackground:-moz-linear-gradient(top, #FFFFFF, #F0F0F0);\n"
+    "\t/* For WebKit (Safari, Google Chrome etc) */\n"
+    "\tbackground:-webkit-gradient(linear, left top, left bottom, "
+    "from(#FFFFFF), to(#F0F0F0));\n"
+    "}\n"
+    "/* Safari */\n"
+    "html:not(:only-child:only-child) .sh_heading_main_b,\n"
+    "html:not(:only-child:only-child) .sh_heading_main_b_wide{\n"
+    "\t/* For WebKit (Safari, Google Chrome etc) */\n"
+    "\tbackground: -webkit-gradient(linear, left top, left bottom, "
+    "from(#FFFFFF), to(#F0F0F0));\n"
+    "}\n",
+
+    // Invalid comment type ("//").
+    ".ciuNoteEditBox .topLeft\n"
+    "{\n"
+    "        background-position:left top;\n"
+    "\tbackground-repeat:no-repeat;\n"
+    "\tfont-size:4px;\n"
+    "\t\n"
+    "\t\n"
+    "\tpadding: 0px 0px 0px 1px; \n"
+    "\t\n"
+    "\twidth:7px;\n"
+    "}\n"
+    "\n"
+    "// css hack to make font-size 0px in only ff2.0 and older "
+    "(http://pornel.net/firefoxhack)\n"
+    ".ciuNoteBox .topLeft,\n"
+    ".ciuNoteEditBox .topLeft, x:-moz-any-link {\n"
+    "\tfont-size: 0px;\n"
+    "}\n",
+  };
 
   for (int i = 0; i < arraysize(parse_fail_examples); ++i) {
     GoogleString id = StringPrintf("complex_css_parse_fail%d", i);

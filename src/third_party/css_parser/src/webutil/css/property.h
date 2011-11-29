@@ -96,7 +96,12 @@ class Property {
     SCROLLBAR_HIGHLIGHT_COLOR, SCROLLBAR_3DLIGHT_COLOR,
     SCROLLBAR_DARKSHADOW_COLOR, SCROLLBAR_TRACK_COLOR,
     SCROLLBAR_ARROW_COLOR, _WEBKIT_TEXT_DECORATIONS_IN_EFFECT,
-    _WEBKIT_RTL_ORDERING, OTHER
+    _WEBKIT_RTL_ORDERING,
+    // Dummy property value used for when we failed to parse a declaration and
+    // so all we can do is store the verbatim text.
+    UNPARSEABLE,
+    // If OTHER, actual property text is stored in other_.
+    OTHER,
   };
 
   // Constructor.

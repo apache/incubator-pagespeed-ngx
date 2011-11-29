@@ -517,10 +517,10 @@ TimedBool CssFilter::RewriteCssText(Context* context,
                                     GoogleString* out_text,
                                     MessageHandler* handler) {
   int64 in_text_size = static_cast<int64>(in_text.size());
-  // Load stylesheet w/o expanding background attributes and preserving all
-  // values from original document.
+  // Load stylesheet w/o expanding background attributes and preserving as
+  // much content as possible from the original document.
   Css::Parser parser(in_text);
-  parser.set_allow_all_values(true);
+  parser.set_preservation_mode(true);
   // If we think this is XHTML, turn off quirks-mode so that we don't "fix"
   // things we shouldn't.
   // TODO(sligocki): We might need to do this in other cases too.
@@ -614,7 +614,8 @@ bool CssFilter::SerializeCss(RewriteContext* context,
                       "bytes.", css_base_gurl.spec_c_str(),
                       Integer64ToString(-bytes_saved).c_str());
     }
-    // Don't rewrite if we blanked the CSS file! (This is a parse error)
+    // Don't rewrite if we blanked the CSS file. This is likely to be a parse
+    // error unless the input was also blank.
     // TODO(sligocki): Don't error if in_text is all whitespace.
     if (out_text_size == 0 && in_text_size != 0) {
       ret = false;
