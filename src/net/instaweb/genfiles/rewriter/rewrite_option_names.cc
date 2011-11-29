@@ -47,12 +47,12 @@ struct FilterMap {
 };
 #include <string.h>
 
-#define TOTAL_KEYWORDS 39
+#define TOTAL_KEYWORDS 41
 #define MIN_WORD_LENGTH 8
 #define MAX_WORD_LENGTH 33
 #define MIN_HASH_VALUE 8
-#define MAX_HASH_VALUE 48
-/* maximum key range = 41, duplicates = 0 */
+#define MAX_HASH_VALUE 52
+/* maximum key range = 45, duplicates = 0 */
 
 #ifndef GPERF_DOWNCASE
 #define GPERF_DOWNCASE 1
@@ -112,32 +112,32 @@ FilterMapper::hash (register const char *str, register unsigned int len)
 {
   static const unsigned char asso_values[] =
     {
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49,  5, 49, 14,  0,  0,
-       0, 49, 49,  9, 49,  5,  0, 13,  0,  3,
-       7, 49, 25, 17,  8, 22, 20,  0,  8, 49,
-      49, 49, 49, 49, 49, 49, 49,  5, 49, 14,
-       0,  0,  0, 49, 49,  9, 49,  5,  0, 13,
-       0,  3,  7, 49, 25, 17,  8, 22, 20,  0,
-       8, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49, 49, 49, 49, 49,
-      49, 49, 49, 49, 49, 49
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53,  8, 53, 30,  0,  0,
+       0, 53, 53,  9, 53,  2,  0, 13,  0,  3,
+      18, 53, 21, 17,  8, 22, 24,  0,  8, 53,
+       8, 53, 53, 53, 53, 53, 53,  8, 53, 30,
+       0,  0,  0, 53, 53,  9, 53,  2,  0, 13,
+       0,  3, 18, 53, 21, 17,  8, 22, 24,  0,
+       8, 53,  8, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53, 53, 53, 53, 53,
+      53, 53, 53, 53, 53, 53
     };
   return len + asso_values[(unsigned char)str[2]] + asso_values[(unsigned char)str[1]];
 }
@@ -148,83 +148,87 @@ static const struct FilterMap kHtmlNameTable[] =
 #line 28 "rewriter/rewrite_option_names.gperf"
     {"add_head",                          RewriteOptions::kAddHead},
     {""},
-#line 44 "rewriter/rewrite_option_names.gperf"
+#line 45 "rewriter/rewrite_option_names.gperf"
     {"inline_css",                        RewriteOptions::kInlineCss},
-#line 59 "rewriter/rewrite_option_names.gperf"
+#line 61 "rewriter/rewrite_option_names.gperf"
     {"rewrite_css",                       RewriteOptions::kRewriteCss},
 #line 37 "rewriter/rewrite_option_names.gperf"
     {"delay_images",                      RewriteOptions::kDelayImages},
-#line 45 "rewriter/rewrite_option_names.gperf"
+#line 46 "rewriter/rewrite_option_names.gperf"
     {"inline_images",                     RewriteOptions::kInlineImages},
-#line 50 "rewriter/rewrite_option_names.gperf"
+#line 52 "rewriter/rewrite_option_names.gperf"
     {"left_trim_urls",                    RewriteOptions::kLeftTrimUrls},
-#line 60 "rewriter/rewrite_option_names.gperf"
+#line 62 "rewriter/rewrite_option_names.gperf"
     {"rewrite_domains",                   RewriteOptions::kRewriteDomains},
 #line 36 "rewriter/rewrite_option_names.gperf"
     {"defer_javascript",                  RewriteOptions::kDeferJavascript},
-#line 47 "rewriter/rewrite_option_names.gperf"
+#line 48 "rewriter/rewrite_option_names.gperf"
     {"inline_javascript",                 RewriteOptions::kInlineJavascript},
-#line 61 "rewriter/rewrite_option_names.gperf"
+#line 63 "rewriter/rewrite_option_names.gperf"
     {"rewrite_javascript",                RewriteOptions::kRewriteJavascript},
 #line 29 "rewriter/rewrite_option_names.gperf"
     {"add_instrumentation",               RewriteOptions::kAddInstrumentation},
 #line 35 "rewriter/rewrite_option_names.gperf"
     {"convert_meta_tags",                 RewriteOptions::kConvertMetaTags},
-#line 46 "rewriter/rewrite_option_names.gperf"
+#line 47 "rewriter/rewrite_option_names.gperf"
     {"inline_import_to_link",             RewriteOptions::kInlineImportToLink},
 #line 30 "rewriter/rewrite_option_names.gperf"
     {"collapse_whitespace",               RewriteOptions::kCollapseWhitespace},
 #line 34 "rewriter/rewrite_option_names.gperf"
     {"convert_jpeg_to_webp",              RewriteOptions::kConvertJpegToWebp},
-#line 62 "rewriter/rewrite_option_names.gperf"
+#line 64 "rewriter/rewrite_option_names.gperf"
     {"rewrite_style_attributes",          RewriteOptions::kRewriteStyleAttributes},
 #line 40 "rewriter/rewrite_option_names.gperf"
     {"elide_attributes",                  RewriteOptions::kElideAttributes},
-#line 57 "rewriter/rewrite_option_names.gperf"
+#line 59 "rewriter/rewrite_option_names.gperf"
     {"remove_quotes",                     RewriteOptions::kRemoveQuotes},
 #line 31 "rewriter/rewrite_option_names.gperf"
     {"combine_css",                       RewriteOptions::kCombineCss},
-#line 56 "rewriter/rewrite_option_names.gperf"
+#line 58 "rewriter/rewrite_option_names.gperf"
     {"remove_comments",                   RewriteOptions::kRemoveComments},
 #line 33 "rewriter/rewrite_option_names.gperf"
     {"combine_heads",                     RewriteOptions::kCombineHeads},
-#line 58 "rewriter/rewrite_option_names.gperf"
+#line 60 "rewriter/rewrite_option_names.gperf"
     {"resize_images",                     RewriteOptions::kResizeImages},
-#line 55 "rewriter/rewrite_option_names.gperf"
-    {"recompress_images",                 RewriteOptions::kRecompressImages},
-#line 41 "rewriter/rewrite_option_names.gperf"
+#line 51 "rewriter/rewrite_option_names.gperf"
+    {"lazyload_images",                   RewriteOptions::kLazyloadImages},
+#line 42 "rewriter/rewrite_option_names.gperf"
     {"extend_cache_css",                  RewriteOptions::kExtendCacheCss},
-#line 63 "rewriter/rewrite_option_names.gperf"
+#line 65 "rewriter/rewrite_option_names.gperf"
     {"rewrite_style_attributes_with_url", RewriteOptions::kRewriteStyleAttributesWithUrl},
 #line 32 "rewriter/rewrite_option_names.gperf"
     {"combine_javascript",                RewriteOptions::kCombineJavascript},
-#line 42 "rewriter/rewrite_option_names.gperf"
-    {"extend_cache_images",               RewriteOptions::kExtendCacheImages},
 #line 43 "rewriter/rewrite_option_names.gperf"
+    {"extend_cache_images",               RewriteOptions::kExtendCacheImages},
+#line 44 "rewriter/rewrite_option_names.gperf"
     {"extend_cache_scripts",              RewriteOptions::kExtendCacheScripts},
-#line 51 "rewriter/rewrite_option_names.gperf"
-    {"make_google_analytics_async",       RewriteOptions::kMakeGoogleAnalyticsAsync},
-#line 48 "rewriter/rewrite_option_names.gperf"
-    {"insert_img_dimensions",             RewriteOptions::kInsertImageDimensions},
-#line 52 "rewriter/rewrite_option_names.gperf"
-    {"move_css_to_head",                  RewriteOptions::kMoveCssToHead},
-#line 49 "rewriter/rewrite_option_names.gperf"
-    {"insert_image_dimensions",           RewriteOptions::kInsertImageDimensions},
 #line 53 "rewriter/rewrite_option_names.gperf"
-    {"outline_css",                       RewriteOptions::kOutlineCss},
-#line 39 "rewriter/rewrite_option_names.gperf"
-    {"div_structure",                     RewriteOptions::kDivStructure},
-#line 66 "rewriter/rewrite_option_names.gperf"
+    {"make_google_analytics_async",       RewriteOptions::kMakeGoogleAnalyticsAsync},
+#line 49 "rewriter/rewrite_option_names.gperf"
+    {"insert_img_dimensions",             RewriteOptions::kInsertImageDimensions},
+#line 68 "rewriter/rewrite_option_names.gperf"
     {"trim_urls",                         RewriteOptions::kLeftTrimUrls},
+#line 50 "rewriter/rewrite_option_names.gperf"
+    {"insert_image_dimensions",           RewriteOptions::kInsertImageDimensions},
+#line 55 "rewriter/rewrite_option_names.gperf"
+    {"outline_css",                       RewriteOptions::kOutlineCss},
+#line 67 "rewriter/rewrite_option_names.gperf"
+    {"strip_scripts",                     RewriteOptions::kStripScripts},
+#line 54 "rewriter/rewrite_option_names.gperf"
+    {"move_css_to_head",                  RewriteOptions::kMoveCssToHead},
 #line 38 "rewriter/rewrite_option_names.gperf"
     {"disable_javascript",                RewriteOptions::kDisableJavascript},
-#line 64 "rewriter/rewrite_option_names.gperf"
-    {"sprite_images",                     RewriteOptions::kSpriteImages},
-#line 65 "rewriter/rewrite_option_names.gperf"
-    {"strip_scripts",                     RewriteOptions::kStripScripts},
-    {""},
-#line 54 "rewriter/rewrite_option_names.gperf"
-    {"outline_javascript",                RewriteOptions::kOutlineJavascript}
+#line 41 "rewriter/rewrite_option_names.gperf"
+    {"explicit_close_tags",               RewriteOptions::kExplicitCloseTags},
+#line 39 "rewriter/rewrite_option_names.gperf"
+    {"div_structure",                     RewriteOptions::kDivStructure},
+#line 57 "rewriter/rewrite_option_names.gperf"
+    {"recompress_images",                 RewriteOptions::kRecompressImages},
+#line 56 "rewriter/rewrite_option_names.gperf"
+    {"outline_javascript",                RewriteOptions::kOutlineJavascript},
+    {""}, {""}, {""},
+#line 66 "rewriter/rewrite_option_names.gperf"
+    {"sprite_images",                     RewriteOptions::kSpriteImages}
   };
 
 const struct FilterMap *
@@ -244,7 +248,7 @@ FilterMapper::Lookup (register const char *str, register unsigned int len)
     }
   return 0;
 }
-#line 67 "rewriter/rewrite_option_names.gperf"
+#line 69 "rewriter/rewrite_option_names.gperf"
 
 
 RewriteOptions::Filter RewriteOptions::Lookup(const StringPiece& filter_name) {

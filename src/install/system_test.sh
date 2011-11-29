@@ -480,6 +480,7 @@ check grep "'<script src=\".*normal\.js\.pagespeed\..*\.js\">'" $FETCHED
 check grep "'<script src=\"js_tinyMCE\.js\"></script>'" $FETCHED
 check grep "'<script src=\"tiny_mce\.js\"></script>'" $FETCHED
 check grep "'<script src=\"tinymce\.js\"></script>'" $FETCHED
+check grep "'<script src=\"scriptaculous\.js?load=effects,builder\"></script>'" $FETCHED
 check grep "'<script src=\".*jquery.*\.js\.pagespeed\..*\.js\">'" $FETCHED
 check grep "'<script src=\".*ckeditor\.js\.pagespeed\..*\.js\">'" $FETCHED
 check grep "'<script src=\".*swfobject\.js\.pagespeed\..*\.js\">'" $FETCHED

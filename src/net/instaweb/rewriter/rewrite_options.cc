@@ -167,6 +167,7 @@ const RewriteOptions::Filter kTestFilterSet[] = {
   RewriteOptions::kConvertJpegToWebp,
   RewriteOptions::kMakeGoogleAnalyticsAsync,
   RewriteOptions::kRewriteDomains,
+  RewriteOptions::kSpriteImages,
 };
 
 // Note: These filters should not be included even if the level is "All".
@@ -174,6 +175,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kDeferJavascript,
   RewriteOptions::kDisableJavascript,
   RewriteOptions::kDivStructure,
+  RewriteOptions::kExplicitCloseTags,
   RewriteOptions::kLazyloadImages,
   RewriteOptions::kStripScripts,
 };
@@ -210,6 +212,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
         return "Disables scripts by placing them inside noscript tags";
     case kDivStructure:                    return "Div Structure";
     case kElideAttributes:                 return "Elide Attributes";
+    case kExplicitCloseTags:               return "Explicit Close Tags";
     case kExtendCacheCss:                  return "Cache Extend Css";
     case kExtendCacheImages:               return "Cache Extend Images";
     case kExtendCacheScripts:              return "Cache Extend Scripts";
@@ -257,6 +260,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kDisableJavascript:               return "jd";
     case kDivStructure:                    return "ds";
     case kElideAttributes:                 return "ea";
+    case kExplicitCloseTags:               return "xc";
     case kExtendCacheCss:                  return "ec";
     case kExtendCacheImages:               return "ei";
     case kExtendCacheScripts:              return "es";
@@ -393,6 +397,9 @@ void RewriteOptions::DisallowTroublesomeResources() {
   Disallow("*tiny_mce*");
   // I've also seen tinymce.js
   Disallow("*tinymce*");
+
+  // http://code.google.com/p/modpagespeed/issues/detail?id=352
+  Disallow("*scriptaculous.js*");
 
   // http://code.google.com/p/modpagespeed/issues/detail?id=207
   // jquery-ui-1.8.2.custom.min.js, jquery-1.4.4.min.js, jquery.fancybox-...

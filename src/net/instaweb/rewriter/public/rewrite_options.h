@@ -53,6 +53,7 @@ class RewriteOptions {
     kDisableJavascript,
     kDivStructure,
     kElideAttributes,
+    kExplicitCloseTags,
     kExtendCacheCss,
     kExtendCacheImages,
     kExtendCacheScripts,
