@@ -142,12 +142,25 @@
       ],
     },
     {
+      'target_name': 'instaweb_http_gperf',
+      'variables': {
+        'instaweb_gperf_subdir': 'net/instaweb/http/',
+      },
+      'sources': [
+        'http/bot_checker.gperf',
+      ],
+      'includes': [
+        'gperf.gypi',
+      ]
+    },
+    {
       # TODO: break this up into sub-libs (mocks, real, etc)
       'target_name': 'instaweb_util',
       'type': '<(library)',
       'dependencies': [
         'instaweb_core.gyp:instaweb_util_core',
         'instaweb_http',
+        'instaweb_http_gperf',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
         '<(DEPTH)/base/base.gyp:base',
@@ -157,7 +170,6 @@
       ],
       'sources': [
         # TODO(sligocki): Move http/ files to instaweb_http.
-        'genfiles/http/bot_checker.cc',
         'http/cache_url_async_fetcher.cc',
         'http/dummy_url_fetcher.cc',
         'http/fake_url_async_fetcher.cc',
@@ -466,14 +478,26 @@
       },
     },
     {
+      'target_name': 'instaweb_javascript_gperf',
+      'variables': {
+        'instaweb_gperf_subdir': 'net/instaweb/js/',
+      },
+      'sources': [
+        'js/js_keywords.gperf',
+      ],
+      'includes': [
+        'gperf.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_javascript',
       'type': '<(library)',
       'dependencies': [
         'instaweb_util',
+        'instaweb_javascript_gperf',
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [
-        'genfiles/js/js_keywords.cc',
         'js/js_lexer.cc',
       ],
       'include_dirs': [

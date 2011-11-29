@@ -45,14 +45,18 @@ BASE_LIBS = \
   net/instaweb/libautomatic_util.a \
   net/instaweb/libhttp_core.a \
   net/instaweb/libinstaweb_htmlparse_core.a \
+  net/instaweb/libinstaweb_htmlparse_core_gperf.a \
   net/instaweb/libinstaweb_http.a \
+  net/instaweb/libinstaweb_http_gperf.a \
   net/instaweb/libinstaweb_http_pb.a \
+  net/instaweb/libinstaweb_javascript_gperf.a \
   net/instaweb/libinstaweb_js_defer_data2c.a \
   net/instaweb/libinstaweb_lazyload_images_data2c.a \
   net/instaweb/libinstaweb_rewriter.a \
   net/instaweb/libinstaweb_rewriter_base.a \
   net/instaweb/libinstaweb_rewriter_css.a \
   net/instaweb/libinstaweb_rewriter_html.a \
+  net/instaweb/libinstaweb_rewriter_html_gperf.a \
   net/instaweb/libinstaweb_rewriter_image.a \
   net/instaweb/libinstaweb_rewriter_javascript.a \
   net/instaweb/libinstaweb_rewriter_pb.a \
