@@ -352,6 +352,7 @@ TEST_P(CssImageCombineTest, ServeFiles) {
   ServeResourceFromManyContexts(sprite_str, output);
 }
 
+// FYI: Takes ~10000 ms to run under Valgrind.
 TEST_P(CssImageCombineTest, CombineManyFiles) {
   CSS_XFAIL_SYNC();
   // Prepare an HTML fragment with too many image files to combine,

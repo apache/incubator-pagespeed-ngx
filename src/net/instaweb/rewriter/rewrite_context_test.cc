@@ -1583,6 +1583,7 @@ TEST_F(RewriteContextTest, CombinationFetch) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
+// FYI: Takes ~70000 ms to run under Valgrind.
 TEST_F(RewriteContextTest, FetchDeadlineTest) {
   // This tests that deadlines on fetches are functional.
   // This uses a combining filter with one input, as it has the needed delay

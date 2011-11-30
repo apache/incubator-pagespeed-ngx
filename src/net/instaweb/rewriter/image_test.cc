@@ -15,6 +15,7 @@
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
@@ -203,6 +204,7 @@ TEST_F(ImageTest, InputWebpTest) {
       30320, false);
 }
 
+// FYI: Takes ~20000 ms to run under Valgrind.
 TEST_F(ImageTest, WebpLowResTest) {
   GoogleString contents;
   ImagePtr image(ReadImageFromFile(Image::IMAGE_WEBP, kScenery, &contents));
@@ -247,6 +249,7 @@ TEST_F(ImageTest, JpegTest) {
       241260, true);
 }
 
+// FYI: Takes ~70000 ms to run under Valgrind.
 TEST_F(ImageTest, WebpTest) {
   CheckImageFromFile(
       kPuzzle, Image::IMAGE_JPEG, Image::IMAGE_WEBP,
@@ -391,6 +394,11 @@ TEST_F(ImageTest, BlankSecondWebp) {
 // stack. kLarge is a 10000x10000 image, so it will try to allocate > 100MB
 // on the stack, which should overflow the stack and SEGV.
 TEST_F(ImageTest, OpencvStackOverflow) {
+  // This test takes ~90000 ms on Valgrind and need not be run there.
+  if (RunningOnValgrind()) {
+    return;
+  }
+
   GoogleString buf;
   ImagePtr image(ReadImageFromFile(Image::IMAGE_JPEG, kLarge, &buf));
 
