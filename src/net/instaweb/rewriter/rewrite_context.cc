@@ -1450,14 +1450,14 @@ void RewriteContext::FetchCacheDone(
       if (fetch_->requested_hash_ != output_resource->hash()) {
         // Try to do a cache look up on the proper hash; if it's available,
         // we can serve it.
-        FetchTryFallback(output_resource->url());
+        FetchTryFallback(output_resource->url(), output_resource->hash());
         return;
       }
     } else if (num_slots() == 1) {
       // The result is not optimizable, and there is only one input.
       // Try serving the original. (For simplicity, we will do an another
       // rewrite attempt if it's not in the cache).
-      FetchTryFallback(slot(0)->resource()->url());
+      FetchTryFallback(slot(0)->resource()->url(), "");
       return;
     }
   }
@@ -1466,7 +1466,8 @@ void RewriteContext::FetchCacheDone(
   StartFetchReconstruction();
 }
 
-void RewriteContext::FetchTryFallback(const GoogleString& url) {
+void RewriteContext::FetchTryFallback(const GoogleString& url,
+                                      const StringPiece& hash) {
   Manager()->http_cache()->Find(
       url,
       Manager()->message_handler(),

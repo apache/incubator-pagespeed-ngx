@@ -71,13 +71,34 @@ void AjaxRewriteContext::Harvest() {
       }
     }
   }
-  LOG(ERROR) << "Ajax rewrite failed for " << url_;
+  LOG(INFO) << "Ajax rewrite failed for " << url_;
   RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
 }
 
+void AjaxRewriteContext::FetchTryFallback(const GoogleString& url,
+                                          const StringPiece& hash) {
+  const char* request_etag = request_headers_.Lookup1(
+      HttpAttributes::kIfNoneMatch);
+  if (request_etag != NULL && !hash.empty() &&
+      StringEqualConcat(request_etag, etag_prefix_, hash)) {
+    // Serve out a 304.
+    ResponseHeaders* response_headers = fetch_response_headers();
+    response_headers->Clear();
+    response_headers->SetStatusAndReason(HttpStatus::kNotModified);
+    fetch_callback()->Done(true);
+    driver_->FetchComplete();
+  } else {
+    // Save the hash of the resource.
+    rewritten_hash_ = hash.as_string();
+    RewriteContext::FetchTryFallback(url, hash);
+  }
+}
+
 void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
-  // TODO(nikhilmadan): Add the hash of the rewritten url as the Etag.
-  headers->RemoveAll(HttpAttributes::kEtag);
+  if (is_rewritten_ && !rewritten_hash_.empty()) {
+      headers->Replace(HttpAttributes::kEtag,
+                       StrCat(etag_prefix_, rewritten_hash_));
+  }
 
   headers->ComputeCaching();
   int64 expire_at_ms = kint64max;
@@ -230,6 +251,8 @@ void AjaxRewriteContext::StartFetchReconstruction() {
   // the original resource and trigger an asynchronous rewrite.
   DCHECK_EQ(1, num_slots());
   ResourcePtr resource(slot(0)->resource());
+  // If we get here, the resource must not have been rewritten.
+  is_rewritten_ = false;
   RecordingFetch* fetch = new RecordingFetch(
       fetch_writer(), fetch_response_headers(), fetch_message_handler(),
       fetch_callback(), resource, this);

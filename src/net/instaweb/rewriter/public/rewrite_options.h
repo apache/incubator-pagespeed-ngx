@@ -83,6 +83,7 @@ class RewriteOptions {
     kEndOfFilters
   };
 
+  static const char kAjaxRewriteId[];
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
   static const char kCssInlineId[];

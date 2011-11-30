@@ -297,6 +297,16 @@ TEST(StringCaseTest, TestStringCaseEndsWith) {
   EXPECT_FALSE(StringCaseEndsWith("zzz", "zzzz"));
 }
 
+TEST(StringCaseTest, TestStringEqualConcat) {
+  EXPECT_TRUE(StringEqualConcat("foobar", "foobar", ""));
+  EXPECT_TRUE(StringEqualConcat("foobar", "fooba", "r"));
+  EXPECT_TRUE(StringEqualConcat("foobar", "", "foobar"));
+  EXPECT_TRUE(StringEqualConcat("fOobAr", "fO", "obAr"));
+  EXPECT_FALSE(StringEqualConcat("fOobAr", "fo", "obAr"));
+  EXPECT_FALSE(StringEqualConcat("foobar", "FO", "OBAR"));
+  EXPECT_FALSE(StringEqualConcat("foobar", "foo", "obar"));
+}
+
 TEST(StringCaseTest, Locale) {
   // This will fail if the locale is available and StringCaseEqual is
   // built using strcasecmp.  Note that the locale will generally be

@@ -206,6 +206,11 @@ bool StringCaseStartsWith(const StringPiece& str, const StringPiece& prefix);
 // Return true iff str ends with suffix, ignoring case.
 bool StringCaseEndsWith(const StringPiece& str, const StringPiece& suffix);
 
+// Return true if str is equal to the concatenation of first and second. Note
+// that this respects case.
+bool StringEqualConcat(const StringPiece& str, const StringPiece& first,
+                       const StringPiece& second);
+
 struct CharStarCompareInsensitive {
   bool operator()(const char* s1, const char* s2) const {
     return (StringCaseCompare(s1, s2) < 0);

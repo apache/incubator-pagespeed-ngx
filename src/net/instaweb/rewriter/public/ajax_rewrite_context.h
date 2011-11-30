@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -59,7 +60,9 @@ class AjaxRewriteContext : public SingleRewriteContext {
                      const RequestHeaders& request_headers)
       : SingleRewriteContext(driver, NULL, NULL),
         driver_(driver),
-        url_(url) {
+        url_(url),
+        is_rewritten_(true),
+        etag_prefix_(StrCat(HTTPCache::kEtagPrefix, id(), "-")) {
     request_headers_.CopyFrom(request_headers);
     set_notify_driver_on_fetch_done(true);
   }
@@ -68,7 +71,7 @@ class AjaxRewriteContext : public SingleRewriteContext {
 
   virtual void RewriteSingle(const ResourcePtr& input,
                              const OutputResourcePtr& output);
-  virtual const char* id() const { return "aj"; }
+  virtual const char* id() const { return RewriteOptions::kAjaxRewriteId; }
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
 
   virtual bool DecodeFetchUrls(const OutputResourcePtr& output_resource,
@@ -86,11 +89,20 @@ class AjaxRewriteContext : public SingleRewriteContext {
   virtual void Harvest();
   void StartFetchReconstructionParent();
   virtual void FixFetchFallbackHeaders(ResponseHeaders* headers);
+  virtual void FetchTryFallback(const GoogleString& url,
+                                const StringPiece& hash);
 
   RewriteDriver* driver_;
   GoogleString url_;
   RequestHeaders request_headers_;
-  bool success_;
+  // Boolean indicating whether or not the resource was rewritten successfully.
+  bool is_rewritten_;
+  // The hash of the rewritten resource. Note that this should only be used if
+  // is_rewritten_ is true. This may be empty.
+  GoogleString rewritten_hash_;
+
+  // Prefix to be appended to etags.
+  const GoogleString etag_prefix_;
 
   DISALLOW_COPY_AND_ASSIGN(AjaxRewriteContext);
 };

@@ -54,6 +54,7 @@ const int kOptionsVersion = 11;
 namespace net_instaweb {
 
 // RewriteFilter prefixes
+const char RewriteOptions::kAjaxRewriteId[] = "aj";
 const char RewriteOptions::kCssCombinerId[] = "cc";
 const char RewriteOptions::kCssFilterId[] = "cf";
 const char RewriteOptions::kCssInlineId[] = "ci";
@@ -393,13 +394,16 @@ RewriteOptions::OptionBase::~OptionBase() {
 void RewriteOptions::DisallowTroublesomeResources() {
   // http://code.google.com/p/modpagespeed/issues/detail?id=38
   Disallow("*js_tinyMCE*");  // js_tinyMCE.js
-  // Official timeMCE URLs: tiny_mce.js, tiny_mce_src.js, tiny_mce_gzip.php, ...
+  // Official tinyMCE URLs: tiny_mce.js, tiny_mce_src.js, tiny_mce_gzip.php, ...
   Disallow("*tiny_mce*");
   // I've also seen tinymce.js
   Disallow("*tinymce*");
 
   // http://code.google.com/p/modpagespeed/issues/detail?id=352
   Disallow("*scriptaculous.js*");
+
+  // Breaks some sites.
+  Disallow("*connect.facebook.net/*");
 
   // http://code.google.com/p/modpagespeed/issues/detail?id=207
   // jquery-ui-1.8.2.custom.min.js, jquery-1.4.4.min.js, jquery.fancybox-...

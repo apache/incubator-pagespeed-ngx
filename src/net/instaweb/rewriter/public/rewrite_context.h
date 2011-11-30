@@ -408,6 +408,13 @@ class RewriteContext {
   // and sets the cache ttl to ResponseHeaders::kImplicitCacheTtlMs.
   virtual void FixFetchFallbackHeaders(ResponseHeaders* headers);
 
+  // Attempts to fetch a given URL from HTTP cache, and serves it
+  // (with shortened HTTP headers) if available. If not, fallback to normal
+  // full reconstruction path. Note that the hash can be an empty string if the
+  // url is not rewritten.
+  virtual void FetchTryFallback(const GoogleString& url,
+                                const StringPiece& hash);
+
   // Accessors for the nested rewrites.
   int num_nested() const { return nested_.size(); }
   RewriteContext* nested(int i) const { return nested_[i]; }
@@ -558,11 +565,6 @@ class RewriteContext {
 
   // Callback for metadata lookup on fetch path.
   void FetchCacheDone(CacheInterface::KeyState state, SharedString value);
-
-  // Attempts to fetch a given URL from HTTP cache, and serves it
-  // (with shortened HTTP headers) if available. If not, fallback to normal
-  // full reconstruction path.
-  void FetchTryFallback(const GoogleString& url);
 
   // Callback for HTTP lookup on fetch path where the metadata cache suggests
   // we should try either serving a different path or the original.

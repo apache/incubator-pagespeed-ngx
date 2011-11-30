@@ -251,6 +251,12 @@ bool StringCaseEndsWith(const StringPiece& str, const StringPiece& suffix) {
                                   str.substr(str.size() - suffix.size()))));
 }
 
+bool StringEqualConcat(const StringPiece& str, const StringPiece& first,
+                       const StringPiece& second) {
+  return (str.size() == first.size() + second.size()) &&
+      str.starts_with(first) && str.ends_with(second);
+}
+
 void ParseShellLikeString(const StringPiece& input,
                           std::vector<GoogleString>* output) {
   output->clear();
