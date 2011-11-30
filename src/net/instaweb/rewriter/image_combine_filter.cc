@@ -759,9 +759,8 @@ class ImageCombineFilter::Context : public RewriteContext {
                  filter->driver()->message_handler()),
         filter_(filter) {
     MD5Hasher hasher;
-    GoogleString prefix = StrCat("css-key:", hasher.Hash(css_text),
-                                 "@", css_url.AllExceptLeaf());
-    UrlEscaper::EncodeToUrlSegment(prefix, &key_prefix_);
+    key_prefix_ = StrCat("/css-key=", hasher.Hash(css_text),
+                         "@", css_url.AllExceptLeaf());
   }
 
   Context(RewriteDriver* driver, ImageCombineFilter* filter)
@@ -784,9 +783,8 @@ class ImageCombineFilter::Context : public RewriteContext {
   // filename length limits on apache.
   // TODO(nforman): Figure out a way to test cache keys in general.
   virtual GoogleString CacheKey() const {
-    GoogleString key = RewriteContext::CacheKey();
-    return StrCat(key_prefix_,
-                  Manager()->hasher()->Hash(key));
+    // TODO(jmarantz): rename to key_prefix_ to key_suffix_.
+    return StrCat(RewriteContext::CacheKey(), key_prefix_);
   }
 
   bool AddFuture(CssResourceSlotPtr slot) {

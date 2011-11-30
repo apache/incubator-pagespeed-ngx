@@ -66,6 +66,15 @@
 #include "net/instaweb/util/public/url_segment_encoder.h"
 #include "net/instaweb/util/public/writer.h"
 
+namespace {
+
+// Beyond 64 characters, take the hash of the encoding of the URLs rather
+// than using the URLs literally.  Note in particular the potential for
+// large cache-keys for combining filters and inlining with data-urls.
+const size_t kMaxUrlCacheKeyEncoding = 64;
+
+}  // namespace
+
 namespace net_instaweb {
 
 class RewriteFilter;
@@ -561,7 +570,9 @@ void RewriteContext::Start() {
 
 void RewriteContext::SetPartitionKey() {
   partition_key_ = CacheKey();
-  StrAppend(&partition_key_, ":", id(), Options()->signature());
+  GoogleString signature = Options()->signature();
+  const Hasher* hasher = Manager()->lock_hasher();
+  StrAppend(&partition_key_, "/", hasher->Hash(signature));
 }
 
 // Check if this mapping from input to output URLs is still valid; and if not
@@ -1353,13 +1364,36 @@ const UrlSegmentEncoder* RewriteContext::encoder() const {
 }
 
 GoogleString RewriteContext::CacheKey() const {
-  GoogleString key;
+  GoogleString key(ResourceManager::kCacheKeyResourceNamePrefix), encoding;
   StringVector urls;
-  for (int i = 0, n = num_slots(); i < n; ++i) {
-    ResourcePtr resource(slot(i)->resource());
-    urls.push_back(resource->url());
+
+  // We need to run the URL encoder in order to serialize the resource_context_.
+  // But we don't really want to flatten all the hierarchy in most cases: we
+  // want the FileCache hierarchies to reflect the URL hierarchies if possible.
+  // So we use a dummy URL of "" in our url-list for now.
+  //
+  // But if we are combining multiple URLs then we confusing hiearchy
+  // where url2 is beneath url1.  So we use the URL encoder normally
+  // in that case.
+  if (num_slots() == 1) {
+    urls.push_back("");
+  } else {
+    for (int i = 0, n = num_slots(); i < n; ++i) {
+      ResourcePtr resource(slot(i)->resource());
+      urls.push_back(resource->url());
+    }
   }
-  encoder()->Encode(urls, resource_context_.get(), &key);
+  encoder()->Encode(urls, resource_context_.get(), &encoding);
+  if (num_slots() == 1) {
+    // If we didn't run the encoder with the URLs then just append
+    // on the verbatim URL.
+    StrAppend(&encoding, slot(0)->resource()->url());
+  }
+
+  if (encoding.size() > kMaxUrlCacheKeyEncoding) {
+    encoding = Manager()->lock_hasher()->Hash(encoding);
+  }
+  StrAppend(&key, id(), "/", encoding);
   return key;
 }
 
