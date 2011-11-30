@@ -217,13 +217,27 @@ void JavascriptFilter::Characters(HtmlCharactersNode* characters) {
 // Flatten script fragments in buffer_, using script_buffer to hold
 // the data if necessary.  Return a StringPiece referring to the data.
 const StringPiece JavascriptFilter::FlattenBuffer(GoogleString* script_buffer) {
+  // TODO(jmaessen): To work around a bug in JS minification, we unconditionally
+  // copy the string and replace '\r' by '\n'.  This can be stripped out once
+  // an updated pagespeed library with the bug fix is available.
+  const bool kTranslateCRtoLF = true;
   const int buffer_size = buffer_.size();
-  if (buffer_.size() == 1) {
+  if (buffer_.size() == 1 && !kTranslateCRtoLF) {
+    // TODO(jmaessen): since this code was written, we've added an invariant
+    // that buffer_size <= 1.  So most of the buffering logic, and buffer_
+    // itself, should be stripped out.
     StringPiece result(buffer_[0]->contents());
     return result;
   } else {
     for (int i = 0; i < buffer_size; i++) {
       script_buffer->append(buffer_[i]->contents());
+    }
+    if (kTranslateCRtoLF) {
+      size_t lf_position = -1;
+      while ((lf_position = script_buffer->find('\r', lf_position+1)) !=
+             GoogleString::npos) {
+        (*script_buffer)[lf_position] = '\n';
+      }
     }
     StringPiece result(*script_buffer);
     return result;

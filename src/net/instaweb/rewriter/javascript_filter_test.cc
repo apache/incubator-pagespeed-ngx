@@ -37,6 +37,7 @@ const char kHtmlFormat[] =
     "<script type='text/javascript' src='%s'></script>\n";
 
 const char kCdataWrapper[] = "//<![CDATA[\n%s\n//]]>";
+const char kCdataAltWrapper[] = "//<![CDATA[\r%s\r//]]>";
 
 const char kInlineJs[] =
     "<script type='text/javascript'>%s</script>\n";
@@ -194,6 +195,10 @@ TEST_P(JavascriptFilterTest, CdataJavascript) {
       "cdata non-xhtml javascript",
       StringPrintf(kInlineJs, StringPrintf(kCdataWrapper, kJsData).c_str()),
       StringPrintf(kInlineJs, kJsMinData));
+  ValidateExpected(
+      "cdata non-xhtml javascript",
+      StringPrintf(kInlineJs, StringPrintf(kCdataAltWrapper, kJsData).c_str()),
+      StringPrintf(kInlineJs, kJsMinData));
 }
 
 TEST_P(JavascriptFilterTest, XHtmlInlineJavascript) {
@@ -204,6 +209,11 @@ TEST_P(JavascriptFilterTest, XHtmlInlineJavascript) {
       StrCat(kXhtmlHeader, StringPrintf(kInlineJs, kCdataWrapper));
   ValidateExpected("xhtml inline javascript",
                    StringPrintf(xhtml_script_format.c_str(), kJsData),
+                   StringPrintf(xhtml_script_format.c_str(), kJsMinData));
+  const GoogleString xhtml_script_alt_format =
+      StrCat(kXhtmlHeader, StringPrintf(kInlineJs, kCdataAltWrapper));
+  ValidateExpected("xhtml inline javascript",
+                   StringPrintf(xhtml_script_alt_format.c_str(), kJsData),
                    StringPrintf(xhtml_script_format.c_str(), kJsMinData));
 }
 
