@@ -118,7 +118,7 @@ void VectorizeMediaAttribute(const StringPiece& input_media,
   std::vector<StringPiece>::iterator it;
   for (it = media_vector.begin(); it != media_vector.end(); ++it) {
     TrimWhitespace(&(*it));
-    if (*it == "all") {
+    if (StringCaseEqual(*it, kAllMedia)) {
       // Special case: an element of value 'all'.
       output_vector->clear();
       break;
@@ -133,7 +133,7 @@ void VectorizeMediaAttribute(const StringPiece& input_media,
 GoogleString StringifyMediaVector(const StringVector& input_media) {
   // Special case: inverse of the special rule in the vectorize function.
   if (input_media.empty()) {
-    return "all";
+    return kAllMedia;
   }
   // Hmm, we don't seem to have a useful 'join' function handy.
   GoogleString result(input_media[0]);
@@ -167,6 +167,16 @@ void ConvertStringVectorToUnicodeVector(
       UnicodeText unicode_element;
       unicode_element.CopyUTF8(element.data(), element.length());
       out_vector->push_back(unicode_element);
+    }
+  }
+}
+
+void ClearVectorIfContainsMediaAll(StringVector* media) {
+  StringVector::const_iterator iter;
+  for (iter = media->begin(); iter != media->end(); ++iter) {
+    if (StringCaseEqual(*iter, kAllMedia)) {
+      media->clear();
+      break;
     }
   }
 }

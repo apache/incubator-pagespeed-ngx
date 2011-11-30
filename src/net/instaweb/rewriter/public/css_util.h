@@ -42,6 +42,7 @@ class HtmlElement;
 // StyleExtractor class.
 namespace css_util {
 
+static const char kAllMedia[] = "all";
 static const int kNoValue = -1;
 
 enum DimensionState {
@@ -118,6 +119,46 @@ void ConvertUnicodeVectorToStringVector(
 void ConvertStringVectorToUnicodeVector(
     const StringVector& in_vector,
     std::vector<UnicodeText>* out_vector);
+
+// Clear the given vector if it contains the media 'all'. This is required
+// because Css::Parser doesn't treat 'all' specially but we do for efficiency.
+void ClearVectorIfContainsMediaAll(StringVector* media);
+
+// Eliminate all elements from the first vector that are not in the second
+// vector, with the caveat that an empty vector (first or second) means 'the
+// set of all possible values', meaning that if the second vector is empty
+// then no elements are removed from the first vector, and if the first vector
+// is empty then the second vector is copied into it. Both vectors must be
+// sorted on entry.
+template<typename T>
+void EliminateElementsNotIn(std::vector<T>* sorted_inner,
+                            const std::vector<T>& sorted_outer) {
+  if (!sorted_outer.empty()) {
+    if (sorted_inner->empty()) {
+      *sorted_inner = sorted_outer;
+    } else {
+      typename std::vector<T>::const_iterator outer_iter = sorted_outer.begin();
+      typename std::vector<T>::iterator inner_iter = sorted_inner->begin();
+
+      while (inner_iter != sorted_inner->end()) {
+        if (outer_iter == sorted_outer.end()) {
+          // No more outer elements => delete all remaining inner elements.
+          inner_iter = sorted_inner->erase(inner_iter, sorted_inner->end());
+        } else if (*outer_iter == *inner_iter) {
+          // This inner element is in the outer => keep it and move on.
+          ++outer_iter;
+          ++inner_iter;
+        } else if (*outer_iter < *inner_iter) {
+          // This outer element isn't in the inner => skip it, try the next.
+          ++outer_iter;
+        } else {
+          // This inner element isn't in the outer => delete it, move on.
+          inner_iter = sorted_inner->erase(inner_iter);
+        }
+      }
+    }
+  }
+}
 
 }  // css_util
 

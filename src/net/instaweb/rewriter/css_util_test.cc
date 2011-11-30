@@ -152,10 +152,9 @@ TEST_F(CssUtilTest, StringifyMediaVector) {
   GoogleString multiple_media = StringifyMediaVector(multiple_vector);
   EXPECT_EQ(kMultipleMedia, multiple_media);
 
-  const char kAllMedia[] = "all";
   StringVector all_vector;
   GoogleString all_media = StringifyMediaVector(all_vector);
-  EXPECT_EQ(kAllMedia, all_media);
+  EXPECT_EQ(css_util::kAllMedia, all_media);
 }
 
 TEST_F(CssUtilTest, ConvertUnicodeVectorToStringVector) {
@@ -198,6 +197,61 @@ TEST_F(CssUtilTest, ConvertStringVectorToUnicodeVector) {
   std::vector<UnicodeText> actual_vector;
   ConvertStringVectorToUnicodeVector(input_vector, &actual_vector);
   EXPECT_TRUE(expected_vector == actual_vector);
+}
+
+TEST_F(CssUtilTest, ClearVectorIfContainsMediaAll) {
+  const char* kInputVector[] = { "screen", "", " ", "print " };
+  StringVector input_vector(kInputVector,
+                            kInputVector + arraysize(kInputVector));
+
+  // 1. No 'all' in there.
+  StringVector output_vector = input_vector;
+  ClearVectorIfContainsMediaAll(&output_vector);
+  EXPECT_TRUE(input_vector == output_vector);
+
+  // 2. 'all' in there.
+  output_vector = input_vector;
+  output_vector.push_back(kAllMedia);
+  ClearVectorIfContainsMediaAll(&output_vector);
+  EXPECT_TRUE(output_vector.empty());
+}
+
+TEST_F(CssUtilTest, EliminateElementsNotIn) {
+  const char* kSmallVector[] = { "screen", "print", "alternate" };
+  StringVector small_vector(kSmallVector,
+                            kSmallVector + arraysize(kSmallVector));
+  std::sort(small_vector.begin(), small_vector.end());
+  const char* kLargeVector[] = { "aural", "visual", "screen",
+                                 "tactile", "print", "olfactory" };
+  StringVector large_vector(kLargeVector,
+                            kLargeVector + arraysize(kLargeVector));
+  std::sort(large_vector.begin(), large_vector.end());
+  const char* kIntersectVector[] = { "screen", "print" };
+  StringVector intersect_vector(kIntersectVector,
+                                kIntersectVector + arraysize(kIntersectVector));
+  std::sort(intersect_vector.begin(), intersect_vector.end());
+  StringVector empty_vector;
+  StringVector input_vector;
+
+  // 1. empty + empty => empty
+  EliminateElementsNotIn(&input_vector, empty_vector);
+  EXPECT_TRUE(input_vector.empty());
+
+  // 2. empty + non-empty => non-empty
+  EliminateElementsNotIn(&input_vector, small_vector);
+  EXPECT_TRUE(input_vector == small_vector);
+
+  // 3. non-empty + empty => non-empty
+  EliminateElementsNotIn(&input_vector, empty_vector);
+  EXPECT_TRUE(input_vector == small_vector);
+
+  // 4. non-empty + non-empty => items only in both
+  input_vector = small_vector;
+  EliminateElementsNotIn(&input_vector, large_vector);
+  EXPECT_TRUE(input_vector == intersect_vector);
+  input_vector = large_vector;
+  EliminateElementsNotIn(&input_vector, small_vector);
+  EXPECT_TRUE(input_vector == intersect_vector);
 }
 
 } // css_util
