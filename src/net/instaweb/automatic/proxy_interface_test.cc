@@ -822,6 +822,20 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
   EXPECT_EQ(kMinimizedCssContent, text);
 }
 
+TEST_F(ProxyInterfaceTest, DontRewriteDisallowedHtml) {
+  // Blacklisted URL should not be rewritten.
+  InitResponseHeaders("blacklist.html", kContentTypeHtml,
+                      CssLinkHref("a.css"), kHtmlCacheTimeSec * 2),
+  InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
+                      kHtmlCacheTimeSec * 2);
+
+  GoogleString text;
+  ResponseHeaders headers;
+  FetchFromProxy("blacklist.html", true, &text, &headers);
+  CheckHeaders(headers, kContentTypeHtml);
+  EXPECT_EQ(CssLinkHref("a.css"), text);
+}
+
 TEST_F(ProxyInterfaceTest, DontRewriteMislabeledAsHtml) {
   // Make sure we don't rewrite things that claim to be HTML, but aren't.
   GoogleString text;

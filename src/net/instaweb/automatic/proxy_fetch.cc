@@ -235,7 +235,7 @@ void ProxyFetch::AddPagespeedHeader() {
 
 void ProxyFetch::SetupForHtml() {
   const RewriteOptions* options = Options();
-  if (options->enabled()) {
+  if (options->enabled() && options->IsAllowed(url_)) {
     started_parse_ = StartParse();
     if (started_parse_) {
       pass_through_ = false;
