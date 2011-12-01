@@ -17,10 +17,14 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/htmlparse/html_lexer.h"
+
+#include <algorithm>
 #include <cctype>
 #include <cstdarg>
+#include <cstddef>  // for size_t
 #include <cstdio>
-#include <algorithm>
+#include <utility>  // for pair
+
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -98,7 +102,7 @@ const HtmlName::Keyword kLiteralTags[] = {
 
 // Statically declarable structure (no pre-main code needs to run) that
 // maps a keyword to the keywords that can close it.
-struct HtmlAutoCloseMapElement {
+struct HtmlTagMapElement {
   HtmlName::Keyword tag_to_close;
   int num_followers;
   HtmlName::Keyword* followers;
@@ -120,8 +124,11 @@ struct HtmlAutoCloseMapElement {
 #define ELTS0() 0, (HtmlName::Keyword[1]) {HtmlName::kNotAKeyword}
 #define ELTS1(a) 1, (HtmlName::Keyword[1]) {a}
 #define ELTS2(a, b) 2, (HtmlName::Keyword[2]) {a, b}
+#define ELTS3(a, b, c) 3, (HtmlName::Keyword[3]) {a, b, c}
+#define ELTS4(a, b, c, d) 4, (HtmlName::Keyword[4]) {a, b, c, d}
+#define ELTS5(a, b, c, d, e) 5, (HtmlName::Keyword[5]) {a, b, c, d, e}
 
-const HtmlAutoCloseMapElement kOptionallyClosedTags[] = {
+const HtmlTagMapElement kOptionallyClosedTags[] = {
   // A body element's end tag may be omitted if the body element is not
   // immediately followed by a comment.
   //
@@ -220,15 +227,59 @@ const HtmlAutoCloseMapElement kOptionallyClosedTags[] = {
   {HtmlName::kTr, ELTS1(HtmlName::kTr)},
 };
 
-const HtmlAutoCloseMapElement* FindAutoCloseElement(HtmlName::Keyword keyword) {
-  const HtmlAutoCloseMapElement* end = kOptionallyClosedTags +
+const HtmlTagMapElement* FindAutoCloseElement(HtmlName::Keyword keyword) {
+  const HtmlTagMapElement* end = kOptionallyClosedTags +
       arraysize(kOptionallyClosedTags);
-  const HtmlAutoCloseMapElement* p =
+  const HtmlTagMapElement* p =
       std::lower_bound(kOptionallyClosedTags, end, keyword);
   if ((p != end) && (p->tag_to_close == keyword)) {
     return p;
   }
   return NULL;
+}
+
+// In order to deal with mismatched close-tags, we walk up the stack
+// to auto-close elements.  For example: <div><span></div> auto-closes
+// the span, and we wind up with <div><span></span*></div> where the
+// "*" indicates that we will not re-serialize that close-tag; we'll
+// let the browser do what it thinks is right.  But we present our
+// C++ api with a balanced tag-view, and that </span*> is required.
+//
+// However when we auto-close we should avoid climbing too far up the
+// stack.  E.g. tr,td,thead,tbody must be underneath a table, and the
+// table must be closed.  An unclosed tr must not 'escape' outside
+// the table, to close an outer 'tr'.
+//
+// Similarly, formatting elements do not escape outside tables, rows,
+// or data.
+//
+// This list is not complete: we need to do a thorough pass through
+// the html spec to see what belongs here.
+const HtmlTagMapElement kContainedTags[] = {
+  {HtmlName::kB, ELTS3(HtmlName::kTable, HtmlName::kTd, HtmlName::kTr)},
+  {HtmlName::kEm, ELTS3(HtmlName::kTable, HtmlName::kTd, HtmlName::kTr)},
+  {HtmlName::kFont, ELTS3(HtmlName::kTable, HtmlName::kTd, HtmlName::kTr)},
+  {HtmlName::kI, ELTS3(HtmlName::kTable, HtmlName::kTd, HtmlName::kTr)},
+  {HtmlName::kTbody, ELTS1(HtmlName::kTable)},
+  {HtmlName::kTd, ELTS5(HtmlName::kTable, HtmlName::kTbody, HtmlName::kTfoot,
+                        HtmlName::kThead, HtmlName::kTr)},
+  {HtmlName::kTfoot, ELTS1(HtmlName::kTable)},
+  {HtmlName::kTh, ELTS1(HtmlName::kTable)},
+  {HtmlName::kThead, ELTS1(HtmlName::kTable)},
+  {HtmlName::kTr, ELTS4(HtmlName::kTable, HtmlName::kTbody, HtmlName::kTfoot,
+                        HtmlName::kThead)},
+};
+
+const bool IsContained(HtmlName::Keyword elt_being_closed,
+                       HtmlName::Keyword parent) {
+  const HtmlTagMapElement* end = kContainedTags + arraysize(kContainedTags);
+  const HtmlTagMapElement* p = std::lower_bound(kContainedTags, end,
+                                                elt_being_closed);
+  if ((p != end) && (p->tag_to_close == elt_being_closed)) {
+    return std::binary_search(p->followers, p->followers + p->num_followers,
+                              parent);
+  }
+  return false;
 }
 
 // We start our stack-iterations from 1, because we put a NULL into
@@ -241,6 +292,20 @@ const int kStartStack = 1;
 void CheckKeywordSetOrdering(const HtmlName::Keyword* keywords, int num) {
   for (int i = 1; i < num; ++i) {
     DCHECK_GT(keywords[i], keywords[i - 1]);
+  }
+}
+
+// Ensures that the 2-D map structure is ordered so that we can do binary
+// searches.
+void ValidateMap(const HtmlTagMapElement* p, int n) {
+  for (int i = 0; i < n; ++i) {
+    const HtmlTagMapElement& tag = p[i];
+    if (i > 0) {
+      DCHECK_GT(tag.tag_to_close, p[i - 1].tag_to_close);
+    }
+    for (int j = 1; j < tag.num_followers; ++j) {
+      DCHECK_GT(tag.followers[j], tag.followers[j - 1]) << tag.tag_to_close;
+    }
   }
 }
 #endif
@@ -274,16 +339,8 @@ HtmlLexer::HtmlLexer(HtmlParse* html_parse)
   CHECK_KEYWORD_SET_ORDERING(kImplicitlyClosedHtmlTags);
   CHECK_KEYWORD_SET_ORDERING(kNonBriefTerminatedTags);
   CHECK_KEYWORD_SET_ORDERING(kLiteralTags);
-
-  for (int i = 0, n = arraysize(kOptionallyClosedTags); i < n; ++i) {
-    const HtmlAutoCloseMapElement& tag = kOptionallyClosedTags[i];
-    if (i > 0) {
-      DCHECK_GT(tag.tag_to_close, kOptionallyClosedTags[i - 1].tag_to_close);
-    }
-    for (int j = 1; j < tag.num_followers; ++j) {
-      DCHECK_GT(tag.followers[j], tag.followers[j - 1]) << tag.tag_to_close;
-    }
-  }
+  ValidateMap(kOptionallyClosedTags, arraysize(kOptionallyClosedTags));
+  ValidateMap(kContainedTags, arraysize(kContainedTags));
 #endif
 }
 
@@ -755,7 +812,7 @@ void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
     // TODO(jmarantz): this is a hack -- we should make a more elegant
     // structure of open/new tag combinations that we should auto-close.
     HtmlName::Keyword open_tag = open_element->keyword();
-    const HtmlAutoCloseMapElement* p = FindAutoCloseElement(open_tag);
+    const HtmlTagMapElement* p = FindAutoCloseElement(open_tag);
     if (p != NULL) {
       HtmlName::Keyword next_keyword = next_tag.keyword();
       if (std::binary_search(p->followers, p->followers + p->num_followers,
@@ -1015,9 +1072,8 @@ void HtmlLexer::EvalAttrValSq(char c) {
 }
 
 void HtmlLexer::EmitTagClose(HtmlElement::CloseStyle close_style) {
-  // TODO(jmarantz): consider clearing the tag-bag when the parent
-  // of a forgotten close element is closed.
   TagBag::iterator p = missing_close_tag_bag_.find(token_);
+  bool emit_fake_close_as_a_characters_literal = false;
   if (p != missing_close_tag_bag_.end()) {
     int implicit_closes_for_this_tag = p->second - 1;
     if (implicit_closes_for_this_tag == 0) {
@@ -1025,6 +1081,8 @@ void HtmlLexer::EmitTagClose(HtmlElement::CloseStyle close_style) {
     } else {
       p->second = implicit_closes_for_this_tag;
     }
+    emit_fake_close_as_a_characters_literal = true;
+
     SyntaxError("Close-tag `%s', appears to be misplaced", token_.c_str());
   } else {
     HtmlElement* element = PopElementMatchingTag(token_);
@@ -1034,8 +1092,20 @@ void HtmlLexer::EmitTagClose(HtmlElement::CloseStyle close_style) {
     } else {
       SyntaxError("Unexpected close-tag `%s', no tags are open",
                   token_.c_str());
-      EmitLiteral();
+      emit_fake_close_as_a_characters_literal = true;
     }
+  }
+
+  if (emit_fake_close_as_a_characters_literal) {
+    // Structurally the close-tag we just parsed is not open.  This
+    // might happen because the HTML structure constraint forced this
+    // tag to be closed already, but now we finally see a literal
+    // close.  Note that the earlier close will be structural in the
+    // API, but invisible because it will be an AUTO_CLOSE.  Now that
+    // we see the *real* close, we don't want to eat it because we
+    // want to be byte-accurate to the input.  So we emit the "</tag>"
+    // as a Characters literal.
+    EmitLiteral();
   }
 
   literal_.clear();
@@ -1141,34 +1211,52 @@ HtmlElement* HtmlLexer::PopElement() {
 HtmlElement* HtmlLexer::PopElementMatchingTag(const StringPiece& tag) {
   HtmlElement* element = NULL;
 
+  HtmlName::Keyword keyword = HtmlName::Lookup(tag);
+  int close_index = element_stack_.size();
+
   // Search the stack from top to bottom.
   for (int i = element_stack_.size() - 1; i >= kStartStack; --i) {
     element = element_stack_[i];
 
-    // In tag-matching we will do case-insensitive comparisons, despite
-    // the fact that we have a keywords enum.  Note that the symbol
-    // table is case sensitive.
-    if (StringCaseEqual(element->name_str(), tag)) {
-      // Emit warnings for the tags we are skipping.  We have to do
-      // this in reverse order so that we maintain stack discipline.
-      for (int j = element_stack_.size() - 1; j > i; --j) {
-        HtmlElement* skipped = element_stack_[j];
-        // In fact, should we actually perform this optimization ourselves
-        // in a filter to omit closing tags that can be inferred?
-        if (!IsOptionallyClosedTag(skipped->keyword())) {
-          html_parse_->Info(id_.c_str(), skipped->begin_line_number(),
-                            "Unclosed element `%s'", skipped->name_str());
-          ++missing_close_tag_bag_[skipped->name_str()];
-        }
-        // Before closing the skipped element, pop it off the stack.  Otherwise,
-        // the parent redundancy check in HtmlParse::AddEvent will fail.
-        element_stack_.resize(j);
-        html_parse_->CloseElement(skipped, HtmlElement::UNCLOSED, line_);
-      }
-      element_stack_.resize(i);
+    // Stop when we get to an 'owner' of this element.
+    if (IsContained(keyword, element->keyword())) {
+      close_index = i + 1;
+      missing_close_tag_bag_.clear();
+      break;
+    } else if (StringCaseEqual(element->name_str(), tag)) {
+      // In tag-matching we will do case-insensitive comparisons, despite
+      // the fact that we have a keywords enum.  Note that the symbol
+      // table is case sensitive.
+      close_index = i;
       break;
     }
+  }
+
+  if (close_index == static_cast<int>(element_stack_.size())) {
     element = NULL;
+  } else {
+    element = element_stack_[close_index];
+
+    // Emit warnings for the tags we are skipping.  We have to do
+    // this in reverse order so that we maintain stack discipline.
+    //
+    // Note that the element at close_index does not get closed here,
+    // but gets returned and closed at the call-site.
+    for (int j = element_stack_.size() - 1; j > close_index; --j) {
+      HtmlElement* skipped = element_stack_[j];
+      // In fact, should we actually perform this optimization ourselves
+      // in a filter to omit closing tags that can be inferred?
+      if (!IsOptionallyClosedTag(skipped->keyword())) {
+        html_parse_->Info(id_.c_str(), skipped->begin_line_number(),
+                          "Unclosed element `%s'", skipped->name_str());
+        ++missing_close_tag_bag_[skipped->name_str()];
+      }
+      // Before closing the skipped element, pop it off the stack.  Otherwise,
+      // the parent redundancy check in HtmlParse::AddEvent will fail.
+      element_stack_.resize(j);
+      html_parse_->CloseElement(skipped, HtmlElement::UNCLOSED, line_);
+    }
+    element_stack_.resize(close_index);
   }
   return element;
 }

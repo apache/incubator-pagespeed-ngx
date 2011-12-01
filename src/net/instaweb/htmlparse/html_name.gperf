@@ -36,6 +36,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "autocomplete",           HtmlName::kAutocomplete
 "autofocus",              HtmlName::kAutofocus
 "autoplay",               HtmlName::kAutoplay
+"b",                      HtmlName::kB
 "base",                   HtmlName::kBase
 "blockquote",             HtmlName::kBlockquote
 "body",                   HtmlName::kBody
@@ -62,9 +63,11 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "div",                    HtmlName::kDiv
 "dl",                     HtmlName::kDl
 "dt",                     HtmlName::kDt
+"em",                     HtmlName::kEm
 "enctype",                HtmlName::kEnctype
 "event",                  HtmlName::kEvent
 "fieldset",               HtmlName::kFieldset
+"font",                   HtmlName::kFont
 "footer",                 HtmlName::kFooter
 "for",                    HtmlName::kFor
 "form",                   HtmlName::kForm
@@ -85,6 +88,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "href",                   HtmlName::kHref
 "html",                   HtmlName::kHtml
 "http-equiv",             HtmlName::kHttpEquiv
+"i",                      HtmlName::kI
 "id",                     HtmlName::kId
 "iframe",                 HtmlName::kIframe
 "img",                    HtmlName::kImg

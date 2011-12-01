@@ -172,6 +172,12 @@ HtmlElement* HtmlParse::NewElement(HtmlElement* parent, const HtmlName& name) {
   HtmlElement* element =
       new (&nodes_) HtmlElement(parent, name, queue_.end(), queue_.end());
   element->set_sequence(sequence_++);
+  if (IsOptionallyClosedTag(name.keyword())) {
+    // When we programmatically insert HTML nodes we should default to
+    // including an explicit close-tag if they are optionally closed
+    // such as <html>, <body>, and <p>.
+    element->set_close_style(HtmlElement::EXPLICIT_CLOSE);
+  }
   return element;
 }
 
@@ -743,6 +749,10 @@ void HtmlParse::DebugPrintQueue() {
 
 bool HtmlParse::IsImplicitlyClosedTag(HtmlName::Keyword keyword) const {
   return lexer_->IsImplicitlyClosedTag(keyword);
+}
+
+bool HtmlParse::IsOptionallyClosedTag(HtmlName::Keyword keyword) const {
+  return lexer_->IsOptionallyClosedTag(keyword);
 }
 
 bool HtmlParse::TagAllowsBriefTermination(HtmlName::Keyword keyword) const {

@@ -19,6 +19,7 @@
 // Unit-test the html reader/writer to ensure that a few tricky
 // constructs come through without corruption.
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/html_testing_peer.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
@@ -26,11 +27,11 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/htmlparse/public/explicit_close_tag.h"
-#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
@@ -353,14 +354,71 @@ TEST_F(HtmlParseTest, AutoClose) {
 
   ExpectAutoClose("tr", "tr");
   ExpectNoAutoClose("tr", "td");
+
+  // http://www.w3.org/TR/html5/the-end.html#misnested-tags:-b-i-b-i
 }
 
-TEST_F(HtmlParseTest, UnbalancedMarkup) {
+namespace {
+
+class AnnotatingHtmlFilter : public EmptyHtmlFilter {
+ public:
+  AnnotatingHtmlFilter() {}
+  virtual ~AnnotatingHtmlFilter() {}
+
+  virtual void StartElement(HtmlElement* element) {
+    StrAppend(&buffer_, " +", element->name_str());
+  }
+  virtual void EndElement(HtmlElement* element) {
+    StrAppend(&buffer_, " -", element->name_str());
+    switch (element->close_style()) {
+      case HtmlElement::AUTO_CLOSE:      buffer_ += "(a)"; break;
+      case HtmlElement::IMPLICIT_CLOSE:  buffer_ += "(i)"; break;
+      case HtmlElement::EXPLICIT_CLOSE:  buffer_ += "(e)"; break;
+      case HtmlElement::BRIEF_CLOSE:     buffer_ += "(b)"; break;
+      case HtmlElement::UNCLOSED:        buffer_ += "(u)"; break;
+    }
+  }
+  virtual void Characters(HtmlCharactersNode* characters) {
+    StrAppend(&buffer_, " '", characters->contents(), "'");
+  }
+  virtual const char* Name() const { return "AnnotatingHtmlFilter"; }
+
+  GoogleString buffer() const { return buffer_; }
+
+ private:
+  GoogleString buffer_;
+};
+
+}  // namespace
+
+TEST_F(HtmlParseTestNoBody, UnbalancedMarkup) {
+  AnnotatingHtmlFilter annotation;
+  html_parse_.AddFilter(&annotation);
+
+  // The second 'tr' closes the first one, and our HtmlWriter will not
+  // implicitly close 'tr' because IsImplicitlyClosedTag is false, so
+  // the markup is changed to add the missing tr.
+  ValidateNoChanges("unbalanced_markup",
+                    "<font><tr><i><font></i></font><tr></font>");
+
+  // We use this (hopefully) self-explanatory annotation format to indicate
+  // what's going on int he parse.
+  EXPECT_EQ(" +html '\n' +font +tr +i +font -font(u) -i(e) '</font>' -tr(a) +tr"
+            " '</font>\n' -tr(u) -font(u) -html(e)",
+            annotation.buffer());
+}
+
+TEST_F(HtmlParseTest, StrayCloseTrNonExplicit) {
+  ValidateNoChanges("stray_tr",
+                    "<table><tr><table></tr></table></tr></table>");
+}
+
+TEST_F(HtmlParseTest, StrayCloseTrExplicit) {
+  // Now let's see what this looks like with explicit tags.
   ExplicitCloseTag close_tags;
   html_parse_.AddFilter(&close_tags);
-  ValidateExpected("unbalanced_markup",
-                   "<font><tr><i><font></i></font><tr></font>",
-                   "<font><tr><i><font></font></i></tr><tr></tr></font>");
+  ValidateNoChanges("stray_tr_explicit",
+                    "<table><tr><table></tr></table></tr></table>");
 }
 
 TEST_F(HtmlParseTest, MakeName) {

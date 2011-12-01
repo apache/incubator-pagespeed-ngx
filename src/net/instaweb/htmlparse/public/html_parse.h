@@ -21,7 +21,9 @@
 
 #include <cstdarg>
 #include <cstddef>
+#include <set>
 #include <vector>
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -241,8 +243,14 @@ class HtmlParse {
   // Implementation helper with detailed knowledge of html parsing libraries
   friend class HtmlLexer;
 
-  // Determines whether a tag should be terminated in HTML.
+  // Determines whether a tag should be terminated in HTML, e.g. <meta ..>.
+  // We do not expect to see a close-tag for meta and should never insert one.
   bool IsImplicitlyClosedTag(HtmlName::Keyword keyword) const;
+
+  // An optionally closed tag ranges from <p>, which is typically not closed,
+  // but we infer the closing from context.  Also consider <html>, which usually
+  // is closed but not always.  E.g. www.google.com does not close its html tag.
+  bool IsOptionallyClosedTag(HtmlName::Keyword keyword) const;
 
   // Determines whether a tag allows brief termination in HTML, e.g. <tag/>
   bool TagAllowsBriefTermination(HtmlName::Keyword keyword) const;

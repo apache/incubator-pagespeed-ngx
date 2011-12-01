@@ -132,7 +132,16 @@ HtmlElement::CloseStyle HtmlWriterFilter::GetCloseStyle(HtmlElement* element) {
   HtmlElement::CloseStyle style = element->close_style();
   if (style == HtmlElement::AUTO_CLOSE) {
     HtmlName::Keyword keyword = element->keyword();
-    if (html_parse_->IsImplicitlyClosedTag(keyword)) {
+
+    // Avoid writing closing-tag when original HTML was <li>1<li>2.  We want
+    // the correct structure in our API but want to avoid spewing it in a
+    // more verbose form than the original HTML had when the browser will
+    // interpret it correctly as is.
+    //
+    // Note that programatically inserted tags that for which
+    // IsOptionallyClosedTag is true will be explicitly closed by default.
+    if (html_parse_->IsImplicitlyClosedTag(keyword) ||
+        html_parse_->IsOptionallyClosedTag(keyword)) {
       style = HtmlElement::IMPLICIT_CLOSE;
     } else if (html_parse_->TagAllowsBriefTermination(keyword)) {
       style = HtmlElement::BRIEF_CLOSE;

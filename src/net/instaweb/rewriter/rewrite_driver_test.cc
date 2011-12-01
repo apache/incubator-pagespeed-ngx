@@ -599,10 +599,11 @@ class RewriteDriverInhibitTest : public RewriteDriverTest {
     SetupWriter();
     ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
 
-    // Set up a document: <html><body><p/></body></html>.
+    // Set up a document: <html><body><p></p></body></html>.
     html_ = rewrite_driver()->NewElement(NULL, HtmlName::kHtml);
     body_ = rewrite_driver()->NewElement(html_, HtmlName::kBody);
     par_ = rewrite_driver()->NewElement(body_, HtmlName::kP);
+    par_->set_close_style(HtmlElement::EXPLICIT_CLOSE);
     HtmlCharactersNode* start = rewrite_driver()->NewCharactersNode(NULL, "");
     HtmlTestingPeer::AddEvent(rewrite_driver(),
                               new HtmlCharactersEvent(start, -1));
@@ -641,13 +642,13 @@ TEST_P(RewriteDriverInhibitTest, InhibitEndElement) {
 
   // Verify that we do not flush </body> or beyond, even on a second flush.
   rewrite_driver()->Flush();
-  EXPECT_EQ("<html><body><p/>", output_buffer_);
+  EXPECT_EQ("<html><body><p></p>", output_buffer_);
   rewrite_driver()->Flush();
-  EXPECT_EQ("<html><body><p/>", output_buffer_);
+  EXPECT_EQ("<html><body><p></p>", output_buffer_);
 
   // Verify that we flush the entire document once </body> is uninhibited.
   UninhibitEndElementAndWait(body_);
-  EXPECT_EQ("<html><body><p/></body></html>", output_buffer_);
+  EXPECT_EQ("<html><body><p></p></body></html>", output_buffer_);
 }
 
 // Tests that we can inhibit and uninhibit the flush in multiple places.
@@ -662,15 +663,15 @@ TEST_P(RewriteDriverInhibitTest, MultipleInhibitEndElement) {
 
   // Verify that we will not flush </body> or beyond.
   rewrite_driver()->Flush();
-  EXPECT_EQ("<html><body><p/>", output_buffer_);
+  EXPECT_EQ("<html><body><p></p>", output_buffer_);
 
   // Uninhibit </body> and verify that we flush it.
   UninhibitEndElementAndWait(body_);
-  EXPECT_EQ("<html><body><p/></body>", output_buffer_);
+  EXPECT_EQ("<html><body><p></p></body>", output_buffer_);
 
   // Verify that we will flush the entire document once </html> is uninhibited.
   UninhibitEndElementAndWait(html_);
-  EXPECT_EQ("<html><body><p/></body></html>", output_buffer_);
+  EXPECT_EQ("<html><body><p></p></body></html>", output_buffer_);
 }
 
 // Tests that FinishParseAsync respects inhibits.
@@ -687,7 +688,7 @@ TEST_P(RewriteDriverInhibitTest, InhibitWithFinishParse) {
 
   // Busy wait until the resulting async flush completes.
   mock_scheduler()->AwaitQuiescence();
-  EXPECT_EQ("<html><body><p/>", output_buffer_);
+  EXPECT_EQ("<html><body><p></p>", output_buffer_);
 
   // Uninhibit </body> and wait for FinishParseAsync to call back.
   rewrite_driver()->UninhibitEndElement(body_);
@@ -695,7 +696,7 @@ TEST_P(RewriteDriverInhibitTest, InhibitWithFinishParse) {
   wait.Block();
 
   // Verify that we flush the entire document once </body> is uninhibited.
-  EXPECT_EQ("<html><body><p/></body></html>", output_buffer_);
+  EXPECT_EQ("<html><body><p></p></body></html>", output_buffer_);
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
