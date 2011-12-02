@@ -47,14 +47,13 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/url_escaper.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/parser.h"
 
@@ -473,7 +472,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
   } else if (element->keyword() == HtmlName::kLink &&
              driver_->IsRewritable(element)) {
     StringPiece relation(element->AttributeValue(HtmlName::kRel));
-    if (relation == kStylesheet) {
+    if (StringCaseEqual(relation, kStylesheet)) {
       HtmlElement::Attribute* element_href = element->FindAttribute(
           HtmlName::kHref);
       if (element_href != NULL) {

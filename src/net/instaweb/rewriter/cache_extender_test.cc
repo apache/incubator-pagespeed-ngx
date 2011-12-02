@@ -135,6 +135,16 @@ TEST_P(CacheExtenderTest, DoExtend) {
   }
 }
 
+TEST_P(CacheExtenderTest, DoExtendLinkRelCaseInsensitive) {
+  InitTest(kShortTtlSec);
+  const char kMixedCaseTemplate[] = "<link rel=StyleSheet href='%s'>";
+  ValidateExpected(
+      "extend_ci",
+      StringPrintf(kMixedCaseTemplate, kCssFile),
+      StringPrintf(kMixedCaseTemplate,
+                   Encode(kCssPath, "ce", "0", kCssTail, "css").c_str()));
+}
+
 TEST_P(CacheExtenderTest, DoExtendForImagesOnly) {
   AddFilter(RewriteOptions::kExtendCacheImages);
   InitResponseHeaders(kCssFile, kContentTypeCss, kCssData, kShortTtlSec);

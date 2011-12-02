@@ -111,6 +111,22 @@ TEST_F(CssTagScannerTest, TestFull) {
   // TODO(jmarantz): test removal of 'rel' and 'href' attributes
 }
 
+TEST_F(CssTagScannerTest, RelCaseInsensitive) {
+  // The rel attribute is case-insensitive.
+  HtmlParse html_parse(&message_handler_);
+  HtmlElement* link = html_parse.NewElement(NULL, HtmlName::kLink);
+  const char kUrl[] = "http://www.myhost.com/static/mycss.css";
+  html_parse.AddAttribute(link, HtmlName::kRel, "StyleSheet");
+  html_parse.AddAttribute(link, HtmlName::kHref, kUrl);
+  HtmlElement::Attribute* href = NULL;
+  const char* media = NULL;
+  CssTagScanner scanner(&html_parse);
+
+  EXPECT_TRUE(scanner.ParseCssElement(link, &href, &media));
+  EXPECT_EQ("", GoogleString(media));
+  EXPECT_EQ(kUrl, GoogleString(href->value()));
+}
+
 TEST_F(CssTagScannerTest, TestHasImport) {
   // Should work.
   EXPECT_TRUE(CssTagScanner::HasImport("@import", &message_handler_));

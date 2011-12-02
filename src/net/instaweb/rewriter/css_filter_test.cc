@@ -56,6 +56,17 @@ TEST_P(CssFilterTest, RewriteCss404) {
   ValidateNoChanges("404", "<link rel=stylesheet href='404.css'>");
 }
 
+TEST_P(CssFilterTest, LinkHrefCaseInsensitive) {
+  // Make sure we check rel value case insensitively.
+  // http://code.google.com/p/modpagespeed/issues/detail?id=354
+  InitResponseHeaders("a.css", kContentTypeCss, kInputStyle, 100);
+  ValidateExpected(
+      "case_insensitive", "<link rel=StyleSheet href=a.css>",
+      StrCat("<link rel=StyleSheet href=",
+             ExpectedUrlForCss("a", kOutputStyle),
+             ">"));
+}
+
 TEST_P(CssFilterTest, UrlTooLong) {
   // Make the filename maximum size, so we cannot rewrite it.
   // -4 because .css will be appended.

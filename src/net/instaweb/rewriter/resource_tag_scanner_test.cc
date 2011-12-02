@@ -80,8 +80,9 @@ TEST_F(ResourceTagScannerTest, FindTags) {
       "<link rel=\"stylesheet\" type=\"text/css\" href=\"nomedia.css\">\n"
       "<link rel=stylesheet type=text/css href=id.css id=id>\n"
       "<link rel=stylesheet href=no_type.style>\n"
-      "<link rel=stylesheet type=text/css href=media.css media=print>");
-  ASSERT_EQ(static_cast<size_t>(7), resources.size());
+      "<link rel=stylesheet type=text/css href=media.css media=print>"
+      "<link rel=StyleSheet href='case.css'>");
+  ASSERT_EQ(static_cast<size_t>(8), resources.size());
   EXPECT_EQ(GoogleString("myscript.js"), resources[0]);
   EXPECT_EQ(GoogleString("action.as"), resources[1]);
   EXPECT_EQ(GoogleString("image.jpg"), resources[2]);
@@ -89,6 +90,7 @@ TEST_F(ResourceTagScannerTest, FindTags) {
   EXPECT_EQ(GoogleString("id.css"), resources[4]);
   EXPECT_EQ(GoogleString("no_type.style"), resources[5]);
   EXPECT_EQ(GoogleString("media.css"), resources[6]);
+  EXPECT_EQ(GoogleString("case.css"), resources[7]);
 }
 
 }  // namespace net_instaweb
