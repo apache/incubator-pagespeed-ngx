@@ -21,7 +21,6 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
@@ -95,11 +94,10 @@ bool CssMinify::AbsolutifyImports(Css::Stylesheet* stylesheet,
 // URLs causes IE8 to interpret the backslash as a forward slash.
 //
 GoogleString CssMinify::EscapeString(const StringPiece& src, bool in_url) {
-  const int dest_length = src.size() * 2 + 1;  // Maximum possible expansion
-  scoped_array<char> dest(new char[dest_length]);
+  GoogleString dest;
+  dest.reserve(src.size());  // Minimum possible expansion
 
   const char* src_end = src.data() + src.size();
-  int used = 0;
 
   for (const char* p = src.data(); p < src_end; p++) {
     switch (*p) {
@@ -110,26 +108,31 @@ GoogleString CssMinify::EscapeString(const StringPiece& src, bool in_url) {
       // Note: Hex escapes in CSS must end in space.
       // See: http://www.w3.org/TR/CSS2/syndata.html#characters
       case '\n':
-        dest[used++] = '\\'; dest[used++] = 'A'; dest[used++] = ' '; break;
+        dest += "\\A ";
+        break;
       case '\r':
-        dest[used++] = '\\'; dest[used++] = 'D'; dest[used++] = ' '; break;
+        dest += "\\D ";
+        break;
       case '\t':
-        dest[used++] = '\\'; dest[used++] = '9'; dest[used++] = ' '; break;
+        dest += "\\9 ";
+        break;
       case ',':
         if (in_url) {
-          dest[used++] = *p;
+          dest.push_back(*p);
           break;
         }
         // fall through -- we are escaping commas for non-URLs.
       case '\"': case '\'': case '\\': case '(': case ')':
-        dest[used++] = '\\';
-        dest[used++] = *p;
+        dest.push_back('\\');
+        dest.push_back(*p);
           break;
-      default: dest[used++] = *p; break;
+      default:
+        dest.push_back(*p);
+        break;
     }
   }
 
-  return GoogleString(dest.get(), used);
+  return dest;
 }
 
 CssMinify::CssMinify(const GoogleUrl& base_url,
