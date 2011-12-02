@@ -1422,8 +1422,8 @@ Declarations* Parser::ParseRawDeclarations() {
         // this declaration correctly. This is saved so that it can be
         // serialized back out in case it was actually meaningful even though
         // we could not understand it.
-        StringPiece text_in_original_buffer(decl_start, in_ - decl_start);
-        declarations->push_back(new Declaration(text_in_original_buffer));
+        StringPiece bytes_in_original_buffer(decl_start, in_ - decl_start);
+        declarations->push_back(new Declaration(bytes_in_original_buffer));
         // All errors that occurred sinse we started this declaration are
         // demoted to unparseable sections now that we've saved the dummy
         // element.
@@ -1749,20 +1749,41 @@ Ruleset* Parser::ParseRuleset() {
   // closing }. Then discard the whole ruleset if necessary. This allows the
   // parser to make progress anyway.
   bool success = true;
+  const char* start_pos = in_;
+  const uint64 start_errors_seen_mask = errors_seen_mask_;
 
   scoped_ptr<Ruleset> ruleset(new Ruleset());
   scoped_ptr<Selectors> selectors(ParseSelectors());
 
-  if (Done())
+  if (Done()) {
+    ReportParsingError(kSelectorError,
+                       "Selectors without declarations at end of doc.");
     return NULL;
+  }
+
+  // In preservation_mode_ we want to use verbatim text whenever we got a
+  // parsing error during selector parsing, so clear the partial parse here.
+  if (preservation_mode_ && (start_errors_seen_mask != errors_seen_mask_)) {
+    selectors.reset(NULL);
+  }
 
   if (selectors.get() == NULL) {
-    // http://www.w3.org/TR/CSS21/syndata.html#rule-sets
-    // When a user agent can't parse the selector (i.e., it is not
-    // valid CSS 2.1), it must ignore the declaration block as
-    // well.
-    success = false;
     ReportParsingError(kSelectorError, "Failed to parse selector");
+    if (preservation_mode_) {
+      selectors.reset(new Selectors(StringPiece(start_pos, in_ - start_pos)));
+      ruleset->set_selectors(selectors.release());
+      // All errors that occurred sinse we started this declaration are
+      // demoted to unparseable sections now that we've saved the dummy
+      // element.
+      unparseable_sections_seen_mask_ |= errors_seen_mask_;
+      errors_seen_mask_ = start_errors_seen_mask;
+    } else {
+      // http://www.w3.org/TR/CSS21/syndata.html#rule-sets
+      // When a user agent can't parse the selector (i.e., it is not
+      // valid CSS 2.1), it must ignore the declaration block as
+      // well.
+      success = false;
+    }
   } else {
     ruleset->set_selectors(selectors.release());
   }

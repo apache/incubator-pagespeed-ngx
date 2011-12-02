@@ -461,6 +461,9 @@ class Parser {
   // ruleset, including the closing '}'. Return NULL if the parsing fails.
   // However, the parser would consume anything up to the closing '}', if any,
   // even if it fails somehow in the middle, per CSS spec.
+  //
+  // Note: In preservation mode, a ruleset may be returned even if selectors
+  // could not be parsed. If this happens the selectors.is_dummy() will be true.
   Ruleset* ParseRuleset();
 
   //
@@ -556,9 +559,9 @@ class Declaration {
   }
   // Constructor for dummy declaration used to pass through unparseable
   // declaration text.
-  explicit Declaration(const StringPiece& text_in_original_buffer)
+  explicit Declaration(const StringPiece& bytes_in_original_buffer)
       : property_(Property::UNPARSEABLE), important_(false),
-        text_in_original_buffer_(text_in_original_buffer) {}
+        bytes_in_original_buffer_(bytes_in_original_buffer) {}
 
   // accessors
   Property property() const { return property_; }
@@ -567,8 +570,8 @@ class Declaration {
 
   // Note: This is only valid as long as original buffer is.
   // Note: May be invalid UTF8.
-  StringPiece text_in_original_buffer() const {
-    return text_in_original_buffer_;
+  StringPiece bytes_in_original_buffer() const {
+    return bytes_in_original_buffer_;
   }
 
   // convenience accessors
@@ -594,7 +597,7 @@ class Declaration {
   // Points into CSS buffer (so it is only valid as long as that buffer is).
   // TODO(sligocki): We may want to store verbatim text for all declarations
   // to preserve the details of the original text.
-  StringPiece text_in_original_buffer_;
+  StringPiece bytes_in_original_buffer_;
 
   DISALLOW_COPY_AND_ASSIGN(Declaration);
 };

@@ -1565,7 +1565,7 @@ TEST_F(ParserTest, VerbatimDeclarations) {
   ASSERT_EQ(3, declarations->size());
   EXPECT_EQ(Property::COLOR, declarations->at(0)->prop());
   EXPECT_EQ(Property::UNPARSEABLE, declarations->at(1)->prop());
-  EXPECT_EQ("z-i ndex: 42", declarations->at(1)->text_in_original_buffer());
+  EXPECT_EQ("z-i ndex: 42", declarations->at(1)->bytes_in_original_buffer());
   EXPECT_EQ(Property::WIDTH, declarations->at(2)->prop());
   EXPECT_EQ("color: #ff0000; /* Unparsed declaration: */ z-i ndex: 42; "
             "width: 1px", declarations->ToString());

@@ -141,8 +141,6 @@ TEST_P(CssFilterTest, NoRewriteParseError) {
   // From http://www.baidu.com/
   ValidateFailParse("non_unicode_baidu",
                     "#lk span {font:14px \"\xCB\xCE\xCC\xE5\"}");
-
-  ValidateFailParse("bad_char_in_selector", ".bold: { font-weight: bold }");
 }
 
 // Make sure bad requests do not corrupt our extension.
@@ -211,6 +209,9 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     // and http://www.webkit.org/blog/138/css-animation/
     "a{-webkit-transition-property:opacity,-webkit-transform }",
 
+    // Parameterized pseudo-selector.
+    "div:nth-child(1n) {color:red}",
+
     // IE8 Hack \0/
     // See http://dimox.net/personal-css-hacks-for-ie6-ie7-ie8/
     "a{color: red\\0/ ;background-color:green}",
@@ -238,6 +239,16 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     "a{1font-family:Tahoma, Arial, sans-serif }",
     "a{text align:center }",
 
+    // kSelectorError from Alexa-100
+    // Selector list ends in comma
+    ".hp .col ul, {display:inline}",
+    // Parameters for pseudoclass
+    "body:not(:target) {color:red}",
+    "a:not(.button):hover {color:red}",
+    // Typos
+    "# new_results_notification{font-size:12px}",
+    ".bold: {font-weight:bold}",
+
     // kFunctionError from Alexa-100
     // Expression
     "a{_top: expression(0+((e=document.documen))) }",
@@ -261,22 +272,16 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=50
     "@media screen and (max-width: 290px) { a { color:red } }",
 
-    // Parameterized pseudo-selector.
-    "div:nth-child(1n) { color: red; }",
-
     // Things from Alexa-100 that we get parsing errors for. Most are illegal
     // syntax/typos. Some are CSS3 constructs.
 
     // kSelectorError from Alexa-100
-    // Selector list ends in comma
-    ".hp .col ul, { display: inline }",
-    // Parameters for pseudoclass
-    "body:not(:target) { color: red }",
-    "a:not(.button):hover { color: red }",
     // Typos
-    "# new_results_notification{font-size:12px;}",
+    // Note: These fail because of the if (Done()) return NULL call in
+    // ParseRuleset
     "a { color: red }\n */",
     "a { color: red }\n // Comment",
+    "a { color: red } .foo",
 
     // Should fail (bad syntax):
     "}}",
@@ -679,6 +684,87 @@ TEST_P(CssFilterTest, ComplexCssTest) {
       "background-repeat;no-repeat}"
       "td.pop_content .dialog_body{padding:10px;border-bottom:1px# solid #ccc}"
     },
+
+    // kSelectorError from Alexa-100
+    // Selector list ends in comma
+    { ".hp .col ul, {\n"
+      "  display: inline !important;\n"
+      "  zoom: 1;\n"
+      "  vertical-align: top;\n"
+      "  margin-left: -10px;\n"
+      "  position: relative;\n"
+      "}\n",
+
+      ".hp .col ul, {display:inline!important;zoom:1;vertical-align:top;"
+      "margin-left:-10px;position:relative}" },
+
+    // Invalid comment type ("//").
+    { ".ciuNoteEditBox .topLeft\n"
+      "{\n"
+      "        background-position:left top;\n"
+      "\tbackground-repeat:no-repeat;\n"
+      "\tfont-size:4px;\n"
+      "\t\n"
+      "\t\n"
+      "\tpadding: 0px 0px 0px 1px; \n"
+      "\t\n"
+      "\twidth:7px;\n"
+      "}\n"
+      "\n"
+      "// css hack to make font-size 0px in only ff2.0 and older "
+      "(http://pornel.net/firefoxhack)\n"
+      ".ciuNoteBox .topLeft,\n"
+      ".ciuNoteEditBox .topLeft, x:-moz-any-link {\n"
+      "\tfont-size: 0px;\n"
+      "}\n",
+
+      ".ciuNoteEditBox .topLeft{background-position:left top;"
+      "background-repeat:no-repeat;font-size:4px;padding:0px 0px 0px 1px;"
+      "width:7px}// css hack to make font-size 0px in only ff2.0 and older "
+      "(http://pornel.net/firefoxhack)\n"
+      ".ciuNoteBox .topLeft,\n"
+      ".ciuNoteEditBox .topLeft, x:-moz-any-link {font-size:0px}" },
+
+    // Parameters for pseudoclass
+    { "/* Opera（＋Firefox、Safari） */\n"
+      "body:not(:target) .sh_heading_main_b, body:not(:target) "
+      ".sh_heading_main_b_wide{\n"
+      "  background:url(\"data:image/png;base64,"
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAoCAYAAAA/tpB3AAAAQ0lEQVR42k3EMQLAIAg"
+      "EMP//WkRQVMB2YLgMae/XMhOLCMzdq3svds7B9t6VmWFrLWzOWakqJiLYGKNiZqz3jh"
+      "HR+wBZbpvd95zR6QAAAABJRU5ErkJggg==\") repeat-x left top;\n"
+      "}\n"
+      "/* Firefox（＋Google Chrome2） */\n"
+      "html:not([lang*=""]) .sh_heading_main_b,\n"
+      "html:not([lang*=""]) .sh_heading_main_b_wide{\n"
+      "\t/* For Mozilla/Gecko (Firefox etc) */\n"
+      "\tbackground:-moz-linear-gradient(top, #FFFFFF, #F0F0F0);\n"
+      "\t/* For WebKit (Safari, Google Chrome etc) */\n"
+      "\tbackground:-webkit-gradient(linear, left top, left bottom, "
+      "from(#FFFFFF), to(#F0F0F0));\n"
+      "}\n"
+      "/* Safari */\n"
+      "html:not(:only-child:only-child) .sh_heading_main_b,\n"
+      "html:not(:only-child:only-child) .sh_heading_main_b_wide{\n"
+      "\t/* For WebKit (Safari, Google Chrome etc) */\n"
+      "\tbackground: -webkit-gradient(linear, left top, left bottom, "
+      "from(#FFFFFF), to(#F0F0F0));\n"
+      "}\n",
+
+      "body:not(:target) .sh_heading_main_b, body:not(:target) "
+      ".sh_heading_main_b_wide{background:url(data:image/png;base64,"
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAAoCAYAAAA/tpB3AAAAQ0lEQVR42k3EMQLAIAg"
+      "EMP//WkRQVMB2YLgMae/XMhOLCMzdq3svds7B9t6VmWFrLWzOWakqJiLYGKNiZqz3jh"
+      "HR+wBZbpvd95zR6QAAAABJRU5ErkJggg==) repeat-x left top}"
+      "html:not([lang*=""]) .sh_heading_main_b,\n"
+      "html:not([lang*=""]) .sh_heading_main_b_wide{"
+      "background:-moz-linear-gradient(top,#fff,#f0f0f0);"
+      "background:-webkit-gradient(linear,left top,left bottom,"
+      "from(#fff),to(#f0f0f0))}"
+      "html:not(:only-child:only-child) .sh_heading_main_b,\n"
+      "html:not(:only-child:only-child) .sh_heading_main_b_wide{"
+      "background:-webkit-gradient(linear,left top,left bottom,"
+      "from(#fff),to(#f0f0f0))}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
@@ -687,60 +773,7 @@ TEST_P(CssFilterTest, ComplexCssTest) {
   }
 
   const char* parse_fail_examples[] = {
-    // kSelectorError from Alexa-100
-    // Selector list ends in comma
-    ".hp .col ul, {\n"
-    "  display: inline !important;\n"
-    "  zoom: 1;\n"
-    "  vertical-align: top;\n"
-    "  margin-left: -10px;\n"
-    "  position: relative;\n"
-    "}\n",
-
-    // Parameters for pseudoclass
-    "/* Opera（＋Firefox、Safari） */\n"
-    "body:not(:target) .sh_heading_main_b, body:not(:target) "
-    ".sh_heading_main_b_wide{\n  background:url(\"data:image/png;base64,iVBORw"
-    "0KGgoAAAANSUhEUgAAAAEAAAAoCAYAAAA/tpB3AAAAQ0lEQVR42k3EMQLAIAgEMP//WkRQVMB"
-    "2YLgMae/XMhOLCMzdq3svds7B9t6VmWFrLWzOWakqJiLYGKNiZqz3jhHR+wBZbpvd95zR6QAA"
-    "AABJRU5ErkJggg==\") repeat-x left top;\n"
-    "}\n"
-    "/* Firefox（＋Google Chrome2） */\n"
-    "html:not([lang*=""]) .sh_heading_main_b,\n"
-    "html:not([lang*=""]) .sh_heading_main_b_wide{\n"
-    "\t/* For Mozilla/Gecko (Firefox etc) */\n"
-    "\tbackground:-moz-linear-gradient(top, #FFFFFF, #F0F0F0);\n"
-    "\t/* For WebKit (Safari, Google Chrome etc) */\n"
-    "\tbackground:-webkit-gradient(linear, left top, left bottom, "
-    "from(#FFFFFF), to(#F0F0F0));\n"
-    "}\n"
-    "/* Safari */\n"
-    "html:not(:only-child:only-child) .sh_heading_main_b,\n"
-    "html:not(:only-child:only-child) .sh_heading_main_b_wide{\n"
-    "\t/* For WebKit (Safari, Google Chrome etc) */\n"
-    "\tbackground: -webkit-gradient(linear, left top, left bottom, "
-    "from(#FFFFFF), to(#F0F0F0));\n"
-    "}\n",
-
-    // Invalid comment type ("//").
-    ".ciuNoteEditBox .topLeft\n"
-    "{\n"
-    "        background-position:left top;\n"
-    "\tbackground-repeat:no-repeat;\n"
-    "\tfont-size:4px;\n"
-    "\t\n"
-    "\t\n"
-    "\tpadding: 0px 0px 0px 1px; \n"
-    "\t\n"
-    "\twidth:7px;\n"
-    "}\n"
-    "\n"
-    "// css hack to make font-size 0px in only ff2.0 and older "
-    "(http://pornel.net/firefoxhack)\n"
-    ".ciuNoteBox .topLeft,\n"
-    ".ciuNoteEditBox .topLeft, x:-moz-any-link {\n"
-    "\tfont-size: 0px;\n"
-    "}\n",
+    "}}",
   };
 
   for (int i = 0; i < arraysize(parse_fail_examples); ++i) {

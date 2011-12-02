@@ -253,7 +253,11 @@ void CssMinify::Minify(const Css::Import& import) {
 }
 
 void CssMinify::MinifyRulesetIgnoringMedia(const Css::Ruleset& ruleset) {
-  JoinMinify(ruleset.selectors(), ",");
+  if (ruleset.selectors().is_dummy()) {
+    Write(ruleset.selectors().bytes_in_original_buffer());
+  } else {
+    JoinMinify(ruleset.selectors(), ",");
+  }
   Write("{");
   JoinMinify(ruleset.declarations(), ";");
   Write("}");
@@ -337,7 +341,7 @@ GoogleString FontToString(const Css::Values& font_values) {
 
 void CssMinify::Minify(const Css::Declaration& declaration) {
   if (declaration.prop() == Css::Property::UNPARSEABLE) {
-    Write(declaration.text_in_original_buffer());
+    Write(declaration.bytes_in_original_buffer());
   } else {
     Write(EscapeString(declaration.prop_text(), false));
     Write(":");

@@ -225,7 +225,13 @@ string Selector::ToString() const {
 }
 
 string Selectors::ToString() const {
-  return JoinElementStrings(*this, ", ");
+  if (is_dummy()) {
+    string result = "/* Unparsed selectors: */ ";
+    bytes_in_original_buffer().AppendToString(&result);
+    return result;
+  } else {
+    return JoinElementStrings(*this, ", ");
+  }
 }
 
 string Declaration::ToString() const {
@@ -233,7 +239,7 @@ string Declaration::ToString() const {
   switch (prop()) {
     case Property::UNPARSEABLE:
       result = "/* Unparsed declaration: */ ";
-      text_in_original_buffer().AppendToString(&result);
+      bytes_in_original_buffer().AppendToString(&result);
       return result;
       break;
     case Property::FONT_FAMILY:
