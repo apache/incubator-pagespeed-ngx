@@ -60,7 +60,6 @@ class RewriteDriverTest : public ResourceManagerTestBase,
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    SetAsynchronousRewrites(GetParam());
   }
 
   bool CanDecodeUrl(const StringPiece& url) {
@@ -195,7 +194,6 @@ TEST_P(RewriteDriverTest, TestCacheUse) {
 
 // Extension of above with cache invalidation.
 TEST_P(RewriteDriverTest, TestCacheUseWithInvalidation) {
-  bool async = rewrite_driver()->asynchronous_rewrites();
   resource_manager()->set_store_outputs_in_file_system(false);
   AddFilter(RewriteOptions::kRewriteCss);
 
@@ -230,20 +228,11 @@ TEST_P(RewriteDriverTest, TestCacheUseWithInvalidation) {
   options()->set_cache_invalidation_timestamp(now_ms);
   options()->ComputeSignature(hasher());
   EXPECT_TRUE(TryFetchResource(css_minified_url));
-  if (async) {
-    // We expect: identical input a new rname entry (its version # changed),
-    // and the output which may not may not auto-advance due to MockTimer
-    // black magic.
-    EXPECT_EQ(1, lru_cache()->num_inserts());
-    EXPECT_EQ(2, lru_cache()->num_identical_reinserts());
-  } else {
-    // We expect: input, output, rname, to be all re-inserted without
-    // changes (as the legacy codepath doesn't understand option timestamps) ---
-    // except the date header on the revised result may auto-advance a bit
-    // due to mock timer/scheduler blocking on named lock acquisition.
-    EXPECT_EQ(3, lru_cache()->num_inserts() +
-                 lru_cache()->num_identical_reinserts());
-  }
+  // We expect: identical input a new rname entry (its version # changed),
+  // and the output which may not may not auto-advance due to MockTimer
+  // black magic.
+  EXPECT_EQ(1, lru_cache()->num_inserts());
+  EXPECT_EQ(2, lru_cache()->num_identical_reinserts());
 }
 
 // Similar to TestCacheUse, but with cache-extender which reconstructs on the
@@ -275,7 +264,6 @@ TEST_P(RewriteDriverTest, TestCacheUseOnTheFly) {
 
 // Extension of above with cache invalidation.
 TEST_P(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
-  bool async = rewrite_driver()->asynchronous_rewrites();
   resource_manager()->set_store_outputs_in_file_system(false);
   AddFilter(RewriteOptions::kExtendCacheCss);
 
@@ -308,15 +296,9 @@ TEST_P(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
   options()->set_cache_invalidation_timestamp(now_ms);
   options()->ComputeSignature(hasher());
   EXPECT_TRUE(TryFetchResource(cache_extended_url));
-  if (async) {
-    // We expect: input re-insert, new metadata key
-    EXPECT_EQ(1, lru_cache()->num_inserts());
-    EXPECT_EQ(1, lru_cache()->num_identical_reinserts());
-  } else {
-    // We expect: input, rname re-inserted without changes.
-    EXPECT_EQ(0, lru_cache()->num_inserts());
-    EXPECT_EQ(2, lru_cache()->num_identical_reinserts());
-  }
+  // We expect: input re-insert, new metadata key
+  EXPECT_EQ(1, lru_cache()->num_inserts());
+  EXPECT_EQ(1, lru_cache()->num_identical_reinserts());
 }
 
 TEST_P(RewriteDriverTest, BaseTags) {
@@ -401,25 +383,24 @@ TEST_P(RewriteDriverTest, CreateOutputResourceTooLong) {
   OutputResourcePtr resource;
   for (int t = 0; t < arraysize(content_types); ++t) {
     for (int k = 0; k < arraysize(resource_kinds); ++k) {
-      for (int use_async_flow = 0; use_async_flow < 2; ++use_async_flow) {
-        // Short name should always succeed at creating new resource.
-        resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-            short_path, dummy_filter_id, short_name,
-            content_types[t], resource_kinds[k], use_async_flow != 0));
-        EXPECT_TRUE(NULL != resource.get());
+      bool use_async_flow = true;
+      // Short name should always succeed at creating new resource.
+      resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
+          short_path, dummy_filter_id, short_name,
+          content_types[t], resource_kinds[k], use_async_flow));
+      EXPECT_TRUE(NULL != resource.get());
 
-        // Long leaf-name should always fail at creating new resource.
-        resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-            short_path, dummy_filter_id, long_name,
-            content_types[t], resource_kinds[k], use_async_flow != 0));
-        EXPECT_TRUE(NULL == resource.get());
+      // Long leaf-name should always fail at creating new resource.
+      resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
+          short_path, dummy_filter_id, long_name,
+          content_types[t], resource_kinds[k], use_async_flow));
+      EXPECT_TRUE(NULL == resource.get());
 
-        // Long total URL length should always fail at creating new resource.
-        resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-            long_path, dummy_filter_id, short_name,
-            content_types[t], resource_kinds[k], use_async_flow != 0));
-        EXPECT_TRUE(NULL == resource.get());
-      }
+      // Long total URL length should always fail at creating new resource.
+      resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
+          long_path, dummy_filter_id, short_name,
+          content_types[t], resource_kinds[k], use_async_flow));
+      EXPECT_TRUE(NULL == resource.get());
     }
   }
 }
@@ -586,7 +567,6 @@ TEST_P(RewriteDriverTest, DiagnosticsWithPercent) {
   logging::SetMinLogLevel(prev_log_level);
 }
 
-// We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(RewriteDriverTestInstance,
                         RewriteDriverTest,
                         ::testing::Bool());
@@ -699,7 +679,6 @@ TEST_P(RewriteDriverInhibitTest, InhibitWithFinishParse) {
   EXPECT_EQ("<html><body><p></p></body></html>", output_buffer_);
 }
 
-// We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(RewriteDriverInhibitTestInstance,
                         RewriteDriverInhibitTest,
                         ::testing::Bool());

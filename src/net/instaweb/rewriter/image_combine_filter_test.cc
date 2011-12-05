@@ -103,7 +103,6 @@ class CssImageCombineTest : public CssRewriteTestBase {
 };
 
 TEST_P(CssImageCombineTest, SpritesImages) {
-  CSS_XFAIL_SYNC();
   // For each of these, expect the following:
   // If spriting is possible, the first image (Cuppa.png)
   // ends up on top and the second image (BikeCrashIcn.png) ends up on the
@@ -140,7 +139,6 @@ TEST_P(CssImageCombineTest, SpritesImages) {
 }
 
 TEST_P(CssImageCombineTest, SpritesMultiple) {
-  CSS_XFAIL_SYNC();
   GoogleString before, after, sprite;
   // With the same image present 3 times, there should be no sprite.
   before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 10,
@@ -172,7 +170,6 @@ TEST_P(CssImageCombineTest, SpritesMultiple) {
 
 // Try the last test from SpritesMultiple with a cold cache.
 TEST_P(CssImageCombineTest, NoSpritesMultiple) {
-  CSS_XFAIL_SYNC();
   GoogleString text;
   // If the second occurence of the image is unspriteable (e.g. if the div is
   // larger than the image), then don't sprite anything.
@@ -188,7 +185,6 @@ TEST_P(CssImageCombineTest, NoSpritesMultiple) {
 }
 
 TEST_P(CssImageCombineTest, NoCrashUnknownType) {
-  CSS_XFAIL_SYNC();
   // Make sure we don't crash trying to sprite an image with an unknown mimetype
   ResponseHeaders response_headers;
   SetDefaultLongCacheHeaders(&kContentTypePng, &response_headers);
@@ -209,7 +205,6 @@ TEST_P(CssImageCombineTest, NoCrashUnknownType) {
 }
 
 TEST_P(CssImageCombineTest, SpritesImagesExternal) {
-  CSS_XFAIL_SYNC();
   SetupWaitFetcher();
 
   const GoogleString beforeCss = StrCat(" "  // extra whitespace allows rewrite
@@ -246,8 +241,6 @@ TEST_P(CssImageCombineTest, SpritesImagesExternal) {
 TEST_P(CssImageCombineTest, SpritesOkAfter404) {
   // Make sure the handling of a 404 is correct, and doesn't interrupt spriting
   // (nor check fail, as it used to before).
-  CSS_XFAIL_SYNC();
-
   AddFileToMockFetcher(StrCat(kTestDomain, "bike2.png"), kBikePngFile,
                        kContentTypePng, 100);
   AddFileToMockFetcher(StrCat(kTestDomain, "bike3.png"), kBikePngFile,
@@ -281,8 +274,6 @@ TEST_P(CssImageCombineTest, SpritesMultiSite) {
   // Make sure we do something sensible when we're forced to split into multiple
   // partitions due to different host names -- at lest when it doesn't require
   // us to keep track of multiple partitions intelligently.
-  CSS_XFAIL_SYNC();
-
   const char kAltDomain[] = "http://images.example.com/";
   DomainLawyer* lawyer = options()->domain_lawyer();
   lawyer->AddDomain(kAltDomain, message_handler());
@@ -343,7 +334,6 @@ TEST_P(CssImageCombineTest, SpritesMultiSite) {
 // .pagespeed.* parts) is larger than RewriteOptions::kDefaultMaxUrlSegmentSize
 // (1024).
 TEST_P(CssImageCombineTest, ServeFiles) {
-  CSS_XFAIL_SYNC();
   GoogleString sprite_str =
       Encode(kTestDomain, "is", "0",
              MultiUrl(kCuppaPngFile, kBikePngFile), "png");
@@ -354,7 +344,6 @@ TEST_P(CssImageCombineTest, ServeFiles) {
 
 // FYI: Takes ~10000 ms to run under Valgrind.
 TEST_P(CssImageCombineTest, CombineManyFiles) {
-  CSS_XFAIL_SYNC();
   // Prepare an HTML fragment with too many image files to combine,
   // exceeding the char limit.
   const int kNumImages = 100;
@@ -403,7 +392,6 @@ TEST_P(CssImageCombineTest, CombineManyFiles) {
 TEST_P(CssImageCombineTest, SpritesBrokenUp) {
   // Make sure we include all spritable images, even if there are
   // un-spritable images in between.
-  CSS_XFAIL_SYNC();
   GoogleString before, after;
 
   before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kPuzzleJpgFile, 0, 10,
@@ -423,7 +411,6 @@ TEST_P(CssImageCombineTest, SpritesBrokenUp) {
 TEST_P(CssImageCombineTest, SpritesGifsWithPngs) {
   // Make sure we include all spritable images, even if there are
   // un-spritable images in between.
-  CSS_XFAIL_SYNC();
   GoogleString before, after;
 
   before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kChefGifFile, 0, 10,
@@ -444,7 +431,6 @@ TEST_P(CssImageCombineTest, SpritesGifsWithPngs) {
 }
 
 TEST_P(CssImageCombineTest, SpriteWrongMime) {
-  CSS_XFAIL_SYNC();
   // Make sure that a server messing up the content-type doesn't prevent
   // spriting.
   GoogleString wrong_bike = StrCat(kTestDomain, "w", kBikePngFile);
@@ -474,7 +460,6 @@ TEST_P(CssImageCombineTest, SpriteWrongMime) {
   ValidateExpected("wrong_mime", before, after);
 }
 
-// We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(CssImageCombineTestInstance,
                         CssImageCombineTest,
                         ::testing::Bool());
@@ -489,7 +474,6 @@ class CssImageMultiFilterTest : public CssImageCombineTest {
 };
 
 TEST_P(CssImageMultiFilterTest, SpritesAndNonSprites) {
-  CSS_XFAIL_SYNC();
   GoogleString before, after, encoded, cuppa_encoded, sprite;
   // With the same image present 3 times, there should be no sprite.
   before = StringPrintf(kHtmlTemplate3Divs, kBikePngFile, kBikePngFile, 0, 10,
@@ -519,7 +503,6 @@ TEST_P(CssImageMultiFilterTest, SpritesAndNonSprites) {
   ValidateExpected("sprite_none_dimmensions", before, after);
 }
 
-// We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(CssImageMultiFilterTestInstance,
                         CssImageMultiFilterTest,
                         ::testing::Bool());

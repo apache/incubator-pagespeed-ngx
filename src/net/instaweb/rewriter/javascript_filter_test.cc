@@ -60,7 +60,6 @@ class JavascriptFilterTest : public ResourceManagerTestBase,
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    SetAsynchronousRewrites(GetParam());
     AddFilter(RewriteOptions::kRewriteJavascript);
     expected_rewritten_path_ = Encode(kTestDomain, kFilterId, "0",
                                       kRewrittenJsName, "js");
@@ -238,8 +237,6 @@ TEST_P(JavascriptFilterTest, WeirdSrcCrash) {
   ValidateNoChanges("weird_tag", "<script<foo>");
 }
 
-// We runs the test with GetParam() both true and false, in order to
-// test both the traditional and async flows.
 INSTANTIATE_TEST_CASE_P(JavascriptFilterTestInstance,
                         JavascriptFilterTest,
                         ::testing::Bool());

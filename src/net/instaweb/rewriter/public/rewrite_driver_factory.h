@@ -182,12 +182,7 @@ class RewriteDriverFactory {
     return created_directories_;
   }
 
-  bool async_rewrites() { return async_rewrites_; }
-
-  // Sets the resource manager into async_rewrite mode.  This can be
-  // called before or after ComputeResourceManager, but will only
-  // affect RewriteDrivers that are created after the call is made.
-  void SetAsyncRewrites(bool x);
+  bool async_rewrites() { return true; }
 
   // Collection of global statistics objects.  This is thread-unsafe:
   // it must be called prior to spawning threads, and after any calls
@@ -302,7 +297,6 @@ class RewriteDriverFactory {
   bool force_caching_;
   bool slurp_read_only_;
   bool slurp_print_urls_;
-  bool async_rewrites_;
 
   // protected by resource_manager_mutex_;
   typedef std::set<ResourceManager*> ResourceManagerSet;

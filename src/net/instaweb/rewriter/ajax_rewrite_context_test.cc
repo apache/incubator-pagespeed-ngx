@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -151,7 +152,6 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    SetAsynchronousRewrites(true);
     mock_url_fetcher()->set_fail_on_unexpected(false);
 
     // Set fetcher result and headers.

@@ -97,10 +97,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // on the main rewrite driver.
   void SetBaseUrlForFetch(const StringPiece& url);
 
-  // Sets whether asynchronous rewrites are on, for both main and 'other'
-  // rewrite drivers we manage.
-  void SetAsynchronousRewrites(bool async);
-
   ResourcePtr CreateResource(const StringPiece& base, const StringPiece& url);
 
   MockTimer* mock_timer() { return factory_->mock_timer(); }

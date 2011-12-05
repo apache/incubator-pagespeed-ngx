@@ -47,7 +47,6 @@ class Stylesheet;
 
 namespace net_instaweb {
 
-class CssImageRewriter;
 class CssImageRewriterAsync;
 class CacheExtender;
 class HtmlCharactersNode;
@@ -152,8 +151,6 @@ class CssFilter : public RewriteSingleResourceFilter {
   // These are meaningless if in_style_element_ is false:
   HtmlElement* style_element_;  // The element we are in.
   HtmlCharactersNode* style_char_node_;  // The single character node in style.
-
-  scoped_ptr<CssImageRewriter> image_rewriter_;
 
   // Filters we delegate to.
   CacheExtender* cache_extender_;

@@ -41,7 +41,6 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    SetAsynchronousRewrites(false);
     AddFilter(RewriteOptions::kDelayImages);
   }
 

@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
@@ -37,6 +38,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -57,7 +59,6 @@ class ImageRewriteTest : public ResourceManagerTestBase,
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    SetAsynchronousRewrites(GetParam());
   }
 
   // Simple image rewrite test to check resource fetching functionality.
@@ -603,11 +604,6 @@ TEST_P(ImageRewriteTest, RetainExtraHeaders) {
 }
 
 TEST_P(ImageRewriteTest, NestedConcurrentRewritesLimit) {
-  // Buggy in sync.
-  if (!rewrite_driver()->asynchronous_rewrites()) {
-    return;
-  }
-
   // Make sure we're limiting # of concurrent rewrites properly even when we're
   // nested inside another filter, and that we do not cache that outcome
   // improperly.
@@ -661,7 +657,6 @@ TEST_P(ImageRewriteTest, NestedConcurrentRewritesLimit) {
   EXPECT_EQ(1, drops->Get(TimedVariable::START));
 }
 
-// We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(ImageRewriteTestInstance,
                         ImageRewriteTest,
                         ::testing::Bool());

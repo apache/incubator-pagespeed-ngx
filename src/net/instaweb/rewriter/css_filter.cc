@@ -30,7 +30,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/css_image_rewriter.h"
 #include "net/instaweb/rewriter/public/css_image_rewriter_async.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
@@ -335,8 +334,6 @@ CssFilter::CssFilter(RewriteDriver* driver,
                      ImageCombineFilter* image_combiner)
     : RewriteSingleResourceFilter(driver),
       in_style_element_(false),
-      image_rewriter_(new CssImageRewriter(driver, cache_extender,
-                                           image_rewriter)),
       cache_extender_(cache_extender),
       image_rewrite_filter_(image_rewriter),
       image_combiner_(image_combiner),
@@ -362,9 +359,7 @@ void CssFilter::Initialize(Statistics* statistics) {
     statistics->AddVariable(CssFilter::kFilesMinified);
     statistics->AddVariable(CssFilter::kMinifiedBytesSaved);
     statistics->AddVariable(CssFilter::kParseFailures);
-    CssImageRewriter::Initialize(statistics);
   }
-
   InitializeAtExitManager();
 }
 
@@ -412,19 +407,8 @@ void CssFilter::StartElementImpl(HtmlElement* element) {
           HtmlName::kStyle);
       if (element_style != NULL &&
           (!check_for_url || CssTagScanner::HasUrl(element_style->value()))) {
-        if (HasAsyncFlow()) {
-          Context* context = MakeContext(driver_, NULL);
-          context->StartAttributeRewrite(element, element_style);
-        } else {
-          GoogleString new_content;
-          if (RewriteCssText(NULL /* no async context*/,
-                             driver_->base_url(), driver_->base_url(),
-                             element_style->value(),
-                             true /* text_is_declarations */,
-                             &new_content, driver_->message_handler()).value) {
-            element_style->SetValue(new_content);  // Update the style= value.
-          }
-        }
+        Context* context = MakeContext(driver_, NULL);
+        context->StartAttributeRewrite(element, element_style);
       }
     }
   }
@@ -451,20 +435,8 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
       CHECK(element == style_char_node_->parent());  // Sanity check.
       GoogleString new_content;
 
-      if (HasAsyncFlow()) {
-        Context* context = MakeContext(driver_, NULL);
-        context->StartInlineRewrite(element, style_char_node_);
-      } else if (RewriteCssText(NULL /* no async context*/,
-                                driver_->base_url(), driver_->base_url(),
-                                style_char_node_->contents(),
-                                false /* text_is_declarations */,
-                                &new_content,
-                                driver_->message_handler()).value) {
-        // Note: Copy of new_content here.
-        HtmlCharactersNode* new_style_char_node =
-            driver_->NewCharactersNode(element, new_content);
-        driver_->ReplaceNode(style_char_node_, new_style_char_node);
-      }
+      Context* context = MakeContext(driver_, NULL);
+      context->StartInlineRewrite(element, style_char_node_);
     }
     in_style_element_ = false;
 
@@ -477,15 +449,8 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
           HtmlName::kHref);
       if (element_href != NULL) {
         // If it has a href= attribute
-        if (HasAsyncFlow()) {
-          Context* context = MakeContext(driver_, NULL);
-          context->StartExternalRewrite(element, element_href);
-        } else {
-          GoogleString new_url;
-          if (RewriteExternalCss(element_href->value(), &new_url)) {
-            element_href->SetValue(new_url);  // Update the href= attribute.
-          }
-        }
+        Context* context = MakeContext(driver_, NULL);
+        context->StartExternalRewrite(element, element_href);
       } else {
         driver_->ErrorHere("Link element with no href.");
       }
@@ -547,29 +512,11 @@ TimedBool CssFilter::RewriteCssText(Context* context,
     num_parse_failures_->Add(1);
   } else {
     // Edit stylesheet.
-    if (HasAsyncFlow()) {
-      // Start any nested rewrite tasks
-      context->RewriteImages(in_text_size, stylesheet.release());
+    // Start any nested rewrite tasks
+    context->RewriteImages(in_text_size, stylesheet.release());
 
-      // Rewrite OK thus far.
-      ret.value = true;
-      return ret;
-    } else {
-      TimedBool result = image_rewriter_->RewriteCssImages(
-          css_base_gurl, css_trim_gurl, stylesheet.get(), handler);
-      ret.expiration_ms = result.expiration_ms;
-      RewriteContext* no_rewrite_context = NULL;
-      // May need to absolutify @imports.
-      bool absolutified_imports = false;
-      if (driver_->ShouldAbsolutifyUrl(css_base_gurl, css_trim_gurl, NULL)) {
-        absolutified_imports =
-            CssMinify::AbsolutifyImports(stylesheet.get(), css_base_gurl);
-      }
-      ret.value = SerializeCss(no_rewrite_context, in_text_size,
-                               stylesheet.get(), css_base_gurl, css_trim_gurl,
-                               result.value || absolutified_imports,
-                               text_is_declarations, out_text, handler);
-    }
+    // Rewrite OK thus far.
+    ret.value = true;
   }
   return ret;
 }

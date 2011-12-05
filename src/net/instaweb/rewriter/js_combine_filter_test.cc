@@ -134,7 +134,6 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
 
   void SetUpWithJsFilter(bool use_js_filter) {
     ResourceManagerTestBase::SetUp();
-    bool async_rewrites = GetParam();
     UseMd5Hasher();
     SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_js_header_);
     SimulateJsResource(kJsUrl1, kJsText1);
@@ -144,7 +143,6 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
     SimulateJsResource(kStrictUrl1, kStrictText1);
     SimulateJsResource(kStrictUrl2, kStrictText2);
 
-    rewrite_driver()->SetAsynchronousRewrites(async_rewrites);
     if (use_js_filter) {
       AddRewriteFilter(new JavascriptFilter(rewrite_driver()));
     }
@@ -270,11 +268,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
                (minified ? kMinifiedEscapedJs2 : kEscapedJs2), ";\n")),
                  combination_src);
 
-    // We currently cannot reconstruct nested rewrites in sync flow
-    // without doing a loopback fetch to ourselves.
-    if (!minified || rewrite_driver()->asynchronous_rewrites()) {
-      ServeResourceFromManyContexts(scripts[0].url, combination_src);
-    }
+    ServeResourceFromManyContexts(scripts[0].url, combination_src);
   }
 
  protected:
@@ -390,11 +384,6 @@ TEST_P(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
 }
 
 TEST_P(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
-  // Broken in sync.
-  if (!rewrite_driver()->asynchronous_rewrites()) {
-    return;
-  }
-
   // Testcase for case where we have cached metadata for results of JS rewrite,
   // but not its contents easily available.
   resource_manager()->set_store_outputs_in_file_system(false);
@@ -701,10 +690,6 @@ TEST_P(JsCombineFilterTest, PartlyInvalidFetchCache) {
   // and then rewritten --- incorrectly.
   // Note: arguably this shouldn't get cached at all; but it certainly
   // should not result in an inappropriate result.
-  if (!rewrite_driver()->asynchronous_rewrites()) {
-    // Legacy path doesn't cache at all (so it does a more sensible rewrite)
-    return;
-  }
   SetFetchResponse404("404.js");
   InitResponseHeaders("a.js", kContentTypeJavascript, "var a;", 100);
   InitResponseHeaders("b.js", kContentTypeJavascript, "var b;", 100);

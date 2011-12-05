@@ -78,7 +78,6 @@ class CacheExtenderTest : public ResourceManagerTestBase,
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    SetAsynchronousRewrites(GetParam());
   }
 
   void InitTest(int64 ttl) {
@@ -340,11 +339,7 @@ TEST_P(CacheExtenderTest, ConsistentHashWithRewrite) {
   // elect not to add cache pressure. We do of course also cache the original,
   // and under traditional flow also get it from the cache.
   EXPECT_EQ(2, lru_cache()->num_inserts());
-  if (rewrite_driver()->asynchronous_rewrites()) {
-    EXPECT_EQ(0, lru_cache()->num_hits());
-  } else {
-    EXPECT_EQ(1, lru_cache()->num_hits());
-  }
+  EXPECT_EQ(0, lru_cache()->num_hits());
 
   // TODO(jmarantz): To make this test pass we need to set up the mock
   // fetcher so it can find the resource in new.com, not just
@@ -390,11 +385,7 @@ TEST_P(CacheExtenderTest, ConsistentHashWithShard) {
   // elect not to add cache pressure. We do of course also cache the original,
   // and under traditional flow also get it from the cache.
   EXPECT_EQ(2, lru_cache()->num_inserts());
-  if (rewrite_driver()->asynchronous_rewrites()) {
-    EXPECT_EQ(0, lru_cache()->num_hits());
-  } else {
-    EXPECT_EQ(1, lru_cache()->num_hits());
-  }
+  EXPECT_EQ(0, lru_cache()->num_hits());
 
   // TODO(jmarantz): eliminate this when we canonicalize URLs before caching.
   InitResponseHeaders(StrCat("http://shard2.com/", kCssFile), kContentTypeCss,
@@ -530,11 +521,9 @@ TEST_P(CacheExtenderTest, TrimUrlInteraction) {
                    StringPrintf(kCssFormat, a_ext.c_str()));
 }
 
-// We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(CacheExtenderTestInstance,
                         CacheExtenderTest,
                         ::testing::Bool());
-
 }  // namespace
 
 }  // namespace net_instaweb

@@ -22,7 +22,6 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -218,22 +217,6 @@ void CssRewriteTestBase::TestCorruptUrl(const char* junk,
   ValidateRewriteExternalCss(
       "rep", kInput, kOutput,
       kExpectChange | kExpectSuccess | kNoClearFetcher | kNoStatCheck);
-}
-
-bool CssRewriteTestBase::SkipAndWarnIfAsync() {
-  if (rewrite_driver()->asynchronous_rewrites()) {
-    LOG(ERROR) << "Skipping test in async mode!";
-    return true;
-  }
-  return false;
-}
-
-bool CssRewriteTestBase::SkipAndWarnIfSync() {
-  if (!rewrite_driver()->asynchronous_rewrites()) {
-    LOG(ERROR) << "Skipping test in sync mode!";
-    return true;
-  }
-  return false;
 }
 
 }  // namespace net_instaweb

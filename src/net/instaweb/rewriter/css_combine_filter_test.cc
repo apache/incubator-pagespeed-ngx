@@ -58,8 +58,6 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    bool async_rewrites = GetParam();
-    SetAsynchronousRewrites(async_rewrites);
     AddFilter(RewriteOptions::kCombineCss);
     AddOtherFilter(RewriteOptions::kCombineCss);
   }

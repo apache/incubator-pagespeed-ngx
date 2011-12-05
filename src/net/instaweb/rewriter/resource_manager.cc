@@ -142,7 +142,6 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       relative_path_(false),
       store_outputs_in_file_system_(true),
       block_until_completion_in_render_(false),
-      async_rewrites_(true),
       lock_manager_(NULL),
       message_handler_(NULL),
       trying_to_cleanup_rewrite_drivers_(false),
@@ -559,7 +558,6 @@ RewriteDriver* ResourceManager::NewCustomRewriteDriver(
 RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver() {
   RewriteDriver* rewrite_driver = new RewriteDriver(
       message_handler_, file_system_, url_async_fetcher_);
-  rewrite_driver->SetAsynchronousRewrites(async_rewrites_);
   rewrite_driver->SetResourceManager(this);
   return rewrite_driver;
 }
@@ -570,7 +568,6 @@ RewriteDriver* ResourceManager::NewRewriteDriver() {
   if (!available_rewrite_drivers_.empty()) {
     rewrite_driver = available_rewrite_drivers_.back();
     available_rewrite_drivers_.pop_back();
-    rewrite_driver->SetAsynchronousRewrites(async_rewrites_);
   } else {
     rewrite_driver = NewUnmanagedRewriteDriver();
     rewrite_driver->AddFilters();

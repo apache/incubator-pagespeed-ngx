@@ -39,7 +39,6 @@ class JsInlineFilterTest : public ResourceManagerTestBase,
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    SetAsynchronousRewrites(GetParam());
   }
 
   void TestInlineJavascript(const GoogleString& html_url,

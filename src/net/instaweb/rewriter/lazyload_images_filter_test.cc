@@ -29,7 +29,6 @@ class LazyloadImagesFilterTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    SetAsynchronousRewrites(true);
     AddFilter(RewriteOptions::kLazyloadImages);
   }
 

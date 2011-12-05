@@ -602,7 +602,6 @@ class RewriteContextTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    SetAsynchronousRewrites(true);
 
     // The default deadline set in RewriteDriver is dependent on whether
     // the system was compiled for debug, or is being run under valgrind.

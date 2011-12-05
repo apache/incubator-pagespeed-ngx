@@ -544,7 +544,6 @@ class RewriteDriver : public HtmlParse {
   // Experimental asynchronous rewrite feature.  This is present only
   // for regression tests, and should not be used in production.
   bool asynchronous_rewrites() const { return asynchronous_rewrites_; }
-  void SetAsynchronousRewrites(bool x);
 
   // Indicate that this RewriteDriver will be explicitly deleted, and
   // thus should not be auto-deleted at the end of the parse.  This is

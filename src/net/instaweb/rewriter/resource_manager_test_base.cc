@@ -166,11 +166,6 @@ void ResourceManagerTestBase::SetBaseUrlForFetch(const StringPiece& url) {
   rewrite_driver_->SetBaseUrlForFetch(url);
 }
 
-void ResourceManagerTestBase::SetAsynchronousRewrites(bool async) {
-  rewrite_driver_->SetAsynchronousRewrites(async);
-  other_rewrite_driver_->SetAsynchronousRewrites(async);
-}
-
 void ResourceManagerTestBase::DeleteFileIfExists(const GoogleString& filename) {
   if (file_system()->Exists(filename.c_str(), message_handler()).is_true()) {
     ASSERT_TRUE(file_system()->RemoveFile(filename.c_str(), message_handler()));
@@ -237,8 +232,6 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   RewriteDriver* new_rewrite_driver = MakeDriver(new_resource_manager,
                                                  new_options);
   new_factory.SetupWaitFetcher();
-  new_rewrite_driver->SetAsynchronousRewrites(
-      rewrite_driver_->asynchronous_rewrites());
 
   RequestHeaders request_headers;
   // TODO(sligocki): We should set default request headers.

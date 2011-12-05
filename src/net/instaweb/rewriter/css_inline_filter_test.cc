@@ -41,7 +41,6 @@ class CssInlineFilterTest : public ResourceManagerTestBase,
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    SetAsynchronousRewrites(GetParam());
   }
 
   void TestInlineCssWithOutputUrl(
@@ -277,7 +276,6 @@ TEST_P(CssInlineFilterTest, InlineMinimizeInteraction) {
       "div{display: none}");
 }
 
-// We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(CssInlineFilterTestInstance,
                         CssInlineFilterTest,
                         ::testing::Bool());

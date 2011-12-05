@@ -202,7 +202,6 @@ RewriteDriver* RewriteDriver::Clone() {
   } else {
     result = resource_manager_->NewRewriteDriver();
   }
-  result->SetAsynchronousRewrites(asynchronous_rewrites_);
   return result;
 }
 
@@ -892,12 +891,6 @@ void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {
   // TODO(sligocki): It'd be nice to get this into the constructor.
   resource_filter_map_[filter->id()] = filter;
   filters_to_delete_.push_back(filter);
-}
-
-void RewriteDriver::SetAsynchronousRewrites(bool async_rewrites) {
-  if (async_rewrites != asynchronous_rewrites_) {
-    asynchronous_rewrites_ = async_rewrites;
-  }
 }
 
 void RewriteDriver::SetWriter(Writer* writer) {
