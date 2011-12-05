@@ -26,6 +26,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 ### rewriting.
 "?xml",                   HtmlName::kXml
 "a",                      HtmlName::kA
+"abbr",                   HtmlName::kAbbr
 "address",                HtmlName::kAddress,
 "alt",                    HtmlName::kAlt
 "area",                   HtmlName::kArea
@@ -38,13 +39,17 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "autoplay",               HtmlName::kAutoplay
 "b",                      HtmlName::kB
 "base",                   HtmlName::kBase
+"bdi",                    HtmlName::kBdi
+"bdo",                    HtmlName::kBdo
 "blockquote",             HtmlName::kBlockquote
 "body",                   HtmlName::kBody
 "br",                     HtmlName::kBr
 "button",                 HtmlName::kButton
 "charset",                HtmlName::kCharset
 "checked",                HtmlName::kChecked
+"cite",                   HtmlName::kCite
 "class",                  HtmlName::kClass
+"code",                   HtmlName::kCode
 "col",                    HtmlName::kCol
 "colgroup",               HtmlName::kColgroup
 "colspan",                HtmlName::kColspan
@@ -57,6 +62,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "defaultselected",        HtmlName::kDefaultselected
 "defer",                  HtmlName::kDefer
 "details",                HtmlName::kDetails
+"dfn",                    HtmlName::kDfn
 "dir",                    HtmlName::kDir
 "disabled",               HtmlName::kDisabled
 "display",                HtmlName::kDisplay
@@ -64,6 +70,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "dl",                     HtmlName::kDl
 "dt",                     HtmlName::kDt
 "em",                     HtmlName::kEm
+"embed",                  HtmlName::kEmbed
 "enctype",                HtmlName::kEnctype
 "event",                  HtmlName::kEvent
 "fieldset",               HtmlName::kFieldset
@@ -95,6 +102,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "indeterminate",          HtmlName::kIndeterminate
 "input",                  HtmlName::kInput
 "ismap",                  HtmlName::kIsmap
+"kbd",                    HtmlName::kKbd
 "keygen",                 HtmlName::kKeygen
 "keytype",                HtmlName::kKeytype
 "lang",                   HtmlName::kLang
@@ -102,6 +110,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "li",                     HtmlName::kLi
 "link",                   HtmlName::kLink
 "loop",                   HtmlName::kLoop
+"mark",                   HtmlName::kMark
 "media",                  HtmlName::kMedia
 "menu",                   HtmlName::kMenu
 "meta",                   HtmlName::kMeta
@@ -128,6 +137,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "pagespeed_low_res_src",  HtmlName::kPagespeedLowResSrc
 "param",                  HtmlName::kParam
 "pre",                    HtmlName::kPre
+"q",                      HtmlName::kQ
 "readonly",               HtmlName::kReadonly
 "rel",                    HtmlName::kRel
 "required",               HtmlName::kRequired
@@ -135,6 +145,9 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "rowspan",                HtmlName::kRowspan
 "rp",                     HtmlName::kRp
 "rt",                     HtmlName::kRt
+"ruby",                   HtmlName::kRuby
+"s",                      HtmlName::kS
+"samp",                   HtmlName::kSamp
 "scoped",                 HtmlName::kScoped
 "script",                 HtmlName::kScript
 "scrolling",              HtmlName::kScrolling
@@ -143,10 +156,13 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "select",                 HtmlName::kSelect
 "selected",               HtmlName::kSelected
 "shape",                  HtmlName::kShape
+"small",                  HtmlName::kSmall
 "source",                 HtmlName::kSource
 "span",                   HtmlName::kSpan
 "src",                    HtmlName::kSrc
+"strong",                 HtmlName::kStrong
 "style",                  HtmlName::kStyle
+"sub",                    HtmlName::kSub
 "table",                  HtmlName::kTable
 "tag",                    HtmlName::kTag
 "tbody",                  HtmlName::kTbody
@@ -156,10 +172,14 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "tfoot",                  HtmlName::kTfoot
 "th",                     HtmlName::kTh
 "thead",                  HtmlName::kThead
+"time",                   HtmlName::kTime
 "tr",                     HtmlName::kTr
+"track",                  HtmlName::kTrack
 "type",                   HtmlName::kType
+"u",                      HtmlName::kU
 "ul",                     HtmlName::kUl
 "valuetype",              HtmlName::kValuetype
+"var",                    HtmlName::kVar
 "video",                  HtmlName::kVideo
 "wbr",                    HtmlName::kWbr
 "width",                  HtmlName::kWidth

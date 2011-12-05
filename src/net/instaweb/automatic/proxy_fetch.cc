@@ -180,6 +180,12 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
         resource_manager_->NewCustomRewriteDriver(custom_options);
   }
 
+  // TODO(sligocki): Make complete request header available to filters.
+  const char* cookies = request_headers.Lookup1(HttpAttributes::kCookie);
+  if (cookies != NULL) {
+    driver_->set_cookies(cookies);
+  }
+
   const char* user_agent = request_headers.Lookup1(HttpAttributes::kUserAgent);
   if (user_agent != NULL) {
     VLOG(1) << "Setting user-agent to " << user_agent;

@@ -47,19 +47,23 @@ namespace {
 //
 // TODO(jmarantz): Check out
 // http://www.whatwg.org/specs/web-apps/current-work/multipage/
-// syntax.html#optional-tags
+// syntax.html#void-elements
 const HtmlName::Keyword kImplicitlyClosedHtmlTags[] = {
   HtmlName::kXml,
   HtmlName::kArea,
   HtmlName::kBase,
   HtmlName::kBr,
   HtmlName::kCol,
+  HtmlName::kEmbed,
   HtmlName::kHr,
   HtmlName::kImg,
   HtmlName::kInput,
+  HtmlName::kKeygen,
   HtmlName::kLink,
   HtmlName::kMeta,
   HtmlName::kParam,
+  HtmlName::kSource,
+  HtmlName::kTrack,
   HtmlName::kWbr,
 };
 
@@ -129,6 +133,8 @@ struct HtmlTagMapElement {
 #define ELTS5(a, b, c, d, e) 5, (HtmlName::Keyword[5]) {a, b, c, d, e}
 
 const HtmlTagMapElement kOptionallyClosedTags[] = {
+  {HtmlName::kB, ELTS1(HtmlName::kTr)},
+
   // A body element's end tag may be omitted if the body element is not
   // immediately followed by a comment.
   //
@@ -151,11 +157,19 @@ const HtmlTagMapElement kOptionallyClosedTags[] = {
   // followed by another dt element or a dd element.
   {HtmlName::kDt, ELTS2(HtmlName::kDd, HtmlName::kDt)},
 
+  {HtmlName::kEm, ELTS1(HtmlName::kTr)},
+
+  {HtmlName::kFont, ELTS1(HtmlName::kTr)},
+
+  // TODO(jmarantz): add in support for 'strong' etc.
+
   // An html element's end tag may be omitted if the html element is not
   // immediately followed by a comment.
   //
   // TODO(jmarantz): Not sure what this means.
   {HtmlName::kHtml, ELTS0()},
+
+  {HtmlName::kI, ELTS1(HtmlName::kTr)},
 
   // A li element's end tag may be omitted if the li element is immediately
   // followed by another li element or if there is no more content in the
@@ -171,7 +185,7 @@ const HtmlTagMapElement kOptionallyClosedTags[] = {
   // immediately followed by another option element, or if it is immediately
   // followed by an optgroup element, or if there is no more content in the
   // parent element.
-  {HtmlName::kOption, ELTS1(HtmlName::kOption)},
+  {HtmlName::kOption, ELTS2(HtmlName::kOptgroup, HtmlName::kOption)},
 
   // A p element's end tag may be omitted if the p element is immediately
   // followed by an address, article, aside, blockquote, dir, div, dl, fieldset,
@@ -260,6 +274,8 @@ const HtmlTagMapElement kContainedTags[] = {
   {HtmlName::kEm, ELTS3(HtmlName::kTable, HtmlName::kTd, HtmlName::kTr)},
   {HtmlName::kFont, ELTS3(HtmlName::kTable, HtmlName::kTd, HtmlName::kTr)},
   {HtmlName::kI, ELTS3(HtmlName::kTable, HtmlName::kTd, HtmlName::kTr)},
+  {HtmlName::kRp, ELTS1(HtmlName::kRuby)},
+  {HtmlName::kRt, ELTS1(HtmlName::kRuby)},
   {HtmlName::kTbody, ELTS1(HtmlName::kTable)},
   {HtmlName::kTd, ELTS5(HtmlName::kTable, HtmlName::kTbody, HtmlName::kTfoot,
                         HtmlName::kThead, HtmlName::kTr)},
@@ -280,6 +296,14 @@ const bool IsContained(HtmlName::Keyword elt_being_closed,
                               parent);
   }
   return false;
+}
+
+const bool IsAutoClose(HtmlName::Keyword open_keyword,
+                       HtmlName::Keyword next_keyword) {
+  const HtmlTagMapElement* p = FindAutoCloseElement(open_keyword);
+  return (p != NULL) &&
+      std::binary_search(p->followers, p->followers + p->num_followers,
+                         next_keyword);
 }
 
 // We start our stack-iterations from 1, because we put a NULL into
@@ -802,24 +826,20 @@ void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
   token_.clear();
 
   // Look for elements that are implicitly closed by an open for this type.
-  //
-  // TODO(jmarantz): Handle "<tr><i>a<tr>b" as <tr><i>a</i></tr><tr>b</tr>.
-  // With this code, when we see the second <tr> the open_element will be
-  // an <i>.  I think we need to close the <i> first, then find the <tr> and
-  // close that.
-  HtmlElement* open_element = Parent();
-  if (open_element != NULL) {
+  HtmlName::Keyword next_keyword = next_tag.keyword();
+
+  // Continue popping off auto-close elements as needed to handle cases like
+  // IClosedByOpenTr in html_parse_test.cc: "<tr><i>a<tr>b".  The first the <i>
+  // needs to be auto-closed, then the <tr>.
+  while (HtmlElement* open_element = Parent()) {
     // TODO(jmarantz): this is a hack -- we should make a more elegant
     // structure of open/new tag combinations that we should auto-close.
-    HtmlName::Keyword open_tag = open_element->keyword();
-    const HtmlTagMapElement* p = FindAutoCloseElement(open_tag);
-    if (p != NULL) {
-      HtmlName::Keyword next_keyword = next_tag.keyword();
-      if (std::binary_search(p->followers, p->followers + p->num_followers,
-                             next_keyword)) {
-        element_stack_.resize(element_stack_.size() - 1);
-        html_parse_->CloseElement(open_element, HtmlElement::AUTO_CLOSE, line_);
-      }
+    HtmlName::Keyword open_keyword = open_element->keyword();
+    if (IsAutoClose(open_keyword, next_keyword)) {
+      element_stack_.pop_back();
+      html_parse_->CloseElement(open_element, HtmlElement::AUTO_CLOSE, line_);
+    } else {
+      break;
     }
   }
 
@@ -1183,7 +1203,8 @@ bool HtmlLexer::IsImplicitlyClosedTag(HtmlName::Keyword keyword) const {
 }
 
 bool HtmlLexer::TagAllowsBriefTermination(HtmlName::Keyword keyword) const {
-  return !IS_IN_SET(kNonBriefTerminatedTags, keyword);
+  return (!IS_IN_SET(kNonBriefTerminatedTags, keyword) &&
+          !IsImplicitlyClosedTag(keyword));
 }
 
 bool HtmlLexer::IsOptionallyClosedTag(HtmlName::Keyword keyword) const {

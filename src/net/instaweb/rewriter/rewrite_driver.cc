@@ -210,6 +210,7 @@ void RewriteDriver::Clear() {
   cleanup_on_fetch_complete_ = false;
   base_url_.Clear();
   DCHECK(!base_url_.is_valid());
+  cookies_.clear();
   decoded_base_url_.Clear();
   resource_map_.clear();
   DCHECK(end_elements_inhibited_.empty());

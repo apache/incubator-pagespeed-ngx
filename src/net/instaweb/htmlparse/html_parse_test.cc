@@ -50,7 +50,7 @@ class HtmlParseTest : public HtmlParseTestBase {
   // For tag-pairs that auto-close, we expect the appearance
   // of tag2 to automatically close tag1.
   void ExpectAutoClose(const char* tag1, const char* tag2) {
-    GoogleString test_case = StrCat(tag1, "_", tag2);
+    GoogleString test_case = StrCat("auto_close_", tag1, "_", tag2);
     ValidateExpected(
         test_case,
         Div(StrCat("<", tag1, ">x<", tag2, ">y")),
@@ -61,7 +61,7 @@ class HtmlParseTest : public HtmlParseTestBase {
   // For 2 tags that do not have a specified auto-close relationship,
   // we expect the appearance of tag2 to nest inside tag1.
   void ExpectNoAutoClose(const char* tag1, const char* tag2) {
-    GoogleString test_case = StrCat(tag1, "_", tag2);
+    GoogleString test_case = StrCat("no_auto_close_", tag1, "_", tag2);
     ValidateExpected(
         test_case,
         Div(StrCat("<", tag1, ">x<", tag2, ">y")),
@@ -317,6 +317,10 @@ TEST_F(HtmlParseTest, AutoClose) {
   ExpectAutoClose("optgroup", "optgroup");
   ExpectNoAutoClose("optgroup", "rp");
 
+  ExpectAutoClose("option", "optgroup");
+  ExpectAutoClose("option", "option");
+  ExpectNoAutoClose("option", "rp");
+
   // <p> has an outrageous number of tags that auto-close it.
   ExpectNoAutoClose("p", "tr");  // tr is not listed in the auto-closers for p.
   ExpectAutoClose("p", "address");  // first closer of 28.
@@ -341,7 +345,6 @@ TEST_F(HtmlParseTest, AutoClose) {
   ExpectNoAutoClose("td", "rt");
 
   ExpectAutoClose("tfoot", "tbody");
-  ExpectNoAutoClose("tfoot", "tfoot");
   ExpectNoAutoClose("tfoot", "dd");
 
   ExpectAutoClose("th", "td");
@@ -356,6 +359,9 @@ TEST_F(HtmlParseTest, AutoClose) {
   ExpectNoAutoClose("tr", "td");
 
   // http://www.w3.org/TR/html5/the-end.html#misnested-tags:-b-i-b-i
+
+
+  // TODO(jmarantz): add more tests related to formatting keywords.
 }
 
 namespace {
@@ -384,6 +390,7 @@ class AnnotatingHtmlFilter : public EmptyHtmlFilter {
   virtual const char* Name() const { return "AnnotatingHtmlFilter"; }
 
   GoogleString buffer() const { return buffer_; }
+  void Clear() { buffer_.clear(); }
 
  private:
   GoogleString buffer_;
@@ -402,23 +409,67 @@ TEST_F(HtmlParseTestNoBody, UnbalancedMarkup) {
                     "<font><tr><i><font></i></font><tr></font>");
 
   // We use this (hopefully) self-explanatory annotation format to indicate
-  // what's going on int he parse.
-  EXPECT_EQ(" +html '\n' +font +tr +i +font -font(u) -i(e) '</font>' -tr(a) +tr"
-            " '</font>\n' -tr(u) -font(u) -html(e)",
+  // what's going on in the parse.
+  EXPECT_EQ(" +html '\n' +font -font(a) +tr +i +font -font(u) -i(e) '</font>'"
+            " -tr(a) +tr '</font>\n' -tr(u) -html(e)",
             annotation.buffer());
 }
 
-TEST_F(HtmlParseTest, StrayCloseTrNonExplicit) {
+TEST_F(HtmlParseTestNoBody, StrayCloseTr) {
+  AnnotatingHtmlFilter annotation;
+  html_parse_.AddFilter(&annotation);
   ValidateNoChanges("stray_tr",
                     "<table><tr><table></tr></table></tr></table>");
+
+  // We use this (hopefully) self-explanatory annotation format to indicate
+  // what's going on in the parse.
+  EXPECT_EQ(" +html '\n' +table +tr +table '</tr>' -table(e) -tr(e) -table(e) "
+            "'\n' -html(e)",
+            annotation.buffer());
 }
 
-TEST_F(HtmlParseTest, StrayCloseTrExplicit) {
-  // Now let's see what this looks like with explicit tags.
-  ExplicitCloseTag close_tags;
-  html_parse_.AddFilter(&close_tags);
-  ValidateNoChanges("stray_tr_explicit",
-                    "<table><tr><table></tr></table></tr></table>");
+TEST_F(HtmlParseTestNoBody, IClosedByOpenTr) {
+  AnnotatingHtmlFilter annotation;
+  html_parse_.AddFilter(&annotation);
+  ValidateNoChanges("unclosed_i_tag", "<tr><i>a<tr>b");
+  EXPECT_EQ(" +html '\n' +tr +i 'a' -i(a) -tr(a) +tr 'b\n' -tr(u) -html(e)",
+            annotation.buffer());
+
+  // TODO(jmarantz): morlovich points out that this is nowhere near
+  // how a browser will handle this stuff... For a nighmarish testcase, try:
+  //     data:text/html,<table><tr><td><i>a<tr>b
+  //
+  // The 'a' gets rendered in italics *after* the b.
+  //
+  // See also:
+  // http://www.whatwg.org/specs/web-apps/current-work/multipage/
+  // the-end.html#unexpected-markup-in-tables
+  //
+  // But note that these 2 are the same and do what I expect:
+  //
+  // data:text/html,<table><tr><td><i>a</td></tr></table>b
+  // data:text/html,<table><tr><td><i>a</table>b
+  //
+  // the 'a' is italicized but the 'b' is not.  If I omit the 'td'
+  // then the 'b' gets italicized.  This implies I suppose that 'i' is
+  // closed by td but is not closed by tr or table.  And it is indeed
+  // closed by the *implicit* closing of td.
+
+  // http://www.w3.org/TR/html5/the-end.html#misnested-tags:-b-i-b-i
+}
+
+TEST_F(HtmlParseTestNoBody, INotClosedByOpenTable) {
+  AnnotatingHtmlFilter annotation;
+  html_parse_.AddFilter(&annotation);
+  ValidateNoChanges("explicit_close_tr", "<i>a<table><tr></tr></table>b");
+  EXPECT_EQ(
+      " +html '\n' +i 'a' +table +tr -tr(e) -table(e) 'b\n' -i(u) -html(e)",
+      annotation.buffer());
+  annotation.Clear();
+  ValidateNoChanges("implicit_close_tr", "<i>a<table><tr></table>b");
+  EXPECT_EQ(
+      " +html '\n' +i 'a' +table +tr -tr(u) -table(e) 'b\n' -i(u) -html(e)",
+      annotation.buffer());
 }
 
 TEST_F(HtmlParseTest, MakeName) {

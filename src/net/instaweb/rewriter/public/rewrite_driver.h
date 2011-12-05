@@ -179,6 +179,16 @@ class RewriteDriver : public HtmlParse {
     response_headers_ = headers;
   }
 
+  // Copies the cookies from the client request.
+  void set_cookies(const char* cookies) {
+    cookies_.assign(cookies);
+  }
+
+  // Returns the cookies from the client request.
+  const GoogleString& cookies() {
+    return cookies_;
+  }
+
   const UserAgentMatcher& user_agent_matcher() const {
     return user_agent_matcher_;
   }
@@ -887,6 +897,7 @@ class RewriteDriver : public HtmlParse {
   StringFilterMap resource_filter_map_;
 
   ResponseHeaders* response_headers_;
+  GoogleString cookies_;
 
   // This group of rewrite-context-related variables is accessed
   // only in the main thread of RewriteDriver (aka the HTML thread).
