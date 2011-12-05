@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_AJAX_REWRITE_CONTEXT_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_AJAX_REWRITE_CONTEXT_H_
 
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -29,6 +30,7 @@
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -80,7 +82,7 @@ class AjaxRewriteContext : public SingleRewriteContext {
 
   virtual void StartFetchReconstruction();
 
-  virtual GoogleString CacheKey() const;
+  virtual GoogleString CacheKeySuffix() const;
 
  private:
   friend class RecordingFetch;

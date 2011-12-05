@@ -33,6 +33,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
@@ -357,10 +358,9 @@ class RewriteContext {
   // TODO(jmarantz): remove the encoder from RewriteFilter.
   virtual const UrlSegmentEncoder* encoder() const;
 
-  // Returns the cache key that should be used to identify the input &
-  // settings for the rewrites we're representing. The default implementation
-  // just passes in the URLs through the encoder.
-  virtual GoogleString CacheKey() const;
+  // Allows subclasses to add additional text to be appended to the
+  // metadata cache key.  The default implementation returns "".
+  virtual GoogleString CacheKeySuffix() const;
 
   // Returrns the filter ID.
   virtual const char* id() const = 0;

@@ -309,8 +309,13 @@ bool CssFilter::Context::Partition(OutputPartitions* partitions,
   }
 }
 
-GoogleString CssFilter::Context::CacheKey() const {
-  GoogleString key = SingleRewriteContext::CacheKey();
+GoogleString CssFilter::Context::CacheKeySuffix() const {
+  // TODO(morlovich): Make the quirks bit part of the actual output resource
+  // name; as ignoring it on the fetch path is unsafe.
+  // TODO(nikhilmadan): For ajax rewrites, be conservative and assume its XHTML.
+  // Is this right?
+  GoogleString suffix = (has_parent() || driver_->doctype().IsXhtml())
+      ? "X" : "h";
 
   if (rewrite_inline_element_ != NULL) {
     // Incorporate the base path of the HTML as part of the key --- it
@@ -318,15 +323,10 @@ GoogleString CssFilter::Context::CacheKey() const {
     // that (while it doesn't for external CSS, since that uses the
     // stylesheet as the base).
     const Hasher* hasher = Manager()->lock_hasher();
-    StrAppend(&key, "@", hasher->Hash(css_base_gurl_.AllExceptLeaf()));
+    StrAppend(&suffix, "_@", hasher->Hash(css_base_gurl_.AllExceptLeaf()));
   }
 
-  // TODO(morlovich): Make the quirks bit part of the actual output resource
-  // name; as ignoring it on the fetch path is unsafe.
-  // TODO(nikhilmadan): For ajax rewrites, be conservative and assume its XHTML.
-  // Is this right?
-  StrAppend(&key, (has_parent() || driver_->doctype().IsXhtml()) ? "_X" : "_h");
-  return key;
+  return suffix;
 }
 
 CssFilter::CssFilter(RewriteDriver* driver,

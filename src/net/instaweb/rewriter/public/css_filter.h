@@ -211,7 +211,7 @@ class CssFilter::Context : public SingleRewriteContext {
                              const OutputResourcePtr& output);
   virtual const char* id() const { return filter_->id(); }
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
-  virtual GoogleString CacheKey() const;
+  virtual GoogleString CacheKeySuffix() const;
   virtual const UrlSegmentEncoder* encoder() const;
 
  private:

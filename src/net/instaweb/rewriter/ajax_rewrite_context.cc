@@ -265,11 +265,10 @@ void AjaxRewriteContext::StartFetchReconstructionParent() {
   RewriteContext::StartFetchReconstruction();
 }
 
-GoogleString AjaxRewriteContext::CacheKey() const {
+GoogleString AjaxRewriteContext::CacheKeySuffix() const {
   // Include driver_->ShouldNotRewriteImages() in the cache key to prevent image
   // rewrites when bot detection is enabled.
-  return StrCat(RewriteContext::CacheKey(), ":",
-                driver_->ShouldNotRewriteImages() ? "0" : "1");
+  return driver_->ShouldNotRewriteImages() ? "0" : "1";
 }
 
 }  // namespace net_instaweb

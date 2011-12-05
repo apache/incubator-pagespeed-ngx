@@ -52,6 +52,7 @@
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/null_writer.h"
@@ -65,15 +66,6 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 #include "net/instaweb/util/public/writer.h"
-
-namespace {
-
-// Beyond 64 characters, take the hash of the encoding of the URLs rather
-// than using the URLs literally.  Note in particular the potential for
-// large cache-keys for combining filters and inlining with data-urls.
-const size_t kMaxUrlCacheKeyEncoding = 64;
-
-}  // namespace
 
 namespace net_instaweb {
 
@@ -568,11 +560,99 @@ void RewriteContext::Start() {
   }
 }
 
+namespace {
+
+// Hashes a string into (we expect) a base-64-encoded sequence.  Then
+// inserts a "/" after the first character.  The theory is that for
+// inlined and combined resources, there is no useful URL hierarchy,
+// and we want to avoid creating, in the file-cache, a gigantic flat
+// list of names.
+//
+// We do this split after one character so we just get 64
+// subdirectories.  If we have too many subdirectories then the
+// file-system will not cache the metadata efficiently.  If we have
+// too few then the directories get very large.  The main limitation
+// we are working against is in pre-ext4 file systems, there are a
+// maximum of 32k subdirectories per directory, and there is not an
+// explicit limitation on the number of file.  Additioanlly,
+// old file-systems may not be efficiently indexed, in which case
+// adding some hierarchy should help.
+GoogleString HashSplit(const Hasher* hasher, const StringPiece& str) {
+  GoogleString hash_buffer = hasher->Hash(str);
+  StringPiece hash(hash_buffer);
+  return StrCat(hash.substr(0, 1), "/", hash.substr(1));
+}
+
+}
+
 void RewriteContext::SetPartitionKey() {
-  partition_key_ = CacheKey();
-  GoogleString signature = Options()->signature();
+  // In Apache, we are populating a file-cache.  To be friendly to
+  // the file system, we want to structure it as follows:
+  //
+  //   rname/id_signature/encoded_filename
+  //
+  // Performance constraints:
+  //   - max 32k links (created by ".." link from subdirectories) per directory
+  //   - avoid excessive high-entropy hierarchy as it will not play well with
+  //     the filesystem metadata cache.
+  //
+  // The natural hierarchy in URLs should be exploited for single-resource
+  // rewrites; and in fact the http cache uses that, so it can't be too bad.
+  //
+  // Data URLs & combined URLs should be encoded & hashed because they lack
+  // a useful natural hierarchy to reflect in the file-system.
+  //
+  // We need to run the URL encoder in order to serialize the
+  // resource_context_, but this flattens the hierarchy by encoding
+  // slashes.  We want the FileCache hierarchies to reflect the URL
+  // hierarchies if possible.  So we use a dummy URL of "" in our
+  // url-list for now.
+  StringVector urls;
   const Hasher* hasher = Manager()->lock_hasher();
-  StrAppend(&partition_key_, "/", hasher->Hash(signature));
+  GoogleString url;
+  GoogleString signature = hasher->Hash(Options()->signature());
+  GoogleString suffix = CacheKeySuffix();
+
+  if (num_slots() == 1) {
+    // Usually a resource-context-specific encoding such as the
+    // image dimension will be placed ahead of the URL.  However,
+    // in the cache context, we want to put it at the end, so
+    // put this encoding right before any context-specific suffix.
+    urls.push_back("");
+    GoogleString encoding;
+    encoder()->Encode(urls, resource_context_.get(), &encoding);
+    suffix = StrCat(encoding, "@", suffix);
+
+    url = slot(0)->resource()->url();
+    if (StringPiece(url).starts_with("data:")) {
+      url = HashSplit(hasher, url);
+    }
+  } else if (num_slots() == 0) {
+    // Ideally we should not be writing cache entries for 0-slot
+    // contexts.  However that is currently the case for
+    // image-spriting.  It would be preferable to avoid creating an
+    // identical empty encoding here for every degenerate sprite
+    // attempt, but for the moment we can at least make all the
+    // encodings the same so they can share the same cache entry.
+    // Note that we clear out the suffix to avoid having separate
+    // entries for each CSS files that lacks any images.
+    //
+    // TODO(morlovich): Maksim has a fix in progress which will
+    // eliminate this case.
+    suffix.clear();
+    url = "empty";
+  } else {
+    for (int i = 0, n = num_slots(); i < n; ++i) {
+      ResourcePtr resource(slot(i)->resource());
+      urls.push_back(resource->url());
+    }
+    encoder()->Encode(urls, resource_context_.get(), &url);
+    url = HashSplit(hasher, url);
+  }
+
+  partition_key_ = StrCat(ResourceManager::kCacheKeyResourceNamePrefix,
+                          id(), "_", signature, "/",
+                          url, "@", suffix);
 }
 
 // Check if this mapping from input to output URLs is still valid; and if not
@@ -1363,38 +1443,8 @@ const UrlSegmentEncoder* RewriteContext::encoder() const {
   return &default_encoder_;
 }
 
-GoogleString RewriteContext::CacheKey() const {
-  GoogleString key(ResourceManager::kCacheKeyResourceNamePrefix), encoding;
-  StringVector urls;
-
-  // We need to run the URL encoder in order to serialize the resource_context_.
-  // But we don't really want to flatten all the hierarchy in most cases: we
-  // want the FileCache hierarchies to reflect the URL hierarchies if possible.
-  // So we use a dummy URL of "" in our url-list for now.
-  //
-  // But if we are combining multiple URLs then we confusing hiearchy
-  // where url2 is beneath url1.  So we use the URL encoder normally
-  // in that case.
-  if (num_slots() == 1) {
-    urls.push_back("");
-  } else {
-    for (int i = 0, n = num_slots(); i < n; ++i) {
-      ResourcePtr resource(slot(i)->resource());
-      urls.push_back(resource->url());
-    }
-  }
-  encoder()->Encode(urls, resource_context_.get(), &encoding);
-  if (num_slots() == 1) {
-    // If we didn't run the encoder with the URLs then just append
-    // on the verbatim URL.
-    StrAppend(&encoding, slot(0)->resource()->url());
-  }
-
-  if (encoding.size() > kMaxUrlCacheKeyEncoding) {
-    encoding = Manager()->lock_hasher()->Hash(encoding);
-  }
-  StrAppend(&key, id(), "/", encoding);
-  return key;
+GoogleString RewriteContext::CacheKeySuffix() const {
+  return "";
 }
 
 bool RewriteContext::DecodeFetchUrls(

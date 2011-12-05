@@ -51,7 +51,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -59,7 +58,6 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/url_escaper.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/identifier.h"
 #include "webutil/css/parser.h"
@@ -759,8 +757,8 @@ class ImageCombineFilter::Context : public RewriteContext {
                  filter->driver()->message_handler()),
         filter_(filter) {
     MD5Hasher hasher;
-    key_prefix_ = StrCat("/css-key=", hasher.Hash(css_text),
-                         "@", css_url.AllExceptLeaf());
+    key_suffix_ = StrCat("css-key=", hasher.Hash(css_text),
+                         "_", hasher.Hash(css_url.AllExceptLeaf()));
   }
 
   Context(RewriteDriver* driver, ImageCombineFilter* filter)
@@ -769,7 +767,6 @@ class ImageCombineFilter::Context : public RewriteContext {
                  filter->driver()->resource_manager()->filename_prefix(),
                  filter->driver()->message_handler()),
         filter_(filter) {
-    key_prefix_ = "";
   }
 
   virtual ~Context() {}
@@ -782,9 +779,8 @@ class ImageCombineFilter::Context : public RewriteContext {
   // combination, in order to keep it short so it doesn't run up against
   // filename length limits on apache.
   // TODO(nforman): Figure out a way to test cache keys in general.
-  virtual GoogleString CacheKey() const {
-    // TODO(jmarantz): rename to key_prefix_ to key_suffix_.
-    return StrCat(RewriteContext::CacheKey(), key_prefix_);
+  virtual GoogleString CacheKeySuffix() const {
+    return key_suffix_;
   }
 
   bool AddFuture(CssResourceSlotPtr slot) {
@@ -1115,7 +1111,7 @@ class ImageCombineFilter::Context : public RewriteContext {
 
   Library library_;
   ImageCombineFilter* filter_;
-  GoogleString key_prefix_;
+  GoogleString key_suffix_;
 };
 
 ImageCombineFilter::ImageCombineFilter(RewriteDriver* driver)
