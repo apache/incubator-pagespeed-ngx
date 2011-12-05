@@ -207,6 +207,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kCombineJavascript:               return "Combine Javascript";
     case kConvertJpegToWebp:               return "Convert Jpeg To Webp";
     case kConvertMetaTags:                 return "Convert Meta Tags";
+    case kConvertPngToJpeg:                return "Convert Png to Jpeg";
     case kDeferJavascript:                 return "Defer Javascript";
     case kDelayImages:                     return "Delay Images";
     case kDisableJavascript:
@@ -256,6 +257,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kCombineJavascript:               return kJavascriptCombinerId;
     case kConvertJpegToWebp:               return "jw";
     case kConvertMetaTags:                 return "mc";
+    case kConvertPngToJpeg:                return "pj";
     case kDeferJavascript:                 return "dj";
     case kDelayImages:                     return "di";
     case kDisableJavascript:               return "jd";

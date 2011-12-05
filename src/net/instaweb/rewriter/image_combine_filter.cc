@@ -568,6 +568,7 @@ class Library : public spriter::ImageLibraryInterface {
     bool prefer_webp = false;  // Not working with jpg/webp at all.
     // TODO(satyanarayana): Use approriate quality param for spriting.
     int jpeg_quality = RewriteOptions::kDefaultImageJpegRecompressQuality;
+    bool convert_png_to_jpeg = false;
     net_instaweb::Image* prev_image = fake_fs_[resource->url()];
     if (prev_image != NULL) {
       // Already registered
@@ -576,7 +577,7 @@ class Library : public spriter::ImageLibraryInterface {
 
     scoped_ptr<net_instaweb::Image> image(net_instaweb::NewImage(
         resource->contents(), resource->url(), tmp_dir_, prefer_webp,
-        jpeg_quality, handler_));
+        jpeg_quality, convert_png_to_jpeg, handler_));
 
     // We only handle PNGs and GIFs (which are converted to PNGs) for now.
     net_instaweb::Image::Type image_type = image->image_type();

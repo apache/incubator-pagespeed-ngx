@@ -47,6 +47,7 @@ extern "C" {
 #include "third_party/opencv/src/opencv/include/opencv/highgui.h"
 #endif
 #include "pagespeed/image_compression/gif_reader.h"
+#include "pagespeed/image_compression/image_converter.h"
 #include "pagespeed/image_compression/jpeg_optimizer.h"
 #include "pagespeed/image_compression/png_optimizer.h"
 
@@ -57,6 +58,7 @@ extern "C" {
 #include "net/instaweb/util/public/stdio_file_system.h"
 #endif
 
+using pagespeed::image_compression::ImageConverter;
 using pagespeed::image_compression::PngOptimizer;
 
 namespace net_instaweb {
@@ -96,6 +98,7 @@ class ImageImpl : public Image {
             const StringPiece& file_prefix,
             bool webp_preferred,
             int jpeg_quality,
+            bool convert_png_to_jpeg,
             MessageHandler* handler);
 
   virtual void Dimensions(ImageDim* natural_dim);
@@ -162,6 +165,7 @@ class ImageImpl : public Image {
   int jpeg_quality_;
   int webp_quality_;
   bool low_quality_enabled_;
+  bool convert_png_to_jpeg_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageImpl);
 };
@@ -201,6 +205,7 @@ ImageImpl::ImageImpl(const StringPiece& original_contents,
                      const StringPiece& file_prefix,
                      bool webp_preferred,
                      int jpeg_quality,
+                     bool convert_png_to_jpeg,
                      MessageHandler* handler)
     : Image(original_contents),
       file_prefix_(file_prefix.data(), file_prefix.size()),
@@ -212,16 +217,18 @@ ImageImpl::ImageImpl(const StringPiece& original_contents,
       webp_preferred_(webp_preferred),
       jpeg_quality_(jpeg_quality),
       webp_quality_(RewriteOptions::kDefaultImageWebpRecompressQuality),
-      low_quality_enabled_(false) { }
+      low_quality_enabled_(false),
+      convert_png_to_jpeg_(convert_png_to_jpeg) { }
 
 Image* NewImage(const StringPiece& original_contents,
                 const GoogleString& url,
                 const StringPiece& file_prefix,
                 bool webp_preferred,
                 int jpeg_quality,
+                bool convert_png_to_jpeg,
                 MessageHandler* handler) {
   return new ImageImpl(original_contents, url, file_prefix, webp_preferred,
-                       jpeg_quality, handler);
+                       jpeg_quality, convert_png_to_jpeg, handler);
 }
 
 Image::Image(Type type)
@@ -242,7 +249,8 @@ ImageImpl::ImageImpl(int width, int height, Type type,
       webp_preferred_(false),
       jpeg_quality_(RewriteOptions::kDefaultImageJpegRecompressQuality),
       webp_quality_(RewriteOptions::kDefaultImageWebpRecompressQuality),
-      low_quality_enabled_(false) {
+      low_quality_enabled_(false),
+      convert_png_to_jpeg_(false) {
   dims_.set_width(width);
   dims_.set_height(height);
 }
@@ -760,10 +768,29 @@ bool ImageImpl::ComputeOutputContents() {
           }
           break;
         case IMAGE_PNG: {
+          pagespeed::image_compression::PngReader png_reader;
+
           if (low_quality_enabled_) {
             // Currently, png to jpeg conversion is not present in the pagespeed
             // library.
+            // TODO(pulkitg): Implement this once pagespeed exposes setting
+            // quality parameter for png to jpeg conversion.
             ok = false;
+            break;
+          }
+
+          if (convert_png_to_jpeg_) {
+            bool is_png;
+#if 0  // pagespeed function that implements this not checked in yet ....
+            ok = ImageConverter::OptimizePngOrConvertToJpeg(
+                png_reader, string_for_image, &output_contents_, &is_png);
+#else
+            ok = false;
+            is_png = false;
+#endif
+            if (ok && !is_png) {
+              image_type_ = IMAGE_JPEG;
+            }
           } else {
             pagespeed::image_compression::PngReader png_reader;
             ok = PngOptimizer::OptimizePngBestCompression

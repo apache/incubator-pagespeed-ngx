@@ -204,6 +204,7 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
       NewImage(input_resource->contents(), input_resource->url(),
                resource_manager_->filename_prefix(),
                context.attempt_webp(), options->image_jpeg_recompress_quality(),
+               options->Enabled(RewriteOptions::kConvertPngToJpeg),
                message_handler));
   Image::Type original_image_type = image->image_type();
   if (original_image_type == Image::IMAGE_UNKNOWN) {
@@ -315,7 +316,9 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
       scoped_ptr<Image> low_image(
           NewImage(image->Contents(), input_resource->url(),
                    resource_manager_->filename_prefix(), false,
-                   options->image_jpeg_recompress_quality(), message_handler));
+                   options->image_jpeg_recompress_quality(),
+                   options->Enabled(RewriteOptions::kConvertPngToJpeg),
+                   message_handler));
       low_image->SetTransformToLowRes();
       if (image->Contents().size() > low_image->Contents().size()) {
         // TODO(pulkitg): Add a some sort of guarantee on how small inline

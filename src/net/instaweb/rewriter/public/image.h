@@ -164,6 +164,7 @@ Image* NewImage(const StringPiece& original_contents,
                 const StringPiece& file_prefix,
                 bool webp_preferred,
                 int jpeg_quality,
+                bool convert_png_to_jpeg,
                 MessageHandler* handler);
 
 // Creates a blank image of the given dimensions and type.

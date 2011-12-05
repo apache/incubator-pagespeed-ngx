@@ -52,7 +52,8 @@ class ImageTest : public testing::Test {
                          const GoogleString& name,
                          const GoogleString& contents) {
     return NewImage(contents, name, GTestTempDir(),
-                    output_type == Image::IMAGE_WEBP, -1, &handler_);
+                    output_type == Image::IMAGE_WEBP, -1,
+                    output_type == Image::IMAGE_JPEG, &handler_);
   }
 
   void ExpectDimensions(Image::Type image_type, int size,
@@ -221,6 +222,17 @@ TEST_F(ImageTest, PngTest) {
       100, 100,
       26548, true);
 }
+
+#if 0
+TEST_F(ImageTest, PngToJpegTest) {
+  CheckImageFromFile(
+      kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_JPEG,
+      ImageHeaders::kPngHeaderLength,
+      ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
+      100, 100,
+      26548, true);
+}
+#endif
 
 TEST_F(ImageTest, GifTest) {
   CheckImageFromFile(
