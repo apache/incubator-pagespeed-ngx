@@ -27,7 +27,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -88,24 +87,12 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
     const char* src = attr->value();
     DCHECK(src != NULL);
 
+    // Initiate() transfers ownership of ctx to RewriteDriver, or deletes
+    // it on failure.
     // TODO(morlovich): Consider async/defer here; it may not be a good
     // idea to inline async scripts in particular.
-
-    if (HasAsyncFlow()) {
-      (new Context(this, element, attr))->Initiate();
-    } else {
-      ResourcePtr resource(CreateInputResourceAndReadIfCached(src));
-      // TODO(jmaessen): Is the domain lawyer policy the appropriate one here?
-      // Or do we still have to check for strict domain equivalence?
-      // If so, add an inline-in-page policy to domainlawyer in some form,
-      // as we make a similar policy decision in css_inline_filter.
-      if ((resource.get() != NULL) && resource->ContentsValid()) {
-        StringPiece contents = resource->contents();
-        if (ShouldInline(contents)) {
-          RenderInline(resource, contents, element);
-        }
-      }
-    }
+    Context* ctx = new Context(this, element, attr);
+    ctx->Initiate();
   }
   should_inline_ = false;
 }
@@ -174,8 +161,9 @@ void JsInlineFilter::Characters(HtmlCharactersNode* characters) {
   }
 }
 
+// TODO(nforman): Rip this out.
 bool JsInlineFilter::HasAsyncFlow() const {
-  return driver_->asynchronous_rewrites();
+  return true;
 }
 
 }  // namespace net_instaweb

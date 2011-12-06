@@ -162,12 +162,8 @@ class JsCombineFilter::Context : public RewriteContext {
   // from the combination.  Remove the corresponding slot as well,
   // because we are no longer handling the resource associated with it.
   void RemoveLastElement() {
-    if (filter_->HasAsyncFlow()) {
-      RemoveLastSlot();
-      elements_.resize(elements_.size() - 1);
-    } else {
-      combiner_.RemoveLastElement();
-    }
+    RemoveLastSlot();
+    elements_.resize(elements_.size() - 1);
   }
 
   bool HasElementLast(HtmlElement* element) {
@@ -550,34 +546,11 @@ void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
   }
 
   // Now we see if policy permits us merging this element with previous ones.
-  if (HasAsyncFlow()) {
-    context_->AddElement(element, src);
-  } else {
-    StringPiece url = src->value();
-    MessageHandler* handler = driver_->message_handler();
-    if (!combiner()->AddElement(element, url, handler).value) {
-      // No -> try to flush what we have thus far.
-      // Note: this flush is important in part because it ensure that all
-      // scripts within combination have the same hostname, so we can safely
-      // name variables excluding the hostname, without worrying about
-      // foo.com/a.js and bar.com/a.js colliding.
-      NextCombination();
-
-      // ... and try to start a new combination
-      combiner()->AddElement(element, url, handler);
-    }
-  }
+  context_->AddElement(element, src);
 }
 
 bool JsCombineFilter::IsCurrentScriptInCombination() const {
-  if (HasAsyncFlow()) {
-    return context_->HasElementLast(current_js_script_);
-  } else {
-    int included_urls = combiner()->num_urls();
-    return (current_js_script_ != NULL) &&
-        (included_urls >= 1) &&
-        (combiner()->element(included_urls - 1) == current_js_script_);
-  }
+  return context_->HasElementLast(current_js_script_);
 }
 
 GoogleString JsCombineFilter::VarName(const GoogleString& url) const {
@@ -596,6 +569,7 @@ GoogleString JsCombineFilter::VarName(const GoogleString& url) const {
   return StrCat("mod_pagespeed_", url_hash);
 }
 
+// TODO(nforman): This will fail (for sync only).  Rip it out.
 bool JsCombineFilter::Fetch(const OutputResourcePtr& resource,
                             Writer* writer,
                             const RequestHeaders& request_header,
@@ -607,8 +581,9 @@ bool JsCombineFilter::Fetch(const OutputResourcePtr& resource,
                           message_handler, callback);
 }
 
+// TODO(nforman): Rip this out.
 bool JsCombineFilter::HasAsyncFlow() const {
-  return driver_->asynchronous_rewrites();
+  return true;
 }
 
 JsCombineFilter::Context* JsCombineFilter::MakeContext() {
@@ -628,13 +603,9 @@ JsCombineFilter::JsCombiner* JsCombineFilter::combiner() const {
 // In sync flow, just write out what we have so far, and then
 // reset the context.
 void JsCombineFilter::NextCombination() {
-  if (HasAsyncFlow()) {
-    if (!context_->empty()) {
-      driver_->InitiateRewrite(context_.release());
-      context_.reset(MakeContext());
-    }
-  } else {
-    combiner()->TryCombineAccumulated();
+  if (!context_->empty()) {
+    driver_->InitiateRewrite(context_.release());
+    context_.reset(MakeContext());
   }
   context_->Reset();
 }

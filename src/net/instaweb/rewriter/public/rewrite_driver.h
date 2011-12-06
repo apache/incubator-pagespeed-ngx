@@ -406,6 +406,9 @@ class RewriteDriver : public HtmlParse {
   //
   // Could be private since you should use one of the versions below but put
   // here with the rest like it and for documentation clarity.
+  //
+  // TODO(nforman): Remove the use_async_flow parameter on all these
+  // CrateOutputResource*() methods.
   OutputResourcePtr CreateOutputResourceWithPath(
       const StringPiece& mapped_path, const StringPiece& unmapped_path,
       const StringPiece& base_url, const StringPiece& filter_id,

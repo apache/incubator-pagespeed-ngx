@@ -24,7 +24,6 @@
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
@@ -395,14 +394,11 @@ TEST_P(CssImageRewriterTest, CacheInlineParseFailures) {
                            kExpectNoChange | kExpectFailure | kNoOtherContexts);
   EXPECT_EQ(1, num_parse_failures->Get());
 
-  // This works properly only under new flow...
-  if (rewrite_driver()->asynchronous_rewrites()) {
-    ValidateRewriteInlineCss(
-        "inline-invalid2", kInvalidCss, kInvalidCss,
-        kExpectNoChange | kExpectFailure | kNoOtherContexts | kNoStatCheck);
-    // Shouldn't reparse -- and stats are reset between runs.
-    EXPECT_EQ(0, num_parse_failures->Get());
-  }
+  ValidateRewriteInlineCss(
+      "inline-invalid2", kInvalidCss, kInvalidCss,
+      kExpectNoChange | kExpectFailure | kNoOtherContexts | kNoStatCheck);
+  // Shouldn't reparse -- and stats are reset between runs.
+  EXPECT_EQ(0, num_parse_failures->Get());
 }
 
 TEST_P(CssImageRewriterTest, RecompressImages) {
