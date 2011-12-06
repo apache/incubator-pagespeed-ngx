@@ -558,9 +558,8 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
       initiate_mutex_(parent->thread_system()->NewMutex()),
       initiate_fetches_(new SerfFetchPool()),
       initiate_fetches_nonempty_(initiate_mutex_->NewCondvar()),
-      thread_finish_(false) {
-    CHECK_EQ(APR_SUCCESS,
-             apr_thread_create(&thread_id_, NULL, SerfThreadFn, this, pool_));
+      thread_finish_(false),
+      thread_started_(false) {
   }
 
   ~SerfThreadedFetcher() {
@@ -569,8 +568,13 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     {
       // Indicate termination and unblock the worker thread so it can clean up.
       ScopedMutex lock(initiate_mutex_.get());
-      thread_finish_ = true;
-      initiate_fetches_nonempty_->Signal();
+      if (thread_started_) {
+        thread_finish_ = true;
+        initiate_fetches_nonempty_->Signal();
+      } else {
+        LOG(INFO) << "Serf threaded not actually started, quick shutdown.";
+        return;
+      }
     }
 
     LOG(INFO) << "Waiting for threaded serf fetcher to terminate";
@@ -598,10 +602,23 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     initiate_fetches_->DeleteAll();
   }
 
+  void StartThread() {
+    CHECK_EQ(APR_SUCCESS,
+             apr_thread_create(&thread_id_, NULL, SerfThreadFn, this, pool_));
+    thread_started_ = true;
+  }
+
   // Called from mainline to queue up a fetch for the thread.  If the
   // thread is idle then we can unlock it.
   void InitiateFetch(SerfFetch* fetch) {
     ScopedMutex lock(initiate_mutex_.get());
+
+    // We delay thread startup until we actually want to fetch something
+    // to avoid problems with ITK.
+    if (!thread_started_) {
+      StartThread();
+    }
+
     // TODO(jmaessen): Consider adding an awaiting_nonempty_ flag to avoid
     // spurious calls to Signal().
     bool signal = initiate_fetches_->empty();
@@ -615,8 +632,13 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
     // See comments in the destructor above.. The big difference is that
     // because we set shutdown_ to true new jobs can't actually come in.
     {
+      // Acquisition order is initiate before hold, see e.g. AnyPendingFetches()
+      ScopedMutex hold_initiate(initiate_mutex_.get());
       ScopedMutex hold(mutex_);
       set_shutdown(true);
+      if (!thread_started_) {
+        return;
+      }
     }
     TransferFetchesAndCheckDone(false);
     CancelActiveFetches();
@@ -740,7 +762,8 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
 
   apr_thread_t* thread_id_;
 
-  // protects initiate_fetches_, initiate_fetches_nonempty_, and thread_finish_.
+  // protects initiate_fetches_, initiate_fetches_nonempty_, thread_finish_
+  // and thread_started_.
   scoped_ptr<ThreadSystem::CondvarCapableMutex> initiate_mutex_;
   // pushed in the main thread; popped by TransferFetches().
   scoped_ptr<SerfFetchPool> initiate_fetches_;
@@ -754,6 +777,9 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
 
   // Flag to signal worker to finish working and terminate.
   bool thread_finish_;
+
+  // True if we actually started the worker thread. Protected by initiate_mutex_
+  bool thread_started_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfThreadedFetcher);
 };
