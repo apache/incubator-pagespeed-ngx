@@ -223,7 +223,6 @@ TEST_F(ImageTest, PngTest) {
       26548, true);
 }
 
-#if 0
 TEST_F(ImageTest, PngToJpegTest) {
   CheckImageFromFile(
       kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_JPEG,
@@ -232,7 +231,6 @@ TEST_F(ImageTest, PngToJpegTest) {
       100, 100,
       26548, true);
 }
-#endif
 
 TEST_F(ImageTest, GifTest) {
   CheckImageFromFile(

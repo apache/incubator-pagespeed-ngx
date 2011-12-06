@@ -781,13 +781,13 @@ bool ImageImpl::ComputeOutputContents() {
 
           if (convert_png_to_jpeg_) {
             bool is_png;
-#if 0  // pagespeed function that implements this not checked in yet ....
+            pagespeed::image_compression::JpegCompressionOptions options;
+            options.lossy = true;
+            options.quality =
+                std::min(ImageHeaders::kMaxJpegQuality, jpeg_quality_);
             ok = ImageConverter::OptimizePngOrConvertToJpeg(
-                png_reader, string_for_image, &output_contents_, &is_png);
-#else
-            ok = false;
-            is_png = false;
-#endif
+                png_reader, string_for_image, options,
+                &output_contents_, &is_png);
             if (ok && !is_png) {
               image_type_ = IMAGE_JPEG;
             }
