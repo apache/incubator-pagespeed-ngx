@@ -694,8 +694,9 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
   return ret ? kRewriteOk : kRewriteFailed;
 }
 
+// TODO(nforman): Rip this out.
 bool CssFilter::HasAsyncFlow() const {
-  return driver_->asynchronous_rewrites();
+  return true;
 }
 
 CssFilter::Context* CssFilter::MakeContext(RewriteDriver* driver,

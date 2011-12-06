@@ -407,23 +407,15 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     resource_context->set_attempt_webp(true);
   }
 
-  if (HasAsyncFlow()) {
-    ResourcePtr input_resource = CreateInputResource(src->value());
-    if (input_resource.get() != NULL) {
-      Context* context = new Context(0 /* No CSS inlining, it's html */,
-                                     this, driver_, NULL /*not nested */,
-                                     resource_context.release(),
-                                     false /*not css */);
-      ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
-      context->AddSlot(slot);
-      driver_->InitiateRewrite(context);
-    }
-  } else {
-    scoped_ptr<CachedResult> cached(RewriteWithCaching(src->value(),
-                                                       resource_context.get()));
-    if (cached.get() != NULL) {
-      FinishRewriteImageUrl(cached.get(), resource_context.get(), element, src);
-    }
+  ResourcePtr input_resource = CreateInputResource(src->value());
+  if (input_resource.get() != NULL) {
+    Context* context = new Context(0 /* No CSS inlining, it's html */,
+                                   this, driver_, NULL /*not nested */,
+                                   resource_context.release(),
+                                   false /*not css */);
+    ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
+    context->AddSlot(slot);
+    driver_->InitiateRewrite(context);
   }
 }
 
@@ -594,8 +586,9 @@ const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {
   return &encoder_;
 }
 
+// TODO(nforman): Rip this out.
 bool ImageRewriteFilter::HasAsyncFlow() const {
-  return driver_->asynchronous_rewrites();
+  return true;
 }
 
 RewriteContext* ImageRewriteFilter::MakeRewriteContext() {

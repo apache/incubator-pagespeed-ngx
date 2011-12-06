@@ -77,6 +77,7 @@ BASE_LIBS = \
   third_party/icu/libicuuc.a \
   third_party/libjpeg/libjpeg.a \
   third_party/libpagespeed/src/pagespeed/core/libpagespeed_core.a \
+  third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_image_converter.a \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_jpeg_optimizer.a \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_jpeg_reader.a \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_png_optimizer.a \

@@ -94,25 +94,7 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
       return;  // We obviously can't inline if the URL isn't there.
     }
 
-    if (HasAsyncFlow()) {
-      (new Context(this, base_url(), element, attr))->Initiate();
-    } else {
-      // Make sure we're not moving across domains -- CSS can potentially
-      // contain Javascript expressions.
-      // TODO(jmaessen): Is the domain lawyer policy the appropriate one here?
-      // Or do we still have to check for strict domain equivalence?
-      // If so, add an inline-in-page policy to domainlawyer in some form,
-      // as we make a similar policy decision in js_inline_filter.
-      ResourcePtr resource(CreateInputResourceAndReadIfCached(attr->value()));
-      if ((resource.get() == NULL) || !resource->ContentsValid()) {
-        return;
-      }
-
-      StringPiece contents = resource->contents();
-      if (ShouldInline(contents)) {
-        RenderInline(resource, base_url(), contents, element);
-      }
-    }
+    (new Context(this, base_url(), element, attr))->Initiate();
   }
 }
 
@@ -168,8 +150,9 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
   }
 }
 
+// TODO(nforman): Rip this out.
 bool CssInlineFilter::HasAsyncFlow() const {
-  return driver_->asynchronous_rewrites();
+  return true;
 }
 
 }  // namespace net_instaweb

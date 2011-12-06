@@ -19,14 +19,12 @@
 #include "net/instaweb/rewriter/public/cache_extender.h"
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -171,20 +169,10 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
       return;
     }
 
-    if (HasAsyncFlow()) {
-      ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, href));
-      Context* context = new Context(this, driver_, NULL /* not nested */);
-      context->AddSlot(slot);
-      driver_->InitiateRewrite(context);
-    } else {
-      scoped_ptr<CachedResult> rewrite_info(
-          RewriteExternalResource(input_resource, NULL));
-      if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
-        // Rewrite URL to cache-extended version
-        href->SetValue(rewrite_info->url());
-        extension_count_->Add(1);
-      }
-    }
+    ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, href));
+    Context* context = new Context(this, driver_, NULL /* not nested */);
+    context->AddSlot(slot);
+    driver_->InitiateRewrite(context);
   }
 }
 
@@ -261,8 +249,9 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   }
 }
 
+// TODO(nforman): Rip this out.
 bool CacheExtender::HasAsyncFlow() const {
-  return driver_->asynchronous_rewrites();
+  return true;
 }
 
 RewriteContext* CacheExtender::MakeRewriteContext() {

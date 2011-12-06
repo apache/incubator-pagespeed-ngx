@@ -143,18 +143,13 @@ class CssCombineFilter::Context : public RewriteContext {
   CssCombiner* combiner() { return &combiner_; }
 
   bool AddElement(HtmlElement* element, HtmlElement::Attribute* href) {
-    bool ret = true;
-    if (filter_->HasAsyncFlow()) {
-      ResourcePtr resource(filter_->CreateInputResource(href->value()));
-      if (resource.get() != NULL) {
-        ResourceSlotPtr slot(Driver()->GetSlot(resource, element, href));
-        AddSlot(slot);
-        elements_.push_back(element);
-      } else {
-        ret = false;
-      }
-    } else {
-      AddToCombiner(element, href);
+    bool ret = false;
+    ResourcePtr resource(filter_->CreateInputResource(href->value()));
+    if (resource.get() != NULL) {
+      ResourceSlotPtr slot(Driver()->GetSlot(resource, element, href));
+      AddSlot(slot);
+      elements_.push_back(element);
+      ret = true;
     }
     return ret;
   }
@@ -507,8 +502,9 @@ CssCombineFilter::CssCombiner* CssCombineFilter::combiner() {
   return context_->combiner();
 }
 
+// TODO(nforman): Rip this out.
 bool CssCombineFilter::HasAsyncFlow() const {
-  return driver_->asynchronous_rewrites();
+  return true;
 }
 
 CssCombineFilter::Context* CssCombineFilter::MakeContext() {
