@@ -54,6 +54,7 @@ const uint64 Parser::kSkippedTokenError;
 const uint64 Parser::kCharsetError;
 const uint64 Parser::kBlockError;
 const uint64 Parser::kNumberError;
+const uint64 Parser::kImportError;
 
 
 // Using isascii with signed chars is unfortunately undefined.
@@ -1868,8 +1869,12 @@ void Parser::ParseAtrule(Stylesheet* stylesheet) {
   if (ident.utf8_length() == 6 &&
       memcasecmp(ident.utf8_data(), "import", 6) == 0) {
     scoped_ptr<Import> import(ParseImport());
-    if (import.get() && stylesheet)
+    if (import.get() && stylesheet) {
       stylesheet->mutable_imports().push_back(import.release());
+    } else {
+      ReportParsingError(kImportError, "Failed to parse import");
+      SkipPastDelimiter(';');
+    }
 
   // @charset string ;
   } else if (ident.utf8_length() == 7 &&

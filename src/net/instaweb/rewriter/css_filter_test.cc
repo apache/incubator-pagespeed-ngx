@@ -272,6 +272,12 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=50
     "@media screen and (max-width: 290px) { a { color:red } }",
 
+    // Malformed @import statements.
+    "@import styles.css; a { color: red; }",
+    "@import \"styles.css\", \"other.css\"; a { color: red; }",
+    "@import url(styles.css), url(other.css); a { color: red; }",
+    "@import \"styles.css\"...; a { color: red; }",
+
     // Things from Alexa-100 that we get parsing errors for. Most are illegal
     // syntax/typos. Some are CSS3 constructs.
 
@@ -765,6 +771,10 @@ TEST_P(CssFilterTest, ComplexCssTest) {
       "html:not(:only-child:only-child) .sh_heading_main_b_wide{"
       "background:-webkit-gradient(linear,left top,left bottom,"
       "from(#fff),to(#f0f0f0))}" },
+
+    // @import stuff
+    { "@import \"styles.css\"foo; a { color: red; }",
+      "@import url(styles.css) foo;a{color:red}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
