@@ -22,14 +22,12 @@
 #include <cstddef>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -285,25 +283,14 @@ void JavascriptFilter::RewriteInlineScript() {
 // External script; minify and replace with rewritten version (also external).
 void JavascriptFilter::RewriteExternalScript() {
   const StringPiece script_url(script_src_->value());
-  if (driver_->asynchronous_rewrites()) {
-    ResourcePtr resource = CreateInputResource(script_url);
-    if (resource.get() != NULL) {
-      ResourceSlotPtr slot(
-          driver_->GetSlot(resource, script_in_progress_, script_src_));
-      Context* jrc = new Context(driver_, NULL, &config_, buffer_);
-      jrc->AddSlot(slot);
-      driver_->InitiateRewrite(jrc);
-    }
-    return;
+  ResourcePtr resource = CreateInputResource(script_url);
+  if (resource.get() != NULL) {
+    ResourceSlotPtr slot(
+        driver_->GetSlot(resource, script_in_progress_, script_src_));
+    Context* jrc = new Context(driver_, NULL, &config_, buffer_);
+    jrc->AddSlot(slot);
+    driver_->InitiateRewrite(jrc);
   }
-
-  scoped_ptr<CachedResult> rewrite_info(RewriteWithCaching(script_url, NULL));
-
-  if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
-    script_src_->SetValue(rewrite_info->url());
-  }
-
-  CleanupWhitespaceScriptBody(driver_, NULL, buffer_);
 }
 
 // Reset state at end of script.

@@ -125,7 +125,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
     : HtmlParse(message_handler),
       base_was_set_(false),
       refs_before_base_(false),
-      asynchronous_rewrites_(true),
       filters_added_(false),
       externally_managed_(false),
       fetch_queued_(false),
@@ -274,15 +273,13 @@ void RewriteDriver::WaitForShutDown() {
 }
 
 void RewriteDriver::BoundedWaitFor(WaitMode mode, int64 timeout_ms) {
-  if (asynchronous_rewrites_) {
-    SchedulerBlockingFunction wait(scheduler_);
+  SchedulerBlockingFunction wait(scheduler_);
 
-    {
-      ScopedMutex lock(rewrite_mutex());
-      CheckForCompletionAsync(mode, timeout_ms, &wait);
-    }
-    wait.Block();
+  {
+    ScopedMutex lock(rewrite_mutex());
+    CheckForCompletionAsync(mode, timeout_ms, &wait);
   }
+  wait.Block();
 }
 
 void RewriteDriver::CheckForCompletionAsync(WaitMode wait_mode,
@@ -1133,19 +1130,12 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
       // cause us to needlessly fail fetches); which is also why we use
       // did_locking_ above and not has_lock().
       did_locking_ = true;
-      if (driver_->asynchronous_rewrites()) {
-        // The use of rewrite_worker() here is for more predictability in
-        // testing, as it keeps the individual lock ops ordered with respect
-        // to the rewrite graph state machine.
-        output_resource_->LockForCreation(
-            driver_->rewrite_worker(),
-            MakeFunction(this, &CacheCallback::Find, &CacheCallback::Find));
-      } else {
-        SchedulerBlockingFunction blocker(driver_->scheduler());
-        output_resource_->LockForCreation(driver_->rewrite_worker(), &blocker);
-        blocker.Block();
-        Find();
-      }
+      // The use of rewrite_worker() here is for more predictability in
+      // testing, as it keeps the individual lock ops ordered with respect
+      // to the rewrite graph state machine.
+      output_resource_->LockForCreation(
+          driver_->rewrite_worker(),
+          MakeFunction(this, &CacheCallback::Find, &CacheCallback::Find));
     }
   }
 
@@ -1346,21 +1336,6 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   bool may_rewrite = false;
   if (decoded_base_url_.is_valid()) {
     may_rewrite = MayRewriteUrl(decoded_base_url_, input_url);
-    // TODO(matterbury): This code is triggered ONLY in synchronous mode (no,
-    // I don't know why), so when we rip that out this should go too. I have
-    // added an explicit test of that here so that we fail if that changes.
-    if (!may_rewrite && !asynchronous_rewrites_) {
-      // Check if the decoded form of the URL may be rewritten. input_url will
-      // be encoded if we are creating an input resource from an output resource
-      // created by an earlier filter, such as the combine followed by rewrite
-      // in CssFilterWithCombineTest.TestFollowCombine.
-      UrlNamer* namer = resource_manager()->url_namer();
-      GoogleString decoded_input;
-      if (namer->Decode(input_url, NULL, &decoded_input)) {
-        GoogleUrl decoded_url(decoded_input);
-        may_rewrite = MayRewriteUrl(decoded_base_url_, decoded_url);
-      }
-    }
   } else {
     // Shouldn't happen?
     message_handler()->Message(

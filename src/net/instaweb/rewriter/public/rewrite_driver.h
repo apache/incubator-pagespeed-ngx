@@ -554,10 +554,6 @@ class RewriteDriver : public HtmlParse {
   // Renders any completed rewrites back into the DOM.
   void Render();
 
-  // Experimental asynchronous rewrite feature.  This is present only
-  // for regression tests, and should not be used in production.
-  bool asynchronous_rewrites() const { return asynchronous_rewrites_; }
-
   // Indicate that this RewriteDriver will be explicitly deleted, and
   // thus should not be auto-deleted at the end of the parse.  This is
   // primarily for tests.
@@ -819,9 +815,6 @@ class RewriteDriver : public HtmlParse {
   // other url references, this should also be false.
   bool refs_before_base_;
 
-  // Asynchronous rewriting is, at the moment, an experimental-only feature,
-  // which can only be turned on for unit tests.
-  bool asynchronous_rewrites_;
   bool filters_added_;
   bool externally_managed_;
 

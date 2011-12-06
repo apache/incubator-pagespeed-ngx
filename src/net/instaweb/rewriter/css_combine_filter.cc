@@ -371,13 +371,9 @@ void CssCombineFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void CssCombineFilter::NextCombination() {
-  if (driver_->asynchronous_rewrites()) {
-    if (!context_->empty()) {
-      driver_->InitiateRewrite(context_.release());
-      context_.reset(MakeContext());
-    }
-  } else {
-    combiner()->TryCombineAccumulated();
+  if (!context_->empty()) {
+    driver_->InitiateRewrite(context_.release());
+    context_.reset(MakeContext());
   }
   context_->Reset();
 }
@@ -486,13 +482,13 @@ bool CssCombineFilter::CssCombiner::WritePiece(
   return ret;
 }
 
+// TODO(nforman): This fails for async. Rip it out.
 bool CssCombineFilter::Fetch(const OutputResourcePtr& resource,
                              Writer* writer,
                              const RequestHeaders& request_header,
                              ResponseHeaders* response_headers,
                              MessageHandler* message_handler,
                              UrlAsyncFetcher::Callback* callback) {
-  DCHECK(!driver_->asynchronous_rewrites());
   context_.reset(MakeContext());
   return combiner()->Fetch(resource, writer, request_header, response_headers,
                            message_handler, callback);
