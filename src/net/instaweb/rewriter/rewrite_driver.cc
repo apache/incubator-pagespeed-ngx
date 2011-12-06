@@ -933,6 +933,14 @@ bool RewriteDriver::DecodeOutputResourceName(const GoogleUrl& gurl,
     return false;
   }
 
+  // If we are running in proxy mode we need to ignore URLs where the leaf is
+  // encoded but the URL as a whole isn't proxy encoded, since that can happen
+  // when proxying from a server using mod_pagsepeed.
+  UrlNamer* url_namer = resource_manager()->url_namer();
+  if (url_namer->ProxyMode() && !url_namer->IsProxyEncoded(gurl)) {
+    return false;
+  }
+
   // Now let's reject as mal-formed if the id string is not
   // in the rewrite drivers. Also figure out the filter's preferred
   // resource kind.
