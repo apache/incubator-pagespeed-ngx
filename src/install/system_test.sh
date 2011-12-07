@@ -709,7 +709,7 @@ fi
 
 # This filter convert the meta tags in the html into headers.
 test_filter convert_meta_tags
-run_wget_with_args $URL > /dev/null
+run_wget_with_args $URL
 
 echo Checking for Content-Language header.
 grep -qi "CONTENT-LANGUAGE: en-US,fr" $WGET_OUTPUT

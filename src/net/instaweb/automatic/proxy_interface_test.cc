@@ -45,7 +45,6 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/worker_test_base.h"
@@ -59,23 +58,24 @@ namespace {
 const char kCssContent[] = "* { display: none; }";
 const char kMinimizedCssContent[] = "*{display:none}";
 
-// Like ExpectCallback but for asynchronous invocation -- it lets
+// Like ExpectStringAsyncFetch but for asynchronous invocation -- it lets
 // one specify a WorkerTestBase::SyncPoint to help block until completion.
-class AsyncExpectCallback : public ExpectCallback {
+class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
  public:
-  AsyncExpectCallback(bool expect_success, WorkerTestBase::SyncPoint* notify)
-      : ExpectCallback(expect_success), notify_(notify) {}
+  AsyncExpectStringAsyncFetch(bool expect_success,
+                              WorkerTestBase::SyncPoint* notify)
+      : ExpectStringAsyncFetch(expect_success), notify_(notify) {}
 
-  virtual ~AsyncExpectCallback() {}
+  virtual ~AsyncExpectStringAsyncFetch() {}
 
-  virtual void Done(bool success) {
-    ExpectCallback::Done(success);
+  virtual void HandleDone(bool success) {
+    ExpectStringAsyncFetch::HandleDone(success);
     notify_->Notify();
   }
 
  private:
   WorkerTestBase::SyncPoint* notify_;
-  DISALLOW_COPY_AND_ASSIGN(AsyncExpectCallback);
+  DISALLOW_COPY_AND_ASSIGN(AsyncExpectStringAsyncFetch);
 };
 
 // This class creates a proxy URL naming rule that encodes an "owner" domain
@@ -187,19 +187,19 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
                       bool expect_success,
                       GoogleString* string_out,
                       ResponseHeaders* headers_out) {
-    StringWriter writer(string_out);
     WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
-    AsyncExpectCallback callback(expect_success, &sync);
-    bool already_done =
-        proxy_interface_->StreamingFetch(
-            AbsolutifyUrl(url), request_headers, headers_out, &writer,
-            message_handler(), &callback);
+    AsyncExpectStringAsyncFetch callback(expect_success, &sync);
+    callback.set_response_headers(headers_out);
+    callback.request_headers()->CopyFrom(request_headers);
+    bool already_done = proxy_interface_->Fetch(AbsolutifyUrl(url),
+                                                message_handler(), &callback);
     if (already_done) {
       EXPECT_TRUE(callback.done());
     } else {
       sync.Wait();
     }
     mock_scheduler()->AwaitQuiescence();
+    *string_out = callback.buffer();
   }
 
   void CheckHeaders(const ResponseHeaders& headers,

@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -40,7 +41,6 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
@@ -72,20 +72,19 @@ ProxyFetchFactory::~ProxyFetchFactory() {
 }
 
 void ProxyFetchFactory::StartNewProxyFetch(
-    const GoogleString& url_in, const RequestHeaders& request_headers_in,
-    RewriteOptions* custom_options, ResponseHeaders* response_headers,
-    Writer* base_writer, UrlAsyncFetcher::Callback* callback) {
+    const GoogleString& url_in, AsyncFetch* async_fetch,
+    RewriteOptions* custom_options) {
   const GoogleString* url_to_fetch = &url_in;
-  const RequestHeaders* request_headers_to_fetch = &request_headers_in;
 
   // Check whether this an encoding of a non-rewritten resource served
   // from a proxied domain.
   UrlNamer* namer = manager_->url_namer();
   GoogleString decoded_resource;
-  RequestHeaders stripped_request_headers;
   GoogleUrl gurl(url_in), request_origin;
   DCHECK(!manager_->IsPagespeedResource(gurl))
       << "expect ResourceFetch called for pagespeed resources, not ProxyFetch";
+
+  bool remove_host = false;
   if (gurl.is_valid()) {
     if (namer->Decode(gurl, &request_origin, &decoded_resource)) {
       const RewriteOptions* options = (custom_options == NULL)
@@ -96,28 +95,29 @@ void ProxyFetchFactory::StartNewProxyFetch(
         // so don't try to do the cache-lookup or URL fetch without stripping
         // the proxied portion.
         url_to_fetch = &decoded_resource;
-        stripped_request_headers.CopyFrom(request_headers_in);
 
         // In a proxy configuration, the host header is likely set to
         // the proxy host rather than the origin host.  Depending on
         // the origin, this will not work: it will not expect to see
         // the Proxy Host in its headers.
-        stripped_request_headers.RemoveAll(HttpAttributes::kHost);
-        request_headers_to_fetch = &stripped_request_headers;
+        remove_host = true;
       } else {
-        response_headers->SetStatusAndReason(HttpStatus::kForbidden);
+        async_fetch->response_headers()->SetStatusAndReason(
+            HttpStatus::kForbidden);
         if (custom_options != NULL) {
           delete custom_options;
         }
-        callback->Done(false);
+        async_fetch->Done(false);
         return;
       }
     }
   }
 
-  ProxyFetch* fetch = new ProxyFetch(
-      *url_to_fetch, *request_headers_to_fetch, custom_options,
-      response_headers, base_writer, manager_, timer_, callback, this);
+  ProxyFetch* fetch = new ProxyFetch(*url_to_fetch, async_fetch, custom_options,
+                                     manager_, timer_, this);
+  if (remove_host) {
+    fetch->request_headers()->RemoveAll(HttpAttributes::kHost);
+  }
   Start(fetch);
   fetch->StartFetch();
 }
@@ -142,19 +142,15 @@ void ProxyFetchFactory::Finish(ProxyFetch* fetch) {
 }
 
 ProxyFetch::ProxyFetch(const GoogleString& url,
-                       const RequestHeaders& request_headers,
+                       AsyncFetch* async_fetch,
                        RewriteOptions* custom_options,
-                       ResponseHeaders* response_headers,
-                       Writer* base_writer,
                        ResourceManager* manager,
-                       Timer* timer, UrlAsyncFetcher::Callback* callback,
+                       Timer* timer,
                        ProxyFetchFactory* factory)
     : url_(url),
-      response_headers_(response_headers),
-      base_writer_(base_writer),
+      async_fetch_(async_fetch),
       resource_manager_(manager),
       timer_(timer),
-      callback_(callback),
       pass_through_(true),
       claims_html_(false),
       started_parse_(false),
@@ -170,7 +166,9 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       idle_alarm_(NULL),
       factory_(factory),
       prepare_success_(false) {
-  request_headers_.CopyFrom(request_headers);
+  set_request_headers(async_fetch->request_headers());
+  set_response_headers(async_fetch->response_headers());
+
   // Set RewriteDriver.
   if (custom_options == NULL) {
     driver_ = resource_manager_->NewRewriteDriver();
@@ -181,12 +179,13 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
   }
 
   // TODO(sligocki): Make complete request header available to filters.
-  const char* cookies = request_headers.Lookup1(HttpAttributes::kCookie);
+  const char* cookies = request_headers()->Lookup1(HttpAttributes::kCookie);
   if (cookies != NULL) {
     driver_->set_cookies(cookies);
   }
 
-  const char* user_agent = request_headers.Lookup1(HttpAttributes::kUserAgent);
+  const char* user_agent = request_headers()->Lookup1(
+      HttpAttributes::kUserAgent);
   if (user_agent != NULL) {
     VLOG(1) << "Setting user-agent to " << user_agent;
     driver_->set_user_agent(user_agent);
@@ -199,7 +198,8 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
 }
 
 ProxyFetch::~ProxyFetch() {
-  DCHECK(callback_ == NULL) << "Callback should be called before destruction";
+  DCHECK(async_fetch_ == NULL)
+      << "Callback should be called before destruction";
   DCHECK(!queue_run_job_created_);
   DCHECK(!network_flush_outstanding_);
   DCHECK(!done_outstanding_);
@@ -208,9 +208,9 @@ ProxyFetch::~ProxyFetch() {
 }
 
 bool ProxyFetch::StartParse() {
-  driver_->SetWriter(base_writer_);
+  driver_->SetWriter(async_fetch_);
   sequence_ = driver_->html_worker();
-  driver_->set_response_headers_ptr(response_headers_);
+  driver_->set_response_headers_ptr(response_headers());
 
   // Start parsing.
   // TODO(sligocki): Allow calling StartParse with GoogleUrl.
@@ -228,14 +228,15 @@ const RewriteOptions* ProxyFetch::Options() {
   return driver_->options();
 }
 
-void ProxyFetch::HeadersComplete() {
-  // Figure out semantic info from response_headers_.
-  claims_html_ = response_headers_->DetermineContentType() == &kContentTypeHtml;
+void ProxyFetch::HandleHeadersComplete() {
+  // Figure out semantic info from response_headers_
+  claims_html_ = (response_headers()->DetermineContentType()
+                  == &kContentTypeHtml);
 }
 
 void ProxyFetch::AddPagespeedHeader() {
   if (Options()->enabled()) {
-    response_headers_->Add(kPageSpeedHeader, factory_->server_version());
+    response_headers()->Add(kPageSpeedHeader, factory_->server_version());
   }
 }
 
@@ -250,9 +251,9 @@ void ProxyFetch::SetupForHtml() {
       int64 ttl_ms;
       GoogleString cache_control_suffix;
       if ((options->max_html_cache_time_ms() == 0) ||
-          response_headers_->HasValue(
+          response_headers()->HasValue(
               HttpAttributes::kCacheControl, "no-cache") ||
-          response_headers_->HasValue(
+          response_headers()->HasValue(
               HttpAttributes::kCacheControl, "must-revalidate")) {
         ttl_ms = 0;
         cache_control_suffix = ", no-cache";
@@ -260,13 +261,13 @@ void ProxyFetch::SetupForHtml() {
         // TODO(sligocki): Stop special-casing no-store, just preserve all
         // Cache-Control identifiers except for restricting max-age and
         // private/no-cache level.
-        if (response_headers_->HasValue(
+        if (response_headers()->HasValue(
                 HttpAttributes::kCacheControl, "no-store")) {
           cache_control_suffix += ", no-store";
         }
       } else {
         ttl_ms = std::min(options->max_html_cache_time_ms(),
-                          response_headers_->cache_ttl_ms());
+                          response_headers()->cache_ttl_ms());
         // TODO(sligocki): We defensively set Cache-Control: private, but if
         // original HTML was publicly cacheable, we should be able to set
         // the rewritten HTML as publicly cacheable likewise.
@@ -274,14 +275,14 @@ void ProxyFetch::SetupForHtml() {
         // Cache-Control quantifiers, like "proxy-revalidate".
         cache_control_suffix = ", private";
       }
-      response_headers_->SetDateAndCaching(
-          response_headers_->date_ms(), ttl_ms, cache_control_suffix);
+      response_headers()->SetDateAndCaching(
+          response_headers()->date_ms(), ttl_ms, cache_control_suffix);
       // TODO(sligocki): Support Etags.
-      response_headers_->RemoveAll(HttpAttributes::kEtag);
+      response_headers()->RemoveAll(HttpAttributes::kEtag);
       start_time_us_ = resource_manager_->timer()->NowUs();
 
       // HTML sizes are likely to be altered by HTML rewriting.
-      response_headers_->RemoveAll(HttpAttributes::kContentLength);
+      response_headers()->RemoveAll(HttpAttributes::kContentLength);
 
       // TODO(sligocki): see mod_instaweb.cc line 528, which strips
       // Expires, Last-Modified and Content-MD5.  Perhaps we should
@@ -291,8 +292,8 @@ void ProxyFetch::SetupForHtml() {
 }
 
 void ProxyFetch::StartFetch() {
-  factory_->manager_->url_namer()->PrepareRequest(Options(),
-      &url_, &request_headers_, &prepare_success_,
+  factory_->manager_->url_namer()->PrepareRequest(
+      Options(), &url_, request_headers(), &prepare_success_,
       MakeFunction(this, &ProxyFetch::DoFetch),
       factory_->handler_);
 }
@@ -304,10 +305,9 @@ void ProxyFetch::DoFetch() {
         driver_->options()->ajax_rewriting_enabled() &&
         driver_->options()->IsAllowed(url_)) {
       driver_->set_async_fetcher(fetcher);
-      driver_->FetchResource(url_, request_headers_, response_headers_, this);
+      driver_->FetchResource(url_, this);
     } else {
-      fetcher->Fetch(url_, request_headers_, response_headers_,
-                     factory_->handler_, this);
+      fetcher->Fetch(url_, factory_->handler_, this);
     }
   } else {
     Done(false);
@@ -332,8 +332,8 @@ void ProxyFetch::ScheduleQueueExecutionIfNeeded() {
   sequence_->Add(MakeFunction(this, &ProxyFetch::ExecuteQueued));
 }
 
-bool ProxyFetch::Write(const StringPiece& str,
-                       MessageHandler* message_handler) {
+bool ProxyFetch::HandleWrite(const StringPiece& str,
+                             MessageHandler* message_handler) {
   // TODO(jmarantz): check if the server is being shut down and punt.
 
   if (claims_html_ && !html_detector_.already_decided()) {
@@ -377,12 +377,12 @@ bool ProxyFetch::Write(const StringPiece& str,
     }
   } else {
     // Pass other data (css, js, images) directly to http writer.
-    ret = base_writer_->Write(str, message_handler);
+    ret = async_fetch_->Write(str, message_handler);
   }
   return ret;
 }
 
-bool ProxyFetch::Flush(MessageHandler* message_handler) {
+bool ProxyFetch::HandleFlush(MessageHandler* message_handler) {
   // TODO(jmarantz): check if the server is being shut down and punt.
 
   if (claims_html_ && !html_detector_.already_decided()) {
@@ -401,12 +401,12 @@ bool ProxyFetch::Flush(MessageHandler* message_handler) {
       ScheduleQueueExecutionIfNeeded();
     }
   } else {
-    ret = base_writer_->Flush(message_handler);
+    ret = async_fetch_->Flush(message_handler);
   }
   return ret;
 }
 
-void ProxyFetch::Done(bool success) {
+void ProxyFetch::HandleDone(bool success) {
   // TODO(jmarantz): check if the server is being shut down and punt,
   // possibly by calling Finish(false).
 
@@ -420,16 +420,17 @@ void ProxyFetch::Done(bool success) {
       GoogleString buffered;
       html_detector_.ReleaseBuffered(&buffered);
       AddPagespeedHeader();
+      async_fetch_->HeadersComplete();
       Write(buffered, resource_manager_->message_handler());
     }
   } else {
     // This is a fetcher failure, like connection refused, not just an error
     // status code.
-    response_headers_->SetStatusAndReason(HttpStatus::kNotFound);
+    response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
   }
 
   VLOG(1) << "Fetch result:" << success << " " << url_
-          << " : " << response_headers_->status_code();
+          << " : " << response_headers()->status_code();
   if (!pass_through_) {
     ScopedMutex lock(mutex_.get());
     done_outstanding_ = true;
@@ -538,8 +539,8 @@ void ProxyFetch::Finish(bool success) {
     stats->total_rewrite_count()->IncBy(1);
   }
 
-  callback_->Done(success);
-  callback_ = NULL;
+  async_fetch_->Done(success);
+  async_fetch_ = NULL;
   factory_->Finish(this);
 
   delete this;

@@ -26,53 +26,14 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
+class AsyncFetch;
 class MessageHandler;
 class RequestHeaders;
 class ResponseHeaders;
 class Writer;
-
-// Abstract base class for encapsulating streaming, asynchronous HTTP fetches.
-//
-// If you want to fetch a resources, implement this interface, create an
-// instance and call UrlAsyncFetcher::StreamingAsyncFetch() with it.
-//
-// It combines the 3 callbacks we expect to get from fetchers
-// (Write, Flush and Done) and adds a HeadersComplete indicator that is
-// useful in any place where we want to deal with and send headers before
-// Write or Done are called.
-class AsyncFetch {
- public:
-  AsyncFetch() {}
-  virtual ~AsyncFetch();
-
-  // TODO(sligocki): Make headers accessible through AsyncFetch?
-
-  // Called when ResponseHeaders have been set, but before writing contents.
-  // Contract: Must be called (exactly once) before Write, Flush or Done.
-  virtual void HeadersComplete() = 0;
-
-  // Write a chunk of body content.
-  virtual bool Write(const StringPiece& content, MessageHandler* handler) = 0;
-  virtual bool Flush(MessageHandler* handler) = 0;
-
-  // Fetch complete.
-  virtual void Done(bool success) = 0;
-
-  // Is the cache entry corresponding to headers valid? Default is that it is
-  // valid. Sub-classes can provide specific implementations, e.g., based on
-  // cache invalidation timestamp in domain specific options.
-  // Used by CacheUrlAsyncFetcher.
-  virtual bool IsCachedResultValid(const ResponseHeaders& headers) {
-    return true;
-  }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(AsyncFetch);
-};
 
 class UrlAsyncFetcher {
  public:
@@ -139,8 +100,6 @@ class UrlAsyncFetcher {
   // TODO(sligocki): Stick all other params into AsyncFetch object (url,
   // request_headers, response_headers, message_handler).
   virtual bool Fetch(const GoogleString& url,
-                     const RequestHeaders& request_headers,
-                     ResponseHeaders* response_headers,
                      MessageHandler* message_handler,
                      AsyncFetch* fetch);
 

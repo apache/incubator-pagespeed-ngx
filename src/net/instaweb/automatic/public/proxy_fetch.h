@@ -27,8 +27,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/automatic/public/html_detector.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -39,15 +38,14 @@ namespace net_instaweb {
 class AbstractMutex;
 class CacheUrlAsyncFetcher;
 class MessageHandler;
+class ProxyFetch;
 class QueuedAlarm;
 class ResourceManager;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
 class Timer;
-class Writer;
-
-class ProxyFetch;
+class UrlAsyncFetcher;
 
 // Factory for creating and starting ProxyFetches. Must outlive all
 // ProxyFetches it creates.
@@ -60,11 +58,8 @@ class ProxyFetchFactory {
   //
   // Takes ownership of custom_options.
   void StartNewProxyFetch(const GoogleString& url,
-                          const RequestHeaders& request_headers,
-                          RewriteOptions* custom_options,
-                          ResponseHeaders* response_headers,
-                          Writer* base_writer,
-                          UrlAsyncFetcher::Callback* callback);
+                          AsyncFetch* async_fetch,
+                          RewriteOptions* custom_options);
 
   void set_server_version(const StringPiece& server_version) {
     server_version.CopyToString(&server_version_);
@@ -125,22 +120,22 @@ class ProxyFetchFactory {
 // multiple Writes, and depending on the timing, may move Flushes to
 // follow Writes and collapse multiple Flushes into one.
 class ProxyFetch : public AsyncFetch {
- public:
-  // Public interface from AsyncFetch.
-  virtual void HeadersComplete();
-  virtual bool Write(const StringPiece& content, MessageHandler* handler);
-  virtual bool Flush(MessageHandler* handler);
-  virtual void Done(bool success);
+ protected:
+  // protected interface from AsyncFetch.
+  virtual void HandleHeadersComplete();
+  virtual bool HandleWrite(const StringPiece& content, MessageHandler* handler);
+  virtual bool HandleFlush(MessageHandler* handler);
+  virtual void HandleDone(bool success);
   virtual bool IsCachedResultValid(const ResponseHeaders& headers);
 
  private:
   friend class ProxyFetchFactory;
 
-  ProxyFetch(const GoogleString& url, const RequestHeaders& request_headers,
+  ProxyFetch(const GoogleString& url,
+             AsyncFetch* async_fetch,
              RewriteOptions* custom_options,
-             ResponseHeaders* response_headers,
-             Writer* base_writer, ResourceManager* manager,
-             Timer* timer, UrlAsyncFetcher::Callback* callback,
+             ResourceManager* manager,
+             Timer* timer,
              ProxyFetchFactory* factory);
   virtual ~ProxyFetch();
 
@@ -149,7 +144,7 @@ class ProxyFetch : public AsyncFetch {
   // Once we have decided this is HTML, begin parsing and set headers.
   void SetupForHtml();
 
-  // Adds a pagespeed header to response_headers_ if enabled.
+  // Adds a pagespeed header to response_headers if enabled.
   void AddPagespeedHeader();
 
   // Sets up driver_, registering the writer and start parsing url.
@@ -196,12 +191,9 @@ class ProxyFetch : public AsyncFetch {
   void HandleIdleAlarm();
 
   GoogleString url_;
-  RequestHeaders request_headers_;
-  ResponseHeaders* response_headers_;
-  Writer* base_writer_;
+  AsyncFetch* async_fetch_;
   ResourceManager* resource_manager_;
   Timer* timer_;
-  UrlAsyncFetcher::Callback* callback_;
 
   // Should we pass through contents (because it's not HTML or PSA disabled)?
   bool pass_through_;

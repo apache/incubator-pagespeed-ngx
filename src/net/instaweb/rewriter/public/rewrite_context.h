@@ -24,7 +24,6 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -38,6 +37,7 @@
 
 namespace net_instaweb {
 
+class AsyncFetch;
 class CachedResult;
 class GoogleUrl;
 class InputInfo;
@@ -50,7 +50,6 @@ class RewriteDriver;
 class RewriteOptions;
 class SharedString;
 class Statistics;
-class Writer;
 
 // A RewriteContext is all the contextual information required to
 // perform one or more Rewrites.  Member data in the ResourceContext
@@ -155,10 +154,8 @@ class RewriteContext {
   // True is returned if an asynchronous fetch got queued up.
   // If false, Done() will not be called.
   bool Fetch(const OutputResourcePtr& output_resource,
-             Writer* response_writer,
-             ResponseHeaders* response_headers,
-             MessageHandler* message_handler,
-             UrlAsyncFetcher::Callback* callback);
+             AsyncFetch* fetch,
+             MessageHandler* message_handler);
 
   // Runs after all Rewrites have been completed, and all nested
   // RewriteContexts have completed and harvested.
@@ -424,15 +421,7 @@ class RewriteContext {
   }
 
   // Note that the following must only be called in the fetch flow.
-
-  // The writer for the fetch.
-  Writer* fetch_writer();
-
-  // The response headers for the fetch.
-  ResponseHeaders* fetch_response_headers();
-
-  // The callback for the fetch.
-  UrlAsyncFetcher::Callback* fetch_callback();
+  AsyncFetch* async_fetch();
 
   // The message handler for the fetch.
   MessageHandler* fetch_message_handler();

@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
@@ -27,13 +26,15 @@
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -46,7 +47,9 @@
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
+
 class MessageHandler;
+class RewriteContext;
 
 namespace {
 
@@ -80,8 +83,6 @@ class TestRewriter : public RewriteSingleResourceFilter {
   TestRewriter(RewriteDriver* driver, bool create_custom_encoder)
       : RewriteSingleResourceFilter(driver),
         format_version_(0),
-        num_cached_results_(0),
-        num_optimizable_(0),
         num_rewrites_called_(0),
         create_custom_encoder_(create_custom_encoder),
         reuse_by_content_hash_(false) {
@@ -97,7 +98,13 @@ class TestRewriter : public RewriteSingleResourceFilter {
     if (element->keyword() == HtmlName::kTag) {
       HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
       if (src != NULL) {
-        TryRewrite(src);
+        ResourcePtr resource = CreateInputResource(src->value());
+        if (resource.get() != NULL) {
+          ResourceSlotPtr slot(driver_->GetSlot(resource, element, src));
+          Context* context = new Context(driver_, this);
+          context->AddSlot(slot);
+          driver_->InitiateRewrite(context);
+        }
       }
     }
   }
@@ -107,14 +114,6 @@ class TestRewriter : public RewriteSingleResourceFilter {
 
   // Number of times RewriteLoadedResource got called
   int num_rewrites_called() const { return num_rewrites_called_; }
-
-  // Number of times a cached result was available when rewriting;
-  // including both when looked up from cache or created by the
-  // base class
-  int num_cached_results() const { return num_cached_results_; }
-
-  // How many times resource was known optimizable when rewriting
-  int num_optimizable() const { return num_optimizable_; }
 
   // Changes which file format we advertize
   void set_format_version(int ver) { format_version_ = ver; }
@@ -165,6 +164,33 @@ class TestRewriter : public RewriteSingleResourceFilter {
     }
   }
 
+  class Context : public SingleRewriteContext {
+   public:
+    Context(RewriteDriver* driver, TestRewriter* rewriter)
+        : SingleRewriteContext(driver, NULL, NULL),
+          filter_(rewriter) {
+    }
+    virtual ~Context() {
+    }
+    virtual void RewriteSingle(
+        const ResourcePtr& input, const OutputResourcePtr& output) {
+      RewriteDone(filter_->RewriteLoadedResource(input, output), 0);
+    }
+
+    virtual OutputResourceKind kind() const { return kRewrittenResource; }
+    virtual const char* id() const { return filter_->id(); }
+    virtual const UrlSegmentEncoder* encoder() const {
+      return filter_->encoder();
+    }
+
+   private:
+    TestRewriter* filter_;
+  };
+
+  virtual RewriteContext* MakeRewriteContext() {
+    return new Context(driver_, this);
+  }
+
  private:
   friend class TestUrlEncoder;
 
@@ -196,21 +222,7 @@ class TestRewriter : public RewriteSingleResourceFilter {
     }
   };
 
-  void TryRewrite(HtmlElement::Attribute* src) {
-    scoped_ptr<CachedResult> result(
-        RewriteWithCaching(StringPiece(src->value()), NULL));
-    if (result.get() != NULL) {
-      ++num_cached_results_;
-      if (result->optimizable()) {
-        ++num_optimizable_;
-        src->SetValue(result->url());
-      }
-    }
-  }
-
   int format_version_;
-  int num_cached_results_;
-  int num_optimizable_;
   int num_rewrites_called_;
   bool create_custom_encoder_;
   bool reuse_by_content_hash_;
@@ -230,6 +242,7 @@ class RewriteSingleResourceFilterTest
     AddRewriteFilter(filter_);
     AddOtherRewriteFilter(
         new TestRewriter(other_rewrite_driver(), GetParam()));
+    options()->ComputeSignature(hasher());
 
     MockResource("a.tst", "good", TtlSec());
     MockResource("bad.tst", "bad", TtlSec());
@@ -272,19 +285,10 @@ class RewriteSingleResourceFilterTest
     return ServeResourceUrl(StrCat(kTestDomain, rel_path), content);
   }
 
-  // Transfers ownership and may return NULL.
-  CachedResult* CachedResultForInput(const char* url) {
-    const UrlSegmentEncoder* encoder = filter_->encoder();
-    ResourcePtr input_resource(CreateResource(kTestDomain, url));
-    EXPECT_TRUE(input_resource.get() != NULL);
-    bool use_async_flow = false;
-    OutputResourcePtr output_resource(
-        rewrite_driver()->CreateOutputResourceFromResource(
-            kTestFilterPrefix, encoder, NULL, input_resource,
-            kRewrittenResource, use_async_flow));
-    EXPECT_TRUE(output_resource.get() != NULL);
-
-    return output_resource->ReleaseCachedResult();
+  void ResetSignature(int outline_min_bytes) {
+    options()->ClearSignatureForTesting();
+    options()->set_css_outline_min_bytes(outline_min_bytes);
+    resource_manager_->ComputeSignature(options());
   }
 
   GoogleString in_tag_;
@@ -298,25 +302,28 @@ TEST_P(RewriteSingleResourceFilterTest, BasicOperation) {
 
   // Should only have to rewrite once here
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(3, filter_->num_cached_results());
-  EXPECT_EQ(3, filter_->num_optimizable());
 }
 
 TEST_P(RewriteSingleResourceFilterTest, VersionChange) {
+  options()->ClearSignatureForTesting();
+  const int kOrigOutlineMinBytes = 1234;
+  ResetSignature(kOrigOutlineMinBytes);
+
   GoogleString in = StrCat(in_tag_, in_tag_, in_tag_);
   GoogleString out = StrCat(out_tag_, out_tag_, out_tag_);
   ValidateExpected("vc1", in, out);
 
   // Should only have to rewrite once here
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(3, filter_->num_cached_results());
-  EXPECT_EQ(3, filter_->num_optimizable());
 
   // The next attempt should still use cache
   ValidateExpected("vc2", in, out);
   EXPECT_EQ(1, filter_->num_rewrites_called());
 
-  // Now pretend to have upgraded --- this should dump the cache
+  // Change the rewrite options -- this won't affect the actual
+  // result but will result in an effective cache flush.
+  ResetSignature(kOrigOutlineMinBytes + 1);
+
   filter_->set_format_version(42);
   ValidateExpected("vc3", in, out);
   EXPECT_EQ(2, filter_->num_rewrites_called());
@@ -325,14 +332,14 @@ TEST_P(RewriteSingleResourceFilterTest, VersionChange) {
   ValidateExpected("vc4", in, out);
   EXPECT_EQ(2, filter_->num_rewrites_called());
 
-  // Downgrade. Should dump the cache, too
-  filter_->set_format_version(21);
+  // Restore. The old meta-data cache entries can be re-used.
+  ResetSignature(kOrigOutlineMinBytes);
   ValidateExpected("vc5", in, out);
-  EXPECT_EQ(3, filter_->num_rewrites_called());
+  EXPECT_EQ(2, filter_->num_rewrites_called());
 
   // And now we're caching again
   ValidateExpected("vc6", in, out);
-  EXPECT_EQ(3, filter_->num_rewrites_called());
+  EXPECT_EQ(2, filter_->num_rewrites_called());
 }
 
 // We should re-check bad resources when version number changes.
@@ -346,7 +353,7 @@ TEST_P(RewriteSingleResourceFilterTest, VersionChangeBad) {
   EXPECT_EQ(1, filter_->num_rewrites_called());
 
   // upgraded -- retried
-  filter_->set_format_version(42);
+  ResetSignature(42);
   ValidateNoChanges("vc.bad3", in_tag);
   EXPECT_EQ(2, filter_->num_rewrites_called());
 
@@ -355,7 +362,7 @@ TEST_P(RewriteSingleResourceFilterTest, VersionChangeBad) {
   EXPECT_EQ(2, filter_->num_rewrites_called());
 
   // downgrade -- retried.
-  filter_->set_format_version(21);
+  ResetSignature(21);
   ValidateNoChanges("vc.bad5", in_tag);
   EXPECT_EQ(3, filter_->num_rewrites_called());
 
@@ -387,8 +394,6 @@ TEST_P(RewriteSingleResourceFilterTest, CacheBad) {
 
   // Should call rewrite once, and then remember it's not optimizable
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(3, filter_->num_cached_results());
-  EXPECT_EQ(0, filter_->num_optimizable());
 }
 
 TEST_P(RewriteSingleResourceFilterTest, CacheBusy) {
@@ -400,11 +405,8 @@ TEST_P(RewriteSingleResourceFilterTest, CacheBusy) {
   ValidateExpected("cache.busy", StrCat(in_tag, in_tag, in_tag),
                    StrCat(out_tag, out_tag, out_tag));
 
-  EXPECT_EQ(3, filter_->num_rewrites_called());
-  EXPECT_EQ(0, filter_->num_cached_results());
-  EXPECT_EQ(0, filter_->num_optimizable());
+  EXPECT_EQ(1, filter_->num_rewrites_called());
 }
-
 
 TEST_P(RewriteSingleResourceFilterTest, Cache404) {
   // 404s should come up as unoptimizable as well.
@@ -417,8 +419,6 @@ TEST_P(RewriteSingleResourceFilterTest, Cache404) {
   // past the first fetch, where it's not immediately sure
   // (but it will be OK if that changes)
   EXPECT_EQ(0, filter_->num_rewrites_called());
-  EXPECT_EQ(2, filter_->num_cached_results());
-  EXPECT_EQ(0, filter_->num_optimizable());
 }
 
 TEST_P(RewriteSingleResourceFilterTest, InvalidUrl) {
@@ -430,15 +430,11 @@ TEST_P(RewriteSingleResourceFilterTest, CacheExpire) {
   // Make sure we don't cache past the TTL.
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, filter_->num_cached_results());
-  EXPECT_EQ(1, filter_->num_optimizable());
 
   // Next fetch should be still in there.
   mock_timer()->AdvanceMs(TtlMs() / 2);
   ValidateExpected("initial.2", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(2, filter_->num_cached_results());
-  EXPECT_EQ(2, filter_->num_optimizable());
 
   // ... but not once we get past the ttl, we will have to re-fetch the
   // input resource from the cache, which will correct the date.
@@ -447,9 +443,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheExpire) {
   // reuse enabled.
   mock_timer()->AdvanceMs(TtlMs() * 2);
   ValidateExpected("expire", in_tag_, out_tag_);
-  EXPECT_EQ(2, filter_->num_rewrites_called());
-  EXPECT_EQ(3, filter_->num_cached_results());
-  EXPECT_EQ(3, filter_->num_optimizable());
+  EXPECT_EQ(1, filter_->num_rewrites_called());
 }
 
 TEST_P(RewriteSingleResourceFilterTest, CacheExpireWithReuseEnabled) {
@@ -458,111 +452,12 @@ TEST_P(RewriteSingleResourceFilterTest, CacheExpireWithReuseEnabled) {
   // Make sure we don't cache past the TTL.
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, filter_->num_cached_results());
-  EXPECT_EQ(1, filter_->num_optimizable());
 
   // Everything expires out of the cache but has the same content hash,
   // so no more rewrites should be needed.
   mock_timer()->AdvanceMs(TtlMs() * 2);
   ValidateExpected("expire", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());  // no second rewrite.
-  EXPECT_EQ(2, filter_->num_cached_results());
-  EXPECT_EQ(2, filter_->num_optimizable());
-}
-
-TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshen) {
-  // Start with non-zero time
-  mock_timer()->AdvanceMs(TtlMs() / 2);
-  MockResource("a.tst", "whatever", TtlSec());
-
-  ValidateExpected("initial", in_tag_, out_tag_);
-  EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
-
-  // Advance time past TTL, but re-mock the resource so it can be refetched
-  mock_timer()->AdvanceMs(TtlMs() + 10);
-  MockResource("a.tst", "whatever", TtlSec());
-  ValidateExpected("refetch", in_tag_, out_tag_);
-  EXPECT_EQ(2, filter_->num_rewrites_called());
-  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
-}
-
-TEST_P(RewriteSingleResourceFilterTest, CacheNoFreshenHashCheck) {
-  // Like above, but we rely on the input hash check to recover the result
-  // for us.
-  filter_->set_reuse_by_content_hash(true);
-
-  // Start with non-zero time.
-  mock_timer()->AdvanceMs(TtlMs() / 2);
-  MockResource("a.tst", "whatever", TtlSec());
-
-  ValidateExpected("initial", in_tag_, out_tag_);
-  EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
-
-  // Advance time past TTL, but re-mock the resource so it can be refetched.
-  mock_timer()->AdvanceMs(TtlMs() + 10);
-  MockResource("a.tst", "whatever", TtlSec());
-  ValidateExpected("refetch", in_tag_, out_tag_);
-
-  // Here, we did re-fetch it, but did not recompute.
-  EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
-}
-
-TEST_P(RewriteSingleResourceFilterTest, CacheHashCheckChange) {
-  // Now the hash check should fail because the hash changed
-  filter_->set_reuse_by_content_hash(true);
-
-  // Start with non-zero time
-  mock_timer()->AdvanceMs(TtlMs() / 2);
-  MockResource("a.tst", "whatever", TtlSec());
-
-  ValidateExpected("initial", in_tag_, out_tag_);
-  EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
-
-  // Advance time past TTL, but re-mock the resource so it can be refetched.
-  mock_timer()->AdvanceMs(TtlMs() + 10);
-  SetMockHashValue("1");
-  MockResource("a.tst", "whatever", TtlSec());
-  // Here ComputeOutTag() != out_tag_ due to the new hasher.
-  ValidateExpected("refetch", in_tag_, ComputeOutTag());
-
-  // Since we changed the hash, this needs to recompute.
-  EXPECT_EQ(2, filter_->num_rewrites_called());
-  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
-}
-
-
-
-TEST_P(RewriteSingleResourceFilterTest, CacheFreshen) {
-  // Start with non-zero time
-  mock_timer()->AdvanceMs(TtlMs() / 2);
-  MockResource("a.tst", "whatever", TtlSec());
-
-  ValidateExpected("initial", in_tag_, out_tag_);
-  EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
-
-  // Advance close to TTL and rewrite, having updated the data.
-  // We expect it to be freshened to that.
-  mock_timer()->AdvanceMs(TtlMs() * 9 / 10);
-  MockResource("a.tst", "whatever", TtlSec());
-  ValidateExpected("initial", in_tag_, out_tag_);
-  EXPECT_EQ(1, filter_->num_rewrites_called());
-  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // the 2nd fetch is freshening
-
-  // Now advance past original TTL, but it should still be alive
-  // due to freshening.
-  mock_timer()->AdvanceMs(TtlMs() / 2);
-  ValidateExpected("refetch", in_tag_, out_tag_);
-  // we have to recompute since the rewrite cache entry has expired
-  // (this behavior may change in the future)
-  EXPECT_EQ(2, filter_->num_rewrites_called());
-  // definitely should not have to fetch here --- freshening should have
-  // done it already.
-  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 }
 
 // Make sure that fetching normal content works
@@ -594,11 +489,6 @@ TEST_P(RewriteSingleResourceFilterTest, FetchGoodCache2) {
   ValidateExpected("reused_cached", StrCat(in_tag_, in_tag_, in_tag_),
                    StrCat(out_tag_, out_tag_, out_tag_));
   EXPECT_EQ(1, filter_->num_rewrites_called());
-
-  // Make sure the above also cached the timestamp
-  scoped_ptr<CachedResult> cached(CachedResultForInput("a.tst"));
-  ASSERT_TRUE(cached.get() != NULL);
-  EXPECT_TRUE(cached->has_input_date_ms());
 }
 
 // Regression test: Fetch() should update cache version, too.
@@ -636,11 +526,6 @@ TEST_P(RewriteSingleResourceFilterTest, FetchRewriteFailed) {
 TEST_P(RewriteSingleResourceFilterTest, Fetch404) {
   GoogleString out;
   ASSERT_FALSE(ServeRelativeUrl(OutputName("", "404.tst"), &out));
-
-  // Make sure the above also cached the failure.
-  scoped_ptr<CachedResult> cached(CachedResultForInput("404.tst"));
-  ASSERT_TRUE(cached.get() != NULL);
-  EXPECT_FALSE(cached->optimizable());
 }
 
 TEST_P(RewriteSingleResourceFilterTest, FetchInvalidResourceName) {

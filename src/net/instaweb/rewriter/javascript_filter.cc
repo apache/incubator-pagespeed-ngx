@@ -50,15 +50,17 @@ namespace net_instaweb {
 namespace {
 
 void CleanupWhitespaceScriptBody(
-    RewriteDriver* driver, RewriteContext* context, HtmlCharactersNode* node) {
-  if (node != NULL) {
-    // Note that an external script tag might contain body data.  We erase this
-    // if it is just whitespace; otherwise we leave it alone.  The script body
-    // is ignored by all browsers we know of.  However, various sources have
-    // encouraged using the body of an external script element to store a
-    // post-load callback.  As this technique is preferable to storing callbacks
-    // in, say, html comments, we support it here.
-    const GoogleString& contents = node->contents();
+    RewriteDriver* driver, RewriteContext* context,
+    const JavascriptFilter::HtmlCharNodeVector& nodes) {
+  // Finally, note that the script might contain body data.
+  // We erase this if it is just whitespace; otherwise we leave it alone.
+  // The script body is ignored by all browsers we know of.
+  // However, various sources have encouraged using the body of an
+  // external script element to store a post-load callback.
+  // As this technique is preferable to storing callbacks in, say, html
+  // comments, we support it for now.
+  for (size_t i = 0; i < nodes.size(); ++i) {
+    const GoogleString& contents = nodes[i]->contents();
     for (size_t j = 0; j < contents.size(); ++j) {
       char c = contents[j];
       if (!isspace(c) && c != 0) {
@@ -67,7 +69,9 @@ void CleanupWhitespaceScriptBody(
         return;
       }
     }
-    driver->DeleteElement(node);
+  }
+  for (size_t i = 0; i < nodes.size(); ++i) {
+    driver->DeleteElement(nodes[i]);
   }
 }
 
@@ -77,7 +81,6 @@ class RewriteContext;
 class Statistics;
 JavascriptFilter::JavascriptFilter(RewriteDriver* driver)
     : RewriteSingleResourceFilter(driver),
-      body_node_(NULL),
       script_in_progress_(NULL),
       script_src_(NULL),
       some_missing_scripts_(false),
@@ -94,10 +97,10 @@ class JavascriptFilter::Context : public SingleRewriteContext {
  public:
   Context(RewriteDriver* driver, RewriteContext* parent,
           JavascriptRewriteConfig* config,
-          HtmlCharactersNode* body_node)
+          const HtmlCharNodeVector& inline_text)
       : SingleRewriteContext(driver, parent, NULL),
         config_(config),
-        body_node_(body_node) {
+        inline_text_(inline_text) {
   }
 
   RewriteSingleResourceFilter::RewriteResult RewriteJavascript(
@@ -141,7 +144,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
   }
 
   virtual void Render() {
-    CleanupWhitespaceScriptBody(Driver(), this, body_node_);
+    CleanupWhitespaceScriptBody(Driver(), this, inline_text_);
   }
 
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
@@ -173,15 +176,13 @@ class JavascriptFilter::Context : public SingleRewriteContext {
 
   JavascriptRewriteConfig* config_;
 
-  // The node containing the body of the script tag, or NULL.
-  HtmlCharactersNode* body_node_;
+  // The vector is copied; the nodes are owned by parser and hence
+  // should only be used in Render().
+  HtmlCharNodeVector inline_text_;
 };
 
 void JavascriptFilter::StartElementImpl(HtmlElement* element) {
-  // These ought to be invariants.  If they're not, we may leak
-  // memory and/or fail to optimize, but it's not a disaster.
-  DCHECK(script_in_progress_ == NULL);
-  DCHECK(body_node_ == NULL);
+  CHECK(script_in_progress_ == NULL);
 
   switch (script_tag_scanner_.ParseScriptElement(element, &script_src_)) {
     case ScriptTagScanner::kJavaScript:
@@ -203,17 +204,52 @@ void JavascriptFilter::StartElementImpl(HtmlElement* element) {
 
 void JavascriptFilter::Characters(HtmlCharactersNode* characters) {
   if (script_in_progress_ != NULL) {
-    // Save a reference to characters encountered in the script body.
-    body_node_ = characters;
+    // Note that we're keeping a vector of nodes here,
+    // and appending them lazily at the end.  This is
+    // because there's usually only 1 HtmlCharactersNode involved,
+    // and we end up not actually needing to copy the string.
+    buffer_.push_back(characters);
+  }
+}
+
+// Flatten script fragments in buffer_, using script_buffer to hold
+// the data if necessary.  Return a StringPiece referring to the data.
+const StringPiece JavascriptFilter::FlattenBuffer(GoogleString* script_buffer) {
+  // TODO(jmaessen): To work around a bug in JS minification, we unconditionally
+  // copy the string and replace '\r' by '\n'.  This can be stripped out once
+  // an updated pagespeed library with the bug fix is available.
+  const bool kTranslateCRtoLF = true;
+  const int buffer_size = buffer_.size();
+  if (buffer_.size() == 1 && !kTranslateCRtoLF) {
+    // TODO(jmaessen): since this code was written, we've added an invariant
+    // that buffer_size <= 1.  So most of the buffering logic, and buffer_
+    // itself, should be stripped out.
+    StringPiece result(buffer_[0]->contents());
+    return result;
+  } else {
+    for (int i = 0; i < buffer_size; i++) {
+      script_buffer->append(buffer_[i]->contents());
+    }
+    if (kTranslateCRtoLF) {
+      size_t lf_position = -1;
+      while ((lf_position = script_buffer->find('\r', lf_position+1)) !=
+             GoogleString::npos) {
+        (*script_buffer)[lf_position] = '\n';
+      }
+    }
+    StringPiece result(*script_buffer);
+    return result;
   }
 }
 
 void JavascriptFilter::RewriteInlineScript() {
-  if (body_node_ != NULL) {
+  const int buffer_size = buffer_.size();
+  if (buffer_size > 0) {
     // First buffer up script data and minify it.
-    GoogleString* script = body_node_->mutable_contents();
+    GoogleString script_buffer;
+    const StringPiece script = FlattenBuffer(&script_buffer);
     MessageHandler* message_handler = driver_->message_handler();
-    JavascriptCodeBlock code_block(*script, &config_, driver_->UrlLine(),
+    JavascriptCodeBlock code_block(script, &config_, driver_->UrlLine(),
                                    message_handler);
     JavascriptLibraryId library = code_block.ComputeJavascriptLibrary();
     if (library.recognized()) {
@@ -221,17 +257,24 @@ void JavascriptFilter::RewriteInlineScript() {
                         library.name(), library.version());
     }
     if (code_block.ProfitableToRewrite()) {
-      // Replace the old script string with the new, minified one.
-      GoogleString* rewritten_script = code_block.RewrittenString();
+      // Now replace all CharactersNodes with a single CharactersNode containing
+      // the minified script.
+      HtmlCharactersNode* new_script =
+          driver_->NewCharactersNode(buffer_[0]->parent(), "");
       if (driver_->doctype().IsXhtml() &&
-          script->find("<![CDATA[") != StringPiece::npos) {
+          script.find("<![CDATA[") != StringPiece::npos) {
         // Minifier strips leading and trailing CDATA comments from scripts.
         // Restore them if necessary and safe according to the original script.
-        script->clear();
-        StrAppend(script, "//<![CDATA[\n", *rewritten_script, "\n//]]>");
+        new_script->Append("//<![CDATA[\n");
+        new_script->Append(code_block.Rewritten());
+        new_script->Append("\n//]]>");
       } else {
-        // Swap in the minified code to replace the original code.
-        script->swap(*rewritten_script);
+        new_script->Append(code_block.Rewritten());
+      }
+
+      driver_->ReplaceNode(buffer_[0], new_script);
+      for (int i = 1; i < buffer_size; i++) {
+        driver_->DeleteElement(buffer_[i]);
       }
     }
   }
@@ -244,7 +287,7 @@ void JavascriptFilter::RewriteExternalScript() {
   if (resource.get() != NULL) {
     ResourceSlotPtr slot(
         driver_->GetSlot(resource, script_in_progress_, script_src_));
-    Context* jrc = new Context(driver_, NULL, &config_, body_node_);
+    Context* jrc = new Context(driver_, NULL, &config_, buffer_);
     jrc->AddSlot(slot);
     driver_->InitiateRewrite(jrc);
   }
@@ -252,7 +295,7 @@ void JavascriptFilter::RewriteExternalScript() {
 
 // Reset state at end of script.
 void JavascriptFilter::CompleteScriptInProgress() {
-  body_node_ = NULL;
+  buffer_.clear();
   script_in_progress_ = NULL;
   script_src_ = NULL;
 }
@@ -307,7 +350,7 @@ JavascriptFilter::RewriteLoadedResource(
     const OutputResourcePtr& output_resource) {
   // Temporary code so that we can share the rewriting implementation beteween
   // the old blocking rewrite model and the new async model.
-  Context jrc(driver_, NULL, &config_, body_node_);
+  Context jrc(driver_, NULL, &config_, buffer_);
   return jrc.RewriteJavascript(script_input, output_resource);
 }
 
@@ -317,13 +360,13 @@ bool JavascriptFilter::HasAsyncFlow() const {
 }
 
 RewriteContext* JavascriptFilter::MakeRewriteContext() {
-  return new Context(driver_, NULL, &config_, NULL /* no body node */);
+  return new Context(driver_, NULL, &config_, HtmlCharNodeVector());
 }
 
 RewriteContext* JavascriptFilter::MakeNestedRewriteContext(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
-  Context* context = new Context(NULL /* driver */, parent, &config_,
-                                 NULL /* no body node */);
+  Context* context = new Context(NULL /* driver*/, parent, &config_,
+                                 HtmlCharNodeVector());
   context->AddSlot(slot);
   return context;
 }

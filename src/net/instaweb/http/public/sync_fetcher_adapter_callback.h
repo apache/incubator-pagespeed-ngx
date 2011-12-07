@@ -19,23 +19,22 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_SYNC_FETCHER_ADAPTER_CALLBACK_H_
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
 class AbstractMutex;
+class MessageHandler;
 class ThreadSystem;
-class Writer;
 
 // Class to help run an asynchronous fetch synchronously with a timeout.
-class SyncFetcherAdapterCallback : public UrlAsyncFetcher::Callback {
+class SyncFetcherAdapterCallback : public AsyncFetch {
  public:
-  SyncFetcherAdapterCallback(ThreadSystem* thread_system,
-                             ResponseHeaders* response_headers, Writer* writer);
+  SyncFetcherAdapterCallback(ThreadSystem* thread_system, Writer* writer);
   virtual ~SyncFetcherAdapterCallback();
-  virtual void Done(bool success);
 
   // When implementing a synchronous fetch with a timeout based on an
   // underlying asynchronous mechanism, we need to ensure that we don't
@@ -49,8 +48,6 @@ class SyncFetcherAdapterCallback : public UrlAsyncFetcher::Callback {
   // If this object may be accessed from multiple threads (e.g. due to
   // async rewrites), you should use LockIfNotReleased() and Unlock()
   // to guard access to these.
-  ResponseHeaders* response_headers() { return &response_headers_buffer_; }
-  Writer* writer() { return writer_.get(); }
 
   // When the 'owner' of this callback -- the code that calls 'new' --
   // is done with it, it can call release.  This will only delete the
@@ -74,13 +71,23 @@ class SyncFetcherAdapterCallback : public UrlAsyncFetcher::Callback {
   // Releases mutex acquired by a successful LockIfNotReleased() call.
   void Unlock();
 
+ protected:
+  virtual void HandleDone(bool success);
+  virtual bool HandleWrite(const StringPiece& content,
+                           MessageHandler* handler) {
+    return writer_->Write(content, handler);
+  }
+  virtual bool HandleFlush(MessageHandler* handler) {
+    return writer_->Flush(handler);
+  }
+  virtual void HandleHeadersComplete() {
+  }
+
  private:
   scoped_ptr<AbstractMutex> mutex_;
   bool done_;
   bool success_;
   bool released_;
-  ResponseHeaders response_headers_buffer_;
-  ResponseHeaders* response_headers_;
   scoped_ptr<Writer> writer_;
 
   DISALLOW_COPY_AND_ASSIGN(SyncFetcherAdapterCallback);

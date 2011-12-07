@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_AJAX_REWRITE_CONTEXT_H_
 
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -57,15 +56,12 @@ class AjaxRewriteResourceSlot : public ResourceSlot {
 // Context that is used for an ajax rewrite.
 class AjaxRewriteContext : public SingleRewriteContext {
  public:
-  AjaxRewriteContext(RewriteDriver* driver,
-                     const GoogleString& url,
-                     const RequestHeaders& request_headers)
+  AjaxRewriteContext(RewriteDriver* driver, const GoogleString& url)
       : SingleRewriteContext(driver, NULL, NULL),
         driver_(driver),
         url_(url),
         is_rewritten_(true),
         etag_prefix_(StrCat(HTTPCache::kEtagPrefix, id(), "-")) {
-    request_headers_.CopyFrom(request_headers);
     set_notify_driver_on_fetch_done(true);
   }
 
@@ -96,7 +92,6 @@ class AjaxRewriteContext : public SingleRewriteContext {
 
   RewriteDriver* driver_;
   GoogleString url_;
-  RequestHeaders request_headers_;
   // Boolean indicating whether or not the resource was rewritten successfully.
   bool is_rewritten_;
   // The hash of the rewritten resource. Note that this should only be used if

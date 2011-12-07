@@ -44,17 +44,16 @@
 
 namespace net_instaweb {
 
+class AsyncFetch;
 class GoogleUrl;
 class MessageHandler;
 class ProxyFetchFactory;
 class RequestHeaders;
 class ResourceManager;
-class ResponseHeaders;
 class RewriteOptions;
 class Statistics;
 class TimedVariable;
 class Timer;
-class Writer;
 
 // TODO(sligocki): Rename as per style-guide.
 class ProxyInterface : public UrlAsyncFetcher {
@@ -73,12 +72,9 @@ class ProxyInterface : public UrlAsyncFetcher {
   // All requests use this interface. We decide internally whether the
   // request is a pagespeed resource, HTML page to be rewritten or another
   // resource to be proxied directly.
-  virtual bool StreamingFetch(const GoogleString& requested_url,
-                              const RequestHeaders& request_headers,
-                              ResponseHeaders* response_headers,
-                              Writer* response_writer,
-                              MessageHandler* handler,
-                              Callback* callback);
+  virtual bool Fetch(const GoogleString& requested_url,
+                     MessageHandler* handler,
+                     AsyncFetch* async_fetch);
 
   // Returns any custom options required for this request, incorporating
   // any domain-specific options from the UrlNamer, options set in query-params,
@@ -99,12 +95,9 @@ class ProxyInterface : public UrlAsyncFetcher {
   // have rewrite_options for requests that are being proxied.
   void ProxyRequestCallback(bool is_resource_fetch,
                             GoogleUrl* request_url,
-                            RequestHeaders* request_headers,
-                            ResponseHeaders* response_headers,
-                            Writer* response_writer,
-                            MessageHandler* handler,
-                            Callback* callback,
-                            RewriteOptions* rewrite_options);
+                            AsyncFetch* async_fetch,
+                            RewriteOptions* domain_options,
+                            MessageHandler* handler);
 
  private:
   // Handle requests that are being proxied.
@@ -112,11 +105,8 @@ class ProxyInterface : public UrlAsyncFetcher {
   // * Resource requests are proxied verbatim.
   void ProxyRequest(bool is_resource_fetch,
                     const GoogleUrl& requested_url,
-                    const RequestHeaders& request_headers,
-                    ResponseHeaders* response_headers,
-                    Writer* response_writer,
-                    MessageHandler* handler,
-                    Callback* callback);
+                    AsyncFetch* async_fetch,
+                    MessageHandler* handler);
 
   // Is this url_string well-formed enough to proxy through?
   bool IsWellFormedUrl(const GoogleUrl& url);

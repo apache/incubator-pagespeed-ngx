@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
 
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -26,7 +27,6 @@
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -97,25 +97,27 @@ class MockFetch : public AsyncFetch {
  public:
   explicit MockFetch(WorkerTestBase::SyncPoint* sync,
                      ResponseHeaders* response_headers)
-      : response_headers_(response_headers),
-        done_(false),
+      : done_(false),
         success_(false),
-        sync_(sync) { }
+        sync_(sync) {
+    set_response_headers(response_headers);
+  }
 
   virtual ~MockFetch() {}
 
-  virtual void HeadersComplete() {}
-  virtual bool Write(const StringPiece& content, MessageHandler* handler) {
+  virtual void HandleHeadersComplete() {}
+  virtual bool HandleWrite(const StringPiece& content,
+                           MessageHandler* handler) {
     content.AppendToString(&content_);
     return true;
   }
-  virtual bool Flush(MessageHandler* handler) {
+  virtual bool HandleFlush(MessageHandler* handler) {
     return true;
   }
 
   // Fetch complete.
-  virtual void Done(bool success) {
-    response_headers_->ComputeCaching();
+  virtual void HandleDone(bool success) {
+    response_headers()->ComputeCaching();
     done_ = true;
     success_ = success;
     sync_->Notify();
@@ -125,7 +127,6 @@ class MockFetch : public AsyncFetch {
   bool success() { return success_; }
 
  private:
-  ResponseHeaders* response_headers_;
   GoogleString content_;
   bool done_;
   bool success_;
@@ -231,11 +232,11 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
                              int64 date_ms) {
     WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
     MockFetch mock_fetch(&sync, &response_headers_);
+    mock_fetch.set_request_headers(&request_headers_);
 
     rewrite_driver()->Clear();
     rewrite_driver()->set_async_fetcher(counting_url_async_fetcher());
-    rewrite_driver()->FetchResource(url, request_headers_, &response_headers_,
-                                    &mock_fetch);
+    rewrite_driver()->FetchResource(url, &mock_fetch);
     sync.Wait();
     rewrite_driver()->WaitForShutDown();
     EXPECT_TRUE(mock_fetch.done());

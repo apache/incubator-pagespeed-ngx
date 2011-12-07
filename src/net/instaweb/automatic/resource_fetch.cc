@@ -19,7 +19,9 @@
 #include "net/instaweb/automatic/public/resource_fetch.h"
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -29,102 +31,96 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
+class UrlAsyncFetcher;
+
 void ResourceFetch::Start(ResourceManager* manager,
                           const GoogleUrl& url,
-                          const RequestHeaders& request_headers,
+                          AsyncFetch* async_fetch,
                           RewriteOptions* custom_options,
-                          ResponseHeaders* response_headers,
-                          Writer* response_writer,
-                          UrlAsyncFetcher::Callback* callback,
                           const GoogleString& version) {
   RewriteDriver* driver = (custom_options == NULL)
       ? manager->NewRewriteDriver()
       : manager->NewCustomRewriteDriver(custom_options);
   LOG(INFO) << "Fetch with RewriteDriver " << driver;
   ResourceFetch* resource_fetch = new ResourceFetch(
-      url, request_headers, response_headers, response_writer,
-      manager->message_handler(), driver, manager->url_async_fetcher(),
-      manager->timer(), callback, version);
+      url, async_fetch, manager->message_handler(), driver,
+      manager->url_async_fetcher(), manager->timer(), version);
   // TODO(sligocki): This will currently fail us on all non-pagespeed
   // resource requests. We should move the check somewhere else.
-  driver->FetchResource(url.Spec().as_string(), request_headers,
-                        response_headers, resource_fetch);
+  driver->FetchResource(url.Spec().as_string(), resource_fetch);
 }
 
 ResourceFetch::ResourceFetch(const GoogleUrl& url,
-                             const RequestHeaders& request_headers,
-                             ResponseHeaders* response_headers,
-                             Writer* response_writer,
+                             AsyncFetch* async_fetch,
                              MessageHandler* handler,
                              RewriteDriver* driver,
                              UrlAsyncFetcher* fetcher,
                              Timer* timer,
-                             UrlAsyncFetcher::Callback* callback,
                              const GoogleString& version)
-    : response_headers_(response_headers),
-      response_writer_(response_writer),
+    : async_fetch_(async_fetch),
       fetcher_(fetcher),
       message_handler_(handler),
       driver_(driver),
       timer_(timer),
-      callback_(callback),
       version_(version),
       start_time_us_(timer->NowUs()),
       redirect_count_(0) {
   resource_url_.Reset(url);
-  request_headers_.CopyFrom(request_headers);
+  set_request_headers(async_fetch->request_headers());
+  set_response_headers(async_fetch->response_headers());
 }
 
 ResourceFetch::~ResourceFetch() {
 }
 
-void ResourceFetch::HeadersComplete() {
+void ResourceFetch::HandleHeadersComplete() {
   // We do not want any cookies (or other person information) in pagespeed
   // resources. They shouldn't be here anyway, but we assure that.
   ConstStringStarVector v;
-  DCHECK(!response_headers_->Lookup(HttpAttributes::kSetCookie, &v));
-  DCHECK(!response_headers_->Lookup(HttpAttributes::kSetCookie2, &v));
-  response_headers_->RemoveAll(HttpAttributes::kSetCookie);
-  response_headers_->RemoveAll(HttpAttributes::kSetCookie2);
+  DCHECK(!response_headers()->Lookup(HttpAttributes::kSetCookie, &v));
+  DCHECK(!response_headers()->Lookup(HttpAttributes::kSetCookie2, &v));
+  response_headers()->RemoveAll(HttpAttributes::kSetCookie);
+  response_headers()->RemoveAll(HttpAttributes::kSetCookie2);
 
   // "Vary: Accept-Encoding" for all resources that are transmitted compressed.
   // Server ought to set these, I suppose.
-  //response_headers_->Add(HttpAttributes::kVary, "Accept-Encoding");
+  // response_headers()->Add(HttpAttributes::kVary, "Accept-Encoding");
 
-  response_headers_->Add(kPageSpeedHeader, version_);
+  response_headers()->Add(kPageSpeedHeader, version_);
+  async_fetch_->HeadersComplete();
 }
 
-bool ResourceFetch::Write(const StringPiece& content, MessageHandler* handler) {
-  return response_writer_->Write(content, handler);
+bool ResourceFetch::HandleWrite(const StringPiece& content,
+                                MessageHandler* handler) {
+  return async_fetch_->Write(content, handler);
 }
 
-bool ResourceFetch::Flush(MessageHandler* handler) {
-  return response_writer_->Flush(handler);
+bool ResourceFetch::HandleFlush(MessageHandler* handler) {
+  return async_fetch_->Flush(handler);
 }
 
-void ResourceFetch::Done(bool success) {
+void ResourceFetch::HandleDone(bool success) {
   if (success) {
     LOG(INFO) << "Resource " << resource_url_.Spec()
-              << " : " << response_headers_->status_code() ;
+              << " : " << response_headers()->status_code() ;
   } else {
     // This is a fetcher failure, like connection refused, not just an error
     // status code.
     LOG(ERROR) << "Fetch failed for resource url " << resource_url_.Spec();
     LOG(WARNING) << "Failed resource " << resource_url_.Spec()
-                 << "\nrequest headers:\n" << request_headers_.ToString();
+                 << "\nrequest headers:\n" << request_headers()->ToString();
 
-    response_headers_->SetStatusAndReason(HttpStatus::kNotFound);
+    response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
   }
   RewriteStats* stats = driver_->resource_manager()->rewrite_stats();
   stats->fetch_latency_histogram()->Add(
       (timer_->NowUs() - start_time_us_) / 1000.0);
   stats->total_fetch_count()->IncBy(1);
   driver_->Cleanup();
-  callback_->Done(success);
+  async_fetch_->Done(success);
   delete this;
 }
 

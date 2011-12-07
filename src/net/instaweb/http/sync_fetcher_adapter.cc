@@ -47,10 +47,9 @@ bool SyncFetcherAdapter::StreamingFetchUrl(
     ResponseHeaders* response_headers, Writer* fetched_content_writer,
     MessageHandler* message_handler) {
   SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
-      thread_system_, response_headers, fetched_content_writer);
-  async_fetcher_->StreamingFetch(
-      url, request_headers, callback->response_headers(),
-      callback->writer(), message_handler, callback);
+      thread_system_, fetched_content_writer);
+  callback->set_response_headers(response_headers);
+  async_fetcher_->Fetch(url, message_handler, callback);
 
   // We are counting on the async fetcher having a timeout (if any)
   // that's similar to the timeout that we have in this class.

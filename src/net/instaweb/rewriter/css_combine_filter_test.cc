@@ -26,7 +26,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -42,7 +41,6 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
 
@@ -174,36 +172,28 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
     EXPECT_EQ(combined_headers_ + expected_combination, actual_combination);
 
     // Fetch the combination to make sure we can serve the result from above.
-    RequestHeaders request_headers;
-    ResponseHeaders response_headers;
-    GoogleString fetched_resource_content;
-    StringWriter writer(&fetched_resource_content);
-    ExpectCallback dummy_callback(true);
-    rewrite_driver()->FetchResource(combine_url, request_headers,
-                                    &response_headers, &writer,
-                                    &dummy_callback);
+    ExpectStringAsyncFetch expect_callback(true);
+    rewrite_driver()->FetchResource(combine_url, &expect_callback);
     rewrite_driver()->WaitForCompletion();
-    EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) << combine_url;
-    EXPECT_EQ(expected_combination, fetched_resource_content);
+    EXPECT_EQ(HttpStatus::kOK,
+              expect_callback.response_headers()->status_code()) << combine_url;
+    EXPECT_EQ(expected_combination, expect_callback.buffer());
 
     // Now try to fetch from another server (other_rewrite_driver()) that
     // does not already have the combination cached.
     // TODO(sligocki): This has too much shared state with the first server.
     // See RewriteImage for details.
-    ResponseHeaders other_response_headers;
-    fetched_resource_content.clear();
+    ExpectStringAsyncFetch other_expect_callback(true);
     message_handler_.Message(kInfo, "Now with serving.");
     file_system()->Enable();
-    dummy_callback.Reset();
-    other_rewrite_driver()->FetchResource(combine_url, request_headers,
-                                          &other_response_headers, &writer,
-                                          &dummy_callback);
+    other_rewrite_driver()->FetchResource(combine_url, &other_expect_callback);
     other_rewrite_driver()->WaitForCompletion();
-    EXPECT_EQ(HttpStatus::kOK, other_response_headers.status_code());
-    EXPECT_EQ(expected_combination, fetched_resource_content);
+    EXPECT_EQ(HttpStatus::kOK,
+              other_expect_callback.response_headers()->status_code());
+    EXPECT_EQ(expected_combination, other_expect_callback.buffer());
 
     // Try to fetch from an independent server.
-    ServeResourceFromManyContexts(combine_url, fetched_resource_content);
+    ServeResourceFromManyContexts(combine_url, expected_combination);
   }
 
   // Test what happens when CSS combine can't find a previously-rewritten
@@ -230,55 +220,40 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
     GoogleString kABCUrl = Encode(kDomain, "cc", "0",
                                   MultiUrl("a.css", "bbb.css", "c.css"),
                                   "css");
-    RequestHeaders request_headers;
-    ResponseHeaders response_headers;
-    GoogleString fetched_resource_content;
-    StringWriter writer(&fetched_resource_content);
-    ExpectCallback dummy_callback(true);
+    ExpectStringAsyncFetch expect_callback(true);
 
     // NOTE: This first fetch used to return status 0 because response_headers
     // weren't initialized by the first resource fetch (but were cached
     // correctly).  Content was correct.
-    EXPECT_TRUE(
-        rewrite_driver()->FetchResource(kACUrl, request_headers,
-                                        &response_headers, &writer,
-                                        &dummy_callback));
+    EXPECT_TRUE(rewrite_driver()->FetchResource(kACUrl, &expect_callback));
     rewrite_driver()->WaitForCompletion();
-    EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
-    EXPECT_EQ(expected_combination, fetched_resource_content);
+    EXPECT_EQ(HttpStatus::kOK,
+              expect_callback.response_headers()->status_code());
+    EXPECT_EQ(expected_combination, expect_callback.buffer());
 
     // We repeat the fetch to prove that it succeeds from cache:
-    fetched_resource_content.clear();
-    dummy_callback.Reset();
-    response_headers.Clear();
-    EXPECT_TRUE(
-        rewrite_driver()->FetchResource(kACUrl, request_headers,
-                                        &response_headers, &writer,
-                                        &dummy_callback));
+    expect_callback.Reset();
+    EXPECT_TRUE(rewrite_driver()->FetchResource(kACUrl, &expect_callback));
     rewrite_driver()->WaitForCompletion();
-    EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
-    EXPECT_EQ(expected_combination, fetched_resource_content);
+    EXPECT_EQ(HttpStatus::kOK,
+              expect_callback.response_headers()->status_code());
+    EXPECT_EQ(expected_combination, expect_callback.buffer());
 
     // Now let's try fetching the url that references a missing resource
     // (bbb.css) in addition to the two that do exist, a.css and c.css.  Using
     // an entirely non-existent resource appears to test a strict superset of
     // filter code paths when compared with returning a 404 for the resource.
     SetFetchFailOnUnexpected(false);
-    ExpectCallback fail_callback(false);
-    fetched_resource_content.clear();
-    response_headers.Clear();
+    ExpectStringAsyncFetch fail_callback(false);
     EXPECT_TRUE(
-        rewrite_driver()->FetchResource(kABCUrl, request_headers,
-                                        &response_headers, &writer,
-                                        &fail_callback));
+        rewrite_driver()->FetchResource(kABCUrl, &fail_callback));
     rewrite_driver()->WaitForCompletion();
 
     // What status we get here depends a lot on details of when exactly
     // we detect the failure. If done early enough, nothing will be set.
     // This test may change, but see also
     // ResourceCombinerTest.TestContinuingFetchWhenFastFailed
-    EXPECT_FALSE(response_headers.headers_complete());
-    EXPECT_EQ("", fetched_resource_content);
+    EXPECT_EQ("", fail_callback.buffer());
   }
 
   // Common framework for testing barriers.  A null-terminated set of css

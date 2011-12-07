@@ -25,12 +25,12 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
@@ -233,12 +233,8 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
                                                  new_options);
   new_factory.SetupWaitFetcher();
 
-  RequestHeaders request_headers;
   // TODO(sligocki): We should set default request headers.
-  ResponseHeaders response_headers;
-  GoogleString response_contents;
-  StringWriter response_writer(&response_contents);
-  ExpectCallback callback(true);
+  ExpectStringAsyncFetch response_contents(true);
 
   // Check that we don't already have it in cache.
   EXPECT_EQ(CacheInterface::kNotFound,
@@ -246,17 +242,16 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
 
   // Initiate fetch.
   EXPECT_EQ(true, new_rewrite_driver->FetchResource(
-      resource_url, request_headers, &response_headers, &response_writer,
-      &callback));
+      resource_url, &response_contents));
 
   // Content should not be set until we call the callback.
-  EXPECT_FALSE(callback.done());
-  EXPECT_EQ("", response_contents);
+  EXPECT_FALSE(response_contents.done());
+  EXPECT_EQ("", response_contents.buffer());
 
   // After we call the callback, it should be correct.
   new_factory.CallFetcherCallbacksForDriver(new_rewrite_driver);
-  EXPECT_EQ(true, callback.done());
-  EXPECT_STREQ(expected_content, response_contents);
+  EXPECT_EQ(true, response_contents.done());
+  EXPECT_STREQ(expected_content, response_contents.buffer());
 
   // Check that stats say we took the construct resource path.
   RewriteStats* new_stats = new_factory.rewrite_stats();
@@ -362,11 +357,9 @@ bool ResourceManagerTestBase::ServeResourceUrl(
 bool ResourceManagerTestBase::ServeResourceUrl(
     const StringPiece& url, GoogleString* content, ResponseHeaders* response) {
   content->clear();
-  RequestHeaders request_headers;
-  StringWriter writer(content);
-  MockCallback callback;
-  bool fetched = rewrite_driver_->FetchResource(
-      url, request_headers, response, &writer, &callback);
+  StringAsyncFetch async_fetch(content);
+  async_fetch.set_response_headers(response);
+  bool fetched = rewrite_driver_->FetchResource(url, &async_fetch);
 
   // Make sure we let the rewrite complete, and also wait for the driver to be
   // idle so we can reuse it safely.
@@ -374,8 +367,8 @@ bool ResourceManagerTestBase::ServeResourceUrl(
   rewrite_driver_->Clear();
 
   // The callback should be called if and only if FetchResource returns true.
-  EXPECT_EQ(fetched, callback.done());
-  return fetched && callback.success();
+  EXPECT_EQ(fetched, async_fetch.done());
+  return fetched && async_fetch.success();
 }
 
 void ResourceManagerTestBase::TestServeFiles(

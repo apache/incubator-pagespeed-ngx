@@ -16,11 +16,12 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-// Callbacks used of testing.
+// Callbacks used for testing.
 
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_MOCK_CALLBACK_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_MOCK_CALLBACK_H_
 
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -31,6 +32,9 @@ namespace net_instaweb {
 // find out if it has been called and whether result was success.
 // MockCallback does not delete itself and expects to be allocated on stack
 // so that it can be accessed before and after Done() is called.
+//
+// Note: this only has one user now: TestConditionalFetch in
+// UrlAsyncFetcherTest.
 class MockCallback : public UrlAsyncFetcher::Callback {
  public:
   MockCallback() : success_(false), done_(false) {}
@@ -53,34 +57,25 @@ class MockCallback : public UrlAsyncFetcher::Callback {
 // Callback that can be used for testing resource fetches which makes sure
 // that Done() is called exactly once and with the expected success value.
 // Can be used multiple times by calling Reset in between.
-class ExpectCallback : public UrlAsyncFetcher::Callback {
+class ExpectStringAsyncFetch : public StringAsyncFetch {
  public:
-  explicit ExpectCallback(bool expect_success)
-      : done_(false),
-        expect_success_(expect_success) {}
-  virtual ~ExpectCallback() {
-    EXPECT_TRUE(done_);
+  explicit ExpectStringAsyncFetch(bool expect_success)
+      : expect_success_(expect_success) {}
+  virtual ~ExpectStringAsyncFetch() {
+    EXPECT_TRUE(done());
   }
 
-  virtual void Done(bool success) {
-    EXPECT_FALSE(done_) << "Already Done; perhaps you reused without Reset()";
-    done_ = true;
+  virtual void HandleDone(bool success) {
+    EXPECT_FALSE(done()) << "Already Done; perhaps you reused without Reset()";
+    StringAsyncFetch::HandleDone(success);
     EXPECT_EQ(expect_success_, success);
   }
 
-  void Reset() {
-    done_ = false;
-  }
-
-  bool done() const { return done_; }
-
  private:
-  bool done_;
   bool expect_success_;
 
-  DISALLOW_COPY_AND_ASSIGN(ExpectCallback);
+  DISALLOW_COPY_AND_ASSIGN(ExpectStringAsyncFetch);
 };
-
 
 }  // namespace net_instaweb
 

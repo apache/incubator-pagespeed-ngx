@@ -21,10 +21,12 @@
 #include <algorithm>
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -36,7 +38,6 @@
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 
 namespace net_instaweb {
@@ -77,15 +78,15 @@ void AjaxRewriteContext::Harvest() {
 
 void AjaxRewriteContext::FetchTryFallback(const GoogleString& url,
                                           const StringPiece& hash) {
-  const char* request_etag = request_headers_.Lookup1(
+  const char* request_etag = async_fetch()->request_headers()->Lookup1(
       HttpAttributes::kIfNoneMatch);
   if (request_etag != NULL && !hash.empty() &&
       StringEqualConcat(request_etag, etag_prefix_, hash)) {
     // Serve out a 304.
-    ResponseHeaders* response_headers = fetch_response_headers();
-    response_headers->Clear();
-    response_headers->SetStatusAndReason(HttpStatus::kNotModified);
-    fetch_callback()->Done(true);
+    async_fetch()->response_headers()->Clear();
+    async_fetch()->response_headers()->SetStatusAndReason(
+        HttpStatus::kNotModified);
+    async_fetch()->Done(true);
     driver_->FetchComplete();
   } else {
     // Save the hash of the resource.
@@ -120,49 +121,50 @@ void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
 // underlying writer, response headers and callback.
 class AjaxRewriteContext::RecordingFetch : public AsyncFetch {
  public:
-  RecordingFetch(Writer* writer,
-                 ResponseHeaders* response_headers,
-                 MessageHandler* handler,
-                 UrlAsyncFetcher::Callback* callback,
-                 ResourcePtr resource,
-                 AjaxRewriteContext* context)
-      : writer_(writer),
-        response_headers_(response_headers),
-        handler_(handler),
-        callback_(callback),
+  RecordingFetch(AsyncFetch* async_fetch,
+                 const ResourcePtr& resource,
+                 AjaxRewriteContext* context,
+                 MessageHandler* handler)
+      : handler_(handler),
+        async_fetch_(async_fetch),
         resource_(resource),
         context_(context),
-        can_ajax_rewrite_(false) { }
+        can_ajax_rewrite_(false) {
+    set_request_headers(async_fetch->request_headers());
+    set_response_headers(async_fetch->response_headers());
+  }
 
   virtual ~RecordingFetch() {}
 
-  virtual void HeadersComplete() {
+  virtual void HandleHeadersComplete() {
     can_ajax_rewrite_ = CanAjaxRewrite();
     if (can_ajax_rewrite_) {
-      cache_value_.SetHeaders(response_headers_);
+      cache_value_.SetHeaders(response_headers());
     } else {
       // It's not worth trying to rewrite any more. This cleans up the context
       // and frees the driver. Leaving this context around causes problems in
       // the html flow in particular.
       context_->driver_->FetchComplete();
     }
+    async_fetch_->HeadersComplete();
   }
 
-  virtual bool Write(const StringPiece& content, MessageHandler* handler) {
+  virtual bool HandleWrite(const StringPiece& content,
+                           MessageHandler* handler) {
     bool ret = true;
-    ret &= writer_->Write(content, handler);
+    ret &= async_fetch_->Write(content, handler);
     if (can_ajax_rewrite_) {
       ret &= cache_value_.Write(content, handler);
     }
     return ret;
   }
 
-  virtual bool Flush(MessageHandler* handler) {
-    return writer_->Flush(handler);
+  virtual bool HandleFlush(MessageHandler* handler) {
+    return async_fetch_->Flush(handler);
   }
 
-  virtual void Done(bool success) {
-    callback_->Done(success);
+  virtual void HandleDone(bool success) {
+    async_fetch_->Done(success);
 
     if (can_ajax_rewrite_) {
       resource_->Link(&cache_value_, handler_);
@@ -175,20 +177,18 @@ class AjaxRewriteContext::RecordingFetch : public AsyncFetch {
 
  private:
   bool CanAjaxRewrite() {
-    const ContentType* type = response_headers_->DetermineContentType();
-    response_headers_->ComputeCaching();
+    ResponseHeaders* headers = response_headers();
+    const ContentType* type = headers->DetermineContentType();
+    headers->ComputeCaching();
     return (type != NULL && (type->type() ==  ContentType::kCss ||
             type->type() == ContentType::kJavascript ||
             type->type() == ContentType::kPng ||
             type->type() == ContentType::kJpeg) &&
-            !context_->driver_->resource_manager()->http_cache()->
-                IsAlreadyExpired(*response_headers_));
+            !context_->Manager()->http_cache()->IsAlreadyExpired(*headers));
   }
 
-  Writer* writer_;
-  ResponseHeaders* response_headers_;
   MessageHandler* handler_;
-  UrlAsyncFetcher::Callback* callback_;
+  AsyncFetch* async_fetch_;
   ResourcePtr resource_;
   AjaxRewriteContext* context_;
   bool can_ajax_rewrite_;
@@ -254,11 +254,8 @@ void AjaxRewriteContext::StartFetchReconstruction() {
   // If we get here, the resource must not have been rewritten.
   is_rewritten_ = false;
   RecordingFetch* fetch = new RecordingFetch(
-      fetch_writer(), fetch_response_headers(), fetch_message_handler(),
-      fetch_callback(), resource, this);
-  driver_->async_fetcher()->Fetch(url_, request_headers_,
-                                  fetch_response_headers(),
-                                  fetch_message_handler(), fetch);
+      async_fetch(), resource, this, fetch_message_handler());
+  driver_->async_fetcher()->Fetch(url_, fetch_message_handler(), fetch);
 }
 
 void AjaxRewriteContext::StartFetchReconstructionParent() {
@@ -266,8 +263,8 @@ void AjaxRewriteContext::StartFetchReconstructionParent() {
 }
 
 GoogleString AjaxRewriteContext::CacheKeySuffix() const {
-  // Include driver_->ShouldNotRewriteImages() in the cache key to prevent image
-  // rewrites when bot detection is enabled.
+  // Include driver_->ShouldNotRewriteImages() in the cache key to
+  // prevent image rewrites when bot detection is enabled.
   return driver_->ShouldNotRewriteImages() ? "0" : "1";
 }
 

@@ -24,7 +24,6 @@
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
@@ -42,7 +41,6 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
 
@@ -110,34 +108,31 @@ class ImageRewriteTest : public ResourceManagerTestBase,
     ASSERT_TRUE(ReadFile(rewritten_filename.c_str(), &rewritten_image_data));
 
     // Also fetch the resource to ensure it can be created dynamically
-    RequestHeaders request_headers;
-    ResponseHeaders response_headers;
-    GoogleString fetched_resource_content;
-    StringWriter writer(&fetched_resource_content);
-    ExpectCallback dummy_callback(true);
+    ExpectStringAsyncFetch expect_callback(true);
 
     GoogleString headers;
     AppendDefaultHeaders(content_type, &headers);
 
-    writer.Write(headers, &message_handler_);
-    writer.Flush(&message_handler_);
-    int header_size = fetched_resource_content.length();
-    EXPECT_TRUE(
-        rewrite_driver()->FetchResource(src_string, request_headers,
-                                        &response_headers, &writer,
-                                        &dummy_callback));
+    // TODO(jmarantz): this usage of expect_callback to prepend serialized
+    // headers is pretty weird.  This might have been made weirder by my
+    // AsyncFetch refactor but I'll just note this here for now.
+    expect_callback.response_headers()->SetStatusAndReason(HttpStatus::kOK);
+    expect_callback.Write(headers, &message_handler_);
+    int header_size = expect_callback.buffer().length();
+    EXPECT_TRUE(rewrite_driver()->FetchResource(src_string, &expect_callback));
     rewrite_driver()->WaitForCompletion();
-    EXPECT_EQ(HttpStatus::kOK, response_headers.status_code()) <<
+    EXPECT_EQ(HttpStatus::kOK,
+              expect_callback.response_headers()->status_code()) <<
         "Looking for " << src_string;
     // For readability, only do EXPECT_EQ on initial portions of data
     // as most of it isn't human-readable.  This will show us the headers
     // and the start of the image data.  So far every failure fails this
     // first, and we caught doubled headers this way.
     EXPECT_EQ(rewritten_image_data.substr(0, 250),
-              fetched_resource_content.substr(0, 250)) <<
+              expect_callback.buffer().substr(0, 250)) <<
         "In " << src_string <<
-        " response headers " << response_headers.ToString();
-    EXPECT_TRUE(rewritten_image_data == fetched_resource_content) <<
+        " response headers " << expect_callback.response_headers()->ToString();
+    EXPECT_TRUE(rewritten_image_data == expect_callback.buffer()) <<
         "In " << src_string;
 
     // Try to fetch from an independent server.

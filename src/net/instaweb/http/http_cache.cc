@@ -367,6 +367,9 @@ void HTTPCache::Initialize(Statistics* statistics) {
 }
 
 HTTPCache::Callback::~Callback() {
+  if (owns_response_headers_) {
+    delete response_headers_;
+  }
 }
 
 }  // namespace net_instaweb

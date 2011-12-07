@@ -30,7 +30,7 @@ FileLoadPolicy::~FileLoadPolicy() {}
 
 bool FileLoadPolicy::ShouldLoadFromFile(const GoogleUrl& url,
                                         GoogleString* filename) const {
-  StringPiece url_string = url.AllExceptQuery();
+  StringPiece url_string = url.Spec();
 
   // TODO(sligocki): Consider layering a cache over this lookup.
 
@@ -41,7 +41,6 @@ bool FileLoadPolicy::ShouldLoadFromFile(const GoogleUrl& url,
       // Replace url_prefix_ with filename_prefix_.
       StringPiece suffix = url_string.substr(iter->url_prefix.size());
       *filename = StrCat(iter->filename_prefix, suffix);
-      // TODO(sligocki): Should we decode filenames as well? Say "%20" -> " "
       return true;
     }
   }

@@ -31,12 +31,11 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -55,7 +54,6 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
-#include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/queued_alarm.h"
 #include "net/instaweb/util/public/shared_string.h"
@@ -65,7 +63,6 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
-#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
@@ -175,8 +172,7 @@ class RewriteContext::ResourceFetchCallback : public Resource::AsyncCallback {
 
 // Callback used when we need to reconstruct a resource we made to satisfy
 // a fetch (due to rewrites being nested inside each other).
-class RewriteContext::ResourceReconstructCallback
-    : public UrlAsyncFetcher::Callback {
+class RewriteContext::ResourceReconstructCallback : public AsyncFetch {
  public:
   // Takes ownership of the driver (e.g. will call Cleanup)
   ResourceReconstructCallback(RewriteDriver* driver, RewriteContext* rc,
@@ -189,7 +185,7 @@ class RewriteContext::ResourceReconstructCallback
   virtual ~ResourceReconstructCallback() {
   }
 
-  virtual void Done(bool success) {
+  virtual void HandleDone(bool success) {
     // Make sure to release the lock here, as in case of nested reconstructions
     // that fail it would otherwise only get released on ~OutputResource, which
     // in turn will only happen once the top-level is done, which may take a
@@ -201,19 +197,20 @@ class RewriteContext::ResourceReconstructCallback
     delete this;
   }
 
-  const RequestHeaders& request_headers() const { return request_headers_; }
-  ResponseHeaders* response_headers() { return &response_headers_; }
-  Writer* writer() { return &writer_; }
+  // We ignore the output here as it's also put into the resource itself.
+  virtual bool HandleWrite(const StringPiece& content,
+                           MessageHandler* handler) {
+    return true;
+  }
+  virtual bool HandleFlush(MessageHandler* handler) {
+    return true;
+  }
+  virtual void HandleHeadersComplete() {}
 
  private:
   RewriteDriver* driver_;
   ResourceCallbackUtils delegate_;
   OutputResourcePtr resource_;
-
-  // We ignore the output here as it's also put into the resource itself.
-  NullWriter writer_;
-  ResponseHeaders response_headers_;
-  RequestHeaders request_headers_;
 };
 
 // Callback used when we re-check validity of cached results by contents.
@@ -250,15 +247,11 @@ class RewriteContext::ResourceRevalidateCallback
 class RewriteContext::FetchContext {
  public:
   FetchContext(RewriteContext* rewrite_context,
-               Writer* writer,
-               ResponseHeaders* response_headers,
-               UrlAsyncFetcher::Callback* callback,
+               AsyncFetch* fetch,
                const OutputResourcePtr& output_resource,
                MessageHandler* handler)
       : rewrite_context_(rewrite_context),
-        writer_(writer),
-        response_headers_(response_headers),
-        callback_(callback),
+        async_fetch_(fetch),
         output_resource_(output_resource),
         handler_(handler),
         deadline_alarm_(NULL),
@@ -323,10 +316,13 @@ class RewriteContext::FetchContext {
 
     GoogleString output;
     bool ok = false;
+    ResponseHeaders* response_headers = async_fetch_->response_headers();
     if (success_) {
       if (output_resource_->hash() == requested_hash_) {
-        response_headers_->CopyFrom(*(output_resource_->response_headers()));
-        ok = writer_->Write(output_resource_->contents(), handler_);
+        response_headers->CopyFrom(*(
+            output_resource_->response_headers()));
+        async_fetch_->HeadersComplete();
+        ok = async_fetch_->Write(output_resource_->contents(), handler_);
       } else {
         // Our rewrite produced a different hash than what was requested;
         // we better not give it an ultra-long TTL.
@@ -339,17 +335,18 @@ class RewriteContext::FetchContext {
       if (rewrite_context_->num_slots() == 1) {
         ResourcePtr input_resource(rewrite_context_->slot(0)->resource());
         if (input_resource.get() != NULL && input_resource->ContentsValid()) {
-          response_headers_->CopyFrom(*input_resource->response_headers());
+          response_headers->CopyFrom(*input_resource->response_headers());
           // We strip cookies here to get consistent behavior between cases
           // where we cache things and cases where we don't.
           // TODO(morlovich): It might make sense to only do this for
           // cacheable resources; in that case however the DCHECK
           // in automatic/resource_fetch.cc, ResourceFetch::HeadersComplete
           // should be relaxed.
-          if (response_headers_->Sanitize()) {
-            response_headers_->ComputeCaching();
+          if (response_headers->Sanitize()) {
+            response_headers->ComputeCaching();
           }
-          ok = writer_->Write(input_resource->contents(), handler_);
+          async_fetch_->HeadersComplete();
+          ok = async_fetch_->Write(input_resource->contents(), handler_);
         } else {
           GoogleString url = input_resource.get()->url();
           handler_->Error(
@@ -360,6 +357,11 @@ class RewriteContext::FetchContext {
       }
     }
 
+    if (!ok) {
+      async_fetch_->response_headers()->SetStatusAndReason(
+          HttpStatus::kNotFound);
+      async_fetch_->HeadersComplete();
+    }
     rewrite_context_->FetchCallbackDone(ok);
   }
 
@@ -384,8 +386,9 @@ class RewriteContext::FetchContext {
                              ResponseHeaders* headers) {
     rewrite_context_->FixFetchFallbackHeaders(headers);
 
-    response_headers_->CopyFrom(*headers);
-    bool ok = writer_->Write(contents, handler_);
+    async_fetch_->response_headers()->CopyFrom(*headers);
+    async_fetch_->HeadersComplete();
+    bool ok = async_fetch_->Write(contents, handler_);
     rewrite_context_->FetchCallbackDone(ok);
   }
 
@@ -397,9 +400,7 @@ class RewriteContext::FetchContext {
   OutputResourcePtr output_resource() { return output_resource_; }
 
   RewriteContext* rewrite_context_;
-  Writer* writer_;
-  ResponseHeaders* response_headers_;
-  UrlAsyncFetcher::Callback* callback_;
+  AsyncFetch* async_fetch_;
   OutputResourcePtr output_resource_;
   MessageHandler* handler_;
   GoogleString requested_hash_;  // hash we were requested as. May be empty.
@@ -934,12 +935,7 @@ void RewriteContext::FetchInputs() {
           ResourceReconstructCallback* callback =
               new ResourceReconstructCallback(
                   nested_driver, this, output_resource, i);
-          nested_driver->FetchOutputResource(
-              output_resource, filter,
-              callback->request_headers(),
-              callback->response_headers(),
-              callback->writer(),
-              callback);
+          nested_driver->FetchOutputResource(output_resource, filter, callback);
         } else {
           Manager()->ReleaseRewriteDriver(nested_driver);
         }
@@ -1466,10 +1462,8 @@ bool RewriteContext::DecodeFetchUrls(
 
 bool RewriteContext::Fetch(
     const OutputResourcePtr& output_resource,
-    Writer* response_writer,
-    ResponseHeaders* response_headers,
-    MessageHandler* message_handler,
-    UrlAsyncFetcher::Callback* callback) {
+    AsyncFetch* fetch,
+    MessageHandler* message_handler) {
   // Decode the URLs required to execute the rewrite.
   bool ret = false;
   RewriteDriver* driver = Driver();
@@ -1493,20 +1487,21 @@ bool RewriteContext::Fetch(
       AddSlot(slot);
     }
     STLDeleteContainerPointers(url_vector.begin(), url_vector.end());
-    if (!is_valid) {
-      return false;
+    if (is_valid) {
+      SetPartitionKey();
+      fetch_.reset(
+          new FetchContext(this, fetch, output_resource, message_handler));
+      if (output_resource->has_hash()) {
+        fetch_->set_requested_hash(output_resource->hash());
+      }
+      Driver()->AddRewriteTask(MakeFunction(this, &RewriteContext::StartFetch));
+      ret = true;
     }
-
-    SetPartitionKey();
-    fetch_.reset(
-        new FetchContext(this, response_writer, response_headers, callback,
-                         output_resource, message_handler));
-    if (output_resource->has_hash()) {
-      fetch_->set_requested_hash(output_resource->hash());
-    }
-    Driver()->AddRewriteTask(MakeFunction(this, &RewriteContext::StartFetch));
-    ret = true;
   }
+  if (!ret) {
+    fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
+  }
+
   return ret;
 }
 
@@ -1577,7 +1572,7 @@ void RewriteContext::FetchFallbackCacheDone(HTTPCache::FindResult result,
 void RewriteContext::FetchCallbackDone(bool success) {
   RewriteDriver* notify_driver =
       notify_driver_on_fetch_done_ ? Driver() : NULL;
-  fetch_callback()->Done(success);
+  async_fetch()->Done(success);
   if (notify_driver != NULL) {
     notify_driver->FetchComplete();
   }
@@ -1644,19 +1639,9 @@ void RewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
   headers->ComputeCaching();
 }
 
-Writer* RewriteContext::fetch_writer() {
+AsyncFetch* RewriteContext::async_fetch() {
   DCHECK(fetch_.get() != NULL);
-  return fetch_->writer_;
-}
-
-ResponseHeaders* RewriteContext::fetch_response_headers() {
-  DCHECK(fetch_.get() != NULL);
-  return fetch_->response_headers_;
-}
-
-UrlAsyncFetcher::Callback* RewriteContext::fetch_callback() {
-  DCHECK(fetch_.get() != NULL);
-  return fetch_->callback_;
+  return fetch_->async_fetch_;
 }
 
 MessageHandler* RewriteContext::fetch_message_handler() {

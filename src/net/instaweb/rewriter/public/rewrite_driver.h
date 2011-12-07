@@ -27,7 +27,6 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -51,6 +50,7 @@ struct ContentType;
 
 class AbstractMutex;
 class AddInstrumentationFilter;
+class AsyncFetch;
 class CommonFilter;
 class DomainRewriteFilter;
 class FileSystem;
@@ -59,7 +59,6 @@ class HtmlEvent;
 class HtmlFilter;
 class HtmlWriterFilter;
 class MessageHandler;
-class RequestHeaders;
 class ResourceContext;
 class ResourceNamer;
 class ResponseHeaders;
@@ -67,6 +66,7 @@ class RewriteContext;
 class RewriteFilter;
 class ScopedMutex;
 class Statistics;
+class UrlAsyncFetcher;
 class UrlLeftTrimFilter;
 class Writer;
 
@@ -229,9 +229,7 @@ class RewriteDriver : public HtmlParse {
   // install filters in any order and the writer will always be last.
   void SetWriter(Writer* writer);
 
-  Writer* writer() const {
-    return writer_;
-  }
+  Writer* writer() const { return writer_; }
 
   // Initiates an async fetch for a rewritten resource with the specified name.
   // If resource matches the pattern of what the driver is authorized to serve,
@@ -256,17 +254,7 @@ class RewriteDriver : public HtmlParse {
   // will not be called.  If the callback is called, then this should be the
   // 'final word' on this request, whether it was called with success=true or
   // success=false.
-  bool FetchResource(const StringPiece& resource,
-                     const RequestHeaders& request_headers,
-                     ResponseHeaders* response_headers,
-                     Writer* writer,
-                     UrlAsyncFetcher::Callback* callback);
-
-  // Same as above, but accepts an AsyncFetch instead of a writer and callback.
-  bool FetchResource(const StringPiece& url,
-                     const RequestHeaders& request_headers,
-                     ResponseHeaders* response_headers,
-                     AsyncFetch* fetch);
+  bool FetchResource(const StringPiece& url, AsyncFetch* fetch);
 
   // See FetchResource.  There are two differences:
   //   1. It takes an OutputResource instead of a URL.
@@ -276,10 +264,7 @@ class RewriteDriver : public HtmlParse {
   //      (if enabled) the file system.
   bool FetchOutputResource(const OutputResourcePtr& output_resource,
                            RewriteFilter* filter,
-                           const RequestHeaders& request_headers,
-                           ResponseHeaders* response_headers,
-                           Writer* writer,
-                           UrlAsyncFetcher::Callback* callback);
+                           AsyncFetch* async_fetch);
 
   // Attempts to decode an output resource based on the URL pattern
   // without actually rewriting it. No permission checks are performed on the

@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_HTTP_CACHE_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_CACHE_H_
 
+#include "base/logging.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -64,8 +65,17 @@ class HTTPCache {
     kRecentFetchFailedOrNotCacheable,
   };
 
+  // Class to handle an asynchronous cache lookup response.
+  //
+  // TODO(jmarantz): consider inheriting from AsyncFetch with an implementation
+  // of Write/Flush/HeadersComplete -- we'd have to make Done take true/false so
+  // this would impact callers.
   class Callback {
    public:
+    Callback()
+        : response_headers_(NULL),
+          owns_response_headers_(false) {
+    }
     virtual ~Callback();
     virtual void Done(FindResult find_result) = 0;
     // A method that allows client Callbacks to apply invalidation checks.  We
@@ -79,12 +89,34 @@ class HTTPCache {
     // implementation you probably want to use.
     virtual bool IsCacheValid(const ResponseHeaders& headers) = 0;
 
+    // TODO(jmarantz): specify the dataflow between http_value and
+    // response_headers.
     HTTPValue* http_value() { return &http_value_; }
-    ResponseHeaders* response_headers() { return &response_headers_; }
+    ResponseHeaders* response_headers() {
+      if (response_headers_ == NULL) {
+        response_headers_ = new ResponseHeaders;
+        owns_response_headers_ = true;
+      }
+      return response_headers_;
+    }
+    const ResponseHeaders* response_headers() const {
+      return const_cast<Callback*>(this)->response_headers();
+    }
+    void set_response_headers(ResponseHeaders* headers) {
+      DCHECK(!owns_response_headers_);
+      if (owns_response_headers_) {
+        delete response_headers_;
+      }
+      response_headers_ = headers;
+      owns_response_headers_ = false;
+    }
 
    private:
     HTTPValue http_value_;
-    ResponseHeaders response_headers_;
+    ResponseHeaders* response_headers_;
+    bool owns_response_headers_;
+
+    DISALLOW_COPY_AND_ASSIGN(Callback);
   };
 
   // Makes the cache ignore all put requests.

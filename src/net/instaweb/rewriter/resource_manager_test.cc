@@ -24,14 +24,13 @@
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
@@ -58,14 +57,12 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
@@ -85,7 +82,6 @@ const size_t kUrlPrefixLength = STATIC_STRLEN(kUrlPrefix);
 namespace net_instaweb {
 
 class SharedString;
-class Writer;
 
 class VerifyContentsCallback : public Resource::AsyncCallback {
  public:
@@ -121,39 +117,35 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   // non-existence and potentially doing locking, too.
   // Note: resource must have hash set.
   bool FetchExtantOutputResourceHelper(const OutputResourcePtr& resource,
-                                       Writer* writer) {
-    MockCallback callback;
+                                       StringAsyncFetch* async_fetch) {
+    async_fetch->set_response_headers(resource->response_headers());
     RewriteFilter* null_filter = NULL;  // We want to test the cache only.
-    RequestHeaders request;
-    EXPECT_TRUE(rewrite_driver()->FetchOutputResource(
-        resource, null_filter, request, resource->response_headers(), writer,
-        &callback));
+    EXPECT_TRUE(rewrite_driver()->FetchOutputResource(resource, null_filter,
+                                                      async_fetch));
     rewrite_driver()->WaitForCompletion();
-    EXPECT_TRUE(callback.done());
-    return callback.success();
+    EXPECT_TRUE(async_fetch->done());
+    return async_fetch->success();
   }
 
   GoogleString GetOutputResourceWithoutLock(const OutputResourcePtr& resource) {
-    GoogleString contents;
-    StringWriter writer(&contents);
-    EXPECT_TRUE(FetchExtantOutputResourceHelper(resource, &writer));
+    StringAsyncFetch fetch;
+    EXPECT_TRUE(FetchExtantOutputResourceHelper(resource, &fetch));
     EXPECT_FALSE(resource->has_lock());
-    return contents;
+    return fetch.buffer();
   }
 
   GoogleString GetOutputResourceWithLock(const OutputResourcePtr& resource) {
-    GoogleString contents;
-    StringWriter writer(&contents);
-    EXPECT_TRUE(FetchExtantOutputResourceHelper(resource, &writer));
+    StringAsyncFetch fetch;
+    EXPECT_TRUE(FetchExtantOutputResourceHelper(resource, &fetch));
     EXPECT_TRUE(resource->has_lock());
-    return contents;
+    return fetch.buffer();
   }
 
   // Returns whether there was an existing copy of data for the resource.
   // If not, makes sure the resource is wrapped.
   bool TryFetchExtantOutputResourceOrLock(const OutputResourcePtr& resource) {
-    NullWriter null_writer;
-    return FetchExtantOutputResourceHelper(resource, &null_writer);
+    StringAsyncFetch dummy_fetch;
+    return FetchExtantOutputResourceHelper(resource, &dummy_fetch);
   }
 
   // Asserts that the given url starts with an appropriate prefix;

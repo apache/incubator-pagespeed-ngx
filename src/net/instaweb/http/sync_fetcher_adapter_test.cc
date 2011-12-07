@@ -21,6 +21,7 @@
 #include <algorithm>
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -128,6 +129,7 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
     if (sim_success_) {
       response_headers_->CopyFrom(headers);
       response_headers_->Add(kHeader, kText);
+      response_headers_->set_status_code(HttpStatus::kOK);
       response_writer_->Write(kText, handler_);
       response_writer_->Flush(handler_);
     }
@@ -158,12 +160,11 @@ class SyncFetcherAdapterTest : public testing::Test {
   }
 
  protected:
-  bool DoFetch(UrlFetcher* fetcher, ResponseHeaders* response_headers,
-               Writer* response_writer) {
+  bool DoFetch(UrlFetcher* fetcher, Writer* response_writer) {
     RequestHeaders request_headers;
     return fetcher->StreamingFetchUrl("http://www.example.com/",
                                       request_headers,
-                                      response_headers,
+                                      &out_headers_,
                                       response_writer,
                                       &handler_);
   }
@@ -172,14 +173,13 @@ class SyncFetcherAdapterTest : public testing::Test {
     SyncFetcherAdapter fetcher(&timer_, 1000, async_fetcher,
                                thread_system_.get());
 
-    ResponseHeaders out_headers;
     GoogleString out_str;
     StringWriter out_writer(&out_str);
-    EXPECT_TRUE(DoFetch(&fetcher, &out_headers, &out_writer));
+    EXPECT_TRUE(DoFetch(&fetcher, &out_writer));
     EXPECT_EQ(kText, out_str);
 
     ConstStringStarVector values;
-    EXPECT_TRUE(out_headers.Lookup(kHeader, &values));
+    EXPECT_TRUE(out_headers_.Lookup(kHeader, &values));
     ASSERT_EQ(1, values.size());
     EXPECT_EQ(GoogleString(kText), *(values[0]));
   }
@@ -191,12 +191,11 @@ class SyncFetcherAdapterTest : public testing::Test {
   }
 
   void TestFailedFetchSync(UrlFetcher* fetcher) {
-    ResponseHeaders out_headers;
     TrapWriter trap_writer;
-    EXPECT_FALSE(DoFetch(fetcher, &out_headers, &trap_writer));
+    EXPECT_FALSE(DoFetch(fetcher, &trap_writer));
   }
 
-  void TestTimeoutFetch(UrlPollableAsyncFetcher* async_fetcher) {
+  void TestTimeoutFetch(DelayedFetcher* async_fetcher) {
     SyncFetcherAdapter fetcher(&timer_, 1000, async_fetcher,
                                thread_system_.get());
 
@@ -208,6 +207,7 @@ class SyncFetcherAdapterTest : public testing::Test {
     while (async_fetcher->Poll(1000) != 0) {}
   }
 
+  ResponseHeaders out_headers_;
   MockMessageHandler handler_;
   MockTimer timer_;
   scoped_ptr<ThreadSystem> thread_system_;

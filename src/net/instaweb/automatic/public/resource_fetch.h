@@ -23,9 +23,7 @@
 #ifndef NET_INSTAWEB_AUTOMATIC_PUBLIC_RESOURCE_FETCH_H_
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_RESOURCE_FETCH_H_
 
-#include "net/instaweb/http/public/url_async_fetcher.h"
-
-#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
@@ -34,12 +32,11 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class ResponseHeaders;
 class ResourceManager;
 class RewriteDriver;
 class RewriteOptions;
+class UrlAsyncFetcher;
 class Timer;
-class Writer;
 
 // Manages a single fetch of a pagespeed rewritten resource.
 // Fetch is initialized by calling ResourceFetch::Start()
@@ -49,41 +46,33 @@ class ResourceFetch : public AsyncFetch {
  public:
   static void Start(ResourceManager* resource_manager,
                     const GoogleUrl& url,
-                    const RequestHeaders& request_headers,
+                    AsyncFetch* async_fetch,
                     RewriteOptions* custom_options,
-                    ResponseHeaders* response_headers,
-                    Writer* response_writer,
-                    UrlAsyncFetcher::Callback* callback,
                     const GoogleString& version);
 
-  // Public interface from AsyncFetch.
-  virtual void HeadersComplete();
-  virtual bool Write(const StringPiece& content, MessageHandler* handler);
-  virtual bool Flush(MessageHandler* handler);
-  virtual void Done(bool success);
+ protected:
+  // Protected interface from AsyncFetch.
+  virtual void HandleHeadersComplete();
+  virtual bool HandleWrite(const StringPiece& content, MessageHandler* handler);
+  virtual bool HandleFlush(MessageHandler* handler);
+  virtual void HandleDone(bool success);
 
  private:
   explicit ResourceFetch(const GoogleUrl& url,
-                         const RequestHeaders& request_headers,
-                         ResponseHeaders* response_headers,
-                         Writer* response_writer,
+                         AsyncFetch* async_fetch,
                          MessageHandler* handler,
                          RewriteDriver* driver,
                          UrlAsyncFetcher* fetcher,
                          Timer* timer,
-                         UrlAsyncFetcher::Callback* callback,
                          const GoogleString& version);
   virtual ~ResourceFetch();
 
   GoogleUrl resource_url_;
-  RequestHeaders request_headers_;
-  ResponseHeaders* response_headers_;
-  Writer* response_writer_;
+  AsyncFetch* async_fetch_;
   UrlAsyncFetcher* fetcher_;
   MessageHandler* message_handler_;
   RewriteDriver* driver_;
   Timer* timer_;
-  UrlAsyncFetcher::Callback* callback_;
   const GoogleString& version_;
 
   int64 start_time_us_;

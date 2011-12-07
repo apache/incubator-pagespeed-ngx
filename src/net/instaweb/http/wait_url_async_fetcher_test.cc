@@ -21,12 +21,9 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
@@ -57,60 +54,42 @@ class WaitUrlAsyncFetcherTest : public ::testing::Test {
 };
 
 TEST_F(WaitUrlAsyncFetcherTest, FetcherWaits) {
-  const RequestHeaders request_headers;
-  ResponseHeaders response_headers;
-  GoogleString response_body;
-  StringWriter response_writer(&response_body);
   GoogleMessageHandler handler;
-  ExpectCallback callback(true);
+  ExpectStringAsyncFetch callback(true);
 
-  EXPECT_FALSE(wait_fetcher()->StreamingFetch(
-      kUrl, request_headers, &response_headers, &response_writer, &handler,
-      &callback));
+  EXPECT_FALSE(wait_fetcher()->Fetch(kUrl, &handler, &callback));
 
   // Nothing gets set ...
   EXPECT_EQ(false, callback.done());
-  EXPECT_EQ("", response_body);
+  EXPECT_EQ("", callback.buffer());
 
   // ... until we CallCallbacks.
   wait_fetcher()->CallCallbacks();
   EXPECT_EQ(true, callback.done());
-  EXPECT_EQ(kBody, response_body);
+  EXPECT_EQ(kBody, callback.buffer());
 }
 
 TEST_F(WaitUrlAsyncFetcherTest, PassThrough) {
-  const RequestHeaders request_headers;
-  ResponseHeaders response_headers;
-  GoogleString response_body;
-  StringWriter response_writer(&response_body);
   GoogleMessageHandler handler;
-  ExpectCallback callback(true);
+  ExpectStringAsyncFetch callback(true);
 
-  EXPECT_FALSE(wait_fetcher()->StreamingFetch(
-      kUrl, request_headers, &response_headers, &response_writer, &handler,
-      &callback));
+  EXPECT_FALSE(wait_fetcher()->Fetch(kUrl, &handler, &callback));
 
   // Nothing gets set ...
   EXPECT_EQ(false, callback.done());
-  EXPECT_EQ("", response_body);
+  EXPECT_EQ("", callback.buffer());
 
   // Now switch to pass-through mode.  This causes the callback to get called.
   bool prev_mode = wait_fetcher()->SetPassThroughMode(true);
   EXPECT_FALSE(prev_mode);
   EXPECT_EQ(true, callback.done());
-  EXPECT_EQ(kBody, response_body);
+  EXPECT_EQ(kBody, callback.buffer());
 
   // Now fetches happen instantly.
-  ResponseHeaders response_headers2;
-  GoogleString response_body2;
-  StringWriter response_writer2(&response_body2);
-  ExpectCallback callback2(true);
-
-  EXPECT_TRUE(wait_fetcher()->StreamingFetch(
-      kUrl, request_headers, &response_headers2, &response_writer2, &handler,
-      &callback2));
+  ExpectStringAsyncFetch callback2(true);
+  EXPECT_TRUE(wait_fetcher()->Fetch(kUrl, &handler, &callback2));
   EXPECT_EQ(true, callback2.done());
-  EXPECT_EQ(kBody, response_body2);
+  EXPECT_EQ(kBody, callback2.buffer());
 }
 
 }  // namespace
