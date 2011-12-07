@@ -275,7 +275,10 @@ TEST_F(ResponseHeadersTest, TestCachingDefault) {
             response_headers_.date_ms());
 }
 
-// Test that we don't erroneously cache a 204.
+// Test that we don't erroneously cache a 204 even though it is marked
+// explicitly as cacheable. Note: We could cache this, but many status codes
+// are only cacheable depending on precise input headers, to be cautious, we
+// blacklist everything other than 200.
 TEST_F(ResponseHeadersTest, TestCachingInvalidStatus) {
   ParseHeaders(StrCat("HTTP/1.0 204 OK\r\n"
                       "Date: ", start_time_string_, "\r\n"
@@ -284,6 +287,9 @@ TEST_F(ResponseHeadersTest, TestCachingInvalidStatus) {
 }
 
 // Test that we don't erroneously cache a 304.
+// Note: Even though it claims to be publicly cacheable, that cacheability only
+// applies to the response based on the precise request headers or it applies
+// to the original 200 response.
 TEST_F(ResponseHeadersTest, TestCachingNotModified) {
   ParseHeaders(StrCat("HTTP/1.0 304 OK\r\n"
                       "Date: ", start_time_string_, "\r\n"
