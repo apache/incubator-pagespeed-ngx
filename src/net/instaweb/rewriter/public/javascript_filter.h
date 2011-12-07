@@ -19,8 +19,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_FILTER_H_
 
-#include <vector>
-
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr
@@ -30,8 +28,6 @@
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -64,8 +60,6 @@ class Statistics;
  */
 class JavascriptFilter : public RewriteSingleResourceFilter {
  public:
-  typedef std::vector<HtmlCharactersNode*> HtmlCharNodeVector;
-
   explicit JavascriptFilter(RewriteDriver* rewrite_driver);
   virtual ~JavascriptFilter();
   static void Initialize(Statistics* statistics);
@@ -102,9 +96,8 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
   inline void CompleteScriptInProgress();
   inline void RewriteInlineScript();
   inline void RewriteExternalScript();
-  const StringPiece FlattenBuffer(GoogleString* script_buffer);
 
-  HtmlCharNodeVector buffer_;
+  HtmlCharactersNode* body_node_;
   HtmlElement* script_in_progress_;
   HtmlElement::Attribute* script_src_;
   // some_missing_scripts indicates that we stopped processing a script and
