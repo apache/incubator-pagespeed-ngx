@@ -548,6 +548,7 @@
         'rewriter/inline_rewrite_context.cc',
         'rewriter/image_rewrite_filter.cc',
         'rewriter/js_combine_filter.cc',
+        'rewriter/js_defer_disabled_filter.cc',
         'rewriter/js_defer_filter.cc',
         'rewriter/js_disable_filter.cc',
         'rewriter/js_inline_filter.cc',

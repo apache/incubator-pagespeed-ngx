@@ -65,6 +65,7 @@
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
+#include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 #include "net/instaweb/rewriter/public/js_defer_filter.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
@@ -822,7 +823,8 @@ void RewriteDriver::AddPostRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
     // Defers javascript download and execution to post onload.
-    AddOwnedPostRenderFilter(new JsDeferFilter(this));
+    AddUnownedPostRenderFilter(new JsDisableFilter(this));
+    AddUnownedPostRenderFilter(new JsDeferDisabledFilter(this));
   }
   // TODO(nikhilmadan): Should we disable this for bots?
   if (rewrite_options->Enabled(RewriteOptions::kLazyloadImages)) {

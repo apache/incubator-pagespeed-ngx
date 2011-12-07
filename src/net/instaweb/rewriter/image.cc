@@ -770,16 +770,7 @@ bool ImageImpl::ComputeOutputContents() {
         case IMAGE_PNG: {
           pagespeed::image_compression::PngReader png_reader;
 
-          if (low_quality_enabled_) {
-            // Currently, png to jpeg conversion is not present in the pagespeed
-            // library.
-            // TODO(pulkitg): Implement this once pagespeed exposes setting
-            // quality parameter for png to jpeg conversion.
-            ok = false;
-            break;
-          }
-
-          if (convert_png_to_jpeg_) {
+          if (convert_png_to_jpeg_ || low_quality_enabled_) {
             bool is_png;
             pagespeed::image_compression::JpegCompressionOptions options;
             options.lossy = true;

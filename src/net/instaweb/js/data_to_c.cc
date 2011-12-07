@@ -1,6 +1,8 @@
 // Copyright 2011 Google Inc. All Rights Reserved.
 // Author: atulvasu@google.com (Atul Vasu)
 
+#include <algorithm>
+
 #include "net/instaweb/util/public/gflags.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
@@ -33,8 +35,7 @@ const char kOutputTemplate[] =
     "\n"
     "namespace net_instaweb {\n"
     "\n"
-    "const char* %s =\n"
-    "    %s;\n"
+    "const char* %s =%s;\n"
     "\n"
     "}  // namespace net_instaweb\n";
 
@@ -46,12 +47,11 @@ void DataToC(int argc, char* argv[]) {
   StdioFileSystem file_system;
   GoogleString input;
   file_system.ReadFile(FLAGS_data_file.c_str(), &input, &handler);
-  GoogleString escaped("\"" + CEscape(input) + "\"");
-  std::vector<GoogleString> result;
-  SplitStringUsingSubstr(escaped, "\\n", &result);
-  GoogleString joined = result.empty() ? "" : result[0];
-  for (size_t i = 1; i < result.size(); ++i) {
-    StrAppend(&joined, "\\n\"\n    \"", result[i]);
+  GoogleString joined = "";
+  for (size_t i = 0; i < input.size(); i += 60) {
+    // substr says if length exceeds it takes chars till end of string.
+    GoogleString part = input.substr(i, 60);
+    StrAppend(&joined, "\n    \"", CEscape(part), "\"");
   }
   GoogleString output = StringPrintf(kOutputTemplate, FLAGS_data_file.c_str(),
       FLAGS_varname.c_str(), joined.c_str());
