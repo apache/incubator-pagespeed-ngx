@@ -94,12 +94,11 @@ void UrlNamer::PrepareRequest(const RewriteOptions* rewrite_options,
   if (rewrite_options == NULL) {
     *success = true;
   } else {
-    GoogleString url_copy = *url;
-    GoogleUrl gurl(url_copy);
+    GoogleUrl gurl(*url);
     if (gurl.is_valid()) {
       request_headers->Replace(HttpAttributes::kHost, gurl.Host());
       const DomainLawyer* domain_lawyer = rewrite_options->domain_lawyer();
-      if (domain_lawyer->MapOrigin(url_copy, url)) {
+      if (domain_lawyer->MapOriginUrl(gurl, url)) {
         *success = true;
       }
     }

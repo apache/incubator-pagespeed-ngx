@@ -18,10 +18,8 @@
 
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 
-#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -35,9 +33,6 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class RequestHeaders;
-class ResponseHeaders;
-class Writer;
 
 SimpleTextFilter::Rewriter::~Rewriter() {
 }
@@ -91,16 +86,6 @@ void SimpleTextFilter::StartElementImpl(HtmlElement* element) {
       driver_->InitiateRewrite(context);
     }
   }
-}
-
-bool SimpleTextFilter::Fetch(const OutputResourcePtr& output_resource,
-                             Writer* response_writer,
-                             const RequestHeaders& request_header,
-                             ResponseHeaders* response_headers,
-                             MessageHandler* message_handler,
-                             UrlAsyncFetcher::Callback* callback) {
-  DLOG(FATAL);
-  return false;
 }
 
 RewriteContext* SimpleTextFilter::MakeRewriteContext() {

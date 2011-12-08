@@ -29,7 +29,6 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/css_resource_slot.h"
@@ -65,10 +64,7 @@
 #include "webutil/css/value.h"
 
 namespace net_instaweb {
-class RequestHeaders;
-class ResponseHeaders;
 class UrlSegmentEncoder;
-class Writer;
 
 typedef std::map<GoogleString, const spriter::Rect*> RectMap;
 namespace {
@@ -1133,16 +1129,6 @@ ImageCombineFilter::~ImageCombineFilter() {
 
 void ImageCombineFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kImageFileCountReduction);
-}
-
-bool ImageCombineFilter::Fetch(const OutputResourcePtr& resource,
-                               Writer* writer,
-                               const RequestHeaders& request_header,
-                               ResponseHeaders* response_headers,
-                               MessageHandler* message_handler,
-                               UrlAsyncFetcher::Callback* callback) {
-  CHECK(false) << "Fetch should not get called in Async flow";
-  return false;
 }
 
 // Get the dimensions of the declaration.  This is tricky.

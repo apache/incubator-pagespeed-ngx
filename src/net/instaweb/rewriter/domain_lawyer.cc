@@ -384,12 +384,17 @@ bool DomainLawyer::IsDomainAuthorized(const GoogleUrl& original_request,
 }
 
 bool DomainLawyer::MapOrigin(const StringPiece& in, GoogleString* out) const {
-  bool ret = false;
   GoogleUrl gurl(in);
+  return MapOriginUrl(gurl, out);
+}
+
+bool DomainLawyer::MapOriginUrl(const GoogleUrl& gurl,
+                                GoogleString* out) const {
+  bool ret = false;
   // We can map an origin TO http only, but FROM http or https.
   if (gurl.is_valid()) {
     ret = true;
-    in.CopyToString(out);
+    gurl.Spec().CopyToString(out);
     Domain* domain = FindDomain(gurl);
     if (domain != NULL) {
       Domain* origin_domain = domain->origin_domain();

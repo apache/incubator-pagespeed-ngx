@@ -98,6 +98,7 @@ class DomainLawyer {
   // mapping done.  You must compare 'in' to 'out' to determine if
   // mapping was done.
   bool MapOrigin(const StringPiece& in, GoogleString* out) const;
+  bool MapOriginUrl(const GoogleUrl& gurl, GoogleString* out) const;
 
   // The methods below this comment are intended only to be run only
   // at configuration time.

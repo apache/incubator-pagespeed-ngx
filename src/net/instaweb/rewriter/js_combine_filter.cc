@@ -34,7 +34,6 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -61,8 +60,6 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class RequestHeaders;
-class ResponseHeaders;
 class UrlSegmentEncoder;
 
 const char JsCombineFilter::kJsFileCountReduction[] = "js_file_count_reduction";
@@ -567,18 +564,6 @@ GoogleString JsCombineFilter::VarName(const GoogleString& url) const {
   }
 
   return StrCat("mod_pagespeed_", url_hash);
-}
-
-// TODO(nforman): This will fail (for sync only).  Rip it out.
-bool JsCombineFilter::Fetch(const OutputResourcePtr& resource,
-                            Writer* writer,
-                            const RequestHeaders& request_header,
-                            ResponseHeaders* response_headers,
-                            MessageHandler* message_handler,
-                            UrlAsyncFetcher::Callback* callback) {
-  DCHECK(!HasAsyncFlow());
-  return combiner()->Fetch(resource, writer, request_header, response_headers,
-                          message_handler, callback);
 }
 
 // TODO(nforman): Rip this out.

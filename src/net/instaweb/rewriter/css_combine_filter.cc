@@ -30,7 +30,6 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -55,8 +54,6 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class RequestHeaders;
-class ResponseHeaders;
 class HtmlIEDirectiveNode;
 class UrlSegmentEncoder;
 
@@ -480,18 +477,6 @@ bool CssCombineFilter::CssCombiner::WritePiece(
       break;
   }
   return ret;
-}
-
-// TODO(nforman): This fails for async. Rip it out.
-bool CssCombineFilter::Fetch(const OutputResourcePtr& resource,
-                             Writer* writer,
-                             const RequestHeaders& request_header,
-                             ResponseHeaders* response_headers,
-                             MessageHandler* message_handler,
-                             UrlAsyncFetcher::Callback* callback) {
-  context_.reset(MakeContext());
-  return combiner()->Fetch(resource, writer, request_header, response_headers,
-                           message_handler, callback);
 }
 
 CssCombineFilter::CssCombiner* CssCombineFilter::combiner() {

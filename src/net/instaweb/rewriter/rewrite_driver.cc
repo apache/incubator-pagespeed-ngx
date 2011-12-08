@@ -983,11 +983,7 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(
       resource_manager_, base, base, base, namer,
       NULL,  // content_type
       options(), kind));
-  bool has_async_flow = false;
-  if (*filter != NULL) {
-    has_async_flow = (*filter)->HasAsyncFlow();
-  }
-  output_resource->set_written_using_rewrite_context_flow(has_async_flow);
+  output_resource->set_written_using_rewrite_context_flow(true /* async */);
 
   // We also reject any unknown extensions, which includes rejecting requests
   // with trailing junk. We do this now since OutputResource figures out
