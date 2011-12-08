@@ -97,6 +97,7 @@ const int64 RewriteOptions::kDefaultCssImageInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultJsInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultCssOutlineMinBytes = 3000;
 const int64 RewriteOptions::kDefaultJsOutlineMinBytes = 3000;
+const int64 RewriteOptions::kDefaultProgressiveJpegMinBytes = 10240;
 
 const int64 RewriteOptions::kDefaultMaxHtmlCacheTimeMs = 0;
 const int64 RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs = 0;
@@ -205,6 +206,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kCombineCss:                      return "Combine Css";
     case kCombineHeads:                    return "Combine Heads";
     case kCombineJavascript:               return "Combine Javascript";
+    case kConvertJpegToProgressive:        return "Convert Jpeg to Progressive";
     case kConvertJpegToWebp:               return "Convert Jpeg To Webp";
     case kConvertMetaTags:                 return "Convert Meta Tags";
     case kConvertPngToJpeg:                return "Convert Png to Jpeg";
@@ -255,6 +257,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kCombineCss:                      return kCssCombinerId;
     case kCombineHeads:                    return "ch";
     case kCombineJavascript:               return kJavascriptCombinerId;
+    case kConvertJpegToProgressive:        return "jp";
     case kConvertJpegToWebp:               return "jw";
     case kConvertMetaTags:                 return "mc";
     case kConvertPngToJpeg:                return "pj";
@@ -353,6 +356,8 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultJsInlineMaxBytes, &js_inline_max_bytes_, "ji");
   add_option(kDefaultCssOutlineMinBytes, &css_outline_min_bytes_, "co");
   add_option(kDefaultJsOutlineMinBytes, &js_outline_min_bytes_, "jo");
+  add_option(kDefaultProgressiveJpegMinBytes,
+             &progressive_jpeg_min_bytes_, "jp");
   add_option(kDefaultMaxHtmlCacheTimeMs, &max_html_cache_time_ms_, "hc");
   add_option(kDefaultMinResourceCacheTimeToRewriteMs,
              &min_resource_cache_time_to_rewrite_ms_, "rc");

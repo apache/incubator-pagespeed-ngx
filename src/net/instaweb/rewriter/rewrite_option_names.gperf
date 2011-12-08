@@ -31,6 +31,7 @@ struct FilterMap {
 "combine_css",                       RewriteOptions::kCombineCss
 "combine_javascript",                RewriteOptions::kCombineJavascript
 "combine_heads",                     RewriteOptions::kCombineHeads
+"convert_jpeg_to_progressive",       RewriteOptions::kConvertJpegToProgressive
 "convert_jpeg_to_webp",              RewriteOptions::kConvertJpegToWebp
 "convert_meta_tags",                 RewriteOptions::kConvertMetaTags
 "convert_png_to_jpeg",               RewriteOptions::kConvertPngToJpeg

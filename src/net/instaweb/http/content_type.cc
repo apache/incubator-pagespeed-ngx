@@ -46,7 +46,6 @@ const ContentType kTypes[] = {
   {"application/x-javascript", ".js",   ContentType::kJavascript},
   {"application/javascript",   ".js",   ContentType::kJavascript},
   {"text/ecmascript",          ".js",   ContentType::kJavascript},
-  {"text/x-js",                ".js",   ContentType::kJavascript},
   {"application/ecmascript",   ".js",   ContentType::kJavascript},
   {"image/jpeg",               ".jpeg", ContentType::kJpeg},
   {"text/html",                ".htm",  ContentType::kHtml},

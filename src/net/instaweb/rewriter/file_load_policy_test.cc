@@ -60,6 +60,11 @@ TEST_F(FileLoadPolicyTest, EmptyPolicy) {
   EXPECT_FALSE(TryLoadFromFile("http://www.example.com/static/bar/"));
   EXPECT_FALSE(TryLoadFromFile(
       "http://www.example.com/static/some/more/dirs/b.css"));
+  EXPECT_FALSE(TryLoadFromFile(
+      "http://www.example.com/static/foo.png?version=3.1"));
+  EXPECT_FALSE(TryLoadFromFile(
+      "http://www.example.com/static/foo.png?a?b#/c?foo"));
+  EXPECT_FALSE(TryLoadFromFile("http://www.example.com/static/foo%20bar.png"));
 
   EXPECT_FALSE(TryLoadFromFile("http://www.example.com/images/another.gif"));
   EXPECT_FALSE(TryLoadFromFile(
@@ -83,6 +88,14 @@ TEST_F(FileLoadPolicyTest, OnePrefix) {
             LoadFromFile("http://www.example.com/static/bar/"));
   EXPECT_EQ("/example/1/some/more/dirs/b.css",
             LoadFromFile("http://www.example.com/static/some/more/dirs/b.css"));
+  // Drop query string.
+  EXPECT_EQ("/example/1/foo.png",
+            LoadFromFile("http://www.example.com/static/foo.png?version=3.1"));
+  EXPECT_EQ("/example/1/foo.png",
+            LoadFromFile("http://www.example.com/static/foo.png?a?b#/c?foo"));
+  // TODO(sligocki): We should probably load "foo bar.png".
+  EXPECT_EQ("/example/1/foo%20bar.png",
+            LoadFromFile("http://www.example.com/static/foo%20bar.png"));
 
   // Don't map other URLs
   EXPECT_FALSE(TryLoadFromFile("http://www.example.com/images/another.gif"));
@@ -111,6 +124,14 @@ TEST_F(FileLoadPolicyTest, ManyPrefixes) {
             LoadFromFile("http://www.example.com/static/bar/"));
   EXPECT_EQ("/example/1/some/more/dirs/b.css",
             LoadFromFile("http://www.example.com/static/some/more/dirs/b.css"));
+  // Drop query string.
+  EXPECT_EQ("/example/1/foo.png",
+            LoadFromFile("http://www.example.com/static/foo.png?version=3.1"));
+  EXPECT_EQ("/example/1/foo.png",
+            LoadFromFile("http://www.example.com/static/foo.png?a?b#/c?foo"));
+  // TODO(sligocki): We should probably load "foo bar.png".
+  EXPECT_EQ("/example/1/foo%20bar.png",
+            LoadFromFile("http://www.example.com/static/foo%20bar.png"));
 
   // Map other associations.
   EXPECT_EQ("/example/images/static/another.gif",

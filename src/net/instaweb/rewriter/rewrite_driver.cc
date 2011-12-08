@@ -757,6 +757,7 @@ void RewriteDriver::AddPreRenderFilters() {
     AddOwnedPreRenderFilter(new JsInlineFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kConvertJpegToWebp) ||
+      rewrite_options->Enabled(RewriteOptions::kConvertJpegToProgressive) ||
       rewrite_options->NeedLowResImages() ||
       rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
       rewrite_options->Enabled(RewriteOptions::kInsertImageDimensions) ||

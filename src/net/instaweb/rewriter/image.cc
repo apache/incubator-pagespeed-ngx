@@ -22,11 +22,11 @@
 #include <cstddef>
 
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/image_data_lookup.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/webp_optimizer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -96,9 +96,7 @@ class ImageImpl : public Image {
   ImageImpl(const StringPiece& original_contents,
             const GoogleString& url,
             const StringPiece& file_prefix,
-            bool webp_preferred,
-            int jpeg_quality,
-            bool convert_png_to_jpeg,
+            CompressionOptions* options,
             MessageHandler* handler);
 
   virtual void Dimensions(ImageDim* natural_dim);
@@ -161,19 +159,16 @@ class ImageImpl : public Image {
   bool changed_;
   const GoogleString url_;
   ImageDim dims_;
-  bool webp_preferred_;
-  int jpeg_quality_;
-  int webp_quality_;
+  scoped_ptr<Image::CompressionOptions> options_;
   bool low_quality_enabled_;
-  bool convert_png_to_jpeg_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageImpl);
 };
 
 void ImageImpl::SetTransformToLowRes() {
   low_quality_enabled_ = true;
-  webp_quality_ = 20;
-  jpeg_quality_ = 20;
+  options_->webp_quality = 20;
+  options_->jpeg_quality = 20;
 }
 
 void ImageImpl::SetQuality(Type image_type, int quality) {
@@ -184,10 +179,10 @@ void ImageImpl::SetQuality(Type image_type, int quality) {
   }
   switch (image_type) {
     case IMAGE_JPEG:
-      jpeg_quality_ = quality;
+      options_->jpeg_quality = quality;
       break;
     case IMAGE_WEBP:
-      webp_quality_ = quality;
+      options_->webp_quality = quality;
       break;
     default:
       break;
@@ -203,9 +198,7 @@ Image::Image(const StringPiece& original_contents)
 ImageImpl::ImageImpl(const StringPiece& original_contents,
                      const GoogleString& url,
                      const StringPiece& file_prefix,
-                     bool webp_preferred,
-                     int jpeg_quality,
-                     bool convert_png_to_jpeg,
+                     Image::CompressionOptions* options,
                      MessageHandler* handler)
     : Image(original_contents),
       file_prefix_(file_prefix.data(), file_prefix.size()),
@@ -214,21 +207,15 @@ ImageImpl::ImageImpl(const StringPiece& original_contents,
       opencv_load_possible_(true),
       changed_(false),
       url_(url),
-      webp_preferred_(webp_preferred),
-      jpeg_quality_(jpeg_quality),
-      webp_quality_(RewriteOptions::kDefaultImageWebpRecompressQuality),
-      low_quality_enabled_(false),
-      convert_png_to_jpeg_(convert_png_to_jpeg) { }
+      options_(options),
+      low_quality_enabled_(false) {}
 
 Image* NewImage(const StringPiece& original_contents,
                 const GoogleString& url,
                 const StringPiece& file_prefix,
-                bool webp_preferred,
-                int jpeg_quality,
-                bool convert_png_to_jpeg,
+                Image::CompressionOptions* options,
                 MessageHandler* handler) {
-  return new ImageImpl(original_contents, url, file_prefix, webp_preferred,
-                       jpeg_quality, convert_png_to_jpeg, handler);
+  return new ImageImpl(original_contents, url, file_prefix, options, handler);
 }
 
 Image::Image(Type type)
@@ -246,11 +233,8 @@ ImageImpl::ImageImpl(int width, int height, Type type,
       opencv_load_possible_(true),
       changed_(false),
       url_(),
-      webp_preferred_(false),
-      jpeg_quality_(RewriteOptions::kDefaultImageJpegRecompressQuality),
-      webp_quality_(RewriteOptions::kDefaultImageWebpRecompressQuality),
-      low_quality_enabled_(false),
-      convert_png_to_jpeg_(false) {
+      low_quality_enabled_(false) {
+  options_.reset(new Image::CompressionOptions());
   dims_.set_width(width);
   dims_.set_height(height);
 }
@@ -730,13 +714,14 @@ bool ImageImpl::ComputeOutputContents() {
         case IMAGE_UNKNOWN:
           break;
         case IMAGE_WEBP:
-            ok = ReduceWebpImageQuality(string_for_image, webp_quality_,
+            ok = ReduceWebpImageQuality(string_for_image,
+                                        options_->webp_quality,
                                         &output_contents_);
             // TODO(pulkitg): Convert a webp image to jpeg image if
             // web_preferred_ is false.
           break;
         case IMAGE_JPEG:
-          if (webp_preferred_ && !low_quality_enabled_) {
+          if (options_->webp_preferred && !low_quality_enabled_) {
             // Right now we just compute the webp, and assume that it'll be
             // smaller than the equivalent re-compressed jpg.  Doing jpg
             // recompression *as well* and picking the smaller file is very
@@ -751,31 +736,29 @@ bool ImageImpl::ComputeOutputContents() {
           if (ok) {  // && webp_preferred, which is implied.
             image_type_ = IMAGE_WEBP;
           } else {
-            if (jpeg_quality_ > 0) {
-              pagespeed::image_compression::JpegCompressionOptions options;
+            pagespeed::image_compression::JpegCompressionOptions options;
+            if (options_->jpeg_quality > 0) {
               options.lossy = true;
-              options.quality =
-                  std::min(ImageHeaders::kMaxJpegQuality, jpeg_quality_);
-              ok = pagespeed::image_compression::OptimizeJpegWithOptions(
-                  string_for_image,
-                  &output_contents_,
-                  &options);
-            } else {
-              ok = pagespeed::image_compression::OptimizeJpeg(
-                  string_for_image,
-                  &output_contents_);
+              options.quality = std::min(ImageHeaders::kMaxJpegQuality,
+                                         options_->jpeg_quality);
             }
+            options.progressive = options_->progressive_jpeg;
+            ok = pagespeed::image_compression::OptimizeJpegWithOptions(
+                string_for_image,
+                &output_contents_,
+                &options);
           }
           break;
         case IMAGE_PNG: {
           pagespeed::image_compression::PngReader png_reader;
 
-          if (convert_png_to_jpeg_ || low_quality_enabled_) {
+          if (options_->convert_png_to_jpeg || low_quality_enabled_) {
             bool is_png;
             pagespeed::image_compression::JpegCompressionOptions options;
             options.lossy = true;
             options.quality =
-                std::min(ImageHeaders::kMaxJpegQuality, jpeg_quality_);
+                std::min(ImageHeaders::kMaxJpegQuality, options_->jpeg_quality);
+            options.progressive = options_->progressive_jpeg;
             ok = ImageConverter::OptimizePngOrConvertToJpeg(
                 png_reader, string_for_image, options,
                 &output_contents_, &is_png);

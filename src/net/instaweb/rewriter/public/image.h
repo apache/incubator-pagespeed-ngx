@@ -21,6 +21,7 @@
 
 #include <cstddef>
 
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -51,6 +52,20 @@ class Image {
     IMAGE_PNG,
     IMAGE_GIF,
     IMAGE_WEBP,  // Update kImageTypeEnd if you add something after this.
+  };
+
+  struct CompressionOptions {
+    CompressionOptions()
+        : webp_preferred(false),
+          webp_quality(RewriteOptions::kDefaultImageWebpRecompressQuality),
+          jpeg_quality(RewriteOptions::kDefaultImageJpegRecompressQuality),
+          progressive_jpeg(false),
+          convert_png_to_jpeg(false) {}
+    bool webp_preferred;
+    int webp_quality;
+    int jpeg_quality;
+    bool progressive_jpeg;
+    bool convert_png_to_jpeg;
   };
 
   virtual ~Image();
@@ -162,9 +177,7 @@ class Image {
 Image* NewImage(const StringPiece& original_contents,
                 const GoogleString& url,
                 const StringPiece& file_prefix,
-                bool webp_preferred,
-                int jpeg_quality,
-                bool convert_png_to_jpeg,
+                Image::CompressionOptions* options,
                 MessageHandler* handler);
 
 // Creates a blank image of the given dimensions and type.

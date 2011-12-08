@@ -46,6 +46,7 @@ class RewriteOptions {
     kCombineCss,
     kCombineHeads,
     kCombineJavascript,
+    kConvertJpegToProgressive,
     kConvertJpegToWebp,
     kConvertMetaTags,
     kConvertPngToJpeg,
@@ -139,6 +140,7 @@ class RewriteOptions {
   static const int64 kDefaultJsInlineMaxBytes;
   static const int64 kDefaultCssOutlineMinBytes;
   static const int64 kDefaultJsOutlineMinBytes;
+  static const int64 kDefaultProgressiveJpegMinBytes;
   static const int64 kDefaultMaxHtmlCacheTimeMs;
   static const int64 kDefaultMinResourceCacheTimeToRewriteMs;
   static const int64 kDefaultCacheInvalidationTimestamp;
@@ -226,6 +228,14 @@ class RewriteOptions {
   void set_js_outline_min_bytes(int64 x) {
     set_option(x, &js_outline_min_bytes_);
   }
+
+  int64 progressive_jpeg_min_bytes() const {
+    return progressive_jpeg_min_bytes_.value();
+  }
+  void set_progressive_jpeg_min_bytes(int64 x) {
+    set_option(x, &progressive_jpeg_min_bytes_);
+  }
+
   // Retrieve the image inlining threshold, but return 0 if it's disabled.
   int64 ImageInlineMaxBytes() const;
   void set_image_inline_max_bytes(int64 x);
@@ -626,6 +636,7 @@ class RewriteOptions {
   Option<int64> js_inline_max_bytes_;
   Option<int64> css_outline_min_bytes_;
   Option<int64> js_outline_min_bytes_;
+  Option<int64> progressive_jpeg_min_bytes_;
   // The max Cache-Control TTL for HTML.
   Option<int64> max_html_cache_time_ms_;
   // Resources with Cache-Control TTL less than this will not be rewritten.

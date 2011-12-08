@@ -200,12 +200,22 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
   }
 
   const RewriteOptions* options = driver_->options();
+
+  Image::CompressionOptions* image_options = new Image::CompressionOptions();
+  image_options->webp_preferred = context.attempt_webp();
+  image_options->jpeg_quality = options->image_jpeg_recompress_quality();
+  image_options->progressive_jpeg =
+      options->Enabled(RewriteOptions::kConvertJpegToProgressive) &&
+      static_cast<int64>(input_resource->contents().size()) >=
+          options->progressive_jpeg_min_bytes();
+  image_options->convert_png_to_jpeg =
+      options->Enabled(RewriteOptions::kConvertPngToJpeg);
+
   scoped_ptr<Image> image(
       NewImage(input_resource->contents(), input_resource->url(),
-               resource_manager_->filename_prefix(),
-               context.attempt_webp(), options->image_jpeg_recompress_quality(),
-               options->Enabled(RewriteOptions::kConvertPngToJpeg),
+               resource_manager_->filename_prefix(), image_options,
                message_handler));
+
   Image::Type original_image_type = image->image_type();
   if (original_image_type == Image::IMAGE_UNKNOWN) {
     message_handler->Error(result->name().as_string().c_str(), 0,
@@ -313,11 +323,18 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
       // 100KB or all images above the fold & size >20KB etc. This will require
       // adding additional data to rewrite_context, so that it can be propagated
       // from the point of rewriting to the point of optimization.
+
+      Image::CompressionOptions* image_options =
+          new Image::CompressionOptions();
+      image_options->webp_preferred = false;
+      image_options->jpeg_quality = options->image_jpeg_recompress_quality();
+      image_options->progressive_jpeg = false;
+      image_options->convert_png_to_jpeg =
+          options->Enabled(RewriteOptions::kConvertPngToJpeg);
+
       scoped_ptr<Image> low_image(
           NewImage(image->Contents(), input_resource->url(),
-                   resource_manager_->filename_prefix(), false,
-                   options->image_jpeg_recompress_quality(),
-                   options->Enabled(RewriteOptions::kConvertPngToJpeg),
+                   resource_manager_->filename_prefix(), image_options,
                    message_handler));
       low_image->SetTransformToLowRes();
       if (image->Contents().size() > low_image->Contents().size()) {

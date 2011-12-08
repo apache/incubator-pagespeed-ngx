@@ -33,6 +33,9 @@ const char kPuzzle[] = "Puzzle.jpg";
 const char kLarge[] = "Large.png";
 const char kScenery[] = "Scenery.webp";
 
+const char kProgressiveHeader[] = "\xFF\xC2";
+const int kProgressiveHeaderStartIndex = 158;
+
 }  // namespace
 
 namespace net_instaweb {
@@ -50,10 +53,16 @@ class ImageTest : public testing::Test {
   // processing) to set up rewrite permissions for the resulting Image object.
   Image* ImageFromString(Image::Type output_type,
                          const GoogleString& name,
-                         const GoogleString& contents) {
-    return NewImage(contents, name, GTestTempDir(),
-                    output_type == Image::IMAGE_WEBP, -1,
-                    output_type == Image::IMAGE_JPEG, &handler_);
+                         const GoogleString& contents,
+                         bool progressive) {
+    net_instaweb::Image::CompressionOptions* image_options =
+        new net_instaweb::Image::CompressionOptions();
+    image_options->webp_preferred = output_type == Image::IMAGE_WEBP;
+    image_options->jpeg_quality = -1;
+    image_options->progressive_jpeg = progressive;
+    image_options->convert_png_to_jpeg =  output_type == Image::IMAGE_JPEG;
+
+    return NewImage(contents, name, GTestTempDir(), image_options, &handler_);
   }
 
   void ExpectDimensions(Image::Type image_type, int size,
@@ -75,8 +84,9 @@ class ImageTest : public testing::Test {
   }
 
   void CheckInvalid(const GoogleString& name, const GoogleString& contents,
-                    Image::Type input_type, Image::Type output_type) {
-    ImagePtr image(ImageFromString(output_type, name, contents));
+                    Image::Type input_type, Image::Type output_type,
+                    bool progressive) {
+    ImagePtr image(ImageFromString(output_type, name, contents, progressive));
     EXPECT_EQ(contents.size(), image->input_size());
     EXPECT_EQ(input_type, image->image_type());
     // Arbitrary but bogus values to check for accidental modification.
@@ -95,11 +105,12 @@ class ImageTest : public testing::Test {
   // We use the output_type (ultimate expected output type after image
   // processing) to set up rewrite permissions for the resulting Image object.
   Image* ReadImageFromFile(Image::Type output_type,
-                           const char* filename, GoogleString* buffer) {
+                           const char* filename, GoogleString* buffer,
+                           bool progressive) {
     EXPECT_TRUE(file_system_.ReadFile(
         StrCat(GTestSrcDir(), kTestData, filename).c_str(),
         buffer, &handler_));
-    return ImageFromString(output_type, filename, *buffer);
+    return ImageFromString(output_type, filename, *buffer, progressive);
   }
 
   void CheckImageFromFile(const char* filename,
@@ -108,9 +119,11 @@ class ImageTest : public testing::Test {
                           int min_bytes_to_type,
                           int min_bytes_to_dimensions,
                           int width, int height,
-                          int size, bool optimizable) {
+                          int size, bool optimizable,
+                          bool progressive) {
     GoogleString contents;
-    ImagePtr image(ReadImageFromFile(output_type, filename, &contents));
+    ImagePtr image(ReadImageFromFile(output_type, filename, &contents,
+                                     progressive));
     ExpectDimensions(input_type, size, width, height, image.get());
     if (optimizable) {
       EXPECT_GT(size, image->output_size());
@@ -125,6 +138,12 @@ class ImageTest : public testing::Test {
     GoogleString data_url;
     EXPECT_NE(Image::IMAGE_UNKNOWN, image->image_type());
     StringPiece image_contents = image->Contents();
+
+    if (progressive) {
+      EXPECT_STREQ(kProgressiveHeader, image_contents.substr(
+          kProgressiveHeaderStartIndex, strlen(kProgressiveHeader)));
+    }
+
     cached.set_inlined_data(image_contents.data(), image_contents.size());
     cached.set_inlined_image_type(static_cast<int>(image->image_type()));
     EXPECT_TRUE(ImageRewriteFilter::TryInline(
@@ -143,17 +162,19 @@ class ImageTest : public testing::Test {
     // Now truncate the file in various ways and make sure we still
     // get partial data.
     GoogleString dim_data(contents, 0, min_bytes_to_dimensions);
-    ImagePtr dim_image(ImageFromString(output_type, filename, dim_data));
+    ImagePtr dim_image(
+        ImageFromString(output_type, filename, dim_data, progressive));
     ExpectDimensions(input_type, min_bytes_to_dimensions, width, height,
                      dim_image.get());
     EXPECT_EQ(min_bytes_to_dimensions, dim_image->output_size());
 
     GoogleString no_dim_data(contents, 0, min_bytes_to_dimensions - 1);
-    CheckInvalid(filename, no_dim_data, input_type, output_type);
+    CheckInvalid(filename, no_dim_data, input_type, output_type, progressive);
     GoogleString type_data(contents, 0, min_bytes_to_type);
-    CheckInvalid(filename, type_data, input_type, output_type);
+    CheckInvalid(filename, type_data, input_type, output_type, progressive);
     GoogleString junk(contents, 0, min_bytes_to_type - 1);
-    CheckInvalid(filename, junk, Image::IMAGE_UNKNOWN, Image::IMAGE_UNKNOWN);
+    CheckInvalid(filename, junk, Image::IMAGE_UNKNOWN, Image::IMAGE_UNKNOWN,
+                 progressive);
   }
 
   GoogleString EncodeUrlAndDimensions(
@@ -193,7 +214,8 @@ class ImageTest : public testing::Test {
 };
 
 TEST_F(ImageTest, EmptyImageUnidentified) {
-  CheckInvalid("Empty string", "", Image::IMAGE_UNKNOWN, Image::IMAGE_UNKNOWN);
+  CheckInvalid("Empty string", "", Image::IMAGE_UNKNOWN, Image::IMAGE_UNKNOWN,
+               false);
 }
 
 TEST_F(ImageTest, InputWebpTest) {
@@ -202,13 +224,14 @@ TEST_F(ImageTest, InputWebpTest) {
       20,  // Min bytes to bother checking file type at all.
       30,
       550, 368,
-      30320, false);
+      30320, false, false);
 }
 
 // FYI: Takes ~20000 ms to run under Valgrind.
 TEST_F(ImageTest, WebpLowResTest) {
   GoogleString contents;
-  ImagePtr image(ReadImageFromFile(Image::IMAGE_WEBP, kScenery, &contents));
+  ImagePtr image(ReadImageFromFile(Image::IMAGE_WEBP, kScenery, &contents,
+                                   false));
   int filesize = 30320;
   image->SetTransformToLowRes();
   EXPECT_GT(filesize, image->output_size());
@@ -220,7 +243,7 @@ TEST_F(ImageTest, PngTest) {
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
-      26548, true);
+      26548, true, false);
 }
 
 TEST_F(ImageTest, PngToJpegTest) {
@@ -229,7 +252,16 @@ TEST_F(ImageTest, PngToJpegTest) {
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
-      26548, true);
+      26548, true, false);
+}
+
+TEST_F(ImageTest, PngToProgressiveJpegTest) {
+  CheckImageFromFile(
+      kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_JPEG,
+      ImageHeaders::kPngHeaderLength,
+      ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
+      100, 100,
+      26548, true, true);
 }
 
 TEST_F(ImageTest, GifTest) {
@@ -238,7 +270,7 @@ TEST_F(ImageTest, GifTest) {
       8,  // Min bytes to bother checking file type at all.
       ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
       192, 256,
-      24941, true);
+      24941, true, false);
 }
 
 TEST_F(ImageTest, AnimationTest) {
@@ -247,7 +279,7 @@ TEST_F(ImageTest, AnimationTest) {
       8,  // Min bytes to bother checking file type at all.
       ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
       200, 150,
-      583374, false);
+      583374, false, false);
 }
 
 TEST_F(ImageTest, JpegTest) {
@@ -256,7 +288,16 @@ TEST_F(ImageTest, JpegTest) {
       8,  // Min bytes to bother checking file type at all.
       6468,  // Specific to this test
       1023, 766,
-      241260, true);
+      241260, true, false);
+}
+
+TEST_F(ImageTest, ProgressiveJpegTest) {
+  CheckImageFromFile(
+      kPuzzle, Image::IMAGE_JPEG, Image::IMAGE_JPEG,
+      8,  // Min bytes to bother checking file type at all.
+      6468,  // Specific to this test
+      1023, 766,
+      241260, true, true);
 }
 
 // FYI: Takes ~70000 ms to run under Valgrind.
@@ -266,17 +307,19 @@ TEST_F(ImageTest, WebpTest) {
       8,  // Min bytes to bother checking file type at all.
       6468,  // Specific to this test
       1023, 766,
-      241260, true);
+      241260, true, false);
 }
 
 TEST_F(ImageTest, DrawImage) {
   GoogleString buf1;
-  ImagePtr image1(ReadImageFromFile(Image::IMAGE_PNG, kBikeCrash, &buf1));
+  ImagePtr image1(ReadImageFromFile(Image::IMAGE_PNG, kBikeCrash, &buf1,
+                                    false));
   ImageDim image_dim1;
   image1->Dimensions(&image_dim1);
 
   GoogleString buf2;
-  ImagePtr image2(ReadImageFromFile(Image::IMAGE_PNG, kCuppa, &buf2));
+  ImagePtr image2(ReadImageFromFile(Image::IMAGE_PNG, kCuppa, &buf2,
+                                    false));
   ImageDim image_dim2;
   image2->Dimensions(&image_dim2);
 
@@ -410,7 +453,7 @@ TEST_F(ImageTest, OpencvStackOverflow) {
   }
 
   GoogleString buf;
-  ImagePtr image(ReadImageFromFile(Image::IMAGE_JPEG, kLarge, &buf));
+  ImagePtr image(ReadImageFromFile(Image::IMAGE_JPEG, kLarge, &buf, false));
 
   ImageDim new_dim;
   new_dim.set_width(1);
