@@ -171,6 +171,58 @@ class StringAsyncFetch : public AsyncFetch {
   DISALLOW_COPY_AND_ASSIGN(StringAsyncFetch);
 };
 
+// Creates an AsyncFetch object using an existing Writer* object,
+// which is used to delegate Write and Flush operations.  This
+// class is still abstract, and requires inheritors to implement Done().
+class AsyncFetchUsingWriter : public AsyncFetch {
+ public:
+  explicit AsyncFetchUsingWriter(Writer* writer) : writer_(writer) {}
+  virtual ~AsyncFetchUsingWriter();
+
+ protected:
+  virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
+  virtual bool HandleFlush(MessageHandler* handler);
+
+ private:
+  Writer* writer_;
+  DISALLOW_COPY_AND_ASSIGN(AsyncFetchUsingWriter);
+};
+
+// Creates an AsyncFetch object using an existing AsyncFetcher*,
+// sharing the response & request headers, and by default delegating
+// all 4 Handle methods to the base fetcher.  Any one of them can
+// be overridden by inheritors of this class.
+class SharedAsyncFetch : public AsyncFetch {
+ public:
+  explicit SharedAsyncFetch(AsyncFetch* base_fetch);
+  virtual ~SharedAsyncFetch();
+
+  AsyncFetch* base_fetch() { return base_fetch_; }
+  const AsyncFetch* base_fetch() const { return base_fetch_; }
+
+ protected:
+  virtual void HandleDone(bool success) {
+    base_fetch_->Done(success);
+  }
+
+  virtual bool HandleWrite(const StringPiece& content,
+                           MessageHandler* handler) {
+    return base_fetch_->Write(content, handler);
+  }
+
+  virtual bool HandleFlush(MessageHandler* handler) {
+    return base_fetch_->Flush(handler);
+  }
+
+  virtual void HandleHeadersComplete() {
+    base_fetch_->HeadersComplete();
+  }
+
+ private:
+  AsyncFetch* base_fetch_;
+  DISALLOW_COPY_AND_ASSIGN(SharedAsyncFetch);
+};
+
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_HTTP_PUBLIC_ASYNC_FETCH_H_

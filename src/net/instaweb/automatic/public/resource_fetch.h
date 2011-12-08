@@ -27,7 +27,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -42,7 +41,7 @@ class Timer;
 // Fetch is initialized by calling ResourceFetch::Start()
 //
 // TODO(sligocki): Rename to ProxyResourceFetch or something else ...
-class ResourceFetch : public AsyncFetch {
+class ResourceFetch : public SharedAsyncFetch {
  public:
   static void Start(ResourceManager* resource_manager,
                     const GoogleUrl& url,
@@ -53,8 +52,6 @@ class ResourceFetch : public AsyncFetch {
  protected:
   // Protected interface from AsyncFetch.
   virtual void HandleHeadersComplete();
-  virtual bool HandleWrite(const StringPiece& content, MessageHandler* handler);
-  virtual bool HandleFlush(MessageHandler* handler);
   virtual void HandleDone(bool success);
 
  private:
@@ -68,7 +65,6 @@ class ResourceFetch : public AsyncFetch {
   virtual ~ResourceFetch();
 
   GoogleUrl resource_url_;
-  AsyncFetch* async_fetch_;
   UrlAsyncFetcher* fetcher_;
   MessageHandler* message_handler_;
   RewriteDriver* driver_;

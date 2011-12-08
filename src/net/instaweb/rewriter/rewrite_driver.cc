@@ -998,36 +998,13 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(
 
 namespace {
 
-class FilterFetch : public AsyncFetch {
+class FilterFetch : public SharedAsyncFetch {
  public:
   FilterFetch(RewriteDriver* driver, AsyncFetch* async_fetch)
-    : driver_(driver),
-      async_fetch_(async_fetch) {
-    set_response_headers(async_fetch->response_headers());
+      : SharedAsyncFetch(async_fetch),
+        driver_(driver) {
   }
   virtual ~FilterFetch() {}
-  virtual void HandleDone(bool success) {
-    RewriteStats* stats = driver_->resource_manager()->rewrite_stats();
-    if (success) {
-      stats->succeeded_filter_resource_fetches()->Add(1);
-    } else {
-      stats->failed_filter_resource_fetches()->Add(1);
-    }
-    async_fetch_->Done(success);
-    driver_->FetchComplete();
-    delete this;
-  }
-
-  virtual bool HandleWrite(const StringPiece& content,
-                           MessageHandler* handler) {
-    return async_fetch_->Write(content, handler);
-  }
-  virtual bool HandleFlush(MessageHandler* handler) {
-    return async_fetch_->Flush(handler);
-  }
-  virtual void HandleHeadersComplete() {
-    async_fetch_->HeadersComplete();
-  }
 
   static bool Start(RewriteFilter* filter,
                     const OutputResourcePtr& output_resource,
@@ -1052,9 +1029,21 @@ class FilterFetch : public AsyncFetch {
     return queued;
   }
 
+ protected:
+  virtual void HandleDone(bool success) {
+    RewriteStats* stats = driver_->resource_manager()->rewrite_stats();
+    if (success) {
+      stats->succeeded_filter_resource_fetches()->Add(1);
+    } else {
+      stats->failed_filter_resource_fetches()->Add(1);
+    }
+    base_fetch()->Done(success);
+    driver_->FetchComplete();
+    delete this;
+  }
+
  private:
   RewriteDriver* driver_;
-  AsyncFetch* async_fetch_;
 };
 
 class CacheCallback : public OptionsAwareHTTPCacheCallback {

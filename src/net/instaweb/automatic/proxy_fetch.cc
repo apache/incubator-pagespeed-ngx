@@ -147,13 +147,14 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
                        ResourceManager* manager,
                        Timer* timer,
                        ProxyFetchFactory* factory)
-    : url_(url),
-      async_fetch_(async_fetch),
+    : SharedAsyncFetch(async_fetch),
+      url_(url),
       resource_manager_(manager),
       timer_(timer),
       pass_through_(true),
       claims_html_(false),
       started_parse_(false),
+      done_called_(false),
       start_time_us_(0),
       queue_run_job_created_(false),
       mutex_(manager->thread_system()->NewMutex()),
@@ -198,8 +199,7 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
 }
 
 ProxyFetch::~ProxyFetch() {
-  DCHECK(async_fetch_ == NULL)
-      << "Callback should be called before destruction";
+  DCHECK(done_called_) << "Callback should be called before destruction";
   DCHECK(!queue_run_job_created_);
   DCHECK(!network_flush_outstanding_);
   DCHECK(!done_outstanding_);
@@ -208,7 +208,7 @@ ProxyFetch::~ProxyFetch() {
 }
 
 bool ProxyFetch::StartParse() {
-  driver_->SetWriter(async_fetch_);
+  driver_->SetWriter(base_fetch());
   sequence_ = driver_->html_worker();
   driver_->set_response_headers_ptr(response_headers());
 
@@ -377,7 +377,7 @@ bool ProxyFetch::HandleWrite(const StringPiece& str,
     }
   } else {
     // Pass other data (css, js, images) directly to http writer.
-    ret = async_fetch_->Write(str, message_handler);
+    ret = base_fetch()->Write(str, message_handler);
   }
   return ret;
 }
@@ -401,7 +401,7 @@ bool ProxyFetch::HandleFlush(MessageHandler* message_handler) {
       ScheduleQueueExecutionIfNeeded();
     }
   } else {
-    ret = async_fetch_->Flush(message_handler);
+    ret = base_fetch()->Flush(message_handler);
   }
   return ret;
 }
@@ -420,7 +420,7 @@ void ProxyFetch::HandleDone(bool success) {
       GoogleString buffered;
       html_detector_.ReleaseBuffered(&buffered);
       AddPagespeedHeader();
-      async_fetch_->HeadersComplete();
+      base_fetch()->HeadersComplete();
       Write(buffered, resource_manager_->message_handler());
     }
   } else {
@@ -539,8 +539,8 @@ void ProxyFetch::Finish(bool success) {
     stats->total_rewrite_count()->IncBy(1);
   }
 
-  async_fetch_->Done(success);
-  async_fetch_ = NULL;
+  base_fetch()->Done(success);
+  done_called_ = true;
   factory_->Finish(this);
 
   delete this;

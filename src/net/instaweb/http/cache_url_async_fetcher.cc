@@ -37,17 +37,16 @@ namespace net_instaweb {
 
 namespace {
 
-class CachePutFetch : public AsyncFetch {
+class CachePutFetch : public SharedAsyncFetch {
  public:
   CachePutFetch(const GoogleString& url, AsyncFetch* base_fetch,
                 bool respect_vary, HTTPCache* cache,
                 Histogram* backend_first_byte_latency, MessageHandler* handler)
-      : url_(url), base_fetch_(base_fetch),
+      : SharedAsyncFetch(base_fetch),
+        url_(url),
         respect_vary_(respect_vary), cache_(cache),
         backend_first_byte_latency_(backend_first_byte_latency),
         handler_(handler), cacheable_(false) {
-    set_request_headers(base_fetch->request_headers());
-    set_response_headers(base_fetch->response_headers());
     if (backend_first_byte_latency_ != NULL) {
       start_time_ms_ = cache_->timer()->NowMs();
     }
@@ -77,13 +76,13 @@ class CachePutFetch : public AsyncFetch {
       cache_value_.SetHeaders(headers);
     }
 
-    base_fetch_->HeadersComplete();
+    base_fetch()->HeadersComplete();
   }
 
   virtual bool HandleWrite(const StringPiece& content,
                            MessageHandler* handler) {
     bool ret = true;
-    ret &= base_fetch_->Write(content, handler);
+    ret &= base_fetch()->Write(content, handler);
     if (cacheable_) {
       ret &= cache_value_.Write(content, handler);
     }
@@ -92,12 +91,12 @@ class CachePutFetch : public AsyncFetch {
 
   virtual bool HandleFlush(MessageHandler* handler) {
     // Note cache_value_.Flush doesn't do anything.
-    return base_fetch_->Flush(handler);
+    return base_fetch()->Flush(handler);
   }
 
   virtual void HandleDone(bool success) {
     // Finish fetch.
-    base_fetch_->Done(success);
+    base_fetch()->Done(success);
     // Add result to cache.
     if (cacheable_) {
       cache_->Put(url_, &cache_value_, handler_);
@@ -107,7 +106,6 @@ class CachePutFetch : public AsyncFetch {
 
  private:
   const GoogleString url_;
-  AsyncFetch* base_fetch_;
   bool respect_vary_;
   HTTPCache* cache_;
   Histogram* backend_first_byte_latency_;

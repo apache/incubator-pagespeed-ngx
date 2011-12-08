@@ -123,4 +123,25 @@ void AsyncFetch::set_response_headers(ResponseHeaders* headers) {
 StringAsyncFetch::~StringAsyncFetch() {
 }
 
+bool AsyncFetchUsingWriter::HandleWrite(const StringPiece& sp,
+                                        MessageHandler* handler) {
+  return writer_->Write(sp, handler);
+}
+
+bool AsyncFetchUsingWriter::HandleFlush(MessageHandler* handler) {
+  return writer_->Flush(handler);
+}
+
+AsyncFetchUsingWriter::~AsyncFetchUsingWriter() {
+}
+
+SharedAsyncFetch::SharedAsyncFetch(AsyncFetch* base_fetch)
+    : base_fetch_(base_fetch) {
+  set_response_headers(base_fetch->response_headers());
+  set_request_headers(base_fetch->request_headers());
+}
+
+SharedAsyncFetch::~SharedAsyncFetch() {
+}
+
 }  // namespace net_instaweb

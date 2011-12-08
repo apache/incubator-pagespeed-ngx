@@ -60,7 +60,7 @@ ResourceFetch::ResourceFetch(const GoogleUrl& url,
                              UrlAsyncFetcher* fetcher,
                              Timer* timer,
                              const GoogleString& version)
-    : async_fetch_(async_fetch),
+    : SharedAsyncFetch(async_fetch),
       fetcher_(fetcher),
       message_handler_(handler),
       driver_(driver),
@@ -69,8 +69,6 @@ ResourceFetch::ResourceFetch(const GoogleUrl& url,
       start_time_us_(timer->NowUs()),
       redirect_count_(0) {
   resource_url_.Reset(url);
-  set_request_headers(async_fetch->request_headers());
-  set_response_headers(async_fetch->response_headers());
 }
 
 ResourceFetch::~ResourceFetch() {
@@ -90,16 +88,7 @@ void ResourceFetch::HandleHeadersComplete() {
   // response_headers()->Add(HttpAttributes::kVary, "Accept-Encoding");
 
   response_headers()->Add(kPageSpeedHeader, version_);
-  async_fetch_->HeadersComplete();
-}
-
-bool ResourceFetch::HandleWrite(const StringPiece& content,
-                                MessageHandler* handler) {
-  return async_fetch_->Write(content, handler);
-}
-
-bool ResourceFetch::HandleFlush(MessageHandler* handler) {
-  return async_fetch_->Flush(handler);
+  base_fetch()->HeadersComplete();
 }
 
 void ResourceFetch::HandleDone(bool success) {
@@ -120,7 +109,7 @@ void ResourceFetch::HandleDone(bool success) {
       (timer_->NowUs() - start_time_us_) / 1000.0);
   stats->total_fetch_count()->IncBy(1);
   driver_->Cleanup();
-  async_fetch_->Done(success);
+  base_fetch()->Done(success);
   delete this;
 }
 

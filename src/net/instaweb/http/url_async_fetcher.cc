@@ -51,11 +51,12 @@ bool UrlAsyncFetcher::Callback::EnableThreaded() const {
 
 namespace {
 
-class WriterCallbackFetch : public AsyncFetch {
+class WriterCallbackFetch : public AsyncFetchUsingWriter {
  public:
   WriterCallbackFetch(Writer* writer, const RequestHeaders& headers,
                       UrlAsyncFetcher::Callback* callback)
-      : writer_(writer), callback_(callback) {
+      : AsyncFetchUsingWriter(writer),
+        callback_(callback) {
     request_headers()->CopyFrom(headers);
   }
   virtual ~WriterCallbackFetch() {}
@@ -64,20 +65,12 @@ class WriterCallbackFetch : public AsyncFetch {
 
  protected:
   virtual void HandleHeadersComplete() {}
-  virtual bool HandleWrite(const StringPiece& content,
-                           MessageHandler* handler) {
-    return writer_->Write(content, handler);
-  }
-  virtual bool HandleFlush(MessageHandler* handler) {
-    return writer_->Flush(handler);
-  }
   virtual void HandleDone(bool success) {
     callback_->Done(success);
     delete this;
   }
 
  private:
-  Writer* writer_;
   UrlAsyncFetcher::Callback* callback_;
 
   DISALLOW_COPY_AND_ASSIGN(WriterCallbackFetch);
@@ -145,10 +138,10 @@ class AsyncFetchCallback : public UrlAsyncFetcher::Callback {
 // Write, Flush or Done are called.
 //
 // Used to implement StreamingAsyncFetch using StreamingFetch.
-class FixupAsyncFetch : public AsyncFetch {
+class FixupAsyncFetch : public SharedAsyncFetch {
  public:
   FixupAsyncFetch(AsyncFetch* base_fetch)
-      : base_fetch_(base_fetch),
+      : SharedAsyncFetch(base_fetch),
         writer_interface_(new AsyncFetchWriter(this)),
         callback_interface_(new AsyncFetchCallback(this)),
         headers_complete_(false) {
@@ -162,29 +155,15 @@ class FixupAsyncFetch : public AsyncFetch {
     return callback_interface_;
   }
 
-  virtual void HandleHeadersComplete() {
-    base_fetch_->HeadersComplete();
-  }
+  virtual bool EnableThreaded() const { return base_fetch()->EnableThreaded(); }
 
-  virtual bool HandleWrite(const StringPiece& content,
-                           MessageHandler* handler) {
-    return base_fetch_->Write(content, handler);
-  }
-
-  virtual bool HandleFlush(MessageHandler* handler) {
-    return base_fetch_->Flush(handler);
-  }
-
+ protected:
   virtual void HandleDone(bool success) {
-    base_fetch_->Done(success);
+    base_fetch()->Done(success);
     delete this;
   }
 
-  virtual bool EnableThreaded() const { return base_fetch_->EnableThreaded(); }
-
  private:
-  AsyncFetch* base_fetch_;
-
   scoped_ptr<Writer> writer_interface_;
   UrlAsyncFetcher::Callback* callback_interface_;
 

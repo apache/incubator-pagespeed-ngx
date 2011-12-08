@@ -119,7 +119,7 @@ class ProxyFetchFactory {
 // offload them to a worker-thread.  This implementation bundles together
 // multiple Writes, and depending on the timing, may move Flushes to
 // follow Writes and collapse multiple Flushes into one.
-class ProxyFetch : public AsyncFetch {
+class ProxyFetch : public SharedAsyncFetch {
  protected:
   // protected interface from AsyncFetch.
   virtual void HandleHeadersComplete();
@@ -191,7 +191,6 @@ class ProxyFetch : public AsyncFetch {
   void HandleIdleAlarm();
 
   GoogleString url_;
-  AsyncFetch* async_fetch_;
   ResourceManager* resource_manager_;
   Timer* timer_;
 
@@ -204,6 +203,9 @@ class ProxyFetch : public AsyncFetch {
   // Has a call to StartParse succeeded? We'll only do this if we actually
   // decide it is HTML.
   bool started_parse_;
+
+  // Tracks whether Done() has been called.
+  bool done_called_;
 
   HtmlDetector html_detector_;
 

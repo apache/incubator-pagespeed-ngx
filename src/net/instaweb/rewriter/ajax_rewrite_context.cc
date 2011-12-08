@@ -119,19 +119,17 @@ void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
 
 // Records the fetch into the provided resource and passes through events to the
 // underlying writer, response headers and callback.
-class AjaxRewriteContext::RecordingFetch : public AsyncFetch {
+class AjaxRewriteContext::RecordingFetch : public SharedAsyncFetch {
  public:
   RecordingFetch(AsyncFetch* async_fetch,
                  const ResourcePtr& resource,
                  AjaxRewriteContext* context,
                  MessageHandler* handler)
-      : handler_(handler),
-        async_fetch_(async_fetch),
+      : SharedAsyncFetch(async_fetch),
+        handler_(handler),
         resource_(resource),
         context_(context),
         can_ajax_rewrite_(false) {
-    set_request_headers(async_fetch->request_headers());
-    set_response_headers(async_fetch->response_headers());
   }
 
   virtual ~RecordingFetch() {}
@@ -146,13 +144,13 @@ class AjaxRewriteContext::RecordingFetch : public AsyncFetch {
       // the html flow in particular.
       context_->driver_->FetchComplete();
     }
-    async_fetch_->HeadersComplete();
+    base_fetch()->HeadersComplete();
   }
 
   virtual bool HandleWrite(const StringPiece& content,
                            MessageHandler* handler) {
     bool ret = true;
-    ret &= async_fetch_->Write(content, handler);
+    ret &= base_fetch()->Write(content, handler);
     if (can_ajax_rewrite_) {
       ret &= cache_value_.Write(content, handler);
     }
@@ -160,11 +158,11 @@ class AjaxRewriteContext::RecordingFetch : public AsyncFetch {
   }
 
   virtual bool HandleFlush(MessageHandler* handler) {
-    return async_fetch_->Flush(handler);
+    return base_fetch()->Flush(handler);
   }
 
   virtual void HandleDone(bool success) {
-    async_fetch_->Done(success);
+    base_fetch()->Done(success);
 
     if (can_ajax_rewrite_) {
       resource_->Link(&cache_value_, handler_);
@@ -188,7 +186,6 @@ class AjaxRewriteContext::RecordingFetch : public AsyncFetch {
   }
 
   MessageHandler* handler_;
-  AsyncFetch* async_fetch_;
   ResourcePtr resource_;
   AjaxRewriteContext* context_;
   bool can_ajax_rewrite_;
