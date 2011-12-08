@@ -576,6 +576,12 @@ class RewriteDriver : public HtmlParse {
   void set_rewrite_deadline_ms(int x) { rewrite_deadline_ms_ = x; }
   int rewrite_deadline_ms() { return rewrite_deadline_ms_; }
 
+  // Sets the start time of this request in ms.
+  void set_request_start_time_ms(int64 start_time_ms) {
+    start_time_ms_ = start_time_ms;
+  }
+  int64 start_time_ms() const { return start_time_ms_; }
+
   // Tries to register the given rewrite context as working on
   // its partition key. If this context is the first one to try to handle it,
   // returns NULL. Otherwise returns the previous such context.
@@ -956,6 +962,8 @@ class RewriteDriver : public HtmlParse {
   QueuedWorkerPool::Sequence* low_priority_rewrite_worker_;
 
   Writer* writer_;
+
+  int64 start_time_ms_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

@@ -33,6 +33,7 @@ class CountingUrlAsyncFetcher;
 class FakeUrlAsyncFetcher;
 class FileSystem;
 class Hasher;
+class HtmlFilter;
 class LRUCache;
 class MemFileSystem;
 class MessageHandler;
@@ -80,6 +81,24 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   bool use_test_url_namer() const { return use_test_url_namer_; }
   void SetUseTestUrlNamer(bool x);
 
+  class CreateFilterCallback {
+   public:
+    CreateFilterCallback() {}
+    virtual ~CreateFilterCallback();
+    virtual HtmlFilter* Done(RewriteDriver* driver) = 0;
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(CreateFilterCallback);
+  };
+
+  void AddCreateFilterCallback(CreateFilterCallback* callback) {
+    callback_vector_.push_back(callback);
+  }
+
+  void ClearFilterCallbackVector() {
+    callback_vector_.clear();
+  }
+
   // Note that this disables ajax rewriting by default.
   virtual RewriteOptions* NewRewriteOptions();
 
@@ -95,6 +114,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual UrlNamer* DefaultUrlNamer();
   virtual bool ShouldWriteResourcesToFileSystem() { return true; }
   virtual Scheduler* CreateScheduler();
+  virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
 
  private:
   MockTimer* mock_timer_;  // owned by base class timer_.
@@ -112,6 +132,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   MockMessageHandler* mock_message_handler_;
   MockMessageHandler* mock_html_message_handler_;
   bool use_test_url_namer_;
+  std::vector<CreateFilterCallback*> callback_vector_;
 };
 
 }  // namespace net_instaweb

@@ -23,13 +23,17 @@
 #include <cstddef>
 
 #include "base/scoped_ptr.h"            // for scoped_ptr
+#include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -51,6 +55,7 @@
 
 namespace net_instaweb {
 
+class HtmlFilter;
 class MessageHandler;
 
 namespace {
@@ -133,6 +138,28 @@ class ProxyUrlNamer : public UrlNamer {
 
 const char ProxyUrlNamer::kProxyHost[] = "proxy_host.com";
 
+// Mock filter which gets passed to the new rewrite driver created in
+// proxy_fetch. We need this to ascertain that start_time_ms is set correctly.
+class MockFilter : public EmptyHtmlFilter {
+ public:
+  MockFilter(RewriteDriver* driver, int64* request_start_time_ms)
+      : driver_(driver),
+        request_start_time_ms_(request_start_time_ms) {
+  }
+
+  virtual void StartDocument() {
+    *request_start_time_ms_ = driver_->start_time_ms();
+  }
+
+  virtual const char* Name() const { return "MockFilter"; }
+
+ private:
+  RewriteDriver* driver_;
+  int64* request_start_time_ms_;
+};
+
+class FilterCallback;
+
 // TODO(morlovich): This currently relies on ResourceManagerTestBase to help
 // setup fetchers; and also indirectly to prevent any rewrites from timing out
 // (as it runs the tests with real scheduler but mock timer). It would probably
@@ -141,7 +168,9 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
  protected:
   static const int kHtmlCacheTimeSec = 5000;
 
-  ProxyInterfaceTest() : max_age_300_("max-age=300") {
+  ProxyInterfaceTest()
+      : max_age_300_("max-age=300"),
+        request_start_time_ms_(-1) {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
     ConvertTimeToString(MockTimer::kApr_5_2010_ms + 5 * Timer::kMinuteMs,
                         &start_time_plus_300s_string_);
@@ -261,9 +290,30 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   GoogleString start_time_plus_300s_string_;
   GoogleString old_time_string_;
   const GoogleString max_age_300_;
+  int64 request_start_time_ms_;
 
  private:
+  friend class FilterCallback;
+
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceTest);
+};
+
+class FilterCallback : public TestRewriteDriverFactory::CreateFilterCallback {
+ public:
+  FilterCallback(ProxyInterfaceTest* proxy_interface)
+      : proxy_interface_(proxy_interface) {
+  }
+
+  virtual HtmlFilter* Done(RewriteDriver* driver) {
+    return new MockFilter(driver, &proxy_interface_->request_start_time_ms_);
+  }
+
+  virtual ~FilterCallback() {}
+
+ private:
+  ProxyInterfaceTest* proxy_interface_;
+
+  DISALLOW_COPY_AND_ASSIGN(FilterCallback);
 };
 
 TEST_F(ProxyInterfaceTest, FetchFailure) {
@@ -282,6 +332,36 @@ TEST_F(ProxyInterfaceTest, PassThrough404) {
   FetchFromProxy("404", true, &text, &headers);
   ASSERT_TRUE(headers.has_status_code());
   EXPECT_EQ(HttpStatus::kNotFound, headers.status_code());
+}
+
+TEST_F(ProxyInterfaceTest, RequestStartTimeHeader) {
+  GoogleString url = "http://www.example.com/";
+  GoogleString text;
+  RequestHeaders request_headers;
+  ResponseHeaders headers;
+  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  mock_url_fetcher_.SetResponse("http://www.example.com/", headers,
+                                "<html></html>");
+  // We need custom options so that NewCustomRewriteDriver gets created.
+  // This is needed so that AddPlatformSpecificRewritePasses gets called.
+  scoped_ptr<RewriteOptions> custom_options(factory()->NewRewriteOptions());
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  resource_manager()->set_url_namer(&url_namer);
+
+  FilterCallback callback(this);
+  factory_->AddCreateFilterCallback(&callback);
+
+  // Request start time header not set.
+  FetchFromProxy(url, request_headers, true, &text, &headers);
+  EXPECT_EQ(0, request_start_time_ms_);
+
+  // Request start time header set.
+  request_headers.Add(kRequestStartTimeHeader,
+                       Integer64ToString(10));
+  FetchFromProxy(url, request_headers, true, &text, &headers);
+  EXPECT_EQ(10, request_start_time_ms_);
 }
 
 TEST_F(ProxyInterfaceTest, PassThroughResource) {

@@ -17,6 +17,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include <cstdlib>                     // for getenv
+#include <vector>
 
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 
@@ -48,6 +49,7 @@ namespace net_instaweb {
 class CacheInterface;
 class FileSystem;
 class Hasher;
+class HtmlFilter;
 class MessageHandler;
 class RequestHeaders;
 class ResponseHeaders;
@@ -216,6 +218,17 @@ RewriteOptions* TestRewriteDriverFactory::NewRewriteOptions() {
   RewriteOptions* options = RewriteDriverFactory::NewRewriteOptions();
   options->set_ajax_rewriting_enabled(false);
   return options;
+}
+
+void TestRewriteDriverFactory::AddPlatformSpecificRewritePasses(
+    RewriteDriver* driver) {
+  for (std::size_t i = 0; i < callback_vector_.size(); i++) {
+    HtmlFilter* filter = callback_vector_[i]->Done(driver);
+    driver->AddOwnedPostRenderFilter(filter);
+  }
+}
+
+TestRewriteDriverFactory::CreateFilterCallback::~CreateFilterCallback() {
 }
 
 }  // namespace net_instaweb

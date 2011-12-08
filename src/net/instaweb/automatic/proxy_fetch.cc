@@ -185,6 +185,15 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
     driver_->set_cookies(cookies);
   }
 
+  const char* start_time_ms_str =
+      request_headers()->Lookup1(kRequestStartTimeHeader);
+  if (start_time_ms_str != NULL) {
+    int64 start_time_ms;
+    if (StringToInt64(start_time_ms_str, &start_time_ms)) {
+      driver_->set_request_start_time_ms(start_time_ms);
+    }
+  }
+
   const char* user_agent = request_headers()->Lookup1(
       HttpAttributes::kUserAgent);
   if (user_agent != NULL) {
