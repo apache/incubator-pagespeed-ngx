@@ -283,12 +283,12 @@ TEST_F(WriteThroughHTTPCacheTest, RememberFetchFailedOrNotCacheable) {
             Find(key_, &value, &headers_out, &message_handler_));
 }
 
-// Make sure we don't remember 'non-cacheable' once we've put it into r/o mode.
-// (but do before)
-TEST_F(WriteThroughHTTPCacheTest, ReadOnly) {
+// Make sure we don't remember 'non-cacheable' once we've put it into
+// SetIgnoreFailurePuts() mode (but do before)
+TEST_F(WriteThroughHTTPCacheTest, SetIgnoreFailurePuts) {
   ClearStats();
   http_cache_.RememberNotCacheable(key_, &message_handler_);
-  http_cache_.SetReadOnly();
+  http_cache_.SetIgnoreFailurePuts();
   http_cache_.RememberNotCacheable("mykey2", &message_handler_);
   ResponseHeaders headers_out;
   HTTPValue value_out;

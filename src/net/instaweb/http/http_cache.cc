@@ -71,8 +71,8 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
 
 HTTPCache::~HTTPCache() {}
 
-void HTTPCache::SetReadOnly() {
-  readonly_.set_value(true);
+void HTTPCache::SetIgnoreFailurePuts() {
+  ignore_failure_puts_.set_value(true);
 }
 
 bool HTTPCache::IsCurrentlyValid(const ResponseHeaders& headers, int64 now_ms) {
@@ -263,7 +263,8 @@ void HTTPCache::RememberFetchFailedorNotCacheableHelper(const GoogleString& key,
 HTTPValue* HTTPCache::ApplyHeaderChangesForPut(
     const GoogleString& key, int64 start_us, const StringPiece* content,
     ResponseHeaders* headers, HTTPValue* value, MessageHandler* handler) {
-  if (readonly_.value()) {
+  if ((headers->status_code() != HttpStatus::kOK) &&
+      ignore_failure_puts_.value()) {
     return NULL;
   }
   DCHECK(value != NULL || content != NULL);

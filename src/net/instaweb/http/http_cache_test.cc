@@ -306,18 +306,25 @@ TEST_F(HTTPCacheTest, RememberNotCacheable) {
             Find("mykey", &value, &meta_data_out, &message_handler_));
 }
 
-// Make sure we don't remember 'non-cacheable' once we've put it into r/o mode.
-// (but do before)
-TEST_F(HTTPCacheTest, ReadOnly) {
+// Make sure we don't remember 'non-cacheable' once we've put it into
+// non-recording of failures mode (but do before that), and that we
+// remember successful results even when in SetIgnoreFailurePuts() mode.
+TEST_F(HTTPCacheTest, IgnoreFailurePuts) {
   http_cache_.RememberNotCacheable("mykey", &message_handler_);
-  http_cache_.SetReadOnly();
+  http_cache_.SetIgnoreFailurePuts();
   http_cache_.RememberNotCacheable("mykey2", &message_handler_);
-  ResponseHeaders meta_data_out;
+
+  ResponseHeaders meta_data_in, meta_data_out;
+  InitHeaders(&meta_data_in, "max-age=300");
+  http_cache_.Put("mykey3", &meta_data_in, "content", &message_handler_);
+
   HTTPValue value_out;
   EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
             Find("mykey", &value_out, &meta_data_out, &message_handler_));
   EXPECT_EQ(HTTPCache::kNotFound,
             Find("mykey2", &value_out, &meta_data_out, &message_handler_));
+  EXPECT_EQ(HTTPCache::kFound,
+            Find("mykey3", &value_out, &meta_data_out, &message_handler_));
 }
 
 TEST_F(HTTPCacheTest, Uncacheable) {

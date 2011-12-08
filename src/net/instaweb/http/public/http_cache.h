@@ -119,8 +119,8 @@ class HTTPCache {
     DISALLOW_COPY_AND_ASSIGN(Callback);
   };
 
-  // Makes the cache ignore all put requests.
-  virtual void SetReadOnly();
+  // Makes the cache ignore put requests that do not record successes.
+  virtual void SetIgnoreFailurePuts();
 
   // Non-blocking Find.  Calls callback when done.  'handler' must all
   // stay valid until callback->Done() is called.
@@ -244,7 +244,7 @@ class HTTPCache {
   Variable* cache_inserts_;
   int64 remember_not_cacheable_ttl_seconds_;
   int64 remember_fetch_failed_ttl_seconds_;
-  AtomicBool readonly_;
+  AtomicBool ignore_failure_puts_;
 
   DISALLOW_COPY_AND_ASSIGN(HTTPCache);
 };

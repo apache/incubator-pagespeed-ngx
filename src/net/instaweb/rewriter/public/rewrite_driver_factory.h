@@ -219,6 +219,11 @@ class RewriteDriverFactory {
     version_string.CopyToString(&version_string_);
   }
 
+  // Causes the given function to be Run after all the threads are shutdown,
+  // in order to do any needed resource cleanups. The Deleter<T> template below
+  // may be useful for object deletion cleanups.
+  void defer_delete(Function* f) { deferred_deletes_.push_back(f); }
+
  protected:
   bool FetchersComputed() const;
   void StopCacheWrites();
@@ -269,11 +274,6 @@ class RewriteDriverFactory {
   // when using the default filesystem-based lock manager. The default is
   // filename_prefix()
   virtual StringPiece LockFilePrefix();
-
-  // Causes the given function to be Run after all the threads are shutdown,
-  // in order to do any needed resource cleanups. The Deleter<T> template below
-  // may be useful for object deletion cleanups.
-  void defer_delete(Function* f) { deferred_deletes_.push_back(f); }
 
  private:
   void SetupSlurpDirectories();

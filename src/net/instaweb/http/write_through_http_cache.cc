@@ -95,9 +95,9 @@ void WriteThroughHTTPCache::PutInCache1(const GoogleString& key,
   }
 }
 
-void WriteThroughHTTPCache::SetReadOnly() {
-  cache1_->SetReadOnly();
-  cache2_->SetReadOnly();
+void WriteThroughHTTPCache::SetIgnoreFailurePuts() {
+  cache1_->SetIgnoreFailurePuts();
+  cache2_->SetIgnoreFailurePuts();
 }
 
 void WriteThroughHTTPCache::Find(const GoogleString& key,

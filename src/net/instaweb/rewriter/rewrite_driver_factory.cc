@@ -435,15 +435,18 @@ StringPiece RewriteDriverFactory::LockFilePrefix() {
 void RewriteDriverFactory::StopCacheWrites() {
   ScopedMutex lock(resource_manager_mutex_.get());
 
-  // Make sure we stop cache writes before turning off the fetcher, so any
-  // requests it cancels will not result in RememberFetchFailedOrNotCacheable
-  // entries getting written out to disk cache.
+  // Make sure we tell HTTP cache not to write out fetch failures, as
+  // fetcher shutdown may create artificial ones, and we don't want to
+  // remember those.
   //
-  // Note that we have to be careful not to try creating it now, since it
-  // may involve access to worker initialization.
-  HTTPCache* cache = http_cache_.get();
-  if (cache != NULL) {
-    cache->SetReadOnly();
+  // Note that we also cannot access our own http_cache_ since it may be
+  // NULL in case like Apache where resource managers get their own.
+  for (ResourceManagerSet::iterator p = resource_managers_.begin();
+       p != resource_managers_.end(); ++p) {
+    HTTPCache* cache = (*p)->http_cache();
+    if (cache != NULL) {
+      cache->SetIgnoreFailurePuts();
+    }
   }
 
   // Similarly stop metadata cache writes.

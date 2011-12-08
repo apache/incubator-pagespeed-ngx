@@ -43,8 +43,10 @@
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/resource_manager_testing_peer.h"
 #include "net/instaweb/util/public/atomic_int32.h"
@@ -1197,7 +1199,12 @@ class ResourceManagerTestThreadedCache : public ResourceManagerTest {
 
   virtual void SetUp() {
     ResourceManagerTest::SetUp();
-    resource_manager()->set_http_cache(http_cache_.get());
+    HTTPCache* cache = http_cache_.release();
+    resource_manager()->set_http_cache(cache);
+
+    // Make sure the cache is deleted only after everything is fully shutdown.
+    factory()->defer_delete(
+        new RewriteDriverFactory::Deleter<HTTPCache>(cache));
   }
 
   void ClearHTTPCache() { cache_backend_->Clear(); }
