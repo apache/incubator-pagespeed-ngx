@@ -58,24 +58,14 @@ class RewriteFilter : public CommonFilter {
   // The default implementation returns false.
   virtual bool ComputeOnTheFly() const;
 
-  // Determines whether this filter supports the asynchronous writing flow,
-  // and the RewriteDriver is in async mode.
-  //
-  // TODO(jmarantz): remove this method once all filters use the async
-  // writing flow.
-  virtual bool HasAsyncFlow() const;
-
-  // Generates a RewriteContext appropriate for this filter.  This will only
-  // be called if in asynchronous mode, for filters that support asynchronous
-  // mode.  Default implementation return NULL.  This must be overridden by
-  // filters when they add async support.  This is used to implement Fetch.
+  // Generates a RewriteContext appropriate for this filter.
+  // Default implementation returns NULL.  This must be overridden by
+  // filters.  This is used to implement Fetch.
   virtual RewriteContext* MakeRewriteContext();
 
-  // Generates a nested RewriteContext appropriate for this filter.  This will
-  // only be called if in asynchronous mode, for filters that support
-  // asynchronous mode.  Default implementation returns NULL.  This must be
-  // overridden by filters when they add async support.  This is used to
-  // implement ajax rewriting.
+  // Generates a nested RewriteContext appropriate for this filter.
+  // Default implementation returns NULL.
+  // This is used to implement ajax rewriting.
   virtual RewriteContext* MakeNestedRewriteContext(
       RewriteContext* parent, const ResourceSlotPtr& slot);
 

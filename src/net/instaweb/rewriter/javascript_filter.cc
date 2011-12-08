@@ -311,11 +311,6 @@ JavascriptFilter::RewriteLoadedResource(
   return jrc.RewriteJavascript(script_input, output_resource);
 }
 
-// TODO(nforman): Rip this out.
-bool JavascriptFilter::HasAsyncFlow() const {
-  return true;
-}
-
 RewriteContext* JavascriptFilter::MakeRewriteContext() {
   return new Context(driver_, NULL, &config_, NULL /* no body node */);
 }

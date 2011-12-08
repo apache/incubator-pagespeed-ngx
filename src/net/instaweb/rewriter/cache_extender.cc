@@ -249,11 +249,6 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   }
 }
 
-// TODO(nforman): Rip this out.
-bool CacheExtender::HasAsyncFlow() const {
-  return true;
-}
-
 RewriteContext* CacheExtender::MakeRewriteContext() {
   return new Context(this, driver_, NULL /*not nested*/);
 }

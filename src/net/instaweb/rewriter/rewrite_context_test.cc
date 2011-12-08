@@ -374,7 +374,6 @@ class NestedFilter : public RewriteFilter {
   virtual const char* Name() const { return "NestedFilter"; }
   virtual void StartDocumentImpl() {}
   virtual void EndElementImpl(HtmlElement* element) {}
-  virtual bool HasAsyncFlow() const { return true; }
 
  private:
   OutputResourceKind kind_;
@@ -572,7 +571,6 @@ class CombiningFilter : public RewriteFilter {
     return false;
   }
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
-  virtual bool HasAsyncFlow() const { return true; }
 
   bool num_rewrites() const { return num_rewrites_; }
   void ClearStats() { num_rewrites_ = 0; }
@@ -1838,7 +1836,6 @@ class TestNotifyFilter : public CommonFilter {
   }
 
   virtual void EndElementImpl(net_instaweb::HtmlElement*) {}
-  virtual bool HasAsyncFlow() const { return true; }
 
  private:
   WorkerTestBase::SyncPoint* sync_;

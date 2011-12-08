@@ -56,7 +56,6 @@ class CssCombineFilter : public RewriteFilter {
     return &multipart_encoder_;
   }
 
-  virtual bool HasAsyncFlow() const;
   virtual RewriteContext* MakeRewriteContext();
   virtual const char* id() const { return RewriteOptions::kCssCombinerId; }
 

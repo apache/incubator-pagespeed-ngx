@@ -153,9 +153,4 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
   }
 }
 
-// TODO(nforman): Rip this out.
-bool CssInlineFilter::HasAsyncFlow() const {
-  return true;
-}
-
 }  // namespace net_instaweb

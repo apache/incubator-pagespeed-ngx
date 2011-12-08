@@ -99,9 +99,4 @@ RewriteContext* SimpleTextFilter::MakeNestedRewriteContext(
   return context;
 }
 
-// TODO(nforman): Rip this out.
-bool SimpleTextFilter::HasAsyncFlow() const {
-  return true;
-}
-
 }  // namespace net_instaweb

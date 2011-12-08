@@ -81,7 +81,6 @@ class ImageCombineFilter : public RewriteFilter {
 
   void Reset(CssFilter::Context* context, const GoogleUrl& css_url,
              const StringPiece& css_text);
-  virtual bool HasAsyncFlow() const;
 
  protected:
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }

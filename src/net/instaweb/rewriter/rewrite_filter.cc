@@ -62,10 +62,6 @@ bool RewriteFilter::ComputeOnTheFly() const {
   return false;
 }
 
-bool RewriteFilter::HasAsyncFlow() const {
-  return true;
-}
-
 RewriteContext* RewriteFilter::MakeRewriteContext() {
   return NULL;
 }

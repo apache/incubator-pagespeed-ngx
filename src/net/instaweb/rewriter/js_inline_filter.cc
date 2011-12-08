@@ -161,9 +161,4 @@ void JsInlineFilter::Characters(HtmlCharactersNode* characters) {
   }
 }
 
-// TODO(nforman): Rip this out.
-bool JsInlineFilter::HasAsyncFlow() const {
-  return true;
-}
-
 }  // namespace net_instaweb

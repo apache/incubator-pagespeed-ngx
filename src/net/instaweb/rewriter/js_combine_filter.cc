@@ -566,11 +566,6 @@ GoogleString JsCombineFilter::VarName(const GoogleString& url) const {
   return StrCat("mod_pagespeed_", url_hash);
 }
 
-// TODO(nforman): Rip this out.
-bool JsCombineFilter::HasAsyncFlow() const {
-  return true;
-}
-
 JsCombineFilter::Context* JsCombineFilter::MakeContext() {
   return new Context(driver_, this);
 }

@@ -104,7 +104,6 @@ class CssFilter : public RewriteSingleResourceFilter {
   static const char kParseFailures[];
 
  protected:
-  virtual bool HasAsyncFlow() const;
   virtual RewriteContext* MakeRewriteContext();
   virtual const UrlSegmentEncoder* encoder() const;
   virtual RewriteContext* MakeNestedRewriteContext(

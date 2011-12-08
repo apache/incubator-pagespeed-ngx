@@ -86,7 +86,6 @@ class JavascriptFilter : public RewriteSingleResourceFilter {
   virtual RewriteResult RewriteLoadedResource(
       const ResourcePtr& input_resource,
       const OutputResourcePtr& output_resource);
-  virtual bool HasAsyncFlow() const;
 
   virtual RewriteContext* MakeNestedRewriteContext(
       RewriteContext* parent, const ResourceSlotPtr& slot);

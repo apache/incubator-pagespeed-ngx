@@ -483,11 +483,6 @@ CssCombineFilter::CssCombiner* CssCombineFilter::combiner() {
   return context_->combiner();
 }
 
-// TODO(nforman): Rip this out.
-bool CssCombineFilter::HasAsyncFlow() const {
-  return true;
-}
-
 CssCombineFilter::Context* CssCombineFilter::MakeContext() {
   return new Context(driver_, &css_tag_scanner_, this);
 }

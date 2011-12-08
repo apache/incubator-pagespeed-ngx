@@ -94,7 +94,6 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
   virtual bool ReuseByContentHash() const;
   virtual const UrlSegmentEncoder* encoder() const;
 
-  virtual bool HasAsyncFlow() const;
   virtual RewriteContext* MakeRewriteContext();
 
  private:

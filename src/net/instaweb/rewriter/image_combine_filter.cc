@@ -1196,11 +1196,6 @@ RewriteContext* ImageCombineFilter::MakeRewriteContext() {
   return new Context(driver_, this);
 }
 
-// TODO(nforman): Rip this out.
-bool ImageCombineFilter::HasAsyncFlow() const {
-  return true;
-}
-
 void ImageCombineFilter::AddFilesReducedStat(int reduced) {
   if (image_file_count_reduction_ != NULL) {
     image_file_count_reduction_->Add(reduced);

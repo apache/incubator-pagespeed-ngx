@@ -603,11 +603,6 @@ const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {
   return &encoder_;
 }
 
-// TODO(nforman): Rip this out.
-bool ImageRewriteFilter::HasAsyncFlow() const {
-  return true;
-}
-
 RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
   return new Context(0 /*No CSS inlining, it's html */,
                      this, driver_, NULL /*not nested */,

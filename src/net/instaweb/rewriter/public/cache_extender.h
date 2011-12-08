@@ -69,7 +69,6 @@ class CacheExtender : public RewriteSingleResourceFilter {
       const ResourcePtr& input_resource,
       const OutputResourcePtr& output_resource);
   virtual bool ComputeOnTheFly() const;
-  virtual bool HasAsyncFlow() const;
   virtual RewriteContext* MakeRewriteContext();
 
  private:

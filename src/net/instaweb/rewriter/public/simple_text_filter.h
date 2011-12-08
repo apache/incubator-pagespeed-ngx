@@ -102,7 +102,6 @@ class SimpleTextFilter : public RewriteFilter {
  protected:
   virtual const char* id() const { return rewriter_->id(); }
   virtual const char* Name() const { return rewriter_->name(); }
-  virtual bool HasAsyncFlow() const;
   virtual bool ComputeOnTheFly() const {
     return rewriter_->kind() == kOnTheFlyResource;
   }
