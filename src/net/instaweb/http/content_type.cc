@@ -147,6 +147,8 @@ const ContentType* MimeTypeToContentType(const StringPiece& mime_type) {
   return res;
 }
 
+// TODO(nforman): Have some further indication of whether
+// content_type_str was just empty or invalid.
 bool ParseContentType(const StringPiece& content_type_str,
                       GoogleString* mime_type,
                       GoogleString* charset) {

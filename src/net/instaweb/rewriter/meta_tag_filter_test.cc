@@ -124,6 +124,17 @@ TEST_F(MetaTagFilterTest, TestCharset) {
   EXPECT_TRUE(StringCaseEqual(val->c_str(), "text/html; charset=UTF-8"));
 }
 
+const char kMetaTagCharsetOnly[] =
+    "<html><head>"
+    "<meta charset=\"UTF-8\">"
+    "</head><body></body></html>";
+
+TEST_F(MetaTagFilterTest, TestCharsetOnly) {
+  ValidateNoChanges("convert_charset_only", kMetaTagCharsetOnly);
+  ConstStringStarVector values;
+  EXPECT_FALSE(headers()->Lookup(HttpAttributes::kContentType, &values));
+}
+
 const char kMetaTagDoNothing[] =
     "<html><head>"
     "<meta http-equiv=\"\" content=\"\">"

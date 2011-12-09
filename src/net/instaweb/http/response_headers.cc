@@ -218,8 +218,16 @@ bool ResponseHeaders::CombineContentTypes(const StringPiece& orig,
   GoogleString mime_type, charset;
   ret = ParseContentType(orig, &mime_type, &charset);
   if (!ret) {
-    Replace(HttpAttributes::kContentType, fresh);
-    ret = true;
+    GoogleString fresh_mime_type, fresh_charset;
+    ret = ParseContentType(fresh, &fresh_mime_type, &fresh_charset);
+    // Don't replace nothing with a charset only because
+    // ; charset=xyz is not a valid ContentType header..
+    if (ret && !fresh_mime_type.empty()) {
+      Replace(HttpAttributes::kContentType, fresh);
+      ret = true;
+    } else {
+      ret = false;
+    }
   } else if (charset.empty() || mime_type.empty()) {
     GoogleString fresh_mime_type, fresh_charset;
     ret = ParseContentType(fresh, &fresh_mime_type, &fresh_charset);
@@ -255,8 +263,7 @@ bool ResponseHeaders::MergeContentType(const StringPiece& content_type) {
   // If there is already more than one content-type header, it's
   // unclear what exactly should happen, so don't change anything.
   if (old_values.size() < 1) {
-    Add(HttpAttributes::kContentType, content_type);
-    ret = true;
+    ret = CombineContentTypes("", content_type);
   } else if (old_values.size() == 1) {
     StringPiece old_val(*old_values[0]);
     ret = CombineContentTypes(old_val, content_type);
