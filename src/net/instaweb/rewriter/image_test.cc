@@ -1,4 +1,18 @@
-// Copyright 2010 Google Inc. All Rights Reserved.
+/*
+ * Copyright 2010 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 // Author: jmaessen@google.com (Jan Maessen)
 
 // Unit tests for Image class used in rewriting.
@@ -12,6 +26,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/image_data_lookup.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/image_test_base.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -24,15 +39,6 @@
 
 namespace {
 
-const char kTestData[] = "/net/instaweb/rewriter/testdata/";
-const char kCuppa[] = "Cuppa.png";
-const char kBikeCrash[] = "BikeCrashIcn.png";
-const char kIronChef[] = "IronChef2.gif";
-const char kCradle[] = "CradleAnimation.gif";
-const char kPuzzle[] = "Puzzle.jpg";
-const char kLarge[] = "Large.png";
-const char kScenery[] = "Scenery.webp";
-
 const char kProgressiveHeader[] = "\xFF\xC2";
 const int kProgressiveHeaderStartIndex = 158;
 
@@ -43,28 +49,11 @@ namespace net_instaweb {
 const bool kNoWebp = false;
 const bool kWebp   = true;
 
-class ImageTest : public testing::Test {
+class ImageTest : public ImageTestBase {
+ public:
+  ImageTest() {}
+
  protected:
-  typedef scoped_ptr<Image> ImagePtr;
-
-  ImageTest() { }
-
-  // We use the output_type (ultimate expected output type after image
-  // processing) to set up rewrite permissions for the resulting Image object.
-  Image* ImageFromString(Image::Type output_type,
-                         const GoogleString& name,
-                         const GoogleString& contents,
-                         bool progressive) {
-    net_instaweb::Image::CompressionOptions* image_options =
-        new net_instaweb::Image::CompressionOptions();
-    image_options->webp_preferred = output_type == Image::IMAGE_WEBP;
-    image_options->jpeg_quality = -1;
-    image_options->progressive_jpeg = progressive;
-    image_options->convert_png_to_jpeg =  output_type == Image::IMAGE_JPEG;
-
-    return NewImage(contents, name, GTestTempDir(), image_options, &handler_);
-  }
-
   void ExpectDimensions(Image::Type image_type, int size,
                         int expected_width, int expected_height,
                         Image *image) {
@@ -100,17 +89,6 @@ class ImageTest : public testing::Test {
     EXPECT_FALSE(image_dim.has_height());
     EXPECT_EQ(contents.size(), image->output_size());
     EXPECT_EQ("xZZ", EncodeUrlAndDimensions(kNoWebp, "ZZ", image_dim));
-  }
-
-  // We use the output_type (ultimate expected output type after image
-  // processing) to set up rewrite permissions for the resulting Image object.
-  Image* ReadImageFromFile(Image::Type output_type,
-                           const char* filename, GoogleString* buffer,
-                           bool progressive) {
-    EXPECT_TRUE(file_system_.ReadFile(
-        StrCat(GTestSrcDir(), kTestData, filename).c_str(),
-        buffer, &handler_));
-    return ImageFromString(output_type, filename, *buffer, progressive);
   }
 
   void CheckImageFromFile(const char* filename,

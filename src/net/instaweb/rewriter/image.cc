@@ -553,16 +553,19 @@ void ImageImpl::CleanOpenCv() {
 
 bool ImageImpl::LoadOpenCvEmpty() {
   // empty canvas -- width and height must be set already.
+  bool ok = false;
   if (ImageUrlEncoder::HasValidDimensions(dims_)) {
     // TODO(abliss): Need to figure out the right values for these.
     int depth = 8, channels = 3;
-    opencv_image_ = cvCreateImage(cvSize(dims_.width(), dims_.height()),
-                                  depth, channels);
-    cvSetZero(opencv_image_);
-    return true;
-  } else {
-    return false;
+    try {
+      opencv_image_ = cvCreateImage(cvSize(dims_.width(), dims_.height()),
+                                    depth, channels);
+      cvSetZero(opencv_image_);
+      ok = true;
+    } catch (cv::Exception& e) {
+    }
   }
+  return ok;
 }
 
 #ifdef USE_OPENCV_2_1
@@ -574,7 +577,11 @@ bool ImageImpl::LoadOpenCvFromBuffer(const StringPiece& data) {
 
   // Note: this is more convenient than imdecode as it lets us
   // get an image pointer directly, and not just a Mat
-  opencv_image_ = cvDecodeImage(&cv_original_contents);
+  try {
+    opencv_image_ = cvDecodeImage(&cv_original_contents);
+  } catch (cv::Exception& e) {
+    return false;
+  }
   return opencv_image_ != NULL;
 }
 
