@@ -1320,7 +1320,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
     if (resource.get() == NULL) {
       // Note: Bad user-content can leave us here.
       message_handler()->Message(kWarning, "Badly formatted data url '%s'",
-                                 url_string.as_string().c_str());
+                                 url.spec_c_str());
     }
   } else if (url.SchemeIs("http") || url.SchemeIs("https")) {
     // Note: type may be NULL if url has an unexpected or malformed extension.
@@ -1330,6 +1330,22 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
       resource.reset(new FileInputResource(resource_manager_, options(), type,
                                            url_string, filename));
     } else {
+      // If the scheme is https and the fetcher doesn't support https, map
+      // the URL to what will ultimately be fetched to see if that will be
+      // http, in which case the fetcher will be able to handle it.
+      // TODO(matterbury): If/when we support origin mapping TO https this
+      // test will need fixing to always map the origin.
+      if (url.SchemeIs("https") && !url_async_fetcher_->SupportsHttps()) {
+        GoogleString mapped_url;
+        options()->domain_lawyer()->MapOriginUrl(url, &mapped_url);
+        GoogleUrl mapped_gurl(mapped_url);
+        if (!mapped_gurl.SchemeIs("http")) {
+          message_handler()->Message(
+              kInfo, "Cannot fetch url '%s': as https is not supported",
+              url.spec_c_str());
+          return resource;
+        }
+      }
       resource.reset(new UrlInputResource(resource_manager_, options(), type,
                                           url_string));
     }
@@ -1339,7 +1355,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
     // TODO(sligocki): Is this true? Or will such URLs not make it this far?
     message_handler()->Message(kWarning, "Unsupported scheme '%s' for url '%s'",
                                url.Scheme().as_string().c_str(),
-                               url_string.as_string().c_str());
+                               url.spec_c_str());
   }
   return resource;
 }

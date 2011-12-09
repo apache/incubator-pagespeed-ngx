@@ -66,6 +66,10 @@ class UrlAsyncFetcher {
 
   virtual ~UrlAsyncFetcher();
 
+  // Determine if the fetcher supports fetching using HTTPS. By default we
+  // assume a fetcher can.
+  virtual bool SupportsHttps() const { return true; }
+
   // Fetch a URL, set response_headers and stream the output to response_writer.
   // response_headers and response_writer must be valid until callback->Done().
   //

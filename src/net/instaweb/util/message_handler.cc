@@ -55,6 +55,20 @@ const char* MessageHandler::MessageTypeToString(const MessageType type) const {
   return type_string;
 }
 
+const MessageType MessageHandler::StringToMessageType(const StringPiece& msg) {
+  if (StringCaseEqual(msg, "Info")) {
+    return kInfo;
+  } else if (StringCaseEqual(msg, "Warning")) {
+    return kWarning;
+  } else if (StringCaseEqual(msg, "Error")) {
+    return kError;
+  } else if (StringCaseEqual(msg, "Fatal")) {
+    return kFatal;
+  }
+  CHECK(false) << "Invalid msg level: " << msg;
+  return kInfo;
+}
+
 void MessageHandler::Message(MessageType type, const char* msg, ...) {
   va_list args;
   va_start(args, msg);

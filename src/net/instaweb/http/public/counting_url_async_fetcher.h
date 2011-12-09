@@ -42,6 +42,8 @@ class CountingUrlAsyncFetcher : public UrlAsyncFetcher {
 
   void set_fetcher(UrlAsyncFetcher* fetcher) { fetcher_ = fetcher; }
 
+  virtual bool SupportsHttps() const { return fetcher_->SupportsHttps(); }
+
   virtual bool StreamingFetch(const GoogleString& url,
                               const RequestHeaders& request_headers,
                               ResponseHeaders* response_headers,

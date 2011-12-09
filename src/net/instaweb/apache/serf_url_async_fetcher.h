@@ -67,11 +67,14 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent, const char* proxy);
   virtual ~SerfUrlAsyncFetcher();
 
+  static void Initialize(Statistics* statistics);
+
   // Stops all active fetches and prevents further fetches from starting
   // (they will instead quickly call back to ->Done(false).
   virtual void ShutDown();
 
-  static void Initialize(Statistics* statistics);
+  virtual bool SupportsHttps() const { return false; }
+
   virtual bool StreamingFetch(const GoogleString& url,
                               const RequestHeaders& request_headers,
                               ResponseHeaders* response_headers,

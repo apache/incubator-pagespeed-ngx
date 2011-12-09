@@ -22,6 +22,7 @@
 #include <cstdarg>
 
 #include "net/instaweb/util/public/printf_format.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -39,6 +40,9 @@ class MessageHandler {
 
   // String representation for MessageType.
   const char* MessageTypeToString(const MessageType type) const;
+
+  // Convert string to MessageType.
+  static const MessageType StringToMessageType(const StringPiece& msg);
 
   // Specify the minimum message type. Lower message types will not be
   // logged.

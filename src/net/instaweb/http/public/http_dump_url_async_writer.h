@@ -52,6 +52,8 @@ class HttpDumpUrlAsyncWriter : public UrlAsyncFetcher {
   }
   virtual ~HttpDumpUrlAsyncWriter();
 
+  virtual bool SupportsHttps() const { return base_fetcher_->SupportsHttps(); }
+
   // This is a synchronous/blocking implementation.
   virtual bool StreamingFetch(const GoogleString& url,
                               const RequestHeaders& request_headers,
