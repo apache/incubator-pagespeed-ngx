@@ -66,6 +66,9 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   MockTimer* mock_timer() { return mock_timer_; }
   MockHasher* mock_hasher() { return mock_hasher_; }
   MemFileSystem* mem_file_system() { return mem_file_system_; }
+  FakeUrlAsyncFetcher* mock_url_async_fetcher() {
+    return mock_url_async_fetcher_.get();
+  }
   WaitUrlAsyncFetcher* wait_url_async_fetcher() {
     return wait_url_async_fetcher_.get();
   }

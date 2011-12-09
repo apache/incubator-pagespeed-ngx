@@ -24,6 +24,8 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/counting_url_async_fetcher.h"
+#include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/mock_resource_callback.h"
@@ -565,6 +567,27 @@ TEST_P(RewriteDriverTest, DiagnosticsWithPercent) {
   context.AddSlot(slot);
   rewrite_driver()->InfoAt(&context, "Just a test");
   logging::SetMinLogLevel(prev_log_level);
+}
+
+// Tests that we reject https URLs quickly.
+TEST_P(RewriteDriverTest, RejectHttpsQuickly) {
+  // Need to expressly authorize https even though we don't support it.
+  options()->domain_lawyer()->AddDomain("https://*/", message_handler());
+  AddFilter(RewriteOptions::kRewriteJavascript);
+
+  // When we don't support https then we fail quickly and cleanly.
+  factory()->mock_url_async_fetcher()->set_fetcher_supports_https(false);
+  ValidateNoChanges("reject_https_quickly",
+                    "<script src='https://example.com/a.js'></script>");
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+
+  // When we do support https the fetcher fails to find the resource.
+  factory()->mock_url_async_fetcher()->set_fetcher_supports_https(true);
+  SetFetchResponse404("https://example.com/a.js");
+  ValidateNoChanges("reject_https_quickly",
+                    "<script src='https://example.com/a.js'></script>");
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->failure_count());
 }
 
 INSTANTIATE_TEST_CASE_P(RewriteDriverTestInstance,
