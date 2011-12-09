@@ -141,7 +141,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
   bool AddToCache(bool success) {
     ResponseHeaders* headers = response_headers();
     headers->FixDateHeaders(http_cache()->timer()->NowMs());
-    if (success) {
+    if (success && !headers->IsErrorStatus()) {
       if (IsValidAndCacheableImpl(http_cache(), resource_cutoff_ms_,
                                   respect_vary_, headers)) {
         HTTPValue* value = http_value();

@@ -596,7 +596,10 @@ TEST_F(ResourceManagerTest, TestInputResourceQuery) {
 }
 
 TEST_F(ResourceManagerTest, TestRemember404) {
-  // Make sure our resources remember that a page 404'd
+  // Make sure our resources remember that a page 404'd, but not too long.
+  http_cache()->set_remember_not_cacheable_ttl_seconds(10000);
+  http_cache()->set_remember_fetch_failed_ttl_seconds(100);
+
   ResponseHeaders not_found;
   SetDefaultLongCacheHeaders(&kContentTypeHtml, &not_found);
   not_found.SetStatusAndReason(HttpStatus::kNotFound);
@@ -609,6 +612,11 @@ TEST_F(ResourceManagerTest, TestRemember404) {
   HTTPValue value_out;
   ResponseHeaders headers_out;
   EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
+            http_cache()->Find("http://example.com/404", &value_out,
+                               &headers_out, message_handler()));
+  mock_timer()->AdvanceMs(150 * Timer::kSecondMs);
+
+  EXPECT_EQ(HTTPCache::kNotFound,
             http_cache()->Find("http://example.com/404", &value_out,
                                &headers_out, message_handler()));
 }
