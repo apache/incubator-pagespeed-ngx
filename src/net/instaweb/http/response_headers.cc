@@ -412,8 +412,9 @@ namespace {
 // The differences are:
 //  1) TODO(sligocki): We can consider HTML to be cacheable by default
 //     depending upon a user option.
-//  2) We only consider HTTP status code 200 and our internal use codes to be
-//     cacheable. Others (such as 203, 206 and 304) are not cacheable for us.
+//  2) We only consider HTTP status code 200, 301 and our internal use codes
+//     to be cacheable. Others (such as 203, 206 and 304) are not cacheable
+//     for us.
 //
 // This also abstracts away the pagespeed::Resource/ResponseHeaders distinction.
 class InstawebCacheComputer : public pagespeed::ResourceCacheComputer {
@@ -434,11 +435,13 @@ class InstawebCacheComputer : public pagespeed::ResourceCacheComputer {
     return pagespeed::ResourceCacheComputer::IsLikelyStaticResourceType();
   }
 
+  // Which status codes are cacheable by default.
   virtual bool IsCacheableResourceStatusCode() {
     switch (resource_->GetResponseStatusCode()) {
-      // For our purposes, the only intrinsically cacheable status code is OK.
+      // For our purposes, only a few status codes are cacheable.
       // Others like 203, 206 and 304 depend upon input headers and other state.
       case HttpStatus::kOK:
+      case HttpStatus::kMovedPermanently:
       // These dummy status codes indicate something about our system that we
       // want to remember in the cache.
       case HttpStatus::kRememberNotCacheableStatusCode:
@@ -447,6 +450,19 @@ class InstawebCacheComputer : public pagespeed::ResourceCacheComputer {
       default:
         return false;
     }
+  }
+
+  // Which status codes do we allow to cache at all. Others will not be cached
+  // even if explicitly marked as such because we may not be able to cache
+  // them correctly (say 304 or 206, which depend upon input headers).
+  bool IsAllowedCacheableStatusCode() {
+    // For now it's identical to the default cacheable list.
+    return IsCacheableResourceStatusCode();
+
+    // Note: We have made a consious decision not to allow caching
+    // 302 Found or 307 Temporary Redirect even if they explicitly
+    // ask to be cached because most webmasters use 301 Moved Permanently
+    // for redirects they actually want cached.
   }
 
   pagespeed::ResourceType GetResourceType() const {
@@ -481,9 +497,9 @@ void ResponseHeaders::ComputeCaching() {
   // Note: Unlike pagespeed algorithm, we are very conservative about calling
   // a resource cacheable. Many status codes are technically cacheable but only
   // based upon precise input headers. Since we do not check those headers we
-  // only allow vanilla 200 status codes to be cached.
+  // only allow a few hand-picked status codes to be cacheable at all.
   proto_->set_cacheable(has_date &&
-                        computer->IsCacheableResourceStatusCode() &&
+                        computer->IsAllowedCacheableStatusCode() &&
                         computer->IsCacheable());
   if (proto_->cacheable()) {
     // TODO(jmarantz): check "Age" resource and use that to reduce

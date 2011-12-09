@@ -275,6 +275,31 @@ TEST_F(ResponseHeadersTest, TestCachingDefault) {
             response_headers_.date_ms());
 }
 
+// By default, cache permanent redirects.
+TEST_F(ResponseHeadersTest, TestCachingDefaultPermRedirect) {
+  ParseHeaders(StrCat("HTTP/1.1 301 Moved Permanently\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "\r\n"));
+  EXPECT_TRUE(response_headers_.IsCacheable());
+}
+
+// Even when explicitly set, don't cache temporary redirects.
+TEST_F(ResponseHeadersTest, TestCachingExplicitTempRedirect302) {
+  ParseHeaders(StrCat("HTTP/1.1 302 Found\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: max-age=300\r\n"
+                      "\r\n"));
+  EXPECT_FALSE(response_headers_.IsCacheable());
+}
+
+TEST_F(ResponseHeadersTest, TestCachingExplicitTempRedirect307) {
+  ParseHeaders(StrCat("HTTP/1.1 307 Temporary Redirect\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: max-age=300\r\n"
+                      "\r\n"));
+  EXPECT_FALSE(response_headers_.IsCacheable());
+}
+
 // Test that we don't erroneously cache a 204 even though it is marked
 // explicitly as cacheable. Note: We could cache this, but many status codes
 // are only cacheable depending on precise input headers, to be cautious, we
