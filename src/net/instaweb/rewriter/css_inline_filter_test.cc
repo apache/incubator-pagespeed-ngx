@@ -199,7 +199,7 @@ TEST_P(CssInlineFilterTest, DoNotInlineCssTooBig) {
 }
 
 TEST_P(CssInlineFilterTest, DoNotInlineCssDifferentDomain) {
-  // Note: This only fails because we haven't autorized www.example.org
+  // Note: This only fails because we haven't authorized www.example.org
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.org/styles.css",
                 "", "BODY { color: red; }\n", false, "");
