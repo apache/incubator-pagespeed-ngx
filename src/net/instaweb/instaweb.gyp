@@ -46,7 +46,7 @@
     {
       'target_name': 'instaweb_js_defer_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter/',
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
         'var_name': 'js_defer',
       },
       'sources': [
@@ -59,7 +59,7 @@
     {
       'target_name': 'instaweb_lazyload_images_data2c',
       'variables': {
-        'instaweb_data2c_subdir': 'net/instaweb/rewriter/',
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
         'var_name': 'lazyload_images',
       },
       'sources': [
@@ -72,7 +72,7 @@
     {
       'target_name': 'instaweb_spriter_pb',
       'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/spriter/public/',
+        'instaweb_protoc_subdir': 'net/instaweb/spriter/public',
       },
       'sources': [
         'spriter/public/image_spriter.proto',
@@ -128,7 +128,7 @@
     {
       'target_name': 'instaweb_rewriter_pb',
       'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/rewriter/',
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
       },
       'sources': [
         '<(protoc_out_dir)/<(instaweb_protoc_subdir)/cached_result.pb.cc',
@@ -144,7 +144,7 @@
     {
       'target_name': 'instaweb_http_gperf',
       'variables': {
-        'instaweb_gperf_subdir': 'net/instaweb/http/',
+        'instaweb_gperf_subdir': 'net/instaweb/http',
       },
       'sources': [
         'http/bot_checker.gperf',
@@ -481,7 +481,7 @@
     {
       'target_name': 'instaweb_javascript_gperf',
       'variables': {
-        'instaweb_gperf_subdir': 'net/instaweb/js/',
+        'instaweb_gperf_subdir': 'net/instaweb/js',
       },
       'sources': [
         'js/js_keywords.gperf',
@@ -589,7 +589,7 @@
     {
       'target_name': 'instaweb_http_pb',
       'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/http/',
+        'instaweb_protoc_subdir': 'net/instaweb/http',
       },
       'sources': [
         'http/http.proto',

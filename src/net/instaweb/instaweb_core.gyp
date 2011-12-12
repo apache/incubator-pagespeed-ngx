@@ -58,7 +58,7 @@
     {
       'target_name': 'instaweb_htmlparse_core_gperf',
       'variables': {
-        'instaweb_gperf_subdir': 'net/instaweb/htmlparse/',
+        'instaweb_gperf_subdir': 'net/instaweb/htmlparse',
       },
       'sources': [
         'htmlparse/html_name.gperf',
@@ -129,7 +129,7 @@
     {
       'target_name': 'instaweb_rewriter_html_gperf',
       'variables': {
-        'instaweb_gperf_subdir': 'net/instaweb/rewriter/',
+        'instaweb_gperf_subdir': 'net/instaweb/rewriter',
       },
       'sources': [
         'rewriter/rewrite_option_names.gperf',
