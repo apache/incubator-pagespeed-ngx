@@ -21,7 +21,11 @@
  * @author nikhilmadan@google.com (Nikhil Madan)
  */
 
-var pagespeed = pagespeed || {};
+// Exporting functions using quoted attributes to prevent js compiler from
+// renaming them.
+// See http://code.google.com/closure/compiler/docs/api-tutorial3.html#dangers
+window['pagespeed'] = window['pagespeed'] || {};
+var pagespeed = window['pagespeed'];
 
 /**
  * @constructor
@@ -62,9 +66,11 @@ pagespeed.LazyloadImages.prototype.viewport_ = function() {
   } else if (document.documentElement && document.documentElement.scrollTop) {
     scrollY = document.documentElement.scrollTop;
   }
+  var height = window.innerHeight || document.documentElement.clientHeight ||
+      document.body.clientHeight;
   return {
     top: scrollY,
-    bottom: scrollY + window.innerHeight
+    bottom: scrollY + height
   };
 };
 
@@ -122,6 +128,9 @@ pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
   }
 };
 
+pagespeed.LazyloadImages.prototype['loadIfVisible'] =
+    pagespeed.LazyloadImages.prototype.loadIfVisible;
+
 /**
  * Loads the visible elements in the deferred queue. Also, removes the loaded
  * elements from the deferred queue.
@@ -165,9 +174,11 @@ pagespeed.addHandler = function(elem, ev, func) {
  */
 pagespeed.lazyLoadInit = function() {
   pagespeed.lazyLoadImages = new pagespeed.LazyloadImages();
+  pagespeed['lazyLoadImages'] = pagespeed.lazyLoadImages;
   var lazy_onscroll = function() {
     pagespeed.lazyLoadImages.loadVisible_();
   };
   pagespeed.addHandler(window, 'scroll', lazy_onscroll);
 };
 
+pagespeed['lazyLoadInit'] = pagespeed.lazyLoadInit;
