@@ -227,8 +227,7 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
       case RewriteDriver::kNoResolutionNeeded:
         break;
       case RewriteDriver::kWriteFailed:
-        LOG(DFATAL) << "Write Failed while resolving CSS";
-        break;
+        return RewriteSingleResourceFilter::kRewriteFailed;
       case RewriteDriver::kSuccess:
         // TODO(jmarantz): find a mechanism to write this directly into
         // the HTTPValue so we can reduce the number of times that we

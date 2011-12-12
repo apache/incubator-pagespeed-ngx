@@ -42,8 +42,9 @@ class CssTagScanner {
    public:
     virtual ~Transformer();
 
-    // Returns 'false' if no transformation was made by the transformer.
-    virtual bool Transform(const StringPiece& in, GoogleString* out) = 0;
+    enum TransformStatus { kSuccess, kNoChange, kFailure };
+    virtual TransformStatus Transform(const StringPiece& in,
+                                      GoogleString* out) = 0;
   };
 
   static const char kStylesheet[];
@@ -86,7 +87,7 @@ class RewriteDomainTransformer : public CssTagScanner::Transformer {
                            RewriteDriver* driver);
   virtual ~RewriteDomainTransformer();
 
-  virtual bool Transform(const StringPiece& in, GoogleString* out);
+  virtual TransformStatus Transform(const StringPiece& in, GoogleString* out);
 
   void set_trim_urls(bool x) { trim_urls_ = x; }
 

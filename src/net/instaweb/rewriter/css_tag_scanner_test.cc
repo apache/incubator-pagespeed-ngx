@@ -29,6 +29,8 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -317,7 +319,27 @@ TEST_F(RewriteDomainTransformerTest, ImportSQuoteDQuote) {
       Transform("a @import 'style.css'\"screen\";"));
 }
 
+class FailTransformer : public CssTagScanner::Transformer {
+ public:
+  FailTransformer() {}
+  virtual ~FailTransformer() {}
 
+  virtual TransformStatus Transform(const StringPiece& in, GoogleString* out) {
+    return kFailure;
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(FailTransformer);
+};
+
+TEST(FailTransformerTest, TransformUrlsFails) {
+  NullWriter writer;
+  NullMessageHandler handler;
+
+  FailTransformer fail_transformer;
+  EXPECT_FALSE(CssTagScanner::TransformUrls("url(foo)", &writer,
+                                            &fail_transformer, &handler));
+}
 
 }  // namespace
 

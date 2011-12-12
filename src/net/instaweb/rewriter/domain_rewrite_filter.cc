@@ -65,7 +65,8 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
   if (attr != NULL) {
     StringPiece val(attr->value());
     GoogleString rewritten_val;
-    if (Rewrite(val, driver_->base_url(), &rewritten_val) == kRewroteDomain) {
+    if (BaseUrlIsValid() &&
+        Rewrite(val, driver_->base_url(), &rewritten_val) == kRewroteDomain) {
       attr->SetValue(rewritten_val);
       rewrite_count_->Add(1);
     }
@@ -76,21 +77,24 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
 DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
     const StringPiece& url_to_rewrite, const GoogleUrl& base_url,
     GoogleString* rewritten_url) {
-  if (url_to_rewrite.empty() || !BaseUrlIsValid()) {
+  if (url_to_rewrite.empty()) {
     return kFail;
   }
 
   GoogleUrl orig_url(base_url, url_to_rewrite);
   StringPiece orig_spec = orig_url.Spec();
   const RewriteOptions* options = driver_->options();
-  if (!orig_url.is_valid() || !orig_url.is_standard() ||
-      !options->IsAllowed(orig_spec)) {
+  if (!orig_url.is_valid() || !orig_url.is_standard()) {
     return kFail;
   }
 
-  // Don't rewrite a domain from an already-rewritten resource.
-  if (resource_manager_->IsPagespeedResource(orig_url)) {
-    return kFail;
+  if (!options->IsAllowed(orig_spec) ||
+      // Don't rewrite a domain from an already-rewritten resource.
+      resource_manager_->IsPagespeedResource(orig_url)) {
+    // Even though domain is unchanged, we need to store absolute URL in
+    // rewritten_url.
+    orig_url.Spec().CopyToString(rewritten_url);
+    return kDomainUnchanged;
   }
 
   // Apply any domain rewrites.
@@ -106,7 +110,10 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
   if (!lawyer->MapRequestToDomain(base_url, url_to_rewrite,
                                   &mapped_domain_name, &resolved_request,
                                   driver_->message_handler())) {
-    return kFail;
+    // Even though domain is unchanged, we need to store absolute URL in
+    // rewritten_url.
+    orig_url.Spec().CopyToString(rewritten_url);
+    return kDomainUnchanged;
   }
 
   // Next, apply any sharding.

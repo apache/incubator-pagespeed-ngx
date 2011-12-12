@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
@@ -35,6 +36,7 @@ const char kTextCss[] = "text/css";
 }
 
 namespace net_instaweb {
+
 class HtmlParse;
 
 CssTagScanner::Transformer::~Transformer() {
@@ -308,31 +310,42 @@ bool CssTagScanner::TransformUrls(
       // See if we actually have to do something. If the transformer
       // wants to leave the URL alone, we will just pass the bytes through.
       GoogleString transformed;
-      if (transformer->Transform(url, &transformed)) {
-        // Write out the buffered up part of input.
-        ok = ok && WriteRange(out_begin, out_end, writer, handler);
+      switch (transformer->Transform(url, &transformed)) {
+        case Transformer::kSuccess: {
+          // Write out the buffered up part of input.
+          ok = ok && WriteRange(out_begin, out_end, writer, handler);
 
-        if (have_url == kImport) {
-          ok = ok && writer->Write("@import ", handler);
-        } else {
-          ok = ok && writer->Write("url(", handler);
-        }
+          if (have_url == kImport) {
+            ok = ok && writer->Write("@import ", handler);
+          } else {
+            ok = ok && writer->Write("url(", handler);
+          }
 
-        if (is_quoted) {
-          ok = ok && writer->Write(StringPiece(&quote, 1), handler);
-        }
-        ok = ok && writer->Write(
-            CssMinify::EscapeString(transformed, true /*in_url*/), handler);
-        if (have_term_quote) {
-          ok = ok && writer->Write(StringPiece(&quote, 1), handler);
-        }
+          if (is_quoted) {
+            ok = ok && writer->Write(StringPiece(&quote, 1), handler);
+          }
+          ok = ok && writer->Write(
+              CssMinify::EscapeString(transformed, true /*in_url*/), handler);
+          if (have_term_quote) {
+            ok = ok && writer->Write(StringPiece(&quote, 1), handler);
+          }
 
-        if (have_term_paren) {
-          ok = ok && writer->Write(")", handler);
-        }
+          if (have_term_paren) {
+            ok = ok && writer->Write(")", handler);
+          }
 
-        // Begin accumulating input again starting from next byte.
-        out_begin = remaining.data();
+          // Begin accumulating input again starting from next byte.
+          out_begin = remaining.data();
+          break;
+        }
+        case Transformer::kFailure: {
+          // We could not transform URL, fail fast.
+          handler->Message(kError, "Transform failed for url %s", url.c_str());
+          return false;
+        }
+        case Transformer::kNoChange: {
+          break;
+        }
       }
     }
 
@@ -380,12 +393,12 @@ RewriteDomainTransformer::RewriteDomainTransformer(
 RewriteDomainTransformer::~RewriteDomainTransformer() {
 }
 
-bool RewriteDomainTransformer::Transform(const StringPiece& in,
-                                         GoogleString* out) {
+CssTagScanner::Transformer::TransformStatus RewriteDomainTransformer::Transform(
+    const StringPiece& in, GoogleString* out) {
   GoogleString rewritten;
   if (domain_rewriter_->Rewrite(in, *old_base_url_, &rewritten)
       == DomainRewriteFilter::kFail) {
-    return false;
+    return kFailure;
   }
   // Note: Because of complications with sharding, we cannot trim
   // sharded resources against the final sharded domain of the CSS file.
@@ -395,7 +408,7 @@ bool RewriteDomainTransformer::Transform(const StringPiece& in,
       !url_trim_filter_->Trim(*new_base_url_, rewritten, out, handler_)) {
     out->swap(rewritten);
   }
-  return *out != in;
+  return (*out == in) ? kNoChange : kSuccess;
 }
 
 }  // namespace net_instaweb
