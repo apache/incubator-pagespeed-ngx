@@ -199,17 +199,17 @@ TEST_P(CssInlineFilterTest, DoNotInlineCssTooBig) {
 }
 
 TEST_P(CssInlineFilterTest, DoNotInlineCssDifferentDomain) {
-  // TODO(mdsteele): Is switching domains in fact an issue for CSS?
+  // Note: This only fails because we haven't autorized www.example.org
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.org/styles.css",
                 "", "BODY { color: red; }\n", false, "");
 }
 
-TEST_P(CssInlineFilterTest, DoNotInlineCssWithImports) {
-  // TODO(mdsteele): Is switching domains in fact an issue for CSS?
+TEST_P(CssInlineFilterTest, CorrectlyInlineCssWithImports) {
   TestInlineCss("http://www.example.com/index.html",
-                "http://www.example.com/styles.css",
-                "", "@import \"foo.css\", BODY { color: red; }\n", false, "");
+                "http://www.example.com/dir/styles.css", "",
+                "@import \"foo.css\"; BODY { color: red; }\n", true,
+                "@import \"dir/foo.css\"; BODY { color: red; }\n");
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?q=css&id=252

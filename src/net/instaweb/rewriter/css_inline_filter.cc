@@ -19,7 +19,6 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/inline_rewrite_context.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -103,14 +102,6 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
 
 bool CssInlineFilter::ShouldInline(const StringPiece& contents) const {
   if (contents.size() > size_threshold_bytes_) {
-    return false;
-  }
-
-  // Check that the file does not have imports, which we cannot yet
-  // correct paths yet.
-  //
-  // Remove this once CssTagScanner::TransformUrls handles imports.
-  if (CssTagScanner::HasImport(contents, driver_->message_handler())) {
     return false;
   }
 
