@@ -473,7 +473,7 @@ check "$WGET_DUMP $URL | grep -qe 'HTTP/1\.. 200 OK'"
 echo TEST: Filters do not rewrite blacklisted JavaScript files.
 URL=$TEST_ROOT/blacklist/blacklist.html?ModPagespeedFilters=extend_cache,rewrite_javascript,trim_urls
 FETCHED=$OUTDIR/blacklist.html
-fetch_until $URL 'grep -c .js.pagespeed.' 5
+fetch_until $URL 'grep -c .js.pagespeed.' 4
 $WGET_DUMP $URL > $FETCHED
 cat $FETCHED
 check grep "'<script src=\".*normal\.js\.pagespeed\..*\.js\">'" $FETCHED
@@ -485,7 +485,7 @@ check grep "'<script src=\"scriptaculous\.js?load=effects,builder\"></script>'"\
 check grep "'<script src=\"connect\.facebook\.net/en_US/all\.js\"></script>'" \
   $FETCHED
 check grep "'<script src=\".*jquery.*\.js\.pagespeed\..*\.js\">'" $FETCHED
-check grep "'<script src=\".*ckeditor\.js\.pagespeed\..*\.js\">'" $FETCHED
+check grep "'<script src=\".*ckeditor\.js\">'" $FETCHED
 check grep "'<script src=\".*swfobject\.js\.pagespeed\..*\.js\">'" $FETCHED
 check grep "'<script src=\".*another_normal\.js\.pagespeed\..*\.js\">'" $FETCHED
 

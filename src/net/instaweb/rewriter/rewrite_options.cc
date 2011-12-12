@@ -412,17 +412,16 @@ void RewriteOptions::DisallowTroublesomeResources() {
   // Breaks some sites.
   Disallow("*connect.facebook.net/*");
 
+  // http://code.google.com/p/modpagespeed/issues/detail?id=186
+  // ckeditor.js, ckeditor_basic.js, ckeditor_basic_source.js, ...
+  Disallow("*ckeditor*");
+
   // http://code.google.com/p/modpagespeed/issues/detail?id=207
   // jquery-ui-1.8.2.custom.min.js, jquery-1.4.4.min.js, jquery.fancybox-...
   //
   // TODO(sligocki): Is jquery actually a problem? Perhaps specific
   // jquery libraries (like tiny MCE). Investigate before disabling.
   // Disallow("*jquery*");
-
-  // http://code.google.com/p/modpagespeed/issues/detail?id=186
-  // ckeditor.js, ckeditor_basic.js, ckeditor_basic_source.js, ...
-  // Appears to be fixed upstream. Leaving here for reference.
-  // Disallow("*ckeditor*");
 
   // http://code.google.com/p/modpagespeed/issues/detail?id=216
   // Appears to be an issue with old version of jsminify.
