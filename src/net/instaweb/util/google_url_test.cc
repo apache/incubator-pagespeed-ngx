@@ -110,6 +110,41 @@ TEST_F(GoogleUrlTest, TestSpecWithPort) {
   EXPECT_EQ(GoogleString("/b/c/"), gurl_.PathSansLeaf());
 }
 
+TEST_F(GoogleUrlTest, TestDots) {
+  GoogleUrl url1("http://www.example.com/foo/../bar/baz/./../index.html");
+  EXPECT_EQ("http://www.example.com/bar/index.html", url1.Spec());
+
+  GoogleUrl url2("http://www.example.com/../../../../..");
+  EXPECT_EQ("http://www.example.com/", url2.Spec());
+
+  GoogleUrl url3("http://www.example.com/foo/./bar/index.html");
+  EXPECT_EQ("http://www.example.com/foo/bar/index.html", url3.Spec());
+}
+
+// Note: These tests are basically gold tests done for documentation more
+// than expectation. If they change that should be fine, we just want to
+// know what is decoded and what is not.
+TEST_F(GoogleUrlTest, TestDecode) {
+  // Not "%20" -> " "
+  GoogleUrl url1("http://www.example.com/foo%20bar.html");
+  EXPECT_EQ("http://www.example.com/foo%20bar.html", url1.Spec());
+  // "%2E" -> "."
+  GoogleUrl url2("http://www.example.com/foo/%2E%2E/bar.html");
+  EXPECT_EQ("http://www.example.com/bar.html", url2.Spec());
+  GoogleUrl url2b("http://www.example.com/foo/%2e%2e/bar.html");
+  EXPECT_EQ("http://www.example.com/bar.html", url2b.Spec());
+  GoogleUrl url2c("http://www.example.com/%2e%2e/%2e%2e/some/file/path/");
+  EXPECT_EQ("http://www.example.com/some/file/path/", url2c.Spec());
+  // Not "%2F" -> "/"
+  GoogleUrl url3("http://www.example.com/foo%2Fbar.html");
+  EXPECT_EQ("http://www.example.com/foo%2Fbar.html", url3.Spec());
+  GoogleUrl url3b("http://www.example.com/foo%2fbar.html");
+  EXPECT_EQ("http://www.example.com/foo%2fbar.html", url3b.Spec());
+  // Other
+  GoogleUrl url4("http://www.example.com/%53%2D%38%25%32%35");
+  EXPECT_EQ("http://www.example.com/S-8%2525", url4.Spec());
+}
+
 TEST_F(GoogleUrlTest, TestCopyAndAddQueryParam) {
   TestCopyAndAddQueryParamCase("http://a.com/b/c/d.ext",
                                "http://a.com/b/c/d.ext?r=s");
