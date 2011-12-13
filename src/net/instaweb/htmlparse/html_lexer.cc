@@ -218,8 +218,8 @@ const HtmlTagMapElement kOptionallyClosedTags[] = {
 
   // A td element's end tag may be omitted if the td element is immediately
   // followed by a td or th element, or if there is no more content in the
-  // parent element.
-  {HtmlName::kTd, ELTS2(HtmlName::kTd, HtmlName::kTh)},
+  // parent element.  A new 'tr' also ends 'td'.
+  {HtmlName::kTd, ELTS3(HtmlName::kTd, HtmlName::kTh, HtmlName::kTr)},
 
   // A tfoot element's end tag may be omitted if the tfoot element is
   // immediately followed by a tbody element, or if there is no more content in
@@ -228,8 +228,8 @@ const HtmlTagMapElement kOptionallyClosedTags[] = {
 
   // A th element's end tag may be omitted if the th element is immediately
   // followed by a td or th element, or if there is no more content in the
-  // parent element.
-  {HtmlName::kTh, ELTS2(HtmlName::kTd, HtmlName::kTh)},
+  // parent element.  A new 'tr' also ends 'th'.
+  {HtmlName::kTh, ELTS3(HtmlName::kTd, HtmlName::kTh, HtmlName::kTr)},
 
   // A thead element's end tag may be omitted if the thead element is
   // immediately followed by a tbody or tfoot element.
@@ -436,6 +436,7 @@ void HtmlLexer::EvalTagOpen(char c) {
   if (IsLegalTagChar(c)) {
     token_ += c;
   } else if (c == '>') {
+    MakeElement();
     EmitTagOpen(true);
   } else if (c == '/') {
     state_ = TAG_BRIEF_CLOSE;
@@ -506,6 +507,7 @@ void HtmlLexer::EvalTagBriefCloseAttr(char c) {
 // of the tag identifier, and go back to the TAG_OPEN state.
 void HtmlLexer::EvalTagBriefClose(char c) {
   if (c == '>') {
+    MakeElement();
     EmitTagOpen(false);
     EmitTagBriefClose();
   } else {
@@ -819,11 +821,9 @@ void HtmlLexer::EmitCdata() {
 // does not require an explicit termination in HTML, then we will
 // automatically emit a matching 'element close' event.
 void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
-  if (token_.empty() && (element_ == NULL)) {
-    SyntaxError("Making element with empty tag name");
-  }
-  HtmlName next_tag = html_parse_->MakeName(token_);
-  token_.clear();
+  DCHECK(element_ != NULL);
+  DCHECK(token_.empty());
+  HtmlName next_tag = element_->name();
 
   // Look for elements that are implicitly closed by an open for this type.
   HtmlName::Keyword next_keyword = next_tag.keyword();
@@ -831,20 +831,27 @@ void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
   // Continue popping off auto-close elements as needed to handle cases like
   // IClosedByOpenTr in html_parse_test.cc: "<tr><i>a<tr>b".  The first the <i>
   // needs to be auto-closed, then the <tr>.
-  while (HtmlElement* open_element = Parent()) {
+  for (HtmlElement* open_element = Parent(); open_element != NULL; ) {
     // TODO(jmarantz): this is a hack -- we should make a more elegant
     // structure of open/new tag combinations that we should auto-close.
     HtmlName::Keyword open_keyword = open_element->keyword();
     if (IsAutoClose(open_keyword, next_keyword)) {
       element_stack_.pop_back();
       html_parse_->CloseElement(open_element, HtmlElement::AUTO_CLOSE, line_);
+
+      // Having automatically closed the element that was open on the stack,
+      // we must recompute the open element from whatever is now on top of
+      // the stack.  We must also correct the current element's parent to
+      // maintain DOM consistency with the event stream.
+      DCHECK_EQ(element_->parent(), open_element);
+      open_element = Parent();
+      element_->set_parent(open_element);
     } else {
       break;
     }
   }
 
   literal_.clear();
-  MakeElement(next_tag);
   html_parse_->AddElement(element_, tag_start_line_);
   element_stack_.push_back(element_);
   if (IS_IN_SET(kLiteralTags, element_->keyword())) {
@@ -884,13 +891,6 @@ void HtmlLexer::MakeElement() {
     element_ = html_parse_->NewElement(Parent(), token_);
     element_->set_begin_line_number(tag_start_line_);
     token_.clear();
-  }
-}
-
-void HtmlLexer::MakeElement(const HtmlName& html_name) {
-  if (element_ == NULL) {
-    element_ = html_parse_->NewElement(Parent(), html_name);
-    element_->set_begin_line_number(tag_start_line_);
   }
 }
 

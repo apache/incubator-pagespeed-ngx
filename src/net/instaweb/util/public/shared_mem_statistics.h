@@ -129,6 +129,7 @@ class SharedMemHistogram : public Histogram {
   int FindBucket(double value);
   void Init();
   void Reset();
+  void ClearInternal();  // expects mutex_ held, buffer_ != NULL
   const GoogleString name_;
   scoped_ptr<AbstractMutex> mutex_;
   // TODO(fangfei): implement a non-shared-mem histogram.
@@ -152,7 +153,7 @@ class SharedMemHistogram : public Histogram {
   };
   // Maximum number of buckets in Histogram.
   int max_buckets_;
-  HistogramBody *buffer_;
+  HistogramBody* buffer_;  // may be NULL if init failed.
   DISALLOW_COPY_AND_ASSIGN(SharedMemHistogram);
 };
 

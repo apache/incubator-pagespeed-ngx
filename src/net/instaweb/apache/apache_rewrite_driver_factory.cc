@@ -43,6 +43,7 @@
 #include "net/instaweb/util/public/hashed_referer_statistics.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/null_shared_mem.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
@@ -75,7 +76,11 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
 #endif
                            ),
       server_rec_(server),
+#ifdef linux
       shared_mem_runtime_(new PthreadSharedMem()),
+#else
+      shared_mem_runtime_(new NullSharedMem()),
+#endif
       shared_circular_buffer_(NULL),
       version_(version.data(), version.size()),
       statistics_frozen_(false),
@@ -248,10 +253,11 @@ void ApacheRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
         message_buffer_size_,
         filename_prefix().as_string(),
         hostname_identifier()));
-    shared_circular_buffer_->InitSegment(is_root, message_handler());
-    apache_message_handler_->set_buffer(shared_circular_buffer_.get());
-    apache_html_parse_message_handler_->set_buffer(
-        shared_circular_buffer_.get());
+    if (shared_circular_buffer_->InitSegment(is_root, message_handler())) {
+      apache_message_handler_->set_buffer(shared_circular_buffer_.get());
+      apache_html_parse_message_handler_->set_buffer(
+          shared_circular_buffer_.get());
+     }
   }
 }
 

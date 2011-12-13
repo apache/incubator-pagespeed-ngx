@@ -78,6 +78,7 @@ class HtmlNode {
   }
 
  private:
+  friend class HtmlLexer;
   friend class HtmlTestingPeer;
 
   // Note: setting the parent doesn't change the DOM -- it just updates

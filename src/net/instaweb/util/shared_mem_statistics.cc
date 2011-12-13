@@ -24,6 +24,7 @@
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -98,22 +99,21 @@ SharedMemHistogram::~SharedMemHistogram() {
 }
 
 void SharedMemHistogram::Init() {
-  if (mutex_.get() != NULL) {
-    ScopedMutex hold_lock(mutex_.get());
-    if (buffer_ == NULL) {
-      return;
-    }
-    buffer_->enable_negative_ = false;
-    buffer_->min_value_ = 0;
-    buffer_->max_value_ = kMaxValue;
-    buffer_->min_ = 0;
-    buffer_->max_ = 0;
-    buffer_->count_ = 0;
-    buffer_->sum_ = 0;
-    buffer_->sum_of_squares_ = 0;
-    for (int i = 0; i < max_buckets_; ++i) {
-      buffer_->values_[i] = 0;
-    }
+  if (buffer_ == NULL) {
+    return;
+  }
+
+  ScopedMutex hold_lock(mutex_.get());
+  buffer_->enable_negative_ = false;
+  buffer_->min_value_ = 0;
+  buffer_->max_value_ = kMaxValue;
+  buffer_->min_ = 0;
+  buffer_->max_ = 0;
+  buffer_->count_ = 0;
+  buffer_->sum_ = 0;
+  buffer_->sum_of_squares_ = 0;
+  for (int i = 0; i < max_buckets_; ++i) {
+    buffer_->values_[i] = 0;
   }
 }
 
@@ -124,16 +124,20 @@ void SharedMemHistogram::AttachTo(
   if (mutex_.get() == NULL) {
     message_handler->Message(
         kError, "Unable to attach to mutex for statistics histogram");
+    Reset();
+    return;
   }
   buffer_ = reinterpret_cast<HistogramBody*>(const_cast<char*>(
       segment->Base() + offset + segment->SharedMutexSize()));
 }
 
 void SharedMemHistogram::Reset() {
-  mutex_.reset();
+  mutex_.reset(new NullMutex);
+  buffer_ = NULL;
 }
 
 int SharedMemHistogram::FindBucket(double value) {
+  DCHECK(buffer_ != NULL);
   if (buffer_->enable_negative_) {
     if (value > 0) {
       // When value > 0 and bucket_->max_value_ = +Inf,
@@ -151,57 +155,64 @@ int SharedMemHistogram::FindBucket(double value) {
 }
 
 void SharedMemHistogram::Add(double value) {
-  if (mutex_.get() != NULL) {
-    ScopedMutex hold_lock(mutex_.get());
-    if (buffer_->enable_negative_) {
-      // If negative buckets is enabled, the minimum value allowed in Histogram
-      // is -buffer_->max_value_;
-      // The default min_value_ is 0, it's fine to add 0 to histogram.
-      // But the |value| should be smaller than max_value_.
-      // When |value| == max_value_, the return
-      // value of FindBuckets() is max_buckets, which is out of boundary.
-      if (value <= -buffer_->max_value_ ||
-          value >= buffer_->max_value_ ) {
-        return;
-      }
-    } else {
-      if (value < buffer_->min_value_ || value >= buffer_->max_value_) {
-        return;
-      }
-    }
-    int index = FindBucket(value);
-    if (index < 0 || index >= max_buckets_) {
-      LOG(ERROR) << "Invalid bucket index found for" << value;
+  if (buffer_ == NULL) {
+    return;
+  }
+  ScopedMutex hold_lock(mutex_.get());
+  if (buffer_->enable_negative_) {
+    // If negative buckets is enabled, the minimum value allowed in Histogram
+    // is -buffer_->max_value_;
+    // The default min_value_ is 0, it's fine to add 0 to histogram.
+    // But the |value| should be smaller than max_value_.
+    // When |value| == max_value_, the return
+    // value of FindBuckets() is max_buckets, which is out of boundary.
+    if (value <= -buffer_->max_value_ ||
+        value >= buffer_->max_value_ ) {
       return;
     }
-    buffer_->values_[index]++;
-    // Update actual min & max values;
-    if (buffer_->count_ == 0) {
-      buffer_->min_ = value;
-      buffer_->max_ = value;
-    } else if (value < buffer_->min_) {
-      buffer_->min_ = value;
-    } else if (value > buffer_->max_) {
-      buffer_->max_ = value;
+  } else {
+    if (value < buffer_->min_value_ || value >= buffer_->max_value_) {
+      return;
     }
-    buffer_->count_++;
-    buffer_->sum_ += value;
-    buffer_->sum_of_squares_ += value * value;
   }
+  int index = FindBucket(value);
+  if (index < 0 || index >= max_buckets_) {
+    LOG(ERROR) << "Invalid bucket index found for" << value;
+    return;
+  }
+  buffer_->values_[index]++;
+  // Update actual min & max values;
+  if (buffer_->count_ == 0) {
+    buffer_->min_ = value;
+    buffer_->max_ = value;
+  } else if (value < buffer_->min_) {
+    buffer_->min_ = value;
+  } else if (value > buffer_->max_) {
+    buffer_->max_ = value;
+  }
+  buffer_->count_++;
+  buffer_->sum_ += value;
+  buffer_->sum_of_squares_ += value * value;
 }
 
 void SharedMemHistogram::Clear() {
+  if (buffer_ == NULL) {
+    return;
+  }
+
+  ScopedMutex hold_lock(mutex_.get());
+  ClearInternal();
+}
+
+void SharedMemHistogram::ClearInternal() {
   // Throw away data.
-  if (mutex_.get() != NULL) {
-    ScopedMutex hold_lock(mutex_.get());
-    buffer_->min_ = 0;
-    buffer_->max_ = 0;
-    buffer_->count_ = 0;
-    buffer_->sum_ = 0;
-    buffer_->sum_of_squares_ = 0;
-    for (int i = 0; i < max_buckets_; ++i) {
-      buffer_->values_[i] = 0;
-    }
+  buffer_->min_ = 0;
+  buffer_->max_ = 0;
+  buffer_->count_ = 0;
+  buffer_->sum_ = 0;
+  buffer_->sum_of_squares_ = 0;
+  for (int i = 0; i < max_buckets_; ++i) {
+    buffer_->values_[i] = 0;
   }
 }
 
@@ -210,34 +221,39 @@ int SharedMemHistogram::MaxBuckets() {
 }
 
 void SharedMemHistogram::EnableNegativeBuckets() {
-  DCHECK_EQ(0, buffer_->min_value_) << "Cannot call EnableNegativeBuckets and"
-                                       "SetMinValue on the same histogram.";
-  if (mutex_.get() != NULL) {
-    ScopedMutex hold_lock(mutex_.get());
-    buffer_->enable_negative_ = true;
+  if (buffer_ == NULL) {
+    return;
   }
-  Clear();
+  DCHECK_EQ(0, buffer_->min_value_) << "Cannot call EnableNegativeBuckets and"
+                                        "SetMinValue on the same histogram.";
+
+  ScopedMutex hold_lock(mutex_.get());
+  buffer_->enable_negative_ = true;
+  ClearInternal();
 }
 
 void SharedMemHistogram::SetMinValue(double value) {
+  if (buffer_ == NULL) {
+    return;
+  }
   DCHECK_EQ(false, buffer_->enable_negative_) << "Cannot call"
       "EnableNegativeBuckets and SetMinValue on the same histogram.";
   DCHECK_LT(value, buffer_->max_value_) << "Lower-bound of a histogram "
       "should be smaller than its upper-bound.";
-  if (mutex_.get() != NULL) {
-    ScopedMutex hold_lock(mutex_.get());
-    buffer_->min_value_ = value;
-  }
-  Clear();
+
+  ScopedMutex hold_lock(mutex_.get());
+  buffer_->min_value_ = value;
+  ClearInternal();
 }
 
 void SharedMemHistogram::SetMaxValue(double value) {
-  DCHECK_LT(0, value) << "Upper-bound of a histogram should be larger than 0.";
-  if (mutex_.get() != NULL) {
-    ScopedMutex hold_lock(mutex_.get());
-    buffer_->max_value_ = value;
+  if (buffer_ == NULL) {
+    return;
   }
-  Clear();
+  DCHECK_LT(0, value) << "Upper-bound of a histogram should be larger than 0.";
+  ScopedMutex hold_lock(mutex_.get());
+  buffer_->max_value_ = value;
+  ClearInternal();
 }
 
 void SharedMemHistogram::SetMaxBuckets(int i) {
@@ -246,6 +262,9 @@ void SharedMemHistogram::SetMaxBuckets(int i) {
 }
 
 double SharedMemHistogram::AverageInternal() {
+  if (buffer_ == NULL) {
+    return -1.0;
+  }
   if (buffer_->count_ == 0) return 0.0;
   return buffer_->sum_ / buffer_->count_;
 }
@@ -254,6 +273,9 @@ double SharedMemHistogram::AverageInternal() {
 // e.g. Percentile(50) is the median. Percentile(99) is the value larger than
 // 99% of the data.
 double SharedMemHistogram::PercentileInternal(const double perc) {
+  if (buffer_ == NULL) {
+    return -1.0;
+  }
   if (buffer_->count_ == 0 || perc < 0) return 0.0;
   // Floor of count_below is the number of values below the percentile.
   // We are indeed looking for the next value in histogram.
@@ -284,6 +306,9 @@ double SharedMemHistogram::PercentileInternal(const double perc) {
 }
 
 double SharedMemHistogram::StandardDeviationInternal() {
+  if (buffer_ == NULL) {
+    return -1.0;
+  }
   if (buffer_->count_ == 0) return 0.0;
   const double v = (buffer_->sum_of_squares_ * buffer_->count_ -
                    buffer_->sum_ * buffer_->sum_) /
@@ -295,18 +320,30 @@ double SharedMemHistogram::StandardDeviationInternal() {
 }
 
 double SharedMemHistogram::CountInternal() {
+  if (buffer_ == NULL) {
+    return -1.0;
+  }
   return buffer_->count_;
 }
 
 double SharedMemHistogram::MaximumInternal() {
+  if (buffer_ == NULL) {
+    return -1.0;
+  }
   return buffer_->max_;
 }
 
 double SharedMemHistogram::MinimumInternal() {
+  if (buffer_ == NULL) {
+    return -1.0;
+  }
   return buffer_->min_;
 }
 
 double SharedMemHistogram::BucketStart(int index) {
+  if (buffer_ == NULL) {
+    return -1.0;
+  }
   DCHECK(index >= 0 && index <= max_buckets_) <<
       "Queried index is out of boundary.";
   if (index == max_buckets_) {
@@ -324,13 +361,20 @@ double SharedMemHistogram::BucketStart(int index) {
 }
 
 double SharedMemHistogram::BucketCount(int index) {
+  if (buffer_ == NULL) {
+    return -1.0;
+  }
+
   if (index < 0 || index >= max_buckets_) {
-    return -1;
+    return -1.0;
   }
   return buffer_->values_[index];
 }
 
 double SharedMemHistogram::BucketWidth() {
+  if (buffer_ == NULL) {
+    return -1.0;
+  }
   double max = buffer_->max_value_;
   double min = buffer_->min_value_;
   double bucket_width = 0;
@@ -436,6 +480,12 @@ void SharedMemStatistics::Init(bool parent,
     segment_.reset(
         shm_runtime_->AttachToSegment(SegmentName(), total, message_handler));
     ok = (segment_.get() != NULL);
+  }
+
+  if (!ok) {
+    message_handler->Message(
+        kWarning, "Problem during shared memory setup; "
+                  "statistics functionality unavailable.");
   }
 
   // Now make the variable objects actually point to the right things.

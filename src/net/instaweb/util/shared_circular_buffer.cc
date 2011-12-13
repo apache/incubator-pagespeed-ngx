@@ -66,8 +66,11 @@ bool SharedCircularBuffer::InitSegment(bool parent,
     // In root process -> initialize the shared memory.
     segment_.reset(
         shm_runtime_->CreateSegment(SegmentName(), total, handler));
+    if (segment_.get() == NULL) {
+      return false;
+    }
     // Initialize mutex.
-    if (segment_.get() != NULL && !InitMutex(handler)) {
+    if (!InitMutex(handler)) {
       segment_.reset(NULL);
       shm_runtime_->DestroySegment(SegmentName(), handler);
       return false;

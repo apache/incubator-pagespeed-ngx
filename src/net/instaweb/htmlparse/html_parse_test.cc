@@ -389,7 +389,7 @@ class AnnotatingHtmlFilter : public EmptyHtmlFilter {
   }
   virtual const char* Name() const { return "AnnotatingHtmlFilter"; }
 
-  GoogleString buffer() const { return buffer_; }
+  const GoogleString& buffer() const { return buffer_; }
   void Clear() { buffer_.clear(); }
 
  private:
@@ -398,10 +398,20 @@ class AnnotatingHtmlFilter : public EmptyHtmlFilter {
 
 }  // namespace
 
-TEST_F(HtmlParseTestNoBody, UnbalancedMarkup) {
-  AnnotatingHtmlFilter annotation;
-  html_parse_.AddFilter(&annotation);
+class HtmlAnnotationTest : public HtmlParseTestNoBody {
+ protected:
+  virtual void SetUp() {
+    HtmlParseTestNoBody::SetUp();
+    html_parse_.AddFilter(&annotation_);
+  }
 
+  const GoogleString& annotation() { return annotation_.buffer(); }
+
+ private:
+  AnnotatingHtmlFilter annotation_;
+};
+
+TEST_F(HtmlAnnotationTest, UnbalancedMarkup) {
   // The second 'tr' closes the first one, and our HtmlWriter will not
   // implicitly close 'tr' because IsImplicitlyClosedTag is false, so
   // the markup is changed to add the missing tr.
@@ -412,12 +422,10 @@ TEST_F(HtmlParseTestNoBody, UnbalancedMarkup) {
   // what's going on in the parse.
   EXPECT_EQ(" +html '\n' +font -font(a) +tr +i +font -font(u) -i(e) '</font>'"
             " -tr(a) +tr '</font>\n' -tr(u) -html(e)",
-            annotation.buffer());
+            annotation());
 }
 
-TEST_F(HtmlParseTestNoBody, StrayCloseTr) {
-  AnnotatingHtmlFilter annotation;
-  html_parse_.AddFilter(&annotation);
+TEST_F(HtmlAnnotationTest, StrayCloseTr) {
   ValidateNoChanges("stray_tr",
                     "<table><tr><table></tr></table></tr></table>");
 
@@ -425,15 +433,13 @@ TEST_F(HtmlParseTestNoBody, StrayCloseTr) {
   // what's going on in the parse.
   EXPECT_EQ(" +html '\n' +table +tr +table '</tr>' -table(e) -tr(e) -table(e) "
             "'\n' -html(e)",
-            annotation.buffer());
+            annotation());
 }
 
-TEST_F(HtmlParseTestNoBody, IClosedByOpenTr) {
-  AnnotatingHtmlFilter annotation;
-  html_parse_.AddFilter(&annotation);
+TEST_F(HtmlAnnotationTest, IClosedByOpenTr) {
   ValidateNoChanges("unclosed_i_tag", "<tr><i>a<tr>b");
   EXPECT_EQ(" +html '\n' +tr +i 'a' -i(a) -tr(a) +tr 'b\n' -tr(u) -html(e)",
-            annotation.buffer());
+            annotation());
 
   // TODO(jmarantz): morlovich points out that this is nowhere near
   // how a browser will handle this stuff... For a nighmarish testcase, try:
@@ -458,18 +464,102 @@ TEST_F(HtmlParseTestNoBody, IClosedByOpenTr) {
   // http://www.w3.org/TR/html5/the-end.html#misnested-tags:-b-i-b-i
 }
 
-TEST_F(HtmlParseTestNoBody, INotClosedByOpenTable) {
-  AnnotatingHtmlFilter annotation;
-  html_parse_.AddFilter(&annotation);
+TEST_F(HtmlAnnotationTest, INotClosedByOpenTableExplicit) {
   ValidateNoChanges("explicit_close_tr", "<i>a<table><tr></tr></table>b");
   EXPECT_EQ(
       " +html '\n' +i 'a' +table +tr -tr(e) -table(e) 'b\n' -i(u) -html(e)",
-      annotation.buffer());
-  annotation.Clear();
+      annotation());
+}
+
+TEST_F(HtmlAnnotationTest, INotClosedByOpenTableImplicit) {
   ValidateNoChanges("implicit_close_tr", "<i>a<table><tr></table>b");
   EXPECT_EQ(
       " +html '\n' +i 'a' +table +tr -tr(u) -table(e) 'b\n' -i(u) -html(e)",
-      annotation.buffer());
+      annotation());
+}
+
+TEST_F(HtmlAnnotationTest, AClosedByBInLi) {
+  ValidateNoChanges("a_closed_by_b", "<li><a href='x'></b>");
+  EXPECT_EQ(" +html '\n' +li +a '</b>\n' -a(u) -li(u) -html(e)", annotation());
+}
+
+TEST_F(HtmlAnnotationTest, MiscCornerCases) {
+  // TODO(jmarantz): handle/test a variety of corner cases:
+  //
+  // 1. This is <B>bold, <I>bold italic, </b>italic, </i>normal text
+  // 2. <P>This is a <A>link<P>More
+  // 3. <P><FONT>a<P>b</FONT>
+  // 7. <img title=="><script>alert('foo')</script>">
+  // 8. < HTML> < TBODY> < COL SPAN=999999999>
+  // 9. <DIV STYLE="top:214px; left:139px; position:absolute; font-size:26px;">
+  //    <NOBR><SPAN STYLE="font-family:"Wingdings 2";"></SPAN></NOBR></DIV>
+  // 10. <a href="http://www.cnn.com/"' title="cnn.com">cnn</a>
+  // 11. do <![if !supportLists]>not<![endif]> lose this text
+  // 12. <table><tr><td>row1<tr><td>row2</td>
+  // 13. <table><tr><td>foo<td>bar<tr><td>baz<td>boo</table>
+  // 14. <p>The quick <strong>brown fox</strong></p>\njumped over the\n
+  //     <p>lazy</strong> dog.</p>
+  // 15. <p> paragraph <h1> heading </h1>
+  // 16. <a href="h">1<a>2</a></a>
+  ValidateNoChanges("quote_balance", "<img title=\"><script>alert('foo')"
+                    "</script>\">");
+  EXPECT_EQ(" +html '\n' +img -img(i) '\n' -html(e)", annotation());
+}
+
+TEST_F(HtmlAnnotationTest, DoubleEquals) {
+  // Note: we have turned "==" into "=", but this masks the real problem, that
+  // we don't parse the attr value correctly.  This is more evident in the
+  // commented-out EXPECT_EQ for the annotation below.
+  ValidateExpected("double_equals",
+                   "<img title==\"><script>alert('foo')</script>\">",
+                   "<img title= \"><script>alert('foo')</script>\">");
+
+  // TODO(jmarantz): Fix this testcase.  The double-equals in the attr
+  // should probably be treated as a single-equals.  As it stands the
+  // lexer seems to get into an unexpected state and we treat the script,
+  // which looks like it should be an attr value, as an actual tag.
+  //
+  // EXPECT_EQ(" +html '\n' +img -img '\n' -html(e)", annotation());
+}
+
+TEST_F(HtmlAnnotationTest, TableForm) {
+  ValidateNoChanges("table_form", "<table><form><input></table><input></form>");
+  EXPECT_EQ(" +html '\n' +table +form +input -input(i) -form(u) -table(e)"
+            " +input -input(i) '</form>\n' -html(e)",
+            annotation());
+}
+
+TEST_F(HtmlAnnotationTest, ComplexQuotedAttribute) {
+  ValidateNoChanges("complex_quoted_attr",
+                    "<div x='\\'><img onload=alert(42)"
+                    "src=http://json.org/img/json160.gif>'></div>");
+  EXPECT_EQ(" +html '\n' +div +img -img(i) ''>' -div(e) '\n' -html(e)",
+            annotation());
+}
+
+TEST_F(HtmlAnnotationTest, DivNbsp) {
+  ValidateNoChanges("div_nbsp",
+                    "<div&nbsp &nbsp style=\\-\\mo\\z\\-b\\i\\nd\\in\\g:\\url("
+                    "//business\\i\\nfo.co.uk\\/labs\\/xbl\\/xbl\\.xml\\#xss)"
+                    ">");
+  EXPECT_EQ(" +html '\n<div&nbsp &nbsp style=\\-\\mo\\z\\-b\\i\\nd\\in\\g:\\"
+            "url(//business\\i\\nfo.co.uk\\/labs\\/xbl\\/xbl\\.xml\\#xss)>\n' "
+            "-html(e)",
+            annotation());
+}
+
+TEST_F(HtmlAnnotationTest, ExtraQuote) {
+  ValidateExpected(
+      "extra_quote",
+      "<a href=\"http://www.cnn.com/\"' title=\"cnn.com\">cnn</a>",
+      "<a href=\"http://www.cnn.com/\" ' title=\"cnn.com\">cnn</a>");
+}
+
+TEST_F(HtmlAnnotationTest, TrNesting) {
+  ValidateNoChanges("nesting", "<tr><td><tr a=b><td c=d></td></tr>");
+  EXPECT_EQ(" +html '\n' +tr +td -td(a) -tr(a) +tr +td -td(e) -tr(e) '\n' "
+            "-html(e)",
+            annotation());
 }
 
 TEST_F(HtmlParseTest, MakeName) {

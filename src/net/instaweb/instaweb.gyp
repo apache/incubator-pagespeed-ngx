@@ -216,6 +216,7 @@
         'util/named_lock_manager.cc',
         'util/null_message_handler.cc',
         'util/null_mutex.cc',
+        'util/null_shared_mem.cc',
         'util/null_statistics.cc',
         'util/null_writer.cc',
         'util/queued_alarm.cc',
@@ -272,6 +273,15 @@
         'util/pthread_rw_lock.cc',
         'util/pthread_shared_mem.cc',
         'util/pthread_thread_system.cc',
+      ],
+      'conditions': [
+          # Unfortunately most pthreads implementations do not support
+          # inter-process mutexes, which this requires.
+          ['OS != "linux"', {
+            'sources!' : [
+              'util/pthread_shared_mem.cc',
+            ],
+          }]
       ],
       'include_dirs': [
         '<(instaweb_root)',

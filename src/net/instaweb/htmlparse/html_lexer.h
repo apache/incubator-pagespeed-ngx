@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_HTML_LEXER_H_
 #define NET_INSTAWEB_HTMLPARSE_HTML_LEXER_H_
 
+#include <map>
 #include <vector>
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
@@ -112,16 +113,13 @@ class HtmlLexer {
   // name.
   void MakeElement();
 
-  // Makes an element from the passed-in tag name.
-  void MakeElement(const HtmlName& name);
-
   void MakeAttribute(bool has_value);
   void FinishAttribute(char c, bool has_value, bool brief_close);
 
   void EmitCdata();
   void EmitComment();
   void EmitLiteral();
-  void EmitTagOpen(bool allow_implicit_close);
+  void EmitTagOpen(bool allow_implicit_close);  // expects element_ != NULL.
   void EmitTagClose(HtmlElement::CloseStyle close_style);
   void EmitTagBriefClose();
   void EmitDirective();
