@@ -42,25 +42,44 @@ class WriteThroughHTTPCache : public HTTPCache {
 
   // Takes ownership of both caches passed in.
   WriteThroughHTTPCache(CacheInterface* cache1, CacheInterface* cache2,
-                        Timer* timer, Hasher* hasher, Statistics* statistics)
-      : HTTPCache(NULL, timer, hasher, statistics),
-        cache1_(new HTTPCache(cache1, timer, hasher, statistics)),
-        cache2_(new HTTPCache(cache2, timer, hasher, statistics)),
-        cache1_size_limit_(kUnlimited) { }
+                        Timer* timer, Hasher* hasher, Statistics* statistics);
+
   virtual ~WriteThroughHTTPCache();
 
+  // Implements HTTPCache::SetIgnoreFailurePuts().
   virtual void SetIgnoreFailurePuts();
 
+  // Implements HTTPCache::Find().
   virtual void Find(const GoogleString& key, MessageHandler* handler,
                     Callback* callback);
 
+  // Implements HTTPCache::Find().
   virtual HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
                                      ResponseHeaders* headers,
                                      MessageHandler* handler);
 
+  // Implements HTTPCache::Query().
   virtual CacheInterface::KeyState Query(const GoogleString& key);
 
+  // Implements HTTPCache::Delete().
   virtual void Delete(const GoogleString& key);
+
+  // Implements HTTPCache::set_force_caching().
+  virtual void set_force_caching(bool force);
+
+  // Implements HTTPCache::set_remember_not_cacheable_ttl_seconds().
+  virtual void set_remember_not_cacheable_ttl_seconds(int64 value);
+
+  // Implements HTTPCache::set_remember_fetch_failed_ttl_seconds().
+  virtual void set_remember_fetch_failed_ttl_seconds(int64 value);
+
+  // Implements HTTPCache::RememberNotCacheable().
+  virtual void RememberNotCacheable(const GoogleString& key,
+                                    MessageHandler * handler);
+
+  // Implements HTTPCache::RememberFetchFailed().
+  virtual void RememberFetchFailed(const GoogleString& key,
+                                   MessageHandler * handler);
 
   // By default, all data goes into both cache1 and cache2.  But
   // if you only want to put small items in cache1, you can set the
@@ -68,27 +87,13 @@ class WriteThroughHTTPCache : public HTTPCache {
   // torward the size.
   void set_cache1_limit(size_t limit) { cache1_size_limit_ = limit; }
 
-  virtual void set_force_caching(bool force);
-
-  virtual void set_remember_not_cacheable_ttl_seconds(int64 value);
-
-  virtual void set_remember_fetch_failed_ttl_seconds(int64 value);
-
-  virtual void RememberNotCacheable(const GoogleString& key,
-                                    MessageHandler * handler);
-
-  virtual void RememberFetchFailed(const GoogleString& key,
-                                   MessageHandler * handler);
-
  protected:
+  // Implements HTTPCache::PutInternal().
   virtual void PutInternal(const GoogleString& key, int64 start_us,
                            HTTPValue* value);
 
  private:
-  class WriteThroughHTTPCallback;
-  friend class WriteThroughHTTPCallback;
-
-  void PutInCache1(const GoogleString& key, HTTPValue* value);
+  void PutInCache1(GoogleString key, HTTPValue* value);
 
   scoped_ptr<HTTPCache> cache1_;
   scoped_ptr<HTTPCache> cache2_;

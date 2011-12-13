@@ -105,7 +105,8 @@ class MemOutputFile : public FileSystem::OutputFile {
 };
 
 MemFileSystem::MemFileSystem(ThreadSystem* threads, Timer* timer)
-    : mutex_(threads->NewMutex()),
+    : lock_map_mutex_(threads->NewMutex()),
+      all_else_mutex_(threads->NewMutex()),
       enabled_(true),
       timer_(timer),
       mock_timer_(NULL),
@@ -139,10 +140,12 @@ void MemFileSystem::UpdateMtime(const StringPiece& path) {
 }
 
 void MemFileSystem::Clear() {
+  ScopedMutex lock(all_else_mutex_.get());
   string_map_.clear();
 }
 
 BoolOrError MemFileSystem::Exists(const char* path, MessageHandler* handler) {
+  ScopedMutex lock(all_else_mutex_.get());
   StringStringMap::const_iterator iter = string_map_.find(path);
   return BoolOrError(iter != string_map_.end());
 }
@@ -154,6 +157,7 @@ BoolOrError MemFileSystem::IsDir(const char* path, MessageHandler* handler) {
 
 bool MemFileSystem::MakeDir(const char* path, MessageHandler* handler) {
   // We store directories as empty files with trailing slashes.
+  ScopedMutex lock(all_else_mutex_.get());
   GoogleString path_string = path;
   EnsureEndsInSlash(&path_string);
   string_map_[path_string] = "";
@@ -164,6 +168,8 @@ bool MemFileSystem::MakeDir(const char* path, MessageHandler* handler) {
 
 FileSystem::InputFile* MemFileSystem::OpenInputFile(
     const char* filename, MessageHandler* message_handler) {
+  ScopedMutex lock(all_else_mutex_.get());
+
   ++num_input_file_opens_;
   if (!enabled_) {
     return NULL;
@@ -182,6 +188,7 @@ FileSystem::InputFile* MemFileSystem::OpenInputFile(
 
 FileSystem::OutputFile* MemFileSystem::OpenOutputFileHelper(
     const char* filename, MessageHandler* message_handler) {
+  ScopedMutex lock(all_else_mutex_.get());
   UpdateAtime(filename);
   UpdateMtime(filename);
   ++num_output_file_opens_;
@@ -190,6 +197,7 @@ FileSystem::OutputFile* MemFileSystem::OpenOutputFileHelper(
 
 FileSystem::OutputFile* MemFileSystem::OpenTempFileHelper(
     const StringPiece& prefix, MessageHandler* message_handler) {
+  ScopedMutex lock(all_else_mutex_.get());
   GoogleString filename = StringPrintf("tmpfile%d", temp_file_index_++);
   UpdateAtime(filename);
   UpdateMtime(filename);
@@ -207,6 +215,7 @@ bool MemFileSystem::RecursivelyMakeDir(const StringPiece& full_path_const,
 
 bool MemFileSystem::RemoveFile(const char* filename,
                                MessageHandler* handler) {
+  ScopedMutex lock(all_else_mutex_.get());
   atime_map_.erase(filename);
   return (string_map_.erase(filename) == 1);
 }
@@ -214,6 +223,7 @@ bool MemFileSystem::RemoveFile(const char* filename,
 bool MemFileSystem::RenameFileHelper(const char* old_file,
                                      const char* new_file,
                                      MessageHandler* handler) {
+  ScopedMutex lock(all_else_mutex_.get());
   UpdateAtime(new_file);
   if (strcmp(old_file, new_file) == 0) {
     handler->Error(old_file, 0, "Cannot move a file to itself");
@@ -233,6 +243,7 @@ bool MemFileSystem::RenameFileHelper(const char* old_file,
 
 bool MemFileSystem::ListContents(const StringPiece& dir, StringVector* files,
                                  MessageHandler* handler) {
+  ScopedMutex lock(all_else_mutex_.get());
   GoogleString prefix = dir.as_string();
   EnsureEndsInSlash(&prefix);
   const size_t prefix_length = prefix.size();
@@ -258,12 +269,14 @@ bool MemFileSystem::ListContents(const StringPiece& dir, StringVector* files,
 
 bool MemFileSystem::Atime(const StringPiece& path, int64* timestamp_sec,
                           MessageHandler* handler) {
+  ScopedMutex lock(all_else_mutex_.get());
   *timestamp_sec = atime_map_[path.as_string()];
   return true;
 }
 
 bool MemFileSystem::Mtime(const StringPiece& path, int64* timestamp_sec,
                           MessageHandler* handler) {
+  ScopedMutex lock(all_else_mutex_.get());
   ++num_input_file_stats_;
   *timestamp_sec = mtime_map_[path.as_string()];
   return true;
@@ -271,10 +284,11 @@ bool MemFileSystem::Mtime(const StringPiece& path, int64* timestamp_sec,
 
 bool MemFileSystem::Size(const StringPiece& path, int64* size,
                          MessageHandler* handler) {
+  ScopedMutex lock(all_else_mutex_.get());
   const GoogleString path_string = path.as_string();
-  const char* path_str = path_string.c_str();
-  if (Exists(path_str, handler).is_true()) {
-    *size = string_map_[path_string].size();
+  StringStringMap::const_iterator iter = string_map_.find(path_string);
+  if (iter != string_map_.end()) {
+    *size = iter->second.size();
     return true;
   } else {
     return false;
@@ -283,7 +297,7 @@ bool MemFileSystem::Size(const StringPiece& path, int64* size,
 
 BoolOrError MemFileSystem::TryLock(const StringPiece& lock_name,
                                    MessageHandler* handler) {
-  ScopedMutex lock(mutex_.get());
+  ScopedMutex lock(lock_map_mutex_.get());
 
   if (lock_map_.count(lock_name.as_string()) != 0) {
     return BoolOrError(false);
@@ -296,7 +310,7 @@ BoolOrError MemFileSystem::TryLock(const StringPiece& lock_name,
 BoolOrError MemFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
                                               int64 timeout_ms,
                                               MessageHandler* handler) {
-  ScopedMutex lock(mutex_.get());
+  ScopedMutex lock(lock_map_mutex_.get());
 
   GoogleString name = lock_name.as_string();
   int64 now = timer_->NowMs();
@@ -311,7 +325,7 @@ BoolOrError MemFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
 
 bool MemFileSystem::Unlock(const StringPiece& lock_name,
                            MessageHandler* handler) {
-  ScopedMutex lock(mutex_.get());
+  ScopedMutex lock(lock_map_mutex_.get());
   return (lock_map_.erase(lock_name.as_string()) == 1);
 }
 

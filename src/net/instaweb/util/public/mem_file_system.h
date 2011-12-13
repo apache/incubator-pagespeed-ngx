@@ -119,10 +119,12 @@ class MemFileSystem : public FileSystem {
   int num_temp_file_opens() const { return num_temp_file_opens_; }
 
  private:
+  // all_else_mutex_ should be held when calling these.
   inline void UpdateAtime(const StringPiece& path);
   inline void UpdateMtime(const StringPiece& path);
 
-  scoped_ptr<AbstractMutex> mutex_;
+  scoped_ptr<AbstractMutex> lock_map_mutex_;  // controls access to lock_map_
+  scoped_ptr<AbstractMutex> all_else_mutex_;  // controls access to all else.
 
   bool enabled_;  // When disabled, OpenInputFile returns NULL.
   StringStringMap string_map_;

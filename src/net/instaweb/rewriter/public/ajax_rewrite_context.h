@@ -19,7 +19,9 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_AJAX_REWRITE_CONTEXT_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_AJAX_REWRITE_CONTEXT_H_
 
-#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -36,14 +38,19 @@ namespace net_instaweb {
 class MessageHandler;
 class ResponseHeaders;
 class RewriteDriver;
+class RewriteFilter;
 
 // A resource-slot created for an ajax rewrite. This has an empty render method.
+// Note that this class is usually used as a RefCountedPtr and gets deleted when
+// there are no references remaining.
 class AjaxRewriteResourceSlot : public ResourceSlot {
  public:
-  explicit AjaxRewriteResourceSlot(const ResourcePtr& resource)
-      : ResourceSlot(resource) {}
+  explicit AjaxRewriteResourceSlot(const ResourcePtr& resource);
 
+  // Implements ResourceSlot::Render().
   virtual void Render();
+
+  // Implements ResourceSlot::LocationString().
   virtual GoogleString LocationString() { return "ajax"; }
 
  protected:
@@ -56,39 +63,38 @@ class AjaxRewriteResourceSlot : public ResourceSlot {
 // Context that is used for an ajax rewrite.
 class AjaxRewriteContext : public SingleRewriteContext {
  public:
-  AjaxRewriteContext(RewriteDriver* driver, const GoogleString& url)
-      : SingleRewriteContext(driver, NULL, NULL),
-        driver_(driver),
-        url_(url),
-        is_rewritten_(true),
-        etag_prefix_(StrCat(HTTPCache::kEtagPrefix, id(), "-")) {
-    set_notify_driver_on_fetch_done(true);
-  }
+  AjaxRewriteContext(RewriteDriver* driver, const GoogleString& url);
 
   virtual ~AjaxRewriteContext();
 
+  // Implements SingleRewriteContext::RewriteSingle().
   virtual void RewriteSingle(const ResourcePtr& input,
                              const OutputResourcePtr& output);
+  // Implements RewriteContext::id().
   virtual const char* id() const { return RewriteOptions::kAjaxRewriteId; }
+  // Implements RewriteContext::kind().
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
-
+  // Implements RewriteContext::DecodeFetchUrls().
   virtual bool DecodeFetchUrls(const OutputResourcePtr& output_resource,
                                MessageHandler* message_handler,
                                GoogleUrlStarVector* url_vector);
-
+  // Implements RewriteContext::StartFetchReconstruction().
   virtual void StartFetchReconstruction();
-
+  // Implements RewriteContext::CacheKeySuffix().
   virtual GoogleString CacheKeySuffix() const;
 
  private:
   friend class RecordingFetch;
-  class RecordingFetch;
-
+  // Implements RewriteContext::Harvest().
   virtual void Harvest();
   void StartFetchReconstructionParent();
+  // Implements RewriteContext::FixFetchFallbackHeaders().
   virtual void FixFetchFallbackHeaders(ResponseHeaders* headers);
+  // Implements RewriteContext::FetchTryFallback().
   virtual void FetchTryFallback(const GoogleString& url,
                                 const StringPiece& hash);
+
+  RewriteFilter* GetRewriteFilter(const ContentType::Type& type);
 
   RewriteDriver* driver_;
   GoogleString url_;
@@ -102,6 +108,39 @@ class AjaxRewriteContext : public SingleRewriteContext {
   const GoogleString etag_prefix_;
 
   DISALLOW_COPY_AND_ASSIGN(AjaxRewriteContext);
+};
+
+// Records the fetch into the provided resource and passes through events to the
+// underlying writer, response headers and callback.
+class RecordingFetch : public SharedAsyncFetch {
+ public:
+  RecordingFetch(AsyncFetch* async_fetch,
+                 const ResourcePtr& resource,
+                 AjaxRewriteContext* context,
+                 MessageHandler* handler);
+
+  virtual ~RecordingFetch();
+
+  // Implements SharedAsyncFetch::HandleHeadersComplete().
+  virtual void HandleHeadersComplete();
+  // Implements SharedAsyncFetch::HandleWrite().
+  virtual bool HandleWrite(const StringPiece& content, MessageHandler* handler);
+  // Implements SharedAsyncFetch::HandleFlush().
+  virtual bool HandleFlush(MessageHandler* handler);
+  // Implements SharedAsyncFetch::HandleDone().
+  virtual void HandleDone(bool success);
+
+ private:
+  bool CanAjaxRewrite();
+
+  MessageHandler* handler_;
+  ResourcePtr resource_;
+  AjaxRewriteContext* context_;
+  bool can_ajax_rewrite_;
+
+  HTTPValue cache_value_;
+
+  DISALLOW_COPY_AND_ASSIGN(RecordingFetch);
 };
 
 }  // namespace net_instaweb

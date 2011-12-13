@@ -22,7 +22,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -44,15 +43,94 @@ namespace net_instaweb {
 
 class MessageHandler;
 
-AjaxRewriteResourceSlot::~AjaxRewriteResourceSlot() {
-}
+AjaxRewriteResourceSlot::AjaxRewriteResourceSlot(const ResourcePtr& resource)
+    : ResourceSlot(resource) {}
+
+AjaxRewriteResourceSlot::~AjaxRewriteResourceSlot() {}
 
 void AjaxRewriteResourceSlot::Render() {
   // Do nothing.
 }
 
-AjaxRewriteContext::~AjaxRewriteContext() {
+RecordingFetch::RecordingFetch(AsyncFetch* async_fetch,
+                               const ResourcePtr& resource,
+                               AjaxRewriteContext* context,
+                               MessageHandler* handler)
+    : SharedAsyncFetch(async_fetch),
+      handler_(handler),
+      resource_(resource),
+      context_(context),
+      can_ajax_rewrite_(false) {}
+
+RecordingFetch::~RecordingFetch() {}
+
+void RecordingFetch::HandleHeadersComplete() {
+  can_ajax_rewrite_ = CanAjaxRewrite();
+  if (can_ajax_rewrite_) {
+    cache_value_.SetHeaders(response_headers());
+  } else {
+    // It's not worth trying to rewrite any more. This cleans up the context
+    // and frees the driver. Leaving this context around causes problems in
+    // the html flow in particular.
+    context_->driver_->FetchComplete();
+  }
+  base_fetch()->HeadersComplete();
 }
+
+bool RecordingFetch::HandleWrite(const StringPiece& content,
+                                 MessageHandler* handler) {
+  bool result = base_fetch()->Write(content, handler);
+  if (can_ajax_rewrite_) {
+    result &= cache_value_.Write(content, handler);
+  }
+  return result;
+}
+
+bool RecordingFetch::HandleFlush(MessageHandler* handler) {
+  return base_fetch()->Flush(handler);
+}
+
+void RecordingFetch::HandleDone(bool success) {
+  base_fetch()->Done(success);
+
+  if (can_ajax_rewrite_) {
+    resource_->Link(&cache_value_, handler_);
+    context_->DetachFetch();
+    context_->StartFetchReconstructionParent();
+    context_->driver_->FetchComplete();
+  }
+  delete this;
+}
+
+bool RecordingFetch::CanAjaxRewrite() {
+  const ContentType* type = response_headers()->DetermineContentType();
+  response_headers()->ComputeCaching();
+  if (type == NULL) {
+    return false;
+  }
+  if (type->type() == ContentType::kCss ||
+      type->type() == ContentType::kJavascript ||
+      type->type() == ContentType::kPng ||
+      type->type() == ContentType::kJpeg) {
+    if (!context_->driver_->resource_manager()->http_cache()->IsAlreadyExpired(
+        *response_headers())) {
+      return true;
+    }
+  }
+  return false;
+}
+
+AjaxRewriteContext::AjaxRewriteContext(RewriteDriver* driver,
+                                       const GoogleString& url)
+    : SingleRewriteContext(driver, NULL, NULL),
+      driver_(driver),
+      url_(url),
+      is_rewritten_(true),
+      etag_prefix_(StrCat(HTTPCache::kEtagPrefix, id(), "-")) {
+  set_notify_driver_on_fetch_done(true);
+}
+
+AjaxRewriteContext::~AjaxRewriteContext() {}
 
 void AjaxRewriteContext::Harvest() {
   if (num_nested() == 1) {
@@ -117,114 +195,46 @@ void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
   headers->SetCacheControlMaxAge(cache_ttl_ms);
 }
 
-// Records the fetch into the provided resource and passes through events to the
-// underlying writer, response headers and callback.
-class AjaxRewriteContext::RecordingFetch : public SharedAsyncFetch {
- public:
-  RecordingFetch(AsyncFetch* async_fetch,
-                 const ResourcePtr& resource,
-                 AjaxRewriteContext* context,
-                 MessageHandler* handler)
-      : SharedAsyncFetch(async_fetch),
-        handler_(handler),
-        resource_(resource),
-        context_(context),
-        can_ajax_rewrite_(false) {
+RewriteFilter* AjaxRewriteContext::GetRewriteFilter(
+    const ContentType::Type& type) {
+  const RewriteOptions* options = driver_->options();
+  if (type == ContentType::kCss &&
+      options->Enabled(RewriteOptions::kRewriteCss)) {
+    return driver_->FindFilter(RewriteOptions::kCssFilterId);
   }
-
-  virtual ~RecordingFetch() {}
-
-  virtual void HandleHeadersComplete() {
-    can_ajax_rewrite_ = CanAjaxRewrite();
-    if (can_ajax_rewrite_) {
-      cache_value_.SetHeaders(response_headers());
-    } else {
-      // It's not worth trying to rewrite any more. This cleans up the context
-      // and frees the driver. Leaving this context around causes problems in
-      // the html flow in particular.
-      context_->driver_->FetchComplete();
-    }
-    base_fetch()->HeadersComplete();
+  if (type == ContentType::kJavascript &&
+      options->Enabled(RewriteOptions::kRewriteJavascript)) {
+    return driver_->FindFilter(RewriteOptions::kJavascriptMinId);
   }
-
-  virtual bool HandleWrite(const StringPiece& content,
-                           MessageHandler* handler) {
-    bool ret = true;
-    ret &= base_fetch()->Write(content, handler);
-    if (can_ajax_rewrite_) {
-      ret &= cache_value_.Write(content, handler);
-    }
-    return ret;
+  if ((type == ContentType::kPng || type == ContentType::kJpeg) &&
+      options->Enabled(RewriteOptions::kRecompressImages) &&
+      !driver_->ShouldNotRewriteImages()) {
+    // TODO(nikhilmadan): This converts one image format to another. We
+    // shouldn't do inter-conversion since we can't change the file extension.
+    return driver_->FindFilter(RewriteOptions::kImageCompressionId);
   }
-
-  virtual bool HandleFlush(MessageHandler* handler) {
-    return base_fetch()->Flush(handler);
-  }
-
-  virtual void HandleDone(bool success) {
-    base_fetch()->Done(success);
-
-    if (can_ajax_rewrite_) {
-      resource_->Link(&cache_value_, handler_);
-      context_->DetachFetch();
-      context_->StartFetchReconstructionParent();
-      context_->driver_->FetchComplete();
-    }
-    delete this;
-  }
-
- private:
-  bool CanAjaxRewrite() {
-    ResponseHeaders* headers = response_headers();
-    const ContentType* type = headers->DetermineContentType();
-    headers->ComputeCaching();
-    return (type != NULL && (type->type() ==  ContentType::kCss ||
-            type->type() == ContentType::kJavascript ||
-            type->type() == ContentType::kPng ||
-            type->type() == ContentType::kJpeg) &&
-            !context_->Manager()->http_cache()->IsAlreadyExpired(*headers));
-  }
-
-  MessageHandler* handler_;
-  ResourcePtr resource_;
-  AjaxRewriteContext* context_;
-  bool can_ajax_rewrite_;
-
-  HTTPValue cache_value_;
-
-  DISALLOW_COPY_AND_ASSIGN(RecordingFetch);
-};
+  return NULL;
+}
 
 void AjaxRewriteContext::RewriteSingle(const ResourcePtr& input,
                                        const OutputResourcePtr& output) {
-  RewriteFilter* filter = NULL;
-  const RewriteOptions* options = driver_->options();
   input->DetermineContentType();
   if (input->IsValidAndCacheable() && input->type() != NULL) {
     ContentType::Type type = input->type()->type();
-    if (type == ContentType::kCss &&
-        options->Enabled(RewriteOptions::kRewriteCss)) {
-      filter = driver_->FindFilter(RewriteOptions::kCssFilterId);
-    } else if (type == ContentType::kJavascript &&
-               options->Enabled(RewriteOptions::kRewriteJavascript)) {
-      filter = driver_->FindFilter(RewriteOptions::kJavascriptMinId);
-    } else if ((type == ContentType::kPng || type == ContentType::kJpeg) &&
-               options->Enabled(RewriteOptions::kRecompressImages) &&
-               !driver_->ShouldNotRewriteImages()) {
-      // TODO(nikhilmadan): This converts one image format to another. We
-      // shouldn't do inter-conversion since we can't change the file extension.
-      filter = driver_->FindFilter(RewriteOptions::kImageCompressionId);
-    }
+    RewriteFilter* filter = GetRewriteFilter(type);
     if (filter != NULL) {
       ResourceSlotPtr ajax_slot(
           new AjaxRewriteResourceSlot(slot(0)->resource()));
       RewriteContext* context = filter->MakeNestedRewriteContext(
           this, ajax_slot);
-      DCHECK(context != NULL);
       if (context != NULL) {
         AddNestedContext(context);
         StartNestedTasks();
         return;
+      } else {
+        LOG(ERROR) << "Filter (" << filter->id() << ") does not support "
+                   << "nested contexts.";
+        ajax_slot.clear();
       }
     }
   }
@@ -246,13 +256,18 @@ bool AjaxRewriteContext::DecodeFetchUrls(
 void AjaxRewriteContext::StartFetchReconstruction() {
   // The ajax metdata or the rewritten resource was not found in cache. Fetch
   // the original resource and trigger an asynchronous rewrite.
-  DCHECK_EQ(1, num_slots());
-  ResourcePtr resource(slot(0)->resource());
-  // If we get here, the resource must not have been rewritten.
-  is_rewritten_ = false;
-  RecordingFetch* fetch = new RecordingFetch(
-      async_fetch(), resource, this, fetch_message_handler());
-  driver_->async_fetcher()->Fetch(url_, fetch_message_handler(), fetch);
+  if (num_slots() == 1) {
+    ResourcePtr resource(slot(0)->resource());
+    // If we get here, the resource must not have been rewritten.
+    is_rewritten_ = false;
+    RecordingFetch* fetch = new RecordingFetch(
+        async_fetch(), resource, this, fetch_message_handler());
+    driver_->async_fetcher()->Fetch(url_, fetch_message_handler(), fetch);
+  } else {
+    LOG(ERROR) << "Expected one resource slot, but found " << num_slots()
+               << ".";
+    delete this;
+  }
 }
 
 void AjaxRewriteContext::StartFetchReconstructionParent() {

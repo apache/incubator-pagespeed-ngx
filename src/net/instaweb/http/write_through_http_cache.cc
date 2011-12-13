@@ -23,69 +23,118 @@
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
+namespace {
+
+// Callback to look up cache2. Note that if the response is found in cache2, we
+// insert it into cache1.
+class FallbackCacheCallback: public HTTPCache::Callback {
+ public:
+  typedef void (WriteThroughHTTPCache::*UpdateCache1HandlerFunction) (
+      GoogleString key, HTTPValue* http_value);
+
+  FallbackCacheCallback(const GoogleString& key,
+                        WriteThroughHTTPCache* write_through_http_cache,
+                        HTTPCache::Callback* client_callback,
+                        UpdateCache1HandlerFunction function)
+      : key_(key),
+        write_through_http_cache_(write_through_http_cache),
+        client_callback_(client_callback),
+        function_(function) {}
+
+  virtual ~FallbackCacheCallback() {}
+
+  virtual void Done(HTTPCache::FindResult find_result) {
+    if (find_result != HTTPCache::kNotFound) {
+      client_callback_->http_value()->Link(http_value());
+      client_callback_->response_headers()->CopyFrom(*response_headers());
+      // Insert the response into cache1.
+      MakeFunction(write_through_http_cache_, function_, key_,
+                   http_value())->CallRun();
+    }
+    client_callback_->Done(find_result);
+    delete this;
+  }
+
+  virtual bool IsCacheValid(const ResponseHeaders& headers) {
+    return client_callback_->IsCacheValid(headers);
+  }
+
+ private:
+  GoogleString key_;
+  WriteThroughHTTPCache* write_through_http_cache_;
+  HTTPCache::Callback* client_callback_;
+  UpdateCache1HandlerFunction function_;
+};
+
+// Callback to look up cache1. Note that if the response is not found in cache1,
+// we look up fallback_cache.
+class Cache1Callback: public HTTPCache::Callback {
+ public:
+  Cache1Callback(const GoogleString& key,
+                 HTTPCache* fallback_cache,
+                 MessageHandler* handler,
+                 HTTPCache::Callback* client_callback,
+                 HTTPCache::Callback* fallback_cache_callback)
+      : key_(key),
+        fallback_cache_(fallback_cache),
+        handler_(handler),
+        client_callback_(client_callback),
+        fallback_cache_callback_(fallback_cache_callback) {}
+
+  virtual ~Cache1Callback() {}
+
+  virtual void Done(HTTPCache::FindResult find_result) {
+    if (find_result == HTTPCache::kNotFound) {
+      fallback_cache_->cache_misses()->Add(-1);
+      fallback_cache_->Find(key_, handler_, fallback_cache_callback_.release());
+    } else {
+      client_callback_->http_value()->Link(http_value());
+      client_callback_->response_headers()->CopyFrom(*response_headers());
+      client_callback_->Done(find_result);
+    }
+    delete this;
+  }
+
+  virtual bool IsCacheValid(const ResponseHeaders& headers) {
+    return client_callback_->IsCacheValid(headers);
+  }
+
+ private:
+  GoogleString key_;
+  HTTPCache* fallback_cache_;
+  MessageHandler* handler_;
+  HTTPCache::Callback* client_callback_;
+  scoped_ptr<HTTPCache::Callback> fallback_cache_callback_;
+};
+
+}  // namespace
+
 const size_t WriteThroughHTTPCache::kUnlimited = static_cast<size_t>(-1);
 
 // TODO(nikhilmadan): Fix the stats computation of cache expirations which are
 // currently double counted.
 
-class WriteThroughHTTPCache::WriteThroughHTTPCallback
-    : public HTTPCache::Callback {
- public:
-  WriteThroughHTTPCallback(const GoogleString& key,
-                           WriteThroughHTTPCache* cache,
-                           MessageHandler* handler,
-                           Callback* callback)
-      : key_(key),
-        cache_(cache),
-        handler_(handler),
-        callback_(callback),
-        trying_cache2_(false) { }
-
-  virtual ~WriteThroughHTTPCallback() { }
-
-  virtual void Done(HTTPCache::FindResult find_result) {
-    if (!trying_cache2_ && find_result == HTTPCache::kNotFound) {
-      // This is not a cache miss yet. Check the other cache.
-      // TODO(nikhilmadan): Put in a hook into HTTPCache to allow the derived
-      // class to take control of statistics updating.
-      cache_->cache_misses()->Add(-1);
-      trying_cache2_ = true;
-      cache_->cache2_->Find(key_, handler_, this);
-    } else {
-      callback_->http_value()->Link(http_value());
-      callback_->response_headers()->CopyFrom(*response_headers());
-      if (trying_cache2_ && find_result != HTTPCache::kNotFound) {
-        cache_->PutInCache1(key_, http_value());
-      }
-      callback_->Done(find_result);
-      delete this;
-    }
-  }
-
-  virtual bool IsCacheValid(const ResponseHeaders& headers) {
-    return callback_->IsCacheValid(headers);
-  }
-
- private:
-  GoogleString key_;
-  WriteThroughHTTPCache* cache_;
-  MessageHandler* handler_;
-  Callback* callback_;
-  bool trying_cache2_;
-
-  DISALLOW_COPY_AND_ASSIGN(WriteThroughHTTPCallback);
-};
+WriteThroughHTTPCache::WriteThroughHTTPCache(CacheInterface* cache1,
+                                             CacheInterface* cache2,
+                                             Timer* timer,
+                                             Hasher* hasher,
+                                             Statistics* statistics)
+    : HTTPCache(NULL, timer, hasher, statistics),
+      cache1_(new HTTPCache(cache1, timer, hasher, statistics)),
+      cache2_(new HTTPCache(cache2, timer, hasher, statistics)),
+      cache1_size_limit_(kUnlimited) {}
 
 WriteThroughHTTPCache::~WriteThroughHTTPCache() {
 }
 
-void WriteThroughHTTPCache::PutInCache1(const GoogleString& key,
+void WriteThroughHTTPCache::PutInCache1(GoogleString key,
                                         HTTPValue* value) {
   if ((cache1_size_limit_ == kUnlimited) ||
       (key.size() + value->size() < cache1_size_limit_)) {
@@ -103,9 +152,11 @@ void WriteThroughHTTPCache::SetIgnoreFailurePuts() {
 void WriteThroughHTTPCache::Find(const GoogleString& key,
                                  MessageHandler* handler,
                                  Callback* callback) {
-  WriteThroughHTTPCallback* write_through_callback =
-      new WriteThroughHTTPCallback(key, this, handler, callback);
-  cache1_->Find(key, handler, write_through_callback);
+  FallbackCacheCallback* fallback_cache_callback = new FallbackCacheCallback(
+      key, this, callback, &WriteThroughHTTPCache::PutInCache1);
+  Cache1Callback* cache1_callback = new Cache1Callback(
+      key, cache2_.get(), handler, callback, fallback_cache_callback);
+  cache1_->Find(key, handler, cache1_callback);
 }
 
 HTTPCache::FindResult WriteThroughHTTPCache::Find(
