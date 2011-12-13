@@ -157,9 +157,6 @@ class HtmlLexer {
   // Determines whether a character can be used in an attribute name.
   static inline bool IsLegalAttrNameChar(char c);
 
-  // Determines whether a character can be used in an attribute value.
-  static inline bool IsLegalAttrValChar(char c);
-
   // The lexer is implemented as a pure state machine.  There is
   // no lookahead.  The state is understood primarily in this
   // enum, although there are a few state flavors that are managed

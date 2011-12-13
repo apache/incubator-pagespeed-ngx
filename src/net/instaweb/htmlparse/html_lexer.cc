@@ -43,9 +43,8 @@ namespace {
 // noticably faster or not.
 
 // These tags can be specified in documents without a brief "/>",
-// or an explicit </tag>, according to the Chrome Developer Tools console.
+// or an explicit </tag>, according to the Chrome Developer Tools console.  See:
 //
-// TODO(jmarantz): Check out
 // http://www.whatwg.org/specs/web-apps/current-work/multipage/
 // syntax.html#void-elements
 const HtmlName::Keyword kImplicitlyClosedHtmlTags[] = {
@@ -405,12 +404,6 @@ bool HtmlLexer::IsLegalTagChar(char c) {
 bool HtmlLexer::IsLegalAttrNameChar(char c) {
   return (IsI18nChar(c) ||
           ((c != '=') && (c != '>') && (c != '/') && !isspace(c)));
-}
-
-bool HtmlLexer::IsLegalAttrValChar(char c) {
-  return (IsI18nChar(c) ||
-          ((c != '=') && (c != '>') && (c != '/') &&
-           (c != '"') && (c != '\'') && !isspace(c)));
 }
 
 // Handle the case where "<" was recently parsed.
@@ -997,17 +990,15 @@ void HtmlLexer::EvalAttrName(char c) {
   } else if (c == '>') {
     MakeAttribute(false);
     EmitTagOpen(true);
+  } else if (state_ == TAG_ATTR_NAME_SPACE) {
+    // "<x y z".  Now that we see the 'z', we need
+    // to finish 'y' as an attribute, then queue up
+    // 'z' (c) as the start of a new attribute.
+    MakeAttribute(false);
+    state_ = TAG_ATTR_NAME;
+    attr_name_ += c;
   } else {
-    if (state_ == TAG_ATTR_NAME_SPACE) {
-      // "<x y z".  Now that we see the 'z', we need
-      // to finish 'y' as an attribute, then queue up
-      // 'z' (c) as the start of a new attribute.
-      MakeAttribute(false);
-      state_ = TAG_ATTR_NAME;
-      attr_name_ += c;
-    } else {
-      FinishAttribute(c, false, false);
-    }
+    FinishAttribute(c, false, false);
   }
 }
 
@@ -1050,11 +1041,7 @@ void HtmlLexer::FinishAttribute(char c, bool has_value, bool brief_close) {
 }
 
 void HtmlLexer::EvalAttrEq(char c) {
-  if (IsLegalAttrValChar(c)) {
-    state_ = TAG_ATTR_VAL;
-    attr_quote_ = "";
-    EvalAttrVal(c);
-  } else if (c == '"') {
+  if (c == '"') {
     attr_quote_ = "\"";
     state_ = TAG_ATTR_VALDQ;
   } else if (c == '\'') {
@@ -1062,8 +1049,12 @@ void HtmlLexer::EvalAttrEq(char c) {
     state_ = TAG_ATTR_VALSQ;
   } else if (isspace(c)) {
     // ignore -- spaces are allowed between "=" and the value
-  } else {
+  } else if (c == '>') {
     FinishAttribute(c, true, false);
+  } else {
+    state_ = TAG_ATTR_VAL;
+    attr_quote_ = "";
+    EvalAttrVal(c);
   }
 }
 

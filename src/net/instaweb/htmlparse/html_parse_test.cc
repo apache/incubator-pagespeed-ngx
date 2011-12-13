@@ -507,19 +507,35 @@ TEST_F(HtmlAnnotationTest, MiscCornerCases) {
 }
 
 TEST_F(HtmlAnnotationTest, DoubleEquals) {
-  // Note: we have turned "==" into "=", but this masks the real problem, that
-  // we don't parse the attr value correctly.  This is more evident in the
-  // commented-out EXPECT_EQ for the annotation below.
-  ValidateExpected("double_equals",
-                   "<img title==\"><script>alert('foo')</script>\">",
-                   "<img title= \"><script>alert('foo')</script>\">");
+  // Note that the attr-value is not in fact a quoted string.  The second
+  // "=" begins the attr-value and its terminated by the ">".  The script
+  // is not in the quote.  The closing quote and > are stray and rendered
+  // as characters in our DOM.  We are byte accurate.  This behavior
+  // was hand-confirmed as consistent with Chrome by typing
+  //      data:text/html,<img title=="><script>alert('foo')</script>">
+  // into the URL bar on 12/13/2011.  The "alert" popped up which is
+  // consistent with the dom annotation below.
+  ValidateNoChanges("double_equals",
+                    "<img title==\"><script>alert('foo')</script>\">");
+  EXPECT_EQ(" +html '\n' +img -img(i) +script 'alert('foo')' -script(e) "
+            "'\">\n' -html(e)",
+            annotation());
+}
 
-  // TODO(jmarantz): Fix this testcase.  The double-equals in the attr
-  // should probably be treated as a single-equals.  As it stands the
-  // lexer seems to get into an unexpected state and we treat the script,
-  // which looks like it should be an attr value, as an actual tag.
-  //
-  // EXPECT_EQ(" +html '\n' +img -img '\n' -html(e)", annotation());
+TEST_F(HtmlAnnotationTest, AttrEqStartWithSlash) {
+  // Note the "/>" here does *not* briefly end the 'body'; it's part of the
+  // attribute.  Verified with chrome using
+  // data:text/html,<body title=/>hello</body>
+  ValidateNoChanges("attr_eq_starts_with_slash", "<body title=/>1</body>");
+  EXPECT_EQ(" +html '\n' +body '1' -body(e) '\n' -html(e)", annotation());
+}
+
+TEST_F(HtmlAnnotationTest, AttrEqEndsWithSlash) {
+  // Note again the "/>" here does *not* briefly end the 'body'; it's part of
+  // the attribute.  Verified with chrome using
+  // data:text/html,<body title=x/>hello</body>
+  ValidateNoChanges("attr_eq_ends_with_slash", "<body title=x/></body>");
+  EXPECT_EQ(" +html '\n' +body -body(e) '\n' -html(e)", annotation());
 }
 
 TEST_F(HtmlAnnotationTest, TableForm) {

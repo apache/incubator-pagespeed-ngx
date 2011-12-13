@@ -32,6 +32,7 @@ namespace net_instaweb {
 struct HttpAttributes {
   static const char kAcceptEncoding[];
   static const char kCacheControl[];
+  static const char kConnection[];
   static const char kContentEncoding[];
   static const char kContentLanguage[];
   static const char kContentLength[];
