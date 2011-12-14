@@ -99,9 +99,6 @@ void ResourceFetch::HandleDone(bool success) {
     // This is a fetcher failure, like connection refused, not just an error
     // status code.
     LOG(ERROR) << "Fetch failed for resource url " << resource_url_.Spec();
-    LOG(WARNING) << "Failed resource " << resource_url_.Spec()
-                 << "\nrequest headers:\n" << request_headers()->ToString();
-
     response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
   }
   RewriteStats* stats = driver_->resource_manager()->rewrite_stats();
