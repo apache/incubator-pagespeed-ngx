@@ -563,6 +563,8 @@ bool ImageImpl::LoadOpenCvEmpty() {
       cvSetZero(opencv_image_);
       ok = true;
     } catch (cv::Exception& e) {
+      handler_->Message(
+          kError, "OpenCv exception in LoadOpenCvEmpty: %s", e.what());
     }
   }
   return ok;
@@ -580,6 +582,9 @@ bool ImageImpl::LoadOpenCvFromBuffer(const StringPiece& data) {
   try {
     opencv_image_ = cvDecodeImage(&cv_original_contents);
   } catch (cv::Exception& e) {
+    handler_->Error(
+        url_.c_str(), 0, "OpenCv exception in LoadOpenCvFromBuffer: %s",
+        e.what());
     return false;
   }
   return opencv_image_ != NULL;
