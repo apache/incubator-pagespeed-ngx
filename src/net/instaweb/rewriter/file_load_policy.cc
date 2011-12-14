@@ -41,7 +41,9 @@ bool FileLoadPolicy::ShouldLoadFromFile(const GoogleUrl& url,
       // Replace url_prefix_ with filename_prefix_.
       StringPiece suffix = url_string.substr(iter->url_prefix.size());
       *filename = StrCat(iter->filename_prefix, suffix);
-      // TODO(sligocki): Should we decode filenames as well? Say "%20" -> " "
+      // GoogleUrl will decode most %XX escapes, but it does not convert
+      // "%20" -> " " which has come up often.
+      GlobalReplaceSubstring("%20", " ", filename);
       return true;
     }
   }

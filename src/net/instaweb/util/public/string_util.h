@@ -142,6 +142,11 @@ inline bool OnlyWhitespace(const GoogleString& str) {
   return ContainsOnlyWhitespaceASCII(str);
 }
 
+// Replaces all instances of 'substring' in 's' with 'replacement'.
+// Returns the number of instances replaced.  Replacements are not
+// subject to re-matching.
+//
+// NOTE: The string pieces must not overlap 's'.
 int GlobalReplaceSubstring(const StringPiece& substring,
                            const StringPiece& replacement,
                            GoogleString* s);
