@@ -35,7 +35,15 @@
     # get -Werror
     'gcc_devel_version%': '44',
 
+    # We need inter-process mutexes to support POSIX shared memory, and they're
+    # unfortunately not supported on some common systems.
+    'support_posix_shared_mem%': 0,
+
     'conditions': [
+      # TODO(morlovich): AIX, Solaris, FreeBSD10?
+      ['OS == "linux"', {
+        'support_posix_shared_mem': 1
+      }],
       ['use_system_libs==1', {
         'use_system_apache_dev': 1,
         'use_system_libjpeg': 1,
@@ -52,6 +60,9 @@
   ],
   'target_defaults': {
     'conditions': [
+      ['support_posix_shared_mem == 1', {
+        'defines': [ 'PAGESPEED_SUPPORT_POSIX_SHARED_MEM', ],
+      }],
       ['OS == "linux"', {
         # Disable -Werror when not using the version of gcc that development
         # is generally done with, to avoid breaking things for users with

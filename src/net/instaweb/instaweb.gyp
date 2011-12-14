@@ -275,13 +275,11 @@
         'util/pthread_thread_system.cc',
       ],
       'conditions': [
-          # Unfortunately most pthreads implementations do not support
-          # inter-process mutexes, which this requires.
-          ['OS != "linux"', {
-            'sources!' : [
-              'util/pthread_shared_mem.cc',
-            ],
-          }]
+        ['support_posix_shared_mem != 1', {
+          'sources!' : [
+            'util/pthread_shared_mem.cc',
+          ],
+        }]
       ],
       'include_dirs': [
         '<(instaweb_root)',

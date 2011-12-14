@@ -198,6 +198,13 @@
 #        'util/split_writer_test.cc',               # not currently needed
 #        'util/stdio_file_system_test.cc',          # not currently needed
       ],
+      'conditions': [
+        ['support_posix_shared_mem != 1', {
+          'sources!' : [
+            'util/pthread_shared_mem_test.cc',
+          ],
+        }]
+      ],
     },
     {
       'variables': {

@@ -76,7 +76,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
 #endif
                            ),
       server_rec_(server),
-#ifdef linux
+#ifdef PAGESPEED_SUPPORT_POSIX_SHARED_MEM
       shared_mem_runtime_(new PthreadSharedMem()),
 #else
       shared_mem_runtime_(new NullSharedMem()),
