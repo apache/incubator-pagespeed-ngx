@@ -186,11 +186,10 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     const int64 kTtlMs = 100000;
     const int64 origin_expire_time_ms = start_time_ms() + kTtlMs;
     const ContentType* content_type = &kContentTypeText;
-    bool use_async_flow = true;
     OutputResourcePtr output(
         rewrite_driver()->CreateOutputResourceWithPath(
             kUrlPrefix, filter_prefix, name, content_type,
-            kRewrittenResource, use_async_flow));
+            kRewrittenResource));
     ASSERT_TRUE(output.get() != NULL);
     // Check name_key against url_prefix/fp.name
     GoogleString name_key = output->name_key();
@@ -209,7 +208,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       OutputResourcePtr output1(
           rewrite_driver()->CreateOutputResourceWithPath(
               kUrlPrefix, filter_prefix, name, content_type,
-              kRewrittenResource, use_async_flow));
+              kRewrittenResource));
       ASSERT_TRUE(output1.get() != NULL);
       EXPECT_FALSE(output1->TryLockForCreation());
       EXPECT_FALSE(output1->IsWritten());
@@ -362,11 +361,10 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
 
   // When we rewrite the resource as an ouptut, it will show up in the
   // CDN per the rewrite mapping.
-  bool use_async_flow = true;
   OutputResourcePtr output(
       rewrite_driver()->CreateOutputResourceFromResource(
           RewriteOptions::kCacheExtenderId, rewrite_driver()->default_encoder(),
-          NULL, input, kRewrittenResource, use_async_flow));
+          NULL, input, kRewrittenResource));
   ASSERT_TRUE(output.get() != NULL);
 
   // We need to 'Write' an output resource before we can determine its
@@ -396,10 +394,9 @@ TEST_F(ResourceManagerTest, TestInputResourceQuery) {
   ResourcePtr resource(CreateResource(kResourceUrlBase, kUrl));
   ASSERT_TRUE(resource.get() != NULL);
   EXPECT_EQ(StrCat(GoogleString(kResourceUrlBase), "/", kUrl), resource->url());
-  bool use_async_flow = true;
   OutputResourcePtr output(rewrite_driver()->CreateOutputResourceFromResource(
       "sf", rewrite_driver()->default_encoder(), NULL, resource,
-      kRewrittenResource, use_async_flow));
+      kRewrittenResource));
   ASSERT_TRUE(output.get() != NULL);
 
   GoogleString included_name;
@@ -495,11 +492,10 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
-  bool use_async_flow = true;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
           kUrlPrefix, CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
-          kOutlinedResource, use_async_flow));
+          kOutlinedResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -519,7 +515,7 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   output_resource.reset(
       rewrite_driver()->CreateOutputResourceWithPath(
           kUrlPrefix, CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
-          kOutlinedResource, use_async_flow));
+          kOutlinedResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -540,11 +536,10 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
-  bool use_async_flow = true;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
           kUrlPrefix, RewriteOptions::kCssFilterId, "_", &kContentTypeCss,
-          kOnTheFlyResource, use_async_flow));
+          kOnTheFlyResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -583,11 +578,10 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
-  bool use_async_flow = true;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
           kUrlPrefix, RewriteOptions::kCssFilterId, "_", &kContentTypeCss,
-          kRewrittenResource, use_async_flow));
+          kRewrittenResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -739,14 +733,13 @@ class ResourceManagerShardedTest : public ResourceManagerTest {
 TEST_F(ResourceManagerShardedTest, TestNamed) {
   GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", "orig", "js");
-  bool use_async_flow = true;
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
           "http://example.com/dir/",
           "jm",
           "orig.js",
           &kContentTypeJavascript,
-          kRewrittenResource, use_async_flow));
+          kRewrittenResource));
   ASSERT_TRUE(output_resource.get());
   ASSERT_TRUE(resource_manager()->Write(HttpStatus::kOK, "alert('hello');",
                                        output_resource.get(), 0,

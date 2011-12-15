@@ -152,7 +152,7 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
     OutputResourcePtr resource(
         driver_->CreateOutputResourceWithUnmappedPath(
             driver_->google_url().AllExceptLeaf(), kFilterId, "_",
-            &kContentTypeJavascript, kOutlinedResource, true /*async*/));
+            &kContentTypeJavascript, kOutlinedResource));
     if (resource.get() != NULL &&
         WriteResource(content, resource.get(), handler)) {
       HtmlElement* outline_element = driver_->CloneElement(inline_element);

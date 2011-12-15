@@ -1679,8 +1679,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
     const UrlSegmentEncoder* encoder,
     const ResourceContext* data,
     const ResourcePtr& input_resource,
-    OutputResourceKind kind,
-    bool use_async_flow) {
+    OutputResourceKind kind) {
   OutputResourcePtr result;
   if (input_resource.get() != NULL) {
     // TODO(jmarantz): It would be more efficient to pass in the base
@@ -1699,7 +1698,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
       encoder->Encode(v, data, &name);
       result.reset(CreateOutputResourceWithMappedPath(
           mapped_gurl.AllExceptLeaf(), gurl.AllExceptLeaf(),
-          filter_id, name, input_resource->type(), kind, use_async_flow));
+          filter_id, name, input_resource->type(), kind));
     }
   }
   return result;
@@ -1712,8 +1711,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
     const StringPiece& filter_id,
     const StringPiece& name,
     const ContentType* content_type,
-    OutputResourceKind kind,
-    bool use_async_flow /* ignored */) {
+    OutputResourceKind kind) {
   ResourceNamer full_name;
   full_name.set_id(filter_id);
   full_name.set_name(name);

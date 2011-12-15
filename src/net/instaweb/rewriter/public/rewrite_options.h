@@ -181,6 +181,13 @@ class RewriteOptions {
   }
   RewriteLevel level() const { return level_.value();}
 
+  // Enables filters specified without a prefix or with a prefix of '+' and
+  // disables filters specified with a prefix of '-'. Returns false if any
+  // of the filter names are invalid, but all the valid ones will be
+  // added anyway.
+  bool AdjustFiltersByCommaSeparatedList(const StringPiece& filters,
+                                         MessageHandler* handler);
+
   // Adds a set of filters to the enabled set.  Returns false if any
   // of the filter names are invalid, but all the valid ones will be
   // added anyway.
@@ -584,6 +591,11 @@ class RewriteOptions {
   void SetUp();
   bool AddCommaSeparatedListToFilterSet(
       const StringPiece& filters, MessageHandler* handler, FilterSet* set);
+  bool AddCommaSeparatedListToPlusAndMinusFilterSets(
+      const StringPiece& filters, MessageHandler* handler,
+      FilterSet* plus_set, FilterSet* minus_set);
+  bool AddOptionToFilterSet(
+      const StringPiece& option, MessageHandler* handler, FilterSet* set);
   static Filter Lookup(const StringPiece& filter_name);
 
   // These static methods enable us to generate signatures for all

@@ -455,4 +455,33 @@ TEST_F(RewriteOptionsTest, CoreAndNotDangerous) {
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kCombineCss));
 }
 
+TEST_F(RewriteOptionsTest, CoreByNameNotLevel) {
+  NullMessageHandler handler;
+  options_.SetRewriteLevel(RewriteOptions::kPassThrough);
+  ASSERT_TRUE(options_.EnableFiltersByCommaSeparatedList("core", &handler));
+
+  // Test the same ones as tested in InstrumentationDisabled.
+  ASSERT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheCss));
+  ASSERT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheImages));
+
+  // Test these for PlusAndMinus validation.
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kDivStructure));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInlineCss));
+}
+
+TEST_F(RewriteOptionsTest, PlusAndMinus) {
+  const char* kList = "core,+div_structure,-inline_css,+extend_cache_css";
+  NullMessageHandler handler;
+  options_.SetRewriteLevel(RewriteOptions::kPassThrough);
+  ASSERT_TRUE(options_.AdjustFiltersByCommaSeparatedList(kList, &handler));
+
+  // Test the same ones as tested in InstrumentationDisabled.
+  ASSERT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheCss));
+  ASSERT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheImages));
+
+  // These should be opposite from normal.
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kDivStructure));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kInlineCss));
+}
+
 }  // namespace

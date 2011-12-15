@@ -48,7 +48,7 @@ bool SingleRewriteContext::Partition(OutputPartitions* partitions,
       OutputResourcePtr output_resource(
           Driver()->CreateOutputResourceFromResource(
               id(), encoder(), resource_context(),
-              resource, kind(), true /* async flow */));
+              resource, kind()));
       if (output_resource.get() != NULL) {
         CachedResult* partition = partitions->add_partition();
         Resource::HashHint hash_hint =

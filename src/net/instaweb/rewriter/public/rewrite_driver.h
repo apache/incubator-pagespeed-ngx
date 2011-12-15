@@ -372,8 +372,7 @@ class RewriteDriver : public HtmlParse {
       const UrlSegmentEncoder* encoder,
       const ResourceContext* data,
       const ResourcePtr& input_resource,
-      OutputResourceKind kind,
-      bool use_async_flow);
+      OutputResourceKind kind);
 
   // Creates an output resource where the name is provided.  The intent is to
   // be able to derive the content from the name, for example, by encoding
@@ -391,24 +390,20 @@ class RewriteDriver : public HtmlParse {
   //
   // Could be private since you should use one of the versions below but put
   // here with the rest like it and for documentation clarity.
-  //
-  // TODO(nforman): Remove the use_async_flow parameter on all these
-  // CrateOutputResource*() methods.
   OutputResourcePtr CreateOutputResourceWithPath(
       const StringPiece& mapped_path, const StringPiece& unmapped_path,
       const StringPiece& base_url, const StringPiece& filter_id,
       const StringPiece& name, const ContentType* content_type,
-      OutputResourceKind kind, bool use_async_flow);
+      OutputResourceKind kind);
 
   // Version of CreateOutputResourceWithPath where the unmapped and mapped
   // paths are the same and the base_url is this driver's base_url.
   OutputResourcePtr CreateOutputResourceWithUnmappedPath(
       const StringPiece& path, const StringPiece& filter_id,
       const StringPiece& name, const ContentType* content_type,
-      OutputResourceKind kind, bool use_async_flow) {
+      OutputResourceKind kind) {
     return CreateOutputResourceWithPath(path, path, base_url_.AllExceptLeaf(),
-                                        filter_id, name, content_type, kind,
-                                        use_async_flow);
+                                        filter_id, name, content_type, kind);
   }
 
   // Version of CreateOutputResourceWithPath where the unmapped and mapped
@@ -416,12 +411,10 @@ class RewriteDriver : public HtmlParse {
   OutputResourcePtr CreateOutputResourceWithMappedPath(
       const StringPiece& mapped_path, const StringPiece& unmapped_path,
       const StringPiece& filter_id, const StringPiece& name,
-      const ContentType* content_type, OutputResourceKind kind,
-      bool use_async_flow) {
+      const ContentType* content_type, OutputResourceKind kind) {
     return CreateOutputResourceWithPath(mapped_path, unmapped_path,
                                         decoded_base_url_.AllExceptLeaf(),
-                                        filter_id, name, content_type, kind,
-                                        use_async_flow);
+                                        filter_id, name, content_type, kind);
   }
 
   // Version of CreateOutputResourceWithPath where the unmapped and mapped
@@ -429,9 +422,9 @@ class RewriteDriver : public HtmlParse {
   OutputResourcePtr CreateOutputResourceWithPath(
       const StringPiece& path, const StringPiece& filter_id,
       const StringPiece& name, const ContentType* content_type,
-      OutputResourceKind kind, bool use_async_flow) {
+      OutputResourceKind kind) {
     return CreateOutputResourceWithPath(path, path, path, filter_id, name,
-                                        content_type, kind, use_async_flow);
+                                        content_type, kind);
   }
 
   // Creates an input resource based on input_url.  Returns NULL if

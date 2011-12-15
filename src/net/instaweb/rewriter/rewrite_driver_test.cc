@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/mock_resource_callback.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -37,6 +38,7 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -385,23 +387,22 @@ TEST_P(RewriteDriverTest, CreateOutputResourceTooLong) {
   OutputResourcePtr resource;
   for (int t = 0; t < arraysize(content_types); ++t) {
     for (int k = 0; k < arraysize(resource_kinds); ++k) {
-      bool use_async_flow = true;
       // Short name should always succeed at creating new resource.
       resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
           short_path, dummy_filter_id, short_name,
-          content_types[t], resource_kinds[k], use_async_flow));
+          content_types[t], resource_kinds[k]));
       EXPECT_TRUE(NULL != resource.get());
 
       // Long leaf-name should always fail at creating new resource.
       resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
           short_path, dummy_filter_id, long_name,
-          content_types[t], resource_kinds[k], use_async_flow));
+          content_types[t], resource_kinds[k]));
       EXPECT_TRUE(NULL == resource.get());
 
       // Long total URL length should always fail at creating new resource.
       resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
           long_path, dummy_filter_id, short_name,
-          content_types[t], resource_kinds[k], use_async_flow));
+          content_types[t], resource_kinds[k]));
       EXPECT_TRUE(NULL == resource.get());
     }
   }

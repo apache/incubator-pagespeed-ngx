@@ -254,7 +254,7 @@ OutputResourcePtr ResourceCombiner::Combine(const ContentType& content_type,
   // TODO(jmaessen, jmarantz): encode based on partnership
   combination.reset(rewrite_driver_->CreateOutputResourceWithUnmappedPath(
       ResolvedBase(), filter_->id(), url_safe_id, &content_type,
-      kRewrittenResource, true /*async*/));
+      kRewrittenResource));
   if (combination.get() != NULL) {
     if (combination->cached_result() != NULL &&
         combination->cached_result()->optimizable()) {

@@ -154,7 +154,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       OutputResourcePtr output_resource(
           driver_->CreateOutputResourceWithUnmappedPath(
               driver_->google_url().AllExceptLeaf(), kFilterId, "_",
-              &kContentTypeCss, kOutlinedResource, true /*async*/));
+              &kContentTypeCss, kOutlinedResource));
 
       if (output_resource.get() != NULL) {
         // Rewrite URLs in content.

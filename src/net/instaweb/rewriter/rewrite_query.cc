@@ -139,7 +139,7 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     // When using ModPagespeedFilters query param, only the
     // specified filters should be enabled.
     options->SetRewriteLevel(RewriteOptions::kPassThrough);
-    if (options->EnableFiltersByCommaSeparatedList(value, handler)) {
+    if (options->AdjustFiltersByCommaSeparatedList(value, handler)) {
       options->DisableAllFiltersNotExplicitlyEnabled();
       status = kSuccess;
     } else {

@@ -432,6 +432,12 @@ void RewriteOptions::DisallowTroublesomeResources() {
   // Not clear which JS file is broken and proxying is not working correctly.
 }
 
+bool RewriteOptions::AdjustFiltersByCommaSeparatedList(
+    const StringPiece& filters, MessageHandler* handler) {
+  return AddCommaSeparatedListToPlusAndMinusFilterSets(
+      filters, handler, &enabled_filters_, &disabled_filters_);
+}
+
 bool RewriteOptions::EnableFiltersByCommaSeparatedList(
     const StringPiece& filters, MessageHandler* handler) {
   return AddCommaSeparatedListToFilterSet(
@@ -509,30 +515,76 @@ bool RewriteOptions::AddCommaSeparatedListToFilterSet(
   bool ret = true;
   size_t prev_set_size = set->size();
   for (int i = 0, n = names.size(); i < n; ++i) {
-    const StringPiece& option = names[i];
-    Filter filter = Lookup(option);
-    if (filter == kEndOfFilters) {
-      // Handle a compound filter name.  This is much less common, so we don't
-      // have any special infrastructure for it; just code.
-      if (option == "rewrite_images") {
-        set->insert(kInlineImages);
-        set->insert(kInsertImageDimensions);
-        set->insert(kRecompressImages);
-        set->insert(kResizeImages);
-      } else if (option == "extend_cache") {
-        set->insert(kExtendCacheCss);
-        set->insert(kExtendCacheImages);
-        set->insert(kExtendCacheScripts);
-      } else {
-        handler->Message(kWarning, "Invalid filter name: %s",
-                         option.as_string().c_str());
-        ret = false;
-      }
-    } else {
-      set->insert(filter);
-    }
+    ret = AddOptionToFilterSet(names[i], handler, set);
   }
   modified_ |= (set->size() != prev_set_size);
+  return ret;
+}
+
+bool RewriteOptions::AddCommaSeparatedListToPlusAndMinusFilterSets(
+    const StringPiece& filters, MessageHandler* handler,
+    FilterSet* plus_set, FilterSet* minus_set) {
+  DCHECK(!frozen_);
+  StringPieceVector names;
+  SplitStringPieceToVector(filters, ",", &names, true);
+  bool ret = true;
+  size_t sets_size_sum_before = (plus_set->size() + minus_set->size());
+  for (int i = 0, n = names.size(); i < n; ++i) {
+    StringPiece& option = names[i];
+    if (!option.empty()) {
+      if (option[0] == '-') {
+        option.remove_prefix(1);
+        ret = AddOptionToFilterSet(names[i], handler, minus_set);
+      } else if (option[0] == '+') {
+        option.remove_prefix(1);
+        ret = AddOptionToFilterSet(names[i], handler, plus_set);
+      } else {
+        // No prefix is treated the same as '+'. Arbitrary but reasonable.
+        ret = AddOptionToFilterSet(names[i], handler, plus_set);
+      }
+    }
+  }
+  size_t sets_size_sum_after = (plus_set->size() + minus_set->size());
+  modified_ |= (sets_size_sum_before != sets_size_sum_after);
+  return ret;
+}
+
+bool RewriteOptions::AddOptionToFilterSet(
+    const StringPiece& option, MessageHandler* handler, FilterSet* set) {
+  bool ret = true;
+  Filter filter = Lookup(option);
+  if (filter == kEndOfFilters) {
+    // Handle a compound filter name.  This is much less common, so we don't
+    // have any special infrastructure for it; just code.
+    if (option == "rewrite_images") {
+      set->insert(kInlineImages);
+      set->insert(kInsertImageDimensions);
+      set->insert(kRecompressImages);
+      set->insert(kResizeImages);
+    } else if (option == "extend_cache") {
+      set->insert(kExtendCacheCss);
+      set->insert(kExtendCacheImages);
+      set->insert(kExtendCacheScripts);
+    } else if (option == "testing") {
+      for (int i = 0, n = arraysize(kTestFilterSet); i < n; ++i) {
+        set->insert(kTestFilterSet[i]);
+      }
+    } else if (option == "core") {
+      for (int i = 0, n = arraysize(kCoreFilterSet); i < n; ++i) {
+        set->insert(kCoreFilterSet[i]);
+      }
+    } else if (option == "dangerous") {
+      for (int i = 0, n = arraysize(kDangerousFilterSet); i < n; ++i) {
+        set->insert(kDangerousFilterSet[i]);
+      }
+    } else {
+      handler->Message(kWarning, "Invalid filter name: %s",
+                       option.as_string().c_str());
+      ret = false;
+    }
+  } else {
+    set->insert(filter);
+  }
   return ret;
 }
 

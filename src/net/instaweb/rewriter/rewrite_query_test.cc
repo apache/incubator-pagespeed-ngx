@@ -116,6 +116,26 @@ TEST_F(RewriteQueryTest, SetFiltersQuery) {
   EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascript));
 }
 
+TEST_F(RewriteQueryTest, SetFiltersQueryCorePlusMinus) {
+  RewriteOptions* options = ParseAndScan("ModPagespeedFilters="
+                                         "core,+div_structure,-inline_css,"
+                                         "+extend_cache_css",
+                                         "");
+  ASSERT_TRUE(options != NULL);
+  EXPECT_TRUE(options->enabled());
+
+  CheckExtendCache(options, true);
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCacheCss));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kExtendCacheImages));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kDivStructure));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kInlineCss));
+  // Unlike above, these are true because 'core' is in the filter list.
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kResizeImages));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteCss));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteJavascript));
+}
+
 TEST_F(RewriteQueryTest, SetFiltersHeaders) {
   RewriteOptions* options = ParseAndScan("",
                                          "ModPagespeedFilters;remove_quotes");
