@@ -55,6 +55,7 @@ const uint64 Parser::kCharsetError;
 const uint64 Parser::kBlockError;
 const uint64 Parser::kNumberError;
 const uint64 Parser::kImportError;
+const uint64 Parser::kAtError;
 
 
 // Using isascii with signed chars is unfortunately undefined.
@@ -1934,7 +1935,13 @@ void Parser::ParseAtrule(Stylesheet* stylesheet) {
   // @page pseudo_page? { declaration-list }
   } else if (ident.utf8_length() == 4 &&
       memcasecmp(ident.utf8_data(), "page", 4) == 0) {
+    ReportParsingError(kAtError, "Cannot parse @page declaration.");
     delete ParseRuleset();
+
+  } else {
+    string ident_string(ident.utf8_data(), ident.utf8_length());
+    ReportParsingError(kAtError, StringPrintf(
+        "Cannot parse unknown @-statement: %s", ident_string.c_str()));
   }
 }
 

@@ -176,6 +176,7 @@ class Parser {
   static const uint64 kBlockError       = 1ULL << 11; // 2048
   static const uint64 kNumberError      = 1ULL << 12; // 4096
   static const uint64 kImportError      = 1ULL << 13; // 8192
+  static const uint64 kAtError          = 1ULL << 14; // 16384
   uint64 errors_seen_mask() const { return errors_seen_mask_; }
   uint64 unparseable_sections_seen_mask() const {
     return unparseable_sections_seen_mask_;

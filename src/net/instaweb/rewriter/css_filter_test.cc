@@ -278,6 +278,10 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
     "@import url(styles.css), url(other.css); a { color: red; }",
     "@import \"styles.css\"...; a { color: red; }",
 
+    // Unexpected @-statements
+    "@keyframes wiggle { 0% { transform: rotate(6deg); } }",
+    "@font-face { font-family: 'Ubuntu'; font-style: normal }",
+
     // Things from Alexa-100 that we get parsing errors for. Most are illegal
     // syntax/typos. Some are CSS3 constructs.
 
@@ -783,6 +787,32 @@ TEST_P(CssFilterTest, ComplexCssTest) {
   }
 
   const char* parse_fail_examples[] = {
+    // Unexpected @-statements
+    "@-webkit-keyframes wiggle {\n"
+    "  0% {-webkit-transform:rotate(6deg);}\n"
+    "  50% {-webkit-transform:rotate(-6deg);}\n"
+    "  100% {-webkit-transform:rotate(6deg);}\n"
+    "}\n"
+    "@-moz-keyframes wiggle {\n"
+    "  0% {-moz-transform:rotate(6deg);}\n"
+    "  50% {-moz-transform:rotate(-6deg);}\n"
+    "  100% {-moz-transform:rotate(6deg);}\n"
+    "}\n"
+    "@keyframes wiggle {\n"
+    "  0% {transform:rotate(6deg);}\n"
+    "  50% {transform:rotate(-6deg);}\n"
+    "  100% {transform:rotate(6deg);}\n"
+    "}\n",
+
+    "@font-face{font-family:'Ubuntu';font-style:normal;font-weight:normal;"
+    "src:local('Ubuntu'), url('http://themes.googleusercontent.com/static/"
+    "fonts/ubuntu/v2/2Q-AW1e_taO6pHwMXcXW5w.ttf') format('truetype')}"
+    "@font-face{font-family:'Ubuntu';font-style:normal;font-weight:bold;"
+    "src:local('Ubuntu Bold'), local('Ubuntu-Bold'), url('http://themes."
+    "googleusercontent.com/static/fonts/ubuntu/v2/0ihfXUL2emPh0ROJezvraKCWc"
+    "ynf_cDxXwCLxiixG1c.ttf') format('truetype')}",
+
+    // Bad syntax
     "}}",
   };
 
