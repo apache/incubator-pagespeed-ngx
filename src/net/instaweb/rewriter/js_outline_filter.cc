@@ -149,11 +149,10 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
     // Create script file from content.
     MessageHandler* handler = driver_->message_handler();
     // Create outline resource at the document location, not base URL location
-    bool use_async_flow = false;
     OutputResourcePtr resource(
         driver_->CreateOutputResourceWithUnmappedPath(
             driver_->google_url().AllExceptLeaf(), kFilterId, "_",
-            &kContentTypeJavascript, kOutlinedResource, use_async_flow));
+            &kContentTypeJavascript, kOutlinedResource, true /*async*/));
     if (resource.get() != NULL &&
         WriteResource(content, resource.get(), handler)) {
       HtmlElement* outline_element = driver_->CloneElement(inline_element);

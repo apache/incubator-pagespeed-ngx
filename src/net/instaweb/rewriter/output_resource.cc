@@ -19,12 +19,9 @@
 
 #include "net/instaweb/rewriter/public/output_resource.h"
 
-#include <algorithm>
-
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/response_headers_parser.h"
@@ -34,7 +31,6 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_writer.h"
@@ -44,11 +40,9 @@
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
-#include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/stack_buffer.h"
 
 namespace net_instaweb {
@@ -91,8 +85,7 @@ OutputResource::OutputResource(ResourceManager* resource_manager,
       unmapped_base_(unmapped_base.data(), unmapped_base.size()),
       original_base_(original_base.data(), original_base.size()),
       rewrite_options_(options),
-      kind_(kind),
-      written_using_rewrite_context_flow_(false) {
+      kind_(kind) {
   DCHECK(options != NULL);
   full_name_.CopyFrom(full_name);
   if (type == NULL) {
@@ -346,78 +339,6 @@ void OutputResource::LockForCreation(QueuedWorkerPool::Sequence* worker,
 
 void OutputResource::DropCreationLock() {
   creation_lock_.reset();
-}
-
-void OutputResource::SaveCachedResult(const GoogleString& name_key,
-                                      MessageHandler* handler) {
-  CacheInterface* cache = resource_manager_->metadata_cache();
-  CachedResult* cached = EnsureCachedResultCreated();
-  cached->set_frozen(true);
-
-  int64 delta_ms = cached->origin_expiration_time_ms() -
-                       resource_manager_->timer()->NowMs();
-  int64 delta_sec = delta_ms / Timer::kSecondMs;
-  if (!cached->auto_expire()) {
-    delta_sec = std::max(delta_sec, Timer::kYearMs / Timer::kSecondMs);
-  }
-  if ((delta_sec > 0) || resource_manager_->http_cache()->force_caching()) {
-    if (cached->optimizable()) {
-      cached->set_hash(full_name_.hash().as_string());
-      cached->set_extension(full_name_.ext().as_string());
-    }
-    SharedString buf;
-    {
-      StringOutputStream sstream(buf.get());
-      cached->SerializeToZeroCopyStream(&sstream);
-      // destructor of sstream prepares *buf.get()
-    }
-    cache->Put(name_key, &buf);
-  }
-}
-
-void OutputResource::FetchCachedResult(const GoogleString& name_key,
-                                       MessageHandler* handler) {
-  if (written_using_rewrite_context_flow_) {
-    return;
-  }
-  bool ok = false;
-  CacheInterface* cache = resource_manager_->metadata_cache();
-  clear_cached_result();
-  CachedResult* cached = EnsureCachedResultCreated();
-
-  SyncCallback callback;
-  cache->Get(name_key, &callback);
-  CHECK(callback.called_) << "Async metadata caches not supported yet";
-
-  if (callback.state_ == CacheInterface::kAvailable) {
-    SharedString* val = callback.value();
-    const GoogleString* val_str = val->get();
-    ArrayInputStream input(val_str->data(), val_str->size());
-    if (cached->ParseFromZeroCopyStream(&input)) {
-      cached->set_frozen(false);
-      if (!cached->optimizable()) {
-        ok = true;
-      } else if (cached->has_hash() && cached->has_extension()) {
-        SetHash(cached->hash());
-        // Note that the '.' must be included in the suffix
-        // TODO(jmarantz): remove this from the suffix.
-        set_suffix(StrCat(".", cached->extension()));
-        ok = true;
-      }
-    }
-
-    // Apply auto-expire if needed & enabled
-    if (ok && cached->auto_expire()) {
-      if (cached->origin_expiration_time_ms() <=
-          resource_manager_->timer()->NowMs()) {
-        ok = false;
-      }
-    }
-  }
-
-  if (!ok) {
-    clear_cached_result();
-  }
 }
 
 CachedResult* OutputResource::EnsureCachedResultCreated() {

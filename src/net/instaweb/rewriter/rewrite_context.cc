@@ -1392,7 +1392,6 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
                            gurl.AllExceptLeaf() /* unmapped_base */,
                            Driver()->base_url().Origin() /* original_base */,
                            namer, content_type, Options(), kind()));
-    (*output_resource)->set_written_using_rewrite_context_flow(true);
     ret = true;
   }
   return ret;

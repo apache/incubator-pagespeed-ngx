@@ -151,11 +151,10 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       MessageHandler* handler = driver_->message_handler();
       // Create outline resource at the document location,
       // not base URL location.
-      bool use_async_flow = false;
       OutputResourcePtr output_resource(
           driver_->CreateOutputResourceWithUnmappedPath(
               driver_->google_url().AllExceptLeaf(), kFilterId, "_",
-              &kContentTypeCss, kOutlinedResource, use_async_flow));
+              &kContentTypeCss, kOutlinedResource, true /*async*/));
 
       if (output_resource.get() != NULL) {
         // Rewrite URLs in content.

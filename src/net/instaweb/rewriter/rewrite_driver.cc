@@ -38,6 +38,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
@@ -985,7 +986,6 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(
       resource_manager_, base, base, base, namer,
       NULL,  // content_type
       options(), kind));
-  output_resource->set_written_using_rewrite_context_flow(true /* async */);
 
   // We also reject any unknown extensions, which includes rejecting requests
   // with trailing junk. We do this now since OutputResource figures out
@@ -1713,7 +1713,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
     const StringPiece& name,
     const ContentType* content_type,
     OutputResourceKind kind,
-    bool use_async_flow) {
+    bool use_async_flow /* ignored */) {
   ResourceNamer full_name;
   full_name.set_id(filter_id);
   full_name.set_name(name);
@@ -1731,18 +1731,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
     OutputResource* output_resource = new OutputResource(
         resource_manager_, mapped_path, unmapped_path, base_url,
         full_name, content_type, options(), kind);
-    output_resource->set_written_using_rewrite_context_flow(use_async_flow);
     resource.reset(output_resource);
-
-    // Determine whether this output resource is still valid by looking
-    // up by hash in the http cache.  Note that this cache entry will
-    // expire when any of the origin resources expire.
-    if ((kind != kOutlinedResource) && !use_async_flow) {
-      GoogleString name_key = StrCat(
-          ResourceManager::kCacheKeyResourceNamePrefix, resource->name_key());
-      resource->FetchCachedResult(name_key,
-                                  resource_manager_->message_handler());
-    }
   }
   return resource;
 }

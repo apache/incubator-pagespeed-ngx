@@ -337,9 +337,6 @@ void ResourceManager::CacheComputedResourceMapping(OutputResource* output,
     cached->set_url(output->url());
   }
   cached->set_origin_expiration_time_ms(origin_expire_time_ms);
-  if (!output->written_using_rewrite_context_flow()) {
-    output->SaveCachedResult(name_key, handler);
-  }
 }
 
 bool ResourceManager::IsPagespeedResource(const GoogleUrl& url) {

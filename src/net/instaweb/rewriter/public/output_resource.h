@@ -190,14 +190,6 @@ class OutputResource : public Resource {
 
   OutputResourceKind kind() const { return kind_; }
 
-  // TODO(jmarantz): get rid of this bool when RewriteContext is fully deployed.
-  bool written_using_rewrite_context_flow() const {
-    return written_using_rewrite_context_flow_;
-  }
-  void set_written_using_rewrite_context_flow(bool x) {
-    written_using_rewrite_context_flow_ = x;
-  }
-
   bool has_lock() const;
 
   // This is called by CacheCallback::Done in rewrite_driver.cc.
@@ -243,16 +235,6 @@ class OutputResource : public Resource {
 
   OutputWriter* BeginWrite(MessageHandler* message_handler);
   bool EndWrite(OutputWriter* writer, MessageHandler* message_handler);
-
-  // Stores the current state of cached_result in the metadata cache
-  // under the given key.
-  // Pre-condition: cached_result() != NULL
-  void SaveCachedResult(const GoogleString& key, MessageHandler* handler);
-
-  // Loads the state of cached_result from the given cached key if possible,
-  // and syncs our URL and content type with it. If fails, cached_result
-  // will be set to NULL.
-  void FetchCachedResult(const GoogleString& key, MessageHandler* handler);
 
   FileSystem::OutputFile* output_file_;
   bool writing_complete_;
@@ -307,13 +289,6 @@ class OutputResource : public Resource {
   // Output resource have a 'kind' associated with them that controls the kind
   // of caching we would like to be performed on them when written out.
   OutputResourceKind kind_;
-
-  // Outputs written using the newer async flow in RewriteContext.cc do not need
-  // rname caches, because the meta-data is contained in the OutputPartitions.
-  //
-  // TODO(jmarantz): when the new flow is completley deployed this bool
-  // can be removed.
-  bool written_using_rewrite_context_flow_;
 
   DISALLOW_COPY_AND_ASSIGN(OutputResource);
 };
