@@ -13,6 +13,10 @@
 # limitations under the License.
 
 vars = {
+  # Note that the chromium_revision should be kept in sync with the
+  # one in libpagespeed's DEPS file. Allowing them to drift out of
+  # sync means that we will end up linking different versions of code
+  # that may be incompatible with each other, which can lead to bugs.
   "chromium_trunk": "http://src.chromium.org/svn/trunk",
   "chromium_revision": "@90205",
   "chromium_deps_root": "src/third_party/chromium_deps",
@@ -20,10 +24,6 @@ vars = {
   "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.12.4.0",
   "libpagespeed_revision": "@head",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
-
-  # We check libwebp out of Chromium repo to get the .gyp file.
-  "libwebp_src": "http://src.chromium.org/svn/trunk/src/third_party/libwebp/",
-  "libwebp_revision": "@80421",
 
   "mod_spdy_trunk": "http://mod-spdy.googlecode.com/svn/trunk",
   "mod_spdy_revision": "@143",
@@ -49,9 +49,6 @@ vars = {
 
   "google_sparsehash_root": "http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.8.1/src",
   "google_sparsehash_revision": "@head",
-
-  "drp_src": "http://domain-registry-provider.googlecode.com/svn/trunk",
-  "drp_revision": "@22",
 }
 
 deps = {
@@ -128,14 +125,6 @@ deps = {
      Var("chromium_trunk") + "/src/net/base" +
      Var("chromium_revision"),
 
-  "src/third_party/chromium/src/base/memory":
-     Var("chromium_trunk") + "/src/base/memory" +
-     Var("chromium_revision"),
-
-  "src/third_party/chromium/src/base/threading":
-     Var("chromium_trunk") + "/src/base/threading" +
-     Var("chromium_revision"),
-
   "src/third_party/chromium/src/net/tools/dump_cache":
      Var("chromium_trunk") + "/src/net/tools/dump_cache" +
      Var("chromium_revision"),
@@ -198,7 +187,10 @@ deps = {
 
   "src/third_party/serf/src": Var("serf_src") + Var("serf_revision"),
 
-  "src/third_party/libwebp": Var("libwebp_src") + Var("libwebp_revision"),
+  # We check libwebp out of Chromium repo to get the .gyp file.
+  "src/third_party/libwebp":
+     Var("chromium_trunk") + "/src/third_party/libwebp" +
+     Var("chromium_revision"),
 
   "src/third_party/zlib":
     (Var("libpagespeed_trunk") + "/src/third_party/zlib" +
@@ -213,7 +205,7 @@ deps = {
       Var("chromium_revision"),
 
   "src/third_party/domain_registry_provider/src":
-    Var("drp_src") + "/src" + Var("drp_revision"),
+    From(Var("libpagespeed_deps_root")),
 }
 
 

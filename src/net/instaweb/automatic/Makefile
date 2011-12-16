@@ -66,6 +66,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_util_core.a \
   net/instaweb/libinstaweb_util_pthread.a \
   net/instaweb/libmem_clean_up.a \
+  net/instaweb/libpanel_config_pb.a \
   third_party/base64/libbase64.a \
   third_party/chromium/src/base/third_party/dynamic_annotations/libdynamic_annotations.a \
   third_party/chromium/src/net/tools/liburl_to_filename_encoder.a \

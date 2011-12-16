@@ -19,6 +19,7 @@
 
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 
+#include <cstring>
 #include <vector>
 
 #include "base/logging.h"
@@ -28,6 +29,7 @@
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -515,6 +517,13 @@ TEST_P(CssCombineFilterTest, CombineCssWithImportInSecond) {
   BarrierTestHelper("combine_css_with_import1", css_in, &css_out);
   EXPECT_EQ("1.css", css_out[0]->url_);
   EXPECT_EQ(2, css_out.size());
+}
+
+TEST_P(CssCombineFilterTest, ProperBOM) {
+  EXPECT_EQ(3, std::strlen(CssCombineFilter::kUtf8Bom));
+  EXPECT_EQ(0xEF, static_cast<unsigned char>(CssCombineFilter::kUtf8Bom[0]));
+  EXPECT_EQ(0xBB, static_cast<unsigned char>(CssCombineFilter::kUtf8Bom[1]));
+  EXPECT_EQ(0xBF, static_cast<unsigned char>(CssCombineFilter::kUtf8Bom[2]));
 }
 
 TEST_P(CssCombineFilterTest, StripBOM) {

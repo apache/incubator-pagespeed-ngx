@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -34,6 +35,7 @@ namespace net_instaweb {
 
 class Hasher;
 class MessageHandler;
+class PublisherConfig;
 
 class RewriteOptions {
  public:
@@ -46,6 +48,8 @@ class RewriteOptions {
     kCombineCss,
     kCombineHeads,
     kCombineJavascript,
+    kComputeLayout,
+    kComputePanelJson,
     kConvertJpegToProgressive,
     kConvertJpegToWebp,
     kConvertMetaTags,
@@ -95,6 +99,8 @@ class RewriteOptions {
   static const char kJavascriptCombinerId[];
   static const char kJavascriptInlineId[];
   static const char kJavascriptMinId[];
+
+  static const char kPanelCommentPrefix[];
 
   // Return the appropriate human-readable filter name for the given filter,
   // e.g. "CombineCss".
@@ -392,6 +398,11 @@ class RewriteOptions {
     set_option(x, &image_webp_recompress_quality_);
   }
 
+  // Takes ownership of the config.
+  void set_panel_config(PublisherConfig* panel_config);
+  const PublisherConfig* panel_config() const;
+
+
   // Merge together two source RewriteOptions to populate this.  The order
   // is significant: the second will override the first.  One semantic
   // subject to interpretation is when a core-filter is disabled in the
@@ -679,6 +690,8 @@ class RewriteOptions {
   Option<bool> always_rewrite_css_;  // For tests/debugging.
   Option<bool> respect_vary_;
   Option<bool> flush_html_;
+
+  scoped_ptr<PublisherConfig> panel_config_;
 
   Option<GoogleString> beacon_url_;
 

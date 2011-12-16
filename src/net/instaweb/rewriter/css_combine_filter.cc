@@ -58,7 +58,7 @@ class HtmlIEDirectiveNode;
 class UrlSegmentEncoder;
 
 // {0xEF, 0xBB, 0xBF, 0x0}
-const char CssCombineFilter::kUtf8Bom[] = "\0357\0273\0277";
+const char CssCombineFilter::kUtf8Bom[] = "\xEF\xBB\xBF";
 
 namespace {
 

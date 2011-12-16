@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "base/logging.h"
+#include "net/instaweb/rewriter/panel_config.pb.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -64,6 +65,7 @@ const char RewriteOptions::kImageCompressionId[] = "ic";
 const char RewriteOptions::kJavascriptCombinerId[] = "jc";
 const char RewriteOptions::kJavascriptMinId[] = "jm";
 const char RewriteOptions::kJavascriptInlineId[] = "ji";
+const char RewriteOptions::kPanelCommentPrefix[] = "GooglePanel";
 
 // TODO(jmarantz): consider merging this threshold with the image-inlining
 // threshold, which is currently defaulting at 2000, so we have a single
@@ -206,6 +208,8 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kCombineCss:                      return "Combine Css";
     case kCombineHeads:                    return "Combine Heads";
     case kCombineJavascript:               return "Combine Javascript";
+    case kComputeLayout:                   return "Computes layout";
+    case kComputePanelJson:                return "Computes panel json";
     case kConvertJpegToProgressive:        return "Convert Jpeg to Progressive";
     case kConvertJpegToWebp:               return "Convert Jpeg To Webp";
     case kConvertMetaTags:                 return "Convert Meta Tags";
@@ -257,6 +261,8 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kCombineCss:                      return kCssCombinerId;
     case kCombineHeads:                    return "ch";
     case kCombineJavascript:               return kJavascriptCombinerId;
+    case kComputeLayout:                   return "bl";
+    case kComputePanelJson:                return "bp";
     case kConvertJpegToProgressive:        return "jp";
     case kConvertJpegToWebp:               return "jw";
     case kConvertMetaTags:                 return "mc";
@@ -397,6 +403,14 @@ RewriteOptions::~RewriteOptions() {
 RewriteOptions::OptionBase::~OptionBase() {
 }
 
+void RewriteOptions::set_panel_config(
+    PublisherConfig* panel_config) {
+  panel_config_.reset(panel_config);
+}
+
+const PublisherConfig* RewriteOptions::panel_config() const {
+  return panel_config_.get();
+}
 
 void RewriteOptions::DisallowTroublesomeResources() {
   // http://code.google.com/p/modpagespeed/issues/detail?id=38
@@ -430,6 +444,10 @@ void RewriteOptions::DisallowTroublesomeResources() {
   // TODO(sligocki): Add disallow for the JS broken in:
   // http://code.google.com/p/modpagespeed/issues/detail?id=142
   // Not clear which JS file is broken and proxying is not working correctly.
+
+  if (Enabled(kComputeLayout) || Enabled(kComputePanelJson)) {
+    RetainComment(StrCat(kPanelCommentPrefix, "*"));
+  }
 }
 
 bool RewriteOptions::AdjustFiltersByCommaSeparatedList(
@@ -724,11 +742,22 @@ void RewriteOptions::Merge(const RewriteOptions& first,
 
   retain_comments_.CopyFrom(first.retain_comments_);
   retain_comments_.AppendFrom(second.retain_comments_);
+
+  if (second.panel_config() != NULL) {
+    set_panel_config(new PublisherConfig(*(second.panel_config())));
+  } else if (first.panel_config() != NULL) {
+    set_panel_config(new PublisherConfig(*(first.panel_config())));
+  }
 }
 
 RewriteOptions* RewriteOptions::Clone() const {
   RewriteOptions* options = new RewriteOptions;
   options->CopyFrom(*this);
+
+  const PublisherConfig* config = panel_config();
+  if (config != NULL) {
+    options->set_panel_config(new PublisherConfig(*config));
+  }
   return options;
 }
 

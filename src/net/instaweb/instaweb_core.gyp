@@ -15,6 +15,9 @@
 {
   'variables': {
     'instaweb_root': '../..',
+    'protoc_out_dir': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
+    'protoc_executable':
+        '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
     'chromium_code': 1,
   },
   'targets': [
@@ -139,12 +142,28 @@
       ]
     },
     {
+      'target_name': 'panel_config_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter/',
+      },
+      'sources': [
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/panel_config.pb.cc',
+        'rewriter/panel_config.proto',
+      ],
+      'dependencies': [
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_rewriter_html',
       'type': '<(library)',
       'dependencies': [
         'instaweb_util_core',
         'instaweb_htmlparse_core',
         'instaweb_rewriter_html_gperf',
+        'panel_config_pb',
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [
