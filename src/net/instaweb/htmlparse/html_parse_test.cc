@@ -372,7 +372,14 @@ class AnnotatingHtmlFilter : public EmptyHtmlFilter {
   virtual ~AnnotatingHtmlFilter() {}
 
   virtual void StartElement(HtmlElement* element) {
-    StrAppend(&buffer_, " +", element->name_str());
+    StrAppend(&buffer_, (buffer_.empty() ? "+" : " +"), element->name_str());
+    for (int i = 0; i < element->attribute_size(); ++i) {
+      const HtmlElement::Attribute& attr = element->attribute(i);
+      StrAppend(&buffer_, (i == 0 ? ":" : ","), attr.name_str());
+      if (attr.value() != NULL) {
+        StrAppend(&buffer_, "=", attr.quote(), attr.value(), attr.quote());
+      }
+    }
   }
   virtual void EndElement(HtmlElement* element) {
     StrAppend(&buffer_, " -", element->name_str());
@@ -385,8 +392,10 @@ class AnnotatingHtmlFilter : public EmptyHtmlFilter {
     }
   }
   virtual void Characters(HtmlCharactersNode* characters) {
-    StrAppend(&buffer_, " '", characters->contents(), "'");
+    StrAppend(&buffer_, (buffer_.empty() ? "'" : " '"), characters->contents(),
+              "'");
   }
+
   virtual const char* Name() const { return "AnnotatingHtmlFilter"; }
 
   const GoogleString& buffer() const { return buffer_; }
@@ -406,6 +415,7 @@ class HtmlAnnotationTest : public HtmlParseTestNoBody {
   }
 
   const GoogleString& annotation() { return annotation_.buffer(); }
+  virtual bool AddHtmlTags() const { return false; }
 
  private:
   AnnotatingHtmlFilter annotation_;
@@ -420,8 +430,8 @@ TEST_F(HtmlAnnotationTest, UnbalancedMarkup) {
 
   // We use this (hopefully) self-explanatory annotation format to indicate
   // what's going on in the parse.
-  EXPECT_EQ(" +html '\n' +font -font(a) +tr +i +font -font(u) -i(e) '</font>'"
-            " -tr(a) +tr '</font>\n' -tr(u) -html(e)",
+  EXPECT_EQ("+font -font(a) +tr +i +font -font(u) -i(e) '</font>' -tr(a) +tr "
+            "'</font>'",
             annotation());
 }
 
@@ -431,15 +441,13 @@ TEST_F(HtmlAnnotationTest, StrayCloseTr) {
 
   // We use this (hopefully) self-explanatory annotation format to indicate
   // what's going on in the parse.
-  EXPECT_EQ(" +html '\n' +table +tr +table '</tr>' -table(e) -tr(e) -table(e) "
-            "'\n' -html(e)",
+  EXPECT_EQ("+table +tr +table '</tr>' -table(e) -tr(e) -table(e)",
             annotation());
 }
 
 TEST_F(HtmlAnnotationTest, IClosedByOpenTr) {
   ValidateNoChanges("unclosed_i_tag", "<tr><i>a<tr>b");
-  EXPECT_EQ(" +html '\n' +tr +i 'a' -i(a) -tr(a) +tr 'b\n' -tr(u) -html(e)",
-            annotation());
+  EXPECT_EQ("+tr +i 'a' -i(a) -tr(a) +tr 'b'", annotation());
 
   // TODO(jmarantz): morlovich points out that this is nowhere near
   // how a browser will handle this stuff... For a nighmarish testcase, try:
@@ -466,25 +474,138 @@ TEST_F(HtmlAnnotationTest, IClosedByOpenTr) {
 
 TEST_F(HtmlAnnotationTest, INotClosedByOpenTableExplicit) {
   ValidateNoChanges("explicit_close_tr", "<i>a<table><tr></tr></table>b");
-  EXPECT_EQ(
-      " +html '\n' +i 'a' +table +tr -tr(e) -table(e) 'b\n' -i(u) -html(e)",
-      annotation());
+  EXPECT_EQ("+i 'a' +table +tr -tr(e) -table(e) 'b'", annotation());
 }
 
 TEST_F(HtmlAnnotationTest, INotClosedByOpenTableImplicit) {
   ValidateNoChanges("implicit_close_tr", "<i>a<table><tr></table>b");
-  EXPECT_EQ(
-      " +html '\n' +i 'a' +table +tr -tr(u) -table(e) 'b\n' -i(u) -html(e)",
-      annotation());
+  EXPECT_EQ("+i 'a' +table +tr -tr(u) -table(e) 'b'", annotation());
 }
 
 TEST_F(HtmlAnnotationTest, AClosedByBInLi) {
   ValidateNoChanges("a_closed_by_b", "<li><a href='x'></b>");
-  EXPECT_EQ(" +html '\n' +li +a '</b>\n' -a(u) -li(u) -html(e)", annotation());
+  EXPECT_EQ("+li +a:href='x' '</b>'", annotation());
 }
 
-TEST_F(HtmlAnnotationTest, MiscCornerCases) {
-  // TODO(jmarantz): handle/test a variety of corner cases:
+TEST_F(HtmlAnnotationTest, BClosedByTd) {
+  ValidateNoChanges("b_closed_by_td", "<table><tr><td><b>1</table></b>");
+
+  // The <b> gets closed by the </td>, which is automatically closed by
+  // the td, which is automatically closed by the tr, which is automatically
+  // closed by the tbody, which is automatically closed by the "</table>".
+  // The actual "</b>" that appears here doesn't close any open tags, so
+  // its rendered as literal characters.
+  //
+  // TODO(jmarantz): consider adding a new event-type to represent bogus
+  // tags rather than using Characters.
+  EXPECT_EQ("+table +tr +td +b '1' -b(u) -td(u) -tr(u) -table(e) '</b>'",
+            annotation());
+}
+
+TEST_F(HtmlAnnotationTest, BNotClosedByTable) {
+  ValidateNoChanges(
+      "a_closed_by_b",
+      "<table><tbody><tr><b><td>hello</tr></tbody></table>World</b>");
+
+  // We do not create the same annotation Chrome does in this case.  Opening up
+  // the inspector on
+  // data:text/html,<table><tbody><tr><b><td>hello</tr></tbody></table>World</b>
+  // shows us (ignoring html, head, and body tags for brevity):
+  //      <b></b>
+  //      <table>
+  //        <tbody>
+  //          <tr>
+  //            <td>hello</td>
+  //          </td>
+  //        </tbody>
+  //      </table>
+  //      <b>World</b>
+  // For us to replicate this structure, we'd have to move the 'b' tag ahead of
+  // the <table> opening tag.  To do this we would need to buffer tables until
+  // they reached the end-table tag.  This does not appear to be a good
+  // tradeoff as tables might be large and buffering them would impact
+  // the UX for all sites, as a defense against bad markup and filters that
+  // care deeply about the structure of formatting elements in illegal DOM
+  // positions.
+  //
+  // But note that this malformed markup will in fact pass through
+  // parsing & serialization with byte accuracy.
+}
+
+TEST_F(HtmlAnnotationTest, OverlappingStyleTags) {
+  ValidateNoChanges("overlapping_style_tags", "n<b>b<i>bi</b>i</i>n");
+
+  // TODO(jmarantz): The behavior of this sequence is well-specified, but
+  // is not currently implemented by PSA.  We should have
+  // EXPECT_EQ("'n' +b 'b' +i 'bi' -i(u) -b(e) +i* 'i' -i(e) 'n'",
+  //           annotation());
+  // Note that we will need to render a synthetic <i> that shows up in our
+  // DOM tree but does not get serialized.  We have no current representation
+  // for that, but we could easily add a bool to HtmlElement to suppress the
+  // serialization of the open tag.  Above that's represented by "+i*".
+  //
+  // But we actually get this, which does not have the 'i' in italics.
+  EXPECT_EQ("'n' +b 'b' +i 'bi' -i(u) -b(e) 'i</i>n'", annotation());
+
+  // There is no real drawback to implementing this; but at the moment
+  // no filters are likely to care.
+}
+
+TEST_F(HtmlAnnotationTest, AClosedByP) {
+  ValidateNoChanges("a_closed_by_p", "<P>This is a <A>link<P>More");
+
+  // According to Chrome("data:text/html,<P>This is a <A>link<P>More") the
+  // structure should be something like this:
+  //     "+p 'This is a' +a link -a -p +p +a more -a -p"
+  // In this fashion a&p overlap together in a fashion similar to bold and
+  // italic.
+  //
+  // But we actually product this markup:
+  EXPECT_EQ("+P 'This is a ' +A 'link' +P 'More'",
+            annotation());
+}
+
+TEST_F(HtmlAnnotationTest, PFont) {
+  ValidateNoChanges("p_font", "<P><FONT>a<P>b</FONT>");
+
+  // TODO(jmarantz): The second <P> should force the close of
+  // the first one, despite the intervening <font>.  In other words
+  // we need to keep track of which formatting elements are active:
+  // <p> does not nest but I supose <font> likely does.
+  //
+  // Chrome("data:text/html,<P><FONT>a<P>b</FONT>") yields
+  // "<p><font>a</font</p><p><font><b></font></p>"
+  EXPECT_EQ("+P +FONT 'a' +P 'b' -P(u) -FONT(e)", annotation());
+}
+
+TEST_F(HtmlAnnotationTest, HtmlTbodyCol) {
+  // The spaces before the tag names are invalid.  Chrome parses these as
+  // literals; our behavior is consistent.
+  ValidateNoChanges("html_tbody_col", "< HTML> < TBODY> < COL SPAN=999999999>");
+  EXPECT_EQ("'< HTML> < TBODY> < COL SPAN=999999999>'", annotation());
+}
+
+TEST_F(HtmlAnnotationTest, WeirdAttrQuotes) {
+  // Note that in the expected results, a space was inserted before
+  // 'position:absolute' and before 'Windings'.  I think this is correct.
+  //
+  // TODO(jmarantz): check in Chrome.
+  ValidateExpected("weird_attr_quotes",
+                    "<DIV STYLE=\"top:214px; left:139px;\""
+                    "position:absolute; font-size:26px;\">"
+                    "<NOBR><SPAN STYLE=\"font-family:\"Wingdings 2\";\">"
+                   "</SPAN></NOBR></DIV>",
+                   "<DIV STYLE=\"top:214px; left:139px;\" "
+                   "position:absolute; font-size:26px;\">"
+                   "<NOBR><SPAN STYLE=\"font-family:\" Wingdings 2\";\">"
+                   "</SPAN></NOBR></DIV>");
+  EXPECT_EQ("+DIV:STYLE=\"top:214px; left:139px;\",position:absolute;,"
+            "font-size:26px;\" +NOBR "
+            "+SPAN:STYLE=\"font-family:\",Wingdings,2\";\" "
+            "-SPAN(e) -NOBR(e) -DIV(e)", annotation());
+}
+
+TEST_F(HtmlAnnotationTest, Misc) {
   //
   // 1. This is <B>bold, <I>bold italic, </b>italic, </i>normal text
   // 2. <P>This is a <A>link<P>More
@@ -503,7 +624,8 @@ TEST_F(HtmlAnnotationTest, MiscCornerCases) {
   // 16. <a href="h">1<a>2</a></a>
   ValidateNoChanges("quote_balance", "<img title=\"><script>alert('foo')"
                     "</script>\">");
-  EXPECT_EQ(" +html '\n' +img -img(i) '\n' -html(e)", annotation());
+  EXPECT_EQ("+img:title=\"><script>alert('foo')</script>\" -img(i)",
+            annotation());
 }
 
 TEST_F(HtmlAnnotationTest, DoubleEquals) {
@@ -517,8 +639,7 @@ TEST_F(HtmlAnnotationTest, DoubleEquals) {
   // consistent with the dom annotation below.
   ValidateNoChanges("double_equals",
                     "<img title==\"><script>alert('foo')</script>\">");
-  EXPECT_EQ(" +html '\n' +img -img(i) +script 'alert('foo')' -script(e) "
-            "'\">\n' -html(e)",
+  EXPECT_EQ("+img:title==\" -img(i) +script 'alert('foo')' -script(e) '\">'",
             annotation());
 }
 
@@ -527,7 +648,7 @@ TEST_F(HtmlAnnotationTest, AttrEqStartWithSlash) {
   // attribute.  Verified with chrome using
   // data:text/html,<body title=/>hello</body>
   ValidateNoChanges("attr_eq_starts_with_slash", "<body title=/>1</body>");
-  EXPECT_EQ(" +html '\n' +body '1' -body(e) '\n' -html(e)", annotation());
+  EXPECT_EQ("+body:title=/ '1' -body(e)", annotation());
 }
 
 TEST_F(HtmlAnnotationTest, AttrEqEndsWithSlash) {
@@ -535,13 +656,13 @@ TEST_F(HtmlAnnotationTest, AttrEqEndsWithSlash) {
   // the attribute.  Verified with chrome using
   // data:text/html,<body title=x/>hello</body>
   ValidateNoChanges("attr_eq_ends_with_slash", "<body title=x/></body>");
-  EXPECT_EQ(" +html '\n' +body -body(e) '\n' -html(e)", annotation());
+  EXPECT_EQ("+body:title=x/ -body(e)", annotation());
 }
 
 TEST_F(HtmlAnnotationTest, TableForm) {
   ValidateNoChanges("table_form", "<table><form><input></table><input></form>");
-  EXPECT_EQ(" +html '\n' +table +form +input -input(i) -form(u) -table(e)"
-            " +input -input(i) '</form>\n' -html(e)",
+  EXPECT_EQ("+table +form +input -input(i) -form(u) -table(e)"
+            " +input -input(i) '</form>'",
             annotation());
 }
 
@@ -549,8 +670,9 @@ TEST_F(HtmlAnnotationTest, ComplexQuotedAttribute) {
   ValidateNoChanges("complex_quoted_attr",
                     "<div x='\\'><img onload=alert(42)"
                     "src=http://json.org/img/json160.gif>'></div>");
-  EXPECT_EQ(" +html '\n' +div +img -img(i) ''>' -div(e) '\n' -html(e)",
-            annotation());
+  EXPECT_EQ("+div:x='\\' "
+            "+img:onload=alert(42)src=http://json.org/img/json160.gif "
+            "-img(i) ''>' -div(e)", annotation());
 }
 
 TEST_F(HtmlAnnotationTest, DivNbsp) {
@@ -558,9 +680,8 @@ TEST_F(HtmlAnnotationTest, DivNbsp) {
                     "<div&nbsp &nbsp style=\\-\\mo\\z\\-b\\i\\nd\\in\\g:\\url("
                     "//business\\i\\nfo.co.uk\\/labs\\/xbl\\/xbl\\.xml\\#xss)"
                     ">");
-  EXPECT_EQ(" +html '\n<div&nbsp &nbsp style=\\-\\mo\\z\\-b\\i\\nd\\in\\g:\\"
-            "url(//business\\i\\nfo.co.uk\\/labs\\/xbl\\/xbl\\.xml\\#xss)>\n' "
-            "-html(e)",
+  EXPECT_EQ("'<div&nbsp &nbsp style=\\-\\mo\\z\\-b\\i\\nd\\in\\g:\\"
+            "url(//business\\i\\nfo.co.uk\\/labs\\/xbl\\/xbl\\.xml\\#xss)>'",
             annotation());
 }
 
@@ -573,9 +694,13 @@ TEST_F(HtmlAnnotationTest, ExtraQuote) {
 
 TEST_F(HtmlAnnotationTest, TrNesting) {
   ValidateNoChanges("nesting", "<tr><td><tr a=b><td c=d></td></tr>");
-  EXPECT_EQ(" +html '\n' +tr +td -td(a) -tr(a) +tr +td -td(e) -tr(e) '\n' "
-            "-html(e)",
+  EXPECT_EQ("+tr +td -td(a) -tr(a) +tr:a=b +td:c=d -td(e) -tr(e)",
             annotation());
+}
+
+TEST_F(HtmlAnnotationTest, AttrEndingWithOpenAngle) {
+  ValidateNoChanges("weird_attr", "<script src=foo<bar>Content");
+  EXPECT_EQ("+script:src=foo<bar 'Content'", annotation());
 }
 
 TEST_F(HtmlParseTest, MakeName) {

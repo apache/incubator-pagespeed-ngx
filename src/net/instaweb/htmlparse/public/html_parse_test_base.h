@@ -57,6 +57,13 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   // override this variable to indicate which they prefer.
   virtual bool AddBody() const = 0;
 
+  // If true, prepends "<html>\n" and appends "\n</html>" to input text
+  // prior to parsing it.  This was originally done for consistency with
+  // libxml2 but that's long since been made irrelevant and we should probably
+  // just stop doing it.  Adding the virtual function here should help us
+  // incrementally update tests & their gold results.
+  virtual bool AddHtmlTags() const { return true; }
+
   // Set a doctype string (e.g. "<!doctype html>") to be inserted before the
   // rest of the document (for the current test only).  If none is set, it
   // defaults to the empty string.
@@ -65,8 +72,13 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   }
 
   virtual GoogleString AddHtmlBody(const StringPiece& html) {
-    GoogleString ret = AddBody() ? "<html><body>\n" : "<html>\n";
-    StrAppend(&ret, html, (AddBody() ? "\n</body></html>\n" : "\n</html>"));
+    GoogleString ret;
+    if (AddHtmlTags()) {
+      ret = AddBody() ? "<html><body>\n" : "<html>\n";
+      StrAppend(&ret, html, (AddBody() ? "\n</body></html>\n" : "\n</html>"));
+    } else {
+      html.CopyToString(&ret);
+    }
     return ret;
   }
 
