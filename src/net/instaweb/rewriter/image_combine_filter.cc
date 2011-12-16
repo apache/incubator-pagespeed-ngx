@@ -1181,7 +1181,15 @@ void ImageCombineFilter::Reset(CssFilter::Context* parent,
                                const GoogleUrl& css_url,
                                const StringPiece& css_text) {
   context_ = MakeNestedContext(parent, css_url, css_text);
-  parent->RegisterNested(context_);
+}
+
+void ImageCombineFilter::RegisterOrReleaseContext() {
+  if ((context_ != NULL) && (context_->num_slots() != 0)) {
+    context_->parent()->AddNestedContext(context_);
+  } else {
+    delete context_;
+    context_ = NULL;
+  }
 }
 
 // Make a new context that is nested under parent.

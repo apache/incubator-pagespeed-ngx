@@ -109,7 +109,6 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
       image_rewriter_(
           new CssImageRewriterAsync(this, filter->driver_, cache_extender,
                                     image_rewriter, image_combiner)),
-      have_nested_rewrites_(false),
       rewrite_inline_element_(NULL),
       rewrite_inline_char_node_(NULL),
       rewrite_inline_attribute_(NULL),
@@ -217,7 +216,7 @@ void CssFilter::Context::RewriteSingle(
       driver_->message_handler());
 
   if (result.value) {
-    if (have_nested_rewrites_) {
+    if (num_nested() > 0) {
       StartNestedTasks();
     } else {
       // We call Harvest() ourselves so we can centralize all the output there.
@@ -237,11 +236,6 @@ void CssFilter::Context::RewriteImages(int64 in_text_size,
                                     css_base_gurl_, css_trim_gurl_,
                                     input_resource_->contents(), stylesheet,
                                     driver_->message_handler());
-}
-
-void CssFilter::Context::RegisterNested(RewriteContext* nested) {
-  have_nested_rewrites_ = true;
-  AddNestedContext(nested);
 }
 
 void CssFilter::Context::Harvest() {

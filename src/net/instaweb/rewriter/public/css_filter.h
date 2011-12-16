@@ -193,9 +193,6 @@ class CssFilter::Context : public SingleRewriteContext {
   // Starts nested rewrite jobs for any images contained in the CSS.
   void RewriteImages(int64 in_text_size, Css::Stylesheet* stylesheet);
 
-  // Registers a context that was started on our behalf.
-  void RegisterNested(RewriteContext* nested);
-
   CssResourceSlotFactory* slot_factory() { return &slot_factory_; }
 
  protected:
@@ -235,9 +232,6 @@ class CssFilter::Context : public SingleRewriteContext {
   RewriteDriver* driver_;
   scoped_ptr<CssImageRewriterAsync> image_rewriter_;
   CssResourceSlotFactory slot_factory_;
-
-  // If this is true, the image_rewriter_ has asked us to start nested rewrites.
-  bool have_nested_rewrites_;
 
   // Style element containing inline CSS (see StartInlineRewrite) -or-
   // any element with a style attribute (see StartAttributeRewrite), or

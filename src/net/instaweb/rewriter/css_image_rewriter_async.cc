@@ -89,13 +89,13 @@ void CssImageRewriterAsync::RewriteImage(
 
   if (options->Enabled(RewriteOptions::kRecompressImages) ||
       image_inline_max_bytes > 0) {
-    context_->RegisterNested(
+    context_->AddNestedContext(
         image_rewriter_->MakeNestedRewriteContextForCss(image_inline_max_bytes,
             context_, ResourceSlotPtr(slot)));
   }
 
   if (driver_->MayCacheExtendImages()) {
-    context_->RegisterNested(
+    context_->AddNestedContext(
         cache_extender_->MakeNestedContext(context_, ResourceSlotPtr(slot)));
   }
 
@@ -190,6 +190,8 @@ void CssImageRewriterAsync::RewriteCssImages(int64 image_inline_max_bytes,
         spriting_ok = false;
       }
     }
+
+    image_combiner_->RegisterOrReleaseContext();
   } else {
     handler->Message(kInfo, "Image rewriting and cache extension not enabled, "
                      "so not rewriting images in CSS in %s",

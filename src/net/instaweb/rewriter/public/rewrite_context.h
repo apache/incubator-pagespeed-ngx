@@ -189,6 +189,14 @@ class RewriteContext {
   // Returns true if this is a nested rewriter.
   bool has_parent() const { return parent_ != NULL; }
 
+  // Allows a nested rewriter to walk up its parent hierarchy.
+  RewriteContext* parent() { return parent_; }
+  const RewriteContext* parent() const { return parent_; }
+
+  // Adds a new nested RewriteContext.  This RewriteContext will not
+  // be considered complete until all nested contexts have completed.
+  void AddNestedContext(RewriteContext* context);
+
  protected:
   typedef std::vector<InputInfo*> InputInfoStarVector;
   typedef std::vector<GoogleUrl*> GoogleUrlStarVector;
@@ -236,10 +244,6 @@ class RewriteContext {
   // This method can run in any thread.
   void RewriteDone(RewriteSingleResourceFilter::RewriteResult result,
                    int partition_index);
-
-  // Adds a new nested RewriteContext.  This RewriteContext will not
-  // be considered complete until all nested contexts have completed.
-  void AddNestedContext(RewriteContext* context);
 
   // Called on the parent from a nested Rewrite when it is complete.
   // Note that we don't track rewrite success/failure here.  We only

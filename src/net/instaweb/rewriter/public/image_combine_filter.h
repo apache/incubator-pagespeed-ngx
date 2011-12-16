@@ -79,8 +79,13 @@ class ImageCombineFilter : public RewriteFilter {
   // Create the combination with the current combiner.
   OutputResourcePtr MakeOutput();
 
+  // Creates a new context for doing spriting, but does not register it.
   void Reset(CssFilter::Context* context, const GoogleUrl& css_url,
              const StringPiece& css_text);
+
+  // If there is any work to do, registers the RewriteContext created by
+  // Reset(). If there isn't, cleans it up.
+  void RegisterOrReleaseContext();
 
  protected:
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
