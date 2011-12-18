@@ -108,8 +108,9 @@ class CssCombineFilter::CssCombiner
   const GoogleString& media() const { return media_; }
 
  private:
-  virtual bool WritePiece(const Resource* input, OutputResource* combination,
-                          Writer* writer, MessageHandler* handler);
+  virtual bool WritePiece(int index, const Resource* input,
+                          OutputResource* combination, Writer* writer,
+                          MessageHandler* handler);
 
   void StripUTF8BOM(StringPiece* contents) const;
 
@@ -454,14 +455,14 @@ void CssCombineFilter::CssCombiner::StripUTF8BOM(StringPiece* contents) const {
 }
 
 bool CssCombineFilter::CssCombiner::WritePiece(
-    const Resource* input, OutputResource* combination, Writer* writer,
-    MessageHandler* handler) {
+    int index, const Resource* input, OutputResource* combination,
+    Writer* writer, MessageHandler* handler) {
   StringPiece contents = input->contents();
   GoogleUrl input_url(input->url());
   StringPiece input_dir = input_url.AllExceptLeaf();
   // Strip the BOM off of the contents (if it's there) if this is not the
   // first resource.
-  if (resources().size() > 0 && resources()[0].get() != input) {
+  if (index != 0) {
     StripUTF8BOM(&contents);
   }
   bool ret = false;

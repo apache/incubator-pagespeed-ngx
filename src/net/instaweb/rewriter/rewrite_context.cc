@@ -1446,12 +1446,33 @@ bool RewriteContext::DecodeFetchUrls(
     const OutputResourcePtr& output_resource,
     MessageHandler* message_handler,
     GoogleUrlStarVector* url_vector) {
-  GoogleUrl base(output_resource->decoded_base());
+  GoogleUrl original_base(output_resource->url());
+  GoogleUrl decoded_base(output_resource->decoded_base());
+  bool check_for_multiple_rewrites =
+      (original_base.AllExceptLeaf() != decoded_base.AllExceptLeaf());
   StringVector urls;
   if (encoder()->Decode(output_resource->name(), &urls, resource_context_.get(),
                         message_handler)) {
     for (int i = 0, n = urls.size(); i < n; ++i) {
-      GoogleUrl* url = new GoogleUrl(base, urls[i]);
+      // If the decoded name is still encoded (because originally it was
+      // rewritten by multiple filters, such as CSS minified then combined),
+      // keep the un-decoded base, otherwise use the decoded base.
+      // For example, this encoded URL:
+      //   http://cdn.com/my.com/I.a.css.pagespeed.cf.0.css
+      // needs will be decoded to http://my.com/a.css so we need to use the
+      // decoded domain here. But this encoded URL:
+      //   http://cdn.com/my.com/I.a.css+b.css,Mcc.0.css.pagespeed.cf.0.css
+      // needs will be decoded first to:
+      //   http://cdn.com/my.com/I.a.css+b.css,pagespeed.cc.0.css
+      // which will then be decoded to http://my.com/a.css and b.css so for the
+      // first decoding here we need to retain the encoded domain name.
+      GoogleUrl* url = NULL;
+      ResourceNamer namer;
+      if (check_for_multiple_rewrites && namer.Decode(urls[i])) {
+        url = new GoogleUrl(original_base, urls[i]);
+      } else {
+        url = new GoogleUrl(decoded_base, urls[i]);
+      }
       url_vector->push_back(url);
     }
     return true;

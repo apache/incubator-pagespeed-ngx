@@ -121,8 +121,9 @@ class JsCombineFilter::JsCombiner
   }
 
  private:
-  virtual bool WritePiece(const Resource* input, OutputResource* combination,
-                          Writer* writer, MessageHandler* handler);
+  virtual bool WritePiece(int index, const Resource* input,
+                          OutputResource* combination, Writer* writer,
+                          MessageHandler* handler);
 
   JsCombineFilter* filter_;
   Variable* js_file_count_reduction_;
@@ -402,8 +403,8 @@ void JsCombineFilter::JsCombiner::TryCombineAccumulated() {
 }
 
 bool JsCombineFilter::JsCombiner::WritePiece(
-    const Resource* input, OutputResource* combination, Writer* writer,
-    MessageHandler* handler) {
+    int index, const Resource* input, OutputResource* combination,
+    Writer* writer, MessageHandler* handler) {
   // We write out code of each script into a variable.
   writer->Write(StrCat("var ", filter_->VarName(input->url()), " = "),
                 handler);

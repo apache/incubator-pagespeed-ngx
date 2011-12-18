@@ -574,6 +574,22 @@ TEST_P(CssCombineFilterTest, StripBOM) {
   EXPECT_EQ(0, bom_pos);
 }
 
+TEST_P(CssCombineFilterTest, StripBOMReconstruct) {
+  // Make sure we strip the BOM properly when reconstructing, too.
+  const char kCssA[] = "a.css";
+  const char kCssB[] = "b.css";
+  const char kCssText[] = "div {background-image:url(fancy.png);}";
+  InitResponseHeaders(kCssA, kContentTypeCss,
+                      StrCat(CssCombineFilter::kUtf8Bom, kCssText), 300);
+  InitResponseHeaders(kCssB, kContentTypeCss,
+                      StrCat(CssCombineFilter::kUtf8Bom, kCssText), 300);
+  GoogleString css_url =
+      Encode(kTestDomain, "cc", "0", MultiUrl(kCssA, kCssB), "css");
+  GoogleString css_out;
+  EXPECT_TRUE(ServeResourceUrl(css_url, &css_out));
+  EXPECT_EQ(StrCat(CssCombineFilter::kUtf8Bom, kCssText, kCssText), css_out);
+}
+
 TEST_P(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
   const char noscript_barrier[] =
       "<noscript>\n"

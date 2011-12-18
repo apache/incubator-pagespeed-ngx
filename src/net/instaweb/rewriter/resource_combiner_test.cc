@@ -88,10 +88,11 @@ class TestCombineFilter : public RewriteFilter {
     };
 
    protected:
-    virtual bool WritePiece(const Resource* input, OutputResource* combination,
-                    Writer* writer, MessageHandler* handler) {
-      ResourceCombinerTemplate<HtmlElement*>::WritePiece(input, combination,
-                                                         writer, handler);
+    virtual bool WritePiece(int index, const Resource* input,
+                            OutputResource* combination, Writer* writer,
+                            MessageHandler* handler) {
+      ResourceCombinerTemplate<HtmlElement*>::WritePiece(
+          index, input, combination, writer, handler);
       writer->Write("|", handler);
       return true;
     }

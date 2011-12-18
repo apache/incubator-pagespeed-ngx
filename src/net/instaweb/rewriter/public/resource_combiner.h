@@ -133,8 +133,10 @@ class ResourceCombiner {
   // Override this to alter how pieces are processed when included inside
   // a combination. Returns whether successful. The default implementation
   // writes input->contents() to the writer without any alteration.
-  virtual bool WritePiece(const Resource* input, OutputResource* combination,
-                          Writer* writer, MessageHandler* handler);
+  // 'index' is the position of this piece in the combination.
+  virtual bool WritePiece(int index, const Resource* input,
+                          OutputResource* combination, Writer* writer,
+                          MessageHandler* handler);
 
   // Override this if you need to remove some state whenever Reset() is called.
   // Your implementation must call the superclass.

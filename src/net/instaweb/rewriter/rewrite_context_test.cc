@@ -418,10 +418,12 @@ class CombiningFilter : public RewriteFilter {
       return WriteCombination(in, out, rewrite_driver_->message_handler());
     }
 
-    virtual bool WritePiece(const Resource* input, OutputResource* combination,
+    virtual bool WritePiece(int index, const Resource* input,
+                            OutputResource* combination,
                             Writer* writer, MessageHandler* handler) {
       writer->Write(prefix_, handler);
-      return ResourceCombiner::WritePiece(input, combination, writer, handler);
+      return ResourceCombiner::WritePiece(
+          index, input, combination, writer, handler);
     }
 
     void set_prefix(const GoogleString& prefix) { prefix_ = prefix; }
@@ -1856,7 +1858,7 @@ TEST_F(RewriteContextTest, UltraQuickRewrite) {
   InitResources();
 
   WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
-  rewrite_driver()->AddOwnedPreRenderFilter(
+  rewrite_driver()->AppendOwnedPreRenderFilter(
       new TestNotifyFilter(rewrite_driver(), &sync));
   rewrite_driver()->AddOwnedPostRenderFilter(
       new TestWaitFilter(rewrite_driver(), &sync));

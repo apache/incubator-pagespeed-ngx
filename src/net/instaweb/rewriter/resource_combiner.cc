@@ -292,7 +292,7 @@ bool ResourceCombiner::WriteCombination(
       min_origin_expiration_time_ms = input_expire_time_ms;
     }
 
-    written = WritePiece(input.get(), combination.get(), &writer, handler);
+    written = WritePiece(i, input.get(), combination.get(), &writer, handler);
   }
   if (written) {
     written =
@@ -303,7 +303,8 @@ bool ResourceCombiner::WriteCombination(
   return written;
 }
 
-bool ResourceCombiner::WritePiece(const Resource* input,
+bool ResourceCombiner::WritePiece(int index,
+                                  const Resource* input,
                                   OutputResource* /*combination*/,
                                   Writer* writer,
                                   MessageHandler* handler) {

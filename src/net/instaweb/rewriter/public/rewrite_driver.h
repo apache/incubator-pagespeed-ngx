@@ -201,16 +201,23 @@ class RewriteDriver : public HtmlParse {
   // in RewriteOptions, via AddFilter(HtmlFilter* filter) (below).
   void AddFilters();
 
-  // Adds a filter to the pre-render chain, taking ownership.
-  void AddOwnedPreRenderFilter(HtmlFilter* filter);
+  // Adds a filter to the very beginning of the pre-render chain, taking
+  // ownership.  This should only be used for filters that must run before any
+  // filter added via PrependOwnedPreRenderFilter.
+  void AddOwnedEarlyPreRenderFilter(HtmlFilter* filter);
 
-  // Adds a filter to the post-render chain, taking ownership.
+  // Adds a filter to the beginning of the pre-render chain, taking ownership.
+  void PrependOwnedPreRenderFilter(HtmlFilter* filter);
+  // Adds a filter to the end of the pre-render chain, taking ownership.
+  void AppendOwnedPreRenderFilter(HtmlFilter* filter);
+
+  // Adds a filter to the end of the post-render chain, taking ownership.
   void AddOwnedPostRenderFilter(HtmlFilter* filter);
   // Same, without taking ownership.
   void AddUnownedPostRenderFilter(HtmlFilter* filter);
 
   // Add a RewriteFilter to the pre-render chain and take ownership of
-  // the filter.  This differs from AddOwnedPreRenderFilter in that
+  // the filter.  This differs from AppendOwnedPreRenderFilter in that
   // it adds the filter's ID into a dispatch table for serving
   // rewritten resources.  E.g. if your filter->id == "xy" and
   // FetchResource("NAME.pagespeed.xy.HASH.EXT"...)  is called, then
@@ -942,8 +949,10 @@ class RewriteDriver : public HtmlParse {
   // The default resource encoder
   UrlSegmentEncoder default_encoder_;
 
-  // The chain of filters called prior to waiting for Rewrites to complete.
-  FilterVector pre_render_filters_;
+  // The first chain of filters called before waiting for Rewrites to complete.
+  FilterList early_pre_render_filters_;
+  // The second chain of filters called before waiting for Rewrites to complete.
+  FilterList pre_render_filters_;
 
   // A container of filters to delete when RewriteDriver is deleted.  This
   // can include pre_render_filters as well as those added to the post-render

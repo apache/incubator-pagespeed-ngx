@@ -328,6 +328,7 @@ class HtmlParse {
 
  protected:
   typedef std::vector<HtmlFilter*> FilterVector;
+  typedef std::list<HtmlFilter*> FilterList;
 
   // HtmlParse::FinishParse() is equivalent to the sequence of
   // BeginFinishParse(); Flush(); EndFinishParse().

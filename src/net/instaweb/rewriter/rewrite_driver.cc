@@ -173,7 +173,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
 #endif
   }
   // The Scan filter always goes first so it can find base-tags.
-  pre_render_filters_.push_back(&scan_filter_);
+  early_pre_render_filters_.push_back(&scan_filter_);
 }
 
 RewriteDriver::~RewriteDriver() {
@@ -412,8 +412,14 @@ void RewriteDriver::FlushAsync(Function* callback) {
   // Hide the tail of the queue after an inhibited event.
   SplitQueueIfNecessary();
 
-  for (int i = 0, n = pre_render_filters_.size(); i < n; ++i) {
-    HtmlFilter* filter = pre_render_filters_[i];
+  for (FilterList::iterator it = early_pre_render_filters_.begin();
+      it != early_pre_render_filters_.end(); ++it) {
+    HtmlFilter* filter = *it;
+    ApplyFilter(filter);
+  }
+  for (FilterList::iterator it = pre_render_filters_.begin();
+      it != pre_render_filters_.end(); ++it) {
+    HtmlFilter* filter = *it;
     ApplyFilter(filter);
   }
 
@@ -689,17 +695,17 @@ void RewriteDriver::AddPreRenderFilters() {
       rewrite_options->Enabled(RewriteOptions::kAddInstrumentation)) {
     // Adds a filter that adds a 'head' section to html documents if
     // none found prior to the body.
-    AddOwnedPreRenderFilter(new AddHeadFilter(
+    AddOwnedEarlyPreRenderFilter(new AddHeadFilter(
         this, rewrite_options->Enabled(RewriteOptions::kCombineHeads)));
   }
   if (rewrite_options->Enabled(RewriteOptions::kStripScripts)) {
     // Experimental filter that blindly strips all scripts from a page.
-    AddOwnedPreRenderFilter(new StripScriptsFilter(this));
+    AppendOwnedPreRenderFilter(new StripScriptsFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink)) {
     // If we're converting simple embedded CSS @imports into a href link
     // then we need to do that before any other CSS processing.
-    AddOwnedPreRenderFilter(new CssInlineImportToLinkFilter(this,
+    AppendOwnedPreRenderFilter(new CssInlineImportToLinkFilter(this,
                                                             statistics()));
   }
   if (rewrite_options->Enabled(RewriteOptions::kOutlineCss)) {
@@ -707,19 +713,19 @@ void RewriteDriver::AddPreRenderFilters() {
     // This can only be called once and requires a resource_manager to be set.
     CHECK(resource_manager_ != NULL);
     CssOutlineFilter* css_outline_filter = new CssOutlineFilter(this);
-    AddOwnedPreRenderFilter(css_outline_filter);
+    AppendOwnedPreRenderFilter(css_outline_filter);
   }
   if (rewrite_options->Enabled(RewriteOptions::kOutlineJavascript)) {
     // Cut out inlined scripts and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
     CHECK(resource_manager_ != NULL);
     JsOutlineFilter* js_outline_filter = new JsOutlineFilter(this);
-    AddOwnedPreRenderFilter(js_outline_filter);
+    AppendOwnedPreRenderFilter(js_outline_filter);
   }
   if (rewrite_options->Enabled(RewriteOptions::kMoveCssToHead)) {
     // It's good to move CSS links to the head prior to running CSS combine,
     // which only combines CSS links that are already in the head.
-    AddOwnedPreRenderFilter(new CssMoveToHeadFilter(this, statistics()));
+    AppendOwnedPreRenderFilter(new CssMoveToHeadFilter(this, statistics()));
   }
   if (rewrite_options->Enabled(RewriteOptions::kCombineCss)) {
     // Combine external CSS resources after we've outlined them.
@@ -734,7 +740,7 @@ void RewriteDriver::AddPreRenderFilters() {
     // Converts sync loads of Google Analytics javascript to async loads.
     // This needs to be listed before rewrite_javascript because it injects
     // javascript that has comments and extra whitespace.
-    AddOwnedPreRenderFilter(new GoogleAnalyticsFilter(this, statistics()));
+    AppendOwnedPreRenderFilter(new GoogleAnalyticsFilter(this, statistics()));
   }
   if (rewrite_options->Enabled(RewriteOptions::kRewriteJavascript)) {
     // Rewrite (minify etc.) JavaScript code to reduce time to first
@@ -751,13 +757,13 @@ void RewriteDriver::AddPreRenderFilters() {
     // Inline small CSS files.  Give CssCombineFilter and CSS minification a
     // chance to run before we decide what counts as "small".
     CHECK(resource_manager_ != NULL);
-    AddOwnedPreRenderFilter(new CssInlineFilter(this));
+    AppendOwnedPreRenderFilter(new CssInlineFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineJavascript)) {
     // Inline small Javascript files.  Give JS minification a chance to run
     // before we decide what counts as "small".
     CHECK(resource_manager_ != NULL);
-    AddOwnedPreRenderFilter(new JsInlineFilter(this));
+    AppendOwnedPreRenderFilter(new JsInlineFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kConvertJpegToWebp) ||
       rewrite_options->Enabled(RewriteOptions::kConvertJpegToProgressive) ||
@@ -769,17 +775,17 @@ void RewriteDriver::AddPreRenderFilters() {
     EnableRewriteFilter(RewriteOptions::kImageCompressionId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kRemoveComments)) {
-    AddOwnedPreRenderFilter(new RemoveCommentsFilter(this, rewrite_options));
+    AppendOwnedPreRenderFilter(new RemoveCommentsFilter(this, rewrite_options));
   }
   if (rewrite_options->Enabled(RewriteOptions::kCollapseWhitespace)) {
     // Remove excess whitespace in HTML
-    AddOwnedPreRenderFilter(new CollapseWhitespaceFilter(this));
+    AppendOwnedPreRenderFilter(new CollapseWhitespaceFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kElideAttributes)) {
     // Remove HTML element attribute values where
     // http://www.w3.org/TR/html4/loose.dtd says that the name is all
     // that's necessary
-    AddOwnedPreRenderFilter(new ElideAttributesFilter(this));
+    AppendOwnedPreRenderFilter(new ElideAttributesFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kExtendCacheCss) ||
       rewrite_options->Enabled(RewriteOptions::kExtendCacheImages) ||
@@ -860,7 +866,17 @@ void RewriteDriver::AddPostRenderFilters() {
   // Initialize() function above or it will break under Apache!
 }
 
-void RewriteDriver::AddOwnedPreRenderFilter(HtmlFilter* filter) {
+void RewriteDriver::AddOwnedEarlyPreRenderFilter(HtmlFilter* filter) {
+  filters_to_delete_.push_back(filter);
+  early_pre_render_filters_.push_back(filter);
+}
+
+void RewriteDriver::PrependOwnedPreRenderFilter(HtmlFilter* filter) {
+  filters_to_delete_.push_back(filter);
+  pre_render_filters_.push_front(filter);
+}
+
+void RewriteDriver::AppendOwnedPreRenderFilter(HtmlFilter* filter) {
   filters_to_delete_.push_back(filter);
   pre_render_filters_.push_back(filter);
 }
@@ -1278,6 +1294,17 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   bool may_rewrite = false;
   if (decoded_base_url_.is_valid()) {
     may_rewrite = MayRewriteUrl(decoded_base_url_, input_url);
+    // In the case where we are proxying and we have resources that have been
+    // rewritten multiple times, input_url will still have the encoded domain,
+    // and we can rewrite that, so test again but against the encoded base url.
+    if (!may_rewrite) {
+      UrlNamer* namer = resource_manager()->url_namer();
+      GoogleString decoded_input;
+      if (namer->Decode(input_url, NULL, &decoded_input)) {
+        GoogleUrl decoded_url(decoded_input);
+        may_rewrite = MayRewriteUrl(decoded_base_url_, decoded_url);
+      }
+    }
   } else {
     // Shouldn't happen?
     message_handler()->Message(
