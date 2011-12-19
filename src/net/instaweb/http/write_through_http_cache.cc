@@ -37,7 +37,7 @@ namespace {
 class FallbackCacheCallback: public HTTPCache::Callback {
  public:
   typedef void (WriteThroughHTTPCache::*UpdateCache1HandlerFunction) (
-      GoogleString key, HTTPValue* http_value);
+      const GoogleString& key, HTTPValue* http_value);
 
   FallbackCacheCallback(const GoogleString& key,
                         WriteThroughHTTPCache* write_through_http_cache,
@@ -55,8 +55,7 @@ class FallbackCacheCallback: public HTTPCache::Callback {
       client_callback_->http_value()->Link(http_value());
       client_callback_->response_headers()->CopyFrom(*response_headers());
       // Insert the response into cache1.
-      MakeFunction(write_through_http_cache_, function_, key_,
-                   http_value())->CallRun();
+      (write_through_http_cache_->*function_)(key_, http_value());
     }
     client_callback_->Done(find_result);
     delete this;
@@ -134,7 +133,7 @@ WriteThroughHTTPCache::WriteThroughHTTPCache(CacheInterface* cache1,
 WriteThroughHTTPCache::~WriteThroughHTTPCache() {
 }
 
-void WriteThroughHTTPCache::PutInCache1(GoogleString key,
+void WriteThroughHTTPCache::PutInCache1(const GoogleString& key,
                                         HTTPValue* value) {
   if ((cache1_size_limit_ == kUnlimited) ||
       (key.size() + value->size() < cache1_size_limit_)) {

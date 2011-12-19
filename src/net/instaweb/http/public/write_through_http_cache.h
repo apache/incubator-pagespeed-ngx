@@ -93,7 +93,7 @@ class WriteThroughHTTPCache : public HTTPCache {
                            HTTPValue* value);
 
  private:
-  void PutInCache1(GoogleString key, HTTPValue* value);
+  void PutInCache1(const GoogleString& key, HTTPValue* value);
 
   scoped_ptr<HTTPCache> cache1_;
   scoped_ptr<HTTPCache> cache2_;

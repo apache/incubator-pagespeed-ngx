@@ -65,6 +65,7 @@
     # ModPagespeedLRUCacheByteLimit        16384
     # ModPagespeedCssInlineMaxBytes        2048
     # ModPagespeedImageInlineMaxBytes      2048
+    # ModPagespeedCssImageInlineMaxBytes   2048
     # ModPagespeedJsInlineMaxBytes         2048
     # ModPagespeedCssOutlineMinBytes       3000
     # ModPagespeedJsOutlineMinBytes        3000
@@ -73,6 +74,18 @@
     # avoids overloading the CPU.  Set this to 0 to remove the bound.
     #
     # ModPagespeedImageMaxRewritesAtOnce      8
+
+    # Settings for image optimization:
+    #
+    # Jpeg recompression quality (0 to 100, -1 strips metadata):
+    # ModPagespeedJpegRecompressionQuality -1
+    #
+    # Percent of original image size below which optimized images are retained:
+    # ModPagespeedImageLimitOptimizedPercent 100
+    #
+    # Percent of original image area below which image resizing will be
+    # attempted:
+    # ModPagespeedImageLimitResizeAreaPercent 100
 
     # When Apache is set up as a browser proxy, mod_pagespeed can record
     # web-sites as they are requested, so that an image of the web is built up

@@ -156,7 +156,6 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kInlineImages,
   RewriteOptions::kInlineImportToLink,
   RewriteOptions::kInlineJavascript,
-  RewriteOptions::kInsertImageDimensions,
   RewriteOptions::kLeftTrimUrls,
   RewriteOptions::kRecompressImages,
   RewriteOptions::kResizeImages,
@@ -169,6 +168,7 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
 // this is managed in the c++ switch statement.
 const RewriteOptions::Filter kTestFilterSet[] = {
   RewriteOptions::kConvertJpegToWebp,
+  RewriteOptions::kInsertImageDimensions,
   RewriteOptions::kMakeGoogleAnalyticsAsync,
   RewriteOptions::kRewriteDomains,
   RewriteOptions::kSpriteImages,
@@ -576,7 +576,6 @@ bool RewriteOptions::AddOptionToFilterSet(
     // have any special infrastructure for it; just code.
     if (option == "rewrite_images") {
       set->insert(kInlineImages);
-      set->insert(kInsertImageDimensions);
       set->insert(kRecompressImages);
       set->insert(kResizeImages);
     } else if (option == "extend_cache") {

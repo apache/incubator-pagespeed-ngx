@@ -164,7 +164,6 @@ TEST_F(RewriteOptionsTest, CompoundFlag) {
   // TODO(jmaessen): add kConvertJpegToWebp here when it becomes part of
   // rewrite_images.
   s.insert(RewriteOptions::kInlineImages);
-  s.insert(RewriteOptions::kInsertImageDimensions);
   s.insert(RewriteOptions::kRecompressImages);
   s.insert(RewriteOptions::kResizeImages);
   s.insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default

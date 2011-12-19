@@ -1158,6 +1158,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "DEPRECATED, use ModPagespeedImageInlineMaxBytes."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImageInlineMaxBytes,
         "Number of bytes below which images will be inlined."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedCssImageInlineMaxBytes,
+        "Number of bytes below which images will be inlined in external CSS."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJsInlineMaxBytes,
         "Number of bytes below which javascript will be inlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJsOutlineMinBytes,
@@ -1209,6 +1211,14 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
                        "Set quality parameter for recompressing jpeg "
                        "images [-1,100], 100 refers to best quality, "
                        "-1 disables lossy compression."),
+  APACHE_CONFIG_OPTION(kModPagespeedImageLimitOptimizedPercent,
+                       "Replace images whose size after recompression "
+                       "is less than the given percent of original "
+                       "image size; 100 means replace if smaller."),
+  APACHE_CONFIG_OPTION(kModPagespeedImageLimitResizeAreaPercent,
+                       "Consider resizing images whose area in pixels "
+                       "is less than the given percent of original "
+                       "image area; 100 means replace if smaller."),
   APACHE_CONFIG_OPTION(kModPagespeedLRUCacheByteLimit,
         "Set the maximum byte size entry to store in the per-process "
         "in-memory LRU cache"),

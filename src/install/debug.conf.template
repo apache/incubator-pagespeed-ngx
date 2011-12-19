@@ -122,11 +122,15 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 #COVERAGE   ModPagespeedLRUCacheByteLimit        16384
 #COVERAGE   ModPagespeedCssInlineMaxBytes        2048
 #COVERAGE   ModPagespeedImageInlineMaxBytes      2048
+#COVERAGE   ModPagespeedCssImageInlineMaxBytes   2048
 #COVERAGE   ModPagespeedJsInlineMaxBytes         2048
 #COVERAGE   ModPagespeedCssOutlineMinBytes       3000
 #COVERAGE   ModPagespeedJsOutlineMinBytes        3000
 #COVERAGE   ModPagespeedImageMaxRewritesAtOnce      8
 #COVERAGE   ModPagespeedSlurpFlushLimit          8192
+#COVERAGE   ModPagespeedJpegRecompressionQuality   -1
+#COVERAGE   ModPagespeedImageLimitOptimizedPercent  100
+#COVERAGE   ModPagespeedImageLimitResizeAreaPercent 100
 #COVERAGE   <Location /mod_pagespeed_beacon>
 #COVERAGE       SetHandler mod_pagespeed_beacon
 #COVERAGE   </Location>
@@ -152,7 +156,7 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 #COVERAGE
 #COVERAGE   # ModPagespeedSlurpDirectory ...
 #COVERAGE   # ModPagespeedSlurpReadOnly on
-#COVERAGE   
+#COVERAGE
 #COVERAGE   <Location /mod_pagespeed_message>
 #COVERAGE        Allow from localhost
 #COVERAGE        Allow from 127.0.0.1
