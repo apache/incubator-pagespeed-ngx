@@ -512,6 +512,29 @@ TEST_F(ResponseHeadersTest, TestReasonPhrase) {
             GoogleString(response_headers_.reason_phrase()));
 }
 
+TEST_F(ResponseHeadersTest, TestReasonPhraseMissing) {
+  static const char kText[] = "HTTP/1.0 200\r\nContent-type: text/html\r\n\r\n";
+  ParseHeaders(kText);
+  EXPECT_EQ(HttpStatus::kOK, response_headers_.status_code());
+  EXPECT_STREQ("OK", response_headers_.reason_phrase());
+}
+
+TEST_F(ResponseHeadersTest, TestReasonPhraseHasOnlySpace) {
+  static const char kText[] =
+      "HTTP/1.0 200 \r\nContent-type: text/html\r\n\r\n";
+  ParseHeaders(kText);
+  EXPECT_EQ(HttpStatus::kOK, response_headers_.status_code());
+  EXPECT_STREQ("OK", response_headers_.reason_phrase());
+}
+
+TEST_F(ResponseHeadersTest, TestReasonPhraseBogusCode) {
+  static const char kText[] =
+      "HTTP/1.0 6765 \r\nContent-type: text/html\r\n\r\n";
+  ParseHeaders(kText);
+  EXPECT_EQ(6765, response_headers_.status_code());
+  EXPECT_STREQ("Internal Server Error", response_headers_.reason_phrase());
+}
+
 TEST_F(ResponseHeadersTest, TestSetDate) {
   response_headers_.SetStatusAndReason(HttpStatus::kOK);
   response_headers_.SetDate(MockTimer::kApr_5_2010_ms);

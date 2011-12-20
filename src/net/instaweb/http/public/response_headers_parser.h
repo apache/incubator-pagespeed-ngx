@@ -42,8 +42,6 @@ class ResponseHeadersParser {
   void set_headers_complete(bool x) { headers_complete_ = x; }
 
  private:
-  bool GrabLastToken(const GoogleString& input, GoogleString* output);
-
   ResponseHeaders* response_headers_;
 
   bool parsing_http_;

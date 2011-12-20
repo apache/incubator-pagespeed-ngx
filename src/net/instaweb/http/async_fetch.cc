@@ -54,10 +54,13 @@ bool AsyncFetch::Flush(MessageHandler* handler) {
 }
 
 void AsyncFetch::HeadersComplete() {
-  DCHECK(!headers_complete_);
-  headers_complete_ = true;
   DCHECK_NE(0, response_headers()->status_code());
-  HandleHeadersComplete();
+  if (headers_complete_) {
+    LOG(DFATAL) << "AsyncFetch::HeadersComplete() called twice.";
+  } else {
+    headers_complete_ = true;
+    HandleHeadersComplete();
+  }
 }
 
 void AsyncFetch::Done(bool success) {
@@ -69,9 +72,6 @@ void AsyncFetch::Done(bool success) {
       response_headers()->set_status_code(HttpStatus::kNotFound);
     }
     HeadersComplete();
-  }
-  if (!success) {
-    DCHECK_NE(HttpStatus::kOK, response_headers()->status_code());
   }
   HandleDone(success);
 }

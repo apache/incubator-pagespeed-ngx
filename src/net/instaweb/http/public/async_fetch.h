@@ -102,7 +102,11 @@ class AsyncFetch : public Writer {
 
   virtual bool EnableThreaded() const { return false; }
 
+  // Resets the 'headers_complete_' flag.
+  // TODO(jmarantz): should this also clear the response headers?
   void Reset() { headers_complete_ = false; }
+
+  bool headers_complete() const { return headers_complete_; }
 
  protected:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler) = 0;

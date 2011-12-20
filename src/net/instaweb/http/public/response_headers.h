@@ -179,7 +179,12 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
     return date_ms() > time_ms;
   }
 
+  // Parses the first line of an HTTP response, including the "HTTP/".
   void ParseFirstLine(const StringPiece& first_line);
+
+  // Parses the first line of an HTTP response, skipping the "HTTP/".
+  void ParseFirstLineHelper(const StringPiece& first_line);
+
   // Set whole first line.
   void set_first_line(int major_version, int minor_version, int status_code,
                       const StringPiece& reason_phrase) {

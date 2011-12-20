@@ -17,7 +17,6 @@
 #include "net/instaweb/http/public/response_headers_parser.h"
 
 #include <cctype>                      // for isspace
-#include <cstdio>
 #include "base/logging.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -66,22 +65,7 @@ int ResponseHeadersParser::ParseChunk(const StringPiece& text,
         break;
       }
       if (parsing_http_) {
-        // Parsing "1.0 200 OK\r", using sscanf for the integers, and
-        // private method GrabLastToken for the "OK".
-        int major_version, minor_version, status_code;
-        GoogleString reason_phrase;
-        if ((sscanf(parse_value_.c_str(), "%d.%d %d ",  // NOLINT
-                    &major_version, &minor_version, &status_code) != 3) ||
-            !GrabLastToken(parse_value_, &reason_phrase)) {
-          // TODO(jmarantz): capture the filename/url, track the line numbers.
-          handler->Message(kError, "Invalid HTML headers: %s",
-                           parse_value_.c_str());
-        } else {
-          response_headers_->set_major_version(major_version);
-          response_headers_->set_minor_version(minor_version);
-          response_headers_->set_status_code(status_code);
-          response_headers_->set_reason_phrase(reason_phrase);
-        }
+        response_headers_->ParseFirstLineHelper(parse_value_);
         parsing_http_ = false;
       } else {
         response_headers_->Add(parse_name_, parse_value_);
@@ -99,30 +83,6 @@ int ResponseHeadersParser::ParseChunk(const StringPiece& text,
     }
   }
   return num_consumed;
-}
-
-// Grabs the last non-whitespace token from 'input' and puts it in 'output'.
-bool ResponseHeadersParser::GrabLastToken(const GoogleString& input,
-                                          GoogleString* output) {
-  bool ret = false;
-  // Safely grab the response code string from the end of parse_value_.
-  int last_token_char = -1;
-  for (int i = input.size() - 1; i >= 0; --i) {
-    char c = input[i];
-    if (isspace(c)) {
-      if (last_token_char >= 0) {
-        // We found the whole token.
-        const char* token_start = input.c_str() + i + 1;
-        int token_len = last_token_char - i;
-        output->append(token_start, token_len);
-        ret = true;
-        break;
-      }
-    } else if (last_token_char == -1) {
-      last_token_char = i;
-    }
-  }
-  return ret;
 }
 
 }  // namespace net_instaweb

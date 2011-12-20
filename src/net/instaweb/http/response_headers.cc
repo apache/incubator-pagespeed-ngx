@@ -630,18 +630,32 @@ bool ResponseHeaders::ParseDateHeader(
   return (date_string != NULL) && ConvertStringToTime(date_string, date_ms);
 }
 
-// TODO(sligocki): Unite this with parsing code in ResponseHeadersParser.
 void ResponseHeaders::ParseFirstLine(const StringPiece& first_line) {
+  if (first_line.starts_with("HTTP/")) {
+    ParseFirstLineHelper(first_line.substr(5));
+  } else {
+    LOG(WARNING) << "Could not parse first line: " << first_line;
+  }
+}
+
+void ResponseHeaders::ParseFirstLineHelper(const StringPiece& first_line) {
   int major_version, minor_version, status;
   // We reserve enough to avoid buffer overflow on sscanf command.
   GoogleString reason_phrase(first_line.size(), '\0');
   char* reason_phrase_cstr = &reason_phrase[0];
-  if (4 == sscanf(first_line.as_string().c_str(), "HTTP/%d.%d %d %[^\n\t]s",
-                  &major_version, &minor_version, &status,
-                  reason_phrase_cstr)) {
-    set_first_line(major_version, minor_version, status, reason_phrase_cstr);
-  } else {
+  int num_scanned = sscanf(
+      first_line.as_string().c_str(), "%d.%d %d %[^\n\t]s",
+      &major_version, &minor_version, &status,
+      reason_phrase_cstr);
+  if (num_scanned < 3) {
     LOG(WARNING) << "Could not parse first line: " << first_line;
+  } else {
+    if (num_scanned == 3) {
+      reason_phrase = HttpStatus::GetReasonPhrase(
+          static_cast<HttpStatus::Code>(status));
+      reason_phrase_cstr = &reason_phrase[0];
+    }
+    set_first_line(major_version, minor_version, status, reason_phrase_cstr);
   }
 }
 
