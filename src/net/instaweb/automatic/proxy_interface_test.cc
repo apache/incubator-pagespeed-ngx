@@ -134,6 +134,7 @@ class ProxyUrlNamer : public UrlNamer {
  private:
   bool authorized_;
   RewriteOptions* options_;
+  DISALLOW_COPY_AND_ASSIGN(ProxyUrlNamer);
 };
 
 const char ProxyUrlNamer::kProxyHost[] = "proxy_host.com";
@@ -157,8 +158,6 @@ class MockFilter : public EmptyHtmlFilter {
   RewriteDriver* driver_;
   int64* request_start_time_ms_;
 };
-
-class FilterCallback;
 
 // TODO(morlovich): This currently relies on ResourceManagerTestBase to help
 // setup fetchers; and also indirectly to prevent any rewrites from timing out
@@ -1300,6 +1299,52 @@ TEST_F(ProxyInterfaceTest, RepairMismappedResource) {
   FetchFromProxy(
       StrCat("http://", ProxyUrlNamer::kProxyHost, "/test.com/evil.com/foo.js"),
       false, &text, &headers);
+}
+
+TEST_F(ProxyInterfaceTest, CrossDomainHeaders) {
+  // If we're serving content from test.com via kProxyHost URL, we need to make
+  // sure that cookies are not propagated, as evil.com could also be potentially
+  // proxied via kProxyHost.
+  const char kText[] = "* { pretty; }";
+
+  ResponseHeaders orig_headers;
+  DefaultResponseHeaders(kContentTypeCss, 100, &orig_headers);
+  orig_headers.Add(HttpAttributes::kSetCookie, "tasty");
+  SetFetchResponse("http://test.com/file.css", orig_headers, kText);
+
+  ProxyUrlNamer url_namer;
+  resource_manager()->set_url_namer(&url_namer);
+  ResponseHeaders out_headers;
+  GoogleString out_text;
+  FetchFromProxy(
+      StrCat("http://", ProxyUrlNamer::kProxyHost,
+             "/test.com/test.com/file.css"),
+      true, &out_text, &out_headers);
+  EXPECT_STREQ(kText, out_text);
+  EXPECT_STREQ(NULL, out_headers.Lookup1(HttpAttributes::kSetCookie));
+}
+
+TEST_F(ProxyInterfaceTest, NoRehostIncompatMPS) {
+  // Make sure we don't try to interpret a URL from an incompatible
+  // mod_pagespeed version at our proxy host level.
+
+  // This url will be rejected by CssUrlEncoder
+  const char kOldName[] = "style.css.pagespeed.cf.0.css";
+  const char kContent[] = "*     {}";
+  InitResponseHeaders(kOldName, kContentTypeCss, kContent, 100);
+
+  ProxyUrlNamer url_namer;
+  resource_manager()->set_url_namer(&url_namer);
+  ResponseHeaders out_headers;
+  GoogleString out_text;
+  LOG(ERROR) << EncodeNormal("", "ce", "0", kOldName, "css");
+  FetchFromProxy(
+      StrCat("http://", ProxyUrlNamer::kProxyHost,
+             "/test.com/test.com/",
+             EncodeNormal("", "ce", "0", kOldName, "css")),
+      true, &out_text, &out_headers);
+  EXPECT_EQ(HttpStatus::kOK, out_headers.status_code());
+  EXPECT_STREQ(kContent, out_text);
 }
 
 // Test that we serve "Cache-Control: no-store" only when original page did.

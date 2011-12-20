@@ -131,7 +131,10 @@ class ProxyFetch : public SharedAsyncFetch {
  private:
   friend class ProxyFetchFactory;
 
+  // If cross_domain is true, we're requested under a domain different from
+  // the underlying host, using proxy mode in UrlNamer.
   ProxyFetch(const GoogleString& url,
+             bool cross_domain,
              AsyncFetch* async_fetch,
              RewriteOptions* custom_options,
              ResourceManager* manager,
@@ -196,6 +199,10 @@ class ProxyFetch : public SharedAsyncFetch {
 
   // Should we pass through contents (because it's not HTML or PSA disabled)?
   bool pass_through_;
+
+  // True if we're handling a cross-domain request in proxy mode, which
+  // should do some additional checking.
+  bool cross_domain_;
 
   // Does page claim to be "Content-Type: text/html"? (It may be lying)
   bool claims_html_;

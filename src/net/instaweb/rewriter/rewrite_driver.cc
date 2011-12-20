@@ -953,7 +953,7 @@ bool RewriteDriver::DecodeOutputResourceName(const GoogleUrl& gurl,
 
   // If we are running in proxy mode we need to ignore URLs where the leaf is
   // encoded but the URL as a whole isn't proxy encoded, since that can happen
-  // when proxying from a server using mod_pagsepeed.
+  // when proxying from a server using mod_pagespeed.
   UrlNamer* url_namer = resource_manager()->url_namer();
   if (url_namer->ProxyMode() && !url_namer->IsProxyEncoded(gurl)) {
     return false;
@@ -983,6 +983,17 @@ bool RewriteDriver::DecodeOutputResourceName(const GoogleUrl& gurl,
     *filter_out = NULL;
   } else {
     return false;
+  }
+
+  // Check if filter-specific decoding works as well.
+  // TODO(morlovich): This is doing some redundant work.
+  if (*filter_out != NULL) {
+    ResourceContext resource_context;
+    StringVector urls;
+    if (!(*filter_out)->encoder()->Decode(
+        namer_out->name(), &urls, &resource_context, message_handler())) {
+      return false;
+    }
   }
 
   return true;

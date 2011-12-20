@@ -29,6 +29,7 @@ const char HttpAttributes::kContentLanguage[] = "Content-Language";
 const char HttpAttributes::kContentLength[] = "Content-Length";
 const char HttpAttributes::kContentType[] = "Content-Type";
 const char HttpAttributes::kCookie[] = "Cookie";
+const char HttpAttributes::kCookie2[] = "Cookie2";
 const char HttpAttributes::kDate[] = "Date";
 const char HttpAttributes::kDeflate[] = "deflate";
 const char HttpAttributes::kEtag[] = "Etag";

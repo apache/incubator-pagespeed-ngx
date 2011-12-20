@@ -1468,9 +1468,16 @@ bool RewriteContext::DecodeFetchUrls(
       // first decoding here we need to retain the encoded domain name.
       GoogleUrl* url = NULL;
       ResourceNamer namer;
-      if (check_for_multiple_rewrites && namer.Decode(urls[i])) {
-        url = new GoogleUrl(original_base, urls[i]);
-      } else {
+
+      if (check_for_multiple_rewrites) {
+        scoped_ptr<GoogleUrl> orig_based_url(
+            new GoogleUrl(original_base, urls[i]));
+        if (Manager()->IsPagespeedResource(*orig_based_url.get())) {
+          url = orig_based_url.release();
+        }
+      }
+
+      if (url == NULL) {  // Didn't set one based on original_base
         url = new GoogleUrl(decoded_base, urls[i]);
       }
       url_vector->push_back(url);

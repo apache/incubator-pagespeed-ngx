@@ -77,14 +77,14 @@ void ProxyFetchFactory::StartNewProxyFetch(
   const GoogleString* url_to_fetch = &url_in;
 
   // Check whether this an encoding of a non-rewritten resource served
-  // from a proxied domain.
+  // from a non-transparently proxied domain.
   UrlNamer* namer = manager_->url_namer();
   GoogleString decoded_resource;
   GoogleUrl gurl(url_in), request_origin;
   DCHECK(!manager_->IsPagespeedResource(gurl))
       << "expect ResourceFetch called for pagespeed resources, not ProxyFetch";
 
-  bool remove_host = false;
+  bool cross_domain = false;
   if (gurl.is_valid()) {
     if (namer->Decode(gurl, &request_origin, &decoded_resource)) {
       const RewriteOptions* options = (custom_options == NULL)
@@ -95,12 +95,7 @@ void ProxyFetchFactory::StartNewProxyFetch(
         // so don't try to do the cache-lookup or URL fetch without stripping
         // the proxied portion.
         url_to_fetch = &decoded_resource;
-
-        // In a proxy configuration, the host header is likely set to
-        // the proxy host rather than the origin host.  Depending on
-        // the origin, this will not work: it will not expect to see
-        // the Proxy Host in its headers.
-        remove_host = true;
+        cross_domain = true;
       } else {
         async_fetch->response_headers()->SetStatusAndReason(
             HttpStatus::kForbidden);
@@ -113,10 +108,20 @@ void ProxyFetchFactory::StartNewProxyFetch(
     }
   }
 
-  ProxyFetch* fetch = new ProxyFetch(*url_to_fetch, async_fetch, custom_options,
-                                     manager_, timer_, this);
-  if (remove_host) {
+  ProxyFetch* fetch = new ProxyFetch(
+      *url_to_fetch, cross_domain, async_fetch, custom_options,
+      manager_, timer_, this);
+  if (cross_domain) {
+    // If we're proxying resources from a different domain, the host header is
+    // likely set to the proxy host rather than the origin host.  Depending on
+    // the origin, this will not work: it will not expect to see
+    // the Proxy Host in its headers.
     fetch->request_headers()->RemoveAll(HttpAttributes::kHost);
+
+    // The domain is also supposed to be cookieless, so enforce not
+    // sending any cookies to origin, as a precaution against contamination.
+    fetch->request_headers()->RemoveAll(HttpAttributes::kCookie);
+    fetch->request_headers()->RemoveAll(HttpAttributes::kCookie2);
   }
   Start(fetch);
   fetch->StartFetch();
@@ -142,6 +147,7 @@ void ProxyFetchFactory::Finish(ProxyFetch* fetch) {
 }
 
 ProxyFetch::ProxyFetch(const GoogleString& url,
+                       bool cross_domain,
                        AsyncFetch* async_fetch,
                        RewriteOptions* custom_options,
                        ResourceManager* manager,
@@ -152,6 +158,7 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       resource_manager_(manager),
       timer_(timer),
       pass_through_(true),
+      cross_domain_(cross_domain),
       claims_html_(false),
       started_parse_(false),
       done_called_(false),
@@ -241,6 +248,16 @@ void ProxyFetch::HandleHeadersComplete() {
   // Figure out semantic info from response_headers_
   claims_html_ = (response_headers()->DetermineContentType()
                   == &kContentTypeHtml);
+
+  // Make sure we never serve cookies if the domain we are serving
+    // under isn't the domain of the origin.
+  if (cross_domain_) {
+    // ... by calling Sanitize to remove them.
+    bool changed = response_headers()->Sanitize();
+    if (changed) {
+      response_headers()->ComputeCaching();
+    }
+  }
 }
 
 void ProxyFetch::AddPagespeedHeader() {

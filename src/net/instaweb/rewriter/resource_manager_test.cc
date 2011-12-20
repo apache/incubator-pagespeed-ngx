@@ -178,7 +178,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   // Tests for the lifecycle and various flows of a named output resource.
   void TestNamed() {
     const char* filter_prefix = RewriteOptions::kCssFilterId;
-    const char* name = "name";
+    const char* name = "I.name";  // valid name for CSS filter.
     const char* contents = "contents";
     // origin_expire_time_ms should be considerably longer than the various
     // timeouts for resource locking, since we hit those timeouts in various

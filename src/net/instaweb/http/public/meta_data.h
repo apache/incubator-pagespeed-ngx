@@ -38,6 +38,7 @@ struct HttpAttributes {
   static const char kContentLength[];
   static const char kContentType[];
   static const char kCookie[];
+  static const char kCookie2[];
   static const char kDate[];
   static const char kDeflate[];
   static const char kEtag[];
