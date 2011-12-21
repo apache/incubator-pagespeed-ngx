@@ -431,7 +431,7 @@ TEST_F(HtmlAnnotationTest, UnbalancedMarkup) {
   // We use this (hopefully) self-explanatory annotation format to indicate
   // what's going on in the parse.
   EXPECT_EQ("+font -font(a) +tr +i +font -font(u) -i(e) '</font>' -tr(a) +tr "
-            "'</font>'",
+            "'</font>' -tr(u)",
             annotation());
 }
 
@@ -447,7 +447,7 @@ TEST_F(HtmlAnnotationTest, StrayCloseTr) {
 
 TEST_F(HtmlAnnotationTest, IClosedByOpenTr) {
   ValidateNoChanges("unclosed_i_tag", "<tr><i>a<tr>b");
-  EXPECT_EQ("+tr +i 'a' -i(a) -tr(a) +tr 'b'", annotation());
+  EXPECT_EQ("+tr +i 'a' -i(a) -tr(a) +tr 'b' -tr(u)", annotation());
 
   // TODO(jmarantz): morlovich points out that this is nowhere near
   // how a browser will handle this stuff... For a nighmarish testcase, try:
@@ -474,17 +474,17 @@ TEST_F(HtmlAnnotationTest, IClosedByOpenTr) {
 
 TEST_F(HtmlAnnotationTest, INotClosedByOpenTableExplicit) {
   ValidateNoChanges("explicit_close_tr", "<i>a<table><tr></tr></table>b");
-  EXPECT_EQ("+i 'a' +table +tr -tr(e) -table(e) 'b'", annotation());
+  EXPECT_EQ("+i 'a' +table +tr -tr(e) -table(e) 'b' -i(u)", annotation());
 }
 
 TEST_F(HtmlAnnotationTest, INotClosedByOpenTableImplicit) {
   ValidateNoChanges("implicit_close_tr", "<i>a<table><tr></table>b");
-  EXPECT_EQ("+i 'a' +table +tr -tr(u) -table(e) 'b'", annotation());
+  EXPECT_EQ("+i 'a' +table +tr -tr(u) -table(e) 'b' -i(u)", annotation());
 }
 
 TEST_F(HtmlAnnotationTest, AClosedByBInLi) {
   ValidateNoChanges("a_closed_by_b", "<li><a href='x'></b>");
-  EXPECT_EQ("+li +a:href='x' '</b>'", annotation());
+  EXPECT_EQ("+li +a:href='x' '</b>' -a(u) -li(u)", annotation());
 }
 
 TEST_F(HtmlAnnotationTest, BClosedByTd) {
@@ -561,7 +561,7 @@ TEST_F(HtmlAnnotationTest, AClosedByP) {
   // italic.
   //
   // But we actually product this markup:
-  EXPECT_EQ("+P 'This is a ' +A 'link' +P 'More'",
+  EXPECT_EQ("+P 'This is a ' +A 'link' +P 'More' -P(u) -A(u) -P(u)",
             annotation());
 }
 
@@ -575,7 +575,7 @@ TEST_F(HtmlAnnotationTest, PFont) {
   //
   // Chrome("data:text/html,<P><FONT>a<P>b</FONT>") yields
   // "<p><font>a</font</p><p><font><b></font></p>"
-  EXPECT_EQ("+P +FONT 'a' +P 'b' -P(u) -FONT(e)", annotation());
+  EXPECT_EQ("+P +FONT 'a' +P 'b' -P(u) -FONT(e) -P(u)", annotation());
 }
 
 TEST_F(HtmlAnnotationTest, HtmlTbodyCol) {
@@ -700,7 +700,7 @@ TEST_F(HtmlAnnotationTest, TrNesting) {
 
 TEST_F(HtmlAnnotationTest, AttrEndingWithOpenAngle) {
   ValidateNoChanges("weird_attr", "<script src=foo<bar>Content");
-  EXPECT_EQ("+script:src=foo<bar 'Content'", annotation());
+  EXPECT_EQ("+script:src=foo<bar 'Content' -script(u)", annotation());
 }
 
 TEST_F(HtmlParseTest, MakeName) {

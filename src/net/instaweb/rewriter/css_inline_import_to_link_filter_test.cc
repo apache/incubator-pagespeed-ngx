@@ -150,7 +150,6 @@ TEST_F(CssInlineImportToLinkFilterTest, DoNotConvertBadStyle) {
                          "@import url(\"mystyle.css\" );\n</style>");
   ValidateStyleUnchanged("<style>@charset \"ISO-8859-1\";\n"
                          "@import \"mystyle.css\" all;</style>");
-  ValidateStyleUnchanged("<style>@import url(assets/styles.css)");
   ValidateStyleUnchanged("<style><p/>@import url(assets/styles.css)</style>");
   ValidateStyleUnchanged("<style>@import url(assets/styles.css);<p/</style>");
   ValidateStyleUnchanged("<style><![CDATA[@import url(assets/styles.css);]]\n");
@@ -172,6 +171,20 @@ TEST_F(CssInlineImportToLinkFilterTest, DoNotConvertBadStyle) {
   // type we end up with a link with media type of 'style'. I don't know if
   // this is correct behavior so I am leaving it out but commenting it.
   // ValidateStyleUnchanged("<style>@import url(styles.css)<style/></style>");
+}
+
+class CssInlineImportToLinkFilterTestNoTags
+    : public CssInlineImportToLinkFilterTest {
+ public:
+  virtual bool AddHtmlTags() const { return false; }
+};
+
+TEST_F(CssInlineImportToLinkFilterTestNoTags, UnclosedStyleGetsConverted) {
+  options()->EnableFilter(RewriteOptions::kInlineImportToLink);
+  rewrite_driver()->AddFilters();
+  ValidateExpected("unclosed_style",
+                   "<style>@import url(assets/styles.css)",
+                   "<link rel=\"stylesheet\" href=\"assets/styles.css\">");
 }
 
 TEST_F(CssInlineImportToLinkFilterTest, ConvertThenCacheExtend) {

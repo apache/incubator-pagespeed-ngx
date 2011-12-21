@@ -930,15 +930,18 @@ void HtmlLexer::FinishParse() {
                                         "element_stack_.empty()");
   html_parse_->message_handler()->Check(element_stack_[0] == NULL,
                                         "element_stack_[0] != NULL");
-  for (size_t i = kStartStack; i < element_stack_.size(); ++i) {
-    HtmlElement* element = element_stack_[i];
+
+  for (int i = element_stack_.size() - 1; i > 0; --i) {
+    HtmlElement* element = element_stack_.back();
+    token_ = element->name_str();
+    EmitTagClose(HtmlElement::UNCLOSED);
     if (!IsOptionallyClosedTag(element->keyword())) {
       html_parse_->Info(id_.c_str(), element->begin_line_number(),
                         "End-of-file with open tag: %s", element->name_str());
     }
   }
-  element_stack_.clear();
-  element_stack_.push_back(static_cast<HtmlElement*>(0));
+  DCHECK_EQ(1U, element_stack_.size());
+  DCHECK_EQ(static_cast<HtmlElement*>(0), element_stack_[0]);
   element_ = NULL;
 }
 

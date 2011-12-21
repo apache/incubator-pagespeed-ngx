@@ -233,7 +233,19 @@ TEST_P(JavascriptFilterTest, BackslashInRegexp) {
 TEST_P(JavascriptFilterTest, WeirdSrcCrash) {
   // These used to crash due to bugs in the lexer breaking invariants some
   // filters relied on.
-  ValidateNoChanges("weird_attr", "<script src=foo<bar>Content");
+  //
+  // Note that the attribute-value "foo<bar" gets converted into "foo%3Cbar"
+  // by this line:
+  //   const GoogleUrl resource_url(base_url(), input_url);
+  // in CommonFilter::CreateInputResource.  Following that, resource_url.Spec()
+  // has the %3C in it.  I guess that's probably the right thing to do, but
+  // I was a little surprised.
+  static const char kUrl[] = "foo%3Cbar";
+  InitResponseHeaders(kUrl, kContentTypeJavascript, kJsData, 300);
+  ValidateExpected("weird_attr", "<script src=foo<bar>Content",
+                   StrCat("<script src=",
+                          Encode(kTestDomain, "jm", "0", kUrl, "js"),
+                          ">Content"));
   ValidateNoChanges("weird_tag", "<script<foo>");
 }
 
