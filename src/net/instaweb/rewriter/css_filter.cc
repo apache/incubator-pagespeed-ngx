@@ -635,22 +635,6 @@ bool CssFilter::LoadAllSubStylesheets(
   return true;
 }
 
-
-// Read an external CSS file, rewrite it and write a new external CSS file.
-bool CssFilter::RewriteExternalCss(const StringPiece& in_url,
-                                   GoogleString* out_url) {
-  ResourceContext resource_context;
-  resource_context.set_inline_images(driver_->UserAgentSupportsImageInlining());
-  resource_context.set_attempt_webp(driver_->UserAgentSupportsWebp());
-  scoped_ptr<CachedResult> rewrite_info(RewriteWithCaching(in_url,
-                                                           &resource_context));
-  if (rewrite_info.get() != NULL && rewrite_info->optimizable()) {
-    *out_url = rewrite_info->url();
-    return true;
-  }
-  return false;
-}
-
 RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {

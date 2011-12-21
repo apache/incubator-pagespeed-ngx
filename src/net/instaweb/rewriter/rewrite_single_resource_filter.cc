@@ -20,17 +20,14 @@
 
 #include <algorithm>
 #include "base/logging.h"
-#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
-#include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -148,19 +145,6 @@ bool RewriteSingleResourceFilter::Fetch(
   return ret;
 }
 
-// TODO(jmarantz): consider putting the 'url' into the ResourceContext
-// so that we can generalize the caching management in this class to
-// cover multi-input-url rewrites.
-CachedResult* RewriteSingleResourceFilter::RewriteWithCaching(
-    const StringPiece& url, const ResourceContext* data) {
-  CachedResult* ret = NULL;
-  ResourcePtr input_resource(CreateInputResource(url));
-  if (input_resource.get() != NULL) {
-    ret = RewriteExternalResource(input_resource, data);
-  }
-  return ret;
-}
-
 int RewriteSingleResourceFilter::FilterCacheFormatVersion() const {
   return 0;
 }
@@ -200,119 +184,6 @@ void RewriteSingleResourceFilter::CacheRewriteFailure(
                     output_resource->EnsureCachedResultCreated());
   }
   resource_manager_->WriteUnoptimizable(output_resource, expire_at_ms, handler);
-}
-
-CachedResult* RewriteSingleResourceFilter::RewriteExternalResource(
-    const ResourcePtr& input_resource, const ResourceContext* data) {
-  MessageHandler* handler = driver_->message_handler();
-
-  OutputResourceKind kind = kRewrittenResource;
-  if (ComputeOnTheFly()) {
-    kind = kOnTheFlyResource;
-  }
-  OutputResourcePtr output_resource(
-      driver_->CreateOutputResourceFromResource(
-          id(), encoder(), data, input_resource, kind));
-  if (output_resource.get() == NULL) {
-    return NULL;
-  }
-
-  // See if we already have the result, and if it's valid.
-  CachedResult* result = output_resource->EnsureCachedResultCreated();
-  if (!IsValidCacheFormat(result)) {
-    delete output_resource->ReleaseCachedResult();
-    result = NULL;
-  }
-
-  // If we're checking the input hash we may be keeping the cached output
-  // past the TTL of the input; in which case we can't just return it ---
-  // we need to check whether the input has changed or not, which we do
-  // further below.
-  bool check_input_hash = ReuseByContentHash();
-  if (result != NULL && !(check_input_hash && IsOriginExpired(result))) {
-    return ReleaseCachedAfterAnyFreshening(input_resource, output_resource);
-  }
-
-  HTTPCache::FindResult input_state = driver_->ReadIfCachedWithStatus(
-      input_resource);
-  if (input_state == HTTPCache::kNotFound) {
-    // The resource has not finished fetching yet; so the caller can't
-    // rewrite but there is nothing for us to cache.
-    // TODO(morlovich): This is inaccurate with synchronous fetchers
-    // the first time we get a 404.
-    return NULL;
-  }
-
-  bool ok;
-  if (input_state == HTTPCache::kFound && input_resource->ContentsValid()) {
-    if (check_input_hash) {
-      output_resource->EnsureCachedResultCreated()->set_auto_expire(false);
-
-      if (result != NULL) {
-        GoogleString actual_hash =
-            resource_manager_->hasher()->Hash(input_resource->contents());
-        if (result->has_input_hash()
-            && (actual_hash == result->input_hash())) {
-          // The input has not changed, so we can return the same output.
-          // We do need to update the cache entry for new input expiration
-          // and load times.
-          result->set_input_date_ms(
-              input_resource->response_headers()->date_ms());
-          resource_manager_->CacheComputedResourceMapping(
-              output_resource.get(), input_resource->CacheExpirationTimeMs(),
-              handler);
-          handler->Message(kInfo, "Resource %s expired but did not change.",
-                           input_resource->url().c_str());
-
-          return ReleaseCachedAfterAnyFreshening(input_resource,
-                                                 output_resource);
-        }
-      }
-    }
-
-    // Do the actual rewrite -- unless some other process is doing it at the
-    // same time. (The unlock will happen at Write or ~OutputResource)
-    //
-    // NOTE: This locks based on hash's so if you use a MockHasher, you may
-    // only rewrite a single resource at a time (e.g. no rewriting resources
-    // inside resources, see css_image_rewriter_test.cc for examples.)
-    if (!output_resource->TryLockForCreation()) {
-      handler->Message(kInfo, "%s: Someone else is trying to rewrite %s.",
-                       base_url().spec_c_str(),
-                       input_resource->url().c_str());
-      return NULL;
-    }
-
-    RewriteResult res = RewriteLoadedResourceAndCacheIfOk(
-        input_resource, output_resource);
-    if (res == kTooBusy) {
-      // The system is too loaded to currently do a rewrite; in this case
-      // we simply return NULL and don't write anything to the cache since
-      // we plain don't know.
-      return NULL;
-    }
-
-    ok = (res == kRewriteOk);
-  } else {
-    ok = false;
-    if (input_state == HTTPCache::kRecentFetchFailedOrNotCacheable) {
-      handler->Message(kInfo, "%s: Couldn't fetch resource %s to rewrite.",
-                       base_url().spec_c_str(), input_resource->url().c_str());
-    } else {
-      handler->Message(kWarning,
-                       "%s: Unexpected status code for resource %s: %d",
-                       base_url().spec_c_str(), input_resource->url().c_str(),
-                       input_resource->response_headers()->status_code());
-    }
-  }
-
-  if (!ok) {
-    CacheRewriteFailure(input_resource.get(), output_resource.get(), handler);
-  }
-
-  // Note: we want to return this even if optimization failed in case the filter
-  // has stashed some useful information about the input.
-  return output_resource->ReleaseCachedResult();
 }
 
 // Fails for default-constructed, or cache-miss results.

@@ -23,9 +23,6 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -106,21 +103,6 @@ ResourcePtr CommonFilter::CreateInputResource(const StringPiece& input_url) {
     }
   }
   return resource;
-}
-
-ResourcePtr CommonFilter::CreateInputResourceAndReadIfCached(
-    const StringPiece& input_url) {
-  ResourcePtr input_resource = CreateInputResource(input_url);
-  MessageHandler* handler = driver_->message_handler();
-  if ((input_resource.get() != NULL) &&
-      (!input_resource->IsCacheable() ||
-       !driver_->ReadIfCached(input_resource))) {
-    handler->Message(
-        kInfo, "%s: Couldn't fetch resource %s to rewrite.",
-        base_url().spec_c_str(), input_url.as_string().c_str());
-    input_resource.clear();
-  }
-  return input_resource;
 }
 
 const GoogleUrl& CommonFilter::base_url() const {

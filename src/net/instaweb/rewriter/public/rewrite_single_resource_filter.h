@@ -24,14 +24,12 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 class CachedResult;
 class MessageHandler;
 class OutputResource;
 class RequestHeaders;
-class ResourceContext;
 class ResponseHeaders;
 class RewriteDriver;
 class Writer;
@@ -66,38 +64,7 @@ class RewriteSingleResourceFilter : public RewriteFilter {
                // it's worth trying again or not.
   };
 
-  // Rewrites the given resource using as much caching as possible and
-  // the filter-supplied URL encoding scheme.
-  //
-  // The Resource* arg is the already-created input object.  'data' may be
-  // NULL, or include other meta-data needed for the rewrite, such as image
-  // dimensions.
-  //
-  // A return value of NULL indicates that some resources needed for
-  // processing are not available yet --- either the inputs are in the process
-  // of being fetched, or perhaps the system is too busy (and there is no
-  // cached result, either).
-  //
-  // In other cases this method returns a CachedResult stating whether the
-  // resource is optimizable, and if so the URL of the output, along with
-  // any metadata that was stored when examining it.
-  //
-  // Note: The metadata may be useful even when optimizable() is false.
-  // For example a filter could store dimensions of an image in them, even
-  // if it chose to not change it, so any <img> tags can be given appropriate
-  // width and height.
-  //
-  // Precondition: in != NULL, in is security-checked
-  CachedResult* RewriteExternalResource(const ResourcePtr& in,
-                                        const ResourceContext* data);
-
  protected:
-  // Variant of the above that makes and cleans up input resource for in_url.
-  // Note that the URL will be expanded and security checked with respect to the
-  // current base URL for the HTML parser.
-  CachedResult* RewriteWithCaching(const StringPiece& url,
-                                   const ResourceContext* data);
-
   // RewriteSingleResourceFilter will make sure to disregard any written
   // cache data with a version number different from what this method returns.
   //

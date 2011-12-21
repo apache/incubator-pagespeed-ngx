@@ -121,7 +121,6 @@ class CssFilter : public RewriteSingleResourceFilter {
                            bool text_is_declarations,
                            GoogleString* out_text,
                            MessageHandler* handler);
-  bool RewriteExternalCss(const StringPiece& in_url, GoogleString* out_url);
 
   // Tries to write out a (potentially edited) stylesheet out to out_text,
   // and returns whether we should consider the result as an improvement.

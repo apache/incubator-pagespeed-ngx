@@ -68,12 +68,6 @@ class CommonFilter : public EmptyHtmlFilter {
   // context of this page.
   ResourcePtr CreateInputResource(const StringPiece& input_url);
 
-  // Create input resource from input_url, if it is legal in the context of
-  // base_url(), and if the resource can be read from cache.  If it's not in
-  // cache, initiate an asynchronous fetch so it will be on next access.  This
-  // is a common case for filters.
-  ResourcePtr CreateInputResourceAndReadIfCached(const StringPiece& input_url);
-
   // Returns whether or not the base url is valid.  This value will change
   // as a filter processes the document.  E.g. If there are url refs before
   // the base tag is reached, it will return false until the filter sees the
