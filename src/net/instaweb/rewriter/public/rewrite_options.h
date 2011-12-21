@@ -492,7 +492,7 @@ class RewriteOptions {
   virtual const char* class_name() const;
 
   // Returns true if generation low res images is required.
-  bool NeedLowResImages() const {
+  virtual bool NeedLowResImages() const {
     return Enabled(kDelayImages);
   }
 
