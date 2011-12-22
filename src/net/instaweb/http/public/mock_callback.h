@@ -71,6 +71,8 @@ class ExpectStringAsyncFetch : public StringAsyncFetch {
     EXPECT_EQ(expect_success_, success);
   }
 
+  void set_expect_success(bool x) { expect_success_ = x; }
+
  private:
   bool expect_success_;
 

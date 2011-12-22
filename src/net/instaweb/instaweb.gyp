@@ -180,6 +180,7 @@
         'http/http_dump_url_writer.cc',
         'http/http_response_parser.cc',
         'http/http_value.cc',
+        'http/inflating_fetch.cc',
         'http/meta_data.cc',
         'http/sync_fetcher_adapter.cc',
         'http/sync_fetcher_adapter_callback.cc',

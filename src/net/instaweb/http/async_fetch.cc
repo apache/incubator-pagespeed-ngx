@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/util/public/statistics.h"
 
 namespace net_instaweb {
 
@@ -142,6 +143,61 @@ SharedAsyncFetch::SharedAsyncFetch(AsyncFetch* base_fetch)
 }
 
 SharedAsyncFetch::~SharedAsyncFetch() {
+}
+
+const char FallbackSharedAsyncFetch::kStaleWarningHeaderValue[] =
+    "110 Response is stale";
+
+FallbackSharedAsyncFetch::FallbackSharedAsyncFetch(AsyncFetch* base_fetch,
+                                                   HTTPValue* fallback,
+                                                   MessageHandler* handler)
+    : SharedAsyncFetch(base_fetch),
+      handler_(handler),
+      serving_fallback_(false),
+      fallback_responses_served_(NULL) {
+  if (fallback != NULL && !fallback->Empty()) {
+    fallback_.Link(fallback);
+  }
+}
+
+FallbackSharedAsyncFetch::~FallbackSharedAsyncFetch() {}
+
+void FallbackSharedAsyncFetch::HandleDone(bool success) {
+  if (!serving_fallback_) {
+    base_fetch()->Done(success);
+  }
+  delete this;
+}
+
+bool FallbackSharedAsyncFetch::HandleWrite(const StringPiece& content,
+                                           MessageHandler* handler) {
+  return serving_fallback_ || base_fetch()->Write(content, handler);
+}
+
+bool FallbackSharedAsyncFetch::HandleFlush(MessageHandler* handler) {
+  return serving_fallback_ || base_fetch()->Flush(handler);
+}
+
+void FallbackSharedAsyncFetch::HandleHeadersComplete() {
+  if (response_headers()->IsServerErrorStatus() && !fallback_.Empty()) {
+    // If the fetch resulted in a server side error from the origin, stop
+    // passing any events through to the base fetch until HandleDone().
+    serving_fallback_ = true;
+    response_headers()->Clear();
+    fallback_.ExtractHeaders(response_headers(), handler_);
+    // Add a warning header indicating that the response is stale.
+    response_headers()->Add(HttpAttributes::kWarning, kStaleWarningHeaderValue);
+    base_fetch()->HeadersComplete();
+    StringPiece contents;
+    fallback_.ExtractContents(&contents);
+    base_fetch()->Write(contents, handler_);
+    if (fallback_responses_served_ != NULL) {
+      fallback_responses_served_->Add(1);
+    }
+    base_fetch()->Done(true);
+  } else {
+    base_fetch()->HeadersComplete();
+  }
 }
 
 }  // namespace net_instaweb

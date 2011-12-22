@@ -67,6 +67,7 @@
         'http/http_dump_url_writer_test.cc',
         'http/http_response_parser_test.cc',
         'http/http_value_test.cc',
+        'http/inflating_fetch_test.cc',
         'http/mock_url_fetcher_test.cc',
         'http/request_headers_test.cc',
         'http/response_headers_test.cc',

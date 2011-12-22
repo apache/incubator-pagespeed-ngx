@@ -41,6 +41,7 @@ const char kResourceFetchConstructSuccesses[] =
 const char kResourceFetchConstructFailures[] =
     "resource_fetch_construct_failures";
 const char kNumFlushes[] = "num_flushes";
+const char kFallbackResponsesServed[] = "num_fallback_responses_served";
 
 // Variables for the beacon to increment.  These are currently handled in
 // mod_pagespeed_handler on apache.  The average load time in milliseconds is
@@ -86,6 +87,7 @@ void RewriteStats::Initialize(Statistics* statistics) {
   statistics->AddHistogram(kFetchLatencyHistogram);
   statistics->AddHistogram(kRewriteLatencyHistogram);
   statistics->AddHistogram(kBackendLatencyHistogram);
+  statistics->AddVariable(kFallbackResponsesServed);
   statistics->AddTimedVariable(kTotalFetchCount,
                                ResourceManager::kStatisticsGroup);
   statistics->AddTimedVariable(kTotalRewriteCount,
@@ -124,6 +126,8 @@ RewriteStats::RewriteStats(Statistics* stats,
           stats->GetVariable(kResourceFetchConstructSuccesses)),
       total_page_load_ms_(
           stats->GetVariable(kTotalPageLoadMs)),
+      fallback_responses_served_(
+          stats->GetVariable(kFallbackResponsesServed)),
       fetch_latency_histogram_(
           stats->GetHistogram(kFetchLatencyHistogram)),
       rewrite_latency_histogram_(

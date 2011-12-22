@@ -110,9 +110,13 @@ class HTTPCache {
       response_headers_ = headers;
       owns_response_headers_ = false;
     }
+    HTTPValue* fallback_http_value() { return &fallback_http_value_; }
 
    private:
     HTTPValue http_value_;
+    // Stale value that can be used in case a fetch fails. Note that Find()
+    // may fill in a stale value here but it will still return kNotFound.
+    HTTPValue fallback_http_value_;
     ResponseHeaders* response_headers_;
     bool owns_response_headers_;
 

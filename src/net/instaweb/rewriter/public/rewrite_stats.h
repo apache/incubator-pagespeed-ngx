@@ -62,6 +62,9 @@ class RewriteStats {
   }
   Variable* total_page_load_ms() { return total_page_load_ms_; }
   Variable* page_load_count() { return page_load_count_; }
+  Variable* fallback_responses_served() {
+    return fallback_responses_served_;
+  }
 
   Histogram* fetch_latency_histogram() { return fetch_latency_histogram_; }
   Histogram* rewrite_latency_histogram() { return rewrite_latency_histogram_; }
@@ -88,6 +91,7 @@ class RewriteStats {
   Variable* slurp_404_count_;
   Variable* succeeded_filter_resource_fetches_;
   Variable* total_page_load_ms_;
+  Variable* fallback_responses_served_;
 
   Histogram* fetch_latency_histogram_;
   Histogram* rewrite_latency_histogram_;

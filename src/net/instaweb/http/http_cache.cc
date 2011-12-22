@@ -115,24 +115,34 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     ResponseHeaders* headers = callback_->response_headers();
     if ((state == CacheInterface::kAvailable) &&
         callback_->http_value()->Link(value(), headers, handler_) &&
-        http_cache_->IsCurrentlyValid(*headers, now_ms) &&
-        // TODO(sriharis) : Should we keep statistic for number of invalidated
-        // lookups, i.e., #times IsCacheValid returned false?
         callback_->IsCacheValid(*headers)) {
+      bool is_valid = http_cache_->IsCurrentlyValid(*headers, now_ms);
+      // While stale responses can potentially be used in case of fetch
+      // failures, responses invalidated via a flush cache should never be
+      // returned under any scenario.
+      // TODO(sriharis) : Should we keep statistic for number of invalidated
+      // lookups, i.e., #times IsCacheValid returned false?
       int http_status = headers->status_code();
       if (http_status == HttpStatus::kRememberNotCacheableStatusCode ||
           http_status == HttpStatus::kRememberFetchFailedStatusCode) {
-        int64 remember_not_found_time_ms = headers->CacheExpirationTimeMs()
-            - start_ms_;
-        if (handler_ != NULL) {
-          handler_->Info(
-              key_.c_str(), 0,
-              "HTTPCache: remembering not-found status for %ld seconds",
-              static_cast<long>(remember_not_found_time_ms / 1000));  // NOLINT
+        if (is_valid) {
+          int64 remember_not_found_time_ms = headers->CacheExpirationTimeMs()
+              - start_ms_;
+          if (handler_ != NULL) {
+            handler_->Info(
+                key_.c_str(), 0,
+                "HTTPCache: remembering not-found status for %ld seconds",
+                static_cast<long>(  // NOLINT
+                    remember_not_found_time_ms / 1000));
+          }
+          result = HTTPCache::kRecentFetchFailedOrNotCacheable;
         }
-        result = HTTPCache::kRecentFetchFailedOrNotCacheable;
       } else {
-        result = HTTPCache::kFound;
+        if (is_valid) {
+          result = HTTPCache::kFound;
+        } else {
+          callback_->fallback_http_value()->Link(callback_->http_value());
+        }
       }
     }
 

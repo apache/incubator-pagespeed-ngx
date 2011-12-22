@@ -130,9 +130,11 @@ class CacheFindCallback : public HTTPCache::Callback {
         fetcher_(owner->fetcher()),
         backend_first_byte_latency_(
             owner->backend_first_byte_latency_histogram()),
+        fallback_responses_served_(owner->fallback_responses_served()),
         handler_(handler),
         respect_vary_(owner->respect_vary()),
-        ignore_recent_fetch_failed_(owner->ignore_recent_fetch_failed()) {
+        ignore_recent_fetch_failed_(owner->ignore_recent_fetch_failed()),
+        serve_stale_if_fetch_error_(owner->serve_stale_if_fetch_error()) {
     // Note that this is a cache lookup: there are no request-headers.  At
     // this level, we have already made a policy decision that any Vary
     // headers present will be ignored (see
@@ -180,14 +182,25 @@ class CacheFindCallback : public HTTPCache::Callback {
           // we will refetch the resource as we would for kNotFound.
           //
           // For example, we should do this for fetches that are being proxied.
-
           // fall through
         }
       case HTTPCache::kNotFound: {
         VLOG(1) << "Did not find in cache: " << url_;
-        CachePutFetch* put_fetch =
-            new CachePutFetch(url_, base_fetch_, respect_vary_, cache_,
-                              backend_first_byte_latency_, handler_);
+        // If fallback_http_value() is populated, use it in case the fetch
+        // fails. Note that this is only populated if the response in cache is
+        // stale.
+        AsyncFetch* base_fetch = base_fetch_;
+        if (serve_stale_if_fetch_error_) {
+          FallbackSharedAsyncFetch* fallback_fetch =
+              new FallbackSharedAsyncFetch(
+                  base_fetch_, fallback_http_value(), handler_);
+          fallback_fetch->set_fallback_responses_served(
+              fallback_responses_served_);
+          base_fetch = fallback_fetch;
+        }
+        CachePutFetch* put_fetch = new CachePutFetch(
+            url_, base_fetch, respect_vary_, cache_,
+            backend_first_byte_latency_, handler_);
         DCHECK_EQ(response_headers(), base_fetch_->response_headers());
 
         // Remove any Etags added by us before sending the request out.
@@ -246,10 +259,12 @@ class CacheFindCallback : public HTTPCache::Callback {
   HTTPCache* cache_;
   UrlAsyncFetcher* fetcher_;
   Histogram* backend_first_byte_latency_;
+  Variable* fallback_responses_served_;
   MessageHandler* handler_;
 
   bool respect_vary_;
   bool ignore_recent_fetch_failed_;
+  bool serve_stale_if_fetch_error_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheFindCallback);
 };

@@ -58,6 +58,8 @@ struct HttpAttributes {
   static const char kTransferEncoding[];
   static const char kUserAgent[];
   static const char kVary[];
+  static const char kWarning[];
+  static const char kXAssociatedContent[];
 };
 
 namespace HttpStatus {

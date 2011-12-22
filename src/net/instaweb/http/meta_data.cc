@@ -49,6 +49,9 @@ const char HttpAttributes::kSetCookie2[] = "Set-Cookie2";
 const char HttpAttributes::kTransferEncoding[] = "Transfer-Encoding";
 const char HttpAttributes::kUserAgent[] = "User-Agent";
 const char HttpAttributes::kVary[] = "Vary";
+const char HttpAttributes::kWarning[] = "Warning";
+const char HttpAttributes::kXAssociatedContent[] = "X-Associated-Content";
+
 
 const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {
   switch (rc) {

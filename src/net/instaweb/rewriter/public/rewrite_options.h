@@ -363,6 +363,13 @@ class RewriteOptions {
   void set_flush_html(bool x) { set_option(x, &flush_html_); }
   bool flush_html() const { return flush_html_.value(); }
 
+  void set_serve_stale_if_fetch_error(bool x) {
+    set_option(x, &serve_stale_if_fetch_error_);
+  }
+  bool serve_stale_if_fetch_error() const {
+    return serve_stale_if_fetch_error_.value();
+  }
+
   const GoogleString& beacon_url() const { return beacon_url_.value(); }
   void set_beacon_url(const StringPiece& p) {
     set_option(GoogleString(p.data(), p.size()), &beacon_url_);
@@ -690,6 +697,9 @@ class RewriteOptions {
   Option<bool> always_rewrite_css_;  // For tests/debugging.
   Option<bool> respect_vary_;
   Option<bool> flush_html_;
+  // Should we serve stale responses if the fetch results in a server side
+  // error.
+  Option<bool> serve_stale_if_fetch_error_;
 
   scoped_ptr<PublisherConfig> panel_config_;
 

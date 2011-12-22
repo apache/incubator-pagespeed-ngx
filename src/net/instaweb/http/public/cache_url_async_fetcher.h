@@ -29,6 +29,7 @@ class AsyncFetch;
 class Histogram;
 class HTTPCache;
 class MessageHandler;
+class Variable;
 
 // Composes an asynchronous URL fetcher with an http cache, to
 // generate an asynchronous caching URL fetcher.
@@ -37,6 +38,8 @@ class MessageHandler;
 // is found in cache and is still valid, the fetch's callback will be
 // called right away. Otherwise an async fetch will be performed in
 // the fetcher, the result of which will be written into the cache.
+// In case the fetch fails and there is a stale response in the cache, we serve
+// the stale response.
 //
 // TODO(sligocki): In order to use this for fetching resources for rewriting
 // we'd need to integrate resource locking in this class. Do we want that?
@@ -47,8 +50,10 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
       : http_cache_(cache),
         fetcher_(fetcher),
         backend_first_byte_latency_(NULL),
+        fallback_responses_served_(NULL),
         respect_vary_(respect_vary),
-        ignore_recent_fetch_failed_(false) {
+        ignore_recent_fetch_failed_(false),
+        serve_stale_if_fetch_error_(false) {
   }
   virtual ~CacheUrlAsyncFetcher();
 
@@ -69,6 +74,14 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
     return backend_first_byte_latency_;
   }
 
+  void set_fallback_responses_served(Variable* x) {
+    fallback_responses_served_ = x;
+  }
+
+  Variable* fallback_responses_served() const {
+    return fallback_responses_served_;
+  }
+
   bool respect_vary() const { return respect_vary_; }
 
   void set_ignore_recent_fetch_failed(bool x) {
@@ -79,14 +92,24 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
     return ignore_recent_fetch_failed_;
   }
 
+  void set_serve_stale_if_fetch_error(bool x) {
+    serve_stale_if_fetch_error_ = x;
+  }
+
+  bool serve_stale_if_fetch_error() const {
+    return serve_stale_if_fetch_error_;
+  }
+
  private:
   // Not owned by CacheUrlAsyncFetcher.
   HTTPCache* http_cache_;
   UrlAsyncFetcher* fetcher_;
   Histogram* backend_first_byte_latency_;  // may be NULL.
+  Variable* fallback_responses_served_;  // may be NULL.
 
   bool respect_vary_;
   bool ignore_recent_fetch_failed_;
+  bool serve_stale_if_fetch_error_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheUrlAsyncFetcher);
 };

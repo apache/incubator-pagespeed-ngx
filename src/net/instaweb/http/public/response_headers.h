@@ -151,10 +151,16 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Parses an arbitrary string into milliseconds since 1970
   static bool ParseTime(const char* time_str, int64* time_ms);
 
-  // Returns true if our status denotes the request failing
+  // Returns true if our status denotes the request failing.
   inline bool IsErrorStatus() {
     int status = status_code();
     return status >= 400 && status <= 599;
+  }
+
+  // Returns true if our status denotes a server side error.
+  inline bool IsServerErrorStatus() {
+    int status = status_code();
+    return status >= 500 && status <= 599;
   }
 
   // Determines whether a response header is marked as gzipped.

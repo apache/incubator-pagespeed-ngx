@@ -59,6 +59,15 @@ ProxyFetchFactory::ProxyFetchFactory(ResourceManager* manager)
       manager->rewrite_stats()->backend_latency_histogram());
   cache_fetcher_no_respect_vary_->set_backend_first_byte_latency_histogram(
       manager->rewrite_stats()->backend_latency_histogram());
+  cache_fetcher_respect_vary_->set_fallback_responses_served(
+      manager->rewrite_stats()->fallback_responses_served());
+  cache_fetcher_no_respect_vary_->set_fallback_responses_served(
+      manager->rewrite_stats()->fallback_responses_served());
+  // TODO(nikhilmadan): Control this at a per domain granularity.
+  cache_fetcher_respect_vary_->set_serve_stale_if_fetch_error(
+      manager->global_options()->serve_stale_if_fetch_error());
+  cache_fetcher_no_respect_vary_->set_serve_stale_if_fetch_error(
+      manager->global_options()->serve_stale_if_fetch_error());
 }
 
 ProxyFetchFactory::~ProxyFetchFactory() {
@@ -449,7 +458,7 @@ void ProxyFetch::HandleDone(bool success) {
       base_fetch()->HeadersComplete();
       Write(buffered, resource_manager_->message_handler());
     }
-  } else {
+  } else if (!response_headers()->headers_complete()) {
     // This is a fetcher failure, like connection refused, not just an error
     // status code.
     response_headers()->SetStatusAndReason(HttpStatus::kNotFound);

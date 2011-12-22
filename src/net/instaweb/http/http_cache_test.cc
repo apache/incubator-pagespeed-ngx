@@ -108,24 +108,23 @@ class HTTPCacheTest : public testing::Test {
     testing::Test::TearDownTestCase();
   }
 
-  HTTPCache::FindResult FindInternal(const GoogleString& key, HTTPValue* value,
-                                     ResponseHeaders* headers,
-                                     MessageHandler* handler,
-                                     Callback& callback) {
-    http_cache_.Find(key, handler, &callback);
-    EXPECT_TRUE(callback.called_);
-    if (callback.result_ == HTTPCache::kFound) {
-      value->Link(callback.http_value());
+  HTTPCache::FindResult FindWithCallback(
+      const GoogleString& key, HTTPValue* value, ResponseHeaders* headers,
+      MessageHandler* handler, Callback* callback) {
+    http_cache_.Find(key, handler, callback);
+    EXPECT_TRUE(callback->called_);
+    if (callback->result_ == HTTPCache::kFound) {
+      value->Link(callback->http_value());
     }
-    headers->CopyFrom(*callback.response_headers());
-    return callback.result_;
+    headers->CopyFrom(*callback->response_headers());
+    return callback->result_;
   }
 
   HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
                              ResponseHeaders* headers,
                              MessageHandler* handler) {
     Callback callback;
-    return FindInternal(key, value, headers, handler, callback);
+    return FindWithCallback(key, value, headers, handler, &callback);
   }
 
   HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
@@ -133,7 +132,7 @@ class HTTPCacheTest : public testing::Test {
                              MessageHandler* handler, bool cache_valid) {
     Callback callback;
     callback.cache_valid_ = cache_valid;
-    return FindInternal(key, value, headers, handler, callback);
+    return FindWithCallback(key, value, headers, handler, &callback);
   }
 
   MockTimer mock_timer_;
@@ -171,14 +170,39 @@ TEST_F(HTTPCacheTest, PutGet) {
   EXPECT_EQ("content", contents);
   EXPECT_EQ(2, GetStat(HTTPCache::kCacheHits));  // The "query" counts as a hit.
 
+  Callback callback;
   // Now advance time 301 seconds and the we should no longer
   // be able to fetch this resource out of the cache.
   mock_timer_.AdvanceMs(301 * 1000);
-  found = Find("mykey", &value, &meta_data_out, &message_handler_);
+  found = FindWithCallback("mykey", &value, &meta_data_out, &message_handler_,
+                           &callback);
   ASSERT_EQ(HTTPCache::kNotFound, found);
   ASSERT_FALSE(meta_data_out.headers_complete());
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheExpirations));
+
+  // However, the fallback value should be filled in.
+  HTTPValue* fallback_value = callback.fallback_http_value();
+  meta_data_out.Clear();
+  contents.clear();
+  EXPECT_FALSE(fallback_value->Empty());
+  ASSERT_TRUE(fallback_value->ExtractHeaders(&meta_data_out,
+                                             &message_handler_));
+  ASSERT_TRUE(meta_data_out.headers_complete());
+  ASSERT_TRUE(fallback_value->ExtractContents(&contents));
+  ASSERT_STREQ("value", meta_data_out.Lookup1("name"));
+  EXPECT_EQ("content", contents);
+
+  // Try again but with the cache invalidated.
+  Callback callback2;
+  callback2.cache_valid_ = false;
+  found = FindWithCallback("mykey", &value, &meta_data_out, &message_handler_,
+                           &callback2);
+  ASSERT_EQ(HTTPCache::kNotFound, found);
+  ASSERT_FALSE(meta_data_out.headers_complete());
+  // The fallback is empty since the entry has been invalidated.
+  fallback_value = callback2.fallback_http_value();
+  ASSERT_TRUE(fallback_value->Empty());
 }
 
 TEST_F(HTTPCacheTest, EtagsAddedIfAbsent) {

@@ -383,6 +383,7 @@ RewriteOptions::RewriteOptions()
   add_option(false, &always_rewrite_css_, "arc");
   add_option(false, &respect_vary_, "rv");
   add_option(false, &flush_html_, "fh");
+  add_option(true, &serve_stale_if_fetch_error_, "ss");
   add_option(kDefaultBeaconUrl, &beacon_url_, "bu");
   add_option(kDefaultImageJpegRecompressQuality,
              &image_jpeg_recompress_quality_, "iq");

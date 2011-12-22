@@ -22,6 +22,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_ASYNC_FETCH_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_ASYNC_FETCH_H_
 
+#include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -32,6 +33,7 @@ namespace net_instaweb {
 
 class MessageHandler;
 class RequestHeaders;
+class Variable;
 
 // Abstract base class for encapsulating streaming, asynchronous HTTP fetches.
 //
@@ -54,6 +56,7 @@ class AsyncFetch : public Writer {
       owns_response_headers_(false),
       headers_complete_(false) {
   }
+
   virtual ~AsyncFetch();
 
   // Called when ResponseHeaders have been set, but before writing
@@ -104,7 +107,7 @@ class AsyncFetch : public Writer {
 
   // Resets the 'headers_complete_' flag.
   // TODO(jmarantz): should this also clear the response headers?
-  void Reset() { headers_complete_ = false; }
+  virtual void Reset() { headers_complete_ = false; }
 
   bool headers_complete() const { return headers_complete_; }
 
@@ -225,6 +228,42 @@ class SharedAsyncFetch : public AsyncFetch {
  private:
   AsyncFetch* base_fetch_;
   DISALLOW_COPY_AND_ASSIGN(SharedAsyncFetch);
+};
+
+// Creates a SharedAsyncFetch object using an existing AsyncFetch and a fallback
+// value that is used in case the fetched response is an error. Note that in
+// case the fetched response is an error and we have a non-empty fallback value,
+// we completely ignore the fetched response.
+// Also, note that this class gets deleted when HandleDone is called.
+class FallbackSharedAsyncFetch : public SharedAsyncFetch {
+ public:
+  // Warning header to be added if a stale response is served.
+  static const char kStaleWarningHeaderValue[];
+
+  FallbackSharedAsyncFetch(AsyncFetch* base_fetch, HTTPValue* fallback,
+                           MessageHandler* handler);
+  virtual ~FallbackSharedAsyncFetch();
+
+  void set_fallback_responses_served(Variable* x) {
+    fallback_responses_served_ = x;
+  }
+
+  void set_message_handler(MessageHandler* handler);
+
+ protected:
+  virtual void HandleDone(bool success);
+  virtual bool HandleWrite(const StringPiece& content, MessageHandler* handler);
+  virtual bool HandleFlush(MessageHandler* handler);
+  virtual void HandleHeadersComplete();
+
+ private:
+  // Note that this is only used while serving the fallback response.
+  MessageHandler* handler_;
+  HTTPValue fallback_;
+  bool serving_fallback_;
+  Variable* fallback_responses_served_;  // may be NULL.
+
+  DISALLOW_COPY_AND_ASSIGN(FallbackSharedAsyncFetch);
 };
 
 }  // namespace net_instaweb

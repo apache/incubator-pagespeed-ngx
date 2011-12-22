@@ -1067,4 +1067,22 @@ TEST_F(ResponseHeadersTest, TestSetCacheControlMaxAge) {
   EXPECT_EQ(expected_headers3, response_headers_.ToString());
 }
 
+TEST_F(ResponseHeadersTest, CheckErrorCodes) {
+  response_headers_.SetStatusAndReason(HttpStatus::kOK);
+  EXPECT_FALSE(response_headers_.IsErrorStatus());
+  EXPECT_FALSE(response_headers_.IsServerErrorStatus());
+
+  response_headers_.SetStatusAndReason(HttpStatus::kNotModified);
+  EXPECT_FALSE(response_headers_.IsErrorStatus());
+  EXPECT_FALSE(response_headers_.IsServerErrorStatus());
+
+  response_headers_.SetStatusAndReason(HttpStatus::kNotFound);
+  EXPECT_TRUE(response_headers_.IsErrorStatus());
+  EXPECT_FALSE(response_headers_.IsServerErrorStatus());
+
+  response_headers_.SetStatusAndReason(HttpStatus::kInternalServerError);
+  EXPECT_TRUE(response_headers_.IsErrorStatus());
+  EXPECT_TRUE(response_headers_.IsServerErrorStatus());
+}
+
 }  // namespace net_instaweb
