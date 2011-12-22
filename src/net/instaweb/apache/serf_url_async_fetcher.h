@@ -75,12 +75,9 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
 
   virtual bool SupportsHttps() const { return false; }
 
-  virtual bool StreamingFetch(const GoogleString& url,
-                              const RequestHeaders& request_headers,
-                              ResponseHeaders* response_headers,
-                              Writer* fetched_content_writer,
-                              MessageHandler* message_handler,
-                              UrlAsyncFetcher::Callback* callback);
+  virtual bool Fetch(const GoogleString& url,
+                     MessageHandler* message_handler,
+                     AsyncFetch* callback);
 
   virtual int Poll(int64 max_wait_ms);
 

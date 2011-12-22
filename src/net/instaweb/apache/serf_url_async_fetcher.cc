@@ -33,6 +33,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "base/stl_util-inl.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/response_headers_parser.h"
@@ -95,35 +96,29 @@ class SerfFetch : public PoolElement<SerfFetch> {
  public:
   // TODO(lsong): make use of request_headers.
   SerfFetch(const GoogleString& url,
-            const RequestHeaders& request_headers,
-            ResponseHeaders* response_headers,
-            Writer* fetched_content_writer,
+            AsyncFetch* async_fetch,
             MessageHandler* message_handler,
-            UrlAsyncFetcher::Callback* callback,
             Timer* timer)
       : fetcher_(NULL),
         timer_(timer),
         str_url_(url),
-        response_headers_(response_headers),
-        parser_(response_headers),
+        async_fetch_(async_fetch),
+        parser_(async_fetch->response_headers()),
         status_line_read_(false),
         one_byte_read_(false),
         has_saved_byte_(false),
         saved_byte_('\0'),
-        fetched_content_writer_(fetched_content_writer),
         message_handler_(message_handler),
-        callback_(callback),
         pool_(NULL),  // filled in once assigned to a thread, to use its pool.
         bucket_alloc_(NULL),
         connection_(NULL),
         bytes_received_(0),
         fetch_start_ms_(0),
         fetch_end_ms_(0) {
-    request_headers_.CopyFrom(request_headers);
   }
 
   ~SerfFetch() {
-    DCHECK(callback_ == NULL);
+    DCHECK(async_fetch_ == NULL);
     if (connection_ != NULL) {
       serf_connection_close(connection_);
     }
@@ -149,14 +144,12 @@ class SerfFetch : public PoolElement<SerfFetch> {
   //
   // This must be called while holding SerfUrlAsyncFetcher's mutex_.
   void CallCallback(bool success) {
-    if (callback_ == NULL) {
+    if (async_fetch_ == NULL) {
       LOG(FATAL) << "BUG: Serf callback called more than once on same fetch "
                  << str_url() << " (" << this << ").  Please report this "
                  << "at http://code.google.com/p/modpagespeed/issues/";
     } else {
       CallbackDone(success);
-      response_headers_ = NULL;
-      fetched_content_writer_ = NULL;
       fetch_end_ms_ = timer_->NowMs();
       fetcher_->FetchComplete(this);
     }
@@ -167,10 +160,10 @@ class SerfFetch : public PoolElement<SerfFetch> {
     if (!success && (fetcher_ != NULL)) {
       fetcher_->failure_count_->Add(1);
     }
-    callback_->Done(success);
-    // We should always NULL the callback_ out after calling otherwise we
+    async_fetch_->Done(success);
+    // We should always NULL the async_fetch_ out after calling otherwise we
     // could get weird double calling errors.
-    callback_ = NULL;
+    async_fetch_ = NULL;
   }
 
   // If last poll of this fetch's connection resulted in an error, clean it up.
@@ -289,7 +282,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     // that more data is available in the socket so another read should
     // be issued before returning.
     apr_status_t status = APR_EAGAIN;
-    while (MoreDataAvailable(status) && (response_headers_ != NULL) &&
+    while (MoreDataAvailable(status) && (async_fetch_ != NULL) &&
             !parser_.headers_complete()) {
       if (!status_line_read_) {
         status = ReadStatusLine(response);
@@ -308,14 +301,14 @@ class SerfFetch : public PoolElement<SerfFetch> {
       status = ReadBody(response);
     }
 
-    if ((response_headers_ != NULL) &&
+    if ((async_fetch_ != NULL) &&
         ((APR_STATUS_IS_EOF(status) && parser_.headers_complete()) ||
          (status == APR_EGENERAL))) {
       bool success = (IsStatusOk(status) && parser_.headers_complete());
-      if (!parser_.headers_complete() && (response_headers_ != NULL)) {
+      if (!parser_.headers_complete() && (async_fetch_ != NULL)) {
         // Be careful not to leave headers in inconsistent state in some error
         // conditions.
-        response_headers_->Clear();
+        async_fetch_->response_headers()->Clear();
       }
       CallCallback(success);
     }
@@ -325,11 +318,12 @@ class SerfFetch : public PoolElement<SerfFetch> {
   apr_status_t ReadStatusLine(serf_bucket_t* response) {
     serf_status_line status_line;
     apr_status_t status = serf_bucket_response_status(response, &status_line);
+    ResponseHeaders* response_headers = async_fetch_->response_headers();
     if (status == APR_SUCCESS) {
-      response_headers_->SetStatusAndReason(
+      response_headers->SetStatusAndReason(
           static_cast<HttpStatus::Code>(status_line.code));
-      response_headers_->set_major_version(status_line.version / 1000);
-      response_headers_->set_minor_version(status_line.version % 1000);
+      response_headers->set_major_version(status_line.version / 1000);
+      response_headers->set_minor_version(status_line.version % 1000);
       status_line_read_ = true;
     }
     return status;
@@ -380,8 +374,8 @@ class SerfFetch : public PoolElement<SerfFetch> {
           // Stream the one byte read from ReadOneByteFromBody to writer.
           if (has_saved_byte_) {
             ++bytes_received_;
-            if (!fetched_content_writer_->Write(StringPiece(&saved_byte_, 1),
-                                                message_handler_)) {
+            if (!async_fetch_->Write(StringPiece(&saved_byte_, 1),
+                                     message_handler_)) {
               status = APR_EGENERAL;
             }
           }
@@ -401,18 +395,16 @@ class SerfFetch : public PoolElement<SerfFetch> {
     const char* data = NULL;
     apr_size_t len = 0;
     apr_size_t bytes_to_flush = 0;
-    while (MoreDataAvailable(status) && (fetched_content_writer_ != NULL)) {
+    while (MoreDataAvailable(status) && (async_fetch_ != NULL)) {
       status = serf_bucket_read(response, SERF_READ_ALL_AVAIL, &data, &len);
       bytes_received_ += len;
       bytes_to_flush += len;
       if (IsStatusOk(status) && (len != 0) &&
-          !fetched_content_writer_->Write(
-              StringPiece(data, len), message_handler_)) {
+          !async_fetch_->Write(StringPiece(data, len), message_handler_)) {
         status = APR_EGENERAL;
       }
     }
-    if ((bytes_to_flush != 0) &&
-        !fetched_content_writer_->Flush(message_handler_)) {
+    if ((bytes_to_flush != 0) && !async_fetch_->Flush(message_handler_)) {
       status = APR_EGENERAL;
     }
     return status;
@@ -425,7 +417,8 @@ class SerfFetch : public PoolElement<SerfFetch> {
     // append on a 'serf' suffix.
     GoogleString user_agent;
     ConstStringStarVector v;
-    if (request_headers_.Lookup(HttpAttributes::kUserAgent, &v)) {
+    RequestHeaders* request_headers = async_fetch_->request_headers();
+    if (request_headers->Lookup(HttpAttributes::kUserAgent, &v)) {
       for (int i = 0, n = v.size(); i < n; ++i) {
         if (i != 0) {
           user_agent += " ";
@@ -434,7 +427,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
           user_agent += *(v[i]);
         }
       }
-      request_headers_.RemoveAll(HttpAttributes::kUserAgent);
+      request_headers->RemoveAll(HttpAttributes::kUserAgent);
     }
     if (user_agent.empty()) {
       user_agent += "Serf/" SERF_VERSION_STRING;
@@ -444,7 +437,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     if (!StringPiece(user_agent).ends_with(version)) {
       user_agent.append(version.data(), version.size());
     }
-    request_headers_.Add(HttpAttributes::kUserAgent, user_agent);
+    request_headers->Add(HttpAttributes::kUserAgent, user_agent);
   }
 
   static apr_status_t SetupRequest(serf_request_t* request,
@@ -470,7 +463,8 @@ class SerfFetch : public PoolElement<SerfFetch> {
     // See src/third_party/serf/src/instaweb_context.c
     ConstStringStarVector v;
     const char* host = NULL;
-    if (fetch->request_headers_.Lookup(HttpAttributes::kHost, &v) &&
+    RequestHeaders* request_headers = fetch->async_fetch_->request_headers();
+    if (request_headers->Lookup(HttpAttributes::kHost, &v) &&
         (v.size() == 1) && (v[0] != NULL)) {
       host = v[0]->c_str();
     }
@@ -484,9 +478,9 @@ class SerfFetch : public PoolElement<SerfFetch> {
     serf_bucket_t* hdrs_bkt = serf_bucket_request_get_headers(*req_bkt);
 
     // Selectively add other useful headers from the caller's request.
-    for (int i = 0; i < fetch->request_headers_.NumAttributes(); ++i) {
-      const GoogleString& name = fetch->request_headers_.Name(i);
-      const GoogleString& value = fetch->request_headers_.Value(i);
+    for (int i = 0; i < request_headers->NumAttributes(); ++i) {
+      const GoogleString& name = request_headers->Name(i);
+      const GoogleString& value = request_headers->Value(i);
       if ((StringCaseEqual(name, HttpAttributes::kUserAgent)) ||
           (StringCaseEqual(name, HttpAttributes::kAcceptEncoding)) ||
           (StringCaseEqual(name, HttpAttributes::kReferer)) ||
@@ -529,16 +523,13 @@ class SerfFetch : public PoolElement<SerfFetch> {
   SerfUrlAsyncFetcher* fetcher_;
   Timer* timer_;
   const GoogleString str_url_;
-  RequestHeaders request_headers_;
-  ResponseHeaders* response_headers_;
+  AsyncFetch* async_fetch_;
   ResponseHeadersParser parser_;
   bool status_line_read_;
   bool one_byte_read_;
   bool has_saved_byte_;
   char saved_byte_;
-  Writer* fetched_content_writer_;
   MessageHandler* message_handler_;
-  UrlAsyncFetcher::Callback* callback_;
 
   apr_pool_t* pool_;
   serf_bucket_alloc_t* bucket_alloc_;
@@ -1003,17 +994,12 @@ bool SerfUrlAsyncFetcher::StartFetch(SerfFetch* fetch) {
   return started;
 }
 
-bool SerfUrlAsyncFetcher::StreamingFetch(const GoogleString& url,
-                                         const RequestHeaders& request_headers,
-                                         ResponseHeaders* response_headers,
-                                         Writer* fetched_content_writer,
-                                         MessageHandler* message_handler,
-                                         UrlAsyncFetcher::Callback* callback) {
-  SerfFetch* fetch = new SerfFetch(
-      url, request_headers, response_headers, fetched_content_writer,
-      message_handler, callback, timer_);
+bool SerfUrlAsyncFetcher::Fetch(const GoogleString& url,
+                                MessageHandler* message_handler,
+                                AsyncFetch* async_fetch) {
+  SerfFetch* fetch = new SerfFetch(url, async_fetch, message_handler, timer_);
   request_count_->Add(1);
-  if (force_threaded_ || callback->EnableThreaded()) {
+  if (force_threaded_ || async_fetch->EnableThreaded()) {
     message_handler->Message(kInfo, "Initiating async fetch for %s",
                              url.c_str());
     threaded_fetcher_->InitiateFetch(fetch);
