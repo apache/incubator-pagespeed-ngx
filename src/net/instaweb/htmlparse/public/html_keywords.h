@@ -19,7 +19,9 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_KEYWORDS_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_KEYWORDS_H_
 
+#include <algorithm>
 #include <map>
+#include <vector>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/util/public/string.h"
@@ -67,9 +69,68 @@ class HtmlKeywords {
   // parsing and rewriting system will need to maintain the original escaped
   // text parsed from HTML files, and pass that to browsers.
 
+  // Determines whether an open tag of type k1 should be automatically closed
+  // if a StartElement for tag k2 is encountered.  E.g. <tr><tbody> should
+  // be transformed to <tr></tr><tbody>.
+  static bool IsAutoClose(HtmlName::Keyword k1, HtmlName::Keyword k2) {
+    return std::binary_search(singleton_->auto_close_.begin(),
+                              singleton_->auto_close_.end(),
+                              MakeKeywordPair(k1, k2));
+  }
+
+  // Determines whether an open tag of type k1 should be automatically closed
+  // if an EndElement for tag k2 is encountered.  E.g. <tbody></table> should
+  // be transformed into <tbody></tbody></table>.
+  static bool IsContained(HtmlName::Keyword k1, HtmlName::Keyword k2) {
+    return std::binary_search(singleton_->contained_.begin(),
+                              singleton_->contained_.end(),
+                              MakeKeywordPair(k1, k2));
+  }
+
+  // Determines whether the specified HTML keyword is closed automatically
+  // by the parser if the close-tag is omitted.  E.g. <head> must be closed,
+  // but formatting elements such as <p> do not need to be closed.  Also note
+  // the distinction with tags which are *implicitly* closed in HTML such as
+  // <img> and <br>.
+  static bool IsOptionallyClosedTag(HtmlName::Keyword keyword) {
+    return std::binary_search(singleton_->optionally_closed_.begin(),
+                              singleton_->optionally_closed_.end(),
+                              keyword);
+  }
+
  private:
+  typedef int32 KeywordPair;  // Encoded via shift & OR.
+  typedef std::vector<KeywordPair> KeywordPairVec;
+  typedef std::vector<HtmlName::Keyword> KeywordVec;
+
   HtmlKeywords();
   const char* UnescapeAttributeValue();
+  void InitEscapeSequences();
+  void InitAutoClose();
+  void InitContains();
+  void InitOptionallyClosedKeywords();
+
+  // Encodes two keyword enums as a KeywordPair, represented as an int32.
+  static KeywordPair MakeKeywordPair(HtmlName::Keyword k1,
+                                     HtmlName::Keyword k2) {
+    return (static_cast<KeywordPair>(k1) << 16) | static_cast<KeywordPair>(k2);
+  }
+
+  // Adds all combinations of the members of k1_list and k2_list to
+  // kmap.  The lists are represented as space-delimited keywords.
+  // E.g. if k1_list="a b" and k2_list="c d", then this adds (a,c),
+  // (b,c), (a,d), (b,d) to kmap.
+  void AddCrossProduct(const StringPiece& k1_list, const StringPiece& k2_list,
+                       KeywordPairVec* kmap);
+  void AddAutoClose(const StringPiece& k1_list, const StringPiece& k2_list) {
+    AddCrossProduct(k1_list, k2_list, &auto_close_);
+  }
+  void AddContained(const StringPiece& k1_list, const StringPiece& k2_list) {
+    AddCrossProduct(k1_list, k2_list, &contained_);
+  }
+
+  // Adds every space-delimited token in klist to kset.
+  void AddToSet(const StringPiece& klist, KeywordVec* kset);
 
   static HtmlKeywords* singleton_;
 
@@ -85,6 +146,12 @@ class HtmlKeywords {
   StringStringMapSensitive unescape_sensitive_map_;
   StringStringMapSensitive escape_map_;
   CharStarVector keyword_vector_;
+
+  // These vectors of KeywordPair and Keyword are sorted numerically during
+  // construction to enable binary-search during parsing.
+  KeywordPairVec auto_close_;
+  KeywordPairVec contained_;
+  KeywordVec optionally_closed_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlKeywords);
 };

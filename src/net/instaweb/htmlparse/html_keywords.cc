@@ -18,6 +18,8 @@
 
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 
+#include <algorithm>
+#include <cstddef>
 #include <map>
 #include <utility>
 
@@ -138,6 +140,40 @@ static HtmlKeywordsSequence kHtmlKeywordsSequences[] = {
   { "yuml", {0xFF, 0x0} }
 };
 
+// String constants used to populate maps at initialization time.
+// These are a little more expressive than static arrays of keywords.
+// The penalty for this expressiveness is lack of compile-time checking,
+// and startup time.  But the compile-time checking is replaced by
+// debug-only init checks.
+
+// Tables are a 4-level hierarchy:
+//   table > [thead tbody tfoot] > tr > [td th]
+//
+// Note: we use trailing spaces in all these strings so that they can
+// be concatenated more easily.  Note that we use 'omit_empty_strings'
+// when we interpret via SplitStringPieceToVector.
+const char kTableLeaves[] = "td th ";
+const char kTableSections[] = "tbody tfoot thead ";
+const char kTableElements[] = "td th tbody tfoot thead table tr ";
+// TODO(jmarantz): consider caption, col, colgroup.
+
+// Formatting elements are terminated by many other tags.
+const char kFormattingElements[] =
+    "b i em font strong small s cite q dfn abbr time code var "
+    "samp kbd sub u mark bdi bdo ";
+// TODO(jmarantz): consider ins and del & potentially lots more.
+
+const char kListElements[] = "li ol ul ";
+const char kDeclarationElements[] = "dl dt dd ";
+
+const char kParagraphTerminators[] =
+    "address article aside blockquote dir div dl fieldset "
+    "footer form h1 h2 h3 h4 h5 h6 header hgroup hr menu nav ol p "
+    "pre section table ul";
+
+// TODO(jmarantz): handle & test Ruby containment.
+// const char kRubyElements[] = "ruby rt rp ";
+
 }  // namespace
 
 namespace net_instaweb {
@@ -145,6 +181,13 @@ namespace net_instaweb {
 HtmlKeywords* HtmlKeywords::singleton_ = NULL;
 
 HtmlKeywords::HtmlKeywords() {
+  InitEscapeSequences();
+  InitAutoClose();
+  InitContains();
+  InitOptionallyClosedKeywords();
+}
+
+void HtmlKeywords::InitEscapeSequences() {
   StringSetInsensitive case_sensitive_symbols;
   for (size_t i = 0; i < arraysize(kHtmlKeywordsSequences); ++i) {
     // Put all symbols in the case-sensitive map
@@ -324,6 +367,128 @@ StringPiece HtmlKeywords::EscapeHelper(const StringPiece& unescaped,
     }
   }
   return StringPiece(*buf);
+}
+
+void HtmlKeywords::AddCrossProduct(const StringPiece& k1_list,
+                                   const StringPiece& k2_list,
+                                   KeywordPairVec* kmap) {
+  StringPieceVector v1, v2;
+  SplitStringPieceToVector(k1_list, " ", &v1, true);
+  SplitStringPieceToVector(k2_list, " ", &v2, true);
+  for (int i = 0, n1 = v1.size(); i < n1; ++i) {
+    HtmlName::Keyword k1 = HtmlName::Lookup(v1[i]);
+    DCHECK_NE(HtmlName::kNotAKeyword, k1) << v1[i];
+    for (int j = 0, n2 = v2.size(); j < n2; ++j) {
+      HtmlName::Keyword k2 = HtmlName::Lookup(v2[j]);
+      DCHECK_NE(HtmlName::kNotAKeyword, k2) << v2[j];
+      KeywordPair k1_k2 = MakeKeywordPair(k1, k2);
+      kmap->push_back(k1_k2);
+    }
+  }
+}
+
+void HtmlKeywords::AddToSet(const StringPiece& klist, KeywordVec* kset) {
+  StringPieceVector v;
+  SplitStringPieceToVector(klist, " ", &v, true);
+  for (int i = 0, n = v.size(); i < n; ++i) {
+    HtmlName::Keyword k = HtmlName::Lookup(v[i]);
+    DCHECK_NE(HtmlName::kNotAKeyword, k) << v[i];
+    kset->push_back(k);
+  }
+}
+
+namespace {
+
+// Sorts the passed-in vector to enable binary_search.  The vector is
+// sorted by T::operator<.  If in the future a binary search requires
+// a custom comparator then this function should also be changed to
+// take that comparator.
+//
+// vec must not be empty.
+template<class T>
+void PrepareForBinarySearch(std::vector<T>* vec) {
+  CHECK(!vec->empty());
+  std::sort(vec->begin(), vec->end());
+  // Make sure there are no duplicates
+#ifndef NDEBUG
+  typename std::vector<T>::iterator p = std::unique(vec->begin(), vec->end());
+  if (p != vec->end()) {
+    T duplicate_value = *p;
+    LOG(DFATAL) << "Duplicate set element " << duplicate_value;
+  }
+#endif
+}
+
+}  // namespace
+
+void HtmlKeywords::InitAutoClose() {
+  // The premise of our lookup machinery is that HtmlName::Keyword can
+  // be represented in a 16-bit int, so that we can make a pair using
+  // SHIFT+OR.
+  DCHECK_EQ(HtmlName::num_keywords(), HtmlName::num_keywords() & 0xffff);
+
+  // TODO(jmarantz): these deserve another pass through the HTML5 spec.
+  // Note that http://www.w3.org/TR/html5/syntax.html#optional-tags
+  // covers many of these cases, but omits the general situation that
+  // formatting elements should be automatically closed when they
+  // hit most other tags.
+  //
+  // However, there is discussion of relevance in and around:
+  // http://www.w3.org/TR/html5/the-end.html#misnested-tags:-b-i-b-i
+
+  AddAutoClose(kTableLeaves, kTableLeaves);
+  AddAutoClose(kTableLeaves, "tr");
+  AddAutoClose("tr", kTableSections);
+  AddAutoClose("tr", "tr");
+  AddAutoClose(kTableSections, kTableSections);
+
+  AddAutoClose("p", kParagraphTerminators);
+
+  AddAutoClose("li", "li");
+  AddAutoClose("dd dt", "dd dt");
+  AddAutoClose("rp rt", "rp rt");
+  AddAutoClose("optgroup", "optgroup");
+  AddAutoClose("option", "optgroup option");
+  AddAutoClose(kFormattingElements, StrCat("tr ", kListElements,
+                                           kDeclarationElements));
+  PrepareForBinarySearch(&auto_close_);
+}
+
+void HtmlKeywords::InitContains() {
+  // TODO(jmarantz): these deserve another pass through the HTML5 spec.  Note
+  // that the HTML5 spec doesn't have a 'containment' section but there is
+  // discussion of the context in which tags can reside in the doc for each
+  // tag, and discussion of relevance in and around:
+  // http://www.w3.org/TR/html5/the-end.html#misnested-tags:-b-i-b-i
+  //
+  // Also see http://www.whatwg.org/specs/web-apps/current-work
+  // /multipage/syntax.html#optional-tags which describes auto-closing
+  // elements whose parents have no more content.
+
+  AddContained(kTableLeaves, "table");
+  AddContained("tr", "table");
+  AddContained(kTableSections, "table");
+  AddContained("li", "ul ol");
+  AddContained("dd dt", "dl");
+  AddContained("rt rp", "ruby");
+  AddContained(kFormattingElements, "td th");
+  PrepareForBinarySearch(&contained_);
+}
+
+// These tags do not need to be explicitly closed, but can be.  See
+// http://www.w3.org/TR/html5/syntax.html#optional-tags .  Note that
+// this is *not* consistent with
+// http://www.w3schools.com/tags/tag_p.asp which claims that the <p>
+// tag works the same in XHTML as HTML.  This is clearly wrong since
+// real XHTML has XML syntax which requires explicit closing tags.
+//
+// Note that we will close any of these tags without warning.
+void HtmlKeywords::InitOptionallyClosedKeywords() {
+  AddToSet(kFormattingElements, &optionally_closed_);
+  AddToSet("body colgroup dd dt html optgroup option p", &optionally_closed_);
+  AddToSet(kListElements, &optionally_closed_);
+  AddToSet(kTableElements, &optionally_closed_);
+  PrepareForBinarySearch(&optionally_closed_);
 }
 
 }  // namespace

@@ -28,6 +28,7 @@
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
@@ -89,222 +90,6 @@ const HtmlName::Keyword kLiteralTags[] = {
   HtmlName::kXmp,
 };
 
-// These tags do not need to be explicitly closed, but can be.  See
-// http://www.w3.org/TR/html5/syntax.html#optional-tags .  Note that
-// this is *not* consistent with
-// http://www.w3schools.com/tags/tag_p.asp which claims that the <p>
-// tag works the same in XHTML as HTML.  This is clearly wrong since
-// real XHTML has XML syntax which requires explicit closing tags.
-//
-// http://www.w3.org/TR/html5/syntax.html#optional-tags
-// specifies complex rules, thus we employ a nested variable
-// length array structure rather than a simple static array, because
-// we need to know about the tags that immediately close these.
-//
-// Note that we will close any of these tags without warning.
-
-// Statically declarable structure (no pre-main code needs to run) that
-// maps a keyword to the keywords that can close it.
-struct HtmlTagMapElement {
-  HtmlName::Keyword tag_to_close;
-  int num_followers;
-  HtmlName::Keyword* followers;
-  bool operator<(HtmlName::Keyword keyword) const {
-    return tag_to_close < keyword;
-  }
-};
-
-// The static specification of an array of variable-length arrays is awkward,
-// but Stack Overflow offers an answer:
-//     http://stackoverflow.com/questions/1558025/
-//     c-initialize-array-within-structure
-// To hide the awkwardness we define a couple of macros.  Note that "p" has
-// 27 followers but we don't bother to define a macro to that as there would
-// be only one such user.
-//
-// Note the c-style cast.  C++-style casts do not appear to be workable in this
-// context.
-#define ELTS0() 0, (HtmlName::Keyword[1]) {HtmlName::kNotAKeyword}
-#define ELTS1(a) 1, (HtmlName::Keyword[1]) {a}
-#define ELTS2(a, b) 2, (HtmlName::Keyword[2]) {a, b}
-#define ELTS3(a, b, c) 3, (HtmlName::Keyword[3]) {a, b, c}
-#define ELTS4(a, b, c, d) 4, (HtmlName::Keyword[4]) {a, b, c, d}
-#define ELTS5(a, b, c, d, e) 5, (HtmlName::Keyword[5]) {a, b, c, d, e}
-
-const HtmlTagMapElement kOptionallyClosedTags[] = {
-  {HtmlName::kB, ELTS1(HtmlName::kTr)},
-
-  // A body element's end tag may be omitted if the body element is not
-  // immediately followed by a comment.
-  //
-  // TODO(jmarantz): I am puzzled by the actionable meaning of this
-  // comment from www.w3.org in section 8.1.2.4.
-  {HtmlName::kBody, ELTS0()},
-
-  // A colgroup element's end tag may be omitted if the colgroup element is not
-  // immediately followed by a space character or a comment.
-  //
-  // TODO(jmarantz): I am similarly puzzled by this one.
-  {HtmlName::kColgroup, ELTS0()},
-
-  // A dd element's end tag may be omitted if the dd element is immediately
-  // followed by another dd element or a dt element, or if there is no more
-  // content in the parent element.
-  {HtmlName::kDd, ELTS2(HtmlName::kDd, HtmlName::kDt)},
-
-  // A dt element's end tag may be omitted if the dt element is immediately
-  // followed by another dt element or a dd element.
-  {HtmlName::kDt, ELTS2(HtmlName::kDd, HtmlName::kDt)},
-
-  {HtmlName::kEm, ELTS1(HtmlName::kTr)},
-
-  {HtmlName::kFont, ELTS1(HtmlName::kTr)},
-
-  // TODO(jmarantz): add in support for 'strong' etc.
-
-  // An html element's end tag may be omitted if the html element is not
-  // immediately followed by a comment.
-  //
-  // TODO(jmarantz): Not sure what this means.
-  {HtmlName::kHtml, ELTS0()},
-
-  {HtmlName::kI, ELTS1(HtmlName::kTr)},
-
-  // A li element's end tag may be omitted if the li element is immediately
-  // followed by another li element or if there is no more content in the
-  // parent element.
-  {HtmlName::kLi, ELTS1(HtmlName::kLi)},
-
-  // An optgroup element's end tag may be omitted if the optgroup element is
-  // immediately followed by another optgroup element, or if there is no more
-  // content in the parent element.
-  {HtmlName::kOptgroup, ELTS1(HtmlName::kOptgroup)},
-
-  // An option element's end tag may be omitted if the option element is
-  // immediately followed by another option element, or if it is immediately
-  // followed by an optgroup element, or if there is no more content in the
-  // parent element.
-  {HtmlName::kOption, ELTS2(HtmlName::kOptgroup, HtmlName::kOption)},
-
-  // A p element's end tag may be omitted if the p element is immediately
-  // followed by an address, article, aside, blockquote, dir, div, dl, fieldset,
-  // footer, form, h1, h2, h3, h4, h5, h6, header, hgroup, hr, menu, nav, ol, p,
-  // pre, section, table, or ul, element, or if there is no more content in the
-  // parent element and the parent element is not an a element.
-  {HtmlName::kP, 27, (HtmlName::Keyword[27]) {
-      HtmlName::kAddress, HtmlName::kArticle, HtmlName::kAside,
-      HtmlName::kBlockquote, HtmlName::kDir, HtmlName::kDiv,
-      HtmlName::kDl, HtmlName::kFieldset, HtmlName::kFooter, HtmlName::kForm,
-      HtmlName::kH1, HtmlName::kH2, HtmlName::kH3, HtmlName::kH4, HtmlName::kH5,
-      HtmlName::kH6, HtmlName::kHeader, HtmlName::kHgroup, HtmlName::kHr,
-      HtmlName::kMenu, HtmlName::kNav, HtmlName::kOl, HtmlName::kP,
-      HtmlName::kPre, HtmlName::kSection, HtmlName::kTable, HtmlName::kUl}},
-
-  // An rp element's end tag may be omitted if the rp element is immediately
-  // followed by an rt or rp element, or if there is no more content in the
-  // parent element.
-  {HtmlName::kRp, ELTS2(HtmlName::kRp, HtmlName::kRt)},
-
-  // An rt element's end tag may be omitted if the rt element is immediately
-  // followed by an rt or rp element, or if there is no more content in the
-  // parent element.
-  {HtmlName::kRt, ELTS2(HtmlName::kRp, HtmlName::kRt)},
-
-  // A tbody element's end tag may be omitted if the tbody element is
-  // immediately followed by a tbody or tfoot element, or if there is no more
-  // content in the parent element.
-  {HtmlName::kTbody, ELTS2(HtmlName::kTbody, HtmlName::kTfoot)},
-
-  // A td element's end tag may be omitted if the td element is immediately
-  // followed by a td or th element, or if there is no more content in the
-  // parent element.  A new 'tr' also ends 'td'.
-  {HtmlName::kTd, ELTS3(HtmlName::kTd, HtmlName::kTh, HtmlName::kTr)},
-
-  // A tfoot element's end tag may be omitted if the tfoot element is
-  // immediately followed by a tbody element, or if there is no more content in
-  // the parent element.
-  {HtmlName::kTfoot, ELTS1(HtmlName::kTbody)},
-
-  // A th element's end tag may be omitted if the th element is immediately
-  // followed by a td or th element, or if there is no more content in the
-  // parent element.  A new 'tr' also ends 'th'.
-  {HtmlName::kTh, ELTS3(HtmlName::kTd, HtmlName::kTh, HtmlName::kTr)},
-
-  // A thead element's end tag may be omitted if the thead element is
-  // immediately followed by a tbody or tfoot element.
-  {HtmlName::kThead, ELTS2(HtmlName::kTbody, HtmlName::kTfoot)},
-
-  // A tr element's end tag may be omitted if the tr element is immediately
-  // followed by another tr element, or if there is no more content in the
-  // parent element.
-  {HtmlName::kTr, ELTS1(HtmlName::kTr)},
-};
-
-const HtmlTagMapElement* FindAutoCloseElement(HtmlName::Keyword keyword) {
-  const HtmlTagMapElement* end = kOptionallyClosedTags +
-      arraysize(kOptionallyClosedTags);
-  const HtmlTagMapElement* p =
-      std::lower_bound(kOptionallyClosedTags, end, keyword);
-  if ((p != end) && (p->tag_to_close == keyword)) {
-    return p;
-  }
-  return NULL;
-}
-
-// In order to deal with mismatched close-tags, we walk up the stack
-// to auto-close elements.  For example: <div><span></div> auto-closes
-// the span, and we wind up with <div><span></span*></div> where the
-// "*" indicates that we will not re-serialize that close-tag; we'll
-// let the browser do what it thinks is right.  But we present our
-// C++ api with a balanced tag-view, and that </span*> is required.
-//
-// However when we auto-close we should avoid climbing too far up the
-// stack.  E.g. tr,td,thead,tbody must be underneath a table, and the
-// table must be closed.  An unclosed tr must not 'escape' outside
-// the table, to close an outer 'tr'.
-//
-// Similarly, formatting elements do not escape outside tables, rows,
-// or data.
-//
-// This list is not complete: we need to do a thorough pass through
-// the html spec to see what belongs here.
-const HtmlTagMapElement kContainedTags[] = {
-  {HtmlName::kB, ELTS3(HtmlName::kTable, HtmlName::kTd, HtmlName::kTr)},
-  {HtmlName::kEm, ELTS3(HtmlName::kTable, HtmlName::kTd, HtmlName::kTr)},
-  {HtmlName::kFont, ELTS3(HtmlName::kTable, HtmlName::kTd, HtmlName::kTr)},
-  {HtmlName::kI, ELTS3(HtmlName::kTable, HtmlName::kTd, HtmlName::kTr)},
-  {HtmlName::kRp, ELTS1(HtmlName::kRuby)},
-  {HtmlName::kRt, ELTS1(HtmlName::kRuby)},
-  {HtmlName::kTbody, ELTS1(HtmlName::kTable)},
-  {HtmlName::kTd, ELTS5(HtmlName::kTable, HtmlName::kTbody, HtmlName::kTfoot,
-                        HtmlName::kThead, HtmlName::kTr)},
-  {HtmlName::kTfoot, ELTS1(HtmlName::kTable)},
-  {HtmlName::kTh, ELTS1(HtmlName::kTable)},
-  {HtmlName::kThead, ELTS1(HtmlName::kTable)},
-  {HtmlName::kTr, ELTS4(HtmlName::kTable, HtmlName::kTbody, HtmlName::kTfoot,
-                        HtmlName::kThead)},
-};
-
-const bool IsContained(HtmlName::Keyword elt_being_closed,
-                       HtmlName::Keyword parent) {
-  const HtmlTagMapElement* end = kContainedTags + arraysize(kContainedTags);
-  const HtmlTagMapElement* p = std::lower_bound(kContainedTags, end,
-                                                elt_being_closed);
-  if ((p != end) && (p->tag_to_close == elt_being_closed)) {
-    return std::binary_search(p->followers, p->followers + p->num_followers,
-                              parent);
-  }
-  return false;
-}
-
-const bool IsAutoClose(HtmlName::Keyword open_keyword,
-                       HtmlName::Keyword next_keyword) {
-  const HtmlTagMapElement* p = FindAutoCloseElement(open_keyword);
-  return (p != NULL) &&
-      std::binary_search(p->followers, p->followers + p->num_followers,
-                         next_keyword);
-}
-
 // We start our stack-iterations from 1, because we put a NULL into
 // position 0 to reduce special-cases.
 const int kStartStack = 1;
@@ -315,20 +100,6 @@ const int kStartStack = 1;
 void CheckKeywordSetOrdering(const HtmlName::Keyword* keywords, int num) {
   for (int i = 1; i < num; ++i) {
     DCHECK_GT(keywords[i], keywords[i - 1]);
-  }
-}
-
-// Ensures that the 2-D map structure is ordered so that we can do binary
-// searches.
-void ValidateMap(const HtmlTagMapElement* p, int n) {
-  for (int i = 0; i < n; ++i) {
-    const HtmlTagMapElement& tag = p[i];
-    if (i > 0) {
-      DCHECK_GT(tag.tag_to_close, p[i - 1].tag_to_close);
-    }
-    for (int j = 1; j < tag.num_followers; ++j) {
-      DCHECK_GT(tag.followers[j], tag.followers[j - 1]) << tag.tag_to_close;
-    }
   }
 }
 #endif
@@ -362,8 +133,6 @@ HtmlLexer::HtmlLexer(HtmlParse* html_parse)
   CHECK_KEYWORD_SET_ORDERING(kImplicitlyClosedHtmlTags);
   CHECK_KEYWORD_SET_ORDERING(kNonBriefTerminatedTags);
   CHECK_KEYWORD_SET_ORDERING(kLiteralTags);
-  ValidateMap(kOptionallyClosedTags, arraysize(kOptionallyClosedTags));
-  ValidateMap(kContainedTags, arraysize(kContainedTags));
 #endif
 }
 
@@ -828,7 +597,7 @@ void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
     // TODO(jmarantz): this is a hack -- we should make a more elegant
     // structure of open/new tag combinations that we should auto-close.
     HtmlName::Keyword open_keyword = open_element->keyword();
-    if (IsAutoClose(open_keyword, next_keyword)) {
+    if (HtmlKeywords::IsAutoClose(open_keyword, next_keyword)) {
       element_stack_.pop_back();
       html_parse_->CloseElement(open_element, HtmlElement::AUTO_CLOSE, line_);
 
@@ -935,7 +704,7 @@ void HtmlLexer::FinishParse() {
     HtmlElement* element = element_stack_.back();
     token_ = element->name_str();
     EmitTagClose(HtmlElement::UNCLOSED);
-    if (!IsOptionallyClosedTag(element->keyword())) {
+    if (!HtmlKeywords::IsOptionallyClosedTag(element->keyword())) {
       html_parse_->Info(id_.c_str(), element->begin_line_number(),
                         "End-of-file with open tag: %s", element->name_str());
     }
@@ -1101,6 +870,7 @@ void HtmlLexer::EmitTagClose(HtmlElement::CloseStyle close_style) {
   } else {
     HtmlElement* element = PopElementMatchingTag(token_);
     if (element != NULL) {
+      DCHECK(StringCaseEqual(token_, element->name_str()));
       element->set_end_line_number(line_);
       html_parse_->CloseElement(element, close_style, line_);
     } else {
@@ -1202,7 +972,7 @@ bool HtmlLexer::TagAllowsBriefTermination(HtmlName::Keyword keyword) const {
 }
 
 bool HtmlLexer::IsOptionallyClosedTag(HtmlName::Keyword keyword) const {
-  return FindAutoCloseElement(keyword) != NULL;
+  return HtmlKeywords::IsOptionallyClosedTag(keyword);
 }
 
 void HtmlLexer::DebugPrintStack() {
@@ -1233,17 +1003,22 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(const StringPiece& tag) {
   for (int i = element_stack_.size() - 1; i >= kStartStack; --i) {
     element = element_stack_[i];
 
-    // Stop when we get to an 'owner' of this element.
-    if (IsContained(keyword, element->keyword())) {
-      close_index = i + 1;
-      missing_close_tag_bag_.clear();
-      break;
-    } else if (StringCaseEqual(element->name_str(), tag)) {
+    if (StringCaseEqual(element->name_str(), tag)) {
       // In tag-matching we will do case-insensitive comparisons, despite
       // the fact that we have a keywords enum.  Note that the symbol
       // table is case sensitive.
       close_index = i;
       break;
+    } else if (HtmlKeywords::IsContained(keyword, element->keyword())) {
+      // Stop when we get to an 'owner' of this element.  Consider
+      // <tr><table></tr></table>.  When hitting the </tr> we start
+      // looking for a matching <tr> to close.  We need to stop when
+      // we get an IsContained match (e.g. tr,table).  But at at this
+      // point the appropriate response is to give up -- there is no
+      // matching open-tag for the </tr> inside the <table>.  See
+      // HtmlAnnotationTest.StrayCloseTrInTable in html_parse_test.cc.
+      missing_close_tag_bag_.clear();
+      return NULL;
     }
   }
 
@@ -1261,7 +1036,7 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(const StringPiece& tag) {
       HtmlElement* skipped = element_stack_[j];
       // In fact, should we actually perform this optimization ourselves
       // in a filter to omit closing tags that can be inferred?
-      if (!IsOptionallyClosedTag(skipped->keyword())) {
+      if (!HtmlKeywords::IsOptionallyClosedTag(skipped->keyword())) {
         html_parse_->Info(id_.c_str(), skipped->begin_line_number(),
                           "Unclosed element `%s'", skipped->name_str());
         ++missing_close_tag_bag_[skipped->name_str()];

@@ -532,6 +532,25 @@ TEST_F(HtmlAnnotationTest, BNotClosedByTable) {
   // parsing & serialization with byte accuracy.
 }
 
+TEST_F(HtmlAnnotationTest, StrayCloseTrInTable) {
+  ValidateNoChanges("stray_close_tr",
+                    "<div><table><tbody><td>1</td></tr></tbody></table></div>");
+  EXPECT_EQ("+div +table +tbody +td '1' -td(e) '</tr>' -tbody(e) -table(e) "
+            "-div(e)", annotation());
+}
+
+TEST_F(HtmlAnnotationTest, StrayCloseTrInTableWithUnclosedTd) {
+  ValidateNoChanges("stray_close_tr_unclosed_td",
+                    "<tr><table><td>1</tr></table>");
+  EXPECT_EQ("+tr +table +td '1</tr>' -td(u) -table(e) -tr(u)", annotation());
+  // TODO(jmarantz): the above is not quite DOM-accurate.  A 'tr' will
+  // actually be synthesized around the <td>.  To solve this and
+  // maintain byte accuracy we must synthesize an HtmlElement whose
+  // opening-tag is invisible, and create a map that requires <td>
+  // elements to be enclosed in <tr> etc.  See, in Chrome,
+  // data:text/html,<tr><table><td>1</tr></table>
+}
+
 TEST_F(HtmlAnnotationTest, OverlappingStyleTags) {
   ValidateNoChanges("overlapping_style_tags", "n<b>b<i>bi</b>i</i>n");
 

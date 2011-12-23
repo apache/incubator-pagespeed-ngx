@@ -752,7 +752,7 @@ bool HtmlParse::IsImplicitlyClosedTag(HtmlName::Keyword keyword) const {
 }
 
 bool HtmlParse::IsOptionallyClosedTag(HtmlName::Keyword keyword) const {
-  return lexer_->IsOptionallyClosedTag(keyword);
+  return HtmlKeywords::IsOptionallyClosedTag(keyword);
 }
 
 bool HtmlParse::TagAllowsBriefTermination(HtmlName::Keyword keyword) const {
