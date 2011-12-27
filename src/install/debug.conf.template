@@ -50,6 +50,13 @@ ModPagespeedEnableFilters add_instrumentation
     Options +SymLinksIfOwnerMatch
 </Directory>
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/compressed/" >
+    # Files in this directory are already compressed so always add
+    # the right header.
+    Header set Cache-control "max-age=600"
+    Header append 'Content-Encoding' 'gzip'
+</Directory>
+
 # This is needed for the server-side includes test in
 # apache_system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
 <IfModule !include_module>

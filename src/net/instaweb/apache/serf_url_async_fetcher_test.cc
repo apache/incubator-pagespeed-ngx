@@ -486,6 +486,8 @@ TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFails) {
   ASSERT_TRUE(callbacks_[kHttpsGoogleFavicon]->IsDone());
   ASSERT_TRUE(content_starts_[kHttpsGoogleFavicon].empty());
   EXPECT_TRUE(contents_[kHttpsGoogleFavicon]->empty());
+
+  // TODO(jmarantz): Consider using a 500 error code for https support.
   EXPECT_EQ(HttpStatus::kNotFound,
             response_headers_[kHttpsGoogleFavicon]->status_code());
 }
