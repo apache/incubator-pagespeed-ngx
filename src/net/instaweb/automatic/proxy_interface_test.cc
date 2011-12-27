@@ -1336,6 +1336,26 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeaders) {
   EXPECT_STREQ(NULL, out_headers.Lookup1(HttpAttributes::kSetCookie));
 }
 
+TEST_F(ProxyInterfaceTest, ProxyResourceQueryOnly) {
+  // At one point we had a bug where if we optimized a pagespeed resource
+  // whose original name was a bare query, we would loop infinitely when
+  // trying to fetch it from a separate-domain proxy.
+  const char kUrl[] = "?somestuff";
+  InitResponseHeaders(kUrl, kContentTypeJavascript, "var a = 2;// stuff",
+                      kHtmlCacheTimeSec * 2);
+
+  ProxyUrlNamer url_namer;
+  resource_manager()->set_url_namer(&url_namer);
+  ResponseHeaders out_headers;
+  GoogleString out_text;
+  FetchFromProxy(
+      StrCat("http://", ProxyUrlNamer::kProxyHost,
+             "/test.com/test.com/",
+             EncodeNormal("", "jm", "0", kUrl, "css")),
+      true, &out_text, &out_headers);
+  EXPECT_STREQ("var a=2;", out_text);
+}
+
 TEST_F(ProxyInterfaceTest, NoRehostIncompatMPS) {
   // Make sure we don't try to interpret a URL from an incompatible
   // mod_pagespeed version at our proxy host level.

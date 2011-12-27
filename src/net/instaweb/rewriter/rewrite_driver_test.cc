@@ -39,6 +39,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -154,7 +155,7 @@ TEST_P(RewriteDriverTest, TestModernUrl) {
 
   // Invalid filter code
   EXPECT_FALSE(CanDecodeUrl(
-      Encode("http://example.com/", "nf", "HASH", "Puzzle.jpg", "jpg")));
+      Encode("http://example.com/", "NOFILTER", "HASH", "Puzzle.jpg", "jpg")));
 
   // Nonsense extension
   EXPECT_FALSE(CanDecodeUrl(
@@ -164,6 +165,51 @@ TEST_P(RewriteDriverTest, TestModernUrl) {
   GoogleString encoded_url(Encode("http://example.com/", "ce", "123456789",
                                   "Puzzle.jpg", "jpg"));
   GlobalReplaceSubstring("123456789", "", &encoded_url);
+  EXPECT_FALSE(CanDecodeUrl(encoded_url));
+}
+
+class RewriteDriverTestUrlNamer : public RewriteDriverTest {
+ public:
+  RewriteDriverTestUrlNamer() {
+    SetUseTestUrlNamer(true);
+  }
+};
+
+TEST_P(RewriteDriverTestUrlNamer, TestEncodedUrls) {
+  rewrite_driver()->AddFilters();
+
+  // Sanity-check on a valid one
+  EXPECT_TRUE(CanDecodeUrl(
+      Encode("http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpg")));
+
+  // Query is OK, too.
+  EXPECT_TRUE(CanDecodeUrl(
+      StrCat(Encode("http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpg"),
+             "?s=ok")));
+
+  // Invalid filter code
+  EXPECT_FALSE(CanDecodeUrl(
+      Encode("http://example.com/", "NOFILTER", "HASH", "Puzzle.jpg", "jpg")));
+
+  // Nonsense extension
+  EXPECT_FALSE(CanDecodeUrl(
+      Encode("http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpgif")));
+
+  // No hash
+  GoogleString encoded_url(Encode("http://example.com/", "ce", "123456789",
+                                  "Puzzle.jpg", "jpg"));
+  GlobalReplaceSubstring("123456789", "", &encoded_url);
+  EXPECT_FALSE(CanDecodeUrl(encoded_url));
+
+  // Valid proxy domain but invalid decoded URL.
+  encoded_url = Encode("http://example.com/", "ce", "0", "Puzzle.jpg", "jpg");
+  GlobalReplaceSubstring("example.com/",
+                         "example.comWYTHQ000JRJFCAAKYU1EMA6VUBDTS4DESLRWIPMS"
+                         "KKMQH0XYN1FURDBBSQ9AYXVX3TZDKZEIJNLRHU05ATHBAWWAG2+"
+                         "ADDCXPWGGP1VTHJIYU13IIFQYSYMGKIMSFIEBM+HCAACVNGO8CX"
+                         "XO%81%9F%F1m/", &encoded_url);
+  // By default TestUrlNamer doesn't proxy but we need it to for this test.
+  TestUrlNamer::SetProxyMode(true);
   EXPECT_FALSE(CanDecodeUrl(encoded_url));
 }
 
@@ -593,6 +639,10 @@ TEST_P(RewriteDriverTest, RejectHttpsQuickly) {
 
 INSTANTIATE_TEST_CASE_P(RewriteDriverTestInstance,
                         RewriteDriverTest,
+                        ::testing::Bool());
+
+INSTANTIATE_TEST_CASE_P(RewriteDriverTestUrlNamerInstance,
+                        RewriteDriverTestUrlNamer,
                         ::testing::Bool());
 
 class RewriteDriverInhibitTest : public RewriteDriverTest {

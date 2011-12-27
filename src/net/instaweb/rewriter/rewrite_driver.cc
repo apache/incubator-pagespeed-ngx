@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 #include <cstdarg>
+#include <list>
 #include <map>
 #include <set>
 #include <utility>  // for std::pair
@@ -39,6 +40,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
@@ -951,12 +953,21 @@ bool RewriteDriver::DecodeOutputResourceName(const GoogleUrl& gurl,
     return false;
   }
 
+  UrlNamer* url_namer = resource_manager()->url_namer();
+  GoogleString decoded_gurl;
   // If we are running in proxy mode we need to ignore URLs where the leaf is
   // encoded but the URL as a whole isn't proxy encoded, since that can happen
   // when proxying from a server using mod_pagespeed.
-  UrlNamer* url_namer = resource_manager()->url_namer();
-  if (url_namer->ProxyMode() && !url_namer->IsProxyEncoded(gurl)) {
-    return false;
+  // If we are running in proxy mode and the URL is in the proxy domain, we
+  // also need to ensure that the URL decodes correctly as otherwise we end
+  // up with an invalid decoded base URL, which ultimately leads to inability
+  // to rewrite the URL.
+  if (url_namer->ProxyMode()) {
+    if (!url_namer->IsProxyEncoded(gurl) ||
+        !url_namer->Decode(gurl, NULL, &decoded_gurl) ||
+        !GoogleUrl(decoded_gurl).is_valid()) {
+      return false;
+    }
   }
 
   // Now let's reject as mal-formed if the id string is not

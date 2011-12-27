@@ -31,9 +31,13 @@ namespace net_instaweb {
 const char kTopDomain[] = "http://cdn.com";
 
 bool TestUrlNamer::use_normal_encoding_ = false;
+bool TestUrlNamer::proxy_mode_ = false;
 
 TestUrlNamer::TestUrlNamer() {
-  use_normal_encoding_ = false;  // reset whenever a new one is constructed.
+  // Reset these whenever a new one is constructed so that changes from the
+  // default don't carry over between tests.
+  use_normal_encoding_ = false;
+  proxy_mode_ = false;
 }
 
 TestUrlNamer::~TestUrlNamer() {
@@ -113,6 +117,17 @@ GoogleString TestUrlNamer::EncodeUrl(const StringPiece& original_base,
                        "/", unmapped_base_host),
                 resolved_path,
                 leaf_details.Encode());
+}
+
+bool TestUrlNamer::IsProxyEncoded(const GoogleUrl& url) const {
+  if (!url.is_valid()) {
+    return false;
+  }
+  GoogleString url_origin = url.Origin().as_string();
+  if (url_origin == kTopDomain) {
+    return true;
+  }
+  return false;
 }
 
 bool TestUrlNamer::IsOriginEncoded(const GoogleUrl& url) const {

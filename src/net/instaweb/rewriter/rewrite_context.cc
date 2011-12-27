@@ -1448,11 +1448,21 @@ bool RewriteContext::DecodeFetchUrls(
     GoogleUrlStarVector* url_vector) {
   GoogleUrl original_base(output_resource->url());
   GoogleUrl decoded_base(output_resource->decoded_base());
+  StringPiece original_base_sans_leaf(original_base.AllExceptLeaf());
   bool check_for_multiple_rewrites =
-      (original_base.AllExceptLeaf() != decoded_base.AllExceptLeaf());
+      (original_base_sans_leaf != decoded_base.AllExceptLeaf());
   StringVector urls;
   if (encoder()->Decode(output_resource->name(), &urls, resource_context_.get(),
                         message_handler)) {
+
+    if (check_for_multiple_rewrites) {
+      // We want to drop the leaf from the base URL before combining it
+      // with the decoded name, in case the decoded name turns into a
+      // query. (Since otherwise we would end up with http://base/,qfoo?foo
+      // rather than http://base?foo).
+      original_base.Reset(original_base_sans_leaf);
+    }
+
     for (int i = 0, n = urls.size(); i < n; ++i) {
       // If the decoded name is still encoded (because originally it was
       // rewritten by multiple filters, such as CSS minified then combined),
