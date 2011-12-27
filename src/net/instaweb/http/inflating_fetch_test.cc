@@ -139,6 +139,29 @@ TEST_F(InflatingFetchTest, ContentGzipAndDeflatedButWantClear) {
   EXPECT_TRUE(mock_fetch_.success());
 }
 
+// Tests that content that was first gzipped, and then encoded with
+// some encoder ("frob") unknown to our system does not get touched.
+// We should not attempt to gunzip the 'frob' data.
+TEST_F(InflatingFetchTest, GzippedAndFrobbedNotChanged) {
+  inflating_fetch_.response_headers()->Add(
+      HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
+  inflating_fetch_.response_headers()->Add(
+      HttpAttributes::kContentEncoding, "frob");
+  inflating_fetch_.response_headers()->SetStatusAndReason(HttpStatus::kOK);
+  inflating_fetch_.Write(gzipped_data_, &message_handler_);
+  inflating_fetch_.Done(true);
+
+  EXPECT_EQ(gzipped_data_, mock_fetch_.buffer())
+      << "data should be not be altered (even though it happens to be gzipped)";
+  ConstStringStarVector encodings;
+  ASSERT_TRUE(mock_fetch_.response_headers()->Lookup(
+      HttpAttributes::kContentEncoding, &encodings))
+      << "deflate encoding remains though gzip encoding is stripped";
+  ASSERT_EQ(2, encodings.size());
+  EXPECT_STREQ(HttpAttributes::kGzip, *encodings[0]);
+  EXPECT_STREQ("frob", *encodings[1]);
+}
+
 // TODO(jmarantz): test 'deflate' without gzip
 
 }  // namespace net_instaweb

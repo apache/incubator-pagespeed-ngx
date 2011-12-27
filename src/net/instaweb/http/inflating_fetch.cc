@@ -97,18 +97,18 @@ void InflatingFetch::HandleHeadersComplete() {
 
   v.clear();
   if (response_headers()->Lookup(HttpAttributes::kContentEncoding, &v)) {
-    // Look for encodings to strip.  Iterate backwards through the vector
-    // because we want to apply the last encoding first.  See
-    // http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
+    // Look for an encoding to strip.  We only look at the *last* encoding.
+    // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
     for (int i = v.size() - 1; i >= 0; --i) {
       if (v[i] != NULL) {
         StringPiece value = *v[i];
-        if (StringCaseEqual(value, HttpAttributes::kGzip)) {
-          InitInflater(GzipInflater::kGzip, value);
-          break;
-        } else if (StringCaseEqual(value, HttpAttributes::kDeflate)) {
-          InitInflater(GzipInflater::kDeflate, value);
-          break;
+        if (!value.empty()) {
+          if (StringCaseEqual(value, HttpAttributes::kGzip)) {
+            InitInflater(GzipInflater::kGzip, value);
+          } else if (StringCaseEqual(value, HttpAttributes::kDeflate)) {
+            InitInflater(GzipInflater::kDeflate, value);
+          }
+          break;  // Stop on the last non-empty value.
         }
       }
     }
