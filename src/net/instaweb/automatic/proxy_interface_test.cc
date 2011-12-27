@@ -22,6 +22,7 @@
 
 #include <cstddef>
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
@@ -879,17 +880,28 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
   options->SetRewriteLevel(RewriteOptions::kPassThrough);
   options->EnableFilter(RewriteOptions::kRewriteCss);
   resource_manager()->ComputeSignature(options);
-  InitResponseHeaders("page.html", kContentTypeHtml,
-                      CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
+
+  headers.Add(HttpAttributes::kEtag, "something");
+  headers.SetDateAndCaching(MockTimer::kApr_5_2010_ms,
+                            kHtmlCacheTimeSec * 2 * Timer::kSecondMs);
+  headers.SetLastModified(MockTimer::kApr_5_2010_ms);
+  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("page.html"), headers, CssLinkHref("a.css"));
+
   InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
                       kHtmlCacheTimeSec * 2);
 
+  headers.Clear();
   FetchFromProxy("page.html", true, &text, &headers);
   CheckHeaders(headers, kContentTypeHtml);
   EXPECT_EQ(CssLinkHref(Encode(kTestDomain, "cf", "0", "a.css", "css")), text);
   headers.ComputeCaching();
   EXPECT_LE(start_time_ms_ + kHtmlCacheTimeSec * Timer::kSecondMs,
             headers.CacheExpirationTimeMs());
+  EXPECT_EQ(NULL, headers.Lookup1(HttpAttributes::kEtag));
+  EXPECT_EQ(NULL, headers.Lookup1(HttpAttributes::kLastModified));
 
   // Fetch the rewritten resource as well.
   text.clear();

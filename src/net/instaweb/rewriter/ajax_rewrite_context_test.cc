@@ -555,6 +555,46 @@ TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingSucceeds) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
+TEST_F(AjaxRewriteContextTest, CacheableCssUrlIfCssRewritingDisabled) {
+  options()->ClearSignatureForTesting();
+  options()->DisableFilter(RewriteOptions::kRewriteCss);
+  resource_manager()->ComputeSignature(options());
+  FetchAndCheckResponse(cache_css_url_, cache_body_, true, ttl_ms_, NULL,
+                        start_time_ms());
+
+  // First fetch succeeds at the fetcher, no rewriting happens since the css
+  // filter is disabled, and metadata indicating a rewriting failure gets
+  // inserted into cache.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+
+  ResetTest();
+  FetchAndCheckResponse(cache_css_url_, cache_body_, true, ttl_ms_, NULL,
+                        start_time_ms());
+
+  // Second fetch hits the metadata cache, finds that the result is not
+  // optimizable. It then looks up cache for the original, does not find it and
+  // succeeds at the fetcher.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+}
+
 TEST_F(AjaxRewriteContextTest, CacheableCssUrlRewritingSucceeds) {
   FetchAndCheckResponse(cache_css_url_, cache_body_, true, ttl_ms_, NULL,
                         start_time_ms());

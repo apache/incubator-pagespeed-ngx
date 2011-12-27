@@ -167,32 +167,43 @@ void AjaxRewriteContext::FetchTryFallback(const GoogleString& url,
     async_fetch()->Done(true);
     driver_->FetchComplete();
   } else {
-    // Save the hash of the resource.
-    rewritten_hash_ = hash.as_string();
+    if (url == url_) {
+      // If the fallback url is the same as the original url, no rewriting is
+      // happening.
+      is_rewritten_ = false;
+      // TODO(nikhilmadan): RewriteContext::FetchTryFallback is going to look up
+      // the cache. The fetcher may also do so. Should we just call
+      // StartFetchReconstruction() here instead?
+    } else {
+      // Save the hash of the resource.
+      rewritten_hash_ = hash.as_string();
+    }
     RewriteContext::FetchTryFallback(url, hash);
   }
 }
 
 void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
-  if (is_rewritten_ && !rewritten_hash_.empty()) {
+  if (is_rewritten_) {
+    if (!rewritten_hash_.empty()) {
       headers->Replace(HttpAttributes::kEtag,
                        StrCat(etag_prefix_, rewritten_hash_));
-  }
-
-  headers->ComputeCaching();
-  int64 expire_at_ms = kint64max;
-  for (int j = 0, m = partitions()->other_dependency_size(); j < m; ++j) {
-    InputInfo dependency = partitions()->other_dependency(j);
-    if (dependency.has_expiration_time_ms()) {
-      expire_at_ms = std::min(expire_at_ms, dependency.expiration_time_ms());
     }
+
+    headers->ComputeCaching();
+    int64 expire_at_ms = kint64max;
+    for (int j = 0, m = partitions()->other_dependency_size(); j < m; ++j) {
+      InputInfo dependency = partitions()->other_dependency(j);
+      if (dependency.has_expiration_time_ms()) {
+        expire_at_ms = std::min(expire_at_ms, dependency.expiration_time_ms());
+      }
+    }
+    int64 cache_ttl_ms = expire_at_ms - headers->date_ms();
+    if (expire_at_ms == kint64max) {
+      // If expire_at_ms is not set, set the cache ttl to kImplicitCacheTtlMs.
+      cache_ttl_ms = ResponseHeaders::kImplicitCacheTtlMs;
+    }
+    headers->SetCacheControlMaxAge(cache_ttl_ms);
   }
-  int64 cache_ttl_ms = expire_at_ms - headers->date_ms();
-  if (expire_at_ms == kint64max) {
-    // If expire_at_ms is not set, set the cache ttl to kImplicitCacheTtlMs.
-    cache_ttl_ms = ResponseHeaders::kImplicitCacheTtlMs;
-  }
-  headers->SetCacheControlMaxAge(cache_ttl_ms);
 }
 
 RewriteFilter* AjaxRewriteContext::GetRewriteFilter(

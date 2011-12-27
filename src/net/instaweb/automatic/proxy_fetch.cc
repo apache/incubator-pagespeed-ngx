@@ -312,16 +312,16 @@ void ProxyFetch::SetupForHtml() {
       }
       response_headers()->SetDateAndCaching(
           response_headers()->date_ms(), ttl_ms, cache_control_suffix);
-      // TODO(sligocki): Support Etags.
+      // TODO(sligocki): Support Etags and/or Last-Modified.
       response_headers()->RemoveAll(HttpAttributes::kEtag);
+      response_headers()->RemoveAll(HttpAttributes::kLastModified);
       start_time_us_ = resource_manager_->timer()->NowUs();
 
       // HTML sizes are likely to be altered by HTML rewriting.
       response_headers()->RemoveAll(HttpAttributes::kContentLength);
 
-      // TODO(sligocki): see mod_instaweb.cc line 528, which strips
-      // Expires, Last-Modified and Content-MD5.  Perhaps we should
-      // do that here as well.
+      // TODO(sligocki): See mod_instaweb.cc line 528, which strips Expires and
+      // Content-MD5.  Perhaps we should do that here as well.
     }
   }
 }
