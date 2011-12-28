@@ -376,6 +376,55 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
             output->url());
 }
 
+class MockRewriteFilter : public RewriteFilter {
+ public:
+  explicit MockRewriteFilter(RewriteDriver* driver)
+      : RewriteFilter(driver) {}
+  virtual ~MockRewriteFilter() {}
+  virtual const char* id() const { return "mk"; }
+  virtual const char* Name() const { return "mock_filter"; }
+  virtual void StartDocumentImpl() {}
+  virtual void StartElementImpl(HtmlElement* element) {}
+  virtual void EndElementImpl(HtmlElement* element) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockRewriteFilter);
+};
+
+class CreateMockRewriterCallback : public
+TestRewriteDriverFactory::CreateRewriterCallback {
+ public:
+  CreateMockRewriterCallback() {}
+  virtual ~CreateMockRewriterCallback() {}
+  virtual RewriteFilter* Done(RewriteDriver* driver) {
+    return new MockRewriteFilter(driver);
+  }
+ private:
+  DISALLOW_COPY_AND_ASSIGN(CreateMockRewriterCallback);
+};
+
+// Tests that platform-specific rewriters are used for decoding fetches.
+TEST_F(ResourceManagerTest, TestPlatformSpecificRewritersDecoding) {
+  GoogleString url = Encode("http://example.com/dir/123/",
+                            "mk", "0", "orig", "js");
+  GoogleUrl gurl(url);
+  RewriteFilter* dummy;
+
+  // Without the mock rewriter enabled, this URL should not be decoded.
+  RewriteDriver* driver = resource_manager()->decoding_driver();
+  OutputResourcePtr bad_output(driver->DecodeOutputResource(gurl, &dummy));
+  ASSERT_TRUE(bad_output.get() == NULL);
+
+  // With the mock rewriter enabled, this URL should be decoded.
+  CreateMockRewriterCallback callback;
+  factory()->AddCreateRewriterCallback(&callback);
+  resource_manager()->InitWorkersAndDecodingDriver();
+  driver = resource_manager()->decoding_driver();
+  OutputResourcePtr good_output(driver->DecodeOutputResource(gurl, &dummy));
+  ASSERT_TRUE(good_output.get() != NULL);
+  EXPECT_EQ(url, good_output->url());
+}
+
 // DecodeOutputResource should drop query
 TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
   GoogleString url = Encode("http://example.com/dir/123/",

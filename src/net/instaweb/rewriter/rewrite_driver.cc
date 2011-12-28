@@ -893,15 +893,21 @@ void RewriteDriver::AddUnownedPostRenderFilter(HtmlFilter* filter) {
   HtmlParse::AddFilter(filter);
 }
 
-// This is used exclusively in tests.
-void RewriteDriver::AddRewriteFilter(RewriteFilter* filter) {
+void RewriteDriver::AppendRewriteFilter(RewriteFilter* filter) {
+  CHECK(filter != NULL);
   RegisterRewriteFilter(filter);
-  EnableRewriteFilter(filter->id());
+  pre_render_filters_.push_back(filter);
+}
+
+void RewriteDriver::PrependRewriteFilter(RewriteFilter* filter) {
+  CHECK(filter != NULL);
+  RegisterRewriteFilter(filter);
+  pre_render_filters_.push_front(filter);
 }
 
 void RewriteDriver::EnableRewriteFilter(const char* id) {
   RewriteFilter* filter = resource_filter_map_[id];
-  CHECK(filter);
+  CHECK(filter != NULL);
   pre_render_filters_.push_back(filter);
 }
 

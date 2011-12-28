@@ -191,6 +191,7 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
     driver_ = resource_manager_->NewRewriteDriver();
   } else {
     // NewCustomRewriteDriver takes ownership of custom_options_.
+    resource_manager_->ComputeSignature(custom_options);
     driver_ =
         resource_manager_->NewCustomRewriteDriver(custom_options);
   }

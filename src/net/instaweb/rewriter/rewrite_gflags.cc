@@ -114,6 +114,7 @@ DEFINE_int32(psa_idle_flush_time_ms,
              " will be injected. Use a value <= 0 to disable.");
 DEFINE_string(pagespeed_version, "", "Version number to put into X-Page-Speed "
               "response header.");
+DEFINE_bool(enable_blink, false, "If true then blink is enabled");
 
 namespace net_instaweb {
 
@@ -213,6 +214,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_image_limit_resize_area_percent(
         FLAGS_image_limit_resize_area_percent);
   }
+  if (WasExplicitlySet("enable_blink")) {
+    options->set_enable_blink(FLAGS_enable_blink);
+  }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been
   // disabled by default because of potential conflicts with Apache, we are
@@ -287,4 +291,4 @@ bool RewriteGflags::SetRewriters(const char* rewriters_flag_name,
   return ret;
 }
 
-}  // namespace
+}  // namespace net_instaweb

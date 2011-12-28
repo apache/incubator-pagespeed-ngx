@@ -171,11 +171,11 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
     js_filter_ = new FakeRewriter(RewriteOptions::kJavascriptMinId);
     css_filter_ = new FakeRewriter(RewriteOptions::kCssFilterId);
 
-    rewrite_driver()->AddRewriteFilter(
+    rewrite_driver()->AppendRewriteFilter(
         new SimpleTextFilter(img_filter_, rewrite_driver()));
-    rewrite_driver()->AddRewriteFilter(
+    rewrite_driver()->AppendRewriteFilter(
         new SimpleTextFilter(js_filter_, rewrite_driver()));
-    rewrite_driver()->AddRewriteFilter(
+    rewrite_driver()->AppendRewriteFilter(
         new SimpleTextFilter(css_filter_, rewrite_driver()));
     rewrite_driver()->AddFilters();
 

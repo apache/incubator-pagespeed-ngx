@@ -635,12 +635,12 @@ class RewriteContextTest : public ResourceManagerTestBase {
 
   void InitTrimFilters(OutputResourceKind kind) {
     trim_filter_ = new TrimWhitespaceRewriter(kind);
-    rewrite_driver()->AddRewriteFilter(
+    rewrite_driver()->AppendRewriteFilter(
         new SimpleTextFilter(trim_filter_, rewrite_driver()));
     rewrite_driver()->AddFilters();
 
     other_trim_filter_ = new TrimWhitespaceRewriter(kind);
-    other_rewrite_driver()->AddRewriteFilter(
+    other_rewrite_driver()->AppendRewriteFilter(
         new SimpleTextFilter(other_trim_filter_, other_rewrite_driver()));
     other_rewrite_driver()->AddFilters();
   }
@@ -652,7 +652,7 @@ class RewriteContextTest : public ResourceManagerTestBase {
   }
 
   void InitUpperFilter(OutputResourceKind kind, RewriteDriver* rewrite_driver) {
-    rewrite_driver->AddRewriteFilter(
+    rewrite_driver->AppendRewriteFilter(
         UpperCaseRewriter::MakeFilter(kind, rewrite_driver));
   }
 
@@ -660,14 +660,14 @@ class RewriteContextTest : public ResourceManagerTestBase {
     RewriteDriver* driver = rewrite_driver();
     combining_filter_ = new CombiningFilter(driver, mock_scheduler(),
                                             rewrite_delay_ms);
-    driver->AddRewriteFilter(combining_filter_);
+    driver->AppendRewriteFilter(combining_filter_);
     driver->AddFilters();
   }
 
   void InitNestedFilter(bool expected_nested_rewrite_result) {
     RewriteDriver* driver = rewrite_driver();
     nested_filter_ = new NestedFilter(driver, expected_nested_rewrite_result);
-    driver->AddRewriteFilter(nested_filter_);
+    driver->AppendRewriteFilter(nested_filter_);
     driver->AddFilters();
   }
 
@@ -1469,7 +1469,7 @@ TEST_F(RewriteContextTest, NestedChained) {
   NestedFilter* nf =
       new NestedFilter(driver, kExpectNestedRewritesSucceed);
   nf->set_chain(true);
-  driver->AddRewriteFilter(nf);
+  driver->AppendRewriteFilter(nf);
   driver->AddFilters();
   InitResources();
   ValidateExpected(

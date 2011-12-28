@@ -958,6 +958,17 @@ TEST_P(CssFilterTest, DontAbsolutifyCssImportUrls) {
   ValidateNoChanges("dont_absolutify_css_import_urls", html);
 }
 
+TEST_P(CssFilterTest, DontAbsolutifyEmptyUrl) {
+  // Ensure that an empty URL is left as-is and is not absolutified.
+  const char kEmptyUrlRule[] = "#gallery { list-style: none outside url(''); }";
+  const char kNoUrlRule[] = "#gallery{list-style:none outside url()}";
+  ValidateRewrite("empty_url_in_rule", kEmptyUrlRule, kNoUrlRule);
+
+  const char kEmptyUrlImport[] = "@import url('');";
+  const char kNoUrlImport[] = "@import url() ;";
+  ValidateRewrite("empty_url_in_import", kEmptyUrlImport, kNoUrlImport);
+}
+
 // We test with asynchronous_rewrites() == GetParam() as both true and false.
 INSTANTIATE_TEST_CASE_P(CssFilterTestInstance,
                         CssFilterTest,

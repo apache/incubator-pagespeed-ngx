@@ -216,8 +216,8 @@ class RewriteDriver : public HtmlParse {
   // Same, without taking ownership.
   void AddUnownedPostRenderFilter(HtmlFilter* filter);
 
-  // Add a RewriteFilter to the pre-render chain and take ownership of
-  // the filter.  This differs from AppendOwnedPreRenderFilter in that
+  // Add a RewriteFilter to the end of the pre-render chain and take ownership
+  // of the filter.  This differs from AppendOwnedPreRenderFilter in that
   // it adds the filter's ID into a dispatch table for serving
   // rewritten resources.  E.g. if your filter->id == "xy" and
   // FetchResource("NAME.pagespeed.xy.HASH.EXT"...)  is called, then
@@ -227,7 +227,11 @@ class RewriteDriver : public HtmlParse {
   // core set built into RewriteDriver and RewriteOptions, such
   // as platform-specific or server-specific filters, or filters
   // invented for unit-testing the framework.
-  void AddRewriteFilter(RewriteFilter* filter);
+  void AppendRewriteFilter(RewriteFilter* filter);
+
+  // Like AppendRewriteFilter, but adds the filter to the beginning of the
+  // pre-render chain.
+  void PrependRewriteFilter(RewriteFilter* filter);
 
   // Controls how HTML output is written.  Be sure to call this last, after
   // all other filters have been established.

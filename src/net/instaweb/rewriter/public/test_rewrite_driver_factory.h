@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_TEST_REWRITE_DRIVER_FACTORY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_TEST_REWRITE_DRIVER_FACTORY_H_
 
+#include <vector>
+
 #include "base/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -43,6 +45,7 @@ class MockScheduler;
 class MockTimer;
 class MockUrlFetcher;
 class RewriteDriver;
+class RewriteFilter;
 class RewriteOptions;
 class Scheduler;
 class Timer;
@@ -94,12 +97,30 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
     DISALLOW_COPY_AND_ASSIGN(CreateFilterCallback);
   };
 
+  class CreateRewriterCallback {
+   public:
+    CreateRewriterCallback() {}
+    virtual ~CreateRewriterCallback();
+    virtual RewriteFilter* Done(RewriteDriver* driver) = 0;
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(CreateRewriterCallback);
+  };
+
   void AddCreateFilterCallback(CreateFilterCallback* callback) {
-    callback_vector_.push_back(callback);
+    filter_callback_vector_.push_back(callback);
   }
 
   void ClearFilterCallbackVector() {
-    callback_vector_.clear();
+    filter_callback_vector_.clear();
+  }
+
+  void AddCreateRewriterCallback(CreateRewriterCallback* callback) {
+    rewriter_callback_vector_.push_back(callback);
+  }
+
+  void ClearRewriterCallbackVector() {
+    rewriter_callback_vector_.clear();
   }
 
   // Note that this disables ajax rewriting by default.
@@ -135,7 +156,8 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   MockMessageHandler* mock_message_handler_;
   MockMessageHandler* mock_html_message_handler_;
   bool use_test_url_namer_;
-  std::vector<CreateFilterCallback*> callback_vector_;
+  std::vector<CreateFilterCallback*> filter_callback_vector_;
+  std::vector<CreateRewriterCallback*> rewriter_callback_vector_;
 };
 
 }  // namespace net_instaweb

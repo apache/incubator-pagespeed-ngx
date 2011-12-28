@@ -53,6 +53,7 @@ class HtmlFilter;
 class MessageHandler;
 class RequestHeaders;
 class ResponseHeaders;
+class RewriteFilter;
 class Scheduler;
 class UrlAsyncFetcher;
 class UrlNamer;
@@ -222,13 +223,20 @@ RewriteOptions* TestRewriteDriverFactory::NewRewriteOptions() {
 
 void TestRewriteDriverFactory::AddPlatformSpecificRewritePasses(
     RewriteDriver* driver) {
-  for (std::size_t i = 0; i < callback_vector_.size(); i++) {
-    HtmlFilter* filter = callback_vector_[i]->Done(driver);
+  for (std::size_t i = 0; i < filter_callback_vector_.size(); i++) {
+    HtmlFilter* filter = filter_callback_vector_[i]->Done(driver);
     driver->AddOwnedPostRenderFilter(filter);
+  }
+  for (std::size_t i = 0; i < rewriter_callback_vector_.size(); i++) {
+    RewriteFilter* filter = rewriter_callback_vector_[i]->Done(driver);
+    driver->AppendRewriteFilter(filter);
   }
 }
 
 TestRewriteDriverFactory::CreateFilterCallback::~CreateFilterCallback() {
+}
+
+TestRewriteDriverFactory::CreateRewriterCallback::~CreateRewriterCallback() {
 }
 
 }  // namespace net_instaweb

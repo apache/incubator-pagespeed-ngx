@@ -189,6 +189,9 @@ void ResourceManager::InitWorkersAndDecodingDriver() {
   low_priority_rewrite_workers_ = factory_->WorkerPool(
       RewriteDriverFactory::kLowPriorityRewriteWorkers);
   decoding_driver_.reset(NewUnmanagedRewriteDriver());
+  // Inserts platform-specific rewriters into the resource_filter_map_, so that
+  // the decoding process can recognize those rewriter ids.
+  factory_->AddPlatformSpecificRewritePasses(decoding_driver_.get());
 }
 
 // TODO(jmarantz): consider moving this method to ResponseHeaders

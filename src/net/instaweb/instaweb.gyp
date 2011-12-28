@@ -527,6 +527,7 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_core.gyp:instaweb_rewriter_html',
+        'instaweb_core.gyp:panel_config_pb',
         'instaweb_http',
         'instaweb_js_defer_data2c',
         'instaweb_lazyload_images_data2c',
@@ -542,6 +543,7 @@
         'rewriter/add_head_filter.cc',
         'rewriter/add_instrumentation_filter.cc',
         'rewriter/ajax_rewrite_context.cc',
+        'rewriter/blink_util.cc',
         'rewriter/cache_extender.cc',
         'rewriter/common_filter.cc',
         'rewriter/css_combine_filter.cc',
@@ -626,12 +628,14 @@
       'target_name': 'instaweb_automatic',
       'type': '<(library)',
       'dependencies': [
+        'instaweb_core.gyp:panel_config_pb',
         'instaweb_http',
         'instaweb_rewriter',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [
+        'automatic/blink_flow.cc',
         'automatic/html_detector.cc',
         'automatic/proxy_fetch.cc',
         'automatic/proxy_interface.cc',

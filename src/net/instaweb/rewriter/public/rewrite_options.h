@@ -370,6 +370,9 @@ class RewriteOptions {
     return serve_stale_if_fetch_error_.value();
   }
 
+  void set_enable_blink(bool x) { set_option(x, &enable_blink_); }
+  bool enable_blink() const { return enable_blink_.value(); }
+
   const GoogleString& beacon_url() const { return beacon_url_.value(); }
   void set_beacon_url(const StringPiece& p) {
     set_option(GoogleString(p.data(), p.size()), &beacon_url_);
@@ -700,6 +703,7 @@ class RewriteOptions {
   // Should we serve stale responses if the fetch results in a server side
   // error.
   Option<bool> serve_stale_if_fetch_error_;
+  Option<bool> enable_blink_;
 
   scoped_ptr<PublisherConfig> panel_config_;
 

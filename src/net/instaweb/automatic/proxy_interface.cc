@@ -20,12 +20,14 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/automatic/public/blink_flow.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/automatic/public/resource_fetch.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
@@ -40,6 +42,7 @@
 namespace net_instaweb {
 
 class MessageHandler;
+class PublisherConfig;
 
 namespace {
 
@@ -232,6 +235,7 @@ ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
   // Add custom options based on the request.
   resource_manager_->url_namer()->ConfigureCustomOptions(
       request_url, request_headers, custom_options.get());
+
   return OptionsBoolPair(custom_options.release(), true);
 }
 
@@ -272,22 +276,38 @@ void ProxyInterface::ProxyRequestCallback(bool is_resource_fetch,
 
     // Start fetch and rewrite.  If GetCustomOptions found options for us,
     // the RewriteDriver created by StartNewProxyFetch will take ownership.
-    if (custom_options_success.first != NULL) {
-      resource_manager_->ComputeSignature(custom_options_success.first);
-    }
-
     if (is_resource_fetch) {
       ResourceFetch::Start(resource_manager_,
                            *request_url, async_fetch,
                            custom_options_success.first,
                            proxy_fetch_factory_->server_version());
     } else {
-      proxy_fetch_factory_->StartNewProxyFetch(
-          request_url->Spec().as_string(), async_fetch,
-          custom_options_success.first);
+      RewriteOptions* options = custom_options_success.first;
+      const Layout* layout = ExtractBlinkLayout(*request_url, async_fetch,
+                                                options);
+      if (layout != NULL) {
+        BlinkFlow::Start(request_url->Spec().as_string(), async_fetch, layout,
+                         options, proxy_fetch_factory_.get(),
+                         resource_manager_);
+      } else {
+        proxy_fetch_factory_->StartNewProxyFetch(
+            request_url->Spec().as_string(), async_fetch, options);
+      }
     }
   }
   delete request_url;
+}
+
+const Layout* ProxyInterface::ExtractBlinkLayout(const GoogleUrl& url,
+                                                 AsyncFetch* async_fetch,
+                                                 RewriteOptions* options) {
+  if (options != NULL && options->enable_blink()) {
+    const PublisherConfig* config = options->panel_config();
+    if (config != NULL) {
+      return BlinkUtil::FindLayout(*config, url);
+    }
+  }
+  return NULL;
 }
 
 }  // namespace net_instaweb
