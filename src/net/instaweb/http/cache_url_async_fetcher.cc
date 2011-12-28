@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+class TimingInfo;
 
 namespace {
 
@@ -142,6 +143,10 @@ class CacheFindCallback : public HTTPCache::Callback {
     set_response_headers(base_fetch->response_headers());
   }
   virtual ~CacheFindCallback() {}
+
+  virtual TimingInfo* timing_info() {
+    return base_fetch_->timing_info();
+  }
 
   virtual void Done(HTTPCache::FindResult find_result) {
     switch (find_result) {

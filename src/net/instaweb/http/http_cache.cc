@@ -18,11 +18,14 @@
 
 #include "net/instaweb/http/public/http_cache.h"
 
+#include <algorithm>
+
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/timing.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -146,7 +149,9 @@ class HTTPCacheCallback : public CacheInterface::Callback {
       }
     }
 
-    http_cache_->UpdateStats(result, now_us - start_us_);
+    int64 elapsed_us = std::max(static_cast<int64>(0), now_us - start_us_);
+    http_cache_->UpdateStats(result, elapsed_us);
+    callback_->SetTimingMs(elapsed_us/1000);
     if (result != HTTPCache::kFound) {
       headers->Clear();
       callback_->http_value()->Clear();
@@ -381,6 +386,30 @@ HTTPCache::Callback::~Callback() {
   if (owns_response_headers_) {
     delete response_headers_;
   }
+  if (owns_timing_info_) {
+    delete timing_info_;
+  }
+}
+
+void HTTPCache::Callback::SetTimingMs(int64 timing_value_ms) {
+  timing_info()->set_cache1_ms(timing_value_ms);
+}
+
+void HTTPCache::Callback::set_timing_info(TimingInfo* timing_info) {
+  DCHECK(!owns_timing_info_);
+  if (owns_timing_info_) {
+    delete timing_info_;
+  }
+  timing_info_ = timing_info;
+  owns_timing_info_ = false;
+}
+
+TimingInfo* HTTPCache::Callback::timing_info() {
+  if (timing_info_ == NULL) {
+    timing_info_ = new TimingInfo;
+    owns_timing_info_ = true;
+  }
+  return timing_info_;
 }
 
 }  // namespace net_instaweb

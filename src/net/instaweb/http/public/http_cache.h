@@ -35,6 +35,7 @@ class Hasher;
 class MessageHandler;
 class Statistics;
 class Timer;
+class TimingInfo;
 class Variable;
 
 // Implements HTTP caching semantics, including cache expiration and
@@ -74,7 +75,9 @@ class HTTPCache {
    public:
     Callback()
         : response_headers_(NULL),
-          owns_response_headers_(false) {
+          owns_response_headers_(false),
+          timing_info_(NULL),
+          owns_timing_info_(false) {
     }
     virtual ~Callback();
     virtual void Done(FindResult find_result) = 0;
@@ -112,6 +115,13 @@ class HTTPCache {
     }
     HTTPValue* fallback_http_value() { return &fallback_http_value_; }
 
+    // Sets the TimingInfo to the specified pointer.  The caller must
+    // guarantee that the pointed-to TimingInfo remains valid as long as the
+    // HTTPCache is running.
+    void set_timing_info(TimingInfo* timing_info);
+    virtual TimingInfo* timing_info();
+    virtual void SetTimingMs(int64 timing_value_ms);
+
    private:
     HTTPValue http_value_;
     // Stale value that can be used in case a fetch fails. Note that Find()
@@ -119,6 +129,8 @@ class HTTPCache {
     HTTPValue fallback_http_value_;
     ResponseHeaders* response_headers_;
     bool owns_response_headers_;
+    TimingInfo* timing_info_;
+    bool owns_timing_info_;
 
     DISALLOW_COPY_AND_ASSIGN(Callback);
   };

@@ -62,6 +62,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_rewriter_pb.a \
   net/instaweb/libinstaweb_spriter.a \
   net/instaweb/libinstaweb_spriter_pb.a \
+  net/instaweb/libinstaweb_timing_pb.a \
   net/instaweb/libinstaweb_util.a \
   net/instaweb/libinstaweb_util_core.a \
   net/instaweb/libinstaweb_util_pthread.a \

@@ -22,6 +22,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/timing.pb.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -65,6 +66,14 @@ class FallbackCacheCallback: public HTTPCache::Callback {
     return client_callback_->IsCacheValid(headers);
   }
 
+  virtual void SetTimingMs(int64 timing_value_ms) {
+    client_callback_->timing_info()->set_cache2_ms(timing_value_ms);
+  }
+
+  virtual TimingInfo* timing_info() {
+    return client_callback_->timing_info();
+  }
+
  private:
   GoogleString key_;
   WriteThroughHTTPCache* write_through_http_cache_;
@@ -103,6 +112,14 @@ class Cache1Callback: public HTTPCache::Callback {
 
   virtual bool IsCacheValid(const ResponseHeaders& headers) {
     return client_callback_->IsCacheValid(headers);
+  }
+
+  virtual void SetTimingMs(int64 timing_value_ms) {
+    client_callback_->timing_info()->set_cache1_ms(timing_value_ms);
+  }
+
+  virtual TimingInfo* timing_info() {
+    return client_callback_->timing_info();
   }
 
  private:

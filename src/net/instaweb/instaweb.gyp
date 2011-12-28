@@ -161,6 +161,7 @@
         'instaweb_core.gyp:instaweb_util_core',
         'instaweb_http',
         'instaweb_http_gperf',
+        'instaweb_timing_pb',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
         '<(DEPTH)/base/base.gyp:base',
@@ -603,6 +604,19 @@
       'sources': [
         'http/http.proto',
         '<(protoc_out_dir)/<(instaweb_protoc_subdir)/http.pb.cc',
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
+      'target_name': 'instaweb_timing_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/http',
+      },
+      'sources': [
+        'http/timing.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/timing.pb.cc',
       ],
       'includes': [
         'protoc.gypi',

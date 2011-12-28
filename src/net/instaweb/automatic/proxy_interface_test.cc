@@ -34,6 +34,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/timing.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -229,6 +230,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     }
     mock_scheduler()->AwaitQuiescence();
     *string_out = callback.buffer();
+    timing_info_.CopyFrom(*callback.timing_info());
   }
 
   void CheckHeaders(const ResponseHeaders& headers,
@@ -289,6 +291,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   GoogleString start_time_string_;
   GoogleString start_time_plus_300s_string_;
   GoogleString old_time_string_;
+  TimingInfo timing_info_;
   const GoogleString max_age_300_;
   int64 request_start_time_ms_;
 
@@ -315,6 +318,24 @@ class FilterCallback : public TestRewriteDriverFactory::CreateFilterCallback {
 
   DISALLOW_COPY_AND_ASSIGN(FilterCallback);
 };
+
+TEST_F(ProxyInterfaceTest, TimingInfo) {
+  GoogleString url = "http://www.example.com/";
+  GoogleString text;
+  RequestHeaders request_headers;
+  ResponseHeaders headers;
+  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  mock_url_fetcher_.SetResponse("http://www.example.com/", headers,
+                                "<html></html>");
+
+  FetchFromProxy(url, request_headers, true, &text, &headers);
+  ASSERT_TRUE(timing_info_.has_cache1_ms());
+  EXPECT_EQ(timing_info_.cache1_ms(), 0);
+  EXPECT_FALSE(timing_info_.has_cache2_ms());
+  EXPECT_FALSE(timing_info_.has_header_fetch_ms());
+  EXPECT_FALSE(timing_info_.has_fetch_ms());
+}
 
 TEST_F(ProxyInterfaceTest, FetchFailure) {
   GoogleString text;

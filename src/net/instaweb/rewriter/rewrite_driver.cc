@@ -120,6 +120,7 @@ const int kTestTimeoutMs = 10000;
 }  // namespace
 
 class FileSystem;
+class TimingInfo;
 
 RewriteDriver::RewriteDriver(MessageHandler* message_handler,
                              FileSystem* file_system,
@@ -1163,6 +1164,10 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
           driver_->rewrite_worker(),
           MakeFunction(this, &CacheCallback::Find, &CacheCallback::Find));
     }
+  }
+
+  virtual TimingInfo* timing_info() {
+    return async_fetch_->timing_info();
   }
 
  private:

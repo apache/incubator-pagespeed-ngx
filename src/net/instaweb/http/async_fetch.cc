@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/timing.pb.h"
 #include "net/instaweb/util/public/statistics.h"
 
 namespace net_instaweb {
@@ -33,6 +34,9 @@ AsyncFetch::~AsyncFetch() {
   }
   if (owns_request_headers_) {
     delete request_headers_;
+  }
+  if (owns_timing_info_) {
+    delete timing_info_;
   }
 }
 
@@ -121,6 +125,47 @@ void AsyncFetch::set_response_headers(ResponseHeaders* headers) {
   owns_response_headers_ = false;
 }
 
+void AsyncFetch::set_timing_info(TimingInfo* timing_info) {
+  DCHECK(!owns_timing_info_);
+  if (owns_timing_info_) {
+    delete timing_info_;
+  }
+  timing_info_ = timing_info;
+  owns_timing_info_ = false;
+}
+
+TimingInfo* AsyncFetch::timing_info() {
+  if (timing_info_ == NULL) {
+    timing_info_ = new TimingInfo;
+    owns_timing_info_ = true;
+  }
+  return timing_info_;
+}
+
+
+GoogleString AsyncFetch::TimingString() const {
+  GoogleString timing_info_str;
+  if (timing_info_ != NULL) {
+    if (timing_info_->has_cache1_ms()) {
+      StrAppend(&timing_info_str, "c1:",
+                Integer64ToString(timing_info_->cache1_ms()), ";");
+    }
+    if (timing_info_->has_cache2_ms()) {
+      StrAppend(&timing_info_str, "c2:",
+                Integer64ToString(timing_info_->cache2_ms()), ";");
+    }
+    if (timing_info_->has_header_fetch_ms()) {
+      StrAppend(&timing_info_str, "hf:",
+                Integer64ToString(timing_info_->header_fetch_ms()), ";");
+    }
+    if (timing_info_->has_fetch_ms()) {
+      StrAppend(&timing_info_str, "f:",
+                Integer64ToString(timing_info_->fetch_ms()), ";");
+    }
+  }
+  return timing_info_str;
+}
+
 StringAsyncFetch::~StringAsyncFetch() {
 }
 
@@ -140,6 +185,7 @@ SharedAsyncFetch::SharedAsyncFetch(AsyncFetch* base_fetch)
     : base_fetch_(base_fetch) {
   set_response_headers(base_fetch->response_headers());
   set_request_headers(base_fetch->request_headers());
+  set_timing_info(base_fetch->timing_info());
 }
 
 SharedAsyncFetch::~SharedAsyncFetch() {
