@@ -29,11 +29,43 @@ namespace net_instaweb {
 
 InflatingFetch::InflatingFetch(AsyncFetch* fetch)
   : SharedAsyncFetch(fetch),
+    request_checked_for_accept_encoding_(false),
+    compression_desired_(false),
     inflate_failure_(false) {
 }
 
 InflatingFetch::~InflatingFetch() {
   Reset();
+}
+
+bool InflatingFetch::IsCompressionAllowedInRequest() {
+  if (!request_checked_for_accept_encoding_) {
+    request_checked_for_accept_encoding_ = true;
+    ConstStringStarVector v;
+    if (request_headers()->Lookup(HttpAttributes::kAcceptEncoding, &v)) {
+      for (int i = 0, n = v.size(); i < n; ++i) {
+        if (v[i] != NULL) {
+          StringPiece value = *v[i];
+          if (StringCaseEqual(value, HttpAttributes::kGzip) ||
+              StringCaseEqual(value, HttpAttributes::kDeflate)) {
+            // TODO(jmarantz): what if we want only deflate, but get gzip?
+            // What if we want only gzip, but get deflate?  I think this will
+            // rarely happen in practice but we could handle it here.
+            compression_desired_ = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+  return compression_desired_;
+}
+
+void InflatingFetch::EnableGzipFromBackend() {
+  if (!IsCompressionAllowedInRequest()) {
+    request_headers()->Add(HttpAttributes::kAcceptEncoding,
+                           HttpAttributes::kGzip);
+  }
 }
 
 bool InflatingFetch::HandleWrite(const StringPiece& sp,
@@ -79,29 +111,13 @@ bool InflatingFetch::HandleWrite(const StringPiece& sp,
 // This is referenced from http://boston.com.
 void InflatingFetch::HandleHeadersComplete() {
   ConstStringStarVector v;
-  if (request_headers()->Lookup(HttpAttributes::kAcceptEncoding, &v)) {
-    for (int i = 0, n = v.size(); i < n; ++i) {
-      if (v[i] != NULL) {
-        StringPiece value = *v[i];
-        if (StringCaseEqual(value, HttpAttributes::kGzip) ||
-            StringCaseEqual(value, HttpAttributes::kDeflate)) {
-          // TODO(jmarantz): what if we want only deflate, but get gzip?
-          // What if we want only gzip, but get deflate?  I think this will
-          // rarely happen in practice but we could handle it here.
-          SharedAsyncFetch::HandleHeadersComplete();
-          return;
-        }
-      }
-    }
-  }
-
-  v.clear();
-  if (response_headers()->Lookup(HttpAttributes::kContentEncoding, &v)) {
+  if (!IsCompressionAllowedInRequest() &&
+      response_headers()->Lookup(HttpAttributes::kContentEncoding, &v)) {
     // Look for an encoding to strip.  We only look at the *last* encoding.
     // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
     for (int i = v.size() - 1; i >= 0; --i) {
       if (v[i] != NULL) {
-        StringPiece value = *v[i];
+        const StringPiece& value = *v[i];
         if (!value.empty()) {
           if (StringCaseEqual(value, HttpAttributes::kGzip)) {
             InitInflater(GzipInflater::kGzip, value);

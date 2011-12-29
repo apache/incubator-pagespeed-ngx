@@ -74,6 +74,7 @@
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -84,7 +85,7 @@ class RewriteDriver;
 class DelayImagesFilter : public EmptyHtmlFilter {
  public:
   static const char* kDelayScript;
-  static const char* kShowInlineScript;
+  static const char* kInlineScript;
   explicit DelayImagesFilter(RewriteDriver* driver);
   virtual ~DelayImagesFilter();
 
@@ -103,6 +104,8 @@ class DelayImagesFilter : public EmptyHtmlFilter {
   bool low_res_map_inserted_;
   bool delay_script_inserted_;
   StringStringMap low_res_data_map_;
+  GoogleString delay_images_js_;
+  GoogleString delay_images_inline_js_;
 
   DISALLOW_COPY_AND_ASSIGN(DelayImagesFilter);
 };

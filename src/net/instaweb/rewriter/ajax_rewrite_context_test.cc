@@ -136,6 +136,8 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
       : cache_html_url_("http://www.example.com/cacheable.html"),
         cache_jpg_url_("http://www.example.com/cacheable.jpg"),
         cache_png_url_("http://www.example.com/cacheable.png"),
+        cache_gif_url_("http://www.example.com/cacheable.gif"),
+        cache_webp_url_("http://www.example.com/cacheable.webp"),
         cache_js_url_("http://www.example.com/cacheable.js"),
         cache_css_url_("http://www.example.com/cacheable.css"),
         nocache_html_url_("http://www.example.com/nocacheable.html"),
@@ -154,6 +156,10 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
     AddResponse(cache_jpg_url_, kContentTypeJpeg, cache_body_, start_time_ms(),
                 ttl_ms_, "", false);
     AddResponse(cache_png_url_, kContentTypePng, cache_body_, start_time_ms(),
+                ttl_ms_, original_etag_, true);
+    AddResponse(cache_gif_url_, kContentTypeGif, cache_body_, start_time_ms(),
+                ttl_ms_, original_etag_, true);
+    AddResponse(cache_webp_url_, kContentTypeWebp, cache_body_, start_time_ms(),
                 ttl_ms_, original_etag_, true);
     AddResponse(cache_js_url_, kContentTypeJavascript, cache_body_,
                 start_time_ms(), ttl_ms_, "", false);
@@ -250,6 +256,59 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
     ResourceManagerTestBase::ClearStats();
   }
 
+  void ExpectAjaxImageSuccessFlow(const GoogleString& url) {
+    FetchAndCheckResponse(url, cache_body_, true, ttl_ms_,
+                          original_etag_, start_time_ms());
+
+    // First fetch misses initial cache lookup, succeeds at fetch and inserts
+    // result into cache. Also, the resource gets rewritten and the rewritten
+    // resource gets inserted into cache.
+    EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+    EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+    EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+    EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+    EXPECT_EQ(0, lru_cache()->num_hits());
+    EXPECT_EQ(2, lru_cache()->num_misses());
+    EXPECT_EQ(3, lru_cache()->num_inserts());
+    EXPECT_EQ(1, img_filter_->num_rewrites());
+    EXPECT_EQ(0, js_filter_->num_rewrites());
+    EXPECT_EQ(0, css_filter_->num_rewrites());
+
+    ResetTest();
+    FetchAndCheckResponse(url, "good:ic", true, ttl_ms_, etag_,
+                        start_time_ms());
+    // Second fetch hits the metadata cache and the rewritten resource is
+    // served out.
+    EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+    EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+    EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+    EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+    EXPECT_EQ(2, lru_cache()->num_hits());
+    EXPECT_EQ(0, lru_cache()->num_misses());
+    EXPECT_EQ(0, lru_cache()->num_inserts());
+    EXPECT_EQ(0, img_filter_->num_rewrites());
+    EXPECT_EQ(0, js_filter_->num_rewrites());
+    EXPECT_EQ(0, css_filter_->num_rewrites());
+
+    mock_timer()->AdvanceMs(2 * ttl_ms_);
+    ResetTest();
+    FetchAndCheckResponse(url, cache_body_, true, ttl_ms_,
+                          original_etag_, start_time_ms());
+    // The metadata and cache entry is stale now. Fetch the content and serve
+    // it out without rewriting. Don't attempt to rewrite the content as it
+    // is stale.
+    EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+    EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+    EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+    EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+    EXPECT_EQ(1, lru_cache()->num_hits());
+    EXPECT_EQ(0, lru_cache()->num_misses());
+    EXPECT_EQ(0, lru_cache()->num_inserts());
+    EXPECT_EQ(0, img_filter_->num_rewrites());
+    EXPECT_EQ(0, js_filter_->num_rewrites());
+    EXPECT_EQ(0, css_filter_->num_rewrites());
+  }
+
   FakeRewriter* img_filter_;
   FakeRewriter* js_filter_;
   FakeRewriter* css_filter_;
@@ -260,6 +319,8 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
   const GoogleString cache_html_url_;
   const GoogleString cache_jpg_url_;
   const GoogleString cache_png_url_;
+  const GoogleString cache_gif_url_;
+  const GoogleString cache_webp_url_;
   const GoogleString cache_js_url_;
   const GoogleString cache_css_url_;
 
@@ -415,55 +476,15 @@ TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
 }
 
 TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingSucceeds) {
-  FetchAndCheckResponse(cache_png_url_, cache_body_, true, ttl_ms_,
-                        original_etag_, start_time_ms());
+  ExpectAjaxImageSuccessFlow(cache_png_url_);
+}
 
-  // First fetch misses initial cache lookup, succeeds at fetch and inserts
-  // result into cache. Also, the resource gets rewritten and the rewritten
-  // resource gets inserted into cache.
-  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(2, lru_cache()->num_misses());
-  EXPECT_EQ(3, lru_cache()->num_inserts());
-  EXPECT_EQ(1, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
+TEST_F(AjaxRewriteContextTest, CacheableiGifUrlRewritingSucceeds) {
+  ExpectAjaxImageSuccessFlow(cache_gif_url_);
+}
 
-  ResetTest();
-  FetchAndCheckResponse(cache_png_url_, "good:ic", true, ttl_ms_, etag_,
-                        start_time_ms());
-  // Second fetch hits the metadata cache and the rewritten resource is served
-  // out.
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
-
-  mock_timer()->AdvanceMs(2 * ttl_ms_);
-  ResetTest();
-  FetchAndCheckResponse(cache_png_url_, cache_body_, true, ttl_ms_,
-                        original_etag_, start_time_ms());
-  // The metadata and cache entry is stale now. Fetch the content and serve it
-  // out without rewriting. Don't attempt to rewrite the content as it is stale.
-  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
+TEST_F(AjaxRewriteContextTest, CacheableWebpUrlRewritingSucceeds) {
+  ExpectAjaxImageSuccessFlow(cache_webp_url_);
 }
 
 TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingFails) {

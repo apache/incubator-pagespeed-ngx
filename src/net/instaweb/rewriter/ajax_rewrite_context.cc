@@ -22,6 +22,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -110,8 +111,7 @@ bool RecordingFetch::CanAjaxRewrite() {
   }
   if (type->type() == ContentType::kCss ||
       type->type() == ContentType::kJavascript ||
-      type->type() == ContentType::kPng ||
-      type->type() == ContentType::kJpeg) {
+      type->IsImage()) {
     if (!context_->driver_->resource_manager()->http_cache()->IsAlreadyExpired(
         *response_headers())) {
       return true;
@@ -207,18 +207,17 @@ void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
 }
 
 RewriteFilter* AjaxRewriteContext::GetRewriteFilter(
-    const ContentType::Type& type) {
+    const ContentType& type) {
   const RewriteOptions* options = driver_->options();
-  if (type == ContentType::kCss &&
+  if (type.type() == ContentType::kCss &&
       options->Enabled(RewriteOptions::kRewriteCss)) {
     return driver_->FindFilter(RewriteOptions::kCssFilterId);
   }
-  if (type == ContentType::kJavascript &&
+  if (type.type() == ContentType::kJavascript &&
       options->Enabled(RewriteOptions::kRewriteJavascript)) {
     return driver_->FindFilter(RewriteOptions::kJavascriptMinId);
   }
-  if ((type == ContentType::kPng || type == ContentType::kJpeg) &&
-      options->Enabled(RewriteOptions::kRecompressImages) &&
+  if (type.IsImage() && options->Enabled(RewriteOptions::kRecompressImages) &&
       !driver_->ShouldNotRewriteImages()) {
     // TODO(nikhilmadan): This converts one image format to another. We
     // shouldn't do inter-conversion since we can't change the file extension.
@@ -231,8 +230,8 @@ void AjaxRewriteContext::RewriteSingle(const ResourcePtr& input,
                                        const OutputResourcePtr& output) {
   input->DetermineContentType();
   if (input->IsValidAndCacheable() && input->type() != NULL) {
-    ContentType::Type type = input->type()->type();
-    RewriteFilter* filter = GetRewriteFilter(type);
+    const ContentType* type = input->type();
+    RewriteFilter* filter = GetRewriteFilter(*type);
     if (filter != NULL) {
       ResourceSlotPtr ajax_slot(
           new AjaxRewriteResourceSlot(slot(0)->resource()));

@@ -44,6 +44,32 @@
       ],
     },
     {
+      'target_name': 'instaweb_delay_images_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'var_name': 'delay_images',
+      },
+      'sources': [
+        'rewriter/delay_images.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_delay_images_inline_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'var_name': 'delay_images_inline',
+      },
+      'sources': [
+        'rewriter/delay_images_inline.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_js_defer_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -529,6 +555,8 @@
         'instaweb_core.gyp:instaweb_rewriter_html',
         'instaweb_core.gyp:panel_config_pb',
         'instaweb_http',
+        'instaweb_delay_images_data2c',
+        'instaweb_delay_images_inline_data2c',
         'instaweb_js_defer_data2c',
         'instaweb_lazyload_images_data2c',
         'instaweb_rewriter_base',

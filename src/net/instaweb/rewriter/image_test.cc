@@ -54,6 +54,15 @@ class ImageTest : public ImageTestBase {
   ImageTest() {}
 
  protected:
+  void ExpectEmptyOuput(Image* image) {
+    EXPECT_FALSE(image->output_valid_);
+    EXPECT_TRUE(image->output_contents_.empty());
+  }
+
+  void ExpectContentType(Image::Type image_type, Image* image) {
+    EXPECT_EQ(image_type, image->image_type_);
+  }
+
   void ExpectDimensions(Image::Type image_type, int size,
                         int expected_width, int expected_height,
                         Image *image) {
@@ -437,6 +446,19 @@ TEST_F(ImageTest, OpencvStackOverflow) {
   new_dim.set_width(1);
   new_dim.set_height(1);
   image->ResizeTo(new_dim);
+}
+
+TEST_F(ImageTest, ResizeTo) {
+  GoogleString buf;
+  ImagePtr image(ReadImageFromFile(Image::IMAGE_JPEG, kPuzzle, &buf, false));
+
+  ImageDim new_dim;
+  new_dim.set_height(10);
+  new_dim.set_width(10);
+  image->ResizeTo(new_dim);
+
+  ExpectEmptyOuput(image.get());
+  ExpectContentType(Image::IMAGE_JPEG, image.get());
 }
 
 }  // namespace net_instaweb

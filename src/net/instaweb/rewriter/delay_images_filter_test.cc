@@ -33,23 +33,44 @@ const char kSampleWebpFile[] = "Sample_webp.webp";
 // libjpeg are yeilding different low_res_image_data.
 const char kSampleJpegData[] = "data:image/jpeg;base64*";
 const char kSampleWebpData[] = "data:image/webp;base64*";
+
 }  // namespace
 
 namespace net_instaweb {
 
 class DelayImagesFilterTest : public ResourceManagerTestBase {
+ public:
+  DelayImagesFilterTest() {
+    head_html_ = StrCat("<head><script type=\"text/javascript\">",
+                        DelayImagesFilter::kDelayScript,
+                        "\npagespeed.delayImagesInit()</script></head>");
+    inline_script_ = StrCat("<script type=\"text/javascript\">",
+                            DelayImagesFilter::kInlineScript,
+                            "\npagespeed.delayImagesInlineInit();");
+  }
+
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
     AddFilter(RewriteOptions::kDelayImages);
   }
 
-  void TestOutput(const GoogleString& html_input, const GoogleString& expected) {
+  void TestOutput(const GoogleString& html_input,
+                  const GoogleString& expected) {
     Parse("delay_images", html_input);
     GoogleString full_html = doctype_string_ + AddHtmlBody(expected);
     EXPECT_TRUE(Wildcard(full_html).Match(output_buffer_));
     output_buffer_.clear();
   }
+
+  GoogleString GenerateAddLowResString(const GoogleString& url,
+                                       const GoogleString& image_data) {
+    return StrCat("\npagespeed.delayImagesInline.addLowResImages(\'", url,
+        "\', \'", image_data, "\');");
+  }
+
+  GoogleString head_html_;
+  GoogleString inline_script_;
 };
 
 TEST_F(DelayImagesFilterTest, DelayWebPImage) {
@@ -59,14 +80,11 @@ TEST_F(DelayImagesFilterTest, DelayWebPImage) {
       "<body>"
       "<img src=\"http://test.com/1.webp\" />"
       "</body>";
-  GoogleString output_html = StrCat(
-      "<head><script type=\"text/javascript\">",
-      DelayImagesFilter::kDelayScript, "</script></head>"
-      "<body><img pagespeed_high_res_src=\"http://test.com/1.webp\"/>"
-      "<script type=\"text/javascript\">var pagespeed_inline_map = {};"
-      "\npagespeed_inline_map[\'http://test.com/1.webp\'] = \'",
-      kSampleWebpData, "\';\n",
-      DelayImagesFilter::kShowInlineScript, "</script></body>");
+  GoogleString output_html = StrCat(head_html_,
+      "<body><img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
+      inline_script_,
+      GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
+      "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>");
   TestOutput(input_html, output_html);
 }
 
@@ -77,14 +95,11 @@ TEST_F(DelayImagesFilterTest, DelayJpegImage) {
       "<body>"
       "<img src=\"http://test.com/1.jpeg\" />"
       "</body>";
-  GoogleString output_html = StrCat(
-      "<head><script type=\"text/javascript\">",
-      DelayImagesFilter::kDelayScript, "</script></head>"
-      "<body><img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>"
-      "<script type=\"text/javascript\">var pagespeed_inline_map = {};"
-      "\npagespeed_inline_map[\'http://test.com/1.jpeg\'] = \'",
-      kSampleJpegData, "\';\n",
-      DelayImagesFilter::kShowInlineScript, "</script></body>");
+  GoogleString output_html = StrCat(head_html_,
+      "<body><img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
+      inline_script_,
+      GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
+      "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>");
   TestOutput(input_html, output_html);
 }
 
@@ -100,15 +115,12 @@ TEST_F(DelayImagesFilterTest, DelayMultipleSameImage) {
       "<img src=\"http://test.com/1.webp\" />"
       "<img src=\"http://test.com/1.webp\" />"
       "</body>";
-  GoogleString output_html = StrCat(
-      "<head><script type=\"text/javascript\">",
-      DelayImagesFilter::kDelayScript, "</script></head>"
+  GoogleString output_html = StrCat(head_html_,
       "<body><img pagespeed_high_res_src=\"http://test.com/1.webp\"/>"
-      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>"
-      "<script type=\"text/javascript\">var pagespeed_inline_map = {};"
-      "\npagespeed_inline_map[\'http://test.com/1.webp\'] = \'",
-      kSampleWebpData, "\';\n",
-      DelayImagesFilter::kShowInlineScript, "</script></body>");
+      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
+      inline_script_,
+      GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
+      "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>");
   TestOutput(input_html, output_html);
 }
 
@@ -132,14 +144,11 @@ TEST_F(DelayImagesFilterTest, MultipleBodyTags) {
   GoogleString input_html = "<head></head>"
       "<body><img src=\"http://test.com/1.webp\"/></body>"
       "<body><img src=\"http://test.com/2.jpeg\"/></body>";
-  GoogleString output_html = StrCat(
-      "<head><script type=\"text/javascript\">",
-      DelayImagesFilter::kDelayScript, "</script></head>"
-      "<body><img pagespeed_high_res_src=\"http://test.com/1.webp\"/>"
-      "<script type=\"text/javascript\">var pagespeed_inline_map = {};"
-      "\npagespeed_inline_map[\'http://test.com/1.webp\'] = \'",
-      kSampleWebpData, "\';\n",
-      DelayImagesFilter::kShowInlineScript, "</script></body>"
+  GoogleString output_html = StrCat(head_html_,
+      "<body><img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
+      inline_script_,
+      GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
+      "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>",
       "<body><img src=\"http://test.com/2.jpeg\"/></body>");
   TestOutput(input_html, output_html);
 }

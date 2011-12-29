@@ -683,6 +683,7 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
       opencv_image_ = rescaled_image;
       changed_ = true;
       output_valid_ = false;
+      output_contents_.clear();
     }
   }
   return changed_;
@@ -692,6 +693,7 @@ void ImageImpl::UndoChange() {
   if (changed_) {
     CleanOpenCv();
     output_valid_ = false;
+    output_contents_.clear();
     image_type_ = IMAGE_UNKNOWN;
     changed_ = false;
   }

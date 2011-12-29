@@ -24,6 +24,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace {
@@ -41,6 +42,30 @@ const unsigned char kGzippedData[] = {
 
 namespace net_instaweb {
 
+class MockFetch : public StringAsyncFetch {
+ public:
+  MockFetch() {}
+  virtual ~MockFetch() {}
+
+  void ExpectAcceptEncoding(const StringPiece& encoding) {
+    encoding.CopyToString(&accept_encoding_);
+  }
+
+  virtual void HandleHeadersComplete() {
+    if (!accept_encoding_.empty()) {
+      EXPECT_TRUE(request_headers()->HasValue(
+          HttpAttributes::kAcceptEncoding, accept_encoding_));
+    }
+    StringAsyncFetch::HandleHeadersComplete();
+  }
+
+ private:
+  // If non-empty, EXPECT that each request must accept this encoding.
+  GoogleString accept_encoding_;
+
+  DISALLOW_COPY_AND_ASSIGN(MockFetch);
+};
+
 class InflatingFetchTest : public testing::Test {
  protected:
   InflatingFetchTest()
@@ -49,7 +74,7 @@ class InflatingFetchTest : public testing::Test {
                       STATIC_STRLEN(kGzippedData)) {
   }
 
-  StringAsyncFetch mock_fetch_;
+  MockFetch mock_fetch_;
   InflatingFetch inflating_fetch_;
   GoogleMessageHandler message_handler_;
   StringPiece gzipped_data_;
@@ -160,6 +185,59 @@ TEST_F(InflatingFetchTest, GzippedAndFrobbedNotChanged) {
   ASSERT_EQ(2, encodings.size());
   EXPECT_STREQ(HttpAttributes::kGzip, *encodings[0]);
   EXPECT_STREQ("frob", *encodings[1]);
+}
+
+TEST_F(InflatingFetchTest, TestEnableGzipFromBackend) {
+  mock_fetch_.ExpectAcceptEncoding(HttpAttributes::kGzip);
+  inflating_fetch_.EnableGzipFromBackend();
+  inflating_fetch_.response_headers()->Add(
+      HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
+  inflating_fetch_.response_headers()->SetStatusAndReason(HttpStatus::kOK);
+  inflating_fetch_.Write(gzipped_data_, &message_handler_);
+  inflating_fetch_.Done(true);
+  EXPECT_EQ(kClearData, mock_fetch_.buffer())
+      << "data should be auto-inflated";
+  EXPECT_TRUE(mock_fetch_.response_headers()->Lookup1(
+      HttpAttributes::kContentEncoding) == NULL)
+      << "Content encoding should be stripped since we inflated the data";
+  EXPECT_TRUE(mock_fetch_.done());
+  EXPECT_TRUE(mock_fetch_.success());
+}
+
+TEST_F(InflatingFetchTest, TestEnableGzipFromBackendWithCleartext) {
+  mock_fetch_.ExpectAcceptEncoding(HttpAttributes::kGzip);
+  inflating_fetch_.EnableGzipFromBackend();
+
+  // We are going to ask the mock server for gzip, but we'll get cleartext.
+  inflating_fetch_.response_headers()->SetStatusAndReason(HttpStatus::kOK);
+  inflating_fetch_.Write(kClearData, &message_handler_);
+  inflating_fetch_.Done(true);
+  EXPECT_EQ(kClearData, mock_fetch_.buffer());
+  EXPECT_TRUE(mock_fetch_.done());
+  EXPECT_TRUE(mock_fetch_.success());
+}
+
+TEST_F(InflatingFetchTest, TestEnableGzipFromBackendExpectingGzip) {
+  inflating_fetch_.request_headers()->Add(
+      HttpAttributes::kAcceptEncoding, HttpAttributes::kGzip);
+  inflating_fetch_.response_headers()->Add(
+      HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
+
+  // Calling EnableGzipFromBackend here has no effect in this case,
+  // because above we declare that we want to see gzipped data coming
+  // into our Write methods.
+  inflating_fetch_.EnableGzipFromBackend();
+  mock_fetch_.ExpectAcceptEncoding(HttpAttributes::kGzip);
+
+  inflating_fetch_.response_headers()->SetStatusAndReason(HttpStatus::kOK);
+  inflating_fetch_.Write(gzipped_data_, &message_handler_);
+  inflating_fetch_.Done(true);
+  EXPECT_STREQ(gzipped_data_, mock_fetch_.buffer())
+      << "data should be untouched";
+  EXPECT_STREQ(HttpAttributes::kGzip, mock_fetch_.response_headers()->Lookup1(
+      HttpAttributes::kContentEncoding)) << "content-encoding not stripped";
+  EXPECT_TRUE(mock_fetch_.done());
+  EXPECT_TRUE(mock_fetch_.success());
 }
 
 // TODO(jmarantz): test 'deflate' without gzip

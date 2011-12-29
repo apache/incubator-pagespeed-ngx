@@ -33,57 +33,19 @@
 
 namespace net_instaweb {
 
-// Script content which converts low res inline_src images to high res images
-// after onload event.
-// TODO(pulkitg): Use data2c and remove duplicate code in lines 54-66.
-const char* DelayImagesFilter::kDelayScript =
-    "\n"
-    "function pagespeed_delay_images_onload_handler() {\n"
-    "  var pagespeed_img_tags = document.getElementsByTagName('img');\n"
-    "  for (var i = 0; i < pagespeed_img_tags.length; ++i) {\n"
-    "    var src = pagespeed_img_tags[i].getAttribute(\n"
-    "        'pagespeed_high_res_src');\n"
-    "    if (src) {\n"
-    "      pagespeed_img_tags[i].setAttribute('src', src);\n"
-    "    }\n"
-    "  }\n"
-    "}\n"
-    "function pagespeed_delay_func() {\n"
-    "  setTimeout(pagespeed_delay_images_onload_handler,\n"
-    "             100);\n"
-    "}\n"
-    "if (window.addEventListener) {\n"
-    "  window.addEventListener('load', pagespeed_delay_func, false);\n"
-    "} else if (window.attachEvent) {\n"
-    "  window.attachEvent('onload', pagespeed_delay_func);\n"
-    "} else {\n"
-    "  var oldOnload = window.onload;\n"
-    "  window.onload = function() {\n"
-    "    if (oldOnload) {\n"
-    "      oldOnload.call(this);\n"
-    "    }\n"
-    "    pagespeed_delay_func();\n"
-    "  }\n"
-    "}\n";
+extern const char* JS_delay_images;
+extern const char* JS_delay_images_inline;
 
-// Script content which puts low quality/resolution images' base64 encoded data
-// url into the respective image tag.
-const char* DelayImagesFilter::kShowInlineScript =
-    "var pagespeed_img_tags = document.getElementsByTagName('img');\n"
-    "for (var i = 0; i < pagespeed_img_tags.length; ++i) {\n"
-    "  var src = pagespeed_img_tags[i].getAttribute(\n"
-    "      'pagespeed_high_res_src');\n"
-    "  if (src) {\n"
-    "    pagespeed_img_tags[i].setAttribute('src',\n"
-    "                                       pagespeed_inline_map[src]);\n"
-    "  }\n"
-    "}\n";
+const char* DelayImagesFilter::kDelayScript = JS_delay_images;
+const char* DelayImagesFilter::kInlineScript = JS_delay_images_inline;
 
 DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
     : driver_(driver),
       tag_scanner_(driver),
       low_res_map_inserted_(false),
-      delay_script_inserted_(false) {}
+      delay_script_inserted_(false) {
+  delay_images_js_ = StrCat(kDelayScript, "\npagespeed.delayImagesInit()");
+}
 
 DelayImagesFilter::~DelayImagesFilter() {}
 
@@ -102,7 +64,7 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
     driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
     HtmlCharactersNode* script_content = driver_->NewCharactersNode(
-        script, kDelayScript);
+        script, delay_images_js_);
     driver_->AppendChild(element, script);
     driver_->AppendChild(script, script_content);
     delay_script_inserted_ = true;
@@ -138,18 +100,24 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
     // Generate javascript map for inline data urls where key is url and
     // base64 encoded data url as its value. This map is added to the html at
     // the end of body tag.
-    GoogleString inline_data_script = "var pagespeed_inline_map = {};\n";
+    GoogleString inline_data_script;
     for (StringStringMap::iterator it = low_res_data_map_.begin();
         it != low_res_data_map_.end(); ++it) {
-      StrAppend(&inline_data_script, "pagespeed_inline_map['", it->first,
-                "'] = '", it->second, "';\n");
+      StrAppend(&inline_data_script,
+                "\npagespeed.delayImagesInline.addLowResImages('",
+                it->first, "', '", it->second, "');");
     }
 
-    StrAppend(&inline_data_script, kShowInlineScript);
+    delay_images_inline_js_ = StrCat(
+        kInlineScript,
+        "\npagespeed.delayImagesInlineInit();",
+        inline_data_script,
+        "\npagespeed.delayImagesInline.replaceWithLowRes();\n");
+
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
     driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
     HtmlCharactersNode* script_content = driver_->NewCharactersNode(
-        script, inline_data_script);
+        script, delay_images_inline_js_);
     driver_->AppendChild(element, script);
     driver_->AppendChild(script, script_content);
     low_res_map_inserted_ = true;

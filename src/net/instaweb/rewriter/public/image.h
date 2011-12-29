@@ -158,6 +158,8 @@ class Image {
   bool output_valid_;             // Indicates output_contents_ now correct.
 
  private:
+  friend class ImageTest;
+
   DISALLOW_COPY_AND_ASSIGN(Image);
 };
 

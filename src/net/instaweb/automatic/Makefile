@@ -44,6 +44,8 @@ BASE_LIBS = \
   build/temp_gyp/libgoogleurl.a \
   net/instaweb/libautomatic_util.a \
   net/instaweb/libhttp_core.a \
+  net/instaweb/libinstaweb_delay_images_data2c.a \
+  net/instaweb/libinstaweb_delay_images_inline_data2c.a \
   net/instaweb/libinstaweb_htmlparse_core.a \
   net/instaweb/libinstaweb_htmlparse_core_gperf.a \
   net/instaweb/libinstaweb_http.a \

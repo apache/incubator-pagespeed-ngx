@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_AJAX_REWRITE_CONTEXT_H_
 
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -39,6 +38,7 @@ class MessageHandler;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteFilter;
+struct ContentType;
 
 // A resource-slot created for an ajax rewrite. This has an empty render method.
 // Note that this class is usually used as a RefCountedPtr and gets deleted when
@@ -94,7 +94,7 @@ class AjaxRewriteContext : public SingleRewriteContext {
   virtual void FetchTryFallback(const GoogleString& url,
                                 const StringPiece& hash);
 
-  RewriteFilter* GetRewriteFilter(const ContentType::Type& type);
+  RewriteFilter* GetRewriteFilter(const ContentType& type);
 
   RewriteDriver* driver_;
   GoogleString url_;

@@ -34,14 +34,20 @@ class MessageHandler;
 // accept-encoding:gzip.  In that scenario, this class inflates the
 // content and strips the content-encoding:gzip response header.
 //
-// TODO(jmarantz): Note that this filter enables fetchers to unconditionally
-// add accept-encoding:gzip to reduce network overhead, and this class can
-// then transparently handle the inflating.  Currently the intent is just
-// to work better with servers that do not honor the request headers.
+// Some servers will serve gzipped content even to clients that didn't
+// ask for it.  Depending on the serving environment, we may also want
+// to ask backend servers for gzipped content even if we want cleartext
+// to be sent to the Write methods.  Users of this class can force this
+// by calling EnableGzipFromBackend.
 class InflatingFetch : public SharedAsyncFetch {
  public:
   explicit InflatingFetch(AsyncFetch* fetch);
   virtual ~InflatingFetch();
+
+  // Adds accept-encoding:gzip to the request headers sent to the
+  // origin.  The data is inflated as we Write it.  If deflate
+  // or gzip was already in the request then this has no effect.
+  void EnableGzipFromBackend();
 
  protected:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
@@ -51,8 +57,11 @@ class InflatingFetch : public SharedAsyncFetch {
 
  private:
   void InitInflater(GzipInflater::InflateType, const StringPiece& value);
+  bool IsCompressionAllowedInRequest();
 
   scoped_ptr<GzipInflater> inflater_;
+  bool request_checked_for_accept_encoding_;
+  bool compression_desired_;
   bool inflate_failure_;
   DISALLOW_COPY_AND_ASSIGN(InflatingFetch);
 };
