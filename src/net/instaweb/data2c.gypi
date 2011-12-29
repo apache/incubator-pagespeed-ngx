@@ -29,10 +29,8 @@
       ],
       'action': [
         '<(data2c_exe)',
-        '--data_file=<(instaweb_root)/<(instaweb_data2c_subdir)/' +
-        '<(RULE_INPUT_NAME)',
-        '--c_file=<(data2c_out_dir)/<(instaweb_data2c_subdir)/' +
-        '<(RULE_INPUT_ROOT)_out.cc',
+        '--data_file=<(instaweb_root)/<(instaweb_data2c_subdir)/<(RULE_INPUT_NAME)',
+        '--c_file=<(data2c_out_dir)/<(instaweb_data2c_subdir)/<(RULE_INPUT_ROOT)_out.cc',
         '--varname=JS_<(var_name)',
       ],
       'process_outputs_as_sources': 1,

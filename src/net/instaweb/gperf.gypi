@@ -31,8 +31,7 @@
         'gperf',
         '-m 10',
         '<(instaweb_root)/<(instaweb_gperf_subdir)/<(RULE_INPUT_NAME)',
-        '--output-file=<(gperf_out_dir)/<(instaweb_gperf_subdir)/' +
-            '<(RULE_INPUT_ROOT).gp.cc',
+        '--output-file=<(gperf_out_dir)/<(instaweb_gperf_subdir)/<(RULE_INPUT_ROOT).gp.cc',
       ],
       'process_outputs_as_sources': 1,
     },

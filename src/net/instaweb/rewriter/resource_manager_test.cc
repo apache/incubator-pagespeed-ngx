@@ -82,6 +82,7 @@ const size_t kUrlPrefixLength = STATIC_STRLEN(kUrlPrefix);
 
 namespace net_instaweb {
 
+class HtmlElement;
 class SharedString;
 
 class VerifyContentsCallback : public Resource::AsyncCallback {

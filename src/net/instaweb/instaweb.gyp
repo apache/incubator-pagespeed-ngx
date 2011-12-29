@@ -19,8 +19,8 @@
     'protoc_executable':
         '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
     'data2c_out_dir': '<(SHARED_INTERMEDIATE_DIR)/data2c_out/instaweb',
-    'data2c_exe': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)instaweb_data2c' +
-                  '<(EXECUTABLE_SUFFIX)',
+    'data2c_exe':
+        '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)instaweb_data2c<(EXECUTABLE_SUFFIX)',
     # Setting chromium_code to 1 turns on extra warnings. Also, if the compiler
     # is whitelisted in our common.gypi, those warnings will get treated as
     # errors.
