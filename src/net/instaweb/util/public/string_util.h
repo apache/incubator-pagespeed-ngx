@@ -62,6 +62,10 @@ inline GoogleString Integer64ToString(int64 i) {
   return base::Int64ToString(i);
 }
 
+inline GoogleString PointerToString(void* pointer) {
+  return StringPrintf("%p", pointer);
+}
+
 inline bool StringToInt(const char* in, int* out) {
   // TODO(bmcquade): Use char*-based StringToInt once we sync the
   // Chromium repository.

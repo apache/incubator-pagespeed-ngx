@@ -169,7 +169,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     GoogleUrl resource_url(url);
     ResourcePtr resource(rewrite_driver()->CreateInputResource(resource_url));
     if ((resource.get() != NULL) &&
-        (!resource->IsCacheable() ||
+        (!resource->IsCacheableTypeOfResource() ||
          !rewrite_driver()->ReadIfCached(resource))) {
       resource.clear();
     }

@@ -117,10 +117,7 @@ class Resource : public RefCounted<Resource> {
   const ContentType* type() const { return type_; }
   virtual void SetType(const ContentType* type);
 
-  // This function is a mis-nomer, it only says whether or not this type of
-  // resource is cacheable, not whether this actual resource is cacheable.
-  // TODO(sligocki): Rename or get rid of this.
-  virtual bool IsCacheable() const { return true; }
+  virtual bool IsCacheableTypeOfResource() const { return true; }
 
   // Gets the absolute URL of the resource
   virtual GoogleString url() const = 0;

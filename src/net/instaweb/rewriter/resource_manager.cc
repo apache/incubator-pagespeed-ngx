@@ -380,7 +380,7 @@ bool ResourceManager::IsImminentlyExpiring(int64 start_date_ms,
 
 void ResourceManager::RefreshIfImminentlyExpiring(
     Resource* resource, MessageHandler* handler) const {
-  if (!http_cache_->force_caching() && resource->IsCacheable()) {
+  if (!http_cache_->force_caching() && resource->IsCacheableTypeOfResource()) {
     const ResponseHeaders* headers = resource->response_headers();
     int64 start_date_ms = headers->date_ms();
     int64 expire_ms = headers->CacheExpirationTimeMs();
@@ -447,7 +447,7 @@ void ResourceManager::ReadAsync(Resource::AsyncCallback* callback) {
   if (resource->loaded()) {
     RefreshIfImminentlyExpiring(resource.get(), message_handler_);
     callback->Done(true);
-  } else if (resource->IsCacheable()) {
+  } else if (resource->IsCacheableTypeOfResource()) {
     ResourceManagerHttpCallback* resource_manager_callback =
         new ResourceManagerHttpCallback(callback, this);
     http_cache_->Find(resource->url(), message_handler_,

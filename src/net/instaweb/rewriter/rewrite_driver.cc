@@ -1439,7 +1439,7 @@ HTTPCache::FindResult RewriteDriver::ReadIfCachedWithStatus(
   // URL vs File vs Data) is cacheable, then try to load it.
   if (resource->loaded()) {
     result = HTTPCache::kFound;
-  } else if (resource->IsCacheable()) {
+  } else if (resource->IsCacheableTypeOfResource()) {
     result = resource_manager_->http_cache()->Find(
         resource->url(), &resource->value_, resource->response_headers(),
         handler);
