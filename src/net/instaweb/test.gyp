@@ -45,6 +45,7 @@
         '<(DEPTH)/testing/gmock.gyp:gmock',
         '<(DEPTH)/testing/gtest.gyp:gtest_main',
         '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
+        '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
       ],
       'include_dirs': [
         '<(DEPTH)/third_party/protobuf/src',
@@ -84,6 +85,7 @@
         'rewriter/common_filter_test.cc',
         'rewriter/css_combine_filter_test.cc',
         'rewriter/css_filter_test.cc',
+        'rewriter/css_hierarchy_test.cc',
         'rewriter/css_image_rewriter_test.cc',
         'rewriter/css_inline_filter_test.cc',
         'rewriter/css_inline_import_to_link_filter_test.cc',
