@@ -219,7 +219,7 @@ UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(
         // Make a copy of the passed-in config with the slurp directory
         // erased, and use that to construct the base fetcher.
         ApacheConfig no_slurp_config("");
-        no_slurp_config.Merge(*config, *config);
+        no_slurp_config.Merge(*config);
         no_slurp_config.set_slurp_directory("");
         UrlPollableAsyncFetcher* base_fetcher = GetFetcher(&no_slurp_config);
 

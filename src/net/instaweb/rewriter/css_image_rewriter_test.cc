@@ -16,14 +16,13 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "base/scoped_ptr.h"
-
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
@@ -597,44 +596,57 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesInStyleAttributes) {
                    "\"/>");
 }
 
-TEST_P(CssImageRewriterTest, RecompressImagesInStyleAttributes) {
-  static const char div_before[] =
-      "<div style=\""
-      "background-image:url(foo.png)"
-      "\"/>";
-  const GoogleString div_after = StrCat(
-      "<div style=\""
-      "background-image:url(",
-      Encode(kTestDomain, "ic", "0", "foo.png", "png"),
-      ")"
-      "\"/>");
+class CssRecompressImagesInStyleAttributes
+    : public ResourceManagerTestBase,
+      public ::testing::WithParamInterface<bool> {
+ protected:
+  CssRecompressImagesInStyleAttributes()
+      : div_before_(
+          "<div style=\""
+          "background-image:url(foo.png)"
+          "\"/>") {}
 
-  scoped_ptr<RewriteOptions> default_options(factory()->NewRewriteOptions());
-  default_options.get()->DisableFilter(RewriteOptions::kExtendCacheImages);
-  AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
-                       kContentTypePng, 100);
+  virtual void SetUp() {
+    ResourceManagerTestBase::SetUp();
+    options()->EnableFilter(RewriteOptions::kRewriteCss);
+    options()->set_always_rewrite_css(true);
+    AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
+                         kContentTypePng, 100);
+    div_after_ = StrCat(
+        "<div style=\""
+        "background-image:url(",
+        Encode(kTestDomain, "ic", "0", "foo.png", "png"),
+        ")"
+        "\"/>");
+  }
 
-  // No rewriting if neither option is enabled.
-  ValidateNoChanges("options_disabled", div_before);
+  GoogleString div_before_;
+  GoogleString div_after_;
+};
 
-  // No rewriting if only one option is enabled.
-  options()->CopyFrom(*default_options.get());
-  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
-  resource_manager()->ComputeSignature(options());
-  ValidateNoChanges("recompress_images_disabled", div_before);
+// No rewriting if neither option is enabled.
+TEST_P(CssRecompressImagesInStyleAttributes, NeitherEnabled) {
+  ValidateNoChanges("options_disabled", div_before_);
+}
 
-  // No rewriting if only one option is enabled.
-  options()->CopyFrom(*default_options.get());
+// No rewriting if only 'style' is enabled.
+TEST_P(CssRecompressImagesInStyleAttributes, OnlyStyleEnabled) {
+  AddFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
+  ValidateNoChanges("recompress_images_disabled", div_before_);
+}
+
+// No rewriting if only 'recompress' is enabled.
+TEST_P(CssRecompressImagesInStyleAttributes, OnlyRecompressEnabled) {
+  AddFilter(RewriteOptions::kRecompressImages);
+  ValidateNoChanges("recompress_images_disabled", div_before_);
+}
+
+// Rewrite iff both options are enabled.
+TEST_P(CssRecompressImagesInStyleAttributes, RecompressAndStyleEnabled) {
   options()->EnableFilter(RewriteOptions::kRecompressImages);
-  resource_manager()->ComputeSignature(options());
-  ValidateNoChanges("rewrite_style_attrs_disabled", div_before);
-
-  // Rewrite iff both options are enabled.
-  options()->CopyFrom(*default_options.get());
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
-  options()->EnableFilter(RewriteOptions::kRecompressImages);
-  resource_manager()->ComputeSignature(options());
-  ValidateExpected("options_enabled", div_before, div_after);
+  rewrite_driver()->AddFilters();
+  ValidateExpected("options_enabled", div_before_, div_after_);
 }
 
 INSTANTIATE_TEST_CASE_P(CssImageRewriterTestInstance,
@@ -643,6 +655,10 @@ INSTANTIATE_TEST_CASE_P(CssImageRewriterTestInstance,
 
 INSTANTIATE_TEST_CASE_P(CssImageRewriterTestUrlNamerInstance,
                         CssImageRewriterTestUrlNamer,
+                        ::testing::Bool());
+
+INSTANTIATE_TEST_CASE_P(CssRecompressImagesInStyleAttributesInstance,
+                        CssRecompressImagesInStyleAttributes,
                         ::testing::Bool());
 
 }  // namespace

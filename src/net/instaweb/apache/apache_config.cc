@@ -76,7 +76,7 @@ bool ApacheConfig::ParseRefererStatisticsOutputLevel(
 
 RewriteOptions* ApacheConfig::Clone() const {
   ApacheConfig* options = new ApacheConfig(description_);
-  options->CopyFrom(*this);
+  options->Merge(*this);
   return options;
 }
 

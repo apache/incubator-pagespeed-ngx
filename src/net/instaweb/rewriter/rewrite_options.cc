@@ -665,22 +665,19 @@ int64 RewriteOptions::MaxImageInlineMaxBytes() const {
                   CssImageInlineMaxBytes());
 }
 
-void RewriteOptions::Merge(const RewriteOptions& first,
-                           const RewriteOptions& second) {
+void RewriteOptions::Merge(const RewriteOptions& src) {
   DCHECK(!frozen_);
-  modified_ = first.modified_ || second.modified_;
-  enabled_filters_ = first.enabled_filters_;
-  disabled_filters_ = first.disabled_filters_;
-  for (FilterSet::const_iterator p = second.enabled_filters_.begin(),
-           e = second.enabled_filters_.end(); p != e; ++p) {
+  modified_ |= src.modified_;
+  for (FilterSet::const_iterator p = src.enabled_filters_.begin(),
+           e = src.enabled_filters_.end(); p != e; ++p) {
     Filter filter = *p;
     // Enabling in 'second' trumps Disabling in first.
     disabled_filters_.erase(filter);
     enabled_filters_.insert(filter);
   }
 
-  for (FilterSet::const_iterator p = second.disabled_filters_.begin(),
-           e = second.disabled_filters_.end(); p != e; ++p) {
+  for (FilterSet::const_iterator p = src.disabled_filters_.begin(),
+           e = src.disabled_filters_.end(); p != e; ++p) {
     Filter filter = *p;
     // Disabling in 'second' trumps enabling in anything.
     disabled_filters_.insert(filter);
@@ -693,72 +690,41 @@ void RewriteOptions::Merge(const RewriteOptions& first,
   // thing to do -- we should ensure that within a system all the
   // RewriteOptions that are instantiated are the same sublcass, so
   // DCHECK that they have the same number of options.
-  size_t options_to_read = std::max(first.all_options_.size(),
-                                    second.all_options_.size());
-  DCHECK_EQ(first.all_options_.size(), second.all_options_.size());
-  DCHECK_EQ(options_to_read, all_options_.size());
+  size_t options_to_read = std::max(all_options_.size(),
+                                    src.all_options_.size());
+  DCHECK_EQ(all_options_.size(), src.all_options_.size());
   size_t options_to_merge = std::min(options_to_read, all_options_.size());
   for (size_t i = 0; i < options_to_merge; ++i) {
-    // Be careful to merge only options that exist in all three.
-    // TODO(jmarantz): this logic is not 100% sound if there are two
-    // different subclasses in play.  We should resolve this at a higher
-    // level and assert that the option subclasses are the same.
-    if (i >= first.all_options_.size()) {
-      all_options_[i]->Merge(second.all_options_[i], second.all_options_[i]);
-    } else if (i >= second.all_options_.size()) {
-      all_options_[i]->Merge(first.all_options_[i], first.all_options_[i]);
-    } else {
-      all_options_[i]->Merge(first.all_options_[i], second.all_options_[i]);
-    }
+    all_options_[i]->Merge(src.all_options_[i]);
   }
 
-  // Pick the larger of the two cache invalidation timestamps. Following
-  // calculation assumes the default value of cache invalidation timestamp
-  // to be -1.
-  //
-  // Note: this gets merged by order in the above loop, and then this
-  // block of code overrides the merged value.
-  //
-  // TODO(jmarantz): fold this logic into a new OptionBase subclass whose
-  // Merge method does the right thing.
-  if (first.cache_invalidation_timestamp_.value() !=
-      RewriteOptions::kDefaultCacheInvalidationTimestamp ||
-      second.cache_invalidation_timestamp_.value() !=
-          RewriteOptions::kDefaultCacheInvalidationTimestamp) {
-    cache_invalidation_timestamp_.set(
-        std::max(first.cache_invalidation_timestamp_.value(),
-                 second.cache_invalidation_timestamp_.value()));
+  domain_lawyer_.Merge(src.domain_lawyer_);
+  file_load_policy_.Merge(src.file_load_policy_);
+  allow_resources_.AppendFrom(src.allow_resources_);
+  retain_comments_.AppendFrom(src.retain_comments_);
+
+  if (src.panel_config() != NULL) {
+    set_panel_config(new PublisherConfig(*(src.panel_config())));
   }
+}
 
-  // Note that the domain-lawyer merge works one-at-a-time, which is easier
-  // to unit test.  So we have to call it twice.
-  domain_lawyer_.Merge(first.domain_lawyer_);
-  domain_lawyer_.Merge(second.domain_lawyer_);
+RewriteOptions::OptionInt64MergeWithMax::~OptionInt64MergeWithMax() {
+}
 
-  file_load_policy_.Merge(first.file_load_policy_);
-  file_load_policy_.Merge(second.file_load_policy_);
-
-  allow_resources_.CopyFrom(first.allow_resources_);
-  allow_resources_.AppendFrom(second.allow_resources_);
-
-  retain_comments_.CopyFrom(first.retain_comments_);
-  retain_comments_.AppendFrom(second.retain_comments_);
-
-  if (second.panel_config() != NULL) {
-    set_panel_config(new PublisherConfig(*(second.panel_config())));
-  } else if (first.panel_config() != NULL) {
-    set_panel_config(new PublisherConfig(*(first.panel_config())));
+void RewriteOptions::OptionInt64MergeWithMax::Merge(
+    const OptionBase* src_base) {
+  const OptionInt64MergeWithMax* src =
+      static_cast<const OptionInt64MergeWithMax*>(src_base);
+  if (src->was_set() && (!was_set() || (src->value() > value()))) {
+    set(src->value());
   }
 }
 
 RewriteOptions* RewriteOptions::Clone() const {
   RewriteOptions* options = new RewriteOptions;
-  options->CopyFrom(*this);
-
-  const PublisherConfig* config = panel_config();
-  if (config != NULL) {
-    options->set_panel_config(new PublisherConfig(*config));
-  }
+  options->Merge(*this);
+  options->frozen_ = false;
+  options->modified_ = false;
   return options;
 }
 

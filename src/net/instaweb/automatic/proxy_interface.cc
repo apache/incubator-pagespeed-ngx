@@ -211,7 +211,8 @@ ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
   scoped_ptr<RewriteOptions> scoped_domain_options(domain_options);
   if (scoped_domain_options.get() != NULL) {
     custom_options.reset(resource_manager_->NewOptions());
-    custom_options->Merge(*options, *scoped_domain_options.get());
+    custom_options->Merge(*options);
+    custom_options->Merge(*scoped_domain_options.get());
     options = custom_options.get();
   }
 
@@ -232,7 +233,8 @@ ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
       // the new merged options.
       scoped_ptr<RewriteOptions> options_buffer(custom_options.release());
       custom_options.reset(resource_manager_->NewOptions());
-      custom_options->Merge(*options, *query_options.get());
+      custom_options->Merge(*options);
+      custom_options->Merge(*query_options.get());
       break;
     }
   }

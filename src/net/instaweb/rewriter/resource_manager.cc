@@ -643,8 +643,7 @@ size_t ResourceManager::num_active_rewrite_drivers() {
 
 RewriteOptions* ResourceManager::global_options() {
   if (base_class_options_.get() == NULL) {
-    base_class_options_.reset(factory_->NewRewriteOptions());
-    base_class_options_->CopyFrom(*factory_->default_options());
+    base_class_options_.reset(factory_->default_options()->Clone());
   }
   return base_class_options_.get();
 }

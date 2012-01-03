@@ -313,7 +313,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   if ((directory_options != NULL) && directory_options->modified()) {
     custom_options.reset(factory->NewRewriteOptions());
-    custom_options->Merge(*host_options, *directory_options);
+    custom_options->Merge(*host_options);
+    custom_options->Merge(*directory_options);
     manager->ComputeSignature(custom_options.get());
     options = custom_options.get();
     use_custom_options = true;
@@ -404,7 +405,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
       case RewriteQuery::kSuccess: {
         use_custom_options = true;
         RewriteOptions* merged_options = factory->NewRewriteOptions();
-        merged_options->Merge(*options, query_options);
+        merged_options->Merge(*options);
+        merged_options->Merge(query_options);
         manager->ComputeSignature(merged_options);
         custom_options.reset(merged_options);
         options = merged_options;
@@ -1295,7 +1297,8 @@ void* merge_dir_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
   // the merged configuration.
   ApacheConfig* dir3 = new ApacheConfig(StrCat(
       "Combine(", dir1->description(), ", ", dir2->description(), ")"));
-  dir3->Merge(*dir1, *dir2);
+  dir3->Merge(*dir1);
+  dir3->Merge(*dir2);
   apr_pool_cleanup_register(pool, dir3, delete_config, apr_pool_cleanup_null);
   return dir3;
 }

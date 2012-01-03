@@ -44,6 +44,9 @@ vars = {
   "opencv_src": "https://code.ros.org/svn/opencv/tags/2.1",
   "opencv_revision": "@head",
 
+  "jsoncpp_src": "https://jsoncpp.svn.sourceforge.net/svnroot/jsoncpp/trunk/",
+  "jsoncpp_revision": "@247",
+
   "gflags_root": "http://google-gflags.googlecode.com/svn/tags/gflags-1.5/src",
   "gflags_revision": "@head",
 
@@ -184,6 +187,13 @@ deps = {
 
   "src/third_party/opencv/src/opencv/3rdparty/include":
     Var("opencv_src") + "/opencv/3rdparty/include" + Var("opencv_revision"),
+
+  # Json cpp.
+  "src/third_party/jsoncpp/src":
+    Var("jsoncpp_src") + "/jsoncpp/src" + Var("jsoncpp_revision"),
+
+  "src/third_party/jsoncpp/include":
+    Var("jsoncpp_src") + "/jsoncpp/include" + Var("jsoncpp_revision"),
 
   "src/third_party/serf/src": Var("serf_src") + Var("serf_revision"),
 

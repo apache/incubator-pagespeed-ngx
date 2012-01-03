@@ -412,14 +412,21 @@ class RewriteOptions {
   void set_panel_config(PublisherConfig* panel_config);
   const PublisherConfig* panel_config() const;
 
-
-  // Merge together two source RewriteOptions to populate this.  The order
-  // is significant: the second will override the first.  One semantic
-  // subject to interpretation is when a core-filter is disabled in the
-  // first set and not in the second.  In this case, my judgement is that
-  // the 'disable' from the first should override the core-set membership
-  // in the second, but not an 'enable' in the second.
-  virtual void Merge(const RewriteOptions& first, const RewriteOptions& second);
+  // Merge src into 'this'.  Generally, options that are explicitly
+  // set in src will override those explicitly set in 'this', although
+  // option Merge implemntations can be redefined by specific Option
+  // class implementations (e.g. OptionInt64MergeWithMax).  One
+  // semantic subject to interpretation is when a core-filter is
+  // disabled in the first set and not in the second.  My judgement is
+  // that the 'disable' from 'this' should override the core-set
+  // membership in the 'src', but not an 'enable' in the 'src'.
+  //
+  // You can make an exact duplicate of RewriteOptions object 'src' via
+  // (new 'typeof src')->Merge(src).
+  //
+  // Merge expects that 'src' and 'this' are the same type.  If that's
+  // not true, this function will DCHECK.
+  virtual void Merge(const RewriteOptions& src);
 
   // Registers a wildcard pattern for to be allowed, potentially overriding
   // previous Disallow wildcards.
@@ -465,12 +472,6 @@ class RewriteOptions {
     return retain_comments_.Match(comment, false);
   }
 
-  void CopyFrom(const RewriteOptions& src) {
-    frozen_ = false;
-    modified_ = false;
-    Merge(src, src);  // We lack a better implementation of Copy.
-  }
-
   // Make an identical copy of these options and return it.  This does
   // *not* copy the signature, and the returned options are not in
   // a frozen state.
@@ -511,7 +512,7 @@ class RewriteOptions {
    public:
     OptionBase() : id_(NULL) {}
     virtual ~OptionBase();
-    virtual void Merge(const OptionBase* one, const OptionBase* two) = 0;
+    virtual void Merge(const OptionBase* src) = 0;
     virtual bool was_set() const = 0;
     virtual GoogleString Signature(const Hasher* hasher) const = 0;
     virtual GoogleString ToString() const = 0;
@@ -556,17 +557,16 @@ class RewriteOptions {
     // The caller is responsible for ensuring that only the same typed Options
     // are compared.  In RewriteOptions::Merge this is guaranteed because we
     // are always comparing options at the same index in a vector<OptionBase*>.
-    virtual void Merge(const OptionBase* a, const OptionBase* b) {
-      MergeHelper(static_cast<const Option*>(a), static_cast<const Option*>(b));
+    virtual void Merge(const OptionBase* src) {
+      MergeHelper(static_cast<const Option*>(src));
     }
 
-    void MergeHelper(const Option* one, const Option* two) {
-      if (two->was_set_ || !one->was_set_) {
-        value_ = two->value_;
-        was_set_ = two->was_set_;
-      } else {
-        value_ = one->value_;
-        was_set_ = true;  // this stmt is reached only if one.was_set_==true
+    void MergeHelper(const Option* src) {
+      // Even if !src->was_set, the default value needs to be transferred
+      // over in case it was changed with set_default or SetDefaultRewriteLevel.
+      if (src->was_set_ || !was_set_) {
+        value_ = src->value_;
+        was_set_ = src->was_set_;
       }
     }
 
@@ -583,6 +583,15 @@ class RewriteOptions {
     bool was_set_;
 
     DISALLOW_COPY_AND_ASSIGN(Option);
+  };
+
+  // Like Option<int64>, but merge by taking the Max of the two values.  Note
+  // that this could be templatized on type in which case we'd need to inline
+  // the implementation of Merge.
+  class OptionInt64MergeWithMax : public Option<int64> {
+   public:
+    virtual ~OptionInt64MergeWithMax();
+    virtual void Merge(const OptionBase* src_base);
   };
 
   // When adding an option, we take the default_value by value, not
@@ -663,6 +672,8 @@ class RewriteOptions {
   // we don't really care we'll try to keep the code structured better.
   Option<RewriteLevel> level_;
 
+  OptionInt64MergeWithMax cache_invalidation_timestamp_;
+
   Option<int64> css_inline_max_bytes_;
   Option<int64> image_inline_max_bytes_;
   Option<int64> css_image_inline_max_bytes_;
@@ -674,7 +685,6 @@ class RewriteOptions {
   Option<int64> max_html_cache_time_ms_;
   // Resources with Cache-Control TTL less than this will not be rewritten.
   Option<int64> min_resource_cache_time_to_rewrite_ms_;
-  Option<int64> cache_invalidation_timestamp_;
   Option<int64> idle_flush_time_ms_;
 
   // Options related to jpeg compression.
