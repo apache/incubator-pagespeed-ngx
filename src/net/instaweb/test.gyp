@@ -55,6 +55,7 @@
       ],
       'sources': [
         'automatic/html_detector_test.cc',
+        'automatic/proxy_fetch_test.cc',
         'automatic/proxy_interface_test.cc',
         'htmlparse/html_keywords_test.cc',
         'htmlparse/html_name_test.cc',

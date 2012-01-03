@@ -105,6 +105,7 @@ class ResourceManager {
   StringPiece filename_prefix() const { return file_prefix_; }
   Statistics* statistics() const { return statistics_; }
   NamedLockManager* lock_manager() const { return lock_manager_; }
+  RewriteDriverFactory* factory() const { return factory_; }
 
   // Writes the specified contents into the output resource, retaining
   // both a name->filename map and the filename->contents map.

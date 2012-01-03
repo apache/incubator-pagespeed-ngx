@@ -687,6 +687,13 @@ class RewriteDriver : public HtmlParse {
                            const GoogleUrl& output_base,
                            bool* proxy_mode) const;
 
+  void set_user_ip(const GoogleString& x) {
+    user_ip_ = x;
+  }
+  const GoogleString& user_ip() const {
+    return user_ip_;
+  }
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -970,6 +977,9 @@ class RewriteDriver : public HtmlParse {
   Writer* writer_;
 
   int64 start_time_ms_;
+
+  // Stores the user IP.
+  GoogleString user_ip_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

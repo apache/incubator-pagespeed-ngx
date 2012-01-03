@@ -41,7 +41,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/panel_config.pb.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -104,28 +103,29 @@ class LayoutFetch : public StringAsyncFetch {
   virtual ~LayoutFetch() {}
 
   virtual void HandleDone(bool success) {
-    if (success) {
-      RewriteDriver* layout_computation_driver =
-          resource_manager_->NewCustomRewriteDriver(options_.release());
-      // Set deadline to 10s since we want maximum filters to complete.
-      // Note that no client is blocked waiting for this request to complete.
-      layout_computation_driver->set_rewrite_deadline_ms(
-          10 * Timer::kSecondMs);
-      layout_computation_driver->SetWriter(&value_);
-      layout_computation_driver->set_response_headers_ptr(response_headers());
-
-      layout_computation_driver->StartParse(
-          key_.substr(kLayoutCachePrefixLength));
-      layout_computation_driver->ParseText(buffer());
-
-      // Clean up.
-      layout_computation_driver->FinishParseAsync(MakeFunction(
-          this, &LayoutFetch::CompleteFinishParse));
-    } else {
+    if (!success || !response_headers()->status_code() == HttpStatus::kOK) {
       // Do nothing since the fetch failed.
       LOG(INFO) << "Background fetch for layout url " << key_ << " failed.";
       delete this;
+      return;
     }
+
+    RewriteDriver* layout_computation_driver =
+        resource_manager_->NewCustomRewriteDriver(options_.release());
+    // Set deadline to 10s since we want maximum filters to complete.
+    // Note that no client is blocked waiting for this request to complete.
+    layout_computation_driver->set_rewrite_deadline_ms(
+        10 * Timer::kSecondMs);
+    layout_computation_driver->SetWriter(&value_);
+    layout_computation_driver->set_response_headers_ptr(response_headers());
+
+    layout_computation_driver->StartParse(
+        key_.substr(kLayoutCachePrefixLength));
+    layout_computation_driver->ParseText(buffer());
+
+    // Clean up.
+    layout_computation_driver->FinishParseAsync(MakeFunction(
+        this, &LayoutFetch::CompleteFinishParse));
   }
 
   void CompleteFinishParse() {
@@ -204,11 +204,6 @@ BlinkFlow::~BlinkFlow() {}
 
 void BlinkFlow::LayoutCacheHit(const StringPiece& content,
                                const ResponseHeaders& headers) {
-  if (headers.status_code() != HttpStatus::kOK) {
-    LayoutCacheMiss();
-    return;
-  }
-
   // NOTE: Since we compute layout in background and only get it in serialized
   // form, we have to strip everything after the layout marker.
   size_t pos = content.find(kLayoutMarker);

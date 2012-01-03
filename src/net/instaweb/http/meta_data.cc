@@ -51,6 +51,7 @@ const char HttpAttributes::kUserAgent[] = "User-Agent";
 const char HttpAttributes::kVary[] = "Vary";
 const char HttpAttributes::kWarning[] = "Warning";
 const char HttpAttributes::kXAssociatedContent[] = "X-Associated-Content";
+const char HttpAttributes::kXForwardedFor[] = "X-Forwarded-For";
 
 
 const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {

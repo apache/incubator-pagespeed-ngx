@@ -126,6 +126,10 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   // Note that this disables ajax rewriting by default.
   virtual RewriteOptions* NewRewriteOptions();
 
+  virtual bool IsDebugClient(const GoogleString& ip) const {
+    return ip == "127.0.0.1";
+  }
+
  protected:
   virtual Hasher* NewHasher();
   virtual MessageHandler* DefaultHtmlParseMessageHandler();

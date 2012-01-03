@@ -161,7 +161,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       rewrite_worker_(NULL),
       low_priority_rewrite_worker_(NULL),
       writer_(NULL),
-      start_time_ms_(0) {
+      start_time_ms_(0),
+      user_ip_() {
   // Set up default values for the amount of time an HTML rewrite will wait for
   // Rewrites to complete, based on whether compiled for debug or running on
   // valgrind.  Note that unit-tests can explicitly override this value via
@@ -237,6 +238,7 @@ void RewriteDriver::Clear() {
   detached_fetch_main_path_complete_ = false;
   panel_filter_incomplete_ = false;
   start_time_ms_ = 0;
+  user_ip_.clear();
 }
 
 // Must be called with rewrite_mutex() held.

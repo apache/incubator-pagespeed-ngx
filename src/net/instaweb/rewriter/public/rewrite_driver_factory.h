@@ -224,6 +224,11 @@ class RewriteDriverFactory {
   // may be useful for object deletion cleanups.
   void defer_delete(Function* f) { deferred_deletes_.push_back(f); }
 
+  // Base method that returns true if the given ip is a debug ip.
+  virtual bool IsDebugClient(const GoogleString& ip) const {
+    return false;
+  }
+
  protected:
   bool FetchersComputed() const;
   void StopCacheWrites();

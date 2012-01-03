@@ -196,6 +196,12 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
         resource_manager_->NewCustomRewriteDriver(custom_options);
   }
 
+  const char* user_ip = request_headers()->Lookup1(
+      HttpAttributes::kXForwardedFor);
+  if (user_ip != NULL) {
+    driver_->set_user_ip(user_ip);
+  }
+
   // TODO(sligocki): Make complete request header available to filters.
   const char* cookies = request_headers()->Lookup1(HttpAttributes::kCookie);
   if (cookies != NULL) {

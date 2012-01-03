@@ -60,6 +60,7 @@ struct HttpAttributes {
   static const char kVary[];
   static const char kWarning[];
   static const char kXAssociatedContent[];
+  static const char kXForwardedFor[];
 };
 
 namespace HttpStatus {

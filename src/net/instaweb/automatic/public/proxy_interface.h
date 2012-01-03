@@ -139,6 +139,8 @@ class ProxyInterface : public UrlAsyncFetcher {
   TimedVariable* all_requests_;
   // Total Pagespeed requests.
   TimedVariable* pagespeed_requests_;
+  // Blink requests.
+  TimedVariable* blink_requests_;
 
   scoped_ptr<ProxyFetchFactory> proxy_fetch_factory_;
 

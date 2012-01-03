@@ -21,7 +21,6 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -44,7 +43,6 @@ void ResourceFetch::Start(ResourceManager* manager,
   RewriteDriver* driver = (custom_options == NULL)
       ? manager->NewRewriteDriver()
       : manager->NewCustomRewriteDriver(custom_options);
-  LOG(INFO) << "Fetch with RewriteDriver " << driver;
   ResourceFetch* resource_fetch = new ResourceFetch(
       url, async_fetch, manager->message_handler(), driver,
       manager->url_async_fetcher(), manager->timer(), version);

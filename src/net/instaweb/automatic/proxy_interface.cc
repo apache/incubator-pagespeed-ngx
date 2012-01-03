@@ -49,6 +49,7 @@ namespace {
 // Names for Statistics variables.
 const char kTotalRequestCount[] = "all-requests";
 const char kPagespeedRequestCount[] = "pagespeed-requests";
+const char kBlinkRequestCount[] = "blink-requests";
 
 // Provides a callback whose Done() function is executed once we have
 // rewrite options.
@@ -93,11 +94,13 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
       hostname_(hostname.as_string()),
       port_(port),
       all_requests_(NULL),
-      pagespeed_requests_(NULL) {
+      pagespeed_requests_(NULL),
+      blink_requests_(NULL) {
   proxy_fetch_factory_.reset(new ProxyFetchFactory(manager));
   if (stats != NULL) {
     all_requests_ = stats->GetTimedVariable(kTotalRequestCount);
     pagespeed_requests_ = stats->GetTimedVariable(kPagespeedRequestCount);
+    blink_requests_ = stats->GetTimedVariable(kBlinkRequestCount);
   }
 }
 
@@ -108,6 +111,8 @@ void ProxyInterface::Initialize(Statistics* statistics) {
   statistics->AddTimedVariable(kTotalRequestCount,
                                ResourceManager::kStatisticsGroup);
   statistics->AddTimedVariable(kPagespeedRequestCount,
+                               ResourceManager::kStatisticsGroup);
+  statistics->AddTimedVariable(kBlinkRequestCount,
                                ResourceManager::kStatisticsGroup);
 }
 
@@ -286,6 +291,13 @@ void ProxyInterface::ProxyRequestCallback(bool is_resource_fetch,
       const Layout* layout = ExtractBlinkLayout(*request_url, async_fetch,
                                                 options);
       if (layout != NULL) {
+        // TODO(rahulbansal): Remove this LOG once we expect to have
+        // Blink requests.
+        LOG(INFO) << "Triggering Blink flow for url "
+                  << request_url->Spec().as_string();
+        if (blink_requests_ != NULL) {
+          blink_requests_->IncBy(1);
+        }
         BlinkFlow::Start(request_url->Spec().as_string(), async_fetch, layout,
                          options, proxy_fetch_factory_.get(),
                          resource_manager_);
