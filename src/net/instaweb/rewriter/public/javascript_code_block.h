@@ -24,6 +24,7 @@
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -131,7 +132,9 @@ class JavascriptCodeBlock {
   // that output also contains starting and ending quotes, to facilitate
   // embedding.
   static void ToJsStringLiteral(const StringPiece& original,
-                                GoogleString* escaped);
+                                GoogleString* escaped) {
+    EscapeToJsStringLiteral(original, true /*add quotes*/, escaped);
+  }
 
  private:
   void RewriteIfNecessary() {

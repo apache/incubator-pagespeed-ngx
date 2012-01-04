@@ -54,6 +54,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_javascript_gperf.a \
   net/instaweb/libinstaweb_js_defer_data2c.a \
   net/instaweb/libinstaweb_lazyload_images_data2c.a \
+  net/instaweb/libinstaweb_panel_config_pb.a \
   net/instaweb/libinstaweb_rewriter.a \
   net/instaweb/libinstaweb_rewriter_base.a \
   net/instaweb/libinstaweb_rewriter_css.a \
@@ -69,7 +70,6 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_util_core.a \
   net/instaweb/libinstaweb_util_pthread.a \
   net/instaweb/libmem_clean_up.a \
-  net/instaweb/libpanel_config_pb.a \
   third_party/base64/libbase64.a \
   third_party/chromium/src/base/third_party/dynamic_annotations/libdynamic_annotations.a \
   third_party/chromium/src/net/tools/liburl_to_filename_encoder.a \

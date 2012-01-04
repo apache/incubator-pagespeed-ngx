@@ -152,6 +152,21 @@
       ],
     },
     {
+      'target_name': 'instaweb_panel_config_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter/',
+      },
+      'sources': [
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/panel_config.pb.cc',
+        'rewriter/panel_config.proto',
+      ],
+      'dependencies': [
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_rewriter_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -174,6 +189,18 @@
       },
       'sources': [
         'http/bot_checker.gperf',
+      ],
+      'includes': [
+        'gperf.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_rewriter_html_gperf',
+      'variables': {
+        'instaweb_gperf_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        'rewriter/rewrite_option_names.gperf',
       ],
       'includes': [
         'gperf.gypi',
@@ -228,6 +255,7 @@
         'util/condvar.cc',
         'util/data_url.cc',
         'util/debug.cc',
+        'util/escaping.cc',
         'util/file_cache.cc',
         'util/file_system.cc',
         'util/file_system_lock_manager.cc',
@@ -400,12 +428,15 @@
       'dependencies': [
         'instaweb_util',
         'instaweb_core.gyp:instaweb_htmlparse_core',
+        'instaweb_panel_config_pb',
+        'instaweb_rewriter_html_gperf',
         'instaweb_rewriter_pb',
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [
         'rewriter/domain_lawyer.cc',
         'rewriter/resource.cc',
+        'rewriter/rewrite_options.cc',
         'rewriter/output_resource.cc',
         'rewriter/resource_namer.cc',
         'rewriter/resource_manager.cc',
@@ -554,12 +585,12 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_core.gyp:instaweb_rewriter_html',
-        'instaweb_core.gyp:panel_config_pb',
         'instaweb_http',
         'instaweb_delay_images_data2c',
         'instaweb_delay_images_inline_data2c',
         'instaweb_js_defer_data2c',
         'instaweb_lazyload_images_data2c',
+        'instaweb_panel_config_pb',
         'instaweb_rewriter_base',
         'instaweb_rewriter_css',
         'instaweb_rewriter_image',
@@ -657,8 +688,8 @@
       'target_name': 'instaweb_automatic',
       'type': '<(library)',
       'dependencies': [
-        'instaweb_core.gyp:panel_config_pb',
         'instaweb_http',
+        'instaweb_panel_config_pb',
         'instaweb_rewriter',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',

@@ -123,7 +123,10 @@ int MatchBlock(const char* pat, const char* str) {
 
 }  // namespace
 
-bool Wildcard::Match(const StringPiece& actual) {
+bool Wildcard::Match(const StringPiece& actual) const {
+  if (is_simple_) {
+    return (actual == spec());
+  }
   // We match a block at a time, checking incrementally that there are always
   // enough characters remaining in actual to match the remaining blocks in
   // storage_.  We do this by maintaining "chars_to_skip", which counts the

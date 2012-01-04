@@ -117,6 +117,25 @@ const int kOptWaitForRewriteMsPerFlush = 10;
 const int kValgrindWaitForRewriteMsPerFlush = 1000;
 const int kTestTimeoutMs = 10000;
 
+// Implementation of RemoveCommentsFilter::OptionsInterface that wraps
+// a RewriteOptions instance.
+class RemoveCommentsFilterOptions
+    : public RemoveCommentsFilter::OptionsInterface {
+ public:
+  RemoveCommentsFilterOptions(const RewriteOptions* options)
+      : options_(options) {
+  }
+
+  virtual bool IsRetainedComment(const StringPiece& comment) const {
+    return options_->IsRetainedComment(comment);
+  }
+
+ private:
+  const RewriteOptions* options_;
+
+  DISALLOW_COPY_AND_ASSIGN(RemoveCommentsFilterOptions);
+};
+
 }  // namespace
 
 class FileSystem;
@@ -780,7 +799,8 @@ void RewriteDriver::AddPreRenderFilters() {
     EnableRewriteFilter(RewriteOptions::kImageCompressionId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kRemoveComments)) {
-    AppendOwnedPreRenderFilter(new RemoveCommentsFilter(this, rewrite_options));
+    AppendOwnedPreRenderFilter(new RemoveCommentsFilter(
+        this, new RemoveCommentsFilterOptions(rewrite_options)));
   }
   if (rewrite_options->Enabled(RewriteOptions::kCollapseWhitespace)) {
     // Remove excess whitespace in HTML

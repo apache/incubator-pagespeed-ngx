@@ -20,7 +20,6 @@
 
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 
@@ -29,14 +28,17 @@ namespace net_instaweb {
 class RemoveCommentsFilterTest : public HtmlParseTestBase {
  protected:
   RemoveCommentsFilterTest()
-      : remove_comments_filter_(&html_parse_, &options_) {
+      : options_(new RemoveCommentsFilter::OptionsImpl()),
+        remove_comments_filter_(&html_parse_, options_) {
     html_parse_.AddFilter(&remove_comments_filter_);
   }
 
   virtual bool AddBody() const { return false; }
 
  protected:
-  RewriteOptions options_;
+  // NOTE: The options_ instance is owned by the
+  // remove_comments_filter_ instance.
+  RemoveCommentsFilter::OptionsImpl* options_;
   RemoveCommentsFilter remove_comments_filter_;
 
  private:
@@ -69,7 +71,7 @@ TEST_F(RemoveCommentsFilterTest, DoNotRemoveIEDirective) {
 }
 
 TEST_F(RemoveCommentsFilterTest, Retain) {
-  options_.RetainComment("*google_ad_section_*");
+  options_->RetainComment("*google_ad_section_*");
   ValidateNoChanges("do_not_remove_ad_section",
                     "<body>hello <!-- google_ad_section_start --></body>");
   ValidateExpected("remove_comment_not_matching_retained",

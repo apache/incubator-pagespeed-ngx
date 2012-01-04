@@ -111,32 +111,4 @@ void JavascriptCodeBlock::Rewrite() {
   }
 }
 
-// We escape backslash, double-quote, CR and LF while forming a string
-// from the code. This is /almost/ completely right: U+2028 and U+2029 are
-// line terminators as well (ECMA 262-5 --- 7.3, 7.8.4), so should really be
-// escaped, too, but we don't have the encoding here.
-void JavascriptCodeBlock::ToJsStringLiteral(
-    const StringPiece& original, GoogleString* escaped) {
-  (*escaped) += "\"";
-  for (size_t c = 0; c < original.length(); ++c) {
-    switch (original[c]) {
-      case '\\':
-        (*escaped) += "\\\\";
-        break;
-      case '"':
-        (*escaped) += "\\\"";
-        break;
-      case '\r':
-        (*escaped) += "\\r";
-        break;
-      case '\n':
-        (*escaped) += "\\n";
-        break;
-      default:
-        (*escaped) += original[c];
-    }
-  }
-  (*escaped) += "\"";
-}
-
 }  // namespace net_instaweb

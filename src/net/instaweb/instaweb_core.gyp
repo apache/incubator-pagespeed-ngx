@@ -15,9 +15,6 @@
 {
   'variables': {
     'instaweb_root': '../..',
-    'protoc_out_dir': '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
-    'protoc_executable':
-        '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)protoc<(EXECUTABLE_SUFFIX)',
     'chromium_code': 1,
   },
   'targets': [
@@ -130,40 +127,11 @@
       },
     },
     {
-      'target_name': 'instaweb_rewriter_html_gperf',
-      'variables': {
-        'instaweb_gperf_subdir': 'net/instaweb/rewriter',
-      },
-      'sources': [
-        'rewriter/rewrite_option_names.gperf',
-      ],
-      'includes': [
-        'gperf.gypi',
-      ]
-    },
-    {
-      'target_name': 'panel_config_pb',
-      'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/rewriter/',
-      },
-      'sources': [
-        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/panel_config.pb.cc',
-        'rewriter/panel_config.proto',
-      ],
-      'dependencies': [
-      ],
-      'includes': [
-        'protoc.gypi',
-      ],
-    },
-    {
       'target_name': 'instaweb_rewriter_html',
       'type': '<(library)',
       'dependencies': [
         'instaweb_util_core',
         'instaweb_htmlparse_core',
-        'instaweb_rewriter_html_gperf',
-        'panel_config_pb',
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [
@@ -172,7 +140,6 @@
         'rewriter/file_load_policy.cc',
         'rewriter/html_attribute_quote_removal.cc',
         'rewriter/remove_comments_filter.cc',
-        'rewriter/rewrite_options.cc'
       ],
       'include_dirs': [
         '<(instaweb_root)',
@@ -189,9 +156,6 @@
         'instaweb_htmlparse_core',
       ]
     },
-    # We build this target to make sure that we don't accidentially
-    # introduce dependencies from the core libraries to non-core
-    # libraries.
     {
       'target_name': 'html_minifier_main',
       'type': 'executable',
@@ -205,5 +169,55 @@
         'rewriter/html_minifier_main.cc',
       ],
     },
+  ],
+  'conditions': [
+    ['OS=="linux"', {
+      'targets': [
+        # We build this target to make sure that we don't accidentially
+        # introduce dependencies from the core libraries to non-core
+        # libraries.
+        {
+          'target_name': 'html_minifier_main_dependency_check',
+          'type': 'none',
+          'dependencies': [
+            'html_minifier_main',
+          ],
+          'actions': [
+            {
+              'action_name': 'html_minifier_main_dependency_check',
+              'inputs': [
+                '<(PRODUCT_DIR)/html_minifier_main',
+              ],
+              'outputs': [
+                '<(PRODUCT_DIR)/html_minifier_main_dependency_check',
+              ],
+              'action': [
+                'g++',
+                '-pthread',
+                '-o', '<@(_outputs)',
+                '<(LIB_DIR)/html_minifier_main/net/instaweb/rewriter/html_minifier_main.o',
+
+                # Only the following dependencies are allowed. If you
+                # find yourself needing to add additional dependencies,
+                # please check with bmcquade first.
+                '<(LIB_DIR)/net/instaweb/libinstaweb_rewriter_html.a',
+                '<(LIB_DIR)/net/instaweb/libinstaweb_htmlparse_core.a',
+                '<(LIB_DIR)/net/instaweb/libhttp_core.a',
+                '<(LIB_DIR)/net/instaweb/libinstaweb_util_core.a',
+                '<(LIB_DIR)/net/instaweb/libinstaweb_htmlparse_core_gperf.a',
+                '<(LIB_DIR)/build/temp_gyp/libgoogleurl.a',
+                '<(LIB_DIR)/base/libbase.a',
+                '<(LIB_DIR)/base/libbase_static.a',
+                '<(LIB_DIR)/third_party/chromium/src/base/third_party/dynamic_annotations/libdynamic_annotations.a',
+                '<(LIB_DIR)/third_party/modp_b64/libmodp_b64.a',
+                '<(LIB_DIR)/third_party/icu/libicuuc.a',
+                '<(LIB_DIR)/third_party/icu/libicudata.a',
+                '-lrt',
+              ],
+            },
+          ],
+        },
+      ],
+    }],
   ],
 }

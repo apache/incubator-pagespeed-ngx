@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2011 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,25 +14,20 @@
  * limitations under the License.
  */
 
-// Author: mdsteele@google.com (Matthew D. Steele)
+// Author: vitaliyl@google.com (Vitaliy Lvin)
 
-#include "net/instaweb/rewriter/public/remove_comments_filter.h"
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_ESCAPING_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_ESCAPING_H_
 
-#include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-RemoveCommentsFilter::~RemoveCommentsFilter() {}
-
-void RemoveCommentsFilter::Comment(HtmlCommentNode* comment) {
-  if ((options_ == NULL) ||
-      !options_->IsRetainedComment(comment->contents())) {
-    html_parse_->DeleteElement(comment);
-  }
-}
-
-RemoveCommentsFilter::OptionsInterface::~OptionsInterface() {
-}
+void EscapeToJsStringLiteral(const StringPiece& original,
+                             bool add_quotes,
+                             GoogleString* escaped);
 
 }  // namespace net_instaweb
+
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_ESCAPING_H_

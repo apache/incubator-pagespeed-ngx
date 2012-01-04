@@ -34,14 +34,16 @@ class Wildcard {
   explicit Wildcard(const StringPiece& wildcard_spec);
 
   // Determines whether a string matches the wildcard.
-  bool Match(const StringPiece& str);
+  bool Match(const StringPiece& str) const;
 
   // Determines whether this wildcard is just a simple name, lacking
   // any wildcard characters.
   bool IsSimple() const { return is_simple_; }
 
   // Returns the original wildcard specification.
-  const StringPiece spec() const { return storage_; }
+  const StringPiece spec() const {
+    return StringPiece(storage_.data(), storage_.size() - 1);
+  }
 
   // Makes a duplicate copy of the wildcard object.
   Wildcard* Duplicate() const;

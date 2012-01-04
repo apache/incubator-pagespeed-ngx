@@ -20,12 +20,15 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REMOVE_COMMENTS_FILTER_H_
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/wildcard_group.h"
 
 namespace net_instaweb {
 class HtmlCommentNode;
 class HtmlParse;
-class RewriteOptions;
 
 // Reduce the size of the HTML by removing all HTML comments (except those
 // which are IE directives).  Note that this is a potentially dangerous
@@ -33,14 +36,54 @@ class RewriteOptions;
 // removing those comments might break something.
 class RemoveCommentsFilter : public EmptyHtmlFilter {
  public:
+  // Interface that allows policy injection into a RemoveCommentsFilter
+  // instance. We cannot use RewriteOptions directly here since
+  // RemoveCommentsFilter does not want to take on all of the
+  // RewriteOptions dependencies.
+  class OptionsInterface {
+   public:
+    OptionsInterface() {}
+    virtual ~OptionsInterface();
+
+    // Return true if the given comment should not be removed from the
+    // HTML, false otherwise.
+    virtual bool IsRetainedComment(const StringPiece& comment) const = 0;
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(OptionsInterface);
+  };
+
+  // Basic default implementation.
+  class OptionsImpl : public OptionsInterface {
+   public:
+    OptionsImpl() {}
+
+    void RetainComment(const StringPiece& comment) {
+      retain_comments_.Allow(comment);
+    }
+
+    virtual bool IsRetainedComment(const StringPiece& comment) const {
+      return retain_comments_.Match(comment, false);
+    }
+
+   private:
+    WildcardGroup retain_comments_;
+
+    DISALLOW_COPY_AND_ASSIGN(OptionsImpl);
+  };
+
   explicit RemoveCommentsFilter(HtmlParse* html_parse)
       : html_parse_(html_parse),
-        rewrite_options_(NULL) {
+        options_(NULL) {
   }
 
-  RemoveCommentsFilter(HtmlParse* html_parse, const RewriteOptions* options)
+  // RemoveCommentsFilter takes ownership of the passed in
+  // OptionsInterface instance. It is ok for OptionsInterface to be
+  // NULL.
+  RemoveCommentsFilter(HtmlParse* html_parse,
+                       const OptionsInterface* options)
       : html_parse_(html_parse),
-        rewrite_options_(options) {
+        options_(options) {
   }
 
   virtual ~RemoveCommentsFilter();
@@ -50,7 +93,7 @@ class RemoveCommentsFilter : public EmptyHtmlFilter {
 
  private:
   HtmlParse* html_parse_;
-  const RewriteOptions* rewrite_options_;
+  scoped_ptr<const OptionsInterface> options_;
 
   DISALLOW_COPY_AND_ASSIGN(RemoveCommentsFilter);
 };
