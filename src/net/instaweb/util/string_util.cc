@@ -137,7 +137,7 @@ GoogleString CEscape(const StringPiece& src) {
       case '\\': dest[used++] = '\\'; dest[used++] = '\\'; break;
       default:
         if (ch < 32 || ch >= 127) {
-          std::snprintf(dest + used, 5, "\\%03o", ch);
+          base::snprintf(dest + used, 5, "\\%03o", ch);
           used += 4;
         } else {
           dest[used++] = ch;
