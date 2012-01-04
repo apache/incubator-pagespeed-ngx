@@ -40,7 +40,7 @@ int64 GoogleTimer::NowUs() const {
   if (gettimeofday(&tv, &tz) != 0) {
     LOG(FATAL) << "Could not determine time of day: " << strerror(errno);
   }
-  return (tv.tv_sec * 1000000) + tv.tv_usec;
+  return (static_cast<int64>(tv.tv_sec) * 1000000) + tv.tv_usec;
 }
 
 void GoogleTimer::SleepUs(int64 us) {
