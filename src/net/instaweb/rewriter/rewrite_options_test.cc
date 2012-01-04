@@ -498,5 +498,4 @@ TEST_F(RewriteOptionsTest, SetDefaultRewriteLevel) {
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheCss));
 }
 
-
 }  // namespace

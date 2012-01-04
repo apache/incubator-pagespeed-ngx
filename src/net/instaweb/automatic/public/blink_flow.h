@@ -32,9 +32,9 @@ class ResourceManager;
 class ResponseHeaders;
 class RewriteOptions;
 
-// This class manages the blink flow for looking up the layout in cache,
+// This class manages the blink flow for looking up the json in cache,
 // modifying the options for passthru and triggering asynchronous lookups to
-// compute the layout and insert it into cache.
+// compute the json and insert it into cache.
 class BlinkFlow {
  public:
   static void Start(const GoogleString& url,
@@ -47,8 +47,8 @@ class BlinkFlow {
   virtual ~BlinkFlow();
 
  private:
-  class LayoutFindCallback;
-  friend class LayoutFindCallback;
+  class JsonFindCallback;
+  friend class JsonFindCallback;
 
   BlinkFlow(const GoogleString& url,
             AsyncFetch* base_fetch,
@@ -63,16 +63,16 @@ class BlinkFlow {
         factory_(factory),
         manager_(manager) {}
 
-  void InitiateLayoutLookup();
+  void InitiateJsonLookup();
 
-  void LayoutCacheHit(const StringPiece& content,
-                      const ResponseHeaders& headers);
+  void JsonCacheHit(const StringPiece& content,
+                    const ResponseHeaders& headers);
 
-  void LayoutCacheMiss();
+  void JsonCacheMiss();
 
   void TriggerProxyFetch(bool layout_found);
 
-  void ComputeLayoutInBackground();
+  void ComputeJsonInBackground();
 
   GoogleString url_;
   AsyncFetch* base_fetch_;
@@ -80,7 +80,7 @@ class BlinkFlow {
   RewriteOptions* options_;
   ProxyFetchFactory* factory_;
   ResourceManager* manager_;
-  GoogleString layout_url_;
+  GoogleString json_url_;
 
   DISALLOW_COPY_AND_ASSIGN(BlinkFlow);
 };

@@ -48,7 +48,6 @@ class RewriteOptions {
     kCombineCss,
     kCombineHeads,
     kCombineJavascript,
-    kComputeLayout,
     kComputePanelJson,
     kConvertJpegToProgressive,
     kConvertJpegToWebp,
@@ -414,7 +413,7 @@ class RewriteOptions {
 
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this', although
-  // option Merge implemntations can be redefined by specific Option
+  // option Merge implementations can be redefined by specific Option
   // class implementations (e.g. OptionInt64MergeWithMax).  One
   // semantic subject to interpretation is when a core-filter is
   // disabled in the first set and not in the second.  My judgement is
@@ -422,7 +421,7 @@ class RewriteOptions {
   // membership in the 'src', but not an 'enable' in the 'src'.
   //
   // You can make an exact duplicate of RewriteOptions object 'src' via
-  // (new 'typeof src')->Merge(src).
+  // (new 'typeof src')->Merge(src), aka Clone().
   //
   // Merge expects that 'src' and 'this' are the same type.  If that's
   // not true, this function will DCHECK.

@@ -208,7 +208,6 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kCombineCss:                      return "Combine Css";
     case kCombineHeads:                    return "Combine Heads";
     case kCombineJavascript:               return "Combine Javascript";
-    case kComputeLayout:                   return "Computes layout";
     case kComputePanelJson:                return "Computes panel json";
     case kConvertJpegToProgressive:        return "Convert Jpeg to Progressive";
     case kConvertJpegToWebp:               return "Convert Jpeg To Webp";
@@ -261,7 +260,6 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kCombineCss:                      return kCssCombinerId;
     case kCombineHeads:                    return "ch";
     case kCombineJavascript:               return kJavascriptCombinerId;
-    case kComputeLayout:                   return "bl";
     case kComputePanelJson:                return "bp";
     case kConvertJpegToProgressive:        return "jp";
     case kConvertJpegToWebp:               return "jw";
@@ -447,7 +445,7 @@ void RewriteOptions::DisallowTroublesomeResources() {
   // http://code.google.com/p/modpagespeed/issues/detail?id=142
   // Not clear which JS file is broken and proxying is not working correctly.
 
-  if (Enabled(kComputeLayout) || Enabled(kComputePanelJson)) {
+  if (Enabled(kComputePanelJson)) {
     RetainComment(StrCat(kPanelCommentPrefix, "*"));
   }
 }

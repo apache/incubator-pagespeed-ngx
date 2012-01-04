@@ -18,14 +18,13 @@
 //
 // This class manages the flow of a blink request. In order to flush the layout
 // early before we start getting bytes back from the fetcher, we trigger a cache
-// lookup for the layout.
-// If the layout is found, we flush it out and then trigger the normal
+// lookup for the json.
+// If the json is found, we flush json out and then trigger the normal
 // ProxyFetch flow with customized options which extracts json from the page and
 // sends it out.
-// If the layout is not found in cache, we pass this request through the normal
-// ProxyFetch flow and trigger an asynchronous fetch for the sample page of the
-// family to which the current request belongs, create a driver to parse it and
-// store the extracted layout in the cache.
+// If the json is not found in cache, we pass this request through the normal
+// ProxyFetch flow and trigger an asynchronous fetch for the page,
+// create a driver to parse it and store the extracted json in the cache.
 
 #include "net/instaweb/automatic/public/blink_flow.h"
 
@@ -41,6 +40,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/panel_config.pb.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -48,22 +48,24 @@
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/timer.h"
+#include "third_party/jsoncpp/include/json/json.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
 
-const char kLayoutCachePrefix[] = "layout/";
-const int kLayoutCachePrefixLength = strlen(kLayoutCachePrefix);
+const char kJsonCachePrefix[] = "json:";
+const int kJsonCachePrefixLength = strlen(kJsonCachePrefix);
 const char kLayoutMarker[] = "<!--GooglePanel **** Layout end ****-->";
+const char kInstanceHtml[] = "instance_html";
 
 namespace {
 
 // AsyncFetch that doesn't call HeadersComplete() on the base fetch. Note that
 // this class only links the request headers from the base fetch and does not
 // link the response headers.
-// This is used as a wrapper around the base fetch when the layout is found in
-// cache. This is done because the response headers and the layout have been
+// This is used as a wrapper around the base fetch when the json is found in
+// cache. This is done because the response headers and the json have been
 // already been flushed out in the base fetch and we don't want to call
 // HeadersComplete() twice on the base fetch.
 // This class deletes itself when HandleDone() is called.
@@ -89,18 +91,18 @@ class AsyncFetchWithHeadersInhibited : public AsyncFetchUsingWriter {
 };
 
 // AsyncFetch that fetches the sample page, initiates a new RewriteDriver to
-// compute the layout and stores it in cache.
+// compute the json and stores it in cache.
 // TODO(rahulbansal): Buffer the html chunked rather than in one string.
-class LayoutFetch : public StringAsyncFetch {
+class JsonFetch : public StringAsyncFetch {
  public:
-  LayoutFetch(const GoogleString& key,
-              ResourceManager* resource_manager,
-              RewriteOptions* options)
+  JsonFetch(const GoogleString& key,
+            ResourceManager* resource_manager,
+            RewriteOptions* options)
       : key_(key),
         resource_manager_(resource_manager),
         options_(options) {}
 
-  virtual ~LayoutFetch() {}
+  virtual ~JsonFetch() {}
 
   virtual void HandleDone(bool success) {
     if (!success || !response_headers()->status_code() == HttpStatus::kOK) {
@@ -109,33 +111,25 @@ class LayoutFetch : public StringAsyncFetch {
       delete this;
       return;
     }
-
-    RewriteDriver* layout_computation_driver =
+    RewriteDriver* json_computation_driver =
         resource_manager_->NewCustomRewriteDriver(options_.release());
     // Set deadline to 10s since we want maximum filters to complete.
     // Note that no client is blocked waiting for this request to complete.
-    layout_computation_driver->set_rewrite_deadline_ms(
+    json_computation_driver->set_rewrite_deadline_ms(
         10 * Timer::kSecondMs);
-    layout_computation_driver->SetWriter(&value_);
-    layout_computation_driver->set_response_headers_ptr(response_headers());
+    json_computation_driver->SetWriter(&value_);
+    json_computation_driver->set_response_headers_ptr(response_headers());
 
-    layout_computation_driver->StartParse(
-        key_.substr(kLayoutCachePrefixLength));
-    layout_computation_driver->ParseText(buffer());
+    json_computation_driver->StartParse(
+        key_.substr(kJsonCachePrefixLength));
+    json_computation_driver->ParseText(buffer());
 
     // Clean up.
-    layout_computation_driver->FinishParseAsync(MakeFunction(
-        this, &LayoutFetch::CompleteFinishParse));
+    json_computation_driver->FinishParseAsync(MakeFunction(
+        this, &JsonFetch::CompleteFinishParse));
   }
 
   void CompleteFinishParse() {
-    HTTPCache* http_cache = resource_manager_->http_cache();
-    MessageHandler* message_handler = resource_manager_->message_handler();
-    value_.SetHeaders(response_headers());
-
-    VLOG(1) << "Adding layout to cache with key = " << key_ << "\theaders = "
-            << response_headers()->ToString();
-    http_cache->Put(key_, &value_, message_handler);
     delete this;
   }
 
@@ -145,25 +139,25 @@ class LayoutFetch : public StringAsyncFetch {
   scoped_ptr<RewriteOptions> options_;
   HTTPValue value_;
 
-  DISALLOW_COPY_AND_ASSIGN(LayoutFetch);
+  DISALLOW_COPY_AND_ASSIGN(JsonFetch);
 };
 
 }  // namespace
 
-class BlinkFlow::LayoutFindCallback : public HTTPCache::Callback {
+class BlinkFlow::JsonFindCallback : public HTTPCache::Callback {
  public:
-  explicit LayoutFindCallback(BlinkFlow* blink_fetch)
+  explicit JsonFindCallback(BlinkFlow* blink_fetch)
       : blink_fetch_(blink_fetch) {}
 
-  virtual ~LayoutFindCallback() {}
+  virtual ~JsonFindCallback() {}
 
   virtual void Done(HTTPCache::FindResult find_result) {
     if (find_result != HTTPCache::kFound) {
-      blink_fetch_->LayoutCacheMiss();
+      blink_fetch_->JsonCacheMiss();
     } else {
       StringPiece contents;
       http_value()->ExtractContents(&contents);
-      blink_fetch_->LayoutCacheHit(contents, *response_headers());
+      blink_fetch_->JsonCacheHit(contents, *response_headers());
     }
     delete this;
   }
@@ -174,7 +168,7 @@ class BlinkFlow::LayoutFindCallback : public HTTPCache::Callback {
 
  private:
   BlinkFlow* blink_fetch_;
-  DISALLOW_COPY_AND_ASSIGN(LayoutFindCallback);
+  DISALLOW_COPY_AND_ASSIGN(JsonFindCallback);
 };
 
 void BlinkFlow::Start(const GoogleString& url,
@@ -185,42 +179,50 @@ void BlinkFlow::Start(const GoogleString& url,
                       ResourceManager* manager) {
   BlinkFlow* flow = new BlinkFlow(url, base_fetch, layout, options, factory,
                                   manager);
-  flow->InitiateLayoutLookup();
+  flow->InitiateJsonLookup();
 }
 
-void BlinkFlow::InitiateLayoutLookup() {
-  const PublisherConfig* config = options_->panel_config();
+void BlinkFlow::InitiateJsonLookup() {
   GoogleUrl gurl(url_);
-  layout_url_ = StrCat(kLayoutCachePrefix, "http://",
-                       config->web_site(),
-                       layout_->reference_page_url_path());
-  LayoutFindCallback* callback = new LayoutFindCallback(this);
-  manager_->http_cache()->Find(layout_url_,
+  json_url_ = kJsonCachePrefix;
+  gurl.Spec().AppendToString(&json_url_);
+  JsonFindCallback* callback = new JsonFindCallback(this);
+  manager_->http_cache()->Find(json_url_,
                                manager_->message_handler(),
                                callback);
 }
 
 BlinkFlow::~BlinkFlow() {}
 
-void BlinkFlow::LayoutCacheHit(const StringPiece& content,
-                               const ResponseHeaders& headers) {
+void BlinkFlow::JsonCacheHit(const StringPiece& content,
+                             const ResponseHeaders& headers) {
+  Json::Reader json_reader;
+  Json::Value json;
+  std::string json_str = std::string(content.data(), content.size());
+  if (!json_reader.parse(json_str, json)) {
+    LOG(DFATAL) << "Couldn't parse Json From Cache: " << json_str;
+    JsonCacheMiss();
+    return;
+  }
+
+  StringPiece layout = (json)[0][kInstanceHtml].asCString();
   // NOTE: Since we compute layout in background and only get it in serialized
   // form, we have to strip everything after the layout marker.
-  size_t pos = content.find(kLayoutMarker);
+  size_t pos = layout.find(kLayoutMarker);
   if (pos == StringPiece::npos) {
-    LOG(DFATAL) << "Layout marker not found: " << content;
-    LayoutCacheMiss();
+    LOG(DFATAL) << "Layout marker not found: " << layout;
+    JsonCacheMiss();
     return;
   }
 
   ResponseHeaders* response_headers = base_fetch_->response_headers();
   response_headers->CopyFrom(headers);
-  // Remove any Etag headers from the layout response. Note that an Etag is
+  // Remove any Etag headers from the json response. Note that an Etag is
   // added by the HTTPCache for all responses that don't already have one.
   response_headers->RemoveAll(HttpAttributes::kEtag);
   base_fetch_->HeadersComplete();
 
-  base_fetch_->Write(content.substr(0, pos), manager_->message_handler());
+  base_fetch_->Write(layout.substr(0, pos), manager_->message_handler());
   base_fetch_->Write("<script src=\"/webinstant/blink.js\"></script>",
                      manager_->message_handler());
   base_fetch_->Write("<script>var panelLoader = new PanelLoader();</script>",
@@ -234,14 +236,14 @@ void BlinkFlow::LayoutCacheHit(const StringPiece& content,
   TriggerProxyFetch(true);
 }
 
-void BlinkFlow::LayoutCacheMiss() {
-  ComputeLayoutInBackground();
+void BlinkFlow::JsonCacheMiss() {
+  ComputeJsonInBackground();
   TriggerProxyFetch(false);
 }
 
-void BlinkFlow::TriggerProxyFetch(bool layout_found) {
+void BlinkFlow::TriggerProxyFetch(bool json_found) {
   AsyncFetch* fetch = base_fetch_;
-  if (layout_found) {
+  if (json_found) {
     // Remove any headers that can lead to a 304, since blink can't handle 304s.
     base_fetch_->request_headers()->RemoveAll(HttpAttributes::kIfNoneMatch);
     base_fetch_->request_headers()->RemoveAll(HttpAttributes::kIfModifiedSince);
@@ -254,18 +256,20 @@ void BlinkFlow::TriggerProxyFetch(bool layout_found) {
   delete this;
 }
 
-void BlinkFlow::ComputeLayoutInBackground() {
+void BlinkFlow::ComputeJsonInBackground() {
   RewriteOptions* options = options_->Clone();
-  options->EnableFilter(RewriteOptions::kComputeLayout);
+  options->EnableFilter(RewriteOptions::kComputePanelJson);
   options->EnableFilter(RewriteOptions::kDisableJavascript);
-  options->EnableFilter(RewriteOptions::kHtmlWriterFilter);
+  options->DisableFilter(RewriteOptions::kHtmlWriterFilter);
 
-  LayoutFetch* layout_fetch = new LayoutFetch(layout_url_, manager_, options);
+  JsonFetch* json_fetch = new JsonFetch(json_url_, manager_, options);
 
+  // TODO(rahulbansal): We can use the output of AsyncFetchWithHeadersInhibited
+  // instead of triggering a new background fetch.
   manager_->url_async_fetcher()->Fetch(
-      layout_url_.substr(kLayoutCachePrefixLength),
+      json_url_.substr(kJsonCachePrefixLength),
       manager_->message_handler(),
-      layout_fetch);
+      json_fetch);
 }
 
 }  // namespace net_instaweb
