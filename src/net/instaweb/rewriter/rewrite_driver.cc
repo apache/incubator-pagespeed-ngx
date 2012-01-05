@@ -66,6 +66,7 @@
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/insert_ga_filter.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
@@ -577,6 +578,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     GoogleAnalyticsFilter::Initialize(statistics);
     ImageRewriteFilter::Initialize(statistics);
     ImageCombineFilter::Initialize(statistics);
+    InsertGAFilter::Initialize(statistics);
     JavascriptFilter::Initialize(statistics);
     JsCombineFilter::Initialize(statistics);
     MetaTagFilter::Initialize(statistics);
@@ -885,6 +887,10 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kDelayImages)) {
     // kInsertImageDimensions should be enabled to avoid drastic reflows.
     AddOwnedPostRenderFilter(new DelayImagesFilter(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kInsertGA) &&
+      rewrite_options->ga_id() != "") {
+    AddOwnedPostRenderFilter(new InsertGAFilter(this));
   }
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
   // doesn't, it probably should.  If it does, be sure to add it to the

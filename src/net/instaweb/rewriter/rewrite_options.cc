@@ -168,6 +168,7 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
 // this is managed in the c++ switch statement.
 const RewriteOptions::Filter kTestFilterSet[] = {
   RewriteOptions::kConvertJpegToWebp,
+  RewriteOptions::kInsertGA,
   RewriteOptions::kInsertImageDimensions,
   RewriteOptions::kMakeGoogleAnalyticsAsync,
   RewriteOptions::kRewriteDomains,
@@ -228,6 +229,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kInlineImages:                    return "Inline Images";
     case kInlineImportToLink:              return "Inline @import to Link";
     case kInlineJavascript:                return "Inline Javascript";
+    case kInsertGA:                        return "Insert Google Analytics";
     case kInsertImageDimensions:           return "Insert Image Dimensions";
     case kLazyloadImages:                  return "Lazyload Images";
     case kLeftTrimUrls:                    return "Left Trim Urls";
@@ -279,6 +281,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kInlineImages:                    return "ii";
     case kInlineImportToLink:              return "il";
     case kInlineJavascript:                return kJavascriptInlineId;
+    case kInsertGA:                        return "ig";
     case kInsertImageDimensions:           return "id";
     case kLazyloadImages:                  return "ll";
     case kLeftTrimUrls:                    return "tu";
@@ -392,6 +395,7 @@ RewriteOptions::RewriteOptions()
              &image_limit_resize_area_percent_, "ia");
   add_option(kDefaultImageWebpRecompressQuality,
              &image_webp_recompress_quality_, "iw");
+  add_option("", &ga_id_, "ig");
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);

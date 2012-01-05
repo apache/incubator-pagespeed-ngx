@@ -67,6 +67,7 @@ class RewriteOptions {
     kInlineImages,
     kInlineImportToLink,
     kInlineJavascript,
+    kInsertGA,
     kInsertImageDimensions,
     kLazyloadImages,
     kLeftTrimUrls,
@@ -236,6 +237,12 @@ class RewriteOptions {
   void set_css_outline_min_bytes(int64 x) {
     set_option(x, &css_outline_min_bytes_);
   }
+
+  GoogleString ga_id() const { return ga_id_.value(); }
+  void set_ga_id(GoogleString id) {
+    set_option(id, &ga_id_);
+  }
+
   int64 js_outline_min_bytes() const { return js_outline_min_bytes_.value(); }
   void set_js_outline_min_bytes(int64 x) {
     set_option(x, &js_outline_min_bytes_);
@@ -717,6 +724,7 @@ class RewriteOptions {
   scoped_ptr<PublisherConfig> panel_config_;
 
   Option<GoogleString> beacon_url_;
+  Option<GoogleString> ga_id_;
 
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,

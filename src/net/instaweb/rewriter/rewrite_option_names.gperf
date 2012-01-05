@@ -48,6 +48,7 @@ struct FilterMap {
 "inline_images",                     RewriteOptions::kInlineImages
 "inline_import_to_link",             RewriteOptions::kInlineImportToLink
 "inline_javascript",                 RewriteOptions::kInlineJavascript
+"insert_ga",                         RewriteOptions::kInsertGA
 "insert_img_dimensions",             RewriteOptions::kInsertImageDimensions
 "insert_image_dimensions",           RewriteOptions::kInsertImageDimensions
 "lazyload_images",                   RewriteOptions::kLazyloadImages
