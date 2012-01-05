@@ -779,6 +779,10 @@ TEST_P(CssFilterTest, ComplexCssTest) {
     // @import stuff
     { "@import \"styles.css\"foo; a { color: red; }",
       "@import url(styles.css) foo;a{color:red}" },
+
+    // @media with no contents
+    { "@media; a { color: red; }", "a{color:red}" },
+    { "@media screen, print; a { color: red; }", "a{color:red}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

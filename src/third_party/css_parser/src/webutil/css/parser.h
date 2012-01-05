@@ -176,7 +176,7 @@ class Parser {
   static const uint64 kBlockError       = 1ULL << 11; // 2048
   static const uint64 kNumberError      = 1ULL << 12; // 4096
   static const uint64 kImportError      = 1ULL << 13; // 8192
-  static const uint64 kAtError          = 1ULL << 14; // 16384
+  static const uint64 kAtRuleError      = 1ULL << 14; // 16384
   uint64 errors_seen_mask() const { return errors_seen_mask_; }
   uint64 unparseable_sections_seen_mask() const {
     return unparseable_sections_seen_mask_;
@@ -203,10 +203,12 @@ class Parser {
   // comments.  Returns whether delim is actually seen.
   bool SkipPastDelimiter(char delim);
 
+  // Skip until next "any" token (value which can be parsed by ParseAny).
+  //
   // Skips whitespace, comments, blocks ({..}), and @tokens, and returns true
   // unless we are at the end of the document or the next character is a token
   // ending delimiter ([;}!]).
-  bool SkipToNextToken();
+  bool SkipToNextAny();
 
   //
   // Parse functions.
@@ -482,15 +484,33 @@ class Parser {
   // containing the imported name and the media.
   Import* ParseImport();
 
-  // Starting at @, ParseAtrule parses @import, @charset, @medium, and
-  // @page declarations and adds the information to the stylesheet.
+  // Starting at @, ParseAtRule parses @import, @charset, and @medium
+  // declarations and adds the information to the stylesheet.
+  //
+  // For other (unsupported) at-keywords (like @font-face or @keyframes),
+  // we set an error and skip over and ignore the entire at-rule.
+  // TODO(sligocki): In preservation mode, we should save a dummy at-rule
+  // type for passing through verbatim bytes.
+  //
   // Consumes the @-rule, including the closing ';' or '}'.  Does not
   // consume trailing whitespace.
-  void ParseAtrule(Stylesheet* stylesheet);  // parse @ rules.
+  void ParseAtRule(Stylesheet* stylesheet);  // parse @ rules.
 
-  // Starting at '{', ParseBlock consumes to the matching '}', respecting
+  // Skip until the end of the at-rule. Used for at-rules that we do not
+  // recognize.
+  //
+  // From http://www.w3.org/TR/CSS2/syndata.html#parsing-errors:
+  //
+  //   At-rules with unknown at-keywords. User agents must ignore an invalid
+  //   at-keyword together with everything following it, up to the end of the
+  //   block that contains the invalid at-keyword, or up to and including the
+  //   next semicolon (;), or up to and including the next block ({...}),
+  //   whichever comes first.
+  void SkipToAtRuleEnd();
+
+  // Starting at '{', SkipBlock consumes to the matching '}', respecting
   // nested blocks.  We discard the result.
-  void ParseBlock();
+  void SkipBlock();
 
   // Current position in document (bytes from beginning).
   int CurrentOffset() const { return in_ - begin_; }

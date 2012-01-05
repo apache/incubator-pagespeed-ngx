@@ -849,9 +849,9 @@ TEST_F(ParserTest, illegal_constructs) {
   scoped_ptr<Parser> a(new Parser("width: {$width}"));
   scoped_ptr<Declarations> t(a->ParseDeclarations());
 
-  ASSERT_EQ(1, t->size());
-  EXPECT_EQ(Property::WIDTH, t->get(0)->prop());
-  EXPECT_EQ(0, t->get(0)->values()->size());
+  // From CSS2.1 spec http://www.w3.org/TR/CSS2/syndata.html#parsing-errors:
+  //   User agents must ignore a declaration with an illegal value.
+  EXPECT_EQ(0, t->size());
 
   a.reset(new Parser("font-family: \"Gill Sans MT;"));
   t.reset(a->ParseDeclarations());
@@ -1255,7 +1255,7 @@ TEST_F(ParserTest, atrules) {
   scoped_ptr<Parser> a(new Parser(
       "@IMPORT url(assets/style.css) screen,printer"));
   scoped_ptr<Stylesheet> t(new Stylesheet());
-  a->ParseAtrule(t.get());
+  a->ParseAtRule(t.get());
 
   ASSERT_EQ(1, t->imports().size());
   EXPECT_EQ("assets/style.css", UnicodeTextToUTF8(t->import(0).link));
@@ -1263,14 +1263,14 @@ TEST_F(ParserTest, atrules) {
 
   a.reset(new Parser("@charset \"ISO-8859-1\" ;"));
   t.reset(new Stylesheet());
-  a->ParseAtrule(t.get());
+  a->ParseAtRule(t.get());
 
   EXPECT_EQ(true, a->Done());
 
   a.reset(new Parser(
       "@media print,screen {\n\tbody { font-size: 10pt }\n}"));
   t.reset(new Stylesheet());
-  a->ParseAtrule(t.get());
+  a->ParseAtRule(t.get());
 
   ASSERT_EQ(1, t->rulesets().size());
   ASSERT_EQ(1, t->ruleset(0).selectors().size());
@@ -1288,7 +1288,7 @@ TEST_F(ParserTest, atrules) {
   a.reset(new Parser(
       "@page :left { margin-left: 4cm; margin-right: 3cm; }"));
   t.reset(new Stylesheet());
-  a->ParseAtrule(t.get());
+  a->ParseAtRule(t.get());
 
   EXPECT_EQ(0, t->rulesets().size());
   EXPECT_EQ(true, a->Done());
@@ -1297,7 +1297,7 @@ TEST_F(ParserTest, atrules) {
   a.reset(new Parser(
       "@media print { a { color: red; }  p { color: blue; } }"));
   t.reset(new Stylesheet());
-  a->ParseAtrule(t.get());
+  a->ParseAtRule(t.get());
 
   ASSERT_EQ(2, t->rulesets().size());
   EXPECT_EQ("print", UnicodeTextToUTF8(t->ruleset(0).medium(0)));
@@ -1677,6 +1677,80 @@ TEST_F(ParserTest, ParseSingleImport) {
                           "@import \"mystyle.css\" all;"));
   import.reset(parser->ParseAsSingleImport());
   EXPECT_TRUE(import.get() == NULL);
+}
+
+TEST_F(ParserTest, UnexpectedAtRule) {
+  scoped_ptr<Parser> parser;
+  scoped_ptr<Stylesheet> stylesheet;
+
+  // Unexpected at-rule with block.
+  parser.reset(new Parser(
+      "@font-face{font-family:'Ubuntu';font-style:normal}"
+      ".foo { width: 1px; }"));
+  stylesheet.reset(parser->ParseStylesheet());
+  EXPECT_TRUE(Parser::kAtRuleError & parser->errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n\n\n.foo {width: 1px}\n", stylesheet->ToString());
+
+  // ... and with extra selectors.
+  parser.reset(new Parser(
+      "@page :first { margin-top: 8cm; }\n"
+      ".foo { width: 1px; }"));
+  stylesheet.reset(parser->ParseStylesheet());
+  EXPECT_TRUE(Parser::kAtRuleError & parser->errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n\n\n.foo {width: 1px}\n", stylesheet->ToString());
+
+  // ... and with subblocks inside block.
+  parser.reset(new Parser(
+      "@keyframes wiggle {\n"
+      "  0% {transform:rotate(6deg);}\n"
+      "  50% {transform:rotate(6deg);}\n"
+      "  100% {transform:rotate(6deg);}\n"
+      "}\n"
+      "@-webkit-keyframes wiggle {\n"
+      "  0% {transform:rotate(6deg);}\n"
+      "  50% {transform:rotate(6deg);}\n"
+      "  100% {transform:rotate(6deg);}\n"
+      "}\n"
+      ".foo { width: 1px; }"));
+  stylesheet.reset(parser->ParseStylesheet());
+  EXPECT_TRUE(Parser::kAtRuleError & parser->errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n\n\n.foo {width: 1px}\n", stylesheet->ToString());
+
+  // Unexpected at-rule ending in ';'.
+  parser.reset(new Parser(
+      "@namespace foo \"http://example.com/ns/foo\";\n"
+      ".foo { width: 1px; }"));
+  stylesheet.reset(parser->ParseStylesheet());
+  EXPECT_TRUE(Parser::kAtRuleError & parser->errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n\n\n.foo {width: 1px}\n", stylesheet->ToString());
+
+  // Unexpected at-rule with nothing else to parse before ';'.
+  parser.reset(new Parser(
+      "@use-klingon;\n"
+      ".foo { width: 1px; }"));
+  stylesheet.reset(parser->ParseStylesheet());
+  EXPECT_TRUE(Parser::kAtRuleError & parser->errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n\n\n.foo {width: 1px}\n", stylesheet->ToString());
+
+  // Unexpected at-keyword in a block.
+  parser.reset(new Parser(
+      "@media screen {\n"
+      "  .bar { height: 2px; on-hover: @use-klingon}\n"
+      "  .baz { height: 4px }\n"
+      "}\n"
+      ".foo {\n"
+      "  three-dee: @three-dee { @background-lighting { azimuth: 30deg; } };\n"
+      "  width: 1px;\n"
+      "}\n"));
+  stylesheet.reset(parser->ParseStylesheet());
+  // Note: These don't actually call the at-rule parsing code because they
+  // are not full at-rules, but just at-keywords and are skipped by
+  // SkipToNextAny().
+  EXPECT_NE(Parser::kNoError, parser->errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n\n\n"
+            "@media screen { .bar {height: 2px} }\n"
+            "@media screen { .baz {height: 4px} }\n"
+            ".foo {width: 1px}\n", stylesheet->ToString());
 }
 
 }  // namespace

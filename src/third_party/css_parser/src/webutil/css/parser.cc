@@ -55,7 +55,7 @@ const uint64 Parser::kCharsetError;
 const uint64 Parser::kBlockError;
 const uint64 Parser::kNumberError;
 const uint64 Parser::kImportError;
-const uint64 Parser::kAtError;
+const uint64 Parser::kAtRuleError;
 
 
 // Using isascii with signed chars is unfortunately undefined.
@@ -200,7 +200,7 @@ bool Parser::SkipPastDelimiter(char delim) {
 }
 
 // returns true if there might be a token to read
-bool Parser::SkipToNextToken() {
+bool Parser::SkipToNextAny() {
   Tracer trace(__func__, &in_);
 
   SkipSpace();
@@ -209,12 +209,16 @@ bool Parser::SkipToNextToken() {
       case '{':
         ReportParsingError(kSkippedTokenError,
                            "Ignoring block between tokens.");
-        ParseBlock();  // ignore
+        SkipBlock();  // ignore
         break;
       case '@':
         ReportParsingError(kSkippedTokenError,
                            "Ignoring @ident between tokens.");
         in_++;
+        // TODO(sligocki): Should we just skip the at-keyword, or an entire
+        // at-rule with SkipToAtRuleEnd(). This affects how a declatation like:
+        //   foo: #000 @ident url(foo.mks) { block { rep } } end
+        // would be parsed. Specifically, should the url() be ignored?
         ParseIdent();  // ignore
         break;
       case ';': case '}':
@@ -826,7 +830,11 @@ Values* Parser::ParseValues(Property::Prop prop) {
   bool expecting_color = IsPropExpectingColor(prop);
 
   scoped_ptr<Values> values(new Values);
-  while (SkipToNextToken()) {
+  // Note: We skip over all blocks and at-keywords and only parse "any"s.
+  //   value : [ any | block | ATKEYWORD S* ]+;
+  // TODO(sligocki): According to the spec, if we cannot parse one of the
+  // values, we must ignore the whole declaration.
+  while (SkipToNextAny()) {
     const StringPiece allowed_chars(":.");
     scoped_ptr<Value> v(expecting_color ?
                         ParseAnyExpectingColor(allowed_chars) :
@@ -838,7 +846,11 @@ if (v.get()) {
       return NULL;
     }
   }
-  return values.release();
+  if (values->size() > 0) {
+    return values.release();
+  } else {
+    return NULL;
+  }
 }
 
 // Parse background. It is a shortcut property for individual background
@@ -1029,7 +1041,7 @@ bool Parser::ParseFontFamily(Values* values) {
   DCHECK_LT(in_, end_);
 
   UnicodeText family;
-  while (SkipToNextToken()) {
+  while (SkipToNextAny()) {
     if (*in_ == ',') {
       if (!family.empty()) {
         values->push_back(new Value(Identifier(family)));
@@ -1082,7 +1094,7 @@ Values* Parser::ParseFont() {
 
   scoped_ptr<Values> values(new Values);
 
-  if (!SkipToNextToken())
+  if (!SkipToNextAny())
     return NULL;
 
   scoped_ptr<Value> v(ParseAny());
@@ -1102,7 +1114,7 @@ Values* Parser::ParseFont() {
         // These special identifiers must be the only one in a declaration.
         // Fail if there are others.
         // TODO(sligocki): We should probably raise an error here.
-        if (SkipToNextToken()) return NULL;
+        if (SkipToNextAny()) return NULL;
         // If everything is good, push these out.
         values->push_back(v.release());
         return values.release();
@@ -1160,7 +1172,7 @@ Values* Parser::ParseFont() {
     } else {
       goto check_fontsize;
     }
-    if (!SkipToNextToken())
+    if (!SkipToNextAny())
       return NULL;
     v.reset(ParseAny());
     if (!v.get()) return NULL;
@@ -1194,9 +1206,9 @@ Values* Parser::ParseFont() {
   }
 
   // parse line-height if '/' is seen, or use the default line-height
-  if (SkipToNextToken() && *in_ == '/') {
+  if (SkipToNextAny() && *in_ == '/') {
     in_++;
-    if (!SkipToNextToken()) return NULL;
+    if (!SkipToNextAny()) return NULL;
     v.reset(ParseAny());
     if (!v.get()) return NULL;
 
@@ -1413,7 +1425,7 @@ Declarations* Parser::ParseRawDeclarations() {
       while (in_ < end_ && *in_ != ';' && *in_ != '}') {
         // IE (and IE only) ignores {} blocks in quirks mode.
         if (*in_ == '{' && !quirks_mode_) {
-          ParseBlock();  // ignore
+          SkipBlock();  // ignore
         } else {
           in_++;
           SkipSpace();
@@ -1856,7 +1868,7 @@ Import* Parser::ParseImport() {
   return import;
 }
 
-void Parser::ParseAtrule(Stylesheet* stylesheet) {
+void Parser::ParseAtRule(Stylesheet* stylesheet) {
   Tracer trace(__func__, &in_);
 
   SkipSpace();
@@ -1909,8 +1921,16 @@ void Parser::ParseAtrule(Stylesheet* stylesheet) {
              memcasecmp(ident.utf8_data(), "media", 5) == 0) {
     std::vector<UnicodeText> media;
     ParseMediumList(&media);
-    if (Done() || *in_ != '{')
+    if (Done() || *in_ != '{') {
+      if (*in_ == ';') {
+        // @media tags ending in ';' are no-ops, we simply ignore them.
+        // Skip over ending ';'
+        in_++;
+      } else {
+        ReportParsingError(kMediaError, "Malformed @media statement.");
+      }
       return;
+    }
     in_++;
     SkipSpace();
     while (in_ < end_ && *in_ != '}') {
@@ -1932,22 +1952,48 @@ void Parser::ParseAtrule(Stylesheet* stylesheet) {
       in_++;
     }
 
-  // @page pseudo_page? { declaration-list }
-  } else if (ident.utf8_length() == 4 &&
-      memcasecmp(ident.utf8_data(), "page", 4) == 0) {
-    ReportParsingError(kAtError, "Cannot parse @page declaration.");
-    delete ParseRuleset();
-
+  // Unexpected @-rule.
   } else {
     string ident_string(ident.utf8_data(), ident.utf8_length());
-    ReportParsingError(kAtError, StringPrintf(
+    ReportParsingError(kAtRuleError, StringPrintf(
         "Cannot parse unknown @-statement: %s", ident_string.c_str()));
+    SkipToAtRuleEnd();
   }
 }
 
-// TODO(dpeng): What exactly does this code do?
-// TODO(sligocki): This appears to skip over the next {} block???
-void Parser::ParseBlock() {
+// From http://www.w3.org/TR/CSS2/syndata.html#parsing-errors:
+//
+//   At-rules with unknown at-keywords. User agents must ignore an invalid
+//   at-keyword together with everything following it, up to the end of the
+//   block that contains the invalid at-keyword, or up to and including the
+//   next semicolon (;), or up to and including the next block ({...}),
+//   whichever comes first.
+void Parser::SkipToAtRuleEnd() {
+  Tracer trace(__func__, &in_);
+
+  while (in_ < end_) {
+    switch (*in_) {
+      // "up to the end of the block that contains the invalid at-keyword"
+      case '}':
+        // Note: Do not advance in_, so that caller will see closing '}'.
+        return;
+      // "up to and including the next semicolon (;)"
+      case ';':
+        ++in_;
+        return;
+      // "up to and including the next block ({...})"
+      case '{':
+        SkipBlock();
+        return;
+      // Skip over all other chars.
+      default:
+        ++in_;
+        break;
+    }
+  }
+}
+
+void Parser::SkipBlock() {
   Tracer trace(__func__, &in_);
 
   ReportParsingError(kBlockError, "Ignoring {} block.");
@@ -1976,7 +2022,7 @@ void Parser::ParseBlock() {
           return;
         break;
       default:
-        // TODO(sligocki): What's going on here? Just ignoring the next value?
+        // Ignore whatever there is to parse.
         scoped_ptr<Value> v(ParseAny());
         break;
     }
@@ -2014,7 +2060,7 @@ Stylesheet* Parser::ParseRawStylesheet() {
         }
         break;
       case '@':
-        ParseAtrule(stylesheet);
+        ParseAtRule(stylesheet);
         break;
       default: {
         const char* oldin = in_;
