@@ -103,8 +103,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
       : fetcher_(NULL),
         timer_(timer),
         str_url_(url),
-        inflating_fetch_(async_fetch),
-        async_fetch_(&inflating_fetch_),
+        async_fetch_(new InflatingFetch(async_fetch)),
         parser_(async_fetch->response_headers()),
         status_line_read_(false),
         one_byte_read_(false),
@@ -525,7 +524,6 @@ class SerfFetch : public PoolElement<SerfFetch> {
   SerfUrlAsyncFetcher* fetcher_;
   Timer* timer_;
   const GoogleString str_url_;
-  InflatingFetch inflating_fetch_;
   AsyncFetch* async_fetch_;
   ResponseHeadersParser parser_;
   bool status_line_read_;

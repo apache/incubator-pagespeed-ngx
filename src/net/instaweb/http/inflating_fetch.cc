@@ -148,6 +148,7 @@ void InflatingFetch::InitInflater(GzipInflater::InflateType type,
 
 void InflatingFetch::HandleDone(bool success) {
   SharedAsyncFetch::HandleDone(success && !inflate_failure_);
+  delete this;
 }
 
 void InflatingFetch::Reset() {

@@ -20,6 +20,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/inflating_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -246,6 +247,14 @@ bool UrlAsyncFetcher::ConditionalFetch(const GoogleString& url,
 }
 
 void UrlAsyncFetcher::ShutDown() {
+}
+
+AsyncFetch* UrlAsyncFetcher::EnableInflation(AsyncFetch* fetch) const {
+  InflatingFetch* inflating_fetch = new InflatingFetch(fetch);
+  if (fetch_with_gzip_) {
+    inflating_fetch->EnableGzipFromBackend();
+  }
+  return inflating_fetch;
 }
 
 }  // namespace instaweb

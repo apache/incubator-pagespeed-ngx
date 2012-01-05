@@ -245,6 +245,10 @@ class SharedAsyncFetch : public AsyncFetch {
     base_fetch_->HeadersComplete();
   }
 
+  virtual bool EnableThreaded() const {
+    return base_fetch_->EnableThreaded();
+  }
+
  private:
   AsyncFetch* base_fetch_;
   DISALLOW_COPY_AND_ASSIGN(SharedAsyncFetch);

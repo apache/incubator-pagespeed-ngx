@@ -129,12 +129,23 @@ class UrlAsyncFetcher {
   // Base-class implementation is empty for forward compatibility.
   virtual void ShutDown();
 
+  // Always requests content from servers using gzip.  If the request headers
+  // do not accept that encoding, then it will be decompressed while streaming.
+  void set_fetch_with_gzip(bool x) { fetch_with_gzip_ = x; }
+  bool fetch_with_gzip() const { return fetch_with_gzip_; }
+
+  // Returns a new InflatingFetch to handle auto-inflating the
+  // response if needed.
+  AsyncFetch* EnableInflation(AsyncFetch* fetch) const;
+
  protected:
   // Put this in protected to make sure nobody constructs this class except
   // for subclasses.
-  UrlAsyncFetcher() {}
+  UrlAsyncFetcher() : fetch_with_gzip_(false) {}
 
  private:
+  bool fetch_with_gzip_;
+
   DISALLOW_COPY_AND_ASSIGN(UrlAsyncFetcher);
 };
 
