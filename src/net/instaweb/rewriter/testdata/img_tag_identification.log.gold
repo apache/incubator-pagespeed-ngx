@@ -1,10 +1,10 @@
-Info: img_tag_identification.html:23: Shrinking image `http://file.name/BikeCrashIcn.png' (26548 bytes) to `http://file.name/xBikeCrashIcn.png.pagespeed.ic.0.png' (23357 bytes)
+Info: img_tag_identification.html:23: Shrinking image `http://file.name/BikeCrashIcn.png' (26548 bytes) to `http://file.name/xBikeCrashIcn.png.pagespeed.ic.0.png' (21420 bytes)
 Info: img_tag_identification.html:36: Shrinking image `http://file.name/Puzzle.jpg' (241260 bytes) to `http://file.name/1023x766xPuzzle.jpg.pagespeed.ic.0.jpg' (231192 bytes)
 Info: img_tag_identification.html:37: Resized image `http://file.name/Puzzle.jpg' from 1023x766 to 256x192
 Info: img_tag_identification.html:37: Shrinking image `http://file.name/Puzzle.jpg' (241260 bytes) to `http://file.name/256x192xPuzzle.jpg.pagespeed.ic.0.jpg' (18650 bytes)
 Info: img_tag_identification.html:51: Resized image `http://file.name/ExplosiveEgress.png' from 169x137 to 84x68
-Info: img_tag_identification.html:51: Shrinking image `http://file.name/ExplosiveEgress.png' (38057 bytes) to `http://file.name/84x68xExplosiveEgress.png.pagespeed.ic.0.png' (11563 bytes)
+Info: img_tag_identification.html:51: Shrinking image `http://file.name/ExplosiveEgress.png' (38057 bytes) to `http://file.name/84x68xExplosiveEgress.png.pagespeed.ic.0.png' (9909 bytes)
 Info: img_tag_identification.html:52: Resized image `http://file.name/IronChef2.gif' from 192x256 to 96x128
-Info: img_tag_identification.html:52: Shrinking image `http://file.name/IronChef2.gif' (24941 bytes) to `http://file.name/96x128xIronChef2.gif.pagespeed.ic.0.png' (20091 bytes)
-Info: img_tag_identification.html:54: Shrinking image `http://file.name/Cuppa.png' (1763 bytes) to `http://file.name/xCuppa.png.pagespeed.ic.0.png' (780 bytes)
+Info: img_tag_identification.html:52: Shrinking image `http://file.name/IronChef2.gif' (24941 bytes) to `http://file.name/96x128xIronChef2.gif.pagespeed.ic.0.png' (19178 bytes)
+Info: img_tag_identification.html:54: Shrinking image `http://file.name/Cuppa.png' (1763 bytes) to `http://file.name/xCuppa.png.pagespeed.ic.0.png' (770 bytes)
 Info: img_tag_identification.html:55: Couldn't resize image `http://file.name/CuppaT.png' from 65x70 to 26x28
