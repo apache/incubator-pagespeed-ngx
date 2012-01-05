@@ -154,7 +154,7 @@
     {
       'target_name': 'instaweb_panel_config_pb',
       'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/rewriter/',
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
       },
       'sources': [
         '<(protoc_out_dir)/<(instaweb_protoc_subdir)/panel_config.pb.cc',
