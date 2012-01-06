@@ -146,6 +146,7 @@ const char* kModPagespeedStatistics = "ModPagespeedStatistics";
 const char* kModPagespeedTestProxy = "ModPagespeedTestProxy";
 const char* kModPagespeedUrlPrefix = "ModPagespeedUrlPrefix";
 const char* kModPagespeedRespectVary = "ModPagespeedRespectVary";
+const char* kModPagespeedGAID = "ModPagespeedAnalyticsID";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -1017,6 +1018,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedRespectVary)) {
     ret = ParseBoolOption(options, cmd,
                           &RewriteOptions::set_respect_vary, arg);
+  } else if (StringCaseEqual(directive, kModPagespeedGAID)) {
+    // TODO(nforman): Some input checking?
+    options->set_ga_id(arg);
   } else if (StringCaseEqual(directive, kModPagespeedNumShards)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (StringCaseEqual(directive,
@@ -1186,6 +1190,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Whether to collect cross-process statistics."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedRespectVary,
         "Whether to respect the Vary header."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedGAID,
+        "Google Analytics ID to use on site."),
 
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)

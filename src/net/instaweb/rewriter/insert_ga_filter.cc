@@ -35,21 +35,6 @@ namespace {
 
 const char kSnippetsInserted[] = "inserted_ga_snippets";
 
-// TODO(nforman): Replace this with our knowledge of
-// document.location.protocol.
-const char kGASnippet[] = "var _gaq = _gaq || [];\n"
-    "_gaq.push(['_setAccount', '%s']);\n"
-    "_gaq.push(['_trackPageview']);\n"
-    "(function() {\n"
-    "var ga = document.createElement('script'); ga.type = 'text/javascript'; "
-    "ga.async = true;\n"
-    "ga.src = ('https:' == document.location.protocol ? "
-    "'https://ssl' : 'http://www') "
-    "+ '.google-analytics.com/ga.js';\n"
-    "var s = document.getElementsByTagName('script')[0]; "
-    "s.parentNode.insertBefore(ga, s);\n"
-    "})();";
-
 }  // namespace
 
 namespace net_instaweb {
@@ -91,6 +76,9 @@ void InsertGAFilter::StartElementImpl(HtmlElement* element) {
   }
 }
 
+// This may not be exact, but should be a pretty good guess.
+// TODO(nforman): Find out if there is a canonical way of determining
+// if a script is a GA snippet.
 bool InsertGAFilter::FoundSnippetInBuffer() {
   return (buffer_.find(ga_id_) != buffer_.npos &&
           buffer_.find("setAccount") != buffer_.npos &&

@@ -52,20 +52,12 @@ static const char html_input[] =
 
 static const char html_output_format[] =
     "<head>\n<title>Something</title>\n"
-    "<script type=\"text/javascript\">var _gaq = _gaq || [];\n"
-    "_gaq.push(['_setAccount', '%s']);\n"
-    "_gaq.push(['_trackPageview']);\n"
-    "(function() {\n"
-    "var ga = document.createElement('script'); ga.type = 'text/javascript'; "
-    "ga.async = true;\n"
-    "ga.src = ('https:' == document.location.protocol ? "
-    "'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';\n"
-    "var s = document.getElementsByTagName('script')[0]; "
-    "s.parentNode.insertBefore(ga, s);\n"
-    "})();</script></head><body> Hello World!</body>";
+    "<script type=\"text/javascript\">%s</script>"
+    "</head><body> Hello World!</body>";
 
 TEST_F(InsertGAFilterTest, simple_insert) {
-  GoogleString output = StringPrintf(html_output_format, kGaId);
+  GoogleString format_output = StringPrintf(html_output_format, kGASnippet);
+  GoogleString output = StringPrintf(format_output.c_str(), kGaId);
   ValidateExpected("simple_addition", html_input, output);
   ValidateNoChanges("already_there", output);
 }
@@ -73,20 +65,12 @@ TEST_F(InsertGAFilterTest, simple_insert) {
 static const char html_outside_head[] =
     "<head>\n<title>Something</title>\n"
     "</head>\n"
-    "<script type=\"text/javascript\">var _gaq = _gaq || [];\n"
-    "_gaq.push(['_setAccount', '%s']);\n"
-    "_gaq.push(['_trackPageview']);\n"
-    "(function() {\n"
-    "var ga = document.createElement('script'); ga.type = 'text/javascript'; "
-    "ga.async = true;\n"
-    "ga.src = ('https:' == document.location.protocol ? "
-    "'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';\n"
-    "var s = document.getElementsByTagName('script')[0]; "
-    "s.parentNode.insertBefore(ga, s);\n"
-    "})();</script><body> Hello World!</body>";
+    "<script type=\"text/javascript\">%s</script>"
+    "<body> Hello World!</body>";
 
 TEST_F(InsertGAFilterTest, no_double) {
-  ValidateNoChanges("outside_head", StringPrintf(html_outside_head, kGaId));
+  GoogleString format_html = StringPrintf(html_outside_head, kGASnippet);
+  ValidateNoChanges("outside_head", StringPrintf(format_html.c_str(), kGaId));
 }
 
 }  // namespace

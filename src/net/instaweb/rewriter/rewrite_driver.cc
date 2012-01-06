@@ -747,6 +747,11 @@ void RewriteDriver::AddPreRenderFilters() {
     // javascript that has comments and extra whitespace.
     AppendOwnedPreRenderFilter(new GoogleAnalyticsFilter(this, statistics()));
   }
+  if (rewrite_options->Enabled(RewriteOptions::kInsertGA) &&
+      rewrite_options->ga_id() != "") {
+    // Like MakeGoogleAnalyticsAsync, InsertGA should be before js rewriting.
+    AppendOwnedPreRenderFilter(new InsertGAFilter(this));
+  }
   if (rewrite_options->Enabled(RewriteOptions::kRewriteJavascript)) {
     // Rewrite (minify etc.) JavaScript code to reduce time to first
     // interaction.
@@ -866,10 +871,6 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kDelayImages)) {
     // kInsertImageDimensions should be enabled to avoid drastic reflows.
     AddOwnedPostRenderFilter(new DelayImagesFilter(this));
-  }
-  if (rewrite_options->Enabled(RewriteOptions::kInsertGA) &&
-      rewrite_options->ga_id() != "") {
-    AddOwnedPostRenderFilter(new InsertGAFilter(this));
   }
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
   // doesn't, it probably should.  If it does, be sure to add it to the
