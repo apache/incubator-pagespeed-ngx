@@ -177,7 +177,8 @@ class CacheFindCallback : public HTTPCache::Callback {
       // Note: currently no resources fetched through CacheUrlAsyncFetcher
       // will be marked RememberFetchFailedOrNotCacheable.
       // TODO(sligocki): Should we mark resources as such in this class?
-      case HTTPCache::kRecentFetchFailedOrNotCacheable:
+      case HTTPCache::kRecentFetchFailed:
+      case HTTPCache::kRecentFetchNotCacheable:
         VLOG(1) << "RecentFetchFailedOrNotCacheable: " << url_;
         if (!ignore_recent_fetch_failed_) {
           base_fetch_->Done(false);

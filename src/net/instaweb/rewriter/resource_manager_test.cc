@@ -470,7 +470,7 @@ TEST_F(ResourceManagerTest, TestRemember404) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
+  EXPECT_EQ(HTTPCache::kRecentFetchFailed,
             http_cache()->Find("http://example.com/404", &value_out,
                                &headers_out, message_handler()));
   mock_timer()->AdvanceMs(150 * Timer::kSecondMs);
@@ -484,7 +484,7 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
   const GoogleString kContents = "ok";
 
   // Make sure that when we get non-cacheable resources
-  // we mark the fetch as failed in the cache.
+  // we mark the fetch as not cacheable in the cache.
   ResponseHeaders no_cache;
   SetDefaultLongCacheHeaders(&kContentTypeHtml, &no_cache);
   no_cache.Replace(HttpAttributes::kCacheControl, "no-cache");
@@ -500,14 +500,14 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
+  EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable,
             http_cache()->Find("http://example.com/", &value_out, &headers_out,
                                message_handler()));
 }
 
 TEST_F(ResourceManagerTest, TestVaryOption) {
   // Make sure that when we get non-cacheable resources
-  // we mark the fetch as failed in the cache.
+  // we mark the fetch as not-cacheable in the cache.
   options()->set_respect_vary(true);
   ResponseHeaders no_cache;
   const GoogleString kContents = "ok";
@@ -527,7 +527,7 @@ TEST_F(ResourceManagerTest, TestVaryOption) {
 
   HTTPValue valueOut;
   ResponseHeaders headersOut;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
+  EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable,
             http_cache()->Find("http://example.com/", &valueOut, &headersOut,
                                message_handler()));
 }
@@ -847,10 +847,6 @@ TEST_F(ResourceManagerTest, PartlyFailedFetch) {
   // In that case, we would end up with headers claiming successful fetch,
   // but an HTTPValue without headers set (which would also crash on
   // access if no data was emitted by fetcher via Write).
-  //
-  // This currently relies on us marking uncacheable resources as invalid.
-  // In case the behavior changes, this test should be changed to use a mock
-  // fetcher which outputs the headers before calling success(false)
   static const char kCssName[] = "a.css";
   GoogleString abs_url = AbsolutifyUrl(kCssName);
   ResponseHeaders non_cacheable;
@@ -861,9 +857,12 @@ TEST_F(ResourceManagerTest, PartlyFailedFetch) {
   SetFetchResponse(abs_url, non_cacheable, "");
 
   // We tell the fetcher to quash the zero-bytes writes, as that behavior
-  // (which Serf) has made the bug more severe, with not only
+  // (which Serf has) made the bug more severe, with not only
   // loaded() and ContentsValid() lying, but also contents() crashing.
   mock_url_fetcher()->set_omit_empty_writes(true);
+
+  // We tell the fetcher to output the headers and then immediately fail.
+  mock_url_fetcher()->set_fail_after_headers(true);
 
   GoogleUrl gurl(abs_url);
   SetBaseUrlForFetch(abs_url);

@@ -63,7 +63,8 @@ class HTTPCache {
     kNotFound,
     // Helps avoid frequent refetching of resources which have error status
     // codes or are not cacheable.
-    kRecentFetchFailedOrNotCacheable,
+    kRecentFetchFailed,
+    kRecentFetchNotCacheable,
   };
 
   // Class to handle an asynchronous cache lookup response.

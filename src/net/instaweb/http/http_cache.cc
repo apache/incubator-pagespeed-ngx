@@ -131,14 +131,22 @@ class HTTPCacheCallback : public CacheInterface::Callback {
         if (is_valid) {
           int64 remember_not_found_time_ms = headers->CacheExpirationTimeMs()
               - start_ms_;
-          if (handler_ != NULL) {
-            handler_->Info(
-                key_.c_str(), 0,
-                "HTTPCache: remembering not-found status for %ld seconds",
-                static_cast<long>(  // NOLINT
-                    remember_not_found_time_ms / 1000));
+          const char* status = NULL;
+          if (http_status == HttpStatus::kRememberNotCacheableStatusCode) {
+            status = "not-cacheable";
+            result = HTTPCache::kRecentFetchNotCacheable;
+          } else {
+            status = "not-found";
+            result = HTTPCache::kRecentFetchFailed;
           }
-          result = HTTPCache::kRecentFetchFailedOrNotCacheable;
+          if (handler_ != NULL) {
+            handler_->Message(kInfo,
+                              "HTTPCache key=%s: remembering %s status "
+                              "for %ld seconds.",
+                              key_.c_str(), status,
+                              static_cast<long>(  // NOLINT
+                                  remember_not_found_time_ms / 1000));
+          }
         }
       } else {
         if (is_valid) {

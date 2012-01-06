@@ -70,6 +70,16 @@ typedef std::vector<OutputResourcePtr> OutputResourceVector;
 // which should be renamed RequestContext.
 class ResourceManager {
  public:
+  // This enumerates possible follow-up behaviors when a requested resource was
+  // marked as not-cacheable in the cache on a recent fetch.
+  enum ResourceNotCacheableAction {
+    kLoadIfNotCacheable,
+    kReportFailureIfNotCacheable,
+  };
+
+  // The lifetime for cache-extended generated resources, in milliseconds.
+  static const int64 kGeneratedMaxAgeMs;
+
   // This value is a shared constant so that it can also be used in
   // the Apache-specific code that repairs our caching headers downstream
   // of mod_headers.
@@ -190,7 +200,8 @@ class ResourceManager {
   // done.  If the resource contents are cached, the callback will
   // be called directly, rather than asynchronously.  The resource
   // will be passed to the callback, with its contents and headers filled in.
-  void ReadAsync(Resource::AsyncCallback* callback);
+  void ReadAsync(Resource::AsyncCallback* callback,
+                 ResourceNotCacheableAction not_cacheable_action);
 
   // Allocate an NamedLock to guard the creation of the given resource.  If the
   // object is expensive to create, this lock should be held during its creation

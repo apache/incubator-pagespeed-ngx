@@ -321,6 +321,8 @@ class RewriteContext::FetchContext {
       if (output_resource_->hash() == requested_hash_) {
         response_headers->CopyFrom(*(
             output_resource_->response_headers()));
+        // Use the most conservative Cache-Control considering all inputs.
+        ApplyInputCacheControl(response_headers);
         async_fetch_->HeadersComplete();
         ok = async_fetch_->Write(output_resource_->contents(), handler_);
       } else {
@@ -385,6 +387,8 @@ class RewriteContext::FetchContext {
   void FetchFallbackDoneImpl(const StringPiece& contents,
                              ResponseHeaders* headers) {
     rewrite_context_->FixFetchFallbackHeaders(headers);
+    // Use the most conservative Cache-Control considering all inputs.
+    ApplyInputCacheControl(headers);
 
     async_fetch_->response_headers()->CopyFrom(*headers);
     async_fetch_->HeadersComplete();
@@ -399,6 +403,7 @@ class RewriteContext::FetchContext {
   void set_success(bool success) { success_ = success; }
   OutputResourcePtr output_resource() { return output_resource_; }
 
+  // TODO(dgerman): These data members should be private.
   RewriteContext* rewrite_context_;
   AsyncFetch* async_fetch_;
   OutputResourcePtr output_resource_;
@@ -408,6 +413,45 @@ class RewriteContext::FetchContext {
 
   bool success_;
   bool detached_;
+
+ private:
+  // Computes the most restrictive Cache-Control intersection of the input
+  // resources, and the provided headers, and sets that cache-control on the
+  // provided headers.  Does nothing if all of the resources are fully
+  // cacheable, since in that case we will want to cache-extend.
+  //
+  // Disregards Cache-Control directives other than max-age, no-cache, and
+  // private, and strips them if any resource is no-cache or private.
+  void ApplyInputCacheControl(ResponseHeaders* headers) {
+    headers->ComputeCaching();
+    bool proxy_cacheable = headers->IsProxyCacheable();
+    bool cacheable = headers->IsCacheable();
+    int64 max_age = headers->cache_ttl_ms();
+    for (int i = 0; i < rewrite_context_->num_slots(); i++) {
+      ResourcePtr input_resource(rewrite_context_->slot(i)->resource());
+      if (input_resource.get() != NULL && input_resource->ContentsValid()) {
+        ResponseHeaders* input_headers = input_resource->response_headers();
+        input_headers->ComputeCaching();
+        if (input_headers->cache_ttl_ms() < max_age) {
+          max_age = input_headers->cache_ttl_ms();
+        }
+        proxy_cacheable &= input_headers->IsProxyCacheable();
+        cacheable &= input_headers->IsCacheable();
+      }
+    }
+    if (cacheable) {
+      if (proxy_cacheable) {
+        return;
+      } else {
+        headers->SetDateAndCaching(headers->date_ms(), max_age, ",private");
+      }
+    } else {
+      headers->SetDateAndCaching(headers->date_ms(), 0, ",no-cache");
+    }
+    headers->ComputeCaching();
+  }
+
+  DISALLOW_COPY_AND_ASSIGN(FetchContext);
 };
 
 // Helper for running filter's Rewrite method in low-priority rewrite thread,
@@ -845,7 +889,8 @@ void RewriteContext::OutputCacheRevalidate(
     InputInfo* input_info = to_revalidate[i];
     ResourcePtr resource = slots_[input_info->index()]->resource();
     Manager()->ReadAsync(
-        new ResourceRevalidateCallback(this, resource, input_info));
+        new ResourceRevalidateCallback(this, resource, input_info),
+        ResourceManager::kReportFailureIfNotCacheable);
   }
 }
 
@@ -942,7 +987,15 @@ void RewriteContext::FetchInputs() {
       }
 
       if (!handled_internally) {
-        Manager()->ReadAsync(new ResourceFetchCallback(this, resource, i));
+        ResourceManager::ResourceNotCacheableAction action =
+            ResourceManager::kReportFailureIfNotCacheable;
+        if (fetch_.get() != NULL) {
+          // This is a fetch.  We want to try to get the input resource even if
+          // it was previously noted to be uncacheable.
+          action = ResourceManager::kLoadIfNotCacheable;
+        }
+        Manager()->ReadAsync(new ResourceFetchCallback(this, resource, i),
+                             action);
       }
     }
   }

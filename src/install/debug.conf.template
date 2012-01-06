@@ -57,6 +57,11 @@ ModPagespeedEnableFilters add_instrumentation
     Header append 'Content-Encoding' 'gzip'
 </Directory>
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/no_cache/" >
+    # Files in this directory should be served uncacheable.
+    Header set Cache-control "no-cache"
+</Directory>
+
 # This is needed for the server-side includes test in
 # apache_system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
 <IfModule !include_module>

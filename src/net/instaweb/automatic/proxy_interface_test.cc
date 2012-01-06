@@ -1196,6 +1196,61 @@ TEST_F(ProxyInterfaceTest, CacheRequests) {
   EXPECT_EQ("a", text);
 }
 
+// Verifies that we proxy uncacheable resources, but do not insert them in the
+// cache.
+TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCached) {
+  ResponseHeaders resource_headers;
+  DefaultResponseHeaders(kContentTypeCss, kHtmlCacheTimeSec, &resource_headers);
+  resource_headers.SetDateAndCaching(http_cache()->timer()->NowMs(),
+                                     300000, ", private");
+  resource_headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "a");
+
+  ProxyUrlNamer url_namer;
+  resource_manager()->set_url_namer(&url_namer);
+  ResponseHeaders out_headers;
+  GoogleString out_text;
+
+  // We should not cache while fetching via kProxyHost.
+  FetchFromProxy(
+      StrCat("http://", ProxyUrlNamer::kProxyHost,
+             "/test.com/test.com/style.css"),
+      true, &out_text, &out_headers);
+  EXPECT_EQ("a", out_text);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(2, lru_cache()->num_misses());  // mapping, input resource
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());  // input resource
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+
+  // We should likewise not cache while fetching on the origin domain.
+  out_text.clear();
+  ClearStats();
+  FetchFromProxy("style.css", true, &out_text, &out_headers);
+  EXPECT_EQ("a", out_text);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(2, lru_cache()->num_misses());  // mapping, input resource
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());  // input resource
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+
+  // Since the original response is not cached, we should pick up changes in the
+  // input resource immediately.
+  SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "b");
+  out_text.clear();
+  ClearStats();
+  FetchFromProxy("style.css", true, &out_text, &out_headers);
+  EXPECT_EQ("b", out_text);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(2, lru_cache()->num_misses());  // mapping, input resource
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());  // input resource
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+}
+
 // No matter what options->respect_vary() is set to we will respect HTML Vary
 // headers.
 TEST_F(ProxyInterfaceTest, NoCacheVaryHtml) {
@@ -1355,6 +1410,41 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeaders) {
       true, &out_text, &out_headers);
   EXPECT_STREQ(kText, out_text);
   EXPECT_STREQ(NULL, out_headers.Lookup1(HttpAttributes::kSetCookie));
+}
+
+TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResource) {
+  // Check that we do not propagate cookies from test.com via kProxyHost URL,
+  // as in CrossDomainHeaders above.  Also check that we do propagate cache
+  // control.
+  const char kText[] = "* { pretty; }";
+
+  ResponseHeaders orig_headers;
+  DefaultResponseHeaders(kContentTypeCss, 100, &orig_headers);
+  orig_headers.Add(HttpAttributes::kSetCookie, "tasty");
+  orig_headers.SetDateAndCaching(http_cache()->timer()->NowMs(),
+                                 300000, ", private");
+  orig_headers.ComputeCaching();
+  SetFetchResponse("http://test.com/file.css", orig_headers, kText);
+
+  ProxyUrlNamer url_namer;
+  resource_manager()->set_url_namer(&url_namer);
+  ResponseHeaders out_headers;
+  GoogleString out_text;
+  FetchFromProxy(
+      StrCat("http://", ProxyUrlNamer::kProxyHost,
+             "/test.com/test.com/file.css"),
+      true, &out_text, &out_headers);
+
+  // Check that we ate the cookies.
+  EXPECT_STREQ(kText, out_text);
+  EXPECT_STREQ(NULL, out_headers.Lookup1(HttpAttributes::kSetCookie));
+
+  // Check that the resource Cache-Control has been preserved.
+  ConstStringStarVector values;
+  out_headers.Lookup(HttpAttributes::kCacheControl, &values);
+  ASSERT_EQ(2, values.size());
+  EXPECT_STREQ("max-age=300", *values[0]);
+  EXPECT_STREQ("private", *values[1]);
 }
 
 TEST_F(ProxyInterfaceTest, ProxyResourceQueryOnly) {

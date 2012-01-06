@@ -77,6 +77,7 @@ class RequestHeaders;
 namespace {
 
 const char kTrimWhitespaceFilterId[] = "tw";
+const char kTrimWhitespaceSyncFilterId[] = "ts";
 const char kUpperCaseFilterId[] = "uc";
 const char kNestedFilterId[] = "nf";
 const char kCombiningFilterId[] = "cr";
@@ -114,6 +115,7 @@ class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
   virtual bool RewriteText(const StringPiece& url, const StringPiece& in,
                            GoogleString* out,
                            ResourceManager* resource_manager) {
+    LOG(INFO) << "Trimming whitespace.";
     ++num_rewrites_;
     TrimWhitespace(in, out);
     return in != *out;
@@ -134,6 +136,34 @@ class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
   int num_rewrites_;
 
   DISALLOW_COPY_AND_ASSIGN(TrimWhitespaceRewriter);
+};
+
+// Test filter that replaces a CSS resource URL with a corresponding Pagespeed
+// resource URL.  When that URL is requested, it will invoke a rewriter that
+// trims whitespace in the line of serving.  Does not require or expect the
+// resource to be fetched or loaded from cache at rewrite time.
+class TrimWhitespaceSyncFilter : public SimpleTextFilter {
+ public:
+  explicit TrimWhitespaceSyncFilter(OutputResourceKind kind,
+                                    RewriteDriver* driver)
+      : SimpleTextFilter(new TrimWhitespaceRewriter(kind), driver) {
+  }
+
+  virtual void StartElementImpl(HtmlElement* element) {
+    if (element->keyword() == HtmlName::kLink) {
+      HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
+      if (href != NULL) {
+        GoogleUrl gurl(driver()->google_url(), href->value());
+        href->SetValue(StrCat(gurl.Spec(), ".pagespeed.ts.0.css").c_str());
+      }
+    }
+  }
+
+  virtual const char* id() const { return kTrimWhitespaceSyncFilterId; }
+  virtual const char* name() const { return "TrimWhitespaceSync"; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(TrimWhitespaceSyncFilter);
 };
 
 // A similarly structured test-filter: this one just upper-cases its text.
@@ -631,6 +661,32 @@ class RewriteContextTest : public ResourceManagerTestBase {
     SetFetchResponse("http://test.com/b.css", default_css_header, "b");
     SetFetchResponse("http://test.com/c.css", default_css_header,
                      "a.css\nb.css\n");
+
+    // trimmable, private
+    ResponseHeaders private_css_header;
+    now_ms = http_cache()->timer()->NowMs();
+    private_css_header.set_major_version(1);
+    private_css_header.set_minor_version(1);
+    private_css_header.SetStatusAndReason(HttpStatus::kOK);
+    private_css_header.SetDateAndCaching(now_ms, kOriginTtlMs, ", private");
+    private_css_header.ComputeCaching();
+
+    SetFetchResponse("http://test.com/a_private.css",
+                     private_css_header,
+                     " a ");
+
+    // trimmable, no-cache
+    ResponseHeaders no_cache_css_header;
+    now_ms = http_cache()->timer()->NowMs();
+    no_cache_css_header.set_major_version(1);
+    no_cache_css_header.set_minor_version(1);
+    no_cache_css_header.SetStatusAndReason(HttpStatus::kOK);
+    no_cache_css_header.SetDateAndCaching(now_ms, 0, ", no-cache");
+    no_cache_css_header.ComputeCaching();
+
+    SetFetchResponse("http://test.com/a_no_cache.css",
+                     no_cache_css_header,
+                     " a ");
   }
 
   void InitTrimFilters(OutputResourceKind kind) {
@@ -642,6 +698,16 @@ class RewriteContextTest : public ResourceManagerTestBase {
     other_trim_filter_ = new TrimWhitespaceRewriter(kind);
     other_rewrite_driver()->AppendRewriteFilter(
         new SimpleTextFilter(other_trim_filter_, other_rewrite_driver()));
+    other_rewrite_driver()->AddFilters();
+  }
+
+  void InitTrimFiltersSync(OutputResourceKind kind) {
+    rewrite_driver()->AppendRewriteFilter(
+        new TrimWhitespaceSyncFilter(kind, rewrite_driver()));
+    rewrite_driver()->AddFilters();
+
+    other_rewrite_driver()->AppendRewriteFilter(
+        new TrimWhitespaceSyncFilter(kind, rewrite_driver()));
     other_rewrite_driver()->AddFilters();
   }
 
@@ -1162,6 +1228,235 @@ TEST_F(RewriteContextTest, TrimFetch404SeedsCache) {
   mock_timer()->AdvanceMs(Timer::kDayMs);
   ValidateNoChanges("404", CssLinkHref("404.css"));
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+}
+
+// Verifies that rewriters can replace resource URLs without kicking off any
+// fetching or caching.
+TEST_F(RewriteContextTest, ClobberResourceUrlSync) {
+  InitTrimFiltersSync(kOnTheFlyResource);
+  InitResources();
+  GoogleString input_html(CssLinkHref("a_private.css"));
+  GoogleString output_html(CssLinkHref(
+      Encode(kTestDomain, "ts", "0", "a_private.css", "css")));
+  ValidateExpected("trimmable", input_html, output_html);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
+}
+
+// Verifies that when an HTML document references an uncacheable resource, that
+// reference does not get modified.
+TEST_F(RewriteContextTest, DoNotModifyReferencesToUncacheableResources) {
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+  GoogleString input_html(CssLinkHref("a_private.css"));
+
+  ValidateExpected("trimmable_but_private", input_html, input_html);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());  // partition, resource
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // partition, not-cacheable memo
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());  // the resource
+  ClearStats();
+
+  ValidateExpected("trimmable_but_private", input_html, input_html);
+  EXPECT_EQ(1, lru_cache()->num_hits());  // not-cacheable memo
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  ValidateExpected("trimmable_but_private", input_html, input_html);
+  EXPECT_EQ(1, lru_cache()->num_hits());  // not-cacheable memo
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+};
+
+// Verifies that we can rewrite uncacheable resources without caching them.
+TEST_F(RewriteContextTest, FetchUncacheableWithRewritesInLineOfServing) {
+  InitTrimFiltersSync(kOnTheFlyResource);
+  InitResources();
+
+  GoogleString content;
+
+  // The first time we serve the resource, we insert a memo that it is
+  // uncacheable, and a name mapping.
+  EXPECT_TRUE(ServeResource(kTestDomain,
+                            kTrimWhitespaceSyncFilterId,
+                            "a_private.css",
+                            "css",
+                            &content));
+  EXPECT_EQ("a", content);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // name mapping & uncacheable memo
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Each subsequent time we serve the resource, we should experience a cache
+  // hit for the notation that the resource is uncacheable, and then we should
+  // perform an origin fetch anyway.
+  for (int i = 0; i < 3; ++i) {
+    ClearStats();
+    EXPECT_TRUE(ServeResource(kTestDomain,
+                              kTrimWhitespaceSyncFilterId,
+                              "a_private.css",
+                              "css",
+                              &content));
+    EXPECT_EQ("a", content);
+    EXPECT_EQ(1, lru_cache()->num_hits());
+    EXPECT_EQ(0, lru_cache()->num_misses());
+    EXPECT_EQ(0, lru_cache()->num_inserts());
+    EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  }
+
+  // Now, we change the resource.
+  ResponseHeaders private_css_header;
+  private_css_header.set_major_version(1);
+  private_css_header.set_minor_version(1);
+  private_css_header.SetStatusAndReason(HttpStatus::kOK);
+  private_css_header.SetDateAndCaching(http_cache()->timer()->NowMs(),
+                                       kOriginTtlMs,
+                                       ", private");
+  private_css_header.ComputeCaching();
+
+  SetFetchResponse("http://test.com/a_private.css",
+                   private_css_header,
+                   " b ");
+
+  // We should continue to experience cache hits, and continue to fetch from
+  // the origin.
+  for (int i = 0; i < 3; ++i) {
+    ClearStats();
+    EXPECT_TRUE(ServeResource(kTestDomain,
+                              kTrimWhitespaceSyncFilterId,
+                              "a_private.css",
+                              "css",
+                              &content));
+    EXPECT_EQ("b", content);
+    EXPECT_EQ(1, lru_cache()->num_hits());
+    EXPECT_EQ(0, lru_cache()->num_misses());
+    EXPECT_EQ(0, lru_cache()->num_inserts());
+    EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  }
+  ClearStats();
+
+  // After advancing the time, we should see new cache inserts.  Note that we
+  // also get a cache hit because the out-of-date entries are still there.
+  mock_timer()->AdvanceMs(Timer::kMinuteMs * 50);
+  EXPECT_TRUE(ServeResource(kTestDomain,
+                            kTrimWhitespaceSyncFilterId,
+                            "a_private.css",
+                            "css",
+                            &content));
+  EXPECT_EQ("b", content);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+}
+
+// Verifies that we preserve cache-control when rewriting a no-cache resource.
+TEST_F(RewriteContextTest, PreserveNoCacheWithRewrites) {
+  InitTrimFiltersSync(kOnTheFlyResource);
+  InitResources();
+
+  GoogleString content;
+  ResponseHeaders headers;
+
+  // Even on sequential requests, the resource does not become cache-extended.
+  for (int i = 0; i < 4; ++i) {
+    EXPECT_TRUE(ServeResource(kTestDomain,
+                              kTrimWhitespaceSyncFilterId,
+                              "a_no_cache.css",
+                              "css",
+                              &content,
+                              &headers));
+    EXPECT_EQ("a", content);
+    ConstStringStarVector values;
+    headers.Lookup(HttpAttributes::kCacheControl, &values);
+    ASSERT_EQ(2, values.size());
+    EXPECT_STREQ("max-age=0", *values[0]);
+    EXPECT_STREQ("no-cache", *values[1]);
+  }
+}
+
+// Verifies that we preserve cache-control when rewriting a private resource.
+TEST_F(RewriteContextTest, PreservePrivateWithRewrites) {
+  InitTrimFiltersSync(kOnTheFlyResource);
+  InitResources();
+
+  GoogleString content;
+  ResponseHeaders headers;
+
+  // Even on sequential requests, the resource does not become cache-extended.
+  for (int i = 0; i < 4; ++i) {
+    EXPECT_TRUE(ServeResource(kTestDomain,
+                              kTrimWhitespaceSyncFilterId,
+                              "a_private.css",
+                              "css",
+                              &content,
+                              &headers));
+    EXPECT_EQ("a", content);
+    ConstStringStarVector values;
+    headers.Lookup(HttpAttributes::kCacheControl, &values);
+    ASSERT_EQ(2, values.size());
+    EXPECT_STREQ("max-age=300", *values[0]);
+    EXPECT_STREQ("private", *values[1]);
+  }
+}
+
+// Verifies that we intersect cache-control when there are multiple input
+// resources.
+TEST_F(RewriteContextTest, CacheControlWithMultipleInputResources) {
+  InitCombiningFilter(0);
+  InitResources();
+
+  GoogleString content;
+  ResponseHeaders headers;
+
+  GoogleString combined_url =
+      Encode(kTestDomain, kCombiningFilterId, "0",
+             MultiUrl("a.css",
+                      "b.css",
+                      "a_private.css"), "css");
+
+  ServeResourceUrl(combined_url, &content, &headers);
+  EXPECT_EQ(" a b a ", content);
+
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(6, lru_cache()->num_misses());   // partition, output 2x, 3 inputs.
+  EXPECT_EQ(5, lru_cache()->num_inserts());  // partition, output, 3 inputs.
+  EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
+
+  ConstStringStarVector values;
+  headers.Lookup(HttpAttributes::kCacheControl, &values);
+  ASSERT_EQ(2, values.size());
+  EXPECT_STREQ("max-age=300", *values[0]);
+  EXPECT_STREQ("private", *values[1]);
+}
+
+// Verifies that we cache-extend when rewriting a cacheable resource.
+TEST_F(RewriteContextTest, CacheExtendCacheableResource) {
+  InitTrimFiltersSync(kOnTheFlyResource);
+  InitResources();
+
+  GoogleString content;
+  ResponseHeaders headers;
+
+  for (int i = 0; i < 4; ++i) {
+    EXPECT_TRUE(ServeResource(kTestDomain,
+                              kTrimWhitespaceSyncFilterId,
+                              "a.css",
+                              "css",
+                              &content,
+                              &headers));
+    EXPECT_EQ("a", content);
+    EXPECT_STREQ(StringPrintf("max-age=%lld",
+                              ResourceManager::kGeneratedMaxAgeMs/1000),
+                 headers.Lookup1(HttpAttributes::kCacheControl));
+  }
 }
 
 TEST_F(RewriteContextTest, FetchColdCacheOnTheFly) {

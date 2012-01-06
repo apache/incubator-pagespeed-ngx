@@ -533,7 +533,8 @@ TEST_P(RewriteDriverTest, LoadResourcesFromTheWeb) {
       rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
   MockResourceCallback mock_callback(resource);
   EXPECT_TRUE(resource.get() != NULL);
-  resource_manager()->ReadAsync(&mock_callback);
+  resource_manager()->ReadAsync(&mock_callback,
+                                ResourceManager::kReportFailureIfNotCacheable);
   EXPECT_TRUE(mock_callback.done());
   EXPECT_TRUE(mock_callback.success());
   EXPECT_EQ(kResourceContents1, resource->contents());
@@ -546,7 +547,8 @@ TEST_P(RewriteDriverTest, LoadResourcesFromTheWeb) {
       rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
   MockResourceCallback mock_callback2(resource2);
   EXPECT_TRUE(resource2.get() != NULL);
-  resource_manager()->ReadAsync(&mock_callback2);
+  resource_manager()->ReadAsync(&mock_callback2,
+                                ResourceManager::kReportFailureIfNotCacheable);
   EXPECT_TRUE(mock_callback2.done());
   EXPECT_TRUE(mock_callback2.success());
   EXPECT_EQ(kResourceContents1, resource2->contents());
@@ -559,7 +561,8 @@ TEST_P(RewriteDriverTest, LoadResourcesFromTheWeb) {
       rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
   MockResourceCallback mock_callback3(resource3);
   EXPECT_TRUE(resource3.get() != NULL);
-  resource_manager()->ReadAsync(&mock_callback3);
+  resource_manager()->ReadAsync(&mock_callback3,
+                                ResourceManager::kReportFailureIfNotCacheable);
   EXPECT_TRUE(mock_callback3.done());
   EXPECT_EQ(kResourceContents2, resource3->contents());
 }
@@ -590,7 +593,8 @@ TEST_P(RewriteDriverTest, LoadResourcesFromFiles) {
       rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
   MockResourceCallback mock_callback(resource);
   EXPECT_TRUE(resource.get() != NULL);
-  resource_manager()->ReadAsync(&mock_callback);
+  resource_manager()->ReadAsync(&mock_callback,
+                                ResourceManager::kReportFailureIfNotCacheable);
   EXPECT_TRUE(mock_callback.done());
   EXPECT_TRUE(mock_callback.success());
   EXPECT_EQ(kResourceContents1, resource->contents());
@@ -603,7 +607,8 @@ TEST_P(RewriteDriverTest, LoadResourcesFromFiles) {
       rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
   MockResourceCallback mock_callback2(resource2);
   EXPECT_TRUE(resource2.get() != NULL);
-  resource_manager()->ReadAsync(&mock_callback2);
+  resource_manager()->ReadAsync(&mock_callback2,
+                                ResourceManager::kReportFailureIfNotCacheable);
   EXPECT_TRUE(mock_callback2.done());
   EXPECT_TRUE(mock_callback2.success());
   EXPECT_EQ(kResourceContents2, resource2->contents());

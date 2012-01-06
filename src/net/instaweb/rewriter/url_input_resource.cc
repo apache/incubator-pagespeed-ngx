@@ -168,11 +168,12 @@ class UrlResourceFetchCallback : public AsyncFetch {
   virtual void HandleDone(bool success) {
     VLOG(2) << response_headers()->ToString();
     bool cached = AddToCache(success);
-    success = cached;
     if (lock_.get() != NULL) {
       message_handler_->Message(
-          kInfo, "%s: Unlocking lock %s with success=%s",
-          url().c_str(), lock_->name().c_str(), success ? "true" : "false");
+          kInfo, "%s: Unlocking lock %s with cached=%s, success=%s",
+          url().c_str(), lock_->name().c_str(),
+          cached ? "true" : "false",
+          success ? "true" : "false");
       lock_->Unlock();
       lock_.reset(NULL);
     }

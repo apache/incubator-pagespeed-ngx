@@ -280,7 +280,7 @@ TEST_F(WriteThroughHTTPCacheTest, RememberFetchFailedOrNotCacheable) {
   ResponseHeaders headers_out;
   http_cache_->RememberFetchFailed(key_, &message_handler_);
   HTTPValue value;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
+  EXPECT_EQ(HTTPCache::kRecentFetchFailed,
             Find(key_, &value, &headers_out, &message_handler_));
 
   // Now advance time 301 seconds; the cache should allow us to try fetching
@@ -299,7 +299,7 @@ TEST_F(WriteThroughHTTPCacheTest, SetIgnoreFailurePuts) {
   http_cache_->RememberNotCacheable("mykey2", &message_handler_);
   ResponseHeaders headers_out;
   HTTPValue value_out;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
+  EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable,
             Find(key_, &value_out, &headers_out, &message_handler_));
   EXPECT_EQ(HTTPCache::kNotFound,
             Find("mykey2", &value_out, &headers_out, &message_handler_));

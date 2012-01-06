@@ -38,7 +38,7 @@ class MockUrlFetcher : public UrlFetcher {
  public:
   MockUrlFetcher() : enabled_(true), fail_on_unexpected_(true),
                      update_date_headers_(false), omit_empty_writes_(false),
-                     timer_(NULL) {}
+                     fail_after_headers_(false), timer_(NULL) {}
   virtual ~MockUrlFetcher();
 
   void SetResponse(const StringPiece& url,
@@ -86,6 +86,10 @@ class MockUrlFetcher : public UrlFetcher {
   // length 0.
   void set_omit_empty_writes(bool x) { omit_empty_writes_ = x; }
 
+  // If set to true (defaults to false) the fetcher will fail after outputting
+  // the headers.
+  void set_fail_after_headers(bool x) { fail_after_headers_ = x; }
+
   void set_timer(MockTimer* timer) { timer_ = timer; }
 
  private:
@@ -117,7 +121,8 @@ class MockUrlFetcher : public UrlFetcher {
   bool enabled_;
   bool fail_on_unexpected_;   // Should we EXPECT if unexpected url called?
   bool update_date_headers_;  // Should we update Date headers from timer?
-  bool omit_empty_writes_;  // Should we call ->Write with length 0?
+  bool omit_empty_writes_;    // Should we call ->Write with length 0?
+  bool fail_after_headers_;   // Should we call Done(false) after headers?
 
   MockTimer* timer_;  // Timer to use for updating header dates.
 

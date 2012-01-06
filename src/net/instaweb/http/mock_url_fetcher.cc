@@ -111,6 +111,9 @@ bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,
       } else {
         // Otherwise serve a normal 200 OK response.
         response_headers->CopyFrom(response->header());
+        if (fail_after_headers_) {
+          return false;
+        }
         if (update_date_headers_) {
           CHECK(timer_ != NULL);
           // Update Date headers.

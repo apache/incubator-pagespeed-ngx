@@ -288,7 +288,7 @@ TEST_F(HTTPCacheTest, RememberFetchFailed) {
   ResponseHeaders meta_data_out;
   http_cache_.RememberFetchFailed("mykey", &message_handler_);
   HTTPValue value;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
+  EXPECT_EQ(HTTPCache::kRecentFetchFailed,
             Find("mykey", &value, &meta_data_out, &message_handler_));
 
   // Now advance time 301 seconds; the cache should allow us to try fetching
@@ -302,7 +302,7 @@ TEST_F(HTTPCacheTest, RememberFetchFailed) {
   // Now advance time 301 seconds; the cache should remember that the fetch
   // failed previously.
   mock_timer_.AdvanceMs(301 * 1000);
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
+  EXPECT_EQ(HTTPCache::kRecentFetchFailed,
             Find("mykey", &value, &meta_data_out, &message_handler_));
 }
 
@@ -312,7 +312,7 @@ TEST_F(HTTPCacheTest, RememberNotCacheable) {
   ResponseHeaders meta_data_out;
   http_cache_.RememberNotCacheable("mykey", &message_handler_);
   HTTPValue value;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
+  EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable,
             Find("mykey", &value, &meta_data_out, &message_handler_));
 
   // Now advance time 301 seconds; the cache should allow us to try fetching
@@ -326,7 +326,7 @@ TEST_F(HTTPCacheTest, RememberNotCacheable) {
   // Now advance time 301 seconds; the cache should remember that the fetch
   // failed previously.
   mock_timer_.AdvanceMs(301 * 1000);
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
+  EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable,
             Find("mykey", &value, &meta_data_out, &message_handler_));
 }
 
@@ -343,7 +343,7 @@ TEST_F(HTTPCacheTest, IgnoreFailurePuts) {
   http_cache_.Put("mykey3", &meta_data_in, "content", &message_handler_);
 
   HTTPValue value_out;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailedOrNotCacheable,
+  EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable,
             Find("mykey", &value_out, &meta_data_out, &message_handler_));
   EXPECT_EQ(HTTPCache::kNotFound,
             Find("mykey2", &value_out, &meta_data_out, &message_handler_));
