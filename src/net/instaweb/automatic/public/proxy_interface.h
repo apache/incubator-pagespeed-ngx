@@ -38,6 +38,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -143,6 +144,7 @@ class ProxyInterface : public UrlAsyncFetcher {
   TimedVariable* blink_requests_;
 
   scoped_ptr<ProxyFetchFactory> proxy_fetch_factory_;
+  UserAgentMatcher user_agent_matcher_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyInterface);
 };

@@ -44,6 +44,7 @@
 #include "net/instaweb/rewriter/panel_config.pb.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -52,12 +53,7 @@
 
 namespace net_instaweb {
 
-class MessageHandler;
-
-const char kJsonCachePrefix[] = "json:";
-const int kJsonCachePrefixLength = strlen(kJsonCachePrefix);
-const char kLayoutMarker[] = "<!--GooglePanel **** Layout end ****-->";
-const char kInstanceHtml[] = "instance_html";
+const int kJsonCachePrefixLength = strlen(BlinkUtil::kJsonCachePrefix);
 
 namespace {
 
@@ -105,12 +101,20 @@ class JsonFetch : public StringAsyncFetch {
   virtual ~JsonFetch() {}
 
   virtual void HandleDone(bool success) {
-    if (!success || !response_headers()->status_code() == HttpStatus::kOK) {
+    if (!success || response_headers()->status_code() != HttpStatus::kOK) {
       // Do nothing since the fetch failed.
       LOG(INFO) << "Background fetch for layout url " << key_ << " failed.";
       delete this;
       return;
     }
+
+    const ContentType* type = response_headers()->DetermineContentType();
+    if (type == NULL || !type->IsHtmlLike()) {
+      LOG(INFO) << "Non html page, not rewritable: " << key_;
+      delete this;
+      return;
+    }
+
     RewriteDriver* json_computation_driver =
         resource_manager_->NewCustomRewriteDriver(options_.release());
     // Set deadline to 10s since we want maximum filters to complete.
@@ -184,8 +188,7 @@ void BlinkFlow::Start(const GoogleString& url,
 
 void BlinkFlow::InitiateJsonLookup() {
   GoogleUrl gurl(url_);
-  json_url_ = kJsonCachePrefix;
-  gurl.Spec().AppendToString(&json_url_);
+  json_url_ = StrCat(BlinkUtil::kJsonCachePrefix, gurl.Spec());
   JsonFindCallback* callback = new JsonFindCallback(this);
   manager_->http_cache()->Find(json_url_,
                                manager_->message_handler(),
@@ -205,10 +208,10 @@ void BlinkFlow::JsonCacheHit(const StringPiece& content,
     return;
   }
 
-  StringPiece layout = (json)[0][kInstanceHtml].asCString();
+  StringPiece layout = (json)[0][BlinkUtil::kInstanceHtml].asCString();
   // NOTE: Since we compute layout in background and only get it in serialized
   // form, we have to strip everything after the layout marker.
-  size_t pos = layout.find(kLayoutMarker);
+  size_t pos = layout.find(BlinkUtil::kLayoutMarker);
   if (pos == StringPiece::npos) {
     LOG(DFATAL) << "Layout marker not found: " << layout;
     JsonCacheMiss();
@@ -220,20 +223,106 @@ void BlinkFlow::JsonCacheHit(const StringPiece& content,
   // Remove any Etag headers from the json response. Note that an Etag is
   // added by the HTTPCache for all responses that don't already have one.
   response_headers->RemoveAll(HttpAttributes::kEtag);
+
+  const PanelSet* panel_set_ = &(layout_->panel_set());
+  PanelIdToSpecMap panel_id_to_spec_;
+  bool non_cacheable_present = BlinkUtil::ComputePanels(panel_set_,
+                                                        &panel_id_to_spec_);
+
+  // TODO(rahulbansal): Do this only if there are uncacheable panels.
+  response_headers->ComputeCaching();
+  response_headers->SetDateAndCaching(response_headers->date_ms(), 0,
+                                      ", private, no-cache");
+
   base_fetch_->HeadersComplete();
+  SendLayout(layout.substr(0, pos));
 
-  base_fetch_->Write(layout.substr(0, pos), manager_->message_handler());
-  base_fetch_->Write("<script src=\"/webinstant/blink.js\"></script>",
-                     manager_->message_handler());
-  base_fetch_->Write("<script>var panelLoader = new PanelLoader();</script>",
-                     manager_->message_handler());
+  // If there are no non cacheable panels, serve all the contents
+  // else serve critical contents and trigger a fetch for non cacheable panels.
+  if (!non_cacheable_present) {
+    ServeAllPanelContents(json, panel_id_to_spec_);
+  } else {
+    ServeCriticalPanelContents(json, panel_id_to_spec_);
+
+    options_->EnableFilter(RewriteOptions::kComputePanelJson);
+    options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
+    options_->EnableFilter(RewriteOptions::kDisableJavascript);
+    options_->EnableFilter(RewriteOptions::kInlineImages);
+    TriggerProxyFetch(true);
+  }
+}
+
+void BlinkFlow::ServeCriticalPanelContents(
+    const Json::Value& json,
+    const PanelIdToSpecMap& panel_id_to_spec) {
+  GoogleString critical_json_str, non_critical_json_str, pushed_images_str;
+  BlinkUtil::SplitCritical(json, panel_id_to_spec, &critical_json_str,
+                           &non_critical_json_str, &pushed_images_str);
+  // TODO(rahulbansal): Add an option for storing sent_critical_data.
+  SendCriticalJson(&critical_json_str);
+  SendInlineImagesJson(&pushed_images_str);
+}
+
+void BlinkFlow::ServeAllPanelContents(
+    const Json::Value& json,
+    const PanelIdToSpecMap& panel_id_to_spec) {
+  GoogleString critical_json_str, non_critical_json_str, pushed_images_str;
+  BlinkUtil::SplitCritical(json, panel_id_to_spec, &critical_json_str,
+                           &non_critical_json_str, &pushed_images_str);
+  SendCriticalJson(&critical_json_str);
+  SendInlineImagesJson(&pushed_images_str);
+  // TODO(rahulbansal): We can't send cookies here since the fetch hasn't
+  // yet returned. This needs to be fixed so that even for a case when
+  // everything is cached, we do send the cookies when the fetch returns.
+  SendNonCriticalJson(&non_critical_json_str);
+  WriteString("\n</body></html>\n");
+  base_fetch_->Done(true);
+  delete this;
+}
+
+void BlinkFlow::SendLayout(const StringPiece& layout) {
+  WriteString(layout);
+  WriteString("<script src=\"/webinstant/blink.js\"></script>");
+  WriteString("<script>var panelLoader = new PanelLoader();</script>");
+  Flush();
+}
+
+void BlinkFlow::SendCriticalJson(GoogleString* critical_json_str) {
+  // TODO(rahulbansal): Remove user_ip from rewrite_driver.
+  const char* user_ip = base_fetch_->request_headers()->Lookup1(
+      HttpAttributes::kXForwardedFor);
+  if (user_ip != NULL && manager_->factory()->IsDebugClient(user_ip)) {
+    WriteString("<script>panelLoader.setRequestFromInternalIp();</script>");
+  }
+
+  WriteString("<script>panelLoader.loadCriticalData(");
+  BlinkUtil::EscapeString(critical_json_str);
+  WriteString(*critical_json_str);
+  WriteString(");</script>");
+  Flush();
+}
+
+void BlinkFlow::SendInlineImagesJson(GoogleString* pushed_images_str) {
+  WriteString("<script>panelLoader.loadImagesData(");
+  WriteString(*pushed_images_str);
+  WriteString(");</script>");
+  Flush();
+}
+
+void BlinkFlow::SendNonCriticalJson(GoogleString* non_critical_json_str) {
+  WriteString("<script>panelLoader.bufferNonCriticalData(");
+  BlinkUtil::EscapeString(non_critical_json_str);
+  WriteString(*non_critical_json_str);
+  WriteString(");</script>");
+  Flush();
+}
+
+void BlinkFlow::WriteString(const StringPiece& str) {
+  base_fetch_->Write(str, manager_->message_handler());
+}
+
+void BlinkFlow::Flush() {
   base_fetch_->Flush(manager_->message_handler());
-
-  options_->EnableFilter(RewriteOptions::kComputePanelJson);
-  options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
-  options_->EnableFilter(RewriteOptions::kDisableJavascript);
-  options_->EnableFilter(RewriteOptions::kInlineImages);
-  TriggerProxyFetch(true);
 }
 
 void BlinkFlow::JsonCacheMiss() {

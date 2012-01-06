@@ -213,6 +213,39 @@ TEST_P(RewriteDriverTestUrlNamer, TestEncodedUrls) {
   EXPECT_FALSE(CanDecodeUrl(encoded_url));
 }
 
+TEST_P(RewriteDriverTestUrlNamer, TestDecodeUrls) {
+  // Sanity-check on a valid one
+  GoogleUrl gurl_good(Encode(
+      "http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpg"));
+  rewrite_driver()->AddFilters();
+  StringVector urls;
+  TestUrlNamer::SetProxyMode(true);
+  EXPECT_TRUE(rewrite_driver()->DecodeUrl(gurl_good, &urls));
+  EXPECT_EQ(1, urls.size());
+  EXPECT_EQ("http://example.com/Puzzle.jpg", urls[0]);
+
+  // Invalid filter code
+  urls.clear();
+  GoogleUrl gurl_bad(Encode(
+      "http://example.com/", "NOFILTER", "HASH", "Puzzle.jpg", "jpgif"));
+  EXPECT_FALSE(rewrite_driver()->DecodeUrl(gurl_bad, &urls));
+
+  // Combine filters
+  urls.clear();
+  GoogleUrl gurl_multi(Encode(
+      "http://example.com/", "cc", "HASH", MultiUrl("a.css", "b.css"), "css"));
+  EXPECT_TRUE(rewrite_driver()->DecodeUrl(gurl_multi, &urls));
+  EXPECT_EQ(2, urls.size());
+  EXPECT_EQ("http://example.com/a.css", urls[0]);
+  EXPECT_EQ("http://example.com/b.css", urls[1]);
+
+  // Invalid Url.
+  urls.clear();
+  GoogleUrl gurl_invalid("invalid url");
+  EXPECT_FALSE(rewrite_driver()->DecodeUrl(gurl_invalid, &urls));
+  EXPECT_EQ(0, urls.size());
+}
+
 // Test to make sure we do not put in extra things into the cache.
 // This is using the CSS rewriter, which caches the output.
 TEST_P(RewriteDriverTest, TestCacheUse) {

@@ -50,6 +50,22 @@ const char* kImageInliningBlacklist[] = {
   "*Opera?5*",
   "*Opera?6*"
 };
+// For Panels, we only allow Firefox3+, IE8+, safari and Chrome
+// We'll be updating this as and when required.
+const char* kPanelSupportWhitelist[] = {
+  "*Chrome/*",
+  "*Firefox/*",
+  "*MSIE *",
+  "*Safari*",
+  "*Wget*",
+};
+const char* kPanelSupportBlacklist[] = {
+  "*Firefox/1.*",
+  "*Firefox/2.*",
+  "*MSIE 5.*",
+  "*MSIE 6.*",
+  "*MSIE 7.*",
+};
 // For webp rewriting, we whitelist Android, Chrome and Opera, but blacklist
 // older versions of the browsers that are not webp capable.  As other browsers
 // roll out webp support we will need to update this list to include them.
@@ -76,6 +92,10 @@ const char* kWebpBlacklist[] = {
   "*Chrome/7.*",
   "*Chrome/8.*",
   "*Chrome/9.0.*",
+  "*Chrome/14.*",
+  "*Chrome/15.*",
+  "*Chrome/16.*",
+  "*Chrome/17.*",
   "*Opera/9.80*Version/10.*",
   "*Opera?10.*",
   "*Opera/9.80*Version/11.0*",
@@ -90,6 +110,12 @@ UserAgentMatcher::UserAgentMatcher() {
   }
   for (int i = 0, n = arraysize(kImageInliningBlacklist); i < n; ++i) {
     supports_image_inlining_.Disallow(kImageInliningBlacklist[i]);
+  }
+  for (int i = 0, n = arraysize(kPanelSupportWhitelist); i < n; ++i) {
+    supports_blink_.Allow(kPanelSupportWhitelist[i]);
+  }
+  for (int i = 0, n = arraysize(kPanelSupportBlacklist); i < n; ++i) {
+    supports_blink_.Disallow(kPanelSupportBlacklist[i]);
   }
   // Do the same for webp support.
   for (int i = 0, n = arraysize(kWebpWhitelist); i < n; ++i) {
@@ -118,6 +144,10 @@ bool UserAgentMatcher::SupportsImageInlining(
     return true;
   }
   return supports_image_inlining_.Match(user_agent, false);
+}
+
+bool UserAgentMatcher::SupportsBlink(const StringPiece& user_agent) const {
+  return user_agent.empty() || supports_blink_.Match(user_agent, false);
 }
 
 bool UserAgentMatcher::SupportsWebp(const StringPiece& user_agent) const {

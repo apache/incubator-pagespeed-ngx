@@ -35,6 +35,12 @@ const char kChromeUserAgent[] =
 const char kChrome9UserAgent[] =  // Not webp capable
     "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) "
     "AppleWebKit/534.13 (KHTML, like Gecko) Chrome/9.0.597.19 Safari/534.13";
+const char kChrome15UserAgent[] =  // Not webp capable
+    "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) "
+    "AppleWebKit/534.13 (KHTML, like Gecko) Chrome/15.0.597.19 Safari/534.13";
+const char kChrome18UserAgent[] =  // webp capable
+    "Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) "
+    "AppleWebKit/534.13 (KHTML, like Gecko) Chrome/18.0.597.19 Safari/534.13";
 const char kChrome12UserAgent[] =  // webp capable
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_4) "
     "AppleWebKit/534.30 (KHTML, like Gecko) Chrome/12.0.742.100 Safari/534.30";
@@ -125,10 +131,25 @@ TEST_F(UserAgentMatcherTest, NotSupportsImageInlining) {
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(kPSPUserAgent));
 }
 
+TEST_F(UserAgentMatcherTest, SupportsBlink) {
+  EXPECT_TRUE(user_agent_matcher_.SupportsBlink(kIe9UserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsBlink(kChromeUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsBlink(kFirefoxUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsBlink(kSafariUserAgent));
+}
+
+TEST_F(UserAgentMatcherTest, NotSupportsBlink) {
+  EXPECT_FALSE(user_agent_matcher_.SupportsBlink(kIe6UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsBlink(kFirefox1UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsBlink(kNokiaUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsBlink(kOpera5UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsBlink(kPSPUserAgent));
+}
 
 TEST_F(UserAgentMatcherTest, SupportsWebp) {
   EXPECT_TRUE(user_agent_matcher_.SupportsWebp(kAndroidICSUserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsWebp(kChrome12UserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsWebp(kChrome18UserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsWebp(kOpera1110UserAgent));
 }
 
@@ -138,6 +159,7 @@ TEST_F(UserAgentMatcherTest, DoesntSupportWebp) {
   EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kAndroidHCUserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kChromeUserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kChrome9UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kChrome15UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kOpera1101UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kFirefoxUserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsWebp(kFirefox1UserAgent));

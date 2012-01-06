@@ -157,7 +157,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       waiting_(kNoWait),
       cleanup_on_fetch_complete_(false),
       flush_requested_(false),
-      panel_filter_incomplete_(false),
       inhibits_mutex_(NULL),
       finish_parse_on_hold_(NULL),
       inhibiting_event_(NULL),
@@ -256,7 +255,6 @@ void RewriteDriver::Clear() {
   fetch_detached_ = false;
   detached_fetch_detached_path_complete_ = false;
   detached_fetch_main_path_complete_ = false;
-  panel_filter_incomplete_ = false;
   start_time_ms_ = 0;
   user_ip_.clear();
 }
@@ -264,26 +262,7 @@ void RewriteDriver::Clear() {
 // Must be called with rewrite_mutex() held.
 bool RewriteDriver::RewritesComplete() const {
   return ((pending_rewrites_ == 0) && !fetch_queued_ &&
-          detached_rewrites_.empty() && (rewrites_to_delete_ == 0) &&
-          !panel_filter_incomplete_);
-}
-
-void RewriteDriver::SetPanelFilterIncomplete(bool panel_filter_incomplete) {
-  bool clean = false;
-  {
-    // TODO(jmarantz): We'd like to make 'parsing_' symmetric with the other
-    // booleans checked for in RewritesComplete(), but it does not work that
-    // way now.  In non-panel-related flows, Cleanup() is used to indicate
-    // that parsing is complete, hence parsing_ is set to false *in* Cleanup.
-    //
-    // I think this code would be cleaner with a refactor toward this symmetry.
-    ScopedMutex lock(rewrite_mutex());
-    clean = panel_filter_incomplete_ && !panel_filter_incomplete && !parsing_;
-    panel_filter_incomplete_ = panel_filter_incomplete;
-  }
-  if (clean) {
-    Cleanup();
-  }
+          detached_rewrites_.empty() && (rewrites_to_delete_ == 0));
 }
 
 bool RewriteDriver::HaveBackgroundFetchRewrite() const {
@@ -966,10 +945,13 @@ Statistics* RewriteDriver::statistics() const {
   return (resource_manager_ == NULL) ? NULL : resource_manager_->statistics();
 }
 
-bool RewriteDriver::DecodeOutputResourceName(const GoogleUrl& gurl,
-                                             ResourceNamer* namer_out,
-                                             OutputResourceKind* kind_out,
-                                             RewriteFilter** filter_out) const {
+bool RewriteDriver::DecodeOutputResourceNameHelper(
+    const GoogleUrl& gurl,
+    ResourceNamer* namer_out,
+    OutputResourceKind* kind_out,
+    RewriteFilter** filter_out,
+    GoogleString* url_base,
+    StringVector* urls) const {
   // First, we can't handle anything that's not a valid URL nor is named
   // properly as our resource.
   if (!gurl.is_valid()) {
@@ -1003,6 +985,7 @@ bool RewriteDriver::DecodeOutputResourceName(const GoogleUrl& gurl,
         !GoogleUrl(decoded_gurl).is_valid()) {
       return false;
     }
+    *url_base = (GoogleUrl(decoded_gurl).AllExceptLeaf()).as_string();
   }
 
   // Now let's reject as mal-formed if the id string is not
@@ -1035,14 +1018,41 @@ bool RewriteDriver::DecodeOutputResourceName(const GoogleUrl& gurl,
   // TODO(morlovich): This is doing some redundant work.
   if (*filter_out != NULL) {
     ResourceContext resource_context;
-    StringVector urls;
     if (!(*filter_out)->encoder()->Decode(
-        namer_out->name(), &urls, &resource_context, message_handler())) {
+        namer_out->name(), urls, &resource_context, message_handler())) {
       return false;
     }
   }
 
   return true;
+}
+
+bool RewriteDriver::DecodeOutputResourceName(const GoogleUrl& gurl,
+                                             ResourceNamer* namer_out,
+                                             OutputResourceKind* kind_out,
+                                             RewriteFilter** filter_out) const {
+  StringVector urls;
+  GoogleString url_base;
+  return DecodeOutputResourceNameHelper(
+      gurl, namer_out, kind_out, filter_out, &url_base, &urls);
+}
+
+bool RewriteDriver::DecodeUrl(const GoogleUrl& url,
+                              StringVector* decoded_urls) const {
+  ResourceNamer namer;
+  OutputResourceKind kind;
+  RewriteFilter* filter = NULL;
+  GoogleString url_base;
+  bool is_decoded =  DecodeOutputResourceNameHelper(
+      url, &namer, &kind, &filter, &url_base, decoded_urls);
+  if (is_decoded) {
+    GoogleUrl gurl_base(url_base);
+    for (int i = 0, n = decoded_urls->size(); i < n; ++i) {
+      GoogleUrl full_url(gurl_base, (*decoded_urls)[i]);
+      (*decoded_urls)[i] = full_url.Spec().as_string();
+    }
+  }
+  return is_decoded;
 }
 
 OutputResourcePtr RewriteDriver::DecodeOutputResource(

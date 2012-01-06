@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -292,7 +293,9 @@ void ProxyInterface::ProxyRequestCallback(bool is_resource_fetch,
       RewriteOptions* options = custom_options_success.first;
       const Layout* layout = ExtractBlinkLayout(*request_url, async_fetch,
                                                 options);
-      if (layout != NULL) {
+      const char* user_agent = async_fetch->request_headers()->Lookup1(
+          HttpAttributes::kUserAgent);
+      if (layout != NULL && user_agent_matcher_.SupportsBlink(user_agent)) {
         // TODO(rahulbansal): Remove this LOG once we expect to have
         // Blink requests.
         LOG(INFO) << "Triggering Blink flow for url "

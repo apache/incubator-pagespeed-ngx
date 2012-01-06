@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_AUTOMATIC_PUBLIC_BLINK_FLOW_H_
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_BLINK_FLOW_H_
 
+#include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -73,6 +74,26 @@ class BlinkFlow {
   void TriggerProxyFetch(bool layout_found);
 
   void ComputeJsonInBackground();
+
+  void ServeAllPanelContents(const Json::Value& json,
+                             const PanelIdToSpecMap& panel_id_to_spec);
+
+  void ServeCriticalPanelContents(const Json::Value& json,
+                                  const PanelIdToSpecMap& panel_id_to_spec);
+
+  void SendLayout(const StringPiece& str);
+
+  void SendCriticalJson(GoogleString* critical_json_str);
+
+  void SendInlineImagesJson(GoogleString* pushed_images_str);
+
+  void SendNonCriticalJson(GoogleString* non_critical_json_str);
+
+  void EscapeString(GoogleString* str) const;
+
+  void WriteString(const StringPiece& str);
+
+  void Flush();
 
   GoogleString url_;
   AsyncFetch* base_fetch_;

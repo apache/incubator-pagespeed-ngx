@@ -294,6 +294,10 @@ class RewriteDriver : public HtmlParse {
                                 OutputResourceKind* kind_out,
                                 RewriteFilter** filter_out) const;
 
+  // Decodes the incoming pagespeed url to original url(s).
+  bool DecodeUrl(const GoogleUrl& url,
+                 StringVector* decoded_urls) const;
+
   FileSystem* file_system() { return file_system_; }
   void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }
   UrlAsyncFetcher* async_fetcher() { return url_async_fetcher_; }
@@ -594,10 +598,6 @@ class RewriteDriver : public HtmlParse {
   RewriteContext* RegisterForPartitionKey(const GoogleString& partition_key,
                                           RewriteContext* candidate);
 
-  // Sets whether panel filter is still in progress and hence rewrite driver
-  // shouldn't be deleted.
-  void SetPanelFilterIncomplete(bool panel_filter_incomplete);
-
   // Must be called after all other rewrites that are currently relying on this
   // one have had their RepeatedSuccess or RepeatedFailure methods called.
   //
@@ -798,6 +798,14 @@ class RewriteDriver : public HtmlParse {
   // Move anything on queue_ after the first inhibited event to deferred_queue_.
   void SplitQueueIfNecessary();
 
+  // Helper function to decode the pagespeed url.
+  bool DecodeOutputResourceNameHelper(const GoogleUrl& url,
+                                      ResourceNamer* name_out,
+                                      OutputResourceKind* kind_out,
+                                      RewriteFilter** filter_out,
+                                      GoogleString* url_base,
+                                      StringVector* urls) const;
+
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
   // tag, if one exists.  See
@@ -854,10 +862,6 @@ class RewriteDriver : public HtmlParse {
   bool cleanup_on_fetch_complete_;
 
   bool flush_requested_;
-
-  // Whether panel filter has still not completed and the rewrite driver
-  // should be kept alive.
-  bool panel_filter_incomplete_;
 
   scoped_ptr<AbstractMutex> inhibits_mutex_;
   typedef std::set <const HtmlElement*> ConstHtmlElementSet;
