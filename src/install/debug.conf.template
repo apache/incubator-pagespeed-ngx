@@ -86,6 +86,12 @@ AddOutputFilter INCLUDES .shtml
 # http://code.google.com/p/modpagespeed/issues/detail?id=324
 Header append 'X-Extra-Header' '1'
 
+# However we should not allow user-specified cache-control on
+# rewritten HTML or resources.  This setting helps us make
+# sure that we strip any user-specified cache-control when
+# we rewrite HTML.  We test this in apache_system_test.sh.
+Header set Cache-Control "max-age=600"
+
 # For regression test of connection failing.
 ModPagespeedDomain www.google.co.ca:8085
 

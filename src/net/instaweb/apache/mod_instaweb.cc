@@ -98,6 +98,7 @@ const char* kModPagespeedFileCacheCleanIntervalMs =
 const char* kModPagespeedFileCachePath = "ModPagespeedFileCachePath";
 const char* kModPagespeedFileCacheSizeKb = "ModPagespeedFileCacheSizeKb";
 const char* kModPagespeedFilterName = "MOD_PAGESPEED_OUTPUT_FILTER";
+const char* kModPagespeedFixHeadersName = "MOD_PAGESPEED_FIX_HEADERS_FILTER";
 const char* kModPagespeedForceCaching = "ModPagespeedForceCaching";
 const char* kModPagespeedGeneratedFilePrefix =
     "ModPagespeedGeneratedFilePrefix";
@@ -459,22 +460,15 @@ InstawebContext* build_context_for_request(request_rec* request) {
   apr_table_setn(request->headers_out, kModPagespeedHeader,
                  kModPagespeedVersion);
 
-  // TODO(sligocki): Move inside PSA.
-  // Turn off caching for the HTTP requests, and remove any filters
-  // that might run downstream of us and mess up our caching headers.
-  apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
-                HttpAttributes::kNoCache);
-  apr_table_unset(request->headers_out, HttpAttributes::kExpires);
-  apr_table_unset(request->headers_out, HttpAttributes::kEtag);
   apr_table_unset(request->headers_out, HttpAttributes::kLastModified);
-  DisableDownstreamHeaderFilters(request);
-
   apr_table_unset(request->headers_out, HttpAttributes::kContentLength);
   apr_table_unset(request->headers_out, "Content-MD5");
   apr_table_unset(request->headers_out, HttpAttributes::kContentEncoding);
 
   // Make sure compression is enabled for this response.
   ap_add_output_filter("DEFLATE", NULL, request, request->connection);
+  ap_add_output_filter(kModPagespeedFixHeadersName, NULL, request,
+                       request->connection);
 
   ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                 "Request accepted.");
@@ -574,6 +568,30 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
 
   apr_brigade_cleanup(bb);
   return return_code;
+}
+
+// This is called when mod_pagespeed rewrites HTML.  At this time we do
+// not want rewritten HTML to be cached, though we may relax that policy
+// with some pagespeed.conf settings in the future.
+//
+// This function removes any expires or cache-control settings added
+// by the uesr's .conf files, and puts in headers to disable caching.
+//
+// We expect this to run after mod_headers and mod_expires, triggered
+// by the call to ap_add_output_filter(kModPagespeedFixHeadersName...)
+// in build_context_for_request.
+apr_status_t instaweb_fix_headers_filter(
+    ap_filter_t *filter, apr_bucket_brigade *bb) {
+  request_rec* request = filter->r;
+
+  // TODO(sligocki): Move inside PSA.
+  // Turn off caching for the HTTP requests.
+  apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
+                HttpAttributes::kNoCache);
+  apr_table_unset(request->headers_out, HttpAttributes::kExpires);
+  apr_table_unset(request->headers_out, HttpAttributes::kEtag);
+  ap_remove_output_filter(filter);
+  return ap_pass_brigade(filter->next, bb);
 }
 
 void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
@@ -734,6 +752,17 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   ap_register_output_filter(
       kModPagespeedFilterName, instaweb_out_filter, NULL,
       static_cast<ap_filter_type>(AP_FTYPE_RESOURCE + 1));
+
+  // For HTML rewrites, we must apply our caching semantics later
+  // in the filter-chain than mod_headers or mod_expires.  See:
+  //   APACHE_DIST/src/modules/metadata/mod_headers.c:857
+  //         --> mod_headers is installed at AP_FTYPE_CONTENT_SET
+  //   APACHE_DIST/src/modules/metadata/mod_expires.c:554
+  //         --> mod_expires is installed at AP_FTYPE_CONTENT_SET - 2
+  // Thus we can override its settings by installing at +1.
+  ap_register_output_filter(
+      kModPagespeedFixHeadersName, instaweb_fix_headers_filter, NULL,
+      static_cast<ap_filter_type>(AP_FTYPE_CONTENT_SET + 1));
 
   ap_hook_post_config(pagespeed_post_config, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(pagespeed_child_init, NULL, NULL, APR_HOOK_LAST);

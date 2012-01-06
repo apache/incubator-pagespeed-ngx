@@ -363,6 +363,27 @@ echo TEST: ModPagespeedLoadFromFile
 URL=$TEST_ROOT/load_from_file/index.html?ModPagespeedFilters=inline_css
 fetch_until $URL 'grep -c blue' 1
 
+echo TEST: Custom headers remain on HTML, but cache should be disabled.
+URL=$TEST_ROOT/rewrite_compressed_js.html
+echo $WGET_DUMP $URL
+HTML_HEADERS=$($WGET_DUMP $URL)
+echo $HTML_HEADERS | egrep -q "X-Extra-Header: 1"
+echo $HTML_HEADERS | egrep -q -v "X-Extra-Header: 1, 1"
+check [ $? = 0 ]
+echo $HTML_HEADERS | egrep -q 'Cache-Control: max-age=0, no-cache'
+check [ $? = 0 ]
+
+echo TEST: Custom headers remain on resources, but cache should be 1 year.
+URL="$TEST_ROOT/compressed/hello_js.pagespeed.ce.HdziXmtLIV.txt"
+echo $WGET_DUMP $URL
+RESOURCE_HEADERS=$($WGET_DUMP $URL)
+echo $RESOURCE_HEADERS | egrep -q 'X-Extra-Header: 1'
+echo $RESOURCE_HEADERS | egrep -q -v 'X-Extra-Header: 1, 1'
+check [ $? = 0 ]
+# It should only be added once, not twice:
+echo $RESOURCE_HEADERS | egrep -q 'Cache-Control: max-age=31536000'
+check [ $? = 0 ]
+
 # Cleanup
 rm -rf $OUTDIR
 echo "PASS."
