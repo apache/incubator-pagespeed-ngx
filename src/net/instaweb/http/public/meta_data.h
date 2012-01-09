@@ -114,6 +114,11 @@ enum Code {
   kGatewayTimeout = 504,
   kHttpVersionNotSupported = 505,
 
+  // Instaweb-specific proxy failure constants.
+  kProxyPublisherFailure = 520,
+  kProxyFailure = 521,
+  kProxyConfigurationFailure = 522,
+
   // Instaweb-specific response codes: these are intentionally chosen to be
   // outside the normal HTTP range, but we consider these response codes
   // to be 'cacheable' in our own cache.

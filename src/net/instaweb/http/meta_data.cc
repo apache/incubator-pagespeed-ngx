@@ -107,6 +107,11 @@ const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {
     case HttpStatus::kUnavailable             : return "Service Unavailable";
     case HttpStatus::kGatewayTimeout          : return "Gateway Time-out";
 
+     // Instaweb proxy failures
+    case HttpStatus::kProxyPublisherFailure  : return "Proxy Publisher Failure";
+    case HttpStatus::kProxyFailure             : return "Proxy Failure";
+    case HttpStatus::kProxyConfigurationFailure: return "Proxy Config Failure";
+
     default:
       // We don't have a name for this response code, so we'll just
       // take the blame
