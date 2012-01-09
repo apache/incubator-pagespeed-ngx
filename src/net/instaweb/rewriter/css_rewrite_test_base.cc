@@ -134,15 +134,28 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
   }
   InitResponseHeaders(StrCat(id, ".css"), kContentTypeCss, css_input, 300);
 
+  GoogleString link_extras("");
+  if ((flags & kLinkCharsetIsUTF8) != 0) {
+    link_extras = " charset='utf-8'";
+  }
+  if ((flags & kLinkScreenMedia) != 0 && (flags & kLinkPrintMedia) != 0) {
+    StrAppend(&link_extras, " media='screen,print'");
+  } else if ((flags & kLinkScreenMedia) != 0) {
+    StrAppend(&link_extras, " media='screen'");
+  } else if ((flags & kLinkPrintMedia) != 0) {
+    StrAppend(&link_extras, " media='print'");
+  }
+
   static const char html_template[] =
       "<head>\n"
       "  <title>Example style outline</title>\n"
       "  <!-- Style starts here -->\n"
-      "  <link rel='stylesheet' type='text/css' href='%s'>\n"
+      "  <link rel='stylesheet' type='text/css' href='%s'%s>\n"
       "  <!-- Style ends here -->\n"
       "</head>";
 
-  GoogleString html_input  = StringPrintf(html_template, css_url.c_str());
+  GoogleString html_input  = StringPrintf(html_template, css_url.c_str(),
+                                          link_extras.c_str());
 
   GoogleString html_output;
 
@@ -151,7 +164,8 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
   GoogleString expected_new_url = ExpectedUrlForNamer(namer);
 
   if (flags & kExpectChange) {
-    html_output = StringPrintf(html_template, expected_new_url.c_str());
+    html_output = StringPrintf(html_template, expected_new_url.c_str(),
+                               link_extras.c_str());
   } else {
     html_output = html_input;
   }
@@ -186,9 +200,7 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
   if (flags & kExpectChange) {
     GoogleString actual_output;
     // TODO(sligocki): This will only work with mock_hasher.
-    EXPECT_TRUE(ServeResource(kTestDomain,
-                              namer.id(), namer.name(), namer.ext(),
-                              &actual_output)) << id;
+    EXPECT_TRUE(ServeResourceUrl(expected_new_url, &actual_output)) << id;
     EXPECT_EQ(expected_css_output, actual_output) << id;
 
     // Serve from new context.

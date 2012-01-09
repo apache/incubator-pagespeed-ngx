@@ -23,27 +23,29 @@
 
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"        // for StringPiece
+
 namespace Css {
 
 class Values;
-class Stylesheet;
 
 }  // namespace Css
 
 namespace net_instaweb {
 
 class CacheExtender;
+class CssHierarchy;
 class GoogleUrl;
 class ImageCombineFilter;
 class ImageRewriteFilter;
 class MessageHandler;
+class RewriteContext;
 class RewriteDriver;
 class Statistics;
 
 class CssImageRewriterAsync {
  public:
   CssImageRewriterAsync(CssFilter::Context* context,
+                        CssFilter* filter,
                         RewriteDriver* driver,
                         CacheExtender* cache_extender,
                         ImageRewriteFilter* image_rewriter,
@@ -52,28 +54,33 @@ class CssImageRewriterAsync {
 
   static void Initialize(Statistics* statistics);
 
-  // Attempts to rewrite all images in stylesheet, starting nested rewrites.
-  // If successful, it mutates stylesheet to point to new images. base_url
-  // is the base of the original CSS and is used to convert relative URLs to
-  // their absolute form for fetching; trim_url is the base of the rewritten
-  // CSS and is used to convert absolute URLs in the resulting CSS to their
-  // relative form.
-  void RewriteCssImages(int64 image_inline_max_bytes,
-                        const GoogleUrl& base_url,
-                        const GoogleUrl& trim_url,
-                        const StringPiece& contents,
-                        Css::Stylesheet* stylesheet,
-                        MessageHandler* handler);
+  // Attempts to rewrite the given CSS, starting nested rewrites for each
+  // import and image to be rewritten. If successful, it mutates the CSS
+  // to point to new images and flattens all @imports (if enabled).
+  void RewriteCss(int64 image_inline_max_bytes,
+                  RewriteContext* parent,
+                  CssHierarchy* hierarchy,
+                  MessageHandler* handler);
+
+  // Is @import flattening enabled?
+  bool FlatteningEnabled() const;
 
   // Are any rewrites enabled?
   bool RewritesEnabled(int64 image_inline_max_bytes) const;
 
  private:
+  void RewriteImport(RewriteContext* parent,
+                     CssHierarchy* hierarchy);
+
   void RewriteImage(int64 image_inline_max_bytes,
                     const GoogleUrl& trim_url,
                     const GoogleUrl& original_url,
+                    RewriteContext* parent,
                     Css::Values* values, size_t value_index,
                     MessageHandler* handler);
+
+  // Needed for import flattening.
+  CssFilter* filter_;
 
   // Needed for resource_manager and options.
   RewriteDriver* driver_;

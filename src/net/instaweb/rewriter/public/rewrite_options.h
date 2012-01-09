@@ -62,6 +62,7 @@ class RewriteOptions {
     kExtendCacheCss,
     kExtendCacheImages,
     kExtendCacheScripts,
+    kFlattenCssImports,
     kHtmlWriterFilter,
     kInlineCss,
     kInlineImages,
@@ -92,6 +93,7 @@ class RewriteOptions {
   static const char kAjaxRewriteId[];
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
+  static const char kCssImportFlattenerId[];
   static const char kCssInlineId[];
   static const char kCacheExtenderId[];
   static const char kImageCombineId[];

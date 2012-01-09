@@ -59,6 +59,7 @@ namespace net_instaweb {
 const char RewriteOptions::kAjaxRewriteId[] = "aj";
 const char RewriteOptions::kCssCombinerId[] = "cc";
 const char RewriteOptions::kCssFilterId[] = "cf";
+const char RewriteOptions::kCssImportFlattenerId[] = "if";
 const char RewriteOptions::kCssInlineId[] = "ci";
 const char RewriteOptions::kCacheExtenderId[] = "ce";
 const char RewriteOptions::kImageCombineId[] = "is";
@@ -230,6 +231,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kExtendCacheCss:                  return "Cache Extend Css";
     case kExtendCacheImages:               return "Cache Extend Images";
     case kExtendCacheScripts:              return "Cache Extend Scripts";
+    case kFlattenCssImports:               return "Flatten CSS Imports";
     case kHtmlWriterFilter:                return "Flushes html";
     case kInlineCss:                       return "Inline Css";
     case kInlineImages:                    return "Inline Images";
@@ -282,6 +284,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kExtendCacheCss:                  return "ec";
     case kExtendCacheImages:               return "ei";
     case kExtendCacheScripts:              return "es";
+    case kFlattenCssImports:               return kCssImportFlattenerId;
     case kHtmlWriterFilter:                return "hw";
     case kInlineCss:                       return kCssInlineId;
     case kInlineImages:                    return "ii";

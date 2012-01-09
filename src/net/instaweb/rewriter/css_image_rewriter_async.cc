@@ -23,11 +23,13 @@
 
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
+#include "net/instaweb/rewriter/public/css_hierarchy.h"
 #include "net/instaweb/rewriter/public/css_resource_slot.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -42,11 +44,13 @@
 namespace net_instaweb {
 
 CssImageRewriterAsync::CssImageRewriterAsync(CssFilter::Context* context,
+                                             CssFilter* filter,
                                              RewriteDriver* driver,
                                              CacheExtender* cache_extender,
                                              ImageRewriteFilter* image_rewriter,
                                              ImageCombineFilter* image_combiner)
-    : driver_(driver),
+    : filter_(filter),
+      driver_(driver),
       context_(context),
       // For now we use the same options as for rewriting and cache-extending
       // images found in HTML.
@@ -62,6 +66,11 @@ CssImageRewriterAsync::CssImageRewriterAsync(CssFilter::Context* context,
 
 CssImageRewriterAsync::~CssImageRewriterAsync() {}
 
+bool CssImageRewriterAsync::FlatteningEnabled() const {
+  const RewriteOptions* options = driver_->options();
+  return options->Enabled(RewriteOptions::kFlattenCssImports);
+}
+
 bool CssImageRewriterAsync::RewritesEnabled(
     int64 image_inline_max_bytes) const {
   const RewriteOptions* options = driver_->options();
@@ -72,10 +81,25 @@ bool CssImageRewriterAsync::RewritesEnabled(
           options->Enabled(RewriteOptions::kSpriteImages));
 }
 
+void CssImageRewriterAsync::RewriteImport(
+    RewriteContext* parent,
+    CssHierarchy* hierarchy) {
+  GoogleUrl import_url(hierarchy->url());
+  ResourcePtr resource = driver_->CreateInputResource(import_url);
+  if (resource.get() == NULL) {
+    return;
+  }
+
+  parent->AddNestedContext(
+      filter_->MakeNestedFlatteningContextInNewSlot(
+          resource, driver_->UrlLine(), context_, parent, hierarchy));
+}
+
 void CssImageRewriterAsync::RewriteImage(
     int64 image_inline_max_bytes,
     const GoogleUrl& trim_url,
     const GoogleUrl& original_url,
+    RewriteContext* parent,
     Css::Values* values, size_t value_index,
     MessageHandler* handler) {
   const RewriteOptions* options = driver_->options();
@@ -89,14 +113,14 @@ void CssImageRewriterAsync::RewriteImage(
 
   if (options->Enabled(RewriteOptions::kRecompressImages) ||
       image_inline_max_bytes > 0) {
-    context_->AddNestedContext(
+    parent->AddNestedContext(
         image_rewriter_->MakeNestedRewriteContextForCss(image_inline_max_bytes,
-            context_, ResourceSlotPtr(slot)));
+            parent, ResourceSlotPtr(slot)));
   }
 
   if (driver_->MayCacheExtendImages()) {
-    context_->AddNestedContext(
-        cache_extender_->MakeNestedContext(context_, ResourceSlotPtr(slot)));
+    parent->AddNestedContext(
+        cache_extender_->MakeNestedContext(parent, ResourceSlotPtr(slot)));
   }
 
   // TODO(sligocki): DomainRewriter or is this done automatically?
@@ -108,22 +132,40 @@ void CssImageRewriterAsync::RewriteImage(
   }
 }
 
-void CssImageRewriterAsync::RewriteCssImages(int64 image_inline_max_bytes,
-                                             const GoogleUrl& base_url,
-                                             const GoogleUrl& trim_url,
-                                             const StringPiece& contents,
-                                             Css::Stylesheet* stylesheet,
-                                             MessageHandler* handler) {
+void CssImageRewriterAsync::RewriteCss(int64 image_inline_max_bytes,
+                                       RewriteContext* parent,
+                                       CssHierarchy* hierarchy,
+                                       MessageHandler* handler) {
   const RewriteOptions* options = driver_->options();
   bool spriting_ok = options->Enabled(RewriteOptions::kSpriteImages);
 
+  if (!FlatteningEnabled()) {
+    // If flattening is disabled completely, mark this hierarchy as having
+    // failed flattening, so that later RollUps do the right thing (nothing).
+    hierarchy->set_flattening_succeeded(false);
+  } else if (hierarchy->flattening_succeeded()) {
+    // Flattening of this hierarchy might have already failed because of a
+    // problem detected with the containing charset or media, in particular
+    // see CssFilter::Start(Inline|Attribute|External)Rewrite.
+    if (hierarchy->ExpandChildren()) {
+      for (int i = 0, n = hierarchy->children().size(); i < n; ++i) {
+        CssHierarchy* child = hierarchy->children()[i];
+        if (child->needs_rewriting()) {
+          RewriteImport(parent, child);
+        }
+      }
+    }
+  }
+
   if (RewritesEnabled(image_inline_max_bytes)) {
     handler->Message(kInfo, "Starting to rewrite images in CSS in %s",
-                     base_url.spec_c_str());
+                     hierarchy->css_base_url().spec_c_str());
     if (spriting_ok) {
-      image_combiner_->Reset(context_, base_url, contents);
+      image_combiner_->Reset(parent, hierarchy->css_base_url(),
+                             hierarchy->input_contents());
     }
-    Css::Rulesets& rulesets = stylesheet->mutable_rulesets();
+    Css::Rulesets& rulesets =
+        hierarchy->mutable_stylesheet()->mutable_rulesets();
     for (Css::Rulesets::iterator ruleset_iter = rulesets.begin();
          ruleset_iter != rulesets.end(); ++ruleset_iter) {
       Css::Ruleset* ruleset = *ruleset_iter;
@@ -156,7 +198,8 @@ void CssImageRewriterAsync::RewriteCssImages(int64 image_inline_max_bytes,
                 GoogleString rel_url =
                     UnicodeTextToUTF8(value->GetStringValue());
                 // TODO(abliss): only do this resolution once.
-                const GoogleUrl original_url(base_url, rel_url);
+                const GoogleUrl original_url(hierarchy->css_base_url(),
+                                             rel_url);
                 if (!original_url.is_valid()) {
                   handler->Message(kInfo, "Invalid URL %s", rel_url.c_str());
                   continue;
@@ -171,8 +214,9 @@ void CssImageRewriterAsync::RewriteCssImages(int64 image_inline_max_bytes,
                       original_url, values, value_index, context_,
                       &decls, handler);
                 }
-                RewriteImage(image_inline_max_bytes, trim_url, original_url,
-                             values, value_index, handler);
+                RewriteImage(image_inline_max_bytes,
+                             hierarchy->css_trim_url(), original_url,
+                             parent, values, value_index, handler);
               }
             }
             break;
@@ -195,7 +239,7 @@ void CssImageRewriterAsync::RewriteCssImages(int64 image_inline_max_bytes,
   } else {
     handler->Message(kInfo, "Image rewriting and cache extension not enabled, "
                      "so not rewriting images in CSS in %s",
-                     base_url.spec_c_str());
+                     hierarchy->css_base_url().spec_c_str());
   }
 }
 

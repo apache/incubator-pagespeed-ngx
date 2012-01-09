@@ -58,7 +58,10 @@ class CssRewriteTestBase : public ResourceManagerTestBase,
     kExpectSuccess = 8,
     kNoStatCheck = 16,
     kNoClearFetcher = 32,
-    kNoOtherContexts = 64
+    kNoOtherContexts = 64,
+    kLinkCharsetIsUTF8 = 128,
+    kLinkScreenMedia = 256,
+    kLinkPrintMedia = 512
   };
 
   static bool ExactlyOneTrue(bool a, bool b) {

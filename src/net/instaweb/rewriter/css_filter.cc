@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/css_filter.h"
 
 #include <algorithm>
-#include <vector>
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
@@ -29,10 +28,14 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/css_flatten_imports_context.h"
+#include "net/instaweb/rewriter/public/css_hierarchy.h"
 #include "net/instaweb/rewriter/public/css_image_rewriter_async.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -53,7 +56,6 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "util/utf8/public/unicodetext.h"
 #include "webutil/css/parser.h"
 
 #include "base/at_exit.h"
@@ -107,8 +109,9 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
       filter_(filter),
       driver_(driver),
       image_rewriter_(
-          new CssImageRewriterAsync(this, filter->driver_, cache_extender,
-                                    image_rewriter, image_combiner)),
+          new CssImageRewriterAsync(this, filter, filter->driver_,
+                                    cache_extender, image_rewriter,
+                                    image_combiner)),
       rewrite_inline_element_(NULL),
       rewrite_inline_char_node_(NULL),
       rewrite_inline_attribute_(NULL),
@@ -145,48 +148,24 @@ void CssFilter::Context::Render() {
   }
 }
 
-void CssFilter::Context::StartInlineRewrite(HtmlElement* style_element,
+void CssFilter::Context::SetupInlineRewrite(HtmlElement* style_element,
                                             HtmlCharactersNode* text) {
   // To handle nested rewrites of inline CSS, we internally handle it
   // as a rewrite of a data: URL.
   rewrite_inline_element_ = style_element;
   rewrite_inline_char_node_ = text;
-  GoogleString data_url;
-  // TODO(morlovich): This does a lot of useless conversions and
-  // copying. Get rid of them.
-  DataUrl(kContentTypeCss, PLAIN, text->contents(), &data_url);
-  ResourcePtr input_resource(DataUrlInputResource::Make(data_url, Manager()));
-  ResourceSlotPtr slot(new InlineCssSlot(input_resource, Driver()->UrlLine()));
-  AddSlot(slot);
-  driver_->InitiateRewrite(this);
 }
 
-void CssFilter::Context::StartAttributeRewrite(HtmlElement* element,
+void CssFilter::Context::SetupAttributeRewrite(HtmlElement* element,
                                                HtmlElement::Attribute* src) {
   rewrite_inline_element_ = element;
   rewrite_inline_attribute_ = src;
-  GoogleString data_url;
-  // TODO(morlovich): This does a lot of useless conversions and
-  // copying. Get rid of them.
-  DataUrl(kContentTypeCss, PLAIN, src->value(), &data_url);
-  ResourcePtr input_resource(DataUrlInputResource::Make(data_url, Manager()));
-  ResourceSlotPtr slot(new InlineCssSlot(input_resource, Driver()->UrlLine()));
-  AddSlot(slot);
-  driver_->InitiateRewrite(this);
 }
 
-void CssFilter::Context::StartExternalRewrite(HtmlElement* link,
-                                              HtmlElement::Attribute* src) {
-  ResourcePtr input_resource(filter_->CreateInputResource(src->value()));
-  if (input_resource.get() != NULL) {
-    css_base_gurl_.Reset(input_resource->url());
-    css_trim_gurl_.Reset(css_base_gurl_);
-    ResourceSlotPtr slot(driver_->GetSlot(input_resource, link, src));
-    AddSlot(slot);
-    driver_->InitiateRewrite(this);
-  } else {
-    delete this;
-  }
+void CssFilter::Context::SetupExternalRewrite(const GoogleUrl& base_gurl,
+                                              const GoogleUrl& trim_gurl) {
+  css_base_gurl_.Reset(base_gurl);
+  css_trim_gurl_.Reset(trim_gurl);
 }
 
 void CssFilter::Context::RewriteSingle(
@@ -194,6 +173,7 @@ void CssFilter::Context::RewriteSingle(
     const OutputResourcePtr& output_resource) {
   input_resource_ = input_resource;
   output_resource_ = output_resource;
+  StringPiece input_contents = input_resource_->contents();
   // The base URL used when absolutifying sub-resources must be the input
   // URL of this rewrite.
   //
@@ -209,8 +189,9 @@ void CssFilter::Context::RewriteSingle(
     css_base_gurl_.Reset(input_resource_->url());
     css_trim_gurl_.Reset(output_resource_->UrlEvenIfLeafInvalid());
   }
+  in_text_size_ = input_contents.size();
   TimedBool result = filter_->RewriteCssText(
-      this, css_base_gurl_, css_trim_gurl_, input_resource->contents(),
+      this, css_base_gurl_, css_trim_gurl_, input_contents, in_text_size_,
       IsInlineAttribute() /* text_is_declarations */,
       NULL /* out_text --- not written in RewriteCssText in async case */,
       driver_->message_handler());
@@ -227,22 +208,32 @@ void CssFilter::Context::RewriteSingle(
   }
 }
 
-void CssFilter::Context::RewriteImages(int64 in_text_size,
-                                       Css::Stylesheet* stylesheet) {
+void CssFilter::Context::RewriteCssFromRoot(const StringPiece& contents,
+                                            int64 in_text_size,
+                                            Css::Stylesheet* stylesheet) {
   in_text_size_ = in_text_size;
-  stylesheet_.reset(stylesheet);
 
-  image_rewriter_->RewriteCssImages(ImageInlineMaxBytes(),
-                                    css_base_gurl_, css_trim_gurl_,
-                                    input_resource_->contents(), stylesheet,
-                                    driver_->message_handler());
+  hierarchy_.InitializeRoot(css_base_gurl_, css_trim_gurl_, contents,
+                            driver_->doctype().IsXhtml(), stylesheet,
+                            driver_->message_handler());
+
+  image_rewriter_->RewriteCss(ImageInlineMaxBytes(), this, &hierarchy_,
+                              driver_->message_handler());
+}
+
+void CssFilter::Context::RewriteCssFromNested(RewriteContext* parent,
+                                              CssHierarchy* hierarchy) {
+  image_rewriter_->RewriteCss(ImageInlineMaxBytes(), parent, hierarchy,
+                              driver_->message_handler());
 }
 
 void CssFilter::Context::Harvest() {
   GoogleString out_text;
 
+  hierarchy_.RollUpStylesheets();
+
   bool previously_optimized = false;
-  for (int i = 0; i < num_nested(); ++i) {
+  for (int i = 0; !previously_optimized && i < num_nested(); ++i) {
     RewriteContext* nested_context = nested(i);
     for (int j = 0; j < nested_context->num_slots(); ++j) {
       if (nested_context->slot(j)->was_optimized()) {
@@ -254,14 +245,15 @@ void CssFilter::Context::Harvest() {
 
   // May need to absolutify @imports.
   bool absolutified_imports = false;
-  if (Driver()->ShouldAbsolutifyUrl(css_base_gurl_, css_trim_gurl_, NULL)) {
+  if (driver_->ShouldAbsolutifyUrl(css_base_gurl_, css_trim_gurl_, NULL)) {
     absolutified_imports =
-        CssMinify::AbsolutifyImports(stylesheet_.get(), css_base_gurl_);
+        CssMinify::AbsolutifyImports(hierarchy_.mutable_stylesheet(),
+                                     css_base_gurl_);
   }
 
   bool ok = filter_->SerializeCss(
-      this, in_text_size_, stylesheet_.get(), css_base_gurl_, css_trim_gurl_,
-      previously_optimized || absolutified_imports,
+      this, in_text_size_, hierarchy_.mutable_stylesheet(), css_base_gurl_,
+      css_trim_gurl_, previously_optimized || absolutified_imports,
       IsInlineAttribute() /* stylesheet_is_declarations */,
       &out_text, driver_->message_handler());
   if (ok) {
@@ -273,7 +265,7 @@ void CssFilter::Context::Harvest() {
                                               output_resource_);
       ok = manager->Write(HttpStatus::kOK, out_text,
                           output_resource_.get(),
-                          expire_ms, Driver()->message_handler());
+                          expire_ms, driver_->message_handler());
     } else {
       output_partition(0)->set_inlined_data(out_text);
     }
@@ -401,8 +393,7 @@ void CssFilter::StartElementImpl(HtmlElement* element) {
           HtmlName::kStyle);
       if (element_style != NULL &&
           (!check_for_url || CssTagScanner::HasUrl(element_style->value()))) {
-        Context* context = MakeContext(driver_, NULL);
-        context->StartAttributeRewrite(element, element_style);
+        StartAttributeRewrite(element, element_style);
       }
     }
   }
@@ -429,8 +420,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
       CHECK(element == style_char_node_->parent());  // Sanity check.
       GoogleString new_content;
 
-      Context* context = MakeContext(driver_, NULL);
-      context->StartInlineRewrite(element, style_char_node_);
+      StartInlineRewrite(element, style_char_node_);
     }
     in_style_element_ = false;
 
@@ -443,13 +433,117 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
           HtmlName::kHref);
       if (element_href != NULL) {
         // If it has a href= attribute
-        Context* context = MakeContext(driver_, NULL);
-        context->StartExternalRewrite(element, element_href);
+        StartExternalRewrite(element, element_href);
       } else {
         driver_->ErrorHere("Link element with no href.");
       }
     }
   }
+}
+
+void CssFilter::StartInlineRewrite(HtmlElement* element,
+                                   HtmlCharactersNode* text) {
+  ResourceSlotPtr slot(MakeSlotForInlineCss(text->contents()));
+  CssFilter::Context* rewriter = StartRewriting(slot);
+  rewriter->SetupInlineRewrite(element, text);
+
+  // Get the applicable media and charset. If the charset on the link doesn't
+  // agree with that of the source page, we can't flatten.
+  CssHierarchy* hierarchy = rewriter->mutable_hierarchy();
+  GetApplicableMedia(element, hierarchy->mutable_media());
+  hierarchy->set_flattening_succeeded(
+      GetApplicableCharset(element, hierarchy->mutable_charset()));
+}
+
+void CssFilter::StartAttributeRewrite(HtmlElement* element,
+                                      HtmlElement::Attribute* style) {
+  ResourceSlotPtr slot(MakeSlotForInlineCss(style->value()));
+  CssFilter::Context* rewriter = StartRewriting(slot);
+  rewriter->SetupAttributeRewrite(element, style);
+
+  // @import is not allowed (nor handled) in attribute CSS, which must be
+  // declarations only, so disable flattening from the get-go.
+  rewriter->mutable_hierarchy()->set_flattening_succeeded(false);
+}
+
+void CssFilter::StartExternalRewrite(HtmlElement* link,
+                                     HtmlElement::Attribute* src) {
+  // Create the input resource for the slot.
+  ResourcePtr input_resource(CreateInputResource(src->value()));
+  if (input_resource.get() == NULL) {
+    return;
+  }
+  ResourceSlotPtr slot(driver_->GetSlot(input_resource, link, src));
+  CssFilter::Context* rewriter = StartRewriting(slot);
+  rewriter->SetupExternalRewrite(GoogleUrl(input_resource->url()),
+                                 decoded_base_url());
+
+  // Get the applicable media and charset. If the charset on the link doesn't
+  // agree with that of the source page, we can't flatten.
+  CssHierarchy* hierarchy = rewriter->mutable_hierarchy();
+  GetApplicableMedia(link, hierarchy->mutable_media());
+  hierarchy->set_flattening_succeeded(
+      GetApplicableCharset(link, hierarchy->mutable_charset()));
+}
+
+ResourceSlot* CssFilter::MakeSlotForInlineCss(const StringPiece& content) {
+  // Create the input resource for the slot.
+  GoogleString data_url;
+  // TODO(morlovich): This does a lot of useless conversions and
+  // copying. Get rid of them.
+  DataUrl(kContentTypeCss, PLAIN, content, &data_url);
+  ResourcePtr input_resource(DataUrlInputResource::Make(data_url,
+                                                        resource_manager_));
+  return new InlineCssSlot(input_resource, driver_->UrlLine());
+}
+
+CssFilter::Context* CssFilter::StartRewriting(const ResourceSlotPtr& slot) {
+  // Create the context add it to the slot, then kick everything off.
+  CssFilter::Context* rewriter = MakeContext(driver_, NULL);
+  rewriter->AddSlot(slot);
+  driver_->InitiateRewrite(rewriter);
+  return rewriter;
+}
+
+bool CssFilter::GetApplicableCharset(const HtmlElement* element,
+                                     GoogleString* charset) const {
+  // HTTP1.1 says the default charset is ISO-8859-1 but as the W3C says (in
+  // http://www.w3.org/International/O-HTTP-charset.en.php) not many browsers
+  // actually do this so a default of "" might be better.
+  StringPiece our_charset("iso-8859-1");
+  GoogleString headers_charset;
+  ResponseHeaders* headers = driver_->response_headers_ptr();
+  if (headers != NULL) {
+    headers_charset = headers->DetermineCharset();
+    if (!headers_charset.empty()) {
+      our_charset = headers_charset;
+    }
+  }
+  if (element != NULL) {
+    const HtmlElement::Attribute* charset_attribute =
+        element->FindAttribute(HtmlName::kCharset);
+    if (charset_attribute != NULL) {
+      if (our_charset != charset_attribute->value()) {
+        return false;  // early return!
+      }
+    }
+  }
+  our_charset.CopyToString(charset);
+  return true;
+}
+
+bool CssFilter::GetApplicableMedia(const HtmlElement* element,
+                                   StringVector* media) const {
+  bool result = false;
+  if (element != NULL) {
+    const HtmlElement::Attribute* media_attribute =
+        element->FindAttribute(HtmlName::kMedia);
+    if (media_attribute != NULL) {
+      css_util::VectorizeMediaAttribute(media_attribute->value(), media);
+      result = true;
+    }
+  }
+  return result;
 }
 
 // Return value answers the question: May we rewrite?
@@ -464,10 +558,10 @@ TimedBool CssFilter::RewriteCssText(Context* context,
                                     const GoogleUrl& css_base_gurl,
                                     const GoogleUrl& css_trim_gurl,
                                     const StringPiece& in_text,
+                                    int64 in_text_size,
                                     bool text_is_declarations,
                                     GoogleString* out_text,
                                     MessageHandler* handler) {
-  int64 in_text_size = static_cast<int64>(in_text.size());
   // Load stylesheet w/o expanding background attributes and preserving as
   // much content as possible from the original document.
   Css::Parser parser(in_text);
@@ -490,7 +584,7 @@ TimedBool CssFilter::RewriteCssText(Context* context,
     if (declarations != NULL) {
       stylesheet.reset(new Css::Stylesheet());
       Css::Ruleset* ruleset = new Css::Ruleset();
-      stylesheet.get()->mutable_rulesets().push_back(ruleset);
+      stylesheet->mutable_rulesets().push_back(ruleset);
       ruleset->set_declarations(declarations);
     }
   } else {
@@ -506,9 +600,10 @@ TimedBool CssFilter::RewriteCssText(Context* context,
     num_parse_failures_->Add(1);
   } else {
     // Edit stylesheet.
-    // Start any nested rewrite tasks
-    context->RewriteImages(in_text_size, stylesheet.release());
-
+    // Any problem with an @import results in the error mask bit kImportError
+    // being set, so if we get here we know that any @import rules were parsed
+    // successfully, thus, flattening is safe.
+    context->RewriteCssFromRoot(in_text, in_text_size, stylesheet.release());
     // Rewrite OK thus far.
     ret.value = true;
   }
@@ -569,72 +664,6 @@ bool CssFilter::SerializeCss(RewriteContext* context,
   return ret;
 }
 
-// Combine all 'original_stylesheets' (and all their sub stylescripts) into a
-// single returned stylesheet which has no @imports or returns NULL if we fail
-// to load some sub-resources.
-//
-// Note: we must cannibalize input stylesheets or we will have ownership
-// problems or a lot of deep-copying.
-Css::Stylesheet* CssFilter::CombineStylesheets(
-    std::vector<Css::Stylesheet*>* original_stylesheets) {
-  // Load all sub-stylesheets to assure that we can do the combination.
-  std::vector<Css::Stylesheet*> stylesheets;
-  std::vector<Css::Stylesheet*>::const_iterator iter;
-  for (iter = original_stylesheets->begin();
-       iter < original_stylesheets->end(); ++iter) {
-    Css::Stylesheet* stylesheet = *iter;
-    if (!LoadAllSubStylesheets(stylesheet, &stylesheets)) {
-      return NULL;
-    }
-  }
-
-  // Once all sub-stylesheets are loaded in memory, combine them.
-  Css::Stylesheet* combination = new Css::Stylesheet;
-  // TODO(sligocki): combination->rulesets().reserve(...);
-  for (std::vector<Css::Stylesheet*>::const_iterator iter = stylesheets.begin();
-       iter < stylesheets.end(); ++iter) {
-    Css::Stylesheet* stylesheet = *iter;
-    // Append all rulesets from 'stylesheet' to 'combination' ...
-    combination->mutable_rulesets().insert(
-        combination->mutable_rulesets().end(),
-        stylesheet->rulesets().begin(),
-        stylesheet->rulesets().end());
-    // ... and then clear rules from 'stylesheet' to avoid double ownership.
-    stylesheet->mutable_rulesets().clear();
-  }
-  return combination;
-}
-
-// Collect a list of all stylesheets @imported by base_stylesheet directly or
-// indirectly in the order that they will be dealt with by a CSS parser and
-// append them to vector 'all_stylesheets'.
-bool CssFilter::LoadAllSubStylesheets(
-    Css::Stylesheet* base_stylesheet,
-    std::vector<Css::Stylesheet*>* all_stylesheets) {
-  const Css::Imports& imports = base_stylesheet->imports();
-  for (Css::Imports::const_iterator iter = imports.begin();
-       iter < imports.end(); ++iter) {
-    Css::Import* import = *iter;
-    StringPiece url(import->link.utf8_data(), import->link.utf8_length());
-
-    // Fetch external stylesheet from url ...
-    Css::Stylesheet* sub_stylesheet = LoadStylesheet(url);
-    if (sub_stylesheet == NULL) {
-      driver_->ErrorHere("Failed to load sub-resource %s",
-                             url.as_string().c_str());
-      return false;
-    }
-
-    // ... and recursively add all its sub-stylesheets (and it) to vector.
-    if (!LoadAllSubStylesheets(sub_stylesheet, all_stylesheets)) {
-      return false;
-    }
-  }
-  // Add base stylesheet after all imports have been added.
-  all_stylesheets->push_back(base_stylesheet);
-  return true;
-}
-
 RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
@@ -649,7 +678,8 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
     GoogleUrl css_trim_gurl(output_resource->UrlEvenIfLeafInvalid());
     if (css_base_gurl.is_valid() && css_trim_gurl.is_valid()) {
       TimedBool result = RewriteCssText(
-          NULL /* no context*/, css_base_gurl, css_trim_gurl, in_contents,
+          NULL /* no context*/, css_base_gurl, css_trim_gurl,
+          in_contents, in_contents.size(),
           false /* text_is_declarations -- it's a style element */,
           &out_contents, driver_->message_handler());
       if (result.value) {
@@ -697,6 +727,18 @@ const UrlSegmentEncoder* CssFilter::Context::encoder() const {
 RewriteContext* CssFilter::MakeNestedRewriteContext(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
   RewriteContext* context = MakeContext(NULL, parent);
+  context->AddSlot(slot);
+  return context;
+}
+
+RewriteContext* CssFilter::MakeNestedFlatteningContextInNewSlot(
+    const ResourcePtr& resource, const GoogleString& location,
+    CssFilter::Context* rewriter, RewriteContext* parent,
+    CssHierarchy* hierarchy) {
+  ResourceSlotPtr slot(new InlineCssSlot(resource, location));
+  RewriteContext* context = new CssFlattenImportsContext(NULL /* driver */,
+                                                         parent, rewriter,
+                                                         hierarchy);
   context->AddSlot(slot);
   return context;
 }

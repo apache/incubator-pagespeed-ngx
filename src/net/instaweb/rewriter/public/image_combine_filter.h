@@ -80,7 +80,7 @@ class ImageCombineFilter : public RewriteFilter {
   OutputResourcePtr MakeOutput();
 
   // Creates a new context for doing spriting, but does not register it.
-  void Reset(CssFilter::Context* context, const GoogleUrl& css_url,
+  void Reset(RewriteContext* context, const GoogleUrl& css_url,
              const StringPiece& css_text);
 
   // If there is any work to do, registers the RewriteContext created by

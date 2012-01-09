@@ -44,6 +44,7 @@ struct FilterMap {
 "extend_cache_css",                  RewriteOptions::kExtendCacheCss
 "extend_cache_images",               RewriteOptions::kExtendCacheImages
 "extend_cache_scripts",              RewriteOptions::kExtendCacheScripts
+"flatten_css_imports",               RewriteOptions::kFlattenCssImports
 "inline_css",                        RewriteOptions::kInlineCss
 "inline_images",                     RewriteOptions::kInlineImages
 "inline_import_to_link",             RewriteOptions::kInlineImportToLink

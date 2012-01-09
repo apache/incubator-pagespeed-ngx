@@ -88,6 +88,7 @@
         'rewriter/css_combine_filter_test.cc',
         'rewriter/css_filter_test.cc',
         'rewriter/css_hierarchy_test.cc',
+        'rewriter/css_flatten_imports_test.cc',
         'rewriter/css_image_rewriter_test.cc',
         'rewriter/css_inline_filter_test.cc',
         'rewriter/css_inline_import_to_link_filter_test.cc',

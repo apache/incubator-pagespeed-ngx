@@ -19,10 +19,9 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_FILTER_H_
 
-#include <vector>
-
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/rewriter/public/css_hierarchy.h"
 #include "net/instaweb/rewriter/public/css_resource_slot.h"
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -103,6 +102,11 @@ class CssFilter : public RewriteSingleResourceFilter {
   static const char kMinifiedBytesSaved[];
   static const char kParseFailures[];
 
+  RewriteContext* MakeNestedFlatteningContextInNewSlot(
+      const ResourcePtr& resource, const GoogleString& location,
+      CssFilter::Context* rewriter, RewriteContext* parent,
+      CssHierarchy* hierarchy);
+
  protected:
   virtual RewriteContext* MakeRewriteContext();
   virtual const UrlSegmentEncoder* encoder() const;
@@ -111,13 +115,44 @@ class CssFilter : public RewriteSingleResourceFilter {
 
  private:
   friend class Context;
+
   Context* MakeContext(RewriteDriver* driver,
                        RewriteContext* parent);
+
+  // Starts the asynchronous rewrite process for inline CSS inside the given
+  // style_element, with the CSS in 'text'.
+  void StartInlineRewrite(HtmlElement* style_element, HtmlCharactersNode* text);
+
+  // Starts the asynchronous rewrite process for inline CSS inside the given
+  // element's given style attribute.
+  void StartAttributeRewrite(HtmlElement* element,
+                             HtmlElement::Attribute* style);
+
+  // Starts the asynchronous rewrite process for external CSS referenced by
+  // attribute 'src' of 'link'.
+  void StartExternalRewrite(HtmlElement* link, HtmlElement::Attribute* src);
+
+  ResourceSlot* MakeSlotForInlineCss(const StringPiece& content);
+  CssFilter::Context* StartRewriting(const ResourceSlotPtr& slot);
+
+  // Get the charset of the HTML being parsed which can be specified in the
+  // driver's headers, defaulting to ISO-8859-1 if isn't. Then, if a charset
+  // is specified in the given element, check that they agree, and if not
+  // return false, otherwise return true and assign the first charset to the
+  // given string.
+  bool GetApplicableCharset(const HtmlElement* element,
+                            GoogleString* charset) const;
+
+  // Get the media specified in the given element, if any. Returns true if
+  // media were found false if not.
+  bool GetApplicableMedia(const HtmlElement* element,
+                          StringVector* media) const;
 
   TimedBool RewriteCssText(Context* context,
                            const GoogleUrl& css_base_gurl,
                            const GoogleUrl& css_trim_gurl,
                            const StringPiece& in_text,
+                           int64 in_text_size,
                            bool text_is_declarations,
                            GoogleString* out_text,
                            MessageHandler* handler);
@@ -137,13 +172,6 @@ class CssFilter : public RewriteSingleResourceFilter {
   virtual RewriteResult RewriteLoadedResource(
       const ResourcePtr& input_resource,
       const OutputResourcePtr& output_resource);
-
-  Css::Stylesheet* CombineStylesheets(
-      std::vector<Css::Stylesheet*>* stylesheets);
-  bool LoadAllSubStylesheets(Css::Stylesheet* stylesheet_with_imports,
-                             std::vector<Css::Stylesheet*>* result_stylesheets);
-
-  Css::Stylesheet* LoadStylesheet(const StringPiece& url) { return NULL; }
 
   bool in_style_element_;  // Are we in a style element?
   // These are meaningless if in_style_element_ is false:
@@ -175,24 +203,20 @@ class CssFilter::Context : public SingleRewriteContext {
           ResourceContext* context);
   virtual ~Context();
 
-  // Starts the asynchronous rewrite process for inline CSS inside
-  // given style_element, with text in text.
-  // Takes over the ownership of 'this'.
-  void StartInlineRewrite(HtmlElement* style_element, HtmlCharactersNode* text);
+  // Setup rewriting for inline, attribute, or external CSS.
+  void SetupInlineRewrite(HtmlElement* style_element, HtmlCharactersNode* text);
+  void SetupAttributeRewrite(HtmlElement* element, HtmlElement::Attribute* src);
+  void SetupExternalRewrite(const GoogleUrl& base_gurl,
+                            const GoogleUrl& trim_gurl);
 
-  // Starts the asynchronous rewrite process for inline CSS inside the given
-  // element's given style attribute. Takes over the ownership of 'this'.
-  void StartAttributeRewrite(HtmlElement* element, HtmlElement::Attribute* src);
-
-  // Starts the asynchronous rewrite process for external CSS reference to
-  // by attribute 'src' of 'link'.
-  // Takes over the ownership of 'this'
-  void StartExternalRewrite(HtmlElement* link, HtmlElement::Attribute* src);
-
-  // Starts nested rewrite jobs for any images contained in the CSS.
-  void RewriteImages(int64 in_text_size, Css::Stylesheet* stylesheet);
+  // Starts nested rewrite jobs for any imports or images contained in the CSS.
+  void RewriteCssFromRoot(const StringPiece& in_text, int64 in_text_size,
+                          Css::Stylesheet* stylesheet);
+  void RewriteCssFromNested(RewriteContext* parent, CssHierarchy* hierarchy);
 
   CssResourceSlotFactory* slot_factory() { return &slot_factory_; }
+
+  CssHierarchy* mutable_hierarchy() { return &hierarchy_; }
 
  protected:
   virtual void Render();
@@ -231,6 +255,7 @@ class CssFilter::Context : public SingleRewriteContext {
   RewriteDriver* driver_;
   scoped_ptr<CssImageRewriterAsync> image_rewriter_;
   CssResourceSlotFactory slot_factory_;
+  CssHierarchy hierarchy_;
 
   // Style element containing inline CSS (see StartInlineRewrite) -or-
   // any element with a style attribute (see StartAttributeRewrite), or
@@ -247,7 +272,6 @@ class CssFilter::Context : public SingleRewriteContext {
 
   // Information needed for nested rewrites or finishing up serialization.
   int64 in_text_size_;
-  scoped_ptr<Css::Stylesheet> stylesheet_;
   GoogleUrl css_base_gurl_;
   GoogleUrl css_trim_gurl_;
   ResourcePtr input_resource_;

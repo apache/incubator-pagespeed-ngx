@@ -1177,7 +1177,7 @@ void ImageCombineFilter::AddCssBackgroundContext(
   return;
 }
 
-void ImageCombineFilter::Reset(CssFilter::Context* parent,
+void ImageCombineFilter::Reset(RewriteContext* parent,
                                const GoogleUrl& css_url,
                                const StringPiece& css_text) {
   context_ = MakeNestedContext(parent, css_url, css_text);
