@@ -48,6 +48,7 @@ class HTTPCache {
   static const char kCacheMisses[];
   static const char kCacheExpirations[];
   static const char kCacheInserts[];
+  static const char kCacheDeletes[];
 
   // The prefix to be added to Etags.
   static const char kEtagPrefix[];
@@ -206,6 +207,7 @@ class HTTPCache {
   Variable* cache_misses()      { return cache_misses_; }
   Variable* cache_expirations() { return cache_expirations_; }
   Variable* cache_inserts()     { return cache_inserts_; }
+  Variable* cache_deletes()     { return cache_deletes_; }
 
   int64 remember_not_cacheable_ttl_seconds() {
     return remember_not_cacheable_ttl_seconds_;
@@ -259,6 +261,7 @@ class HTTPCache {
   Variable* cache_misses_;
   Variable* cache_expirations_;
   Variable* cache_inserts_;
+  Variable* cache_deletes_;
   int64 remember_not_cacheable_ttl_seconds_;
   int64 remember_fetch_failed_ttl_seconds_;
   AtomicBool ignore_failure_puts_;

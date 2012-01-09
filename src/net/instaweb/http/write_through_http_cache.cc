@@ -208,6 +208,7 @@ CacheInterface::KeyState WriteThroughHTTPCache::Query(const GoogleString& key) {
 void WriteThroughHTTPCache::Delete(const GoogleString& key) {
   cache1_->Delete(key);
   cache2_->Delete(key);
+  cache_deletes()->Add(-1);  // To avoid double counting.
 }
 
 void WriteThroughHTTPCache::set_force_caching(bool force) {

@@ -54,6 +54,7 @@ const char HTTPCache::kCacheHits[] = "cache_hits";
 const char HTTPCache::kCacheMisses[] = "cache_misses";
 const char HTTPCache::kCacheExpirations[] = "cache_expirations";
 const char HTTPCache::kCacheInserts[] = "cache_inserts";
+const char HTTPCache::kCacheDeletes[] = "cache_deletes";
 const char HTTPCache::kEtagPrefix[] = "W/PSA-";
 
 
@@ -67,7 +68,8 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
       cache_hits_(stats->GetVariable(kCacheHits)),
       cache_misses_(stats->GetVariable(kCacheMisses)),
       cache_expirations_(stats->GetVariable(kCacheExpirations)),
-      cache_inserts_(stats->GetVariable(kCacheInserts)) {
+      cache_inserts_(stats->GetVariable(kCacheInserts)),
+      cache_deletes_(stats->GetVariable(kCacheDeletes)) {
   remember_not_cacheable_ttl_seconds_ = kRememberNotCacheableTtl;
   remember_fetch_failed_ttl_seconds_ = kRememberFetchFailedTtl;
 }
@@ -379,6 +381,7 @@ void HTTPCache::Put(const GoogleString& key, ResponseHeaders* headers,
 }
 
 void HTTPCache::Delete(const GoogleString& key) {
+  cache_deletes_->Add(1);
   return cache_->Delete(key);
 }
 
@@ -388,6 +391,7 @@ void HTTPCache::Initialize(Statistics* statistics) {
   statistics->AddVariable(kCacheMisses);
   statistics->AddVariable(kCacheExpirations);
   statistics->AddVariable(kCacheInserts);
+  statistics->AddVariable(kCacheDeletes);
 }
 
 HTTPCache::Callback::~Callback() {

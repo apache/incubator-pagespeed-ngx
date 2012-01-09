@@ -116,6 +116,20 @@ DEFINE_string(pagespeed_version, "", "Version number to put into X-Page-Speed "
               "response header.");
 DEFINE_bool(enable_blink, false, "If true then blink is enabled");
 
+// TODO(pulkitg): Add following flags in apache/mod_instaweb.cc
+DEFINE_int32(max_delayed_images_index,
+             net_instaweb::RewriteOptions::kDefaultMaxDelayedImagesIndex,
+             "Number of first N images for which low res image is generated. "
+             "Negative values will bypass image index check.");
+
+DEFINE_int64(min_image_size_low_resolution_bytes,
+    net_instaweb::RewriteOptions::kDefaultMinImageSizeLowResolutionBytes,
+    "Minimum image size above which low res image is generated.");
+
+DEFINE_int64(critical_images_cache_expiration_time_ms,
+    net_instaweb::RewriteOptions::kDefaultCriticalImagesCacheExpirationMs,
+    "Critical images ajax metadata cache expiration time in msec.");
+
 namespace net_instaweb {
 
 namespace {
@@ -216,6 +230,17 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("enable_blink")) {
     options->set_enable_blink(FLAGS_enable_blink);
+  }
+  if (WasExplicitlySet("max_delayed_images_index")) {
+    options->set_max_delayed_images_index(FLAGS_max_delayed_images_index);
+  }
+  if (WasExplicitlySet("min_image_size_low_resolution_bytes")) {
+    options->set_min_image_size_low_resolution_bytes(
+        FLAGS_min_image_size_low_resolution_bytes);
+  }
+  if (WasExplicitlySet("critical_images_cache_expiration_time_ms")) {
+    options->set_critical_images_cache_expiration_time_ms(
+        FLAGS_critical_images_cache_expiration_time_ms);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

@@ -368,6 +368,8 @@ URL=$TEST_ROOT/rewrite_compressed_js.html
 echo $WGET_DUMP $URL
 HTML_HEADERS=$($WGET_DUMP $URL)
 echo $HTML_HEADERS | egrep -q "X-Extra-Header: 1"
+check [ $? = 0 ]
+# The extra header should only be added once, not twice.
 echo $HTML_HEADERS | egrep -q -v "X-Extra-Header: 1, 1"
 check [ $? = 0 ]
 echo $HTML_HEADERS | egrep -q 'Cache-Control: max-age=0, no-cache'
@@ -378,9 +380,10 @@ URL="$TEST_ROOT/compressed/hello_js.pagespeed.ce.HdziXmtLIV.txt"
 echo $WGET_DUMP $URL
 RESOURCE_HEADERS=$($WGET_DUMP $URL)
 echo $RESOURCE_HEADERS | egrep -q 'X-Extra-Header: 1'
+check [ $? = 0 ]
+# The extra header should only be added once, not twice.
 echo $RESOURCE_HEADERS | egrep -q -v 'X-Extra-Header: 1, 1'
 check [ $? = 0 ]
-# It should only be added once, not twice:
 echo $RESOURCE_HEADERS | egrep -q 'Cache-Control: max-age=31536000'
 check [ $? = 0 ]
 

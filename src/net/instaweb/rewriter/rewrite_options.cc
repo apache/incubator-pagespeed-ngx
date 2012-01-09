@@ -30,6 +30,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/wildcard_group.h"
 
 namespace {
@@ -139,6 +140,11 @@ const int RewriteOptions::kDefaultMaxUrlSegmentSize = 1024;
 
 const GoogleString RewriteOptions::kDefaultBeaconUrl =
     "/mod_pagespeed_beacon?ets=";
+
+const int RewriteOptions::kDefaultMaxDelayedImagesIndex = 5;
+const int64 RewriteOptions::kDefaultMinImageSizeLowResolutionBytes = 1 * 1024;
+const int64 RewriteOptions::kDefaultCriticalImagesCacheExpirationMs =
+    Timer::kHourMs;
 
 const char RewriteOptions::kClassName[] = "RewriteOptions";
 
@@ -396,6 +402,11 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultImageWebpRecompressQuality,
              &image_webp_recompress_quality_, "iw");
   add_option("", &ga_id_, "ig");
+  add_option(kDefaultMaxDelayedImagesIndex, &max_delayed_images_index_, "mdii");
+  add_option(kDefaultMinImageSizeLowResolutionBytes,
+             &min_image_size_low_resolution_bytes_, "islr");
+  add_option(kDefaultCriticalImagesCacheExpirationMs,
+             &critical_images_cache_expiration_time_ms_, "cice");
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
