@@ -149,6 +149,7 @@
         'util/chunking_writer_test.cc',
         'util/circular_buffer_test.cc',
         'util/data_url_test.cc',
+        'util/escaping_test.cc',
         'util/file_cache_test.cc',
         'util/file_system_lock_manager_test.cc',
         'util/filename_encoder_test.cc',

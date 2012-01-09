@@ -18,6 +18,8 @@
 
 #include "net/instaweb/util/public/escaping.h"
 
+#include <cstddef>
+
 namespace net_instaweb {
 
 // We escape backslash, double-quote, CR and LF while forming a string
@@ -44,6 +46,14 @@ void EscapeToJsStringLiteral(const StringPiece& original,
       case '\n':
         (*escaped) += "\\n";
         break;
+      case '/':
+        // Forward slashes are generally OK, but </script> is trouble
+        // if it happens inside an inline <script>. We therefore escape the
+        // forward slash if we see /script>
+        if (original.substr(c).starts_with("/script")) {
+          (*escaped) += '\\';
+        }
+        // fallthrough intentional.
       default:
         (*escaped) += original[c];
     }
