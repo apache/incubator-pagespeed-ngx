@@ -78,15 +78,28 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
     const StringPiece& url_to_rewrite, const GoogleUrl& base_url,
     GoogleString* rewritten_url) {
   if (url_to_rewrite.empty()) {
-    return kFail;
+    return kDomainUnchanged;
   }
 
   GoogleUrl orig_url(base_url, url_to_rewrite);
-  StringPiece orig_spec = orig_url.Spec();
-  const RewriteOptions* options = driver_->options();
-  if (!orig_url.is_valid() || !orig_url.is_standard()) {
+  if (!orig_url.is_valid()) {
     return kFail;
   }
+  if (!orig_url.is_standard()) {
+    // If the schemes are the same url_to_rewrite was -probably- relative,
+    // so fail this rewrite since the absolute result can't be handled;
+    // if they're different then it was definitely absolute and we should
+    // just leave it as it was.
+    if (orig_url.Scheme() == base_url.Scheme()) {
+      return kFail;
+    } else {
+      orig_url.Spec().CopyToString(rewritten_url);
+      return kDomainUnchanged;
+    }
+  }
+
+  StringPiece orig_spec = orig_url.Spec();
+  const RewriteOptions* options = driver_->options();
 
   if (!options->IsAllowed(orig_spec) ||
       // Don't rewrite a domain from an already-rewritten resource.

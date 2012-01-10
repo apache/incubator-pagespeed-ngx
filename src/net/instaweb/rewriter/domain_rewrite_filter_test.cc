@@ -88,12 +88,15 @@ class DomainRewriteFilterTest : public ResourceManagerTestBase {
 };
 
 TEST_F(DomainRewriteFilterTest, DontTouch) {
+  ExpectNoChange("", "");
   ExpectNoChange("relative", "relative.css");
   ExpectNoChange("absolute", "/absolute.css");
   ExpectNoChange("html domain", StrCat(kHtmlDomain, "absolute.css"));
   ExpectNoChange("other domain", StrCat(kOtherDomain, "absolute.css"));
   ExpectNoChange("disallow1", StrCat(kFrom1Domain, "dont_shard.css"));
   ExpectNoChange("disallow2", StrCat(kFrom2Domain, "dont_shard.css"));
+  ExpectNoChange("http://absolute.css", "http://absolute.css");
+  ExpectNoChange("data:image/gif;base64,AAAA", "data:image/gif;base64,AAAA");
 }
 
 TEST_F(DomainRewriteFilterTest, RelativeUpReferenceRewrite) {
