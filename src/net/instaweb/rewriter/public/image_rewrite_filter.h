@@ -132,6 +132,12 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
   // even if they're not parsable.
   bool HasAnyDimensions(HtmlElement* element);
 
+  // Resizes low quality image. It further reduces the size of inlined low
+  // quality image for mobile.
+  void ResizeLowQualityImage(
+      Image* low_image, const ResourcePtr& input_resource,
+      CachedResult* cached);
+
   scoped_ptr<const ImageTagScanner> image_filter_;
   scoped_ptr<WorkBound> work_bound_;
   Variable* rewrite_count_;

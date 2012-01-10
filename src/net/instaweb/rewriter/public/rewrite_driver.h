@@ -164,6 +164,7 @@ class RewriteDriver : public HtmlParse {
     user_agent_is_bot_ = kNotSet;
     user_agent_supports_image_inlining_ = kNotSet;
     user_agent_supports_webp_ = kNotSet;
+    is_mobile_user_agent_ = kNotSet;
   }
 
   // Return a pointer to the response headers that filters can update
@@ -194,6 +195,7 @@ class RewriteDriver : public HtmlParse {
   }
   bool UserAgentSupportsImageInlining() const;
   bool UserAgentSupportsWebp() const;
+  bool IsMobileUserAgent() const;
 
   // Adds the filters from the options, specified by name in enabled_filters.
   // This must be called explicitly after object construction to provide an
@@ -895,6 +897,7 @@ class RewriteDriver : public HtmlParse {
   mutable LazyBool user_agent_is_bot_;
   mutable LazyBool user_agent_supports_image_inlining_;
   mutable LazyBool user_agent_supports_webp_;
+  mutable LazyBool is_mobile_user_agent_;
 
   StringFilterMap resource_filter_map_;
 

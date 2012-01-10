@@ -249,6 +249,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kRemoveComments:                  return "Remove Comments";
     case kRemoveQuotes:                    return "Remove Quotes";
     case kResizeImages:                    return "Resize Images";
+    case kResizeMobileImages:              return "Resize Mobile Images";
     case kRewriteCss:                      return "Rewrite Css";
     case kRewriteDomains:                  return "Rewrite Domains";
     case kRewriteJavascript:               return "Rewrite Javascript";
@@ -302,6 +303,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kRemoveComments:                  return "rc";
     case kRemoveQuotes:                    return "rq";
     case kResizeImages:                    return "ri";
+    case kResizeMobileImages:              return "rm";
     case kRewriteCss:                      return kCssFilterId;
     case kRewriteDomains:                  return "rd";
     case kRewriteJavascript:               return kJavascriptMinId;

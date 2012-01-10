@@ -56,13 +56,11 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "<script src=\"blah2\" random=\"false\">hi2</script>");
   const GoogleString expected = StrCat(
       kUnrelatedNoscriptTags,
-      "<noscript psa_disabled=\"true\">"
-      "<script src=\"blah1\" random=\"true\">hi1</script>"
-      "</noscript>",
+      "<script random=\"true\" orig_src=\"blah1\" type=\"text/psajs\""
+      ">hi1</script>",
       kUnrelatedTags,
-      "<noscript psa_disabled=\"true\">"
-      "<script src=\"blah2\" random=\"false\">hi2</script>"
-      "</noscript>");
+      "<script random=\"false\" orig_src=\"blah2\" type=\"text/psajs\""
+      ">hi2</script>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
 }

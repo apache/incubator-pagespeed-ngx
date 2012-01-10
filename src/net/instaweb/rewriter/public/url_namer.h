@@ -104,7 +104,17 @@ class UrlNamer {
   // proxy domain.
   virtual bool IsProxyEncoded(const GoogleUrl& url) const { return false; }
 
+  const GoogleString& get_proxy_domain() {
+    return proxy_domain_;
+  }
+
+  void set_proxy_domain(const GoogleString proxy_domain) {
+    proxy_domain_ = proxy_domain;
+  }
+
  private:
+  GoogleString proxy_domain_;
+
   DISALLOW_COPY_AND_ASSIGN(UrlNamer);
 };
 

@@ -49,7 +49,7 @@ void JsDeferDisabledFilter::EndElement(HtmlElement* element) {
                               "text/javascript");
     GoogleString defer_js = StrCat(kDeferJsCode, "\n"
         "pagespeed.deferInit();\n"
-        "pagespeed.deferJs.registerNoScriptTags();\n"
+        "pagespeed.deferJs.registerScriptTags();\n"
         "pagespeed.addOnload(window, function() {\n"
         "  pagespeed.deferJs.run();\n"
         "});\n");

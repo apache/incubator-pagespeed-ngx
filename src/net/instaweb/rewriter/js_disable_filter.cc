@@ -26,29 +26,32 @@ namespace net_instaweb {
 const char kDisabledAttribute[] = "psa_disabled";
 
 JsDisableFilter::JsDisableFilter(RewriteDriver* driver)
-    : rewrite_driver_(driver) {
+    : rewrite_driver_(driver),
+      script_tag_scanner_(driver) {
 }
 
 JsDisableFilter::~JsDisableFilter() {
 }
 
 void JsDisableFilter::StartElement(HtmlElement* element) {
-  // TODO(gagansingh): Make sure Flush does not happen before this element's end
-  // event is reached.
-}
-
-void JsDisableFilter::EndElement(HtmlElement* element) {
-  if (element->keyword() == HtmlName::kScript) {
-    HtmlElement* noscript = rewrite_driver_->NewElement(
-        element->parent(), HtmlName::kNoscript);
-    rewrite_driver_->InsertElementBeforeElement(element, noscript);
-
-    HtmlName attr = rewrite_driver_->MakeName(kDisabledAttribute);
-    noscript->AddAttribute(attr, "true", "\"");
-
-    if (!rewrite_driver_->MoveCurrentInto(noscript)) {
-      LOG(DFATAL) << "Could not move";
+  HtmlElement::Attribute* src;
+  if (script_tag_scanner_.ParseScriptElement(element, &src) ==
+      ScriptTagScanner::kJavaScript) {
+    if (src != NULL) {
+      GoogleString url(src->value());
+      element->AddAttribute(
+          rewrite_driver_->MakeName("orig_src"), url, "\"");
+      element->DeleteAttribute(HtmlName::kSrc);
     }
+    HtmlElement::Attribute* type = element->FindAttribute(HtmlName::kType);
+    if (type != NULL) {
+      GoogleString jstype(type->value());
+      element->DeleteAttribute(HtmlName::kType);
+      element->AddAttribute(
+          rewrite_driver_->MakeName("orig_type"), jstype, "\"");
+    }
+    element->AddAttribute(
+        rewrite_driver_->MakeName(HtmlName::kType), "text/psajs", "\"");
   }
 }
 

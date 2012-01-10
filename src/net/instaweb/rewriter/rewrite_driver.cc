@@ -166,6 +166,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       user_agent_is_bot_(kNotSet),
       user_agent_supports_image_inlining_(kNotSet),
       user_agent_supports_webp_(kNotSet),
+      is_mobile_user_agent_(kNotSet),
       response_headers_(NULL),
       pending_rewrites_(0),
       possibly_quick_rewrites_(0),
@@ -659,6 +660,14 @@ bool RewriteDriver::UserAgentSupportsWebp() const {
   return (user_agent_supports_webp_ == kTrue);
 }
 
+bool RewriteDriver::IsMobileUserAgent() const {
+  if (is_mobile_user_agent_ == kNotSet) {
+    is_mobile_user_agent_ =
+        user_agent_matcher_.IsMobileUserAgent(user_agent_) ? kTrue : kFalse;
+  }
+  return (is_mobile_user_agent_ == kTrue);
+}
+
 void RewriteDriver::AddFilters() {
   CHECK(html_writer_filter_ == NULL);
   CHECK(!filters_added_);
@@ -972,7 +981,7 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
   }
 
   UrlNamer* url_namer = resource_manager()->url_namer();
-  GoogleString decoded_gurl;
+  GoogleString decoded_url;
   // If we are running in proxy mode we need to ignore URLs where the leaf is
   // encoded but the URL as a whole isn't proxy encoded, since that can happen
   // when proxying from a server using mod_pagespeed.
@@ -982,11 +991,17 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
   // to rewrite the URL.
   if (url_namer->ProxyMode()) {
     if (!url_namer->IsProxyEncoded(gurl) ||
-        !url_namer->Decode(gurl, NULL, &decoded_gurl) ||
-        !GoogleUrl(decoded_gurl).is_valid()) {
+        !url_namer->Decode(gurl, NULL, &decoded_url)) {
       return false;
     }
-    *url_base = (GoogleUrl(decoded_gurl).AllExceptLeaf()).as_string();
+    GoogleUrl decoded_gurl(decoded_url);
+    if (decoded_gurl.is_valid()) {
+      *url_base = (decoded_gurl.AllExceptLeaf()).as_string();
+    } else {
+      return false;
+    }
+  } else {
+    *url_base = (gurl.AllExceptLeaf()).as_string();
   }
 
   // Now let's reject as mal-formed if the id string is not

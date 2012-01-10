@@ -62,6 +62,7 @@ struct FilterMap {
 "remove_comments",                   RewriteOptions::kRemoveComments
 "remove_quotes",                     RewriteOptions::kRemoveQuotes
 "resize_images",                     RewriteOptions::kResizeImages
+"resize_mobile_images",              RewriteOptions::kResizeMobileImages
 "rewrite_css",                       RewriteOptions::kRewriteCss
 "rewrite_domains",                   RewriteOptions::kRewriteDomains
 "rewrite_javascript",                RewriteOptions::kRewriteJavascript

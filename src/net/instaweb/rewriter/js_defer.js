@@ -91,6 +91,17 @@ pagespeed.DeferJs.prototype.submitTask = function(task, opt_pos) {
 };
 
 /**
+ * @param {string} str to be evaluated.
+ */
+pagespeed.DeferJs.prototype.globalEval = function(str) {
+  if (window.execScript) {
+    window.execScript(str);
+  } else {
+    window["eval"].call(window, str);
+  }
+};
+
+/**
  * Defers execution of 'str', by adding it to the queue.
  * @param {!string} str valid javascript snippet.
  * @param {Element} opt_elem Optional context element.
@@ -104,7 +115,7 @@ pagespeed.DeferJs.prototype.addStr = function(str, opt_elem, opt_pos) {
       me.currentElem_ = opt_elem;
     }
     try {
-      window.eval(str);
+      me.globalEval(str);
     } catch (err) {
       me.log('Exception while evaluating.', err);
     }
@@ -137,6 +148,13 @@ pagespeed.DeferJs.prototype.addUrl = function(url, opt_elem, opt_pos) {
     };
     pagespeed.addOnload(script, runNextHandler);
     pagespeed.addHandler(script, 'error', runNextHandler);
+    var stateChangeHandler = function() {
+      if (script.readyState == 'complete' ||
+          script.readyState == 'loaded') {
+        runNextHandler();
+      }
+    }
+    pagespeed.addHandler(script, 'readystatechange', stateChangeHandler);
     me.currentElem_.parentNode.insertBefore(script, me.currentElem_);
   }, opt_pos);
 };
@@ -320,35 +338,28 @@ pagespeed.DeferJs.prototype.writeHtml = function(html) {
 };
 
 /**
- * Registers all non-script tags, by adding themselves as the context element
- * to the scripts embedded inside them.
+ * Registers all script tags which are marked text/psajs, by adding themselves
+ * as the context element to the script embedded inside them.
  */
-pagespeed.DeferJs.prototype.registerNoScriptTags = function() {
-  var noscripts = document.getElementsByTagName('noscript');
-  var len = noscripts.length;
+pagespeed.DeferJs.prototype.registerScriptTags = function() {
+  var scripts = document.getElementsByTagName('script');
+  var len = scripts.length;
   for (var i = 0; i < len; ++i) {
-    var noscript = noscripts[i];
-    if (noscript.getAttribute('psa_disabled') == 'true') {
-      var html = '';
-      for (var j = 0; j < noscript.childNodes.length; j++) {
-        var node = noscript.childNodes[j];
-        if (node.nodeType == node.TEXT_NODE) {
-          html += node.textContent;
-        } else {
-          // TODO(atulvasu): If browser already parsed, then we can
-          // actually directly call deferScripts() instead, but since this
-          // is a non-deterministic one off case, not optimizing to keep the
-          // flow clear.
-          html += pagespeed.outerHTML(node);
-          this.log('browser parsed contents of noscript');
-        }
+    var script = scripts[i];
+    // TODO(atulvasu): Use orig_type
+    if (script.getAttribute('type') == 'text/psajs') {
+      var src = script.getAttribute('orig_src');
+      if (src) {
+        this.addUrl(src, script);
+      } else {
+        var str = script.innerHTML || script.textContent || script.data;
+        this.addStr(str, script);
       }
-      this.insertHtml(html, this.queue_.length, noscript);
     }
   }
 };
-pagespeed.DeferJs.prototype['registerNoScriptTags'] =
-    pagespeed.DeferJs.prototype.registerNoScriptTags;
+pagespeed.DeferJs.prototype['registerScriptTags'] =
+    pagespeed.DeferJs.prototype.registerScriptTags;
 
 /**
  * Runs the function when element is loaded.

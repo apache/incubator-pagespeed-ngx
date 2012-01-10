@@ -61,6 +61,8 @@ const char kImageRewriteSavedBytes[] = "image_rewrite_saved_bytes";
 const char kImageInline[] = "image_inline";
 const char kImageWebpRewrites[] = "image_webp_rewrites";
 
+// This is the resized placeholder image width for mobile.
+const int kDelayImageWidthForMobile = 320;
 }  // namespace
 
 // name for statistic used to bound rewriting work.
@@ -340,13 +342,16 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
       if (image->Contents().size() > low_image->Contents().size()) {
         // TODO(pulkitg): Add a some sort of guarantee on how small inline
         // images will be.
-        cached->set_low_resolution_inlined_data(low_image->Contents().data(),
-                                                low_image->Contents().size());
+        if (context.mobile_user_agent()) {
+          ResizeLowQualityImage(low_image.get(), input_resource, cached);
+        } else {
+          cached->set_low_resolution_inlined_data(low_image->Contents().data(),
+                                                  low_image->Contents().size());
+        }
         cached->set_low_resolution_inlined_image_type(
             static_cast<int>(low_image->image_type()));
       }
     }
-
     work_bound_->WorkComplete();
   } else {
     image_rewrites_dropped_->IncBy(1);
@@ -354,6 +359,53 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
                              input_resource->url().c_str());
   }
   return rewrite_result;
+}
+
+// Generate resized low quality image if the image width is not smaller than
+// kDelayImageWidthForMobile. If image width is smaller than
+// kDelayImageWidthForMobile, "delay_images" optimization is not very useful
+// and no low quality image will be generated.
+void ImageRewriteFilter::ResizeLowQualityImage(
+    Image* low_image, const ResourcePtr& input_resource, CachedResult* cached) {
+  ImageDim image_dim;
+  low_image->Dimensions(&image_dim);
+  if (image_dim.width() >= kDelayImageWidthForMobile) {
+    const RewriteOptions* options = driver_->options();
+    Image::CompressionOptions* image_options =
+        new Image::CompressionOptions();
+    // TODO(bolian): Use webp format for supported user agents.
+    image_options->webp_preferred = false;
+    image_options->jpeg_quality = options->image_jpeg_recompress_quality();
+    image_options->progressive_jpeg = false;
+    image_options->convert_png_to_jpeg =
+        options->Enabled(RewriteOptions::kConvertPngToJpeg);
+    scoped_ptr<Image> image(
+        NewImage(low_image->Contents(), input_resource->url(),
+                 resource_manager_->filename_prefix(), image_options,
+                 driver_->message_handler()));
+    ImageDim resized_dim;
+    resized_dim.set_width(kDelayImageWidthForMobile);
+    resized_dim.set_height((static_cast<int64>(resized_dim.width()) *
+                            image_dim.height()) / image_dim.width());
+    MessageHandler* message_handler = driver_->message_handler();
+    if (image->ResizeTo(resized_dim)) {
+      StringPiece contents = image->Contents();
+      cached->set_low_resolution_inlined_data(contents.data(), contents.size());
+      message_handler->Message(
+          kInfo,
+          "Resized low quality image (%s) from %dx%d to %dx%d",
+          input_resource->url().c_str(),
+          image_dim.width(), image_dim.height(),
+          resized_dim.width(), resized_dim.width());
+    } else {
+      message_handler->Message(
+          kError,
+          "Couldn't resize low quality image (%s) from %dx%d to %dx%d",
+          input_resource->url().c_str(),
+          image_dim.width(), image_dim.height(),
+          resized_dim.width(), resized_dim.width());
+    }
+  }
 }
 
 int ImageRewriteFilter::FilterCacheFormatVersion() const {
@@ -422,6 +474,11 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     // bit of the plumbing that is otherwise provided for us by
     // SingleRewriteContext.
     resource_context->set_attempt_webp(true);
+  }
+  if (options->NeedLowResImages() &&
+      options->Enabled(RewriteOptions::kResizeMobileImages) &&
+      driver_->IsMobileUserAgent()) {
+    resource_context->set_mobile_user_agent(true);
   }
 
   ResourcePtr input_resource = CreateInputResource(src->value());
@@ -512,18 +569,19 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   if (driver_->UserAgentSupportsImageInlining() && !image_inlined &&
       options->NeedLowResImages() &&
       cached->has_low_resolution_inlined_data()) {
-    GoogleString data_url;
     int image_type = cached->low_resolution_inlined_image_type();
     bool valid_image_type = Image::kImageTypeStart <= image_type &&
         Image::kImageTypeEnd >= image_type;
-    DCHECK(valid_image_type) << "Invalid Image Type";
-
-    if (!valid_image_type) {
-      LOG(ERROR) << "Invalid low res image type in cache.";
-    } else {
+    DCHECK(valid_image_type) << "Invalid Image Type: " << image_type;
+    if (valid_image_type) {
+      GoogleString data_url;
       DataUrl(*Image::TypeToContentType(static_cast<Image::Type>(image_type)),
               BASE64, cached->low_resolution_inlined_data(), &data_url);
       driver_->AddAttribute(element, HtmlName::kPagespeedLowResSrc, data_url);
+    } else {
+      driver_->message_handler()->Message(kError,
+                                          "Invalid low res image type: %d",
+                                          image_type);
     }
   }
   return rewrote_url;

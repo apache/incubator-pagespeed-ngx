@@ -244,6 +244,24 @@ TEST_P(RewriteDriverTestUrlNamer, TestDecodeUrls) {
   GoogleUrl gurl_invalid("invalid url");
   EXPECT_FALSE(rewrite_driver()->DecodeUrl(gurl_invalid, &urls));
   EXPECT_EQ(0, urls.size());
+
+  // ProxyMode off
+  urls.clear();
+  TestUrlNamer::SetProxyMode(false);
+  SetUseTestUrlNamer(false);
+  gurl_good.Reset(Encode(
+      "http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpg"));
+  EXPECT_TRUE(rewrite_driver()->DecodeUrl(gurl_good, &urls));
+  EXPECT_EQ(1, urls.size());
+  EXPECT_EQ("http://example.com/Puzzle.jpg", urls[0]);
+
+  urls.clear();
+  gurl_multi.Reset(Encode(
+      "http://example.com/", "cc", "HASH", MultiUrl("a.css", "b.css"), "css"));
+  EXPECT_TRUE(rewrite_driver()->DecodeUrl(gurl_multi, &urls));
+  EXPECT_EQ(2, urls.size());
+  EXPECT_EQ("http://example.com/a.css", urls[0]);
+  EXPECT_EQ("http://example.com/b.css", urls[1]);
 }
 
 // Test to make sure we do not put in extra things into the cache.

@@ -101,6 +101,19 @@ const char* kWebpBlacklist[] = {
   "*Opera/9.80*Version/11.0*",
   "*Opera?11.0*",
 };
+
+// Only a few user agents are supported at this point.
+// This is currently used only by kResizeMobileImages to deliver low resolution
+// images to mobile devices. We treat ipads like desktops as they have big
+// enough screen (relative to phones). But we treat android tablets like
+// phones. If we could distinguish android tablets from phones easily using
+// user agent string we would do so for the same reason we do so for ipads.
+// TODO(bolian): Add more mobile user agents.
+const char* kMobileUserAgentWhitelist[] = {
+  "*Android*",
+  "*iPhone OS*",
+  "*BlackBerry88*",
+};
 }
 
 UserAgentMatcher::UserAgentMatcher() {
@@ -123,6 +136,9 @@ UserAgentMatcher::UserAgentMatcher() {
   }
   for (int i = 0, n = arraysize(kWebpBlacklist); i < n; ++i) {
     supports_webp_.Disallow(kWebpBlacklist[i]);
+  }
+  for (int i = 0, n = arraysize(kMobileUserAgentWhitelist); i < n; ++i) {
+    mobile_user_agents_.Allow(kMobileUserAgentWhitelist[i]);
   }
 }
 
@@ -156,4 +172,7 @@ bool UserAgentMatcher::SupportsWebp(const StringPiece& user_agent) const {
   return supports_webp_.Match(user_agent, false);
 }
 
+bool UserAgentMatcher::IsMobileUserAgent(const StringPiece& user_agent) const {
+  return mobile_user_agents_.Match(user_agent, false);
+}
 }  // namespace net_instaweb

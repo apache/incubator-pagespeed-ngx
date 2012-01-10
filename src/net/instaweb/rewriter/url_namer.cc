@@ -28,7 +28,8 @@
 
 namespace net_instaweb {
 
-UrlNamer::UrlNamer() {
+UrlNamer::UrlNamer()
+    : proxy_domain_("") {
 }
 
 UrlNamer::~UrlNamer() {

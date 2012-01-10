@@ -46,6 +46,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/timer.h"
@@ -282,7 +283,11 @@ void BlinkFlow::ServeAllPanelContents(
 
 void BlinkFlow::SendLayout(const StringPiece& layout) {
   WriteString(layout);
-  WriteString("<script src=\"/webinstant/blink.js\"></script>");
+  // TODO(rahulbansal): Not serving off a sharded domain will cause an extra
+  // dns lookup.
+  WriteString(StrCat("<script src=\"",
+                     manager_->url_namer()->get_proxy_domain(),
+                     "/webinstant/blink.js\"></script>"));
   WriteString("<script>var panelLoader = new PanelLoader();</script>");
   Flush();
 }

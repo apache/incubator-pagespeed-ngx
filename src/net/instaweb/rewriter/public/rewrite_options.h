@@ -80,6 +80,7 @@ class RewriteOptions {
     kRemoveComments,
     kRemoveQuotes,
     kResizeImages,
+    kResizeMobileImages,
     kRewriteCss,
     kRewriteDomains,
     kRewriteJavascript,

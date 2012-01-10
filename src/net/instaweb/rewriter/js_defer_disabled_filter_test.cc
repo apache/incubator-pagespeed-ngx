@@ -44,20 +44,21 @@ class JsDeferDisabledFilterTest : public HtmlParseTestBase {
 TEST_F(JsDeferDisabledFilterTest, DeferScript) {
   ValidateExpected("defer_script",
       "<head>"
-      "<noscript psa_disabled><script "
-      "src='http://www.google.com/javascript/ajax_apis.js'></script></noscript>"
-      "<noscript psa_disabled><script> func(); </script></noscript>"
+      "<script type='text/psajs' "
+      "src='http://www.google.com/javascript/ajax_apis.js'></script>"
+      "<script type='text/psajs'"
+      "> func();</script>"
       "</head><body>Hello, world!</body>",
       StrCat("<head>"
-             "<noscript psa_disabled><script "
+             "<script type='text/psajs' "
              "src='http://www.google.com/javascript/ajax_apis.js'></script>"
-             "</noscript>"
-             "<noscript psa_disabled><script> func(); </script></noscript>"
+             "<script type='text/psajs'"
+             "> func();</script>"
              "</head><body>Hello, world!"
              "<script type=\"text/javascript\">",
              JsDeferDisabledFilter::kDeferJsCode,
              "\npagespeed.deferInit();\n",
-             "pagespeed.deferJs.registerNoScriptTags();\n",
+             "pagespeed.deferJs.registerScriptTags();\n",
              "pagespeed.addOnload(window, function() {\n"
              "  pagespeed.deferJs.run();\n"
              "});\n</script></body>"));
@@ -66,27 +67,25 @@ TEST_F(JsDeferDisabledFilterTest, DeferScript) {
 TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
   ValidateExpected("defer_script_multi_body",
       "<head>"
-      "<noscript psa_disabled>"
-      "<script src='http://www.google.com/javascript/ajax_apis.js'></script>"
-      "</noscript>"
-      "<noscript psa_disabled><script> func(); </script></noscript>"
+      "<script type='text/psajs' "
+      "src='http://www.google.com/javascript/ajax_apis.js'></script>"
+      "<script type='text/psajs'> func(); </script>"
       "</head><body>Hello, world!</body><body>"
-      "<noscript psa_disabled><script> func2(); </script></noscript></body>",
+      "<script type='text/psajs'> func2(); </script></body>",
       StrCat("<head>"
-             "<noscript psa_disabled>"
-             "<script src='http://www.google.com/javascript/ajax_apis.js'>"
-             "</script></noscript>"
-             "<noscript psa_disabled><script> func(); </script></noscript>"
+             "<script type='text/psajs' "
+             "src='http://www.google.com/javascript/ajax_apis.js'></script>"
+             "<script type='text/psajs'> func(); </script>"
              "</head><body>Hello, world!"
              "<script type=\"text/javascript\">",
              JsDeferDisabledFilter::kDeferJsCode, "\n"
              "pagespeed.deferInit();\n",
-             "pagespeed.deferJs.registerNoScriptTags();\n",
+             "pagespeed.deferJs.registerScriptTags();\n",
              "pagespeed.addOnload(window, function() {\n"
              "  pagespeed.deferJs.run();\n"
              "});\n"
-             "</script></body><body><noscript psa_disabled><script> func2(); "
-             "</script></noscript></body>"));
+             "</script></body><body><script type='text/psajs'> func2(); "
+             "</script></body>"));
 }
 
 }  // namespace net_instaweb

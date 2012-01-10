@@ -29,12 +29,20 @@ class MessageHandler;
 
 // This class implements the encoding of image urls with optional additional
 // dimension metadata.  It basically prepends characters indicating image
-// dimensions on the page and webp eligibility (this information is conveyed in
-// the ResourceContext).
+// dimensions on the page, webp eligibility, and mobile user agent eligibility
+// (this information is conveyed in the ResourceContext).
 //   http://...path.../50x75xurl...  No webp, image is 50x75 on page
 //   http://...path.../50x75wurl...  Webp requested, image is 50x75 on page
+//   http://...path.../50x75mxurl...
+//       No webp, for mobile user agent, image is 50x75 on page
+//   http://...path.../50x75mwurl...
+//       Webp requested, for mobile user agent, image is 50x75 on page
 //   http://...path.../xurl...  Page does not specify both dimensions.  No webp.
 //   http://...path.../wurl...  Webp requested, page missing dimensions.
+//   http://...path.../mxurl...
+//       No webp, for mobile user agent, page does not specify dimensions.
+//   http://...path.../mwurl...
+//       Webp requested, for mobile user agent, page missing dimensions.
 class ImageUrlEncoder : public UrlSegmentEncoder {
  public:
   ImageUrlEncoder() {}

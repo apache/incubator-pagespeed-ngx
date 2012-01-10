@@ -28,6 +28,15 @@ namespace net_instaweb {
 
 namespace {
 
+const char kCodeSeparator = 'x';
+const char kCodeWebp = 'w';
+const char kCodeMobileUserAgent = 'm';
+
+bool IsValidCode(char code) {
+  return (code == kCodeSeparator) || (code == kCodeWebp) ||
+      (code == kCodeMobileUserAgent);
+}
+
 // Decodes decimal int followed by x or w at start of source, removing them
 // from source.  Returns true on success.  This is a utility for the
 // decoding of image dimensions.
@@ -47,11 +56,11 @@ bool DecodeIntXW(StringPiece* in, int* result, char* sep) {
   // If we get here, either curr_char is a non-digit, or in->empty().  In the
   // latter case, curr_char is the last char of in (a digit) or '\0', and we
   // fall through the next test and fail.
-  if (curr_char != 'x' && curr_char != 'w') {
-    ok = false;
-  } else {
+  if (IsValidCode(curr_char)) {
     *sep = curr_char;
     in->remove_prefix(1);
+  } else {
+    ok = false;
   }
   return ok;
 }
@@ -68,13 +77,18 @@ void ImageUrlEncoder::Encode(const StringVector& urls,
   if (data != NULL) {
     if (HasDimensions(*data)) {
       const ImageDim& dims = data->image_tag_dims();
-      StrAppend(rewritten_url, IntegerToString(dims.width()), "x",
+      StrAppend(rewritten_url, IntegerToString(dims.width()),
+                StringPiece(&kCodeSeparator, 1),
                 IntegerToString(dims.height()));
     }
+    if (data->mobile_user_agent()) {
+      rewritten_url->append(1, kCodeMobileUserAgent);
+    }
+    // Must end with kCodeWebp or kCodeSeparator.
     if (data->attempt_webp()) {
-      rewritten_url->append("w");
+      rewritten_url->append(1, kCodeWebp);
     } else {
-      rewritten_url->append("x");
+      rewritten_url->append(1, kCodeSeparator);
     }
   }
   UrlEscaper::EncodeToUrlSegment(urls[0], rewritten_url);
@@ -93,15 +107,15 @@ bool ImageUrlEncoder::Decode(const StringPiece& encoded,
   // Note that "remaining" is shortened from the left as we parse.
   StringPiece remaining(encoded);
   int width, height;
-  char sep = 'x';
+  char sep = kCodeSeparator;
   if (remaining.empty()) {
     handler->Message(kInfo, "Empty Image URL");
     return false;
-  } else if (remaining[0] == 'x' || remaining[0] == 'w') {
+  } else if (IsValidCode(remaining[0])) {
     // No dimensions.
     sep = remaining[0];
     remaining.remove_prefix(1);
-  } else if (DecodeIntXW(&remaining, &width, &sep) && (sep == 'x') &&
+  } else if (DecodeIntXW(&remaining, &width, &sep) && (sep == kCodeSeparator) &&
              DecodeIntXW(&remaining, &height, &sep)) {
     dims->set_width(width);
     dims->set_height(height);
@@ -110,9 +124,19 @@ bool ImageUrlEncoder::Decode(const StringPiece& encoded,
                      encoded.as_string().c_str());
     return false;
   }
-  DCHECK(sep == 'w' || sep == 'x');
-  if (sep == 'w') {
+  DCHECK(IsValidCode(sep));
+  if (sep == kCodeMobileUserAgent) {
+    data->set_mobile_user_agent(true);
+    sep = remaining[0];
+    remaining.remove_prefix(1);
+  }
+  // Must end with kCodeWebp or kCodeSeparator. Otherwise, invalid.
+  if (sep == kCodeWebp) {
     data->set_attempt_webp(true);
+  } else if (sep != kCodeSeparator) {
+    handler->Message(kInfo, "Invalid Image URL encoding: %s",
+                     encoded.as_string().c_str());
+    return false;
   }
 
   GoogleString* url = StringVectorAdd(urls);

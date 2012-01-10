@@ -34,10 +34,12 @@ class UserAgentMatcher {
   bool SupportsImageInlining(const StringPiece& user_agent) const;
   bool SupportsBlink(const StringPiece& user_agent) const;
   bool SupportsWebp(const StringPiece& user_agent) const;
+  bool IsMobileUserAgent(const StringPiece& user_agent) const;
  private:
   WildcardGroup supports_image_inlining_;
   WildcardGroup supports_blink_;
   WildcardGroup supports_webp_;
+  WildcardGroup mobile_user_agents_;
 
   DISALLOW_COPY_AND_ASSIGN(UserAgentMatcher);
 };
