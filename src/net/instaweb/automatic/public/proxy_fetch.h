@@ -45,7 +45,6 @@ class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
 class Timer;
-class UrlAsyncFetcher;
 
 // Factory for creating and starting ProxyFetches. Must outlive all
 // ProxyFetches it creates.
@@ -78,20 +77,10 @@ class ProxyFetchFactory {
   void Start(ProxyFetch* proxy_fetch);
   void Finish(ProxyFetch* proxy_fetch);
 
-  // Choose which cache_fetcher to use based upon options.
-  UrlAsyncFetcher* ChooseCacheFetcher(const RewriteOptions* options);
-
   ResourceManager* manager_;
   Timer* timer_;
   MessageHandler* handler_;
   GoogleString server_version_;
-
-  // Used to support caching input HTML and un-rewritten resources.
-  // We keep 2, one for each possible value of options->respect_vary().
-  //
-  // TODO(sligocki): Validate for vary cacheability in Srihari's callback.
-  scoped_ptr<CacheUrlAsyncFetcher> cache_fetcher_respect_vary_;
-  scoped_ptr<CacheUrlAsyncFetcher> cache_fetcher_no_respect_vary_;
 
   scoped_ptr<AbstractMutex> outstanding_proxy_fetches_mutex_;
   std::set<ProxyFetch*> outstanding_proxy_fetches_;
@@ -198,8 +187,7 @@ class ProxyFetch : public SharedAsyncFetch {
   ResourceManager* resource_manager_;
   Timer* timer_;
 
-  // Should we pass through contents (because it's not HTML or PSA disabled)?
-  bool pass_through_;
+  scoped_ptr<CacheUrlAsyncFetcher> cache_fetcher_;
 
   // True if we're handling a cross-domain request in proxy mode, which
   // should do some additional checking.

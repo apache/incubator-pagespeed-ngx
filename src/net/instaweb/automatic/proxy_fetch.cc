@@ -26,7 +26,6 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -48,26 +47,7 @@ ProxyFetchFactory::ProxyFetchFactory(ResourceManager* manager)
     : manager_(manager),
       timer_(manager->timer()),
       handler_(manager->message_handler()),
-      cache_fetcher_respect_vary_(new CacheUrlAsyncFetcher(
-          manager->http_cache(), manager->url_async_fetcher(), true)),
-      cache_fetcher_no_respect_vary_(new CacheUrlAsyncFetcher(
-          manager->http_cache(), manager->url_async_fetcher(), false)),
       outstanding_proxy_fetches_mutex_(manager->thread_system()->NewMutex()) {
-  cache_fetcher_respect_vary_->set_ignore_recent_fetch_failed(true);
-  cache_fetcher_no_respect_vary_->set_ignore_recent_fetch_failed(true);
-  cache_fetcher_respect_vary_->set_backend_first_byte_latency_histogram(
-      manager->rewrite_stats()->backend_latency_histogram());
-  cache_fetcher_no_respect_vary_->set_backend_first_byte_latency_histogram(
-      manager->rewrite_stats()->backend_latency_histogram());
-  cache_fetcher_respect_vary_->set_fallback_responses_served(
-      manager->rewrite_stats()->fallback_responses_served());
-  cache_fetcher_no_respect_vary_->set_fallback_responses_served(
-      manager->rewrite_stats()->fallback_responses_served());
-  // TODO(nikhilmadan): Control this at a per domain granularity.
-  cache_fetcher_respect_vary_->set_serve_stale_if_fetch_error(
-      manager->global_options()->serve_stale_if_fetch_error());
-  cache_fetcher_no_respect_vary_->set_serve_stale_if_fetch_error(
-      manager->global_options()->serve_stale_if_fetch_error());
 }
 
 ProxyFetchFactory::~ProxyFetchFactory() {
@@ -136,15 +116,6 @@ void ProxyFetchFactory::StartNewProxyFetch(
   fetch->StartFetch();
 }
 
-UrlAsyncFetcher* ProxyFetchFactory::ChooseCacheFetcher(
-    const RewriteOptions* options) {
-  if (options->respect_vary()) {
-    return cache_fetcher_respect_vary_.get();
-  } else {
-    return cache_fetcher_no_respect_vary_.get();
-  }
-}
-
 void ProxyFetchFactory::Start(ProxyFetch* fetch) {
   ScopedMutex lock(outstanding_proxy_fetches_mutex_.get());
   outstanding_proxy_fetches_.insert(fetch);
@@ -166,7 +137,6 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       url_(url),
       resource_manager_(manager),
       timer_(timer),
-      pass_through_(true),
       cross_domain_(cross_domain),
       claims_html_(false),
       started_parse_(false),
@@ -192,8 +162,7 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
   } else {
     // NewCustomRewriteDriver takes ownership of custom_options_.
     resource_manager_->ComputeSignature(custom_options);
-    driver_ =
-        resource_manager_->NewCustomRewriteDriver(custom_options);
+    driver_ = resource_manager_->NewCustomRewriteDriver(custom_options);
   }
 
   const char* user_ip = request_headers()->Lookup1(
@@ -201,6 +170,22 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
   if (user_ip != NULL) {
     driver_->set_user_ip(user_ip);
   }
+
+  // TODO(sligocki): We should pass the options in with the AsyncFetch rather
+  // than creating a new fetcher for each fetch.
+  // Note: CacheUrlAsyncFetcher is actually a pretty light class, so this isn't
+  // terrible for performance, just seems like bad programming practice.
+  cache_fetcher_.reset(new CacheUrlAsyncFetcher(
+      resource_manager_->http_cache(), resource_manager_->url_async_fetcher()));
+  cache_fetcher_->set_respect_vary(Options()->respect_vary());
+  cache_fetcher_->set_ignore_recent_fetch_failed(true);
+  cache_fetcher_->set_default_cache_html(Options()->default_cache_html());
+  cache_fetcher_->set_backend_first_byte_latency_histogram(
+      resource_manager_->rewrite_stats()->backend_latency_histogram());
+  cache_fetcher_->set_fallback_responses_served(
+      resource_manager_->rewrite_stats()->fallback_responses_served());
+  cache_fetcher_->set_serve_stale_if_fetch_error(
+      Options()->serve_stale_if_fetch_error());
 
   // TODO(sligocki): Make complete request header available to filters.
   const char* cookies = request_headers()->Lookup1(HttpAttributes::kCookie);
@@ -266,7 +251,7 @@ void ProxyFetch::HandleHeadersComplete() {
                   == &kContentTypeHtml);
 
   // Make sure we never serve cookies if the domain we are serving
-    // under isn't the domain of the origin.
+  // under isn't the domain of the origin.
   if (cross_domain_) {
     // ... by calling Sanitize to remove them.
     bool changed = response_headers()->Sanitize();
@@ -287,7 +272,6 @@ void ProxyFetch::SetupForHtml() {
   if (options->enabled() && options->IsAllowed(url_)) {
     started_parse_ = StartParse();
     if (started_parse_) {
-      pass_through_ = false;
       // TODO(sligocki): Get these in the main flow.
       // Add, remove and update headers as appropriate.
       int64 ttl_ms;
@@ -342,14 +326,13 @@ void ProxyFetch::StartFetch() {
 
 void ProxyFetch::DoFetch() {
   if (prepare_success_) {
-    UrlAsyncFetcher* fetcher = factory_->ChooseCacheFetcher(Options());
     if (driver_->options()->enabled() &&
         driver_->options()->ajax_rewriting_enabled() &&
         driver_->options()->IsAllowed(url_)) {
-      driver_->set_async_fetcher(fetcher);
+      driver_->set_async_fetcher(cache_fetcher_.get());
       driver_->FetchResource(url_, this);
     } else {
-      fetcher->Fetch(url_, factory_->handler_, this);
+      cache_fetcher_->Fetch(url_, factory_->handler_, this);
     }
   } else {
     Done(false);
@@ -405,7 +388,7 @@ bool ProxyFetch::HandleWrite(const StringPiece& str,
   }
 
   bool ret = true;
-  if (!pass_through_) {
+  if (started_parse_) {
     // Buffer up all text & flushes until our worker-thread gets a chance
     // to run.  This will re-order pending flushes after already-received
     // html, so that if the html is coming in faster than we can process it,
@@ -432,7 +415,7 @@ bool ProxyFetch::HandleFlush(MessageHandler* message_handler) {
   }
 
   bool ret = true;
-  if (!pass_through_) {
+  if (started_parse_) {
     // Buffer up Flushes for handling in our QueuedWorkerPool::Sequence
     // in ExecuteQueued.  Note that this can re-order Flushes behind
     // pending text, and aggregate together multiple flushes received from
@@ -473,7 +456,7 @@ void ProxyFetch::HandleDone(bool success) {
 
   VLOG(1) << "Fetch result:" << success << " " << url_
           << " : " << response_headers()->status_code();
-  if (!pass_through_) {
+  if (started_parse_) {
     ScopedMutex lock(mutex_.get());
     done_outstanding_ = true;
     done_result_ = success;
@@ -574,7 +557,7 @@ void ProxyFetch::Finish(bool success) {
     }
   }
 
-  if (!pass_through_ && success) {
+  if (started_parse_ && success) {
     RewriteStats* stats = resource_manager_->rewrite_stats();
     stats->rewrite_latency_histogram()->Add(
         (timer_->NowUs() - start_time_us_) / 1000.0);

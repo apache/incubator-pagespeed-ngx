@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+
 class TimingInfo;
 
 namespace {
@@ -41,13 +42,17 @@ namespace {
 class CachePutFetch : public SharedAsyncFetch {
  public:
   CachePutFetch(const GoogleString& url, AsyncFetch* base_fetch,
-                bool respect_vary, HTTPCache* cache,
-                Histogram* backend_first_byte_latency, MessageHandler* handler)
+                bool respect_vary, bool default_cache_html,
+                HTTPCache* cache, Histogram* backend_first_byte_latency,
+                MessageHandler* handler)
       : SharedAsyncFetch(base_fetch),
         url_(url),
-        respect_vary_(respect_vary), cache_(cache),
+        respect_vary_(respect_vary),
+        default_cache_html_(default_cache_html),
+        cache_(cache),
         backend_first_byte_latency_(backend_first_byte_latency),
-        handler_(handler), cacheable_(false) {
+        handler_(handler),
+        cacheable_(false) {
     if (backend_first_byte_latency_ != NULL) {
       start_time_ms_ = cache_->timer()->NowMs();
     }
@@ -64,11 +69,22 @@ class CachePutFetch : public SharedAsyncFetch {
     }
     ResponseHeaders* headers = response_headers();
     headers->FixDateHeaders(now_ms);
+    bool is_html = (headers->DetermineContentType() == &kContentTypeHtml);
+    ConstStringStarVector values;
+    const char* cache_control = headers->Lookup1(HttpAttributes::kCacheControl);
+    if (default_cache_html_ && is_html &&
+        // TODO(sligocki): Use some sort of computed
+        // headers->HasExplicitCachingTtl() instead
+        // of just checking for the existence of 2 headers.
+        (cache_control == NULL || cache_control == StringPiece("public")) &&
+        // TODO(sligocki): Add a ResponseHeaders::Has() instead of full lookup.
+        !headers->Lookup(HttpAttributes::kExpires, &values)) {
+      // TODO(sligocki): Use ResponseHeaders::kImplicitCacheTtlMs.
+      headers->Add(HttpAttributes::kCacheControl, "max-age=300");
+    }
     headers->ComputeCaching();
 
     cacheable_ = headers->IsProxyCacheable();
-    bool is_html = (headers->DetermineContentType()
-                    == &kContentTypeHtml);
     if (cacheable_ && (respect_vary_ || is_html)) {
       cacheable_ = headers->VaryCacheable();
     }
@@ -108,6 +124,7 @@ class CachePutFetch : public SharedAsyncFetch {
  private:
   const GoogleString url_;
   bool respect_vary_;
+  bool default_cache_html_;
   HTTPCache* cache_;
   Histogram* backend_first_byte_latency_;
   MessageHandler* handler_;
@@ -135,7 +152,8 @@ class CacheFindCallback : public HTTPCache::Callback {
         handler_(handler),
         respect_vary_(owner->respect_vary()),
         ignore_recent_fetch_failed_(owner->ignore_recent_fetch_failed()),
-        serve_stale_if_fetch_error_(owner->serve_stale_if_fetch_error()) {
+        serve_stale_if_fetch_error_(owner->serve_stale_if_fetch_error()),
+        default_cache_html_(owner->default_cache_html()) {
     // Note that this is a cache lookup: there are no request-headers.  At
     // this level, we have already made a policy decision that any Vary
     // headers present will be ignored (see
@@ -205,7 +223,7 @@ class CacheFindCallback : public HTTPCache::Callback {
           base_fetch = fallback_fetch;
         }
         CachePutFetch* put_fetch = new CachePutFetch(
-            url_, base_fetch, respect_vary_, cache_,
+            url_, base_fetch, respect_vary_, default_cache_html_, cache_,
             backend_first_byte_latency_, handler_);
         DCHECK_EQ(response_headers(), base_fetch_->response_headers());
 
@@ -271,6 +289,7 @@ class CacheFindCallback : public HTTPCache::Callback {
   bool respect_vary_;
   bool ignore_recent_fetch_failed_;
   bool serve_stale_if_fetch_error_;
+  bool default_cache_html_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheFindCallback);
 };

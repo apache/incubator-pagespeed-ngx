@@ -47,9 +47,11 @@ template<class Proto> class Headers {
   const GoogleString& Name(int i) const;
   const GoogleString& Value(int i) const;
 
+  // Lookup attributes with provided name. Attribute values are stored in
+  // values. Returns true iff there were any attributes with provided name.
+  //
   // Note that Lookup, though declared const, is NOT thread-safe.  This
   // is because it lazily generates a map.
-  //
   // TODO(jmarantz): this is a problem waiting to happen, but I believe it
   // will not be a problem in the immediate future.  We can refactor our way
   // around this problem by moving the Map to an explicit separate class that

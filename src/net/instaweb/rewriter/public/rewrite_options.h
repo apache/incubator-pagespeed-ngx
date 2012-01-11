@@ -391,6 +391,9 @@ class RewriteOptions {
   void set_enable_blink(bool x) { set_option(x, &enable_blink_); }
   bool enable_blink() const { return enable_blink_.value(); }
 
+  void set_default_cache_html(bool x) { set_option(x, &default_cache_html_); }
+  bool default_cache_html() const { return default_cache_html_.value(); }
+
   void set_max_delayed_images_index(int x) {
     set_option(x, &max_delayed_images_index_);
   }
@@ -753,6 +756,11 @@ class RewriteOptions {
   // error.
   Option<bool> serve_stale_if_fetch_error_;
   Option<bool> enable_blink_;
+  // When default_cache_html_ is false (default) we do not cache
+  // input HTML which lacks Cache-Control headers. But, when set true,
+  // we will cache those inputs for the implicit lifetime just like we
+  // do for resources.
+  Option<bool> default_cache_html_;
 
   // Number of first N images for which low res image is generated. Negative
   // values will bypass image index check.

@@ -45,15 +45,15 @@ class Variable;
 // we'd need to integrate resource locking in this class. Do we want that?
 class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
-  CacheUrlAsyncFetcher(HTTPCache* cache, UrlAsyncFetcher* fetcher,
-                       bool respect_vary)
+  CacheUrlAsyncFetcher(HTTPCache* cache, UrlAsyncFetcher* fetcher)
       : http_cache_(cache),
         fetcher_(fetcher),
         backend_first_byte_latency_(NULL),
         fallback_responses_served_(NULL),
-        respect_vary_(respect_vary),
+        respect_vary_(false),
         ignore_recent_fetch_failed_(false),
-        serve_stale_if_fetch_error_(false) {
+        serve_stale_if_fetch_error_(false),
+        default_cache_html_(false) {
   }
   virtual ~CacheUrlAsyncFetcher();
 
@@ -82,12 +82,12 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
     return fallback_responses_served_;
   }
 
+  void set_respect_vary(bool x) { respect_vary_ = x; }
   bool respect_vary() const { return respect_vary_; }
 
   void set_ignore_recent_fetch_failed(bool x) {
     ignore_recent_fetch_failed_ = x;
   }
-
   bool ignore_recent_fetch_failed() const {
     return ignore_recent_fetch_failed_;
   }
@@ -100,16 +100,21 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
     return serve_stale_if_fetch_error_;
   }
 
+  void set_default_cache_html(bool x) { default_cache_html_ = x; }
+  bool default_cache_html() const { return default_cache_html_; }
+
  private:
   // Not owned by CacheUrlAsyncFetcher.
   HTTPCache* http_cache_;
   UrlAsyncFetcher* fetcher_;
+
   Histogram* backend_first_byte_latency_;  // may be NULL.
   Variable* fallback_responses_served_;  // may be NULL.
 
   bool respect_vary_;
   bool ignore_recent_fetch_failed_;
   bool serve_stale_if_fetch_error_;
+  bool default_cache_html_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheUrlAsyncFetcher);
 };
