@@ -753,14 +753,15 @@ bool ImageImpl::ComputeOutputContents() {
             pagespeed::image_compression::JpegCompressionOptions options;
             if (options_->jpeg_quality > 0) {
               options.lossy = true;
-              options.quality = std::min(ImageHeaders::kMaxJpegQuality,
-                                         options_->jpeg_quality);
+              options.lossy_options.quality =
+                  std::min(ImageHeaders::kMaxJpegQuality,
+                           options_->jpeg_quality);
             }
             options.progressive = options_->progressive_jpeg;
             ok = pagespeed::image_compression::OptimizeJpegWithOptions(
                 string_for_image,
                 &output_contents_,
-                &options);
+                options);
           }
           break;
         case IMAGE_PNG: {
@@ -770,7 +771,7 @@ bool ImageImpl::ComputeOutputContents() {
             bool is_png;
             pagespeed::image_compression::JpegCompressionOptions options;
             options.lossy = true;
-            options.quality =
+            options.lossy_options.quality =
                 std::min(ImageHeaders::kMaxJpegQuality, options_->jpeg_quality);
             options.progressive = options_->progressive_jpeg;
             ok = ImageConverter::OptimizePngOrConvertToJpeg(
