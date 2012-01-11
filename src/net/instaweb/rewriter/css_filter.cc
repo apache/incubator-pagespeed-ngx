@@ -56,6 +56,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/writer.h"
 #include "webutil/css/parser.h"
 
 #include "base/at_exit.h"
@@ -128,6 +129,33 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
 }
 
 CssFilter::Context::~Context() {
+}
+
+bool CssFilter::Context::AbsolutifyIfNeeded(
+    const StringPiece& input_contents, Writer* writer,
+    MessageHandler* handler) {
+  bool ret = false;
+  switch (driver_->ResolveCssUrls(css_base_gurl_, css_trim_gurl_.Spec(),
+                                  input_contents, writer, handler)) {
+    case RewriteDriver::kNoResolutionNeeded:
+    case RewriteDriver::kWriteFailed:
+      // If kNoResolutionNeeded, we just write out the input_contents, because
+      // nothing needed to be changed.
+      //
+      // If kWriteFailed, this means that the URLs couldn't be transformed
+      // (or that writer->Write() actually failed ... I think this shouldn't
+      // generally happen). So, we just push out the unedited original,
+      // figuring that must be better than nothing.
+      //
+      // TODO(sligocki): In the fetch path ResolveCssUrls should never fail
+      // to transform URLs. We should just absolutify all the ones we can.
+      ret = writer->Write(input_contents, handler);
+      break;
+    case RewriteDriver::kSuccess:
+      ret = true;
+      break;
+  }
+  return ret;
 }
 
 void CssFilter::Context::Render() {

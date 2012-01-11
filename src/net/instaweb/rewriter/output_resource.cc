@@ -237,7 +237,7 @@ GoogleString OutputResource::url() const {
 
 GoogleString OutputResource::UrlEvenIfLeafInvalid() {
   GoogleString result;
-  if (full_name_.hash().empty()) {
+  if (!has_hash()) {
     full_name_.set_hash("0");
     result = resource_manager()->url_namer()->Encode(rewrite_options_, *this);
     full_name_.ClearHash();

@@ -142,11 +142,14 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
         cache_css_url_("http://www.example.com/cacheable.css"),
         nocache_html_url_("http://www.example.com/nocacheable.html"),
         bad_url_("http://www.example.com/bad.url"),
+        rewritten_jpg_url_(
+            "http://www.example.com/cacheable.jpg.pagespeed.ic.0.jpg"),
         cache_body_("good"), nocache_body_("bad"), bad_body_("ugly"),
         ttl_ms_(Timer::kHourMs), etag_("W/PSA-aj-0"),
         original_etag_("original_etag") {}
 
   virtual void SetUp() {
+    mock_timer()->SetTimeUs(start_time_ms() * Timer::kMsUs);
     ResourceManagerTestBase::SetUp();
     mock_url_fetcher()->set_fail_on_unexpected(false);
 
@@ -326,6 +329,7 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
 
   const GoogleString nocache_html_url_;
   const GoogleString bad_url_;
+  const GoogleString rewritten_jpg_url_;
 
   const GoogleString cache_body_;
   const GoogleString nocache_body_;
@@ -446,6 +450,48 @@ TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   EXPECT_EQ(HttpStatus::kOK, response_headers_.status_code());
   // We hit the metadata cache, but the etag doesn't match so we fetch the
   // rewritten resource from the HTTPCache and serve it out.
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+
+  // Delete the rewritten resource from cache to check if reconstruction works.
+  lru_cache()->Delete(rewritten_jpg_url_);
+
+  ResetTest();
+  FetchAndCheckResponse(cache_jpg_url_, "good", true, ttl_ms_, NULL,
+                        start_time_ms());
+  // We find the metadata in cache, but don't find the rewritten resource.
+  // Hence, we reconstruct the resource and insert it into cache. We see 2
+  // identical reinserts - one for the image rewrite filter metadata and one for
+  // the ajax metadata.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_inserts());
+  EXPECT_EQ(2, lru_cache()->num_identical_reinserts());
+  EXPECT_EQ(1, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+
+  ResetTest();
+  // Each test increments the time in mock_timer() by 2 seconds in
+  // rewrite_driver()->WaitForShutDown
+  // As a result, when the resource is reconstructed, the date of the rewritten
+  // resource gets pushed forward by 10 seconds.
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_ - 10000, etag_,
+                        start_time_ms() + 10000);
+  // This fetch hits the metadata cache and the rewritten resource is served
+  // out.
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, http_cache()->cache_misses()->Get());

@@ -63,6 +63,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
@@ -296,8 +297,13 @@ class RewriteContext::FetchContext {
   void HandleDeadline() {
     deadline_alarm_ = NULL;  // avoid dangling reference.
     rewrite_context_->DetachFetch();
+    handler_->Message(kError, "Deadline exceeded for resource %s",
+                      output_resource_->UrlEvenIfLeafInvalid().c_str());
+    // TODO(sligocki): Log a variable for number of deadline hits.
     ResourcePtr input(rewrite_context_->slot(0)->resource());
-    FetchFallbackDoneImpl(input->contents(), input->response_headers());
+    bool absolutify_contents = true;
+    FetchFallbackDoneImpl(input->contents(), input->response_headers(),
+                          absolutify_contents);
   }
 
   // Note that the callback is called from the RewriteThread.
@@ -334,23 +340,30 @@ class RewriteContext::FetchContext {
       }
     } else {
       // Rewrite failed. If we have a single original, write it out instead.
+      // NOTE: CSS filter can "fail" rewriting because it decides
+      // that the file is not optimizable (can't make it smaller, etc.).
+      //
+      // TODO(sligocki): We should probably not do that in the fetch path.
+      // For example, we could set_always_rewrite_css(true) for fetches.
+      // On the other hand, it might be difficult to keep that from dirtying
+      // the cache. So maybe we shouldn't do it.
       if (rewrite_context_->num_slots() == 1) {
         ResourcePtr input_resource(rewrite_context_->slot(0)->resource());
         if (input_resource.get() != NULL && input_resource->ContentsValid()) {
+          handler_->Message(kError, "Rewrite %s failed while fetching %s",
+                            input_resource->url().c_str(),
+                            output_resource_->UrlEvenIfLeafInvalid().c_str());
+          // TODO(sligocki): Log variable for number of failed rewrites in
+          // fetch path.
+
           response_headers->CopyFrom(*input_resource->response_headers());
-          // We strip cookies here to get consistent behavior between cases
-          // where we cache things and cases where we don't.
-          // TODO(morlovich): It might make sense to only do this for
-          // cacheable resources; in that case however the DCHECK
-          // in automatic/resource_fetch.cc, ResourceFetch::HeadersComplete
-          // should be relaxed.
-          if (response_headers->Sanitize()) {
-            response_headers->ComputeCaching();
-          }
+          rewrite_context_->FixFetchFallbackHeaders(response_headers);
           async_fetch_->HeadersComplete();
-          ok = async_fetch_->Write(input_resource->contents(), handler_);
+
+          ok = rewrite_context_->AbsolutifyIfNeeded(
+              input_resource->contents(), async_fetch_, handler_);
         } else {
-          GoogleString url = input_resource.get()->url();
+          GoogleString url = input_resource->url();
           handler_->Error(
               output_resource_->name().as_string().c_str(), 0,
               "Resource based on %s but cannot access the original",
@@ -362,6 +375,7 @@ class RewriteContext::FetchContext {
     if (!ok) {
       async_fetch_->response_headers()->SetStatusAndReason(
           HttpStatus::kNotFound);
+      // TODO(sligocki): We could be calling this twice if Writes fail above.
       async_fetch_->HeadersComplete();
     }
     rewrite_context_->FetchCallbackDone(ok);
@@ -379,20 +393,30 @@ class RewriteContext::FetchContext {
       return;
     }
 
-    FetchFallbackDoneImpl(contents, headers);
+    bool absolutify_contents = false;
+    FetchFallbackDoneImpl(contents, headers, absolutify_contents);
   }
 
   // Backend for FetchFallbackCacheDone, but can be also invoked
   // for main rewrite when background rewrite is detached.
   void FetchFallbackDoneImpl(const StringPiece& contents,
-                             ResponseHeaders* headers) {
+                             ResponseHeaders* headers,
+                             bool absolutify_contents) {
     rewrite_context_->FixFetchFallbackHeaders(headers);
     // Use the most conservative Cache-Control considering all inputs.
     ApplyInputCacheControl(headers);
 
     async_fetch_->response_headers()->CopyFrom(*headers);
     async_fetch_->HeadersComplete();
-    bool ok = async_fetch_->Write(contents, handler_);
+
+    bool ok;
+    if (absolutify_contents) {
+      ok = rewrite_context_->AbsolutifyIfNeeded(contents, async_fetch_,
+                                                handler_);
+    } else {
+      ok = async_fetch_->Write(contents, handler_);
+    }
+
     rewrite_context_->FetchCallbackDone(ok);
   }
 
@@ -400,19 +424,14 @@ class RewriteContext::FetchContext {
     hash.CopyToString(&requested_hash_);
   }
 
-  void set_success(bool success) { success_ = success; }
+  AsyncFetch* async_fetch() { return async_fetch_; }
+  bool detached() const { return detached_; }
+  MessageHandler* handler() { return handler_; }
   OutputResourcePtr output_resource() { return output_resource_; }
+  const GoogleString& requested_hash() const { return requested_hash_; }
 
-  // TODO(dgerman): These data members should be private.
-  RewriteContext* rewrite_context_;
-  AsyncFetch* async_fetch_;
-  OutputResourcePtr output_resource_;
-  MessageHandler* handler_;
-  GoogleString requested_hash_;  // hash we were requested as. May be empty.
-  QueuedAlarm* deadline_alarm_;
-
-  bool success_;
-  bool detached_;
+  void set_success(bool success) { success_ = success; }
+  void set_detached(bool value) { detached_ = value; }
 
  private:
   // Computes the most restrictive Cache-Control intersection of the input
@@ -450,6 +469,16 @@ class RewriteContext::FetchContext {
     }
     headers->ComputeCaching();
   }
+
+  RewriteContext* rewrite_context_;
+  AsyncFetch* async_fetch_;
+  OutputResourcePtr output_resource_;
+  MessageHandler* handler_;
+  GoogleString requested_hash_;  // hash we were requested as. May be empty.
+  QueuedAlarm* deadline_alarm_;
+
+  bool success_;
+  bool detached_;
 
   DISALLOW_COPY_AND_ASSIGN(FetchContext);
 };
@@ -496,7 +525,8 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     was_too_busy_(false),
     slow_(false),
     revalidate_ok_(true),
-    notify_driver_on_fetch_done_(false) {
+    notify_driver_on_fetch_done_(false),
+    force_rewrite_(false) {
   partitions_.reset(new OutputPartitions);
 }
 
@@ -594,9 +624,16 @@ void RewriteContext::Start() {
       Driver()->RegisterForPartitionKey(partition_key_, this);
   if (previous_handler == NULL) {
     // When the cache lookup is finished, OutputCacheDone will be called.
-    metadata_cache->Get(
-        partition_key_, new OutputCacheCallback(
-            this, &RewriteContext::OutputCacheDone));
+    if (force_rewrite_) {
+      // Make the metadata cache lookup fail since we want to force a rewrite.
+       (new OutputCacheCallback(
+           this, &RewriteContext::OutputCacheDone))->Done(
+               CacheInterface::kNotFound);
+    } else {
+      metadata_cache->Get(
+          partition_key_, new OutputCacheCallback(
+              this, &RewriteContext::OutputCacheDone));
+    }
   } else {
     if (previous_handler->slow()) {
       MarkSlow();
@@ -1098,7 +1135,7 @@ void RewriteContext::PartitionDone(bool result) {
     // if it's a nested rewrite for one, since its top-level will be
     // handled by StartRewriteForFetch().
     bool is_fetch = ((parent_ != NULL) && (parent_->fetch_.get() != NULL));
-    bool is_detached_fetch = is_fetch && parent_->fetch_->detached_;
+    bool is_detached_fetch = is_fetch && parent_->fetch_->detached();
 
     CHECK_EQ(outstanding_rewrites_, static_cast<int>(outputs_.size()));
     for (int i = 0, n = outstanding_rewrites_; i < n; ++i) {
@@ -1616,7 +1653,7 @@ void RewriteContext::FetchCacheDone(
     OutputResourcePtr output_resource;
     if (result->optimizable() &&
         CreateOutputResourceForCachedOutput(result, &output_resource)) {
-      if (fetch_->requested_hash_ != output_resource->hash()) {
+      if (fetch_->requested_hash() != output_resource->hash()) {
         // Try to do a cache look up on the proper hash; if it's available,
         // we can serve it.
         FetchTryFallback(output_resource->url(), output_resource->hash());
@@ -1695,7 +1732,7 @@ void RewriteContext::StartFetchReconstruction() {
 
 void RewriteContext::DetachFetch() {
   CHECK(fetch_.get() != NULL);
-  fetch_->detached_ = true;
+  fetch_->set_detached(true);
   Driver()->DetachFetch();
 }
 
@@ -1729,14 +1766,20 @@ void RewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
   headers->ComputeCaching();
 }
 
+bool RewriteContext::AbsolutifyIfNeeded(const StringPiece& input_contents,
+                                        Writer* writer,
+                                        MessageHandler* handler) {
+  return writer->Write(input_contents, handler);
+}
+
 AsyncFetch* RewriteContext::async_fetch() {
   DCHECK(fetch_.get() != NULL);
-  return fetch_->async_fetch_;
+  return fetch_->async_fetch();
 }
 
 MessageHandler* RewriteContext::fetch_message_handler() {
   DCHECK(fetch_.get() != NULL);
-  return fetch_->handler_;
+  return fetch_->handler();
 }
 
 }  // namespace net_instaweb

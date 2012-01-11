@@ -239,6 +239,12 @@ void AjaxRewriteContext::RewriteSingle(const ResourcePtr& input,
           this, ajax_slot);
       if (context != NULL) {
         AddNestedContext(context);
+        if (!is_rewritten_ && !rewritten_hash_.empty()) {
+          // The ajax metadata was found but the rewritten resource is not.
+          // Hence, make the nested rewrite skip the metadata and force a
+          // rewrite.
+          context->set_force_rewrite(true);
+        }
         StartNestedTasks();
         return;
       } else {

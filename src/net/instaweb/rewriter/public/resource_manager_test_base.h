@@ -127,6 +127,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                               ResponseHeaders* response_headers);
 
   // Add content to mock fetcher (with default headers).
+  // TODO(sligocki): Rename to SetResponseWithDefaultHeaders().
   void InitResponseHeaders(const StringPiece& relative_url,
                            const ContentType& content_type,
                            const StringPiece& content,
@@ -147,7 +148,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                      const StringPiece& name, const StringPiece& ext,
                      GoogleString* content, ResponseHeaders* response);
 
-
+  // TODO(sligocki): Rename to FetchResourceUrl.
   bool ServeResourceUrl(const StringPiece& url, GoogleString* content,
                         ResponseHeaders* response);
   bool ServeResourceUrl(const StringPiece& url, GoogleString* content);

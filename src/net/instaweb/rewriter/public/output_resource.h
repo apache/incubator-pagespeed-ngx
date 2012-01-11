@@ -66,7 +66,14 @@ class OutputResource : public Resource {
                  OutputResourceKind kind);
 
   virtual bool Load(MessageHandler* message_handler);
+  // NOTE: url() will crash if resource has does not have a hash set yet.
+  // Specifically, this will occur if the resource has not been completely
+  // written yet. Before that point, the final URL cannot be known.
   virtual GoogleString url() const;
+  // Returns the same as url(), but with a spoofed hash in case no hash
+  // was set yet. Use this for error reporting, etc. where you do not
+  // know whether the output resource has a valid hash yet.
+  // TODO(sligocki): Rename UrlEvenIfHashNotSet()
   GoogleString UrlEvenIfLeafInvalid();
 
   // Lazily initialize and return creation_lock_.  If the resource is expensive

@@ -536,7 +536,7 @@ grep "mod_pagespeed_example" $FETCHED     # base dir, shouldn't find
 check [ $? != 0 ]
 check [ `stat -c %s $FETCHED` -lt 153 ]   # down from 157
 
-test_filter rewrite_css removes comments and saves a bunch of bytes.
+test_filter rewrite_css minifies CSS and saves bytes.
 fetch_until $URL 'grep -c comment' 0
 check run_wget_with_args $URL
 check [ `stat -c %s $FETCHED` -lt 680 ]   # down from 689
@@ -643,7 +643,7 @@ cat $OUTDIR/sprite_css_output
 echo ""
 check [ `grep -c "ic.pagespeed.is" $OUTDIR/sprite_css_output` -gt 0 ]
 
-test_filter rewrite_javascript removes comments and saves a bunch of bytes.
+test_filter rewrite_javascript minifies JavaScript and saves bytes.
 # External scripts rewritten.
 fetch_until $URL 'grep -c src.*/rewrite_javascript\.js\.pagespeed\.jm\.' 2
 check run_wget_with_args $URL

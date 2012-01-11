@@ -50,6 +50,7 @@ class RewriteDriver;
 class RewriteOptions;
 class SharedString;
 class Statistics;
+class Writer;
 
 // A RewriteContext is all the contextual information required to
 // perform one or more Rewrites.  Member data in the ResourceContext
@@ -196,6 +197,9 @@ class RewriteContext {
   // Adds a new nested RewriteContext.  This RewriteContext will not
   // be considered complete until all nested contexts have completed.
   void AddNestedContext(RewriteContext* context);
+
+  // If called with true, forces a rewrite and re-generates the output.
+  void set_force_rewrite(bool x) { force_rewrite_ = x; }
 
  protected:
   typedef std::vector<InputInfo*> InputInfoStarVector;
@@ -406,6 +410,15 @@ class RewriteContext {
   // fetch fallback is found in cache. The default implementation strips cookies
   // and sets the cache ttl to ResponseHeaders::kImplicitCacheTtlMs.
   virtual void FixFetchFallbackHeaders(ResponseHeaders* headers);
+
+  // Absolutify contents of an input resource and write it into writer.
+  // This is called in case a rewrite fails in the fetch path or a deadline
+  // is exceeded. Default implementation is just to write the input.
+  // But contexts may need to specialize this to actually absolutify
+  // subresources if the fetched resource is served on a different path
+  // than the input resource.
+  virtual bool AbsolutifyIfNeeded(const StringPiece& input_contents,
+                                  Writer* writer, MessageHandler* handler);
 
   // Attempts to fetch a given URL from HTTP cache, and serves it
   // (with shortened HTTP headers) if available. If not, fallback to normal
@@ -683,6 +696,10 @@ class RewriteContext {
   // Boolean to indicate that the context should call driver()->FetchComplete()
   // once fetch is done.
   bool notify_driver_on_fetch_done_;
+
+  // Boolean to indicate whether we want to force a rewrite. If true, we skip
+  // reading from the metadata cache.
+  bool force_rewrite_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };

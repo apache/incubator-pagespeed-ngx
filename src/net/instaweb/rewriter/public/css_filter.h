@@ -58,6 +58,7 @@ class RewriteContext;
 class Statistics;
 class UrlSegmentEncoder;
 class Variable;
+class Writer;
 
 // Find and parse all CSS in the page and apply transformations including:
 // minification, combining, refactoring, and optimizing sub-resources.
@@ -213,6 +214,11 @@ class CssFilter::Context : public SingleRewriteContext {
   void RewriteCssFromRoot(const StringPiece& in_text, int64 in_text_size,
                           Css::Stylesheet* stylesheet);
   void RewriteCssFromNested(RewriteContext* parent, CssHierarchy* hierarchy);
+
+  // Specialization to absolutify URLs in input resource in case of rewrite
+  // fail or deadline exceeded.
+  virtual bool AbsolutifyIfNeeded(const StringPiece& input_contents,
+                                  Writer* writer, MessageHandler* handler);
 
   CssResourceSlotFactory* slot_factory() { return &slot_factory_; }
 
