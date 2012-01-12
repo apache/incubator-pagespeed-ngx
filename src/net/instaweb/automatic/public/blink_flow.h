@@ -62,7 +62,11 @@ class BlinkFlow {
         layout_(layout),
         options_(options),
         factory_(factory),
-        manager_(manager) {}
+        manager_(manager),
+        request_start_time_ms_(-1),
+        time_to_start_blink_flow_ms_(-1),
+        time_to_json_lookup_done_ms_(-1),
+        time_to_split_critical_ms_(-1) {}
 
   void InitiateJsonLookup();
 
@@ -95,6 +99,11 @@ class BlinkFlow {
 
   void Flush();
 
+  int64 GetTimeElapsedFromStartRequest();
+
+  GoogleString GetAddTimingScriptString(const GoogleString& timing_str,
+                                        int64 time_ms);
+
   GoogleString url_;
   AsyncFetch* base_fetch_;
   const Layout* layout_;
@@ -102,6 +111,10 @@ class BlinkFlow {
   ProxyFetchFactory* factory_;
   ResourceManager* manager_;
   GoogleString json_url_;
+  int64 request_start_time_ms_;
+  int64 time_to_start_blink_flow_ms_;
+  int64 time_to_json_lookup_done_ms_;
+  int64 time_to_split_critical_ms_;
 
   DISALLOW_COPY_AND_ASSIGN(BlinkFlow);
 };

@@ -439,12 +439,15 @@ class RewriteContext::FetchContext {
   // provided headers.  Does nothing if all of the resources are fully
   // cacheable, since in that case we will want to cache-extend.
   //
-  // Disregards Cache-Control directives other than max-age, no-cache, and
-  // private, and strips them if any resource is no-cache or private.
+  // Disregards Cache-Control directives other than max-age, no-cache, no-store,
+  // and private, and strips them if any resource is no-cache or private.  By
+  // assumption, a resource can only be no-store if it is also no-cache.
   void ApplyInputCacheControl(ResponseHeaders* headers) {
     headers->ComputeCaching();
     bool proxy_cacheable = headers->IsProxyCacheable();
     bool cacheable = headers->IsCacheable();
+    bool no_store = headers->HasValue(HttpAttributes::kCacheControl,
+                                      "no-store");
     int64 max_age = headers->cache_ttl_ms();
     for (int i = 0; i < rewrite_context_->num_slots(); i++) {
       ResourcePtr input_resource(rewrite_context_->slot(i)->resource());
@@ -456,6 +459,8 @@ class RewriteContext::FetchContext {
         }
         proxy_cacheable &= input_headers->IsProxyCacheable();
         cacheable &= input_headers->IsCacheable();
+        no_store |= input_headers->HasValue(HttpAttributes::kCacheControl,
+                                            "no-store");
       }
     }
     if (cacheable) {
@@ -465,7 +470,11 @@ class RewriteContext::FetchContext {
         headers->SetDateAndCaching(headers->date_ms(), max_age, ",private");
       }
     } else {
-      headers->SetDateAndCaching(headers->date_ms(), 0, ",no-cache");
+      GoogleString directives = ",no-cache";
+      if (no_store) {
+        directives += ",no-store";
+      }
+      headers->SetDateAndCaching(headers->date_ms(), 0, directives);
     }
     headers->ComputeCaching();
   }

@@ -160,6 +160,9 @@ class Resource : public RefCounted<Resource> {
   // of cache misses when serving live traffic.
   virtual void Freshen(MessageHandler* handler);
 
+  // Links the stale fallback value that can be used in case a fetch fails.
+  void LinkFallbackValue(HTTPValue* value);
+
  protected:
   virtual ~Resource();
   REFCOUNT_FRIEND_DECLARATION(Resource);
@@ -184,6 +187,11 @@ class Resource : public RefCounted<Resource> {
   const ContentType* type_;
   HTTPValue value_;  // contains contents and meta-data
   ResponseHeaders response_headers_;
+
+  // A stale value that can be used in case we aren't able to fetch a fresh
+  // version of the resource. Note that this should only be used if it is not
+  // empty.
+  HTTPValue fallback_value_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Resource);

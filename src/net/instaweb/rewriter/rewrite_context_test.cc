@@ -47,6 +47,7 @@
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
@@ -668,7 +669,7 @@ class RewriteContextTest : public ResourceManagerTestBase {
     private_css_header.set_major_version(1);
     private_css_header.set_minor_version(1);
     private_css_header.SetStatusAndReason(HttpStatus::kOK);
-    private_css_header.SetDateAndCaching(now_ms, kOriginTtlMs, ", private");
+    private_css_header.SetDateAndCaching(now_ms, kOriginTtlMs, ",private");
     private_css_header.ComputeCaching();
 
     SetFetchResponse("http://test.com/a_private.css",
@@ -681,11 +682,24 @@ class RewriteContextTest : public ResourceManagerTestBase {
     no_cache_css_header.set_major_version(1);
     no_cache_css_header.set_minor_version(1);
     no_cache_css_header.SetStatusAndReason(HttpStatus::kOK);
-    no_cache_css_header.SetDateAndCaching(now_ms, 0, ", no-cache");
+    no_cache_css_header.SetDateAndCaching(now_ms, 0, ",no-cache");
     no_cache_css_header.ComputeCaching();
 
     SetFetchResponse("http://test.com/a_no_cache.css",
                      no_cache_css_header,
+                     " a ");
+
+    // trimmable, no-cache, no-store
+    ResponseHeaders no_store_css_header;
+    now_ms = http_cache()->timer()->NowMs();
+    no_store_css_header.set_major_version(1);
+    no_store_css_header.set_minor_version(1);
+    no_store_css_header.SetStatusAndReason(HttpStatus::kOK);
+    no_store_css_header.SetDateAndCaching(now_ms, 0, ",no-cache,no-store");
+    no_store_css_header.ComputeCaching();
+
+    SetFetchResponse("http://test.com/a_no_store.css",
+                     no_store_css_header,
                      " a ");
   }
 
@@ -1382,6 +1396,29 @@ TEST_F(RewriteContextTest, PreserveNoCacheWithRewrites) {
   }
 }
 
+// Verifies that we preserve cache-control when rewriting a no-store resource.
+TEST_F(RewriteContextTest, PreserveNoStoreWithRewrites) {
+  InitTrimFiltersSync(kOnTheFlyResource);
+  InitResources();
+
+  GoogleString content;
+  ResponseHeaders headers;
+
+  // Even on sequential requests, the resource does not become cache-extended.
+  for (int i = 0; i < 4; ++i) {
+    EXPECT_TRUE(ServeResource(kTestDomain,
+                              kTrimWhitespaceSyncFilterId,
+                              "a_no_store.css",
+                              "css",
+                              &content,
+                              &headers));
+    EXPECT_EQ("a", content);
+    EXPECT_TRUE(headers.HasValue(HttpAttributes::kCacheControl, "max-age=0"));
+    EXPECT_TRUE(headers.HasValue(HttpAttributes::kCacheControl, "no-cache"));
+    EXPECT_TRUE(headers.HasValue(HttpAttributes::kCacheControl, "no-store"));
+  }
+}
+
 // Verifies that we preserve cache-control when rewriting a private resource.
 TEST_F(RewriteContextTest, PreservePrivateWithRewrites) {
   InitTrimFiltersSync(kOnTheFlyResource);
@@ -1435,6 +1472,35 @@ TEST_F(RewriteContextTest, CacheControlWithMultipleInputResources) {
   ASSERT_EQ(2, values.size());
   EXPECT_STREQ("max-age=300", *values[0]);
   EXPECT_STREQ("private", *values[1]);
+}
+
+// Verifies that we intersect cache-control when there are multiple input
+// resources.
+TEST_F(RewriteContextTest, CacheControlWithMultipleInputResourcesAndNoStore) {
+  InitCombiningFilter(0);
+  InitResources();
+
+  GoogleString content;
+  ResponseHeaders headers;
+
+  GoogleString combined_url =
+      Encode(kTestDomain, kCombiningFilterId, "0",
+             MultiUrl("a.css",
+                      "b.css",
+                      "a_private.css",
+                      "a_no_store.css"), "css");
+
+  ServeResourceUrl(combined_url, &content, &headers);
+  EXPECT_EQ(" a b a  a ", content);
+
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(7, lru_cache()->num_misses());   // partition, output 2x, 4 inputs.
+  EXPECT_EQ(6, lru_cache()->num_inserts());  // partition, output, 4 inputs.
+  EXPECT_EQ(4, counting_url_async_fetcher()->fetch_count());
+
+  EXPECT_TRUE(headers.HasValue(HttpAttributes::kCacheControl, "max-age=0"));
+  EXPECT_TRUE(headers.HasValue(HttpAttributes::kCacheControl, "no-cache"));
+  EXPECT_TRUE(headers.HasValue(HttpAttributes::kCacheControl, "no-store"));
 }
 
 // Verifies that we cache-extend when rewriting a cacheable resource.
@@ -2286,6 +2352,122 @@ TEST_F(RewriteContextTest, TestReuse) {
                                       "test.css", "css")));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
+  FetcherUpdateDateHeaders();
+  InitTrimFilters(kRewrittenResource);
+  resource_manager()->set_store_outputs_in_file_system(false);
+
+  // Test to make sure we are able to serve stale resources if available when
+  // the fetch fails.
+  const int kTtlMs = ResponseHeaders::kImplicitCacheTtlMs;
+  const char kPath[] = "test.css";
+  const char kDataIn[] = "   data  ";
+  const char kDataOut[] = "data";
+  GoogleString rewritten_url = Encode(kTestDomain, "tw", "0",
+                                      "test.css", "css");
+  GoogleString response_content;
+  ResponseHeaders response_headers;
+
+  // Serve a 500 for the CSS file.
+  ResponseHeaders bad_headers;
+  bad_headers.set_first_line(1, 1, 500, "Internal Server Error");
+  mock_url_fetcher()->SetResponse(AbsolutifyUrl(kPath), bad_headers, "");
+
+  // First fetch. No rewriting happens since the fetch fails. We cache that the
+  // fetch failed for kImplicitCacheTtlMs.
+  ValidateNoChanges("initial_500", CssLinkHref(kPath));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(
+      0,
+      resource_manager()->rewrite_stats()->fallback_responses_served()->Get());
+
+  ClearStats();
+  // Advance the timer by less than kImplicitCacheTtlMs. Since we remembered
+  // that the fetch failed, we don't trigger a fetch for the CSS and don't
+  // rewrite it either.
+  mock_timer()->AdvanceMs(kTtlMs / 2);
+  ValidateNoChanges("forward_500", CssLinkHref(kPath));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(
+      0,
+      resource_manager()->rewrite_stats()->fallback_responses_served()->Get());
+
+  ClearStats();
+
+  // Advance the timer again so that the fetch failed is stale and update the
+  // css response to a valid 200.
+  mock_timer()->AdvanceMs(kTtlMs);
+  InitResponseHeaders(kPath, kContentTypeCss, kDataIn,
+                      kTtlMs / Timer::kSecondMs);
+
+  // The resource is rewritten successfully.
+  ValidateExpected("forward_200",
+                   CssLinkHref(kPath),
+                   CssLinkHref(rewritten_url));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  // Two cache inserts for the original and rewritten resource.
+  EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
+  EXPECT_TRUE(ServeResourceUrl(rewritten_url, &response_content,
+                               &response_headers));
+  EXPECT_STREQ(kDataOut, response_content);
+  EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+  EXPECT_EQ(
+      0,
+      resource_manager()->rewrite_stats()->fallback_responses_served()->Get());
+
+  ClearStats();
+
+  // Advance time way past when it was expired. Set the css response to a 500
+  // again and delete the rewritten url from cache. We don't rewrite the html.
+  // Note that we don't overwrite the stale response for the css and serve a
+  // valid 200 response to the rewrriten resource.
+  mock_timer()->AdvanceMs(kTtlMs * 10);
+  lru_cache()->Delete(rewritten_url);
+  mock_url_fetcher()->SetResponse(AbsolutifyUrl(kPath), bad_headers, "");
+
+  ValidateNoChanges("forward_500_fallback_served", CssLinkHref(kPath));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(
+      1,
+      resource_manager()->rewrite_stats()->fallback_responses_served()->Get());
+
+  response_headers.Clear();
+  response_content.clear();
+  EXPECT_TRUE(ServeResourceUrl(rewritten_url, &response_content,
+                               &response_headers));
+  EXPECT_STREQ(kDataOut, response_content);
+  EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+
+  // Disable serving of stale resources and delete the rewritten resource from
+  // cache. We don't rewrite the html. We insert the fetch failure into cache
+  // and are unable to serve the rewritten resource.
+  options()->ClearSignatureForTesting();
+  options()->set_serve_stale_if_fetch_error(false);
+  options()->ComputeSignature(hasher());
+
+  ClearStats();
+  lru_cache()->Delete(rewritten_url);
+  ValidateNoChanges("forward_500_no_fallback", CssLinkHref(kPath));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(
+      0,
+      resource_manager()->rewrite_stats()->fallback_responses_served()->Get());
+
+  response_headers.Clear();
+  response_content.clear();
+  EXPECT_FALSE(ServeResourceUrl(rewritten_url, &response_content,
+                                &response_headers));
 }
 
 TEST_F(RewriteContextTest, TestReuseNotFastEnough) {

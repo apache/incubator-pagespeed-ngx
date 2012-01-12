@@ -127,6 +127,12 @@ bool Resource::Link(HTTPValue* value, MessageHandler* handler) {
   return value_.Link(contents_and_headers, &response_headers_, handler);
 }
 
+void Resource::LinkFallbackValue(HTTPValue* value) {
+  if (!value->Empty()) {
+    fallback_value_.Link(value);
+  }
+}
+
 void Resource::Freshen(MessageHandler* handler) {
   // We don't need Freshining for data urls or output resources.
 }

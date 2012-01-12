@@ -272,7 +272,7 @@ class FallbackSharedAsyncFetch : public SharedAsyncFetch {
     fallback_responses_served_ = x;
   }
 
-  void set_message_handler(MessageHandler* handler);
+  bool serving_fallback() const { return serving_fallback_; }
 
  protected:
   virtual void HandleDone(bool success);

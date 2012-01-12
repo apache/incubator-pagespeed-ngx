@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
@@ -78,15 +79,18 @@ UrlInputResource::~UrlInputResource() {
 class UrlResourceFetchCallback : public AsyncFetch {
  public:
   UrlResourceFetchCallback(ResourceManager* resource_manager,
-                           const RewriteOptions* rewrite_options) :
+                           const RewriteOptions* rewrite_options,
+                           HTTPValue* fallback_value) :
       resource_manager_(resource_manager),
       rewrite_options_(rewrite_options),
       message_handler_(NULL),
+      fallback_value_(fallback_value),
       success_(false),
       fetcher_(NULL),
       respect_vary_(rewrite_options->respect_vary()),
       resource_cutoff_ms_(
-          rewrite_options->min_resource_cache_time_to_rewrite_ms()) {
+          rewrite_options->min_resource_cache_time_to_rewrite_ms()),
+      fallback_fetch_(NULL) {
     // We intentionally do *not* keep a pointer to rewrite_options because
     // the pointer may not be valid at callback time.
   }
@@ -162,12 +166,27 @@ class UrlResourceFetchCallback : public AsyncFetch {
       return;
     }
     // TODO(sligocki): Allow ConditionalFetch here
-    fetcher_->Fetch(fetch_url_, message_handler_, this);
+    AsyncFetch* fetch = this;
+    if (rewrite_options_->serve_stale_if_fetch_error() &&
+        fallback_value_ != NULL && !fallback_value_->Empty()) {
+      fallback_fetch_ = new FallbackSharedAsyncFetch(
+          this, fallback_value_, message_handler_);
+      fallback_fetch_->set_fallback_responses_served(
+          resource_manager_->rewrite_stats()->fallback_responses_served());
+      fetch = fallback_fetch_;
+    }
+    fetcher_->Fetch(fetch_url_, message_handler_, fetch);
   }
 
   virtual void HandleDone(bool success) {
     VLOG(2) << response_headers()->ToString();
-    bool cached = AddToCache(success);
+    bool cached = false;
+    // Do not store the response in cache if we are using the fallback.
+    if (fallback_fetch_ != NULL && fallback_fetch_->serving_fallback()) {
+      success = true;
+    } else {
+      cached = AddToCache(success);
+    }
     if (lock_.get() != NULL) {
       message_handler_->Message(
           kInfo, "%s: Unlocking lock %s with cached=%s, success=%s",
@@ -181,7 +200,11 @@ class UrlResourceFetchCallback : public AsyncFetch {
     delete this;
   }
 
-  virtual void HandleHeadersComplete() {}
+  virtual void HandleHeadersComplete() {
+    if (fallback_fetch_ != NULL && fallback_fetch_->serving_fallback()) {
+      response_headers()->ComputeCaching();
+    }
+  }
   virtual bool HandleWrite(const StringPiece& content,
                            MessageHandler* handler) {
     return http_value()->Write(content, handler);
@@ -219,6 +242,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
  private:
   // TODO(jmarantz): consider request_headers.  E.g. will we ever
   // get different resources depending on user-agent?
+  HTTPValue* fallback_value_;
   bool success_;
   UrlAsyncFetcher* fetcher_;
   GoogleString fetch_url_;
@@ -226,6 +250,9 @@ class UrlResourceFetchCallback : public AsyncFetch {
   scoped_ptr<NamedLock> lock_;
   const bool respect_vary_;
   const int64 resource_cutoff_ms_;
+
+  FallbackSharedAsyncFetch* fallback_fetch_;
+
   DISALLOW_COPY_AND_ASSIGN(UrlResourceFetchCallback);
 };
 
@@ -239,7 +266,7 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
   UrlReadIfCachedCallback(const GoogleString& url, HTTPCache* http_cache,
                           ResourceManager* resource_manager,
                           const RewriteOptions* rewrite_options)
-      : UrlResourceFetchCallback(resource_manager, rewrite_options),
+      : UrlResourceFetchCallback(resource_manager, rewrite_options, NULL),
         url_(url),
         http_cache_(http_cache) {
   }
@@ -305,7 +332,8 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
   explicit UrlReadAsyncFetchCallback(Resource::AsyncCallback* callback,
                                      UrlInputResource* resource)
       : UrlResourceFetchCallback(resource->resource_manager(),
-                                 resource->rewrite_options()),
+                                 resource->rewrite_options(),
+                                 &resource->fallback_value_),
         resource_(resource),
         callback_(callback) {
     set_response_headers(&resource_->response_headers_);

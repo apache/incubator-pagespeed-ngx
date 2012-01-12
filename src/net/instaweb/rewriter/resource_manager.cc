@@ -449,6 +449,8 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
       break;
     case HTTPCache::kNotFound:
       // If not, load it asynchronously.
+      // Link the fallback value which can be used if the fetch fails.
+      resource->LinkFallbackValue(fallback_http_value());
       resource->LoadAndCallback(resource_callback_, handler);
       break;
   }

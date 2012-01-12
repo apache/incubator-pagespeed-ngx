@@ -383,6 +383,7 @@ void ImageRewriteFilter::ResizeLowQualityImage(
         NewImage(low_image->Contents(), input_resource->url(),
                  resource_manager_->filename_prefix(), image_options,
                  driver_->message_handler()));
+    image->SetTransformToLowRes();
     ImageDim resized_dim;
     resized_dim.set_width(kDelayImageWidthForMobile);
     resized_dim.set_height((static_cast<int64>(resized_dim.width()) *
@@ -390,13 +391,20 @@ void ImageRewriteFilter::ResizeLowQualityImage(
     MessageHandler* message_handler = driver_->message_handler();
     if (image->ResizeTo(resized_dim)) {
       StringPiece contents = image->Contents();
+      StringPiece old_contents = low_image->Contents();
+      DCHECK(contents.size() < old_contents.size())
+          << "Wrong scaled down image size: increased from "
+          << old_contents.size() << " to " << contents.size() << " bytes";
       cached->set_low_resolution_inlined_data(contents.data(), contents.size());
       message_handler->Message(
           kInfo,
-          "Resized low quality image (%s) from %dx%d to %dx%d",
+          "Resized low quality image (%s) from "
+          "%dx%d(%d bytes) to %dx%d(%d bytes)",
           input_resource->url().c_str(),
           image_dim.width(), image_dim.height(),
-          resized_dim.width(), resized_dim.width());
+          static_cast<int>(old_contents.size()),
+          resized_dim.width(), resized_dim.width(),
+          static_cast<int>(contents.size()));
     } else {
       message_handler->Message(
           kError,

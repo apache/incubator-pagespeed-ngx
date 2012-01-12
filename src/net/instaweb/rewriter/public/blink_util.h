@@ -25,12 +25,6 @@ const char kContiguous[] = "contiguous";
 const char kCritical[] = "critical";
 const char kPanelId[] = "panel-id";
 const char kImages[] = "images";
-// TODO(rahulbansal): Populate the timings getting removed here.
-const char kTimeToStartDocument[] = "TIME_TO_START_DOCUMENT";
-const char kTimeToLayoutCacheLookup[] = "TIME_TO_LAYOUT_LOOKUP";
-const char kTimeToJsonCacheLookup[] = "TIME_TO_JSON_LOOKUP";
-const char kTimeToSplitCritical[] = "TIME_TO_SPLIT_CRITICAL";
-const char kLayoutLoaded[] = "LAYOUT_LOADED";
 const char kInstanceHtml[] = "instance_html";
 const char kLayoutMarker[] = "<!--GooglePanel **** Layout end ****-->";
 const char kJsonCachePrefix[] = "json:";

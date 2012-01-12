@@ -40,6 +40,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/panel_config.pb.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -57,6 +58,10 @@ namespace net_instaweb {
 const int kJsonCachePrefixLength = strlen(BlinkUtil::kJsonCachePrefix);
 
 namespace {
+const char kTimeToBlinkFlowStart[] = "TIME_TO_BLINK_FLOW_START";
+const char kTimeToJsonLookupDone[] = "TIME_TO_JSON_LOOKUP_DONE";
+const char kTimeToSplitCritical[] = "TIME_TO_SPLIT_CRITICAL";
+const char kLayoutLoaded[] = "LAYOUT_LOADED";
 
 // AsyncFetch that doesn't call HeadersComplete() on the base fetch. Note that
 // this class only links the request headers from the base fetch and does not
@@ -157,6 +162,9 @@ class BlinkFlow::JsonFindCallback : public HTTPCache::Callback {
   virtual ~JsonFindCallback() {}
 
   virtual void Done(HTTPCache::FindResult find_result) {
+    blink_fetch_->time_to_json_lookup_done_ms_ =
+        blink_fetch_->GetTimeElapsedFromStartRequest();
+
     if (find_result != HTTPCache::kFound) {
       blink_fetch_->JsonCacheMiss();
     } else {
@@ -188,6 +196,17 @@ void BlinkFlow::Start(const GoogleString& url,
 }
 
 void BlinkFlow::InitiateJsonLookup() {
+  // TODO(rahulbansal): Remove start_time_ms from rewrite_driver.
+  const char* request_start_time_ms_str =
+      base_fetch_->request_headers()->Lookup1(kRequestStartTimeHeader);
+  if (request_start_time_ms_str != NULL) {
+    if (!StringToInt64(request_start_time_ms_str, &request_start_time_ms_)) {
+      request_start_time_ms_ = 0;
+    }
+  }
+
+  time_to_start_blink_flow_ms_ = GetTimeElapsedFromStartRequest();
+
   GoogleUrl gurl(url_);
   json_url_ = StrCat(BlinkUtil::kJsonCachePrefix, gurl.Spec());
   JsonFindCallback* callback = new JsonFindCallback(this);
@@ -259,6 +278,7 @@ void BlinkFlow::ServeCriticalPanelContents(
   GoogleString critical_json_str, non_critical_json_str, pushed_images_str;
   BlinkUtil::SplitCritical(json, panel_id_to_spec, &critical_json_str,
                            &non_critical_json_str, &pushed_images_str);
+  time_to_split_critical_ms_ = GetTimeElapsedFromStartRequest();
   // TODO(rahulbansal): Add an option for storing sent_critical_data.
   SendCriticalJson(&critical_json_str);
   SendInlineImagesJson(&pushed_images_str);
@@ -270,6 +290,7 @@ void BlinkFlow::ServeAllPanelContents(
   GoogleString critical_json_str, non_critical_json_str, pushed_images_str;
   BlinkUtil::SplitCritical(json, panel_id_to_spec, &critical_json_str,
                            &non_critical_json_str, &pushed_images_str);
+  time_to_split_critical_ms_ = GetTimeElapsedFromStartRequest();
   SendCriticalJson(&critical_json_str);
   SendInlineImagesJson(&pushed_images_str);
   // TODO(rahulbansal): We can't send cookies here since the fetch hasn't
@@ -289,6 +310,14 @@ void BlinkFlow::SendLayout(const StringPiece& layout) {
                      manager_->url_namer()->get_proxy_domain(),
                      "/webinstant/blink.js\"></script>"));
   WriteString("<script>var panelLoader = new PanelLoader();</script>");
+  WriteString(GetAddTimingScriptString(kTimeToBlinkFlowStart,
+                                       time_to_start_blink_flow_ms_));
+  WriteString(GetAddTimingScriptString(kTimeToJsonLookupDone,
+                                       time_to_json_lookup_done_ms_));
+  WriteString(StrCat("<script>panelLoader.addCsiTiming(\"", kLayoutLoaded,
+                     "\", new Date() - panelLoader.timeStart, ",
+                     IntegerToString(layout.size()),
+                     ")</script>"));
   Flush();
 }
 
@@ -299,7 +328,8 @@ void BlinkFlow::SendCriticalJson(GoogleString* critical_json_str) {
   if (user_ip != NULL && manager_->factory()->IsDebugClient(user_ip)) {
     WriteString("<script>panelLoader.setRequestFromInternalIp();</script>");
   }
-
+  WriteString(GetAddTimingScriptString(kTimeToSplitCritical,
+                                       time_to_split_critical_ms_));
   WriteString("<script>panelLoader.loadCriticalData(");
   BlinkUtil::EscapeString(critical_json_str);
   WriteString(*critical_json_str);
@@ -364,6 +394,16 @@ void BlinkFlow::ComputeJsonInBackground() {
       json_url_.substr(kJsonCachePrefixLength),
       manager_->message_handler(),
       json_fetch);
+}
+
+int64 BlinkFlow::GetTimeElapsedFromStartRequest() {
+  return manager_->timer()->NowMs() - request_start_time_ms_;
+}
+
+GoogleString BlinkFlow::GetAddTimingScriptString(
+    const GoogleString& timing_str, int64 time_ms) {
+  return StrCat("<script>panelLoader.addCsiTiming(\"", timing_str, "\", ",
+                Integer64ToString(time_ms), ")</script>");
 }
 
 }  // namespace net_instaweb
