@@ -70,15 +70,13 @@ class CachePutFetch : public SharedAsyncFetch {
     ResponseHeaders* headers = response_headers();
     headers->FixDateHeaders(now_ms);
     bool is_html = (headers->DetermineContentType() == &kContentTypeHtml);
-    ConstStringStarVector values;
     const char* cache_control = headers->Lookup1(HttpAttributes::kCacheControl);
     if (default_cache_html_ && is_html &&
         // TODO(sligocki): Use some sort of computed
         // headers->HasExplicitCachingTtl() instead
         // of just checking for the existence of 2 headers.
         (cache_control == NULL || cache_control == StringPiece("public")) &&
-        // TODO(sligocki): Add a ResponseHeaders::Has() instead of full lookup.
-        !headers->Lookup(HttpAttributes::kExpires, &values)) {
+        !headers->Has(HttpAttributes::kExpires)) {
       // TODO(sligocki): Use ResponseHeaders::kImplicitCacheTtlMs.
       headers->Add(HttpAttributes::kCacheControl, "max-age=300");
     }

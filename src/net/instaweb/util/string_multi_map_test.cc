@@ -53,16 +53,17 @@ TEST_F(StringMultiMapTest, TestAdd) {
   EXPECT_EQ(1, strlen(string_map_.value(5)->c_str()));
 }
 
-TEST_F(StringMultiMapTest, TestLookup) {
+TEST_F(StringMultiMapTest, TestLookupHas) {
   ConstStringStarVector v;
+  EXPECT_TRUE(string_map_.Has("a"));
   ASSERT_TRUE(string_map_.Lookup("a", &v));
   ASSERT_EQ(2, v.size());
   EXPECT_EQ(GoogleString("1"), *(v[0]));
   EXPECT_EQ(GoogleString("3"), *(v[1]));
-  ASSERT_TRUE(string_map_.Lookup("b", &v));
+  ASSERT_TRUE(string_map_.Lookup("B", &v));
   ASSERT_EQ(1, v.size());
   EXPECT_EQ(NULL, v[0]);
-  ASSERT_TRUE(string_map_.Lookup("C", &v));
+  ASSERT_TRUE(string_map_.Lookup("c", &v));
   ASSERT_EQ(1, v.size());
   EXPECT_EQ(GoogleString("2"), *(v[0]));
   ASSERT_TRUE(string_map_.Lookup("d", &v));
@@ -71,6 +72,14 @@ TEST_F(StringMultiMapTest, TestLookup) {
   ASSERT_TRUE(string_map_.Lookup("e", &v));
   ASSERT_EQ(1, v.size());
   EXPECT_EQ(4, v[0]->size());
+
+  EXPECT_FALSE(string_map_.Has("foo"));
+  EXPECT_FALSE(string_map_.Lookup("foo", &v));
+  string_map_.Add("foo", "bar");
+  EXPECT_TRUE(string_map_.Has("foo"));
+  ASSERT_TRUE(string_map_.Lookup("foo", &v));
+  ASSERT_EQ(1, v.size());
+  EXPECT_STREQ("bar", *v[0]);
 }
 
 TEST_F(StringMultiMapTest, TestRemove) {

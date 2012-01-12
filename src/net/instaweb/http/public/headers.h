@@ -63,10 +63,13 @@ template<class Proto> class Headers {
   // not found, or if more than one attribute is found.
   const char* Lookup1(const StringPiece& name) const;
 
+  // Does there exist a header with given name.
+  bool Has(const StringPiece& name) const;
+
   // Is value one of the values in Lookup(name)?
   bool HasValue(const StringPiece& name, const StringPiece& value) const;
 
-  // Likewise, NumAttributeNames is const but not thread-safe.
+  // NumAttributeNames is also const but not thread-safe.
   int NumAttributeNames() const;
 
   // Adds a new header, even if a header with the 'name' exists already.

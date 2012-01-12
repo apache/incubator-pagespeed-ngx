@@ -65,6 +65,10 @@ template<class StringCompare> class StringMultiMap {
     return ret;
   }
 
+  bool Has(const StringPiece& name) const {
+    return map_.find(name.as_string()) != map_.end();
+  }
+
   // Remove all variables by name.  Returns true if anything was removed.
   bool RemoveAll(const StringPiece& var_name) {
     GoogleString var_string(var_name.data(), var_name.size());

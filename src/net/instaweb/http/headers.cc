@@ -110,6 +110,11 @@ template<class Proto> const char* Headers<Proto>::Lookup1(
   return NULL;
 }
 
+template<class Proto> bool Headers<Proto>::Has(const StringPiece& name) const {
+  PopulateMap();
+  return map_->Has(name);
+}
+
 template<class Proto> bool Headers<Proto>::HasValue(
     const StringPiece& name, const StringPiece& value) const {
   ConstStringStarVector values;
