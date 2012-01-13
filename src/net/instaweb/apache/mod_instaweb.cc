@@ -134,6 +134,8 @@ const char* kModPagespeedMapOriginDomain = "ModPagespeedMapOriginDomain";
 const char* kModPagespeedMapRewriteDomain = "ModPagespeedMapRewriteDomain";
 const char* kModPagespeedMaxSegmentLength = "ModPagespeedMaxSegmentLength";
 const char* kModPagespeedMessageBufferSize = "ModPagespeedMessageBufferSize";
+const char* kModPagespeedModifyCachingHeaders =
+    "ModPagespeedModifyCachingHeaders";
 const char* kModPagespeedNumShards = "ModPagespeedNumShards";
 const char* kModPagespeedRefererStatisticsOutputLevel =
     "ModPagespeedRefererStatisticsOutputLevel";
@@ -468,8 +470,11 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   // Make sure compression is enabled for this response.
   ap_add_output_filter("DEFLATE", NULL, request, request->connection);
-  ap_add_output_filter(kModPagespeedFixHeadersName, NULL, request,
-                       request->connection);
+
+  if (options->modify_caching_headers()) {
+    ap_add_output_filter(kModPagespeedFixHeadersName, NULL, request,
+                         request->connection);
+  }
 
   ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                 "Request accepted.");
@@ -576,11 +581,13 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
 // with some pagespeed.conf settings in the future.
 //
 // This function removes any expires or cache-control settings added
-// by the uesr's .conf files, and puts in headers to disable caching.
+// by the user's .conf files, and puts in headers to disable caching.
 //
 // We expect this to run after mod_headers and mod_expires, triggered
 // by the call to ap_add_output_filter(kModPagespeedFixHeadersName...)
 // in build_context_for_request.
+//
+// NOTE: This is disabled if users set "ModPagespeedModifyCachingHeaders false".
 apr_status_t instaweb_fix_headers_filter(
     ap_filter_t *filter, apr_bucket_brigade *bb) {
   request_rec* request = filter->r;
@@ -591,6 +598,8 @@ apr_status_t instaweb_fix_headers_filter(
                 HttpAttributes::kNoCache);
   apr_table_unset(request->headers_out, HttpAttributes::kExpires);
   apr_table_unset(request->headers_out, HttpAttributes::kEtag);
+  // TODO(sligocki): Why remove ourselves? Is it to assure that this filter
+  // won't be turned on by default for the next request?
   ap_remove_output_filter(filter);
   return ap_pass_brigade(filter->next, bb);
 }
@@ -916,6 +925,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   // resolve properly for options in RewriteOptions for ApacheConfig.
   RewriteOptions* options = config;
 
+  // TODO(jmarantz): We should use gperf and a switch statement rather than
+  // this long list of string compares.
   if (StringCaseEqual(directive, RewriteQuery::kModPagespeed)) {
     ret = ParseBoolOption(options, cmd, &RewriteOptions::set_enabled, arg);
   } else if (StringCaseEqual(directive, kModPagespeedAllow)) {
@@ -977,6 +988,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
     ret = ParseBoolOption(static_cast<RewriteDriverFactory*>(factory),
         cmd, &RewriteDriverFactory::set_force_caching, arg);
+  } else if (StringCaseEqual(directive, kModPagespeedGAID)) {
+    // TODO(nforman): Some input checking?
+    options->set_ga_id(arg);
   } else if (StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix)) {
     config->set_filename_prefix(arg);
     if (!give_apache_user_permissions(factory)) {
@@ -1048,12 +1062,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedMessageBufferSize)) {
     ret = ParseIntOption(factory,
         cmd, &ApacheRewriteDriverFactory::set_message_buffer_size, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedRespectVary)) {
+  } else if (StringCaseEqual(directive, kModPagespeedModifyCachingHeaders)) {
     ret = ParseBoolOption(options, cmd,
-                          &RewriteOptions::set_respect_vary, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedGAID)) {
-    // TODO(nforman): Some input checking?
-    options->set_ga_id(arg);
+                          &RewriteOptions::set_modify_caching_headers, arg);
   } else if (StringCaseEqual(directive, kModPagespeedNumShards)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (StringCaseEqual(directive,
@@ -1065,6 +1076,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     } else {
       ret = "Failed to parse RefererStatisticsOutputLevel.";
     }
+  } else if (StringCaseEqual(directive, kModPagespeedRespectVary)) {
+    ret = ParseBoolOption(options, cmd,
+                          &RewriteOptions::set_respect_vary, arg);
   } else if (StringCaseEqual(directive, kModPagespeedRetainComment)) {
     options->RetainComment(arg);
   } else if (StringCaseEqual(directive, kModPagespeedRewriteLevel)) {
@@ -1210,6 +1224,10 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Lowercase tag and attribute names for HTML."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedMaxSegmentLength,
         "Maximum size of a URL segment."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedModifyCachingHeaders,
+        "Set to false to disallow mod_pagespeed from editing HTML "
+        "Cache-Control headers. This is not safe in general and can cause "
+        "the incorrect versions of HTML to be served to users."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedRefererStatisticsOutputLevel,
         "Set the output level of mod_pagespeed_referer_statistics (Fast, "
         "Simple, Organized).  There is a trade-off between readability and "

@@ -394,6 +394,13 @@ class RewriteOptions {
   void set_default_cache_html(bool x) { set_option(x, &default_cache_html_); }
   bool default_cache_html() const { return default_cache_html_.value(); }
 
+  void set_modify_caching_headers(bool x) {
+    set_option(x, &modify_caching_headers_);
+  }
+  bool modify_caching_headers() const {
+    return modify_caching_headers_.value();
+  }
+
   void set_max_delayed_images_index(int x) {
     set_option(x, &max_delayed_images_index_);
   }
@@ -761,6 +768,11 @@ class RewriteOptions {
   // we will cache those inputs for the implicit lifetime just like we
   // do for resources.
   Option<bool> default_cache_html_;
+  // In general, we rewrite Cache-Control headers for HTML. We do this
+  // for several reasons, but at least one is that our rewrites are not
+  // necessarily publicly cacheable.
+  // Some people don't like this, so we allow them to disable it.
+  Option<bool> modify_caching_headers_;
 
   // Number of first N images for which low res image is generated. Negative
   // values will bypass image index check.

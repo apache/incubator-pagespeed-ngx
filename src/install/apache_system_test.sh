@@ -387,6 +387,12 @@ check [ $? = 0 ]
 echo $RESOURCE_HEADERS | egrep -q 'Cache-Control: max-age=31536000'
 check [ $? = 0 ]
 
+echo TEST: ModPagespeedModifyCachingHeaders
+URL=$TEST_ROOT/retain_cache_control/index.html
+$WGET_DUMP $URL
+$WGET_DUMP $URL | grep -q "Cache-Control: private, max-age=3000"
+check [ $? = 0 ]
+
 # Cleanup
 rm -rf $OUTDIR
 echo "PASS."
