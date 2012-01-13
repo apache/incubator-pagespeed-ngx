@@ -262,14 +262,17 @@ class ResourceManager {
   // on the driver, and then call AddFilters to freeze them.
   RewriteDriver* NewUnmanagedRewriteDriver();
 
-  // Like NewUnmanagedRewriteDriver, but adds adds all the filters
-  // specified in the options.
+  // Like NewUnmanagedRewriteDriver, but uses supplied options instead
+  // of RewriteDriver's global_options().
+  //
+  // NOTE: This does not merge custom_options with global_options(), the
+  // caller must do that if they want them merged.
   //
   // Filters allocated using this mechanism have their filter-chain
   // already frozen (see AddFilters()).
   //
-  // Takes ownership of 'options'.
-  RewriteDriver* NewCustomRewriteDriver(RewriteOptions* options);
+  // Takes ownership of 'custom_options'.
+  RewriteDriver* NewCustomRewriteDriver(RewriteOptions* custom_options);
 
   // Puts a RewriteDriver back on the free pool.  This is intended to
   // be called by a RewriteDriver on itself, once all pending

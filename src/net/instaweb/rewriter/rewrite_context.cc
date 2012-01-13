@@ -674,7 +674,7 @@ GoogleString HashSplit(const Hasher* hasher, const StringPiece& str) {
   return StrCat(hash.substr(0, 1), "/", hash.substr(1));
 }
 
-}
+}  // namespace
 
 void RewriteContext::SetPartitionKey() {
   // In Apache, we are populating a file-cache.  To be friendly to
@@ -1171,7 +1171,7 @@ void RewriteContext::WritePartition() {
         const CachedResult& partition = partitions_->partition(i);
         if (partition.optimizable() && !partition.has_inlined_data()) {
           GoogleUrl gurl(partition.url());
-          DCHECK(gurl.is_valid());
+          DCHECK(gurl.is_valid()) << partition.url();
         }
       }
 #endif
@@ -1553,7 +1553,6 @@ bool RewriteContext::DecodeFetchUrls(
   StringVector urls;
   if (encoder()->Decode(output_resource->name(), &urls, resource_context_.get(),
                         message_handler)) {
-
     if (check_for_multiple_rewrites) {
       // We want to drop the leaf from the base URL before combining it
       // with the decoded name, in case the decoded name turns into a

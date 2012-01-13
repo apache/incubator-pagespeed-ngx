@@ -309,13 +309,13 @@ void BlinkFlow::SendLayout(const StringPiece& layout) {
   WriteString(StrCat("<script src=\"",
                      manager_->url_namer()->get_proxy_domain(),
                      "/webinstant/blink.js\"></script>"));
-  WriteString("<script>var panelLoader = new PanelLoader();</script>");
+  WriteString("<script>pagespeed.panelLoaderInit();</script>");
   WriteString(GetAddTimingScriptString(kTimeToBlinkFlowStart,
                                        time_to_start_blink_flow_ms_));
   WriteString(GetAddTimingScriptString(kTimeToJsonLookupDone,
                                        time_to_json_lookup_done_ms_));
-  WriteString(StrCat("<script>panelLoader.addCsiTiming(\"", kLayoutLoaded,
-                     "\", new Date() - panelLoader.timeStart, ",
+  WriteString(StrCat("<script>pagespeed.panelLoader.addCsiTiming(\"", kLayoutLoaded,
+                     "\", new Date() - pagespeed.panelLoader.timeStart, ",
                      IntegerToString(layout.size()),
                      ")</script>"));
   Flush();
@@ -326,11 +326,12 @@ void BlinkFlow::SendCriticalJson(GoogleString* critical_json_str) {
   const char* user_ip = base_fetch_->request_headers()->Lookup1(
       HttpAttributes::kXForwardedFor);
   if (user_ip != NULL && manager_->factory()->IsDebugClient(user_ip)) {
-    WriteString("<script>panelLoader.setRequestFromInternalIp();</script>");
+    WriteString("<script>pagespeed.panelLoader.setRequestFromInternalIp();"
+                "</script>");
   }
   WriteString(GetAddTimingScriptString(kTimeToSplitCritical,
                                        time_to_split_critical_ms_));
-  WriteString("<script>panelLoader.loadCriticalData(");
+  WriteString("<script>pagespeed.panelLoader.loadCriticalData(");
   BlinkUtil::EscapeString(critical_json_str);
   WriteString(*critical_json_str);
   WriteString(");</script>");
@@ -338,14 +339,14 @@ void BlinkFlow::SendCriticalJson(GoogleString* critical_json_str) {
 }
 
 void BlinkFlow::SendInlineImagesJson(GoogleString* pushed_images_str) {
-  WriteString("<script>panelLoader.loadImagesData(");
+  WriteString("<script>pagespeed.panelLoader.loadImagesData(");
   WriteString(*pushed_images_str);
   WriteString(");</script>");
   Flush();
 }
 
 void BlinkFlow::SendNonCriticalJson(GoogleString* non_critical_json_str) {
-  WriteString("<script>panelLoader.bufferNonCriticalData(");
+  WriteString("<script>pagespeed.panelLoader.bufferNonCriticalData(");
   BlinkUtil::EscapeString(non_critical_json_str);
   WriteString(*non_critical_json_str);
   WriteString(");</script>");
@@ -402,7 +403,7 @@ int64 BlinkFlow::GetTimeElapsedFromStartRequest() {
 
 GoogleString BlinkFlow::GetAddTimingScriptString(
     const GoogleString& timing_str, int64 time_ms) {
-  return StrCat("<script>panelLoader.addCsiTiming(\"", timing_str, "\", ",
+  return StrCat("<script>pagespeed.panelLoader.addCsiTiming(\"", timing_str, "\", ",
                 Integer64ToString(time_ms), ")</script>");
 }
 

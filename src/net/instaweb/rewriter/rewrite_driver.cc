@@ -123,7 +123,7 @@ const int kTestTimeoutMs = 10000;
 class RemoveCommentsFilterOptions
     : public RemoveCommentsFilter::OptionsInterface {
  public:
-  RemoveCommentsFilterOptions(const RewriteOptions* options)
+  explicit RemoveCommentsFilterOptions(const RewriteOptions* options)
       : options_(options) {
   }
 
