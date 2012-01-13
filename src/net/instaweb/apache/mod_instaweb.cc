@@ -93,6 +93,7 @@ const char* kModPagespeedDomain = "ModPagespeedDomain";
 const char* kModPagespeedEnableFilters = "ModPagespeedEnableFilters";
 const char* kModPagespeedFetchProxy = "ModPagespeedFetchProxy";
 const char* kModPagespeedFetcherTimeoutMs = "ModPagespeedFetcherTimeOutMs";
+const char* kModPagespeedFetchWithGzip = "ModPagespeedFetchWithGzip";
 const char* kModPagespeedFileCacheCleanIntervalMs =
     "ModPagespeedFileCacheCleanIntervalMs";
 const char* kModPagespeedFileCachePath = "ModPagespeedFileCachePath";
@@ -955,6 +956,9 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
         cmd, &ApacheConfig::set_fetcher_time_out_ms, arg);
   } else if (StringCaseEqual(directive, kModPagespeedFetchProxy)) {
     config->set_fetcher_proxy(arg);
+  } else if (StringCaseEqual(directive, kModPagespeedFetchWithGzip)) {
+    ret = ParseBoolOption(
+        factory, cmd, &ApacheRewriteDriverFactory::set_fetch_with_gzip, arg);
   } else if (StringCaseEqual(directive,
                              kModPagespeedFileCacheCleanIntervalMs)) {
     ret = ParseInt64Option(config,
@@ -1227,6 +1231,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedFetcherTimeoutMs,
         "Set internal fetcher timeout in milliseconds"),
   APACHE_CONFIG_OPTION(kModPagespeedFetchProxy, "Set the fetch proxy"),
+  APACHE_CONFIG_OPTION(kModPagespeedFetchWithGzip,
+                       "Request http content from origin servers using gzip"),
   APACHE_CONFIG_OPTION(kModPagespeedFileCacheCleanIntervalMs,
         "Set the interval (in ms) for cleaning the file cache"),
   APACHE_CONFIG_OPTION(kModPagespeedFileCachePath,

@@ -197,12 +197,12 @@ void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
         expire_at_ms = std::min(expire_at_ms, dependency.expiration_time_ms());
       }
     }
-    int64 cache_ttl_ms = expire_at_ms - headers->date_ms();
+    int64 now_ms = Manager()->timer()->NowMs();
     if (expire_at_ms == kint64max) {
       // If expire_at_ms is not set, set the cache ttl to kImplicitCacheTtlMs.
-      cache_ttl_ms = ResponseHeaders::kImplicitCacheTtlMs;
+      expire_at_ms = now_ms + ResponseHeaders::kImplicitCacheTtlMs;
     }
-    headers->SetCacheControlMaxAge(cache_ttl_ms);
+    headers->SetDateAndCaching(now_ms, expire_at_ms - now_ms);
   }
 }
 

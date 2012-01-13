@@ -8,7 +8,7 @@
 #  apache_install_conf (should read OPT_REWRITE_TEST, OPT_PROXY_TEST,
 #                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_HTTPS_TEST,
 #                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST,
-#                       OPT_SHARED_MEM_LOCK_TEST)
+#                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST)
 #  apache_debug_restart
 #  apache_debug_stop
 #  apache_debug_leak_test, apache_debug_proxy_test, apache_debug_slurp_test
@@ -37,6 +37,7 @@ apache_system_tests :
 	$(MAKE) apache_debug_slurp_test
 	$(MAKE) apache_debug_serf_empty_header_test
 	$(MAKE) apache_debug_speling_test
+	$(MAKE) apache_debug_gzip_test
 	$(MAKE) apache_debug_vhost_only_test
 	$(MAKE) apache_debug_global_off_test
 	$(MAKE) apache_debug_shared_mem_lock_sanity_test
@@ -60,6 +61,8 @@ else
 endif
 EXAMPLE = $(APACHE_SERVER)/mod_pagespeed_example
 EXAMPLE_IMAGE = $(EXAMPLE)/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
+EXAMPLE_BIG_CSS = $(EXAMPLE)/styles/big.css.pagespeed.ce.01O-NppLwe.css
+EXAMPLE_COMBINE_CSS = $(EXAMPLE)/combine_css.html
 
 # Installs debug configuration and runs a smoke test against it.
 # This will blow away your existing pagespeed.conf,
@@ -97,7 +100,8 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	$(MAKE) apache_debug_stop
 	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
 
-apache_debug_rewrite_test : rewrite_test_prepare apache_install_conf apache_debug_restart
+apache_debug_rewrite_test : rewrite_test_prepare apache_install_conf \
+    apache_debug_restart
 	sleep 2
 	$(WGET) -q -O - --save-headers $(EXAMPLE_IMAGE) \
 	  | head -13 | grep "Content-Type: image/jpeg"
@@ -110,17 +114,38 @@ rewrite_test_prepare:
 	$(eval OPT_REWRITE_TEST="REWRITE_TEST=1")
 	rm -rf $(PAGESPEED_ROOT)/cache/*
 
-# This test checks that when mod_speling is enabled, we handle the
+# This test checks that when mod_speling is enabled we handle the
 # resource requests properly by nulling out request->filename.  If
 # we fail to do that then mod_speling rewrites the result to be a 300
 # (multiple choices).
-apache_debug_speling_test : speling_test_prepare apache_install_conf apache_debug_restart
+apache_debug_speling_test : speling_test_prepare apache_install_conf \
+    apache_debug_restart
 	@echo Testing compatibility with mod_speling:
 	$(WGET) -O /dev/null --save-headers $(EXAMPLE_IMAGE) 2>&1 \
 	  | head | grep "HTTP request sent, awaiting response... 200 OK"
 
 speling_test_prepare:
 	$(eval OPT_SPELING_TEST="SPELING_TEST=1")
+	rm -rf $(PAGESPEED_ROOT)/cache/*
+
+# This test checks that when ModPagespeedFetchWithGzip is enabled we
+# fetch resources from origin with the gzip flag.  Note that big.css
+# uncompressed is 4307 bytes.  As of Jan 2012 we get 339 bytes, but
+# the compression is done by mod_deflate which might change.  So we
+# do a cumbersome range-check that the 4307 bytes gets compressed to
+# somewhere between 200 and 500 bytes.
+apache_debug_gzip_test : gzip_test_prepare apache_install_conf \
+    apache_debug_restart
+	@echo Testing efficacy of ModPagespeedFetchWithGzip:
+	$(WGET) -O /dev/null --save-headers $(EXAMPLE_BIG_CSS) 2>&1 \
+	  | head | grep "HTTP request sent, awaiting response... 200 OK"
+	bytes=`$(WGET) -q -O - $(APACHE_SERVER)/mod_pagespeed_statistics \
+	  | grep 'serf_fetch_bytes_count: ' | cut -d\  -f2`; \
+	  echo Compressed big.css took $$bytes bytes; \
+	  test $$bytes -gt 200 -a $$bytes -lt 500
+
+gzip_test_prepare:
+	$(eval OPT_GZIP_TEST="GZIP_TEST=1")
 	rm -rf $(PAGESPEED_ROOT)/cache/*
 
 # Test to make sure we don't crash if we're off for global but on for vhosts.
@@ -161,11 +186,9 @@ apache_debug_global_off_test:
 # system to crash, and a rewrite does successfully happen.
 apache_debug_shared_mem_lock_sanity_test : shared_mem_lock_test_prepare \
     apache_install_conf apache_debug_restart
-	$(WGET) -q -O /dev/null \
-	 $(APACHE_SERVER)/mod_pagespeed_example/combine_css.html?ModPagespeedFilters=combine_css
+	$(WGET) -q -O /dev/null $(EXAMPLE_COMBINE_CSS)?ModPagespeedFilters=combine_css
 	sleep 1
-	$(WGET) -q -O - \
-	 $(APACHE_SERVER)/mod_pagespeed_example/combine_css.html?ModPagespeedFilters=combine_css \
+	$(WGET) -q -O - $(EXAMPLE_COMBINE_CSS)?ModPagespeedFilters=combine_css \
 	 | grep "\.pagespeed\.cc\."
 
 shared_mem_lock_test_prepare:

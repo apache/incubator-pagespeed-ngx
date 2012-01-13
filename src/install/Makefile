@@ -210,6 +210,14 @@ else
   SPELING_TEST_SED_PATTERN=^\#SPELING.*\n
 endif
 
+ifeq ($(GZIP_TEST),1)
+  # remove prefix
+  GZIP_TEST_SED_PATTERN=^\#GZIP
+else
+  # remove whole line
+  GZIP_TEST_SED_PATTERN=^\#GZIP.*\n
+endif
+
 ifeq ($(HTTPS_TEST),1)
   # remove prefix
   HTTPS_TEST_SED_PATTERN=^\#HTTPS
@@ -236,6 +244,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(SLURP_TEST_SED_PATTERN)@@" \
 	    -e "s@$(SHARED_MEM_LOCK_TEST_SED_PATTERN)@@" \
 	    -e "s@$(SPELING_TEST_SED_PATTERN)@@" \
+	    -e "s@$(GZIP_TEST_SED_PATTERN)@@" \
 	    -e "s@$(HTTPS_TEST_SED_PATTERN)@@" \
 		$^ > $@
 	! grep '@@' $@  # Make sure we don't have any remaining @@variables@@
@@ -320,11 +329,13 @@ apache_install_conf:
 	$(MAKE) staging_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
 	                $(OPT_SLURP_TEST) $(OPT_SPELING_TEST) \
 	                $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
-	                $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST)
+	                $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST) \
+			$(OPT_GZIP_TEST)
 	$(MAKE) install_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
 	                $(OPT_SLURP_TEST) $(OPT_SPELING_TEST) \
 	                $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
-	                $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST)
+	                $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST) \
+			$(OPT_GZIP_TEST)
 
 apache_debug_restart:
 	$(APACHE_CONTROL_PROGRAM) restart

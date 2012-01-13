@@ -104,6 +104,9 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 #SPELING </IfModule>
 #SPELING CheckSpelling on
 
+#GZIP ModPagespeedFetchWithGzip on
+#GZIP SetOutputFilter DEFLATE
+
 #STRESS # These lines are only needed for the stress test.
 #STRESS <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/cgi" >
 #STRESS   Options +ExecCGI

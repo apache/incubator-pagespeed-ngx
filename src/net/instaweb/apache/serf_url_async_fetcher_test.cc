@@ -311,6 +311,8 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURL) {
   EXPECT_EQ(kTimerAdvanceMs, time_duration);
 }
 
+// Tests that when the fetcher requests gzipped data it gets it.  Note
+// that the callback is delivered content that must be explicitly unzipped.
 TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
   request_headers_[kModpagespeedSite]->Add(HttpAttributes::kAcceptEncoding,
                                            HttpAttributes::kGzip);
@@ -332,6 +334,34 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
   ASSERT_EQ(size, inflater.InflateBytes(buf.get(), size));
   EXPECT_EQ(content_starts_[kModpagespeedSite], GoogleString(buf.get(), size));
   EXPECT_EQ(0, ActiveFetches());
+}
+
+// In this variant, we do not add accept-encoding gzip, but we *do*
+// enable the fetcher to transparently add gzipped content.  In
+// mod_pagespeed this is an off-by-default option for the site owner
+// because local loopback fetches might be more efficient without
+// gzip.
+TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLWithGzip) {
+  serf_url_async_fetcher_->set_fetch_with_gzip(true);
+  EXPECT_TRUE(TestFetch(kModpagespeedSite, kModpagespeedSite));
+  EXPECT_FALSE(response_headers_[kModpagespeedSite]->IsGzipped());
+  int request_count =
+      statistics_.GetVariable(SerfStats::kSerfFetchRequestCount)->Get();
+  EXPECT_EQ(1, request_count);
+  int bytes_count =
+      statistics_.GetVariable(SerfStats::kSerfFetchByteCount)->Get();
+  // Since we've asked for gzipped content, we expect between 2k and 5k.
+  // This might have to be regolded if modpagespeed.com site changes.
+  //
+  // As of Dec 27, 2011, we have:
+  //   wget -q -O - --header='Accept-Encoding:gzip'
+  //       http://www.modpagespeed.com/|wc -c              --> 13747
+  //   wget -q -O - http://www.modpagespeed.com/|wc -c     --> 2232
+  EXPECT_LT(2000, bytes_count);
+  EXPECT_GT(5000, bytes_count);
+  int time_duration =
+      statistics_.GetVariable(SerfStats::kSerfFetchTimeDurationMs)->Get();
+  EXPECT_EQ(kTimerAdvanceMs, time_duration);
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, FetchTwoURLs) {

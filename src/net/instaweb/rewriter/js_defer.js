@@ -102,6 +102,22 @@ pagespeed.DeferJs.prototype.globalEval = function(str) {
 };
 
 /**
+ * Defers execution of scriptNode, by adding it to the queue.
+ * @param {Element} script script node.
+ * @param {Element} opt_elem Optional context element.
+ * @param {number} opt_pos Optional position for ordering.
+ */
+pagespeed.DeferJs.prototype.addNode = function(script, opt_elem, opt_pos) {
+  var src = script.getAttribute('orig_src') || script.getAttribute('src');
+  if (src) {
+    this.addUrl(src, opt_elem, opt_pos);
+  } else {
+    var str = script.innerHTML || script.textContent || script.data;
+    this.addStr(str, opt_elem, opt_pos);
+  }
+};
+
+/**
  * Defers execution of 'str', by adding it to the queue.
  * @param {!string} str valid javascript snippet.
  * @param {Element} opt_elem Optional context element.
@@ -213,7 +229,11 @@ pagespeed.DeferJs.prototype['run'] = pagespeed.DeferJs.prototype.run;
  */
 pagespeed.DeferJs.prototype.parseHtml = function(html) {
   var div = document.createElement('div');
-  div.innerHTML = html;
+  // IE HACK -- Two options.
+  // 1) Either add a dummy character at the start and delete it after parsing.
+  // 2) Add some non-empty node infront of html.
+  div.innerHTML = '<div>_</div>' + html;
+  div.removeChild(div.firstChild);
   return div;
 };
 
@@ -275,13 +295,7 @@ pagespeed.DeferJs.prototype.extractScriptNodes = function(node, scriptNodes) {
 pagespeed.DeferJs.prototype.deferScripts = function(scripts, pos, opt_elem) {
   var len = scripts.length;
   for (var i = 0; i < len; ++i) {
-    var script = scripts[i];
-    var src = script.getAttribute('src');
-    if (src) {
-      this.addUrl(src, opt_elem, pos + i);
-    } else {
-       this.addStr(script.textContent, opt_elem, pos + i);
-    }
+    this.addNode(scripts[i], opt_elem, pos + i);
   }
 };
 
@@ -348,13 +362,7 @@ pagespeed.DeferJs.prototype.registerScriptTags = function() {
     var script = scripts[i];
     // TODO(atulvasu): Use orig_type
     if (script.getAttribute('type') == 'text/psajs') {
-      var src = script.getAttribute('orig_src');
-      if (src) {
-        this.addUrl(src, script);
-      } else {
-        var str = script.innerHTML || script.textContent || script.data;
-        this.addStr(str, script);
-      }
+      this.addNode(script, script);
     }
   }
 };

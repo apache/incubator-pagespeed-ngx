@@ -115,6 +115,11 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   ApacheResourceManager* MakeApacheResourceManager(server_rec* server);
 
+  // Makes fetches from PSA to origin-server request
+  // accept-encoding:gzip, even when used in a context when we want
+  // cleartext.  We'll decompress as we read the content if needed.
+  void set_fetch_with_gzip(bool x) { fetch_with_gzip_ = x; }
+
   void set_message_buffer_size(int x) {
     message_buffer_size_ = x;
   }
@@ -194,6 +199,7 @@ protected:
 
   bool statistics_frozen_;
   bool is_root_process_;
+  bool fetch_with_gzip_;
 
   scoped_ptr<SharedMemRefererStatistics> shared_mem_referer_statistics_;
 

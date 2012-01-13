@@ -103,7 +103,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
       : fetcher_(NULL),
         timer_(timer),
         str_url_(url),
-        async_fetch_(new InflatingFetch(async_fetch)),
+        async_fetch_(async_fetch),
         parser_(async_fetch->response_headers()),
         status_line_read_(false),
         one_byte_read_(false),
@@ -489,9 +489,6 @@ class SerfFetch : public PoolElement<SerfFetch> {
         serf_bucket_headers_setn(hdrs_bkt, name.c_str(), value.c_str());
       }
     }
-
-    // TODO(jmarantz): add accept-encoding:gzip even if not requested by
-    // the caller, but then decompress in the output handler.
 
     *acceptor = SerfFetch::AcceptResponse;
     *acceptor_baton = fetch;
@@ -998,7 +995,9 @@ bool SerfUrlAsyncFetcher::StartFetch(SerfFetch* fetch) {
 bool SerfUrlAsyncFetcher::Fetch(const GoogleString& url,
                                 MessageHandler* message_handler,
                                 AsyncFetch* async_fetch) {
+  async_fetch = EnableInflation(async_fetch);
   SerfFetch* fetch = new SerfFetch(url, async_fetch, message_handler, timer_);
+
   request_count_->Add(1);
   if (force_threaded_ || async_fetch->EnableThreaded()) {
     message_handler->Message(kInfo, "Initiating async fetch for %s",

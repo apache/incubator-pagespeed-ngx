@@ -389,12 +389,10 @@ void ImageRewriteFilter::ResizeLowQualityImage(
     resized_dim.set_height((static_cast<int64>(resized_dim.width()) *
                             image_dim.height()) / image_dim.width());
     MessageHandler* message_handler = driver_->message_handler();
-    if (image->ResizeTo(resized_dim)) {
-      StringPiece contents = image->Contents();
-      StringPiece old_contents = low_image->Contents();
-      DCHECK(contents.size() < old_contents.size())
-          << "Wrong scaled down image size: increased from "
-          << old_contents.size() << " to " << contents.size() << " bytes";
+    bool resized = image->ResizeTo(resized_dim);
+    StringPiece contents = image->Contents();
+    StringPiece old_contents = low_image->Contents();
+    if (resized && contents.size() < old_contents.size()) {
       cached->set_low_resolution_inlined_data(contents.data(), contents.size());
       message_handler->Message(
           kInfo,
@@ -408,10 +406,14 @@ void ImageRewriteFilter::ResizeLowQualityImage(
     } else {
       message_handler->Message(
           kError,
-          "Couldn't resize low quality image (%s) from %dx%d to %dx%d",
+          "Couldn't resize low quality image (%s) or resized image file is "
+          "not smaller: "
+          "%dx%d(%d bytes) => %dx%d(%d bytes)",
           input_resource->url().c_str(),
           image_dim.width(), image_dim.height(),
-          resized_dim.width(), resized_dim.width());
+          static_cast<int>(old_contents.size()),
+          resized_dim.width(), resized_dim.width(),
+          static_cast<int>(contents.size()));
     }
   }
 }

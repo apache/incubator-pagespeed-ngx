@@ -85,6 +85,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       version_(version.data(), version.size()),
       statistics_frozen_(false),
       is_root_process_(true),
+      fetch_with_gzip_(false),
       shared_mem_referer_statistics_(NULL),
       hostname_identifier_(StrCat(server->server_hostname,
                                   ":",
@@ -238,6 +239,7 @@ UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(
           NULL,  // Do not use the Factory pool so we can control deletion.
           thread_system(), statistics(), timer(),
           config->fetcher_time_out_ms());
+      fetcher->set_fetch_with_gzip(fetch_with_gzip_);
     }
     iter->second = fetcher;
   }
