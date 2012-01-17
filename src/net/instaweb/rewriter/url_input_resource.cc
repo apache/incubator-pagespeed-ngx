@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -275,9 +276,9 @@ class UrlResourceFetchCallback : public AsyncFetch {
 //
 // For example, this is used for fetches and refreshes of resources
 // discovered while rewriting HTML.
-class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
+class FreshenFetchCallback : public UrlResourceFetchCallback {
  public:
-  UrlReadIfCachedCallback(const GoogleString& url, HTTPCache* http_cache,
+  FreshenFetchCallback(const GoogleString& url, HTTPCache* http_cache,
                           ResourceManager* resource_manager,
                           const RewriteOptions* rewrite_options)
       : UrlResourceFetchCallback(resource_manager, rewrite_options, NULL),
@@ -295,7 +296,51 @@ class UrlReadIfCachedCallback : public UrlResourceFetchCallback {
   HTTPCache* http_cache_;
   HTTPValue http_value_;
 
-  DISALLOW_COPY_AND_ASSIGN(UrlReadIfCachedCallback);
+  DISALLOW_COPY_AND_ASSIGN(FreshenFetchCallback);
+};
+
+// HTTPCache::Callback which checks if we have a fresh response in the cache.
+// Note that we don't really care about what the response in cache is. We just
+// check whether it is fresh enough to avoid having to trigger an external
+// fetch.
+class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
+ public:
+  FreshenHttpCacheCallback(const GoogleString& url,
+                           ResourceManager* manager,
+                           const RewriteOptions* options)
+      : OptionsAwareHTTPCacheCallback(options),
+        url_(url),
+        manager_(manager),
+        options_(options) {}
+
+  virtual ~FreshenHttpCacheCallback() {}
+
+  virtual void Done(HTTPCache::FindResult find_result) {
+    if (find_result == HTTPCache::kNotFound) {
+      // Not found in cache. Invoke the fetcher.
+      FreshenFetchCallback* cb = new FreshenFetchCallback(
+          url_, manager_->http_cache(), manager_, options_);
+      cb->Fetch(manager_->url_async_fetcher(), manager_->message_handler());
+    }
+    delete this;
+  }
+
+  // Checks if the response is fresh enough. This is done in IsCacheValid()
+  // instead of Done() to handle two level caches. We may have an imminently
+  // expiring resource in the L1 cache, but a fresh response in the L2 cache and
+  // regular cache lookups will return the response in the L1.
+  virtual bool IsCacheValid(const ResponseHeaders& headers) {
+    int64 date_ms = headers.date_ms();
+    int64 expiry_ms = headers.CacheExpirationTimeMs();
+    return OptionsAwareHTTPCacheCallback::IsCacheValid(headers) &&
+        !manager_->IsImminentlyExpiring(date_ms, expiry_ms);
+  }
+
+ private:
+  GoogleString url_;
+  ResourceManager* manager_;
+  const RewriteOptions* options_;
+  DISALLOW_COPY_AND_ASSIGN(FreshenHttpCacheCallback);
 };
 
 bool UrlInputResource::IsValidAndCacheable() const {
@@ -310,7 +355,7 @@ bool UrlInputResource::Load(MessageHandler* handler) {
   value_.Clear();
 
   HTTPCache* http_cache = resource_manager()->http_cache();
-  UrlReadIfCachedCallback* cb = new UrlReadIfCachedCallback(
+  FreshenFetchCallback* cb = new FreshenFetchCallback(
       url_, http_cache, resource_manager(), rewrite_options_);
 
   // If the fetcher can satisfy the request instantly, then we
@@ -330,10 +375,11 @@ void UrlInputResource::Freshen(MessageHandler* handler) {
   // For now this is much like Load(), except we do not
   // touch our value, but just the cache
   HTTPCache* http_cache = resource_manager()->http_cache();
-  UrlReadIfCachedCallback* cb = new UrlReadIfCachedCallback(
-      url_, http_cache, resource_manager(), rewrite_options_);
-  // TODO(sligocki): Ask for Conditional fetch here.
-  cb->Fetch(resource_manager_->url_async_fetcher(), handler);
+  FreshenHttpCacheCallback* freshen_callback = new FreshenHttpCacheCallback(
+      url_, resource_manager(), rewrite_options_);
+  // Lookup the cache before doing the fetch since the response may have already
+  // been fetched elsewhere.
+  http_cache->Find(url_, handler, freshen_callback);
 }
 
 // Writes result into a resource. Use this when you need to load a resource

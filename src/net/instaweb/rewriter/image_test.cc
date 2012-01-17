@@ -54,7 +54,7 @@ namespace net_instaweb {
 
 class ImageTest : public ImageTestBase {
  public:
-  ImageTest() {}
+  ImageTest() : options_(new Image::CompressionOptions()) {}
 
  protected:
   void ExpectEmptyOuput(Image* image) {
@@ -109,11 +109,13 @@ class ImageTest : public ImageTestBase {
                           int min_bytes_to_type,
                           int min_bytes_to_dimensions,
                           int width, int height,
-                          int size, bool optimizable,
-                          bool progressive) {
+                          int size, bool optimizable) {
+    options_->webp_preferred = output_type == Image::IMAGE_WEBP;
+    options_->convert_png_to_jpeg = output_type == Image::IMAGE_JPEG;
+    bool progressive = options_->progressive_jpeg;
     GoogleString contents;
-    ImagePtr image(ReadImageFromFile(output_type, filename, &contents,
-                                     progressive));
+    ImagePtr image(ReadFromFileWithOptions(
+        filename, &contents, options_.release()));
     ExpectDimensions(input_type, size, width, height, image.get());
     if (optimizable) {
       EXPECT_GT(size, image->output_size());
@@ -201,6 +203,7 @@ class ImageTest : public ImageTestBase {
   StdioFileSystem file_system_;
   GoogleMessageHandler handler_;
   ImageUrlEncoder encoder_;
+  scoped_ptr<Image::CompressionOptions> options_;
 
  private:
   bool IsWebp(ImageContext context) {
@@ -225,7 +228,7 @@ TEST_F(ImageTest, InputWebpTest) {
       20,  // Min bytes to bother checking file type at all.
       30,
       550, 368,
-      30320, false, false);
+      30320, false);
 }
 
 // FYI: Takes ~20000 ms to run under Valgrind.
@@ -244,25 +247,28 @@ TEST_F(ImageTest, PngTest) {
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
-      26548, true, false);
+      26548, true);
 }
 
 TEST_F(ImageTest, PngToJpegTest) {
+  options_->jpeg_quality = 85;
   CheckImageFromFile(
       kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_JPEG,
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
-      26548, true, false);
+      26548, true);
 }
 
 TEST_F(ImageTest, PngToProgressiveJpegTest) {
+  options_->progressive_jpeg = true;
+  options_->jpeg_quality = 85;
   CheckImageFromFile(
       kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_JPEG,
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
-      26548, true, true);
+      26548, true);
 }
 
 TEST_F(ImageTest, GifTest) {
@@ -271,7 +277,7 @@ TEST_F(ImageTest, GifTest) {
       8,  // Min bytes to bother checking file type at all.
       ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
       192, 256,
-      24941, true, false);
+      24941, true);
 }
 
 TEST_F(ImageTest, AnimationTest) {
@@ -280,7 +286,7 @@ TEST_F(ImageTest, AnimationTest) {
       8,  // Min bytes to bother checking file type at all.
       ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
       200, 150,
-      583374, false, false);
+      583374, false);
 }
 
 TEST_F(ImageTest, JpegTest) {
@@ -289,7 +295,7 @@ TEST_F(ImageTest, JpegTest) {
       8,  // Min bytes to bother checking file type at all.
       6468,  // Specific to this test
       1023, 766,
-      241260, true, false);
+      241260, true);
 }
 
 TEST_F(ImageTest, ProgressiveJpegTest) {
@@ -298,7 +304,7 @@ TEST_F(ImageTest, ProgressiveJpegTest) {
       8,  // Min bytes to bother checking file type at all.
       6468,  // Specific to this test
       1023, 766,
-      241260, true, true);
+      241260, true);
 }
 
 // FYI: Takes ~70000 ms to run under Valgrind.
@@ -308,7 +314,7 @@ TEST_F(ImageTest, WebpTest) {
       8,  // Min bytes to bother checking file type at all.
       6468,  // Specific to this test
       1023, 766,
-      241260, true, false);
+      241260, true);
 }
 
 TEST_F(ImageTest, DrawImage) {

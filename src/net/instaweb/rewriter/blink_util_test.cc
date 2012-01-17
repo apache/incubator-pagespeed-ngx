@@ -3,7 +3,7 @@
 
 #include "net/instaweb/rewriter/public/blink_util.h"
 
-#include "base/scoped_ptr.h"
+#include "base/logging.h"               // for operator<<, etc
 #include "net/instaweb/rewriter/panel_config.pb.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
@@ -200,6 +200,17 @@ TEST_F(BlinkUtilTest, ClearArrayIfAllEmpty) {
   val.append(val_obj);
   BlinkUtil::ClearArrayIfAllEmpty(&val);
   EXPECT_EQ(2, val.size());
+}
+
+TEST_F(BlinkUtilTest, IsJsonEmpty) {
+  Json::Value val_obj(Json::objectValue);
+  EXPECT_TRUE(BlinkUtil::IsJsonEmpty(val_obj));
+  val_obj["contiguous"] = "blah";
+
+  EXPECT_TRUE(BlinkUtil::IsJsonEmpty(val_obj));
+
+  val_obj["instance_html"] = "blah";
+  EXPECT_FALSE(BlinkUtil::IsJsonEmpty(val_obj));
 }
 
 }  // namespace

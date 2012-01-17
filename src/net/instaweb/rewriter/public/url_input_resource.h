@@ -51,7 +51,8 @@ class UrlInputResource : public Resource {
     return rewrite_options_;
   }
 
-  void Freshen(MessageHandler* handler);
+  // Note that this only updates the HTTPCache and not the metadata.
+  virtual void Freshen(MessageHandler* handler);
 
  protected:
   virtual bool Load(MessageHandler* message_handler);

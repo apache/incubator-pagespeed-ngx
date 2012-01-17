@@ -121,6 +121,10 @@ const int RewriteOptions::kMaxUrlSize = 2083;
 // use source image quality parameters, and is lossless.
 const int RewriteOptions::kDefaultImageJpegRecompressQuality = -1;
 
+// Number of scans to output for jpeg images when using progressive mode. If set
+// to -1, we ignore this setting.
+const int RewriteOptions::kDefaultImageJpegNumProgressiveScans = -1;
+
 // Percentage savings in order to retain rewritten images; these default
 // to 100% so that we always attempt to resize downsized images, and
 // unconditionally retain images if they save any bytes at all.
@@ -397,6 +401,7 @@ RewriteOptions::RewriteOptions()
   add_option(false, &flush_html_, "fh");
   add_option(true, &serve_stale_if_fetch_error_, "ss");
   add_option(false, &enable_blink_, "eb");
+  add_option(false, &serve_blink_non_critical_, "snc");
   add_option(false, &default_cache_html_, "dch");
   add_option(true, &modify_caching_headers_, "mch");
   add_option(kDefaultBeaconUrl, &beacon_url_, "bu");
@@ -414,6 +419,10 @@ RewriteOptions::RewriteOptions()
              &min_image_size_low_resolution_bytes_, "islr");
   add_option(kDefaultCriticalImagesCacheExpirationMs,
              &critical_images_cache_expiration_time_ms_, "cice");
+  add_option(kDefaultImageJpegNumProgressiveScans,
+             &image_jpeg_num_progressive_scans_, "ijps");
+  add_option(false, &image_retain_color_profile_, "ircp");
+  add_option(false, &image_retain_exif_data_, "ired");
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);

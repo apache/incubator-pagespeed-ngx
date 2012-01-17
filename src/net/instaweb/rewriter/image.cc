@@ -59,6 +59,7 @@ extern "C" {
 #endif
 
 using pagespeed::image_compression::ImageConverter;
+using pagespeed::image_compression::JpegCompressionOptions;
 using pagespeed::image_compression::PngOptimizer;
 
 namespace net_instaweb {
@@ -104,7 +105,6 @@ class ImageImpl : public Image {
   virtual bool DrawImage(Image* image, int x, int y);
   virtual bool EnsureLoaded();
   virtual void SetTransformToLowRes();
-  virtual void SetQuality(Type image_type, int quality);
 
  private:
   // byte buffer type most convenient for working with given OpenCV version
@@ -131,6 +131,11 @@ class ImageImpl : public Image {
   bool HasTransparency(const StringPiece& buf);
   bool LoadOpenCv();
   void CleanOpenCv();
+
+  // Retunrs jpeg compression options based on given options object. Caller owns
+  // the returned object.
+  JpegCompressionOptions* GetJpegOptions(
+      const Image::CompressionOptions& options);
 
   // Initializes an empty image.
   bool LoadOpenCvEmpty();
@@ -169,24 +174,6 @@ void ImageImpl::SetTransformToLowRes() {
   low_quality_enabled_ = true;
   options_->webp_quality = 10;
   options_->jpeg_quality = 10;
-}
-
-void ImageImpl::SetQuality(Type image_type, int quality) {
-  if (quality < 1) {
-    quality = 1;
-  } else if (quality > 100) {
-    quality = 100;
-  }
-  switch (image_type) {
-    case IMAGE_JPEG:
-      options_->jpeg_quality = quality;
-      break;
-    case IMAGE_WEBP:
-      options_->webp_quality = quality;
-      break;
-    default:
-      break;
-  }
 }
 
 Image::Image(const StringPiece& original_contents)
@@ -750,32 +737,24 @@ bool ImageImpl::ComputeOutputContents() {
           if (ok) {  // && webp_preferred, which is implied.
             image_type_ = IMAGE_WEBP;
           } else {
-            pagespeed::image_compression::JpegCompressionOptions options;
-            if (options_->jpeg_quality > 0) {
-              options.lossy = true;
-              options.lossy_options.quality =
-                  std::min(ImageHeaders::kMaxJpegQuality,
-                           options_->jpeg_quality);
-            }
-            options.progressive = options_->progressive_jpeg;
+            scoped_ptr<JpegCompressionOptions> jpeg_options(
+                GetJpegOptions(*options_.get()));
             ok = pagespeed::image_compression::OptimizeJpegWithOptions(
                 string_for_image,
                 &output_contents_,
-                options);
+                *jpeg_options.get());
           }
           break;
         case IMAGE_PNG: {
           pagespeed::image_compression::PngReader png_reader;
 
-          if (options_->convert_png_to_jpeg || low_quality_enabled_) {
+          if ((options_->convert_png_to_jpeg || low_quality_enabled_) &&
+              options_->jpeg_quality > 0) {
             bool is_png;
-            pagespeed::image_compression::JpegCompressionOptions options;
-            options.lossy = true;
-            options.lossy_options.quality =
-                std::min(ImageHeaders::kMaxJpegQuality, options_->jpeg_quality);
-            options.progressive = options_->progressive_jpeg;
+            scoped_ptr<JpegCompressionOptions> jpeg_options(
+                GetJpegOptions(*options_.get()));
             ok = ImageConverter::OptimizePngOrConvertToJpeg(
-                png_reader, string_for_image, options,
+                png_reader, string_for_image, *jpeg_options.get(),
                 &output_contents_, &is_png);
             if (ok && !is_png) {
               image_type_ = IMAGE_JPEG;
@@ -807,6 +786,24 @@ bool ImageImpl::ComputeOutputContents() {
     output_valid_ = ok;
   }
   return output_valid_;
+}
+
+JpegCompressionOptions* ImageImpl::GetJpegOptions(
+    const Image::CompressionOptions& options) {
+  JpegCompressionOptions* jpeg_options = new JpegCompressionOptions();
+  jpeg_options->retain_color_profile = options.retain_color_profile;
+  jpeg_options->retain_exif_data = options.retain_exif_data;
+  jpeg_options->progressive = options.progressive_jpeg;
+  if (options.jpeg_quality > 0) {
+    jpeg_options->lossy = true;
+    jpeg_options->lossy_options.quality =
+        std::min(ImageHeaders::kMaxJpegQuality, options.jpeg_quality);
+    if (options.progressive_jpeg) {
+      jpeg_options->lossy_options.num_scans =
+          options.jpeg_num_progressive_scans;
+    }
+  }
+  return jpeg_options;
 }
 
 StringPiece Image::Contents() {

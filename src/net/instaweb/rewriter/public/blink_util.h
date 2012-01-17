@@ -60,6 +60,9 @@ void SplitCriticalObj(const Json::Value& json_obj,
                       Json::Value* non_critical_obj,
                       bool panel_cacheable,
                       Json::Value* pushed_images);
+// Returns true if json has only miscellaneous(like 'contiguous')
+// atributes.
+bool IsJsonEmpty(const Json::Value& json);
 
 // Clears the json array if all objects are empty.
 void ClearArrayIfAllEmpty(Json::Value* json);

@@ -158,6 +158,7 @@ class RewriteOptions {
   static const int kDefaultImageJpegRecompressQuality;
   static const int kDefaultImageLimitOptimizedPercent;
   static const int kDefaultImageLimitResizeAreaPercent;
+  static const int kDefaultImageJpegNumProgressiveScans;
   static const int kDefaultImageWebpRecompressQuality;
 
   // IE limits URL size overall to about 2k characters.  See
@@ -391,6 +392,13 @@ class RewriteOptions {
   void set_enable_blink(bool x) { set_option(x, &enable_blink_); }
   bool enable_blink() const { return enable_blink_.value(); }
 
+  void set_serve_blink_non_critical(bool x) {
+    set_option(x, &serve_blink_non_critical_);
+  }
+  bool serve_blink_non_critical() const {
+    return serve_blink_non_critical_.value();
+  }
+
   void set_default_cache_html(bool x) { set_option(x, &default_cache_html_); }
   bool default_cache_html() const { return default_cache_html_.value(); }
 
@@ -422,6 +430,20 @@ class RewriteOptions {
     return critical_images_cache_expiration_time_ms_.value();
   }
 
+  bool image_retain_color_profile() const {
+    return image_retain_color_profile_.value();
+  }
+  void set_image_retain_color_profile(bool x) {
+    set_option(x, &image_retain_color_profile_);
+  }
+
+  bool image_retain_exif_data() const {
+    return image_retain_exif_data_.value();
+  }
+  void set_image_retain_exif_data(bool x) {
+    set_option(x, &image_retain_exif_data_);
+  }
+
   const GoogleString& beacon_url() const { return beacon_url_.value(); }
   void set_beacon_url(const StringPiece& p) {
     set_option(GoogleString(p.data(), p.size()), &beacon_url_);
@@ -448,6 +470,13 @@ class RewriteOptions {
   }
   void set_image_limit_resize_area_percent(int x) {
     set_option(x, &image_limit_resize_area_percent_);
+  }
+
+  int image_jpeg_num_progressive_scans() const {
+    return image_jpeg_num_progressive_scans_.value();
+  }
+  void set_image_jpeg_num_progressive_scans(int x) {
+    set_option(x, &image_jpeg_num_progressive_scans_);
   }
 
   int image_webp_recompress_quality() const {
@@ -738,6 +767,9 @@ class RewriteOptions {
 
   // Options related to jpeg compression.
   Option<int> image_jpeg_recompress_quality_;
+  Option<int> image_jpeg_num_progressive_scans_;
+  Option<bool> image_retain_color_profile_;
+  Option<bool> image_retain_exif_data_;
 
   // Options governing when to retain optimized images vs keep original
   Option<int> image_limit_optimized_percent_;
@@ -763,6 +795,10 @@ class RewriteOptions {
   // error.
   Option<bool> serve_stale_if_fetch_error_;
   Option<bool> enable_blink_;
+  // When non-cacheable panels are absent, non-critical content is already
+  // served in blink flow. This flag indicates whether to serve non-critical
+  // from panel_filter or not.
+  Option<bool> serve_blink_non_critical_;
   // When default_cache_html_ is false (default) we do not cache
   // input HTML which lacks Cache-Control headers. But, when set true,
   // we will cache those inputs for the implicit lifetime just like we

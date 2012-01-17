@@ -33,6 +33,7 @@
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -2423,16 +2424,27 @@ TEST_F(RewriteContextTest, TestFreshen) {
                                       "test.css", "css")));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  // Cache miss for the original. Both original and rewritten are inserted into
+  // cache.
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
 
+  ClearStats();
   // Advance halfway from TTL. This should be an entire cache hit.
   mock_timer()->AdvanceMs(kTtlMs * 5 / 10);
   ValidateExpected("fully_hit",
                    CssLinkHref(kPath),
                    CssLinkHref(Encode(kTestDomain, "tw", "0",
                                       "test.css", "css")));
-  EXPECT_EQ(1, trim_filter_->num_rewrites());
-  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  // No cache lookups or writes.
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
 
+  ClearStats();
   // Advance close to TTL and rewrite. We should see an extra fetch.
   // Also upload a version with a newer timestamp.
   InitResponseHeaders(kPath, kContentTypeCss, kDataIn,
@@ -2442,9 +2454,30 @@ TEST_F(RewriteContextTest, TestFreshen) {
                    CssLinkHref(kPath),
                    CssLinkHref(Encode(kTestDomain, "tw", "0",
                                       "test.css", "css")));
-  EXPECT_EQ(1, trim_filter_->num_rewrites());
-  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  // Miss for the original since it expired. The newly fetched resource is
+  // inserted into the cache.
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
 
+  ClearStats();
+  // Advance again closer to the TTL. This shouldn't trigger any fetches since
+  // the last freshen updated the cache.
+  mock_timer()->AdvanceMs(kTtlMs * 1 / 20);
+  ValidateExpected("freshen",
+                   CssLinkHref(kPath),
+                   CssLinkHref(Encode(kTestDomain, "tw", "0",
+                                      "test.css", "css")));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  // Cache hit for the resource while freshening.
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+
+  ClearStats();
   // Now advance past original expiration. While we cannot avoid trying to
   // rewrite as of now, we at least don't do an extra fetch at this point,
   // which hopefully shaves off tons of latency. In this test, we also
@@ -2458,11 +2491,168 @@ TEST_F(RewriteContextTest, TestFreshen) {
                    CssLinkHref(kPath),
                    CssLinkHref(Encode(kTestDomain, "tw", "0",
                                       "test.css", "css")));
-  EXPECT_EQ(1, trim_filter_->num_rewrites());
-  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
-
   // Make sure we do this or it will leak.
   CallFetcherCallbacks();
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  // Cache hit again from the freshen.
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+}
+
+TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
+  // Note that this must be >= kImplicitCacheTtlMs for freshening.
+  const int kTtlMs = ResponseHeaders::kImplicitCacheTtlMs * 10;
+  const char kPath[] = "test.css";
+  const char kDataIn[] = "   data  ";
+
+  // Set up a WriteThroughHTTPCache.
+  LRUCache l2_cache(1000);
+  WriteThroughHTTPCache* two_level_cache = new WriteThroughHTTPCache(
+      lru_cache(), &l2_cache, mock_timer(), hasher(), statistics());
+  resource_manager()->set_http_cache(two_level_cache);
+  // Make sure the cache is deleted only after everything is fully shutdown.
+  factory()->defer_delete(
+      new RewriteDriverFactory::Deleter<HTTPCache>(two_level_cache));
+
+  // Start with non-zero time, and init our resource.
+  mock_timer()->AdvanceMs(kTtlMs / 2);
+  InitTrimFilters(kRewrittenResource);
+  InitResponseHeaders(kPath, kContentTypeCss, kDataIn,
+                      kTtlMs / Timer::kSecondMs);
+
+  // First fetch + rewrite.
+  ValidateExpected("initial",
+                   CssLinkHref(kPath),
+                   CssLinkHref(Encode(kTestDomain, "tw", "0",
+                                      "test.css", "css")));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  // Cache miss for the original. Both original and rewritten are inserted into
+  // cache. Besides this, the metadata lookup fails and new metadata is inserted
+  // into cache. Note that the metadata cache is L1 only.
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  EXPECT_EQ(0, l2_cache.num_hits());
+  EXPECT_EQ(1, l2_cache.num_misses());
+  EXPECT_EQ(2, l2_cache.num_inserts());
+
+  ClearStats();
+  l2_cache.ClearStats();
+  // Advance halfway from TTL. This should be an entire cache hit.
+  mock_timer()->AdvanceMs(kTtlMs * 5 / 10);
+  ValidateExpected("fully_hit",
+                   CssLinkHref(kPath),
+                   CssLinkHref(Encode(kTestDomain, "tw", "0",
+                                      "test.css", "css")));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  // L1 cache hit for the metadata.
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, l2_cache.num_hits());
+  EXPECT_EQ(0, l2_cache.num_misses());
+  EXPECT_EQ(0, l2_cache.num_inserts());
+
+  // Create a new fresh response and insert into the L2 cache. Do this by
+  // creating a temporary HTTPCache with the L2 cache since we don't want to
+  // alter the state of the L1 cache whose response is no longer fresh.
+  ResponseHeaders new_headers;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &new_headers);
+  int64 now_ms = mock_timer()->NowMs();
+  new_headers.SetDateAndCaching(now_ms, kTtlMs);
+  new_headers.ComputeCaching();
+  HTTPCache* l2_only_cache = new HTTPCache(&l2_cache, mock_timer(), hasher(),
+                                           statistics());
+  l2_only_cache->Put(AbsolutifyUrl(kPath), &new_headers, kDataIn,
+                     message_handler());
+  delete l2_only_cache;
+
+  ClearStats();
+  l2_cache.ClearStats();
+  // Advance close to TTL and rewrite. No extra fetches here since we find the
+  // response in the L2 cache.
+  mock_timer()->AdvanceMs(kTtlMs * 4 / 10);
+  ValidateExpected("freshen",
+                   CssLinkHref(kPath),
+                   CssLinkHref(Encode(kTestDomain, "tw", "0",
+                                      "test.css", "css")));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  // We find a fresh response in the L2 cache and insert it into the L1 cache.
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_inserts());
+  EXPECT_EQ(1, l2_cache.num_hits());
+  EXPECT_EQ(0, l2_cache.num_misses());
+  EXPECT_EQ(0, l2_cache.num_inserts());
+
+  ClearStats();
+  l2_cache.ClearStats();
+  // Advance again closer to the TTL. This shouldn't trigger any fetches since
+  // the last freshen updated the cache.
+  mock_timer()->AdvanceMs(kTtlMs * 1 / 20);
+  ValidateExpected("freshen",
+                   CssLinkHref(kPath),
+                   CssLinkHref(Encode(kTestDomain, "tw", "0",
+                                      "test.css", "css")));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  // L1 cache hit for the metadata. We try to freshen again but find a fresh
+  // response in the L1 cache.
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, l2_cache.num_hits());
+  EXPECT_EQ(0, l2_cache.num_misses());
+  EXPECT_EQ(0, l2_cache.num_inserts());
+
+  ClearStats();
+  l2_cache.ClearStats();
+  // Now advance past original expiration. Since the metadata has expired we go
+  // through the OutputCacheRevalidate flow which fetches the resource. Since
+  // there is a fresh resource in the cache, this succeeds quickly and goes into
+  // the OutputCacheHit flow where it freshens the resource again.
+  // TODO(nikhilmadan): Avoid a freshen when an OutputCacheRevalidate leads to
+  // an OutputCacheHit?
+  // As we are also reusing rewrite results when contents did not change,
+  // there is no second rewrite.
+  SetupWaitFetcher();
+  mock_timer()->AdvanceMs(kTtlMs * 4 / 10);
+  ValidateExpected("freshen2",
+                   CssLinkHref(kPath),
+                   CssLinkHref(Encode(kTestDomain, "tw", "0",
+                                      "test.css", "css")));
+  CallFetcherCallbacks();
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  // The entries in both the caches are not within the freshness threshold, and
+  // are hence counted as misses. The original resource gets refetched and
+  // inserted into cache.
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(2, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(4, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());
+  EXPECT_EQ(2, l2_cache.num_hits());
+  EXPECT_EQ(0, l2_cache.num_misses());
+  EXPECT_EQ(1, l2_cache.num_inserts());
 }
 
 TEST_F(RewriteContextTest, TestReuse) {

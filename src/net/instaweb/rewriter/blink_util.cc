@@ -3,6 +3,10 @@
 
 #include "net/instaweb/rewriter/public/blink_util.h"
 
+#include <algorithm>
+#include <utility>
+#include <vector>
+#include "base/logging.h"
 #include "net/instaweb/rewriter/panel_config.pb.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
@@ -182,14 +186,20 @@ void SplitCriticalObj(const Json::Value& json_obj,
   }
 }
 
+bool IsJsonEmpty(const Json::Value& json) {
+  const std::vector<std::string>& keys = json.getMemberNames();
+  for (Json::ArrayIndex k = 0; k < keys.size(); ++k) {
+    const std::string& key = keys[k];
+    if (key != kContiguous) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void ClearArrayIfAllEmpty(Json::Value* json) {
   for (Json::ArrayIndex i = 0; i < json->size(); ++i) {
-    if (!(*json)[i].isMember(kContiguous)) {
-      LOG(DFATAL) << "No Contiguous member in Json";
-      return;
-    }
-    // 'contiguous' is added to every json by default
-    if ((*json)[i].size() > 1) {
+    if (!IsJsonEmpty((*json)[i])) {
       return;
     }
   }

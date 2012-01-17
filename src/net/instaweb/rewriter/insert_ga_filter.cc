@@ -87,7 +87,7 @@ bool InsertGAFilter::FoundSnippetInBuffer() {
 }
 
 void InsertGAFilter::EndElementImpl(HtmlElement* element) {
-  switch(element->keyword()) {
+  switch (element->keyword()) {
     case HtmlName::kScript:
       // There shouldn't be any "nested" script elements, but just
       // in case, don't reset things if the elements don't match.

@@ -34,6 +34,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -257,19 +258,19 @@ void BlinkFlow::JsonCacheHit(const StringPiece& content,
   base_fetch_->HeadersComplete();
   SendLayout(layout.substr(0, pos));
 
-  // If there are no non cacheable panels, serve all the contents
-  // else serve critical contents and trigger a fetch for non cacheable panels.
   if (!non_cacheable_present) {
     ServeAllPanelContents(json, panel_id_to_spec_);
   } else {
     ServeCriticalPanelContents(json, panel_id_to_spec_);
-
-    options_->EnableFilter(RewriteOptions::kComputePanelJson);
-    options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
-    options_->EnableFilter(RewriteOptions::kDisableJavascript);
-    options_->EnableFilter(RewriteOptions::kInlineImages);
-    TriggerProxyFetch(true);
+    options_->set_serve_blink_non_critical(true);
   }
+
+  // Trigger a fetch for non cacheable panels and cookies.
+  options_->EnableFilter(RewriteOptions::kComputePanelJson);
+  options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
+  options_->EnableFilter(RewriteOptions::kDisableJavascript);
+  options_->EnableFilter(RewriteOptions::kInlineImages);
+  TriggerProxyFetch(true);
 }
 
 void BlinkFlow::ServeCriticalPanelContents(
@@ -297,9 +298,6 @@ void BlinkFlow::ServeAllPanelContents(
   // yet returned. This needs to be fixed so that even for a case when
   // everything is cached, we do send the cookies when the fetch returns.
   SendNonCriticalJson(&non_critical_json_str);
-  WriteString("\n</body></html>\n");
-  base_fetch_->Done(true);
-  delete this;
 }
 
 void BlinkFlow::SendLayout(const StringPiece& layout) {

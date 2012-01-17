@@ -212,6 +212,10 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
           options->progressive_jpeg_min_bytes();
   image_options->convert_png_to_jpeg =
       options->Enabled(RewriteOptions::kConvertPngToJpeg);
+  image_options->retain_color_profile = options->image_retain_color_profile();
+  image_options->retain_exif_data = options->image_retain_exif_data();
+  image_options->jpeg_num_progressive_scans =
+      options->image_jpeg_num_progressive_scans();
 
   scoped_ptr<Image> image(
       NewImage(input_resource->contents(), input_resource->url(),
@@ -333,7 +337,11 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
       image_options->progressive_jpeg = false;
       image_options->convert_png_to_jpeg =
           options->Enabled(RewriteOptions::kConvertPngToJpeg);
-
+      image_options->retain_color_profile =
+          options->image_retain_color_profile();
+      image_options->retain_exif_data = options->image_retain_exif_data();
+      image_options->jpeg_num_progressive_scans =
+          options->image_jpeg_num_progressive_scans();
       scoped_ptr<Image> low_image(
           NewImage(image->Contents(), input_resource->url(),
                    resource_manager_->filename_prefix(), image_options,

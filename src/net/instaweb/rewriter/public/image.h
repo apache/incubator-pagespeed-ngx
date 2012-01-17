@@ -60,12 +60,19 @@ class Image {
           webp_quality(RewriteOptions::kDefaultImageWebpRecompressQuality),
           jpeg_quality(RewriteOptions::kDefaultImageJpegRecompressQuality),
           progressive_jpeg(false),
-          convert_png_to_jpeg(false) {}
+          convert_png_to_jpeg(false),
+          retain_color_profile(false),
+          retain_exif_data(false),
+          jpeg_num_progressive_scans(
+              RewriteOptions::kDefaultImageJpegNumProgressiveScans) {}
     bool webp_preferred;
     int webp_quality;
     int jpeg_quality;
     bool progressive_jpeg;
     bool convert_png_to_jpeg;
+    bool retain_color_profile;
+    bool retain_exif_data;
+    int jpeg_num_progressive_scans;
   };
 
   virtual ~Image();
@@ -114,12 +121,6 @@ class Image {
   // image processing on the image, and return false if the image processing
   // fails.  Otherwise the image contents and type can change.
   virtual bool ResizeTo(const ImageDim& new_dim) = 0;
-
-  // Set the quality of the output image for a particular image type.
-  // Currently, quality for only jpegs & webps is supported.
-  // Jpeg quality varies from 1 to 100 where 1 is minimum and 100 is maximum.
-  // WebP quality varies from 1 to 100 where 1 is minimum and 100 is maximum.
-  virtual void SetQuality(Type image_type, int quality) = 0;
 
   // Enable the transformation to low res image. If low res image is enabled,
   // all jpeg images are transformed to low quality jpeg images and all webp
