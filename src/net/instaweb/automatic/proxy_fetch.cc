@@ -22,7 +22,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -247,8 +246,7 @@ const RewriteOptions* ProxyFetch::Options() {
 
 void ProxyFetch::HandleHeadersComplete() {
   // Figure out semantic info from response_headers_
-  claims_html_ = (response_headers()->DetermineContentType()
-                  == &kContentTypeHtml);
+  claims_html_ = response_headers()->IsHtmlLike();
 
   // Make sure we never serve cookies if the domain we are serving
   // under isn't the domain of the origin.

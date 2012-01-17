@@ -17,16 +17,16 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_RESPONSE_HEADERS_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_RESPONSE_HEADERS_H_
 
-#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/http/public/meta_data.h"  // HttpAttributes, HttpStatus
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
-struct ContentType;
 class HttpResponseHeaders;
 class MessageHandler;
 class Writer;
@@ -170,6 +170,12 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Get ContentType. NULL if none set or it isn't in our predefined set of
   // known content types.
   const ContentType* DetermineContentType() const;
+
+  // Does this header have an HTML-like Content-Type (HTML, XHTML, ...).
+  bool IsHtmlLike() const {
+    const ContentType* type = DetermineContentType();
+    return (type != NULL && type->IsHtmlLike());
+  }
 
   // Get the charset. Empty string if none set in a Content-Type header.
   GoogleString DetermineCharset() const;

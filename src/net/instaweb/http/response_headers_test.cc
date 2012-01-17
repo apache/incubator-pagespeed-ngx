@@ -108,6 +108,17 @@ class ResponseHeadersTest : public testing::Test {
     return cacheable;
   }
 
+  bool IsHtmlLike(const StringPiece& type) {
+    response_headers_.Clear();
+    GoogleString header_text = "HTTP/1.1 200 OK\r\n";
+    if (!type.empty()) {
+      StrAppend(&header_text, "Content-Type: ", type, "\r\n");
+    }
+    header_text += "\r\n";
+    ParseHeaders(header_text);
+    return response_headers_.IsHtmlLike();
+  }
+
   // At the end of every test, check to make sure that clearing the
   // meta-data produces an equivalent structure to a freshly initiliazed
   // one.
@@ -1083,6 +1094,15 @@ TEST_F(ResponseHeadersTest, CheckErrorCodes) {
   response_headers_.SetStatusAndReason(HttpStatus::kInternalServerError);
   EXPECT_TRUE(response_headers_.IsErrorStatus());
   EXPECT_TRUE(response_headers_.IsServerErrorStatus());
+}
+
+TEST_F(ResponseHeadersTest, IsHtmlLike) {
+  // No header means, not html-like.
+  EXPECT_FALSE(IsHtmlLike(""));
+  EXPECT_FALSE(IsHtmlLike("text/css"));
+
+  EXPECT_TRUE(IsHtmlLike("text/html"));
+  EXPECT_TRUE(IsHtmlLike("application/xhtml+xml"));
 }
 
 }  // namespace net_instaweb

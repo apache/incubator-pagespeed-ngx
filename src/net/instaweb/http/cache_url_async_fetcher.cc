@@ -20,7 +20,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -69,7 +68,7 @@ class CachePutFetch : public SharedAsyncFetch {
     }
     ResponseHeaders* headers = response_headers();
     headers->FixDateHeaders(now_ms);
-    bool is_html = (headers->DetermineContentType() == &kContentTypeHtml);
+    bool is_html = headers->IsHtmlLike();
     const char* cache_control = headers->Lookup1(HttpAttributes::kCacheControl);
     if (default_cache_html_ && is_html &&
         // TODO(sligocki): Use some sort of computed
