@@ -43,32 +43,24 @@ class MessageHandler;
 // of its @import's replaced with the contents of the @import'd file (and
 // each of those have had their @import's replaced, and so on recursively).
 //
-// The representation comprises:
-// * The URL of the stylesheet being represented; in the case of inline CSS
-//   this will be a data URL.
-// * The base for any relative URLs in the input CSS.
-// * The base of the output URL which is used to trim absolutified URLs back
-//   to relative URLs in the output CSS.
-// * A pointer to the representation of the parent CSS that imports this CSS;
-//   for the top-level CSS only this will be NULL.
-// * An array of pointers to the child representations of the CSS's that this
-//   CSS imports, one array element per import, in the order they are imported;
-//   for leaf CSS's this will be empty.
-// * The text form of the input CSS.
-// * The text form of the output (flattened) CSS.
-// * The parsed form of the CSS, in various states of transformation. Created
-//   from the input text form by Parse, mutated by RollUpContents and
-//   RollUpStylesheets - see their description for details.
-// * The charset for this CSS as specified by HTTP headers, or a charset
-//   attribute, or an @charset rule, or inherited from the parent.
-// * The collection of media for which this CSS applies; an empty collection
-//   means all media. CSS in or linked from HTML can specify this using a media
-//   attribute, @import'd CSS can specify it on the @import rule. Note that
-//   this is NOT media from @media rules, it is only media that applies to the
-//   *whole* CSS document. Note that media expressions (CSS3) are NOT handled.
-// * An indication of the success or failure of the flattening process, which
-//   can fail for various reasons, and any failure propagates up the hierarchy
-//   to the root CSS and eventually stops the process.
+// Lifecycle:
+//   Processing:
+//       Construct + InitializeRoot
+//       if (ExpandChildren) <------------------+
+//         for each child                       |
+//           InitializeNested                   |
+//           set_input_contents                 |
+//           if (Parse)                         |
+//             if (CheckCharsetOk)              |
+//               Kick off recursion from here --+
+//   Harvesting (when all the children of a node have completed):
+//       if you need the rolled-up text form:
+//         RollUpContents
+//         Use minified_contents
+//       if you need the rolled-up parsed form:
+//         RollUpStylesheet
+//         Use stylesheet
+//
 class CssHierarchy {
  public:
   // Initialized in an empty state, which is considered successful since it
@@ -77,21 +69,21 @@ class CssHierarchy {
   ~CssHierarchy();
 
   // Initialize the top-level hierarchy's state from the given values.
-  // The input contents must remain valid for the life of this object.
+  // A StringPiece reference to input_contents is made so it must remain
+  // valid for the life of this object.
   void InitializeRoot(const GoogleUrl& css_base_url,
                       const GoogleUrl& css_trim_url,
-                      const StringPiece& input_contents,
+                      const StringPiece input_contents,
                       bool is_xhtml,
                       Css::Stylesheet* stylesheet,
                       MessageHandler* message_handler);
 
   // A hierarchy needs rewriting only if it has an import to read and expand.
-  bool needs_rewriting() const {
+  bool NeedsRewriting() const {
     return flattening_succeeded_ && !url_.empty();
   }
 
-  const StringPiece& url() const { return url_; }
-  void set_url(const StringPiece& url) { url_ = url; }
+  const StringPiece url() const { return url_; }
 
   const GoogleUrl& css_base_url() const { return css_base_url_; }
   const GoogleUrl& css_trim_url() const { return css_trim_url_; }
@@ -100,13 +92,15 @@ class CssHierarchy {
   Css::Stylesheet* mutable_stylesheet() { return stylesheet_.get(); }
   void set_stylesheet(Css::Stylesheet* stylesheet);
 
-  const StringPiece& input_contents() const { return input_contents_; }
-  void set_input_contents(const StringPiece& input_contents) {
+  const StringPiece input_contents() const { return input_contents_; }
+  // A StringPiece reference to input_contents is made so it must remain
+  // valid for the life of this object.
+  void set_input_contents(const StringPiece input_contents) {
     input_contents_ = input_contents;
   }
 
   const GoogleString& minified_contents() const { return minified_contents_; }
-  void set_minified_contents(const StringPiece& minified_contents);
+  void set_minified_contents(const StringPiece minified_contents);
 
   const GoogleString& charset() const { return charset_; }
   GoogleString* mutable_charset() { return &charset_; }
@@ -127,6 +121,7 @@ class CssHierarchy {
   // this CSS is taken from resource's headers if specified, else from the
   // @charset rule in the parsed CSS, if any, else from the owning document
   // (our parent). Returns true if the charsets are compatible, false if not.
+  // The charset is always determined and set regardless of the return value.
   //
   // TODO(matterbury): A potential future enhancement is to allow 'compatible'
   // charsets, like a US-ASCII child in a UTF-8 parent, since US-ASCII is a
@@ -137,6 +132,7 @@ class CssHierarchy {
   // and apply the media applicable to the whole CSS to each ruleset in the
   // stylesheet and delete any rulesets that end up with no applicable media.
   // Returns true if the input contents are successfully parsed, false if not.
+  // 'this' will be unchanged if false is returned.
   bool Parse();
 
   // Expand the imports in our stylesheet, creating the next level of the
@@ -149,7 +145,8 @@ class CssHierarchy {
   // imports b.css with a media rule of 'screen' there is no point in expanding
   // b.css because none of it can apply to the 'print' medium]. Returns true
   // if any children were expanded and need rewriting, which can be tested
-  // using needs_rewriting().
+  // using NeedsRewriting() [it tests both that the child was expanded and
+  // that the expansion succeeded].
   bool ExpandChildren();
 
   // Recursively roll up this CSS's textual form such that minified_contents()
@@ -176,25 +173,29 @@ class CssHierarchy {
   // not contain any @import rules, rather it must be the already-flattened
   // CSS text, because we use the existence of @import rules to tell that we
   // have already tried and failed to parse and flatten the CSS. This method
-  // intended to be invoked only on the root CSS since there is no need to
+  // is intended to be invoked only on the root CSS since there is no need to
   // roll up intermediate/nested stylesheets; only their contents need to be
-  // rolled up.
+  // rolled up. Returns false if the CSS was not already parsed and the call
+  // to Parse() failed, in which case rolling up has not been performed and
+  // 'this' is unchanged.
   bool RollUpStylesheets();
 
  private:
   friend class CssHierarchyTest;
 
   // Initialize state from the given values; for use by nested levels that
-  // are initialized from their parent's state.
+  // are initialized from their parent's state. A StringPiece reference to
+  // import_url is made so it must remain valid for the life of this object.
   void InitializeNested(const CssHierarchy& parent,
                         const GoogleUrl& import_url);
 
   // Resize to the specified number of children.
   void ResizeChildren(int n);
 
-  // Determine whether any CSS in the hierarchy is handling our url already.
-  // This is to cater for things like a.css @import'ing itself.
-  bool AreRecursing() const;
+  // Determine whether this CSS is a recusrive import by checking if any CSS
+  // in the hierarchy is handling our url already. This is to cater for things
+  // like a.css @import'ing itself.
+  bool IsRecursive() const;
 
   // Determine the media applicable to this CSS as the intersection of the
   // set of media applicable to the containing CSS and the set of media
@@ -213,19 +214,56 @@ class CssHierarchy {
   bool DetermineRulesetMedia(const std::vector<UnicodeText>& ruleset_media_in,
                              StringVector* ruleset_media_out);
 
+  // The URL of the stylesheet being represented; in the case of inline CSS
+  // this will be a data URL.
   StringPiece url_;
+
+  // The base for any relative URLs in the input CSS.
   GoogleUrl css_base_url_;
+
+  // The base of the output URL which is used to trim absolutified URLs back
+  // to relative URLs in the output CSS.
   GoogleUrl css_trim_url_;
+
+  // A pointer to the representation of the parent CSS that imports this CSS;
+  // for the top-level CSS only this will be NULL.
   const CssHierarchy* parent_;
+
+  // An array of pointers to the child representations of the CSS's that this
+  // CSS imports, one array element per import, in the order they are imported;
+  // for leaf CSS's this will be empty.
   std::vector<CssHierarchy*> children_;
+
+  // The text form of the input CSS.
+  StringPiece input_contents_;
+
+  // The text form of the output (flattened) CSS.
+  GoogleString minified_contents_;
+
+  // The parsed form of the CSS, in various states of transformation. Created
+  // from the input text form by Parse, mutated by RollUpContents and
+  // RollUpStylesheets - see their description for details.
   scoped_ptr<Css::Stylesheet> stylesheet_;
   bool is_xhtml_;
-  MessageHandler* message_handler_;
-  StringPiece input_contents_;
+
+  // The charset for this CSS as specified by HTTP headers, or a charset
+  // attribute, or an @charset rule, or inherited from the parent.
   GoogleString charset_;
+
+  // The collection of media for which this CSS applies; an empty collection
+  // means all media. CSS in or linked from HTML can specify this using a media
+  // attribute, @import'd CSS can specify it on the @import rule. Note that
+  // this is NOT media from @media rules, it is only media that applies to the
+  // *whole* CSS document. Note that media expressions (CSS3) are NOT handled.
   StringVector media_;
-  GoogleString minified_contents_;
+
+  // An indication of the success or failure of the flattening process, which
+  // can fail for various reasons, and any failure propagates up the hierarchy
+  // to the root CSS and eventually stops the process.
   bool flattening_succeeded_;
+
+  // For logging messages.
+  MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(CssHierarchy);
 };

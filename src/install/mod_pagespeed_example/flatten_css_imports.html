@@ -1,0 +1,16 @@
+<html>
+  <head>
+    <title>flatten_css_imports example</title>
+    <!-- link rel='stylesheet' href='styles/all_using_imports.css' -->
+    <style>
+      @import url(styles/all_using_imports.css);
+    </style>
+  </head>
+  <body>
+    <div class="blue yellow bold">
+      &lt;style&gt; tag should contain the contents of the yellow, blue,
+      and bold CSS files <code>@import</code>'d by
+      <code>styles/all_using_imports.css</code>.
+    </div>
+  </body>
+</html>

@@ -503,8 +503,8 @@ void CssFilter::StartExternalRewrite(HtmlElement* link,
   }
   ResourceSlotPtr slot(driver_->GetSlot(input_resource, link, src));
   CssFilter::Context* rewriter = StartRewriting(slot);
-  rewriter->SetupExternalRewrite(GoogleUrl(input_resource->url()),
-                                 decoded_base_url());
+  GoogleUrl input_resource_gurl(input_resource->url());
+  rewriter->SetupExternalRewrite(input_resource_gurl, decoded_base_url());
 
   // Get the applicable media and charset. If the charset on the link doesn't
   // agree with that of the source page, we can't flatten.

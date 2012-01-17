@@ -75,28 +75,10 @@ class CssHierarchyTest : public ::testing::Test {
         top_child1_child1_url_(top_url_, "nested/nested1.css"),
         top_child2_child1_url_(top_url_, "nested/nested2.css") {
   }
-  virtual ~CssHierarchyTest() {}
 
   // Initialize our CSS contents with the given, optional, media.
-  void InitializeCss(const StringPiece& top_media,
-                     const StringPiece& child_media) {
-    if (flat_top_css_.empty()) {
-      flat_top_css_ = kTopCss;
-      nested_top_css_ = StrCat(
-          StrCat("@import url(", top_child1_url_.Spec(), ") ", top_media, ";"),
-          StrCat("@import url(", top_child2_url_.Spec(), ") ", top_media, ";"),
-          kTopCss);
-      nested_child1_css_ = StrCat(
-          "@import url(", top_child1_child1_url_.Spec(), ") ", child_media, ";",
-          kTopChild1Css);
-      nested_child2_css_ = StrCat(
-          "@import url(", top_child2_child1_url_.Spec(), ") ", child_media, ";",
-          kTopChild2Css);
-      flattened_css_ = StrCat(kTopChild1Child1Css, kTopChild1Css,
-                              kTopChild2Child1Css, kTopChild2Css,
-                              kTopCss);
-    }
-  }
+  void InitializeCss(const StringPiece top_media,
+                     const StringPiece child_media);
 
   // Initialize a flat root - top-level CSS with no @imports.
   void InitializeFlatRoot(CssHierarchy* top) {
@@ -116,8 +98,8 @@ class CssHierarchyTest : public ::testing::Test {
 
   // Initialize a nested root with the given media.
   void InitializeNestedRootWithMedia(CssHierarchy* top,
-                                     const StringPiece& top_media,
-                                     const StringPiece& child_media) {
+                                     const StringPiece top_media,
+                                     const StringPiece child_media) {
     InitializeCss(top_media, child_media);
     top->InitializeRoot(top_url_, top_url_, nested_top_css_,
                         false /* is_xhtml */, NULL /* stylesheet */,
@@ -126,31 +108,7 @@ class CssHierarchyTest : public ::testing::Test {
 
   // Expand the hierarchy using ExpandChildren. Expands the top then adds
   // each child's contents and expands it, and so on for entire hierarchy.
-  void ExpandHierarchy(CssHierarchy* top) {
-    EXPECT_TRUE(top->Parse());
-    EXPECT_TRUE(top->ExpandChildren());
-
-    GoogleString child_contents[] = { nested_child1_css_, nested_child2_css_ };
-    GoogleString grandchild_contents[] = { kTopChild1Child1Css,
-                                           kTopChild2Child1Css };
-
-    for (int i = 0, n = top->children().size(); i < n && i < 2; ++i) {
-      CssHierarchy* child = top->children()[i];
-      if (child->needs_rewriting()) {
-        child->set_input_contents(child_contents[i]);
-        EXPECT_TRUE(child->Parse());
-        child->ExpandChildren();
-
-        if (child->children().size() > 0 &&
-            child->children()[0]->needs_rewriting()) {
-          CssHierarchy* grandchild = child->children()[0];
-          grandchild->set_input_contents(grandchild_contents[i]);
-          EXPECT_TRUE(grandchild->Parse());
-          EXPECT_FALSE(grandchild->ExpandChildren());
-        }
-      }
-    }
-  }
+  void ExpandHierarchy(CssHierarchy* top);
 
   // Create the given number of children under the given hierarchy.
   void ResizeChildren(CssHierarchy* top, int n) {
@@ -163,90 +121,14 @@ class CssHierarchyTest : public ::testing::Test {
   // This version populates the hierarchy manually, deliberately NOT using
   // ExpandChildren to ensure it ends up as we expect so that we can then
   // compare against and so test ExpandChildren.
-  void PopulateHierarchy(CssHierarchy* top) {
-    ResizeChildren(top, 2);
-
-    CssHierarchy* topChild1 = top->children()[0];
-    topChild1->InitializeNested(*top, top_child1_url_);
-    topChild1->set_input_contents(nested_child1_css_);
-    ResizeChildren(topChild1, 1);
-
-    CssHierarchy* topChild2 = top->children()[1];
-    topChild2->InitializeNested(*top, top_child2_url_);
-    topChild2->set_input_contents(nested_child2_css_);
-    ResizeChildren(topChild2, 1);
-
-    CssHierarchy* topChild1Child1 = topChild1->children()[0];
-    topChild1Child1->InitializeNested(*topChild1, top_child1_child1_url_);
-    topChild1Child1->set_input_contents(kTopChild1Child1Css);
-
-    CssHierarchy* topChild2Child1 = topChild2->children()[0];
-    topChild2Child1->InitializeNested(*topChild2, top_child2_child1_url_);
-    topChild2Child1->set_input_contents(kTopChild2Child1Css);
-  }
+  void PopulateHierarchy(CssHierarchy* top);
 
   // Are these two instances equivalent? Shallow comparison only: does not
   // check parent and only checks that they have the same number of children.
-  bool AreEquivalent(const CssHierarchy& one, const CssHierarchy& two) {
-    if (one.url() != two.url()) {
-      return false;
-    }
-    if (one.css_base_url() != two.css_base_url()) {
-      return false;
-    }
-    if (one.css_trim_url() != two.css_trim_url()) {
-      return false;
-    }
-    if (one.children().size() != two.children().size()) {
-      return false;
-    }
-    if (one.input_contents() != two.input_contents()) {
-      return false;
-    }
-    if (one.minified_contents() != two.minified_contents()) {
-      return false;
-    }
-    if (one.charset() != two.charset()) {
-      return false;
-    }
-    if (one.flattening_succeeded() != two.flattening_succeeded()) {
-      return false;
-    }
-    // It would be nice to check parent_ but it's private so skip it.
+  bool AreEquivalent(const CssHierarchy& one, const CssHierarchy& two);
 
-    // Sigh. We need to check the stylesheet data manually.
-    const Css::Stylesheet* stylesheet_one = one.stylesheet();
-    const Css::Stylesheet* stylesheet_two = two.stylesheet();
-    if ((stylesheet_one == NULL && stylesheet_two != NULL) ||
-        (stylesheet_one != NULL && stylesheet_two == NULL)) {
-      return false;
-    }
-    if (stylesheet_one != NULL && stylesheet_two != NULL) {
-      // The easiest way to compare two stylesheets is to textify them and
-      // compare the texts. Not inefficient but simple and effective. If either
-      // textification fails though we give up and treat the as different.
-      GoogleString text_one;
-      StringWriter writer_one(&text_one);
-      if (!CssMinify::Stylesheet(*stylesheet_one, &writer_one, &handler_)) {
-        return false;
-      }
-      GoogleString text_two;
-      StringWriter writer_two(&text_two);
-      if (!CssMinify::Stylesheet(*stylesheet_two, &writer_two, &handler_)) {
-        return false;
-      }
-      if (text_one != text_two) {
-        return false;
-      }
-    }
-    // And the same for the media though it's much easier.
-    const StringVector& media_one = one.media();
-    const StringVector& media_two = two.media();
-    if (media_one.size() != media_two.size() ||
-        !std::equal(media_one.begin(), media_one.end(), media_two.begin())) {
-      return false;
-    }
-    return true;
+  GoogleString MakeAtImport(StringPiece url, StringPiece media) {
+    return StrCat("@import url(", url, ") ", media, ";");
   }
 
   MessageHandler* message_handler() { return &handler_; }
@@ -273,6 +155,143 @@ class CssHierarchyTest : public ::testing::Test {
 
   DISALLOW_COPY_AND_ASSIGN(CssHierarchyTest);
 };
+
+void CssHierarchyTest::InitializeCss(const StringPiece top_media,
+                                     const StringPiece child_media) {
+  if (flat_top_css_.empty()) {
+    flat_top_css_ = kTopCss;
+    nested_top_css_ = StrCat(
+        MakeAtImport(top_child1_url_.Spec(), top_media),
+        MakeAtImport(top_child2_url_.Spec(), top_media),
+        kTopCss);
+    nested_child1_css_ = StrCat(
+        MakeAtImport(top_child1_child1_url_.Spec(), child_media),
+        kTopChild1Css);
+    nested_child2_css_ = StrCat(
+        MakeAtImport(top_child2_child1_url_.Spec(), child_media),
+        kTopChild2Css);
+    flattened_css_ = StrCat(kTopChild1Child1Css, kTopChild1Css,
+                            kTopChild2Child1Css, kTopChild2Css,
+                            kTopCss);
+  }
+}
+
+
+void CssHierarchyTest::ExpandHierarchy(CssHierarchy* top) {
+  EXPECT_TRUE(top->Parse());
+  EXPECT_TRUE(top->ExpandChildren());
+
+  GoogleString child_contents[] = {
+    nested_child1_css_,
+    nested_child2_css_
+  };
+  GoogleString grandchild_contents[] = {
+    kTopChild1Child1Css,
+    kTopChild2Child1Css
+  };
+
+  for (int i = 0, n = top->children().size(); i < n && i < 2; ++i) {
+    CssHierarchy* child = top->children()[i];
+    if (child->NeedsRewriting()) {
+      child->set_input_contents(child_contents[i]);
+      EXPECT_TRUE(child->Parse());
+      child->ExpandChildren();
+
+      if (child->children().size() > 0 &&
+          child->children()[0]->NeedsRewriting()) {
+        CssHierarchy* grandchild = child->children()[0];
+        grandchild->set_input_contents(grandchild_contents[i]);
+        EXPECT_TRUE(grandchild->Parse());
+        EXPECT_FALSE(grandchild->ExpandChildren());
+      }
+    }
+  }
+}
+
+void CssHierarchyTest::PopulateHierarchy(CssHierarchy* top) {
+  ResizeChildren(top, 2);
+
+  CssHierarchy* top_child1 = top->children()[0];
+  top_child1->InitializeNested(*top, top_child1_url_);
+  top_child1->set_input_contents(nested_child1_css_);
+  ResizeChildren(top_child1, 1);
+
+  CssHierarchy* top_child2 = top->children()[1];
+  top_child2->InitializeNested(*top, top_child2_url_);
+  top_child2->set_input_contents(nested_child2_css_);
+  ResizeChildren(top_child2, 1);
+
+  CssHierarchy* top_child1_child1 = top_child1->children()[0];
+  top_child1_child1->InitializeNested(*top_child1, top_child1_child1_url_);
+  top_child1_child1->set_input_contents(kTopChild1Child1Css);
+
+  CssHierarchy* top_child2_child1 = top_child2->children()[0];
+  top_child2_child1->InitializeNested(*top_child2, top_child2_child1_url_);
+  top_child2_child1->set_input_contents(kTopChild2Child1Css);
+}
+
+bool CssHierarchyTest::AreEquivalent(const CssHierarchy& one,
+                                     const CssHierarchy& two) {
+  if (one.url() != two.url()) {
+    return false;
+  }
+  if (one.css_base_url() != two.css_base_url()) {
+    return false;
+  }
+  if (one.css_trim_url() != two.css_trim_url()) {
+    return false;
+  }
+  if (one.children().size() != two.children().size()) {
+    return false;
+  }
+  if (one.input_contents() != two.input_contents()) {
+    return false;
+  }
+  if (one.minified_contents() != two.minified_contents()) {
+    return false;
+  }
+  if (one.charset() != two.charset()) {
+    return false;
+  }
+  if (one.flattening_succeeded() != two.flattening_succeeded()) {
+    return false;
+  }
+  // It would be nice to check parent_ but it's private so skip it.
+
+  // Sigh. We need to check the stylesheet data manually.
+  const Css::Stylesheet* stylesheet_one = one.stylesheet();
+  const Css::Stylesheet* stylesheet_two = two.stylesheet();
+  if ((stylesheet_one == NULL && stylesheet_two != NULL) ||
+      (stylesheet_one != NULL && stylesheet_two == NULL)) {
+    return false;
+  }
+  if (stylesheet_one != NULL && stylesheet_two != NULL) {
+    // The easiest way to compare two stylesheets is to textify them and
+    // compare the texts. Not inefficient but simple and effective. If either
+    // textification fails though we give up and treat the as different.
+    GoogleString text_one;
+    StringWriter writer_one(&text_one);
+    if (!CssMinify::Stylesheet(*stylesheet_one, &writer_one, &handler_)) {
+      return false;
+    }
+    GoogleString text_two;
+    StringWriter writer_two(&text_two);
+    if (!CssMinify::Stylesheet(*stylesheet_two, &writer_two, &handler_)) {
+      return false;
+    }
+    if (text_one != text_two) {
+      return false;
+    }
+  }
+  // And the same for the media though it's much easier.
+  const StringVector& media_one = one.media();
+  const StringVector& media_two = two.media();
+  if (media_one.size() != media_two.size() ||
+      !std::equal(media_one.begin(), media_one.end(), media_two.begin())) {
+    return false;
+  }
+  return true;
+}
 
 TEST_F(CssHierarchyTest, ParseFlat) {
   CssHierarchy top;
@@ -409,7 +428,7 @@ TEST_F(CssHierarchyTest, FailOnDirectRecursion) {
 
   CssHierarchy* child = top.children()[0];
   child->set_input_contents(recursive_import);
-  EXPECT_TRUE(child->needs_rewriting());
+  EXPECT_TRUE(child->NeedsRewriting());
   EXPECT_TRUE(child->Parse());
   EXPECT_FALSE(child->ExpandChildren());
   EXPECT_TRUE(child->flattening_succeeded());
@@ -476,7 +495,7 @@ TEST_F(CssHierarchyTest, ExpandElidesImportsWithNoMedia) {
     CssHierarchy* grandchild = child->children()[0];
     EXPECT_TRUE(NULL == grandchild->stylesheet());
     EXPECT_TRUE(grandchild->children().empty());
-    EXPECT_FALSE(grandchild->needs_rewriting());
+    EXPECT_FALSE(grandchild->NeedsRewriting());
   }
 
   top.RollUpContents();

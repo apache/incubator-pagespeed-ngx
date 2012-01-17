@@ -44,8 +44,8 @@ namespace net_instaweb {
 
 CssHierarchy::CssHierarchy()
     : parent_(NULL),
-      message_handler_(NULL),
-      flattening_succeeded_(true) {
+      flattening_succeeded_(true),
+      message_handler_(NULL) {
 }
 
 CssHierarchy::~CssHierarchy() {
@@ -54,7 +54,7 @@ CssHierarchy::~CssHierarchy() {
 
 void CssHierarchy::InitializeRoot(const GoogleUrl& css_base_url,
                                   const GoogleUrl& css_trim_url,
-                                  const StringPiece& input_contents,
+                                  const StringPiece input_contents,
                                   bool is_xhtml,
                                   Css::Stylesheet* stylesheet,
                                   MessageHandler* message_handler) {
@@ -82,7 +82,7 @@ void CssHierarchy::set_stylesheet(Css::Stylesheet* stylesheet) {
 }
 
 void CssHierarchy::set_minified_contents(
-    const StringPiece& minified_contents) {
+    const StringPiece minified_contents) {
   minified_contents.CopyToString(&minified_contents_);
 }
 
@@ -104,7 +104,7 @@ void CssHierarchy::ResizeChildren(int n) {
   }
 }
 
-bool CssHierarchy::AreRecursing() const {
+bool CssHierarchy::IsRecursive() const {
   for (const CssHierarchy* ancestor = parent_;
        ancestor != NULL; ancestor = ancestor->parent_) {
     if (ancestor->url_ == url_) {
@@ -126,8 +126,8 @@ bool CssHierarchy::DetermineImportMedia(
     // Media were specified for the @import so we need to determine the
     // minimum subset required relative to the containing media.
     css_util::ConvertUnicodeVectorToStringVector(import_media_in, &media_);
-    std::sort(media_.begin(), media_.end());
     css_util::ClearVectorIfContainsMediaAll(&media_);
+    std::sort(media_.begin(), media_.end());
     css_util::EliminateElementsNotIn(&media_, containing_media);
     if (media_.empty()) {
       result = false;  // The media have been reduced to nothing.
@@ -144,8 +144,8 @@ bool CssHierarchy::DetermineRulesetMedia(
   bool result = true;
   css_util::ConvertUnicodeVectorToStringVector(ruleset_media_in,
                                                ruleset_media_out);
-  std::sort(ruleset_media_out->begin(), ruleset_media_out->end());
   css_util::ClearVectorIfContainsMediaAll(ruleset_media_out);
+  std::sort(ruleset_media_out->begin(), ruleset_media_out->end());
   if (!media_.empty()) {
     css_util::EliminateElementsNotIn(ruleset_media_out, media_);
     if (ruleset_media_out->empty()) {
@@ -196,8 +196,8 @@ bool CssHierarchy::Parse() {
       // Reduce the media on the to-be merged rulesets to the minimum required,
       // deleting any rulesets that end up having no applicable media types.
       Css::Rulesets& rulesets = stylesheet->mutable_rulesets();
-      Css::Rulesets::iterator iter;
-      for (iter = rulesets.begin(); iter != rulesets.end(); ) {
+      for (Css::Rulesets::iterator iter = rulesets.begin();
+           iter != rulesets.end(); ) {
         Css::Ruleset* ruleset = *iter;
         StringVector ruleset_media;
         if (DetermineRulesetMedia(ruleset->media(), &ruleset_media)) {
@@ -230,7 +230,7 @@ bool CssHierarchy::ExpandChildren() {
       child->set_flattening_succeeded(false);
     } else if (child->DetermineImportMedia(media_, import->media)) {
       child->InitializeNested(*this, import_url);
-      if (child->AreRecursing()) {
+      if (child->IsRecursive()) {
         child->set_flattening_succeeded(false);
       } else {
         result = true;
@@ -260,7 +260,7 @@ void CssHierarchy::RollUpContents() {
   }
   CHECK(stylesheet_.get() != NULL);
 
-  int n = children_.size();
+  const int n = children_.size();
 
   // Check if flattening has worked so far for us and all our children.
   for (int i = 0; i < n && flattening_succeeded_; ++i) {
@@ -285,7 +285,7 @@ void CssHierarchy::RollUpContents() {
       input_contents_.CopyToString(&minified_contents_);
     }
   } else {
-    // Flattening succeeed so concatenate our children's minified contents.
+    // Flattening succeeded so concatenate our children's minified contents.
     for (int i = 0; i < n && flattening_succeeded_; ++i) {
       StrAppend(&minified_contents_, children_[i]->minified_contents());
     }
@@ -325,7 +325,7 @@ bool CssHierarchy::RollUpStylesheets() {
   }
   CHECK(stylesheet_.get() != NULL);
 
-  int n = children_.size();
+  const int n = children_.size();
 
   // Check if flattening worked for us and all our children.
   for (int i = 0; i < n && flattening_succeeded_; ++i) {
@@ -341,7 +341,7 @@ bool CssHierarchy::RollUpStylesheets() {
   }
 
   if (flattening_succeeded_) {
-    // Flattening succeeed so delete our @charset and @import rules then
+    // Flattening succeeded so delete our @charset and @import rules then
     // merge our children's rulesets (only) into ours.
     stylesheet_->mutable_charsets().clear();
     STLDeleteElements(&stylesheet_->mutable_imports());

@@ -150,7 +150,7 @@ void CssImageRewriterAsync::RewriteCss(int64 image_inline_max_bytes,
     if (hierarchy->ExpandChildren()) {
       for (int i = 0, n = hierarchy->children().size(); i < n; ++i) {
         CssHierarchy* child = hierarchy->children()[i];
-        if (child->needs_rewriting()) {
+        if (child->NeedsRewriting()) {
           RewriteImport(parent, child);
         }
       }
