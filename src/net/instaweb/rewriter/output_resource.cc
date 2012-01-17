@@ -106,6 +106,9 @@ OutputResource::~OutputResource() {
   clear_cached_result();
 }
 
+OutputResource::OutputWriter::~OutputWriter() {
+}
+
 bool OutputResource::OutputWriter::Write(const StringPiece& data,
                                          MessageHandler* handler) {
   bool ret = http_value_->Write(data, handler);
@@ -115,7 +118,11 @@ bool OutputResource::OutputWriter::Write(const StringPiece& data,
   return ret;
 }
 
-OutputResource::OutputWriter* OutputResource::BeginWrite(
+bool OutputResource::OutputWriter::Flush(MessageHandler*) {
+  return true;
+}
+
+Writer* OutputResource::BeginWrite(
     MessageHandler* handler) {
   value_.Clear();
   full_name_.ClearHash();
@@ -152,7 +159,7 @@ OutputResource::OutputWriter* OutputResource::BeginWrite(
   };
 }
 
-bool OutputResource::EndWrite(OutputWriter* writer, MessageHandler* handler) {
+bool OutputResource::EndWrite(MessageHandler* handler) {
   CHECK(!writing_complete_);
   value_.SetHeaders(&response_headers_);
   Hasher* hasher = resource_manager_->hasher();

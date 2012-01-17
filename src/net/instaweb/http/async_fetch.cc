@@ -178,6 +178,11 @@ bool AsyncFetchUsingWriter::HandleFlush(MessageHandler* handler) {
   return writer_->Flush(handler);
 }
 
+void AsyncFetchUsingWriter::DeleteOwnedWriter() {
+  delete writer_;
+  writer_ = NULL;
+}
+
 AsyncFetchUsingWriter::~AsyncFetchUsingWriter() {
 }
 

@@ -723,16 +723,25 @@ URL="$TEST_ROOT/rewrite_compressed_js.html"
 QPARAMS="ModPagespeedFilters=rewrite_javascript,inline_javascript"
 fetch_until "$URL?$QPARAMS" "grep -c Hello'" 1
 
-echo Tests that we can rewrite javascript resources that are served with
-echo Cache-Control: no-cache.  Tests that the no-cache header is preserved.
+echo Test that we can rewrite resources that are served with
+echo Cache-Control: no-cache with on-the-fly filters.  Tests that the
+echo no-cache header is preserved.
+test_filter extend_cache with no-cache js origin
+URL="$REWRITTEN_ROOT/../mod_pagespeed_test/no_cache/hello.js.pagespeed.ce.0.js"
+echo run_wget_with_args $URL
+run_wget_with_args $URL
+cat $WGET_OUTPUT
+cat $OUTDIR/hello.js.pagespeed.ce.0.js
+check grep -c "Hello\'" $OUTDIR/hello.js.pagespeed.ce.0.js
+check grep -c "no-cache" $WGET_OUTPUT
+
+echo Test that we presently disallow rewrites of Cache-Control: no-cache
+echo resources with non-on-the-fly filters.
 test_filter rewrite_javascript with no-cache js origin
 URL="$REWRITTEN_ROOT/../mod_pagespeed_test/no_cache/hello.js.pagespeed.jm.0.js"
 echo run_wget_with_args $URL
 run_wget_with_args $URL
-cat $WGET_OUTPUT
-cat $OUTDIR/hello.js.pagespeed.jm.0.js
-check grep -c "Hello\'" $OUTDIR/hello.js.pagespeed.jm.0.js
-check grep -c "no-cache" $WGET_OUTPUT
+check grep '"404 Not Found"' $WGET_OUTPUT
 
 # Cleanup
 rm -rf $OUTDIR

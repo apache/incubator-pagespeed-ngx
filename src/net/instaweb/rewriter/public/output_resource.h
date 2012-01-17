@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
@@ -206,6 +207,11 @@ class OutputResource : public Resource {
     return rewrite_options_;
   }
 
+  // Interface for directly setting the value of the resource.
+  // It must not have been set otherwise!
+  Writer* BeginWrite(MessageHandler* message_handler);
+  bool EndWrite(MessageHandler* message_handler);
+
  protected:
   virtual ~OutputResource();
   REFCOUNT_FRIEND_DECLARATION(OutputResource);
@@ -216,7 +222,7 @@ class OutputResource : public Resource {
   friend class ResourceManagerTestingPeer;
   friend class RewriteDriver;
 
-  class OutputWriter {
+  class OutputWriter : public Writer {
    public:
     // file may be null if we shouldn't write to the filesystem.
     OutputWriter(FileSystem::OutputFile* file, HTTPValue* http_value)
@@ -228,9 +234,13 @@ class OutputResource : public Resource {
       }
     }
 
+    virtual ~OutputWriter();
+
     // Adds the given data to our http_value, and, if
     // non-null, our file.
-    bool Write(const StringPiece& data, MessageHandler* handler);
+    virtual bool Write(const StringPiece& data, MessageHandler* handler);
+    virtual bool Flush(MessageHandler* message_handler);
+
    private:
     scoped_ptr<FileWriter> file_writer_;
     HTTPValue* http_value_;
@@ -239,9 +249,6 @@ class OutputResource : public Resource {
   void SetHash(const StringPiece& hash);
   StringPiece extension() const { return full_name_.ext(); }
   GoogleString TempPrefix() const;
-
-  OutputWriter* BeginWrite(MessageHandler* message_handler);
-  bool EndWrite(OutputWriter* writer, MessageHandler* message_handler);
 
   FileSystem::OutputFile* output_file_;
   bool writing_complete_;

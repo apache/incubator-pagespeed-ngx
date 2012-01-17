@@ -51,6 +51,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
@@ -278,11 +279,11 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
   // so it can can live, essentially, forever. So compute this hash,
   // and cache the output using meta_data's default headers which are to cache
   // forever.
-  scoped_ptr<OutputResource::OutputWriter> writer(output->BeginWrite(handler));
+  scoped_ptr<Writer> writer(output->BeginWrite(handler));
   bool ret = (writer != NULL);
   if (ret) {
     ret = writer->Write(contents, handler);
-    ret &= output->EndWrite(writer.get(), handler);
+    ret &= output->EndWrite(handler);
 
     if (output->kind() != kOnTheFlyResource) {
       http_cache_->Put(output->url(), &output->value_, handler);

@@ -173,45 +173,44 @@ class RewriteContext::ResourceFetchCallback : public Resource::AsyncCallback {
 
 // Callback used when we need to reconstruct a resource we made to satisfy
 // a fetch (due to rewrites being nested inside each other).
-class RewriteContext::ResourceReconstructCallback : public AsyncFetch {
+class RewriteContext::ResourceReconstructCallback
+    : public AsyncFetchUsingWriter {
  public:
   // Takes ownership of the driver (e.g. will call Cleanup)
   ResourceReconstructCallback(RewriteDriver* driver, RewriteContext* rc,
                               const OutputResourcePtr& resource, int slot_index)
-      : driver_(driver),
+      : AsyncFetchUsingWriter(resource->BeginWrite(driver->message_handler())),
+        driver_(driver),
         delegate_(rc, ResourcePtr(resource), slot_index),
         resource_(resource) {
+    set_response_headers(resource->response_headers());
   }
 
   virtual ~ResourceReconstructCallback() {
   }
 
   virtual void HandleDone(bool success) {
-    // Make sure to release the lock here, as in case of nested reconstructions
-    // that fail it would otherwise only get released on ~OutputResource, which
-    // in turn will only happen once the top-level is done, which may take a
-    // while.
-    resource_->DropCreationLock();
+    // Compute the final post-write state of the object, including the hash.
+    // Also takes care of dropping creation lock.
+    resource_->EndWrite(driver_->message_handler());
+    DeleteOwnedWriter();
+
+    // Make sure to compute the URL, as we'll be killing the rewrite driver
+    // shortly, and the driver is needed for URL computation.
+    resource_->url();
 
     delegate_.Done(success);
     driver_->Cleanup();
     delete this;
   }
 
-  // We ignore the output here as it's also put into the resource itself.
-  virtual bool HandleWrite(const StringPiece& content,
-                           MessageHandler* handler) {
-    return true;
-  }
-  virtual bool HandleFlush(MessageHandler* handler) {
-    return true;
-  }
   virtual void HandleHeadersComplete() {}
 
  private:
   RewriteDriver* driver_;
   ResourceCallbackUtils delegate_;
   OutputResourcePtr resource_;
+  DISALLOW_COPY_AND_ASSIGN(ResourceReconstructCallback);
 };
 
 // Callback used when we re-check validity of cached results by contents.
@@ -358,6 +357,10 @@ class RewriteContext::FetchContext {
 
           response_headers->CopyFrom(*input_resource->response_headers());
           rewrite_context_->FixFetchFallbackHeaders(response_headers);
+          // Use the most conservative Cache-Control considering all inputs.
+          // Note that this is needed because FixFetchFallbackHeaders might
+          // actually relax things a bit if the input was no-cache.
+          ApplyInputCacheControl(response_headers);
           async_fetch_->HeadersComplete();
 
           ok = rewrite_context_->AbsolutifyIfNeeded(
@@ -1026,7 +1029,11 @@ void RewriteContext::FetchInputs() {
           ResourceReconstructCallback* callback =
               new ResourceReconstructCallback(
                   nested_driver, this, output_resource, i);
-          nested_driver->FetchOutputResource(output_resource, filter, callback);
+          // As a temporary workaround for bugs where FetchOutputResource
+          // does not fully sync OutputResource with what it gives the
+          // callback, we use FetchResource here and sync to the
+          // resource object in the callback.
+          nested_driver->FetchResource(resource->url(), callback);
         } else {
           Manager()->ReleaseRewriteDriver(nested_driver);
         }
@@ -1035,9 +1042,11 @@ void RewriteContext::FetchInputs() {
       if (!handled_internally) {
         Resource::NotCacheablePolicy noncache_policy =
             Resource::kReportFailureIfNotCacheable;
-        if (fetch_.get() != NULL) {
+        if (fetch_.get() != NULL && (kind() == kOnTheFlyResource)) {
           // This is a fetch.  We want to try to get the input resource even if
-          // it was previously noted to be uncacheable.
+          // it was previously noted to be uncacheable; but only for on-the-fly
+          // resources, since otherwise we would end up writing out a cached
+          // copy of transformed version, which would be insecure.
           noncache_policy = Resource::kLoadEvenIfNotCacheable;
         }
         Manager()->ReadAsync(noncache_policy,
@@ -1394,10 +1403,13 @@ void RewriteContext::StartRewriteForFetch() {
   bool ok_to_rewrite = true;
   for (int i = 0, n = slots_.size(); i < n; ++i) {
     ResourcePtr resource(slot(i)->resource());
-    if (resource->loaded() && resource->ContentsValid()) {
-      Resource::HashHint hash_hint =
-          (kind() == kOnTheFlyResource) ?
-              Resource::kOmitInputHash : Resource::kIncludeInputHash;
+    bool on_the_fly = (kind() == kOnTheFlyResource);
+    ResponseHeaders* headers = resource->response_headers();
+    if (resource->loaded() && resource->ContentsValid()
+        && (on_the_fly ||
+            (headers->IsCacheable() && headers->IsProxyCacheable()))) {
+      Resource::HashHint hash_hint = on_the_fly ?
+          Resource::kOmitInputHash : Resource::kIncludeInputHash;
       resource->AddInputInfoToPartition(hash_hint, i, partition);
     } else {
       ok_to_rewrite = false;
@@ -1714,6 +1726,7 @@ void RewriteContext::FetchCallbackDone(bool success) {
 }
 
 void RewriteContext::StartFetch() {
+  DCHECK_EQ(kind(), fetch_->output_resource()->kind());
   // If we have an on-the-fly resource, we almost always want to reconstruct it
   // --- there will be no shortcuts in the metadata cache unless the rewrite
   // fails, and it's ultra-cheap to reconstruct anyway.

@@ -154,7 +154,10 @@ class HTTPCacheCallback : public CacheInterface::Callback {
         if (is_valid) {
           result = HTTPCache::kFound;
         } else {
-          callback_->fallback_http_value()->Link(callback_->http_value());
+          if (http_cache_->force_caching_ ||
+              (headers->IsCacheable() && headers->IsProxyCacheable())) {
+            callback_->fallback_http_value()->Link(callback_->http_value());
+          }
         }
       }
     }
@@ -349,6 +352,11 @@ void HTTPCache::Put(const GoogleString& key, HTTPValue* value,
   ResponseHeaders headers;
   bool success = value->ExtractHeaders(&headers, handler);
   DCHECK(success);
+  if (!force_caching_ &&
+      !(headers.IsCacheable() && headers.IsProxyCacheable())) {
+    LOG(DFATAL) << "trying to Put uncacheable data for key " << key;
+    return;
+  }
   // Apply header changes.
   HTTPValue* new_value = ApplyHeaderChangesForPut(key, start_us, NULL,
                                                   &headers, value, handler);

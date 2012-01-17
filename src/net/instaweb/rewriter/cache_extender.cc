@@ -205,7 +205,11 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   // to cache extend it.
   bool ok = false;
   if (!resource_manager_->http_cache()->force_caching() &&
-      !headers->IsCacheable()) {
+      !(headers->IsCacheable() && headers->IsProxyCacheable())) {
+    // Note: RewriteContextTest.PreserveNoCacheWithFailedRewrites
+    // relies on CacheExtender failing rewrites in this case.
+    // If you change this behavior that test MUST be updated as it covers
+    // security.
     not_cacheable_count_->Add(1);
   } else if (ShouldRewriteResource(headers, now_ms, input_resource, url)) {
     output_resource->SetType(input_resource->type());

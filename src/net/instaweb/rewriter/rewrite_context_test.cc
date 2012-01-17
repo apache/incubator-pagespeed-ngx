@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
+#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -431,7 +432,8 @@ class CombiningFilter : public RewriteFilter {
                   int64 rewrite_delay_ms)
     : RewriteFilter(driver),
       scheduler_(scheduler),
-      rewrite_delay_ms_(rewrite_delay_ms) {
+      rewrite_delay_ms_(rewrite_delay_ms),
+      on_the_fly_(false) {
     ClearStats();
   }
   virtual ~CombiningFilter() {}
@@ -557,7 +559,9 @@ class CombiningFilter : public RewriteFilter {
 
     virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
     virtual const char* id() const { return kCombiningFilterId; }
-    virtual OutputResourceKind kind() const { return kRewrittenResource; }
+    virtual OutputResourceKind kind() const {
+      return filter_->on_the_fly_ ? kOnTheFlyResource : kRewrittenResource;
+    }
 
    private:
     Combiner combiner_;
@@ -605,12 +609,16 @@ class CombiningFilter : public RewriteFilter {
   }
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
 
+  virtual bool ComputeOnTheFly() const { return on_the_fly_; }
+
   bool num_rewrites() const { return num_rewrites_; }
   void ClearStats() { num_rewrites_ = 0; }
   int64 rewrite_delay_ms() const { return rewrite_delay_ms_; }
 
   // Each entry in combination will be prefixed with this.
   void set_prefix(const GoogleString& prefix) { prefix_ = prefix; }
+
+  void set_on_the_fly(bool v) { on_the_fly_ = true; }
 
  private:
   friend class Context;
@@ -621,6 +629,7 @@ class CombiningFilter : public RewriteFilter {
   int num_rewrites_;
   int64 rewrite_delay_ms_;
   GoogleString prefix_;
+  bool on_the_fly_;  // If true, will act as an on-the-fly filter.
 
   DISALLOW_COPY_AND_ASSIGN(CombiningFilter);
 };
@@ -1396,6 +1405,105 @@ TEST_F(RewriteContextTest, PreserveNoCacheWithRewrites) {
   }
 }
 
+TEST_F(RewriteContextTest, PreserveNoCacheWithFailedRewrites) {
+  // Make sure propagation of non-cacheability works in case when
+  // rewrite failed. (This relies on cache extender explicitly
+  // rejecting to rewrite non-cacheable things).
+  options()->EnableFilter(RewriteOptions::kExtendCacheCss);
+  rewrite_driver()->AddFilters();
+
+  InitResources();
+
+  // Even on sequential requests, the resource does not become cache-extended.
+  for (int i = 0; i < 4; ++i) {
+    GoogleString content;
+    ResponseHeaders headers;
+
+    EXPECT_TRUE(ServeResource(kTestDomain,
+                              "ce",
+                              "a_no_cache.css",
+                              "css",
+                              &content,
+                              &headers));
+    EXPECT_EQ(" a ", content);
+    ConstStringStarVector values;
+    headers.Lookup(HttpAttributes::kCacheControl, &values);
+    ASSERT_EQ(2, values.size());
+    EXPECT_STREQ("max-age=0", *values[0]);
+    EXPECT_STREQ("no-cache", *values[1]);
+  }
+}
+
+// Verifies that we preserve cache-control when rewriting a no-cache resource
+// with a non-on-the-fly filter
+TEST_F(RewriteContextTest, PrivateNotCached) {
+  InitTrimFiltersSync(kRewrittenResource);
+  InitResources();
+  resource_manager()->set_store_outputs_in_file_system(false);
+
+  // Even on sequential requests, the resource does not become cache-extended.
+  for (int i = 0; i < 4; ++i) {
+    GoogleString content;
+    ResponseHeaders headers;
+
+    // There are two possible secure outcomes here: either the fetch fails
+    // entirely here, or we serve it as cache-control: private. For now
+    // we just fail it.
+    EXPECT_FALSE(ServeResource(kTestDomain,
+                               kTrimWhitespaceSyncFilterId,
+                               "a_private.css",
+                               "css",
+                               &content,
+                               &headers));
+    EXPECT_TRUE(content.empty());
+  }
+
+  // Now make sure that fetching with an invalid hash doesn't work when
+  // the original is not available. This is significant since if it this fails
+  // an attacker may get access to resources without access to an actual hash.
+  GoogleString output;
+  mock_url_fetcher()->Disable();
+  EXPECT_FALSE(ServeResourceUrl(
+      Encode(kTestDomain, kTrimWhitespaceSyncFilterId, "1", "a_private.css",
+             "css"),
+      &output));
+}
+
+TEST_F(RewriteContextTest, PrivateNotCachedOnTheFly) {
+  // Variant of the above for on-the-fly, as that relies on completely
+  // different code paths to be safe. (It is also covered by earlier tests,
+  // but this is included here to be thorough).
+  InitTrimFiltersSync(kOnTheFlyResource);
+  InitResources();
+  resource_manager()->set_store_outputs_in_file_system(false);
+
+  // Even on sequential requests, the resource does not become cache-extended.
+  for (int i = 0; i < 4; ++i) {
+    GoogleString content;
+    ResponseHeaders headers;
+
+    EXPECT_TRUE(ServeResource(kTestDomain,
+                              kTrimWhitespaceSyncFilterId,
+                              "a_private.css",
+                              "css",
+                              &content,
+                              &headers));
+    EXPECT_EQ("a", content);
+    EXPECT_TRUE(headers.HasValue(HttpAttributes::kCacheControl, "private"))
+        << " Not private on fetch #" << i << " " << headers.ToString();
+  }
+
+  // Now make sure that fetching with an invalid hash doesn't work when
+  // the original is not available. This is significant since if it this fails
+  // an attacker may get access to resources without access to an actual hash.
+  GoogleString output;
+  mock_url_fetcher()->Disable();
+  EXPECT_FALSE(ServeResourceUrl(
+      Encode(kTestDomain, kTrimWhitespaceSyncFilterId, "1", "a_private.css",
+             "css"),
+      &output));
+}
+
 // Verifies that we preserve cache-control when rewriting a no-store resource.
 TEST_F(RewriteContextTest, PreserveNoStoreWithRewrites) {
   InitTrimFiltersSync(kOnTheFlyResource);
@@ -1448,6 +1556,7 @@ TEST_F(RewriteContextTest, PreservePrivateWithRewrites) {
 // resources.
 TEST_F(RewriteContextTest, CacheControlWithMultipleInputResources) {
   InitCombiningFilter(0);
+  combining_filter_->set_on_the_fly(true);
   InitResources();
 
   GoogleString content;
@@ -1463,8 +1572,9 @@ TEST_F(RewriteContextTest, CacheControlWithMultipleInputResources) {
   EXPECT_EQ(" a b a ", content);
 
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(6, lru_cache()->num_misses());   // partition, output 2x, 3 inputs.
-  EXPECT_EQ(5, lru_cache()->num_inserts());  // partition, output, 3 inputs.
+  EXPECT_EQ(3, lru_cache()->num_misses());   // 3 inputs.
+  EXPECT_EQ(4, lru_cache()->num_inserts()) <<
+      "partition, 2 inputs, 1 non-cacheability note";
   EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
 
   ConstStringStarVector values;
@@ -1478,6 +1588,7 @@ TEST_F(RewriteContextTest, CacheControlWithMultipleInputResources) {
 // resources.
 TEST_F(RewriteContextTest, CacheControlWithMultipleInputResourcesAndNoStore) {
   InitCombiningFilter(0);
+  combining_filter_->set_on_the_fly(true);
   InitResources();
 
   GoogleString content;
@@ -1494,8 +1605,9 @@ TEST_F(RewriteContextTest, CacheControlWithMultipleInputResourcesAndNoStore) {
   EXPECT_EQ(" a b a  a ", content);
 
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(7, lru_cache()->num_misses());   // partition, output 2x, 4 inputs.
-  EXPECT_EQ(6, lru_cache()->num_inserts());  // partition, output, 4 inputs.
+  EXPECT_EQ(4, lru_cache()->num_misses());   // 4 inputs.
+  EXPECT_EQ(5, lru_cache()->num_inserts())
+      << "partition, 2 inputs, 2 non-cacheability notes";
   EXPECT_EQ(4, counting_url_async_fetcher()->fetch_count());
 
   EXPECT_TRUE(headers.HasValue(HttpAttributes::kCacheControl, "max-age=0"));
@@ -1790,6 +1902,52 @@ TEST_F(RewriteContextTest, RepeatedTwoFilters) {
            CssLinkHref(Encode(kTestDomain, "tw", "0",
                               Encode("", "uc", "0", "a.css", "css"), "css"))));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
+}
+
+TEST_F(RewriteContextTest, ReconstructChainedWrongHash) {
+  // Make sure that we don't have problems with repeated reconstruction
+  // of chained rewrites where the hash is incorrect. (We used to screw
+  // up the response code if two different wrong inner hashes were used,
+  // leading to failure at outer level). Also make sure we always propagate
+  // short TTL as well, since that could also be screwed up.
+  resource_manager()->set_store_outputs_in_file_system(false);
+
+  // Need normal filters since cloned RewriteDriver instances wouldn't
+  // know about test-only stuff.
+  options()->EnableFilter(RewriteOptions::kCombineCss);
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  rewrite_driver()->AddFilters();
+
+  InitResponseHeaders(
+      "a.css", kContentTypeCss, " div { display: block;  }", 100);
+
+  GoogleString url = Encode(kTestDomain, "cc", "0",
+                            Encode("", "cf", "1", "a.css", "css"), "css");
+  GoogleString url2 = Encode(kTestDomain, "cc", "0",
+                             Encode("", "cf", "2", "a.css", "css"), "css");
+
+  for (int run = 0; run < 3; ++run) {
+    GoogleString content;
+    ResponseHeaders headers;
+
+    ServeResourceUrl(url, &content, &headers);
+    // Note that this works only because the combiner fails and passes
+    // through its input, which is the private cache-controled output
+    // of rewrite_css
+    EXPECT_EQ(HttpStatus::kOK, headers.status_code());
+    EXPECT_STREQ("div{display:block}", content);
+    EXPECT_TRUE(headers.HasValue(HttpAttributes::kCacheControl, "private"))
+        << headers.ToString();
+  }
+
+  // Now also try the second version.
+  GoogleString content;
+  ResponseHeaders headers;
+  ServeResourceUrl(url2, &content, &headers);
+  EXPECT_EQ(HttpStatus::kOK, headers.status_code());
+  EXPECT_STREQ("div{display:block}", content);
+  EXPECT_TRUE(headers.HasValue(HttpAttributes::kCacheControl, "private"))
+      << headers.ToString();
 }
 
 TEST_F(RewriteContextTest, Nested) {

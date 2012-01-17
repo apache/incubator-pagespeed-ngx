@@ -210,6 +210,10 @@ class AsyncFetchUsingWriter : public AsyncFetch {
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
   virtual bool HandleFlush(MessageHandler* handler);
 
+  // If the writer is actually owned by the subclass and not externally,
+  // this method should be called to delete the object.
+  void DeleteOwnedWriter();
+
  private:
   Writer* writer_;
   DISALLOW_COPY_AND_ASSIGN(AsyncFetchUsingWriter);
