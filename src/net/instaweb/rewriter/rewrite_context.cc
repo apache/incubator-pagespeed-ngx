@@ -935,8 +935,8 @@ void RewriteContext::OutputCacheRevalidate(
     InputInfo* input_info = to_revalidate[i];
     ResourcePtr resource = slots_[input_info->index()]->resource();
     Manager()->ReadAsync(
-        new ResourceRevalidateCallback(this, resource, input_info),
-        ResourceManager::kReportFailureIfNotCacheable);
+        Resource::kReportFailureIfNotCacheable,
+        new ResourceRevalidateCallback(this, resource, input_info));
   }
 }
 
@@ -1033,15 +1033,15 @@ void RewriteContext::FetchInputs() {
       }
 
       if (!handled_internally) {
-        ResourceManager::ResourceNotCacheableAction action =
-            ResourceManager::kReportFailureIfNotCacheable;
+        Resource::NotCacheablePolicy noncache_policy =
+            Resource::kReportFailureIfNotCacheable;
         if (fetch_.get() != NULL) {
           // This is a fetch.  We want to try to get the input resource even if
           // it was previously noted to be uncacheable.
-          action = ResourceManager::kLoadIfNotCacheable;
+          noncache_policy = Resource::kLoadEvenIfNotCacheable;
         }
-        Manager()->ReadAsync(new ResourceFetchCallback(this, resource, i),
-                             action);
+        Manager()->ReadAsync(noncache_policy,
+                             new ResourceFetchCallback(this, resource, i));
       }
     }
   }

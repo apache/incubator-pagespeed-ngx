@@ -54,6 +54,15 @@ Image* ImageTestBase::ImageFromString(
   return NewImage(contents, name, GTestTempDir(), image_options, &handler_);
 }
 
+Image* ImageTestBase::ReadFromFileWithOptions(
+    const char* name, GoogleString* contents,
+    Image::CompressionOptions* options) {
+  EXPECT_TRUE(file_system_.ReadFile(
+      StrCat(GTestSrcDir(), kTestData, name).c_str(),
+      contents, &handler_));
+  return NewImage(*contents, name, GTestTempDir(), options, &handler_);
+}
+
 Image* ImageTestBase::ReadImageFromFile(
     Image::Type output_type, const char* filename, GoogleString* buffer,
     bool progressive) {

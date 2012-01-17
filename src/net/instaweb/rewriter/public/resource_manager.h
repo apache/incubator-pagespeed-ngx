@@ -42,6 +42,7 @@ namespace net_instaweb {
 class AbstractMutex;
 class CacheInterface;
 class ContentType;
+class CriticalImagesFinder;
 class FileSystem;
 class FilenameEncoder;
 class Function;
@@ -70,13 +71,6 @@ typedef std::vector<OutputResourcePtr> OutputResourceVector;
 // which should be renamed RequestContext.
 class ResourceManager {
  public:
-  // This enumerates possible follow-up behaviors when a requested resource was
-  // marked as not-cacheable in the cache on a recent fetch.
-  enum ResourceNotCacheableAction {
-    kLoadIfNotCacheable,
-    kReportFailureIfNotCacheable,
-  };
-
   // The lifetime for cache-extended generated resources, in milliseconds.
   static const int64 kGeneratedMaxAgeMs;
 
@@ -166,6 +160,12 @@ class ResourceManager {
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
   Timer* timer() const { return http_cache_->timer(); }
   HTTPCache* http_cache() { return http_cache_; }
+  CriticalImagesFinder* critical_images_finder() const {
+    return critical_images_finder_;
+  }
+  void set_critical_images_finder(CriticalImagesFinder* finder) {
+    critical_images_finder_ = finder;
+  }
 
   // Cache for small non-HTTP objects.
   //
@@ -200,8 +200,8 @@ class ResourceManager {
   // done.  If the resource contents are cached, the callback will
   // be called directly, rather than asynchronously.  The resource
   // will be passed to the callback, with its contents and headers filled in.
-  void ReadAsync(Resource::AsyncCallback* callback,
-                 ResourceNotCacheableAction not_cacheable_action);
+  void ReadAsync(Resource::NotCacheablePolicy not_cacheable_policy,
+                 Resource::AsyncCallback* callback);
 
   // Allocate an NamedLock to guard the creation of the given resource.  If the
   // object is expensive to create, this lock should be held during its creation
@@ -385,6 +385,7 @@ class ResourceManager {
   Scheduler* scheduler_;
   UrlAsyncFetcher* url_async_fetcher_;
   Hasher* hasher_;
+  CriticalImagesFinder* critical_images_finder_;
 
   // hasher_ is often set to a mock within unit tests, but some parts of the
   // system will not work sensibly if the "hash algorithm" used always returns

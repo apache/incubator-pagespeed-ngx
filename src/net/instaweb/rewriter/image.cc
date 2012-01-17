@@ -167,8 +167,8 @@ class ImageImpl : public Image {
 
 void ImageImpl::SetTransformToLowRes() {
   low_quality_enabled_ = true;
-  options_->webp_quality = 20;
-  options_->jpeg_quality = 20;
+  options_->webp_quality = 10;
+  options_->jpeg_quality = 10;
 }
 
 void ImageImpl::SetQuality(Type image_type, int quality) {

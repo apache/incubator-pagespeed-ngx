@@ -114,7 +114,8 @@ void Resource::DetermineContentType() {
 
 // Default, blocking implementation which calls Load.
 // Resources which can fetch asynchronously should override this.
-void Resource::LoadAndCallback(AsyncCallback* callback,
+void Resource::LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
+                               AsyncCallback* callback,
                                MessageHandler* message_handler) {
   callback->Done(Load(message_handler));
 }

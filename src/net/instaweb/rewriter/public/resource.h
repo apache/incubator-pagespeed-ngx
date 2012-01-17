@@ -57,6 +57,13 @@ class Resource : public RefCounted<Resource> {
     kIncludeInputHash
   };
 
+  // This enumerates possible follow-up behaviors when a requested resource was
+  // uncacheable.
+  enum NotCacheablePolicy {
+    kLoadEvenIfNotCacheable,
+    kReportFailureIfNotCacheable,
+  };
+
   Resource(ResourceManager* resource_manager, const ContentType* type);
 
   // Common methods across all deriviations
@@ -173,13 +180,15 @@ class Resource : public RefCounted<Resource> {
 
   // Load the resource asynchronously, storing ResponseHeaders and
   // contents in cache.  Returns true, if the resource is already
-  // loaded or loaded synchronously.
+  // loaded or loaded synchronously. Never reports uncacheable resources.
   virtual bool Load(MessageHandler* message_handler) = 0;
 
   // Same as Load, but calls a callback when finished.  The ResourcePtr
   // used to construct 'callback' must be the same as the resource used
-  // to invoke this method.
-  virtual void LoadAndCallback(AsyncCallback* callback,
+  // to invoke this method. If the resource is uncacheable, will only
+  // return true if not_cacheable_policy == kLoadEvenIfNotCacheable.
+  virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
+                               AsyncCallback* callback,
                                MessageHandler* message_handler);
 
   ResourceManager* resource_manager_;

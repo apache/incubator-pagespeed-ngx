@@ -33,6 +33,7 @@ namespace net_instaweb {
 
 class AbstractMutex;
 class CacheInterface;
+class CriticalImagesFinder;
 class FileSystem;
 class FilenameEncoder;
 class Hasher;
@@ -91,6 +92,7 @@ class RewriteDriverFactory {
   void set_filename_encoder(FilenameEncoder* filename_encoder);
   void set_url_namer(UrlNamer* url_namer);
   void set_timer(Timer* timer);
+  void set_critical_images_finder(CriticalImagesFinder* finder);
 
   // Set up a directory for slurped files for HTML and resources.  If
   // read_only is true, then it will only read from these files, and
@@ -176,6 +178,8 @@ class RewriteDriverFactory {
 
   ThreadSystem* thread_system() { return thread_system_.get(); }
 
+  CriticalImagesFinder* critical_images_finder();
+
   // Returns the set of directories that we (our our subclasses) have created
   // thus far.
   const StringSet& created_directories() const {
@@ -244,7 +248,10 @@ class RewriteDriverFactory {
   virtual Timer* DefaultTimer() = 0;
   virtual Hasher* NewHasher() = 0;
 
-    // Note: Returned CacheInterface should be thread-safe.
+  // Default implementation returns NULL.
+  virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
+
+  // Note: Returned CacheInterface should be thread-safe.
   virtual CacheInterface* DefaultCacheInterface() = 0;
 
   // They may also supply a custom lock manager. The default implementation
@@ -320,6 +327,8 @@ class RewriteDriverFactory {
   scoped_ptr<NamedLockManager> lock_manager_;
 
   scoped_ptr<ThreadSystem> thread_system_;
+
+  scoped_ptr<CriticalImagesFinder> critical_images_finder_;
 
   // Default statistics implementation which can be overridden by children
   // by calling SetStatistics().

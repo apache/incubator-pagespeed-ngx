@@ -51,6 +51,12 @@ class ImageTestBase : public testing::Test {
                          const GoogleString& contents,
                          bool progressive);
 
+  // Read an image with given filename and compression options. This also
+  // transfers the ownership of options to image object.
+  Image* ReadFromFileWithOptions(
+      const char* name, GoogleString* contents,
+      Image::CompressionOptions* options);
+
   // We use the output_type (ultimate expected output type after image
   // processing) to set up rewrite permissions for the resulting Image object.
   Image* ReadImageFromFile(Image::Type output_type,

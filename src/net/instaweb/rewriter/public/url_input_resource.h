@@ -55,7 +55,8 @@ class UrlInputResource : public Resource {
 
  protected:
   virtual bool Load(MessageHandler* message_handler);
-  virtual void LoadAndCallback(AsyncCallback* callback,
+  virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
+                               AsyncCallback* callback,
                                MessageHandler* message_handler);
 
  private:

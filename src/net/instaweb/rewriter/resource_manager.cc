@@ -116,16 +116,16 @@ const char ResourceManager::kResourceEtagValue[] = "W/0";
 class ResourceManagerHttpCallback : public OptionsAwareHTTPCacheCallback {
  public:
   ResourceManagerHttpCallback(
+      Resource::NotCacheablePolicy not_cacheable_policy,
       Resource::AsyncCallback* resource_callback,
-      ResourceManager* resource_manager,
-      ResourceManager::ResourceNotCacheableAction not_cacheable_action);
+      ResourceManager* resource_manager);
   virtual ~ResourceManagerHttpCallback();
   virtual void Done(HTTPCache::FindResult find_result);
 
  private:
   Resource::AsyncCallback* resource_callback_;
   ResourceManager* resource_manager_;
-  ResourceManager::ResourceNotCacheableAction not_cacheable_action_;
+  Resource::NotCacheablePolicy not_cacheable_policy_;
   DISALLOW_COPY_AND_ASSIGN(ResourceManagerHttpCallback);
 };
 
@@ -138,6 +138,7 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       scheduler_(factory->scheduler()),
       url_async_fetcher_(NULL),
       hasher_(NULL),
+      critical_images_finder_(factory->critical_images_finder()),
       lock_hasher_(20),
       contents_hasher_(21),
       statistics_(NULL),
@@ -395,15 +396,15 @@ void ResourceManager::RefreshIfImminentlyExpiring(
 }
 
 ResourceManagerHttpCallback::ResourceManagerHttpCallback(
+    Resource::NotCacheablePolicy not_cacheable_policy,
     Resource::AsyncCallback* resource_callback,
-    ResourceManager* resource_manager,
-    ResourceManager::ResourceNotCacheableAction not_cacheable_action)
+    ResourceManager* resource_manager)
     : OptionsAwareHTTPCacheCallback(
           resource_callback->resource()->rewrite_options()),
       resource_callback_(resource_callback),
       resource_manager_(resource_manager),
-      not_cacheable_action_(not_cacheable_action) {
-  }
+      not_cacheable_policy_(not_cacheable_policy) {
+}
 
 
 ResourceManagerHttpCallback::~ResourceManagerHttpCallback() {
@@ -434,15 +435,16 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
       resource_callback_->Done(false);
       break;
     case HTTPCache::kRecentFetchNotCacheable:
-      switch (not_cacheable_action_) {
-        case ResourceManager::kLoadIfNotCacheable:
-          resource->LoadAndCallback(resource_callback_, handler);
+      switch (not_cacheable_policy_) {
+        case Resource::kLoadEvenIfNotCacheable:
+          resource->LoadAndCallback(not_cacheable_policy_,
+                                    resource_callback_, handler);
           break;
-        case ResourceManager::kReportFailureIfNotCacheable:
+        case Resource::kReportFailureIfNotCacheable:
           resource_callback_->Done(false);
           break;
         default:
-          LOG(DFATAL) << "Unexpected not_cacheable_action_!";
+          LOG(DFATAL) << "Unexpected not_cacheable_policy_!";
           resource_callback_->Done(false);
           break;
       }
@@ -451,7 +453,8 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
       // If not, load it asynchronously.
       // Link the fallback value which can be used if the fetch fails.
       resource->LinkFallbackValue(fallback_http_value());
-      resource->LoadAndCallback(resource_callback_, handler);
+      resource->LoadAndCallback(not_cacheable_policy_,
+                                resource_callback_, handler);
       break;
   }
   delete this;
@@ -463,8 +466,8 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
 // which will always fail, for FileInputResources, we should just Load them.
 // TODO(morlovich): Should this load non-cacheable + non-loaded resources?
 void ResourceManager::ReadAsync(
-    Resource::AsyncCallback* callback,
-    ResourceNotCacheableAction not_cacheable_action) {
+    Resource::NotCacheablePolicy not_cacheable_policy,
+    Resource::AsyncCallback* callback) {
   // If the resource is not already loaded, and this type of resource (e.g.
   // URL vs File vs Data) is cacheable, then try to load it.
   ResourcePtr resource = callback->resource();
@@ -473,8 +476,7 @@ void ResourceManager::ReadAsync(
     callback->Done(true);
   } else if (resource->IsCacheableTypeOfResource()) {
     ResourceManagerHttpCallback* resource_manager_callback =
-        new ResourceManagerHttpCallback(callback, this,
-                                        not_cacheable_action);
+        new ResourceManagerHttpCallback(not_cacheable_policy, callback, this);
     http_cache_->Find(resource->url(), message_handler_,
                       resource_manager_callback);
   }

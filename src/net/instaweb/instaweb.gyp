@@ -434,6 +434,7 @@
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [
+        'rewriter/critical_images_finder.cc',
         'rewriter/domain_lawyer.cc',
         'rewriter/resource.cc',
         'rewriter/rewrite_options.cc',
@@ -606,6 +607,7 @@
         'rewriter/blink_util.cc',
         'rewriter/cache_extender.cc',
         'rewriter/common_filter.cc',
+        'rewriter/critical_images_callback.cc',
         'rewriter/css_combine_filter.cc',
         'rewriter/css_inline_filter.cc',
         'rewriter/css_move_to_head_filter.cc',

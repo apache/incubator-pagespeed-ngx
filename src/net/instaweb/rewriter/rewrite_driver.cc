@@ -1477,8 +1477,8 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
 void RewriteDriver::ReadAsync(Resource::AsyncCallback* callback,
                               MessageHandler* handler) {
   // TODO(jmarantz): fix call-sites and eliminate this wrapper.
-  resource_manager_->ReadAsync(callback,
-                               ResourceManager::kReportFailureIfNotCacheable);
+  resource_manager_->ReadAsync(Resource::kReportFailureIfNotCacheable,
+                               callback);
 }
 
 bool RewriteDriver::ReadIfCached(const ResourcePtr& resource) {

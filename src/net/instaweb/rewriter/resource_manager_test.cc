@@ -505,6 +505,32 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
                                message_handler()));
 }
 
+TEST_F(ResourceManagerTest, TestNonCacheableReadResultPolicy) {
+  // Make sure we report the success/failure for non-cacheable resources
+  // depending on the policy. (TestNonCacheable also covers the value).
+
+  ResponseHeaders no_cache;
+  SetDefaultLongCacheHeaders(&kContentTypeHtml, &no_cache);
+  no_cache.Replace(HttpAttributes::kCacheControl, "no-cache");
+  no_cache.ComputeCaching();
+  SetFetchResponse("http://example.com/", no_cache, "stuff");
+
+  ResourcePtr resource1(CreateResource("http://example.com/", "/"));
+  ASSERT_TRUE(resource1.get() != NULL);
+  MockResourceCallback callback1(resource1);
+  resource_manager()->ReadAsync(
+      Resource::kReportFailureIfNotCacheable, &callback1);
+  EXPECT_TRUE(callback1.done());
+  EXPECT_FALSE(callback1.success());
+
+  ResourcePtr resource2(CreateResource("http://example.com/", "/"));
+  ASSERT_TRUE(resource2.get() != NULL);
+  MockResourceCallback callback2(resource2);
+  resource_manager()->ReadAsync(Resource::kLoadEvenIfNotCacheable, &callback2);
+  EXPECT_TRUE(callback2.done());
+  EXPECT_TRUE(callback2.success());
+}
+
 TEST_F(ResourceManagerTest, TestVaryOption) {
   // Make sure that when we get non-cacheable resources
   // we mark the fetch as not-cacheable in the cache.

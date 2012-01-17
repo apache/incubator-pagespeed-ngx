@@ -86,6 +86,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
       message_handler_(NULL),
       fallback_value_(fallback_value),
       success_(false),
+      no_cache_ok_(false),
       fetcher_(NULL),
       respect_vary_(rewrite_options->respect_vary()),
       resource_cutoff_ms_(
@@ -186,6 +187,14 @@ class UrlResourceFetchCallback : public AsyncFetch {
       success = true;
     } else {
       cached = AddToCache(success);
+      // Unless the client code explicitly opted into dealing with potentially
+      // uncacheable content (by passing in kLoadEvenIfNotCacheable to
+      // LoadAndCallback) we turn it into a fetch failure so we do not
+      // end up inadvertently rewriting something that's private or highly
+      // volatile.
+      if (!cached && !no_cache_ok_) {
+        success = false;
+      }
     }
     if (lock_.get() != NULL) {
       message_handler_->Message(
@@ -231,6 +240,8 @@ class UrlResourceFetchCallback : public AsyncFetch {
   // thread, as it only populates the cache, which is thread-safe.
   virtual bool EnableThreaded() const { return true; }
 
+  void set_no_cache_ok(bool x) { no_cache_ok_ = x; }
+
  protected:
   virtual void DoneInternal(bool success) {
   }
@@ -244,6 +255,9 @@ class UrlResourceFetchCallback : public AsyncFetch {
   // get different resources depending on user-agent?
   HTTPValue* fallback_value_;
   bool success_;
+
+  // If this is true, loading of non-cacheable resources will succeed.
+  bool no_cache_ok_;
   UrlAsyncFetcher* fetcher_;
   GoogleString fetch_url_;
 
@@ -374,7 +388,8 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
   DISALLOW_COPY_AND_ASSIGN(UrlReadAsyncFetchCallback);
 };
 
-void UrlInputResource::LoadAndCallback(AsyncCallback* callback,
+void UrlInputResource::LoadAndCallback(NotCacheablePolicy no_cache_policy,
+                                       AsyncCallback* callback,
                                        MessageHandler* message_handler) {
   CHECK(callback != NULL) << "A callback must be supplied, or else it will "
       "not be possible to determine when it's safe to delete the resource.";
@@ -385,6 +400,9 @@ void UrlInputResource::LoadAndCallback(AsyncCallback* callback,
   } else {
     UrlReadAsyncFetchCallback* cb =
         new UrlReadAsyncFetchCallback(callback, this);
+    if (no_cache_policy == Resource::kLoadEvenIfNotCacheable) {
+      cb->set_no_cache_ok(true);
+    }
     cb->Fetch(resource_manager_->url_async_fetcher(), message_handler);
   }
 }

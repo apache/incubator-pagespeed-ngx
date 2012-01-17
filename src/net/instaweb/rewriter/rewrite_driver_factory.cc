@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/http_dump_url_writer.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -196,6 +197,11 @@ void RewriteDriverFactory::set_url_namer(UrlNamer* url_namer) {
   url_namer_.reset(url_namer);
 }
 
+void RewriteDriverFactory::set_critical_images_finder(
+    CriticalImagesFinder* finder) {
+  critical_images_finder_.reset(finder);
+}
+
 MessageHandler* RewriteDriverFactory::html_parse_message_handler() {
   if (html_parse_message_handler_ == NULL) {
     html_parse_message_handler_.reset(DefaultHtmlParseMessageHandler());
@@ -231,6 +237,13 @@ UrlNamer* RewriteDriverFactory::url_namer() {
   return url_namer_.get();
 }
 
+CriticalImagesFinder* RewriteDriverFactory::critical_images_finder() {
+  if (critical_images_finder_ == NULL) {
+    critical_images_finder_.reset(DefaultCriticalImagesFinder());
+  }
+  return critical_images_finder_.get();
+}
+
 Scheduler* RewriteDriverFactory::scheduler() {
   if (scheduler_ == NULL) {
     scheduler_.reset(CreateScheduler());
@@ -252,6 +265,10 @@ NamedLockManager* RewriteDriverFactory::DefaultLockManager() {
 
 UrlNamer* RewriteDriverFactory::DefaultUrlNamer() {
   return new UrlNamer();
+}
+
+CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
+  return NULL;
 }
 
 QueuedWorkerPool* RewriteDriverFactory::CreateWorkerPool(WorkerPoolName pool) {
