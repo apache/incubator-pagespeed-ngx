@@ -35,6 +35,7 @@ bool CriticalImagesFinder::IsCriticalImage(const GoogleString& image_url,
 }
 
 void CriticalImagesFinder::GetCriticalImages(const GoogleString& url,
+                                             const GoogleString& user_agent,
                                              CriticalImagesCallback* callback) {
   StringSet image_urls;
   callback->Done(image_urls, false);

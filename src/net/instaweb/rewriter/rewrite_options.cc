@@ -735,6 +735,8 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   if (src.panel_config() != NULL) {
     set_panel_config(new PublisherConfig(*(src.panel_config())));
   }
+
+  set_domain(src.domain());
 }
 
 RewriteOptions::OptionInt64MergeWithMax::~OptionInt64MergeWithMax() {

@@ -200,7 +200,7 @@
         'instaweb_gperf_subdir': 'net/instaweb/rewriter',
       },
       'sources': [
-        'rewriter/rewrite_option_names.gperf',
+        'rewriter/rewrite_filter_names.gperf',
       ],
       'includes': [
         'gperf.gypi',

@@ -40,6 +40,7 @@ class CriticalImagesFinder {
 
   // Gets critical images and calls the callback with critical images.
   virtual void GetCriticalImages(const GoogleString& url,
+                                 const GoogleString& user_agent,
                                  CriticalImagesCallback* callback);
 
  private:

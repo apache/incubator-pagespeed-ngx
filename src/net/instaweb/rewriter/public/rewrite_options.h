@@ -574,6 +574,8 @@ class RewriteOptions {
     DCHECK(frozen_);
     return signature_;
   }
+  const GoogleString& domain() const { return domain_; }
+  void set_domain(const GoogleString& domain) { domain_ = domain; }
 
   GoogleString ToString() const;
 
@@ -845,6 +847,8 @@ class RewriteOptions {
   WildcardGroup retain_comments_;
 
   GoogleString signature_;
+
+  GoogleString domain_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteOptions);
 };
