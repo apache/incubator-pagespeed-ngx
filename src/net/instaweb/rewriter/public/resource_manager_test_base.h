@@ -33,7 +33,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
@@ -89,6 +88,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // to rewrite_driver and enable it.
   void AddRewriteFilter(RewriteFilter* filter);
 
+  // Adds a custom rewriter filter but does not register it for HTML
+  // rewriting, only for fetches.
+  void AddFetchOnlyRewriteFilter(RewriteFilter* filter);
+
   // Add a custom rewrite filter (one without a corresponding option)
   // to other_rewrite_driver and enable it.
   void AddOtherRewriteFilter(RewriteFilter* filter);
@@ -100,8 +103,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   ResourcePtr CreateResource(const StringPiece& base, const StringPiece& url);
 
   MockTimer* mock_timer() { return factory_->mock_timer(); }
-
-  void DeleteFileIfExists(const GoogleString& filename);
 
   void AppendDefaultHeaders(const ContentType& content_type,
                             GoogleString* text);
@@ -303,20 +304,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                       const StringPiece& rewritten_name,
                       const StringPiece& rewritten_content);
 
-  // These functions help test the ResourceManager::store_outputs_in_file_system
-  // functionality.
-
-  // Translates an output URL into a full file pathname.
-  GoogleString OutputResourceFilename(const StringPiece& url);
-
-  // Writes an output resource into the file system.
-  void WriteOutputResourceFile(const StringPiece& url,
-                               const ContentType* content_type,
-                               const StringPiece& rewritten_content);
-
-  // Removes the output resource from the file system.
-  void RemoveOutputResourceFile(const StringPiece& url);
-
   TestRewriteDriverFactory* factory() { return factory_.get(); }
   TestRewriteDriverFactory* other_factory() { return other_factory_.get(); }
 
@@ -355,11 +342,6 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   void ClearFetcherResponses() { mock_url_fetcher()->Clear(); }
 
   virtual void ClearStats();
-
-  void EncodeFilename(const StringPiece& url, GoogleString* filename) {
-    factory_->filename_encoder()->Encode(factory_->filename_prefix(), url,
-                                         filename);
-  }
 
   MockUrlFetcher* mock_url_fetcher() {
     return &mock_url_fetcher_;

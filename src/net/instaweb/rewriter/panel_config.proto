@@ -5,7 +5,7 @@
 //
 // Field Description
 // Layout -                 Layout Details.
-//  relative_url_patterns - Array of wildcard patterns for identifying the urls
+//  relative_url_patterns - Array of regular expression for identifying the urls
 //                          that have the same layout.
 //
 // PublisherConfig
@@ -18,8 +18,8 @@
 // publisher_config {
 //   web_site: "www.boutiques.com"
 //   layout {
-//     relative_url_patterns: "/lunr.py?type=*"
-//     relative_url_patterns: "/lunr.py?q=*"
+//     relative_url_patterns: "/lunr.py?type=.*"
+//     relative_url_patterns: "/lunr.py?q=.*"
 //     panel_set {
 //       panels {
 //         xpath: "//div[@id = \"container\"]"

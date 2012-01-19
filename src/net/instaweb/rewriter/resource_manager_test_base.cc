@@ -49,8 +49,6 @@
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -157,6 +155,10 @@ void ResourceManagerTestBase::AddRewriteFilter(RewriteFilter* filter) {
   rewrite_driver_->EnableRewriteFilter(filter->id());
 }
 
+void ResourceManagerTestBase::AddFetchOnlyRewriteFilter(RewriteFilter* filter) {
+  rewrite_driver_->RegisterRewriteFilter(filter);
+}
+
 void ResourceManagerTestBase::AddOtherRewriteFilter(RewriteFilter* filter) {
   other_rewrite_driver_->RegisterRewriteFilter(filter);
   other_rewrite_driver_->EnableRewriteFilter(filter->id());
@@ -164,12 +166,6 @@ void ResourceManagerTestBase::AddOtherRewriteFilter(RewriteFilter* filter) {
 
 void ResourceManagerTestBase::SetBaseUrlForFetch(const StringPiece& url) {
   rewrite_driver_->SetBaseUrlForFetch(url);
-}
-
-void ResourceManagerTestBase::DeleteFileIfExists(const GoogleString& filename) {
-  if (file_system()->Exists(filename.c_str(), message_handler()).is_true()) {
-    ASSERT_TRUE(file_system()->RemoveFile(filename.c_str(), message_handler()));
-  }
 }
 
 ResourcePtr ResourceManagerTestBase::CreateResource(const StringPiece& base,
@@ -385,8 +381,7 @@ void ResourceManagerTestBase::TestServeFiles(
   GoogleString content;
 
   // When we start, there are no mock fetchers, so we'll need to get it
-  // from the cache or the disk.  Start with the cache.
-  file_system()->Disable();
+  // from the cache.
   ResponseHeaders headers;
   resource_manager_->SetDefaultLongCacheHeaders(content_type, &headers);
   http_cache()->Put(expected_rewritten_path, &headers, rewritten_content,
@@ -397,27 +392,7 @@ void ResourceManagerTestBase::TestServeFiles(
   EXPECT_EQ(1U, lru_cache()->num_hits());
   EXPECT_EQ(rewritten_content, content);
 
-  // Now remove it from the cache, but put it in the file system.  Make sure
-  // that works.  Still there is no mock fetcher.
-  file_system()->Enable();
-  lru_cache()->Clear();
-
-  WriteOutputResourceFile(expected_rewritten_path, content_type,
-                          rewritten_content);
-  EXPECT_TRUE(ServeResource(kTestDomain, filter_id,
-                            rewritten_name, rewritten_ext, &content));
-  EXPECT_EQ(rewritten_content, content);
-
-  // After serving from the disk, we should have seeded our cache.  Check it.
-  RewriteFilter* filter = rewrite_driver_->FindFilter(filter_id);
-  if (!filter->ComputeOnTheFly()) {
-    EXPECT_EQ(CacheInterface::kAvailable, http_cache()->Query(
-        expected_rewritten_path));
-  }
-
-  // Finally, nuke the file, nuke the cache, get it via a fetch.
-  file_system()->Disable();
-  RemoveOutputResourceFile(expected_rewritten_path);
+  // Now nuke the cache, get it via a fetch.
   lru_cache()->Clear();
   InitResponseHeaders(orig_name, *content_type, orig_content,
                       100 /* ttl in seconds */);
@@ -425,37 +400,12 @@ void ResourceManagerTestBase::TestServeFiles(
                             rewritten_name, rewritten_ext, &content));
   EXPECT_EQ(rewritten_content, content);
 
-  // Now we expect both the file and the cache entry to be there.
+  // Now we expect the cache entry to be there.
+  RewriteFilter* filter = rewrite_driver_->FindFilter(filter_id);
   if (!filter->ComputeOnTheFly()) {
     EXPECT_EQ(CacheInterface::kAvailable, http_cache()->Query(
         expected_rewritten_path));
   }
-  file_system()->Enable();
-  EXPECT_TRUE(file_system()->Exists(OutputResourceFilename(
-    expected_rewritten_path).c_str(), message_handler()).is_true());
-}
-
-GoogleString ResourceManagerTestBase::OutputResourceFilename(
-    const StringPiece& url) {
-  GoogleString filename;
-  FilenameEncoder* encoder = resource_manager_->filename_encoder();
-  encoder->Encode(resource_manager_->filename_prefix(), url, &filename);
-  return filename;
-}
-
-void ResourceManagerTestBase::WriteOutputResourceFile(
-    const StringPiece& url, const ContentType* content_type,
-    const StringPiece& rewritten_content) {
-  ResponseHeaders headers;
-  resource_manager_->SetDefaultLongCacheHeaders(content_type, &headers);
-  GoogleString data = StrCat(headers.ToString(), rewritten_content);
-  EXPECT_TRUE(file_system()->WriteFile(OutputResourceFilename(url).c_str(),
-                                       data, message_handler()));
-}
-
-void ResourceManagerTestBase::RemoveOutputResourceFile(const StringPiece& url) {
-  EXPECT_TRUE(file_system()->RemoveFile(
-      OutputResourceFilename(url).c_str(), message_handler()));
 }
 
 // Just check if we can fetch a resource successfully, ignore response.

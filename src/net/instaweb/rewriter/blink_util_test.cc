@@ -58,8 +58,8 @@ class BlinkUtilTest : public ::testing::Test {
     // TODO(rahulbansal): Share the configs between tests.
     cname_config_.set_web_site("www.cname.com");
     Layout* layout = cname_config_.add_layout();
-    layout->add_relative_url_patterns("/lunr.py?type=*");
-    layout->add_relative_url_patterns("/lunr.py?q=*");
+    layout->add_relative_url_patterns("/lunr.py\\?type=.*");
+    layout->add_relative_url_patterns("/lunr.py\\?q=.*");
     layout->set_page_max_age_s(1000);
     layout->set_layout_max_age_s(100);
     PanelSet* panel_set = layout->mutable_panel_set();
@@ -69,7 +69,7 @@ class BlinkUtilTest : public ::testing::Test {
 
     example_config_.set_web_site("www.example.com");
     layout = example_config_.add_layout();
-    layout->add_relative_url_patterns("/*");
+    layout->add_relative_url_patterns("/.*");
     layout->set_page_max_age_s(10000);
     layout->set_layout_max_age_s(1000);
     panel_set = layout->mutable_panel_set();

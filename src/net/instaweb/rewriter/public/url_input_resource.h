@@ -51,7 +51,9 @@ class UrlInputResource : public Resource {
     return rewrite_options_;
   }
 
-  // Note that this only updates the HTTPCache and not the metadata.
+  // Note that this only updates the resource contents in cache and does not
+  // update the metadata that associates an input resource with a rewritten
+  // resource.
   virtual void Freshen(MessageHandler* handler);
 
  protected:

@@ -358,8 +358,6 @@ TEST_P(JsFilterAndCombineProxyTest, MinifyCombineSameHostProxy) {
 
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
-  resource_manager()->set_store_outputs_in_file_system(false);
-  other_resource_manager()->set_store_outputs_in_file_system(false);
   ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
                                "<script src=", kJsUrl2, "></script>"));
   ASSERT_EQ(3, scripts.size()) << "successful combination yields 3 scripts";
@@ -370,8 +368,6 @@ TEST_P(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
   PrepareToCollectScriptsInto(&scripts);
   GoogleString js_url_2(StrCat(kAlternateDomain, kJsUrl2));
   options()->domain_lawyer()->AddDomain(kAlternateDomain, message_handler());
-  resource_manager()->set_store_outputs_in_file_system(false);
-  other_resource_manager()->set_store_outputs_in_file_system(false);
   ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
                                "<script src=", js_url_2, "></script>"));
   ASSERT_EQ(2, scripts.size()) << "If combination fails, we get 2 scripts";
@@ -386,7 +382,6 @@ TEST_P(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
 TEST_P(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
   // Testcase for case where we have cached metadata for results of JS rewrite,
   // but not its contents easily available.
-  resource_manager()->set_store_outputs_in_file_system(false);
   SimulateJsResource(kJsUrl1, kJsText1);
   SimulateJsResource(kJsUrl2, kJsText2);
 

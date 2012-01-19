@@ -249,18 +249,6 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     OutputResourcePtr output4(CreateOutputResourceForFetch(output->url()));
     EXPECT_EQ(output->url(), output4->url());
     EXPECT_EQ(contents, GetOutputResourceWithoutLock(output4));
-
-    // If it's evicted from the http_cache, we can also retrieve it from the
-    // filesystem.
-    lru_cache()->Clear();
-    output4.reset(CreateOutputResourceForFetch(output->url()));
-    EXPECT_EQ(output->url(), output4->url());
-    EXPECT_EQ(contents, GetOutputResourceWithLock(output4));
-    // This also works asynchronously.
-    lru_cache()->Clear();
-    VerifyContentsCallback callback2(output4, contents);
-    rewrite_driver()->ReadAsync(&callback2, message_handler());
-    callback2.AssertCalled();
   }
 
   bool ResourceIsCached() {

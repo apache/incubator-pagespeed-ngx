@@ -46,6 +46,7 @@
         '<(DEPTH)/testing/gtest.gyp:gtest_main',
         '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
+        '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
       'include_dirs': [
         '<(DEPTH)/third_party/protobuf/src',
@@ -176,6 +177,7 @@
         'util/queued_alarm_test.cc',
         'util/queued_worker_test.cc',
         'util/queued_worker_pool_test.cc',
+        'util/re2_test.cc',
         'util/ref_counted_owner_test.cc',
         'util/ref_counted_ptr_test.cc',
         'util/scheduler_based_abstract_lock_test.cc',

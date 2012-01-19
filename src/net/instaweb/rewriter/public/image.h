@@ -143,7 +143,10 @@ class Image {
 
   // Attempts to decode this image and load its raster into memory.  If this
   // returns false, future calls to DrawImage and ResizeTo will fail.
-  virtual bool EnsureLoaded() = 0;
+  //
+  // If output_useful is true, the decoded version might be written out
+  // directly to user, so it may be worthwhile to make it efficient.
+  virtual bool EnsureLoaded(bool output_useful) = 0;
 
  protected:
   explicit Image(const StringPiece& original_contents);

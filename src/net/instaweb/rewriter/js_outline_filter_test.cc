@@ -20,14 +20,12 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/mem_file_system.h"
-#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -54,13 +52,8 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
     outline_text += script_text;
 
     GoogleString hash = hasher()->Hash(script_text);
-    GoogleString outline_filename;
     GoogleString outline_url = Encode(
         kTestDomain, JsOutlineFilter::kFilterId,  hash, "_", "js");
-    EncodeFilename(outline_url, &outline_filename);
-
-    // Make sure the file we check later was written this time, rm any old one.
-    DeleteFileIfExists(outline_filename);
 
     GoogleString html_input =
         "<head>\n"
@@ -81,8 +74,9 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
 
     if (expect_outline) {
       GoogleString actual_outline;
-      ASSERT_TRUE(ReadFile(outline_filename.c_str(), &actual_outline));
-      EXPECT_EQ(outline_text, actual_outline);
+      ResponseHeaders headers;
+      EXPECT_TRUE(ServeResourceUrl(outline_url, &actual_outline, &headers));
+      EXPECT_EQ(outline_text, StrCat(headers.ToString(), actual_outline));
     }
   }
 };
@@ -126,11 +120,6 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
   options()->EnableFilter(RewriteOptions::kOutlineCss);
   SetupOutliner();
 
-  // We need to make sure we don't create this file, so rm any old one
-  GoogleString filename = Encode(file_prefix, JsOutlineFilter::kFilterId, "0",
-                                 "_", "js");
-  DeleteFileIfExists(filename);
-
   static const char html_input[] =
       "<head>\n"
       "  <title>Example style outline</title>\n"
@@ -140,13 +129,6 @@ TEST_F(JsOutlineFilterTest, NoOutlineScript) {
       "  <!-- Script ends here -->\n"
       "</head>";
   ValidateNoChanges("no_outline_script", html_input);
-
-  // Check that it did *NOT* create the file.
-  // TODO(jmarantz): this is pretty brittle, and perhaps obsolete.
-  // We just change the test to ensure that we are not outlining when
-  // we don't want to.
-  EXPECT_FALSE(file_system()->Exists(filename.c_str(),
-                                     &message_handler_).is_true());
 }
 
 

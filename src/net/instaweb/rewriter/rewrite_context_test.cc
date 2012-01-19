@@ -46,6 +46,7 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
@@ -60,6 +61,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mem_file_system.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -172,11 +174,17 @@ class TrimWhitespaceSyncFilter : public SimpleTextFilter {
 // A similarly structured test-filter: this one just upper-cases its text.
 class UpperCaseRewriter : public SimpleTextFilter::Rewriter {
  public:
-  explicit UpperCaseRewriter(OutputResourceKind kind) : kind_(kind) {}
+  explicit UpperCaseRewriter(OutputResourceKind kind)
+      : kind_(kind), num_rewrites_(0) {}
   static SimpleTextFilter* MakeFilter(OutputResourceKind kind,
-                                      RewriteDriver* driver) {
-    return new SimpleTextFilter(new UpperCaseRewriter(kind), driver);
+                                      RewriteDriver* driver,
+                                      UpperCaseRewriter** rewriter_out) {
+    *rewriter_out = new UpperCaseRewriter(kind);
+    return new SimpleTextFilter(*rewriter_out, driver);
   }
+
+  int num_rewrites() const { return num_rewrites_; }
+  void ClearStats() { num_rewrites_ = 0; }
 
  protected:
   REFCOUNT_FRIEND_DECLARATION(UpperCaseRewriter);
@@ -185,6 +193,7 @@ class UpperCaseRewriter : public SimpleTextFilter::Rewriter {
   virtual bool RewriteText(const StringPiece& url, const StringPiece& in,
                            GoogleString* out,
                            ResourceManager* resource_manager) {
+    ++num_rewrites_;
     in.CopyToString(out);
     UpperString(out);
     return in != *out;
@@ -201,6 +210,7 @@ class UpperCaseRewriter : public SimpleTextFilter::Rewriter {
 
  private:
   OutputResourceKind kind_;
+  int num_rewrites_;
 
   DISALLOW_COPY_AND_ASSIGN(UpperCaseRewriter);
 };
@@ -209,19 +219,21 @@ class UpperCaseRewriter : public SimpleTextFilter::Rewriter {
 // be rewritten.
 class NestedFilter : public RewriteFilter {
  public:
-  explicit NestedFilter(RewriteDriver* driver, bool expected_nested_result)
-      : RewriteFilter(driver), chain_(false),
+  NestedFilter(RewriteDriver* driver, SimpleTextFilter* upper_filter,
+               UpperCaseRewriter* upper_rewriter, bool expected_nested_result)
+      : RewriteFilter(driver), upper_filter_(upper_filter),
+        upper_rewriter_(upper_rewriter), chain_(false),
         expected_nested_rewrite_result_(expected_nested_result) {
     ClearStats();
   }
 
   // Stats
   int num_top_rewrites() const { return num_top_rewrites_; }
-  int num_sub_rewrites() const { return num_sub_rewrites_; }
+  int num_sub_rewrites() const { return upper_rewriter_->num_rewrites(); }
 
   void ClearStats() {
     num_top_rewrites_ = 0;
-    num_sub_rewrites_ = 0;
+    upper_rewriter_->ClearStats();
   }
 
   // Set this to true to create a chain of nested rewrites on the same slot.
@@ -243,39 +255,6 @@ class NestedFilter : public RewriteFilter {
     explicit NestedSlot(const ResourcePtr& resource) : ResourceSlot(resource) {}
     virtual void Render() {}
     virtual GoogleString LocationString() { return "nested:"; }
-  };
-
-  class NestedContext : public SingleRewriteContext {
-   public:
-    NestedContext(RewriteContext* parent, NestedFilter* filter)
-        : SingleRewriteContext(NULL, parent, NULL),
-          filter_(filter) {}
-    virtual ~NestedContext() {}
-
-   protected:
-    virtual void RewriteSingle(
-        const ResourcePtr& input, const OutputResourcePtr& output) {
-      ++filter_->num_sub_rewrites_;
-      GoogleString text = input->contents().as_string();
-      UpperString(&text);
-      RewriteSingleResourceFilter::RewriteResult result =
-          RewriteSingleResourceFilter::kRewriteFailed;
-      if (input->contents() != text) {
-        int64 origin_expire_time_ms = input->CacheExpirationTimeMs();
-        ResourceManager* resource_manager = Manager();
-        MessageHandler* message_handler = resource_manager->message_handler();
-        if (resource_manager->Write(HttpStatus::kOK, text, output.get(),
-                                    origin_expire_time_ms, message_handler)) {
-          result = RewriteSingleResourceFilter::kRewriteOk;
-        }
-      }
-      RewriteDone(result, 0);
-    }
-
-    virtual const char* id() const { return kNestedFilterId; }
-    virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
-
-    NestedFilter* filter_;
   };
 
   class Context : public SingleRewriteContext {
@@ -305,18 +284,18 @@ class NestedFilter : public RewriteFilter {
           if (url.is_valid()) {
             ResourcePtr resource(Driver()->CreateInputResource(url));
             if (resource.get() != NULL) {
-              NestedContext* nested_context = new NestedContext(this, filter_);
-              AddNestedContext(nested_context);
               ResourceSlotPtr slot(new NestedSlot(resource));
-              nested_context->AddSlot(slot);
+              RewriteContext* nested_context =
+                  filter_->upper_filter()->MakeNestedRewriteContext(this, slot);
+              AddNestedContext(nested_context);
               nested_slots_.push_back(slot);
 
               // Test chaining of a 2nd rewrite on the same slot, if asked.
               if (chain_) {
-                NestedContext* nested_context2 =
-                    new NestedContext(this, filter_);
+                RewriteContext* nested_context2 =
+                    filter_->upper_filter()->MakeNestedRewriteContext(this,
+                                                                      slot);
                 AddNestedContext(nested_context2);
-                nested_context2->AddSlot(slot);
               }
             }
           }
@@ -402,14 +381,17 @@ class NestedFilter : public RewriteFilter {
     }
   }
 
-  virtual OutputResourceKind kind() const { return kind_; }
+  SimpleTextFilter* upper_filter() { return upper_filter_; }
+
   virtual const char* id() const { return kNestedFilterId; }
   virtual const char* Name() const { return "NestedFilter"; }
   virtual void StartDocumentImpl() {}
   virtual void EndElementImpl(HtmlElement* element) {}
 
  private:
-  OutputResourceKind kind_;
+  // Upper-casing filter we also invoke.
+  SimpleTextFilter* upper_filter_;
+  UpperCaseRewriter* upper_rewriter_;
   bool chain_;
 
   // Whether we expect nested rewrites to be successful.
@@ -417,7 +399,6 @@ class NestedFilter : public RewriteFilter {
 
   // Stats
   int num_top_rewrites_;
-  int num_sub_rewrites_;
 
   DISALLOW_COPY_AND_ASSIGN(NestedFilter);
 };
@@ -742,8 +723,9 @@ class RewriteContextTest : public ResourceManagerTestBase {
   }
 
   void InitUpperFilter(OutputResourceKind kind, RewriteDriver* rewrite_driver) {
+    UpperCaseRewriter* rewriter;
     rewrite_driver->AppendRewriteFilter(
-        UpperCaseRewriter::MakeFilter(kind, rewrite_driver));
+        UpperCaseRewriter::MakeFilter(kind, rewrite_driver, &rewriter));
   }
 
   void InitCombiningFilter(int64 rewrite_delay_ms) {
@@ -756,7 +738,17 @@ class RewriteContextTest : public ResourceManagerTestBase {
 
   void InitNestedFilter(bool expected_nested_rewrite_result) {
     RewriteDriver* driver = rewrite_driver();
-    nested_filter_ = new NestedFilter(driver, expected_nested_rewrite_result);
+
+    // Note that we only register this instance for rewrites, not HTML
+    // handling, so that uppercasing doesn't end up messing things up before
+    // NestedFilter gets to them.
+    UpperCaseRewriter* upper_rewriter;
+    SimpleTextFilter* upper_filter =
+        UpperCaseRewriter::MakeFilter(kOnTheFlyResource, driver,
+                                      &upper_rewriter);
+    AddFetchOnlyRewriteFilter(upper_filter);
+    nested_filter_ = new NestedFilter(driver, upper_filter, upper_rewriter,
+                                      expected_nested_rewrite_result);
     driver->AppendRewriteFilter(nested_filter_);
     driver->AddFilters();
   }
@@ -1440,7 +1432,6 @@ TEST_F(RewriteContextTest, PreserveNoCacheWithFailedRewrites) {
 TEST_F(RewriteContextTest, PrivateNotCached) {
   InitTrimFiltersSync(kRewrittenResource);
   InitResources();
-  resource_manager()->set_store_outputs_in_file_system(false);
 
   // Even on sequential requests, the resource does not become cache-extended.
   for (int i = 0; i < 4; ++i) {
@@ -1476,7 +1467,6 @@ TEST_F(RewriteContextTest, PrivateNotCachedOnTheFly) {
   // but this is included here to be thorough).
   InitTrimFiltersSync(kOnTheFlyResource);
   InitResources();
-  resource_manager()->set_store_outputs_in_file_system(false);
 
   // Even on sequential requests, the resource does not become cache-extended.
   for (int i = 0; i < 4; ++i) {
@@ -1911,7 +1901,6 @@ TEST_F(RewriteContextTest, ReconstructChainedWrongHash) {
   // up the response code if two different wrong inner hashes were used,
   // leading to failure at outer level). Also make sure we always propagate
   // short TTL as well, since that could also be screwed up.
-  resource_manager()->set_store_outputs_in_file_system(false);
 
   // Need normal filters since cloned RewriteDriver instances wouldn't
   // know about test-only stuff.
@@ -1959,8 +1948,8 @@ TEST_F(RewriteContextTest, Nested) {
   ValidateExpected("async3", CssLinkHref("c.css"), CssLinkHref(kRewrittenUrl));
   GoogleString rewritten_contents;
   EXPECT_TRUE(ServeResourceUrl(kRewrittenUrl, &rewritten_contents));
-  EXPECT_EQ(StrCat(Encode(kTestDomain, "nf", "0", "a.css", "css"), "\n",
-                   Encode(kTestDomain, "nf", "0", "b.css", "css"), "\n"),
+  EXPECT_EQ(StrCat(Encode(kTestDomain, "uc", "0", "a.css", "css"), "\n",
+                   Encode(kTestDomain, "uc", "0", "b.css", "css"), "\n"),
             rewritten_contents);
 }
 
@@ -1985,12 +1974,8 @@ TEST_F(RewriteContextTest, NestedChained) {
   const GoogleString kRewrittenUrl = Encode(kTestDomain, "nf", "0",
                                             "c.css", "css");
 
-  RewriteDriver* driver = rewrite_driver();
-  NestedFilter* nf =
-      new NestedFilter(driver, kExpectNestedRewritesSucceed);
-  nf->set_chain(true);
-  driver->AppendRewriteFilter(nf);
-  driver->AddFilters();
+  InitNestedFilter(kExpectNestedRewritesSucceed);
+  nested_filter_->set_chain(true);
   InitResources();
   ValidateExpected(
       "async_nest_chain", CssLinkHref("c.css"), CssLinkHref(kRewrittenUrl));
@@ -1998,10 +1983,10 @@ TEST_F(RewriteContextTest, NestedChained) {
   EXPECT_TRUE(ServeResourceUrl(kRewrittenUrl, &rewritten_contents));
   // We expect each URL twice since we have two nested jobs for it, and the
   // Harvest() just dumps each nested rewrites' slots.
-  EXPECT_EQ(StrCat(Encode(kTestDomain, "nf", "0", "a.css", "css"), "\n",
-                   Encode(kTestDomain, "nf", "0", "a.css", "css"), "\n",
-                   Encode(kTestDomain, "nf", "0", "b.css", "css"), "\n",
-                   Encode(kTestDomain, "nf", "0", "b.css", "css"), "\n"),
+  EXPECT_EQ(StrCat(Encode(kTestDomain, "uc", "0", "a.css", "css"), "\n",
+                   Encode(kTestDomain, "uc", "0", "a.css", "css"), "\n",
+                   Encode(kTestDomain, "uc", "0", "b.css", "css"), "\n",
+                   Encode(kTestDomain, "uc", "0", "b.css", "css"), "\n"),
             rewritten_contents);
 }
 
@@ -2439,7 +2424,7 @@ TEST_F(RewriteContextTest, TestFreshen) {
                                       "test.css", "css")));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  // No cache lookups or writes.
+  // No HTTPCache lookups or writes.
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
@@ -2456,8 +2441,8 @@ TEST_F(RewriteContextTest, TestFreshen) {
                                       "test.css", "css")));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
-  // Miss for the original since it expired. The newly fetched resource is
-  // inserted into the cache.
+  // Miss for the original since it is past 75% of its expiration time. The
+  // newly fetched resource is inserted into the cache.
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
@@ -2478,13 +2463,10 @@ TEST_F(RewriteContextTest, TestFreshen) {
   EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
 
   ClearStats();
-  // Now advance past original expiration. While we cannot avoid trying to
-  // rewrite as of now, we at least don't do an extra fetch at this point,
-  // which hopefully shaves off tons of latency. In this test, we also
-  // ensure this by using a wait fetcher, expecting that it will not be
-  // asked to serve a fetch.
-  // As we are also reusing rewrite results when contents did not change,
-  // there is no second rewrite, either.
+  // Now advance past original expiration. The metadata freshens itself since
+  // it detects the resource hasn't changed and hence avoids the rewriter. Also,
+  // note that we don't require any extra fetches since the resource was
+  // freshened by the previous fetch.
   SetupWaitFetcher();
   mock_timer()->AdvanceMs(kTtlMs * 4 / 10);
   ValidateExpected("freshen2",
@@ -2512,7 +2494,8 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   WriteThroughHTTPCache* two_level_cache = new WriteThroughHTTPCache(
       lru_cache(), &l2_cache, mock_timer(), hasher(), statistics());
   resource_manager()->set_http_cache(two_level_cache);
-  // Make sure the cache is deleted only after everything is fully shutdown.
+  // Since the cache is referenced in TearDown(), make sure the cache is deleted
+  // only after everything is fully shutdown.
   factory()->defer_delete(
       new RewriteDriverFactory::Deleter<HTTPCache>(two_level_cache));
 
@@ -2624,10 +2607,16 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
 
   ClearStats();
   l2_cache.ClearStats();
-  // Now advance past original expiration. Since the metadata has expired we go
-  // through the OutputCacheRevalidate flow which fetches the resource. Since
-  // there is a fresh resource in the cache, this succeeds quickly and goes into
-  // the OutputCacheHit flow where it freshens the resource again.
+  // Now, advance past original expiration. Since the metadata has expired we go
+  // through the OutputCacheRevalidate flow which looks up cache and finds that
+  // the result in cache is valid and calls OutputCacheDone resulting in a
+  // successful rewrite. Note that it also sees that the resource is close to
+  // expiry and triggers a freshen. The OutputCacheHit flow then triggers
+  // another freshen since it observes that the resource refernced in its
+  // metadata is close to expiry.
+  // Note that only one of these freshens actually trigger a fetch because of
+  // the locking mechanism in UrlInputResource to prevent parallel fetches of
+  // the same resource.
   // TODO(nikhilmadan): Avoid a freshen when an OutputCacheRevalidate leads to
   // an OutputCacheHit?
   // As we are also reusing rewrite results when contents did not change,
@@ -2640,13 +2629,15 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
                                       "test.css", "css")));
   CallFetcherCallbacks();
   EXPECT_EQ(0, trim_filter_->num_rewrites());
+  // The original resource gets refetched and inserted into cache.
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
-  // The entries in both the caches are not within the freshness threshold, and
-  // are hence counted as misses. The original resource gets refetched and
-  // inserted into cache.
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(2, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  // The cache hit is in the OutputCacheRevalidate flow.
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  // The entries in both the caches are not within the freshness threshold, and
+  // are hence counted as misses. This lookup is repeated in the freshen from
+  // both the OutputCacheRevalidate and OutputCacheHit flows.
+  EXPECT_EQ(2, http_cache()->cache_misses()->Get());
   EXPECT_EQ(4, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());
@@ -2705,7 +2696,6 @@ TEST_F(RewriteContextTest, TestReuse) {
 TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   FetcherUpdateDateHeaders();
   InitTrimFilters(kRewrittenResource);
-  resource_manager()->set_store_outputs_in_file_system(false);
 
   // Test to make sure we are able to serve stale resources if available when
   // the fetch fails.
@@ -3243,9 +3233,9 @@ TEST_F(NestedResourceUpdateTest, TestExpireNested404) {
   ReconfigureNestedFilter(kExpectNestedRewritesSucceed);
   const GoogleString kFullOutUrl =
       Encode(kTestDomain, "nf",
-             test_url_namer ? "ddCLaqHYwR" : "wtz1oZ56O0",
+             test_url_namer ? "jPITKUE2Yd" : "G60oQsKZ9F",
              "main.txt", "css");
-  const GoogleString kInnerUrl = StrCat(Encode(kTestDomain, "nf", "N4LKMOq9ms",
+  const GoogleString kInnerUrl = StrCat(Encode(kTestDomain, "uc", "N4LKMOq9ms",
                                                "a.css", "css"), "\n");
   ValidateExpected("nested_404", CssLinkHref("main.txt"),
                    CssLinkHref(kFullOutUrl));
@@ -3283,12 +3273,14 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   EXPECT_EQ(" B1 ", result_vector[1]);
   EXPECT_EQ(" C1 ", result_vector[2]);
   EXPECT_EQ(1, nested_filter_->num_top_rewrites());
-  EXPECT_EQ(3, nested_filter_->num_sub_rewrites());
+  // 3 nested rewrites during actual rewrite, 3 when redoing them for
+  // on-the-fly when checking the output.
+  EXPECT_EQ(6, nested_filter_->num_sub_rewrites());
   EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
-  // {a,b,c}.css.pagespeed.nf.HASH.css and b.css
-  EXPECT_EQ(4, file_system()->num_input_file_opens());
-  // Loading b.css the first time.
-  EXPECT_EQ(1, file_system()->num_input_file_stats());
+  // b.css, twice (rewrite and fetch)
+  EXPECT_EQ(2, file_system()->num_input_file_opens());
+  // b.css twice, again.
+  EXPECT_EQ(2, file_system()->num_input_file_stats());
   ClearStats();
 
   // 2) Advance time, but not so far that any resources have expired.
@@ -3300,11 +3292,12 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   EXPECT_EQ(" B1 ", result_vector[1]);
   EXPECT_EQ(" C1 ", result_vector[2]);
   EXPECT_EQ(0, nested_filter_->num_top_rewrites());
-  EXPECT_EQ(0, nested_filter_->num_sub_rewrites());
+  EXPECT_EQ(3, nested_filter_->num_sub_rewrites());  // on inner fetch.
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(0, file_system()->num_input_file_opens());
-  // re-checked b.
-  EXPECT_EQ(1, file_system()->num_input_file_stats());
+  // b on rewrite.
+  EXPECT_EQ(1, file_system()->num_input_file_opens());
+  // re-check of b, b on rewrite.
+  EXPECT_EQ(2, file_system()->num_input_file_stats());
   ClearStats();
 
   // 3) Change resources
@@ -3320,16 +3313,19 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   EXPECT_EQ(" B2 ", result_vector[1]);
   EXPECT_EQ(" C1 ", result_vector[2]);
   EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
-  EXPECT_EQ(1, nested_filter_->num_sub_rewrites());  // b.css
+
+  // on rewrite, b.css; when checking inside RewriteNestedResources, all 3
+  // got rewritten.
+  EXPECT_EQ(4, nested_filter_->num_sub_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   // b.css, b.css.pagespeed.nf.HASH.css
   EXPECT_EQ(2, file_system()->num_input_file_opens());
 
   // The stats here are:
   // 1) Stat b.css to figure out if top-level rewrite is valid.
-  // 2) Stat b.css to figure out if nested rewrite is valid.
-  // 3) Stat b.css to figure out its time on loading it.
-  EXPECT_EQ(3, file_system()->num_input_file_stats());
+  // 2) Stats of the 3 inputs when doing on-the-fly rewriting when
+  //    responding to fetches of inner stuff.
+  EXPECT_EQ(4, file_system()->num_input_file_stats());
   ClearStats();
 
   // 4) Advance time so that short-cached input expires.
@@ -3341,10 +3337,12 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   EXPECT_EQ(" B2 ", result_vector[1]);
   EXPECT_EQ(" C2 ", result_vector[2]);
   EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
-  EXPECT_EQ(1, nested_filter_->num_sub_rewrites());  // c.css
+  EXPECT_EQ(4, nested_filter_->num_sub_rewrites());  // c.css + check fetches
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());  // c.css
-  EXPECT_EQ(1, file_system()->num_input_file_opens());  // rewritten c.css
-  EXPECT_EQ(1, file_system()->num_input_file_stats());  // verify b.css
+  // b.css
+  EXPECT_EQ(1, file_system()->num_input_file_opens());
+  // b.css, when rewriting outer and fetching inner
+  EXPECT_EQ(2, file_system()->num_input_file_stats());
   ClearStats();
 
   // 5) Advance time so that all inputs have expired and been updated.
@@ -3357,12 +3355,13 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   EXPECT_EQ(" C2 ", result_vector[2]);
   EXPECT_EQ(1, nested_filter_->num_top_rewrites());  // Because inputs updated
 
-  // a.css; and c.css gets rewritten while unchanged as it is an on-the-fly
-  // resource.
-  EXPECT_EQ(2, nested_filter_->num_sub_rewrites());
+  // For rewrite of top-level, we re-do a.css (actually changed) and c.css
+  // (as it's expired, and we don't check if it's really changed for on-the-fly
+  // filters). Then there are 3 when we actually fetch them individually.
+  EXPECT_EQ(5, nested_filter_->num_sub_rewrites());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());  // a.css, c.css
-  EXPECT_EQ(1, file_system()->num_input_file_opens());  // rewritten a.css
-  EXPECT_EQ(1, file_system()->num_input_file_stats());  // check b.css (nested)
+  EXPECT_EQ(1, file_system()->num_input_file_opens());
+  EXPECT_EQ(2, file_system()->num_input_file_stats());
   ClearStats();
 }
 

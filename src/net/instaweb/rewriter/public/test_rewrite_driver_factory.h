@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/mock_time_cache.h"
 #include "net/instaweb/util/public/simple_stats.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"        // for StringPiece
 
 namespace net_instaweb {
@@ -140,7 +141,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual Timer* DefaultTimer();
   virtual CacheInterface* DefaultCacheInterface();
   virtual UrlNamer* DefaultUrlNamer();
-  virtual bool ShouldWriteResourcesToFileSystem() { return true; }
+  virtual bool ShouldWriteResourcesToFileSystem() { return false; }
   virtual Scheduler* CreateScheduler();
   virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
 

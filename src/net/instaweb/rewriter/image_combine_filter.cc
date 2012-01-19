@@ -952,7 +952,7 @@ class ImageCombineFilter::Context : public RewriteContext {
       return false;
     }
 
-    return spriter_image->image()->EnsureLoaded();
+    return spriter_image->image()->EnsureLoaded(false);
   }
 
   // Returns true if the image at url has already been added to the collection

@@ -599,6 +599,7 @@
         'instaweb_spriter',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
       'sources': [
         'rewriter/add_head_filter.cc',

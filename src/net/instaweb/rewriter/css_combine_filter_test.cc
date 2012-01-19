@@ -142,9 +142,6 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
     const GoogleString& combine_url = css_urls[0];
     GoogleUrl gurl(combine_url);
 
-    GoogleString combine_filename;
-    EncodeFilename(combine_url, &combine_filename);
-
     // Expected CSS combination.
     // This syntax must match that in css_combine_filter
     GoogleString expected_combination = StrCat(a_css_body, b_css_body);
@@ -168,10 +165,6 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
         "  ", (is_barrier ? Link("c.css") : ""), "\n"
         "</body>\n"));
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
-
-    GoogleString actual_combination;
-    ASSERT_TRUE(ReadFile(combine_filename.c_str(), &actual_combination));
-    EXPECT_EQ(combined_headers_ + expected_combination, actual_combination);
 
     // Fetch the combination to make sure we can serve the result from above.
     ExpectStringAsyncFetch expect_callback(true);

@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -75,12 +76,6 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
                                               css_gurl_base_origin,
                                               CssOutlineFilter::kFilterId,
                                               hash, "_", "css");
-    // Figure out outline_filename.
-    GoogleString outline_filename;
-    EncodeFilename(outline_url, &outline_filename);
-    // Make sure the file we check later was written this time, rm any old one.
-    DeleteFileIfExists(outline_filename);
-
     // Add a base href to the HTML iff specified.
     GoogleString other_content;
     if (!base_ref.empty()) {
@@ -112,16 +107,12 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
       GoogleString expected_headers;
       AppendDefaultHeaders(kContentTypeCss, &expected_headers);
 
-      // Check file was written.
-      // TODO(sligocki): Should we check this or only the fetch below?
-      GoogleString actual_outline;
-      ASSERT_TRUE(ReadFile(outline_filename.c_str(), &actual_outline));
-      EXPECT_EQ(expected_headers + css_rewritten_body, actual_outline);
-
       // Check fetched resource.
-      actual_outline.clear();
-      EXPECT_TRUE(ServeResourceUrl(outline_url, &actual_outline));
-      // TODO(sligocki): Check headers?
+      GoogleString actual_outline;
+      ResponseHeaders actual_headers;
+      EXPECT_TRUE(ServeResourceUrl(outline_url, &actual_outline,
+                                   &actual_headers));
+      EXPECT_EQ(expected_headers, actual_headers.ToString());
       EXPECT_EQ(css_rewritten_body, actual_outline);
     }
   }

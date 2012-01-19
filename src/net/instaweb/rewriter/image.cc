@@ -103,7 +103,7 @@ class ImageImpl : public Image {
   virtual void Dimensions(ImageDim* natural_dim);
   virtual bool ResizeTo(const ImageDim& new_dim);
   virtual bool DrawImage(Image* image, int x, int y);
-  virtual bool EnsureLoaded();
+  virtual bool EnsureLoaded(bool output_useful);
   virtual void SetTransformToLowRes();
 
  private:
@@ -118,6 +118,8 @@ class ImageImpl : public Image {
   // Concrete helper methods called by parent class
   virtual void ComputeImageType();
   virtual bool ComputeOutputContents();
+
+  bool QuickLoadGifToOutputContents();
 
   // Helper methods
   static bool ComputePngTransparency(const StringPiece& buf);
@@ -485,7 +487,7 @@ bool ImageImpl::HasTransparency(const StringPiece& buf) {
 // Returns value of opencv_load_possible_ after load attempted.
 // Note that if the load fails, opencv_load_possible_ will be false
 // and future calls to EnsureLoaded will fail fast.
-bool ImageImpl::EnsureLoaded() {
+bool ImageImpl::EnsureLoaded(bool output_useful) {
   if (!(opencv_image_ == NULL && opencv_load_possible_)) {
     // Already attempted load, fall through.
   } else if (image_type() == IMAGE_UNKNOWN) {
@@ -496,12 +498,23 @@ bool ImageImpl::EnsureLoaded() {
     StringPiece image_data_source(original_contents_);
     if (image_type_ == IMAGE_GIF) {
       // OpenCV doesn't understand gif format directly, but png works well.  So
-      // we perform a pre-emptive early translation to png, which we'll end
-      // up keeping if the OpenCV load or resize operations fail.
-      opencv_load_possible_ = output_valid_ || ComputeOutputContents();
-      if (opencv_load_possible_) {
-        image_data_source = output_contents_;
+      // we perform a pre-emptive early translation to png.
+      // If the output may be useful, the PNG will be optimized, which we will
+      // end up keeping if the OpenCV load or resize operations fail.
+      // If the output is not expected to be written out, we will produce an
+      // unoptimized PNG instead.
+      if (output_valid_) {
+        // Output bits already available.
+        opencv_load_possible_ = true;
+      } else {
+        // Need to load.
+        if (output_useful) {
+          opencv_load_possible_ = ComputeOutputContents();
+        } else {
+          opencv_load_possible_ = QuickLoadGifToOutputContents();
+        }
       }
+      image_data_source = output_contents_;
     }
     if (original_contents_.size() == 0) {
       opencv_load_possible_ = LoadOpenCvEmpty();
@@ -646,7 +659,7 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
     // If we already resized, drop data and work with original image.
     UndoChange();
   }
-  bool ok = opencv_image_ != NULL || EnsureLoaded();
+  bool ok = opencv_image_ != NULL || EnsureLoaded(true);
   if (ok) {
     IplImage* rescaled_image =
         cvCreateImage(cvSize(new_dim.width(), new_dim.height()),
@@ -788,6 +801,25 @@ bool ImageImpl::ComputeOutputContents() {
   return output_valid_;
 }
 
+// Converts gif into a png in output_contents_ as quickly as possible;
+// that is, unlike ComputeOutputContents it does not use BestCompression.
+bool ImageImpl::QuickLoadGifToOutputContents() {
+  CHECK(!output_valid_);
+  CHECK_EQ(image_type(), IMAGE_GIF);
+  CHECK(!changed_);
+
+  GoogleString string_for_image(original_contents_.data(),
+                                original_contents_.size());
+  pagespeed::image_compression::GifReader gif_reader;
+  bool ok = PngOptimizer::OptimizePng(gif_reader, string_for_image,
+                                      &output_contents_);
+  output_valid_ = ok;
+  if (ok) {
+    image_type_ = IMAGE_PNG;
+  }
+  return ok;
+}
+
 JpegCompressionOptions* ImageImpl::GetJpegOptions(
     const Image::CompressionOptions& options) {
   JpegCompressionOptions* jpeg_options = new JpegCompressionOptions();
@@ -819,7 +851,7 @@ StringPiece Image::Contents() {
 
 bool ImageImpl::DrawImage(Image* image, int x, int y) {
   ImageImpl* impl = static_cast<ImageImpl*>(image);
-  if (!EnsureLoaded() || !image->EnsureLoaded()) {
+  if (!EnsureLoaded(false) || !image->EnsureLoaded(false)) {
     return false;
   }
   ImageDim other_dim;

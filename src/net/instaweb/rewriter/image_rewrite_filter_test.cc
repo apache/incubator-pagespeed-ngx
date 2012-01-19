@@ -22,6 +22,8 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
+#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -51,6 +53,38 @@ const char kBikePngFile[] = "BikeCrashIcn.png";
 const char kPuzzleJpgFile[] = "Puzzle.jpg";
 const char kChefGifFile[] = "IronChef2.gif";
 const char kCuppaTPngFile[] = "CuppaT.png";
+
+// A callback for HTTP cache that stores body and string representation
+// of headers into given strings.
+class HTTPCacheStringCallback : public OptionsAwareHTTPCacheCallback {
+ public:
+  HTTPCacheStringCallback(const RewriteOptions* options,
+                          GoogleString* body_out, GoogleString* headers_out)
+      : OptionsAwareHTTPCacheCallback(options), body_out_(body_out),
+        headers_out_(headers_out), found_(false) {}
+
+  virtual ~HTTPCacheStringCallback() {}
+
+  virtual void Done(HTTPCache::FindResult find_result) {
+    StringPiece contents;
+    if ((find_result == HTTPCache::kFound) &&
+        http_value()->ExtractContents(&contents)) {
+      found_ = true;
+      contents.CopyToString(body_out_);
+      *headers_out_ = response_headers()->ToString();
+    }
+  }
+
+  void ExpectFound() {
+    EXPECT_TRUE(found_);
+  }
+
+ private:
+  GoogleString* body_out_;
+  GoogleString* headers_out_;
+  bool found_;
+  DISALLOW_COPY_AND_ASSIGN(HTTPCacheStringCallback);
+};
 
 class ImageRewriteTest : public ResourceManagerTestBase,
                          public ::testing::WithParamInterface<bool> {
@@ -101,43 +135,35 @@ class ImageRewriteTest : public ResourceManagerTestBase,
                "\" width=\"1023\" height=\"766\"/></body>");
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
 
-    GoogleString rewritten_filename;
-    EncodeFilename(src_string, &rewritten_filename);
+    // Fetch the version we just put into the cache, so we can
+    // make sure we produce it consistently.
+    GoogleString rewritten_image;
+    GoogleString rewritten_headers;
+    HTTPCacheStringCallback cache_callback(
+        options(), &rewritten_image, &rewritten_headers);
+    http_cache()->Find(src_string, message_handler(), &cache_callback);
+    cache_callback.ExpectFound();
 
-    GoogleString rewritten_image_data;
-    ASSERT_TRUE(ReadFile(rewritten_filename.c_str(), &rewritten_image_data));
+    // Make sure the headers produced make sense.
+    GoogleString expect_headers;
+    AppendDefaultHeaders(content_type, &expect_headers);
+    EXPECT_STREQ(expect_headers, rewritten_headers);
 
     // Also fetch the resource to ensure it can be created dynamically
     ExpectStringAsyncFetch expect_callback(true);
+    lru_cache()->Clear();
 
-    GoogleString headers;
-    AppendDefaultHeaders(content_type, &headers);
-
-    // TODO(jmarantz): this usage of expect_callback to prepend serialized
-    // headers is pretty weird.  This might have been made weirder by my
-    // AsyncFetch refactor but I'll just note this here for now.
-    expect_callback.response_headers()->SetStatusAndReason(HttpStatus::kOK);
-    expect_callback.Write(headers, &message_handler_);
-    int header_size = expect_callback.buffer().length();
     EXPECT_TRUE(rewrite_driver()->FetchResource(src_string, &expect_callback));
     rewrite_driver()->WaitForCompletion();
     EXPECT_EQ(HttpStatus::kOK,
               expect_callback.response_headers()->status_code()) <<
         "Looking for " << src_string;
-    // For readability, only do EXPECT_EQ on initial portions of data
-    // as most of it isn't human-readable.  This will show us the headers
-    // and the start of the image data.  So far every failure fails this
-    // first, and we caught doubled headers this way.
-    EXPECT_EQ(rewritten_image_data.substr(0, 250),
-              expect_callback.buffer().substr(0, 250)) <<
-        "In " << src_string <<
-        " response headers " << expect_callback.response_headers()->ToString();
-    EXPECT_TRUE(rewritten_image_data == expect_callback.buffer()) <<
-        "In " << src_string;
+    EXPECT_STREQ(rewritten_image, expect_callback.buffer());
+    EXPECT_STREQ(rewritten_headers,
+                 expect_callback.response_headers()->ToString());
 
     // Try to fetch from an independent server.
-    ServeResourceFromManyContexts(src_string,
-                                  rewritten_image_data.substr(header_size));
+    ServeResourceFromManyContexts(src_string, rewritten_image);
   }
 
   // Helper class to collect image srcs.

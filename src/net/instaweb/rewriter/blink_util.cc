@@ -9,6 +9,7 @@
 #include "base/logging.h"
 #include "net/instaweb/rewriter/panel_config.pb.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/wildcard.h"
 
@@ -23,8 +24,10 @@ const Layout* FindLayout(const PublisherConfig& config,
       return &layout;
     }
     for (int j = 0; j < layout.relative_url_patterns_size(); ++j) {
-      Wildcard wildcard(layout.relative_url_patterns(j));
-      if (wildcard.Match(request_url.PathAndLeaf())) {
+      VLOG(2) << "regex = |" << layout.relative_url_patterns(j)
+              << "|\t str = |" << request_url.PathAndLeaf() << "|";
+      if (RE2::FullMatch(request_url.PathAndLeaf().data(),
+                         layout.relative_url_patterns(j).data())) {
         return &layout;
       }
     }

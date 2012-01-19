@@ -52,6 +52,9 @@ vars = {
 
   "google_sparsehash_root": "http://google-sparsehash.googlecode.com/svn/tags/sparsehash-1.8.1/src",
   "google_sparsehash_revision": "@head",
+
+  "re2_src": "http://re2-svn.googlecode.com/svn/trunk/",
+  "re2_revision": "@2",
 }
 
 deps = {
@@ -195,6 +198,7 @@ deps = {
   "src/third_party/jsoncpp/include":
     Var("jsoncpp_src") + "/jsoncpp/include" + Var("jsoncpp_revision"),
 
+  # Serf
   "src/third_party/serf/src": Var("serf_src") + Var("serf_revision"),
 
   # We check libwebp out of Chromium repo to get the .gyp file.
@@ -216,6 +220,10 @@ deps = {
 
   "src/third_party/domain_registry_provider/src":
     From(Var("libpagespeed_deps_root")),
+
+  # RE2.
+  "src/third_party/re2/src":
+    Var("re2_src") + "/src/re2" + Var("re2_revision"),
 }
 
 

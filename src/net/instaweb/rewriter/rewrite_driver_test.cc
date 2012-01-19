@@ -295,7 +295,6 @@ TEST_P(RewriteDriverTest, TestCacheUse) {
 
 // Extension of above with cache invalidation.
 TEST_P(RewriteDriverTest, TestCacheUseWithInvalidation) {
-  resource_manager()->set_store_outputs_in_file_system(false);
   AddFilter(RewriteOptions::kRewriteCss);
 
   const char kCss[] = "* { display: none; }";
@@ -365,7 +364,6 @@ TEST_P(RewriteDriverTest, TestCacheUseOnTheFly) {
 
 // Extension of above with cache invalidation.
 TEST_P(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
-  resource_manager()->set_store_outputs_in_file_system(false);
   AddFilter(RewriteOptions::kExtendCacheCss);
 
   const char kCss[] = "* { display: none; }";

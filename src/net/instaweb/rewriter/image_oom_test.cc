@@ -70,7 +70,7 @@ TEST_F(ImageOomTest, BlankImage) {
   // Make sure creating gigantic image fails cleanly.
   ImagePtr giant(
       BlankImage(10000, 10000, Image::IMAGE_PNG, GTestTempDir(), &handler_));
-  EXPECT_FALSE(giant->EnsureLoaded());
+  EXPECT_FALSE(giant->EnsureLoaded(true));
 }
 
 TEST_F(ImageOomTest, LoadImage) {
@@ -82,13 +82,13 @@ TEST_F(ImageOomTest, LoadImage) {
   bool not_progressive = false;
   ImagePtr giant(ReadImageFromFile(Image::IMAGE_JPEG, kLarge, &buf,
                                    not_progressive));
-  EXPECT_FALSE(giant->EnsureLoaded());
+  EXPECT_FALSE(giant->EnsureLoaded(true));
 
   // Make sure we can still load a reasonable image OK.
   buf.clear();
   ImagePtr small(
       ReadImageFromFile(Image::IMAGE_PNG, kCuppa, &buf, not_progressive));
-  EXPECT_TRUE(small->EnsureLoaded());
+  EXPECT_TRUE(small->EnsureLoaded(true));
 }
 
 }  // namespace
