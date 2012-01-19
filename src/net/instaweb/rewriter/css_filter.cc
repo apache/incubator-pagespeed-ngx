@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/css_filter.h"
 
-#include <algorithm>
-
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/doctype.h"
@@ -286,14 +284,13 @@ void CssFilter::Context::Harvest() {
       &out_text, driver_->message_handler());
   if (ok) {
     if (rewrite_inline_element_ == NULL) {
-      int64 expire_ms = input_resource_->CacheExpirationTimeMs();
       output_resource_->SetType(&kContentTypeCss);
       ResourceManager* manager = Manager();
       manager->MergeNonCachingResponseHeaders(input_resource_,
                                               output_resource_);
       ok = manager->Write(HttpStatus::kOK, out_text,
                           output_resource_.get(),
-                          expire_ms, driver_->message_handler());
+                          driver_->message_handler());
     } else {
       output_partition(0)->set_inlined_data(out_text);
     }
@@ -712,15 +709,12 @@ RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
           &out_contents, driver_->message_handler());
       if (result.value) {
         // Write new stylesheet.
-        int64 expire_ms = std::min(result.expiration_ms,
-                                   input_resource->CacheExpirationTimeMs());
         output_resource->SetType(&kContentTypeCss);
         resource_manager_->MergeNonCachingResponseHeaders(input_resource,
                                                           output_resource);
         if (resource_manager_->Write(HttpStatus::kOK,
                                      out_contents,
                                      output_resource.get(),
-                                     expire_ms,
                                      driver_->message_handler())) {
           ret = output_resource->IsWritten();
         }

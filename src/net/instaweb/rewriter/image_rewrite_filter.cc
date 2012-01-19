@@ -286,11 +286,10 @@ ImageRewriteFilter::RewriteLoadedResourceImpl(
       // This needs to happen before Write to persist.
       SaveIfInlinable(image->Contents(), image->image_type(), cached);
 
-      int64 origin_expire_time_ms = input_resource->CacheExpirationTimeMs();
       resource_manager_->MergeNonCachingResponseHeaders(input_resource, result);
       if (resource_manager_->Write(
               HttpStatus::kOK, image->Contents(), result.get(),
-              origin_expire_time_ms, message_handler)) {
+              message_handler)) {
         driver_->InfoAt(
             rewrite_context,
             "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",
@@ -424,14 +423,6 @@ void ImageRewriteFilter::ResizeLowQualityImage(
           static_cast<int>(contents.size()));
     }
   }
-}
-
-int ImageRewriteFilter::FilterCacheFormatVersion() const {
-  return 1;
-}
-
-bool ImageRewriteFilter::ReuseByContentHash() const {
-  return true;
 }
 
 void ImageRewriteFilter::SaveIfInlinable(const StringPiece& contents,

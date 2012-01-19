@@ -19,42 +19,21 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_SINGLE_RESOURCE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_SINGLE_RESOURCE_FILTER_H_
 
-#include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
-class CachedResult;
-class MessageHandler;
-class OutputResource;
-class RequestHeaders;
-class ResponseHeaders;
-class RewriteDriver;
-class Writer;
 
-// A helper base class for RewriteFilters which only convert one input resource
-// to one output resource. This class helps implement both HTML rewriting
-// and Fetch in terms of a single RewriteLoadedResource method, and takes
-// care of resource management and caching.
-//
-// Subclasses should implement RewriteLoadedResource and call
-// Rewrite*WithCaching when rewriting HTML using the returned
-// CachedResult (which may be NULL) to get rewrite results.
+class RewriteDriver;
+
+// This class no longer has any functionality and exists only as a transition
+// aid to avoid making a single change too large.
 class RewriteSingleResourceFilter : public RewriteFilter {
  public:
   explicit RewriteSingleResourceFilter(RewriteDriver* driver)
       : RewriteFilter(driver) {
   }
   virtual ~RewriteSingleResourceFilter();
-
-  virtual bool Fetch(const OutputResourcePtr& output_resource,
-                     Writer* response_writer,
-                     const RequestHeaders& request_header,
-                     ResponseHeaders* response_headers,
-                     MessageHandler* message_handler,
-                     UrlAsyncFetcher::Callback* callback);
 
   enum RewriteResult {
     kRewriteFailed,  // rewrite is impossible or undesirable
@@ -65,83 +44,6 @@ class RewriteSingleResourceFilter : public RewriteFilter {
   };
 
  protected:
-  // RewriteSingleResourceFilter will make sure to disregard any written
-  // cache data with a version number different from what this method returns.
-  //
-  // Filters should increase this version when they add some new
-  // metadata they rely on to do proper optimization or when
-  // the quality of their optimization has increased significantly from
-  // previous version.
-  //
-  // The default implementation returns 0.
-  virtual int FilterCacheFormatVersion() const;
-
-  // If this method returns true, RewriteSingleResourceFilter will keep
-  // track of the content hash of the input resource, and use it to
-  // reuse cached outputs even when the input TTL has expired.
-  //
-  // Warning: this is the wrong thing to do if the filter also touches
-  // other files recursively (e.g. a CSS filter rewriting images included
-  // from it), since RewriteSingleResourceFilter would not know to check
-  // whether these dependencies have changed.
-  //
-  // The default implementation returns false.
-  virtual bool ReuseByContentHash() const;
-
-  // Derived classes must implement this function instead of Fetch.
-  //
-  // The last parameter gets the UrlSegmentEncoder used to encode or decode
-  // the output URL.
-  //
-  // If rewrite succeeds, make sure to set the content-type on the output
-  // resource, call ResourceManager::Write, and return kRewriteOk.
-  //
-  // If rewrite fails, simply return kRewriteFailed.
-  //
-  // In case it would be inadvisable to run the rewrite due to external
-  // factors such as system load (rather than contents of the input)
-  // return kTooBusy.
-  virtual RewriteResult RewriteLoadedResource(
-      const ResourcePtr& input_resource,
-      const OutputResourcePtr& output_resource) = 0;
-
- private:
-  class FetchCallback;
-
-  friend class FetchCallback;
-  friend class RewriteSingleResourceFilterTest;
-
-  // Check and record whether metadata version matches
-  // FilterCacheFormatVersion() respectively.
-  bool IsValidCacheFormat(const CachedResult* cached);
-  void UpdateCacheFormat(OutputResource* output_resource);
-
-  // If the filter requests reuse of results based on input hash,
-  // stores it in cached.
-  void UpdateInputHash(const Resource* input_resource, CachedResult* cached);
-
-  // Returns true if origin expiration time passed.
-  bool IsOriginExpired(CachedResult* cached) const;
-
-  // Releases a valid cached result inside output_resource,
-  // taking care to freshen the input if needed.
-  CachedResult* ReleaseCachedAfterAnyFreshening(
-      const ResourcePtr& input_resource,
-      const OutputResourcePtr& output_resource);
-
-  // Tries to rewrite input_resource to output_resource, and if successful
-  // updates the cache as appropriate. Does not call WriteUnoptimizable on
-  // failure.
-  RewriteResult RewriteLoadedResourceAndCacheIfOk(
-      const ResourcePtr& input_resource,
-      const OutputResourcePtr& output_resource);
-
-  // Records that rewrite of input -> output failed (either due to
-  // unavailability of input or failed conversion).
-  void CacheRewriteFailure(const Resource* input_resource,
-                           OutputResource* output_resource,
-                           MessageHandler* message_handler);
-
   DISALLOW_COPY_AND_ASSIGN(RewriteSingleResourceFilter);
 };
 

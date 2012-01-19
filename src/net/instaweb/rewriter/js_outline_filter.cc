@@ -29,7 +29,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -134,11 +133,7 @@ void JsOutlineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
 bool JsOutlineFilter::WriteResource(const GoogleString& content,
                                     OutputResource* resource,
                                     MessageHandler* handler) {
-  // We set the TTL of the origin->hashed_name map to 0 because this is
-  // derived from the inlined HTML.
-  int64 origin_expire_time_ms = 0;
-  return resource_manager_->Write(HttpStatus::kOK, content, resource,
-                                  origin_expire_time_ms, handler);
+  return resource_manager_->Write(HttpStatus::kOK, content, resource, handler);
 }
 
 // Create file with script content and remove that element from DOM.

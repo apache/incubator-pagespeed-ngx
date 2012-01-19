@@ -656,14 +656,8 @@ class ImageCombineFilter::Combiner
     options->set_output_image_path("sprite");
     options->set_placement_method(spriter::VERTICAL_STRIP);
 
-    int64 min_origin_expiration_time_ms = 0;
     for (int i = 0, n = combine_resources.size(); i < n; ++i) {
       const ResourcePtr& resource = combine_resources[i];
-      int64 expire_time_ms = resource->CacheExpirationTimeMs();
-      if ((min_origin_expiration_time_ms == 0) ||
-          (expire_time_ms < min_origin_expiration_time_ms)) {
-        min_origin_expiration_time_ms = expire_time_ms;
-      }
       input.add_input_image_set()->set_path(resource->url());
     }
 
@@ -685,8 +679,7 @@ class ImageCombineFilter::Combiner
         CopyFrom(*result);
     if (!resource_manager_->Write(HttpStatus::kOK,
                                   result_image->image()->Contents(),
-                                  combination.get(),
-                                  min_origin_expiration_time_ms, handler)) {
+                                  combination.get(), handler)) {
       handler->Error(UrlSafeId().c_str(), 0,
                      "Could not write sprited resource.");
       return false;

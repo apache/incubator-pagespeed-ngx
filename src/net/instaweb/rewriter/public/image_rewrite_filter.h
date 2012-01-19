@@ -90,8 +90,6 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
   // Interface to RewriteSingleResourceFilter
   virtual RewriteResult RewriteLoadedResource(const ResourcePtr& input_resource,
                                               const OutputResourcePtr& result);
-  virtual int FilterCacheFormatVersion() const;
-  virtual bool ReuseByContentHash() const;
   virtual const UrlSegmentEncoder* encoder() const;
 
   virtual RewriteContext* MakeRewriteContext();

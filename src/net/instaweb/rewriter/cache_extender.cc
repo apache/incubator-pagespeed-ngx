@@ -244,8 +244,7 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   resource_manager_->MergeNonCachingResponseHeaders(
       input_resource, output_resource);
   if (resource_manager_->Write(
-          HttpStatus::kOK, contents, output_resource.get(),
-          headers->CacheExpirationTimeMs(), message_handler)) {
+          HttpStatus::kOK, contents, output_resource.get(), message_handler)) {
     return RewriteSingleResourceFilter::kRewriteOk;
   } else {
     return RewriteSingleResourceFilter::kRewriteFailed;

@@ -49,6 +49,7 @@
 namespace net_instaweb {
 
 class MessageHandler;
+class ResourceContext;
 class RewriteContext;
 
 namespace {
@@ -82,10 +83,8 @@ class TestRewriter : public RewriteSingleResourceFilter {
  public:
   TestRewriter(RewriteDriver* driver, bool create_custom_encoder)
       : RewriteSingleResourceFilter(driver),
-        format_version_(0),
         num_rewrites_called_(0),
-        create_custom_encoder_(create_custom_encoder),
-        reuse_by_content_hash_(false) {
+        create_custom_encoder_(create_custom_encoder) {
   }
 
   virtual ~TestRewriter() {
@@ -115,13 +114,8 @@ class TestRewriter : public RewriteSingleResourceFilter {
   // Number of times RewriteLoadedResource got called
   int num_rewrites_called() const { return num_rewrites_called_; }
 
-  // Changes which file format we advertize
-  void set_format_version(int ver) { format_version_ = ver; }
-
   // Do we use a custom encoder (which prepends kTestEncoderUrlExtra?)
   bool create_custom_encoder() const { return create_custom_encoder_; }
-
-  void set_reuse_by_content_hash(bool r) { reuse_by_content_hash_ = r; }
 
   virtual RewriteResult RewriteLoadedResource(
       const ResourcePtr& input_resource,
@@ -143,17 +137,8 @@ class TestRewriter : public RewriteSingleResourceFilter {
     output_resource->SetType(&kContentTypeText);
     bool ok = resource_manager_->Write(
         HttpStatus::kOK, StrCat(contents, contents), output_resource.get(),
-        input_resource->response_headers()->CacheExpirationTimeMs(),
         driver_->message_handler());
     return ok ? kRewriteOk : kRewriteFailed;
-  }
-
-  virtual int FilterCacheFormatVersion() const {
-    return format_version_;
-  }
-
-  virtual bool ReuseByContentHash() const {
-    return reuse_by_content_hash_;
   }
 
   virtual const UrlSegmentEncoder* encoder() const {
@@ -324,7 +309,6 @@ TEST_P(RewriteSingleResourceFilterTest, VersionChange) {
   // result but will result in an effective cache flush.
   ResetSignature(kOrigOutlineMinBytes + 1);
 
-  filter_->set_format_version(42);
   ValidateExpected("vc3", in, out);
   EXPECT_EQ(2, filter_->num_rewrites_called());
 
@@ -447,8 +431,6 @@ TEST_P(RewriteSingleResourceFilterTest, CacheExpire) {
 }
 
 TEST_P(RewriteSingleResourceFilterTest, CacheExpireWithReuseEnabled) {
-  filter_->set_reuse_by_content_hash(true);
-
   // Make sure we don't cache past the TTL.
   ValidateExpected("initial", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
@@ -491,12 +473,12 @@ TEST_P(RewriteSingleResourceFilterTest, FetchGoodCache2) {
   EXPECT_EQ(1, filter_->num_rewrites_called());
 }
 
-// Regression test: Fetch() should update cache version, too.
-// TODO(morlovich): We want to run the entire test with different
-// version, but the Google Test version we depend on is too old to have
-// ::testing::WithParamInterface<int>
+// In the old RewriteSingleResourceFilter cache versioning machinery
+// there used to be a bug where first Fetches didn't update
+// cache correctly for further rewrites. The relevant code no
+// longer exists, but the test is retained as simple exercise of caching
+// on fetch.
 TEST_P(RewriteSingleResourceFilterTest, FetchFirstVersioned) {
-  filter_->set_format_version(1);
   GoogleString out;
   ASSERT_TRUE(ServeRelativeUrl(OutputName("", "a.tst"), &out));
   EXPECT_EQ("goodgood", out);

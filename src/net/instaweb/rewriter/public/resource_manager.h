@@ -111,30 +111,11 @@ class ResourceManager {
   NamedLockManager* lock_manager() const { return lock_manager_; }
   RewriteDriverFactory* factory() const { return factory_; }
 
-  // Writes the specified contents into the output resource, retaining
-  // both a name->filename map and the filename->contents map.
-  //
-  // TODO(jmarantz): add last_modified arg.
+  // Writes the specified contents into the output resource, and marks it
+  // as optimized.
   bool Write(HttpStatus::Code status_code,
              const StringPiece& contents, OutputResource* output,
-             int64 origin_expire_time_ms, MessageHandler* handler);
-
-  // Writes out a note that constructing given output resource is
-  // not beneficial, and hence should not be attempted until origin's expiration
-  // If your filter uses this, it should look at the ->optimizable() property
-  // of resources when transforming
-  void WriteUnoptimizable(OutputResource* output,
-                          int64 origin_expire_time_ms, MessageHandler* handler);
-
-  // Writes out a cache entry telling us how to get to the processed version
-  // (output) of some resource given the original source URL and summary of the
-  // processing done, such as the filter code and any custom information
-  // stored by the filter which are all packed inside the ResourceNamer.
-  // This entry expires as soon as the origin does. If no optimization
-  // was possible, it records that fact.
-  void CacheComputedResourceMapping(OutputResource* output,
-                                    int64 origin_expire_time_ms,
-                                    MessageHandler* handler);
+             MessageHandler* handler);
 
   // Is this URL a ref to a Pagespeed resource?
   bool IsPagespeedResource(const GoogleUrl& url);

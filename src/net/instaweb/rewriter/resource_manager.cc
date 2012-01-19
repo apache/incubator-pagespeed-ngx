@@ -269,7 +269,6 @@ void ResourceManager::set_filename_prefix(const StringPiece& file_prefix) {
 bool ResourceManager::Write(HttpStatus::Code status_code,
                             const StringPiece& contents,
                             OutputResource* output,
-                            int64 origin_expire_time_ms,
                             MessageHandler* handler) {
   ResponseHeaders* meta_data = output->response_headers();
   SetDefaultLongCacheHeaders(output->type(), meta_data);
@@ -293,8 +292,9 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
     // us due to something like outlining), cache the mapping from original URL
     // to the constructed one.
     if (output->kind() != kOutlinedResource) {
-      output->EnsureCachedResultCreated()->set_optimizable(true);
-      CacheComputedResourceMapping(output, origin_expire_time_ms, handler);
+      CachedResult* cached = output->EnsureCachedResultCreated();
+      cached->set_optimizable(true);
+      cached->set_url(output->url());
     }
   } else {
     // Note that we've already gotten a "could not open file" message;
@@ -304,48 +304,6 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
                      file_prefix_.c_str());
   }
   return ret;
-}
-
-void ResourceManager::WriteUnoptimizable(OutputResource* output,
-                                         int64 origin_expire_time_ms,
-                                         MessageHandler* handler) {
-  output->EnsureCachedResultCreated()->set_optimizable(false);
-  CacheComputedResourceMapping(output, origin_expire_time_ms, handler);
-}
-
-// Map the name of this resource to information on its contents:
-// either the fully expanded filename, or the fact that we don't want
-// to make this resource (!optimizable()).
-//
-// The name of the output resource is usually a function of how it is
-// constructed from input resources.  For example, with combine_css,
-// output->name() encodes all the component CSS filenames.  The filename
-// this maps to includes the hash of the content.
-//
-// The name->filename map expires when any of the origin files expire.
-// When that occurs, fresh content must be read, and the output must
-// be recomputed and re-hashed. We'll hence mutate meta_data to expire when the
-// origin expires
-//
-// TODO(morlovich) We should consider caching based on the input hash, too,
-// so we don't end redoing work when input resources don't change but have
-// short expiration.
-//
-// TODO(jmarantz): It would be nicer for all the cache-related
-// twiddling for the new methodology (including both
-// set_optimizable(true) and set_optimizable(false)) was in
-// RewriteContext, perhaps right next to the Put; and if
-// CacheComputedResourceMapping was not called if
-// written_using_rewrite_context_flow at all.
-void ResourceManager::CacheComputedResourceMapping(OutputResource* output,
-    int64 origin_expire_time_ms, MessageHandler* handler) {
-  GoogleString name_key = StrCat(kCacheKeyResourceNamePrefix,
-                                 output->name_key());
-  CachedResult* cached = output->EnsureCachedResultCreated();
-  if (cached->optimizable()) {
-    cached->set_url(output->url());
-  }
-  cached->set_origin_expiration_time_ms(origin_expire_time_ms);
 }
 
 bool ResourceManager::IsPagespeedResource(const GoogleUrl& url) {

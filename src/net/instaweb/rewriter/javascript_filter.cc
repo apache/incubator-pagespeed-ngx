@@ -158,11 +158,10 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     bool ok = false;
     ResourceManager* resource_manager = Manager();
     MessageHandler* message_handler = resource_manager->message_handler();
-    int64 origin_expire_time_ms = script_resource->CacheExpirationTimeMs();
     resource_manager->MergeNonCachingResponseHeaders(
         script_resource, script_dest);
     if (resource_manager->Write(HttpStatus::kOK, script_out, script_dest.get(),
-                                origin_expire_time_ms, message_handler)) {
+                                message_handler)) {
       ok = true;
       message_handler->Message(kInfo, "Rewrite script %s to %s",
                                script_resource->url().c_str(),
@@ -295,10 +294,6 @@ void JavascriptFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   CHECK(script_in_progress_ == NULL);
   // We presume an IE directive is concealing some js code.
   some_missing_scripts_ = true;
-}
-
-bool JavascriptFilter::ReuseByContentHash() const {
-  return true;
 }
 
 RewriteSingleResourceFilter::RewriteResult

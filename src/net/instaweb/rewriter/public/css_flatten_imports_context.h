@@ -112,13 +112,11 @@ class CssFlattenImportsContext : public SingleRewriteContext {
     // Our result is the combination of all our imports and our own rules.
     output_partition(0)->set_inlined_data(hierarchy_->minified_contents());
 
-    int64 expire_ms = input_resource_->CacheExpirationTimeMs();
     output_resource_->SetType(&kContentTypeCss);
     ResourceManager* manager = Manager();
     manager->MergeNonCachingResponseHeaders(input_resource_, output_resource_);
     if (manager->Write(HttpStatus::kOK, hierarchy_->minified_contents(),
-                       output_resource_.get(), expire_ms,
-                       Driver()->message_handler())) {
+                       output_resource_.get(), Driver()->message_handler())) {
       RewriteDone(RewriteSingleResourceFilter::kRewriteOk, 0);
     } else {
       RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);

@@ -93,23 +93,7 @@ message CachedResult {
   // optimizable is true.
   optional string url = 2;
 
-  // When the input used to produce this expires, in ms since the epoch.
-  // TODO(sligocki): Get rid of this.
-  optional int64 origin_expiration_time_ms = 3 [ default = 0 ];
-
-  // The auto_expire bit is used when writing out this entry to cache
-  // to determine the TTL. If auto_expire is true (the default) this entry
-  // will be marked to get automatically expunged when
-  // origin_expiration_time_ms() is reached; this means it can be safely
-  // used without any checking. If set_auto_expire(false) is called before
-  // write, the cache entry will be given TTL of at least a year
-  // or until origin_expiration_time_ms, whichever is longer
-  // (origin_expiration_time_ms() will still be stored properly).
-  // In that case, the user is responsible for ensuring that the cached
-  // result is still valid, for example by combination of checking against
-  // origin_expiration_time_ms() and verifying that the input contents
-  // have not changed.
-  optional bool auto_expire = 4 [ default = true ];
+  // tags 3, 4 deleted and should not be reused.
 
   // Changes to custom metadata by clients done after we are written to
   // cache are lost, and it's extremely easy to get it wrong. To catch
@@ -125,19 +109,8 @@ message CachedResult {
   // encoded resource, not including the leading "."
   optional string extension = 7;
 
-  // Tags 8+ are for use by individual filters.
-
-  // The timestamp of the input resource.
-  // Used by rewrite_single_resource_filter.
-  optional int64 input_date_ms = 8;
-
-  // Cache format key version.
-  // Used by rewrite_single_resource_filter.
-  optional int32 cache_version = 9;
-
-  // The hash of the input resource.
-  // Used by rewrite_single_resource_filter.
-  optional string input_hash = 10;
+  // Tags 11+ are for use by individual filters. 8-10 have been used
+  // in the past and should not be reused.
 
   // Dimensions of an image file, in pixels.  Used by
   // image_rewrite_filter.  Note that these dimensions are not

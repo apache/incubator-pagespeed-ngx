@@ -282,23 +282,14 @@ bool ResourceCombiner::WriteCombination(
   // string copy.
   GoogleString combined_contents;
   StringWriter writer(&combined_contents);
-  int64 min_origin_expiration_time_ms = 0;
-
   for (int i = 0, n = combine_resources.size(); written && (i < n); ++i) {
     ResourcePtr input(combine_resources[i]);
-    int64 input_expire_time_ms = input->CacheExpirationTimeMs();
-    if ((min_origin_expiration_time_ms == 0) ||
-        (input_expire_time_ms < min_origin_expiration_time_ms)) {
-      min_origin_expiration_time_ms = input_expire_time_ms;
-    }
-
     written = WritePiece(i, input.get(), combination.get(), &writer, handler);
   }
   if (written) {
     written =
         resource_manager_->Write(
-            HttpStatus::kOK, combined_contents, combination.get(),
-            min_origin_expiration_time_ms, handler);
+            HttpStatus::kOK, combined_contents, combination.get(), handler);
   }
   return written;
 }

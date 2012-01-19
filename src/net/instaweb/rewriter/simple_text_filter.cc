@@ -26,7 +26,6 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -64,9 +63,8 @@ void SimpleTextFilter::Context::RewriteSingle(const ResourcePtr& input,
   if (rewriter_->RewriteText(input->url(), input->contents(), &rewritten,
                              resource_manager))  {
     MessageHandler* message_handler = resource_manager->message_handler();
-    int64 origin_expire_time_ms = input->CacheExpirationTimeMs();
-    if (resource_manager->Write(HttpStatus::kOK, rewritten, output.get(),
-                                origin_expire_time_ms, message_handler)) {
+    if (resource_manager->Write(
+            HttpStatus::kOK, rewritten, output.get(), message_handler)) {
       result = RewriteSingleResourceFilter::kRewriteOk;
     }
   }

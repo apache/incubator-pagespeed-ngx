@@ -316,24 +316,17 @@ class NestedFilter : public RewriteFilter {
                   nested_slots_[i]->was_optimized());
       }
 
-      // TODO(jmarantz): Make RewriteContext handle the aggregation of
-      // of expiration times.
-      int64 min_expire_ms = 0;
       CHECK_EQ(1, num_slots());
       for (int i = 0, n = num_nested(); i < n; ++i) {
         CHECK_EQ(1, nested(i)->num_slots());
         ResourceSlotPtr slot(nested(i)->slot(0));
         ResourcePtr resource(slot->resource());
-        int64 expire_ms = resource->CacheExpirationTimeMs();
-        if ((i == 0) || (expire_ms < min_expire_ms)) {
-          min_expire_ms = expire_ms;
-        }
         StrAppend(&new_content, resource->url(), "\n");
       }
       ResourceManager* resource_manager = Manager();
       MessageHandler* message_handler = resource_manager->message_handler();
       if (resource_manager->Write(HttpStatus::kOK, new_content, output(0).get(),
-                                  min_expire_ms, message_handler)) {
+                                  message_handler)) {
         result = RewriteSingleResourceFilter::kRewriteOk;
       }
       RewriteDone(result, 0);

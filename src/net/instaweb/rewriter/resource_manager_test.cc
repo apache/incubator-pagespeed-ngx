@@ -181,11 +181,6 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     const char* filter_prefix = RewriteOptions::kCssFilterId;
     const char* name = "I.name";  // valid name for CSS filter.
     const char* contents = "contents";
-    // origin_expire_time_ms should be considerably longer than the various
-    // timeouts for resource locking, since we hit those timeouts in various
-    // places.
-    const int64 kTtlMs = 100000;
-    const int64 origin_expire_time_ms = start_time_ms() + kTtlMs;
     const ContentType* content_type = &kContentTypeText;
     OutputResourcePtr output(
         rewrite_driver()->CreateOutputResourceWithPath(
@@ -237,8 +232,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     ASSERT_TRUE(ResourceManagerTestingPeer::HasHash(output.get()));
     EXPECT_EQ(kRewrittenResource, output->kind());
     EXPECT_TRUE(resource_manager()->Write(HttpStatus::kOK, contents,
-                                          output.get(), origin_expire_time_ms,
-                                          message_handler()));
+                                          output.get(), message_handler()));
     EXPECT_TRUE(output->IsWritten());
     // Check that hash and ext are correct.
     EXPECT_EQ("0", output->hash());
@@ -359,8 +353,7 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
   // We need to 'Write' an output resource before we can determine its
   // URL.
   resource_manager()->Write(HttpStatus::kOK, StringPiece(kStyleContent),
-                            output.get(), kOriginTtlSec * Timer::kSecondMs,
-                            message_handler());
+                            output.get(), message_handler());
   EXPECT_EQ(Encode("http://cdn.com/", "ce", "0", "style.css", "css"),
             output->url());
 }
@@ -547,9 +540,6 @@ TEST_F(ResourceManagerTest, TestVaryOption) {
 }
 
 TEST_F(ResourceManagerTest, TestOutlined) {
-  const int64 kLongTtlMs = 50000;
-  const int64 long_expiry_ms = start_time_ms() + kLongTtlMs;
-
   // Outliner resources should not produce extra cache traffic
   // due to rname/ entries we can't use anyway.
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -568,7 +558,7 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   resource_manager()->Write(HttpStatus::kOK, "", output_resource.get(),
-                           long_expiry_ms, message_handler());
+                            message_handler());
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -591,8 +581,6 @@ TEST_F(ResourceManagerTest, TestOutlined) {
 TEST_F(ResourceManagerTest, TestOnTheFly) {
   // Test to make sure that an on-fly insert does not insert the data,
   // just the rname/
-  const int64 kLongTtlMs = 50000;
-  const int64 long_expiry_ms = start_time_ms() + kLongTtlMs;
 
   // For derived resources we can and should use the rewrite
   // summary/metadata cache
@@ -612,7 +600,7 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   resource_manager()->Write(HttpStatus::kOK, "", output_resource.get(),
-                            long_expiry_ms, message_handler());
+                            message_handler());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -633,9 +621,6 @@ TEST_F(ResourceManagerTest, TestHandleBeacon) {
 }
 
 TEST_F(ResourceManagerTest, TestNotGenerated) {
-  const int64 kLongTtlMs = 50000;
-  const int64 long_expiry_ms = start_time_ms() + kLongTtlMs;
-
   // For derived resources we can and should use the rewrite
   // summary/metadata cache
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -654,7 +639,7 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   resource_manager()->Write(HttpStatus::kOK, "", output_resource.get(),
-                           long_expiry_ms, message_handler());
+                            message_handler());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -806,8 +791,8 @@ TEST_F(ResourceManagerShardedTest, TestNamed) {
           kRewrittenResource));
   ASSERT_TRUE(output_resource.get());
   ASSERT_TRUE(resource_manager()->Write(HttpStatus::kOK, "alert('hello');",
-                                       output_resource.get(), 0,
-                                       message_handler()));
+                                        output_resource.get(),
+                                        message_handler()));
 
   // This always gets mapped to shard0 because we are using the mock
   // hasher for the content hash.  Note that the sharding sensitivity
