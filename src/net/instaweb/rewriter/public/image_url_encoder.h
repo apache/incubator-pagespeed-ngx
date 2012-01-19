@@ -37,8 +37,18 @@ class MessageHandler;
 //       No webp, for mobile user agent, image is 50x75 on page
 //   http://...path.../50x75mwurl...
 //       Webp requested, for mobile user agent, image is 50x75 on page
+//   http://...path.../50xNxurl..    No webp, image is 50 wide, no height given
+//   http://...path.../50xNwurl...   Webp, image is 50 wide, no height given
+//   http://...path.../Nx75xurl...   No webp, image is 75 high, no width given
+//   http://...path.../Nx75wurl...   Webp, image is 75 high, no width given.
+//   http://...path.../50xNmxurl..   No webp, image is 50 wide, mobile
+//   http://...path.../50xNmwurl...  Webp, image is 50 wide, mobile
+//   http://...path.../Nx75mxurl...  No webp, image is 75 high, mobile
+//   http://...path.../Nx75mwurl...  Webp, image is 75 high, mobile
 //   http://...path.../xurl...  Page does not specify both dimensions.  No webp.
 //   http://...path.../wurl...  Webp requested, page missing dimensions.
+//   http://...path.../xurl...  Page does not specify any dimension.  No webp.
+//   http://...path.../wurl...  Webp requested, page missing either dimension.
 //   http://...path.../mxurl...
 //       No webp, for mobile user agent, page does not specify dimensions.
 //   http://...path.../mwurl...
@@ -64,6 +74,15 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
 
   static bool HasValidDimensions(const ImageDim& dims) {
     return (dims.has_width() && dims.has_height());
+  }
+
+  static bool HasDimension(const ResourceContext& data) {
+    return (data.has_image_tag_dims() &&
+            HasValidDimension(data.image_tag_dims()));
+  }
+
+  static bool HasValidDimension(const ImageDim& dims) {
+    return (dims.has_width() || dims.has_height());
   }
 
  private:

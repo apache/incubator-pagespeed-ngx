@@ -19,7 +19,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_escaper.h"
@@ -31,36 +30,33 @@ namespace {
 const char kCodeSeparator = 'x';
 const char kCodeWebp = 'w';
 const char kCodeMobileUserAgent = 'm';
+const char kMissingDimension = 'N';
+
+const int kNoDimension = -1;
 
 bool IsValidCode(char code) {
   return (code == kCodeSeparator) || (code == kCodeWebp) ||
       (code == kCodeMobileUserAgent);
 }
 
-// Decodes decimal int followed by x or w at start of source, removing them
-// from source.  Returns true on success.  This is a utility for the
-// decoding of image dimensions.
-// The separator character (x or w) is stored in sep if the parse succeeds.
-bool DecodeIntXW(StringPiece* in, int* result, char* sep) {
-  *result = 0;
-  bool ok = false;
-  char curr_char = '\0';
-  for (; !in->empty(); in->remove_prefix(1)) {
-    // TODO(jmaessen): roll strtol-like functionality for StringPiece in util
-    curr_char = (*in)[0];
-    if (!AccumulateDecimalValue(curr_char, result)) {
-      break;
-    }
-    ok = true;
-  }
-  // If we get here, either curr_char is a non-digit, or in->empty().  In the
-  // latter case, curr_char is the last char of in (a digit) or '\0', and we
-  // fall through the next test and fail.
-  if (IsValidCode(curr_char)) {
-    *sep = curr_char;
+// Decodes a single dimension (either N or an integer), removing it from *in and
+// ensuring at least one character remains.  Returns true on success.  When N is
+// seen, result is set to kNoDimension, otherwise it's set to the decoded
+// dimension.  If decoding fails, result may be written.
+// Ensures that *in contains at least one character on exit.
+bool DecodeDimension(StringPiece* in, int* result) {
+  DCHECK(in->size() >= 2);
+  if ((*in)[0] == kMissingDimension) {
+    // Dimension is absent.
     in->remove_prefix(1);
-  } else {
-    ok = false;
+    *result = kNoDimension;
+    return true;
+  }
+  bool ok = false;
+  *result = 0;
+  while (in->size() >= 2 && AccumulateDecimalValue((*in)[0], result)) {
+    in->remove_prefix(1);
+    ok = true;
   }
   return ok;
 }
@@ -75,16 +71,26 @@ void ImageUrlEncoder::Encode(const StringVector& urls,
   DCHECK(data != NULL) << "null data passed to ImageUrlEncoder::Encode";
   DCHECK_EQ(1U, urls.size());
   if (data != NULL) {
-    if (HasDimensions(*data)) {
+    if (HasDimension(*data)) {
       const ImageDim& dims = data->image_tag_dims();
-      StrAppend(rewritten_url, IntegerToString(dims.width()),
-                StringPiece(&kCodeSeparator, 1),
-                IntegerToString(dims.height()));
+      if (dims.has_width()) {
+        rewritten_url->append(IntegerToString(dims.width()));
+      } else {
+        rewritten_url->append(1, kMissingDimension);
+      }
+      if (dims.has_height()) {
+        StrAppend(rewritten_url,
+                  StringPiece(&kCodeSeparator, 1),
+                  IntegerToString(dims.height()));
+      } else {
+        StrAppend(rewritten_url,
+                  StringPiece(&kCodeSeparator, 1),
+                  StringPiece(&kMissingDimension, 1));
+      }
     }
     if (data->mobile_user_agent()) {
       rewritten_url->append(1, kCodeMobileUserAgent);
     }
-    // Must end with kCodeWebp or kCodeSeparator.
     if (data->attempt_webp()) {
       rewritten_url->append(1, kCodeWebp);
     } else {
@@ -94,6 +100,48 @@ void ImageUrlEncoder::Encode(const StringVector& urls,
   UrlEscaper::EncodeToUrlSegment(urls[0], rewritten_url);
 }
 
+namespace {
+
+// Stateless helper function for ImageUrlEncoder::Decode.
+// Removes read dimensions from remaining, sets dims and returns true if
+// dimensions are correctly parsed, returns false and leaves dims untouched on
+// parse failure.
+bool DecodeImageDimensions(StringPiece* remaining, ImageDim* dims) {
+  if (remaining->size() < 4) {
+    // url too short to hold dimensions.
+    return false;
+  }
+  int width, height;
+  if (!DecodeDimension(remaining, &width) ||  // Parse the width
+      (*remaining)[0] != kCodeSeparator) {        // And check the separator
+    return false;
+  }
+  // Consume the separator
+  remaining->remove_prefix(1);
+  if (remaining->size() < 2 ||
+      !DecodeDimension(remaining, &height)) {  // Parse the height
+    return false;
+  }
+  if (!IsValidCode((*remaining)[0])) {  // And check the terminator
+    return false;
+  }
+  // Parsed successfully.
+  // Now store the dimensions that were present.
+  if (width != kNoDimension) {
+    dims->set_width(width);
+  }
+  if (height != kNoDimension) {
+    dims->set_height(height);
+  } else if (width == kNoDimension) {
+    // Both dimensions are missing!  NxN[xw] is not allowed, as it's ambiguous
+    // with the shorter encoding.  We should never get here in real life.
+    return false;
+  }
+  return true;
+}
+
+}  // namespace
+
 // The generic Decode interface is supplied so that
 // RewriteSingleResourceFilter and/or RewriteDriver can decode any
 // ResourceNamer::name() field and find the set of URLs that are
@@ -102,42 +150,39 @@ bool ImageUrlEncoder::Decode(const StringPiece& encoded,
                              StringVector* urls,
                              ResourceContext* data,
                              MessageHandler* handler) const {
+  if (encoded.empty()) {
+    return false;
+  }
   ImageDim* dims = data->mutable_image_tag_dims();
-  DCHECK(dims != NULL);  // TODO(jmaessen): sanity check on my api understanding
   // Note that "remaining" is shortened from the left as we parse.
   StringPiece remaining(encoded);
-  int width, height;
-  char sep = kCodeSeparator;
-  if (remaining.empty()) {
-    handler->Message(kInfo, "Empty Image URL");
-    return false;
-  } else if (IsValidCode(remaining[0])) {
-    // No dimensions.
-    sep = remaining[0];
-    remaining.remove_prefix(1);
-  } else if (DecodeIntXW(&remaining, &width, &sep) && (sep == kCodeSeparator) &&
-             DecodeIntXW(&remaining, &height, &sep)) {
-    dims->set_width(width);
-    dims->set_height(height);
+  char terminator = remaining[0];
+  if (IsValidCode(terminator)) {
+    // No dimensions.  x... or w... or mx... or mw...
+    // Do nothing.
+  } else if (DecodeImageDimensions(&remaining, dims)) {
+    // We've parsed the dimensions and they've been stripped from remaining.
+    // Now set terminator properly.
+    terminator = remaining[0];
   } else {
-    handler->Message(kInfo, "Invalid Image URL encoding: %s",
-                     encoded.as_string().c_str());
     return false;
   }
-  DCHECK(IsValidCode(sep));
-  if (sep == kCodeMobileUserAgent) {
+  // Remove the terminator
+  remaining.remove_prefix(1);
+  if (terminator == kCodeMobileUserAgent) {
     data->set_mobile_user_agent(true);
-    sep = remaining[0];
+    // There must be a final kCodeWebp or kCodeSeparator. Otherwise, invalid.
+    // Check and strip it.
+    if (remaining.empty()) {
+      return false;
+    }
+    terminator = remaining[0];
+    if (terminator != kCodeWebp && terminator != kCodeSeparator) {
+      return false;
+    }
     remaining.remove_prefix(1);
   }
-  // Must end with kCodeWebp or kCodeSeparator. Otherwise, invalid.
-  if (sep == kCodeWebp) {
-    data->set_attempt_webp(true);
-  } else if (sep != kCodeSeparator) {
-    handler->Message(kInfo, "Invalid Image URL encoding: %s",
-                     encoded.as_string().c_str());
-    return false;
-  }
+  data->set_attempt_webp(terminator == kCodeWebp);
 
   GoogleString* url = StringVectorAdd(urls);
   if (UrlEscaper::DecodeFromUrlSegment(remaining, url)) {
