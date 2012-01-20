@@ -22,7 +22,6 @@
 #include <utility>
 
 #include "base/logging.h"
-#include "base/paranoid.h"
 #include "strings/ascii_ctype.h"
 #include "util/gtl/dense_hash_map.h"
 
@@ -88,7 +87,7 @@ HtmlTagIndex::~HtmlTagIndex() {
 
 void HtmlTagIndex::SetCaseSensitive(bool case_sensitive) {
   CHECK(!case_sensitive_fixed_);
-  case_sensitive_ = SanitizeBool(case_sensitive);
+  case_sensitive_ = case_sensitive;
   if (case_sensitive_) {
     case_mask_1_ = case_mask_2_ = case_mask_3_ = case_mask_4_ = 0;
     case_mask_5_ = case_mask_6_ = case_mask_7_ = case_mask_8_ = 0;
