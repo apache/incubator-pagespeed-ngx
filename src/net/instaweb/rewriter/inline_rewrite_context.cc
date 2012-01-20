@@ -27,7 +27,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -79,7 +79,7 @@ void InlineRewriteContext::Rewrite(int partition_index,
   CHECK(partition_index == 0);
 
   // We signal as rewrite failed, as we do not create an output resource.
-  RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+  RewriteDone(kRewriteFailed, 0);
 }
 
 void InlineRewriteContext::Render() {

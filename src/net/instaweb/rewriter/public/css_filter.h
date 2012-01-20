@@ -30,8 +30,9 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -70,7 +71,7 @@ class Writer;
 //
 // Currently only deals with inline <style> tags and external <link> resources.
 // It does not consider style= attributes on arbitrary elements.
-class CssFilter : public RewriteSingleResourceFilter {
+class CssFilter : public RewriteFilter {
  public:
   class Context;
 

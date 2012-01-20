@@ -43,7 +43,7 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/spriter/image_library_interface.h"
 #include "net/instaweb/spriter/public/image_spriter.h"
 #include "net/instaweb/spriter/public/image_spriter.pb.h"
@@ -800,8 +800,7 @@ class ImageCombineFilter::Context : public RewriteContext {
   // Write the combination out.
   virtual void Rewrite(int partition_index, CachedResult* partition,
                        const OutputResourcePtr& output) {
-    RewriteSingleResourceFilter::RewriteResult result =
-        RewriteSingleResourceFilter::kRewriteOk;
+    RewriteResult result = kRewriteOk;
     if (!output->IsWritten()) {
       // Note that this method expects to do something for only the fetch path,
       // when only one partition should be in use --- in the rewrite path
@@ -818,7 +817,7 @@ class ImageCombineFilter::Context : public RewriteContext {
         ok = EnsureLoaded(resource->url());
       }
       if (!ok || !combiner.Write(resources, output)) {
-        result = RewriteSingleResourceFilter::kRewriteFailed;
+        result = kRewriteFailed;
       }
     }
     RewriteDone(result, partition_index);

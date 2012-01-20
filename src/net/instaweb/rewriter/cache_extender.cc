@@ -35,7 +35,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -86,7 +85,7 @@ class CacheExtender::Context : public SingleRewriteContext {
 };
 
 CacheExtender::CacheExtender(RewriteDriver* driver)
-    : RewriteSingleResourceFilter(driver),
+    : RewriteFilter(driver),
       tag_scanner_(driver_),
       extension_count_(NULL),
       not_cacheable_count_(NULL) {
@@ -191,7 +190,7 @@ void CacheExtender::Context::Render() {
   extender_->extension_count_->Add(1);
 }
 
-RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
+RewriteResult CacheExtender::RewriteLoadedResource(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
   CHECK(input_resource->loaded());
@@ -217,7 +216,7 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
   }
 
   if (!ok) {
-    return RewriteSingleResourceFilter::kRewriteFailed;
+    return kRewriteFailed;
   }
 
   StringPiece contents(input_resource->contents());
@@ -231,7 +230,7 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
       case RewriteDriver::kNoResolutionNeeded:
         break;
       case RewriteDriver::kWriteFailed:
-        return RewriteSingleResourceFilter::kRewriteFailed;
+        return kRewriteFailed;
       case RewriteDriver::kSuccess:
         // TODO(jmarantz): find a mechanism to write this directly into
         // the HTTPValue so we can reduce the number of times that we
@@ -245,9 +244,9 @@ RewriteSingleResourceFilter::RewriteResult CacheExtender::RewriteLoadedResource(
       input_resource, output_resource);
   if (resource_manager_->Write(
           HttpStatus::kOK, contents, output_resource.get(), message_handler)) {
-    return RewriteSingleResourceFilter::kRewriteOk;
+    return kRewriteOk;
   } else {
-    return RewriteSingleResourceFilter::kRewriteFailed;
+    return kRewriteFailed;
   }
 }
 

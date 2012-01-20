@@ -33,8 +33,6 @@ class RewriteDriver;
 
 // Class that unifies tasks common to building rewriters for filters
 // that only do one-for-one URL substitutions.
-//
-// TODO(jmarantz): Sever the ties to RewriteSingleResourceFilter.
 class SingleRewriteContext : public RewriteContext {
  public:
   // Transfers ownership of resource_context, which must be NULL or

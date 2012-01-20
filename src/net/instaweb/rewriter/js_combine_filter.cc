@@ -45,7 +45,7 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -223,8 +223,7 @@ class JsCombineFilter::Context : public RewriteContext {
   virtual void Rewrite(int partition_index,
                        CachedResult* partition,
                        const OutputResourcePtr& output) {
-    RewriteSingleResourceFilter::RewriteResult result =
-        RewriteSingleResourceFilter::kRewriteOk;
+    RewriteResult result = kRewriteOk;
     if (!output->IsWritten()) {
       ResourceVector resources;
       for (int i = 0, n = num_slots(); i < n; ++i) {
@@ -232,7 +231,7 @@ class JsCombineFilter::Context : public RewriteContext {
         resources.push_back(resource);
       }
       if (!combiner_.Write(resources, output)) {
-        result = RewriteSingleResourceFilter::kRewriteFailed;
+        result = kRewriteFailed;
       }
     }
     RewriteDone(result, partition_index);

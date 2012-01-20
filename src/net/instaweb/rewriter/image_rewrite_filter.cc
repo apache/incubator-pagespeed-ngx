@@ -36,7 +36,6 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/data_url.h"
@@ -148,7 +147,7 @@ const UrlSegmentEncoder* ImageRewriteFilter::Context::encoder() const {
 }
 
 ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
-    : RewriteSingleResourceFilter(driver),
+    : RewriteFilter(driver),
       image_filter_(new ImageTagScanner(driver)),
       rewrite_count_(NULL),
       inline_count_(NULL),
@@ -183,15 +182,7 @@ void ImageRewriteFilter::Initialize(Statistics* statistics) {
                                ResourceManager::kStatisticsGroup);
 }
 
-RewriteSingleResourceFilter::RewriteResult
-ImageRewriteFilter::RewriteLoadedResource(const ResourcePtr& input_resource,
-                                          const OutputResourcePtr& result) {
-  return RewriteLoadedResourceImpl(NULL /* no rewrite_context*/,
-                                   input_resource, result);
-}
-
-RewriteSingleResourceFilter::RewriteResult
-ImageRewriteFilter::RewriteLoadedResourceImpl(
+RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       RewriteContext* rewrite_context, const ResourcePtr& input_resource,
       const OutputResourcePtr& result) {
   MessageHandler* message_handler = driver_->message_handler();

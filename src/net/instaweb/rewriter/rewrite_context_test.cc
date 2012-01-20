@@ -49,7 +49,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
@@ -307,8 +306,7 @@ class NestedFilter : public RewriteFilter {
     }
 
     virtual void Harvest() {
-      RewriteSingleResourceFilter::RewriteResult result =
-          RewriteSingleResourceFilter::kRewriteFailed;
+      RewriteResult result = kRewriteFailed;
       GoogleString new_content;
 
       for (int i = 0, n = nested_slots_.size(); i < n; ++i) {
@@ -327,7 +325,7 @@ class NestedFilter : public RewriteFilter {
       MessageHandler* message_handler = resource_manager->message_handler();
       if (resource_manager->Write(HttpStatus::kOK, new_content, output(0).get(),
                                   message_handler)) {
-        result = RewriteSingleResourceFilter::kRewriteOk;
+        result = kRewriteOk;
       }
       RewriteDone(result, 0);
     }
@@ -505,8 +503,7 @@ class CombiningFilter : public RewriteFilter {
       // resource_combiner.cc takes calls WriteCombination as part
       // of Combine.  But if we are being called on behalf of a
       // fetch then the resource still needs to be written.
-      RewriteSingleResourceFilter::RewriteResult result =
-          RewriteSingleResourceFilter::kRewriteOk;
+      RewriteResult result = kRewriteOk;
       if (!output->IsWritten()) {
         ResourceVector resources;
         for (int i = 0, n = num_slots(); i < n; ++i) {
@@ -514,7 +511,7 @@ class CombiningFilter : public RewriteFilter {
           resources.push_back(resource);
         }
         if (!combiner_.Write(resources, output)) {
-          result = RewriteSingleResourceFilter::kRewriteFailed;
+          result = kRewriteFailed;
         }
       }
       RewriteDone(result, partition_index);
@@ -2304,7 +2301,7 @@ class TestNotifyFilter : public CommonFilter {
    protected:
     virtual void RewriteSingle(
         const ResourcePtr& input, const OutputResourcePtr& output) {
-      RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+      RewriteDone(kRewriteFailed, 0);
     }
 
     virtual const char* id() const { return "testnotify"; }

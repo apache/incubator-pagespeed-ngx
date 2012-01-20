@@ -42,7 +42,6 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/data_url.h"
@@ -230,7 +229,7 @@ void CssFilter::Context::RewriteSingle(
       Harvest();
     }
   } else {
-    RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+    RewriteDone(kRewriteFailed, 0);
   }
 }
 
@@ -297,9 +296,9 @@ void CssFilter::Context::Harvest() {
   }
 
   if (ok) {
-    RewriteDone(RewriteSingleResourceFilter::kRewriteOk, 0);
+    RewriteDone(kRewriteOk, 0);
   } else {
-    RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+    RewriteDone(kRewriteFailed, 0);
   }
 }
 
@@ -343,7 +342,7 @@ CssFilter::CssFilter(RewriteDriver* driver,
                      CacheExtender* cache_extender,
                      ImageRewriteFilter* image_rewriter,
                      ImageCombineFilter* image_combiner)
-    : RewriteSingleResourceFilter(driver),
+    : RewriteFilter(driver),
       in_style_element_(false),
       cache_extender_(cache_extender),
       image_rewrite_filter_(image_rewriter),
@@ -689,7 +688,7 @@ bool CssFilter::SerializeCss(RewriteContext* context,
   return ret;
 }
 
-RewriteSingleResourceFilter::RewriteResult CssFilter::RewriteLoadedResource(
+RewriteResult CssFilter::RewriteLoadedResource(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
   CHECK(input_resource->loaded());

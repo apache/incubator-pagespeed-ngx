@@ -28,7 +28,8 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
@@ -246,8 +247,7 @@ class RewriteContext {
   // done.  Note that RewriteDone may 'delete this' so no
   // further references to 'this' should follow a call to RewriteDone.
   // This method can run in any thread.
-  void RewriteDone(RewriteSingleResourceFilter::RewriteResult result,
-                   int partition_index);
+  void RewriteDone(RewriteResult result, int partition_index);
 
   // Called on the parent from a nested Rewrite when it is complete.
   // Note that we don't track rewrite success/failure here.  We only
@@ -319,11 +319,9 @@ class RewriteContext {
   void CrossThreadPartitionDone(bool result);
 
   // Takes a completed rewrite partition and rewrites it.  When
-  // complete calls RewriteDone with
-  // RewriteSingleResourceFilter::kRewriteOk if successful.  Note that
-  // a value of RewriteSingleResourceFilter::kTooBusy means that an
-  // HTML rewrite will skip this resource, but we should not cache it
-  // as "do not optimize".
+  // complete calls RewriteDone with kRewriteOk if successful.  Note that
+  // a value of kTooBusy means that an HTML rewrite will skip this resource,
+  // but we should not cache it as "do not optimize".
   //
   // During this phase, any nested contexts that are needed to complete
   // the Rewrite process can be instantiated.
@@ -560,8 +558,7 @@ class RewriteContext {
 
   // Actual implementation of RewriteDone that's queued to run in
   // high-priority rewrite thread.
-  void RewriteDoneImpl(RewriteSingleResourceFilter::RewriteResult result,
-                       int partition_index);
+  void RewriteDoneImpl(RewriteResult result, int partition_index);
 
   // Actual implementation of StartNestedTasks that's queued to run in
   // high-priority rewrite thread.

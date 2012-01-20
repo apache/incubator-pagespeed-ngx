@@ -15,8 +15,11 @@
  */
 
 // Author: morlovich@google.com (Maksim Orlovich)
+//
+// This contains tests for a basic fake filter that rewrites a single resource,
+// making sure the various caching and invalidation mechanisms work.
 
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -34,6 +37,7 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -72,17 +76,17 @@ int TtlMs() {
   return TtlSec() * Timer::kSecondMs;
 }
 
-// A simple RewriteSingleResourceFilter subclass that rewrites
+// A simple RewriteFilter subclass that rewrites
 // <tag src=...> and keeps some statistics.
 //
 // It rewrites resources as follows:
 // 1) If original contents are equal to bad, it fails the rewrite
 // 2) If the contents are a $ sign, it claims the system is too busy
 // 3) otherwise it repeats the contents twice.
-class TestRewriter : public RewriteSingleResourceFilter {
+class TestRewriter : public RewriteFilter {
  public:
   TestRewriter(RewriteDriver* driver, bool create_custom_encoder)
-      : RewriteSingleResourceFilter(driver),
+      : RewriteFilter(driver),
         num_rewrites_called_(0),
         create_custom_encoder_(create_custom_encoder) {
   }

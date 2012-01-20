@@ -35,10 +35,11 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -145,13 +146,13 @@ void AjaxRewriteContext::Harvest() {
                   << nested_resource->url();
         partition->set_url(nested_resource->url());
         partition->set_optimizable(true);
-        RewriteDone(RewriteSingleResourceFilter::kRewriteOk, 0);
+        RewriteDone(kRewriteOk, 0);
         return;
       }
     }
   }
   LOG(INFO) << "Ajax rewrite failed for " << url_;
-  RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+  RewriteDone(kRewriteFailed, 0);
 }
 
 void AjaxRewriteContext::FetchTryFallback(const GoogleString& url,
@@ -255,7 +256,7 @@ void AjaxRewriteContext::RewriteSingle(const ResourcePtr& input,
     }
   }
   // Give up on the rewrite.
-  RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+  RewriteDone(kRewriteFailed, 0);
   // TODO(nikhilmadan): If the resource is not cacheable, cache this in the
   // metadata so that the fetcher can skip reading from the cache.
 }

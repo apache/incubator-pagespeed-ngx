@@ -26,8 +26,9 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -49,7 +50,7 @@ class WorkBound;
 // Identify img tags in html and optimize them.
 // TODO(jmaessen): Big open question: how best to link pulled-in resources to
 //     rewritten urls, when in general those urls will be in a different domain.
-class ImageRewriteFilter : public RewriteSingleResourceFilter {
+class ImageRewriteFilter : public RewriteFilter {
  public:
   explicit ImageRewriteFilter(RewriteDriver* driver);
   virtual ~ImageRewriteFilter();
@@ -87,9 +88,6 @@ class ImageRewriteFilter : public RewriteSingleResourceFilter {
   static const char kImageRewritesDroppedDueToLoad[];
 
  protected:
-  // Interface to RewriteSingleResourceFilter
-  virtual RewriteResult RewriteLoadedResource(const ResourcePtr& input_resource,
-                                              const OutputResourcePtr& result);
   virtual const UrlSegmentEncoder* encoder() const;
 
   virtual RewriteContext* MakeRewriteContext();

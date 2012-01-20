@@ -143,7 +143,7 @@ bool DecodeImageDimensions(StringPiece* remaining, ImageDim* dims) {
 }  // namespace
 
 // The generic Decode interface is supplied so that
-// RewriteSingleResourceFilter and/or RewriteDriver can decode any
+// RewriteContext and/or RewriteDriver can decode any
 // ResourceNamer::name() field and find the set of URLs that are
 // referenced.
 bool ImageUrlEncoder::Decode(const StringPiece& encoded,

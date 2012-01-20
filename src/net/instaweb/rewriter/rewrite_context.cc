@@ -44,7 +44,6 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -512,7 +511,7 @@ class RewriteContext::InvokeRewriteFunction : public Function {
   }
 
   virtual void Cancel() {
-    context_->RewriteDone(RewriteSingleResourceFilter::kTooBusy, partition_);
+    context_->RewriteDone(kTooBusy, partition_);
   }
 
  private:
@@ -1284,9 +1283,7 @@ void RewriteContext::NestedRewriteDone(const RewriteContext* context) {
   }
 }
 
-void RewriteContext::RewriteDone(
-    RewriteSingleResourceFilter::RewriteResult result,
-    int partition_index) {
+void RewriteContext::RewriteDone(RewriteResult result, int partition_index) {
   // RewriteDone may be called from a low-priority rewrites thread.
   // Make sure the rest of the work happens in the high priority rewrite thread.
   Driver()->AddRewriteTask(
@@ -1294,15 +1291,14 @@ void RewriteContext::RewriteDone(
                    result, partition_index));
 }
 
-void RewriteContext::RewriteDoneImpl(
-    RewriteSingleResourceFilter::RewriteResult result,
-    int partition_index) {
-  if (result == RewriteSingleResourceFilter::kTooBusy) {
+void RewriteContext::RewriteDoneImpl(RewriteResult result,
+                                     int partition_index) {
+  if (result == kTooBusy) {
     MarkTooBusy();
   } else {
     CachedResult* partition =
         partitions_->mutable_partition(partition_index);
-    bool optimizable = (result == RewriteSingleResourceFilter::kRewriteOk);
+    bool optimizable = (result == kRewriteOk);
     partition->set_optimizable(optimizable);
     if (optimizable && (fetch_.get() == NULL)) {
       // TODO(morlovich): currently in async mode, we tie rendering of slot
@@ -1314,7 +1310,7 @@ void RewriteContext::RewriteDoneImpl(
   --outstanding_rewrites_;
   if (outstanding_rewrites_ == 0) {
     if (fetch_.get() != NULL) {
-      fetch_->set_success((result == RewriteSingleResourceFilter::kRewriteOk));
+      fetch_->set_success((result == kRewriteOk));
     }
     Finalize();
   }
@@ -1435,7 +1431,7 @@ void RewriteContext::StartRewriteForFetch() {
   } else {
     partition->clear_input();
     AddRecheckDependency();
-    RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+    RewriteDone(kRewriteFailed, 0);
   }
 }
 

@@ -36,7 +36,6 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -76,7 +75,7 @@ void CleanupWhitespaceScriptBody(
 class RewriteContext;
 class Statistics;
 JavascriptFilter::JavascriptFilter(RewriteDriver* driver)
-    : RewriteSingleResourceFilter(driver),
+    : RewriteFilter(driver),
       body_node_(NULL),
       script_in_progress_(NULL),
       script_src_(NULL),
@@ -100,7 +99,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
         body_node_(body_node) {
   }
 
-  RewriteSingleResourceFilter::RewriteResult RewriteJavascript(
+  RewriteResult RewriteJavascript(
       const ResourcePtr& input, const OutputResourcePtr& output) {
     MessageHandler* message_handler = Manager()->message_handler();
     StringPiece script = input->contents();
@@ -125,16 +124,13 @@ class JavascriptFilter::Context : public SingleRewriteContext {
       message_handler->Message(kInfo, "Script %s didn't shrink",
                                input->url().c_str());
     }
-    return ok ? RewriteSingleResourceFilter::kRewriteOk
-      : RewriteSingleResourceFilter::kRewriteFailed;
+    return ok ? kRewriteOk : kRewriteFailed;
   }
 
  protected:
   // Implements the asynchronous interface required by SingleRewriteContext.
   //
-  // TODO(jmarantz): this should be done as a SimpleTextFilter, but that would
-  // require cutting the umbilical chord with RewriteSingleResourceFilter,
-  // because we can't inherite from both that and SimpleTextFilter.
+  // TODO(jmarantz): this should be done as a SimpleTextFilter.
   virtual void RewriteSingle(
       const ResourcePtr& input, const OutputResourcePtr& output) {
     RewriteDone(RewriteJavascript(input, output), 0);
@@ -296,8 +292,7 @@ void JavascriptFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   some_missing_scripts_ = true;
 }
 
-RewriteSingleResourceFilter::RewriteResult
-JavascriptFilter::RewriteLoadedResource(
+RewriteResult JavascriptFilter::RewriteLoadedResource(
     const ResourcePtr& script_input,
     const OutputResourcePtr& output_resource) {
   // Temporary code so that we can share the rewriting implementation beteween

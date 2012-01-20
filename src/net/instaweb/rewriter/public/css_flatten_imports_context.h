@@ -32,7 +32,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -91,7 +91,7 @@ class CssFlattenImportsContext : public SingleRewriteContext {
 
     if (!ok) {
       hierarchy_->set_flattening_succeeded(false);
-      RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+      RewriteDone(kRewriteFailed, 0);
     } else if (num_nested() > 0) {
       StartNestedTasks();  // Initiates rewriting of @import'd files.
     } else {
@@ -117,9 +117,9 @@ class CssFlattenImportsContext : public SingleRewriteContext {
     manager->MergeNonCachingResponseHeaders(input_resource_, output_resource_);
     if (manager->Write(HttpStatus::kOK, hierarchy_->minified_contents(),
                        output_resource_.get(), Driver()->message_handler())) {
-      RewriteDone(RewriteSingleResourceFilter::kRewriteOk, 0);
+      RewriteDone(kRewriteOk, 0);
     } else {
-      RewriteDone(RewriteSingleResourceFilter::kRewriteFailed, 0);
+      RewriteDone(kRewriteFailed, 0);
     }
   }
 

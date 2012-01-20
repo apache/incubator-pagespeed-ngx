@@ -24,8 +24,9 @@
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 
@@ -58,7 +59,7 @@ class Statistics;
  * feedback to change the runtime instrumentation in future pages as we serve
  * them.
  */
-class JavascriptFilter : public RewriteSingleResourceFilter {
+class JavascriptFilter : public RewriteFilter {
  public:
   explicit JavascriptFilter(RewriteDriver* rewrite_driver);
   virtual ~JavascriptFilter();

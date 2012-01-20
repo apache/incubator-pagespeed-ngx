@@ -42,7 +42,7 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
-#include "net/instaweb/rewriter/public/rewrite_single_resource_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -239,8 +239,7 @@ class CssCombineFilter::Context : public RewriteContext {
     // resource_combiner.cc calls WriteCombination as part
     // of Combine.  But if we are being called on behalf of a
     // fetch then the resource still needs to be written.
-    RewriteSingleResourceFilter::RewriteResult result =
-        RewriteSingleResourceFilter::kRewriteOk;
+    RewriteResult result = kRewriteOk;
     // OutputResource CHECK-fails if you try to Write twice, which
     // would happen in the html-rewrite phase without this check.
     if (!output->IsWritten()) {
@@ -250,7 +249,7 @@ class CssCombineFilter::Context : public RewriteContext {
         resources.push_back(resource);
       }
       if (!combiner_.Write(resources, output)) {
-        result = RewriteSingleResourceFilter::kRewriteFailed;
+        result = kRewriteFailed;
       }
     }
     RewriteDone(result, partition_index);
