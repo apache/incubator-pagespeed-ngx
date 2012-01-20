@@ -102,6 +102,28 @@ pagespeed.DeferJs.prototype.globalEval = function(str) {
 };
 
 /**
+ * Defines a new var in the name of id's present in the doc. This is the fix for
+ * IE, where setting value to the var with same name as an id in the doc throws
+ * exception. While creating vars, skip the names which have '-', ':', '.'.
+ * These characters are allowed in id names but not allowed in variable
+ * names.
+ */
+pagespeed.DeferJs.prototype.createIdVars = function() {
+  var elems = document.getElementsByTagName("*");
+  var idVarsString = "";
+  for (var i = 0; i < elems.length; i++) {
+    if (elems[i].id && elems[i].id.search(/[-:.]/g) == -1) {
+      idVarsString += 'var ' + elems[i].id + ' = ' + elems[i].id + ';';
+    }
+  }
+  if (idVarsString) {
+    this.globalEval(idVarsString);
+  }
+}
+pagespeed.DeferJs.prototype['createIdVars'] =
+    pagespeed.DeferJs.prototype.createIdVars;
+
+/**
  * Defers execution of scriptNode, by adding it to the queue.
  * @param {Element} script script node.
  * @param {Element} opt_elem Optional context element.
@@ -417,6 +439,7 @@ pagespeed.outerHTML = function(node) {
 pagespeed.deferInit = function() {
   pagespeed.deferJs = new pagespeed.DeferJs();
   pagespeed['deferJs'] = pagespeed.deferJs;
+  pagespeed.deferJs.createIdVars();
   document.writeln = function(x) {
     pagespeed.deferJs.writeHtml(x + '\n');
   };
