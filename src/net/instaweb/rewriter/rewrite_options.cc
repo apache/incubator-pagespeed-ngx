@@ -556,6 +556,16 @@ void RewriteOptions::DisableFilters(
   }
 }
 
+void RewriteOptions::ClearFilters() {
+  DCHECK(!frozen_);
+  modified_ = true;
+  enabled_filters_.clear();
+  disabled_filters_.clear();
+
+  // Re-enable HtmlWriterFilter by default.
+  EnableFilter(kHtmlWriterFilter);
+}
+
 bool RewriteOptions::AddCommaSeparatedListToFilterSet(
     const StringPiece& filters, MessageHandler* handler, FilterSet* set) {
   DCHECK(!frozen_);

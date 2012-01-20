@@ -62,8 +62,6 @@ class ProxyInterface : public UrlAsyncFetcher {
  public:
   typedef std::pair<RewriteOptions*, bool> OptionsBoolPair;
 
-  // TODO(sligocki): Simplify this by getting timer and handler from manager
-  // or even just pass in the factory for everything?
   ProxyInterface(const StringPiece& hostname, int port,
                  ResourceManager* manager, Statistics* stats);
   virtual ~ProxyInterface();

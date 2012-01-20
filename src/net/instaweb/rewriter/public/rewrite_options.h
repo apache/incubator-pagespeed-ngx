@@ -237,6 +237,9 @@ class RewriteOptions {
   void DisableFilter(Filter filter);
   void EnableFilters(const FilterSet& filter_set);
   void DisableFilters(const FilterSet& filter_set);
+  // Clear all explicitly enabled and disabled filters. Some filters may still
+  // be enabled by the rewrite level and HtmlWriterFilter will be enabled.
+  void ClearFilters();
 
   // Enables all three extend_cache filters.
   void EnableExtendCacheFilters();
