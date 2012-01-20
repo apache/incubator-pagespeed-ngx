@@ -66,15 +66,15 @@ class CacheExtender : public RewriteFilter {
                                     const ResourceSlotPtr& slot);
 
  protected:
-  virtual RewriteResult RewriteLoadedResource(
-      const ResourcePtr& input_resource,
-      const OutputResourcePtr& output_resource);
   virtual bool ComputeOnTheFly() const;
   virtual RewriteContext* MakeRewriteContext();
 
  private:
   class Context;
   friend class Context;
+
+  RewriteResult RewriteLoadedResource(const ResourcePtr& input_resource,
+                                      const OutputResourcePtr& output_resource);
 
   bool ShouldRewriteResource(
       const ResponseHeaders* headers, int64 now_ms,

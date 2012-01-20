@@ -171,9 +171,8 @@ class CssFilter : public RewriteFilter {
                     GoogleString* out_text,
                     MessageHandler* handler);
 
-  virtual RewriteResult RewriteLoadedResource(
-      const ResourcePtr& input_resource,
-      const OutputResourcePtr& output_resource);
+  RewriteResult RewriteLoadedResource(const ResourcePtr& input_resource,
+                                      const OutputResourcePtr& output_resource);
 
   bool in_style_element_;  // Are we in a style element?
   // These are meaningless if in_style_element_ is false:

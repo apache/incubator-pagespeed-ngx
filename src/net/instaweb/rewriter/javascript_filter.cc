@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -290,15 +291,6 @@ void JavascriptFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   CHECK(script_in_progress_ == NULL);
   // We presume an IE directive is concealing some js code.
   some_missing_scripts_ = true;
-}
-
-RewriteResult JavascriptFilter::RewriteLoadedResource(
-    const ResourcePtr& script_input,
-    const OutputResourcePtr& output_resource) {
-  // Temporary code so that we can share the rewriting implementation beteween
-  // the old blocking rewrite model and the new async model.
-  Context jrc(driver_, NULL, &config_, body_node_);
-  return jrc.RewriteJavascript(script_input, output_resource);
 }
 
 RewriteContext* JavascriptFilter::MakeRewriteContext() {

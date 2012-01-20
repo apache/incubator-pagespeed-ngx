@@ -121,7 +121,7 @@ class TestRewriter : public RewriteFilter {
   // Do we use a custom encoder (which prepends kTestEncoderUrlExtra?)
   bool create_custom_encoder() const { return create_custom_encoder_; }
 
-  virtual RewriteResult RewriteLoadedResource(
+  RewriteResult RewriteLoadedResource(
       const ResourcePtr& input_resource,
       const OutputResourcePtr& output_resource) {
     ++num_rewrites_called_;

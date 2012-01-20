@@ -21,12 +21,9 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
-#include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 
@@ -83,10 +80,6 @@ class JavascriptFilter : public RewriteFilter {
   virtual RewriteContext* MakeRewriteContext();
 
  protected:
-  virtual RewriteResult RewriteLoadedResource(
-      const ResourcePtr& input_resource,
-      const OutputResourcePtr& output_resource);
-
   virtual RewriteContext* MakeNestedRewriteContext(
       RewriteContext* parent, const ResourceSlotPtr& slot);
 
