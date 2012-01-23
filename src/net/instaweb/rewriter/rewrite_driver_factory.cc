@@ -376,6 +376,10 @@ void RewriteDriverFactory::InitResourceManager(
   resource_managers_.insert(resource_manager);
 }
 
+void RewriteDriverFactory::AddPlatformSpecificDecodingPasses(
+    RewriteDriver* driver) {
+}
+
 void RewriteDriverFactory::AddPlatformSpecificRewritePasses(
     RewriteDriver* driver) {
 }

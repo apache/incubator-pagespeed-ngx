@@ -172,9 +172,18 @@ class RewriteDriverFactory {
   // call this if you use CreateResourceManager.
   void InitResourceManager(ResourceManager* resource_manager);
 
-  // Provides an optional hook for adding rewrite passes that are
-  // specific to an implementation of RewriteDriverFactory.
+  // Provides an optional hook for adding rewrite passes to the HTML filter
+  // chain.  This should be used for filters that are specific to a particular
+  // RewriteDriverFactory implementation.
   virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
+
+  // Provides an optional hook for adding rewriters to the .pagespeed. resource
+  // decoding chain.  This should be used for rewriters that are specific to a
+  // particular RewriteDriverFactory implementation.  The caller should only use
+  // the resulting driver for reconstructing a .pagespeed. resource, not for
+  // transforming HTML.  Therefore, implementations should add any
+  // platform-specific rewriter whose id might appear in a .pagespeed. URL.
+  virtual void AddPlatformSpecificDecodingPasses(RewriteDriver* driver);
 
   ThreadSystem* thread_system() { return thread_system_.get(); }
 

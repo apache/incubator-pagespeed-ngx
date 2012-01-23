@@ -185,8 +185,53 @@ class ApacheConfig : public RewriteOptions {
   // Name of the actual type of this instance as a poor man's RTTI.
   virtual const char* class_name() const;
 
+ protected:
+  template<class T> class ApacheOption : public OptionTemplateBase<T> {
+   public:
+    ApacheOption() {}
+
+    // Sets value_ from value_string.
+    virtual bool SetFromString(const GoogleString& value_string) {
+      T value;
+      bool success = ApacheConfig::ParseFromString(value_string, &value);
+      if (success) {
+        this->set(value);
+      }
+      return success;
+    }
+
+    virtual GoogleString Signature(const Hasher* hasher) const {
+      return ApacheConfig::OptionSignature(this->value(), hasher);
+    }
+
+    virtual GoogleString ToString() const {
+      return ApacheConfig::ToString(this->value());
+    }
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(ApacheOption);
+  };
+
  private:
   void Init();
+
+  static bool ParseFromString(const GoogleString& value_string,
+                              RefererStatisticsOutputLevel* value) {
+    return ParseRefererStatisticsOutputLevel(value_string, value);
+  }
+
+  static GoogleString OptionSignature(RefererStatisticsOutputLevel x,
+                                      const Hasher* hasher) {
+    // TODO(sriharis):  This is what we had so far due to implicit cast to int.
+    // Do we need something better now?
+    return IntegerToString(x);
+  }
+
+  static GoogleString ToString(RefererStatisticsOutputLevel x) {
+    // TODO(sriharis):  This is what we had so far due to implicit cast to int.
+    // Do we need something better now?
+    return IntegerToString(x);
+  }
 
   GoogleString description_;
   RewriteOptions options_;
@@ -196,7 +241,7 @@ class ApacheConfig : public RewriteOptions {
   Option<GoogleString> filename_prefix_;
   Option<GoogleString> slurp_directory_;
 
-  Option<RefererStatisticsOutputLevel> referer_statistics_output_level_;
+  ApacheOption<RefererStatisticsOutputLevel> referer_statistics_output_level_;
 
   Option<bool> collect_referer_statistics_;
   Option<bool> hash_referer_statistics_;

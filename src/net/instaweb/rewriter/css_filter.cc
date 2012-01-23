@@ -42,6 +42,7 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/data_url.h"
@@ -686,41 +687,6 @@ bool CssFilter::SerializeCss(RewriteContext* context,
     minified_bytes_saved_->Add(bytes_saved);
   }
   return ret;
-}
-
-RewriteResult CssFilter::RewriteLoadedResource(
-    const ResourcePtr& input_resource,
-    const OutputResourcePtr& output_resource) {
-  CHECK(input_resource->loaded());
-  bool ret = false;
-  if (input_resource->ContentsValid()) {
-    // Rewrite stylesheet.
-    StringPiece in_contents = input_resource->contents();
-    GoogleString out_contents;
-    // TODO(sligocki): Store the GURL in the input_resource.
-    GoogleUrl css_base_gurl(input_resource->url());
-    GoogleUrl css_trim_gurl(output_resource->UrlEvenIfLeafInvalid());
-    if (css_base_gurl.is_valid() && css_trim_gurl.is_valid()) {
-      TimedBool result = RewriteCssText(
-          NULL /* no context*/, css_base_gurl, css_trim_gurl,
-          in_contents, in_contents.size(),
-          false /* text_is_declarations -- it's a style element */,
-          &out_contents, driver_->message_handler());
-      if (result.value) {
-        // Write new stylesheet.
-        output_resource->SetType(&kContentTypeCss);
-        resource_manager_->MergeNonCachingResponseHeaders(input_resource,
-                                                          output_resource);
-        if (resource_manager_->Write(HttpStatus::kOK,
-                                     out_contents,
-                                     output_resource.get(),
-                                     driver_->message_handler())) {
-          ret = output_resource->IsWritten();
-        }
-      }
-    }
-  }
-  return ret ? kRewriteOk : kRewriteFailed;
 }
 
 CssFilter::Context* CssFilter::MakeContext(RewriteDriver* driver,

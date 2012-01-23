@@ -115,7 +115,7 @@ const int RewriteOptions::kDefaultImageMaxRewritesAtOnce = 8;
 
 // IE limits URL size overall to about 2k characters.  See
 // http://support.microsoft.com/kb/208427/EN-US
-const int RewriteOptions::kMaxUrlSize = 2083;
+const int RewriteOptions::kDefaultMaxUrlSize = 2083;
 
 // Jpeg quality that needs to be used while recompressing. If set to -1, we
 // use source image quality parameters, and is lossless.
@@ -370,59 +370,79 @@ RewriteOptions::RewriteOptions()
 
   // TODO(jmarantz): consider adding these on demand so that the cost of
   // initializing an empty RewriteOptions object is closer to zero.
-  add_option(kPassThrough, &level_, "l");
-  add_option(kDefaultCssInlineMaxBytes, &css_inline_max_bytes_, "ci");
-  add_option(kDefaultImageInlineMaxBytes, &image_inline_max_bytes_, "ii");
+  add_option(kPassThrough, &level_, "l", kRewriteLevel);
+  add_option(kDefaultCssInlineMaxBytes, &css_inline_max_bytes_, "ci",
+             kCssInlineMaxBytes);
+  add_option(kDefaultImageInlineMaxBytes, &image_inline_max_bytes_, "ii",
+             kImageInlineMaxBytes);
   add_option(kDefaultCssImageInlineMaxBytes, &css_image_inline_max_bytes_,
-             "cii");
-  add_option(kDefaultJsInlineMaxBytes, &js_inline_max_bytes_, "ji");
-  add_option(kDefaultCssOutlineMinBytes, &css_outline_min_bytes_, "co");
-  add_option(kDefaultJsOutlineMinBytes, &js_outline_min_bytes_, "jo");
-  add_option(kDefaultProgressiveJpegMinBytes,
-             &progressive_jpeg_min_bytes_, "jp");
-  add_option(kDefaultMaxHtmlCacheTimeMs, &max_html_cache_time_ms_, "hc");
+             "cii", kCssImageInlineMaxBytes);
+  add_option(kDefaultJsInlineMaxBytes, &js_inline_max_bytes_, "ji",
+             kJsInlineMaxBytes);
+  add_option(kDefaultCssOutlineMinBytes, &css_outline_min_bytes_, "co",
+             kCssOutlineMinBytes);
+  add_option(kDefaultJsOutlineMinBytes, &js_outline_min_bytes_, "jo",
+             kJsOutlineMinBytes);
+  add_option(kDefaultProgressiveJpegMinBytes, &progressive_jpeg_min_bytes_,
+             "jp", kProgressiveJpegMinBytes);
+  add_option(kDefaultMaxHtmlCacheTimeMs, &max_html_cache_time_ms_, "hc",
+             kMaxHtmlCacheTimeMs);
   add_option(kDefaultMinResourceCacheTimeToRewriteMs,
-             &min_resource_cache_time_to_rewrite_ms_, "rc");
+             &min_resource_cache_time_to_rewrite_ms_, "rc",
+             kMinResourceCacheTimeToRewriteMs);
   add_option(kDefaultCacheInvalidationTimestamp,
-             &cache_invalidation_timestamp_, "it");
-  add_option(kDefaultIdleFlushTimeMs, &idle_flush_time_ms_, "if");
+             &cache_invalidation_timestamp_, "it", kCacheInvalidationTimestamp);
+  add_option(kDefaultIdleFlushTimeMs, &idle_flush_time_ms_, "if",
+             kIdleFlushTimeMs);
   add_option(kDefaultImageMaxRewritesAtOnce, &image_max_rewrites_at_once_,
-             "im");
-  add_option(kDefaultMaxUrlSegmentSize, &max_url_segment_size_, "uss");
-  add_option(kMaxUrlSize, &max_url_size_, "us");
-  add_option(true, &enabled_, "e");
-  add_option(false, &ajax_rewriting_enabled_, "ar");
-  add_option(false, &botdetect_enabled_, "be");
-  add_option(true, &combine_across_paths_, "cp");
-  add_option(false, &log_rewrite_timing_, "lr");
-  add_option(false, &lowercase_html_names_, "lh");
-  add_option(false, &always_rewrite_css_, "arc");
-  add_option(false, &respect_vary_, "rv");
-  add_option(false, &flush_html_, "fh");
-  add_option(true, &serve_stale_if_fetch_error_, "ss");
-  add_option(false, &enable_blink_, "eb");
-  add_option(false, &serve_blink_non_critical_, "snc");
-  add_option(false, &default_cache_html_, "dch");
-  add_option(true, &modify_caching_headers_, "mch");
-  add_option(kDefaultBeaconUrl, &beacon_url_, "bu");
+             "im", kImageMaxRewritesAtOnce);
+  add_option(kDefaultMaxUrlSegmentSize, &max_url_segment_size_, "uss",
+             kMaxUrlSegmentSize);
+  add_option(kDefaultMaxUrlSize, &max_url_size_, "us", kMaxUrlSize);
+  add_option(true, &enabled_, "e", kEnabled);
+  add_option(false, &ajax_rewriting_enabled_, "ar", kAjaxRewritingEnabled);
+  add_option(false, &botdetect_enabled_, "be", kBotdetectEnabled);
+  add_option(true, &combine_across_paths_, "cp", kCombineAcrossPaths);
+  add_option(false, &log_rewrite_timing_, "lr", kLogRewriteTiming);
+  add_option(false, &lowercase_html_names_, "lh", kLowercaseHtmlNames);
+  add_option(false, &always_rewrite_css_, "arc", kAlwaysRewriteCss);
+  add_option(false, &respect_vary_, "rv", kRespectVary);
+  add_option(false, &flush_html_, "fh", kFlushHtml);
+  add_option(true, &serve_stale_if_fetch_error_, "ss", kServeStaleIfFetchError);
+  add_option(false, &enable_blink_, "eb", kEnableBlink);
+  add_option(false, &serve_blink_non_critical_, "snc", kServeBlinkNonCritical);
+  add_option(false, &default_cache_html_, "dch", kDefaultCacheHtml);
+  add_option(true, &modify_caching_headers_, "mch", kModifyCachingHeaders);
+  add_option(kDefaultBeaconUrl, &beacon_url_, "bu", kBeaconUrl);
   add_option(kDefaultImageJpegRecompressQuality,
-             &image_jpeg_recompress_quality_, "iq");
+             &image_jpeg_recompress_quality_, "iq",
+             kImageJpegRecompressionQuality);
   add_option(kDefaultImageLimitOptimizedPercent,
-             &image_limit_optimized_percent_, "ip");
+             &image_limit_optimized_percent_, "ip",
+             kImageLimitOptimizedPercent);
   add_option(kDefaultImageLimitResizeAreaPercent,
-             &image_limit_resize_area_percent_, "ia");
+             &image_limit_resize_area_percent_, "ia",
+             kImageLimitResizeAreaPercent);
   add_option(kDefaultImageWebpRecompressQuality,
-             &image_webp_recompress_quality_, "iw");
-  add_option("", &ga_id_, "ig");
-  add_option(kDefaultMaxDelayedImagesIndex, &max_delayed_images_index_, "mdii");
+             &image_webp_recompress_quality_, "iw",
+             kImageWebpRecompressQuality);
+  add_option(kDefaultMaxDelayedImagesIndex, &max_delayed_images_index_, "mdii",
+             kMaxDelayedImagesIndex);
   add_option(kDefaultMinImageSizeLowResolutionBytes,
-             &min_image_size_low_resolution_bytes_, "islr");
+             &min_image_size_low_resolution_bytes_, "islr",
+             kMinImageSizeLowResolutionBytes);
   add_option(kDefaultCriticalImagesCacheExpirationMs,
-             &critical_images_cache_expiration_time_ms_, "cice");
+             &critical_images_cache_expiration_time_ms_, "cice",
+             kCriticalImagesCacheExpirationTimeMs);
   add_option(kDefaultImageJpegNumProgressiveScans,
-             &image_jpeg_num_progressive_scans_, "ijps");
-  add_option(false, &image_retain_color_profile_, "ircp");
-  add_option(false, &image_retain_exif_data_, "ired");
+             &image_jpeg_num_progressive_scans_, "ijps",
+             kImageJpegNumProgressiveScans);
+  add_option(false, &image_retain_color_profile_, "ircp",
+             kImageRetainColorProfile);
+  add_option(false, &image_retain_exif_data_, "ired", kImageRetainExifData);
+  add_option("", &ga_id_, "ig", kAnalyticsID);
+  // Sort all_options_ on enum.
+  SortOptions();
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
@@ -432,6 +452,11 @@ RewriteOptions::~RewriteOptions() {
 }
 
 RewriteOptions::OptionBase::~OptionBase() {
+}
+
+void RewriteOptions::SortOptions() {
+  std::sort(all_options_.begin(), all_options_.end(),
+            RewriteOptions::OptionLessThanByEnum);
 }
 
 void RewriteOptions::set_panel_config(
@@ -574,7 +599,7 @@ bool RewriteOptions::AddCommaSeparatedListToFilterSet(
   bool ret = true;
   size_t prev_set_size = set->size();
   for (int i = 0, n = names.size(); i < n; ++i) {
-    ret = AddOptionToFilterSet(names[i], handler, set);
+    ret = AddByNameToFilterSet(names[i], handler, set);
   }
   modified_ |= (set->size() != prev_set_size);
   return ret;
@@ -593,13 +618,13 @@ bool RewriteOptions::AddCommaSeparatedListToPlusAndMinusFilterSets(
     if (!option.empty()) {
       if (option[0] == '-') {
         option.remove_prefix(1);
-        ret = AddOptionToFilterSet(names[i], handler, minus_set);
+        ret = AddByNameToFilterSet(names[i], handler, minus_set);
       } else if (option[0] == '+') {
         option.remove_prefix(1);
-        ret = AddOptionToFilterSet(names[i], handler, plus_set);
+        ret = AddByNameToFilterSet(names[i], handler, plus_set);
       } else {
         // No prefix is treated the same as '+'. Arbitrary but reasonable.
-        ret = AddOptionToFilterSet(names[i], handler, plus_set);
+        ret = AddByNameToFilterSet(names[i], handler, plus_set);
       }
     }
   }
@@ -608,10 +633,10 @@ bool RewriteOptions::AddCommaSeparatedListToPlusAndMinusFilterSets(
   return ret;
 }
 
-bool RewriteOptions::AddOptionToFilterSet(
+bool RewriteOptions::AddByNameToFilterSet(
     const StringPiece& option, MessageHandler* handler, FilterSet* set) {
   bool ret = true;
-  Filter filter = Lookup(option);
+  Filter filter = LookupFilter(option);
   if (filter == kEndOfFilters) {
     // Handle a compound filter name.  This is much less common, so we don't
     // have any special infrastructure for it; just code.
@@ -644,6 +669,34 @@ bool RewriteOptions::AddOptionToFilterSet(
     set->insert(filter);
   }
   return ret;
+}
+
+bool RewriteOptions::SetOptionFromName(const GoogleString& name,
+                                       const GoogleString& value,
+                                       MessageHandler* handler) {
+  OptionEnum name_enum = LookupOption(name);
+  if (name_enum == kEndOfOptions) {
+    // Not a mapped option.
+    handler->Message(kWarning, "Option %s not mapped.", name.c_str());
+    return false;
+  }
+  OptionBaseVector::iterator it = std::lower_bound(
+      all_options_.begin(), all_options_.end(), name_enum,
+      RewriteOptions::LessThanArg);
+  OptionBase* option = *it;
+  if (option->option_enum() == name_enum) {
+    if (!option->SetFromString(value)) {
+      handler->Message(kWarning, "Cannot set %s for option %s.",
+                       value.c_str(), name.c_str());
+      return false;
+    } else {
+      return true;
+    }
+  } else {
+    // No Option with name_enum in all_options_.
+    handler->Message(kWarning, "Option %s not found.", name.c_str());
+    return false;
+  }
 }
 
 bool RewriteOptions::Enabled(Filter filter) const {

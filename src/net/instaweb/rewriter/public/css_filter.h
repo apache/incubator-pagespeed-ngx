@@ -32,7 +32,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -170,9 +169,6 @@ class CssFilter : public RewriteFilter {
                     bool stylesheet_is_declarations,
                     GoogleString* out_text,
                     MessageHandler* handler);
-
-  RewriteResult RewriteLoadedResource(const ResourcePtr& input_resource,
-                                      const OutputResourcePtr& output_resource);
 
   bool in_style_element_;  // Are we in a style element?
   // These are meaningless if in_style_element_ is false:

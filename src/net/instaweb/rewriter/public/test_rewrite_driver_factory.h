@@ -131,6 +131,16 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
     return ip == "127.0.0.1";
   }
 
+  // Enable or disable adding the contents of rewriter_callback_vector_ within
+  // AddPlatformSpecificRewritePasses.
+  void set_add_platform_specific_decoding_passes(bool value) {
+    add_platform_specific_decoding_passes_ = value;
+  }
+
+  bool add_platform_specific_decoding_passes() const {
+    return add_platform_specific_decoding_passes_;
+  }
+
  protected:
   virtual Hasher* NewHasher();
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
@@ -143,6 +153,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual UrlNamer* DefaultUrlNamer();
   virtual bool ShouldWriteResourcesToFileSystem() { return false; }
   virtual Scheduler* CreateScheduler();
+  virtual void AddPlatformSpecificDecodingPasses(RewriteDriver* driver);
   virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);
 
  private:
@@ -161,6 +172,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   MockMessageHandler* mock_message_handler_;
   MockMessageHandler* mock_html_message_handler_;
   bool use_test_url_namer_;
+  bool add_platform_specific_decoding_passes_;
   std::vector<CreateFilterCallback*> filter_callback_vector_;
   std::vector<CreateRewriterCallback*> rewriter_callback_vector_;
 };

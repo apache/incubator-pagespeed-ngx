@@ -1,0 +1,80 @@
+%{
+// rewrite_option_names.cc is automatically generated from
+// rewrite_option_names.gperf.
+// Author: jmarantz@google.com, sriharis@google.com
+
+#include "base/basictypes.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/string_util.h"
+
+namespace net_instaweb {
+%}
+%compare-strncmp
+%define class-name OptionMapper
+%define lookup-function-name Lookup
+%define word-array-name kOptionNameTable
+%global-table
+%ignore-case
+%includes
+%language=C++
+%readonly-tables
+%struct-type
+
+struct OptionName {
+  const char* name;
+  net_instaweb::RewriteOptions::OptionEnum option_enum;
+};
+%%
+"RewriteLevel",                         RewriteOptions::kRewriteLevel
+"CssInlineMaxBytes",                    RewriteOptions::kCssInlineMaxBytes
+"ImageInlineMaxBytes",                  RewriteOptions::kImageInlineMaxBytes
+"CssImageInlineMaxBytes",               RewriteOptions::kCssImageInlineMaxBytes
+"JsInlineMaxBytes",                     RewriteOptions::kJsInlineMaxBytes
+"CssOutlineMinBytes",                   RewriteOptions::kCssOutlineMinBytes
+"JsOutlineMinBytes",                    RewriteOptions::kJsOutlineMinBytes
+"ProgressiveJpegMinBytes",              RewriteOptions::kProgressiveJpegMinBytes
+"MaxHtmlCacheTimeMs",                   RewriteOptions::kMaxHtmlCacheTimeMs
+"MinResourceCacheTimeToRewriteMs",      RewriteOptions::kMinResourceCacheTimeToRewriteMs
+"IdleFlushTimeMs",                      RewriteOptions::kIdleFlushTimeMs
+"JpegRecompressionQuality",             RewriteOptions::kImageJpegRecompressionQuality
+"ImageJpegNumProgressiveScans",         RewriteOptions::kImageJpegNumProgressiveScans
+"ImageRetainColorProfile",              RewriteOptions::kImageRetainColorProfile
+"ImageRetainExifData",                  RewriteOptions::kImageRetainExifData
+"ImageLimitOptimizedPercent",           RewriteOptions::kImageLimitOptimizedPercent
+"ImageLimitResizeAreaPercent",          RewriteOptions::kImageLimitResizeAreaPercent
+"ImageWebpRecompressQuality",           RewriteOptions::kImageWebpRecompressQuality
+"ImageMaxRewritesAtOnce",               RewriteOptions::kImageMaxRewritesAtOnce
+"MaxUrlSegmentSize",                    RewriteOptions::kMaxUrlSegmentSize
+"kMaxUrlSize",                          RewriteOptions::kMaxUrlSize
+"Allow",                                RewriteOptions::kEnabled
+"AjaxRewritingEnabled",                 RewriteOptions::kAjaxRewritingEnabled
+"BotdetectEnabled",                     RewriteOptions::kBotdetectEnabled
+"CombineAcrossPaths",                   RewriteOptions::kCombineAcrossPaths
+"LogRewriteTiming",                     RewriteOptions::kLogRewriteTiming
+"LowercaseHtmlNames",                   RewriteOptions::kLowercaseHtmlNames
+"AlwaysRewriteCss",                     RewriteOptions::kAlwaysRewriteCss
+"RespectVary",                          RewriteOptions::kRespectVary
+"FlushHtml",                            RewriteOptions::kFlushHtml
+"ServeStaleIfFetchError",               RewriteOptions::kServeStaleIfFetchError
+"EnableBlink",                          RewriteOptions::kEnableBlink
+"ServeBlinkNonCritical",                RewriteOptions::kServeBlinkNonCritical
+"DefaultCacheHtml",                     RewriteOptions::kDefaultCacheHtml
+"ModifyCachingHeaders",                 RewriteOptions::kModifyCachingHeaders
+"MaxDelayedImagesIndex",                RewriteOptions::kMaxDelayedImagesIndex
+"MinImageSizeLowResolutionBytes",       RewriteOptions::kMinImageSizeLowResolutionBytes
+"CriticalImagesCacheExpirationTimeMs",  RewriteOptions::kCriticalImagesCacheExpirationTimeMs
+"BeaconUrl",                            RewriteOptions::kBeaconUrl
+"AnalyticsID",                          RewriteOptions::kAnalyticsID
+%%
+
+RewriteOptions::OptionEnum RewriteOptions::LookupOption(
+    const StringPiece& option_name) {
+  const OptionName* entry = OptionMapper::Lookup(
+      option_name.data(), option_name.size());
+  if (entry != NULL) {
+    return entry->option_enum;
+  }
+  return RewriteOptions::kEndOfOptions;
+}
+
+}  // namespace net_instaweb

@@ -1,6 +1,6 @@
 %{
-// rewrite_options_names.cc is automatically generated from
-// rewrite_options_names.gperf.
+// rewrite_filter_names.cc is automatically generated from
+// rewrite_filter_names.gperf.
 // Author: jmarantz@google.com
 
 #include "base/basictypes.h"
@@ -73,7 +73,8 @@ struct FilterMap {
 "trim_urls",                         RewriteOptions::kLeftTrimUrls
 %%
 
-RewriteOptions::Filter RewriteOptions::Lookup(const StringPiece& filter_name) {
+RewriteOptions::Filter RewriteOptions::LookupFilter(
+    const StringPiece& filter_name) {
   const FilterMap* entry = FilterMapper::Lookup(
       filter_name.data(), filter_name.size());
   if (entry != NULL) {

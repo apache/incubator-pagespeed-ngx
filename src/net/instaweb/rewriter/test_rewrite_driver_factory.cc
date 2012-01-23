@@ -112,7 +112,8 @@ TestRewriteDriverFactory::TestRewriteDriverFactory(
     mem_file_system_(NULL),
     mock_hasher_(NULL),
     mock_message_handler_(NULL),
-    mock_html_message_handler_(NULL) {
+    mock_html_message_handler_(NULL),
+    add_platform_specific_decoding_passes_(true) {
   set_filename_prefix(StrCat(temp_dir, "/"));
   use_test_url_namer_ = (getenv(kUrlNamerScheme) != NULL &&
                          strcmp(getenv(kUrlNamerScheme), "test") == 0);
@@ -219,6 +220,16 @@ RewriteOptions* TestRewriteDriverFactory::NewRewriteOptions() {
   RewriteOptions* options = RewriteDriverFactory::NewRewriteOptions();
   options->set_ajax_rewriting_enabled(false);
   return options;
+}
+
+void TestRewriteDriverFactory::AddPlatformSpecificDecodingPasses(
+    RewriteDriver* driver) {
+  if (add_platform_specific_decoding_passes_) {
+    for (std::size_t i = 0; i < rewriter_callback_vector_.size(); i++) {
+      RewriteFilter* filter = rewriter_callback_vector_[i]->Done(driver);
+      driver->AppendRewriteFilter(filter);
+    }
+  }
 }
 
 void TestRewriteDriverFactory::AddPlatformSpecificRewritePasses(

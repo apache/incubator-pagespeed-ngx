@@ -498,4 +498,38 @@ TEST_F(RewriteOptionsTest, SetDefaultRewriteLevel) {
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheCss));
 }
 
+TEST_F(RewriteOptionsTest, SetOptionFromName) {
+  NullMessageHandler handler;
+
+  EXPECT_TRUE(
+      options_.SetOptionFromName("CssInlineMaxBytes", "1024", &handler));
+  // Default for this is 2048.
+  EXPECT_EQ(1024L, options_.css_inline_max_bytes());
+
+  EXPECT_TRUE(
+      options_.SetOptionFromName("JpegRecompressionQuality", "1", &handler));
+  // Default is -1.
+  EXPECT_EQ(1, options_.image_jpeg_recompress_quality());
+
+  EXPECT_TRUE(
+      options_.SetOptionFromName("CombineAcrossPaths", "false", &handler));
+  // Default is true
+  EXPECT_EQ(false, options_.combine_across_paths());
+
+  EXPECT_TRUE(options_.SetOptionFromName("BeaconUrl", "example", &handler));
+  EXPECT_EQ("example", options_.beacon_url());
+
+  RewriteOptions::RewriteLevel old_level = options_.level();
+  EXPECT_FALSE(
+      options_.SetOptionFromName("RewriteLevel", "does_not_work", &handler));
+  EXPECT_EQ(old_level, options_.level());
+
+  EXPECT_FALSE(options_.SetOptionFromName("InvalidName", "example", &handler));
+
+  EXPECT_FALSE(
+      options_.SetOptionFromName("JsInlineMaxBytes", "NOT_INT", &handler));
+  EXPECT_EQ(RewriteOptions::kDefaultJsInlineMaxBytes,
+            options_.js_inline_max_bytes());  // unchanged from default.
+}
+
 }  // namespace

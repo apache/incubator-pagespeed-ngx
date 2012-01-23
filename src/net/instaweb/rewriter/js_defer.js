@@ -94,11 +94,10 @@ pagespeed.DeferJs.prototype.submitTask = function(task, opt_pos) {
  * @param {string} str to be evaluated.
  */
 pagespeed.DeferJs.prototype.globalEval = function(str) {
-  if (window.execScript) {
-    window.execScript(str);
-  } else {
-    window["eval"].call(window, str);
-  }
+  var script = document.createElement('script');
+  script.text=str;
+  script.setAttribute('type', 'text/javascript');
+  this.currentElem_.parentNode.insertBefore(script, this.currentElem_);
 };
 
 /**
@@ -120,8 +119,6 @@ pagespeed.DeferJs.prototype.createIdVars = function() {
     this.globalEval(idVarsString);
   }
 }
-pagespeed.DeferJs.prototype['createIdVars'] =
-    pagespeed.DeferJs.prototype.createIdVars;
 
 /**
  * Defers execution of scriptNode, by adding it to the queue.
@@ -238,6 +235,7 @@ pagespeed.DeferJs.prototype.run = function() {
   initialContextNode.setAttribute('psa_dw_target', 'true');
   document.body.appendChild(initialContextNode);
   this.currentElem_ = initialContextNode;
+  this.createIdVars();
 
   // Starts executing the defer_js closures.
   this.runNext();
@@ -439,7 +437,6 @@ pagespeed.outerHTML = function(node) {
 pagespeed.deferInit = function() {
   pagespeed.deferJs = new pagespeed.DeferJs();
   pagespeed['deferJs'] = pagespeed.deferJs;
-  pagespeed.deferJs.createIdVars();
   document.writeln = function(x) {
     pagespeed.deferJs.writeHtml(x + '\n');
   };

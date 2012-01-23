@@ -197,6 +197,11 @@ void ResourceManager::InitWorkersAndDecodingDriver() {
   decoding_driver_.reset(NewUnmanagedRewriteDriver());
   // Inserts platform-specific rewriters into the resource_filter_map_, so that
   // the decoding process can recognize those rewriter ids.
+  factory_->AddPlatformSpecificDecodingPasses(decoding_driver_.get());
+  // This call is for backwards compatibility.  When adding new platform
+  // specific rewriters to implementations of RewriteDriverFactory, please
+  // do not rely on this call to include them in the decoding process.  Instead,
+  // add them to your implementation of AddPlatformSpecificDecodingPasses.
   factory_->AddPlatformSpecificRewritePasses(decoding_driver_.get());
 }
 

@@ -852,8 +852,8 @@ void RewriteDriver::AddPostRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
     // Defers javascript download and execution to post onload.
-    AddUnownedPostRenderFilter(new JsDisableFilter(this));
-    AddUnownedPostRenderFilter(new JsDeferDisabledFilter(this));
+    AddOwnedPostRenderFilter(new JsDisableFilter(this));
+    AddOwnedPostRenderFilter(new JsDeferDisabledFilter(this));
   }
   // TODO(nikhilmadan): Should we disable this for bots?
   if (rewrite_options->Enabled(RewriteOptions::kLazyloadImages)) {

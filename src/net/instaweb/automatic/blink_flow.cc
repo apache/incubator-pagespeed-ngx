@@ -122,21 +122,25 @@ class JsonFetch : public StringAsyncFetch {
       return;
     }
 
-    RewriteDriver* json_computation_driver =
-        resource_manager_->NewCustomRewriteDriver(options_.release());
+    json_computation_driver_ = resource_manager_->NewCustomRewriteDriver(
+        options_.release());
     // Set deadline to 10s since we want maximum filters to complete.
     // Note that no client is blocked waiting for this request to complete.
-    json_computation_driver->set_rewrite_deadline_ms(
+    json_computation_driver_->set_rewrite_deadline_ms(
         10 * Timer::kSecondMs);
-    json_computation_driver->SetWriter(&value_);
-    json_computation_driver->set_response_headers_ptr(response_headers());
+    json_computation_driver_->SetWriter(&value_);
+    json_computation_driver_->set_response_headers_ptr(response_headers());
+    json_computation_driver_->AddLowPriorityRewriteTask(
+        MakeFunction(this, &JsonFetch::Parse));
+  }
 
-    json_computation_driver->StartParse(
+  void Parse() {
+    json_computation_driver_->StartParse(
         key_.substr(kJsonCachePrefixLength));
-    json_computation_driver->ParseText(buffer());
+    json_computation_driver_->ParseText(buffer());
 
     // Clean up.
-    json_computation_driver->FinishParseAsync(MakeFunction(
+    json_computation_driver_->FinishParseAsync(MakeFunction(
         this, &JsonFetch::CompleteFinishParse));
   }
 
@@ -149,6 +153,8 @@ class JsonFetch : public StringAsyncFetch {
   ResourceManager* resource_manager_;
   scoped_ptr<RewriteOptions> options_;
   HTTPValue value_;
+
+  RewriteDriver* json_computation_driver_;
 
   DISALLOW_COPY_AND_ASSIGN(JsonFetch);
 };

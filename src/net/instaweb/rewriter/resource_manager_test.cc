@@ -400,8 +400,30 @@ TEST_F(ResourceManagerTest, TestPlatformSpecificRewritersDecoding) {
   // With the mock rewriter enabled, this URL should be decoded.
   CreateMockRewriterCallback callback;
   factory()->AddCreateRewriterCallback(&callback);
+  factory()->set_add_platform_specific_decoding_passes(true);
   resource_manager()->InitWorkersAndDecodingDriver();
   driver = resource_manager()->decoding_driver();
+  OutputResourcePtr good_output(driver->DecodeOutputResource(gurl, &dummy));
+  ASSERT_TRUE(good_output.get() != NULL);
+  EXPECT_EQ(url, good_output->url());
+}
+
+// Tests that platform-specific rewriters are used for decoding fetches even
+// if they are only added in AddPlatformSpecificRewritePasses, not
+// AddPlatformSpecificDecodingPasses.  Required for backwards compatibility.
+TEST_F(ResourceManagerTest, TestPlatformSpecificRewritersImplicitDecoding) {
+  GoogleString url = Encode("http://example.com/dir/123/",
+                            "mk", "0", "orig", "js");
+  GoogleUrl gurl(url);
+  RewriteFilter* dummy;
+
+  // The URL should be decoded even if AddPlatformSpecificDecodingPasses is
+  // suppressed.
+  CreateMockRewriterCallback callback;
+  factory()->AddCreateRewriterCallback(&callback);
+  factory()->set_add_platform_specific_decoding_passes(false);
+  resource_manager()->InitWorkersAndDecodingDriver();
+  RewriteDriver* driver = resource_manager()->decoding_driver();
   OutputResourcePtr good_output(driver->DecodeOutputResource(gurl, &dummy));
   ASSERT_TRUE(good_output.get() != NULL);
   EXPECT_EQ(url, good_output->url());

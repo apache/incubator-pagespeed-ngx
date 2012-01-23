@@ -91,6 +91,53 @@ class RewriteOptions {
     kEndOfFilters
   };
 
+  // Any new Option added, should have a corresponding enum here and this should
+  // be passed in when add_option is called in the constructor.
+  enum OptionEnum {
+    kRewriteLevel,
+    kCssInlineMaxBytes,
+    kImageInlineMaxBytes,
+    kCssImageInlineMaxBytes,
+    kJsInlineMaxBytes,
+    kCssOutlineMinBytes,
+    kJsOutlineMinBytes,
+    kProgressiveJpegMinBytes,
+    kMaxHtmlCacheTimeMs,
+    kMinResourceCacheTimeToRewriteMs,
+    kCacheInvalidationTimestamp,
+    kIdleFlushTimeMs,
+    kImageMaxRewritesAtOnce,
+    kMaxUrlSegmentSize,
+    kMaxUrlSize,
+    kEnabled,
+    kAjaxRewritingEnabled,
+    kBotdetectEnabled,
+    kCombineAcrossPaths,
+    kLogRewriteTiming,
+    kLowercaseHtmlNames,
+    kAlwaysRewriteCss,
+    kRespectVary,
+    kFlushHtml,
+    kServeStaleIfFetchError,
+    kEnableBlink,
+    kServeBlinkNonCritical,
+    kDefaultCacheHtml,
+    kModifyCachingHeaders,
+    kBeaconUrl,
+    kImageJpegRecompressionQuality,
+    kImageLimitOptimizedPercent,
+    kImageLimitResizeAreaPercent,
+    kImageWebpRecompressQuality,
+    kMaxDelayedImagesIndex,
+    kMinImageSizeLowResolutionBytes,
+    kCriticalImagesCacheExpirationTimeMs,
+    kImageJpegNumProgressiveScans,
+    kImageRetainColorProfile,
+    kImageRetainExifData,
+    kAnalyticsID,
+    kEndOfOptions
+  };
+
   static const char kAjaxRewriteId[];
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
@@ -163,7 +210,7 @@ class RewriteOptions {
 
   // IE limits URL size overall to about 2k characters.  See
   // http://support.microsoft.com/kb/208427/EN-US
-  static const int kMaxUrlSize;
+  static const int kDefaultMaxUrlSize;
 
   static const int kDefaultImageMaxRewritesAtOnce;
 
@@ -245,6 +292,10 @@ class RewriteOptions {
   void EnableExtendCacheFilters();
 
   bool Enabled(Filter filter) const;
+
+  // Set Option name with value.
+  bool SetOptionFromName(const GoogleString& name, const GoogleString& value,
+                         MessageHandler* handler);
 
   // TODO(jmarantz): consider setting flags in the set_ methods so that
   // first's explicit settings can override default values from second.
@@ -591,8 +642,9 @@ class RewriteOptions {
  protected:
   class OptionBase {
    public:
-    OptionBase() : id_(NULL) {}
+    OptionBase() : id_(NULL), option_enum_(RewriteOptions::kEndOfOptions) {}
     virtual ~OptionBase();
+    virtual bool SetFromString(const GoogleString& value_string) = 0;
     virtual void Merge(const OptionBase* src) = 0;
     virtual bool was_set() const = 0;
     virtual GoogleString Signature(const Hasher* hasher) const = 0;
@@ -602,8 +654,11 @@ class RewriteOptions {
       DCHECK(id_);
       return id_;
     }
+    void set_option_enum(OptionEnum option_enum) { option_enum_ = option_enum; }
+    OptionEnum option_enum() const { return option_enum_; }
    private:
     const char* id_;
+    OptionEnum option_enum_;  // To know where this is in all_options_.
   };
 
   // Helper class to represent an Option, whose value is held in some class T.
@@ -615,9 +670,9 @@ class RewriteOptions {
   // It can use this knowledge to intelligently merge a 'base' option value
   // into a 'new' option value, allowing explicitly set values from 'base'
   // to override default values from 'new'.
-  template<class T> class Option : public OptionBase {
+  template<class T> class OptionTemplateBase : public OptionBase {
    public:
-    Option() : was_set_(false) {}
+    OptionTemplateBase() : was_set_(false) {}
 
     virtual bool was_set() const { return was_set_; }
 
@@ -634,15 +689,17 @@ class RewriteOptions {
 
     const T& value() const { return value_; }
 
-    // The signature of the Merge implementation must match the base-class.
-    // The caller is responsible for ensuring that only the same typed Options
-    // are compared.  In RewriteOptions::Merge this is guaranteed because we
-    // are always comparing options at the same index in a vector<OptionBase*>.
+    // The signature of the Merge implementation must match the base-class.  The
+    // caller is responsible for ensuring that only the same typed Options are
+    // compared.  In RewriteOptions::Merge this is guaranteed because the
+    // vector<OptionBase*> all_options_ is sorted on option_enum().  We DCHECK
+    // that the option_enum of this and src are the same.
     virtual void Merge(const OptionBase* src) {
-      MergeHelper(static_cast<const Option*>(src));
+      DCHECK(option_enum() == src->option_enum());
+      MergeHelper(static_cast<const OptionTemplateBase*>(src));
     }
 
-    void MergeHelper(const Option* src) {
+    void MergeHelper(const OptionTemplateBase* src) {
       // Even if !src->was_set, the default value needs to be transferred
       // over in case it was changed with set_default or SetDefaultRewriteLevel.
       if (src->was_set_ || !was_set_) {
@@ -651,18 +708,40 @@ class RewriteOptions {
       }
     }
 
-    virtual GoogleString Signature(const Hasher* hasher) const {
-      return RewriteOptions::OptionSignature(value_, hasher);
-    }
-
-    virtual GoogleString ToString() const {
-      return RewriteOptions::ToString(value_);
-    }
-
    private:
     T value_;
     bool was_set_;
 
+    DISALLOW_COPY_AND_ASSIGN(OptionTemplateBase);
+  };
+
+  // Subclassing OptionTemplateBase so that the conversion functions that need
+  // to invoke static overloaded functions are declared only here.  Enables
+  // subclasses of RewriteOptions to override these in case they use Option
+  // types not visible here.
+  template<class T> class Option : public OptionTemplateBase<T> {
+   public:
+    Option() {}
+
+    // Sets value_ from value_string.
+    virtual bool SetFromString(const GoogleString& value_string) {
+      T value;
+      bool success = RewriteOptions::ParseFromString(value_string, &value);
+      if (success) {
+        this->set(value);
+      }
+      return success;
+    }
+
+    virtual GoogleString Signature(const Hasher* hasher) const {
+      return RewriteOptions::OptionSignature(this->value(), hasher);
+    }
+
+    virtual GoogleString ToString() const {
+      return RewriteOptions::ToString(this->value());
+    }
+
+   private:
     DISALLOW_COPY_AND_ASSIGN(Option);
   };
 
@@ -679,8 +758,21 @@ class RewriteOptions {
   // const-reference.  This is because when calling add_option we may
   // want to use a compile-time constant (e.g. Timer::kHourMs) which
   // does not have a linkable address.
+  // The option_enum_ field of Option is set from the option_enum argument here.
+  // It has to be ensured that correct enum is passed in.  If two Option<>
+  // objects have same enum, then SetOptionFromName will not work for those.  If
+  // option_enum is not passed in, then kEndOfOptions will be used (default
+  // value in OptionBase constructor) and this means this option cannot be set
+  // using SetOptionFromName.
   template<class T, class U>  // U must be assignable to T.
-  void add_option(U default_value, Option<T>* option, const char* id) {
+  void add_option(U default_value, OptionTemplateBase<T>* option,
+                  const char* id, OptionEnum option_enum) {
+    add_option(default_value, option, id);
+    option->set_option_enum(option_enum);
+  }
+  template<class T, class U>  // U must be assignable to T.
+  void add_option(U default_value, OptionTemplateBase<T>* option,
+                  const char* id) {
     option->set_default(default_value);
     option->set_id(id);
     all_options_.push_back(option);
@@ -690,10 +782,16 @@ class RewriteOptions {
   // with a variable rather than a constant so it makes sense to pass
   // it by reference.
   template<class T, class U>  // U must be assignable to T.
-  void set_option(const U& new_value, Option<T>* option) {
+  void set_option(const U& new_value, OptionTemplateBase<T>* option) {
     option->set(new_value);
     Modify();
   }
+
+  // To be called after construction and before this object is used.
+  // Currently this is called from constructor.  If a sub-class calls
+  // add_option() with OptionEnum, then it has to call this again to ensure
+  // sorted order.
+  void SortOptions();
 
   // Marks the config as modified.
   void Modify();
@@ -705,9 +803,36 @@ class RewriteOptions {
   bool AddCommaSeparatedListToPlusAndMinusFilterSets(
       const StringPiece& filters, MessageHandler* handler,
       FilterSet* plus_set, FilterSet* minus_set);
-  bool AddOptionToFilterSet(
+  bool AddByNameToFilterSet(
       const StringPiece& option, MessageHandler* handler, FilterSet* set);
-  static Filter Lookup(const StringPiece& filter_name);
+  static Filter LookupFilter(const StringPiece& filter_name);
+  static OptionEnum LookupOption(const StringPiece& option_name);
+
+  // These static methods are used by Option<T>::SetFromString to set
+  // Option<T>::value_ from a string representation of it.
+  static bool ParseFromString(const GoogleString& value_string, bool* value) {
+    // How are bools passed in the string?  I am assuming "true" / "false".
+    *value = (value_string == "true");
+    return true;
+  }
+  static bool ParseFromString(const GoogleString& value_string, int* value) {
+    return StringToInt(value_string, value);
+  }
+  static bool ParseFromString(const GoogleString& value_string, int64* value) {
+    return StringToInt64(value_string, value);
+  }
+  static bool ParseFromString(const GoogleString& value_string,
+                              GoogleString* value) {
+    *value = value_string;
+    return true;
+  }
+  static bool ParseFromString(const GoogleString& value_string,
+                              RewriteLevel* value) {
+    // We shouldn't be setting level_ via SetOptionFromName. So ignore
+    // value_string.
+    // Should we set the default?  *value = kPassThrough
+    return false;
+  }
 
   // These static methods enable us to generate signatures for all
   // instantiated option-types from Option<T>::Signature().
@@ -740,6 +865,17 @@ class RewriteOptions {
     return x;
   }
   static GoogleString ToString(RewriteLevel x);
+
+  // Returns true if option1's enum is less than option2's. Used to order
+  // all_options_.
+  static bool OptionLessThanByEnum(OptionBase* option1, OptionBase* option2) {
+    return option1->option_enum() < option2->option_enum();
+  }
+
+  // Returns if option's enum is less than arg.
+  static bool LessThanArg(OptionBase* option, OptionEnum arg) {
+    return option->option_enum() < arg;
+  }
 
   bool modified_;
   bool frozen_;
@@ -830,8 +966,8 @@ class RewriteOptions {
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,
   // Compare.
-
-  std::vector<OptionBase*> all_options_;
+  typedef std::vector<OptionBase*> OptionBaseVector;
+  OptionBaseVector all_options_;
 
   // When compiled for debug, we lazily check whether the all the Option<>
   // member variables in all_options have unique IDs.
