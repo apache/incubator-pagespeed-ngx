@@ -20,7 +20,9 @@
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_BLINK_FLOW_H_
 
 #include "net/instaweb/rewriter/public/blink_util.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -29,7 +31,6 @@ namespace net_instaweb {
 class AsyncFetch;
 class Layout;
 class ProxyFetchFactory;
-class ResourceManager;
 class ResponseHeaders;
 class RewriteOptions;
 
@@ -47,10 +48,17 @@ class BlinkFlow {
 
   virtual ~BlinkFlow();
 
+  static void Initialize(Statistics* statistics);
+
+  // Statistics variable names.
+  static const char kNumBackgroundFetchesStarted[];
+  static const char kNumBackgroundFetchesComplete[];
+
  private:
   class JsonFindCallback;
   friend class JsonFindCallback;
 
+  // TODO(rahulbansal): Move this to cc file.
   BlinkFlow(const GoogleString& url,
             AsyncFetch* base_fetch,
             const Layout* layout,
@@ -66,7 +74,14 @@ class BlinkFlow {
         request_start_time_ms_(-1),
         time_to_start_blink_flow_ms_(-1),
         time_to_json_lookup_done_ms_(-1),
-        time_to_split_critical_ms_(-1) {}
+        time_to_split_critical_ms_(-1),
+        num_background_fetches_started_(NULL) {
+    Statistics* stats = manager_->statistics();
+    if (stats != NULL) {
+      num_background_fetches_started_ = stats->GetTimedVariable(
+          kNumBackgroundFetchesStarted);
+    }
+  }
 
   void InitiateJsonLookup();
 
@@ -115,6 +130,7 @@ class BlinkFlow {
   int64 time_to_start_blink_flow_ms_;
   int64 time_to_json_lookup_done_ms_;
   int64 time_to_split_critical_ms_;
+  TimedVariable* num_background_fetches_started_;
 
   DISALLOW_COPY_AND_ASSIGN(BlinkFlow);
 };

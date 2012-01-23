@@ -103,11 +103,19 @@ class JsonFetch : public StringAsyncFetch {
             RewriteOptions* options)
       : key_(key),
         resource_manager_(resource_manager),
-        options_(options) {}
+        options_(options),
+        num_background_fetches_complete_(NULL) {
+    Statistics* stats = resource_manager_->statistics();
+    if (stats != NULL) {
+      num_background_fetches_complete_ = stats->GetTimedVariable(
+          BlinkFlow::kNumBackgroundFetchesComplete);
+    }
+  }
 
   virtual ~JsonFetch() {}
 
   virtual void HandleDone(bool success) {
+    num_background_fetches_complete_->IncBy(1);
     if (!success || response_headers()->status_code() != HttpStatus::kOK) {
       // Do nothing since the fetch failed.
       LOG(INFO) << "Background fetch for layout url " << key_ << " failed.";
@@ -124,10 +132,7 @@ class JsonFetch : public StringAsyncFetch {
 
     json_computation_driver_ = resource_manager_->NewCustomRewriteDriver(
         options_.release());
-    // Set deadline to 10s since we want maximum filters to complete.
-    // Note that no client is blocked waiting for this request to complete.
-    json_computation_driver_->set_rewrite_deadline_ms(
-        10 * Timer::kSecondMs);
+    // TODO(rahulbansal): Put an increased deadline on this driver.
     json_computation_driver_->SetWriter(&value_);
     json_computation_driver_->set_response_headers_ptr(response_headers());
     json_computation_driver_->AddLowPriorityRewriteTask(
@@ -153,6 +158,7 @@ class JsonFetch : public StringAsyncFetch {
   ResourceManager* resource_manager_;
   scoped_ptr<RewriteOptions> options_;
   HTTPValue value_;
+  TimedVariable* num_background_fetches_complete_;
 
   RewriteDriver* json_computation_driver_;
 
@@ -191,6 +197,11 @@ class BlinkFlow::JsonFindCallback : public HTTPCache::Callback {
   DISALLOW_COPY_AND_ASSIGN(JsonFindCallback);
 };
 
+const char BlinkFlow::kNumBackgroundFetchesStarted[] =
+    "num_background_fetches_started";
+const char BlinkFlow::kNumBackgroundFetchesComplete[] =
+    "num_background_fetches_complete";
+
 void BlinkFlow::Start(const GoogleString& url,
                       AsyncFetch* base_fetch,
                       const Layout* layout,
@@ -200,6 +211,13 @@ void BlinkFlow::Start(const GoogleString& url,
   BlinkFlow* flow = new BlinkFlow(url, base_fetch, layout, options, factory,
                                   manager);
   flow->InitiateJsonLookup();
+}
+
+void BlinkFlow::Initialize(Statistics* stats) {
+  stats->AddTimedVariable(kNumBackgroundFetchesComplete,
+                          ResourceManager::kStatisticsGroup);
+  stats->AddTimedVariable(kNumBackgroundFetchesStarted,
+                          ResourceManager::kStatisticsGroup);
 }
 
 void BlinkFlow::InitiateJsonLookup() {
@@ -367,6 +385,7 @@ void BlinkFlow::Flush() {
 
 void BlinkFlow::JsonCacheMiss() {
   ComputeJsonInBackground();
+  num_background_fetches_started_->IncBy(1);
   TriggerProxyFetch(false);
 }
 
@@ -381,6 +400,7 @@ void BlinkFlow::TriggerProxyFetch(bool json_found) {
     // fetch since headers have already been flushed out.
     fetch = new AsyncFetchWithHeadersInhibited(base_fetch_);
   }
+
   factory_->StartNewProxyFetch(url_, fetch, options_);
   delete this;
 }
