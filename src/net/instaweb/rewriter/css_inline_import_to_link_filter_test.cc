@@ -191,7 +191,8 @@ TEST_F(CssInlineImportToLinkFilterTest, ConvertThenCacheExtend) {
   options()->EnableFilter(RewriteOptions::kInlineImportToLink);
   options()->EnableFilter(RewriteOptions::kExtendCacheCss);
   rewrite_driver()->AddFilters();
-  InitResponseHeaders(kCssFile, kContentTypeCss, kCssData, 100);  // 100ms
+  // Cache for 100s.
+  SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss, kCssData, 100);
 
   ValidateExpected("script_to_link_then_cache_extend",
                    StrCat("<style>@import url(", kCssFile, ");</style>"),
@@ -205,7 +206,8 @@ TEST_F(CssInlineImportToLinkFilterTest, DontConvertButCacheExtend) {
   options()->EnableFilter(RewriteOptions::kInlineImportToLink);
   options()->EnableFilter(RewriteOptions::kExtendCacheCss);
   rewrite_driver()->AddFilters();
-  InitResponseHeaders(kCssFile, kContentTypeCss, kCssData, 100);  // 100ms
+  // Cache for 100s.
+  SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss, kCssData, 100);
 
   const GoogleString kStyleElement = StrCat("<style>@import url(",
                                             kCssFile, ");\n",

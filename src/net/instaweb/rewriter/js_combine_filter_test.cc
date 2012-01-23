@@ -260,7 +260,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase,
 
     // Now fetch the combined URL.
     GoogleString combination_src;
-    ASSERT_TRUE(ServeResourceUrl(scripts[0].url, &combination_src));
+    ASSERT_TRUE(FetchResourceUrl(scripts[0].url, &combination_src));
     EXPECT_STREQ(StrCat(
         StrCat("var mod_pagespeed_", hash1, " = ",
                (minified ? kMinifiedEscapedJs1 : kEscapedJs1), ";\n"),
@@ -389,11 +389,11 @@ TEST_P(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
   // to pre-cache them.
   GoogleString out_url1(Encode(kTestDomain, "jm", "FUEwDOA7jh", kJsUrl1, "js"));
   GoogleString content;
-  EXPECT_TRUE(ServeResourceUrl(out_url1, &content));
+  EXPECT_TRUE(FetchResourceUrl(out_url1, &content));
   EXPECT_STREQ(kMinifiedJs1, content);
 
   GoogleString out_url2(Encode(kTestDomain, "jm", "Y1kknPfzVs", kJsUrl2, "js"));
-  EXPECT_TRUE(ServeResourceUrl(out_url2, &content));
+  EXPECT_TRUE(FetchResourceUrl(out_url2, &content));
   EXPECT_STREQ(kMinifiedJs2, content);
 
   // Make sure the data isn't available in the HTTP cache (while the metadata
@@ -668,14 +668,14 @@ TEST_P(JsCombineFilterTest, TestCombineShard) {
       Encode("", "jc", "0", MultiUrl(kJsUrl1, kJsUrl2), "js");
 
   GoogleString src1;
-  EXPECT_TRUE(ServeResourceUrl(StrCat(kTestDomain, path), &src1));
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kTestDomain, path), &src1));
 
   const char kOtherDomain[] = "http://cdn.example.com/";
   SimulateJsResourceOnDomain(kOtherDomain, kJsUrl1, kJsText1);
   SimulateJsResourceOnDomain(kOtherDomain, kJsUrl2, kJsText2);
 
   GoogleString src2;
-  EXPECT_TRUE(ServeResourceUrl(StrCat(kOtherDomain, path), &src2));
+  EXPECT_TRUE(FetchResourceUrl(StrCat(kOtherDomain, path), &src2));
 
   EXPECT_EQ(src1, src2);
 }
@@ -686,8 +686,8 @@ TEST_P(JsCombineFilterTest, PartlyInvalidFetchCache) {
   // Note: arguably this shouldn't get cached at all; but it certainly
   // should not result in an inappropriate result.
   SetFetchResponse404("404.js");
-  InitResponseHeaders("a.js", kContentTypeJavascript, "var a;", 100);
-  InitResponseHeaders("b.js", kContentTypeJavascript, "var b;", 100);
+  SetResponseWithDefaultHeaders("a.js", kContentTypeJavascript, "var a;", 100);
+  SetResponseWithDefaultHeaders("b.js", kContentTypeJavascript, "var b;", 100);
   EXPECT_FALSE(
       TryFetchResource(
           Encode(kTestDomain, "jc", "0", MultiUrl("a.js", "b.js", "404.js"),

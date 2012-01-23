@@ -249,7 +249,7 @@ class RewriteSingleResourceFilterTest
   // Create a resource with given data and TTL
   void MockResource(const char* rel_path, const StringPiece& data,
                     int64 ttlSec) {
-    InitResponseHeaders(rel_path, kContentTypeText, data, ttlSec);
+    SetResponseWithDefaultHeaders(rel_path, kContentTypeText, data, ttlSec);
   }
 
   // Creates a resource that 404s
@@ -271,7 +271,7 @@ class RewriteSingleResourceFilterTest
 
   // Serves from relative URL
   bool ServeRelativeUrl(const StringPiece& rel_path, GoogleString* content) {
-    return ServeResourceUrl(StrCat(kTestDomain, rel_path), content);
+    return FetchResourceUrl(StrCat(kTestDomain, rel_path), content);
   }
 
   void ResetSignature(int outline_min_bytes) {

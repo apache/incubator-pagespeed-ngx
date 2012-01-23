@@ -249,7 +249,7 @@ TEST_P(CssInlineFilterTest, InlineCombined) {
   const char kCssUrl[] = "a.css";
   const char kCss[] = "div {display:block;}";
 
-  InitResponseHeaders(kCssUrl, kContentTypeCss, kCss, 3000);
+  SetResponseWithDefaultHeaders(kCssUrl, kContentTypeCss, kCss, 3000);
 
   GoogleString html_input =
       StrCat("<link rel=stylesheet href=\"", kCssUrl, "\">",

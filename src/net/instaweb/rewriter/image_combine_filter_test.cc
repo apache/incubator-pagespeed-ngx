@@ -192,7 +192,8 @@ TEST_P(CssImageCombineTest, NoCrashUnknownType) {
   response_headers.ComputeCaching();
   SetFetchResponse(StrCat(kTestDomain, "bar.bewq"),
                    response_headers, "unused payload");
-  InitResponseHeaders("foo.png", kContentTypePng, "unused payload", 100);
+  SetResponseWithDefaultHeaders("foo.png", kContentTypePng,
+                                "unused payload", 100);
 
   const GoogleString before =
       "<head><style>"
@@ -338,7 +339,7 @@ TEST_P(CssImageCombineTest, ServeFiles) {
       Encode(kTestDomain, "is", "0",
              MultiUrl(kCuppaPngFile, kBikePngFile), "png");
   GoogleString output;
-  EXPECT_EQ(true, ServeResourceUrl(sprite_str, &output));
+  EXPECT_EQ(true, FetchResourceUrl(sprite_str, &output));
   ServeResourceFromManyContexts(sprite_str, output);
 }
 

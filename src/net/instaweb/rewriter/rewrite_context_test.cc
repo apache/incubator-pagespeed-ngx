@@ -1044,7 +1044,7 @@ TEST_F(RewriteContextTest, FetchNonOptimizable) {
   // should still work in a single-input case. This is important to be more
   // robust against JS URL manipulation.
   GoogleString output;
-  EXPECT_TRUE(ServeResourceUrl(Encode(kTestDomain, "tw", "0", "b.css", "css"),
+  EXPECT_TRUE(FetchResourceUrl(Encode(kTestDomain, "tw", "0", "b.css", "css"),
                                &output));
   EXPECT_EQ("b", output);
 }
@@ -1101,7 +1101,7 @@ TEST_F(RewriteContextTest, TrimFetchOnTheFly) {
 
   // The input URL is not in cache, but the fetch should work.
   GoogleString content;
-  EXPECT_TRUE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
+  EXPECT_TRUE(FetchResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
                             "css", &content));
   EXPECT_EQ("a", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -1112,7 +1112,7 @@ TEST_F(RewriteContextTest, TrimFetchOnTheFly) {
   content.clear();
 
   // Now fetch it again.  This time the input URL is cached.
-  EXPECT_TRUE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
+  EXPECT_TRUE(FetchResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
                             "css", &content));
   EXPECT_EQ("a", content);
   EXPECT_EQ(1, lru_cache()->num_hits());
@@ -1127,7 +1127,7 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
 
   // The input URL is not in cache, but the fetch should work.
   GoogleString content;
-  EXPECT_TRUE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
+  EXPECT_TRUE(FetchResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
                             "css", &content));
   EXPECT_EQ("a", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -1146,7 +1146,7 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
 
   // Now fetch it again: the output URL is cached.
   ResponseHeaders headers;
-  EXPECT_TRUE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
+  EXPECT_TRUE(FetchResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
                             "css", &content, &headers));
   EXPECT_EQ("a", content);
   EXPECT_EQ(1, lru_cache()->num_hits());
@@ -1168,7 +1168,7 @@ TEST_F(RewriteContextTest, TrimFetchSeedsCache) {
 
   // The input URL is not in cache, but the fetch should work.
   GoogleString content;
-  EXPECT_TRUE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
+  EXPECT_TRUE(FetchResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
                             "css", &content));
   EXPECT_EQ("a", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -1198,7 +1198,7 @@ TEST_F(RewriteContextTest, TrimFetchRewriteFailureSeedsCache) {
 
   // The input URL is not in cache, but the fetch should work.
   GoogleString content;
-  EXPECT_TRUE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "b.css",
+  EXPECT_TRUE(FetchResource(kTestDomain, kTrimWhitespaceFilterId, "b.css",
                             "css", &content));
   EXPECT_EQ("b", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -1222,7 +1222,7 @@ TEST_F(RewriteContextTest, TrimFetch404SeedsCache) {
   SetFetchResponse404("404.css");
 
   GoogleString content;
-  EXPECT_FALSE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "404.css",
+  EXPECT_FALSE(FetchResource(kTestDomain, kTrimWhitespaceFilterId, "404.css",
                              "css", &content));
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
@@ -1289,7 +1289,7 @@ TEST_F(RewriteContextTest, FetchUncacheableWithRewritesInLineOfServing) {
 
   // The first time we serve the resource, we insert a memo that it is
   // uncacheable, and a name mapping.
-  EXPECT_TRUE(ServeResource(kTestDomain,
+  EXPECT_TRUE(FetchResource(kTestDomain,
                             kTrimWhitespaceSyncFilterId,
                             "a_private.css",
                             "css",
@@ -1305,7 +1305,7 @@ TEST_F(RewriteContextTest, FetchUncacheableWithRewritesInLineOfServing) {
   // perform an origin fetch anyway.
   for (int i = 0; i < 3; ++i) {
     ClearStats();
-    EXPECT_TRUE(ServeResource(kTestDomain,
+    EXPECT_TRUE(FetchResource(kTestDomain,
                               kTrimWhitespaceSyncFilterId,
                               "a_private.css",
                               "css",
@@ -1335,7 +1335,7 @@ TEST_F(RewriteContextTest, FetchUncacheableWithRewritesInLineOfServing) {
   // the origin.
   for (int i = 0; i < 3; ++i) {
     ClearStats();
-    EXPECT_TRUE(ServeResource(kTestDomain,
+    EXPECT_TRUE(FetchResource(kTestDomain,
                               kTrimWhitespaceSyncFilterId,
                               "a_private.css",
                               "css",
@@ -1351,7 +1351,7 @@ TEST_F(RewriteContextTest, FetchUncacheableWithRewritesInLineOfServing) {
   // After advancing the time, we should see new cache inserts.  Note that we
   // also get a cache hit because the out-of-date entries are still there.
   mock_timer()->AdvanceMs(Timer::kMinuteMs * 50);
-  EXPECT_TRUE(ServeResource(kTestDomain,
+  EXPECT_TRUE(FetchResource(kTestDomain,
                             kTrimWhitespaceSyncFilterId,
                             "a_private.css",
                             "css",
@@ -1373,7 +1373,7 @@ TEST_F(RewriteContextTest, PreserveNoCacheWithRewrites) {
 
   // Even on sequential requests, the resource does not become cache-extended.
   for (int i = 0; i < 4; ++i) {
-    EXPECT_TRUE(ServeResource(kTestDomain,
+    EXPECT_TRUE(FetchResource(kTestDomain,
                               kTrimWhitespaceSyncFilterId,
                               "a_no_cache.css",
                               "css",
@@ -1402,7 +1402,7 @@ TEST_F(RewriteContextTest, PreserveNoCacheWithFailedRewrites) {
     GoogleString content;
     ResponseHeaders headers;
 
-    EXPECT_TRUE(ServeResource(kTestDomain,
+    EXPECT_TRUE(FetchResource(kTestDomain,
                               "ce",
                               "a_no_cache.css",
                               "css",
@@ -1431,7 +1431,7 @@ TEST_F(RewriteContextTest, PrivateNotCached) {
     // There are two possible secure outcomes here: either the fetch fails
     // entirely here, or we serve it as cache-control: private. For now
     // we just fail it.
-    EXPECT_FALSE(ServeResource(kTestDomain,
+    EXPECT_FALSE(FetchResource(kTestDomain,
                                kTrimWhitespaceSyncFilterId,
                                "a_private.css",
                                "css",
@@ -1445,7 +1445,7 @@ TEST_F(RewriteContextTest, PrivateNotCached) {
   // an attacker may get access to resources without access to an actual hash.
   GoogleString output;
   mock_url_fetcher()->Disable();
-  EXPECT_FALSE(ServeResourceUrl(
+  EXPECT_FALSE(FetchResourceUrl(
       Encode(kTestDomain, kTrimWhitespaceSyncFilterId, "1", "a_private.css",
              "css"),
       &output));
@@ -1463,7 +1463,7 @@ TEST_F(RewriteContextTest, PrivateNotCachedOnTheFly) {
     GoogleString content;
     ResponseHeaders headers;
 
-    EXPECT_TRUE(ServeResource(kTestDomain,
+    EXPECT_TRUE(FetchResource(kTestDomain,
                               kTrimWhitespaceSyncFilterId,
                               "a_private.css",
                               "css",
@@ -1479,7 +1479,7 @@ TEST_F(RewriteContextTest, PrivateNotCachedOnTheFly) {
   // an attacker may get access to resources without access to an actual hash.
   GoogleString output;
   mock_url_fetcher()->Disable();
-  EXPECT_FALSE(ServeResourceUrl(
+  EXPECT_FALSE(FetchResourceUrl(
       Encode(kTestDomain, kTrimWhitespaceSyncFilterId, "1", "a_private.css",
              "css"),
       &output));
@@ -1495,7 +1495,7 @@ TEST_F(RewriteContextTest, PreserveNoStoreWithRewrites) {
 
   // Even on sequential requests, the resource does not become cache-extended.
   for (int i = 0; i < 4; ++i) {
-    EXPECT_TRUE(ServeResource(kTestDomain,
+    EXPECT_TRUE(FetchResource(kTestDomain,
                               kTrimWhitespaceSyncFilterId,
                               "a_no_store.css",
                               "css",
@@ -1518,7 +1518,7 @@ TEST_F(RewriteContextTest, PreservePrivateWithRewrites) {
 
   // Even on sequential requests, the resource does not become cache-extended.
   for (int i = 0; i < 4; ++i) {
-    EXPECT_TRUE(ServeResource(kTestDomain,
+    EXPECT_TRUE(FetchResource(kTestDomain,
                               kTrimWhitespaceSyncFilterId,
                               "a_private.css",
                               "css",
@@ -1549,7 +1549,7 @@ TEST_F(RewriteContextTest, CacheControlWithMultipleInputResources) {
                       "b.css",
                       "a_private.css"), "css");
 
-  ServeResourceUrl(combined_url, &content, &headers);
+  FetchResourceUrl(combined_url, &content, &headers);
   EXPECT_EQ(" a b a ", content);
 
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -1582,7 +1582,7 @@ TEST_F(RewriteContextTest, CacheControlWithMultipleInputResourcesAndNoStore) {
                       "a_private.css",
                       "a_no_store.css"), "css");
 
-  ServeResourceUrl(combined_url, &content, &headers);
+  FetchResourceUrl(combined_url, &content, &headers);
   EXPECT_EQ(" a b a  a ", content);
 
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -1605,7 +1605,7 @@ TEST_F(RewriteContextTest, CacheExtendCacheableResource) {
   ResponseHeaders headers;
 
   for (int i = 0; i < 4; ++i) {
-    EXPECT_TRUE(ServeResource(kTestDomain,
+    EXPECT_TRUE(FetchResource(kTestDomain,
                               kTrimWhitespaceSyncFilterId,
                               "a.css",
                               "css",
@@ -1643,7 +1643,7 @@ TEST_F(RewriteContextTest, TrimFetchWrongHash) {
   // Now try fetching it with the wrong hash)
   GoogleString contents;
   ResponseHeaders headers;
-  EXPECT_TRUE(ServeResourceUrl(Encode(kTestDomain, "tw", "1", "a.css", "css"),
+  EXPECT_TRUE(FetchResourceUrl(Encode(kTestDomain, "tw", "1", "a.css", "css"),
                                &contents, &headers));
   EXPECT_STREQ("a", contents);
   // Should not need any rewrites or fetches.
@@ -1669,7 +1669,7 @@ TEST_F(RewriteContextTest, TrimFetchWrongHashColdCache) {
 
   GoogleString contents;
   ResponseHeaders headers;
-  EXPECT_TRUE(ServeResourceUrl(Encode(kTestDomain, "tw", "1", "a.css", "css"),
+  EXPECT_TRUE(FetchResourceUrl(Encode(kTestDomain, "tw", "1", "a.css", "css"),
                                &contents, &headers));
   EXPECT_STREQ("a", contents);
 
@@ -1690,7 +1690,7 @@ TEST_F(RewriteContextTest, TrimFetchHashFailed) {
 
   GoogleString contents;
   ResponseHeaders headers;
-  EXPECT_TRUE(ServeResourceUrl(Encode(kTestDomain, "tw", "1", "b.css", "css"),
+  EXPECT_TRUE(FetchResourceUrl(Encode(kTestDomain, "tw", "1", "b.css", "css"),
                                &contents, &headers));
   EXPECT_STREQ("b", contents);
   EXPECT_EQ(0, trim_filter_->num_rewrites());
@@ -1711,13 +1711,13 @@ TEST_F(RewriteContextTest, TrimFetchHashFailedShortTtl) {
   // Variation of TrimFetchHashFailed, where the input's TTL is very short.
   const int kTestTtlSec = 5;
   InitTrimFilters(kRewrittenResource);
-  InitResponseHeaders("d.css", kContentTypeCss, "d", kTestTtlSec);
+  SetResponseWithDefaultHeaders("d.css", kContentTypeCss, "d", kTestTtlSec);
   ValidateNoChanges("no_trimmable", CssLinkHref("d.css"));
   ClearStats();
 
   GoogleString contents;
   ResponseHeaders headers;
-  EXPECT_TRUE(ServeResourceUrl(Encode(kTestDomain, "tw", "1", "d.css", "css"),
+  EXPECT_TRUE(FetchResourceUrl(Encode(kTestDomain, "tw", "1", "d.css", "css"),
                                &contents, &headers));
   EXPECT_STREQ("d", contents);
   EXPECT_EQ(kTestTtlSec * Timer::kSecondMs, headers.cache_ttl_ms());
@@ -1790,7 +1790,7 @@ TEST_F(RewriteContextTest, FetchColdCacheOnTheFlyNotFound) {
   SetFetchFailOnUnexpected(false);
 
   GoogleString content;
-  EXPECT_FALSE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
+  EXPECT_FALSE(FetchResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
                             "css", &content));
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_misses());
@@ -1800,7 +1800,7 @@ TEST_F(RewriteContextTest, FetchColdCacheOnTheFlyNotFound) {
 
   // Try it again with a warm cache.  We'll get a 'hit' which will inform us
   // that this resource is not fetchable.
-  EXPECT_FALSE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
+  EXPECT_FALSE(FetchResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
                             "css", &content));
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -1816,7 +1816,7 @@ TEST_F(RewriteContextTest, FetchColdCacheRewrittenNotFound) {
   SetFetchFailOnUnexpected(false);
 
   GoogleString content;
-  EXPECT_FALSE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
+  EXPECT_FALSE(FetchResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
                             "css", &content));
   EXPECT_EQ(0, lru_cache()->num_hits());
 
@@ -1834,7 +1834,7 @@ TEST_F(RewriteContextTest, FetchColdCacheRewrittenNotFound) {
   // - HTTP cache entry for resource fetch of original failing
   // - 2nd access of it when we give up on fast path.
   // TODO(morlovich): Should we propagate the 404 directly?
-  EXPECT_FALSE(ServeResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
+  EXPECT_FALSE(FetchResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
                             "css", &content));
   EXPECT_EQ(3, lru_cache()->num_hits());
 
@@ -1898,7 +1898,7 @@ TEST_F(RewriteContextTest, ReconstructChainedWrongHash) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   rewrite_driver()->AddFilters();
 
-  InitResponseHeaders(
+  SetResponseWithDefaultHeaders(
       "a.css", kContentTypeCss, " div { display: block;  }", 100);
 
   GoogleString url = Encode(kTestDomain, "cc", "0",
@@ -1910,7 +1910,7 @@ TEST_F(RewriteContextTest, ReconstructChainedWrongHash) {
     GoogleString content;
     ResponseHeaders headers;
 
-    ServeResourceUrl(url, &content, &headers);
+    FetchResourceUrl(url, &content, &headers);
     // Note that this works only because the combiner fails and passes
     // through its input, which is the private cache-controled output
     // of rewrite_css
@@ -1923,7 +1923,7 @@ TEST_F(RewriteContextTest, ReconstructChainedWrongHash) {
   // Now also try the second version.
   GoogleString content;
   ResponseHeaders headers;
-  ServeResourceUrl(url2, &content, &headers);
+  FetchResourceUrl(url2, &content, &headers);
   EXPECT_EQ(HttpStatus::kOK, headers.status_code());
   EXPECT_STREQ("div{display:block}", content);
   EXPECT_TRUE(headers.HasValue(HttpAttributes::kCacheControl, "private"))
@@ -1937,7 +1937,7 @@ TEST_F(RewriteContextTest, Nested) {
   InitResources();
   ValidateExpected("async3", CssLinkHref("c.css"), CssLinkHref(kRewrittenUrl));
   GoogleString rewritten_contents;
-  EXPECT_TRUE(ServeResourceUrl(kRewrittenUrl, &rewritten_contents));
+  EXPECT_TRUE(FetchResourceUrl(kRewrittenUrl, &rewritten_contents));
   EXPECT_EQ(StrCat(Encode(kTestDomain, "uc", "0", "a.css", "css"), "\n",
                    Encode(kTestDomain, "uc", "0", "b.css", "css"), "\n"),
             rewritten_contents);
@@ -1970,7 +1970,7 @@ TEST_F(RewriteContextTest, NestedChained) {
   ValidateExpected(
       "async_nest_chain", CssLinkHref("c.css"), CssLinkHref(kRewrittenUrl));
   GoogleString rewritten_contents;
-  EXPECT_TRUE(ServeResourceUrl(kRewrittenUrl, &rewritten_contents));
+  EXPECT_TRUE(FetchResourceUrl(kRewrittenUrl, &rewritten_contents));
   // We expect each URL twice since we have two nested jobs for it, and the
   // Harvest() just dumps each nested rewrites' slots.
   EXPECT_EQ(StrCat(Encode(kTestDomain, "uc", "0", "a.css", "css"), "\n",
@@ -2055,7 +2055,7 @@ TEST_F(RewriteContextTest, CombinationFetch) {
 
   // The input URLs are not in cache, but the fetch should work.
   GoogleString content;
-  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  EXPECT_TRUE(FetchResourceUrl(combined_url, &content));
   EXPECT_EQ(" a b", content);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(5, lru_cache()->num_misses())
@@ -2069,7 +2069,7 @@ TEST_F(RewriteContextTest, CombinationFetch) {
   content.clear();
 
   // Now fetch it again.  This time the output resource is cached.
-  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  EXPECT_TRUE(FetchResourceUrl(combined_url, &content));
   EXPECT_EQ(" a b", content);
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -2090,7 +2090,7 @@ TEST_F(RewriteContextTest, FetchDeadlineTest) {
                                      "a.css", "css");
 
   GoogleString content;
-  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  EXPECT_TRUE(FetchResourceUrl(combined_url, &content));
   // Should not get a |, as 1 month is way bigger than the rendering deadline.
   EXPECT_EQ(" a ", content);
   EXPECT_EQ(3, lru_cache()->num_inserts()); // input, output, metadata
@@ -2099,7 +2099,7 @@ TEST_F(RewriteContextTest, FetchDeadlineTest) {
   // everything now, and be able to do it from cache.
   content.clear();
   ClearStats();
-  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  EXPECT_TRUE(FetchResourceUrl(combined_url, &content));
   EXPECT_EQ("| a ", content);
 
   EXPECT_EQ(1, lru_cache()->num_hits());
@@ -2119,14 +2119,14 @@ TEST_F(RewriteContextTest, FetchDeadlineTestBeforeDeadline) {
                                      "a.css", "css");
 
   GoogleString content;
-  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  EXPECT_TRUE(FetchResourceUrl(combined_url, &content));
   // Should get a |, as 1 ms is smaller than the rendering deadline.
   EXPECT_EQ("| a ", content);
 
   // And of course it's nicely cached.
   content.clear();
   ClearStats();
-  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  EXPECT_TRUE(FetchResourceUrl(combined_url, &content));
   EXPECT_EQ("| a ", content);
 
   EXPECT_EQ(1, lru_cache()->num_hits());
@@ -2165,7 +2165,7 @@ TEST_F(RewriteContextTest, CombinationFetchSeedsCache) {
   GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
                                      MultiUrl("a.css", "b.css"), "css");
   GoogleString content;
-  EXPECT_TRUE(ServeResourceUrl(combined_url, &content));
+  EXPECT_TRUE(FetchResourceUrl(combined_url, &content));
   EXPECT_EQ(" a b", content);
   ClearStats();
 
@@ -2389,8 +2389,8 @@ TEST_F(RewriteContextTest, TestFreshen) {
   // Start with non-zero time, and init our resource..
   mock_timer()->AdvanceMs(kTtlMs / 2);
   InitTrimFilters(kRewrittenResource);
-  InitResponseHeaders(kPath, kContentTypeCss, kDataIn,
-                      kTtlMs / Timer::kSecondMs);
+  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
+                                kTtlMs / Timer::kSecondMs);
 
   // First fetch + rewrite
   ValidateExpected("initial",
@@ -2422,8 +2422,8 @@ TEST_F(RewriteContextTest, TestFreshen) {
   ClearStats();
   // Advance close to TTL and rewrite. We should see an extra fetch.
   // Also upload a version with a newer timestamp.
-  InitResponseHeaders(kPath, kContentTypeCss, kDataIn,
-                      kTtlMs / Timer::kSecondMs);
+  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
+                                kTtlMs / Timer::kSecondMs);
   mock_timer()->AdvanceMs(kTtlMs * 4 / 10);
   ValidateExpected("freshen",
                    CssLinkHref(kPath),
@@ -2492,8 +2492,8 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   // Start with non-zero time, and init our resource.
   mock_timer()->AdvanceMs(kTtlMs / 2);
   InitTrimFilters(kRewrittenResource);
-  InitResponseHeaders(kPath, kContentTypeCss, kDataIn,
-                      kTtlMs / Timer::kSecondMs);
+  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
+                                kTtlMs / Timer::kSecondMs);
 
   // First fetch + rewrite.
   ValidateExpected("initial",
@@ -2649,8 +2649,8 @@ TEST_F(RewriteContextTest, TestReuse) {
   // Start with non-zero time, and init our resource..
   mock_timer()->AdvanceMs(kTtlMs / 2);
   InitTrimFilters(kRewrittenResource);
-  InitResponseHeaders(kPath, kContentTypeCss, kDataIn,
-                      kTtlMs / Timer::kSecondMs);
+  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
+                                kTtlMs / Timer::kSecondMs);
 
   // First fetch + rewrite.
   ValidateExpected("initial",
@@ -2731,8 +2731,8 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   // Advance the timer again so that the fetch failed is stale and update the
   // css response to a valid 200.
   mock_timer()->AdvanceMs(kTtlMs);
-  InitResponseHeaders(kPath, kContentTypeCss, kDataIn,
-                      kTtlMs / Timer::kSecondMs);
+  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
+                                kTtlMs / Timer::kSecondMs);
 
   // The resource is rewritten successfully.
   ValidateExpected("forward_200",
@@ -2742,7 +2742,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   // Two cache inserts for the original and rewritten resource.
   EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
-  EXPECT_TRUE(ServeResourceUrl(rewritten_url, &response_content,
+  EXPECT_TRUE(FetchResourceUrl(rewritten_url, &response_content,
                                &response_headers));
   EXPECT_STREQ(kDataOut, response_content);
   EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
@@ -2770,7 +2770,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
 
   response_headers.Clear();
   response_content.clear();
-  EXPECT_TRUE(ServeResourceUrl(rewritten_url, &response_content,
+  EXPECT_TRUE(FetchResourceUrl(rewritten_url, &response_content,
                                &response_headers));
   EXPECT_STREQ(kDataOut, response_content);
   EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
@@ -2794,7 +2794,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
 
   response_headers.Clear();
   response_content.clear();
-  EXPECT_FALSE(ServeResourceUrl(rewritten_url, &response_content,
+  EXPECT_FALSE(FetchResourceUrl(rewritten_url, &response_content,
                                 &response_headers));
 }
 
@@ -2809,8 +2809,8 @@ TEST_F(RewriteContextTest, TestReuseNotFastEnough) {
   // Start with non-zero time, and init our resource..
   mock_timer()->AdvanceMs(kTtlMs / 2);
   InitTrimFilters(kRewrittenResource);
-  InitResponseHeaders(kPath, kContentTypeCss, kDataIn,
-                      kTtlMs / Timer::kSecondMs);
+  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
+                                kTtlMs / Timer::kSecondMs);
 
   // First fetch + rewrite.
   ValidateExpected("initial",
@@ -2879,7 +2879,7 @@ class ResourceUpdateTest : public RewriteContextTest {
   GoogleString FetchUrlAndCheckHash(const StringPiece& url) {
     // Fetch resource.
     GoogleString contents;
-    EXPECT_TRUE(ServeResourceUrl(url, &contents));
+    EXPECT_TRUE(FetchResourceUrl(url, &contents));
 
     // Check that hash code is correct.
     ResourceNamer namer;
@@ -2912,7 +2912,7 @@ TEST_F(ResourceUpdateTest, TestExpire404) {
   // "And thus Moses wandered the desert for only 20 years, because of a
   // limitation in the implementation of time_t."
   mock_timer()->AdvanceMs(20 * Timer::kYearMs);
-  InitResponseHeaders(kOriginalUrl, kContentTypeCss, " init ", 100);
+  SetResponseWithDefaultHeaders(kOriginalUrl, kContentTypeCss, " init ", 100);
   EXPECT_EQ("init", RewriteSingleResource("200"));
 }
 
@@ -2922,7 +2922,8 @@ TEST_F(ResourceUpdateTest, OnTheFly) {
   int64 ttl_ms = 5 * Timer::kMinuteMs;
 
   // 1) Set first version of resource.
-  InitResponseHeaders(kOriginalUrl, kContentTypeCss, " init ", ttl_ms / 1000);
+  SetResponseWithDefaultHeaders(kOriginalUrl, kContentTypeCss,
+                                " init ", ttl_ms / 1000);
   ClearStats();
   EXPECT_EQ("init", RewriteSingleResource("first_load"));
   // TODO(sligocki): Why are we rewriting twice here?
@@ -2941,7 +2942,8 @@ TEST_F(ResourceUpdateTest, OnTheFly) {
   EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 3) Change resource.
-  InitResponseHeaders(kOriginalUrl, kContentTypeCss, " new ", ttl_ms / 1000);
+  SetResponseWithDefaultHeaders(kOriginalUrl, kContentTypeCss,
+                                " new ", ttl_ms / 1000);
   ClearStats();
   // Rewrite should still be the same, because it's found in cache.
   EXPECT_EQ("init", RewriteSingleResource("stale_content"));
@@ -2966,7 +2968,8 @@ TEST_F(ResourceUpdateTest, Rewritten) {
   int64 ttl_ms = 5 * Timer::kMinuteMs;
 
   // 1) Set first version of resource.
-  InitResponseHeaders(kOriginalUrl, kContentTypeCss, " init ", ttl_ms / 1000);
+  SetResponseWithDefaultHeaders(kOriginalUrl, kContentTypeCss,
+                                " init ", ttl_ms / 1000);
   ClearStats();
   EXPECT_EQ("init", RewriteSingleResource("first_load"));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
@@ -2983,7 +2986,8 @@ TEST_F(ResourceUpdateTest, Rewritten) {
   EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 3) Change resource.
-  InitResponseHeaders(kOriginalUrl, kContentTypeCss, " new ", ttl_ms / 1000);
+  SetResponseWithDefaultHeaders(kOriginalUrl, kContentTypeCss,
+                                " new ", ttl_ms / 1000);
   ClearStats();
   // Rewrite should still be the same, because it's found in cache.
   EXPECT_EQ("init", RewriteSingleResource("stale_content"));
@@ -3108,11 +3112,11 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   // Initialize resources.
   int64 kLongTtlMs = 1 * Timer::kMonthMs;
   int64 kShortTtlMs = 1 * Timer::kMinuteMs;
-  InitResponseHeaders("http://test.com/web/a.css", kContentTypeCss,
-                      " a1 ", kLongTtlMs / 1000);
+  SetResponseWithDefaultHeaders("http://test.com/web/a.css", kContentTypeCss,
+                                " a1 ", kLongTtlMs / 1000);
   WriteFile("/test/b.css", " b1 ");
-  InitResponseHeaders("http://test.com/web/c.css", kContentTypeCss,
-                      " c1 ", kShortTtlMs / 1000);
+  SetResponseWithDefaultHeaders("http://test.com/web/c.css", kContentTypeCss,
+                                " c1 ", kShortTtlMs / 1000);
   WriteFile("/test/d.css", " d1 ");
 
   // 1) Initial combined resource.
@@ -3135,11 +3139,11 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   ClearStats();
 
   // 3) Change resources
-  InitResponseHeaders("http://test.com/web/a.css", kContentTypeCss,
-                      " a2 ", kLongTtlMs / 1000);
+  SetResponseWithDefaultHeaders("http://test.com/web/a.css", kContentTypeCss,
+                                " a2 ", kLongTtlMs / 1000);
   WriteFile("/test/b.css", " b2 ");
-  InitResponseHeaders("http://test.com/web/c.css", kContentTypeCss,
-                      " c2 ", kShortTtlMs / 1000);
+  SetResponseWithDefaultHeaders("http://test.com/web/c.css", kContentTypeCss,
+                                " c2 ", kShortTtlMs / 1000);
   WriteFile("/test/d.css", " d2 ");
   // File-based resources should be updated, but web-based ones still cached.
   EXPECT_EQ(" a1  b2  c1  d2 ", CombineResources("stale_content"));
@@ -3204,13 +3208,13 @@ TEST_F(NestedResourceUpdateTest, TestExpireNested404) {
   // Have the nested one have a 404...
   const GoogleString kOutUrl = Encode(kTestDomain, "nf", "sdUklQf3sx",
                                       "main.txt", "css");
-  InitResponseHeaders("http://test.com/main.txt", kContentTypeCss,
-                      "a.css\n", 4 * kDecadeMs / 1000);
+  SetResponseWithDefaultHeaders("http://test.com/main.txt", kContentTypeCss,
+                                "a.css\n", 4 * kDecadeMs / 1000);
   SetFetchResponse404("a.css");
 
   ValidateExpected("nested_404", CssLinkHref("main.txt"), CssLinkHref(kOutUrl));
   GoogleString contents;
-  EXPECT_TRUE(ServeResourceUrl(kOutUrl, &contents));
+  EXPECT_TRUE(FetchResourceUrl(kOutUrl, &contents));
   EXPECT_EQ("http://test.com/a.css\n", contents);
 
   // Determine if we're using the TestUrlNamer, for the hash later.
@@ -3219,7 +3223,7 @@ TEST_F(NestedResourceUpdateTest, TestExpireNested404) {
   // Now move forward two decades, and upload a new version. We should
   // be ready to optimize at that point, but input should not be expired.
   mock_timer()->AdvanceMs(2 * kDecadeMs);
-  InitResponseHeaders("a.css", kContentTypeCss, " lowercase ", 100);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, " lowercase ", 100);
   ReconfigureNestedFilter(kExpectNestedRewritesSucceed);
   const GoogleString kFullOutUrl =
       Encode(kTestDomain, "nf",
@@ -3229,9 +3233,9 @@ TEST_F(NestedResourceUpdateTest, TestExpireNested404) {
                                                "a.css", "css"), "\n");
   ValidateExpected("nested_404", CssLinkHref("main.txt"),
                    CssLinkHref(kFullOutUrl));
-  EXPECT_TRUE(ServeResourceUrl(kFullOutUrl, &contents));
+  EXPECT_TRUE(FetchResourceUrl(kFullOutUrl, &contents));
   EXPECT_EQ(kInnerUrl, contents);
-  EXPECT_TRUE(ServeResourceUrl(kInnerUrl, &contents));
+  EXPECT_TRUE(FetchResourceUrl(kInnerUrl, &contents));
   EXPECT_EQ(" LOWERCASE ", contents);
 }
 
@@ -3244,15 +3248,15 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   const int64 kExtraLongTtlMs = 10 * Timer::kMonthMs;
   const int64 kLongTtlMs = 1 * Timer::kMonthMs;
   const int64 kShortTtlMs = 1 * Timer::kMinuteMs;
-  InitResponseHeaders("http://test.com/main.txt", kContentTypeCss,
-                      "web/a.css\n"
-                      "file/b.css\n"
-                      "web/c.css\n", kExtraLongTtlMs / 1000);
-  InitResponseHeaders("http://test.com/web/a.css", kContentTypeCss,
-                      " a1 ", kLongTtlMs / 1000);
+  SetResponseWithDefaultHeaders("http://test.com/main.txt", kContentTypeCss,
+                                "web/a.css\n"
+                                "file/b.css\n"
+                                "web/c.css\n", kExtraLongTtlMs / 1000);
+  SetResponseWithDefaultHeaders("http://test.com/web/a.css", kContentTypeCss,
+                                " a1 ", kLongTtlMs / 1000);
   WriteFile("/test/b.css", " b1 ");
-  InitResponseHeaders("http://test.com/web/c.css", kContentTypeCss,
-                      " c1 ", kShortTtlMs / 1000);
+  SetResponseWithDefaultHeaders("http://test.com/web/c.css", kContentTypeCss,
+                                " c1 ", kShortTtlMs / 1000);
 
   ClearStats();
   // 1) Initial combined resource.
@@ -3291,11 +3295,11 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   ClearStats();
 
   // 3) Change resources
-  InitResponseHeaders("http://test.com/web/a.css", kContentTypeCss,
-                      " a2 ", kLongTtlMs / 1000);
+  SetResponseWithDefaultHeaders("http://test.com/web/a.css", kContentTypeCss,
+                                " a2 ", kLongTtlMs / 1000);
   WriteFile("/test/b.css", " b2 ");
-  InitResponseHeaders("http://test.com/web/c.css", kContentTypeCss,
-                      " c2 ", kShortTtlMs / 1000);
+  SetResponseWithDefaultHeaders("http://test.com/web/c.css", kContentTypeCss,
+                                " c2 ", kShortTtlMs / 1000);
   // File-based resources should be updated, but web-based ones still cached.
   result_vector = RewriteNestedResources("stale_content");
   ASSERT_EQ(3, result_vector.size());

@@ -83,9 +83,9 @@ class CacheExtenderTest : public ResourceManagerTestBase,
   void InitTest(int64 ttl) {
     options()->EnableExtendCacheFilters();
     rewrite_driver()->AddFilters();
-    InitResponseHeaders(kCssFile, kContentTypeCss, kCssData, ttl);
-    InitResponseHeaders("b.jpg", kContentTypeJpeg, kImageData, ttl);
-    InitResponseHeaders("c.js", kContentTypeJavascript, kJsData, ttl);
+    SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss, kCssData, ttl);
+    SetResponseWithDefaultHeaders("b.jpg", kContentTypeJpeg, kImageData, ttl);
+    SetResponseWithDefaultHeaders("c.js", kContentTypeJavascript, kJsData, ttl);
   }
 
   // Generate HTML loading 3 resources with the specified URLs
@@ -106,9 +106,9 @@ class CacheExtenderTest : public ResourceManagerTestBase,
                      GenerateHtml(kCssFile, "b.jpg", "c.js"),
                      GenerateHtml(a_ext, b_ext, c_ext));
     GoogleString output;
-    EXPECT_EQ(should_fetch_ok, ServeResourceUrl(StrCat(a_ext, junk), &output));
-    EXPECT_EQ(should_fetch_ok, ServeResourceUrl(StrCat(b_ext, junk), &output));
-    EXPECT_EQ(should_fetch_ok, ServeResourceUrl(StrCat(c_ext, junk), &output));
+    EXPECT_EQ(should_fetch_ok, FetchResourceUrl(StrCat(a_ext, junk), &output));
+    EXPECT_EQ(should_fetch_ok, FetchResourceUrl(StrCat(b_ext, junk), &output));
+    EXPECT_EQ(should_fetch_ok, FetchResourceUrl(StrCat(c_ext, junk), &output));
     ValidateExpected("no_ext_corrupt_cached",
                      GenerateHtml(kCssFile, "b.jpg", "c.js"),
                      GenerateHtml(a_ext, b_ext, c_ext));
@@ -146,9 +146,12 @@ TEST_P(CacheExtenderTest, DoExtendLinkRelCaseInsensitive) {
 
 TEST_P(CacheExtenderTest, DoExtendForImagesOnly) {
   AddFilter(RewriteOptions::kExtendCacheImages);
-  InitResponseHeaders(kCssFile, kContentTypeCss, kCssData, kShortTtlSec);
-  InitResponseHeaders("b.jpg", kContentTypeJpeg, kImageData, kShortTtlSec);
-  InitResponseHeaders("c.js", kContentTypeJavascript, kJsData, kShortTtlSec);
+  SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss,
+                                kCssData, kShortTtlSec);
+  SetResponseWithDefaultHeaders("b.jpg", kContentTypeJpeg,
+                                kImageData, kShortTtlSec);
+  SetResponseWithDefaultHeaders("c.js", kContentTypeJavascript,
+                                kJsData, kShortTtlSec);
 
   for (int i = 0; i < 3; i++) {
     ValidateExpected(
@@ -179,9 +182,12 @@ TEST_P(CacheExtenderTest, UrlTooLong) {
   GoogleString css_name = StrCat("style.css?z=", long_string);
   GoogleString jpg_name = StrCat("image.jpg?z=", long_string);
   GoogleString js_name  = StrCat("script.js?z=", long_string);
-  InitResponseHeaders(css_name, kContentTypeCss, kCssData, kShortTtlSec);
-  InitResponseHeaders(jpg_name, kContentTypeJpeg, kImageData, kShortTtlSec);
-  InitResponseHeaders(js_name, kContentTypeJavascript, kJsData, kShortTtlSec);
+  SetResponseWithDefaultHeaders(css_name, kContentTypeCss,
+                                kCssData, kShortTtlSec);
+  SetResponseWithDefaultHeaders(jpg_name, kContentTypeJpeg,
+                                kImageData, kShortTtlSec);
+  SetResponseWithDefaultHeaders(js_name, kContentTypeJavascript,
+                                kJsData, kShortTtlSec);
 
   // If filename wasn't too long, this would be rewritten (like in DoExtend).
   ValidateNoChanges("url_too_long", GenerateHtml(css_name, jpg_name, js_name));
@@ -305,12 +311,12 @@ TEST_P(CacheExtenderTest, ServeFiles) {
   // To ensure there's no absolutification (below) of embedded.png's URL in
   // the served CSS file, we have to serve it from test.com and not from
   // cdn.com which TestUrlNamer does when it's being used.
-  ASSERT_TRUE(ServeResourceUrl(
+  ASSERT_TRUE(FetchResourceUrl(
       EncodeNormal(kCssPath, kFilterId, "0", kCssTail, "css"), &content));
   EXPECT_EQ(kCssData, content);  // no absolutification
-  ASSERT_TRUE(ServeResource(kTestDomain, kFilterId, "b.jpg", "jpg", &content));
+  ASSERT_TRUE(FetchResource(kTestDomain, kFilterId, "b.jpg", "jpg", &content));
   EXPECT_EQ(GoogleString(kImageData), content);
-  ASSERT_TRUE(ServeResource(kTestDomain, kFilterId, "c.js", "js", &content));
+  ASSERT_TRUE(FetchResource(kTestDomain, kFilterId, "c.js", "js", &content));
   EXPECT_EQ(GoogleString(kJsData), content);
 }
 
@@ -352,12 +358,12 @@ TEST_P(CacheExtenderTest, ConsistentHashWithRewrite) {
   // it again using the new name.  We ought to be canonicalizing the
   // URLs we write into the cache so we don't need this.  This also
   // applies to sharding.
-  InitResponseHeaders(StrCat(kNewDomain, kCssFile), kContentTypeCss,
-                      kCssData, kShortTtlSec);
+  SetResponseWithDefaultHeaders(StrCat(kNewDomain, kCssFile), kContentTypeCss,
+                                kCssData, kShortTtlSec);
 
   // Now serve the resource, as in ServeFilesWithRewrite above.
   GoogleString content;
-  ASSERT_TRUE(ServeResourceUrl(extended_css, &content));
+  ASSERT_TRUE(FetchResourceUrl(extended_css, &content));
   EXPECT_EQ(kCssData, content);
 }
 
@@ -388,12 +394,12 @@ TEST_P(CacheExtenderTest, ConsistentHashWithShard) {
   EXPECT_EQ(0, lru_cache()->num_hits());
 
   // TODO(jmarantz): eliminate this when we canonicalize URLs before caching.
-  InitResponseHeaders(StrCat("http://shard2.com/", kCssFile), kContentTypeCss,
-                      kCssData, kShortTtlSec);
+  SetResponseWithDefaultHeaders(StrCat("http://shard2.com/", kCssFile),
+                                kContentTypeCss, kCssData, kShortTtlSec);
 
   // Now serve the resource, as in ServeFilesWithRewrite above.
   GoogleString content;
-  ASSERT_TRUE(ServeResourceUrl(extended_css, &content));
+  ASSERT_TRUE(FetchResourceUrl(extended_css, &content));
 
   // Note that, through the luck of hashes, we've sharded the embedded
   // image differently than the css file.
@@ -406,7 +412,7 @@ TEST_P(CacheExtenderTest, ServeFilesWithRewriteDomainsEnabled) {
   DomainLawyer* lawyer = options()->domain_lawyer();
   lawyer->AddRewriteDomainMapping(kNewDomain, kTestDomain, &message_handler_);
   InitTest(kShortTtlSec);
-  ASSERT_TRUE(ServeResource(kCssPath, kFilterId, kCssTail, "css", &content));
+  ASSERT_TRUE(FetchResource(kCssPath, kFilterId, kCssTail, "css", &content));
   EXPECT_EQ(CssData("http://new.com/sub/"), content);
 }
 
@@ -416,7 +422,7 @@ TEST_P(CacheExtenderTest, ServeFilesWithRewriteDomainAndPathEnabled) {
   lawyer->AddRewriteDomainMapping("http://new.com/test/", kTestDomain,
                                   &message_handler_);
   InitTest(kShortTtlSec);
-  ASSERT_TRUE(ServeResource(kCssPath, kFilterId, kCssTail, "css", &content));
+  ASSERT_TRUE(FetchResource(kCssPath, kFilterId, kCssTail, "css", &content));
   EXPECT_EQ(CssData("http://new.com/test/sub/"), content);
 }
 
@@ -426,7 +432,7 @@ TEST_P(CacheExtenderTest, ServeFilesWithShard) {
   lawyer->AddRewriteDomainMapping(kNewDomain, kTestDomain, &message_handler_);
   lawyer->AddShard(kNewDomain, "shard1.com,shard2.com", &message_handler_);
   InitTest(kShortTtlSec);
-  ASSERT_TRUE(ServeResource(kCssPath, kFilterId, kCssTail, "css", &content));
+  ASSERT_TRUE(FetchResource(kCssPath, kFilterId, kCssTail, "css", &content));
   EXPECT_EQ(CssData("http://shard1.com/sub/"), content);
 }
 
@@ -492,7 +498,7 @@ TEST_P(CacheExtenderTest, MadeOnTheFly) {
   EXPECT_EQ(0, stats->cached_resource_fetches()->Get());
   EXPECT_EQ(0, stats->succeeded_filter_resource_fetches()->Get());
   GoogleString out;
-  EXPECT_TRUE(ServeResourceUrl(b_ext, &out));
+  EXPECT_TRUE(FetchResourceUrl(b_ext, &out));
   EXPECT_EQ(0, stats->cached_resource_fetches()->Get());
   EXPECT_EQ(1, stats->succeeded_filter_resource_fetches()->Get());
 }
@@ -500,7 +506,7 @@ TEST_P(CacheExtenderTest, MadeOnTheFly) {
 // http://code.google.com/p/modpagespeed/issues/detail?id=324
 TEST_P(CacheExtenderTest, RetainExtraHeaders) {
   GoogleString url = StrCat(kTestDomain, "retain.css");
-  InitResponseHeaders(url, kContentTypeCss, kCssData, 300);
+  SetResponseWithDefaultHeaders(url, kContentTypeCss, kCssData, 300);
   // We must explicitly call ComputeSignature here because we are not
   // calling InitTest in this test.
   resource_manager()->ComputeSignature(options());

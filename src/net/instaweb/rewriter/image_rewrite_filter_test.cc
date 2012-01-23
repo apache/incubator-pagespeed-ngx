@@ -268,9 +268,9 @@ class ImageRewriteTest : public ResourceManagerTestBase,
     // Fetch messed up versions. Currently image rewriter doesn't actually
     // fetch them.
     GoogleString out;
-    EXPECT_EQ(should_fetch_ok, ServeResourceUrl(StrCat(url1, junk), &out));
-    EXPECT_EQ(should_fetch_ok, ServeResourceUrl(StrCat(url2, junk), &out));
-    EXPECT_EQ(should_fetch_ok, ServeResourceUrl(StrCat(url3, junk), &out));
+    EXPECT_EQ(should_fetch_ok, FetchResourceUrl(StrCat(url1, junk), &out));
+    EXPECT_EQ(should_fetch_ok, FetchResourceUrl(StrCat(url2, junk), &out));
+    EXPECT_EQ(should_fetch_ok, FetchResourceUrl(StrCat(url3, junk), &out));
 
     // Now run through again to make sure we didn't cache the messed up URL
     img_srcs.clear();
@@ -559,7 +559,7 @@ TEST_P(ImageRewriteTest, FetchInvalid) {
   GoogleString encoded_url = Encode("http://www.example.com/", "ic",
                                     "ABCDEFGHIJ", kPlaceholder, "jpg");
   GlobalReplaceSubstring(kPlaceholder, "70x53x,", &encoded_url);
-  EXPECT_FALSE(ServeResourceUrl(encoded_url, &out));
+  EXPECT_FALSE(FetchResourceUrl(encoded_url, &out));
 }
 
 TEST_P(ImageRewriteTest, Rewrite404) {
@@ -605,7 +605,7 @@ TEST_P(ImageRewriteTest, RewriteCacheExtendInteraction) {
 
   // Provide a non-image file, so image rewrite fails (but cache extension
   // works)
-  InitResponseHeaders("a.png", kContentTypePng, "Not a PNG", 600);
+  SetResponseWithDefaultHeaders("a.png", kContentTypePng, "Not a PNG", 600);
 
   ValidateExpected("cache_extend_fallback", "<img src=a.png>",
                    StrCat("<img src=",
@@ -640,7 +640,7 @@ TEST_P(ImageRewriteTest, NestedConcurrentRewritesLimit) {
   AddFileToMockFetcher(StrCat(kTestDomain, kPngFile), kBikePngFile,
                        kContentTypePng, 100);
   GoogleString in_css = StringPrintf(kCssTemplate, kPngFile);
-  InitResponseHeaders(kCssFile,  kContentTypeCss, in_css, 100);
+  SetResponseWithDefaultHeaders(kCssFile,  kContentTypeCss, in_css, 100);
 
   GoogleString out_css_url = Encode(kTestDomain, "cf", "0", kCssFile, "css");
   GoogleString out_png_url = Encode(kTestDomain, "ic", "0", kPngFile, "png");
@@ -655,7 +655,7 @@ TEST_P(ImageRewriteTest, NestedConcurrentRewritesLimit) {
                    CssLinkHref(out_css_url));
 
   GoogleString out_css;
-  EXPECT_TRUE(ServeResourceUrl(out_css_url, &out_css));
+  EXPECT_TRUE(FetchResourceUrl(out_css_url, &out_css));
   // During this time, the out_css should only be absolutified, and a dropped
   // image rewrite be recorded.
   GoogleString abs_png_url = AbsolutifyUrl(kPngFile);
@@ -672,7 +672,7 @@ TEST_P(ImageRewriteTest, NestedConcurrentRewritesLimit) {
                    CssLinkHref(out_css_url));
   GoogleString expected_out_css =
       StringPrintf(kCssTemplate, out_png_url.c_str());
-  EXPECT_TRUE(ServeResourceUrl(out_css_url, &out_css));
+  EXPECT_TRUE(FetchResourceUrl(out_css_url, &out_css));
   // This time, however, CSS should be altered (and the drop count still be 1).
   EXPECT_EQ(expected_out_css, out_css);
   EXPECT_EQ(1, drops->Get(TimedVariable::START));

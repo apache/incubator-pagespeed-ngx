@@ -242,7 +242,7 @@ GoogleString OutputResource::url() const {
   return computed_url_;
 }
 
-GoogleString OutputResource::UrlEvenIfLeafInvalid() {
+GoogleString OutputResource::UrlEvenIfHashNotSet() {
   GoogleString result;
   if (!has_hash()) {
     full_name_.set_hash("0");

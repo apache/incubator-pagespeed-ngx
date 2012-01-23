@@ -296,7 +296,7 @@ class RewriteContext::FetchContext {
     deadline_alarm_ = NULL;  // avoid dangling reference.
     rewrite_context_->DetachFetch();
     handler_->Message(kError, "Deadline exceeded for resource %s",
-                      output_resource_->UrlEvenIfLeafInvalid().c_str());
+                      output_resource_->UrlEvenIfHashNotSet().c_str());
     // TODO(sligocki): Log a variable for number of deadline hits.
     ResourcePtr input(rewrite_context_->slot(0)->resource());
     bool absolutify_contents = true;
@@ -350,7 +350,7 @@ class RewriteContext::FetchContext {
         if (input_resource.get() != NULL && input_resource->ContentsValid()) {
           handler_->Message(kError, "Rewrite %s failed while fetching %s",
                             input_resource->url().c_str(),
-                            output_resource_->UrlEvenIfLeafInvalid().c_str());
+                            output_resource_->UrlEvenIfHashNotSet().c_str());
           // TODO(sligocki): Log variable for number of failed rewrites in
           // fetch path.
 

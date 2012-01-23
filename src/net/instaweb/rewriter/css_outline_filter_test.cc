@@ -110,7 +110,7 @@ class CssOutlineFilterTest : public ResourceManagerTestBase {
       // Check fetched resource.
       GoogleString actual_outline;
       ResponseHeaders actual_headers;
-      EXPECT_TRUE(ServeResourceUrl(outline_url, &actual_outline,
+      EXPECT_TRUE(FetchResourceUrl(outline_url, &actual_outline,
                                    &actual_headers));
       EXPECT_EQ(expected_headers, actual_headers.ToString());
       EXPECT_EQ(css_rewritten_body, actual_outline);

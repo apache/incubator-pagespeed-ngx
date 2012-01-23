@@ -128,11 +128,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                               ResponseHeaders* response_headers);
 
   // Add content to mock fetcher (with default headers).
-  // TODO(sligocki): Rename to SetResponseWithDefaultHeaders().
-  void InitResponseHeaders(const StringPiece& relative_url,
-                           const ContentType& content_type,
-                           const StringPiece& content,
-                           int64 ttl_sec);
+  void SetResponseWithDefaultHeaders(const StringPiece& relative_url,
+                                     const ContentType& content_type,
+                                     const StringPiece& content,
+                                     int64 ttl_sec);
 
   // Add the contents of a file to mock fetcher (with default headers).
   void AddFileToMockFetcher(const StringPiece& url,
@@ -142,17 +141,16 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // Helper function to test resource fetching, returning true if the fetch
   // succeeded, and modifying content.  It is up to the caller to EXPECT_TRUE
   // on the status and EXPECT_EQ on the content.
-  bool ServeResource(const StringPiece& path, const StringPiece& filter_id,
+  bool FetchResource(const StringPiece& path, const StringPiece& filter_id,
                      const StringPiece& name, const StringPiece& ext,
                      GoogleString* content);
-  bool ServeResource(const StringPiece& path, const StringPiece& filter_id,
+  bool FetchResource(const StringPiece& path, const StringPiece& filter_id,
                      const StringPiece& name, const StringPiece& ext,
                      GoogleString* content, ResponseHeaders* response);
 
-  // TODO(sligocki): Rename to FetchResourceUrl.
-  bool ServeResourceUrl(const StringPiece& url, GoogleString* content,
+  bool FetchResourceUrl(const StringPiece& url, GoogleString* content,
                         ResponseHeaders* response);
-  bool ServeResourceUrl(const StringPiece& url, GoogleString* content);
+  bool FetchResourceUrl(const StringPiece& url, GoogleString* content);
 
   // Just check if we can fetch a resource successfully, ignore response.
   bool TryFetchResource(const StringPiece& url);

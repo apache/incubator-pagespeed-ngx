@@ -75,7 +75,7 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
     if (expect_outline) {
       GoogleString actual_outline;
       ResponseHeaders headers;
-      EXPECT_TRUE(ServeResourceUrl(outline_url, &actual_outline, &headers));
+      EXPECT_TRUE(FetchResourceUrl(outline_url, &actual_outline, &headers));
       EXPECT_EQ(outline_text, StrCat(headers.ToString(), actual_outline));
     }
   }

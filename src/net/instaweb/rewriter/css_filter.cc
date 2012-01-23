@@ -213,7 +213,7 @@ void CssFilter::Context::RewriteSingle(
   // needs to be set from the ultimate output resource.
   if (!StringPiece(input_resource_->url()).starts_with("data:")) {
     css_base_gurl_.Reset(input_resource_->url());
-    css_trim_gurl_.Reset(output_resource_->UrlEvenIfLeafInvalid());
+    css_trim_gurl_.Reset(output_resource_->UrlEvenIfHashNotSet());
   }
   in_text_size_ = input_contents.size();
   TimedBool result = filter_->RewriteCssText(

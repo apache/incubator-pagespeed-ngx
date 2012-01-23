@@ -93,15 +93,16 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     options()->EnableFilter(RewriteOptions::kFlattenCssImports);
     options()->EnableFilter(RewriteOptions::kExtendCacheImages);
     CssRewriteTestBase::SetUp();
-    InitResponseHeaders(kTopCssFile, kContentTypeCss, kTopCssContents, 100);
-    InitResponseHeaders(kOneLevelDownFile1, kContentTypeCss,
-                        kOneLevelDownContents1, 100);
-    InitResponseHeaders(kOneLevelDownFile2, kContentTypeCss,
-                        kOneLevelDownContents2, 100);
-    InitResponseHeaders(kTwoLevelsDownFile1, kContentTypeCss,
-                        kTwoLevelsDownContents1, 100);
-    InitResponseHeaders(kTwoLevelsDownFile2, kContentTypeCss,
-                        kTwoLevelsDownContents2, 100);
+    SetResponseWithDefaultHeaders(kTopCssFile, kContentTypeCss,
+                                  kTopCssContents, 100);
+    SetResponseWithDefaultHeaders(kOneLevelDownFile1, kContentTypeCss,
+                                  kOneLevelDownContents1, 100);
+    SetResponseWithDefaultHeaders(kOneLevelDownFile2, kContentTypeCss,
+                                  kOneLevelDownContents2, 100);
+    SetResponseWithDefaultHeaders(kTwoLevelsDownFile1, kContentTypeCss,
+                                  kTwoLevelsDownContents1, 100);
+    SetResponseWithDefaultHeaders(kTwoLevelsDownFile2, kContentTypeCss,
+                                  kTwoLevelsDownContents2, 100);
     SetFetchResponse404(k404CssFile);
   }
 
@@ -112,7 +113,8 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     // foo.png
     const char kFooPngFilename[] = "foo.png";
     const char kImageData[] = "Invalid PNG but does not matter for this test";
-    InitResponseHeaders(kFooPngFilename, kContentTypePng, kImageData, 100);
+    SetResponseWithDefaultHeaders(kFooPngFilename, kContentTypePng,
+                                  kImageData, 100);
 
     // image1.css loads foo.png as a background image.
     const char kCss1Filename[] = "image1.css";
@@ -125,12 +127,13 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
                Encode(trim_urls ? "" : kTestDomain,
                       "ce", "0", kFooPngFilename, "png"),
                ")}");
-    InitResponseHeaders(kCss1Filename, kContentTypeCss, css1_before, 100);
+    SetResponseWithDefaultHeaders(kCss1Filename, kContentTypeCss,
+                                  css1_before, 100);
 
     // bar.png
     const char kBarPngFilename[] = "bar.png";
-    InitResponseHeaders(StrCat("nested/", kBarPngFilename),  // under /nested!
-                        kContentTypePng, kImageData, 100);
+    SetResponseWithDefaultHeaders(StrCat("nested/", kBarPngFilename),
+                                  kContentTypePng, kImageData, 100);
 
     // image2.css loads bar.png as a background image.
     const char kCss2Filename[] = "nested/image2.css";  // because its CSS is!
@@ -143,7 +146,8 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
                Encode(trim_urls ? "nested/" : StrCat(kTestDomain, "nested/"),
                       "ce", "0", kBarPngFilename, "png"),
                ")}");
-    InitResponseHeaders(kCss2Filename, kContentTypeCss, css2_before, 100);
+    SetResponseWithDefaultHeaders(kCss2Filename, kContentTypeCss,
+                                  css2_before, 100);
 
     // foo-then-bar.css @imports image1.css then image2.css
     const char kTop1CssFilename[] = "foo-then-bar.css";
@@ -151,7 +155,8 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
         StrCat("@import url(", kCss1Filename, ");",
                "@import url(", kCss2Filename, ");");
     const GoogleString top1_after = StrCat(css1_after, css2_after);
-    InitResponseHeaders(kTop1CssFilename, kContentTypeCss, top1_before, 100);
+    SetResponseWithDefaultHeaders(kTop1CssFilename, kContentTypeCss,
+                                  top1_before, 100);
 
     // bar-then-foo.css @imports image2.css then image1.css
     const char kTop2CssFilename[] = "bar-then-foo.css";
@@ -159,7 +164,8 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
         StrCat("@import url(", kCss2Filename, ");",
                "@import url(", kCss1Filename, ");");
     const GoogleString top2_after = StrCat(css2_after, css1_after);
-    InitResponseHeaders(kTop2CssFilename, kContentTypeCss, top2_before, 100);
+    SetResponseWithDefaultHeaders(kTop2CssFilename, kContentTypeCss,
+                                  top2_before, 100);
 
     // Phew! Load them both. bar-then-foo.css should use cached data.
     ValidateRewriteExternalCss("flatten_then_cache_extend_nested1",
@@ -188,8 +194,8 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
         "@import url(screen.css);",
         kStylesCss);
 
-    // Next block is a reimplementation of InitResponseHeaders() but setting
-    // the charset in the Content-Type header.
+    // Next block is a reimplementation of SetResponseWithDefaultHeaders()
+    // but setting the charset in the Content-Type header.
     GoogleString url = AbsolutifyUrl(kStylesFilename);
     int64 ttl_sec = 100;
     ResponseHeaders response_headers;
@@ -214,7 +220,8 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
         ".background_cyan{background-color:#0ff}"
         ".foreground_pink{color:#ffc0cb}";
     const GoogleString kPrintContents = kPrintCss;
-    InitResponseHeaders(kPrintFilename, kContentTypeCss, kPrintContents, 100);
+    SetResponseWithDefaultHeaders(kPrintFilename, kContentTypeCss,
+                                  kPrintContents, 100);
 
     const char kScreenFilename[] = "screen.css";
     const char kScreenCss[] =
@@ -223,7 +230,8 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     const GoogleString kScreenContents = StrCat(
         "@charset \"UtF-8\";",
         kScreenCss);
-    InitResponseHeaders(kScreenFilename, kContentTypeCss, kScreenContents, 100);
+    SetResponseWithDefaultHeaders(kScreenFilename, kContentTypeCss,
+                                  kScreenContents, 100);
 
     const char css_in[] = "@import url(http://test.com/styles.css) ;";
     if (should_succeed) {
@@ -265,7 +273,7 @@ TEST_P(CssFlattenImportsTest, FlattenInlineCss) {
       ".background_red{background-color:red}"
       ".foreground_yellow{color:#ff0}";
 
-  InitResponseHeaders(kFilename, kContentTypeCss, css_out, 100);
+  SetResponseWithDefaultHeaders(kFilename, kContentTypeCss, css_out, 100);
 
   ValidateRewriteInlineCss("flatten_simple",
                            css_in, css_out,
@@ -282,7 +290,7 @@ TEST_P(CssFlattenImportsTest, DontFlattenAttributeCss) {
       ".background_red{background-color:red}"
       ".foreground_yellow{color:#ff0}";
 
-  InitResponseHeaders(kFilename, kContentTypeCss, css_out, 100);
+  SetResponseWithDefaultHeaders(kFilename, kContentTypeCss, css_out, 100);
 
   // Test that rewriting of attributes is enabled and working.
   ValidateExpected("rewrite-attribute-setup",
@@ -336,7 +344,7 @@ TEST_P(CssFlattenImportsTest, FlattenInvalidCSS) {
   const char kStylesCss[] =
       ".background_red{background-color:red}"
       ".foreground_yellow{color:#ff0}";
-  InitResponseHeaders(kFilename, kContentTypeCss, kStylesCss, 100);
+  SetResponseWithDefaultHeaders(kFilename, kContentTypeCss, kStylesCss, 100);
 
   GoogleString kFlattenedInvalidCss = StrCat(kStylesCss, "a{{ color:red }");
 
@@ -360,7 +368,7 @@ TEST_P(CssFlattenImportsTest, FlattenSimple) {
       ".background_red{background-color:red}"
       ".foreground_yellow{color:#ff0}";
 
-  InitResponseHeaders(kFilename, kContentTypeCss, css_out, 100);
+  SetResponseWithDefaultHeaders(kFilename, kContentTypeCss, css_out, 100);
 
   ValidateRewriteExternalCss("flatten_simple",
                              css_in, css_out,
@@ -376,7 +384,7 @@ TEST_P(CssFlattenImportsTest, FlattenEmpty) {
   const char css_in[] = "@import url(http://test.com/empty.css) ;";
   const char css_out[] = "";
 
-  InitResponseHeaders(kFilename, kContentTypeCss, css_out, 100);
+  SetResponseWithDefaultHeaders(kFilename, kContentTypeCss, css_out, 100);
 
   ValidateRewriteExternalCss("flatten_empty",
                              css_in, css_out,
@@ -396,13 +404,15 @@ TEST_P(CssFlattenImportsTest, FlattenSimpleRewriteOnTheFly) {
   const char kImportFilename[] = "import.css";
   const char css_import[] =
       "@import url(http://test.com/simple.css) ;";
-  InitResponseHeaders(kImportFilename, kContentTypeCss, css_import, 100);
+  SetResponseWithDefaultHeaders(kImportFilename, kContentTypeCss,
+                                css_import, 100);
 
   const char kSimpleFilename[] = "simple.css";
   const char css_simple[] =
       ".background_red{background-color:red}"
       ".foreground_yellow{color:#ff0}";
-  InitResponseHeaders(kSimpleFilename, kContentTypeCss, css_simple, 100);
+  SetResponseWithDefaultHeaders(kSimpleFilename, kContentTypeCss,
+                                css_simple, 100);
 
   // Check that nothing is up my sleeve ...
   EXPECT_EQ(0, lru_cache()->num_elements());
@@ -413,7 +423,7 @@ TEST_P(CssFlattenImportsTest, FlattenSimpleRewriteOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_deletes());
 
   GoogleString content;
-  EXPECT_TRUE(ServeResource(kTestDomain, RewriteOptions::kCssFilterId,
+  EXPECT_TRUE(FetchResource(kTestDomain, RewriteOptions::kCssFilterId,
                             "import.css", "css", &content));
   EXPECT_EQ(css_simple, content);
 
@@ -523,7 +533,7 @@ TEST_P(CssFlattenImportsTest, FlattenFromCacheIndirectly) {
   const char filename[] = "alternative.css";
   css_in = StrCat("@import url(http://test.com/", filename, ") ;");
   GoogleString contents = StrCat("@import url(", kOneLevelDownFile1, ") ;");
-  InitResponseHeaders(filename, kContentTypeCss, contents, 100);
+  SetResponseWithDefaultHeaders(filename, kContentTypeCss, contents, 100);
   ValidateRewriteExternalCss("flatten_from_cache_indirectly_repeat",
                              css_in, kFlattenedOneLevelDownContents1,
                              kExpectChange | kExpectSuccess |
@@ -562,11 +572,12 @@ TEST_P(CssFlattenImportsTest, CacheExtendsAfterFlattening) {
       StrCat("body{background-image:url(",
              Encode(kTestDomain, "ce", "0", "foo.png", "png"),
              ")}");
-  InitResponseHeaders(kCssFilename, kContentTypeCss, css_before, 100);
+  SetResponseWithDefaultHeaders(kCssFilename, kContentTypeCss, css_before, 100);
 
   const char kFooPngFilename[] = "foo.png";
   const char kImageData[] = "Invalid PNG but it does not matter for this test";
-  InitResponseHeaders(kFooPngFilename, kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders(kFooPngFilename, kContentTypePng,
+                                kImageData, 100);
 
   ValidateRewriteExternalCss("flatten_then_cache_extend",
                              css_before, css_after,
@@ -596,7 +607,7 @@ TEST_P(CssFlattenImportsTest, FlattenRecursion) {
   const GoogleString css_in =
       StrCat("@import url(http://test.com/", kFilename, ") ;");
 
-  InitResponseHeaders(kFilename, kContentTypeCss, css_in, 100);
+  SetResponseWithDefaultHeaders(kFilename, kContentTypeCss, css_in, 100);
 
   ValidateRewriteExternalCss("flatten_recursive",
                              css_in, css_in,
@@ -614,7 +625,7 @@ TEST_P(CssFlattenImportsTest, FlattenSimpleMedia) {
       ".foreground_yellow{color:#ff0}"
       "}";
 
-  InitResponseHeaders(kFilename, kContentTypeCss, css_out, 100);
+  SetResponseWithDefaultHeaders(kFilename, kContentTypeCss, css_out, 100);
 
   ValidateRewriteExternalCss("flatten_simple_media",
                              css_in, css_out,
@@ -637,7 +648,8 @@ TEST_P(CssFlattenImportsTest, FlattenNestedMedia) {
       "@media all{",
       kStylesCss,
       "}");
-  InitResponseHeaders(kStylesFilename, kContentTypeCss, kStylesContents, 100);
+  SetResponseWithDefaultHeaders(kStylesFilename, kContentTypeCss,
+                                kStylesContents, 100);
 
   const char kPrintFilename[] = "print.css";
   const char kPrintCss[] =
@@ -652,7 +664,8 @@ TEST_P(CssFlattenImportsTest, FlattenNestedMedia) {
       "@media all{",                     // subsetted to print
       kPrintAllCss,
       "}");
-  InitResponseHeaders(kPrintFilename, kContentTypeCss, kPrintContents, 100);
+  SetResponseWithDefaultHeaders(kPrintFilename, kContentTypeCss,
+                                kPrintContents, 100);
 
   const char kScreenFilename[] = "screen.css";
   const char kScreenCss[] =
@@ -667,7 +680,8 @@ TEST_P(CssFlattenImportsTest, FlattenNestedMedia) {
       "@media all{",                    // subsetted to screen
       kScreenAllCss,
       "}");
-  InitResponseHeaders(kScreenFilename, kContentTypeCss, kScreenContents, 100);
+  SetResponseWithDefaultHeaders(kScreenFilename, kContentTypeCss,
+                                kScreenContents, 100);
 
   const char css_in[] =
       "@import url(http://test.com/styles.css) ;";
@@ -706,7 +720,7 @@ TEST_P(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
 
   const char kFilename[] = "mixed.css";
   const GoogleString css_contents = StrCat(css_screen, css_print);
-  InitResponseHeaders(kFilename, kContentTypeCss, css_contents, 100);
+  SetResponseWithDefaultHeaders(kFilename, kContentTypeCss, css_contents, 100);
 
   // When we @import with media screen we should cache the file in its
   // entirety, and the screen-specific results, separately.
@@ -824,7 +838,8 @@ TEST_P(CssFlattenImportsTest, FlattenFailsIfLinkHasWrongCharset) {
   const char kStylesCss[] =
       ".background_red{background-color:red}"
       ".foreground_yellow{color:#ff0}";
-  InitResponseHeaders(kStylesFilename, kContentTypeCss, kStylesCss, 100);
+  SetResponseWithDefaultHeaders(kStylesFilename, kContentTypeCss,
+                                kStylesCss, 100);
 
   const char css_in[] =
       "@import url(http://test.com/styles.css) ;";

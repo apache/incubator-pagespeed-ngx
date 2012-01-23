@@ -271,7 +271,7 @@ TEST_P(RewriteDriverTest, TestCacheUse) {
 
   const char kCss[] = "* { display: none; }";
   const char kMinCss[] = "*{display:none}";
-  InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCss, 100);
 
   GoogleString css_minified_url =
       Encode(kTestDomain, RewriteOptions::kCssFilterId,
@@ -299,7 +299,7 @@ TEST_P(RewriteDriverTest, TestCacheUseWithInvalidation) {
 
   const char kCss[] = "* { display: none; }";
   const char kMinCss[] = "*{display:none}";
-  InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCss, 100);
 
   GoogleString css_minified_url =
       Encode(kTestDomain, RewriteOptions::kCssFilterId,
@@ -341,7 +341,7 @@ TEST_P(RewriteDriverTest, TestCacheUseOnTheFly) {
   AddFilter(RewriteOptions::kExtendCacheCss);
 
   const char kCss[] = "* { display: none; }";
-  InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCss, 100);
 
   GoogleString cache_extended_url =
       Encode(kTestDomain, RewriteOptions::kCacheExtenderId,
@@ -367,7 +367,7 @@ TEST_P(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
   AddFilter(RewriteOptions::kExtendCacheCss);
 
   const char kCss[] = "* { display: none; }";
-  InitResponseHeaders("a.css", kContentTypeCss, kCss, 100);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCss, 100);
 
   GoogleString cache_extended_url =
       Encode(kTestDomain, RewriteOptions::kCacheExtenderId,
@@ -512,8 +512,10 @@ TEST_P(RewriteDriverTest, MultipleDomains) {
 
   const char kCss[] = "* { display: none; }";
   const char kAltDomain[] = "http://www.example.co.uk/";
-  InitResponseHeaders(StrCat(kTestDomain, "a.css"), kContentTypeCss, kCss, 100);
-  InitResponseHeaders(StrCat(kAltDomain, "b.css"), kContentTypeCss, kCss, 100);
+  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "a.css"), kContentTypeCss,
+                                kCss, 100);
+  SetResponseWithDefaultHeaders(StrCat(kAltDomain, "b.css"), kContentTypeCss,
+                                kCss, 100);
 
   GoogleString rewritten1 = Encode(kTestDomain,
                                    RewriteOptions::kCacheExtenderId,

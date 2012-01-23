@@ -58,7 +58,7 @@ class CssImageRewriterTest : public CssRewriteTestBase {
 TEST_P(CssImageRewriterTest, CacheExtendsImagesSimple) {
   // Simplified version of CacheExtendsImages, which doesn't have many copies of
   // the same URL.
-  InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kImageData, 100);
 
   static const char css_before[] =
       "body {\n"
@@ -84,7 +84,7 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesEmbeddedComma) {
   // the "," and IE8 interprets those backslashes as forward slashes,
   // making the URL incorrect.
   static const char kImageUrl[] = "foo,bar.png";
-  InitResponseHeaders(kImageUrl, kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders(kImageUrl, kContentTypePng, kImageData, 100);
 
   static const char css_before[] =
       "body {\n"
@@ -107,7 +107,8 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesEmbeddedComma) {
 TEST_P(CssImageRewriterTest, CacheExtendsImagesEmbeddedSpace) {
   // Note that GoogleUrl will, internal to our system, convert the space to
   // a %20, so we'll be fetching the percentified form.
-  InitResponseHeaders("foo%20bar.png", kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders("foo%20bar.png", kContentTypePng,
+                                kImageData, 100);
 
   static const char css_before[] =
       "body {\n"
@@ -157,7 +158,7 @@ TEST_P(CssImageRewriterTest, CacheExtendsWhenCssGrows) {
   options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(false);
   resource_manager()->ComputeSignature(options());
-  InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kImageData, 100);
   static const char css_before[] =
       "body{background-image: url(foo.png)}";
   const GoogleString css_after =
@@ -186,8 +187,8 @@ TEST_P(CssImageRewriterTest, CacheExtendsRepeatedTopLevel) {
       Encode(kTestDomain, "cf", "0", "stylesheet.css", "css");
   const char kCssTemplate[] = "body{background-image:url(%s)}";
 
-  InitResponseHeaders(kImg, kContentTypePng, kImageData, 100);
-  InitResponseHeaders(
+  SetResponseWithDefaultHeaders(kImg, kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders(
       kCss, kContentTypeCss, StringPrintf(kCssTemplate, kImg), 100);
 
   const char kHtmlTemplate[] =
@@ -201,14 +202,14 @@ TEST_P(CssImageRewriterTest, CacheExtendsRepeatedTopLevel) {
                                 kExtendedImg.c_str()));
 
   GoogleString css_out;
-  EXPECT_TRUE(ServeResourceUrl(kRewrittenCss, &css_out));
+  EXPECT_TRUE(FetchResourceUrl(kRewrittenCss, &css_out));
   EXPECT_EQ(StringPrintf(kCssTemplate, kExtendedImg.c_str()), css_out);
 }
 
 TEST_P(CssImageRewriterTest, CacheExtendsImages) {
-  InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
-  InitResponseHeaders("bar.png", kContentTypePng, kImageData, 100);
-  InitResponseHeaders("baz.png", kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders("bar.png", kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders("baz.png", kContentTypePng, kImageData, 100);
 
   static const char css_before[] =
       "body {\n"
@@ -262,7 +263,7 @@ TEST_P(CssImageRewriterTest, TrimsImageUrls) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
   resource_manager()->ComputeSignature(options());
-  InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kImageData, 100);
   static const char kCss[] =
       "body {\n"
       "  background-image: url(foo.png);\n"
@@ -295,7 +296,7 @@ TEST_P(CssImageRewriterTestUrlNamer, TrimsImageUrls) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
   resource_manager()->ComputeSignature(options());
-  InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kImageData, 100);
   static const char kCss[] =
       "body {\n"
       "  background-image: url(foo.png);\n"
@@ -319,7 +320,8 @@ TEST_P(CssImageRewriterTest, InlinePaths) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
   resource_manager()->ComputeSignature(options());
-  InitResponseHeaders("dir/foo.png", kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders("dir/foo.png", kContentTypePng,
+                                kImageData, 100);
 
   static const char kCssBefore[] =
       "body {\n"
@@ -352,7 +354,8 @@ TEST_P(CssImageRewriterTest, RewriteCached) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
   resource_manager()->ComputeSignature(options());
-  InitResponseHeaders("dir/foo.png", kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders("dir/foo.png", kContentTypePng,
+                                kImageData, 100);
 
   static const char kCssBefore[] =
       "body {\n"
@@ -506,9 +509,9 @@ TEST_P(CssImageRewriterTest, UseCorrectBaseUrl) {
   // Initialize resources.
   static const char css_url[] = "http://www.example.com/bar/style.css";
   static const char css_before[] = "body { background: url(image.png); }";
-  InitResponseHeaders(css_url, kContentTypeCss, css_before, 100);
+  SetResponseWithDefaultHeaders(css_url, kContentTypeCss, css_before, 100);
   static const char image_url[] = "http://www.example.com/bar/image.png";
-  InitResponseHeaders(image_url, kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders(image_url, kContentTypePng, kImageData, 100);
 
   // Construct URL for rewritten image.
   GoogleString expected_image_url = ExpectedRewrittenUrl(
@@ -536,14 +539,14 @@ TEST_P(CssImageRewriterTest, UseCorrectBaseUrl) {
   ValidateExpectedUrl("http://www.example.com/", html_before, html_after);
 
   GoogleString actual_css_after;
-  ServeResourceUrl(expected_css_url, &actual_css_after);
+  FetchResourceUrl(expected_css_url, &actual_css_after);
   EXPECT_EQ(css_after, actual_css_after);
 }
 
 TEST_P(CssImageRewriterTest, CacheExtendsImagesInStyleAttributes) {
-  InitResponseHeaders("foo.png", kContentTypePng, kImageData, 100);
-  InitResponseHeaders("bar.png", kContentTypePng, kImageData, 100);
-  InitResponseHeaders("baz.png", kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders("bar.png", kContentTypePng, kImageData, 100);
+  SetResponseWithDefaultHeaders("baz.png", kContentTypePng, kImageData, 100);
 
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);

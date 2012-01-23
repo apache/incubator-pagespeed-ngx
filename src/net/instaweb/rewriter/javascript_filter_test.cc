@@ -66,7 +66,8 @@ class JavascriptFilterTest : public ResourceManagerTestBase,
   }
 
   void InitTest(int64 ttl) {
-    InitResponseHeaders(kOrigJsName, kContentTypeJavascript, kJsData, ttl);
+    SetResponseWithDefaultHeaders(kOrigJsName, kContentTypeJavascript,
+                                  kJsData, ttl);
   }
 
   // Generate HTML loading 3 resources with the specified URLs
@@ -84,7 +85,7 @@ class JavascriptFilterTest : public ResourceManagerTestBase,
     // Fetch messed up URL.
     GoogleString out;
     EXPECT_EQ(should_fetch_ok,
-              ServeResourceUrl(StrCat(expected_rewritten_path_, junk), &out));
+              FetchResourceUrl(StrCat(expected_rewritten_path_, junk), &out));
 
     // Rewrite again; should still get normal URL
     ValidateExpected("no_ext_corruption",
@@ -132,7 +133,7 @@ TEST_P(JavascriptFilterTest, InvalidInputMimetype) {
   not_java_script.mime_type_ = "text/semicolon-inserted";
   const char* kNotJsFile = "script.notjs";
 
-  InitResponseHeaders(kNotJsFile, not_java_script, kJsData, 100);
+  SetResponseWithDefaultHeaders(kNotJsFile, not_java_script, kJsData, 100);
   ValidateExpected("wrong_mime",
                    GenerateHtml(kNotJsFile),
                    GenerateHtml(Encode(kTestDomain, "jm", "0",
@@ -219,7 +220,7 @@ TEST_P(JavascriptFilterTest, XHtmlInlineJavascript) {
 // http://code.google.com/p/modpagespeed/issues/detail?id=324
 TEST_P(JavascriptFilterTest, RetainExtraHeaders) {
   GoogleString url = StrCat(kTestDomain, kOrigJsName);
-  InitResponseHeaders(url, kContentTypeJavascript, kJsData, 300);
+  SetResponseWithDefaultHeaders(url, kContentTypeJavascript, kJsData, 300);
   TestRetainExtraHeaders(kOrigJsName, "jm", "js");
 }
 
@@ -241,7 +242,7 @@ TEST_P(JavascriptFilterTest, WeirdSrcCrash) {
   // has the %3C in it.  I guess that's probably the right thing to do, but
   // I was a little surprised.
   static const char kUrl[] = "foo%3Cbar";
-  InitResponseHeaders(kUrl, kContentTypeJavascript, kJsData, 300);
+  SetResponseWithDefaultHeaders(kUrl, kContentTypeJavascript, kJsData, 300);
   ValidateExpected("weird_attr", "<script src=foo<bar>Content",
                    StrCat("<script src=",
                           Encode(kTestDomain, "jm", "0", kUrl, "js"),

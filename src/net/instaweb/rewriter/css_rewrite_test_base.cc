@@ -132,7 +132,8 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
   if ((flags & kNoClearFetcher) == 0) {
     ClearFetcherResponses();
   }
-  InitResponseHeaders(StrCat(id, ".css"), kContentTypeCss, css_input, 300);
+  SetResponseWithDefaultHeaders(StrCat(id, ".css"), kContentTypeCss,
+                                css_input, 300);
 
   GoogleString link_extras("");
   if ((flags & kLinkCharsetIsUTF8) != 0) {
@@ -200,7 +201,7 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
   if (flags & kExpectChange) {
     GoogleString actual_output;
     // TODO(sligocki): This will only work with mock_hasher.
-    EXPECT_TRUE(ServeResourceUrl(expected_new_url, &actual_output)) << id;
+    EXPECT_TRUE(FetchResourceUrl(expected_new_url, &actual_output)) << id;
     EXPECT_EQ(expected_css_output, actual_output) << id;
 
     // Serve from new context.
@@ -223,7 +224,7 @@ void CssRewriteTestBase::TestCorruptUrl(const char* junk,
   GoogleString css_url = ExpectedUrlForCss("rep", kOutput);
   GoogleString output;
   EXPECT_EQ(should_fetch_ok,
-            ServeResourceUrl(StrCat(css_url, junk), &output));
+            FetchResourceUrl(StrCat(css_url, junk), &output));
 
   // Now see that output is correct
   ValidateRewriteExternalCss(

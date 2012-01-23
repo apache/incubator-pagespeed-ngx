@@ -74,8 +74,7 @@ class OutputResource : public Resource {
   // Returns the same as url(), but with a spoofed hash in case no hash
   // was set yet. Use this for error reporting, etc. where you do not
   // know whether the output resource has a valid hash yet.
-  // TODO(sligocki): Rename UrlEvenIfHashNotSet()
-  GoogleString UrlEvenIfLeafInvalid();
+  GoogleString UrlEvenIfHashNotSet();
 
   // Lazily initialize and return creation_lock_.  If the resource is expensive
   // to create, this lock should be held during its creation to avoid multiple

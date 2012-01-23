@@ -265,7 +265,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
       const CssLink::Vector& input_css_links,
       CssLink::Vector* output_css_links) {
     // TODO(sligocki): Allow other domains (this is constrained right now b/c
-    // of InitResponseHeaders.
+    // of SetResponseWithDefaultHeaders.
     GoogleString html_url = StrCat(kTestDomain, id, ".html");
     GoogleString html_input("<head>\n");
     for (int i = 0, n = input_css_links.size(); i < n; ++i) {
@@ -274,7 +274,8 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
         if (link->supply_mock_) {
           // If the css-vector contains a 'true' for this, then we supply the
           // mock fetcher with headers and content for the CSS file.
-          InitResponseHeaders(link->url_, kContentTypeCss, link->content_, 600);
+          SetResponseWithDefaultHeaders(link->url_, kContentTypeCss,
+                                        link->content_, 600);
         }
         StrAppend(&html_input, "  ", Link(link->url_, link->media_, false),
                   "\n");
@@ -303,7 +304,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
 
     GoogleString out;
     EXPECT_EQ(should_fetch_ok,
-              ServeResourceUrl(StrCat(normal_url, junk),  &out));
+              FetchResourceUrl(StrCat(normal_url, junk),  &out));
 
     // Now re-do it and make sure %22 didn't get stuck in the URL
     STLDeleteElements(&css_out);
@@ -546,7 +547,7 @@ TEST_P(CssCombineFilterTest, StripBOM) {
   CollectCssLinks("combine_css_no_bom", output_buffer_, &css_urls);
   ASSERT_EQ(1UL, css_urls.size());
   GoogleString actual_combination;
-  EXPECT_TRUE(ServeResourceUrl(css_urls[0], &actual_combination));
+  EXPECT_TRUE(FetchResourceUrl(css_urls[0], &actual_combination));
   int bom_pos = actual_combination.find(CssCombineFilter::kUtf8Bom);
   EXPECT_EQ(GoogleString::npos, bom_pos);
 
@@ -560,7 +561,7 @@ TEST_P(CssCombineFilterTest, StripBOM) {
   actual_combination.clear();
   CollectCssLinks("combine_css_beginning_bom", output_buffer_, &css_urls);
   ASSERT_EQ(1UL, css_urls.size());
-  EXPECT_TRUE(ServeResourceUrl(css_urls[0], &actual_combination));
+  EXPECT_TRUE(FetchResourceUrl(css_urls[0], &actual_combination));
   bom_pos = actual_combination.find(CssCombineFilter::kUtf8Bom);
   EXPECT_EQ(0, bom_pos);
   bom_pos = actual_combination.rfind(CssCombineFilter::kUtf8Bom);
@@ -572,14 +573,16 @@ TEST_P(CssCombineFilterTest, StripBOMReconstruct) {
   const char kCssA[] = "a.css";
   const char kCssB[] = "b.css";
   const char kCssText[] = "div {background-image:url(fancy.png);}";
-  InitResponseHeaders(kCssA, kContentTypeCss,
-                      StrCat(CssCombineFilter::kUtf8Bom, kCssText), 300);
-  InitResponseHeaders(kCssB, kContentTypeCss,
-                      StrCat(CssCombineFilter::kUtf8Bom, kCssText), 300);
+  SetResponseWithDefaultHeaders(kCssA, kContentTypeCss,
+                                StrCat(CssCombineFilter::kUtf8Bom, kCssText),
+                                300);
+  SetResponseWithDefaultHeaders(kCssB, kContentTypeCss,
+                                StrCat(CssCombineFilter::kUtf8Bom, kCssText),
+                                300);
   GoogleString css_url =
       Encode(kTestDomain, "cc", "0", MultiUrl(kCssA, kCssB), "css");
   GoogleString css_out;
-  EXPECT_TRUE(ServeResourceUrl(css_url, &css_out));
+  EXPECT_TRUE(FetchResourceUrl(css_url, &css_out));
   EXPECT_EQ(StrCat(CssCombineFilter::kUtf8Bom, kCssText, kCssText), css_out);
 }
 
@@ -926,7 +929,7 @@ TEST_P(CssCombineFilterTest, NoAbsolutifySameDir) {
 
   // Check fetched resource.
   GoogleString actual_combination;
-  EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
+  EXPECT_TRUE(FetchResourceUrl(css_out[0]->url_, &actual_combination));
   // TODO(sligocki): Check headers?
   EXPECT_EQ(expected_combination, actual_combination);
 }
@@ -945,7 +948,7 @@ TEST_P(CssCombineFilterTest, DoRewriteForDifferentDir) {
 
   // Check fetched resource.
   GoogleString actual_combination;
-  EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
+  EXPECT_TRUE(FetchResourceUrl(css_out[0]->url_, &actual_combination));
   // TODO(sligocki): Check headers?
   EXPECT_EQ(expected_combination, actual_combination);
 }
@@ -968,7 +971,7 @@ TEST_P(CssCombineFilterTest, ShardSubresources) {
 
   // Check fetched resource.
   GoogleString actual_combination;
-  EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
+  EXPECT_TRUE(FetchResourceUrl(css_out[0]->url_, &actual_combination));
   EXPECT_EQ(expected_combination, actual_combination);
 }
 
@@ -986,7 +989,7 @@ TEST_P(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   BarrierTestHelper("cross_paths", css_in, &css_out);
   EXPECT_EQ(2, css_out.size());
   GoogleString actual_combination;
-  EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
+  EXPECT_TRUE(FetchResourceUrl(css_out[0]->url_, &actual_combination));
   GoogleUrl gurl(css_out[0]->url_);
   ASSERT_TRUE(gurl.is_valid());
   GoogleUrl dummy_encoded(Encode(StrCat(kTestDomain, long_name, "/"), "x", "0",
@@ -1028,7 +1031,7 @@ TEST_P(CssCombineFilterTest, CrossMappedDomain) {
   BarrierTestHelper("combine_css_with_style", css_in, &css_out);
   EXPECT_EQ(1, css_out.size());
   GoogleString actual_combination;
-  EXPECT_TRUE(ServeResourceUrl(css_out[0]->url_, &actual_combination));
+  EXPECT_TRUE(FetchResourceUrl(css_out[0]->url_, &actual_combination));
   EXPECT_EQ(Encode("http://a.com/", "cc", "0", MultiUrl("1.css", "2.css"),
                    "css"),
             css_out[0]->url_);
@@ -1134,8 +1137,8 @@ TEST_P(CssFilterWithCombineTest, TestFollowCombine) {
   const char kCssText[] = " div {    } ";
   const char kCssTextOptimized[] = "div{}";
 
-  InitResponseHeaders(kCssA, kContentTypeCss, kCssText, 300);
-  InitResponseHeaders(kCssB, kContentTypeCss, kCssText, 300);
+  SetResponseWithDefaultHeaders(kCssA, kContentTypeCss, kCssText, 300);
+  SetResponseWithDefaultHeaders(kCssB, kContentTypeCss, kCssText, 300);
 
   ValidateExpected(
       "follow_combine",
@@ -1143,7 +1146,7 @@ TEST_P(CssFilterWithCombineTest, TestFollowCombine) {
       Link(kCssOut));
 
   GoogleString content;
-  EXPECT_TRUE(ServeResourceUrl(kCssOut, &content));
+  EXPECT_TRUE(FetchResourceUrl(kCssOut, &content));
   EXPECT_EQ(StrCat(kCssTextOptimized, kCssTextOptimized), content);
 }
 
@@ -1169,8 +1172,8 @@ TEST_P(CssFilterWithCombineTestUrlNamer, TestFollowCombine) {
   const char kCssText[] = " div {    } ";
   const char kCssTextOptimized[] = "div{}";
 
-  InitResponseHeaders(kCssA, kContentTypeCss, kCssText, 300);
-  InitResponseHeaders(kCssB, kContentTypeCss, kCssText, 300);
+  SetResponseWithDefaultHeaders(kCssA, kContentTypeCss, kCssText, 300);
+  SetResponseWithDefaultHeaders(kCssB, kContentTypeCss, kCssText, 300);
 
   ValidateExpected(
       "follow_combine",
@@ -1178,7 +1181,7 @@ TEST_P(CssFilterWithCombineTestUrlNamer, TestFollowCombine) {
       Link(kCssOut));
 
   GoogleString content;
-  EXPECT_TRUE(ServeResourceUrl(kCssOut, &content));
+  EXPECT_TRUE(FetchResourceUrl(kCssOut, &content));
   EXPECT_EQ(StrCat(kCssTextOptimized, kCssTextOptimized), content);
 }
 

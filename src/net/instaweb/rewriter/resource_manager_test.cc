@@ -338,8 +338,8 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
   // able to serve it from localhost, per the origin mapping above.
   static const char kStyleContent[] = "style content";
   const int kOriginTtlSec = 300;
-  InitResponseHeaders("http://localhost/style.css", kContentTypeCss,
-                      kStyleContent, kOriginTtlSec);
+  SetResponseWithDefaultHeaders("http://localhost/style.css", kContentTypeCss,
+                                kStyleContent, kOriginTtlSec);
   EXPECT_TRUE(rewrite_driver()->ReadIfCached(input));
 
   // When we rewrite the resource as an ouptut, it will show up in the
@@ -1083,8 +1083,10 @@ TEST_F(ResourceManagerTestThreadedCache, RepeatedFetches) {
   for (int run = 0; run < 10; ++run) {
     lru_cache()->Clear();
     ClearHTTPCache();
-    InitResponseHeaders(a_url, kContentTypeJavascript, "var a = 42  ;", 1000);
-    InitResponseHeaders(b_url, kContentTypeJavascript, "var b = 42  ;", 1);
+    SetResponseWithDefaultHeaders(a_url, kContentTypeJavascript,
+                                  "var a = 42  ;", 1000);
+    SetResponseWithDefaultHeaders(b_url, kContentTypeJavascript,
+                                  "var b = 42  ;", 1);
 
     // First rewrite try --- this in particular caches the minifications of
     // A and B.

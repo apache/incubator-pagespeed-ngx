@@ -287,7 +287,7 @@ void ResourceManagerTestBase::DefaultResponseHeaders(
 }
 
 // Initializes a resource for mock fetching.
-void ResourceManagerTestBase::InitResponseHeaders(
+void ResourceManagerTestBase::SetResponseWithDefaultHeaders(
     const StringPiece& resource_name,
     const ContentType& content_type,
     const StringPiece& content,
@@ -322,35 +322,35 @@ void ResourceManagerTestBase::AddFileToMockFetcher(
   GoogleString filename_str = StrCat(GTestSrcDir(), kTestData, filename);
   ASSERT_TRUE(stdio_file_system.ReadFile(
       filename_str.c_str(), &contents, message_handler()));
-  InitResponseHeaders(url, content_type, contents, ttl_sec);
+  SetResponseWithDefaultHeaders(url, content_type, contents, ttl_sec);
 }
 
 // Helper function to test resource fetching, returning true if the fetch
 // succeeded, and modifying content.  It is up to the caller to EXPECT_TRUE
 // on the status and EXPECT_EQ on the content.
-bool ResourceManagerTestBase::ServeResource(
+bool ResourceManagerTestBase::FetchResource(
     const StringPiece& path, const StringPiece& filter_id,
     const StringPiece& name, const StringPiece& ext,
     GoogleString* content, ResponseHeaders* response) {
   GoogleString url = Encode(path, filter_id, "0", name, ext);
-  return ServeResourceUrl(url, content, response);
+  return FetchResourceUrl(url, content, response);
 }
 
-bool ResourceManagerTestBase::ServeResource(
+bool ResourceManagerTestBase::FetchResource(
     const StringPiece& path, const StringPiece& filter_id,
     const StringPiece& name, const StringPiece& ext,
     GoogleString* content) {
   ResponseHeaders response;
-  return ServeResource(path, filter_id, name, ext, content, &response);
+  return FetchResource(path, filter_id, name, ext, content, &response);
 }
 
-bool ResourceManagerTestBase::ServeResourceUrl(
+bool ResourceManagerTestBase::FetchResourceUrl(
     const StringPiece& url, GoogleString* content) {
   ResponseHeaders response;
-  return ServeResourceUrl(url, content, &response);
+  return FetchResourceUrl(url, content, &response);
 }
 
-bool ResourceManagerTestBase::ServeResourceUrl(
+bool ResourceManagerTestBase::FetchResourceUrl(
     const StringPiece& url, GoogleString* content, ResponseHeaders* response) {
   content->clear();
   StringAsyncFetch async_fetch(content);
@@ -387,16 +387,16 @@ void ResourceManagerTestBase::TestServeFiles(
   http_cache()->Put(expected_rewritten_path, &headers, rewritten_content,
                     message_handler());
   EXPECT_EQ(0U, lru_cache()->num_hits());
-  EXPECT_TRUE(ServeResource(kTestDomain, filter_id,
+  EXPECT_TRUE(FetchResource(kTestDomain, filter_id,
                             rewritten_name, rewritten_ext, &content));
   EXPECT_EQ(1U, lru_cache()->num_hits());
   EXPECT_EQ(rewritten_content, content);
 
   // Now nuke the cache, get it via a fetch.
   lru_cache()->Clear();
-  InitResponseHeaders(orig_name, *content_type, orig_content,
-                      100 /* ttl in seconds */);
-  EXPECT_TRUE(ServeResource(kTestDomain, filter_id,
+  SetResponseWithDefaultHeaders(orig_name, *content_type,
+                                orig_content, 100 /* ttl in seconds */);
+  EXPECT_TRUE(FetchResource(kTestDomain, filter_id,
                             rewritten_name, rewritten_ext, &content));
   EXPECT_EQ(rewritten_content, content);
 
@@ -412,7 +412,7 @@ void ResourceManagerTestBase::TestServeFiles(
 bool ResourceManagerTestBase::TryFetchResource(const StringPiece& url) {
   GoogleString contents;
   ResponseHeaders response;
-  return ServeResourceUrl(url, &contents, &response);
+  return FetchResourceUrl(url, &contents, &response);
 }
 
 
@@ -658,7 +658,7 @@ void ResourceManagerTestBase::TestRetainExtraHeaders(
   ResponseHeaders response;
 
   GoogleString rewritten_url = Encode(kTestDomain, filter_id, "0", name, ext);
-  ASSERT_TRUE(ServeResourceUrl(rewritten_url, &content, &response));
+  ASSERT_TRUE(FetchResourceUrl(rewritten_url, &content, &response));
 
   // Extra non-blacklisted header is preserved.
   ConstStringStarVector v;

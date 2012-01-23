@@ -220,7 +220,7 @@ TEST_P(JsInlineFilterTest, CachedWithSuccesors) {
   const char kJsUrl[] = "script.js";
   const char kJs[] = "function id(x) { return x; }\n";
 
-  InitResponseHeaders(kJsUrl, kContentTypeJavascript, kJs, 3000);
+  SetResponseWithDefaultHeaders(kJsUrl, kContentTypeJavascript, kJs, 3000);
 
   GoogleString html_input = StrCat("<script src=\"", kJsUrl, "\"></script>");
   GoogleString html_output= StrCat("<script>", kJs, "</script>");
@@ -240,7 +240,7 @@ TEST_P(JsInlineFilterTest, CachedWithPredecessors) {
   const char kJsUrl[] = "script.js";
   const char kJs[] = "function id(x) { return x; }\n";
 
-  InitResponseHeaders(kJsUrl, kContentTypeJavascript, kJs, 3000);
+  SetResponseWithDefaultHeaders(kJsUrl, kContentTypeJavascript, kJs, 3000);
 
   GoogleString html_input = StrCat("<script src=\"", kJsUrl, "\"></script>",
                                    "<script src=\"", kJsUrl, "\"></script>");
@@ -283,7 +283,7 @@ TEST_P(JsInlineFilterTest, FlushSplittingScriptTag) {
 
   const char kJsUrl[] = "http://www.example.com/script.js";
   const char kJs[] = "function id(x) { return x; }\n";
-  InitResponseHeaders(kJsUrl, kContentTypeJavascript, kJs, 3000);
+  SetResponseWithDefaultHeaders(kJsUrl, kContentTypeJavascript, kJs, 3000);
 
   html_parse()->StartParse("http://www.example.com");
   html_parse()->ParseText("<div><script src=\"script.js\"> ");
@@ -300,7 +300,7 @@ TEST_P(JsInlineFilterTest, NoFlushSplittingScriptTag) {
 
   const char kJsUrl[] = "http://www.example.com/script.js";
   const char kJs[] = "function id(x) { return x; }\n";
-  InitResponseHeaders(kJsUrl, kContentTypeJavascript, kJs, 3000);
+  SetResponseWithDefaultHeaders(kJsUrl, kContentTypeJavascript, kJs, 3000);
 
   html_parse()->StartParse("http://www.example.com");
   html_parse()->ParseText("<div><script src=\"script.js\">     ");

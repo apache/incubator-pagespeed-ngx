@@ -69,7 +69,7 @@ TEST_F(RewriterTest, HandlingOfInvalidUrls) {
 
   const char kCssData[] = "a { color: red }";
   const char kMinimizedCssData[] = "a{color:red}";
-  InitResponseHeaders("a.css", kContentTypeCss, kCssData, 100);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssData, 100);
 
   // Fetching the real rewritten resource name should work.
   // TODO(sligocki): This will need to be regolded if naming format changes.

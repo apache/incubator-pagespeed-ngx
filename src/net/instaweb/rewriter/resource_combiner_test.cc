@@ -164,7 +164,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
 
   // Create a resource with given data and TTL
   void MockResource(const char* rel_path, const StringPiece& data, int64 ttl) {
-    InitResponseHeaders(rel_path, kContentTypeText, data, ttl);
+    SetResponseWithDefaultHeaders(rel_path, kContentTypeText, data, ttl);
   }
 
   enum FetchFlags {
@@ -179,7 +179,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
       SetupWaitFetcher();
     }
 
-    // TODO(morlovich): This is basically copy-paste from ServeResourceUrl.
+    // TODO(morlovich): This is basically copy-paste from FetchResourceUrl.
     content->clear();
     StringAsyncFetch callback(content);
     bool fetched = rewrite_driver()->FetchResource(url, &callback);

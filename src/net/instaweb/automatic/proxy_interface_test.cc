@@ -389,8 +389,8 @@ TEST_F(ProxyInterfaceTest, PassThroughResource) {
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";
 
-  InitResponseHeaders("text.txt", kContentTypeText, kContent,
-                      kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("text.txt", kContentTypeText, kContent,
+                                kHtmlCacheTimeSec * 2);
   FetchFromProxy("text.txt", true, &text, &headers);
   CheckHeaders(headers, kContentTypeText);
   EXPECT_EQ(kContent, text);
@@ -809,8 +809,8 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingDisabledByGlobalDisable) {
   options->set_enabled(false);
   resource_manager()->ComputeSignature(options);
 
-  InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
-                      kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
+                                kHtmlCacheTimeSec * 2);
   GoogleString text;
   ResponseHeaders response_headers;
   FetchFromProxy("a.css", true, &text, &response_headers);
@@ -910,8 +910,8 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
   headers.ComputeCaching();
   SetFetchResponse(AbsolutifyUrl("page.html"), headers, CssLinkHref("a.css"));
 
-  InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
-                      kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
+                                kHtmlCacheTimeSec * 2);
 
   headers.Clear();
   FetchFromProxy("page.html", true, &text, &headers);
@@ -935,10 +935,10 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
 
 TEST_F(ProxyInterfaceTest, DontRewriteDisallowedHtml) {
   // Blacklisted URL should not be rewritten.
-  InitResponseHeaders("blacklist.html", kContentTypeHtml,
-                      CssLinkHref("a.css"), kHtmlCacheTimeSec * 2),
-  InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
-                      kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("blacklist.html", kContentTypeHtml,
+                                CssLinkHref("a.css"), kHtmlCacheTimeSec * 2),
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
+                                kHtmlCacheTimeSec * 2);
 
   GoogleString text;
   ResponseHeaders headers;
@@ -952,11 +952,11 @@ TEST_F(ProxyInterfaceTest, DontRewriteMislabeledAsHtml) {
   GoogleString text;
   ResponseHeaders headers;
 
-  InitResponseHeaders("page.js", kContentTypeHtml,
-                      StrCat("//", CssLinkHref("a.css")),
-                      kHtmlCacheTimeSec * 2);
-  InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
-                      kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("page.js", kContentTypeHtml,
+                                StrCat("//", CssLinkHref("a.css")),
+                                kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
+                                kHtmlCacheTimeSec * 2);
 
   FetchFromProxy("page.js", true, &text, &headers);
   CheckHeaders(headers, kContentTypeHtml);
@@ -969,8 +969,8 @@ TEST_F(ProxyInterfaceTest, ReconstructResource) {
 
   // Fetching of a rewritten resource we did not just create
   // after an HTML rewrite.
-  InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
-                      kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
+                                kHtmlCacheTimeSec * 2);
   FetchFromProxy(Encode("", "cf", "0", "a.css", "css"), true, &text, &headers);
   CheckHeaders(headers, kContentTypeCss);
   headers.ComputeCaching();
@@ -987,11 +987,11 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
 
   // We're not going to image-compress so we don't need our mock image
   // to really be an image.
-  InitResponseHeaders(kBackgroundImage, kContentTypePng, "image",
-                      kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders(kBackgroundImage, kContentTypePng, "image",
+                                kHtmlCacheTimeSec * 2);
   GoogleString orig_css = StringPrintf(kCssWithEmbeddedImage, kBackgroundImage);
-  InitResponseHeaders("embedded.css", kContentTypeCss,
-                      orig_css, kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("embedded.css", kContentTypeCss,
+                                orig_css, kHtmlCacheTimeSec * 2);
 
   // By default, cache extension is off in the default options.
   resource_manager()->global_options()->SetDefaultRewriteLevel(
@@ -1135,10 +1135,10 @@ TEST_F(ProxyInterfaceTest, MinResourceTimeZero) {
       kHtmlCacheTimeSec * Timer::kSecondMs);
   resource_manager()->ComputeSignature(options);
 
-  InitResponseHeaders("page.html", kContentTypeHtml,
-                      CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
-  InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
-                      kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
+                                CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
+                                kHtmlCacheTimeSec * 2);
 
   GoogleString text;
   ResponseHeaders headers;
@@ -1155,10 +1155,10 @@ TEST_F(ProxyInterfaceTest, MinResourceTimeLarge) {
       4 * kHtmlCacheTimeSec * Timer::kSecondMs);
   resource_manager()->ComputeSignature(options);
 
-  InitResponseHeaders("page.html", kContentTypeHtml,
-                      CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
-  InitResponseHeaders("a.css", kContentTypeCss, kCssContent,
-                      kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
+                                CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
+                                kHtmlCacheTimeSec * 2);
 
   GoogleString text;
   ResponseHeaders headers;
@@ -1417,10 +1417,10 @@ TEST_F(ProxyInterfaceTest, Blacklist) {
       "    <script src='tiny_mce.js'></script>\n"
       "  </body>\n"
       "</html>\n";
-  InitResponseHeaders("tiny_mce.js", kContentTypeJavascript, "", 100);
+  SetResponseWithDefaultHeaders("tiny_mce.js", kContentTypeJavascript, "", 100);
   ValidateNoChanges("blacklist", content);
 
-  InitResponseHeaders("page.html", kContentTypeHtml, content, 0);
+  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml, content, 0);
   GoogleString text_out;
   ResponseHeaders headers_out;
   FetchFromProxy("page.html", true, &text_out, &headers_out);
@@ -1431,8 +1431,8 @@ TEST_F(ProxyInterfaceTest, RepairMismappedResource) {
   // Teach the mock fetcher to serve origin content for
   // "http://test.com/foo.js".
   const char kContent[] = "function f() {alert('foo');}";
-  InitResponseHeaders("foo.js", kContentTypeHtml, kContent,
-                      kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("foo.js", kContentTypeHtml, kContent,
+                                kHtmlCacheTimeSec * 2);
 
   // Set up a Mock Namer that will mutate output resources to
   // be served on proxy_host.com, encoding the origin URL.
@@ -1598,8 +1598,8 @@ TEST_F(ProxyInterfaceTest, ProxyResourceQueryOnly) {
   // whose original name was a bare query, we would loop infinitely when
   // trying to fetch it from a separate-domain proxy.
   const char kUrl[] = "?somestuff";
-  InitResponseHeaders(kUrl, kContentTypeJavascript, "var a = 2;// stuff",
-                      kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders(kUrl, kContentTypeJavascript,
+                                "var a = 2;// stuff", kHtmlCacheTimeSec * 2);
 
   ProxyUrlNamer url_namer;
   resource_manager()->set_url_namer(&url_namer);
@@ -1620,7 +1620,7 @@ TEST_F(ProxyInterfaceTest, NoRehostIncompatMPS) {
   // This url will be rejected by CssUrlEncoder
   const char kOldName[] = "style.css.pagespeed.cf.0.css";
   const char kContent[] = "*     {}";
-  InitResponseHeaders(kOldName, kContentTypeCss, kContent, 100);
+  SetResponseWithDefaultHeaders(kOldName, kContentTypeCss, kContent, 100);
 
   ProxyUrlNamer url_namer;
   resource_manager()->set_url_namer(&url_namer);

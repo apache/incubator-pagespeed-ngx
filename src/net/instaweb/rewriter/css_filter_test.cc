@@ -59,7 +59,7 @@ TEST_P(CssFilterTest, RewriteCss404) {
 TEST_P(CssFilterTest, LinkHrefCaseInsensitive) {
   // Make sure we check rel value case insensitively.
   // http://code.google.com/p/modpagespeed/issues/detail?id=354
-  InitResponseHeaders("a.css", kContentTypeCss, kInputStyle, 100);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kInputStyle, 100);
   ValidateExpected(
       "case_insensitive", "<link rel=StyleSheet href=a.css>",
       StrCat("<link rel=StyleSheet href=",
@@ -887,7 +887,7 @@ TEST_P(CssFilterTest, NoQuirksModeForXhtml) {
 // http://code.google.com/p/modpagespeed/issues/detail?id=324
 TEST_P(CssFilterTest, RetainExtraHeaders) {
   GoogleString url = StrCat(kTestDomain, "retain.css");
-  InitResponseHeaders(url, kContentTypeCss, kInputStyle, 300);
+  SetResponseWithDefaultHeaders(url, kContentTypeCss, kInputStyle, 300);
   TestRetainExtraHeaders("retain.css", "cf", "css");
 }
 
@@ -946,7 +946,7 @@ TEST_P(CssFilterTest, DontAbsolutifyCssImportUrls) {
       "@import url(media/print.css) print;",
       "@import url(media/screen.css) screen;",
       styles_css);
-  InitResponseHeaders(styles_filename, kContentTypeCss, css_in, 100);
+  SetResponseWithDefaultHeaders(styles_filename, kContentTypeCss, css_in, 100);
 
   static const char html_prefix[] =
       "<head>\n"
