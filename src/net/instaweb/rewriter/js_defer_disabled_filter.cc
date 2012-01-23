@@ -19,19 +19,27 @@
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
+
+#include "base/logging.h"
+#include "net/instaweb/rewriter/public/javascript_code_block.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 
 namespace net_instaweb {
 
-extern const char* JS_js_defer;
+extern const char* JS_js_defer;  // Non-optimized output.
 
-// TODO(atulvasu): Minify this script if minify is turned on.
-const char* JsDeferDisabledFilter::kDeferJsCode = JS_js_defer;
+
+GoogleString* JsDeferDisabledFilter::opt_defer_js_ = NULL;
+GoogleString* JsDeferDisabledFilter::debug_defer_js_ = NULL;
 
 JsDeferDisabledFilter::JsDeferDisabledFilter(HtmlParse* html_parse)
-    : html_parse_(html_parse) {
+    : html_parse_(html_parse),
+      script_written_(false),
+      debug_(false) {
 }
 
 JsDeferDisabledFilter::~JsDeferDisabledFilter() { }
@@ -40,6 +48,37 @@ void JsDeferDisabledFilter::StartDocument() {
   script_written_ = false;
 }
 
+void JsDeferDisabledFilter::Initialize(Statistics* statistics) {
+  static const char kSuffix[] =
+      "\npagespeed.deferInit();\n"
+      "pagespeed.deferJs.registerScriptTags();\n"
+      "pagespeed.addOnload(window, function() {\n"
+      "  pagespeed.deferJs.run();\n"
+      "});\n";
+  if (debug_defer_js_ == NULL) {
+    debug_defer_js_ = new GoogleString(StrCat(JS_js_defer, kSuffix));
+    JavascriptRewriteConfig config(NULL);
+    NullMessageHandler handler;
+    JavascriptCodeBlock code_block(*debug_defer_js_, &config, "init", &handler);
+    bool ok = code_block.ProfitableToRewrite();
+    DCHECK(ok);
+    if (ok) {
+      opt_defer_js_ = new GoogleString;
+      code_block.Rewritten().CopyToString(opt_defer_js_);
+    } else {
+      opt_defer_js_ = debug_defer_js_;
+    }
+  }
+}
+
+void JsDeferDisabledFilter::Terminate() {
+  if (opt_defer_js_ != debug_defer_js_) {
+    delete opt_defer_js_;
+  }
+  delete debug_defer_js_;
+  opt_defer_js_ = NULL;
+  debug_defer_js_ = NULL;
+}
 
 void JsDeferDisabledFilter::EndElement(HtmlElement* element) {
   if (element->keyword() == HtmlName::kBody && !script_written_) {
@@ -47,12 +86,7 @@ void JsDeferDisabledFilter::EndElement(HtmlElement* element) {
         html_parse_->NewElement(element, HtmlName::kScript);
     html_parse_->AddAttribute(script_node, HtmlName::kType,
                               "text/javascript");
-    GoogleString defer_js = StrCat(kDeferJsCode, "\n"
-        "pagespeed.deferInit();\n"
-        "pagespeed.deferJs.registerScriptTags();\n"
-        "pagespeed.addOnload(window, function() {\n"
-        "  pagespeed.deferJs.run();\n"
-        "});\n");
+    const GoogleString& defer_js = debug_ ? *debug_defer_js_ : *opt_defer_js_;
     HtmlNode* script_code =
         html_parse_->NewCharactersNode(script_node, defer_js);
     html_parse_->InsertElementBeforeCurrent(script_node);

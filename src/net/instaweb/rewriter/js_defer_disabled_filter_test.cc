@@ -30,14 +30,19 @@ class JsDeferDisabledFilterTest : public HtmlParseTestBase {
  protected:
   JsDeferDisabledFilterTest()
       : js_defer_disabled_filter_(&html_parse_) {
+    JsDeferDisabledFilter::Initialize(NULL);
     html_parse_.AddFilter(&js_defer_disabled_filter_);
+  }
+
+  virtual ~JsDeferDisabledFilterTest() {
+    JsDeferDisabledFilter::Terminate();
   }
 
   virtual bool AddBody() const { return false; }
 
- private:
   JsDeferDisabledFilter js_defer_disabled_filter_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(JsDeferDisabledFilterTest);
 };
 
@@ -56,12 +61,8 @@ TEST_F(JsDeferDisabledFilterTest, DeferScript) {
              "> func();</script>"
              "</head><body>Hello, world!"
              "<script type=\"text/javascript\">",
-             JsDeferDisabledFilter::kDeferJsCode,
-             "\npagespeed.deferInit();\n",
-             "pagespeed.deferJs.registerScriptTags();\n",
-             "pagespeed.addOnload(window, function() {\n"
-             "  pagespeed.deferJs.run();\n"
-             "});\n</script></body>"));
+             JsDeferDisabledFilter::defer_js_code(),
+             "</script></body>"));
 }
 
 TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
@@ -78,14 +79,25 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
              "<script type='text/psajs'> func(); </script>"
              "</head><body>Hello, world!"
              "<script type=\"text/javascript\">",
-             JsDeferDisabledFilter::kDeferJsCode, "\n"
-             "pagespeed.deferInit();\n",
-             "pagespeed.deferJs.registerScriptTags();\n",
-             "pagespeed.addOnload(window, function() {\n"
-             "  pagespeed.deferJs.run();\n"
-             "});\n"
+             JsDeferDisabledFilter::defer_js_code(),
              "</script></body><body><script type='text/psajs'> func2(); "
              "</script></body>"));
+}
+
+TEST_F(JsDeferDisabledFilterTest, DeferScriptOptimized) {
+  js_defer_disabled_filter_.set_debug(false);
+  Parse("optimized",
+        "<body><script type='text/psajs' src='foo.js'></script></body>");
+  EXPECT_TRUE(output_buffer_.find("/*") == GoogleString::npos)
+      << "There should be no comments in the optimized code";
+}
+
+TEST_F(JsDeferDisabledFilterTest, DeferScriptDebug) {
+  js_defer_disabled_filter_.set_debug(true);
+  Parse("optimized",
+        "<body><script type='text/psajs' src='foo.js'></script></body>");
+  EXPECT_TRUE(output_buffer_.find("/*") != GoogleString::npos)
+      << "There should still be some comments in the debug code";
 }
 
 }  // namespace net_instaweb

@@ -743,6 +743,37 @@ echo run_wget_with_args $URL
 run_wget_with_args $URL
 check grep '"404 Not Found"' $WGET_OUTPUT
 
+URL="$REWRITTEN_ROOT/../mod_pagespeed_test/no_cache/hello.js.pagespeed.jm.0.js"
+echo run_wget_with_args $URL
+run_wget_with_args $URL
+check grep '"404 Not Found"' $WGET_OUTPUT
+
+# Checks that defer_javascript injects 'pagespeed.deferJs' from defer_js.js,
+# but strips the comments.
+test_filter defer_javascript optimize mode
+echo run_wget_with_args $URL
+check run_wget_with_args $URL
+grep pagespeed.deferJs $FETCHED >/dev/null
+check [ $? = 0 ]
+grep text/psajs $FETCHED >/dev/null
+check [ $? = 0 ]
+grep '/\*' $FETCHED >/dev/null
+check [ $? = 1 ]
+
+# Checks that defer_javascript,debug injects 'pagespeed.deferJs' from
+# defer_js.js, but retains the comments.
+test_filter defer_javascript,debug optimize mode
+FILE=defer_javascript.html?ModPagespeedFilters=$FILTER_NAME
+URL=$EXAMPLE_ROOT/$FILE
+FETCHED=$OUTDIR/$FILE
+check run_wget_with_args "$URL"
+grep pagespeed.deferJs $FETCHED >/dev/null
+check [ $? = 0 ]
+grep text/psajs $FETCHED >/dev/null
+check [ $? = 0 ]
+grep '/\*' $FETCHED >/dev/null
+check [ $? = 0 ]
+
 # Cleanup
 rm -rf $OUTDIR
 echo "PASS."

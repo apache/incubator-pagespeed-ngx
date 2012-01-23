@@ -561,6 +561,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     InsertGAFilter::Initialize(statistics);
     JavascriptFilter::Initialize(statistics);
     JsCombineFilter::Initialize(statistics);
+    JsDeferDisabledFilter::Initialize(statistics);
     MetaTagFilter::Initialize(statistics);
     UrlLeftTrimFilter::Initialize(statistics);
   }
@@ -853,7 +854,10 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
     // Defers javascript download and execution to post onload.
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
-    AddOwnedPostRenderFilter(new JsDeferDisabledFilter(this));
+    JsDeferDisabledFilter* js_defer_filter = new JsDeferDisabledFilter(this);
+    js_defer_filter->set_debug(
+        rewrite_options->Enabled(RewriteOptions::kDebug));
+    AddOwnedPostRenderFilter(js_defer_filter);
   }
   // TODO(nikhilmadan): Should we disable this for bots?
   if (rewrite_options->Enabled(RewriteOptions::kLazyloadImages)) {

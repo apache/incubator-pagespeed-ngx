@@ -17,6 +17,7 @@
 #include "googleurl/src/url_util.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
+#include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 #include "net/instaweb/rewriter/public/mem_clean_up.h"
 #include "net/instaweb/util/public/gflags.h"
 
@@ -60,6 +61,7 @@ MemCleanUp::~MemCleanUp() {
   // ResourceManager::Initialize, which is a static method that is
   // called before threads are spawned.
   CssFilter::Terminate();
+  JsDeferDisabledFilter::Terminate();
   HtmlKeywords::ShutDown();
 }
 

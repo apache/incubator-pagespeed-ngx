@@ -19,16 +19,16 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_JS_DEFER_DISABLED_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_JS_DEFER_DISABLED_FILTER_H_
 
-#include <vector>
-
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 
 namespace net_instaweb {
 
 class HtmlParse;
 class HtmlElement;
+class Statistics;
 
 // Implements deferring of javascripts into post onload.
 // JsDisableFilter moves scripts inside a noscript tag. This
@@ -46,10 +46,24 @@ class JsDeferDisabledFilter : public EmptyHtmlFilter {
   virtual void EndDocument();
   virtual const char* Name() const { return "JsDeferDisabledFilter"; }
 
+  // Emits cleartext javascript rather than minified/optimized code.
+  void set_debug(bool x) { debug_ = x; }
+
+  static StringPiece defer_js_code() { return *opt_defer_js_; }
+
+  static void Initialize(Statistics* statistics);
+  static void Terminate();
+
  private:
+  // The script that will be inlined at the end of BODY.
+  static GoogleString* opt_defer_js_;  // Minified version.
+  static GoogleString* debug_defer_js_;  // Debug version.
+
   HtmlParse* html_parse_;
+
   // The script that will be inlined at the end of BODY.
   bool script_written_;
+  bool debug_;
 
   DISALLOW_COPY_AND_ASSIGN(JsDeferDisabledFilter);
 };

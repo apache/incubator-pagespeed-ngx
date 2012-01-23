@@ -35,6 +35,7 @@ struct FilterMap {
 "convert_jpeg_to_webp",              RewriteOptions::kConvertJpegToWebp
 "convert_meta_tags",                 RewriteOptions::kConvertMetaTags
 "convert_png_to_jpeg",               RewriteOptions::kConvertPngToJpeg
+"debug",                             RewriteOptions::kDebug
 "defer_javascript",                  RewriteOptions::kDeferJavascript
 "delay_images",                      RewriteOptions::kDelayImages
 "disable_javascript",                RewriteOptions::kDisableJavascript
