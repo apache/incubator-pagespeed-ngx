@@ -151,7 +151,6 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual Timer* DefaultTimer();
   virtual CacheInterface* DefaultCacheInterface();
   virtual UrlNamer* DefaultUrlNamer();
-  virtual bool ShouldWriteResourcesToFileSystem() { return false; }
   virtual Scheduler* CreateScheduler();
   virtual void AddPlatformSpecificDecodingPasses(RewriteDriver* driver);
   virtual void AddPlatformSpecificRewritePasses(RewriteDriver* driver);

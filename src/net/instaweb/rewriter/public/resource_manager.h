@@ -165,7 +165,8 @@ class ResourceManager {
   // your key names do not start with http://.
   CacheInterface* metadata_cache() { return metadata_cache_; }
 
-  // Whether or not resources should hit the filesystem.
+  // Whether or not dumps of rewritten resources should be stored to
+  // the filesystem. This is meant for testing purposes only.
   bool store_outputs_in_file_system() { return store_outputs_in_file_system_; }
   void set_store_outputs_in_file_system(bool store) {
     store_outputs_in_file_system_ = store;

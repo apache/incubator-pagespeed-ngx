@@ -284,15 +284,20 @@ bool ResourceManager::Write(const ResourceVector& inputs,
   // so it can can live, essentially, forever. So compute this hash,
   // and cache the output using meta_data's default headers which are to cache
   // forever.
-  scoped_ptr<Writer> writer(output->BeginWrite(handler));
+  Writer* writer = output->BeginWrite(handler);
   bool ret = (writer != NULL);
   if (ret) {
     ret = writer->Write(contents, handler);
-    ret &= output->EndWrite(handler);
+    output->EndWrite(handler);
 
     if (output->kind() != kOnTheFlyResource &&
         (http_cache_->force_caching() || meta_data->IsProxyCacheable())) {
       http_cache_->Put(output->url(), &output->value_, handler);
+    }
+
+    // If we're asked to, also save a debug dump
+    if (store_outputs_in_file_system_) {
+      output->DumpToDisk(handler);
     }
 
     // If our URL is derived from some pre-existing URL (and not invented by

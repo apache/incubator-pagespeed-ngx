@@ -370,8 +370,6 @@ void RewriteDriverFactory::InitResourceManager(
   resource_manager->set_filename_prefix(filename_prefix_);
   resource_manager->set_hasher(hasher());
   resource_manager->set_message_handler(message_handler());
-  resource_manager->set_store_outputs_in_file_system(
-      ShouldWriteResourcesToFileSystem());
   resource_manager->InitWorkersAndDecodingDriver();
   resource_managers_.insert(resource_manager);
 }

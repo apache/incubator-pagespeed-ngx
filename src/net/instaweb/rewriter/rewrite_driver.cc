@@ -1193,7 +1193,8 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
     } else if (did_locking_) {
       if (output_resource_->Load(handler_)) {
         // OutputResources can also be loaded while not in cache if
-        // store_outputs_in_file_system() is true.
+        // FetchOutputResource() somehow got called on an already written
+        // resource object (while the cache somehow decided not to store it).
         content = output_resource_->contents();
         response_headers->CopyFrom(*output_resource_->response_headers());
         ResourceManager* resource_manager = driver_->resource_manager();
@@ -1248,6 +1249,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
 bool RewriteDriver::FetchResource(const StringPiece& url,
                                   AsyncFetch* async_fetch) {
   DCHECK(!fetch_queued_) << this;
+  DCHECK(!fetch_detached_) << this;
   DCHECK_EQ(0, pending_rewrites_) << this;
   bool handled = false;
 

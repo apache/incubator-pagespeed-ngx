@@ -24,7 +24,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -33,20 +32,18 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/file_writer.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/stack_buffer.h"
 
 namespace net_instaweb {
-class MessageHandler;
 
 namespace {
 
@@ -77,7 +74,6 @@ OutputResource::OutputResource(ResourceManager* resource_manager,
                                const RewriteOptions* options,
                                OutputResourceKind kind)
     : Resource(resource_manager, type),
-      output_file_(NULL),
       writing_complete_(false),
       cached_result_owned_(false),
       cached_result_(NULL),
@@ -106,95 +102,50 @@ OutputResource::~OutputResource() {
   clear_cached_result();
 }
 
-OutputResource::OutputWriter::~OutputWriter() {
-}
-
-bool OutputResource::OutputWriter::Write(const StringPiece& data,
-                                         MessageHandler* handler) {
-  bool ret = http_value_->Write(data, handler);
-  if (file_writer_.get() != NULL) {
-    ret &= file_writer_->Write(data, handler);
+void OutputResource::DumpToDisk(MessageHandler* handler) {
+  GoogleString file_name = DumpFileName();
+  FileSystem* file_system = resource_manager_->file_system();
+  FileSystem::OutputFile* output_file =
+      file_system->OpenOutputFile(file_name.c_str(), handler);
+  if (output_file == NULL) {
+    handler->Message(kWarning, "Unable to open dump file: %s",
+                     file_name.c_str());
+    return;
   }
-  return ret;
+
+  // Serialize headers.
+  GoogleString headers;
+  StringWriter string_writer(&headers);
+  response_headers_.WriteAsHttp(&string_writer, handler);
+  bool ok_headers = output_file->Write(headers, handler);
+
+  // Serialize payload.
+  bool ok_body = output_file->Write(contents(), handler);
+
+  if (!ok_headers || !ok_body) {
+    handler->Message(kWarning,
+                     "Error writing dump file: %s", file_name.c_str());
+  }
+
+  file_system->Close(output_file, handler);
 }
 
-bool OutputResource::OutputWriter::Flush(MessageHandler*) {
-  return true;
-}
-
-Writer* OutputResource::BeginWrite(
-    MessageHandler* handler) {
+Writer* OutputResource::BeginWrite(MessageHandler* handler) {
   value_.Clear();
   full_name_.ClearHash();
   computed_url_.clear();  // Since dependent on full_name_.
   CHECK(!writing_complete_);
-  CHECK(output_file_ == NULL);
-  if (resource_manager_->store_outputs_in_file_system()) {
-    FileSystem* file_system = resource_manager_->file_system();
-    // Always write to a tempfile, so that if we get interrupted in the middle
-    // we won't leave a half-baked file in the serving path.
-    GoogleString temp_prefix = TempPrefix();
-    output_file_ = file_system->OpenTempFile(temp_prefix, handler);
-    bool success = (output_file_ != NULL);
-    if (success) {
-      GoogleString header;
-      StringWriter string_writer(&header);
-      // Serialize headers.
-      response_headers_.WriteAsHttp(&string_writer, handler);
-      // It does not make sense to have the headers in the hash.
-      // call output_file_->Write directly, rather than going through
-      // OutputWriter.
-      //
-      // TODO(jmarantz): consider refactoring to split out the header-file
-      // writing in a different way, e.g. to a separate file.
-      success &= output_file_->Write(header, handler);
-    }
-    OutputWriter* writer = NULL;
-    if (success) {
-      writer = new OutputWriter(output_file_, &value_);
-    }
-    return writer;
-  } else {
-    return new OutputWriter(NULL, &value_);
-  };
+  return &value_;
 }
 
-bool OutputResource::EndWrite(MessageHandler* handler) {
+void OutputResource::EndWrite(MessageHandler* handler) {
   CHECK(!writing_complete_);
   value_.SetHeaders(&response_headers_);
   Hasher* hasher = resource_manager_->hasher();
   full_name_.set_hash(hasher->Hash(contents()));
   computed_url_.clear();  // Since dependent on full_name_.
   writing_complete_ = true;
-  bool ret = true;
-  if (output_file_ != NULL) {
-    FileSystem* file_system = resource_manager_->file_system();
-    CHECK(file_system != NULL);
-    GoogleString temp_filename = output_file_->filename();
-    ret = file_system->Close(output_file_, handler);
-
-    // Now that we are done writing, we can rename to the filename we
-    // really want.
-    if (ret) {
-      ret = file_system->RenameFile(temp_filename.c_str(), filename().c_str(),
-                                    handler);
-    }
-
-    // TODO(jmarantz): Consider writing to the HTTP cache as we write the
-    // file, so same-process write-then-read never has to read from disk.
-    // This is moderately inconvenient because HTTPCache lacks a streaming
-    // Put interface.
-
-    output_file_ = NULL;
-  }
   DropCreationLock();
-  return ret;
-}
-
-// Called by FilenameOutputResource::BeginWrite to determine how
-// to start writing the tmpfile.
-GoogleString OutputResource::TempPrefix() const {
-  return StrCat(resource_manager_->filename_prefix(), "temp_");
 }
 
 StringPiece OutputResource::suffix() const {
@@ -214,7 +165,7 @@ void OutputResource::set_suffix(const StringPiece& ext) {
   computed_url_.clear();  // Since dependent on full_name_.
 }
 
-GoogleString OutputResource::filename() const {
+GoogleString OutputResource::DumpFileName() const {
   GoogleString filename;
   resource_manager_->filename_encoder()->Encode(
       resource_manager_->filename_prefix(), url(), &filename);
@@ -262,36 +213,6 @@ void OutputResource::SetHash(const StringPiece& hash) {
 }
 
 bool OutputResource::Load(MessageHandler* handler) {
-  if (!writing_complete_ && resource_manager_->store_outputs_in_file_system() &&
-      (kind_ != kOnTheFlyResource)) {
-    FileSystem* file_system = resource_manager_->file_system();
-    FileSystem::InputFile* file = file_system->OpenInputFile(
-        filename().c_str(), handler);
-    if (file != NULL) {
-      char buf[kStackBufferSize];
-      int nread = 0, num_consumed = 0;
-      // TODO(jmarantz): this logic is duplicated in util/wget_url_fetcher.cc,
-      // consider a refactor to merge it.
-      response_headers_.Clear();
-      value_.Clear();
-
-      // TODO(jmarantz): convert to binary headers
-      ResponseHeadersParser parser(&response_headers_);
-      while (!parser.headers_complete() &&
-             ((nread = file->Read(buf, sizeof(buf), handler)) != 0)) {
-        num_consumed = parser.ParseChunk(StringPiece(buf, nread), handler);
-      }
-      value_.SetHeaders(&response_headers_);
-      writing_complete_ = value_.Write(
-          StringPiece(buf + num_consumed, nread - num_consumed),
-          handler);
-      while (writing_complete_ &&
-             ((nread = file->Read(buf, sizeof(buf), handler)) != 0)) {
-        writing_complete_ = value_.Write(StringPiece(buf, nread), handler);
-      }
-      file_system->Close(file, handler);
-    }
-  }
   return writing_complete_;
 }
 

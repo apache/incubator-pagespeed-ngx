@@ -192,7 +192,6 @@ class RewriteContext::ResourceReconstructCallback
     // Compute the final post-write state of the object, including the hash.
     // Also takes care of dropping creation lock.
     resource_->EndWrite(driver_->message_handler());
-    DeleteOwnedWriter();
 
     // Make sure to compute the URL, as we'll be killing the rewrite driver
     // shortly, and the driver is needed for URL computation.

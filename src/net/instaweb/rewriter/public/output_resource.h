@@ -28,23 +28,20 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/file_writer.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
 class CachedResult;
 class Function;
-class HTTPValue;
 class MessageHandler;
 class NamedLock;
 class ResourceManager;
 class RewriteOptions;
+class Writer;
 struct ContentType;
 
 class OutputResource : public Resource {
@@ -75,6 +72,12 @@ class OutputResource : public Resource {
   // was set yet. Use this for error reporting, etc. where you do not
   // know whether the output resource has a valid hash yet.
   GoogleString UrlEvenIfHashNotSet();
+
+  // Save resource contents to disk, for testing and debugging purposes.
+  // Precondition: the resource contents must be fully set.
+  // The resource will be saved under the resource manager's filename_prefix()
+  // using with URL escaped using its filename_encoder().
+  void DumpToDisk(MessageHandler* handler);
 
   // Lazily initialize and return creation_lock_.  If the resource is expensive
   // to create, this lock should be held during its creation to avoid multiple
@@ -119,7 +122,6 @@ class OutputResource : public Resource {
   const GoogleString& original_base() const { return original_base_; }
   const ResourceNamer& full_name() const { return full_name_; }
   StringPiece name() const { return full_name_.name(); }
-  GoogleString filename() const;
   StringPiece suffix() const;
   StringPiece filter_prefix() const { return full_name_.id(); }
   StringPiece hash() const { return full_name_.hash(); }
@@ -207,9 +209,10 @@ class OutputResource : public Resource {
   }
 
   // Interface for directly setting the value of the resource.
-  // It must not have been set otherwise!
+  // It must not have been set otherwise! The return value of
+  // BeginWrite is owned by this OutputResource.
   Writer* BeginWrite(MessageHandler* message_handler);
-  bool EndWrite(MessageHandler* message_handler);
+  void EndWrite(MessageHandler* message_handler);
 
  protected:
   virtual ~OutputResource();
@@ -221,35 +224,12 @@ class OutputResource : public Resource {
   friend class ResourceManagerTestingPeer;
   friend class RewriteDriver;
 
-  class OutputWriter : public Writer {
-   public:
-    // file may be null if we shouldn't write to the filesystem.
-    OutputWriter(FileSystem::OutputFile* file, HTTPValue* http_value)
-        : http_value_(http_value) {
-      if (file != NULL) {
-        file_writer_.reset(new FileWriter(file));
-      } else {
-        file_writer_.reset(NULL);
-      }
-    }
-
-    virtual ~OutputWriter();
-
-    // Adds the given data to our http_value, and, if
-    // non-null, our file.
-    virtual bool Write(const StringPiece& data, MessageHandler* handler);
-    virtual bool Flush(MessageHandler* message_handler);
-
-   private:
-    scoped_ptr<FileWriter> file_writer_;
-    HTTPValue* http_value_;
-  };
-
   void SetHash(const StringPiece& hash);
   StringPiece extension() const { return full_name_.ext(); }
-  GoogleString TempPrefix() const;
 
-  FileSystem::OutputFile* output_file_;
+  // Name of the file used by DumpToDisk.
+  GoogleString DumpFileName() const;
+
   bool writing_complete_;
 
   // TODO(jmarantz): We have a complicated semantic for CachedResult
