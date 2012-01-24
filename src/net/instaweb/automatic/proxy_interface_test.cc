@@ -396,6 +396,34 @@ TEST_F(ProxyInterfaceTest, PassThroughResource) {
   EXPECT_EQ(kContent, text);
 }
 
+TEST_F(ProxyInterfaceTest, PassThroughEmptyResource) {
+  ResponseHeaders headers;
+  const char kContent[] = "";
+  SetDefaultLongCacheHeaders(&kContentTypeText, &headers);
+  SetFetchResponse(AbsolutifyUrl("text.txt"), headers, kContent);
+
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.txt", true, &text, &response_headers);
+  EXPECT_EQ(kContent, text);
+  // One lookup for ajax metadata and one for the HTTP response. Neither are
+  // found.
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+
+  ClearStats();
+  GoogleString text2;
+  ResponseHeaders response_headers2;
+  FetchFromProxy("text.txt", true, &text2, &response_headers2);
+  EXPECT_EQ(kContent, text2);
+  // The HTTP response is found but the ajax metadata is not found.
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+}
+
 TEST_F(ProxyInterfaceTest, SetCookieNotCached) {
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";

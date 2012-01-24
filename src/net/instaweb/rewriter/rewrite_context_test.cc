@@ -1419,6 +1419,59 @@ TEST_F(RewriteContextTest, PreserveNoCacheWithFailedRewrites) {
   }
 }
 
+TEST_F(RewriteContextTest, TestRewritesOnEmptyPublicResources) {
+  options()->EnableFilter(RewriteOptions::kExtendCacheCss);
+  rewrite_driver()->AddFilters();
+
+  const int kTtlMs = ResponseHeaders::kImplicitCacheTtlMs;
+  const char kPath[] = "test.css";
+  const char kDataIn[] = "";
+
+  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
+                                kTtlMs / Timer::kSecondMs);
+  for (int i = 0; i < 2; i++) {
+    GoogleString content;
+    ResponseHeaders headers;
+
+    EXPECT_TRUE(FetchResource(
+        kTestDomain, "ce", "test.css", "css", &content, &headers));
+    EXPECT_EQ("", content);
+    EXPECT_STREQ("max-age=31536000",
+                 headers.Lookup1(HttpAttributes::kCacheControl));
+  }
+}
+
+TEST_F(RewriteContextTest, TestRewritesOnEmptyPrivateResources) {
+  options()->EnableFilter(RewriteOptions::kExtendCacheCss);
+  rewrite_driver()->AddFilters();
+
+  const char kPath[] = "test.css";
+  ResponseHeaders no_store_css_header;
+  int64 now_ms = mock_timer()->NowMs();
+  no_store_css_header.set_major_version(1);
+  no_store_css_header.set_minor_version(1);
+  no_store_css_header.SetStatusAndReason(HttpStatus::kOK);
+  no_store_css_header.SetDateAndCaching(now_ms, 0, ",no-store");
+  no_store_css_header.ComputeCaching();
+
+  SetFetchResponse(AbsolutifyUrl(kPath), no_store_css_header, "");
+
+  for (int i = 0; i < 2; i++) {
+    GoogleString content;
+    ResponseHeaders headers;
+
+    EXPECT_TRUE(FetchResource(
+        kTestDomain, "ce", "test.css", "css", &content, &headers));
+    EXPECT_EQ("", content);
+    ConstStringStarVector values;
+    headers.Lookup(HttpAttributes::kCacheControl, &values);
+    ASSERT_EQ(3, values.size());
+    EXPECT_STREQ("max-age=0", *values[0]);
+    EXPECT_STREQ("no-cache", *values[1]);
+    EXPECT_STREQ("no-store", *values[2]);
+  }
+}
+
 // Verifies that we preserve cache-control when rewriting a no-cache resource
 // with a non-on-the-fly filter
 TEST_F(RewriteContextTest, PrivateNotCached) {

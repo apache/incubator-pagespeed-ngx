@@ -197,6 +197,13 @@ class UrlResourceFetchCallback : public AsyncFetch {
         success = false;
       }
     }
+    if (http_value()->Empty()) {
+      // If there have been no writes so far, write an empty string to the
+      // HTTPValue. Note that this is required since empty writes aren't
+      // propagated while fetching and we need to write something to the
+      // HTTPValue so that we can successfully extract empty content from it.
+      http_value()->Write("", message_handler_);
+    }
     if (lock_.get() != NULL) {
       message_handler_->Message(
           kInfo, "%s: Unlocking lock %s with cached=%s, success=%s",
