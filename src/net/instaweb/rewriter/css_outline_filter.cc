@@ -21,9 +21,9 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -130,7 +130,7 @@ void CssOutlineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
 bool CssOutlineFilter::WriteResource(const StringPiece& content,
                                      OutputResource* resource,
                                      MessageHandler* handler) {
-  return resource_manager_->Write(HttpStatus::kOK, content, resource, handler);
+  return resource_manager_->Write(ResourceVector(), content, resource, handler);
 }
 
 // Create file with style content and remove that element from DOM.

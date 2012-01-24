@@ -130,6 +130,12 @@ DEFINE_int64(critical_images_cache_expiration_time_ms,
     net_instaweb::RewriteOptions::kDefaultCriticalImagesCacheExpirationMs,
     "Critical images ajax metadata cache expiration time in msec.");
 
+DEFINE_int64(
+    metadata_cache_staleness_threshold_ms,
+    net_instaweb::RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs,
+    "Maximum time in milliseconds beyond expiry for which a metadata cache "
+    "entry may be used in milliseconds.");
+
 namespace net_instaweb {
 
 namespace {
@@ -241,6 +247,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("critical_images_cache_expiration_time_ms")) {
     options->set_critical_images_cache_expiration_time_ms(
         FLAGS_critical_images_cache_expiration_time_ms);
+  }
+  if (WasExplicitlySet("metadata_cache_staleness_threshold_ms")) {
+    options->set_metadata_cache_staleness_threshold_ms(
+        FLAGS_metadata_cache_staleness_threshold_ms);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

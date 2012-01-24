@@ -23,7 +23,6 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
@@ -242,8 +241,10 @@ RewriteResult CacheExtender::RewriteLoadedResource(
 
   resource_manager_->MergeNonCachingResponseHeaders(
       input_resource, output_resource);
-  if (resource_manager_->Write(
-          HttpStatus::kOK, contents, output_resource.get(), message_handler)) {
+  if (resource_manager_->Write(ResourceVector(1, input_resource),
+                               contents,
+                               output_resource.get(),
+                               message_handler)) {
     return kRewriteOk;
   } else {
     return kRewriteFailed;

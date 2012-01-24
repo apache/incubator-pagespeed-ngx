@@ -323,7 +323,9 @@ class NestedFilter : public RewriteFilter {
       }
       ResourceManager* resource_manager = Manager();
       MessageHandler* message_handler = resource_manager->message_handler();
-      if (resource_manager->Write(HttpStatus::kOK, new_content, output(0).get(),
+      if (resource_manager->Write(ResourceVector(1, slot(0)->resource()),
+                                  new_content,
+                                  output(0).get(),
                                   message_handler)) {
         result = kRewriteOk;
       }
@@ -1429,15 +1431,14 @@ TEST_F(RewriteContextTest, PrivateNotCached) {
     ResponseHeaders headers;
 
     // There are two possible secure outcomes here: either the fetch fails
-    // entirely here, or we serve it as cache-control: private. For now
-    // we just fail it.
-    EXPECT_FALSE(FetchResource(kTestDomain,
-                               kTrimWhitespaceSyncFilterId,
-                               "a_private.css",
-                               "css",
-                               &content,
-                               &headers));
-    EXPECT_TRUE(content.empty());
+    // entirely here, or we serve it as cache-control: private.
+    EXPECT_TRUE(FetchResource(kTestDomain,
+                              kTrimWhitespaceSyncFilterId,
+                              "a_private.css",
+                              "css",
+                              &content,
+                              &headers));
+    EXPECT_TRUE(headers.HasValue(HttpAttributes::kCacheControl, "private"));
   }
 
   // Now make sure that fetching with an invalid hash doesn't work when
@@ -1912,7 +1913,7 @@ TEST_F(RewriteContextTest, ReconstructChainedWrongHash) {
 
     FetchResourceUrl(url, &content, &headers);
     // Note that this works only because the combiner fails and passes
-    // through its input, which is the private cache-controled output
+    // through its input, which is the private cache-controlled output
     // of rewrite_css
     EXPECT_EQ(HttpStatus::kOK, headers.status_code());
     EXPECT_STREQ("div{display:block}", content);
@@ -2842,6 +2843,73 @@ TEST_F(RewriteContextTest, TestReuseNotFastEnough) {
                                       "test.css", "css")));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(RewriteContextTest, TestStaleRewriting) {
+  FetcherUpdateDateHeaders();
+  // We use MD5 hasher instead of mock hasher so that the rewritten url changes
+  // when its content gets updated.
+  UseMd5Hasher();
+
+  const int kTtlMs = ResponseHeaders::kImplicitCacheTtlMs;
+  const char kPath[] = "test.css";
+  const char kDataIn[] = "   data  ";
+  const char kNewDataIn[] = "   newdata  ";
+  const GoogleString kOriginalRewriteUrl(Encode(kTestDomain, "tw", "jXd_OF09_s",
+                                                "test.css", "css"));
+
+  options()->ClearSignatureForTesting();
+  options()->set_metadata_cache_staleness_threshold_ms(kTtlMs / 2);
+  options()->ComputeSignature(hasher());
+
+  // Start with non-zero time, and init our resource..
+  mock_timer()->AdvanceMs(kTtlMs / 2);
+  InitTrimFilters(kRewrittenResource);
+  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
+                                kTtlMs / Timer::kSecondMs);
+
+  // First fetch + rewrite.
+  ValidateExpected("initial",
+                   CssLinkHref(kPath),
+                   CssLinkHref(kOriginalRewriteUrl));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Change the resource.
+  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kNewDataIn,
+                                kTtlMs / Timer::kSecondMs);
+
+  // Advance time past when it was expired, but within the staleness threshold.
+  mock_timer()->AdvanceMs((kTtlMs * 5)/4);
+
+  ClearStats();
+  // We continue to serve the stale resource.
+  SetupWaitFetcher();
+  // We continue to rewrite the resource with the old hash. However, we noticed
+  // that the resource has changed, store it in cache and delete the old
+  // metadata.
+  ValidateExpected("initial",
+                   CssLinkHref(kPath),
+                   CssLinkHref(kOriginalRewriteUrl));
+
+  CallFetcherCallbacks();
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  // Replacing the old resource with the new resource is also considered a cache
+  // delete. The other delete is for the metadata.
+  EXPECT_EQ(2, lru_cache()->num_deletes());
+
+  ClearStats();
+  // Next time, we serve the html with the new resource hash.
+  ValidateExpected("initial",
+                   CssLinkHref(kPath),
+                   CssLinkHref(Encode(kTestDomain, "tw", "nnVv_VJ4Xn",
+                                      "test.css", "css")));
+  CallFetcherCallbacks();
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
 // Test resource update behavior.

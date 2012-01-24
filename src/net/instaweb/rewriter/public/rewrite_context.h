@@ -454,6 +454,7 @@ class RewriteContext {
   friend class ResourceRevalidateCallback;
   class InvokeRewriteFunction;
   friend class InvokeRewriteFunction;
+  class StaleFreshenCallback;
 
   typedef std::set<RewriteContext*> ContextSet;
 
@@ -690,13 +691,17 @@ class RewriteContext {
   // Starts at true, set to false if any content-change checks failed.
   bool revalidate_ok_;
 
-  // Boolean to indicate that the context should call driver()->FetchComplete()
-  // once fetch is done.
+  // Indicates that the context should call driver()->FetchComplete() once the
+  // fetch is done.
   bool notify_driver_on_fetch_done_;
 
-  // Boolean to indicate whether we want to force a rewrite. If true, we skip
-  // reading from the metadata cache.
+  // Indicates whether we want to force a rewrite. If true, we skip reading
+  // from the metadata cache.
   bool force_rewrite_;
+
+  // Indicates that the current rewrite involves at least one resource which
+  // is stale.
+  bool stale_rewrite_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };

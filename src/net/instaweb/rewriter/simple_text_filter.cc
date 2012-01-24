@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -63,7 +62,8 @@ void SimpleTextFilter::Context::RewriteSingle(const ResourcePtr& input,
                              resource_manager))  {
     MessageHandler* message_handler = resource_manager->message_handler();
     if (resource_manager->Write(
-            HttpStatus::kOK, rewritten, output.get(), message_handler)) {
+            ResourceVector(1, input), rewritten, output.get(),
+            message_handler)) {
       result = kRewriteOk;
     }
   }

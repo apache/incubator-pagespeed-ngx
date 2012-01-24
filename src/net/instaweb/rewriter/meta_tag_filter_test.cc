@@ -62,9 +62,6 @@ TEST_F(MetaTagFilterTest, TestTags) {
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
   EXPECT_TRUE(StringCaseEqual(values[0]->c_str(), "text/html;  charset=UTF-8"));
-  EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentLanguage, &values));
-  ASSERT_EQ(1, values.size());
-  EXPECT_TRUE(StringCaseEqual(values[0]->c_str(), "en-US,fr"));
 }
 
 const char kMetaTagDoubleDoc[] =
@@ -81,9 +78,6 @@ TEST_F(MetaTagFilterTest, TestDoubleTags) {
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
   EXPECT_TRUE(StringCaseEqual(values[0]->c_str(), "text/html;  charset=UTF-8"));
-  EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentLanguage, &values));
-  ASSERT_EQ(1, values.size());
-  EXPECT_TRUE(StringCaseEqual(values[0]->c_str(), "en-US,fr"));
 }
 
 TEST_F(MetaTagFilterTest, TestEquivNoValue) {
@@ -146,6 +140,18 @@ const char kMetaTagDoNothing[] =
 
 TEST_F(MetaTagFilterTest, TestDoNothing) {
   ValidateNoChanges("do_nothing", kMetaTagDoNothing);
+  ASSERT_EQ(0, headers()->NumAttributes());
+}
+
+const char kMetaTagNoScriptDoc[] =
+    "<html><head>"
+    "<noscript>"
+    "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">"
+    "</noscript>"
+    "</head><body></body></html>";
+
+TEST_F(MetaTagFilterTest, TestNoScript) {
+  ValidateNoChanges("no_script", kMetaTagDoNothing);
   ASSERT_EQ(0, headers()->NumAttributes());
 }
 

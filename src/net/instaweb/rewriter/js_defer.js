@@ -64,6 +64,20 @@ pagespeed.DeferJs = function() {
    * @private
    */
   this.documentWriteHtml_ = '';
+
+  /**
+   * EvenListeners for DOMContentLoaded or onreadystatechange on document.
+   */
+  this.domReadyListeners_ = [];
+
+  /**
+   * EvenListeners for document.onload or window.onload
+   * TODO(ksimbili): Handle body.onload. In IE body.onload is alias to
+   * window.onload
+   * TODO(ksimbili): onload set in HTML for other elements need to be handled
+   * too.
+   */
+  this.pageLoadListeners_ = [];
 };
 
 /**
@@ -104,6 +118,7 @@ pagespeed.DeferJs.prototype.globalEval = function(str) {
  * Defines a new var in the name of id's present in the doc. This is the fix for
  * IE, where setting value to the var with same name as an id in the doc throws
  * exception. While creating vars, skip the names which have '-', ':', '.'.
+ * Also, variable names cannot start with digits.
  * These characters are allowed in id names but not allowed in variable
  * names.
  */
@@ -111,7 +126,8 @@ pagespeed.DeferJs.prototype.createIdVars = function() {
   var elems = document.getElementsByTagName("*");
   var idVarsString = "";
   for (var i = 0; i < elems.length; i++) {
-    if (elems[i].id && elems[i].id.search(/[-:.]/g) == -1) {
+    if (elems[i].id && elems[i].id.search(/[-:.]/) == -1 &&
+        elems[i].id.search(/^[0-9]/) == -1) {
       idVarsString += 'var ' + elems[i].id + ' = ' + elems[i].id + ';';
     }
   }
@@ -196,6 +212,14 @@ pagespeed.DeferJs.prototype.addUrl = function(url, opt_elem, opt_pos) {
 pagespeed.DeferJs.prototype['addUrl'] = pagespeed.DeferJs.prototype.addUrl;
 
 /**
+ * Called when the script Queue execution is finished.
+ */
+pagespeed.DeferJs.prototype.onComplete = function() {
+  this.executeDomReady();
+  this.executePageLoad();
+}
+
+/**
  * Schedules the next task in the queue.
  */
 pagespeed.DeferJs.prototype.runNext = function() {
@@ -206,6 +230,8 @@ pagespeed.DeferJs.prototype.runNext = function() {
     // loop.
     this.next_++;
     this.queue_[this.next_ - 1].call(window);
+  } else {
+    this.onComplete();
   }
 };
 
@@ -227,6 +253,8 @@ pagespeed.DeferJs.prototype.nodeListToArray = function(nodeList) {
  * Starts the execution of all the deferred scripts.
  */
 pagespeed.DeferJs.prototype.run = function() {
+  this.overrideAddEventListener(document);
+  this.overrideAddEventListener(window);
   // TODO(atulvasu): Remove this once context is not optional.
   // Place where document.write() happens if there is no context element
   // present. Happens if there is no context registering that happened in
@@ -369,6 +397,104 @@ pagespeed.DeferJs.prototype.handlePendingDocumentWrites = function() {
 pagespeed.DeferJs.prototype.writeHtml = function(html) {
   this.log('dw: ' + html);
   this.documentWriteHtml_ += html;
+};
+
+/**
+ * Adds DOMContentLoaded event listeners to our own list and called them later.
+ * @param {!function()} func domReady listener.
+ */
+pagespeed.DeferJs.prototype.addDomReadyListeners = function(func) {
+  this.log('domready: ' + func.toString());
+  this.domReadyListeners_.push(func);
+};
+
+/**
+ * Adds page onload event listeners to our own list and called them later.
+ * @param {!function()} func onload listener.
+ */
+pagespeed.DeferJs.prototype.addPageLoadListeners = function(func) {
+  this.log('onload: ' + func.toString());
+  this.pageLoadListeners_.push(func);
+};
+
+/**
+ * Execute all handlers registered for DOMContentLoaded/onreadystatechange.
+ */
+pagespeed.DeferJs.prototype.executeDomReady = function() {
+  for (var i = 0; i < this.domReadyListeners_.length; i++) {
+    this.log('executing domready: ' + this.domReadyListeners_[i].toString());
+    this.domReadyListeners_[i].call(window);
+  }
+  if (document.onreadystatechange) {
+    document.onreadystatechange();
+  }
+};
+
+/**
+ * Execute all handlers registered for page onload.
+ */
+pagespeed.DeferJs.prototype.executePageLoad = function() {
+  for (var i = 0; i < this.pageLoadListeners_.length; i++) {
+    this.log('executing pageload: ' + this.pageLoadListeners_[i].toString());
+    this.pageLoadListeners_[i].call(window);
+  }
+};
+
+/**
+ * Adds the function to list of listeners based on event.
+ * TODO(ksimbili): Store 'this' and call func on 'this'.
+ * @param {Window|Element|Document} elem Element on which event is registered.
+ * @param {!string} eventName Name of the event.
+ * @param {!function()} func handler getting registered.
+ * @param {Boolean} capture Capture event.
+ */
+var psaAddEventListener = function(elem, eventName, func, capture) {
+  if (eventName == 'DOMContentLoaded' || eventName == 'readystatechange') {
+    pagespeed.deferJs.addDomReadyListeners(func);
+    return;
+  }
+  if (eventName == 'load') {
+    pagespeed.deferJs.addPageLoadListeners(func);
+    return;
+  }
+  elem.originalAddEventListener(eventName, func, capture);
+};
+
+/**
+ * Adds the function to list of listeners based on event.
+ * TODO(ksimbili): Store 'this' and call func on 'this'.
+ * @param {Window|Element|Document} elem Element on which event is registered.
+ * @param {!string} eventName Name of the event.
+ * @param {!function()} func handler getting registered.
+ */
+var psaAttachEvent = function(elem, eventName, func) {
+  if (eventName == 'onDOMContentLoaded' || eventName == 'onreadystatechange') {
+    pagespeed.deferJs.addDomReadyListeners(func);
+    return;
+  }
+  if (eventName == 'onload') {
+    pagespeed.deferJs.addPageLoadListeners(func);
+    return;
+  }
+  elem.originalAttachEvent(eventName, func);
+};
+
+/**
+ * Override addEventListener/attachEvent of Element.
+ * @param {Window|Element|Document} elem Element whose handler to be overriden.
+ */
+pagespeed.DeferJs.prototype.overrideAddEventListener = function(elem) {
+  if (elem.addEventListener && !elem.originalAddEventListener) {
+    elem.originalAddEventListener = elem.addEventListener;
+    elem.addEventListener = function (eventName, func, capture) {
+      psaAddEventListener(elem, eventName, func, capture);
+    };
+  } else if (elem.attachEvent && !elem.originalAttachEvent) {
+    elem.originalAttachEvent = elem.attachEvent;
+    elem.attachEvent = function (eventName, func) {
+      psaAttachEvent(elem, eventName, func);
+    };
+  }
 };
 
 /**

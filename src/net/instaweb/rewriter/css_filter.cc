@@ -25,7 +25,6 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_flatten_imports_context.h"
@@ -288,7 +287,8 @@ void CssFilter::Context::Harvest() {
       ResourceManager* manager = Manager();
       manager->MergeNonCachingResponseHeaders(input_resource_,
                                               output_resource_);
-      ok = manager->Write(HttpStatus::kOK, out_text,
+      ok = manager->Write(ResourceVector(1, input_resource_),
+                          out_text,
                           output_resource_.get(),
                           driver_->message_handler());
     } else {

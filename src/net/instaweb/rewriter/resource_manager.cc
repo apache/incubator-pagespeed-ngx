@@ -271,13 +271,14 @@ void ResourceManager::set_filename_prefix(const StringPiece& file_prefix) {
   file_prefix.CopyToString(&file_prefix_);
 }
 
-bool ResourceManager::Write(HttpStatus::Code status_code,
+bool ResourceManager::Write(const ResourceVector& inputs,
                             const StringPiece& contents,
                             OutputResource* output,
                             MessageHandler* handler) {
   ResponseHeaders* meta_data = output->response_headers();
   SetDefaultLongCacheHeaders(output->type(), meta_data);
-  meta_data->SetStatusAndReason(status_code);
+  meta_data->SetStatusAndReason(HttpStatus::kOK);
+  ApplyInputCacheControl(inputs, meta_data);
 
   // The URL for any resource we will write includes the hash of contents,
   // so it can can live, essentially, forever. So compute this hash,
@@ -289,7 +290,8 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
     ret = writer->Write(contents, handler);
     ret &= output->EndWrite(handler);
 
-    if (output->kind() != kOnTheFlyResource) {
+    if (output->kind() != kOnTheFlyResource &&
+        (http_cache_->force_caching() || meta_data->IsProxyCacheable())) {
       http_cache_->Put(output->url(), &output->value_, handler);
     }
 
@@ -309,6 +311,44 @@ bool ResourceManager::Write(HttpStatus::Code status_code,
                      file_prefix_.c_str());
   }
   return ret;
+}
+
+void ResourceManager::ApplyInputCacheControl(const ResourceVector& inputs,
+                                             ResponseHeaders* headers) {
+  headers->ComputeCaching();
+  bool proxy_cacheable = headers->IsProxyCacheable();
+  bool cacheable = headers->IsCacheable();
+  bool no_store = headers->HasValue(HttpAttributes::kCacheControl,
+                                    "no-store");
+  int64 max_age = headers->cache_ttl_ms();
+  for (int i = 0, n = inputs.size(); i < n; i++) {
+    const ResourcePtr& input_resource(inputs[i]);
+    if (input_resource.get() != NULL && input_resource->ContentsValid()) {
+      ResponseHeaders* input_headers = input_resource->response_headers();
+      input_headers->ComputeCaching();
+      if (input_headers->cache_ttl_ms() < max_age) {
+        max_age = input_headers->cache_ttl_ms();
+      }
+      proxy_cacheable &= input_headers->IsProxyCacheable();
+      cacheable &= input_headers->IsCacheable();
+      no_store |= input_headers->HasValue(HttpAttributes::kCacheControl,
+                                          "no-store");
+    }
+  }
+  if (cacheable) {
+    if (proxy_cacheable) {
+      return;
+    } else {
+      headers->SetDateAndCaching(headers->date_ms(), max_age, ",private");
+    }
+  } else {
+    GoogleString directives = ",no-cache";
+    if (no_store) {
+      directives += ",no-store";
+    }
+    headers->SetDateAndCaching(headers->date_ms(), 0, directives);
+  }
+  headers->ComputeCaching();
 }
 
 bool ResourceManager::IsPagespeedResource(const GoogleUrl& url) {

@@ -42,7 +42,8 @@ class RewriteOptions {
   // If you add or remove anything from this list, you need to update the
   // version number in rewrite_options.cc and FilterName().
   enum Filter {
-    kAddHead,  // Update kFirstFilter if you add something before this.
+    kAboveTheFold,  // Update kFirstFilter if you add something before this.
+    kAddHead,
     kAddInstrumentation,
     kCollapseWhitespace,
     kCombineCss,
@@ -136,6 +137,9 @@ class RewriteOptions {
     kImageRetainColorProfile,
     kImageRetainExifData,
     kAnalyticsID,
+    kAboveTheFoldNonCacheableElements,
+    kAboveTheFoldCacheTime,
+    kAboveTheFoldCacheableFamilies,
     kEndOfOptions
   };
 
@@ -162,7 +166,7 @@ class RewriteOptions {
   static const char* FilterId(Filter filter);
 
   // Used for enumerating over all entries in the Filter enum.
-  static const Filter kFirstFilter = kAddHead;
+  static const Filter kFirstFilter = kAboveTheFold;
 
   // Convenience name for a set of rewrite filters.
   typedef std::set<Filter> FilterSet;
@@ -229,6 +233,10 @@ class RewriteOptions {
   static const int64 kDefaultMinImageSizeLowResolutionBytes;
   // Default cache expiration value for critical images in ajax metadata cache.
   static const int64 kDefaultCriticalImagesCacheExpirationMs;
+
+  // Default time in milliseconds for which a metadata cache entry may be used
+  // after expiry.
+  static const int64 kDefaultMetadataCacheStalenessThresholdMs;
 
   static const char kClassName[];
 
@@ -497,6 +505,13 @@ class RewriteOptions {
   }
   void set_image_retain_exif_data(bool x) {
     set_option(x, &image_retain_exif_data_);
+  }
+
+  void set_metadata_cache_staleness_threshold_ms(int64 x) {
+    set_option(x, &metadata_cache_staleness_threshold_ms_);
+  }
+  int64 metadata_cache_staleness_threshold_ms() const {
+    return metadata_cache_staleness_threshold_ms_.value();
   }
 
   const GoogleString& beacon_url() const { return beacon_url_.value(); }
@@ -958,6 +973,10 @@ class RewriteOptions {
 
   // Critical images ajax metadata cache expiration time in msec.
   Option<int64> critical_images_cache_expiration_time_ms_;
+
+  // The maximum time beyond expiry for which a metadata cache entry may be
+  // used.
+  Option<int64> metadata_cache_staleness_threshold_ms_;
 
   scoped_ptr<PublisherConfig> panel_config_;
 

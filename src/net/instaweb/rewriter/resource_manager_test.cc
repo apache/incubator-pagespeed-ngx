@@ -231,8 +231,8 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     // Write some data
     ASSERT_TRUE(ResourceManagerTestingPeer::HasHash(output.get()));
     EXPECT_EQ(kRewrittenResource, output->kind());
-    EXPECT_TRUE(resource_manager()->Write(HttpStatus::kOK, contents,
-                                          output.get(), message_handler()));
+    EXPECT_TRUE(resource_manager()->Write(
+        ResourceVector(), contents, output.get(), message_handler()));
     EXPECT_TRUE(output->IsWritten());
     // Check that hash and ext are correct.
     EXPECT_EQ("0", output->hash());
@@ -267,6 +267,38 @@ class ResourceManagerTest : public ResourceManagerTestBase {
   void EnableRewriteDriverCleanupMode(bool s) {
     resource_manager()->trying_to_cleanup_rewrite_drivers_ = s;
     resource_manager()->deferred_release_rewrite_drivers_.clear();
+  }
+
+  // Creates a response with given ttl and extra cache control under given URL.
+  void SetCustomCachingResponse(const StringPiece& url,
+                                int ttl_ms,
+                                const StringPiece& extra_cache_control) {
+    ResponseHeaders response_headers;
+    DefaultResponseHeaders(kContentTypeCss, ttl_ms, &response_headers);
+    response_headers.SetDateAndCaching(
+        http_cache()->timer()->NowMs(), ttl_ms * Timer::kSecondMs,
+        extra_cache_control);
+    response_headers.ComputeCaching();
+    SetFetchResponse(AbsolutifyUrl(url), response_headers, "payload");
+  }
+
+  // Creates a resource with given ttl and extra cache control under given URL.
+  ResourcePtr CreateCustomCachingResource(
+      const StringPiece& url, int ttl_ms,
+      const StringPiece& extra_cache_control) {
+    SetCustomCachingResponse(url, ttl_ms, extra_cache_control);
+    GoogleUrl gurl(AbsolutifyUrl(url));
+    rewrite_driver()->SetBaseUrlForFetch(kTestDomain);
+    ResourcePtr resource(rewrite_driver()->CreateInputResource(gurl));
+    VerifyContentsCallback callback(resource, "payload");
+    resource_manager()->ReadAsync(Resource::kLoadEvenIfNotCacheable,
+                                  &callback);
+    callback.AssertCalled();
+    return resource;
+  }
+
+  void DefaultHeaders(ResponseHeaders* headers) {
+    SetDefaultLongCacheHeaders(&kContentTypeCss, headers);
   }
 };
 
@@ -352,7 +384,7 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
 
   // We need to 'Write' an output resource before we can determine its
   // URL.
-  resource_manager()->Write(HttpStatus::kOK, StringPiece(kStyleContent),
+  resource_manager()->Write(ResourceVector(), StringPiece(kStyleContent),
                             output.get(), message_handler());
   EXPECT_EQ(Encode("http://cdn.com/", "ce", "0", "style.css", "css"),
             output->url());
@@ -579,8 +611,8 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
-  resource_manager()->Write(HttpStatus::kOK, "", output_resource.get(),
-                            message_handler());
+  resource_manager()->Write(
+      ResourceVector(), "", output_resource.get(), message_handler());
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -621,8 +653,8 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
-  resource_manager()->Write(HttpStatus::kOK, "", output_resource.get(),
-                            message_handler());
+  resource_manager()->Write(
+      ResourceVector(), "", output_resource.get(), message_handler());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -660,8 +692,8 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
-  resource_manager()->Write(HttpStatus::kOK, "", output_resource.get(),
-                            message_handler());
+  resource_manager()->Write(
+      ResourceVector(), "", output_resource.get(), message_handler());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -812,7 +844,8 @@ TEST_F(ResourceManagerShardedTest, TestNamed) {
           &kContentTypeJavascript,
           kRewrittenResource));
   ASSERT_TRUE(output_resource.get());
-  ASSERT_TRUE(resource_manager()->Write(HttpStatus::kOK, "alert('hello');",
+  ASSERT_TRUE(resource_manager()->Write(ResourceVector(),
+                                        "alert('hello');",
                                         output_resource.get(),
                                         message_handler()));
 
@@ -834,6 +867,112 @@ TEST_F(ResourceManagerTest, TestMergeNonCachingResponseHeaders) {
   ASSERT_TRUE(output.Lookup("X-Extra-Header", &v));
   ASSERT_EQ(1, v.size());
   EXPECT_EQ("Extra Value", *v[0]);
+}
+
+TEST_F(ResourceManagerTest, ApplyInputCacheControl) {
+  ResourcePtr public_100(
+      CreateCustomCachingResource("pub_100", 100, ""));
+  ResourcePtr public_200(
+      CreateCustomCachingResource("pub_200", 200, ""));
+  ResourcePtr private_300(
+      CreateCustomCachingResource("pri_300", 300, ",private"));
+  ResourcePtr private_400(
+      CreateCustomCachingResource("pri_400", 400, ",private"));
+  ResourcePtr no_cache_150(
+      CreateCustomCachingResource("noc_150", 400, ",no-cache"));
+  ResourcePtr no_store_200(
+      CreateCustomCachingResource("nos_200", 200, ",no-store"));
+
+  {
+    // If we feed in just public resources, we should get something with
+    // ultra-long TTL, regardless of how soon they expire.
+    ResponseHeaders out;
+    DefaultHeaders(&out);
+    ResourceVector two_public;
+    two_public.push_back(public_100);
+    two_public.push_back(public_200);
+    resource_manager()->ApplyInputCacheControl(two_public, &out);
+
+    GoogleString expect_ttl = StrCat(
+        "max-age=",
+        Integer64ToString(ResourceManager::kGeneratedMaxAgeMs /
+                            Timer::kSecondMs));
+    EXPECT_STREQ(expect_ttl, out.Lookup1(HttpAttributes::kCacheControl));
+  }
+
+  {
+    // If an input is private, however, we must mark output appropriately
+    // and not cache-extend.
+    ResponseHeaders out;
+    DefaultHeaders(&out);
+    ResourceVector some_private;
+    some_private.push_back(public_100);
+    some_private.push_back(private_300);
+    some_private.push_back(private_400);
+    resource_manager()->ApplyInputCacheControl(some_private, &out);
+    EXPECT_FALSE(out.HasValue(HttpAttributes::kCacheControl, "public"));
+    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "private"));
+    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "max-age=100"));
+  }
+
+  {
+    // Similarly no-cache should be incorporated --- but then we also need
+    // to have 0 ttl.
+    ResponseHeaders out;
+    DefaultHeaders(&out);
+    ResourceVector some_nocache;
+    some_nocache.push_back(public_100);
+    some_nocache.push_back(private_300);
+    some_nocache.push_back(private_400);
+    some_nocache.push_back(no_cache_150);
+    resource_manager()->ApplyInputCacheControl(some_nocache, &out);
+    EXPECT_FALSE(out.HasValue(HttpAttributes::kCacheControl, "public"));
+    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "no-cache"));
+    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "max-age=0"));
+  }
+
+  {
+    // Make sure we save no-store as well.
+    ResponseHeaders out;
+    DefaultHeaders(&out);
+    ResourceVector some_nostore;
+    some_nostore.push_back(public_100);
+    some_nostore.push_back(private_300);
+    some_nostore.push_back(private_400);
+    some_nostore.push_back(no_cache_150);
+    some_nostore.push_back(no_store_200);
+    resource_manager()->ApplyInputCacheControl(some_nostore, &out);
+    EXPECT_FALSE(out.HasValue(HttpAttributes::kCacheControl, "public"));
+    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "no-cache"));
+    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "no-store"));
+    EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "max-age=0"));
+  }
+}
+
+TEST_F(ResourceManagerTest, WriteChecksInputVector) {
+  // Make sure ->Write incorporates the cache control info from inputs,
+  // and doesn't cache a private resource improperly.
+  ResourcePtr private_400(
+      CreateCustomCachingResource("pri_400", 400, ",private"));
+  // Should have the 'it's not cacheable!' entry here; see also below.
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  OutputResourcePtr output_resource(
+      rewrite_driver()->CreateOutputResourceFromResource(
+          "cf", rewrite_driver()->default_encoder(), NULL /* no context*/,
+          private_400, kRewrittenResource));
+
+
+  resource_manager()->Write(ResourceVector(1, private_400),
+                            "boo!",
+                            output_resource.get(),
+                            message_handler());
+  ResponseHeaders* headers = output_resource->response_headers();
+  EXPECT_FALSE(headers->HasValue(HttpAttributes::kCacheControl, "public"));
+  EXPECT_TRUE(headers->HasValue(HttpAttributes::kCacheControl, "private"));
+  EXPECT_TRUE(headers->HasValue(HttpAttributes::kCacheControl, "max-age=400"));
+
+  // Make sure nothing extra in the cache at this point.
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
 }
 
 TEST_F(ResourceManagerTest, ShutDownAssumptions) {

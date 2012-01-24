@@ -22,7 +22,6 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_resource_slot.h"
 #include "net/instaweb/rewriter/public/css_util.h"
@@ -279,8 +278,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
 
       resource_manager_->MergeNonCachingResponseHeaders(input_resource, result);
       if (resource_manager_->Write(
-              HttpStatus::kOK, image->Contents(), result.get(),
-              message_handler)) {
+              ResourceVector(1, input_resource),
+              image->Contents(), result.get(), message_handler)) {
         driver_->InfoAt(
             rewrite_context,
             "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",

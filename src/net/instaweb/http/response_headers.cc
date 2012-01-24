@@ -482,6 +482,10 @@ class InstawebCacheComputer : public pagespeed::ResourceCacheComputer {
 }  // namespace
 
 void ResponseHeaders::ComputeCaching() {
+  if (!cache_fields_dirty_) {
+    return;
+  }
+
   ConstStringStarVector values;
   int64 date;
   bool has_date = ParseDateHeader(HttpAttributes::kDate, &date);

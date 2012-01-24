@@ -1251,8 +1251,7 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnProxy) {
 }
 
 // Verifies that we retrieve and serve uncacheable resources, but do not insert
-// them in the cache. Note: we can currently only do this for
-// on-the-fly resources. Trying to fetch other types fails.
+// them in the cache.
 TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
   ResponseHeaders resource_headers;
   DefaultResponseHeaders(kContentTypeCss, kHtmlCacheTimeSec, &resource_headers);
@@ -1270,11 +1269,11 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
   ResponseHeaders out_headers;
   GoogleString out_text;
 
-  // cf is not on-the-fly, so this presently fails due to style.css
-  // being private.
+  // cf is not on-the-fly, and we can reconstruct it while keeping it private.
   FetchFromProxy(Encode(kTestDomain, "cf", "0", "style.css", "css"),
-                 false, &out_text, &out_headers);
-  EXPECT_EQ("", out_text);
+                 true, &out_text, &out_headers);
+  EXPECT_TRUE(out_headers.HasValue(HttpAttributes::kCacheControl, "private"));
+  EXPECT_EQ("a", out_text);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(4, lru_cache()->num_misses());  // 2x output, metadata, input
@@ -1284,9 +1283,10 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
 
   out_text.clear();
   ClearStats();
-  // ce is on-the-fly, so we can recover even though style.css is private.
+  // ce is on-the-fly, and we can recover even though style.css is private.
   FetchFromProxy(Encode(kTestDomain, "ce", "0", "style.css", "css"),
                  true, &out_text, &out_headers);
+  EXPECT_TRUE(out_headers.HasValue(HttpAttributes::kCacheControl, "private"));
   EXPECT_EQ("a", out_text);
   EXPECT_EQ(1, lru_cache()->num_hits());  // input uncacheable memo
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
@@ -1300,6 +1300,7 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
   ClearStats();
   FetchFromProxy(Encode(kTestDomain, "ce", "0", "style.css", "css"),
                  true, &out_text, &out_headers);
+  EXPECT_TRUE(out_headers.HasValue(HttpAttributes::kCacheControl, "private"));
   EXPECT_EQ("a", out_text);
   EXPECT_EQ(1, lru_cache()->num_hits());  // uncacheable memo
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
@@ -1317,6 +1318,7 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
   ClearStats();
   FetchFromProxy(Encode(kTestDomain, "ce", "0", "style.css", "css"),
                  true, &out_text, &out_headers);
+  EXPECT_TRUE(out_headers.HasValue(HttpAttributes::kCacheControl, "private"));
   EXPECT_EQ("b", out_text);
   EXPECT_EQ(1, lru_cache()->num_hits());  // uncacheable memo
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
@@ -1567,9 +1569,7 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnFetch) {
 }
 
 TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnFetch2) {
-  // Variant of the above with a non-on-the-fly filter. Note that a previous
-  // version of CrossDomainHeadersWithUncacheableResourceOnFetch had checks
-  // that may be useful once we can do this.
+  // Variant of the above with a non-on-the-fly filter.
   const char kText[] = "* { pretty; }";
 
   ResponseHeaders orig_headers;
@@ -1585,9 +1585,16 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnFetch2) {
   ResponseHeaders out_headers;
   GoogleString out_text;
   FetchFromProxy(Encode(kTestDomain, "cf", "0", "file.css", "css"),
-                 false, &out_text, &out_headers);
-  // No output.
-  EXPECT_TRUE(out_text.empty());
+                 true, &out_text, &out_headers);
+  // Proper output
+  EXPECT_STREQ("*{pretty}", out_text);
+
+  // Private.
+  ConstStringStarVector values;
+  out_headers.Lookup(HttpAttributes::kCacheControl, &values);
+  ASSERT_EQ(2, values.size());
+  EXPECT_STREQ("max-age=400", *values[0]);
+  EXPECT_STREQ("private", *values[1]);
 
   // Check that we ate the cookies.
   EXPECT_FALSE(out_headers.Has(HttpAttributes::kSetCookie));

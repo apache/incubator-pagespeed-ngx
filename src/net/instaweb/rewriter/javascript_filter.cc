@@ -27,7 +27,6 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -157,7 +156,9 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     MessageHandler* message_handler = resource_manager->message_handler();
     resource_manager->MergeNonCachingResponseHeaders(
         script_resource, script_dest);
-    if (resource_manager->Write(HttpStatus::kOK, script_out, script_dest.get(),
+    if (resource_manager->Write(ResourceVector(1, script_resource),
+                                script_out,
+                                script_dest.get(),
                                 message_handler)) {
       ok = true;
       message_handler->Message(kInfo, "Rewrite script %s to %s",

@@ -26,7 +26,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -57,8 +56,9 @@ MetaTagFilter::~MetaTagFilter() {}
 void MetaTagFilter::EndElementImpl(HtmlElement* element) {
   // If headers are null, they got reset due to a flush, so don't
   // try to convert any tags into headers (which were already finalized).
+  // Also don't add meta tags to headers if they're inside a noscript tag.
   ResponseHeaders* headers = driver_->response_headers_ptr();
-  if (headers != NULL) {
+  if (headers != NULL && noscript_element() == NULL) {
     // Figure out if this is a meta tag.  If it is, move to headers.
     if (element->keyword() == HtmlName::kMeta) {
       // We want meta tags with http header equivalents.
@@ -67,40 +67,26 @@ void MetaTagFilter::EndElementImpl(HtmlElement* element) {
       HtmlElement::Attribute* value = element->FindAttribute(
           HtmlName::kContent);
 
+      // HTTP-EQUIV case.
       if (equiv != NULL && value != NULL) {
         StringPiece attribute = equiv->value();
         StringPiece content = value->value();
         // It doesn't make sense to have nothing in HttpEquiv, but that means
-        // it is in fact lurking out there.  Some of these other values
-        // don't make sense either.
+        // it is in fact lurking out there.
         TrimWhitespace(&attribute);
 
-        // We don't want to add any of the excluded attributes in as headers
-        // because they either don't make sense in this context, or because
-        // they may write over the real headers.
-        if (attribute.empty() || HasIllicitTokenCharacter(attribute) ||
-            (!StringCaseEqual(attribute, HttpAttributes::kContentType) &&
-             ResourceManager::IsExcludedAttribute(
-                 attribute.as_string().c_str()))) {
-          return;
-        }
-
-        // Check to see if we have this value already.  If we do,
-        // there's no need to add it in again.
-        ConstStringStarVector values;
-        headers->Lookup(attribute, &values);
-        for (int i = 0, n = values.size(); i < n; ++i) {
-          StringPiece val(*values[i]);
-          if (StringCaseEqual(val, content)) {
-            return;
-          }
-        }
-
-        // If this value is a content type or charset that doesn't make sense,
-        // i.e. we shouldn't have been able to get this far if it were correct,
-        // then don't add it to the headers, lest things get extra screwy.
         if (StringCaseEqual(attribute, HttpAttributes::kContentType)) {
           if (!content.empty()) {
+            // Check to see if we have this value already.  If we do,
+            // there's no need to add it in again.
+            ConstStringStarVector values;
+            headers->Lookup(attribute, &values);
+            for (int i = 0, n = values.size(); i < n; ++i) {
+              StringPiece val(*values[i]);
+              if (StringCaseEqual(val, content)) {
+                return;
+              }
+            }
             GoogleString mime_type;
             GoogleString charset;
             if (ParseContentType(content, &mime_type, &charset)) {
@@ -115,11 +101,7 @@ void MetaTagFilter::EndElementImpl(HtmlElement* element) {
               converted_meta_tag_count_->Add(1);
             }
           }
-          return;
         }
-
-        headers->Add(attribute, content);
-        converted_meta_tag_count_->Add(1);
         return;
       } else {
         // Also handle the <meta charset=''> case.

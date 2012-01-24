@@ -23,7 +23,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_hierarchy.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -115,8 +114,10 @@ class CssFlattenImportsContext : public SingleRewriteContext {
     output_resource_->SetType(&kContentTypeCss);
     ResourceManager* manager = Manager();
     manager->MergeNonCachingResponseHeaders(input_resource_, output_resource_);
-    if (manager->Write(HttpStatus::kOK, hierarchy_->minified_contents(),
-                       output_resource_.get(), Driver()->message_handler())) {
+    if (manager->Write(ResourceVector(1, input_resource_),
+                       hierarchy_->minified_contents(),
+                       output_resource_.get(),
+                       Driver()->message_handler())) {
       RewriteDone(kRewriteOk, 0);
     } else {
       RewriteDone(kRewriteFailed, 0);

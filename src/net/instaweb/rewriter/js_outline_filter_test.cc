@@ -53,7 +53,10 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
 
     GoogleString hash = hasher()->Hash(script_text);
     GoogleString outline_url = Encode(
-        kTestDomain, JsOutlineFilter::kFilterId,  hash, "_", "js");
+        kTestDomain, JsOutlineFilter::kFilterId, hash, "_", "js");
+
+    GoogleString wrong_hash_outline_url = Encode(
+      kTestDomain, JsOutlineFilter::kFilterId, "not" + hash, "_", "js");
 
     GoogleString html_input =
         "<head>\n"
@@ -77,6 +80,12 @@ class JsOutlineFilterTest : public ResourceManagerTestBase {
       ResponseHeaders headers;
       EXPECT_TRUE(FetchResourceUrl(outline_url, &actual_outline, &headers));
       EXPECT_EQ(outline_text, StrCat(headers.ToString(), actual_outline));
+
+      // Make sure we don't try anything funny with fallbacks if the hash
+      // given is wrong. It'd be an attack vector otherwise since outlined
+      // resources may contain things from private pages.
+      EXPECT_FALSE(
+          FetchResourceUrl(wrong_hash_outline_url, &actual_outline, &headers));
     }
   }
 };
@@ -86,6 +95,7 @@ TEST_F(JsOutlineFilterTest, OutlineScript) {
   SetupOutliner();
   OutlineScript("outline_scripts_no_hash", true);
 }
+
 TEST_F(JsOutlineFilterTest, OutlineScriptMd5) {
   UseMd5Hasher();
   SetupOutliner();

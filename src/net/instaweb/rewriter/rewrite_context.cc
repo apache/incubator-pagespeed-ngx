@@ -241,6 +241,36 @@ class RewriteContext::ResourceRevalidateCallback
   InputInfo* input_info_;
 };
 
+// Callback that is invoked after fetching a resource as part of a stale
+// rewrite. This deletes the rewrite metadata if the resource has changed in any
+// way.
+class RewriteContext::StaleFreshenCallback : public Resource::AsyncCallback {
+ public :
+  StaleFreshenCallback(const ResourcePtr& resource,
+                       CacheInterface* metadata_cache,
+                       const GoogleString& cache_key,
+                       const GoogleString& content_hash)
+      : Resource::AsyncCallback(resource),
+        metadata_cache_(metadata_cache),
+        cache_key_(cache_key),
+        content_hash_(content_hash) {}
+
+  virtual ~StaleFreshenCallback() {}
+  virtual void Done(bool success) {
+    if (!success || (resource()->ContentsHash() != content_hash_)) {
+      metadata_cache_->Delete(cache_key_);
+    }
+    delete this;
+  }
+
+ private:
+  CacheInterface* metadata_cache_;
+  GoogleString cache_key_;
+  GoogleString content_hash_;
+
+  DISALLOW_COPY_AND_ASSIGN(StaleFreshenCallback);
+};
+
 // This class encodes a few data members used for responding to
 // resource-requests when the output_resource is not in cache.
 class RewriteContext::FetchContext {
@@ -402,13 +432,12 @@ class RewriteContext::FetchContext {
   // Backend for FetchFallbackCacheDone, but can be also invoked
   // for main rewrite when background rewrite is detached.
   void FetchFallbackDoneImpl(const StringPiece& contents,
-                             ResponseHeaders* headers,
+                             const ResponseHeaders* headers,
                              bool absolutify_contents) {
-    rewrite_context_->FixFetchFallbackHeaders(headers);
-    // Use the most conservative Cache-Control considering all inputs.
-    ApplyInputCacheControl(headers);
-
     async_fetch_->response_headers()->CopyFrom(*headers);
+    rewrite_context_->FixFetchFallbackHeaders(async_fetch_->response_headers());
+    // Use the most conservative Cache-Control considering all inputs.
+    ApplyInputCacheControl(async_fetch_->response_headers());
     async_fetch_->HeadersComplete();
 
     bool ok;
@@ -436,49 +465,13 @@ class RewriteContext::FetchContext {
   void set_detached(bool value) { detached_ = value; }
 
  private:
-  // Computes the most restrictive Cache-Control intersection of the input
-  // resources, and the provided headers, and sets that cache-control on the
-  // provided headers.  Does nothing if all of the resources are fully
-  // cacheable, since in that case we will want to cache-extend.
-  //
-  // Disregards Cache-Control directives other than max-age, no-cache, no-store,
-  // and private, and strips them if any resource is no-cache or private.  By
-  // assumption, a resource can only be no-store if it is also no-cache.
   void ApplyInputCacheControl(ResponseHeaders* headers) {
-    headers->ComputeCaching();
-    bool proxy_cacheable = headers->IsProxyCacheable();
-    bool cacheable = headers->IsCacheable();
-    bool no_store = headers->HasValue(HttpAttributes::kCacheControl,
-                                      "no-store");
-    int64 max_age = headers->cache_ttl_ms();
+    ResourceVector inputs;
     for (int i = 0; i < rewrite_context_->num_slots(); i++) {
-      ResourcePtr input_resource(rewrite_context_->slot(i)->resource());
-      if (input_resource.get() != NULL && input_resource->ContentsValid()) {
-        ResponseHeaders* input_headers = input_resource->response_headers();
-        input_headers->ComputeCaching();
-        if (input_headers->cache_ttl_ms() < max_age) {
-          max_age = input_headers->cache_ttl_ms();
-        }
-        proxy_cacheable &= input_headers->IsProxyCacheable();
-        cacheable &= input_headers->IsCacheable();
-        no_store |= input_headers->HasValue(HttpAttributes::kCacheControl,
-                                            "no-store");
-      }
+      inputs.push_back(rewrite_context_->slot(i)->resource());
     }
-    if (cacheable) {
-      if (proxy_cacheable) {
-        return;
-      } else {
-        headers->SetDateAndCaching(headers->date_ms(), max_age, ",private");
-      }
-    } else {
-      GoogleString directives = ",no-cache";
-      if (no_store) {
-        directives += ",no-store";
-      }
-      headers->SetDateAndCaching(headers->date_ms(), 0, directives);
-    }
-    headers->ComputeCaching();
+
+    rewrite_context_->Manager()->ApplyInputCacheControl(inputs, headers);
   }
 
   RewriteContext* rewrite_context_;
@@ -537,7 +530,8 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     slow_(false),
     revalidate_ok_(true),
     notify_driver_on_fetch_done_(false),
-    force_rewrite_(false) {
+    force_rewrite_(false),
+    stale_rewrite_(false) {
   partitions_.reset(new OutputPartitions);
 }
 
@@ -802,9 +796,16 @@ bool RewriteContext::IsInputValid(const InputInfo& input_info) {
       if (!input_info.has_expiration_time_ms()) {
         return false;
       }
-      int64 now_ms = Manager()->timer()->NowMs();
-      return (now_ms <= input_info.expiration_time_ms());
-      break;
+      int64 ttl_ms = input_info.expiration_time_ms() -
+          Manager()->timer()->NowMs();
+      if (ttl_ms > 0) {
+        return true;
+      } else if (ttl_ms + Options()->metadata_cache_staleness_threshold_ms()
+                 > 0) {
+        stale_rewrite_ = true;
+        return true;
+      }
+      return false;
     }
     case InputInfo::FILE_BASED: {
       // ... if file-based inputs have changed.
@@ -819,7 +820,6 @@ bool RewriteContext::IsInputValid(const InputInfo& input_info) {
                                       Manager()->message_handler());
       return (mtime_sec * Timer::kSecondMs ==
                 input_info.last_modified_time_ms());
-      break;
     }
     case InputInfo::ALWAYS_VALID:
       return true;
@@ -1041,12 +1041,14 @@ void RewriteContext::FetchInputs() {
       if (!handled_internally) {
         Resource::NotCacheablePolicy noncache_policy =
             Resource::kReportFailureIfNotCacheable;
-        if (fetch_.get() != NULL && (kind() == kOnTheFlyResource)) {
+        if (fetch_.get() != NULL) {
           // This is a fetch.  We want to try to get the input resource even if
-          // it was previously noted to be uncacheable; but only for on-the-fly
-          // resources, since otherwise we would end up writing out a cached
-          // copy of transformed version, which would be insecure.
-          noncache_policy = Resource::kLoadEvenIfNotCacheable;
+          // it was previously noted to be uncacheable. Note that this applies
+          // only to top-level rewrites: anything nested will still fail.
+          DCHECK(!has_parent());
+          if (!has_parent()) {
+            noncache_policy = Resource::kLoadEvenIfNotCacheable;
+          }
         }
         Manager()->ReadAsync(noncache_policy,
                              new ResourceFetchCallback(this, resource, i));
@@ -1399,11 +1401,8 @@ void RewriteContext::StartRewriteForFetch() {
   bool ok_to_rewrite = true;
   for (int i = 0, n = slots_.size(); i < n; ++i) {
     ResourcePtr resource(slot(i)->resource());
-    bool on_the_fly = (kind() == kOnTheFlyResource);
-    ResponseHeaders* headers = resource->response_headers();
-    if (resource->loaded() && resource->ContentsValid()
-        && (on_the_fly ||
-            (headers->IsCacheable() && headers->IsProxyCacheable()))) {
+    if (resource->loaded() && resource->ContentsValid()) {
+      bool on_the_fly = (kind() == kOnTheFlyResource);
       Resource::HashHint hash_hint = on_the_fly ?
           Resource::kOmitInputHash : Resource::kIncludeInputHash;
       resource->AddInputInfoToPartition(hash_hint, i, partition);
@@ -1532,9 +1531,16 @@ void RewriteContext::Freshen(const CachedResult& partition) {
         input_info.has_expiration_time_ms() &&
         input_info.has_date_ms() &&
         input_info.has_index()) {
-      if (Manager()->IsImminentlyExpiring(input_info.date_ms(),
+      ResourcePtr resource(slots_[input_info.index()]->resource());
+      if (stale_rewrite_) {
+        StaleFreshenCallback* stale_freshen_callback = new StaleFreshenCallback(
+            resource, Manager()->metadata_cache(), partition_key_,
+            input_info.input_content_hash());
+
+        Manager()->ReadAsync(Resource::kReportFailureIfNotCacheable,
+                             stale_freshen_callback);
+      } else  if (Manager()->IsImminentlyExpiring(input_info.date_ms(),
                                           input_info.expiration_time_ms())) {
-        ResourcePtr resource(slots_[input_info.index()]->resource());
         resource->Freshen(Manager()->message_handler());
       }
     }

@@ -150,6 +150,7 @@ const int RewriteOptions::kDefaultMaxDelayedImagesIndex = 5;
 const int64 RewriteOptions::kDefaultMinImageSizeLowResolutionBytes = 1 * 1024;
 const int64 RewriteOptions::kDefaultCriticalImagesCacheExpirationMs =
     Timer::kHourMs;
+const int64 RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs = 0;
 
 const char RewriteOptions::kClassName[] = "RewriteOptions";
 
@@ -214,6 +215,7 @@ bool IsInSet(const RewriteOptions::Filter* filters, int num,
 
 const char* RewriteOptions::FilterName(Filter filter) {
   switch (filter) {
+    case kAboveTheFold:                    return "Above The Fold";
     case kAddHead:                         return "Add Head";
     case kAddInstrumentation:              return "Add Instrumentation";
     case kCollapseWhitespace:              return "Collapse Whitespace";
@@ -270,6 +272,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
 
 const char* RewriteOptions::FilterId(Filter filter) {
   switch (filter) {
+    case kAboveTheFold:                    return "af";
     case kAddHead:                         return "ah";
     case kAddInstrumentation:              return "ai";
     case kCollapseWhitespace:              return "cw";
@@ -445,6 +448,8 @@ RewriteOptions::RewriteOptions()
   add_option("", &ga_id_, "ig", kAnalyticsID);
   // Sort all_options_ on enum.
   SortOptions();
+  add_option(kDefaultMetadataCacheStalenessThresholdMs,
+             &metadata_cache_staleness_threshold_ms_, "mcst");
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);

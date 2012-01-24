@@ -705,13 +705,16 @@ fi
 test_filter convert_meta_tags
 run_wget_with_args $URL
 
-echo Checking for Content-Language header.
-grep -qi "CONTENT-LANGUAGE: en-US,fr" $WGET_OUTPUT
-check [ $? = 0 ]
-
 echo Checking for Charset header.
 grep -qi "CONTENT-TYPE: text/html; *charset=UTF-8" $WGET_OUTPUT
 check [ $? = 0 ]
+
+# This filter loads below the fold images lazily.
+test_filter lazyload_images
+check run_wget_with_args $URL
+# Check src gets swapped with pagespeed_lazy_src
+check grep -q "'pagespeed_lazy_src=\"images/Puzzle.jpg\"'" $FETCHED
+check grep -q "'pagespeed.lazyLoadInit'" $FETCHED  # inline script injected
 
 echo Testing whether we can rewrite javascript resources that are served
 echo gzipped, even though we generally ask for them clear.  This particular
@@ -735,18 +738,14 @@ cat $OUTDIR/hello.js.pagespeed.ce.0.js
 check grep -c "Hello\'" $OUTDIR/hello.js.pagespeed.ce.0.js
 check grep -c "no-cache" $WGET_OUTPUT
 
-echo Test that we presently disallow rewrites of Cache-Control: no-cache
-echo resources with non-on-the-fly filters.
+echo Test that we can rewrite Cache-Control: no-cache resources with
+echo non-on-the-fly filters.
 test_filter rewrite_javascript with no-cache js origin
 URL="$REWRITTEN_ROOT/../mod_pagespeed_test/no_cache/hello.js.pagespeed.jm.0.js"
 echo run_wget_with_args $URL
 run_wget_with_args $URL
-check grep '"404 Not Found"' $WGET_OUTPUT
-
-URL="$REWRITTEN_ROOT/../mod_pagespeed_test/no_cache/hello.js.pagespeed.jm.0.js"
-echo run_wget_with_args $URL
-run_wget_with_args $URL
-check grep '"404 Not Found"' $WGET_OUTPUT
+check grep -c "Hello\'" $OUTDIR/hello.js.pagespeed.jm.0.js
+check grep -c "no-cache" $WGET_OUTPUT
 
 # Checks that defer_javascript injects 'pagespeed.deferJs' from defer_js.js,
 # but strips the comments.

@@ -26,7 +26,6 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/atomic_bool.h"
@@ -112,10 +111,22 @@ class ResourceManager {
   RewriteDriverFactory* factory() const { return factory_; }
 
   // Writes the specified contents into the output resource, and marks it
-  // as optimized.
-  bool Write(HttpStatus::Code status_code,
-             const StringPiece& contents, OutputResource* output,
-             MessageHandler* handler);
+  // as optimized. 'inputs' described the input resources that were used
+  // to construct the output, and is used to determine whether the
+  // result can be safely cache extended and be marked publicly cacheable.
+  bool Write(const ResourceVector& inputs, const StringPiece& contents,
+             OutputResource* output, MessageHandler* handler);
+
+  // Computes the most restrictive Cache-Control intersection of the input
+  // resources, and the provided headers, and sets that cache-control on the
+  // provided headers.  Does nothing if all of the resources are fully
+  // cacheable, since in that case we will want to cache-extend.
+  //
+  // Disregards Cache-Control directives other than max-age, no-cache, no-store,
+  // and private, and strips them if any resource is no-cache or private.  By
+  // assumption, a resource can only be no-store if it is also no-cache.
+  void ApplyInputCacheControl(const ResourceVector& inputs,
+                              ResponseHeaders* headers);
 
   // Is this URL a ref to a Pagespeed resource?
   bool IsPagespeedResource(const GoogleUrl& url);

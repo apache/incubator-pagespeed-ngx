@@ -248,7 +248,8 @@ void BlinkFlow::JsonCacheHit(const StringPiece& content,
   Json::Value json;
   std::string json_str = std::string(content.data(), content.size());
   if (!json_reader.parse(json_str, json)) {
-    LOG(DFATAL) << "Couldn't parse Json From Cache: " << json_str;
+    LOG(DFATAL) << "Couldn't parse Json From Cache: " << json_str << "for url"
+                << url_;
     JsonCacheMiss();
     return;
   }
@@ -258,7 +259,7 @@ void BlinkFlow::JsonCacheHit(const StringPiece& content,
   // form, we have to strip everything after the layout marker.
   size_t pos = layout.find(BlinkUtil::kLayoutMarker);
   if (pos == StringPiece::npos) {
-    LOG(DFATAL) << "Layout marker not found: " << layout;
+    LOG(DFATAL) << "Layout marker not found: " << layout << " for url " << url_;
     JsonCacheMiss();
     return;
   }

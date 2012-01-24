@@ -28,7 +28,6 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/css_resource_slot.h"
@@ -677,9 +676,10 @@ class ImageCombineFilter::Combiner
 
     combination->EnsureCachedResultCreated()->mutable_spriter_result()->
         CopyFrom(*result);
-    if (!resource_manager_->Write(HttpStatus::kOK,
+    if (!resource_manager_->Write(combine_resources,
                                   result_image->image()->Contents(),
-                                  combination.get(), handler)) {
+                                  combination.get(),
+                                  handler)) {
       handler->Error(UrlSafeId().c_str(), 0,
                      "Could not write sprited resource.");
       return false;

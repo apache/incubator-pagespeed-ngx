@@ -289,7 +289,7 @@ bool ResourceCombiner::WriteCombination(
   if (written) {
     written =
         resource_manager_->Write(
-            HttpStatus::kOK, combined_contents, combination.get(), handler);
+            combine_resources, combined_contents, combination.get(), handler);
   }
   return written;
 }

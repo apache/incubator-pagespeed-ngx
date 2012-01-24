@@ -289,6 +289,28 @@ inline_javascript
 
 <tr>
   <td class="code">
+    <a href="http://code.google.com/speed/page-speed/docs/filter-lazyload-images.html">
+lazyload_images
+    </a>
+  </td>
+  <td class="desc">
+    Loads images when they become visible in the client viewport.
+  </td>
+  <td class="before">
+    <a href="lazyload_images.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a
+      href="lazyload_images.html?ModPagespeed=on&ModPagespeedFilters=lazyload_images">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
     <a href="http://code.google.com/speed/page-speed/docs/filter-css-outline.html">
 outline_css
     </a>
@@ -593,6 +615,48 @@ sprite_images
   </td>
   <td class="after">
     <a href="insert_ga.html?ModPagespeed=on&ModPagespeedFilters=insert_ga">
+      after
+    </a>
+  </td>
+</tr>
+<tr>
+  <td class="code">
+    <a href="http://code.google.com/speed/page-speed/docs/filter-image-optimize.html#delay_images">
+delay_images
+    </a>
+  </td>
+  <td class="desc">
+    Delays original images; serves inlined, low-quality placeholder images until
+    originals are loaded.
+  </td>
+  <td class="before">
+    <a href="delay_images.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="delay_images.html?ModPagespeed=on&ModPagespeedFilters=delay_images,insert_image_dimensions">
+      after
+    </a>
+  </td>
+</tr>
+<tr>
+  <td class="code">
+    <a href="http://code.google.com/speed/page-speed/docs/filter-image-optimize.html#resize_mobile_images">
+resize_mobile_images
+    </a>
+  </td>
+  <td class="desc">
+    Just like delay_images, but uses smaller placeholder images for mobile
+    browsers.
+  </td>
+  <td class="before">
+    <a href="resize_mobile_images.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="resize_mobile_images.html?ModPagespeed=on&ModPagespeedFilters=delay_images,resize_mobile_images,insert_image_dimensions">
       after
     </a>
   </td>
