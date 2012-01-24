@@ -65,6 +65,9 @@ struct OptionName {
 "CriticalImagesCacheExpirationTimeMs",  RewriteOptions::kCriticalImagesCacheExpirationTimeMs
 "BeaconUrl",                            RewriteOptions::kBeaconUrl
 "AnalyticsID",                          RewriteOptions::kAnalyticsID
+"AboveTheFoldNonCacheableElements",     RewriteOptions::kAboveTheFoldNonCacheableElements
+"AboveTheFoldCacheTime",                RewriteOptions::kAboveTheFoldCacheTime
+"AboveTheFoldCacheableFamilies",        RewriteOptions::kAboveTheFoldCacheableFamilies
 %%
 
 RewriteOptions::OptionEnum RewriteOptions::LookupOption(
