@@ -1385,7 +1385,13 @@ bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
 ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   ResourcePtr resource;
   bool may_rewrite = false;
-  if (decoded_base_url_.is_valid()) {
+  if (input_url.SchemeIs("data")) {
+    // Skip and silently ignore; don't log a failure.
+    // For the moment we assume data: urls are small enough to not be worth
+    // optimizing.  We have optimized them in the past, but that code is likely
+    // to have bit-rotted since it was disabled.
+    return resource;
+  } else if (decoded_base_url_.is_valid()) {
     may_rewrite = MayRewriteUrl(decoded_base_url_, input_url);
     // In the case where we are proxying and we have resources that have been
     // rewritten multiple times, input_url will still have the encoded domain,
@@ -1406,8 +1412,6 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   }
   if (may_rewrite) {
     resource = CreateInputResourceUnchecked(input_url);
-  } else if (input_url.SchemeIs("data")) {
-    // skip and silently ignore; don't log a failure.
   } else {
     message_handler()->Message(kInfo, "No permission to rewrite '%s'",
                                input_url.spec_c_str());

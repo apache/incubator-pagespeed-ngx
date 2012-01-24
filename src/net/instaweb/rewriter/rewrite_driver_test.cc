@@ -693,6 +693,15 @@ TEST_P(RewriteDriverTest, RejectHttpsQuickly) {
   EXPECT_EQ(0, counting_url_async_fetcher()->failure_count());
 }
 
+// Test that CreateInputResource doesn't crash when handed a data url.
+// This was causing a query of death in some circumstances.
+TEST_P(RewriteDriverTest, RejectDataResourceGracefully) {
+  MockRewriteContext context(rewrite_driver());
+  GoogleUrl dataUrl("data:");
+  ResourcePtr resource(rewrite_driver()->CreateInputResource(dataUrl));
+  EXPECT_TRUE(resource.get() == NULL);
+}
+
 INSTANTIATE_TEST_CASE_P(RewriteDriverTestInstance,
                         RewriteDriverTest,
                         ::testing::Bool());
