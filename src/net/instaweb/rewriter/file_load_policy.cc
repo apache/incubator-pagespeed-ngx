@@ -30,21 +30,25 @@ FileLoadPolicy::~FileLoadPolicy() {}
 
 bool FileLoadPolicy::ShouldLoadFromFile(const GoogleUrl& url,
                                         GoogleString* filename) const {
+  if (!url.is_valid()) {
+    return false;
+  }
+
   StringPiece url_string = url.AllExceptQuery();
-
-  // TODO(sligocki): Consider layering a cache over this lookup.
-
-  // Later associations take precedence over earlier ones.
-  UrlFilenames::const_reverse_iterator iter;
-  for (iter = url_filenames_.rbegin(); iter != url_filenames_.rend(); ++iter) {
-    if (url_string.starts_with(iter->url_prefix)) {
-      // Replace url_prefix_ with filename_prefix_.
-      StringPiece suffix = url_string.substr(iter->url_prefix.size());
-      *filename = StrCat(iter->filename_prefix, suffix);
-      // GoogleUrl will decode most %XX escapes, but it does not convert
-      // "%20" -> " " which has come up often.
-      GlobalReplaceSubstring("%20", " ", filename);
-      return true;
+  if (!url_string.empty()) {
+    // TODO(sligocki): Consider layering a cache over this lookup.
+    // Note: Later associations take precedence over earlier ones.
+    for (UrlFilenames::const_reverse_iterator iter = url_filenames_.rbegin();
+         iter != url_filenames_.rend(); ++iter) {
+      if (url_string.starts_with(iter->url_prefix)) {
+        // Replace url_prefix_ with filename_prefix_.
+        StringPiece suffix = url_string.substr(iter->url_prefix.size());
+        *filename = StrCat(iter->filename_prefix, suffix);
+        // GoogleUrl will decode most %XX escapes, but it does not convert
+        // "%20" -> " " which has come up often.
+        GlobalReplaceSubstring("%20", " ", filename);
+        return true;
+      }
     }
   }
 

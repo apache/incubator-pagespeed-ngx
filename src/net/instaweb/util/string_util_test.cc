@@ -387,6 +387,8 @@ TEST(BasicUtilsTest, CountSubstringTest) {
   StringPiece abab("abab");
   EXPECT_EQ(4, CountSubstring(text3, ab));
   EXPECT_EQ(3, CountSubstring(text3, abab));
+
+  EXPECT_EQ(3, CountSubstring("aaaaa", "aaa"));
 }
 
 TEST(BasicUtilsTest, JoinStringStar) {

@@ -215,6 +215,15 @@ pagespeed.DeferJs.prototype['addUrl'] = pagespeed.DeferJs.prototype.addUrl;
  * Called when the script Queue execution is finished.
  */
 pagespeed.DeferJs.prototype.onComplete = function() {
+  // TODO(ksimbili): Restore the handlers in a clean way.
+  if (document.originalAddEventListener) {
+    document.addEventListener = document.originalAddEventListener;
+    window.addEventListener = window.originalAddEventListener;
+  } else if (document.originalAttachEvent) {
+    document.attachEvent = document.originalAttachEvent;
+    window.attachEvent = window.originalAttachEvent;
+  }
+
   this.executeDomReady();
   this.executePageLoad();
 }
