@@ -62,13 +62,11 @@ class GoogleUrl {
                                   const StringPiece& value);
 
   // For "http://a.com/b/c/d?e=f/g#r" returns "http://a.com/b/c/d"
-  // Returns empty StringPiece for invalid url.
   // Returns a StringPiece, only valid for the lifetime of this object.
   StringPiece AllExceptQuery() const;
 
   // For "http://a.com/b/c/d?e=f#r" returns "#r"
   // For "http://a.com/b/c/d?e=f#r1#r2" returns "#r1#r2"
-  // Returns empty StringPiece for invalid url.
   // AllExceptQuery() + Query() + AllAfterQuery() = Spec() when url is valid
   // Different from Parsed.ref in the case of multiple "#"s after "?"
   // Returns a StringPiece, only valid for the lifetime of this object.
@@ -98,6 +96,10 @@ class GoogleUrl {
   // Returns a StringPiece, only valid for the lifetime of this object.
   StringPiece PathSansLeaf() const;
 
+  // For "http://a.com/b/c/d?E=f/g returns "/b/c/d" including leading slash,
+  // and excluding the query.
+  StringPiece PathSansQuery() const;
+
   // Extracts the filename portion of the path and returns it. The filename
   // is everything after the last slash in the path. This may be empty.
   GoogleString ExtractFileName() const;
@@ -112,10 +114,6 @@ class GoogleUrl {
   // without trailing slash
   // Returns a StringPiece, only valid for the lifetime of this object.
   StringPiece Origin() const;
-
-  // For "http://a.com/b/c/d?E=f/g returns "/b/c/d" including leading slash,
-  // and excluding the query.
-  StringPiece PathSansQuery() const;
 
   StringPiece Query() const;
 
@@ -166,6 +164,9 @@ class GoogleUrl {
   }
 
  private:
+  // Returned by *Position methods when that position is not well-defined.
+  const static size_t npos;
+
   explicit GoogleUrl(const GURL& gurl);
 
   static size_t LeafEndPosition(const GURL& gurl);

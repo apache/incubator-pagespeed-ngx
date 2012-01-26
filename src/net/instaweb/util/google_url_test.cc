@@ -60,6 +60,43 @@ class GoogleUrlTest : public testing::Test {
     EXPECT_EQ(before_url.AllAfterQuery(), GoogleString(after));
   }
 
+  // RunMostMethods and RunAllMethods parse a url and run methods to make
+  // sure they don't crash.
+
+  // None of these methods should CHECK-crash if a bad URL is passed in.
+  // They will LOG(DFATAL)-crash in debug mode, though, so you should use
+  // EXPECT_DFATAL(RunMostMethods("..."), "");
+  void RunMostMethods(const StringPiece& url_string) {
+    GoogleUrl url(url_string);
+    url.AllExceptQuery();
+    url.AllAfterQuery();
+    url.AllExceptLeaf();
+    url.LeafWithQuery();
+    url.LeafSansQuery();
+    url.PathAndLeaf();
+    url.PathSansLeaf();
+    url.PathSansQuery();
+    url.ExtractFileName();
+    url.Host();
+    url.HostAndPort();
+    url.Origin();
+    url.Query();
+    url.Scheme();
+    url.UncheckedSpec();
+    url.IntPort();
+    url.EffectiveIntPort();
+  }
+
+  // Runs all methods, even ones that will CHECK-crash on invalid URLs.
+  void RunAllMethods(const StringPiece& url_string) {
+    RunMostMethods(url_string);
+
+    GoogleUrl url(url_string);
+    ASSERT_TRUE(url.is_valid()) << url_string << " is invalid";
+    url.Spec();
+    url.spec_c_str();
+  }
+
   GoogleUrl gurl_;
   GoogleUrl gurl_with_port_;
 };
@@ -85,29 +122,25 @@ TEST_F(GoogleUrlTest, TestNotValid) {
 }
 
 TEST_F(GoogleUrlTest, TestSpec) {
-  EXPECT_EQ(GoogleString(kUrl), gurl_.Spec());
-  EXPECT_EQ(GoogleString("http://a.com/b/c/"), gurl_.AllExceptLeaf());
-  EXPECT_EQ(GoogleString("d.ext?f=g/h"), gurl_.LeafWithQuery());
-  EXPECT_EQ(GoogleString("d.ext"), gurl_.LeafSansQuery());
-  EXPECT_EQ(GoogleString("http://a.com"), gurl_.Origin());
-  EXPECT_EQ(GoogleString("/b/c/d.ext?f=g/h"), gurl_.PathAndLeaf());
-  EXPECT_EQ(GoogleString("/b/c/d.ext"), gurl_.PathSansQuery());
+  EXPECT_STREQ(kUrl, gurl_.Spec());
+  EXPECT_STREQ("http://a.com/b/c/", gurl_.AllExceptLeaf());
+  EXPECT_STREQ("d.ext?f=g/h", gurl_.LeafWithQuery());
+  EXPECT_STREQ("d.ext", gurl_.LeafSansQuery());
+  EXPECT_STREQ("http://a.com", gurl_.Origin());
+  EXPECT_STREQ("/b/c/d.ext?f=g/h", gurl_.PathAndLeaf());
+  EXPECT_STREQ("/b/c/d.ext", gurl_.PathSansQuery());
 }
 
 
 TEST_F(GoogleUrlTest, TestSpecWithPort) {
-  EXPECT_EQ(GoogleString(kUrlWithPort), gurl_with_port_.Spec());
-  EXPECT_EQ(GoogleString("http://a.com:8080/b/c/"),
-            gurl_with_port_.AllExceptLeaf());
-  EXPECT_EQ(GoogleString("d.ext?f=g/h"),
-            gurl_with_port_.LeafWithQuery());
-  EXPECT_EQ(GoogleString("d.ext"), gurl_with_port_.LeafSansQuery());
-  EXPECT_EQ(GoogleString("http://a.com:8080"),
-            gurl_with_port_.Origin());
-  EXPECT_EQ(GoogleString("/b/c/d.ext?f=g/h"),
-            gurl_with_port_.PathAndLeaf());
-  EXPECT_EQ(GoogleString("/b/c/d.ext"), gurl_.PathSansQuery());
-  EXPECT_EQ(GoogleString("/b/c/"), gurl_.PathSansLeaf());
+  EXPECT_STREQ(kUrlWithPort, gurl_with_port_.Spec());
+  EXPECT_STREQ("http://a.com:8080/b/c/", gurl_with_port_.AllExceptLeaf());
+  EXPECT_STREQ("d.ext?f=g/h", gurl_with_port_.LeafWithQuery());
+  EXPECT_STREQ("d.ext", gurl_with_port_.LeafSansQuery());
+  EXPECT_STREQ("http://a.com:8080", gurl_with_port_.Origin());
+  EXPECT_STREQ("/b/c/d.ext?f=g/h", gurl_with_port_.PathAndLeaf());
+  EXPECT_STREQ("/b/c/d.ext", gurl_.PathSansQuery());
+  EXPECT_STREQ("/b/c/", gurl_.PathSansLeaf());
 }
 
 TEST_F(GoogleUrlTest, TestDots) {
@@ -171,9 +204,6 @@ TEST_F(GoogleUrlTest, TestAllExceptQuery) {
 
   TestAllExceptQueryCase("http://a.com?p=p&q=q",
                          "http://a.com/");
-
-  TestAllExceptQueryCase("invalid_url_string",
-                         "");
 }
 
 TEST_F(GoogleUrlTest, TestAllAfterQuery) {
@@ -191,16 +221,13 @@ TEST_F(GoogleUrlTest, TestAllAfterQuery) {
 
   TestAllAfterQueryCase("http://a.com#ref",
                         "#ref");
-
-  TestAllAfterQueryCase("invalid_url_string",
-                         "");
 }
 
 TEST_F(GoogleUrlTest, TestTrivialAllExceptLeaf) {
   GoogleUrl queryless("http://a.com/b/c/d.ext");
-  EXPECT_EQ(GoogleString("http://a.com/b/c/"), queryless.AllExceptLeaf());
+  EXPECT_STREQ("http://a.com/b/c/", queryless.AllExceptLeaf());
   GoogleUrl queryful("http://a.com/b/c/d.ext?p=p&q=q");
-  EXPECT_EQ(GoogleString("http://a.com/b/c/"), queryful.AllExceptLeaf());
+  EXPECT_STREQ("http://a.com/b/c/", queryful.AllExceptLeaf());
 }
 
 TEST_F(GoogleUrlTest, TestAllExceptLeafIsIdempotent) {
@@ -216,7 +243,7 @@ TEST_F(GoogleUrlTest, TestAllExceptLeafIsIdempotent) {
 
 TEST_F(GoogleUrlTest, TestTrivialLeafSansQuery) {
   GoogleUrl queryless("http://a.com/b/c/d.ext");
-  EXPECT_EQ(GoogleString("d.ext"), queryless.LeafSansQuery());
+  EXPECT_STREQ("d.ext", queryless.LeafSansQuery());
 }
 
 TEST_F(GoogleUrlTest, ResolveRelative) {
@@ -224,9 +251,8 @@ TEST_F(GoogleUrlTest, ResolveRelative) {
   ASSERT_TRUE(base.is_valid());
   GoogleUrl resolved(base, "test.html");
   ASSERT_TRUE(resolved.is_valid());
-  EXPECT_EQ(GoogleString("http://www.google.com/test.html"),
-            resolved.Spec());
-  EXPECT_EQ(GoogleString("/test.html"), resolved.PathSansQuery());
+  EXPECT_STREQ("http://www.google.com/test.html", resolved.Spec());
+  EXPECT_STREQ("/test.html", resolved.PathSansQuery());
 }
 
 TEST_F(GoogleUrlTest, ResolveAbsolute) {
@@ -234,9 +260,8 @@ TEST_F(GoogleUrlTest, ResolveAbsolute) {
   ASSERT_TRUE(base.is_valid());
   GoogleUrl resolved(base, "http://www.google.com");
   ASSERT_TRUE(resolved.is_valid());
-  EXPECT_EQ(GoogleString("http://www.google.com/"),
-            resolved.Spec());
-  EXPECT_EQ(GoogleString("/"), resolved.PathSansQuery());
+  EXPECT_STREQ("http://www.google.com/", resolved.Spec());
+  EXPECT_STREQ("/", resolved.PathSansQuery());
 }
 
 TEST_F(GoogleUrlTest, TestReset) {
@@ -278,6 +303,23 @@ TEST_F(GoogleUrlTest, TestExtraSlash) {
   EXPECT_STREQ("http://www.example.com/extra_slash/index.html",
                example_extra_slash.Spec());
   EXPECT_STREQ("http://a.com/extra_slash/index.html", a_extra_slash.Spec());
+}
+
+// Make sure weird URLs don't crash our system.
+TEST_F(GoogleUrlTest, TestNoCrash) {
+  RunAllMethods("http://www.example.com/");
+  RunAllMethods("http:foo.css");
+  RunAllMethods("data:");
+  RunAllMethods("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAA"
+                "FCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljN"
+                "BAAO9TXL0Y4OHwAAAABJRU5ErkJggg==");
+  RunAllMethods("https://secure.example.org/foo/bar.html?blah=t#frag");
+  RunAllMethods("file:");
+  RunAllMethods("file:foobar");
+  RunAllMethods("file:foo/bar/baz.rtf");
+  RunAllMethods("file:///var/log/");
+  RunAllMethods("ftp://ftp.example.com/");
+
 }
 
 }  // namespace net_instaweb
