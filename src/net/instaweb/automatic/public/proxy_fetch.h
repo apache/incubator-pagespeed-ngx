@@ -119,7 +119,6 @@ class ProxyFetch : public SharedAsyncFetch {
 
  private:
   friend class ProxyFetchFactory;
-  friend class ProxyFetchTest;
 
   // If cross_domain is true, we're requested under a domain different from
   // the underlying host, using proxy mode in UrlNamer.

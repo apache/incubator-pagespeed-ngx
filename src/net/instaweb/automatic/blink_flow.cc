@@ -17,11 +17,11 @@
 // Author: nikhilmadan@google.com (Nikhil Madan)
 //
 // This class manages the flow of a blink request. In order to flush the layout
-// early before we start getting bytes back from the fetcher, we trigger a cache
-// lookup for the json.
+// and cacheable panels early before we start getting bytes back from the
+// fetcher, we trigger a cache lookup for the json.
 // If the json is found, we flush json out and then trigger the normal
-// ProxyFetch flow with customized options which extracts json from the page and
-// sends it out.
+// ProxyFetch flow with customized options which extracts cookies and
+// non cacheable panels from the page and sends it out.
 // If the json is not found in cache, we pass this request through the normal
 // ProxyFetch flow and trigger an asynchronous fetch for the page,
 // create a driver to parse it and store the extracted json in the cache.
@@ -51,6 +51,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/timer.h"
 #include "third_party/jsoncpp/include/json/json.h"
 
@@ -144,7 +145,6 @@ class JsonFetch : public StringAsyncFetch {
         key_.substr(kJsonCachePrefixLength));
     json_computation_driver_->ParseText(buffer());
 
-    // Clean up.
     json_computation_driver_->FinishParseAsync(MakeFunction(
         this, &JsonFetch::CompleteFinishParse));
   }
@@ -202,6 +202,30 @@ const char BlinkFlow::kNumBackgroundFetchesStarted[] =
 const char BlinkFlow::kNumBackgroundFetchesComplete[] =
     "num_background_fetches_complete";
 
+BlinkFlow::BlinkFlow(const GoogleString& url,
+                     AsyncFetch* base_fetch,
+                     const Layout* layout,
+                     RewriteOptions* options,
+                     ProxyFetchFactory* factory,
+                     ResourceManager* manager)
+    : url_(url),
+      base_fetch_(base_fetch),
+      layout_(layout),
+      options_(options),
+      factory_(factory),
+      manager_(manager),
+      request_start_time_ms_(-1),
+      time_to_start_blink_flow_ms_(-1),
+      time_to_json_lookup_done_ms_(-1),
+      time_to_split_critical_ms_(-1),
+      num_background_fetches_started_(NULL) {
+  Statistics* stats = manager_->statistics();
+  if (stats != NULL) {
+    num_background_fetches_started_ = stats->GetTimedVariable(
+        kNumBackgroundFetchesStarted);
+  }
+}
+
 void BlinkFlow::Start(const GoogleString& url,
                       AsyncFetch* base_fetch,
                       const Layout* layout,
@@ -221,7 +245,8 @@ void BlinkFlow::Initialize(Statistics* stats) {
 }
 
 void BlinkFlow::InitiateJsonLookup() {
-  // TODO(rahulbansal): Remove start_time_ms from rewrite_driver.
+  // TODO(rahulbansal): Add this field to timing info proto and remove this
+  // header.
   const char* request_start_time_ms_str =
       base_fetch_->request_headers()->Lookup1(kRequestStartTimeHeader);
   if (request_start_time_ms_str != NULL) {
@@ -319,9 +344,6 @@ void BlinkFlow::ServeAllPanelContents(
   time_to_split_critical_ms_ = GetTimeElapsedFromStartRequest();
   SendCriticalJson(&critical_json_str);
   SendInlineImagesJson(&pushed_images_str);
-  // TODO(rahulbansal): We can't send cookies here since the fetch hasn't
-  // yet returned. This needs to be fixed so that even for a case when
-  // everything is cached, we do send the cookies when the fetch returns.
   SendNonCriticalJson(&non_critical_json_str);
 }
 
@@ -345,7 +367,6 @@ void BlinkFlow::SendLayout(const StringPiece& layout) {
 }
 
 void BlinkFlow::SendCriticalJson(GoogleString* critical_json_str) {
-  // TODO(rahulbansal): Remove user_ip from rewrite_driver.
   const char* user_ip = base_fetch_->request_headers()->Lookup1(
       HttpAttributes::kXForwardedFor);
   if (user_ip != NULL && manager_->factory()->IsDebugClient(user_ip)) {
@@ -412,14 +433,30 @@ void BlinkFlow::ComputeJsonInBackground() {
   options->EnableFilter(RewriteOptions::kDisableJavascript);
   options->DisableFilter(RewriteOptions::kHtmlWriterFilter);
 
-  JsonFetch* json_fetch = new JsonFetch(json_url_, manager_, options);
+  AsyncFetch* json_fetch = new JsonFetch(json_url_, manager_, options);
+  bool* prepare_success = new bool;
+  manager_->url_namer()->PrepareRequest(
+      options, &url_, json_fetch->request_headers(), prepare_success,
+      MakeFunction(this, &BlinkFlow::TriggerJsonBackgroundFetch, json_fetch,
+                   prepare_success),
+      manager_->message_handler());
+}
 
-  // TODO(rahulbansal): We can use the output of AsyncFetchWithHeadersInhibited
-  // instead of triggering a new background fetch.
-  manager_->url_async_fetcher()->Fetch(
-      json_url_.substr(kJsonCachePrefixLength),
-      manager_->message_handler(),
-      json_fetch);
+void BlinkFlow::TriggerJsonBackgroundFetch(AsyncFetch* json_fetch,
+                                           bool* success) {
+  if (*success) {
+    // TODO(rahulbansal): We can use the output of
+    // AsyncFetchWithHeadersInhibited instead of triggering a new background
+    // fetch.
+    manager_->url_async_fetcher()->Fetch(
+        json_url_.substr(kJsonCachePrefixLength),
+        manager_->message_handler(),
+        json_fetch);
+  } else {
+    LOG(WARNING) << "Prepare request failed in BlinkFlow for " << url_;
+    delete json_fetch;
+  }
+  delete success;
 }
 
 int64 BlinkFlow::GetTimeElapsedFromStartRequest() {
@@ -428,8 +465,8 @@ int64 BlinkFlow::GetTimeElapsedFromStartRequest() {
 
 GoogleString BlinkFlow::GetAddTimingScriptString(
     const GoogleString& timing_str, int64 time_ms) {
-  return StrCat("<script>pagespeed.panelLoader.addCsiTiming(\"", timing_str, "\", ",
-                Integer64ToString(time_ms), ")</script>");
+  return StrCat("<script>pagespeed.panelLoader.addCsiTiming(\"", timing_str,
+                "\", ", Integer64ToString(time_ms), ")</script>");
 }
 
 }  // namespace net_instaweb

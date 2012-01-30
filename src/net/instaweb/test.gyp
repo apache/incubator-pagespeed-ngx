@@ -56,7 +56,6 @@
       ],
       'sources': [
         'automatic/html_detector_test.cc',
-        'automatic/proxy_fetch_test.cc',
         'automatic/proxy_interface_test.cc',
         'htmlparse/html_keywords_test.cc',
         'htmlparse/html_name_test.cc',
@@ -118,7 +117,6 @@
         'rewriter/javascript_filter_test.cc',
         'rewriter/js_combine_filter_test.cc',
         'rewriter/js_defer_disabled_filter_test.cc',
-        'rewriter/js_defer_filter_test.cc',
         'rewriter/js_disable_filter_test.cc',
         'rewriter/js_inline_filter_test.cc',
         'rewriter/js_outline_filter_test.cc',

@@ -144,20 +144,17 @@ const char ProxyUrlNamer::kProxyHost[] = "proxy_host.com";
 // proxy_fetch. We need this to ascertain that start_time_ms is set correctly.
 class MockFilter : public EmptyHtmlFilter {
  public:
-  MockFilter(RewriteDriver* driver, int64* request_start_time_ms)
-      : driver_(driver),
-        request_start_time_ms_(request_start_time_ms) {
+  MockFilter(RewriteDriver* driver)
+      : driver_(driver) {
   }
 
   virtual void StartDocument() {
-    *request_start_time_ms_ = driver_->start_time_ms();
   }
 
   virtual const char* Name() const { return "MockFilter"; }
 
  private:
   RewriteDriver* driver_;
-  int64* request_start_time_ms_;
 };
 
 // TODO(morlovich): This currently relies on ResourceManagerTestBase to help
@@ -307,7 +304,7 @@ class FilterCallback : public TestRewriteDriverFactory::CreateFilterCallback {
   }
 
   virtual HtmlFilter* Done(RewriteDriver* driver) {
-    return new MockFilter(driver, &proxy_interface_->request_start_time_ms_);
+    return new MockFilter(driver);
   }
 
   virtual ~FilterCallback() {}
@@ -352,36 +349,6 @@ TEST_F(ProxyInterfaceTest, PassThrough404) {
   FetchFromProxy("404", true, &text, &headers);
   ASSERT_TRUE(headers.has_status_code());
   EXPECT_EQ(HttpStatus::kNotFound, headers.status_code());
-}
-
-TEST_F(ProxyInterfaceTest, RequestStartTimeHeader) {
-  GoogleString url = "http://www.example.com/";
-  GoogleString text;
-  RequestHeaders request_headers;
-  ResponseHeaders headers;
-  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
-  headers.SetStatusAndReason(HttpStatus::kOK);
-  mock_url_fetcher_.SetResponse("http://www.example.com/", headers,
-                                "<html></html>");
-  // We need custom options so that NewCustomRewriteDriver gets created.
-  // This is needed so that AddPlatformSpecificRewritePasses gets called.
-  scoped_ptr<RewriteOptions> custom_options(factory()->NewRewriteOptions());
-  ProxyUrlNamer url_namer;
-  url_namer.set_options(custom_options.get());
-  resource_manager()->set_url_namer(&url_namer);
-
-  FilterCallback callback(this);
-  factory_->AddCreateFilterCallback(&callback);
-
-  // Request start time header not set.
-  FetchFromProxy(url, request_headers, true, &text, &headers);
-  EXPECT_EQ(0, request_start_time_ms_);
-
-  // Request start time header set.
-  request_headers.Add(kRequestStartTimeHeader,
-                       Integer64ToString(10));
-  FetchFromProxy(url, request_headers, true, &text, &headers);
-  EXPECT_EQ(10, request_start_time_ms_);
 }
 
 TEST_F(ProxyInterfaceTest, PassThroughResource) {

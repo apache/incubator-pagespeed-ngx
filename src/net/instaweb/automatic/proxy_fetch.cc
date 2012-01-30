@@ -164,12 +164,6 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
     driver_ = resource_manager_->NewCustomRewriteDriver(custom_options);
   }
 
-  const char* user_ip = request_headers()->Lookup1(
-      HttpAttributes::kXForwardedFor);
-  if (user_ip != NULL) {
-    driver_->set_user_ip(user_ip);
-  }
-
   // TODO(sligocki): We should pass the options in with the AsyncFetch rather
   // than creating a new fetcher for each fetch.
   // Note: CacheUrlAsyncFetcher is actually a pretty light class, so this isn't
@@ -190,15 +184,6 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
   const char* cookies = request_headers()->Lookup1(HttpAttributes::kCookie);
   if (cookies != NULL) {
     driver_->set_cookies(cookies);
-  }
-
-  const char* start_time_ms_str =
-      request_headers()->Lookup1(kRequestStartTimeHeader);
-  if (start_time_ms_str != NULL) {
-    int64 start_time_ms;
-    if (StringToInt64(start_time_ms_str, &start_time_ms)) {
-      driver_->set_request_start_time_ms(start_time_ms);
-    }
   }
 
   const char* user_agent = request_headers()->Lookup1(

@@ -11,7 +11,6 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/wildcard.h"
 
 namespace net_instaweb {
 namespace BlinkUtil {
@@ -236,8 +235,8 @@ bool ComputePanels(const PanelSet* panel_set_,
 }
 
 void EscapeString(GoogleString* str) {
-  *str = BlinkUtil::StringReplace(*str, "<", "__psa_lt;", true);
-  *str = BlinkUtil::StringReplace(*str, ">", "__psa_gt;", true);
+  GlobalReplaceSubstring("<", "__psa_lt;", str);
+  GlobalReplaceSubstring(">", "__psa_gt;", str);
 }
 
 bool StripTrailingNewline(GoogleString* s) {
@@ -249,36 +248,6 @@ bool StripTrailingNewline(GoogleString* s) {
     return true;
   }
   return false;
-}
-
-GoogleString StringReplace(const StringPiece& s, const StringPiece& oldsub,
-                     const StringPiece& newsub, bool replace_all) {
-  GoogleString ret;
-  BlinkUtil::StringReplace(s, oldsub, newsub, replace_all, &ret);
-  return ret;
-}
-
-void StringReplace(const StringPiece& s, const StringPiece& oldsub,
-                   const StringPiece& newsub, bool replace_all,
-                   GoogleString* res) {
-  if (oldsub.empty()) {
-    res->append(s.data(), s.length());  // If empty, append the given string.
-    return;
-  }
-
-  StringPiece::size_type start_pos = 0;
-  StringPiece::size_type pos;
-  do {
-    pos = s.find(oldsub, start_pos);
-    if (pos == StringPiece::npos) {
-      break;
-    }
-    res->append(s.data() + start_pos, pos - start_pos);
-    res->append(newsub.data(), newsub.length());
-    // Start searching again after the "old".
-    start_pos = pos + oldsub.length();
-  } while (replace_all);
-  res->append(s.data() + start_pos, s.length() - start_pos);
 }
 
 }  // namespace PanelUtil

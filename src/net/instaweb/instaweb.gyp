@@ -639,7 +639,6 @@
         'rewriter/insert_ga_filter.cc',
         'rewriter/js_combine_filter.cc',
         'rewriter/js_defer_disabled_filter.cc',
-        'rewriter/js_defer_filter.cc',
         'rewriter/js_disable_filter.cc',
         'rewriter/js_inline_filter.cc',
         'rewriter/js_outline_filter.cc',

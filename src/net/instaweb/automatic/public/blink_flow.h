@@ -20,9 +20,7 @@
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_BLINK_FLOW_H_
 
 #include "net/instaweb/rewriter/public/blink_util.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -32,7 +30,10 @@ class AsyncFetch;
 class Layout;
 class ProxyFetchFactory;
 class ResponseHeaders;
+class ResourceManager;
 class RewriteOptions;
+class Statistics;
+class TimedVariable;
 
 // This class manages the blink flow for looking up the json in cache,
 // modifying the options for passthru and triggering asynchronous lookups to
@@ -64,24 +65,7 @@ class BlinkFlow {
             const Layout* layout,
             RewriteOptions* options,
             ProxyFetchFactory* factory,
-            ResourceManager* manager)
-      : url_(url),
-        base_fetch_(base_fetch),
-        layout_(layout),
-        options_(options),
-        factory_(factory),
-        manager_(manager),
-        request_start_time_ms_(-1),
-        time_to_start_blink_flow_ms_(-1),
-        time_to_json_lookup_done_ms_(-1),
-        time_to_split_critical_ms_(-1),
-        num_background_fetches_started_(NULL) {
-    Statistics* stats = manager_->statistics();
-    if (stats != NULL) {
-      num_background_fetches_started_ = stats->GetTimedVariable(
-          kNumBackgroundFetchesStarted);
-    }
-  }
+            ResourceManager* manager);
 
   void InitiateJsonLookup();
 
@@ -93,6 +77,8 @@ class BlinkFlow {
   void TriggerProxyFetch(bool layout_found);
 
   void ComputeJsonInBackground();
+
+  void TriggerJsonBackgroundFetch(AsyncFetch* json_fetch, bool* success);
 
   void ServeAllPanelContents(const Json::Value& json,
                              const PanelIdToSpecMap& panel_id_to_spec);

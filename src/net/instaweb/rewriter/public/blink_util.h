@@ -5,8 +5,8 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_BLINK_UTIL_H_
 
 #include <map>
+
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "third_party/jsoncpp/include/json/json.h"
 
 namespace net_instaweb {
@@ -78,16 +78,8 @@ bool ComputePanels(const PanelSet* panel_set_,
 // Escapes < and > with __psa_lt; and __psa_gt; respectively.
 void EscapeString(GoogleString* str);
 
-// TODO(rahulbansal): Move these functions to net/instaweb/util/string_util
+// TODO(rahulbansal): Move this function to net/instaweb/util/string_util
 bool StripTrailingNewline(GoogleString* s);
-
-GoogleString StringReplace(const StringPiece& s, const StringPiece& oldsub,
-                     const StringPiece& newsub, bool replace_all);
-
-void StringReplace(const StringPiece& s, const StringPiece& oldsub,
-                   const StringPiece& newsub, bool replace_all,
-                   GoogleString* res);
-
 }  // namespace BlinkUtil
 
 }  // namespace net_instaweb
