@@ -18,6 +18,11 @@
 //
 // Contains MockTimeCache, which lets one inject MockTimer-simulated
 // delays before callback invocations of a cache object.
+//
+// Note: DelayCache also supports delayed callbacks, but each key's
+// delivery is controlled by API.
+//
+// TODO(jmarantz): consider refactoring this as a subclass of DelayCache.
 
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_MOCK_TIME_CACHE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_MOCK_TIME_CACHE_H_

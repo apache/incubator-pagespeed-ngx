@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
+#include "net/instaweb/util/public/delay_cache.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
@@ -108,7 +109,7 @@ TestRewriteDriverFactory::TestRewriteDriverFactory(
     mock_url_fetcher_(mock_fetcher),
     mock_url_async_fetcher_(NULL),
     counting_url_async_fetcher_(NULL),
-    mock_time_cache_(mock_timer_, lru_cache_),
+    mock_time_cache_(mock_timer_, lru_cache_.get()),
     mem_file_system_(NULL),
     mock_hasher_(NULL),
     mock_message_handler_(NULL),
@@ -176,8 +177,9 @@ Timer* TestRewriteDriverFactory::DefaultTimer() {
 
 CacheInterface* TestRewriteDriverFactory::DefaultCacheInterface() {
   DCHECK(lru_cache_ == NULL);
-  lru_cache_ = new LRUCache(kCacheSize);
-  return lru_cache_;
+  lru_cache_.reset(new LRUCache(kCacheSize));
+  delay_cache_ = new DelayCache(lru_cache_.get());
+  return delay_cache_;
 }
 
 Hasher* TestRewriteDriverFactory::NewHasher() {

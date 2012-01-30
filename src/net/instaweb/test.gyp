@@ -148,6 +148,7 @@
         'util/chunking_writer_test.cc',
         'util/circular_buffer_test.cc',
         'util/data_url_test.cc',
+        'util/delay_cache_test.cc',
         'util/escaping_test.cc',
         'util/file_cache_test.cc',
         'util/file_system_lock_manager_test.cc',
@@ -274,6 +275,7 @@
         'rewriter/resource_manager_test_base.cc',
         'rewriter/test_rewrite_driver_factory.cc',
         'rewriter/test_url_namer.cc',
+        'util/delay_cache.cc',
         'util/file_system_test.cc',
         'util/gtest.cc',
         'util/mem_file_system.cc',
@@ -282,6 +284,5 @@
         'util/mock_time_cache.cc',
       ],
     },
-
   ],
 }

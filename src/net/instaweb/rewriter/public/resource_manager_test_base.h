@@ -46,6 +46,7 @@
 namespace net_instaweb {
 
 class CountingUrlAsyncFetcher;
+class DelayCache;
 class HTTPCache;
 class Hasher;
 class LRUCache;
@@ -345,6 +346,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     return &mock_url_fetcher_;
   }
   Hasher* hasher() { return resource_manager_->hasher(); }
+  DelayCache* delay_cache() { return factory_->delay_cache(); }
   LRUCache* lru_cache() { return factory_->lru_cache(); }
   Statistics* statistics() { return factory_->statistics(); }
   MemFileSystem* file_system() { return factory_->mem_file_system(); }
