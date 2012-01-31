@@ -324,10 +324,15 @@ class RewriteContext::FetchContext {
   void HandleDeadline() {
     deadline_alarm_ = NULL;  // avoid dangling reference.
     rewrite_context_->DetachFetch();
-    handler_->Message(kError, "Deadline exceeded for resource %s",
-                      output_resource_->UrlEvenIfHashNotSet().c_str());
+    // It's very tempting to log the output URL here, but it's not safe to do
+    // so, as OutputResource::UrlEvenIfHashNotSet can write to the hash,
+    // which may race against normal setting of the hash in
+    // ResourceManager::Write called off low-priority thread.
     // TODO(sligocki): Log a variable for number of deadline hits.
     ResourcePtr input(rewrite_context_->slot(0)->resource());
+    handler_->Message(
+        kError, "Deadline exceeded for rewrite of resource %s with %s.",
+        input->url().c_str(), rewrite_context_->id());
     bool absolutify_contents = true;
     FetchFallbackDoneImpl(input->contents(), input->response_headers(),
                           absolutify_contents);
