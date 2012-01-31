@@ -26,7 +26,7 @@
 
 namespace net_instaweb {
 
-class HtmlParse;
+class RewriteDriver;
 class HtmlElement;
 class Statistics;
 
@@ -38,7 +38,7 @@ class JsDeferDisabledFilter : public EmptyHtmlFilter {
  public:
   static const char* kDeferJsCode;
 
-  explicit JsDeferDisabledFilter(HtmlParse* html_parse);
+  explicit JsDeferDisabledFilter(RewriteDriver* driver);
   virtual ~JsDeferDisabledFilter();
 
   virtual void StartDocument();
@@ -59,10 +59,11 @@ class JsDeferDisabledFilter : public EmptyHtmlFilter {
   static GoogleString* opt_defer_js_;  // Minified version.
   static GoogleString* debug_defer_js_;  // Debug version.
 
-  HtmlParse* html_parse_;
+  RewriteDriver* rewrite_driver_;
 
   // The script that will be inlined at the end of BODY.
   bool script_written_;
+  bool defer_js_enabled_;
   bool debug_;
 
   DISALLOW_COPY_AND_ASSIGN(JsDeferDisabledFilter);

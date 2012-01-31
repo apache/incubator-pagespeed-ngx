@@ -50,6 +50,14 @@ ModPagespeedEnableFilters add_instrumentation
     Options +SymLinksIfOwnerMatch
 </Directory>
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/close_connection/" >
+    AllowOverride All
+    # Helps tests whether we successfully strip Connection:close
+    # results from the origin.
+    Options +SymLinksIfOwnerMatch
+    Header append 'Connection' 'close'
+</Directory>
+
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/compressed/" >
     # Files in this directory are already compressed so always add
     # the right header.
@@ -226,9 +234,34 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 #PROXY   ModPagespeedRewriteLevel PassThrough
 #PROXY </VirtualHost>
 
-#SLURP # This is used for Slurp testing.
-#SLURP ModPagespeedSlurpDirectory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/slurp"
-#SLURP ModPagespeedSlurpReadOnly on
+#SLURP # This is used for Slurp testing.  The initial slurp testing
+#SLURP # uses a slurp test dir pre-populated from source control,
+#SLURP # via a read-only slurp setup on port 8080.  We also test slurp
+#SLURP # writing via an origin server on port 8081, and s slurp server
+#SLURP # on 8082 with slurping read-only off.
+#SLURP Listen 8081
+#SLURP Listen 8082
+#SLURP <VirtualHost *:8080>
+#SLURP   ModPagespeedFileCachePath        "@@MODPAGESPEED_CACHE_ROOT@@/cache/"
+#SLURP   ModPagespeedGeneratedFilePrefix  "@@MODPAGESPEED_CACHE_ROOT@@/files/"
+#SLURP   ModPagespeedSlurpDirectory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/slurp"
+#SLURP   ModPagespeedSlurpReadOnly on
+#SLURP </VirtualHost>
+#SLURP <VirtualHost *:8081>
+#SLURP   # Host at 8081 sees into mod_pagespeed_examples directory.
+#SLURP   DocumentRoot  "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
+#SLURP
+#SLURP   ModPagespeed off
+#SLURP   ModPagespeedFileCachePath        "@@MODPAGESPEED_CACHE_ROOT@@-alt/cache/"
+#SLURP   ModPagespeedGeneratedFilePrefix  "@@MODPAGESPEED_CACHE_ROOT@@-alt/files/"
+#SLURP   ModPagespeedRewriteLevel PassThrough
+#SLURP </VirtualHost>
+#SLURP <VirtualHost *:8082>
+#SLURP   ModPagespeedFileCachePath        "@@MODPAGESPEED_CACHE_ROOT@@-alt2/cache/"
+#SLURP   ModPagespeedGeneratedFilePrefix  "@@MODPAGESPEED_CACHE_ROOT@@-alt2/files/"
+#SLURP   ModPagespeedSlurpDirectory @@TMP_SLURP_DIR@@
+#SLURP   ModPagespeedSlurpReadOnly off
+#SLURP </VirtualHost>
 
 #SHARED_MEM_LOCKS ModPagespeedSharedMemoryLocks on
 

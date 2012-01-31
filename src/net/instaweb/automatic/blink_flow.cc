@@ -353,7 +353,7 @@ void BlinkFlow::SendLayout(const StringPiece& layout) {
   // dns lookup.
   WriteString(StrCat("<script src=\"",
                      manager_->url_namer()->get_proxy_domain(),
-                     "/webinstant/blink.js\"></script>"));
+                     "/psajs/blink.js\"></script>"));
   WriteString("<script>pagespeed.panelLoaderInit();</script>");
   WriteString(GetAddTimingScriptString(kTimeToBlinkFlowStart,
                                        time_to_start_blink_flow_ms_));

@@ -165,6 +165,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       rewrites_to_delete_(0),
       user_agent_is_bot_(kNotSet),
       user_agent_supports_image_inlining_(kNotSet),
+      user_agent_supports_js_defer_(kNotSet),
       user_agent_supports_webp_(kNotSet),
       is_mobile_user_agent_(kNotSet),
       response_headers_(NULL),
@@ -649,6 +650,16 @@ bool RewriteDriver::UserAgentSupportsImageInlining() const {
   }
   return (user_agent_supports_image_inlining_ == kTrue);
 }
+
+bool RewriteDriver::UserAgentSupportsJsDefer() const {
+  if (user_agent_supports_js_defer_ == kNotSet) {
+    user_agent_supports_js_defer_ =
+        user_agent_matcher_.SupportsJsDefer(user_agent_) ?
+        kTrue : kFalse;
+  }
+  return (user_agent_supports_js_defer_ == kTrue);
+}
+
 bool RewriteDriver::UserAgentSupportsWebp() const {
   if (user_agent_supports_webp_ == kNotSet) {
     user_agent_supports_webp_ =

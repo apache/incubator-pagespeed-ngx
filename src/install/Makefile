@@ -237,6 +237,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s!@@MODPAGESPEED_CACHE_ROOT@@!$(MOD_PAGESPEED_FILE_ROOT)!g" \
 	    -e "s@# ModPagespeedSlurpDirectory ...@$(APACHE_SLURP_DIR_COMMAND)@g" \
 	    -e "s@# ModPagespeedSlurpReadOnly on@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
+	    -e "s|@@TMP_SLURP_DIR@@|$(TMP_SLURP_DIR)|g" \
 	    -e "s@$(STRESS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(REWRITE_TEST_SED_PATTERN)@@" \
 	    -e "s@$(COVERAGE_TEST_SED_PATTERN)@@" \

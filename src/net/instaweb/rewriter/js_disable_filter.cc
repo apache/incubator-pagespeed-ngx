@@ -34,6 +34,9 @@ JsDisableFilter::~JsDisableFilter() {
 }
 
 void JsDisableFilter::StartElement(HtmlElement* element) {
+  if (!rewrite_driver_->UserAgentSupportsJsDefer()) {
+    return;
+  }
   HtmlElement::Attribute* src;
   if (script_tag_scanner_.ParseScriptElement(element, &src) ==
       ScriptTagScanner::kJavaScript) {

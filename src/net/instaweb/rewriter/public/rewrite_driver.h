@@ -163,6 +163,7 @@ class RewriteDriver : public HtmlParse {
     user_agent_string.CopyToString(&user_agent_);
     user_agent_is_bot_ = kNotSet;
     user_agent_supports_image_inlining_ = kNotSet;
+    user_agent_supports_js_defer_ = kNotSet;
     user_agent_supports_webp_ = kNotSet;
     is_mobile_user_agent_ = kNotSet;
   }
@@ -194,6 +195,7 @@ class RewriteDriver : public HtmlParse {
     return user_agent_matcher_;
   }
   bool UserAgentSupportsImageInlining() const;
+  bool UserAgentSupportsJsDefer() const;
   bool UserAgentSupportsWebp() const;
   bool IsMobileUserAgent() const;
 
@@ -883,6 +885,7 @@ class RewriteDriver : public HtmlParse {
   // Properties of the user_agent_ that are computed once and cached.
   mutable LazyBool user_agent_is_bot_;
   mutable LazyBool user_agent_supports_image_inlining_;
+  mutable LazyBool user_agent_supports_js_defer_;
   mutable LazyBool user_agent_supports_webp_;
   mutable LazyBool is_mobile_user_agent_;
 

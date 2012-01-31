@@ -33,6 +33,7 @@ class UserAgentMatcher {
   };
   bool SupportsImageInlining(const StringPiece& user_agent) const;
   bool SupportsBlink(const StringPiece& user_agent) const;
+  bool SupportsJsDefer(const StringPiece& user_agent) const;
   bool SupportsWebp(const StringPiece& user_agent) const;
   bool IsMobileUserAgent(const StringPiece& user_agent) const;
  private:

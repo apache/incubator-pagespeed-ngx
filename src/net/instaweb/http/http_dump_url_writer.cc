@@ -77,6 +77,10 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(
                                            handler);
     compressed_response.Replace(HttpAttributes::kContentLength,
                                 IntegerToString(contents.size()));
+    // TODO(jmarantz): http://tools.ietf.org/html/rfc2616#section-13.5.1
+    // tells us we can also remove Keep-Alive, Proxy-Authenticate,
+    // Proxy-Authorization, TE, Trailers, Transfer-Encoding, and Upgrade.
+    compressed_response.RemoveAll(HttpAttributes::kConnection);
     compressed_response.ComputeCaching();
 
     // Do not write an empty file if the fetch failed.

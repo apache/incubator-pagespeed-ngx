@@ -21,7 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/string.h"
 
 #include "base/logging.h"
@@ -36,9 +36,10 @@ extern const char* JS_js_defer;  // Non-optimized output.
 GoogleString* JsDeferDisabledFilter::opt_defer_js_ = NULL;
 GoogleString* JsDeferDisabledFilter::debug_defer_js_ = NULL;
 
-JsDeferDisabledFilter::JsDeferDisabledFilter(HtmlParse* html_parse)
-    : html_parse_(html_parse),
+JsDeferDisabledFilter::JsDeferDisabledFilter(RewriteDriver* driver)
+    : rewrite_driver_(driver),
       script_written_(false),
+      defer_js_enabled_(false),
       debug_(false) {
 }
 
@@ -46,6 +47,7 @@ JsDeferDisabledFilter::~JsDeferDisabledFilter() { }
 
 void JsDeferDisabledFilter::StartDocument() {
   script_written_ = false;
+  defer_js_enabled_ = rewrite_driver_->UserAgentSupportsJsDefer();
 }
 
 void JsDeferDisabledFilter::Initialize(Statistics* statistics) {
@@ -81,24 +83,25 @@ void JsDeferDisabledFilter::Terminate() {
 }
 
 void JsDeferDisabledFilter::EndElement(HtmlElement* element) {
-  if (element->keyword() == HtmlName::kBody && !script_written_) {
+  if (defer_js_enabled_ && element->keyword() == HtmlName::kBody &&
+      !script_written_) {
     HtmlElement* script_node =
-        html_parse_->NewElement(element, HtmlName::kScript);
-    html_parse_->AddAttribute(script_node, HtmlName::kType,
+        rewrite_driver_->NewElement(element, HtmlName::kScript);
+    rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
                               "text/javascript");
     const GoogleString& defer_js = debug_ ? *debug_defer_js_ : *opt_defer_js_;
     HtmlNode* script_code =
-        html_parse_->NewCharactersNode(script_node, defer_js);
-    html_parse_->InsertElementBeforeCurrent(script_node);
-    html_parse_->AppendChild(script_node, script_code);
+        rewrite_driver_->NewCharactersNode(script_node, defer_js);
+    rewrite_driver_->InsertElementBeforeCurrent(script_node);
+    rewrite_driver_->AppendChild(script_node, script_code);
     script_written_ = true;
   }
 }
 
 void JsDeferDisabledFilter::EndDocument() {
-  if (!script_written_) {
+  if (defer_js_enabled_ && !script_written_) {
     // Scripts never get executed if this happen.
-    html_parse_->ErrorHere("BODY tag didn't close after last script");
+    rewrite_driver_->InfoHere("BODY tag didn't close after last script");
     // TODO(atulvasu): Try to write here.
   }
 }

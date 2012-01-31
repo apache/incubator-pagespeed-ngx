@@ -50,7 +50,8 @@ const char* kImageInliningBlacklist[] = {
   "*Opera?5*",
   "*Opera?6*"
 };
-// For Panels, we only allow Firefox3+, IE8+, safari and Chrome
+// For Panels and deferJs the list is same as of now.
+// we only allow Firefox3+, IE8+, safari and Chrome
 // We'll be updating this as and when required.
 const char* kPanelSupportWhitelist[] = {
   "*Chrome/*",
@@ -95,7 +96,6 @@ const char* kWebpBlacklist[] = {
   "*Chrome/14.*",
   "*Chrome/15.*",
   "*Chrome/16.*",
-  "*Chrome/17.*",
   "*Opera/9.80*Version/10.*",
   "*Opera?10.*",
   "*Opera/9.80*Version/11.0*",
@@ -163,6 +163,11 @@ bool UserAgentMatcher::SupportsImageInlining(
 }
 
 bool UserAgentMatcher::SupportsBlink(const StringPiece& user_agent) const {
+  return user_agent.empty() || supports_blink_.Match(user_agent, false);
+}
+
+bool UserAgentMatcher::SupportsJsDefer(const StringPiece& user_agent) const {
+  // TODO(ksimbili): Have js_defer it's own wildcard group.
   return user_agent.empty() || supports_blink_.Match(user_agent, false);
 }
 
