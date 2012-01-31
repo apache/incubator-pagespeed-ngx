@@ -25,9 +25,6 @@
 #include <cstddef>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -39,7 +36,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -53,7 +49,6 @@
 
 namespace net_instaweb {
 
-class RequestHeaders;
 struct ContentType;
 
 ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
@@ -300,199 +295,6 @@ bool ResourceCombiner::WritePiece(int index,
                                   Writer* writer,
                                   MessageHandler* handler) {
   return writer->Write(input->contents(), handler);
-}
-
-// Callback to run whenever a resource is collected.  This keeps a
-// count of the resources collected so far.  When the last one is collected,
-// it aggregates the results and calls the final callback with the result.
-class AggregateCombiner {
- public:
-  AggregateCombiner(ResourceCombiner* combiner,
-                    MessageHandler* handler,
-                    UrlAsyncFetcher::Callback* callback,
-                    OutputResourcePtr combination,
-                    Writer* writer,
-                    ResponseHeaders* response_headers) :
-      enable_completion_(false),
-      emit_done_(true),
-      done_count_(0),
-      fail_count_(0),
-      combiner_(combiner),
-      message_handler_(handler),
-      callback_(callback),
-      combination_(combination),
-      writer_(writer),
-      response_headers_(response_headers) {
-  }
-
-  virtual ~AggregateCombiner() {
-  }
-
-  // Note that the passed-in resource might be NULL; this gives us a chance
-  // to note failure.
-  bool AddResource(const ResourcePtr& resource) {
-    bool ret = false;
-    if (resource.get() == NULL) {
-      // Whoops, we've failed to even obtain a resource.
-      ++fail_count_;
-    } else if (fail_count_ == 0) {
-      combine_resources_.push_back(resource);
-      ret = true;
-    }
-    return ret;
-  }
-
-  virtual void Done(bool success) {
-    if (!success) {
-      ++fail_count_;
-    }
-    ++done_count_;
-
-    if (Ready()) {
-      DoCombination();
-    }
-  }
-
-  bool Ready() {
-    return (enable_completion_ &&
-            (done_count_ == combine_resources_.size()));
-  }
-
-  void EnableCompletion() {
-    enable_completion_ = true;
-    if (Ready()) {
-      DoCombination();
-    }
-  }
-
-  void DoCombination() {
-    bool ok = fail_count_ == 0;
-    for (size_t i = 0; ok && (i < combine_resources_.size()); ++i) {
-      ResourcePtr resource(combine_resources_[i]);
-      ok = resource->ContentsValid();
-    }
-    if (ok) {
-      ok = (combiner_->WriteCombination(combine_resources_, combination_,
-                                        message_handler_) &&
-            combination_->IsWritten() &&
-            ((writer_ == NULL) ||
-             writer_->Write(combination_->contents(), message_handler_)));
-      // Above code fills in combination_->response_headers(); now propagate to
-      // response_headers_.
-    }
-    if (ok) {
-      response_headers_->CopyFrom(*combination_->response_headers());
-    } else if (emit_done_) {
-      // we can only safely touch response_headers_ if we can emit
-      // Done() safely.
-      response_headers_->SetStatusAndReason(HttpStatus::kNotFound);
-    }
-
-    if (emit_done_) {
-      callback_->Done(ok);
-    }
-
-    delete this;
-  }
-
-  void set_emit_done(bool emit_done) {
-    emit_done_ = emit_done;
-  }
-
- private:
-  bool enable_completion_;
-  bool emit_done_;
-  size_t done_count_;
-  size_t fail_count_;
-  ResourceCombiner* combiner_;
-  MessageHandler* message_handler_;
-  UrlAsyncFetcher::Callback* callback_;
-  OutputResourcePtr combination_;
-  ResourceVector combine_resources_;
-  Writer* writer_;
-  ResponseHeaders* response_headers_;
-
-  DISALLOW_COPY_AND_ASSIGN(AggregateCombiner);
-};
-
-namespace {
-
-// The CombinerCallback must own a single input resource, so we need a
-// distinct one for each resource.  This delegates to an AggregateCombiner
-// to determine when all inputs are available and it's possible to process
-// the combination.
-class CombinerCallback : public Resource::AsyncCallback {
- public:
-  CombinerCallback(const ResourcePtr& resource, AggregateCombiner* combiner)
-      : Resource::AsyncCallback(resource),
-        combiner_(combiner) {
-  }
-
-  virtual ~CombinerCallback() {
-  }
-
-  virtual void Done(bool success) {
-    combiner_->Done(success);
-    delete this;
-  }
-
- private:
-  AggregateCombiner* combiner_;
-
-  DISALLOW_COPY_AND_ASSIGN(CombinerCallback);
-};
-
-}  // namespace
-
-bool ResourceCombiner::Fetch(const OutputResourcePtr& combination,
-                             Writer* writer,
-                             const RequestHeaders& request_header,
-                             ResponseHeaders* response_headers,
-                             MessageHandler* message_handler,
-                             UrlAsyncFetcher::Callback* callback) {
-  CHECK(response_headers != NULL);
-  bool ret = false;
-  StringPiece url_safe_id = combination->name();
-  UrlMultipartEncoder multipart_encoder;
-  StringVector urls;
-  GoogleString multipart_encoding;
-  GoogleUrl gurl(combination->url());
-  if (gurl.is_valid() &&
-      multipart_encoder.Decode(url_safe_id, &urls, NULL, message_handler)) {
-    GoogleString url, decoded_resource;
-    ret = true;
-    AggregateCombiner* combiner = new AggregateCombiner(
-        this, message_handler, callback, combination, writer, response_headers);
-
-    GoogleString root = combination->decoded_base();
-    for (int i = 0, n = urls.size(); ret && (i < n); ++i)  {
-      GoogleString url = StrCat(root, urls[i]);
-      // Safe since we use StrCat to absolutize the URL rather than
-      // full resolve, so it will always be a subpath of root.
-      ResourcePtr resource(
-          rewrite_driver_->CreateInputResourceAbsoluteUnchecked(url));
-      ret = combiner->AddResource(resource);
-      if (ret) {
-        rewrite_driver_->ReadAsync(new CombinerCallback(resource, combiner),
-                                   message_handler);
-      }
-    }
-
-    // If we're about to return false, we do not want the combiner to emit
-    // Done as RewriteDriver::FetchResource will do it as well.
-    combiner->set_emit_done(ret);
-
-    // In the case where the first input file is already cached,
-    // ReadAsync will directly call the CombineCallback, which, if
-    // already enabled, would think it was complete and run DoCombination
-    // prematurely.  So we wait until the resources are all added before
-    // enabling the callback to complete.
-    combiner->EnableCompletion();
-  } else {
-    message_handler->Error(url_safe_id.as_string().c_str(), 0,
-                           "Unable to decode resource string");
-  }
-  return ret;
 }
 
 void ResourceCombiner::Clear() {

@@ -105,39 +105,6 @@ void LoggingFilter::LogStatistics(StatisticsLog *statistics_log) const {
   }
 }
 
-bool LoggingFilter::Equals(const LoggingFilter &that) const {
-  for (int statistic = MIN_STAT; statistic < MAX_STAT; ++statistic) {
-    if (this->stats_[statistic] != that.stats_[statistic])
-      return false;
-  }
-  return true;
-}
-
-void LoggingFilter::LogDifferences(
-    const LoggingFilter &that, StatisticsLog *statistics_log) const {
-  for (int statistic = MIN_STAT; statistic < MAX_STAT; ++statistic) {
-    if (this->stats_[statistic] != that.stats_[statistic]) {
-      statistics_log->LogDifference(
-          kStatisticNames[statistic],
-          this->stats_[statistic], that.stats_[statistic]);
-    }
-  }
-}
-
-void LoggingFilter::Aggregate(const LoggingFilter &that) {
-  for (int statistic = MIN_STAT; statistic < MAX_STAT; ++statistic) {
-    this->stats_[statistic] += that.stats_[statistic];
-  }
-}
-
-void LoggingFilter::AggregateDifferences(const LoggingFilter &first,
-                                         const LoggingFilter &second) {
-  for (int statistic = MIN_STAT; statistic < MAX_STAT; ++statistic) {
-    this->stats_[statistic] +=
-        first.stats_[statistic] - second.stats_[statistic];
-  }
-}
-
 void LoggingFilter::Reset() {
   // Cleaner than memset?
   for (int statistic = MIN_STAT; statistic < MAX_STAT; ++statistic) {

@@ -70,13 +70,6 @@ class HttpDumpUrlFetcher : public UrlFetcher {
     return GetFilenameFromUrl(root_dir_, url, filename, message_handler);
   }
 
-  // Converts URL into filename prefix the way that Latency Lab does.
-  // Note: root_dir_ must be standardized to have a / at end already.
-  static bool GetFilenamePrefixFromUrl(const StringPiece& root_dir,
-                                       const GoogleUrl& url,
-                                       GoogleString* filename,
-                                       MessageHandler* message_handler);
-
   // This is a synchronous/blocking implementation.
   virtual bool StreamingFetchUrl(const GoogleString& url,
                                  const RequestHeaders& request_headers,

@@ -35,8 +35,7 @@ class FileStatisticsLog : public StatisticsLog {
                              MessageHandler* message_handler);
   virtual ~FileStatisticsLog();
   virtual void LogStat(const char *statName, int value);
-  virtual void LogDifference(const char *statName,
-                             int value1, int value2);
+
  private:
   FileSystem::OutputFile* file_;
   MessageHandler* message_handler_;

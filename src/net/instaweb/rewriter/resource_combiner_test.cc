@@ -27,6 +27,7 @@
 
 #include <cstdio>
 
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -55,6 +56,8 @@ namespace net_instaweb {
 class HtmlElement;
 class MessageHandler;
 class OutputResource;
+class RequestHeaders;
+class ResponseHeaders;
 class UrlSegmentEncoder;
 
 namespace {
@@ -118,14 +121,17 @@ class TestCombineFilter : public RewriteFilter {
   virtual void EndElementImpl(HtmlElement* element) {}
   virtual const char* Name() const { return "TestCombine"; }
   virtual const char* id() const { return kTestCombinerId; }
+
+  // NOTE: We do not test fetching here. Actual combine filters use a
+  // different mechanism to perform Fetches. Tested in other tests.
   virtual bool Fetch(const OutputResourcePtr& resource,
                      Writer* writer,
                      const RequestHeaders& request_header,
                      ResponseHeaders* response_headers,
                      MessageHandler* message_handler,
                      UrlAsyncFetcher::Callback* callback) {
-    return combiner_.Fetch(resource, writer, request_header, response_headers,
-                           message_handler, callback);
+    LOG(FATAL) << "TestCombineFilter should not be performing fetch.";
+    return false;
   }
   TestCombineFilter::TestCombiner* combiner() { return &combiner_; }
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }

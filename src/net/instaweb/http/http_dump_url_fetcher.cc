@@ -19,7 +19,6 @@
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 
 #include <cstdio>
-#include <cstddef>                     // for size_t
 #include <set>
 #include <utility>                     // for pair
 #include "base/logging.h"
@@ -91,21 +90,6 @@ bool HttpDumpUrlFetcher::GetFilenameFromUrl(const StringPiece& root_dir,
     FilenameEncoder encoder;
     const GoogleString prefix = StrCat(root_dir, domain);
     encoder.Encode(prefix, path, filename);  // Writes encoded filename.
-  }
-  return ret;
-}
-
-bool HttpDumpUrlFetcher::GetFilenamePrefixFromUrl(const StringPiece& root_dir,
-                                                  const GoogleUrl& url,
-                                                  GoogleString* filename,
-                                                  MessageHandler* handler) {
-  handler->Check(EndsInSlash(url.Spec()),
-                 "Prefix url must end in '/', was %s", url.spec_c_str());
-  bool ret = GetFilenameFromUrl(root_dir, url, filename, handler);
-  if (ret) {
-    size_t last_slash = filename->find_last_of('/');
-    CHECK(last_slash != GoogleString::npos);
-    filename->resize(last_slash + 1);
   }
   return ret;
 }

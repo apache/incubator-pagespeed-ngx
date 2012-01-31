@@ -47,6 +47,11 @@
 
 namespace net_instaweb {
 
+class HtmlCdataNode;
+class HtmlCommentNode;
+class HtmlDirectiveNode;
+class HtmlElement;
+class HtmlIEDirectiveNode;
 class StatisticsLog;
 
 class LoggingFilter : public EmptyHtmlFilter {
@@ -92,21 +97,6 @@ class LoggingFilter : public EmptyHtmlFilter {
 
   // Report all statistics
   void LogStatistics(StatisticsLog *statistics_log) const;
-
-  // Return true if all statistics in this are equal to those in that.
-  bool Equals(const LoggingFilter &that) const;
-
-  // Report all statistics in this and that which differ
-  void LogDifferences(
-      const LoggingFilter &that, StatisticsLog *statistics_log) const;
-
-  // Add all statistics in that into this.
-  void Aggregate(const LoggingFilter &that);
-
-  // Aggregate differences between two sets of statistics into this.
-  //     this.get(stat) += first.get(stat) - second.get(stat)
-  void AggregateDifferences(const LoggingFilter &first,
-                            const LoggingFilter &second);
 
   void Reset();
 

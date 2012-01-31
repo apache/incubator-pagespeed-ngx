@@ -605,43 +605,6 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   url_trim_filter_.reset(new UrlLeftTrimFilter(this, statistics()));
 }
 
-// If flag starts with key (a string ending in "="), call m on the remainder of
-// flag (the piece after the "=").  Always returns true if the key matched; m is
-// free to complain about invalid input using message_handler().
-bool RewriteDriver::ParseKeyString(const StringPiece& key, SetStringMethod m,
-                                   const GoogleString& flag) {
-  if (flag.rfind(key.data(), 0, key.size()) == 0) {
-    StringPiece sp(flag);
-    (this->*m)(flag.substr(key.size()));
-    return true;
-  } else {
-    return false;
-  }
-}
-
-// If flag starts with key (a string ending in "="), convert rest of
-// flag after the "=" to Int64, and call m on it.  Always returns true
-// if the key matched; m is free to complain about invalid input using
-// message_handler() (failure to parse a number does so and never
-// calls m).
-bool RewriteDriver::ParseKeyInt64(const StringPiece& key, SetInt64Method m,
-                                  const GoogleString& flag) {
-  if (flag.rfind(key.data(), 0, key.size()) == 0) {
-    GoogleString str_value = flag.substr(key.size());
-    int64 value;
-    if (StringToInt64(str_value, &value)) {
-      (this->*m)(value);
-    } else {
-      message_handler()->Message(
-          kError, "'%s': ignoring value (should have been int64) after %s",
-          flag.c_str(), key.as_string().c_str());
-    }
-    return true;
-  } else {
-    return false;
-  }
-}
-
 bool RewriteDriver::UserAgentSupportsImageInlining() const {
   if (user_agent_supports_image_inlining_ == kNotSet) {
     user_agent_supports_image_inlining_ =
@@ -1904,18 +1867,6 @@ void RewriteDriver::SetBaseUrlForFetch(const StringPiece& url) {
     SetDecodedUrlFromBase();
     base_was_set_ = false;
   }
-}
-
-bool RewriteDriver::FindResource(const StringPiece& url,
-                                 ResourcePtr* resource) const {
-  bool ret = false;
-  GoogleString url_str(url.data(), url.size());
-  ResourceMap::const_iterator iter = resource_map_.find(url_str);
-  if (iter != resource_map_.end()) {
-    resource->reset(iter->second);
-    ret = true;
-  }
-  return ret;
 }
 
 void RewriteDriver::RememberResource(const StringPiece& url,

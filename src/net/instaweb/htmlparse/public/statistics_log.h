@@ -28,8 +28,6 @@ class StatisticsLog {
   StatisticsLog() { }
   virtual ~StatisticsLog();
   virtual void LogStat(const char *statName, int value) = 0;
-  virtual void LogDifference(const char *statName,
-                             int value1, int value2) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(StatisticsLog);

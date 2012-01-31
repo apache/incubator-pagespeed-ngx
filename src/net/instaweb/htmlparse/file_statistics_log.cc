@@ -44,15 +44,4 @@ void FileStatisticsLog::LogStat(const char *stat_name, int value) {
   file_->Write(buf, message_handler_);
 }
 
-void FileStatisticsLog::LogDifference(const char *stat_name,
-                                      int value1, int value2) {
-  // Buffer whole log entry before writing, in case there's interleaving going
-  // on (ie avoid multiple writes for single log entry)
-  GoogleString buf(stat_name);
-  StrAppend(&buf, ":\t", IntegerToString(value1),
-            " vs\t", IntegerToString(value2),
-            "\tdiffer by\t", IntegerToString(value1 - value2), "\n");
-  file_->Write(buf, message_handler_);
-}
-
 }  // namespace net_instaweb

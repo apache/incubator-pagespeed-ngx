@@ -134,15 +134,6 @@ class RewriteDriver : public HtmlParse {
   // resources. This will replace any previous resource managers.
   void SetResourceManager(ResourceManager* resource_manager);
 
-  // NULL is returned for resources that:
-  //  - were not requested during Scan
-  //  - were requested, but have not yet finished being retrieved
-  //  - were requested, but failed
-  //
-  // TODO(jmarantz): note that the returned resource does not necessarily
-  // have its content loaded. This needs some more design work.
-  bool FindResource(const StringPiece& url, ResourcePtr* resource) const;
-
   // Determines whether images should be rewritten.
   // TODO(jmarantz): Another approach to allow rewriting to be friendly
   // to image-search link rel=canonical, described in:
@@ -753,11 +744,6 @@ class RewriteDriver : public HtmlParse {
   AbstractMutex* rewrite_mutex() { return scheduler_->mutex(); }
 
   friend class ScanFilter;
-
-  bool ParseKeyString(const StringPiece& key, SetStringMethod m,
-                      const GoogleString& flag);
-  bool ParseKeyInt64(const StringPiece& key, SetInt64Method m,
-                     const GoogleString& flag);
 
   // Adds a CommonFilter into the HtmlParse filter-list, and into the
   // Scan filter-list for initiating async resource fetches.   See

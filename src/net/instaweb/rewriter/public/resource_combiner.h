@@ -23,7 +23,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_COMBINER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_COMBINER_H_
 
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
@@ -36,8 +35,6 @@ namespace net_instaweb {
 class ContentType;
 class MessageHandler;
 class OutputResource;
-class RequestHeaders;
-class ResponseHeaders;
 class RewriteDriver;
 class RewriteFilter;
 class Writer;
@@ -74,13 +71,6 @@ class ResourceCombiner {
                    RewriteFilter* filter);
 
   virtual ~ResourceCombiner();
-
-  bool Fetch(const OutputResourcePtr& resource,
-             Writer* writer,
-             const RequestHeaders& request_header,
-             ResponseHeaders* response_headers,
-             MessageHandler* message_handler,
-             UrlAsyncFetcher::Callback* callback);
 
   // Resets the current combiner to an empty state, incorporating the base URL.
   // Make sure this gets called before documents --- on a ::Flush() is enough.
