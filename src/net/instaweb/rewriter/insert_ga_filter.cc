@@ -33,11 +33,28 @@
 
 namespace {
 
+// Name for statistics variable.
 const char kSnippetsInserted[] = "inserted_ga_snippets";
 
 }  // namespace
 
 namespace net_instaweb {
+
+// Google Analytics async snippet.
+// TODO(nforman): Replace the http(s) logic with our knowledge of
+// document.location.protocol.
+extern const char kGASnippet[] =
+    "var _gaq = _gaq || [];"
+    "_gaq.push(['_setAccount', '%s']);"
+    "_gaq.push(['_trackPageview']);"
+    "(function() {"
+    "var ga = document.createElement('script'); ga.type = 'text/javascript';"
+    "ga.async = true;"
+    "ga.src = ('https:' == document.location.protocol ?"
+    "'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';"
+    "var s = document.getElementsByTagName('script')[0];"
+    "s.parentNode.insertBefore(ga, s);"
+    "})();";
 
 InsertGAFilter::InsertGAFilter(RewriteDriver* rewrite_driver)
     : CommonFilter(rewrite_driver),
@@ -47,9 +64,7 @@ InsertGAFilter::InsertGAFilter(RewriteDriver* rewrite_driver)
       found_snippet_(false) {
   Statistics* stats = driver_->statistics();
   inserted_snippets_count_ = stats->GetVariable(kSnippetsInserted);
-  if (ga_id_ == "") {
-    DCHECK(false) << "Enabled ga insertion, but did not provide ga id.";
-  }
+  DCHECK(!ga_id_.empty()) << "Enabled ga insertion, but did not provide ga id.";
 }
 
 void InsertGAFilter::Initialize(Statistics* stats) {
@@ -79,11 +94,12 @@ void InsertGAFilter::StartElementImpl(HtmlElement* element) {
 // This may not be exact, but should be a pretty good guess.
 // TODO(nforman): Find out if there is a canonical way of determining
 // if a script is a GA snippet.
-bool InsertGAFilter::FoundSnippetInBuffer() {
-  return (buffer_.find(ga_id_) != buffer_.npos &&
-          buffer_.find("setAccount") != buffer_.npos &&
-          (buffer_.find(".google-analytics.com/ga.js") != buffer_.npos ||
-           buffer_.find(".google-analytics.com/urchin.js") != buffer_.npos));
+bool InsertGAFilter::FoundSnippetInBuffer() const {
+  return
+      (buffer_.find(ga_id_) != GoogleString::npos &&
+       buffer_.find("setAccount") != GoogleString::npos &&
+       (buffer_.find(".google-analytics.com/ga.js") != GoogleString::npos ||
+        buffer_.find(".google-analytics.com/urchin.js") != GoogleString::npos));
 }
 
 void InsertGAFilter::EndElementImpl(HtmlElement* element) {

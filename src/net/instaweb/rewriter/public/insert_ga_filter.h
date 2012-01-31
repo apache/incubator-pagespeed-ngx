@@ -33,20 +33,7 @@ class RewriteDriver;
 class Statistics;
 class Variable;
 
-// TODO(nforman): Replace this with our knowledge of
-// document.location.protocol.
-const char kGASnippet[] =
-    "var _gaq = _gaq || [];"
-    "_gaq.push(['_setAccount', '%s']);"
-    "_gaq.push(['_trackPageview']);"
-    "(function() {"
-    "var ga = document.createElement('script'); ga.type = 'text/javascript';"
-    "ga.async = true;"
-    "ga.src = ('https:' == document.location.protocol ?"
-    "'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';"
-    "var s = document.getElementsByTagName('script')[0];"
-    "s.parentNode.insertBefore(ga, s);"
-    "})();";
+extern const char kGASnippet[];
 
 // This class is the implementation of insert_ga_snippet filter, which adds
 // a Google Analytics snippet into the head of html pages.
@@ -55,6 +42,7 @@ class InsertGAFilter : public CommonFilter {
   explicit InsertGAFilter(RewriteDriver* rewrite_driver);
   virtual ~InsertGAFilter();
 
+  // Set up statistics for this filter.
   static void Initialize(Statistics* stats);
 
   virtual void StartDocumentImpl();
@@ -67,13 +55,22 @@ class InsertGAFilter : public CommonFilter {
   virtual const char* Name() const { return "InsertGASnippet"; }
 
  private:
-  bool FoundSnippetInBuffer();
+  // Indicates whether or not buffer_ contains a GA snippet with the
+  // same id as ga_id_.
+  bool FoundSnippetInBuffer() const;
   // Stats on how many tags we moved.
   Variable* inserted_snippets_count_;
+  // Script element we're currently in, so we can check it to see if
+  // it has the GA snippet already.
   HtmlElement* script_element_;
+  // Element in which we added the GA snippet.
   HtmlElement* added_snippet_element_;
+  // GA ID for this site.
   GoogleString ga_id_;
+  // Buffer in which we collect the contents of any script element we're
+  // looking for the GA snippet in.
   GoogleString buffer_;
+  // Indicates whether or not we've already found a GA snippet.
   bool found_snippet_;
   DISALLOW_COPY_AND_ASSIGN(InsertGAFilter);
 };

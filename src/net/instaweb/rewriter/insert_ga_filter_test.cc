@@ -31,7 +31,7 @@ namespace net_instaweb {
 
 namespace {
 
-static const char kGaId[] = "UA-21111111-1";
+const char kGaId[] = "UA-21111111-1";
 
 // Test fixture for InsertGAFilter unit tests.
 class InsertGAFilterTest : public ResourceManagerTestBase {
@@ -44,32 +44,32 @@ class InsertGAFilterTest : public ResourceManagerTestBase {
   }
 };
 
-static const char html_input[] =
+const char kHtmlInput[] =
     "<head>\n"
     "<title>Something</title>\n"
     "</head>"
     "<body> Hello World!</body>";
 
-static const char html_output_format[] =
+const char kHtmlOutputFormat[] =
     "<head>\n<title>Something</title>\n"
     "<script type=\"text/javascript\">%s</script>"
     "</head><body> Hello World!</body>";
 
 TEST_F(InsertGAFilterTest, simple_insert) {
-  GoogleString format_output = StringPrintf(html_output_format, kGASnippet);
+  GoogleString format_output = StringPrintf(kHtmlOutputFormat, kGASnippet);
   GoogleString output = StringPrintf(format_output.c_str(), kGaId);
-  ValidateExpected("simple_addition", html_input, output);
+  ValidateExpected("simple_addition", kHtmlInput, output);
   ValidateNoChanges("already_there", output);
 }
 
-static const char html_outside_head[] =
+const char kHtmlOutsideHead[] =
     "<head>\n<title>Something</title>\n"
     "</head>\n"
     "<script type=\"text/javascript\">%s</script>"
     "<body> Hello World!</body>";
 
 TEST_F(InsertGAFilterTest, no_double) {
-  GoogleString format_html = StringPrintf(html_outside_head, kGASnippet);
+  GoogleString format_html = StringPrintf(kHtmlOutsideHead, kGASnippet);
   ValidateNoChanges("outside_head", StringPrintf(format_html.c_str(), kGaId));
 }
 

@@ -33,6 +33,7 @@
 
 namespace {
 
+// Statistics variable for number of tags converted to headers.
 const char kConvertedMetaTags[] = "converted_meta_tags";
 
 }  // namespace
@@ -58,61 +59,56 @@ void MetaTagFilter::EndElementImpl(HtmlElement* element) {
   // try to convert any tags into headers (which were already finalized).
   // Also don't add meta tags to headers if they're inside a noscript tag.
   ResponseHeaders* headers = driver_->response_headers_ptr();
-  if (headers != NULL && noscript_element() == NULL) {
-    // Figure out if this is a meta tag.  If it is, move to headers.
-    if (element->keyword() == HtmlName::kMeta) {
-      // We want meta tags with http header equivalents.
-      HtmlElement::Attribute* equiv = element->FindAttribute(
-          HtmlName::kHttpEquiv);
-      HtmlElement::Attribute* value = element->FindAttribute(
-          HtmlName::kContent);
+  if (headers == NULL || noscript_element() != NULL ||
+      element->keyword() != HtmlName::kMeta) {
+    return;
+  }
 
-      // HTTP-EQUIV case.
-      if (equiv != NULL && value != NULL) {
-        StringPiece attribute = equiv->value();
-        StringPiece content = value->value();
-        // It doesn't make sense to have nothing in HttpEquiv, but that means
-        // it is in fact lurking out there.
-        TrimWhitespace(&attribute);
+  // We want meta tags with http header equivalents.
+  HtmlElement::Attribute* equiv = element->FindAttribute(
+      HtmlName::kHttpEquiv);
+  HtmlElement::Attribute* value = element->FindAttribute(
+      HtmlName::kContent);
 
-        if (StringCaseEqual(attribute, HttpAttributes::kContentType)) {
-          if (!content.empty()) {
-            // Check to see if we have this value already.  If we do,
-            // there's no need to add it in again.
-            ConstStringStarVector values;
-            headers->Lookup(attribute, &values);
-            for (int i = 0, n = values.size(); i < n; ++i) {
-              StringPiece val(*values[i]);
-              if (StringCaseEqual(val, content)) {
-                return;
-              }
-            }
-            GoogleString mime_type;
-            GoogleString charset;
-            if (ParseContentType(content, &mime_type, &charset)) {
-              if (!mime_type.empty()) {
-                const ContentType* type = MimeTypeToContentType(mime_type);
-                if (type == NULL || !type->IsHtmlLike()) {
-                  return;
-                }
-              }
-            }
-            if (headers->MergeContentType(content)) {
-              converted_meta_tag_count_->Add(1);
-            }
-          }
-        }
+  // HTTP-EQUIV case.
+  if (equiv != NULL && value != NULL) {
+    StringPiece attribute = equiv->value();
+    StringPiece content = value->value();
+    // It doesn't make sense to have nothing in HttpEquiv, but that means
+    // it is in fact lurking out there.
+    TrimWhitespace(&attribute);
+
+    if (!StringCaseEqual(attribute, HttpAttributes::kContentType) ||
+        content.empty()) {
+      return;
+    }
+    // Check to see if we have this value already.  If we do,
+    // there's no need to add it in again.
+    if (headers->HasValue(attribute, content)) {
+      return;
+    }
+
+    GoogleString mime_type, unused_charset;
+    if (ParseContentType(content, &mime_type, &unused_charset) &&
+        !mime_type.empty()) {
+      const ContentType* type = MimeTypeToContentType(mime_type);
+      if (type == NULL || !type->IsHtmlLike()) {
         return;
-      } else {
-        // Also handle the <meta charset=''> case.
-        HtmlElement::Attribute* charset = element->FindAttribute(
-            HtmlName::kCharset);
-        if (charset != NULL) {
-          GoogleString type = StrCat("; charset=", charset->value());
-          if (headers->MergeContentType(type)) {
-            converted_meta_tag_count_->Add(1);
-          }
-        }
+      }
+      if (headers->MergeContentType(content)) {
+        converted_meta_tag_count_->Add(1);
+        return;
+      }
+    }
+    return;
+  } else {
+    // Also handle the <meta charset=''> case.
+    HtmlElement::Attribute* charset = element->FindAttribute(
+        HtmlName::kCharset);
+    if (charset != NULL) {
+      GoogleString type = StrCat("; charset=", charset->value());
+      if (headers->MergeContentType(type)) {
+        converted_meta_tag_count_->Add(1);
       }
     }
   }
