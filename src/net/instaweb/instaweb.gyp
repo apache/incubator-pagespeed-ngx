@@ -89,11 +89,11 @@
       'target_name': 'instaweb_js_defer_opt_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
-        'instaweb_js_subdir': 'net/instaweb/genfiles',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
         'var_name': 'js_defer_opt',
       },
       'sources': [
-        'genfiles/js_defer_opt.js',
+        'genfiles/rewriter/js_defer_opt.js',
       ],
       'includes': [
         'data2c.gypi',
