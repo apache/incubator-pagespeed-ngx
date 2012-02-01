@@ -115,10 +115,8 @@ DEFINE_int32(psa_idle_flush_time_ms,
 DEFINE_string(pagespeed_version, "", "Version number to put into X-Page-Speed "
               "response header.");
 DEFINE_bool(enable_blink, false, "If true then blink is enabled");
-
-// TODO(pulkitg): Add following flags in apache/mod_instaweb.cc
-DEFINE_int32(max_delayed_images_index,
-             net_instaweb::RewriteOptions::kDefaultMaxDelayedImagesIndex,
+DEFINE_int32(max_inlined_preview_images_index,
+             net_instaweb::RewriteOptions::kDefaultMaxInlinedPreviewImagesIndex,
              "Number of first N images for which low res image is generated. "
              "Negative values will bypass image index check.");
 
@@ -237,8 +235,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_blink")) {
     options->set_enable_blink(FLAGS_enable_blink);
   }
-  if (WasExplicitlySet("max_delayed_images_index")) {
-    options->set_max_delayed_images_index(FLAGS_max_delayed_images_index);
+  if (WasExplicitlySet("max_inlined_preview_images_index")) {
+    options->set_max_inlined_preview_images_index(
+        FLAGS_max_inlined_preview_images_index);
   }
   if (WasExplicitlySet("min_image_size_low_resolution_bytes")) {
     options->set_min_image_size_low_resolution_bytes(

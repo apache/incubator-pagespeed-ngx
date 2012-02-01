@@ -32,6 +32,7 @@ namespace net_instaweb {
 
 extern const char* JS_js_defer;  // Non-optimized output.
 
+extern const char* JS_js_defer_opt;
 
 GoogleString* JsDeferDisabledFilter::opt_defer_js_ = NULL;
 GoogleString* JsDeferDisabledFilter::debug_defer_js_ = NULL;
@@ -59,24 +60,14 @@ void JsDeferDisabledFilter::Initialize(Statistics* statistics) {
       "});\n";
   if (debug_defer_js_ == NULL) {
     debug_defer_js_ = new GoogleString(StrCat(JS_js_defer, kSuffix));
-    JavascriptRewriteConfig config(NULL);
-    NullMessageHandler handler;
-    JavascriptCodeBlock code_block(*debug_defer_js_, &config, "init", &handler);
-    bool ok = code_block.ProfitableToRewrite();
-    DCHECK(ok);
-    if (ok) {
-      opt_defer_js_ = new GoogleString;
-      code_block.Rewritten().CopyToString(opt_defer_js_);
-    } else {
-      opt_defer_js_ = debug_defer_js_;
-    }
+  }
+  if (opt_defer_js_ == NULL) {
+    opt_defer_js_ = new GoogleString(StrCat(JS_js_defer_opt, kSuffix));
   }
 }
 
 void JsDeferDisabledFilter::Terminate() {
-  if (opt_defer_js_ != debug_defer_js_) {
-    delete opt_defer_js_;
-  }
+  delete opt_defer_js_;
   delete debug_defer_js_;
   opt_defer_js_ = NULL;
   debug_defer_js_ = NULL;

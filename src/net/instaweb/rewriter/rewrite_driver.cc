@@ -829,10 +829,6 @@ void RewriteDriver::AddPostRenderFilters() {
         rewrite_options->Enabled(RewriteOptions::kDebug));
     AddOwnedPostRenderFilter(js_defer_filter);
   }
-  // TODO(nikhilmadan): Should we disable this for bots?
-  if (rewrite_options->Enabled(RewriteOptions::kLazyloadImages)) {
-    AddOwnedPostRenderFilter(new LazyloadImagesFilter(this));
-  }
   if (rewrite_options->Enabled(RewriteOptions::kRemoveQuotes)) {
     // Remove extraneous quotes from html attributes.  Does this save
     // enough bytes to be worth it after compression?  If we do it
@@ -854,6 +850,11 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kDelayImages)) {
     // kInsertImageDimensions should be enabled to avoid drastic reflows.
     AddOwnedPostRenderFilter(new DelayImagesFilter(this));
+  }
+  // TODO(nikhilmadan): Should we disable this for bots?
+  // LazyLoadImagesFilter should be applied after DelayImagesFilter.
+  if (rewrite_options->Enabled(RewriteOptions::kLazyloadImages)) {
+    AddOwnedPostRenderFilter(new LazyloadImagesFilter(this));
   }
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
   // doesn't, it probably should.  If it does, be sure to add it to the

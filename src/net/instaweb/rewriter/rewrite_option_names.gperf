@@ -60,7 +60,7 @@ struct OptionName {
 "ServeBlinkNonCritical",                RewriteOptions::kServeBlinkNonCritical
 "DefaultCacheHtml",                     RewriteOptions::kDefaultCacheHtml
 "ModifyCachingHeaders",                 RewriteOptions::kModifyCachingHeaders
-"MaxDelayedImagesIndex",                RewriteOptions::kMaxDelayedImagesIndex
+"MaxInlinedPreviewImagesIndex",         RewriteOptions::kMaxInlinedPreviewImagesIndex
 "MinImageSizeLowResolutionBytes",       RewriteOptions::kMinImageSizeLowResolutionBytes
 "CriticalImagesCacheExpirationTimeMs",  RewriteOptions::kCriticalImagesCacheExpirationTimeMs
 "BeaconUrl",                            RewriteOptions::kBeaconUrl

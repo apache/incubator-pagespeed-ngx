@@ -47,6 +47,7 @@
       'target_name': 'instaweb_delay_images_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/rewriter',
         'var_name': 'delay_images',
       },
       'sources': [
@@ -60,6 +61,7 @@
       'target_name': 'instaweb_delay_images_inline_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/rewriter',
         'var_name': 'delay_images_inline',
       },
       'sources': [
@@ -73,6 +75,7 @@
       'target_name': 'instaweb_js_defer_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/rewriter',
         'var_name': 'js_defer',
       },
       'sources': [
@@ -83,9 +86,24 @@
       ]
     },
     {
+      'target_name': 'instaweb_js_defer_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles',
+        'var_name': 'js_defer_opt',
+      },
+      'sources': [
+        'genfiles/js_defer_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_lazyload_images_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/rewriter',
         'var_name': 'lazyload_images',
       },
       'sources': [
@@ -602,6 +620,7 @@
         'instaweb_delay_images_data2c',
         'instaweb_delay_images_inline_data2c',
         'instaweb_js_defer_data2c',
+        'instaweb_js_defer_opt_data2c',
         'instaweb_lazyload_images_data2c',
         'instaweb_panel_config_pb',
         'instaweb_rewriter_base',

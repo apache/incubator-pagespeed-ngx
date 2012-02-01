@@ -37,7 +37,6 @@ struct FilterMap {
 "convert_png_to_jpeg",               RewriteOptions::kConvertPngToJpeg
 "debug",                             RewriteOptions::kDebug
 "defer_javascript",                  RewriteOptions::kDeferJavascript
-"delay_images",                      RewriteOptions::kDelayImages
 "disable_javascript",                RewriteOptions::kDisableJavascript
 "div_structure",                     RewriteOptions::kDivStructure
 "elide_attributes",                  RewriteOptions::kElideAttributes
@@ -50,6 +49,7 @@ struct FilterMap {
 "inline_images",                     RewriteOptions::kInlineImages
 "inline_import_to_link",             RewriteOptions::kInlineImportToLink
 "inline_javascript",                 RewriteOptions::kInlineJavascript
+"inline_preview_images",             RewriteOptions::kDelayImages
 "insert_ga",                         RewriteOptions::kInsertGA
 "insert_img_dimensions",             RewriteOptions::kInsertImageDimensions
 "insert_image_dimensions",           RewriteOptions::kInsertImageDimensions

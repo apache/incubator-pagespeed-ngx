@@ -59,7 +59,7 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
   // Match rewritten html content and return its byte count.
   int MatchOutputAndCountBytes(const GoogleString& html_input,
                                const GoogleString& expected) {
-    Parse("delay_images", html_input);
+    Parse("inline_preview_images", html_input);
     GoogleString full_html = doctype_string_ + AddHtmlBody(expected);
     EXPECT_TRUE(Wildcard(full_html).Match(output_buffer_));
     int output_size = output_buffer_.size();

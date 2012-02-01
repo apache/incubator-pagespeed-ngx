@@ -151,6 +151,10 @@ const char* kModPagespeedTestProxy = "ModPagespeedTestProxy";
 const char* kModPagespeedUrlPrefix = "ModPagespeedUrlPrefix";
 const char* kModPagespeedRespectVary = "ModPagespeedRespectVary";
 const char* kModPagespeedGAID = "ModPagespeedAnalyticsID";
+const char* kModPagespeedMaxInlinedPreviewImagesIndex =
+    "ModPagespeedMaxInlinedPreviewImagesIndex";
+const char* kModPagespeedMinImageSizeLowResolutionBytes =
+    "ModPagespeedMinImageSizeLowResolutionBytes";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -1106,6 +1110,14 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
         cmd, &ApacheConfig::set_test_proxy, arg);
   } else if (StringCaseEqual(directive, kModPagespeedUrlPrefix)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
+  } else if (StringCaseEqual(directive,
+                             kModPagespeedMaxInlinedPreviewImagesIndex)) {
+    ret = ParseIntOption(options,
+        cmd, &RewriteOptions::set_max_inlined_preview_images_index, arg);
+  } else if (StringCaseEqual(directive,
+                             kModPagespeedMinImageSizeLowResolutionBytes)) {
+    ret = ParseInt64Option(options,
+        cmd, &RewriteOptions::set_min_image_size_low_resolution_bytes, arg);
   } else {
     return "Unknown directive.";
   }
@@ -1299,6 +1311,11 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedTestProxy,
         "Act as a proxy without maintaining a slurp dump."),
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "Set the url prefix"),
+  APACHE_CONFIG_OPTION(kModPagespeedMaxInlinedPreviewImagesIndex,
+        "Number of first N images for which low resolution image is generated. "
+        "Negative values result in generation for all images."),
+  APACHE_CONFIG_OPTION(kModPagespeedMinImageSizeLowResolutionBytes,
+          "Minimum image size above which low resolution image is generated."),
 
   // All two parameter options that are allowed in <Directory> blocks.
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,
