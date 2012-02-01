@@ -201,6 +201,19 @@
       ],
     },
     {
+      'target_name': 'instaweb_propcache_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/util',
+      },
+      'sources': [
+        'util/property_cache.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/property_cache.pb.cc',
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_http_gperf',
       'variables': {
         'instaweb_gperf_subdir': 'net/instaweb/http',
@@ -244,6 +257,7 @@
         'instaweb_core.gyp:instaweb_util_core',
         'instaweb_http',
         'instaweb_http_gperf',
+        'instaweb_propcache_pb',
         'instaweb_timing_pb',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
@@ -304,6 +318,7 @@
         'util/null_shared_mem.cc',
         'util/null_statistics.cc',
         'util/null_writer.cc',
+        'util/property_cache.cc',
         'util/queued_alarm.cc',
         'util/queued_worker.cc',
         'util/queued_worker_pool.cc',

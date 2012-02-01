@@ -89,6 +89,7 @@ class MockTimer : public Timer {
   // Sets the time as in microseconds, calling any outstanding alarms
   // with wakeup times up to and including time_us.
   void SetTimeUs(int64 new_time_us);
+  void SetTimeMs(int64 new_time_ms) { SetTimeUs(1000 * new_time_ms); }
 
   // Advance forward time by the specified number of microseconds.
   void AdvanceUs(int64 delta_us) { SetTimeUs(time_us_ + delta_us); }

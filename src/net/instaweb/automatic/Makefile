@@ -56,6 +56,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_js_defer_opt_data2c.a \
   net/instaweb/libinstaweb_lazyload_images_data2c.a \
   net/instaweb/libinstaweb_panel_config_pb.a \
+  net/instaweb/libinstaweb_propcache_pb.a \
   net/instaweb/libinstaweb_rewriter.a \
   net/instaweb/libinstaweb_rewriter_base.a \
   net/instaweb/libinstaweb_rewriter_css.a \

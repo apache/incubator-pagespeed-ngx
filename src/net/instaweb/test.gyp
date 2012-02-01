@@ -168,6 +168,7 @@
         'util/mock_scheduler_test.cc',
         'util/mock_time_cache_test.cc',
         'util/mock_timer_test.cc',
+        'util/property_cache_test.cc',
         'util/pthread_condvar_test.cc',
         'util/pthread_shared_mem_test.cc',
         'util/pthread_thread_system_test.cc',
