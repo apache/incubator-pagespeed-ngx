@@ -87,12 +87,12 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
     const char* src = attr->value();
     DCHECK(src != NULL);
 
-    // Initiate() transfers ownership of ctx to RewriteDriver, or deletes
+    // StartInlining() transfers ownership of ctx to RewriteDriver, or deletes
     // it on failure.
     // TODO(morlovich): Consider async/defer here; it may not be a good
     // idea to inline async scripts in particular.
     Context* ctx = new Context(this, element, attr);
-    ctx->Initiate();
+    ctx->StartInlining();
   }
   should_inline_ = false;
 }

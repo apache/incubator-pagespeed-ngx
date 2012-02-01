@@ -93,10 +93,10 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
       return;  // We obviously can't inline if the URL isn't there.
     }
 
-    // Initiate() transfers posession of ctx to RewriteDriver or deletes
+    // StartInlining() transfers posession of ctx to RewriteDriver or deletes
     // it on failure.
     Context* ctx = new Context(this, base_url(), element, attr);
-    ctx->Initiate();
+    ctx->StartInlining();
   }
 }
 

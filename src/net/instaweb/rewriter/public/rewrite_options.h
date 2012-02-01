@@ -645,7 +645,7 @@ class RewriteOptions {
     return signature_;
   }
 
-  GoogleString ToString() const;
+  virtual GoogleString ToString() const;
 
   // Name of the actual type of this instance as a poor man's RTTI.
   virtual const char* class_name() const;

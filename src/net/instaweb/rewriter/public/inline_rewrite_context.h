@@ -37,14 +37,17 @@ class OutputPartitions;
 // that inline resources.
 class InlineRewriteContext : public RewriteContext {
  public:
-  // Note that you should also call Initiate() to do the work.
+  // Note that you should also call StartInlining() to do the work.
   InlineRewriteContext(CommonFilter* filter, HtmlElement* element,
                        HtmlElement::Attribute* src);
   virtual ~InlineRewriteContext();
 
   // Starts the actual inlining process, and takes over memory management
   // of this object.
-  void Initiate();
+  // Returns true if the process is started, false if it cannot be started
+  // because the input resource cannot be created, in which case 'this' is
+  // deleted and accordingly no rewriting callbacks are invoked.
+  bool StartInlining();
 
  protected:
   // Subclasses of InlineRewriteContext must override these:

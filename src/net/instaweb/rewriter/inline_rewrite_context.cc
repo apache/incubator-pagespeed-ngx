@@ -45,15 +45,17 @@ InlineRewriteContext::InlineRewriteContext(CommonFilter* filter,
 InlineRewriteContext::~InlineRewriteContext() {
 }
 
-void InlineRewriteContext::Initiate() {
+bool InlineRewriteContext::StartInlining() {
   RewriteDriver* driver = filter_->driver();
   ResourcePtr input_resource(filter_->CreateInputResource(src_->value()));
   if (input_resource.get() != NULL) {
     ResourceSlotPtr slot(driver->GetSlot(input_resource, element_, src_));
     AddSlot(slot);
     driver->InitiateRewrite(this);
+    return true;
   } else {
     delete this;
+    return false;
   }
 }
 
