@@ -50,6 +50,7 @@ class Hasher;
 class MessageHandler;
 class NamedLock;
 class NamedLockManager;
+class PropertyCache;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteDriverFactory;
@@ -102,6 +103,7 @@ class ResourceManager {
   void set_relative_path(bool x) { relative_path_ = x; }
   void set_lock_manager(NamedLockManager* x) { lock_manager_ = x; }
   void set_http_cache(HTTPCache* x) { http_cache_ = x; }
+  void set_property_cache(PropertyCache* x) { property_cache_ = x; }
   void set_metadata_cache(CacheInterface* x) { metadata_cache_ = x; }
   void set_message_handler(MessageHandler* x) { message_handler_ = x; }
 
@@ -151,7 +153,8 @@ class ResourceManager {
   void set_scheduler(Scheduler* s) { scheduler_ = s; }
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
   Timer* timer() const { return http_cache_->timer(); }
-  HTTPCache* http_cache() { return http_cache_; }
+  HTTPCache* http_cache() const { return http_cache_; }
+  PropertyCache* property_cache() const { return property_cache_; }
   CriticalImagesFinder* critical_images_finder() const {
     return critical_images_finder_;
   }
@@ -392,6 +395,7 @@ class ResourceManager {
   Statistics* statistics_;
 
   HTTPCache* http_cache_;
+  PropertyCache* property_cache_;
   CacheInterface* metadata_cache_;
 
   bool relative_path_;

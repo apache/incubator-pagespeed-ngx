@@ -59,6 +59,7 @@ class HtmlEvent;
 class HtmlFilter;
 class HtmlWriterFilter;
 class MessageHandler;
+class PropertyPage;
 class ResourceContext;
 class ResourceNamer;
 class ResponseHeaders;
@@ -108,6 +109,18 @@ class RewriteDriver : public HtmlParse {
   // Headers not in this list will be ignored so there is no need to
   // copy them over.
   static const char* kPassThroughRequestAttributes[3];
+
+  // This string identifies, for the PropertyCache, a group of properties
+  // that are computed from the DOM, and thus can, if desired, be rewritten
+  // on every HTML request.
+  //
+  // TODO(jmarantz): The "DOM" cohort is here as a placeholder.  There's no
+  // existing filter that needs this yet, although a pending test in
+  // proxy_interface_test.cc that will need it.  If, by the time the
+  // PropertyCache comes into use in a product, the DOM cohort is not in
+  // use, we should remove it since its presence will cause an extra
+  // cache-lookup per HTML request.
+  static const char kDomCohort[];
 
   RewriteDriver(MessageHandler* message_handler,
                 FileSystem* file_system,
@@ -676,6 +689,9 @@ class RewriteDriver : public HtmlParse {
                            const GoogleUrl& output_base,
                            bool* proxy_mode) const;
 
+  PropertyPage* property_page() const { return property_page_.get(); }
+  void set_property_page(PropertyPage* page);  // Takes ownership of page.
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -782,6 +798,11 @@ class RewriteDriver : public HtmlParse {
                                       RewriteFilter** filter_out,
                                       GoogleString* url_base,
                                       StringVector* urls) const;
+
+  // When HTML parsing is complete, we have learned all we can about
+  // the DOM, so immediately write anything required into that Cohort
+  // into the property cache.
+  void WriteDomCohortIntoPropertyCache();
 
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
@@ -958,6 +979,9 @@ class RewriteDriver : public HtmlParse {
   QueuedWorkerPool::Sequence* low_priority_rewrite_worker_;
 
   Writer* writer_;
+
+  // Stores any cached properties associated with the current URL.
+  scoped_ptr<PropertyPage> property_page_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

@@ -78,6 +78,7 @@ void ApacheResourceManager::ChildInit() {
     initialized_ = true;
     ApacheCache* cache = apache_factory_->GetCache(config());
     set_http_cache(cache->http_cache());
+    set_property_cache(cache->property_cache());
     set_metadata_cache(cache->cache());
     set_lock_manager(cache->lock_manager());
     UrlPollableAsyncFetcher* fetcher = apache_factory_->GetFetcher(config());

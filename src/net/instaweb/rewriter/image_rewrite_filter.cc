@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 
+#include <limits.h>
+
 #include "base/logging.h"               // for CHECK, etc
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -59,6 +61,8 @@ const char kImageRewriteSavedBytes[] = "image_rewrite_saved_bytes";
 const char kImageInline[] = "image_inline";
 const char kImageWebpRewrites[] = "image_webp_rewrites";
 
+const int kNotCriticalIndex = INT_MAX;
+
 // This is the resized placeholder image width for mobile.
 const int kDelayImageWidthForMobile = 320;
 }  // namespace
@@ -76,12 +80,13 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   Context(int64 css_image_inline_max_bytes,
           ImageRewriteFilter* filter, RewriteDriver* driver,
           RewriteContext* parent, ResourceContext* resource_context,
-          bool is_css)
+          bool is_css, int html_index)
       : SingleRewriteContext(driver, parent, resource_context),
         css_image_inline_max_bytes_(css_image_inline_max_bytes),
         filter_(filter),
         driver_(driver),
-        is_css_(is_css) {}
+        is_css_(is_css),
+        html_index_(html_index) {}
   virtual ~Context() {}
 
   virtual void Render();
@@ -96,6 +101,7 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   ImageRewriteFilter* filter_;
   RewriteDriver* driver_;
   bool is_css_;
+  const int html_index_;
   DISALLOW_COPY_AND_ASSIGN(Context);
 };
 
@@ -130,7 +136,7 @@ void ImageRewriteFilter::Context::Render() {
           resource_slot);
       rewrote_url = filter_->FinishRewriteImageUrl(
           result, resource_context(),
-          html_slot->element(), html_slot->attribute());
+          html_slot->element(), html_slot->attribute(), html_index_);
     }
     // Use standard rendering in case the rewrite is nested and not inside CSS.
   }
@@ -151,7 +157,8 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
       rewrite_count_(NULL),
       inline_count_(NULL),
       rewrite_saved_bytes_(NULL),
-      webp_count_(NULL) {
+      webp_count_(NULL),
+      image_counter_(0) {
   Statistics* stats = resource_manager_->statistics();
   Variable* ongoing_rewrites = NULL;
   if (stats != NULL) {
@@ -179,6 +186,10 @@ void ImageRewriteFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kImageWebpRewrites);
   statistics->AddTimedVariable(kImageRewritesDroppedDueToLoad,
                                ResourceManager::kStatisticsGroup);
+}
+
+void ImageRewriteFilter::StartDocumentImpl() {
+  image_counter_ = 0;
 }
 
 RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
@@ -312,13 +323,9 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     }
 
     if (options->NeedLowResImages() &&
-        !cached->has_low_resolution_inlined_data()) {
-      // TODO(pulkitg): Add a check to generate low quality image only if image
-      // fulfills certain conditions. Conditions may include all images above
-      // 100KB or all images above the fold & size >20KB etc. This will require
-      // adding additional data to rewrite_context, so that it can be propagated
-      // from the point of rewriting to the point of optimization.
-
+        !cached->has_low_resolution_inlined_data() &&
+        static_cast<int64>(image->output_size()) >
+            options->min_image_size_low_resolution_bytes()) {
       Image::CompressionOptions* image_options =
           new Image::CompressionOptions();
       image_options->webp_preferred = false;
@@ -485,7 +492,7 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     Context* context = new Context(0 /* No CSS inlining, it's html */,
                                    this, driver_, NULL /*not nested */,
                                    resource_context.release(),
-                                   false /*not css */);
+                                   false /*not css */, image_counter_++);
     ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
     context->AddSlot(slot);
     driver_->InitiateRewrite(context);
@@ -513,7 +520,7 @@ bool ImageRewriteFilter::FinishRewriteCssImageUrl(
 
 bool ImageRewriteFilter::FinishRewriteImageUrl(
     const CachedResult* cached, const ResourceContext* resource_context,
-    HtmlElement* element, HtmlElement::Attribute* src) {
+    HtmlElement* element, HtmlElement::Attribute* src, int image_index) {
   const RewriteOptions* options = driver_->options();
   bool rewrote_url = false;
   bool image_inlined = false;
@@ -568,19 +575,23 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   if (driver_->UserAgentSupportsImageInlining() && !image_inlined &&
       options->NeedLowResImages() &&
       cached->has_low_resolution_inlined_data()) {
-    int image_type = cached->low_resolution_inlined_image_type();
-    bool valid_image_type = Image::kImageTypeStart <= image_type &&
-        Image::kImageTypeEnd >= image_type;
-    DCHECK(valid_image_type) << "Invalid Image Type: " << image_type;
-    if (valid_image_type) {
-      GoogleString data_url;
-      DataUrl(*Image::TypeToContentType(static_cast<Image::Type>(image_type)),
-              BASE64, cached->low_resolution_inlined_data(), &data_url);
-      driver_->AddAttribute(element, HtmlName::kPagespeedLowResSrc, data_url);
-    } else {
-      driver_->message_handler()->Message(kError,
-                                          "Invalid low res image type: %d",
-                                          image_type);
+    int max_preview_image_index =
+        driver_->options()->max_inlined_preview_images_index();
+    if (max_preview_image_index < 0 || image_index < max_preview_image_index) {
+      int image_type = cached->low_resolution_inlined_image_type();
+      bool valid_image_type = Image::kImageTypeStart <= image_type &&
+          Image::kImageTypeEnd >= image_type;
+      DCHECK(valid_image_type) << "Invalid Image Type: " << image_type;
+      if (valid_image_type) {
+        GoogleString data_url;
+        DataUrl(*Image::TypeToContentType(static_cast<Image::Type>(image_type)),
+                BASE64, cached->low_resolution_inlined_data(), &data_url);
+        driver_->AddAttribute(element, HtmlName::kPagespeedLowResSrc, data_url);
+      } else {
+        driver_->message_handler()->Message(kError,
+                                            "Invalid low res image type: %d",
+                                            image_type);
+      }
     }
   }
   return rewrote_url;
@@ -663,7 +674,7 @@ const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {
 RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
   return new Context(0 /*No CSS inlining, it's html */,
                      this, driver_, NULL /*not nested */,
-                     new ResourceContext(), false /*not css */);
+                     new ResourceContext(), false /*not css */, kNotCriticalIndex);
 }
 
 RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
@@ -671,7 +682,8 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
   Context* context = new Context(css_image_inline_max_bytes,
                                  this, NULL /* driver*/, parent,
-                                 new ResourceContext, true /*is css */);
+                                 new ResourceContext, true /*is css */,
+                                 kNotCriticalIndex);
   context->AddSlot(slot);
   return context;
 }
@@ -680,7 +692,7 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContext(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
   Context* context = new Context(0 /*No Css inling */, this, NULL /* driver*/,
                                  parent, new ResourceContext,
-                                 false /*not css */);
+                                 false /*not css */, kNotCriticalIndex);
   context->AddSlot(slot);
   return context;
 }

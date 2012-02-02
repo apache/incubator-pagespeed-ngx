@@ -22,6 +22,7 @@
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
@@ -81,6 +82,7 @@ ApacheCache::ApacheCache(const StringPiece& path,
   }
   http_cache_.reset(new HTTPCache(cache_.get(), factory->timer(),
                                   factory->hasher(), factory->statistics()));
+  property_cache_.reset(factory->MakePropertyCache(cache_.get()));
 }
 
 ApacheCache::~ApacheCache() {

@@ -144,6 +144,7 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       contents_hasher_(21),
       statistics_(NULL),
       http_cache_(NULL),
+      property_cache_(NULL),
       metadata_cache_(NULL),
       relative_path_(false),
       store_outputs_in_file_system_(false),

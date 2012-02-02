@@ -40,6 +40,7 @@ class Hasher;
 class HTTPCache;
 class MessageHandler;
 class NamedLockManager;
+class PropertyCache;
 class QueuedWorkerPool;
 class ResourceManager;
 class RewriteDriver;
@@ -93,6 +94,7 @@ class RewriteDriverFactory {
   void set_url_namer(UrlNamer* url_namer);
   void set_timer(Timer* timer);
   void set_critical_images_finder(CriticalImagesFinder* finder);
+  void set_enable_property_cache(bool enabled);
 
   // Set up a directory for slurped files for HTML and resources.  If
   // read_only is true, then it will only read from these files, and
@@ -145,9 +147,13 @@ class RewriteDriverFactory {
   // to forking threads, e.g. via ComputeUrlFetcher().
   Timer* timer();
   HTTPCache* http_cache();
+  PropertyCache* property_cache();
   NamedLockManager* lock_manager();
   QueuedWorkerPool* WorkerPool(WorkerPoolName pool);
   Scheduler* scheduler();
+
+  // Builds a PropertyCache given a CacheInterface.
+  PropertyCache* MakePropertyCache(CacheInterface* cache) const;
 
   StringPiece filename_prefix();
 
@@ -288,6 +294,9 @@ class RewriteDriverFactory {
   // filename_prefix()
   virtual StringPiece LockFilePrefix();
 
+  // Return memo-ized backend cache interface.
+  CacheInterface* cache_backend();
+
  private:
   void SetupSlurpDirectories();
   void Init();  // helper-method for constructors.
@@ -310,6 +319,7 @@ class RewriteDriverFactory {
   bool force_caching_;
   bool slurp_read_only_;
   bool slurp_print_urls_;
+  bool enable_property_cache_;
 
   // protected by resource_manager_mutex_;
   typedef std::set<ResourceManager*> ResourceManagerSet;
@@ -328,8 +338,8 @@ class RewriteDriverFactory {
   scoped_ptr<NamedLockManager> lock_manager_;
 
   scoped_ptr<ThreadSystem> thread_system_;
-
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
+  scoped_ptr<PropertyCache> property_cache_;
 
   // Default statistics implementation which can be overridden by children
   // by calling SetStatistics().

@@ -97,6 +97,7 @@
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -255,6 +256,7 @@ void RewriteDriver::Clear() {
   fetch_detached_ = false;
   detached_fetch_detached_path_complete_ = false;
   detached_fetch_main_path_complete_ = false;
+  property_page_.reset(NULL);
 }
 
 // Must be called with rewrite_mutex() held.
@@ -542,6 +544,8 @@ const char* RewriteDriver::kPassThroughRequestAttributes[3] = {
   HttpAttributes::kReferer,
   HttpAttributes::kUserAgent
 };
+
+const char RewriteDriver::kDomCohort[] = "dom";
 
 void RewriteDriver::Initialize(Statistics* statistics) {
   if (statistics != NULL) {
@@ -1615,6 +1619,17 @@ void RewriteDriver::DeregisterForPartitionKey(const GoogleString& partition_key,
   }
 }
 
+void RewriteDriver::WriteDomCohortIntoPropertyCache() {
+  if (property_page_.get() != NULL) {
+    PropertyCache* pcache = resource_manager_->property_cache();
+    const PropertyCache::Cohort* dom = pcache->GetCohort(kDomCohort);
+    if (dom != NULL) {
+      pcache->WriteCohort(url(), dom, property_page_.get());
+      property_page_.reset(NULL);
+    }
+  }
+}
+
 void RewriteDriver::Cleanup() {
   if (!externally_managed_) {
     bool done = false;
@@ -1717,6 +1732,7 @@ void RewriteDriver::UninhibitFlushDone(Function* user_callback) {
 
 void RewriteDriver::FinishParse() {
   HtmlParse::FinishParse();
+  WriteDomCohortIntoPropertyCache();
   Cleanup();
 }
 
@@ -1743,6 +1759,7 @@ void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
     return;
   }
   HtmlParse::EndFinishParse();
+  WriteDomCohortIntoPropertyCache();
   Cleanup();
   if (user_callback != NULL) {
     user_callback->CallRun();
@@ -2011,6 +2028,12 @@ bool RewriteDriver::ShouldAbsolutifyUrl(const GoogleUrl& input_base,
   }
 
   return result;
+}
+
+// This is in the .cc rather than the header to avoid the need to
+// include property_cache.h in the header.
+void RewriteDriver::set_property_page(PropertyPage* page) {
+  property_page_.reset(page);
 }
 
 }  // namespace net_instaweb

@@ -41,6 +41,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -69,6 +70,7 @@ void RewriteDriverFactory::Init() {
   force_caching_ = false;
   slurp_read_only_ = false;
   slurp_print_urls_ = false;
+  enable_property_cache_ = false;
   SetStatistics(&null_statistics_);
   resource_manager_mutex_.reset(thread_system_->NewMutex());
   worker_pools_.assign(kNumWorkerPools, NULL);
@@ -202,6 +204,13 @@ void RewriteDriverFactory::set_critical_images_finder(
   critical_images_finder_.reset(finder);
 }
 
+void RewriteDriverFactory::set_enable_property_cache(bool enabled) {
+  enable_property_cache_ = enabled;
+  if (property_cache_.get() != NULL) {
+    property_cache_->set_enabled(enabled);
+  }
+}
+
 MessageHandler* RewriteDriverFactory::html_parse_message_handler() {
   if (html_parse_message_handler_ == NULL) {
     html_parse_message_handler_.reset(DefaultHtmlParseMessageHandler());
@@ -317,9 +326,17 @@ StringPiece RewriteDriverFactory::filename_prefix() {
   return filename_prefix_;
 }
 
+
+CacheInterface* RewriteDriverFactory::cache_backend() {
+  if (cache_backend_.get() == NULL) {
+    cache_backend_.reset(DefaultCacheInterface());
+  }
+  return cache_backend_.get();
+}
+
+
 HTTPCache* RewriteDriverFactory::http_cache() {
   if (http_cache_.get() == NULL) {
-    cache_backend_.reset(DefaultCacheInterface());
     http_cache_.reset(ComputeHTTPCache());
   }
   return http_cache_.get();
@@ -327,9 +344,24 @@ HTTPCache* RewriteDriverFactory::http_cache() {
 
 HTTPCache* RewriteDriverFactory::ComputeHTTPCache() {
   HTTPCache* http_cache = new HTTPCache(
-      cache_backend_.get(), timer(), hasher(), statistics());
+      cache_backend(), timer(), hasher(), statistics());
   http_cache->set_force_caching(force_caching_);
   return http_cache;
+}
+
+PropertyCache* RewriteDriverFactory::MakePropertyCache(
+    CacheInterface* cache) const {
+  PropertyCache* pcache = new PropertyCache(cache, timer_.get(),
+                                            thread_system_.get());
+  pcache->set_enabled(enable_property_cache_);
+  return pcache;
+}
+
+PropertyCache* RewriteDriverFactory::property_cache() {
+  if (property_cache_.get() == NULL) {
+    property_cache_.reset(MakePropertyCache(cache_backend()));
+  }
+  return property_cache_.get();
 }
 
 ResourceManager* RewriteDriverFactory::CreateResourceManager() {
@@ -355,8 +387,11 @@ void RewriteDriverFactory::InitResourceManager(
     // VirtualHost, which must be set prior to calling Init.
     resource_manager->set_http_cache(http_cache());
   }
+  if (resource_manager->property_cache() == NULL) {
+    resource_manager->set_property_cache(property_cache());
+  }
   if (resource_manager->metadata_cache() == NULL) {
-    resource_manager->set_metadata_cache(cache_backend_.get());
+    resource_manager->set_metadata_cache(cache_backend());
   }
   if (resource_manager->lock_manager() == NULL) {
     resource_manager->set_lock_manager(lock_manager());

@@ -33,6 +33,7 @@ class Hasher;
 class HTTPCache;
 class MessageHandler;
 class NamedLockManager;
+class PropertyCache;
 class SharedMemRuntime;
 class SharedMemLockManager;
 class Timer;
@@ -49,6 +50,7 @@ class ApacheCache {
   CacheInterface* cache() { return cache_.get(); }
   NamedLockManager* lock_manager() { return lock_manager_; }
   HTTPCache* http_cache() { return http_cache_.get(); }
+  PropertyCache* property_cache() { return property_cache_.get(); }
 
   void RootInit();
   void ChildInit();
@@ -66,6 +68,7 @@ class ApacheCache {
   NamedLockManager* lock_manager_;
   FileCache* file_cache_;
   scoped_ptr<HTTPCache> http_cache_;
+  scoped_ptr<PropertyCache> property_cache_;
 };
 
 }  // namespace net_instaweb

@@ -55,7 +55,7 @@ class ImageRewriteFilter : public RewriteFilter {
   explicit ImageRewriteFilter(RewriteDriver* driver);
   virtual ~ImageRewriteFilter();
   static void Initialize(Statistics* statistics);
-  virtual void StartDocumentImpl() {}
+  virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "ImageRewrite"; }
@@ -113,7 +113,7 @@ class ImageRewriteFilter : public RewriteFilter {
   // Returns true if it rewrote the URL.
   bool FinishRewriteImageUrl(
       const CachedResult* cached, const ResourceContext* resource_context,
-      HtmlElement* element, HtmlElement::Attribute* src);
+      HtmlElement* element, HtmlElement::Attribute* src, int image_index);
 
   // Save image contents in cached if the image is inlinable.
   void SaveIfInlinable(const StringPiece& contents,
@@ -142,6 +142,10 @@ class ImageRewriteFilter : public RewriteFilter {
   Variable* webp_count_;
   TimedVariable* image_rewrites_dropped_;
   ImageUrlEncoder encoder_;
+
+  // Counter to help associate each <img> tag in the HTML with a unique index,
+  // for use in determining whether the image should be previewed.
+  int image_counter_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageRewriteFilter);
 };

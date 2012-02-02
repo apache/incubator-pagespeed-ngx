@@ -49,6 +49,8 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
     inline_script_ = StrCat("<script type=\"text/javascript\">",
                             DelayImagesFilter::kInlineScript,
                             "\npagespeed.delayImagesInlineInit();");
+    options_->set_min_image_size_low_resolution_bytes(1 * 1024);
+    options_->set_max_inlined_preview_images_index(-1);
   }
 
  protected:
@@ -109,6 +111,50 @@ TEST_F(DelayImagesFilterTest, DelayJpegImage) {
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
+TEST_F(DelayImagesFilterTest, TestMinImageSizeLowResolutionBytesFlag) {
+  options_->set_min_image_size_low_resolution_bytes(2 * 1024);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
+                       kContentTypeJpeg, 100);
+  // Size of 1.webp is 1780 and size of 1.jpeg is 6245. As
+  // MinImageSizeLowResolutionBytes is set to 2 KB only jpeg low quality image
+  // will be generated.
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<img src=\"http://test.com/1.webp\" />"
+      "<img src=\"http://test.com/1.jpeg\" />"
+      "</body>";
+  GoogleString output_html = StrCat(head_html_,
+      "<body><img src=\"http://test.com/1.webp\"/>"
+      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
+      inline_script_,
+      GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
+      "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
+TEST_F(DelayImagesFilterTest, TestMaxInlinedPreviewImagesIndexFlag) {
+  options_->set_max_inlined_preview_images_index(1);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
+                       kContentTypeJpeg, 100);
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<img src=\"http://test.com/1.jpeg\" />"
+      "<img src=\"http://test.com/1.webp\" />"
+      "</body>";
+  GoogleString output_html = StrCat(head_html_,
+      "<body><img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
+      "<img src=\"http://test.com/1.webp\"/>",
+      inline_script_,
+      GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
+      "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
 
 TEST_F(DelayImagesFilterTest, DelayMultipleSameImage) {
   AddFilter(RewriteOptions::kDelayImages);
