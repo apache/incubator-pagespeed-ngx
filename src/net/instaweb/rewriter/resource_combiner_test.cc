@@ -122,17 +122,6 @@ class TestCombineFilter : public RewriteFilter {
   virtual const char* Name() const { return "TestCombine"; }
   virtual const char* id() const { return kTestCombinerId; }
 
-  // NOTE: We do not test fetching here. Actual combine filters use a
-  // different mechanism to perform Fetches. Tested in other tests.
-  virtual bool Fetch(const OutputResourcePtr& resource,
-                     Writer* writer,
-                     const RequestHeaders& request_header,
-                     ResponseHeaders* response_headers,
-                     MessageHandler* message_handler,
-                     UrlAsyncFetcher::Callback* callback) {
-    LOG(FATAL) << "TestCombineFilter should not be performing fetch.";
-    return false;
-  }
   TestCombineFilter::TestCombiner* combiner() { return &combiner_; }
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
 
