@@ -39,7 +39,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/rewriter/public/mem_clean_up.h"
+#include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
@@ -279,7 +279,7 @@ class ApacheProcessContext {
 
   scoped_ptr<ApacheRewriteDriverFactory> factory_;
   // Process-scoped static variable cleanups, mainly for valgrind.
-  MemCleanUp mem_cleanup_;
+  ProcessContext process_context_;
 };
 ApacheProcessContext apache_process_context;
 

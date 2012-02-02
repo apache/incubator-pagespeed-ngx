@@ -346,6 +346,15 @@ class NestedFilter : public RewriteFilter {
     DISALLOW_COPY_AND_ASSIGN(Context);
   };
 
+  bool Fetch(const OutputResourcePtr& output_resource,
+             Writer* response_writer,
+             const RequestHeaders& request_header,
+             ResponseHeaders* response_headers,
+             MessageHandler* message_handler,
+             UrlAsyncFetcher::Callback* callback) {
+    LOG(FATAL);
+  }
+
   RewriteContext* MakeRewriteContext() {
     return new Context(driver_, this, chain_);
   }
@@ -562,6 +571,15 @@ class CombiningFilter : public RewriteFilter {
   virtual const char* Name() const { return "Combining"; }
   RewriteContext* MakeRewriteContext() {
     return new Context(driver_, this, scheduler_);
+  }
+  virtual bool Fetch(const OutputResourcePtr& resource,
+                     Writer* writer,
+                     const RequestHeaders& request_header,
+                     ResponseHeaders* response,
+                     MessageHandler* handler,
+                     UrlAsyncFetcher::Callback* callback) {
+    LOG(FATAL);
+    return false;
   }
   virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
 

@@ -16,9 +16,8 @@
 
 #include "googleurl/src/url_util.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
-#include "net/instaweb/rewriter/public/css_filter.h"
-#include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
-#include "net/instaweb/rewriter/public/mem_clean_up.h"
+#include "net/instaweb/rewriter/public/process_context.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gflags.h"
 
 #include "third_party/protobuf/src/google/protobuf/stubs/common.h"
@@ -30,7 +29,7 @@ using namespace google;  // NOLINT
 
 namespace net_instaweb {
 
-MemCleanUp::MemCleanUp() {
+ProcessContext::ProcessContext() {
   HtmlKeywords::Init();
 
   // googleurl/src/url_util.cc lazily initializes its
@@ -40,7 +39,7 @@ MemCleanUp::MemCleanUp() {
   url_util::Initialize();
 }
 
-MemCleanUp::~MemCleanUp() {
+ProcessContext::~ProcessContext() {
   // Clean up statics from third_party code first.
 
   // The command-line flags structures are lazily initialized, but
@@ -55,13 +54,7 @@ MemCleanUp::~MemCleanUp() {
   google::protobuf::ShutdownProtobufLibrary();
 
   url_util::Shutdown();
-
-  // Then clean up statics net_instaweb code.  Note that
-  // CssFilter::Initialize(statistics) is called by
-  // ResourceManager::Initialize, which is a static method that is
-  // called before threads are spawned.
-  CssFilter::Terminate();
-  JsDeferDisabledFilter::Terminate();
+  RewriteDriverFactory::Terminate();
   HtmlKeywords::ShutDown();
 }
 

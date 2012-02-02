@@ -214,6 +214,7 @@ class RewriteDriverFactory {
   Statistics* statistics() { return statistics_; }
 
   static void Initialize(Statistics* statistics);
+  static void Terminate();
 
   // Does *not* take ownership of Statistics.
   void SetStatistics(Statistics* stats);

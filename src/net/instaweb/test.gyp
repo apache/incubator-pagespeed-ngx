@@ -258,7 +258,7 @@
       'dependencies': [
         'instaweb.gyp:instaweb_rewriter',
         'instaweb.gyp:instaweb_http_test',
-        'instaweb.gyp:mem_clean_up',
+        'instaweb.gyp:process_context',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
         '<(DEPTH)/testing/gtest.gyp:gtest',

@@ -552,6 +552,10 @@ void RewriteDriverFactory::Initialize(Statistics* statistics) {
   }
 }
 
+void RewriteDriverFactory::Terminate() {
+  RewriteDriver::Terminate();
+}
+
 void RewriteDriverFactory::SetStatistics(Statistics* statistics) {
   statistics_ = statistics;
   rewrite_stats_.reset(NULL);

@@ -765,7 +765,7 @@
       ],
     },
     {
-      'target_name': 'mem_clean_up',
+      'target_name': 'process_context',
       'type': '<(library)',
       'dependencies': [
         '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
@@ -773,7 +773,7 @@
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
        ],
       'sources': [
-        'rewriter/mem_clean_up.cc',
+        'rewriter/process_context.cc',
       ],
     },
   ],

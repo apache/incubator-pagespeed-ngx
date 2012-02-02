@@ -140,8 +140,11 @@ class RewriteDriver : public HtmlParse {
   // WaitForCompletion must be called prior to Clear().
   void Clear();
 
-  // Calls Initialize on all known rewrite_drivers.
+  // Calls Initialize on all filters that need it.
   static void Initialize(Statistics* statistics);
+
+  // Calls Terminate on all filters that need it.
+  static void Terminate();
 
   // Adds a resource manager enabling the rewriting of
   // resources. This will replace any previous resource managers.

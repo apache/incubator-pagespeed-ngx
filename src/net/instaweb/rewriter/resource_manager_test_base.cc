@@ -36,7 +36,7 @@
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/mem_clean_up.h"
+#include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -705,7 +705,7 @@ class ResourceManagerProcessContext {
   }
 
  private:
-  MemCleanUp mem_clean_up_;
+  ProcessContext process_context_;
 };
 ResourceManagerProcessContext resource_manager_process_context;
 

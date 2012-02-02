@@ -570,6 +570,12 @@ void RewriteDriver::Initialize(Statistics* statistics) {
   CssInlineImportToLinkFilter::Initialize(statistics);
 }
 
+void RewriteDriver::Terminate() {
+  // Clean up statics.
+  CssFilter::Terminate();
+  JsDeferDisabledFilter::Terminate();
+}
+
 void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   DCHECK(resource_manager_ == NULL);
   resource_manager_ = resource_manager;
