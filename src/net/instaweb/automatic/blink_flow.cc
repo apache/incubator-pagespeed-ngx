@@ -167,10 +167,11 @@ class JsonFetch : public StringAsyncFetch {
 
 }  // namespace
 
-class BlinkFlow::JsonFindCallback : public HTTPCache::Callback {
+class BlinkFlow::JsonFindCallback : public OptionsAwareHTTPCacheCallback {
  public:
   explicit JsonFindCallback(BlinkFlow* blink_fetch)
-      : blink_fetch_(blink_fetch) {}
+      : OptionsAwareHTTPCacheCallback(blink_fetch->options_),
+        blink_fetch_(blink_fetch) {}
 
   virtual ~JsonFindCallback() {}
 
@@ -186,10 +187,6 @@ class BlinkFlow::JsonFindCallback : public HTTPCache::Callback {
       blink_fetch_->JsonCacheHit(contents, *response_headers());
     }
     delete this;
-  }
-
-  virtual bool IsCacheValid(const ResponseHeaders& headers) {
-    return true;
   }
 
  private:
