@@ -24,6 +24,7 @@
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/automatic/public/resource_fetch.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -35,13 +36,16 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class MessageHandler;
 class PublisherConfig;
 
@@ -52,6 +56,39 @@ const char kTotalRequestCount[] = "all-requests";
 const char kPagespeedRequestCount[] = "pagespeed-requests";
 const char kBlinkRequestCount[] = "blink-requests";
 
+bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
+  const ContentType* type = NameExtensionToContentType(url.LeafSansQuery());
+  if (type == NULL) {
+    return true;  // http://www.example.com/  -- no extension; could be HTML.
+  }
+
+  // Use a complete switch-statement rather than type()->IsHtmlLike()
+  // so that every time we add a new content-type we make an explicit
+  // decision about whether it should induce a pcache read.
+  //
+  // TODO(jmarantz): currently this returns false for ".txt".  Thus we will
+  // do no optimizations relying on property-cache on HTML files ending with
+  // ".txt".  We should determine whether this is the right thing or not.
+  switch (type->type()) {
+    case ContentType::kHtml:
+    case ContentType::kXhtml:
+    case ContentType::kCeHtml:
+      return true;
+    case ContentType::kJavascript:
+    case ContentType::kCss:
+    case ContentType::kText:
+    case ContentType::kXml:
+    case ContentType::kPng:
+    case ContentType::kGif:
+    case ContentType::kJpeg:
+    case ContentType::kWebp:
+      return false;
+  }
+  LOG(DFATAL) << "URL " << url.Spec() << ": unexpected type:" << type->type()
+              << "; " << type->mime_type() << "; " << type->file_extension();
+  return false;
+}
+
 // Provides a callback whose Done() function is executed once we have
 // rewrite options.
 class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
@@ -59,11 +96,13 @@ class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
   ProxyInterfaceUrlNamerCallback(bool is_resource_fetch,
                                  GoogleUrl* request_url,
                                  AsyncFetch* async_fetch,
+                                 ProxyFetchPropertyCallback* property_callback,
                                  ProxyInterface* proxy_interface,
                                  MessageHandler* handler)
       : is_resource_fetch_(is_resource_fetch),
         request_url_(request_url),
         async_fetch_(async_fetch),
+        property_callback_(property_callback),
         handler_(handler),
         proxy_interface_(proxy_interface) {
   }
@@ -71,7 +110,7 @@ class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
   virtual void Done(RewriteOptions* rewrite_options) {
     proxy_interface_->ProxyRequestCallback(
         is_resource_fetch_, request_url_, async_fetch_, rewrite_options,
-        handler_);
+        property_callback_, handler_);
     delete this;
   }
 
@@ -79,6 +118,7 @@ class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
   bool is_resource_fetch_;
   GoogleUrl* request_url_;
   AsyncFetch* async_fetch_;
+  ProxyFetchPropertyCallback* property_callback_;
   MessageHandler* handler_;
   ProxyInterface* proxy_interface_;
 
@@ -255,19 +295,40 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
   GoogleUrl* url = new GoogleUrl;
   url->Reset(request_url);
 
+  PropertyCache* property_cache = resource_manager_->property_cache();
+  ProxyFetchPropertyCallback* property_callback = NULL;
+
+  if (!is_resource_fetch && UrlMightHavePropertyCacheEntry(request_url)) {
+    // Initiate any pcache lookups early, before we know the
+    // RewriteOptions, in order to avoid adding latency to the serving
+    // flow.  This has the downside of adding more cache pressure.
+    // OTOH we do a lot of cache lookups for HTML files: usually one
+    // per resource.  So adding one more shouldn't significantly
+    // increase the cache RPC pressure.  One thing to look out for is
+    // if we serve a lot of JPGs that don't end in .jpg or .jpeg --
+    // we'll pessimistically assume they are HTML and do pcache
+    // lookups for them.
+    AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
+    property_callback = new ProxyFetchPropertyCallback(mutex);
+    property_cache->Read(request_url.Spec(), property_callback);
+  }
+
   ProxyInterfaceUrlNamerCallback* proxy_interface_url_namer_callback =
       new ProxyInterfaceUrlNamerCallback(is_resource_fetch, url, async_fetch,
-                                         this, handler);
+                                         property_callback, this, handler);
+
   resource_manager_->url_namer()->DecodeOptions(
       request_url, *async_fetch->request_headers(),
       proxy_interface_url_namer_callback, handler);
 }
 
-void ProxyInterface::ProxyRequestCallback(bool is_resource_fetch,
-                                          GoogleUrl* request_url,
-                                          AsyncFetch* async_fetch,
-                                          RewriteOptions* domain_options,
-                                          MessageHandler* handler) {
+void ProxyInterface::ProxyRequestCallback(
+    bool is_resource_fetch,
+    GoogleUrl* request_url,
+    AsyncFetch* async_fetch,
+    RewriteOptions* domain_options,
+    ProxyFetchPropertyCallback* property_callback,
+    MessageHandler* handler) {
   OptionsBoolPair custom_options_success = GetCustomOptions(
       *request_url, *async_fetch->request_headers(), domain_options, handler);
   if (!custom_options_success.second) {
@@ -307,11 +368,23 @@ void ProxyInterface::ProxyRequestCallback(bool is_resource_fetch,
         BlinkFlow::Start(request_url->Spec().as_string(), async_fetch, layout,
                          options, proxy_fetch_factory_.get(),
                          resource_manager_);
+
+        // TODO(jmarantz): provide property-cache data to blink.
       } else {
         proxy_fetch_factory_->StartNewProxyFetch(
-            request_url->Spec().as_string(), async_fetch, options);
+            request_url->Spec().as_string(), async_fetch, options,
+            property_callback);
+        // ProxyFetch takes ownership of property_callback. NULL it here so that
+        // we do not detach it below.
+        property_callback = NULL;
       }
     }
+  }
+
+  if (property_callback != NULL) {
+    // If management of the callback was not transferred to proxy fetch,
+    // then we must detach it so it deletes itself when complete.
+    property_callback->Detach();
   }
   delete request_url;
 }

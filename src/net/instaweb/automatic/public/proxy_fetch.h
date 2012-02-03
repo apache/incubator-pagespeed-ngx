@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -39,6 +40,7 @@ class AbstractMutex;
 class CacheUrlAsyncFetcher;
 class MessageHandler;
 class ProxyFetch;
+class ProxyFetchPropertyCallback;
 class QueuedAlarm;
 class ResourceManager;
 class ResponseHeaders;
@@ -58,7 +60,8 @@ class ProxyFetchFactory {
   // Takes ownership of custom_options.
   void StartNewProxyFetch(const GoogleString& url,
                           AsyncFetch* async_fetch,
-                          RewriteOptions* custom_options);
+                          RewriteOptions* custom_options,
+                          ProxyFetchPropertyCallback* property_callback);
 
   void set_server_version(const StringPiece& server_version) {
     server_version.CopyToString(&server_version_);
@@ -86,6 +89,47 @@ class ProxyFetchFactory {
   std::set<ProxyFetch*> outstanding_proxy_fetches_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyFetchFactory);
+};
+
+// Helps track a property-cache lookup for a (likely) HTML page.  The lookup
+// is initiated immediately upon handling the URL, in parallel with determining
+// domain-specific RewriteOptions and fetching the HTTP headers for the HTML.
+//
+// Handling of the URL can proceed in parallel with the property-cache
+// fetch, including RewriteOptions lookup and initating the HTTP
+// fetch.  However, handling incoming bytes will be blocked waiting
+// for the property-cache lookup to complete.
+//
+// TODO(jmarantz): Generalize this to allow other cache lookups or
+// asynchronous activity to be initiated as soon as we see in a URL
+// and block filter execution.
+class ProxyFetchPropertyCallback : public PropertyPage {
+ public:
+  explicit ProxyFetchPropertyCallback(AbstractMutex* mutex);
+
+  // In our flow, we initiate the property-cache lookup prior to
+  // creating a proxy-fetch, so that RewriteOptions lookup can proceed
+  // in parallel.  When we instantiate a ProxyFetch we need to attach
+  // it to this callback.
+  void SetProxyFetch(ProxyFetch* proxy_fetch);
+
+  // If for any reason we decide *not* to initiate a ProxyFetch for a
+  // request, then we need to 'detach' this request so that we can
+  // delete it once it completes, rather than waiting for a
+  // ProxyFetch to be inserted.
+  void Detach();
+
+ protected:
+  virtual void Done(bool success);
+
+ private:
+  AbstractMutex* mutex_;
+  bool detached_;             // protected by mutex_.
+  bool done_;                 // protected by mutex_.
+  bool success_;              // protected by mutex_; accessed after quiescence.
+  ProxyFetch* proxy_fetch_;   // protected by mutex_.
+
+  DISALLOW_COPY_AND_ASSIGN(ProxyFetchPropertyCallback);
 };
 
 // Manages a single fetch of an HTML or resource file from the original server.
@@ -119,11 +163,17 @@ class ProxyFetch : public SharedAsyncFetch {
 
  private:
   friend class ProxyFetchFactory;
+  friend class ProxyFetchPropertyCallback;
+
+  // Called by ProxyFetchPropertyCallback when the property-cache fetch
+  // is complete.  This function takes ownership of property_page.
+  void PropertyCacheComplete(PropertyPage* property_page, bool success);
 
   // If cross_domain is true, we're requested under a domain different from
   // the underlying host, using proxy mode in UrlNamer.
   ProxyFetch(const GoogleString& url,
              bool cross_domain,
+             bool wait_for_property_cache,
              AsyncFetch* async_fetch,
              RewriteOptions* custom_options,
              ResourceManager* manager,
@@ -214,6 +264,9 @@ class ProxyFetch : public SharedAsyncFetch {
   // True if we have queued up ExecuteQueued but did not
   // execute it yet.
   bool queue_run_job_created_;
+
+  // Waiting for a property-cache lookup to complete.
+  bool waiting_for_property_cache_;
 
   // As the UrlAsyncFetcher calls our Write & Flush methods, we collect
   // the text in text_queue, and note the Flush call in

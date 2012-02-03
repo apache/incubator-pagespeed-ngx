@@ -420,7 +420,8 @@ void BlinkFlow::TriggerProxyFetch(bool json_found) {
     fetch = new AsyncFetchWithHeadersInhibited(base_fetch_);
   }
 
-  factory_->StartNewProxyFetch(url_, fetch, options_);
+  // TODO(jmarantz): pass-through the property-cache callback rather than NULL.
+  factory_->StartNewProxyFetch(url_, fetch, options_, NULL);
   delete this;
 }
 

@@ -61,7 +61,8 @@ ProxyFetchFactory::~ProxyFetchFactory() {
 
 void ProxyFetchFactory::StartNewProxyFetch(
     const GoogleString& url_in, AsyncFetch* async_fetch,
-    RewriteOptions* custom_options) {
+    RewriteOptions* custom_options,
+    ProxyFetchPropertyCallback* property_callback) {
   const GoogleString* url_to_fetch = &url_in;
 
   // Check whether this an encoding of a non-rewritten resource served
@@ -91,14 +92,23 @@ void ProxyFetchFactory::StartNewProxyFetch(
           delete custom_options;
         }
         async_fetch->Done(false);
+        if (property_callback != NULL) {
+          property_callback->Detach();
+        }
         return;
       }
     }
   }
 
   ProxyFetch* fetch = new ProxyFetch(
-      *url_to_fetch, cross_domain, async_fetch, custom_options,
-      manager_, timer_, this);
+      *url_to_fetch, cross_domain, property_callback != NULL, async_fetch,
+      custom_options, manager_, timer_, this);
+  if (property_callback != NULL) {
+    // Since ProxyFetch has already been been constructed, and
+    // waiting_for_property_cache_ is initialized in the constructor,
+    // there can be no race.
+    property_callback->SetProxyFetch(fetch);
+  }
   if (cross_domain) {
     // If we're proxying resources from a different domain, the host header is
     // likely set to the proxy host rather than the origin host.  Depending on
@@ -125,8 +135,72 @@ void ProxyFetchFactory::Finish(ProxyFetch* fetch) {
   outstanding_proxy_fetches_.erase(fetch);
 }
 
+ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(AbstractMutex* mutex)
+    : PropertyPage(mutex),
+      mutex_(mutex),
+      detached_(false),
+      done_(false),
+      success_(false),
+      proxy_fetch_(NULL) {
+}
+
+// Calls to Done(), SetProxyFetch(), and Detach() may occur on
+// different threads.  Exactly one of SetProxyFetch and Detach can be
+// called, but either can race with Done().
+//
+// TODO(jmarantz): Add unit-tests to capture the 4 orderings, if
+// not the potential races.
+
+void ProxyFetchPropertyCallback::Done(bool success) {
+  // Note that the proxy_fetch is created while the property-cache
+  // lookup is in progress, so we must lock access to the proxy_fetch_.
+  ProxyFetch* fetch = NULL;
+  bool do_delete = false;
+  {
+    ScopedMutex lock(mutex_);
+    success_ = success;
+    done_ = true;
+    fetch = proxy_fetch_;
+    do_delete = detached_;
+  }
+  if (fetch != NULL) {
+    fetch->PropertyCacheComplete(this, success);  // Transfers ownership.
+  } else if (do_delete) {
+    delete this;
+  }
+}
+
+void ProxyFetchPropertyCallback::SetProxyFetch(ProxyFetch* proxy_fetch) {
+  bool ready = false;
+  {
+    ScopedMutex lock(mutex_);
+    DCHECK(proxy_fetch_ == NULL);
+    DCHECK(!detached_);
+    proxy_fetch_ = proxy_fetch;
+    ready = done_;
+  }
+  if (ready) {
+    proxy_fetch->PropertyCacheComplete(this, success_);  // Transfers ownership.
+  }
+}
+
+void ProxyFetchPropertyCallback::Detach() {
+  bool do_delete = false;
+  {
+    ScopedMutex lock(mutex_);
+    DCHECK(proxy_fetch_ == NULL);
+    DCHECK(!detached_);
+    detached_ = true;
+    do_delete = done_;
+  }
+  if (do_delete) {
+    delete this;
+  }
+}
+
 ProxyFetch::ProxyFetch(const GoogleString& url,
                        bool cross_domain,
+                       bool wait_for_property_cache,
                        AsyncFetch* async_fetch,
                        RewriteOptions* custom_options,
                        ResourceManager* manager,
@@ -142,6 +216,7 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       done_called_(false),
       start_time_us_(0),
       queue_run_job_created_(false),
+      waiting_for_property_cache_(wait_for_property_cache),
       mutex_(manager->thread_system()->NewMutex()),
       network_flush_outstanding_(false),
       sequence_(NULL),
@@ -210,8 +285,16 @@ ProxyFetch::~ProxyFetch() {
 
 bool ProxyFetch::StartParse() {
   driver_->SetWriter(base_fetch());
-  sequence_ = driver_->html_worker();
   driver_->set_response_headers_ptr(response_headers());
+
+  {
+    // PropertyCacheComplete checks sequence_ to see whether it should
+    // start processing queued text, so we need to mutex-protect it.
+    // Often we expect the PropertyCache lookup to complete before
+    // StartParse is called, but that is not guaranteed.
+    ScopedMutex lock(mutex_.get());
+    sequence_ = driver_->html_worker();
+  }
 
   // Start parsing.
   // TODO(sligocki): Allow calling StartParse with GoogleUrl.
@@ -332,12 +415,28 @@ void ProxyFetch::ScheduleQueueExecutionIfNeeded() {
 
   // We're waiting for previous flushes -> no need to queue it here,
   // will happen from FlushDone.
-  if (waiting_for_flush_to_finish_) {
+  if (waiting_for_flush_to_finish_ || waiting_for_property_cache_) {
     return;
   }
 
   queue_run_job_created_ = true;
   sequence_->Add(MakeFunction(this, &ProxyFetch::ExecuteQueued));
+}
+
+void ProxyFetch::PropertyCacheComplete(PropertyPage* property_page,
+                                       bool success) {
+  ScopedMutex lock(mutex_.get());
+  DCHECK(waiting_for_property_cache_);
+  waiting_for_property_cache_ = false;
+  if (driver_ == NULL) {
+    LOG(DFATAL) << "Expected non-null driver.";
+    delete property_page;
+  } else {
+    driver_->set_property_page(property_page);
+  }
+  if (sequence_ != NULL) {
+    ScheduleQueueExecutionIfNeeded();
+  }
 }
 
 bool ProxyFetch::HandleWrite(const StringPiece& str,

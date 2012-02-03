@@ -24,19 +24,20 @@
 
 #include "base/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/mock_url_fetcher.h"
-#include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
-#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/timing.pb.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -47,11 +48,12 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/time_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
@@ -141,20 +143,67 @@ class ProxyUrlNamer : public UrlNamer {
 const char ProxyUrlNamer::kProxyHost[] = "proxy_host.com";
 
 // Mock filter which gets passed to the new rewrite driver created in
-// proxy_fetch. We need this to ascertain that start_time_ms is set correctly.
+// proxy_fetch.
+//
+// This is used to check the flow for injecting data into filters via the
+// ProxyInterface, including:
+//     property_cache.
 class MockFilter : public EmptyHtmlFilter {
  public:
   MockFilter(RewriteDriver* driver)
-      : driver_(driver) {
+      : driver_(driver),
+        num_elements_(0),
+        num_elements_property_(NULL) {
   }
 
   virtual void StartDocument() {
+    num_elements_ = 0;
+    PropertyCache* pcache = driver_->resource_manager()->property_cache();
+    const PropertyCache::Cohort* cohort =
+        pcache->GetCohort(RewriteDriver::kDomCohort);
+    PropertyPage* page = driver_->property_page();
+    if (page != NULL) {
+      num_elements_property_ = page->GetProperty(cohort, "num_elements");
+    } else {
+      num_elements_property_ = NULL;
+    }
+  }
+
+  virtual void StartElement(HtmlElement* element) {
+    if (num_elements_ == 0) {
+      // Before the start of the first element, print out the number
+      // of elements that we expect based on the cache.
+      GoogleString comment;
+      PropertyCache* pcache = driver_->resource_manager()->property_cache();
+      if ((num_elements_property_ != NULL) &&
+          num_elements_property_->has_value()) {
+        comment = StrCat(" ", num_elements_property_->value(), " elements ",
+                         pcache->IsStable(num_elements_property_)
+                         ? "stable " : "unstable ");
+      } else {
+        comment = " Element count unknown ";
+      }
+      HtmlNode* node = driver_->NewCommentNode(element->parent(), comment);
+      driver_->InsertElementBeforeCurrent(node);
+    }
+    ++num_elements_;
+  }
+
+  virtual void EndDocument() {
+    if (num_elements_property_ != NULL) {
+      PropertyCache* pcache = driver_->resource_manager()->property_cache();
+      pcache->UpdateValue(IntegerToString(num_elements_),
+                          num_elements_property_);
+      num_elements_property_ = NULL;
+    }
   }
 
   virtual const char* Name() const { return "MockFilter"; }
 
  private:
   RewriteDriver* driver_;
+  int num_elements_;
+  PropertyValue* num_elements_property_;
 };
 
 // TODO(morlovich): This currently relies on ResourceManagerTestBase to help
@@ -178,6 +227,8 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     RewriteOptions* options = resource_manager()->global_options();
+    factory()->set_enable_property_cache(true);
+    factory()->property_cache()->AddCohort(RewriteDriver::kDomCohort);
     options->ClearSignatureForTesting();
     options->EnableFilter(RewriteOptions::kRewriteCss);
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
@@ -297,9 +348,12 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceTest);
 };
 
-class FilterCallback : public TestRewriteDriverFactory::CreateFilterCallback {
+// Hook provided to TestRewriteDriverFactory to add a new filter when
+// a rewrite_driver is created.
+class CreateFilterCallback
+    : public TestRewriteDriverFactory::CreateFilterCallback {
  public:
-  FilterCallback(ProxyInterfaceTest* proxy_interface)
+  explicit CreateFilterCallback(ProxyInterfaceTest* proxy_interface)
       : proxy_interface_(proxy_interface) {
   }
 
@@ -307,12 +361,12 @@ class FilterCallback : public TestRewriteDriverFactory::CreateFilterCallback {
     return new MockFilter(driver);
   }
 
-  virtual ~FilterCallback() {}
+  virtual ~CreateFilterCallback() {}
 
  private:
   ProxyInterfaceTest* proxy_interface_;
 
-  DISALLOW_COPY_AND_ASSIGN(FilterCallback);
+  DISALLOW_COPY_AND_ASSIGN(CreateFilterCallback);
 };
 
 TEST_F(ProxyInterfaceTest, TimingInfo) {
@@ -527,9 +581,9 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
-  // One lookup for ajax metadata and one for the HTTP response. Neither are
-  // found.
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  // Lookups for: (1) ajax metadata (2) HTTP response (3) Property cache.
+  // None are found.
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
 
@@ -542,9 +596,9 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
-  // One lookup for ajax metadata and one for the HTTP response. Neither are
-  // found.
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  // Lookups for: (1) ajax metadata (2) HTTP response (3) Property cache.
+  // None are found.
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
 }
@@ -1658,6 +1712,118 @@ TEST_F(ProxyInterfaceTest, NoStore) {
   EXPECT_STREQ("max-age=0, no-cache, no-store",
                RewriteHtmlCacheHeader("no-store2", "no-store, max-age=300"));
 }
+
+TEST_F(ProxyInterfaceTest, PropCacheFilter) {
+  CreateFilterCallback create_filter_callback(this);
+  factory()->AddCreateFilterCallback(&create_filter_callback);
+
+  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
+                                "<div><p></p></div>", 0);
+  GoogleString text_out;
+  ResponseHeaders headers_out;
+
+  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  EXPECT_EQ("<!-- Element count unknown --><div><p></p></div>", text_out);
+
+  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  EXPECT_EQ("<!-- 2 elements unstable --><div><p></p></div>", text_out);
+
+  // How many refreshes should we require before it's stable?  That
+  // tuning can be done in the PropertyCacheTest.  For this
+  // system-test just do a hundred blind refreshes and check again for
+  // stability.
+  const int kFetchIterations = 100;
+  for (int i = 0; i < kFetchIterations; ++i) {
+    FetchFromProxy("page.html", true, &text_out, &headers_out);
+  }
+
+  // Must be stable by now!
+  EXPECT_EQ("<!-- 2 elements stable --><div><p></p></div>", text_out);
+
+  // In this algorithm we will spend a property-cache-write per fetch.
+  //
+  // We'll also check that we do no cache writes when there are no properties
+  // to save.
+  EXPECT_EQ(2 + kFetchIterations, lru_cache()->num_inserts());
+
+  // Now change the HTML and watch the #elements change.
+  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
+                                "<div><span><p></p></span></div>", 0);
+  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  EXPECT_EQ("<!-- 3 elements stable --><div><span><p></p></span></div>",
+            text_out);
+
+  ClearStats();
+
+  // Finally, disable the property-cache and note that the element-count
+  // annotatation reverts to "unknown mode"
+  factory()->set_enable_property_cache(false);
+  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  EXPECT_EQ("<!-- Element count unknown --><div><span><p></p></span></div>",
+            text_out);
+}
+
+TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNoProperties) {
+  // There will be no properties added to the cache set in this test because
+  // we have not enabled the filter with
+  //     CreateFilterCallback create_filter_callback(this);
+  //     factory()->AddCreateFilterCallback(&callback);
+
+  RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_ajax_rewriting_enabled(false);
+  resource_manager()->ComputeSignature(options);
+
+  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
+                                "<div><p></p></div>", 0);
+  GoogleString text_out;
+  ResponseHeaders headers_out;
+
+  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(2, lru_cache()->num_misses());  // property-cache + http-cache
+
+  ClearStats();
+  factory()->set_enable_property_cache(false);
+  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(1, lru_cache()->num_misses());  // http-cache only.
+}
+
+TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfHtmlEndsWithTxt) {
+  CreateFilterCallback create_filter_callback(this);
+  factory()->AddCreateFilterCallback(&create_filter_callback);
+
+  // There will be no properties added to the cache set in this test because
+  // we have not enabled the filter with
+  //     CreateFilterCallback create_filter_callback(this);
+  //     factory()->AddCreateFilterCallback(&callback);
+
+  RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_ajax_rewriting_enabled(false);
+  resource_manager()->ComputeSignature(options);
+
+  SetResponseWithDefaultHeaders("page.txt", kContentTypeHtml,
+                                "<div><p></p></div>", 0);
+  GoogleString text_out;
+  ResponseHeaders headers_out;
+
+  FetchFromProxy("page.txt", true, &text_out, &headers_out);
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(1, lru_cache()->num_misses());  // http-cache only
+
+  ClearStats();
+  factory()->set_enable_property_cache(false);
+  FetchFromProxy("page.txt", true, &text_out, &headers_out);
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(1, lru_cache()->num_misses());  // http-cache only
+}
+
+// TODO(jmarantz): add a test with a simulated slow cache to see what happens
+// when the rest of the system must block, buffering up incoming HTML text,
+// waiting for the property-cache lookups to complete.
 
 }  // namespace
 
