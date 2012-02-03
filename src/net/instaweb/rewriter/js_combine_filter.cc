@@ -554,14 +554,8 @@ GoogleString JsCombineFilter::VarName(const GoogleString& url) const {
   // We hash the non-host portion of URL to keep it consistent when sharding.
   // This is safe since we never include URLs from different hosts in a single
   // combination.
-  GoogleString url_hash =
-      resource_manager_->hasher()->Hash(GoogleUrl(url).PathAndLeaf());
-  // Our hashes are web64, which are almost valid identifier continuations,
-  // except for use of -. We simply replace it with $.
-  size_t pos = 0;
-  while ((pos = url_hash.find_first_of('-', pos)) != GoogleString::npos) {
-    url_hash[pos] = '$';
-  }
+  GoogleString url_hash = JavascriptCodeBlock::JsUrlHash(url,
+    resource_manager_->hasher());
 
   return StrCat("mod_pagespeed_", url_hash);
 }

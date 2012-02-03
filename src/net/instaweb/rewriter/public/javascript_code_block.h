@@ -25,6 +25,8 @@
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/escaping.h"
+#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -136,6 +138,20 @@ class JavascriptCodeBlock {
     EscapeToJsStringLiteral(original, true /*add quotes*/, escaped);
   }
 
+  // Generates a hash of a URL escaped to be safe to use in a Javascript
+  // identifier, so that variable names can be safely created that won't
+  // collide with other local Javascript.
+  static GoogleString JsUrlHash(const GoogleString &url, Hasher *hasher) {
+    GoogleString url_hash = hasher->Hash(GoogleUrl(url).PathAndLeaf());
+    // Hashes may contain '-', which isn't valid in a JavaScript name, so
+    // replace every '-' with '$'.
+    size_t pos = 0;
+    while ((pos = url_hash.find_first_of('-', pos)) != GoogleString::npos) {
+      url_hash[pos] = '$';
+    }
+    return url_hash;
+  }
+
  private:
   void RewriteIfNecessary() {
     if (!rewritten_) {
@@ -143,6 +159,8 @@ class JavascriptCodeBlock {
       rewritten_ = true;
     }
   }
+
+  DISALLOW_COPY_AND_ASSIGN(JavascriptCodeBlock);
 
  protected:
   void Rewrite();
@@ -157,8 +175,6 @@ class JavascriptCodeBlock {
   StringPiece output_code_;
   bool rewritten_;
   GoogleString rewritten_code_;
-
-  DISALLOW_COPY_AND_ASSIGN(JavascriptCodeBlock);
 };
 
 }  // namespace net_instaweb
