@@ -11,8 +11,8 @@
     # ModPagespeedGeneratedFilePrefix directories must exist and be
     # writable by the apache user (as specified by the User
     # directive).
-    ModPagespeedFileCachePath            "@@MODPAGESPEED_CACHE_ROOT@@cache/"
-    ModPagespeedGeneratedFilePrefix      "@@MODPAGESPEED_CACHE_ROOT@@files/"
+    ModPagespeedFileCachePath            "@@MODPAGESPEED_CACHE_ROOT@@/cache/"
+    ModPagespeedGeneratedFilePrefix      "@@MODPAGESPEED_CACHE_ROOT@@/files/"
 
     # Override the mod_pagespeed 'rewrite level'. The default level
     # "CoreFilters" uses a set of rewrite filters that are generally
