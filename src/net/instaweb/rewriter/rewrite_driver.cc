@@ -737,7 +737,8 @@ void RewriteDriver::AddPreRenderFilters() {
     // javascript that has comments and extra whitespace.
     AppendOwnedPreRenderFilter(new GoogleAnalyticsFilter(this, statistics()));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kInsertGA) &&
+  if ((rewrite_options->Enabled(RewriteOptions::kInsertGA) ||
+       rewrite_options->running_furious()) &&
       rewrite_options->ga_id() != "") {
     // Like MakeGoogleAnalyticsAsync, InsertGA should be before js rewriting.
     AppendOwnedPreRenderFilter(new InsertGAFilter(this));

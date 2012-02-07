@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -120,6 +121,10 @@ void ProxyFetchFactory::StartNewProxyFetch(
     // sending any cookies to origin, as a precaution against contamination.
     fetch->request_headers()->RemoveAll(HttpAttributes::kCookie);
     fetch->request_headers()->RemoveAll(HttpAttributes::kCookie2);
+  } else {
+    // If we didn't already remove all the cookies, remove the furious
+    // ones so we don't confuse the origin.
+    furious::RemoveFuriousCookie(fetch->request_headers());
   }
   Start(fetch);
   fetch->StartFetch();
@@ -229,12 +234,36 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       prepare_success_(false) {
   set_request_headers(async_fetch->request_headers());
   set_response_headers(async_fetch->response_headers());
+  // TODO(nforman): If we are not running an experiment, remove the
+  // furious cookie.
+  // If we don't already have custom options, and the global options
+  // say we're running furious, then clone them into custom_options so we
+  // can manipulate custom options without affecting the global options.
+  const RewriteOptions* global_options = resource_manager_->global_options();
+  if (custom_options == NULL && global_options->running_furious()) {
+    custom_options = global_options->Clone();
+  }
 
   // Set RewriteDriver.
   if (custom_options == NULL) {
     driver_ = resource_manager_->NewRewriteDriver();
   } else {
     // NewCustomRewriteDriver takes ownership of custom_options_.
+    if (custom_options->running_furious()) {
+      furious::FuriousState furious_value;
+      if (!furious::GetFuriousCookieState(async_fetch->request_headers(),
+                                          &furious_value)) {
+        furious_value = furious::DetermineFuriousState(custom_options);
+      }
+      custom_options->set_furious_state(furious_value);
+      // If this request is on the 'B' side of the experiment, turn off
+      // all the rewriters except the ones we need to do the experiment.
+      // TODO(nforman): Allow the configuration to specify what the 'B'
+      // set of filters should be.
+      if (custom_options->furious_state() == furious::kFuriousB) {
+        furious::FuriousNoFilterDefault(custom_options);
+      }
+    }
     resource_manager_->ComputeSignature(custom_options);
     driver_ = resource_manager_->NewCustomRewriteDriver(custom_options);
   }
@@ -285,6 +314,13 @@ ProxyFetch::~ProxyFetch() {
 
 bool ProxyFetch::StartParse() {
   driver_->SetWriter(base_fetch());
+  if (Options()->running_furious()) {
+    furious::FuriousState state = Options()->furious_state();
+    // The "0" string is for an experiment id.
+    // TODO(nforman): Replace "0" with a configurable id.
+    furious::SetFuriousCookie(response_headers(), "0", state, url_.c_str(),
+                              resource_manager_->timer()->NowUs());
+  }
   driver_->set_response_headers_ptr(response_headers());
 
   {

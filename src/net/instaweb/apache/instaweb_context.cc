@@ -17,9 +17,11 @@
 
 #include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
@@ -62,6 +64,22 @@ InstawebContext::InstawebContext(request_rec* request,
     // a reference to its options throughout its lifetime to refer to the
     // domain lawyer and other options.
     RewriteOptions* options = custom_options.Clone();
+
+    // TODO(nforman): If we're not running a furious experiment, clear out
+    // the Furious cookie.
+    // TODO(nforman): If you're on the B side of an experiment, this is
+    // not going to be friendly for your query params.  Make it so that
+    // if query params are specified, we honor them even if in an experiment.
+    if (options->running_furious()) {
+      SetFuriousStateAndCookie(request, options);
+      // For B, turn off all the filters except the ones we need to run
+      // the experiment.
+      // TODO(nforman): Allow the user to specify what the 'B' set of
+      // filters is.
+      if (options->furious_state() == furious::kFuriousB) {
+        furious::FuriousNoFilterDefault(options);
+      }
+    }
     resource_manager_->ComputeSignature(options);
     rewrite_driver_ = resource_manager_->NewCustomRewriteDriver(options);
   } else {
@@ -106,7 +124,7 @@ InstawebContext::InstawebContext(request_rec* request,
   rewrite_driver_->set_user_agent(user_agent);
   response_headers_.Clear();
   rewrite_driver_->set_response_headers_ptr(&response_headers_);
-  // TODO(lsong): Bypass the string buffer, writer data directly to the next
+  // TODO(lsong): Bypass the string buffer, write data directly to the next
   // apache bucket.
   rewrite_driver_->SetWriter(&string_writer_);
 }
@@ -289,6 +307,25 @@ const char* InstawebContext::MakeRequestUrl(request_rec* request) {
   }
   apr_table_setn(request->notes, kPagespeedOriginalUrl, url);
   return url;
+}
+
+void InstawebContext::SetFuriousStateAndCookie(request_rec* request,
+                                               RewriteOptions* options) {
+  RequestHeaders req_headers;
+  ApacheRequestToRequestHeaders(*request, &req_headers);
+  furious::FuriousState furious_value;
+  if (!furious::GetFuriousCookieState(&req_headers, &furious_value)) {
+    ResponseHeaders resp_headers;
+    AprTimer timer;
+    const char* url = apr_table_get(request->notes, kPagespeedOriginalUrl);
+    furious_value = furious::DetermineFuriousState(options);
+    // The "0" string is for an experiment id.
+    // TODO(nforman): Replace "0" with a configurable id.
+    furious::SetFuriousCookie(&resp_headers, "0", furious_value,
+                              url, timer.NowMs());
+    AddResponseHeadersToRequest(resp_headers, request);
+  }
+  options->set_furious_state(furious_value);
 }
 
 }  // namespace net_instaweb

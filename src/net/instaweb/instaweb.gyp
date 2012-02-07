@@ -667,6 +667,7 @@
         'rewriter/domain_rewrite_filter.cc',
         'rewriter/file_input_resource.cc',
         'rewriter/flush_html_filter.cc',
+        'rewriter/furious_util.cc',
         'rewriter/google_analytics_filter.cc',
         'rewriter/image_rewrite_filter.cc',
         'rewriter/inline_rewrite_context.cc',

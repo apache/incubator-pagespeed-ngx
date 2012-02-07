@@ -8,7 +8,8 @@
 #  apache_install_conf (should read OPT_REWRITE_TEST, OPT_PROXY_TEST,
 #                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_HTTPS_TEST,
 #                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST,
-#                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST)
+#                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST,
+#                       OPT_FURIOUS_TEST)
 #  apache_debug_restart
 #  apache_debug_stop
 #  apache_debug_leak_test, apache_debug_proxy_test, apache_debug_slurp_test
@@ -38,6 +39,7 @@ apache_system_tests :
 	$(MAKE) apache_debug_serf_empty_header_test
 	$(MAKE) apache_debug_speling_test
 	$(MAKE) apache_debug_gzip_test
+	$(MAKE) apache_debug_furious_test
 	$(MAKE) apache_debug_vhost_only_test
 	$(MAKE) apache_debug_global_off_test
 	$(MAKE) apache_debug_shared_mem_lock_sanity_test
@@ -146,6 +148,23 @@ apache_debug_gzip_test : gzip_test_prepare apache_install_conf \
 
 gzip_test_prepare:
 	$(eval OPT_GZIP_TEST="GZIP_TEST=1")
+	rm -rf $(PAGESPEED_ROOT)/cache/*
+
+# Test to make sure Furious is sending its headers
+# TODO(nforman): Make this run multiple times and make sure we don't *always*
+# get the same result.
+apache_debug_furious_test : furious_test_prepare apache_install_conf \
+    apache_debug_restart
+	@echo Testing whether or not Furious is working:
+	$(WGET) -q -O - --save-headers $(EXAMPLE) \
+	  | grep "_GFURIOUS="
+	matches=`$(WGET) -q -O - --save-headers \
+          '$(EXAMPLE)?ModPagespeed=on&ModPagespeedFilters=rewrite_css' \
+	  | grep -c '_GFURIOUS='`; \
+	test $$matches -eq 0
+
+furious_test_prepare:
+	$(eval OPT_FURIOUS_TEST="FURIOUS_TEST=1")
 	rm -rf $(PAGESPEED_ROOT)/cache/*
 
 # Test to make sure we don't crash if we're off for global but on for vhosts.
