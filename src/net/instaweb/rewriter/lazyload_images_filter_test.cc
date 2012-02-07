@@ -48,6 +48,7 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
       "<head></head>"
       "<body>"
       "<img src=\"1.jpg\" />"
+      "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>"
       "<img src=\"2.jpg\" height=\"300\" width=\"123\" />"
       "<input type=\"image\" src=\"12.jpg\" />"
       "<input src=\"12.jpg\" />"
@@ -55,9 +56,10 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
       "</body>",
       StrCat("<head><script type=\"text/javascript\">",
              LazyloadImagesFilter::kImageLazyloadCode,
-             "\npagespeed.lazyLoadInit();\n",
+             "\npagespeed.lazyLoadInit(false);\n"
              "</script></head>"
              "<body>", GenerateRewrittenImageTag("img", "1.jpg", ""),
+             "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
              GenerateRewrittenImageTag("img", "2.jpg",
                                        "height=\"300\" width=\"123\" "),
              GenerateRewrittenImageTag("input", "12.jpg", "type=\"image\" "),
@@ -66,12 +68,27 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
              "</body>"));
 }
 
+TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {
+  options()->ClearSignatureForTesting();
+  options()->set_lazyload_images_after_onload(true);
+  resource_manager()->ComputeSignature(options());
+  ValidateExpected("lazyload_images",
+      "<head></head>"
+      "<body>"
+      "</body>",
+      StrCat("<head><script type=\"text/javascript\">",
+             LazyloadImagesFilter::kImageLazyloadCode,
+             "\npagespeed.lazyLoadInit(true);\n",
+             "</script></head>"
+             "<body></body>"));
+}
+
 TEST_F(LazyloadImagesFilterTest, NoHeadTag) {
   GoogleString input_html = "<body>"
       "<img src=\"1.jpg\"/>"
       "</body>";
   // No change in the html if script is not inserted in the head.
-  ValidateExpected("lazyload_images", input_html, input_html);
+  ValidateNoChanges("lazyload_images", input_html);
 }
 
 TEST_F(LazyloadImagesFilterTest, MultipleHeadTags) {
@@ -82,7 +99,7 @@ TEST_F(LazyloadImagesFilterTest, MultipleHeadTags) {
       "</body>",
       StrCat("<head><script type=\"text/javascript\">",
              LazyloadImagesFilter::kImageLazyloadCode,
-             "\npagespeed.lazyLoadInit();\n",
+             "\npagespeed.lazyLoadInit(false);\n",
              "</script></head>"
              "<head></head><body></body>"));
 }

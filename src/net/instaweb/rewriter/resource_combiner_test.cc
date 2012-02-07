@@ -27,14 +27,11 @@
 
 #include <cstdio>
 
-#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner_template.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -56,8 +53,6 @@ namespace net_instaweb {
 class HtmlElement;
 class MessageHandler;
 class OutputResource;
-class RequestHeaders;
-class ResponseHeaders;
 class UrlSegmentEncoder;
 
 namespace {
@@ -103,7 +98,7 @@ class TestCombineFilter : public RewriteFilter {
    private:
     virtual bool ResourceCombinable(Resource* resource,
                                     MessageHandler* /*handler*/) {
-      EXPECT_TRUE(resource->ContentsValid());
+      EXPECT_TRUE(resource->HttpStatusOk());
       return resource->contents() != kVetoText;
     }
   };
@@ -196,7 +191,7 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
   // is valid and matches expected URL and element
   void VerifyResource(int pos, const char* url, HtmlElement* element) {
     EXPECT_EQ(element, partnership_->element(pos));
-    EXPECT_TRUE(partnership_->resources()[pos]->ContentsValid());
+    EXPECT_TRUE(partnership_->resources()[pos]->HttpStatusOk());
     EXPECT_EQ(AbsoluteUrl(url), partnership_->resources()[pos]->url());
   }
 

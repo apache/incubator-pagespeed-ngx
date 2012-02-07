@@ -60,6 +60,9 @@ class SimpleTextFilter : public RewriteFilter {
     virtual const char* id() const = 0;
     virtual const char* name() const = 0;
 
+    // See RewriteContext::OptimizationOnly()
+    virtual bool OptimizationOnly() const { return true; }
+
    protected:
     REFCOUNT_FRIEND_DECLARATION(Rewriter);
     virtual ~Rewriter();
@@ -81,6 +84,9 @@ class SimpleTextFilter : public RewriteFilter {
    protected:
     virtual const char* id() const { return rewriter_->id(); }
     virtual OutputResourceKind kind() const { return rewriter_->kind(); }
+    virtual bool OptimizationOnly() const {
+      return rewriter_->OptimizationOnly();
+    }
 
    private:
     RewriterPtr rewriter_;

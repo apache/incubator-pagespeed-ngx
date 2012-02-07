@@ -44,6 +44,7 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/panel_config.pb.h"
+#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
@@ -313,10 +314,9 @@ void BlinkFlow::JsonCacheHit(const StringPiece& content,
   }
 
   // Trigger a fetch for non cacheable panels and cookies.
-  options_->EnableFilter(RewriteOptions::kComputePanelJson);
+  options_->ForceEnableFilter(RewriteOptions::kComputePanelJson);
   options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
-  options_->EnableFilter(RewriteOptions::kDisableJavascript);
-  options_->EnableFilter(RewriteOptions::kInlineImages);
+  options_->ForceEnableFilter(RewriteOptions::kDisableJavascript);
   TriggerProxyFetch(true);
 }
 
@@ -348,9 +348,10 @@ void BlinkFlow::SendLayout(const StringPiece& layout) {
   WriteString(layout);
   // TODO(rahulbansal): Not serving off a sharded domain will cause an extra
   // dns lookup.
+  JavascriptUrlManager* js_manager = manager_->javascript_url_manager();
   WriteString(StrCat("<script src=\"",
-                     manager_->url_namer()->get_proxy_domain(),
-                     "/psajs/blink.js\"></script>"));
+                     js_manager->GetBlinkJsUrl(options_),
+                     "\"></script>"));
   WriteString("<script>pagespeed.panelLoaderInit();</script>");
   WriteString(GetAddTimingScriptString(kTimeToBlinkFlowStart,
                                        time_to_start_blink_flow_ms_));
@@ -427,8 +428,11 @@ void BlinkFlow::TriggerProxyFetch(bool json_found) {
 
 void BlinkFlow::ComputeJsonInBackground() {
   RewriteOptions* options = options_->Clone();
-  options->EnableFilter(RewriteOptions::kComputePanelJson);
-  options->EnableFilter(RewriteOptions::kDisableJavascript);
+  options_->set_min_image_size_low_resolution_bytes(0);
+  // Enable inlining for all the images in html.
+  options_->set_max_inlined_preview_images_index(-1);
+  options->ForceEnableFilter(RewriteOptions::kComputePanelJson);
+  options->ForceEnableFilter(RewriteOptions::kDisableJavascript);
   options->DisableFilter(RewriteOptions::kHtmlWriterFilter);
 
   AsyncFetch* json_fetch = new JsonFetch(json_url_, manager_, options);

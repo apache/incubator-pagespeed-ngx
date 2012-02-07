@@ -357,7 +357,8 @@ void ProxyInterface::ProxyRequestCallback(
                                                 options);
       const char* user_agent = async_fetch->request_headers()->Lookup1(
           HttpAttributes::kUserAgent);
-      if (layout != NULL && user_agent_matcher_.SupportsBlink(user_agent)) {
+      if (layout != NULL && user_agent_matcher_.SupportsBlink(user_agent) &&
+          options->Enabled(RewriteOptions::kAboveTheFold)) {
         // TODO(rahulbansal): Remove this LOG once we expect to have
         // Blink requests.
         LOG(INFO) << "Triggering Blink flow for url "
@@ -392,7 +393,7 @@ void ProxyInterface::ProxyRequestCallback(
 const Layout* ProxyInterface::ExtractBlinkLayout(const GoogleUrl& url,
                                                  AsyncFetch* async_fetch,
                                                  RewriteOptions* options) {
-  if (options != NULL && options->enable_blink()) {
+  if (options != NULL) {
     const PublisherConfig* config = options->panel_config();
     if (config != NULL) {
       return BlinkUtil::FindLayout(*config, url);

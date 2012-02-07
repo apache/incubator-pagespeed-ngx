@@ -419,6 +419,8 @@ RewriteOptions::RewriteOptions()
   add_option(false, &default_cache_html_, "dch", kDefaultCacheHtml);
   add_option(true, &modify_caching_headers_, "mch", kModifyCachingHeaders);
   add_option(kDefaultBeaconUrl, &beacon_url_, "bu", kBeaconUrl);
+  add_option(false, &lazyload_images_after_onload_, "llio",
+             kLazyloadImagesAfterOnload);
   add_option(kDefaultImageJpegRecompressQuality,
              &image_jpeg_recompress_quality_, "iq",
              kImageJpegRecompressionQuality);

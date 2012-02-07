@@ -146,8 +146,9 @@ pagespeed.DeferJs.prototype.addNode = function(script, opt_elem, opt_pos) {
   var src = script.getAttribute('orig_src') || script.getAttribute('src');
   if (src) {
     this.addUrl(src, opt_elem, opt_pos);
-  } else {
-    var str = script.innerHTML || script.textContent || script.data;
+  }
+  var str = script.innerHTML || script.textContent || script.data;
+  if (str) {
     this.addStr(str, opt_elem, opt_pos);
   }
 };

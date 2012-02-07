@@ -18,7 +18,10 @@
 
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
+#include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
+#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
@@ -43,14 +46,27 @@ namespace net_instaweb {
 class DelayImagesFilterTest : public ResourceManagerTestBase {
  public:
   DelayImagesFilterTest() {
-    head_html_ = StrCat("<head><script type=\"text/javascript\">",
-                        DelayImagesFilter::kDelayScript,
-                        "\npagespeed.delayImagesInit()</script></head>");
-    inline_script_ = StrCat("<script type=\"text/javascript\">",
-                            DelayImagesFilter::kInlineScript,
-                            "\npagespeed.delayImagesInlineInit();");
-    options_->set_min_image_size_low_resolution_bytes(1 * 1024);
-    options_->set_max_inlined_preview_images_index(-1);
+    head_html_ =
+       StrCat("<head><script type=\"text/javascript\">",
+              DelayImagesFilter::kDelayScript,
+              "\npagespeed.delayImagesInit()</script></head>");
+   head_html_with_lazy_load_ =
+       StrCat("<head><script type=\"text/javascript\">",
+              DelayImagesFilter::kDelayScript,
+              "\npagespeed.delayImagesInit()</script>",
+              "<script type=\"text/javascript\">",
+              LazyloadImagesFilter::kImageLazyloadCode,
+              "\npagespeed.lazyLoadInit(false);\n",
+              "</script></head>");
+   inline_script_with_js_defer_ =
+       StrCat("<script type=\"text/javascript\">",
+              JsDeferDisabledFilter::defer_js_code(),
+              "</script><script type=\"text/javascript\">",
+              DelayImagesFilter::kInlineScript,
+              "\npagespeed.delayImagesInlineInit();");
+
+   options_->set_min_image_size_low_resolution_bytes(1 * 1024);
+   options_->set_max_inlined_preview_images_index(-1);
   }
 
  protected:
@@ -75,11 +91,34 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
         "\', \'", image_data, "\');");
   }
 
+  GoogleString GenerateRewrittenImageTag(const StringPiece& url) {
+    return StrCat("<img pagespeed_lazy_src=\"", url, "\" onload=\"",
+                  LazyloadImagesFilter::kImageOnloadCode, "\" src=\"",
+                  LazyloadImagesFilter::kDefaultInlineImage, "\"/>");
+  }
+
   GoogleString head_html_;
-  GoogleString inline_script_;
+  GoogleString head_html_with_lazy_load_;
+  GoogleString inline_script_with_js_defer_;
 };
 
-TEST_F(DelayImagesFilterTest, DelayWebPImage) {
+TEST_F(DelayImagesFilterTest, DelayImageWithDeferJavascriptDisabled) {
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<img src=\"http://test.com/1.webp\" />"
+      "</body>";
+  GoogleString output_html = StrCat(head_html_with_lazy_load_,
+      "<body><img pagespeed_high_res_src=\"http://test.com/1.webp\" ",
+      "src=\"", kSampleWebpData, "\"/></body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
+TEST_F(DelayImagesFilterTest, DelayImageWithLazyLoadDisabled) {
+  options()->EnableFilter(RewriteOptions::kDeferJavascript);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
                        kContentTypeWebp, 100);
@@ -88,14 +127,34 @@ TEST_F(DelayImagesFilterTest, DelayWebPImage) {
       "<img src=\"http://test.com/1.webp\" />"
       "</body>";
   GoogleString output_html = StrCat(head_html_,
+      "<body><img pagespeed_high_res_src=\"http://test.com/1.webp\" ",
+      "src=\"", kSampleWebpData, "\"/><script type=\"text/javascript\">",
+      JsDeferDisabledFilter::defer_js_code(),
+      "</script></body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
+TEST_F(DelayImagesFilterTest, DelayWebPImage) {
+  options()->EnableFilter(RewriteOptions::kDeferJavascript);
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<img src=\"http://test.com/1.webp\" />"
+      "</body>";
+  GoogleString output_html = StrCat(head_html_with_lazy_load_,
       "<body><img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
-      inline_script_,
+      inline_script_with_js_defer_,
       GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
       "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
 TEST_F(DelayImagesFilterTest, DelayJpegImage) {
+  options()->EnableFilter(RewriteOptions::kDeferJavascript);
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
                        kContentTypeJpeg, 100);
@@ -103,9 +162,9 @@ TEST_F(DelayImagesFilterTest, DelayJpegImage) {
       "<body>"
       "<img src=\"http://test.com/1.jpeg\" />"
       "</body>";
-  GoogleString output_html = StrCat(head_html_,
+  GoogleString output_html = StrCat(head_html_with_lazy_load_,
       "<body><img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
-      inline_script_,
+      inline_script_with_js_defer_,
       GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
       "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>");
   MatchOutputAndCountBytes(input_html, output_html);
@@ -113,6 +172,8 @@ TEST_F(DelayImagesFilterTest, DelayJpegImage) {
 
 TEST_F(DelayImagesFilterTest, TestMinImageSizeLowResolutionBytesFlag) {
   options_->set_min_image_size_low_resolution_bytes(2 * 1024);
+  options()->EnableFilter(RewriteOptions::kDeferJavascript);
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
                        kContentTypeWebp, 100);
@@ -126,10 +187,11 @@ TEST_F(DelayImagesFilterTest, TestMinImageSizeLowResolutionBytesFlag) {
       "<img src=\"http://test.com/1.webp\" />"
       "<img src=\"http://test.com/1.jpeg\" />"
       "</body>";
-  GoogleString output_html = StrCat(head_html_,
-      "<body><img src=\"http://test.com/1.webp\"/>"
+  GoogleString output_html = StrCat(head_html_with_lazy_load_,
+      "<body>",
+      GenerateRewrittenImageTag("http://test.com/1.webp"),
       "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
-      inline_script_,
+      inline_script_with_js_defer_,
       GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
       "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>");
   MatchOutputAndCountBytes(input_html, output_html);
@@ -137,6 +199,8 @@ TEST_F(DelayImagesFilterTest, TestMinImageSizeLowResolutionBytesFlag) {
 
 TEST_F(DelayImagesFilterTest, TestMaxInlinedPreviewImagesIndexFlag) {
   options_->set_max_inlined_preview_images_index(1);
+  options()->EnableFilter(RewriteOptions::kDeferJavascript);
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
                        kContentTypeWebp, 100);
@@ -147,16 +211,18 @@ TEST_F(DelayImagesFilterTest, TestMaxInlinedPreviewImagesIndexFlag) {
       "<img src=\"http://test.com/1.jpeg\" />"
       "<img src=\"http://test.com/1.webp\" />"
       "</body>";
-  GoogleString output_html = StrCat(head_html_,
+  GoogleString output_html = StrCat(head_html_with_lazy_load_,
       "<body><img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
-      "<img src=\"http://test.com/1.webp\"/>",
-      inline_script_,
+      GenerateRewrittenImageTag("http://test.com/1.webp"),
+      inline_script_with_js_defer_,
       GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
       "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
 TEST_F(DelayImagesFilterTest, DelayMultipleSameImage) {
+  options()->EnableFilter(RewriteOptions::kDeferJavascript);
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
                        kContentTypeWebp, 100);
@@ -168,10 +234,10 @@ TEST_F(DelayImagesFilterTest, DelayMultipleSameImage) {
       "<img src=\"http://test.com/1.webp\" />"
       "<img src=\"http://test.com/1.webp\" />"
       "</body>";
-  GoogleString output_html = StrCat(head_html_,
+  GoogleString output_html = StrCat(head_html_with_lazy_load_,
       "<body><img pagespeed_high_res_src=\"http://test.com/1.webp\"/>"
       "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
-      inline_script_,
+      inline_script_with_js_defer_,
       GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
       "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>");
   MatchOutputAndCountBytes(input_html, output_html);
@@ -189,6 +255,8 @@ TEST_F(DelayImagesFilterTest, NoHeadTag) {
 }
 
 TEST_F(DelayImagesFilterTest, MultipleBodyTags) {
+  options()->EnableFilter(RewriteOptions::kDeferJavascript);
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
                        kContentTypeWebp, 100);
@@ -199,12 +267,12 @@ TEST_F(DelayImagesFilterTest, MultipleBodyTags) {
   GoogleString input_html = "<head></head>"
       "<body><img src=\"http://test.com/1.webp\"/></body>"
       "<body><img src=\"http://test.com/2.jpeg\"/></body>";
-  GoogleString output_html = StrCat(head_html_,
+  GoogleString output_html = StrCat(head_html_with_lazy_load_,
       "<body><img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
-      inline_script_,
+      inline_script_with_js_defer_,
       GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
       "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>",
-      "<body><img src=\"http://test.com/2.jpeg\"/></body>");
+      "<body>", GenerateRewrittenImageTag("http://test.com/2.jpeg"), "</body>");
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -220,10 +288,8 @@ TEST_F(DelayImagesFilterTest, ResizeForResolution) {
       "</body>";
   GoogleString output_html = StrCat(
       head_html_,
-      "<body><img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
-      inline_script_,
-      GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
-      "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>");
+      "<body><img pagespeed_high_res_src=\"http://test.com/1.jpeg\" ",
+      "src=\"", kSampleJpegData, "\"/></body>");
 
   // Mobile output should be smaller than desktop because inlined low quality
   // image is resized smaller for mobile.
@@ -278,10 +344,8 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionNegative) {
       "</body>";
   GoogleString output_html = StrCat(
       head_html_,
-      "<body><img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
-      inline_script_,
-      GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
-      "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script></body>");
+      "<body><img pagespeed_high_res_src=\"http://test.com/1.jpeg\" ",
+      "src=\"", kSampleJpegData, "\"/></body>");
 
   // If kResizeMobileImages is not explicitly enabled, desktop and mobile
   // outputs will have the same size.

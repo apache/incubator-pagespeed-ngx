@@ -216,8 +216,9 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   // New objects for the new server.
   SimpleStats stats;
   TestRewriteDriverFactory new_factory(GTestTempDir(), &mock_url_fetcher_);
+  TestRewriteDriverFactory::Initialize(&stats);
   new_factory.SetUseTestUrlNamer(factory_->use_test_url_namer());
-  new_factory.SetStatistics(&statistics_);
+  new_factory.SetStatistics(&stats);
   ResourceManager* new_resource_manager = new_factory.CreateResourceManager();
   if (new_rms_url_namer != NULL) {
     new_resource_manager->set_url_namer(new_rms_url_namer);

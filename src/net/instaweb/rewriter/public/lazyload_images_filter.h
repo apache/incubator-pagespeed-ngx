@@ -78,6 +78,7 @@ class LazyloadImagesFilter : public EmptyHtmlFilter {
   explicit LazyloadImagesFilter(RewriteDriver* driver);
   virtual ~LazyloadImagesFilter();
 
+  virtual void StartDocument();
   virtual void EndElement(HtmlElement* element);
 
   virtual const char* Name() const { return "Lazyload Images"; }

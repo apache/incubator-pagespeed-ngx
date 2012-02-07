@@ -107,6 +107,11 @@ class DelayImagesFilter : public EmptyHtmlFilter {
   GoogleString delay_images_js_;
   GoogleString delay_images_inline_js_;
 
+  // Replace the image url with low res base64 encoded url inplace if it is
+  // true, else low_res_data_map_ containing low res images is inserted at the
+  // end of body tag.
+  bool insert_low_res_images_inplace_;
+
   DISALLOW_COPY_AND_ASSIGN(DelayImagesFilter);
 };
 

@@ -93,6 +93,8 @@ class AjaxRewriteContext : public SingleRewriteContext {
   // Implements RewriteContext::FetchTryFallback().
   virtual void FetchTryFallback(const GoogleString& url,
                                 const StringPiece& hash);
+  // Implements RewriteContext::FetchCallbackDone().
+  virtual void FetchCallbackDone(bool success);
 
   RewriteFilter* GetRewriteFilter(const ContentType& type);
 

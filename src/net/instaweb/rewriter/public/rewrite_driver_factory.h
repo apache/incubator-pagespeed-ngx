@@ -38,6 +38,7 @@ class FileSystem;
 class FilenameEncoder;
 class Hasher;
 class HTTPCache;
+class JavascriptUrlManager;
 class MessageHandler;
 class NamedLockManager;
 class PropertyCache;
@@ -141,6 +142,7 @@ class RewriteDriverFactory {
   Hasher* hasher();
   FilenameEncoder* filename_encoder() { return filename_encoder_.get(); }
   UrlNamer* url_namer();
+  JavascriptUrlManager* javascript_url_manager();
   RewriteOptions* default_options() { return default_options_.get(); }
 
   // These accessors are *not* thread-safe.  They must be called once prior
@@ -298,6 +300,11 @@ class RewriteDriverFactory {
   // Return memo-ized backend cache interface.
   CacheInterface* cache_backend();
 
+  // Creates a JavascriptUrlManager instance. Default implementation creates
+  // an instance that disables serving of filter javascript via gstatic
+  // (gstatic.com is the domain google uses for serving static content).
+  virtual JavascriptUrlManager* DefaultJavascriptUrlManager();
+
  private:
   void SetupSlurpDirectories();
   void Init();  // helper-method for constructors.
@@ -312,6 +319,7 @@ class RewriteDriverFactory {
   scoped_ptr<Hasher> hasher_;
   scoped_ptr<FilenameEncoder> filename_encoder_;
   scoped_ptr<UrlNamer> url_namer_;
+  scoped_ptr<JavascriptUrlManager> javascript_url_manager_;
   scoped_ptr<Timer> timer_;
   scoped_ptr<Scheduler> scheduler_;
 

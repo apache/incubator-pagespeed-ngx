@@ -481,6 +481,7 @@
       'sources': [
         'rewriter/critical_images_finder.cc',
         'rewriter/domain_lawyer.cc',
+        'rewriter/javascript_url_manager.cc',
         'rewriter/resource.cc',
         'rewriter/rewrite_options.cc',
         'rewriter/output_resource.cc',

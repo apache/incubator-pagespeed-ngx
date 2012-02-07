@@ -47,6 +47,7 @@ class FilenameEncoder;
 class Function;
 class GoogleUrl;
 class Hasher;
+class JavascriptUrlManager;
 class MessageHandler;
 class NamedLock;
 class NamedLockManager;
@@ -149,6 +150,12 @@ class ResourceManager {
   void set_filename_encoder(FilenameEncoder* x) { filename_encoder_ = x; }
   UrlNamer* url_namer() const { return url_namer_; }
   void set_url_namer(UrlNamer* n) { url_namer_ = n; }
+  JavascriptUrlManager* javascript_url_manager() const {
+    return javascript_url_manager_;
+  }
+  void set_javascript_url_manager(JavascriptUrlManager* manager) {
+    javascript_url_manager_ = manager;
+  }
   Scheduler* scheduler() const { return scheduler_; }
   void set_scheduler(Scheduler* s) { scheduler_ = s; }
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
@@ -455,6 +462,9 @@ class ResourceManager {
   QueuedWorkerPool* low_priority_rewrite_workers_;  // Owned by the factory
 
   AtomicBool metadata_cache_readonly_;
+
+  // Used to create URLs for various filter javascript files.
+  JavascriptUrlManager* javascript_url_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };

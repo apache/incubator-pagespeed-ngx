@@ -29,6 +29,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -45,6 +46,12 @@ DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
       low_res_map_inserted_(false),
       delay_script_inserted_(false) {
   delay_images_js_ = StrCat(kDelayScript, "\npagespeed.delayImagesInit()");
+  // Low res images will be placed inside the respective image tag if any one of
+  // kDeferJavascript or kLazyloadImages is turned off. Otherwise, low res
+  // images will be blocked by javascript or images which are not critical.
+  insert_low_res_images_inplace_ =
+      !driver_->options()->Enabled(RewriteOptions::kDeferJavascript) ||
+      !driver_->options()->Enabled(RewriteOptions::kLazyloadImages);
 }
 
 DelayImagesFilter::~DelayImagesFilter() {}
@@ -85,13 +92,20 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
         // It is better to move inlined low resolution data at the end of body
         // tag, otherwise they will block further parsing and rendering of
         // the html page.
-        GoogleString src_content = src->value();
-        low_res_data_map_[src_content] = low_res_src->value();
+        const GoogleString& src_content = src->value();
+
         // High res src is added and original img src attribute is removed from
         // img tag.
         driver_->AddAttribute(element, HtmlName::kPagespeedHighResSrc,
                               src_content);
         element->DeleteAttribute(HtmlName::kSrc);
+
+        if (insert_low_res_images_inplace_) {
+          driver_->AddAttribute(element, HtmlName::kSrc,
+                                low_res_src->value());
+        } else {
+          low_res_data_map_[src_content] = low_res_src->value();
+        }
       }
     }
     element->DeleteAttribute(HtmlName::kPagespeedLowResSrc);

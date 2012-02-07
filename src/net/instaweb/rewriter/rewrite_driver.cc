@@ -1160,6 +1160,9 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
     StringPiece content;
     ResponseHeaders* response_headers = async_fetch_->response_headers();
     if (find_result == HTTPCache::kFound) {
+      RewriteStats* stats = driver_->resource_manager()->rewrite_stats();
+      stats->cached_resource_fetches()->Add(1);
+
       HTTPValue* value = http_value();
       bool success = (value->ExtractContents(&content) &&
                       value->ExtractHeaders(response_headers, handler_));

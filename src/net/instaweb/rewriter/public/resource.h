@@ -78,8 +78,7 @@ class Resource : public RefCounted<Resource> {
   // TODO(sligocki): Do we need these or can we just use IsValidAndCacheable
   // everywhere?
   bool loaded() const { return response_headers_.status_code() != 0; }
-  // TODO(sligocki): Change name to HttpStatusOk?
-  bool ContentsValid() const {
+  bool HttpStatusOk() const {
     return (response_headers_.status_code() == HttpStatus::kOK);
   }
 

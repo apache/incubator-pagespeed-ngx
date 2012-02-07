@@ -47,13 +47,23 @@ pagespeed.LazyloadImages = function() {
    * @private
    */
   this.buffer_ = 0;
+
+  /**
+   * Boolean indicating whether we should force loading of all images,
+   * irrespective of whether or not they are visible. This is set to true when
+   * we want to load all images after onload is triggered.
+   * @type {boolean}
+   * @private
+   */
+  this.force_load_ = false;
 };
 
 /**
  * Returns a bounding box for the currently visible part of the window.
  * @return {{
  *     top: (number),
- *     bottom: (number)
+ *     bottom: (number),
+ *     height: (number)
  * }}
  * @private
  */
@@ -70,13 +80,35 @@ pagespeed.LazyloadImages.prototype.viewport_ = function() {
       document.body.clientHeight;
   return {
     top: scrollY,
-    bottom: scrollY + height
+    bottom: scrollY + height,
+    height: height
   };
 };
 
 /**
- * Returns a bounding box for the given element.
+ * Returns the position of the top of the given element with respect to the top
+ * of the page.
  * @param {Element} element DOM element to measure offset of.
+ * @return {number} The position of the element in the page.
+ * @private
+ */
+pagespeed.LazyloadImages.prototype.compute_top_ = function(element) {
+  var position = element.getAttribute('pagespeed_lazy_position');
+  if (position) {
+    return parseInt(position, 0);
+  }
+  position = element.offsetTop;
+  var parent = element.offsetParent;
+  if (parent) {
+    position += this.compute_top_(parent);
+  }
+  element.setAttribute('pagespeed_lazy_position', position);
+  return position;
+};
+
+/**
+ * Returns a bounding box for the given element.
+ * @param {Element} element DOM element whose position is to be computed.
  * @return {{
  *     top: (number),
  *     bottom: (number)
@@ -84,17 +116,10 @@ pagespeed.LazyloadImages.prototype.viewport_ = function() {
  * @private
  */
 pagespeed.LazyloadImages.prototype.offset_ = function(element) {
-  var original = element;
-  var curtop = 0;
-  if (element.offsetParent) {
-    curtop = element.offsetTop;
-    while ((element = element.offsetParent) != null) {
-      curtop += element.offsetTop;
-    }
-  }
+  var top_position = this.compute_top_(element);
   return {
-    top: curtop,
-    bottom: curtop + original.offsetHeight
+    top: top_position,
+    bottom: top_position + element.offsetHeight
   };
 };
 
@@ -106,20 +131,31 @@ pagespeed.LazyloadImages.prototype.offset_ = function(element) {
  */
 pagespeed.LazyloadImages.prototype.isVisible_ = function(element) {
   var viewport = this.viewport_();
-  var position = this.offset_(element);
-  return (position.top - this.buffer_ <= viewport.bottom &&
-          position.bottom + this.buffer_ >= viewport.top);
+  var rect = element.getBoundingClientRect();
+  var top_diff, bottom_diff;
+  if (rect) {
+    // getBoundingClientRect() gives the position with respect to the current
+    // viewport.
+    top_diff = rect.top - viewport.height;
+    bottom_diff = rect.bottom;
+  } else {
+    var position = this.offset_(element);
+    top_diff = position.top - viewport.bottom;
+    bottom_diff = position.bottom - viewport.top;
+  }
+  return (top_diff <= this.buffer_ &&
+          bottom_diff + this.buffer_ >= 0);
 };
 
 /**
  * Loads the given element if it is visible. Otherwise, adds it to the deferred
- * queue.
+ * queue. Note that if force_load_ is true, the visibility check is skipped.
  * @param {Element} element The element to check for visibility.
  */
 pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
   var data_src = element.getAttribute('pagespeed_lazy_src');
   if (data_src != null) {
-    if (this.isVisible_(element)) {
+    if (this.force_load_ || this.isVisible_(element)) {
       element.src = data_src;
       element.removeAttribute('pagespeed_lazy_src');
     } else {
@@ -171,14 +207,28 @@ pagespeed.addHandler = function(elem, ev, func) {
 
 /**
  * Initializes the lazyload module.
+ * @param {boolean} loadAfterOnload If true, load images when the onload event
+ * is fired. Otherwise, load images on scrolling as they become visible.
  */
-pagespeed.lazyLoadInit = function() {
+pagespeed.lazyLoadInit = function(loadAfterOnload) {
   pagespeed.lazyLoadImages = new pagespeed.LazyloadImages();
   pagespeed['lazyLoadImages'] = pagespeed.lazyLoadImages;
-  var lazy_onscroll = function() {
-    pagespeed.lazyLoadImages.loadVisible_();
-  };
-  pagespeed.addHandler(window, 'scroll', lazy_onscroll);
+  if (loadAfterOnload) {
+    var lazy_onload = function() {
+      // Note that the timeout here should be greater than the timeout for the
+      // delay_images filter to avoid CPU contention between the two filters.
+      window.setTimeout(function() {
+        pagespeed.lazyLoadImages.force_load_ = true;
+        pagespeed.lazyLoadImages.loadVisible_();
+      }, 200);
+    }
+    pagespeed.addHandler(window, 'load', lazy_onload);
+  } else {
+    var lazy_onscroll = function() {
+      pagespeed.lazyLoadImages.loadVisible_();
+    };
+    pagespeed.addHandler(window, 'scroll', lazy_onscroll);
+  }
 };
 
 pagespeed['lazyLoadInit'] = pagespeed.lazyLoadInit;

@@ -192,9 +192,11 @@ void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
 
     headers->ComputeCaching();
     int64 expire_at_ms = kint64max;
+    int64 date_ms = kint64max;
     for (int j = 0, m = partitions()->other_dependency_size(); j < m; ++j) {
       InputInfo dependency = partitions()->other_dependency(j);
-      if (dependency.has_expiration_time_ms()) {
+      if (dependency.has_expiration_time_ms() && dependency.has_date_ms()) {
+        date_ms = std::min(date_ms, dependency.date_ms());
         expire_at_ms = std::min(expire_at_ms, dependency.expiration_time_ms());
       }
     }
@@ -202,9 +204,24 @@ void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
     if (expire_at_ms == kint64max) {
       // If expire_at_ms is not set, set the cache ttl to kImplicitCacheTtlMs.
       expire_at_ms = now_ms + ResponseHeaders::kImplicitCacheTtlMs;
+    } else if (stale_rewrite()) {
+      // If we are serving a stale rewrite, set the cache ttl to the minimum of
+      // kImplicitCacheTtlMs and the original ttl.
+      expire_at_ms = now_ms + std::min(ResponseHeaders::kImplicitCacheTtlMs,
+                                       expire_at_ms - date_ms);
     }
     headers->SetDateAndCaching(now_ms, expire_at_ms - now_ms);
   }
+}
+
+void AjaxRewriteContext::FetchCallbackDone(bool success) {
+  if (is_rewritten_ && num_output_partitions() == 1) {
+    // Ajax rewrites always apply on single rewrites.
+    // Freshen the resource if possible. Note that since is_rewritten_ is true,
+    // we got a metadata cache hit and a hit on the rewritten resource in cache.
+    Freshen(*output_partition(0));
+  }
+  RewriteContext::FetchCallbackDone(success);
 }
 
 RewriteFilter* AjaxRewriteContext::GetRewriteFilter(

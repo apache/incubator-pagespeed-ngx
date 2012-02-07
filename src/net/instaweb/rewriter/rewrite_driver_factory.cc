@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -246,6 +247,13 @@ UrlNamer* RewriteDriverFactory::url_namer() {
   return url_namer_.get();
 }
 
+JavascriptUrlManager* RewriteDriverFactory::javascript_url_manager() {
+  if (javascript_url_manager_ == NULL) {
+    javascript_url_manager_.reset(DefaultJavascriptUrlManager());
+  }
+  return javascript_url_manager_.get();
+}
+
 CriticalImagesFinder* RewriteDriverFactory::critical_images_finder() {
   if (critical_images_finder_ == NULL) {
     critical_images_finder_.reset(DefaultCriticalImagesFinder());
@@ -274,6 +282,10 @@ NamedLockManager* RewriteDriverFactory::DefaultLockManager() {
 
 UrlNamer* RewriteDriverFactory::DefaultUrlNamer() {
   return new UrlNamer();
+}
+
+JavascriptUrlManager* RewriteDriverFactory::DefaultJavascriptUrlManager() {
+  return new JavascriptUrlManager(url_namer(), false, "");
 }
 
 CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
@@ -405,6 +417,8 @@ void RewriteDriverFactory::InitResourceManager(
   resource_manager->set_filename_prefix(filename_prefix_);
   resource_manager->set_hasher(hasher());
   resource_manager->set_message_handler(message_handler());
+  resource_manager->set_javascript_url_manager(
+      javascript_url_manager());
   resource_manager->InitWorkersAndDecodingDriver();
   resource_managers_.insert(resource_manager);
 }

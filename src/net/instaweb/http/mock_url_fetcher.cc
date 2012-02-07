@@ -118,8 +118,8 @@ bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,
           CHECK(timer_ != NULL);
           // Update Date headers.
           response_headers->SetDate(timer_->NowMs());
-          response_headers->ComputeCaching();
         }
+        response_headers->ComputeCaching();
 
         if (!(response->body().empty() && omit_empty_writes_)) {
           response_writer->Write(response->body(), message_handler);

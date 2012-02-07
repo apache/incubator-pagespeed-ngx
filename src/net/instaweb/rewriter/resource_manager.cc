@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -156,7 +157,8 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       rewrite_drivers_mutex_(thread_system_->NewMutex()),
       html_workers_(NULL),
       rewrite_workers_(NULL),
-      low_priority_rewrite_workers_(NULL) {
+      low_priority_rewrite_workers_(NULL),
+      javascript_url_manager_(NULL) {
   // Make sure the excluded-attributes are in abc order so binary_search works.
   // Make sure to use the same comparator that we pass to the binary_search.
 #ifndef NDEBUG
@@ -329,7 +331,7 @@ void ResourceManager::ApplyInputCacheControl(const ResourceVector& inputs,
   int64 max_age = headers->cache_ttl_ms();
   for (int i = 0, n = inputs.size(); i < n; i++) {
     const ResourcePtr& input_resource(inputs[i]);
-    if (input_resource.get() != NULL && input_resource->ContentsValid()) {
+    if (input_resource.get() != NULL && input_resource->HttpStatusOk()) {
       ResponseHeaders* input_headers = input_resource->response_headers();
       input_headers->ComputeCaching();
       if (input_headers->cache_ttl_ms() < max_age) {

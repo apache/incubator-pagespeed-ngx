@@ -103,8 +103,9 @@ TimedBool ResourceCombiner::AddResource(const StringPiece& url,
     return ret;
   }
 
-  if (!resource->ContentsValid()) {
+  if (!resource->HttpStatusOk()) {
     // Resource is not valid, but may be someday.
+    // TODO(sligocki): Perhaps we should follow redirects.
     handler->Message(kInfo, "Cannot combine: invalid contents");
     ret.expiration_ms = 5 * Timer::kMinuteMs;
     return ret;

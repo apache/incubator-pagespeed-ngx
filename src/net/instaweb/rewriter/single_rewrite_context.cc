@@ -70,7 +70,7 @@ void SingleRewriteContext::Rewrite(int partition_index,
   ResourcePtr resource(slot(0)->resource());
   CHECK(resource.get() != NULL);
   CHECK(resource->loaded());
-  CHECK(resource->ContentsValid());
+  CHECK(resource->HttpStatusOk());
   if (output_resource.get() != NULL) {
     DCHECK_EQ(output_resource->cached_result(), partition);
   }

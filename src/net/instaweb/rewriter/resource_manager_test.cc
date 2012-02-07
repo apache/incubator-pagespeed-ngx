@@ -1018,7 +1018,7 @@ TEST_F(ResourceManagerTest, PartlyFailedFetch) {
 
   // We tell the fetcher to quash the zero-bytes writes, as that behavior
   // (which Serf has) made the bug more severe, with not only
-  // loaded() and ContentsValid() lying, but also contents() crashing.
+  // loaded() and HttpStatusOk() lying, but also contents() crashing.
   mock_url_fetcher()->set_omit_empty_writes(true);
 
   // We tell the fetcher to output the headers and then immediately fail.
@@ -1034,7 +1034,7 @@ TEST_F(ResourceManagerTest, PartlyFailedFetch) {
   EXPECT_FALSE(callback.success());
   EXPECT_FALSE(resource->IsValidAndCacheable());
   EXPECT_FALSE(resource->loaded());
-  EXPECT_FALSE(resource->ContentsValid())
+  EXPECT_FALSE(resource->HttpStatusOk())
     << " Unexpectedly got access to resource contents:" << resource->contents();
 }
 

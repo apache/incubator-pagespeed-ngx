@@ -140,6 +140,7 @@ class RewriteOptions {
     kAboveTheFoldNonCacheableElements,
     kAboveTheFoldCacheTime,
     kAboveTheFoldCacheableFamilies,
+    kLazyloadImagesAfterOnload,
     kEndOfOptions
   };
 
@@ -470,6 +471,13 @@ class RewriteOptions {
   }
   bool modify_caching_headers() const {
     return modify_caching_headers_.value();
+  }
+
+  void set_lazyload_images_after_onload(bool x) {
+    set_option(x, &lazyload_images_after_onload_);
+  }
+  bool lazyload_images_after_onload() const {
+    return lazyload_images_after_onload_.value();
   }
 
   void set_max_inlined_preview_images_index(int x) {
@@ -964,6 +972,10 @@ class RewriteOptions {
   // necessarily publicly cacheable.
   // Some people don't like this, so we allow them to disable it.
   Option<bool> modify_caching_headers_;
+  // In general, lazyload images loads images on scroll. However, some people
+  // may want to load images when the onload event is fired instead. If set to
+  // true, images are loaded when onload is fired.
+  Option<bool> lazyload_images_after_onload_;
 
   // Number of first N images for which low res image is generated. Negative
   // values will bypass image index check.

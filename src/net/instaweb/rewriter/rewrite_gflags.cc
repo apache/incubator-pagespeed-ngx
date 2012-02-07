@@ -134,6 +134,10 @@ DEFINE_int64(
     "Maximum time in milliseconds beyond expiry for which a metadata cache "
     "entry may be used in milliseconds.");
 
+DEFINE_bool(lazyload_images_after_onload, false, "Boolean indicating whether "
+            "lazyload images should load images when onload is fired. If "
+            "false, images are loaded onscroll.");
+
 namespace net_instaweb {
 
 namespace {
@@ -250,6 +254,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("metadata_cache_staleness_threshold_ms")) {
     options->set_metadata_cache_staleness_threshold_ms(
         FLAGS_metadata_cache_staleness_threshold_ms);
+  }
+  if (WasExplicitlySet("lazyload_images_after_onload")) {
+    options->set_lazyload_images_after_onload(
+        FLAGS_lazyload_images_after_onload);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

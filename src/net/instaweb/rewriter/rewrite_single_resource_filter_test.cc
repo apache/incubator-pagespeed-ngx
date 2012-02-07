@@ -127,7 +127,7 @@ class TestRewriter : public RewriteFilter {
     ++num_rewrites_called_;
     EXPECT_TRUE(input_resource.get() != NULL);
     EXPECT_TRUE(output_resource.get() != NULL);
-    EXPECT_TRUE(input_resource->ContentsValid());
+    EXPECT_TRUE(input_resource->HttpStatusOk());
 
     StringPiece contents = input_resource->contents();
     if (contents == "bad") {

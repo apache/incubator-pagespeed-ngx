@@ -153,7 +153,7 @@ class ResourceCombiner {
   bool UrlTooBig();
 
   // Override this if you need to forbid some combinations based on the
-  // content of the resource (e.g. with resource->ContentsValid())
+  // content of the resource (e.g. with resource->HttpStatusOk())
   // This is called before the URL is added to UrlPartnership's
   // data structures.
   virtual bool ResourceCombinable(Resource* resource,

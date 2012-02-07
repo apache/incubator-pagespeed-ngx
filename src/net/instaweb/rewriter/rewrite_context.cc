@@ -371,17 +371,11 @@ class RewriteContext::FetchContext {
         return;
       }
     } else {
-      // Rewrite failed. If we have a single original, write it out instead.
-      // NOTE: CSS filter can "fail" rewriting because it decides
-      // that the file is not optimizable (can't make it smaller, etc.).
-      //
-      // TODO(sligocki): We should probably not do that in the fetch path.
-      // For example, we could set_always_rewrite_css(true) for fetches.
-      // On the other hand, it might be difficult to keep that from dirtying
-      // the cache. So maybe we shouldn't do it.
-      if (rewrite_context_->num_slots() == 1) {
+      // Rewrite failed. If we can, fallback to the original as rewrite failing
+      // may just mean the input isn't optimizable.
+      if (rewrite_context_->CanFetchFallbackToOriginal(kFallbackEmergency)) {
         ResourcePtr input_resource(rewrite_context_->slot(0)->resource());
-        if (input_resource.get() != NULL && input_resource->ContentsValid()) {
+        if (input_resource.get() != NULL && input_resource->HttpStatusOk()) {
           handler_->Message(kError, "Rewrite %s failed while fetching %s",
                             input_resource->url().c_str(),
                             output_resource_->UrlEvenIfHashNotSet().c_str());
@@ -1008,7 +1002,7 @@ void RewriteContext::FetchInputs() {
   for (int i = 0, n = slots_.size(); i < n; ++i) {
     const ResourceSlotPtr& slot = slots_[i];
     ResourcePtr resource(slot->resource());
-    if (!(resource->loaded() && resource->ContentsValid())) {
+    if (!(resource->loaded() && resource->HttpStatusOk())) {
       ++outstanding_fetches_;
 
       // Sometimes we can end up needing pagespeed resources as inputs.
@@ -1405,7 +1399,7 @@ void RewriteContext::StartRewriteForFetch() {
   bool ok_to_rewrite = true;
   for (int i = 0, n = slots_.size(); i < n; ++i) {
     ResourcePtr resource(slot(i)->resource());
-    if (resource->loaded() && resource->ContentsValid()) {
+    if (resource->loaded() && resource->HttpStatusOk()) {
       bool on_the_fly = (kind() == kOnTheFlyResource);
       Resource::HashHint hash_hint = on_the_fly ?
           Resource::kOmitInputHash : Resource::kIncludeInputHash;
@@ -1423,10 +1417,9 @@ void RewriteContext::StartRewriteForFetch() {
   output->set_cached_result(partition);
   ++outstanding_rewrites_;
   if (ok_to_rewrite) {
-    // We do not use a deadline for combining filters since we can't
-    // just substitute in an input as a fallback, we have to wait for
-    // them to actually make the combination.
-    if (num_slots() == 1) {
+    // To avoid rewrites from delaying fetches, we try to fallback
+    // to the original version if rewriting takes too long.
+    if (CanFetchFallbackToOriginal(kFallbackDiscretional)) {
       fetch_->SetupDeadlineAlarm();
     }
 
@@ -1685,10 +1678,11 @@ void RewriteContext::FetchCacheDone(
         FetchTryFallback(output_resource->url(), output_resource->hash());
         return;
       }
-    } else if (num_slots() == 1) {
-      // The result is not optimizable, and there is only one input.
-      // Try serving the original. (For simplicity, we will do an another
-      // rewrite attempt if it's not in the cache).
+    } else if (CanFetchFallbackToOriginal(kFallbackDiscretional)) {
+      // The result is not optimizable, and it makes sense to use
+      // the original instead, so try to do that.
+      // (For simplicity, we will do an another rewrite attempt if it's not in
+      // the cache).
       FetchTryFallback(slot(0)->resource()->url(), "");
       return;
     }
@@ -1729,6 +1723,18 @@ void RewriteContext::FetchCallbackDone(bool success) {
   if (notify_driver != NULL) {
     notify_driver->FetchComplete();
   }
+}
+
+bool RewriteContext::CanFetchFallbackToOriginal(
+    FallbackCondition condition) const {
+  if (!OptimizationOnly() && (condition != kFallbackEmergency)) {
+    // If the filter is non-discretionary we will run it unless it already
+    // failed and we would rather serve -something-.
+    return false;
+  }
+  // We can serve the original (well, perhaps with some absolutification) in
+  // cases where there is a single input.
+  return (num_slots() == 1);
 }
 
 void RewriteContext::StartFetch() {

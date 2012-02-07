@@ -399,7 +399,8 @@ class CombiningFilter : public RewriteFilter {
     : RewriteFilter(driver),
       scheduler_(scheduler),
       rewrite_delay_ms_(rewrite_delay_ms),
-      on_the_fly_(false) {
+      on_the_fly_(false),
+      optimization_only_(true) {
     ClearStats();
   }
   virtual ~CombiningFilter() {}
@@ -489,6 +490,10 @@ class CombiningFilter : public RewriteFilter {
       }
     }
 
+    virtual bool OptimizationOnly() const {
+      return filter_->optimization_only();
+    }
+
     void DoRewrite(int partition_index,
                    CachedResult* partition,
                    OutputResourcePtr output) {
@@ -576,6 +581,9 @@ class CombiningFilter : public RewriteFilter {
 
   void set_on_the_fly(bool v) { on_the_fly_ = true; }
 
+  bool optimization_only() const { return optimization_only_; }
+  void set_optimization_only(bool o) { optimization_only_ = o; }
+
  private:
   friend class Context;
 
@@ -586,6 +594,8 @@ class CombiningFilter : public RewriteFilter {
   int64 rewrite_delay_ms_;
   GoogleString prefix_;
   bool on_the_fly_;  // If true, will act as an on-the-fly filter.
+  bool optimization_only_;  // If false, will disable load-shedding and fetch
+                            // rewrite deadlines.
 
   DISALLOW_COPY_AND_ASSIGN(CombiningFilter);
 };
@@ -1114,6 +1124,8 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
   EXPECT_TRUE(FetchResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
                             "css", &content));
   EXPECT_EQ("a", content);
+  EXPECT_EQ(
+      0, resource_manager()->rewrite_stats()->cached_resource_fetches()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
   // We did the output_resource lookup twice: once before acquiring the lock,
   // and the second time after acquiring the lock, because presumably whoever
@@ -1133,6 +1145,8 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
   EXPECT_TRUE(FetchResource(kTestDomain, kTrimWhitespaceFilterId, "a.css",
                             "css", &content, &headers));
   EXPECT_EQ("a", content);
+  EXPECT_EQ(
+      1, resource_manager()->rewrite_stats()->cached_resource_fetches()->Get());
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -2142,6 +2156,25 @@ TEST_F(RewriteContextTest, FetchDeadlineTest) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(RewriteContextTest, FetchDeadlineMandatoryTest) {
+  // Version of FetchDeadlineTest where the filter is marked as not being
+  // an optimization only. This effectively disables the deadline.
+  InitCombiningFilter(Timer::kMonthMs);
+  InitResources();
+  combining_filter_->set_optimization_only(false);
+  combining_filter_->set_prefix("|");
+
+  GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
+                                     "a.css", "css");
+
+  GoogleString content;
+  EXPECT_TRUE(FetchResourceUrl(combined_url, &content));
+  // Should get a |, despite 1 month simulated delay inside the combine filter
+  // being way bigger than the rendering deadline.
+  EXPECT_EQ("| a ", content);
+  EXPECT_EQ(3, lru_cache()->num_inserts()); // input, output, metadata
 }
 
 TEST_F(RewriteContextTest, FetchDeadlineTestBeforeDeadline) {

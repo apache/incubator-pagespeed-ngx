@@ -27,9 +27,16 @@
 
 namespace net_instaweb {
 
+namespace {
+
+const char kTrue[] = "true";
+const char kFalse[] = "false";
+const char kData[] = "data:";
+
+}  // namespace
+
 extern const char* JS_lazyload_images;
 
-// TODO(nikhilmadan): Minify this script. Also, consider outlining it.
 const char* LazyloadImagesFilter::kImageLazyloadCode = JS_lazyload_images;
 
 // base64 encoding of a blank 1x1 gif.
@@ -43,10 +50,17 @@ LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
     : driver_(driver),
       tag_scanner_(new ImageTagScanner(driver)),
       script_inserted_(false) {
-  lazyload_js_ = StrCat(kImageLazyloadCode, "\npagespeed.lazyLoadInit();\n");
 }
 
 LazyloadImagesFilter::~LazyloadImagesFilter() {}
+
+void LazyloadImagesFilter::StartDocument() {
+  const GoogleString& load_onload =
+      driver_->options()->lazyload_images_after_onload() ? kTrue : kFalse;
+  lazyload_js_ = StrCat(kImageLazyloadCode, "\npagespeed.lazyLoadInit(",
+                        load_onload, ");\n");
+  script_inserted_ = false;
+}
 
 void LazyloadImagesFilter::EndElement(HtmlElement* element) {
   if (!script_inserted_ && element->keyword() == HtmlName::kHead) {
@@ -60,18 +74,21 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
     script_inserted_ = true;
   } else if (script_inserted_ && driver_->IsRewritable(element)) {
     HtmlElement::Attribute* src = tag_scanner_->ParseImageElement(element);
-    if (src != NULL &&
-        element->FindAttribute(HtmlName::kOnload) == NULL &&
-        element->FindAttribute(HtmlName::kPagespeedLazySrc) == NULL) {
-      // Check that the image has an src, and does not have an onload and
-      // pagespeed_lazy_src attribute. If so, replace the src with
-      // pagespeed_lazy_src and set the onload appropriately.
-      driver_->AddAttribute(element, HtmlName::kPagespeedLazySrc, src->value());
-      driver_->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
-      driver_->AddAttribute(element, HtmlName::kSrc, kDefaultInlineImage);
-      element->DeleteAttribute(HtmlName::kSrc);
+    if (src != NULL) {
+      StringPiece url(src->value());
+      if (!url.starts_with(kData) &&
+          element->FindAttribute(HtmlName::kOnload) == NULL &&
+          element->FindAttribute(HtmlName::kPagespeedLazySrc) == NULL &&
+          element->FindAttribute(HtmlName::kPagespeedLazySrc) == NULL) {
+        // Check that the image has a src, does not have an onload and
+        // pagespeed_lazy_src attribute and is not inlined. If so, replace the
+        // src with pagespeed_lazy_src and set the onload appropriately.
+        driver_->AddAttribute(element, HtmlName::kPagespeedLazySrc, url);
+        driver_->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
+        driver_->AddAttribute(element, HtmlName::kSrc, kDefaultInlineImage);
+        element->DeleteAttribute(HtmlName::kSrc);
+      }
     }
-    // TODO(nikhilmadan): Do nothing if the src is a base64 encoding.
   }
 }
 

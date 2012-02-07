@@ -281,6 +281,11 @@ class RewriteContext {
   bool CreateOutputResourceForCachedOutput(const CachedResult* cached_result,
                                            OutputResourcePtr* output_resource);
 
+  // If this returns true, running the rewriter isn't required for
+  // correctness of the page, so the engine will be permitted to drop
+  // the rewrite if needed to preserve system responsiveness.
+  virtual bool OptimizationOnly() const { return true; }
+
   // Partitions the input resources into one or more outputs.  Return
   // 'true' if the partitioning could complete (whether a rewrite was
   // found or not), false if the attempt was abandoned and no
@@ -409,6 +414,10 @@ class RewriteContext {
   // and sets the cache ttl to ResponseHeaders::kImplicitCacheTtlMs.
   virtual void FixFetchFallbackHeaders(ResponseHeaders* headers);
 
+  // Callback once the fetch is done. This calls Driver()->FetchComplete() if
+  // notify_driver_on_fetch_done is true.
+  virtual void FetchCallbackDone(bool success);
+
   // Absolutify contents of an input resource and write it into writer.
   // This is called in case a rewrite fails in the fetch path or a deadline
   // is exceeded. Default implementation is just to write the input.
@@ -424,6 +433,9 @@ class RewriteContext {
   // url is not rewritten.
   virtual void FetchTryFallback(const GoogleString& url,
                                 const StringPiece& hash);
+
+  // Freshens resources proactively to avoid expiration in the near future.
+  void Freshen(const CachedResult& group);
 
   // Accessors for the nested rewrites.
   int num_nested() const { return nested_.size(); }
@@ -441,6 +453,9 @@ class RewriteContext {
   // The message handler for the fetch.
   MessageHandler* fetch_message_handler();
 
+  // Indicates whether we are serving a stale rewrite.
+  bool stale_rewrite() const { return stale_rewrite_; }
+
  private:
   class OutputCacheCallback;
   friend class OutputCacheCallback;
@@ -457,6 +472,16 @@ class RewriteContext {
   class StaleFreshenCallback;
 
   typedef std::set<RewriteContext*> ContextSet;
+
+  // This is passed to CanFetchFallbackToOriginal when trying to determine
+  // whether using the 0th input resource would be an acceptable substitute
+  // for output when:
+  enum FallbackCondition {
+    kFallbackDiscretional,   // trying to produce result quicker to improve
+                             // latency
+    kFallbackEmergency    // rewrite failed and output would otherwise not
+                          // be available
+  };
 
   // Callback helper functions.
   void Start();
@@ -514,9 +539,6 @@ class RewriteContext {
   void StartRewriteForHtml();
   void StartRewriteForFetch();
 
-  // Freshens resources proactively to avoid expiration in the near future.
-  void Freshen(const CachedResult& group);
-
   // Determines whether the Context is in a state where it's ready to
   // rewrite.  This requires:
   //    - no preceding RewriteContexts in progress
@@ -573,9 +595,11 @@ class RewriteContext {
   void FetchFallbackCacheDone(HTTPCache::FindResult result,
                               HTTPCache::Callback* data);
 
-  // Callback once the fetch is done. This calls Driver()->FetchComplete() if
-  // notify_driver_on_fetch_done is true.
-  void FetchCallbackDone(bool success);
+  // Returns true if we can attempt to serve the original file for a fetch
+  // request in case something goes wrong with rewriting (circumstance ==
+  // kFallbackEmergency) or the system thinks that would avoid a latency
+  // spike or overload (kFallbackDiscretional).
+  bool CanFetchFallbackToOriginal(FallbackCondition circumstance) const;
 
   // To perform a rewrite, we need to have data for all of its input slots.
   ResourceSlotVector slots_;
