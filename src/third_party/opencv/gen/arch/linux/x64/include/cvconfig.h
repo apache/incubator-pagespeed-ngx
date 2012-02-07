@@ -82,7 +82,7 @@
 /* #undef HAVE_LIBM */
 
 /* libpng/png.h needs to be included */
-#define  HAVE_LIBPNG_PNG_H
+/* #undef HAVE_LIBPNG_PNG_H */
 
 /* Define to 1 if you have the `pthread' library (-lpthread). */
 #define  HAVE_LIBPTHREAD 1
@@ -97,7 +97,7 @@
 #define  HAVE_PNG_GET_VALID 1
 
 /* png.h needs to be included */
-/* #undef HAVE_PNG_H */
+#define  HAVE_PNG_H 1
 
 /* Define to 1 if you have the `png_set_tRNS_to_alpha' function. */
 #define  HAVE_PNG_SET_TRNS_TO_ALPHA 1
