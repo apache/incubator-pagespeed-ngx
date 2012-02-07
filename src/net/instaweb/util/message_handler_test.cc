@@ -74,8 +74,8 @@ TEST_F(MessageHandlerTest, Simple) {
   ASSERT_EQ(messages()[1], "Info: filename.cc: 1: here is another message");
   ASSERT_EQ(kWarning, MessageHandler::StringToMessageType("Warning"));
   ASSERT_EQ(kFatal, MessageHandler::StringToMessageType("Fatal"));
-  ASSERT_DEATH(MessageHandler::StringToMessageType("Random"),
-               "Invalid msg level: Random");
+  ASSERT_DEATH_IF_SUPPORTED(MessageHandler::StringToMessageType("Random"),
+                            "Invalid msg level: Random");
 }
 
 TEST_F(MessageHandlerTest, MinMessageType) {

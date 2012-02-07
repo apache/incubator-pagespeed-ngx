@@ -16,6 +16,9 @@
   'variables': {
     'instaweb_root': '../..',
     'chromium_code': 1,
+    # Warning: duplicated from icu.gyp; so please remember to change both spots
+    # if changing the default.
+    'use_system_icu%': 0,
   },
   'targets': [
     {
@@ -171,7 +174,7 @@
     },
   ],
   'conditions': [
-    ['OS=="linux"', {
+    ['OS=="linux" and use_system_icu==0', {
       'targets': [
         # We build this target to make sure that we don't accidentially
         # introduce dependencies from the core libraries to non-core
