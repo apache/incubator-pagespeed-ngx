@@ -42,6 +42,7 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"  // for StrCat, etc
+#include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -179,7 +180,7 @@ CacheInterface* TestRewriteDriverFactory::DefaultCacheInterface() {
   DCHECK(lru_cache_ == NULL);
   lru_cache_.reset(new LRUCache(kCacheSize));
   delay_cache_ = new DelayCache(lru_cache_.get());
-  return delay_cache_;
+  return new ThreadsafeCache(delay_cache_, thread_system()->NewMutex());
 }
 
 Hasher* TestRewriteDriverFactory::NewHasher() {
