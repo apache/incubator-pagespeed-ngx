@@ -22,7 +22,6 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -36,6 +35,7 @@ namespace net_instaweb {
 
 class ApacheResourceManager;
 class GzipInflater;
+class ResponseHeaders;
 class RewriteOptions;
 
 const char kPagespeedOriginalUrl[] = "mod_pagespeed_original_url";
@@ -95,13 +95,6 @@ class InstawebContext {
  private:
   void ComputeContentEncoding(request_rec* request);
   void ProcessBytes(const char* input, int size);
-
-  // Checks to see if there was a Furious cookie sent with the request.
-  // If there was not, set one, and add a Set-Cookie header to the
-  // response headers.
-  // If there was one, make sure to set the options state appropriately.
-  void SetFuriousStateAndCookie(request_rec* request, RewriteOptions* options);
-
   static apr_status_t Cleanup(void* object);
 
   GoogleString output_;  // content after instaweb rewritten.

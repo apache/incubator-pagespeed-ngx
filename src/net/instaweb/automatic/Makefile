@@ -98,9 +98,11 @@ BASE_LIBS = \
   third_party/libpng/libpng.a \
   third_party/libwebp/libwebp_dec.a \
   third_party/libwebp/libwebp_enc.a \
+  third_party/opencv/libcv.a \
+  third_party/opencv/libcxcore.a \
+  third_party/opencv/libflann.a \
   third_party/opencv/libhighgui.a \
-  third_party/opencv/libopencv_imgproc.a \
-  third_party/opencv/libopencv_core.a \
+  third_party/opencv/liblapack.a \
   third_party/protobuf/libprotobuf_lite.a \
   third_party/zlib/libzlib.a
 

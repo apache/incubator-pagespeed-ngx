@@ -54,25 +54,18 @@ EOF
 
 HOSTNAME=$1
 EXAMPLE_ROOT=http://$HOSTNAME/mod_pagespeed_example
+REWRITTEN_TEST_ROOT=$TEST_ROOT
+TEST_ROOT=http://$HOSTNAME/mod_pagespeed_test
 STATISTICS_URL=http://$HOSTNAME/mod_pagespeed_statistics
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/W.bad.pagespeed.cf.hash.css
 MESSAGE_URL=http://$HOSTNAME/mod_pagespeed_message
 
-# The following shake-and-bake ensures that we set REWRITTEN_TEST_ROOT based on
-# the TEST_ROOT in effect when we start up, if any, but if it was not set before
-# invocation it is set to the newly-chosen TEST_ROOT.  This permits us to call
-# this from other test scripts that use different host prefixes for rewritten
-# content.
-REWRITTEN_TEST_ROOT=$TEST_ROOT
-TEST_ROOT=http://$HOSTNAME/mod_pagespeed_test
-REWRITTEN_TEST_ROOT=${REWRITTEN_TEST_ROOT:-$TEST_ROOT}
-
-# This sets up similar naming for https requests.
 HTTPS_HOST=$2
 HTTPS_EXAMPLE_ROOT=https://$HTTPS_HOST/mod_pagespeed_example
 
 # These are the root URLs for rewritten resources; by default, no change.
 REWRITTEN_ROOT=${REWRITTEN_ROOT:-$EXAMPLE_ROOT}
+REWRITTEN_TEST_ROOT=${REWRITTEN_TEST_ROOT:-$TEST_ROOT}
 
 # Setup wget proxy information
 export http_proxy=$3

@@ -28,6 +28,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -250,6 +251,28 @@ TEST_F(PropertyCacheTest, TwoCohorts) {
     PropertyValue* p2 = page.GetProperty(cohort2, kPropertyName2);
     EXPECT_TRUE(p2->was_read());
     EXPECT_TRUE(p2->has_value());
+  }
+}
+
+TEST_F(PropertyCacheTest, Expiration) {
+  timer_.SetTimeMs(MockTimer::kApr_5_2010_ms);
+  ReadWriteInitial(kCacheKey1, "Value1");
+
+  // Read a value & make sure it's not expired initially, but expires when
+  // we move time forward.
+  {
+    MockPage page(thread_system_->NewMutex());
+    property_cache_.Read(kCacheKey1, &page);
+    PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
+
+    // Initially it's not expired.
+    EXPECT_FALSE(property_cache_.IsExpired(property, Timer::kMinuteMs));
+    timer_.AdvanceMs(30 * Timer::kSecondMs);
+    EXPECT_FALSE(property_cache_.IsExpired(property, Timer::kMinuteMs));
+    timer_.AdvanceMs(30 * Timer::kSecondMs);
+    EXPECT_FALSE(property_cache_.IsExpired(property, Timer::kMinuteMs));
+    timer_.AdvanceMs(1 * Timer::kSecondMs);
+    EXPECT_TRUE(property_cache_.IsExpired(property, Timer::kMinuteMs));
   }
 }
 

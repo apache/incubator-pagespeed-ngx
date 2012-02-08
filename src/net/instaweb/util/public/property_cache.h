@@ -199,6 +199,16 @@ class PropertyCache {
     return property->IsStable(mutations_per_1000_writes_threshold_);
   }
 
+  // Determines whether a value is expired relative to the specified TTL.
+  //
+  // It is an error (DCHECK) to call this method when !property->has_value().
+  //
+  // Note; we could also store the TTL in the cache-value itself.  That would
+  // be useful if we derived the TTL from the data or other transients.  But
+  // our envisioned usage has the TTL coming from a configuration that is
+  // available at read-time, so for now we just use that.
+  bool IsExpired(const PropertyValue* property_value, int64 ttl_ms) const;
+
   // Updates the value of a property, tracking stability & discarding
   // writes when the existing data is more up-to-date.
   void UpdateValue(const StringPiece& value, PropertyValue* property) const;

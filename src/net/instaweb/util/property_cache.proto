@@ -35,7 +35,7 @@ message PropertyValueProtobuf {
   optional uint64 update_mask = 4 [ default = 0 ];
 
   // Total number of writes ever done on this property value.
-  optional int64 num_writes = 5 [default = 0];
+  optional int64 num_writes = 5 [ default = 0 ];
 };
 
 message PropertyCacheValues {

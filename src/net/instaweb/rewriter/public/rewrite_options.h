@@ -27,7 +27,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
-#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/wildcard_group.h"
@@ -240,8 +239,6 @@ class RewriteOptions {
   // after expiry.
   static const int64 kDefaultMetadataCacheStalenessThresholdMs;
 
-  static const int kDefaultFuriousTrafficPercent;
-
   static const char kClassName[];
 
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
@@ -258,17 +255,6 @@ class RewriteOptions {
   void SetRewriteLevel(RewriteLevel level) {
     set_option(level, &level_);
   }
-
-  // Sets which side of the experiment these RewriteOptions are on.
-  // Cookie-setting must be done separately.
-  void set_furious_state(furious::FuriousState state) {
-    furious_state_ = state;
-  }
-
-  furious::FuriousState furious_state() const {
-    return furious_state_;
-  }
-
   RewriteLevel level() const { return level_.value();}
 
   // Enables filters specified without a prefix or with a prefix of '+' and
@@ -581,20 +567,6 @@ class RewriteOptions {
   // Takes ownership of the config.
   void set_panel_config(PublisherConfig* panel_config);
   const PublisherConfig* panel_config() const;
-
-  void set_running_furious_experiment(bool x) {
-    set_option(x, &running_furious_);
-  }
-  bool running_furious() const {
-    return running_furious_.value();
-  }
-
-  void set_furious_percent(int x) {
-    set_option(x, &furious_percent_);
-  }
-  int furious_percent() const {
-    return furious_percent_.value();
-  }
 
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this', although
@@ -970,9 +942,8 @@ class RewriteOptions {
   Option<int> image_webp_recompress_quality_;
 
   Option<int> image_max_rewrites_at_once_;
-  Option<int> max_url_segment_size_;  // For http://a/b/c.d, use strlen("c.d").
-  Option<int> max_url_size_;          // This is strlen("http://a/b/c.d").
-  Option<int> furious_percent_;       // Percent traffic to go through furious.
+  Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")
+  Option<int> max_url_size_;          // but this is strlen("http://a/b/c.d")
 
   Option<bool> enabled_;
   Option<bool> ajax_rewriting_enabled_;  // Should ajax rewriting be enabled?
@@ -1006,11 +977,6 @@ class RewriteOptions {
   // true, images are loaded when onload is fired.
   Option<bool> lazyload_images_after_onload_;
 
-  // Furious is the A/B experiment framework that uses cookies
-  // and Google Analytics to track page speed statistics with
-  // multiple sets of rewriters.
-  Option<bool> running_furious_;
-
   // Number of first N images for which low res image is generated. Negative
   // values will bypass image index check.
   Option<int> max_inlined_preview_images_index_;
@@ -1042,9 +1008,6 @@ class RewriteOptions {
   // optimization as otherwise it might be very bad news indeed if someone
   // mixed debug/opt object files in an executable.
   bool options_uniqueness_checked_;
-
-  // Which side of the experiment are we in?
-  furious::FuriousState furious_state_;
 
   DomainLawyer domain_lawyer_;
   FileLoadPolicy file_load_policy_;

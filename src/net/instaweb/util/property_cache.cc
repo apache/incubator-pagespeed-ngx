@@ -282,6 +282,13 @@ void PropertyCache::WriteCohort(const StringPiece& key,
   }
 }
 
+bool PropertyCache::IsExpired(const PropertyValue* property_value,
+                              int64 ttl_ms) const {
+  DCHECK(property_value->has_value());
+  int64 expiration_time_ms = property_value->write_timestamp_ms() + ttl_ms;
+  return timer_->NowMs() > expiration_time_ms;
+}
+
 const PropertyCache::Cohort* PropertyCache::AddCohort(
     const StringPiece& cohort_name) {
   Cohort cohort_prototype;

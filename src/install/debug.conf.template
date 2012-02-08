@@ -273,7 +273,3 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 #HTTPS SSLRandomSeed startup builtin
 #HTTPS SSLRandomSeed connect builtin
 #HTTPS ModPagespeedMapOriginDomain http://@@APACHE_DOMAIN@@ https://@@APACHE_HTTPS_DOMAIN@@
-
-#FURIOUS # This is used for testing the Furious experiment framework.
-#FURIOUS ModPagespeedRunExperiment on
-#FURIOUS ModPagespeedAnalyticsID "123-45-6734"

@@ -43,9 +43,8 @@ extern "C" {
 #include "cv.h"
 #include "highgui.h"
 #else
-#include "opencv2/core/core.hpp"
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/highgui/highgui.hpp"
+#include "third_party/opencv/src/opencv/include/opencv/cv.h"
+#include "third_party/opencv/src/opencv/include/opencv/highgui.h"
 #endif
 #include "pagespeed/image_compression/gif_reader.h"
 #include "pagespeed/image_compression/image_converter.h"
