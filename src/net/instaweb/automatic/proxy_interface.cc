@@ -277,6 +277,8 @@ ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
       custom_options.reset(resource_manager_->NewOptions());
       custom_options->Merge(*options);
       custom_options->Merge(*query_options.get());
+      // Don't run any experiments if this is a special query-params request.
+      custom_options->set_running_furious_experiment(false);
       break;
     }
   }

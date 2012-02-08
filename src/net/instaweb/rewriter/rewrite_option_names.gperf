@@ -80,4 +80,17 @@ RewriteOptions::OptionEnum RewriteOptions::LookupOption(
   return RewriteOptions::kEndOfOptions;
 }
 
+void RewriteOptions::InitOptionEnumToNameArray() {
+  // We assume that all entries of option_enum_to_name_array_ have been
+  // initialized to NULL.
+  int num_entries = arraysize(kOptionNameTable);
+  for (int i = 0; i < num_entries; ++i) {
+    const char* name = kOptionNameTable[i].name;
+    if ((name != NULL) && (*name != '\0') &&
+        (kOptionNameTable[i].option_enum < kEndOfOptions)) {
+      option_enum_to_name_array_[kOptionNameTable[i].option_enum] = name;
+    }
+  }
+}
+
 }  // namespace net_instaweb

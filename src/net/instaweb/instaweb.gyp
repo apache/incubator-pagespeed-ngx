@@ -58,6 +58,20 @@
       ]
     },
     {
+      'target_name': 'instaweb_delay_images_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'delay_images_opt',
+      },
+      'sources': [
+        'genfiles/rewriter/delay_images_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_delay_images_inline_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -66,6 +80,20 @@
       },
       'sources': [
         'rewriter/delay_images_inline.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_delay_images_inline_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'delay_images_inline_opt',
+      },
+      'sources': [
+        'genfiles/rewriter/delay_images_inline_opt.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -108,6 +136,20 @@
       },
       'sources': [
         'rewriter/lazyload_images.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_lazyload_images_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'lazyload_images_opt',
+      },
+      'sources': [
+        'genfiles/rewriter/lazyload_images_opt.js',
       ],
       'includes': [
         'data2c.gypi',
@@ -634,10 +676,13 @@
         'instaweb_core.gyp:instaweb_rewriter_html',
         'instaweb_http',
         'instaweb_delay_images_data2c',
+        'instaweb_delay_images_opt_data2c',
         'instaweb_delay_images_inline_data2c',
+        'instaweb_delay_images_inline_opt_data2c',
         'instaweb_js_defer_data2c',
         'instaweb_js_defer_opt_data2c',
         'instaweb_lazyload_images_data2c',
+        'instaweb_lazyload_images_opt_data2c',
         'instaweb_panel_config_pb',
         'instaweb_rewriter_base',
         'instaweb_rewriter_css',
@@ -667,6 +712,7 @@
         'rewriter/domain_rewrite_filter.cc',
         'rewriter/file_input_resource.cc',
         'rewriter/flush_html_filter.cc',
+        'rewriter/furious_util.cc',
         'rewriter/google_analytics_filter.cc',
         'rewriter/image_rewrite_filter.cc',
         'rewriter/inline_rewrite_context.cc',

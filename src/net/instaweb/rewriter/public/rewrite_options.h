@@ -27,6 +27,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
+#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/wildcard_group.h"
@@ -239,12 +240,17 @@ class RewriteOptions {
   // after expiry.
   static const int64 kDefaultMetadataCacheStalenessThresholdMs;
 
+  static const int kDefaultFuriousTrafficPercent;
+
   static const char kClassName[];
 
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
 
   RewriteOptions();
   virtual ~RewriteOptions();
+
+  // Does one time initialization of static members.
+  static void Initialize();
 
   bool modified() const { return modified_; }
 
@@ -255,6 +261,17 @@ class RewriteOptions {
   void SetRewriteLevel(RewriteLevel level) {
     set_option(level, &level_);
   }
+
+  // Sets which side of the experiment these RewriteOptions are on.
+  // Cookie-setting must be done separately.
+  void set_furious_state(furious::FuriousState state) {
+    furious_state_ = state;
+  }
+
+  furious::FuriousState furious_state() const {
+    return furious_state_;
+  }
+
   RewriteLevel level() const { return level_.value();}
 
   // Enables filters specified without a prefix or with a prefix of '+' and
@@ -568,6 +585,20 @@ class RewriteOptions {
   void set_panel_config(PublisherConfig* panel_config);
   const PublisherConfig* panel_config() const;
 
+  void set_running_furious_experiment(bool x) {
+    set_option(x, &running_furious_);
+  }
+  bool running_furious() const {
+    return running_furious_.value();
+  }
+
+  void set_furious_percent(int x) {
+    set_option(x, &furious_percent_);
+  }
+  int furious_percent() const {
+    return furious_percent_.value();
+  }
+
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this', although
   // option Merge implementations can be redefined by specific Option
@@ -661,6 +692,12 @@ class RewriteOptions {
   // Returns true if generation low res images is required.
   virtual bool NeedLowResImages() const {
     return Enabled(kDelayImages);
+  }
+
+  // Returns the option name corresponding to the option enum.
+  static const char* LookupOptionEnum(RewriteOptions::OptionEnum option_enum) {
+    return (option_enum < kEndOfOptions) ?
+        option_enum_to_name_array_[option_enum] : NULL;
   }
 
  protected:
@@ -820,6 +857,14 @@ class RewriteOptions {
   // Marks the config as modified.
   void Modify();
 
+  // Convenience name for a set of rewrite options.
+  typedef std::vector<OptionBase*> OptionBaseVector;
+
+  // Return the list of all options.
+  const OptionBaseVector& all_options() const {
+    return all_options_;
+  }
+
  private:
   void SetUp();
   bool AddCommaSeparatedListToFilterSet(
@@ -831,6 +876,9 @@ class RewriteOptions {
       const StringPiece& option, MessageHandler* handler, FilterSet* set);
   static Filter LookupFilter(const StringPiece& filter_name);
   static OptionEnum LookupOption(const StringPiece& option_name);
+  // Initialize the option-enum to option-name array for fast lookups by
+  // OptionEnum.
+  static void InitOptionEnumToNameArray();
 
   // These static methods are used by Option<T>::SetFromString to set
   // Option<T>::value_ from a string representation of it.
@@ -942,8 +990,9 @@ class RewriteOptions {
   Option<int> image_webp_recompress_quality_;
 
   Option<int> image_max_rewrites_at_once_;
-  Option<int> max_url_segment_size_;  // for http://a/b/c.d, use strlen("c.d")
-  Option<int> max_url_size_;          // but this is strlen("http://a/b/c.d")
+  Option<int> max_url_segment_size_;  // For http://a/b/c.d, use strlen("c.d").
+  Option<int> max_url_size_;          // This is strlen("http://a/b/c.d").
+  Option<int> furious_percent_;       // Percent traffic to go through furious.
 
   Option<bool> enabled_;
   Option<bool> ajax_rewriting_enabled_;  // Should ajax rewriting be enabled?
@@ -977,6 +1026,11 @@ class RewriteOptions {
   // true, images are loaded when onload is fired.
   Option<bool> lazyload_images_after_onload_;
 
+  // Furious is the A/B experiment framework that uses cookies
+  // and Google Analytics to track page speed statistics with
+  // multiple sets of rewriters.
+  Option<bool> running_furious_;
+
   // Number of first N images for which low res image is generated. Negative
   // values will bypass image index check.
   Option<int> max_inlined_preview_images_index_;
@@ -998,8 +1052,10 @@ class RewriteOptions {
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,
   // Compare.
-  typedef std::vector<OptionBase*> OptionBaseVector;
   OptionBaseVector all_options_;
+
+  // Array of option names indexed by corresponding OptionEnum.
+  static const char* option_enum_to_name_array_[kEndOfOptions];
 
   // When compiled for debug, we lazily check whether the all the Option<>
   // member variables in all_options have unique IDs.
@@ -1008,6 +1064,9 @@ class RewriteOptions {
   // optimization as otherwise it might be very bad news indeed if someone
   // mixed debug/opt object files in an executable.
   bool options_uniqueness_checked_;
+
+  // Which side of the experiment are we in?
+  furious::FuriousState furious_state_;
 
   DomainLawyer domain_lawyer_;
   FileLoadPolicy file_load_policy_;

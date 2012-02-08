@@ -490,24 +490,29 @@ class RewriteContext::FetchContext {
 // introducing a kTooBusy response if the job gets dumped.
 class RewriteContext::InvokeRewriteFunction : public Function {
  public:
-  InvokeRewriteFunction(RewriteContext* context, int partition)
-      : context_(context), partition_(partition) {}
+  InvokeRewriteFunction(RewriteContext* context, int partition,
+                        const OutputResourcePtr& output)
+      : context_(context), partition_(partition), output_(output) {
+  }
 
   virtual ~InvokeRewriteFunction() {}
 
   virtual void Run() {
+    context_->Manager()->rewrite_stats()->num_rewrites_executed()->IncBy(1);
     context_->Rewrite(partition_,
                       context_->partitions_->mutable_partition(partition_),
-                      context_->outputs_[partition_]);
+                      output_);
   }
 
   virtual void Cancel() {
+    context_->Manager()->rewrite_stats()->num_rewrites_dropped()->IncBy(1);
     context_->RewriteDone(kTooBusy, partition_);
   }
 
  private:
   RewriteContext* context_;
   int partition_;
+  OutputResourcePtr output_;
 };
 
 RewriteContext::RewriteContext(RewriteDriver* driver,
@@ -1146,23 +1151,18 @@ void RewriteContext::PartitionDone(bool result) {
     // but the content-hashes for the rewritten content.  So we must
     // rewrite before calling WritePartition.
 
-    // Note that we run the actual rewrites in the "low priority" thread except
-    // if we're serving an attached fetch, since we do not want to fail it due
-    // to load shedding. Of course, we're only inside this method for a fetch
-    // if it's a nested rewrite for one, since its top-level will be
-    // handled by StartRewriteForFetch().
-    bool is_fetch = ((parent_ != NULL) && (parent_->fetch_.get() != NULL));
-    bool is_detached_fetch = is_fetch && parent_->fetch_->detached();
-
+    // Note that we run the actual rewrites in the "low priority" thread,
+    // which makes it easy to cancel them if our backlog gets too horrid.
+    //
+    // This path corresponds either to HTML rewriting or to a rewrite nested
+    // inside a fetch (top-levels for fetches are handled inside
+    // StartRewriteForFetch), so failing it due to load-shedding will not
+    // prevent us from serving requests.
     CHECK_EQ(outstanding_rewrites_, static_cast<int>(outputs_.size()));
     for (int i = 0, n = outstanding_rewrites_; i < n; ++i) {
       InvokeRewriteFunction* invoke_rewrite =
-          new InvokeRewriteFunction(this, i);
-      if (is_fetch && !is_detached_fetch) {
-        Driver()->AddRewriteTask(invoke_rewrite);
-      } else {
-        Driver()->AddLowPriorityRewriteTask(invoke_rewrite);
-      }
+          new InvokeRewriteFunction(this, i, outputs_[i]);
+      Driver()->AddLowPriorityRewriteTask(invoke_rewrite);
     }
   }
 }
@@ -1423,7 +1423,19 @@ void RewriteContext::StartRewriteForFetch() {
       fetch_->SetupDeadlineAlarm();
     }
 
-    Rewrite(0, partition, output);
+    // Generally, we want to do all rewriting in the low-priority thread,
+    // to ensure the main rewrite thread is always responsive. However, the
+    // low-priority thread's tasks may get cancelled due to load-shedding,
+    // so we have to be careful not to do it for filters where falling back
+    // to an input isn't an option (such as combining filters or filters that
+    // set OptimizationOnly() to false).
+    InvokeRewriteFunction* call_rewrite =
+        new InvokeRewriteFunction(this, 0, output);
+    if (CanFetchFallbackToOriginal(kFallbackDiscretional)) {
+      Driver()->AddLowPriorityRewriteTask(call_rewrite);
+    } else {
+      Driver()->AddRewriteTask(call_rewrite);
+    }
   } else {
     partition->clear_input();
     AddRecheckDependency();

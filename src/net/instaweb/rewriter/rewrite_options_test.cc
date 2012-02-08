@@ -532,4 +532,24 @@ TEST_F(RewriteOptionsTest, SetOptionFromName) {
             options_.js_inline_max_bytes());  // unchanged from default.
 }
 
+// TODO(bharathbhushan): Figure out a better way to test all enum lookups.
+TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
+  RewriteOptions::Initialize();
+  EXPECT_EQ(StringPiece("CssInlineMaxBytes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kCssInlineMaxBytes));
+  EXPECT_EQ(StringPiece("JsInlineMaxBytes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kJsInlineMaxBytes));
+  EXPECT_EQ(StringPiece("ImageInlineMaxBytes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kImageInlineMaxBytes));
+  EXPECT_EQ(StringPiece("CssImageInlineMaxBytes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kCssImageInlineMaxBytes));
+  EXPECT_EQ(StringPiece("MinImageSizeLowResolutionBytes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kMinImageSizeLowResolutionBytes));
+}
+
 }  // namespace

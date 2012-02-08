@@ -27,12 +27,12 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
@@ -63,6 +63,7 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -76,7 +77,6 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class RequestHeaders;
 
 namespace {
 
@@ -399,6 +399,8 @@ class CombiningFilter : public RewriteFilter {
     : RewriteFilter(driver),
       scheduler_(scheduler),
       rewrite_delay_ms_(rewrite_delay_ms),
+      rewrite_block_on_(NULL),
+      rewrite_signal_on_(NULL),
       on_the_fly_(false),
       optimization_only_(true) {
     ClearStats();
@@ -479,6 +481,12 @@ class CombiningFilter : public RewriteFilter {
     virtual void Rewrite(int partition_index,
                          CachedResult* partition,
                          const OutputResourcePtr& output) {
+      if (filter_->rewrite_signal_on_ != NULL) {
+        filter_->rewrite_signal_on_->Notify();
+      }
+      if (filter_->rewrite_block_on_ != NULL) {
+        filter_->rewrite_block_on_->Wait();
+      }
       if (filter_->rewrite_delay_ms() == 0) {
         DoRewrite(partition_index, partition, output);
       } else {
@@ -575,6 +583,13 @@ class CombiningFilter : public RewriteFilter {
   bool num_rewrites() const { return num_rewrites_; }
   void ClearStats() { num_rewrites_ = 0; }
   int64 rewrite_delay_ms() const { return rewrite_delay_ms_; }
+  void set_rewrite_block_on(WorkerTestBase::SyncPoint* sync) {
+    rewrite_block_on_ = sync;
+  }
+
+  void set_rewrite_signal_on(WorkerTestBase::SyncPoint* sync) {
+    rewrite_signal_on_ = sync;
+  }
 
   // Each entry in combination will be prefixed with this.
   void set_prefix(const GoogleString& prefix) { prefix_ = prefix; }
@@ -592,6 +607,15 @@ class CombiningFilter : public RewriteFilter {
   MockScheduler* scheduler_;
   int num_rewrites_;
   int64 rewrite_delay_ms_;
+
+  // If this is non-NULL, the actual rewriting will block until this is
+  // signaled. Applied before rewrite_delay_ms_
+  WorkerTestBase::SyncPoint* rewrite_block_on_;
+
+  // If this is non-NULL, this will be signaled the moment rewrite is called
+  // on the context, before rewrite_block_on_ and rewrite_delay_ms_ are
+  // applied.
+  WorkerTestBase::SyncPoint* rewrite_signal_on_;
   GoogleString prefix_;
   bool on_the_fly_;  // If true, will act as an on-the-fly filter.
   bool optimization_only_;  // If false, will disable load-shedding and fetch
@@ -2202,6 +2226,93 @@ TEST_F(RewriteContextTest, FetchDeadlineTestBeforeDeadline) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(RewriteContextTest, LoadSheddingTest) {
+  const int kThresh = 20;
+  resource_manager()->low_priority_rewrite_workers()->
+      SetLoadSheddingThreshold(kThresh);
+
+  const char kCss[] = " * { display: none; } ";
+  const char kMinifiedCss[] = "*{display:none}";
+
+  InitResources();
+  for (int i = 0; i < 2 * kThresh; ++i) {
+    GoogleString file_name = IntegerToString(i);
+    SetResponseWithDefaultHeaders(
+        file_name, kContentTypeCss, kCss, Timer::kYearMs * Timer::kSecondMs);
+  }
+
+  // We use a sync point here to wedge the combining filter, and then have
+  // other filters behind it accumulate lots of work and get load-shed.
+  InitCombiningFilter(0);
+  combining_filter_->set_prefix("|");
+  WorkerTestBase::SyncPoint rewrite_reached(
+      resource_manager()->thread_system());
+  WorkerTestBase::SyncPoint resume_rewrite(resource_manager()->thread_system());
+  combining_filter_->set_rewrite_signal_on(&rewrite_reached);
+  combining_filter_->set_rewrite_block_on(&resume_rewrite);
+
+  GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
+                                     "a.css", "css");
+
+  GoogleString out_combine;
+  StringAsyncFetch async_fetch(&out_combine);
+  rewrite_driver()->FetchResource(combined_url, &async_fetch);
+  rewrite_reached.Wait();
+
+  // We need separate rewrite drivers, strings, and callbacks for each of the
+  // other requests..
+  std::vector<GoogleString*> outputs;
+  std::vector<StringAsyncFetch*> fetchers;
+  std::vector<RewriteDriver*> drivers;
+
+  for (int i = 0; i < 2 * kThresh; ++i) {
+    GoogleString file_name = IntegerToString(i);
+    GoogleString* out = new GoogleString;
+    StringAsyncFetch* fetch = new StringAsyncFetch(out);
+    RewriteDriver* driver = resource_manager()->NewRewriteDriver();
+    GoogleString out_url =
+        Encode(kTestDomain, "cf", "0", file_name, "css");
+    driver->FetchResource(out_url, fetch);
+
+    outputs.push_back(out);
+    fetchers.push_back(fetch);
+    drivers.push_back(driver);
+  }
+
+  // Note that we know that we're stuck in the middle of combining filter's
+  // rewrite, as it signaled us on rewrite_reached, but we didn't yet
+  // signal on resume_rewrite. This means that once the 2 * kThresh rewrites
+  // will get queued up, we will be forced to load-shed kThresh of them
+  // (with combiner not canceled since it's already "running"), and so the
+  // rewrites 0 ... kThresh - 1 can actually complete via shedding now.
+  for (int i = 0; i < kThresh; ++i) {
+    drivers[i]->WaitForCompletion();
+    drivers[i]->Cleanup();
+    // Since this got load-shed, we expect output to be unoptimized,
+    // and private cache-control.
+    EXPECT_STREQ(kCss, *outputs[i]) << "rewrite:" << i;
+    EXPECT_TRUE(fetchers[i]->response_headers()->HasValue(
+                    HttpAttributes::kCacheControl, "private"));
+  }
+
+  // Unwedge the combiner, then collect other rewrites.
+  resume_rewrite.Notify();
+
+  for (int i = kThresh; i < 2 * kThresh; ++i) {
+    drivers[i]->WaitForCompletion();
+    drivers[i]->Cleanup();
+    // These should be optimized.
+    EXPECT_STREQ(kMinifiedCss, *outputs[i]) << "rewrite:" << i;
+    EXPECT_FALSE(fetchers[i]->response_headers()->HasValue(
+                     HttpAttributes::kCacheControl, "private"));
+  }
+
+  STLDeleteElements(&outputs);
+  STLDeleteElements(&fetchers);
+
+  rewrite_driver()->WaitForShutDown();
 }
 
 TEST_F(RewriteContextTest, CombinationFetchMissing) {

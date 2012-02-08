@@ -45,7 +45,9 @@ BASE_LIBS = \
   net/instaweb/libautomatic_util.a \
   net/instaweb/libhttp_core.a \
   net/instaweb/libinstaweb_delay_images_data2c.a \
+  net/instaweb/libinstaweb_delay_images_opt_data2c.a \
   net/instaweb/libinstaweb_delay_images_inline_data2c.a \
+  net/instaweb/libinstaweb_delay_images_inline_opt_data2c.a \
   net/instaweb/libinstaweb_htmlparse_core.a \
   net/instaweb/libinstaweb_htmlparse_core_gperf.a \
   net/instaweb/libinstaweb_http.a \
@@ -55,6 +57,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_js_defer_data2c.a \
   net/instaweb/libinstaweb_js_defer_opt_data2c.a \
   net/instaweb/libinstaweb_lazyload_images_data2c.a \
+  net/instaweb/libinstaweb_lazyload_images_opt_data2c.a \
   net/instaweb/libinstaweb_panel_config_pb.a \
   net/instaweb/libinstaweb_propcache_pb.a \
   net/instaweb/libinstaweb_rewriter.a \
@@ -98,11 +101,9 @@ BASE_LIBS = \
   third_party/libpng/libpng.a \
   third_party/libwebp/libwebp_dec.a \
   third_party/libwebp/libwebp_enc.a \
-  third_party/opencv/libcv.a \
-  third_party/opencv/libcxcore.a \
-  third_party/opencv/libflann.a \
   third_party/opencv/libhighgui.a \
-  third_party/opencv/liblapack.a \
+  third_party/opencv/libopencv_imgproc.a \
+  third_party/opencv/libopencv_core.a \
   third_party/protobuf/libprotobuf_lite.a \
   third_party/zlib/libzlib.a
 

@@ -24,6 +24,9 @@
 /* V4L2 capturing support */
 /* #undef HAVE_CAMV4L2 */
 
+/* V4L/V4L2 capturing support via libv4l */
+/* #undef HAVE_LIBV4L */
+
 /* Carbon windowing environment */
 /* #undef HAVE_CARBON */
 
@@ -48,9 +51,6 @@
 /* GStreamer multimedia framework */
 /* #undef HAVE_GSTREAMER */
 
-/* GStreamer with gstappsink & gstappsrc */
-/* #undef HAVE_GSTREAMER_APP */
-
 /* GTK+ 2.0 Thread support */
 /* #undef HAVE_GTHREAD */
 
@@ -70,7 +70,7 @@
 /* #undef HAVE_JASPER */
 
 /* IJG JPEG codec */
-/* #undef HAVE_JPEG */
+#define  HAVE_JPEG 1
 
 /* Define to 1 if you have the `dl' library (-ldl). */
 /* #undef HAVE_LIBDL */
@@ -91,16 +91,16 @@
 /* #undef HAVE_LRINT */
 
 /* PNG codec */
-/* #undef HAVE_PNG */
+#define  HAVE_PNG 1
 
 /* Define to 1 if you have the `png_get_valid' function. */
-/* #undef HAVE_PNG_GET_VALID */
+#define  HAVE_PNG_GET_VALID 1
 
 /* png.h needs to be included */
-/* #undef HAVE_PNG_H */
+#define  HAVE_PNG_H 1
 
 /* Define to 1 if you have the `png_set_tRNS_to_alpha' function. */
-/* #undef HAVE_PNG_SET_TRNS_TO_ALPHA */
+#define  HAVE_PNG_SET_TRNS_TO_ALPHA 1
 
 /* QuickTime video libraries */
 /* #undef HAVE_QUICKTIME */
@@ -112,19 +112,22 @@
 /* #undef HAVE_UNICAP */
 
 /* Define to 1 if you have the <unistd.h> header file. */
-/* #undef HAVE_UNISTD_H */
+#define  HAVE_UNISTD_H 1
 
 /* Xine video library */
 /* #undef HAVE_XINE */
 
+/* OpenNI library */
+/* #undef HAVE_OPENNI */
+
 /* LZ77 compression/decompression library (used for PNG) */
-/* #undef HAVE_ZLIB */
+#define  HAVE_ZLIB 1
 
 /* Intel Integrated Performance Primitives */
 /* #undef HAVE_IPP */
 
 /* OpenCV compiled as static or dynamic libs */
-#define  OPENCV_BUILD_SHARED_LIB
+#define  BUILD_SHARED_LIBS
 
 /* Name of package */
 #define  PACKAGE "opencv"
@@ -136,13 +139,13 @@
 #define  PACKAGE_NAME "opencv"
 
 /* Define to the full name and version of this package. */
-#define  PACKAGE_STRING "opencv 2.1.0"
+#define  PACKAGE_STRING "opencv 2.3.1"
 
 /* Define to the one symbol short name of this package. */
 #define  PACKAGE_TARNAME "opencv"
 
 /* Define to the version of this package. */
-#define  PACKAGE_VERSION "2.1.0"
+#define  PACKAGE_VERSION "2.3.1"
 
 /* If using the C implementation of alloca, define if you know the
    direction of stack growth for your system; otherwise it will be
@@ -153,7 +156,7 @@
 /* #undef STACK_DIRECTION */
 
 /* Version number of package */
-#define  VERSION "2.1.0"
+#define  VERSION "2.3.1"
 
 /* Define to 1 if your processor stores words with the most significant byte
    first (like Motorola and SPARC, unlike Intel and VAX). */
@@ -161,3 +164,30 @@
 
 /* Intel Threading Building Blocks */
 /* #undef HAVE_TBB */
+
+/* Threading Framework --- temporary decision for ARM instead of Intel TBB  */
+/* #undef HAVE_THREADING_FRAMEWORK */
+
+/* Eigen Matrix & Linear Algebra Library */
+/* #undef HAVE_EIGEN */
+
+/* NVidia Cuda Runtime API*/
+/* #undef HAVE_CUDA */
+
+/* Compile for 'real' NVIDIA GPU architectures */
+#define CUDA_ARCH_BIN ""
+
+/* Compile for 'virtual' NVIDIA PTX architectures */
+#define CUDA_ARCH_PTX ""
+
+/* NVIDIA GPU features are used */
+#define CUDA_ARCH_FEATURES ""
+
+/* Create PTX or BIN for 1.0 compute capability */
+/* #undef CUDA_ARCH_BIN_OR_PTX_10 */
+
+/* VideoInput library */
+/* #undef HAVE_VIDEOINPUT */
+
+/* XIMEA camera support */
+/* #undef HAVE_XIMEA */

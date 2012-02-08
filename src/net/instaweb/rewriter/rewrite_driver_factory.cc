@@ -296,6 +296,10 @@ QueuedWorkerPool* RewriteDriverFactory::CreateWorkerPool(WorkerPoolName pool) {
   return new QueuedWorkerPool(1, thread_system());
 }
 
+int RewriteDriverFactory::LowPriorityLoadSheddingThreshold() const {
+  return QueuedWorkerPool::kNoLoadShedding;
+}
+
 Scheduler* RewriteDriverFactory::CreateScheduler() {
   return new Scheduler(thread_system(), timer());
 }
@@ -312,7 +316,12 @@ QueuedWorkerPool* RewriteDriverFactory::WorkerPool(WorkerPoolName pool) {
     worker_pools_[pool] = CreateWorkerPool(pool);
     worker_pools_[pool]->set_queue_size_stat(
         rewrite_stats()->thread_queue_depth(pool));
+    if (pool == kLowPriorityRewriteWorkers) {
+      worker_pools_[pool]->SetLoadSheddingThreshold(
+          LowPriorityLoadSheddingThreshold());
+    }
   }
+
   return worker_pools_[pool];
 }
 

@@ -61,6 +61,8 @@ const char kBackendLatencyHistogram[] =
 // TimedVariable names.
 const char kTotalFetchCount[] = "total_fetch_count";
 const char kTotalRewriteCount[] = "total_rewrite_count";
+const char kRewritesExecuted[] = "num_rewrites_executed";
+const char kRewritesDropped[] = "num_rewrites_dropped";
 
 }  // namespace
 
@@ -91,6 +93,10 @@ void RewriteStats::Initialize(Statistics* statistics) {
   statistics->AddTimedVariable(kTotalFetchCount,
                                ResourceManager::kStatisticsGroup);
   statistics->AddTimedVariable(kTotalRewriteCount,
+                               ResourceManager::kStatisticsGroup);
+  statistics->AddTimedVariable(kRewritesExecuted,
+                               ResourceManager::kStatisticsGroup);
+  statistics->AddTimedVariable(kRewritesDropped,
                                ResourceManager::kStatisticsGroup);
 }
 
@@ -135,7 +141,9 @@ RewriteStats::RewriteStats(Statistics* stats,
       backend_latency_histogram_(
           stats->GetHistogram(kBackendLatencyHistogram)),
       total_fetch_count_(stats->GetTimedVariable(kTotalFetchCount)),
-      total_rewrite_count_(stats->GetTimedVariable(kTotalRewriteCount)) {
+      total_rewrite_count_(stats->GetTimedVariable(kTotalRewriteCount)),
+      num_rewrites_executed_(stats->GetTimedVariable(kRewritesExecuted)),
+      num_rewrites_dropped_(stats->GetTimedVariable(kRewritesDropped)) {
   // Timers are not guaranteed to go forward in time, however
   // Histograms will CHECK-fail given a negative value unless
   // EnableNegativeBuckets is called, allowing bars to be created with

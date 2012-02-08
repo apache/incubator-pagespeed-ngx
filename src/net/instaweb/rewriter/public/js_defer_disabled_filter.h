@@ -46,9 +46,6 @@ class JsDeferDisabledFilter : public EmptyHtmlFilter {
   virtual void EndDocument();
   virtual const char* Name() const { return "JsDeferDisabledFilter"; }
 
-  // Emits cleartext javascript rather than minified/optimized code.
-  void set_debug(bool x) { debug_ = x; }
-
   static StringPiece defer_js_code() { return *opt_defer_js_; }
 
   static void Initialize(Statistics* statistics);

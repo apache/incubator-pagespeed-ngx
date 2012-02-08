@@ -21,12 +21,15 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class HtmlElement;
 class ImageTagScanner;
 class RewriteDriver;
+class Statistics;
 
 // Filter to lazyload images by replacing the src with a pagespeed_lazy_src
 // attribute and injecting a javascript to detect which images are in the
@@ -83,11 +86,19 @@ class LazyloadImagesFilter : public EmptyHtmlFilter {
 
   virtual const char* Name() const { return "Lazyload Images"; }
 
+  static void Initialize(Statistics* statistics);
+  static void Terminate();
+
+  static StringPiece lazyload_js_code() { return *opt_lazyload_images_js_; }
+
  private:
+  static GoogleString* debug_lazyload_images_js_;
+  static GoogleString* opt_lazyload_images_js_;
+
   RewriteDriver* driver_;
   scoped_ptr<const ImageTagScanner> tag_scanner_;
   bool script_inserted_;
-  GoogleString lazyload_js_;
+  bool debug_;
 };
 
 }  // namespace net_instaweb

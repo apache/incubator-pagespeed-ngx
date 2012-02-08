@@ -285,6 +285,14 @@ class RewriteDriverFactory {
   // make one with a single thread.
   virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolName name);
 
+  // Subclasses can override this method to request load-shedding to happen
+  // if the low-priority work pool has too many inactive sequences queued up
+  // waiting (the returned value will be a threshold beyond which things
+  // will start getting dropped). The default implementation returns
+  // kNoLoadShedding, which disables the feature. See also
+  // QueuedWorkerPool::set_load_shedding_threshold
+  virtual int LowPriorityLoadSheddingThreshold() const;
+
   // Subclasses can override this to create an appropriate Scheduler
   // subclass if the default isn't acceptable.
   virtual Scheduler* CreateScheduler();

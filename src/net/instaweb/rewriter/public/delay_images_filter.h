@@ -81,11 +81,10 @@ namespace net_instaweb {
 
 class HtmlElement;
 class RewriteDriver;
+class Statistics;
 
 class DelayImagesFilter : public EmptyHtmlFilter {
  public:
-  static const char* kDelayScript;
-  static const char* kInlineScript;
   explicit DelayImagesFilter(RewriteDriver* driver);
   virtual ~DelayImagesFilter();
 
@@ -95,7 +94,21 @@ class DelayImagesFilter : public EmptyHtmlFilter {
 
   virtual const char* Name() const { return "DelayImages"; }
 
+  static void Initialize(Statistics* statistics);
+  static void Terminate();
+
+  static StringPiece delay_images_js_code() { return *opt_delay_images_js_; }
+
+  static StringPiece delay_images_inline_js_code() {
+    return *opt_delay_images_inline_js_;
+  }
+
  private:
+  static GoogleString* opt_delay_images_js_;
+  static GoogleString* debug_delay_images_js_;
+  static GoogleString* opt_delay_images_inline_js_;
+  static GoogleString* debug_delay_images_inline_js_;
+
   RewriteDriver* driver_;
   ResourceTagScanner tag_scanner_;
   // pagespeed_low_res_src will be added to the low_res_data_map_ until
@@ -104,8 +117,7 @@ class DelayImagesFilter : public EmptyHtmlFilter {
   bool low_res_map_inserted_;
   bool delay_script_inserted_;
   StringStringMap low_res_data_map_;
-  GoogleString delay_images_js_;
-  GoogleString delay_images_inline_js_;
+  bool debug_;
 
   // Replace the image url with low res base64 encoded url inplace if it is
   // true, else low_res_data_map_ containing low res images is inserted at the

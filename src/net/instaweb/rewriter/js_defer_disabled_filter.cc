@@ -22,6 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string.h"
 
 #include "base/logging.h"
@@ -41,7 +42,7 @@ JsDeferDisabledFilter::JsDeferDisabledFilter(RewriteDriver* driver)
     : rewrite_driver_(driver),
       script_written_(false),
       defer_js_enabled_(false),
-      debug_(false) {
+      debug_(driver->options()->Enabled(RewriteOptions::kDebug)) {
 }
 
 JsDeferDisabledFilter::~JsDeferDisabledFilter() { }

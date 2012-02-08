@@ -173,7 +173,9 @@ TEST_F(QueuedWorkerPoolTest, RestartSequenceFromFunction) {
 // Keeps track of whether run or cancel were called.
 class LogOpsFunction : public Function {
  public:
-  LogOpsFunction() : run_called_(false), cancel_called_(false) {}
+  LogOpsFunction() : run_called_(false), cancel_called_(false) {
+    set_delete_after_callback(false);
+  }
   virtual ~LogOpsFunction() {}
 
   bool run_called() const { return run_called_; }
@@ -194,11 +196,64 @@ TEST_F(QueuedWorkerPoolTest, AddAfterShutDown) {
   QueuedWorkerPool::Sequence* sequence = worker_->NewSequence();
   worker_->ShutDown();
   LogOpsFunction f;
-  f.set_delete_after_callback(false);
   sequence->Add(&f);
   worker_.reset(NULL);
   EXPECT_TRUE(f.cancel_called());
   EXPECT_FALSE(f.run_called());
+}
+
+TEST_F(QueuedWorkerPoolTest, LoadShedding) {
+  const int kThresh = 100;
+  worker_->SetLoadSheddingThreshold(kThresh);
+  // Tests that load shedding works, and does so in FIFO order.
+  // We do it by first wedging the queues by 2 (as many as we have threads)
+  // sequences that wait on SyncPoints followed by 2*kThresh
+  // independent LogOpsFunction instances (each in a separate sequence),
+  // then a notify. If everything works fine, we'll cancel the first
+  // kThresh + 1 LogOps, run the kThresh - 1 last LogOps, and the notify.
+  SyncPoint wedge1_sync(thread_runtime_.get());
+  SyncPoint wedge2_sync(thread_runtime_.get());
+  QueuedWorkerPool::Sequence* wedge1 = worker_->NewSequence();
+  wedge1->Add(new WaitRunFunction(&wedge1_sync));
+  QueuedWorkerPool::Sequence* wedge2 = worker_->NewSequence();
+  wedge2->Add(new WaitRunFunction(&wedge2_sync));
+
+  std::vector<QueuedWorkerPool::Sequence*> log_ops;
+  std::vector<LogOpsFunction*> log_ops_functions;
+  for (int i = 0; i < 2 * kThresh; ++i) {
+    LogOpsFunction* fn = new LogOpsFunction;
+    QueuedWorkerPool::Sequence* log_op = worker_->NewSequence();
+    log_op->Add(fn);
+    log_ops.push_back(log_op);
+    log_ops_functions.push_back(fn);
+  }
+
+  SyncPoint done_sync(thread_runtime_.get());
+  QueuedWorkerPool::Sequence* done = worker_->NewSequence();
+  done->Add(new NotifyRunFunction(&done_sync));
+
+  wedge1_sync.Notify();
+  wedge2_sync.Notify();
+  done_sync.Wait();
+
+  worker_->FreeSequence(wedge1);
+  worker_->FreeSequence(wedge2);
+
+  for (int i = 0; i <= kThresh; ++i) {
+    EXPECT_TRUE(log_ops_functions[i]->cancel_called());
+    EXPECT_FALSE(log_ops_functions[i]->run_called());
+    delete log_ops_functions[i];
+    worker_->FreeSequence(log_ops[i]);
+  }
+
+  for (int i = kThresh + 1; i < 2 * kThresh; ++i) {
+    EXPECT_FALSE(log_ops_functions[i]->cancel_called());
+    EXPECT_TRUE(log_ops_functions[i]->run_called());
+    delete log_ops_functions[i];
+    worker_->FreeSequence(log_ops[i]);
+  }
+
+  worker_->FreeSequence(done);
 }
 
 }  // namespace

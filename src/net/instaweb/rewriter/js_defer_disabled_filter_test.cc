@@ -18,8 +18,10 @@
 
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -27,30 +29,26 @@ namespace net_instaweb {
 
 class JsDeferDisabledFilterTest : public ResourceManagerTestBase {
  protected:
-  JsDeferDisabledFilterTest() {
-    JsDeferDisabledFilter::Initialize(NULL);
-  }
-
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
+  }
+
+  virtual void InitJsDeferDisabledFilter(bool debug) {
+    if (debug) {
+      options()->EnableFilter(RewriteOptions::kDebug);
+    }
     js_defer_disabled_filter_.reset(
         new JsDeferDisabledFilter(rewrite_driver()));
     rewrite_driver()->AddFilter(js_defer_disabled_filter_.get());
   }
 
-  virtual ~JsDeferDisabledFilterTest() {
-    JsDeferDisabledFilter::Terminate();
-  }
-
   virtual bool AddBody() const { return false; }
 
   scoped_ptr<JsDeferDisabledFilter> js_defer_disabled_filter_;
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(JsDeferDisabledFilterTest);
 };
 
 TEST_F(JsDeferDisabledFilterTest, DeferScript) {
+  InitJsDeferDisabledFilter(false);
   ValidateExpected("defer_script",
       "<head>"
       "<script type='text/psajs' "
@@ -70,6 +68,7 @@ TEST_F(JsDeferDisabledFilterTest, DeferScript) {
 }
 
 TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
+  InitJsDeferDisabledFilter(false);
   ValidateExpected("defer_script_multi_body",
       "<head>"
       "<script type='text/psajs' "
@@ -89,22 +88,23 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
 }
 
 TEST_F(JsDeferDisabledFilterTest, DeferScriptOptimized) {
-  js_defer_disabled_filter_->set_debug(false);
+  InitJsDeferDisabledFilter(false);
   Parse("optimized",
         "<body><script type='text/psajs' src='foo.js'></script></body>");
-  EXPECT_TRUE(output_buffer_.find("/*") == GoogleString::npos)
+  EXPECT_EQ(GoogleString::npos, output_buffer_.find("/*"))
       << "There should be no comments in the optimized code";
 }
 
 TEST_F(JsDeferDisabledFilterTest, DeferScriptDebug) {
-  js_defer_disabled_filter_->set_debug(true);
+  InitJsDeferDisabledFilter(true);
   Parse("optimized",
         "<body><script type='text/psajs' src='foo.js'></script></body>");
-  EXPECT_TRUE(output_buffer_.find("/*") != GoogleString::npos)
+  EXPECT_NE(GoogleString::npos, output_buffer_.find("/*"))
       << "There should still be some comments in the debug code";
 }
 
 TEST_F(JsDeferDisabledFilterTest, InvalidUserAgent) {
+  InitJsDeferDisabledFilter(false);
   rewrite_driver()->set_user_agent("BlackListUserAgent");
   const char script[] = "<head>"
       "<script type='text/psajs' "

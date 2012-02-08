@@ -45,6 +45,8 @@ class Waveform;
 // number of groups of sequential tasks to those threads.
 class QueuedWorkerPool {
  public:
+  static const int kNoLoadShedding = -1;
+
   QueuedWorkerPool(int max_workers, ThreadSystem* thread_system);
   ~QueuedWorkerPool();
 
@@ -124,6 +126,10 @@ class QueuedWorkerPool {
     // Assumes sequence_mutex_ held. Returns number of tasks that were canceled.
     int CancelTasksOnWorkQueue();
 
+    // Cancels all pending tasks (and updates stats appropriately).
+    // Assumes sequence_mutex_ not held.
+    void Cancel();
+
     friend class QueuedWorkerPool;
     std::deque<Function*> work_queue_;
     scoped_ptr<ThreadSystem::CondvarCapableMutex> sequence_mutex_;
@@ -168,6 +174,17 @@ class QueuedWorkerPool {
   //    queue.
   static bool AreBusy(const SequenceSet& sequences);
 
+  // If x == kNoLoadShedding disables load-shedding.
+  // Otherwise, if more than x sequences are queued waiting to run,
+  // sequences will start getting dropped and canceled, with oldest
+  // sequences canceled first.
+  //
+  // Precondition: x > 0 || x == kNoLoadShedding
+  // x = kNoLoadShedding (the default) disables the limit.
+  //
+  // Should be called before starting any work.
+  void SetLoadSheddingThreshold(int x);
+
   // Sets up a timed-variable statistic indicating the current queue depth.
   //
   // This must be called prior to creating sequences.
@@ -197,6 +214,7 @@ class QueuedWorkerPool {
   bool shutdown_;
 
   Waveform* queue_size_;
+  int load_shedding_threshold_;
 
   DISALLOW_COPY_AND_ASSIGN(QueuedWorkerPool);
 };

@@ -41,7 +41,7 @@ vars = {
   "apache_httpd_src": "http://svn.apache.org/repos/asf/httpd/httpd/tags/2.2.15",
   "apache_httpd_revision": "@head",
 
-  "opencv_src": "https://code.ros.org/svn/opencv/tags/2.1",
+  "opencv_src": "https://code.ros.org/svn/opencv/tags/2.3.1",
   "opencv_revision": "@head",
 
   "jsoncpp_src": "https://jsoncpp.svn.sourceforge.net/svnroot/jsoncpp/trunk/",
@@ -176,20 +176,17 @@ deps = {
 
   "src/third_party/protobuf": From(Var("libpagespeed_deps_root")),
 
-  "src/third_party/opencv/src/opencv/src":
-    Var("opencv_src") + "/opencv/src" + Var("opencv_revision"),
-
   "src/third_party/opencv/src/opencv/include":
     Var("opencv_src") + "/opencv/include" + Var("opencv_revision"),
 
-  "src/third_party/opencv/src/opencv/3rdparty/flann":
-    Var("opencv_src") + "/opencv/3rdparty/flann" + Var("opencv_revision"),
+  "src/third_party/opencv/src/opencv/modules/core":
+    Var("opencv_src") + "/opencv/modules/core" + Var("opencv_revision"),
 
-  "src/third_party/opencv/src/opencv/3rdparty/lapack":
-    Var("opencv_src") + "/opencv/3rdparty/lapack" + Var("opencv_revision"),
+  "src/third_party/opencv/src/opencv/modules/imgproc":
+    Var("opencv_src") + "/opencv/modules/imgproc" + Var("opencv_revision"),
 
-  "src/third_party/opencv/src/opencv/3rdparty/include":
-    Var("opencv_src") + "/opencv/3rdparty/include" + Var("opencv_revision"),
+  "src/third_party/opencv/src/opencv/modules/highgui":
+    Var("opencv_src") + "/opencv/modules/highgui" + Var("opencv_revision"),
 
   # Json cpp.
   "src/third_party/jsoncpp/src":

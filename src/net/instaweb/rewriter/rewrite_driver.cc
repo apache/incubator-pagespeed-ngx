@@ -548,6 +548,7 @@ const char* RewriteDriver::kPassThroughRequestAttributes[3] = {
 const char RewriteDriver::kDomCohort[] = "dom";
 
 void RewriteDriver::Initialize(Statistics* statistics) {
+  RewriteOptions::Initialize();
   if (statistics != NULL) {
     // TODO(jmarantz): Make all of these work with null statistics so that
     // they could mdo other required static initializations if desired
@@ -555,6 +556,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     CacheExtender::Initialize(statistics);
     CssCombineFilter::Initialize(statistics);
     CssMoveToHeadFilter::Initialize(statistics);
+    DelayImagesFilter::Initialize(statistics);
     DomainRewriteFilter::Initialize(statistics);
     GoogleAnalyticsFilter::Initialize(statistics);
     ImageRewriteFilter::Initialize(statistics);
@@ -563,6 +565,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
     JavascriptFilter::Initialize(statistics);
     JsCombineFilter::Initialize(statistics);
     JsDeferDisabledFilter::Initialize(statistics);
+    LazyloadImagesFilter::Initialize(statistics);
     MetaTagFilter::Initialize(statistics);
     UrlLeftTrimFilter::Initialize(statistics);
   }
@@ -573,7 +576,9 @@ void RewriteDriver::Initialize(Statistics* statistics) {
 void RewriteDriver::Terminate() {
   // Clean up statics.
   CssFilter::Terminate();
+  DelayImagesFilter::Terminate();
   JsDeferDisabledFilter::Terminate();
+  LazyloadImagesFilter::Terminate();
 }
 
 void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
@@ -737,7 +742,8 @@ void RewriteDriver::AddPreRenderFilters() {
     // javascript that has comments and extra whitespace.
     AppendOwnedPreRenderFilter(new GoogleAnalyticsFilter(this, statistics()));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kInsertGA) &&
+  if ((rewrite_options->Enabled(RewriteOptions::kInsertGA) ||
+       rewrite_options->running_furious()) &&
       rewrite_options->ga_id() != "") {
     // Like MakeGoogleAnalyticsAsync, InsertGA should be before js rewriting.
     AppendOwnedPreRenderFilter(new InsertGAFilter(this));
@@ -834,10 +840,7 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
     // Defers javascript download and execution to post onload.
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
-    JsDeferDisabledFilter* js_defer_filter = new JsDeferDisabledFilter(this);
-    js_defer_filter->set_debug(
-        rewrite_options->Enabled(RewriteOptions::kDebug));
-    AddOwnedPostRenderFilter(js_defer_filter);
+    AddOwnedPostRenderFilter(new JsDeferDisabledFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kRemoveQuotes)) {
     // Remove extraneous quotes from html attributes.  Does this save

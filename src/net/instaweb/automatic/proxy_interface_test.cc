@@ -35,6 +35,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/timing.pb.h"
+#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -1824,6 +1825,37 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfHtmlEndsWithTxt) {
 // TODO(jmarantz): add a test with a simulated slow cache to see what happens
 // when the rest of the system must block, buffering up incoming HTML text,
 // waiting for the property-cache lookups to complete.
+
+// Test that we set the Furious cookie up appropriately.
+TEST_F(ProxyInterfaceTest, FuriousTest) {
+  RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_ga_id("123-455-2341");
+  options->set_running_furious_experiment(true);
+  resource_manager()->ComputeSignature(options);
+
+  ResponseHeaders headers;
+  const char kContent[] = "<html><head></head><body>A very compelling "
+      "article</body></html>";
+  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  SetFetchResponse(AbsolutifyUrl("text.html"), headers, kContent);
+  headers.Clear();
+
+  GoogleString text;
+  FetchFromProxy("text.html", true, &text, &headers);
+  EXPECT_TRUE(headers.Has(HttpAttributes::kSetCookie));
+  ConstStringStarVector values;
+  headers.Lookup(HttpAttributes::kSetCookie, &values);
+  bool found = false;
+  for (int i = 0, n = values.size(); i < n; ++i) {
+    if (values[i]->find(furious::kFuriousCookie) == 0) {
+      found = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(found);
+}
 
 }  // namespace
 

@@ -77,6 +77,9 @@ class RewriteStats {
     return thread_queue_depths_[name];
   }
 
+  TimedVariable* num_rewrites_executed() { return num_rewrites_executed_; }
+  TimedVariable* num_rewrites_dropped() { return num_rewrites_dropped_; }
+
  private:
   Variable* cached_output_hits_;
   Variable* cached_output_missed_deadline_;
@@ -99,6 +102,8 @@ class RewriteStats {
 
   TimedVariable* total_fetch_count_;
   TimedVariable* total_rewrite_count_;
+  TimedVariable* num_rewrites_executed_;
+  TimedVariable* num_rewrites_dropped_;
 
   std::vector<Waveform*> thread_queue_depths_;
 

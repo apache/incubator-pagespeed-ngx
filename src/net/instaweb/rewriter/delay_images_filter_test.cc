@@ -47,26 +47,25 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
  public:
   DelayImagesFilterTest() {
     head_html_ =
-       StrCat("<head><script type=\"text/javascript\">",
-              DelayImagesFilter::kDelayScript,
-              "\npagespeed.delayImagesInit()</script></head>");
-   head_html_with_lazy_load_ =
-       StrCat("<head><script type=\"text/javascript\">",
-              DelayImagesFilter::kDelayScript,
-              "\npagespeed.delayImagesInit()</script>",
-              "<script type=\"text/javascript\">",
-              LazyloadImagesFilter::kImageLazyloadCode,
-              "\npagespeed.lazyLoadInit(false);\n",
-              "</script></head>");
-   inline_script_with_js_defer_ =
-       StrCat("<script type=\"text/javascript\">",
-              JsDeferDisabledFilter::defer_js_code(),
-              "</script><script type=\"text/javascript\">",
-              DelayImagesFilter::kInlineScript,
-              "\npagespeed.delayImagesInlineInit();");
+        StrCat("<head><script type=\"text/javascript\">",
+               DelayImagesFilter::delay_images_js_code(),
+               "</script></head>");
+    head_html_with_lazy_load_ =
+        StrCat("<head><script type=\"text/javascript\">",
+               DelayImagesFilter::delay_images_js_code(),
+               "</script>",
+               "<script type=\"text/javascript\">",
+               LazyloadImagesFilter::lazyload_js_code(),
+               "\npagespeed.lazyLoadInit(false);\n",
+               "</script></head>");
+    inline_script_with_js_defer_ =
+        StrCat("<script type=\"text/javascript\">",
+               JsDeferDisabledFilter::defer_js_code(),
+               "</script><script type=\"text/javascript\">",
+               DelayImagesFilter::delay_images_inline_js_code());
 
-   options_->set_min_image_size_low_resolution_bytes(1 * 1024);
-   options_->set_max_inlined_preview_images_index(-1);
+    options_->set_min_image_size_low_resolution_bytes(1 * 1024);
+    options_->set_max_inlined_preview_images_index(-1);
   }
 
  protected:
@@ -355,4 +354,28 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionNegative) {
   int byte_count_mobile = MatchOutputAndCountBytes(input_html, output_html);
   EXPECT_EQ(byte_count_mobile, byte_count_desktop);
 }
+
+TEST_F(DelayImagesFilterTest, DelayImagesScriptOptimized) {
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.jpeg", kLargeJpgFile,
+                       kContentTypeJpeg, 100);
+  rewrite_driver()->set_user_agent("Safari");
+  Parse("optimized",
+        "<head></head><body><img src=\"http://test.com/1.jpeg\"</body>");
+  EXPECT_EQ(GoogleString::npos, output_buffer_.find("/*"))
+      << "There should be no comments in the optimized code";
+}
+
+TEST_F(DelayImagesFilterTest, DelayImagesScriptDebug) {
+  options()->EnableFilter(RewriteOptions::kDebug);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.jpeg", kLargeJpgFile,
+                       kContentTypeJpeg, 100);
+  rewrite_driver()->set_user_agent("Safari");
+  Parse("debug",
+        "<head></head><body><img src=\"http://test.com/1.jpeg\"</body>");
+  EXPECT_NE(GoogleString::npos, output_buffer_.find("/*"))
+      << "There should still be some comments in the debug code";
+}
+
 }  // namespace net_instaweb

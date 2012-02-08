@@ -33,12 +33,23 @@
 
 namespace net_instaweb {
 
+namespace {
+
+inline void UpdateWaveform(Waveform* queue_size, int delta) {
+  if ((queue_size != NULL) && (delta != 0)) {
+    queue_size->AddDelta(delta);
+  }
+}
+
+}  // namespace
+
 QueuedWorkerPool::QueuedWorkerPool(int max_workers, ThreadSystem* thread_system)
     : thread_system_(thread_system),
       mutex_(thread_system_->NewMutex()),
       max_workers_(max_workers),
       shutdown_(false),
-      queue_size_(NULL) {
+      queue_size_(NULL),
+      load_shedding_threshold_(kNoLoadShedding) {
 }
 
 QueuedWorkerPool::~QueuedWorkerPool() {
@@ -148,6 +159,7 @@ QueuedWorkerPool::Sequence* QueuedWorkerPool::AssignWorkerToNextSequence(
 
 void QueuedWorkerPool::QueueSequence(Sequence* sequence) {
   QueuedWorker* worker = NULL;
+  Sequence* drop_sequence = NULL;
   {
     ScopedMutex lock(mutex_.get());
     if (available_workers_.empty()) {
@@ -160,6 +172,15 @@ void QueuedWorkerPool::QueueSequence(Sequence* sequence) {
       } else {
         // No workers available: must queue the sequence.
         queued_sequences_.push_back(sequence);
+
+        // If too many sequences are waiting, we will cancel the oldest
+        // waiting one.
+        if ((load_shedding_threshold_ != kNoLoadShedding) &&
+            (queued_sequences_.size() >
+             static_cast<size_t>(load_shedding_threshold_))) {
+          drop_sequence = queued_sequences_.front();
+          queued_sequences_.pop_front();
+        }
       }
     } else {
       // We pulled a worker off the free-stack.
@@ -167,6 +188,10 @@ void QueuedWorkerPool::QueueSequence(Sequence* sequence) {
       available_workers_.pop_back();
       active_workers_.insert(worker);
     }
+  }
+
+  if (drop_sequence != NULL) {
+    drop_sequence->Cancel();
   }
 
   // Run the worker without holding the Pool lock.
@@ -201,6 +226,11 @@ bool QueuedWorkerPool::AreBusy(const SequenceSet& sequences) {
   }
 
   return busy;
+}
+
+void QueuedWorkerPool::SetLoadSheddingThreshold(int x) {
+  DCHECK((x > 0) || (x == kNoLoadShedding));
+  load_shedding_threshold_ = x;
 }
 
 QueuedWorkerPool::Sequence* QueuedWorkerPool::NewSequence() {
@@ -284,9 +314,8 @@ void QueuedWorkerPool::Sequence::WaitForShutDown() {
     num_canceled = CancelTasksOnWorkQueue();
     DCHECK(work_queue_.empty());
   }
-  if ((queue_size_ != NULL) && (num_canceled != 0)) {
-    queue_size_->AddDelta(-num_canceled);
-  }
+
+  UpdateWaveform(queue_size_, -num_canceled);
 }
 
 int QueuedWorkerPool::Sequence::CancelTasksOnWorkQueue() {
@@ -300,6 +329,16 @@ int QueuedWorkerPool::Sequence::CancelTasksOnWorkQueue() {
     sequence_mutex_->Lock();
   }
   return num_canceled;
+}
+
+void QueuedWorkerPool::Sequence::Cancel() {
+  int num_canceled = 0;
+  {
+    ScopedMutex lock(sequence_mutex_.get());
+    num_canceled = CancelTasksOnWorkQueue();
+  }
+
+  UpdateWaveform(queue_size_, -num_canceled);
 }
 
 void QueuedWorkerPool::Sequence::Add(Function* function) {
@@ -318,9 +357,7 @@ void QueuedWorkerPool::Sequence::Add(Function* function) {
   if (queue_sequence) {
     pool_->QueueSequence(this);
   }
-  if (queue_size_ != NULL) {
-    queue_size_->AddDelta(1);
-  }
+  UpdateWaveform(queue_size_, 1);
 }
 
 Function* QueuedWorkerPool::Sequence::NextFunction() {
@@ -365,9 +402,7 @@ Function* QueuedWorkerPool::Sequence::NextFunction() {
     // QueuedWorkerPool::ShutDown().
     release_to_pool->SequenceNoLongerActive(this);
   }
-  if ((queue_size_ != NULL) && (queue_size_delta != 0)) {
-    queue_size_->AddDelta(queue_size_delta);
-  }
+  UpdateWaveform(queue_size_, queue_size_delta);
 
   return function;
 }

@@ -6,13 +6,13 @@
 /* Define to one of `_getb67', `GETB67', `getb67' for Cray-2 and Cray-YMP
    systems. This function is required for `alloca.c' support on those systems.
    */
-/* #undef  CRAY_STACKSEG_END */
+/* #undef CRAY_STACKSEG_END */
 
 /* Define to 1 if using `alloca.c'. */
 /* #undef C_ALLOCA */
 
 /* Define to 1 if you have `alloca', as a function or macro. */
-/* #undef HAVE_ALLOCA 1 */
+/* #undef HAVE_ALLOCA */
 
 /* Define to 1 if you have <alloca.h> and it should be used (not on Ultrix).
    */
@@ -23,6 +23,9 @@
 
 /* V4L2 capturing support */
 /* #undef HAVE_CAMV4L2 */
+
+/* V4L/V4L2 capturing support via libv4l */
+/* #undef HAVE_LIBV4L */
 
 /* Carbon windowing environment */
 /* #undef HAVE_CARBON */
@@ -40,16 +43,13 @@
 /* #undef HAVE_GENTOO_FFMPEG */
 
 /* FFMpeg video library */
-/* #undef  HAVE_FFMPEG */
+/* #undef HAVE_FFMPEG */
 
 /* ffmpeg's libswscale */
-/* #undef  HAVE_FFMPEG_SWSCALE */
+/* #undef HAVE_FFMPEG_SWSCALE */
 
 /* GStreamer multimedia framework */
 /* #undef HAVE_GSTREAMER */
-
-/* GStreamer with gstappsink & gstappsrc */
-/* #undef  HAVE_GSTREAMER_APP */
 
 /* GTK+ 2.0 Thread support */
 /* #undef HAVE_GTHREAD */
@@ -58,73 +58,76 @@
 /* #undef HAVE_GTK */
 
 /* OpenEXR codec */
-/* #undef  HAVE_ILMIMF */
+/* #undef HAVE_ILMIMF */
 
 /* Apple ImageIO Framework */
-/* #undef  HAVE_IMAGEIO */
+/* #undef HAVE_IMAGEIO */
 
 /* Define to 1 if you have the <inttypes.h> header file. */
-/* #undef  HAVE_INTTYPES_H 1 */
+/* #undef HAVE_INTTYPES_H */
 
 /* JPEG-2000 codec */
-/* #undef  HAVE_JASPER */
+/* #undef HAVE_JASPER */
 
 /* IJG JPEG codec */
-#define HAVE_JPEG
+#define  HAVE_JPEG 1
 
 /* Define to 1 if you have the `dl' library (-ldl). */
-/* #undef  HAVE_LIBDL 1 */
+/* #undef HAVE_LIBDL */
 
 /* Define to 1 if you have the `gomp' library (-lgomp). */
-/* #undef  HAVE_LIBGOMP 1 */
+/* #undef HAVE_LIBGOMP */
 
 /* Define to 1 if you have the `m' library (-lm). */
-#define  HAVE_LIBM 1
+/* #undef HAVE_LIBM */
 
 /* libpng/png.h needs to be included */
-/* #undef  HAVE_LIBPNG_PNG_H */
+/* #undef HAVE_LIBPNG_PNG_H */
 
 /* Define to 1 if you have the `pthread' library (-lpthread). */
 #define  HAVE_LIBPTHREAD 1
 
 /* Define to 1 if you have the `lrint' function. */
-/* #undef  HAVE_LRINT 1 */
+/* #undef HAVE_LRINT */
 
 /* PNG codec */
-#define HAVE_PNG
+#define  HAVE_PNG 1
 
 /* Define to 1 if you have the `png_get_valid' function. */
-#define HAVE_PNG_GET_VALID 1
+#define  HAVE_PNG_GET_VALID 1
 
 /* png.h needs to be included */
-#define HAVE_PNG_H
+#define  HAVE_PNG_H 1
 
 /* Define to 1 if you have the `png_set_tRNS_to_alpha' function. */
-#define HAVE_PNG_SET_TRNS_TO_ALPHA 1
+#define  HAVE_PNG_SET_TRNS_TO_ALPHA 1
 
 /* QuickTime video libraries */
-/* #undef  HAVE_QUICKTIME */
+/* #undef HAVE_QUICKTIME */
 
 /* TIFF codec */
-/* #undef  HAVE_TIFF */
+/* #undef HAVE_TIFF */
 
 /* Unicap video capture library */
-/* #undef  HAVE_UNICAP */
+/* #undef HAVE_UNICAP */
 
 /* Define to 1 if you have the <unistd.h> header file. */
 #define  HAVE_UNISTD_H 1
 
 /* Xine video library */
-/* #undef  HAVE_XINE */
+/* #undef HAVE_XINE */
+
+/* OpenNI library */
+/* #undef HAVE_OPENNI */
 
 /* LZ77 compression/decompression library (used for PNG) */
-#define HAVE_ZLIB
+#define  HAVE_ZLIB 1
 
 /* Intel Integrated Performance Primitives */
-/* #undef  HAVE_IPP */
+/* #undef HAVE_IPP */
 
 /* OpenCV compiled as static or dynamic libs */
-#define  OPENCV_BUILD_SHARED_LIB
+#define  BUILD_SHARED_LIBS
 
 /* Name of package */
 #define  PACKAGE "opencv"
@@ -136,13 +139,13 @@
 #define  PACKAGE_NAME "opencv"
 
 /* Define to the full name and version of this package. */
-#define  PACKAGE_STRING "opencv 2.1.0"
+#define  PACKAGE_STRING "opencv 2.3.1"
 
 /* Define to the one symbol short name of this package. */
 #define  PACKAGE_TARNAME "opencv"
 
 /* Define to the version of this package. */
-#define  PACKAGE_VERSION "2.1.0"
+#define  PACKAGE_VERSION "2.3.1"
 
 /* If using the C implementation of alloca, define if you know the
    direction of stack growth for your system; otherwise it will be
@@ -150,14 +153,41 @@
 	STACK_DIRECTION > 0 => grows toward higher addresses
 	STACK_DIRECTION < 0 => grows toward lower addresses
 	STACK_DIRECTION = 0 => direction of growth unknown */
-/* #undef  STACK_DIRECTION */
+/* #undef STACK_DIRECTION */
 
 /* Version number of package */
-#define  VERSION "2.1.0"
+#define  VERSION "2.3.1"
 
 /* Define to 1 if your processor stores words with the most significant byte
    first (like Motorola and SPARC, unlike Intel and VAX). */
-/* #undef  WORDS_BIGENDIAN */
+/* #undef WORDS_BIGENDIAN */
 
 /* Intel Threading Building Blocks */
-/* #undef  HAVE_TBB */
+/* #undef HAVE_TBB */
+
+/* Threading Framework --- temporary decision for ARM instead of Intel TBB  */
+/* #undef HAVE_THREADING_FRAMEWORK */
+
+/* Eigen Matrix & Linear Algebra Library */
+/* #undef HAVE_EIGEN */
+
+/* NVidia Cuda Runtime API*/
+/* #undef HAVE_CUDA */
+
+/* Compile for 'real' NVIDIA GPU architectures */
+#define CUDA_ARCH_BIN ""
+
+/* Compile for 'virtual' NVIDIA PTX architectures */
+#define CUDA_ARCH_PTX ""
+
+/* NVIDIA GPU features are used */
+#define CUDA_ARCH_FEATURES ""
+
+/* Create PTX or BIN for 1.0 compute capability */
+/* #undef CUDA_ARCH_BIN_OR_PTX_10 */
+
+/* VideoInput library */
+/* #undef HAVE_VIDEOINPUT */
+
+/* XIMEA camera support */
+/* #undef HAVE_XIMEA */

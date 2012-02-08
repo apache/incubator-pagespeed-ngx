@@ -29,7 +29,6 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/wildcard_group.h"
 
@@ -151,8 +150,12 @@ const int64 RewriteOptions::kDefaultMinImageSizeLowResolutionBytes = 1 * 1024;
 const int64 RewriteOptions::kDefaultCriticalImagesCacheExpirationMs =
     Timer::kHourMs;
 const int64 RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs = 0;
+const int RewriteOptions::kDefaultFuriousTrafficPercent = 50;
 
 const char RewriteOptions::kClassName[] = "RewriteOptions";
+
+const char* RewriteOptions::option_enum_to_name_array_[
+    RewriteOptions::kEndOfOptions];
 
 namespace {
 
@@ -352,7 +355,8 @@ bool RewriteOptions::ParseRewriteLevel(
 RewriteOptions::RewriteOptions()
     : modified_(false),
       frozen_(false),
-      options_uniqueness_checked_(false) {
+      options_uniqueness_checked_(false),
+      furious_state_(furious::kFuriousNotSet) {
   // Sanity-checks -- will be active only when compiled for debug.
 #ifndef NDEBUG
   CheckFilterSetOrdering(kCoreFilterSet, arraysize(kCoreFilterSet));
@@ -453,6 +457,8 @@ RewriteOptions::RewriteOptions()
   SortOptions();
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
              &metadata_cache_staleness_threshold_ms_, "mcst");
+  add_option(false, &running_furious_, "fur");
+  add_option(kDefaultFuriousTrafficPercent, &furious_percent_, "fp");
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
@@ -462,6 +468,10 @@ RewriteOptions::~RewriteOptions() {
 }
 
 RewriteOptions::OptionBase::~OptionBase() {
+}
+
+void RewriteOptions::Initialize() {
+  InitOptionEnumToNameArray();
 }
 
 void RewriteOptions::SortOptions() {

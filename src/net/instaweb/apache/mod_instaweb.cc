@@ -155,6 +155,9 @@ const char* kModPagespeedMaxInlinedPreviewImagesIndex =
     "ModPagespeedMaxInlinedPreviewImagesIndex";
 const char* kModPagespeedMinImageSizeLowResolutionBytes =
     "ModPagespeedMinImageSizeLowResolutionBytes";
+const char* kModPagespeedRunFurious = "ModPagespeedRunExperiment";
+const char* kModPagespeedFuriousPercent =
+    "ModPagespeedPercentExperimentTraffic";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -416,6 +419,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
         RewriteOptions* merged_options = factory->NewRewriteOptions();
         merged_options->Merge(*options);
         merged_options->Merge(query_options);
+        // Don't run any experiments if we're handling a query params request.
+        merged_options->set_running_furious_experiment(false);
         manager->ComputeSignature(merged_options);
         custom_options.reset(merged_options);
         options = merged_options;
@@ -995,6 +1000,13 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedGAID)) {
     // TODO(nforman): Some input checking?
     options->set_ga_id(arg);
+  } else if (StringCaseEqual(directive, kModPagespeedRunFurious)) {
+    ret = ParseBoolOption(options, cmd,
+                          &RewriteOptions::set_running_furious_experiment, arg);
+  } else if (StringCaseEqual(directive, kModPagespeedFuriousPercent)) {
+    ret = ParseIntBoundedOption(options, cmd,
+                                &RewriteOptions::set_furious_percent, arg,
+                                0, 100);
   } else if (StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix)) {
     config->set_filename_prefix(arg);
     if (!give_apache_user_permissions(factory)) {
@@ -1255,6 +1267,10 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Whether to respect the Vary header."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedGAID,
         "Google Analytics ID to use on site."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedRunFurious,
+         "Run an experiment to test the effectiveness of rewriters."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedFuriousPercent,
+         "Percentage of traffic to be run through an experiment."),
 
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)
