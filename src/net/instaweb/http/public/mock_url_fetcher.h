@@ -56,6 +56,7 @@ class MockUrlFetcher : public UrlFetcher {
   // upon last_modified_time and conditional GET "If-Modified-Since" headers.
   void SetConditionalResponse(const StringPiece& url,
                               int64 last_modified_date,
+                              const GoogleString& etag,
                               const ResponseHeaders& response_header,
                               const StringPiece& response_body);
 
@@ -95,20 +96,23 @@ class MockUrlFetcher : public UrlFetcher {
  private:
   class HttpResponse {
    public:
-    HttpResponse(int64 last_modified_time,
+    HttpResponse(int64 last_modified_time, const GoogleString& etag,
                  const ResponseHeaders& in_header, const StringPiece& in_body)
         : last_modified_time_(last_modified_time),
+          etag_(etag),
           body_(in_body.data(), in_body.size()) {
       header_.CopyFrom(in_header);
     }
 
     const int64 last_modified_time() const { return last_modified_time_; }
+    const GoogleString& etag() const { return etag_; }
     const ResponseHeaders& header() const { return header_; }
     ResponseHeaders* mutable_header() { return &header_; }
     const GoogleString& body() const { return body_; }
 
    private:
     int64 last_modified_time_;
+    GoogleString etag_;
     ResponseHeaders header_;
     GoogleString body_;
 

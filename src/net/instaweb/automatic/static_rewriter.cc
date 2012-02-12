@@ -136,12 +136,12 @@ int main(int argc, char** argv) {
     return 1;
   }
 
+  net_instaweb::RewriteDriver* driver = resource_manager->NewRewriteDriver();
+
   // For this simple file transformation utility we always want to perform
   // any optimizations we can, so we wait until everything is done rather
   // than using a deadline, the way a server deployment would.
-  resource_manager->set_block_until_completion_in_render(true);
-
-  net_instaweb::RewriteDriver* driver = resource_manager->NewRewriteDriver();
+  driver->set_fully_rewrite_on_flush(true);
 
   // Set up a Writer callback to serialize rewritten output to a string buffer.
   // A network Writer can be defined that will stream directly to a network

@@ -53,7 +53,7 @@ class UrlAsyncFetcherTest : public ::testing::Test {
     {
       ResponseHeaders good_headers;
       good_headers.set_first_line(1, 1, HttpStatus::kOK, "OK");
-      fetcher.SetConditionalResponse(kUrl, kNewTime,
+      fetcher.SetConditionalResponse(kUrl, kNewTime, "",
                                      good_headers, kNewContents);
     }
 

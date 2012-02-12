@@ -146,6 +146,7 @@ class CacheFindCallback : public HTTPCache::Callback {
         backend_first_byte_latency_(
             owner->backend_first_byte_latency_histogram()),
         fallback_responses_served_(owner->fallback_responses_served()),
+        num_conditional_refreshes_(owner->num_conditional_refreshes()),
         handler_(handler),
         respect_vary_(owner->respect_vary()),
         ignore_recent_fetch_failed_(owner->ignore_recent_fetch_failed()),
@@ -232,7 +233,13 @@ class CacheFindCallback : public HTTPCache::Callback {
           put_fetch->request_headers()->RemoveAll(HttpAttributes::kIfNoneMatch);
         }
 
-        fetcher_->Fetch(url_, handler_, put_fetch);
+        ConditionalSharedAsyncFetch* conditional_fetch =
+            new ConditionalSharedAsyncFetch(
+                put_fetch, fallback_http_value(), handler_);
+        conditional_fetch->set_num_conditional_refreshes(
+            num_conditional_refreshes_);
+
+        fetcher_->Fetch(url_, handler_, conditional_fetch);
         break;
       }
     }
@@ -281,6 +288,7 @@ class CacheFindCallback : public HTTPCache::Callback {
   UrlAsyncFetcher* fetcher_;
   Histogram* backend_first_byte_latency_;
   Variable* fallback_responses_served_;
+  Variable* num_conditional_refreshes_;
   MessageHandler* handler_;
 
   bool respect_vary_;

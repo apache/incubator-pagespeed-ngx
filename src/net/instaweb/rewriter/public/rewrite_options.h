@@ -97,51 +97,75 @@ class RewriteOptions {
   // Any new Option added, should have a corresponding enum here and this should
   // be passed in when add_option is called in the constructor.
   enum OptionEnum {
-    kRewriteLevel,
-    kCssInlineMaxBytes,
-    kImageInlineMaxBytes,
-    kCssImageInlineMaxBytes,
-    kJsInlineMaxBytes,
-    kCssOutlineMinBytes,
-    kJsOutlineMinBytes,
-    kProgressiveJpegMinBytes,
-    kMaxHtmlCacheTimeMs,
-    kMinResourceCacheTimeToRewriteMs,
-    kCacheInvalidationTimestamp,
-    kIdleFlushTimeMs,
-    kImageMaxRewritesAtOnce,
-    kMaxUrlSegmentSize,
-    kMaxUrlSize,
-    kEnabled,
+    kAboveTheFoldCacheTime,
+    kAboveTheFoldCacheableFamilies,
+    kAboveTheFoldNonCacheableElements,
     kAjaxRewritingEnabled,
-    kBotdetectEnabled,
-    kCombineAcrossPaths,
-    kLogRewriteTiming,
-    kLowercaseHtmlNames,
     kAlwaysRewriteCss,
-    kRespectVary,
-    kFlushHtml,
-    kServeStaleIfFetchError,
-    kEnableBlink,
-    kServeBlinkNonCritical,
-    kDefaultCacheHtml,
-    kModifyCachingHeaders,
+    kAnalyticsID,
     kBeaconUrl,
+    kBotdetectEnabled,
+    kCacheInvalidationTimestamp,
+    kCombineAcrossPaths,
+    kCriticalImagesCacheExpirationTimeMs,
+    kCssImageInlineMaxBytes,
+    kCssInlineMaxBytes,
+    kCssOutlineMinBytes,
+    kDefaultCacheHtml,
+    kEnableBlink,
+    kEnabled,
+    kFlushHtml,
+    kFuriousPercent,
+    kIdleFlushTimeMs,
+    kImageInlineMaxBytes,
+    kImageJpegNumProgressiveScans,
     kImageJpegRecompressionQuality,
     kImageLimitOptimizedPercent,
     kImageLimitResizeAreaPercent,
-    kImageWebpRecompressQuality,
-    kMaxInlinedPreviewImagesIndex,
-    kMinImageSizeLowResolutionBytes,
-    kCriticalImagesCacheExpirationTimeMs,
-    kImageJpegNumProgressiveScans,
+    kImageMaxRewritesAtOnce,
     kImageRetainColorProfile,
     kImageRetainExifData,
-    kAnalyticsID,
-    kAboveTheFoldNonCacheableElements,
-    kAboveTheFoldCacheTime,
-    kAboveTheFoldCacheableFamilies,
+    kImageWebpRecompressQuality,
+    kJsInlineMaxBytes,
+    kJsOutlineMinBytes,
     kLazyloadImagesAfterOnload,
+    kLogRewriteTiming,
+    kLowercaseHtmlNames,
+    kMaxHtmlCacheTimeMs,
+    kMaxInlinedPreviewImagesIndex,
+    kMaxUrlSegmentSize,
+    kMaxUrlSize,
+    kMinImageSizeLowResolutionBytes,
+    kMinResourceCacheTimeToRewriteMs,
+    kModifyCachingHeaders,
+    kProgressiveJpegMinBytes,
+    kRespectVary,
+    kRewriteLevel,
+    kRunningFurious,
+    kServeBlinkNonCritical,
+    kServeStaleIfFetchError,
+
+    // Apache specific:
+    kCollectRefererStatistics,
+    kFetcherProxy,
+    kFetcherTimeOutMs,
+    kFileCacheCleanIntervalMs,
+    kFileCacheCleanSizeKb,
+    kFileCachePath,
+    kFileNamePrefix,
+    kHashRefererStatistics,
+    kLruCacheByteLimit,
+    kLruCacheKbPerProcess,
+    kMessageBufferSize,
+    kRefererStatisticsOutputLevel,
+    kSlurpDirectory,
+    kSlurpFlushLimit,
+    kSlurpReadOnly,
+    kStatisticsEnabled,
+    kTestProxy,
+    kUseSharedMemLocking,
+
+    // This is always the last option.
     kEndOfOptions
   };
 
@@ -321,7 +345,7 @@ class RewriteOptions {
   bool Enabled(Filter filter) const;
 
   // Set Option name with value.
-  bool SetOptionFromName(const GoogleString& name, const GoogleString& value,
+  bool SetOptionFromName(const StringPiece& name, const GoogleString& value,
                          MessageHandler* handler);
 
   // TODO(jmarantz): consider setting flags in the set_ methods so that
@@ -883,8 +907,19 @@ class RewriteOptions {
   // These static methods are used by Option<T>::SetFromString to set
   // Option<T>::value_ from a string representation of it.
   static bool ParseFromString(const GoogleString& value_string, bool* value) {
-    // How are bools passed in the string?  I am assuming "true" / "false".
-    *value = (value_string == "true");
+    // How are bools passed in the string?  I am assuming "true"/"false" or
+    // "on"/"off".
+    if (StringCaseEqual(value_string, "true") ||
+        StringCaseEqual(value_string, "on")) {
+      *value = true;
+    } else if (StringCaseEqual(value_string, "false") ||
+        StringCaseEqual(value_string, "off")) {
+      *value = false;
+    } else {
+      // value_string is not "true"/"false" or "on"/"off".  Return a parse
+      // error.
+      return false;
+    }
     return true;
   }
   static bool ParseFromString(const GoogleString& value_string, int* value) {
@@ -900,10 +935,7 @@ class RewriteOptions {
   }
   static bool ParseFromString(const GoogleString& value_string,
                               RewriteLevel* value) {
-    // We shouldn't be setting level_ via SetOptionFromName. So ignore
-    // value_string.
-    // Should we set the default?  *value = kPassThrough
-    return false;
+    return ParseRewriteLevel(value_string, value);
   }
 
   // These static methods enable us to generate signatures for all

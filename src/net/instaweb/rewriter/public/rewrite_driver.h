@@ -108,6 +108,7 @@ class RewriteDriver : public HtmlParse {
   // ResponseHeaders request_headers sent to the rewrite driver.
   // Headers not in this list will be ignored so there is no need to
   // copy them over.
+  // TODO(sligocki): Use these in ProxyInterface flow.
   static const char* kPassThroughRequestAttributes[3];
 
   // This string identifies, for the PropertyCache, a group of properties
@@ -176,7 +177,7 @@ class RewriteDriver : public HtmlParse {
   }
 
   // Return a pointer to the response headers that filters can update
-  // before the frist flush.
+  // before the first flush.
   ResponseHeaders* response_headers_ptr() {
     return response_headers_;
   }
@@ -555,8 +556,16 @@ class RewriteDriver : public HtmlParse {
   // If timeout_ms <= 0, no time bound will be used.
   void BoundedWaitFor(WaitMode mode, int64 timeout_ms);
 
-  // Renders any completed rewrites back into the DOM.
-  void Render();
+  // If this is set to true, during a Flush of HTML the system will
+  // wait for results of all rewrites rather than just waiting for
+  // cache lookups and a small deadline. Note, however, that in very
+  // rare circumstances some rewrites may still be dropped due to
+  // excessive load.
+  //
+  // Note: reset every time the driver is recycled.
+  void set_fully_rewrite_on_flush(bool x) {
+    fully_rewrite_on_flush_ = x;
+  }
 
   // Indicate that this RewriteDriver will be explicitly deleted, and
   // thus should not be auto-deleted at the end of the parse.  This is
@@ -691,6 +700,9 @@ class RewriteDriver : public HtmlParse {
   bool ShouldAbsolutifyUrl(const GoogleUrl& input_base,
                            const GoogleUrl& output_base,
                            bool* proxy_mode) const;
+
+  void set_client_id(const StringPiece& id) { client_id_ = id.as_string(); }
+  const GoogleString& client_id() const { return client_id_; }
 
   PropertyPage* property_page() const { return property_page_.get(); }
   void set_property_page(PropertyPage* page);  // Takes ownership of page.
@@ -858,6 +870,12 @@ class RewriteDriver : public HtmlParse {
   // everything having been finished in a given mode.
   WaitMode waiting_; // protected by rewrite_mutex()
 
+  // If this is true, the usual HTML streaming interface will let rendering
+  // of every flush window fully complete before proceeding rather than
+  // use a deadline. This means rewriting of HTML may be slow, and hence
+  // should not be used for online traffic.
+  bool fully_rewrite_on_flush_;
+
   // If this is true, this RewriteDriver should Cleanup() itself when it
   // finishes handling the current fetch.
   bool cleanup_on_fetch_complete_;
@@ -982,6 +1000,9 @@ class RewriteDriver : public HtmlParse {
   QueuedWorkerPool::Sequence* low_priority_rewrite_worker_;
 
   Writer* writer_;
+
+  // Stores a client identifier associated with this request, if any.
+  GoogleString client_id_;
 
   // Stores any cached properties associated with the current URL.
   scoped_ptr<PropertyPage> property_page_;

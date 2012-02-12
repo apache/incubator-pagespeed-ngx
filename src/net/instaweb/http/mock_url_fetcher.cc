@@ -47,7 +47,7 @@ void MockUrlFetcher::SetResponse(const StringPiece& url,
   // Note: This is a little kludgey, but if you set a normal response and
   // always perform normal GETs you won't even notice that we've set the
   // last_modified_time internally.
-  SetConditionalResponse(url, 0, response_header, response_body);
+  SetConditionalResponse(url, 0, "" , response_header, response_body);
 }
 
 void MockUrlFetcher::AddToResponse(const StringPiece& url,
@@ -62,7 +62,7 @@ void MockUrlFetcher::AddToResponse(const StringPiece& url,
 }
 
 void MockUrlFetcher::SetConditionalResponse(
-    const StringPiece& url, int64 last_modified_time,
+    const StringPiece& url, int64 last_modified_time, const GoogleString& etag,
     const ResponseHeaders& response_header, const StringPiece& response_body) {
   GoogleString url_string = url.as_string();
   // Delete any old response.
@@ -73,7 +73,7 @@ void MockUrlFetcher::SetConditionalResponse(
   }
 
   // Add new response.
-  HttpResponse* response = new HttpResponse(last_modified_time,
+  HttpResponse* response = new HttpResponse(last_modified_time, etag,
                                             response_header, response_body);
   response_map_.insert(ResponseMap::value_type(url_string, response));
 }
@@ -100,6 +100,7 @@ bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,
       if (request_headers.Lookup(HttpAttributes::kIfModifiedSince, &values) &&
           values.size() == 1 &&
           ConvertStringToTime(*values[0], &if_modified_since_time) &&
+          if_modified_since_time > 0 &&
           if_modified_since_time >= response->last_modified_time()) {
         // We recieved an If-Modified-Since header with a date that was
         // parsable and at least as new our new resource.
@@ -108,6 +109,12 @@ bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,
         response_headers->SetStatusAndReason(HttpStatus::kNotModified);
         // TODO(sligocki): Perhaps allow other headers to be set.
         // Date is technically required to be set.
+      } else if (!response->etag().empty() &&
+          request_headers.Lookup(HttpAttributes::kIfNoneMatch, &values) &&
+          values.size() == 1 && *values[0] == response->etag()) {
+        // We received an If-None-Match header whose etag matches that of the
+        // stored response. serve a 304 Not Modified.
+        response_headers->SetStatusAndReason(HttpStatus::kNotModified);
       } else {
         // Otherwise serve a normal 200 OK response.
         response_headers->CopyFrom(response->header());

@@ -101,7 +101,7 @@ Header append 'X-Extra-Header' '1'
 Header set Cache-Control "max-age=600"
 
 # For regression test of connection failing.
-ModPagespeedDomain www.google.co.ca:8085
+ModPagespeedDomain modpagespeed.com:1023
 
 # Test LoadFromFile mapping by mapping one dir to another.
 ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"

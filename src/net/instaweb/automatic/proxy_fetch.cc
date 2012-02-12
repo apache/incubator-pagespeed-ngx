@@ -268,6 +268,14 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
     driver_ = resource_manager_->NewCustomRewriteDriver(custom_options);
   }
 
+  // Now that we've created the RewriteDriver, include the client_id generated
+  // from the original request headers, if any.
+  const char* client_id = async_fetch->request_headers()->Lookup1(
+      HttpAttributes::kXGooglePagespeedClientId);
+  if (client_id != NULL) {
+    driver_->set_client_id(client_id);
+  }
+
   // TODO(sligocki): We should pass the options in with the AsyncFetch rather
   // than creating a new fetcher for each fetch.
   // Note: CacheUrlAsyncFetcher is actually a pretty light class, so this isn't
@@ -281,6 +289,8 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       resource_manager_->rewrite_stats()->backend_latency_histogram());
   cache_fetcher_->set_fallback_responses_served(
       resource_manager_->rewrite_stats()->fallback_responses_served());
+  cache_fetcher_->set_num_conditional_refreshes(
+      resource_manager_->rewrite_stats()->num_conditional_refreshes());
   cache_fetcher_->set_serve_stale_if_fetch_error(
       Options()->serve_stale_if_fetch_error());
 

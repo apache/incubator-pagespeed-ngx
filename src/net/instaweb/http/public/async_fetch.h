@@ -62,18 +62,19 @@ class AsyncFetch : public Writer {
 
   virtual ~AsyncFetch();
 
-  // Called when ResponseHeaders have been set, but before writing
-  // contents.  Contract: Must be called (exactly once) before Write,
-  // Flush or Done.  This interface is intended for callers
-  // (e.g. Fetchers).  Implementors of the AsyncFetch interface must
-  // override HandleHeadersComplete.
+  // Called when ResponseHeaders have been set, but before writing contents.
+  // Contract: Must be called (at most once) before Write, Flush or Done.
+  // Automatically invoked (if neccessary) before the first call to Write,
+  // Flush, or Done.  This interface is intended for callers (e.g. Fetchers).
+  // Implementors of the AsyncFetch interface must override
+  // HandleHeadersComplete.
   void HeadersComplete();
 
   // Fetch complete.  This interface is intended for callers
   // (e.g. Fetchers).  Implementors must override HandleDone.
   void Done(bool success);
 
-  // Fetch complete.  This interface is intended for callers.  Implementors
+  // Data available.  This interface is intended for callers.  Implementors
   // must override HandlerWrite and HandleFlush.
   virtual bool Write(const StringPiece& sp, MessageHandler* handler);
   virtual bool Flush(MessageHandler* handler);
@@ -288,6 +289,46 @@ class FallbackSharedAsyncFetch : public SharedAsyncFetch {
   Variable* fallback_responses_served_;  // may be NULL.
 
   DISALLOW_COPY_AND_ASSIGN(FallbackSharedAsyncFetch);
+};
+
+// Creates a SharedAsyncFetch object using an existing AsyncFetch and a cached
+// value (that may be stale) that is used to conditionally check if the resource
+// at the origin has changed. If the resource hasn't changed and we get a 304,
+// we serve the cached response, thus avoiding the download of the entire
+// content.
+// Note that we if you want the conditionally validated resource to be treated
+// as a newly fetched with the original ttl, you should use this fetch such that
+// the fixing of date headers happens in the base fetch.
+// Also, note that this class gets deleted when HandleDone is called.
+class ConditionalSharedAsyncFetch : public SharedAsyncFetch {
+ public:
+  ConditionalSharedAsyncFetch(AsyncFetch* base_fetch, HTTPValue* cached_value,
+                              MessageHandler* handler);
+  virtual ~ConditionalSharedAsyncFetch();
+
+  void set_num_conditional_refreshes(Variable* x) {
+    num_conditional_refreshes_ = x;
+  }
+
+ protected:
+  virtual void HandleDone(bool success);
+  virtual bool HandleWrite(const StringPiece& content, MessageHandler* handler);
+  virtual bool HandleFlush(MessageHandler* handler);
+  virtual void HandleHeadersComplete();
+
+ private:
+  // Note that this is only used while serving the cached response.
+  MessageHandler* handler_;
+  HTTPValue cached_value_;
+  // Indicates that we received a 304 from the origin and are serving out the
+  // cached value.
+  bool serving_cached_value_;
+  // Indicates that we added conditional headers to the request.
+  bool added_conditional_headers_to_request_;
+
+  Variable* num_conditional_refreshes_;  // may be NULL.
+
+  DISALLOW_COPY_AND_ASSIGN(ConditionalSharedAsyncFetch);
 };
 
 }  // namespace net_instaweb

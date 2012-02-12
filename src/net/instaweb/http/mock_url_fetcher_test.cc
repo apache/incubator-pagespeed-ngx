@@ -143,7 +143,7 @@ TEST_F(MockUrlFetcherTest, ConditionalFetchTest) {
   ASSERT_TRUE(ConvertTimeToString(last_modified_time, &now_string));
   ASSERT_TRUE(ConvertTimeToString(new_time, &new_time_string));
 
-  fetcher_.SetConditionalResponse(url, last_modified_time, header, body);
+  fetcher_.SetConditionalResponse(url, last_modified_time, "", header, body);
 
   // Response is normal to an un-conditional GET.
   TestResponse(url, header, body);
@@ -172,6 +172,36 @@ TEST_F(MockUrlFetcherTest, ConditionalFetchTest) {
     MockFetchContainer fetch(&fetcher_);
     fetch.request_headers_.Add(HttpAttributes::kIfModifiedSince,
                                new_time_string);
+    EXPECT_TRUE(fetch.Fetch(url));
+    EXPECT_EQ(HttpStatus::kNotModified, fetch.response_headers_.status_code());
+  }
+}
+
+TEST_F(MockUrlFetcherTest, ConditionalFetchWithEtagsTest) {
+  const char url[] = "http://www.example.com/successs.html";
+  const char etag[] = "etag";
+  ResponseHeaders header;
+  header.set_first_line(1, 1, 200, "OK");
+  const char body[] = "This website loaded :)";
+
+  fetcher_.SetConditionalResponse(url, -1, etag, header, body);
+
+  // Response is normal to an un-conditional GET.
+  TestResponse(url, header, body);
+
+  // Also normal for conditional GET with wrong etag.
+  {
+    MockFetchContainer fetch(&fetcher_);
+    fetch.request_headers_.Add(HttpAttributes::kIfNoneMatch, "blah");
+    EXPECT_TRUE(fetch.Fetch(url));
+    EXPECT_EQ(header.ToString(), fetch.response_headers_.ToString());
+    EXPECT_EQ(body, fetch.response_body_);
+  }
+
+  // But conditional GET with correct etag gets 304 Not Modified response.
+  {
+    MockFetchContainer fetch(&fetcher_);
+    fetch.request_headers_.Add(HttpAttributes::kIfNoneMatch, etag);
     EXPECT_TRUE(fetch.Fetch(url));
     EXPECT_EQ(HttpStatus::kNotModified, fetch.response_headers_.status_code());
   }

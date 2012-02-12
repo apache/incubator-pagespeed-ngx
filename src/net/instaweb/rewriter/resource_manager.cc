@@ -29,7 +29,6 @@
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -149,7 +148,6 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       metadata_cache_(NULL),
       relative_path_(false),
       store_outputs_in_file_system_(false),
-      block_until_completion_in_render_(false),
       lock_manager_(NULL),
       message_handler_(NULL),
       trying_to_cleanup_rewrite_drivers_(false),

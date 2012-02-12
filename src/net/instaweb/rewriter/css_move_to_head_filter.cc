@@ -27,7 +27,7 @@
 namespace {
 
 // names for Statistics variables.
-const char kCssElements[] = "css_elements";
+const char kCssElements[] = "css_elements_moved_to_head";
 
 }  // namespace
 

@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
 class CachedResult;
 class CssResourceSlot;
 class ContentType;
@@ -136,11 +137,33 @@ class ImageRewriteFilter : public RewriteFilter {
 
   scoped_ptr<const ImageTagScanner> image_filter_;
   scoped_ptr<WorkBound> work_bound_;
-  Variable* rewrite_count_;
-  Variable* inline_count_;
-  Variable* rewrite_saved_bytes_;
-  Variable* webp_count_;
-  TimedVariable* image_rewrites_dropped_;
+
+  // Statistics
+
+  // # of images rewritten successfully.
+  Variable* image_rewrites_;
+  // # of images that we decided not to serve rewritten. This could be because
+  // the rewrite failed, recompression wasn't effective enough, the image
+  // couldn't be resized because it had an alpha-channel, etc.
+  Variable* image_rewrites_dropped_intentionally_;
+  // # of images not rewritten because of load.
+  TimedVariable* image_rewrites_dropped_due_to_load_;
+  // # of bytes saved from image rewriting (Note: This is computed at
+  // rewrite time not at serve time, so the number of bytes saved in
+  // transmission should be larger than this).
+  Variable* image_rewrite_total_bytes_saved_;
+  // Sum of original sizes of all successfully rewritten images.
+  // image_rewrite_total_bytes_saved_ / image_rewrite_total_original_bytes_
+  // is the average bytes saved per rewrite.
+  Variable* image_rewrite_total_original_bytes_;
+  // # of uses of rewritten images (updating <img> src= attributes in HTML
+  // or url()s in CSS).
+  Variable* image_rewrite_uses_;
+  // # of inlines of images (into HTML or CSS).
+  Variable* image_inline_count_;
+  // # of images rewritten into WebP format.
+  Variable* image_webp_rewrites_;
+
   ImageUrlEncoder encoder_;
 
   // Counter to help associate each <img> tag in the HTML with a unique index,

@@ -82,6 +82,14 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
     return fallback_responses_served_;
   }
 
+  void set_num_conditional_refreshes(Variable* x) {
+    num_conditional_refreshes_ = x;
+  }
+
+  Variable* num_conditional_refreshes() const {
+    return num_conditional_refreshes_;
+  }
+
   void set_respect_vary(bool x) { respect_vary_ = x; }
   bool respect_vary() const { return respect_vary_; }
 
@@ -110,6 +118,7 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
 
   Histogram* backend_first_byte_latency_;  // may be NULL.
   Variable* fallback_responses_served_;  // may be NULL.
+  Variable* num_conditional_refreshes_;  // may be NULL.
 
   bool respect_vary_;
   bool ignore_recent_fetch_failed_;

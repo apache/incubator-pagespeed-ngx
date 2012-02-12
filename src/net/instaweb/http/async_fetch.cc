@@ -20,6 +20,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -244,6 +245,95 @@ void FallbackSharedAsyncFetch::HandleHeadersComplete() {
   } else {
     base_fetch()->HeadersComplete();
   }
+}
+
+ConditionalSharedAsyncFetch::ConditionalSharedAsyncFetch(
+    AsyncFetch* base_fetch,
+    HTTPValue* cached_value,
+    MessageHandler* handler)
+    : SharedAsyncFetch(base_fetch),
+      handler_(handler),
+      serving_cached_value_(false),
+      added_conditional_headers_to_request_(false) {
+  if (cached_value != NULL && !cached_value->Empty()) {
+    // Only do our own conditional fetch if the original request wasn't
+    // conditional.
+    if (!request_headers()->Has(HttpAttributes::kIfModifiedSince) &&
+        !request_headers()->Has(HttpAttributes::kIfNoneMatch)) {
+      ResponseHeaders cached_response_headers;
+      cached_value->ExtractHeaders(&cached_response_headers, handler_);
+      // Check that the cached response is a 200.
+      if (cached_response_headers.status_code() == HttpStatus::kOK) {
+        // Copy the Etag and Last-Modified if any into the If-None-Match and
+        // If-Modified-Since request headers. Also, ensure that the Etag wasn't
+        // added by us.
+        const char* etag = cached_response_headers.Lookup1(
+            HttpAttributes::kEtag);
+        if (etag != NULL && !StringCaseStartsWith(etag,
+                                                  HTTPCache::kEtagPrefix)) {
+          request_headers()->Add(HttpAttributes::kIfNoneMatch, etag);
+          added_conditional_headers_to_request_ = true;
+        }
+        const char* last_modified = cached_response_headers.Lookup1(
+            HttpAttributes::kLastModified);
+        if (last_modified != NULL) {
+          request_headers()->Add(HttpAttributes::kIfModifiedSince,
+                                 last_modified);
+          added_conditional_headers_to_request_ = true;
+        }
+      }
+      if (added_conditional_headers_to_request_) {
+        cached_value_.Link(cached_value);
+      }
+    }
+  }
+}
+
+ConditionalSharedAsyncFetch::~ConditionalSharedAsyncFetch() {}
+
+void ConditionalSharedAsyncFetch::HandleHeadersComplete() {
+  if (added_conditional_headers_to_request_ &&
+      response_headers()->status_code() == HttpStatus::kNotModified) {
+    // If the fetch resulted in a 304 from the server, serve the cached response
+    // and stop passing any events through to the base fetch.
+    serving_cached_value_ = true;
+    response_headers()->Clear();
+    cached_value_.ExtractHeaders(response_headers(), handler_);
+    base_fetch()->HeadersComplete();
+    StringPiece contents;
+    cached_value_.ExtractContents(&contents);
+    base_fetch()->Write(contents, handler_);
+    base_fetch()->Done(true);
+    if (num_conditional_refreshes_ != NULL) {
+      num_conditional_refreshes_->Add(1);
+    }
+  } else {
+    base_fetch()->HeadersComplete();
+  }
+}
+
+bool ConditionalSharedAsyncFetch::HandleWrite(const StringPiece& content,
+                                              MessageHandler* handler) {
+  if (serving_cached_value_) {
+    return true;
+  }
+  return base_fetch()->Write(content, handler);
+}
+
+bool ConditionalSharedAsyncFetch::HandleFlush(MessageHandler* handler) {
+  if (serving_cached_value_) {
+    return true;
+  }
+  return base_fetch()->Flush(handler);
+}
+
+void ConditionalSharedAsyncFetch::HandleDone(bool success) {
+  if (!serving_cached_value_) {
+    base_fetch()->Done(success);
+  }
+  // If we are serving the cached value, base_fetch()->Done() would already have
+  // been called in HandleHeadersComplete().
+  delete this;
 }
 
 }  // namespace net_instaweb

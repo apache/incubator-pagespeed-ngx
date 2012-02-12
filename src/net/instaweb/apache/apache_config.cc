@@ -31,29 +31,44 @@ ApacheConfig::ApacheConfig() {
 }
 
 void ApacheConfig::Init() {
-  add_option("", &fetcher_proxy_, "afp");
-  add_option("", &file_cache_path_, "afcp");
-  add_option("", &filename_prefix_, "afnp");
-  add_option("", &slurp_directory_, "asd");
+  add_option("", &fetcher_proxy_, "afp", RewriteOptions::kFetcherProxy);
+  add_option("", &file_cache_path_, "afcp", RewriteOptions::kFileCachePath);
+  add_option("", &filename_prefix_, "afnp", RewriteOptions::kFileNamePrefix);
+  add_option("", &slurp_directory_, "asd", RewriteOptions::kSlurpDirectory);
 
-  add_option(kOrganized, &referer_statistics_output_level_, "arso");
+  add_option(kOrganized, &referer_statistics_output_level_, "arso",
+             RewriteOptions::kRefererStatisticsOutputLevel);
 
-  add_option(false, &collect_referer_statistics_, "acrs");
-  add_option(false, &hash_referer_statistics_, "ahrs");
-  add_option(true, &statistics_enabled_, "ase");
-  add_option(false, &test_proxy_, "atp");
-  add_option(false, &use_shared_mem_locking_, "ausml");
-  add_option(false, &slurp_read_only_, "asro");
+  add_option(false, &collect_referer_statistics_, "acrs",
+             RewriteOptions::kCollectRefererStatistics);
+  add_option(false, &hash_referer_statistics_, "ahrs",
+             RewriteOptions::kHashRefererStatistics);
+  add_option(true, &statistics_enabled_, "ase",
+             RewriteOptions::kStatisticsEnabled);
+  add_option(false, &test_proxy_, "atp", RewriteOptions::kTestProxy);
+  add_option(false, &use_shared_mem_locking_, "ausml",
+             RewriteOptions::kUseSharedMemLocking);
+  add_option(false, &slurp_read_only_, "asro",
+             RewriteOptions::kSlurpReadOnly);
 
-  add_option(5 * Timer::kSecondMs, &fetcher_time_out_ms_, "afto");
-  add_option(Timer::kHourMs, &file_cache_clean_interval_ms_, "afcci");
+  add_option(5 * Timer::kSecondMs, &fetcher_time_out_ms_, "afto",
+             RewriteOptions::kFetcherTimeOutMs);
+  add_option(Timer::kHourMs, &file_cache_clean_interval_ms_, "afcci",
+             RewriteOptions::kFileCacheCleanIntervalMs);
 
-  add_option(100 * 1024, &file_cache_clean_size_kb_, "afc");  // 100 megabytes
-  add_option(0, &lru_cache_byte_limit_, "alcb");
-  add_option(0, &lru_cache_kb_per_process_, "alcp");
-  add_option(0, &slurp_flush_limit_, "asfl");
+  add_option(100 * 1024, &file_cache_clean_size_kb_, "afc",
+             RewriteOptions::kFileCacheCleanSizeKb);  // 100 megabytes
+  add_option(0, &lru_cache_byte_limit_, "alcb",
+             RewriteOptions::kLruCacheByteLimit);
+  add_option(0, &lru_cache_kb_per_process_, "alcp",
+             RewriteOptions::kLruCacheKbPerProcess);
+  add_option(0, &slurp_flush_limit_, "asfl",
+             RewriteOptions::kSlurpFlushLimit);
 
-  add_option(100 * 1024, &message_buffer_size_, "ambs");  // 100 kbytes
+  add_option(100 * 1024, &message_buffer_size_, "ambs",
+             RewriteOptions::kMessageBufferSize);  // 100 kbytes
+
+  SortOptions();
 }
 
 bool ApacheConfig::ParseRefererStatisticsOutputLevel(

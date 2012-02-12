@@ -926,7 +926,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
       InstawebContext::ManagerFromServerRec(cmd->server);
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   MessageHandler* handler = factory->message_handler();
-  const char* directive = cmd->directive->directive;
+  StringPiece directive(cmd->directive->directive);
+  StringPiece prefix(RewriteQuery::kModPagespeed);
   const char* ret = NULL;
   ApacheConfig* config = CmdOptions(cmd, data);
 
@@ -934,27 +935,25 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   // resolve properly for options in RewriteOptions for ApacheConfig.
   RewriteOptions* options = config;
 
-  // TODO(jmarantz): We should use gperf and a switch statement rather than
-  // this long list of string compares.
-  if (StringCaseEqual(directive, RewriteQuery::kModPagespeed)) {
+  // We have "FileCachePath" mapped in gperf, but here we do more than just
+  // setting the option. This must precede the call to SetOptionFromName which
+  // would catch this directive but miss the call to
+  // give_apache_user_permissions.
+  if (StringCaseEqual(directive, kModPagespeedFileCachePath)) {
+    config->set_file_cache_path(arg);
+    if (!manager->InitFileCachePath() ||
+        !give_apache_user_permissions(factory)) {
+      ret = apr_pstrcat(cmd->pool, "Directory ", arg,
+                        " does not exist and can't be created.", NULL);
+    }
+  } else if (directive.starts_with(prefix) &&
+             options->SetOptionFromName(directive.substr(prefix.size()), arg,
+                                        handler)) {
+    // Set option via name.
+  } else if (StringCaseEqual(directive, RewriteQuery::kModPagespeed)) {
     ret = ParseBoolOption(options, cmd, &RewriteOptions::set_enabled, arg);
   } else if (StringCaseEqual(directive, kModPagespeedAllow)) {
     options->Allow(arg);
-  } else if (StringCaseEqual(directive, kModPagespeedBeaconUrl)) {
-    options->set_beacon_url(arg);
-  } else if (StringCaseEqual(directive,
-                             kModPagespeedCollectRefererStatistics)) {
-    ret = ParseBoolOption(config, cmd,
-        &ApacheConfig::set_collect_referer_statistics, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedCombineAcrossPaths)) {
-    ret = ParseBoolOption(options, cmd,
-                          &RewriteOptions::set_combine_across_paths, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedCssInlineMaxBytes)) {
-    ret = ParseInt64Option(options,
-        cmd, &RewriteOptions::set_css_inline_max_bytes, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedCssOutlineMinBytes)) {
-    ret = ParseInt64Option(options,
-        cmd, &RewriteOptions::set_css_outline_min_bytes, arg);
   } else if (StringCaseEqual(directive, kModPagespeedDisableFilters)) {
     if (!options->DisableFiltersByCommaSeparatedList(arg, handler)) {
       ret = "Failed to disable some filters.";
@@ -971,165 +970,28 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     if (!options->EnableFiltersByCommaSeparatedList(arg, handler)) {
       ret = "Failed to enable some filters.";
     }
-  } else if (StringCaseEqual(directive, kModPagespeedFetcherTimeoutMs)) {
-    ret = ParseInt64Option(config,
-        cmd, &ApacheConfig::set_fetcher_time_out_ms, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedFetchProxy)) {
-    config->set_fetcher_proxy(arg);
   } else if (StringCaseEqual(directive, kModPagespeedFetchWithGzip)) {
     ret = ParseBoolOption(
         factory, cmd, &ApacheRewriteDriverFactory::set_fetch_with_gzip, arg);
-  } else if (StringCaseEqual(directive,
-                             kModPagespeedFileCacheCleanIntervalMs)) {
-    ret = ParseInt64Option(config,
-                           cmd, &ApacheConfig::set_file_cache_clean_interval_ms,
-                           arg);
-  } else if (StringCaseEqual(directive, kModPagespeedFileCachePath)) {
-    config->set_file_cache_path(arg);
-    if (!manager->InitFileCachePath() ||
-        !give_apache_user_permissions(factory)) {
-      ret = apr_pstrcat(cmd->pool, "Directory ", arg,
-                        " does not exist and can't be created.", NULL);
-    }
-  } else if (StringCaseEqual(directive, kModPagespeedFileCacheSizeKb)) {
-    ret = ParseInt64Option(config,
-        cmd, &ApacheConfig::set_file_cache_clean_size_kb, arg);
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
     ret = ParseBoolOption(static_cast<RewriteDriverFactory*>(factory),
-        cmd, &RewriteDriverFactory::set_force_caching, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedGAID)) {
-    // TODO(nforman): Some input checking?
-    options->set_ga_id(arg);
-  } else if (StringCaseEqual(directive, kModPagespeedRunFurious)) {
-    ret = ParseBoolOption(options, cmd,
-                          &RewriteOptions::set_running_furious_experiment, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedFuriousPercent)) {
-    ret = ParseIntBoundedOption(options, cmd,
-                                &RewriteOptions::set_furious_percent, arg,
-                                0, 100);
+                          cmd, &RewriteDriverFactory::set_force_caching, arg);
   } else if (StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix)) {
     config->set_filename_prefix(arg);
     if (!give_apache_user_permissions(factory)) {
       ret = apr_pstrcat(cmd->pool, "Directory ", arg,
                         " does not exist and can't be created.", NULL);
     }
-  } else if (StringCaseEqual(directive, kModPagespeedHashRefererStatistics)) {
-    ret = ParseBoolOption(config, cmd,
-         &ApacheConfig::set_hash_referer_statistics, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedImgInlineMaxBytes)) {
-    // Deprecated due to spelling
-    ret = ParseInt64Option(options,
-        cmd, &RewriteOptions::set_image_inline_max_bytes, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedImgMaxRewritesAtOnce)) {
-    // Deprecated due to spelling
-    // TODO(sligocki): Convert to ParseInt64Option for consistency?
-    ret = ParseIntOption(options,
-        cmd, &RewriteOptions::set_image_max_rewrites_at_once, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedImageInlineMaxBytes)) {
-    ret = ParseInt64Option(options,
-        cmd, &RewriteOptions::set_image_inline_max_bytes, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedImageMaxRewritesAtOnce)) {
-    // TODO(sligocki): Convert to ParseInt64Option for consistency?
-    ret = ParseIntOption(options,
-        cmd, &RewriteOptions::set_image_max_rewrites_at_once, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedCssImageInlineMaxBytes)) {
-    ret = ParseInt64Option(options,
-        cmd, &RewriteOptions::set_css_image_inline_max_bytes, arg);
-  } else if (StringCaseEqual(directive,
-                             kModPagespeedJpegRecompressQuality)) {
-    ret = ParseIntBoundedOption(
-        options,
-        cmd, &RewriteOptions::set_image_jpeg_recompress_quality, arg,
-        -1, 100);
-  } else if (StringCaseEqual(directive,
-                             kModPagespeedImageLimitOptimizedPercent)) {
-    ret = ParseIntBoundedOption(
-        options,
-        cmd, &RewriteOptions::set_image_limit_optimized_percent, arg,
-        0, 100);
-  } else if (StringCaseEqual(directive,
-                             kModPagespeedImageLimitResizeAreaPercent)) {
-    ret = ParseIntBoundedOption(
-        options,
-        cmd, &RewriteOptions::set_image_limit_resize_area_percent, arg,
-        0, 100);
-  } else if (StringCaseEqual(directive, kModPagespeedJsInlineMaxBytes)) {
-    ret = ParseInt64Option(options,
-        cmd, &RewriteOptions::set_js_inline_max_bytes, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedJsOutlineMinBytes)) {
-    ret = ParseInt64Option(options,
-        cmd, &RewriteOptions::set_js_outline_min_bytes, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedLogRewriteTiming)) {
-    ret = ParseBoolOption(
-        options, cmd, &RewriteOptions::set_log_rewrite_timing, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedLowercaseHtmlNames)) {
-    ret = ParseBoolOption(options, cmd,
-                          &RewriteOptions::set_lowercase_html_names, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedLRUCacheByteLimit)) {
-    ret = ParseInt64Option(config,
-        cmd, &ApacheConfig::set_lru_cache_byte_limit, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedLRUCacheKbPerProcess)) {
-    ret = ParseInt64Option(config,
-        cmd, &ApacheConfig::set_lru_cache_kb_per_process, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedMaxSegmentLength)) {
-    // TODO(sligocki): Convert to ParseInt64Option for consistency?
-    ret = ParseIntOption(options,
-        cmd, &RewriteOptions::set_max_url_segment_size, arg);
   } else if (StringCaseEqual(directive, kModPagespeedMessageBufferSize)) {
-    ret = ParseIntOption(factory,
-        cmd, &ApacheRewriteDriverFactory::set_message_buffer_size, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedModifyCachingHeaders)) {
-    ret = ParseBoolOption(options, cmd,
-                          &RewriteOptions::set_modify_caching_headers, arg);
+    ret = ParseIntOption(factory, cmd,
+                         &ApacheRewriteDriverFactory::set_message_buffer_size,
+                         arg);
   } else if (StringCaseEqual(directive, kModPagespeedNumShards)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
-  } else if (StringCaseEqual(directive,
-                             kModPagespeedRefererStatisticsOutputLevel)) {
-    ApacheConfig::RefererStatisticsOutputLevel level =
-        ApacheConfig::kOrganized;
-    if (ApacheConfig::ParseRefererStatisticsOutputLevel(arg, &level)) {
-      config->set_referer_statistics_output_level(level);
-    } else {
-      ret = "Failed to parse RefererStatisticsOutputLevel.";
-    }
-  } else if (StringCaseEqual(directive, kModPagespeedRespectVary)) {
-    ret = ParseBoolOption(options, cmd,
-                          &RewriteOptions::set_respect_vary, arg);
   } else if (StringCaseEqual(directive, kModPagespeedRetainComment)) {
     options->RetainComment(arg);
-  } else if (StringCaseEqual(directive, kModPagespeedRewriteLevel)) {
-    RewriteOptions::RewriteLevel level = RewriteOptions::kPassThrough;
-    if (RewriteOptions::ParseRewriteLevel(arg, &level)) {
-      options->SetRewriteLevel(level);
-    } else {
-      ret = "Failed to parse RewriteLevel.";
-    }
-  } else if (StringCaseEqual(directive, kModPagespeedSharedMemoryLocks)) {
-    ret = ParseBoolOption(config, cmd,
-       &ApacheConfig::set_use_shared_mem_locking, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedSlurpDirectory)) {
-    config->set_slurp_directory(arg);
-  } else if (StringCaseEqual(directive, kModPagespeedSlurpFlushLimit)) {
-    ret = ParseInt64Option(config,
-        cmd, &ApacheConfig::set_slurp_flush_limit, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedSlurpReadOnly)) {
-    ret = ParseBoolOption(config, cmd, &ApacheConfig::set_slurp_read_only, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedStatistics)) {
-    ret = ParseBoolOption(config, cmd,
-        &ApacheConfig::set_statistics_enabled, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedTestProxy)) {
-    ret = ParseBoolOption(config,
-        cmd, &ApacheConfig::set_test_proxy, arg);
   } else if (StringCaseEqual(directive, kModPagespeedUrlPrefix)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
-  } else if (StringCaseEqual(directive,
-                             kModPagespeedMaxInlinedPreviewImagesIndex)) {
-    ret = ParseIntOption(options,
-        cmd, &RewriteOptions::set_max_inlined_preview_images_index, arg);
-  } else if (StringCaseEqual(directive,
-                             kModPagespeedMinImageSizeLowResolutionBytes)) {
-    ret = ParseInt64Option(options,
-        cmd, &RewriteOptions::set_min_image_size_low_resolution_bytes, arg);
   } else {
     return "Unknown directive.";
   }

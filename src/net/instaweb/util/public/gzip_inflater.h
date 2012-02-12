@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+// Author: bmcquade@google.com (Bryan McQuade)
+
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_GZIP_INFLATER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_GZIP_INFLATER_H_
 
@@ -62,12 +64,24 @@ class GzipInflater {
   bool error() const { return error_; }
 
  private:
+  friend class GzipInflaterTestPeer;
+
+  enum StreamFormat {
+    FORMAT_GZIP,         // RFC1952
+    FORMAT_ZLIB_STREAM,  // RFC1950
+    FORMAT_RAW_INFLATE,  // RFC1951
+  };
+
+  static bool GetWindowBitsForFormat(
+      StreamFormat format, int* out_window_bits);
   void Free();
+  void SetInputInternal(const void *in, size_t in_size);
+  void SwitchToRawDeflateFormat();
 
   z_stream *zlib_;
+  StreamFormat format_;
   bool finished_;
   bool error_;
-  InflateType type_;
 
   DISALLOW_COPY_AND_ASSIGN(GzipInflater);
 };

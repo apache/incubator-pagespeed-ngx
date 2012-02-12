@@ -156,6 +156,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       detached_fetch_main_path_complete_(false),
       detached_fetch_detached_path_complete_(false),
       waiting_(kNoWait),
+      fully_rewrite_on_flush_(false),
       cleanup_on_fetch_complete_(false),
       flush_requested_(false),
       inhibits_mutex_(NULL),
@@ -256,7 +257,9 @@ void RewriteDriver::Clear() {
   fetch_detached_ = false;
   detached_fetch_detached_path_complete_ = false;
   detached_fetch_main_path_complete_ = false;
+  client_id_.clear();
   property_page_.reset(NULL);
+  fully_rewrite_on_flush_ = false;
 }
 
 // Must be called with rewrite_mutex() held.
@@ -464,7 +467,7 @@ void RewriteDriver::FlushAsync(Function* callback) {
     Function* flush_async_done =
         MakeFunction(this, &RewriteDriver::QueueFlushAsyncDone,
                      num_rewrites, callback);
-    if (resource_manager_->block_until_completion_in_render()) {
+    if (fully_rewrite_on_flush_) {
       CheckForCompletionAsync(kWaitForCompletion, -1, flush_async_done);
     } else {
       CheckForCompletionAsync(kWaitForCachedRender, rewrite_deadline_ms_,
@@ -1937,7 +1940,7 @@ void RewriteDriver::InitiateRewrite(RewriteContext* rewrite_context) {
 }
 
 void RewriteDriver::InitiateFetch(RewriteContext* rewrite_context) {
-  // Note that we don't let the fetch start until ::Render(), above,
+  // Note that we don't let the fetch start until ::FlushAsync(), above,
   // loops through all the rewriters_ and calls Initiate().  This
   // avoids races between rewriters mutating slots, and filters adding
   // new Rewriters with slots.

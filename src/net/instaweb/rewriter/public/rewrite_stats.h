@@ -65,6 +65,7 @@ class RewriteStats {
   Variable* fallback_responses_served() {
     return fallback_responses_served_;
   }
+  Variable* num_conditional_refreshes() { return num_conditional_refreshes_; }
 
   Histogram* fetch_latency_histogram() { return fetch_latency_histogram_; }
   Histogram* rewrite_latency_histogram() { return rewrite_latency_histogram_; }
@@ -95,6 +96,7 @@ class RewriteStats {
   Variable* succeeded_filter_resource_fetches_;
   Variable* total_page_load_ms_;
   Variable* fallback_responses_served_;
+  Variable* num_conditional_refreshes_;
 
   Histogram* fetch_latency_histogram_;
   Histogram* rewrite_latency_histogram_;

@@ -182,17 +182,6 @@ class ResourceManager {
     store_outputs_in_file_system_ = store;
   }
 
-  // Whether or not HTML rendering should block until all normally
-  // asynchronous processing finishes.
-  // This is meant for file rewriting and testing, not for use within a server.
-  bool block_until_completion_in_render() const {
-    return block_until_completion_in_render_;
-  }
-
-  void set_block_until_completion_in_render(bool x) {
-    block_until_completion_in_render_ = x;
-  }
-
   void RefreshIfImminentlyExpiring(Resource* resource,
                                    MessageHandler* handler) const;
 
@@ -407,7 +396,6 @@ class ResourceManager {
 
   bool relative_path_;
   bool store_outputs_in_file_system_;
-  bool block_until_completion_in_render_;
 
   NamedLockManager* lock_manager_;
   MessageHandler* message_handler_;

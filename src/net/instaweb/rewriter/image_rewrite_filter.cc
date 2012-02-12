@@ -24,6 +24,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_resource_slot.h"
 #include "net/instaweb/rewriter/public/css_util.h"
@@ -49,31 +50,29 @@
 #include "net/instaweb/util/public/work_bound.h"
 
 namespace net_instaweb {
+
 class RewriteContext;
 class UrlSegmentEncoder;
-struct ContentType;
-
-namespace {
 
 // names for Statistics variables.
 const char kImageRewrites[] = "image_rewrites";
-const char kImageRewriteSavedBytes[] = "image_rewrite_saved_bytes";
+const char kImageRewritesDroppedIntentionally[] =
+    "image_rewrites_dropped_intentionally";
+const char ImageRewriteFilter::kImageRewritesDroppedDueToLoad[] =
+    "image_rewrites_dropped_due_to_load";
+const char kImageRewriteTotalBytesSaved[] = "image_rewrite_total_bytes_saved";
+const char kImageRewriteTotalOriginalBytes[] =
+    "image_rewrite_total_original_bytes";
+const char kImageRewriteUses[] = "image_rewrite_uses";
 const char kImageInline[] = "image_inline";
+const char ImageRewriteFilter::kImageOngoingRewrites[] =
+    "image_ongoing_rewrites";
 const char kImageWebpRewrites[] = "image_webp_rewrites";
 
 const int kNotCriticalIndex = INT_MAX;
 
 // This is the resized placeholder image width for mobile.
 const int kDelayImageWidthForMobile = 320;
-}  // namespace
-
-// name for statistic used to bound rewriting work.
-const char ImageRewriteFilter::kImageOngoingRewrites[] =
-    "image_ongoing_rewrites";
-
-// Number of image rewrites we dropped lately due to work bound.
-const char ImageRewriteFilter::kImageRewritesDroppedDueToLoad[] =
-    "image_rewrites_dropped_due_to_load";
 
 class ImageRewriteFilter::Context : public SingleRewriteContext {
  public:
@@ -154,38 +153,50 @@ const UrlSegmentEncoder* ImageRewriteFilter::Context::encoder() const {
 ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
       image_filter_(new ImageTagScanner(driver)),
-      rewrite_count_(NULL),
-      inline_count_(NULL),
-      rewrite_saved_bytes_(NULL),
-      webp_count_(NULL),
+      image_rewrites_(NULL),
+      image_rewrites_dropped_intentionally_(NULL),
+      image_rewrites_dropped_due_to_load_(NULL),
+      image_rewrite_total_bytes_saved_(NULL),
+      image_rewrite_total_original_bytes_(NULL),
+      image_rewrite_uses_(NULL),
+      image_inline_count_(NULL),
+      image_webp_rewrites_(NULL),
       image_counter_(0) {
   Statistics* stats = resource_manager_->statistics();
-  Variable* ongoing_rewrites = NULL;
+  Variable* image_ongoing_rewrites = NULL;
   if (stats != NULL) {
-    rewrite_count_ = stats->GetVariable(kImageRewrites);
-    rewrite_saved_bytes_ = stats->GetVariable(
-        kImageRewriteSavedBytes);
-    inline_count_ = stats->GetVariable(kImageInline);
-    ongoing_rewrites = stats->GetVariable(kImageOngoingRewrites);
-    webp_count_ = stats->GetVariable(kImageWebpRewrites);
-    image_rewrites_dropped_ =
+    image_rewrites_ = stats->GetVariable(kImageRewrites);
+    image_rewrites_dropped_intentionally_ =
+        stats->GetVariable(kImageRewritesDroppedIntentionally);
+    image_rewrites_dropped_due_to_load_ =
         stats->GetTimedVariable(kImageRewritesDroppedDueToLoad);
+    image_rewrite_total_bytes_saved_ =
+        stats->GetVariable(kImageRewriteTotalBytesSaved);
+    image_rewrite_total_original_bytes_ =
+        stats->GetVariable(kImageRewriteTotalOriginalBytes);
+    image_rewrite_uses_ = stats->GetVariable(kImageRewriteUses);
+    image_inline_count_ = stats->GetVariable(kImageInline);
+    image_ongoing_rewrites = stats->GetVariable(kImageOngoingRewrites);
+    image_webp_rewrites_ = stats->GetVariable(kImageWebpRewrites);
   }
   work_bound_.reset(
-      new StatisticsWorkBound(ongoing_rewrites,
+      new StatisticsWorkBound(image_ongoing_rewrites,
                               driver->options()->image_max_rewrites_at_once()));
 }
 
 ImageRewriteFilter::~ImageRewriteFilter() {}
 
 void ImageRewriteFilter::Initialize(Statistics* statistics) {
-  statistics->AddVariable(kImageInline);
-  statistics->AddVariable(kImageRewriteSavedBytes);
   statistics->AddVariable(kImageRewrites);
-  statistics->AddVariable(kImageOngoingRewrites);
-  statistics->AddVariable(kImageWebpRewrites);
+  statistics->AddVariable(kImageRewritesDroppedIntentionally);
   statistics->AddTimedVariable(kImageRewritesDroppedDueToLoad,
                                ResourceManager::kStatisticsGroup);
+  statistics->AddVariable(kImageRewriteTotalBytesSaved);
+  statistics->AddVariable(kImageRewriteTotalOriginalBytes);
+  statistics->AddVariable(kImageRewriteUses);
+  statistics->AddVariable(kImageInline);
+  statistics->AddVariable(kImageOngoingRewrites);
+  statistics->AddVariable(kImageWebpRewrites);
 }
 
 void ImageRewriteFilter::StartDocumentImpl() {
@@ -227,6 +238,9 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   if (original_image_type == Image::IMAGE_UNKNOWN) {
     message_handler->Error(result->name().as_string().c_str(), 0,
                            "Unrecognized image content type.");
+    if (image_rewrites_dropped_intentionally_ != NULL) {
+      image_rewrites_dropped_intentionally_->Add(1);
+    }
     return kRewriteFailed;
   }
   // We used to reject beacon images based on their size (1x1 or less) here, but
@@ -280,7 +294,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     if ((resized || options->Enabled(RewriteOptions::kRecompressImages)) &&
         (image->output_size() * 100 <
          image->input_size() * options->image_limit_optimized_percent())) {
-      // here output image type could potentially be different from input type.
+      // Here output image type could potentially be different from input type.
       result->SetType(ImageToContentType(input_resource->url(), image.get()));
 
       // Consider inlining output image (no need to check input, it's bigger)
@@ -299,20 +313,23 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
             result->url().c_str(),
             static_cast<unsigned>(image->output_size()));
 
-        if (rewrite_saved_bytes_ != NULL) {
-          // Note: if we are serving a request from a different server
-          // than the server that rewrote the <img> tag, and they don't
-          // share a file system, then we will be bumping the byte-count
-          // here without bumping the rewrite count.  This seems ok,
-          // though perhaps we may need to revisit.
-          //
-          // Currently this will be a problem even when serving on a
-          // different file that *does* share a filesystem,
-          // HashResourceManager does not yet load its internal map
-          // by scanning the filesystem on startup.
-          rewrite_saved_bytes_->Add(
+        // Update stats.
+        if (image_rewrites_ != NULL) {
+          image_rewrites_->Add(1);
+        }
+        if (image_rewrite_total_bytes_saved_ != NULL) {
+          image_rewrite_total_bytes_saved_->Add(
               image->input_size() - image->output_size());
         }
+        if (image_rewrite_total_original_bytes_ != NULL) {
+          image_rewrite_total_original_bytes_->Add(image->input_size());
+        }
+        if (result->type() == &kContentTypeWebp) {
+          if (image_webp_rewrites_ != NULL) {
+            image_webp_rewrites_->Add(1);
+          }
+        }
+
         rewrite_result = kRewriteOk;
       }
     }
@@ -358,10 +375,20 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     }
     work_bound_->WorkComplete();
   } else {
-    image_rewrites_dropped_->IncBy(1);
-    message_handler->Message(kInfo, "%s: Too busy to rewrite image.",
-                             input_resource->url().c_str());
+      if (image_rewrites_dropped_due_to_load_ != NULL) {
+        image_rewrites_dropped_due_to_load_->IncBy(1);
+      }
+      message_handler->Message(kInfo, "%s: Too busy to rewrite image.",
+                               input_resource->url().c_str());
   }
+
+  // All other conditions were updated in other code paths above.
+  if (rewrite_result == kRewriteFailed) {
+    if (image_rewrites_dropped_intentionally_ != NULL) {
+      image_rewrites_dropped_intentionally_->Add(1);
+    }
+  }
+
   return rewrite_result;
 }
 
@@ -508,10 +535,10 @@ bool ImageRewriteFilter::FinishRewriteCssImageUrl(
     // TODO(jmaessen): Can we make output URL reflect actual *usage*
     // of image inlining and/or webp images?
     slot->UpdateUrlInCss(data_url);
-    inline_count_->Add(1);
+    image_inline_count_->Add(1);
     return true;
   } else if (cached->optimizable()) {
-    rewrite_count_->Add(1);
+    image_rewrite_uses_->Add(1);
   }
   // Fall back to nested rewriting, which will also left trim the url if that
   // is required.
@@ -543,14 +570,14 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
       element->DeleteAttribute(HtmlName::kWidth);
       element->DeleteAttribute(HtmlName::kHeight);
     }
-    inline_count_->Add(1);
+    image_inline_count_->Add(1);
     rewrote_url = true;
     image_inlined = true;
   } else {
     if (cached->optimizable()) {
       // Rewritten HTTP url
       src->SetValue(cached->url());
-      rewrite_count_->Add(1);
+      image_rewrite_uses_->Add(1);
       rewrote_url = true;
     }
 

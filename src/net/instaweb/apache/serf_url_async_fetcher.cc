@@ -1079,7 +1079,7 @@ int SerfUrlAsyncFetcher::Poll(int64 max_wait_ms) {
       // know whether we are accumulating active fetches to make the
       // server fall over.
       LOG(ERROR) << "Serf status " << status << " ("
-                 << GetAprErrorString(status) << " ) polling for "
+                 << GetAprErrorString(status) << ") polling for "
                  << active_fetches_.size()
                  << ((threaded_fetcher_ == NULL) ? ": (threaded)"
                      : ": (non-blocking)")

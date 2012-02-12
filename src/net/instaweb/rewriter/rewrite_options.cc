@@ -453,12 +453,13 @@ RewriteOptions::RewriteOptions()
              kImageRetainColorProfile);
   add_option(false, &image_retain_exif_data_, "ired", kImageRetainExifData);
   add_option("", &ga_id_, "ig", kAnalyticsID);
+  add_option(false, &running_furious_, "fur", kRunningFurious);
+  add_option(kDefaultFuriousTrafficPercent, &furious_percent_, "fp",
+             kFuriousPercent);
   // Sort all_options_ on enum.
   SortOptions();
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
              &metadata_cache_staleness_threshold_ms_, "mcst");
-  add_option(false, &running_furious_, "fur");
-  add_option(kDefaultFuriousTrafficPercent, &furious_percent_, "fp");
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
@@ -691,13 +692,14 @@ bool RewriteOptions::AddByNameToFilterSet(
   return ret;
 }
 
-bool RewriteOptions::SetOptionFromName(const GoogleString& name,
+bool RewriteOptions::SetOptionFromName(const StringPiece& name,
                                        const GoogleString& value,
                                        MessageHandler* handler) {
   OptionEnum name_enum = LookupOption(name);
   if (name_enum == kEndOfOptions) {
     // Not a mapped option.
-    handler->Message(kWarning, "Option %s not mapped.", name.c_str());
+    handler->Message(kWarning, "Option %s not mapped.",
+                     name.as_string().c_str());
     return false;
   }
   OptionBaseVector::iterator it = std::lower_bound(
@@ -706,15 +708,16 @@ bool RewriteOptions::SetOptionFromName(const GoogleString& name,
   OptionBase* option = *it;
   if (option->option_enum() == name_enum) {
     if (!option->SetFromString(value)) {
-      handler->Message(kWarning, "Cannot set %s for option %s.",
-                       value.c_str(), name.c_str());
+      handler->Message(kWarning, "Cannot set %s for option %s.", value.c_str(),
+                       name.as_string().c_str());
       return false;
     } else {
       return true;
     }
   } else {
     // No Option with name_enum in all_options_.
-    handler->Message(kWarning, "Option %s not found.", name.c_str());
+    handler->Message(kWarning, "Option %s not found.",
+                     name.as_string().c_str());
     return false;
   }
 }
