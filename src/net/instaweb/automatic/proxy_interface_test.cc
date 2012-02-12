@@ -43,6 +43,7 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/delay_cache.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -207,6 +208,22 @@ class MockFilter : public EmptyHtmlFilter {
   PropertyValue* num_elements_property_;
 };
 
+// Hook provided to TestRewriteDriverFactory to add a new filter when
+// a rewrite_driver is created.
+class CreateFilterCallback
+    : public TestRewriteDriverFactory::CreateFilterCallback {
+ public:
+  CreateFilterCallback() {}
+  virtual ~CreateFilterCallback() {}
+
+  virtual HtmlFilter* Done(RewriteDriver* driver) {
+    return new MockFilter(driver);
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(CreateFilterCallback);
+};
+
 // TODO(morlovich): This currently relies on ResourceManagerTestBase to help
 // setup fetchers; and also indirectly to prevent any rewrites from timing out
 // (as it runs the tests with real scheduler but mock timer). It would probably
@@ -334,6 +351,46 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheScripts));
   }
 
+  void TestLooksLikeHtmlButIsNot(bool delay_pcache) {
+    // This jpeg file lacks a .jpg or .jpeg extension.  So we initiate
+    // a property-cache read prior to getting the response-headers back,
+    // but will never go into the ProxyFetch flow that blocks waiting
+    // for the cache lookup to come back.
+    const char kImageFilenameLackingExt[] = "jpg_file_lacks_ext";
+
+    GoogleString delay_cache_key;
+    if (delay_pcache) {
+      PropertyCache* pcache = resource_manager()->property_cache();
+      const PropertyCache::Cohort* cohort =
+          pcache->GetCohort(RewriteDriver::kDomCohort);
+      delay_cache_key = pcache->CacheKey(
+          AbsolutifyUrl(kImageFilenameLackingExt), cohort);
+      delay_cache()->DelayKey(delay_cache_key);
+    }
+
+    CreateFilterCallback create_filter_callback;
+    factory()->AddCreateFilterCallback(&create_filter_callback);
+
+    RewriteOptions* options = resource_manager()->global_options();
+    options->ClearSignatureForTesting();
+    options->set_ajax_rewriting_enabled(false);
+    resource_manager()->ComputeSignature(options);
+
+    SetResponseWithDefaultHeaders(kImageFilenameLackingExt, kContentTypeJpeg,
+                                  "image data", 300);
+    GoogleString image_out;
+    ResponseHeaders headers_out;
+
+    FetchFromProxy(kImageFilenameLackingExt, true, &image_out, &headers_out);
+
+    if (delay_pcache) {
+      delay_cache()->ReleaseKey(delay_cache_key);
+    }
+
+    EXPECT_EQ(1, lru_cache()->num_inserts());  // http-cache
+    EXPECT_EQ(2, lru_cache()->num_misses());   // http-cache & prop-cache
+  }
+
   scoped_ptr<ProxyInterface> proxy_interface_;
   int64 start_time_ms_;
   GoogleString start_time_string_;
@@ -347,27 +404,6 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   friend class FilterCallback;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceTest);
-};
-
-// Hook provided to TestRewriteDriverFactory to add a new filter when
-// a rewrite_driver is created.
-class CreateFilterCallback
-    : public TestRewriteDriverFactory::CreateFilterCallback {
- public:
-  explicit CreateFilterCallback(ProxyInterfaceTest* proxy_interface)
-      : proxy_interface_(proxy_interface) {
-  }
-
-  virtual HtmlFilter* Done(RewriteDriver* driver) {
-    return new MockFilter(driver);
-  }
-
-  virtual ~CreateFilterCallback() {}
-
- private:
-  ProxyInterfaceTest* proxy_interface_;
-
-  DISALLOW_COPY_AND_ASSIGN(CreateFilterCallback);
 };
 
 TEST_F(ProxyInterfaceTest, TimingInfo) {
@@ -1341,9 +1377,9 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
   EXPECT_EQ(1, lru_cache()->num_hits());  // input uncacheable memo
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(1, http_cache()->cache_misses()->Get()); // input uncacheable memo
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());  // input uncacheable memo
   EXPECT_EQ(1, lru_cache()->num_inserts());  // mapping
-  EXPECT_EQ(1, lru_cache()->num_identical_reinserts()); // uncacheable memo
+  EXPECT_EQ(1, lru_cache()->num_identical_reinserts());  // uncacheable memo
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());  // uncacheable memo
 
   out_text.clear();
@@ -1715,7 +1751,7 @@ TEST_F(ProxyInterfaceTest, NoStore) {
 }
 
 TEST_F(ProxyInterfaceTest, PropCacheFilter) {
-  CreateFilterCallback create_filter_callback(this);
+  CreateFilterCallback create_filter_callback;
   factory()->AddCreateFilterCallback(&create_filter_callback);
 
   SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
@@ -1768,7 +1804,7 @@ TEST_F(ProxyInterfaceTest, PropCacheFilter) {
 TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNoProperties) {
   // There will be no properties added to the cache set in this test because
   // we have not enabled the filter with
-  //     CreateFilterCallback create_filter_callback(this);
+  //     CreateFilterCallback create_filter_callback;
   //     factory()->AddCreateFilterCallback(&callback);
 
   RewriteOptions* options = resource_manager()->global_options();
@@ -1793,12 +1829,12 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNoProperties) {
 }
 
 TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfHtmlEndsWithTxt) {
-  CreateFilterCallback create_filter_callback(this);
+  CreateFilterCallback create_filter_callback;
   factory()->AddCreateFilterCallback(&create_filter_callback);
 
   // There will be no properties added to the cache set in this test because
   // we have not enabled the filter with
-  //     CreateFilterCallback create_filter_callback(this);
+  //     CreateFilterCallback create_filter_callback;
   //     factory()->AddCreateFilterCallback(&callback);
 
   RewriteOptions* options = resource_manager()->global_options();
@@ -1820,6 +1856,14 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfHtmlEndsWithTxt) {
   FetchFromProxy("page.txt", true, &text_out, &headers_out);
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(1, lru_cache()->num_misses());  // http-cache only
+}
+
+TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNonHtmlDelayedCache) {
+  TestLooksLikeHtmlButIsNot(true);
+}
+
+TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNonHtmlImmediateCache) {
+  TestLooksLikeHtmlButIsNot(false);
 }
 
 // TODO(jmarantz): add a test with a simulated slow cache to see what happens

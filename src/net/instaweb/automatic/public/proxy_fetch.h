@@ -173,7 +173,7 @@ class ProxyFetch : public SharedAsyncFetch {
   // the underlying host, using proxy mode in UrlNamer.
   ProxyFetch(const GoogleString& url,
              bool cross_domain,
-             bool wait_for_property_cache,
+             ProxyFetchPropertyCallback* property_cache_callback,
              AsyncFetch* async_fetch,
              RewriteOptions* custom_options,
              ResourceManager* manager,
@@ -257,6 +257,12 @@ class ProxyFetch : public SharedAsyncFetch {
   // Statistics
   int64 start_time_us_;
 
+  // Tracks an outstanding property-cache lookup.  This is NULLed
+  // when the property-cache completes or when we detach it.  We use
+  // this to detach the callback if we decide we don't care about the
+  // property-cache because we discovered we are not working with HTML.
+  ProxyFetchPropertyCallback* property_cache_callback_;
+
   // ProxyFetch is responsible for getting RewriteDrivers from the pool and
   // putting them back.
   RewriteDriver* driver_;
@@ -264,9 +270,6 @@ class ProxyFetch : public SharedAsyncFetch {
   // True if we have queued up ExecuteQueued but did not
   // execute it yet.
   bool queue_run_job_created_;
-
-  // Waiting for a property-cache lookup to complete.
-  bool waiting_for_property_cache_;
 
   // As the UrlAsyncFetcher calls our Write & Flush methods, we collect
   // the text in text_queue, and note the Flush call in

@@ -102,14 +102,8 @@ void ProxyFetchFactory::StartNewProxyFetch(
   }
 
   ProxyFetch* fetch = new ProxyFetch(
-      *url_to_fetch, cross_domain, property_callback != NULL, async_fetch,
+      *url_to_fetch, cross_domain, property_callback, async_fetch,
       custom_options, manager_, timer_, this);
-  if (property_callback != NULL) {
-    // Since ProxyFetch has already been been constructed, and
-    // waiting_for_property_cache_ is initialized in the constructor,
-    // there can be no race.
-    property_callback->SetProxyFetch(fetch);
-  }
   if (cross_domain) {
     // If we're proxying resources from a different domain, the host header is
     // likely set to the proxy host rather than the origin host.  Depending on
@@ -150,8 +144,12 @@ ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(AbstractMutex* mutex)
 }
 
 // Calls to Done(), SetProxyFetch(), and Detach() may occur on
-// different threads.  Exactly one of SetProxyFetch and Detach can be
-// called, but either can race with Done().
+// different threads.  Exactly one of SetProxyFetch and Detach will
+// never race with each other, as they correspond to the construction
+// or destruction of ProxyFetch, but either can race with Done().  Note
+// that SetProxyFetch can be followed by Detach if it turns out that
+// a URL without a known extension is *not* HTML.  See
+// ProxyInterfaceTest.PropCacheNoWritesIfNonHtmlDelayedCache.
 //
 // TODO(jmarantz): Add unit-tests to capture the 4 orderings, if
 // not the potential races.
@@ -193,7 +191,7 @@ void ProxyFetchPropertyCallback::Detach() {
   bool do_delete = false;
   {
     ScopedMutex lock(mutex_);
-    DCHECK(proxy_fetch_ == NULL);
+    proxy_fetch_ = NULL;
     DCHECK(!detached_);
     detached_ = true;
     do_delete = done_;
@@ -205,7 +203,7 @@ void ProxyFetchPropertyCallback::Detach() {
 
 ProxyFetch::ProxyFetch(const GoogleString& url,
                        bool cross_domain,
-                       bool wait_for_property_cache,
+                       ProxyFetchPropertyCallback* property_cache_callback,
                        AsyncFetch* async_fetch,
                        RewriteOptions* custom_options,
                        ResourceManager* manager,
@@ -220,8 +218,8 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       started_parse_(false),
       done_called_(false),
       start_time_us_(0),
+      property_cache_callback_(property_cache_callback),
       queue_run_job_created_(false),
-      waiting_for_property_cache_(wait_for_property_cache),
       mutex_(manager->thread_system()->NewMutex()),
       network_flush_outstanding_(false),
       sequence_(NULL),
@@ -234,6 +232,7 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
       prepare_success_(false) {
   set_request_headers(async_fetch->request_headers());
   set_response_headers(async_fetch->response_headers());
+
   // TODO(nforman): If we are not running an experiment, remove the
   // furious cookie.
   // If we don't already have custom options, and the global options
@@ -311,6 +310,10 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
 
   VLOG(1) << "Attaching RewriteDriver " << driver_
           << " to HtmlRewriter " << this;
+
+  if (property_cache_callback != NULL) {
+    property_cache_callback->SetProxyFetch(this);
+  }
 }
 
 ProxyFetch::~ProxyFetch() {
@@ -320,6 +323,7 @@ ProxyFetch::~ProxyFetch() {
   DCHECK(!done_outstanding_);
   DCHECK(!waiting_for_flush_to_finish_);
   DCHECK(text_queue_.empty());
+  DCHECK(property_cache_callback_ == NULL);
 }
 
 bool ProxyFetch::StartParse() {
@@ -459,9 +463,10 @@ void ProxyFetch::ScheduleQueueExecutionIfNeeded() {
     return;
   }
 
-  // We're waiting for previous flushes -> no need to queue it here,
-  // will happen from FlushDone.
-  if (waiting_for_flush_to_finish_ || waiting_for_property_cache_) {
+  // We're waiting for any property-cache lookups and previous flushes to
+  // complete, so no need to queue it here.  The queuing will happen when
+  // the PropertyCache lookup is complete or from FlushDone.
+  if (waiting_for_flush_to_finish_ || (property_cache_callback_ != NULL)) {
     return;
   }
 
@@ -472,16 +477,20 @@ void ProxyFetch::ScheduleQueueExecutionIfNeeded() {
 void ProxyFetch::PropertyCacheComplete(PropertyPage* property_page,
                                        bool success) {
   ScopedMutex lock(mutex_.get());
-  DCHECK(waiting_for_property_cache_);
-  waiting_for_property_cache_ = false;
-  if (driver_ == NULL) {
-    LOG(DFATAL) << "Expected non-null driver.";
+  if (property_cache_callback_ == NULL) {
+    // Already called Finish and abandoned callback.
     delete property_page;
   } else {
-    driver_->set_property_page(property_page);
-  }
-  if (sequence_ != NULL) {
-    ScheduleQueueExecutionIfNeeded();
+    property_cache_callback_ = NULL;
+    if (driver_ == NULL) {
+      LOG(DFATAL) << "Expected non-null driver.";
+      delete property_page;
+    } else {
+      driver_->set_property_page(property_page);
+    }
+    if (sequence_ != NULL) {
+      ScheduleQueueExecutionIfNeeded();
+    }
   }
 }
 
@@ -664,11 +673,23 @@ void ProxyFetch::ExecuteQueued() {
 
 
 void ProxyFetch::Finish(bool success) {
+  ProxyFetchPropertyCallback* detach_callback = NULL;
   {
     ScopedMutex lock(mutex_.get());
     DCHECK(!waiting_for_flush_to_finish_);
     done_outstanding_ = false;
     finishing_ = true;
+
+    if (property_cache_callback_ != NULL) {
+      // Avoid holding two locks (this->mutex_ and
+      // property_cache_callback_->mutex_) by copying the
+      // pointer and detaching after unlocking the this->mutex_.
+      detach_callback = property_cache_callback_;
+      property_cache_callback_ = NULL;
+    }
+  }
+  if (detach_callback != NULL) {
+    detach_callback->Detach();
   }
 
   if (driver_ != NULL) {

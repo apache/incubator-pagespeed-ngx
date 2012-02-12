@@ -110,7 +110,7 @@ TestRewriteDriverFactory::TestRewriteDriverFactory(
     mock_url_fetcher_(mock_fetcher),
     mock_url_async_fetcher_(NULL),
     counting_url_async_fetcher_(NULL),
-    mock_time_cache_(mock_timer_, lru_cache_.get()),
+    mock_time_cache_(mock_timer_, lru_cache_),
     mem_file_system_(NULL),
     mock_hasher_(NULL),
     mock_message_handler_(NULL),
@@ -177,10 +177,14 @@ Timer* TestRewriteDriverFactory::DefaultTimer() {
 }
 
 CacheInterface* TestRewriteDriverFactory::DefaultCacheInterface() {
+  // TODO(jmarantz): Make the cache-ownership semantics consistent between
+  // DelayCache and ThreadsafeCache.
   DCHECK(lru_cache_ == NULL);
-  lru_cache_.reset(new LRUCache(kCacheSize));
-  delay_cache_ = new DelayCache(lru_cache_.get());
-  return new ThreadsafeCache(delay_cache_, thread_system()->NewMutex());
+  lru_cache_ = new LRUCache(kCacheSize);
+  threadsafe_cache_.reset(
+      new ThreadsafeCache(lru_cache_, thread_system()->NewMutex()));
+  delay_cache_ = new DelayCache(threadsafe_cache_.get());
+  return delay_cache_;
 }
 
 Hasher* TestRewriteDriverFactory::NewHasher() {

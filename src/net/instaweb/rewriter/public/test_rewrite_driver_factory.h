@@ -50,6 +50,7 @@ class RewriteDriver;
 class RewriteFilter;
 class RewriteOptions;
 class Scheduler;
+class ThreadsafeCache;
 class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
@@ -68,7 +69,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual ~TestRewriteDriverFactory();
 
   DelayCache* delay_cache() { return delay_cache_; }
-  LRUCache* lru_cache() { return lru_cache_.get(); }
+  LRUCache* lru_cache() { return lru_cache_; }
   MockTimer* mock_timer() { return mock_timer_; }
   MockHasher* mock_hasher() { return mock_hasher_; }
   MemFileSystem* mem_file_system() { return mem_file_system_; }
@@ -161,7 +162,8 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   MockTimer* mock_timer_;  // owned by base class timer_.
   MockScheduler* mock_scheduler_;  // owned by base class scheduler_;
   DelayCache* delay_cache_;
-  scoped_ptr<LRUCache> lru_cache_;
+  scoped_ptr<ThreadsafeCache> threadsafe_cache_;
+  LRUCache* lru_cache_;
   UrlFetcher* proxy_url_fetcher_;
   MockUrlFetcher* mock_url_fetcher_;
   scoped_ptr<FakeUrlAsyncFetcher> mock_url_async_fetcher_;

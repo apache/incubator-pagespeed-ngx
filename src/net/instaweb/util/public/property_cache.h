@@ -186,7 +186,7 @@ class PropertyCache {
   void Read(const StringPiece& cache_key, PropertyPage* property_page) const;
 
   // Updates a Cohort of properties into the cache.  It is a
-  // programming error (dcheck-fail) to Write a PropertyPage that that
+  // programming error (dcheck-fail) to Write a PropertyPage that
   // was not read first.  It is fine to Write after a failed Read.
   //
   // Even if a PropertyValue was not changed since it was read, Write
@@ -229,6 +229,12 @@ class PropertyCache {
   // disabled cache are ignored.  Reads cause Done(false) to be called
   // immediately.
   void set_enabled(bool x) { enabled_ = x; }
+
+  // Gets the underlying key associated with cache_key and a Cohort.
+  // This is the key used for the CacheInterface provided to the
+  // constructor.  This is made visible for testing, to make it
+  // possible to inject delays into the cache via DelayCache::DelayKey.
+  static GoogleString CacheKey(const StringPiece& key, const Cohort* cohort);
 
   // TODO(jmarantz): add a some statistics tracking for stomps, stability, etc.
 

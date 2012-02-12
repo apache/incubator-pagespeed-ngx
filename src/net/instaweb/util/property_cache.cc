@@ -239,6 +239,11 @@ int64 PropertyValue::write_timestamp_ms() const {
   return proto_->write_timestamp_ms();
 }
 
+GoogleString PropertyCache::CacheKey(const StringPiece& key,
+                                     const Cohort* cohort) {
+  return StrCat(kCacheKeyPrefix, key, "@", *cohort);
+}
+
 void PropertyCache::Read(const StringPiece& key, PropertyPage* page) const {
   if (enabled_ && !cohorts_.empty()) {
     PropertyPage::CallbackCollector* collector =
@@ -247,7 +252,7 @@ void PropertyCache::Read(const StringPiece& key, PropertyPage* page) const {
     for (CohortSet::const_iterator p = cohorts_.begin(), e = cohorts_.end();
          p != e; ++p) {
       const Cohort& cohort = *p;
-      GoogleString cache_key = StrCat(kCacheKeyPrefix, key, "@", cohort);
+      const GoogleString cache_key = CacheKey(key, &cohort);
       cache_->Get(cache_key,
                   new CacheInterfaceCallback(page, &cohort, collector));
     }
@@ -276,7 +281,7 @@ void PropertyCache::WriteCohort(const StringPiece& key,
     DCHECK(GetCohort(*cohort) == cohort);
     SharedString value;
     if (page->EncodeCacheEntry(cohort, value.get())) {
-      GoogleString cache_key = StrCat(kCacheKeyPrefix, key, "@", *cohort);
+      GoogleString cache_key = CacheKey(key, cohort);
       cache_->Put(cache_key, &value);
     }
   }
