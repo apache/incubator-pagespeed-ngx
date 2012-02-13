@@ -1179,15 +1179,13 @@ void SerfUrlAsyncFetcher::CleanupFetchesWithErrors() {
 }
 
 void SerfUrlAsyncFetcher::Initialize(Statistics* statistics) {
-  if (statistics != NULL) {
-    statistics->AddVariable(SerfStats::kSerfFetchRequestCount);
-    statistics->AddVariable(SerfStats::kSerfFetchByteCount);
-    statistics->AddVariable(SerfStats::kSerfFetchTimeDurationMs);
-    statistics->AddVariable(SerfStats::kSerfFetchCancelCount);
-    statistics->AddVariable(SerfStats::kSerfFetchActiveCount);
-    statistics->AddVariable(SerfStats::kSerfFetchTimeoutCount);
-    statistics->AddVariable(SerfStats::kSerfFetchFailureCount);
-  }
+  statistics->AddVariable(SerfStats::kSerfFetchRequestCount);
+  statistics->AddVariable(SerfStats::kSerfFetchByteCount);
+  statistics->AddVariable(SerfStats::kSerfFetchTimeDurationMs);
+  statistics->AddVariable(SerfStats::kSerfFetchCancelCount);
+  statistics->AddVariable(SerfStats::kSerfFetchActiveCount);
+  statistics->AddVariable(SerfStats::kSerfFetchTimeoutCount);
+  statistics->AddVariable(SerfStats::kSerfFetchFailureCount);
 }
 
 }  // namespace net_instaweb

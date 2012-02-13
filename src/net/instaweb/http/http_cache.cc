@@ -254,13 +254,11 @@ CacheInterface::KeyState HTTPCache::Query(const GoogleString& key) {
 }
 
 void HTTPCache::UpdateStats(FindResult result, int64 delta_us) {
-  if (cache_time_us_ != NULL) {
-    cache_time_us_->Add(delta_us);
-    if (result == kFound) {
-      cache_hits_->Add(1);
-    } else {
-      cache_misses_->Add(1);
-    }
+  cache_time_us_->Add(delta_us);
+  if (result == kFound) {
+    cache_hits_->Add(1);
+  } else {
+    cache_misses_->Add(1);
   }
 }
 

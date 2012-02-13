@@ -568,11 +568,9 @@ void RewriteDriverFactory::AddCreatedDirectory(const GoogleString& dir) {
 }
 
 void RewriteDriverFactory::Initialize(Statistics* statistics) {
-  if (statistics != NULL) {
-    RewriteStats::Initialize(statistics);
-    HTTPCache::Initialize(statistics);
-    RewriteDriver::Initialize(statistics);
-  }
+  HTTPCache::Initialize(statistics);
+  RewriteDriver::Initialize(statistics);
+  RewriteStats::Initialize(statistics);
 }
 
 void RewriteDriverFactory::Terminate() {

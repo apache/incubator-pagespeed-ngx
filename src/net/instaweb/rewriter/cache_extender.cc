@@ -85,14 +85,10 @@ class CacheExtender::Context : public SingleRewriteContext {
 
 CacheExtender::CacheExtender(RewriteDriver* driver)
     : RewriteFilter(driver),
-      tag_scanner_(driver_),
-      extension_count_(NULL),
-      not_cacheable_count_(NULL) {
+      tag_scanner_(driver_) {
   Statistics* stats = resource_manager_->statistics();
-  if (stats != NULL) {
-    extension_count_ = stats->GetVariable(kCacheExtensions);
-    not_cacheable_count_ = stats->GetVariable(kNotCacheable);
-  }
+  extension_count_ = stats->GetVariable(kCacheExtensions);
+  not_cacheable_count_ = stats->GetVariable(kNotCacheable);
 }
 
 CacheExtender::~CacheExtender() {}

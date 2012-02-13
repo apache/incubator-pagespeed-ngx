@@ -153,32 +153,21 @@ const UrlSegmentEncoder* ImageRewriteFilter::Context::encoder() const {
 ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
       image_filter_(new ImageTagScanner(driver)),
-      image_rewrites_(NULL),
-      image_rewrites_dropped_intentionally_(NULL),
-      image_rewrites_dropped_due_to_load_(NULL),
-      image_rewrite_total_bytes_saved_(NULL),
-      image_rewrite_total_original_bytes_(NULL),
-      image_rewrite_uses_(NULL),
-      image_inline_count_(NULL),
-      image_webp_rewrites_(NULL),
       image_counter_(0) {
   Statistics* stats = resource_manager_->statistics();
-  Variable* image_ongoing_rewrites = NULL;
-  if (stats != NULL) {
-    image_rewrites_ = stats->GetVariable(kImageRewrites);
-    image_rewrites_dropped_intentionally_ =
-        stats->GetVariable(kImageRewritesDroppedIntentionally);
-    image_rewrites_dropped_due_to_load_ =
-        stats->GetTimedVariable(kImageRewritesDroppedDueToLoad);
-    image_rewrite_total_bytes_saved_ =
-        stats->GetVariable(kImageRewriteTotalBytesSaved);
-    image_rewrite_total_original_bytes_ =
-        stats->GetVariable(kImageRewriteTotalOriginalBytes);
-    image_rewrite_uses_ = stats->GetVariable(kImageRewriteUses);
-    image_inline_count_ = stats->GetVariable(kImageInline);
-    image_ongoing_rewrites = stats->GetVariable(kImageOngoingRewrites);
-    image_webp_rewrites_ = stats->GetVariable(kImageWebpRewrites);
-  }
+  image_rewrites_ = stats->GetVariable(kImageRewrites);
+  image_rewrites_dropped_intentionally_ =
+      stats->GetVariable(kImageRewritesDroppedIntentionally);
+  image_rewrites_dropped_due_to_load_ =
+      stats->GetTimedVariable(kImageRewritesDroppedDueToLoad);
+  image_rewrite_total_bytes_saved_ =
+      stats->GetVariable(kImageRewriteTotalBytesSaved);
+  image_rewrite_total_original_bytes_ =
+      stats->GetVariable(kImageRewriteTotalOriginalBytes);
+  image_rewrite_uses_ = stats->GetVariable(kImageRewriteUses);
+  image_inline_count_ = stats->GetVariable(kImageInline);
+  Variable* image_ongoing_rewrites = stats->GetVariable(kImageOngoingRewrites);
+  image_webp_rewrites_ = stats->GetVariable(kImageWebpRewrites);
   work_bound_.reset(
       new StatisticsWorkBound(image_ongoing_rewrites,
                               driver->options()->image_max_rewrites_at_once()));
@@ -238,9 +227,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   if (original_image_type == Image::IMAGE_UNKNOWN) {
     message_handler->Error(result->name().as_string().c_str(), 0,
                            "Unrecognized image content type.");
-    if (image_rewrites_dropped_intentionally_ != NULL) {
-      image_rewrites_dropped_intentionally_->Add(1);
-    }
+    image_rewrites_dropped_intentionally_->Add(1);
     return kRewriteFailed;
   }
   // We used to reject beacon images based on their size (1x1 or less) here, but
@@ -314,20 +301,12 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
             static_cast<unsigned>(image->output_size()));
 
         // Update stats.
-        if (image_rewrites_ != NULL) {
-          image_rewrites_->Add(1);
-        }
-        if (image_rewrite_total_bytes_saved_ != NULL) {
-          image_rewrite_total_bytes_saved_->Add(
-              image->input_size() - image->output_size());
-        }
-        if (image_rewrite_total_original_bytes_ != NULL) {
-          image_rewrite_total_original_bytes_->Add(image->input_size());
-        }
+        image_rewrites_->Add(1);
+        image_rewrite_total_bytes_saved_->Add(
+            image->input_size() - image->output_size());
+        image_rewrite_total_original_bytes_->Add(image->input_size());
         if (result->type() == &kContentTypeWebp) {
-          if (image_webp_rewrites_ != NULL) {
-            image_webp_rewrites_->Add(1);
-          }
+          image_webp_rewrites_->Add(1);
         }
 
         rewrite_result = kRewriteOk;
@@ -375,18 +354,14 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     }
     work_bound_->WorkComplete();
   } else {
-      if (image_rewrites_dropped_due_to_load_ != NULL) {
-        image_rewrites_dropped_due_to_load_->IncBy(1);
-      }
-      message_handler->Message(kInfo, "%s: Too busy to rewrite image.",
-                               input_resource->url().c_str());
+    image_rewrites_dropped_due_to_load_->IncBy(1);
+    message_handler->Message(kInfo, "%s: Too busy to rewrite image.",
+                             input_resource->url().c_str());
   }
 
   // All other conditions were updated in other code paths above.
   if (rewrite_result == kRewriteFailed) {
-    if (image_rewrites_dropped_intentionally_ != NULL) {
-      image_rewrites_dropped_intentionally_->Add(1);
-    }
+    image_rewrites_dropped_intentionally_->Add(1);
   }
 
   return rewrite_result;

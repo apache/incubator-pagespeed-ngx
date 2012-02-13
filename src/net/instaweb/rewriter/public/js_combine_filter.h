@@ -33,6 +33,7 @@
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 
 namespace net_instaweb {
+
 class HtmlCharactersNode;
 class HtmlIEDirectiveNode;
 class RewriteDriver;

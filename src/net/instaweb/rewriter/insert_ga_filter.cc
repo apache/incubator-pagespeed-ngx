@@ -34,7 +34,7 @@
 namespace {
 
 // Name for statistics variable.
-const char kSnippetsInserted[] = "inserted_ga_snippets";
+const char kInsertedGaSnippets[] = "inserted_ga_snippets";
 
 }  // namespace
 
@@ -63,14 +63,12 @@ InsertGAFilter::InsertGAFilter(RewriteDriver* rewrite_driver)
       ga_id_(rewrite_driver->options()->ga_id()),
       found_snippet_(false) {
   Statistics* stats = driver_->statistics();
-  inserted_snippets_count_ = stats->GetVariable(kSnippetsInserted);
+  inserted_ga_snippets_count_ = stats->GetVariable(kInsertedGaSnippets);
   DCHECK(!ga_id_.empty()) << "Enabled ga insertion, but did not provide ga id.";
 }
 
 void InsertGAFilter::Initialize(Statistics* stats) {
-  if (stats != NULL) {
-    stats->AddVariable(kSnippetsInserted);
-  }
+  stats->AddVariable(kInsertedGaSnippets);
 }
 
 InsertGAFilter::~InsertGAFilter() {}
@@ -118,6 +116,7 @@ void InsertGAFilter::EndElementImpl(HtmlElement* element) {
           if (added_snippet_element_ != NULL) {
             driver_->DeleteElement(added_snippet_element_);
             added_snippet_element_ = NULL;
+            inserted_ga_snippets_count_->Add(-1);
           }
         }
         script_element_ = NULL;
@@ -137,6 +136,8 @@ void InsertGAFilter::EndElementImpl(HtmlElement* element) {
             driver_->NewCharactersNode(added_snippet_element_, snippet_text);
         driver_->AppendChild(element, added_snippet_element_);
         driver_->AppendChild(added_snippet_element_, snippet);
+
+        inserted_ga_snippets_count_->Add(1);
       }
       break;
     default:

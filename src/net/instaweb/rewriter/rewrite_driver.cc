@@ -552,28 +552,24 @@ const char RewriteDriver::kDomCohort[] = "dom";
 
 void RewriteDriver::Initialize(Statistics* statistics) {
   RewriteOptions::Initialize();
-  if (statistics != NULL) {
-    // TODO(jmarantz): Make all of these work with null statistics so that
-    // they could mdo other required static initializations if desired
-    // without having to edit code to this method.
-    CacheExtender::Initialize(statistics);
-    CssCombineFilter::Initialize(statistics);
-    CssMoveToHeadFilter::Initialize(statistics);
-    DelayImagesFilter::Initialize(statistics);
-    DomainRewriteFilter::Initialize(statistics);
-    GoogleAnalyticsFilter::Initialize(statistics);
-    ImageRewriteFilter::Initialize(statistics);
-    ImageCombineFilter::Initialize(statistics);
-    InsertGAFilter::Initialize(statistics);
-    JavascriptFilter::Initialize(statistics);
-    JsCombineFilter::Initialize(statistics);
-    JsDeferDisabledFilter::Initialize(statistics);
-    LazyloadImagesFilter::Initialize(statistics);
-    MetaTagFilter::Initialize(statistics);
-    UrlLeftTrimFilter::Initialize(statistics);
-  }
+
+  CacheExtender::Initialize(statistics);
+  CssCombineFilter::Initialize(statistics);
   CssFilter::Initialize(statistics);
   CssInlineImportToLinkFilter::Initialize(statistics);
+  CssMoveToHeadFilter::Initialize(statistics);
+  DelayImagesFilter::Initialize(statistics);
+  DomainRewriteFilter::Initialize(statistics);
+  GoogleAnalyticsFilter::Initialize(statistics);
+  ImageCombineFilter::Initialize(statistics);
+  ImageRewriteFilter::Initialize(statistics);
+  InsertGAFilter::Initialize(statistics);
+  JavascriptFilter::Initialize(statistics);
+  JsCombineFilter::Initialize(statistics);
+  JsDeferDisabledFilter::Initialize(statistics);
+  LazyloadImagesFilter::Initialize(statistics);
+  MetaTagFilter::Initialize(statistics);
+  UrlLeftTrimFilter::Initialize(statistics);
 }
 
 void RewriteDriver::Terminate() {

@@ -134,15 +134,10 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
       handler_(manager->message_handler()),
       hostname_(hostname.as_string()),
       port_(port),
-      all_requests_(NULL),
-      pagespeed_requests_(NULL),
-      blink_requests_(NULL) {
+      all_requests_(stats->GetTimedVariable(kTotalRequestCount)),
+      pagespeed_requests_(stats->GetTimedVariable(kPagespeedRequestCount)),
+      blink_requests_(stats->GetTimedVariable(kBlinkRequestCount)) {
   proxy_fetch_factory_.reset(new ProxyFetchFactory(manager));
-  if (stats != NULL) {
-    all_requests_ = stats->GetTimedVariable(kTotalRequestCount);
-    pagespeed_requests_ = stats->GetTimedVariable(kPagespeedRequestCount);
-    blink_requests_ = stats->GetTimedVariable(kBlinkRequestCount);
-  }
 }
 
 ProxyInterface::~ProxyInterface() {

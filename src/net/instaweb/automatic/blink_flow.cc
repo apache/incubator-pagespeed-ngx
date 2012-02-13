@@ -105,13 +105,10 @@ class JsonFetch : public StringAsyncFetch {
             RewriteOptions* options)
       : key_(key),
         resource_manager_(resource_manager),
-        options_(options),
-        num_background_fetches_complete_(NULL) {
+        options_(options) {
     Statistics* stats = resource_manager_->statistics();
-    if (stats != NULL) {
-      num_background_fetches_complete_ = stats->GetTimedVariable(
-          BlinkFlow::kNumBackgroundFetchesComplete);
-    }
+    num_background_fetches_complete_ = stats->GetTimedVariable(
+        BlinkFlow::kNumBackgroundFetchesComplete);
   }
 
   virtual ~JsonFetch() {}
@@ -215,13 +212,10 @@ BlinkFlow::BlinkFlow(const GoogleString& url,
       request_start_time_ms_(-1),
       time_to_start_blink_flow_ms_(-1),
       time_to_json_lookup_done_ms_(-1),
-      time_to_split_critical_ms_(-1),
-      num_background_fetches_started_(NULL) {
+      time_to_split_critical_ms_(-1) {
   Statistics* stats = manager_->statistics();
-  if (stats != NULL) {
-    num_background_fetches_started_ = stats->GetTimedVariable(
-        kNumBackgroundFetchesStarted);
-  }
+  num_background_fetches_started_ = stats->GetTimedVariable(
+      kNumBackgroundFetchesStarted);
 }
 
 void BlinkFlow::Start(const GoogleString& url,

@@ -1197,9 +1197,7 @@ RewriteContext* ImageCombineFilter::MakeRewriteContext() {
 }
 
 void ImageCombineFilter::AddFilesReducedStat(int reduced) {
-  if (image_file_count_reduction_ != NULL) {
-    image_file_count_reduction_->Add(reduced);
-  }
+  image_file_count_reduction_->Add(reduced);
 }
 
 }  // namespace net_instaweb

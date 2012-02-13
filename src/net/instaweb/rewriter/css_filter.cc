@@ -347,16 +347,11 @@ CssFilter::CssFilter(RewriteDriver* driver,
       in_style_element_(false),
       cache_extender_(cache_extender),
       image_rewrite_filter_(image_rewriter),
-      image_combiner_(image_combiner),
-      num_files_minified_(NULL),
-      minified_bytes_saved_(NULL),
-      num_parse_failures_(NULL) {
+      image_combiner_(image_combiner) {
   Statistics* stats = resource_manager_->statistics();
-  if (stats != NULL) {
-    num_files_minified_ = stats->GetVariable(CssFilter::kFilesMinified);
-    minified_bytes_saved_ = stats->GetVariable(CssFilter::kMinifiedBytesSaved);
-    num_parse_failures_ = stats->GetVariable(CssFilter::kParseFailures);
-  }
+  num_files_minified_ = stats->GetVariable(CssFilter::kFilesMinified);
+  minified_bytes_saved_ = stats->GetVariable(CssFilter::kMinifiedBytesSaved);
+  num_parse_failures_ = stats->GetVariable(CssFilter::kParseFailures);
 }
 
 CssFilter::~CssFilter() {}
@@ -366,11 +361,9 @@ int CssFilter::FilterCacheFormatVersion() const {
 }
 
 void CssFilter::Initialize(Statistics* statistics) {
-  if (statistics != NULL) {
-    statistics->AddVariable(CssFilter::kFilesMinified);
-    statistics->AddVariable(CssFilter::kMinifiedBytesSaved);
-    statistics->AddVariable(CssFilter::kParseFailures);
-  }
+  statistics->AddVariable(CssFilter::kFilesMinified);
+  statistics->AddVariable(CssFilter::kMinifiedBytesSaved);
+  statistics->AddVariable(CssFilter::kParseFailures);
   InitializeAtExitManager();
 }
 

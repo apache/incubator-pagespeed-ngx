@@ -27,6 +27,7 @@
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
+
 class HtmlCharactersNode;
 class HtmlElement;
 class RewriteDriver;
@@ -58,20 +59,26 @@ class InsertGAFilter : public CommonFilter {
   // Indicates whether or not buffer_ contains a GA snippet with the
   // same id as ga_id_.
   bool FoundSnippetInBuffer() const;
+
   // Stats on how many tags we moved.
-  Variable* inserted_snippets_count_;
+  Variable* inserted_ga_snippets_count_;
+
   // Script element we're currently in, so we can check it to see if
   // it has the GA snippet already.
   HtmlElement* script_element_;
   // Element in which we added the GA snippet.
   HtmlElement* added_snippet_element_;
+
   // GA ID for this site.
   GoogleString ga_id_;
+
   // Buffer in which we collect the contents of any script element we're
   // looking for the GA snippet in.
   GoogleString buffer_;
+
   // Indicates whether or not we've already found a GA snippet.
   bool found_snippet_;
+
   DISALLOW_COPY_AND_ASSIGN(InsertGAFilter);
 };
 

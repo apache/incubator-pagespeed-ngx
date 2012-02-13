@@ -26,7 +26,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -41,43 +41,29 @@ class MessageHandler;
 class JavascriptRewriteConfig {
  public:
   explicit JavascriptRewriteConfig(Statistics* statistics);
+
   static void Initialize(Statistics* statistics);
+
   // Whether to minify javascript output (using jsminify).
   // true by default.
-  bool minify() const {
-    return minify_;
-  }
-  void set_minify(bool minify) {
-    minify_ = minify;
-  }
+  bool minify() const { return minify_; }
+  void set_minify(bool minify) { minify_ = minify; }
   // whether to redirect external javascript libraries to
   // Google-as-a-CDN
-  bool redirect() const {
-    return redirect_;
-  }
-  void set_redirect(bool redirect) {
-    redirect_ = redirect;
-  }
+  bool redirect() const { return redirect_; }
+  void set_redirect(bool redirect) { redirect_ = redirect; }
+
   void AddBytesSaved(size_t bytes) {
-    if (bytes_saved_ != NULL) {
-      bytes_saved_->Add(bytes);
-      blocks_minified_->Add(1);
-    }
+    bytes_saved_->Add(bytes);
+    blocks_minified_->Add(1);
   }
-  void AddMinificationFailure() {
-    if (minification_failures_ != NULL) {
-      minification_failures_->Add(1);
-    }
-  }
-  void AddBlock() {
-    if (total_blocks_ != NULL) {
-      total_blocks_->Add(1);
-    }
-  }
+  void AddMinificationFailure() { minification_failures_->Add(1); }
+  void AddBlock() { total_blocks_->Add(1); }
 
  private:
   bool minify_;
   bool redirect_;
+
   Variable* blocks_minified_;
   Variable* bytes_saved_;
   Variable* minification_failures_;

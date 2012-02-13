@@ -25,7 +25,6 @@
 
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
 
-#include <cstddef>
 #include <vector>
 
 #include "base/logging.h"
@@ -48,8 +47,6 @@
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -71,12 +68,9 @@ class JsCombineFilter::JsCombiner
   JsCombiner(JsCombineFilter* filter, RewriteDriver* driver)
       : ResourceCombinerTemplate<HtmlElement*>(
             driver, kContentTypeJavascript.file_extension() + 1, filter),
-        filter_(filter),
-        js_file_count_reduction_(NULL) {
+        filter_(filter) {
     Statistics* stats = resource_manager_->statistics();
-    if (stats != NULL) {
-      js_file_count_reduction_ = stats->GetVariable(kJsFileCountReduction);
-    }
+    js_file_count_reduction_ = stats->GetVariable(kJsFileCountReduction);
   }
 
   virtual ~JsCombiner() {
@@ -115,9 +109,7 @@ class JsCombineFilter::JsCombiner
 
   // Stats.
   void AddFileCountReduction(int files) {
-    if (js_file_count_reduction_ != NULL) {
-      js_file_count_reduction_->Add(files);
-    }
+    js_file_count_reduction_->Add(files);
   }
 
  private:

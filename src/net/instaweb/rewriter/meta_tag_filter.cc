@@ -47,9 +47,7 @@ MetaTagFilter::MetaTagFilter(RewriteDriver* rewrite_driver)
 }
 
 void MetaTagFilter::Initialize(Statistics* stats) {
-  if (stats != NULL) {
-    stats->AddVariable(kConvertedMetaTags);
-  }
+  stats->AddVariable(kConvertedMetaTags);
 }
 
 MetaTagFilter::~MetaTagFilter() {}

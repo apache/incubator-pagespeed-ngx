@@ -62,9 +62,7 @@ CssInlineImportToLinkFilter::CssInlineImportToLinkFilter(RewriteDriver* driver,
 CssInlineImportToLinkFilter::~CssInlineImportToLinkFilter() {}
 
 void CssInlineImportToLinkFilter::Initialize(Statistics* statistics) {
-  if (statistics != NULL) {
-    statistics->AddVariable(kCssImportsToLinks);
-  }
+  statistics->AddVariable(kCssImportsToLinks);
 }
 
 void CssInlineImportToLinkFilter::StartDocument() {

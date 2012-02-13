@@ -98,11 +98,8 @@ GoogleAnalyticsFilter::GoogleAnalyticsFilter(
       html_parse_(html_parse),
       script_element_(NULL),
       script_characters_node_(NULL),
-      page_load_count_((stats == NULL) ? NULL :
-                       stats->GetVariable(kPageLoadCount)),
-      rewritten_count_((stats == NULL) ? NULL :
-                       stats->GetVariable(kRewrittenCount))
-{
+      page_load_count_(stats->GetVariable(kPageLoadCount)),
+      rewritten_count_(stats->GetVariable(kRewrittenCount)) {
   // The following are the methods that need to be forwarded to the asyn
   // interface. This list was created by parsing ga.js and finding the method
   // names in the documentation. Methods that return values were added to the
@@ -206,10 +203,8 @@ GoogleAnalyticsFilter::GoogleAnalyticsFilter(
 GoogleAnalyticsFilter::~GoogleAnalyticsFilter() {}
 
 void GoogleAnalyticsFilter::Initialize(Statistics* statistics) {
-  if (statistics != NULL) {
-    statistics->AddVariable(kPageLoadCount);
-    statistics->AddVariable(kRewrittenCount);
-  }
+  statistics->AddVariable(kPageLoadCount);
+  statistics->AddVariable(kRewrittenCount);
 }
 
 void GoogleAnalyticsFilter::StartDocument() {

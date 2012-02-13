@@ -43,18 +43,11 @@ const char kJavascriptTotalBlocks[] = "javascript_total_blocks";
 
 JavascriptRewriteConfig::JavascriptRewriteConfig(Statistics* stats)
     : minify_(true),
-      redirect_(true),
-      blocks_minified_(NULL),
-      bytes_saved_(NULL),
-      minification_failures_(NULL),
-      total_blocks_(NULL) {
-  if (stats != NULL) {
-    blocks_minified_ = stats->GetVariable(kJavascriptBlocksMinified);
-    bytes_saved_ = stats->GetVariable(kJavascriptBytesSaved);
-    minification_failures_ =
-        stats->GetVariable(kJavascriptMinificationFailures);
-    total_blocks_ = stats->GetVariable(kJavascriptTotalBlocks);
-  }
+      redirect_(true) {
+  blocks_minified_ = stats->GetVariable(kJavascriptBlocksMinified);
+  bytes_saved_ = stats->GetVariable(kJavascriptBytesSaved);
+  minification_failures_ = stats->GetVariable(kJavascriptMinificationFailures);
+  total_blocks_ = stats->GetVariable(kJavascriptTotalBlocks);
 }
 
 void JavascriptRewriteConfig::Initialize(Statistics* statistics) {

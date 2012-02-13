@@ -77,12 +77,9 @@ class CssCombineFilter::CssCombiner
               CssCombineFilter* filter)
       : ResourceCombinerTemplate<HtmlElement*>(
           driver, kContentTypeCss.file_extension() + 1, filter),
-        css_tag_scanner_(css_tag_scanner),
-        css_file_count_reduction_(NULL) {
+        css_tag_scanner_(css_tag_scanner) {
     Statistics* stats = resource_manager_->statistics();
-    if (stats != NULL) {
-      css_file_count_reduction_ = stats->GetVariable(kCssFileCountReduction);
-    }
+    css_file_count_reduction_ = stats->GetVariable(kCssFileCountReduction);
   }
 
   virtual bool ResourceCombinable(Resource* resource, MessageHandler* handler) {
@@ -423,9 +420,7 @@ void CssCombineFilter::CssCombiner::TryCombineAccumulated() {
       }
       rewrite_driver_->InfoHere("Combined %d CSS files into one at %s",
                                 num_urls(), combination->url().c_str());
-      if (css_file_count_reduction_ != NULL) {
-        css_file_count_reduction_->Add(num_urls() - 1);
-      }
+      css_file_count_reduction_->Add(num_urls() - 1);
     }
   }
   Reset();
