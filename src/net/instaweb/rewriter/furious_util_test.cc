@@ -88,7 +88,7 @@ TEST_F(FuriousUtilTest, RemoveFuriousCookie) {
                   "something=random;_GFURIOUS=18:2;another=cookie");
   RemoveFuriousCookie(&req_headers);
 
-  GoogleString expected = "something=random;another=cookie;";
+  GoogleString expected = "something=random;another=cookie";
   EXPECT_EQ(expected, req_headers.Lookup1(HttpAttributes::kCookie));
 
   req_headers.Clear();

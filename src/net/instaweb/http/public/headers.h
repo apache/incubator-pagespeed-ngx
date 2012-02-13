@@ -72,6 +72,15 @@ template<class Proto> class Headers {
   // NumAttributeNames is also const but not thread-safe.
   int NumAttributeNames() const;
 
+  // Remove all instances of cookie_name in all the cookie headers.
+  // Empty cookie headers will be removed.
+  // It might be better for performance if this function is called after
+  // checking that the cookie is present.
+  // CAVEAT: Double quoted values are not necessarily treated as one token.
+  // Please refer to the test cases in headers_cookie_util_test.cc for more
+  // details.
+  void RemoveCookie(const StringPiece& cookie_name);
+
   // Adds a new header, even if a header with the 'name' exists already.
   virtual void Add(const StringPiece& name, const StringPiece& value);
 

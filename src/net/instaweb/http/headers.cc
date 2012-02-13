@@ -30,6 +30,47 @@
 
 namespace net_instaweb {
 
+namespace {
+
+// Helper function that removes a specific cookie from a cookie header
+// and returns the new cookie header in new_cookie_header.
+// For example: If cookie_header="A=1; VICTIM=2; B=3\r\n",
+//              and cookie_name="VICTIM", then
+//              new_cookie_header="A=1; B=3\r\n"
+// Returns true if the cookie was found.
+// Returns false otherwise, but still fills in new_cookie_header.
+bool RemoveCookieString(const StringPiece& cookie_name,
+                        const StringPiece& cookie_header,
+                        GoogleString* new_cookie_header) {
+  bool cookie_found = false;
+  StringPieceVector pieces;
+  SplitStringPieceToVector(cookie_header, ";", &pieces, false);
+  GoogleString cookie_prefix(cookie_name.data(), cookie_name.size());
+  cookie_prefix.append("=");
+  for (int i = 0, n = pieces.size(); i < n; ++i) {
+    StringPiece working_cookie = pieces[i];
+    TrimLeadingWhitespace(&working_cookie);
+    if (StringCaseStartsWith(working_cookie, cookie_prefix)) {
+      cookie_found = true;
+    } else {
+      // Don't trim the whitespace off the cookie, just in case it actually
+      // meant something.
+      if (!pieces[i].empty()) {
+        if (!new_cookie_header->empty()) {
+          new_cookie_header->append(";");
+        } else {
+          // For the first cookie, trim the whitespace off the front.
+          TrimLeadingWhitespace(&pieces[i]);
+        }
+        pieces[i].AppendToString(new_cookie_header);
+      }
+    }
+  }
+  return cookie_found;
+}
+
+}  // namespace
+
 class MessageHandler;
 
 template<class Proto> Headers<Proto>::Headers() {
@@ -168,6 +209,31 @@ template<class Proto> void Headers<Proto>::AddToMap(
   }
 }
 
+template<class Proto> void Headers<Proto>::RemoveCookie(
+    const StringPiece& cookie_name) {
+  ConstStringStarVector values;
+  if (Lookup(HttpAttributes::kCookie, &values)) {
+    StringVector new_cookie_lines;
+    bool remove_cookie = false;
+    for (int i = 0, n = values.size(); i < n; ++i) {
+      StringPiece cookie_header = *values[i];
+      new_cookie_lines.push_back(GoogleString());
+      bool removed = RemoveCookieString(cookie_name, cookie_header,
+                                        &new_cookie_lines[i]);
+      remove_cookie |= removed;
+    }
+
+    if (remove_cookie) {
+      RemoveAll(HttpAttributes::kCookie);
+      for (int i = 0, n = new_cookie_lines.size(); i < n; ++i) {
+        if (!new_cookie_lines[i].empty()) {
+          Add(HttpAttributes::kCookie,
+              new_cookie_lines[i]);
+        }
+      }
+    }
+  }
+}
 
 // Remove works in a perverted manner.
 // First comb through the values, from back to front, looking for the last

@@ -73,31 +73,7 @@ bool GetFuriousCookieState(const RequestHeaders* headers, FuriousState* value) {
 }
 
 void RemoveFuriousCookie(RequestHeaders* headers) {
-  ConstStringStarVector v;
-  GoogleString prefix;
-  StrAppend(&prefix, kFuriousCookie, "=");
-  if (headers->Lookup(HttpAttributes::kCookie, &v)) {
-    for (int i = 0, nv = v.size(); i < nv; ++i) {
-      StringPieceVector cookies;
-      SplitStringPieceToVector(*(v[i]), ";", &cookies, false);
-      GoogleString cookie_value;
-      bool found = false;
-      for (int j = 0, ncookies = cookies.size(); j < ncookies; ++j) {
-        StringPiece cookie(cookies[j]);
-        TrimWhitespace(&cookie);
-        if (!StringCaseStartsWith(cookie, prefix)) {
-          cookie_value += GoogleString(cookies[j].data(), cookies[j].length());
-          cookie_value += ";";
-        } else {
-          found = true;
-        }
-      }
-      if (found) {
-        headers->Remove(HttpAttributes::kCookie, *v[i]);
-        headers->Add(HttpAttributes::kCookie, cookie_value);
-      }
-    }
-  }
+  headers->RemoveCookie(kFuriousCookie);
 }
 
 void SetFuriousCookie(ResponseHeaders* headers,

@@ -136,6 +136,21 @@ class SerfFetch : public PoolElement<SerfFetch> {
 
   // This must be called while holding SerfUrlAsyncFetcher's mutex_.
   void Cancel() {
+    if (connection_ != NULL) {
+      // We can get here either because we're canceling the connection ourselves
+      // or because Serf detected an error.
+      //
+      // If we canceled/timed out, we want to close the serf connection so it
+      // doesn't call us back, as we will detach from the async_fetch_ shortly.
+      //
+      // If Serf detected an error we also want to clean up as otherwise it will
+      // keep re-detecting it, which will interfere with other jobs getting
+      // handled (until we finally cleanup the old fetch and close things in
+      // ~SerfFetch).
+      serf_connection_close(connection_);
+      connection_ = NULL;
+    }
+
     CallCallback(false);
   }
 
@@ -174,13 +189,6 @@ class SerfFetch : public PoolElement<SerfFetch> {
         serf_connection_is_in_error_state(connection_)) {
       message_handler_->Message(
           kInfo, "Serf cleanup for error'd fetch of: %s", str_url());
-      // Close the errant connection here immediately to remove it from
-      // the poll set immediately so that other jobs can proceed w/o trouble,
-      // rather than waiting for ~SerfFetch.
-      serf_connection_close(connection_);
-      connection_ = NULL;
-
-      // Do the rest of normal cleanup, including calling Done(false);
       Cancel();
     }
   }
@@ -963,7 +971,7 @@ void SerfUrlAsyncFetcher::CancelActiveFetchesMutexHeld() {
   // If there are still active requests, cancel them.
   int num_canceled = 0;
   while (!active_fetches_.empty()) {
-    // Cancelling a fetch requires that the fetch reside in active_fetches_,
+    // Canceling a fetch requires that the fetch reside in active_fetches_,
     // but can invalidate iterators pointing to the affected fetch.  To avoid
     // trouble, we simply ask for the oldest element, knowing it will go away.
     SerfFetch* fetch = active_fetches_.oldest();
@@ -1051,7 +1059,7 @@ int SerfUrlAsyncFetcher::Poll(int64 max_wait_ms) {
                      << active_fetches_.size() << " waiting for " << max_wait_ms
                      << "ms)";
         timeouts++;
-        // Note that cancelling the fetch will ultimately call FetchComplete and
+        // Note that canceling the fetch will ultimately call FetchComplete and
         // delete it from the pool.
         fetch->Cancel();
       }
