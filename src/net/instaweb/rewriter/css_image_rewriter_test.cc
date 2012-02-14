@@ -18,7 +18,6 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -382,25 +381,21 @@ TEST_P(CssImageRewriterTest, RewriteCached) {
                            kCssBefore, kCssAfter,
                            kExpectChange | kExpectSuccess | kNoStatCheck);
   // Should not re-serialize. Works only under the new flow...
-  EXPECT_EQ(
-      0, statistics()->GetVariable(CssFilter::kMinifiedBytesSaved)->Get());
+  EXPECT_EQ(0, total_bytes_saved_->Get());
 }
 
 TEST_P(CssImageRewriterTest, CacheInlineParseFailures) {
   const char kInvalidCss[] = " div{";
 
-  Variable* num_parse_failures =
-      statistics()->GetVariable(CssFilter::kParseFailures);
-
   ValidateRewriteInlineCss("inline-invalid", kInvalidCss, kInvalidCss,
                            kExpectNoChange | kExpectFailure | kNoOtherContexts);
-  EXPECT_EQ(1, num_parse_failures->Get());
+  EXPECT_EQ(1, num_parse_failures_->Get());
 
   ValidateRewriteInlineCss(
       "inline-invalid2", kInvalidCss, kInvalidCss,
       kExpectNoChange | kExpectFailure | kNoOtherContexts | kNoStatCheck);
   // Shouldn't reparse -- and stats are reset between runs.
-  EXPECT_EQ(0, num_parse_failures->Get());
+  EXPECT_EQ(0, num_parse_failures_->Get());
 }
 
 TEST_P(CssImageRewriterTest, RecompressImages) {

@@ -52,29 +52,52 @@ void CssRewriteTestBase::ValidateRewriteInlineCss(
   GoogleString html_input  = StrCat(prefix, css_input, suffix);
   GoogleString html_output = StrCat(prefix, expected_css_output, suffix);
 
-  // Reset stats
-  num_files_minified_->Set(0);
-  minified_bytes_saved_->Set(0);
+  ValidateWithStats(id, html_input, html_output,
+                    css_input, expected_css_output, flags);
+}
+
+void CssRewriteTestBase::ResetStats() {
+  num_blocks_rewritten_->Set(0);
   num_parse_failures_->Set(0);
+  num_rewrites_dropped_->Set(0);
+  total_bytes_saved_->Set(0);
+  total_original_bytes_->Set(0);
+  num_uses_->Set(0);
+}
+
+void CssRewriteTestBase::ValidateWithStats(
+    const StringPiece& id,
+    const GoogleString& html_input, const GoogleString& expected_html_output,
+    const StringPiece& css_input, const StringPiece& expected_css_output,
+    int flags) {
+  ResetStats();
 
   // Rewrite
-  ValidateExpected(id, html_input, html_output);
+  ValidateExpected(id, html_input, expected_html_output);
 
   // Check stats
   if (!(flags & kNoStatCheck)) {
     if (flags & kExpectChange) {
-      EXPECT_EQ(1, num_files_minified_->Get()) << id;
-      EXPECT_EQ(css_input.size() - expected_css_output.size(),
-                minified_bytes_saved_->Get()) << id;
+      EXPECT_EQ(1, num_blocks_rewritten_->Get()) << id;
       EXPECT_EQ(0, num_parse_failures_->Get()) << id;
+      EXPECT_EQ(0, num_rewrites_dropped_->Get()) << id;
+      EXPECT_EQ(css_input.size() - expected_css_output.size(),
+                total_bytes_saved_->Get()) << id;
+      EXPECT_EQ(css_input.size(), total_original_bytes_->Get()) << id;
+      EXPECT_EQ(1, num_uses_->Get()) << id;
     } else {
-      EXPECT_EQ(0, num_files_minified_->Get()) << id;
-      EXPECT_EQ(0, minified_bytes_saved_->Get()) << id;
+      EXPECT_EQ(0, num_blocks_rewritten_->Get()) << id;
       if (flags & kExpectFailure) {
         EXPECT_EQ(1, num_parse_failures_->Get()) << id;
+        EXPECT_EQ(0, num_rewrites_dropped_->Get()) << id;
       } else {
         EXPECT_EQ(0, num_parse_failures_->Get()) << id;
+        // TODO(sligocki): Test num_rewrites_dropped_
+        //EXPECT_EQ(1, num_rewrites_dropped_->Get()) << id;
       }
+      EXPECT_EQ(0, total_bytes_saved_->Get()) << id;
+      EXPECT_EQ(0, total_original_bytes_->Get()) << id;
+      EXPECT_EQ(0, num_uses_->Get()) << id;
     }
   }
 }
@@ -171,31 +194,8 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
     html_output = html_input;
   }
 
-  // Reset stats
-  num_files_minified_->Set(0);
-  minified_bytes_saved_->Set(0);
-  num_parse_failures_->Set(0);
-
-  // Rewrite
-  ValidateExpected(id, html_input, html_output);
-
-  // Check stats, if requested
-  if (!(flags & kNoStatCheck)) {
-    if (flags & kExpectChange) {
-      EXPECT_EQ(1, num_files_minified_->Get()) << id;
-      EXPECT_EQ(css_input.size() - expected_css_output.size(),
-                minified_bytes_saved_->Get()) << id;
-      EXPECT_EQ(0, num_parse_failures_->Get()) << id;
-    } else {
-      EXPECT_EQ(0, num_files_minified_->Get()) << id;
-      EXPECT_EQ(0, minified_bytes_saved_->Get()) << id;
-      if (flags & kExpectFailure) {
-        EXPECT_EQ(1, num_parse_failures_->Get()) << id;
-      } else {
-        EXPECT_EQ(0, num_parse_failures_->Get()) << id;
-      }
-    }
-  }
+  ValidateWithStats(id, html_input, html_output,
+                    css_input, expected_css_output, flags);
 
   // If we produced a new output resource, check it.
   if (flags & kExpectChange) {

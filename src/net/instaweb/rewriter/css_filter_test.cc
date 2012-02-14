@@ -83,13 +83,13 @@ TEST_P(CssFilterTest, RewriteEmptyCssTest) {
                            kExpectChange | kExpectSuccess | kNoStatCheck);
   // Note: We must check stats ourselves because, for technical reasons,
   // empty inline styles are not treated as being rewritten at all.
-  // EXPECT_EQ(0, num_files_minified_->Get());
-  EXPECT_EQ(0, minified_bytes_saved_->Get());
+  EXPECT_EQ(0, num_blocks_rewritten_->Get());
+  EXPECT_EQ(0, total_bytes_saved_->Get());
   EXPECT_EQ(0, num_parse_failures_->Get());
 
   ValidateRewriteExternalCss("rewrite_empty_css-external", "", "",
                              kExpectChange | kExpectSuccess | kNoStatCheck);
-  EXPECT_EQ(0, minified_bytes_saved_->Get());
+  EXPECT_EQ(0, total_bytes_saved_->Get());
   EXPECT_EQ(0, num_parse_failures_->Get());
 }
 
@@ -99,14 +99,17 @@ TEST_P(CssFilterTest, RewriteRepeated) {
   ValidateRewriteExternalCss("rep", " div { } ", "div{}",
                              kExpectChange | kExpectSuccess);
   int inserts_before = lru_cache()->num_inserts();
-  EXPECT_EQ(1, num_files_minified_->Get());  // for factory_
-  num_files_minified_->Set(0);
+  EXPECT_EQ(1, num_blocks_rewritten_->Get());  // for factory_
+  EXPECT_EQ(1, num_uses_->Get());
+
+  ResetStats();
   ValidateRewriteExternalCss("rep", " div { } ", "div{}",
                              kExpectChange | kExpectSuccess | kNoStatCheck);
   int inserts_after = lru_cache()->num_inserts();
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
   EXPECT_EQ(inserts_before, inserts_after);
-  EXPECT_EQ(0, num_files_minified_->Get());
+  EXPECT_EQ(0, num_blocks_rewritten_->Get());
+  EXPECT_EQ(1, num_uses_->Get());
 }
 
 // Make sure we do not reparse external CSS when we know it already has

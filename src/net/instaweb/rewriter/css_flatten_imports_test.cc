@@ -278,6 +278,12 @@ TEST_P(CssFlattenImportsTest, FlattenInlineCss) {
   ValidateRewriteInlineCss("flatten_simple",
                            css_in, css_out,
                            kExpectChange | kExpectSuccess);
+  // TODO(sligocki): This suggests that we grew the number of bytes, which is
+  // misleading because originally, the user would have loaded both files
+  // and now they will only load one. So total bytes are less.
+  // I think this should be listing bytes saved as STATIC_STRLEN(css_in).
+  EXPECT_EQ(STATIC_STRLEN(css_in) - STATIC_STRLEN(css_out),
+            total_bytes_saved_->Get());
 }
 
 TEST_P(CssFlattenImportsTest, DontFlattenAttributeCss) {
@@ -470,8 +476,8 @@ TEST_P(CssFlattenImportsTest, FlattenFromCacheDirectly) {
 
   // Check things work when data is already cached, though the stats are
   // messed up because we don't do any actual rewriting in that instance:
-  // num_files_minified_->Get() == 0 instead of 1
-  // minified_bytes_saved_->Get() == 0 instead of negative something.
+  // num_blocks_rewritten_->Get() == 0 instead of 1
+  // total_bytes_saved_->Get() == 0 instead of negative something.
   ValidateRewriteExternalCss("flatten_from_cache_directly",
                              css_in, kFlattenedTopCssContents,
                              kExpectChange | kExpectSuccess | kNoStatCheck |

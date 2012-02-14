@@ -38,10 +38,15 @@ class CssRewriteTestBase : public ResourceManagerTestBase,
                            public ::testing::WithParamInterface<bool> {
  protected:
   CssRewriteTestBase() {
-    num_files_minified_ = statistics()->GetVariable(CssFilter::kFilesMinified);
-    minified_bytes_saved_ =
-        statistics()->GetVariable(CssFilter::kMinifiedBytesSaved);
+    num_blocks_rewritten_ =
+        statistics()->GetVariable(CssFilter::kBlocksRewritten);
     num_parse_failures_ = statistics()->GetVariable(CssFilter::kParseFailures);
+    num_rewrites_dropped_ =
+        statistics()->GetVariable(CssFilter::kRewritesDropped);
+    total_bytes_saved_ = statistics()->GetVariable(CssFilter::kTotalBytesSaved);
+    total_original_bytes_ =
+        statistics()->GetVariable(CssFilter::kTotalOriginalBytes);
+    num_uses_ = statistics()->GetVariable(CssFilter::kUses);
   }
   ~CssRewriteTestBase();
 
@@ -122,12 +127,25 @@ class CssRewriteTestBase : public ResourceManagerTestBase,
     ValidateRewrite(id, css_input, css_input, kExpectNoChange | kExpectFailure);
   }
 
+  // Reset all Variables.
+  void ResetStats();
+
+  // Validate HTML rewrite as well as checking statistics.
+  void ValidateWithStats(
+      const StringPiece& id,
+      const GoogleString& html_input, const GoogleString& expected_html_output,
+      const StringPiece& css_input, const StringPiece& expected_css_output,
+      int flags);
+
   // Helper to test for how we handle trailing junk
   void TestCorruptUrl(const char* junk, bool should_fetch_ok);
 
-  Variable* num_files_minified_;
-  Variable* minified_bytes_saved_;
+  Variable* num_blocks_rewritten_;
   Variable* num_parse_failures_;
+  Variable* num_rewrites_dropped_;
+  Variable* total_bytes_saved_;
+  Variable* total_original_bytes_;
+  Variable* num_uses_;
 };
 
 }  // namespace net_instaweb

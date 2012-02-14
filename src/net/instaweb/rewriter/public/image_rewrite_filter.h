@@ -155,7 +155,7 @@ class ImageRewriteFilter : public RewriteFilter {
   Variable* image_rewrite_total_bytes_saved_;
   // Sum of original sizes of all successfully rewritten images.
   // image_rewrite_total_bytes_saved_ / image_rewrite_total_original_bytes_
-  // is the average bytes saved per rewrite.
+  // is the average percentage reduction in image size.
   Variable* image_rewrite_total_original_bytes_;
   // # of uses of rewritten images (updating <img> src= attributes in HTML
   // or url()s in CSS).

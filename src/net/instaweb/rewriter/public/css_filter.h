@@ -99,9 +99,12 @@ class CssFilter : public RewriteFilter {
   virtual const char* id() const { return RewriteOptions::kCssFilterId; }
   virtual int FilterCacheFormatVersion() const;
 
-  static const char kFilesMinified[];
-  static const char kMinifiedBytesSaved[];
+  static const char kBlocksRewritten[];
   static const char kParseFailures[];
+  static const char kRewritesDropped[];
+  static const char kTotalBytesSaved[];
+  static const char kTotalOriginalBytes[];
+  static const char kUses[];
 
   RewriteContext* MakeNestedFlatteningContextInNewSlot(
       const ResourcePtr& resource, const GoogleString& location,
@@ -155,7 +158,6 @@ class CssFilter : public RewriteFilter {
                            const StringPiece& in_text,
                            int64 in_text_size,
                            bool text_is_declarations,
-                           GoogleString* out_text,
                            MessageHandler* handler);
 
   // Tries to write out a (potentially edited) stylesheet out to out_text,
@@ -181,9 +183,28 @@ class CssFilter : public RewriteFilter {
   ImageCombineFilter* image_combiner_;
 
   // Statistics
-  Variable* num_files_minified_;
-  Variable* minified_bytes_saved_;
+  // # of CSS blocks (CSS files, <style> blocks or style= attributes)
+  // successfully rewritten.
+  Variable* num_blocks_rewritten_;
+  // # of CSS blocks that rewriter failed to parse.
   Variable* num_parse_failures_;
+  // # of CSS rewrites which were not applied because they made the CSS larger
+  // and did not rewrite any images in it/flatten any other CSS files into it.
+  Variable* num_rewrites_dropped_;
+  // # of bytes saved from rewriting CSS (including minification and the
+  // increase of bytes from longer image URLs and the increase of bytes
+  // from @import flattening).
+  // TODO(sligocki): This should consider the input size to be the input sizes
+  // of all CSS files flattened into this one. Currently it does not.
+  Variable* total_bytes_saved_;
+  // Sum of original bytes of all successfully rewritten CSS blocks.
+  // total_bytes_saved_ / total_original_bytes_ should be the
+  // average percentage reduction of CSS block size.
+  Variable* total_original_bytes_;
+  // # of uses of rewritten CSS (updating <link> href= attributes,
+  // <style> contents or style= attributes).
+  Variable* num_uses_;
+
   CssUrlEncoder encoder_;
 
   DISALLOW_COPY_AND_ASSIGN(CssFilter);

@@ -65,6 +65,7 @@ base::AtExitManager* at_exit_manager = NULL;
 }  // namespace
 
 namespace net_instaweb {
+
 class CacheExtender;
 class ImageCombineFilter;
 class ImageRewriteFilter;
@@ -93,9 +94,12 @@ class InlineCssSlot : public ResourceSlot {
 }  // namespace
 
 // Statistics variable names.
-const char CssFilter::kFilesMinified[] = "css_filter_files_minified";
-const char CssFilter::kMinifiedBytesSaved[] = "css_filter_minified_bytes_saved";
+const char CssFilter::kBlocksRewritten[] = "css_filter_blocks_rewritten";
 const char CssFilter::kParseFailures[] = "css_filter_parse_failures";
+const char CssFilter::kRewritesDropped[] = "css_filter_rewrites_dropped";
+const char CssFilter::kTotalBytesSaved[] = "css_filter_total_bytes_saved";
+const char CssFilter::kTotalOriginalBytes[] = "css_filter_total_original_bytes";
+const char CssFilter::kUses[] = "css_filter_uses";
 
 CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
                             RewriteContext* parent,
@@ -170,6 +174,7 @@ void CssFilter::Context::Render() {
     } else if (rewrite_inline_attribute_ != NULL) {
       rewrite_inline_attribute_->SetValue(result.inlined_data());
     }
+    filter_->num_uses_->Add(1);
   }
 }
 
@@ -218,7 +223,6 @@ void CssFilter::Context::RewriteSingle(
   TimedBool result = filter_->RewriteCssText(
       this, css_base_gurl_, css_trim_gurl_, input_contents, in_text_size_,
       IsInlineAttribute() /* text_is_declarations */,
-      NULL /* out_text --- not written in RewriteCssText in async case */,
       driver_->message_handler());
 
   if (result.value) {
@@ -349,9 +353,12 @@ CssFilter::CssFilter(RewriteDriver* driver,
       image_rewrite_filter_(image_rewriter),
       image_combiner_(image_combiner) {
   Statistics* stats = resource_manager_->statistics();
-  num_files_minified_ = stats->GetVariable(CssFilter::kFilesMinified);
-  minified_bytes_saved_ = stats->GetVariable(CssFilter::kMinifiedBytesSaved);
+  num_blocks_rewritten_ = stats->GetVariable(CssFilter::kBlocksRewritten);
   num_parse_failures_ = stats->GetVariable(CssFilter::kParseFailures);
+  num_rewrites_dropped_ = stats->GetVariable(CssFilter::kRewritesDropped);
+  total_bytes_saved_ = stats->GetVariable(CssFilter::kTotalBytesSaved);
+  total_original_bytes_ = stats->GetVariable(CssFilter::kTotalOriginalBytes);
+  num_uses_ = stats->GetVariable(CssFilter::kUses);
 }
 
 CssFilter::~CssFilter() {}
@@ -361,9 +368,12 @@ int CssFilter::FilterCacheFormatVersion() const {
 }
 
 void CssFilter::Initialize(Statistics* statistics) {
-  statistics->AddVariable(CssFilter::kFilesMinified);
-  statistics->AddVariable(CssFilter::kMinifiedBytesSaved);
+  statistics->AddVariable(CssFilter::kBlocksRewritten);
   statistics->AddVariable(CssFilter::kParseFailures);
+  statistics->AddVariable(CssFilter::kRewritesDropped);
+  statistics->AddVariable(CssFilter::kTotalBytesSaved);
+  statistics->AddVariable(CssFilter::kTotalOriginalBytes);
+  statistics->AddVariable(CssFilter::kUses);
   InitializeAtExitManager();
 }
 
@@ -565,7 +575,6 @@ bool CssFilter::GetApplicableMedia(const HtmlElement* element,
 }
 
 // Return value answers the question: May we rewrite?
-// If return false, out_text is undefined.
 // css_base_gurl is the URL used to resolve relative URLs in the CSS.
 // css_trim_gurl is the URL used to trim absolute URLs to relative URLs.
 // Specifically, it should be the address of the CSS document itself for
@@ -578,7 +587,6 @@ TimedBool CssFilter::RewriteCssText(Context* context,
                                     const StringPiece& in_text,
                                     int64 in_text_size,
                                     bool text_is_declarations,
-                                    GoogleString* out_text,
                                     MessageHandler* handler) {
   // Load stylesheet w/o expanding background attributes and preserving as
   // much content as possible from the original document.
@@ -659,6 +667,7 @@ bool CssFilter::SerializeCss(RewriteContext* context,
       driver_->InfoAt(context, "CSS parser increased size of CSS file %s by %s "
                       "bytes.", css_base_gurl.spec_c_str(),
                       Integer64ToString(-bytes_saved).c_str());
+      num_rewrites_dropped_->Add(1);
     }
     // Don't rewrite if we blanked the CSS file. This is likely to be a parse
     // error unless the input was also blank.
@@ -676,8 +685,10 @@ bool CssFilter::SerializeCss(RewriteContext* context,
     driver_->InfoAt(context, "Successfully rewrote CSS file %s saving %s "
                     "bytes.", css_base_gurl.spec_c_str(),
                     Integer64ToString(bytes_saved).c_str());
-    num_files_minified_->Add(1);
-    minified_bytes_saved_->Add(bytes_saved);
+    num_blocks_rewritten_->Add(1);
+    total_bytes_saved_->Add(bytes_saved);
+    // TODO(sligocki): Will this be misleading if we flatten @imports?
+    total_original_bytes_->Add(in_text_size);
   }
   return ret;
 }
