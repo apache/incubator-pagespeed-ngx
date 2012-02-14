@@ -151,6 +151,7 @@ const char* kModPagespeedTestProxy = "ModPagespeedTestProxy";
 const char* kModPagespeedUrlPrefix = "ModPagespeedUrlPrefix";
 const char* kModPagespeedRespectVary = "ModPagespeedRespectVary";
 const char* kModPagespeedGAID = "ModPagespeedAnalyticsID";
+const char* kModPagespeedSpeedTracking = "ModPagespeedIncreaseSpeedTracking";
 const char* kModPagespeedMaxInlinedPreviewImagesIndex =
     "ModPagespeedMaxInlinedPreviewImagesIndex";
 const char* kModPagespeedMinImageSizeLowResolutionBytes =
@@ -1128,6 +1129,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Whether to respect the Vary header."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedGAID,
         "Google Analytics ID to use on site."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedSpeedTracking,
+        "Increase the percentage of sites that have Google Analytics page "
+        "speed tracking"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedRunFurious,
          "Run an experiment to test the effectiveness of rewriters."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedFuriousPercent,

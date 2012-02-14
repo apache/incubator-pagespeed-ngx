@@ -45,7 +45,8 @@ namespace net_instaweb {
 // document.location.protocol.
 extern const char kGASnippet[] =
     "var _gaq = _gaq || [];"
-    "_gaq.push(['_setAccount', '%s']);"
+    "_gaq.push(['_setAccount', '%s']);"  // %s is the GA account number.
+    "%s"  // %s is the optional snippet to increase site speed tracking.
     "_gaq.push(['_trackPageview']);"
     "(function() {"
     "var ga = document.createElement('script'); ga.type = 'text/javascript';"
@@ -56,12 +57,17 @@ extern const char kGASnippet[] =
     "s.parentNode.insertBefore(ga, s);"
     "})();";
 
+extern const char kGASpeedTracking[] =
+    "_gaq.push(['_setSiteSpeedSampleRate', 10]);";
+
 InsertGAFilter::InsertGAFilter(RewriteDriver* rewrite_driver)
     : CommonFilter(rewrite_driver),
       script_element_(NULL),
       added_snippet_element_(NULL),
       ga_id_(rewrite_driver->options()->ga_id()),
-      found_snippet_(false) {
+      found_snippet_(false),
+      increase_speed_tracking_(
+          rewrite_driver->options()->increase_speed_tracking()) {
   Statistics* stats = driver_->statistics();
   inserted_ga_snippets_count_ = stats->GetVariable(kInsertedGaSnippets);
   DCHECK(!ga_id_.empty()) << "Enabled ga insertion, but did not provide ga id.";
@@ -131,7 +137,10 @@ void InsertGAFilter::EndElementImpl(HtmlElement* element) {
         added_snippet_element_->set_close_style(HtmlElement::EXPLICIT_CLOSE);
         driver_->AddAttribute(added_snippet_element_, HtmlName::kType,
                               "text/javascript");
-        GoogleString snippet_text = StringPrintf(kGASnippet, ga_id_.c_str());
+        const char* kSpeedSnippet = increase_speed_tracking_ ?
+            kGASpeedTracking : "";
+        GoogleString snippet_text = StringPrintf(
+            kGASnippet, ga_id_.c_str(), kSpeedSnippet);
         HtmlNode* snippet =
             driver_->NewCharactersNode(added_snippet_element_, snippet_text);
         driver_->AppendChild(element, added_snippet_element_);

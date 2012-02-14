@@ -40,7 +40,6 @@ class InsertGAFilterTest : public ResourceManagerTestBase {
     options()->set_ga_id(kGaId);
     options()->EnableFilter(RewriteOptions::kInsertGA);
     ResourceManagerTestBase::SetUp();
-    rewrite_driver()->AddFilters();
   }
 };
 
@@ -56,8 +55,10 @@ const char kHtmlOutputFormat[] =
     "</head><body> Hello World!</body>";
 
 TEST_F(InsertGAFilterTest, simple_insert) {
+  rewrite_driver()->AddFilters();
   GoogleString format_output = StringPrintf(kHtmlOutputFormat, kGASnippet);
-  GoogleString output = StringPrintf(format_output.c_str(), kGaId);
+  GoogleString output = StringPrintf(format_output.c_str(), kGaId,
+                                     kGASpeedTracking);
   ValidateExpected("simple_addition", kHtmlInput, output);
   ValidateNoChanges("already_there", output);
 }
@@ -69,8 +70,21 @@ const char kHtmlOutsideHead[] =
     "<body> Hello World!</body>";
 
 TEST_F(InsertGAFilterTest, no_double) {
+  rewrite_driver()->AddFilters();
   GoogleString format_html = StringPrintf(kHtmlOutsideHead, kGASnippet);
-  ValidateNoChanges("outside_head", StringPrintf(format_html.c_str(), kGaId));
+  ValidateNoChanges("outside_head", StringPrintf(format_html.c_str(), kGaId,
+                                                 kGASpeedTracking));
+}
+
+TEST_F(InsertGAFilterTest, no_increased_speed) {
+  options()->set_increase_speed_tracking(false);
+  rewrite_driver()->AddFilters();
+
+  GoogleString format_output = StringPrintf(kHtmlOutputFormat, kGASnippet);
+  GoogleString output = StringPrintf(format_output.c_str(), kGaId, "");
+
+  ValidateExpected("simple_addition", kHtmlInput, output);
+  ValidateNoChanges("already_there", output);
 }
 
 }  // namespace

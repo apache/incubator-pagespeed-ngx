@@ -35,6 +35,7 @@ class Statistics;
 class Variable;
 
 extern const char kGASnippet[];
+extern const char kGASpeedTracking[];
 
 // This class is the implementation of insert_ga_snippet filter, which adds
 // a Google Analytics snippet into the head of html pages.
@@ -78,6 +79,9 @@ class InsertGAFilter : public CommonFilter {
 
   // Indicates whether or not we've already found a GA snippet.
   bool found_snippet_;
+
+  // Increase site-speed tracking to the max allowed.
+  bool increase_speed_tracking_;
 
   DISALLOW_COPY_AND_ASSIGN(InsertGAFilter);
 };

@@ -458,6 +458,7 @@ RewriteOptions::RewriteOptions()
              kImageRetainColorProfile);
   add_option(false, &image_retain_exif_data_, "ired", kImageRetainExifData);
   add_option("", &ga_id_, "ig", kAnalyticsID);
+  add_option(true, &increase_speed_tracking_, "st", kIncreaseSpeedTracking);
   add_option(false, &running_furious_, "fur", kRunningFurious);
   add_option(kDefaultFuriousTrafficPercent, &furious_percent_, "fp",
              kFuriousPercent);

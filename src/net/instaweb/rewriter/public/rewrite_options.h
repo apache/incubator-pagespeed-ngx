@@ -127,6 +127,7 @@ class RewriteOptions {
     kImageRetainExifData,
     kImageWebpRecompressQuality,
     kImplicitCacheTtlMs,
+    kIncreaseSpeedTracking,
     kJsInlineMaxBytes,
     kJsOutlineMinBytes,
     kLazyloadImagesAfterOnload,
@@ -362,6 +363,13 @@ class RewriteOptions {
   GoogleString ga_id() const { return ga_id_.value(); }
   void set_ga_id(GoogleString id) {
     set_option(id, &ga_id_);
+  }
+
+  bool increase_speed_tracking() const {
+    return increase_speed_tracking_.value();
+  }
+  void set_increase_speed_tracking(bool x) {
+    set_option(x, &increase_speed_tracking_);
   }
 
   int64 js_outline_min_bytes() const { return js_outline_min_bytes_.value(); }
@@ -1082,6 +1090,10 @@ class RewriteOptions {
   // and Google Analytics to track page speed statistics with
   // multiple sets of rewriters.
   Option<bool> running_furious_;
+
+  // Increase the percentage of hits to 10% (current max) that have
+  // site speed tracking in Google Analytics.
+  Option<bool> increase_speed_tracking_;
 
   // Number of first N images for which low res image is generated. Negative
   // values will bypass image index check.
