@@ -25,6 +25,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -47,7 +48,7 @@ namespace net_instaweb {
 
 class CountingUrlAsyncFetcher;
 class DelayCache;
-class HTTPCache;
+class HTTPValue;
 class Hasher;
 class LRUCache;
 class MessageHandler;
@@ -420,6 +421,24 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   GoogleString EncodeCssName(const StringPiece& name,
                              bool supports_webp,
                              bool can_inline);
+
+  // Helper function for legacy tests that used this now-extinct interface.
+  // In general we don't support this flow in production but we rely on it
+  // in tests for obliquely covering some cases relating to resource pathnames.
+  bool ReadIfCached(const ResourcePtr& resource);
+
+  // Variation on ReadIfCached that is used when we expect the resource
+  // not to be in present in cache, but instead we are looking to
+  // initiate the resource-rewrite process so that a subsequent call
+  // to ReadIfCached succeeds.
+  void InitiateResourceRead(const ResourcePtr& resource);
+
+  // While our production cache model is non-blocking, we use an in-memory LRU
+  // for tests that calls its callback directly from Get.  Thus we can make
+  // a convenient blocking cache wrapper to make it easier to write tests.
+  HTTPCache::FindResult HttpBlockingFind(
+      const GoogleString& key, HTTPCache* http_cache, HTTPValue* value_out,
+      ResponseHeaders* headers);
 
  protected:
   void Init();

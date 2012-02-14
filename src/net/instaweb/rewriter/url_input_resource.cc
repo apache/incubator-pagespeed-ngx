@@ -372,23 +372,16 @@ bool UrlInputResource::IsValidAndCacheable() const {
 }
 
 bool UrlInputResource::Load(MessageHandler* handler) {
-  response_headers_.Clear();
-  value_.Clear();
-
-  HTTPCache* http_cache = resource_manager()->http_cache();
-  FreshenFetchCallback* cb = new FreshenFetchCallback(
-      url_, http_cache, resource_manager(), rewrite_options_);
-
-  // If the fetcher can satisfy the request instantly, then we
-  // can try to populate the resource from the cache.
+  // I believe a deep static analysis would reveal this function
+  // cannot be reached.  However, the typing rules of C++ do not allow
+  // us to omit the definition.
   //
-  // TODO(jmarantz): populate directly from Fetch callback rather
-  // than having to deserialize from cache.
-  bool data_available =
-      (cb->Fetch(resource_manager_->url_async_fetcher(), handler) &&
-       (http_cache->Find(url_, &value_, &response_headers_, handler) ==
-        HTTPCache::kFound));
-  return data_available;
+  // Resource::Load is a protected abstract method.  It's called in
+  // the default implementation of Resource::LoadAndCallback.
+  // UrlInputResource::LoadAndCallback overrides that, however, and
+  // does not call Load(), so this function cannot be reached.
+  LOG(DFATAL) << "Blocking Load should never be called for UrlInputResource";
+  return false;
 }
 
 void UrlInputResource::Freshen(MessageHandler* handler) {

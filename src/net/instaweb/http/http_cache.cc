@@ -30,7 +30,6 @@
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -221,37 +220,6 @@ class SynchronizingCallback : public HTTPCache::Callback {
 };
 
 }  // namespace
-
-// Legacy blocking version of HTTPCache::Find.  This will fail if the
-// cache implementation does not call its callback immediately.
-//
-// TODO(jmarantz): remove this when blocking callers of HTTPCache::Find
-// are removed from the codebase.
-HTTPCache::FindResult HTTPCache::Find(
-    const GoogleString& key, HTTPValue* value, ResponseHeaders* headers,
-    MessageHandler* handler) {
-  SharedString cache_buffer;
-
-  SynchronizingCallback callback;
-  Find(key, handler, &callback);
-  CHECK(callback.called()) << "Non-blocking caches not yet supported";
-  if (callback.result() == kFound) {
-    if (value != NULL) {
-      value->Link(callback.http_value());
-    }
-  }
-  if (headers != NULL) {
-    headers->CopyFrom(*callback.response_headers());
-  }
-  return callback.result();
-}
-
-CacheInterface::KeyState HTTPCache::Query(const GoogleString& key) {
-  HTTPCache::FindResult find_result = Find(key, NULL, NULL, NULL);
-  CacheInterface::KeyState state = (find_result == kFound)
-      ? CacheInterface::kAvailable : CacheInterface::kNotFound;
-  return state;
-}
 
 void HTTPCache::UpdateStats(FindResult result, int64 delta_us) {
   cache_time_us_->Add(delta_us);

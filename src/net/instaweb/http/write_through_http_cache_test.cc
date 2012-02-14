@@ -26,7 +26,6 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -185,13 +184,12 @@ TEST_F(WriteThroughHTTPCacheTest, PutGet) {
   EXPECT_EQ(1, cache2_.num_inserts());
   EXPECT_EQ(0, cache2_.num_deletes());
 
-  EXPECT_EQ(CacheInterface::kAvailable, http_cache_->Query(key_));
   CheckCachedValueValid();
-  EXPECT_EQ(2, GetStat(HTTPCache::kCacheHits));
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
-  EXPECT_EQ(2, cache1_.num_hits());
+  EXPECT_EQ(1, cache1_.num_hits());
   EXPECT_EQ(0, cache1_.num_misses());
   EXPECT_EQ(1, cache1_.num_inserts());
   EXPECT_EQ(0, cache1_.num_deletes());
@@ -204,11 +202,11 @@ TEST_F(WriteThroughHTTPCacheTest, PutGet) {
   // inserted into cache1.
   cache1_.Clear();
   CheckCachedValueValid();
-  EXPECT_EQ(3, GetStat(HTTPCache::kCacheHits));
+  EXPECT_EQ(2, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
-  EXPECT_EQ(2, cache1_.num_hits());
+  EXPECT_EQ(1, cache1_.num_hits());
   EXPECT_EQ(1, cache1_.num_misses());
   EXPECT_EQ(2, cache1_.num_inserts());
   EXPECT_EQ(0, cache1_.num_deletes());
@@ -222,11 +220,11 @@ TEST_F(WriteThroughHTTPCacheTest, PutGet) {
   // the local and remote cache in this case.
   mock_timer_.AdvanceMs(301 * 1000);
   CheckCachedValueExpired();
-  EXPECT_EQ(3, GetStat(HTTPCache::kCacheHits));
+  EXPECT_EQ(2, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(2, GetStat(HTTPCache::kCacheExpirations));
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
-  EXPECT_EQ(3, cache1_.num_hits());
+  EXPECT_EQ(2, cache1_.num_hits());
   EXPECT_EQ(1, cache1_.num_misses());
   EXPECT_EQ(2, cache1_.num_inserts());
   EXPECT_EQ(0, cache1_.num_deletes());
@@ -310,7 +308,6 @@ TEST_F(WriteThroughHTTPCacheTest, Uncacheable) {
   ResponseHeaders headers_in, headers_out;
   InitHeaders(&headers_in, NULL);
   http_cache_->Put(key_, &headers_in, content_, &message_handler_);
-  EXPECT_EQ(CacheInterface::kNotFound, http_cache_->Query(key_));
   HTTPValue value;
   HTTPCache::FindResult found = Find(
       key_, &value, &headers_out, &message_handler_);
@@ -323,7 +320,6 @@ TEST_F(WriteThroughHTTPCacheTest, UncacheablePrivate) {
   ResponseHeaders headers_in, headers_out;
   InitHeaders(&headers_in, "private, max-age=300");
   http_cache_->Put(key_, &headers_in, content_, &message_handler_);
-  EXPECT_EQ(CacheInterface::kNotFound, http_cache_->Query(key_));
   HTTPValue value;
   HTTPCache::FindResult found = Find(
       key_, &value, &headers_out, &message_handler_);

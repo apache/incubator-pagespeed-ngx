@@ -25,12 +25,12 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
+class CacheInterface;
 class Hasher;
 class MessageHandler;
 class Statistics;
@@ -145,15 +145,6 @@ class HTTPCache {
   virtual void Find(const GoogleString& key, MessageHandler* handler,
                     Callback* callback);
 
-  // Blocking Find.  This method is deprecated for transition to strictly
-  // non-blocking cache usage.
-  //
-  // TODO(jmarantz): remove this when blocking callers of HTTPCache::Find
-  // are removed from the codebase.
-  virtual HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
-                                     ResponseHeaders* headers,
-                                     MessageHandler* handler);
-
   // Note that Put takes a non-const pointer for HTTPValue so it can
   // bump the reference count.
   virtual void Put(const GoogleString& key, HTTPValue* value,
@@ -163,11 +154,6 @@ class HTTPCache {
   // can update the caching fields prior to storing.
   virtual void Put(const GoogleString& key, ResponseHeaders* headers,
                    const StringPiece& content, MessageHandler* handler);
-
-  // Deprecated method to make a blocking query for the state of an
-  // element in the cache.
-  // TODO(jmarantz): remove this interface when blocking callers are removed.
-  virtual CacheInterface::KeyState Query(const GoogleString& key);
 
   // Deletes an element in the cache.
   virtual void Delete(const GoogleString& key);

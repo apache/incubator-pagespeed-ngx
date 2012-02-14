@@ -23,13 +23,13 @@
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/timing.pb.h"
-#include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+
+class CacheInterface;
 
 namespace {
 
@@ -175,34 +175,12 @@ void WriteThroughHTTPCache::Find(const GoogleString& key,
   cache1_->Find(key, handler, cache1_callback);
 }
 
-HTTPCache::FindResult WriteThroughHTTPCache::Find(
-    const GoogleString& key,
-    HTTPValue* value,
-    ResponseHeaders* headers,
-    MessageHandler* handler) {
-  HTTPCache::FindResult result = cache1_->Find(key, value, headers, handler);
-  if (result == kNotFound) {
-    // This is not a cache miss yet. Check the other cache.
-    cache_misses()->Add(-1);
-    result = cache2_->Find(key, value, headers, handler);
-  }
-  return result;
-}
-
 void WriteThroughHTTPCache::PutInternal(const GoogleString& key, int64 start_us,
                                         HTTPValue* value) {
   // Put into cache2_'s underlying cache.
   cache2_->PutInternal(key, start_us, value);
   // Put into cache1_'s underlying cache if required.
   PutInCache1(key, value);
-}
-
-CacheInterface::KeyState WriteThroughHTTPCache::Query(const GoogleString& key) {
-  CacheInterface::KeyState state = cache1_->Query(key);
-  if (state != CacheInterface::kAvailable) {
-    state = cache2_->Query(key);
-  }
-  return state;
 }
 
 void WriteThroughHTTPCache::Delete(const GoogleString& key) {

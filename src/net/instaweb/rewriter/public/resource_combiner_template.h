@@ -47,15 +47,6 @@ class ResourceCombinerTemplate : public ResourceCombiner {
     Clear();
   }
 
-  TimedBool AddElement(T element, const StringPiece& url,
-                       MessageHandler* handler) {
-    TimedBool result = AddResource(url, handler);
-    if (result.value) {
-      elements_.push_back(element);
-    }
-    return result;
-  }
-
   TimedBool AddElementNoFetch(T element, const ResourcePtr& resource,
                               MessageHandler* handler) {
     TimedBool result = AddResourceNoFetch(resource, handler);
@@ -81,6 +72,15 @@ class ResourceCombinerTemplate : public ResourceCombiner {
     elements_.clear();
     ResourceCombiner::Clear();
   }
+
+ private:
+  friend class ResourceCombinerTest;
+
+  // This is visible for ResourceCombinerTest, which uses this to
+  // emulate an old blocking flow using the now-extinct ReadIfCached.
+  // That test-suite is still useful, however, for pathname limitation
+  // tests.
+  void push_back_element(T element) { elements_.push_back(element); }
 
   std::vector<T> elements_;
 };

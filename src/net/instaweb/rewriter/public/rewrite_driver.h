@@ -478,15 +478,6 @@ class RewriteDriver : public HtmlParse {
   void ReadAsync(Resource::AsyncCallback* callback,
                  MessageHandler* message_handler);
 
-  // Load the resource if it is cached (or if it can be fetched quickly).
-  // If not send off an asynchronous fetch and store the result in the cache.
-  //
-  // Returns true if the resource is loaded.
-  bool ReadIfCached(const ResourcePtr& resource);
-
-  // As above, but distinguishes between unavailable in cache and not found
-  HTTPCache::FindResult ReadIfCachedWithStatus(const ResourcePtr& resource);
-
   // Returns the appropriate base gurl to be used for resolving hrefs
   // in the document.  Note that HtmlParse::google_url() is the URL
   // for the HTML file and is used for printing html syntax errors.

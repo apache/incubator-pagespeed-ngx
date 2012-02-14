@@ -149,26 +149,6 @@ class CssCombineFilter::Context : public RewriteContext {
     return ret;
   }
 
-  void AddToCombiner(HtmlElement* element, HtmlElement::Attribute* href) {
-    const char* url = href->value();
-    MessageHandler* handler = filter_->driver()->message_handler();
-
-    if (!combiner_.AddElement(element, url, handler).value) {
-      // This element can't be included in the previous combination,
-      // so try to flush out what we have.
-      combiner_.TryCombineAccumulated();
-
-      // Now we'll try to start a new partnership with this CSS file --
-      // perhaps we ran out out of space in the previous combination
-      // or this file is simply in a different authorized domain, or
-      // contained @Import.
-      //
-      // Note that it's OK if this fails; we will simply not rewrite
-      // the element in that case
-      combiner_.AddElement(element, url, handler);
-    }
-  }
-
   bool empty() const { return elements_.empty(); }
   bool new_combination() const { return new_combination_; }
 

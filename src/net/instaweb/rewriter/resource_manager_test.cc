@@ -170,7 +170,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     ResourcePtr resource(rewrite_driver()->CreateInputResource(resource_url));
     if ((resource.get() != NULL) &&
         (!resource->IsCacheableTypeOfResource() ||
-         !rewrite_driver()->ReadIfCached(resource))) {
+         !ReadIfCached(resource))) {
       resource.clear();
     }
     return resource;
@@ -247,10 +247,12 @@ class ResourceManagerTest : public ResourceManagerTestBase {
 
   bool ResourceIsCached() {
     ResourcePtr resource(CreateResource(kResourceUrlBase, kResourceUrlPath));
-    bool ok = rewrite_driver()->ReadIfCached(resource);
-    // Should not damage resources when freshening
-    EXPECT_FALSE(ok && !resource->loaded());
-    return ok;
+    return ReadIfCached(resource);
+  }
+
+  void StartRead() {
+    ResourcePtr resource(CreateResource(kResourceUrlBase, kResourceUrlPath));
+    InitiateResourceRead(resource);
   }
 
   GoogleString MakeEvilUrl(const StringPiece& host, const StringPiece& name) {
@@ -372,7 +374,7 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
   const int kOriginTtlSec = 300;
   SetResponseWithDefaultHeaders("http://localhost/style.css", kContentTypeCss,
                                 kStyleContent, kOriginTtlSec);
-  EXPECT_TRUE(rewrite_driver()->ReadIfCached(input));
+  EXPECT_TRUE(ReadIfCached(input));
 
   // When we rewrite the resource as an ouptut, it will show up in the
   // CDN per the rewrite mapping.
@@ -505,14 +507,12 @@ TEST_F(ResourceManagerTest, TestRemember404) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  EXPECT_EQ(HTTPCache::kRecentFetchFailed,
-            http_cache()->Find("http://example.com/404", &value_out,
-                               &headers_out, message_handler()));
+  EXPECT_EQ(HTTPCache::kRecentFetchFailed, HttpBlockingFind(
+      "http://example.com/404", http_cache(), &value_out, &headers_out));
   mock_timer()->AdvanceMs(150 * Timer::kSecondMs);
 
-  EXPECT_EQ(HTTPCache::kNotFound,
-            http_cache()->Find("http://example.com/404", &value_out,
-                               &headers_out, message_handler()));
+  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFind(
+      "http://example.com/404", http_cache(), &value_out, &headers_out));
 }
 
 TEST_F(ResourceManagerTest, TestNonCacheable) {
@@ -535,9 +535,8 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
 
   HTTPValue value_out;
   ResponseHeaders headers_out;
-  EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable,
-            http_cache()->Find("http://example.com/", &value_out, &headers_out,
-                               message_handler()));
+  EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable, HttpBlockingFind(
+      "http://example.com/", http_cache(), &value_out, &headers_out));
 }
 
 TEST_F(ResourceManagerTest, TestNonCacheableReadResultPolicy) {
@@ -588,9 +587,8 @@ TEST_F(ResourceManagerTest, TestVaryOption) {
 
   HTTPValue valueOut;
   ResponseHeaders headersOut;
-  EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable,
-            http_cache()->Find("http://example.com/", &valueOut, &headersOut,
-                               message_handler()));
+  EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable, HttpBlockingFind(
+      "http://example.com/", http_cache(), &valueOut, &headersOut));
 }
 
 TEST_F(ResourceManagerTest, TestOutlined) {
@@ -739,7 +737,7 @@ TEST_F(ResourceFreshenTest, TestFreshenImminentlyExpiringResources) {
 
   // The test here is not that the ReadIfCached will succeed, because
   // it's a fake url fetcher.
-  EXPECT_FALSE(ResourceIsCached());
+  StartRead();
   CallFetcherCallbacks();
   EXPECT_TRUE(ResourceIsCached());
 
@@ -749,8 +747,8 @@ TEST_F(ResourceFreshenTest, TestFreshenImminentlyExpiringResources) {
   // completely inactive site will not see its resources freshened.
   mock_timer()->AdvanceMs((max_age_sec + 1) * Timer::kSecondMs);
   expirations_->Clear();
-  EXPECT_FALSE(ResourceIsCached());
-  EXPECT_EQ(2, expirations_->Get());
+  StartRead();
+  EXPECT_EQ(1, expirations_->Get());
   expirations_->Clear();
   CallFetcherCallbacks();
   EXPECT_TRUE(ResourceIsCached());

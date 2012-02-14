@@ -89,19 +89,11 @@ class ResourceCombiner {
   // Base common to all URLs. Always has a trailing slash.
   GoogleString ResolvedBase() const { return partnership_.ResolvedBase(); }
 
-  // TODO(jmarantz): remove AddResource and rename this once async flow
-  // is live.
+  // TODO(jmarantz): rename this to AddResource now that async flow is live.
   TimedBool AddResourceNoFetch(const ResourcePtr& resource,
                                MessageHandler* handler);
 
  protected:
-  // Tries to add a resource with given source URL to the current partnership.
-  // Returns whether successful or not (in which case the partnership will be
-  // unchanged). This will succeed only if we both have the data ready and can
-  // fit in the names into the combined URL.
-  virtual TimedBool AddResource(const StringPiece& url,
-                                MessageHandler* handler);
-
   // Removes the last resource that was added here, assuming the last call to
   // AddResource was successful.  If the last call to AddResource returned
   // false, behavior is undefined.

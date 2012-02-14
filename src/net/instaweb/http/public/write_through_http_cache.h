@@ -23,15 +23,14 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
+class CacheInterface;
 class Hasher;
 class HTTPValue;
 class MessageHandler;
-class ResponseHeaders;
 class Statistics;
 class Timer;
 
@@ -52,14 +51,6 @@ class WriteThroughHTTPCache : public HTTPCache {
   // Implements HTTPCache::Find().
   virtual void Find(const GoogleString& key, MessageHandler* handler,
                     Callback* callback);
-
-  // Implements HTTPCache::Find().
-  virtual HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
-                                     ResponseHeaders* headers,
-                                     MessageHandler* handler);
-
-  // Implements HTTPCache::Query().
-  virtual CacheInterface::KeyState Query(const GoogleString& key);
 
   // Implements HTTPCache::Delete().
   virtual void Delete(const GoogleString& key);

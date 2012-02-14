@@ -224,7 +224,7 @@ class ImageRewriteTest : public ResourceManagerTestBase,
     ResourcePtr cuppa_resource(
         rewrite_driver()->CreateInputResourceAbsoluteUnchecked(cuppa_string));
     ASSERT_TRUE(cuppa_resource.get() != NULL);
-    EXPECT_TRUE(rewrite_driver()->ReadIfCached(cuppa_resource));
+    EXPECT_TRUE(ReadIfCached(cuppa_resource));
     GoogleString cuppa_contents;
     cuppa_resource->contents().CopyToString(&cuppa_contents);
     // Now make sure axing the original cuppa_string doesn't affect the
@@ -233,7 +233,7 @@ class ImageRewriteTest : public ResourceManagerTestBase,
         rewrite_driver()->CreateInputResourceAbsoluteUnchecked(cuppa_string));
     ASSERT_TRUE(other_resource.get() != NULL);
     cuppa_string.clear();
-    EXPECT_TRUE(rewrite_driver()->ReadIfCached(other_resource));
+    EXPECT_TRUE(ReadIfCached(other_resource));
     GoogleString other_contents;
     cuppa_resource->contents().CopyToString(&other_contents);
     ASSERT_EQ(cuppa_contents, other_contents);

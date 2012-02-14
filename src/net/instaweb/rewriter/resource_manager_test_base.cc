@@ -29,12 +29,13 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -48,7 +49,6 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -56,6 +56,7 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_time_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
@@ -234,9 +235,10 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   ExpectStringAsyncFetch response_contents(true);
 
   // Check that we don't already have it in cache.
-  EXPECT_EQ(CacheInterface::kNotFound,
-            new_factory.http_cache()->Query(resource_url));
-
+  HTTPValue value;
+  ResponseHeaders response_headers;
+  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFind(
+      resource_url, new_factory.http_cache(), &value, &response_headers));
   // Initiate fetch.
   EXPECT_EQ(true, new_rewrite_driver->FetchResource(
       resource_url, &response_contents));
@@ -404,8 +406,10 @@ void ResourceManagerTestBase::TestServeFiles(
   // Now we expect the cache entry to be there.
   RewriteFilter* filter = rewrite_driver_->FindFilter(filter_id);
   if (!filter->ComputeOnTheFly()) {
-    EXPECT_EQ(CacheInterface::kAvailable, http_cache()->Query(
-        expected_rewritten_path));
+    HTTPValue value;
+    ResponseHeaders response_headers;
+    EXPECT_EQ(HTTPCache::kFound, HttpBlockingFind(
+        expected_rewritten_path, http_cache(), &value, &response_headers));
   }
 }
 
@@ -695,6 +699,86 @@ void ResourceManagerTestBase::SetUseTestUrlNamer(bool use_test_url_namer) {
   resource_manager_->set_url_namer(factory_->url_namer());
   other_factory_->SetUseTestUrlNamer(use_test_url_namer);
   other_resource_manager_->set_url_namer(other_factory_->url_namer());
+}
+
+namespace {
+
+class BlockingResourceCallback : public Resource::AsyncCallback {
+ public:
+  explicit BlockingResourceCallback(const ResourcePtr& resource)
+      : Resource::AsyncCallback(resource),
+        done_(false),
+        success_(false) {
+  }
+  virtual ~BlockingResourceCallback() {}
+  virtual void Done(bool success) {
+    done_ = true;
+    success_ = success;
+  }
+  bool done() const { return done_; }
+  bool success() const { return success_; }
+
+ private:
+  bool done_;
+  bool success_;
+};
+
+class DeferredResourceCallback : public Resource::AsyncCallback {
+ public:
+  explicit DeferredResourceCallback(const ResourcePtr& resource)
+      : Resource::AsyncCallback(resource) {
+  }
+  virtual ~DeferredResourceCallback() {}
+  virtual void Done(bool success) {
+    CHECK(success);
+    delete this;
+  }
+};
+
+class HttpCallback : public HTTPCache::Callback {
+ public:
+  HttpCallback() : done_(false) {}
+  virtual ~HttpCallback() {}
+  virtual bool IsCacheValid(const ResponseHeaders& headers) { return true; }
+  virtual void Done(HTTPCache::FindResult find_result) {
+    done_ = true;
+    result_ = find_result;
+  }
+  bool done() const { return done_; }
+  HTTPCache::FindResult result() { return result_; }
+
+ private:
+  bool done_;
+  HTTPCache::FindResult result_;
+};
+
+}  // namespace
+
+bool ResourceManagerTestBase::ReadIfCached(const ResourcePtr& resource) {
+  BlockingResourceCallback callback(resource);
+  rewrite_driver()->ReadAsync(&callback, message_handler());
+  CHECK(callback.done());
+  if (callback.success()) {
+    CHECK(resource->loaded());
+  }
+  return callback.success();
+}
+
+void ResourceManagerTestBase::InitiateResourceRead(
+    const ResourcePtr& resource) {
+  DeferredResourceCallback* callback = new DeferredResourceCallback(resource);
+  rewrite_driver()->ReadAsync(callback, message_handler());
+}
+
+HTTPCache::FindResult ResourceManagerTestBase::HttpBlockingFind(
+    const GoogleString& key, HTTPCache* http_cache, HTTPValue* value_out,
+    ResponseHeaders* headers) {
+  HttpCallback callback;
+  callback.set_response_headers(headers);
+  http_cache->Find(key, message_handler(), &callback);
+  CHECK(callback.done());
+  value_out->Link(callback.http_value());
+  return callback.result();
 }
 
 // Logging at the INFO level slows down tests, adds to the noise, and

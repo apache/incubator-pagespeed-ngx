@@ -25,7 +25,6 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -155,7 +154,6 @@ TEST_F(HTTPCacheTest, PutGet) {
   http_cache_.Put("mykey", &meta_data_in, "content", &message_handler_);
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
-  EXPECT_EQ(CacheInterface::kAvailable, http_cache_.Query("mykey"));
   HTTPValue value;
   HTTPCache::FindResult found = Find(
       "mykey", &value, &meta_data_out, &message_handler_);
@@ -168,7 +166,7 @@ TEST_F(HTTPCacheTest, PutGet) {
   ASSERT_EQ(static_cast<size_t>(1), values.size());
   EXPECT_EQ(GoogleString("value"), *(values[0]));
   EXPECT_EQ("content", contents);
-  EXPECT_EQ(2, GetStat(HTTPCache::kCacheHits));  // The "query" counts as a hit.
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));
 
   Callback callback;
   // Now advance time 301 seconds and the we should no longer
@@ -355,7 +353,6 @@ TEST_F(HTTPCacheTest, Uncacheable) {
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, NULL);
   http_cache_.Put("mykey", &meta_data_in, "content", &message_handler_);
-  EXPECT_EQ(CacheInterface::kNotFound, http_cache_.Query("mykey"));
   HTTPValue value;
   HTTPCache::FindResult found = Find(
       "mykey", &value, &meta_data_out, &message_handler_);
@@ -367,7 +364,6 @@ TEST_F(HTTPCacheTest, UncacheablePrivate) {
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "private, max-age=300");
   http_cache_.Put("mykey", &meta_data_in, "content", &message_handler_);
-  EXPECT_EQ(CacheInterface::kNotFound, http_cache_.Query("mykey"));
   HTTPValue value;
   HTTPCache::FindResult found = Find(
       "mykey", &value, &meta_data_out, &message_handler_);

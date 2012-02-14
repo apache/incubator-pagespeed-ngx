@@ -1477,34 +1477,6 @@ void RewriteDriver::ReadAsync(Resource::AsyncCallback* callback,
                                callback);
 }
 
-bool RewriteDriver::ReadIfCached(const ResourcePtr& resource) {
-  return (ReadIfCachedWithStatus(resource) == HTTPCache::kFound);
-}
-
-HTTPCache::FindResult RewriteDriver::ReadIfCachedWithStatus(
-    const ResourcePtr& resource) {
-  HTTPCache::FindResult result = HTTPCache::kNotFound;
-  MessageHandler* handler = message_handler();
-
-  // If the resource is not already loaded, and this type of resource (e.g.
-  // URL vs File vs Data) is cacheable, then try to load it.
-  if (resource->loaded()) {
-    result = HTTPCache::kFound;
-  } else if (resource->IsCacheableTypeOfResource()) {
-    result = resource_manager_->http_cache()->Find(
-        resource->url(), &resource->value_, resource->response_headers(),
-        handler);
-  }
-  if ((result == HTTPCache::kNotFound) && resource->Load(handler)) {
-    result = HTTPCache::kFound;
-  }
-  if (result == HTTPCache::kFound) {
-    resource->DetermineContentType();
-    resource_manager_->RefreshIfImminentlyExpiring(resource.get(), handler);
-  }
-  return result;
-}
-
 bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
                                  const ContentType& content_type) {
   set_log_rewrite_timing(options()->log_rewrite_timing());

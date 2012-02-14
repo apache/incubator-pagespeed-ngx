@@ -35,14 +35,12 @@
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_escaper.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "net/instaweb/util/public/writer.h"
@@ -77,41 +75,6 @@ ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
 
 ResourceCombiner::~ResourceCombiner() {
   Clear();
-}
-
-TimedBool ResourceCombiner::AddResource(const StringPiece& url,
-                                        MessageHandler* handler) {
-  // See if we have the source loaded, or start loading it
-  // TODO(morlovich) this may not always be desirable.
-  //    we want to do this if we can't combine due to URL limits,
-  //    as we will eventually need the data, but not when it's
-  //    disabled due to policy.
-
-  ResourcePtr resource(filter_->CreateInputResource(url));
-  TimedBool ret = {0, false};
-
-  if (resource.get() == NULL) {
-    // Resource is not creatable, and never will be.
-    ret.expiration_ms = kint64max;
-    handler->Message(kInfo, "Cannot combine: null resource");
-    return ret;
-  }
-
-  if (!(rewrite_driver_->ReadIfCached(resource))) {
-    // Resource is not cached, but may be soon.
-    handler->Message(kInfo, "Cannot combine: not cached");
-    return ret;
-  }
-
-  if (!resource->HttpStatusOk()) {
-    // Resource is not valid, but may be someday.
-    // TODO(sligocki): Perhaps we should follow redirects.
-    handler->Message(kInfo, "Cannot combine: invalid contents");
-    ret.expiration_ms = 5 * Timer::kMinuteMs;
-    return ret;
-  }
-
-  return AddResourceNoFetch(resource, handler);
 }
 
 TimedBool ResourceCombiner::AddResourceNoFetch(const ResourcePtr& resource,

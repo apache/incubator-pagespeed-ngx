@@ -41,6 +41,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -51,7 +52,6 @@
 namespace net_instaweb {
 
 class HtmlElement;
-class MessageHandler;
 class OutputResource;
 class UrlSegmentEncoder;
 
@@ -124,6 +124,8 @@ class TestCombineFilter : public RewriteFilter {
   TestCombineFilter::TestCombiner combiner_;
   UrlMultipartEncoder encoder_;
 };
+
+}  // namespace
 
 // Test fixture.
 class ResourceCombinerTest : public ResourceManagerTestBase {
@@ -239,7 +241,38 @@ class ResourceCombinerTest : public ResourceManagerTestBase {
 
   bool AddElement(HtmlElement* element, const StringPiece& url,
                   MessageHandler* handler) {
-    return partnership_->AddElement(element, url, handler).value;
+    bool result = AddResource(url, handler);
+    if (result) {
+      partnership_->push_back_element(element);
+    }
+    return result;
+  }
+
+  bool AddResource(const StringPiece& url, MessageHandler* handler) {
+    // See if we have the source loaded, or start loading it.
+    ResourcePtr resource(filter_->CreateInputResource(url));
+    bool ret = false;
+
+    if (resource.get() == NULL) {
+      // Resource is not creatable, and never will be.
+      handler->Message(kInfo, "Cannot combine: null resource");
+      return ret;
+    }
+
+    if (!ReadIfCached(resource)) {
+      // Resource is not cached, but may be soon.
+      handler->Message(kInfo, "Cannot combine: not cached");
+      return ret;
+    }
+
+    if (!resource->HttpStatusOk()) {
+      // Resource is not valid, but may be someday.
+      // TODO(sligocki): Perhaps we should follow redirects.
+      handler->Message(kInfo, "Cannot combine: invalid contents");
+      return ret;
+    }
+
+    return partnership_->AddResourceNoFetch(resource, handler).value;
   }
 
   TestCombineFilter* filter_;  // owned by the rewrite_driver_.
@@ -532,7 +565,5 @@ TEST_F(ResourceCombinerTest, TestMaxUrlOverflow2) {
   VerifyResource(1, kTestPiece1, e2);
   VerifyLengthLimits();
 }
-
-}  // namespace
 
 }  // namespace net_instaweb
