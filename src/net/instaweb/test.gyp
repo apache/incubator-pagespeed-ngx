@@ -63,6 +63,7 @@
         'http/bot_checker_test.cc',
         'http/content_type_test.cc',
         'http/fetcher_test.cc',
+        'http/headers_cookie_util_test.cc',
         'http/http_cache_test.cc',
         'http/http_dump_url_async_writer_test.cc',
         'http/http_dump_url_fetcher_test.cc',
