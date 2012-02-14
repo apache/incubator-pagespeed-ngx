@@ -68,8 +68,8 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
                       MessageHandler* handler) const;
 
   static bool HasDimensions(const ResourceContext& data) {
-    return (data.has_image_tag_dims() &&
-            HasValidDimensions(data.image_tag_dims()));
+    return (data.has_desired_image_dims() &&
+            HasValidDimensions(data.desired_image_dims()));
   }
 
   static bool HasValidDimensions(const ImageDim& dims) {
@@ -77,8 +77,8 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
   }
 
   static bool HasDimension(const ResourceContext& data) {
-    return (data.has_image_tag_dims() &&
-            HasValidDimension(data.image_tag_dims()));
+    return (data.has_desired_image_dims() &&
+            HasValidDimension(data.desired_image_dims()));
   }
 
   static bool HasValidDimension(const ImageDim& dims) {

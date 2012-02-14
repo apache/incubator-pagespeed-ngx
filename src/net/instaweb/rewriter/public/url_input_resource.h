@@ -37,12 +37,7 @@ class UrlInputResource : public Resource {
   UrlInputResource(ResourceManager* resource_manager,
                    const RewriteOptions* options,
                    const ContentType* type,
-                   const StringPiece& url)
-      : Resource(resource_manager, type),
-        url_(url.data(), url.size()),
-        rewrite_options_(options),
-        respect_vary_(rewrite_options_->respect_vary()){
-  }
+                   const StringPiece& url);
   virtual ~UrlInputResource();
 
   virtual bool IsValidAndCacheable() const;

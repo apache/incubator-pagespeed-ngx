@@ -202,8 +202,9 @@ void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
     }
     int64 now_ms = Manager()->timer()->NowMs();
     if (expire_at_ms == kint64max) {
-      // If expire_at_ms is not set, set the cache ttl to kImplicitCacheTtlMs.
-      expire_at_ms = now_ms + ResponseHeaders::kImplicitCacheTtlMs;
+      // If expire_at_ms is not set, set the cache ttl to the implicit ttl value
+      // specified in the response headers.
+      expire_at_ms = now_ms + headers->implicit_cache_ttl_ms();
     } else if (stale_rewrite()) {
       // If we are serving a stale rewrite, set the cache ttl to the minimum of
       // kImplicitCacheTtlMs and the original ttl.

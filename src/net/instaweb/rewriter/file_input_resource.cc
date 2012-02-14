@@ -76,7 +76,7 @@ void FileInputResource::SetDefaultHeaders(const ContentType* content_type,
   // automatically cached for 5 minutes on the sync pathway. We could
   // probably remove it once we kill the sync pathway.
   header->SetDateAndCaching(resource_manager_->timer()->NowMs(),
-                            ResponseHeaders::kImplicitCacheTtlMs);
+                            header->implicit_cache_ttl_ms());
   header->SetLastModified(last_modified_time_sec_ * Timer::kSecondMs);
   header->ComputeCaching();
 }

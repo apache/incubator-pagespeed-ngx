@@ -72,7 +72,7 @@ void ImageUrlEncoder::Encode(const StringVector& urls,
   DCHECK_EQ(1U, urls.size());
   if (data != NULL) {
     if (HasDimension(*data)) {
-      const ImageDim& dims = data->image_tag_dims();
+      const ImageDim& dims = data->desired_image_dims();
       if (dims.has_width()) {
         rewritten_url->append(IntegerToString(dims.width()));
       } else {
@@ -153,7 +153,7 @@ bool ImageUrlEncoder::Decode(const StringPiece& encoded,
   if (encoded.empty()) {
     return false;
   }
-  ImageDim* dims = data->mutable_image_tag_dims();
+  ImageDim* dims = data->mutable_desired_image_dims();
   // Note that "remaining" is shortened from the left as we parse.
   StringPiece remaining(encoded);
   char terminator = remaining[0];

@@ -40,6 +40,7 @@ class HtmlName {
     kXml,  // ?Xml
     kA,
     kAbbr,
+    kAction,
     kAddress,
     kAlt,
     kArea,

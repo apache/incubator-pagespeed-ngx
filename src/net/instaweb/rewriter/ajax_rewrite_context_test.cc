@@ -141,6 +141,7 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
         cache_js_url_("http://www.example.com/cacheable.js"),
         cache_css_url_("http://www.example.com/cacheable.css"),
         nocache_html_url_("http://www.example.com/nocacheable.html"),
+        cache_js_no_max_age_url_("http://www.example.com/cacheablemod.js"),
         bad_url_("http://www.example.com/bad.url"),
         rewritten_jpg_url_(
             "http://www.example.com/cacheable.jpg.pagespeed.ic.0.jpg"),
@@ -170,6 +171,8 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
                 ttl_ms_, "", false);
     AddResponse(nocache_html_url_, kContentTypeHtml, nocache_body_,
                 start_time_ms(), -1, "", false);
+    AddResponse(cache_js_no_max_age_url_, kContentTypeJavascript, cache_body_,
+                start_time_ms(), 0, "", false);
 
     ResponseHeaders bad_headers;
     bad_headers.set_first_line(1, 1, 404, "Not Found");
@@ -207,7 +210,11 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
       response_headers.SetDateAndCaching(now_ms, ttl_ms);
     } else {
       response_headers.SetDate(now_ms);
-      response_headers.Replace(HttpAttributes::kCacheControl, "no-cache");
+      if (ttl_ms < 0) {
+        response_headers.Replace(HttpAttributes::kCacheControl, "no-cache");
+      } else {
+        response_headers.Replace(HttpAttributes::kCacheControl, "public");
+      }
     }
     if (!etag.empty()) {
       response_headers.Add(HttpAttributes::kEtag, etag);
@@ -329,6 +336,7 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
   const GoogleString cache_css_url_;
 
   const GoogleString nocache_html_url_;
+  const GoogleString cache_js_no_max_age_url_;
   const GoogleString bad_url_;
   const GoogleString rewritten_jpg_url_;
 
@@ -684,6 +692,12 @@ TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
   EXPECT_EQ(0, img_filter_->num_rewrites());
   EXPECT_EQ(0, js_filter_->num_rewrites());
   EXPECT_EQ(0, css_filter_->num_rewrites());
+}
+
+TEST_F(AjaxRewriteContextTest, CacheableJsUrlModifiedImplicitCacheTtl) {
+  response_headers_.set_implicit_cache_ttl_ms(500 * Timer::kSecondMs);
+  FetchAndCheckResponse(cache_js_no_max_age_url_, cache_body_, true,
+                        500 * Timer::kSecondMs, NULL, start_time_ms());
 }
 
 TEST_F(AjaxRewriteContextTest, CacheableCssUrlIfCssRewritingDisabled) {

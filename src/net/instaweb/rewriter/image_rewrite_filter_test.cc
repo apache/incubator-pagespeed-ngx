@@ -381,11 +381,37 @@ TEST_P(ImageRewriteTest, ResizeTest) {
   // Make sure we resize images, but don't optimize them in place.
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
-  const char kResizedDims[] = " width=\"256\" height=\"192\"";
   // Without explicit resizing, we leave the image alone.
   TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
                     "", "", false, false);
   // With resizing, we optimize.
+  const char kResizedDims[] = " width=\"256\" height=\"192\"";
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+                    kResizedDims, kResizedDims, true, false);
+}
+
+TEST_P(ImageRewriteTest, ResizeWidthOnly) {
+  // Make sure we resize images, but don't optimize them in place.
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+  // Without explicit resizing, we leave the image alone.
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+                    "", "", false, false);
+  // With resizing, we optimize.
+  const char kResizedDims[] = " width=\"256\"";
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+                    kResizedDims, kResizedDims, true, false);
+}
+
+TEST_P(ImageRewriteTest, ResizeHeightOnly) {
+  // Make sure we resize images, but don't optimize them in place.
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+  // Without explicit resizing, we leave the image alone.
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+                    "", "", false, false);
+  // With resizing, we optimize.
+  const char kResizedDims[] = " height=\"192\"";
   TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
                     kResizedDims, kResizedDims, true, false);
 }

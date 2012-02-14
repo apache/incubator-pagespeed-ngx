@@ -36,6 +36,10 @@ template<class StringCompare> class StringMultiMap {
     Clear();
   }
 
+  bool empty() {
+    return vector_.empty();
+  }
+
   void Clear() {
     for (int i = 0, n = vector_.size(); i < n; ++i) {
       delete vector_[i].second;
@@ -113,6 +117,18 @@ template<class StringCompare> class StringMultiMap {
     }
     values.push_back(value_copy);
     vector_.push_back(StringPair(iter->first.c_str(), value_copy));
+  }
+
+  void CopyFrom(const StringMultiMap& string_multi_map) {
+    Clear();
+    for (int i = 0; i < string_multi_map.num_values(); ++i) {
+      const GoogleString* value = string_multi_map.value(i);
+      if (value != NULL) {
+        Add(string_multi_map.name(i), *value);
+      } else {
+        Add(string_multi_map.name(i), NULL);
+      }
+    }
   }
 
  private:

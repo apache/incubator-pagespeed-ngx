@@ -76,8 +76,8 @@ class CachePutFetch : public SharedAsyncFetch {
         // of just checking for the existence of 2 headers.
         (cache_control == NULL || cache_control == StringPiece("public")) &&
         !headers->Has(HttpAttributes::kExpires)) {
-      // TODO(sligocki): Use ResponseHeaders::kImplicitCacheTtlMs.
-      headers->Add(HttpAttributes::kCacheControl, "max-age=300");
+      headers->Add(HttpAttributes::kCacheControl,
+          "max-age=" + Integer64ToString(headers->implicit_cache_ttl_ms()));
     }
     headers->ComputeCaching();
 

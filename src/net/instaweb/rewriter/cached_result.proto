@@ -180,7 +180,7 @@ message OutputPartitions {
 // Encapsulates all the data needed to rewrite a resource.  Any filter needing
 // additional information should add it as optional fields here.
 message ResourceContext {
-  optional ImageDim image_tag_dims = 1;
+  optional ImageDim desired_image_dims = 1;
   optional bool attempt_webp = 2 [ default = false ];
   optional bool inline_images = 3 [ default = true ];
   optional bool mobile_user_agent = 4 [ default = false ];

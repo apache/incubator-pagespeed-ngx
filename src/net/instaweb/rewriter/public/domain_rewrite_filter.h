@@ -42,7 +42,7 @@ class DomainRewriteFilter : public CommonFilter {
   DomainRewriteFilter(RewriteDriver* rewrite_driver, Statistics* stats);
   ~DomainRewriteFilter();
   static void Initialize(Statistics* statistics);
-  virtual void StartDocumentImpl() {}
+  virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element) {}
 

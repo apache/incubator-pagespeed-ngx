@@ -50,6 +50,7 @@ struct OptionName {
 "ImageRetainColorProfile",              RewriteOptions::kImageRetainColorProfile
 "ImageRetainExifData",                  RewriteOptions::kImageRetainExifData
 "ImageWebpRecompressQuality",           RewriteOptions::kImageWebpRecompressQuality
+"ImplicitCacheTtlMs",                   RewriteOptions::kImplicitCacheTtlMs
 "JpegRecompressionQuality",             RewriteOptions::kImageJpegRecompressionQuality
 "JsInlineMaxBytes",                     RewriteOptions::kJsInlineMaxBytes
 "JsOutlineMinBytes",                    RewriteOptions::kJsOutlineMinBytes
@@ -89,6 +90,7 @@ struct OptionName {
 "SlurpReadOnly",                        RewriteOptions::kSlurpReadOnly
 "Statistics",                           RewriteOptions::kStatisticsEnabled
 "TestProxy",                            RewriteOptions::kTestProxy
+"DomainRewriteAllTags",                 RewriteOptions::kDomainRewriteAllTags
 %%
 
 RewriteOptions::OptionEnum RewriteOptions::LookupOption(

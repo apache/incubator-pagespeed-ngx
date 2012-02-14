@@ -52,8 +52,8 @@ class BlinkFlow {
   static void Initialize(Statistics* statistics);
 
   // Statistics variable names.
-  static const char kNumBackgroundFetchesStarted[];
-  static const char kNumBackgroundFetchesComplete[];
+  static const char kNumSharedJsonFetchesStarted[];
+  static const char kNumSharedJsonFetchesComplete[];
 
  private:
   class JsonFindCallback;
@@ -75,8 +75,6 @@ class BlinkFlow {
   void JsonCacheMiss();
 
   void TriggerProxyFetch(bool layout_found);
-
-  void ComputeJsonInBackground();
 
   void TriggerJsonBackgroundFetch(AsyncFetch* json_fetch, bool* success);
 
@@ -111,12 +109,12 @@ class BlinkFlow {
   RewriteOptions* options_;
   ProxyFetchFactory* factory_;
   ResourceManager* manager_;
+  TimedVariable* num_shared_json_fetches_started_;
   GoogleString json_url_;
   int64 request_start_time_ms_;
   int64 time_to_start_blink_flow_ms_;
   int64 time_to_json_lookup_done_ms_;
   int64 time_to_split_critical_ms_;
-  TimedVariable* num_background_fetches_started_;
 
   DISALLOW_COPY_AND_ASSIGN(BlinkFlow);
 };

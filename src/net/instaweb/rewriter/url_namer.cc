@@ -97,7 +97,7 @@ void UrlNamer::PrepareRequest(const RewriteOptions* rewrite_options,
   } else {
     GoogleUrl gurl(*url);
     if (gurl.is_valid()) {
-      request_headers->Replace(HttpAttributes::kHost, gurl.Host());
+      request_headers->Replace(HttpAttributes::kHost, gurl.HostAndPort());
       const DomainLawyer* domain_lawyer = rewrite_options->domain_lawyer();
       if (domain_lawyer->MapOriginUrl(gurl, url)) {
         *success = true;

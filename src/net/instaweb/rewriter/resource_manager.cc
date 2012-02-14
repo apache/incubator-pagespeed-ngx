@@ -384,6 +384,9 @@ bool ResourceManager::IsImminentlyExpiring(int64 start_date_ms,
   //
   // TODO(jmaessen): Lower threshold when If-Modified-Since checking is in
   // place; consider making this settable.
+  // TODO(pradnya): We will freshen only if ttl is greater than the default
+  // implicit ttl. If the implicit ttl has been overridden by a site, we will
+  // not honor it here. Fix that.
   if (ttl_ms >= ResponseHeaders::kImplicitCacheTtlMs) {
     int64 elapsed_ms = now_ms - start_date_ms;
     if ((elapsed_ms * 100) >= (kRefreshExpirePercent * ttl_ms)) {

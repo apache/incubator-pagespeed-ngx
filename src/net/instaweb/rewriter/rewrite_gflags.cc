@@ -112,6 +112,7 @@ DEFINE_int32(psa_idle_flush_time_ms,
              net_instaweb::RewriteOptions::kDefaultIdleFlushTimeMs,
              "If the input HTML stops coming in for this many ms, a flush"
              " will be injected. Use a value <= 0 to disable.");
+
 DEFINE_string(pagespeed_version, "", "Version number to put into X-Page-Speed "
               "response header.");
 DEFINE_bool(enable_blink, false, "If true then blink is enabled");
@@ -137,6 +138,12 @@ DEFINE_int64(
 DEFINE_bool(lazyload_images_after_onload, false, "Boolean indicating whether "
             "lazyload images should load images when onload is fired. If "
             "false, images are loaded onscroll.");
+
+DEFINE_int64(implicit_cache_ttl_ms,
+             net_instaweb::RewriteOptions::kDefaultImplicitCacheTtlMs,
+             "The number of milliseconds of cache TTL we assign to resources "
+             "that are likely cacheable (e.g. images, js, css, not html) and "
+             "have no explicit cache ttl or expiration date.");
 
 namespace net_instaweb {
 
@@ -258,6 +265,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("lazyload_images_after_onload")) {
     options->set_lazyload_images_after_onload(
         FLAGS_lazyload_images_after_onload);
+  }
+  if (WasExplicitlySet("implicit_cache_ttl_ms")) {
+    options->set_implicit_cache_ttl_ms(FLAGS_implicit_cache_ttl_ms);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

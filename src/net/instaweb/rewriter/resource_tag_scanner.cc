@@ -49,6 +49,11 @@ HtmlElement::Attribute* ResourceTagScanner::ScanElement(HtmlElement* element)
         attr = element->FindAttribute(HtmlName::kHref);
       }
       break;
+    case HtmlName::kForm:
+      if (find_form_tags_) {
+        attr = element->FindAttribute(HtmlName::kAction);
+      }
+      break;
     default:
       break;
   }

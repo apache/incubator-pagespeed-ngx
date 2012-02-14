@@ -87,7 +87,10 @@ class ResponseHeadersTest : public testing::Test {
     EXPECT_EQ(num_header_names, response_headers_.NumAttributeNames());
   }
 
-  bool ComputeImplicitCaching(int status_code, const char* content_type) {
+  bool ComputeImplicitCaching(
+      int status_code, const char* content_type,
+      const GoogleString& max_age_string,
+      const GoogleString& start_time_plus_implicit_ttl_string) {
     GoogleString header_text =
         StringPrintf("HTTP/1.0 %d OK\r\n"
                      "Date: %s\r\n"
@@ -100,12 +103,17 @@ class ResponseHeadersTest : public testing::Test {
       EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kCacheControl));
       EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kExpires));
     } else {
-      EXPECT_STREQ(max_age_300_,
+      EXPECT_STREQ(max_age_string,
                    response_headers_.Lookup1(HttpAttributes::kCacheControl));
-      EXPECT_STREQ(start_time_plus_5_minutes_string_,
+      EXPECT_STREQ(start_time_plus_implicit_ttl_string,
                    response_headers_.Lookup1(HttpAttributes::kExpires));
     }
     return cacheable;
+  }
+
+  bool ComputeImplicitCaching(int status_code, const char* content_type) {
+    return ComputeImplicitCaching(status_code, content_type, max_age_300_,
+                                  start_time_plus_5_minutes_string_);
   }
 
   bool IsHtmlLike(const StringPiece& type) {
@@ -352,6 +360,46 @@ TEST_F(ResponseHeadersTest, TestImplicitCache) {
   EXPECT_FALSE(ComputeImplicitCaching(204, "image/jpeg"));
   EXPECT_FALSE(ComputeImplicitCaching(204, "image/gif"));
   EXPECT_FALSE(ComputeImplicitCaching(204, "image/png"));
+}
+
+// Test that we don't cache an HTML file without explicit caching, but
+// that we do cache images, css, and javascript.
+TEST_F(ResponseHeadersTest, TestModifiedImplicitCache) {
+  GoogleString max_age_500 = "max-age=500";
+  GoogleString start_time_plus_implicit_ttl_string;
+  ConvertTimeToString(MockTimer::kApr_5_2010_ms + 500 * Timer::kSecondMs,
+                      &start_time_plus_implicit_ttl_string);
+  response_headers_.set_implicit_cache_ttl_ms(500 * Timer::kSecondMs);
+
+  EXPECT_FALSE(ComputeImplicitCaching(200, "text/html", max_age_500,
+                                      start_time_plus_implicit_ttl_string));
+  EXPECT_FALSE(ComputeImplicitCaching(200, "unknown", max_age_500,
+                                      start_time_plus_implicit_ttl_string));
+  EXPECT_TRUE(ComputeImplicitCaching(200, "text/javascript", max_age_500,
+                                     start_time_plus_implicit_ttl_string));
+  EXPECT_TRUE(ComputeImplicitCaching(200, "text/css", max_age_500,
+                                     start_time_plus_implicit_ttl_string));
+  EXPECT_TRUE(ComputeImplicitCaching(200, "image/jpeg", max_age_500,
+                                     start_time_plus_implicit_ttl_string));
+  EXPECT_TRUE(ComputeImplicitCaching(200, "image/gif", max_age_500,
+                                     start_time_plus_implicit_ttl_string));
+  EXPECT_TRUE(ComputeImplicitCaching(200, "image/png", max_age_500,
+                                     start_time_plus_implicit_ttl_string));
+
+  EXPECT_FALSE(ComputeImplicitCaching(204, "text/html", max_age_500,
+                                      start_time_plus_implicit_ttl_string));
+  EXPECT_FALSE(ComputeImplicitCaching(204, "unknown", max_age_500,
+                                      start_time_plus_implicit_ttl_string));
+  EXPECT_FALSE(ComputeImplicitCaching(204, "text/javascript", max_age_500,
+                                      start_time_plus_implicit_ttl_string));
+  EXPECT_FALSE(ComputeImplicitCaching(204, "text/css", max_age_500,
+                                      start_time_plus_implicit_ttl_string));
+  EXPECT_FALSE(ComputeImplicitCaching(204, "image/jpeg", max_age_500,
+                                      start_time_plus_implicit_ttl_string));
+  EXPECT_FALSE(ComputeImplicitCaching(204, "image/gif", max_age_500,
+                                      start_time_plus_implicit_ttl_string));
+  EXPECT_FALSE(ComputeImplicitCaching(204, "image/png", max_age_500,
+                                      start_time_plus_implicit_ttl_string));
 }
 
 TEST_F(ResponseHeadersTest, TestSetCookieCacheabilityForHtml) {
@@ -1041,7 +1089,7 @@ TEST_F(ResponseHeadersTest, TestSetCacheControlMaxAge) {
   response_headers_.Add(HttpAttributes::kCacheControl, "max-age=0, no-cache");
   response_headers_.ComputeCaching();
 
-  response_headers_.SetCacheControlMaxAge(300000);
+  response_headers_.SetCacheControlMaxAge(300 * Timer::kSecondMs);
 
   const GoogleString expected_headers = StrCat(
       "HTTP/1.0 200 OK\r\n"
@@ -1054,7 +1102,7 @@ TEST_F(ResponseHeadersTest, TestSetCacheControlMaxAge) {
   response_headers_.RemoveAll(HttpAttributes::kCacheControl);
   response_headers_.ComputeCaching();
 
-  response_headers_.SetCacheControlMaxAge(360000);
+  response_headers_.SetCacheControlMaxAge(360 * Timer::kSecondMs);
   GoogleString expected_headers2 = StrCat(
       "HTTP/1.0 200 OK\r\n"
       "Date: ", start_time_string_, "\r\n"
@@ -1068,7 +1116,7 @@ TEST_F(ResponseHeadersTest, TestSetCacheControlMaxAge) {
                         "max-age=10,private,no-cache,max-age=20,max-age=30");
   response_headers_.ComputeCaching();
 
-  response_headers_.SetCacheControlMaxAge(360000);
+  response_headers_.SetCacheControlMaxAge(360 * Timer::kSecondMs);
   GoogleString expected_headers3 = StrCat(
       "HTTP/1.0 200 OK\r\n"
       "Date: ", start_time_string_, "\r\n"

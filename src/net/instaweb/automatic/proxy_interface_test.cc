@@ -307,7 +307,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   }
 
   RewriteOptions* GetCustomOptions(const StringPiece& url,
-                                   const RequestHeaders& request_headers,
+                                   RequestHeaders* request_headers,
                                    RewriteOptions* domain_options) {
     // The default url_namer does not yield any name-derived options, and we
     // have not specified any URL params or request-headers, so there will be
@@ -316,7 +316,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     RewriteOptions* copy_options = domain_options != NULL ?
         domain_options->Clone() : NULL;
     ProxyInterface::OptionsBoolPair options_success =
-        proxy_interface_->GetCustomOptions(gurl, request_headers,
+        proxy_interface_->GetCustomOptions(&gurl, request_headers,
                                            copy_options, message_handler());
     EXPECT_TRUE(options_success.second);
     return options_success.first;
@@ -638,6 +638,64 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
   EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
+}
+
+TEST_F(ProxyInterfaceTest, ModifiedImplicitCachingHeadersForCss) {
+  RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_implicit_cache_ttl_ms(500 * Timer::kSecondMs);
+  resource_manager()->ComputeSignature(options);
+
+  ResponseHeaders headers;
+  const char kContent[] = "A very compelling article";
+  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  // Do not call ComputeCaching before calling SetFetchResponse because it will
+  // add an explicit max-age=300 cache control header. We do not want that
+  // header in this test.
+  SetFetchResponse(AbsolutifyUrl("text.css"), headers, kContent);
+
+  // The first response served by the fetcher has caching headers.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.css", true, &text, &response_headers);
+
+  GoogleString max_age_500 = "max-age=500";
+  GoogleString start_time_plus_500s_string;
+  ConvertTimeToString(MockTimer::kApr_5_2010_ms + 500 * Timer::kSecondMs,
+                      &start_time_plus_500s_string);
+
+  EXPECT_STREQ(max_age_500,
+               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_500s_string,
+               response_headers.Lookup1(HttpAttributes::kExpires));
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_EQ(kContent, text);
+  // One lookup for ajax metadata, one for the HTTP response and one by the css
+  // filter which looks up metadata while rewriting. None are found.
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+
+  ClearStats();
+  // Fetch again from cache. It has the same caching headers.
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.css", true, &text, &response_headers);
+
+  EXPECT_STREQ(max_age_500,
+               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_500s_string,
+               response_headers.Lookup1(HttpAttributes::kExpires));
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_EQ(kContent, text);
+  // One hit for ajax metadata and one for the HTTP response.
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, EtagsAddedWhenAbsent) {
@@ -1126,14 +1184,14 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithNoUrlNamerOptions) {
   // no custom options, and no errors.
   RequestHeaders request_headers;
   scoped_ptr<RewriteOptions> options(
-      GetCustomOptions("http://example.com/", request_headers, NULL));
+      GetCustomOptions("http://example.com/", &request_headers, NULL));
   ASSERT_TRUE(options.get() == NULL);
 
   // Now put a query-param in, just turning on PageSpeed.  The core filters
   // should be enabled.
   options.reset(GetCustomOptions(
       "http://example.com/?ModPagespeed=on",
-      request_headers, NULL));
+      &request_headers, NULL));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
   CheckExtendCache(options.get(), true);
@@ -1143,7 +1201,7 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithNoUrlNamerOptions) {
   // Now explicitly enable a filter, which should disable others.
   options.reset(GetCustomOptions(
       "http://example.com/?ModPagespeedFilters=extend_cache",
-      request_headers, NULL));
+      &request_headers, NULL));
   ASSERT_TRUE(options.get() != NULL);
   CheckExtendCache(options.get(), true);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
@@ -1154,14 +1212,14 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithNoUrlNamerOptions) {
   request_headers.Add("ModPagespeed", "off");
   options.reset(GetCustomOptions(
       "http://example.com/?ModPagespeed=on",
-      request_headers, NULL));
+      &request_headers, NULL));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_FALSE(options->enabled());
 
   // Now explicitly enable a bogus filter, which should will cause the
   // options to be uncomputable.
   GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
-  EXPECT_FALSE(proxy_interface_->GetCustomOptions(gurl, request_headers, NULL,
+  EXPECT_FALSE(proxy_interface_->GetCustomOptions(&gurl, &request_headers, NULL,
                                                   message_handler()).second);
 }
 
@@ -1172,7 +1230,8 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
 
   RequestHeaders request_headers;
   scoped_ptr<RewriteOptions> options(
-      GetCustomOptions("http://example.com/", request_headers, &namer_options));
+      GetCustomOptions("http://example.com/", &request_headers,
+                       &namer_options));
   // Even with no query-params or request-headers, we get the custom
   // options as domain options provided as argument.
   ASSERT_TRUE(options.get() != NULL);
@@ -1184,7 +1243,7 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
   // Now combine with query params, which turns core-filters on.
   options.reset(GetCustomOptions(
       "http://example.com/?ModPagespeed=on",
-      request_headers, &namer_options));
+      &request_headers, &namer_options));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
   CheckExtendCache(options.get(), true);
@@ -1197,7 +1256,7 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
   // the options provided as a parameter.
   options.reset(GetCustomOptions(
       "http://example.com/?ModPagespeedFilters=combine_css",
-      request_headers, &namer_options));
+      &request_headers, &namer_options));
   ASSERT_TRUE(options.get() != NULL);
   EXPECT_TRUE(options->enabled());
   CheckExtendCache(options.get(), false);
@@ -1207,7 +1266,7 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
   // Now explicitly enable a bogus filter, which should will cause the
   // options to be uncomputable.
   GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
-  EXPECT_FALSE(proxy_interface_->GetCustomOptions(gurl, request_headers,
+  EXPECT_FALSE(proxy_interface_->GetCustomOptions(&gurl, &request_headers,
                                                   (&namer_options)->Clone(),
                                                   message_handler()).second);
 }
@@ -1287,7 +1346,7 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnProxy) {
   ResponseHeaders resource_headers;
   DefaultResponseHeaders(kContentTypeCss, kHtmlCacheTimeSec, &resource_headers);
   resource_headers.SetDateAndCaching(http_cache()->timer()->NowMs(),
-                                     300000, ", private");
+                                     300 * Timer::kSecondMs, ", private");
   resource_headers.ComputeCaching();
   SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "a");
 
@@ -1342,7 +1401,7 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
   ResponseHeaders resource_headers;
   DefaultResponseHeaders(kContentTypeCss, kHtmlCacheTimeSec, &resource_headers);
   resource_headers.SetDateAndCaching(http_cache()->timer()->NowMs(),
-                                     300000, ", private");
+                                     300 * Timer::kSecondMs, ", private");
   resource_headers.ComputeCaching();
   SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "a");
 
@@ -1587,7 +1646,7 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnProxy) {
   DefaultResponseHeaders(kContentTypeCss, 100, &orig_headers);
   orig_headers.Add(HttpAttributes::kSetCookie, "tasty");
   orig_headers.SetDateAndCaching(http_cache()->timer()->NowMs(),
-                                 400000, ", private");
+                                 400 * Timer::kSecondMs, ", private");
   orig_headers.ComputeCaching();
   SetFetchResponse("http://test.com/file.css", orig_headers, kText);
 
@@ -1626,7 +1685,7 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnFetch) {
   DefaultResponseHeaders(kContentTypeCss, 100, &orig_headers);
   orig_headers.Add(HttpAttributes::kSetCookie, "tasty");
   orig_headers.SetDateAndCaching(http_cache()->timer()->NowMs(),
-                                 400000, ", private");
+                                 400 * Timer::kSecondMs, ", private");
   orig_headers.ComputeCaching();
   SetFetchResponse("http://test.com/file.css", orig_headers, kText);
 
@@ -1662,7 +1721,7 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnFetch2) {
   DefaultResponseHeaders(kContentTypeCss, 100, &orig_headers);
   orig_headers.Add(HttpAttributes::kSetCookie, "tasty");
   orig_headers.SetDateAndCaching(http_cache()->timer()->NowMs(),
-                                 400000, ", private");
+                                 400 * Timer::kSecondMs, ", private");
   orig_headers.ComputeCaching();
   SetFetchResponse("http://test.com/file.css", orig_headers, kText);
 

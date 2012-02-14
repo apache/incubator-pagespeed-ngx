@@ -28,7 +28,8 @@ class HtmlParse;
 class ResourceTagScanner {
  public:
   explicit ResourceTagScanner(HtmlParse* html_parse)
-      : find_a_tags_(false) {
+      : find_a_tags_(false),
+        find_form_tags_(false) {
   }
 
   // Examines an HTML element to determine if it's a link to any sort
@@ -40,9 +41,11 @@ class ResourceTagScanner {
   HtmlElement::Attribute* ScanElement(HtmlElement* element) const;
 
   void set_find_a_tags(bool val) { find_a_tags_ = val; }
+  void set_find_form_tags(bool val) { find_form_tags_ = val; }
 
  private:
   bool find_a_tags_;
+  bool find_form_tags_;
   DISALLOW_COPY_AND_ASSIGN(ResourceTagScanner);
 };
 

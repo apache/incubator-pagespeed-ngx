@@ -192,18 +192,13 @@ void ImageRewriteFilter::StartDocumentImpl() {
   image_counter_ = 0;
 }
 
-RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
-      RewriteContext* rewrite_context, const ResourcePtr& input_resource,
-      const OutputResourcePtr& result) {
-  MessageHandler* message_handler = driver_->message_handler();
-  StringVector urls;
-  ResourceContext context;
-  if (!encoder_.Decode(result->name(), &urls, &context, message_handler)) {
-    return kRewriteFailed;
-  }
+namespace {
 
-  const RewriteOptions* options = driver_->options();
-
+// Allocate and initialize CompressionOptions object based on RewriteOptions and
+// ResourceContext.
+Image::CompressionOptions* ImageOptionsForLoadedResource(
+    const ResourceContext& context, const RewriteOptions* options,
+    const ResourcePtr& input_resource) {
   Image::CompressionOptions* image_options = new Image::CompressionOptions();
   image_options->webp_preferred = context.attempt_webp();
   image_options->jpeg_quality = options->image_jpeg_recompress_quality();
@@ -217,6 +212,96 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   image_options->retain_exif_data = options->image_retain_exif_data();
   image_options->jpeg_num_progressive_scans =
       options->image_jpeg_num_progressive_scans();
+  return image_options;
+}
+
+// Resize image if necessary, returning true if this resizing succeeds and false
+// if it's unnecessary or fails.
+bool ResizeImageIfNecessary(
+    const RewriteContext* rewrite_context, const GoogleString& url,
+    RewriteDriver* driver, ResourceContext* context,
+    Image* image, CachedResult* cached) {
+  const RewriteOptions* options = driver->options();
+  bool resized = false;
+  // Begin by resizing the image if necessary
+  ImageDim image_dim;
+  image->Dimensions(&image_dim);
+  // Here we are computing the size of the image as described by the html on the
+  // page. If we succeed in doing so, that will be the desired image size.
+  // Otherwise we may fill in desired_image_dims later based on actual image
+  // size.
+  ImageDim* desired_dim = context->mutable_desired_image_dims();
+  const ImageDim* post_resize_dim = &image_dim;
+  if (options->Enabled(RewriteOptions::kResizeImages) &&
+      ImageUrlEncoder::HasValidDimension(*desired_dim) &&
+      ImageUrlEncoder::HasValidDimensions(image_dim)) {
+    // Fill in a missing page height
+    if (!desired_dim->has_width()) {
+      // multiply page_height * (image_width / image_height),
+      // but to avoid fractions we instead group as
+      // (page_height * image_width) / image_height and do the
+      // math in int64 to avoid overflow in the numerator.
+      // Note that we can fiddle with rounding by adding factors
+      // of image_height to the numerator before we divide.
+      int64 page_height = desired_dim->height();
+      int64 page_width =
+          (page_height * image_dim.width()) / image_dim.height();
+      desired_dim->set_width(static_cast<int32>(page_width));
+    } else if (!desired_dim->has_height()) {
+      // Math as above, swapping width and height.
+      int64 page_width = desired_dim->width();
+      int64 page_height =
+          (page_width * image_dim.height()) / image_dim.width();
+      desired_dim->set_height(static_cast<int32>(page_height));
+    }
+    // Fill in a missing page width
+    int64 page_area =
+        static_cast<int64>(desired_dim->width()) * desired_dim->height();
+    int64 image_area =
+        static_cast<int64>(image_dim.width()) * image_dim.height();
+    if (page_area * 100 <
+        image_area * options->image_limit_resize_area_percent()) {
+      const char* message;  // Informational message for logging only.
+      if (image->ResizeTo(*desired_dim)) {
+        post_resize_dim = desired_dim;
+        message = "Resized";
+        resized = true;
+      } else {
+        message = "Couldn't resize";
+      }
+      driver->InfoAt(rewrite_context, "%s image `%s' from %dx%d to %dx%d",
+                     message, url.c_str(),
+                     image_dim.width(), image_dim.height(),
+                     desired_dim->width(), desired_dim->height());
+    }
+  }
+
+  // Cache image dimensions, including any resizing we did.
+  // This happens regardless of whether we rewrite the image contents.
+  if (ImageUrlEncoder::HasValidDimensions(*post_resize_dim)) {
+    ImageDim* dims = cached->mutable_image_file_dims();
+    dims->set_width(post_resize_dim->width());
+    dims->set_height(post_resize_dim->height());
+  }
+  return resized;
+}
+
+}  // namespace
+
+RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
+      RewriteContext* rewrite_context, const ResourcePtr& input_resource,
+      const OutputResourcePtr& result) {
+  MessageHandler* message_handler = driver_->message_handler();
+  StringVector urls;
+  ResourceContext context;
+  if (!encoder_.Decode(result->name(), &urls, &context, message_handler)) {
+    return kRewriteFailed;
+  }
+
+  const RewriteOptions* options = driver_->options();
+
+  Image::CompressionOptions* image_options =
+      ImageOptionsForLoadedResource(context, options, input_resource);
 
   scoped_ptr<Image> image(
       NewImage(input_resource->contents(), input_resource->url(),
@@ -233,48 +318,13 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   // We used to reject beacon images based on their size (1x1 or less) here, but
   // now rely on caching headers instead as this was missing a lot of padding
   // images that were ripe for inlining.
-
   RewriteResult rewrite_result = kTooBusy;
   if (work_bound_->TryToWork()) {
     rewrite_result = kRewriteFailed;
-    bool resized = false;
-    // Begin by resizing the image if necessary
-    ImageDim image_dim;
-    image->Dimensions(&image_dim);
-    const ImageDim& page_dim = context.image_tag_dims();
-    const ImageDim* post_resize_dim = &image_dim;
-    if (options->Enabled(RewriteOptions::kResizeImages) &&
-        ImageUrlEncoder::HasValidDimensions(page_dim) &&
-        ImageUrlEncoder::HasValidDimensions(image_dim)) {
-      int64 page_area =
-          static_cast<int64>(page_dim.width()) * page_dim.height();
-      int64 image_area =
-          static_cast<int64>(image_dim.width()) * image_dim.height();
-      if (page_area * 100 <
-          image_area * options->image_limit_resize_area_percent()) {
-        const char* message;  // Informational message for logging only.
-        if (image->ResizeTo(page_dim)) {
-          post_resize_dim = &page_dim;
-          message = "Resized";
-          resized = true;
-        } else {
-          message = "Couldn't resize";
-        }
-        driver_->InfoAt(rewrite_context, "%s image `%s' from %dx%d to %dx%d",
-                        message, input_resource->url().c_str(),
-                        image_dim.width(), image_dim.height(),
-                        page_dim.width(), page_dim.height());
-      }
-    }
-
-    // Cache image dimensions, including any resizing we did.
-    // This happens regardless of whether we rewrite the image contents.
     CachedResult* cached = result->EnsureCachedResultCreated();
-    if (ImageUrlEncoder::HasValidDimensions(*post_resize_dim)) {
-      ImageDim* dims = cached->mutable_image_file_dims();
-      dims->set_width(post_resize_dim->width());
-      dims->set_height(post_resize_dim->height());
-    }
+    bool resized =
+        ResizeImageIfNecessary(rewrite_context, input_resource->url(),
+                               driver_, &context, image.get(), cached);
 
     // Now re-compress the (possibly resized) image, and decide if it's
     // saved us anything.
@@ -429,7 +479,7 @@ void ImageRewriteFilter::SaveIfInlinable(const StringPiece& contents,
                                          CachedResult* cached) {
   // We retain inlining information if the image size is >= the largest possible
   // inlining threshold, as an image might be used in both html and css and we
-  // may see it first from the one with a smaller threshold.  Note that this can
+  // may see it first from the one with a smaller threshold. Note that this can
   // cause us to save inline information for an image that won't ever actually
   // be inlined (because it's too big to inline in html, say, and doesn't occur
   // in css).
@@ -457,28 +507,23 @@ const ContentType* ImageRewriteFilter::ImageToContentType(
 void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
                                               HtmlElement::Attribute* src) {
   scoped_ptr<ResourceContext> resource_context(new ResourceContext);
-  int width, height;
   const RewriteOptions* options = driver_->options();
 
-  if (options->Enabled(RewriteOptions::kResizeImages) &&
-      GetDimensions(element, &width, &height)) {
-    // Specific image size is called for.  Rewrite to that size.
-    ImageDim* page_dim = resource_context->mutable_image_tag_dims();
-    page_dim->set_width(width);
-    page_dim->set_height(height);
+  if (options->Enabled(RewriteOptions::kResizeImages)) {
+    GetDimensions(element, resource_context->mutable_desired_image_dims());
   }
   StringPiece url(src->value());
   if (options->Enabled(RewriteOptions::kConvertJpegToWebp) &&
       driver_->UserAgentSupportsWebp() &&
       !url.ends_with(".png") && !url.ends_with(".gif")) {
-    // Note that we guess content type based on extension above.  This avoids
+    // Note that we guess content type based on extension above. This avoids
     // the common case where we rewrite a .png twice, once for webp capable
     // browsers and once for non-webp browsers, even though neither rewrite uses
-    // webp code paths at all.  We only consider webp as a candidate image
+    // webp code paths at all. We only consider webp as a candidate image
     // format if we might have a jpg.
     // TODO(jmaessen): if we instead set up the ResourceContext mapping
     // explicitly from within the filter, we can imagine doing so after we know
-    // the content type of the image.  But that involves throwing away quite a
+    // the content type of the image. But that involves throwing away quite a
     // bit of the plumbing that is otherwise provided for us by
     // SingleRewriteContext.
     resource_context->set_attempt_webp(true);
@@ -528,7 +573,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   bool image_inlined = false;
 
   // See if we have a data URL, and if so use it if the browser can handle it
-  // TODO(jmaessen): get rid of a string copy here.  Tricky because ->SetValue()
+  // TODO(jmaessen): get rid of a string copy here. Tricky because ->SetValue()
   // copies implicitly.
   GoogleString data_url;
   if (driver_->UserAgentSupportsImageInlining() &&
@@ -536,11 +581,11 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
                 cached, &data_url)) {
     src->SetValue(data_url);
     if (cached->has_image_file_dims() &&
-        (!resource_context->has_image_tag_dims() ||
+        (!resource_context->has_desired_image_dims() ||
          ((cached->image_file_dims().width() ==
-           resource_context->image_tag_dims().width()) &&
+           resource_context->desired_image_dims().width()) &&
           (cached->image_file_dims().height() ==
-           resource_context->image_tag_dims().height())))) {
+           resource_context->desired_image_dims().height())))) {
       // Delete dimensions, as they they match the given inline image data.
       element->DeleteAttribute(HtmlName::kWidth);
       element->DeleteAttribute(HtmlName::kHeight);
@@ -560,12 +605,12 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
         !HasAnyDimensions(element) &&
         cached->has_image_file_dims() &&
         ImageUrlEncoder::HasValidDimensions(cached->image_file_dims())) {
-      // Add image dimensions.  We don't bother if even a single image
+      // Add image dimensions. We don't bother if even a single image
       // dimension is already specified---even though we don't resize in that
       // case, either, because we might be off by a pixel in the other
-      // dimension from the size chosen by the browser.  We also don't bother
+      // dimension from the size chosen by the browser. We also don't bother
       // to resize if either dimension is specified with units (px, em, %)
-      // rather than as absolute pixels.  But note that we DO attempt to
+      // rather than as absolute pixels. But note that we DO attempt to
       // include image dimensions even if we otherwise choose not to optimize
       // an image.
       const ImageDim& file_dims = cached->image_file_dims();
@@ -610,31 +655,58 @@ bool ImageRewriteFilter::HasAnyDimensions(HtmlElement* element) {
   return extractor.HasAnyDimensions();
 }
 
-bool ImageRewriteFilter::GetDimensions(HtmlElement* element,
-                                       int* width, int* height) {
+namespace {
+
+// If the element has a width attribute, set it in page_dim.
+void SetWidthFromAttribute(const HtmlElement* element, ImageDim* page_dim) {
+  int32 width;
+  if (element->IntAttributeValue(HtmlName::kWidth, &width)) {
+    page_dim->set_width(width);
+  }
+}
+
+// If the element has a height attribute, set it in page_dim.
+void SetHeightFromAttribute(const HtmlElement* element, ImageDim* page_dim) {
+  int32 height;
+  if (element->IntAttributeValue(HtmlName::kHeight, &height)) {
+    page_dim->set_height(height);
+  }
+}
+
+}  // namespace
+
+void ImageRewriteFilter::GetDimensions(HtmlElement* element,
+                                       ImageDim* page_dim) {
   css_util::StyleExtractor extractor(element);
   css_util::DimensionState state = extractor.state();
-  *width = extractor.width();
-  *height = extractor.height();
+  int32 width = extractor.width();
+  int32 height = extractor.height();
   // If we didn't get a height dimension above, but there is a height
   // value in the style attribute, that means there's a height value
-  // we can't process.  This height will tromp the height attribute in the
+  // we can't process. This height will trump the height attribute in the
   // image tag, so we need to avoid resizing.
   // The same is true of width.
   switch (state) {
-    case css_util::kHasBothDimensions:
-      return true;
     case css_util::kNotParsable:
-      return false;
+      break;
+    case css_util::kHasBothDimensions:
+      page_dim->set_width(width);
+      page_dim->set_height(height);
+      break;
     case css_util::kHasHeightOnly:
-      return element->IntAttributeValue(HtmlName::kWidth, width);
+      page_dim->set_height(height);
+      SetWidthFromAttribute(element, page_dim);
+      break;
     case css_util::kHasWidthOnly:
-      return element->IntAttributeValue(HtmlName::kHeight, height);
+      page_dim->set_width(width);
+      SetHeightFromAttribute(element, page_dim);
+      break;
     case css_util::kNoDimensions:
-      return (element->IntAttributeValue(HtmlName::kWidth, width) &&
-              element->IntAttributeValue(HtmlName::kHeight, height));
+      SetWidthFromAttribute(element, page_dim);
+      SetHeightFromAttribute(element, page_dim);
+      break;
     default:
-      return false;
+      break;
   }
 }
 
@@ -676,7 +748,8 @@ const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {
 RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
   return new Context(0 /*No CSS inlining, it's html */,
                      this, driver_, NULL /*not nested */,
-                     new ResourceContext(), false /*not css */, kNotCriticalIndex);
+                     new ResourceContext(), false /*not css */,
+                     kNotCriticalIndex);
 }
 
 RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(

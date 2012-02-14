@@ -401,14 +401,13 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   // TODO(sligocki): Move inside PSA.
   {
-    QueryParams query_params;
-    if (request->parsed_uri.query != NULL) {
-      query_params.Parse(request->parsed_uri.query);
-    }
+    // TODO(mmohabey): Add a hook which strips off the ModPagespeed* query
+    // params before content generation.
+    GoogleUrl gurl(absolute_url);
     RequestHeaders request_headers;
     ApacheRequestToRequestHeaders(*request, &request_headers);
     ApacheConfig query_options("query");
-    switch (RewriteQuery::Scan(query_params, request_headers, &query_options,
+    switch (RewriteQuery::Scan(&gurl, &request_headers, &query_options,
                                manager->message_handler())) {
       case RewriteQuery::kInvalid:
         return NULL;

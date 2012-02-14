@@ -126,6 +126,7 @@ class RewriteOptions {
     kImageRetainColorProfile,
     kImageRetainExifData,
     kImageWebpRecompressQuality,
+    kImplicitCacheTtlMs,
     kJsInlineMaxBytes,
     kJsOutlineMinBytes,
     kLazyloadImagesAfterOnload,
@@ -166,6 +167,7 @@ class RewriteOptions {
     kUseSharedMemLocking,
 
     // This is always the last option.
+    kDomainRewriteAllTags,
     kEndOfOptions
   };
 
@@ -232,6 +234,7 @@ class RewriteOptions {
   static const int64 kDefaultMinResourceCacheTimeToRewriteMs;
   static const int64 kDefaultCacheInvalidationTimestamp;
   static const int64 kDefaultIdleFlushTimeMs;
+  static const int64 kDefaultImplicitCacheTtlMs;
   static const GoogleString kDefaultBeaconUrl;
   static const int kDefaultImageJpegRecompressQuality;
   static const int kDefaultImageLimitOptimizedPercent;
@@ -605,6 +608,13 @@ class RewriteOptions {
     set_option(x, &image_webp_recompress_quality_);
   }
 
+  bool domain_rewrite_all_tags() const {
+    return domain_rewrite_all_tags_.value();
+  }
+  void set_domain_rewrite_all_tags(bool x) {
+    set_option(x, &domain_rewrite_all_tags_);
+  }
+
   // Takes ownership of the config.
   void set_panel_config(PublisherConfig* panel_config);
   const PublisherConfig* panel_config() const;
@@ -621,6 +631,13 @@ class RewriteOptions {
   }
   int furious_percent() const {
     return furious_percent_.value();
+  }
+
+  void set_implicit_cache_ttl_ms(int64 x) {
+    set_option(x, &implicit_cache_ttl_ms_);
+  }
+  int64 implicit_cache_ttl_ms() const {
+    return implicit_cache_ttl_ms_.value();
   }
 
   // Merge src into 'this'.  Generally, options that are explicitly
@@ -1057,6 +1074,9 @@ class RewriteOptions {
   // may want to load images when the onload event is fired instead. If set to
   // true, images are loaded when onload is fired.
   Option<bool> lazyload_images_after_onload_;
+  // Indicates whether the DomainRewriteFilter should rewrite all tags,
+  // including <a href> and <form action>.
+  Option<bool> domain_rewrite_all_tags_;
 
   // Furious is the A/B experiment framework that uses cookies
   // and Google Analytics to track page speed statistics with
@@ -1075,6 +1095,11 @@ class RewriteOptions {
   // The maximum time beyond expiry for which a metadata cache entry may be
   // used.
   Option<int64> metadata_cache_staleness_threshold_ms_;
+
+  // The number of milliseconds of cache TTL we assign to resources that
+  // are "likely cacheable" (e.g. images, js, css, not html) and have no
+  // explicit cache ttl or expiration date.
+  Option<int64> implicit_cache_ttl_ms_;
 
   scoped_ptr<PublisherConfig> panel_config_;
 

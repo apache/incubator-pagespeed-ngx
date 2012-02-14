@@ -135,6 +135,10 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   void set_status_code(const int code);
   const char* reason_phrase() const;
   void set_reason_phrase(const StringPiece& reason_phrase);
+  int64 implicit_cache_ttl_ms() const { return implicit_cache_ttl_ms_; }
+  void set_implicit_cache_ttl_ms(const int64 ttl) {
+    implicit_cache_ttl_ms_ = ttl;
+  }
 
   int64 last_modified_time_ms() const;
   int64 date_ms() const;  // Timestamp from Date header.
@@ -225,6 +229,10 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
 
   friend class ResponseHeadersTest;
   bool cache_fields_dirty_;
+
+  // The number of milliseconds of cache TTL we assign to resources that are
+  // likely cacheable and have no explicit cache ttl or expiration date.
+  int64 implicit_cache_ttl_ms_;
 
   DISALLOW_COPY_AND_ASSIGN(ResponseHeaders);
 };

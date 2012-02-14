@@ -54,6 +54,10 @@ class ResourceTagScannerTest : public HtmlParseTestBase {
       }
     }
 
+    ResourceTagScanner* resource_tag_scanner() {
+      return &resource_tag_scanner_;
+    }
+
     virtual const char* Name() const { return "ResourceCollector"; }
 
    private:
@@ -81,6 +85,8 @@ TEST_F(ResourceTagScannerTest, FindTags) {
       "<link rel=stylesheet type=text/css href=id.css id=id>\n"
       "<link rel=stylesheet href=no_type.style>\n"
       "<link rel=stylesheet type=text/css href=media.css media=print>"
+      "<a href=\"link\"/>"
+      "<form action=\"blank\"/>"
       "<link rel=StyleSheet href='case.css'>");
   ASSERT_EQ(static_cast<size_t>(8), resources.size());
   EXPECT_EQ(GoogleString("myscript.js"), resources[0]);
@@ -91,6 +97,32 @@ TEST_F(ResourceTagScannerTest, FindTags) {
   EXPECT_EQ(GoogleString("no_type.style"), resources[5]);
   EXPECT_EQ(GoogleString("media.css"), resources[6]);
   EXPECT_EQ(GoogleString("case.css"), resources[7]);
+}
+
+TEST_F(ResourceTagScannerTest, FindATags) {
+  StringVector resources;
+  ResourceCollector collector(&html_parse_, &resources);
+  collector.resource_tag_scanner()->set_find_a_tags(true);
+  html_parse_.AddFilter(&collector);
+  ValidateNoChanges(
+      "simple_script",
+      "<a href=\"link\"/>"
+      "<form action=\"blank\"/>");
+  ASSERT_EQ(static_cast<size_t>(1), resources.size());
+  EXPECT_EQ(GoogleString("link"), resources[0]);
+}
+
+TEST_F(ResourceTagScannerTest, FindFormATags) {
+  StringVector resources;
+  ResourceCollector collector(&html_parse_, &resources);
+  collector.resource_tag_scanner()->set_find_form_tags(true);
+  html_parse_.AddFilter(&collector);
+  ValidateNoChanges(
+      "simple_script",
+      "<a href=\"link\"/>"
+      "<form action=\"blank\"/>");
+  ASSERT_EQ(static_cast<size_t>(1), resources.size());
+  EXPECT_EQ(GoogleString("blank"), resources[0]);
 }
 
 }  // namespace net_instaweb

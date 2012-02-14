@@ -411,7 +411,7 @@ class RewriteContext {
 
   // Fixes the headers resulting from a fetch fallback. This is called when a
   // fetch fallback is found in cache. The default implementation strips cookies
-  // and sets the cache ttl to ResponseHeaders::kImplicitCacheTtlMs.
+  // and sets the cache ttl to the implicit cache ttl ms.
   virtual void FixFetchFallbackHeaders(ResponseHeaders* headers);
 
   // Callback once the fetch is done. This calls Driver()->FetchComplete() if

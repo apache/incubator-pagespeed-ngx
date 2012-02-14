@@ -1777,7 +1777,8 @@ void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
   }
 }
 
-void RewriteDriver::InfoAt(RewriteContext* context, const char* msg, ...) {
+void RewriteDriver::InfoAt(const RewriteContext* context,
+                           const char* msg, ...) {
   va_list args;
   va_start(args, msg);
 

@@ -525,17 +525,16 @@ bool ImageImpl::EnsureLoaded(bool output_useful) {
         opencv_load_possible_ = LoadOpenCvFromBuffer(image_data_source);
       }
     }
-    if (opencv_load_possible_) {
+    if (opencv_load_possible_ && ImageUrlEncoder::HasValidDimensions(dims_)) {
       // A bit of belt and suspenders dimension checking.  We used to do this
       // for every image we loaded, but now we only do it when we're already
       // paying the cost of OpenCV image conversion.
-      bool has_dims = ImageUrlEncoder::HasValidDimensions(dims_);
-      if (has_dims && (dims_.width() != opencv_image_->width)) {
+      if (dims_.width() != opencv_image_->width) {
         handler_->Error(url_.c_str(), 0,
                         "Computed width %d doesn't match OpenCV %d",
                         dims_.width(), opencv_image_->width);
       }
-      if (has_dims && (dims_.height() != opencv_image_->height)) {
+      if (dims_.height() != opencv_image_->height) {
         handler_->Error(url_.c_str(), 0,
                         "Computed height %d doesn't match OpenCV %d",
                         dims_.height(), opencv_image_->height);

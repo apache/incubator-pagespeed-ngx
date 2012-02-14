@@ -38,6 +38,7 @@ namespace net_instaweb {
 class CachedResult;
 class CssResourceSlot;
 class ContentType;
+class ImageDim;
 class ImageTagScanner;
 class ResourceContext;
 class RewriteContext;
@@ -123,7 +124,7 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Populates width and height with the attributes specified in the
   // image tag (including in an inline style attribute).
-  bool GetDimensions(HtmlElement* element, int* width, int* height);
+  void GetDimensions(HtmlElement* element, ImageDim* page_dim);
 
   // Returns true if there is either a width or height attribute specified,
   // even if they're not parsable.

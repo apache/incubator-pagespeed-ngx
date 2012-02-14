@@ -48,7 +48,8 @@ class MessageHandler;
 
 const int64 ResponseHeaders::kImplicitCacheTtlMs;
 
-ResponseHeaders::ResponseHeaders() {
+ResponseHeaders::ResponseHeaders()
+    : implicit_cache_ttl_ms_(kImplicitCacheTtlMs) {
   proto_.reset(new HttpResponseHeaders);
   Clear();
 }
@@ -513,10 +514,9 @@ void ResponseHeaders::ComputeCaching() {
     // ResourceCacheComputer algorithms.
     // See: http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html
     //
-    // Implicitly cached items stay alive in our system for 5 minutes
-    // TODO(jmarantz): Consider making this a flag, or getting some
-    // other heuristic value from the PageSpeed libraries.
-    int64 cache_ttl_ms = kImplicitCacheTtlMs;
+    // Implicitly cached items stay alive in our system for the specified
+    // implicit ttl ms.
+    int64 cache_ttl_ms = implicit_cache_ttl_ms();
     if (computer->IsExplicitlyCacheable()) {
       // TODO: Do we care about the return value.
       computer->GetFreshnessLifetimeMillis(&cache_ttl_ms);
@@ -539,7 +539,7 @@ void ResponseHeaders::ComputeCaching() {
       // If the resource is proxy cacheable but it does not have explicit
       // caching headers, explicitly set the caching headers.
       DCHECK(has_date);
-      DCHECK(cache_ttl_ms == kImplicitCacheTtlMs);
+      DCHECK(cache_ttl_ms == implicit_cache_ttl_ms());
       SetDateAndCaching(date, cache_ttl_ms);
     }
   } else {
@@ -703,6 +703,8 @@ void ResponseHeaders::DebugPrint() const {
   fprintf(stderr, "%s\n", ToString().c_str());
   fprintf(stderr, "cache_fields_dirty_ = %s\n",
           BoolToString(cache_fields_dirty_));
+  fprintf(stderr, "implicit_cache_ttl_ms_ = %s\n",
+          Integer64ToString(implicit_cache_ttl_ms()).c_str());
   if (!cache_fields_dirty_) {
     fprintf(stderr, "expiration_time_ms_ = %s\n",
             Integer64ToString(proto_->expiration_time_ms()).c_str());

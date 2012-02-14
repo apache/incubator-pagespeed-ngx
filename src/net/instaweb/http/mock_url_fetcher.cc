@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -91,6 +92,13 @@ bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,
                                        MessageHandler* message_handler) {
   bool ret = false;
   if (enabled_) {
+    // Verify that the url and Host: header match.
+    if (verify_host_header_) {
+      const char* host_header = request_headers.Lookup1(HttpAttributes::kHost);
+      GoogleUrl gurl(url);
+      EXPECT_STREQ(gurl.HostAndPort(), host_header);
+    }
+
     ResponseMap::iterator iter = response_map_.find(url);
     if (iter != response_map_.end()) {
       const HttpResponse* response = iter->second;

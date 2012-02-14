@@ -788,7 +788,7 @@ void RewriteContext::AddRecheckDependency() {
   InputInfo* force_recheck = partitions_->add_other_dependency();
   force_recheck->set_type(InputInfo::CACHED);
   force_recheck->set_expiration_time_ms(
-      now_ms + ResponseHeaders::kImplicitCacheTtlMs);
+      now_ms + Options()->implicit_cache_ttl_ms());
 }
 
 bool RewriteContext::IsInputValid(const InputInfo& input_info) {

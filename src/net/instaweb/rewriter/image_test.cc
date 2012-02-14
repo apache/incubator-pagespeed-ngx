@@ -71,10 +71,7 @@ class ImageTest : public ImageTestBase {
                         Image *image) {
     EXPECT_EQ(size, image->input_size());
     EXPECT_EQ(image_type, image->image_type());
-    // Arbitrary but bogus values to make sure we get dimensions.
     ImageDim image_dim;
-    image_dim.set_width(-7);
-    image_dim.set_height(-9);
     image_dim.Clear();
     image->Dimensions(&image_dim);
     EXPECT_TRUE(ImageUrlEncoder::HasValidDimensions(image_dim));
@@ -90,13 +87,10 @@ class ImageTest : public ImageTestBase {
     ImagePtr image(ImageFromString(output_type, name, contents, progressive));
     EXPECT_EQ(contents.size(), image->input_size());
     EXPECT_EQ(input_type, image->image_type());
-    // Arbitrary but bogus values to check for accidental modification.
     ImageDim  image_dim;
-    image_dim.set_width(-7);
-    image_dim.set_height(-9);
     image_dim.Clear();
     image->Dimensions(&image_dim);
-    EXPECT_FALSE(ImageUrlEncoder::HasValidDimensions(image_dim));
+    EXPECT_FALSE(ImageUrlEncoder::HasValidDimension(image_dim));
     EXPECT_FALSE(image_dim.has_width());
     EXPECT_FALSE(image_dim.has_height());
     EXPECT_EQ(contents.size(), image->output_size());
@@ -176,7 +170,7 @@ class ImageTest : public ImageTestBase {
     v.push_back(origin_url.as_string());
     GoogleString out;
     ResourceContext data;
-    *data.mutable_image_tag_dims() = dim;
+    *data.mutable_desired_image_dims() = dim;
     data.set_attempt_webp(IsWebp(image_context));
     data.set_mobile_user_agent(IsMobile(image_context));
     encoder_.Encode(v, &data, &out);
@@ -195,7 +189,7 @@ class ImageTest : public ImageTestBase {
       EXPECT_EQ(IsMobile(expected_image_context), context.mobile_user_agent());
       EXPECT_EQ(1, urls.size());
       url->assign(urls.back());
-      *dim = context.image_tag_dims();
+      *dim = context.desired_image_dims();
     }
     return result;
   }
@@ -671,8 +665,8 @@ TEST_F(ImageTest, ResizeTo) {
   ImagePtr image(ReadImageFromFile(Image::IMAGE_JPEG, kPuzzle, &buf, false));
 
   ImageDim new_dim;
-  new_dim.set_height(10);
   new_dim.set_width(10);
+  new_dim.set_height(10);
   image->ResizeTo(new_dim);
 
   ExpectEmptyOuput(image.get());

@@ -15,6 +15,7 @@
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/string.h"
@@ -58,17 +59,20 @@ static struct Int64QueryParam int64_query_params_[] = {
 //
 // So we will check for explicit parameters we want to support.
 RewriteQuery::Status RewriteQuery::Scan(
-    const QueryParams& query_params,
-    const RequestHeaders& request_headers,
+    GoogleUrl* request_url,
+    RequestHeaders* request_headers,
     RewriteOptions* options,
     MessageHandler* handler) {
   Status status = kNoneFound;
 
+  QueryParams query_params, temp_query_params;
+  query_params.Parse(request_url->Query());
   for (int i = 0; i < query_params.size(); ++i) {
     const GoogleString* value = query_params.value(i);
-    if (value != NULL) {  // All query-params we care about have values.
+    if (value != NULL) {
       switch (ScanNameValue(query_params.name(i), *value, options, handler)) {
         case kNoneFound:
+          temp_query_params.Add(query_params.name(i), *value);
           break;
         case kSuccess:
           status = kSuccess;
@@ -76,13 +80,25 @@ RewriteQuery::Status RewriteQuery::Scan(
         case kInvalid:
           return kInvalid;
       }
+    } else {
+      temp_query_params.Add(query_params.name(i), NULL);
     }
   }
+  if (status == kSuccess) {
+    // Remove the ModPagespeed* for url.
+    GoogleString temp_params = temp_query_params.empty() ? "" :
+        StrCat("?", temp_query_params.ToString());
+    request_url->Reset(StrCat(request_url->AllExceptQuery(), temp_params,
+                              request_url->AllAfterQuery()));
+  }
 
-  for (int i = 0, n = request_headers.NumAttributes(); i < n; ++i) {
-    switch (ScanNameValue(request_headers.Name(i), request_headers.Value(i),
+  RequestHeaders temp_request_headers;
+  for (int i = 0, n = request_headers->NumAttributes(); i < n; ++i) {
+    switch (ScanNameValue(request_headers->Name(i), request_headers->Value(i),
                           options, handler)) {
       case kNoneFound:
+        temp_request_headers.Add(request_headers->Name(i),
+                                 request_headers->Value(i));
         break;
       case kSuccess:
         status = kSuccess;
@@ -90,6 +106,9 @@ RewriteQuery::Status RewriteQuery::Scan(
       case kInvalid:
         return kInvalid;
     }
+  }
+  if (status == kSuccess) {
+    request_headers->CopyFrom(temp_request_headers);
   }
 
   // This semantic provides for a mod_pagespeed server that has no rewriting

@@ -88,12 +88,12 @@ class RewriteDriver : public HtmlParse {
 
   // Mode for BoundedWaitForCompletion
   enum WaitMode {
-    kNoWait, // Used internally. Do not pass in.
-    kWaitForCompletion,   // wait for everything to complete (up to deadline)
-    kWaitForCachedRender, // wait for at least cached rewrites to complete,
-                          // and anything else that finishes within deadline.
-    kWaitForShutDown      // Makes sure that all work, including any that's
-                          // being done in background, finishes.
+    kNoWait,  // Used internally. Do not pass in.
+    kWaitForCompletion,    // wait for everything to complete (up to deadline)
+    kWaitForCachedRender,  // wait for at least cached rewrites to complete,
+                           // and anything else that finishes within deadline.
+    kWaitForShutDown       // Makes sure that all work, including any that's
+                           // being done in background, finishes.
   };
 
   // Lazily-initialized boolean value
@@ -380,7 +380,7 @@ class RewriteDriver : public HtmlParse {
   // Report error message with description of context's location
   // (such as filenames and line numbers). context may be NULL, in which case
   // the current parse position will be used.
-  void InfoAt(RewriteContext* context,
+  void InfoAt(const RewriteContext* context,
               const char* msg, ...) INSTAWEB_PRINTF_FORMAT(3, 4);
 
   // Creates a reference-counted pointer to a new OutputResource object.
@@ -868,7 +868,7 @@ class RewriteDriver : public HtmlParse {
   // If not kNoWait, indicates that WaitForCompletion or similar method
   // have been called, and an another thread is waiting for us to notify it of
   // everything having been finished in a given mode.
-  WaitMode waiting_; // protected by rewrite_mutex()
+  WaitMode waiting_;  // protected by rewrite_mutex()
 
   // If this is true, the usual HTML streaming interface will let rendering
   // of every flush window fully complete before proceeding rather than

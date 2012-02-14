@@ -308,6 +308,11 @@ ProxyFetch::ProxyFetch(const GoogleString& url,
     VLOG(1) << "User-agent empty";
   }
 
+  // Set the implicit cache ttl for the response headers based on the value
+  // specified in the options.
+  response_headers()->set_implicit_cache_ttl_ms(
+      Options()->implicit_cache_ttl_ms());
+
   VLOG(1) << "Attaching RewriteDriver " << driver_
           << " to HtmlRewriter " << this;
 

@@ -16,8 +16,11 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
@@ -134,6 +137,30 @@ TEST_F(DomainRewriteFilterTest, MappedAndSharded) {
 TEST_F(DomainRewriteFilterTest, DontTouchIfAlreadyRewritten) {
   ExpectNoChange("other domain",
                  Encode(kFrom1Domain, "cf", "0", "a.css", "css"));
+}
+
+TEST_F(DomainRewriteFilterTest, RewriteAllTags) {
+  options()->ClearSignatureForTesting();
+  options()->set_domain_rewrite_all_tags(true);
+  ValidateExpected(
+      "forms and a tags",
+      StrCat("<a href=\"", kFrom1Domain, "link.html\"/>"
+             "<form action=\"", kFrom1Domain, "blank\"/>"),
+      "<a href=\"http://to1.test.com/link.html\"/>"
+      "<form action=\"http://to1.test.com/blank\"/>");
+}
+
+TEST_F(DomainRewriteFilterTest, RewriteRedirectLocations) {
+  options()->ClearSignatureForTesting();
+  options()->set_domain_rewrite_all_tags(true);
+  ResponseHeaders headers;
+  headers.Add(HttpAttributes::kLocation,
+              StrCat(kFrom1Domain, "redirect"));
+  rewrite_driver()->set_response_headers_ptr(&headers);
+
+  ValidateNoChanges("headers", "");
+  EXPECT_EQ(StrCat(kTo1Domain, "redirect"),
+            headers.Lookup1(HttpAttributes::kLocation));
 }
 
 }  // namespace net_instaweb

@@ -20,10 +20,10 @@
 
 namespace net_instaweb {
 
+class GoogleUrl;
 class MessageHandler;
 class RequestHeaders;
 class RewriteOptions;
-class QueryParams;
 
 class RewriteQuery {
  public:
@@ -42,13 +42,14 @@ class RewriteQuery {
   // flags, populating 'options' if there were any "ModPagespeed"
   // flags found, and they were all parsed successfully.  If any were
   // parsed unsuccessfully kInvalid is returned.  If none found,
-  // kNoneFound is returned.
+  // kNoneFound is returned. It also removes the "ModPagespeed" flags from the
+  // query_params of the url and the request_headers.
   //
   // TODO(jmarantz): consider allowing an alternative prefix to "ModPagespeed"
   // to accomodate other Page Speed Automatic applications that might want to
   // brand differently.
-  static Status Scan(const QueryParams& query_params,
-                     const RequestHeaders& request_headers,
+  static Status Scan(GoogleUrl* request_url,
+                     RequestHeaders* request_headers,
                      RewriteOptions* options,
                      MessageHandler* handler);
 

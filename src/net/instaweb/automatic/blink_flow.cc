@@ -95,56 +95,81 @@ class AsyncFetchWithHeadersInhibited : public AsyncFetchUsingWriter {
   DISALLOW_COPY_AND_ASSIGN(AsyncFetchWithHeadersInhibited);
 };
 
-// AsyncFetch that fetches the sample page, initiates a new RewriteDriver to
-// compute the json and stores it in cache.
+// SharedAsyncFetch that fetches the page and passes events through to the base
+// fetch. It also determines if the page is html, and whether to trigger an
+// async computation of the json.
 // TODO(rahulbansal): Buffer the html chunked rather than in one string.
-class JsonFetch : public StringAsyncFetch {
+class SharedJsonFetch : public SharedAsyncFetch {
  public:
-  JsonFetch(const GoogleString& key,
-            ResourceManager* resource_manager,
-            RewriteOptions* options)
-      : key_(key),
+  SharedJsonFetch(AsyncFetch* base_fetch,
+                  const GoogleString& key,
+                  ResourceManager* resource_manager,
+                  RewriteOptions* options)
+      : SharedAsyncFetch(base_fetch),
+        key_(key),
         resource_manager_(resource_manager),
-        options_(options) {
+        options_(options),
+        compute_json_(false) {
     Statistics* stats = resource_manager_->statistics();
-    num_background_fetches_complete_ = stats->GetTimedVariable(
-        BlinkFlow::kNumBackgroundFetchesComplete);
+    num_shared_json_fetches_complete_ = stats->GetTimedVariable(
+        BlinkFlow::kNumSharedJsonFetchesComplete);
   }
 
-  virtual ~JsonFetch() {}
+  virtual ~SharedJsonFetch() {}
+
+  virtual void HandleHeadersComplete() {
+    base_fetch()->HeadersComplete();
+    if (response_headers()->status_code() == HttpStatus::kOK) {
+      const ContentType* type = response_headers()->DetermineContentType();
+      if (type != NULL && type->IsHtmlLike()) {
+        compute_json_ = true;
+      } else {
+        VLOG(1) << "Non html page, not rewritable: " << key_;
+      }
+    } else {
+      VLOG(1) << "Non 200 response code for: " << key_;
+    }
+  }
+
+  virtual bool HandleWrite(const StringPiece& content,
+                           MessageHandler* handler) {
+    bool ret = base_fetch()->Write(content, handler);
+    if (compute_json_) {
+      content.AppendToString(&json_buffer_);
+    }
+    return ret;
+  }
 
   virtual void HandleDone(bool success) {
-    num_background_fetches_complete_->IncBy(1);
-    if (!success || response_headers()->status_code() != HttpStatus::kOK) {
-      // Do nothing since the fetch failed.
-      LOG(INFO) << "Background fetch for layout url " << key_ << " failed.";
-      delete this;
-      return;
-    }
+    num_shared_json_fetches_complete_->IncBy(1);
+    compute_json_ &= success;
+    if (compute_json_) {
+      json_headers_.CopyFrom(*response_headers());
 
-    const ContentType* type = response_headers()->DetermineContentType();
-    if (type == NULL || !type->IsHtmlLike()) {
-      LOG(INFO) << "Non html page, not rewritable: " << key_;
-      delete this;
-      return;
+      json_computation_driver_ = resource_manager_->NewCustomRewriteDriver(
+          options_.release());
+      // TODO(rahulbansal): Put an increased deadline on this driver.
+      json_computation_driver_->SetWriter(&value_);
+      json_computation_driver_->set_response_headers_ptr(&json_headers_);
+      json_computation_driver_->AddLowPriorityRewriteTask(
+          MakeFunction(this, &SharedJsonFetch::Parse));
     }
-
-    json_computation_driver_ = resource_manager_->NewCustomRewriteDriver(
-        options_.release());
-    // TODO(rahulbansal): Put an increased deadline on this driver.
-    json_computation_driver_->SetWriter(&value_);
-    json_computation_driver_->set_response_headers_ptr(response_headers());
-    json_computation_driver_->AddLowPriorityRewriteTask(
-        MakeFunction(this, &JsonFetch::Parse));
+    // We call Done after scheduling the rewrite on the driver since we expect
+    // this to be very low cost. Calling Done on base_fetch() before scheduling
+    // the rewrite causes problems with testing.
+    base_fetch()->Done(success);
+    if (!compute_json_) {
+      delete this;
+    }
   }
 
   void Parse() {
     json_computation_driver_->StartParse(
         key_.substr(kJsonCachePrefixLength));
-    json_computation_driver_->ParseText(buffer());
+    json_computation_driver_->ParseText(json_buffer_);
 
     json_computation_driver_->FinishParseAsync(MakeFunction(
-        this, &JsonFetch::CompleteFinishParse));
+        this, &SharedJsonFetch::CompleteFinishParse));
   }
 
   void CompleteFinishParse() {
@@ -155,12 +180,15 @@ class JsonFetch : public StringAsyncFetch {
   GoogleString key_;
   ResourceManager* resource_manager_;
   scoped_ptr<RewriteOptions> options_;
+  bool compute_json_;
+  ResponseHeaders json_headers_;
+  GoogleString json_buffer_;
   HTTPValue value_;
-  TimedVariable* num_background_fetches_complete_;
+  TimedVariable* num_shared_json_fetches_complete_;
 
   RewriteDriver* json_computation_driver_;
 
-  DISALLOW_COPY_AND_ASSIGN(JsonFetch);
+  DISALLOW_COPY_AND_ASSIGN(SharedJsonFetch);
 };
 
 }  // namespace
@@ -192,10 +220,10 @@ class BlinkFlow::JsonFindCallback : public OptionsAwareHTTPCacheCallback {
   DISALLOW_COPY_AND_ASSIGN(JsonFindCallback);
 };
 
-const char BlinkFlow::kNumBackgroundFetchesStarted[] =
-    "num_background_fetches_started";
-const char BlinkFlow::kNumBackgroundFetchesComplete[] =
-    "num_background_fetches_complete";
+const char BlinkFlow::kNumSharedJsonFetchesStarted[] =
+    "num_shared_json_fetches_started";
+const char BlinkFlow::kNumSharedJsonFetchesComplete[] =
+    "num_shared_json_fetches_complete";
 
 BlinkFlow::BlinkFlow(const GoogleString& url,
                      AsyncFetch* base_fetch,
@@ -214,8 +242,8 @@ BlinkFlow::BlinkFlow(const GoogleString& url,
       time_to_json_lookup_done_ms_(-1),
       time_to_split_critical_ms_(-1) {
   Statistics* stats = manager_->statistics();
-  num_background_fetches_started_ = stats->GetTimedVariable(
-      kNumBackgroundFetchesStarted);
+  num_shared_json_fetches_started_ = stats->GetTimedVariable(
+      kNumSharedJsonFetchesStarted);
 }
 
 void BlinkFlow::Start(const GoogleString& url,
@@ -230,9 +258,9 @@ void BlinkFlow::Start(const GoogleString& url,
 }
 
 void BlinkFlow::Initialize(Statistics* stats) {
-  stats->AddTimedVariable(kNumBackgroundFetchesComplete,
+  stats->AddTimedVariable(kNumSharedJsonFetchesStarted,
                           ResourceManager::kStatisticsGroup);
-  stats->AddTimedVariable(kNumBackgroundFetchesStarted,
+  stats->AddTimedVariable(kNumSharedJsonFetchesComplete,
                           ResourceManager::kStatisticsGroup);
 }
 
@@ -351,7 +379,8 @@ void BlinkFlow::SendLayout(const StringPiece& layout) {
                                        time_to_start_blink_flow_ms_));
   WriteString(GetAddTimingScriptString(kTimeToJsonLookupDone,
                                        time_to_json_lookup_done_ms_));
-  WriteString(StrCat("<script>pagespeed.panelLoader.addCsiTiming(\"", kLayoutLoaded,
+  WriteString(StrCat("<script>pagespeed.panelLoader.addCsiTiming(\"",
+                     kLayoutLoaded,
                      "\", new Date() - pagespeed.panelLoader.timeStart, ",
                      IntegerToString(layout.size()),
                      ")</script>"));
@@ -398,13 +427,11 @@ void BlinkFlow::Flush() {
 }
 
 void BlinkFlow::JsonCacheMiss() {
-  ComputeJsonInBackground();
-  num_background_fetches_started_->IncBy(1);
   TriggerProxyFetch(false);
 }
 
 void BlinkFlow::TriggerProxyFetch(bool json_found) {
-  AsyncFetch* fetch = base_fetch_;
+  AsyncFetch* fetch;
   if (json_found) {
     // Remove any headers that can lead to a 304, since blink can't handle 304s.
     base_fetch_->request_headers()->RemoveAll(HttpAttributes::kIfNoneMatch);
@@ -413,29 +440,21 @@ void BlinkFlow::TriggerProxyFetch(bool json_found) {
     // base fetch. It also doesn't attach the response headers from the base
     // fetch since headers have already been flushed out.
     fetch = new AsyncFetchWithHeadersInhibited(base_fetch_);
+  } else {
+    RewriteOptions* options = options_->Clone();
+    options->set_min_image_size_low_resolution_bytes(0);
+    // Enable inlining for all the images in html.
+    options->set_max_inlined_preview_images_index(-1);
+    options->EnableFilter(RewriteOptions::kComputePanelJson);
+    options->EnableFilter(RewriteOptions::kDisableJavascript);
+    options->DisableFilter(RewriteOptions::kHtmlWriterFilter);
+    fetch = new SharedJsonFetch(base_fetch_, json_url_, manager_, options);
+    num_shared_json_fetches_started_->IncBy(1);
   }
 
   // TODO(jmarantz): pass-through the property-cache callback rather than NULL.
   factory_->StartNewProxyFetch(url_, fetch, options_, NULL);
   delete this;
-}
-
-void BlinkFlow::ComputeJsonInBackground() {
-  RewriteOptions* options = options_->Clone();
-  options_->set_min_image_size_low_resolution_bytes(0);
-  // Enable inlining for all the images in html.
-  options_->set_max_inlined_preview_images_index(-1);
-  options->ForceEnableFilter(RewriteOptions::kComputePanelJson);
-  options->ForceEnableFilter(RewriteOptions::kDisableJavascript);
-  options->DisableFilter(RewriteOptions::kHtmlWriterFilter);
-
-  AsyncFetch* json_fetch = new JsonFetch(json_url_, manager_, options);
-  bool* prepare_success = new bool;
-  manager_->url_namer()->PrepareRequest(
-      options, &url_, json_fetch->request_headers(), prepare_success,
-      MakeFunction(this, &BlinkFlow::TriggerJsonBackgroundFetch, json_fetch,
-                   prepare_success),
-      manager_->message_handler());
 }
 
 void BlinkFlow::TriggerJsonBackgroundFetch(AsyncFetch* json_fetch,

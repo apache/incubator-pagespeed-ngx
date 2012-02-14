@@ -85,8 +85,10 @@ class ProxyInterface : public UrlAsyncFetcher {
   // first==*, .second==false:  query-params or req-headers failed in parse.
   // .first!=NULL, .second=true:  Custom options created, now owned by caller.
   // .first==NULL, .second=true:  Use the global options for resource_manager.
-  OptionsBoolPair GetCustomOptions(const GoogleUrl& request_url,
-                                   const RequestHeaders& request_headers,
+  // It also strips off the ModPageSpeed query parameters and headers from the
+  // request_url and request_headers respectively.
+  OptionsBoolPair GetCustomOptions(GoogleUrl* request_url,
+                                   RequestHeaders* request_headers,
                                    RewriteOptions* domain_options,
                                    MessageHandler* handler);
 

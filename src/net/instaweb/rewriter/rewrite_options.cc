@@ -107,6 +107,7 @@ const int64 RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs = 0;
 
 const int64 RewriteOptions::kDefaultCacheInvalidationTimestamp = -1;
 const int64 RewriteOptions::kDefaultIdleFlushTimeMs = 10;
+const int64 RewriteOptions::kDefaultImplicitCacheTtlMs = 5 * Timer::kMinuteMs;
 
 // Limit on concurrent ongoing image rewrites.
 // TODO(jmaessen): Determine a sane default for this value.
@@ -404,6 +405,8 @@ RewriteOptions::RewriteOptions()
              &cache_invalidation_timestamp_, "it", kCacheInvalidationTimestamp);
   add_option(kDefaultIdleFlushTimeMs, &idle_flush_time_ms_, "if",
              kIdleFlushTimeMs);
+  add_option(kDefaultImplicitCacheTtlMs, &implicit_cache_ttl_ms_, "ict",
+             kImplicitCacheTtlMs);
   add_option(kDefaultImageMaxRewritesAtOnce, &image_max_rewrites_at_once_,
              "im", kImageMaxRewritesAtOnce);
   add_option(kDefaultMaxUrlSegmentSize, &max_url_segment_size_, "uss",
@@ -426,6 +429,7 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultBeaconUrl, &beacon_url_, "bu", kBeaconUrl);
   add_option(false, &lazyload_images_after_onload_, "llio",
              kLazyloadImagesAfterOnload);
+  add_option(false, &domain_rewrite_all_tags_, "rat", kDomainRewriteAllTags);
   add_option(kDefaultImageJpegRecompressQuality,
              &image_jpeg_recompress_quality_, "iq",
              kImageJpegRecompressionQuality);

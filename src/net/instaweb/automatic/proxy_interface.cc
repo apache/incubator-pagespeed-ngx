@@ -37,7 +37,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -241,7 +240,7 @@ bool ProxyInterface::Fetch(const GoogleString& requested_url_string,
 }
 
 ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
-    const GoogleUrl& request_url, const RequestHeaders& request_headers,
+    GoogleUrl* request_url, RequestHeaders* request_headers,
     RewriteOptions* domain_options, MessageHandler* handler) {
   RewriteOptions* options = resource_manager_->global_options();
   scoped_ptr<RewriteOptions> custom_options;
@@ -254,10 +253,8 @@ ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
   }
 
   // Check query params & reqeust-headers for
-  QueryParams params;
-  params.Parse(request_url.Query());
   scoped_ptr<RewriteOptions> query_options(resource_manager_->NewOptions());
-  switch (RewriteQuery::Scan(params, request_headers,
+  switch (RewriteQuery::Scan(request_url, request_headers,
                              query_options.get(), handler)) {
     case RewriteQuery::kInvalid:
       return OptionsBoolPair(static_cast<RewriteOptions*>(NULL), false);
@@ -280,7 +277,7 @@ ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
 
   // Add custom options based on the request.
   resource_manager_->url_namer()->ConfigureCustomOptions(
-      request_url, request_headers, custom_options.get());
+      *request_url, *request_headers, custom_options.get());
 
   return OptionsBoolPair(custom_options.release(), true);
 }
@@ -327,7 +324,7 @@ void ProxyInterface::ProxyRequestCallback(
     ProxyFetchPropertyCallback* property_callback,
     MessageHandler* handler) {
   OptionsBoolPair custom_options_success = GetCustomOptions(
-      *request_url, *async_fetch->request_headers(), domain_options, handler);
+      request_url, async_fetch->request_headers(), domain_options, handler);
   if (!custom_options_success.second) {
     async_fetch->response_headers()->SetStatusAndReason(
         HttpStatus::kMethodNotAllowed);

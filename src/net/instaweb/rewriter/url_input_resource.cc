@@ -73,6 +73,18 @@ bool IsValidAndCacheableImpl(HTTPCache* http_cache,
 
 }  // namespace
 
+UrlInputResource::UrlInputResource(ResourceManager* resource_manager,
+                                   const RewriteOptions* options,
+                                   const ContentType* type,
+                                   const StringPiece& url)
+    : Resource(resource_manager, type),
+      url_(url.data(), url.size()),
+      rewrite_options_(options),
+      respect_vary_(rewrite_options_->respect_vary()) {
+  response_headers()->set_implicit_cache_ttl_ms(
+      options->implicit_cache_ttl_ms());
+}
+
 UrlInputResource::~UrlInputResource() {
 }
 
@@ -291,6 +303,8 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
       : UrlResourceFetchCallback(resource_manager, rewrite_options, NULL),
         url_(url),
         http_cache_(http_cache) {
+    response_headers()->set_implicit_cache_ttl_ms(
+        rewrite_options->implicit_cache_ttl_ms());
   }
 
   virtual HTTPValue* http_value() { return &http_value_; }
@@ -404,6 +418,8 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
         resource_(resource),
         callback_(callback) {
     set_response_headers(&resource_->response_headers_);
+    response_headers()->set_implicit_cache_ttl_ms(
+        resource->rewrite_options()->implicit_cache_ttl_ms());
   }
 
   virtual void DoneInternal(bool success) {
