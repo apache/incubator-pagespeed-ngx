@@ -73,12 +73,14 @@ bool IsValidAndCacheableImpl(HTTPCache* http_cache,
 
 }  // namespace
 
-UrlInputResource::UrlInputResource(ResourceManager* resource_manager,
+UrlInputResource::UrlInputResource(RewriteDriver* rewrite_driver,
                                    const RewriteOptions* options,
                                    const ContentType* type,
                                    const StringPiece& url)
-    : Resource(resource_manager, type),
+    : Resource((rewrite_driver == NULL ? NULL :
+                rewrite_driver->resource_manager()), type),
       url_(url.data(), url.size()),
+      rewrite_driver_(rewrite_driver),
       rewrite_options_(options),
       respect_vary_(rewrite_options_->respect_vary()) {
   response_headers()->set_implicit_cache_ttl_ms(
@@ -298,13 +300,19 @@ class UrlResourceFetchCallback : public AsyncFetch {
 class FreshenFetchCallback : public UrlResourceFetchCallback {
  public:
   FreshenFetchCallback(const GoogleString& url, HTTPCache* http_cache,
-                          ResourceManager* resource_manager,
-                          const RewriteOptions* rewrite_options)
+                       ResourceManager* resource_manager,
+                       RewriteDriver* rewrite_driver,
+                       const RewriteOptions* rewrite_options)
       : UrlResourceFetchCallback(resource_manager, rewrite_options, NULL),
         url_(url),
-        http_cache_(http_cache) {
+        http_cache_(http_cache),
+        rewrite_driver_(rewrite_driver) {
     response_headers()->set_implicit_cache_ttl_ms(
         rewrite_options->implicit_cache_ttl_ms());
+  }
+
+  virtual void DoneInternal(bool success) {
+    rewrite_driver_->decrement_async_events_count();
   }
 
   virtual HTTPValue* http_value() { return &http_value_; }
@@ -315,6 +323,7 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
  private:
   GoogleString url_;
   HTTPCache* http_cache_;
+  RewriteDriver* rewrite_driver_;
   HTTPValue http_value_;
 
   DISALLOW_COPY_AND_ASSIGN(FreshenFetchCallback);
@@ -328,10 +337,12 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
  public:
   FreshenHttpCacheCallback(const GoogleString& url,
                            ResourceManager* manager,
+                           RewriteDriver* driver,
                            const RewriteOptions* options)
       : OptionsAwareHTTPCacheCallback(options),
         url_(url),
         manager_(manager),
+        driver_(driver),
         options_(options) {}
 
   virtual ~FreshenHttpCacheCallback() {}
@@ -340,8 +351,10 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
     if (find_result == HTTPCache::kNotFound) {
       // Not found in cache. Invoke the fetcher.
       FreshenFetchCallback* cb = new FreshenFetchCallback(
-          url_, manager_->http_cache(), manager_, options_);
+          url_, manager_->http_cache(), manager_, driver_, options_);
       cb->Fetch(manager_->url_async_fetcher(), manager_->message_handler());
+    } else {
+      driver_->decrement_async_events_count();
     }
     delete this;
   }
@@ -360,6 +373,7 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
  private:
   GoogleString url_;
   ResourceManager* manager_;
+  RewriteDriver* driver_;
   const RewriteOptions* options_;
   DISALLOW_COPY_AND_ASSIGN(FreshenHttpCacheCallback);
 };
@@ -389,8 +403,16 @@ void UrlInputResource::Freshen(MessageHandler* handler) {
   // For now this is much like Load(), except we do not
   // touch our value, but just the cache
   HTTPCache* http_cache = resource_manager()->http_cache();
+  if (rewrite_driver_ != NULL) {
+    // Ensure that the rewrite driver is alive until the freshen is completed.
+    rewrite_driver_->increment_async_events_count();
+  } else {
+    LOG(DFATAL) << "rewrite_driver_ must be non-NULL while freshening";
+    return;
+  }
+
   FreshenHttpCacheCallback* freshen_callback = new FreshenHttpCacheCallback(
-      url_, resource_manager(), rewrite_options_);
+      url_, resource_manager(), rewrite_driver_, rewrite_options_);
   // Lookup the cache before doing the fetch since the response may have already
   // been fetched elsewhere.
   http_cache->Find(url_, handler, freshen_callback);

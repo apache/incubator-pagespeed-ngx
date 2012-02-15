@@ -256,6 +256,7 @@ void RewriteDriver::Clear() {
   DCHECK_EQ(0, pending_rewrites_);
   DCHECK_EQ(0, possibly_quick_rewrites_);
   DCHECK(!fetch_queued_);
+  DCHECK_EQ(0, pending_async_events_);
   pending_async_events_ = 0;
   response_headers_ = NULL;
   fetch_detached_ = false;
@@ -1460,8 +1461,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
           return resource;
         }
       }
-      resource.reset(new UrlInputResource(resource_manager_, options(), type,
-                                          url_string));
+      resource.reset(new UrlInputResource(this, options(), type, url_string));
     }
   } else {
     // Note: Valid user-content can leave us here.
