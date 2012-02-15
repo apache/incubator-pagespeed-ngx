@@ -59,7 +59,7 @@ class RewriteFilter;
 
 namespace {
 
-const int64 kRefreshExpirePercent = 75;
+const int64 kRefreshExpirePercent = 80;
 
 // Attributes that should not be automatically copied from inputs to outputs
 const char* kExcludedAttributes[] = {
@@ -388,8 +388,10 @@ bool ResourceManager::IsImminentlyExpiring(int64 start_date_ms,
   // implicit ttl. If the implicit ttl has been overridden by a site, we will
   // not honor it here. Fix that.
   if (ttl_ms >= ResponseHeaders::kImplicitCacheTtlMs) {
-    int64 elapsed_ms = now_ms - start_date_ms;
-    if ((elapsed_ms * 100) >= (kRefreshExpirePercent * ttl_ms)) {
+    int64 freshen_threshold = std::min(
+        ResponseHeaders::kImplicitCacheTtlMs,
+        ((100 - kRefreshExpirePercent) * ttl_ms) / 100);
+    if (expire_ms - now_ms < freshen_threshold) {
       return true;
     }
   }

@@ -495,9 +495,10 @@ TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 
   ResetTest();
-  mock_timer()->SetTimeUs((start_time_ms() + ttl_ms_ * 3/4) * Timer::kMsUs);
-  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/4, etag_,
-                        start_time_ms() + ttl_ms_ * 3/4);
+  int64 time_ms = start_time_ms() + ttl_ms_ - 30 * Timer::kSecondMs;
+  mock_timer()->SetTimeUs(time_ms * Timer::kMsUs);
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, 30 * Timer::kSecondMs,
+                        etag_, time_ms);
   // This fetch hits the metadata cache and the rewritten resource is served
   // out. Freshening is triggered here and we insert the freshened response into
   // cache.

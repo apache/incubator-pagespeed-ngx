@@ -2591,7 +2591,7 @@ TEST_F(RewriteContextTest, TestFreshen) {
 
   ClearStats();
   // Advance halfway from TTL. This should be an entire cache hit.
-  mock_timer()->AdvanceMs(kTtlMs * 5 / 10);
+  mock_timer()->AdvanceMs(kTtlMs / 2);
   ValidateExpected("fully_hit",
                    CssLinkHref(kPath),
                    CssLinkHref(Encode(kTestDomain, "tw", "0",
@@ -2608,15 +2608,15 @@ TEST_F(RewriteContextTest, TestFreshen) {
   // Also upload a version with a newer timestamp.
   SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
                                 kTtlMs / Timer::kSecondMs);
-  mock_timer()->AdvanceMs(kTtlMs * 4 / 10);
+  mock_timer()->AdvanceMs(kTtlMs / 2 - 3 * Timer::kMinuteMs);
   ValidateExpected("freshen",
                    CssLinkHref(kPath),
                    CssLinkHref(Encode(kTestDomain, "tw", "0",
                                       "test.css", "css")));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
-  // Miss for the original since it is past 75% of its expiration time. The
-  // newly fetched resource is inserted into the cache.
+  // Miss for the original since it is within a minute of its expiration time.
+  // The newly fetched resource is inserted into the cache.
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
@@ -2624,7 +2624,104 @@ TEST_F(RewriteContextTest, TestFreshen) {
   ClearStats();
   // Advance again closer to the TTL. This shouldn't trigger any fetches since
   // the last freshen updated the cache.
-  mock_timer()->AdvanceMs(kTtlMs * 1 / 20);
+  mock_timer()->AdvanceMs(2 * Timer::kMinuteMs);
+  ValidateExpected("freshen",
+                   CssLinkHref(kPath),
+                   CssLinkHref(Encode(kTestDomain, "tw", "0",
+                                      "test.css", "css")));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  // Cache hit for the resource while freshening.
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+
+  ClearStats();
+  // Now advance past original expiration. The metadata freshens itself since
+  // it detects the resource hasn't changed and hence avoids the rewriter. Also,
+  // note that we don't require any extra fetches since the resource was
+  // freshened by the previous fetch.
+  SetupWaitFetcher();
+  mock_timer()->AdvanceMs(kTtlMs * 4 / 10);
+  ValidateExpected("freshen2",
+                   CssLinkHref(kPath),
+                   CssLinkHref(Encode(kTestDomain, "tw", "0",
+                                      "test.css", "css")));
+  // Make sure we do this or it will leak.
+  CallFetcherCallbacks();
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  // Cache hit again from the freshen.
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+}
+
+TEST_F(RewriteContextTest, TestFreshenForLowTtl) {
+  FetcherUpdateDateHeaders();
+
+  // Note that this must be >= kImplicitCacheTtlMs for freshening.
+  const int kTtlMs = 400 * Timer::kSecondMs;
+  const char kPath[] = "test.css";
+  const char kDataIn[] = "   data  ";
+
+  // Start with non-zero time, and init our resource..
+  mock_timer()->AdvanceMs(kTtlMs / 2);
+  InitTrimFilters(kRewrittenResource);
+  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
+                                kTtlMs / Timer::kSecondMs);
+
+  // First fetch + rewrite
+  ValidateExpected("initial",
+                   CssLinkHref(kPath),
+                   CssLinkHref(Encode(kTestDomain, "tw", "0",
+                                      "test.css", "css")));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  // Cache miss for the original. Both original and rewritten are inserted into
+  // cache.
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
+
+  ClearStats();
+  // Advance halfway from TTL. This should be an entire cache hit.
+  mock_timer()->AdvanceMs(kTtlMs / 2);
+  ValidateExpected("fully_hit",
+                   CssLinkHref(kPath),
+                   CssLinkHref(Encode(kTestDomain, "tw", "0",
+                                      "test.css", "css")));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  // No HTTPCache lookups or writes.
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+
+  ClearStats();
+  // Advance close to TTL and rewrite. We should see an extra fetch.
+  // Also upload a version with a newer timestamp.
+  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
+                                kTtlMs / Timer::kSecondMs);
+  // Move to 85% of expiry.
+  mock_timer()->AdvanceMs((kTtlMs * 7) / 20);
+  ValidateExpected("freshen",
+                   CssLinkHref(kPath),
+                   CssLinkHref(Encode(kTestDomain, "tw", "0",
+                                      "test.css", "css")));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  // Miss for the original since it is within a minute of its expiration time.
+  // The newly fetched resource is inserted into the cache.
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+
+  ClearStats();
+  // Advance again closer to the TTL. This shouldn't trigger any fetches since
+  // the last freshen updated the cache.
+  // Move to 95% of expiry.
+  mock_timer()->AdvanceMs(kTtlMs / 10);
   ValidateExpected("freshen",
                    CssLinkHref(kPath),
                    CssLinkHref(Encode(kTestDomain, "tw", "0",
@@ -2702,7 +2799,7 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   ClearStats();
   l2_cache.ClearStats();
   // Advance halfway from TTL. This should be an entire cache hit.
-  mock_timer()->AdvanceMs(kTtlMs * 5 / 10);
+  mock_timer()->AdvanceMs(kTtlMs / 2);
   ValidateExpected("fully_hit",
                    CssLinkHref(kPath),
                    CssLinkHref(Encode(kTestDomain, "tw", "0",
@@ -2738,7 +2835,7 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   l2_cache.ClearStats();
   // Advance close to TTL and rewrite. No extra fetches here since we find the
   // response in the L2 cache.
-  mock_timer()->AdvanceMs(kTtlMs * 4 / 10);
+  mock_timer()->AdvanceMs(kTtlMs / 2 - 30 * Timer::kSecondMs);
   ValidateExpected("freshen",
                    CssLinkHref(kPath),
                    CssLinkHref(Encode(kTestDomain, "tw", "0",
@@ -2760,7 +2857,7 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   l2_cache.ClearStats();
   // Advance again closer to the TTL. This shouldn't trigger any fetches since
   // the last freshen updated the cache.
-  mock_timer()->AdvanceMs(kTtlMs * 1 / 20);
+  mock_timer()->AdvanceMs(15 * Timer::kSecondMs);
   ValidateExpected("freshen",
                    CssLinkHref(kPath),
                    CssLinkHref(Encode(kTestDomain, "tw", "0",
@@ -2796,7 +2893,7 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   // As we are also reusing rewrite results when contents did not change,
   // there is no second rewrite.
   SetupWaitFetcher();
-  mock_timer()->AdvanceMs(kTtlMs * 4 / 10);
+  mock_timer()->AdvanceMs(kTtlMs / 2 - 30 * Timer::kSecondMs);
   ValidateExpected("freshen2",
                    CssLinkHref(kPath),
                    CssLinkHref(Encode(kTestDomain, "tw", "0",
