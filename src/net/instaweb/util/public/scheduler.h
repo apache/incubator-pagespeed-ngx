@@ -100,6 +100,12 @@ class Scheduler {
   // work.  Returns true if the cancellation occurred.  If false is returned,
   // the alarm is already being run / has been run in another thread; if the
   // alarm deletes itself on Cancel(), it may no longer safely be used.
+  //
+  // Note that once the user callback for the alarm returns it's no longer
+  // safe to call this (but this method is safe to call when the scheduler has
+  // committed to running the callback, it will just return false), so it's the
+  // caller's responsibility to properly synchronize between its callback and
+  // its invocation of this.
   bool CancelAlarm(Alarm* alarm);
 
   // Finally, ProcessAlarms provides a mechanism to ensure that pending alarms

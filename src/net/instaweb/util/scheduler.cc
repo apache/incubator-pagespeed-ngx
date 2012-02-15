@@ -67,15 +67,24 @@ class Scheduler::Alarm {
     return cmp;
   }
 
+  bool in_wait_dispatch() const { return in_wait_dispatch_; }
+  void set_in_wait_dispatch(bool w) { in_wait_dispatch_ = w; }
+
  protected:
   Alarm() : wakeup_time_us_(0),
-            index_(kIndexNotSet) { }
+            index_(kIndexNotSet),
+            in_wait_dispatch_(false) { }
   virtual ~Alarm() { }
 
  private:
   friend class Scheduler;
   int64 wakeup_time_us_;
   uint32 index_;  // Set by scheduler to disambiguate equal wakeup times.
+
+  // This is used to mark a wait alarm that's being considered by ::Signal
+  // as owned by it for purposes of cleanup, so any concurrent timeout will
+  // know not to delete it.
+  bool in_wait_dispatch_;
   DISALLOW_COPY_AND_ASSIGN(Alarm);
 };
 
@@ -138,9 +147,12 @@ class Scheduler::CondVarTimeout : public Scheduler::Alarm {
   virtual void RunAlarm() {
     *set_on_timeout_ = true;
     scheduler_->CancelWaiting(this);
-    delete this;
+    if (!in_wait_dispatch()) {
+      delete this;
+    }
   }
   virtual void CancelAlarm() {
+    DCHECK(in_wait_dispatch());
     delete this;
   }
  private:
@@ -159,9 +171,13 @@ class Scheduler::CondVarCallbackTimeout : public Scheduler::Alarm {
   virtual ~CondVarCallbackTimeout() { }
   virtual void RunAlarm() {
     scheduler_->CancelWaiting(this);
-    CancelAlarm();
+    callback_->CallRun();
+    if (!in_wait_dispatch()) {
+      delete this;
+    }
   }
   virtual void CancelAlarm() {
+    DCHECK(in_wait_dispatch());
     callback_->CallRun();
     delete this;
   }
@@ -252,10 +268,23 @@ void Scheduler::Signal() {
   waiting_alarms_to_dispatch.swap(waiting_alarms_);
   running_waiting_alarms_ = true;
   if (!waiting_alarms_to_dispatch.empty()) {
+    // First, mark them all as owned by us, so any concurrent timeouts
+    // that happen while we're releasing the lock to run user code
+    // do not delete them from under us.
     for (AlarmSet::iterator i = waiting_alarms_to_dispatch.begin();
          i != waiting_alarms_to_dispatch.end(); ++i) {
-      // The Cancel() methods for waiting_alarms_ retain the scheduler mutex.
-      CancelAlarm(*i);
+      (*i)->set_in_wait_dispatch(true);
+    }
+
+    // Now actually signal those that didn't timeout yet.
+    for (AlarmSet::iterator i = waiting_alarms_to_dispatch.begin();
+         i != waiting_alarms_to_dispatch.end(); ++i) {
+      if (!CancelAlarm(*i)) {
+        // If CancelAlarm returned false, this means the alarm actually
+        // got run by a timeout. In that case, since we set in_wait_dispatch
+        // to true, it deferred the deletion to us, so take care of it.
+        delete *i;
+      }
     }
   }
   condvar_->Broadcast();
