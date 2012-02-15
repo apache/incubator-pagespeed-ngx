@@ -27,6 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -41,8 +42,6 @@ const char kInsertedGaSnippets[] = "inserted_ga_snippets";
 namespace net_instaweb {
 
 // Google Analytics async snippet.
-// TODO(nforman): Replace the http(s) logic with our knowledge of
-// document.location.protocol.
 extern const char kGASnippet[] =
     "var _gaq = _gaq || [];"
     "_gaq.push(['_setAccount', '%s']);"  // %s is the GA account number.
@@ -51,8 +50,7 @@ extern const char kGASnippet[] =
     "(function() {"
     "var ga = document.createElement('script'); ga.type = 'text/javascript';"
     "ga.async = true;"
-    "ga.src = ('https:' == document.location.protocol ?"
-    "'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';"
+    "ga.src = '%s.google-analytics.com/ga.js';"  // %s is the scheme and www/ssl
     "var s = document.getElementsByTagName('script')[0];"
     "s.parentNode.insertBefore(ga, s);"
     "})();";
@@ -139,8 +137,10 @@ void InsertGAFilter::EndElementImpl(HtmlElement* element) {
                               "text/javascript");
         const char* kSpeedSnippet = increase_speed_tracking_ ?
             kGASpeedTracking : "";
+        const char* kUrlPrefix = driver_->google_url().SchemeIs("https") ?
+            "https://ssl" : "http://www";
         GoogleString snippet_text = StringPrintf(
-            kGASnippet, ga_id_.c_str(), kSpeedSnippet);
+            kGASnippet, ga_id_.c_str(), kSpeedSnippet, kUrlPrefix);
         HtmlNode* snippet =
             driver_->NewCharactersNode(added_snippet_element_, snippet_text);
         driver_->AppendChild(element, added_snippet_element_);

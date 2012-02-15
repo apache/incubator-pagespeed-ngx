@@ -58,9 +58,14 @@ TEST_F(InsertGAFilterTest, simple_insert) {
   rewrite_driver()->AddFilters();
   GoogleString format_output = StringPrintf(kHtmlOutputFormat, kGASnippet);
   GoogleString output = StringPrintf(format_output.c_str(), kGaId,
-                                     kGASpeedTracking);
+                                     kGASpeedTracking, "http://www");
   ValidateExpected("simple_addition", kHtmlInput, output);
   ValidateNoChanges("already_there", output);
+
+  output = StringPrintf(format_output.c_str(), kGaId,
+                        kGASpeedTracking, "https://ssl");
+  ValidateExpectedUrl("https://www.test1.com/index.html", kHtmlInput,
+                      output);
 }
 
 const char kHtmlOutsideHead[] =
@@ -72,8 +77,8 @@ const char kHtmlOutsideHead[] =
 TEST_F(InsertGAFilterTest, no_double) {
   rewrite_driver()->AddFilters();
   GoogleString format_html = StringPrintf(kHtmlOutsideHead, kGASnippet);
-  ValidateNoChanges("outside_head", StringPrintf(format_html.c_str(), kGaId,
-                                                 kGASpeedTracking));
+  ValidateNoChanges("outside_head", StringPrintf(
+      format_html.c_str(), kGaId, kGASpeedTracking, "http://www"));
 }
 
 TEST_F(InsertGAFilterTest, no_increased_speed) {
@@ -81,7 +86,8 @@ TEST_F(InsertGAFilterTest, no_increased_speed) {
   rewrite_driver()->AddFilters();
 
   GoogleString format_output = StringPrintf(kHtmlOutputFormat, kGASnippet);
-  GoogleString output = StringPrintf(format_output.c_str(), kGaId, "");
+  GoogleString output = StringPrintf(format_output.c_str(), kGaId, "",
+                                     "http://www");
 
   ValidateExpected("simple_addition", kHtmlInput, output);
   ValidateNoChanges("already_there", output);
