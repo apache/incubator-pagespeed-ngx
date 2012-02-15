@@ -583,14 +583,14 @@ class Declaration {
   // declaration text.
   explicit Declaration(const StringPiece& bytes_in_original_buffer)
       : property_(Property::UNPARSEABLE), important_(false),
-        bytes_in_original_buffer_(bytes_in_original_buffer) {}
+        bytes_in_original_buffer_(bytes_in_original_buffer.data(),
+                                  bytes_in_original_buffer.length()) {}
 
   // accessors
   Property property() const { return property_; }
   const Values* values() const { return values_.get(); }
   bool IsImportant() const { return important_; }
 
-  // Note: This is only valid as long as original buffer is.
   // Note: May be invalid UTF8.
   StringPiece bytes_in_original_buffer() const {
     return bytes_in_original_buffer_;
@@ -616,10 +616,9 @@ class Declaration {
 
   // Verbatim bytes parsed for the declaration. Currently this is only stored
   // for unparseable declarations (stored with property_ == UNPARSEABLE).
-  // Points into CSS buffer (so it is only valid as long as that buffer is).
   // TODO(sligocki): We may want to store verbatim text for all declarations
   // to preserve the details of the original text.
-  StringPiece bytes_in_original_buffer_;
+  string bytes_in_original_buffer_;
 
   DISALLOW_COPY_AND_ASSIGN(Declaration);
 };

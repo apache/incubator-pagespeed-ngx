@@ -303,7 +303,9 @@ class Selectors: public std::vector<Selector*> {
   // dummy selectors? This would make sure users don't accidentally treat
   // dummy selectors as normal selectors.
   explicit Selectors(const StringPiece& bytes_in_original_buffer)
-      : is_dummy_(true), bytes_in_original_buffer_(bytes_in_original_buffer) {}
+      : is_dummy_(true),
+        bytes_in_original_buffer_(bytes_in_original_buffer.data(),
+                                  bytes_in_original_buffer.length()) {}
   ~Selectors();
   const Selector* get(int i) const { return (*this)[i]; }
 
@@ -323,10 +325,9 @@ class Selectors: public std::vector<Selector*> {
   bool is_dummy_;
   // Verbatim bytes parsed for the selectors. Currently this is only stored
   // for unparseable selectors (stored with is_dummy_ == true).
-  // Points into CSS buffer (so it is only valid as long as that buffer is).
   // TODO(sligocki): We may want to store verbatim text for all selectors
   // to preserve the details of the original text.
-  StringPiece bytes_in_original_buffer_;
+  string bytes_in_original_buffer_;
 
   DISALLOW_COPY_AND_ASSIGN(Selectors);
 };
