@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_HTML_LEXER_H_
 #define NET_INSTAWEB_HTMLPARSE_HTML_LEXER_H_
 
-#include <map>
 #include <vector>
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
@@ -209,9 +208,6 @@ class HtmlLexer {
   int tag_start_line_;      // line at which we last transitioned to TAG state
   GoogleString id_;
   GoogleString literal_close_;  // specific tag go close, e.g </script>
-
-  typedef std::map<GoogleString, int> TagBag;
-  TagBag missing_close_tag_bag_;
 
   ContentType content_type_;
   DocType doctype_;

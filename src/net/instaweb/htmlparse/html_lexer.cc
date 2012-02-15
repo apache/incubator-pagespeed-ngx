@@ -672,7 +672,6 @@ void HtmlLexer::StartParse(const StringPiece& id,
   attr_name_.clear();
   attr_value_.clear();
   literal_.clear();
-  missing_close_tag_bag_.clear();
   // clear buffers
 }
 
@@ -855,32 +854,15 @@ void HtmlLexer::EvalAttrValSq(char c) {
 }
 
 void HtmlLexer::EmitTagClose(HtmlElement::CloseStyle close_style) {
-  TagBag::iterator p = missing_close_tag_bag_.find(token_);
-  bool emit_fake_close_as_a_characters_literal = false;
-  if (p != missing_close_tag_bag_.end()) {
-    int implicit_closes_for_this_tag = p->second - 1;
-    if (implicit_closes_for_this_tag == 0) {
-      missing_close_tag_bag_.erase(p);
-    } else {
-      p->second = implicit_closes_for_this_tag;
-    }
-    emit_fake_close_as_a_characters_literal = true;
-
-    SyntaxError("Close-tag `%s', appears to be misplaced", token_.c_str());
+  HtmlElement* element = PopElementMatchingTag(token_);
+  if (element != NULL) {
+    DCHECK(StringCaseEqual(token_, element->name_str()));
+    element->set_end_line_number(line_);
+    html_parse_->CloseElement(element, close_style, line_);
   } else {
-    HtmlElement* element = PopElementMatchingTag(token_);
-    if (element != NULL) {
-      DCHECK(StringCaseEqual(token_, element->name_str()));
-      element->set_end_line_number(line_);
-      html_parse_->CloseElement(element, close_style, line_);
-    } else {
-      SyntaxError("Unexpected close-tag `%s', no tags are open",
-                  token_.c_str());
-      emit_fake_close_as_a_characters_literal = true;
-    }
-  }
+    SyntaxError("Unexpected close-tag `%s', no tags are open",
+                token_.c_str());
 
-  if (emit_fake_close_as_a_characters_literal) {
     // Structurally the close-tag we just parsed is not open.  This
     // might happen because the HTML structure constraint forced this
     // tag to be closed already, but now we finally see a literal
@@ -1017,7 +999,6 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(const StringPiece& tag) {
       // point the appropriate response is to give up -- there is no
       // matching open-tag for the </tr> inside the <table>.  See
       // HtmlAnnotationTest.StrayCloseTrInTable in html_parse_test.cc.
-      missing_close_tag_bag_.clear();
       return NULL;
     }
   }
@@ -1039,7 +1020,6 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(const StringPiece& tag) {
       if (!HtmlKeywords::IsOptionallyClosedTag(skipped->keyword())) {
         html_parse_->Info(id_.c_str(), skipped->begin_line_number(),
                           "Unclosed element `%s'", skipped->name_str());
-        ++missing_close_tag_bag_[skipped->name_str()];
       }
       // Before closing the skipped element, pop it off the stack.  Otherwise,
       // the parent redundancy check in HtmlParse::AddEvent will fail.
