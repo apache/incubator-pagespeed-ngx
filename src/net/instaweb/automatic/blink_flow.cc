@@ -143,7 +143,13 @@ class SharedJsonFetch : public SharedAsyncFetch {
   virtual void HandleDone(bool success) {
     num_shared_json_fetches_complete_->IncBy(1);
     compute_json_ &= success;
-    if (compute_json_) {
+    if (!compute_json_) {
+      base_fetch()->Done(success);
+      delete this;
+    } else {
+      // Store base_fetch() in a temp since it might get deleted before calling
+      // Done.
+      AsyncFetch* fetch = base_fetch();
       json_headers_.CopyFrom(*response_headers());
 
       json_computation_driver_ = resource_manager_->NewCustomRewriteDriver(
@@ -151,15 +157,12 @@ class SharedJsonFetch : public SharedAsyncFetch {
       // TODO(rahulbansal): Put an increased deadline on this driver.
       json_computation_driver_->SetWriter(&value_);
       json_computation_driver_->set_response_headers_ptr(&json_headers_);
-      json_computation_driver_->AddLowPriorityRewriteTask(
+      json_computation_driver_->AddRewriteTask(
           MakeFunction(this, &SharedJsonFetch::Parse));
-    }
-    // We call Done after scheduling the rewrite on the driver since we expect
-    // this to be very low cost. Calling Done on base_fetch() before scheduling
-    // the rewrite causes problems with testing.
-    base_fetch()->Done(success);
-    if (!compute_json_) {
-      delete this;
+      // We call Done after scheduling the rewrite on the driver since we expect
+      // this to be very low cost. Calling Done on base_fetch() before
+      // scheduling the rewrite causes problems with testing.
+      fetch->Done(success);
     }
   }
 
@@ -293,8 +296,8 @@ void BlinkFlow::JsonCacheHit(const StringPiece& content,
   Json::Value json;
   std::string json_str = std::string(content.data(), content.size());
   if (!json_reader.parse(json_str, json)) {
-    LOG(DFATAL) << "Couldn't parse Json From Cache: " << json_str << "for url"
-                << url_;
+    LOG(ERROR) << "Couldn't parse Json from cache for url " << url_;
+    VLOG(1) << "Unparseable json is " << json_str;
     JsonCacheMiss();
     return;
   }
@@ -304,7 +307,8 @@ void BlinkFlow::JsonCacheHit(const StringPiece& content,
   // form, we have to strip everything after the layout marker.
   size_t pos = layout.find(BlinkUtil::kLayoutMarker);
   if (pos == StringPiece::npos) {
-    LOG(DFATAL) << "Layout marker not found: " << layout << " for url " << url_;
+    LOG(ERROR) << "Layout marker not found for url " << url_;
+    VLOG(1) << "Layout without marker is " << layout;
     JsonCacheMiss();
     return;
   }
@@ -336,9 +340,7 @@ void BlinkFlow::JsonCacheHit(const StringPiece& content,
   }
 
   // Trigger a fetch for non cacheable panels and cookies.
-  options_->ForceEnableFilter(RewriteOptions::kComputePanelJson);
-  options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
-  options_->ForceEnableFilter(RewriteOptions::kDisableJavascript);
+  SetFilterOptions(options_);
   TriggerProxyFetch(true);
 }
 
@@ -442,12 +444,7 @@ void BlinkFlow::TriggerProxyFetch(bool json_found) {
     fetch = new AsyncFetchWithHeadersInhibited(base_fetch_);
   } else {
     RewriteOptions* options = options_->Clone();
-    options->set_min_image_size_low_resolution_bytes(0);
-    // Enable inlining for all the images in html.
-    options->set_max_inlined_preview_images_index(-1);
-    options->EnableFilter(RewriteOptions::kComputePanelJson);
-    options->EnableFilter(RewriteOptions::kDisableJavascript);
-    options->DisableFilter(RewriteOptions::kHtmlWriterFilter);
+    SetFilterOptions(options);
     fetch = new SharedJsonFetch(base_fetch_, json_url_, manager_, options);
     num_shared_json_fetches_started_->IncBy(1);
   }
@@ -455,6 +452,25 @@ void BlinkFlow::TriggerProxyFetch(bool json_found) {
   // TODO(jmarantz): pass-through the property-cache callback rather than NULL.
   factory_->StartNewProxyFetch(url_, fetch, options_, NULL);
   delete this;
+}
+
+void BlinkFlow::SetFilterOptions(RewriteOptions* options) const {
+  options->DisableFilter(RewriteOptions::kHtmlWriterFilter);
+  options->DisableFilter(RewriteOptions::kCombineCss);
+  options->DisableFilter(RewriteOptions::kCombineJavascript);
+  options->DisableFilter(RewriteOptions::kMoveCssToHead);
+  options->DisableFilter(RewriteOptions::kLazyloadImages);
+  // TODO(rahulbansal): ConvertMetaTags is a special case incompatible filter
+  // which actually causes a SIGSEGV.
+  options->DisableFilter(RewriteOptions::kConvertMetaTags);
+  options->DisableFilter(RewriteOptions::kDeferJavascript);
+
+  options->ForceEnableFilter(RewriteOptions::kComputePanelJson);
+  options->ForceEnableFilter(RewriteOptions::kDisableJavascript);
+
+  options->set_min_image_size_low_resolution_bytes(0);
+  // Enable inlining for all the images in html.
+  options->set_max_inlined_preview_images_index(-1);
 }
 
 void BlinkFlow::TriggerJsonBackgroundFetch(AsyncFetch* json_fetch,

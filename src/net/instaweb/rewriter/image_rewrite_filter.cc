@@ -26,6 +26,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/css_resource_slot.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/image.h"
@@ -189,6 +190,16 @@ void ImageRewriteFilter::Initialize(Statistics* statistics) {
 }
 
 void ImageRewriteFilter::StartDocumentImpl() {
+  CriticalImagesFinder* finder =
+      driver_->resource_manager()->critical_images_finder();
+  if (finder != NULL &&
+      driver_->options()->Enabled(RewriteOptions::kDelayImages)) {
+    finder->UpdateCriticalImagesSetInDriver(driver_);
+    if (driver_->critical_images() == NULL) {
+      // Compute critical images if critical images information is not present.
+      finder->ComputeCriticalImages(driver_->url(), driver_);
+    }
+  }
   image_counter_ = 0;
 }
 
@@ -571,6 +582,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   const RewriteOptions* options = driver_->options();
   bool rewrote_url = false;
   bool image_inlined = false;
+  const GoogleString& src_value = src->value();
 
   // See if we have a data URL, and if so use it if the browser can handle it
   // TODO(jmaessen): get rid of a string copy here. Tricky because ->SetValue()
@@ -621,7 +633,8 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
 
   if (driver_->UserAgentSupportsImageInlining() && !image_inlined &&
       options->NeedLowResImages() &&
-      cached->has_low_resolution_inlined_data()) {
+      cached->has_low_resolution_inlined_data() &&
+      IsCriticalImage(src_value, image_index)) {
     int max_preview_image_index =
         driver_->options()->max_inlined_preview_images_index();
     if (max_preview_image_index < 0 || image_index < max_preview_image_index) {
@@ -642,6 +655,16 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     }
   }
   return rewrote_url;
+}
+
+bool ImageRewriteFilter::IsCriticalImage(const GoogleString& image_url,
+                                         int image_index) const {
+  GoogleUrl image_gurl(driver_->base_url(), image_url);
+  CriticalImagesFinder* finder =
+      driver_->resource_manager()->critical_images_finder();
+  bool is_image_critical = (finder == NULL) ||
+      (finder->IsCriticalImage(image_gurl.spec_c_str(), driver_));
+  return is_image_critical;
 }
 
 bool ImageRewriteFilter::HasAnyDimensions(HtmlElement* element) {

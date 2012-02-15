@@ -136,6 +136,12 @@ class ImageRewriteFilter : public RewriteFilter {
       Image* low_image, const ResourcePtr& input_resource,
       CachedResult* cached);
 
+  // Checks if image is critical to generate low res image for the given image.
+  // An image is considered critical if it is in the critical list as determined
+  // by CriticalImageFinder. Images are considered critical if the platform
+  // lacks a CriticalImageFinder implementation.
+  bool IsCriticalImage(const GoogleString& image_url, int image_index) const;
+
   scoped_ptr<const ImageTagScanner> image_filter_;
   scoped_ptr<WorkBound> work_bound_;
 

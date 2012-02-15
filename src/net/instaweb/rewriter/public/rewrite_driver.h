@@ -698,6 +698,25 @@ class RewriteDriver : public HtmlParse {
   PropertyPage* property_page() const { return property_page_.get(); }
   void set_property_page(PropertyPage* page);  // Takes ownership of page.
 
+  // Used by ImageRewriteFilter for identifying critical images.
+  const StringSet* critical_images() const {
+    return critical_images_.get();
+  }
+
+  // Inserts the critical images present on the requested html page. It takes
+  // the ownership of critical_images.
+  void set_critical_images(StringSet* critical_images) {
+    critical_images_.reset(critical_images);
+  }
+
+  // Increments the value of pending_async_events_. pending_async_events_ will
+  // be incremented whenever an async event wants rewrite driver to be alive
+  // upon its completion.
+  void increment_async_events_count();
+
+  // Decrements the value of pending_async_events_.
+  void decrement_async_events_count();
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -873,6 +892,9 @@ class RewriteDriver : public HtmlParse {
 
   bool flush_requested_;
 
+  // Set to true if RewriteDriver can be released.
+  bool release_driver_;
+
   scoped_ptr<AbstractMutex> inhibits_mutex_;
   typedef std::set <const HtmlElement*> ConstHtmlElementSet;
   ConstHtmlElementSet end_elements_inhibited_;  // protected by inhibits_mutex_
@@ -945,6 +967,12 @@ class RewriteDriver : public HtmlParse {
   // Rewrites that may possibly be satisfied from metadata cache alone.
   int possibly_quick_rewrites_;           // protected by rewrite_mutex()
 
+  // The number of async events that have been issued, and not yet completed.
+  // This is usually used to make the life of driver longer so that any async
+  // event that depends on RewriteDriver will be completed before the driver is
+  // released.
+  int pending_async_events_;             // protected by rewrite_mutex()
+
   // These objects are provided on construction or later, and are
   // owned by the caller.
   FileSystem* file_system_;
@@ -997,6 +1025,9 @@ class RewriteDriver : public HtmlParse {
 
   // Stores any cached properties associated with the current URL.
   scoped_ptr<PropertyPage> property_page_;
+
+  // Stores all the critical images for the current URL.
+  scoped_ptr<StringSet> critical_images_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

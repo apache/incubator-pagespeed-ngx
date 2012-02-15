@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 
 #include "net/instaweb/rewriter/public/critical_images_callback.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -29,16 +30,21 @@ CriticalImagesFinder::CriticalImagesFinder() {
 CriticalImagesFinder::~CriticalImagesFinder() {
 }
 
-bool CriticalImagesFinder::IsCriticalImage(const GoogleString& image_url,
-                                           RewriteDriver* driver) const {
-  return true;
+bool CriticalImagesFinder::IsCriticalImage(
+    const GoogleString& image_url, RewriteDriver* driver) const {
+  const StringSet* critical_images_set = driver->critical_images();
+  return critical_images_set != NULL &&
+      critical_images_set->find(image_url) != critical_images_set->end();
 }
 
-void CriticalImagesFinder::GetCriticalImages(const GoogleString& url,
-                                             const GoogleString& user_agent,
-                                             CriticalImagesCallback* callback) {
-  StringSet image_urls;
-  callback->Done(image_urls, false);
+void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
+    RewriteDriver* driver) {
+  // Default interface is empty and derived classes can override.
+}
+
+void CriticalImagesFinder::ComputeCriticalImages(
+    StringPiece url, RewriteDriver* driver) {
+  // Default interface is empty and derived classes can override.
 }
 
 }  // namespace net_instaweb

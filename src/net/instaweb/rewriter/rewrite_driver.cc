@@ -159,6 +159,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       fully_rewrite_on_flush_(false),
       cleanup_on_fetch_complete_(false),
       flush_requested_(false),
+      release_driver_(false),
       inhibits_mutex_(NULL),
       finish_parse_on_hold_(NULL),
       inhibiting_event_(NULL),
@@ -173,6 +174,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       response_headers_(NULL),
       pending_rewrites_(0),
       possibly_quick_rewrites_(0),
+      pending_async_events_(0),
       file_system_(file_system),
       url_async_fetcher_(url_async_fetcher),
       resource_manager_(NULL),
@@ -234,6 +236,7 @@ RewriteDriver* RewriteDriver::Clone() {
 void RewriteDriver::Clear() {
   DCHECK(!flush_requested_);
   cleanup_on_fetch_complete_ = false;
+  release_driver_ = false;
   base_url_.Clear();
   DCHECK(!base_url_.is_valid());
   cookies_.clear();
@@ -253,6 +256,7 @@ void RewriteDriver::Clear() {
   DCHECK_EQ(0, pending_rewrites_);
   DCHECK_EQ(0, possibly_quick_rewrites_);
   DCHECK(!fetch_queued_);
+  pending_async_events_ = 0;
   response_headers_ = NULL;
   fetch_detached_ = false;
   detached_fetch_detached_path_complete_ = false;
@@ -1557,12 +1561,13 @@ void RewriteDriver::ReportSlowRewrites(int num) {
 }
 
 void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
-  bool ready_to_recycle = false;
+  bool should_release = false;
   {
     ScopedMutex lock(rewrite_mutex());
     DCHECK_LT(0, rewrites_to_delete_);
     --rewrites_to_delete_;
     delete rewrite_context;
+    bool ready_to_recycle = false;
     if (RewritesComplete()) {
       if (waiting_ != kNoWait) {
         scheduler_->Signal();
@@ -1570,8 +1575,10 @@ void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
         ready_to_recycle = !externally_managed_ && !parsing_;
       }
     }
+    release_driver_ = ready_to_recycle;
+    should_release = release_driver_ && (pending_async_events_ == 0);
   }
-  if (ready_to_recycle) {
+  if (should_release) {
     resource_manager_->ReleaseRewriteDriver(this);
   }
 }
@@ -1607,18 +1614,19 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
     PropertyCache* pcache = resource_manager_->property_cache();
     const PropertyCache::Cohort* dom = pcache->GetCohort(kDomCohort);
     if (dom != NULL) {
+      // Page cannot be cleared yet because other cohorts may still need to be
+      // written.
       pcache->WriteCohort(url(), dom, property_page_.get());
-      property_page_.reset(NULL);
     }
   }
 }
 
 void RewriteDriver::Cleanup() {
   if (!externally_managed_) {
-    bool done = false;
+    bool should_release = false;
     {
       ScopedMutex lock(rewrite_mutex());
-      done = RewritesComplete();
+      bool done = RewritesComplete();
       if (!done) {
         parsing_ = false;  // Permit recycle when contexts done.
         if (fetch_queued_) {
@@ -1634,8 +1642,10 @@ void RewriteDriver::Cleanup() {
           done = false;
         }
       }
+      release_driver_ = done;
+      should_release = release_driver_ && (pending_async_events_ == 0);
     }
-    if (done) {
+    if (should_release) {
       resource_manager_->ReleaseRewriteDriver(this);
     }
   }
@@ -2018,6 +2028,23 @@ bool RewriteDriver::ShouldAbsolutifyUrl(const GoogleUrl& input_base,
 // include property_cache.h in the header.
 void RewriteDriver::set_property_page(PropertyPage* page) {
   property_page_.reset(page);
+}
+
+void RewriteDriver::increment_async_events_count() {
+  ScopedMutex(rewrite_mutex());
+  ++pending_async_events_;
+}
+
+void RewriteDriver::decrement_async_events_count() {
+  bool should_release = false;
+  {
+    ScopedMutex(rewrite_mutex());
+    --pending_async_events_;
+    should_release = release_driver_ && (pending_async_events_ == 0);
+  }
+  if (should_release) {
+    resource_manager_->ReleaseRewriteDriver(this);
+  }
 }
 
 }  // namespace net_instaweb

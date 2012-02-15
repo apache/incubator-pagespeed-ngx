@@ -103,6 +103,8 @@ class BlinkFlow {
   GoogleString GetAddTimingScriptString(const GoogleString& timing_str,
                                         int64 time_ms);
 
+  void SetFilterOptions(RewriteOptions* options) const;
+
   GoogleString url_;
   AsyncFetch* base_fetch_;
   const Layout* layout_;

@@ -98,7 +98,6 @@ class RewriteOptions {
   // be passed in when add_option is called in the constructor.
   enum OptionEnum {
     kAboveTheFoldCacheTime,
-    kAboveTheFoldCacheableFamilies,
     kAboveTheFoldNonCacheableElements,
     kAjaxRewritingEnabled,
     kAlwaysRewriteCss,
@@ -236,6 +235,7 @@ class RewriteOptions {
   static const int64 kDefaultCacheInvalidationTimestamp;
   static const int64 kDefaultIdleFlushTimeMs;
   static const int64 kDefaultImplicitCacheTtlMs;
+  static const int64 kDefaultAboveTheFoldCacheTimeMs;
   static const GoogleString kDefaultBeaconUrl;
   static const int kDefaultImageJpegRecompressQuality;
   static const int kDefaultImageLimitOptimizedPercent;
@@ -621,6 +621,34 @@ class RewriteOptions {
   }
   void set_domain_rewrite_all_tags(bool x) {
     set_option(x, &domain_rewrite_all_tags_);
+  }
+
+  bool MatchesAtfCacheableFamilies(const StringPiece& str) const {
+    return atf_cacheable_families_.Match(str, false);
+  }
+  void AddToAtfCacheableFamilies(const StringPiece& str) {
+    Modify();
+    if (atf_cacheable_families_default_) {
+      // In case is in default mode, blank it and then unmark the default flag
+      // before str is added.
+      WildcardGroup blank;
+      atf_cacheable_families_.CopyFrom(blank);
+      atf_cacheable_families_default_ = false;
+    }
+    atf_cacheable_families_.Allow(str);
+  }
+
+  const GoogleString& atf_non_cacheable_elements() const {
+    return atf_non_cacheable_elements_.value();
+  }
+  void set_atf_non_cacheable_elements(const StringPiece& p) {
+    set_option(GoogleString(p.data(), p.size()), &atf_non_cacheable_elements_);
+  }
+  int64 atf_cache_time_ms() const {
+    return atf_cache_time_ms_.value();
+  }
+  void set_atf_cache_time_ms(int64 x) {
+    set_option(x, &atf_cache_time_ms_);
   }
 
   // Takes ownership of the config.
@@ -1112,6 +1140,16 @@ class RewriteOptions {
   // are "likely cacheable" (e.g. images, js, css, not html) and have no
   // explicit cache ttl or expiration date.
   Option<int64> implicit_cache_ttl_ms_;
+
+  // AboveTheFold related options.
+  // List of elements that will be treated as non-cacheable by AboveTheFold
+  // filter.
+  Option<GoogleString> atf_non_cacheable_elements_;
+  // Caching time for AboveTheFold.
+  Option<int64> atf_cache_time_ms_;
+  // URL patterns for which AboveTheFold will be applied.
+  WildcardGroup atf_cacheable_families_;
+  bool atf_cacheable_families_default_;
 
   scoped_ptr<PublisherConfig> panel_config_;
 

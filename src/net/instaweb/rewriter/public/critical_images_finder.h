@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_IMAGES_FINDER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -35,13 +35,15 @@ class CriticalImagesFinder {
   virtual ~CriticalImagesFinder();
 
   // Checks whether the requested image is present in the critical set or not.
-  bool IsCriticalImage(const GoogleString& image_url,
-                       RewriteDriver* driver) const;
+  virtual bool IsCriticalImage(const GoogleString& image_url,
+                               RewriteDriver* driver) const;
 
-  // Gets critical images and calls the callback with critical images.
-  virtual void GetCriticalImages(const GoogleString& url,
-                                 const GoogleString& user_agent,
-                                 CriticalImagesCallback* callback);
+  // Gets critical images and update the critical images set in RewriteDriver.
+  virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver);
+
+  // Compute the critical images for the given url.
+  virtual void ComputeCriticalImages(StringPiece url,
+                                     RewriteDriver* driver);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CriticalImagesFinder);

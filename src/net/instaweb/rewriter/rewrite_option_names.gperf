@@ -26,7 +26,6 @@ struct OptionName {
 };
 %%
 "AboveTheFoldCacheTime",                RewriteOptions::kAboveTheFoldCacheTime
-"AboveTheFoldCacheableFamilies",        RewriteOptions::kAboveTheFoldCacheableFamilies
 "AboveTheFoldNonCacheableElements",     RewriteOptions::kAboveTheFoldNonCacheableElements
 "AjaxRewritingEnabled",                 RewriteOptions::kAjaxRewritingEnabled
 "AlwaysRewriteCss",                     RewriteOptions::kAlwaysRewriteCss

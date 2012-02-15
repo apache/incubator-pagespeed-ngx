@@ -552,4 +552,43 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
                 RewriteOptions::kMinImageSizeLowResolutionBytes));
 }
 
+TEST_F(RewriteOptionsTest, AtfCacheableFamilies) {
+  // Check if wildcard group is setup for the default value "*";
+  EXPECT_TRUE(options_.MatchesAtfCacheableFamilies("MatchesEverything"));
+  EXPECT_TRUE(options_.MatchesAtfCacheableFamilies(""));
+
+  // Set explicitly.  Now any string should not match.
+  options_.AddToAtfCacheableFamilies("zero*?");
+  EXPECT_FALSE(options_.MatchesAtfCacheableFamilies("MatchesEverything"));
+  EXPECT_FALSE(options_.MatchesAtfCacheableFamilies(""));
+  EXPECT_TRUE(options_.MatchesAtfCacheableFamilies("zero1"));
+  EXPECT_TRUE(options_.MatchesAtfCacheableFamilies("zerooooo1"));
+
+  // Merge in an options with default cacheable families.  This should not
+  // affect options_.
+  RewriteOptions options1;
+  options_.Merge(options1);
+  EXPECT_FALSE(options_.MatchesAtfCacheableFamilies("MatchesEverything"));
+  EXPECT_FALSE(options_.MatchesAtfCacheableFamilies(""));
+  EXPECT_TRUE(options_.MatchesAtfCacheableFamilies("zero1"));
+  EXPECT_TRUE(options_.MatchesAtfCacheableFamilies("zerooooo1"));
+
+  // Merge in an options with explicit options.  This should now replace in
+  // options_.
+  options1.AddToAtfCacheableFamilies("one?");
+  options1.AddToAtfCacheableFamilies("?two*");
+  options1.AddToAtfCacheableFamilies("three");
+  options_.Merge(options1);
+  EXPECT_FALSE(options_.MatchesAtfCacheableFamilies("MatchesEverything"));
+  EXPECT_FALSE(options_.MatchesAtfCacheableFamilies(""));
+  EXPECT_FALSE(options_.MatchesAtfCacheableFamilies("zero1"));
+  EXPECT_FALSE(options_.MatchesAtfCacheableFamilies("zerooooo1"));
+  EXPECT_TRUE(options_.MatchesAtfCacheableFamilies("one1"));
+  EXPECT_FALSE(options_.MatchesAtfCacheableFamilies("one"));
+  EXPECT_TRUE(options_.MatchesAtfCacheableFamilies("2two"));
+  EXPECT_TRUE(options_.MatchesAtfCacheableFamilies("2twoANYTHING"));
+  EXPECT_FALSE(options_.MatchesAtfCacheableFamilies("twoANYTHING"));
+  EXPECT_TRUE(options_.MatchesAtfCacheableFamilies("three"));
+}
+
 }  // namespace

@@ -252,7 +252,7 @@ ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
     options = custom_options.get();
   }
 
-  // Check query params & reqeust-headers for
+  // Check query params & request-headers for
   scoped_ptr<RewriteOptions> query_options(resource_manager_->NewOptions());
   switch (RewriteQuery::Scan(request_url, request_headers,
                              query_options.get(), handler)) {
@@ -351,8 +351,7 @@ void ProxyInterface::ProxyRequestCallback(
                                                 options);
       const char* user_agent = async_fetch->request_headers()->Lookup1(
           HttpAttributes::kUserAgent);
-      if (layout != NULL && user_agent_matcher_.SupportsBlink(user_agent) &&
-          options->Enabled(RewriteOptions::kAboveTheFold)) {
+      if (layout != NULL && user_agent_matcher_.SupportsBlink(user_agent)) {
         // TODO(rahulbansal): Remove this LOG once we expect to have
         // Blink requests.
         LOG(INFO) << "Triggering Blink flow for url "
@@ -387,7 +386,12 @@ void ProxyInterface::ProxyRequestCallback(
 const Layout* ProxyInterface::ExtractBlinkLayout(const GoogleUrl& url,
                                                  AsyncFetch* async_fetch,
                                                  RewriteOptions* options) {
-  if (options != NULL) {
+  if (options != NULL &&
+      /* Above the fold is enabled. */
+      options->Enabled(RewriteOptions::kAboveTheFold) &&
+      /* url matches a cacheable family pattern specified in config. */
+      options->MatchesAtfCacheableFamilies(url.PathAndLeaf())) {
+    // TODO(sriharis):  Add a check on url blacklist also.   [google]
     const PublisherConfig* config = options->panel_config();
     if (config != NULL) {
       return BlinkUtil::FindLayout(*config, url);
