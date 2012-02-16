@@ -307,6 +307,8 @@ CacheUrlAsyncFetcher::~CacheUrlAsyncFetcher() {
 bool CacheUrlAsyncFetcher::Fetch(
     const GoogleString& url, MessageHandler* handler, AsyncFetch* base_fetch) {
 
+  // TODO(mmohabey): If the url is in cache, then use it for serving the head
+  // request.
   if (base_fetch->request_headers()->method() != RequestHeaders::kGet) {
     // Without this if there is URL which responds both on GET
     // and POST. If GET comes first, and POST next then the cached

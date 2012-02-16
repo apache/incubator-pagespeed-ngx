@@ -424,6 +424,85 @@ TEST_F(ProxyInterfaceTest, TimingInfo) {
   EXPECT_FALSE(timing_info_.has_fetch_ms());
 }
 
+TEST_F(ProxyInterfaceTest, HeadRequest) {
+  // Test to check if we are handling Head requests correctly.
+  GoogleString url = "http://www.example.com/";
+  GoogleString set_text, get_text;
+  RequestHeaders request_headers;
+  ResponseHeaders set_headers, get_headers;
+
+  set_headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  set_headers.SetStatusAndReason(HttpStatus::kOK);
+
+  set_text = "<html></html>";
+
+  mock_url_fetcher_.SetResponse("http://www.example.com/", set_headers,
+                                set_text);
+  FetchFromProxy(url, request_headers, true, &get_text, &get_headers);
+
+  // Headers and body are correct for a Get request.
+  EXPECT_EQ("HTTP/1.0 200 OK\r\n"
+            "Content-Type: text/html\r\n"
+            "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+            "Expires: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+            "Cache-Control: max-age=0, private\r\n"
+            "X-Page-Speed: \r\n\r\n", get_headers.ToString());
+  EXPECT_EQ(set_text, get_text);
+
+  // Headers and body are correct for a Head request.
+  request_headers.set_method(RequestHeaders::kHead);
+  FetchFromProxy(url, request_headers, true, &get_text, &get_headers);
+
+  EXPECT_EQ("HTTP/1.0 200 OK\r\n"
+            "Content-Type: text/html\r\n"
+            "X-Page-Speed: \r\n\r\n", get_headers.ToString());
+  EXPECT_TRUE(get_text.empty());
+}
+
+TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
+  // Test to check if we are handling Head requests correctly in pagespeed
+  // resource flow.
+  const char kCssWithEmbeddedImage[] = "*{background-image:url(%s)}";
+  const char kBackgroundImage[] = "1.png";
+
+  GoogleString text;
+  RequestHeaders request_headers;
+  ResponseHeaders response_headers;
+  GoogleString expected_response_headers_string = "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/css\r\n"
+      "Etag: W/0\r\n"
+      "Last-Modified: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+      "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+      "Expires: Tue, 02 Feb 2010 18:56:26 GMT\r\n"
+      "Cache-Control: max-age=300,private\r\n"
+      "X-Page-Speed: \r\n\r\n";
+
+  // We're not going to image-compress so we don't need our mock image
+  // to really be an image.
+  SetResponseWithDefaultHeaders(kBackgroundImage, kContentTypePng, "image",
+                                kHtmlCacheTimeSec * 2);
+  GoogleString orig_css = StringPrintf(kCssWithEmbeddedImage, kBackgroundImage);
+  SetResponseWithDefaultHeaders("embedded.css", kContentTypeCss,
+                                orig_css, kHtmlCacheTimeSec * 2);
+
+  // By default, cache extension is off in the default options.
+  resource_manager()->global_options()->SetDefaultRewriteLevel(
+      RewriteOptions::kPassThrough);
+
+  // Because cache-extension was turned off, the image in the CSS file
+  // will not be changed.
+  FetchFromProxy("I.embedded.css.pagespeed.cf.0.css", request_headers,
+                 true, &text, &response_headers);
+  EXPECT_EQ(expected_response_headers_string, response_headers.ToString());
+  EXPECT_EQ(orig_css, text);
+  // Headers and body are correct for a Head request.
+  request_headers.set_method(RequestHeaders::kHead);
+  FetchFromProxy("I.embedded.css.pagespeed.cf.0.css", request_headers,
+                 true, &text, &response_headers);
+  EXPECT_EQ(expected_response_headers_string, response_headers.ToString());
+  EXPECT_TRUE(text.empty());
+}
+
 TEST_F(ProxyInterfaceTest, FetchFailure) {
   GoogleString text;
   ResponseHeaders headers;

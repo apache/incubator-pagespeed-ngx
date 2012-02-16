@@ -204,8 +204,9 @@ bool ProxyInterface::Fetch(const GoogleString& requested_url_string,
                            MessageHandler* handler,
                            AsyncFetch* async_fetch) {
   const GoogleUrl requested_url(requested_url_string);
-  bool is_get = (async_fetch->request_headers()->method() ==
-                 RequestHeaders::kGet);
+  bool is_get_or_head =
+      (async_fetch->request_headers()->method() == RequestHeaders::kGet) ||
+      (async_fetch->request_headers()->method() == RequestHeaders::kHead);
 
   bool done = false;
 
@@ -217,7 +218,8 @@ bool ProxyInterface::Fetch(const GoogleString& requested_url_string,
     done = true;
   } else {
     // Try to handle this as a .pagespeed. resource.
-    if (resource_manager_->IsPagespeedResource(requested_url) && is_get) {
+    if (resource_manager_->IsPagespeedResource(requested_url) &&
+        is_get_or_head) {
       pagespeed_requests_->IncBy(1);
       ProxyRequest(true, requested_url, async_fetch, handler);
       LOG(INFO) << "Serving URL as pagespeed resource: "

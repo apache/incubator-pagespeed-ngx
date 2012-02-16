@@ -46,6 +46,10 @@ bool AsyncFetch::Write(const StringPiece& sp, MessageHandler* handler) {
   if (!sp.empty()) {  // empty-writes should be no-ops.
     if (!headers_complete_) {
       HeadersComplete();
+    } else if (request_headers()->method() == RequestHeaders::kHead) {
+      // If the request is a head request, then don't write the contents of
+      // body.
+      return ret;
     }
     ret = HandleWrite(sp, handler);
   }
