@@ -946,11 +946,41 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
       ret = apr_pstrcat(cmd->pool, "Directory ", arg,
                         " does not exist and can't be created.", NULL);
     }
-  } else if (directive.starts_with(prefix) &&
-             options->SetOptionFromName(directive.substr(prefix.size()), arg,
-                                        handler)) {
-    // Set option via name.
-  } else if (StringCaseEqual(directive, RewriteQuery::kModPagespeed)) {
+    return ret;
+  }
+
+  // Likewise for GeneratedFilePrefix.
+  if (StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix)) {
+    config->set_filename_prefix(arg);
+    if (!give_apache_user_permissions(factory)) {
+      ret = apr_pstrcat(cmd->pool, "Directory ", arg,
+                        " does not exist and can't be created.", NULL);
+    }
+    return ret;
+  }
+
+  // See whether generic RewriteOptions name handling can figure this one out.
+  if (directive.starts_with(prefix)) {
+    GoogleString msg;
+    RewriteOptions::OptionSettingResult result =
+        options->SetOptionFromName(directive.substr(prefix.size()), arg, &msg);
+    switch (result) {
+      case RewriteOptions::kOptionOk:
+        return NULL;  // No error
+      case RewriteOptions::kOptionNameUnknown:
+        // RewriteOptions didn't recognize the option, but we might do so
+        // below.
+        break;
+      case RewriteOptions::kOptionValueInvalid:
+        // The option is recognized, but the value is not. Return the error
+        // message.
+        ret = apr_pstrdup(cmd->pool, msg.c_str());
+        return ret;
+    }
+  }
+
+  // Options which we handle manually.
+  if (StringCaseEqual(directive, RewriteQuery::kModPagespeed)) {
     ret = ParseBoolOption(options, cmd, &RewriteOptions::set_enabled, arg);
   } else if (StringCaseEqual(directive, kModPagespeedAllow)) {
     options->Allow(arg);
@@ -976,12 +1006,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
     ret = ParseBoolOption(static_cast<RewriteDriverFactory*>(factory),
                           cmd, &RewriteDriverFactory::set_force_caching, arg);
-  } else if (StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix)) {
-    config->set_filename_prefix(arg);
-    if (!give_apache_user_permissions(factory)) {
-      ret = apr_pstrcat(cmd->pool, "Directory ", arg,
-                        " does not exist and can't be created.", NULL);
-    }
   } else if (StringCaseEqual(directive, kModPagespeedMessageBufferSize)) {
     ret = ParseIntOption(factory, cmd,
                          &ApacheRewriteDriverFactory::set_message_buffer_size,
@@ -993,7 +1017,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedUrlPrefix)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else {
-    return "Unknown directive.";
+    ret = apr_pstrcat(cmd->pool, "Unknown directive ",
+                      directive.as_string().c_str(), NULL);
   }
 
   return ret;

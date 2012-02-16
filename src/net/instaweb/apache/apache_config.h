@@ -89,12 +89,6 @@ class ApacheConfig : public RewriteOptions {
   void set_slurp_flush_limit(int64 x) {
     set_option(x, &slurp_flush_limit_);
   }
-  int message_buffer_size() const {
-    return message_buffer_size_.value();
-  }
-  void set_message_buffer_size(int x) {
-    set_option(x, &message_buffer_size_);
-  }
   bool use_shared_mem_locking() const {
     return use_shared_mem_locking_.value();
   }
@@ -256,8 +250,6 @@ class ApacheConfig : public RewriteOptions {
   Option<int64> lru_cache_byte_limit_;
   Option<int64> lru_cache_kb_per_process_;
   Option<int64> slurp_flush_limit_;
-
-  Option<int> message_buffer_size_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheConfig);
 };

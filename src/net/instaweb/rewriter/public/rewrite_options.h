@@ -223,6 +223,13 @@ class RewriteOptions {
     kAllFilters,
   };
 
+  // Used for return value of SetOptionFromName.
+  enum OptionSettingResult {
+    kOptionOk,
+    kOptionNameUnknown,
+    kOptionValueInvalid
+  };
+
   static const int64 kDefaultCssInlineMaxBytes;
   static const int64 kDefaultImageInlineMaxBytes;
   static const int64 kDefaultCssImageInlineMaxBytes;
@@ -348,9 +355,16 @@ class RewriteOptions {
 
   bool Enabled(Filter filter) const;
 
-  // Set Option name with value.
-  bool SetOptionFromName(const StringPiece& name, const GoogleString& value,
-                         MessageHandler* handler);
+  // Set Option 'name' to 'value'. Returns whether it succeeded or the kind of
+  // failure (wrong name or value), and writes the diagnostic into 'msg'.
+  OptionSettingResult SetOptionFromName(
+      const StringPiece& name, const GoogleString& value, GoogleString* msg);
+
+  // Sets Option 'name' to 'value'. Returns whether it succeeded and logs
+  // any warnings to 'handler'.
+  bool SetOptionFromNameAndLog(const StringPiece& name,
+                               const GoogleString& value,
+                               MessageHandler* handler);
 
   // TODO(jmarantz): consider setting flags in the set_ methods so that
   // first's explicit settings can override default values from second.

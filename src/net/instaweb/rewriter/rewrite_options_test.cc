@@ -25,6 +25,7 @@
 
 namespace {
 
+using net_instaweb::MessageHandler;
 using net_instaweb::NullMessageHandler;
 using net_instaweb::RewriteOptions;
 
@@ -64,6 +65,30 @@ class RewriteOptionsTest : public ::testing::Test {
     options_.Merge(one);
     options_.Merge(two);
   }
+
+  // Tests either SetOptionFromName or SetOptionFromNameAndLog depending
+  // on 'test_log_variant'
+  void TestNameSet(RewriteOptions::OptionSettingResult expected_result,
+                   bool test_log_variant,
+                   const StringPiece& name,
+                   const StringPiece& value,
+                   MessageHandler* handler) {
+    if (test_log_variant) {
+      bool expected = (expected_result == RewriteOptions::kOptionOk);
+      EXPECT_EQ(
+          expected,
+          options_.SetOptionFromNameAndLog(name, value.as_string(), handler));
+    } else {
+      GoogleString msg;
+      EXPECT_EQ(expected_result,
+                options_.SetOptionFromName(name, value.as_string(), &msg));
+      // Should produce a message exactly when not OK.
+      EXPECT_EQ(expected_result != RewriteOptions::kOptionOk, !msg.empty())
+          << msg;
+    }
+  }
+
+  void TestSetOptionFromName(bool test_log_variant);
 
   RewriteOptions options_;
 };
@@ -498,38 +523,69 @@ TEST_F(RewriteOptionsTest, SetDefaultRewriteLevel) {
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kExtendCacheCss));
 }
 
-TEST_F(RewriteOptionsTest, SetOptionFromName) {
+void RewriteOptionsTest::TestSetOptionFromName(bool test_log_variant) {
   NullMessageHandler handler;
 
-  EXPECT_TRUE(
-      options_.SetOptionFromName("CssInlineMaxBytes", "1024", &handler));
+  TestNameSet(RewriteOptions::kOptionOk,
+              test_log_variant,
+              "CssInlineMaxBytes",
+              "1024",
+              &handler);
   // Default for this is 2048.
   EXPECT_EQ(1024L, options_.css_inline_max_bytes());
 
-  EXPECT_TRUE(
-      options_.SetOptionFromName("JpegRecompressionQuality", "1", &handler));
+  TestNameSet(RewriteOptions::kOptionOk,
+              test_log_variant,
+              "JpegRecompressionQuality",
+              "1",
+              &handler);
   // Default is -1.
   EXPECT_EQ(1, options_.image_jpeg_recompress_quality());
 
-  EXPECT_TRUE(
-      options_.SetOptionFromName("CombineAcrossPaths", "false", &handler));
+  TestNameSet(RewriteOptions::kOptionOk,
+              test_log_variant,
+              "CombineAcrossPaths",
+              "false",
+              &handler);
   // Default is true
   EXPECT_EQ(false, options_.combine_across_paths());
 
-  EXPECT_TRUE(options_.SetOptionFromName("BeaconUrl", "example", &handler));
+  TestNameSet(RewriteOptions::kOptionOk,
+              test_log_variant,
+              "BeaconUrl",
+              "example",
+              &handler);
   EXPECT_EQ("example", options_.beacon_url());
 
   RewriteOptions::RewriteLevel old_level = options_.level();
-  EXPECT_FALSE(
-      options_.SetOptionFromName("RewriteLevel", "does_not_work", &handler));
+  TestNameSet(RewriteOptions::kOptionValueInvalid,
+              test_log_variant,
+              "RewriteLevel",
+              "does_not_work",
+              &handler);
   EXPECT_EQ(old_level, options_.level());
 
-  EXPECT_FALSE(options_.SetOptionFromName("InvalidName", "example", &handler));
+  TestNameSet(RewriteOptions::kOptionNameUnknown,
+              test_log_variant,
+              "InvalidName",
+              "example",
+              &handler);
 
-  EXPECT_FALSE(
-      options_.SetOptionFromName("JsInlineMaxBytes", "NOT_INT", &handler));
+  TestNameSet(RewriteOptions::kOptionValueInvalid,
+              test_log_variant,
+              "JsInlineMaxBytes",
+              "NOT_INT",
+              &handler);
   EXPECT_EQ(RewriteOptions::kDefaultJsInlineMaxBytes,
             options_.js_inline_max_bytes());  // unchanged from default.
+}
+
+TEST_F(RewriteOptionsTest, SetOptionFromName) {
+  TestSetOptionFromName(false);
+}
+
+TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
+  TestSetOptionFromName(true);
 }
 
 // TODO(bharathbhushan): Figure out a better way to test all enum lookups.

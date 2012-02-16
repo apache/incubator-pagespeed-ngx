@@ -81,7 +81,6 @@ struct OptionName {
 "HashRefererStatistics",                RewriteOptions::kHashRefererStatistics
 "LRUCacheByteLimit",                    RewriteOptions::kLruCacheByteLimit
 "LRUCacheKbPerProcess",                 RewriteOptions::kLruCacheKbPerProcess
-"MessageBufferSize",                    RewriteOptions::kMessageBufferSize
 "RefererStatisticsOutputLevel",         RewriteOptions::kRefererStatisticsOutputLevel
 "SharedMemoryLocks",                    RewriteOptions::kUseSharedMemLocking
 "SlurpDirectory",                       RewriteOptions::kSlurpDirectory

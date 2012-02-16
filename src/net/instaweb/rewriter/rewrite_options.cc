@@ -712,15 +712,13 @@ bool RewriteOptions::AddByNameToFilterSet(
   return ret;
 }
 
-bool RewriteOptions::SetOptionFromName(const StringPiece& name,
-                                       const GoogleString& value,
-                                       MessageHandler* handler) {
+RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
+    const StringPiece& name, const GoogleString& value, GoogleString* msg) {
   OptionEnum name_enum = LookupOption(name);
   if (name_enum == kEndOfOptions) {
     // Not a mapped option.
-    handler->Message(kWarning, "Option %s not mapped.",
-                     name.as_string().c_str());
-    return false;
+    SStringPrintf(msg, "Option %s not mapped.", name.as_string().c_str());
+    return kOptionNameUnknown;
   }
   OptionBaseVector::iterator it = std::lower_bound(
       all_options_.begin(), all_options_.end(), name_enum,
@@ -728,16 +726,28 @@ bool RewriteOptions::SetOptionFromName(const StringPiece& name,
   OptionBase* option = *it;
   if (option->option_enum() == name_enum) {
     if (!option->SetFromString(value)) {
-      handler->Message(kWarning, "Cannot set %s for option %s.", value.c_str(),
-                       name.as_string().c_str());
-      return false;
+      SStringPrintf(msg, "Cannot set %s for option %s.", value.c_str(),
+                    name.as_string().c_str());
+      return kOptionValueInvalid;
     } else {
-      return true;
+      return kOptionOk;
     }
   } else {
     // No Option with name_enum in all_options_.
-    handler->Message(kWarning, "Option %s not found.",
-                     name.as_string().c_str());
+    SStringPrintf(msg, "Option %s not found.", name.as_string().c_str());
+    return kOptionNameUnknown;
+  }
+}
+
+bool RewriteOptions::SetOptionFromNameAndLog(const StringPiece& name,
+                                             const GoogleString& value,
+                                             MessageHandler* handler) {
+  GoogleString msg;
+  OptionSettingResult result = SetOptionFromName(name, value, &msg);
+  if (result == kOptionOk) {
+    return true;
+  } else {
+    handler->Message(kWarning, "%s", msg.c_str());
     return false;
   }
 }

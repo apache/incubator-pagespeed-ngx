@@ -65,9 +65,6 @@ void ApacheConfig::Init() {
   add_option(0, &slurp_flush_limit_, "asfl",
              RewriteOptions::kSlurpFlushLimit);
 
-  add_option(100 * 1024, &message_buffer_size_, "ambs",
-             RewriteOptions::kMessageBufferSize);  // 100 kbytes
-
   SortOptions();
 }
 
