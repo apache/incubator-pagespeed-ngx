@@ -40,6 +40,8 @@ class JsDisableFilter : public EmptyHtmlFilter {
   explicit JsDisableFilter(RewriteDriver* driver);
   ~JsDisableFilter();
 
+  virtual void StartDocument();
+
   virtual void StartElement(HtmlElement* element);
 
   virtual const char* Name() const {
@@ -49,6 +51,7 @@ class JsDisableFilter : public EmptyHtmlFilter {
  private:
   RewriteDriver* rewrite_driver_;
   ScriptTagScanner script_tag_scanner_;
+  int index_;
 
   DISALLOW_COPY_AND_ASSIGN(JsDisableFilter);
 };

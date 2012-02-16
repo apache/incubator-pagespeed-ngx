@@ -27,10 +27,15 @@ const char kDisabledAttribute[] = "psa_disabled";
 
 JsDisableFilter::JsDisableFilter(RewriteDriver* driver)
     : rewrite_driver_(driver),
-      script_tag_scanner_(driver) {
+      script_tag_scanner_(driver),
+      index_(0) {
 }
 
 JsDisableFilter::~JsDisableFilter() {
+}
+
+void JsDisableFilter::StartDocument() {
+  index_ = 0;
 }
 
 void JsDisableFilter::StartElement(HtmlElement* element) {
@@ -55,6 +60,8 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
     }
     element->AddAttribute(
         rewrite_driver_->MakeName(HtmlName::kType), "text/psajs", "\"");
+    element->AddAttribute(rewrite_driver_->MakeName("orig_index"),
+                          IntegerToString(index_++), "\"");
   }
 }
 
