@@ -22,6 +22,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/tools/dump_cache/url_to_filename_encoder.h"
+using net::UrlToFilenameEncoder;
+
 namespace net_instaweb {
 
 class FilenameEncoder {
@@ -30,11 +32,10 @@ class FilenameEncoder {
   ~FilenameEncoder();
 
   void Encode(const StringPiece& filename_prefix,
-                      const StringPiece& filename_ending,
-                      GoogleString* encoded_filename);
+              const StringPiece& filename_ending,
+              GoogleString* encoded_filename);
 
-  bool Decode(const StringPiece& encoded_filename,
-                             GoogleString* decoded_url);
+  bool Decode(const StringPiece& encoded_filename, GoogleString* decoded_url);
 };
 
 }  // namespace net_instaweb

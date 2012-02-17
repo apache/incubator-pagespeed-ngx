@@ -24,13 +24,13 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
+namespace net_instaweb {
+
 namespace {
 // net::kMaximumSubdirectoryLength is defined in url_to_filename_encoder.cc, but
 // we cannot link it.
 const size_t kMaxLen = 128;
 }  // namespace
-
-namespace net_instaweb {
 
 // Note -- the exact behavior of the encoder is tested in
 // gfe/tools/loadtesting/spdy_testing/url_to_filename_encoder_test.cc

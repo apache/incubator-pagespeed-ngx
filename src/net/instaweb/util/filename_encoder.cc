@@ -19,7 +19,6 @@
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-using net::UrlToFilenameEncoder;
 
 namespace net_instaweb {
 
