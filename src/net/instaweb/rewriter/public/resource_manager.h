@@ -104,7 +104,10 @@ class ResourceManager {
   void set_relative_path(bool x) { relative_path_ = x; }
   void set_lock_manager(NamedLockManager* x) { lock_manager_ = x; }
   void set_http_cache(HTTPCache* x) { http_cache_ = x; }
-  void set_property_cache(PropertyCache* x) { property_cache_ = x; }
+  void set_page_property_cache(PropertyCache* x) { page_property_cache_ = x; }
+  void set_client_property_cache(PropertyCache* x) {
+    client_property_cache_ = x;
+  }
   void set_metadata_cache(CacheInterface* x) { metadata_cache_ = x; }
   void set_message_handler(MessageHandler* x) { message_handler_ = x; }
 
@@ -161,7 +164,10 @@ class ResourceManager {
   UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
   Timer* timer() const { return http_cache_->timer(); }
   HTTPCache* http_cache() const { return http_cache_; }
-  PropertyCache* property_cache() const { return property_cache_; }
+  PropertyCache* page_property_cache() const { return page_property_cache_; }
+  PropertyCache* client_property_cache() const {
+    return client_property_cache_;
+  }
   CriticalImagesFinder* critical_images_finder() const {
     return critical_images_finder_;
   }
@@ -391,7 +397,8 @@ class ResourceManager {
   Statistics* statistics_;
 
   HTTPCache* http_cache_;
-  PropertyCache* property_cache_;
+  PropertyCache* page_property_cache_;
+  PropertyCache* client_property_cache_;
   CacheInterface* metadata_cache_;
 
   bool relative_path_;

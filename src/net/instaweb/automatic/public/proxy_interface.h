@@ -50,6 +50,7 @@ class GoogleUrl;
 class Layout;
 class MessageHandler;
 class ProxyFetchPropertyCallback;
+class ProxyFetchPropertyCallbackCollector;
 class ProxyFetchFactory;
 class RequestHeaders;
 class ResourceManager;
@@ -96,12 +97,13 @@ class ProxyInterface : public UrlAsyncFetcher {
 
   // Callback function passed to UrlNamer to finish handling requests once we
   // have rewrite_options for requests that are being proxied.
-  void ProxyRequestCallback(bool is_resource_fetch,
-                            GoogleUrl* request_url,
-                            AsyncFetch* async_fetch,
-                            RewriteOptions* domain_options,
-                            ProxyFetchPropertyCallback* property_callback,
-                            MessageHandler* handler);
+  void ProxyRequestCallback(
+      bool is_resource_fetch,
+      GoogleUrl* request_url,
+      AsyncFetch* async_fetch,
+      RewriteOptions* domain_options,
+      ProxyFetchPropertyCallbackCollector* property_callback,
+      MessageHandler* handler);
 
  private:
   // Handle requests that are being proxied.

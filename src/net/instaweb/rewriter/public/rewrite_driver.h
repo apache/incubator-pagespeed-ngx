@@ -826,8 +826,8 @@ class RewriteDriver : public HtmlParse {
 
   // When HTML parsing is complete, we have learned all we can about
   // the DOM, so immediately write anything required into that Cohort
-  // into the property cache.
-  void WriteDomCohortIntoPropertyCache();
+  // into the page property cache.
+  void WriteDomCohortIntoPagePropertyCache();
 
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base

@@ -178,8 +178,13 @@ bool PropertyPage::EncodeCacheEntry(const PropertyCache::Cohort* cohort,
       if (pcache_value->name().empty()) {
         pcache_value->set_name(p->first);
       }
-      *values.add_value() = *pcache_value;
-      ret = true;
+
+      // Why might the value be empty? If a cache lookup is performed, misses,
+      // and UpdateValue() is never called. In this case, we can skip the write.
+      if (!pcache_value->body().empty()) {
+        *values.add_value() = *pcache_value;
+        ret = true;
+      }
     }
     if (ret) {
       StringOutputStream sstream(value);

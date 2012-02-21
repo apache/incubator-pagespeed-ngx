@@ -63,7 +63,7 @@ ProxyFetchFactory::~ProxyFetchFactory() {
 void ProxyFetchFactory::StartNewProxyFetch(
     const GoogleString& url_in, AsyncFetch* async_fetch,
     RewriteOptions* custom_options,
-    ProxyFetchPropertyCallback* property_callback) {
+    ProxyFetchPropertyCallbackCollector* property_callback) {
   const GoogleString* url_to_fetch = &url_in;
 
   // Check whether this an encoding of a non-rewritten resource served
@@ -134,13 +134,44 @@ void ProxyFetchFactory::Finish(ProxyFetch* fetch) {
   outstanding_proxy_fetches_.erase(fetch);
 }
 
-ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(AbstractMutex* mutex)
+ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(
+    CacheType cache_type, ProxyFetchPropertyCallbackCollector* collector,
+    AbstractMutex* mutex)
     : PropertyPage(mutex),
-      mutex_(mutex),
+      cache_type_(cache_type),
+      collector_(collector) {
+}
+
+void ProxyFetchPropertyCallback::Done(bool success) {
+  collector_->Done(this, success);
+}
+
+ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
+    AbstractMutex* mutex)
+    : mutex_(mutex),
       detached_(false),
       done_(false),
-      success_(false),
+      success_(true),
       proxy_fetch_(NULL) {
+}
+
+ProxyFetchPropertyCallbackCollector::~ProxyFetchPropertyCallbackCollector() {
+  STLDeleteElements(&pending_callbacks_);
+  STLDeleteValues(&property_pages_);
+}
+
+void ProxyFetchPropertyCallbackCollector::AddCallback(
+    ProxyFetchPropertyCallback* callback) {
+  ScopedMutex lock(mutex_.get());
+  pending_callbacks_.insert(callback);
+}
+
+PropertyPage* ProxyFetchPropertyCallbackCollector::GetPropertyPage(
+    ProxyFetchPropertyCallback::CacheType cache_type) {
+  ScopedMutex lock(mutex_.get());
+  PropertyPage* page = property_pages_[cache_type];
+  property_pages_[cache_type] = NULL;
+  return page;
 }
 
 // Calls to Done(), SetProxyFetch(), and Detach() may occur on
@@ -150,21 +181,22 @@ ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(AbstractMutex* mutex)
 // that SetProxyFetch can be followed by Detach if it turns out that
 // a URL without a known extension is *not* HTML.  See
 // ProxyInterfaceTest.PropCacheNoWritesIfNonHtmlDelayedCache.
-//
-// TODO(jmarantz): Add unit-tests to capture the 4 orderings, if
-// not the potential races.
 
-void ProxyFetchPropertyCallback::Done(bool success) {
-  // Note that the proxy_fetch is created while the property-cache
-  // lookup is in progress, so we must lock access to the proxy_fetch_.
+void ProxyFetchPropertyCallbackCollector::Done(
+    ProxyFetchPropertyCallback* callback, bool success) {
   ProxyFetch* fetch = NULL;
   bool do_delete = false;
   {
-    ScopedMutex lock(mutex_);
-    success_ = success;
-    done_ = true;
-    fetch = proxy_fetch_;
-    do_delete = detached_;
+    ScopedMutex lock(mutex_.get());
+    pending_callbacks_.erase(callback);
+    property_pages_[callback->cache_type()] = callback;
+    success_ &= success;
+
+    if (pending_callbacks_.empty()) {
+      done_ = true;
+      fetch = proxy_fetch_;
+      do_delete = detached_;
+    }
   }
   if (fetch != NULL) {
     fetch->PropertyCacheComplete(this, success);  // Transfers ownership.
@@ -173,10 +205,11 @@ void ProxyFetchPropertyCallback::Done(bool success) {
   }
 }
 
-void ProxyFetchPropertyCallback::SetProxyFetch(ProxyFetch* proxy_fetch) {
+void ProxyFetchPropertyCallbackCollector::SetProxyFetch(
+    ProxyFetch* proxy_fetch) {
   bool ready = false;
   {
-    ScopedMutex lock(mutex_);
+    ScopedMutex lock(mutex_.get());
     DCHECK(proxy_fetch_ == NULL);
     DCHECK(!detached_);
     proxy_fetch_ = proxy_fetch;
@@ -187,10 +220,10 @@ void ProxyFetchPropertyCallback::SetProxyFetch(ProxyFetch* proxy_fetch) {
   }
 }
 
-void ProxyFetchPropertyCallback::Detach() {
+void ProxyFetchPropertyCallbackCollector::Detach() {
   bool do_delete = false;
   {
-    ScopedMutex lock(mutex_);
+    ScopedMutex lock(mutex_.get());
     proxy_fetch_ = NULL;
     DCHECK(!detached_);
     detached_ = true;
@@ -201,14 +234,15 @@ void ProxyFetchPropertyCallback::Detach() {
   }
 }
 
-ProxyFetch::ProxyFetch(const GoogleString& url,
-                       bool cross_domain,
-                       ProxyFetchPropertyCallback* property_cache_callback,
-                       AsyncFetch* async_fetch,
-                       RewriteOptions* custom_options,
-                       ResourceManager* manager,
-                       Timer* timer,
-                       ProxyFetchFactory* factory)
+ProxyFetch::ProxyFetch(
+    const GoogleString& url,
+    bool cross_domain,
+    ProxyFetchPropertyCallbackCollector* property_cache_callback,
+    AsyncFetch* async_fetch,
+    RewriteOptions* custom_options,
+    ResourceManager* manager,
+    Timer* timer,
+    ProxyFetchFactory* factory)
     : SharedAsyncFetch(async_fetch),
       url_(url),
       resource_manager_(manager),
@@ -479,20 +513,28 @@ void ProxyFetch::ScheduleQueueExecutionIfNeeded() {
   sequence_->Add(MakeFunction(this, &ProxyFetch::ExecuteQueued));
 }
 
-void ProxyFetch::PropertyCacheComplete(PropertyPage* property_page,
-                                       bool success) {
+void ProxyFetch::PropertyCacheComplete(
+    ProxyFetchPropertyCallbackCollector *callback_collector,
+    bool success) {
   ScopedMutex lock(mutex_.get());
+
   if (property_cache_callback_ == NULL) {
     // Already called Finish and abandoned callback.
-    delete property_page;
+    delete callback_collector;
   } else {
     property_cache_callback_ = NULL;
     if (driver_ == NULL) {
       LOG(DFATAL) << "Expected non-null driver.";
-      delete property_page;
     } else {
-      driver_->set_property_page(property_page);
+      // Set the property page and client state objects in the driver
+      driver_->set_property_page(
+          callback_collector->GetPropertyPage(
+              ProxyFetchPropertyCallback::kPagePropertyCache));
+
+      // TODO(mdw): Extract the client state object and set in the
+      // RewriteDriver.
     }
+    delete callback_collector;
     if (sequence_ != NULL) {
       ScheduleQueueExecutionIfNeeded();
     }
@@ -678,7 +720,7 @@ void ProxyFetch::ExecuteQueued() {
 
 
 void ProxyFetch::Finish(bool success) {
-  ProxyFetchPropertyCallback* detach_callback = NULL;
+  ProxyFetchPropertyCallbackCollector* detach_callback = NULL;
   {
     ScopedMutex lock(mutex_.get());
     DCHECK(!waiting_for_flush_to_finish_);

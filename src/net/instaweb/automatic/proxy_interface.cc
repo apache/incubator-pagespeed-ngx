@@ -92,12 +92,13 @@ bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
 // rewrite options.
 class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
  public:
-  ProxyInterfaceUrlNamerCallback(bool is_resource_fetch,
-                                 GoogleUrl* request_url,
-                                 AsyncFetch* async_fetch,
-                                 ProxyFetchPropertyCallback* property_callback,
-                                 ProxyInterface* proxy_interface,
-                                 MessageHandler* handler)
+  ProxyInterfaceUrlNamerCallback(
+      bool is_resource_fetch,
+      GoogleUrl* request_url,
+      AsyncFetch* async_fetch,
+      ProxyFetchPropertyCallbackCollector* property_callback,
+      ProxyInterface* proxy_interface,
+      MessageHandler* handler)
       : is_resource_fetch_(is_resource_fetch),
         request_url_(request_url),
         async_fetch_(async_fetch),
@@ -117,7 +118,7 @@ class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
   bool is_resource_fetch_;
   GoogleUrl* request_url_;
   AsyncFetch* async_fetch_;
-  ProxyFetchPropertyCallback* property_callback_;
+  ProxyFetchPropertyCallbackCollector* property_callback_;
   MessageHandler* handler_;
   ProxyInterface* proxy_interface_;
 
@@ -291,27 +292,58 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
   GoogleUrl* url = new GoogleUrl;
   url->Reset(request_url);
 
-  PropertyCache* property_cache = resource_manager_->property_cache();
-  ProxyFetchPropertyCallback* property_callback = NULL;
+  // Initiate pcache lookups early, before we know the RewriteOptions,
+  // in order to avoid adding latency to the serving flow. This has
+  // the downside of adding more cache pressure. OTOH we do a lot of
+  // cache lookups for HTML files: usually one per resource. So adding
+  // one more shouldn't significantly increase the cache RPC pressure.
+  // One thing to look out for is if we serve a lot of JPGs that don't
+  // end in .jpg or .jpeg -- we'll pessimistically assume they are HTML
+  // and do pcache lookups for them.
 
+  bool added_callback = false;
+  AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
+  ProxyFetchPropertyCallbackCollector* callback_collector =
+      new ProxyFetchPropertyCallbackCollector(mutex);
+
+  // Initiate page property cache lookup.
   if (!is_resource_fetch && UrlMightHavePropertyCacheEntry(request_url)) {
-    // Initiate any pcache lookups early, before we know the
-    // RewriteOptions, in order to avoid adding latency to the serving
-    // flow.  This has the downside of adding more cache pressure.
-    // OTOH we do a lot of cache lookups for HTML files: usually one
-    // per resource.  So adding one more shouldn't significantly
-    // increase the cache RPC pressure.  One thing to look out for is
-    // if we serve a lot of JPGs that don't end in .jpg or .jpeg --
-    // we'll pessimistically assume they are HTML and do pcache
-    // lookups for them.
-    AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
-    property_callback = new ProxyFetchPropertyCallback(mutex);
-    property_cache->Read(request_url.Spec(), property_callback);
+    PropertyCache* page_property_cache =
+        resource_manager_->page_property_cache();
+    mutex = resource_manager_->thread_system()->NewMutex();
+    ProxyFetchPropertyCallback* callback =
+        new ProxyFetchPropertyCallback(
+            ProxyFetchPropertyCallback::kPagePropertyCache,
+            callback_collector, mutex);
+    callback_collector->AddCallback(callback);
+    added_callback = true;
+    page_property_cache->Read(request_url.Spec(), callback);
+  }
+
+  const char* client_id = async_fetch->request_headers()->Lookup1(
+      HttpAttributes::kXGooglePagespeedClientId);
+  if (client_id != NULL) {
+    PropertyCache* client_property_cache =
+        resource_manager_->client_property_cache();
+    mutex = resource_manager_->thread_system()->NewMutex();
+    ProxyFetchPropertyCallback* callback =
+        new ProxyFetchPropertyCallback(
+            ProxyFetchPropertyCallback::kClientPropertyCache,
+            callback_collector, mutex);
+    callback_collector->AddCallback(callback);
+    added_callback = true;
+    client_property_cache->Read(client_id, callback);
+  }
+
+  if (!added_callback) {
+    // Didn't need the collector after all
+    delete callback_collector;
+    callback_collector = NULL;
   }
 
   ProxyInterfaceUrlNamerCallback* proxy_interface_url_namer_callback =
       new ProxyInterfaceUrlNamerCallback(is_resource_fetch, url, async_fetch,
-                                         property_callback, this, handler);
+                                         callback_collector, this, handler);
 
   resource_manager_->url_namer()->DecodeOptions(
       request_url, *async_fetch->request_headers(),
@@ -323,7 +355,7 @@ void ProxyInterface::ProxyRequestCallback(
     GoogleUrl* request_url,
     AsyncFetch* async_fetch,
     RewriteOptions* domain_options,
-    ProxyFetchPropertyCallback* property_callback,
+    ProxyFetchPropertyCallbackCollector* property_callback,
     MessageHandler* handler) {
   OptionsBoolPair custom_options_success = GetCustomOptions(
       request_url, async_fetch->request_headers(), domain_options, handler);
@@ -370,8 +402,8 @@ void ProxyInterface::ProxyRequestCallback(
         proxy_fetch_factory_->StartNewProxyFetch(
             request_url->Spec().as_string(), async_fetch, options,
             property_callback);
-        // ProxyFetch takes ownership of property_callback. NULL it here so that
-        // we do not detach it below.
+        // ProxyFetch takes ownership of property_callback.
+        // NULL it here so that we do not detach it below.
         property_callback = NULL;
       }
     }

@@ -1609,9 +1609,9 @@ void RewriteDriver::DeregisterForPartitionKey(const GoogleString& partition_key,
   }
 }
 
-void RewriteDriver::WriteDomCohortIntoPropertyCache() {
+void RewriteDriver::WriteDomCohortIntoPagePropertyCache() {
   if (property_page_.get() != NULL) {
-    PropertyCache* pcache = resource_manager_->property_cache();
+    PropertyCache* pcache = resource_manager_->page_property_cache();
     const PropertyCache::Cohort* dom = pcache->GetCohort(kDomCohort);
     if (dom != NULL) {
       // Page cannot be cleared yet because other cohorts may still need to be
@@ -1725,7 +1725,7 @@ void RewriteDriver::UninhibitFlushDone(Function* user_callback) {
 
 void RewriteDriver::FinishParse() {
   HtmlParse::FinishParse();
-  WriteDomCohortIntoPropertyCache();
+  WriteDomCohortIntoPagePropertyCache();
   Cleanup();
 }
 
@@ -1752,7 +1752,7 @@ void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
     return;
   }
   HtmlParse::EndFinishParse();
-  WriteDomCohortIntoPropertyCache();
+  WriteDomCohortIntoPagePropertyCache();
   Cleanup();
   if (user_callback != NULL) {
     user_callback->CallRun();

@@ -160,9 +160,10 @@ class MockFilter : public EmptyHtmlFilter {
 
   virtual void StartDocument() {
     num_elements_ = 0;
-    PropertyCache* pcache = driver_->resource_manager()->property_cache();
+    PropertyCache* page_cache =
+        driver_->resource_manager()->page_property_cache();
     const PropertyCache::Cohort* cohort =
-        pcache->GetCohort(RewriteDriver::kDomCohort);
+        page_cache->GetCohort(RewriteDriver::kDomCohort);
     PropertyPage* page = driver_->property_page();
     if (page != NULL) {
       num_elements_property_ = page->GetProperty(cohort, "num_elements");
@@ -176,11 +177,12 @@ class MockFilter : public EmptyHtmlFilter {
       // Before the start of the first element, print out the number
       // of elements that we expect based on the cache.
       GoogleString comment;
-      PropertyCache* pcache = driver_->resource_manager()->property_cache();
+      PropertyCache* page_cache =
+          driver_->resource_manager()->page_property_cache();
       if ((num_elements_property_ != NULL) &&
           num_elements_property_->has_value()) {
         comment = StrCat(" ", num_elements_property_->value(), " elements ",
-                         pcache->IsStable(num_elements_property_)
+                         page_cache->IsStable(num_elements_property_)
                          ? "stable " : "unstable ");
       } else {
         comment = " Element count unknown ";
@@ -193,9 +195,10 @@ class MockFilter : public EmptyHtmlFilter {
 
   virtual void EndDocument() {
     if (num_elements_property_ != NULL) {
-      PropertyCache* pcache = driver_->resource_manager()->property_cache();
-      pcache->UpdateValue(IntegerToString(num_elements_),
-                          num_elements_property_);
+      PropertyCache* page_cache =
+          driver_->resource_manager()->page_property_cache();
+      page_cache->UpdateValue(IntegerToString(num_elements_),
+                              num_elements_property_);
       num_elements_property_ = NULL;
     }
   }
@@ -246,7 +249,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   virtual void SetUp() {
     RewriteOptions* options = resource_manager()->global_options();
     factory()->set_enable_property_cache(true);
-    factory()->property_cache()->AddCohort(RewriteDriver::kDomCohort);
+    factory()->page_property_cache()->AddCohort(RewriteDriver::kDomCohort);
     options->ClearSignatureForTesting();
     options->EnableFilter(RewriteOptions::kRewriteCss);
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
@@ -289,8 +292,10 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     bool already_done = proxy_interface_->Fetch(AbsolutifyUrl(url),
                                                 message_handler(), &callback);
     if (already_done) {
+      LOG(INFO) << "MDW: callback.done() in FetchFromProxy";
       EXPECT_TRUE(callback.done());
     } else {
+      LOG(INFO) << "MDW: sync.Wait() in FetchFromProxy";
       sync.Wait();
     }
     mock_scheduler()->AwaitQuiescence();
@@ -360,7 +365,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
 
     GoogleString delay_cache_key;
     if (delay_pcache) {
-      PropertyCache* pcache = resource_manager()->property_cache();
+      PropertyCache* pcache = resource_manager()->page_property_cache();
       const PropertyCache::Cohort* cohort =
           pcache->GetCohort(RewriteDriver::kDomCohort);
       delay_cache_key = pcache->CacheKey(

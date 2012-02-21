@@ -22,8 +22,8 @@ option optimize_for = LITE_RUNTIME;
 package net_instaweb;
 
 message PropertyValueProtobuf {
-  required string name = 1;
-  required bytes body = 2;
+  optional string name = 1;  // optional, but expected.
+  optional bytes body = 2;  // optional, but expected.
 
   // timestamp of last write -- ms since 1970.
   optional int64 write_timestamp_ms = 3;

@@ -207,8 +207,11 @@ void RewriteDriverFactory::set_critical_images_finder(
 
 void RewriteDriverFactory::set_enable_property_cache(bool enabled) {
   enable_property_cache_ = enabled;
-  if (property_cache_.get() != NULL) {
-    property_cache_->set_enabled(enabled);
+  if (page_property_cache_.get() != NULL) {
+    page_property_cache_->set_enabled(enabled);
+  }
+  if (client_property_cache_.get() != NULL) {
+    client_property_cache_->set_enabled(enabled);
   }
 }
 
@@ -378,11 +381,18 @@ PropertyCache* RewriteDriverFactory::MakePropertyCache(
   return pcache;
 }
 
-PropertyCache* RewriteDriverFactory::property_cache() {
-  if (property_cache_.get() == NULL) {
-    property_cache_.reset(MakePropertyCache(cache_backend()));
+PropertyCache* RewriteDriverFactory::page_property_cache() {
+  if (page_property_cache_.get() == NULL) {
+    page_property_cache_.reset(MakePropertyCache(cache_backend()));
   }
-  return property_cache_.get();
+  return page_property_cache_.get();
+}
+
+PropertyCache* RewriteDriverFactory::client_property_cache() {
+  if (client_property_cache_.get() == NULL) {
+    client_property_cache_.reset(MakePropertyCache(cache_backend()));
+  }
+  return client_property_cache_.get();
 }
 
 ResourceManager* RewriteDriverFactory::CreateResourceManager() {
@@ -408,8 +418,11 @@ void RewriteDriverFactory::InitResourceManager(
     // VirtualHost, which must be set prior to calling Init.
     resource_manager->set_http_cache(http_cache());
   }
-  if (resource_manager->property_cache() == NULL) {
-    resource_manager->set_property_cache(property_cache());
+  if (resource_manager->page_property_cache() == NULL) {
+    resource_manager->set_page_property_cache(page_property_cache());
+  }
+  if (resource_manager->client_property_cache() == NULL) {
+    resource_manager->set_client_property_cache(client_property_cache());
   }
   if (resource_manager->metadata_cache() == NULL) {
     resource_manager->set_metadata_cache(cache_backend());

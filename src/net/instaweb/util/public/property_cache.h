@@ -54,7 +54,7 @@
 //   properties or the data.
 //
 //   PropertyPage -- this tracks all the PropertyValues in all the
-//   Cohorts for a key (Ex: an HTML page URL).  Generally a
+//   Cohorts for a key (e.g., an HTML page URL).  Generally a
 //   PropertyPage must be read prior to being written, so that
 //   unmodified PropertyValues in a Cohort are not erased by updating
 //   a single Cohert property.  The page executes a Read/Modify/Write
@@ -173,14 +173,14 @@ class PropertyCache {
   // rather than inheritance as GoogleString lacks a virtual dtor.
   //
   // Note that the PropertyCache::Cohort is just a predefined label
-  // used for organizing propertiees.  The Cohort object doesn't
+  // used for organizing properties.  The Cohort object doesn't
   // contain any data itself.
   class Cohort : public GoogleString {};
 
   PropertyCache(CacheInterface* cache, Timer* timer, ThreadSystem* threads);
   ~PropertyCache();
 
-  // Reads the all the PropertValues in all the known Cohorts from
+  // Reads the all the PropertyValues in all the known Cohorts from
   // cache, calling PropertyPage::Done when done.  It is essential
   // that the Cohorts are established prior to calling this function.
   void Read(const StringPiece& cache_key, PropertyPage* property_page) const;
@@ -252,7 +252,7 @@ class PropertyCache {
   DISALLOW_COPY_AND_ASSIGN(PropertyCache);
 };
 
-// Holds the property values associated with an HTML page.  See more
+// Holds the property values associated with a single key.  See more
 // extensive comment for PropertyPage above.
 class PropertyPage {
  public:

@@ -149,7 +149,8 @@ class RewriteDriverFactory {
   // to forking threads, e.g. via ComputeUrlFetcher().
   Timer* timer();
   HTTPCache* http_cache();
-  PropertyCache* property_cache();
+  PropertyCache* page_property_cache();
+  PropertyCache* client_property_cache();
   NamedLockManager* lock_manager();
   QueuedWorkerPool* WorkerPool(WorkerPoolName pool);
   Scheduler* scheduler();
@@ -356,7 +357,8 @@ class RewriteDriverFactory {
 
   scoped_ptr<ThreadSystem> thread_system_;
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
-  scoped_ptr<PropertyCache> property_cache_;
+  scoped_ptr<PropertyCache> page_property_cache_;
+  scoped_ptr<PropertyCache> client_property_cache_;
 
   // Default statistics implementation which can be overridden by children
   // by calling SetStatistics().

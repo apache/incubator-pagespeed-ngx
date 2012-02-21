@@ -39,8 +39,11 @@ namespace net_instaweb {
 class AbstractMutex;
 class CacheUrlAsyncFetcher;
 class MessageHandler;
+class MockProxyFetch;
 class ProxyFetch;
 class ProxyFetchPropertyCallback;
+class ProxyFetchPropertyCallbackCollector;
+class ProxyFetchPropertyCallbackCollectorTest;
 class QueuedAlarm;
 class ResourceManager;
 class ResponseHeaders;
@@ -58,10 +61,11 @@ class ProxyFetchFactory {
   // Pass custom_options = NULL to use default options.
   //
   // Takes ownership of custom_options.
-  void StartNewProxyFetch(const GoogleString& url,
-                          AsyncFetch* async_fetch,
-                          RewriteOptions* custom_options,
-                          ProxyFetchPropertyCallback* property_callback);
+  void StartNewProxyFetch(
+      const GoogleString& url,
+      AsyncFetch* async_fetch,
+      RewriteOptions* custom_options,
+      ProxyFetchPropertyCallbackCollector* property_callback);
 
   void set_server_version(const StringPiece& server_version) {
     server_version.CopyToString(&server_version_);
@@ -91,21 +95,46 @@ class ProxyFetchFactory {
   DISALLOW_COPY_AND_ASSIGN(ProxyFetchFactory);
 };
 
-// Helps track a property-cache lookup for a (likely) HTML page.  The lookup
-// is initiated immediately upon handling the URL, in parallel with determining
+// Tracks a single property-cache lookup. These lookups are initiated
+// immediately upon handling the request, in parallel with determining
 // domain-specific RewriteOptions and fetching the HTTP headers for the HTML.
 //
-// Handling of the URL can proceed in parallel with the property-cache
-// fetch, including RewriteOptions lookup and initating the HTTP
-// fetch.  However, handling incoming bytes will be blocked waiting
-// for the property-cache lookup to complete.
-//
-// TODO(jmarantz): Generalize this to allow other cache lookups or
-// asynchronous activity to be initiated as soon as we see in a URL
-// and block filter execution.
+// Request handling can proceed in parallel with the property-cache lookups,
+// including RewriteOptions lookup and initating the HTTP fetch. However,
+// handling incoming bytes will be blocked waiting for property-cache lookups
+// to complete.
 class ProxyFetchPropertyCallback : public PropertyPage {
  public:
-  explicit ProxyFetchPropertyCallback(AbstractMutex* mutex);
+  // The cache type associated with this callback.
+  enum CacheType {
+    kPagePropertyCache,
+    kClientPropertyCache
+  };
+
+  explicit ProxyFetchPropertyCallback(
+      CacheType cache_type,
+      ProxyFetchPropertyCallbackCollector* collector,
+      AbstractMutex* mutex);
+
+  CacheType cache_type() const { return cache_type_; }
+
+  virtual void Done(bool success);
+
+ private:
+  CacheType cache_type_;
+  ProxyFetchPropertyCallbackCollector* collector_;
+  DISALLOW_COPY_AND_ASSIGN(ProxyFetchPropertyCallback);
+};
+
+// Tracks a collection of property-cache lookups occuring in parallel.
+class ProxyFetchPropertyCallbackCollector {
+ public:
+  explicit ProxyFetchPropertyCallbackCollector(AbstractMutex* mutex);
+  virtual ~ProxyFetchPropertyCallbackCollector();
+
+  // Add a callback to be handled by this collector.
+  // Transfers ownership of the callback to the collector.
+  void AddCallback(ProxyFetchPropertyCallback* callback);
 
   // In our flow, we initiate the property-cache lookup prior to
   // creating a proxy-fetch, so that RewriteOptions lookup can proceed
@@ -119,17 +148,25 @@ class ProxyFetchPropertyCallback : public PropertyPage {
   // ProxyFetch to be inserted.
   void Detach();
 
- protected:
-  virtual void Done(bool success);
+  // Returns the collected PropertyPage with the corresponding cache_type.
+  // Ownership of the object is transferred to the caller.
+  PropertyPage* GetPropertyPage(
+      ProxyFetchPropertyCallback::CacheType cache_type);
+
+  // Called by a ProxyFetchPropertyCallback when the former is complete.
+  virtual void Done(ProxyFetchPropertyCallback* callback, bool success);
 
  private:
-  AbstractMutex* mutex_;
+  std::set<ProxyFetchPropertyCallback*> pending_callbacks_;
+  std::map<ProxyFetchPropertyCallback::CacheType, PropertyPage*>
+      property_pages_;
+  scoped_ptr<AbstractMutex> mutex_;
   bool detached_;             // protected by mutex_.
   bool done_;                 // protected by mutex_.
   bool success_;              // protected by mutex_; accessed after quiescence.
   ProxyFetch* proxy_fetch_;   // protected by mutex_.
 
-  DISALLOW_COPY_AND_ASSIGN(ProxyFetchPropertyCallback);
+  DISALLOW_COPY_AND_ASSIGN(ProxyFetchPropertyCallbackCollector);
 };
 
 // Manages a single fetch of an HTML or resource file from the original server.
@@ -163,17 +200,19 @@ class ProxyFetch : public SharedAsyncFetch {
 
  private:
   friend class ProxyFetchFactory;
-  friend class ProxyFetchPropertyCallback;
+  friend class ProxyFetchPropertyCallbackCollector;
+  friend class MockProxyFetch;
 
-  // Called by ProxyFetchPropertyCallback when the property-cache fetch
-  // is complete.  This function takes ownership of property_page.
-  void PropertyCacheComplete(PropertyPage* property_page, bool success);
+  // Called by ProxyFetchPropertyCallbackCollector when all property-cache
+  // fetches are complete.  This function takes ownership of collector.
+  virtual void PropertyCacheComplete(
+      ProxyFetchPropertyCallbackCollector* collector, bool success);
 
   // If cross_domain is true, we're requested under a domain different from
   // the underlying host, using proxy mode in UrlNamer.
   ProxyFetch(const GoogleString& url,
              bool cross_domain,
-             ProxyFetchPropertyCallback* property_cache_callback,
+             ProxyFetchPropertyCallbackCollector* property_cache_callback,
              AsyncFetch* async_fetch,
              RewriteOptions* custom_options,
              ResourceManager* manager,
@@ -257,11 +296,11 @@ class ProxyFetch : public SharedAsyncFetch {
   // Statistics
   int64 start_time_us_;
 
-  // Tracks an outstanding property-cache lookup.  This is NULLed
+  // Tracks a set of outstanding property-cache lookups.  This is NULLed
   // when the property-cache completes or when we detach it.  We use
   // this to detach the callback if we decide we don't care about the
-  // property-cache because we discovered we are not working with HTML.
-  ProxyFetchPropertyCallback* property_cache_callback_;
+  // property-caches because we discovered we are not working with HTML.
+  ProxyFetchPropertyCallbackCollector* property_cache_callback_;
 
   // ProxyFetch is responsible for getting RewriteDrivers from the pool and
   // putting them back.
