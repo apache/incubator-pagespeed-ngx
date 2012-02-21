@@ -227,6 +227,7 @@ const char BlinkFlow::kNumSharedJsonFetchesStarted[] =
     "num_shared_json_fetches_started";
 const char BlinkFlow::kNumSharedJsonFetchesComplete[] =
     "num_shared_json_fetches_complete";
+const char BlinkFlow::kAboveTheFold[] = "Above the fold";
 
 BlinkFlow::BlinkFlow(const GoogleString& url,
                      AsyncFetch* base_fetch,
@@ -315,6 +316,7 @@ void BlinkFlow::JsonCacheHit(const StringPiece& content,
 
   ResponseHeaders* response_headers = base_fetch_->response_headers();
   response_headers->CopyFrom(headers);
+  response_headers->Add(kPsaRewriterHeader, BlinkFlow::kAboveTheFold);
   // Remove any Etag headers from the json response. Note that an Etag is
   // added by the HTTPCache for all responses that don't already have one.
   response_headers->RemoveAll(HttpAttributes::kEtag);

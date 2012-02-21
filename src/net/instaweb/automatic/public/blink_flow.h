@@ -54,6 +54,7 @@ class BlinkFlow {
   // Statistics variable names.
   static const char kNumSharedJsonFetchesStarted[];
   static const char kNumSharedJsonFetchesComplete[];
+  static const char kAboveTheFold[];
 
  private:
   class JsonFindCallback;

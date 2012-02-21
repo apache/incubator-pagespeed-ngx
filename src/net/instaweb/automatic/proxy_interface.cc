@@ -381,8 +381,8 @@ void ProxyInterface::ProxyRequestCallback(
                            proxy_fetch_factory_->server_version());
     } else {
       RewriteOptions* options = custom_options_success.first;
-      const Layout* layout = ExtractBlinkLayout(*request_url, async_fetch,
-                                                options);
+      const Layout* layout = BlinkUtil::ExtractBlinkLayout(*request_url,
+                                                           options);
       const char* user_agent = async_fetch->request_headers()->Lookup1(
           HttpAttributes::kUserAgent);
       if (layout != NULL && user_agent_matcher_.SupportsBlink(user_agent)) {
@@ -415,23 +415,6 @@ void ProxyInterface::ProxyRequestCallback(
     property_callback->Detach();
   }
   delete request_url;
-}
-
-const Layout* ProxyInterface::ExtractBlinkLayout(const GoogleUrl& url,
-                                                 AsyncFetch* async_fetch,
-                                                 RewriteOptions* options) {
-  if (options != NULL &&
-      /* Above the fold is enabled. */
-      options->Enabled(RewriteOptions::kAboveTheFold) &&
-      /* url matches a cacheable family pattern specified in config. */
-      options->MatchesAtfCacheableFamilies(url.PathAndLeaf())) {
-    // TODO(sriharis):  Add a check on url blacklist also.   [google]
-    const PublisherConfig* config = options->panel_config();
-    if (config != NULL) {
-      return BlinkUtil::FindLayout(*config, url);
-    }
-  }
-  return NULL;
 }
 
 }  // namespace net_instaweb

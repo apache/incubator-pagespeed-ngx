@@ -6,14 +6,35 @@
 #include <algorithm>
 #include <utility>
 #include <vector>
+
 #include "base/logging.h"
 #include "net/instaweb/rewriter/panel_config.pb.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 namespace BlinkUtil {
+
+const Layout* ExtractBlinkLayout(const GoogleUrl& url,
+                                 RewriteOptions* options) {
+  if (options != NULL &&
+      /* Above the fold is enabled. */
+      options->Enabled(RewriteOptions::kAboveTheFold) &&
+      /* url is allowed, i.e., it is not in black-list. */
+      /* TODO(sriharis): We also make this check in regular proxy flow
+       * (ProxyFetch).  Should we combine these? */
+      options->IsAllowed(url.Spec()) &&
+      /* url matches a cacheable family pattern specified in config. */
+      options->MatchesAtfCacheableFamilies(url.PathAndLeaf())) {
+    const PublisherConfig* config = options->panel_config();
+    if (config != NULL) {
+      return FindLayout(*config, url);
+    }
+  }
+  return NULL;
+}
 
 const Layout* FindLayout(const PublisherConfig& config,
                          const GoogleUrl& request_url) {

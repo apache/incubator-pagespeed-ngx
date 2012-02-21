@@ -134,12 +134,13 @@ TEST_F(UserAgentMatcherTest, NotSupportsImageInlining) {
 TEST_F(UserAgentMatcherTest, SupportsBlink) {
   EXPECT_TRUE(user_agent_matcher_.SupportsBlink(kIe9UserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsBlink(kChromeUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsBlink(kFirefoxUserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsBlink(kSafariUserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, NotSupportsBlink) {
   EXPECT_FALSE(user_agent_matcher_.SupportsBlink(kIe6UserAgent));
-  EXPECT_FALSE(user_agent_matcher_.SupportsBlink(kFirefoxUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsBlink(kFirefox1UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsBlink(kNokiaUserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsBlink(kOpera5UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsBlink(kPSPUserAgent));
@@ -148,12 +149,13 @@ TEST_F(UserAgentMatcherTest, NotSupportsBlink) {
 TEST_F(UserAgentMatcherTest, SupportsJsDefer) {
   EXPECT_TRUE(user_agent_matcher_.SupportsJsDefer(kIe9UserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsJsDefer(kChromeUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsJsDefer(kFirefoxUserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsJsDefer(kSafariUserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, NotSupportsJsDefer) {
   EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(kIe6UserAgent));
-  EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(kFirefoxUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(kFirefox1UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(kNokiaUserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(kOpera5UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(kPSPUserAgent));

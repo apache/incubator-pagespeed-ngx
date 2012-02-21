@@ -121,12 +121,6 @@ class ProxyInterface : public UrlAsyncFetcher {
   // infinite fetching loops). This might be the favicon or something...
   bool UrlAndPortMatchThisServer(const GoogleUrl& url);
 
-  // Checks whether the request is a valid blink request. Returns a pointer
-  // to the Layout if it is a blink request and NULL otherwise.
-  const Layout* ExtractBlinkLayout(const GoogleUrl& url,
-                                   AsyncFetch* async_fetch,
-                                   RewriteOptions* options);
-
   // References to unowned objects.
   ResourceManager* resource_manager_;     // thread-safe
   UrlAsyncFetcher* fetcher_;              // thread-safe

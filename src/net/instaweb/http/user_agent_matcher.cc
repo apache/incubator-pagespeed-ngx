@@ -51,15 +51,18 @@ const char* kImageInliningBlacklist[] = {
   "*Opera?6*"
 };
 // For Panels and deferJs the list is same as of now.
-// we only allow IE8+, safari and Chrome
+// we only allow Firefox3+, IE8+, safari and Chrome
 // We'll be updating this as and when required.
 const char* kPanelSupportWhitelist[] = {
   "*Chrome/*",
+  "*Firefox/*",
   "*MSIE *",
   "*Safari*",
   "*Wget*",
 };
 const char* kPanelSupportBlacklist[] = {
+  "*Firefox/1.*",
+  "*Firefox/2.*",
   "*MSIE 5.*",
   "*MSIE 6.*",
   "*MSIE 7.*",

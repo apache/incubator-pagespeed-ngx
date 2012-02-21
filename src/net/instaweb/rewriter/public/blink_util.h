@@ -16,6 +16,7 @@ class Layout;
 class Panel;
 class PanelSet;
 class PublisherConfig;
+class RewriteOptions;
 
 typedef std::map<GoogleString, const Panel*> PanelIdToSpecMap;
 
@@ -28,6 +29,12 @@ const char kImages[] = "images";
 const char kInstanceHtml[] = "instance_html";
 const char kLayoutMarker[] = "<!--GooglePanel **** Layout end ****-->";
 const char kJsonCachePrefix[] = "json:";
+
+// Checks whether the request for 'url' is a valid blink request. If yes,
+// returns a pointer to the corresponding Layout, and NULL otherwise.
+// TODO(sriharis): Split the check part and extracting the layout into separate
+// functions.
+const Layout* ExtractBlinkLayout(const GoogleUrl& url, RewriteOptions* options);
 
 // Finds the layout for the given request_url.
 const Layout* FindLayout(const PublisherConfig& config,
