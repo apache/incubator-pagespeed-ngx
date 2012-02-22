@@ -170,9 +170,12 @@ class Scheduler::CondVarCallbackTimeout : public Scheduler::Alarm {
         scheduler_(scheduler) { }
   virtual ~CondVarCallbackTimeout() { }
   virtual void RunAlarm() {
+    // We may get deleted at tail end of Signal if the lock gets dropped during
+    // CallRun(), so save this into a local.
+    bool saved_in_wait_dispatch = in_wait_dispatch();
     scheduler_->CancelWaiting(this);
     callback_->CallRun();
-    if (!in_wait_dispatch()) {
+    if (!saved_in_wait_dispatch) {
       delete this;
     }
   }
