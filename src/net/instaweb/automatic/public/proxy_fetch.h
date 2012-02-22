@@ -58,13 +58,10 @@ class ProxyFetchFactory {
   explicit ProxyFetchFactory(ResourceManager* manager);
   ~ProxyFetchFactory();
 
-  // Pass custom_options = NULL to use default options.
-  //
-  // Takes ownership of custom_options.
   void StartNewProxyFetch(
       const GoogleString& url,
       AsyncFetch* async_fetch,
-      RewriteOptions* custom_options,
+      RewriteDriver* driver,
       ProxyFetchPropertyCallbackCollector* property_callback);
 
   void set_server_version(const StringPiece& server_version) {
@@ -214,7 +211,7 @@ class ProxyFetch : public SharedAsyncFetch {
              bool cross_domain,
              ProxyFetchPropertyCallbackCollector* property_cache_callback,
              AsyncFetch* async_fetch,
-             RewriteOptions* custom_options,
+             RewriteDriver* driver,
              ResourceManager* manager,
              Timer* timer,
              ProxyFetchFactory* factory);

@@ -62,7 +62,7 @@ ProxyFetchFactory::~ProxyFetchFactory() {
 
 void ProxyFetchFactory::StartNewProxyFetch(
     const GoogleString& url_in, AsyncFetch* async_fetch,
-    RewriteOptions* custom_options,
+    RewriteDriver* driver,
     ProxyFetchPropertyCallbackCollector* property_callback) {
   const GoogleString* url_to_fetch = &url_in;
 
@@ -77,9 +77,7 @@ void ProxyFetchFactory::StartNewProxyFetch(
   bool cross_domain = false;
   if (gurl.is_valid()) {
     if (namer->Decode(gurl, &request_origin, &decoded_resource)) {
-      const RewriteOptions* options = (custom_options == NULL)
-          ? manager_->global_options()
-          : custom_options;
+      const RewriteOptions* options = driver->options();
       if (namer->IsAuthorized(gurl, *options)) {
         // The URL is proxied, but is not rewritten as a pagespeed resource,
         // so don't try to do the cache-lookup or URL fetch without stripping
@@ -89,10 +87,8 @@ void ProxyFetchFactory::StartNewProxyFetch(
       } else {
         async_fetch->response_headers()->SetStatusAndReason(
             HttpStatus::kForbidden);
-        if (custom_options != NULL) {
-          delete custom_options;
-        }
         async_fetch->Done(false);
+        driver->Cleanup();
         if (property_callback != NULL) {
           property_callback->Detach();
         }
@@ -103,7 +99,7 @@ void ProxyFetchFactory::StartNewProxyFetch(
 
   ProxyFetch* fetch = new ProxyFetch(
       *url_to_fetch, cross_domain, property_callback, async_fetch,
-      custom_options, manager_, timer_, this);
+      driver, manager_, timer_, this);
   if (cross_domain) {
     // If we're proxying resources from a different domain, the host header is
     // likely set to the proxy host rather than the origin host.  Depending on
@@ -239,7 +235,7 @@ ProxyFetch::ProxyFetch(
     bool cross_domain,
     ProxyFetchPropertyCallbackCollector* property_cache_callback,
     AsyncFetch* async_fetch,
-    RewriteOptions* custom_options,
+    RewriteDriver* driver,
     ResourceManager* manager,
     Timer* timer,
     ProxyFetchFactory* factory)
@@ -253,6 +249,7 @@ ProxyFetch::ProxyFetch(
       done_called_(false),
       start_time_us_(0),
       property_cache_callback_(property_cache_callback),
+      driver_(driver),
       queue_run_job_created_(false),
       mutex_(manager->thread_system()->NewMutex()),
       network_flush_outstanding_(false),
@@ -266,40 +263,6 @@ ProxyFetch::ProxyFetch(
       prepare_success_(false) {
   set_request_headers(async_fetch->request_headers());
   set_response_headers(async_fetch->response_headers());
-
-  // TODO(nforman): If we are not running an experiment, remove the
-  // furious cookie.
-  // If we don't already have custom options, and the global options
-  // say we're running furious, then clone them into custom_options so we
-  // can manipulate custom options without affecting the global options.
-  const RewriteOptions* global_options = resource_manager_->global_options();
-  if (custom_options == NULL && global_options->running_furious()) {
-    custom_options = global_options->Clone();
-  }
-
-  // Set RewriteDriver.
-  if (custom_options == NULL) {
-    driver_ = resource_manager_->NewRewriteDriver();
-  } else {
-    // NewCustomRewriteDriver takes ownership of custom_options_.
-    if (custom_options->running_furious()) {
-      furious::FuriousState furious_value;
-      if (!furious::GetFuriousCookieState(async_fetch->request_headers(),
-                                          &furious_value)) {
-        furious_value = furious::DetermineFuriousState(custom_options);
-      }
-      custom_options->set_furious_state(furious_value);
-      // If this request is on the 'B' side of the experiment, turn off
-      // all the rewriters except the ones we need to do the experiment.
-      // TODO(nforman): Allow the configuration to specify what the 'B'
-      // set of filters should be.
-      if (custom_options->furious_state() == furious::kFuriousB) {
-        furious::FuriousNoFilterDefault(custom_options);
-      }
-    }
-    resource_manager_->ComputeSignature(custom_options);
-    driver_ = resource_manager_->NewCustomRewriteDriver(custom_options);
-  }
 
   // Now that we've created the RewriteDriver, include the client_id generated
   // from the original request headers, if any.

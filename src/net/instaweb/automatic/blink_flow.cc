@@ -451,8 +451,12 @@ void BlinkFlow::TriggerProxyFetch(bool json_found) {
     num_shared_json_fetches_started_->IncBy(1);
   }
 
+  // NewCustomRewriteDriver takes ownership of custom_options_.
+  manager_->ComputeSignature(options_);
+  RewriteDriver* driver = manager_->NewCustomRewriteDriver(options_);
+
   // TODO(jmarantz): pass-through the property-cache callback rather than NULL.
-  factory_->StartNewProxyFetch(url_, fetch, options_, NULL);
+  factory_->StartNewProxyFetch(url_, fetch, driver, NULL);
   delete this;
 }
 

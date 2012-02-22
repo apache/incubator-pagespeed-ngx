@@ -66,4 +66,6 @@ message Layout {
 message PublisherConfig {
   required string web_site = 1;
   repeated Layout layout = 2;
+  // Represents a wildcard pattern for browser name/version blacklisting.
+  repeated string browser_blacklist_patterns = 3;
 }

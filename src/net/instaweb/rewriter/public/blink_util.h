@@ -7,6 +7,7 @@
 #include <map>
 
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "third_party/jsoncpp/include/json/json.h"
 
 namespace net_instaweb {
@@ -34,7 +35,8 @@ const char kJsonCachePrefix[] = "json:";
 // returns a pointer to the corresponding Layout, and NULL otherwise.
 // TODO(sriharis): Split the check part and extracting the layout into separate
 // functions.
-const Layout* ExtractBlinkLayout(const GoogleUrl& url, RewriteOptions* options);
+const Layout* ExtractBlinkLayout(const GoogleUrl& url, RewriteOptions* options,
+                                 const StringPiece& user_agent);
 
 // Finds the layout for the given request_url.
 const Layout* FindLayout(const PublisherConfig& config,

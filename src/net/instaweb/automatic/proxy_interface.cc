@@ -381,10 +381,35 @@ void ProxyInterface::ProxyRequestCallback(
                            proxy_fetch_factory_->server_version());
     } else {
       RewriteOptions* options = custom_options_success.first;
-      const Layout* layout = BlinkUtil::ExtractBlinkLayout(*request_url,
-                                                           options);
+      // TODO(nforman): If we are not running an experiment, remove the
+      // furious cookie.
+      // If we don't already have custom options, and the global options
+      // say we're running furious, then clone them into custom_options so we
+      // can manipulate custom options without affecting the global options.
+      const RewriteOptions* global_options =
+          resource_manager_->global_options();
+      if (options == NULL && global_options->running_furious()) {
+        options = global_options->Clone();
+      }
+      if (options != NULL && options->running_furious()) {
+        furious::FuriousState furious_value;
+        if (!furious::GetFuriousCookieState(async_fetch->request_headers(),
+                                            &furious_value)) {
+          furious_value = furious::DetermineFuriousState(options);
+        }
+        options->set_furious_state(furious_value);
+        // If this request is on the 'B' side of the experiment, turn off
+        // all the rewriters except the ones we need to do the experiment.
+        // TODO(nforman): Allow the configuration to specify what the 'B'
+        // set of filters should be.
+        if (options->furious_state() == furious::kFuriousB) {
+          furious::FuriousNoFilterDefault(options);
+        }
+      }
       const char* user_agent = async_fetch->request_headers()->Lookup1(
           HttpAttributes::kUserAgent);
+      const Layout* layout = BlinkUtil::ExtractBlinkLayout(*request_url,
+                                                           options, user_agent);
       if (layout != NULL && user_agent_matcher_.SupportsBlink(user_agent)) {
         // TODO(rahulbansal): Remove this LOG once we expect to have
         // Blink requests.
@@ -399,8 +424,16 @@ void ProxyInterface::ProxyRequestCallback(
 
         // TODO(jmarantz): provide property-cache data to blink.
       } else {
+        RewriteDriver* driver = NULL;
+        if (options == NULL) {
+          driver = resource_manager_->NewRewriteDriver();
+        } else {
+          resource_manager_->ComputeSignature(options);
+          // NewCustomRewriteDriver takes ownership of custom_options_.
+          driver = resource_manager_->NewCustomRewriteDriver(options);
+        }
         proxy_fetch_factory_->StartNewProxyFetch(
-            request_url->Spec().as_string(), async_fetch, options,
+            request_url->Spec().as_string(), async_fetch, driver,
             property_callback);
         // ProxyFetch takes ownership of property_callback.
         // NULL it here so that we do not detach it below.

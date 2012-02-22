@@ -13,12 +13,29 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/wildcard.h"
 
 namespace net_instaweb {
 namespace BlinkUtil {
 
+namespace {
+
+bool IsBlacklistedBrowser(const StringPiece& user_agent,
+                          const PublisherConfig& config) {
+  for (int i = 0; i < config.browser_blacklist_patterns_size(); ++i) {
+    Wildcard wildcard(config.browser_blacklist_patterns(i));
+    if (wildcard.Match(user_agent)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+}  // namespace
+
 const Layout* ExtractBlinkLayout(const GoogleUrl& url,
-                                 RewriteOptions* options) {
+                                 RewriteOptions* options,
+                                 const StringPiece& user_agent) {
   if (options != NULL &&
       /* Above the fold is enabled. */
       options->Enabled(RewriteOptions::kAboveTheFold) &&
@@ -29,13 +46,14 @@ const Layout* ExtractBlinkLayout(const GoogleUrl& url,
       /* url matches a cacheable family pattern specified in config. */
       options->MatchesAtfCacheableFamilies(url.PathAndLeaf())) {
     const PublisherConfig* config = options->panel_config();
-    if (config != NULL) {
+    if (config != NULL && !IsBlacklistedBrowser(user_agent, *config)) {
       return FindLayout(*config, url);
     }
   }
   return NULL;
 }
 
+// Finds the layout for the given request_url.
 const Layout* FindLayout(const PublisherConfig& config,
                          const GoogleUrl& request_url) {
   for (int i = 0; i < config.layout_size(); ++i) {  // Typically 3-4 layouts.
@@ -52,7 +70,6 @@ const Layout* FindLayout(const PublisherConfig& config,
       }
     }
   }
-
   return NULL;
 }
 

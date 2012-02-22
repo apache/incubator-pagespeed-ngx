@@ -95,7 +95,7 @@ bool RecordingFetch::HandleFlush(MessageHandler* handler) {
 void RecordingFetch::HandleDone(bool success) {
   base_fetch()->Done(success);
 
-  if (can_ajax_rewrite_) {
+  if (success && can_ajax_rewrite_) {
     resource_->Link(&cache_value_, handler_);
     context_->DetachFetch();
     context_->StartFetchReconstructionParent();
