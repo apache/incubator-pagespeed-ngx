@@ -483,7 +483,7 @@ void ProxyFetch::DoFetch() {
     if (driver_->options()->enabled() &&
         driver_->options()->ajax_rewriting_enabled() &&
         driver_->options()->IsAllowed(url_)) {
-      driver_->set_async_fetcher(cache_fetcher_.get());
+      driver_->SetOwnedAsyncFetcher(cache_fetcher_.release());
       driver_->FetchResource(url_, this);
     } else {
       cache_fetcher_->Fetch(url_, factory_->handler_, this);

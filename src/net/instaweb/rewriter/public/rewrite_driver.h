@@ -27,6 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -67,7 +68,6 @@ class RewriteContext;
 class RewriteFilter;
 class ScopedMutex;
 class Statistics;
-class UrlAsyncFetcher;
 class UrlLeftTrimFilter;
 class Writer;
 
@@ -311,8 +311,20 @@ class RewriteDriver : public HtmlParse {
                  StringVector* decoded_urls) const;
 
   FileSystem* file_system() { return file_system_; }
-  void set_async_fetcher(UrlAsyncFetcher* f) { url_async_fetcher_ = f; }
   UrlAsyncFetcher* async_fetcher() { return url_async_fetcher_; }
+
+  // Does not take ownership of f. Fetcher settings outlast Clear().
+  void SetAsyncFetcher(UrlAsyncFetcher* f) {
+    url_async_fetcher_ = f;
+    owned_url_async_fetcher_.reset();
+  }
+
+  // Like SetAsyncFetcher, but takes ownership.
+  // Fetcher settings outlast Clear().
+  void SetOwnedAsyncFetcher(UrlAsyncFetcher* f) {
+    url_async_fetcher_ = f;
+    owned_url_async_fetcher_.reset(f);
+  }
 
   ResourceManager* resource_manager() const { return resource_manager_; }
   Statistics* statistics() const;
@@ -979,6 +991,10 @@ class RewriteDriver : public HtmlParse {
   UrlAsyncFetcher* url_async_fetcher_;
   ResourceManager* resource_manager_;
   Scheduler* scheduler_;
+
+  // In case 'this' owns url_async_fetcher_, owned_url_async_fetcher_ will
+  // point to it. Otherwise, this will be NULL.
+  scoped_ptr<UrlAsyncFetcher> owned_url_async_fetcher_;
 
   AddInstrumentationFilter* add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
