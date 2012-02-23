@@ -277,3 +277,6 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 #FURIOUS # This is used for testing the Furious experiment framework.
 #FURIOUS ModPagespeedRunExperiment on
 #FURIOUS ModPagespeedAnalyticsID "123-45-6734"
+
+#XHEADER # Set the value of the X-Mod-Pagespeed header
+#XHEADER ModPagespeedXHeaderValue "UNSPECIFIED VERSION"

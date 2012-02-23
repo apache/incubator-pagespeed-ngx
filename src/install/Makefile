@@ -234,6 +234,14 @@ else
   HTTPS_TEST_SED_PATTERN=^\#HTTPS.*\n
 endif
 
+ifeq ($(XHEADER_TEST),1)
+  # remove prefix
+  XHEADER_TEST_SED_PATTERN=^\#XHEADER
+else
+  # remove whole line
+  XHEADER_TEST_SED_PATTERN=^\#XHEADER.*\n
+endif
+
 # Note that the quoted sed replacement for APACHE_SLURP_DIR_COMMAND is because
 # that might have embedded spaces, and 'sed' is interpreted first by bash.
 
@@ -256,6 +264,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(GZIP_TEST_SED_PATTERN)@@" \
 	    -e "s@$(HTTPS_TEST_SED_PATTERN)@@" \
             -e "s@$(FURIOUS_TEST_SED_PATTERN)@@" \
+	    -e "s@$(XHEADER_TEST_SED_PATTERN)@@" \
 		$^ > $@
 	! grep '@@' $@  # Make sure we don't have any remaining @@variables@@
 
@@ -340,12 +349,12 @@ apache_install_conf:
 	                $(OPT_SLURP_TEST) $(OPT_SPELING_TEST) \
 	                $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
 	                $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST) \
-			$(OPT_GZIP_TEST) $(OPT_FURIOUS_TEST)
+			$(OPT_GZIP_TEST) $(OPT_FURIOUS_TEST) $(OPT_XHEADER_TEST)
 	$(MAKE) install_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
 	                $(OPT_SLURP_TEST) $(OPT_SPELING_TEST) \
 	                $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
 	                $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST) \
-			$(OPT_GZIP_TEST) $(OPT_FURIOUS_TEST)
+			$(OPT_GZIP_TEST) $(OPT_FURIOUS_TEST) $(OPT_XHEADER_TEST)
 
 apache_debug_restart:
 	$(APACHE_CONTROL_PROGRAM) restart

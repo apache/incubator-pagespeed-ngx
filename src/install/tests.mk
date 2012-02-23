@@ -9,7 +9,7 @@
 #                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_HTTPS_TEST,
 #                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST,
 #                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST,
-#                       OPT_FURIOUS_TEST)
+#                       OPT_FURIOUS_TEST, OPT_XHEADER_TEST)
 #  apache_debug_restart
 #  apache_debug_stop
 #  apache_debug_leak_test, apache_debug_proxy_test, apache_debug_slurp_test
@@ -41,6 +41,7 @@ apache_system_tests :
 	$(MAKE) apache_debug_speling_test
 	$(MAKE) apache_debug_gzip_test
 	$(MAKE) apache_debug_furious_test
+	$(MAKE) apache_debug_xheader_test
 	$(MAKE) apache_debug_vhost_only_test
 	$(MAKE) apache_debug_global_off_test
 	$(MAKE) apache_debug_shared_mem_lock_sanity_test
@@ -166,6 +167,23 @@ apache_debug_furious_test : furious_test_prepare apache_install_conf \
 
 furious_test_prepare:
 	$(eval OPT_FURIOUS_TEST="FURIOUS_TEST=1")
+	rm -rf $(PAGESPEED_ROOT)/cache/*
+
+# This test checks that the ModPagespeedXHeaderValue directive works.
+apache_debug_xheader_test : xheader_test_prepare apache_install_conf \
+    apache_debug_restart
+	@echo Testing ModPagespeedXHeaderValue directive:
+	$(WGET) -q -O - --save-headers $(EXAMPLE) \
+	  | egrep "^X-Mod-Pagespeed:|^X-Page-Speed:"
+	value=`$(WGET) -q -O - --save-headers '$(EXAMPLE)' \
+	  | egrep "^X-Mod-Pagespeed:|^X-Page-Speed:" \
+	  | sed -e 's/^X-Mod-Pagespeed: *//' \
+	  | sed -e 's/^X-Page-Speed: *//' \
+	  | tr -d '\r'`; \
+	test "$$value" = "UNSPECIFIED VERSION"
+
+xheader_test_prepare:
+	$(eval OPT_XHEADER_TEST="XHEADER_TEST=1")
 	rm -rf $(PAGESPEED_ROOT)/cache/*
 
 # Test to make sure we don't crash if we're off for global but on for vhosts.

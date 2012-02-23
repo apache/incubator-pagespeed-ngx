@@ -158,6 +158,8 @@ const int RewriteOptions::kDefaultFuriousTrafficPercent = 50;
 
 const char RewriteOptions::kClassName[] = "RewriteOptions";
 
+const char RewriteOptions::kDefaultXModPagespeedHeaderValue[] = "__VERSION__";
+
 const char* RewriteOptions::option_enum_to_name_array_[
     RewriteOptions::kEndOfOptions];
 
@@ -470,6 +472,8 @@ RewriteOptions::RewriteOptions()
   add_option(false, &running_furious_, "fur", kRunningFurious);
   add_option(kDefaultFuriousTrafficPercent, &furious_percent_, "fp",
              kFuriousPercent);
+  add_option(kDefaultXModPagespeedHeaderValue, &x_header_value_, "xhv",
+             kXModPagespeedHeaderValue);
   // Sort all_options_ on enum.
   SortOptions();
   // Do not call add_option with OptionEnum fourth argument after this.

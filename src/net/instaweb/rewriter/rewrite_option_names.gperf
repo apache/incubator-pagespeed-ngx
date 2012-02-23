@@ -70,6 +70,7 @@ struct OptionName {
 "RunExperiment",                        RewriteOptions::kRunningFurious
 "ServeBlinkNonCritical",                RewriteOptions::kServeBlinkNonCritical
 "ServeStaleIfFetchError",               RewriteOptions::kServeStaleIfFetchError
+"XHeaderValue",                         RewriteOptions::kXModPagespeedHeaderValue
 // The following are Apache specific options.
 "CollectRefererStatistics",             RewriteOptions::kCollectRefererStatistics
 "FetchProxy",                           RewriteOptions::kFetcherProxy

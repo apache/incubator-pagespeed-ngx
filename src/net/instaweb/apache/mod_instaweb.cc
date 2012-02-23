@@ -159,6 +159,7 @@ const char* kModPagespeedMinImageSizeLowResolutionBytes =
 const char* kModPagespeedRunFurious = "ModPagespeedRunExperiment";
 const char* kModPagespeedFuriousPercent =
     "ModPagespeedPercentExperimentTraffic";
+const char* kModPagespeedXHeaderValue = "ModPagespeedXHeaderValue";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -469,8 +470,12 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   // Set X-Mod-Pagespeed header.
   // TODO(sligocki): Move inside PSA.
-  apr_table_setn(request->headers_out, kModPagespeedHeader,
-                 kModPagespeedVersion);
+  const GoogleString& x_header_value(options->x_header_value());
+  apr_table_setn(
+      request->headers_out,
+      kModPagespeedHeader,
+      (x_header_value == RewriteOptions::kDefaultXModPagespeedHeaderValue
+       ? kModPagespeedVersion : x_header_value.c_str()));
 
   apr_table_unset(request->headers_out, HttpAttributes::kLastModified);
   apr_table_unset(request->headers_out, HttpAttributes::kContentLength);
@@ -1222,6 +1227,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Negative values result in generation for all images."),
   APACHE_CONFIG_OPTION(kModPagespeedMinImageSizeLowResolutionBytes,
           "Minimum image size above which low resolution image is generated."),
+  APACHE_CONFIG_OPTION(kModPagespeedXHeaderValue,
+                       "Set the value for the X-Mod-Pagespeed HTTP header"),
 
   // All two parameter options that are allowed in <Directory> blocks.
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,

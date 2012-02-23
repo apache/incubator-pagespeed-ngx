@@ -145,6 +145,7 @@ class RewriteOptions {
     kRunningFurious,
     kServeBlinkNonCritical,
     kServeStaleIfFetchError,
+    kXModPagespeedHeaderValue,
 
     // Apache specific:
     kCollectRefererStatistics,
@@ -278,6 +279,8 @@ class RewriteOptions {
   static const int kDefaultFuriousTrafficPercent;
 
   static const char kClassName[];
+
+  static const char kDefaultXModPagespeedHeaderValue[];
 
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
 
@@ -688,6 +691,13 @@ class RewriteOptions {
   }
   int64 implicit_cache_ttl_ms() const {
     return implicit_cache_ttl_ms_.value();
+  }
+
+  void set_x_header_value(const StringPiece& p) {
+    set_option(GoogleString(p.data(), p.size()), &x_header_value_);
+  }
+  const GoogleString& x_header_value() const {
+    return x_header_value_.value();
   }
 
   // Merge src into 'this'.  Generally, options that are explicitly
@@ -1169,6 +1179,9 @@ class RewriteOptions {
 
   Option<GoogleString> beacon_url_;
   Option<GoogleString> ga_id_;
+
+  // The value we put for the X-Mod-Pagespeed header. Default is our version.
+  Option<GoogleString> x_header_value_;
 
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,
