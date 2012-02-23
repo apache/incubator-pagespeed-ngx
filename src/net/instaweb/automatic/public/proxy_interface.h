@@ -78,19 +78,25 @@ class ProxyInterface : public UrlAsyncFetcher {
                      MessageHandler* handler,
                      AsyncFetch* async_fetch);
 
+  // Returns any options set in query-params or in request headers. Possible
+  // return-value scenarios for the pair are:
+  //
+  // .first==*, .second==false:  query-params or req-headers failed in parse.
+  // .first==NULL, .second==true: No query-params or req-headers is present.
+  // .first!=NULL, .second==true: Use query-params.
+  //  It also strips off the ModPageSpeed query parameters and headers from the
+  // request_url and request_headers respectively.
+  OptionsBoolPair GetQueryOptions(GoogleUrl* request_url,
+                                  RequestHeaders* request_headers,
+                                  MessageHandler* handler);
+
   // Returns any custom options required for this request, incorporating
   // any domain-specific options from the UrlNamer, options set in query-params,
-  // and options set in request headers.  Possible return-value scenarios for
-  // the pair are:
-  //
-  // first==*, .second==false:  query-params or req-headers failed in parse.
-  // .first!=NULL, .second=true:  Custom options created, now owned by caller.
-  // .first==NULL, .second=true:  Use the global options for resource_manager.
-  // It also strips off the ModPageSpeed query parameters and headers from the
-  // request_url and request_headers respectively.
-  OptionsBoolPair GetCustomOptions(GoogleUrl* request_url,
+  // and options set in request headers.
+  RewriteOptions* GetCustomOptions(GoogleUrl* request_url,
                                    RequestHeaders* request_headers,
                                    RewriteOptions* domain_options,
+                                   RewriteOptions* query_options,
                                    MessageHandler* handler);
 
   void set_server_version(const StringPiece& server_version);
@@ -102,6 +108,7 @@ class ProxyInterface : public UrlAsyncFetcher {
       GoogleUrl* request_url,
       AsyncFetch* async_fetch,
       RewriteOptions* domain_options,
+      RewriteOptions* query_options,
       ProxyFetchPropertyCallbackCollector* property_callback,
       MessageHandler* handler);
 
@@ -113,6 +120,13 @@ class ProxyInterface : public UrlAsyncFetcher {
                     const GoogleUrl& requested_url,
                     AsyncFetch* async_fetch,
                     MessageHandler* handler);
+
+  // Initiates the PropertyCache look up.
+  bool InitiatePropertyCacheLookup(
+      bool is_resource_fetch,
+      const GoogleUrl& request_url,
+      AsyncFetch* async_fetch,
+      ProxyFetchPropertyCallbackCollector* callback_collector);
 
   // Is this url_string well-formed enough to proxy through?
   bool IsWellFormedUrl(const GoogleUrl& url);

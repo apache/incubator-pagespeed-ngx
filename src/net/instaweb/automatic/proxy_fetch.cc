@@ -148,10 +148,16 @@ ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
       detached_(false),
       done_(false),
       success_(true),
-      proxy_fetch_(NULL) {
+      proxy_fetch_(NULL),
+      post_lookup_task_vector_(new std::vector<Function*>) {
 }
 
 ProxyFetchPropertyCallbackCollector::~ProxyFetchPropertyCallbackCollector() {
+  if (post_lookup_task_vector_ != NULL &&
+      !post_lookup_task_vector_->empty()) {
+    LOG(DFATAL) << "ProxyFetchPropertyCallbackCollector function vector is not "
+                << "empty.";
+  }
   STLDeleteElements(&pending_callbacks_);
   STLDeleteValues(&property_pages_);
 }
@@ -170,6 +176,14 @@ PropertyPage* ProxyFetchPropertyCallbackCollector::GetPropertyPage(
   return page;
 }
 
+PropertyPage*
+ProxyFetchPropertyCallbackCollector::GetPropertyPageWithoutOwnership(
+    ProxyFetchPropertyCallback::CacheType cache_type) {
+  ScopedMutex lock(mutex_.get());
+  PropertyPage* page = property_pages_[cache_type];
+  return page;
+}
+
 // Calls to Done(), SetProxyFetch(), and Detach() may occur on
 // different threads.  Exactly one of SetProxyFetch and Detach will
 // never race with each other, as they correspond to the construction
@@ -181,6 +195,7 @@ PropertyPage* ProxyFetchPropertyCallbackCollector::GetPropertyPage(
 void ProxyFetchPropertyCallbackCollector::Done(
     ProxyFetchPropertyCallback* callback, bool success) {
   ProxyFetch* fetch = NULL;
+  scoped_ptr<std::vector<Function*> > post_lookup_task_vector;
   bool do_delete = false;
   {
     ScopedMutex lock(mutex_.get());
@@ -192,6 +207,12 @@ void ProxyFetchPropertyCallbackCollector::Done(
       done_ = true;
       fetch = proxy_fetch_;
       do_delete = detached_;
+      post_lookup_task_vector.reset(post_lookup_task_vector_.release());
+    }
+  }
+  if (post_lookup_task_vector.get() != NULL) {
+    for (int i = 0, n = post_lookup_task_vector->size(); i < n; ++i) {
+      (*post_lookup_task_vector.get())[i]->CallRun();
     }
   }
   if (fetch != NULL) {
@@ -227,6 +248,21 @@ void ProxyFetchPropertyCallbackCollector::Detach() {
   }
   if (do_delete) {
     delete this;
+  }
+}
+
+void ProxyFetchPropertyCallbackCollector::AddPostLookupTask(Function* func) {
+  bool do_run = false;
+  {
+    ScopedMutex lock(mutex_.get());
+    DCHECK(!detached_);
+    do_run = done_;
+    if (!done_) {
+      post_lookup_task_vector_->push_back(func);
+    }
+  }
+  if (do_run) {
+    func->CallRun();
   }
 }
 

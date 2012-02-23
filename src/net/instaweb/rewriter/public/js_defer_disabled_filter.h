@@ -20,8 +20,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_JS_DEFER_DISABLED_FILTER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 
 namespace net_instaweb {
@@ -36,7 +34,7 @@ class Statistics;
 // tag to defer them to be executed at onload of window.
 class JsDeferDisabledFilter : public EmptyHtmlFilter {
  public:
-  static const char* kDeferJsCode;
+  static const char kSuffix[];
 
   explicit JsDeferDisabledFilter(RewriteDriver* driver);
   virtual ~JsDeferDisabledFilter();
@@ -46,16 +44,10 @@ class JsDeferDisabledFilter : public EmptyHtmlFilter {
   virtual void EndDocument();
   virtual const char* Name() const { return "JsDeferDisabledFilter"; }
 
-  static StringPiece defer_js_code() { return *opt_defer_js_; }
-
   static void Initialize(Statistics* statistics);
   static void Terminate();
 
  private:
-  // The script that will be inlined at the end of BODY.
-  static GoogleString* opt_defer_js_;  // Minified version.
-  static GoogleString* debug_defer_js_;  // Debug version.
-
   RewriteDriver* rewrite_driver_;
 
   // The script that will be inlined at the end of BODY.

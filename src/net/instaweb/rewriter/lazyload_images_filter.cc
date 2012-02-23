@@ -22,13 +22,14 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
+#include "net/instaweb/rewriter/public/javascript_url_manager.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
-extern const char* JS_lazyload_images;  // Not optimized.
-extern const char* JS_lazyload_images_opt;
 
 namespace {
 
@@ -38,10 +39,6 @@ const char kData[] = "data:";
 
 }  // namespace
 
-
-GoogleString* LazyloadImagesFilter::opt_lazyload_images_js_ = NULL;
-GoogleString* LazyloadImagesFilter::debug_lazyload_images_js_ = NULL;
-
 // base64 encoding of a blank 1x1 gif.
 const char* LazyloadImagesFilter::kDefaultInlineImage = "data:image/gif;base64"
     ",R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
@@ -49,27 +46,10 @@ const char* LazyloadImagesFilter::kDefaultInlineImage = "data:image/gif;base64"
 const char* LazyloadImagesFilter::kImageOnloadCode =
     "pagespeed.lazyLoadImages.loadIfVisible(this);";
 
-void LazyloadImagesFilter::Initialize(Statistics* statistics) {
-  if (opt_lazyload_images_js_ == NULL) {
-    opt_lazyload_images_js_ = new GoogleString(JS_lazyload_images_opt);
-  }
-  if (debug_lazyload_images_js_ == NULL) {
-    debug_lazyload_images_js_ = new GoogleString(JS_lazyload_images);
-  }
-}
-
-void  LazyloadImagesFilter::Terminate() {
-  delete opt_lazyload_images_js_;
-  delete debug_lazyload_images_js_;
-  opt_lazyload_images_js_ = NULL;
-  debug_lazyload_images_js_ = NULL;
-}
-
 LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
     : driver_(driver),
       tag_scanner_(new ImageTagScanner(driver)),
-      script_inserted_(false),
-      debug_(driver->options()->Enabled(RewriteOptions::kDebug)) {
+      script_inserted_(false) {
 }
 
 LazyloadImagesFilter::~LazyloadImagesFilter() {}
@@ -85,13 +65,14 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
     driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
     const GoogleString& load_onload =
         driver_->options()->lazyload_images_after_onload() ? kTrue : kFalse;
+    JavascriptUrlManager* js_url_manager =
+        driver_->resource_manager()->javascript_url_manager();
+    StringPiece lazyload_images_js =
+        js_url_manager->GetJsSnippet(
+            JavascriptUrlManager::kLazyloadImagesJs, driver_->options());
     const GoogleString& lazyload_js =
-        debug_ ? StrCat(*debug_lazyload_images_js_,
-                        "\npagespeed.lazyLoadInit(",
-                        load_onload, ");\n")
-                        : StrCat(*opt_lazyload_images_js_,
-                                 "\npagespeed.lazyLoadInit(",
-                                 load_onload, ");\n");
+        StrCat(lazyload_images_js, "\npagespeed.lazyLoadInit(",
+               load_onload, ");\n");
     HtmlNode* script_code = driver_->NewCharactersNode(
         script, lazyload_js);
     driver_->InsertElementBeforeCurrent(script);

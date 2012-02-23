@@ -145,9 +145,11 @@ TEST_F(DomainRewriteFilterTest, RewriteAllTags) {
   ValidateExpected(
       "forms and a tags",
       StrCat("<a href=\"", kFrom1Domain, "link.html\"/>"
-             "<form action=\"", kFrom1Domain, "blank\"/>"),
+             "<form action=\"", kFrom1Domain, "blank\"/>"
+             "<a href=\"https://from1.test.com/1.html\"/>"),
       "<a href=\"http://to1.test.com/link.html\"/>"
-      "<form action=\"http://to1.test.com/blank\"/>");
+      "<form action=\"http://to1.test.com/blank\"/>"
+      "<a href=\"https://from1.test.com/1.html\"/>");
 }
 
 TEST_F(DomainRewriteFilterTest, RewriteRedirectLocations) {

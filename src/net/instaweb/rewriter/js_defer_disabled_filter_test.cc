@@ -19,10 +19,13 @@
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -49,6 +52,9 @@ class JsDeferDisabledFilterTest : public ResourceManagerTestBase {
 
 TEST_F(JsDeferDisabledFilterTest, DeferScript) {
   InitJsDeferDisabledFilter(false);
+  StringPiece defer_js_code =
+      resource_manager()->javascript_url_manager()->GetJsSnippet(
+          JavascriptUrlManager::kDeferJs, options());
   ValidateExpected("defer_script",
       "<head>"
       "<script type='text/psajs' "
@@ -63,12 +69,16 @@ TEST_F(JsDeferDisabledFilterTest, DeferScript) {
              "> func();</script>"
              "</head><body>Hello, world!"
              "<script type=\"text/javascript\">",
-             JsDeferDisabledFilter::defer_js_code(),
+             defer_js_code,
+             JsDeferDisabledFilter::kSuffix,
              "</script></body>"));
 }
 
 TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
   InitJsDeferDisabledFilter(false);
+  StringPiece defer_js_code =
+      resource_manager()->javascript_url_manager()->GetJsSnippet(
+          JavascriptUrlManager::kDeferJs, options());
   ValidateExpected("defer_script_multi_body",
       "<head>"
       "<script type='text/psajs' "
@@ -82,7 +92,8 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
              "<script type='text/psajs'> func(); </script>"
              "</head><body>Hello, world!"
              "<script type=\"text/javascript\">",
-             JsDeferDisabledFilter::defer_js_code(),
+             defer_js_code,
+             JsDeferDisabledFilter::kSuffix,
              "</script></body><body><script type='text/psajs'> func2(); "
              "</script></body>"));
 }

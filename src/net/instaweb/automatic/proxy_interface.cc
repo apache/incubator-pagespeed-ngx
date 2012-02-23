@@ -98,19 +98,21 @@ class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
       AsyncFetch* async_fetch,
       ProxyFetchPropertyCallbackCollector* property_callback,
       ProxyInterface* proxy_interface,
+      RewriteOptions* query_options,
       MessageHandler* handler)
       : is_resource_fetch_(is_resource_fetch),
         request_url_(request_url),
         async_fetch_(async_fetch),
         property_callback_(property_callback),
         handler_(handler),
-        proxy_interface_(proxy_interface) {
+        proxy_interface_(proxy_interface),
+        query_options_(query_options) {
   }
   virtual ~ProxyInterfaceUrlNamerCallback() {}
   virtual void Done(RewriteOptions* rewrite_options) {
     proxy_interface_->ProxyRequestCallback(
         is_resource_fetch_, request_url_, async_fetch_, rewrite_options,
-        property_callback_, handler_);
+        query_options_, property_callback_, handler_);
     delete this;
   }
 
@@ -121,6 +123,7 @@ class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
   ProxyFetchPropertyCallbackCollector* property_callback_;
   MessageHandler* handler_;
   ProxyInterface* proxy_interface_;
+  RewriteOptions* query_options_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceUrlNamerCallback);
 };
@@ -242,9 +245,10 @@ bool ProxyInterface::Fetch(const GoogleString& requested_url_string,
   return done;
 }
 
-ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
+RewriteOptions* ProxyInterface::GetCustomOptions(
     GoogleUrl* request_url, RequestHeaders* request_headers,
-    RewriteOptions* domain_options, MessageHandler* handler) {
+    RewriteOptions* domain_options, RewriteOptions* query_options,
+    MessageHandler* handler) {
   RewriteOptions* options = resource_manager_->global_options();
   scoped_ptr<RewriteOptions> custom_options;
   scoped_ptr<RewriteOptions> scoped_domain_options(domain_options);
@@ -255,42 +259,70 @@ ProxyInterface::OptionsBoolPair ProxyInterface::GetCustomOptions(
     options = custom_options.get();
   }
 
-  // Check query params & request-headers for
-  scoped_ptr<RewriteOptions> query_options(resource_manager_->NewOptions());
-  switch (RewriteQuery::Scan(request_url, request_headers,
-                             query_options.get(), handler)) {
-    case RewriteQuery::kInvalid:
-      return OptionsBoolPair(static_cast<RewriteOptions*>(NULL), false);
-      break;
-    case RewriteQuery::kNoneFound:
-      break;
-    case RewriteQuery::kSuccess: {
-      // Subtle memory management to handle deleting any domain_options
-      // after the merge, and transferring ownership to the caller for
-      // the new merged options.
-      scoped_ptr<RewriteOptions> options_buffer(custom_options.release());
-      custom_options.reset(resource_manager_->NewOptions());
-      custom_options->Merge(*options);
-      custom_options->Merge(*query_options.get());
-      // Don't run any experiments if this is a special query-params request.
-      custom_options->set_running_furious_experiment(false);
-      break;
-    }
+  scoped_ptr<RewriteOptions> query_options_ptr(query_options);
+  // Check query params & request-headers
+  if (query_options_ptr.get() != NULL) {
+    // Subtle memory management to handle deleting any domain_options
+    // after the merge, and transferring ownership to the caller for
+    // the new merged options.
+    scoped_ptr<RewriteOptions> options_buffer(custom_options.release());
+    custom_options.reset(resource_manager_->NewOptions());
+    custom_options->Merge(*options);
+    custom_options->Merge(*query_options);
+    // Don't run any experiments if this is a special query-params request.
+    custom_options->set_running_furious_experiment(false);
   }
 
   // Add custom options based on the request.
   resource_manager_->url_namer()->ConfigureCustomOptions(
       *request_url, *request_headers, custom_options.get());
 
-  return OptionsBoolPair(custom_options.release(), true);
+  return custom_options.release();
+}
+
+ProxyInterface::OptionsBoolPair ProxyInterface::GetQueryOptions(
+    GoogleUrl* request_url, RequestHeaders* request_headers,
+    MessageHandler* handler) {
+  scoped_ptr<RewriteOptions> query_options(resource_manager_->NewOptions());
+  bool success = false;
+  switch (RewriteQuery::Scan(request_url, request_headers,
+                             query_options.get(), handler)) {
+    case RewriteQuery::kInvalid:
+      query_options.reset(NULL);
+      break;
+    case RewriteQuery::kNoneFound:
+      query_options.reset(NULL);
+      success = true;
+      break;
+    case RewriteQuery::kSuccess:
+      success = true;
+      break;
+    default:
+      query_options.reset(NULL);
+  }
+  return OptionsBoolPair(query_options.release(), success);
 }
 
 void ProxyInterface::ProxyRequest(bool is_resource_fetch,
                                   const GoogleUrl& request_url,
                                   AsyncFetch* async_fetch,
                                   MessageHandler* handler) {
-  GoogleUrl* url = new GoogleUrl;
-  url->Reset(request_url);
+  scoped_ptr<GoogleUrl> gurl(new GoogleUrl);
+  gurl->Reset(request_url);
+
+  // Stripping ModPagespeed query params before the property cache lookup to
+  // make cache key consistent for both lookup and storing in cache.
+  OptionsBoolPair query_options_success = GetQueryOptions(
+      gurl.get(), async_fetch->request_headers(), handler);
+
+  if (!query_options_success.second) {
+    async_fetch->response_headers()->SetStatusAndReason(
+        HttpStatus::kMethodNotAllowed);
+    async_fetch->Write("Invalid PageSpeed query-params/request headers",
+                       handler);
+    async_fetch->Done(false);
+    return;
+  }
 
   // Initiate pcache lookups early, before we know the RewriteOptions,
   // in order to avoid adding latency to the serving flow. This has
@@ -300,17 +332,41 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
   // One thing to look out for is if we serve a lot of JPGs that don't
   // end in .jpg or .jpeg -- we'll pessimistically assume they are HTML
   // and do pcache lookups for them.
-
-  bool added_callback = false;
   AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
   ProxyFetchPropertyCallbackCollector* callback_collector =
       new ProxyFetchPropertyCallbackCollector(mutex);
+  if (!InitiatePropertyCacheLookup(is_resource_fetch,
+                                   *gurl.get(),
+                                   async_fetch,
+                                   callback_collector)) {
+    // Didn't need the collector after all
+    delete callback_collector;
+    callback_collector = NULL;
+  }
 
-  // Initiate page property cache lookup.
+  // Owned by ProxyInterfaceUrlNamerCallback.
+  GoogleUrl* released_gurl(gurl.release());
+
+  ProxyInterfaceUrlNamerCallback* proxy_interface_url_namer_callback =
+      new ProxyInterfaceUrlNamerCallback(is_resource_fetch, released_gurl,
+                                         async_fetch, callback_collector, this,
+                                         query_options_success.first, handler);
+
+  resource_manager_->url_namer()->DecodeOptions(
+      *released_gurl, *async_fetch->request_headers(),
+      proxy_interface_url_namer_callback, handler);
+}
+
+bool ProxyInterface::InitiatePropertyCacheLookup(
+    bool is_resource_fetch,
+    const GoogleUrl& request_url,
+    AsyncFetch* async_fetch,
+    ProxyFetchPropertyCallbackCollector* callback_collector) {
+  bool added_callback = false;
   if (!is_resource_fetch && UrlMightHavePropertyCacheEntry(request_url)) {
     PropertyCache* page_property_cache =
         resource_manager_->page_property_cache();
-    mutex = resource_manager_->thread_system()->NewMutex();
+    AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
     ProxyFetchPropertyCallback* callback =
         new ProxyFetchPropertyCallback(
             ProxyFetchPropertyCallback::kPagePropertyCache,
@@ -325,7 +381,7 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
   if (client_id != NULL) {
     PropertyCache* client_property_cache =
         resource_manager_->client_property_cache();
-    mutex = resource_manager_->thread_system()->NewMutex();
+    AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
     ProxyFetchPropertyCallback* callback =
         new ProxyFetchPropertyCallback(
             ProxyFetchPropertyCallback::kClientPropertyCache,
@@ -334,20 +390,7 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
     added_callback = true;
     client_property_cache->Read(client_id, callback);
   }
-
-  if (!added_callback) {
-    // Didn't need the collector after all
-    delete callback_collector;
-    callback_collector = NULL;
-  }
-
-  ProxyInterfaceUrlNamerCallback* proxy_interface_url_namer_callback =
-      new ProxyInterfaceUrlNamerCallback(is_resource_fetch, url, async_fetch,
-                                         callback_collector, this, handler);
-
-  resource_manager_->url_namer()->DecodeOptions(
-      request_url, *async_fetch->request_headers(),
-      proxy_interface_url_namer_callback, handler);
+  return added_callback;
 }
 
 void ProxyInterface::ProxyRequestCallback(
@@ -355,90 +398,82 @@ void ProxyInterface::ProxyRequestCallback(
     GoogleUrl* request_url,
     AsyncFetch* async_fetch,
     RewriteOptions* domain_options,
+    RewriteOptions* query_options,
     ProxyFetchPropertyCallbackCollector* property_callback,
     MessageHandler* handler) {
-  OptionsBoolPair custom_options_success = GetCustomOptions(
-      request_url, async_fetch->request_headers(), domain_options, handler);
-  if (!custom_options_success.second) {
-    async_fetch->response_headers()->SetStatusAndReason(
-        HttpStatus::kMethodNotAllowed);
-    async_fetch->Write("Invalid PageSpeed query-params/request headers",
-                       handler);
-    async_fetch->Done(false);
+  RewriteOptions* options = GetCustomOptions(
+      request_url, async_fetch->request_headers(), domain_options,
+      query_options, handler);
+
+  // Update request_headers.
+  // We deal with encodings. So strip the users Accept-Encoding headers.
+  async_fetch->request_headers()->RemoveAll(HttpAttributes::kAcceptEncoding);
+  // Note: We preserve the User-Agent and Cookies so that the origin servers
+  // send us the correct HTML. We will need to consider this for caching HTML.
+
+  // Start fetch and rewrite.  If GetCustomOptions found options for us,
+  // the RewriteDriver created by StartNewProxyFetch will take ownership.
+  if (is_resource_fetch) {
+    ResourceFetch::Start(resource_manager_, *request_url, async_fetch,
+                         options, proxy_fetch_factory_->server_version());
   } else {
-    // Update request_headers.
-    // We deal with encodings. So strip the users Accept-Encoding headers.
-    async_fetch->request_headers()->RemoveAll(HttpAttributes::kAcceptEncoding);
-    // Note: We preserve the User-Agent and Cookies so that the origin servers
-    // send us the correct HTML. We will need to consider this for caching HTML.
+    // TODO(nforman): If we are not running an experiment, remove the
+    // furious cookie.
+    // If we don't already have custom options, and the global options
+    // say we're running furious, then clone them into custom_options so we
+    // can manipulate custom options without affecting the global options.
+    const RewriteOptions* global_options =
+        resource_manager_->global_options();
+    if (options == NULL && global_options->running_furious()) {
+      options = global_options->Clone();
+    }
+    if (options != NULL && options->running_furious()) {
+      furious::FuriousState furious_value;
+      if (!furious::GetFuriousCookieState(async_fetch->request_headers(),
+                                          &furious_value)) {
+        furious_value = furious::DetermineFuriousState(options);
+      }
+      options->set_furious_state(furious_value);
+      // If this request is on the 'B' side of the experiment, turn off
+      // all the rewriters except the ones we need to do the experiment.
+      // TODO(nforman): Allow the configuration to specify what the 'B'
+      // set of filters should be.
+      if (options->furious_state() == furious::kFuriousB) {
+        furious::FuriousNoFilterDefault(options);
+      }
+    }
+    const char* user_agent = async_fetch->request_headers()->Lookup1(
+        HttpAttributes::kUserAgent);
+    const Layout* layout = BlinkUtil::ExtractBlinkLayout(*request_url,
+                                                         options, user_agent);
+    if (layout != NULL && user_agent_matcher_.SupportsBlink(user_agent)) {
+      // TODO(rahulbansal): Remove this LOG once we expect to have
+      // Blink requests.
+      LOG(INFO) << "Triggering Blink flow for url "
+                << request_url->Spec().as_string();
+      if (blink_requests_ != NULL) {
+        blink_requests_->IncBy(1);
+      }
+      BlinkFlow::Start(request_url->Spec().as_string(), async_fetch, layout,
+                       options, proxy_fetch_factory_.get(),
+                       resource_manager_);
 
-    // Start fetch and rewrite.  If GetCustomOptions found options for us,
-    // the RewriteDriver created by StartNewProxyFetch will take ownership.
-    if (is_resource_fetch) {
-      ResourceFetch::Start(resource_manager_,
-                           *request_url, async_fetch,
-                           custom_options_success.first,
-                           proxy_fetch_factory_->server_version());
+      // TODO(jmarantz): provide property-cache data to blink.
     } else {
-      RewriteOptions* options = custom_options_success.first;
-      // TODO(nforman): If we are not running an experiment, remove the
-      // furious cookie.
-      // If we don't already have custom options, and the global options
-      // say we're running furious, then clone them into custom_options so we
-      // can manipulate custom options without affecting the global options.
-      const RewriteOptions* global_options =
-          resource_manager_->global_options();
-      if (options == NULL && global_options->running_furious()) {
-        options = global_options->Clone();
-      }
-      if (options != NULL && options->running_furious()) {
-        furious::FuriousState furious_value;
-        if (!furious::GetFuriousCookieState(async_fetch->request_headers(),
-                                            &furious_value)) {
-          furious_value = furious::DetermineFuriousState(options);
-        }
-        options->set_furious_state(furious_value);
-        // If this request is on the 'B' side of the experiment, turn off
-        // all the rewriters except the ones we need to do the experiment.
-        // TODO(nforman): Allow the configuration to specify what the 'B'
-        // set of filters should be.
-        if (options->furious_state() == furious::kFuriousB) {
-          furious::FuriousNoFilterDefault(options);
-        }
-      }
-      const char* user_agent = async_fetch->request_headers()->Lookup1(
-          HttpAttributes::kUserAgent);
-      const Layout* layout = BlinkUtil::ExtractBlinkLayout(*request_url,
-                                                           options, user_agent);
-      if (layout != NULL && user_agent_matcher_.SupportsBlink(user_agent)) {
-        // TODO(rahulbansal): Remove this LOG once we expect to have
-        // Blink requests.
-        LOG(INFO) << "Triggering Blink flow for url "
-                  << request_url->Spec().as_string();
-        if (blink_requests_ != NULL) {
-          blink_requests_->IncBy(1);
-        }
-        BlinkFlow::Start(request_url->Spec().as_string(), async_fetch, layout,
-                         options, proxy_fetch_factory_.get(),
-                         resource_manager_);
-
-        // TODO(jmarantz): provide property-cache data to blink.
+      RewriteDriver* driver = NULL;
+      if (options == NULL) {
+        driver = resource_manager_->NewRewriteDriver();
       } else {
-        RewriteDriver* driver = NULL;
-        if (options == NULL) {
-          driver = resource_manager_->NewRewriteDriver();
-        } else {
-          resource_manager_->ComputeSignature(options);
-          // NewCustomRewriteDriver takes ownership of custom_options_.
-          driver = resource_manager_->NewCustomRewriteDriver(options);
-        }
-        proxy_fetch_factory_->StartNewProxyFetch(
-            request_url->Spec().as_string(), async_fetch, driver,
-            property_callback);
-        // ProxyFetch takes ownership of property_callback.
-        // NULL it here so that we do not detach it below.
-        property_callback = NULL;
+        resource_manager_->ComputeSignature(options);
+        // NewCustomRewriteDriver takes ownership of custom_options_.
+        driver = resource_manager_->NewCustomRewriteDriver(options);
       }
+      proxy_fetch_factory_->StartNewProxyFetch(
+          request_url->Spec().as_string(), async_fetch, driver,
+          property_callback);
+      // ProxyFetch takes ownership of property_callback.
+      // NULL it here so that we do not detach it below.
+      property_callback = NULL;
     }
   }
 

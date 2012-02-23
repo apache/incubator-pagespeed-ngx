@@ -563,7 +563,6 @@ void RewriteDriver::Initialize(Statistics* statistics) {
   CssFilter::Initialize(statistics);
   CssInlineImportToLinkFilter::Initialize(statistics);
   CssMoveToHeadFilter::Initialize(statistics);
-  DelayImagesFilter::Initialize(statistics);
   DomainRewriteFilter::Initialize(statistics);
   GoogleAnalyticsFilter::Initialize(statistics);
   ImageCombineFilter::Initialize(statistics);
@@ -571,8 +570,6 @@ void RewriteDriver::Initialize(Statistics* statistics) {
   InsertGAFilter::Initialize(statistics);
   JavascriptFilter::Initialize(statistics);
   JsCombineFilter::Initialize(statistics);
-  JsDeferDisabledFilter::Initialize(statistics);
-  LazyloadImagesFilter::Initialize(statistics);
   MetaTagFilter::Initialize(statistics);
   UrlLeftTrimFilter::Initialize(statistics);
 }
@@ -580,9 +577,6 @@ void RewriteDriver::Initialize(Statistics* statistics) {
 void RewriteDriver::Terminate() {
   // Clean up statics.
   CssFilter::Terminate();
-  DelayImagesFilter::Terminate();
-  JsDeferDisabledFilter::Terminate();
-  LazyloadImagesFilter::Terminate();
 }
 
 void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
@@ -1564,19 +1558,25 @@ void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
   bool should_release = false;
   {
     ScopedMutex lock(rewrite_mutex());
+    bool should_signal = false;
     DCHECK_LT(0, rewrites_to_delete_);
     --rewrites_to_delete_;
     delete rewrite_context;
     bool ready_to_recycle = false;
     if (RewritesComplete()) {
       if (waiting_ != kNoWait) {
-        scheduler_->Signal();
+        should_signal = true;
       } else {
         ready_to_recycle = !externally_managed_ && !parsing_;
       }
     }
     release_driver_ = ready_to_recycle;
     should_release = release_driver_ && (pending_async_events_ == 0);
+    if (should_signal) {
+      // Note: must be the last thing in the critical section as relinquishes
+      // lock.
+      scheduler_->Signal();
+    }
   }
   if (should_release) {
     resource_manager_->ReleaseRewriteDriver(this);

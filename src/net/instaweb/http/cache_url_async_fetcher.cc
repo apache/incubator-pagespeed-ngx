@@ -112,7 +112,7 @@ class CachePutFetch : public SharedAsyncFetch {
     // Finish fetch.
     base_fetch()->Done(success);
     // Add result to cache.
-    if (cacheable_) {
+    if (success && cacheable_) {
       cache_->Put(url_, &cache_value_, handler_);
     }
     delete this;

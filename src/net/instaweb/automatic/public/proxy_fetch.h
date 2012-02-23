@@ -150,6 +150,22 @@ class ProxyFetchPropertyCallbackCollector {
   PropertyPage* GetPropertyPage(
       ProxyFetchPropertyCallback::CacheType cache_type);
 
+  // Returns the collected PropertyPage with the corresponding cache_type.
+  // Ownership of the object is retained by collector.
+  PropertyPage* GetPropertyPageWithoutOwnership(
+        ProxyFetchPropertyCallback::CacheType cache_type);
+
+  // In our flow, property-page will be available via RewriteDriver only after
+  // ProxyFetch is set. But there may be instances where the result may be
+  // required even before proxy-fetch is created. Any task that depends on the
+  // PropertyCache result will be executed as soon as PropertyCache lookup is
+  // done.
+  // func is guaranteed to execute after PropertyCache lookup has completed, as
+  // long as ProxyFetch is not set before PropertyCache lookup is done. One
+  // should use PropertyCache result via RewriteDriver if some other thread can
+  // initiate SetProxyFetch().
+  void AddPostLookupTask(Function* func);
+
   // Called by a ProxyFetchPropertyCallback when the former is complete.
   virtual void Done(ProxyFetchPropertyCallback* callback, bool success);
 
@@ -162,6 +178,8 @@ class ProxyFetchPropertyCallbackCollector {
   bool done_;                 // protected by mutex_.
   bool success_;              // protected by mutex_; accessed after quiescence.
   ProxyFetch* proxy_fetch_;   // protected by mutex_.
+  // protected by mutex_.
+  scoped_ptr<std::vector<Function*> > post_lookup_task_vector_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyFetchPropertyCallbackCollector);
 };

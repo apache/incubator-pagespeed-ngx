@@ -26,6 +26,15 @@
 
 namespace net_instaweb {
 
+extern const char* JS_delay_images;
+extern const char* JS_delay_images_opt;
+extern const char* JS_delay_images_inline;
+extern const char* JS_delay_images_inline_opt;
+extern const char* JS_js_defer;
+extern const char* JS_js_defer_opt;
+extern const char* JS_lazyload_images;
+extern const char* JS_lazyload_images_opt;
+
 const char JavascriptUrlManager::kGStaticBase[] =
     "http://www.gstatic.com/psa/static/";
 
@@ -33,12 +42,14 @@ const char JavascriptUrlManager::kBlinkGstaticSuffix[] = "-blink.js";
 
 const char JavascriptUrlManager::kBlinkRelativePath[] = "/psajs/blink.js";
 
+// TODO(guptaa): Rename this class to JavascriptManager
 JavascriptUrlManager::JavascriptUrlManager(
     UrlNamer* url_namer,
     bool serve_js_from_gstatic,
     const GoogleString& blink_hash)
     : url_namer_(url_namer),
       serve_js_from_gstatic_(serve_js_from_gstatic) {
+  InitializeJsStrings();
   InitBlink(blink_hash);
 }
 
@@ -61,6 +72,36 @@ void JavascriptUrlManager::InitBlink(const GoogleString& hash) {
   }
   blink_javascript_handler_url_ =
       StrCat(url_namer_->get_proxy_domain(), kBlinkRelativePath);
+}
+
+void JavascriptUrlManager::InitializeJsStrings() {
+  // Initialize compiled javascript strings.
+  opt_js_vector_.resize(static_cast<int>(kEndOfModules));
+  opt_js_vector_[static_cast<int>(kDeferJs)] = JS_js_defer_opt;
+  opt_js_vector_[static_cast<int>(kDelayImagesJs)] =
+      JS_delay_images_opt;
+  opt_js_vector_[static_cast<int>(kDelayImagesInlineJs)] =
+      JS_delay_images_inline_opt;
+  opt_js_vector_[static_cast<int>(kLazyloadImagesJs)] =
+      JS_lazyload_images_opt;
+  // Initialize cleartext javascript strings.
+  debug_js_vector_.resize(static_cast<int>(kEndOfModules));
+  debug_js_vector_[static_cast<int>(kDeferJs)] = JS_js_defer;
+  debug_js_vector_[static_cast<int>(kDelayImagesJs)] =
+      JS_delay_images;
+  debug_js_vector_[static_cast<int>(kDelayImagesInlineJs)] =
+      JS_delay_images_inline;
+  debug_js_vector_[static_cast<int>(kLazyloadImagesJs)] =
+      JS_lazyload_images;
+}
+
+const char* JavascriptUrlManager::GetJsSnippet(
+    JavascriptUrlManager::JsModule js_module,
+    const RewriteOptions* options) {
+  CHECK(js_module != kEndOfModules);
+  int module = js_module;
+  return options->Enabled(RewriteOptions::kDebug) ?
+      debug_js_vector_[module] : opt_js_vector_[module];
 }
 
 }  // namespace net_instaweb

@@ -17,6 +17,7 @@
 // Author: nikhilmadan@google.com (Nikhil madan)
 
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
+#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -57,6 +58,9 @@ class LazyloadImagesFilterTest : public ResourceManagerTestBase {
 
 TEST_F(LazyloadImagesFilterTest, SingleHead) {
   InitLazyloadImagesFilter(false);
+  StringPiece lazyload_js_code =
+      resource_manager()->javascript_url_manager()->GetJsSnippet(
+          JavascriptUrlManager::kLazyloadImagesJs, options());
   ValidateExpected("lazyload_images",
       "<head></head>"
       "<body>"
@@ -68,7 +72,7 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
       "<img src=\"1.jpg\" onload=\"blah();\" />"
       "</body>",
       StrCat("<head><script type=\"text/javascript\">",
-             LazyloadImagesFilter::lazyload_js_code(),
+             lazyload_js_code,
              "\npagespeed.lazyLoadInit(false);\n"
              "</script></head><body>",
              GenerateRewrittenImageTag("img", "1.jpg", ""),
@@ -82,6 +86,9 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
 
 TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {
   InitLazyloadImagesFilter(false);
+  StringPiece lazyload_js_code =
+      resource_manager()->javascript_url_manager()->GetJsSnippet(
+          JavascriptUrlManager::kLazyloadImagesJs, options());
   options()->ClearSignatureForTesting();
   options()->set_lazyload_images_after_onload(true);
   resource_manager()->ComputeSignature(options());
@@ -90,7 +97,7 @@ TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {
       "<body>"
       "</body>",
       StrCat("<head><script type=\"text/javascript\">",
-             LazyloadImagesFilter::lazyload_js_code(),
+             lazyload_js_code,
              "\npagespeed.lazyLoadInit(true);\n",
              "</script></head>"
              "<body></body>"));
@@ -107,13 +114,16 @@ TEST_F(LazyloadImagesFilterTest, NoHeadTag) {
 
 TEST_F(LazyloadImagesFilterTest, MultipleHeadTags) {
   InitLazyloadImagesFilter(false);
+  StringPiece lazyload_js_code =
+      resource_manager()->javascript_url_manager()->GetJsSnippet(
+          JavascriptUrlManager::kLazyloadImagesJs, options());
   ValidateExpected("lazyload_images",
       "<head></head>"
       "<head></head>"
       "<body>"
       "</body>",
       StrCat("<head><script type=\"text/javascript\">",
-             LazyloadImagesFilter::lazyload_js_code(),
+             lazyload_js_code,
              "\npagespeed.lazyLoadInit(false);\n",
              "</script></head>"
              "<head></head><body></body>"));

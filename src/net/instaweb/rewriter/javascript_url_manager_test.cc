@@ -21,6 +21,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -54,6 +55,35 @@ TEST_F(JavascriptUrlManagerTest, TestBlinkDebug) {
   options_.EnableFilter(RewriteOptions::kDebug);
   const char blink_url[] = "http://proxy-domain/psajs/blink.js";
   EXPECT_STREQ(blink_url, manager.GetBlinkJsUrl(&options_));
+}
+
+TEST_F(JavascriptUrlManagerTest, TestJsDebug) {
+  JavascriptUrlManager manager(&url_namer_, true, "1");
+  options_.EnableFilter(RewriteOptions::kDebug);
+  for (int i = 0;
+       i < static_cast<int>(JavascriptUrlManager::kEndOfModules);
+       ++i) {
+    JavascriptUrlManager::JsModule module =
+        static_cast<JavascriptUrlManager::JsModule>(i);
+    GoogleString script(manager.GetJsSnippet(
+        module, &options_));
+    EXPECT_NE(GoogleString::npos, script.find("/*"))
+        << "There should be some comments in the debug code";
+  }
+}
+
+TEST_F(JavascriptUrlManagerTest, TestJsOpt) {
+  JavascriptUrlManager manager(&url_namer_, true, "1");
+  for (int i = 0;
+       i < static_cast<int>(JavascriptUrlManager::kEndOfModules);
+       ++i) {
+    JavascriptUrlManager::JsModule module =
+        static_cast<JavascriptUrlManager::JsModule>(i);
+    GoogleString script(manager.GetJsSnippet(
+        module, &options_));
+    EXPECT_EQ(GoogleString::npos, script.find("/*"))
+        << "There should be no comments in the compiled code";
+  }
 }
 
 }  // namespace

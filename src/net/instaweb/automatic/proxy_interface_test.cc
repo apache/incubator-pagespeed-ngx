@@ -23,6 +23,7 @@
 #include <cstddef>
 
 #include "base/scoped_ptr.h"            // for scoped_ptr
+#include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
@@ -303,6 +304,24 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     timing_info_.CopyFrom(*callback.timing_info());
   }
 
+  void FetchViaProxyRequestCallback(
+      GoogleUrl* url,
+      ProxyFetchPropertyCallbackCollector* property_callback,
+      GoogleString* string_out,
+      ResponseHeaders* headers_out) {
+    RequestHeaders request_headers;
+    WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
+    AsyncExpectStringAsyncFetch callback(true, &sync);
+    callback.set_response_headers(headers_out);
+    proxy_interface_->ProxyRequestCallback(
+        false, url, &callback, NULL, NULL, property_callback,
+        message_handler());
+    sync.Wait();
+    mock_scheduler()->AwaitQuiescence();
+    *string_out = callback.buffer();
+    timing_info_.CopyFrom(*callback.timing_info());
+  }
+
   void CheckHeaders(const ResponseHeaders& headers,
                     const ContentType& expect_type) {
     ASSERT_TRUE(headers.has_status_code());
@@ -320,11 +339,15 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     GoogleUrl gurl(url);
     RewriteOptions* copy_options = domain_options != NULL ?
         domain_options->Clone() : NULL;
-    ProxyInterface::OptionsBoolPair options_success =
-        proxy_interface_->GetCustomOptions(&gurl, request_headers,
-                                           copy_options, message_handler());
-    EXPECT_TRUE(options_success.second);
-    return options_success.first;
+    ProxyInterface::OptionsBoolPair query_options_success =
+        proxy_interface_->GetQueryOptions(&gurl, request_headers,
+                                          message_handler());
+    EXPECT_TRUE(query_options_success.second);
+    RewriteOptions* options =
+        proxy_interface_->GetCustomOptions(&gurl, request_headers, copy_options,
+                                           query_options_success.first,
+                                           message_handler());
+    return options;
   }
 
   // Serve a trivial HTML page with initial Cache-Control header set to
@@ -394,6 +417,48 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
 
     EXPECT_EQ(1, lru_cache()->num_inserts());  // http-cache
     EXPECT_EQ(2, lru_cache()->num_misses());   // http-cache & prop-cache
+  }
+
+  void PostLookupTask(int num_misses, int num_inserts) {
+    EXPECT_EQ(num_inserts, lru_cache()->num_inserts());
+    EXPECT_EQ(num_misses, lru_cache()->num_misses());
+  }
+
+  void TestAddTaskProxyFetchPropertyCallback(
+      bool delay_pcache, int num_misses, int num_inserts) {
+    GoogleString kUrl("http://www.test.com/");
+    GoogleString delay_cache_key;
+    SetResponseWithDefaultHeaders(kUrl, kContentTypeHtml, "html data", 300);
+    if (delay_pcache) {
+      PropertyCache* pcache = resource_manager()->page_property_cache();
+      const PropertyCache::Cohort* cohort =
+          pcache->GetCohort(RewriteDriver::kDomCohort);
+      delay_cache_key = pcache->CacheKey(kUrl, cohort);
+      delay_cache()->DelayKey(delay_cache_key);
+    }
+    ProxyFetchPropertyCallbackCollector* callback_collector(
+        new ProxyFetchPropertyCallbackCollector(
+            resource_manager()->thread_system()->NewMutex()));
+    ProxyFetchPropertyCallback* callback =
+        new ProxyFetchPropertyCallback(
+            ProxyFetchPropertyCallback::kPagePropertyCache,
+            callback_collector,
+            resource_manager_->thread_system()->NewMutex());
+    callback_collector->AddCallback(callback);
+    resource_manager()->page_property_cache()->Read(kUrl, callback);
+    callback_collector->AddPostLookupTask(MakeFunction(
+        this, &ProxyInterfaceTest::PostLookupTask, num_misses, num_inserts));
+
+    GoogleUrl* gurl = new GoogleUrl(kUrl);
+    GoogleString out;
+    ResponseHeaders headers_out;
+    FetchViaProxyRequestCallback(gurl, callback_collector, &out, &headers_out);
+    if (delay_pcache) {
+      delay_cache()->ReleaseKey(delay_cache_key);
+    }
+    EXPECT_EQ(1, lru_cache()->num_inserts());  // http-cache
+    // meta-data, http-cache & prop-cache
+    EXPECT_EQ(3, lru_cache()->num_misses());
   }
 
   scoped_ptr<ProxyInterface> proxy_interface_;
@@ -1303,8 +1368,8 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithNoUrlNamerOptions) {
   // Now explicitly enable a bogus filter, which should will cause the
   // options to be uncomputable.
   GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
-  EXPECT_FALSE(proxy_interface_->GetCustomOptions(&gurl, &request_headers, NULL,
-                                                  message_handler()).second);
+  EXPECT_FALSE(proxy_interface_->GetQueryOptions(&gurl, &request_headers,
+                                                 message_handler()).second);
 }
 
 TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
@@ -1350,9 +1415,8 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
   // Now explicitly enable a bogus filter, which should will cause the
   // options to be uncomputable.
   GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
-  EXPECT_FALSE(proxy_interface_->GetCustomOptions(&gurl, &request_headers,
-                                                  (&namer_options)->Clone(),
-                                                  message_handler()).second);
+  EXPECT_FALSE(proxy_interface_->GetQueryOptions(&gurl, &request_headers,
+                                                 message_handler()).second);
 }
 
 TEST_F(ProxyInterfaceTest, MinResourceTimeZero) {
@@ -2042,6 +2106,16 @@ TEST_F(ProxyInterfaceTest, FuriousTest) {
     }
   }
   EXPECT_TRUE(found);
+}
+
+TEST_F(ProxyInterfaceTest, TestAddTaskProxyFetchPropertyCallback) {
+  // Added Task is executed before ProxyFetch is Started.
+  TestAddTaskProxyFetchPropertyCallback(false, 1, 0);
+}
+
+TEST_F(ProxyInterfaceTest, TestAddTaskProxyFetchPropertyCallbackDelayedCache) {
+  // Added Task is executed after ProxyFetch is Started.
+  TestAddTaskProxyFetchPropertyCallback(true, 3, 1);
 }
 
 }  // namespace

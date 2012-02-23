@@ -21,8 +21,6 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -89,16 +87,10 @@ class LazyloadImagesFilter : public EmptyHtmlFilter {
   static void Initialize(Statistics* statistics);
   static void Terminate();
 
-  static StringPiece lazyload_js_code() { return *opt_lazyload_images_js_; }
-
  private:
-  static GoogleString* debug_lazyload_images_js_;
-  static GoogleString* opt_lazyload_images_js_;
-
   RewriteDriver* driver_;
   scoped_ptr<const ImageTagScanner> tag_scanner_;
   bool script_inserted_;
-  bool debug_;
 };
 
 }  // namespace net_instaweb

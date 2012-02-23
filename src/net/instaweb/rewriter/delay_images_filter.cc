@@ -28,28 +28,26 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/rewriter/public/javascript_url_manager.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
-extern const char* JS_delay_images;  // Non-optimized.
-extern const char* JS_delay_images_inline;  // Non-optimized.
-extern const char* JS_delay_images_opt;
-extern const char* JS_delay_images_inline_opt;
+const char DelayImagesFilter::kDelayImagesSuffix[] =
+    "\npagespeed.delayImagesInit()";
 
-GoogleString* DelayImagesFilter::opt_delay_images_js_ = NULL;
-GoogleString* DelayImagesFilter::debug_delay_images_js_ = NULL;
-GoogleString* DelayImagesFilter::opt_delay_images_inline_js_ = NULL;
-GoogleString* DelayImagesFilter::debug_delay_images_inline_js_ = NULL;
+const char DelayImagesFilter::kDelayImagesInlineSuffix[] =
+      "\npagespeed.delayImagesInlineInit();";
 
 DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
     : driver_(driver),
+      js_url_manager_(driver->resource_manager()->javascript_url_manager()),
       tag_scanner_(driver),
       low_res_map_inserted_(false),
-      delay_script_inserted_(false),
-      debug_(driver->options()->Enabled(RewriteOptions::kDebug)) {
+      delay_script_inserted_(false) {
   // Low res images will be placed inside the respective image tag if any one of
   // kDeferJavascript or kLazyloadImages is turned off. Otherwise, low res
   // images will be blocked by javascript or images which are not critical.
@@ -59,41 +57,6 @@ DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
 }
 
 DelayImagesFilter::~DelayImagesFilter() {}
-
-void DelayImagesFilter::Initialize(Statistics* statistics) {
-  static const char kDelayImagesSuffix[] = "\npagespeed.delayImagesInit()";
-  if (debug_delay_images_js_ == NULL) {
-    debug_delay_images_js_ =
-        new GoogleString(StrCat(JS_delay_images, kDelayImagesSuffix));
-  }
-  if (opt_delay_images_js_ == NULL) {
-    opt_delay_images_js_ =
-        new GoogleString(StrCat(JS_delay_images_opt, kDelayImagesSuffix));
-  }
-  static const char kDelayImagesInlineSuffix[] =
-      "\npagespeed.delayImagesInlineInit();";
-  if (debug_delay_images_inline_js_ == NULL) {
-    debug_delay_images_inline_js_ =
-        new GoogleString(StrCat(JS_delay_images_inline,
-                                kDelayImagesInlineSuffix));
-  }
-  if (opt_delay_images_inline_js_ == NULL) {
-    opt_delay_images_inline_js_ =
-        new GoogleString(StrCat(JS_delay_images_inline_opt,
-                                kDelayImagesInlineSuffix));
-  }
-}
-
-void DelayImagesFilter::Terminate() {
-  delete opt_delay_images_js_;
-  delete debug_delay_images_js_;
-  delete opt_delay_images_inline_js_;
-  delete debug_delay_images_inline_js_;
-  opt_delay_images_js_ = NULL;
-  debug_delay_images_js_ = NULL;
-  opt_delay_images_inline_js_ = NULL;
-  debug_delay_images_inline_js_ = NULL;
-}
 
 void DelayImagesFilter::StartDocument() {
   low_res_map_inserted_ = false;
@@ -109,8 +72,10 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
     // Append kDelayScript at the end of the Head.
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
     driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
-    const GoogleString& delay_images_js =
-        debug_ ? *debug_delay_images_js_ : * opt_delay_images_js_;
+    const GoogleString& delay_images_js = StrCat(
+        js_url_manager_->GetJsSnippet(JavascriptUrlManager::kDelayImagesJs,
+                                      driver_->options()),
+        kDelayImagesSuffix);
     HtmlCharactersNode* script_content = driver_->NewCharactersNode(
         script, delay_images_js);
     driver_->AppendChild(element, script);
@@ -163,10 +128,10 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
                 it->first, "', '", it->second, "');");
     }
 
-    const GoogleString& delay_images_inline_js =
-        debug_ ? *debug_delay_images_inline_js_ : *opt_delay_images_inline_js_;
     GoogleString inline_script = StrCat(
-        delay_images_inline_js,
+        js_url_manager_->GetJsSnippet(
+            JavascriptUrlManager::kDelayImagesInlineJs, driver_->options()),
+        kDelayImagesInlineSuffix,
         inline_data_script,
         "\npagespeed.delayImagesInline.replaceWithLowRes();\n");
 

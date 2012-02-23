@@ -21,9 +21,12 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/rewriter/public/javascript_url_manager.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
@@ -31,12 +34,12 @@
 
 namespace net_instaweb {
 
-extern const char* JS_js_defer;  // Non-optimized output.
-
-extern const char* JS_js_defer_opt;
-
-GoogleString* JsDeferDisabledFilter::opt_defer_js_ = NULL;
-GoogleString* JsDeferDisabledFilter::debug_defer_js_ = NULL;
+const char JsDeferDisabledFilter::kSuffix[] =
+      "\npagespeed.deferInit();\n"
+      "pagespeed.deferJs.registerScriptTags();\n"
+      "pagespeed.addOnload(window, function() {\n"
+      "  pagespeed.deferJs.run();\n"
+      "});\n";
 
 JsDeferDisabledFilter::JsDeferDisabledFilter(RewriteDriver* driver)
     : rewrite_driver_(driver),
@@ -52,28 +55,6 @@ void JsDeferDisabledFilter::StartDocument() {
   defer_js_enabled_ = rewrite_driver_->UserAgentSupportsJsDefer();
 }
 
-void JsDeferDisabledFilter::Initialize(Statistics* statistics) {
-  static const char kSuffix[] =
-      "\npagespeed.deferInit();\n"
-      "pagespeed.deferJs.registerScriptTags();\n"
-      "pagespeed.addOnload(window, function() {\n"
-      "  pagespeed.deferJs.run();\n"
-      "});\n";
-  if (debug_defer_js_ == NULL) {
-    debug_defer_js_ = new GoogleString(StrCat(JS_js_defer, kSuffix));
-  }
-  if (opt_defer_js_ == NULL) {
-    opt_defer_js_ = new GoogleString(StrCat(JS_js_defer_opt, kSuffix));
-  }
-}
-
-void JsDeferDisabledFilter::Terminate() {
-  delete opt_defer_js_;
-  delete debug_defer_js_;
-  opt_defer_js_ = NULL;
-  debug_defer_js_ = NULL;
-}
-
 void JsDeferDisabledFilter::EndElement(HtmlElement* element) {
   if (defer_js_enabled_ && element->keyword() == HtmlName::kBody &&
       !script_written_) {
@@ -81,7 +62,13 @@ void JsDeferDisabledFilter::EndElement(HtmlElement* element) {
         rewrite_driver_->NewElement(element, HtmlName::kScript);
     rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
                               "text/javascript");
-    const GoogleString& defer_js = debug_ ? *debug_defer_js_ : *opt_defer_js_;
+    JavascriptUrlManager* js_url_manager =
+        rewrite_driver_->resource_manager()->javascript_url_manager();
+    StringPiece defer_js_script =
+        js_url_manager->GetJsSnippet(
+            JavascriptUrlManager::kDeferJs, rewrite_driver_->options());
+    const GoogleString& defer_js =
+        StrCat(defer_js_script, JsDeferDisabledFilter::kSuffix);
     HtmlNode* script_code =
         rewrite_driver_->NewCharactersNode(script_node, defer_js);
     rewrite_driver_->InsertElementBeforeCurrent(script_node);
