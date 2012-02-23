@@ -122,6 +122,10 @@ InstawebContext::InstawebContext(request_rec* request,
   const char* user_agent = apr_table_get(request->headers_in,
                                          HttpAttributes::kUserAgent);
   rewrite_driver_->set_user_agent(user_agent);
+  const char* cookies = apr_table_get(request->headers_in,
+                                      HttpAttributes::kCookie);
+  rewrite_driver_->set_cookies(cookies);
+
   response_headers_.Clear();
   rewrite_driver_->set_response_headers_ptr(&response_headers_);
   // TODO(lsong): Bypass the string buffer, write data directly to the next

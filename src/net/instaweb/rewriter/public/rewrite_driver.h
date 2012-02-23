@@ -190,8 +190,8 @@ class RewriteDriver : public HtmlParse {
   }
 
   // Copies the cookies from the client request.
-  void set_cookies(const char* cookies) {
-    cookies_.assign(cookies);
+  void set_cookies(const StringPiece cookies) {
+    cookies.CopyToString(&cookies_);
   }
 
   // Returns the cookies from the client request.
