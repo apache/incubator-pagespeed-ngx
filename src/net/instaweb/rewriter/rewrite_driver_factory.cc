@@ -413,6 +413,11 @@ void RewriteDriverFactory::InitResourceManager(
   resource_manager->set_scheduler(scheduler());
   resource_manager->set_statistics(statistics());
   resource_manager->set_rewrite_stats(rewrite_stats());
+  // Initialize the metadata cache before initializing the http cache, since
+  // it initializes the cache backend.
+  if (resource_manager->metadata_cache() == NULL) {
+    resource_manager->set_metadata_cache(cache_backend());
+  }
   if (resource_manager->http_cache() == NULL) {
     // In Apache we can potentially have distinct caches per
     // VirtualHost, which must be set prior to calling Init.
@@ -423,9 +428,6 @@ void RewriteDriverFactory::InitResourceManager(
   }
   if (resource_manager->client_property_cache() == NULL) {
     resource_manager->set_client_property_cache(client_property_cache());
-  }
-  if (resource_manager->metadata_cache() == NULL) {
-    resource_manager->set_metadata_cache(cache_backend());
   }
   if (resource_manager->lock_manager() == NULL) {
     resource_manager->set_lock_manager(lock_manager());

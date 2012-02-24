@@ -160,6 +160,15 @@ pagespeed.DeferJs.prototype.addNode = function(script, opt_elem, opt_pos) {
  * @param {number} opt_pos Optional position for ordering.
  */
 pagespeed.DeferJs.prototype.addStr = function(str, opt_elem, opt_pos) {
+  if (this.isFireFox()) {
+    // This is due to some bug identified in firefox.
+    // Got this workaround from the bug raised on firefox.
+    // https://bugzilla.mozilla.org/show_bug.cgi?id=728151
+    this.addUrl('data:text/javascript,' + encodeURIComponent(str),
+                opt_elem,
+                opt_pos);
+    return;
+  }
   this.logs.push('Add to queue str: ' + str);
   var me = this; // capture closure.
   this.submitTask(function() {
@@ -565,6 +574,13 @@ pagespeed['addHandler'] = pagespeed.addHandler;
  */
 pagespeed.outerHTML = function(node) {
   return node.outerHTML || new XMLSerializer().serializeToString(node);
+};
+
+/**
+ * Returns true if browser is Firefox.
+ */
+pagespeed.DeferJs.prototype.isFireFox = function() {
+  return (navigator.userAgent.indexOf("Firefox") != -1);
 };
 
 /**

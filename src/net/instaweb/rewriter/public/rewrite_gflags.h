@@ -34,6 +34,11 @@ class RewriteGflags {
   // The constructor parses the options.
   RewriteGflags(const char* progname, int* argc, char*** argv);
 
+  // Constructor that does no option parsing.
+  // For use in rewrite_proxy, where InitGoogle is called        [google]
+  // explicitly after sandbox fork.                              [google]
+  RewriteGflags() {}
+
   // Apply the parsed options to the options and factory.  Note that some of
   // the command-line flags control how the factory is constructed, whereas
   // others affect the rewriting options, and should be considered global
