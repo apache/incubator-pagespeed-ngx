@@ -19,15 +19,13 @@
 
 #include <limits>
 #include <string>
+
 #include "base/debug/debugger.h"
 #include "base/debug/stack_trace.h"
 #include "base/logging.h"
-#include "httpd.h"
 
-// When HAVE_SYSLOG is defined, apache http_log.h will include syslog.h, which
-// #defined LOG_* as numbers. This conflicts with what we are using those here.
-#undef HAVE_SYSLOG
-#include "http_log.h"
+#include "httpd.h"
+#include "net/instaweb/apache/apache_logging_includes.h"
 
 // Make sure we don't attempt to use LOG macros here, since doing so
 // would cause us to go into an infinite log loop.
@@ -128,11 +126,20 @@ const int kDebugLogLevel = -2;
 
 // TODO(sligocki): This is not thread-safe, do we care? Error case is when
 // you have multiple server_rec's with different LogLevels which start-up
-// simultaniously. In which case we might get a non-min global LogLevel
+// simultaneously. In which case we might get a non-min global LogLevel
 void AddServerConfig(const server_rec* server, const StringPiece& version) {
   // TODO(sligocki): Maybe use ap_log_error(server) if there is exactly one
   // server added?
-  log_level_cutoff = std::min(server->loglevel, log_level_cutoff);
+  int curr_log_level_cutoff;
+#if (AP_SERVER_MAJORVERSION_NUMBER == 2) && (AP_SERVER_MINORVERSION_NUMBER >= 4)
+  // Apache 2.4 adds per-module log level configuration.
+  curr_log_level_cutoff =
+      ap_get_server_module_loglevel(server, APLOG_MODULE_INDEX);
+#else
+  curr_log_level_cutoff = server->loglevel;
+#endif
+  log_level_cutoff = std::min(curr_log_level_cutoff, log_level_cutoff);
+
   // Get VLOG(x) and above if LogLevel is set to Debug.
   if (log_level_cutoff >= APLOG_DEBUG) {
     logging::SetMinLogLevel(kDebugLogLevel);

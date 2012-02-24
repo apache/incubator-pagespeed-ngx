@@ -17,8 +17,6 @@
 
 #include "net/instaweb/apache/instaweb_handler.h"
 
-#include "apr_strings.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -34,6 +32,7 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -41,10 +40,12 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
+
+#include "apr_strings.h"
 #include "http_config.h"
 #include "http_core.h"
-#include "http_log.h"
 #include "http_protocol.h"
+#include "net/instaweb/apache/apache_logging_includes.h"
 
 namespace net_instaweb {
 

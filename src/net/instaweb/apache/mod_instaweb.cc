@@ -21,11 +21,6 @@
 #include <set>
 #include <string>
 
-#include "apr_strings.h"
-#include "apr_timer.h"
-#include "apr_version.h"
-#include "http_request.h"
-#include "unixd.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/header_util.h"
@@ -57,21 +52,26 @@
 // The httpd header must be after the pagepseed_server_context.h. Otherwise,
 // the compiler will complain
 // "strtoul_is_not_a_portable_function_use_strtol_instead".
+#include "ap_release.h"
+#include "apr_strings.h"
+#include "apr_timer.h"
+#include "apr_version.h"
 #include "httpd.h"
 #include "http_config.h"
 #include "http_core.h"
-// When HAVE_SYSLOG, syslog.h is included and #defined LOG_*, which conflicts
-// with log_message_handler.
-#undef HAVE_SYSLOG
-#include "http_log.h"
 #include "http_protocol.h"
-#if USE_FIXUP_HOOK
-#include "http_request.h"  // NOLINT
-#endif
+#include "http_request.h"
+#include "net/instaweb/apache/apache_logging_includes.h"
+#include "unixd.h"
 
 extern "C" {
   extern module AP_MODULE_DECLARE_DATA pagespeed_module;
 }
+
+// Apache 2.4 renames unixd_config -> ap_unixd_config
+#if (AP_SERVER_MAJORVERSION_NUMBER == 2) && (AP_SERVER_MINORVERSION_NUMBER >= 4)
+#define unixd_config ap_unixd_config
+#endif
 
 namespace net_instaweb {
 

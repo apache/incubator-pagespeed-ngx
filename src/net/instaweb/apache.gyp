@@ -52,7 +52,6 @@
         'apache/apache_slurp.cc',
         'apache/apache_thread_system.cc',
         'apache/apr_file_system.cc',
-        'apache/apr_statistics.cc',
         'apache/apr_timer.cc',
         'apache/header_util.cc',
         'apache/instaweb_context.cc',

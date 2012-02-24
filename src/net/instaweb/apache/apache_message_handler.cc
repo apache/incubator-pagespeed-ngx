@@ -20,10 +20,7 @@
 #include "net/instaweb/util/public/time_util.h"
 
 #include "httpd.h"
-// When HAVE_SYSLOG is defined, apache http_log.h will include syslog.h, which
-// #defined LOG_* as numbers. This conflicts with what we are using those here.
-#undef HAVE_SYSLOG
-#include "http_log.h"
+#include "net/instaweb/apache/apache_logging_includes.h"
 
 namespace {
 
