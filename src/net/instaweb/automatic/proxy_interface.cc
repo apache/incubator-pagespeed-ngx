@@ -446,7 +446,13 @@ void ProxyInterface::ProxyRequestCallback(
         HttpAttributes::kUserAgent);
     const Layout* layout = BlinkUtil::ExtractBlinkLayout(*request_url,
                                                          options, user_agent);
-    if (layout != NULL && user_agent_matcher_.SupportsBlink(user_agent)) {
+    // Pass the following into BlinkFlow to treat Desktop and Mobile
+    // differently.
+    UserAgentMatcher::BlinkUserAgentType user_agent_type = (layout == NULL) ?
+        UserAgentMatcher::kDoesNotSupportBlink :
+        user_agent_matcher_.GetBlinkUserAgentType(user_agent);
+    if (layout != NULL &&
+        user_agent_type != UserAgentMatcher::kDoesNotSupportBlink) {
       // TODO(rahulbansal): Remove this LOG once we expect to have
       // Blink requests.
       LOG(INFO) << "Triggering Blink flow for url "
@@ -457,7 +463,6 @@ void ProxyInterface::ProxyRequestCallback(
       BlinkFlow::Start(request_url->Spec().as_string(), async_fetch, layout,
                        options, proxy_fetch_factory_.get(),
                        resource_manager_);
-
       // TODO(jmarantz): provide property-cache data to blink.
     } else {
       RewriteDriver* driver = NULL;

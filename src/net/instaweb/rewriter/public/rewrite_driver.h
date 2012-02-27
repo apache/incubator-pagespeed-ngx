@@ -200,7 +200,8 @@ class RewriteDriver : public HtmlParse {
   }
 
   const UserAgentMatcher& user_agent_matcher() const {
-    return user_agent_matcher_;
+    DCHECK(resource_manager() != NULL);
+    return resource_manager()->user_agent_matcher();
   }
   bool UserAgentSupportsImageInlining() const;
   bool UserAgentSupportsJsDefer() const;
@@ -998,7 +999,6 @@ class RewriteDriver : public HtmlParse {
 
   AddInstrumentationFilter* add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
-  UserAgentMatcher user_agent_matcher_;
 
   ScanFilter scan_filter_;
   scoped_ptr<DomainRewriteFilter> domain_rewriter_;

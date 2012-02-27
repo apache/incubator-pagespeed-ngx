@@ -167,12 +167,16 @@ class SharedJsonFetch : public SharedAsyncFetch {
   }
 
   void Parse() {
-    json_computation_driver_->StartParse(
-        key_.substr(kJsonCachePrefixLength));
-    json_computation_driver_->ParseText(json_buffer_);
-
-    json_computation_driver_->FinishParseAsync(MakeFunction(
-        this, &SharedJsonFetch::CompleteFinishParse));
+    GoogleString url = key_.substr(kJsonCachePrefixLength);
+    if (json_computation_driver_->StartParse(url)) {
+      json_computation_driver_->ParseText(json_buffer_);
+      json_computation_driver_->FinishParseAsync(MakeFunction(
+          this, &SharedJsonFetch::CompleteFinishParse));
+    } else {
+      LOG(ERROR) << "StartParse failed for url: " << url;
+      json_computation_driver_->Cleanup();
+      delete this;
+    }
   }
 
   void CompleteFinishParse() {

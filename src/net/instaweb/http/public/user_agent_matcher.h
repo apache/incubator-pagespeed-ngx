@@ -21,9 +21,23 @@
 
 namespace net_instaweb {
 
+// This class contains various user agent based checks.  Currently all of these
+// are based on simple wildcard based white- and black-lists.
+//
+// TODO(sriharis):  Split the functionality here into two: a matcher that
+// pulls out all relevent information from UA strings (browser-family, version,
+// mobile/tablet/desktop, etc.), and a query interface that can be used by
+// clients.
 class UserAgentMatcher {
  public:
+  enum BlinkUserAgentType {
+    kSupportsBlinkDesktop,
+    kSupportsBlinkMobile,
+    kDoesNotSupportBlink,
+  };
+
   UserAgentMatcher();
+  virtual ~UserAgentMatcher();
 
   bool IsIe(const StringPiece& user_agent) const;
   bool IsIe6(const StringPiece& user_agent) const;
@@ -31,14 +45,29 @@ class UserAgentMatcher {
   bool IsIe6or7(const StringPiece& user_agent) const {
     return IsIe6(user_agent) || IsIe7(user_agent);
   };
+
   bool SupportsImageInlining(const StringPiece& user_agent) const;
-  bool SupportsBlink(const StringPiece& user_agent) const;
+
+  // Returns the user agent type for user_agent.  The return type currently
+  // supports desktop, mobile and not supported.  The current implementation
+  // always returns desktop or not supported.
+  BlinkUserAgentType GetBlinkUserAgentType(const char* user_agent) const;
+
   bool SupportsJsDefer(const StringPiece& user_agent) const;
   bool SupportsWebp(const StringPiece& user_agent) const;
+
+  // The following two functions have similar names, but different
+  // functionality. The first one implements a simple restricted wildcard based
+  // check of whether user_agent corresponds to a mobile. It is not exhaustive.
+  // The second one is meant to check if user_agent matches all currently known
+  // mobile user agent pattern.
+  // TODO(sriharis): Remove the need for these two separate functions, and
+  // refactor the names.
   bool IsMobileUserAgent(const StringPiece& user_agent) const;
+  virtual bool IsAnyMobileUserAgent(const char* user_agent) const;
  private:
   WildcardGroup supports_image_inlining_;
-  WildcardGroup supports_blink_;
+  WildcardGroup supports_blink_desktop_;
   WildcardGroup supports_webp_;
   WildcardGroup mobile_user_agents_;
 

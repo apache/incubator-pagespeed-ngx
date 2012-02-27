@@ -51,15 +51,21 @@ const char* kImageInliningBlacklist[] = {
   "*Opera?6*"
 };
 // For Panels and deferJs the list is same as of now.
-// we only allow IE8+, safari and Chrome
+// we only allow Firefox3+, IE8+, safari and Chrome
 // We'll be updating this as and when required.
-const char* kPanelSupportWhitelist[] = {
+// The blacklist is checked first, then if not in there, the whitelist is
+// checked.
+// Note: None of the following should match a mobile UA.
+const char* kPanelSupportDesktopWhitelist[] = {
   "*Chrome/*",
+  "*Firefox/*",
   "*MSIE *",
   "*Safari*",
   "*Wget*",
 };
-const char* kPanelSupportBlacklist[] = {
+const char* kPanelSupportDesktopBlacklist[] = {
+  "*Firefox/1.*",
+  "*Firefox/2.*",
   "*MSIE 5.*",
   "*MSIE 6.*",
   "*MSIE 7.*",
@@ -121,11 +127,11 @@ UserAgentMatcher::UserAgentMatcher() {
   for (int i = 0, n = arraysize(kImageInliningBlacklist); i < n; ++i) {
     supports_image_inlining_.Disallow(kImageInliningBlacklist[i]);
   }
-  for (int i = 0, n = arraysize(kPanelSupportWhitelist); i < n; ++i) {
-    supports_blink_.Allow(kPanelSupportWhitelist[i]);
+  for (int i = 0, n = arraysize(kPanelSupportDesktopWhitelist); i < n; ++i) {
+    supports_blink_desktop_.Allow(kPanelSupportDesktopWhitelist[i]);
   }
-  for (int i = 0, n = arraysize(kPanelSupportBlacklist); i < n; ++i) {
-    supports_blink_.Disallow(kPanelSupportBlacklist[i]);
+  for (int i = 0, n = arraysize(kPanelSupportDesktopBlacklist); i < n; ++i) {
+    supports_blink_desktop_.Disallow(kPanelSupportDesktopBlacklist[i]);
   }
   // Do the same for webp support.
   for (int i = 0, n = arraysize(kWebpWhitelist); i < n; ++i) {
@@ -137,6 +143,9 @@ UserAgentMatcher::UserAgentMatcher() {
   for (int i = 0, n = arraysize(kMobileUserAgentWhitelist); i < n; ++i) {
     mobile_user_agents_.Allow(kMobileUserAgentWhitelist[i]);
   }
+}
+
+UserAgentMatcher::~UserAgentMatcher() {
 }
 
 bool UserAgentMatcher::IsIe(const StringPiece& user_agent) const {
@@ -159,13 +168,27 @@ bool UserAgentMatcher::SupportsImageInlining(
   return supports_image_inlining_.Match(user_agent, false);
 }
 
-bool UserAgentMatcher::SupportsBlink(const StringPiece& user_agent) const {
-  return user_agent.empty() || supports_blink_.Match(user_agent, false);
+UserAgentMatcher::BlinkUserAgentType UserAgentMatcher::GetBlinkUserAgentType(
+    const char* user_agent) const {
+  if (user_agent == NULL) {
+    // We were allowing empty user agents earlier in SupportsBlink.
+    // TODO(sriharis):  But we should not do so now.
+    return kSupportsBlinkDesktop;
+  }
+  if (IsAnyMobileUserAgent(user_agent)) {
+    // TODO(srihari):  When blink supports mobile, we need to add a mobile
+    // whitelist check here.
+    return kDoesNotSupportBlink;
+  }
+  if (supports_blink_desktop_.Match(user_agent, false)) {
+    return kSupportsBlinkDesktop;
+  }
+  return kDoesNotSupportBlink;
 }
 
 bool UserAgentMatcher::SupportsJsDefer(const StringPiece& user_agent) const {
   // TODO(ksimbili): Have js_defer it's own wildcard group.
-  return user_agent.empty() || supports_blink_.Match(user_agent, false);
+  return user_agent.empty() || supports_blink_desktop_.Match(user_agent, false);
 }
 
 bool UserAgentMatcher::SupportsWebp(const StringPiece& user_agent) const {
@@ -177,4 +200,12 @@ bool UserAgentMatcher::SupportsWebp(const StringPiece& user_agent) const {
 bool UserAgentMatcher::IsMobileUserAgent(const StringPiece& user_agent) const {
   return mobile_user_agents_.Match(user_agent, false);
 }
+
+// The DEFAULT implementation is the same as IsMobileUserAgent but subclasses
+// will override this IsAny method as required.
+bool UserAgentMatcher::IsAnyMobileUserAgent(
+    const char* user_agent) const {
+  return IsMobileUserAgent(user_agent);
+}
+
 }  // namespace net_instaweb

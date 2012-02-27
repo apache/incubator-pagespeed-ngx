@@ -136,6 +136,7 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       file_system_(factory->file_system()),
       filename_encoder_(NULL),
       url_namer_(NULL),
+      user_agent_matcher_(NULL),
       scheduler_(factory->scheduler()),
       url_async_fetcher_(NULL),
       hasher_(NULL),

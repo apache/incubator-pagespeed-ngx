@@ -621,7 +621,7 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
 bool RewriteDriver::UserAgentSupportsImageInlining() const {
   if (user_agent_supports_image_inlining_ == kNotSet) {
     user_agent_supports_image_inlining_ =
-        user_agent_matcher_.SupportsImageInlining(user_agent_) ?
+        user_agent_matcher().SupportsImageInlining(user_agent_) ?
         kTrue : kFalse;
   }
   return (user_agent_supports_image_inlining_ == kTrue);
@@ -630,7 +630,7 @@ bool RewriteDriver::UserAgentSupportsImageInlining() const {
 bool RewriteDriver::UserAgentSupportsJsDefer() const {
   if (user_agent_supports_js_defer_ == kNotSet) {
     user_agent_supports_js_defer_ =
-        user_agent_matcher_.SupportsJsDefer(user_agent_) ?
+        user_agent_matcher().SupportsJsDefer(user_agent_) ?
         kTrue : kFalse;
   }
   return (user_agent_supports_js_defer_ == kTrue);
@@ -639,7 +639,7 @@ bool RewriteDriver::UserAgentSupportsJsDefer() const {
 bool RewriteDriver::UserAgentSupportsWebp() const {
   if (user_agent_supports_webp_ == kNotSet) {
     user_agent_supports_webp_ =
-        user_agent_matcher_.SupportsWebp(user_agent_) ? kTrue : kFalse;
+        user_agent_matcher().SupportsWebp(user_agent_) ? kTrue : kFalse;
   }
   return (user_agent_supports_webp_ == kTrue);
 }
@@ -647,7 +647,7 @@ bool RewriteDriver::UserAgentSupportsWebp() const {
 bool RewriteDriver::IsMobileUserAgent() const {
   if (is_mobile_user_agent_ == kNotSet) {
     is_mobile_user_agent_ =
-        user_agent_matcher_.IsMobileUserAgent(user_agent_) ? kTrue : kFalse;
+        user_agent_matcher().IsMobileUserAgent(user_agent_) ? kTrue : kFalse;
   }
   return (is_mobile_user_agent_ == kTrue);
 }

@@ -63,6 +63,7 @@ class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
 class UrlNamer;
+class UserAgentMatcher;
 
 typedef RefCountedPtr<OutputResource> OutputResourcePtr;
 typedef std::vector<OutputResourcePtr> OutputResourceVector;
@@ -174,6 +175,8 @@ class ResourceManager {
   void set_critical_images_finder(CriticalImagesFinder* finder) {
     critical_images_finder_ = finder;
   }
+  const UserAgentMatcher& user_agent_matcher() { return *user_agent_matcher_; }
+  void set_user_agent_matcher(UserAgentMatcher* n) { user_agent_matcher_ = n; }
 
   // Cache for small non-HTTP objects.
   //
@@ -380,6 +383,7 @@ class ResourceManager {
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
   UrlNamer* url_namer_;
+  UserAgentMatcher* user_agent_matcher_;
   Scheduler* scheduler_;
   UrlAsyncFetcher* url_async_fetcher_;
   Hasher* hasher_;

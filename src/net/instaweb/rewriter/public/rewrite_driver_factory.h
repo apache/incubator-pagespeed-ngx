@@ -54,6 +54,7 @@ class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
 class UrlNamer;
+class UserAgentMatcher;
 
 // A base RewriteDriverFactory.
 class RewriteDriverFactory {
@@ -142,6 +143,7 @@ class RewriteDriverFactory {
   Hasher* hasher();
   FilenameEncoder* filename_encoder() { return filename_encoder_.get(); }
   UrlNamer* url_namer();
+  UserAgentMatcher* user_agent_matcher();
   JavascriptUrlManager* javascript_url_manager();
   RewriteOptions* default_options() { return default_options_.get(); }
 
@@ -281,6 +283,8 @@ class RewriteDriverFactory {
   // performs sharding and appends '.pagespeed.<filter>.<hash>.<extension>'.
   virtual UrlNamer* DefaultUrlNamer();
 
+  virtual UserAgentMatcher* DefaultUserAgentMatcher();
+
   // Subclasses can override this to create an appropriately-sized thread
   // pool for their environment. The default implementation will always
   // make one with a single thread.
@@ -328,6 +332,7 @@ class RewriteDriverFactory {
   scoped_ptr<Hasher> hasher_;
   scoped_ptr<FilenameEncoder> filename_encoder_;
   scoped_ptr<UrlNamer> url_namer_;
+  scoped_ptr<UserAgentMatcher> user_agent_matcher_;
   scoped_ptr<JavascriptUrlManager> javascript_url_manager_;
   scoped_ptr<Timer> timer_;
   scoped_ptr<Scheduler> scheduler_;

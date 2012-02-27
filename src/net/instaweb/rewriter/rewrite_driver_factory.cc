@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/http_dump_url_writer.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -250,6 +251,13 @@ UrlNamer* RewriteDriverFactory::url_namer() {
   return url_namer_.get();
 }
 
+UserAgentMatcher* RewriteDriverFactory::user_agent_matcher() {
+  if (user_agent_matcher_ == NULL) {
+    user_agent_matcher_.reset(DefaultUserAgentMatcher());
+  }
+  return user_agent_matcher_.get();
+}
+
 JavascriptUrlManager* RewriteDriverFactory::javascript_url_manager() {
   if (javascript_url_manager_ == NULL) {
     javascript_url_manager_.reset(DefaultJavascriptUrlManager());
@@ -285,6 +293,10 @@ NamedLockManager* RewriteDriverFactory::DefaultLockManager() {
 
 UrlNamer* RewriteDriverFactory::DefaultUrlNamer() {
   return new UrlNamer();
+}
+
+UserAgentMatcher* RewriteDriverFactory::DefaultUserAgentMatcher() {
+  return new UserAgentMatcher();
 }
 
 JavascriptUrlManager* RewriteDriverFactory::DefaultJavascriptUrlManager() {
@@ -436,6 +448,7 @@ void RewriteDriverFactory::InitResourceManager(
     resource_manager->set_url_async_fetcher(ComputeUrlAsyncFetcher());
   }
   resource_manager->set_url_namer(url_namer());
+  resource_manager->set_user_agent_matcher(user_agent_matcher());
   resource_manager->set_filename_encoder(filename_encoder());
   resource_manager->set_file_system(file_system());
   resource_manager->set_filename_prefix(filename_prefix_);
