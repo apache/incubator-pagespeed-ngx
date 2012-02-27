@@ -55,7 +55,7 @@ ApacheCache::ApacheCache(const StringPiece& path,
       factory->timer(),
       factory->hasher(),
       config.file_cache_clean_interval_ms(),
-      config.file_cache_clean_size_kb());
+      config.file_cache_clean_size_kb() * 1024);
   file_cache_ = new FileCache(
       config.file_cache_path(), factory->file_system(), NULL,
       factory->filename_encoder(), policy, factory->message_handler());
