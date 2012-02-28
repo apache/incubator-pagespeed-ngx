@@ -18,12 +18,16 @@
 
 // Unit-test the javascript filter
 
+#include "net/instaweb/rewriter/public/javascript_filter.h"
+
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -55,14 +59,24 @@ const char kRewrittenJsName[] = "hello.js";
 
 namespace net_instaweb {
 
-class JavascriptFilterTest : public ResourceManagerTestBase,
-                             public ::testing::WithParamInterface<bool> {
+class JavascriptFilterTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
     AddFilter(RewriteOptions::kRewriteJavascript);
     expected_rewritten_path_ = Encode(kTestDomain, kFilterId, "0",
                                       kRewrittenJsName, "js");
+
+    blocks_minified_ = statistics()->GetVariable(
+        JavascriptRewriteConfig::kBlocksMinified);
+    minification_failures_ = statistics()->GetVariable(
+        JavascriptRewriteConfig::kMinificationFailures);
+    total_bytes_saved_ = statistics()->GetVariable(
+        JavascriptRewriteConfig::kTotalBytesSaved);
+    total_original_bytes_ = statistics()->GetVariable(
+        JavascriptRewriteConfig::kTotalOriginalBytes);
+    num_uses_ = statistics()->GetVariable(
+        JavascriptRewriteConfig::kMinifyUses);
   }
 
   void InitTest(int64 ttl) {
@@ -94,16 +108,30 @@ class JavascriptFilterTest : public ResourceManagerTestBase,
   }
 
   GoogleString expected_rewritten_path_;
+
+  // Stats
+  Variable* blocks_minified_;
+  Variable* minification_failures_;
+  Variable* total_bytes_saved_;
+  Variable* total_original_bytes_;
+  Variable* num_uses_;
 };
 
-TEST_P(JavascriptFilterTest, DoRewrite) {
+TEST_F(JavascriptFilterTest, DoRewrite) {
   InitTest(100);
   ValidateExpected("do_rewrite",
                    GenerateHtml(kOrigJsName),
                    GenerateHtml(expected_rewritten_path_.c_str()));
+
+  EXPECT_EQ(1, blocks_minified_->Get());
+  EXPECT_EQ(0, minification_failures_->Get());
+  EXPECT_EQ(STATIC_STRLEN(kJsData) - STATIC_STRLEN(kJsMinData),
+            total_bytes_saved_->Get());
+  EXPECT_EQ(STATIC_STRLEN(kJsData), total_original_bytes_->Get());
+  EXPECT_EQ(1, num_uses_->Get());
 }
 
-TEST_P(JavascriptFilterTest, RewriteAlreadyCachedProperly) {
+TEST_F(JavascriptFilterTest, RewriteAlreadyCachedProperly) {
   InitTest(100000000);  // cached for a long time to begin with
   // But we will rewrite because we can make the data smaller.
   ValidateExpected("rewrite_despite_being_cached_properly",
@@ -111,23 +139,38 @@ TEST_P(JavascriptFilterTest, RewriteAlreadyCachedProperly) {
                    GenerateHtml(expected_rewritten_path_.c_str()));
 }
 
-TEST_P(JavascriptFilterTest, NoRewriteOriginUncacheable) {
+TEST_F(JavascriptFilterTest, NoRewriteOriginUncacheable) {
   InitTest(0);  // origin not cacheable
   ValidateExpected("no_extend_origin_not_cacheable",
                    GenerateHtml(kOrigJsName),
                    GenerateHtml(kOrigJsName));
+
+  EXPECT_EQ(0, blocks_minified_->Get());
+  EXPECT_EQ(0, minification_failures_->Get());
+  EXPECT_EQ(0, total_bytes_saved_->Get());
+  EXPECT_EQ(0, total_original_bytes_->Get());
+  EXPECT_EQ(0, num_uses_->Get());
 }
 
-TEST_P(JavascriptFilterTest, ServeFiles) {
+TEST_F(JavascriptFilterTest, ServeFiles) {
   TestServeFiles(&kContentTypeJavascript, kFilterId, "js",
                  kOrigJsName, kJsData,
                  kRewrittenJsName, kJsMinData);
+
+  EXPECT_EQ(1, blocks_minified_->Get());
+  EXPECT_EQ(0, minification_failures_->Get());
+  EXPECT_EQ(STATIC_STRLEN(kJsData) - STATIC_STRLEN(kJsMinData),
+            total_bytes_saved_->Get());
+  EXPECT_EQ(STATIC_STRLEN(kJsData), total_original_bytes_->Get());
+  // Note: We do not count any uses, because we did not write the URL into
+  // an HTML file, just served it on request.
+  EXPECT_EQ(0, num_uses_->Get());
 
   // Finally, serve from a completely separate server.
   ServeResourceFromManyContexts(expected_rewritten_path_, kJsMinData);
 }
 
-TEST_P(JavascriptFilterTest, InvalidInputMimetype) {
+TEST_F(JavascriptFilterTest, InvalidInputMimetype) {
   // Make sure we can rewrite properly even when input has corrupt mimetype.
   ContentType not_java_script = kContentTypeJavascript;
   not_java_script.mime_type_ = "text/semicolon-inserted";
@@ -140,33 +183,46 @@ TEST_P(JavascriptFilterTest, InvalidInputMimetype) {
                                        kNotJsFile, "js").c_str()));
 }
 
-TEST_P(JavascriptFilterTest, RewriteJs404) {
+TEST_F(JavascriptFilterTest, RewriteJs404) {
   // Test to make sure that a missing input is handled well.
   SetFetchResponse404("404.js");
   ValidateNoChanges("404", "<script src='404.js'></script>");
+  EXPECT_EQ(0, blocks_minified_->Get());
+  EXPECT_EQ(0, minification_failures_->Get());
+  EXPECT_EQ(0, num_uses_->Get());
 
   // Second time, to make sure caching doesn't break it.
   ValidateNoChanges("404", "<script src='404.js'></script>");
+  EXPECT_EQ(0, blocks_minified_->Get());
+  EXPECT_EQ(0, minification_failures_->Get());
+  EXPECT_EQ(0, num_uses_->Get());
 }
 
 // Make sure bad requests do not corrupt our extension.
-TEST_P(JavascriptFilterTest, NoExtensionCorruption) {
+TEST_F(JavascriptFilterTest, NoExtensionCorruption) {
   TestCorruptUrl("%22", false);
 }
 
-TEST_P(JavascriptFilterTest, NoQueryCorruption) {
+TEST_F(JavascriptFilterTest, NoQueryCorruption) {
   TestCorruptUrl("?query", true);
 }
 
-TEST_P(JavascriptFilterTest, InlineJavascript) {
+TEST_F(JavascriptFilterTest, InlineJavascript) {
   // Test minification of a simple inline script
   InitTest(100);
   ValidateExpected("inline javascript",
                    StringPrintf(kInlineJs, kJsData),
                    StringPrintf(kInlineJs, kJsMinData));
+
+  EXPECT_EQ(1, blocks_minified_->Get());
+  EXPECT_EQ(0, minification_failures_->Get());
+  EXPECT_EQ(STATIC_STRLEN(kJsData) - STATIC_STRLEN(kJsMinData),
+            total_bytes_saved_->Get());
+  EXPECT_EQ(STATIC_STRLEN(kJsData), total_original_bytes_->Get());
+  EXPECT_EQ(1, num_uses_->Get());
 }
 
-TEST_P(JavascriptFilterTest, StripInlineWhitespace) {
+TEST_F(JavascriptFilterTest, StripInlineWhitespace) {
   // Make sure we strip inline whitespace when minifying external scripts.
   InitTest(100);
   ValidateExpected(
@@ -177,7 +233,7 @@ TEST_P(JavascriptFilterTest, StripInlineWhitespace) {
              "'></script>"));
 }
 
-TEST_P(JavascriptFilterTest, RetainInlineData) {
+TEST_F(JavascriptFilterTest, RetainInlineData) {
   // Test to make sure we keep inline data when minifying external scripts.
   InitTest(100);
   ValidateExpected("StripInlineWhitespace",
@@ -187,7 +243,7 @@ TEST_P(JavascriptFilterTest, RetainInlineData) {
                           "'> data </script>"));
 }
 
-TEST_P(JavascriptFilterTest, CdataJavascript) {
+TEST_F(JavascriptFilterTest, CdataJavascript) {
   // Test minification of a simple inline script in html (NOT xhtml) where the
   // script is wrapped in a commented-out CDATA.
   InitTest(100);
@@ -201,7 +257,7 @@ TEST_P(JavascriptFilterTest, CdataJavascript) {
       StringPrintf(kInlineJs, kJsMinData));
 }
 
-TEST_P(JavascriptFilterTest, XHtmlInlineJavascript) {
+TEST_F(JavascriptFilterTest, XHtmlInlineJavascript) {
   // Test minification of a simple inline script in xhtml
   // where it must be wrapped in CDATA.
   InitTest(100);
@@ -218,7 +274,7 @@ TEST_P(JavascriptFilterTest, XHtmlInlineJavascript) {
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?id=324
-TEST_P(JavascriptFilterTest, RetainExtraHeaders) {
+TEST_F(JavascriptFilterTest, RetainExtraHeaders) {
   GoogleString url = StrCat(kTestDomain, kOrigJsName);
   SetResponseWithDefaultHeaders(url, kContentTypeJavascript, kJsData, 300);
   TestRetainExtraHeaders(kOrigJsName, "jm", "js");
@@ -226,12 +282,12 @@ TEST_P(JavascriptFilterTest, RetainExtraHeaders) {
 
 // http://code.google.com/p/modpagespeed/issues/detail?id=327 -- we were
 // previously busting regexps with backslashes in them.
-TEST_P(JavascriptFilterTest, BackslashInRegexp) {
+TEST_F(JavascriptFilterTest, BackslashInRegexp) {
   GoogleString input = StringPrintf(kInlineJs, "/http:\\/\\/[^/]+\\//");
   ValidateNoChanges("backslash_in_regexp", input);
 }
 
-TEST_P(JavascriptFilterTest, WeirdSrcCrash) {
+TEST_F(JavascriptFilterTest, WeirdSrcCrash) {
   // These used to crash due to bugs in the lexer breaking invariants some
   // filters relied on.
   //
@@ -250,8 +306,55 @@ TEST_P(JavascriptFilterTest, WeirdSrcCrash) {
   ValidateNoChanges("weird_tag", "<script<foo>");
 }
 
-INSTANTIATE_TEST_CASE_P(JavascriptFilterTestInstance,
-                        JavascriptFilterTest,
-                        ::testing::Bool());
+TEST_F(JavascriptFilterTest, MinificationFailure) {
+  SetResponseWithDefaultHeaders("foo.js", kContentTypeJavascript,
+                                "/* truncated comment", 100);
+  ValidateNoChanges("fail", "<script src=foo.js></script>");
+
+  EXPECT_EQ(0, blocks_minified_->Get());
+  EXPECT_EQ(1, minification_failures_->Get());
+  EXPECT_EQ(0, num_uses_->Get());
+}
+
+TEST_F(JavascriptFilterTest, ReuseRewrite) {
+  InitTest(100);
+
+  ValidateExpected("reuse_rewrite1",
+                   GenerateHtml(kOrigJsName),
+                   GenerateHtml(expected_rewritten_path_.c_str()));
+  // First time: We minify JS and use the minified version.
+  EXPECT_EQ(1, blocks_minified_->Get());
+  EXPECT_EQ(1, num_uses_->Get());
+
+  ClearStats();
+  ValidateExpected("reuse_rewrite2",
+                   GenerateHtml(kOrigJsName),
+                   GenerateHtml(expected_rewritten_path_.c_str()));
+  // Second time: We reuse the original rewrite.
+  EXPECT_EQ(0, blocks_minified_->Get());
+  EXPECT_EQ(1, num_uses_->Get());
+}
+
+TEST_F(JavascriptFilterTest, NoReuseInline) {
+  InitTest(100);
+
+  ValidateExpected("reuse_inline1",
+                   StringPrintf(kInlineJs, kJsData),
+                   StringPrintf(kInlineJs, kJsMinData));
+  // First time: We minify JS and use the minified version.
+  EXPECT_EQ(1, blocks_minified_->Get());
+  EXPECT_EQ(1, num_uses_->Get());
+
+  ClearStats();
+  ValidateExpected("reuse_inline2",
+                   StringPrintf(kInlineJs, kJsData),
+                   StringPrintf(kInlineJs, kJsMinData));
+  // Second time: Apparently we minify it again.
+  // NOTE: This test is here to document current behavior. It should be fine
+  // to change this behavior so that the rewrite is cached (although it may
+  // not be worth it).
+  EXPECT_EQ(1, blocks_minified_->Get());
+  EXPECT_EQ(1, num_uses_->Get());
+}
 
 }  // namespace net_instaweb

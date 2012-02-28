@@ -29,9 +29,9 @@
 
 namespace net_instaweb {
 
-class RewriteContext;
 class HtmlCharactersNode;
 class HtmlIEDirectiveNode;
+class RewriteContext;
 class RewriteDriver;
 class Statistics;
 
@@ -85,6 +85,7 @@ class JavascriptFilter : public RewriteFilter {
 
  private:
   class Context;
+
   inline void CompleteScriptInProgress();
   inline void RewriteInlineScript();
   inline void RewriteExternalScript();

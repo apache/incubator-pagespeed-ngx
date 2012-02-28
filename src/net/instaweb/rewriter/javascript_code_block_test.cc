@@ -108,23 +108,15 @@ const GoogleString kAfterCompilation =
     "is.ie=is.ns=false;is.opera=true;}\n"
     "if(is.ua.indexOf('gecko')>=0){is.ie=is.ns=false;is.gecko=true;}";
 
-const char kJavascriptBlocksMinified[] = "javascript_blocks_minified";
-const char kJavascriptBytesSaved[] = "javascript_bytes_saved";
-const char kJavascriptMinificationFailures[] =
-    "javascript_minification_failures";
-const char kJavascriptTotalBlocks[] = "javascript_total_blocks";
-
-void ExpectStats(const SimpleStats& stats,
-                 int total_blocks, int minified_blocks, int failures,
-                 int saved_bytes) {
-  EXPECT_EQ(minified_blocks,
-            stats.GetVariable(kJavascriptBlocksMinified)->Get());
-  EXPECT_EQ(total_blocks,
-            stats.GetVariable(kJavascriptTotalBlocks)->Get());
-  EXPECT_EQ(failures,
-            stats.GetVariable(kJavascriptMinificationFailures)->Get());
-  EXPECT_EQ(saved_bytes,
-            stats.GetVariable(kJavascriptBytesSaved)->Get());
+void ExpectStats(JavascriptRewriteConfig* config,
+                 int blocks_minified, int minification_failures,
+                 int total_bytes_saved, int total_original_bytes) {
+  EXPECT_EQ(blocks_minified, config->blocks_minified()->Get());
+  EXPECT_EQ(minification_failures, config->minification_failures()->Get());
+  EXPECT_EQ(total_bytes_saved, config->total_bytes_saved()->Get());
+  EXPECT_EQ(total_original_bytes, config->total_original_bytes()->Get());
+  // Note: We cannot compare num_uses() because we only use it in
+  // javascript_filter.cc, not javascript_code_block.cc.
 }
 
 TEST(JsCodeBlockTest, Config) {
@@ -136,7 +128,7 @@ TEST(JsCodeBlockTest, Config) {
   EXPECT_FALSE(config.minify());
   config.set_minify(true);
   EXPECT_TRUE(config.minify());
-  ExpectStats(stats, 0, 0, 0, 0);
+  ExpectStats(&config, 0, 0, 0, 0);
 }
 
 TEST(JsCodeBlockTest, Rewrite) {
@@ -147,8 +139,9 @@ TEST(JsCodeBlockTest, Rewrite) {
   JavascriptCodeBlock block(kBeforeCompilation, &config, "Test", &handler);
   EXPECT_TRUE(block.ProfitableToRewrite());
   EXPECT_EQ(kAfterCompilation, block.Rewritten());
-  ExpectStats(stats, 1, 1, 0,
-              kBeforeCompilation.size() - kAfterCompilation.size());
+  ExpectStats(&config, 1, 0,
+              kBeforeCompilation.size() - kAfterCompilation.size(),
+              kBeforeCompilation.size());
 }
 
 TEST(JsCodeBlockTest, NoRewrite) {
@@ -159,7 +152,9 @@ TEST(JsCodeBlockTest, NoRewrite) {
   JavascriptCodeBlock block(kAfterCompilation, &config, "Test", &handler);
   EXPECT_FALSE(block.ProfitableToRewrite());
   EXPECT_EQ(kAfterCompilation, block.Rewritten());
-  ExpectStats(stats, 1, 0, 0, 0);
+  // Note: We do record this as a successful minification.
+  // Just with 0 bytes saved.
+  ExpectStats(&config, 1, 0, 0, kAfterCompilation.size());
 }
 
 TEST(JsCodeBlockTest, TruncatedComment) {
@@ -170,8 +165,9 @@ TEST(JsCodeBlockTest, TruncatedComment) {
   JavascriptCodeBlock block(kTruncatedComment, &config, "Test", &handler);
   EXPECT_TRUE(block.ProfitableToRewrite());
   EXPECT_EQ(kTruncatedRewritten, block.Rewritten());
-  ExpectStats(stats, 1, 1, 1,
-              kTruncatedComment.size() - kTruncatedRewritten.size());
+  // Note: We do actually strip off a few bytes, but only using TrimWhitespace
+  // so we don't count it towards our minification bytes saved.
+  ExpectStats(&config, 0, 1, 0, 0);
 }
 
 TEST(JsCodeBlockTest, TruncatedString) {
@@ -182,7 +178,7 @@ TEST(JsCodeBlockTest, TruncatedString) {
   JavascriptCodeBlock block(kTruncatedString, &config, "Test", &handler);
   EXPECT_FALSE(block.ProfitableToRewrite());
   EXPECT_EQ(kTruncatedString, block.Rewritten());
-  ExpectStats(stats, 1, 0, 1, 0);
+  ExpectStats(&config, 0, 1, 0, 0);
 }
 
 TEST(JsCodeBlockTest, NoMinification) {
@@ -194,7 +190,7 @@ TEST(JsCodeBlockTest, NoMinification) {
   JavascriptCodeBlock block(kBeforeCompilation, &config, "Test", &handler);
   EXPECT_FALSE(block.ProfitableToRewrite());
   EXPECT_EQ(kBeforeCompilation, block.Rewritten());
-  ExpectStats(stats, 1, 0, 0, 0);
+  ExpectStats(&config, 0, 0, 0, 0);
 }
 
 TEST(JsCodeBlockTest, DealWithSgmlComment) {
@@ -207,7 +203,8 @@ TEST(JsCodeBlockTest, DealWithSgmlComment) {
   JavascriptCodeBlock block(original, &config, "Test", &handler);
   EXPECT_TRUE(block.ProfitableToRewrite());
   EXPECT_EQ(expected, block.Rewritten());
-  ExpectStats(stats, 1, 1, 0, original.size() - expected.size());
+  ExpectStats(&config, 1, 0,
+              original.size() - expected.size(), original.size());
 }
 
 }  // namespace

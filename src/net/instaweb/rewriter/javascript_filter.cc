@@ -41,6 +41,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -73,7 +74,7 @@ void CleanupWhitespaceScriptBody(
 }  // namespace
 
 class RewriteContext;
-class Statistics;
+
 JavascriptFilter::JavascriptFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
       body_node_(NULL),
@@ -138,6 +139,11 @@ class JavascriptFilter::Context : public SingleRewriteContext {
 
   virtual void Render() {
     CleanupWhitespaceScriptBody(Driver(), this, body_node_);
+    // Update stats.
+    DCHECK_EQ(1, num_slots());
+    if (slot(0)->was_optimized()) {
+      config_->num_uses()->Add(1);
+    }
   }
 
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
@@ -230,6 +236,7 @@ void JavascriptFilter::RewriteInlineScript() {
         // Swap in the minified code to replace the original code.
         script->swap(*rewritten_script);
       }
+      config_.num_uses()->Add(1);
     }
   }
 }

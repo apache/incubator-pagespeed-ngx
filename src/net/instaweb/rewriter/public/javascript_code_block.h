@@ -27,13 +27,14 @@
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
+class Statistics;
+class Variable;
 
 // Class wrapping up configuration information for javascript
 // rewriting, in order to minimize footprint of later changes
@@ -53,21 +54,37 @@ class JavascriptRewriteConfig {
   bool redirect() const { return redirect_; }
   void set_redirect(bool redirect) { redirect_ = redirect; }
 
-  void AddBytesSaved(size_t bytes) {
-    bytes_saved_->Add(bytes);
-    blocks_minified_->Add(1);
-  }
-  void AddMinificationFailure() { minification_failures_->Add(1); }
-  void AddBlock() { total_blocks_->Add(1); }
+  Variable* blocks_minified() { return blocks_minified_; }
+  Variable* minification_failures() { return minification_failures_; }
+  Variable* total_bytes_saved() { return total_bytes_saved_; }
+  Variable* total_original_bytes() { return total_original_bytes_; }
+  Variable* num_uses() { return num_uses_; }
+
+  // Statistics names.
+  static const char kBlocksMinified[];
+  static const char kMinificationFailures[];
+  static const char kTotalBytesSaved[];
+  static const char kTotalOriginalBytes[];
+  static const char kMinifyUses[];
 
  private:
   bool minify_;
   bool redirect_;
 
+  // Statistics
+  // # of JS blocks (JS files and <script> blocks) successfully minified.
   Variable* blocks_minified_;
-  Variable* bytes_saved_;
+  // # of JS blocks we failed to minify.
   Variable* minification_failures_;
-  Variable* total_blocks_;
+  // Sum of all bytes saved from minifying JS.
+  Variable* total_bytes_saved_;
+  // Sum of original bytes of all successfully minified JS blocks.
+  // total_bytes_saved_ / total_original_bytes_ should be the average
+  // percentage reduction of JS block size.
+  Variable* total_original_bytes_;
+  // # of uses of the minified JS (updating <script> src= attributes or
+  // contents).
+  Variable* num_uses_;
 
   DISALLOW_COPY_AND_ASSIGN(JavascriptRewriteConfig);
 };

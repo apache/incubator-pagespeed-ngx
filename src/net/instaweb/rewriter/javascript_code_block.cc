@@ -30,31 +30,33 @@
 
 namespace net_instaweb {
 
-namespace {
-
 // Statistics names
-const char kJavascriptBlocksMinified[] = "javascript_blocks_minified";
-const char kJavascriptBytesSaved[] = "javascript_bytes_saved";
-const char kJavascriptMinificationFailures[] =
+const char JavascriptRewriteConfig::kBlocksMinified[] =
+    "javascript_blocks_minified";
+const char JavascriptRewriteConfig::kMinificationFailures[] =
     "javascript_minification_failures";
-const char kJavascriptTotalBlocks[] = "javascript_total_blocks";
-
-}  // namespace
+const char JavascriptRewriteConfig::kTotalBytesSaved[] =
+    "javascript_total_bytes_saved";
+const char JavascriptRewriteConfig::kTotalOriginalBytes[] =
+    "javascript_total_original_bytes";
+const char JavascriptRewriteConfig::kMinifyUses[] = "javascript_minify_uses";
 
 JavascriptRewriteConfig::JavascriptRewriteConfig(Statistics* stats)
     : minify_(true),
       redirect_(true) {
-  blocks_minified_ = stats->GetVariable(kJavascriptBlocksMinified);
-  bytes_saved_ = stats->GetVariable(kJavascriptBytesSaved);
-  minification_failures_ = stats->GetVariable(kJavascriptMinificationFailures);
-  total_blocks_ = stats->GetVariable(kJavascriptTotalBlocks);
+  blocks_minified_ = stats->GetVariable(kBlocksMinified);
+  minification_failures_ = stats->GetVariable(kMinificationFailures);
+  total_bytes_saved_ = stats->GetVariable(kTotalBytesSaved);
+  total_original_bytes_ = stats->GetVariable(kTotalOriginalBytes);
+  num_uses_ = stats->GetVariable(kMinifyUses);
 }
 
 void JavascriptRewriteConfig::Initialize(Statistics* statistics) {
-  statistics->AddVariable(kJavascriptBlocksMinified);
-  statistics->AddVariable(kJavascriptBytesSaved);
-  statistics->AddVariable(kJavascriptMinificationFailures);
-  statistics->AddVariable(kJavascriptTotalBlocks);
+  statistics->AddVariable(kBlocksMinified);
+  statistics->AddVariable(kMinificationFailures);
+  statistics->AddVariable(kTotalBytesSaved);
+  statistics->AddVariable(kTotalOriginalBytes);
+  statistics->AddVariable(kMinifyUses);
 }
 
 JavascriptCodeBlock::JavascriptCodeBlock(
@@ -83,24 +85,21 @@ void JavascriptCodeBlock::Rewrite() {
   // Before attempting library identification, we minify.  However, we only
   // point output_code_ at the minified code if we actually want to serve it to
   // the rest of the universe.
-  config_->AddBlock();
-  if ((config_->minify() || config_->redirect())) {
+  if ((config_->minify())) {
     if (!pagespeed::js::MinifyJs(original_code_, &rewritten_code_)) {
       handler_->Message(kInfo, "%s: Javascript minification failed.  "
                         "Preserving old code.", message_id_.c_str());
-      config_->AddMinificationFailure();
       TrimWhitespace(original_code_, &rewritten_code_);
-    }
-  } else {
-    TrimWhitespace(original_code_, &rewritten_code_);
-  }
-
-  if (config_->minify()) {
-    output_code_ = rewritten_code_;
-    if (rewritten_code_.size() < original_code_.size()) {
+      // Update stats.
+      config_->minification_failures()->Add(1);
+    } else {
+      // Update stats.
+      config_->blocks_minified()->Add(1);
+      config_->total_original_bytes()->Add(original_code_.size());
       size_t savings = original_code_.size() - rewritten_code_.size();
-      config_->AddBytesSaved(savings);
+      config_->total_bytes_saved()->Add(savings);
     }
+    output_code_ = rewritten_code_;
   }
 }
 
