@@ -91,12 +91,6 @@ class JsCombineFilter::JsCombiner
     return true;
   }
 
-  // Try to combine all the JS files we have seen so far, modifying the
-  // HTML if successful. Regardless of success or failure, the combination
-  // will be empty after this call returns. If the last tag inside the
-  // combination is currently open, it will be excluded from the combination.
-  void TryCombineAccumulated();
-
   // This eventually calls WritePiece().
   bool Write(const ResourceVector& in, const OutputResourcePtr& out) {
     return WriteCombination(in, out, rewrite_driver_->message_handler());
@@ -336,62 +330,6 @@ class JsCombineFilter::Context : public RewriteContext {
   bool fresh_combination_;
   UrlMultipartEncoder encoder_;
 };
-
-void JsCombineFilter::JsCombiner::TryCombineAccumulated() {
-  if (num_urls() > 1) {
-    MessageHandler* handler = rewrite_driver_->message_handler();
-
-    // Since we explicitly disallow nesting, and combine before flushes,
-    // the only potential problem is if we have an open script element
-    // (with src) with the flush window happening before </script>.
-    // In that case, we back it out from this combination.
-    // This case also occurs if we're forced to give up on a script
-    // element due to nested content and the like.
-    HtmlElement* last = element(num_urls() - 1);
-    if (!rewrite_driver_->IsRewritable(last)) {
-      RemoveLastElement();
-      if (num_urls() == 1) {
-        // We ended up with only one thing in collection, so there is nothing
-        // to do any more.
-        return;
-      }
-    }
-
-    // Make or reuse from cache the combination of the resources.
-    OutputResourcePtr combination(
-        Combine(kContentTypeJavascript, handler));
-
-    if (combination.get() != NULL) {
-      // Now create an element for the combination, insert it before first one.
-      HtmlElement* combine_element =
-          rewrite_driver_->NewElement(NULL,  // no parent yet.
-                                      HtmlName::kScript);
-      rewrite_driver_->InsertElementBeforeElement(element(0), combine_element);
-
-      rewrite_driver_->AddAttribute(combine_element, HtmlName::kSrc,
-                                    combination->url());
-
-      // Rewrite the scripts included in the combination to have as their bodies
-      // eval() of variables including their code and no src.
-      for (int i = 0; i < num_urls(); ++i) {
-        HtmlElement* original = element(i);
-        HtmlElement* modified = rewrite_driver_->CloneElement(original);
-        modified->DeleteAttribute(HtmlName::kSrc);
-        rewrite_driver_->InsertElementBeforeElement(original, modified);
-        rewrite_driver_->DeleteElement(original);
-        GoogleString var_name = filter_->VarName(resources()[i]->url());
-        HtmlNode* script_code = rewrite_driver_->NewCharactersNode(
-            modified, StrCat("eval(", var_name, ");"));
-        rewrite_driver_->AppendChild(modified, script_code);
-      }
-    }
-
-    rewrite_driver_->InfoHere("Combined %d JS files into one at %s",
-                              num_urls(),
-                              combination->url().c_str());
-    AddFileCountReduction(num_urls() - 1);
-  }
-}
 
 bool JsCombineFilter::JsCombiner::WritePiece(
     int index, const Resource* input, OutputResource* combination,

@@ -41,6 +41,10 @@ class CssCombineFilter : public RewriteFilter {
   // rather than specific to css_combine_filter or even css.
   static const char kUtf8Bom[];
 
+  // Name of statistics variable used to record # of CSS file fetches
+  // avoided due to combining.
+  static const char kCssFileCountReduction[];
+
   explicit CssCombineFilter(RewriteDriver* rewrite_driver);
   virtual ~CssCombineFilter();
 

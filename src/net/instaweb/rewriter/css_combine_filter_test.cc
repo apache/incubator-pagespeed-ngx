@@ -128,6 +128,10 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
     SetFetchResponse(b_css_url, default_css_header, b_css_body);
     SetFetchResponse(c_css_url, default_css_header, c_css_body);
 
+    Variable* css_file_count_reduction =
+        statistics()->GetVariable(CssCombineFilter::kCssFileCountReduction);
+    int orig_file_count_reduction = css_file_count_reduction->Get();
+
     ParseUrl(html_url, html_input);
 
     if (combined_headers_.empty()) {
@@ -144,10 +148,16 @@ class CssCombineFilterTest : public ResourceManagerTestBase,
 
     // Expected CSS combination.
     // This syntax must match that in css_combine_filter
+    // a.css + b.css => a+b.css
     GoogleString expected_combination = StrCat(a_css_body, b_css_body);
+    int expected_file_count_reduction = orig_file_count_reduction + 1;
     if (!is_barrier) {
+      // a.css + b.css + c.css => a+b+c.css
       expected_combination.append(c_css_body);
+      expected_file_count_reduction = orig_file_count_reduction + 2;
     }
+
+    EXPECT_EQ(expected_file_count_reduction, css_file_count_reduction->Get());
 
     GoogleString expected_output(StrCat(
         "<head>\n"

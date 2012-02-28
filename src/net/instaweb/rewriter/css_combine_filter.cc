@@ -60,12 +60,9 @@ class UrlSegmentEncoder;
 // {0xEF, 0xBB, 0xBF, 0x0}
 const char CssCombineFilter::kUtf8Bom[] = "\xEF\xBB\xBF";
 
-namespace {
-
 // names for Statistics variables.
-const char kCssFileCountReduction[] = "css_file_count_reduction";
-
-}  // namespace
+const char CssCombineFilter::kCssFileCountReduction[] =
+    "css_file_count_reduction";
 
 // Combining helper. Takes care of checking that media matches, that we do not
 // produce @import's in the middle and of URL absolutification.
@@ -93,16 +90,16 @@ class CssCombineFilter::CssCombiner
     return Combine(kContentTypeCss, rewrite_driver_->message_handler());
   }
 
-  // Try to combine all the CSS files we have seen so far.
-  // Insert the combined resource where the first original CSS link was.
-  void TryCombineAccumulated();
-
   bool Write(const ResourceVector& in, const OutputResourcePtr& out) {
     return WriteCombination(in, out, rewrite_driver_->message_handler());
   }
 
   void set_media(const char* media) { media_ = media; }
   const GoogleString& media() const { return media_; }
+
+  void AddFileCountReduction(int num_files) {
+    css_file_count_reduction_->Add(num_files);
+  }
 
  private:
   virtual bool WritePiece(int index, const Resource* input,
@@ -250,6 +247,7 @@ class CssCombineFilter::Context : public RewriteContext {
         int slot_index = partition->input(i).index();
         slot(slot_index)->set_should_delete_element(true);
       }
+      combiner_.AddFileCountReduction(partition->input_size() - 1);
     }
   }
 
@@ -279,6 +277,7 @@ class CssCombineFilter::Context : public RewriteContext {
   RewriteFilter* filter_;
   CssCombineFilter::CssCombiner combiner_;
   bool new_combination_;
+  DISALLOW_COPY_AND_ASSIGN(Context);
 };
 
 // TODO(jmarantz) We exhibit zero intelligence about which css files to
@@ -362,48 +361,6 @@ void CssCombineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
 
 void CssCombineFilter::Flush() {
   NextCombination();
-}
-
-void CssCombineFilter::CssCombiner::TryCombineAccumulated() {
-  if (CanRewrite()) {
-    MessageHandler* handler = rewrite_driver_->message_handler();
-    OutputResourcePtr combination(Combine(kContentTypeCss, handler));
-    if (combination.get() != NULL) {
-      // Ideally like to have a data-driven service tell us which elements
-      // should be combined together.  Note that both the resources and the
-      // elements are managed, so we don't delete them even if the spriting
-      // fails.
-
-      HtmlElement* combine_element =
-          rewrite_driver_->NewElement(NULL, HtmlName::kLink);
-      if (rewrite_driver_->doctype().IsXhtml()) {
-        combine_element->set_close_style(HtmlElement::BRIEF_CLOSE);
-      }
-      rewrite_driver_->AddAttribute(
-          combine_element, HtmlName::kRel, "stylesheet");
-      rewrite_driver_->AddAttribute(combine_element, HtmlName::kType,
-                                    kContentTypeCss.mime_type());
-      rewrite_driver_->AddAttribute(combine_element, HtmlName::kHref,
-                                    combination->url());
-      if (!media_.empty()) {
-        rewrite_driver_->AddAttribute(
-            combine_element, HtmlName::kMedia, media_);
-      }
-
-      // TODO(sligocki): Put at top of head/flush-window.
-      // Right now we're putting it where the first original element used to be.
-      rewrite_driver_->InsertElementBeforeElement(element(0),
-                                                  combine_element);
-      // ... and removing originals from the DOM.
-      for (int i = 0; i < num_urls(); ++i) {
-        rewrite_driver_->DeleteElement(element(i));
-      }
-      rewrite_driver_->InfoHere("Combined %d CSS files into one at %s",
-                                num_urls(), combination->url().c_str());
-      css_file_count_reduction_->Add(num_urls() - 1);
-    }
-  }
-  Reset();
 }
 
 // In addition to specifying the encoding in the ContentType header,
