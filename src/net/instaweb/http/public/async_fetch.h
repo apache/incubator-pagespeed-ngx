@@ -83,6 +83,8 @@ class AsyncFetch : public Writer {
   // valid. Sub-classes can provide specific implementations, e.g., based on
   // cache invalidation timestamp in domain specific options.
   // Used by CacheUrlAsyncFetcher.
+  // TODO(nikhilmadan): Consider making this virtual so that subclass authors
+  // are forced to look at this function.
   virtual bool IsCachedResultValid(const ResponseHeaders& headers) {
     return true;
   }
@@ -248,6 +250,10 @@ class SharedAsyncFetch : public AsyncFetch {
 
   virtual bool EnableThreaded() const {
     return base_fetch_->EnableThreaded();
+  }
+
+  virtual bool IsCachedResultValid(const ResponseHeaders& headers) {
+    return base_fetch_->IsCachedResultValid(headers);
   }
 
  private:

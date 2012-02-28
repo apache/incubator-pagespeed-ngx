@@ -48,7 +48,7 @@ namespace {
 //
 // This version number should be incremented if any default-values are changed,
 // either in the add_option() call or via options->set_default.
-const int kOptionsVersion = 11;
+const int kOptionsVersion = 12;
 
 }  // namespace
 

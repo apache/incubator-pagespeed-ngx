@@ -748,6 +748,106 @@ TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
   EXPECT_EQ(0, lru_cache()->num_misses());
 }
 
+TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
+  ResponseHeaders headers;
+  const char kContent[] = "A very compelling article";
+  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  headers.SetDate(MockTimer::kApr_5_2010_ms);
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.SetDateAndCaching(MockTimer::kApr_5_2010_ms, 300 * Timer::kSecondMs);
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.html"), headers, kContent);
+
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.html", true, &text, &response_headers);
+
+  EXPECT_STREQ(max_age_300_,
+               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_300s_string_,
+               response_headers.Lookup1(HttpAttributes::kExpires));
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_EQ(kContent, text);
+  // One lookup for ajax metadata, one for the HTTP response and one for the
+  // property cache entry. None are found.
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+
+  ClearStats();
+  // Fetch again from cache. It has the same caching headers.
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.html", true, &text, &response_headers);
+
+  EXPECT_STREQ(max_age_300_,
+               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_300s_string_,
+               response_headers.Lookup1(HttpAttributes::kExpires));
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_EQ(kContent, text);
+  // One hit for the HTTP response. Misses for the property cache entry and the
+  // ajax metadata.
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+
+  // Change the response.
+  SetFetchResponse(AbsolutifyUrl("text.html"), headers, "new");
+
+  ClearStats();
+  // Fetch again from cache. It has the same caching headers.
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.html", true, &text, &response_headers);
+
+  EXPECT_STREQ(max_age_300_,
+               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_300s_string_,
+               response_headers.Lookup1(HttpAttributes::kExpires));
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  // We continue to serve the previous response since we've cached it.
+  EXPECT_EQ(kContent, text);
+  // One hit for the HTTP response. Misses for the property cache entry and the
+  // ajax metadata.
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+
+  // Invalidate the cache.
+  scoped_ptr<RewriteOptions> custom_options(
+      resource_manager()->global_options()->Clone());
+  custom_options->set_cache_invalidation_timestamp(mock_timer()->NowMs());
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  resource_manager()->set_url_namer(&url_namer);
+
+  ClearStats();
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.html", true, &text, &response_headers);
+
+  EXPECT_STREQ(max_age_300_,
+               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_300s_string_,
+               response_headers.Lookup1(HttpAttributes::kExpires));
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  // We get the new response since we've invalidated the cache.
+  EXPECT_EQ("new", text);
+  // The HTTP response is found in the LRU cache but counts as a miss in the
+  // HTTPCache since it has been invalidated. Also, cache misses for the ajax
+  // metadata and property cache entry.
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+}
+
 TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";

@@ -213,22 +213,6 @@ FallbackSharedAsyncFetch::FallbackSharedAsyncFetch(AsyncFetch* base_fetch,
 
 FallbackSharedAsyncFetch::~FallbackSharedAsyncFetch() {}
 
-void FallbackSharedAsyncFetch::HandleDone(bool success) {
-  if (!serving_fallback_) {
-    base_fetch()->Done(success);
-  }
-  delete this;
-}
-
-bool FallbackSharedAsyncFetch::HandleWrite(const StringPiece& content,
-                                           MessageHandler* handler) {
-  return serving_fallback_ || base_fetch()->Write(content, handler);
-}
-
-bool FallbackSharedAsyncFetch::HandleFlush(MessageHandler* handler) {
-  return serving_fallback_ || base_fetch()->Flush(handler);
-}
-
 void FallbackSharedAsyncFetch::HandleHeadersComplete() {
   if (response_headers()->IsServerErrorStatus() && !fallback_.Empty()) {
     // If the fetch resulted in a server side error from the origin, stop
@@ -242,13 +226,35 @@ void FallbackSharedAsyncFetch::HandleHeadersComplete() {
     StringPiece contents;
     fallback_.ExtractContents(&contents);
     base_fetch()->Write(contents, handler_);
+    base_fetch()->Flush(handler_);
     if (fallback_responses_served_ != NULL) {
       fallback_responses_served_->Add(1);
     }
-    base_fetch()->Done(true);
+    // Do not call Done() on the base fetch yet since it could delete shared
+    // pointers.
   } else {
     base_fetch()->HeadersComplete();
   }
+}
+
+bool FallbackSharedAsyncFetch::HandleWrite(const StringPiece& content,
+                                           MessageHandler* handler) {
+  if (serving_fallback_) {
+    return true;
+  }
+  return base_fetch()->Write(content, handler);
+}
+
+bool FallbackSharedAsyncFetch::HandleFlush(MessageHandler* handler) {
+  if (serving_fallback_) {
+    return true;
+  }
+  return base_fetch()->Flush(handler);
+}
+
+void FallbackSharedAsyncFetch::HandleDone(bool success) {
+  base_fetch()->Done(serving_fallback_ || success);
+  delete this;
 }
 
 ConditionalSharedAsyncFetch::ConditionalSharedAsyncFetch(
@@ -307,7 +313,9 @@ void ConditionalSharedAsyncFetch::HandleHeadersComplete() {
     StringPiece contents;
     cached_value_.ExtractContents(&contents);
     base_fetch()->Write(contents, handler_);
-    base_fetch()->Done(true);
+    base_fetch()->Flush(handler_);
+    // Do not call Done() on the base fetch yet since it could delete shared
+    // pointers.
     if (num_conditional_refreshes_ != NULL) {
       num_conditional_refreshes_->Add(1);
     }
@@ -332,11 +340,7 @@ bool ConditionalSharedAsyncFetch::HandleFlush(MessageHandler* handler) {
 }
 
 void ConditionalSharedAsyncFetch::HandleDone(bool success) {
-  if (!serving_cached_value_) {
-    base_fetch()->Done(success);
-  }
-  // If we are serving the cached value, base_fetch()->Done() would already have
-  // been called in HandleHeadersComplete().
+  base_fetch()->Done(serving_cached_value_ || success);
   delete this;
 }
 
