@@ -1713,10 +1713,12 @@ bool RewriteDriver::EndElementIsStoppingFlush(const HtmlElement* element) {
 // Finish the parse if FinishParseAsync was previously held up by an inhibited
 // event.  Otherwise, run the user callback.
 void RewriteDriver::UninhibitFlushDone(Function* user_callback) {
-  ScopedMutex lock(inhibits_mutex_.get());
-  if (finish_parse_on_hold_ != NULL && end_elements_inhibited_.size() == 0) {
-    html_worker_->Add(finish_parse_on_hold_);
-    finish_parse_on_hold_ = NULL;
+  {
+    ScopedMutex lock(inhibits_mutex_.get());
+    if (finish_parse_on_hold_ != NULL && end_elements_inhibited_.size() == 0) {
+      html_worker_->Add(finish_parse_on_hold_);
+      finish_parse_on_hold_ = NULL;
+    }
   }
   if (user_callback != NULL) {
     user_callback->CallRun();
