@@ -93,7 +93,7 @@ BASE_LIBS = \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_png_optimizer.a \
   third_party/libpagespeed/src/pagespeed/js/libpagespeed_jsminify.a \
   third_party/libpagespeed/src/pagespeed/proto/libpagespeed_output_pb.a \
-  third_party/libpagespeed/src/pagespeed/proto/libpagespeed_output_pb.a \
+  third_party/libpagespeed/src/pagespeed/proto/libpagespeed_resource_pb.a \
   third_party/libpagespeed/src/pagespeed/proto/libtimeline_pb.a \
   third_party/libpagespeed/src/third_party/giflib/libdgiflib.a \
   third_party/libpagespeed/src/third_party/giflib/libgiflib_core.a \
