@@ -36,6 +36,12 @@
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/image_compression/jpeg_optimizer_test_helper.h"
+
+using pagespeed_testing::image_compression::GetNumScansInJpeg;
+using pagespeed_testing::image_compression::IsJpegSegmentPresent;
+using pagespeed_testing::image_compression::GetColorProfileMarker;
+using pagespeed_testing::image_compression::GetExifDataMarker;
 
 namespace {
 
@@ -307,6 +313,64 @@ TEST_F(ImageTest, ProgressiveJpegTest) {
       6468,  // Specific to this test
       1023, 766,
       241260, true);
+}
+
+TEST_F(ImageTest, NumProgressiveScansTest) {
+  Image::CompressionOptions* options = new Image::CompressionOptions();
+  options->jpeg_quality = 85;
+  options->progressive_jpeg = true;
+  options->jpeg_num_progressive_scans = 3;
+
+  GoogleString buffer;
+  ImagePtr image(ReadFromFileWithOptions(kPuzzle, &buffer, options));
+  EXPECT_GT(buffer.size(), image->output_size());
+  EXPECT_EQ(3, GetNumScansInJpeg(image->Contents().as_string()));
+}
+
+TEST_F(ImageTest, JpegRetainColorProfileTest) {
+  Image::CompressionOptions* options = new Image::CompressionOptions();
+  options->jpeg_quality = 85;
+  options->retain_color_profile = true;
+
+  GoogleString buffer;
+  ImagePtr image(ReadFromFileWithOptions(kAppSegments, &buffer, options));
+  EXPECT_TRUE(IsJpegSegmentPresent(buffer, GetColorProfileMarker()));
+  EXPECT_GT(buffer.size(), image->output_size());
+  EXPECT_TRUE(IsJpegSegmentPresent(image->Contents().as_string(),
+                                   GetColorProfileMarker()));
+  // Try stripping the color profile information.
+  options = new Image::CompressionOptions();
+  options->jpeg_quality = 85;
+  options->retain_color_profile = false;
+  buffer.clear();
+  image.reset(ReadFromFileWithOptions(kAppSegments, &buffer, options));
+  EXPECT_TRUE(IsJpegSegmentPresent(buffer, GetColorProfileMarker()));
+  EXPECT_GT(buffer.size(), image->output_size());
+  EXPECT_FALSE(IsJpegSegmentPresent(image->Contents().as_string(),
+                                    GetColorProfileMarker()));
+}
+
+TEST_F(ImageTest, JpegRetainExifDataTest) {
+  Image::CompressionOptions* options = new Image::CompressionOptions();
+  options->jpeg_quality = 85;
+  options->retain_exif_data = true;
+
+  GoogleString buffer;
+  ImagePtr image(ReadFromFileWithOptions(kAppSegments, &buffer, options));
+  EXPECT_TRUE(IsJpegSegmentPresent(buffer, GetExifDataMarker()));
+  EXPECT_GT(buffer.size(), image->output_size());
+  EXPECT_TRUE(IsJpegSegmentPresent(image->Contents().as_string(),
+                                   GetExifDataMarker()));
+  // Try stripping the color profile information.
+  options = new Image::CompressionOptions();
+  options->jpeg_quality = 85;
+  options->retain_exif_data = false;
+  buffer.clear();
+  image.reset(ReadFromFileWithOptions(kAppSegments, &buffer, options));
+  EXPECT_TRUE(IsJpegSegmentPresent(buffer, GetExifDataMarker()));
+  EXPECT_GT(buffer.size(), image->output_size());
+  EXPECT_FALSE(IsJpegSegmentPresent(image->Contents().as_string(),
+                                    GetExifDataMarker()));
 }
 
 // FYI: Takes ~70000 ms to run under Valgrind.

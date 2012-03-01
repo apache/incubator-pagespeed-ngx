@@ -135,10 +135,9 @@ class ImageImpl : public Image {
   bool LoadOpenCv();
   void CleanOpenCv();
 
-  // Retunrs jpeg compression options based on given options object. Caller owns
-  // the returned object.
-  JpegCompressionOptions* GetJpegOptions(
-      const Image::CompressionOptions& options);
+  // Convert the given options object to jpeg compression options.
+  void ConvertToJpegOptions(const Image::CompressionOptions& options,
+                            JpegCompressionOptions* jpeg_options);
 
   // Initializes an empty image.
   bool LoadOpenCvEmpty();
@@ -750,12 +749,10 @@ bool ImageImpl::ComputeOutputContents() {
           if (ok) {  // && webp_preferred, which is implied.
             image_type_ = IMAGE_WEBP;
           } else {
-            scoped_ptr<JpegCompressionOptions> jpeg_options(
-                GetJpegOptions(*options_.get()));
+            JpegCompressionOptions jpeg_options;
+            ConvertToJpegOptions(*options_.get(), &jpeg_options);
             ok = pagespeed::image_compression::OptimizeJpegWithOptions(
-                string_for_image,
-                &output_contents_,
-                *jpeg_options.get());
+                string_for_image, &output_contents_, jpeg_options);
           }
           break;
         case IMAGE_PNG: {
@@ -764,10 +761,10 @@ bool ImageImpl::ComputeOutputContents() {
           if ((options_->convert_png_to_jpeg || low_quality_enabled_) &&
               options_->jpeg_quality > 0) {
             bool is_png;
-            scoped_ptr<JpegCompressionOptions> jpeg_options(
-                GetJpegOptions(*options_.get()));
+            JpegCompressionOptions jpeg_options;
+            ConvertToJpegOptions(*options_.get(), &jpeg_options);
             ok = ImageConverter::OptimizePngOrConvertToJpeg(
-                png_reader, string_for_image, *jpeg_options.get(),
+                png_reader, string_for_image, jpeg_options,
                 &output_contents_, &is_png);
             if (ok && !is_png) {
               image_type_ = IMAGE_JPEG;
@@ -820,9 +817,8 @@ bool ImageImpl::QuickLoadGifToOutputContents() {
   return ok;
 }
 
-JpegCompressionOptions* ImageImpl::GetJpegOptions(
-    const Image::CompressionOptions& options) {
-  JpegCompressionOptions* jpeg_options = new JpegCompressionOptions();
+void ImageImpl::ConvertToJpegOptions(const Image::CompressionOptions& options,
+                                     JpegCompressionOptions* jpeg_options) {
   jpeg_options->retain_color_profile = options.retain_color_profile;
   jpeg_options->retain_exif_data = options.retain_exif_data;
   jpeg_options->progressive = options.progressive_jpeg;
@@ -835,7 +831,6 @@ JpegCompressionOptions* ImageImpl::GetJpegOptions(
           options.jpeg_num_progressive_scans;
     }
   }
-  return jpeg_options;
 }
 
 StringPiece Image::Contents() {

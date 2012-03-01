@@ -38,6 +38,7 @@ class ImageTestBase : public testing::Test {
   static const char kPuzzle[];
   static const char kLarge[];
   static const char kScenery[];
+  static const char kAppSegments[];
 
   typedef scoped_ptr<Image> ImagePtr;
 

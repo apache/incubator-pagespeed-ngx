@@ -35,7 +35,7 @@ const char ImageTestBase::kCradle[] = "CradleAnimation.gif";
 const char ImageTestBase::kPuzzle[] = "Puzzle.jpg";
 const char ImageTestBase::kLarge[] = "Large.png";
 const char ImageTestBase::kScenery[] = "Scenery.webp";
-
+const char ImageTestBase::kAppSegments[] = "AppSegments.jpg";
 ImageTestBase::~ImageTestBase() {
 }
 
