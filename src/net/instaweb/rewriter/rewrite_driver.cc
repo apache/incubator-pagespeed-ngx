@@ -350,6 +350,11 @@ void RewriteDriver::TryCheckForCompletion(
 }
 
 bool RewriteDriver::IsDone(WaitMode wait_mode, bool deadline_reached) {
+  // Always wait for pending async events during shutdown.
+  if (pending_async_events_ > 0 && wait_mode == kWaitForShutDown) {
+    return false;
+  }
+
   // Before deadline, we're happy only if we're 100% done.
   if (!deadline_reached) {
     return RewritesComplete() &&
