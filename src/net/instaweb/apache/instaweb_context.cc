@@ -19,6 +19,7 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/instaweb_context.h"
+#include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
@@ -118,6 +119,9 @@ InstawebContext::InstawebContext(request_rec* request,
                                                referer_url);
     }
   }
+
+  rewrite_driver_->set_using_spdy(
+      mod_spdy_get_spdy_version(request->connection) != 0);
 
   const char* user_agent = apr_table_get(request->headers_in,
                                          HttpAttributes::kUserAgent);

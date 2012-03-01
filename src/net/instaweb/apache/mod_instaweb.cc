@@ -28,6 +28,7 @@
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/instaweb_handler.h"
+#include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -756,6 +757,12 @@ apr_status_t pagespeed_log_transaction(request_rec *request) {
   return DECLINED;
 }
 
+// Called by Apache via hook once all modules have been loaded & configured
+// to let us attach to their optional functions.
+void pagespeed_fetch_optional_fns() {
+  attach_mod_spdy();
+}
+
 // This function is a callback and it declares what
 // other functions should be called for request
 // processing and configuration requests. This
@@ -810,6 +817,14 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   // To prevent that, we hook map_to_storage for our own purposes.
   ap_hook_map_to_storage(instaweb_map_to_storage, NULL, NULL,
                          APR_HOOK_FIRST - 2);
+
+  // Hook which will let us connect to optional functions mod_spdy
+  // exports.
+  ap_hook_optional_fn_retrieve(
+      pagespeed_fetch_optional_fns,  // hook function to be called
+      NULL,                          // predecessors
+      NULL,                          // successors
+      APR_HOOK_MIDDLE);              // position
 }
 
 apr_status_t pagespeed_child_exit(void* data) {

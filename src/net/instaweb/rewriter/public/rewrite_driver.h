@@ -176,6 +176,10 @@ class RewriteDriver : public HtmlParse {
     is_mobile_user_agent_ = kNotSet;
   }
 
+  // Returns true if the request we're rewriting was made using SPDY.
+  bool using_spdy() const { return using_spdy_; }
+  void set_using_spdy(bool x) { using_spdy_ = x; }
+
   // Return a pointer to the response headers that filters can update
   // before the first flush.
   ResponseHeaders* response_headers_ptr() {
@@ -942,6 +946,9 @@ class RewriteDriver : public HtmlParse {
   mutable LazyBool user_agent_supports_js_defer_;
   mutable LazyBool user_agent_supports_webp_;
   mutable LazyBool is_mobile_user_agent_;
+
+  // If true, request is known to have been made using SPDY.
+  bool using_spdy_;
 
   StringFilterMap resource_filter_map_;
 

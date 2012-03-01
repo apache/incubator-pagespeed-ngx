@@ -26,6 +26,7 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/instaweb_context.h"
+#include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -133,6 +134,10 @@ bool handle_as_resource(ApacheResourceManager* manager,
                            value);
     }
   }
+
+  rewrite_driver->set_using_spdy(
+      mod_spdy_get_spdy_version(request->connection) != 0);
+
   MessageHandler* message_handler = manager->message_handler();
   bool handled = rewrite_driver->FetchResource(url, callback);
   if (handled) {

@@ -171,6 +171,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       user_agent_supports_js_defer_(kNotSet),
       user_agent_supports_webp_(kNotSet),
       is_mobile_user_agent_(kNotSet),
+      using_spdy_(false),
       response_headers_(NULL),
       pending_rewrites_(0),
       possibly_quick_rewrites_(0),
@@ -241,6 +242,7 @@ void RewriteDriver::Clear() {
   DCHECK(!base_url_.is_valid());
   cookies_.clear();
   decoded_base_url_.Clear();
+  using_spdy_ = false;
   resource_map_.clear();
   DCHECK(end_elements_inhibited_.empty());
   DCHECK(deferred_queue_.empty());
