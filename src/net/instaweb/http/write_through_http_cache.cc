@@ -55,8 +55,17 @@ class FallbackCacheCallback: public HTTPCache::Callback {
     if (find_result != HTTPCache::kNotFound) {
       client_callback_->http_value()->Link(http_value());
       client_callback_->response_headers()->CopyFrom(*response_headers());
+      // Clear the fallback_http_value() in client_callback_ since we found a
+      // fresh response.
+      client_callback_->fallback_http_value()->Clear();
       // Insert the response into cache1.
       (write_through_http_cache_->*function_)(key_, http_value());
+    } else if (!fallback_http_value()->Empty()) {
+      // We assume that the fallback value in the L2 cache is always fresher
+      // than or as fresh as the fallback value in the L1 cache.
+      HTTPValue* client_fallback = client_callback_->fallback_http_value();
+      client_fallback->Clear();
+      client_fallback->Link(fallback_http_value());
     }
     client_callback_->Done(find_result);
     delete this;
@@ -100,6 +109,11 @@ class Cache1Callback: public HTTPCache::Callback {
 
   virtual void Done(HTTPCache::FindResult find_result) {
     if (find_result == HTTPCache::kNotFound) {
+      if (!fallback_http_value()->Empty()) {
+        // If we have a stale value in the L1 cache, use it unless we find a
+        // fresher value in the L2 cache.
+        client_callback_->fallback_http_value()->Link(fallback_http_value());
+      }
       fallback_cache_->cache_misses()->Add(-1);
       fallback_cache_->Find(key_, handler_, fallback_cache_callback_.release());
     } else {
@@ -211,14 +225,14 @@ void WriteThroughHTTPCache::set_remember_fetch_failed_ttl_seconds(
 
 void WriteThroughHTTPCache::RememberNotCacheable(
     const GoogleString& key,
-    MessageHandler * handler) {
+    MessageHandler* handler) {
   cache1_->RememberNotCacheable(key, handler);
   cache2_->RememberNotCacheable(key, handler);
 }
 
 void WriteThroughHTTPCache::RememberFetchFailed(
     const GoogleString& key,
-    MessageHandler * handler) {
+    MessageHandler* handler) {
   cache1_->RememberFetchFailed(key, handler);
   cache2_->RememberFetchFailed(key, handler);
 }

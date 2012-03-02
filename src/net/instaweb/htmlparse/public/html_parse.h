@@ -238,7 +238,11 @@ class HtmlParse {
 
   void ClearElements();
 
-  void DebugPrintQueue();  // Print queue (for debugging)
+  // Log the HtmlEvent queue_ to the message_handler_ for debugging.
+  void DebugLogQueue();
+
+  // Print the HtmlEvent queue_ to stdout for debugging.
+  void DebugPrintQueue();
 
   // Implementation helper with detailed knowledge of html parsing libraries
   friend class HtmlLexer;
@@ -368,6 +372,7 @@ class HtmlParse {
                   HtmlElement* new_parent);
   void CoalesceAdjacentCharactersNodes();
   void ClearEvents();
+  void EmitQueue(MessageHandler* handler);
 
 
   // Visible for testing only, via HtmlTestingPeer

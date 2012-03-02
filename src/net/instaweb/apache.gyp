@@ -55,6 +55,7 @@
         'apache/apr_timer.cc',
         'apache/header_util.cc',
         'apache/instaweb_context.cc',
+        'apache/interface_mod_spdy.cc',
         'apache/log_message_handler.cc',
         'apache/serf_url_async_fetcher.cc',
       ],

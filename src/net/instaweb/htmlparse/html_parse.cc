@@ -18,8 +18,6 @@
 
 #include "net/instaweb/htmlparse/public/html_parse.h"
 
-#include <cstdarg>
-#include <cstdio>
 #include <list>
 #include <vector>
 
@@ -36,6 +34,7 @@
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/print_message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -731,20 +730,26 @@ void HtmlParse::ClearElements() {
   DCHECK(!running_filters_);
 }
 
-void HtmlParse::DebugPrintQueue() {
+void HtmlParse::EmitQueue(MessageHandler* handler) {
   for (HtmlEventList::iterator p = queue_.begin(), e = queue_.end();
        p != e; ++p) {
     GoogleString buf;
     HtmlEvent* event = *p;
     event->ToString(&buf);
-    long node_ptr = reinterpret_cast<long>(event->GetNode());
-    if (p == current_) {
-      fprintf(stdout, "* %s (0x%lx)\n", buf.c_str(), node_ptr);
-    } else {
-      fprintf(stdout, "  %s (0x%lx)\n", buf.c_str(), node_ptr);
-    }
+    handler->Message(kInfo, "%c %s (%p)\n",
+                     p == current_ ? '*' : ' ',
+                     buf.c_str(),
+                     event->GetNode());
   }
-  fflush(stdout);
+}
+
+void HtmlParse::DebugLogQueue() {
+  EmitQueue(message_handler_);
+}
+
+void HtmlParse::DebugPrintQueue() {
+  PrintMessageHandler handler;
+  EmitQueue(&handler);
 }
 
 bool HtmlParse::IsImplicitlyClosedTag(HtmlName::Keyword keyword) const {

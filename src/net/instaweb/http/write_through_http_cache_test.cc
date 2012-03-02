@@ -232,6 +232,87 @@ TEST_F(WriteThroughHTTPCacheTest, PutGet) {
   EXPECT_EQ(0, cache2_.num_misses());
   EXPECT_EQ(1, cache2_.num_inserts());
   EXPECT_EQ(0, cache2_.num_deletes());
+
+  ClearStats();
+  // Test that fallback_http_value() is set correctly.
+  FakeHttpCacheCallback callback;
+  http_cache_->Find(key_, &message_handler_, &callback);
+  EXPECT_EQ(HTTPCache::kNotFound, callback.result_);
+  EXPECT_FALSE(callback.fallback_http_value()->Empty());
+  EXPECT_TRUE(callback.http_value()->Empty());
+  StringPiece content;
+  EXPECT_TRUE(callback.fallback_http_value()->ExtractContents(&content));
+  EXPECT_STREQ(content_, content);
+  // We find a stale response in the L1 cache, clear it and use the stale
+  // response in the L2 cache instead.
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheMisses));
+  EXPECT_EQ(2, GetStat(HTTPCache::kCacheExpirations));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(1, cache1_.num_hits());
+  EXPECT_EQ(0, cache1_.num_misses());
+  EXPECT_EQ(0, cache1_.num_inserts());
+  EXPECT_EQ(0, cache1_.num_deletes());
+  EXPECT_EQ(1, cache2_.num_hits());
+  EXPECT_EQ(0, cache2_.num_misses());
+  EXPECT_EQ(0, cache2_.num_inserts());
+  EXPECT_EQ(0, cache2_.num_deletes());
+
+  // Create a temporary HTTPCache with just cache1 and insert a stale response
+  // into it. We use the fallback from cache2.
+  HTTPCache temp_l1_cache(&cache1_, &mock_timer_, &mock_hasher_,
+                          &simple_stats_);
+  // Force caching so that the stale response is inserted.
+  temp_l1_cache.set_force_caching(true);
+  temp_l1_cache.Put(key_, &headers_in, "new", &message_handler_);
+  ClearStats();
+  FakeHttpCacheCallback callback2;
+  http_cache_->Find(key_, &message_handler_, &callback2);
+  EXPECT_EQ(HTTPCache::kNotFound, callback2.result_);
+  EXPECT_FALSE(callback2.fallback_http_value()->Empty());
+  EXPECT_TRUE(callback2.http_value()->Empty());
+  StringPiece content2;
+  EXPECT_TRUE(callback2.fallback_http_value()->ExtractContents(&content2));
+  EXPECT_STREQ(content_, content2);
+  // We find a stale response in the L1 cache, clear it and use the stale
+  // response in the L2 cache instead.
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheMisses));
+  EXPECT_EQ(2, GetStat(HTTPCache::kCacheExpirations));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(1, cache1_.num_hits());
+  EXPECT_EQ(0, cache1_.num_misses());
+  EXPECT_EQ(0, cache1_.num_inserts());
+  EXPECT_EQ(0, cache1_.num_deletes());
+  EXPECT_EQ(1, cache2_.num_hits());
+  EXPECT_EQ(0, cache2_.num_misses());
+  EXPECT_EQ(0, cache2_.num_inserts());
+  EXPECT_EQ(0, cache2_.num_deletes());
+
+  ClearStats();
+  // Clear cache2. We now use the fallback from cache1.
+  cache2_.Clear();
+  FakeHttpCacheCallback callback3;
+  http_cache_->Find(key_, &message_handler_, &callback3);
+  EXPECT_EQ(HTTPCache::kNotFound, callback3.result_);
+  EXPECT_FALSE(callback3.fallback_http_value()->Empty());
+  EXPECT_TRUE(callback3.http_value()->Empty());
+  StringPiece content3;
+  EXPECT_TRUE(callback3.fallback_http_value()->ExtractContents(&content3));
+  EXPECT_STREQ("new", content3);
+  // We find a stale response in cache1. Since we don't find anything in cache2,
+  // we use the stale response from cache1
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheMisses));
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheExpirations));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(1, cache1_.num_hits());
+  EXPECT_EQ(0, cache1_.num_misses());
+  EXPECT_EQ(0, cache1_.num_inserts());
+  EXPECT_EQ(0, cache1_.num_deletes());
+  EXPECT_EQ(0, cache2_.num_hits());
+  EXPECT_EQ(1, cache2_.num_misses());
+  EXPECT_EQ(0, cache2_.num_inserts());
 }
 
 // Check size-limits for the small cache
