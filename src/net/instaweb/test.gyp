@@ -202,6 +202,7 @@
         'util/symbol_table_test.cc',
         'util/thread_system_test_base.cc',
         'util/threadsafe_cache_test.cc',
+        'util/thread_synchronizer_test.cc',
         'util/time_util_test.cc',
         'util/url_escaper_test.cc',
         'util/url_multipart_encoder_test.cc',

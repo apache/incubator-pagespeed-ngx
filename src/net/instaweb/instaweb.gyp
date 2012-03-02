@@ -381,6 +381,7 @@
         'util/statistics_work_bound.cc',
         'util/stdio_file_system.cc',
         'util/thread.cc',
+        'util/thread_synchronizer.cc',
         'util/thread_system.cc',
         'util/threadsafe_cache.cc',
         'util/time_util.cc',
