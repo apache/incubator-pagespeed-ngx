@@ -21,11 +21,14 @@
 #include "net/instaweb/util/public/delay_cache.h"
 
 #include <cstddef>
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/cache_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/shared_string.h"
+#include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
 namespace {
@@ -99,6 +102,49 @@ TEST_F(DelayCacheTest, DelayOpsNotFound) {
   cache_.ReleaseKey("Name");
   EXPECT_TRUE(result.called_);
   EXPECT_EQ(CacheInterface::kNotFound, result.state_);
+}
+
+TEST_F(DelayCacheTest, DelayOpsFoundInSequence) {
+  scoped_ptr<ThreadSystem> thread_system(ThreadSystem::CreateThreadSystem());
+  QueuedWorkerPool pool(1, thread_system.get());
+  QueuedWorkerPool::Sequence* sequence = pool.NewSequence();
+  scoped_ptr<WorkerTestBase::SyncPoint> sync_point(
+      new WorkerTestBase::SyncPoint(thread_system.get()));
+
+  // Load the value.
+  CheckPut("Name", "Value");
+  CheckPut("OtherName", "OtherValue");
+
+  cache_.DelayKey("Name");
+  cache_.DelayKey("OtherName");
+
+  // Try getting...
+  CacheTestBase::Callback result, other_result;
+  cache_.Get("Name", &result);
+  cache_.Get("OtherName", &other_result);
+
+  // Initially, should not have been called.
+  EXPECT_FALSE(result.called_);
+
+  // Release an unrelated key.  That should not call "Name".
+  cache_.ReleaseKeyInSequence("OtherName", sequence);
+  sequence->Add(new WorkerTestBase::NotifyRunFunction(sync_point.get()));
+  sync_point->Wait();
+
+  EXPECT_FALSE(result.called_);
+  EXPECT_TRUE(other_result.called_);
+  EXPECT_EQ(CacheInterface::kAvailable, other_result.state_);
+
+  // Now after it is released, it should be OK.
+  cache_.ReleaseKey("Name");
+  sequence->Add(new WorkerTestBase::NotifyRunFunction(sync_point.get()));
+  sync_point->Wait();
+
+  EXPECT_TRUE(result.called_);
+  EXPECT_EQ(CacheInterface::kAvailable, result.state_);
+  EXPECT_EQ("Value", *result.value()->get());
+
+  sync_point.reset(NULL);  // make sure this is destructed first.
 }
 
 }  // namespace

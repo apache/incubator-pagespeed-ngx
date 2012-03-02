@@ -33,6 +33,7 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -59,7 +60,13 @@ class DelayCache : public CacheInterface {
 
   // Release the delay on the callback delivered for a specific key.  It is
   // ane error to attempt to release a key that was never delayed.
-  void ReleaseKey(const GoogleString& key);
+  void ReleaseKey(const GoogleString& key) { ReleaseKeyInSequence(key, NULL); }
+
+  // See ReleaseKey.  If sequence is non-NULL, the callback is
+  // delivered on the sequence, otherwise it is delivered directly
+  // from ReleaseKey.
+  void ReleaseKeyInSequence(const GoogleString& key,
+                            QueuedWorkerPool::Sequence* sequence);
 
  private:
   class DelayCallback;

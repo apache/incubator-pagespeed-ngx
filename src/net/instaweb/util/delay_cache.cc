@@ -25,6 +25,7 @@
 
 #include <utility>  // for pair.
 #include "base/logging.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/shared_string.h"
 
 namespace net_instaweb {
@@ -49,7 +50,7 @@ class DelayCache::DelayCallback : public CacheInterface::Callback {
     *orig_callback_->value() = *value();
     state_ = state;
     delay_cache_->LookupComplete(this);
-  };
+  }
 
   // Helper method so that DelayCache can call the callback for keys
   // that are not being delayed, or for keys that have been released.
@@ -90,14 +91,19 @@ void DelayCache::DelayKey(const GoogleString& key) {
   delay_requests_.insert(key);
 }
 
-void DelayCache::ReleaseKey(const GoogleString& key) {
+void DelayCache::ReleaseKeyInSequence(const GoogleString& key,
+                                      QueuedWorkerPool::Sequence* sequence) {
   int erased = delay_requests_.erase(key);
   CHECK_EQ(1, erased);
   DelayMap::iterator p = delay_map_.find(key);
   CHECK(p != delay_map_.end());
   DelayCallback* callback = p->second;
   delay_map_.erase(p);
-  callback->Run();
+  if (sequence != NULL) {
+    sequence->Add(MakeFunction(callback, &DelayCallback::Run));
+  } else {
+    callback->Run();
+  }
 }
 
 void DelayCache::Get(const GoogleString& key, Callback* callback) {
