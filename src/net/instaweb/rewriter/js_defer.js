@@ -128,7 +128,10 @@ pagespeed.DeferJs.prototype.createIdVars = function() {
   for (var i = 0; i < elems.length; i++) {
     if (elems[i].id && elems[i].id.search(/[-:.]/) == -1 &&
         elems[i].id.search(/^[0-9]/) == -1) {
-      idVarsString += 'var ' + elems[i].id + ' = ' + elems[i].id + ';';
+      if (window[elems[i].id] && window[elems[i].id].tagName) {
+        idVarsString += 'var ' + elems[i].id +
+            '=document.getElementById("' + elems[i].id + '");';
+      }
     }
   }
   if (idVarsString) {
@@ -209,13 +212,17 @@ pagespeed.DeferJs.prototype.addUrl = function(url, opt_elem, opt_pos) {
     };
     pagespeed.addOnload(script, runNextHandler);
     pagespeed.addHandler(script, 'error', runNextHandler);
-    var stateChangeHandler = function() {
-      if (script.readyState == 'complete' ||
-          script.readyState == 'loaded') {
-        runNextHandler();
+    if (me.getIEVersion() < 9) {
+      var stateChangeHandler = function() {
+        if (script.readyState == 'complete' ||
+            script.readyState == 'loaded') {
+          script.onreadystatechange = null;
+          runNextHandler();
+        }
       }
+
+      pagespeed.addHandler(script, 'readystatechange', stateChangeHandler);
     }
-    pagespeed.addHandler(script, 'readystatechange', stateChangeHandler);
     me.currentElem_.parentNode.insertBefore(script, me.currentElem_);
   }, opt_pos);
 };
@@ -282,7 +289,9 @@ pagespeed.DeferJs.prototype.run = function() {
   initialContextNode.setAttribute('psa_dw_target', 'true');
   document.body.appendChild(initialContextNode);
   this.currentElem_ = initialContextNode;
-  this.createIdVars();
+  if (this.getIEVersion()) {
+    this.createIdVars();
+  }
 
   // Starts executing the defer_js closures.
   this.runNext();
@@ -581,6 +590,14 @@ pagespeed.outerHTML = function(node) {
  */
 pagespeed.DeferJs.prototype.isFireFox = function() {
   return (navigator.userAgent.indexOf("Firefox") != -1);
+};
+
+/**
+ * Returns version number if browser is IE.
+ */
+pagespeed.DeferJs.prototype.getIEVersion = function() {
+  var version = /(?:MSIE.(\d+\.\d+))/.exec(navigator.userAgent);
+  return version && version[1] ? parseFloat(version[1]) : NaN;
 };
 
 /**

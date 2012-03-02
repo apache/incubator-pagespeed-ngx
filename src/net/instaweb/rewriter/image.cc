@@ -50,6 +50,7 @@ extern "C" {
 #include "pagespeed/image_compression/gif_reader.h"
 #include "pagespeed/image_compression/image_converter.h"
 #include "pagespeed/image_compression/jpeg_optimizer.h"
+#include "pagespeed/image_compression/jpeg_utils.h"
 #include "pagespeed/image_compression/png_optimizer.h"
 
 #if (CV_MAJOR_VERSION == 2 && CV_MINOR_VERSION >= 1) || (CV_MAJOR_VERSION > 2)
@@ -61,6 +62,7 @@ extern "C" {
 
 using pagespeed::image_compression::ImageConverter;
 using pagespeed::image_compression::JpegCompressionOptions;
+using pagespeed::image_compression::JpegUtils;
 using pagespeed::image_compression::PngOptimizer;
 
 namespace net_instaweb {
@@ -819,16 +821,27 @@ bool ImageImpl::QuickLoadGifToOutputContents() {
 
 void ImageImpl::ConvertToJpegOptions(const Image::CompressionOptions& options,
                                      JpegCompressionOptions* jpeg_options) {
+  int input_quality = JpegUtils::GetImageQualityFromImage(
+      original_contents_.as_string());
   jpeg_options->retain_color_profile = options.retain_color_profile;
   jpeg_options->retain_exif_data = options.retain_exif_data;
   jpeg_options->progressive = options.progressive_jpeg;
+  int output_quality = std::min(ImageHeaders::kMaxJpegQuality,
+                                options.jpeg_quality);
   if (options.jpeg_quality > 0) {
-    jpeg_options->lossy = true;
-    jpeg_options->lossy_options.quality =
-        std::min(ImageHeaders::kMaxJpegQuality, options.jpeg_quality);
-    if (options.progressive_jpeg) {
-      jpeg_options->lossy_options.num_scans =
-          options.jpeg_num_progressive_scans;
+    // If the source image is JPEG we want to fallback to lossless if the input
+    // quality is less than the quality we want to set for final compression and
+    // num progressive scans is not set. Incase we are not able to decode the
+    // input image quality, then we use lossless path.
+    if (image_type() != IMAGE_JPEG ||
+        options.jpeg_num_progressive_scans > 0 ||
+        input_quality > output_quality) {
+      jpeg_options->lossy = true;
+      jpeg_options->lossy_options.quality = output_quality;
+      if (options.progressive_jpeg) {
+        jpeg_options->lossy_options.num_scans =
+            options.jpeg_num_progressive_scans;
+      }
     }
   }
 }

@@ -37,7 +37,9 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/image_compression/jpeg_optimizer_test_helper.h"
+#include "pagespeed/image_compression/jpeg_utils.h"
 
+using pagespeed::image_compression::JpegUtils;
 using pagespeed_testing::image_compression::GetNumScansInJpeg;
 using pagespeed_testing::image_compression::IsJpegSegmentPresent;
 using pagespeed_testing::image_compression::GetColorProfileMarker;
@@ -325,6 +327,39 @@ TEST_F(ImageTest, NumProgressiveScansTest) {
   ImagePtr image(ReadFromFileWithOptions(kPuzzle, &buffer, options));
   EXPECT_GT(buffer.size(), image->output_size());
   EXPECT_EQ(3, GetNumScansInJpeg(image->Contents().as_string()));
+}
+
+TEST_F(ImageTest, UseJpegLossessIfInputQualityIsLowTest) {
+  Image::CompressionOptions* options = new Image::CompressionOptions();
+  options->jpeg_quality = 85;
+  options->progressive_jpeg = true;
+
+  GoogleString buffer;
+  // Input image quality is 50.
+  ImagePtr image(ReadFromFileWithOptions(kAppSegments, &buffer, options));
+  EXPECT_GT(buffer.size(), image->output_size());
+  EXPECT_EQ(
+      50, JpegUtils::GetImageQualityFromImage(image->Contents().as_string()));
+
+  // When num progressive scans is set, we use lossless path so we recompress
+  // with quality 85.
+  options = new Image::CompressionOptions();
+  options->jpeg_quality = 85;
+  options->progressive_jpeg = true;
+  buffer.clear();
+  options->jpeg_num_progressive_scans = 1;
+  image.reset(ReadFromFileWithOptions(kAppSegments, &buffer, options));
+  EXPECT_GT(buffer.size(), image->output_size());
+  EXPECT_EQ(
+      85, JpegUtils::GetImageQualityFromImage(image->Contents().as_string()));
+
+  // Empty image will return -1 when we try to determine its quality.
+  options = new Image::CompressionOptions();
+  options->jpeg_quality = 85;
+  options->progressive_jpeg = true;
+  image.reset(NewImage("", "", GTestTempDir(), options, &handler_));
+  EXPECT_EQ(
+      -1, JpegUtils::GetImageQualityFromImage(image->Contents().as_string()));
 }
 
 TEST_F(ImageTest, JpegRetainColorProfileTest) {
