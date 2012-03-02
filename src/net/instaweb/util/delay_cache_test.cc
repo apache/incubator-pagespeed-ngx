@@ -108,8 +108,7 @@ TEST_F(DelayCacheTest, DelayOpsFoundInSequence) {
   scoped_ptr<ThreadSystem> thread_system(ThreadSystem::CreateThreadSystem());
   QueuedWorkerPool pool(1, thread_system.get());
   QueuedWorkerPool::Sequence* sequence = pool.NewSequence();
-  scoped_ptr<WorkerTestBase::SyncPoint> sync_point(
-      new WorkerTestBase::SyncPoint(thread_system.get()));
+  WorkerTestBase::SyncPoint sync_point(thread_system.get());
 
   // Load the value.
   CheckPut("Name", "Value");
@@ -128,8 +127,8 @@ TEST_F(DelayCacheTest, DelayOpsFoundInSequence) {
 
   // Release an unrelated key.  That should not call "Name".
   cache_.ReleaseKeyInSequence("OtherName", sequence);
-  sequence->Add(new WorkerTestBase::NotifyRunFunction(sync_point.get()));
-  sync_point->Wait();
+  sequence->Add(new WorkerTestBase::NotifyRunFunction(&sync_point));
+  sync_point.Wait();
 
   EXPECT_FALSE(result.called_);
   EXPECT_TRUE(other_result.called_);
@@ -137,14 +136,14 @@ TEST_F(DelayCacheTest, DelayOpsFoundInSequence) {
 
   // Now after it is released, it should be OK.
   cache_.ReleaseKey("Name");
-  sequence->Add(new WorkerTestBase::NotifyRunFunction(sync_point.get()));
-  sync_point->Wait();
+  sequence->Add(new WorkerTestBase::NotifyRunFunction(&sync_point));
+  sync_point.Wait();
 
   EXPECT_TRUE(result.called_);
   EXPECT_EQ(CacheInterface::kAvailable, result.state_);
   EXPECT_EQ("Value", *result.value()->get());
 
-  sync_point.reset(NULL);  // make sure this is destructed first.
+  pool.ShutDown();
 }
 
 }  // namespace

@@ -28,7 +28,6 @@
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -69,6 +68,7 @@ class RewriteFilter;
 class ScopedMutex;
 class Statistics;
 class UrlLeftTrimFilter;
+class UserAgentMatcher;
 class Writer;
 
 // TODO(jmarantz): rename this class to RequestContext.  This extends
@@ -382,10 +382,6 @@ class RewriteDriver : public HtmlParse {
   // not, another flush will be scheduled immediately.
   void UninhibitEndElement(const HtmlElement* element);
 
-  // Like UninhibitEndElement, but will not schedule a flush.  Returns 1 if
-  // element was previously inhibited, and 0 otherwise.
-  int UninhibitEndElementFlushless(const HtmlElement* element);
-
   // Returns true if the EndElementEvent for element is inhibited from flushing.
   bool EndElementIsInhibited(const HtmlElement* element);
 
@@ -661,8 +657,10 @@ class RewriteDriver : public HtmlParse {
   virtual void Flush();
 
   // Initiates an asynchronous Flush.  done->Run() will be called when
-  // the flush is complete.  Further calls to ParseText should be
-  // deferred until the callback is called.
+  // the flush is complete.  The inhibits_mutex_ will be held while the callback
+  // is running, so the callback should not attempt to inhibit or uninhibit
+  // an element.  Further calls to ParseText should be deferred until the
+  // callback is called.
   void FlushAsync(Function* done);
 
   // Queues up a task to run on the (high-priority) rewrite thread.

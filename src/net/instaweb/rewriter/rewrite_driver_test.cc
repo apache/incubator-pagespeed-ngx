@@ -734,13 +734,9 @@ class RewriteDriverInhibitTest : public RewriteDriverTest {
   // Uninhibits the EndEvent for element, and waits for the necessary flush
   // to complete.
   void UninhibitEndElementAndWait(HtmlElement* element) {
-    rewrite_driver()->UninhibitEndElementFlushless(element);
+    rewrite_driver()->UninhibitEndElement(element);
     ASSERT_TRUE(!rewrite_driver()->EndElementIsInhibited(element));
     rewrite_driver()->Flush();
-  }
-
-  // A callback for FinishParseAsync.
-  void ParseFinished() {
   }
 
   HtmlElement* html_;
@@ -817,6 +813,7 @@ TEST_P(RewriteDriverInhibitTest, InhibitWithFinishParse) {
   // Verify that we flush the entire document once </body> is uninhibited.
   EXPECT_EQ("<html><body><p></p></body></html>", output_buffer_);
 }
+
 
 INSTANTIATE_TEST_CASE_P(RewriteDriverInhibitTestInstance,
                         RewriteDriverInhibitTest,

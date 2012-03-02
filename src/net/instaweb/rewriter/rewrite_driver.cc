@@ -40,6 +40,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
@@ -542,16 +543,14 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
       // We therefore need to flush again, and eat the callback until that
       // flush is complete.
       uninhibit_reflush_requested_ = false;
+      Function* post_flush =
+          MakeFunction(this, &RewriteDriver::UninhibitFlushDone, callback);
       html_worker_->Add(
-                MakeFunction(this,
-                             &RewriteDriver::FlushAsync,
-                             MakeFunction(this,
-                                          &RewriteDriver::UninhibitFlushDone,
-                                          callback)));
+          MakeFunction(this, &RewriteDriver::FlushAsync, post_flush));
       return;
     }
+    callback->CallRun();
   }
-  callback->CallRun();
 }
 
 const char* RewriteDriver::kPassThroughRequestAttributes[3] = {
@@ -1668,15 +1667,11 @@ void RewriteDriver::InhibitEndElement(const HtmlElement* element) {
   end_elements_inhibited_.insert(element);
 }
 
-int RewriteDriver::UninhibitEndElementFlushless(const HtmlElement* element) {
-  ScopedMutex lock(inhibits_mutex_.get());
-  return end_elements_inhibited_.erase(element);
-}
-
 // Uninhibit the EndElementEvent for element.
 // This function may be called from another thread, typically a fetch callback.
 void RewriteDriver::UninhibitEndElement(const HtmlElement* element) {
-  if (UninhibitEndElementFlushless(element) == 1) {
+  ScopedMutex lock(inhibits_mutex_.get());
+  if (end_elements_inhibited_.erase(element) == 1) {
     // The element was actually inhibited.  If it was at the front of the queue,
     // it was preventing everything that follows it on the queue from flushing.
     // Now that the inhibition is lifted, all that stuff needs to flush.
@@ -1685,7 +1680,6 @@ void RewriteDriver::UninhibitEndElement(const HtmlElement* element) {
     // remote input that affects the DOM, element almost certainly *was* at
     // front of the queue.  Rather than synchronize with queue_ to check, we
     // just flush.  This might occasionally be superfluous, but no harm is done.
-    ScopedMutex lock(inhibits_mutex_.get());
     if (flush_in_progress_) {
       // This flag will cause FlushAsyncDone to eat the user callback and
       // schedule another flush.
@@ -1693,15 +1687,14 @@ void RewriteDriver::UninhibitEndElement(const HtmlElement* element) {
     } else if (finish_parse_on_hold_ != NULL) {
       // Schedule a flush.  If we aren't holding a FinishParse client callback,
       // it's not safe to schedule a flush because we might race with the
-      // client.  That's OK, because the parse isn't finished; there will be
+      // client to do so.  In that case, it's OK to do nothing: there will be
       // another flush eventually, and so we won't deadlock.
 
+      Function* post_flush =
+          MakeFunction(this, &RewriteDriver::UninhibitFlushDone,
+                       static_cast<Function *>(NULL));
       html_worker_->Add(
-          MakeFunction(this,
-                       &RewriteDriver::FlushAsync,
-                       MakeFunction(this,
-                                    &RewriteDriver::UninhibitFlushDone,
-                                    static_cast<Function *>(NULL))));
+          MakeFunction(this, &RewriteDriver::FlushAsync, post_flush));
     }
   }
 }
@@ -1720,12 +1713,12 @@ bool RewriteDriver::EndElementIsStoppingFlush(const HtmlElement* element) {
 // Finish the parse if FinishParseAsync was previously held up by an inhibited
 // event.  Otherwise, run the user callback.
 void RewriteDriver::UninhibitFlushDone(Function* user_callback) {
-  {
-    ScopedMutex lock(inhibits_mutex_.get());
-    if (finish_parse_on_hold_ != NULL && end_elements_inhibited_.size() == 0) {
-      html_worker_->Add(finish_parse_on_hold_);
-      finish_parse_on_hold_ = NULL;
-    }
+  inhibits_mutex_->DCheckLocked();
+  if (finish_parse_on_hold_ != NULL &&
+      end_elements_inhibited_.size() == 0 &&
+      GetEventQueueSize() == 0) {
+    html_worker_->Add(finish_parse_on_hold_);
+    finish_parse_on_hold_ = NULL;
   }
   if (user_callback != NULL) {
     user_callback->CallRun();
@@ -1745,21 +1738,23 @@ void RewriteDriver::FinishParseAsync(Function* callback) {
 }
 
 void RewriteDriver::QueueFinishParseAfterFlush(Function* user_callback) {
-  // Disconnected to relinquish the lock; might be a better idea to
-  // instead have a lockless version of cleanup?
-  html_worker_->Add(
-      MakeFunction(this, &RewriteDriver::FinishParseAfterFlush, user_callback));
+  inhibits_mutex_->DCheckLocked();
+  Function* finish_parse = MakeFunction(this,
+                                        &RewriteDriver::FinishParseAfterFlush,
+                                        user_callback);
+  if (GetEventQueueSize() > 0) {
+    // Because of an inhibit, the parse is not yet finished.  Save a callback
+    // to FinishParseAfterFlush for later.
+    finish_parse_on_hold_ = finish_parse;
+  } else {
+    // We're really done: queue FinishParseAfterFlush now.
+    DCHECK(end_elements_inhibited_.size() == 0);
+    html_worker_->Add(finish_parse);
+  }
 }
 
 void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
-  if (GetEventQueueSize() > 0) {
-    // Something is blocking completion of the parse.  Save the callback.
-    ScopedMutex lock(inhibits_mutex_.get());
-    finish_parse_on_hold_ = MakeFunction(this,
-                                         &RewriteDriver::FinishParseAfterFlush,
-                                         user_callback);
-    return;
-  }
+  DCHECK(GetEventQueueSize() == 0);
   HtmlParse::EndFinishParse();
   WriteDomCohortIntoPagePropertyCache();
   Cleanup();
