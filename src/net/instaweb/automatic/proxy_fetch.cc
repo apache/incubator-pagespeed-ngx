@@ -38,6 +38,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/queued_alarm.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -216,7 +217,7 @@ void ProxyFetchPropertyCallbackCollector::Done(
     }
   }
   if (fetch != NULL) {
-    fetch->PropertyCacheComplete(this, success);  // Transfers ownership.
+    fetch->PropertyCacheComplete(this, success);  // deletes this.
   } else if (do_delete) {
     delete this;
   }
@@ -233,7 +234,7 @@ void ProxyFetchPropertyCallbackCollector::SetProxyFetch(
     ready = done_;
   }
   if (ready) {
-    proxy_fetch->PropertyCacheComplete(this, success_);  // Transfers ownership.
+    proxy_fetch->PropertyCacheComplete(this, success_);  // deletes this.
   }
 }
 
@@ -348,10 +349,6 @@ ProxyFetch::ProxyFetch(
 
   VLOG(1) << "Attaching RewriteDriver " << driver_
           << " to HtmlRewriter " << this;
-
-  if (property_cache_callback != NULL) {
-    property_cache_callback->SetProxyFetch(this);
-  }
 }
 
 ProxyFetch::~ProxyFetch() {
@@ -426,6 +423,10 @@ void ProxyFetch::SetupForHtml() {
   if (options->enabled() && options->IsAllowed(url_)) {
     started_parse_ = StartParse();
     if (started_parse_) {
+      // HTML needs to wait for the properties to be fetched.
+      if (property_cache_callback_ != NULL) {
+        property_cache_callback_->SetProxyFetch(this);
+      }
       // TODO(sligocki): Get these in the main flow.
       // Add, remove and update headers as appropriate.
       int64 ttl_ms;
@@ -517,26 +518,28 @@ void ProxyFetch::PropertyCacheComplete(
     bool success) {
   ScopedMutex lock(mutex_.get());
 
-  if (property_cache_callback_ == NULL) {
-    // Already called Finish and abandoned callback.
-    delete callback_collector;
+  if (driver_ == NULL) {
+    LOG(DFATAL) << "Expected non-null driver.";
   } else {
-    property_cache_callback_ = NULL;
-    if (driver_ == NULL) {
-      LOG(DFATAL) << "Expected non-null driver.";
-    } else {
-      // Set the property page and client state objects in the driver
-      driver_->set_property_page(
-          callback_collector->GetPropertyPage(
-              ProxyFetchPropertyCallback::kPagePropertyCache));
+    // Set the property page and client state objects in the driver
+    driver_->set_property_page(
+        callback_collector->GetPropertyPage(
+            ProxyFetchPropertyCallback::kPagePropertyCache));
 
-      // TODO(mdw): Extract the client state object and set in the
-      // RewriteDriver.
-    }
-    delete callback_collector;
-    if (sequence_ != NULL) {
-      ScheduleQueueExecutionIfNeeded();
-    }
+    // TODO(mdw): Extract the client state object and set in the
+    // RewriteDriver.
+  }
+  // We have to set the callback to NULL to let ScheduleQueueExecutionIfNeeded
+  // proceed (it waits until it's NULL). And we have to delete it because then
+  // we have no reference to it to delete it in Finish.
+  if (property_cache_callback_ == NULL) {
+    LOG(DFATAL) << "Expected non-null property_cache_callback_.";
+  } else {
+    delete property_cache_callback_;
+    property_cache_callback_ = NULL;
+  }
+  if (sequence_ != NULL) {
+    ScheduleQueueExecutionIfNeeded();
   }
 }
 
@@ -726,14 +729,15 @@ void ProxyFetch::Finish(bool success) {
     done_outstanding_ = false;
     finishing_ = true;
 
-    if (property_cache_callback_ != NULL) {
-      // Avoid holding two locks (this->mutex_ and
-      // property_cache_callback_->mutex_) by copying the
-      // pointer and detaching after unlocking the this->mutex_.
-      detach_callback = property_cache_callback_;
-      property_cache_callback_ = NULL;
-    }
+    // Avoid holding two locks (this->mutex_ + property_cache_callback_->mutex_)
+    // by copying the pointer and detaching after unlocking this->mutex_.
+    detach_callback = property_cache_callback_;
+    property_cache_callback_ = NULL;
   }
+  // The only way detach_callback can be non-NULL here is if the resource isn't
+  // being parsed (it's not HTML) and the collector hasn't finished yet, but in
+  // that case we never attached the collector to us, so when it's done it won't
+  // access us, which is good since we self-delete at the end of this method.
   if (detach_callback != NULL) {
     detach_callback->Detach();
   }
