@@ -372,17 +372,23 @@ bool ProxyInterface::InitiatePropertyCacheLookup(
     AsyncFetch* async_fetch,
     ProxyFetchPropertyCallbackCollector* callback_collector) {
   bool added_callback = false;
+  ProxyFetchPropertyCallback* property_callback = NULL;
+  PropertyCache* page_property_cache = NULL;
   if (!is_resource_fetch && UrlMightHavePropertyCacheEntry(request_url)) {
-    PropertyCache* page_property_cache =
-        resource_manager_->page_property_cache();
+    page_property_cache = resource_manager_->page_property_cache();
     AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
-    ProxyFetchPropertyCallback* callback =
-        new ProxyFetchPropertyCallback(
-            ProxyFetchPropertyCallback::kPagePropertyCache,
-            callback_collector, mutex);
-    callback_collector->AddCallback(callback);
+    property_callback = new ProxyFetchPropertyCallback(
+        ProxyFetchPropertyCallback::kPagePropertyCache,
+        callback_collector, mutex);
+    callback_collector->AddCallback(property_callback);
     added_callback = true;
-    page_property_cache->Read(request_url.Spec(), callback);
+
+    // Don't initiate the Read until the client_id lookup, if any, has had
+    // an opportunity to establish its callback.  Otherwise we race the
+    // completion of this pcache lookup against adding the client-cache
+    // lookup's callback.  Also this would cause the unit-test
+    // ProxyInterfaceTest.BothClientAndPropertyCache to hang on two
+    // Wait calls when the test only sets up one Signal.
   }
 
   const char* client_id = async_fetch->request_headers()->Lookup1(
@@ -399,6 +405,11 @@ bool ProxyInterface::InitiatePropertyCacheLookup(
     added_callback = true;
     client_property_cache->Read(client_id, callback);
   }
+
+  if (page_property_cache != NULL) {
+    page_property_cache->Read(request_url.Spec(), property_callback);
+  }
+
   return added_callback;
 }
 

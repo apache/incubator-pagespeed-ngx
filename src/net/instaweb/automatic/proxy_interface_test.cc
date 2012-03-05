@@ -534,11 +534,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     CreateFilterCallback create_filter_callback;
     factory()->AddCreateFilterCallback(&create_filter_callback);
 
-    RewriteOptions* options = resource_manager()->global_options();
-    options->ClearSignatureForTesting();
-    options->set_ajax_rewriting_enabled(false);
-    resource_manager()->ComputeSignature(options);
-
+    DisableAjax();
     GoogleString image_out;
     ResponseHeaders headers_out;
 
@@ -614,6 +610,13 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     EXPECT_EQ(1, lru_cache()->num_inserts());  // http-cache
     // meta-data, http-cache & prop-cache
     EXPECT_EQ(3, lru_cache()->num_misses());
+  }
+
+  void DisableAjax() {
+    RewriteOptions* options = resource_manager()->global_options();
+    options->ClearSignatureForTesting();
+    options->set_ajax_rewriting_enabled(false);
+    resource_manager()->ComputeSignature(options);
   }
 
   scoped_ptr<ProxyInterface> proxy_interface_;
@@ -2349,11 +2352,7 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNoProperties) {
   //     CreateFilterCallback create_filter_callback;
   //     factory()->AddCreateFilterCallback(&callback);
 
-  RewriteOptions* options = resource_manager()->global_options();
-  options->ClearSignatureForTesting();
-  options->set_ajax_rewriting_enabled(false);
-  resource_manager()->ComputeSignature(options);
-
+  DisableAjax();
   GoogleString text_out;
   ResponseHeaders headers_out;
 
@@ -2377,11 +2376,7 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfHtmlEndsWithTxt) {
   //     CreateFilterCallback create_filter_callback;
   //     factory()->AddCreateFilterCallback(&callback);
 
-  RewriteOptions* options = resource_manager()->global_options();
-  options->ClearSignatureForTesting();
-  options->set_ajax_rewriting_enabled(false);
-  resource_manager()->ComputeSignature(options);
-
+  DisableAjax();
   SetResponseWithDefaultHeaders("page.txt", kContentTypeHtml,
                                 "<div><p></p></div>", 0);
   GoogleString text_out;
@@ -2412,6 +2407,33 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNonHtmlThreadedCache) {
 
 TEST_F(ProxyInterfaceTest, ThreadedHtml) {
   TestPropertyCache(kPageUrl, true, true);
+}
+
+TEST_F(ProxyInterfaceTest, BothClientAndPropertyCache) {
+  // Ensure that the ProxyFetchPropertyCallbackCollector calls its Post function
+  // only once, despite the fact that we are doing two property-cache lookups.
+  //
+  // Note that ProxyFetchPropertyCallbackCollector::Done waits for
+  // ProxyFetch::kCollectorDone.  We will signal it ahead of time so
+  // if this is working properly, it won't block.  However, if the system
+  // incorrectly calls Done() twice, then it will block forever on the
+  // second call to Wait(ProxyFetch::kCollectorDone), since we only offer
+  // one Signal here.
+  ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+  sync->set_enabled(true);
+  sync->Signal(ProxyFetch::kCollectorDone);
+
+  RequestHeaders request_headers;
+  ResponseHeaders response_headers;
+  request_headers.Add(HttpAttributes::kXGooglePagespeedClientId, "1");
+
+  DisableAjax();
+  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
+                                "<div><p></p></div>", 0);
+  GoogleString response;
+  FetchFromProxy("page.html", request_headers, true, &response,
+                 &response_headers);
+  sync->Wait(ProxyFetch::kCollectorReady);  // Clears Signal from PFPCC::Done.
 }
 
 // TODO(jmarantz): add a test with a simulated slow cache to see what happens
