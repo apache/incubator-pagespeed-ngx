@@ -115,7 +115,8 @@ DEFINE_int32(psa_idle_flush_time_ms,
 
 DEFINE_string(pagespeed_version, "", "Version number to put into X-Page-Speed "
               "response header.");
-DEFINE_bool(enable_blink, false, "If true then blink is enabled");
+DEFINE_bool(enable_blink_critical_line, false,
+            "If true then blink critical line flow is enabled");
 DEFINE_int32(max_inlined_preview_images_index,
              net_instaweb::RewriteOptions::kDefaultMaxInlinedPreviewImagesIndex,
              "Number of first N images for which low res image is generated. "
@@ -243,8 +244,8 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_image_limit_resize_area_percent(
         FLAGS_image_limit_resize_area_percent);
   }
-  if (WasExplicitlySet("enable_blink")) {
-    options->set_enable_blink(FLAGS_enable_blink);
+  if (WasExplicitlySet("enable_blink_critical_line")) {
+    options->set_enable_blink_critical_line(FLAGS_enable_blink_critical_line);
   }
   if (WasExplicitlySet("max_inlined_preview_images_index")) {
     options->set_max_inlined_preview_images_index(

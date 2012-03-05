@@ -112,6 +112,9 @@ class ProxyInterface : public UrlAsyncFetcher {
       ProxyFetchPropertyCallbackCollector* property_callback,
       MessageHandler* handler);
 
+  static const char kBlinkRequestCount[];
+  static const char kBlinkCriticalLineRequestCount[];
+
  private:
   // Handle requests that are being proxied.
   // * HTML requests are rewritten.
@@ -154,6 +157,8 @@ class ProxyInterface : public UrlAsyncFetcher {
   TimedVariable* pagespeed_requests_;
   // Blink requests.
   TimedVariable* blink_requests_;
+  // Blink requests in the critical line flow.
+  TimedVariable* blink_critical_line_requests_;
 
   scoped_ptr<ProxyFetchFactory> proxy_fetch_factory_;
   UserAgentMatcher user_agent_matcher_;

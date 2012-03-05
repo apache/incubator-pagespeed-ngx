@@ -25,7 +25,6 @@ struct FilterMap {
   net_instaweb::RewriteOptions::Filter filter;
 };
 %%
-"above_the_fold",                    RewriteOptions::kAboveTheFold
 "add_head",                          RewriteOptions::kAddHead
 "add_instrumentation",               RewriteOptions::kAddInstrumentation
 "collapse_whitespace",               RewriteOptions::kCollapseWhitespace
@@ -60,6 +59,7 @@ struct FilterMap {
 "move_css_to_head",                  RewriteOptions::kMoveCssToHead
 "outline_css",                       RewriteOptions::kOutlineCss
 "outline_javascript",                RewriteOptions::kOutlineJavascript
+"prioritize_visible_content",        RewriteOptions::kPrioritizeVisibleContent
 "recompress_images",                 RewriteOptions::kRecompressImages
 "remove_comments",                   RewriteOptions::kRemoveComments
 "remove_quotes",                     RewriteOptions::kRemoveQuotes

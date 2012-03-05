@@ -319,6 +319,7 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
   virtual GoogleString url() const { return url_; }
   virtual HTTPCache* http_cache() { return http_cache_; }
   virtual bool should_yield() { return true; }
+  virtual bool IsBackgroundFetch() const { return true; }
 
  private:
   GoogleString url_;
@@ -457,6 +458,9 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
   }
 
   virtual bool EnableThreaded() const { return callback_->EnableThreaded(); }
+  virtual bool IsBackgroundFetch() const {
+    return resource_->is_background_fetch();
+  }
 
   virtual HTTPValue* http_value() { return &resource_->value_; }
   virtual GoogleString url() const { return resource_->url(); }

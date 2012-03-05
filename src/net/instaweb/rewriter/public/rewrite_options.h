@@ -43,8 +43,7 @@ class RewriteOptions {
   // If you add or remove anything from this list, you need to update the
   // version number in rewrite_options.cc and FilterName().
   enum Filter {
-    kAboveTheFold,  // Update kFirstFilter if you add something before this.
-    kAddHead,
+    kAddHead,  // Update kFirstFilter if you add something before this.
     kAddInstrumentation,
     kCollapseWhitespace,
     kCombineCss,
@@ -79,6 +78,7 @@ class RewriteOptions {
     kMoveCssToHead,
     kOutlineCss,
     kOutlineJavascript,
+    kPrioritizeVisibleContent,
     kRecompressImages,
     kRemoveComments,
     kRemoveQuotes,
@@ -89,6 +89,7 @@ class RewriteOptions {
     kRewriteJavascript,
     kRewriteStyleAttributes,
     kRewriteStyleAttributesWithUrl,
+    kServeNonCacheableNonCritical,
     kSpriteImages,
     kStripScripts,
     kEndOfFilters
@@ -111,7 +112,7 @@ class RewriteOptions {
     kCssInlineMaxBytes,
     kCssOutlineMinBytes,
     kDefaultCacheHtml,
-    kEnableBlink,
+    kEnableBlinkCriticalLine,
     kEnabled,
     kFlushHtml,
     kFuriousPercent,
@@ -123,6 +124,7 @@ class RewriteOptions {
     kImageLimitResizeAreaPercent,
     kImageMaxRewritesAtOnce,
     kImageRetainColorProfile,
+    kImageRetainColorSampling,
     kImageRetainExifData,
     kImageWebpRecompressQuality,
     kImplicitCacheTtlMs,
@@ -195,7 +197,7 @@ class RewriteOptions {
   static const char* FilterId(Filter filter);
 
   // Used for enumerating over all entries in the Filter enum.
-  static const Filter kFirstFilter = kAboveTheFold;
+  static const Filter kFirstFilter = kAddHead;
 
   // Convenience name for a set of rewrite filters.
   typedef std::set<Filter> FilterSet;
@@ -522,8 +524,12 @@ class RewriteOptions {
     return serve_stale_if_fetch_error_.value();
   }
 
-  void set_enable_blink(bool x) { set_option(x, &enable_blink_); }
-  bool enable_blink() const { return enable_blink_.value(); }
+  void set_enable_blink_critical_line(bool x) {
+    set_option(x, &enable_blink_critical_line_);
+  }
+  bool enable_blink_critical_line() const {
+    return enable_blink_critical_line_.value();
+  }
 
   void set_serve_blink_non_critical(bool x) {
     set_option(x, &serve_blink_non_critical_);
@@ -575,6 +581,13 @@ class RewriteOptions {
   }
   void set_image_retain_color_profile(bool x) {
     set_option(x, &image_retain_color_profile_);
+  }
+
+  bool image_retain_color_sampling() const {
+    return image_retain_color_sampling_.value();
+  }
+  void set_image_retain_color_sampling(bool x) {
+    set_option(x, &image_retain_color_sampling_);
   }
 
   bool image_retain_exif_data() const {
@@ -1089,6 +1102,7 @@ class RewriteOptions {
   Option<int> image_jpeg_recompress_quality_;
   Option<int> image_jpeg_num_progressive_scans_;
   Option<bool> image_retain_color_profile_;
+  Option<bool> image_retain_color_sampling_;
   Option<bool> image_retain_exif_data_;
 
   // Options governing when to retain optimized images vs keep original
@@ -1115,7 +1129,8 @@ class RewriteOptions {
   // Should we serve stale responses if the fetch results in a server side
   // error.
   Option<bool> serve_stale_if_fetch_error_;
-  Option<bool> enable_blink_;
+  // Whether blink critical line flow should be enabled.
+  Option<bool> enable_blink_critical_line_;
   // When non-cacheable panels are absent, non-critical content is already
   // served in blink flow. This flag indicates whether to serve non-critical
   // from panel_filter or not.

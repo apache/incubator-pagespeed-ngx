@@ -204,6 +204,8 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kDivStructure,
   RewriteOptions::kExplicitCloseTags,
   RewriteOptions::kLazyloadImages,
+  RewriteOptions::kServeNonCacheableNonCritical,  // internal,
+                                                  // enabled conditionally
   RewriteOptions::kStripScripts,
 };
 
@@ -225,7 +227,6 @@ bool IsInSet(const RewriteOptions::Filter* filters, int num,
 
 const char* RewriteOptions::FilterName(Filter filter) {
   switch (filter) {
-    case kAboveTheFold:                    return "Above The Fold";
     case kAddHead:                         return "Add Head";
     case kAddInstrumentation:              return "Add Instrumentation";
     case kCollapseWhitespace:              return "Collapse Whitespace";
@@ -249,6 +250,8 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kExtendCacheImages:               return "Cache Extend Images";
     case kExtendCacheScripts:              return "Cache Extend Scripts";
     case kFlattenCssImports:               return "Flatten CSS Imports";
+    case kServeNonCacheableNonCritical:
+        return "Serve Non Cacheable and Non Critical Content";
     case kHtmlWriterFilter:                return "Flushes html";
     case kInlineCss:                       return "Inline Css";
     case kInlineImages:                    return "Inline Images";
@@ -262,6 +265,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kMoveCssToHead:                   return "Move Css To Head";
     case kOutlineCss:                      return "Outline Css";
     case kOutlineJavascript:               return "Outline Javascript";
+    case kPrioritizeVisibleContent:        return "Prioritize Visible Content";
     case kRecompressImages:                return "Recompress Images";
     case kRemoveComments:                  return "Remove Comments";
     case kRemoveQuotes:                    return "Remove Quotes";
@@ -282,7 +286,6 @@ const char* RewriteOptions::FilterName(Filter filter) {
 
 const char* RewriteOptions::FilterId(Filter filter) {
   switch (filter) {
-    case kAboveTheFold:                    return "af";
     case kAddHead:                         return "ah";
     case kAddInstrumentation:              return "ai";
     case kCollapseWhitespace:              return "cw";
@@ -305,6 +308,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kExtendCacheImages:               return "ei";
     case kExtendCacheScripts:              return "es";
     case kFlattenCssImports:               return kCssImportFlattenerId;
+    case kServeNonCacheableNonCritical:    return "sn";
     case kHtmlWriterFilter:                return "hw";
     case kInlineCss:                       return kCssInlineId;
     case kInlineImages:                    return "ii";
@@ -318,6 +322,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kMoveCssToHead:                   return "cm";
     case kOutlineCss:                      return "co";
     case kOutlineJavascript:               return "jo";
+    case kPrioritizeVisibleContent:        return "pv";
     case kRecompressImages:                return "ir";
     case kRemoveComments:                  return "rc";
     case kRemoveQuotes:                    return "rq";
@@ -428,7 +433,8 @@ RewriteOptions::RewriteOptions()
   add_option(false, &respect_vary_, "rv", kRespectVary);
   add_option(false, &flush_html_, "fh", kFlushHtml);
   add_option(true, &serve_stale_if_fetch_error_, "ss", kServeStaleIfFetchError);
-  add_option(false, &enable_blink_, "eb", kEnableBlink);
+  add_option(false, &enable_blink_critical_line_, "ebcl",
+             kEnableBlinkCriticalLine);
   add_option(false, &serve_blink_non_critical_, "snc", kServeBlinkNonCritical);
   add_option(false, &default_cache_html_, "dch", kDefaultCacheHtml);
   add_option(true, &modify_caching_headers_, "mch", kModifyCachingHeaders);
@@ -462,6 +468,8 @@ RewriteOptions::RewriteOptions()
              kImageJpegNumProgressiveScans);
   add_option(false, &image_retain_color_profile_, "ircp",
              kImageRetainColorProfile);
+  add_option(false, &image_retain_color_sampling_, "ircs",
+             kImageRetainColorSampling);
   add_option(false, &image_retain_exif_data_, "ired", kImageRetainExifData);
   add_option("", &atf_non_cacheable_elements_, "nce",
              kAboveTheFoldNonCacheableElements);

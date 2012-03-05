@@ -6,6 +6,7 @@
 
 #include <map>
 
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "third_party/jsoncpp/include/json/json.h"
@@ -31,10 +32,12 @@ const char kInstanceHtml[] = "instance_html";
 const char kLayoutMarker[] = "<!--GooglePanel **** Layout end ****-->";
 const char kJsonCachePrefix[] = "json:";
 
-// Checks whether the request for 'url' is a valid blink request. If yes,
-// returns a pointer to the corresponding Layout, and NULL otherwise.
-// TODO(sriharis): Split the check part and extracting the layout into separate
-// functions.
+// Checks whether the request for 'url' is a valid blink request.
+bool IsBlinkRequest(const GoogleUrl& url, RewriteOptions* options,
+                    const char* user_agent,
+                    const UserAgentMatcher& user_agent_matcher_);
+
+// Returns a pointer to the corresponding Layout, and NULL otherwise.
 const Layout* ExtractBlinkLayout(const GoogleUrl& url, RewriteOptions* options,
                                  const StringPiece& user_agent);
 

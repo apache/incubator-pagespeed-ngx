@@ -77,8 +77,6 @@ class BlinkFlow {
 
   void TriggerProxyFetch(bool layout_found);
 
-  void TriggerJsonBackgroundFetch(AsyncFetch* json_fetch, bool* success);
-
   void ServeAllPanelContents(const Json::Value& json,
                              const PanelIdToSpecMap& panel_id_to_spec);
 

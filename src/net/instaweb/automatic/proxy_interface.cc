@@ -21,6 +21,7 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/automatic/public/blink_flow.h"
+#include "net/instaweb/automatic/public/blink_flow_critical_line.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/automatic/public/resource_fetch.h"
 #include "net/instaweb/http/public/async_fetch.h"
@@ -47,6 +48,10 @@ namespace net_instaweb {
 class AbstractMutex;
 class MessageHandler;
 class PublisherConfig;
+
+const char ProxyInterface::kBlinkRequestCount[] = "blink-requests";
+const char ProxyInterface::kBlinkCriticalLineRequestCount[] =
+    "blink-critical-line-requests";
 
 namespace {
 
@@ -139,7 +144,9 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
       port_(port),
       all_requests_(stats->GetTimedVariable(kTotalRequestCount)),
       pagespeed_requests_(stats->GetTimedVariable(kPagespeedRequestCount)),
-      blink_requests_(stats->GetTimedVariable(kBlinkRequestCount)) {
+      blink_requests_(stats->GetTimedVariable(kBlinkRequestCount)),
+      blink_critical_line_requests_(
+          stats->GetTimedVariable(kBlinkCriticalLineRequestCount)) {
   proxy_fetch_factory_.reset(new ProxyFetchFactory(manager));
 }
 
@@ -152,6 +159,8 @@ void ProxyInterface::Initialize(Statistics* statistics) {
   statistics->AddTimedVariable(kPagespeedRequestCount,
                                ResourceManager::kStatisticsGroup);
   statistics->AddTimedVariable(kBlinkRequestCount,
+                               ResourceManager::kStatisticsGroup);
+  statistics->AddTimedVariable(kBlinkCriticalLineRequestCount,
                                ResourceManager::kStatisticsGroup);
   BlinkFlow::Initialize(statistics);
 }
@@ -446,20 +455,20 @@ void ProxyInterface::ProxyRequestCallback(
         HttpAttributes::kUserAgent);
     const Layout* layout = BlinkUtil::ExtractBlinkLayout(*request_url,
                                                          options, user_agent);
-    // Pass the following into BlinkFlow to treat Desktop and Mobile
-    // differently.
-    UserAgentMatcher::BlinkUserAgentType user_agent_type = (layout == NULL) ?
-        UserAgentMatcher::kDoesNotSupportBlink :
-        user_agent_matcher_.GetBlinkUserAgentType(user_agent);
-    if (layout != NULL &&
-        user_agent_type != UserAgentMatcher::kDoesNotSupportBlink) {
+    bool is_blink_request = BlinkUtil::IsBlinkRequest(
+        *request_url, options, user_agent, user_agent_matcher_);
+    if (is_blink_request && options->enable_blink_critical_line()) {
+      blink_critical_line_requests_->IncBy(1);
+      BlinkFlowCriticalLine::Start(request_url->Spec().as_string(),
+                                   async_fetch, options,
+                                   proxy_fetch_factory_.get(),
+                                   resource_manager_);
+    } else if (is_blink_request && layout != NULL) {
       // TODO(rahulbansal): Remove this LOG once we expect to have
       // Blink requests.
       LOG(INFO) << "Triggering Blink flow for url "
                 << request_url->Spec().as_string();
-      if (blink_requests_ != NULL) {
-        blink_requests_->IncBy(1);
-      }
+      blink_requests_->IncBy(1);
       BlinkFlow::Start(request_url->Spec().as_string(), async_fetch, layout,
                        options, proxy_fetch_factory_.get(),
                        resource_manager_);

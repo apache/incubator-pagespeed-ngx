@@ -25,7 +25,6 @@
 namespace net_instaweb {
 
 class HtmlElement;
-class ImageTagScanner;
 class RewriteDriver;
 class Statistics;
 
@@ -89,7 +88,6 @@ class LazyloadImagesFilter : public EmptyHtmlFilter {
 
  private:
   RewriteDriver* driver_;
-  scoped_ptr<const ImageTagScanner> tag_scanner_;
   bool script_inserted_;
 };
 

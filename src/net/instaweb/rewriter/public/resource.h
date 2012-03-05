@@ -169,6 +169,9 @@ class Resource : public RefCounted<Resource> {
   // Links the stale fallback value that can be used in case a fetch fails.
   void LinkFallbackValue(HTTPValue* value);
 
+  void set_is_background_fetch(bool x) { is_background_fetch_ = x; }
+  bool is_background_fetch() const { return is_background_fetch_; }
+
  protected:
   virtual ~Resource();
   REFCOUNT_FRIEND_DECLARATION(Resource);
@@ -202,6 +205,12 @@ class Resource : public RefCounted<Resource> {
   HTTPValue fallback_value_;
 
  private:
+  // Indicates whether we are trying to load the resource for a background
+  // rewrite or to serve a user request.
+  // Note that by default, we assume that every fetch is triggered in the
+  // background and is not user-facing unless we explicitly set
+  // is_background_fetch_ to false.
+  bool is_background_fetch_;
   DISALLOW_COPY_AND_ASSIGN(Resource);
 };
 

@@ -44,6 +44,7 @@ using pagespeed_testing::image_compression::GetNumScansInJpeg;
 using pagespeed_testing::image_compression::IsJpegSegmentPresent;
 using pagespeed_testing::image_compression::GetColorProfileMarker;
 using pagespeed_testing::image_compression::GetExifDataMarker;
+using pagespeed_testing::image_compression::GetJpegNumComponentsAndSamplingFactors;
 
 namespace {
 
@@ -383,6 +384,43 @@ TEST_F(ImageTest, JpegRetainColorProfileTest) {
   EXPECT_GT(buffer.size(), image->output_size());
   EXPECT_FALSE(IsJpegSegmentPresent(image->Contents().as_string(),
                                     GetColorProfileMarker()));
+}
+
+TEST_F(ImageTest, JpegRetainColorSamplingTest) {
+  int num_components, h_sampling_factor, v_sampling_factor;
+  Image::CompressionOptions* options = new Image::CompressionOptions();
+  options->jpeg_quality = 85;
+  options->retain_color_profile = false;
+
+  GoogleString buffer;
+  // Input image color sampling is YUV 422. By defult we force YUV420.
+  ImagePtr image(ReadFromFileWithOptions(kPuzzle, &buffer, options));
+  GetJpegNumComponentsAndSamplingFactors(
+      buffer, &num_components, &h_sampling_factor, &v_sampling_factor);
+  EXPECT_EQ(3, num_components);
+  EXPECT_EQ(2, h_sampling_factor);
+  EXPECT_EQ(1, v_sampling_factor);
+  EXPECT_GT(buffer.size(), image->output_size());
+  GetJpegNumComponentsAndSamplingFactors(
+      image->Contents().as_string(), &num_components, &h_sampling_factor,
+      &v_sampling_factor);
+  EXPECT_EQ(3, num_components);
+  EXPECT_EQ(2, h_sampling_factor);
+  EXPECT_EQ(2, v_sampling_factor);
+
+  // Try retaining the color sampling.
+  options = new Image::CompressionOptions();
+  options->jpeg_quality = 85;
+  options->retain_color_sampling = true;
+  buffer.clear();
+  image.reset(ReadFromFileWithOptions(kPuzzle, &buffer, options));
+  EXPECT_GT(buffer.size(), image->output_size());
+  GetJpegNumComponentsAndSamplingFactors(
+      image->Contents().as_string(), &num_components, &h_sampling_factor,
+      &v_sampling_factor);
+  EXPECT_EQ(3, num_components);
+  EXPECT_EQ(2, h_sampling_factor);
+  EXPECT_EQ(1, v_sampling_factor);
 }
 
 TEST_F(ImageTest, JpegRetainExifDataTest) {

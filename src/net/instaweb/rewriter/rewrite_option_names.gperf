@@ -38,7 +38,7 @@ struct OptionName {
 "CssInlineMaxBytes",                    RewriteOptions::kCssInlineMaxBytes
 "CssOutlineMinBytes",                   RewriteOptions::kCssOutlineMinBytes
 "DefaultCacheHtml",                     RewriteOptions::kDefaultCacheHtml
-"EnableBlink",                          RewriteOptions::kEnableBlink
+"EnableBlinkCriticalLine",              RewriteOptions::kEnableBlinkCriticalLine
 "FlushHtml",                            RewriteOptions::kFlushHtml
 "IdleFlushTimeMs",                      RewriteOptions::kIdleFlushTimeMs
 "ImageInlineMaxBytes",                  RewriteOptions::kImageInlineMaxBytes
@@ -47,6 +47,7 @@ struct OptionName {
 "ImageLimitResizeAreaPercent",          RewriteOptions::kImageLimitResizeAreaPercent
 "ImageMaxRewritesAtOnce",               RewriteOptions::kImageMaxRewritesAtOnce
 "ImageRetainColorProfile",              RewriteOptions::kImageRetainColorProfile
+"ImageRetainColorSampling",             RewriteOptions::kImageRetainColorSampling
 "ImageRetainExifData",                  RewriteOptions::kImageRetainExifData
 "ImageWebpRecompressQuality",           RewriteOptions::kImageWebpRecompressQuality
 "ImplicitCacheTtlMs",                   RewriteOptions::kImplicitCacheTtlMs

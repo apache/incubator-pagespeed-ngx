@@ -21,7 +21,6 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -48,9 +47,7 @@ const char* LazyloadImagesFilter::kImageOnloadCode =
 
 LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
     : driver_(driver),
-      tag_scanner_(new ImageTagScanner(driver)),
-      script_inserted_(false) {
-}
+      script_inserted_(false) {}
 
 LazyloadImagesFilter::~LazyloadImagesFilter() {}
 
@@ -78,8 +75,11 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
     driver_->InsertElementBeforeCurrent(script);
     driver_->AppendChild(script, script_code);
     script_inserted_ = true;
-  } else if (script_inserted_ && driver_->IsRewritable(element)) {
-    HtmlElement::Attribute* src = tag_scanner_->ParseImageElement(element);
+  } else if (script_inserted_ && driver_->IsRewritable(element) &&
+             element->keyword() == HtmlName::kImg) {
+    // Only rewrite <img> tags. Don't rewrite <input> tags since the onload
+    // event is not fired for them.
+    HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
     if (src != NULL) {
       StringPiece url(src->value());
       if (!url.starts_with(kData) &&

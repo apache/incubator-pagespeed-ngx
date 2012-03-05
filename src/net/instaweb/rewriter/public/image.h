@@ -62,6 +62,7 @@ class Image {
           progressive_jpeg(false),
           convert_png_to_jpeg(false),
           retain_color_profile(false),
+          retain_color_sampling(false),
           retain_exif_data(false),
           jpeg_num_progressive_scans(
               RewriteOptions::kDefaultImageJpegNumProgressiveScans) {}
@@ -71,6 +72,7 @@ class Image {
     bool progressive_jpeg;
     bool convert_png_to_jpeg;
     bool retain_color_profile;
+    bool retain_color_sampling;
     bool retain_exif_data;
     int jpeg_num_progressive_scans;
   };

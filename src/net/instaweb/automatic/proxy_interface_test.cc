@@ -28,6 +28,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -45,6 +46,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/delay_cache.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -55,6 +57,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
@@ -68,6 +71,7 @@ namespace {
 
 const char kCssContent[] = "* { display: none; }";
 const char kMinimizedCssContent[] = "*{display:none}";
+const char kBackgroundFetchHeader[] = "X-Background-Fetch";
 
 // Like ExpectStringAsyncFetch but for asynchronous invocation -- it lets
 // one specify a WorkerTestBase::SyncPoint to help block until completion.
@@ -153,7 +157,7 @@ const char ProxyUrlNamer::kProxyHost[] = "proxy_host.com";
 //     property_cache.
 class MockFilter : public EmptyHtmlFilter {
  public:
-  MockFilter(RewriteDriver* driver)
+  explicit MockFilter(RewriteDriver* driver)
       : driver_(driver),
         num_elements_(0),
         num_elements_property_(NULL) {
@@ -228,6 +232,60 @@ class CreateFilterCallback
   DISALLOW_COPY_AND_ASSIGN(CreateFilterCallback);
 };
 
+// Subclass of AsyncFetch that adds a response header indicating whether the
+// fetch is for a user-facing request, or a background rewrite.
+class BackgroundFetchCheckingAsyncFetch : public SharedAsyncFetch {
+ public:
+  explicit BackgroundFetchCheckingAsyncFetch(AsyncFetch* base_fetch)
+      : SharedAsyncFetch(base_fetch) {}
+  virtual ~BackgroundFetchCheckingAsyncFetch() {}
+
+  virtual void HandleHeadersComplete() {
+    base_fetch()->HeadersComplete();
+    response_headers()->Add(kBackgroundFetchHeader,
+                            base_fetch()->IsBackgroundFetch() ? "1" : "0");
+    // Call ComputeCaching again since Add sets cache_fields_dirty_ to true.
+    response_headers()->ComputeCaching();
+  }
+
+  virtual void HandleDone(bool success) {
+    base_fetch()->Done(success);
+    delete this;
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(BackgroundFetchCheckingAsyncFetch);
+};
+
+// Subclass of UrlAsyncFetcher that wraps the AsyncFetch with a
+// BackgroundFetchCheckingAsyncFetch.
+class BackgroundFetchCheckingUrlAsyncFetcher : public UrlAsyncFetcher {
+ public:
+  explicit BackgroundFetchCheckingUrlAsyncFetcher(UrlAsyncFetcher* fetcher)
+      : base_fetcher_(fetcher),
+        num_background_fetches_(0) {}
+  virtual ~BackgroundFetchCheckingUrlAsyncFetcher() {}
+
+  virtual bool Fetch(const GoogleString& url,
+                     MessageHandler* message_handler,
+                     AsyncFetch* fetch) {
+    if (fetch->IsBackgroundFetch()) {
+      num_background_fetches_++;
+    }
+    BackgroundFetchCheckingAsyncFetch* new_fetch =
+        new BackgroundFetchCheckingAsyncFetch(fetch);
+    return base_fetcher_->Fetch(url, message_handler, new_fetch);
+  }
+
+  int num_background_fetches() { return num_background_fetches_; }
+  void clear_num_background_fetches() { num_background_fetches_ = 0; }
+
+ private:
+  UrlAsyncFetcher* base_fetcher_;
+  int num_background_fetches_;
+  DISALLOW_COPY_AND_ASSIGN(BackgroundFetchCheckingUrlAsyncFetcher);
+};
+
 // TODO(morlovich): This currently relies on ResourceManagerTestBase to help
 // setup fetchers; and also indirectly to prevent any rewrites from timing out
 // (as it runs the tests with real scheduler but mock timer). It would probably
@@ -259,6 +317,10 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     resource_manager()->ComputeSignature(options);
     ResourceManagerTestBase::SetUp();
     ProxyInterface::Initialize(statistics());
+    // The original url_async_fetcher() is still owned by RewriteDriverFactory.
+    background_fetch_fetcher_.reset(new BackgroundFetchCheckingUrlAsyncFetcher(
+        resource_manager()->url_async_fetcher()));
+    resource_manager()->set_url_async_fetcher(background_fetch_fetcher_.get());
     proxy_interface_.reset(
         new ProxyInterface("localhost", 80, resource_manager(), statistics()));
     start_time_ms_ = mock_timer()->NowMs();
@@ -293,10 +355,8 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     bool already_done = proxy_interface_->Fetch(AbsolutifyUrl(url),
                                                 message_handler(), &callback);
     if (already_done) {
-      LOG(INFO) << "MDW: callback.done() in FetchFromProxy";
       EXPECT_TRUE(callback.done());
     } else {
-      LOG(INFO) << "MDW: sync.Wait() in FetchFromProxy";
       sync.Wait();
     }
     mock_scheduler()->AwaitQuiescence();
@@ -328,6 +388,21 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     EXPECT_EQ(HttpStatus::kOK, headers.status_code());
     EXPECT_STREQ(expect_type.mime_type(),
                  headers.Lookup1(HttpAttributes::kContentType));
+  }
+
+  void CheckBackgroundFetch(const ResponseHeaders& headers,
+                            bool is_background_fetch) {
+    EXPECT_STREQ(is_background_fetch ? "1" : "0",
+              headers.Lookup1(kBackgroundFetchHeader));
+  }
+
+  void CheckNumBackgroundFetches(int num) {
+    EXPECT_EQ(num, background_fetch_fetcher_->num_background_fetches());
+  }
+
+  virtual void ClearStats() {
+    ResourceManagerTestBase::ClearStats();
+    background_fetch_fetcher_->clear_num_background_fetches();
   }
 
   RewriteOptions* GetCustomOptions(const StringPiece& url,
@@ -462,6 +537,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   }
 
   scoped_ptr<ProxyInterface> proxy_interface_;
+  scoped_ptr<BackgroundFetchCheckingUrlAsyncFetcher> background_fetch_fetcher_;
   int64 start_time_ms_;
   GoogleString start_time_string_;
   GoogleString start_time_plus_300s_string_;
@@ -487,6 +563,8 @@ TEST_F(ProxyInterfaceTest, TimingInfo) {
                                 "<html></html>");
 
   FetchFromProxy(url, request_headers, true, &text, &headers);
+  CheckBackgroundFetch(headers, false);
+  CheckNumBackgroundFetches(0);
   ASSERT_TRUE(timing_info_.has_cache1_ms());
   EXPECT_EQ(timing_info_.cache1_ms(), 0);
   EXPECT_FALSE(timing_info_.has_cache2_ms());
@@ -513,6 +591,7 @@ TEST_F(ProxyInterfaceTest, HeadRequest) {
   // Headers and body are correct for a Get request.
   EXPECT_EQ("HTTP/1.0 200 OK\r\n"
             "Content-Type: text/html\r\n"
+            "X-Background-Fetch: 0\r\n"
             "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
             "Expires: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
             "Cache-Control: max-age=0, private\r\n"
@@ -525,6 +604,7 @@ TEST_F(ProxyInterfaceTest, HeadRequest) {
 
   EXPECT_EQ("HTTP/1.0 200 OK\r\n"
             "Content-Type: text/html\r\n"
+            "X-Background-Fetch: 0\r\n"
             "X-Page-Speed: \r\n\r\n", get_headers.ToString());
   EXPECT_TRUE(get_text.empty());
 }
@@ -542,6 +622,7 @@ TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
       "Content-Type: text/css\r\n"
       "Etag: W/0\r\n"
       "Last-Modified: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+      "X-Background-Fetch: 0\r\n"
       "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
       "Expires: Tue, 02 Feb 2010 18:56:26 GMT\r\n"
       "Cache-Control: max-age=300,private\r\n"
@@ -580,6 +661,8 @@ TEST_F(ProxyInterfaceTest, FetchFailure) {
   // We don't want fetcher to fail the test, merely the fetch.
   SetFetchFailOnUnexpected(false);
   FetchFromProxy("invalid", false, &text, &headers);
+  CheckBackgroundFetch(headers, false);
+  CheckNumBackgroundFetches(0);
 }
 
 TEST_F(ProxyInterfaceTest, PassThrough404) {
@@ -600,6 +683,8 @@ TEST_F(ProxyInterfaceTest, PassThroughResource) {
                                 kHtmlCacheTimeSec * 2);
   FetchFromProxy("text.txt", true, &text, &headers);
   CheckHeaders(headers, kContentTypeText);
+  CheckBackgroundFetch(headers, false);
+  CheckNumBackgroundFetches(0);
   EXPECT_EQ(kContent, text);
 }
 
@@ -1171,6 +1256,8 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingForCss) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kCssContent, text);
+  CheckBackgroundFetch(response_headers, false);
+  CheckNumBackgroundFetches(0);
   // One lookup for ajax metadata, one for the HTTP response and one by the css
   // filter which looks up metadata while rewriting. None are found.
   EXPECT_EQ(3, lru_cache()->num_misses());
@@ -1192,6 +1279,56 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingForCss) {
   EXPECT_EQ(kMinimizedCssContent, text);
   // One hit for ajax metadata and one for the rewritten HTTP response.
   EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  CheckNumBackgroundFetches(0);
+
+  ClearStats();
+  // Advance close to expiry.
+  mock_timer()->AdvanceUs(270 * Timer::kSecondUs);
+  // The rewrite is complete and the optimized version is served. A freshen is
+  // triggered to refresh the original CSS file.
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.css", true, &text, &response_headers);
+
+  EXPECT_STREQ("max-age=30",
+               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_300s_string_,
+               response_headers.Lookup1(HttpAttributes::kExpires));
+  EXPECT_STREQ("Mon, 05 Apr 2010 18:55:56 GMT",
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_EQ(kMinimizedCssContent, text);
+  // One hit for ajax metadata, one for the rewritten HTTP response and one for
+  // the original HTTP response while freshening.
+  EXPECT_EQ(3, lru_cache()->num_hits());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  // One background fetch is triggered while freshening.
+  CheckNumBackgroundFetches(1);
+
+  // Disable ajax rewriting. We now received the response fetched while
+  // freshening. This response has kBackgroundFetchHeader set to 1.
+  RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_ajax_rewriting_enabled(false);
+  resource_manager()->ComputeSignature(options);
+
+  ClearStats();
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.css", true, &text, &response_headers);
+  EXPECT_STREQ(max_age_300_,
+               response_headers.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ("Mon, 05 Apr 2010 19:00:56 GMT",
+               response_headers.Lookup1(HttpAttributes::kExpires));
+  EXPECT_STREQ("Mon, 05 Apr 2010 18:55:56 GMT",
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_EQ(kCssContent, text);
+  CheckNumBackgroundFetches(0);
+  CheckBackgroundFetch(response_headers, true);
+  // Done HTTP cache hit for the original response.
+  EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, lru_cache()->num_misses());
 }
@@ -1306,8 +1443,11 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
                                 kHtmlCacheTimeSec * 2);
 
+  text.clear();
   headers.Clear();
   FetchFromProxy("page.html", true, &text, &headers);
+  CheckBackgroundFetch(headers, false);
+  CheckNumBackgroundFetches(1);
   CheckHeaders(headers, kContentTypeHtml);
   EXPECT_EQ(CssLinkHref(Encode(kTestDomain, "cf", "0", "a.css", "css")), text);
   headers.ComputeCaching();
@@ -1318,9 +1458,18 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
 
   // Fetch the rewritten resource as well.
   text.clear();
+  headers.Clear();
+  ClearStats();
   FetchFromProxy(Encode(kTestDomain, "cf", "0", "a.css", "css"), true,
                  &text, &headers);
   CheckHeaders(headers, kContentTypeCss);
+  // Note that the fetch for the original resource was triggered as a result of
+  // the initial HTML request. Hence, its headers indicate that it is a
+  // background request
+  // This response has kBackgroundFetchHeader set to 1 since a fetch was
+  // triggered for it in the background while rewriting the original html.
+  CheckBackgroundFetch(headers, true);
+  CheckNumBackgroundFetches(0);
   headers.ComputeCaching();
   EXPECT_LE(start_time_ms_ + Timer::kYearMs, headers.CacheExpirationTimeMs());
   EXPECT_EQ(kMinimizedCssContent, text);
@@ -1367,6 +1516,7 @@ TEST_F(ProxyInterfaceTest, ReconstructResource) {
   FetchFromProxy(Encode("", "cf", "0", "a.css", "css"), true, &text, &headers);
   CheckHeaders(headers, kContentTypeCss);
   headers.ComputeCaching();
+  CheckBackgroundFetch(headers, false);
   EXPECT_LE(start_time_ms_ + Timer::kYearMs, headers.CacheExpirationTimeMs());
   EXPECT_EQ(kMinimizedCssContent, text);
 }
@@ -2011,6 +2161,7 @@ TEST_F(ProxyInterfaceTest, ProxyResourceQueryOnly) {
              EncodeNormal("", "jm", "0", kUrl, "css")),
       true, &out_text, &out_headers);
   EXPECT_STREQ("var a=2;", out_text);
+  CheckBackgroundFetch(out_headers, false);
 }
 
 TEST_F(ProxyInterfaceTest, NoRehostIncompatMPS) {

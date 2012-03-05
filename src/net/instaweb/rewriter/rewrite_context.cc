@@ -1548,8 +1548,8 @@ void RewriteContext::Freshen(const CachedResult& partition) {
 
         Manager()->ReadAsync(Resource::kReportFailureIfNotCacheable,
                              stale_freshen_callback);
-      } else  if (Manager()->IsImminentlyExpiring(input_info.date_ms(),
-                                          input_info.expiration_time_ms())) {
+      } else if (Manager()->IsImminentlyExpiring(
+          input_info.date_ms(), input_info.expiration_time_ms())) {
         resource->Freshen(Manager()->message_handler());
       }
     }
@@ -1641,6 +1641,7 @@ bool RewriteContext::Fetch(
          is_valid = false;
          break;
       }
+      resource->set_is_background_fetch(false);
       ResourceSlotPtr slot(new FetchResourceSlot(resource));
       AddSlot(slot);
     }

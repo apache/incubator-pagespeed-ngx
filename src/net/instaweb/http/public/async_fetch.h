@@ -111,6 +111,10 @@ class AsyncFetch : public Writer {
 
   virtual bool EnableThreaded() const { return false; }
 
+  // Indicates whether the request is a background fetch. These can be scheduled
+  // differently by the fetcher.
+  virtual bool IsBackgroundFetch() const { return false; }
+
   // Resets the 'headers_complete_' flag.
   // TODO(jmarantz): should this also clear the response headers?
   virtual void Reset() { headers_complete_ = false; }
@@ -254,6 +258,10 @@ class SharedAsyncFetch : public AsyncFetch {
 
   virtual bool IsCachedResultValid(const ResponseHeaders& headers) {
     return base_fetch_->IsCachedResultValid(headers);
+  }
+
+  virtual bool IsBackgroundFetch() const {
+    return base_fetch_->IsBackgroundFetch();
   }
 
  private:

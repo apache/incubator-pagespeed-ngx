@@ -43,7 +43,8 @@ const int64 kNotCacheable = 0;
 
 Resource::Resource(ResourceManager* resource_manager, const ContentType* type)
     : resource_manager_(resource_manager),
-      type_(type) {
+      type_(type),
+      is_background_fetch_(true) {
 }
 
 Resource::~Resource() {

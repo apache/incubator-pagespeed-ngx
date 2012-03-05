@@ -33,18 +33,32 @@ bool IsBlacklistedBrowser(const StringPiece& user_agent,
 
 }  // namespace
 
+// TODO(rahulbansal): Add tests for this.
+bool IsBlinkRequest(const GoogleUrl& url, RewriteOptions* options,
+                    const char* user_agent,
+                    const UserAgentMatcher& user_agent_matcher_) {
+  if (options != NULL &&
+      // Is rewriting enabled?
+      options->enabled() &&
+      // Is prioritize visible content filter enabled?
+      options->Enabled(RewriteOptions::kPrioritizeVisibleContent) &&
+      // Is url allowed? (i.e., it is not in black-list.)
+      // TODO(sriharis): We also make this check in regular proxy flow
+      // (ProxyFetch).  Should we combine these?
+      options->IsAllowed(url.Spec()) &&
+      // Does url match a cacheable family pattern specified in config?
+      options->MatchesAtfCacheableFamilies(url.PathAndLeaf()) &&
+      user_agent_matcher_.GetBlinkUserAgentType(user_agent) !=
+          UserAgentMatcher::kDoesNotSupportBlink) {
+    return true;
+  }
+  return false;
+}
+
 const Layout* ExtractBlinkLayout(const GoogleUrl& url,
                                  RewriteOptions* options,
                                  const StringPiece& user_agent) {
-  if (options != NULL &&
-      /* Above the fold is enabled. */
-      options->Enabled(RewriteOptions::kAboveTheFold) &&
-      /* url is allowed, i.e., it is not in black-list. */
-      /* TODO(sriharis): We also make this check in regular proxy flow
-       * (ProxyFetch).  Should we combine these? */
-      options->IsAllowed(url.Spec()) &&
-      /* url matches a cacheable family pattern specified in config. */
-      options->MatchesAtfCacheableFamilies(url.PathAndLeaf())) {
+  if (options != NULL) {
     const PublisherConfig* config = options->panel_config();
     if (config != NULL && !IsBlacklistedBrowser(user_agent, *config)) {
       return FindLayout(*config, url);

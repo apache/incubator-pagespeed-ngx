@@ -483,23 +483,6 @@ void BlinkFlow::SetFilterOptions(RewriteOptions* options) const {
   options->set_max_inlined_preview_images_index(-1);
 }
 
-void BlinkFlow::TriggerJsonBackgroundFetch(AsyncFetch* json_fetch,
-                                           bool* success) {
-  if (*success) {
-    // TODO(rahulbansal): We can use the output of
-    // AsyncFetchWithHeadersInhibited instead of triggering a new background
-    // fetch.
-    manager_->url_async_fetcher()->Fetch(
-        json_url_.substr(kJsonCachePrefixLength),
-        manager_->message_handler(),
-        json_fetch);
-  } else {
-    LOG(WARNING) << "Prepare request failed in BlinkFlow for " << url_;
-    delete json_fetch;
-  }
-  delete success;
-}
-
 int64 BlinkFlow::GetTimeElapsedFromStartRequest() {
   return manager_->timer()->NowMs() - request_start_time_ms_;
 }

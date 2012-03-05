@@ -842,6 +842,11 @@ void ImageImpl::ConvertToJpegOptions(const Image::CompressionOptions& options,
         jpeg_options->lossy_options.num_scans =
             options.jpeg_num_progressive_scans;
       }
+
+      if (options.retain_color_sampling) {
+        jpeg_options->lossy_options.color_sampling =
+            pagespeed::image_compression::RETAIN;
+      }
     }
   }
 }

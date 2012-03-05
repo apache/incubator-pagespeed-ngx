@@ -79,8 +79,8 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
              "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
              GenerateRewrittenImageTag("img", "2.jpg",
                                        "height=\"300\" width=\"123\" "),
-             GenerateRewrittenImageTag("input", "12.jpg", "type=\"image\" "),
-             "<input src=\"12.jpg\"/>"
+              "<input type=\"image\" src=\"12.jpg\"/>"
+              "<input src=\"12.jpg\"/>"
              "<img src=\"1.jpg\" onload=\"blah();\"/></body>"));
 }
 
