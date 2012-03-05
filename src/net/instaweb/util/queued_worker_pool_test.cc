@@ -236,6 +236,10 @@ TEST_F(QueuedWorkerPoolTest, LoadShedding) {
   wedge2_sync.Notify();
   done_sync.Wait();
 
+  // We want to shutdown here since even though done_sync signaled, there
+  // may still be a log op running in the 2nd thread. This will wait for it.
+  worker_->ShutDown();
+
   worker_->FreeSequence(wedge1);
   worker_->FreeSequence(wedge2);
 
