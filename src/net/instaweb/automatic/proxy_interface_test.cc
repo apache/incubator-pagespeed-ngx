@@ -54,9 +54,11 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -68,6 +70,13 @@ class HtmlFilter;
 class MessageHandler;
 
 namespace {
+
+// This jpeg file lacks a .jpg or .jpeg extension.  So we initiate
+// a property-cache read prior to getting the response-headers back,
+// but will never go into the ProxyFetch flow that blocks waiting
+// for the cache lookup to come back.
+const char kImageFilenameLackingExt[] = "jpg_file_lacks_ext";
+const char kPageUrl[] = "page.html";
 
 const char kCssContent[] = "* { display: none; }";
 const char kMinimizedCssContent[] = "*{display:none}";
@@ -296,7 +305,8 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
 
   ProxyInterfaceTest()
       : max_age_300_("max-age=300"),
-        request_start_time_ms_(-1) {
+        request_start_time_ms_(-1),
+        fetch_already_done_(false) {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
     ConvertTimeToString(MockTimer::kApr_5_2010_ms + 5 * Timer::kMinuteMs,
                         &start_time_plus_300s_string_);
@@ -324,6 +334,11 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     proxy_interface_.reset(
         new ProxyInterface("localhost", 80, resource_manager(), statistics()));
     start_time_ms_ = mock_timer()->NowMs();
+
+    SetResponseWithDefaultHeaders(kImageFilenameLackingExt, kContentTypeJpeg,
+                                  "image data", 300);
+    SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml,
+                                  "<div><p></p></div>", 0);
   }
 
   virtual void TearDown() {
@@ -334,6 +349,21 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     ResourceManagerTestBase::TearDown();
   }
 
+  // Initiates a fetch using the proxy interface, and waits for it to
+  // complete.
+  void FetchFromProxy(const StringPiece& url,
+                      const RequestHeaders& request_headers,
+                      bool expect_success,
+                      GoogleString* string_out,
+                      ResponseHeaders* headers_out) {
+    FetchFromProxyNoWait(url, request_headers, expect_success, headers_out);
+    WaitForFetch();
+    *string_out = callback_->buffer();
+    timing_info_.CopyFrom(*callback_->timing_info());
+  }
+
+  // TODO(jmarantz): eliminate this interface as it's annoying to have
+  // the function overload just to save an empty RequestHeaders arg.
   void FetchFromProxy(const StringPiece& url,
                       bool expect_success,
                       GoogleString* string_out,
@@ -343,25 +373,34 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
                    headers_out);
   }
 
-  void FetchFromProxy(const StringPiece& url,
-                      const RequestHeaders& request_headers,
-                      bool expect_success,
-                      GoogleString* string_out,
-                      ResponseHeaders* headers_out) {
-    WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
-    AsyncExpectStringAsyncFetch callback(expect_success, &sync);
-    callback.set_response_headers(headers_out);
-    callback.request_headers()->CopyFrom(request_headers);
-    bool already_done = proxy_interface_->Fetch(AbsolutifyUrl(url),
-                                                message_handler(), &callback);
-    if (already_done) {
-      EXPECT_TRUE(callback.done());
-    } else {
-      sync.Wait();
+  // Initiates a fetch using the proxy interface, without waiting for it to
+  // complete.  The usage model here is to delay callbacks and/or fetches
+  // to control their order of delivery, then call WaitForFetch.
+  void FetchFromProxyNoWait(const StringPiece& url,
+                            const RequestHeaders& request_headers,
+                            bool expect_success,
+                            ResponseHeaders* headers_out) {
+    sync_.reset(new WorkerTestBase::SyncPoint(
+        resource_manager()->thread_system()));
+    callback_.reset(new AsyncExpectStringAsyncFetch(expect_success,
+                                                    sync_.get()));
+    callback_->set_response_headers(headers_out);
+    callback_->request_headers()->CopyFrom(request_headers);
+    fetch_already_done_ = proxy_interface_->Fetch(AbsolutifyUrl(url),
+                                                  message_handler(),
+                                                  callback_.get());
+    if (fetch_already_done_) {
+      EXPECT_TRUE(callback_->done());
+    }
+  }
+
+  // This must be called after FetchFromProxyNoWait, once all of the required
+  // resources (fetches, cache lookups) have been released.
+  void WaitForFetch() {
+    if (!fetch_already_done_) {
+      sync_->Wait();
     }
     mock_scheduler()->AwaitQuiescence();
-    *string_out = callback.buffer();
-    timing_info_.CopyFrom(*callback.timing_info());
   }
 
   void FetchViaProxyRequestCallback(
@@ -454,21 +493,42 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheScripts));
   }
 
-  void TestLooksLikeHtmlButIsNot(bool delay_pcache) {
-    // This jpeg file lacks a .jpg or .jpeg extension.  So we initiate
-    // a property-cache read prior to getting the response-headers back,
-    // but will never go into the ProxyFetch flow that blocks waiting
-    // for the cache lookup to come back.
-    const char kImageFilenameLackingExt[] = "jpg_file_lacks_ext";
+  // Tests a single flow through the property-cache, optionally delaying or
+  // threading property-cache lookups, and using the ThreadSynchronizer to
+  // tease out race conditions.
+  //
+  // delay_pcache indicates that we will suspend the PropertyCache lookup
+  // until after the FetchFromProxy call.  This is used in the
+  // PropCacheNoWritesIfNonHtmlDelayedCache below, which tests the flow where
+  // we have already detached the ProxyFetchPropertyCallbackCollector before
+  // Done() is called.
+  //
+  // thread_pcache forces the property-cache to issue the lookup
+  // callback in a different thread.  This lets us reproduce a
+  // potential race conditions where a context switch in
+  // ProxyFetchPropertyCallbackCollector::Done() would lead to a
+  // double-deletion of the collector object.
+  void TestPropertyCache(const StringPiece& url,
+                         bool delay_pcache, bool thread_pcache) {
+    scoped_ptr<QueuedWorkerPool> pool;
+    QueuedWorkerPool::Sequence* sequence = NULL;
 
-    GoogleString delay_cache_key;
-    if (delay_pcache) {
+    ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+    GoogleString delay_pcache_key, delay_http_cache_key;
+    if (delay_pcache || thread_pcache) {
       PropertyCache* pcache = resource_manager()->page_property_cache();
       const PropertyCache::Cohort* cohort =
           pcache->GetCohort(RewriteDriver::kDomCohort);
-      delay_cache_key = pcache->CacheKey(
-          AbsolutifyUrl(kImageFilenameLackingExt), cohort);
-      delay_cache()->DelayKey(delay_cache_key);
+      delay_http_cache_key = AbsolutifyUrl(url);
+      delay_pcache_key = pcache->CacheKey(delay_http_cache_key, cohort);
+      delay_cache()->DelayKey(delay_pcache_key);
+      if (thread_pcache) {
+        sync->set_enabled(true);
+        delay_cache()->DelayKey(delay_http_cache_key);
+        pool.reset(new QueuedWorkerPool(
+            1, resource_manager()->thread_system()));
+        sequence = pool->NewSequence();
+      }
     }
 
     CreateFilterCallback create_filter_callback;
@@ -479,15 +539,36 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     options->set_ajax_rewriting_enabled(false);
     resource_manager()->ComputeSignature(options);
 
-    SetResponseWithDefaultHeaders(kImageFilenameLackingExt, kContentTypeJpeg,
-                                  "image data", 300);
     GoogleString image_out;
     ResponseHeaders headers_out;
 
-    FetchFromProxy(kImageFilenameLackingExt, true, &image_out, &headers_out);
+    if (thread_pcache) {
+      RequestHeaders request_headers;
+      FetchFromProxyNoWait(url, request_headers, true, &headers_out);
+      delay_cache()->ReleaseKeyInSequence(delay_pcache_key, sequence);
 
-    if (delay_pcache) {
-      delay_cache()->ReleaseKey(delay_cache_key);
+      // Wait until the property-cache-thread is in
+      // ProxyFetchPropertyCallbackCollector::Done(), just after the
+      // critical section when it will signal kCollectorReady, and
+      // then block waiting for the test (in mainline) to signal
+      // kCollectorDone.
+      sync->Wait(ProxyFetch::kCollectorReady);
+
+      // Now release the HTTPCache lookup, which allows the mock-fetch
+      // to stream the bytes in the ProxyFetch and call HandleDone().
+      // Note that we release this key in mainline, so that call
+      // sequence happens directly from ReleaseKey.
+      delay_cache()->ReleaseKey(delay_http_cache_key);
+
+      // Now we can release the property-cache thread.
+      sync->Signal(ProxyFetch::kCollectorDone);
+      WaitForFetch();
+      pool->ShutDown();
+    } else {
+      FetchFromProxy(kImageFilenameLackingExt, true, &image_out, &headers_out);
+      if (delay_pcache) {
+        delay_cache()->ReleaseKey(delay_pcache_key);
+      }
     }
 
     EXPECT_EQ(1, lru_cache()->num_inserts());  // http-cache
@@ -512,8 +593,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
       delay_cache()->DelayKey(delay_cache_key);
     }
     ProxyFetchPropertyCallbackCollector* callback_collector(
-        new ProxyFetchPropertyCallbackCollector(
-            resource_manager()->thread_system()->NewMutex()));
+        new ProxyFetchPropertyCallbackCollector(resource_manager()));
     ProxyFetchPropertyCallback* callback =
         new ProxyFetchPropertyCallback(
             ProxyFetchPropertyCallback::kPagePropertyCache,
@@ -545,6 +625,10 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   TimingInfo timing_info_;
   const GoogleString max_age_300_;
   int64 request_start_time_ms_;
+
+  bool fetch_already_done_;
+  scoped_ptr<WorkerTestBase::SyncPoint> sync_;
+  scoped_ptr<AsyncExpectStringAsyncFetch> callback_;
 
  private:
   friend class FilterCallback;
@@ -2217,10 +2301,10 @@ TEST_F(ProxyInterfaceTest, PropCacheFilter) {
   GoogleString text_out;
   ResponseHeaders headers_out;
 
-  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ("<!-- Element count unknown --><div><p></p></div>", text_out);
 
-  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ("<!-- 2 elements unstable --><div><p></p></div>", text_out);
 
   // How many refreshes should we require before it's stable?  That
@@ -2229,7 +2313,7 @@ TEST_F(ProxyInterfaceTest, PropCacheFilter) {
   // stability.
   const int kFetchIterations = 100;
   for (int i = 0; i < kFetchIterations; ++i) {
-    FetchFromProxy("page.html", true, &text_out, &headers_out);
+    FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   }
 
   // Must be stable by now!
@@ -2242,10 +2326,10 @@ TEST_F(ProxyInterfaceTest, PropCacheFilter) {
   EXPECT_EQ(2 + kFetchIterations, lru_cache()->num_inserts());
 
   // Now change the HTML and watch the #elements change.
-  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
+  SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml,
                                 "<div><span><p></p></span></div>", 0);
-  FetchFromProxy("page.html", true, &text_out, &headers_out);
-  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
+  FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ("<!-- 3 elements stable --><div><span><p></p></span></div>",
             text_out);
 
@@ -2254,7 +2338,7 @@ TEST_F(ProxyInterfaceTest, PropCacheFilter) {
   // Finally, disable the property-cache and note that the element-count
   // annotatation reverts to "unknown mode"
   factory()->set_enable_property_cache(false);
-  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ("<!-- Element count unknown --><div><span><p></p></span></div>",
             text_out);
 }
@@ -2270,18 +2354,16 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNoProperties) {
   options->set_ajax_rewriting_enabled(false);
   resource_manager()->ComputeSignature(options);
 
-  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
-                                "<div><p></p></div>", 0);
   GoogleString text_out;
   ResponseHeaders headers_out;
 
-  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(2, lru_cache()->num_misses());  // property-cache + http-cache
 
   ClearStats();
   factory()->set_enable_property_cache(false);
-  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(1, lru_cache()->num_misses());  // http-cache only.
 }
@@ -2317,11 +2399,19 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfHtmlEndsWithTxt) {
 }
 
 TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNonHtmlDelayedCache) {
-  TestLooksLikeHtmlButIsNot(true);
+  TestPropertyCache(kImageFilenameLackingExt, true, false);
 }
 
 TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNonHtmlImmediateCache) {
-  TestLooksLikeHtmlButIsNot(false);
+  TestPropertyCache(kImageFilenameLackingExt, false, false);
+}
+
+TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNonHtmlThreadedCache) {
+  TestPropertyCache(kImageFilenameLackingExt, true, true);
+}
+
+TEST_F(ProxyInterfaceTest, ThreadedHtml) {
+  TestPropertyCache(kPageUrl, true, true);
 }
 
 // TODO(jmarantz): add a test with a simulated slow cache to see what happens

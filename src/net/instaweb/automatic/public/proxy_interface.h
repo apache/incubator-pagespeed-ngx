@@ -47,9 +47,7 @@ namespace net_instaweb {
 
 class AsyncFetch;
 class GoogleUrl;
-class Layout;
 class MessageHandler;
-class ProxyFetchPropertyCallback;
 class ProxyFetchPropertyCallbackCollector;
 class ProxyFetchFactory;
 class RequestHeaders;

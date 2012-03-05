@@ -49,6 +49,7 @@
 #include "net/instaweb/util/public/stl_util.h"          // for STLDeleteElements
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
@@ -158,7 +159,8 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       html_workers_(NULL),
       rewrite_workers_(NULL),
       low_priority_rewrite_workers_(NULL),
-      javascript_url_manager_(NULL) {
+      javascript_url_manager_(NULL),
+      thread_synchronizer_(new ThreadSynchronizer(thread_system_)) {
   // Make sure the excluded-attributes are in abc order so binary_search works.
   // Make sure to use the same comparator that we pass to the binary_search.
 #ifndef NDEBUG

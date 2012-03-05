@@ -59,6 +59,7 @@ class RewriteOptions;
 class RewriteStats;
 class Scheduler;
 class Statistics;
+class ThreadSynchronizer;
 class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
@@ -116,6 +117,9 @@ class ResourceManager {
   Statistics* statistics() const { return statistics_; }
   NamedLockManager* lock_manager() const { return lock_manager_; }
   RewriteDriverFactory* factory() const { return factory_; }
+  ThreadSynchronizer* thread_synchronizer() {
+    return thread_synchronizer_.get();
+  }
 
   // Writes the specified contents into the output resource, and marks it
   // as optimized. 'inputs' described the input resources that were used
@@ -464,6 +468,10 @@ class ResourceManager {
 
   // Used to create URLs for various filter javascript files.
   JavascriptUrlManager* javascript_url_manager_;
+
+  // Used to help inject sync-points into thread-intensive code for the purposes
+  // of controlling thread interleaving to test code for possible races.
+  scoped_ptr<ThreadSynchronizer> thread_synchronizer_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };

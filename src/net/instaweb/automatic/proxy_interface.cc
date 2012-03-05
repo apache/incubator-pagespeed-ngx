@@ -29,8 +29,8 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
+#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
@@ -46,8 +46,9 @@
 namespace net_instaweb {
 
 class AbstractMutex;
+class Layout;
 class MessageHandler;
-class PublisherConfig;
+class RewriteDriver;
 
 const char ProxyInterface::kBlinkRequestCount[] = "blink-requests";
 const char ProxyInterface::kBlinkCriticalLineRequestCount[] =
@@ -341,9 +342,8 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
   // One thing to look out for is if we serve a lot of JPGs that don't
   // end in .jpg or .jpeg -- we'll pessimistically assume they are HTML
   // and do pcache lookups for them.
-  AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
   ProxyFetchPropertyCallbackCollector* callback_collector =
-      new ProxyFetchPropertyCallbackCollector(mutex);
+      new ProxyFetchPropertyCallbackCollector(resource_manager_);
   if (!InitiatePropertyCacheLookup(is_resource_fetch,
                                    *gurl.get(),
                                    async_fetch,

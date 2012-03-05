@@ -39,10 +39,14 @@
 #include "net/instaweb/util/public/queued_alarm.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+
+const char ProxyFetch::kCollectorDone[] = "CollectorDone";
+const char ProxyFetch::kCollectorReady[] = "CollectorReady";
 
 ProxyFetchFactory::ProxyFetchFactory(ResourceManager* manager)
     : manager_(manager),
@@ -144,8 +148,9 @@ void ProxyFetchPropertyCallback::Done(bool success) {
 }
 
 ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
-    AbstractMutex* mutex)
-    : mutex_(mutex),
+    ResourceManager* resource_manager)
+    : mutex_(resource_manager->thread_system()->NewMutex()),
+      resource_manager_(resource_manager),
       detached_(false),
       done_(false),
       success_(true),
@@ -216,6 +221,9 @@ void ProxyFetchPropertyCallbackCollector::Done(
       (*post_lookup_task_vector.get())[i]->CallRun();
     }
   }
+  ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
+  sync->Signal(ProxyFetch::kCollectorReady);
+  sync->Wait(ProxyFetch::kCollectorDone);
   if (fetch != NULL) {
     fetch->PropertyCacheComplete(this, success);  // deletes this.
   } else if (do_delete) {

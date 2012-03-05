@@ -20,12 +20,12 @@
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 
-#include <cstddef>
-
-#include "base/scoped_ptr.h"            // for scoped_ptr
+#include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -72,17 +72,15 @@ class ProxyFetchPropertyCallbackCollectorTest : public ResourceManagerTestBase {
  protected:
   ProxyFetchPropertyCallbackCollectorTest() :
     thread_system_(ThreadSystem::CreateThreadSystem()),
-    mutex_(thread_system_->NewMutex()),
     resource_manager_(resource_manager()) { }
 
   scoped_ptr<ThreadSystem> thread_system_;
-  AbstractMutex* mutex_;
   ResourceManager* resource_manager_;
 
   // Create a collector.
   ProxyFetchPropertyCallbackCollector* MakeCollector() {
     ProxyFetchPropertyCallbackCollector* collector =
-        new ProxyFetchPropertyCallbackCollector(mutex_);
+        new ProxyFetchPropertyCallbackCollector(resource_manager_);
     // Collector should not contain any PropertyPages
     EXPECT_EQ(NULL, collector->GetPropertyPage(
         ProxyFetchPropertyCallback::kPagePropertyCache));

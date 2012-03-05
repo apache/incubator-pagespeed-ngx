@@ -23,7 +23,9 @@
 #ifndef NET_INSTAWEB_AUTOMATIC_PUBLIC_PROXY_FETCH_H_
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_PROXY_FETCH_H_
 
+#include <map>
 #include <set>
+#include <vector>
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/automatic/public/html_detector.h"
@@ -38,12 +40,10 @@ namespace net_instaweb {
 
 class AbstractMutex;
 class CacheUrlAsyncFetcher;
+class Function;
 class MessageHandler;
-class MockProxyFetch;
 class ProxyFetch;
-class ProxyFetchPropertyCallback;
 class ProxyFetchPropertyCallbackCollector;
-class ProxyFetchPropertyCallbackCollectorTest;
 class QueuedAlarm;
 class ResourceManager;
 class ResponseHeaders;
@@ -126,7 +126,7 @@ class ProxyFetchPropertyCallback : public PropertyPage {
 // Tracks a collection of property-cache lookups occuring in parallel.
 class ProxyFetchPropertyCallbackCollector {
  public:
-  explicit ProxyFetchPropertyCallbackCollector(AbstractMutex* mutex);
+  explicit ProxyFetchPropertyCallbackCollector(ResourceManager* manager);
   virtual ~ProxyFetchPropertyCallbackCollector();
 
   // Add a callback to be handled by this collector.
@@ -153,7 +153,7 @@ class ProxyFetchPropertyCallbackCollector {
   // Returns the collected PropertyPage with the corresponding cache_type.
   // Ownership of the object is retained by collector.
   PropertyPage* GetPropertyPageWithoutOwnership(
-        ProxyFetchPropertyCallback::CacheType cache_type);
+      ProxyFetchPropertyCallback::CacheType cache_type);
 
   // In our flow, property-page will be available via RewriteDriver only after
   // ProxyFetch is set. But there may be instances where the result may be
@@ -172,8 +172,9 @@ class ProxyFetchPropertyCallbackCollector {
  private:
   std::set<ProxyFetchPropertyCallback*> pending_callbacks_;
   std::map<ProxyFetchPropertyCallback::CacheType, PropertyPage*>
-      property_pages_;
+  property_pages_;
   scoped_ptr<AbstractMutex> mutex_;
+  ResourceManager* resource_manager_;
   bool detached_;             // protected by mutex_.
   bool done_;                 // protected by mutex_.
   bool success_;              // protected by mutex_; accessed after quiescence.
@@ -205,6 +206,12 @@ class ProxyFetchPropertyCallbackCollector {
 // multiple Writes, and depending on the timing, may move Flushes to
 // follow Writes and collapse multiple Flushes into one.
 class ProxyFetch : public SharedAsyncFetch {
+ public:
+  // These strings identify sync-points for reproducing races between
+  // PropertyCache lookup completion and Origin HTML Fetch completion.
+  static const char kCollectorDone[];
+  static const char kCollectorReady[];
+
  protected:
   // protected interface from AsyncFetch.
   virtual void HandleHeadersComplete();
