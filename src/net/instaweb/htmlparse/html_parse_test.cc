@@ -1152,6 +1152,38 @@ TEST_F(EventListManipulationTest, TestMoveElementIntoParent2) {
   CheckExpected("132");
 }
 
+TEST_F(EventListManipulationTest, TestMoveCurrentBefore) {
+  // Setup events.
+  HtmlTestingPeer::set_coalesce_characters(&html_parse_, false);
+  HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
+  EXPECT_TRUE(html_parse_.AddParentToSequence(node1_, node2_, div));
+  HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node3_, -1));
+  CheckExpected("<div>12</div>3");
+  HtmlTestingPeer::SetCurrent(&html_parse_, node3_);
+
+  // Test MoveCurrentBefore().
+  EXPECT_TRUE(html_parse_.MoveCurrentBefore(node2_));
+  CheckExpected("<div>132</div>");
+
+#ifdef NDEBUG
+  // Test that current_ pointing to end() does not crash in non-debug build.
+  // In debug build, there is a LOG(DFATAL), so we cannot run this.
+  // NOTE: We do not expect this case ever to happen in normal code.
+  EXPECT_FALSE(html_parse_.MoveCurrentBefore(node2_));
+  CheckExpected("<div>132</div>");
+#endif
+
+  // Test that current_ pointing to a containing object will not work.
+  HtmlElement* span = html_parse_.NewElement(NULL, HtmlName::kSpan);
+  EXPECT_TRUE(html_parse_.AddParentToSequence(div, div, span));
+  CheckExpected("<span><div>132</div></span>");
+  HtmlTestingPeer::SetCurrent(&html_parse_, span);
+
+  EXPECT_FALSE(html_parse_.MoveCurrentBefore(node2_));
+  CheckExpected("<span><div>132</div></span>");
+}
+
 TEST_F(EventListManipulationTest, TestCoalesceOnAdd) {
   CheckExpected("1");
   HtmlTestingPeer::AddEvent(&html_parse_, new HtmlCharactersEvent(node2_, -1));

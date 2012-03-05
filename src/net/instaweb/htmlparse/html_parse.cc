@@ -129,7 +129,10 @@ void HtmlParse::AddEvent(HtmlEvent* event) {
 
 // Testing helper method
 void HtmlParse::SetCurrent(HtmlNode* node) {
-  current_ = node->begin();
+  // Note: We use node->end() because that is often the place we want
+  // to edit an element. For example, you cannot move an element when
+  // current_ is not its end() event.
+  current_ = node->end();
 }
 
 HtmlCdataNode* HtmlParse::NewCdataNode(HtmlElement* parent,
@@ -590,39 +593,99 @@ void HtmlParse::FixParents(const HtmlEventListIterator& begin,
 
 bool HtmlParse::MoveCurrentInto(HtmlElement* new_parent) {
   bool moved = false;
-  HtmlNode* node = (*current_)->GetNode();
-  if ((node != NULL) && (node != new_parent) &&
-      IsRewritable(node) && IsRewritable(new_parent)) {
-    HtmlEventListIterator begin = node->begin();
-    HtmlEventListIterator end = node->end();
-    ++end;  // splice is non-inclusive for the 'end' iterator.
-
-    // Manipulate current_ so that when Flush() iterates it lands
-    // you on object after current_'s original position, rather
-    // than re-iterating over the new_parent's EndElement event.
-    current_ = end;
-    queue_.splice(new_parent->end(), queue_, begin, end);
-    --current_;
-
-    // TODO(jmarantz): According to
-    // http://www.cplusplus.com/reference/stl/list/splice/
-    // the moved iterators are no longer valid, and we
-    // are retaining them in the HtmlNode, so we need to fix them.
-    //
-    // However, in practice they appear to remain valid.  And
-    // I can't think of a reason they should be invalidated,
-    // as the iterator is a pointer to a node structure with
-    // next/prev pointers.  splice can mutate the next/prev pointers
-    // in place.
-    //
-    // See http://stackoverflow.com/questions/143156
-
-    FixParents(node->begin(), node->end(), new_parent);
-    moved = true;
-    need_sanity_check_ = true;
-    need_coalesce_characters_ = true;
+  if (current_ != queue_.end()) {
+    HtmlNode* current_node = (*current_)->GetNode();
+    if (MoveCurrentBeforeEvent(new_parent->end())) {
+      current_node->set_parent(new_parent);
+      moved = true;
+    }
+  } else {
+    DebugLogQueue();
+    LOG(DFATAL) << "MoveCurrentInto() called at queue_.end()";
   }
   return moved;
+}
+
+bool HtmlParse::MoveCurrentBefore(HtmlNode* element) {
+  bool moved = false;
+  DCHECK(current_ != queue_.end());
+  if (current_ != queue_.end()) {
+    HtmlNode* current_node = (*current_)->GetNode();
+    if (MoveCurrentBeforeEvent(element->begin())) {
+      current_node->set_parent(element->parent());
+      moved = true;
+    }
+  } else {
+    DebugLogQueue();
+    LOG(DFATAL) << "MoveCurrentBefore() called at queue_.end()";
+  }
+  return moved;
+}
+
+// NOTE: Only works if current_ is an end() event.
+// Additionally, there are common sense constraints like, current_node and
+// move_to must be within the event window, etc.
+bool HtmlParse::MoveCurrentBeforeEvent(const HtmlEventListIterator& move_to) {
+  bool ret = false;
+  if (move_to != queue_.end() && current_ != queue_.end()) {
+    HtmlNode* move_to_node = (*move_to)->GetNode();
+    HtmlNode* current_node = (*current_)->GetNode();
+    HtmlEventListIterator begin = current_node->begin();
+    HtmlEventListIterator end = current_node->end();
+
+    if (current_ == end && IsInEventWindow(begin) && IsInEventWindow(end) &&
+        IsInEventWindow(move_to) &&
+        !IsDescendantOf(move_to_node, current_node)) {
+      ++end;  // splice is non-inclusive for the 'end' iterator.
+
+      // Manipulate current_ so that when Flush() iterates it lands
+      // you on object after current_'s original position, rather
+      // than re-iterating over the new_parent's EndElement event.
+      current_ = end;
+      // NOTE: This will do Very Bad Things if move_to is between begin and end.
+      // The IsDescendantOf check above should guard against this if the DOM
+      // structure is preserved.
+      queue_.splice(move_to, queue_, begin, end);
+      --current_;
+
+      // TODO(jmarantz): According to
+      // http://www.cplusplus.com/reference/stl/list/splice/
+      // the moved iterators are no longer valid, and we
+      // are retaining them in the HtmlNode, so we need to fix them.
+      //
+      // However, in practice they appear to remain valid.  And
+      // I can't think of a reason they should be invalidated,
+      // as the iterator is a pointer to a node structure with
+      // next/prev pointers.  splice can mutate the next/prev pointers
+      // in place.
+      //
+      // See http://stackoverflow.com/questions/143156
+
+      need_sanity_check_ = true;
+      need_coalesce_characters_ = true;
+      ret = true;
+    }
+  }
+
+  return ret;
+}
+
+// TODO(sligocki): Make a member function of HtmlNode so that it reads
+// more grammatically correct?
+bool HtmlParse::IsDescendantOf(const HtmlNode* possible_child,
+                               const HtmlNode* possible_parent) {
+  // node walks up the DOM starting from possible_child.
+  const HtmlNode* node = possible_child;
+  while (node != NULL) {
+    if (node == possible_parent) {
+      // If possible_parent is a parent-of-parent-of-...
+      return true;
+    }
+    // Walk up further.
+    // Note: this walk ends at top level where parent() == NULL.
+    node = node->parent();
+  }
+  return false;
 }
 
 bool HtmlParse::DeleteElement(HtmlNode* node) {

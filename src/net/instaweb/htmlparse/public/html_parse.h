@@ -21,6 +21,7 @@
 
 #include <cstdarg>
 #include <cstddef>
+#include <list>
 #include <set>
 #include <vector>
 
@@ -38,6 +39,7 @@
 #include "net/instaweb/util/public/symbol_table.h"
 
 namespace net_instaweb {
+
 class DocType;
 class MessageHandler;
 class Timer;
@@ -139,45 +141,53 @@ class HtmlParse {
   // This and downstream filters will then see inserted elements but upstream
   // filters will not.
   // Note: In Javascript the first is called insertBefore and takes the arg
-  // in the oposite order.
+  // in the opposite order.
+  // Note: new_node must not already be in the DOM.
   void InsertElementBeforeElement(const HtmlNode* existing_node,
                                   HtmlNode* new_node);
   void InsertElementAfterElement(const HtmlNode* existing_node,
                                  HtmlNode* new_node);
 
-  // Add child element at the begining or end of existing_parent's children.
-  // Named after Javascript's appendChild method.
+  // Add a new child element at the beginning or end of existing_parent's
+  // children. Named after Javascript's appendChild method.
+  // Note: new_child must not already be in the DOM.
   void PrependChild(const HtmlElement* existing_parent, HtmlNode* new_child);
   void AppendChild(const HtmlElement* existing_parent, HtmlNode* new_child);
 
-  // Insert element before the current one.  current_ remains unchanged.
-  void InsertElementBeforeCurrent(HtmlNode* node);
+  // Insert a new element before the current one.  current_ remains unchanged.
+  // Note: new_node must not already be in the DOM.
+  void InsertElementBeforeCurrent(HtmlNode* new_node);
 
-  // Insert element after the current one, moving current_ to the new
+  // Insert a new element after the current one, moving current_ to the new
   // element.  In a Filter, the flush-loop will advance past this on
   // the next iteration.
-  void InsertElementAfterCurrent(HtmlNode* node);
+  // Note: new_node must not already be in the DOM.
+  void InsertElementAfterCurrent(HtmlNode* new_node);
 
   // Enclose element around two elements in a sequence.  The first
   // element must be the same as, or precede the last element in the
   // event-stream, and this is not checked, but the two elements do
   // not need to be adjacent.  They must have the same parent to start
   // with.
-  //
-  // This differs from MoveSequenceToParent in that the new parent is
-  // not yet in the DOM tree, and will be inserted around the
-  // elements.
   bool AddParentToSequence(HtmlNode* first, HtmlNode* last,
                            HtmlElement* new_parent);
 
-  // Moves a node-sequence to an already-existing parent, where they
-  // will be placed as the last elements in that parent.  Returns false
-  // if the operation could not be performed because either the node
-  // or its parent was partially or wholy flushed.
+  // Moves current node (and all children) to an already-existing parent,
+  // where they will be placed as the last elements in that parent.
+  // Returns false if the operation could not be performed because either
+  // the node or its parent was partially or wholly flushed.
+  // Note: Will not work if called from StartElement() event.
   //
-  // This differs from AddParentToSequence in that the parent is already
-  // in the DOM-tree.
+  // This differs from AppendChild() because it moves the current node,
+  // which is already in the DOM, rather than adding a new node.
   bool MoveCurrentInto(HtmlElement* new_parent);
+
+  // Moves current node (and all children) directly before existing_node.
+  // Note: Will not work if called from StartElement() event.
+  //
+  // This differs from InsertElementBeforeElement() because it moves the
+  // current node, which is already in the DOM, rather than adding a new node.
+  bool MoveCurrentBefore(HtmlNode* existing_node);
 
   // If the given node is rewritable, delete it and all of its children (if
   // any) and return true; otherwise, do nothing and return false.
@@ -363,6 +373,9 @@ class HtmlParse {
                                 HtmlNode* new_node);
   void InsertElementAfterEvent(const HtmlEventListIterator& event,
                                HtmlNode* new_node);
+  bool MoveCurrentBeforeEvent(const HtmlEventListIterator& move_to);
+  bool IsDescendantOf(const HtmlNode* possible_child,
+                      const HtmlNode* possible_parent);
   void SanityCheck();
   void CheckEventParent(HtmlEvent* event, HtmlElement* expect,
                         HtmlElement* actual);
