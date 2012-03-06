@@ -19,10 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_SCRIPT_TAG_SCANNER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_SCRIPT_TAG_SCANNER_H_
 
-#include <set>
-
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -65,8 +63,6 @@ class ScriptTagScanner {
   static GoogleString Normalized(const StringPiece& str);
 
   bool IsJsMime(const GoogleString& type_str);
-
-  std::set<GoogleString> javascript_mimetypes_;
 
   DISALLOW_COPY_AND_ASSIGN(ScriptTagScanner);
 };

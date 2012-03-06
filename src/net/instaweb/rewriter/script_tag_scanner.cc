@@ -18,7 +18,9 @@
 
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 
-#include <set>
+#include <algorithm>
+
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -50,9 +52,12 @@ static const char* const javascript_mimetypes[] = {
 };
 
 ScriptTagScanner::ScriptTagScanner(HtmlParse* html_parse) {
-  for (int i = 0; i < static_cast<int>(arraysize(javascript_mimetypes)); ++i) {
-    javascript_mimetypes_.insert(GoogleString(javascript_mimetypes[i]));
+#ifndef NDEBUG
+  CharStarCompareSensitive less_than;
+  for (int i = 0, n = arraysize(javascript_mimetypes); i < n - 1; ++i) {
+    DCHECK(less_than(javascript_mimetypes[i], javascript_mimetypes[i + 1]));
   }
+#endif
 }
 
 ScriptTagScanner::ScriptClassification ScriptTagScanner::ParseScriptElement(
@@ -145,7 +150,12 @@ GoogleString ScriptTagScanner::Normalized(const StringPiece& str) {
 }
 
 bool ScriptTagScanner::IsJsMime(const GoogleString& type_str) {
-  return javascript_mimetypes_.find(type_str) != javascript_mimetypes_.end();
+  CharStarCompareSensitive less_than;  // case-folding done by caller.
+  return std::binary_search(
+      javascript_mimetypes,
+      javascript_mimetypes + arraysize(javascript_mimetypes),
+      type_str.c_str(),
+      less_than);
 }
 
 }  // namespace net_instaweb
