@@ -298,6 +298,11 @@ void ResourceManagerTestBase::SetResponseWithDefaultHeaders(
   GoogleString url = AbsolutifyUrl(resource_name);
   ResponseHeaders response_headers;
   DefaultResponseHeaders(content_type, ttl_sec, &response_headers);
+  // Do not set Etag and Last-Modified headers to the constants since they make
+  // conditional refreshes always succeed and aren't updated in tests when the
+  // actual response is updated.
+  response_headers.RemoveAll(HttpAttributes::kEtag);
+  response_headers.RemoveAll(HttpAttributes::kLastModified);
   SetFetchResponse(url, response_headers, content);
 }
 

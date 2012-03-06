@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -91,6 +92,7 @@ class RewriteDriverTest : public ResourceManagerTestBase,
     return rewrite_driver()->base_url().Spec().as_string();
   }
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverTest);
 };
 
@@ -542,6 +544,11 @@ TEST_P(RewriteDriverTest, LoadResourcesFromTheWeb) {
   ResponseHeaders resource_headers;
   // This sets 1 year cache lifetime :/ TODO(sligocki): Shorten this.
   SetDefaultLongCacheHeaders(&kContentTypeCss, &resource_headers);
+  // Clear the Etag and Last-Modified headers since this
+  // SetDefaultLongCacheHeaders sets their value to constants which don't change
+  // when their value is updated.
+  resource_headers.RemoveAll(HttpAttributes::kEtag);
+  resource_headers.RemoveAll(HttpAttributes::kLastModified);
 
   // Set the fetch value.
   SetFetchResponse(resource_url, resource_headers, kResourceContents1);
@@ -743,6 +750,7 @@ class RewriteDriverInhibitTest : public RewriteDriverTest {
   HtmlElement* body_;
   HtmlElement* par_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverInhibitTest);
 };
 

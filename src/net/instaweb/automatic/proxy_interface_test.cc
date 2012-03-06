@@ -707,8 +707,6 @@ TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
   ResponseHeaders response_headers;
   GoogleString expected_response_headers_string = "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/css\r\n"
-      "Etag: W/0\r\n"
-      "Last-Modified: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
       "X-Background-Fetch: 0\r\n"
       "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
       "Expires: Tue, 02 Feb 2010 18:56:26 GMT\r\n"
@@ -737,6 +735,17 @@ TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
   request_headers.set_method(RequestHeaders::kHead);
   FetchFromProxy("I.embedded.css.pagespeed.cf.0.css", request_headers,
                  true, &text, &response_headers);
+
+  // This leads to a conditional refresh of the original resource.
+  expected_response_headers_string = "HTTP/1.1 200 OK\r\n"
+      "Content-Type: text/css\r\n"
+      "X-Background-Fetch: 0\r\n"
+      "Etag: W/PSA-0\r\n"
+      "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
+      "Expires: Tue, 02 Feb 2010 18:56:26 GMT\r\n"
+      "Cache-Control: max-age=300,private\r\n"
+      "X-Page-Speed: \r\n\r\n";
+
   EXPECT_EQ(expected_response_headers_string, response_headers.ToString());
   EXPECT_TRUE(text.empty());
 }

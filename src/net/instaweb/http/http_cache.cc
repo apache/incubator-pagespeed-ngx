@@ -120,12 +120,19 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     if ((state == CacheInterface::kAvailable) &&
         callback_->http_value()->Link(value(), headers, handler_) &&
         callback_->IsCacheValid(*headers)) {
-      bool is_valid = http_cache_->IsCurrentlyValid(*headers, now_ms);
       // While stale responses can potentially be used in case of fetch
-      // failures, responses invalidated via a flush cache should never be
+      // failures, responses invalidated via a cache flush should never be
       // returned under any scenario.
       // TODO(sriharis) : Should we keep statistic for number of invalidated
       // lookups, i.e., #times IsCacheValid returned false?
+      // Check that the response is currently valid and is fresh as per the
+      // caller's definition of freshness. For example, if we are using a
+      // two-level HTTPCache, while freshening a resource, this ensures that we
+      // check both caches and don't return a valid response from the L1 cache
+      // that is about to expire soon. We instead also check the L2 cache which
+      // could have a fresher response.
+      bool is_valid = http_cache_->IsCurrentlyValid(*headers, now_ms) &&
+          callback_->IsFresh(*headers);
       int http_status = headers->status_code();
       if (http_status == HttpStatus::kRememberNotCacheableStatusCode ||
           http_status == HttpStatus::kRememberFetchFailedStatusCode) {

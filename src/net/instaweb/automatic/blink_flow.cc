@@ -453,6 +453,11 @@ void BlinkFlow::TriggerProxyFetch(bool json_found) {
     SetFilterOptions(options);
     fetch = new SharedJsonFetch(base_fetch_, json_url_, manager_, options);
     num_shared_json_fetches_started_->IncBy(1);
+
+    // TODO(nikhilmadan): We are temporarily disabling all rewriters since
+    // SharedJsonFetch uses the output of ProxyFetch which may be rewritten. Fix
+    // this.
+    options_->ClearFilters();
   }
 
   // NewCustomRewriteDriver takes ownership of custom_options_.

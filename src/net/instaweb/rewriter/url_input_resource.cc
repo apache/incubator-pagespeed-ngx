@@ -95,20 +95,20 @@ class UrlResourceFetchCallback : public AsyncFetch {
  public:
   UrlResourceFetchCallback(ResourceManager* resource_manager,
                            const RewriteOptions* rewrite_options,
-                           HTTPValue* fallback_value) :
-      resource_manager_(resource_manager),
-      rewrite_options_(rewrite_options),
-      message_handler_(NULL),
-      fallback_value_(fallback_value),
-      success_(false),
-      no_cache_ok_(false),
-      fetcher_(NULL),
-      respect_vary_(rewrite_options->respect_vary()),
-      resource_cutoff_ms_(
-          rewrite_options->min_resource_cache_time_to_rewrite_ms()),
-      fallback_fetch_(NULL) {
-    // We intentionally do *not* keep a pointer to rewrite_options because
-    // the pointer may not be valid at callback time.
+                           HTTPValue* fallback_value)
+      : resource_manager_(resource_manager),
+        rewrite_options_(rewrite_options),
+        message_handler_(NULL),
+        success_(false),
+        no_cache_ok_(false),
+        fetcher_(NULL),
+        respect_vary_(rewrite_options->respect_vary()),
+        resource_cutoff_ms_(
+            rewrite_options->min_resource_cache_time_to_rewrite_ms()),
+        fallback_fetch_(NULL) {
+    if (fallback_value != NULL) {
+      fallback_value_.Link(fallback_value);
+    }
   }
   virtual ~UrlResourceFetchCallback() {}
 
@@ -181,15 +181,25 @@ class UrlResourceFetchCallback : public AsyncFetch {
     if (!success_) {
       return;
     }
-    // TODO(sligocki): Allow ConditionalFetch here
     AsyncFetch* fetch = this;
     if (rewrite_options_->serve_stale_if_fetch_error() &&
-        fallback_value_ != NULL && !fallback_value_->Empty()) {
+        !fallback_value_.Empty()) {
+      // Use a stale value if the fetch from the backend fails.
       fallback_fetch_ = new FallbackSharedAsyncFetch(
-          this, fallback_value_, message_handler_);
+          this, &fallback_value_, message_handler_);
       fallback_fetch_->set_fallback_responses_served(
           resource_manager_->rewrite_stats()->fallback_responses_served());
       fetch = fallback_fetch_;
+    }
+    if (!fallback_value_.Empty()) {
+      // Use the conditional headers in a stale response in cache while
+      // triggering the outgoing fetch.
+      ConditionalSharedAsyncFetch* conditional_fetch =
+          new ConditionalSharedAsyncFetch(
+              fetch, &fallback_value_, message_handler_);
+      conditional_fetch->set_num_conditional_refreshes(
+          resource_manager_->rewrite_stats()->num_conditional_refreshes());
+      fetch = conditional_fetch;
     }
     fetcher_->Fetch(fetch_url_, message_handler_, fetch);
   }
@@ -275,7 +285,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
  private:
   // TODO(jmarantz): consider request_headers.  E.g. will we ever
   // get different resources depending on user-agent?
-  HTTPValue* fallback_value_;
+  HTTPValue fallback_value_;
   bool success_;
 
   // If this is true, loading of non-cacheable resources will succeed.
@@ -296,14 +306,18 @@ class UrlResourceFetchCallback : public AsyncFetch {
 // response, you just want it to be asynchronously placed in the HttpCache.
 //
 // For example, this is used for fetches and refreshes of resources
-// discovered while rewriting HTML.
+// discovered while rewriting HTML. Note that this uses the Last-Modified and
+// If-None-Match headers of the stale value in cache to conditionally refresh
+// the resource.
 class FreshenFetchCallback : public UrlResourceFetchCallback {
  public:
   FreshenFetchCallback(const GoogleString& url, HTTPCache* http_cache,
                        ResourceManager* resource_manager,
                        RewriteDriver* rewrite_driver,
-                       const RewriteOptions* rewrite_options)
-      : UrlResourceFetchCallback(resource_manager, rewrite_options, NULL),
+                       const RewriteOptions* rewrite_options,
+                       HTTPValue* fallback_value)
+      : UrlResourceFetchCallback(resource_manager, rewrite_options,
+                                 fallback_value),
         url_(url),
         http_cache_(http_cache),
         rewrite_driver_(rewrite_driver) {
@@ -352,7 +366,8 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
     if (find_result == HTTPCache::kNotFound) {
       // Not found in cache. Invoke the fetcher.
       FreshenFetchCallback* cb = new FreshenFetchCallback(
-          url_, manager_->http_cache(), manager_, driver_, options_);
+          url_, manager_->http_cache(), manager_, driver_, options_,
+          fallback_http_value());
       cb->Fetch(manager_->url_async_fetcher(), manager_->message_handler());
     } else {
       driver_->decrement_async_events_count();
@@ -360,15 +375,13 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
     delete this;
   }
 
-  // Checks if the response is fresh enough. This is done in IsCacheValid()
-  // instead of Done() to handle two level caches. We may have an imminently
+  // Checks if the response is fresh enough. We may have an imminently
   // expiring resource in the L1 cache, but a fresh response in the L2 cache and
   // regular cache lookups will return the response in the L1.
-  virtual bool IsCacheValid(const ResponseHeaders& headers) {
+  virtual bool IsFresh(const ResponseHeaders& headers) {
     int64 date_ms = headers.date_ms();
     int64 expiry_ms = headers.CacheExpirationTimeMs();
-    return OptionsAwareHTTPCacheCallback::IsCacheValid(headers) &&
-        !manager_->IsImminentlyExpiring(date_ms, expiry_ms);
+    return !manager_->IsImminentlyExpiring(date_ms, expiry_ms);
   }
 
  private:

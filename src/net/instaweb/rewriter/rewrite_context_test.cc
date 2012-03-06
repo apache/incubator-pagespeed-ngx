@@ -2573,8 +2573,16 @@ TEST_F(RewriteContextTest, TestFreshen) {
   // Start with non-zero time, and init our resource..
   mock_timer()->AdvanceMs(kTtlMs / 2);
   InitTrimFilters(kRewrittenResource);
-  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
-                                kTtlMs / Timer::kSecondMs);
+
+  ResponseHeaders response_headers;
+  response_headers.Add(HttpAttributes::kContentType,
+                       kContentTypeCss.mime_type());
+  response_headers.SetDateAndCaching(mock_timer()->NowMs(), kTtlMs);
+  response_headers.Add(HttpAttributes::kEtag, "etag");
+  response_headers.SetStatusAndReason(HttpStatus::kOK);
+  response_headers.ComputeCaching();
+  mock_url_fetcher()->SetConditionalResponse(
+      "http://test.com/test.css", -1, "etag", response_headers, kDataIn);
 
   // First fetch + rewrite
   ValidateExpected("initial",
@@ -2583,6 +2591,8 @@ TEST_F(RewriteContextTest, TestFreshen) {
                                       "test.css", "css")));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  // Note that this only measures the number of bytes in the response body.
+  EXPECT_EQ(9, counting_url_async_fetcher()->byte_count());
   // Cache miss for the original. Both original and rewritten are inserted into
   // cache.
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
@@ -2598,16 +2608,18 @@ TEST_F(RewriteContextTest, TestFreshen) {
                                       "test.css", "css")));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
   // No HTTPCache lookups or writes.
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
 
   ClearStats();
+  response_headers.FixDateHeaders(mock_timer()->NowMs());
   // Advance close to TTL and rewrite. We should see an extra fetch.
   // Also upload a version with a newer timestamp.
-  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
-                                kTtlMs / Timer::kSecondMs);
+  mock_url_fetcher()->SetConditionalResponse(
+      "http://test.com/test.css", -1, "etag", response_headers, kDataIn);
   mock_timer()->AdvanceMs(kTtlMs / 2 - 3 * Timer::kMinuteMs);
   ValidateExpected("freshen",
                    CssLinkHref(kPath),
@@ -2615,6 +2627,11 @@ TEST_F(RewriteContextTest, TestFreshen) {
                                       "test.css", "css")));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(
+      1,
+      resource_manager()->rewrite_stats()->num_conditional_refreshes()->Get());
+  // No bytes are downloaded since we conditionally refresh the resource.
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
   // Miss for the original since it is within a minute of its expiration time.
   // The newly fetched resource is inserted into the cache.
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
@@ -2631,6 +2648,7 @@ TEST_F(RewriteContextTest, TestFreshen) {
                                       "test.css", "css")));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
   // Cache hit for the resource while freshening.
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, http_cache()->cache_misses()->Get());
@@ -2651,6 +2669,7 @@ TEST_F(RewriteContextTest, TestFreshen) {
   CallFetcherCallbacks();
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
   // Cache hit again from the freshen.
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, http_cache()->cache_misses()->Get());
@@ -2773,8 +2792,15 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   // Start with non-zero time, and init our resource.
   mock_timer()->AdvanceMs(kTtlMs / 2);
   InitTrimFilters(kRewrittenResource);
-  SetResponseWithDefaultHeaders(kPath, kContentTypeCss, kDataIn,
-                                kTtlMs / Timer::kSecondMs);
+  ResponseHeaders response_headers;
+  response_headers.Add(HttpAttributes::kContentType,
+                       kContentTypeCss.mime_type());
+  response_headers.SetDateAndCaching(mock_timer()->NowMs(), kTtlMs);
+  response_headers.Add(HttpAttributes::kEtag, "etag");
+  response_headers.SetStatusAndReason(HttpStatus::kOK);
+  response_headers.ComputeCaching();
+  mock_url_fetcher()->SetConditionalResponse(
+      "http://test.com/test.css", -1, "etag", response_headers, kDataIn);
 
   // First fetch + rewrite.
   ValidateExpected("initial",
@@ -2783,6 +2809,7 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
                                       "test.css", "css")));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(9, counting_url_async_fetcher()->byte_count());
   // Cache miss for the original. Both original and rewritten are inserted into
   // cache. Besides this, the metadata lookup fails and new metadata is inserted
   // into cache. Note that the metadata cache is L1 only.
@@ -2806,6 +2833,7 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
                                       "test.css", "css")));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
   // L1 cache hit for the metadata.
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, http_cache()->cache_misses()->Get());
@@ -2820,14 +2848,12 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   // Create a new fresh response and insert into the L2 cache. Do this by
   // creating a temporary HTTPCache with the L2 cache since we don't want to
   // alter the state of the L1 cache whose response is no longer fresh.
-  ResponseHeaders new_headers;
-  SetDefaultLongCacheHeaders(&kContentTypeCss, &new_headers);
-  int64 now_ms = mock_timer()->NowMs();
-  new_headers.SetDateAndCaching(now_ms, kTtlMs);
-  new_headers.ComputeCaching();
+  response_headers.FixDateHeaders(mock_timer()->NowMs());
+  mock_url_fetcher()->SetConditionalResponse(
+      "http://test.com/test.css", -1, "etag", response_headers, kDataIn);
   HTTPCache* l2_only_cache = new HTTPCache(&l2_cache, mock_timer(), hasher(),
                                            statistics());
-  l2_only_cache->Put(AbsolutifyUrl(kPath), &new_headers, kDataIn,
+  l2_only_cache->Put(AbsolutifyUrl(kPath), &response_headers, kDataIn,
                      message_handler());
   delete l2_only_cache;
 
@@ -2842,6 +2868,7 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
                                       "test.css", "css")));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
   // We find a fresh response in the L2 cache and insert it into the L1 cache.
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, http_cache()->cache_misses()->Get());
@@ -2864,6 +2891,7 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
                                       "test.css", "css")));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
   // L1 cache hit for the metadata. We try to freshen again but find a fresh
   // response in the L1 cache.
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
@@ -2902,6 +2930,10 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   // The original resource gets refetched and inserted into cache.
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
+  EXPECT_EQ(
+      1,
+      resource_manager()->rewrite_stats()->num_conditional_refreshes()->Get());
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
   // The cache hit is in the OutputCacheRevalidate flow.
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
@@ -3414,17 +3446,27 @@ TEST_F(ResourceUpdateTest, OnTheFly) {
 }
 
 TEST_F(ResourceUpdateTest, Rewritten) {
+  FetcherUpdateDateHeaders();
   InitTrimFilters(kRewrittenResource);
 
   int64 ttl_ms = 5 * Timer::kMinuteMs;
 
   // 1) Set first version of resource.
-  SetResponseWithDefaultHeaders(kOriginalUrl, kContentTypeCss,
-                                " init ", ttl_ms / 1000);
+  ResponseHeaders response_headers;
+  response_headers.SetStatusAndReason(HttpStatus::kOK);
+  response_headers.Add(HttpAttributes::kContentType,
+                       kContentTypeCss.mime_type());
+  response_headers.Add(HttpAttributes::kEtag, "original");
+  response_headers.SetDateAndCaching(mock_timer()->NowMs(), ttl_ms);
+  response_headers.ComputeCaching();
+  mock_url_fetcher()->SetConditionalResponse(
+      "http://test.com/a.css", -1, "original", response_headers, " init ");
+
   ClearStats();
   EXPECT_EQ("init", RewriteSingleResource("first_load"));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(6, counting_url_async_fetcher()->byte_count());
   EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 2) Advance time, but not so far that resources have expired.
@@ -3434,16 +3476,20 @@ TEST_F(ResourceUpdateTest, Rewritten) {
   EXPECT_EQ("init", RewriteSingleResource("advance_time"));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
   EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 3) Change resource.
-  SetResponseWithDefaultHeaders(kOriginalUrl, kContentTypeCss,
-                                " new ", ttl_ms / 1000);
+  response_headers.Replace(HttpAttributes::kEtag, "new");
+  mock_url_fetcher()->SetConditionalResponse(
+      "http://test.com/a.css", -1, "new", response_headers, " new ");
+
   ClearStats();
   // Rewrite should still be the same, because it's found in cache.
   EXPECT_EQ("init", RewriteSingleResource("stale_content"));
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
   EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 4) Advance time so that old cached input resource expires.
@@ -3453,6 +3499,21 @@ TEST_F(ResourceUpdateTest, Rewritten) {
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
   EXPECT_EQ(1, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(5, counting_url_async_fetcher()->byte_count());
+  EXPECT_EQ(0, file_system()->num_input_file_opens());
+
+  // 5) Advance time so that the new input resource expires and is conditionally
+  // refreshed.
+  mock_timer()->AdvanceMs(2 * ttl_ms);
+  ClearStats();
+  // Rewrite should now use new resource.
+  EXPECT_EQ("new", RewriteSingleResource("updated_content"));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
+  EXPECT_EQ(
+      1,
+      resource_manager()->rewrite_stats()->num_conditional_refreshes()->Get());
   EXPECT_EQ(0, file_system()->num_input_file_opens());
 }
 

@@ -91,11 +91,6 @@ class UrlNamer {
                               bool* success,
                               Function* func, MessageHandler* handler);
 
-  // Configure custom options.
-  virtual void ConfigureCustomOptions(const GoogleUrl& request_url,
-                                      const RequestHeaders& request_headers,
-                                      RewriteOptions* options);
-
   // Determines whether the naming policy incorporates proxying resources
   // using a central proxy domain.
   virtual bool ProxyMode() const { return false; }

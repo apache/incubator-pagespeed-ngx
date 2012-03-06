@@ -48,9 +48,11 @@ TEST_F(AddInstrumentationFilterTest, TestScriptInjection) {
       "</script>"
       "</head><body>"
       "<script type='text/javascript'>"
-      "function g(){new Image().src="
+      "function g(){var ifr=0;"
+      "if(window.parent != window){ifr=1}"
+      "new Image().src="
       "'http://example.com/beacon?ets=load:'+"
-      "(Number(new Date())-window.mod_pagespeed_start)+'&url='+"
+      "(Number(new Date())-window.mod_pagespeed_start)+'&ifr='+ifr+'&url='+"
       "encodeURIComponent('";
   expected_str += HtmlParseTestBaseNoAlloc::kTestDomain;
   expected_str += "test_script_injection.html');};"

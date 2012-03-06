@@ -230,6 +230,9 @@ class PropertyCache {
   // immediately.
   void set_enabled(bool x) { enabled_ = x; }
 
+  // Indicates if the property cache is enabled.
+  bool enabled() const { return enabled_; }
+
   // Gets the underlying key associated with cache_key and a Cohort.
   // This is the key used for the CacheInterface provided to the
   // constructor.  This is made visible for testing, to make it

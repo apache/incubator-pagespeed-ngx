@@ -283,10 +283,6 @@ RewriteOptions* ProxyInterface::GetCustomOptions(
     custom_options->set_running_furious_experiment(false);
   }
 
-  // Add custom options based on the request.
-  resource_manager_->url_namer()->ConfigureCustomOptions(
-      *request_url, *request_headers, custom_options.get());
-
   return custom_options.release();
 }
 
@@ -374,7 +370,9 @@ bool ProxyInterface::InitiatePropertyCacheLookup(
   bool added_callback = false;
   ProxyFetchPropertyCallback* property_callback = NULL;
   PropertyCache* page_property_cache = NULL;
-  if (!is_resource_fetch && UrlMightHavePropertyCacheEntry(request_url)) {
+  if (!is_resource_fetch &&
+      resource_manager_->page_property_cache()->enabled() &&
+      UrlMightHavePropertyCacheEntry(request_url)) {
     page_property_cache = resource_manager_->page_property_cache();
     AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
     property_callback = new ProxyFetchPropertyCallback(
@@ -396,14 +394,16 @@ bool ProxyInterface::InitiatePropertyCacheLookup(
   if (client_id != NULL) {
     PropertyCache* client_property_cache =
         resource_manager_->client_property_cache();
-    AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
-    ProxyFetchPropertyCallback* callback =
-        new ProxyFetchPropertyCallback(
-            ProxyFetchPropertyCallback::kClientPropertyCache,
-            callback_collector, mutex);
-    callback_collector->AddCallback(callback);
-    added_callback = true;
-    client_property_cache->Read(client_id, callback);
+    if (client_property_cache->enabled()) {
+      AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
+      ProxyFetchPropertyCallback* callback =
+          new ProxyFetchPropertyCallback(
+              ProxyFetchPropertyCallback::kClientPropertyCache,
+              callback_collector, mutex);
+      callback_collector->AddCallback(callback);
+      added_callback = true;
+      client_property_cache->Read(client_id, callback);
+    }
   }
 
   if (page_property_cache != NULL) {

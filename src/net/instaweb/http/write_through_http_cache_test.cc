@@ -53,25 +53,39 @@ class FakeHttpCacheCallback : public HTTPCache::Callback {
   FakeHttpCacheCallback()
       : called_(false),
         result_(HTTPCache::kNotFound),
-        first_call_(true),
+        first_call_cache_valid_(true),
         first_cache_valid_(true),
-        second_cache_valid_(true) {}
+        second_cache_valid_(true),
+        first_call_cache_fresh_(true),
+        first_cache_fresh_(true),
+        second_cache_fresh_(true) {}
 
   virtual void Done(HTTPCache::FindResult result) {
     called_ = true;
     result_ = result;
   }
   virtual bool IsCacheValid(const ResponseHeaders& headers) {
-    bool result = first_call_? first_cache_valid_ : second_cache_valid_;
-    first_call_ = false;
+    bool result = first_call_cache_valid_ ?
+        first_cache_valid_ : second_cache_valid_;
+    first_call_cache_valid_ = false;
+    return result;
+  }
+
+  virtual bool IsFresh(const ResponseHeaders& headers) {
+    bool result = first_call_cache_fresh_ ?
+        first_cache_fresh_ : second_cache_fresh_;
+    first_call_cache_fresh_ = false;
     return result;
   }
 
   bool called_;
   HTTPCache::FindResult result_;
-  bool first_call_;
+  bool first_call_cache_valid_;
   bool first_cache_valid_;
   bool second_cache_valid_;
+  bool first_call_cache_fresh_;
+  bool first_cache_fresh_;
+  bool second_cache_fresh_;
 };
 
 class WriteThroughHTTPCacheTest : public testing::Test {
@@ -497,6 +511,114 @@ TEST_F(WriteThroughHTTPCacheTest, CacheInvalidation) {
   ClearStats();
   FakeHttpCacheCallback callback4;
   callback4.second_cache_valid_ = false;
+  http_cache_->Find(key_, &message_handler_, &callback4);
+  EXPECT_TRUE(callback4.called_);
+  // ... only goes to cache1_ and hits.
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheMisses));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(1, cache1_.num_hits());
+  EXPECT_EQ(0, cache1_.num_misses());
+  EXPECT_EQ(0, cache1_.num_inserts());
+  EXPECT_EQ(0, cache1_.num_deletes());
+  EXPECT_EQ(0, cache2_.num_hits());
+  EXPECT_EQ(0, cache2_.num_misses());
+  EXPECT_EQ(0, cache2_.num_inserts());
+  EXPECT_EQ(0, cache2_.num_deletes());
+  EXPECT_EQ(HTTPCache::kFound, callback4.result_);
+}
+
+// Unit testing cache freshness.
+TEST_F(WriteThroughHTTPCacheTest, CacheFreshness) {
+  ClearStats();
+  ResponseHeaders meta_data_in;
+  InitHeaders(&meta_data_in, "max-age=300");
+  http_cache_->Put(key_, &meta_data_in, content_, &message_handler_);
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheMisses));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(0, cache1_.num_hits());
+  EXPECT_EQ(0, cache1_.num_misses());
+  EXPECT_EQ(1, cache1_.num_inserts());
+  EXPECT_EQ(0, cache1_.num_deletes());
+  EXPECT_EQ(0, cache2_.num_hits());
+  EXPECT_EQ(0, cache2_.num_misses());
+  EXPECT_EQ(1, cache2_.num_inserts());
+  EXPECT_EQ(0, cache2_.num_deletes());
+
+  // Check with both caches freshe...
+  ClearStats();
+  FakeHttpCacheCallback callback1;
+  http_cache_->Find(key_, &message_handler_, &callback1);
+  EXPECT_TRUE(callback1.called_);
+  // ... only goes to cache1_ and hits.
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheMisses));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(1, cache1_.num_hits());
+  EXPECT_EQ(0, cache1_.num_misses());
+  EXPECT_EQ(0, cache1_.num_inserts());
+  EXPECT_EQ(0, cache1_.num_deletes());
+  EXPECT_EQ(0, cache2_.num_hits());
+  EXPECT_EQ(0, cache2_.num_misses());
+  EXPECT_EQ(0, cache2_.num_inserts());
+  EXPECT_EQ(0, cache2_.num_deletes());
+  EXPECT_EQ(HTTPCache::kFound, callback1.result_);
+
+  // Check with local cache not fresh and remote cache fresh...
+  ClearStats();
+  FakeHttpCacheCallback callback2;
+  callback2.first_cache_fresh_ = false;
+  http_cache_->Find(key_, &message_handler_, &callback2);
+  EXPECT_TRUE(callback2.called_);
+  // ... hits both cache1_ and cache_2.
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheMisses));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(1, cache1_.num_hits());
+  EXPECT_EQ(0, cache1_.num_misses());
+  EXPECT_EQ(0, cache1_.num_inserts());
+  EXPECT_EQ(0, cache1_.num_deletes());
+  EXPECT_EQ(1, cache2_.num_hits());
+  EXPECT_EQ(0, cache2_.num_misses());
+  EXPECT_EQ(0, cache2_.num_inserts());
+  EXPECT_EQ(0, cache2_.num_deletes());
+  // The insert in cache1_ is a reinsert.
+  EXPECT_EQ(1, cache1_.num_identical_reinserts());
+  EXPECT_EQ(HTTPCache::kFound, callback2.result_);
+
+  // Check with both caches not fresh...
+  ClearStats();
+  FakeHttpCacheCallback callback3;
+  callback3.first_cache_fresh_ = false;
+  callback3.second_cache_fresh_ = false;
+  http_cache_->Find(key_, &message_handler_, &callback3);
+  EXPECT_TRUE(callback3.called_);
+  // ... hits both cache1_ and cache_2. Both aren't fresh. So http_cache_
+  // misses.
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheMisses));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(1, cache1_.num_hits());
+  EXPECT_EQ(0, cache1_.num_misses());
+  EXPECT_EQ(0, cache1_.num_inserts());
+  EXPECT_EQ(0, cache1_.num_deletes());
+  EXPECT_EQ(1, cache2_.num_hits());
+  EXPECT_EQ(0, cache2_.num_misses());
+  EXPECT_EQ(0, cache2_.num_inserts());
+  EXPECT_EQ(0, cache2_.num_deletes());
+  EXPECT_EQ(HTTPCache::kNotFound, callback3.result_);
+  EXPECT_FALSE(callback3.fallback_http_value()->Empty());
+
+  // Check with local cache fresh and remote cache not fresh...
+  ClearStats();
+  FakeHttpCacheCallback callback4;
+  callback4.second_cache_fresh_ = false;
   http_cache_->Find(key_, &message_handler_, &callback4);
   EXPECT_TRUE(callback4.called_);
   // ... only goes to cache1_ and hits.

@@ -56,6 +56,7 @@ class HTTPCacheTest : public testing::Test {
       called_ = false;
       result_ = HTTPCache::kNotFound;
       cache_valid_ = true;
+      fresh_ = true;
       return this;
     }
     virtual void Done(HTTPCache::FindResult result) {
@@ -63,12 +64,17 @@ class HTTPCacheTest : public testing::Test {
       result_ = result;
     }
     virtual bool IsCacheValid(const ResponseHeaders& headers) {
-      // For unit testing we are simply stubbing IsCacheValid.
+      // For unit testing, we are simply stubbing IsCacheValid.
       return cache_valid_;
+    }
+    virtual bool IsFresh(const ResponseHeaders& headers) {
+      // For unit testing, we are simply stubbing IsFresh.
+      return fresh_;
     }
     bool called_;
     HTTPCache::FindResult result_;
     bool cache_valid_;
+    bool fresh_;
   };
 
   static int64 ParseDate(const char* start_date) {
@@ -383,6 +389,35 @@ TEST_F(HTTPCacheTest, CacheInvalidation) {
   // Check with cache invalidated.
   EXPECT_EQ(HTTPCache::kNotFound,
             Find("mykey", &value, &meta_data_out, &message_handler_, false));
+}
+
+TEST_F(HTTPCacheTest, IsFresh) {
+  const char kDataIn[] = "content";
+  ResponseHeaders meta_data_in, meta_data_out;
+  InitHeaders(&meta_data_in, "max-age=300");
+  http_cache_.Put("mykey", &meta_data_in, kDataIn, &message_handler_);
+  HTTPValue value;
+  Callback callback;
+  callback.fresh_ = true;
+  // Check with IsFresh set to true.
+  EXPECT_EQ(HTTPCache::kFound,
+            FindWithCallback("mykey", &value, &meta_data_out, &message_handler_,
+                             &callback));
+  StringPiece contents;
+  EXPECT_TRUE(value.ExtractContents(&contents));
+  EXPECT_STREQ(kDataIn, contents);
+  EXPECT_TRUE(callback.fallback_http_value()->Empty());
+
+  callback.Reset();
+  value.Clear();
+  callback.fresh_ = false;
+  // Check with IsFresh set to false.
+  EXPECT_EQ(HTTPCache::kNotFound,
+            FindWithCallback("mykey", &value, &meta_data_out, &message_handler_,
+                             &callback));
+  EXPECT_TRUE(value.Empty());
+  EXPECT_TRUE(callback.fallback_http_value()->ExtractContents(&contents));
+  EXPECT_STREQ(kDataIn, contents);
 }
 
 }  // namespace net_instaweb

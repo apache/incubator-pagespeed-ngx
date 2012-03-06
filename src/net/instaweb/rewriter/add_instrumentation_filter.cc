@@ -45,8 +45,10 @@ const char kHeadScript[] =
 // Then our timing info, e.g. "load:123", will be appended.
 const char kTailScriptFormat[] =
     "<script type='text/javascript'>"
-    "function g(){new Image().src='%s%s'+"
-    "(Number(new Date())-window.mod_pagespeed_start)+'&url='+"
+    "function g(){var ifr=0;"
+    "if(window.parent != window){ifr=1}"
+    "new Image().src='%s%s'+"
+    "(Number(new Date())-window.mod_pagespeed_start)+'&ifr='+ifr+'&url='+"
     "encodeURIComponent('%s');};"
     "var f=window.addEventListener;if(f){f('load',g,false);}else{"
     "f=window.attachEvent;if(f){f('onload',g);}}"

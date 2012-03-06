@@ -94,6 +94,15 @@ class HTTPCache {
     // implementation you probably want to use.
     virtual bool IsCacheValid(const ResponseHeaders& headers) = 0;
 
+    // A method that allows client Callbacks to check if the response in cache
+    // is fresh enough, in addition to it being valid.  This is used while
+    // freshening  resources to check that the response in cache is not only
+    // valid, but is also not going to expire anytime soon.
+    // Note that if the response in cache is valid but not fresh, the HTTPCache
+    // calls Callback::Done with find_result = kNotFound and fills in
+    // fallback_http_value() with the cached response.
+    virtual bool IsFresh(const ResponseHeaders& headers) { return true; }
+
     // TODO(jmarantz): specify the dataflow between http_value and
     // response_headers.
     HTTPValue* http_value() { return &http_value_; }
@@ -200,7 +209,7 @@ class HTTPCache {
   }
 
   virtual void set_remember_not_cacheable_ttl_seconds(int64 value) {
-    DCHECK(value >= 0);
+    DCHECK_LE(0, value);
     if (value >= 0) {
       remember_not_cacheable_ttl_seconds_ = value;
     }
@@ -211,7 +220,7 @@ class HTTPCache {
   }
 
   virtual void set_remember_fetch_failed_ttl_seconds(int64 value) {
-    DCHECK(value >= 0);
+    DCHECK_LE(0, value);
     if (value >= 0) {
       remember_fetch_failed_ttl_seconds_ = value;
     }

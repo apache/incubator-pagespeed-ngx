@@ -75,6 +75,10 @@ class FallbackCacheCallback: public HTTPCache::Callback {
     return client_callback_->IsCacheValid(headers);
   }
 
+  virtual bool IsFresh(const ResponseHeaders& headers) {
+    return client_callback_->IsFresh(headers);
+  }
+
   virtual void SetTimingMs(int64 timing_value_ms) {
     client_callback_->timing_info()->set_cache2_ms(timing_value_ms);
   }
@@ -126,6 +130,10 @@ class Cache1Callback: public HTTPCache::Callback {
 
   virtual bool IsCacheValid(const ResponseHeaders& headers) {
     return client_callback_->IsCacheValid(headers);
+  }
+
+  virtual bool IsFresh(const ResponseHeaders& headers) {
+    return client_callback_->IsFresh(headers);
   }
 
   virtual void SetTimingMs(int64 timing_value_ms) {
