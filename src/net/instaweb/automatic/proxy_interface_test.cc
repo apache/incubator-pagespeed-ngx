@@ -523,7 +523,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
       delay_pcache_key = pcache->CacheKey(delay_http_cache_key, cohort);
       delay_cache()->DelayKey(delay_pcache_key);
       if (thread_pcache) {
-        sync->set_enabled(true);
+        sync->EnableForPrefix(ProxyFetch::kCollectorPrefix);
         delay_cache()->DelayKey(delay_http_cache_key);
         pool.reset(new QueuedWorkerPool(
             1, resource_manager()->thread_system()));
@@ -561,7 +561,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
       WaitForFetch();
       pool->ShutDown();
     } else {
-      FetchFromProxy(kImageFilenameLackingExt, true, &image_out, &headers_out);
+      FetchFromProxy(url, true, &image_out, &headers_out);
       if (delay_pcache) {
         delay_cache()->ReleaseKey(delay_pcache_key);
       }
@@ -1534,14 +1534,14 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
   headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
   headers.SetStatusAndReason(HttpStatus::kOK);
   headers.ComputeCaching();
-  SetFetchResponse(AbsolutifyUrl("page.html"), headers, CssLinkHref("a.css"));
+  SetFetchResponse(AbsolutifyUrl(kPageUrl), headers, CssLinkHref("a.css"));
 
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
                                 kHtmlCacheTimeSec * 2);
 
   text.clear();
   headers.Clear();
-  FetchFromProxy("page.html", true, &text, &headers);
+  FetchFromProxy(kPageUrl, true, &text, &headers);
   CheckBackgroundFetch(headers, false);
   CheckNumBackgroundFetches(1);
   CheckHeaders(headers, kContentTypeHtml);
@@ -1774,14 +1774,14 @@ TEST_F(ProxyInterfaceTest, MinResourceTimeZero) {
       kHtmlCacheTimeSec * Timer::kSecondMs);
   resource_manager()->ComputeSignature(options);
 
-  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
+  SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml,
                                 CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
                                 kHtmlCacheTimeSec * 2);
 
   GoogleString text;
   ResponseHeaders headers;
-  FetchFromProxy("page.html", true, &text, &headers);
+  FetchFromProxy(kPageUrl, true, &text, &headers);
   EXPECT_EQ(CssLinkHref(Encode(kTestDomain, "cf", "0", "a.css", "css")), text);
 }
 
@@ -1794,40 +1794,40 @@ TEST_F(ProxyInterfaceTest, MinResourceTimeLarge) {
       4 * kHtmlCacheTimeSec * Timer::kSecondMs);
   resource_manager()->ComputeSignature(options);
 
-  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
+  SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml,
                                 CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
                                 kHtmlCacheTimeSec * 2);
 
   GoogleString text;
   ResponseHeaders headers;
-  FetchFromProxy("page.html", true, &text, &headers);
+  FetchFromProxy(kPageUrl, true, &text, &headers);
   EXPECT_EQ(CssLinkHref("a.css"), text);
 }
 
 TEST_F(ProxyInterfaceTest, CacheRequests) {
   ResponseHeaders html_headers;
   DefaultResponseHeaders(kContentTypeHtml, kHtmlCacheTimeSec, &html_headers);
-  SetFetchResponse(AbsolutifyUrl("page.html"), html_headers, "1");
+  SetFetchResponse(AbsolutifyUrl(kPageUrl), html_headers, "1");
   ResponseHeaders resource_headers;
   DefaultResponseHeaders(kContentTypeCss, kHtmlCacheTimeSec, &resource_headers);
   SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "a");
 
   GoogleString text;
   ResponseHeaders actual_headers;
-  FetchFromProxy("page.html", true, &text, &actual_headers);
+  FetchFromProxy(kPageUrl, true, &text, &actual_headers);
   EXPECT_EQ("1", text);
   text.clear();
   FetchFromProxy("style.css", true, &text, &actual_headers);
   EXPECT_EQ("a", text);
 
-  SetFetchResponse(AbsolutifyUrl("page.html"), html_headers, "2");
+  SetFetchResponse(AbsolutifyUrl(kPageUrl), html_headers, "2");
   SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "b");
 
   // Original response is still cached in both cases, so we do not
   // fetch the new values.
   text.clear();
-  FetchFromProxy("page.html", true, &text, &actual_headers);
+  FetchFromProxy(kPageUrl, true, &text, &actual_headers);
   EXPECT_EQ("1", text);
   text.clear();
   FetchFromProxy("style.css", true, &text, &actual_headers);
@@ -1981,7 +1981,7 @@ TEST_F(ProxyInterfaceTest, NoCacheVaryHtml) {
   DefaultResponseHeaders(kContentTypeHtml, kHtmlCacheTimeSec, &html_headers);
   html_headers.Add(HttpAttributes::kVary, HttpAttributes::kUserAgent);
   html_headers.ComputeCaching();
-  SetFetchResponse(AbsolutifyUrl("page.html"), html_headers, "1");
+  SetFetchResponse(AbsolutifyUrl(kPageUrl), html_headers, "1");
   ResponseHeaders resource_headers;
   DefaultResponseHeaders(kContentTypeCss, kHtmlCacheTimeSec, &resource_headers);
   resource_headers.Add(HttpAttributes::kVary, HttpAttributes::kUserAgent);
@@ -1990,19 +1990,19 @@ TEST_F(ProxyInterfaceTest, NoCacheVaryHtml) {
 
   GoogleString text;
   ResponseHeaders actual_headers;
-  FetchFromProxy("page.html", true, &text, &actual_headers);
+  FetchFromProxy(kPageUrl, true, &text, &actual_headers);
   EXPECT_EQ("1", text);
   text.clear();
   FetchFromProxy("style.css", true, &text, &actual_headers);
   EXPECT_EQ("a", text);
 
-  SetFetchResponse(AbsolutifyUrl("page.html"), html_headers, "2");
+  SetFetchResponse(AbsolutifyUrl(kPageUrl), html_headers, "2");
   SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "b");
 
   // HTML was not cached because of Vary: User-Agent header.
   // So we do fetch the new value.
   text.clear();
-  FetchFromProxy("page.html", true, &text, &actual_headers);
+  FetchFromProxy(kPageUrl, true, &text, &actual_headers);
   EXPECT_EQ("2", text);
   // Resource was cached because we have respect_vary == false.
   // So we serve the old value.
@@ -2022,7 +2022,7 @@ TEST_F(ProxyInterfaceTest, NoCacheVaryAll) {
   DefaultResponseHeaders(kContentTypeHtml, kHtmlCacheTimeSec, &html_headers);
   html_headers.Add(HttpAttributes::kVary, HttpAttributes::kUserAgent);
   html_headers.ComputeCaching();
-  SetFetchResponse(AbsolutifyUrl("page.html"), html_headers, "1");
+  SetFetchResponse(AbsolutifyUrl(kPageUrl), html_headers, "1");
   ResponseHeaders resource_headers;
   DefaultResponseHeaders(kContentTypeCss, kHtmlCacheTimeSec, &resource_headers);
   resource_headers.Add(HttpAttributes::kVary, HttpAttributes::kUserAgent);
@@ -2031,19 +2031,19 @@ TEST_F(ProxyInterfaceTest, NoCacheVaryAll) {
 
   GoogleString text;
   ResponseHeaders actual_headers;
-  FetchFromProxy("page.html", true, &text, &actual_headers);
+  FetchFromProxy(kPageUrl, true, &text, &actual_headers);
   EXPECT_EQ("1", text);
   text.clear();
   FetchFromProxy("style.css", true, &text, &actual_headers);
   EXPECT_EQ("a", text);
 
-  SetFetchResponse(AbsolutifyUrl("page.html"), html_headers, "2");
+  SetFetchResponse(AbsolutifyUrl(kPageUrl), html_headers, "2");
   SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "b");
 
   // Original response was not cached in either case, so we do fetch the
   // new value.
   text.clear();
-  FetchFromProxy("page.html", true, &text, &actual_headers);
+  FetchFromProxy(kPageUrl, true, &text, &actual_headers);
   EXPECT_EQ("2", text);
   text.clear();
   FetchFromProxy("style.css", true, &text, &actual_headers);
@@ -2061,10 +2061,10 @@ TEST_F(ProxyInterfaceTest, Blacklist) {
   SetResponseWithDefaultHeaders("tiny_mce.js", kContentTypeJavascript, "", 100);
   ValidateNoChanges("blacklist", content);
 
-  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml, content, 0);
+  SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml, content, 0);
   GoogleString text_out;
   ResponseHeaders headers_out;
-  FetchFromProxy("page.html", true, &text_out, &headers_out);
+  FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_STREQ(content, text_out);
 }
 
@@ -2308,7 +2308,7 @@ TEST_F(ProxyInterfaceTest, PropCacheFilter) {
   CreateFilterCallback create_filter_callback;
   factory()->AddCreateFilterCallback(&create_filter_callback);
 
-  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
+  SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml,
                                 "<div><p></p></div>", 0);
   GoogleString text_out;
   ResponseHeaders headers_out;
@@ -2429,7 +2429,7 @@ TEST_F(ProxyInterfaceTest, BothClientAndPropertyCache) {
   // second call to Wait(ProxyFetch::kCollectorDone), since we only offer
   // one Signal here.
   ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
-  sync->set_enabled(true);
+  sync->EnableForPrefix(ProxyFetch::kCollectorPrefix);
   sync->Signal(ProxyFetch::kCollectorDone);
 
   RequestHeaders request_headers;
@@ -2437,11 +2437,10 @@ TEST_F(ProxyInterfaceTest, BothClientAndPropertyCache) {
   request_headers.Add(HttpAttributes::kXGooglePagespeedClientId, "1");
 
   DisableAjax();
-  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
+  SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml,
                                 "<div><p></p></div>", 0);
   GoogleString response;
-  FetchFromProxy("page.html", request_headers, true, &response,
-                 &response_headers);
+  FetchFromProxy(kPageUrl, request_headers, true, &response, &response_headers);
   sync->Wait(ProxyFetch::kCollectorReady);  // Clears Signal from PFPCC::Done.
 }
 

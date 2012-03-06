@@ -210,6 +210,7 @@ class ProxyFetch : public SharedAsyncFetch {
   // These strings identify sync-points for reproducing races between
   // PropertyCache lookup completion and Origin HTML Fetch completion.
   static const char kCollectorDone[];
+  static const char kCollectorPrefix[];
   static const char kCollectorReady[];
 
  protected:

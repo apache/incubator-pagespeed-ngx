@@ -68,8 +68,8 @@ class ThreadSynchronizer::SyncPoint {
 };
 
 ThreadSynchronizer::ThreadSynchronizer(ThreadSystem* thread_system)
-    : thread_system_(thread_system),
-      enabled_(false),
+    : enabled_(false),
+      thread_system_(thread_system),
       map_mutex_(thread_system->NewMutex()) {
 }
 
@@ -89,11 +89,25 @@ ThreadSynchronizer::SyncPoint* ThreadSynchronizer::GetSyncPoint(
 }
 
 void ThreadSynchronizer::DoWait(const char* key) {
-  GetSyncPoint(key)->Wait();
+  if (MatchesPrefix(key)) {
+    GetSyncPoint(key)->Wait();
+  }
 }
 
 void ThreadSynchronizer::DoSignal(const char* key) {
-  GetSyncPoint(key)->Signal();
+  if (MatchesPrefix(key)) {
+    GetSyncPoint(key)->Signal();
+  }
+}
+
+bool ThreadSynchronizer::MatchesPrefix(const char* key) const {
+  StringPiece key_piece(key);
+  for (int i = 0, n = prefixes_.size(); i < n; ++i) {
+    if (key_piece.starts_with(prefixes_[i])) {
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace net_instaweb

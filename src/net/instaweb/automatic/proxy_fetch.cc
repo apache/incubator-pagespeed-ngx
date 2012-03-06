@@ -45,8 +45,9 @@
 
 namespace net_instaweb {
 
-const char ProxyFetch::kCollectorDone[] = "CollectorDone";
-const char ProxyFetch::kCollectorReady[] = "CollectorReady";
+const char ProxyFetch::kCollectorDone[] = "Collector:Done";
+const char ProxyFetch::kCollectorPrefix[] = "Collector:";
+const char ProxyFetch::kCollectorReady[] = "Collector:Ready";
 
 ProxyFetchFactory::ProxyFetchFactory(ResourceManager* manager)
     : manager_(manager),

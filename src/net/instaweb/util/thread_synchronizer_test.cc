@@ -50,8 +50,8 @@ class ThreadSynchronizerTest : public testing::Test {
  protected:
   void AppendChar(char c) {
     buffer_ += c;
-    synchronizer_.Signal("thread_started");
-    synchronizer_.Wait("unblock_thread");
+    synchronizer_.Signal("Thread:started");
+    synchronizer_.Wait("Thread:unblock");
   }
 
   void AppendStringOneCharAtATime(const StringPiece& str) {
@@ -59,6 +59,16 @@ class ThreadSynchronizerTest : public testing::Test {
       sequence_->Add(MakeFunction(
           this, &ThreadSynchronizerTest::AppendChar, str[i]));
     }
+  }
+
+  void TestSyncDisabled() {
+    // Queue up a bunch of functions.  By default, synchronizer_
+    // is disabled so they will just execute without delay.  That is,
+    // the calls to Wait and Signal in AppendChar will be no-ops.
+    AppendStringOneCharAtATime("135");
+    sequence_->Add(new WorkerTestBase::NotifyRunFunction(sync_point_.get()));
+    sync_point_->Wait();
+    EXPECT_EQ("135", buffer_);
   }
 
   scoped_ptr<ThreadSystem> thread_system_;
@@ -70,51 +80,55 @@ class ThreadSynchronizerTest : public testing::Test {
 };
 
 TEST_F(ThreadSynchronizerTest, SyncDisabled) {
-  // Queue up a bunch of functions.  By default, synchronizer_
-  // is disabled so they will just execute without delay.  That is,
-  // the calls to Wait and Signal in AppendChar will be no-ops.
-  AppendStringOneCharAtATime("135");
-  sequence_->Add(new WorkerTestBase::NotifyRunFunction(sync_point_.get()));
-  sync_point_->Wait();
-  EXPECT_EQ("135", buffer_);
+  TestSyncDisabled();
+}
+
+TEST_F(ThreadSynchronizerTest, SyncWrongPrefix) {
+  synchronizer_.EnableForPrefix("WrongPrefix_");
+
+  // Despite having enabled the synchronizer, the prefix supplied does
+  // not match the prefix we use in AppendChar above.  Thus the
+  // testcase will behave exactly as if there were no sync-points, as
+  // in SyncDisabled.  The sync-points will be no-ops.
+  TestSyncDisabled();
 }
 
 TEST_F(ThreadSynchronizerTest, SyncEnabled) {
-  synchronizer_.set_enabled(true);
+  synchronizer_.EnableForPrefix("Thread:");
   AppendStringOneCharAtATime("135");
   sequence_->Add(new WorkerTestBase::NotifyRunFunction(sync_point_.get()));
 
   // Wait for the thread to initiate, then signal it so it can complete the
   // first character.
-  synchronizer_.Wait("thread_started");
+  synchronizer_.Wait("Thread:started");
   EXPECT_EQ("1", buffer_);
   buffer_ += "2";
-  synchronizer_.Signal("unblock_thread");
-  synchronizer_.Wait("thread_started");
+  synchronizer_.Signal("Thread:unblock");
+  synchronizer_.Wait("Thread:started");
   EXPECT_EQ("123", buffer_);
   buffer_ += "4";
-  synchronizer_.Signal("unblock_thread");
-  synchronizer_.Wait("thread_started");
+  synchronizer_.Signal("Thread:unblock");
+  synchronizer_.Wait("Thread:started");
   EXPECT_EQ("12345", buffer_);
-  synchronizer_.Signal("unblock_thread");
+  synchronizer_.Signal("Thread:unblock");
   sync_point_->Wait();
   EXPECT_EQ("12345", buffer_);
 }
 
 TEST_F(ThreadSynchronizerTest, SignalInAdvance) {
-  synchronizer_.set_enabled(true);
-  synchronizer_.Signal("unblock_thread");
-  synchronizer_.Signal("unblock_thread");
-  synchronizer_.Signal("unblock_thread");
+  synchronizer_.EnableForPrefix("Thread:");
+  synchronizer_.Signal("Thread:unblock");
+  synchronizer_.Signal("Thread:unblock");
+  synchronizer_.Signal("Thread:unblock");
   AppendStringOneCharAtATime("135");
   sequence_->Add(new WorkerTestBase::NotifyRunFunction(sync_point_.get()));
   sync_point_->Wait();
 
-  // It's an error to let the 3 pending "thread_started" signals go unwaited
+  // It's an error to let the 3 pending "Thread:started" signals go unwaited
   // on exit, so "wait" for them now -- it won't actually even block.
-  synchronizer_.Wait("thread_started");
-  synchronizer_.Wait("thread_started");
-  synchronizer_.Wait("thread_started");
+  synchronizer_.Wait("Thread:started");
+  synchronizer_.Wait("Thread:started");
+  synchronizer_.Wait("Thread:started");
 
   EXPECT_EQ("135", buffer_);
 }

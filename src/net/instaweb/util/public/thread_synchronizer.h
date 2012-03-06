@@ -26,6 +26,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -57,8 +58,14 @@ class ThreadSynchronizer {
 
   // By default, the synchronizer is a no-op so we can inject sync-points
   // in production code at sensitive points with minimal overhead.  To
-  // enable in a test, call set_enabled(true);
-  void set_enabled(bool x) { enabled_ = x; }
+  // enable in a test, call EnableForPrefix("Prefix"), which will enable
+  // any synchronization key beginning with "Prefix".
+  //
+  // EnableForPrefix should be called prior to any threading.
+  void EnableForPrefix(StringPiece prefix) {
+    enabled_ = true;
+    prefix.CopyToString(StringVectorAdd(&prefixes_));
+  }
 
   // Waits for a thread to signal the specified key.
   void Wait(const char* key) {
@@ -83,11 +90,13 @@ class ThreadSynchronizer {
   SyncPoint* GetSyncPoint(const GoogleString& key);
   void DoWait(const char* key);
   void DoSignal(const char* key);
+  bool MatchesPrefix(const char* key) const;
 
-  ThreadSystem* thread_system_;
   bool enabled_;
+  ThreadSystem* thread_system_;
   SyncMap sync_map_;
   scoped_ptr<AbstractMutex> map_mutex_;
+  StringVector prefixes_;
 
   DISALLOW_COPY_AND_ASSIGN(ThreadSynchronizer);
 };
