@@ -69,6 +69,41 @@ bool RemoveCookieString(const StringPiece& cookie_name,
   return cookie_found;
 }
 
+// Helper that removes unneeded values from a headers proto array, without
+// changing the order of items kept.
+void RemoveUnneeded(const std::vector<bool>& needed,
+                    protobuf::RepeatedPtrField<NameValue>* headers) {
+  CHECK_EQ(static_cast<size_t>(headers->size()), needed.size());
+
+  int in = 0;
+  int out = 0;
+  int size = headers->size();
+  // Invariant: [0, out) are all values we need.
+  //            [out, in) are all values we don't need.
+  //            [in, size) are unknown.
+  while (in < size) {
+    if (needed[in]) {
+      // If in == out:
+      //    The swap is is a no-op, and we grow [0, out),
+      //    shrink [in, size) by 1 from left, and keep [out, in) as empty
+      //    in between
+      // If in != out:
+      //    The valid region gets grown by one new entry, the invalid one is
+      //    shifted one to the right.
+      headers->SwapElements(in, out);
+      ++in;
+      ++out;
+    } else {
+      ++in;
+    }
+  }
+
+  while (size != out) {
+    headers->RemoveLast();
+    --size;
+  }
+}
+
 }  // namespace
 
 class MessageHandler;
@@ -311,26 +346,16 @@ template<class Proto> bool Headers<Proto>::RemoveAllFromSet(
 
   // If we removed anything, we update the proto as well.
   if (removed_anything) {
-    // Protobufs lack a convenient remove method for array elements, so
-    // we construct a new protobuf and swap them.
+    // Remove all headers that are slated for removal.
+    protobuf::RepeatedPtrField<NameValue>* headers = proto_->mutable_header();
+    std::vector<bool> to_keep;
+    to_keep.reserve(headers->size());
 
-    // Copy all headers that aren't slated for removal.
-    Proto temp_proto;
-    for (int i = 0, n = NumAttributes(); i < n; ++i) {
-      if (names.find(Name(i)) == names.end()) {
-        NameValue* name_value = temp_proto.add_header();
-        name_value->set_name(Name(i));
-        name_value->set_value(Value(i));
-      }
+    for (int i = 0, n = headers->size(); i < n; ++i) {
+      to_keep.push_back(names.find(headers->Get(i).name()) == names.end());
     }
 
-    // Copy back to our protobuf.
-    proto_->clear_header();
-    for (int i = 0, n = temp_proto.header_size(); i < n; ++i) {
-      NameValue* name_value = proto_->add_header();
-      name_value->set_name(temp_proto.header(i).name());
-      name_value->set_value(temp_proto.header(i).value());
-    }
+    RemoveUnneeded(to_keep, headers);
   }
 
   return removed_anything;
@@ -338,28 +363,16 @@ template<class Proto> bool Headers<Proto>::RemoveAllFromSet(
 
 template<class Proto> void Headers<Proto>::RemoveAllWithPrefix(
     const StringPiece& prefix) {
-  // Protobufs lack a convenient remove method for array elements, so
-  // we construct a new protobuf and swap them.
+  protobuf::RepeatedPtrField<NameValue>* headers = proto_->mutable_header();
+  std::vector<bool> to_keep;
+  to_keep.reserve(headers->size());
 
-  // Copy all headers that aren't slated for removal.
-  Proto temp_proto;
-  for (int i = 0, n = NumAttributes(); i < n; ++i) {
-    StringPiece name(Name(i));
-    if (!StringCaseStartsWith(name, prefix)) {
-      NameValue* name_value = temp_proto.add_header();
-      name_value->set_name(Name(i));
-      name_value->set_value(Value(i));
-    }
+  for (int i = 0, n = headers->size(); i < n; ++i) {
+    to_keep.push_back(!StringCaseStartsWith(headers->Get(i).name(), prefix));
   }
+  RemoveUnneeded(to_keep, headers);
 
-  // Copy back to our protobuf.
   map_.reset(NULL);  // Map must be repopulated before next lookup operation.
-  proto_->clear_header();
-  for (int i = 0, n = temp_proto.header_size(); i < n; ++i) {
-    NameValue* name_value = proto_->add_header();
-    name_value->set_name(temp_proto.header(i).name());
-    name_value->set_value(temp_proto.header(i).value());
-  }
 }
 
 template<class Proto> void Headers<Proto>::Replace(
