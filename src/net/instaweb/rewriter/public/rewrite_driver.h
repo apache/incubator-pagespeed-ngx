@@ -22,6 +22,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -182,6 +183,12 @@ class RewriteDriver : public HtmlParse {
 
   // Return a pointer to the response headers that filters can update
   // before the first flush.
+  //
+  // TODO(sligocki): We should work out a better way for RewriteDriver to
+  // make ResponseHeaders always available filters for reading and available
+  // for writing until the first flush. Currently if these are edited after
+  // the first flush, the behavior is undefined, but probably the headers have
+  // already been sent, so the changes are silently ignored.
   ResponseHeaders* response_headers_ptr() {
     return response_headers_;
   }

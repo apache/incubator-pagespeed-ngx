@@ -26,7 +26,9 @@
 #include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
+
 class HtmlElement;
+class ResponseHeaders;
 class RewriteDriver;
 class Statistics;
 class Variable;
@@ -41,7 +43,7 @@ class MetaTagFilter : public CommonFilter {
 
   static void Initialize(Statistics* stats);
 
-  virtual void StartDocumentImpl() {}
+  virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element) {}
 
   // Rewrite tags in the following form:
@@ -57,6 +59,8 @@ class MetaTagFilter : public CommonFilter {
   virtual const char* Name() const { return "ConvertMetaTags"; }
 
  private:
+  ResponseHeaders* response_headers_;
+
   // Stats on how many tags we moved.
   Variable* converted_meta_tag_count_;
 
