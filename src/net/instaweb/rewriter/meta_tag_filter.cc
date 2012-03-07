@@ -41,7 +41,8 @@ const char kConvertedMetaTags[] = "converted_meta_tags";
 namespace net_instaweb {
 
 MetaTagFilter::MetaTagFilter(RewriteDriver* rewrite_driver)
-    : CommonFilter(rewrite_driver) {
+    : CommonFilter(rewrite_driver),
+      response_headers_(NULL) {
   Statistics* stats = driver_->statistics();
   converted_meta_tag_count_ = stats->GetVariable(kConvertedMetaTags);
 }
@@ -52,12 +53,19 @@ void MetaTagFilter::Initialize(Statistics* stats) {
 
 MetaTagFilter::~MetaTagFilter() {}
 
+void MetaTagFilter::StartDocumentImpl() {
+  // This pointer will be nulled at first Flush to guarantee that we don't
+  // write it after that (won't work).
+  response_headers_ = driver_->response_headers_ptr();
+}
+
+
 void MetaTagFilter::EndElementImpl(HtmlElement* element) {
-  // If headers are null, they got reset due to a flush, so don't
-  // try to convert any tags into headers (which were already finalized).
-  // Also don't add meta tags to headers if they're inside a noscript tag.
-  ResponseHeaders* headers = driver_->response_headers_ptr();
-  if (headers == NULL || noscript_element() != NULL ||
+  // If response_headers_ are null, they got reset due to a flush, so don't
+  // try to convert any tags into response_headers_ (which were already
+  // finalized). Also don't add meta tags to response_headers_ if they're
+  // inside a noscript tag.
+  if (response_headers_ == NULL || noscript_element() != NULL ||
       element->keyword() != HtmlName::kMeta) {
     return;
   }
@@ -82,7 +90,7 @@ void MetaTagFilter::EndElementImpl(HtmlElement* element) {
     }
     // Check to see if we have this value already.  If we do,
     // there's no need to add it in again.
-    if (headers->HasValue(attribute, content)) {
+    if (response_headers_->HasValue(attribute, content)) {
       return;
     }
 
@@ -93,7 +101,7 @@ void MetaTagFilter::EndElementImpl(HtmlElement* element) {
       if (type == NULL || !type->IsHtmlLike()) {
         return;
       }
-      if (headers->MergeContentType(content)) {
+      if (response_headers_->MergeContentType(content)) {
         converted_meta_tag_count_->Add(1);
         return;
       }
@@ -105,7 +113,7 @@ void MetaTagFilter::EndElementImpl(HtmlElement* element) {
         HtmlName::kCharset);
     if (charset != NULL) {
       GoogleString type = StrCat("; charset=", charset->value());
-      if (headers->MergeContentType(type)) {
+      if (response_headers_->MergeContentType(type)) {
         converted_meta_tag_count_->Add(1);
       }
     }
@@ -113,7 +121,7 @@ void MetaTagFilter::EndElementImpl(HtmlElement* element) {
 }
 
 void MetaTagFilter::Flush() {
-  driver_->set_response_headers_ptr(NULL);
+  response_headers_ = NULL;
 }
 
 }  // namespace net_instaweb
