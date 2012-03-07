@@ -622,4 +622,8 @@ RewriteOptions* RewriteDriverFactory::NewRewriteOptions() {
   return new RewriteOptions;
 }
 
+RewriteOptions* RewriteDriverFactory::NewRewriteOptionsForQuery() {
+  return NewRewriteOptions();
+}
+
 }  // namespace net_instaweb

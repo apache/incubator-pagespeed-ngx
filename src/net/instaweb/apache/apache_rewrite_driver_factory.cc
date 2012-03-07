@@ -469,4 +469,8 @@ RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptions() {
   return new ApacheConfig(hostname_identifier_);
 }
 
+RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptionsForQuery() {
+  return new ApacheConfig("query");
+}
+
 }  // namespace net_instaweb

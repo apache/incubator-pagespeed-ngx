@@ -238,6 +238,11 @@ class RewriteDriverFactory {
   // a blank set of options.
   virtual RewriteOptions* NewRewriteOptions();
 
+  // Creates a new empty RewriteOptions object meant for use for
+  // custom options from queries or headers. Default implementation just
+  // forwards to NewRewriteOptions().
+  virtual RewriteOptions* NewRewriteOptionsForQuery();
+
   // get/set the version placed into the X-[Mod-]Page(s|-S)peed header.
   const GoogleString& version_string() const { return version_string_; }
   void set_version_string(const StringPiece& version_string) {

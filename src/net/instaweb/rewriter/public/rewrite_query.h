@@ -15,6 +15,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_QUERY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_QUERY_H_
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -22,7 +23,9 @@ namespace net_instaweb {
 
 class GoogleUrl;
 class MessageHandler;
+class QueryParams;
 class RequestHeaders;
+class RewriteDriverFactory;
 class RewriteOptions;
 
 class RewriteQuery {
@@ -38,22 +41,26 @@ class RewriteQuery {
     kNoneFound
   };
 
-  // Scans query parameters and request headers for "ModPagespeed"
-  // flags, populating 'options' if there were any "ModPagespeed"
-  // flags found, and they were all parsed successfully.  If any were
-  // parsed unsuccessfully kInvalid is returned.  If none found,
-  // kNoneFound is returned. It also removes the "ModPagespeed" flags from the
-  // query_params of the url and the request_headers.
+  // Scans request_url's query parameters and request_headers for "ModPagespeed"
+  // flags, creating and populating *'options' if any were found they were all
+  // parsed successfully.  If any were parsed unsuccessfully kInvalid is
+  // returned.  If none found, kNoneFound is returned. It also removes the
+  // "ModPagespeed" flags from the query_params of the url and the
+  // request_headers.
   //
   // TODO(jmarantz): consider allowing an alternative prefix to "ModPagespeed"
   // to accomodate other Page Speed Automatic applications that might want to
   // brand differently.
-  static Status Scan(GoogleUrl* request_url,
+  static Status Scan(RewriteDriverFactory* factory,
+                     GoogleUrl* request_url,
                      RequestHeaders* request_headers,
-                     RewriteOptions* options,
+                     scoped_ptr<RewriteOptions>* options,
                      MessageHandler* handler);
 
  private:
+  static bool MayHaveCustomOptions(const QueryParams& params,
+                                   const RequestHeaders& headers);
+
   static Status ScanNameValue(const StringPiece& name,
                               const GoogleString& value,
                               RewriteOptions* options,

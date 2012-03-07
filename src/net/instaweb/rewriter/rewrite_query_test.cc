@@ -22,6 +22,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -29,7 +30,7 @@
 
 namespace net_instaweb {
 
-class RewriteQueryTest : public ::testing::Test {
+class RewriteQueryTest : public ResourceManagerTestBase {
  protected:
   RewriteOptions* ParseAndScan(const StringPiece& in_query,
                                const StringPiece& in_header_string) {
@@ -54,7 +55,8 @@ class RewriteQueryTest : public ::testing::Test {
     }
 
     GoogleUrl url(StrCat("http://www.test.com/index.jsp?", in_query));
-    if (RewriteQuery::Scan(&url, &request_headers, options_.get(), &handler_)
+    if (RewriteQuery::Scan(factory_.get(), &url, &request_headers,
+                           &options_, &handler_)
         != RewriteQuery::kSuccess) {
       options_.reset(NULL);
     }

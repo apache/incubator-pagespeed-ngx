@@ -147,6 +147,10 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // ApacheConfig.
   virtual RewriteOptions* NewRewriteOptions();
 
+  // As above, but set a name on the ApacheConfig noting that it came from
+  // a query.
+  virtual RewriteOptions* NewRewriteOptionsForQuery();
+
   // Initializes all the statistics objects created transitively by
   // ApacheRewriteDriverFactory, including apache-specific and
   // platform-independent statistics.

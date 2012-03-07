@@ -409,8 +409,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
     GoogleUrl gurl(absolute_url);
     RequestHeaders request_headers;
     ApacheRequestToRequestHeaders(*request, &request_headers);
-    ApacheConfig query_options("query");
-    switch (RewriteQuery::Scan(&gurl, &request_headers, &query_options,
+    scoped_ptr<RewriteOptions> query_options;
+    switch (RewriteQuery::Scan(factory, &gurl, &request_headers, &query_options,
                                manager->message_handler())) {
       case RewriteQuery::kInvalid:
         return NULL;
@@ -420,7 +420,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
         use_custom_options = true;
         RewriteOptions* merged_options = factory->NewRewriteOptions();
         merged_options->Merge(*options);
-        merged_options->Merge(query_options);
+        merged_options->Merge(*query_options.get());
         // Don't run any experiments if we're handling a query params request.
         merged_options->set_running_furious_experiment(false);
         manager->ComputeSignature(merged_options);

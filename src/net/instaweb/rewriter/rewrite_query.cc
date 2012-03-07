@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "net/instaweb/rewriter/public/rewrite_query.h"
+
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/google_url.h"
@@ -20,6 +21,7 @@
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 
 namespace net_instaweb {
@@ -59,18 +61,31 @@ static struct Int64QueryParam int64_query_params_[] = {
 //
 // So we will check for explicit parameters we want to support.
 RewriteQuery::Status RewriteQuery::Scan(
+    RewriteDriverFactory* factory,
     GoogleUrl* request_url,
     RequestHeaders* request_headers,
-    RewriteOptions* options,
+    scoped_ptr<RewriteOptions>* options,
     MessageHandler* handler) {
-  Status status = kNoneFound;
+  options->reset(NULL);
 
-  QueryParams query_params, temp_query_params;
+  QueryParams query_params;
   query_params.Parse(request_url->Query());
+
+  // See if anything looks even remotely like one of our options before doing
+  // any more work.
+  if (!MayHaveCustomOptions(query_params, *request_headers)) {
+    return kNoneFound;
+  }
+
+  options->reset(factory->NewRewriteOptionsForQuery());
+
+  Status status = kNoneFound;
+  QueryParams temp_query_params;
   for (int i = 0; i < query_params.size(); ++i) {
     const GoogleString* value = query_params.value(i);
     if (value != NULL) {
-      switch (ScanNameValue(query_params.name(i), *value, options, handler)) {
+      switch (ScanNameValue(
+                  query_params.name(i), *value, options->get(), handler)) {
         case kNoneFound:
           temp_query_params.Add(query_params.name(i), *value);
           break;
@@ -95,7 +110,7 @@ RewriteQuery::Status RewriteQuery::Scan(
   RequestHeaders temp_request_headers;
   for (int i = 0, n = request_headers->NumAttributes(); i < n; ++i) {
     switch (ScanNameValue(request_headers->Name(i), request_headers->Value(i),
-                          options, handler)) {
+                          options->get(), handler)) {
       case kNoneFound:
         temp_request_headers.Add(request_headers->Name(i),
                                  request_headers->Value(i));
@@ -109,19 +124,33 @@ RewriteQuery::Status RewriteQuery::Scan(
   }
   if (status == kSuccess) {
     request_headers->CopyFrom(temp_request_headers);
-  }
 
-  // This semantic provides for a mod_pagespeed server that has no rewriting
-  // options configured at all.  Turning the module on should some reasonable
-  // defaults.  Note that if any filters are explicitly set with
-  // ModPagespeedFilters=..., then the call to
-  // DisableAllFiltersNotExplicitlyEnabled() below will make the 'level'
-  // irrelevant.
-  if (status == kSuccess) {
-    options->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+    // This semantic provides for a mod_pagespeed server that has no rewriting
+    // options configured at all.  Turning the module on should provide some
+    // reasonable defaults.  Note that if any filters are explicitly set with
+    // ModPagespeedFilters=..., then the call to
+    // DisableAllFiltersNotExplicitlyEnabled() below will make the 'level'
+    // irrelevant.
+    options->get()->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   }
 
   return status;
+}
+
+bool RewriteQuery::MayHaveCustomOptions(
+    const QueryParams& params, const RequestHeaders& headers) {
+  for (int i = 0, n = params.size(); i < n; ++i) {
+    if (StringPiece(params.name(i)).starts_with(kModPagespeed)) {
+      return true;
+    }
+  }
+
+  for (int i = 0, n = headers.NumAttributes(); i < n; ++i) {
+    if (StringPiece(headers.Name(i)).starts_with(kModPagespeed)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 RewriteQuery::Status RewriteQuery::ScanNameValue(

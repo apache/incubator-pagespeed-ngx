@@ -289,10 +289,11 @@ RewriteOptions* ProxyInterface::GetCustomOptions(
 ProxyInterface::OptionsBoolPair ProxyInterface::GetQueryOptions(
     GoogleUrl* request_url, RequestHeaders* request_headers,
     MessageHandler* handler) {
-  scoped_ptr<RewriteOptions> query_options(resource_manager_->NewOptions());
+  scoped_ptr<RewriteOptions> query_options;
   bool success = false;
-  switch (RewriteQuery::Scan(request_url, request_headers,
-                             query_options.get(), handler)) {
+  switch (RewriteQuery::Scan(
+              resource_manager_->factory(), request_url, request_headers,
+              &query_options, handler)) {
     case RewriteQuery::kInvalid:
       query_options.reset(NULL);
       break;
