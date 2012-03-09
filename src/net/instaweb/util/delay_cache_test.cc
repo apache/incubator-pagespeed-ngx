@@ -37,12 +37,16 @@ const size_t kMaxSize = 100;
 
 class DelayCacheTest : public CacheTestBase {
  protected:
-  DelayCacheTest() : lru_cache_(kMaxSize), cache_(&lru_cache_) {}
+  DelayCacheTest()
+      : lru_cache_(kMaxSize),
+        thread_system_(ThreadSystem::CreateThreadSystem()),
+        cache_(&lru_cache_, thread_system_.get()) {}
 
   virtual CacheInterface* Cache() { return &cache_; }
 
  protected:
   LRUCache lru_cache_;
+  scoped_ptr<ThreadSystem> thread_system_;
   DelayCache cache_;
 
  private:

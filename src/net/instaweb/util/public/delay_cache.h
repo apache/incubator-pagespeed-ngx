@@ -31,6 +31,7 @@
 
 #include <map>
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
@@ -39,13 +40,15 @@
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class SharedString;
+class ThreadSystem;
 
 // See file comment
 class DelayCache : public CacheInterface {
  public:
   // Note: takes ownership of nothing.
-  explicit DelayCache(CacheInterface* cache);
+  DelayCache(CacheInterface* cache, ThreadSystem* thread_system);
   virtual ~DelayCache();
 
   // Reimplementations of CacheInterface methods.
@@ -77,6 +80,7 @@ class DelayCache : public CacheInterface {
   typedef std::map<GoogleString, DelayCallback*> DelayMap;
 
   CacheInterface* cache_;
+  scoped_ptr<AbstractMutex> mutex_;
   StringSet delay_requests_;
   DelayMap delay_map_;
   DISALLOW_COPY_AND_ASSIGN(DelayCache);

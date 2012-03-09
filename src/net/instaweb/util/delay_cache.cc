@@ -25,8 +25,10 @@
 
 #include <utility>  // for pair.
 #include "base/logging.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/shared_string.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -70,7 +72,10 @@ class DelayCache::DelayCallback : public CacheInterface::Callback {
   DISALLOW_COPY_AND_ASSIGN(DelayCallback);
 };
 
-DelayCache::DelayCache(CacheInterface* cache) : cache_(cache) {}
+DelayCache::DelayCache(CacheInterface* cache, ThreadSystem* thread_system)
+    : cache_(cache),
+      mutex_(thread_system->NewMutex()) {
+}
 
 DelayCache::~DelayCache() {
   CHECK(delay_requests_.empty());
@@ -78,27 +83,41 @@ DelayCache::~DelayCache() {
 }
 
 void DelayCache::LookupComplete(DelayCallback* callback) {
-  StringSet::iterator p = delay_requests_.find(callback->key());
-  if (p == delay_requests_.end()) {
+  {
+    ScopedMutex lock(mutex_.get());
+    StringSet::iterator p = delay_requests_.find(callback->key());
+    if (p != delay_requests_.end()) {
+      CHECK(delay_map_.find(callback->key()) == delay_map_.end());
+      delay_map_[callback->key()] = callback;
+      callback = NULL;  // Don't run it; we are delaying it.
+    }
+  }
+
+  // Release lock first; then run callback.
+  if (callback != NULL) {
     callback->Run();
-  } else {
-    CHECK(delay_map_.find(callback->key()) == delay_map_.end());
-    delay_map_[callback->key()] = callback;
   }
 }
 
 void DelayCache::DelayKey(const GoogleString& key) {
+  ScopedMutex lock(mutex_.get());
   delay_requests_.insert(key);
 }
 
 void DelayCache::ReleaseKeyInSequence(const GoogleString& key,
                                       QueuedWorkerPool::Sequence* sequence) {
-  int erased = delay_requests_.erase(key);
-  CHECK_EQ(1, erased);
-  DelayMap::iterator p = delay_map_.find(key);
-  CHECK(p != delay_map_.end());
-  DelayCallback* callback = p->second;
-  delay_map_.erase(p);
+  DelayCallback* callback = NULL;
+  {
+    ScopedMutex lock(mutex_.get());
+    int erased = delay_requests_.erase(key);
+    CHECK_EQ(1, erased);
+    DelayMap::iterator p = delay_map_.find(key);
+    CHECK(p != delay_map_.end()) << key;
+    callback = p->second;
+    delay_map_.erase(p);
+  }
+
+  // Release lock first; then run callback or add it to the sequence.
   if (sequence != NULL) {
     sequence->Add(MakeFunction(callback, &DelayCallback::Run));
   } else {

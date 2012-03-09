@@ -183,7 +183,7 @@ CacheInterface* TestRewriteDriverFactory::DefaultCacheInterface() {
   lru_cache_ = new LRUCache(kCacheSize);
   threadsafe_cache_.reset(
       new ThreadsafeCache(lru_cache_, thread_system()->NewMutex()));
-  delay_cache_ = new DelayCache(threadsafe_cache_.get());
+  delay_cache_ = new DelayCache(threadsafe_cache_.get(), thread_system());
   return delay_cache_;
 }
 
