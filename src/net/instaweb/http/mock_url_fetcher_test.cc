@@ -242,6 +242,17 @@ TEST_F(MockUrlFetcherTest, UpdateHeaderDates) {
   }
 }
 
+TEST_F(MockUrlFetcherTest, FailAfterBody) {
+  const char kUrl[] = "http://www.example.com/foo.css";
+  ResponseHeaders response_headers;
+  RequestHeaders request_headres;
+  fetcher_.SetResponse(kUrl, response_headers, "hello");
+  fetcher_.SetResponseFailure(kUrl);
+  MockFetchContainer fetch(&fetcher_);
+  EXPECT_FALSE(fetch.Fetch(kUrl));
+  EXPECT_EQ("hello", fetch.response_body_);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

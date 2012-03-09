@@ -68,6 +68,14 @@ class MockUrlFetcher : public UrlFetcher {
                                  Writer* response_writer,
                                  MessageHandler* message_handler);
 
+  // Indicates that the specified URL should respond with headers and data,
+  // but still return a 'false' status.  This is similar to a live fetcher
+  // that times out or disconnects while streaming data.
+  //
+  // This differs from set_fail_after_headers in that it's specific to a
+  // URL, and writes the body first before returning failure.
+  void SetResponseFailure(const StringPiece& url);
+
   // Clear all set responses.
   void Clear();
 
@@ -89,7 +97,8 @@ class MockUrlFetcher : public UrlFetcher {
   void set_omit_empty_writes(bool x) { omit_empty_writes_ = x; }
 
   // If set to true (defaults to false) the fetcher will fail after outputting
-  // the headers.
+  // the headers.  See also SetResponseFailure which fails after writing
+  // the body.
   void set_fail_after_headers(bool x) { fail_after_headers_ = x; }
 
   // If set to true (defaults to false) the fetcher will verify that the Host:
@@ -105,7 +114,8 @@ class MockUrlFetcher : public UrlFetcher {
                  const ResponseHeaders& in_header, const StringPiece& in_body)
         : last_modified_time_(last_modified_time),
           etag_(etag),
-          body_(in_body.data(), in_body.size()) {
+          body_(in_body.data(), in_body.size()),
+          success_(true) {
       header_.CopyFrom(in_header);
     }
 
@@ -114,12 +124,15 @@ class MockUrlFetcher : public UrlFetcher {
     const ResponseHeaders& header() const { return header_; }
     ResponseHeaders* mutable_header() { return &header_; }
     const GoogleString& body() const { return body_; }
+    void set_success(bool success) { success_ = success; }
+    bool success() const { return success_; }
 
    private:
     int64 last_modified_time_;
     GoogleString etag_;
     ResponseHeaders header_;
     GoogleString body_;
+    bool success_;
 
     DISALLOW_COPY_AND_ASSIGN(HttpResponse);
   };

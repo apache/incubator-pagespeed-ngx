@@ -62,6 +62,13 @@ void MockUrlFetcher::AddToResponse(const StringPiece& url,
   response->ComputeCaching();
 }
 
+void MockUrlFetcher::SetResponseFailure(const StringPiece& url) {
+  ResponseMap::iterator iter = response_map_.find(url.as_string());
+  CHECK(iter != response_map_.end());
+  HttpResponse* http_response = iter->second;
+  http_response->set_success(false);
+}
+
 void MockUrlFetcher::SetConditionalResponse(
     const StringPiece& url, int64 last_modified_time, const GoogleString& etag,
     const ResponseHeaders& response_header, const StringPiece& response_body) {
@@ -102,6 +109,8 @@ bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,
     ResponseMap::iterator iter = response_map_.find(url);
     if (iter != response_map_.end()) {
       const HttpResponse* response = iter->second;
+      ret = response->success();
+
       // Check if we should return 304 Not Modified or full response.
       ConstStringStarVector values;
       int64 if_modified_since_time;
@@ -140,7 +149,6 @@ bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,
           response_writer->Write(response->body(), message_handler);
         }
       }
-      ret = true;
     } else {
       // This is used in tests and we do not expect the test to request a
       // resource that we don't have. So fail if we do.
