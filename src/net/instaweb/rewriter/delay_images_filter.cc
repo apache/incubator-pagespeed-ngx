@@ -28,10 +28,10 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -44,7 +44,8 @@ const char DelayImagesFilter::kDelayImagesInlineSuffix[] =
 
 DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
     : driver_(driver),
-      js_url_manager_(driver->resource_manager()->javascript_url_manager()),
+      static_js_manager_(
+          driver->resource_manager()->static_javascript_manager()),
       tag_scanner_(driver),
       low_res_map_inserted_(false),
       delay_script_inserted_(false) {
@@ -73,8 +74,8 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
     driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
     const GoogleString& delay_images_js = StrCat(
-        js_url_manager_->GetJsSnippet(JavascriptUrlManager::kDelayImagesJs,
-                                      driver_->options()),
+        static_js_manager_->GetJsSnippet(
+            StaticJavascriptManager::kDelayImagesJs, driver_->options()),
         kDelayImagesSuffix);
     HtmlCharactersNode* script_content = driver_->NewCharactersNode(
         script, delay_images_js);
@@ -129,8 +130,8 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
     }
 
     GoogleString inline_script = StrCat(
-        js_url_manager_->GetJsSnippet(
-            JavascriptUrlManager::kDelayImagesInlineJs, driver_->options()),
+        static_js_manager_->GetJsSnippet(
+            StaticJavascriptManager::kDelayImagesInlineJs, driver_->options()),
         kDelayImagesInlineSuffix,
         inline_data_script,
         "\npagespeed.delayImagesInline.replaceWithLowRes();\n");

@@ -16,12 +16,13 @@
 
 // Author: nikhilmadan@google.com (Nikhil madan)
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
-#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -59,8 +60,8 @@ class LazyloadImagesFilterTest : public ResourceManagerTestBase {
 TEST_F(LazyloadImagesFilterTest, SingleHead) {
   InitLazyloadImagesFilter(false);
   StringPiece lazyload_js_code =
-      resource_manager()->javascript_url_manager()->GetJsSnippet(
-          JavascriptUrlManager::kLazyloadImagesJs, options());
+      resource_manager()->static_javascript_manager()->GetJsSnippet(
+          StaticJavascriptManager::kLazyloadImagesJs, options());
   ValidateExpected("lazyload_images",
       "<head></head>"
       "<body>"
@@ -87,8 +88,8 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
 TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {
   InitLazyloadImagesFilter(false);
   StringPiece lazyload_js_code =
-      resource_manager()->javascript_url_manager()->GetJsSnippet(
-          JavascriptUrlManager::kLazyloadImagesJs, options());
+      resource_manager()->static_javascript_manager()->GetJsSnippet(
+          StaticJavascriptManager::kLazyloadImagesJs, options());
   options()->ClearSignatureForTesting();
   options()->set_lazyload_images_after_onload(true);
   resource_manager()->ComputeSignature(options());
@@ -115,8 +116,8 @@ TEST_F(LazyloadImagesFilterTest, NoHeadTag) {
 TEST_F(LazyloadImagesFilterTest, MultipleHeadTags) {
   InitLazyloadImagesFilter(false);
   StringPiece lazyload_js_code =
-      resource_manager()->javascript_url_manager()->GetJsSnippet(
-          JavascriptUrlManager::kLazyloadImagesJs, options());
+      resource_manager()->static_javascript_manager()->GetJsSnippet(
+          StaticJavascriptManager::kLazyloadImagesJs, options());
   ValidateExpected("lazyload_images",
       "<head></head>"
       "<head></head>"

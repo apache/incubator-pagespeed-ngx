@@ -38,7 +38,6 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
@@ -68,6 +67,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   static const char kXhtmlDtd[];    // DOCTYPE string for claming XHTML
 
   ResourceManagerTestBase();
+  explicit ResourceManagerTestBase(Statistics* statistics);
   ResourceManagerTestBase(TestRewriteDriverFactory* factory,
                           TestRewriteDriverFactory* other_factory);
   virtual ~ResourceManagerTestBase();
@@ -450,7 +450,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   // The mock fetcher & stats are global across all Factories used in the tests.
   MockUrlFetcher mock_url_fetcher_;
-  SimpleStats statistics_;
+  scoped_ptr<Statistics> statistics_;
 
   // We have two independent RewriteDrivers representing two completely
   // separate servers for the same domain (say behind a load-balancer).

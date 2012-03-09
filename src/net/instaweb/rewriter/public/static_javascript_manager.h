@@ -16,8 +16,8 @@
 
 // Author: guptaa@google.com (Ashish Gupta)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_URL_MANAGER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_URL_MANAGER_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_STATIC_JAVASCRIPT_MANAGER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_STATIC_JAVASCRIPT_MANAGER_H_
 
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
@@ -29,7 +29,7 @@ class RewriteOptions;
 class UrlNamer;
 
 // Composes URLs for the javascript files injected by the various PSA filters.
-class JavascriptUrlManager {
+class StaticJavascriptManager {
  public:
   static const char kGStaticBase[];
   static const char kBlinkGstaticSuffix[];
@@ -43,12 +43,12 @@ class JavascriptUrlManager {
     kEndOfModules,  // Keep this as the last enum value.
   };
 
-  JavascriptUrlManager(
+  StaticJavascriptManager(
       UrlNamer* url_namer,
       bool serve_js_from_gstatic,
       const GoogleString& blink_hash);
 
-  ~JavascriptUrlManager();
+  ~StaticJavascriptManager();
 
   // Returns the blink js url based on the value of debug filter and the value
   // of serve_js_from_gstatic flag.
@@ -74,9 +74,9 @@ class JavascriptUrlManager {
   GoogleString blink_javascript_gstatic_url_;
   GoogleString blink_javascript_handler_url_;
 
-  DISALLOW_COPY_AND_ASSIGN(JavascriptUrlManager);
+  DISALLOW_COPY_AND_ASSIGN(StaticJavascriptManager);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_URL_MANAGER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_STATIC_JAVASCRIPT_MANAGER_H_

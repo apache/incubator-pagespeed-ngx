@@ -340,11 +340,8 @@ ProxyFetch::ProxyFetch(
   cache_fetcher_->set_serve_stale_if_fetch_error(
       Options()->serve_stale_if_fetch_error());
 
-  // TODO(sligocki): Make complete request header available to filters.
-  const char* cookies = request_headers()->Lookup1(HttpAttributes::kCookie);
-  if (cookies != NULL) {
-    driver_->set_cookies(cookies);
-  }
+  // Make request headers available to the filters.
+  driver_->set_request_headers(request_headers());
 
   const char* user_agent = request_headers()->Lookup1(
       HttpAttributes::kUserAgent);

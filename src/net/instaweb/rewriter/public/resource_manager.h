@@ -47,7 +47,6 @@ class FilenameEncoder;
 class Function;
 class GoogleUrl;
 class Hasher;
-class JavascriptUrlManager;
 class MessageHandler;
 class NamedLock;
 class NamedLockManager;
@@ -58,6 +57,7 @@ class RewriteDriverFactory;
 class RewriteOptions;
 class RewriteStats;
 class Scheduler;
+class StaticJavascriptManager;
 class Statistics;
 class ThreadSynchronizer;
 class ThreadSystem;
@@ -158,11 +158,11 @@ class ResourceManager {
   void set_filename_encoder(FilenameEncoder* x) { filename_encoder_ = x; }
   UrlNamer* url_namer() const { return url_namer_; }
   void set_url_namer(UrlNamer* n) { url_namer_ = n; }
-  JavascriptUrlManager* javascript_url_manager() const {
-    return javascript_url_manager_;
+  StaticJavascriptManager* static_javascript_manager() const {
+    return static_javascript_manager_;
   }
-  void set_javascript_url_manager(JavascriptUrlManager* manager) {
-    javascript_url_manager_ = manager;
+  void set_static_javascript_manager(StaticJavascriptManager* manager) {
+    static_javascript_manager_ = manager;
   }
   Scheduler* scheduler() const { return scheduler_; }
   void set_scheduler(Scheduler* s) { scheduler_ = s; }
@@ -467,7 +467,7 @@ class ResourceManager {
   AtomicBool metadata_cache_readonly_;
 
   // Used to create URLs for various filter javascript files.
-  JavascriptUrlManager* javascript_url_manager_;
+  StaticJavascriptManager* static_javascript_manager_;
 
   // Used to help inject sync-points into thread-intensive code for the purposes
   // of controlling thread interleaving to test code for possible races.

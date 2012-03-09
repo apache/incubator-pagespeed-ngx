@@ -16,7 +16,7 @@
 
 // Author: guptaa@google.com (Ashish Gupta)
 
-#include "net/instaweb/rewriter/public/javascript_url_manager.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -35,15 +35,14 @@ extern const char* JS_js_defer_opt;
 extern const char* JS_lazyload_images;
 extern const char* JS_lazyload_images_opt;
 
-const char JavascriptUrlManager::kGStaticBase[] =
+const char StaticJavascriptManager::kGStaticBase[] =
     "http://www.gstatic.com/psa/static/";
 
-const char JavascriptUrlManager::kBlinkGstaticSuffix[] = "-blink.js";
+const char StaticJavascriptManager::kBlinkGstaticSuffix[] = "-blink.js";
 
-const char JavascriptUrlManager::kBlinkRelativePath[] = "/psajs/blink.js";
+const char StaticJavascriptManager::kBlinkRelativePath[] = "/psajs/blink.js";
 
-// TODO(guptaa): Rename this class to JavascriptManager
-JavascriptUrlManager::JavascriptUrlManager(
+StaticJavascriptManager::StaticJavascriptManager(
     UrlNamer* url_namer,
     bool serve_js_from_gstatic,
     const GoogleString& blink_hash)
@@ -53,10 +52,10 @@ JavascriptUrlManager::JavascriptUrlManager(
   InitBlink(blink_hash);
 }
 
-JavascriptUrlManager::~JavascriptUrlManager() {
+StaticJavascriptManager::~StaticJavascriptManager() {
 }
 
-const GoogleString& JavascriptUrlManager::GetBlinkJsUrl(
+const GoogleString& StaticJavascriptManager::GetBlinkJsUrl(
     RewriteOptions* options) const {
   if (serve_js_from_gstatic_ && !options->Enabled(RewriteOptions::kDebug)) {
     return blink_javascript_gstatic_url_;
@@ -64,7 +63,7 @@ const GoogleString& JavascriptUrlManager::GetBlinkJsUrl(
   return blink_javascript_handler_url_;
 }
 
-void JavascriptUrlManager::InitBlink(const GoogleString& hash) {
+void StaticJavascriptManager::InitBlink(const GoogleString& hash) {
   if (serve_js_from_gstatic_) {
     CHECK(!hash.empty());
     blink_javascript_gstatic_url_ =
@@ -74,7 +73,7 @@ void JavascriptUrlManager::InitBlink(const GoogleString& hash) {
       StrCat(url_namer_->get_proxy_domain(), kBlinkRelativePath);
 }
 
-void JavascriptUrlManager::InitializeJsStrings() {
+void StaticJavascriptManager::InitializeJsStrings() {
   // Initialize compiled javascript strings.
   opt_js_vector_.resize(static_cast<int>(kEndOfModules));
   opt_js_vector_[static_cast<int>(kDeferJs)] = JS_js_defer_opt;
@@ -95,8 +94,8 @@ void JavascriptUrlManager::InitializeJsStrings() {
       JS_lazyload_images;
 }
 
-const char* JavascriptUrlManager::GetJsSnippet(
-    JavascriptUrlManager::JsModule js_module,
+const char* StaticJavascriptManager::GetJsSnippet(
+    StaticJavascriptManager::JsModule js_module,
     const RewriteOptions* options) {
   CHECK(js_module != kEndOfModules);
   int module = js_module;

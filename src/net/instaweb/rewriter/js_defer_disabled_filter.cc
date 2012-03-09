@@ -21,10 +21,10 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -62,11 +62,11 @@ void JsDeferDisabledFilter::EndElement(HtmlElement* element) {
         rewrite_driver_->NewElement(element, HtmlName::kScript);
     rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
                               "text/javascript");
-    JavascriptUrlManager* js_url_manager =
-        rewrite_driver_->resource_manager()->javascript_url_manager();
+    StaticJavascriptManager* static_js_manager =
+        rewrite_driver_->resource_manager()->static_javascript_manager();
     StringPiece defer_js_script =
-        js_url_manager->GetJsSnippet(
-            JavascriptUrlManager::kDeferJs, rewrite_driver_->options());
+        static_js_manager->GetJsSnippet(
+            StaticJavascriptManager::kDeferJs, rewrite_driver_->options());
     const GoogleString& defer_js =
         StrCat(defer_js_script, JsDeferDisabledFilter::kSuffix);
     HtmlNode* script_code =

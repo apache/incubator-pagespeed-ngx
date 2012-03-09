@@ -61,6 +61,7 @@ class HtmlFilter;
 class HtmlWriterFilter;
 class MessageHandler;
 class PropertyPage;
+class RequestHeaders;
 class ResourceContext;
 class ResourceNamer;
 class ResponseHeaders;
@@ -200,14 +201,13 @@ class RewriteDriver : public HtmlParse {
     response_headers_ = headers;
   }
 
-  // Copies the cookies from the client request.
-  void set_cookies(const StringPiece cookies) {
-    cookies.CopyToString(&cookies_);
+  void set_request_headers(const RequestHeaders* headers) {
+    request_headers_ = headers;
   }
 
-  // Returns the cookies from the client request.
-  const GoogleString& cookies() {
-    return cookies_;
+  const RequestHeaders* request_headers() const {
+    DCHECK(request_headers_ != NULL);
+    return request_headers_;
   }
 
   const UserAgentMatcher& user_agent_matcher() const {
@@ -958,7 +958,7 @@ class RewriteDriver : public HtmlParse {
   StringFilterMap resource_filter_map_;
 
   ResponseHeaders* response_headers_;
-  GoogleString cookies_;
+  const RequestHeaders* request_headers_;
 
   // This group of rewrite-context-related variables is accessed
   // only in the main thread of RewriteDriver (aka the HTML thread).

@@ -174,6 +174,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       is_mobile_user_agent_(kNotSet),
       using_spdy_(false),
       response_headers_(NULL),
+      request_headers_(NULL),
       pending_rewrites_(0),
       possibly_quick_rewrites_(0),
       pending_async_events_(0),
@@ -241,7 +242,6 @@ void RewriteDriver::Clear() {
   release_driver_ = false;
   base_url_.Clear();
   DCHECK(!base_url_.is_valid());
-  cookies_.clear();
   decoded_base_url_.Clear();
   using_spdy_ = false;
   resource_map_.clear();
@@ -261,6 +261,7 @@ void RewriteDriver::Clear() {
   DCHECK(!fetch_queued_);
   DCHECK_EQ(0, pending_async_events_);
   pending_async_events_ = 0;
+  request_headers_ = NULL;
   response_headers_ = NULL;
   fetch_detached_ = false;
   detached_fetch_detached_path_complete_ = false;

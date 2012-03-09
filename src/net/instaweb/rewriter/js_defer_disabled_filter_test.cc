@@ -19,11 +19,11 @@
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -53,8 +53,8 @@ class JsDeferDisabledFilterTest : public ResourceManagerTestBase {
 TEST_F(JsDeferDisabledFilterTest, DeferScript) {
   InitJsDeferDisabledFilter(false);
   StringPiece defer_js_code =
-      resource_manager()->javascript_url_manager()->GetJsSnippet(
-          JavascriptUrlManager::kDeferJs, options());
+      resource_manager()->static_javascript_manager()->GetJsSnippet(
+          StaticJavascriptManager::kDeferJs, options());
   ValidateExpected("defer_script",
       "<head>"
       "<script type='text/psajs' "
@@ -77,8 +77,8 @@ TEST_F(JsDeferDisabledFilterTest, DeferScript) {
 TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
   InitJsDeferDisabledFilter(false);
   StringPiece defer_js_code =
-      resource_manager()->javascript_url_manager()->GetJsSnippet(
-          JavascriptUrlManager::kDeferJs, options());
+      resource_manager()->static_javascript_manager()->GetJsSnippet(
+          StaticJavascriptManager::kDeferJs, options());
   ValidateExpected("defer_script_multi_body",
       "<head>"
       "<script type='text/psajs' "

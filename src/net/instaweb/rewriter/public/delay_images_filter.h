@@ -79,8 +79,8 @@
 namespace net_instaweb {
 
 class HtmlElement;
-class JavascriptUrlManager;
 class RewriteDriver;
+class StaticJavascriptManager;
 class Statistics;
 
 class DelayImagesFilter : public EmptyHtmlFilter {
@@ -103,7 +103,7 @@ class DelayImagesFilter : public EmptyHtmlFilter {
 
  private:
   RewriteDriver* driver_;
-  JavascriptUrlManager* js_url_manager_;
+  StaticJavascriptManager* static_js_manager_;
   ResourceTagScanner tag_scanner_;
   // pagespeed_low_res_src will be added to the low_res_data_map_ until
   // low_res_inserted is false. As soon as low_res_map_inserted_ is true, there

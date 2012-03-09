@@ -28,11 +28,11 @@
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
-#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -258,11 +258,11 @@ UserAgentMatcher* RewriteDriverFactory::user_agent_matcher() {
   return user_agent_matcher_.get();
 }
 
-JavascriptUrlManager* RewriteDriverFactory::javascript_url_manager() {
-  if (javascript_url_manager_ == NULL) {
-    javascript_url_manager_.reset(DefaultJavascriptUrlManager());
+StaticJavascriptManager* RewriteDriverFactory::static_javascript_manager() {
+  if (static_javascript_manager_ == NULL) {
+    static_javascript_manager_.reset(DefaultStaticJavascriptManager());
   }
-  return javascript_url_manager_.get();
+  return static_javascript_manager_.get();
 }
 
 CriticalImagesFinder* RewriteDriverFactory::critical_images_finder() {
@@ -299,8 +299,9 @@ UserAgentMatcher* RewriteDriverFactory::DefaultUserAgentMatcher() {
   return new UserAgentMatcher();
 }
 
-JavascriptUrlManager* RewriteDriverFactory::DefaultJavascriptUrlManager() {
-  return new JavascriptUrlManager(url_namer(), false, "");
+StaticJavascriptManager*
+    RewriteDriverFactory::DefaultStaticJavascriptManager() {
+  return new StaticJavascriptManager(url_namer(), false, "");
 }
 
 CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
@@ -454,8 +455,8 @@ void RewriteDriverFactory::InitResourceManager(
   resource_manager->set_filename_prefix(filename_prefix_);
   resource_manager->set_hasher(hasher());
   resource_manager->set_message_handler(message_handler());
-  resource_manager->set_javascript_url_manager(
-      javascript_url_manager());
+  resource_manager->set_static_javascript_manager(
+      static_javascript_manager());
   resource_manager->InitWorkersAndDecodingDriver();
   resource_managers_.insert(resource_manager);
 }

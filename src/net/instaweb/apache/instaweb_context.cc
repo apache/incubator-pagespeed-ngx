@@ -126,9 +126,9 @@ InstawebContext::InstawebContext(request_rec* request,
   const char* user_agent = apr_table_get(request->headers_in,
                                          HttpAttributes::kUserAgent);
   rewrite_driver_->set_user_agent(user_agent);
-  const char* cookies = apr_table_get(request->headers_in,
-                                      HttpAttributes::kCookie);
-  rewrite_driver_->set_cookies(cookies);
+  // Make the entire request headers available to filters.
+  ApacheRequestToRequestHeaders(*request, &request_headers_);
+  rewrite_driver_->set_request_headers(&request_headers_);
 
   response_headers_.Clear();
   rewrite_driver_->set_response_headers_ptr(&response_headers_);

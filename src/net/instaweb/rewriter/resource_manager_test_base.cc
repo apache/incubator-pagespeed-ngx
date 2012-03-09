@@ -79,7 +79,21 @@ const char ResourceManagerTestBase::kXhtmlDtd[] =
     "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">";
 
 ResourceManagerTestBase::ResourceManagerTestBase()
-    : factory_(new TestRewriteDriverFactory(GTestTempDir(),
+    : statistics_(new SimpleStats()),
+      factory_(new TestRewriteDriverFactory(GTestTempDir(),
+                                            &mock_url_fetcher_)),
+      other_factory_(new TestRewriteDriverFactory(GTestTempDir(),
+                                                  &mock_url_fetcher_)),
+      use_managed_rewrite_drivers_(false),
+      options_(factory_->NewRewriteOptions()),
+      other_options_(other_factory_->NewRewriteOptions()) {
+  Init();
+}
+
+// Takes ownership of the statistics.
+ResourceManagerTestBase::ResourceManagerTestBase(Statistics* statistics)
+    : statistics_(statistics),
+      factory_(new TestRewriteDriverFactory(GTestTempDir(),
                                             &mock_url_fetcher_)),
       other_factory_(new TestRewriteDriverFactory(GTestTempDir(),
                                                   &mock_url_fetcher_)),
@@ -92,7 +106,8 @@ ResourceManagerTestBase::ResourceManagerTestBase()
 ResourceManagerTestBase::ResourceManagerTestBase(
     TestRewriteDriverFactory* factory,
     TestRewriteDriverFactory* other_factory)
-    : factory_(factory),
+    : statistics_(new SimpleStats()),
+      factory_(factory),
       other_factory_(other_factory),
       use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
@@ -101,9 +116,10 @@ ResourceManagerTestBase::ResourceManagerTestBase(
 }
 
 void ResourceManagerTestBase::Init() {
-  RewriteDriverFactory::Initialize(&statistics_);
-  factory_->SetStatistics(&statistics_);
-  other_factory_->SetStatistics(&statistics_);
+  DCHECK(statistics_ != NULL);
+  RewriteDriverFactory::Initialize(statistics_.get());
+  factory_->SetStatistics(statistics_.get());
+  other_factory_->SetStatistics(statistics_.get());
   resource_manager_ = factory_->CreateResourceManager();
   other_resource_manager_ = other_factory_->CreateResourceManager();
   other_rewrite_driver_ = MakeDriver(other_resource_manager_, other_options_);

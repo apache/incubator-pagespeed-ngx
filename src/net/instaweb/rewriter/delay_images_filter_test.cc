@@ -18,13 +18,13 @@
 
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
-#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -114,29 +114,29 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
   }
 
   GoogleString GetDeferJsCode() {
-    return GetJsCode(JavascriptUrlManager::kDeferJs,
+    return GetJsCode(StaticJavascriptManager::kDeferJs,
                      JsDeferDisabledFilter::kSuffix);
   }
 
   GoogleString GetDelayImagesCode() {
-    return GetJsCode(JavascriptUrlManager::kDelayImagesJs,
+    return GetJsCode(StaticJavascriptManager::kDelayImagesJs,
                      DelayImagesFilter::kDelayImagesSuffix);
   }
 
   GoogleString GetDelayImagesInlineCode() {
-    return GetJsCode(JavascriptUrlManager::kDelayImagesInlineJs,
+    return GetJsCode(StaticJavascriptManager::kDelayImagesInlineJs,
                      DelayImagesFilter::kDelayImagesInlineSuffix);
   }
 
   GoogleString GetLazyloadImagesCode() {
-    return resource_manager()->javascript_url_manager()->GetJsSnippet(
-        JavascriptUrlManager::kLazyloadImagesJs, options());
+    return resource_manager()->static_javascript_manager()->GetJsSnippet(
+        StaticJavascriptManager::kLazyloadImagesJs, options());
   }
 
-  GoogleString GetJsCode(JavascriptUrlManager::JsModule module,
+  GoogleString GetJsCode(StaticJavascriptManager::JsModule module,
                          const StringPiece& call) {
     StringPiece code =
-        resource_manager()->javascript_url_manager()->GetJsSnippet(
+        resource_manager()->static_javascript_manager()->GetJsSnippet(
             module, options());
     return StrCat(code, call);
   }

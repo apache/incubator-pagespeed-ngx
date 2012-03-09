@@ -21,10 +21,10 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -62,11 +62,11 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
     driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
     const GoogleString& load_onload =
         driver_->options()->lazyload_images_after_onload() ? kTrue : kFalse;
-    JavascriptUrlManager* js_url_manager =
-        driver_->resource_manager()->javascript_url_manager();
+    StaticJavascriptManager* static_js__manager =
+        driver_->resource_manager()->static_javascript_manager();
     StringPiece lazyload_images_js =
-        js_url_manager->GetJsSnippet(
-            JavascriptUrlManager::kLazyloadImagesJs, driver_->options());
+        static_js__manager->GetJsSnippet(
+            StaticJavascriptManager::kLazyloadImagesJs, driver_->options());
     const GoogleString& lazyload_js =
         StrCat(lazyload_images_js, "\npagespeed.lazyLoadInit(",
                load_onload, ");\n");

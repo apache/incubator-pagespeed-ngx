@@ -40,16 +40,14 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/panel_config.pb.h"
-#include "net/instaweb/rewriter/public/javascript_url_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/url_namer.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -378,7 +376,7 @@ void BlinkFlow::SendLayout(const StringPiece& layout) {
   WriteString(layout);
   // TODO(rahulbansal): Not serving off a sharded domain will cause an extra
   // dns lookup.
-  JavascriptUrlManager* js_manager = manager_->javascript_url_manager();
+  StaticJavascriptManager* js_manager = manager_->static_javascript_manager();
   WriteString(StrCat("<script src=\"",
                      js_manager->GetBlinkJsUrl(options_),
                      "\"></script>"));

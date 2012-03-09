@@ -16,7 +16,7 @@
 
 // Author: guptaa@google.com (Ashish Gupta)
 
-#include "net/instaweb/rewriter/public/javascript_url_manager.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -27,10 +27,9 @@ namespace net_instaweb {
 
 namespace {
 
-class JavascriptUrlManagerTest : public ::testing::Test {
+class StaticJavascriptManagerTest : public ::testing::Test {
  protected:
-
-  JavascriptUrlManagerTest() {
+  StaticJavascriptManagerTest() {
     url_namer_.set_proxy_domain("http://proxy-domain");
   }
 
@@ -38,33 +37,33 @@ class JavascriptUrlManagerTest : public ::testing::Test {
   RewriteOptions options_;
 };
 
-TEST_F(JavascriptUrlManagerTest, TestBlinkHandler) {
-  JavascriptUrlManager manager(&url_namer_, false, "");
+TEST_F(StaticJavascriptManagerTest, TestBlinkHandler) {
+  StaticJavascriptManager manager(&url_namer_, false, "");
   const char blink_url[] = "http://proxy-domain/psajs/blink.js";
   EXPECT_STREQ(blink_url, manager.GetBlinkJsUrl(&options_));
 }
 
-TEST_F(JavascriptUrlManagerTest, TestBlinkGstatic) {
-  JavascriptUrlManager manager(&url_namer_, true, "1");
+TEST_F(StaticJavascriptManagerTest, TestBlinkGstatic) {
+  StaticJavascriptManager manager(&url_namer_, true, "1");
   const char blink_url[] = "http://www.gstatic.com/psa/static/1-blink.js";
   EXPECT_STREQ(blink_url, manager.GetBlinkJsUrl(&options_));
 }
 
-TEST_F(JavascriptUrlManagerTest, TestBlinkDebug) {
-  JavascriptUrlManager manager(&url_namer_, true, "1");
+TEST_F(StaticJavascriptManagerTest, TestBlinkDebug) {
+  StaticJavascriptManager manager(&url_namer_, true, "1");
   options_.EnableFilter(RewriteOptions::kDebug);
   const char blink_url[] = "http://proxy-domain/psajs/blink.js";
   EXPECT_STREQ(blink_url, manager.GetBlinkJsUrl(&options_));
 }
 
-TEST_F(JavascriptUrlManagerTest, TestJsDebug) {
-  JavascriptUrlManager manager(&url_namer_, true, "1");
+TEST_F(StaticJavascriptManagerTest, TestJsDebug) {
+  StaticJavascriptManager manager(&url_namer_, true, "1");
   options_.EnableFilter(RewriteOptions::kDebug);
   for (int i = 0;
-       i < static_cast<int>(JavascriptUrlManager::kEndOfModules);
+       i < static_cast<int>(StaticJavascriptManager::kEndOfModules);
        ++i) {
-    JavascriptUrlManager::JsModule module =
-        static_cast<JavascriptUrlManager::JsModule>(i);
+    StaticJavascriptManager::JsModule module =
+        static_cast<StaticJavascriptManager::JsModule>(i);
     GoogleString script(manager.GetJsSnippet(
         module, &options_));
     EXPECT_NE(GoogleString::npos, script.find("/*"))
@@ -72,13 +71,13 @@ TEST_F(JavascriptUrlManagerTest, TestJsDebug) {
   }
 }
 
-TEST_F(JavascriptUrlManagerTest, TestJsOpt) {
-  JavascriptUrlManager manager(&url_namer_, true, "1");
+TEST_F(StaticJavascriptManagerTest, TestJsOpt) {
+  StaticJavascriptManager manager(&url_namer_, true, "1");
   for (int i = 0;
-       i < static_cast<int>(JavascriptUrlManager::kEndOfModules);
+       i < static_cast<int>(StaticJavascriptManager::kEndOfModules);
        ++i) {
-    JavascriptUrlManager::JsModule module =
-        static_cast<JavascriptUrlManager::JsModule>(i);
+    StaticJavascriptManager::JsModule module =
+        static_cast<StaticJavascriptManager::JsModule>(i);
     GoogleString script(manager.GetJsSnippet(
         module, &options_));
     EXPECT_EQ(GoogleString::npos, script.find("/*"))
@@ -88,4 +87,4 @@ TEST_F(JavascriptUrlManagerTest, TestJsOpt) {
 
 }  // namespace
 
-} // namespace net_instaweb
+}  // namespace net_instaweb
