@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -206,6 +207,11 @@ void RewriteDriverFactory::set_critical_images_finder(
   critical_images_finder_.reset(finder);
 }
 
+void RewriteDriverFactory::set_blink_critical_line_data_finder(
+    BlinkCriticalLineDataFinder* finder) {
+  blink_critical_line_data_finder_.reset(finder);
+}
+
 void RewriteDriverFactory::set_enable_property_cache(bool enabled) {
   enable_property_cache_ = enabled;
   if (page_property_cache_.get() != NULL) {
@@ -272,6 +278,15 @@ CriticalImagesFinder* RewriteDriverFactory::critical_images_finder() {
   return critical_images_finder_.get();
 }
 
+BlinkCriticalLineDataFinder*
+    RewriteDriverFactory::blink_critical_line_data_finder() {
+  if (blink_critical_line_data_finder_ == NULL) {
+    blink_critical_line_data_finder_.reset(
+        DefaultBlinkCriticalLineDataFinder());
+  }
+  return blink_critical_line_data_finder_.get();
+}
+
 Scheduler* RewriteDriverFactory::scheduler() {
   if (scheduler_ == NULL) {
     scheduler_.reset(CreateScheduler());
@@ -305,6 +320,11 @@ StaticJavascriptManager*
 }
 
 CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
+  return NULL;
+}
+
+BlinkCriticalLineDataFinder*
+RewriteDriverFactory::DefaultBlinkCriticalLineDataFinder() {
   return NULL;
 }
 

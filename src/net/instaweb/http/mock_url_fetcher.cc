@@ -97,6 +97,7 @@ bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,
                                        ResponseHeaders* response_headers,
                                        Writer* response_writer,
                                        MessageHandler* message_handler) {
+  LOG(INFO) << "MockUrlFetcher StreamingFetchUrl " << url;
   bool ret = false;
   if (enabled_) {
     // Verify that the url and Host: header match.

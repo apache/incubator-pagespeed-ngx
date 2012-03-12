@@ -142,6 +142,8 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       url_async_fetcher_(NULL),
       hasher_(NULL),
       critical_images_finder_(factory->critical_images_finder()),
+      blink_critical_line_data_finder_(
+          factory->blink_critical_line_data_finder()),
       lock_hasher_(20),
       contents_hasher_(21),
       statistics_(NULL),

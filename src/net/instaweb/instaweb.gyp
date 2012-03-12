@@ -227,6 +227,21 @@
       ],
     },
     {
+      'target_name': 'instaweb_blink_critical_line_data_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/blink_critical_line_data.pb.cc',
+        'rewriter/blink_critical_line_data.proto',
+      ],
+      'dependencies': [
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_rewriter_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -522,6 +537,7 @@
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [
+        'rewriter/blink_critical_line_data_finder.cc',
         'rewriter/critical_images_finder.cc',
         'rewriter/domain_lawyer.cc',
         'rewriter/resource.cc',

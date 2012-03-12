@@ -39,6 +39,7 @@
 namespace net_instaweb {
 
 class AbstractMutex;
+class BlinkCriticalLineDataFinder;
 class CacheInterface;
 class ContentType;
 class CriticalImagesFinder;
@@ -181,6 +182,15 @@ class ResourceManager {
   }
   const UserAgentMatcher& user_agent_matcher() { return *user_agent_matcher_; }
   void set_user_agent_matcher(UserAgentMatcher* n) { user_agent_matcher_ = n; }
+
+  BlinkCriticalLineDataFinder* blink_critical_line_data_finder() const {
+    return blink_critical_line_data_finder_;
+  }
+
+  void set_blink_critical_line_data_finder(
+      BlinkCriticalLineDataFinder* finder) {
+    blink_critical_line_data_finder_ = finder;
+  }
 
   // Cache for small non-HTTP objects.
   //
@@ -392,6 +402,7 @@ class ResourceManager {
   UrlAsyncFetcher* url_async_fetcher_;
   Hasher* hasher_;
   CriticalImagesFinder* critical_images_finder_;
+  BlinkCriticalLineDataFinder* blink_critical_line_data_finder_;
 
   // hasher_ is often set to a mock within unit tests, but some parts of the
   // system will not work sensibly if the "hash algorithm" used always returns

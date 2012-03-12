@@ -22,8 +22,14 @@ option optimize_for = LITE_RUNTIME;
 package net_instaweb;
 
 message TimingInfo {
+  // Local cache lookup time in ms.
   optional int64 cache1_ms = 1;
+  // Remote cache lookup time in ms.
   optional int64 cache2_ms = 2;
+  // Time taken to fetch the http header.
   optional int64 header_fetch_ms = 3;
+  // Time taken to fetch the resource from the source.
   optional int64 fetch_ms = 4;
+  // Time taken to send the first byte back to the client.
+  optional int64 time_to_first_byte_ms = 5;
 }

@@ -1,0 +1,43 @@
+/*
+ * Copyright 2012 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Author: pulkitg@google.com (Pulkit Goyal)
+//
+// Blink critical line data proto.
+
+syntax = "proto2";
+
+package net_instaweb;
+
+// Protobuf to encapsulate the information use by blink flow.
+// Next id = 5
+message BlinkCriticalLineData {
+  // Url of the request.
+  required string url = 1;
+
+  // Critical html for the given url. This can potentially be few KBs and could
+  // blow out our cache in the presence of a large URL-space due to query-params
+  // or large catalogs.
+  optional string critical_html = 2;
+
+  // This is a json map from image url to image content. Example -
+  // { 'url1' : 'low res image data2', 'url2' : 'low_res_image_data2' }
+  optional string critical_images_map = 3;
+
+  // This is the part of the html which is not critical and will be sent to the
+  // client after critical html and critical images.
+  optional string non_critical_json = 4;
+}

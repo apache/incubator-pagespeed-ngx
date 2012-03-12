@@ -32,6 +32,7 @@
 namespace net_instaweb {
 
 class AbstractMutex;
+class BlinkCriticalLineDataFinder;
 class CacheInterface;
 class CriticalImagesFinder;
 class FileSystem;
@@ -96,6 +97,7 @@ class RewriteDriverFactory {
   void set_url_namer(UrlNamer* url_namer);
   void set_timer(Timer* timer);
   void set_critical_images_finder(CriticalImagesFinder* finder);
+  void set_blink_critical_line_data_finder(BlinkCriticalLineDataFinder* finder);
   void set_enable_property_cache(bool enabled);
 
   // Set up a directory for slurped files for HTML and resources.  If
@@ -199,6 +201,7 @@ class RewriteDriverFactory {
   ThreadSystem* thread_system() { return thread_system_.get(); }
 
   CriticalImagesFinder* critical_images_finder();
+  BlinkCriticalLineDataFinder* blink_critical_line_data_finder();
 
   // Returns the set of directories that we (our our subclasses) have created
   // thus far.
@@ -276,6 +279,9 @@ class RewriteDriverFactory {
 
   // Default implementation returns NULL.
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
+
+  // Default implementation returns NULL.
+  virtual BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder();
 
   // Note: Returned CacheInterface should be thread-safe.
   virtual CacheInterface* DefaultCacheInterface() = 0;
@@ -367,6 +373,7 @@ class RewriteDriverFactory {
 
   scoped_ptr<ThreadSystem> thread_system_;
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
+  scoped_ptr<BlinkCriticalLineDataFinder> blink_critical_line_data_finder_;
   scoped_ptr<PropertyCache> page_property_cache_;
   scoped_ptr<PropertyCache> client_property_cache_;
 
