@@ -74,11 +74,13 @@ class LazyloadImagesFilter : public EmptyHtmlFilter {
   static const char* kImageLazyloadCode;
   static const char* kDefaultInlineImage;
   static const char* kImageOnloadCode;
+  static const char* kLoadAllImages;
 
   explicit LazyloadImagesFilter(RewriteDriver* driver);
   virtual ~LazyloadImagesFilter();
 
   virtual void StartDocument();
+  virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
 
   virtual const char* Name() const { return "Lazyload Images"; }
@@ -88,7 +90,13 @@ class LazyloadImagesFilter : public EmptyHtmlFilter {
 
  private:
   RewriteDriver* driver_;
-  bool script_inserted_;
+  // Indicates if the main javascript has been inserted into the page.
+  bool main_script_inserted_;
+  // Indicates whether we should abort rewriting the page.
+  bool abort_rewrite_;
+  // Indicates if the javascript to abort the rewrite has been inserted into the
+  // page.
+  bool abort_script_inserted_;
 };
 
 }  // namespace net_instaweb

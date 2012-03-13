@@ -35,6 +35,7 @@ namespace {
 const char kTrue[] = "true";
 const char kFalse[] = "false";
 const char kData[] = "data:";
+const char kJquerySlider[] = "jquery.sexyslider";
 
 }  // namespace
 
@@ -45,18 +46,53 @@ const char* LazyloadImagesFilter::kDefaultInlineImage = "data:image/gif;base64"
 const char* LazyloadImagesFilter::kImageOnloadCode =
     "pagespeed.lazyLoadImages.loadIfVisible(this);";
 
+const char* LazyloadImagesFilter::kLoadAllImages =
+    "pagespeed.lazyLoadImages.loadAllImages();";
+
 LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
     : driver_(driver),
-      script_inserted_(false) {}
+      main_script_inserted_(false),
+      abort_rewrite_(false),
+      abort_script_inserted_(false) {}
 
 LazyloadImagesFilter::~LazyloadImagesFilter() {}
 
 void LazyloadImagesFilter::StartDocument() {
-  script_inserted_ = false;
+  main_script_inserted_ = false;
+  abort_rewrite_ = false;
+  abort_script_inserted_ = false;
+}
+
+void LazyloadImagesFilter::StartElement(HtmlElement* element) {
+  if (element->keyword() == HtmlName::kScript) {
+    // This filter does not currently work with the jquery slider. We just don't
+    // rewrite the page in this case.
+    HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
+    if (src != NULL) {
+      StringPiece url(src->value());
+      if (url.find(kJquerySlider) != StringPiece::npos) {
+        abort_rewrite_ = true;
+      }
+    }
+  }
 }
 
 void LazyloadImagesFilter::EndElement(HtmlElement* element) {
-  if (!script_inserted_ && element->keyword() == HtmlName::kHead) {
+  if (abort_rewrite_) {
+    if (!abort_script_inserted_ && main_script_inserted_) {
+      // If we have already rewritten some elements on the page, insert a
+      // script to load all previously rewritten images.
+      HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
+      driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
+      HtmlNode* script_code = driver_->NewCharactersNode(
+          script, kLoadAllImages);
+      driver_->InsertElementAfterElement(element, script);
+      driver_->AppendChild(script, script_code);
+      abort_script_inserted_ = true;
+    }
+    return;
+  }
+  if (!main_script_inserted_ && element->keyword() == HtmlName::kHead) {
     // Insert the inlined script at the end of the document head.
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
     driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
@@ -74,8 +110,8 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
         script, lazyload_js);
     driver_->InsertElementBeforeCurrent(script);
     driver_->AppendChild(script, script_code);
-    script_inserted_ = true;
-  } else if (script_inserted_ && driver_->IsRewritable(element) &&
+    main_script_inserted_ = true;
+  } else if (main_script_inserted_ && driver_->IsRewritable(element) &&
              element->keyword() == HtmlName::kImg) {
     // Only rewrite <img> tags. Don't rewrite <input> tags since the onload
     // event is not fired for them.

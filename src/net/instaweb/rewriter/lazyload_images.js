@@ -153,19 +153,34 @@ pagespeed.LazyloadImages.prototype.isVisible_ = function(element) {
  * @param {Element} element The element to check for visibility.
  */
 pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
-  var data_src = element.getAttribute('pagespeed_lazy_src');
-  if (data_src != null) {
-    if (this.force_load_ || this.isVisible_(element)) {
-      element.src = data_src;
-      element.removeAttribute('pagespeed_lazy_src');
-    } else {
-      this.deferred_.push(element);
+  var context = this;
+  window.setTimeout(function() {
+    var data_src = element.getAttribute('pagespeed_lazy_src');
+    if (data_src != null) {
+      if (context.force_load_ || context.isVisible_(element)) {
+        element.src = data_src;
+        element.removeAttribute('pagespeed_lazy_src');
+      } else {
+        context.deferred_.push(element);
+      }
     }
-  }
+  }, 100);
 };
 
 pagespeed.LazyloadImages.prototype['loadIfVisible'] =
     pagespeed.LazyloadImages.prototype.loadIfVisible;
+
+/**
+ * Loads all the images irrespective of whether or not they are in the
+ * viewport.
+ */
+pagespeed.LazyloadImages.prototype.loadAllImages = function() {
+  this.force_load_ = true;
+  this.loadVisible_();
+};
+
+pagespeed.LazyloadImages.prototype['loadAllImages'] =
+    pagespeed.LazyloadImages.prototype.loadAllImages;
 
 /**
  * Loads the visible elements in the deferred queue. Also, removes the loaded
@@ -213,17 +228,19 @@ pagespeed.addHandler = function(elem, ev, func) {
 pagespeed.lazyLoadInit = function(loadAfterOnload) {
   pagespeed.lazyLoadImages = new pagespeed.LazyloadImages();
   pagespeed['lazyLoadImages'] = pagespeed.lazyLoadImages;
-  if (loadAfterOnload) {
-    var lazy_onload = function() {
-      // Note that the timeout here should be greater than the timeout for the
-      // delay_images filter to avoid CPU contention between the two filters.
-      window.setTimeout(function() {
-        pagespeed.lazyLoadImages.force_load_ = true;
-        pagespeed.lazyLoadImages.loadVisible_();
-      }, 200);
-    }
-    pagespeed.addHandler(window, 'load', lazy_onload);
-  } else {
+  // Add an event to the onload handler to check if any new images have now
+  // become visible because of reflows or DOM manipulation. If loadAfterOnload
+  // is true, load all images on the page.
+  var lazy_onload = function() {
+    // Note that the timeout here should be greater than the timeout for the
+    // delay_images filter to avoid CPU contention between the two filters.
+    window.setTimeout(function() {
+      pagespeed.lazyLoadImages.force_load_ = loadAfterOnload;
+      pagespeed.lazyLoadImages.loadVisible_();
+    }, 200);
+  }
+  pagespeed.addHandler(window, 'load', lazy_onload);
+  if (!loadAfterOnload) {
     var lazy_onscroll = function() {
       pagespeed.lazyLoadImages.loadVisible_();
     };

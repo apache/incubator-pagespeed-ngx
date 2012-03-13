@@ -146,4 +146,44 @@ TEST_F(LazyloadImagesFilterTest, LazyloadScriptDebug) {
       << "There should still be some comments in the debug code";
 }
 
+TEST_F(LazyloadImagesFilterTest, LazyloadDisabledWithJquerySlider) {
+  InitLazyloadImagesFilter(false);
+  GoogleString input_html = "<body>"
+      "<head>"
+      "<script src=\"jquery.sexyslider.js\"/>"
+      "</head>"
+      "<body>"
+      "<img src=\"1.jpg\"/>"
+      "</body>";
+  // No change in the html.
+  ValidateNoChanges("lazyload_images", input_html);
+}
+
+TEST_F(LazyloadImagesFilterTest, LazyloadDisabledWithJquerySliderAfterHead) {
+  InitLazyloadImagesFilter(false);
+  StringPiece lazyload_js_code =
+      resource_manager()->static_javascript_manager()->GetJsSnippet(
+          StaticJavascriptManager::kLazyloadImagesJs, options());
+  GoogleString input_html = "<head>"
+      "</head>"
+      "<body>"
+      "<script src=\"jquery.sexyslider.js\"/>"
+      "<img src=\"1.jpg\"/>"
+      "</body>";
+  ValidateExpected(
+      "abort_script_inserted",
+      input_html,
+      StrCat("<head><script type=\"text/javascript\">",
+             lazyload_js_code,
+             "\npagespeed.lazyLoadInit(false);\n",
+             "</script></head>"
+             "<body>"
+             "<script src=\"jquery.sexyslider.js\"/>"
+             "<script type=\"text/javascript\">"
+             "pagespeed.lazyLoadImages.loadAllImages();"
+             "</script>"
+             "<img src=\"1.jpg\"/>"
+             "</body>"));
+}
+
 }  // namespace net_instaweb

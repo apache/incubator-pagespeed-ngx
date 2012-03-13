@@ -33,6 +33,7 @@ class Layout;
 class Panel;
 class PanelSet;
 class PublisherConfig;
+class RequestHeaders;
 class RewriteOptions;
 
 typedef std::map<GoogleString, const Panel*> PanelIdToSpecMap;
@@ -48,7 +49,9 @@ const char kLayoutMarker[] = "<!--GooglePanel **** Layout end ****-->";
 const char kJsonCachePrefix[] = "json:";
 
 // Checks whether the request for 'url' is a valid blink request.
-bool IsBlinkRequest(const GoogleUrl& url, RewriteOptions* options,
+bool IsBlinkRequest(const GoogleUrl& url,
+                    const RequestHeaders* request_headers,
+                    const RewriteOptions* options,
                     const char* user_agent,
                     const UserAgentMatcher& user_agent_matcher_);
 

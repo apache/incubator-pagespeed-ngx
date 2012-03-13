@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/panel_config.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -49,12 +50,16 @@ bool IsBlacklistedBrowser(const StringPiece& user_agent,
 }  // namespace
 
 // TODO(rahulbansal): Add tests for this.
-bool IsBlinkRequest(const GoogleUrl& url, RewriteOptions* options,
+bool IsBlinkRequest(const GoogleUrl& url,
+                    const RequestHeaders* request_headers,
+                    const RewriteOptions* options,
                     const char* user_agent,
                     const UserAgentMatcher& user_agent_matcher_) {
   if (options != NULL &&
       // Is rewriting enabled?
       options->enabled() &&
+      // Is Get Request?
+      request_headers->method() == RequestHeaders::kGet &&
       // Is prioritize visible content filter enabled?
       options->Enabled(RewriteOptions::kPrioritizeVisibleContent) &&
       // Is url allowed? (i.e., it is not in black-list.)
@@ -63,6 +68,7 @@ bool IsBlinkRequest(const GoogleUrl& url, RewriteOptions* options,
       options->IsAllowed(url.Spec()) &&
       // Does url match a cacheable family pattern specified in config?
       options->MatchesAtfCacheableFamilies(url.PathAndLeaf()) &&
+      // user agent supports Blink.
       user_agent_matcher_.GetBlinkUserAgentType(user_agent) !=
           UserAgentMatcher::kDoesNotSupportBlink) {
     return true;

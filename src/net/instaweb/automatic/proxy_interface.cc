@@ -468,7 +468,8 @@ void ProxyInterface::ProxyRequestCallback(
     const Layout* layout = BlinkUtil::ExtractBlinkLayout(*request_url,
                                                          options, user_agent);
     bool is_blink_request = BlinkUtil::IsBlinkRequest(
-        *request_url, options, user_agent, user_agent_matcher_);
+        *request_url, async_fetch->request_headers(),
+        options, user_agent, user_agent_matcher_);
     if (is_blink_request && options->enable_blink_critical_line()) {
       blink_critical_line_requests_->IncBy(1);
       BlinkFlowCriticalLine::Start(request_url->Spec().as_string(),
