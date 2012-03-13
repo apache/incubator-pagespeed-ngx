@@ -135,9 +135,11 @@ class ProxyFetchPropertyCallbackCollector {
 
   // In our flow, we initiate the property-cache lookup prior to
   // creating a proxy-fetch, so that RewriteOptions lookup can proceed
-  // in parallel.  When we instantiate a ProxyFetch we need to attach
-  // it to this callback.
-  void SetProxyFetch(ProxyFetch* proxy_fetch);
+  // in parallel.  If/when we determine that ProxyFetch is associated
+  // with HTML content, we connect it to this callback.  Note that if
+  // the property cache lookups have completed, this will result in
+  // a direct call into proxy_fetch->PropertyCacheComplete.
+  void ConnectProxyFetch(ProxyFetch* proxy_fetch);
 
   // If for any reason we decide *not* to initiate a ProxyFetch for a
   // request, then we need to 'detach' this request so that we can
@@ -212,6 +214,22 @@ class ProxyFetch : public SharedAsyncFetch {
   static const char kCollectorDone[];
   static const char kCollectorPrefix[];
   static const char kCollectorReady[];
+
+  // These strings identify sync-points for introducing races between
+  // PropertyCache lookup completion and HeadersComplete.
+  static const char kHeadersSetupRaceAlarmQueued[];
+  static const char kHeadersSetupRaceDone[];
+  static const char kHeadersSetupRaceFlush[];
+  static const char kHeadersSetupRacePrefix[];
+  static const char kHeadersSetupRaceWait[];
+
+  // Number of milliseconds to wait, in a test, for an event that we
+  // are hoping does not occur, specifically an inappropriate call to
+  // base_fetch()->HeadersComplete() while we are still mutating
+  // response headers in SetupForHtml.
+  //
+  // This is used only for testing.
+  static const int kTestSignalTimeoutMs = 200;
 
  protected:
   // protected interface from AsyncFetch.

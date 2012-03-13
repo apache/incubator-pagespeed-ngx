@@ -49,6 +49,13 @@ const char ProxyFetch::kCollectorDone[] = "Collector:Done";
 const char ProxyFetch::kCollectorPrefix[] = "Collector:";
 const char ProxyFetch::kCollectorReady[] = "Collector:Ready";
 
+const char ProxyFetch::kHeadersSetupRaceAlarmQueued[] =
+    "HeadersSetupRace:AlarmQueued";
+const char ProxyFetch::kHeadersSetupRaceDone[] = "HeadersSetupRace:Done";
+const char ProxyFetch::kHeadersSetupRaceFlush[] = "HeadersSetupRace:Flush";
+const char ProxyFetch::kHeadersSetupRacePrefix[] = "HeadersSetupRace:";
+const char ProxyFetch::kHeadersSetupRaceWait[] = "HeadersSetupRace:Wait";
+
 ProxyFetchFactory::ProxyFetchFactory(ResourceManager* manager)
     : manager_(manager),
       timer_(manager->timer()),
@@ -191,11 +198,11 @@ ProxyFetchPropertyCallbackCollector::GetPropertyPageWithoutOwnership(
   return page;
 }
 
-// Calls to Done(), SetProxyFetch(), and Detach() may occur on
-// different threads.  Exactly one of SetProxyFetch and Detach will
+// Calls to Done(), ConnectProxyFetch(), and Detach() may occur on
+// different threads.  Exactly one of ConnectProxyFetch and Detach will
 // never race with each other, as they correspond to the construction
 // or destruction of ProxyFetch, but either can race with Done().  Note
-// that SetProxyFetch can be followed by Detach if it turns out that
+// that ConnectProxyFetch can be followed by Detach if it turns out that
 // a URL without a known extension is *not* HTML.  See
 // ProxyInterfaceTest.PropCacheNoWritesIfNonHtmlDelayedCache.
 
@@ -236,7 +243,7 @@ void ProxyFetchPropertyCallbackCollector::Done(
   }
 }
 
-void ProxyFetchPropertyCallbackCollector::SetProxyFetch(
+void ProxyFetchPropertyCallbackCollector::ConnectProxyFetch(
     ProxyFetch* proxy_fetch) {
   bool ready = false;
   {
@@ -425,6 +432,7 @@ void ProxyFetch::HandleHeadersComplete() {
 void ProxyFetch::AddPagespeedHeader() {
   if (Options()->enabled()) {
     response_headers()->Add(kPageSpeedHeader, factory_->server_version());
+    response_headers()->ComputeCaching();
   }
 }
 
@@ -433,10 +441,6 @@ void ProxyFetch::SetupForHtml() {
   if (options->enabled() && options->IsAllowed(url_)) {
     started_parse_ = StartParse();
     if (started_parse_) {
-      // HTML needs to wait for the properties to be fetched.
-      if (property_cache_callback_ != NULL) {
-        property_cache_callback_->SetProxyFetch(this);
-      }
       // TODO(sligocki): Get these in the main flow.
       // Add, remove and update headers as appropriate.
       int64 ttl_ms;
@@ -466,6 +470,20 @@ void ProxyFetch::SetupForHtml() {
         // Cache-Control quantifiers, like "proxy-revalidate".
         cache_control_suffix = ", private";
       }
+
+      // When testing, wait a little here for unit tests to make sure
+      // we don't race ahead & run filters while we are still cleaning
+      // up headers.  When this particular bug is fixed,
+      // HeadersComplete will *not* be called on base_fetch() until
+      // after this function returns, so we'd block indefinitely.
+      // Instead, block just for 200ms so the test can pass with
+      // limited delay.  Note that this is a no-op except in test
+      // ProxyInterfaceTest.FiltersRaceSetup which enables thread-sync
+      // prefix "HeadersSetupRace:".
+      ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
+      sync->Signal(kHeadersSetupRaceWait);
+      sync->TimedWait(kHeadersSetupRaceFlush, kTestSignalTimeoutMs);
+
       response_headers()->SetDateAndCaching(
           response_headers()->date_ms(), ttl_ms, cache_control_suffix);
       // TODO(sligocki): Support Etags and/or Last-Modified.
@@ -567,6 +585,13 @@ bool ProxyFetch::HandleWrite(const StringPiece& str,
       // Now we're done mucking about with headers, add one noting our
       // involvement.
       AddPagespeedHeader();
+
+      if ((property_cache_callback_ != NULL) && started_parse_) {
+        // Connect the ProxyFetch in the PropertyCacheCallbackCollector.  This
+        // ensures that we will not start executing HTML filters until
+        // property cache lookups are complete.
+        property_cache_callback_->ConnectProxyFetch(this);
+      }
 
       // If we buffered up any bytes in previous calls, make sure to
       // release them.
@@ -777,7 +802,12 @@ void ProxyFetch::Finish(bool success) {
   done_called_ = true;
   factory_->Finish(this);
 
+  // In ProxyInterfaceTest.HeadersSetupRace, raise a signal that
+  // indicates the test functionality is complete.  In other contexts
+  // this is a no-op.
+  ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
   delete this;
+  sync->Signal(kHeadersSetupRaceDone);
 }
 
 void ProxyFetch::CompleteFinishParse(bool success) {
@@ -804,6 +834,12 @@ void ProxyFetch::QueueIdleAlarm() {
       driver_->scheduler(), sequence_,
       timer_->NowUs() + Options()->idle_flush_time_ms() * Timer::kMsUs,
       MakeFunction(this, &ProxyFetch::HandleIdleAlarm));
+
+  // In ProxyInterfaceTest.HeadersSetupRace, raise a signal that
+  // indicates the idle-callback has initiated.  In other contexts
+  // this is a no-op.
+  ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
+  sync->Signal(kHeadersSetupRaceAlarmQueued);
 }
 
 void ProxyFetch::HandleIdleAlarm() {

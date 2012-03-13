@@ -44,6 +44,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/delay_cache.h"
 #include "net/instaweb/util/public/function.h"
@@ -87,10 +88,20 @@ const char kBackgroundFetchHeader[] = "X-Background-Fetch";
 class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
  public:
   AsyncExpectStringAsyncFetch(bool expect_success,
-                              WorkerTestBase::SyncPoint* notify)
-      : ExpectStringAsyncFetch(expect_success), notify_(notify) {}
+                              WorkerTestBase::SyncPoint* notify,
+                              ThreadSynchronizer* sync)
+      : ExpectStringAsyncFetch(expect_success),
+        notify_(notify),
+        sync_(sync) {
+  }
 
   virtual ~AsyncExpectStringAsyncFetch() {}
+
+  virtual void HandleHeadersComplete() {
+    sync_->Wait(ProxyFetch::kHeadersSetupRaceWait);
+    response_headers()->Add("HeadersComplete", "1");  // Dirties caching info.
+    sync_->Signal(ProxyFetch::kHeadersSetupRaceFlush);
+  }
 
   virtual void HandleDone(bool success) {
     ExpectStringAsyncFetch::HandleDone(success);
@@ -99,6 +110,8 @@ class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
 
  private:
   WorkerTestBase::SyncPoint* notify_;
+  ThreadSynchronizer* sync_;
+
   DISALLOW_COPY_AND_ASSIGN(AsyncExpectStringAsyncFetch);
 };
 
@@ -208,6 +221,13 @@ class MockFilter : public EmptyHtmlFilter {
   }
 
   virtual void EndDocument() {
+    // We query IsCacheable for the HTML file only to ensure that
+    // the test will crash if ComputeCaching() was never called.
+    //
+    // IsCacheable is true for HTML files because of kHtmlCacheTimeSec
+    // above.
+    EXPECT_TRUE(driver_->response_headers_ptr()->IsCacheable());
+
     if (num_elements_property_ != NULL) {
       PropertyCache* page_cache =
           driver_->resource_manager()->page_property_cache();
@@ -300,6 +320,16 @@ class BackgroundFetchCheckingUrlAsyncFetcher : public UrlAsyncFetcher {
 // (as it runs the tests with real scheduler but mock timer). It would probably
 // be better to port this away to use TestRewriteDriverFactory directly.
 class ProxyInterfaceTest : public ResourceManagerTestBase {
+ public:
+  // Helper function to run the fetch for ProxyInterfaceTest.HeadersSetupRace
+  // in a thread so we can control it with signals using ThreadSynchronizer.
+  //
+  // It must be declared in the public section to be used in MakeFunction.
+  void TestHeadersSetupRace() {
+    mock_url_fetcher()->SetResponseFailure(AbsolutifyUrl(kPageUrl));
+    TestPropertyCache(kPageUrl, true, true, false);
+  }
+
  protected:
   static const int kHtmlCacheTimeSec = 5000;
 
@@ -382,8 +412,9 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
                             ResponseHeaders* headers_out) {
     sync_.reset(new WorkerTestBase::SyncPoint(
         resource_manager()->thread_system()));
-    callback_.reset(new AsyncExpectStringAsyncFetch(expect_success,
-                                                    sync_.get()));
+    callback_.reset(new AsyncExpectStringAsyncFetch(
+        expect_success, sync_.get(),
+        resource_manager()->thread_synchronizer()));
     callback_->set_response_headers(headers_out);
     callback_->request_headers()->CopyFrom(request_headers);
     fetch_already_done_ = proxy_interface_->Fetch(AbsolutifyUrl(url),
@@ -410,7 +441,8 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
       ResponseHeaders* headers_out) {
     RequestHeaders request_headers;
     WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
-    AsyncExpectStringAsyncFetch callback(true, &sync);
+    AsyncExpectStringAsyncFetch callback(
+        true, &sync, resource_manager()->thread_synchronizer());
     callback.set_response_headers(headers_out);
     proxy_interface_->ProxyRequestCallback(
         false, url, &callback, NULL, NULL, property_callback,
@@ -509,7 +541,8 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   // ProxyFetchPropertyCallbackCollector::Done() would lead to a
   // double-deletion of the collector object.
   void TestPropertyCache(const StringPiece& url,
-                         bool delay_pcache, bool thread_pcache) {
+                         bool delay_pcache, bool thread_pcache,
+                         bool expect_success) {
     scoped_ptr<QueuedWorkerPool> pool;
     QueuedWorkerPool::Sequence* sequence = NULL;
 
@@ -523,7 +556,6 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
       delay_pcache_key = pcache->CacheKey(delay_http_cache_key, cohort);
       delay_cache()->DelayKey(delay_pcache_key);
       if (thread_pcache) {
-        sync->EnableForPrefix(ProxyFetch::kCollectorPrefix);
         delay_cache()->DelayKey(delay_http_cache_key);
         pool.reset(new QueuedWorkerPool(
             1, resource_manager()->thread_system()));
@@ -534,13 +566,12 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     CreateFilterCallback create_filter_callback;
     factory()->AddCreateFilterCallback(&create_filter_callback);
 
-    DisableAjax();
     GoogleString image_out;
     ResponseHeaders headers_out;
 
     if (thread_pcache) {
       RequestHeaders request_headers;
-      FetchFromProxyNoWait(url, request_headers, true, &headers_out);
+      FetchFromProxyNoWait(url, request_headers, expect_success, &headers_out);
       delay_cache()->ReleaseKeyInSequence(delay_pcache_key, sequence);
 
       // Wait until the property-cache-thread is in
@@ -561,7 +592,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
       WaitForFetch();
       pool->ShutDown();
     } else {
-      FetchFromProxy(url, true, &image_out, &headers_out);
+      FetchFromProxy(url, expect_success, &image_out, &headers_out);
       if (delay_pcache) {
         delay_cache()->ReleaseKey(delay_pcache_key);
       }
@@ -682,7 +713,8 @@ TEST_F(ProxyInterfaceTest, HeadRequest) {
             "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
             "Expires: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
             "Cache-Control: max-age=0, private\r\n"
-            "X-Page-Speed: \r\n\r\n", get_headers.ToString());
+            "X-Page-Speed: \r\n"
+            "HeadersComplete: 1\r\n\r\n", get_headers.ToString());
   EXPECT_EQ(set_text, get_text);
 
   // Headers and body are correct for a Head request.
@@ -692,7 +724,8 @@ TEST_F(ProxyInterfaceTest, HeadRequest) {
   EXPECT_EQ("HTTP/1.0 200 OK\r\n"
             "Content-Type: text/html\r\n"
             "X-Background-Fetch: 0\r\n"
-            "X-Page-Speed: \r\n\r\n", get_headers.ToString());
+            "X-Page-Speed: \r\n"
+            "HeadersComplete: 1\r\n\r\n", get_headers.ToString());
   EXPECT_TRUE(get_text.empty());
 }
 
@@ -711,7 +744,8 @@ TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
       "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
       "Expires: Tue, 02 Feb 2010 18:56:26 GMT\r\n"
       "Cache-Control: max-age=300,private\r\n"
-      "X-Page-Speed: \r\n\r\n";
+      "X-Page-Speed: \r\n"
+      "HeadersComplete: 1\r\n\r\n";
 
   // We're not going to image-compress so we don't need our mock image
   // to really be an image.
@@ -744,7 +778,8 @@ TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
       "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
       "Expires: Tue, 02 Feb 2010 18:56:26 GMT\r\n"
       "Cache-Control: max-age=300,private\r\n"
-      "X-Page-Speed: \r\n\r\n";
+      "X-Page-Speed: \r\n"
+      "HeadersComplete: 1\r\n\r\n";
 
   EXPECT_EQ(expected_response_headers_string, response_headers.ToString());
   EXPECT_TRUE(text.empty());
@@ -2403,19 +2438,97 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfHtmlEndsWithTxt) {
 }
 
 TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNonHtmlDelayedCache) {
-  TestPropertyCache(kImageFilenameLackingExt, true, false);
+  DisableAjax();
+  TestPropertyCache(kImageFilenameLackingExt, true, false, true);
 }
 
 TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNonHtmlImmediateCache) {
-  TestPropertyCache(kImageFilenameLackingExt, false, false);
+  // Tests rewriting a file that turns out to be a jpeg, but lacks an
+  // extension, where the property-cache lookup is delivered immediately.
+  DisableAjax();
+  TestPropertyCache(kImageFilenameLackingExt, false, false, true);
 }
 
 TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNonHtmlThreadedCache) {
-  TestPropertyCache(kImageFilenameLackingExt, true, true);
+  // Tests rewriting a file that turns out to be a jpeg, but lacks an
+  // extension, where the property-cache lookup is delivered in a
+  // separate thread.
+  DisableAjax();
+  ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+  sync->EnableForPrefix(ProxyFetch::kCollectorPrefix);
+  TestPropertyCache(kImageFilenameLackingExt, true, true, true);
 }
 
 TEST_F(ProxyInterfaceTest, ThreadedHtml) {
-  TestPropertyCache(kPageUrl, true, true);
+  // Tests rewriting HTML resource where property-cache lookup is delivered
+  // in a separate thread.
+  DisableAjax();
+  ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+  sync->EnableForPrefix(ProxyFetch::kCollectorPrefix);
+  TestPropertyCache(kPageUrl, true, true, true);
+}
+
+TEST_F(ProxyInterfaceTest, ThreadedHtmlFetcherFailure) {
+  // Tests rewriting HTML resource where property-cache lookup is delivered
+  // in a separate thread, but the HTML lookup fails after emitting the
+  // body.
+  DisableAjax();
+  mock_url_fetcher()->SetResponseFailure(AbsolutifyUrl(kPageUrl));
+  TestPropertyCache(kPageUrl, true, true, false);
+}
+
+TEST_F(ProxyInterfaceTest, HtmlFetcherFailure) {
+  // Tests rewriting HTML resource where property-cache lookup is
+  // delivered in a blocking fashion, and the HTML lookup fails after
+  // emitting the body.
+  DisableAjax();
+  mock_url_fetcher()->SetResponseFailure(AbsolutifyUrl(kPageUrl));
+  TestPropertyCache(kPageUrl, false, false, false);
+}
+
+TEST_F(ProxyInterfaceTest, HeadersSetupRace) {
+  //
+  // This crash occured where an Idle-callback is used to flush HTML.
+  // In this bug, we were connecting the property-cache callback to
+  // the ProxyFetch and then mutating response-headers.  The property-cache
+  // callback was waking up the QueuedWorkerPool::Sequence used by
+  // the ProxyFetch, which was waking up and calling HeadersComplete.
+  // If the implementation of HeadersComplete mutated headers itself,
+  // we'd have a deadly race.
+  //
+  // This test uses the ThreadSynchronizer class to induce the desired
+  // race, with strategically placed calls to Signal and Wait.
+  //
+  // Note that the fix for the race means that one of the Signals does
+  // not occur at all, so we have to declare it as "Sloppy" so the
+  // ThreadSynchronizer class doesn't vomit on destruction.
+  const int kIdleCallbackTimeoutMs = 10;
+  RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_idle_flush_time_ms(kIdleCallbackTimeoutMs);
+  options->set_flush_html(true);
+  resource_manager()->ComputeSignature(options);
+  DisableAjax();
+  ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+  sync->EnableForPrefix(ProxyFetch::kHeadersSetupRacePrefix);
+  ThreadSystem* thread_system = resource_manager()->thread_system();
+  QueuedWorkerPool pool(1, thread_system);
+  QueuedWorkerPool::Sequence* sequence = pool.NewSequence();
+  WorkerTestBase::SyncPoint sync_point(thread_system);
+  sequence->Add(MakeFunction(static_cast<ProxyInterfaceTest*>(this),
+                             &ProxyInterfaceTest::TestHeadersSetupRace));
+  sequence->Add(new WorkerTestBase::NotifyRunFunction(&sync_point));
+  sync->TimedWait(ProxyFetch::kHeadersSetupRaceAlarmQueued,
+                  ProxyFetch::kTestSignalTimeoutMs);
+  {
+    // Trigger the idle-callback, if it has been queued.
+    ScopedMutex lock(mock_scheduler()->mutex());
+    mock_scheduler()->ProcessAlarms(kIdleCallbackTimeoutMs * Timer::kMsUs);
+  }
+  sync->Wait(ProxyFetch::kHeadersSetupRaceDone);
+  sync_point.Wait();
+  pool.ShutDown();
+  sync->AllowSloppyTermination(ProxyFetch::kHeadersSetupRaceAlarmQueued);
 }
 
 TEST_F(ProxyInterfaceTest, BothClientAndPropertyCache) {

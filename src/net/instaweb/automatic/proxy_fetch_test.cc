@@ -179,7 +179,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeSetProxyFetch) {
   EXPECT_EQ(NULL, collector.get()->GetPropertyPage(
       ProxyFetchPropertyCallback::kClientPropertyCache));
 
-  collector.get()->SetProxyFetch(mock_proxy_fetch);
+  collector.get()->ConnectProxyFetch(mock_proxy_fetch);
   // Should be complete since SetProxyFetch() called after Done().
   EXPECT_EQ(true, mock_proxy_fetch->complete());
 
@@ -200,7 +200,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, SetProxyFetchBeforeDone) {
   MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
       &async_fetch, &factory, resource_manager_);
 
-  collector.get()->SetProxyFetch(mock_proxy_fetch);
+  collector.get()->ConnectProxyFetch(mock_proxy_fetch);
   // Should not be complete since SetProxyFetch() called first.
   EXPECT_EQ(false, mock_proxy_fetch->complete());
 
@@ -240,7 +240,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, BothCallbacksComplete) {
   MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
       &async_fetch, &factory, resource_manager_);
 
-  collector.get()->SetProxyFetch(mock_proxy_fetch);
+  collector.get()->ConnectProxyFetch(mock_proxy_fetch);
   // Should not be complete since SetProxyFetch() called first.
   EXPECT_EQ(false, mock_proxy_fetch->complete());
 
