@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -38,6 +39,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -49,26 +51,55 @@ namespace {
 bool IsValidAndCacheableImpl(HTTPCache* http_cache,
                              int64 min_cache_time_to_rewrite_ms,
                              bool respect_vary,
-                             const ResponseHeaders* headers) {
-  if (headers->status_code() != HttpStatus::kOK) {
+                             const ResponseHeaders& headers) {
+  if (headers.status_code() != HttpStatus::kOK) {
     return false;
   }
 
   bool cacheable = true;
   if (respect_vary) {
-    cacheable = headers->VaryCacheable();
+    cacheable = headers.VaryCacheable();
   } else {
-    cacheable = headers->IsCacheable();
+    cacheable = headers.IsCacheable();
   }
   // If we are setting a TTL for HTML, we cannot rewrite any resource
   // with a shorter TTL.
-  cacheable &= (headers->cache_ttl_ms() >= min_cache_time_to_rewrite_ms);
+  cacheable &= (headers.cache_ttl_ms() >= min_cache_time_to_rewrite_ms);
 
   if (!cacheable && !http_cache->force_caching()) {
     return false;
   }
 
-  return !http_cache->IsAlreadyExpired(*headers);
+  return !http_cache->IsAlreadyExpired(headers);
+}
+
+// Returns true if the input didn't change and we could successfully update
+// input_info() in the callback.
+bool CheckAndUpdateInputInfo(const ResponseHeaders& headers,
+                             const HTTPValue& value,
+                             const RewriteOptions& options,
+                             const ResourceManager& manager,
+                             Resource::FreshenCallback* callback) {
+  InputInfo* input_info = callback->input_info();
+  if (input_info != NULL && input_info->has_input_content_hash() &&
+      IsValidAndCacheableImpl(manager.http_cache(),
+                              options.min_resource_cache_time_to_rewrite_ms(),
+                              options.respect_vary(),
+                              headers)) {
+    StringPiece content;
+    if (value.ExtractContents(&content)) {
+      InputInfo* input_info = callback->input_info();
+      GoogleString new_hash = manager.contents_hasher()->Hash(content);
+      // TODO(nikhilmadan): Consider using the Etag / Last-Modified header to
+      // validate if the resource has changed instead of computing the hash.
+      if (new_hash == input_info->input_content_hash()) {
+        callback->resource()->FillInPartitionInputInfoFromResponseHeaders(
+            headers, input_info);
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 }  // namespace
@@ -163,7 +194,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
     headers->FixDateHeaders(http_cache()->timer()->NowMs());
     if (success && !headers->IsErrorStatus()) {
       if (IsValidAndCacheableImpl(http_cache(), resource_cutoff_ms_,
-                                  respect_vary_, headers)) {
+                                  respect_vary_, *headers)) {
         HTTPValue* value = http_value();
         value->SetHeaders(headers);
         http_cache()->Put(url(), value, message_handler_);
@@ -315,17 +346,25 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
                        ResourceManager* resource_manager,
                        RewriteDriver* rewrite_driver,
                        const RewriteOptions* rewrite_options,
-                       HTTPValue* fallback_value)
+                       HTTPValue* fallback_value,
+                       Resource::FreshenCallback* callback)
       : UrlResourceFetchCallback(resource_manager, rewrite_options,
                                  fallback_value),
         url_(url),
         http_cache_(http_cache),
-        rewrite_driver_(rewrite_driver) {
+        rewrite_driver_(rewrite_driver),
+        callback_(callback) {
     response_headers()->set_implicit_cache_ttl_ms(
         rewrite_options->implicit_cache_ttl_ms());
   }
 
   virtual void DoneInternal(bool success) {
+    if (callback_ != NULL) {
+      success &= CheckAndUpdateInputInfo(
+          *response_headers(), http_value_, *rewrite_options_,
+          *rewrite_driver_->resource_manager(), callback_);
+      callback_->Done(success);
+    }
     rewrite_driver_->decrement_async_events_count();
   }
 
@@ -339,6 +378,7 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
   GoogleString url_;
   HTTPCache* http_cache_;
   RewriteDriver* rewrite_driver_;
+  Resource::FreshenCallback* callback_;
   HTTPValue http_value_;
 
   DISALLOW_COPY_AND_ASSIGN(FreshenFetchCallback);
@@ -353,12 +393,14 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
   FreshenHttpCacheCallback(const GoogleString& url,
                            ResourceManager* manager,
                            RewriteDriver* driver,
-                           const RewriteOptions* options)
+                           const RewriteOptions* options,
+                           Resource::FreshenCallback* callback)
       : OptionsAwareHTTPCacheCallback(options),
         url_(url),
         manager_(manager),
         driver_(driver),
-        options_(options) {}
+        options_(options),
+        callback_(callback) {}
 
   virtual ~FreshenHttpCacheCallback() {}
 
@@ -367,9 +409,15 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
       // Not found in cache. Invoke the fetcher.
       FreshenFetchCallback* cb = new FreshenFetchCallback(
           url_, manager_->http_cache(), manager_, driver_, options_,
-          fallback_http_value());
+          fallback_http_value(), callback_);
       cb->Fetch(manager_->url_async_fetcher(), manager_->message_handler());
     } else {
+      if (callback_ != NULL) {
+        bool success = (find_result == HTTPCache::kFound) &&
+            CheckAndUpdateInputInfo(*response_headers(), *http_value(),
+                                    *options_, *manager_, callback_);
+        callback_->Done(success);
+      }
       driver_->decrement_async_events_count();
     }
     delete this;
@@ -389,6 +437,7 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
   ResourceManager* manager_;
   RewriteDriver* driver_;
   const RewriteOptions* options_;
+  Resource::FreshenCallback* callback_;
   DISALLOW_COPY_AND_ASSIGN(FreshenHttpCacheCallback);
 };
 
@@ -396,7 +445,7 @@ bool UrlInputResource::IsValidAndCacheable() const {
   return IsValidAndCacheableImpl(
       resource_manager()->http_cache(),
       rewrite_options_->min_resource_cache_time_to_rewrite_ms(),
-      respect_vary_, &response_headers_);
+      respect_vary_, response_headers_);
 }
 
 bool UrlInputResource::Load(MessageHandler* handler) {
@@ -412,7 +461,8 @@ bool UrlInputResource::Load(MessageHandler* handler) {
   return false;
 }
 
-void UrlInputResource::Freshen(MessageHandler* handler) {
+void UrlInputResource::Freshen(Resource::FreshenCallback* callback,
+                               MessageHandler* handler) {
   // TODO(jmarantz): use if-modified-since
   // For now this is much like Load(), except we do not
   // touch our value, but just the cache
@@ -426,7 +476,7 @@ void UrlInputResource::Freshen(MessageHandler* handler) {
   }
 
   FreshenHttpCacheCallback* freshen_callback = new FreshenHttpCacheCallback(
-      url_, resource_manager(), rewrite_driver_, rewrite_options_);
+      url_, resource_manager(), rewrite_driver_, rewrite_options_, callback);
   // Lookup the cache before doing the fetch since the response may have already
   // been fetched elsewhere.
   http_cache->Find(url_, handler, freshen_callback);

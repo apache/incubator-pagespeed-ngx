@@ -22,7 +22,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_URL_INPUT_RESOURCE_H_
 
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -31,6 +30,7 @@ namespace net_instaweb {
 struct ContentType;
 class MessageHandler;
 class RewriteDriver;
+class RewriteOptions;
 
 class UrlInputResource : public Resource {
  public:
@@ -46,10 +46,7 @@ class UrlInputResource : public Resource {
     return rewrite_options_;
   }
 
-  // Note that this only updates the resource contents in cache and does not
-  // update the metadata that associates an input resource with a rewritten
-  // resource.
-  virtual void Freshen(MessageHandler* handler);
+  virtual void Freshen(FreshenCallback* callback, MessageHandler* handler);
 
  protected:
   virtual bool Load(MessageHandler* message_handler);

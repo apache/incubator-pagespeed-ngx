@@ -37,6 +37,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/timer.h"
@@ -141,17 +142,24 @@ void AjaxRewriteContext::Harvest() {
       if (nested_context->slot(0)->was_optimized() &&
           num_output_partitions() == 1) {
         CachedResult* partition = output_partition(0);
-        LOG(INFO) << "Ajax rewrite succeeded for " << url_
-                  << " and the rewritten resource is "
-                  << nested_resource->url();
+        VLOG(1) << "Ajax rewrite succeeded for " << url_
+                << " and the rewritten resource is "
+                << nested_resource->url();
         partition->set_url(nested_resource->url());
         partition->set_optimizable(true);
+        if (partitions()->other_dependency_size() == 1) {
+          // If there is only one other dependency, then the InputInfo is
+          // already covered in the first partition. We're clearing this here
+          // since freshens only update the partitions and not the other
+          // dependencies.
+          partitions()->clear_other_dependency();
+        }
         RewriteDone(kRewriteOk, 0);
         return;
       }
     }
   }
-  LOG(INFO) << "Ajax rewrite failed for " << url_;
+  VLOG(1) << "Ajax rewrite failed for " << url_;
   RewriteDone(kRewriteFailed, 0);
 }
 
@@ -193,12 +201,12 @@ void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
     headers->ComputeCaching();
     int64 expire_at_ms = kint64max;
     int64 date_ms = kint64max;
-    for (int j = 0, m = partitions()->other_dependency_size(); j < m; ++j) {
-      InputInfo dependency = partitions()->other_dependency(j);
-      if (dependency.has_expiration_time_ms() && dependency.has_date_ms()) {
-        date_ms = std::min(date_ms, dependency.date_ms());
-        expire_at_ms = std::min(expire_at_ms, dependency.expiration_time_ms());
-      }
+    if (partitions()->other_dependency_size() > 0) {
+      UpdateDateAndExpiry(partitions()->other_dependency(), &date_ms,
+                          &expire_at_ms);
+    } else {
+      UpdateDateAndExpiry(output_partition(0)->input(), &date_ms,
+                          &expire_at_ms);
     }
     int64 now_ms = Manager()->timer()->NowMs();
     if (expire_at_ms == kint64max) {
@@ -215,12 +223,27 @@ void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
   }
 }
 
+void AjaxRewriteContext::UpdateDateAndExpiry(
+    const protobuf::RepeatedPtrField<InputInfo>& inputs,
+    int64* date_ms,
+    int64* expire_at_ms) {
+  for (int j = 0, m = inputs.size(); j < m; ++j) {
+    const InputInfo& dependency = inputs.Get(j);
+    if (dependency.has_expiration_time_ms() && dependency.has_date_ms()) {
+      *date_ms = std::min(*date_ms, dependency.date_ms());
+      *expire_at_ms = std::min(*expire_at_ms, dependency.expiration_time_ms());
+    }
+  }
+}
+
 void AjaxRewriteContext::FetchCallbackDone(bool success) {
   if (is_rewritten_ && num_output_partitions() == 1) {
-    // Ajax rewrites always apply on single rewrites.
+    // Ajax rewrites always have a single output partition.
     // Freshen the resource if possible. Note that since is_rewritten_ is true,
     // we got a metadata cache hit and a hit on the rewritten resource in cache.
-    Freshen(*output_partition(0));
+    // TODO(nikhilmadan): Freshening is broken for ajax rewrites on css, since
+    // we don't update the other dependencies.
+    Freshen();
   }
   RewriteContext::FetchCallbackDone(success);
 }

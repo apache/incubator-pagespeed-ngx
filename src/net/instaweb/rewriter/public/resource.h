@@ -107,9 +107,13 @@ class Resource : public RefCounted<Resource> {
   virtual void FillInPartitionInputInfo(HashHint suggest_include_content_hash,
                                         InputInfo* input);
 
+  void FillInPartitionInputInfoFromResponseHeaders(
+      const ResponseHeaders& headers,
+      InputInfo* input);
+
   // Returns 0 if resource is not cacheable.
   // TODO(sligocki): Look through callsites and make sure this is being
-  // interpretted correctly.
+  // interpreted correctly.
   int64 CacheExpirationTimeMs() const;
 
   StringPiece contents() const {
@@ -153,6 +157,29 @@ class Resource : public RefCounted<Resource> {
 
    private:
     ResourcePtr resource_;
+    DISALLOW_COPY_AND_ASSIGN(AsyncCallback);
+  };
+
+  // An AsyncCallback for a freshen. The Done() callback in the default
+  // implementation deletes itself.
+  class FreshenCallback : public AsyncCallback {
+   public:
+    explicit FreshenCallback(const ResourcePtr& resource)
+        : AsyncCallback(resource) {}
+
+    virtual ~FreshenCallback();
+    // Returns NULL by default. Sublasses should override this if they want this
+    // to be updated based on the response fetched while freshening.
+    virtual InputInfo* input_info() { return NULL; }
+
+    // This is called with success = true only if the hash of the fetched
+    // response is the same as the hash in input_info()->input_content_hash().
+    virtual void Done(bool success) {
+      delete this;
+    }
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(FreshenCallback);
   };
 
   // Links in the HTTP contents and header from a fetched value.
@@ -164,7 +191,8 @@ class Resource : public RefCounted<Resource> {
 
   // Freshen a soon-to-expire resource so that we minimize the number
   // of cache misses when serving live traffic.
-  virtual void Freshen(MessageHandler* handler);
+  // Note that callback may be NULL, and all subclasses must handle this.
+  virtual void Freshen(FreshenCallback* callback, MessageHandler* handler);
 
   // Links the stale fallback value that can be used in case a fetch fails.
   void LinkFallbackValue(HTTPValue* value);

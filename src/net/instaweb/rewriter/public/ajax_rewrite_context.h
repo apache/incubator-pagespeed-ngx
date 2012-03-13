@@ -29,11 +29,15 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
+namespace proto2 { template <typename Element> class RepeatedPtrField; }
+
 namespace net_instaweb {
 
+class InputInfo;
 class MessageHandler;
 class ResponseHeaders;
 class RewriteDriver;
@@ -97,6 +101,10 @@ class AjaxRewriteContext : public SingleRewriteContext {
   virtual void FetchCallbackDone(bool success);
 
   RewriteFilter* GetRewriteFilter(const ContentType& type);
+
+  // Update the date and expiry time based on the InputInfo's.
+  void UpdateDateAndExpiry(const protobuf::RepeatedPtrField<InputInfo>& inputs,
+                           int64* date_ms, int64* expiry_ms);
 
   RewriteDriver* driver_;
   GoogleString url_;

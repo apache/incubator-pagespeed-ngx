@@ -80,7 +80,7 @@ const char* kExcludedAttributes[] = {
   HttpAttributes::kVary
 };
 
-} // namespace
+}  // namespace
 
 const int64 ResourceManager::kGeneratedMaxAgeMs = Timer::kYearMs;
 
@@ -411,7 +411,7 @@ void ResourceManager::RefreshIfImminentlyExpiring(
     int64 start_date_ms = headers->date_ms();
     int64 expire_ms = headers->CacheExpirationTimeMs();
     if (IsImminentlyExpiring(start_date_ms, expire_ms)) {
-      resource->Freshen(handler);
+      resource->Freshen(NULL, handler);
     }
   }
 }
@@ -426,7 +426,6 @@ ResourceManagerHttpCallback::ResourceManagerHttpCallback(
       resource_manager_(resource_manager),
       not_cacheable_policy_(not_cacheable_policy) {
 }
-
 
 ResourceManagerHttpCallback::~ResourceManagerHttpCallback() {
 }

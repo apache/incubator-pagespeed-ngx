@@ -74,14 +74,20 @@ void Resource::FillInPartitionInputInfo(HashHint include_content_hash,
                                         InputInfo* input) {
   CHECK(loaded());
   input->set_type(InputInfo::CACHED);
-  input->set_last_modified_time_ms(response_headers_.last_modified_time_ms());
-  input->set_expiration_time_ms(response_headers_.CacheExpirationTimeMs());
-  input->set_date_ms(response_headers_.date_ms());
+  FillInPartitionInputInfoFromResponseHeaders(response_headers_, input);
   if ((include_content_hash == kIncludeInputHash) && IsValidAndCacheable()) {
     input->set_input_content_hash(ContentsHash());
   } else {
     input->clear_input_content_hash();
   }
+}
+
+void Resource::FillInPartitionInputInfoFromResponseHeaders(
+      const ResponseHeaders& headers,
+      InputInfo* input) {
+  input->set_last_modified_time_ms(headers.last_modified_time_ms());
+  input->set_expiration_time_ms(headers.CacheExpirationTimeMs());
+  input->set_date_ms(headers.date_ms());
 }
 
 int64 Resource::CacheExpirationTimeMs() const {
@@ -124,6 +130,9 @@ void Resource::LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
 Resource::AsyncCallback::~AsyncCallback() {
 }
 
+Resource::FreshenCallback::~FreshenCallback() {
+}
+
 bool Resource::Link(HTTPValue* value, MessageHandler* handler) {
   SharedString* contents_and_headers = value->share();
   return value_.Link(contents_and_headers, &response_headers_, handler);
@@ -135,8 +144,11 @@ void Resource::LinkFallbackValue(HTTPValue* value) {
   }
 }
 
-void Resource::Freshen(MessageHandler* handler) {
+void Resource::Freshen(FreshenCallback* callback, MessageHandler* handler) {
   // We don't need Freshining for data urls or output resources.
+  if (callback != NULL) {
+    callback->Done(false);
+  }
 }
 
 }  // namespace net_instaweb

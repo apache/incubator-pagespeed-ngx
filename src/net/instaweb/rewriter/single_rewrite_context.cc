@@ -51,10 +51,8 @@ bool SingleRewriteContext::Partition(OutputPartitions* partitions,
               resource, kind()));
       if (output_resource.get() != NULL) {
         CachedResult* partition = partitions->add_partition();
-        Resource::HashHint hash_hint =
-            (kind() == kOnTheFlyResource) ?
-                Resource::kOmitInputHash : Resource::kIncludeInputHash;
-        resource->AddInputInfoToPartition(hash_hint, 0, partition);
+        resource->AddInputInfoToPartition(Resource::kIncludeInputHash, 0,
+                                          partition);
         output_resource->set_cached_result(partition);
         outputs->push_back(output_resource);
       }

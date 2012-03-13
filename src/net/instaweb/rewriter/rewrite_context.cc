@@ -45,6 +45,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -60,6 +61,7 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 #include "net/instaweb/util/public/writer.h"
@@ -68,7 +70,104 @@ namespace net_instaweb {
 
 class RewriteFilter;
 
+namespace {
+
 const char kRewriteContextLockPrefix[] = "rc:";
+
+// Manages freshening of all the inputs of the given context. If any of the
+// input resources change, this deletes the corresponding metadata. Otherwise,
+// we update the metadata and write it out.
+class FreshenMetadataUpdateManager {
+ public:
+  // Takes ownership of mutex.
+  FreshenMetadataUpdateManager(const GoogleString& partition_key,
+                               CacheInterface* metadata_cache,
+                               AbstractMutex* mutex)
+      : partition_key_(partition_key),
+        metadata_cache_(metadata_cache),
+        mutex_(mutex),
+        num_pending_freshens_(0),
+        all_freshens_triggered_(false),
+        should_delete_cache_key_(false) {}
+
+  ~FreshenMetadataUpdateManager() {}
+
+  void Done(bool success) {
+    bool should_cleanup = false;
+    {
+      ScopedMutex lock(mutex_.get());
+      --num_pending_freshens_;
+      if (!success) {
+        should_delete_cache_key_ = true;
+      }
+      should_cleanup = ShouldCleanup();
+    }
+    if (should_cleanup) {
+      Cleanup();
+    }
+  }
+
+  void MarkAllFreshensTriggered() {
+    bool should_cleanup = false;
+    {
+      ScopedMutex lock(mutex_.get());
+      all_freshens_triggered_ = true;
+      should_cleanup = ShouldCleanup();
+    }
+    if (should_cleanup) {
+      Cleanup();
+    }
+  }
+
+  void IncrementFreshens(const OutputPartitions& partitions) {
+    ScopedMutex lock(mutex_.get());
+    if (partitions_.get() == NULL) {
+      // Copy OutputPartitions lazily.
+      OutputPartitions* cloned_partitions = new OutputPartitions;
+      cloned_partitions->CopyFrom(partitions);
+      partitions_.reset(cloned_partitions);
+    }
+    num_pending_freshens_++;
+  }
+
+  InputInfo* GetInputInfo(int partition_index, int input_index) {
+    return partitions_->mutable_partition(partition_index)->
+        mutable_input(input_index);
+  }
+
+ private:
+  bool ShouldCleanup() {
+    mutex_->DCheckLocked();
+    return (num_pending_freshens_ == 0) && all_freshens_triggered_;
+  }
+
+  void Cleanup() {
+    if (should_delete_cache_key_) {
+      // One of the resources changed. Delete the metadata.
+      metadata_cache_->Delete(partition_key_);
+    } else if (partitions_.get() != NULL) {
+      SharedString buf;
+      StringOutputStream sstream(buf.get());
+      partitions_->SerializeToZeroCopyStream(&sstream);
+      // Write the updated partition info to the metadata cache.
+      metadata_cache_->Put(partition_key_, &buf);
+    }
+    delete this;
+  }
+
+  // This is copied lazily.
+  scoped_ptr<OutputPartitions> partitions_;
+  GoogleString partition_key_;
+  CacheInterface* metadata_cache_;
+  scoped_ptr<AbstractMutex> mutex_;
+  int num_pending_freshens_;
+  bool all_freshens_triggered_;
+  bool should_delete_cache_key_;
+
+  DISALLOW_COPY_AND_ASSIGN(FreshenMetadataUpdateManager);
+};
+
+}  // namespace
 
 // Two callback classes for completed caches & fetches.  These gaskets
 // help RewriteContext, which knows about all the pending inputs,
@@ -240,34 +339,37 @@ class RewriteContext::ResourceRevalidateCallback
   InputInfo* input_info_;
 };
 
-// Callback that is invoked after fetching a resource as part of a stale
-// rewrite. This deletes the rewrite metadata if the resource has changed in any
-// way.
-class RewriteContext::StaleFreshenCallback : public Resource::AsyncCallback {
- public :
-  StaleFreshenCallback(const ResourcePtr& resource,
-                       CacheInterface* metadata_cache,
-                       const GoogleString& cache_key,
-                       const GoogleString& content_hash)
-      : Resource::AsyncCallback(resource),
-        metadata_cache_(metadata_cache),
-        cache_key_(cache_key),
-        content_hash_(content_hash) {}
+// Callback that is invoked after freshening a resource. This invokes the
+// FreshenMetadataUpdateManager with the relevant updates.
+class RewriteContext::RewriteFreshenCallback
+    : public Resource::FreshenCallback {
+ public:
+  RewriteFreshenCallback(const ResourcePtr& resource,
+                         int partition_index,
+                         int input_index,
+                         FreshenMetadataUpdateManager* manager)
+      : FreshenCallback(resource),
+        partition_index_(partition_index),
+        input_index_(input_index),
+        manager_(manager) {}
 
-  virtual ~StaleFreshenCallback() {}
+  virtual ~RewriteFreshenCallback() {}
+
+  virtual InputInfo* input_info() {
+    return manager_->GetInputInfo(partition_index_, input_index_);
+  }
+
   virtual void Done(bool success) {
-    if (!success || (resource()->ContentsHash() != content_hash_)) {
-      metadata_cache_->Delete(cache_key_);
-    }
+    manager_->Done(success);
     delete this;
   }
 
  private:
-  CacheInterface* metadata_cache_;
-  GoogleString cache_key_;
-  GoogleString content_hash_;
+  int partition_index_;
+  int input_index_;
+  FreshenMetadataUpdateManager* manager_;
 
-  DISALLOW_COPY_AND_ASSIGN(StaleFreshenCallback);
+  DISALLOW_COPY_AND_ASSIGN(RewriteFreshenCallback);
 };
 
 // This class encodes a few data members used for responding to
@@ -664,7 +766,7 @@ namespace {
 // too few then the directories get very large.  The main limitation
 // we are working against is in pre-ext4 file systems, there are a
 // maximum of 32k subdirectories per directory, and there is not an
-// explicit limitation on the number of file.  Additioanlly,
+// explicit limitation on the number of file.  Additionally,
 // old file-systems may not be efficiently indexed, in which case
 // adding some hierarchy should help.
 GoogleString HashSplit(const Hasher* hasher, const StringPiece& str) {
@@ -908,13 +1010,12 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
 }
 
 void RewriteContext::OutputCacheHit(bool write_partitions) {
+  Freshen();
   for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
     if (outputs_[i].get() != NULL) {
-      Freshen(partitions_->partition(i));
       RenderPartitionOnDetach(i);
     }
   }
-
   ok_to_write_output_partitions_ = write_partitions;
   Finalize();
 }
@@ -1529,31 +1630,38 @@ void RewriteContext::CrossThreadPartitionDone(bool result) {
       MakeFunction(this, &RewriteContext::PartitionDone, result));
 }
 
-void RewriteContext::Freshen(const CachedResult& partition) {
-  // TODO(morlovich): This isn't quite enough as this doesn't cause us to
-  // update the expiration in the partition tables; it merely makes it
-  // essentially prefetch things in the cache for the future, which might
-  // help the rewrite get in by the deadline.
-  for (int i = 0, m = partition.input_size(); i < m; ++i) {
-    const InputInfo& input_info = partition.input(i);
-    if ((input_info.type() == InputInfo::CACHED) &&
-        input_info.has_expiration_time_ms() &&
-        input_info.has_date_ms() &&
-        input_info.has_index()) {
-      ResourcePtr resource(slots_[input_info.index()]->resource());
-      if (stale_rewrite_) {
-        StaleFreshenCallback* stale_freshen_callback = new StaleFreshenCallback(
-            resource, Manager()->metadata_cache(), partition_key_,
-            input_info.input_content_hash());
-
-        Manager()->ReadAsync(Resource::kReportFailureIfNotCacheable,
-                             stale_freshen_callback);
-      } else if (Manager()->IsImminentlyExpiring(
-          input_info.date_ms(), input_info.expiration_time_ms())) {
-        resource->Freshen(Manager()->message_handler());
+void RewriteContext::Freshen() {
+  FreshenMetadataUpdateManager* freshen_manager =
+      new FreshenMetadataUpdateManager(
+          partition_key_, Manager()->metadata_cache(),
+          Manager()->thread_system()->NewMutex());
+  for (int j = 0, n = partitions_->partition_size(); j < n; ++j) {
+    const CachedResult& partition = partitions_->partition(j);
+    for (int i = 0, m = partition.input_size(); i < m; ++i) {
+      const InputInfo& input_info = partition.input(i);
+      if (stale_rewrite_ ||
+          ((input_info.type() == InputInfo::CACHED) &&
+           input_info.has_expiration_time_ms() &&
+           input_info.has_date_ms() &&
+           input_info.has_index())) {
+        ResourcePtr resource(slots_[input_info.index()]->resource());
+        if (stale_rewrite_|| Manager()->IsImminentlyExpiring(
+            input_info.date_ms(), input_info.expiration_time_ms())) {
+          RewriteFreshenCallback* callback = NULL;
+          if (input_info.has_input_content_hash()) {
+            callback = new RewriteFreshenCallback(
+                resource, j, i, freshen_manager);
+            freshen_manager->IncrementFreshens(*partitions_.get());
+          }
+          // TODO(nikhilmadan): We don't actually update the metadata when the
+          // InputInfo does not contain an input_content_hash. However, we still
+          // re-fetch the original resource and update the HTTPCache.
+          resource->Freshen(callback, Manager()->message_handler());
+        }
       }
     }
   }
+  freshen_manager->MarkAllFreshensTriggered();
 }
 
 const UrlSegmentEncoder* RewriteContext::encoder() const {

@@ -435,7 +435,7 @@ class RewriteContext {
                                 const StringPiece& hash);
 
   // Freshens resources proactively to avoid expiration in the near future.
-  void Freshen(const CachedResult& group);
+  void Freshen();
 
   // Accessors for the nested rewrites.
   int num_nested() const { return nested_.size(); }
@@ -469,7 +469,7 @@ class RewriteContext {
   friend class ResourceRevalidateCallback;
   class InvokeRewriteFunction;
   friend class InvokeRewriteFunction;
-  class StaleFreshenCallback;
+  class RewriteFreshenCallback;
 
   typedef std::set<RewriteContext*> ContextSet;
 
