@@ -159,8 +159,9 @@ class RewriteDriverFactory {
   QueuedWorkerPool* WorkerPool(WorkerPoolName pool);
   Scheduler* scheduler();
 
-  // Builds a PropertyCache given a CacheInterface.
-  PropertyCache* MakePropertyCache(CacheInterface* cache) const;
+  // Builds a PropertyCache given a key prefix and a CacheInterface.
+  PropertyCache* MakePropertyCache(const GoogleString& cache_key_prefix,
+                                   CacheInterface* cache) const;
 
   StringPiece filename_prefix();
 

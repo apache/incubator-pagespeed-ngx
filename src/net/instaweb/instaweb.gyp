@@ -258,6 +258,19 @@
       ],
     },
     {
+      'target_name': 'instaweb_clientstate_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/util',
+      },
+      'sources': [
+        'util/client_state.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/client_state.pb.cc',
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_propcache_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/util',
@@ -314,6 +327,7 @@
         'instaweb_core.gyp:instaweb_util_core',
         'instaweb_http',
         'instaweb_http_gperf',
+        'instaweb_clientstate_pb',
         'instaweb_propcache_pb',
         'instaweb_timing_pb',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
@@ -352,6 +366,7 @@
         'util/checking_thread_system.cc',
         'util/chunking_writer.cc',
         'util/circular_buffer.cc',
+        'util/client_state.cc',
         'util/condvar.cc',
         'util/data_url.cc',
         'util/debug.cc',

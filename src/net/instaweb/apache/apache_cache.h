@@ -50,7 +50,12 @@ class ApacheCache {
   CacheInterface* cache() { return cache_.get(); }
   NamedLockManager* lock_manager() { return lock_manager_; }
   HTTPCache* http_cache() { return http_cache_.get(); }
-  PropertyCache* property_cache() { return property_cache_.get(); }
+  PropertyCache* page_property_cache() {
+    return page_property_cache_.get();
+  }
+  PropertyCache* client_property_cache() {
+    return client_property_cache_.get();
+  }
 
   void RootInit();
   void ChildInit();
@@ -68,7 +73,8 @@ class ApacheCache {
   NamedLockManager* lock_manager_;
   FileCache* file_cache_;
   scoped_ptr<HTTPCache> http_cache_;
-  scoped_ptr<PropertyCache> property_cache_;
+  scoped_ptr<PropertyCache> page_property_cache_;
+  scoped_ptr<PropertyCache> client_property_cache_;
 };
 
 }  // namespace net_instaweb

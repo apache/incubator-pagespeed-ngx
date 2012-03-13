@@ -82,7 +82,10 @@ ApacheCache::ApacheCache(const StringPiece& path,
   }
   http_cache_.reset(new HTTPCache(cache_.get(), factory->timer(),
                                   factory->hasher(), factory->statistics()));
-  property_cache_.reset(factory->MakePropertyCache(cache_.get()));
+  page_property_cache_.reset(factory->MakePropertyCache(
+      PropertyCache::kPagePropertyCacheKeyPrefix, cache_.get()));
+  client_property_cache_.reset(factory->MakePropertyCache(
+      PropertyCache::kClientPropertyCacheKeyPrefix, cache_.get()));
 }
 
 ApacheCache::~ApacheCache() {

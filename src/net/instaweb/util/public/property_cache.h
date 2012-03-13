@@ -96,13 +96,13 @@
 #include <set>
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class CacheInterface;
 class PropertyValueProtobuf;
 class PropertyPage;
@@ -162,6 +162,10 @@ class PropertyValue {
 // Adds property-semantics to a raw cache API.
 class PropertyCache {
  public:
+  // Property cache key prefixes.
+  static const char kPagePropertyCacheKeyPrefix[];
+  static const char kClientPropertyCacheKeyPrefix[];
+
   class CacheInterfaceCallback;
 
   // A Cohort is a set of properties that update at roughly the
@@ -177,7 +181,8 @@ class PropertyCache {
   // contain any data itself.
   class Cohort : public GoogleString {};
 
-  PropertyCache(CacheInterface* cache, Timer* timer, ThreadSystem* threads);
+  PropertyCache(const GoogleString& cache_key_prefix,
+                CacheInterface* cache, Timer* timer, ThreadSystem* threads);
   ~PropertyCache();
 
   // Reads the all the PropertyValues in all the known Cohorts from
@@ -237,11 +242,12 @@ class PropertyCache {
   // This is the key used for the CacheInterface provided to the
   // constructor.  This is made visible for testing, to make it
   // possible to inject delays into the cache via DelayCache::DelayKey.
-  static GoogleString CacheKey(const StringPiece& key, const Cohort* cohort);
+  GoogleString CacheKey(const StringPiece& key, const Cohort* cohort) const;
 
   // TODO(jmarantz): add a some statistics tracking for stomps, stability, etc.
 
  private:
+  GoogleString cache_key_prefix_;
   CacheInterface* cache_;
   Timer* timer_;
   ThreadSystem* thread_system_;

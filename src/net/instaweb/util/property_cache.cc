@@ -32,9 +32,12 @@
 
 namespace net_instaweb {
 
+// Property cache key prefixes.
+const char PropertyCache::kPagePropertyCacheKeyPrefix[] = "prop_page/";
+const char PropertyCache::kClientPropertyCacheKeyPrefix[] = "prop_client/";
+
 namespace {
 
-const char kCacheKeyPrefix[] = "prop/";
 const int kDefaultMutationsPer1000WritesThreshold = 300;
 
 // http://stackoverflow.com/questions/109023/
@@ -96,9 +99,11 @@ class PropertyPage::CallbackCollector {
   DISALLOW_COPY_AND_ASSIGN(CallbackCollector);
 };
 
-PropertyCache::PropertyCache(CacheInterface* cache, Timer* timer,
+PropertyCache::PropertyCache(const GoogleString& cache_key_prefix,
+                             CacheInterface* cache, Timer* timer,
                              ThreadSystem* threads)
-    : cache_(cache),
+    : cache_key_prefix_(cache_key_prefix),
+      cache_(cache),
       timer_(timer),
       thread_system_(threads),
       mutations_per_1000_writes_threshold_(
@@ -245,8 +250,8 @@ int64 PropertyValue::write_timestamp_ms() const {
 }
 
 GoogleString PropertyCache::CacheKey(const StringPiece& key,
-                                     const Cohort* cohort) {
-  return StrCat(kCacheKeyPrefix, key, "@", *cohort);
+                                     const Cohort* cohort) const {
+  return StrCat(cache_key_prefix_, key, "@", *cohort);
 }
 
 void PropertyCache::Read(const StringPiece& key, PropertyPage* page) const {

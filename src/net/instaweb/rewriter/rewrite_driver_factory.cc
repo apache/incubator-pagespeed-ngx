@@ -37,6 +37,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/client_state.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/filename_encoder.h"
@@ -407,8 +408,9 @@ HTTPCache* RewriteDriverFactory::ComputeHTTPCache() {
 }
 
 PropertyCache* RewriteDriverFactory::MakePropertyCache(
-    CacheInterface* cache) const {
-  PropertyCache* pcache = new PropertyCache(cache, timer_.get(),
+    const GoogleString& cache_key_prefix, CacheInterface *cache) const {
+  PropertyCache* pcache = new PropertyCache(cache_key_prefix,
+                                            cache, timer_.get(),
                                             thread_system_.get());
   pcache->set_enabled(enable_property_cache_);
   return pcache;
@@ -416,15 +418,18 @@ PropertyCache* RewriteDriverFactory::MakePropertyCache(
 
 PropertyCache* RewriteDriverFactory::page_property_cache() {
   if (page_property_cache_.get() == NULL) {
-    page_property_cache_.reset(MakePropertyCache(cache_backend()));
+    page_property_cache_.reset(MakePropertyCache(
+        PropertyCache::kPagePropertyCacheKeyPrefix, cache_backend()));
   }
   return page_property_cache_.get();
 }
 
 PropertyCache* RewriteDriverFactory::client_property_cache() {
   if (client_property_cache_.get() == NULL) {
-    client_property_cache_.reset(MakePropertyCache(cache_backend()));
+    client_property_cache_.reset(MakePropertyCache(
+        PropertyCache::kClientPropertyCacheKeyPrefix, cache_backend()));
   }
+  client_property_cache_.get()->AddCohort(ClientState::kClientStateCohort);
   return client_property_cache_.get();
 }
 

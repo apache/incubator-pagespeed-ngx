@@ -32,6 +32,8 @@
 
 namespace net_instaweb {
 
+class AbstractMutex;
+
 namespace {
 
 const size_t kMaxCacheSize = 100;
@@ -47,7 +49,7 @@ class PropertyCacheTest : public testing::Test {
       : lru_cache_(kMaxCacheSize),
         timer_(MockTimer::kApr_5_2010_ms),
         thread_system_(ThreadSystem::CreateThreadSystem()),
-        property_cache_(&lru_cache_, &timer_, thread_system_.get()) {
+        property_cache_("test/", &lru_cache_, &timer_, thread_system_.get()) {
     cohort_ = property_cache_.AddCohort(kCohortName1);
   }
 
@@ -181,7 +183,8 @@ TEST_F(PropertyCacheTest, DropOldWrites) {
   // Now imagine we are on a second server, which is trying to write
   // an older value into the same physical cache.  Make sure we don't let it.
   MockTimer timer2(MockTimer::kApr_5_2010_ms - 100);
-  PropertyCache property_cache2(&lru_cache_, &timer2, thread_system_.get());
+  PropertyCache property_cache2("test/", &lru_cache_, &timer2,
+                                thread_system_.get());
   property_cache2.AddCohort(kCohortName1);
   const PropertyCache::Cohort* cohort2 = property_cache2.GetCohort(
       kCohortName1);
