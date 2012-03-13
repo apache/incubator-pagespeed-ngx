@@ -52,7 +52,7 @@ enum FuriousState {
 
 // Populates value with the state indicated by the FuriousCookie, if found.
 // Returns true if a cookie was found, false if it was not.
-bool GetFuriousCookieState(const RequestHeaders* headers, FuriousState* value);
+bool GetFuriousCookieState(const RequestHeaders& headers, FuriousState* value);
 
 // Removes the Furious cookie from the request headers so we don't
 // send it to the origin.

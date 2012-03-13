@@ -44,6 +44,7 @@ class ApacheResourceManager;
 const int kRequestChainLimit = 5;
 
 InstawebContext::InstawebContext(request_rec* request,
+                                 RequestHeaders* request_headers,
                                  const ContentType& content_type,
                                  ApacheResourceManager* manager,
                                  const GoogleString& absolute_url,
@@ -55,6 +56,7 @@ InstawebContext::InstawebContext(request_rec* request,
       string_writer_(&output_),
       inflater_(NULL),
       absolute_url_(absolute_url),
+      request_headers_(request_headers),
       started_parse_(false),
       sent_headers_(false),
       populated_headers_(false) {
@@ -127,8 +129,7 @@ InstawebContext::InstawebContext(request_rec* request,
                                          HttpAttributes::kUserAgent);
   rewrite_driver_->set_user_agent(user_agent);
   // Make the entire request headers available to filters.
-  ApacheRequestToRequestHeaders(*request, &request_headers_);
-  rewrite_driver_->set_request_headers(&request_headers_);
+  rewrite_driver_->set_request_headers(request_headers_.get());
 
   response_headers_.Clear();
   rewrite_driver_->set_response_headers_ptr(&response_headers_);
@@ -319,10 +320,8 @@ const char* InstawebContext::MakeRequestUrl(request_rec* request) {
 
 void InstawebContext::SetFuriousStateAndCookie(request_rec* request,
                                                RewriteOptions* options) {
-  RequestHeaders req_headers;
-  ApacheRequestToRequestHeaders(*request, &req_headers);
   furious::FuriousState furious_value;
-  if (!furious::GetFuriousCookieState(&req_headers, &furious_value)) {
+  if (!furious::GetFuriousCookieState(*request_headers_, &furious_value)) {
     ResponseHeaders resp_headers;
     AprTimer timer;
     const char* url = apr_table_get(request->notes, kPagespeedOriginalUrl);

@@ -44,38 +44,38 @@ TEST_F(FuriousUtilTest, GetCookieState) {
   RequestHeaders req_headers;
   FuriousState state;
   // Empty headers, cookie not set.
-  EXPECT_FALSE(GetFuriousCookieState(&req_headers, &state));
+  EXPECT_FALSE(GetFuriousCookieState(req_headers, &state));
   EXPECT_EQ(kFuriousNotSet, state);
 
   // Headers with malformed furious cookie, cookie not set.
   req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=absdfkjs");
-  EXPECT_FALSE(GetFuriousCookieState(&req_headers, &state));
+  EXPECT_FALSE(GetFuriousCookieState(req_headers, &state));
   EXPECT_EQ(kFuriousNotSet, state);
 
   // Headers with valid furious cookie in None (i.e. not in experiment)
   // state set.
   req_headers.Clear();
   req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=458:0");
-  EXPECT_TRUE(GetFuriousCookieState(&req_headers, &state));
+  EXPECT_TRUE(GetFuriousCookieState(req_headers, &state));
   EXPECT_EQ(kFuriousNone, state);
 
   // Headers with valid furious cookie on the A side set.
   req_headers.Clear();
   req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=12:1");
-  EXPECT_TRUE(GetFuriousCookieState(&req_headers, &state));
+  EXPECT_TRUE(GetFuriousCookieState(req_headers, &state));
   EXPECT_EQ(kFuriousA, state);
 
   // Headers with valid furious cookie on the B side set.
   req_headers.Clear();
   req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=17:2");
-  EXPECT_TRUE(GetFuriousCookieState(&req_headers, &state));
+  EXPECT_TRUE(GetFuriousCookieState(req_headers, &state));
   EXPECT_EQ(kFuriousB, state);
 
   // Headers with valid furious cookie on the B side set.
   req_headers.Clear();
   req_headers.Add(HttpAttributes::kCookie,
                   "cookie=a;_GFURIOUS=17:2;something=foo");
-  EXPECT_TRUE(GetFuriousCookieState(&req_headers, &state));
+  EXPECT_TRUE(GetFuriousCookieState(req_headers, &state));
   EXPECT_EQ(kFuriousB, state);
 }
 

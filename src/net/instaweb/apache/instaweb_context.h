@@ -56,7 +56,9 @@ class InstawebContext {
   enum ContentEncoding { kNone, kGzip, kDeflate, kOther };
   enum ContentDetectionState { kStart, kHtml, kNotHtml };
 
+  // Takes ownership of request_headers.
   InstawebContext(request_rec* request,
+                  RequestHeaders* request_headers,
                   const ContentType& content_type,
                   ApacheResourceManager* manager,
                   const GoogleString& base_url,
@@ -116,7 +118,7 @@ class InstawebContext {
   scoped_ptr<GzipInflater> inflater_;
   HtmlDetector html_detector_;
   GoogleString absolute_url_;
-  RequestHeaders request_headers_;
+  scoped_ptr<RequestHeaders> request_headers_;
   ResponseHeaders response_headers_;
   bool started_parse_;
   bool sent_headers_;

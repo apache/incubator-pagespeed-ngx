@@ -45,12 +45,12 @@ const char kFuriousCookieNotSet[] = "";
 
 // TODO(nforman): Make sure the experiment id in the cookie matches the
 // current experiment in RewriteOptions.
-bool GetFuriousCookieState(const RequestHeaders* headers, FuriousState* value) {
+bool GetFuriousCookieState(const RequestHeaders& headers, FuriousState* value) {
   ConstStringStarVector v;
   GoogleString prefix;
   *value = kFuriousNotSet;
   StrAppend(&prefix, kFuriousCookie, "=");
-  if (headers->Lookup(HttpAttributes::kCookie, &v)) {
+  if (headers.Lookup(HttpAttributes::kCookie, &v)) {
     for (int i = 0, nv = v.size(); i < nv; ++i) {
       StringPieceVector cookies;
       SplitStringPieceToVector(*(v[i]), ";", &cookies, true);

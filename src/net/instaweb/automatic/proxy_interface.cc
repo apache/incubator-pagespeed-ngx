@@ -450,7 +450,7 @@ void ProxyInterface::ProxyRequestCallback(
     }
     if (options != NULL && options->running_furious()) {
       furious::FuriousState furious_value;
-      if (!furious::GetFuriousCookieState(async_fetch->request_headers(),
+      if (!furious::GetFuriousCookieState(*async_fetch->request_headers(),
                                           &furious_value)) {
         furious_value = furious::DetermineFuriousState(options);
       }

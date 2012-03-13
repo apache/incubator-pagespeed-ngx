@@ -402,16 +402,17 @@ InstawebContext* build_context_for_request(request_rec* request) {
   // Determine the absolute URL for this request.
   const char* absolute_url = InstawebContext::MakeRequestUrl(request);
 
-  // TODO(sligocki): Move inside PSA.
+  scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
   {
+    // TODO(sligocki): Move inside PSA.
+    //
     // TODO(mmohabey): Add a hook which strips off the ModPagespeed* query
     // params before content generation.
     GoogleUrl gurl(absolute_url);
-    RequestHeaders request_headers;
-    ApacheRequestToRequestHeaders(*request, &request_headers);
+    ApacheRequestToRequestHeaders(*request, request_headers.get());
     scoped_ptr<RewriteOptions> query_options;
-    switch (RewriteQuery::Scan(factory, &gurl, &request_headers, &query_options,
-                               manager->message_handler())) {
+    switch (RewriteQuery::Scan(factory, &gurl, request_headers.get(),
+                               &query_options, manager->message_handler())) {
       case RewriteQuery::kInvalid:
         return NULL;
       case RewriteQuery::kNoneFound:
@@ -448,7 +449,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
   }
 
   InstawebContext* context = new InstawebContext(
-      request, *content_type, manager, absolute_url,
+      request, request_headers.release(), *content_type, manager, absolute_url,
       use_custom_options, *options);
 
   // TODO(sligocki): Move inside PSA.

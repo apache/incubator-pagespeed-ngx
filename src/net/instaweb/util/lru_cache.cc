@@ -55,12 +55,10 @@ void LRUCache::Get(const GoogleString& key, Callback* callback) {
   } else {
     ++num_misses_;
   }
-  LOG(INFO) << "Get for " << key << " " << key_state;
   callback->Done(key_state);
 }
 
 void LRUCache::Put(const GoogleString& key, SharedString* new_value) {
-  LOG(INFO) << "Put for " << key;
   // Just do one map operation, calling the awkward 'insert' which returns
   // a pair.  The bool indicates whether a new value was inserted, and the
   // iterator provides access to the element, whether it's new or old.
