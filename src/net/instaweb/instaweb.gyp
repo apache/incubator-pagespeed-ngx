@@ -377,6 +377,7 @@
         'util/file_writer.cc',
         'util/filename_encoder.cc',
         'util/function.cc',
+        'util/google_timer.cc',
         'util/gzip_inflater.cc',
         'util/hashed_referer_statistics.cc',
         'util/hasher.cc',

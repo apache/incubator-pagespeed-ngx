@@ -159,7 +159,6 @@
         'util/file_system_lock_manager_test.cc',
         'util/filename_encoder_test.cc',
         'util/function_test.cc',
-        'util/google_timer.cc',
         'util/google_url_test.cc',
         'util/gzip_inflater_test.cc',
         'util/hashed_referer_statistics_test_base.cc',

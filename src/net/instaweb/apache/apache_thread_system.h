@@ -33,6 +33,7 @@ class ApacheThreadSystem : public PthreadThreadSystem {
  public:
   ApacheThreadSystem();
   virtual ~ApacheThreadSystem();
+  virtual Timer* NewTimer();
 
  protected:
   virtual void BeforeThreadRunHook();

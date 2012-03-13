@@ -32,6 +32,7 @@ namespace net_instaweb {
 
 class AbstractMutex;
 class ThreadSystem;
+class Timer;
 
 // Helps create deterministic multi-threaded tests targeting
 // programmer-identified race conditions.
@@ -74,14 +75,32 @@ class ThreadSynchronizer {
     }
   }
 
+  // Waits for a thread to signal the specified key, or the specified timeout in
+  // milliseconds, whichever comes first.  Note that even if the timer expires,
+  // the program should eventually Signal the key unless AllowSloppyTermination
+  // is called.
+  void TimedWait(const char* key, int64 timeout_ms) {
+    if (enabled_) {
+      DoTimedWait(key, timeout_ms);
+    }
+  }
+
   // Signals any thread waiting for a key that it can continue.  Signals
   // delivered in advance of a wait are remembered.  It is an error to
-  // destruct the ThreadSynchronizer with pending signals.
+  // destruct the ThreadSynchronizer with pending signals, unless
+  // AllowSloppyTermination is called for the key.
   void Signal(const char* key) {
     if (enabled_) {
       DoSignal(key);
     }
   }
+
+  // Signals that are delivered in a timing-dependent fashion may not
+  // be totally balanced at the end of a test.  Such signals should be
+  // the exception rather than the rule, but they can be declared with
+  // this method.  This method is intended to be called from tests
+  // only, thus it does not have an inline shunt.
+  void AllowSloppyTermination(const char* key);
 
  private:
   class SyncPoint;
@@ -89,6 +108,7 @@ class ThreadSynchronizer {
 
   SyncPoint* GetSyncPoint(const GoogleString& key);
   void DoWait(const char* key);
+  void DoTimedWait(const char* key, int64 timeout_ms);
   void DoSignal(const char* key);
   bool MatchesPrefix(const char* key) const;
 
@@ -96,6 +116,7 @@ class ThreadSynchronizer {
   ThreadSystem* thread_system_;
   SyncMap sync_map_;
   scoped_ptr<AbstractMutex> map_mutex_;
+  scoped_ptr<Timer> timer_;
   StringVector prefixes_;
 
   DISALLOW_COPY_AND_ASSIGN(ThreadSynchronizer);

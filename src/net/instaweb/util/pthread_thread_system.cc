@@ -21,12 +21,15 @@
 #include <pthread.h>
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/pthread_rw_lock.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
+
+class Timer;
 
 class PthreadThreadImpl : public ThreadSystem::ThreadImpl {
  public:
@@ -110,6 +113,10 @@ void PthreadThreadSystem::BeforeThreadRunHook() {
 ThreadSystem::ThreadImpl* PthreadThreadSystem::NewThreadImpl(
     ThreadSystem::Thread* wrapper, ThreadSystem::ThreadFlags flags) {
   return new PthreadThreadImpl(this, wrapper, flags);
+}
+
+Timer* PthreadThreadSystem::NewTimer() {
+  return new GoogleTimer;
 }
 
 }  // namespace net_instaweb

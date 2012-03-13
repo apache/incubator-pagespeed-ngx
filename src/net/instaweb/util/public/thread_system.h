@@ -32,6 +32,8 @@
 
 namespace net_instaweb {
 
+class Timer;
+
 // Subclasses of this represent threading support under given environment,
 // and help create various primitives for it.
 class ThreadSystem {
@@ -93,6 +95,9 @@ class ThreadSystem {
 
   // Creates an appropriate ThreadSystem for the platform.
   static ThreadSystem* CreateThreadSystem();
+
+  // Creates and returns a real-time timer.  Caller is responsible for deleting.
+  virtual Timer* NewTimer() = 0;
 
  private:
   friend class Thread;

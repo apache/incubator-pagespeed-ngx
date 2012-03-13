@@ -133,6 +133,24 @@ TEST_F(ThreadSynchronizerTest, SignalInAdvance) {
   EXPECT_EQ("135", buffer_);
 }
 
+TEST_F(ThreadSynchronizerTest, TimedWait) {
+  synchronizer_.EnableForPrefix("Thread:");
+  synchronizer_.TimedWait("Thread:NeverComing", 10 /* ms */);
+  synchronizer_.Signal("Thread:NeverComing");
+}
+
+TEST_F(ThreadSynchronizerTest, AllowSloppyNeverSignaled) {
+  synchronizer_.EnableForPrefix("Thread:");
+  synchronizer_.TimedWait("Thread:NeverComing", 10 /* ms */);
+  synchronizer_.AllowSloppyTermination("Thread:NeverComing");
+}
+
+TEST_F(ThreadSynchronizerTest, AllowSloppyNeverWaited) {
+  synchronizer_.EnableForPrefix("Thread:");
+  synchronizer_.Signal("Thread:NeverWaited");
+  synchronizer_.AllowSloppyTermination("Thread:NeverWaited");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

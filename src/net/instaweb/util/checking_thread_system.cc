@@ -26,6 +26,8 @@
 
 namespace net_instaweb {
 
+class Timer;
+
 // Checked condvar class.  Must only be created via a
 // CheckingThreadSystem::Mutex, thus its implementation is kept private.
 class CheckingThreadSystem::CheckingCondvar : public ThreadSystem::Condvar {
@@ -163,6 +165,10 @@ CheckingThreadSystem::RWLock* CheckingThreadSystem::NewRWLock() {
 ThreadSystem::ThreadImpl* CheckingThreadSystem::NewThreadImpl(
     ThreadSystem::Thread* wrapper, ThreadSystem::ThreadFlags flags) {
   return thread_system_->NewThreadImpl(wrapper, flags);
+}
+
+Timer* CheckingThreadSystem::NewTimer() {
+  return thread_system_->NewTimer();
 }
 
 }  // namespace net_instaweb

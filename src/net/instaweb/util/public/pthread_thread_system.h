@@ -26,14 +26,16 @@
 
 namespace net_instaweb {
 
+class Timer;
+
 class PthreadThreadSystem : public ThreadSystem {
  public:
   PthreadThreadSystem();
   virtual ~PthreadThreadSystem();
 
   virtual CondvarCapableMutex* NewMutex();
-
   virtual RWLock* NewRWLock();
+  virtual Timer* NewTimer();
 
  protected:
   // This hook will get invoked by the implementation in the context of a

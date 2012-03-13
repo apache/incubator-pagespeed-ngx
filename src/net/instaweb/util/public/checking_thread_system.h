@@ -28,6 +28,8 @@
 
 namespace net_instaweb {
 
+class Timer;
+
 // A thread system whose mutex and condvar factories yield implementations that
 // permit checking of lock invariants using DCheckLocked().  This can be wrapped
 // around an unchecked implementation.  This implementation checks invariants
@@ -106,6 +108,7 @@ class CheckingThreadSystem : public ThreadSystem {
 
   virtual Mutex* NewMutex();
   virtual RWLock* NewRWLock();
+  virtual Timer* NewTimer();
 
  private:
   friend class Mutex;
