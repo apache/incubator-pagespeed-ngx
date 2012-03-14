@@ -155,6 +155,21 @@ TEST_F(MetaTagFilterTest, TestNoScript) {
   ASSERT_EQ(0, headers()->NumAttributes());
 }
 
+const char kMetaTagNoQuotes[] =
+    "<html><head>"
+    "<meta http-equiv=Content-Type content=text/html; charset=UTF-8>"
+    "</head><body></body></html>";
+
+TEST_F(MetaTagFilterTest, TestNoQuotes) {
+  // See http://webdesign.about.com/od/metatags/qt/meta-charset.htm for an
+  // explanation of why we are testing this invalid format.
+  ValidateNoChanges("convert_tags", kMetaTagNoQuotes);
+  ConstStringStarVector values;
+  EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
+  ASSERT_EQ(1, values.size());
+  EXPECT_TRUE(StringCaseEqual(values[0]->c_str(), "text/html; charset=UTF-8"));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

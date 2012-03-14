@@ -67,7 +67,8 @@ bool IsBlinkRequest(const GoogleUrl& url,
       // (ProxyFetch).  Should we combine these?
       options->IsAllowed(url.Spec()) &&
       // Does url match a cacheable family pattern specified in config?
-      options->MatchesAtfCacheableFamilies(url.PathAndLeaf()) &&
+      options->MatchesPrioritizeVisibleContentCacheableFamilies(
+          url.PathAndLeaf()) &&
       // user agent supports Blink.
       user_agent_matcher_.GetBlinkUserAgentType(user_agent) !=
           UserAgentMatcher::kDoesNotSupportBlink) {

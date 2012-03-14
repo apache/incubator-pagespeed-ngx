@@ -78,6 +78,27 @@ pagespeed.DeferJs = function() {
    * too.
    */
   this.pageLoadListeners_ = [];
+
+  /**
+   * Valid Mime types for Javascript.
+   */
+  this.jsMimeTypes =
+      ['application/ecmascript',
+       'application/javascript',
+       'application/x-ecmascript',
+       'application/x-javascript',
+       'text/ecmascript',
+       'text/javascript',
+       'text/javascript1.0',
+       'text/javascript1.1',
+       'text/javascript1.2',
+       'text/javascript1.3',
+       'text/javascript1.4',
+       'text/javascript1.5',
+       'text/jscript',
+       'text/livescript',
+       'text/x-ecmascript',
+       'text/x-javascript'];
 };
 
 /**
@@ -204,7 +225,6 @@ pagespeed.DeferJs.prototype.addUrl = function(url, opt_elem, opt_pos) {
       me.currentElem_ = opt_elem;
     }
     var script = document.createElement('script');
-    script.setAttribute('src', url);
     script.setAttribute('type', 'text/javascript');
     var runNextHandler = function() {
       me.log('Executed: ' + url);
@@ -223,6 +243,7 @@ pagespeed.DeferJs.prototype.addUrl = function(url, opt_elem, opt_pos) {
 
       pagespeed.addHandler(script, 'readystatechange', stateChangeHandler);
     }
+    script.setAttribute('src', url);
     me.currentElem_.parentNode.insertBefore(script, me.currentElem_);
   }, opt_pos);
 };
@@ -342,6 +363,28 @@ pagespeed.DeferJs.prototype.insertNodesBeforeElem = function(nodes, elem) {
 };
 
 /**
+ * Returns if the node is JavaScript Node.
+ * @param {!Node} node valid script Node.
+ * @return {boolean} true if script node is javascript node.
+ */
+pagespeed.DeferJs.prototype.isJSNode = function(node) {
+  if (node.nodeName != 'SCRIPT') {
+    return false;
+  }
+
+  if (node.hasAttribute('type')) {
+      var type = node.getAttribute('type');
+      return !type ||
+             (this.jsMimeTypes.indexOf(type) != -1);
+  } else if (node.hasAttribute('language')) {
+      var lang = node.getAttribute('language');
+      return !lang ||
+             (this.jsMimeTypes.indexOf('text/' + lang.toLowerCase()) != -1);
+  }
+  return true;
+};
+
+/**
  * Given the list of nodes, separates into script nodes and regular nodes.
  * @param {!Node} node starting node for DFS.
  * @param {!Array.<Element>} scriptNodes array of script elements (output).
@@ -355,8 +398,10 @@ pagespeed.DeferJs.prototype.extractScriptNodes = function(node, scriptNodes) {
   for (var i = 0; i < len; ++i) {
     var child = nodeArray[i];
     if (child.nodeName == 'SCRIPT') {
-      scriptNodes.push(child);
-      this.disown(child);
+      if (this.isJSNode(child)) {
+        scriptNodes.push(child);
+        this.disown(child);
+      }
     } else {
       this.extractScriptNodes(child, scriptNodes);
     }

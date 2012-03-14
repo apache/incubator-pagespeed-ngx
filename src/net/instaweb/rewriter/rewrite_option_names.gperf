@@ -25,8 +25,8 @@ struct OptionName {
   net_instaweb::RewriteOptions::OptionEnum option_enum;
 };
 %%
-"AboveTheFoldCacheTime",                RewriteOptions::kAboveTheFoldCacheTime
-"AboveTheFoldNonCacheableElements",     RewriteOptions::kAboveTheFoldNonCacheableElements
+"AboveTheFoldCacheTime",                RewriteOptions::kPrioritizeVisibleContentCacheTime
+"AboveTheFoldNonCacheableElements",     RewriteOptions::kPrioritizeVisibleContentNonCacheableElements
 "AjaxRewritingEnabled",                 RewriteOptions::kAjaxRewritingEnabled
 "AlwaysRewriteCss",                     RewriteOptions::kAlwaysRewriteCss
 "AnalyticsID",                          RewriteOptions::kAnalyticsID

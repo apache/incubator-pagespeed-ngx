@@ -22,12 +22,14 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 class GoogleUrl;
 class HtmlElement;
 class ResourceManager;
+class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
 
@@ -75,6 +77,24 @@ class CommonFilter : public EmptyHtmlFilter {
   bool BaseUrlIsValid() const;
 
   RewriteDriver* driver() { return driver_; }
+
+  // Utility function to extract the mime type and/or charset from a meta tag,
+  // either the HTML4 http-equiv form or the HTML5 charset form:
+  // element is the meta tag element to process.
+  // headers is optional: if provided it is checked to see if it already has
+  //         a content type with the tag's value; if so, returns false.
+  // content is set to the content attribute's value, http-equiv form only.
+  // mime_type is set to the extracted mime type, if any.
+  // charset is the set to the extracted charset, if any.
+  // returns true if the details were extracted, false if not. If true is
+  // returned then content will be empty for the HTML5 charset form and
+  // non-empty for the HTML4 http-equiv form; also an http-equiv attribute
+  // with a blank mime type returns false as it's not a valid format.
+  bool ExtractMetaTagDetails(const HtmlElement& element,
+                             const ResponseHeaders* headers,
+                             GoogleString* content,
+                             GoogleString* mime_type,
+                             GoogleString* charset) const;
 
  protected:
   // Overload these implementer methods:

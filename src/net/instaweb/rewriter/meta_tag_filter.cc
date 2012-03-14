@@ -24,7 +24,6 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -70,49 +69,24 @@ void MetaTagFilter::EndElementImpl(HtmlElement* element) {
     return;
   }
 
-  // We want meta tags with http header equivalents.
-  HtmlElement::Attribute* equiv = element->FindAttribute(
-      HtmlName::kHttpEquiv);
-  HtmlElement::Attribute* value = element->FindAttribute(
-      HtmlName::kContent);
+  GoogleString content, mime_type, charset;
 
-  // HTTP-EQUIV case.
-  if (equiv != NULL && value != NULL) {
-    StringPiece attribute = equiv->value();
-    StringPiece content = value->value();
-    // It doesn't make sense to have nothing in HttpEquiv, but that means
-    // it is in fact lurking out there.
-    TrimWhitespace(&attribute);
-
-    if (!StringCaseEqual(attribute, HttpAttributes::kContentType) ||
-        content.empty()) {
-      return;
-    }
-    // Check to see if we have this value already.  If we do,
-    // there's no need to add it in again.
-    if (response_headers_->HasValue(attribute, content)) {
-      return;
-    }
-
-    GoogleString mime_type, unused_charset;
-    if (ParseContentType(content, &mime_type, &unused_charset) &&
-        !mime_type.empty()) {
-      const ContentType* type = MimeTypeToContentType(mime_type);
-      if (type == NULL || !type->IsHtmlLike()) {
-        return;
+  if (ExtractMetaTagDetails(*element, response_headers_,
+                            &content, &mime_type, &charset)) {
+    if (!content.empty()) {
+      // Yes content => it has http-equiv and content attributes,
+      // and a mime_type and/or a charset, but we need a mime_type.
+      if (!mime_type.empty()) {
+        const ContentType* type = MimeTypeToContentType(mime_type);
+        if (type != NULL && type->IsHtmlLike()) {
+          if (response_headers_->MergeContentType(content)) {
+            converted_meta_tag_count_->Add(1);
+          }
+        }
       }
-      if (response_headers_->MergeContentType(content)) {
-        converted_meta_tag_count_->Add(1);
-        return;
-      }
-    }
-    return;
-  } else {
-    // Also handle the <meta charset=''> case.
-    HtmlElement::Attribute* charset = element->FindAttribute(
-        HtmlName::kCharset);
-    if (charset != NULL) {
-      GoogleString type = StrCat("; charset=", charset->value());
+    } else {
+      // No content => it has a charset attribute (and no mime_type).
+      GoogleString type = StrCat("; charset=", charset);
       if (response_headers_->MergeContentType(type)) {
         converted_meta_tag_count_->Add(1);
       }

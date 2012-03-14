@@ -1,0 +1,25 @@
+<html>
+  <head>
+    <title>js_defer example</title>
+    <!-- Ensure that the insertion order in the list is maintained when some
+    script is added via external file -->
+  </head>
+  <body>
+    <script type="text/javascript">
+      var list = [];
+    </script>
+    <script type="text/javascript" src="js_defer_order_ext.js">
+    </script>
+    <script type="text/javascript">
+      list.push(2);
+    </script>
+    <script type="text/javascript" >
+      list.push(3);
+    </script>
+    <div id="listDiv"></div>
+    <script type="text/javascript" >
+      var listDiv = document.getElementById("listDiv");
+      listDiv.innerHTML = list.join();
+    </script>
+  </body>
+</html>

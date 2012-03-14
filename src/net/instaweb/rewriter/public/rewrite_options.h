@@ -98,8 +98,6 @@ class RewriteOptions {
   // Any new Option added, should have a corresponding enum here and this should
   // be passed in when add_option is called in the constructor.
   enum OptionEnum {
-    kAboveTheFoldCacheTime,
-    kAboveTheFoldNonCacheableElements,
     kAjaxRewritingEnabled,
     kAlwaysRewriteCss,
     kAnalyticsID,
@@ -141,6 +139,8 @@ class RewriteOptions {
     kMinImageSizeLowResolutionBytes,
     kMinResourceCacheTimeToRewriteMs,
     kModifyCachingHeaders,
+    kPrioritizeVisibleContentCacheTime,
+    kPrioritizeVisibleContentNonCacheableElements,
     kProgressiveJpegMinBytes,
     kRespectVary,
     kRewriteLevel,
@@ -245,7 +245,7 @@ class RewriteOptions {
   static const int64 kDefaultCacheInvalidationTimestamp;
   static const int64 kDefaultIdleFlushTimeMs;
   static const int64 kDefaultImplicitCacheTtlMs;
-  static const int64 kDefaultAboveTheFoldCacheTimeMs;
+  static const int64 kDefaultPrioritizeVisibleContentCacheTimeMs;
   static const GoogleString kDefaultBeaconUrl;
   static const int kDefaultImageJpegRecompressQuality;
   static const int kDefaultImageLimitOptimizedPercent;
@@ -653,32 +653,39 @@ class RewriteOptions {
     set_option(x, &domain_rewrite_all_tags_);
   }
 
-  bool MatchesAtfCacheableFamilies(const StringPiece& str) const {
-    return atf_cacheable_families_.Match(str, false);
+  // Functions for checking against and adding to prioritize_visible_content
+  // cacheable family option (prioritize_visible_content_cacheable_families_
+  // field).  Checks if str is an URL for which prioritize_visible_content
+  // filter is applicable.  Returns true if str matches any of the patterns in
+  // prioritize_visible_content_cacheable_families_.
+  bool MatchesPrioritizeVisibleContentCacheableFamilies(
+      const StringPiece& str) const {
+    return prioritize_visible_content_cacheable_families_.Match(str, false);
   }
-  void AddToAtfCacheableFamilies(const StringPiece& str) {
-    Modify();
-    if (atf_cacheable_families_default_) {
-      // In case is in default mode, blank it and then unmark the default flag
-      // before str is added.
-      WildcardGroup blank;
-      atf_cacheable_families_.CopyFrom(blank);
-      atf_cacheable_families_default_ = false;
-    }
-    atf_cacheable_families_.Allow(str);
+  // Adds str as a URL pattern for which prioritize_visible_content is
+  // applicable, i.e., visible content (html above the fold) will be cached.
+  void AddToPrioritizeVisibleContentCacheableFamilies(const StringPiece& str);
+
+  // Returns the elements that should not be cached by
+  // prioritize_visible_content filter.
+  const GoogleString&
+      prioritize_visible_content_non_cacheable_elements() const {
+    return prioritize_visible_content_non_cacheable_elements_.value();
+  }
+  // Sets the elements that should be cached by prioritize_visible_content
+  // filter.
+  void set_prioritize_visible_content_non_cacheable_elements(
+      const StringPiece& p) {
+    set_option(GoogleString(p.data(), p.size()),
+               &prioritize_visible_content_non_cacheable_elements_);
   }
 
-  const GoogleString& atf_non_cacheable_elements() const {
-    return atf_non_cacheable_elements_.value();
+  // Getter and setter for the prioritize_visible_content cache time.
+  int64 prioritize_visible_content_cache_time_ms() const {
+    return prioritize_visible_content_cache_time_ms_.value();
   }
-  void set_atf_non_cacheable_elements(const StringPiece& p) {
-    set_option(GoogleString(p.data(), p.size()), &atf_non_cacheable_elements_);
-  }
-  int64 atf_cache_time_ms() const {
-    return atf_cache_time_ms_.value();
-  }
-  void set_atf_cache_time_ms(int64 x) {
-    set_option(x, &atf_cache_time_ms_);
+  void set_prioritize_visible_content_cache_time_ms(int64 x) {
+    set_option(x, &prioritize_visible_content_cache_time_ms_);
   }
 
   // Takes ownership of the config.
@@ -1180,15 +1187,20 @@ class RewriteOptions {
   // explicit cache ttl or expiration date.
   Option<int64> implicit_cache_ttl_ms_;
 
-  // AboveTheFold related options.
-  // List of elements that will be treated as non-cacheable by AboveTheFold
-  // filter.
-  Option<GoogleString> atf_non_cacheable_elements_;
-  // Caching time for AboveTheFold.
-  Option<int64> atf_cache_time_ms_;
-  // URL patterns for which AboveTheFold will be applied.
-  WildcardGroup atf_cacheable_families_;
-  bool atf_cacheable_families_default_;
+  // prioritize_visible_content related options.
+  // List of elements that will be treated as non-cacheable by
+  // prioritize_visible_content filter.
+  Option<GoogleString> prioritize_visible_content_non_cacheable_elements_;
+  // Caching time for prioritize_visible_content filter.
+  Option<int64> prioritize_visible_content_cache_time_ms_;
+  // URL patterns for which prioritize_visible_content filter will be applied,
+  // i.e., above the fold html will be cached for URLs that match these wildcard
+  // patterns (excluding the elements in
+  // prioritize_visible_content_non_cacheable_elements_).  Any URL not matching
+  // this does not have prioritize_visible_content applied.
+  // Note:  This field is not used in signature computation.  It does not affect
+  // meta-data and so this is ok.
+  WildcardGroup prioritize_visible_content_cacheable_families_;
 
   scoped_ptr<PublisherConfig> panel_config_;
 
@@ -1220,6 +1232,7 @@ class RewriteOptions {
   DomainLawyer domain_lawyer_;
   FileLoadPolicy file_load_policy_;
 
+  // TODO(sriharis):  Consider this in ComputeSignature.
   WildcardGroup allow_resources_;
   WildcardGroup retain_comments_;
 

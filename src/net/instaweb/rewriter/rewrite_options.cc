@@ -109,7 +109,7 @@ const int64 RewriteOptions::kDefaultCacheInvalidationTimestamp = -1;
 const int64 RewriteOptions::kDefaultIdleFlushTimeMs = 10;
 const int64 RewriteOptions::kDefaultImplicitCacheTtlMs = 5 * Timer::kMinuteMs;
 
-const int64 RewriteOptions::kDefaultAboveTheFoldCacheTimeMs =
+const int64 RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs =
     30 * Timer::kMinuteMs;  // 30 mins.
 
 // Limit on concurrent ongoing image rewrites.
@@ -367,7 +367,6 @@ bool RewriteOptions::ParseRewriteLevel(
 RewriteOptions::RewriteOptions()
     : modified_(false),
       frozen_(false),
-      atf_cacheable_families_default_(true),
       options_uniqueness_checked_(false),
       furious_state_(furious::kFuriousNotSet) {
   // Sanity-checks -- will be active only when compiled for debug.
@@ -471,10 +470,11 @@ RewriteOptions::RewriteOptions()
   add_option(false, &image_retain_color_sampling_, "ircs",
              kImageRetainColorSampling);
   add_option(false, &image_retain_exif_data_, "ired", kImageRetainExifData);
-  add_option("", &atf_non_cacheable_elements_, "nce",
-             kAboveTheFoldNonCacheableElements);
-  add_option(kDefaultAboveTheFoldCacheTimeMs, &atf_cache_time_ms_, "ctm",
-             kAboveTheFoldCacheTime);
+  add_option("", &prioritize_visible_content_non_cacheable_elements_, "nce",
+             kPrioritizeVisibleContentNonCacheableElements);
+  add_option(kDefaultPrioritizeVisibleContentCacheTimeMs,
+             &prioritize_visible_content_cache_time_ms_, "ctm",
+             kPrioritizeVisibleContentCacheTime);
   add_option("", &ga_id_, "ig", kAnalyticsID);
   add_option(true, &increase_speed_tracking_, "st", kIncreaseSpeedTracking);
   add_option(false, &running_furious_, "fur", kRunningFurious);
@@ -487,11 +487,6 @@ RewriteOptions::RewriteOptions()
   // Do not call add_option with OptionEnum fourth argument after this.
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
              &metadata_cache_staleness_threshold_ms_, "mcst");
-
-  // Set atf_cacheable_families_ to match any URL. It is also marked to be in
-  // default state (in the constructor initialization list, where
-  // atf_cacheable_families_default_ is set to true.)
-  atf_cacheable_families_.Allow("*");
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
@@ -822,6 +817,13 @@ int64 RewriteOptions::MaxImageInlineMaxBytes() const {
                   CssImageInlineMaxBytes());
 }
 
+void RewriteOptions::AddToPrioritizeVisibleContentCacheableFamilies(
+    const StringPiece& str) {
+  // We do not call Modify here, since
+  // prioritize_visible_content_cacheable_families does not affect signature.
+  prioritize_visible_content_cacheable_families_.Allow(str);
+}
+
 void RewriteOptions::Merge(const RewriteOptions& src) {
   DCHECK(!frozen_);
   modified_ |= src.modified_;
@@ -860,13 +862,9 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   allow_resources_.AppendFrom(src.allow_resources_);
   retain_comments_.AppendFrom(src.retain_comments_);
 
-  // The semantics for atf_cacheable_families_ is that src replaces this, if src
-  // is explicitly set. (If src is default then this remain as it is.) This is
-  // required to perform overrides from cdd.
-  if (!src.atf_cacheable_families_default_) {
-    atf_cacheable_families_.CopyFrom(src.atf_cacheable_families_);
-    atf_cacheable_families_default_ = false;
-  }
+  // Merge logic for prioritize visible content cacheable families.
+  prioritize_visible_content_cacheable_families_.AppendFrom(
+      src.prioritize_visible_content_cacheable_families_);
 
   if (src.panel_config() != NULL) {
     set_panel_config(new PublisherConfig(*(src.panel_config())));
