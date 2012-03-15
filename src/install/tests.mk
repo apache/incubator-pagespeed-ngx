@@ -158,12 +158,15 @@ gzip_test_prepare:
 apache_debug_furious_test : furious_test_prepare apache_install_conf \
     apache_debug_restart
 	@echo Testing whether or not Furious is working:
-	$(WGET) -q -O - --save-headers $(EXAMPLE) \
-	  | grep "_GFURIOUS="
+	$(WGET) -q -O - --save-headers $(EXAMPLE) | grep "_GFURIOUS="
 	matches=`$(WGET) -q -O - --save-headers \
           '$(EXAMPLE)?ModPagespeed=on&ModPagespeedFilters=rewrite_css' \
 	  | grep -c '_GFURIOUS='`; \
 	test $$matches -eq 0
+
+	matches=`$(WGET) --header='Cookie: _GFURIOUS=2' -q -O - --save-headers \
+        '$(EXAMPLE)' | grep -c '_GFURIOUS='`; \
+        test $$matches -eq 0
 
 furious_test_prepare:
 	$(eval OPT_FURIOUS_TEST="FURIOUS_TEST=1")

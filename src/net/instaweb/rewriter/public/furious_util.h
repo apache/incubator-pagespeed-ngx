@@ -38,21 +38,23 @@ class RewriteOptions;
 
 namespace furious {
 
+// kFuriousNoExperiment indicates there is an actual cookie set, but the cookie
+// says: don't run experiments on this user.  E.g. if you're running an A/B
+// experiment on 40% of the traffic, 20% is in A (control), 20% is in B, and
+// 60% is in NoExperiment.
+enum FuriousState {
+  kFuriousNotSet = -1,  // Indicates no experiment cookie was set.
+  kFuriousNoExperiment = 0,
+  kFuriousControl = 1,
+};
+
 // Name of the Furious cookie we set when running experiments.
 const char kFuriousCookie[] = "_GFURIOUS";
-
-// Various states these options could be in regarding
-// the Furious Experiment.
-enum FuriousState {
-  kFuriousNotSet,
-  kFuriousNone,
-  kFuriousA,
-  kFuriousB
-};
+const char kFuriousCookiePrefix[] = "_GFURIOUS=";
 
 // Populates value with the state indicated by the FuriousCookie, if found.
 // Returns true if a cookie was found, false if it was not.
-bool GetFuriousCookieState(const RequestHeaders& headers, FuriousState* value);
+bool GetFuriousCookieState(const RequestHeaders& headers, int* value);
 
 // Removes the Furious cookie from the request headers so we don't
 // send it to the origin.
@@ -61,25 +63,18 @@ void RemoveFuriousCookie(RequestHeaders *headers);
 // Add a Set-Cookie header for Furious on the domain of url,
 // one week from now_ms, putting it on the side of the experiment
 // indicated by state.
-void SetFuriousCookie(ResponseHeaders* headers,
-                      const StringPiece& experiment_id,
-                      FuriousState state, const char* url, int64 now_ms);
+void SetFuriousCookie(ResponseHeaders* headers, int state,
+                      const StringPiece& url, int64 now_ms);
 
 // Determines which side of the experiment this request should end up on.
-FuriousState DetermineFuriousState(const RewriteOptions* options);
-
-// Disables all the filters except for add_head, insert_ga, add_instrumentation,
-// and HtmlWriter.  This is considered a "no-filter" base for
-// furious experiments.
-void FuriousNoFilterDefault(RewriteOptions* options);
+int DetermineFuriousState(const RewriteOptions* options);
 
 // The string value of a Furious State.  We don't want to use "ToString"
 // in case we change how we want the cookies to look.
-GoogleString FuriousStateToCookieString(const StringPiece& experiment_id,
-                                        const FuriousState state);
+GoogleString FuriousStateToCookieString(int state);
 
 // Converts a Furious Cookie string, e.g. "2", into a FuriousState.
-FuriousState CookieStringToState(const StringPiece& cookie_str);
+int CookieStringToState(const StringPiece& cookie_str);
 
 }  // namespace furious
 

@@ -158,6 +158,7 @@ const char* kModPagespeedMaxInlinedPreviewImagesIndex =
 const char* kModPagespeedMinImageSizeLowResolutionBytes =
     "ModPagespeedMinImageSizeLowResolutionBytes";
 const char* kModPagespeedRunFurious = "ModPagespeedRunExperiment";
+const char* kModPagespeedFuriousSpec = "ModPagespeedExperimentSpec";
 const char* kModPagespeedFuriousPercent =
     "ModPagespeedPercentExperimentTraffic";
 const char* kModPagespeedXHeaderValue = "ModPagespeedXHeaderValue";
@@ -1037,6 +1038,11 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     options->RetainComment(arg);
   } else if (StringCaseEqual(directive, kModPagespeedUrlPrefix)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
+  } else if (StringCaseEqual(directive, kModPagespeedFuriousSpec)) {
+    bool succeeded = options->AddFuriousSpec(arg, handler);
+    if (!succeeded) {
+      ret = "Invalid experiment ID.";
+    }
   } else {
     ret = apr_pstrcat(cmd->pool, "Unknown directive ",
                       directive.as_string().c_str(), NULL);
@@ -1182,7 +1188,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
          "Run an experiment to test the effectiveness of rewriters."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedFuriousPercent,
          "Percentage of traffic to be run through an experiment."),
-
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedFuriousSpec,
+         "Configuration for one side of an experiment in the form: "
+         "'id= ;enabled= ;disabled= ;...'"),
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)
   APACHE_CONFIG_OPTION(kModPagespeedFetcherTimeoutMs,

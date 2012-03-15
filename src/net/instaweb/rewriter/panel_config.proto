@@ -30,6 +30,10 @@
 //   }
 // }
 
+// Note: if you move this file, or add any new depedencies, you must update the
+// App Engine admin-console bundle build rule in
+// //apphosting/client/admin_console/BUILD
+
 syntax = "proto2";
 
 // [opensource] option optimize_for = LITE_RUNTIME;

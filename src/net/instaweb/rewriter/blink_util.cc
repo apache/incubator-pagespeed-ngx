@@ -324,5 +324,58 @@ bool StripTrailingNewline(GoogleString* s) {
   return false;
 }
 
-}  // namespace PanelUtil
+void PopulateAttributeToNonCacheableValuesMap(
+    const GoogleString& atf_non_cacheable_elements,
+    AttributesToNonCacheableValuesMap* attribute_non_cacheable_values_map,
+    std::vector<int>* panel_number_num_instances) {
+  // TODO(rahulbansal): Add more error checking.
+  StringPieceVector non_cacheable_values;
+  SplitStringPieceToVector(atf_non_cacheable_elements,
+                           "\n", &non_cacheable_values, true);
+  for (size_t i = 0; i < non_cacheable_values.size(); i++) {
+    StringPieceVector non_cacheable_values_pair;
+    SplitStringPieceToVector(non_cacheable_values[i], "=",
+                             &non_cacheable_values_pair, true);
+    if (non_cacheable_values_pair.size() != 2) {
+      LOG(ERROR) << "Incorrect non cacheable element value " <<
+          non_cacheable_values[i];
+      return;
+    }
+    attribute_non_cacheable_values_map->insert(make_pair(
+        non_cacheable_values_pair[0].as_string(),
+        make_pair(non_cacheable_values_pair[1].as_string(), i)));
+    panel_number_num_instances->push_back(0);
+  }
+}
+
+int GetPanelNumberForNonCacheableElement(
+    const AttributesToNonCacheableValuesMap&
+        attribute_non_cacheable_values_map,
+    const HtmlElement* element) {
+  for (int i = 0; i < element->attribute_size(); i++) {
+    const HtmlElement::Attribute& attribute = element->attribute(i);
+    if (attribute.value() == NULL) {
+      continue;
+    }
+    std::pair<AttributesToNonCacheableValuesMap::const_iterator,
+        AttributesToNonCacheableValuesMap::const_iterator> ret =
+            attribute_non_cacheable_values_map.equal_range(
+                attribute.name().c_str());
+    AttributesToNonCacheableValuesMap::const_iterator it;
+    for (it = ret.first; it != ret.second; ++it) {
+      if (strcmp(it->first.c_str(), attribute.name().c_str()) == 0 &&
+          strcmp(it->second.first.c_str(), attribute.value()) == 0) {
+        return it->second.second;
+      }
+    }
+  }
+  return -1;
+}
+
+GoogleString GetPanelId(int panel_number, int instance_number) {
+  return StrCat(BlinkUtil::kPanelId, "-", IntegerToString(panel_number),
+                ".", IntegerToString(instance_number));
+}
+
+}  // namespace BlinkUtil
 }  // namespace net_instaweb

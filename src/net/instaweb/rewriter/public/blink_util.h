@@ -21,6 +21,7 @@
 
 #include <map>
 
+#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -37,6 +38,8 @@ class RequestHeaders;
 class RewriteOptions;
 
 typedef std::map<GoogleString, const Panel*> PanelIdToSpecMap;
+typedef std::multimap<GoogleString, std::pair<GoogleString, const int> >
+    AttributesToNonCacheableValuesMap;
 
 namespace BlinkUtil {
 
@@ -110,6 +113,21 @@ void EscapeString(GoogleString* str);
 
 // TODO(rahulbansal): Move this function to net/instaweb/util/string_util
 bool StripTrailingNewline(GoogleString* s);
+
+// Populates the attributes to non cacheable values map.
+void PopulateAttributeToNonCacheableValuesMap(
+    const GoogleString& atf_non_cacheable_elements,
+    AttributesToNonCacheableValuesMap* attribute_non_cacheable_values_map,
+    std::vector<int>* panel_number_num_instances);
+
+// Returns panel number for non cacheable element. If cacheable returns -1.
+int GetPanelNumberForNonCacheableElement(
+    const AttributesToNonCacheableValuesMap&
+        attribute_non_cacheable_values_map,
+    const HtmlElement* element);
+
+// Gets panel id for the given panel instance.
+GoogleString GetPanelId(int panel_number, int instance_number);
 }  // namespace BlinkUtil
 
 }  // namespace net_instaweb

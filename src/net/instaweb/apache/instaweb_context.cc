@@ -68,20 +68,10 @@ InstawebContext::InstawebContext(request_rec* request,
     // domain lawyer and other options.
     RewriteOptions* options = custom_options.Clone();
 
-    // TODO(nforman): If we're not running a furious experiment, clear out
-    // the Furious cookie.
-    // TODO(nforman): If you're on the B side of an experiment, this is
-    // not going to be friendly for your query params.  Make it so that
-    // if query params are specified, we honor them even if in an experiment.
+    // If we're running a Furious experiment, determine the state of this
+    // request and reset the options accordingly.
     if (options->running_furious()) {
       SetFuriousStateAndCookie(request, options);
-      // For B, turn off all the filters except the ones we need to run
-      // the experiment.
-      // TODO(nforman): Allow the user to specify what the 'B' set of
-      // filters is.
-      if (options->furious_state() == furious::kFuriousB) {
-        furious::FuriousNoFilterDefault(options);
-      }
     }
     resource_manager_->ComputeSignature(options);
     rewrite_driver_ = resource_manager_->NewCustomRewriteDriver(options);
@@ -320,19 +310,22 @@ const char* InstawebContext::MakeRequestUrl(request_rec* request) {
 
 void InstawebContext::SetFuriousStateAndCookie(request_rec* request,
                                                RewriteOptions* options) {
-  furious::FuriousState furious_value;
+  int furious_value;
+  // If we didn't get a valid (i.e. currently-running experiment) value from
+  // the cookie, determine which experiment this request should end up in
+  // and set the cookie accordingly.
   if (!furious::GetFuriousCookieState(*request_headers_, &furious_value)) {
     ResponseHeaders resp_headers;
     AprTimer timer;
     const char* url = apr_table_get(request->notes, kPagespeedOriginalUrl);
     furious_value = furious::DetermineFuriousState(options);
-    // The "0" string is for an experiment id.
-    // TODO(nforman): Replace "0" with a configurable id.
-    furious::SetFuriousCookie(&resp_headers, "0", furious_value,
-                              url, timer.NowMs());
-    AddResponseHeadersToRequest(resp_headers, request);
+    if (furious_value != furious::kFuriousNotSet) {
+      furious::SetFuriousCookie(&resp_headers, furious_value, url,
+                                timer.NowMs());
+      AddResponseHeadersToRequest(resp_headers, request);
+    }
   }
-  options->set_furious_state(furious_value);
+  options->SetFuriousState(furious_value);
 }
 
 }  // namespace net_instaweb

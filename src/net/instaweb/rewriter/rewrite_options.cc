@@ -25,9 +25,11 @@
 #include "net/instaweb/rewriter/panel_config.pb.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
+#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/wildcard_group.h"
@@ -206,6 +208,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kLazyloadImages,
   RewriteOptions::kServeNonCacheableNonCritical,  // internal,
                                                   // enabled conditionally
+  RewriteOptions::kStripNonCacheable,  // internal, enabled conditionally
   RewriteOptions::kStripScripts,
 };
 
@@ -242,7 +245,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kDeferJavascript:                 return "Defer Javascript";
     case kDelayImages:                     return "Delay Images";
     case kDisableJavascript:
-        return "Disables scripts by placing them inside noscript tags";
+      return "Disables scripts by placing them inside noscript tags";
     case kDivStructure:                    return "Div Structure";
     case kElideAttributes:                 return "Elide Attributes";
     case kExplicitCloseTags:               return "Explicit Close Tags";
@@ -250,8 +253,6 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kExtendCacheImages:               return "Cache Extend Images";
     case kExtendCacheScripts:              return "Cache Extend Scripts";
     case kFlattenCssImports:               return "Flatten CSS Imports";
-    case kServeNonCacheableNonCritical:
-        return "Serve Non Cacheable and Non Critical Content";
     case kHtmlWriterFilter:                return "Flushes html";
     case kInlineCss:                       return "Inline Css";
     case kInlineImages:                    return "Inline Images";
@@ -277,7 +278,10 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kRewriteStyleAttributes:          return "Rewrite Style Attributes";
     case kRewriteStyleAttributesWithUrl:
       return "Rewrite Style Attributes With Url";
+    case kServeNonCacheableNonCritical:
+        return "Serve Non Cacheable and Non Critical Content";
     case kSpriteImages:                    return "Sprite Images";
+    case kStripNonCacheable:               return "Strip Non Cacheable";
     case kStripScripts:                    return "Strip Scripts";
     case kEndOfFilters:                    return "End of Filters";
   }
@@ -308,7 +312,6 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kExtendCacheImages:               return "ei";
     case kExtendCacheScripts:              return "es";
     case kFlattenCssImports:               return kCssImportFlattenerId;
-    case kServeNonCacheableNonCritical:    return "sn";
     case kHtmlWriterFilter:                return "hw";
     case kInlineCss:                       return kCssInlineId;
     case kInlineImages:                    return "ii";
@@ -333,6 +336,8 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kRewriteJavascript:               return kJavascriptMinId;
     case kRewriteStyleAttributes:          return "cs";
     case kRewriteStyleAttributesWithUrl:   return "cu";
+    case kServeNonCacheableNonCritical:    return "sn";
+    case kStripNonCacheable:               return "nc";
     case kSpriteImages:                    return kImageCombineId;
     case kStripScripts:                    return "ss";
     case kEndOfFilters:
@@ -368,7 +373,7 @@ RewriteOptions::RewriteOptions()
     : modified_(false),
       frozen_(false),
       options_uniqueness_checked_(false),
-      furious_state_(furious::kFuriousNotSet) {
+      furious_id_(furious::kFuriousNotSet) {
   // Sanity-checks -- will be active only when compiled for debug.
 #ifndef NDEBUG
   CheckFilterSetOrdering(kCoreFilterSet, arraysize(kCoreFilterSet));
@@ -493,6 +498,7 @@ RewriteOptions::RewriteOptions()
 }
 
 RewriteOptions::~RewriteOptions() {
+  STLDeleteElements(&furious_specs_);
 }
 
 RewriteOptions::OptionBase::~OptionBase() {
@@ -514,6 +520,11 @@ void RewriteOptions::set_panel_config(
 
 const PublisherConfig* RewriteOptions::panel_config() const {
   return panel_config_.get();
+}
+
+void RewriteOptions::SetFuriousState(int id) {
+  furious_id_ = id;
+  SetupFuriousRewriters();
 }
 
 void RewriteOptions::DisallowTroublesomeResources() {
@@ -562,13 +573,13 @@ bool RewriteOptions::AdjustFiltersByCommaSeparatedList(
 
 bool RewriteOptions::EnableFiltersByCommaSeparatedList(
     const StringPiece& filters, MessageHandler* handler) {
-  return AddCommaSeparatedListToFilterSet(
+  return AddCommaSeparatedListToFilterSetState(
       filters, handler, &enabled_filters_);
 }
 
 bool RewriteOptions::DisableFiltersByCommaSeparatedList(
     const StringPiece& filters, MessageHandler* handler) {
-  return AddCommaSeparatedListToFilterSet(
+  return AddCommaSeparatedListToFilterSetState(
       filters, handler, &disabled_filters_);
 }
 
@@ -639,17 +650,23 @@ void RewriteOptions::ClearFilters() {
   EnableFilter(kHtmlWriterFilter);
 }
 
-bool RewriteOptions::AddCommaSeparatedListToFilterSet(
+bool RewriteOptions::AddCommaSeparatedListToFilterSetState(
     const StringPiece& filters, MessageHandler* handler, FilterSet* set) {
   DCHECK(!frozen_);
+  size_t prev_set_size = set->size();
+  bool ret = AddCommaSeparatedListToFilterSet(filters, handler, set);
+  modified_ |= (set->size() != prev_set_size);
+  return ret;
+}
+
+bool RewriteOptions::AddCommaSeparatedListToFilterSet(
+    const StringPiece& filters, MessageHandler* handler, FilterSet* set) {
   StringPieceVector names;
   SplitStringPieceToVector(filters, ",", &names, true);
   bool ret = true;
-  size_t prev_set_size = set->size();
   for (int i = 0, n = names.size(); i < n; ++i) {
     ret = AddByNameToFilterSet(names[i], handler, set);
   }
-  modified_ |= (set->size() != prev_set_size);
   return ret;
 }
 
@@ -843,6 +860,11 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     enabled_filters_.erase(filter);
   }
 
+  for (int i = 0, n = src.furious_specs_.size(); i < n; ++i) {
+    FuriousSpec* spec = src.furious_specs_[i]->Clone();
+    AddFuriousSpec(spec);
+  }
+
   // Note that from the perspective of this class, we can be merging
   // RewriteOptions subclasses & superclasses, so don't read anything
   // that doesn't exist.  However this is almost certainly the wrong
@@ -989,6 +1011,184 @@ void RewriteOptions::Modify() {
 
 const char* RewriteOptions::class_name() const {
   return RewriteOptions::kClassName;
+}
+
+// We expect furious_specs_.size() to be small (not more than 2 or 3)
+// so there is no need to optimize this
+RewriteOptions::FuriousSpec* RewriteOptions::GetFuriousSpec(int id) const {
+  for (int i = 0, n = furious_specs_.size(); i < n; ++i) {
+    if (furious_specs_[i]->id() == id) {
+      return furious_specs_[i];
+    }
+  }
+  return NULL;
+}
+
+bool RewriteOptions::AvailableFuriousId(int id) {
+  if (id < 0 || id == furious::kFuriousNotSet ||
+      id == furious::kFuriousNoExperiment ||
+      id == furious::kFuriousControl) {
+    return false;
+  }
+  return (GetFuriousSpec(id) == NULL);
+}
+
+bool RewriteOptions::AddFuriousSpec(const StringPiece& spec,
+                                    MessageHandler* handler) {
+  FuriousSpec* f_spec = new FuriousSpec(spec, handler);
+  return AddFuriousSpec(f_spec);
+}
+
+bool RewriteOptions::AddFuriousSpec(int furious_id) {
+  FuriousSpec* f_spec = new FuriousSpec(furious_id);
+  return AddFuriousSpec(f_spec);
+}
+
+bool RewriteOptions::AddFuriousSpec(FuriousSpec* spec) {
+  if (!AvailableFuriousId(spec->id())) {
+    delete spec;
+    return false;
+  }
+  furious_specs_.push_back(spec);
+  return true;
+}
+
+// Always enable add_head, insert_ga, add_instrumentation,
+// and HtmlWriter.  This is considered a "no-filter" base for
+// furious experiments.
+void RewriteOptions::SetupFuriousRewriters() {
+  // Don't change anything if we're not in an experiment or have some
+  // unset id.
+  if (furious_id_ == furious::kFuriousNotSet ||
+      furious_id_ == furious::kFuriousNoExperiment) {
+    return;
+  }
+  // Control: just make sure that the necessary stuff is on.
+  // Do NOT try to set up things to look like the FuriousSpec
+  // for this id: it doesn't match the rewrite options.
+  if (furious_id_ == furious::kFuriousControl) {
+    ForceEnableFilter(RewriteOptions::kAddHead);
+    ForceEnableFilter(RewriteOptions::kAddInstrumentation);
+    ForceEnableFilter(RewriteOptions::kInsertGA);
+    ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
+    return;
+  }
+  FuriousSpec* spec = GetFuriousSpec(furious_id_);
+  if (spec == NULL) {
+    return;
+  }
+  ClearFilters();
+  SetRewriteLevel(spec->rewrite_level());
+  EnableFilters(spec->enabled_filters());
+  DisableFilters(spec->disabled_filters());
+  // We need these for the experiment to work properly.
+  ForceEnableFilter(RewriteOptions::kAddHead);
+  ForceEnableFilter(RewriteOptions::kAddInstrumentation);
+  ForceEnableFilter(RewriteOptions::kInsertGA);
+  ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
+  set_css_inline_max_bytes(spec->css_inline_max_bytes());
+  set_js_inline_max_bytes(spec->js_inline_max_bytes());
+  set_image_inline_max_bytes(spec->image_inline_max_bytes());
+}
+
+RewriteOptions::FuriousSpec::FuriousSpec(const StringPiece& spec,
+                                         MessageHandler* handler)
+    : id_(furious::kFuriousNotSet),
+      rewrite_level_(kPassThrough),
+      css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
+      js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
+      image_inline_max_bytes_(kDefaultImageInlineMaxBytes) {
+  Initialize(spec, handler);
+}
+
+RewriteOptions::FuriousSpec::FuriousSpec(int id)
+    : id_(id),
+      rewrite_level_(kPassThrough),
+      css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
+      js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
+      image_inline_max_bytes_(kDefaultImageInlineMaxBytes) {
+}
+
+RewriteOptions::FuriousSpec* RewriteOptions::FuriousSpec::Clone() {
+  FuriousSpec* ret = new FuriousSpec(id_);
+  for (FilterSet::const_iterator iter = enabled_filters_.begin();
+       iter != enabled_filters_.end(); ++iter) {
+    ret->enabled_filters_.insert(*iter);
+  }
+  for (FilterSet::const_iterator iter = disabled_filters_.begin();
+       iter != disabled_filters_.end(); ++iter) {
+    ret->disabled_filters_.insert(*iter);
+  }
+  ret->rewrite_level_ = rewrite_level_;
+  ret->css_inline_max_bytes_ = css_inline_max_bytes_;
+  ret->js_inline_max_bytes_ = js_inline_max_bytes_;
+  ret->image_inline_max_bytes_ = image_inline_max_bytes_;
+  return ret;
+}
+
+StringPiece RewriteOptions::FuriousSpec::PieceAfterEquals(
+    const StringPiece& piece) {
+  size_t index = piece.find("=");
+  if (index != piece.npos) {
+    ++index;
+    StringPiece ret = piece;
+    ret.remove_prefix(index);
+    TrimWhitespace(&ret);
+    return ret;
+  }
+  return StringPiece(piece.data(), 0);
+}
+
+// Options are written in the form:
+// ModPagespeedExperimentSpec 'id= 2; RewriteLevel= CoreFilters;
+// enable= resize_images; disable = is; inline_css = 25556'
+void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
+                                             MessageHandler* handler) {
+  StringPieceVector spec_pieces;
+  SplitStringPieceToVector(spec, ";", &spec_pieces, true);
+  for (int i = 0, n = spec_pieces.size(); i < n; ++i) {
+    StringPiece piece = spec_pieces[i];
+    TrimWhitespace(&piece);
+    if (StringCaseStartsWith(piece, "id")) {
+      StringPiece id = PieceAfterEquals(piece);
+      if (id.length() > 0 && !StringToInt(id.as_string(), &id_)) {
+        // If we failed to turn this string into an int, then
+        // set the id_ to kFuriousNotSet so we don't end up adding
+        // in this spec.
+        id_ = furious::kFuriousNotSet;
+      }
+    } else if (StringCaseStartsWith(piece, "level")) {
+      StringPiece level = PieceAfterEquals(piece);
+      if (level.length() > 0) {
+        ParseRewriteLevel(level, &rewrite_level_);
+      }
+    } else if (StringCaseStartsWith(piece, "enable")) {
+      StringPiece enabled = PieceAfterEquals(piece);
+      if (enabled.length() > 0) {
+        AddCommaSeparatedListToFilterSet(enabled, handler, &enabled_filters_);
+      }
+    } else if (StringCaseStartsWith(piece, "disable")) {
+      StringPiece disabled = PieceAfterEquals(piece);
+      if (disabled.length() > 0) {
+        AddCommaSeparatedListToFilterSet(disabled, handler, &disabled_filters_);
+      }
+    } else if (StringCaseStartsWith(piece, "inline_css")) {
+      StringPiece max_bytes = PieceAfterEquals(piece);
+      if (max_bytes.length() > 0) {
+        StringToInt64(max_bytes.as_string(), &css_inline_max_bytes_);
+      }
+    } else if (StringCaseStartsWith(piece, "inline_images")) {
+      StringPiece max_bytes = PieceAfterEquals(piece);
+      if (max_bytes.length() > 0) {
+        StringToInt64(max_bytes.as_string(), &image_inline_max_bytes_);
+      }
+    } else if (StringCaseStartsWith(piece, "inline_js")) {
+      StringPiece max_bytes = PieceAfterEquals(piece);
+      if (max_bytes.length() > 0) {
+        StringToInt64(max_bytes.as_string(), &js_inline_max_bytes_);
+      }
+    }
+  }
 }
 
 }  // namespace net_instaweb

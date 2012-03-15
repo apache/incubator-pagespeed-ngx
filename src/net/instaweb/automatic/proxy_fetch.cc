@@ -380,15 +380,17 @@ ProxyFetch::~ProxyFetch() {
 
 bool ProxyFetch::StartParse() {
   driver_->SetWriter(base_fetch());
-  if (Options()->running_furious()) {
-    furious::FuriousState state = Options()->furious_state();
-    // The "0" string is for an experiment id.
-    // TODO(nforman): Replace "0" with a configurable id.
-    furious::SetFuriousCookie(response_headers(), "0", state, url_.c_str(),
+
+  // The response headers get munged between when we initially determine
+  // which rewrite options we need (in proxy_interface.cc) and here.
+  // Therefore, we can not set the Set-Cookie header there, and must
+  // do it here instead.
+  if (driver_->need_furious_cookie() && Options()->running_furious()) {
+    int furious_value = Options()->furious_id();
+    furious::SetFuriousCookie(response_headers(), furious_value, url_,
                               resource_manager_->timer()->NowUs());
   }
   driver_->set_response_headers_ptr(response_headers());
-
   {
     // PropertyCacheComplete checks sequence_ to see whether it should
     // start processing queued text, so we need to mutex-protect it.

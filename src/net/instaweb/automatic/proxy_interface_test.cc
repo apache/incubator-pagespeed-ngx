@@ -54,6 +54,7 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -2567,6 +2568,8 @@ TEST_F(ProxyInterfaceTest, FuriousTest) {
   options->ClearSignatureForTesting();
   options->set_ga_id("123-455-2341");
   options->set_running_furious_experiment(true);
+  NullMessageHandler handler;
+  options->AddFuriousSpec("id=2", &handler);
   resource_manager()->ComputeSignature(options);
 
   ResponseHeaders headers;
@@ -2590,6 +2593,19 @@ TEST_F(ProxyInterfaceTest, FuriousTest) {
     }
   }
   EXPECT_TRUE(found);
+
+  headers.Clear();
+  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  SetFetchResponse(AbsolutifyUrl("text2.html"), headers, kContent);
+  headers.Clear();
+  text.clear();
+
+  RequestHeaders req_headers;
+  req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=2");
+
+  FetchFromProxy("text2.html", req_headers, true, &text, &headers);
+  EXPECT_FALSE(headers.Has(HttpAttributes::kSetCookie));
 }
 
 TEST_F(ProxyInterfaceTest, TestAddTaskProxyFetchPropertyCallback) {

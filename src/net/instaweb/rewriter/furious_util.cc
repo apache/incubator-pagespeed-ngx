@@ -20,7 +20,6 @@
 
 #include "net/instaweb/rewriter/public/furious_util.h"
 
-#include <cstddef>
 #include <cstdlib>
 
 #include "net/instaweb/http/public/meta_data.h"
@@ -31,25 +30,12 @@
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 
-// Separates the experiment ID from the Furious state in the cookie.
-#define SEPARATOR ":"
-
 namespace net_instaweb {
 namespace furious {
 
-// Furious cookie value strings.
-const char kFuriousCookieA[] = "1";
-const char kFuriousCookieB[] = "2";
-const char kFuriousCookieNone[] = "0";
-const char kFuriousCookieNotSet[] = "";
-
-// TODO(nforman): Make sure the experiment id in the cookie matches the
-// current experiment in RewriteOptions.
-bool GetFuriousCookieState(const RequestHeaders& headers, FuriousState* value) {
+bool GetFuriousCookieState(const RequestHeaders& headers, int* value) {
   ConstStringStarVector v;
-  GoogleString prefix;
   *value = kFuriousNotSet;
-  StrAppend(&prefix, kFuriousCookie, "=");
   if (headers.Lookup(HttpAttributes::kCookie, &v)) {
     for (int i = 0, nv = v.size(); i < nv; ++i) {
       StringPieceVector cookies;
@@ -57,8 +43,8 @@ bool GetFuriousCookieState(const RequestHeaders& headers, FuriousState* value) {
       for (int j = 0, ncookies = cookies.size(); j < ncookies; ++j) {
         StringPiece cookie(cookies[j]);
         TrimWhitespace(&cookie);
-        if (StringCaseStartsWith(cookie, prefix)) {
-          cookie.remove_prefix(prefix.length());
+        if (StringCaseStartsWith(cookie, kFuriousCookiePrefix)) {
+          cookie.remove_prefix(STATIC_STRLEN(kFuriousCookiePrefix));
           *value = CookieStringToState(cookie);
           // If we got a bogus value for the cookie, keep looking for another
           // one just in case.
@@ -77,9 +63,8 @@ void RemoveFuriousCookie(RequestHeaders* headers) {
 }
 
 void SetFuriousCookie(ResponseHeaders* headers,
-                      const StringPiece& experiment_id,
-                      FuriousState state,
-                      const char* url,
+                      int state,
+                      const StringPiece& url,
                       int64 now_ms) {
   GoogleUrl request_url(url);
   // If we can't parse this url, don't try to set headers on the response.
@@ -88,10 +73,14 @@ void SetFuriousCookie(ResponseHeaders* headers,
   }
   GoogleString expires;
   ConvertTimeToString(now_ms + Timer::kWeekMs, &expires);
+  StringPiece host = request_url.Host();
+  if (host.length() == 0) {
+    return;
+  }
   GoogleString value = StringPrintf(
       "%s=%s; Expires=%s; Domain=.%s; Path=/",
-      kFuriousCookie, FuriousStateToCookieString(experiment_id, state).c_str(),
-      expires.c_str(), request_url.Host().as_string().c_str());
+      kFuriousCookie, FuriousStateToCookieString(state).c_str(),
+      expires.c_str(), host.as_string().c_str());
   headers->Add(HttpAttributes::kSetCookie, value);
   headers->ComputeCaching();
 }
@@ -102,64 +91,50 @@ void SetFuriousCookie(ResponseHeaders* headers,
 // It might be "safer" to do this as a hash of ip so that if one person
 // sent simultaneous requests, they would end up on the same side of the
 // experiment for all requests.
-FuriousState DetermineFuriousState(const RewriteOptions* options) {
-  FuriousState ret = kFuriousNone;
-  long index = random();
-  // We devide by 200.0 to get half the percentage of traffic in A and
-  // then the other half in B.  E.g. if furious_percent_ is 40,
-  // we want 40/200 => .2 in A and .2 in B.
-  double mult = static_cast<double>(options->furious_percent())/200.0;
-  int middle_bound = mult * RAND_MAX;
-  if (index < middle_bound) {
-    ret = kFuriousA;
-  } else if (index < middle_bound * 2) {
-    ret = kFuriousB;
+int DetermineFuriousState(const RewriteOptions* options) {
+  int ret = kFuriousNotSet;
+  int num_experiments = options->num_furious_experiments();
+
+  // If are no experiments, return kFuriousNotSet so RewriteOptions doesn't try
+  // to change.
+  if (num_experiments < 1) {
+    return ret;
+  }
+
+  // If we're running two experiments, 1/3 of the exeriment traffic
+  // should go into each, and 1/3 into the control.
+  double divisor = (num_experiments + 1) * 100.0;
+  double mult = static_cast<double>(options->furious_percent())/divisor;
+  int bound = mult * RAND_MAX;
+  int64 index = random();
+  ret = kFuriousNoExperiment;
+  // One of these should be the control.
+  for (int i = 0; i < num_experiments; ++i) {
+    if (index < bound * (i + 1)) {
+      ret = options->furious_spec_id(i);
+      return ret;
+    }
+  }
+  if (index < bound * (num_experiments + 1)) {
+    ret = kFuriousControl;
+  }
+
+  return ret;
+}
+
+int CookieStringToState(const StringPiece& cookie_str) {
+  int ret;
+  if (!StringToInt(cookie_str.as_string(), &ret)) {
+    ret = kFuriousNotSet;
   }
   return ret;
 }
 
-FuriousState CookieStringToState(const StringPiece& cookie_str) {
-  size_t index = cookie_str.find(SEPARATOR);
-  if (index == StringPiece::npos) {
-    return kFuriousNotSet;
-  }
-  StringPiece value(cookie_str.data(), cookie_str.length());
-  value.remove_prefix(index + 1);
-  if (value == kFuriousCookieA) {
-    return kFuriousA;
-  }
-  if (value == kFuriousCookieB) {
-    return kFuriousB;
-  }
-  if (value == kFuriousCookieNone) {
-    return kFuriousNone;
-  }
-  return kFuriousNotSet;
-}
-
-GoogleString FuriousStateToCookieString(const StringPiece& experiment_id,
-                                        const FuriousState state) {
-  GoogleString cookie_value(experiment_id.data(), experiment_id.length());
-  cookie_value.append(SEPARATOR);
-  if (state == kFuriousA) {
-    cookie_value.append(kFuriousCookieA);
-  } else if (state == kFuriousB) {
-    cookie_value.append(kFuriousCookieB);
-  } else if (state == kFuriousNone) {
-    cookie_value.append(kFuriousCookieNone);
-  } else {
-    cookie_value.append(kFuriousCookieNotSet);
-  }
+GoogleString FuriousStateToCookieString(int state) {
+  GoogleString cookie_value = IntegerToString(state);
   return cookie_value;
 }
 
-void FuriousNoFilterDefault(RewriteOptions* options) {
-  options->SetRewriteLevel(RewriteOptions::kPassThrough);
-  options->ForceEnableFilter(RewriteOptions::kAddHead);
-  options->ForceEnableFilter(RewriteOptions::kAddInstrumentation);
-  options->ForceEnableFilter(RewriteOptions::kInsertGA);
-  options->ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
-}
 
 }  // namespace furious
 

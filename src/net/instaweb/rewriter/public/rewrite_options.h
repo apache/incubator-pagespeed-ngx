@@ -27,7 +27,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
-#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/wildcard_group.h"
@@ -91,6 +90,7 @@ class RewriteOptions {
     kRewriteStyleAttributesWithUrl,
     kServeNonCacheableNonCritical,
     kSpriteImages,
+    kStripNonCacheable,
     kStripScripts,
     kEndOfFilters
   };
@@ -284,6 +284,61 @@ class RewriteOptions {
 
   static const char kDefaultXModPagespeedHeaderValue[];
 
+  // This class is a spearate subset of options for running a furious
+  // experiment.
+  // These options can be specified by a spec string that looks like:
+  // "id=<number greater than 0>;level=<rewrite level>;enabled=
+  // <comma-separated-list of filters to enable>;disabled=
+  // <comma-separated-list of filters to disable>;css_inline_threshold=
+  // <max size of css to inline>;image_inline_threshold=<max size of
+  // image to inline>;js_inline_threshold=<max size of js to inline>.
+  class FuriousSpec {
+   public:
+    // Creates a FuriousSpec parsed from spec.
+    // If spec doesn't have an id, then id_ will be set to
+    // furious::kFuriousNotSet.  These FuriousSpecs will then be rejected
+    // by AddFuriousSpec().
+    FuriousSpec(const StringPiece& spec, MessageHandler* handler);
+
+    // Creates a FuriousSpec with id_=id.  All other variables
+    // are initialized to 0.
+    // This is primarily used for setting up the control and for cloning.
+    explicit FuriousSpec(int id);
+
+    ~FuriousSpec() {}
+
+    // Return a FuriousSpec with all the same information as this one.
+    FuriousSpec* Clone();
+
+    bool is_valid() const { return id_ >= 0; }
+
+    // Accessors.
+    int id() const { return id_; }
+    RewriteLevel rewrite_level() const { return rewrite_level_; }
+    FilterSet enabled_filters() const { return enabled_filters_; }
+    FilterSet disabled_filters() const { return disabled_filters_; }
+    int64 css_inline_max_bytes() const { return css_inline_max_bytes_; }
+    int64 js_inline_max_bytes() const { return js_inline_max_bytes_; }
+    int64 image_inline_max_bytes() const { return image_inline_max_bytes_; }
+
+   private:
+    // Initialize parses spec and sets the FilterSets, rewrite level,
+    // and inlining thresholds accordingly.
+    void Initialize(const StringPiece& spec, MessageHandler* handler);
+
+    // Helper method that returns the part of the piece after the first '='.
+    static StringPiece PieceAfterEquals(const StringPiece& piece);
+
+    int id_;
+    RewriteLevel rewrite_level_;
+    FilterSet enabled_filters_;
+    FilterSet disabled_filters_;
+    int64 css_inline_max_bytes_;
+    int64 js_inline_max_bytes_;
+    int64 image_inline_max_bytes_;
+    DISALLOW_COPY_AND_ASSIGN(FuriousSpec);
+  };
+
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
 
   RewriteOptions();
@@ -302,15 +357,45 @@ class RewriteOptions {
     set_option(level, &level_);
   }
 
+  // Returns the spec with the id_ that matches id.  Returns NULL if no
+  // spec matches.
+  FuriousSpec* GetFuriousSpec(int id) const;
+
+  // Returns false if id is negative, or if the id is reserved
+  // for NoExperiment or NotSet, or if we already have an experiment
+  // with that id.
+  bool AvailableFuriousId(int id);
+
+  // Creates a FuriousSpec from spec and adds it to the configuration.
+  // Returns true if it was added successfully.
+  bool AddFuriousSpec(const StringPiece& spec, MessageHandler* handler);
+
+  // Creates a FuriousSpec with furious_id and adds it to the configuration.
+  // Returns true if it was added successfully.
+  bool AddFuriousSpec(int furious_id);
+
+  // Add an experiment configuration.
+  // Returns true if the experiment was added successfully.
+  // Takes owndership of (and may delete) spec.
+  bool AddFuriousSpec(FuriousSpec* spec);
+
   // Sets which side of the experiment these RewriteOptions are on.
   // Cookie-setting must be done separately.
-  void set_furious_state(furious::FuriousState state) {
-    furious_state_ = state;
+  // furious::kFuriousControl indicates control group (same as whatever
+  // these RewriteOptions are).
+  // furious::kFuriousNotSet indicates it hasn't been set.
+  // furious::kFuriousNoExperiment indicates this request shouldn't be
+  // in any experiment.
+  // Then sets the rewriters to match the experiment indicated by id.
+  void SetFuriousState(int id);
+
+  int furious_id() const { return furious_id_; }
+
+  int furious_spec_id(int i) const {
+    return furious_specs_[i]->id();
   }
 
-  furious::FuriousState furious_state() const {
-    return furious_state_;
-  }
+  int num_furious_experiments() const { return furious_specs_.size(); }
 
   RewriteLevel level() const { return level_.value();}
 
@@ -987,13 +1072,17 @@ class RewriteOptions {
   }
 
  private:
+  typedef std::vector<Filter> FilterVector;
+
   void SetUp();
-  bool AddCommaSeparatedListToFilterSet(
+  bool AddCommaSeparatedListToFilterSetState(
+      const StringPiece& filters, MessageHandler* handler, FilterSet* set);
+  static bool AddCommaSeparatedListToFilterSet(
       const StringPiece& filters, MessageHandler* handler, FilterSet* set);
   bool AddCommaSeparatedListToPlusAndMinusFilterSets(
       const StringPiece& filters, MessageHandler* handler,
       FilterSet* plus_set, FilterSet* minus_set);
-  bool AddByNameToFilterSet(
+  static bool AddByNameToFilterSet(
       const StringPiece& option, MessageHandler* handler, FilterSet* set);
   static Filter LookupFilter(const StringPiece& filter_name);
   static OptionEnum LookupOption(const StringPiece& option_name);
@@ -1078,6 +1167,9 @@ class RewriteOptions {
     return option->option_enum() < arg;
   }
 
+  // Set the rewriter sets and thresholds to match what is in the
+  // FuriousSpec our furious_id_ matches.
+  void SetupFuriousRewriters();
   bool modified_;
   bool frozen_;
   FilterSet enabled_filters_;
@@ -1226,8 +1318,9 @@ class RewriteOptions {
   // mixed debug/opt object files in an executable.
   bool options_uniqueness_checked_;
 
-  // Which side of the experiment are we in?
-  furious::FuriousState furious_state_;
+  // Which experiment configuration are we in?
+  int furious_id_;
+  std::vector<FuriousSpec*> furious_specs_;
 
   DomainLawyer domain_lawyer_;
   FileLoadPolicy file_load_policy_;

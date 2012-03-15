@@ -725,6 +725,7 @@
         'instaweb_spriter',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
         '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
       'sources': [
@@ -771,6 +772,7 @@
         'rewriter/script_tag_scanner.cc',
         'rewriter/simple_text_filter.cc',
         'rewriter/single_rewrite_context.cc',
+        'rewriter/strip_non_cacheable_filter.cc',
         'rewriter/strip_scripts_filter.cc',
         'rewriter/url_input_resource.cc',
         'rewriter/url_left_trim_filter.cc',

@@ -22,6 +22,7 @@
 
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace {
 
@@ -696,6 +697,30 @@ TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies2) {
       "twoANYTHING"));
   EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
       "three"));
+}
+
+TEST_F(RewriteOptionsTest, FuriousSpecTest) {
+  NullMessageHandler handler;
+  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  // 0 is reserved for the control.
+  EXPECT_FALSE(options_.AddFuriousSpec("id=0", &handler));
+
+  EXPECT_TRUE(options_.AddFuriousSpec(
+      "id=7;level=CoreFilters;enabled=sprite_images;disabled=inline_css;"
+      "inline_js=600000", &handler));
+  EXPECT_TRUE(options_.AddFuriousSpec("id=2;disabled=insert_ga ", &handler));
+  options_.SetFuriousState(7);
+  EXPECT_EQ(RewriteOptions::kCoreFilters, options_.level());
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kSpriteImages));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kInlineCss));
+
+  // insert_ga can not be disabled in any furious experiment because
+  // that filter injects the instrumentation we use to collect the data.
+  options_.SetFuriousState(2);
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kInlineCss));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kSpriteImages));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kLeftTrimUrls));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kInsertGA));
 }
 
 }  // namespace

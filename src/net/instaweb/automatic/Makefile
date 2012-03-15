@@ -86,6 +86,7 @@ BASE_LIBS = \
   third_party/gflags/libgflags.a \
   third_party/icu/libicudata.a \
   third_party/icu/libicuuc.a \
+  third_party/jsoncpp/libjsoncpp.a \
   third_party/libjpeg/libjpeg.a \
   third_party/libpagespeed/src/pagespeed/core/libpagespeed_core.a \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_image_converter.a \
@@ -107,6 +108,7 @@ BASE_LIBS = \
   third_party/opencv/libopencv_imgproc.a \
   third_party/opencv/libopencv_core.a \
   third_party/protobuf/libprotobuf_lite.a \
+  third_party/re2/libre2.a \
   third_party/zlib/libzlib.a
 
 # The 'gclient' build flow uses 'xcodebuild' on Mac and 'make' on Linux.

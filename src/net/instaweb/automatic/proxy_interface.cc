@@ -32,6 +32,7 @@
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -48,7 +49,6 @@ namespace net_instaweb {
 class AbstractMutex;
 class Layout;
 class MessageHandler;
-class RewriteDriver;
 
 const char ProxyInterface::kBlinkRequestCount[] = "blink-requests";
 const char ProxyInterface::kBlinkCriticalLineRequestCount[] =
@@ -448,21 +448,6 @@ void ProxyInterface::ProxyRequestCallback(
     if (options == NULL && global_options->running_furious()) {
       options = global_options->Clone();
     }
-    if (options != NULL && options->running_furious()) {
-      furious::FuriousState furious_value;
-      if (!furious::GetFuriousCookieState(*async_fetch->request_headers(),
-                                          &furious_value)) {
-        furious_value = furious::DetermineFuriousState(options);
-      }
-      options->set_furious_state(furious_value);
-      // If this request is on the 'B' side of the experiment, turn off
-      // all the rewriters except the ones we need to do the experiment.
-      // TODO(nforman): Allow the configuration to specify what the 'B'
-      // set of filters should be.
-      if (options->furious_state() == furious::kFuriousB) {
-        furious::FuriousNoFilterDefault(options);
-      }
-    }
     const char* user_agent = async_fetch->request_headers()->Lookup1(
         HttpAttributes::kUserAgent);
     const Layout* layout = BlinkUtil::ExtractBlinkLayout(*request_url,
@@ -488,6 +473,16 @@ void ProxyInterface::ProxyRequestCallback(
       // TODO(jmarantz): provide property-cache data to blink.
     } else {
       RewriteDriver* driver = NULL;
+      bool need_cookie = false;
+      if (options != NULL && options->running_furious()) {
+        int furious_value = furious::kFuriousNotSet;
+        if (!furious::GetFuriousCookieState(*async_fetch->request_headers(),
+                                            &furious_value)) {
+          furious_value = furious::DetermineFuriousState(options);
+          need_cookie = true;
+        }
+        options->SetFuriousState(furious_value);
+      }
       if (options == NULL) {
         driver = resource_manager_->NewRewriteDriver();
       } else {
@@ -495,6 +490,7 @@ void ProxyInterface::ProxyRequestCallback(
         // NewCustomRewriteDriver takes ownership of custom_options_.
         driver = resource_manager_->NewCustomRewriteDriver(options);
       }
+      driver->set_need_furious_cookie(need_cookie);
       proxy_fetch_factory_->StartNewProxyFetch(
           request_url->Spec().as_string(), async_fetch, driver,
           property_callback);

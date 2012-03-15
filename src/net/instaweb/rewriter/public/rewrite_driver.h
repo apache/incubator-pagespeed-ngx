@@ -739,6 +739,9 @@ class RewriteDriver : public HtmlParse {
   // Decrements the value of pending_async_events_.
   void decrement_async_events_count();
 
+  bool need_furious_cookie() const { return need_furious_cookie_; }
+  void set_need_furious_cookie(bool x) { need_furious_cookie_ = x; }
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -1056,6 +1059,9 @@ class RewriteDriver : public HtmlParse {
 
   // Stores all the critical images for the current URL.
   scoped_ptr<StringSet> critical_images_;
+
+  // Do we need to add a Set-Cookie header for Furious?
+  bool need_furious_cookie_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };
