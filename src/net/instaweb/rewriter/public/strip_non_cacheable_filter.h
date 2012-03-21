@@ -19,14 +19,16 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_STRIP_NON_CACHEABLE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_STRIP_NON_CACHEABLE_FILTER_H_
 
-#include <map>
 #include <vector>
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
+class HtmlElement;
 class RewriteDriver;
 class RewriteOptions;
 

@@ -48,10 +48,12 @@ class LazyloadImagesFilterTest : public ResourceManagerTestBase {
       const StringPiece& tag,
       const StringPiece& url,
       const StringPiece& additional_attributes) {
-    return StrCat("<", tag, " ", additional_attributes,
-                  "pagespeed_lazy_src=\"", url, "\" onload=\"",
-                  StrCat(LazyloadImagesFilter::kImageOnloadCode, "\" src=\"",
-                         LazyloadImagesFilter::kDefaultInlineImage, "\"/>"));
+    return StrCat("<", tag, " pagespeed_lazy_src=\"", url, "\" ",
+                  additional_attributes,
+                  StrCat("src=\"",
+                         LazyloadImagesFilter::kDefaultInlineImage,
+                         "\" onload=\"", LazyloadImagesFilter::kImageOnloadCode,
+                         "\"/>"));
   }
 
   scoped_ptr<LazyloadImagesFilter> lazyload_images_filter_;
@@ -67,8 +69,8 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
       "<body>"
       "<img src=\"1.jpg\" />"
       "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>"
-      "<img src=\"2.jpg\" height=\"300\" width=\"123\" />"
-      "<input type=\"image\" src=\"12.jpg\" />"
+      "<img src=\"2's.jpg\" height=\"300\" width=\"123\" />"
+      "<input src=\"12.jpg\"type=\"image\" />"
       "<input src=\"12.jpg\" />"
       "<img src=\"1.jpg\" onload=\"blah();\" />"
       "</body>",
@@ -76,13 +78,13 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
              lazyload_js_code,
              "\npagespeed.lazyLoadInit(false);\n"
              "</script></head><body>",
-             GenerateRewrittenImageTag("img", "1.jpg", ""),
-             "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
-             GenerateRewrittenImageTag("img", "2.jpg",
-                                       "height=\"300\" width=\"123\" "),
-              "<input type=\"image\" src=\"12.jpg\"/>"
-              "<input src=\"12.jpg\"/>"
-             "<img src=\"1.jpg\" onload=\"blah();\"/></body>"));
+             StrCat(GenerateRewrittenImageTag("img", "1.jpg", ""),
+                    "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
+                    GenerateRewrittenImageTag("img", "2's.jpg",
+                                              "height=\"300\" width=\"123\" "),
+                    "<input src=\"12.jpg\" type=\"image\"/>"
+                    "<input src=\"12.jpg\"/>"
+                    "<img src=\"1.jpg\" onload=\"blah();\"/></body>")));
 }
 
 TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {

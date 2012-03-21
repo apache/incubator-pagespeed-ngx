@@ -390,6 +390,7 @@ bool ProxyInterface::InitiatePropertyCacheLookup(
     // Wait calls when the test only sets up one Signal.
   }
 
+  // Initiate client property cache lookup.
   const char* client_id = async_fetch->request_headers()->Lookup1(
       HttpAttributes::kXGooglePagespeedClientId);
   if (client_id != NULL) {

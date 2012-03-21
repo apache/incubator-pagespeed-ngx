@@ -36,8 +36,8 @@ namespace net_instaweb {
 
 const char JsDeferDisabledFilter::kSuffix[] =
       "\npagespeed.deferInit();\n"
-      "pagespeed.deferJs.registerScriptTags();\n"
       "pagespeed.addOnload(window, function() {\n"
+      "  pagespeed.deferJs.registerScriptTags();\n"
       "  pagespeed.deferJs.run();\n"
       "});\n";
 

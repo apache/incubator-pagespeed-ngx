@@ -24,6 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -56,14 +57,15 @@ const char kHtmlOutputFormat[] =
 
 TEST_F(InsertGAFilterTest, simple_insert) {
   rewrite_driver()->AddFilters();
-  GoogleString format_output = StringPrintf(kHtmlOutputFormat, kGASnippet);
-  GoogleString output = StringPrintf(format_output.c_str(), kGaId,
-                                     kGASpeedTracking, "http://www");
+  GoogleString ga_snippet = StringPrintf(kGASnippet, kGaId, "test.com",
+                                         kGASpeedTracking, "", "http://www");
+  GoogleString output = StringPrintf(kHtmlOutputFormat, ga_snippet.c_str());
   ValidateExpected("simple_addition", kHtmlInput, output);
   ValidateNoChanges("already_there", output);
 
-  output = StringPrintf(format_output.c_str(), kGaId,
-                        kGASpeedTracking, "https://ssl");
+  ga_snippet = StringPrintf(kGASnippet, kGaId, "www.test1.com",
+                            kGASpeedTracking, "", "https://ssl");
+  output = StringPrintf(kHtmlOutputFormat, ga_snippet.c_str());
   ValidateExpectedUrl("https://www.test1.com/index.html", kHtmlInput,
                       output);
 }
@@ -76,21 +78,47 @@ const char kHtmlOutsideHead[] =
 
 TEST_F(InsertGAFilterTest, no_double) {
   rewrite_driver()->AddFilters();
-  GoogleString format_html = StringPrintf(kHtmlOutsideHead, kGASnippet);
-  ValidateNoChanges("outside_head", StringPrintf(
-      format_html.c_str(), kGaId, kGASpeedTracking, "http://www"));
+  GoogleString ga_snippet = StringPrintf(kGASnippet, kGaId, "test.com",
+                                         kGASpeedTracking, "", "http://www");
+  ValidateNoChanges("outside_head", StringPrintf(kHtmlOutsideHead,
+                                                 ga_snippet.c_str()));
 }
 
 TEST_F(InsertGAFilterTest, no_increased_speed) {
   options()->set_increase_speed_tracking(false);
   rewrite_driver()->AddFilters();
 
-  GoogleString format_output = StringPrintf(kHtmlOutputFormat, kGASnippet);
-  GoogleString output = StringPrintf(format_output.c_str(), kGaId, "",
-                                     "http://www");
+  GoogleString ga_snippet = StringPrintf(kGASnippet, kGaId, "test.com",
+                                         "", "", "http://www");
+  GoogleString output = StringPrintf(kHtmlOutputFormat, ga_snippet.c_str());
 
   ValidateExpected("simple_addition", kHtmlInput, output);
   ValidateNoChanges("already_there", output);
+}
+
+TEST_F(InsertGAFilterTest, furious) {
+  NullMessageHandler handler;
+  RewriteOptions* options = rewrite_driver()->options()->Clone();
+  options->set_running_furious_experiment(true);
+  options->AddFuriousSpec("id=2", &handler);
+  options->AddFuriousSpec("id=7;level=CoreFilters", &handler);
+  options->SetFuriousState(2);
+
+  // Setting up Furious automatically enables AddInstrumentation.
+  // Turn it off so our output is easier to understand.
+  options->DisableFilter(RewriteOptions::kAddInstrumentation);
+  rewrite_driver()->set_custom_options(options);
+  rewrite_driver()->AddFilters();
+
+  GoogleString variable_value = StringPrintf(
+      "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s', 2])",
+      options->ToExperimentString().c_str());
+  GoogleString ga_snippet = StringPrintf(
+      kGASnippet, kGaId, "test.com", kGASpeedTracking,
+      variable_value.c_str(), "http://www");
+  GoogleString output = StringPrintf(kHtmlOutputFormat, ga_snippet.c_str());
+
+  ValidateExpected("simple_addition", kHtmlInput, output);
 }
 
 }  // namespace

@@ -29,9 +29,11 @@
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
+#include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
@@ -556,8 +558,8 @@ void ProxyFetch::PropertyCacheComplete(
         callback_collector->GetPropertyPage(
             ProxyFetchPropertyCallback::kPagePropertyCache));
 
-    // TODO(mdw): Extract the client state object and set in the
-    // RewriteDriver.
+    // Set the client state in the driver.
+    driver_->set_client_state(GetClientState(callback_collector));
   }
   // We have to set the callback to NULL to let ScheduleQueueExecutionIfNeeded
   // proceed (it waits until it's NULL). And we have to delete it because then
@@ -571,6 +573,22 @@ void ProxyFetch::PropertyCacheComplete(
   if (sequence_ != NULL) {
     ScheduleQueueExecutionIfNeeded();
   }
+}
+
+AbstractClientState* ProxyFetch::GetClientState(
+    ProxyFetchPropertyCallbackCollector* collector) {
+  // Do nothing if the client ID is unknown.
+  if (driver_->client_id().empty()) {
+    return NULL;
+  }
+  PropertyCache* cache = resource_manager_->client_property_cache();
+  PropertyPage* client_property_page = collector->GetPropertyPage(
+      ProxyFetchPropertyCallback::kClientPropertyCache);
+  AbstractClientState* client_state =
+      resource_manager_->factory()->NewClientState();
+  client_state->InitFromPropertyCache(
+      driver_->client_id(), cache, client_property_page, timer_);
+  return client_state;
 }
 
 bool ProxyFetch::HandleWrite(const StringPiece& str,

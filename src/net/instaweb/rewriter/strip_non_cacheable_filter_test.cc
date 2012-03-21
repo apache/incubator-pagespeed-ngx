@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/strip_non_cacheable_filter.h"
 
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 
@@ -57,7 +56,8 @@ class StripNonCacheableFilterTest : public ResourceManagerTestBase {
     delete options_;
     options_ = new RewriteOptions();
     options_->EnableFilter(RewriteOptions::kStripNonCacheable);
-    options_->set_prioritize_visible_content_non_cacheable_elements("class=item\nid=beforeItems");
+    options_->set_prioritize_visible_content_non_cacheable_elements(
+        "class=item\nid=beforeItems");
     SetUseManagedRewriteDrivers(true);
     ResourceManagerTestBase::SetUp();
   }

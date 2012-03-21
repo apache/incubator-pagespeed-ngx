@@ -702,7 +702,7 @@ TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies2) {
 TEST_F(RewriteOptionsTest, FuriousSpecTest) {
   NullMessageHandler handler;
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  // 0 is reserved for the control.
+  // 0 is reserved for the no-experiment state.
   EXPECT_FALSE(options_.AddFuriousSpec("id=0", &handler));
 
   EXPECT_TRUE(options_.AddFuriousSpec(
@@ -721,6 +721,19 @@ TEST_F(RewriteOptionsTest, FuriousSpecTest) {
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kSpriteImages));
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kLeftTrimUrls));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kInsertGA));
+}
+
+TEST_F(RewriteOptionsTest, FuriousPrintTest) {
+  NullMessageHandler handler;
+  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  EXPECT_TRUE(options_.AddFuriousSpec("id=7;level=AllFilters;", &handler));
+  EXPECT_TRUE(options_.AddFuriousSpec("id=2;enabled=rewrite_css;", &handler));
+  options_.SetFuriousState(-7);
+  EXPECT_EQ(options_.ToString(), options_.ToExperimentString());
+  options_.SetFuriousState(7);
+  GoogleString output = "Experiment: 7; ";
+  output += options_.ToString();
+  EXPECT_EQ(output, options_.ToExperimentString());
 }
 
 }  // namespace

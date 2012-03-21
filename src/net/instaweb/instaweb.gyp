@@ -777,6 +777,7 @@
         'rewriter/url_input_resource.cc',
         'rewriter/url_left_trim_filter.cc',
         'rewriter/url_partnership.cc',
+        'rewriter/usage_data_reporter.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

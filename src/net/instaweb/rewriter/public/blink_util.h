@@ -20,9 +20,9 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_BLINK_UTIL_H_
 
 #include <map>
+#include <utility>
+#include <vector>
 
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "third_party/jsoncpp/include/json/json.h"
@@ -30,12 +30,14 @@
 namespace net_instaweb {
 
 class GoogleUrl;
+class HtmlElement;
 class Layout;
 class Panel;
 class PanelSet;
 class PublisherConfig;
 class RequestHeaders;
 class RewriteOptions;
+class UserAgentMatcher;
 
 typedef std::map<GoogleString, const Panel*> PanelIdToSpecMap;
 typedef std::multimap<GoogleString, std::pair<GoogleString, const int> >

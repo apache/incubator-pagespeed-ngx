@@ -25,6 +25,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -45,7 +46,10 @@ namespace net_instaweb {
 extern const char kGASnippet[] =
     "var _gaq = _gaq || [];"
     "_gaq.push(['_setAccount', '%s']);"  // %s is the GA account number.
+    "_gaq.push(['_setDomainName', '%s']);"  // %s is the domain name
+    "_gaq.push(['_setAllowLinker', true]);"
     "%s"  // %s is the optional snippet to increase site speed tracking.
+    "%s"  // %s is the Furious Snippet for experiments.
     "_gaq.push(['_trackPageview']);"
     "(function() {"
     "var ga = document.createElement('script'); ga.type = 'text/javascript';"
@@ -135,12 +139,33 @@ void InsertGAFilter::EndElementImpl(HtmlElement* element) {
         added_snippet_element_->set_close_style(HtmlElement::EXPLICIT_CLOSE);
         driver_->AddAttribute(added_snippet_element_, HtmlName::kType,
                               "text/javascript");
+        // Increase the percentage of traffic for which we track page load time.
         const char* kSpeedSnippet = increase_speed_tracking_ ?
             kGASpeedTracking : "";
+        // Domain for this html page.
+        GoogleString domain = driver_->google_url().Host().as_string();
+        // HTTP vs. HTTPS
         const char* kUrlPrefix = driver_->google_url().SchemeIs("https") ?
             "https://ssl" : "http://www";
+
+        GoogleString furious = "";
+        // Running furious: add in the information as the slot 1
+        // custom variable.
+        // TODO(nforman): Change this to be a label on track_timings
+        // data when the track_timings api goes live.
+        if (driver_->options()->running_furious()) {
+          int furious_state = driver_->options()->furious_id();
+          if (furious_state != furious::kFuriousNotSet &&
+              furious_state != furious::kFuriousNoExperiment) {
+            furious = StringPrintf(
+                "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s', 2])",
+                driver_->options()->ToExperimentString().c_str());
+          }
+        }
+        // Full Snippet
         GoogleString snippet_text = StringPrintf(
-            kGASnippet, ga_id_.c_str(), kSpeedSnippet, kUrlPrefix);
+            kGASnippet, ga_id_.c_str(), domain.c_str(),
+            kSpeedSnippet, furious.c_str(), kUrlPrefix);
         HtmlNode* snippet =
             driver_->NewCharactersNode(added_snippet_element_, snippet_text);
         driver_->AppendChild(element, added_snippet_element_);

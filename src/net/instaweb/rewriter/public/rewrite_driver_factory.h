@@ -31,6 +31,7 @@
 
 namespace net_instaweb {
 
+class AbstractClientState;
 class AbstractMutex;
 class BlinkCriticalLineDataFinder;
 class CacheInterface;
@@ -86,7 +87,7 @@ class RewriteDriverFactory {
   virtual ~RewriteDriverFactory();
 
   // The RewriteDriveFactory will create objects of default type through the
-  // New* method from drived classs.  Here are the objects that can be
+  // New* method from drived classes.  Here are the objects that can be
   // replaced before creating the RewriteDriver.
   // Note: RewriteDriver takes ownership of these.
   void set_html_parse_message_handler(MessageHandler* message_handler);
@@ -262,6 +263,11 @@ class RewriteDriverFactory {
   virtual bool IsDebugClient(const GoogleString& ip) const {
     return false;
   }
+
+  // Creates a new AbstractClientState object that must be populated.
+  // Subclasses can override this to create an appropriate AbstractClientState
+  // subclass if the default isn't acceptable.
+  virtual AbstractClientState* NewClientState();
 
  protected:
   bool FetchersComputed() const;

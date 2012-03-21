@@ -16,17 +16,22 @@
 
 // Author: mdw@google.com (Matt Welsh)
 
+#include <cstddef>                     // for size_t
+
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/client_state.pb.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/client_state.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/time_util.h"
 
 namespace net_instaweb {
+
+class AbstractMutex;
 
 namespace {
 
@@ -45,7 +50,6 @@ class ClientStateTest : public testing::Test {
  protected:
   ClientStateTest()
       : timer_(MockTimer::kApr_5_2010_ms),
-        client_state_("fakeclient_id", &timer_),
         lru_cache_(kMaxCacheSizeBytes),
         thread_system_(ThreadSystem::CreateThreadSystem()),
         property_cache_("test/", &lru_cache_, &timer_, thread_system_.get()) {
@@ -86,7 +90,6 @@ class MockPage : public PropertyPage {
 
 TEST_F(ClientStateTest, TestBasicOperations) {
   // Test basic Set, InCache, and Clear operations.
-  EXPECT_EQ("fakeclient_id", client_state_.client_id());
   EXPECT_FALSE(client_state_.InCache("http://anyurl.com"));
 
   client_state_.Set("http://someurl.com", 0);
@@ -114,21 +117,24 @@ TEST_F(ClientStateTest, PackUnpackWorks) {
 
   client_state_.Set("http://someurl.com",
                     ClientState::kClientStateExpiryTimeThresholdMs);
-
+  client_state_.client_id_ = "fakeclient_id";
+  client_state_.create_time_ms_ = MockTimer::kApr_5_2010_ms;
   ClientStateMsg proto;
   client_state_.Pack(&proto);
   EXPECT_EQ(MockTimer::kApr_5_2010_ms, proto.create_time_ms());
   EXPECT_TRUE(proto.has_client_id());
   EXPECT_EQ("fakeclient_id", proto.client_id());
 
-  scoped_ptr<ClientState> new_clientstate(ClientState::Unpack(proto, &timer_));
-  EXPECT_EQ("fakeclient_id", new_clientstate.get()->client_id());
-  EXPECT_TRUE(new_clientstate.get()->InCache("http://someurl.com"));
+  ClientState new_clientstate;
+  new_clientstate.Unpack(proto);
+  EXPECT_EQ("fakeclient_id", new_clientstate.ClientId());
+  EXPECT_TRUE(new_clientstate.InCache("http://someurl.com"));
 }
 
 TEST_F(ClientStateTest, PropertyCacheWorks) {
   // Test that property cache operations work as expected.
-  GoogleString client_id1 = client_state_.client_id();
+  GoogleString client_id1 = "fakeclient_id";
+  client_state_.client_id_ = client_id1;
 
   // Prime the PropertyCache with an initial read.
   scoped_ptr<MockPage> page1(new MockPage(thread_system_->NewMutex()));
@@ -149,10 +155,10 @@ TEST_F(ClientStateTest, PropertyCacheWorks) {
   // Read it back and test that we got the right thing.
   MockPage* page2 = new MockPage(thread_system_->NewMutex());
   property_cache_.Read(client_id1, page2);
-  scoped_ptr<ClientState> new_clientstate(
-      ClientState::UnpackFromPropertyCache(
-          client_id1, &property_cache_, page2, &timer_));
-  EXPECT_EQ(client_id1, new_clientstate.get()->client_id());
+  ClientState new_clientstate;
+  new_clientstate.InitFromPropertyCache(
+      client_id1, &property_cache_, page2, &timer_);
+  EXPECT_EQ(client_id1, new_clientstate.ClientId());
 
   // Now test that UnpackFromPropertyCache returns a fresh ClientState
   // when the pcache read fails. Still need to prime the PropertyCache with
@@ -164,10 +170,10 @@ TEST_F(ClientStateTest, PropertyCacheWorks) {
       cohort_, ClientState::kClientStatePropertyValue);
   EXPECT_FALSE(property->has_value());
 
-  scoped_ptr<ClientState> new_clientstate2(
-      ClientState::UnpackFromPropertyCache(
-          client_id2, &property_cache_, page4, &timer_));
-  EXPECT_EQ(client_id2, new_clientstate2.get()->client_id());
+  ClientState new_clientstate2;
+  new_clientstate2.InitFromPropertyCache(
+      client_id2, &property_cache_, page4, &timer_);
+  EXPECT_EQ(client_id2, new_clientstate2.ClientId());
 }
 
 }  // namespace net_instaweb

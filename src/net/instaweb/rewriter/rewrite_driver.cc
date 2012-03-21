@@ -93,6 +93,7 @@
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
+#include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
@@ -190,6 +191,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       rewrite_worker_(NULL),
       low_priority_rewrite_worker_(NULL),
       writer_(NULL),
+      client_state_(NULL),
       need_furious_cookie_(false) {
   // Set up default values for the amount of time an HTML rewrite will wait for
   // Rewrites to complete, based on whether compiled for debug or running on
@@ -1624,7 +1626,7 @@ void RewriteDriver::DeregisterForPartitionKey(const GoogleString& partition_key,
   }
 }
 
-void RewriteDriver::WriteDomCohortIntoPagePropertyCache() {
+void RewriteDriver::WriteDomCohortIntoPropertyCache() {
   if (property_page_.get() != NULL) {
     PropertyCache* pcache = resource_manager_->page_property_cache();
     const PropertyCache::Cohort* dom = pcache->GetCohort(kDomCohort);
@@ -1633,6 +1635,12 @@ void RewriteDriver::WriteDomCohortIntoPagePropertyCache() {
       // written.
       pcache->WriteCohort(url(), dom, property_page_.get());
     }
+  }
+}
+
+void RewriteDriver::WriteClientStateIntoPropertyCache() {
+  if (client_state_.get() != NULL) {
+    client_state_.get()->WriteBackToPropertyCache();
   }
 }
 
@@ -1736,7 +1744,8 @@ void RewriteDriver::UninhibitFlushDone(Function* user_callback) {
 
 void RewriteDriver::FinishParse() {
   HtmlParse::FinishParse();
-  WriteDomCohortIntoPagePropertyCache();
+  WriteDomCohortIntoPropertyCache();
+  WriteClientStateIntoPropertyCache();
   Cleanup();
 }
 
@@ -1765,7 +1774,8 @@ void RewriteDriver::QueueFinishParseAfterFlush(Function* user_callback) {
 void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
   DCHECK(GetEventQueueSize() == 0);
   HtmlParse::EndFinishParse();
-  WriteDomCohortIntoPagePropertyCache();
+  WriteDomCohortIntoPropertyCache();
+  WriteClientStateIntoPropertyCache();
   Cleanup();
   if (user_callback != NULL) {
     user_callback->CallRun();
@@ -2044,14 +2054,14 @@ void RewriteDriver::set_property_page(PropertyPage* page) {
 }
 
 void RewriteDriver::increment_async_events_count() {
-  ScopedMutex(rewrite_mutex());
+  ScopedMutex lock(rewrite_mutex());
   ++pending_async_events_;
 }
 
 void RewriteDriver::decrement_async_events_count() {
   bool should_release = false;
   {
-    ScopedMutex(rewrite_mutex());
+    ScopedMutex lock(rewrite_mutex());
     --pending_async_events_;
     should_release = release_driver_ && (pending_async_events_ == 0);
   }

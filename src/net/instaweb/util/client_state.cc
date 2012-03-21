@@ -22,7 +22,9 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "net/instaweb/util/client_state.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -35,10 +37,8 @@ const int64 ClientState::kClientStateExpiryTimeThresholdMs = 60 * 1000;
 // This implementation is a skeleton that uses a simple FIFO queue to
 // track recent URLs.
 
-ClientState::ClientState(const GoogleString& client_id, Timer* timer)
-    : client_id_(client_id),
-      timer_(timer),
-      create_time_ms_(timer_->NowMs()),
+ClientState::ClientState()
+    : timer_(NULL),
       property_page_(NULL),
       property_cache_(NULL) { }
 
@@ -68,6 +68,7 @@ void ClientState::Clear() {
 
 // Packs the ClientState into the given protobuffer.
 void ClientState::Pack(ClientStateMsg* proto) {
+  DCHECK(!client_id_.empty());
   proto->set_client_id(client_id_);
   proto->set_create_time_ms(create_time_ms_);
   for (StringVector::iterator iter = recent_urls_.begin();
@@ -76,45 +77,31 @@ void ClientState::Pack(ClientStateMsg* proto) {
   }
 }
 
-// Unpacks the given protobuffer and returns a new ClientState object.
-ClientState* ClientState::Unpack(
-    const ClientStateMsg& proto, Timer* timer) {
+// Unpacks the given protobuffer into this, replacing any previous contents.
+bool ClientState::Unpack(const ClientStateMsg& proto) {
   if (!proto.has_client_id()) {
     LOG(WARNING) << "ClientStateMsg does not have client_id field";
-    return NULL;
+    return false;
   }
-
-  ClientState* cs = new ClientState(proto.client_id(), timer);
-  cs->create_time_ms_ = proto.create_time_ms();
+  Clear();
+  client_id_ = proto.client_id();
+  create_time_ms_ = proto.create_time_ms();
   for (int i = 0, n = proto.recent_urls_size(); i < n; i++) {
-    cs->recent_urls_.push_back(proto.recent_urls(i));
+    recent_urls_.push_back(proto.recent_urls(i));
   }
-  return cs;
+  return true;
 }
 
-ClientState* ClientState::UnpackFromPropertyCache(
+bool ClientState::InitFromPropertyCache(
     const GoogleString& client_id,
     PropertyCache* property_cache,
     PropertyPage* property_page,
     Timer* timer) {
-  // First try to initialize from the pcache read.
-  ClientState* client_state = InitFromPropertyCache(
-      property_cache, property_page, timer);
-  if (client_state == NULL) {
-    LOG(WARNING) << "Unable to initialize client state from property cache";
-    // Otherwise, create a new ClientState and initialize pcache fields
-    // so it can be written back.
-    client_state = new ClientState(client_id, timer);
-    client_state->property_page_.reset(property_page);
-    client_state->property_cache_ = property_cache;
-  }
-  return client_state;
-}
+  client_id_ = client_id;
+  create_time_ms_ = timer->NowMs();
+  property_page_.reset(property_page);
+  property_cache_ = property_cache;
 
-ClientState* ClientState::InitFromPropertyCache(
-    PropertyCache* property_cache,
-    PropertyPage* property_page,
-    Timer* timer) {
   const PropertyCache::Cohort* cohort = property_cache->GetCohort(
       kClientStateCohort);
   DCHECK(cohort != NULL);
@@ -124,23 +111,15 @@ ClientState* ClientState::InitFromPropertyCache(
   if (!value->has_value()) {
     LOG(WARNING) << "Property value "
                  << ClientState::kClientStatePropertyValue << " has no value";
-    return NULL;
+    return false;
   }
   // Read and unpack the protobuf.
   ClientStateMsg proto;
   if (!proto.ParseFromString(value->value().as_string())) {
     LOG(WARNING) << "Unable to parse protobuf " << value->value().as_string();
-    return NULL;
+    return false;
   }
-  ClientState* client_state = ClientState::Unpack(proto, timer);
-  if (client_state == NULL) {
-    LOG(WARNING) << "Unpack returned NULL";
-    return NULL;
-  }
-  // Set these fields so we can write back to pCache
-  client_state->property_page_.reset(property_page);
-  client_state->property_cache_ = property_cache;
-  return client_state;
+  return Unpack(proto);
 }
 
 void ClientState::WriteBackToPropertyCache() {
@@ -167,7 +146,7 @@ void ClientState::WriteBackToPropertyCache() {
     return;
   }
   property_cache_->UpdateValue(bytes, value);
-  property_cache_->WriteCohort(client_id(), cohort, property_page_.get());
+  property_cache_->WriteCohort(client_id_, cohort, property_page_.get());
 }
 
 }  // namespace net_instaweb

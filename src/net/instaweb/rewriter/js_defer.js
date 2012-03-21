@@ -147,11 +147,15 @@ pagespeed.DeferJs.prototype.createIdVars = function() {
   var elems = document.getElementsByTagName("*");
   var idVarsString = "";
   for (var i = 0; i < elems.length; i++) {
-    if (elems[i].id && elems[i].id.search(/[-:.]/) == -1 &&
-        elems[i].id.search(/^[0-9]/) == -1) {
-      if (window[elems[i].id] && window[elems[i].id].tagName) {
-        idVarsString += 'var ' + elems[i].id +
-            '=document.getElementById("' + elems[i].id + '");';
+    // Don't use elem.id since it leads to problem in forms.
+    if (elems[i].hasAttribute('id')) {
+      var idStr = elems[i].getAttribute('id');
+      if (idStr && idStr.search(/[-:.]/) == -1 &&
+          idStr.search(/^[0-9]/) == -1) {
+        if (window[idStr] && window[idStr].tagName) {
+          idVarsString += 'var ' + idStr +
+              '=document.getElementById("' + idStr + '");';
+        }
       }
     }
   }
@@ -163,17 +167,16 @@ pagespeed.DeferJs.prototype.createIdVars = function() {
 /**
  * Defers execution of scriptNode, by adding it to the queue.
  * @param {Element} script script node.
- * @param {Element} opt_elem Optional context element.
  * @param {number} opt_pos Optional position for ordering.
  */
-pagespeed.DeferJs.prototype.addNode = function(script, opt_elem, opt_pos) {
+pagespeed.DeferJs.prototype.addNode = function(script, opt_pos) {
   var src = script.getAttribute('orig_src') || script.getAttribute('src');
   if (src) {
-    this.addUrl(src, opt_elem, opt_pos);
+    this.addUrl(src, script, opt_pos);
   }
   var str = script.innerHTML || script.textContent || script.data;
   if (str) {
-    this.addStr(str, opt_elem, opt_pos);
+    this.addStr(str, script, opt_pos);
   }
 };
 
@@ -253,6 +256,13 @@ pagespeed.DeferJs.prototype['addUrl'] = pagespeed.DeferJs.prototype.addUrl;
  * Called when the script Queue execution is finished.
  */
 pagespeed.DeferJs.prototype.onComplete = function() {
+  if (this.getIEVersion() && document.documentElement['originalDoScroll']) {
+    document.documentElement.doScroll =
+        document.documentElement['originalDoScroll'];
+  }
+  // Delete document.readyState so that browser can restore it.
+  // delete document['readyState'];
+
   // TODO(ksimbili): Restore the handlers in a clean way.
   if (document.originalAddEventListener) {
     document.addEventListener = document.originalAddEventListener;
@@ -297,11 +307,28 @@ pagespeed.DeferJs.prototype.nodeListToArray = function(nodeList) {
 };
 
 /**
- * Starts the execution of all the deferred scripts.
+ * SetUp needed before deferrred scripts execution.
  */
-pagespeed.DeferJs.prototype.run = function() {
+pagespeed.DeferJs.prototype.setUp = function() {
+  // Shadow document.readyState
+  var propertyDescriptor = { configurable: true };
+  // Attach the bound getter to the descriptor.
+  propertyDescriptor.get = function() { return 'loading';}
+  // Finally, apply the property to the object.
+  // Object.defineProperty(document, 'readyState', propertyDescriptor);
+
+  if (this.getIEVersion()) {
+    // In IE another approach for identifying DOMContentLoaded is popularly
+    // used. It is described in http://javascript.nwbox.com/IEContentLoaded/ .
+    // And JQuery is one of the libraries which employs this strategy.
+    document.documentElement['originalDoScroll'] =
+        document.documentElement.doScroll;
+    document.documentElement.doScroll = function() { throw ('psa exception');};
+  }
+  // override AddEventListeners.
   this.overrideAddEventListener(document);
   this.overrideAddEventListener(window);
+
   // TODO(atulvasu): Remove this once context is not optional.
   // Place where document.write() happens if there is no context element
   // present. Happens if there is no context registering that happened in
@@ -313,7 +340,13 @@ pagespeed.DeferJs.prototype.run = function() {
   if (this.getIEVersion()) {
     this.createIdVars();
   }
+};
 
+/**
+ * Starts the execution of all the deferred scripts.
+ */
+pagespeed.DeferJs.prototype.run = function() {
+  this.setUp();
   // Starts executing the defer_js closures.
   this.runNext();
 };
@@ -400,7 +433,10 @@ pagespeed.DeferJs.prototype.extractScriptNodes = function(node, scriptNodes) {
     if (child.nodeName == 'SCRIPT') {
       if (this.isJSNode(child)) {
         scriptNodes.push(child);
-        this.disown(child);
+        child.setAttribute('orig_type', child.type);
+        child.setAttribute('type', 'text/psajs');
+        child.setAttribute('orig_src', child.src);
+        child.setAttribute('src', '');
       }
     } else {
       this.extractScriptNodes(child, scriptNodes);
@@ -411,12 +447,11 @@ pagespeed.DeferJs.prototype.extractScriptNodes = function(node, scriptNodes) {
 /**
  * @param {!Array.<Element>} scripts Array of script nodes to be deferred.
  * @param {!number} pos position for script ordering.
- * @param {Element} opt_elem Optional context element.
  */
-pagespeed.DeferJs.prototype.deferScripts = function(scripts, pos, opt_elem) {
+pagespeed.DeferJs.prototype.deferScripts = function(scripts, pos) {
   var len = scripts.length;
   for (var i = 0; i < len; ++i) {
-    this.addNode(scripts[i], opt_elem, pos + i);
+    this.addNode(scripts[i], pos + i);
   }
 };
 
@@ -442,7 +477,7 @@ pagespeed.DeferJs.prototype.insertHtml = function(html, pos, opt_elem) {
   }
 
   // Add script nodes for deferring.
-  this.deferScripts(scriptNodes, pos, opt_elem);
+  this.deferScripts(scriptNodes, pos);
 };
 
 /**
@@ -581,7 +616,7 @@ pagespeed.DeferJs.prototype.registerScriptTags = function() {
     var script = scripts[i];
     // TODO(atulvasu): Use orig_type
     if (script.getAttribute('type') == 'text/psajs') {
-      this.addNode(script, script);
+      this.addNode(script);
     }
   }
 };
@@ -642,7 +677,9 @@ pagespeed.DeferJs.prototype.isFireFox = function() {
  */
 pagespeed.DeferJs.prototype.getIEVersion = function() {
   var version = /(?:MSIE.(\d+\.\d+))/.exec(navigator.userAgent);
-  return version && version[1] ? parseFloat(version[1]) : NaN;
+  return (version && version[1]) ?
+         (document.documentMode || parseFloat(version[1])) :
+         NaN;
 };
 
 /**
@@ -651,12 +688,15 @@ pagespeed.DeferJs.prototype.getIEVersion = function() {
 pagespeed.deferInit = function() {
   pagespeed.deferJs = new pagespeed.DeferJs();
   pagespeed['deferJs'] = pagespeed.deferJs;
+  // TODO(ksimbili): Restore the following functions to their original.
   document.writeln = function(x) {
     pagespeed.deferJs.writeHtml(x + '\n');
   };
   document.write = function(x) {
     pagespeed.deferJs.writeHtml(x);
   };
+  document.open = function() {};
+  document.close = function() {};
 };
 pagespeed['deferInit'] = pagespeed.deferInit;
 

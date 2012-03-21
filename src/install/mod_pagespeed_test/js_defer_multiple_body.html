@@ -1,0 +1,27 @@
+<html>
+  <head>
+    <title>js_defer example</title>
+    <!-- Ensure that the insertion order in the list is maintained. -->
+  </head>
+  <body>
+    <script type="text/javascript" >
+      var list = [];
+    </script>
+    <script type="text/javascript" >
+      list.push(1);
+    </script>
+    <script type="text/javascript" >
+      list.push(2);
+    </script>
+  </body>
+  <body>
+    <script type="text/javascript" >
+      list.push(3);
+    </script>
+    <div id="listDiv"></div>
+    <script type="text/javascript" >
+      var listDiv = document.getElementById("listDiv");
+      listDiv.innerHTML = list.join();
+    </script>
+  </body>
+</html>

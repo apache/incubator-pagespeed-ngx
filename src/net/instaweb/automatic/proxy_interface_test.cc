@@ -44,8 +44,10 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
+#include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/client_state.h"
 #include "net/instaweb/util/public/delay_cache.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -198,22 +200,44 @@ class MockFilter : public EmptyHtmlFilter {
     } else {
       num_elements_property_ = NULL;
     }
+
+    client_id_ = driver_->client_id();
+    client_state_ = driver_->client_state();
+    if (client_state_ != NULL) {
+      // Set or clear the client state based on its current value, so we can
+      // check whether it is being written back to the property cache correctly.
+      if (!client_state_->InCache("http://www.fakeurl.com")) {
+        client_state_->Set("http://www.fakeurl.com", 1000*1000);
+      } else {
+        client_state_->Clear();
+      }
+    }
   }
 
   virtual void StartElement(HtmlElement* element) {
     if (num_elements_ == 0) {
       // Before the start of the first element, print out the number
       // of elements that we expect based on the cache.
-      GoogleString comment;
+      GoogleString comment = " ";
       PropertyCache* page_cache =
           driver_->resource_manager()->page_property_cache();
+
+      if (!client_id_.empty()) {
+        StrAppend(&comment, "ClientID: ", client_id_, " ");
+      }
+      if (client_state_ != NULL) {
+        StrAppend(&comment, "ClientStateID: ",
+                  client_state_->ClientId(),
+                  " InCache: ",
+                  client_state_->InCache("http://www.fakeurl.com") ?
+                  "true" : "false", " ");
+      }
       if ((num_elements_property_ != NULL) &&
-          num_elements_property_->has_value()) {
-        comment = StrCat(" ", num_elements_property_->value(), " elements ",
-                         page_cache->IsStable(num_elements_property_)
-                         ? "stable " : "unstable ");
-      } else {
-        comment = " Element count unknown ";
+                 num_elements_property_->has_value()) {
+        StrAppend(&comment, num_elements_property_->value(),
+                  " elements ",
+                  page_cache->IsStable(num_elements_property_)
+                  ? "stable " : "unstable ");
       }
       HtmlNode* node = driver_->NewCommentNode(element->parent(), comment);
       driver_->InsertElementBeforeCurrent(node);
@@ -244,6 +268,8 @@ class MockFilter : public EmptyHtmlFilter {
   RewriteDriver* driver_;
   int num_elements_;
   PropertyValue* num_elements_property_;
+  GoogleString client_id_;
+  AbstractClientState* client_state_;
 };
 
 // Hook provided to TestRewriteDriverFactory to add a new filter when
@@ -350,6 +376,8 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     RewriteOptions* options = resource_manager()->global_options();
     factory()->set_enable_property_cache(true);
     factory()->page_property_cache()->AddCohort(RewriteDriver::kDomCohort);
+    factory()->client_property_cache()->AddCohort(
+        ClientState::kClientStateCohort);
     options->ClearSignatureForTesting();
     options->EnableFilter(RewriteOptions::kRewriteCss);
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
@@ -2350,7 +2378,7 @@ TEST_F(ProxyInterfaceTest, PropCacheFilter) {
   ResponseHeaders headers_out;
 
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
-  EXPECT_EQ("<!-- Element count unknown --><div><p></p></div>", text_out);
+  EXPECT_EQ("<!-- --><div><p></p></div>", text_out);
 
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ("<!-- 2 elements unstable --><div><p></p></div>", text_out);
@@ -2387,8 +2415,7 @@ TEST_F(ProxyInterfaceTest, PropCacheFilter) {
   // annotatation reverts to "unknown mode"
   factory()->set_enable_property_cache(false);
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
-  EXPECT_EQ("<!-- Element count unknown --><div><span><p></p></span></div>",
-            text_out);
+  EXPECT_EQ("<!-- --><div><span><p></p></span></div>", text_out);
 }
 
 TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNoProperties) {
@@ -2606,6 +2633,40 @@ TEST_F(ProxyInterfaceTest, FuriousTest) {
 
   FetchFromProxy("text2.html", req_headers, true, &text, &headers);
   EXPECT_FALSE(headers.Has(HttpAttributes::kSetCookie));
+}
+
+// Test that ClientState is properly read from the client property cache.
+TEST_F(ProxyInterfaceTest, ClientStateTest) {
+  CreateFilterCallback create_filter_callback;
+  factory()->AddCreateFilterCallback(&create_filter_callback);
+
+  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
+                                "<div><p></p></div>", 0);
+  GoogleString text_out;
+  ResponseHeaders headers_out;
+
+  RequestHeaders request_headers;
+  request_headers.Add(HttpAttributes::kXGooglePagespeedClientId, "clientid");
+
+  // First pass: Should add fake URL to cache.
+  FetchFromProxy("page.html",
+                 request_headers,
+                 true,
+                 &text_out,
+                 &headers_out);
+  EXPECT_EQ(StrCat("<!-- ClientID: clientid ClientStateID: ",
+                   "clientid InCache: true --><div><p></p></div>"),
+            text_out);
+
+  // Second pass: Should clear fake URL from cache.
+  FetchFromProxy("page.html",
+                 request_headers,
+                 true,
+                 &text_out,
+                 &headers_out);
+  EXPECT_EQ(StrCat("<!-- ClientID: clientid ClientStateID: clientid ",
+                   "InCache: false 2 elements unstable --><div><p></p></div>"),
+            text_out);
 }
 
 TEST_F(ProxyInterfaceTest, TestAddTaskProxyFetchPropertyCallback) {

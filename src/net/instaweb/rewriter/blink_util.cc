@@ -23,7 +23,9 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/panel_config.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -332,7 +334,7 @@ void PopulateAttributeToNonCacheableValuesMap(
   StringPieceVector non_cacheable_values;
   SplitStringPieceToVector(atf_non_cacheable_elements,
                            "\n", &non_cacheable_values, true);
-  for (size_t i = 0; i < non_cacheable_values.size(); i++) {
+  for (size_t i = 0; i < non_cacheable_values.size(); ++i) {
     StringPieceVector non_cacheable_values_pair;
     SplitStringPieceToVector(non_cacheable_values[i], "=",
                              &non_cacheable_values_pair, true);
@@ -352,7 +354,7 @@ int GetPanelNumberForNonCacheableElement(
     const AttributesToNonCacheableValuesMap&
         attribute_non_cacheable_values_map,
     const HtmlElement* element) {
-  for (int i = 0; i < element->attribute_size(); i++) {
+  for (int i = 0; i < element->attribute_size(); ++i) {
     const HtmlElement::Attribute& attribute = element->attribute(i);
     if (attribute.value() == NULL) {
       continue;

@@ -35,6 +35,7 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
+#include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
@@ -714,6 +715,17 @@ class RewriteDriver : public HtmlParse {
                            const GoogleUrl& output_base,
                            bool* proxy_mode) const;
 
+  // Sets the pointer to the client state associated with this driver.
+  // RewriteDriver takes ownership of the provided AbstractClientState object.
+  void set_client_state(AbstractClientState* client_state) {
+      client_state_.reset(client_state);
+  }
+
+  // Return a pointer to the client state associated with this request.
+  // This may be NULL if the request does not have an associated client id, or
+  // if the retrieval of client state fails.
+  AbstractClientState* client_state() const { return client_state_.get(); }
+
   void set_client_id(const StringPiece& id) { client_id_ = id.as_string(); }
   const GoogleString& client_id() const { return client_id_; }
 
@@ -852,7 +864,11 @@ class RewriteDriver : public HtmlParse {
   // When HTML parsing is complete, we have learned all we can about
   // the DOM, so immediately write anything required into that Cohort
   // into the page property cache.
-  void WriteDomCohortIntoPagePropertyCache();
+  void WriteDomCohortIntoPropertyCache();
+
+  // When HTML parsing is complete, write back client state, if it exists,
+  // to the property cache.
+  void WriteClientStateIntoPropertyCache();
 
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
@@ -1053,6 +1069,9 @@ class RewriteDriver : public HtmlParse {
 
   // Stores a client identifier associated with this request, if any.
   GoogleString client_id_;
+
+  // Stores the AbstractClientState object associated with the client, if any.
+  scoped_ptr<AbstractClientState> client_state_;
 
   // Stores any cached properties associated with the current URL.
   scoped_ptr<PropertyPage> property_page_;

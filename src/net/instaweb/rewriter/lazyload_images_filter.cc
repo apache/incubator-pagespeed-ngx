@@ -120,15 +120,13 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
       StringPiece url(src->value());
       if (!url.starts_with(kData) &&
           element->FindAttribute(HtmlName::kOnload) == NULL &&
-          element->FindAttribute(HtmlName::kPagespeedLazySrc) == NULL &&
           element->FindAttribute(HtmlName::kPagespeedLazySrc) == NULL) {
-        // Check that the image has a src, does not have an onload and
+        // Check that the image has a src, does not have an onload or
         // pagespeed_lazy_src attribute and is not inlined. If so, replace the
         // src with pagespeed_lazy_src and set the onload appropriately.
-        driver_->AddAttribute(element, HtmlName::kPagespeedLazySrc, url);
-        driver_->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
+        driver_->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
         driver_->AddAttribute(element, HtmlName::kSrc, kDefaultInlineImage);
-        element->DeleteAttribute(HtmlName::kSrc);
+        driver_->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
       }
     }
   }

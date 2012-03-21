@@ -732,6 +732,10 @@ bool RewriteOptions::AddByNameToFilterSet(
     }
   } else {
     set->insert(filter);
+    // kResizeMobileImages requires kDelayImages.
+    if (filter == kResizeMobileImages) {
+      set->insert(kDelayImages);
+    }
   }
   return ret;
 }
@@ -1001,6 +1005,19 @@ GoogleString RewriteOptions::ToString() const {
   }
   // TODO(mmohabey): Incorporate ToString() from the domain_lawyer,
   // file_load_policy, allow_resources, and retain_comments.
+  return output;
+}
+
+// TODO(nforman): This string may need to be significantly more compact to
+// display in Google Analytics properly.
+GoogleString RewriteOptions::ToExperimentString() const {
+  GoogleString output;
+  // Only add the experiment id if we're running this experiment.
+  if (furious_id_ == furious::kFuriousControl ||
+      GetFuriousSpec(furious_id_) != NULL) {
+    output = StringPrintf("Experiment: %d; ", furious_id_);
+  }
+  output += ToString();
   return output;
 }
 

@@ -892,6 +892,11 @@ class RewriteOptions {
 
   virtual GoogleString ToString() const;
 
+  // Returns a string representing the currently running Furious
+  // experiment.  Primarily used for tagging Google Analytics data.
+  // This format is not at all specific to Google Analytics, however.
+  virtual GoogleString ToExperimentString() const;
+
   // Name of the actual type of this instance as a poor man's RTTI.
   virtual const char* class_name() const;
 

@@ -92,9 +92,9 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
   }
 
   GoogleString GenerateRewrittenImageTag(const StringPiece& url) {
-    return StrCat("<img pagespeed_lazy_src=\"", url, "\" onload=\"",
-                  LazyloadImagesFilter::kImageOnloadCode, "\" src=\"",
-                  LazyloadImagesFilter::kDefaultInlineImage, "\"/>");
+    return StrCat("<img pagespeed_lazy_src=\"", url, "\" src=\"",
+                  LazyloadImagesFilter::kDefaultInlineImage, "\" onload=\"",
+                  LazyloadImagesFilter::kImageOnloadCode, "\"/>");
   }
 
   GoogleString GetHeadHtml() {
