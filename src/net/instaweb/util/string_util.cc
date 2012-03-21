@@ -306,6 +306,19 @@ int CountSubstring(const StringPiece& text, const StringPiece& substring) {
   return number_of_occurrences;
 }
 
+int FindIgnoreCase(StringPiece haystack, StringPiece needle) {
+  int pos = 0;
+  while (haystack.size() >= needle.size()) {
+    if (StringCaseStartsWith(haystack, needle)) {
+      return pos;
+    }
+    ++pos;
+    haystack.remove_prefix(1);
+  }
+  return StringPiece::npos;
+}
+
+
 // In-place StringPiece whitespace trimming.  This mutates the StringPiece.
 void TrimWhitespace(StringPiece* str) {
   while (str->size() && isspace(str->data()[0])) {

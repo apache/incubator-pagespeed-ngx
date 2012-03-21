@@ -307,6 +307,15 @@ TEST(StringCaseTest, TestStringEqualConcat) {
   EXPECT_FALSE(StringEqualConcat("foobar", "foo", "obar"));
 }
 
+TEST(StringCaseTest, FindIgnoreCase) {
+  EXPECT_EQ(0, FindIgnoreCase("abc", "aBC"));
+  EXPECT_EQ(1, FindIgnoreCase("abc", "BC"));
+  EXPECT_EQ(1, FindIgnoreCase("abcbc", "BC"));
+  EXPECT_EQ(2, FindIgnoreCase("abCbc", "cB"));
+  EXPECT_EQ(StringPiece::npos, FindIgnoreCase("abc", "bcd"));
+  EXPECT_EQ(StringPiece::npos, FindIgnoreCase("abc", "abcd"));
+}
+
 TEST(StringCaseTest, Locale) {
   // This will fail if the locale is available and StringCaseEqual is
   // built using strcasecmp.  Note that the locale will generally be

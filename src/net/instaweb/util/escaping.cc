@@ -50,7 +50,7 @@ void EscapeToJsStringLiteral(const StringPiece& original,
         // Forward slashes are generally OK, but </script> is trouble
         // if it happens inside an inline <script>. We therefore escape the
         // forward slash if we see /script>
-        if (original.substr(c).starts_with("/script")) {
+        if (StringCaseStartsWith(original.substr(c), "/script")) {
           (*escaped) += '\\';
         }
         // fallthrough intentional.

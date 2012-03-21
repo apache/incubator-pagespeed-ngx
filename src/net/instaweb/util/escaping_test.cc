@@ -47,6 +47,22 @@ TEST_F(EscapingTest, JsAvoidCloseScript) {
   ExpectEscape("not_heavily_excessive_escaping", "/s", "/s");
 }
 
+TEST_F(EscapingTest, JsAvoidCloseScriptSpace) {
+  ExpectEscape("avoid_close_script2",
+               "Foo<\\/script  >Bar", "Foo</script  >Bar");
+}
+
+TEST_F(EscapingTest, JsAvoidCloseScriptCase) {
+  ExpectEscape("avoid_close_script3",
+               "Foo<\\/scrIpt>Bar", "Foo</scrIpt>Bar");
+}
+
+TEST_F(EscapingTest, JsCloseScriptConservativeBehavior) {
+  // We don't need to escape </scripty>, but it's safe to do so.
+  ExpectEscape("close_script_conservative",
+               "Foo<\\/scripty>Bar", "Foo</scripty>Bar");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

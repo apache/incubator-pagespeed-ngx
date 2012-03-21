@@ -99,15 +99,19 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
 
 bool JsInlineFilter::ShouldInline(const StringPiece& contents) const {
   // Only inline if it's small enough, and if it doesn't contain
-  // "</script>" anywhere.  If we inline an external script containing
-  // "</script>", the <script> tag will be ended early.
+  // "</script" anywhere.  If we inline an external script containing
+  // "</script>" and a few variations like </script    > or even
+  // </script foo >, the <script> tag will be ended early.
   // See http://code.google.com/p/modpagespeed/issues/detail?id=106
   // TODO(mdsteele): We should consider rewriting "</script>" to
   //   "<\/script>" instead of just bailing.  But we can't blindly search
   //   and replace because that would break legal (if contrived) code such
   //   as "if(x</script>/){...}", which is comparing x to a regex literal.
-  return (contents.size() <= size_threshold_bytes_ &&
-          contents.find("</script>") == StringPiece::npos);
+  if (contents.size() > size_threshold_bytes_) {
+    return false;
+  }
+  size_t possible_end_script_pos = FindIgnoreCase(contents, "</script");
+  return (possible_end_script_pos == StringPiece::npos);
 }
 
 void JsInlineFilter::RenderInline(

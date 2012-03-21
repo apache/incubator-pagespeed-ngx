@@ -182,6 +182,38 @@ TEST_P(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag) {
                        false);
 }
 
+TEST_P(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag2) {
+  // HTML parsers will also accept junk like
+  // </script  fofo  > as closing the script. (Spaces in the beginning do
+  // cause it to be missed, hower).
+  TestInlineJavascript("http://www.example.com/index.html",
+                       "http://www.example.com/script.js",
+                       "",
+                       "function close() { return '</script foo >'; }\n",
+                       false);
+}
+
+TEST_P(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag3) {
+  // HTML is case insensitive, so make sure we recognize </ScrIpt> as potential
+  // closing tag, too.
+  TestInlineJavascript("http://www.example.com/index.html",
+                       "http://www.example.com/script.js",
+                       "",
+                       "function close() { return '</ScrIpt >'; }\n",
+                       false);
+}
+
+TEST_P(JsInlineFilterTest, ConservativeNonInlineCloseScript) {
+  // We conservatively don't inline some things which contain things that
+  // look a lot like </script> but aren't. This is safe, but it would be
+  // better if we inlined it.
+  TestInlineJavascript("http://www.example.com/index.html",
+                       "http://www.example.com/script.js",
+                       "",
+                       "function close() { return '</scripty>'; }\n",
+                       false);
+}
+
 TEST_P(JsInlineFilterTest, DoInlineJavascriptXhtml) {
   // Simple case:
   TestInlineJavascriptXhtml("http://www.example.com/index.html",

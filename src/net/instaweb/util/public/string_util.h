@@ -155,6 +155,9 @@ int GlobalReplaceSubstring(const StringPiece& substring,
                            const StringPiece& replacement,
                            GoogleString* s);
 
+int FindIgnoreCase(StringPiece haystack, StringPiece needle);
+
+
 // Output a string which is the combination of all values in vector, separated
 // by delim. Does not ignore empty strings in vector. So:
 // JoinStringStar({"foo", "", "bar"}, ", ") == "foo, , bar". (Pseudocode)
