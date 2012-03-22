@@ -66,7 +66,11 @@ class CssRewriteTestBase : public ResourceManagerTestBase,
     kNoOtherContexts = 64,
     kLinkCharsetIsUTF8 = 128,
     kLinkScreenMedia = 256,
-    kLinkPrintMedia = 512
+    kLinkPrintMedia = 512,
+    kMetaCharsetUTF8 = 1024,
+    kMetaCharsetISO88591 = 2048,
+    kMetaHttpEquiv = 4096,
+    kMetaHttpEquivUnquoted = 8192
   };
 
   static bool ExactlyOneTrue(bool a, bool b) {

@@ -169,18 +169,36 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
   } else if ((flags & kLinkPrintMedia) != 0) {
     StrAppend(&link_extras, " media='print'");
   }
+  GoogleString meta_tag("");
+  if ((flags & kMetaCharsetUTF8) != 0) {
+    StrAppend(&meta_tag, "  <meta charset=\"utf-8\">");
+  }
+  if ((flags & kMetaCharsetISO88591) != 0) {
+    StrAppend(&meta_tag, "  <meta charset=ISO-8859-1>");
+  }
+  if ((flags & kMetaHttpEquiv) != 0) {
+    StrAppend(&meta_tag,
+              "  <meta http-equiv=\"Content-Type\" "
+              "content=\"text/html; charset=UTF-8\">");
+  }
+  if ((flags & kMetaHttpEquivUnquoted) != 0) {
+    // Same as the previous one but content's value isn't quoted!
+    StrAppend(&meta_tag,
+              "  <meta http-equiv=\"Content-Type\" "
+              "content=text/html; charset=ISO-8859-1>");
+  }
 
   static const char html_template[] =
       "<head>\n"
       "  <title>Example style outline</title>\n"
+      "%s"
       "  <!-- Style starts here -->\n"
       "  <link rel='stylesheet' type='text/css' href='%s'%s>\n"
       "  <!-- Style ends here -->\n"
       "</head>";
 
-  GoogleString html_input  = StringPrintf(html_template, css_url.c_str(),
-                                          link_extras.c_str());
-
+  GoogleString html_input  = StringPrintf(html_template, meta_tag.c_str(),
+                                          css_url.c_str(), link_extras.c_str());
   GoogleString html_output;
 
   ResourceNamer namer;
@@ -188,8 +206,8 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
   GoogleString expected_new_url = ExpectedUrlForNamer(namer);
 
   if (flags & kExpectChange) {
-    html_output = StringPrintf(html_template, expected_new_url.c_str(),
-                               link_extras.c_str());
+    html_output = StringPrintf(html_template, meta_tag.c_str(),
+                               expected_new_url.c_str(), link_extras.c_str());
   } else {
     html_output = html_input;
   }

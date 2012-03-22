@@ -177,6 +177,9 @@ class CssFilter : public RewriteFilter {
   HtmlElement* style_element_;  // The element we are in.
   HtmlCharactersNode* style_char_node_;  // The single character node in style.
 
+  // The charset extracted from a meta tag, if any.
+  GoogleString meta_tag_charset_;
+
   // Filters we delegate to.
   CacheExtender* cache_extender_;
   ImageRewriteFilter* image_rewrite_filter_;

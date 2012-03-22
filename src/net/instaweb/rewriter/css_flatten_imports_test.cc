@@ -17,6 +17,7 @@
 // Author: matterbury@google.com (Matt Atterbury)
 
 #include <cstddef>
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -178,11 +179,18 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
                                kNoOtherContexts | kNoClearFetcher);
   }
 
-  // General routine to test that charset handling. The html_charset argument
-  // specifies the charset we stick into the HTML page's headers, if any,
-  // which is the charset any imported CSS must also use, while the bool says
-  // whether we should succeed or fail.
-  void TestFlattenWithHtmlCharset(const StringPiece& html_charset,
+  // General routine to test charset handling. The header_charset argument
+  // specifies the charset we stick into the HTML page's headers, if any, while
+  // the meta_tag_charset and http_equiv_charset arguments specify the charset
+  // we stick into a meta tag in the <head> element; these control the charset
+  // of the HTML page that starts the flattening import. The imported css files
+  // all specify @charset utf-8, and the default HTML charset, if none is
+  // specified by one of these arguments, is iso-8859-1, so, unless the result
+  // is for a HTML charset of utf-8, the test will fail. The bool says whether
+  // we expect to succeed.
+  void TestFlattenWithHtmlCharset(const StringPiece& header_charset,
+                                  const StringPiece& meta_tag_charset,
+                                  const StringPiece& http_equiv_charset,
                                   bool should_succeed) {
     const char kStylesFilename[] = "styles.css";
     const char kStylesCss[] =
@@ -208,9 +216,31 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     // Now we set the charset in the driver headers which is how we as a test
     // program set the HTML's charset.
     ResponseHeaders driver_headers;
-    if (!html_charset.empty()) {
+    if (!header_charset.empty()) {
       driver_headers.Add(HttpAttributes::kContentType,
-                         StrCat("text/css; charset=", html_charset));
+                         StrCat("text/css; charset=", header_charset));
+    }
+    ValidationFlags meta_tag_flag = static_cast<ValidationFlags>(0);
+    if (!meta_tag_charset.empty()) {
+      if (meta_tag_charset == "utf-8") {
+        meta_tag_flag = kMetaCharsetUTF8;
+      } else if (meta_tag_charset == "iso-8859-1") {
+        meta_tag_flag = kMetaCharsetISO88591;
+      } else {
+        DCHECK(meta_tag_charset == "utf-8" || meta_tag_charset == "iso-8859-1");
+      }
+      DCHECK(http_equiv_charset.empty());
+    }
+    if (!http_equiv_charset.empty()) {
+      if (http_equiv_charset == "utf-8") {
+        meta_tag_flag = kMetaHttpEquiv;
+      } else if (http_equiv_charset == "iso-8859-1") {
+        meta_tag_flag = kMetaHttpEquivUnquoted;
+      } else {
+        DCHECK(http_equiv_charset == "utf-8" ||
+               http_equiv_charset == "iso-8859-1");
+      }
+      DCHECK(meta_tag_charset.empty());
     }
     driver_headers.ComputeCaching();
     rewrite_driver()->set_response_headers_ptr(&driver_headers);
@@ -240,21 +270,25 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
       ValidateRewriteExternalCss("flatten_nested_media",
                                  css_in, css_out,
                                  kExpectChange | kExpectSuccess |
-                                 kNoOtherContexts | kNoClearFetcher);
+                                 kNoOtherContexts | kNoClearFetcher |
+                                 meta_tag_flag);
       // Check things work when data is already cached.
       ValidateRewriteExternalCss("flatten_nested_media_repeat",
                                  css_in, css_out,
                                  kExpectChange | kExpectSuccess |
-                                 kNoOtherContexts | kNoClearFetcher);
+                                 kNoOtherContexts | kNoClearFetcher |
+                                 meta_tag_flag);
     } else {
       ValidateRewriteExternalCss("flatten_nested_media",
                                  css_in, css_in,
                                  kExpectChange | kExpectSuccess |
-                                 kNoOtherContexts | kNoClearFetcher);
+                                 kNoOtherContexts | kNoClearFetcher |
+                                 meta_tag_flag);
       ValidateRewriteExternalCss("flatten_nested_media_repeat",
                                  css_in, css_in,
                                  kExpectChange | kExpectSuccess |
-                                 kNoOtherContexts | kNoClearFetcher);
+                                 kNoOtherContexts | kNoClearFetcher |
+                                 meta_tag_flag);
     }
   }
 
@@ -832,11 +866,13 @@ TEST_P(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
 }
 
 TEST_P(CssFlattenImportsTest, FlattenNestedCharsetsOk) {
-  TestFlattenWithHtmlCharset("utf-8", true);
+  // HTML = utf-8 (1st argument), CSS = utf-8 (always).
+  TestFlattenWithHtmlCharset("utf-8", "", "", true);
 }
 
 TEST_P(CssFlattenImportsTest, FlattenNestedCharsetsMismatch) {
-  TestFlattenWithHtmlCharset("", false);
+  // HTML = iso-8859-1 (default), CSS = utf-8 (always).
+  TestFlattenWithHtmlCharset("", "", "", false);
 }
 
 TEST_P(CssFlattenImportsTest, FlattenFailsIfLinkHasWrongCharset) {
@@ -855,6 +891,31 @@ TEST_P(CssFlattenImportsTest, FlattenFailsIfLinkHasWrongCharset) {
                              kExpectChange | kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher |
                              kLinkCharsetIsUTF8);
+}
+
+TEST_P(CssFlattenImportsTest, FlattenRespectsMetaTagCharset) {
+  // HTML = utf-8 (2nd argument), CSS = utf-8 (always).
+  TestFlattenWithHtmlCharset("", "utf-8", "", true);
+}
+
+TEST_P(CssFlattenImportsTest, FlattenRespectsHttpEquivCharset) {
+  // HTML = utf-8 (3rd argument), CSS = utf-8 (always).
+  TestFlattenWithHtmlCharset("", "", "utf-8", true);
+}
+
+TEST_P(CssFlattenImportsTest, FlattenRespectsHttpEquivCharsetUnquoted) {
+  // HTML = iso-8859-1 (3rd argument), CSS = utf-8 (always).
+  TestFlattenWithHtmlCharset("", "", "iso-8859-1", false);
+}
+
+TEST_P(CssFlattenImportsTest, HeaderTakesPrecendenceOverMetaTag1) {
+  // HTML = utf-8 (1st argument), CSS = utf-8 (always).
+  TestFlattenWithHtmlCharset("utf-8", "iso-8859-1", "", true);
+}
+
+TEST_P(CssFlattenImportsTest, HeaderTakesPrecendenceOverMetaTag2) {
+  // HTML = iso-8859-1 (1st argument), CSS = utf-8 (always).
+  TestFlattenWithHtmlCharset("iso-8859-1", "utf-8", "", false);
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.

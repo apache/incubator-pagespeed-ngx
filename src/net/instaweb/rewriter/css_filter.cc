@@ -394,6 +394,7 @@ void CssFilter::InitializeAtExitManager() {
 
 void CssFilter::StartDocumentImpl() {
   in_style_element_ = false;
+  meta_tag_charset_.clear();
 }
 
 void CssFilter::StartElementImpl(HtmlElement* element) {
@@ -466,6 +467,13 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
         driver_->ErrorHere("Link element with no href.");
       }
     }
+  // Note any meta tag charset specifier.
+  } else if (meta_tag_charset_.empty() &&
+             element->keyword() == HtmlName::kMeta) {
+    GoogleString content, mime_type, charset;
+    if (ExtractMetaTagDetails(*element, NULL, &content, &mime_type, &charset)) {
+      meta_tag_charset_ = charset;
+    }
   }
 }
 
@@ -537,7 +545,9 @@ bool CssFilter::GetApplicableCharset(const HtmlElement* element,
                                      GoogleString* charset) const {
   // HTTP1.1 says the default charset is ISO-8859-1 but as the W3C says (in
   // http://www.w3.org/International/O-HTTP-charset.en.php) not many browsers
-  // actually do this so a default of "" might be better.
+  // actually do this so a default of "" might be better. Starting from that
+  // base, if the headers specify a charset that is used, otherwise if a meta
+  // tag specifies a charset that is used.
   StringPiece our_charset("iso-8859-1");
   GoogleString headers_charset;
   ResponseHeaders* headers = driver_->response_headers_ptr();
@@ -546,6 +556,9 @@ bool CssFilter::GetApplicableCharset(const HtmlElement* element,
     if (!headers_charset.empty()) {
       our_charset = headers_charset;
     }
+  }
+  if (headers_charset.empty() && !meta_tag_charset_.empty()) {
+    our_charset = meta_tag_charset_;
   }
   if (element != NULL) {
     const HtmlElement::Attribute* charset_attribute =

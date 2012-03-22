@@ -111,6 +111,10 @@ pagespeed.DeferJs.prototype.log = function(line, opt_exception) {
     this.logs.push('' + line);
     if (opt_exception) {
       this.logs.push(opt_exception);
+      if (typeof(console) != 'undefined' &&
+          typeof(console.log) != 'undefined') {
+        console.log('PSA ERROR: ' + line + opt_exception.message);
+      }
     }
   }
 };
@@ -260,8 +264,10 @@ pagespeed.DeferJs.prototype.onComplete = function() {
     document.documentElement.doScroll =
         document.documentElement['originalDoScroll'];
   }
-  // Delete document.readyState so that browser can restore it.
-  // delete document['readyState'];
+  if (Object.defineProperty) {
+    // Delete document.readyState so that browser can restore it.
+    delete document['readyState'];
+  }
 
   // TODO(ksimbili): Restore the handlers in a clean way.
   if (document.originalAddEventListener) {
@@ -310,13 +316,16 @@ pagespeed.DeferJs.prototype.nodeListToArray = function(nodeList) {
  * SetUp needed before deferrred scripts execution.
  */
 pagespeed.DeferJs.prototype.setUp = function() {
-  // Shadow document.readyState
-  var propertyDescriptor = { configurable: true };
-  // Attach the bound getter to the descriptor.
-  propertyDescriptor.get = function() { return 'loading';}
-  // Finally, apply the property to the object.
-  // Object.defineProperty(document, 'readyState', propertyDescriptor);
-
+  if (Object.defineProperty) {
+    try {
+      // Shadow document.readyState
+      var propertyDescriptor = { configurable: true };
+      propertyDescriptor.get = function() { return 'loading';}
+      Object.defineProperty(document, 'readyState', propertyDescriptor);
+    } catch (err) {
+      this.log('Exception while overriding document.readyState.', err);
+    }
+  }
   if (this.getIEVersion()) {
     // In IE another approach for identifying DOMContentLoaded is popularly
     // used. It is described in http://javascript.nwbox.com/IEContentLoaded/ .
