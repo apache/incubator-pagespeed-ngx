@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_AJAX_REWRITE_CONTEXT_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_AJAX_REWRITE_CONTEXT_H_
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -33,8 +34,6 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
-namespace proto2 { template <typename Element> class RepeatedPtrField; }
-
 namespace net_instaweb {
 
 class InputInfo;
@@ -42,6 +41,7 @@ class MessageHandler;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteFilter;
+class UrlAsyncFetcher;
 struct ContentType;
 
 // A resource-slot created for an ajax rewrite. This has an empty render method.
@@ -116,6 +116,8 @@ class AjaxRewriteContext : public SingleRewriteContext {
 
   // Prefix to be appended to etags.
   const GoogleString etag_prefix_;
+
+  scoped_ptr<UrlAsyncFetcher> cache_fetcher_;
 
   DISALLOW_COPY_AND_ASSIGN(AjaxRewriteContext);
 };

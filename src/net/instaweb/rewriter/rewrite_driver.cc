@@ -33,6 +33,7 @@
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/bot_checker.h"
+#include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
@@ -956,6 +957,23 @@ void RewriteDriver::SetWriter(Writer* writer) {
 
 Statistics* RewriteDriver::statistics() const {
   return (resource_manager_ == NULL) ? NULL : resource_manager_->statistics();
+}
+
+CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {
+  CacheUrlAsyncFetcher* cache_fetcher = new CacheUrlAsyncFetcher(
+      resource_manager_->http_cache(), url_async_fetcher_);
+  cache_fetcher->set_respect_vary(options()->respect_vary());
+  cache_fetcher->set_ignore_recent_fetch_failed(true);
+  cache_fetcher->set_default_cache_html(options()->default_cache_html());
+  cache_fetcher->set_backend_first_byte_latency_histogram(
+      resource_manager_->rewrite_stats()->backend_latency_histogram());
+  cache_fetcher->set_fallback_responses_served(
+      resource_manager_->rewrite_stats()->fallback_responses_served());
+  cache_fetcher->set_num_conditional_refreshes(
+      resource_manager_->rewrite_stats()->num_conditional_refreshes());
+  cache_fetcher->set_serve_stale_if_fetch_error(
+      options()->serve_stale_if_fetch_error());
+  return cache_fetcher;
 }
 
 bool RewriteDriver::DecodeOutputResourceNameHelper(

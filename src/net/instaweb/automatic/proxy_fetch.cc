@@ -331,24 +331,6 @@ ProxyFetch::ProxyFetch(
     driver_->set_client_id(client_id);
   }
 
-  // TODO(sligocki): We should pass the options in with the AsyncFetch rather
-  // than creating a new fetcher for each fetch.
-  // Note: CacheUrlAsyncFetcher is actually a pretty light class, so this isn't
-  // terrible for performance, just seems like bad programming practice.
-  cache_fetcher_.reset(new CacheUrlAsyncFetcher(
-      resource_manager_->http_cache(), resource_manager_->url_async_fetcher()));
-  cache_fetcher_->set_respect_vary(Options()->respect_vary());
-  cache_fetcher_->set_ignore_recent_fetch_failed(true);
-  cache_fetcher_->set_default_cache_html(Options()->default_cache_html());
-  cache_fetcher_->set_backend_first_byte_latency_histogram(
-      resource_manager_->rewrite_stats()->backend_latency_histogram());
-  cache_fetcher_->set_fallback_responses_served(
-      resource_manager_->rewrite_stats()->fallback_responses_served());
-  cache_fetcher_->set_num_conditional_refreshes(
-      resource_manager_->rewrite_stats()->num_conditional_refreshes());
-  cache_fetcher_->set_serve_stale_if_fetch_error(
-      Options()->serve_stale_if_fetch_error());
-
   // Make request headers available to the filters.
   driver_->set_request_headers(request_headers());
 
@@ -516,9 +498,9 @@ void ProxyFetch::DoFetch() {
     if (driver_->options()->enabled() &&
         driver_->options()->ajax_rewriting_enabled() &&
         driver_->options()->IsAllowed(url_)) {
-      driver_->SetOwnedAsyncFetcher(cache_fetcher_.release());
       driver_->FetchResource(url_, this);
     } else {
+      cache_fetcher_.reset(driver_->CreateCacheFetcher());
       cache_fetcher_->Fetch(url_, factory_->handler_, this);
     }
   } else {

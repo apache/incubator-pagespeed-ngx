@@ -22,6 +22,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
@@ -320,7 +321,8 @@ void AjaxRewriteContext::StartFetchReconstruction() {
     is_rewritten_ = false;
     RecordingFetch* fetch = new RecordingFetch(
         async_fetch(), resource, this, fetch_message_handler());
-    driver_->async_fetcher()->Fetch(url_, fetch_message_handler(), fetch);
+    cache_fetcher_.reset(driver_->CreateCacheFetcher());
+    cache_fetcher_->Fetch(url_, fetch_message_handler(), fetch);
   } else {
     LOG(ERROR) << "Expected one resource slot, but found " << num_slots()
                << ".";

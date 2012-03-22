@@ -53,6 +53,7 @@ struct ContentType;
 class AbstractMutex;
 class AddInstrumentationFilter;
 class AsyncFetch;
+class CacheUrlAsyncFetcher;
 class CommonFilter;
 class DomainRewriteFilter;
 class FileSystem;
@@ -338,6 +339,10 @@ class RewriteDriver : public HtmlParse {
     url_async_fetcher_ = f;
     owned_url_async_fetcher_.reset(f);
   }
+
+  // Creates a cache fetcher that uses the driver's fetcher and its options.
+  // Note: this means the driver's fetcher must survive as long as this does.
+  CacheUrlAsyncFetcher* CreateCacheFetcher();
 
   ResourceManager* resource_manager() const { return resource_manager_; }
   Statistics* statistics() const;
