@@ -76,7 +76,7 @@ void ImageUrlEncoder::Encode(const StringVector& urls,
       if (dims.has_width()) {
         rewritten_url->append(IntegerToString(dims.width()));
       } else {
-        rewritten_url->append(1, kMissingDimension);
+        rewritten_url->push_back(kMissingDimension);
       }
       if (dims.has_height()) {
         StrAppend(rewritten_url,
@@ -89,12 +89,12 @@ void ImageUrlEncoder::Encode(const StringVector& urls,
       }
     }
     if (data->mobile_user_agent()) {
-      rewritten_url->append(1, kCodeMobileUserAgent);
+      rewritten_url->push_back(kCodeMobileUserAgent);
     }
     if (data->attempt_webp()) {
-      rewritten_url->append(1, kCodeWebp);
+      rewritten_url->push_back(kCodeWebp);
     } else {
-      rewritten_url->append(1, kCodeSeparator);
+      rewritten_url->push_back(kCodeSeparator);
     }
   }
   UrlEscaper::EncodeToUrlSegment(urls[0], rewritten_url);

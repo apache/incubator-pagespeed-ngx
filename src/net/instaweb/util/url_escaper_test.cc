@@ -48,7 +48,7 @@ class UrlEscaperTest : public testing::Test {
     }
 
     EXPECT_TRUE(UrlEscaper::DecodeFromUrlSegment(encoded, &decoded));
-    EXPECT_EQ(url, decoded);
+    EXPECT_EQ(url, decoded) << "\n encoded was " << encoded;
   }
 
   // Some basic text should be completely unchanged upon encode/decode.
@@ -102,6 +102,16 @@ TEST_F(UrlEscaperTest, LegacyDecode) {
   EXPECT_EQ("f.js", Decode("f,l"));
   EXPECT_EQ("g.anything", Decode("g,oanything"));
   EXPECT_EQ("http://www.myhost.com", Decode(",h,wmyhost,c"));
+}
+
+TEST_F(UrlEscaperTest, PercentDecoding) {
+  // Test the corner case where browser percent-encoded parts of our url.
+  EXPECT_EQ("a.css", Decode("%61%2E%63%73%73"));  // Just %-encode whole url
+  EXPECT_EQ("a.js+b.js", Decode("a.js%20b.js"));  // '+' re-encoded as %20 (' ')
+  EXPECT_EQ("a%20b", Decode("a%2CP20b"));  // %-encoding of ,
+  // TODO(jmaessen): The following never seems to happen in practice
+  //  (encoding of character following , in comma encoding)
+  // EXPECT_EQ("a/b", Decode("a,%2Fb"));  // %-encoding of character after ,
 }
 
 TEST_F(UrlEscaperTest, TestEncoding) {

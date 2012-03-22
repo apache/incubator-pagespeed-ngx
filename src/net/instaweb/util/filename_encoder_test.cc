@@ -141,7 +141,7 @@ TEST_F(FilenameEncoderTest, CornerCasesNearMaxLenWithEscape) {
   for (int i = -4; i <= 4; ++i) {
     GoogleString input;
     input.append(i + kMaxLen - 1, 'x');
-    input.append(1, '.');  // this will expand to 3 characters.
+    input.push_back('.');  // this will expand to 3 characters.
     Validate(input);
   }
 }

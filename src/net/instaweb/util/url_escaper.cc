@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/url_escaper.h"
 
+#include <cstddef>
 #include <cctype>
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -109,60 +110,105 @@ void UrlEscaper::EncodeToUrlSegment(const StringPiece& in,
   }
 }
 
+
+namespace {
+
+// DecodeHexEncoding assumes that buffer[pos, pos+1] is of the form "xx" are
+// hexadecimal digits.  It constructs a char from these characters, or returns
+// false to indicate encoding failure.
+bool DecodeHexEncoding(const StringPiece& buffer, size_t i, char* result) {
+  int char_val = 0;
+  if ((i + 1 < buffer.size()) &&
+      AccumulateHexValue(buffer[i], &char_val) &&
+      AccumulateHexValue(buffer[i+1], &char_val)) {
+    *result = static_cast<char>(char_val);
+    return true;
+  }
+  return false;
+}
+
+}  // namespace
+
+
 bool UrlEscaper::DecodeFromUrlSegment(const StringPiece& url_segment,
                                       GoogleString* out) {
-  int remaining = url_segment.size();
-  for (const char* p = url_segment.data(); remaining != 0; ++p, --remaining) {
-    char c = *p;
+  size_t size = url_segment.size();
+  for (size_t i = 0; i < size; ++i) {
+    char c = url_segment[i];
     if (isalnum(c) || (strchr(kPassThroughChars, c) != NULL)) {
-      out->append(&c, 1);
-    } else if ((c != ',') || (remaining < 2)) {
-      return false;  // unknown char or trailing ,; this is an invalid encoding.
-    } else {
-      ++p;
-      --remaining;
-      switch (*p) {
-        case '_': *out += "/"; break;
-        case '-': *out += "\\"; break;
-        case ',': *out += ","; break;
-        case 'a': *out += "&"; break;
-        case 'M': *out += ".pagespeed."; break;
-        case 'P': *out += "%"; break;
-        case 'q': *out += "?"; break;
-        case 'u': *out += "^"; break;
-
-        // The following legacy encodings are no longer made.  However
-        // we should continue to decode what we previously encoded in
-        // November 2010 to avoid (for example) breaking image search.
-        case 'c': *out += ".com"; break;
-        case 'e': *out += ".edu"; break;
-        case 'g': *out += ".gif"; break;
-        case 'h': *out += "http://"; break;
-        case 'j': *out += ".jpg"; break;
-        case 'k': *out += ".jpeg"; break;
-        case 'l': *out += ".js"; break;
-        case 'n': *out += ".net"; break;
-        case 'o': *out += "."; break;
-        case 'p': *out += ".png"; break;
-        case 's': *out += ".css"; break;
-        case 't': *out += ".html"; break;
-        case 'w': *out += "www."; break;
-
-        default:
-          if (remaining < 2) {
-            return false;
-          }
-          --remaining;
-          int char_val = 0;
-          if (AccumulateHexValue(*p++, &char_val) &&
-              AccumulateHexValue(*p, &char_val)) {
-            out->append(1, static_cast<char>(char_val));
-          } else {
-            return false;
-          }
-          break;
+      out->push_back(c);
+      continue;
+    }
+    // We ought to have a ',' or a '%' to decode (or a bad encoding)
+    ++i;  // i points to first char of encoding
+    if (i >= size) {
+      // No space for encoded data
+      return false;
+    }
+    if (c != ',') {
+      if ((c == '%') && DecodeHexEncoding(url_segment, i, &c)) {
+        ++i;  // i points to last char of encoding
+        // Rare corner case: there exist browsers that percent-encode + to %20
+        // (space), which is supposed to be illegal except after ? (in query
+        // params).
+        if (c == ' ') {
+          c = '+';
+        }
+        if (c != ',') {
+          out->push_back(c);
+          continue;
+        }
+        // We found a %-encoded ,
+        ++i;  // Make i point to first char of , encoding
+        if (i >= size) {
+          // trailing %-encoded ,
+          return false;
+        }
+        // Fall through and decode the ,
+      } else {
+        return false;  // unknown char; this is an invalid encoding.
       }
     }
+    // At this point we know we're decoding a , encoding.
+    // TODO(jmaessen): Worry about %-encoding here, if that ever comes up.
+    // To our knowledge it never has.
+    switch (url_segment[i]) {
+      case '_': *out += "/"; break;
+      case '-': *out += "\\"; break;
+      case ',': *out += ","; break;
+      case 'a': *out += "&"; break;
+      case 'M': *out += ".pagespeed."; break;
+      case 'P': *out += "%"; break;
+      case 'q': *out += "?"; break;
+      case 'u': *out += "^"; break;
+
+      // The following legacy encodings are no longer made.  However we should
+      // continue to decode what we previously encoded in November 2010 to
+      // avoid (for example) breaking image search.
+      case 'c': *out += ".com"; break;
+      case 'e': *out += ".edu"; break;
+      case 'g': *out += ".gif"; break;
+      case 'h': *out += "http://"; break;
+      case 'j': *out += ".jpg"; break;
+      case 'k': *out += ".jpeg"; break;
+      case 'l': *out += ".js"; break;
+      case 'n': *out += ".net"; break;
+      case 'o': *out += "."; break;
+      case 'p': *out += ".png"; break;
+      case 's': *out += ".css"; break;
+      case 't': *out += ".html"; break;
+      case 'w': *out += "www."; break;
+
+      default:
+        if (DecodeHexEncoding(url_segment, i, &c)) {
+          ++i;
+          out->push_back(c);
+        } else {
+            return false;
+        }
+        break;
+    }
+    // At this point i points to last char of just-decoded encoding.
   }
   return true;
 }

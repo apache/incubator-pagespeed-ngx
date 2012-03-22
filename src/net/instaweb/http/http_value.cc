@@ -65,7 +65,7 @@ void HTTPValue::SetHeaders(ResponseHeaders* headers) {
   StringWriter writer(&headers_string);
   headers->WriteAsBinary(&writer, NULL);
   if (storage_->empty()) {
-    storage_->append(&kHeadersFirst, 1);
+    storage_->push_back(kHeadersFirst);
     SetSizeOfFirstChunk(headers_string.size());
   } else {
     CHECK(type_identifier() == kBodyFirst);
@@ -81,7 +81,7 @@ void HTTPValue::SetHeaders(ResponseHeaders* headers) {
 bool HTTPValue::Write(const StringPiece& str, MessageHandler* handler) {
   CopyOnWrite();
   if (storage_->empty()) {
-    storage_->append(&kBodyFirst, 1);
+    storage_->push_back(kBodyFirst);
     storage_->append("    ", 4);
     SetSizeOfFirstChunk(str.size());
   } else if (type_identifier() == kBodyFirst) {

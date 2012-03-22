@@ -66,4 +66,13 @@ TEST_F(UrlMultipartEncoderTest, One) {
   EXPECT_EQ(GoogleString("a"), url_vector_[0]);
 }
 
+TEST_F(UrlMultipartEncoderTest, PercentEncoding) {
+  // Check that we can still multipart-decode if the browser
+  // replaces + with %20.
+  ASSERT_TRUE(encoder_.Decode("a%20b%20", &url_vector_, NULL, &handler_));
+  EXPECT_EQ(GoogleString("a"), url_vector_[0]);
+  EXPECT_EQ(GoogleString("b"), url_vector_[1]);
+  EXPECT_EQ(GoogleString(""), url_vector_[2]);
+}
+
 }  // namespace net_instaweb
