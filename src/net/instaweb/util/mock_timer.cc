@@ -148,7 +148,7 @@ void MockTimer::SetTimeUs(int64 new_time_us) {
 }
 
 int64 MockTimer::NowUs() const {
-  ScopedMutex(mutex_.get());
+  ScopedMutex lock(mutex_.get());
   return time_us_;
 }
 
