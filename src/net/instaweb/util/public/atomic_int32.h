@@ -44,7 +44,6 @@ class AtomicInt32 {
   }
 
   int32 increment(int32 amount) {
-    // TODO(jmaessen): Please review the semantics of this.
     return base::subtle::NoBarrier_AtomicIncrement(&value_, amount);
   }
 

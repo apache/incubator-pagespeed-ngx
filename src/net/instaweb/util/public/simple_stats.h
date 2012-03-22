@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_SIMPLE_STATS_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_SIMPLE_STATS_H_
 
+#include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
@@ -30,12 +31,13 @@ class SimpleStatsVariable : public Variable {
  public:
   SimpleStatsVariable() : value_(0) {}
   virtual ~SimpleStatsVariable();
-  virtual int Get() const { return value_; }
-  virtual int64 Get64() const { return value_; }
-  virtual void Set(int value) { value_ = value; }
+  virtual int Get() const { return value_.value(); }
+  virtual int64 Get64() const { return value_.value(); }
+  virtual void Set(int value) { value_.set_value(value); }
+  virtual void Add(int delta) { value_.increment(delta); }
 
  private:
-  int value_;
+  AtomicInt32 value_;
 
   DISALLOW_COPY_AND_ASSIGN(SimpleStatsVariable);
 };
