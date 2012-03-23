@@ -50,11 +50,13 @@
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/json.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/timer.h"
-#include "third_party/jsoncpp/include/json/json.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 const int kJsonCachePrefixLength = strlen(BlinkUtil::kJsonCachePrefix);
 

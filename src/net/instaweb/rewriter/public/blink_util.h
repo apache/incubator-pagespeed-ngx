@@ -23,9 +23,9 @@
 #include <utility>
 #include <vector>
 
+#include "net/instaweb/util/public/json.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "third_party/jsoncpp/include/json/json.h"
 
 namespace net_instaweb {
 
