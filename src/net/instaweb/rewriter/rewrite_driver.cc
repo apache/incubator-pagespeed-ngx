@@ -1593,24 +1593,18 @@ void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
   bool should_release = false;
   {
     ScopedMutex lock(rewrite_mutex());
-    bool should_signal = false;
     DCHECK_LT(0, rewrites_to_delete_);
     --rewrites_to_delete_;
     delete rewrite_context;
-    bool ready_to_recycle = false;
+    release_driver_ = false;
     if (RewritesComplete()) {
       if (waiting_ != kNoWait) {
-        should_signal = true;
+        // Note: relinquishes a lock so must be last line in the mutex's scope.
+        scheduler_->Signal();
       } else {
-        ready_to_recycle = !externally_managed_ && !parsing_;
+        release_driver_ = !externally_managed_ && !parsing_;
+        should_release = release_driver_ && (pending_async_events_ == 0);
       }
-    }
-    release_driver_ = ready_to_recycle;
-    should_release = release_driver_ && (pending_async_events_ == 0);
-    if (should_signal) {
-      // Note: must be the last thing in the critical section as relinquishes
-      // lock.
-      scheduler_->Signal();
     }
   }
   if (should_release) {
@@ -1667,8 +1661,8 @@ void RewriteDriver::Cleanup() {
     bool should_release = false;
     {
       ScopedMutex lock(rewrite_mutex());
-      bool done = RewritesComplete();
-      if (!done) {
+      release_driver_ = false;
+      if (!RewritesComplete()) {
         parsing_ = false;  // Permit recycle when contexts done.
         if (fetch_queued_) {
           // Asynchronous resource fetch we gave up on --- make sure to cleanup
@@ -1680,11 +1674,11 @@ void RewriteDriver::Cleanup() {
         // some work in the background.
         if (HaveBackgroundFetchRewrite()) {
           cleanup_on_fetch_complete_ = true;
-          done = false;
+        } else {
+          release_driver_ = true;
+          should_release = (pending_async_events_ == 0);
         }
       }
-      release_driver_ = done;
-      should_release = release_driver_ && (pending_async_events_ == 0);
     }
     if (should_release) {
       resource_manager_->ReleaseRewriteDriver(this);
