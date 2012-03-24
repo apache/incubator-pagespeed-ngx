@@ -56,9 +56,13 @@ class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
 class UrlNamer;
+class UsageDataReporter;
 class UserAgentMatcher;
 
-// A base RewriteDriverFactory.
+// Manages the construction and ownership of most objects needed to create
+// RewriteDrivers. If you have your own versions of these classes (specific
+// implementations of UrlAsyncFetcher, Hasher, etc.) you can make your own
+// subclass of RewriteDriverFactory to use these by default.
 class RewriteDriverFactory {
  public:
   // Helper for users of defer_delete; see below.
@@ -100,6 +104,7 @@ class RewriteDriverFactory {
   void set_critical_images_finder(CriticalImagesFinder* finder);
   void set_blink_critical_line_data_finder(BlinkCriticalLineDataFinder* finder);
   void set_enable_property_cache(bool enabled);
+  void set_usage_data_reporter(UsageDataReporter* reporter);
 
   // Set up a directory for slurped files for HTML and resources.  If
   // read_only is true, then it will only read from these files, and
@@ -159,6 +164,7 @@ class RewriteDriverFactory {
   NamedLockManager* lock_manager();
   QueuedWorkerPool* WorkerPool(WorkerPoolName pool);
   Scheduler* scheduler();
+  UsageDataReporter* usage_data_reporter();
 
   // Builds a PropertyCache given a key prefix and a CacheInterface.
   PropertyCache* MakePropertyCache(const GoogleString& cache_key_prefix,
@@ -282,6 +288,7 @@ class RewriteDriverFactory {
   virtual MessageHandler* DefaultMessageHandler() = 0;
   virtual FileSystem* DefaultFileSystem() = 0;
   virtual Timer* DefaultTimer() = 0;
+
   virtual Hasher* NewHasher() = 0;
 
   // Default implementation returns NULL.
@@ -302,6 +309,7 @@ class RewriteDriverFactory {
   virtual UrlNamer* DefaultUrlNamer();
 
   virtual UserAgentMatcher* DefaultUserAgentMatcher();
+  virtual UsageDataReporter* DefaultUsageDataReporter();
 
   // Subclasses can override this to create an appropriately-sized thread
   // pool for their environment. The default implementation will always
@@ -354,6 +362,7 @@ class RewriteDriverFactory {
   scoped_ptr<StaticJavascriptManager> static_javascript_manager_;
   scoped_ptr<Timer> timer_;
   scoped_ptr<Scheduler> scheduler_;
+  scoped_ptr<UsageDataReporter> usage_data_reporter_;
 
   GoogleString filename_prefix_;
   GoogleString slurp_directory_;

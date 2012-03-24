@@ -65,6 +65,7 @@ class ThreadSystem;
 class Timer;
 class UrlAsyncFetcher;
 class UrlNamer;
+class UsageDataReporter;
 class UserAgentMatcher;
 
 typedef RefCountedPtr<OutputResource> OutputResourcePtr;
@@ -304,6 +305,7 @@ class ResourceManager {
   void ReleaseRewriteDriver(RewriteDriver* rewrite_driver);
 
   ThreadSystem* thread_system() { return thread_system_; }
+  UsageDataReporter* usage_data_reporter() { return usage_data_reporter_; }
 
   // Calling this method will stop results of rewrites being cached in the
   // metadata cache. This is meant for the shutdown sequence.
@@ -483,6 +485,8 @@ class ResourceManager {
   // Used to help inject sync-points into thread-intensive code for the purposes
   // of controlling thread interleaving to test code for possible races.
   scoped_ptr<ThreadSynchronizer> thread_synchronizer_;
+
+  UsageDataReporter* usage_data_reporter_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceManager);
 };

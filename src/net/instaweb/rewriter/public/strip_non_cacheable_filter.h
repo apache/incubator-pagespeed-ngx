@@ -44,6 +44,8 @@ class StripNonCacheableFilter : public EmptyHtmlFilter {
   virtual void StartElement(HtmlElement* element);
   virtual const char* Name() const { return "StripNonCacheableFilter"; }
 
+  static const char kNoScriptRedirectFormatter[];
+
  private:
   RewriteDriver* rewrite_driver_;
   const RewriteOptions* rewrite_options_;

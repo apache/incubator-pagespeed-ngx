@@ -162,7 +162,8 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       rewrite_workers_(NULL),
       low_priority_rewrite_workers_(NULL),
       static_javascript_manager_(NULL),
-      thread_synchronizer_(new ThreadSynchronizer(thread_system_)) {
+      thread_synchronizer_(new ThreadSynchronizer(thread_system_)),
+      usage_data_reporter_(factory_->usage_data_reporter()) {
   // Make sure the excluded-attributes are in abc order so binary_search works.
   // Make sure to use the same comparator that we pass to the binary_search.
 #ifndef NDEBUG

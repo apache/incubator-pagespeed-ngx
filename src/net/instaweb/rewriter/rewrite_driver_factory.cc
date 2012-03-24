@@ -35,6 +35,7 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
+#include "net/instaweb/rewriter/public/usage_data_reporter.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/client_state.h"
@@ -223,6 +224,11 @@ void RewriteDriverFactory::set_enable_property_cache(bool enabled) {
   }
 }
 
+void RewriteDriverFactory::set_usage_data_reporter(
+    UsageDataReporter* reporter) {
+  usage_data_reporter_.reset(reporter);
+}
+
 MessageHandler* RewriteDriverFactory::html_parse_message_handler() {
   if (html_parse_message_handler_ == NULL) {
     html_parse_message_handler_.reset(DefaultHtmlParseMessageHandler());
@@ -302,6 +308,13 @@ Hasher* RewriteDriverFactory::hasher() {
   return hasher_.get();
 }
 
+UsageDataReporter* RewriteDriverFactory::usage_data_reporter() {
+  if (usage_data_reporter_ == NULL) {
+    usage_data_reporter_.reset(DefaultUsageDataReporter());
+  }
+  return usage_data_reporter_.get();
+}
+
 NamedLockManager* RewriteDriverFactory::DefaultLockManager() {
   return new FileSystemLockManager(file_system(), LockFilePrefix(),
                                    scheduler(), message_handler());
@@ -327,6 +340,10 @@ CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
 BlinkCriticalLineDataFinder*
 RewriteDriverFactory::DefaultBlinkCriticalLineDataFinder() {
   return NULL;
+}
+
+UsageDataReporter* RewriteDriverFactory::DefaultUsageDataReporter() {
+  return new UsageDataReporter;
 }
 
 QueuedWorkerPool* RewriteDriverFactory::CreateWorkerPool(WorkerPoolName pool) {
