@@ -20,6 +20,8 @@
 
 namespace net_instaweb {
 
+const char BlinkCriticalLineDataFinder::kBlinkCohort[] = "blink";
+
 BlinkCriticalLineDataFinder::BlinkCriticalLineDataFinder() {
 }
 

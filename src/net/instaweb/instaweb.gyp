@@ -348,6 +348,7 @@
         'http/http_dump_url_writer.cc',
         'http/http_response_parser.cc',
         'http/http_value.cc',
+        'http/http_value_writer.cc',
         'http/inflating_fetch.cc',
         'http/meta_data.cc',
         'http/sync_fetcher_adapter.cc',
@@ -820,6 +821,7 @@
       'target_name': 'instaweb_automatic',
       'type': '<(library)',
       'dependencies': [
+        'instaweb_blink_critical_line_data_pb',
         'instaweb_http',
         'instaweb_panel_config_pb',
         'instaweb_rewriter',

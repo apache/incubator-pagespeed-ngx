@@ -56,6 +56,7 @@ void HTTPValue::CopyOnWrite() {
 
 void HTTPValue::Clear() {
   CopyOnWrite();
+  contents_size_ = 0;
   storage_->clear();
 }
 
@@ -93,6 +94,7 @@ bool HTTPValue::Write(const StringPiece& str, MessageHandler* handler) {
     CHECK(type_identifier() == kHeadersFirst);
   }
   storage_->append(str.data(), str.size());
+  contents_size_ += str.size();
   return true;
 }
 
@@ -185,6 +187,24 @@ bool HTTPValue::ExtractContents(StringPiece* val) const {
   return ret;
 }
 
+int64 HTTPValue::ComputeContentsSize() const {
+  // Return size as 0 if the cache is corrupted.
+  int64 size = 0;
+  if (storage_->size() >= kStorageOverhead) {
+    // Get the type id which is stored first (head or body).
+    char type_id = type_identifier();
+    // Get the size of the type which is stored first.
+    size = SizeOfFirstChunk();
+    // If the headers are stored first then update the size with storage size -
+    // first chunk size.
+    if ((size <= static_cast<int64>(storage_->size() - kStorageOverhead)) &&
+        (type_id == kHeadersFirst)) {
+      size = storage_->size() - size - kStorageOverhead;
+    }
+  }
+  return size;
+}
+
 bool HTTPValue::Link(SharedString* src, ResponseHeaders* headers,
                      MessageHandler* handler) {
   bool ok = false;
@@ -197,6 +217,7 @@ bool HTTPValue::Link(SharedString* src, ResponseHeaders* headers,
     // the integrity checks.
     SharedString temp(storage_);
     storage_ = *src;
+    contents_size_ = ComputeContentsSize();
 
     // TODO(jmarantz): this could be a lot lighter weight, but we are going
     // to be sure at this point that both the headers and the contents are

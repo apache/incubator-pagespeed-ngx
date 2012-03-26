@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_BLINK_CRITICAL_LINE_DATA_FINDER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_BLINK_CRITICAL_LINE_DATA_FINDER_H_
 
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -33,6 +34,7 @@ class RewriteOptions;
 // TODO(pulkitg): Rethink about the naming and structure of this class.
 class BlinkCriticalLineDataFinder {
  public:
+  static const char kBlinkCohort[];
   BlinkCriticalLineDataFinder();
   virtual ~BlinkCriticalLineDataFinder();
 

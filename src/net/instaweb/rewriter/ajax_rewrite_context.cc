@@ -25,7 +25,6 @@
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -64,28 +63,37 @@ RecordingFetch::RecordingFetch(AsyncFetch* async_fetch,
       handler_(handler),
       resource_(resource),
       context_(context),
-      can_ajax_rewrite_(false) {}
+      can_ajax_rewrite_(false),
+      cache_value_writer_(&cache_value_, context_->Manager()->http_cache()) {}
 
 RecordingFetch::~RecordingFetch() {}
 
 void RecordingFetch::HandleHeadersComplete() {
   can_ajax_rewrite_ = CanAjaxRewrite();
   if (can_ajax_rewrite_) {
-    cache_value_.SetHeaders(response_headers());
+    cache_value_writer_.SetHeaders(response_headers());
   } else {
-    // It's not worth trying to rewrite any more. This cleans up the context
-    // and frees the driver. Leaving this context around causes problems in
-    // the html flow in particular.
-    context_->driver_->FetchComplete();
+    FreeDriver();
   }
   base_fetch()->HeadersComplete();
+}
+
+void RecordingFetch::FreeDriver() {
+  // This cleans up the context and frees the driver. Leaving this context
+  // around causes problems in the html flow in particular.
+  context_->driver_->FetchComplete();
 }
 
 bool RecordingFetch::HandleWrite(const StringPiece& content,
                                  MessageHandler* handler) {
   bool result = base_fetch()->Write(content, handler);
   if (can_ajax_rewrite_) {
-    result &= cache_value_.Write(content, handler);
+    result &= cache_value_writer_.Write(content, handler);
+    if (!cache_value_writer_.has_buffered()) {
+      // Cannot ajax rewrite a resource which is too big to fit in cache.
+      can_ajax_rewrite_ = false;
+      FreeDriver();
+    }
   }
   return result;
 }
@@ -108,8 +116,10 @@ void RecordingFetch::HandleDone(bool success) {
 
 bool RecordingFetch::CanAjaxRewrite() {
   const ContentType* type = response_headers()->DetermineContentType();
-  response_headers()->ComputeCaching();
   if (type == NULL) {
+    return false;
+  }
+  if (!cache_value_writer_.CheckCanCacheElseClear(response_headers())) {
     return false;
   }
   if (type->type() == ContentType::kCss ||

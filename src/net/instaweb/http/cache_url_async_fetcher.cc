@@ -20,6 +20,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/http_value_writer.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -51,7 +52,8 @@ class CachePutFetch : public SharedAsyncFetch {
         cache_(cache),
         backend_first_byte_latency_(backend_first_byte_latency),
         handler_(handler),
-        cacheable_(false) {
+        cacheable_(false),
+        cache_value_writer_(&cache_value_, cache_) {
     if (backend_first_byte_latency_ != NULL) {
       start_time_ms_ = cache_->timer()->NowMs();
     }
@@ -87,7 +89,7 @@ class CachePutFetch : public SharedAsyncFetch {
     }
 
     if (cacheable_) {
-      cache_value_.SetHeaders(headers);
+      cache_value_writer_.SetHeaders(headers);
     }
 
     base_fetch()->HeadersComplete();
@@ -98,7 +100,7 @@ class CachePutFetch : public SharedAsyncFetch {
     bool ret = true;
     ret &= base_fetch()->Write(content, handler);
     if (cacheable_) {
-      ret &= cache_value_.Write(content, handler);
+      ret &= cache_value_writer_.Write(content, handler);
     }
     return ret;
   }
@@ -112,7 +114,7 @@ class CachePutFetch : public SharedAsyncFetch {
     // Finish fetch.
     base_fetch()->Done(success);
     // Add result to cache.
-    if (success && cacheable_) {
+    if (success && cacheable_ && cache_value_writer_.has_buffered()) {
       cache_->Put(url_, &cache_value_, handler_);
     }
     delete this;
@@ -128,6 +130,7 @@ class CachePutFetch : public SharedAsyncFetch {
 
   bool cacheable_;
   HTTPValue cache_value_;
+  HTTPValueWriter cache_value_writer_;
   int64 start_time_ms_;  // only used if backend_first_byte_latency_ != NULL
 
   DISALLOW_COPY_AND_ASSIGN(CachePutFetch);

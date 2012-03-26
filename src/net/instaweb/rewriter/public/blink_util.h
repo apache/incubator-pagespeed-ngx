@@ -34,8 +34,10 @@ class HtmlElement;
 class Layout;
 class Panel;
 class PanelSet;
+class ProxyFetchPropertyCallbackCollector;
 class PublisherConfig;
 class RequestHeaders;
+class ResourceManager;
 class RewriteOptions;
 class UserAgentMatcher;
 
@@ -59,6 +61,12 @@ bool IsBlinkRequest(const GoogleUrl& url,
                     const RewriteOptions* options,
                     const char* user_agent,
                     const UserAgentMatcher& user_agent_matcher_);
+
+// Checks if blink critical line flow can be applied.
+bool ShouldApplyBlinkFlowCriticalLine(
+    const ResourceManager* manager,
+    const ProxyFetchPropertyCallbackCollector* property_callback,
+    const RewriteOptions* options);
 
 // Returns a pointer to the corresponding Layout, and NULL otherwise.
 const Layout* ExtractBlinkLayout(const GoogleUrl& url, RewriteOptions* options,

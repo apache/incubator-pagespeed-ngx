@@ -22,6 +22,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/http_value_writer.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -143,6 +144,8 @@ class RecordingFetch : public SharedAsyncFetch {
   virtual void HandleDone(bool success);
 
  private:
+  void FreeDriver();
+
   bool CanAjaxRewrite();
 
   MessageHandler* handler_;
@@ -151,6 +154,7 @@ class RecordingFetch : public SharedAsyncFetch {
   bool can_ajax_rewrite_;
 
   HTTPValue cache_value_;
+  HTTPValueWriter cache_value_writer_;
 
   DISALLOW_COPY_AND_ASSIGN(RecordingFetch);
 };

@@ -36,7 +36,7 @@ class MessageHandler;
 // the cache, which from which data may be evicted at any time.
 class HTTPValue : public Writer {
  public:
-  HTTPValue() { }
+  HTTPValue() : contents_size_(0) {}
 
   // Clears the value (both headers and content)
   void Clear();
@@ -85,6 +85,7 @@ class HTTPValue : public Writer {
   void Link(HTTPValue* src) {
     if (src != this) {
       storage_ = src->storage_;  // SharedString links via assignment.
+      contents_size_ = src->contents_size();
     }
   }
 
@@ -92,17 +93,23 @@ class HTTPValue : public Writer {
   SharedString* share() { return &storage_; }
 
   size_t size() const { return storage_->size(); }
+  int64 contents_size() { return contents_size_; }
 
  private:
+  friend class HTTPValueTest;
+
   char type_identifier() const { return (*storage_.get())[0]; }
   unsigned int SizeOfFirstChunk() const;
   void SetSizeOfFirstChunk(unsigned int size);
+  int64 ComputeContentsSize() const;
 
   // Disconnects this HTTPValue from other HTTPValues that may share the
   // underlying storage, allowing a new buffer.
   void CopyOnWrite();
 
   SharedString storage_;
+  // Member variable to keep the size of body in storage.
+  int64 contents_size_;
 
   DISALLOW_COPY_AND_ASSIGN(HTTPValue);
 };

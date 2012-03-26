@@ -52,6 +52,10 @@ class HTTPValueTest : public testing::Test {
     EXPECT_EQ(expected.ToString(), meta_data.ToString());
   }
 
+  int64 ComputeContentsSize(HTTPValue* value) {
+    return value->ComputeContentsSize();
+  }
+
   GoogleMessageHandler message_handler_;
 
  private:
@@ -72,6 +76,7 @@ TEST_F(HTTPValueTest, HeadersFirst) {
   StringPiece body;
   ASSERT_TRUE(value.ExtractContents(&body));
   EXPECT_EQ("body", body.as_string());
+  EXPECT_EQ(body.size(), ComputeContentsSize(&value));
   ASSERT_TRUE(value.ExtractHeaders(&check_headers, &message_handler_));
   CheckResponseHeaders(check_headers);
 }
@@ -85,6 +90,7 @@ TEST_F(HTTPValueTest, ContentsFirst) {
   StringPiece body;
   ASSERT_TRUE(value.ExtractContents(&body));
   EXPECT_EQ("body", body.as_string());
+  EXPECT_EQ(body.size(), ComputeContentsSize(&value));
   ASSERT_TRUE(value.ExtractHeaders(&check_headers, &message_handler_));
   CheckResponseHeaders(check_headers);
 }
@@ -98,6 +104,7 @@ TEST_F(HTTPValueTest, EmptyContentsFirst) {
   StringPiece body;
   ASSERT_TRUE(value.ExtractContents(&body));
   EXPECT_EQ("", body.as_string());
+  EXPECT_EQ(body.size(), ComputeContentsSize(&value));
   ASSERT_TRUE(value.ExtractHeaders(&check_headers, &message_handler_));
   CheckResponseHeaders(check_headers);
 }
@@ -140,6 +147,9 @@ TEST_F(HTTPValueTest, TestCopyOnWrite) {
   // But v2 and v3 will remain connected to one another
   EXPECT_EQ(v2_contents, v3_contents);
   EXPECT_EQ(v2_contents.data(), v3_contents.data());  // buffer sharing
+  EXPECT_EQ(v1_contents.size(), ComputeContentsSize(&v1));
+  EXPECT_EQ(v2_contents.size(), ComputeContentsSize(&v2));
+  EXPECT_EQ(v3_contents.size(), ComputeContentsSize(&v3));
 }
 
 TEST_F(HTTPValueTest, TestShare) {

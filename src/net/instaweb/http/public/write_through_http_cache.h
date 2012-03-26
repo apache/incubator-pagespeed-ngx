@@ -64,6 +64,9 @@ class WriteThroughHTTPCache : public HTTPCache {
   // Implements HTTPCache::set_remember_fetch_failed_ttl_seconds().
   virtual void set_remember_fetch_failed_ttl_seconds(int64 value);
 
+  // Implements HTTPCache::set_max_cacheable_response_content_length().
+  virtual void set_max_cacheable_response_content_length(int64 value);
+
   // Implements HTTPCache::RememberNotCacheable().
   virtual void RememberNotCacheable(const GoogleString& key,
                                     MessageHandler * handler);

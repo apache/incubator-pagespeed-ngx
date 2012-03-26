@@ -14,20 +14,24 @@
  * limitations under the License.
  */
 
-// Author: rahulbansal@google.com (Rahul Bansal)
+// Author: pulkitg@google.com (Pulkit Goyal)
 
 #ifndef NET_INSTAWEB_AUTOMATIC_PUBLIC_BLINK_FLOW_CRITICAL_LINE_H_
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_BLINK_FLOW_CRITICAL_LINE_H_
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
 class AsyncFetch;
-class RewriteOptions;
+class BlinkCriticalLineData;
+class BlinkCriticalLineDataFinder;
+class ProxyFetchPropertyCallbackCollector;
 class ProxyFetchFactory;
 class ResourceManager;
+class RewriteOptions;
 
 // This class manages the blink flow for looking up BlinkCriticalLineData in
 // cache, modifying the options for passthru and triggering asynchronous
@@ -38,7 +42,8 @@ class BlinkFlowCriticalLine {
                     AsyncFetch* base_fetch,
                     RewriteOptions* options,
                     ProxyFetchFactory* factory,
-                    ResourceManager* manager);
+                    ResourceManager* manager,
+                    ProxyFetchPropertyCallbackCollector* property_callback);
 
   virtual ~BlinkFlowCriticalLine();
 
@@ -47,7 +52,34 @@ class BlinkFlowCriticalLine {
                         AsyncFetch* base_fetch,
                         RewriteOptions* options,
                         ProxyFetchFactory* factory,
-                        ResourceManager* manager);
+                        ResourceManager* manager,
+                        ProxyFetchPropertyCallbackCollector* property_callback);
+
+  // Function called by the callback collector whenever property cache lookup
+  // is done. Based on the result, it will call either
+  // BlinkCriticalLineDataHit() or BlinkCriticalLineDataMiss().
+  void BlinkCriticalLineDataLookupDone(
+      ProxyFetchPropertyCallbackCollector* collector);
+
+  // Serves the critical html content to the client and triggers the proxy fetch
+  // for non cacheable content.
+  void BlinkCriticalLineDataHit();
+
+  void TriggerProxyFetch(bool critical_line_data_found);
+
+  // Modify the rewrite options before serving to client if
+  // BlinkCriticalLineData is not available in cache. Options being modified
+  // will be used in the background and not in the user-facing request.
+  void SetFilterOptions(RewriteOptions* options) const;
+
+  GoogleString url_;
+  AsyncFetch* base_fetch_;
+  RewriteOptions* options_;
+  ProxyFetchFactory* factory_;
+  ResourceManager* manager_;
+  ProxyFetchPropertyCallbackCollector* property_callback_;
+  scoped_ptr<BlinkCriticalLineData> blink_critical_line_data_;
+  BlinkCriticalLineDataFinder* finder_;
 
   DISALLOW_COPY_AND_ASSIGN(BlinkFlowCriticalLine);
 };

@@ -993,6 +993,125 @@ TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
   EXPECT_EQ(0, lru_cache()->num_misses());
 }
 
+TEST_F(ProxyInterfaceTest, CacheableSize) {
+  // Test to check that we are not caching responses which have content length >
+  // max_cacheable_response_content_length.
+  ResponseHeaders headers;
+  const char kContent[] = "A very compelling article";
+  mock_timer()->SetTimeMs(MockTimer::kApr_5_2010_ms);
+  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.SetDateAndCaching(MockTimer::kApr_5_2010_ms, 300 * Timer::kSecondMs);
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.html"), headers, kContent);
+
+  // Set the set_max_cacheable_response_content_length to 10 bytes.
+  http_cache()->set_max_cacheable_response_content_length(10);
+
+  // Fetch once.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.html", true, &text, &response_headers);
+
+  // One lookup for ajax metadata, one for the HTTP response and one for the
+  // property cache entry. None are found.
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+
+  // Fetch again. It has the same caching headers.
+  ClearStats();
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.html", true, &text, &response_headers);
+
+  // None are found as the size is bigger than
+  // max_cacheable_response_content_length.
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+
+  // Set the set_max_cacheable_response_content_length to 1024 bytes.
+  http_cache()->set_max_cacheable_response_content_length(1024);
+  ClearStats();
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.html", true, &text, &response_headers);
+  // None are found.
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_inserts());
+
+  // Fetch again.
+  ClearStats();
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.html", true, &text, &response_headers);
+
+  // One hit for the HTTP response as content is smaller than
+  // max_cacheable_response_content_length.
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+}
+
+TEST_F(ProxyInterfaceTest, CacheableSizeAjax) {
+  // Test to check that we are not caching responses which have content length >
+  // max_cacheable_response_content_length in Ajax flow.
+  ResponseHeaders headers;
+  mock_timer()->SetTimeMs(MockTimer::kApr_5_2010_ms);
+  headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
+  headers.SetDate(MockTimer::kApr_5_2010_ms);
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.css"), headers, kCssContent);
+
+  http_cache()->set_max_cacheable_response_content_length(0);
+  // The first response served by the fetcher and is not rewritten. An ajax
+  // rewrite should not be triggered as the content length is greater than
+  // max_cacheable_response_content_length.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("text.css", true, &text, &response_headers);
+
+  EXPECT_EQ(kCssContent, text);
+  // One lookup for ajax metadata, one for the HTTP response. None are found.
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+
+  ClearStats();
+  // Fetch again. Optimized version is not served.
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.css", true, &text, &response_headers);
+
+  EXPECT_EQ(kCssContent, text);
+  // None are found.
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+}
+
+TEST_F(ProxyInterfaceTest, CacheableSizeResource) {
+  // Test to check that we are not caching responses which have content length >
+  // max_cacheable_response_content_length in resource flow.
+  GoogleString text;
+  ResponseHeaders headers;
+
+  // Fetching of a rewritten resource we did not just create
+  // after an HTML rewrite.
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
+                                kHtmlCacheTimeSec * 2);
+  // Set the set_max_cacheable_response_content_length to 0 bytes.
+  http_cache()->set_max_cacheable_response_content_length(0);
+  // Fetch fails as original is not accessible.
+  FetchFromProxy(Encode("", "cf", "0", "a.css", "css"), false, &text, &headers);
+}
+
 TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";

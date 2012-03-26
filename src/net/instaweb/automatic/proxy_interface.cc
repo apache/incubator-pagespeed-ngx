@@ -456,12 +456,19 @@ void ProxyInterface::ProxyRequestCallback(
     bool is_blink_request = BlinkUtil::IsBlinkRequest(
         *request_url, async_fetch->request_headers(),
         options, user_agent, user_agent_matcher_);
-    if (is_blink_request && options->enable_blink_critical_line()) {
+    bool apply_blink_critical_line =
+        BlinkUtil::ShouldApplyBlinkFlowCriticalLine(resource_manager_,
+                                                    property_callback,
+                                                    options);
+    if (is_blink_request && apply_blink_critical_line) {
       blink_critical_line_requests_->IncBy(1);
       BlinkFlowCriticalLine::Start(request_url->Spec().as_string(),
                                    async_fetch, options,
                                    proxy_fetch_factory_.get(),
-                                   resource_manager_);
+                                   resource_manager_, property_callback);
+      // BlinkFlowCriticalLine takes ownership of property_callback.
+      // NULL it here so that we do not detach it below.
+      property_callback = NULL;
     } else if (is_blink_request && layout != NULL) {
       // TODO(rahulbansal): Remove this LOG once we expect to have
       // Blink requests.

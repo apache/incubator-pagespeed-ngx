@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/panel_config.pb.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/re2.h"
@@ -77,6 +78,18 @@ bool IsBlinkRequest(const GoogleUrl& url,
     return true;
   }
   return false;
+}
+
+bool ShouldApplyBlinkFlowCriticalLine(
+    const ResourceManager* manager,
+    const ProxyFetchPropertyCallbackCollector* property_callback,
+    const RewriteOptions* options) {
+  return options != NULL &&
+      // Blink flow critical line is enabled in rewrite options.
+      options->enable_blink_critical_line() &&
+      manager->blink_critical_line_data_finder() != NULL &&
+      // Property cache callback is not NULL.
+      property_callback != NULL;
 }
 
 const Layout* ExtractBlinkLayout(const GoogleUrl& url,

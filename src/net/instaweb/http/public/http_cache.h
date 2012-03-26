@@ -189,6 +189,17 @@ class HTTPCache {
   virtual void RememberFetchFailed(const GoogleString& key,
                                    MessageHandler * handler);
 
+  // Indicates if the response is within the cacheable size limit. Clients of
+  // HTTPCache must check if they will be eventually able to cache their entries
+  // before buffering them in memory. If the content length header is not found
+  // then consider it as cacheable. This could be a chunked response.
+  bool IsCacheableContentLength(ResponseHeaders* headers) const;
+  // Indicates if the response body is within the cacheable size limit. If the
+  // response headers do not have content length header, then the clients of
+  // HTTPCache must check if the received response body is of cacheable size
+  // before buffering them in memory.
+  bool IsCacheableBodySize(int64 body_size) const;
+
   // Initialize statistics variables for the cache
   static void Initialize(Statistics* statistics);
 
@@ -226,6 +237,12 @@ class HTTPCache {
     }
   }
 
+  int max_cacheable_response_content_length() {
+    return max_cacheable_response_content_length_;
+  }
+
+  virtual void set_max_cacheable_response_content_length(int64 value);
+
  protected:
   virtual void PutInternal(const GoogleString& key, int64 start_us,
                            HTTPValue* value);
@@ -259,6 +276,7 @@ class HTTPCache {
   Variable* cache_deletes_;
   int64 remember_not_cacheable_ttl_seconds_;
   int64 remember_fetch_failed_ttl_seconds_;
+  int64 max_cacheable_response_content_length_;
   AtomicBool ignore_failure_puts_;
 
   DISALLOW_COPY_AND_ASSIGN(HTTPCache);

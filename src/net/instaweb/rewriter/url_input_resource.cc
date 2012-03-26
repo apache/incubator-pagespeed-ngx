@@ -22,8 +22,9 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/http_value_writer.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -242,13 +243,13 @@ class UrlResourceFetchCallback : public AsyncFetch {
     if (fallback_fetch_ != NULL && fallback_fetch_->serving_fallback()) {
       success = true;
     } else {
-      cached = AddToCache(success);
+      cached = AddToCache(success && http_value_writer()->has_buffered());
       // Unless the client code explicitly opted into dealing with potentially
       // uncacheable content (by passing in kLoadEvenIfNotCacheable to
       // LoadAndCallback) we turn it into a fetch failure so we do not
       // end up inadvertently rewriting something that's private or highly
       // volatile.
-      if (!cached && !no_cache_ok_) {
+      if ((!cached && !no_cache_ok_) || !http_value_writer()->has_buffered()) {
         success = false;
       }
     }
@@ -276,10 +277,11 @@ class UrlResourceFetchCallback : public AsyncFetch {
     if (fallback_fetch_ != NULL && fallback_fetch_->serving_fallback()) {
       response_headers()->ComputeCaching();
     }
+    http_value_writer()->CheckCanCacheElseClear(response_headers());
   }
   virtual bool HandleWrite(const StringPiece& content,
                            MessageHandler* handler) {
-    return http_value()->Write(content, handler);
+    return http_value_writer()->Write(content, handler);
   }
   virtual bool HandleFlush(MessageHandler* handler) {
     return true;
@@ -293,6 +295,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
   virtual HTTPValue* http_value() = 0;
   virtual GoogleString url() const = 0;
   virtual HTTPCache* http_cache() = 0;
+  virtual HTTPValueWriter* http_value_writer() = 0;
   // If someone is already fetching this resource, should we yield to them and
   // try again later?  If so, return true.  Otherwise, if we must fetch the
   // resource regardless, return false.
@@ -353,7 +356,8 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
         url_(url),
         http_cache_(http_cache),
         rewrite_driver_(rewrite_driver),
-        callback_(callback) {
+        callback_(callback),
+        http_value_writer_(&http_value_, http_cache_) {
     response_headers()->set_implicit_cache_ttl_ms(
         rewrite_options->implicit_cache_ttl_ms());
   }
@@ -371,6 +375,7 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
   virtual HTTPValue* http_value() { return &http_value_; }
   virtual GoogleString url() const { return url_; }
   virtual HTTPCache* http_cache() { return http_cache_; }
+  virtual HTTPValueWriter* http_value_writer() { return &http_value_writer_; }
   virtual bool should_yield() { return true; }
   virtual bool IsBackgroundFetch() const { return true; }
 
@@ -380,6 +385,7 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
   RewriteDriver* rewrite_driver_;
   Resource::FreshenCallback* callback_;
   HTTPValue http_value_;
+  HTTPValueWriter http_value_writer_;
 
   DISALLOW_COPY_AND_ASSIGN(FreshenFetchCallback);
 };
@@ -495,7 +501,8 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
                                  resource->rewrite_options(),
                                  &resource->fallback_value_),
         resource_(resource),
-        callback_(callback) {
+        callback_(callback),
+        http_value_writer_(http_value(), http_cache()) {
     set_response_headers(&resource_->response_headers_);
     response_headers()->set_implicit_cache_ttl_ms(
         resource->rewrite_options()->implicit_cache_ttl_ms());
@@ -530,11 +537,13 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
   virtual HTTPCache* http_cache() {
     return resource_->resource_manager()->http_cache();
   }
+  virtual HTTPValueWriter* http_value_writer() { return &http_value_writer_; }
   virtual bool should_yield() { return false; }
 
  private:
   UrlInputResource* resource_;
   Resource::AsyncCallback* callback_;
+  HTTPValueWriter http_value_writer_;
 
   DISALLOW_COPY_AND_ASSIGN(UrlReadAsyncFetchCallback);
 };

@@ -231,6 +231,13 @@ void WriteThroughHTTPCache::set_remember_fetch_failed_ttl_seconds(
   cache2_->set_remember_fetch_failed_ttl_seconds(value);
 }
 
+void WriteThroughHTTPCache::set_max_cacheable_response_content_length(
+    int64 value) {
+  HTTPCache::set_max_cacheable_response_content_length(value);
+  cache1_->set_max_cacheable_response_content_length(value);
+  cache2_->set_max_cacheable_response_content_length(value);
+}
+
 void WriteThroughHTTPCache::RememberNotCacheable(
     const GoogleString& key,
     MessageHandler* handler) {

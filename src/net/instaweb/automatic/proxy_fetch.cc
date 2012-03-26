@@ -229,14 +229,14 @@ void ProxyFetchPropertyCallbackCollector::Done(
     }
   }
   if (call_post) {
+    ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
+    sync->Signal(ProxyFetch::kCollectorReady);
+    sync->Wait(ProxyFetch::kCollectorDone);
     if (post_lookup_task_vector.get() != NULL) {
       for (int i = 0, n = post_lookup_task_vector->size(); i < n; ++i) {
         (*post_lookup_task_vector.get())[i]->CallRun();
       }
     }
-    ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
-    sync->Signal(ProxyFetch::kCollectorReady);
-    sync->Wait(ProxyFetch::kCollectorDone);
     if (fetch != NULL) {
       fetch->PropertyCacheComplete(this, success);  // deletes this.
     } else if (do_delete) {

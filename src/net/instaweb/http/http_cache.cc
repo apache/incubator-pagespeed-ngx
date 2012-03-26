@@ -46,6 +46,10 @@ namespace {
 const int kRememberNotCacheableTtl = 300;
 const int kRememberFetchFailedTtl = 300;
 
+// Maximum size of response content in bytes. -1 indicates that there is no size
+// limit.
+const int64 kCacheSizeUnlimited = -1;
+
 }  // namespace
 
 const char HTTPCache::kCacheTimeUs[] = "cache_time_us";
@@ -71,6 +75,7 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
       cache_deletes_(stats->GetVariable(kCacheDeletes)) {
   remember_not_cacheable_ttl_seconds_ = kRememberNotCacheableTtl;
   remember_fetch_failed_ttl_seconds_ = kRememberFetchFailedTtl;
+  max_cacheable_response_content_length_ = kCacheSizeUnlimited;
 }
 
 HTTPCache::~HTTPCache() {}
@@ -251,6 +256,13 @@ void HTTPCache::RememberFetchFailed(const GoogleString& key,
       remember_fetch_failed_ttl_seconds_);
 }
 
+void HTTPCache::set_max_cacheable_response_content_length(int64 value) {
+  DCHECK(value >= kCacheSizeUnlimited);
+  if (value >= kCacheSizeUnlimited) {
+    max_cacheable_response_content_length_ = value;
+  }
+}
+
 void HTTPCache::RememberFetchFailedorNotCacheableHelper(const GoogleString& key,
     MessageHandler* handler, HttpStatus::Code code, int64 ttl_sec) {
   ResponseHeaders headers;
@@ -326,7 +338,8 @@ void HTTPCache::Put(const GoogleString& key, HTTPValue* value,
   bool success = value->ExtractHeaders(&headers, handler);
   DCHECK(success);
   if (!force_caching_ &&
-      !(headers.IsCacheable() && headers.IsProxyCacheable())) {
+      !(headers.IsCacheable() && headers.IsProxyCacheable() &&
+        IsCacheableBodySize(value->contents_size()))) {
     LOG(DFATAL) << "trying to Put uncacheable data for key " << key;
     return;
   }
@@ -347,7 +360,9 @@ void HTTPCache::Put(const GoogleString& key, ResponseHeaders* headers,
                     const StringPiece& content, MessageHandler* handler) {
   int64 start_us = timer_->NowUs();
   int64 now_ms = start_us / 1000;
-  if (!IsCurrentlyValid(*headers, now_ms)) {
+  if ((!IsCurrentlyValid(*headers, now_ms) ||
+       !IsCacheableBodySize(content.size()))
+      && !force_caching_) {
     return;
   }
   // Apply header changes.
@@ -359,6 +374,17 @@ void HTTPCache::Put(const GoogleString& key, ResponseHeaders* headers,
   if (value.get() != NULL) {
     PutInternal(key, start_us, value.get());
   }
+}
+
+bool HTTPCache::IsCacheableContentLength(ResponseHeaders* headers) const {
+  int64 content_length;
+  bool content_length_found = headers->FindContentLength(&content_length);
+  return (!content_length_found || IsCacheableBodySize(content_length));
+}
+
+bool HTTPCache::IsCacheableBodySize(int64 body_size) const {
+  return (max_cacheable_response_content_length_ == -1 ||
+          body_size <= max_cacheable_response_content_length_);
 }
 
 void HTTPCache::Delete(const GoogleString& key) {
