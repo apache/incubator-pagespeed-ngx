@@ -416,7 +416,7 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
       FreshenFetchCallback* cb = new FreshenFetchCallback(
           url_, manager_->http_cache(), manager_, driver_, options_,
           fallback_http_value(), callback_);
-      cb->Fetch(manager_->url_async_fetcher(), manager_->message_handler());
+      cb->Fetch(driver_->async_fetcher(), manager_->message_handler());
     } else {
       if (callback_ != NULL) {
         bool success = (find_result == HTTPCache::kFound) &&
@@ -555,6 +555,8 @@ void UrlInputResource::LoadAndCallback(NotCacheablePolicy no_cache_policy,
       "not be possible to determine when it's safe to delete the resource.";
   CHECK(this == callback->resource().get())
       << "The callback must keep a reference to the resource";
+  CHECK(rewrite_driver_ != NULL)
+      << "Must provide a RewriteDriver for resources that will get fetched.";
   if (loaded()) {
     callback->Done(true);
   } else {
@@ -563,7 +565,7 @@ void UrlInputResource::LoadAndCallback(NotCacheablePolicy no_cache_policy,
     if (no_cache_policy == Resource::kLoadEvenIfNotCacheable) {
       cb->set_no_cache_ok(true);
     }
-    cb->Fetch(resource_manager_->url_async_fetcher(), message_handler);
+    cb->Fetch(rewrite_driver_->async_fetcher(), message_handler);
   }
 }
 

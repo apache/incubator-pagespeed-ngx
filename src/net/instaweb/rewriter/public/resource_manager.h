@@ -168,7 +168,12 @@ class ResourceManager {
   }
   Scheduler* scheduler() const { return scheduler_; }
   void set_scheduler(Scheduler* s) { scheduler_ = s; }
-  UrlAsyncFetcher* url_async_fetcher() { return url_async_fetcher_; }
+  bool has_url_async_fetcher() { return url_async_fetcher_ != NULL; }
+
+  // Note: for rewriting user content, you want to use RewriteDriver's
+  // async_fetcher() instead, as it may apply session-specific optimizations.
+  UrlAsyncFetcher* DefaultSystemFetcher() { return url_async_fetcher_; }
+
   Timer* timer() const { return http_cache_->timer(); }
   HTTPCache* http_cache() const { return http_cache_; }
   PropertyCache* page_property_cache() const { return page_property_cache_; }

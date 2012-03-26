@@ -33,8 +33,6 @@
 
 namespace net_instaweb {
 
-class UrlAsyncFetcher;
-
 void ResourceFetch::Start(ResourceManager* manager,
                           const GoogleUrl& url,
                           AsyncFetch* async_fetch,
@@ -45,7 +43,7 @@ void ResourceFetch::Start(ResourceManager* manager,
       : manager->NewCustomRewriteDriver(custom_options);
   ResourceFetch* resource_fetch = new ResourceFetch(
       url, async_fetch, manager->message_handler(), driver,
-      manager->url_async_fetcher(), manager->timer(), version);
+      manager->timer(), version);
   // TODO(sligocki): This will currently fail us on all non-pagespeed
   // resource requests. We should move the check somewhere else.
   driver->FetchResource(url.Spec().as_string(), resource_fetch);
@@ -55,11 +53,9 @@ ResourceFetch::ResourceFetch(const GoogleUrl& url,
                              AsyncFetch* async_fetch,
                              MessageHandler* handler,
                              RewriteDriver* driver,
-                             UrlAsyncFetcher* fetcher,
                              Timer* timer,
                              const GoogleString& version)
     : SharedAsyncFetch(async_fetch),
-      fetcher_(fetcher),
       message_handler_(handler),
       driver_(driver),
       timer_(timer),

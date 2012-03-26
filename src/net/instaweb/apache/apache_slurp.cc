@@ -312,7 +312,7 @@ void SlurpUrl(ApacheResourceManager* manager, request_rec* r) {
   GoogleString stripped_url = RemoveModPageSpeedQueryParams(
       uri, r->parsed_uri.query);
 
-  UrlAsyncFetcher* fetcher = manager->url_async_fetcher();
+  UrlAsyncFetcher* fetcher = manager->DefaultSystemFetcher();
   GoogleString contents;
   MessageHandler* handler = manager->message_handler();
   StrippingFetch fetch(manager->config()->domain_lawyer(),

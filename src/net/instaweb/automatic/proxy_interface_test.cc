@@ -388,7 +388,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     ProxyInterface::Initialize(statistics());
     // The original url_async_fetcher() is still owned by RewriteDriverFactory.
     background_fetch_fetcher_.reset(new BackgroundFetchCheckingUrlAsyncFetcher(
-        resource_manager()->url_async_fetcher()));
+        factory()->ComputeUrlAsyncFetcher()));
     resource_manager()->set_url_async_fetcher(background_fetch_fetcher_.get());
     proxy_interface_.reset(
         new ProxyInterface("localhost", 80, resource_manager(), statistics()));

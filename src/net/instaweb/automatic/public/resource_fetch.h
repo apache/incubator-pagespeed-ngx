@@ -34,7 +34,6 @@ class MessageHandler;
 class ResourceManager;
 class RewriteDriver;
 class RewriteOptions;
-class UrlAsyncFetcher;
 class Timer;
 
 // Manages a single fetch of a pagespeed rewritten resource.
@@ -59,13 +58,11 @@ class ResourceFetch : public SharedAsyncFetch {
                          AsyncFetch* async_fetch,
                          MessageHandler* handler,
                          RewriteDriver* driver,
-                         UrlAsyncFetcher* fetcher,
                          Timer* timer,
                          const GoogleString& version);
   virtual ~ResourceFetch();
 
   GoogleUrl resource_url_;
-  UrlAsyncFetcher* fetcher_;
   MessageHandler* message_handler_;
   RewriteDriver* driver_;
   Timer* timer_;

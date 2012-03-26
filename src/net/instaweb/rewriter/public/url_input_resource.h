@@ -56,8 +56,8 @@ class UrlInputResource : public Resource {
 
  private:
   GoogleString url_;
-  // This may be NULL. However, it should always be set if we freshen the
-  // resource.
+  // This may be NULL. However, it should always be set if we fetch or freshen
+  // the resource.
   RewriteDriver* rewrite_driver_;
   const RewriteOptions* rewrite_options_;
   bool respect_vary_;
