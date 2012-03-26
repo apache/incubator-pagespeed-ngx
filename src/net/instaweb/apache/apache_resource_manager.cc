@@ -83,7 +83,7 @@ void ApacheResourceManager::ChildInit() {
     set_metadata_cache(cache->cache());
     set_lock_manager(cache->lock_manager());
     UrlPollableAsyncFetcher* fetcher = apache_factory_->GetFetcher(config());
-    set_url_async_fetcher(fetcher);
+    set_default_system_fetcher(fetcher);
     if (!config()->slurping_enabled_read_only()) {
       subresource_fetcher_ = fetcher;
     }

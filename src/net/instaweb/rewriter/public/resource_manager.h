@@ -168,11 +168,11 @@ class ResourceManager {
   }
   Scheduler* scheduler() const { return scheduler_; }
   void set_scheduler(Scheduler* s) { scheduler_ = s; }
-  bool has_url_async_fetcher() { return url_async_fetcher_ != NULL; }
+  bool has_default_system_fetcher() { return default_system_fetcher_ != NULL; }
 
   // Note: for rewriting user content, you want to use RewriteDriver's
   // async_fetcher() instead, as it may apply session-specific optimizations.
-  UrlAsyncFetcher* DefaultSystemFetcher() { return url_async_fetcher_; }
+  UrlAsyncFetcher* DefaultSystemFetcher() { return default_system_fetcher_; }
 
   Timer* timer() const { return http_cache_->timer(); }
   HTTPCache* http_cache() const { return http_cache_; }
@@ -241,8 +241,8 @@ class ResourceManager {
 
   // Setters should probably only be used in testing.
   void set_hasher(Hasher* hasher) { hasher_ = hasher; }
-  void set_url_async_fetcher(UrlAsyncFetcher* fetcher) {
-    url_async_fetcher_ = fetcher;
+  void set_default_system_fetcher(UrlAsyncFetcher* fetcher) {
+    default_system_fetcher_ = fetcher;
   }
 
   // Handles an incoming beacon request by incrementing the appropriate
@@ -406,7 +406,7 @@ class ResourceManager {
   UrlNamer* url_namer_;
   UserAgentMatcher* user_agent_matcher_;
   Scheduler* scheduler_;
-  UrlAsyncFetcher* url_async_fetcher_;
+  UrlAsyncFetcher* default_system_fetcher_;
   Hasher* hasher_;
   CriticalImagesFinder* critical_images_finder_;
   BlinkCriticalLineDataFinder* blink_critical_line_data_finder_;

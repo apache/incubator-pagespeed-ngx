@@ -139,7 +139,7 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       url_namer_(NULL),
       user_agent_matcher_(NULL),
       scheduler_(factory->scheduler()),
-      url_async_fetcher_(NULL),
+      default_system_fetcher_(NULL),
       hasher_(NULL),
       critical_images_finder_(factory->critical_images_finder()),
       blink_critical_line_data_finder_(
@@ -605,7 +605,7 @@ RewriteDriver* ResourceManager::NewCustomRewriteDriver(
 
 RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver() {
   RewriteDriver* rewrite_driver = new RewriteDriver(
-      message_handler_, file_system_, url_async_fetcher_);
+      message_handler_, file_system_, default_system_fetcher_);
   rewrite_driver->SetResourceManager(this);
   return rewrite_driver;
 }

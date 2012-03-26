@@ -487,8 +487,8 @@ void RewriteDriverFactory::InitResourceManager(
   if (resource_manager->lock_manager() == NULL) {
     resource_manager->set_lock_manager(lock_manager());
   }
-  if (!resource_manager->has_url_async_fetcher()) {
-    resource_manager->set_url_async_fetcher(ComputeUrlAsyncFetcher());
+  if (!resource_manager->has_default_system_fetcher()) {
+    resource_manager->set_default_system_fetcher(ComputeUrlAsyncFetcher());
   }
   resource_manager->set_url_namer(url_namer());
   resource_manager->set_user_agent_matcher(user_agent_matcher());
