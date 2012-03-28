@@ -339,6 +339,9 @@ class RewriteDriverFactory {
   // Return memo-ized backend cache interface.
   CacheInterface* cache_backend();
 
+  // Return the CacheInterface to be used by the property cache.
+  virtual CacheInterface* property_cache_backend() { return cache_backend(); }
+
   // Creates a StaticJavascriptManager instance. Default implementation creates
   // an instance that disables serving of filter javascript via gstatic
   // (gstatic.com is the domain google uses for serving static content).

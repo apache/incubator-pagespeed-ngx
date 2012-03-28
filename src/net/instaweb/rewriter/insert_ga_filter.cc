@@ -59,8 +59,10 @@ extern const char kGASnippet[] =
     "s.parentNode.insertBefore(ga, s);"
     "})();";
 
+// Set the sample rate to 100%.
+// TODO(nforman): Allow this to be configurable through RewriteOptions.
 extern const char kGASpeedTracking[] =
-    "_gaq.push(['_setSiteSpeedSampleRate', 10]);";
+    "_gaq.push(['_setSiteSpeedSampleRate', 100]);";
 
 InsertGAFilter::InsertGAFilter(RewriteDriver* rewrite_driver)
     : CommonFilter(rewrite_driver),
@@ -157,8 +159,9 @@ void InsertGAFilter::EndElementImpl(HtmlElement* element) {
           int furious_state = driver_->options()->furious_id();
           if (furious_state != furious::kFuriousNotSet &&
               furious_state != furious::kFuriousNoExperiment) {
+            // This defaults to being a page-scoped variable.
             furious = StringPrintf(
-                "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s', 2])",
+                "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s'])",
                 driver_->options()->ToExperimentString().c_str());
           }
         }

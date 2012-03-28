@@ -69,15 +69,16 @@ class StripNonCacheableFilterTest : public ResourceManagerTestBase {
 };
 
 TEST_F(StripNonCacheableFilterTest, StripNonCacheable) {
-  GoogleString json_expected_output =
+  GoogleString json_expected_output = StrCat(
       "<html><body><noscript>"
       "<meta HTTP-EQUIV=\"refresh\" content=\"0;url=http://www.test.com/?ModPagespeed=off\"><style><!--table,div,span,font,p{display:none} --></style><div style=\"display:block\">Please click <a href=\"http://www.test.com/?ModPagespeed=off\">here</a> if you are not redirected within a few seconds.</div></noscript>\n"
       "<div id=\"header\"> This is the header </div>"
       "<div id=\"container\" class>"
       "<!--GooglePanel begin panel-id-1.0--><!--GooglePanel end panel-id-1.0-->"
       "<!--GooglePanel begin panel-id-0.0--><!--GooglePanel end panel-id-0.0-->"
-      "<!--GooglePanel begin panel-id-0.1--><!--GooglePanel end panel-id-0.1-->"
-      "</body></html>";
+      "<!--GooglePanel begin panel-id-0.1-->"
+      "<!--GooglePanel end panel-id-0.1-->", BlinkUtil::kLayoutMarker,
+      "</body></html>");
   ValidateExpectedUrl(kRequestUrl, kHtmlInput, json_expected_output);
 }
 

@@ -57,6 +57,9 @@ class ScopedMutex {
 
   DISALLOW_COPY_AND_ASSIGN(ScopedMutex);
 };
+// Catch bug where variable name is omitted with ScopedMutex, e.g.
+// ScopedMutex(&mu);
+#define ScopedMutex(x) COMPILE_ASSERT(0, mutex_lock_decl_missing_var_name)
 
 }  // namespace net_instaweb
 

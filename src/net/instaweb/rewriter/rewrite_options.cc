@@ -437,6 +437,8 @@ RewriteOptions::RewriteOptions()
   add_option(false, &respect_vary_, "rv", kRespectVary);
   add_option(false, &flush_html_, "fh", kFlushHtml);
   add_option(true, &serve_stale_if_fetch_error_, "ss", kServeStaleIfFetchError);
+  add_option(false, &disable_override_doc_open_, "dodo",
+             kDisableOverrideDocOpen);
   add_option(false, &enable_blink_critical_line_, "ebcl",
              kEnableBlinkCriticalLine);
   add_option(false, &serve_blink_non_critical_, "snc", kServeBlinkNonCritical);
@@ -1017,7 +1019,20 @@ GoogleString RewriteOptions::ToExperimentString() const {
       GetFuriousSpec(furious_id_) != NULL) {
     output = StringPrintf("Experiment: %d; ", furious_id_);
   }
-  output += ToString();
+  for (int f = kFirstFilter; f != kEndOfFilters; ++f) {
+    Filter filter = static_cast<Filter>(f);
+    if (Enabled(filter)) {
+      output += FilterId(filter);
+      output += ",";
+    }
+  }
+  output += "css:";
+  output += Integer64ToString(css_inline_max_bytes());
+  output += ",im:";
+  output += Integer64ToString(ImageInlineMaxBytes());
+  output += ",js:";
+  output += Integer64ToString(js_inline_max_bytes());
+  output += ";";
   return output;
 }
 

@@ -479,7 +479,7 @@ void ImageRewriteFilter::ResizeLowQualityImage(
           input_resource->url().c_str(),
           image_dim.width(), image_dim.height(),
           static_cast<int>(old_contents.size()),
-          resized_dim.width(), resized_dim.width(),
+          resized_dim.width(), resized_dim.height(),
           static_cast<int>(contents.size()));
     }
   }

@@ -110,6 +110,7 @@ class RewriteOptions {
     kCssInlineMaxBytes,
     kCssOutlineMinBytes,
     kDefaultCacheHtml,
+    kDisableOverrideDocOpen,
     kEnableBlinkCriticalLine,
     kEnabled,
     kFlushHtml,
@@ -738,6 +739,12 @@ class RewriteOptions {
     set_option(x, &domain_rewrite_all_tags_);
   }
 
+  void set_disable_override_doc_open(bool x) {
+    set_option(x, &disable_override_doc_open_);
+  }
+  bool disable_override_doc_open() const {
+    return disable_override_doc_open_.value();
+  }
   // Functions for checking against and adding to prioritize_visible_content
   // cacheable family option (prioritize_visible_content_cacheable_families_
   // field).  Checks if str is an URL for which prioritize_visible_content
@@ -1265,6 +1272,9 @@ class RewriteOptions {
   // Increase the percentage of hits to 10% (current max) that have
   // site speed tracking in Google Analytics.
   Option<bool> increase_speed_tracking_;
+
+  // Disables the override of document open in defer js.
+  Option<bool> disable_override_doc_open_;
 
   // Number of first N images for which low res image is generated. Negative
   // values will bypass image index check.

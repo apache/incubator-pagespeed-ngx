@@ -402,6 +402,14 @@ void BlinkFlow::SendCriticalJson(GoogleString* critical_json_str) {
     WriteString("<script>pagespeed.panelLoader.setRequestFromInternalIp();"
                 "</script>");
   }
+  // TODO(rahulbansal): Remove this change once we've sorted out deployment
+  // issues.
+  if (options_->disable_override_doc_open()) {
+    WriteString(
+        "<script>pagespeed.panelLoader.disableOverrideDocOpen();"
+        "</script>");
+  }
+
   WriteString(GetAddTimingScriptString(kTimeToSplitCritical,
                                        time_to_split_critical_ms_));
   WriteString("<script>pagespeed.panelLoader.loadCriticalData(");

@@ -146,6 +146,9 @@ DEFINE_int64(implicit_cache_ttl_ms,
              "that are likely cacheable (e.g. images, js, css, not html) and "
              "have no explicit cache ttl or expiration date.");
 
+DEFINE_bool(disable_override_doc_open, false,
+            "Disables overriding document.open in defer js");
+
 namespace net_instaweb {
 
 namespace {
@@ -269,6 +272,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("implicit_cache_ttl_ms")) {
     options->set_implicit_cache_ttl_ms(FLAGS_implicit_cache_ttl_ms);
+  }
+  if (WasExplicitlySet("disable_override_doc_open")) {
+    options->set_disable_override_doc_open(FLAGS_disable_override_doc_open);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

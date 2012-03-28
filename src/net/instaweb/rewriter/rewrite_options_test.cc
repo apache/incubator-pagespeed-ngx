@@ -589,24 +589,208 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
   TestSetOptionFromName(true);
 }
 
-// TODO(bharathbhushan): Figure out a better way to test all enum lookups.
+// All the option names are explicitly enumerated here. Modifications are
+// handled by the explicit tests. Additions/deletions are handled by checking
+// kEndOfOptions explicitly (and assuming we add/delete an option value when we
+// add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(StringPiece("CssInlineMaxBytes"),
+  EXPECT_EQ(70, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kCssInlineMaxBytes));
-  EXPECT_EQ(StringPiece("JsInlineMaxBytes"),
+                RewriteOptions::kPrioritizeVisibleContentCacheTime));
+  EXPECT_EQ(StringPiece("AboveTheFoldNonCacheableElements"),
             RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kJsInlineMaxBytes));
-  EXPECT_EQ(StringPiece("ImageInlineMaxBytes"),
+                RewriteOptions::kPrioritizeVisibleContentNonCacheableElements));
+  EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kImageInlineMaxBytes));
+                RewriteOptions::kAjaxRewritingEnabled));
+  EXPECT_EQ(StringPiece("AlwaysRewriteCss"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kAlwaysRewriteCss));
+  EXPECT_EQ(StringPiece("AnalyticsID"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kAnalyticsID));
+  EXPECT_EQ(StringPiece("BeaconUrl"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kBeaconUrl));
+  EXPECT_EQ(StringPiece("BotdetectEnabled"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kBotdetectEnabled));
+  EXPECT_EQ(StringPiece("CombineAcrossPaths"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kCombineAcrossPaths));
+  EXPECT_EQ(StringPiece("CriticalImagesCacheExpirationTimeMs"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kCriticalImagesCacheExpirationTimeMs));
   EXPECT_EQ(StringPiece("CssImageInlineMaxBytes"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kCssImageInlineMaxBytes));
+  EXPECT_EQ(StringPiece("CssInlineMaxBytes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kCssInlineMaxBytes));
+  EXPECT_EQ(StringPiece("CssOutlineMinBytes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kCssOutlineMinBytes));
+  EXPECT_EQ(StringPiece("DefaultCacheHtml"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kDefaultCacheHtml));
+  EXPECT_EQ(StringPiece("EnableBlinkCriticalLine"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kEnableBlinkCriticalLine));
+  EXPECT_EQ(StringPiece("FlushHtml"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kFlushHtml));
+  EXPECT_EQ(StringPiece("IdleFlushTimeMs"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kIdleFlushTimeMs));
+  EXPECT_EQ(StringPiece("ImageInlineMaxBytes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kImageInlineMaxBytes));
+  EXPECT_EQ(StringPiece("ImageJpegNumProgressiveScans"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kImageJpegNumProgressiveScans));
+  EXPECT_EQ(StringPiece("ImageLimitOptimizedPercent"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kImageLimitOptimizedPercent));
+  EXPECT_EQ(StringPiece("ImageLimitResizeAreaPercent"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kImageLimitResizeAreaPercent));
+  EXPECT_EQ(StringPiece("ImageMaxRewritesAtOnce"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kImageMaxRewritesAtOnce));
+  EXPECT_EQ(StringPiece("ImageRetainColorProfile"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kImageRetainColorProfile));
+  EXPECT_EQ(StringPiece("ImageRetainColorSampling"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kImageRetainColorSampling));
+  EXPECT_EQ(StringPiece("ImageRetainExifData"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kImageRetainExifData));
+  EXPECT_EQ(StringPiece("ImageWebpRecompressQuality"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kImageWebpRecompressQuality));
+  EXPECT_EQ(StringPiece("ImplicitCacheTtlMs"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kImplicitCacheTtlMs));
+  EXPECT_EQ(StringPiece("JpegRecompressionQuality"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kImageJpegRecompressionQuality));
+  EXPECT_EQ(StringPiece("JsInlineMaxBytes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kJsInlineMaxBytes));
+  EXPECT_EQ(StringPiece("JsOutlineMinBytes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kJsOutlineMinBytes));
+  EXPECT_EQ(StringPiece("LazyloadImagesAfterOnload"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kLazyloadImagesAfterOnload));
+  EXPECT_EQ(StringPiece("LogRewriteTiming"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kLogRewriteTiming));
+  EXPECT_EQ(StringPiece("LowercaseHtmlNames"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kLowercaseHtmlNames));
+  EXPECT_EQ(StringPiece("MaxHtmlCacheTimeMs"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kMaxHtmlCacheTimeMs));
+  EXPECT_EQ(StringPiece("MaxInlinedPreviewImagesIndex"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kMaxInlinedPreviewImagesIndex));
+  EXPECT_EQ(StringPiece("MaxUrlSegmentSize"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kMaxUrlSegmentSize));
+  EXPECT_EQ(StringPiece("MaxUrlSize"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kMaxUrlSize));
   EXPECT_EQ(StringPiece("MinImageSizeLowResolutionBytes"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kMinImageSizeLowResolutionBytes));
+  EXPECT_EQ(StringPiece("MinResourceCacheTimeToRewriteMs"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kMinResourceCacheTimeToRewriteMs));
+  EXPECT_EQ(StringPiece("ModifyCachingHeaders"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kModifyCachingHeaders));
+  EXPECT_EQ(StringPiece("PercentExperimentTraffic"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kFuriousPercent));
+  EXPECT_EQ(StringPiece("ProgressiveJpegMinBytes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kProgressiveJpegMinBytes));
+  EXPECT_EQ(StringPiece("RespectVary"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kRespectVary));
+  EXPECT_EQ(StringPiece("RewriteLevel"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kRewriteLevel));
+  EXPECT_EQ(StringPiece("RunExperiment"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kRunningFurious));
+  EXPECT_EQ(StringPiece("ServeBlinkNonCritical"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kServeBlinkNonCritical));
+  EXPECT_EQ(StringPiece("ServeStaleIfFetchError"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kServeStaleIfFetchError));
+  EXPECT_EQ(StringPiece("XHeaderValue"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kXModPagespeedHeaderValue));
+  EXPECT_EQ(StringPiece("CollectRefererStatistics"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kCollectRefererStatistics));
+  EXPECT_EQ(StringPiece("FetchProxy"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kFetcherProxy));
+  EXPECT_EQ(StringPiece("FetcherTimeOutMs"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kFetcherTimeOutMs));
+  EXPECT_EQ(StringPiece("FileCacheCleanIntervalMs"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kFileCacheCleanIntervalMs));
+  EXPECT_EQ(StringPiece("FileCachePath"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kFileCachePath));
+  EXPECT_EQ(StringPiece("FileCacheSizeKb"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kFileCacheCleanSizeKb));
+  EXPECT_EQ(StringPiece("GeneratedFilePrefix"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kFileNamePrefix));
+  EXPECT_EQ(StringPiece("HashRefererStatistics"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kHashRefererStatistics));
+  EXPECT_EQ(StringPiece("LRUCacheByteLimit"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kLruCacheByteLimit));
+  EXPECT_EQ(StringPiece("LRUCacheKbPerProcess"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kLruCacheKbPerProcess));
+  EXPECT_EQ(StringPiece("RefererStatisticsOutputLevel"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kRefererStatisticsOutputLevel));
+  EXPECT_EQ(StringPiece("SharedMemoryLocks"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kUseSharedMemLocking));
+  EXPECT_EQ(StringPiece("SlurpDirectory"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kSlurpDirectory));
+  EXPECT_EQ(StringPiece("SlurpFlushLimit"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kSlurpFlushLimit));
+  EXPECT_EQ(StringPiece("SlurpReadOnly"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kSlurpReadOnly));
+  EXPECT_EQ(StringPiece("Statistics"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kStatisticsEnabled));
+  EXPECT_EQ(StringPiece("TestProxy"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kTestProxy));
+  EXPECT_EQ(StringPiece("DomainRewriteAllTags"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kDomainRewriteAllTags));
 }
 
 TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies1) {
@@ -729,11 +913,22 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   EXPECT_TRUE(options_.AddFuriousSpec("id=7;level=AllFilters;", &handler));
   EXPECT_TRUE(options_.AddFuriousSpec("id=2;enabled=rewrite_css;", &handler));
   options_.SetFuriousState(-7);
-  EXPECT_EQ(options_.ToString(), options_.ToExperimentString());
+  // This should be the core filters.
+  EXPECT_EQ("ah,cc,mc,ec,ei,es,hw,ci,ii,il,ji,tu,ir,ri,cf,jm,cu,"
+            "css:2048,im:2048,js:2048;", options_.ToExperimentString());
   options_.SetFuriousState(7);
-  GoogleString output = "Experiment: 7; ";
-  output += options_.ToString();
-  EXPECT_EQ(output, options_.ToExperimentString());
+  // This should be all non-dangerous filters.
+  EXPECT_EQ("Experiment: 7; ah,ai,cw,cc,ch,jc,jp,jw,mc,pj,db,di,ea,ec,ei,es,if,"
+            "hw,ci,ii,il,ji,ig,id,tu,ga,cm,co,jo,pv,ir,rc,rq,ri,rm,cf,rd,jm,cs,"
+            "cu,is,css:2048,im:2048,js:2048;",
+            options_.ToExperimentString());
+  options_.SetFuriousState(2);
+  // This should be the filters we need to run an experiment (add_head,
+  // add_instrumentation, html_writer, insert_ga) plus rewrite_css.
+  // The image inline threshold is 0 because ImageInlineMaxBytes()
+  // only returns the threshold if inline_images is enabled.
+  EXPECT_EQ("Experiment: 2; ah,ai,hw,ig,cf,css:2048,im:0,js:2048;",
+            options_.ToExperimentString());
 }
 
 }  // namespace

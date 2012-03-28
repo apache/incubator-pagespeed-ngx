@@ -704,8 +704,11 @@ pagespeed.deferInit = function() {
   document.write = function(x) {
     pagespeed.deferJs.writeHtml(x);
   };
-  document.open = function() {};
-  document.close = function() {};
+  if (!window.localStorage['psa_disable_override_doc_open'] &&
+          !window.localStorage['psa_disable_override_doc_open_debug']) {
+    document.open = function() {};
+    document.close = function() {};
+  }
 };
 pagespeed['deferInit'] = pagespeed.deferInit;
 

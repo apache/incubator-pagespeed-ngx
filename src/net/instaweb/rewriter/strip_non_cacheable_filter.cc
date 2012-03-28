@@ -79,6 +79,14 @@ void StripNonCacheableFilter::StartElement(HtmlElement* element) {
   }
 }
 
+void StripNonCacheableFilter::EndElement(HtmlElement* element) {
+  if (element->keyword() == HtmlName::kBody) {
+    HtmlCharactersNode* comment = rewrite_driver_->NewCharactersNode(
+        element, BlinkUtil::kLayoutMarker);
+    rewrite_driver_->AppendChild(element, comment);
+  }
+}
+
 void StripNonCacheableFilter::InsertPanelStub(HtmlElement* element,
                                               const GoogleString& panel_id) {
   HtmlCommentNode* comment = rewrite_driver_->NewCommentNode(

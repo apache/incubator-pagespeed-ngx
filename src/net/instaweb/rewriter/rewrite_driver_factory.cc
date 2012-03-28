@@ -436,7 +436,7 @@ PropertyCache* RewriteDriverFactory::MakePropertyCache(
 PropertyCache* RewriteDriverFactory::page_property_cache() {
   if (page_property_cache_.get() == NULL) {
     page_property_cache_.reset(MakePropertyCache(
-        PropertyCache::kPagePropertyCacheKeyPrefix, cache_backend()));
+        PropertyCache::kPagePropertyCacheKeyPrefix, property_cache_backend()));
   }
   return page_property_cache_.get();
 }
@@ -444,7 +444,8 @@ PropertyCache* RewriteDriverFactory::page_property_cache() {
 PropertyCache* RewriteDriverFactory::client_property_cache() {
   if (client_property_cache_.get() == NULL) {
     client_property_cache_.reset(MakePropertyCache(
-        PropertyCache::kClientPropertyCacheKeyPrefix, cache_backend()));
+        PropertyCache::kClientPropertyCacheKeyPrefix,
+        property_cache_backend()));
   }
   client_property_cache_.get()->AddCohort(ClientState::kClientStateCohort);
   return client_property_cache_.get();

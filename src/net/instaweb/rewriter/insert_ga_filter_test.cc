@@ -111,7 +111,7 @@ TEST_F(InsertGAFilterTest, furious) {
   rewrite_driver()->AddFilters();
 
   GoogleString variable_value = StringPrintf(
-      "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s', 2])",
+      "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s'])",
       options->ToExperimentString().c_str());
   GoogleString ga_snippet = StringPrintf(
       kGASnippet, kGaId, "test.com", kGASpeedTracking,

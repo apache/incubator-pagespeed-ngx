@@ -42,6 +42,7 @@ class StripNonCacheableFilter : public EmptyHtmlFilter {
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
+  virtual void EndElement(HtmlElement* element);
   virtual const char* Name() const { return "StripNonCacheableFilter"; }
 
   static const char kNoScriptRedirectFormatter[];
