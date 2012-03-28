@@ -42,7 +42,7 @@ vars = {
   "apache_httpd_src": "http://svn.apache.org/repos/asf/httpd/httpd/tags/2.2.15",
   "apache_httpd_revision": "@head",
 
-  "opencv_src": "https://code.ros.org/svn/opencv/tags/2.3.1",
+  "opencv_src": "http://code.opencv.org/svn/opencv/tags/2.3.1",
   "opencv_revision": "@head",
 
   "jsoncpp_src": "https://jsoncpp.svn.sourceforge.net/svnroot/jsoncpp/trunk/",
