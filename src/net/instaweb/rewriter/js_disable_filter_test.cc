@@ -34,7 +34,7 @@ class JsDisableFilterTest : public ResourceManagerTestBase {
   }
 
   virtual bool AddBody() const {
-    return true;
+    return false;
   }
 
   scoped_ptr<JsDisableFilter> filter_;
@@ -50,17 +50,58 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "</div>";
 
   const GoogleString input_html = StrCat(
+      "<body>",
       kUnrelatedNoscriptTags,
       "<script src=\"blah1\" random=\"true\">hi1</script>",
       kUnrelatedTags,
-      "<script src=\"blah2\" random=\"false\">hi2</script>");
+      "<script src=\"blah2\" random=\"false\">hi2</script>",
+      "</body>");
   const GoogleString expected = StrCat(
+      "<body>"
+      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      JsDisableFilter::kDisableJsExperimental,
+      "</script>",
       kUnrelatedNoscriptTags,
       "<script random=\"true\" orig_src=\"blah1\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
       kUnrelatedTags,
       "<script random=\"false\" orig_src=\"blah2\" type=\"text/psajs\""
-      " orig_index=\"1\">hi2</script>");
+      " orig_index=\"1\">hi2</script>"
+      "</body>");
+
+  ValidateExpectedUrl("http://example.com/", input_html, expected);
+}
+
+TEST_F(JsDisableFilterTest, DisablesScriptWithExperimental) {
+  options()->set_enable_defer_js_experimental(true);
+
+  const char kUnrelatedNoscriptTags[] =
+      "<noscript>This is original noscript tag</noscript>";
+  const char kUnrelatedTags[] =
+      "<div id=\"contentContainer\">"
+      "<h1>Hello 1</h1>"
+      "<div id=\"middleFooter\"><h3>Hello 3</h3></div>"
+      "</div>";
+
+  const GoogleString input_html = StrCat(
+      "<body>",
+      kUnrelatedNoscriptTags,
+      "<script src=\"blah1\" random=\"true\">hi1</script>",
+      kUnrelatedTags,
+      "<script src=\"blah2\" random=\"false\">hi2</script>",
+      "</body>");
+  const GoogleString expected = StrCat(
+      "<body>"
+      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      JsDisableFilter::kEnableJsExperimental,
+      "</script>",
+      kUnrelatedNoscriptTags,
+      "<script random=\"true\" orig_src=\"blah1\" type=\"text/psajs\""
+      " orig_index=\"0\">hi1</script>",
+      kUnrelatedTags,
+      "<script random=\"false\" orig_src=\"blah2\" type=\"text/psajs\""
+      " orig_index=\"1\">hi2</script>"
+      "</body>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
 }

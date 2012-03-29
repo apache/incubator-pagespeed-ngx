@@ -149,6 +149,9 @@ DEFINE_int64(implicit_cache_ttl_ms,
 DEFINE_bool(disable_override_doc_open, false,
             "Disables overriding document.open in defer js");
 
+DEFINE_bool(enable_defer_js_experimental, false,
+            "Enables experimental defer js");
+
 namespace net_instaweb {
 
 namespace {
@@ -275,6 +278,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("disable_override_doc_open")) {
     options->set_disable_override_doc_open(FLAGS_disable_override_doc_open);
+  }
+  if (WasExplicitlySet("enable_defer_js_experimental")) {
+    options->set_enable_defer_js_experimental(
+        FLAGS_enable_defer_js_experimental);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

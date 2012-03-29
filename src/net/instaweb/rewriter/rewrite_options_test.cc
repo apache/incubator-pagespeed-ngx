@@ -595,7 +595,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(70, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(71, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));

@@ -439,6 +439,8 @@ RewriteOptions::RewriteOptions()
   add_option(true, &serve_stale_if_fetch_error_, "ss", kServeStaleIfFetchError);
   add_option(false, &disable_override_doc_open_, "dodo",
              kDisableOverrideDocOpen);
+  add_option(false, &enable_defer_js_experimental_, "edje",
+             kEnableDeferJsExperimental);
   add_option(false, &enable_blink_critical_line_, "ebcl",
              kEnableBlinkCriticalLine);
   add_option(false, &serve_blink_non_critical_, "snc", kServeBlinkNonCritical);

@@ -22,6 +22,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -30,6 +31,7 @@ class BlinkCriticalLineData;
 class BlinkCriticalLineDataFinder;
 class ProxyFetchPropertyCallbackCollector;
 class ProxyFetchFactory;
+class ResponseHeaders;
 class ResourceManager;
 class RewriteOptions;
 
@@ -46,6 +48,8 @@ class BlinkFlowCriticalLine {
                     ProxyFetchPropertyCallbackCollector* property_callback);
 
   virtual ~BlinkFlowCriticalLine();
+
+  static const char kAboveTheFold[];
 
  private:
   BlinkFlowCriticalLine(const GoogleString& url,
@@ -67,9 +71,31 @@ class BlinkFlowCriticalLine {
 
   void TriggerProxyFetch(bool critical_line_data_found);
 
-  // Modify the rewrite options before serving to client if
-  // BlinkCriticalLineData is not available in cache. Options being modified
-  // will be used in the background and not in the user-facing request.
+  // Serves all the panel contents including critical html, critical images json
+  // and non critical json. This is the case when there are no cacheable panels
+  // in the page.
+  void ServeAllPanelContents();
+
+  // Serves critical panel contents including critical html and
+  // critical images json. This is the case when there are cacheable panels
+  // in the page.
+  void ServeCriticalPanelContents();
+
+  // Sends critical html to the client.
+  void SendCriticalHtml(const GoogleString& critical_json_str);
+
+  // Sends inline images json to the client.
+  void SendInlineImagesJson(const GoogleString& pushed_images_str);
+
+  // Sends non critical json to the client.
+  void SendNonCriticalJson(GoogleString* non_critical_json_str);
+
+  void WriteString(const StringPiece& str);
+
+  void Flush();
+
+  // Modify the rewrite options to be used in the background and user-facing
+  // request when BlinkCriticalLineData is found in the cache.
   void SetFilterOptions(RewriteOptions* options) const;
 
   GoogleString url_;

@@ -40,6 +40,9 @@ class JsDisableFilter : public EmptyHtmlFilter {
   explicit JsDisableFilter(RewriteDriver* driver);
   ~JsDisableFilter();
 
+  static const char kEnableJsExperimental[];
+  static const char kDisableJsExperimental[];
+
   virtual void StartDocument();
 
   virtual void StartElement(HtmlElement* element);
@@ -52,6 +55,7 @@ class JsDisableFilter : public EmptyHtmlFilter {
   RewriteDriver* rewrite_driver_;
   ScriptTagScanner script_tag_scanner_;
   int index_;
+  bool defer_js_experimental_script_written_;
 
   DISALLOW_COPY_AND_ASSIGN(JsDisableFilter);
 };

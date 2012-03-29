@@ -149,6 +149,7 @@ class HtmlName {
     kPagespeedHighResSrc,
     kPagespeedLazySrc,
     kPagespeedLowResSrc,
+    kPagespeedNoDefer,
     kParam,
     kPre,
     kQ,

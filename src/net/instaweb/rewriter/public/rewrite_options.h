@@ -113,6 +113,7 @@ class RewriteOptions {
     kDisableOverrideDocOpen,
     kEnableBlinkCriticalLine,
     kEnabled,
+    kEnableDeferJsExperimental,
     kFlushHtml,
     kFuriousPercent,
     kIdleFlushTimeMs,
@@ -745,6 +746,13 @@ class RewriteOptions {
   bool disable_override_doc_open() const {
     return disable_override_doc_open_.value();
   }
+
+  void set_enable_defer_js_experimental(bool x) {
+    set_option(x, &enable_defer_js_experimental_);
+  }
+  bool enable_defer_js_experimental() const {
+    return enable_defer_js_experimental_.value();
+  }
   // Functions for checking against and adding to prioritize_visible_content
   // cacheable family option (prioritize_visible_content_cacheable_families_
   // field).  Checks if str is an URL for which prioritize_visible_content
@@ -1275,6 +1283,9 @@ class RewriteOptions {
 
   // Disables the override of document open in defer js.
   Option<bool> disable_override_doc_open_;
+
+  // Enables experimental code in defer js.
+  Option<bool> enable_defer_js_experimental_;
 
   // Number of first N images for which low res image is generated. Negative
   // values will bypass image index check.

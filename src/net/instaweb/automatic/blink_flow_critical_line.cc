@@ -37,15 +37,20 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/blink_critical_line_data.pb.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
+#include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
+const char BlinkFlowCriticalLine::kAboveTheFold[] = "Above the fold";
 
 namespace {
 
@@ -247,37 +252,113 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
 }
 
 void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
-  // TODO(rahulbansal): Add CacheHit Case.
+  // TODO(rahulbansal): Add layout marker.
+  ResponseHeaders* response_headers = base_fetch_->response_headers();
+  response_headers->set_status_code(HttpStatus::kOK);
+  // TODO(pulkitg): Store content type in pcache.
+  response_headers->Add(HttpAttributes::kContentType, "text/html");
+  response_headers->Add(kPsaRewriterHeader,
+                        BlinkFlowCriticalLine::kAboveTheFold);
+  response_headers->ComputeCaching();
+  response_headers->SetDateAndCaching(response_headers->date_ms(), 0,
+                                      ", private, no-cache");
+  base_fetch_->HeadersComplete();
+
+  bool non_cacheable_present =
+      !options_->prioritize_visible_content_non_cacheable_elements().empty();
+
+  if (!non_cacheable_present) {
+    ServeAllPanelContents();
+  } else {
+    ServeCriticalPanelContents();
+    options_->set_serve_blink_non_critical(true);
+  }
+
+  TriggerProxyFetch(true);
+}
+
+void BlinkFlowCriticalLine::ServeAllPanelContents() {
+  ServeCriticalPanelContents();
+  GoogleString non_critical_json_str =
+      blink_critical_line_data_->non_critical_json();
+  SendNonCriticalJson(&non_critical_json_str);
+}
+
+void BlinkFlowCriticalLine::ServeCriticalPanelContents() {
+  GoogleString critical_html = blink_critical_line_data_->critical_html();
+  GoogleString pushed_images_str =
+      blink_critical_line_data_->critical_images_map();
+  SendCriticalHtml(critical_html);
+  SendInlineImagesJson(pushed_images_str);
+}
+
+void BlinkFlowCriticalLine::SendCriticalHtml(
+    const GoogleString& critical_html) {
+  WriteString(critical_html);
+  StaticJavascriptManager* js_manager = manager_->static_javascript_manager();
+  WriteString(StrCat("<script src=\"",
+                     js_manager->GetBlinkJsUrl(options_),
+                     "\"></script>"));
+  WriteString("<script>pagespeed.panelLoaderInit();</script>");
+  Flush();
+}
+
+void BlinkFlowCriticalLine::SendInlineImagesJson(
+    const GoogleString& pushed_images_str) {
+  WriteString("<script>pagespeed.panelLoader.loadImagesData(");
+  WriteString(pushed_images_str);
+  WriteString(");</script>");
+  Flush();
+}
+
+void BlinkFlowCriticalLine::SendNonCriticalJson(
+    GoogleString* non_critical_json_str) {
+  WriteString("<script>pagespeed.panelLoader.bufferNonCriticalData(");
+  BlinkUtil::EscapeString(non_critical_json_str);
+  WriteString(*non_critical_json_str);
+  WriteString(");</script>");
+  Flush();
+}
+
+void BlinkFlowCriticalLine::WriteString(const StringPiece& str) {
+  base_fetch_->Write(str, manager_->message_handler());
+}
+
+void BlinkFlowCriticalLine::Flush() {
+  base_fetch_->Flush(manager_->message_handler());
 }
 
 void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
   AsyncFetch* fetch = NULL;
   RewriteOptions* options = NULL;
-  if (!critical_line_data_found) {
-    options = options_->Clone();
-    // TODO(pulkitg): We are temporarily disabling all rewriters since
-    // SharedJsonFetch uses the output of ProxyFetch which may be rewritten. Fix
-    // this.
-    options_->ClearFilters();
-  }
-
-  // NewCustomRewriteDriver takes ownership of custom_options_.
-  manager_->ComputeSignature(options_);
-  RewriteDriver* driver = manager_->NewCustomRewriteDriver(options_);
+  RewriteDriver* driver = NULL;
 
   if (critical_line_data_found) {
+    SetFilterOptions(options_);
+    options_->ForceEnableFilter(RewriteOptions::kServeNonCacheableNonCritical);
+    options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
+    manager_->ComputeSignature(options_);
+    driver = manager_->NewCustomRewriteDriver(options_);
+
     // Remove any headers that can lead to a 304, since blink can't handle 304s.
     base_fetch_->request_headers()->RemoveAll(HttpAttributes::kIfNoneMatch);
     base_fetch_->request_headers()->RemoveAll(HttpAttributes::kIfModifiedSince);
     // Pass a new fetch into proxy fetch that inhibits HeadersComplete() on the
     // base fetch. It also doesn't attach the response headers from the base
     // fetch since headers have already been flushed out.
-    fetch = base_fetch_;
-    // TODO(pulkitg) : Uncomment following statement when
-    // BlinkCriticalLineDataHit() code is ready.
-    // fetch = new AsyncFetchWithHeadersInhibited(base_fetch_);
+    fetch = new AsyncFetchWithHeadersInhibited(base_fetch_);
   } else {
+    options = options_->Clone();
     SetFilterOptions(options);
+    options->ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
+    options->ForceEnableFilter(RewriteOptions::kStripNonCacheable);
+
+    // TODO(pulkitg): We are temporarily disabling all rewriters since
+    // SharedJsonFetch uses the output of ProxyFetch which may be rewritten. Fix
+    // this.
+    options_->ClearFilters();
+    manager_->ComputeSignature(options_);
+    driver = manager_->NewCustomRewriteDriver(options_);
     fetch = new SharedFetch(
         base_fetch_, url_, manager_, options, driver);
   }
@@ -295,8 +376,6 @@ void BlinkFlowCriticalLine::SetFilterOptions(RewriteOptions* options) const {
   options->DisableFilter(RewriteOptions::kConvertMetaTags);
   options->DisableFilter(RewriteOptions::kDeferJavascript);
 
-  options->ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
-  options->ForceEnableFilter(RewriteOptions::kStripNonCacheable);
   options->ForceEnableFilter(RewriteOptions::kDisableJavascript);
 
   options->set_min_image_size_low_resolution_bytes(0);
