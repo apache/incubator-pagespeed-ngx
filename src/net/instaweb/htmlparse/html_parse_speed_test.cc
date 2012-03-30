@@ -26,6 +26,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse.h"
 
+#include <algorithm>
 #include <cstdlib>  // for exit
 
 #include "base/logging.h"
@@ -59,6 +60,7 @@ const StringPiece GetHtmlText() {
       LOG(ERROR) << "Unable to find test data for HTML benchmark, skipping";
       return StringPiece();
     }
+    std::sort(files.begin(), files.end());
     for (int i = 0, n = files.size(); i < n; ++i) {
       GoogleString buffer;
       // Note that we do not want to include xmp_tag.html here as it
