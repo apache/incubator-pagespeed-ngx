@@ -1470,7 +1470,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
     }
   } else if (url.SchemeIs("http") || url.SchemeIs("https")) {
     // Note: type may be NULL if url has an unexpected or malformed extension.
-    const ContentType* type = NameExtensionToContentType(url_string);
+    const ContentType* type = NameExtensionToContentType(url.LeafSansQuery());
     GoogleString filename;
     if (options()->file_load_policy()->ShouldLoadFromFile(url, &filename)) {
       resource.reset(new FileInputResource(resource_manager_, options(), type,

@@ -616,8 +616,9 @@ TEST_P(RewriteDriverTest, LoadResourcesFromFiles) {
   // mock_url_fetcher, because it has not been set in that fetcher.
   ResourcePtr resource(
       rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
-  MockResourceCallback mock_callback(resource);
   EXPECT_TRUE(resource.get() != NULL);
+  EXPECT_EQ(&kContentTypeCss, resource->type());
+  MockResourceCallback mock_callback(resource);
   resource_manager()->ReadAsync(Resource::kReportFailureIfNotCacheable,
                                 &mock_callback);
   EXPECT_TRUE(mock_callback.done());
@@ -630,13 +631,41 @@ TEST_P(RewriteDriverTest, LoadResourcesFromFiles) {
   // Make sure the resource loads updated.
   ResourcePtr resource2(
       rewrite_driver()->CreateInputResourceAbsoluteUnchecked(resource_url));
-  MockResourceCallback mock_callback2(resource2);
   EXPECT_TRUE(resource2.get() != NULL);
+  EXPECT_EQ(&kContentTypeCss, resource2->type());
+  MockResourceCallback mock_callback2(resource2);
   resource_manager()->ReadAsync(Resource::kReportFailureIfNotCacheable,
                                 &mock_callback2);
   EXPECT_TRUE(mock_callback2.done());
   EXPECT_TRUE(mock_callback2.success());
   EXPECT_EQ(kResourceContents2, resource2->contents());
+}
+
+// Make sure the content-type is set correctly, even for URLs with queries.
+// http://code.google.com/p/modpagespeed/issues/detail?id=405
+TEST_P(RewriteDriverTest, LoadResourcesContentType) {
+  rewrite_driver()->AddFilters();
+
+  // Tell RewriteDriver to associate static URLs with filenames.
+  options()->file_load_policy()->Associate("http://www.example.com/static/",
+                                           "/htmlcontent/static/");
+
+  // Write file with readable extension.
+  WriteFile("/htmlcontent/foo.js", "");
+  // Load the file with a query param (add .css at the end of the param just
+  // for optimal trickyness).
+  ResourcePtr resource(rewrite_driver()->CreateInputResourceAbsoluteUnchecked(
+      "http://www.example.com/static/foo.js?version=2.css"));
+  EXPECT_TRUE(resource.get() != NULL);
+  EXPECT_EQ(&kContentTypeJavascript, resource->type());
+
+  // Write file with bogus extension.
+  WriteFile("/htmlcontent/bar.bogus", "");
+  // Load it normally.
+  ResourcePtr resource2(rewrite_driver()->CreateInputResourceAbsoluteUnchecked(
+      "http://www.example.com/static/bar.bogus"));
+  EXPECT_TRUE(resource2.get() != NULL);
+  EXPECT_TRUE(NULL == resource2->type());
 }
 
 TEST_P(RewriteDriverTest, ResolveAnchorUrl) {
