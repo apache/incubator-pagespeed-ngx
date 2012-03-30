@@ -52,7 +52,6 @@
         'src/re2/unicode_groups.cc',
 
         'src/util/arena.cc',
-        'src/util/benchmark.cc',
         'src/util/hash.cc',
         'src/util/pcre.cc',
         'src/util/random.cc',
@@ -63,6 +62,16 @@
         'src/util/test.cc',
         'src/util/thread.cc',
         'src/util/valgrind.cc',
+      ],
+    },
+    {
+      'target_name': 're2_bench_util',
+      'type': '<(library)',
+      'include_dirs': [
+        '<(re2_root)/src/',
+      ],
+      'sources': [
+        'src/util/benchmark.cc',
       ],
     },
   ],

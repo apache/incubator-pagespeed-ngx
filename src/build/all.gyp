@@ -48,6 +48,7 @@
         '../net/instaweb/instaweb_core.gyp:*',
         '../net/instaweb/apache.gyp:*',
         '../net/instaweb/test.gyp:mod_pagespeed_test',
+        '../net/instaweb/test.gyp:mod_pagespeed_speed_test',
         'install.gyp:*',
       ]
     },

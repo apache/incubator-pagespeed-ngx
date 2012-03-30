@@ -294,5 +294,23 @@
         'util/mock_time_cache.cc',
       ],
     },
+    {
+      'target_name': 'mod_pagespeed_speed_test',
+      'type': 'executable',
+      'dependencies': [
+        'test_infrastructure',
+        '<(DEPTH)/third_party/re2/re2.gyp:re2_bench_util',
+        'instaweb.gyp:instaweb_util_pthread',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+      'sources': [
+        'htmlparse/html_parse_speed_test.cc',
+        'rewriter/css_minify_speed_test.cc',
+        'rewriter/rewrite_driver_speed_test.cc',
+        'util/url_escaper_speed_test.cc',
+      ],
+    },
   ],
 }
