@@ -57,7 +57,8 @@ class CssImageRewriterAsync {
   // Attempts to rewrite the given CSS, starting nested rewrites for each
   // import and image to be rewritten. If successful, it mutates the CSS
   // to point to new images and flattens all @imports (if enabled).
-  void RewriteCss(int64 image_inline_max_bytes,
+  // Returns true if rewriting is enabled.
+  bool RewriteCss(int64 image_inline_max_bytes,
                   RewriteContext* parent,
                   CssHierarchy* hierarchy,
                   MessageHandler* handler);

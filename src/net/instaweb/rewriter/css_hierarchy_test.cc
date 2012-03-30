@@ -84,16 +84,16 @@ class CssHierarchyTest : public ::testing::Test {
   void InitializeFlatRoot(CssHierarchy* top) {
     InitializeCss("", "");
     top->InitializeRoot(top_url_, top_url_, flat_top_css_,
-                        false /* is_xhtml */, NULL /* stylesheet */,
-                        message_handler());
+                        false /* is_xhtml */, false /* has_unparseables */,
+                        NULL /* stylesheet */, message_handler());
   }
 
   // Initialize a nested root - top-level CSS with @imports.
   void InitializeNestedRoot(CssHierarchy* top) {
     InitializeCss("", "");
     top->InitializeRoot(top_url_, top_url_, nested_top_css_,
-                        false /* is_xhtml */, NULL /* stylesheet */,
-                        message_handler());
+                        false /* is_xhtml */, false /* has_unparseables */,
+                        NULL /* stylesheet */, message_handler());
   }
 
   // Initialize a nested root with the given media.
@@ -102,8 +102,8 @@ class CssHierarchyTest : public ::testing::Test {
                                      const StringPiece child_media) {
     InitializeCss(top_media, child_media);
     top->InitializeRoot(top_url_, top_url_, nested_top_css_,
-                        false /* is_xhtml */, NULL /* stylesheet */,
-                        message_handler());
+                        false /* is_xhtml */, false /* has_unparseables */,
+                        NULL /* stylesheet */, message_handler());
   }
 
   // Expand the hierarchy using ExpandChildren. Expands the top then adds
@@ -416,14 +416,15 @@ TEST_F(CssHierarchyTest, FailOnDirectRecursion) {
   CssHierarchy top;
   GoogleString recursive_import = StrCat("@import '", top_url().Spec(), "' ;");
   top.InitializeRoot(top_url(), top_url(), recursive_import,
-                     false /* is_xhtml */, NULL /* stylesheet */,
-                     message_handler());
+                     false /* is_xhtml */, false /* has_unparseables */,
+                     NULL /* stylesheet */, message_handler());
 
   // The top-level normally doesn't have an URL so we won't catch it recursing
   // until the grandchild level, but we -do- catch it, eventually.
   EXPECT_TRUE(top.Parse());
   EXPECT_TRUE(top.ExpandChildren());
   EXPECT_TRUE(top.flattening_succeeded());
+  EXPECT_FALSE(top.unparseable_detected());
   EXPECT_EQ(1, top.children().size());
 
   CssHierarchy* child = top.children()[0];
@@ -448,6 +449,7 @@ TEST_F(CssHierarchyTest, FailOnIndirectRecursion) {
   EXPECT_TRUE(top.Parse());
   EXPECT_TRUE(top.ExpandChildren());
   EXPECT_TRUE(top.flattening_succeeded());
+  EXPECT_FALSE(top.unparseable_detected());
 
   CssHierarchy* child1 = top.children()[0];
   child1->set_input_contents(nested_child1_css());
@@ -474,6 +476,26 @@ TEST_F(CssHierarchyTest, FailOnIndirectRecursion) {
   EXPECT_EQ(2, grandchild2->children().size());
   CssHierarchy* greatgrandchild2 = grandchild2->children()[1];
   EXPECT_FALSE(greatgrandchild2->flattening_succeeded());  // ... should fail.
+}
+
+TEST_F(CssHierarchyTest, UnparseableSection) {
+  InitializeCss("", "");  // to initialize top_url().
+
+  // NOTE: this syntax is valid in CSS3 so if we enhance our CSS parsing this
+  // test will fail.
+  GoogleString unparseable_css = StrCat("body { background: "
+                                        "url(", top_url().Spec(), "), ",
+                                        "url(", top_url().Spec(), ") }");
+  CssHierarchy top;
+  top.InitializeRoot(top_url(), top_url(), unparseable_css,
+                     false /* is_xhtml */, false /* has_unparseables */,
+                     NULL /* stylesheet */, message_handler());
+
+  // The top-level normally doesn't have an URL so we won't catch it recursing
+  // until the grandchild level, but we -do- catch it, eventually.
+  EXPECT_TRUE(top.Parse());
+  EXPECT_TRUE(top.flattening_succeeded());
+  EXPECT_TRUE(top.unparseable_detected());
 }
 
 TEST_F(CssHierarchyTest, ExpandElidesImportsWithNoMedia) {

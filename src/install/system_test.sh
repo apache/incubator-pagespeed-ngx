@@ -810,11 +810,9 @@ FILE=delay_images.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 echo run_wget_with_args $URL
+fetch_until $URL 'grep -c pagespeed.delayImagesInit' 1
+fetch_until $URL 'grep -c /\*' 0
 check run_wget_with_args $URL
-grep pagespeed.delay $FETCHED >/dev/null
-check [ $? = 0 ]
-grep '/\*' $FETCHED >/dev/null
-check [ $? = 1 ]
 
 # Checks that inline_preview_images,debug injects from javascript
 # in non-compiled mode
@@ -822,12 +820,8 @@ test_filter inline_preview_images,debug debug mode
 FILE=delay_images.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
-echo run_wget_with_args $URL
+fetch_until $URL 'grep -c pagespeed.delayImagesInit' 3
 check run_wget_with_args $URL
-grep pagespeed.delay $FETCHED >/dev/null
-check [ $? = 0 ]
-grep '/\*' $FETCHED >/dev/null
-check [ $? = 0 ]
 
 # Cleanup
 rm -rf $OUTDIR

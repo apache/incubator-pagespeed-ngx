@@ -15,8 +15,7 @@
  */
 
 /**
- * @fileoverview Code for loading high resolution critical images after onload
- * event.
+ * @fileoverview Code for loading high resolution critical images.
  * This javascript is part of DelayImages filter.
  *
  * @author pulkitg@google.com (Pulkit Goyal)
@@ -32,30 +31,6 @@ var pagespeed = window['pagespeed'];
  * @constructor
  */
 pagespeed.DelayImages = function() {
-};
-
-/**
- * Runs the function when event is triggered.
- * @param {Window|Element} elem Element to attach handler.
- * @param {string} ev Name of the event.
- * @param {function()} func New onload handler.
- *
- * TODO(pulkitg): Avoid duplication with the DeferJs code.
- */
-pagespeed.addHandler = function(elem, ev, func) {
-  if (elem.addEventListener) {
-    elem.addEventListener(ev, func, false);
-  } else if (elem.attachEvent) {
-    elem.attachEvent('on' + ev, func);
-  } else {
-    var oldHandler = elem['on' + ev];
-    elem['on' + ev] = function() {
-      func.call(this);
-      if (oldHandler) {
-        oldHandler.call(this);
-      }
-    }
-  }
 };
 
 /**
@@ -76,12 +51,7 @@ pagespeed.DelayImages.prototype.replaceWithHighRes = function() {
  */
 pagespeed.delayImagesInit = function() {
   pagespeed.delayImages = new pagespeed.DelayImages();
-  var delayImagesOnload = function() {
-    window.setTimeout(function() {
-      pagespeed.delayImages.replaceWithHighRes();
-    }, 100);
-  };
-  pagespeed.addHandler(window, 'load', delayImagesOnload);
+  pagespeed.delayImages.replaceWithHighRes();
 };
 
 pagespeed['delayImagesInit'] = pagespeed.delayImagesInit;

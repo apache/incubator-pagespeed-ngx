@@ -52,7 +52,7 @@ class StaticJavascriptManager {
 
   // Returns the blink js url based on the value of debug filter and the value
   // of serve_js_from_gstatic flag.
-  const GoogleString& GetBlinkJsUrl(RewriteOptions* options) const;
+  const GoogleString& GetBlinkJsUrl(const RewriteOptions* options) const;
 
   const char* GetJsSnippet(JsModule module,
                            const RewriteOptions* options);

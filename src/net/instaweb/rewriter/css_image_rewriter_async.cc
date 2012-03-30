@@ -132,7 +132,7 @@ void CssImageRewriterAsync::RewriteImage(
   }
 }
 
-void CssImageRewriterAsync::RewriteCss(int64 image_inline_max_bytes,
+bool CssImageRewriterAsync::RewriteCss(int64 image_inline_max_bytes,
                                        RewriteContext* parent,
                                        CssHierarchy* hierarchy,
                                        MessageHandler* handler) {
@@ -157,7 +157,9 @@ void CssImageRewriterAsync::RewriteCss(int64 image_inline_max_bytes,
     }
   }
 
-  if (RewritesEnabled(image_inline_max_bytes)) {
+  bool is_enabled = RewritesEnabled(image_inline_max_bytes);
+
+  if (is_enabled) {
     handler->Message(kInfo, "Starting to rewrite images in CSS in %s",
                      hierarchy->css_base_url().spec_c_str());
     if (spriting_ok) {
@@ -184,6 +186,8 @@ void CssImageRewriterAsync::RewriteCss(int64 image_inline_max_bytes,
             break;
           case Css::Property::BACKGROUND:
           case Css::Property::BACKGROUND_IMAGE:
+          case Css::Property::CONTENT:  // In CSS2 but not CSS2.1
+          case Css::Property::CURSOR:
           case Css::Property::LIST_STYLE:
           case Css::Property::LIST_STYLE_IMAGE: {
             // Rewrite all URLs. Technically, background-image should only
@@ -241,6 +245,8 @@ void CssImageRewriterAsync::RewriteCss(int64 image_inline_max_bytes,
                      "so not rewriting images in CSS in %s",
                      hierarchy->css_base_url().spec_c_str());
   }
+
+  return is_enabled;
 }
 
 }  // namespace net_instaweb

@@ -42,7 +42,7 @@ class UnicodeText;
 
 namespace net_instaweb {
 
-class GoogleUrl;
+class RewriteDriver;
 class MessageHandler;
 class Writer;
 
@@ -69,6 +69,18 @@ class CssMinify {
   // URLs were absolutified, false if not.
   static bool AbsolutifyImports(Css::Stylesheet* stylesheet,
                                 const GoogleUrl& base);
+
+  // Absolutify all relative URLs in the stylesheet using the given base URL.
+  // The Declaration structures are modified in-situ. You can control whether
+  // URLs in parseable sections (BACKGROUND, BACKGROUND_IMAGE, LIST_STYLE,
+  // LIST_STYLE_IMAGE) and/or unparseable sections (UNPARSEABLE) are handled.
+  // Returns true if any URLs were absolutified, false if not.
+  static bool AbsolutifyUrls(Css::Stylesheet* stylesheet,
+                             const GoogleUrl& base,
+                             bool handle_parseable_sections,
+                             bool handle_unparseable_sections,
+                             RewriteDriver* driver,
+                             MessageHandler* handler);
 
   // Escape [() \t\r\n\\'"].  Also escape , for non-URLs.  Escaping , in
   // URLs causes IE8 to interpret the backslash as a forward slash.

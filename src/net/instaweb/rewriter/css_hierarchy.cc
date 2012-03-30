@@ -45,6 +45,7 @@ namespace net_instaweb {
 CssHierarchy::CssHierarchy()
     : parent_(NULL),
       flattening_succeeded_(true),
+      unparseable_detected_(false),
       message_handler_(NULL) {
 }
 
@@ -56,6 +57,7 @@ void CssHierarchy::InitializeRoot(const GoogleUrl& css_base_url,
                                   const GoogleUrl& css_trim_url,
                                   const StringPiece input_contents,
                                   bool is_xhtml,
+                                  bool has_unparseables,
                                   Css::Stylesheet* stylesheet,
                                   MessageHandler* message_handler) {
   css_base_url_.Reset(css_base_url);
@@ -63,6 +65,7 @@ void CssHierarchy::InitializeRoot(const GoogleUrl& css_base_url,
   input_contents_ = input_contents;
   stylesheet_.reset(stylesheet);
   is_xhtml_ = is_xhtml;
+  unparseable_detected_ = has_unparseables;
   message_handler_ = message_handler;
 }
 
@@ -193,6 +196,10 @@ bool CssHierarchy::Parse() {
     if (stylesheet == NULL) {
       result = false;
     } else {
+      // Note if we detected anything unparseable.
+      if (parser.unparseable_sections_seen_mask() != Css::Parser::kNoError) {
+        unparseable_detected_ = true;
+      }
       // Reduce the media on the to-be merged rulesets to the minimum required,
       // deleting any rulesets that end up having no applicable media types.
       Css::Rulesets& rulesets = stylesheet->mutable_rulesets();
@@ -267,6 +274,11 @@ void CssHierarchy::RollUpContents() {
     flattening_succeeded_ = children_[i]->flattening_succeeded_;
   }
 
+  // Check if any of our children have anything unparseable in them.
+  for (int i = 0; i < n && !unparseable_detected_; ++i) {
+    unparseable_detected_ = children_[i]->unparseable_detected_;
+  }
+
   // If flattening has worked so far, check that we can get all children's
   // contents. If not, we treat it the same as flattening not succeeding.
   for (int i = 0; i < n && flattening_succeeded_; ++i) {
@@ -330,6 +342,11 @@ bool CssHierarchy::RollUpStylesheets() {
   // Check if flattening worked for us and all our children.
   for (int i = 0; i < n && flattening_succeeded_; ++i) {
     flattening_succeeded_ = children_[i]->flattening_succeeded_;
+  }
+
+  // Check if any of our children have anything unparseable in them.
+  for (int i = 0; i < n && !unparseable_detected_; ++i) {
+    unparseable_detected_ = children_[i]->unparseable_detected_;
   }
 
   // If flattening succeeded, check that we can get all child stylesheets.

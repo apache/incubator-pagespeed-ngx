@@ -748,6 +748,14 @@ class RewriteDriver : public HtmlParse {
     critical_images_.reset(critical_images);
   }
 
+  // We expect to this method to be called on the HTML parser thread.
+  // Returns the number of images whose low quality images are inlined in the
+  // html page.
+  int num_inline_preview_images() const { return num_inline_preview_images_; }
+
+  // We expect to this method to be called on the HTML parser thread.
+  void increment_num_inline_preview_images();
+
   // Increments the value of pending_async_events_. pending_async_events_ will
   // be incremented whenever an async event wants rewrite driver to be alive
   // upon its completion.
@@ -1086,6 +1094,10 @@ class RewriteDriver : public HtmlParse {
 
   // Do we need to add a Set-Cookie header for Furious?
   bool need_furious_cookie_;
+
+  // Number of images whose low quality images are inlined in the html page by
+  // InlinePreviewFilter.
+  int num_inline_preview_images_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

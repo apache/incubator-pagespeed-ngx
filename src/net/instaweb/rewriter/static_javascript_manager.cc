@@ -56,7 +56,7 @@ StaticJavascriptManager::~StaticJavascriptManager() {
 }
 
 const GoogleString& StaticJavascriptManager::GetBlinkJsUrl(
-    RewriteOptions* options) const {
+    const RewriteOptions* options) const {
   if (serve_js_from_gstatic_ && !options->Enabled(RewriteOptions::kDebug)) {
     return blink_javascript_gstatic_url_;
   }

@@ -44,7 +44,6 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -295,10 +294,6 @@ void BlinkFlowCriticalLine::ServeCriticalPanelContents() {
 void BlinkFlowCriticalLine::SendCriticalHtml(
     const GoogleString& critical_html) {
   WriteString(critical_html);
-  StaticJavascriptManager* js_manager = manager_->static_javascript_manager();
-  WriteString(StrCat("<script src=\"",
-                     js_manager->GetBlinkJsUrl(options_),
-                     "\"></script>"));
   WriteString("<script>pagespeed.panelLoaderInit();</script>");
   Flush();
 }

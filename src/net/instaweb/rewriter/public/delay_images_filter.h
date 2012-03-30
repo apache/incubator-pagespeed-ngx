@@ -64,8 +64,8 @@
 // </html>
 //
 // Bottom-of-page script actually includes the image data for the low-resolution
-// images, and those are put in place before the page load completes, then 100ms
-// after onload the image src gets replaced by original high resolution images
+// images, and those are put in place as soon as control reaches there. High
+// quality images are downloaded after all the low quality images are placed
 // by delay script.
 
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_DELAY_IMAGES_FILTER_H_
@@ -79,6 +79,7 @@
 namespace net_instaweb {
 
 class HtmlElement;
+class ImageTagScanner;
 class RewriteDriver;
 class StaticJavascriptManager;
 class Statistics;
@@ -102,14 +103,23 @@ class DelayImagesFilter : public EmptyHtmlFilter {
   static void Terminate();
 
  private:
+  // Creates a script node containing kDelayImagesSuffix js and append this node
+  // just after element.
+  void InsertDelayImagesJS(HtmlElement* element);
+
+  // Creates a script node containing kDelayImagesInlineSuffix js and append
+  // this node just after element.
+  void InsertDelayImagesInlineJS(HtmlElement* element);
+
   RewriteDriver* driver_;
   StaticJavascriptManager* static_js_manager_;
-  ResourceTagScanner tag_scanner_;
+  scoped_ptr<const ImageTagScanner> tag_scanner_;
+
   // pagespeed_low_res_src will be added to the low_res_data_map_ until
   // low_res_inserted is false. As soon as low_res_map_inserted_ is true, there
   // is no further addition to low_res_data_map_.
   bool low_res_map_inserted_;
-  bool delay_script_inserted_;
+  int num_low_res_inlined_images_;
   StringStringMap low_res_data_map_;
 
   // Replace the image url with low res base64 encoded url inplace if it is

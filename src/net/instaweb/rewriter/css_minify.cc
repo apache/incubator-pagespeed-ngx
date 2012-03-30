@@ -18,13 +18,16 @@
 
 #include "net/instaweb/rewriter/public/css_minify.h"
 
+#include <cstddef>
 #include <vector>
 
 #include "base/logging.h"
+#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/writer.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/parser.h"
@@ -87,6 +90,75 @@ bool CssMinify::AbsolutifyImports(Css::Stylesheet* stylesheet,
       result = true;
     }
   }
+  return result;
+}
+
+bool CssMinify::AbsolutifyUrls(Css::Stylesheet* stylesheet,
+                               const GoogleUrl& base,
+                               bool handle_parseable_sections,
+                               bool handle_unparseable_sections,
+                               RewriteDriver* driver,
+                               MessageHandler* handler) {
+  RewriteDomainTransformer transformer(&base, &base, driver);
+  transformer.set_trim_urls(false);
+  bool result = false;
+  Css::Rulesets& rulesets = stylesheet->mutable_rulesets();
+  for (Css::Rulesets::iterator ruleset_iter = rulesets.begin();
+       ruleset_iter != rulesets.end(); ++ruleset_iter) {
+    Css::Ruleset* ruleset = *ruleset_iter;
+    Css::Declarations& decls = ruleset->mutable_declarations();
+    for (Css::Declarations::iterator decl_iter = decls.begin();
+         decl_iter != decls.end(); ++decl_iter) {
+      Css::Declaration* decl = *decl_iter;
+      switch (decl->prop()) {
+        case Css::Property::UNPARSEABLE:
+          if (handle_unparseable_sections) {
+            StringPiece original_bytes = decl->bytes_in_original_buffer();
+            GoogleString rewritten_bytes;
+            StringWriter writer(&rewritten_bytes);
+            if (CssTagScanner::TransformUrls(original_bytes, &writer,
+                                             &transformer, handler)) {
+              result = true;
+              decl->set_bytes_in_original_buffer(rewritten_bytes);
+            }
+            break;
+          }
+        case Css::Property::BACKGROUND:
+        case Css::Property::BACKGROUND_IMAGE:
+        case Css::Property::CONTENT:  // In CSS2 but not CSS2.1
+        case Css::Property::CURSOR:
+        case Css::Property::LIST_STYLE:
+        case Css::Property::LIST_STYLE_IMAGE:
+          if (handle_parseable_sections) {
+            // [cribbed from css_image_rewriter_async.cc]
+            // Rewrite all URLs. Technically, background-image should only
+            // have a single value which is a URL, but background could have
+            // more values.
+            Css::Values* values = decl->mutable_values();
+            for (size_t value_index = 0; value_index < values->size();
+                 value_index++) {
+              Css::Value* value = values->at(value_index);
+              if (value->GetLexicalUnitType() == Css::Value::URI) {
+                result = true;
+                GoogleString in = UnicodeTextToUTF8(value->GetStringValue());
+                GoogleString out;
+                transformer.Transform(in, &out);
+                if (in != out) {
+                  delete (*values)[value_index];
+                  (*values)[value_index] =
+                      new Css::Value(Css::Value::URI,
+                                     UTF8ToUnicodeText(out.data(), out.size()));
+                }
+              }
+            }
+            break;
+          }
+        default:
+          break;
+      }
+    }
+  }
+
   return result;
 }
 

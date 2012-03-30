@@ -17,19 +17,28 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //     and sligocki@google.com (Shawn Ligocki)
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "webutil/css/parser.h"
 
 namespace net_instaweb {
+
+class MessageHandler;
 
 namespace {
 
@@ -41,6 +50,86 @@ const char kOutputStyle[] =
     ".foreground_yellow{color:#ff0}";
 
 class CssFilterTest : public CssRewriteTestBase {
+
+ protected:
+  void TestUrlAbsolutification(const StringPiece id,
+                               const StringPiece css_input,
+                               const StringPiece expected_output,
+                               bool expect_unparseable_section,
+                               bool enable_image_rewriting,
+                               bool enable_proxy_mode,
+                               bool enable_mapping_and_sharding) {
+    options()->ClearSignatureForTesting();
+    options()->EnableFilter(RewriteOptions::kRewriteCss);
+    if (!enable_image_rewriting) {
+      options()->DisableFilter(RewriteOptions::kRecompressImages);
+      options()->DisableFilter(RewriteOptions::kLeftTrimUrls);
+      options()->DisableFilter(RewriteOptions::kExtendCacheImages);
+      options()->DisableFilter(RewriteOptions::kSpriteImages);
+    }
+    resource_manager()->ComputeSignature(options());
+
+    // Set things up so that RewriteDriver::ShouldAbsolutifyUrl returns true
+    // even though we are not proxying (but skip it if it has already been
+    // set up by a previous call to this method).
+    if (enable_mapping_and_sharding &&
+        !options()->domain_lawyer()->can_rewrite_domains()) {
+      DomainLawyer* domain_lawyer = options()->domain_lawyer();
+      MessageHandler* handler = message_handler();
+      ASSERT_TRUE(domain_lawyer->AddDomain("http://cdn.com/", handler));
+      ASSERT_TRUE(domain_lawyer->AddDomain("http://test.com/", handler));
+      ASSERT_TRUE(domain_lawyer->AddShard("cdn.com", "cdn1.com,cdn2.com",
+                                          handler));
+      EXPECT_FALSE(domain_lawyer->DoDomainsServeSameContent("cdn.com",
+                                                            "test.com"));
+      ASSERT_TRUE(domain_lawyer->AddRewriteDomainMapping("http://cdn.com",
+                                                         "http://test.com",
+                                                         handler));
+      EXPECT_TRUE(domain_lawyer->DoDomainsServeSameContent("cdn.com",
+                                                           "test.com"));
+      EXPECT_TRUE(domain_lawyer->can_rewrite_domains());
+      GoogleUrl src_base("http://test.com/foo.css");
+      bool proxying = true;  // to ensure it's set to false.
+      EXPECT_TRUE(rewrite_driver()->ShouldAbsolutifyUrl(src_base, src_base,
+                                                        &proxying));
+      EXPECT_FALSE(proxying);
+      GoogleUrl dst_base("http://cdn.com/foo.css");
+      proxying = true;  // again to ensure it's set to false.
+      EXPECT_TRUE(rewrite_driver()->ShouldAbsolutifyUrl(src_base, dst_base,
+                                                        &proxying));
+      EXPECT_FALSE(proxying);
+    }
+
+    // By default TestUrlNamer doesn't proxy but we might need it for this test.
+    TestUrlNamer::SetProxyMode(enable_proxy_mode);
+
+    SetResponseWithDefaultHeaders("foo.css", kContentTypeCss, css_input, 100);
+
+    // Ensure that the input CSS has/has-not parse errors, as specified by the
+    // expect_unparseable_section parameter, to cater for future improvements
+    // in the CSS parser.
+    Css::Parser parser(css_input);
+    parser.set_preservation_mode(true);
+    scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
+    EXPECT_TRUE(parser.errors_seen_mask() == Css::Parser::kNoError);
+    EXPECT_EQ(expect_unparseable_section,
+              parser.unparseable_sections_seen_mask() != Css::Parser::kNoError);
+
+    Parse(id, CssLinkHref("foo.css"));
+
+    // Check for CSS files in the rewritten page.
+    StringVector css_urls;
+    CollectCssLinks(StrCat(id, "_collect"), output_buffer_, &css_urls);
+    ASSERT_LE(1UL, css_urls.size());
+    StringPiece domain(enable_mapping_and_sharding
+                       ? "http://cdn1.com/" : kTestDomain);
+    EXPECT_EQ(Encode(domain, "cf", "0", "foo.css", "css"), css_urls[0]);
+
+    // Check the content of the CSS file.
+    GoogleString actual_output;
+    EXPECT_TRUE(FetchResourceUrl(css_urls[0], &actual_output));
+    EXPECT_STREQ(expected_output, actual_output);
+  }
 };
 
 TEST_P(CssFilterTest, SimpleRewriteCssTest) {
@@ -968,6 +1057,172 @@ TEST_P(CssFilterTest, DontAbsolutifyEmptyUrl) {
   const char kEmptyUrlImport[] = "@import url('');";
   const char kNoUrlImport[] = "@import url() ;";
   ValidateRewrite("empty_url_in_import", kEmptyUrlImport, kNoUrlImport);
+}
+
+TEST_F(CssFilterTest, DontAbsolutifyUrlsIfNoDomainMapping) {
+  // We are not using a proxy URL namer (TestUrlNamer) nor any domain
+  // rewriting/sharding, so relative URLs can stay relative.
+  // Note: the CSS with multiple urls is valid CSS3 but not valid CSS2.1.
+  const char css_input[] =
+      "body{background:url(a.png)}"
+      "body{background: url(a.png), url( http://test.com/b.png ), "
+      "url('sub/c.png'), url( \"/sub/d.png\"  )}";
+  // with image rewriting
+  TestUrlAbsolutification("dont_absolutify_unparseable_urls_etc_with",
+                          css_input, css_input,
+                          true  /* expect_unparseable_section */,
+                          true  /* enable_image_rewriting */,
+                          false /* enable_proxy_mode */,
+                          false /* enable_mapping_and_sharding */);
+  // without image rewriting
+  TestUrlAbsolutification("dont_absolutify_unparseable_urls_etc_without",
+                          css_input, css_input,
+                          true  /* expect_unparseable_section */,
+                          false /* enable_image_rewriting */,
+                          false /* enable_proxy_mode */,
+                          false /* enable_mapping_and_sharding */);
+}
+
+TEST_F(CssFilterTest, AbsolutifyUnparseableUrlsWithDomainMapping) {
+  // We are not using a proxy URL namer (TestUrlNamer) but we ARE mapping and
+  // sharding domains, so we expect the relative URLs to be absolutified.
+  // Note: the CSS with multiple urls is valid CSS3 but not valid CSS2.1.
+  const char css_input[] =
+      "body{background:url(a.png)}"
+      "body{background: url(a.png), url( http://test.com/b.png ), "
+      "url('sub/c.png'), url( \"/sub/d.png\"  )}";
+  const char css_output[] =
+      "body{background:url(http://cdn2.com/a.png)}"
+      "body{background: url(http://cdn2.com/a.png), "
+      "url(http://cdn1.com/b.png), "
+      "url('http://cdn1.com/sub/c.png'), "
+      "url(\"http://cdn2.com/sub/d.png\")}";
+  // with image rewriting
+  TestUrlAbsolutification("absolutify_unparseable_urls_etc_with",
+                          css_input, css_output,
+                          true  /* expect_unparseable_section */,
+                          true  /* enable_image_rewriting */,
+                          false /* enable_proxy_mode */,
+                          true  /* enable_mapping_and_sharding */);
+  // without image rewriting
+  TestUrlAbsolutification("absolutify_unparseable_urls_etc_without",
+                          css_input, css_output,
+                          true  /* expect_unparseable_section */,
+                          false /* enable_image_rewriting */,
+                          false /* enable_proxy_mode */,
+                          true  /* enable_mapping_and_sharding */);
+}
+
+TEST_F(CssFilterTest, DontAbsolutifyCursorUrlsWithoutDomainMapping) {
+  // Ensure that cursor URLs are left alone when there's nothing to do.
+  const char css_input[] =
+      ":link,:visited { cursor: url(example.svg) pointer }";
+  const char expected_output[] =
+      ":link,:visited{cursor:url(example.svg) pointer}";
+  // with image rewriting
+  TestUrlAbsolutification("dont_absolutify_cursor_urls_etc_with",
+                          css_input, expected_output,
+                          false /* expect_unparseable_section */,
+                          true  /* enable_image_rewriting */,
+                          false /* enable_proxy_mode */,
+                          false /* enable_mapping_and_sharding */);
+  // without image rewriting
+  TestUrlAbsolutification("dont_absolutify_cursor_urls_etc_without",
+                          css_input, expected_output,
+                          false /* expect_unparseable_section */,
+                          false /* enable_image_rewriting */,
+                          false /* enable_proxy_mode */,
+                          false /* enable_mapping_and_sharding */);
+}
+
+TEST_F(CssFilterTest, AbsolutifyCursorUrlsWithDomainMapping) {
+  // Ensure that cursor URLs are correctly absolutified.
+  const char css_input[] =
+      ":link,:visited { cursor: url(example.svg) pointer }";
+  const char expected_output[] =
+      ":link,:visited{cursor:url(http://cdn2.com/example.svg) pointer}";
+  TestUrlAbsolutification("absolutify_cursor_urls_with_domain_mapping",
+                          css_input, expected_output,
+                          false /* expect_unparseable_section */,
+                          true  /* enable_image_rewriting */,
+                          false /* enable_proxy_mode */,
+                          true  /* enable_mapping_and_sharding */);
+}
+
+class CssFilterTestUrlNamer : public CssFilterTest {
+ public:
+  CssFilterTestUrlNamer() {
+    // We need a subclass to do this because of the timing of construction
+    // and SetUp calls, and doing it after all that doesn't inject it in all
+    // right places.
+    SetUseTestUrlNamer(true);
+  }
+};
+
+TEST_F(CssFilterTestUrlNamer, AbsolutifyUnparseableUrls) {
+  // Here we ARE using a proxy URL namer (TestUrlNamer) so the URLs in
+  // unparseable CSS must be absolutified.
+  // This CSS is valid CSS3 but not valid CSS2.1 because of the multiple urls.
+  const char css_input[] =
+      "body { background: url(a.png), url( http://test.com/b.png ), "
+      "url('sub/c.png'), url( \"/sub/d.png\"  ); }\n";
+  const char expected_output[] =
+      "body{background: "
+      "url(http://test.com/a.png), "
+      "url( http://test.com/b.png ), "  // already absolute means no change
+      "url('http://test.com/sub/c.png'), "
+      "url(\"http://test.com/sub/d.png\")}";
+  // with image rewriting
+  TestUrlAbsolutification("absolutify_unparseable_urls_with",
+                          css_input, expected_output,
+                          true  /* expect_unparseable_section */,
+                          true  /* enable_image_rewriting */,
+                          true  /* enable_proxy_mode */,
+                          false /* enable_mapping_and_sharding */);
+  // without image rewriting
+  TestUrlAbsolutification("do_absolutify_unparseable_urls_without",
+                          css_input, expected_output,
+                          true  /* expect_unparseable_section */,
+                          false /* enable_image_rewriting */,
+                          true  /* enable_proxy_mode */,
+                          false /* enable_mapping_and_sharding */);
+}
+
+TEST_F(CssFilterTestUrlNamer, AbsolutifyParseableUrls) {
+  // Here we are using a proxy URL namer (TestUrlNamer) but the URLs in the
+  // CSS isn't rewritten by the image rewriter, but we still must absolutify.
+  const char css_input[] =
+      "body { background: url(a.png); }\n";
+  const char expected_output[] =
+      "body{background:url(http://test.com/a.png)}";
+  // with image rewriting
+  TestUrlAbsolutification("absolutify_parseable_urls_with",
+                          css_input, expected_output,
+                          false /* expect_unparseable_section */,
+                          true  /* enable_image_rewriting */,
+                          true  /* enable_proxy_mode */,
+                          false /* enable_mapping_and_sharding */);
+  // without image rewriting
+  TestUrlAbsolutification("absolutify_parseable_urls_without",
+                          css_input, expected_output,
+                          false /* expect_unparseable_section */,
+                          false /* enable_image_rewriting */,
+                          true  /* enable_proxy_mode */,
+                          false /* enable_mapping_and_sharding */);
+}
+
+TEST_F(CssFilterTestUrlNamer, AbsolutifyCursorUrlsWithProxy) {
+  // Ensure that cursor URLs are correctly absolutified.
+  const char css_input[] =
+      ":link,:visited { cursor: url(example.svg) pointer }";
+  const char expected_output[] =
+      ":link,:visited{cursor:url(http://test.com/example.svg) pointer}";
+  TestUrlAbsolutification("dont_absolutify_cursor_urls_with_proxy",
+                          css_input, expected_output,
+                          false /* expect_unparseable_section */,
+                          true  /* enable_image_rewriting */,
+                          true  /* enable_proxy_mode */,
+                          false /* enable_mapping_and_sharding */);
 }
 
 // We test with asynchronous_rewrites() == GetParam() as both true and false.

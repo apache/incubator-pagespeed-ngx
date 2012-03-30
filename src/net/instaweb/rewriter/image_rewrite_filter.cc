@@ -647,6 +647,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
         DataUrl(*Image::TypeToContentType(static_cast<Image::Type>(image_type)),
                 BASE64, cached->low_resolution_inlined_data(), &data_url);
         driver_->AddAttribute(element, HtmlName::kPagespeedLowResSrc, data_url);
+        driver_->increment_num_inline_preview_images();
       } else {
         driver_->message_handler()->Message(kError,
                                             "Invalid low res image type: %d",

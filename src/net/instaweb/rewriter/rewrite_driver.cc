@@ -193,7 +193,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       low_priority_rewrite_worker_(NULL),
       writer_(NULL),
       client_state_(NULL),
-      need_furious_cookie_(false) {
+      need_furious_cookie_(false),
+      num_inline_preview_images_(0) {
   // Set up default values for the amount of time an HTML rewrite will wait for
   // Rewrites to complete, based on whether compiled for debug or running on
   // valgrind.  Note that unit-tests can explicitly override this value via
@@ -274,6 +275,7 @@ void RewriteDriver::Clear() {
   client_id_.clear();
   property_page_.reset(NULL);
   fully_rewrite_on_flush_ = false;
+  num_inline_preview_images_ = 0;
 }
 
 // Must be called with rewrite_mutex() held.
@@ -2063,6 +2065,10 @@ bool RewriteDriver::ShouldAbsolutifyUrl(const GoogleUrl& input_base,
 // include property_cache.h in the header.
 void RewriteDriver::set_property_page(PropertyPage* page) {
   property_page_.reset(page);
+}
+
+void RewriteDriver::increment_num_inline_preview_images() {
+  ++num_inline_preview_images_;
 }
 
 void RewriteDriver::increment_async_events_count() {

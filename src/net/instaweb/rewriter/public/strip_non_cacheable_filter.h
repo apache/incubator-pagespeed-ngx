@@ -52,6 +52,11 @@ class StripNonCacheableFilter : public EmptyHtmlFilter {
   const RewriteOptions* rewrite_options_;
   AttributesToNonCacheableValuesMap attribute_non_cacheable_values_map_;
   std::vector<int> panel_number_num_instances_;
+  bool script_written_;
+
+  // Inserts blink js and defer js init code into the head element. If no head
+  // tag in the page, it inserts one before body tag.
+  void InsertBlinkJavascript(HtmlElement* element);
 
   void InsertPanelStub(HtmlElement* element, const GoogleString& panel_id);
 

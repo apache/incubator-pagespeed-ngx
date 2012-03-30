@@ -75,6 +75,7 @@ class CssHierarchy {
                       const GoogleUrl& css_trim_url,
                       const StringPiece input_contents,
                       bool is_xhtml,
+                      bool has_unparseables,
                       Css::Stylesheet* stylesheet,
                       MessageHandler* message_handler);
 
@@ -114,6 +115,9 @@ class CssHierarchy {
 
   bool flattening_succeeded() const { return flattening_succeeded_; }
   void set_flattening_succeeded(bool ok) { flattening_succeeded_ = ok; }
+
+  bool unparseable_detected() const { return unparseable_detected_; }
+  void set_unparseable_detected(bool ok) { unparseable_detected_ = ok; }
 
   // If we haven't already, determine the charset of this CSS, then check if
   // it is compatible with the charset of its parent; currently they are
@@ -261,6 +265,9 @@ class CssHierarchy {
   // can fail for various reasons, and any failure propagates up the hierarchy
   // to the root CSS and eventually stops the process.
   bool flattening_succeeded_;
+
+  // An indication of whether anything unparseable was detected in this CSS.
+  bool unparseable_detected_;
 
   // For logging messages.
   MessageHandler* message_handler_;

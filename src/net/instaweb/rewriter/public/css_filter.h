@@ -232,7 +232,7 @@ class CssFilter::Context : public SingleRewriteContext {
 
   // Starts nested rewrite jobs for any imports or images contained in the CSS.
   void RewriteCssFromRoot(const StringPiece& in_text, int64 in_text_size,
-                          Css::Stylesheet* stylesheet);
+                          bool has_unparseables, Css::Stylesheet* stylesheet);
   void RewriteCssFromNested(RewriteContext* parent, CssHierarchy* hierarchy);
 
   // Specialization to absolutify URLs in input resource in case of rewrite
@@ -282,6 +282,7 @@ class CssFilter::Context : public SingleRewriteContext {
   scoped_ptr<CssImageRewriterAsync> image_rewriter_;
   CssResourceSlotFactory slot_factory_;
   CssHierarchy hierarchy_;
+  bool css_rewritten_;
 
   // Style element containing inline CSS (see StartInlineRewrite) -or-
   // any element with a style attribute (see StartAttributeRewrite), or

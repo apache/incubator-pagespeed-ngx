@@ -115,6 +115,7 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
           new CssImageRewriterAsync(this, filter, filter->driver_,
                                     cache_extender, image_rewriter,
                                     image_combiner)),
+      css_rewritten_(false),
       rewrite_inline_element_(NULL),
       rewrite_inline_char_node_(NULL),
       rewrite_inline_attribute_(NULL),
@@ -240,15 +241,18 @@ void CssFilter::Context::RewriteSingle(
 
 void CssFilter::Context::RewriteCssFromRoot(const StringPiece& contents,
                                             int64 in_text_size,
+                                            bool has_unparseables,
                                             Css::Stylesheet* stylesheet) {
   in_text_size_ = in_text_size;
 
   hierarchy_.InitializeRoot(css_base_gurl_, css_trim_gurl_, contents,
-                            driver_->doctype().IsXhtml(), stylesheet,
-                            driver_->message_handler());
+                            driver_->doctype().IsXhtml(), has_unparseables,
+                            stylesheet, driver_->message_handler());
 
-  image_rewriter_->RewriteCss(ImageInlineMaxBytes(), this, &hierarchy_,
-                              driver_->message_handler());
+  css_rewritten_ = image_rewriter_->RewriteCss(ImageInlineMaxBytes(),
+                                               this,
+                                               &hierarchy_,
+                                               driver_->message_handler());
 }
 
 void CssFilter::Context::RewriteCssFromNested(RewriteContext* parent,
@@ -273,17 +277,39 @@ void CssFilter::Context::Harvest() {
     }
   }
 
-  // May need to absolutify @imports.
-  bool absolutified_imports = false;
-  if (driver_->ShouldAbsolutifyUrl(css_base_gurl_, css_trim_gurl_, NULL)) {
-    absolutified_imports =
+  // May need to absolutify @import and/or url() URLs. Note we must invoke
+  // ShouldAbsolutifyUrl first because we need 'proxying' to be calculated.
+  bool absolutified_urls = false;
+  bool proxying = false;
+  bool should_absolutify = driver_->ShouldAbsolutifyUrl(css_base_gurl_,
+                                                        css_trim_gurl_,
+                                                        &proxying);
+  if (should_absolutify) {
+    absolutified_urls =
         CssMinify::AbsolutifyImports(hierarchy_.mutable_stylesheet(),
                                      css_base_gurl_);
   }
 
+  // If we have determined that we need to absolutify URLs, or if we are
+  // proxying (*), we need to absolutify all URLs. If we have already run the
+  // CSS through the image rewriter then all parseable URLs have already been
+  // done, and we only need to do unparseable URLs if any were detected.
+  // (*) When proxying the root of the path can change so we need to absolutify.
+  if (should_absolutify || proxying) {
+    if (!css_rewritten_ || hierarchy_.unparseable_detected()) {
+      absolutified_urls |= CssMinify::AbsolutifyUrls(
+          hierarchy_.mutable_stylesheet(),
+          css_base_gurl_,
+          !css_rewritten_,                    /* handle_parseable_sections */
+          hierarchy_.unparseable_detected(),  /* handle_unparseable_sections */
+          driver_,
+          driver_->message_handler());
+    }
+  }
+
   bool ok = filter_->SerializeCss(
       this, in_text_size_, hierarchy_.mutable_stylesheet(), css_base_gurl_,
-      css_trim_gurl_, previously_optimized || absolutified_imports,
+      css_trim_gurl_, previously_optimized || absolutified_urls,
       IsInlineAttribute() /* stylesheet_is_declarations */,
       &out_text, driver_->message_handler());
   if (ok) {
@@ -651,7 +677,10 @@ TimedBool CssFilter::RewriteCssText(Context* context,
     // Any problem with an @import results in the error mask bit kImportError
     // being set, so if we get here we know that any @import rules were parsed
     // successfully, thus, flattening is safe.
-    context->RewriteCssFromRoot(in_text, in_text_size, stylesheet.release());
+    bool has_unparseables = (parser.unparseable_sections_seen_mask() !=
+                             Css::Parser::kNoError);
+    context->RewriteCssFromRoot(in_text, in_text_size,
+                                has_unparseables, stylesheet.release());
     // Rewrite OK thus far.
     ret.value = true;
   }
