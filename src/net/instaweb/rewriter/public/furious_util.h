@@ -40,12 +40,11 @@ namespace furious {
 
 // kFuriousNoExperiment indicates there is an actual cookie set, but the cookie
 // says: don't run experiments on this user.  E.g. if you're running an A/B
-// experiment on 40% of the traffic, 20% is in A (control), 20% is in B, and
+// experiment on 40% of the traffic, 20% is in A, 20% is in B, and
 // 60% is in NoExperiment.
 enum FuriousState {
   kFuriousNotSet = -1,  // Indicates no experiment cookie was set.
   kFuriousNoExperiment = 0,
-  kFuriousControl = 1,
 };
 
 // Name of the Furious cookie we set when running experiments.

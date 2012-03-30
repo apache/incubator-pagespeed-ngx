@@ -101,24 +101,23 @@ int DetermineFuriousState(const RewriteOptions* options) {
     return ret;
   }
 
-  // If we're running two experiments, 1/3 of the exeriment traffic
-  // should go into each, and 1/3 into the control.
-  double divisor = (num_experiments + 1) * 100.0;
-  double mult = static_cast<double>(options->furious_percent())/divisor;
-  int bound = mult * RAND_MAX;
+  int64 bound = 0;
   int64 index = random();
   ret = kFuriousNoExperiment;
   // One of these should be the control.
   for (int i = 0; i < num_experiments; ++i) {
-    if (index < bound * (i + 1)) {
-      ret = options->furious_spec_id(i);
+    RewriteOptions::FuriousSpec* spec = options->furious_spec(i);
+    double mult = static_cast<double>(spec->percent())/100.0;
+
+    // Because RewriteOptions checks to make sure the total experiment
+    // percentage is not greater than 100, bound should never be greater
+    // than RAND_MAX.
+    bound += (mult * RAND_MAX);
+    if (index < bound) {
+      ret = spec->id();
       return ret;
     }
   }
-  if (index < bound * (num_experiments + 1)) {
-    ret = kFuriousControl;
-  }
-
   return ret;
 }
 

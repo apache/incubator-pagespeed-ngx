@@ -159,8 +159,6 @@ const char* kModPagespeedMinImageSizeLowResolutionBytes =
     "ModPagespeedMinImageSizeLowResolutionBytes";
 const char* kModPagespeedRunFurious = "ModPagespeedRunExperiment";
 const char* kModPagespeedFuriousSpec = "ModPagespeedExperimentSpec";
-const char* kModPagespeedFuriousPercent =
-    "ModPagespeedPercentExperimentTraffic";
 const char* kModPagespeedXHeaderValue = "ModPagespeedXHeaderValue";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
@@ -1186,11 +1184,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "speed tracking"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedRunFurious,
          "Run an experiment to test the effectiveness of rewriters."),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedFuriousPercent,
-         "Percentage of traffic to be run through an experiment."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedFuriousSpec,
          "Configuration for one side of an experiment in the form: "
-         "'id= ;enabled= ;disabled= ;...'"),
+         "'id= ;enabled= ;disabled= ;ga= ;percent= ...'"),
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)
   APACHE_CONFIG_OPTION(kModPagespeedFetcherTimeoutMs,

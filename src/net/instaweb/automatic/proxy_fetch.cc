@@ -371,6 +371,8 @@ bool ProxyFetch::StartParse() {
   // do it here instead.
   if (driver_->need_furious_cookie() && Options()->running_furious()) {
     int furious_value = Options()->furious_id();
+    // TODO(nforman): This seems to be returning times farther ahead than
+    // one week.  Investigate.
     furious::SetFuriousCookie(response_headers(), furious_value, url_,
                               resource_manager_->timer()->NowUs());
   }

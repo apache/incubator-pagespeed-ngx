@@ -104,10 +104,10 @@ TEST_F(FuriousUtilTest, RemoveFuriousCookie) {
 TEST_F(FuriousUtilTest, DetermineFuriousState) {
   RewriteOptions options;
   options.set_running_furious_experiment(true);
-  options.set_furious_percent(70);
   NullMessageHandler handler;
-  ASSERT_TRUE(options.AddFuriousSpec("id=7;", &handler));
-  ASSERT_EQ(1, options.num_furious_experiments());
+  ASSERT_TRUE(options.AddFuriousSpec("id=1;percent=35", &handler));
+  ASSERT_TRUE(options.AddFuriousSpec("id=2;percent=35", &handler));
+  ASSERT_EQ(2, options.num_furious_experiments());
   int none = 0;
   int in_a = 0;
   int in_b = 0;
@@ -120,10 +120,10 @@ TEST_F(FuriousUtilTest, DetermineFuriousState) {
       case kFuriousNoExperiment:  // explicitly not in experiment
         ++none;
         break;
-      case kFuriousControl:  // in control
+      case 1:  // in id=1
         ++in_a;
         break;
-      case 7:  // in id=7
+      case 2:  // in id=2
         ++in_b;
         break;
       default:

@@ -316,12 +316,15 @@ class RewriteOptions {
 
     // Accessors.
     int id() const { return id_; }
+    int percent() const { return percent_; }
+    GoogleString ga_id() const { return ga_id_; }
     RewriteLevel rewrite_level() const { return rewrite_level_; }
     FilterSet enabled_filters() const { return enabled_filters_; }
     FilterSet disabled_filters() const { return disabled_filters_; }
     int64 css_inline_max_bytes() const { return css_inline_max_bytes_; }
     int64 js_inline_max_bytes() const { return js_inline_max_bytes_; }
     int64 image_inline_max_bytes() const { return image_inline_max_bytes_; }
+    bool use_default() const { return use_default_; }
 
    private:
     // Initialize parses spec and sets the FilterSets, rewrite level,
@@ -331,13 +334,18 @@ class RewriteOptions {
     // Helper method that returns the part of the piece after the first '='.
     static StringPiece PieceAfterEquals(const StringPiece& piece);
 
-    int id_;
+    int id_;  // id for this experiment
+    GoogleString ga_id_;  // Google Analytics ID for this experiment
+    int percent_;  // percentage of traffic to go through this experiment.
     RewriteLevel rewrite_level_;
     FilterSet enabled_filters_;
     FilterSet disabled_filters_;
     int64 css_inline_max_bytes_;
     int64 js_inline_max_bytes_;
     int64 image_inline_max_bytes_;
+    // Use whatever RewriteOptions' settings are without experiments
+    // for this experiment.
+    bool use_default_;
     DISALLOW_COPY_AND_ASSIGN(FuriousSpec);
   };
 
@@ -383,8 +391,6 @@ class RewriteOptions {
 
   // Sets which side of the experiment these RewriteOptions are on.
   // Cookie-setting must be done separately.
-  // furious::kFuriousControl indicates control group (same as whatever
-  // these RewriteOptions are).
   // furious::kFuriousNotSet indicates it hasn't been set.
   // furious::kFuriousNoExperiment indicates this request shouldn't be
   // in any experiment.
@@ -395,6 +401,10 @@ class RewriteOptions {
 
   int furious_spec_id(int i) const {
     return furious_specs_[i]->id();
+  }
+
+  FuriousSpec* furious_spec(int i) const {
+    return furious_specs_[i];
   }
 
   int num_furious_experiments() const { return furious_specs_.size(); }
@@ -797,13 +807,6 @@ class RewriteOptions {
   }
   bool running_furious() const {
     return running_furious_.value();
-  }
-
-  void set_furious_percent(int x) {
-    set_option(x, &furious_percent_);
-  }
-  int furious_percent() const {
-    return furious_percent_.value();
   }
 
   void set_implicit_cache_ttl_ms(int64 x) {
@@ -1234,7 +1237,6 @@ class RewriteOptions {
   Option<int> image_max_rewrites_at_once_;
   Option<int> max_url_segment_size_;  // For http://a/b/c.d, use strlen("c.d").
   Option<int> max_url_size_;          // This is strlen("http://a/b/c.d").
-  Option<int> furious_percent_;       // Percent traffic to go through furious.
 
   Option<bool> enabled_;
   Option<bool> ajax_rewriting_enabled_;  // Should ajax rewriting be enabled?
@@ -1346,6 +1348,7 @@ class RewriteOptions {
 
   // Which experiment configuration are we in?
   int furious_id_;
+  int furious_percent_;  // Total traffic going through experiments.
   std::vector<FuriousSpec*> furious_specs_;
 
   DomainLawyer domain_lawyer_;

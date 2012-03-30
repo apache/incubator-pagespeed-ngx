@@ -161,7 +161,7 @@ void InsertGAFilter::EndElementImpl(HtmlElement* element) {
               furious_state != furious::kFuriousNoExperiment) {
             // This defaults to being a page-scoped variable.
             furious = StringPrintf(
-                "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s'])",
+                "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s']);",
                 driver_->options()->ToExperimentString().c_str());
           }
         }

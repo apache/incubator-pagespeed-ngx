@@ -886,13 +886,12 @@ TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies2) {
 TEST_F(RewriteOptionsTest, FuriousSpecTest) {
   NullMessageHandler handler;
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  // 0 is reserved for the no-experiment state.
   EXPECT_FALSE(options_.AddFuriousSpec("id=0", &handler));
-
   EXPECT_TRUE(options_.AddFuriousSpec(
-      "id=7;level=CoreFilters;enabled=sprite_images;disabled=inline_css;"
-      "inline_js=600000", &handler));
-  EXPECT_TRUE(options_.AddFuriousSpec("id=2;disabled=insert_ga ", &handler));
+      "id=7;percent=10;level=CoreFilters;enabled=sprite_images;"
+      "disabled=inline_css;inline_js=600000", &handler));
+  EXPECT_TRUE(options_.AddFuriousSpec("id=2;percent=15;disabled=insert_ga ",
+                                      &handler));
   options_.SetFuriousState(7);
   EXPECT_EQ(RewriteOptions::kCoreFilters, options_.level());
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kSpriteImages));
@@ -910,12 +909,20 @@ TEST_F(RewriteOptionsTest, FuriousSpecTest) {
 TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   NullMessageHandler handler;
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
-  EXPECT_TRUE(options_.AddFuriousSpec("id=7;level=AllFilters;", &handler));
-  EXPECT_TRUE(options_.AddFuriousSpec("id=2;enabled=rewrite_css;", &handler));
+  EXPECT_FALSE(options_.AddFuriousSpec("id=2;enabled=rewrite_css;", &handler));
+  EXPECT_TRUE(options_.AddFuriousSpec("id=1;percent=15;default", &handler));
+  EXPECT_TRUE(options_.AddFuriousSpec("id=7;percent=15;level=AllFilters;",
+                                      &handler));
+  EXPECT_TRUE(options_.AddFuriousSpec("id=2;percent=15;enabled=rewrite_css;"
+                                      "inline_css=4096;ga_id=122333-4",
+                                      &handler));
   options_.SetFuriousState(-7);
   // This should be the core filters.
   EXPECT_EQ("ah,cc,mc,ec,ei,es,hw,ci,ii,il,ji,tu,ir,ri,cf,jm,cu,"
             "css:2048,im:2048,js:2048;", options_.ToExperimentString());
+  options_.SetFuriousState(1);
+  EXPECT_EQ("Experiment: 1; ah,ai,cc,mc,ec,ei,es,hw,ci,ii,il,ji,ig,tu,ir,ri,cf,"
+            "jm,cu,css:2048,im:2048,js:2048;", options_.ToExperimentString());
   options_.SetFuriousState(7);
   // This should be all non-dangerous filters.
   EXPECT_EQ("Experiment: 7; ah,ai,cw,cc,ch,jc,jp,jw,mc,pj,db,di,ea,ec,ei,es,if,"
@@ -927,8 +934,9 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   // add_instrumentation, html_writer, insert_ga) plus rewrite_css.
   // The image inline threshold is 0 because ImageInlineMaxBytes()
   // only returns the threshold if inline_images is enabled.
-  EXPECT_EQ("Experiment: 2; ah,ai,hw,ig,cf,css:2048,im:0,js:2048;",
+  EXPECT_EQ("Experiment: 2; ah,ai,hw,ig,cf,css:4096,im:0,js:2048;",
             options_.ToExperimentString());
+  EXPECT_EQ("122333-4", options_.ga_id());
 }
 
 }  // namespace

@@ -373,7 +373,8 @@ RewriteOptions::RewriteOptions()
     : modified_(false),
       frozen_(false),
       options_uniqueness_checked_(false),
-      furious_id_(furious::kFuriousNotSet) {
+      furious_id_(furious::kFuriousNotSet),
+      furious_percent_(0) {
   // Sanity-checks -- will be active only when compiled for debug.
 #ifndef NDEBUG
   CheckFilterSetOrdering(kCoreFilterSet, arraysize(kCoreFilterSet));
@@ -487,8 +488,6 @@ RewriteOptions::RewriteOptions()
   add_option("", &ga_id_, "ig", kAnalyticsID);
   add_option(true, &increase_speed_tracking_, "st", kIncreaseSpeedTracking);
   add_option(false, &running_furious_, "fur", kRunningFurious);
-  add_option(kDefaultFuriousTrafficPercent, &furious_percent_, "fp",
-             kFuriousPercent);
   add_option(kDefaultXModPagespeedHeaderValue, &x_header_value_, "xhv",
              kXModPagespeedHeaderValue);
   // Sort all_options_ on enum.
@@ -1012,13 +1011,10 @@ GoogleString RewriteOptions::ToString() const {
   return output;
 }
 
-// TODO(nforman): This string may need to be significantly more compact to
-// display in Google Analytics properly.
 GoogleString RewriteOptions::ToExperimentString() const {
   GoogleString output;
   // Only add the experiment id if we're running this experiment.
-  if (furious_id_ == furious::kFuriousControl ||
-      GetFuriousSpec(furious_id_) != NULL) {
+  if (GetFuriousSpec(furious_id_) != NULL) {
     output = StringPrintf("Experiment: %d; ", furious_id_);
   }
   for (int f = kFirstFilter; f != kEndOfFilters; ++f) {
@@ -1060,8 +1056,7 @@ RewriteOptions::FuriousSpec* RewriteOptions::GetFuriousSpec(int id) const {
 
 bool RewriteOptions::AvailableFuriousId(int id) {
   if (id < 0 || id == furious::kFuriousNotSet ||
-      id == furious::kFuriousNoExperiment ||
-      id == furious::kFuriousControl) {
+      id == furious::kFuriousNoExperiment) {
     return false;
   }
   return (GetFuriousSpec(id) == NULL);
@@ -1079,11 +1074,17 @@ bool RewriteOptions::AddFuriousSpec(int furious_id) {
 }
 
 bool RewriteOptions::AddFuriousSpec(FuriousSpec* spec) {
-  if (!AvailableFuriousId(spec->id())) {
+  if (!AvailableFuriousId(spec->id()) || spec->percent() <= 0 ||
+      spec->percent() > 100) {
+    delete spec;
+    return false;
+  }
+  if (furious_percent_ + spec->percent() > 100) {
     delete spec;
     return false;
   }
   furious_specs_.push_back(spec);
+  furious_percent_ += spec->percent();
   return true;
 }
 
@@ -1100,17 +1101,22 @@ void RewriteOptions::SetupFuriousRewriters() {
   // Control: just make sure that the necessary stuff is on.
   // Do NOT try to set up things to look like the FuriousSpec
   // for this id: it doesn't match the rewrite options.
-  if (furious_id_ == furious::kFuriousControl) {
+  FuriousSpec* spec = GetFuriousSpec(furious_id_);
+  if (spec == NULL) {
+    return;
+  }
+
+  set_ga_id(spec->ga_id());
+
+  if (spec->use_default()) {
+    // We need these for the experiment to work properly.
     ForceEnableFilter(RewriteOptions::kAddHead);
     ForceEnableFilter(RewriteOptions::kAddInstrumentation);
     ForceEnableFilter(RewriteOptions::kInsertGA);
     ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
     return;
   }
-  FuriousSpec* spec = GetFuriousSpec(furious_id_);
-  if (spec == NULL) {
-    return;
-  }
+
   ClearFilters();
   SetRewriteLevel(spec->rewrite_level());
   EnableFilters(spec->enabled_filters());
@@ -1128,19 +1134,25 @@ void RewriteOptions::SetupFuriousRewriters() {
 RewriteOptions::FuriousSpec::FuriousSpec(const StringPiece& spec,
                                          MessageHandler* handler)
     : id_(furious::kFuriousNotSet),
+      ga_id_(""),
+      percent_(0),
       rewrite_level_(kPassThrough),
       css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
       js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
-      image_inline_max_bytes_(kDefaultImageInlineMaxBytes) {
+      image_inline_max_bytes_(kDefaultImageInlineMaxBytes),
+      use_default_(false) {
   Initialize(spec, handler);
 }
 
 RewriteOptions::FuriousSpec::FuriousSpec(int id)
     : id_(id),
+      ga_id_(""),
+      percent_(0),
       rewrite_level_(kPassThrough),
       css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
       js_inline_max_bytes_(kDefaultJsInlineMaxBytes),
-      image_inline_max_bytes_(kDefaultImageInlineMaxBytes) {
+      image_inline_max_bytes_(kDefaultImageInlineMaxBytes),
+      use_default_(false) {
 }
 
 RewriteOptions::FuriousSpec* RewriteOptions::FuriousSpec::Clone() {
@@ -1153,10 +1165,13 @@ RewriteOptions::FuriousSpec* RewriteOptions::FuriousSpec::Clone() {
        iter != disabled_filters_.end(); ++iter) {
     ret->disabled_filters_.insert(*iter);
   }
+  ret->ga_id_ = ga_id_;
+  ret->percent_ = percent_;
   ret->rewrite_level_ = rewrite_level_;
   ret->css_inline_max_bytes_ = css_inline_max_bytes_;
   ret->js_inline_max_bytes_ = js_inline_max_bytes_;
   ret->image_inline_max_bytes_ = image_inline_max_bytes_;
+  ret->use_default_ = use_default_;
   return ret;
 }
 
@@ -1174,8 +1189,8 @@ StringPiece RewriteOptions::FuriousSpec::PieceAfterEquals(
 }
 
 // Options are written in the form:
-// ModPagespeedExperimentSpec 'id= 2; RewriteLevel= CoreFilters;
-// enable= resize_images; disable = is; inline_css = 25556'
+// ModPagespeedExperimentSpec 'id= 2; percent= 20; RewriteLevel= CoreFilters;
+// enable= resize_images; disable = is; inline_css = 25556; ga=UA-233842-1'
 void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
                                              MessageHandler* handler) {
   StringPieceVector spec_pieces;
@@ -1190,6 +1205,17 @@ void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
         // set the id_ to kFuriousNotSet so we don't end up adding
         // in this spec.
         id_ = furious::kFuriousNotSet;
+      }
+    } else if (StringCaseEqual(piece, "default")) {
+      // "Default" means use whatever RewriteOptions are.
+      use_default_ = true;
+    } else if (StringCaseStartsWith(piece, "percent")) {
+      StringPiece percent = PieceAfterEquals(piece);
+      StringToInt(percent.as_string(), &percent_);
+    } else if (StringCaseStartsWith(piece, "ga")) {
+      StringPiece ga = PieceAfterEquals(piece);
+      if (ga.length() > 0) {
+        ga_id_ = GoogleString(ga.data(), ga.length());
       }
     } else if (StringCaseStartsWith(piece, "level")) {
       StringPiece level = PieceAfterEquals(piece);
