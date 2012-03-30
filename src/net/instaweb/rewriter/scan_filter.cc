@@ -51,10 +51,13 @@ void ScanFilter::StartElement(HtmlElement* element) {
     HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
     // See http://www.whatwg.org/specs/web-apps/current-work/multipage
     // /semantics.html#the-base-element
-    if (href != NULL) {
+    //
+    // TODO(jmarantz): If the base is present but cannot be decoded, we should
+    // probably not do any resource rewriting at all.
+    if ((href != NULL) && (href->DecodedValueOrNull() != NULL)) {
       // TODO(jmarantz): consider having rewrite_driver access the url in this
       // class, rather than poking it into rewrite_driver.
-      driver_->SetBaseUrlIfUnset(href->value());
+      driver_->SetBaseUrlIfUnset(href->DecodedValueOrNull());
       seen_base_ = true;
       if (seen_refs_) {
         driver_->set_refs_before_base();

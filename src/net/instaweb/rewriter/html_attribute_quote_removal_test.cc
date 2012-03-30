@@ -73,4 +73,16 @@ TEST_F(HtmlAttributeQuoteRemovalTest, DoNotRemoveQuotesInXhtml) {
                     "<div class=\"foo\" id='bar'>foobar</div>");
 }
 
+TEST_F(HtmlAttributeQuoteRemovalTest, RemoveUnneededQuotesWith8BitValue) {
+  // TODO(jmarantz): we should not need to add attribute quotes just
+  // because there are 8-bit values.  Leaving this for a follow-up.
+  // ValidateExpected("remove_unneeded_quotes",
+  //                  "<div class=\"muñecos\" id='muñecos'>foobar</div>",
+  //                  "<div class=muñecos id=muñecos>foobar</div>");
+
+  // For now be conservative.
+  ValidateNoChanges("remove_unneeded_quotes",
+                    "<div class=\"muñecos\" id='muñecos'>foobar</div>");
+}
+
 }  // namespace net_instaweb

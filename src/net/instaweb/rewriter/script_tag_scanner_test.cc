@@ -54,7 +54,7 @@ class ScriptTagScannerTest : public HtmlParseTestBase {
           script_tag_scanner_.ParseScriptElement(element, &src);
       if (info.classification != ScriptTagScanner::kNonScript) {
         if (src) {
-          info.url = src->value();
+          info.url = src->DecodedValueOrNull();
         }
         info.flags = script_tag_scanner_.ExecutionMode(element);
         scripts_.push_back(info);
@@ -160,8 +160,32 @@ TEST_F(ScriptTagScannerTest, TypeEmpty) {
 }
 
 TEST_F(ScriptTagScannerTest, TypeNoValHaveLang) {
-  // type is no-value, but language is there --- it matters
+  // type is missing, but language is there.
   ValidateNoChanges("simple_script", "<script type language=tcl></script>");
+  ASSERT_EQ(1, collector_.Size());
+  EXPECT_EQ(GoogleString(), collector_.UrlAt(0));
+  EXPECT_EQ(ScriptTagScanner::kUnknownScript, collector_.ClassificationAt(0));
+}
+
+TEST_F(ScriptTagScannerTest, TypeEmptyLang) {
+  // Type is absent, and language lacks a value.  Interpret as JS.
+  ValidateNoChanges("empty_lang", "<script language></script>");
+  ASSERT_EQ(1, collector_.Size());
+  EXPECT_EQ(GoogleString(), collector_.UrlAt(0));
+  EXPECT_EQ(ScriptTagScanner::kJavaScript, collector_.ClassificationAt(0));
+}
+
+TEST_F(ScriptTagScannerTest, LangNotDecodable) {
+  // Type is absent, and language cannot be decoded.  Interpret as unknown.
+  ValidateNoChanges("lang_non_decodable", "<script language=muñecos></script>");
+  ASSERT_EQ(1, collector_.Size());
+  EXPECT_EQ(GoogleString(), collector_.UrlAt(0));
+  EXPECT_EQ(ScriptTagScanner::kUnknownScript, collector_.ClassificationAt(0));
+}
+
+TEST_F(ScriptTagScannerTest, TypeNonDecodable) {
+  // type is not decodable, and language is missing.
+  ValidateNoChanges("non_decodable", "<script type=muñecos></script>");
   ASSERT_EQ(1, collector_.Size());
   EXPECT_EQ(GoogleString(), collector_.UrlAt(0));
   EXPECT_EQ(ScriptTagScanner::kUnknownScript, collector_.ClassificationAt(0));

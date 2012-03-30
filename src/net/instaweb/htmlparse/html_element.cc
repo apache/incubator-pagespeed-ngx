@@ -100,11 +100,16 @@ void HtmlElement::ToString(GoogleString* buf) const {
     const Attribute& attribute = *attributes_[i];
     *buf += ' ';
     *buf += attribute.name_str();
-    if (attribute.value() != NULL) {
+    bool decoding_error;
+    const char* value = attribute.DecodedValue(&decoding_error);
+    if (decoding_error) {
+      // This is a debug method; not used in serialization.
+      *buf += "<DECODING ERROR>";
+    } else if (value != NULL) {
       *buf += "=";
       const char* quote = (attribute.quote() != NULL) ? attribute.quote() : "?";
       *buf += quote;
-      *buf += attribute.value();
+      *buf += value;
       *buf += quote;
     }
   }
@@ -137,7 +142,9 @@ void HtmlElement::DebugPrint() const {
 }
 
 void HtmlElement::AddAttribute(const Attribute& src_attr) {
-  Attribute* attr = new Attribute(src_attr.name(), src_attr.value(),
+  Attribute* attr = new Attribute(src_attr.name(),
+                                  src_attr.DecodedValueOrNull(),
+                                  src_attr.decoding_error(),
                                   src_attr.escaped_value(), src_attr.quote());
   attributes_.push_back(attr);
 }
@@ -145,7 +152,7 @@ void HtmlElement::AddAttribute(const Attribute& src_attr) {
 void HtmlElement::AddAttribute(const HtmlName& name, const StringPiece& value,
                                const char* quote) {
   GoogleString buf;
-  Attribute* attr = new Attribute(name, value,
+  Attribute* attr = new Attribute(name, value, false,
                                   HtmlKeywords::Escape(value, &buf), quote);
   attributes_.push_back(attr);
 }
@@ -154,8 +161,10 @@ void HtmlElement::AddEscapedAttribute(const HtmlName& name,
                                       const StringPiece& escaped_value,
                                       const char* quote) {
   GoogleString buf;
-  Attribute* attr = new Attribute(name,
-                                  HtmlKeywords::Unescape(escaped_value, &buf),
+  bool decoding_error;
+  StringPiece unescaped = HtmlKeywords::Unescape(escaped_value,
+                                                 &buf, &decoding_error);
+  Attribute* attr = new Attribute(name, unescaped, decoding_error,
                                   escaped_value, quote);
   attributes_.push_back(attr);
 }
@@ -176,9 +185,11 @@ void HtmlElement::Attribute::CopyValue(const StringPiece& src,
 
 HtmlElement::Attribute::Attribute(const HtmlName& name,
                                   const StringPiece& value,
+                                  bool decoding_error,
                                   const StringPiece& escaped_value,
                                   const char* quote)
-    : name_(name), quote_(quote) {
+    : name_(name), quote_(quote),
+      decoding_error_(decoding_error) {
   CopyValue(value, &value_);
   CopyValue(escaped_value, &escaped_value_);
 }
@@ -208,7 +219,10 @@ void HtmlElement::Attribute::SetEscapedValue(const StringPiece& escaped_value) {
   DCHECK(value_chars + strlen(value_chars) < escaped_value.data() ||
          escaped_value.data() + escaped_value.size() < value_chars)
       << "Setting escaped value from substring of unescaped value.";
-  CopyValue(HtmlKeywords::Unescape(escaped_value, &buf), &value_);
+
+  StringPiece unescaped_value = HtmlKeywords::Unescape(escaped_value, &buf,
+                                                       &decoding_error_);
+  CopyValue(unescaped_value, &value_);
   CopyValue(escaped_value, &escaped_value_);
 }
 

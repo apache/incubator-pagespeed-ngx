@@ -193,6 +193,15 @@ inline char* strdup(const char* str) {
 // Case-insensitive string comparison that is locale-independent.
 int StringCaseCompare(const StringPiece& s1, const StringPiece& s2);
 
+// Determines whether the character is a US Ascii number or letter.  This
+// is preferable to isalnum() for working with computer languages, as
+// opposed to human languages.
+inline bool IsAsciiAlphaNumeric(char ch) {
+  return (((ch >= 'a') && (ch <= 'z')) ||
+          ((ch >= 'A') && (ch <= 'Z')) ||
+          ((ch >= '0') && (ch <= '9')));
+}
+
 inline void TrimWhitespace(const StringPiece& in, GoogleString* output) {
   static const char whitespace[] = " \r\n\t";
   TrimString(GoogleString(in.data(), in.size()), whitespace, output);
@@ -205,11 +214,11 @@ void TrimLeadingWhitespace(StringPiece* str);
 
 // Accumulates a decimal value from 'c' into *value.
 // Returns false and leaves *value unchanged if c is not a decimal digit.
-bool AccumulateDecimalValue(char c, int* value);
+bool AccumulateDecimalValue(char c, uint32* value);
 
 // Accumulates a hex value from 'c' into *value
 // Returns false and leaves *value unchanged if c is not a hex digit.
-bool AccumulateHexValue(char c, int* value);
+bool AccumulateHexValue(char c, uint32* value);
 
 // Return true iff the two strings are equal, ignoring case.
 bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2);

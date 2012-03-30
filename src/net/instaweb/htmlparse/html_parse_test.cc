@@ -142,7 +142,15 @@ class AttrValuesSaverFilter : public EmptyHtmlFilter {
 
   virtual void StartElement(HtmlElement* element) {
     for (int i = 0; i < element->attribute_size(); ++i) {
-      value_ += element->attribute(i).value();
+      bool decoding_error;
+      const char* value = element->attribute(i).DecodedValue(&decoding_error);
+      if (decoding_error) {
+        value_ += "<ERROR>";
+      } else if (value == NULL) {
+        value_ += "(null)";
+      } else {
+        value_ += value;
+      }
     }
   }
 
@@ -161,6 +169,13 @@ TEST_F(HtmlParseTest, EscapedSingleQuote) {
   Parse("escaped_single_quote",
         "<img src='my&#39;single_quoted_image.jpg'/>");
   EXPECT_EQ("my'single_quoted_image.jpg", attr_saver.value());
+}
+
+TEST_F(HtmlParseTest, AttrDecodeError) {
+  AttrValuesSaverFilter attr_saver;
+  html_parse_.AddFilter(&attr_saver);
+  Parse("attr_not_decodable", "<img src='muñecos'/>");
+  EXPECT_EQ("<ERROR>", attr_saver.value());
 }
 
 TEST_F(HtmlParseTest, UnclosedQuote) {
@@ -376,8 +391,12 @@ class AnnotatingHtmlFilter : public EmptyHtmlFilter {
     for (int i = 0; i < element->attribute_size(); ++i) {
       const HtmlElement::Attribute& attr = element->attribute(i);
       StrAppend(&buffer_, (i == 0 ? ":" : ","), attr.name_str());
-      if (attr.value() != NULL) {
-        StrAppend(&buffer_, "=", attr.quote(), attr.value(), attr.quote());
+      bool decoding_error;
+      const char* value = attr.DecodedValue(&decoding_error);
+      if (decoding_error) {
+        StrAppend(&buffer_, "=<ERROR>");
+      } else if (value != NULL) {
+        StrAppend(&buffer_, "=", attr.quote(), value, attr.quote());
       }
     }
   }
@@ -721,6 +740,12 @@ TEST_F(HtmlAnnotationTest, AttrEndingWithOpenAngle) {
   ValidateNoChanges("weird_attr", "<script src=foo<bar>Content");
   EXPECT_EQ("+script:src=foo<bar 'Content' -script(u)", annotation());
 }
+
+// TODO(jmarantz): fix this case; we lose the stray "=".
+// TEST_F(HtmlAnnotationTest, StrayEq) {
+//   ValidateNoChanges("stray_eq", "<a href='foo.html'=>b</a>");
+//   EXPECT_EQ("+a:href=foo.html -a(e)", annotation());
+// }
 
 TEST_F(HtmlParseTest, MakeName) {
   EXPECT_EQ(0, HtmlTestingPeer::symbol_table_size(&html_parse_));
@@ -1299,11 +1324,12 @@ TEST_F(AttributeManipulationTest, PropertiesAndDeserialize) {
   // Returns NULL for attributes that do not exist.
   EXPECT_TRUE(NULL == node_->FindAttribute(HtmlName::kNotAKeyword));
   // Returns an attribute reference for attributes without values.
-  EXPECT_TRUE(NULL != node_->FindAttribute(HtmlName::kSelected));
-  EXPECT_TRUE(NULL == node_->FindAttribute(HtmlName::kSelected)->value());
-  EXPECT_EQ(google, node_->FindAttribute(HtmlName::kHref)->value());
-  EXPECT_EQ(number37, node_->FindAttribute(HtmlName::kId)->value());
-  EXPECT_EQ(search, node_->FindAttribute(HtmlName::kClass)->value());
+  HtmlElement::Attribute* selected = node_->FindAttribute(HtmlName::kSelected);
+  EXPECT_TRUE(NULL != selected);
+  EXPECT_TRUE(NULL == selected->DecodedValueOrNull());
+  EXPECT_EQ(google, node_->AttributeValue(HtmlName::kHref));
+  EXPECT_EQ(number37, node_->AttributeValue(HtmlName::kId));
+  EXPECT_EQ(search, node_->AttributeValue(HtmlName::kClass));
   EXPECT_EQ(google, node_->FindAttribute(HtmlName::kHref)->escaped_value());
   EXPECT_EQ(number37, node_->FindAttribute(HtmlName::kId)->escaped_value());
   EXPECT_EQ(search, node_->FindAttribute(HtmlName::kClass)->escaped_value());
@@ -1340,7 +1366,7 @@ TEST_F(AttributeManipulationTest, ModifyKeepAttribute) {
       node_->FindAttribute(HtmlName::kHref);
   EXPECT_TRUE(href != NULL);
   // This apparently do-nothing call to SetValue exposed an allocation bug.
-  href->SetValue(href->value());
+  href->SetValue(href->DecodedValueOrNull());
   href->set_quote(href->quote());
   href->set_name(href->name());
   CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'"
@@ -1364,13 +1390,13 @@ TEST_F(AttributeManipulationTest, CloneElement) {
   EXPECT_EQ(4, clone->attribute_size());
   EXPECT_EQ(HtmlName::kHref, clone->attribute(0).keyword());
   EXPECT_EQ(GoogleString("http://www.google.com/"),
-            clone->attribute(0).value());
+            clone->attribute(0).DecodedValueOrNull());
   EXPECT_EQ(HtmlName::kId, clone->attribute(1).keyword());
-  EXPECT_EQ(GoogleString("37"), clone->attribute(1).value());
+  EXPECT_EQ(GoogleString("37"), clone->attribute(1).DecodedValueOrNull());
   EXPECT_EQ(HtmlName::kClass, clone->attribute(2).keyword());
-  EXPECT_EQ(GoogleString("search!"), clone->attribute(2).value());
+  EXPECT_EQ(GoogleString("search!"), clone->attribute(2).DecodedValueOrNull());
   EXPECT_EQ(HtmlName::kSelected, clone->attribute(3).keyword());
-  EXPECT_EQ(NULL, clone->attribute(3).value());
+  EXPECT_EQ(NULL, clone->attribute(3).DecodedValueOrNull());
 
   HtmlElement::Attribute* id = clone->FindAttribute(HtmlName::kId);
   ASSERT_TRUE(id != NULL);

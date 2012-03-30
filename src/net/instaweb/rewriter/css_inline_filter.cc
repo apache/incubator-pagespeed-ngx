@@ -89,7 +89,7 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
 
     // Get the URL where the external script is stored
     HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kHref);
-    if (attr == NULL || attr->value() == NULL) {
+    if (attr == NULL || attr->DecodedValueOrNull() == NULL) {
       return;  // We obviously can't inline if the URL isn't there.
     }
 

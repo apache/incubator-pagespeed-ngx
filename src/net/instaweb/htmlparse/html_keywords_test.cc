@@ -17,12 +17,27 @@ class HtmlKeywordsTest : public testing::Test {
     HtmlKeywords::Init();
   }
 
+  StringPiece Unescape(const StringPiece& escaped, GoogleString* buf) {
+    bool decoding_error;
+    StringPiece unescaped = HtmlKeywords::Unescape(escaped, buf,
+                                                   &decoding_error);
+    EXPECT_FALSE(decoding_error);
+    return unescaped;
+  }
+
+  bool UnescapeEncodingError(const StringPiece& escaped) {
+    GoogleString buf;
+    bool decoding_error;
+    HtmlKeywords::Unescape(escaped, &buf, &decoding_error);
+    return decoding_error;
+  }
+
   // In general HtmlKeywords is not reversible, but it is in
   // specific cases.
   void BiTest(const GoogleString& escaped, const GoogleString& unescaped) {
     GoogleString buf;
-    EXPECT_EQ(escaped, HtmlKeywords::Escape(unescaped, &buf));
-    EXPECT_EQ(unescaped, HtmlKeywords::Unescape(escaped, &buf));
+    EXPECT_STREQ(escaped, HtmlKeywords::Escape(unescaped, &buf));
+    EXPECT_STREQ(unescaped, Unescape(escaped, &buf));
   }
 
   void TestEscape(const GoogleString& symbolic_code, char value) {
@@ -31,7 +46,7 @@ class HtmlKeywordsTest : public testing::Test {
         "&#%02d;", static_cast<unsigned char>(value));
     GoogleString unescaped(&value, 1), buf;
     BiTest(symbolic_escaped, unescaped);
-    EXPECT_EQ(unescaped, HtmlKeywords::Unescape(numeric_escaped, &buf));
+    EXPECT_EQ(unescaped, Unescape(numeric_escaped, &buf));
   }
 };
 
@@ -51,16 +66,16 @@ TEST_F(HtmlKeywordsTest, Bidirectional) {
   BiTest("a&#128;&#07;b", "a\200\007b");
 
   GoogleString buf;
-  EXPECT_EQ("'", HtmlKeywords::Unescape("&#39;", &buf));
-  EXPECT_EQ("(", HtmlKeywords::Unescape("&#40;", &buf));
-  EXPECT_EQ(")", HtmlKeywords::Unescape("&#41;", &buf));
+  EXPECT_EQ("'", Unescape("&#39;", &buf));
+  EXPECT_EQ("(", Unescape("&#40;", &buf));
+  EXPECT_EQ(")", Unescape("&#41;", &buf));
 }
 
 TEST_F(HtmlKeywordsTest, Hex) {
   GoogleString buf;
-  EXPECT_EQ("'", HtmlKeywords::Unescape("&#x27;", &buf));
-  EXPECT_EQ("(", HtmlKeywords::Unescape("&#x28;", &buf));
-  EXPECT_EQ(")", HtmlKeywords::Unescape("&#x29;", &buf));
+  EXPECT_EQ("'", Unescape("&#x27;", &buf));
+  EXPECT_EQ("(", Unescape("&#x28;", &buf));
+  EXPECT_EQ(")", Unescape("&#x29;", &buf));
 }
 
 TEST_F(HtmlKeywordsTest, AllCodes) {
@@ -166,19 +181,98 @@ TEST_F(HtmlKeywordsTest, AllCodes) {
   TestEscape("yuml", 0xFF);
 }
 
-/*
- * TODO(jmarantz): fix this.
- * TEST_F(HtmlKeywordsTest, Unescape) {
- *   GoogleString buf;
- *   EXPECT_EQ("a&b", HtmlKeywords::Unescape("a&#26;b", &buf));
- *   GoogleString expected;
- *   expected += 'a';
- *   expected += 0x03;
- *   expected += 0xa7;
- *   expected += 'b';
- *   EXPECT_EQ(expected, HtmlKeywords::Unescape("a&chi;b", &buf));
- *   EXPECT_EQ(GoogleString("a&#03;&#a7;b"), HtmlKeywords::Escape(expected, &buf));
- * }
- */
+TEST_F(HtmlKeywordsTest, DetectEncodingErrors) {
+  EXPECT_FALSE(UnescapeEncodingError("abc"));
+  EXPECT_FALSE(UnescapeEncodingError("a&amp;b"));
+  EXPECT_FALSE(UnescapeEncodingError("a&b"));
+  EXPECT_FALSE(UnescapeEncodingError("a&b&amp;c"));
+  EXPECT_FALSE(UnescapeEncodingError("&#126;"));
+  EXPECT_FALSE(UnescapeEncodingError("&#127;"));
+  EXPECT_FALSE(UnescapeEncodingError("&#128;"));
+  EXPECT_FALSE(UnescapeEncodingError("&#255;"));
+  EXPECT_FALSE(UnescapeEncodingError("&apos;"));   // Ignore invalid code.
+  EXPECT_FALSE(UnescapeEncodingError("&acute;"));
+  EXPECT_FALSE(UnescapeEncodingError("&ACUTE;"));  // sloppy case OK.
+  EXPECT_FALSE(UnescapeEncodingError("&yuml;"));  // lower-case is 255.
+  EXPECT_TRUE(UnescapeEncodingError("&YUML;"));   // sloppy-case OK.
+  EXPECT_TRUE(UnescapeEncodingError("&Yuml;"));   // upper-case is 376; no good.
+  EXPECT_TRUE(UnescapeEncodingError("&#256;"));
+  EXPECT_TRUE(UnescapeEncodingError("&#2560;"));
+  EXPECT_TRUE(UnescapeEncodingError("\200"));
+}
+
+TEST_F(HtmlKeywordsTest, EscapedSingleByteAccented) {
+  BiTest("&atilde;&Yacute;&yacute;", "\xe3\xdd\xfd");
+}
+
+TEST_F(HtmlKeywordsTest, MissingNumber) {
+  BiTest("&amp;#;", "&#;");
+  BiTest("&amp;#", "&#");
+}
+
+TEST_F(HtmlKeywordsTest, NotReallyDecimal) {
+  GoogleString buf;
+  EXPECT_STREQ("\001F", Unescape("&#1F", &buf));
+}
+
+TEST_F(HtmlKeywordsTest, Apos) {
+  // Correct &apos; which appears in web sites but is not valid HTML.
+  // http://fishbowl.pastiche.org/2003/07/01/the_curse_of_apos/
+  GoogleString buf;
+  EXPECT_STREQ("'", Unescape("&apos;", &buf));
+  EXPECT_STREQ("&#39;", HtmlKeywords::Escape("'", &buf));
+}
+
+TEST_F(HtmlKeywordsTest, Unescape) {
+  GoogleString buf;
+  bool decoding_error;
+  EXPECT_STREQ("a\32b",
+               HtmlKeywords::Unescape("a&#26;b", &buf, &decoding_error));
+  EXPECT_FALSE(decoding_error);
+  EXPECT_STREQ("", HtmlKeywords::Unescape("a&chi;b", &buf, &decoding_error))
+      << "&chi; is multi-byte so we can't represent it yet.";
+  EXPECT_TRUE(decoding_error);
+  GoogleString expected;
+  expected += 'a';
+  expected += 0x03;
+  expected += 0xa7;  // equivalent to &sect;
+  expected += 'b';
+  EXPECT_STREQ("a&#03;&sect;b", HtmlKeywords::Escape(expected, &buf));
+}
+
+TEST_F(HtmlKeywordsTest, ListView) {
+  static const char kListView[] =
+      "http://list.taobao.com/market/baby.htm?spm=1.151829.71436.25&"
+      "cat=50032645&sort=_bid&spercent=95&isprepay=1&user_type=0&gobaby=1&"
+      "random=false&lstyle=imgw&as=1&viewIndex=1&yp4p_page=0&commend=all&"
+      "atype=b&style=grid&olu=yes&isnew=2&mSelect=false&#ListView";
+  GoogleString buf;
+  EXPECT_STREQ(kListView, Unescape(kListView, &buf));
+}
+
+TEST_F(HtmlKeywordsTest, DoubleAmpersand) {
+  GoogleString buf;
+  EXPECT_STREQ("&&", Unescape("&&", &buf));
+  BiTest("&amp;&amp;", "&&");
+  EXPECT_STREQ("&&", Unescape("&amp&amp", &buf));
+}
+
+TEST_F(HtmlKeywordsTest, KeepSemicolonOnInvalidEscape) {
+  GoogleString buf;
+  EXPECT_STREQ("a&b;c", Unescape("a&b;c", &buf));
+}
+
+TEST_F(HtmlKeywordsTest, Ocircoooo) {
+  // TODO(jmarantz): This testcase does not behave the same as Chrome,
+  // which surprisingly interprets &ocircoooo as &ocirc;oooo, and
+  // &yumlbear as &yuml;bear.  However, it does *not* interpret
+  // &apostrophy as &apos;trophy.  What's the difference?
+  //
+  // Perhaps the answer to this mystery lies in  http://www.w3.org/TR/2011
+  // /WD-html5-20110113/tokenization.html#tokenizing-character-references
+  GoogleString buf;
+  EXPECT_STREQ("&ocircoooo", Unescape("&ocircoooo", &buf));
+  BiTest("&amp;ocircoooo", "&ocircoooo");
+}
 
 }  // namespace net_instaweb

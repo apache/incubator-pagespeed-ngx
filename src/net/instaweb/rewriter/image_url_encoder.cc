@@ -32,8 +32,6 @@ const char kCodeWebp = 'w';
 const char kCodeMobileUserAgent = 'm';
 const char kMissingDimension = 'N';
 
-const int kNoDimension = -1;
-
 bool IsValidCode(char code) {
   return (code == kCodeSeparator) || (code == kCodeWebp) ||
       (code == kCodeMobileUserAgent);
@@ -41,24 +39,28 @@ bool IsValidCode(char code) {
 
 // Decodes a single dimension (either N or an integer), removing it from *in and
 // ensuring at least one character remains.  Returns true on success.  When N is
-// seen, result is set to kNoDimension, otherwise it's set to the decoded
-// dimension.  If decoding fails, result may be written.
+// seen, *has_dimension is set to true.  If decoding fails, *ok is set to false.
+//
 // Ensures that *in contains at least one character on exit.
-bool DecodeDimension(StringPiece* in, int* result) {
-  DCHECK(in->size() >= 2);
-  if ((*in)[0] == kMissingDimension) {
+uint32 DecodeDimension(StringPiece* in, bool* ok, bool* has_dimension) {
+  uint32 result = 0;
+  if (in->size() < 2) {
+    *ok = false;
+    *has_dimension = false;
+  } else if ((*in)[0] == kMissingDimension) {
     // Dimension is absent.
     in->remove_prefix(1);
-    *result = kNoDimension;
-    return true;
+    *ok = true;
+    *has_dimension = false;
+  } else {
+    *ok = false;
+    *has_dimension = true;
+    while (in->size() >= 2 && AccumulateDecimalValue((*in)[0], &result)) {
+      in->remove_prefix(1);
+      *ok = true;
+    }
   }
-  bool ok = false;
-  *result = 0;
-  while (in->size() >= 2 && AccumulateDecimalValue((*in)[0], result)) {
-    in->remove_prefix(1);
-    ok = true;
-  }
-  return ok;
+  return result;
 }
 
 }  // namespace
@@ -111,15 +113,16 @@ bool DecodeImageDimensions(StringPiece* remaining, ImageDim* dims) {
     // url too short to hold dimensions.
     return false;
   }
-  int width, height;
-  if (!DecodeDimension(remaining, &width) ||  // Parse the width
-      (*remaining)[0] != kCodeSeparator) {        // And check the separator
+  bool ok, has_width, has_height;
+  uint32 width = DecodeDimension(remaining, &ok, &has_width);
+  if (!ok || ((*remaining)[0] != kCodeSeparator)) {   // And check the separator
     return false;
   }
+
   // Consume the separator
   remaining->remove_prefix(1);
-  if (remaining->size() < 2 ||
-      !DecodeDimension(remaining, &height)) {  // Parse the height
+  uint32 height = DecodeDimension(remaining, &ok, &has_height);
+  if (remaining->size() < 1 || !ok) {
     return false;
   }
   if (!IsValidCode((*remaining)[0])) {  // And check the terminator
@@ -127,12 +130,12 @@ bool DecodeImageDimensions(StringPiece* remaining, ImageDim* dims) {
   }
   // Parsed successfully.
   // Now store the dimensions that were present.
-  if (width != kNoDimension) {
+  if (has_width) {
     dims->set_width(width);
   }
-  if (height != kNoDimension) {
+  if (has_height) {
     dims->set_height(height);
-  } else if (width == kNoDimension) {
+  } else if (!has_width) {
     // Both dimensions are missing!  NxN[xw] is not allowed, as it's ambiguous
     // with the shorter encoding.  We should never get here in real life.
     return false;

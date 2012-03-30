@@ -164,6 +164,42 @@ TEST_F(DelayImagesFilterTest, DelayImageWithDeferJavascriptDisabled) {
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
+TEST_F(DelayImagesFilterTest, DelayImageWithQueryParam) {
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  options()->DisableFilter(RewriteOptions::kInlineImages);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp?a=b&c=d", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<img src=\"http://test.com/1.webp?a=b&amp;c=d\" />"
+      "</body>";
+  GoogleString output_html = StrCat(
+      GetHeadHtmlWithLazyload(),
+      "<body>"
+      "<img pagespeed_high_res_src=\"http://test.com/1.webp?a=b&amp;c=d\" "
+      "src=\"", kSampleWebpData, "\"/>", GetDelayImages(), "</body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
+TEST_F(DelayImagesFilterTest, DelayImageWithUnescapedQueryParam) {
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  options()->DisableFilter(RewriteOptions::kInlineImages);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp?a=b&c=d", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<img src=\"http://test.com/1.webp?a=b&c=d\" />"
+      "</body>";
+  GoogleString output_html = StrCat(
+      GetHeadHtmlWithLazyload(),
+      "<body>"
+      "<img pagespeed_high_res_src=\"http://test.com/1.webp?a=b&c=d\" "
+      "src=\"", kSampleWebpData, "\"/>", GetDelayImages(), "</body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
 TEST_F(DelayImagesFilterTest, DelayImageWithLazyLoadDisabled) {
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
   AddFilter(RewriteOptions::kDelayImages);

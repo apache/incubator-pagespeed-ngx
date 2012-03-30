@@ -241,9 +241,9 @@ void ElideAttributesFilter::StartElement(HtmlElement* element) {
       const KeywordSet& oneValueAttrs = iter->second;
       for (int i = 0, end = element->attribute_size(); i < end; ++i) {
         HtmlElement::Attribute& attribute = element->attribute(i);
-        if (attribute.value() != NULL &&
+        if (attribute.escaped_value() != NULL &&
             oneValueAttrs.count(attribute.keyword()) > 0) {
-          attribute.SetValue(NULL);
+          attribute.SetEscapedValue(NULL);
         }
       }
     }
@@ -256,13 +256,14 @@ void ElideAttributesFilter::StartElement(HtmlElement* element) {
     const ValueMap& default_values = iter1->second;
     for (int i = 0; i < element->attribute_size(); ++i) {
       HtmlElement::Attribute& attribute = element->attribute(i);
-      if (attribute.value() != NULL) {
+      const char* attr_value = attribute.DecodedValueOrNull();
+      if (attr_value != NULL) {
         ValueMap::const_iterator iter2 = default_values.find(
             attribute.keyword());
         if (iter2 != default_values.end()) {
           const AttrValue& value = iter2->second;
           if ((!value.requires_version_5 || doctype.IsVersion5()) &&
-              StringCaseEqual(attribute.value(), value.attr_value)) {
+              StringCaseEqual(attr_value, value.attr_value)) {
             element->DeleteAttribute(i);
             --i;
           }

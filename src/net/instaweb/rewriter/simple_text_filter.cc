@@ -73,7 +73,7 @@ void SimpleTextFilter::Context::RewriteSingle(const ResourcePtr& input,
 void SimpleTextFilter::StartElementImpl(HtmlElement* element) {
   HtmlElement::Attribute* attr = rewriter_->FindResourceAttribute(element);
   if (attr != NULL) {
-    ResourcePtr resource = CreateInputResource(attr->value());
+    ResourcePtr resource = CreateInputResource(attr->DecodedValueOrNull());
     if (resource.get() != NULL) {
       ResourceSlotPtr slot(driver_->GetSlot(resource, element, attr));
 

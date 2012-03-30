@@ -19,7 +19,12 @@
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -81,15 +86,15 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
       if (element->FindAttribute(HtmlName::kPagespeedNoDefer)) {
         return;
       }
-      if (src != NULL) {
-        GoogleString url(src->value());
+      if ((src != NULL) && (src->DecodedValueOrNull() != NULL)) {
+        GoogleString url(src->DecodedValueOrNull());
         element->AddAttribute(
             rewrite_driver_->MakeName("orig_src"), url, "\"");
         element->DeleteAttribute(HtmlName::kSrc);
       }
       HtmlElement::Attribute* type = element->FindAttribute(HtmlName::kType);
-      if (type != NULL) {
-        GoogleString jstype(type->value());
+      if ((type != NULL) && (type->DecodedValueOrNull() != NULL)) {
+        GoogleString jstype(type->DecodedValueOrNull());
         element->DeleteAttribute(HtmlName::kType);
         element->AddAttribute(
             rewrite_driver_->MakeName("orig_type"), jstype, "\"");

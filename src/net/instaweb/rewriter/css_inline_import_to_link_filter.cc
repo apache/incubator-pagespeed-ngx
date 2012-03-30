@@ -143,9 +143,11 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
           import_media_ok = true;
         } else if (media_attribute != NULL &&
                    import->media.size() == 1 &&
-                   media_attribute->value() == StringPiece(
+                   media_attribute->DecodedValueOrNull() == StringPiece(
                        import->media[0].utf8_data(),
                        import->media[0].utf8_length())) {
+          // TODO(jmarantz): this code would feel a bit better if
+          // attribute-decoding supported UTF8.
           import_media_ok = true;
         } else {
           // If the style has media then the @import may specify no media or the
@@ -155,8 +157,8 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
                                                        &import_media);
           if (media_attribute != NULL) {
             StringVector style_media;
-            css_util::VectorizeMediaAttribute(media_attribute->value(),
-                                              &style_media);
+            css_util::VectorizeMediaAttribute(
+                media_attribute->DecodedValueOrNull(), &style_media);
             std::sort(import_media.begin(), import_media.end());
             std::sort(style_media.begin(), style_media.end());
             import_media_ok = (style_media == import_media);

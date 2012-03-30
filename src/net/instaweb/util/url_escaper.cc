@@ -20,6 +20,7 @@
 
 #include <cstddef>
 #include <cctype>
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -117,7 +118,7 @@ namespace {
 // hexadecimal digits.  It constructs a char from these characters, or returns
 // false to indicate encoding failure.
 bool DecodeHexEncoding(const StringPiece& buffer, size_t i, char* result) {
-  int char_val = 0;
+  uint32 char_val = 0;
   if ((i + 1 < buffer.size()) &&
       AccumulateHexValue(buffer[i], &char_val) &&
       AccumulateHexValue(buffer[i+1], &char_val)) {

@@ -47,7 +47,8 @@ InlineRewriteContext::~InlineRewriteContext() {
 
 bool InlineRewriteContext::StartInlining() {
   RewriteDriver* driver = filter_->driver();
-  ResourcePtr input_resource(filter_->CreateInputResource(src_->value()));
+  ResourcePtr input_resource(filter_->CreateInputResource(
+      src_->DecodedValueOrNull()));
   if (input_resource.get() != NULL) {
     ResourceSlotPtr slot(driver->GetSlot(input_resource, element_, src_));
     AddSlot(slot);

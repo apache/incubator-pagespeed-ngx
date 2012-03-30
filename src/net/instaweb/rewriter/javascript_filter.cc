@@ -190,7 +190,8 @@ void JavascriptFilter::StartElementImpl(HtmlElement* element) {
     case ScriptTagScanner::kJavaScript:
       script_in_progress_ = element;
       if (script_src_ != NULL) {
-        driver_->InfoHere("Found script with src %s", script_src_->value());
+        driver_->InfoHere("Found script with src %s",
+                          script_src_->DecodedValueOrNull());
       }
       break;
     case ScriptTagScanner::kUnknownScript: {
@@ -243,7 +244,7 @@ void JavascriptFilter::RewriteInlineScript() {
 
 // External script; minify and replace with rewritten version (also external).
 void JavascriptFilter::RewriteExternalScript() {
-  const StringPiece script_url(script_src_->value());
+  const StringPiece script_url(script_src_->DecodedValueOrNull());
   ResourcePtr resource = CreateInputResource(script_url);
   if (resource.get() != NULL) {
     ResourceSlotPtr slot(

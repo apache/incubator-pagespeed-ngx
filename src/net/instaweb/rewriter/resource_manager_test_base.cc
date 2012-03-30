@@ -496,7 +496,7 @@ class CssCollector : public EmptyHtmlFilter {
       // TODO(jmarantz): collect content of the CSS files, before and
       // after combination, so we can diff.
       const char* content = "";
-      css_links_->Add(href->value(), content, media, false);
+      css_links_->Add(href->DecodedValueOrNull(), content, media, false);
     }
   }
 

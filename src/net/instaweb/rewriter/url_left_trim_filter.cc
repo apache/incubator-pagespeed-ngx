@@ -167,10 +167,11 @@ bool UrlLeftTrimFilter::Trim(const GoogleUrl& base_url,
 // Trim the value of the given attribute, if the attribute is non-NULL.
 void UrlLeftTrimFilter::TrimAttribute(HtmlElement::Attribute* attr) {
   if (attr != NULL) {
-    StringPiece val(attr->value());
+    StringPiece val(attr->DecodedValueOrNull());
     GoogleString trimmed_val;
     size_t orig_size = val.size();
-    if (Trim(driver_->base_url(), val, &trimmed_val,
+    if (!val.empty() &&
+        Trim(driver_->base_url(), val, &trimmed_val,
              driver_->message_handler())) {
       attr->SetValue(trimmed_val);
       trim_count_->Add(1);

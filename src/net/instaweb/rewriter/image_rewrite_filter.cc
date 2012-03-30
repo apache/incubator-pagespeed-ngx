@@ -42,6 +42,7 @@
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/data_url.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -523,7 +524,7 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
   if (options->Enabled(RewriteOptions::kResizeImages)) {
     GetDimensions(element, resource_context->mutable_desired_image_dims());
   }
-  StringPiece url(src->value());
+  StringPiece url(src->DecodedValueOrNull());
   if (options->Enabled(RewriteOptions::kConvertJpegToWebp) &&
       driver_->UserAgentSupportsWebp() &&
       !url.ends_with(".png") && !url.ends_with(".gif")) {
@@ -545,7 +546,7 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     resource_context->set_mobile_user_agent(true);
   }
 
-  ResourcePtr input_resource = CreateInputResource(src->value());
+  ResourcePtr input_resource = CreateInputResource(src->DecodedValueOrNull());
   if (input_resource.get() != NULL) {
     Context* context = new Context(0 /* No CSS inlining, it's html */,
                                    this, driver_, NULL /*not nested */,
@@ -582,7 +583,10 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   const RewriteOptions* options = driver_->options();
   bool rewrote_url = false;
   bool image_inlined = false;
-  const GoogleString& src_value = src->value();
+  StringPiece src_value = src->DecodedValueOrNull();
+  if (src_value.empty()) {
+    return false;
+  }
 
   // See if we have a data URL, and if so use it if the browser can handle it
   // TODO(jmaessen): get rid of a string copy here. Tricky because ->SetValue()
@@ -658,7 +662,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   return rewrote_url;
 }
 
-bool ImageRewriteFilter::IsCriticalImage(const GoogleString& image_url,
+bool ImageRewriteFilter::IsCriticalImage(const StringPiece& image_url,
                                          int image_index) const {
   GoogleUrl image_gurl(driver_->base_url(), image_url);
   CriticalImagesFinder* finder =

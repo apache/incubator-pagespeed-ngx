@@ -41,6 +41,15 @@
 namespace net_instaweb {
 
 class DocType;
+class HtmlCdataNode;
+class HtmlCharactersNode;
+class HtmlCommentNode;
+class HtmlDirectiveNode;
+class HtmlEvent;
+class HtmlFilter;
+class HtmlIEDirectiveNode;
+class HtmlLexer;
+class HtmlNode;
 class MessageHandler;
 class Timer;
 
@@ -231,6 +240,10 @@ class HtmlParse {
   void AddAttribute(HtmlElement* element, HtmlName::Keyword keyword,
                     const StringPiece& value) {
     return element->AddAttribute(MakeName(keyword), value, "\"");
+  }
+  void AddEscapedAttribute(HtmlElement* element, HtmlName::Keyword keyword,
+                    const StringPiece& escaped_value) {
+    return element->AddEscapedAttribute(MakeName(keyword), escaped_value, "\"");
   }
   void AddAttribute(HtmlElement* element, HtmlName::Keyword keyword,
                     int value) {

@@ -177,7 +177,7 @@ class ImageRewriteTest : public ResourceManagerTestBase,
     virtual void StartElement(HtmlElement* element) {
       HtmlElement::Attribute* src = image_filter_.ParseImageElement(element);
       if (src != NULL) {
-        img_srcs_->push_back(src->value());
+        img_srcs_->push_back(src->DecodedValueOrNull());
       }
     }
 

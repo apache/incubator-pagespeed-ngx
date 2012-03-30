@@ -59,6 +59,7 @@
         'automatic/html_detector_test.cc',
         'automatic/proxy_fetch_test.cc',
         'automatic/proxy_interface_test.cc',
+        'htmlparse/canonical_attributes_test.cc',
         'htmlparse/html_keywords_test.cc',
         'htmlparse/html_name_test.cc',
         'htmlparse/html_parse_test.cc',
@@ -278,6 +279,7 @@
         '<(DEPTH)',
       ],
       'sources': [
+        'htmlparse/canonical_attributes.cc',
         'htmlparse/html_parse_test_base.cc',
         'http/mock_url_fetcher.cc',
         'rewriter/resource_manager_test_base.cc',

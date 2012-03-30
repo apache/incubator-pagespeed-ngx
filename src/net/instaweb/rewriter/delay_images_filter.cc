@@ -75,13 +75,14 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
     InsertDelayImagesInlineJS(element);
   } else if (driver_->IsRewritable(element)) {
     HtmlElement::Attribute* src = tag_scanner_->ParseImageElement(element);
-    if (src != NULL) {
+    if ((src != NULL) && (src->DecodedValueOrNull() != NULL)) {
       // Remove the inline_src which is low quality base64 encoded data url and
       // add them to a map so that all inline data urls will be available at the
       // end of body tag.
       HtmlElement::Attribute* low_res_src =
           element->FindAttribute(HtmlName::kPagespeedLowResSrc);
-      if (!low_res_map_inserted_ && low_res_src != NULL) {
+      if (!low_res_map_inserted_ && (low_res_src != NULL) &&
+          (low_res_src->DecodedValueOrNull() != NULL)) {
         ++num_low_res_inlined_images_;
         // TODO(pulkitg): Add support for input tag.
         if (element->keyword() == HtmlName::kImg) {
@@ -96,10 +97,10 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
           driver_->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
           if (insert_low_res_images_inplace_) {
             driver_->AddAttribute(element, HtmlName::kSrc,
-                                  low_res_src->value());
+                                  low_res_src->DecodedValueOrNull());
           } else {
-            const GoogleString& src_content = src->value();
-            low_res_data_map_[src_content] = low_res_src->value();
+            const GoogleString& src_content = src->DecodedValueOrNull();
+            low_res_data_map_[src_content] = low_res_src->DecodedValueOrNull();
           }
         }
         if (num_low_res_inlined_images_ ==

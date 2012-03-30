@@ -75,7 +75,7 @@ void JsInlineFilter::StartElementImpl(HtmlElement* element) {
   HtmlElement::Attribute* src;
   if (script_tag_scanner_.ParseScriptElement(element, &src) ==
       ScriptTagScanner::kJavaScript) {
-    should_inline_ = (src != NULL) && (src->value() != NULL);
+    should_inline_ = (src != NULL) && (src->DecodedValueOrNull() != NULL);
   }
 }
 
@@ -84,8 +84,8 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
     DCHECK(element->keyword() == HtmlName::kScript);
     HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kSrc);
     CHECK(attr != NULL);
-    const char* src = attr->value();
-    DCHECK(src != NULL);
+    const char* src = attr->DecodedValueOrNull();
+    DCHECK(src != NULL) << "should_inline_ should be false if attr val is null";
 
     // StartInlining() transfers ownership of ctx to RewriteDriver, or deletes
     // it on failure.

@@ -19,11 +19,13 @@
 #include "net/instaweb/rewriter/public/blink_util.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <utility>
 #include <vector>
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/panel_config.pb.h"
@@ -369,7 +371,8 @@ int GetPanelNumberForNonCacheableElement(
     const HtmlElement* element) {
   for (int i = 0; i < element->attribute_size(); ++i) {
     const HtmlElement::Attribute& attribute = element->attribute(i);
-    if (attribute.value() == NULL) {
+    StringPiece value = attribute.DecodedValueOrNull();
+    if (value.empty()) {
       continue;
     }
     std::pair<AttributesToNonCacheableValuesMap::const_iterator,
@@ -378,8 +381,8 @@ int GetPanelNumberForNonCacheableElement(
                 attribute.name().c_str());
     AttributesToNonCacheableValuesMap::const_iterator it;
     for (it = ret.first; it != ret.second; ++it) {
-      if (strcmp(it->first.c_str(), attribute.name().c_str()) == 0 &&
-          strcmp(it->second.first.c_str(), attribute.value()) == 0) {
+      if ((it->first == attribute.name().c_str()) &&
+          (value == it->second.first)) {
         return it->second.second;
       }
     }

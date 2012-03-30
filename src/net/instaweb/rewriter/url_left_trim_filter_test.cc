@@ -77,6 +77,12 @@ class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
 
   virtual bool AddBody() const { return false; }
 
+  // TODO(jmarantz): factor out all the image references in this file to use
+  // this method.
+  GoogleString Image(const StringPiece& image) {
+    return StrCat("<img src='", image, "'>");
+  }
+
  private:
   scoped_ptr<UrlLeftTrimFilter> left_trim_filter_;
   scoped_ptr<GoogleUrl> base_url_;
@@ -318,6 +324,28 @@ TEST_F(UrlLeftTrimFilterTest, RelativeBase) {
   ValidateExpected("wiki", kRelativeBase, kRelativeBaseRewritten);
 }
 
+TEST_F(UrlLeftTrimFilterTest, QueryWithEncodedAmpersand) {
+  ValidateExpected(
+      "ampersand",
+      Image("http://test.com/discuss/a.php?&action=vtopic&amp;forum=2"),
+      Image("discuss/a.php?&amp;action=vtopic&amp;forum=2"));
+
+  // TODO(jmarantz): consider this case.  We think this should be trimmed:
+  //     ValidateExpected("improperly_terminated_multi_byte_escape",
+  //       Image("http://test.com/?q=klaatu+nikto+barada&lang=fr"),
+  //       Image("?q=klaatu+nikto+barada&amp;lang=fr"));
+  // but it is not, because with "&lang=", we interpretet the
+  // "&lang" as an improperly terminated "&lang;".  Now "&lang;" is
+  // a multi-byte sequence, which we cannot represent, so we get a
+  // decoding error, and thus cannot intpreret this URL at all.
+  //
+  // TODO(jmarantz): consider treating improperly terminated multi-byte
+  // escape sequences as literals.
+  //
+  // For now:
+  ValidateNoChanges("improperly_terminated_multi_byte_escape",
+                    Image("http://test.com/?q=klaatu+nikto+barada&lang=fr"));
+}
 
 TEST_F(UrlLeftTrimFilterTest, Anchors) {
   TestAnchors("http://www.example.com/dir/?var=val");

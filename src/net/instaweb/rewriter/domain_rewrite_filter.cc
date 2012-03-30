@@ -19,6 +19,8 @@
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
@@ -81,9 +83,10 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
   }
   HtmlElement::Attribute* attr = tag_scanner_.ScanElement(element);
   if (attr != NULL) {
-    StringPiece val(attr->value());
+    StringPiece val(attr->DecodedValueOrNull());
     GoogleString rewritten_val;
-    if (BaseUrlIsValid() &&
+    if (!val.empty() &&
+        BaseUrlIsValid() &&
         Rewrite(val, driver_->base_url(), &rewritten_val) == kRewroteDomain) {
       attr->SetValue(rewritten_val);
       rewrite_count_->Add(1);

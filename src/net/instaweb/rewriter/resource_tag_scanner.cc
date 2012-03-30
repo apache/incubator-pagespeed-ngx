@@ -35,7 +35,8 @@ HtmlElement::Attribute* ResourceTagScanner::ScanElement(HtmlElement* element)
       // links.html#linkTypes
       HtmlElement::Attribute* rel_attr = element->FindAttribute(HtmlName::kRel);
       if ((rel_attr != NULL) &&
-          StringCaseEqual(rel_attr->value(), CssTagScanner::kStylesheet)) {
+          StringCaseEqual(rel_attr->DecodedValueOrNull(),
+                          CssTagScanner::kStylesheet)) {
         attr = element->FindAttribute(HtmlName::kHref);
       }
       break;
@@ -56,6 +57,9 @@ HtmlElement::Attribute* ResourceTagScanner::ScanElement(HtmlElement* element)
       break;
     default:
       break;
+  }
+  if ((attr != NULL) && attr->decoding_error()) {
+    attr = NULL;
   }
   return attr;
 }

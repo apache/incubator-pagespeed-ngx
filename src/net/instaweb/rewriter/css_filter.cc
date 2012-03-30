@@ -448,7 +448,8 @@ void CssFilter::StartElementImpl(HtmlElement* element) {
       HtmlElement::Attribute* element_style = element->FindAttribute(
           HtmlName::kStyle);
       if (element_style != NULL &&
-          (!check_for_url || CssTagScanner::HasUrl(element_style->value()))) {
+          (!check_for_url || CssTagScanner::HasUrl(
+              element_style->DecodedValueOrNull()))) {
         StartAttributeRewrite(element, element_style);
       }
     }
@@ -520,7 +521,7 @@ void CssFilter::StartInlineRewrite(HtmlElement* element,
 
 void CssFilter::StartAttributeRewrite(HtmlElement* element,
                                       HtmlElement::Attribute* style) {
-  ResourceSlotPtr slot(MakeSlotForInlineCss(style->value()));
+  ResourceSlotPtr slot(MakeSlotForInlineCss(style->DecodedValueOrNull()));
   CssFilter::Context* rewriter = StartRewriting(slot);
   rewriter->SetupAttributeRewrite(element, style);
 
@@ -532,7 +533,7 @@ void CssFilter::StartAttributeRewrite(HtmlElement* element,
 void CssFilter::StartExternalRewrite(HtmlElement* link,
                                      HtmlElement::Attribute* src) {
   // Create the input resource for the slot.
-  ResourcePtr input_resource(CreateInputResource(src->value()));
+  ResourcePtr input_resource(CreateInputResource(src->DecodedValueOrNull()));
   if (input_resource.get() == NULL) {
     return;
   }
@@ -591,7 +592,7 @@ bool CssFilter::GetApplicableCharset(const HtmlElement* element,
     const HtmlElement::Attribute* charset_attribute =
         element->FindAttribute(HtmlName::kCharset);
     if (charset_attribute != NULL) {
-      if (our_charset != charset_attribute->value()) {
+      if (our_charset != charset_attribute->DecodedValueOrNull()) {
         return false;  // early return!
       }
     }
@@ -607,7 +608,8 @@ bool CssFilter::GetApplicableMedia(const HtmlElement* element,
     const HtmlElement::Attribute* media_attribute =
         element->FindAttribute(HtmlName::kMedia);
     if (media_attribute != NULL) {
-      css_util::VectorizeMediaAttribute(media_attribute->value(), media);
+      css_util::VectorizeMediaAttribute(media_attribute->DecodedValueOrNull(),
+                                        media);
       result = true;
     }
   }

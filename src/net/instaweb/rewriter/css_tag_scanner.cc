@@ -71,11 +71,14 @@ bool CssTagScanner::ParseCssElement(
     if ((num_attrs >= 2) || (num_attrs <= 4)) {
       for (int i = 0; i < num_attrs; ++i) {
         HtmlElement::Attribute& attr = element->attribute(i);
-        if (attr.keyword() == HtmlName::kHref) {
+        if (attr.decoding_error()) {
+          num_required_attributes_found = 0;
+          break;
+        } else if (attr.keyword() == HtmlName::kHref) {
           *href = &attr;
           ++num_required_attributes_found;
         } else if (attr.keyword() == HtmlName::kRel) {
-          if (StringCaseEqual(attr.value(), kStylesheet)) {
+          if (StringCaseEqual(attr.DecodedValueOrNull(), kStylesheet)) {
             ++num_required_attributes_found;
           } else {
             // rel=something_else.  abort.
@@ -83,13 +86,13 @@ bool CssTagScanner::ParseCssElement(
             break;
           }
         } else if (attr.keyword() == HtmlName::kMedia) {
-          *media = attr.value();
+          *media = attr.DecodedValueOrNull();
         } else {
           // The only other attribute we should see is type=text/css.  This
           // attribute is not required, but if the attribute we are
           // finding here is anything else then abort.
           if ((attr.keyword() != HtmlName::kType) ||
-              !StringCaseEqual(attr.value(), kTextCss)) {
+              !StringCaseEqual(attr.DecodedValueOrNull(), kTextCss)) {
             num_required_attributes_found = 0;
             break;
           }

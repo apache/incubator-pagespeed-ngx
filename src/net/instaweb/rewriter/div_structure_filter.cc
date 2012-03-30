@@ -68,7 +68,7 @@ void DivStructureFilter::StartElement(HtmlElement* element) {
   } else if (keyword == HtmlName::kA) {
     HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
     if (href != NULL) {
-      const char* url = href->value();
+      const char* url = href->DecodedValueOrNull();
       if (url != NULL) {
         GoogleUrl google_url(url);
         if (google_url.is_valid()) {

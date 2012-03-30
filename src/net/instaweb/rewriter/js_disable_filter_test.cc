@@ -17,12 +17,30 @@
 // Author: gagansingh@google.com (Gagan Singh)
 
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
+
+#include "base/scoped_ptr.h"
+
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "testing/base/public/gunit.h"
 
 namespace net_instaweb {
+
+namespace {
+
+const char kUnrelatedNoscriptTags[] =
+    "<noscript>This is original noscript tag</noscript>";
+const char kUnrelatedTags[] =
+    "<div id=\"contentContainer\">"
+    "<h1>Hello 1</h1>"
+    "<div id=\"middleFooter\"><h3>Hello 3</h3></div>"
+    "</div>";
+
+}  // namespace
+
 
 class JsDisableFilterTest : public ResourceManagerTestBase {
  protected:
@@ -41,14 +59,6 @@ class JsDisableFilterTest : public ResourceManagerTestBase {
 };
 
 TEST_F(JsDisableFilterTest, DisablesScript) {
-  const char kUnrelatedNoscriptTags[] =
-      "<noscript>This is original noscript tag</noscript>";
-  const char kUnrelatedTags[] =
-      "<div id=\"contentContainer\">"
-      "<h1>Hello 1</h1>"
-      "<div id=\"middleFooter\"><h3>Hello 3</h3></div>"
-      "</div>";
-
   const GoogleString input_html = StrCat(
       "<body>",
       kUnrelatedNoscriptTags,
@@ -104,6 +114,57 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithExperimental) {
       "</body>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
+}
+
+TEST_F(JsDisableFilterTest, DisablesScriptWithQueryParam) {
+  const GoogleString input_html = StrCat(
+      kUnrelatedNoscriptTags,
+      "<script src=\"x?a=b&amp;c=d\" random=\"true\">hi1</script>",
+      kUnrelatedTags,
+      "<script src=\"y?a=b&amp;c=d\" random=\"false\">hi2</script>");
+  const GoogleString expected = StrCat(
+      kUnrelatedNoscriptTags,
+      "<script random=\"true\" orig_src=\"x?a=b&amp;c=d\" type=\"text/psajs\""
+      " orig_index=\"0\">hi1</script>",
+      kUnrelatedTags,
+      "<script random=\"false\" orig_src=\"y?a=b&amp;c=d\" type=\"text/psajs\""
+      " orig_index=\"1\">hi2</script>");
+
+  ValidateExpectedUrl("http://example.com/", input_html, expected);
+}
+
+TEST_F(JsDisableFilterTest, DisablesScriptWithUnescapedQueryParam) {
+  const GoogleString input_html = StrCat(
+      kUnrelatedNoscriptTags,
+      "<script src=\"x?a=b&c=d\" random=\"true\">hi1</script>",
+      kUnrelatedTags,
+      "<script src=\"y?a=b&c=d\" random=\"false\">hi2</script>");
+  const GoogleString expected = StrCat(
+      kUnrelatedNoscriptTags,
+      "<script random=\"true\" orig_src=\"x?a=b&amp;c=d\" type=\"text/psajs\""
+      " orig_index=\"0\">hi1</script>",
+      kUnrelatedTags,
+      "<script random=\"false\" orig_src=\"y?a=b&amp;c=d\" type=\"text/psajs\""
+      " orig_index=\"1\">hi2</script>");
+
+  ValidateExpectedUrl("http://example.com/", input_html, expected);
+}
+
+TEST_F(JsDisableFilterTest, DisablesScriptWithNullSrc) {
+  const GoogleString input_html = StrCat(
+      kUnrelatedNoscriptTags,
+      "<script src random=\"true\">hi1</script>",
+      kUnrelatedTags,
+      "<script src random=\"false\">hi2</script>");
+  const GoogleString expected = StrCat(
+      kUnrelatedNoscriptTags,
+      "<script src random=\"true\" type=\"text/psajs\" orig_index=\"0\">hi1"
+      "</script>",
+      kUnrelatedTags,
+      "<script src random=\"false\" type=\"text/psajs\" orig_index=\"1\">hi2"
+      "</script>");
+
+  ValidateExpected("http://example.com/", input_html, expected);
 }
 
 }  // namespace net_instaweb

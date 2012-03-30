@@ -136,7 +136,8 @@ class CssCombineFilter::Context : public RewriteContext {
 
   bool AddElement(HtmlElement* element, HtmlElement::Attribute* href) {
     bool ret = false;
-    ResourcePtr resource(filter_->CreateInputResource(href->value()));
+    ResourcePtr resource(filter_->CreateInputResource(
+        href->DecodedValueOrNull()));
     if (resource.get() != NULL) {
       ResourceSlotPtr slot(Driver()->GetSlot(resource, element, href));
       AddSlot(slot);

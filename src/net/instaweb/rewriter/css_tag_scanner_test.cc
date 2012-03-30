@@ -47,7 +47,7 @@ class CssTagScannerTest : public testing::Test {
                         const char* abs_path) {
     GoogleUrl resolved(base, relative_path);
     EXPECT_TRUE(resolved.is_valid());
-    EXPECT_EQ(resolved.Spec(), abs_path);
+    EXPECT_STREQ(resolved.Spec(), abs_path);
   }
 
   GoogleMessageHandler message_handler_;
@@ -88,8 +88,8 @@ TEST_F(CssTagScannerTest, TestFull) {
 
   // We can parse css even lacking a 'type' attribute.  Default to text/css.
   EXPECT_TRUE(scanner.ParseCssElement(link, &href, &media));
-  EXPECT_EQ("", GoogleString(media));
-  EXPECT_EQ(kUrl, GoogleString(href->value()));
+  EXPECT_STREQ("", media);
+  EXPECT_STREQ(kUrl, href->DecodedValueOrNull());
 
   // Add an unexpected attribute.  Now we don't know what to do with it.
   link->AddAttribute(html_parse.MakeName("other"), "value", "\"");
@@ -101,14 +101,14 @@ TEST_F(CssTagScannerTest, TestFull) {
   html_parse.SetAttributeName(attr, HtmlName::kType);
   attr->SetValue("text/css");
   EXPECT_TRUE(scanner.ParseCssElement(link, &href, &media));
-  EXPECT_EQ("", GoogleString(media));
-  EXPECT_EQ(kUrl, GoogleString(href->value()));
+  EXPECT_STREQ("", media);
+  EXPECT_STREQ(kUrl, href->DecodedValueOrNull());
 
   // Add a media attribute.  It should still pass, yielding media.
   html_parse.AddAttribute(link, HtmlName::kMedia, kPrint);
   EXPECT_TRUE(scanner.ParseCssElement(link, &href, &media));
-  EXPECT_EQ(kPrint, GoogleString(media));
-  EXPECT_EQ(kUrl, GoogleString(href->value()));
+  EXPECT_STREQ(kPrint, media);
+  EXPECT_STREQ(kUrl, href->DecodedValueOrNull());
 
   // TODO(jmarantz): test removal of 'rel' and 'href' attributes
 }
@@ -125,8 +125,8 @@ TEST_F(CssTagScannerTest, RelCaseInsensitive) {
   CssTagScanner scanner(&html_parse);
 
   EXPECT_TRUE(scanner.ParseCssElement(link, &href, &media));
-  EXPECT_EQ("", GoogleString(media));
-  EXPECT_EQ(kUrl, GoogleString(href->value()));
+  EXPECT_STREQ("", media);
+  EXPECT_STREQ(kUrl, href->DecodedValueOrNull());
 }
 
 TEST_F(CssTagScannerTest, TestHasImport) {

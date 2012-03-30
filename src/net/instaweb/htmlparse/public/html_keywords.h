@@ -54,8 +54,14 @@ class HtmlKeywords {
 
   // Take escaped text and unescape it so its value can be interpreted,
   // e.g.    "http://myhost.com/p?v&amp;w"  --> "http://myhost.com/p?v&w"
-  static StringPiece Unescape(const StringPiece& escaped, GoogleString* buf) {
-    return singleton_->UnescapeHelper(escaped, buf);
+  //
+  // *decoding_error is set to true if the escaped string could not be
+  // safely transformed into a simple stream of bytes.
+  //
+  // TODO(jmarantz): Support a variant where we unescape to UTF-8.
+  static StringPiece Unescape(const StringPiece& escaped, GoogleString* buf,
+                              bool* decoding_error) {
+    return singleton_->UnescapeHelper(escaped, buf, decoding_error);
   }
 
   // Note that Escape and Unescape are not guaranteed to be inverses of
@@ -110,6 +116,29 @@ class HtmlKeywords {
   void InitContains();
   void InitOptionallyClosedKeywords();
 
+  // Translate the escape sequence and append the corresponding character
+  // into *buf.
+  //
+  // accumulate_numeric_code==true means that the sequence has been accumulated
+  // into numeric_value and that will be used to form a character for appending
+  // to *buf.
+  //
+  // accumulate_numeric_code==false means that the sequence is in 'escape' and
+  // that will be looked up in the keyword tables to get the character to append
+  // to *buf.
+  //
+  // was_terminated indicates that the escape-sequence was properly terminated
+  // by a semicolon.  This affects handling of unknown escape sequences, where
+  // we will need to retain the ";".
+  //
+  // Returns false iff the escape-sequence is a valid multi-byte sequence,
+  // which we can't currently represent in our 8-bit format.
+  bool TryUnescape(bool accumulate_numeric_code,
+                   uint32 numeric_value,
+                   const GoogleString& escape,
+                   bool was_terminated,
+                   GoogleString* buf) const;
+
   // Encodes two keyword enums as a KeywordPair, represented as an int32.
   static KeywordPair MakeKeywordPair(HtmlName::Keyword k1,
                                      HtmlName::Keyword k2) {
@@ -137,7 +166,8 @@ class HtmlKeywords {
   StringPiece EscapeHelper(const StringPiece& unescaped,
                            GoogleString* buf) const;
   StringPiece UnescapeHelper(const StringPiece& escaped,
-                             GoogleString* buf) const;
+                             GoogleString* buf,
+                             bool* decoding_error) const;
 
   typedef std::map<GoogleString, GoogleString,
                    StringCompareInsensitive> StringStringMapInsensitive;

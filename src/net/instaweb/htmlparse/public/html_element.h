@@ -82,8 +82,41 @@ class HtmlElement : public HtmlNode {
     // distinct from having the empty string for a value).
 
     // Returns the unescaped value, suitable for directly operating on
-    // in filters as URLs or other data.
-    const char* value() const { return value_.get(); }
+    // in filters as URLs or other data.  Sets *decoding_error
+    // to true if the parsed value from HTML could not be decoded.  This
+    // might occur if:
+    //    - the charset is not known
+    //    - the charset is not supported.  Currently none are supported and
+    //      only values that fall in 7-bit ascii can be interpreted.
+    //    - the charset is known & supported but the value does not appear to be
+    //      legal.
+    //
+    // The decoded value uses 8-bit characters to represent any unicode
+    // code-point less than 256.
+    const char* DecodedValue(bool* decoding_error) const {
+      *decoding_error = decoding_error_;
+      return value_.get();
+    }
+
+    // Same as DecodedValue, but returns NULL on an decoding_error, making
+    // it indistinguishable from the case where the attribute is present,
+    // but there is no equals sign.  E.g.
+    //    <tag a="val">              --> "val"
+    //    <tag a="">                 --> ""
+    //    <tag a>                    --> NULL
+    //    <tag a="bogus_encoding">   --> NULL
+    //
+    // The decoded value uses 8-bit characters to represent any unicode
+    // code-point less than 256.
+    const char* DecodedValueOrNull() const {
+      return (decoding_error_ ? NULL : value_.get());
+    }
+
+    // Deprecated method; must leave in until Page Speed is fixed.
+    const char* value() const { return DecodedValueOrNull(); }
+
+    void set_decoding_error(bool x) { decoding_error_ = x; }
+    bool decoding_error() const { return decoding_error_; }
 
     // See comment about quote on constructor for Attribute.
     // Returns the quotation mark associated with this URL, typically
@@ -130,7 +163,8 @@ class HtmlElement : public HtmlNode {
     //
     // This should only be called from AddAttribute
     Attribute(const HtmlName& name, const StringPiece& value,
-              const StringPiece& escaped_value, const char* quote);
+              bool decoding_error, const StringPiece& escaped_value,
+              const char* quote);
 
     static inline void CopyValue(const StringPiece& src,
                                  scoped_array<char>* dst);
@@ -139,6 +173,7 @@ class HtmlElement : public HtmlNode {
     scoped_array<char> escaped_value_;
     scoped_array<char> value_;
     const char* quote_;
+    bool decoding_error_;
 
     DISALLOW_COPY_AND_ASSIGN(Attribute);
   };
@@ -187,7 +222,10 @@ class HtmlElement : public HtmlNode {
   }
 
   // Look up attribute value by name.
-  // Returns NULL if no attribute exists or if attribute has no value.
+  // Returns NULL if:
+  //    1. no attribute exists
+  //    2. the attribute has no value.
+  //    3. the attribute has a value, but it cannot currently be safely decoded.
   // If you care about this distinction, call FindAttribute.
   // Use this only if you don't intend to change the attribute value;
   // if you might change the attribute value, use FindAttribute instead
@@ -195,7 +233,7 @@ class HtmlElement : public HtmlNode {
   const char* AttributeValue(HtmlName::Keyword name) const {
     const Attribute* attribute = FindAttribute(name);
     if (attribute != NULL) {
-      return attribute->value();
+      return attribute->DecodedValueOrNull();
     }
     return NULL;
   }
@@ -205,8 +243,11 @@ class HtmlElement : public HtmlNode {
   // sets *value.
   bool IntAttributeValue(HtmlName::Keyword name, int* value) const {
     const Attribute* attribute = FindAttribute(name);
-    if (attribute != NULL && attribute->value() != NULL) {
-      return StringToInt(attribute->value(), value);
+    if (attribute != NULL) {
+      const char* attr_value = attribute->DecodedValueOrNull();
+      if (attr_value != NULL) {
+        return StringToInt(attr_value, value);
+      }
     }
     return false;
   }

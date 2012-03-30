@@ -50,7 +50,7 @@ class ResourceTagScannerTest : public HtmlParseTestBase {
       HtmlElement::Attribute* src =
           resource_tag_scanner_.ScanElement(element);
       if (src != NULL) {
-        resources_->push_back(src->value());
+        resources_->push_back(src->DecodedValueOrNull());
       }
     }
 

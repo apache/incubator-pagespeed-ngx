@@ -131,49 +131,53 @@ bool CommonFilter::ExtractMetaTagDetails(const HtmlElement& element,
   // HTTP-EQUIV case.
   if ((equiv = element.FindAttribute(HtmlName::kHttpEquiv)) != NULL &&
       (value = element.FindAttribute(HtmlName::kContent)) != NULL) {
-    StringPiece attribute = equiv->value();
-    *content = value->value();
+    StringPiece attribute = equiv->DecodedValueOrNull();
+    StringPiece value_str = value->DecodedValueOrNull();
+    if (!value_str.empty() && !attribute.empty()) {
+      value_str.CopyToString(content);
+      TrimWhitespace(&attribute);
 
-    TrimWhitespace(&attribute);
-
-    // http-equiv must equal "Content-Type" and content mustn't be blank.
-    if (StringCaseEqual(attribute, HttpAttributes::kContentType) &&
-        !content->empty()) {
-      // Per http://webdesign.about.com/od/metatags/qt/meta-charset.htm we
-      // need to handle this:
-      //   <meta http-equiv=Content-Type content=text/html; charset=UTF-8>
-      // The approach here is to first parse the content string, then if it
-      // doesn't have charset, look for a charset attribute and if the
-      // content ends with ';' append the 'content=charset' text. Note that
-      // we have to parse first because we need the -final- content for
-      // checking the headers. If the initial parsing fails then there's no
-      // point in proceeding because even if we add the content= then it
-      // won't parse and we'll return false.
-      bool have_parsed = true;  // Controls the second parse below.
-      GoogleString local_charset;
-      result = ParseContentType(*content, mime_type, &local_charset);
-      if (result) {
-        // No charset, see if we have a charset attribute to append.
-        if (local_charset.empty() && *(content->rbegin()) == ';' &&
-            (cs_attr = element.FindAttribute(HtmlName::kCharset)) != NULL) {
-          StrAppend(content, " charset=", cs_attr->value());
-          have_parsed = false;
-        }
-        // If requested, check to see if we have this value already.
-        if (headers != NULL && headers->HasValue(attribute, *content)) {
-          result = false;
-        } else if (!have_parsed) {
-          result = ParseContentType(*content, mime_type, &local_charset);
-        }
+      // http-equiv must equal "Content-Type" and content mustn't be blank.
+      if (StringCaseEqual(attribute, HttpAttributes::kContentType) &&
+          !content->empty()) {
+        // Per http://webdesign.about.com/od/metatags/qt/meta-charset.htm we
+        // need to handle this:
+        //   <meta http-equiv=Content-Type content=text/html; charset=UTF-8>
+        // The approach here is to first parse the content string, then if it
+        // doesn't have charset, look for a charset attribute and if the
+        // content ends with ';' append the 'content=charset' text. Note that
+        // we have to parse first because we need the -final- content for
+        // checking the headers. If the initial parsing fails then there's no
+        // point in proceeding because even if we add the content= then it
+        // won't parse and we'll return false.
+        bool have_parsed = true;  // Controls the second parse below.
+        GoogleString local_charset;
+        result = ParseContentType(*content, mime_type, &local_charset);
         if (result) {
-          *charset = local_charset;
+          // No charset, see if we have a charset attribute to append.
+          if (local_charset.empty() && *(content->rbegin()) == ';' &&
+              ((cs_attr = element.FindAttribute(HtmlName::kCharset)) != NULL) &&
+              (cs_attr->DecodedValueOrNull() != NULL)) {
+            StrAppend(content, " charset=", cs_attr->DecodedValueOrNull());
+            have_parsed = false;
+          }
+          // If requested, check to see if we have this value already.
+          if (headers != NULL && headers->HasValue(attribute, *content)) {
+            result = false;
+          } else if (!have_parsed) {
+            result = ParseContentType(*content, mime_type, &local_charset);
+          }
+          if (result) {
+            *charset = local_charset;
+          }
         }
       }
     }
   // charset case.
-  } else if ((cs_attr = element.FindAttribute(HtmlName::kCharset)) != NULL) {
+  } else if (((cs_attr = element.FindAttribute(HtmlName::kCharset)) != NULL) &&
+             (cs_attr->DecodedValueOrNull() != NULL)) {
     *mime_type = "";
-    *charset = cs_attr->value();
+    *charset = cs_attr->DecodedValueOrNull();
     result = true;
   }
 

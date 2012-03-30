@@ -129,7 +129,8 @@ class JsCombineFilter::Context : public RewriteContext {
   // Create and add the slot that corresponds to this element.
   bool AddElement(HtmlElement* element, HtmlElement::Attribute* href) {
     bool ret = true;
-    ResourcePtr resource(filter_->CreateInputResource(href->value()));
+    ResourcePtr resource(filter_->CreateInputResource(
+        href->DecodedValueOrNull()));
     if (resource.get() != NULL) {
       ResourceSlotPtr slot(Driver()->GetSlot(resource, element, href));
       AddSlot(slot);
@@ -459,7 +460,7 @@ void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
   }
 
   // An inline script.
-  if (src == NULL || src->value() == NULL) {
+  if (src == NULL || src->DecodedValueOrNull() == NULL) {
     NextCombination();
     return;
   }

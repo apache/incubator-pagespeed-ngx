@@ -69,7 +69,7 @@ void LazyloadImagesFilter::StartElement(HtmlElement* element) {
     // rewrite the page in this case.
     HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
     if (src != NULL) {
-      StringPiece url(src->value());
+      StringPiece url(src->DecodedValueOrNull());
       if (url.find(kJquerySlider) != StringPiece::npos) {
         abort_rewrite_ = true;
       }
@@ -117,7 +117,7 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
     // event is not fired for them.
     HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
     if (src != NULL) {
-      StringPiece url(src->value());
+      StringPiece url(src->DecodedValueOrNull());
       if (!url.starts_with(kData) &&
           element->FindAttribute(HtmlName::kOnload) == NULL &&
           element->FindAttribute(HtmlName::kPagespeedLazySrc) == NULL) {

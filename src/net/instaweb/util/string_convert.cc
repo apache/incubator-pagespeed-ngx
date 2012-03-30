@@ -16,11 +16,12 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-bool AccumulateDecimalValue(char c, int* value) {
+bool AccumulateDecimalValue(char c, uint32* value) {
   bool ret = true;
   if ((c >= '0') && (c <= '9')) {
     *value *= 10;
@@ -31,7 +32,7 @@ bool AccumulateDecimalValue(char c, int* value) {
   return ret;
 }
 
-bool AccumulateHexValue(char c, int* value) {
+bool AccumulateHexValue(char c, uint32* value) {
   int digit = 0;
   if ((c >= '0') && (c <= '9')) {
     digit = c - '0';

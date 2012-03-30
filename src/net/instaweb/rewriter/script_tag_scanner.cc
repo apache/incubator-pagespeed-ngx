@@ -75,11 +75,18 @@ ScriptTagScanner::ScriptClassification ScriptTagScanner::ParseScriptElement(
   // which is different from <script type="">
   ScriptClassification lang;
   HtmlElement::Attribute* type_attr = element->FindAttribute(HtmlName::kType);
-  HtmlElement::Attribute* lang_attr = element->FindAttribute(
-      HtmlName::kLanguage);
-  if (type_attr != NULL && type_attr->value() != NULL) {
-    StringPiece type_str = type_attr->value();
-    if (type_str.empty() || IsJsMime(Normalized(type_str))) {
+  bool check_lang_attr = false;
+  if (type_attr == NULL) {
+    check_lang_attr = true;
+  } else {
+    bool decoding_error;
+    StringPiece type_str = type_attr->DecodedValue(&decoding_error);
+    if (decoding_error) {
+      lang = kUnknownScript;                 // e.g. <script type=&#257;>
+    } else if (type_str.data() == NULL) {    // e.g. <script type>
+      // If the type attribute is empty (no =) then fall back to the lang attr.
+      check_lang_attr = true;
+    } else if (type_str.empty() || IsJsMime(Normalized(type_str))) {
       // An empty type string (but not whitespace-only!) is JS,
       // So is one that's a known mimetype once lowercased and
       // having its leading and trailing whitespace removed
@@ -87,21 +94,38 @@ ScriptTagScanner::ScriptClassification ScriptTagScanner::ParseScriptElement(
     } else {
       lang = kUnknownScript;
     }
-  } else if (lang_attr != NULL && lang_attr->value() != NULL) {
-    // Without type= the ultra-deprecated language attribute determines things.
-    // empty or null one is ignored. The test is done case-insensitively,
-    // but leading/trailing whitespace matters.
-    // (Note: null check on ->value() above as it's passed to GoogleString)
-    GoogleString lang_str = lang_attr->value();
-    LowerString(&lang_str);
-    if (lang_str.empty() || IsJsMime(StrCat("text/", lang_str))) {
-      lang = kJavaScript;
+  }
+
+  // Without type= the ultra-deprecated language attribute determines
+  // things.  empty or null one is ignored. The test is done
+  // case-insensitively, but leading/trailing whitespace matters.
+  // (Note: null check on ->DecodedValueOrNull() above as it's passed
+  // to GoogleString)
+  if (check_lang_attr) {
+    HtmlElement::Attribute* lang_attr = element->FindAttribute(
+        HtmlName::kLanguage);
+
+    if (lang_attr != NULL) {
+      bool decoding_error;
+      StringPiece lang_piece = lang_attr->DecodedValue(&decoding_error);
+      if (decoding_error) {
+        lang = kUnknownScript;                 // e.g. <script language=&#257;>
+      } else if (lang_piece.data() == NULL) {
+        lang = kJavaScript;                    // e.g. <script language>
+      } else {
+        GoogleString lang_str;
+        lang_piece.CopyToString(&lang_str);
+        LowerString(&lang_str);
+        if (lang_str.empty() || IsJsMime(StrCat("text/", lang_str))) {
+          lang = kJavaScript;
+        } else {
+          lang = kUnknownScript;
+        }
+      }
     } else {
-      lang = kUnknownScript;
+      // JS is the default if nothing is specified at all.
+      lang = kJavaScript;
     }
-  } else {
-    // JS is the default if nothing is specified at all.
-    lang = kJavaScript;
   }
 
   return lang;
@@ -130,10 +154,10 @@ int ScriptTagScanner::ExecutionMode(const HtmlElement* element) const {
   const HtmlElement::Attribute* event_attr = element->FindAttribute(
       HtmlName::kEvent);
   if (for_attr != NULL && event_attr != NULL) {
-    if (Normalized(for_attr->value()) != "window") {
+    if (Normalized(for_attr->DecodedValueOrNull()) != "window") {
       flags |= kExecuteForEvent;
     }
-    GoogleString event_str = Normalized(event_attr->value());
+    GoogleString event_str = Normalized(event_attr->DecodedValueOrNull());
     if (event_str != "onload" && event_str != "onload()") {
       flags |= kExecuteForEvent;
     }

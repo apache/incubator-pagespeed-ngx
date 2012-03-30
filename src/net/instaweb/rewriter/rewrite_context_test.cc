@@ -161,7 +161,7 @@ class TrimWhitespaceSyncFilter : public SimpleTextFilter {
     if (element->keyword() == HtmlName::kLink) {
       HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
       if (href != NULL) {
-        GoogleUrl gurl(driver()->google_url(), href->value());
+        GoogleUrl gurl(driver()->google_url(), href->DecodedValueOrNull());
         href->SetValue(StrCat(gurl.Spec(), ".pagespeed.ts.0.css").c_str());
       }
     }
@@ -357,7 +357,7 @@ class NestedFilter : public RewriteFilter {
   void StartElementImpl(HtmlElement* element) {
     HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kHref);
     if (attr != NULL) {
-      ResourcePtr resource = CreateInputResource(attr->value());
+      ResourcePtr resource = CreateInputResource(attr->DecodedValueOrNull());
       if (resource.get() != NULL) {
         ResourceSlotPtr slot(driver_->GetSlot(resource, element, attr));
 
@@ -558,7 +558,7 @@ class CombiningFilter : public RewriteFilter {
     if (element->keyword() == HtmlName::kLink) {
       HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
       if (href != NULL) {
-        ResourcePtr resource(CreateInputResource(href->value()));
+        ResourcePtr resource(CreateInputResource(href->DecodedValueOrNull()));
         if (resource.get() != NULL) {
           if (context_.get() == NULL) {
             context_.reset(new Context(driver_, this, scheduler_));
@@ -2508,7 +2508,8 @@ class TestNotifyFilter : public CommonFilter {
   virtual void StartElementImpl(net_instaweb::HtmlElement* element) {
     HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
     if (href != NULL) {
-      ResourcePtr input_resource(CreateInputResource(href->value()));
+      ResourcePtr input_resource(CreateInputResource(
+          href->DecodedValueOrNull()));
       ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, href));
       Context* context = new Context(driver(), sync_);
       context->AddSlot(slot);

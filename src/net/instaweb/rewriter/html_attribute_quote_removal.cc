@@ -46,10 +46,19 @@ HtmlAttributeQuoteRemoval::HtmlAttributeQuoteRemoval(HtmlParse* html_parse)
   // In pidgin Python:
   //    needs_no_quotes[:] = false
   //    needs_no_quotes[kNoQuoteChars] = true
+
+  // TODO(jmarantz): put this in a static Initialize method to avoid
+  // per-request construction costs.
   memset(&needs_no_quotes_, 0, sizeof(needs_no_quotes_));
   for (int i = 0; kNoQuoteChars[i] != '\0'; ++i) {
     needs_no_quotes_[kNoQuoteChars[i]] = true;
   }
+
+  // All 8-bit characters can remain unquoted.
+  // TODO(jmarantz): uncomment in a follow-up.  This should be fine.
+  // for (int i = 128; i < 256; ++i) {
+  //   needs_no_quotes_[i] = true;
+  // }
 }
 
 HtmlAttributeQuoteRemoval::~HtmlAttributeQuoteRemoval() {}
@@ -81,7 +90,7 @@ void HtmlAttributeQuoteRemoval::StartElement(HtmlElement* element) {
   for (int i = 0; i < element->attribute_size(); ++i) {
     HtmlElement::Attribute& attr = element->attribute(i);
     if (attr.quote() != NULL && attr.quote()[0] != '\0' &&
-        !NeedsQuotes(attr.value())) {
+        !NeedsQuotes(attr.escaped_value())) {
       attr.set_quote("");
       rewritten++;
     }
