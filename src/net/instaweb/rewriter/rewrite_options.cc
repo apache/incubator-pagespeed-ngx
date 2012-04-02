@@ -970,12 +970,13 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
     }
   }
   StrAppend(&signature_, domain_lawyer_.Signature(), "_");
+  StrAppend(&signature_, "AR:", allow_resources_.Signature(), "_");
+  StrAppend(&signature_, "RC:", retain_comments_.Signature(), "_");
   frozen_ = true;
 
-  // TODO(jmarantz): Incorporate signatures from the domain_lawyer,
-  // file_load_policy, allow_resources, and retain_comments.  However,
-  // the changes made here make our system strictly more correct than
-  // it was before, using an ad-hoc signature in css_filter.cc.
+  // TODO(jmarantz): Incorporate signature from file_load_policy.  However, the
+  // changes made here make our system strictly more correct than it was before,
+  // using an ad-hoc signature in css_filter.cc.
 }
 
 GoogleString RewriteOptions::ToString(RewriteLevel level) {

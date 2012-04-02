@@ -105,6 +105,19 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
                             IntegerToString(index_++), "\"");
     }
   }
+
+  HtmlElement::Attribute* onload = element->FindAttribute(HtmlName::kOnload);
+  if (onload != NULL && (onload->DecodedValueOrNull() != NULL)) {
+    // The onload value can be any script. It's not necessary that it is
+    // always javascript. But we don't have any way of identifying it.
+    // For now let us assume it is JS, which is the case in majority.
+    // TODO(ksimbili): Try fixing not adding non-Js code, if we can.
+    GoogleString deferred_onload =
+        "pagespeed.deferJs.addOnloadListeners(this, function() {";
+    deferred_onload += onload->DecodedValueOrNull();
+    deferred_onload += "});";
+    onload->SetValue(deferred_onload);
+  }
 }
 
 }  // namespace net_instaweb

@@ -1,0 +1,23 @@
+<html>
+  <head>
+    <!-- Ensure that onloads in html tags are executed without any errors. -->
+  </head>
+  <body>
+    <script type="text/javascript" >
+      var list = [];
+    </script>
+    <script type="text/javascript" >
+      list.push(1);
+      list.push(2);
+    </script>
+    <img src="/mod_pagespeed_example/images/Puzzle.jpg" onload="list.push(3);">
+    <script type="text/javascript" >
+      setTimeout(function() {
+                 var div = document.createElement('div');
+                 div.id = "listDiv";
+                 div.innerHTML = list.join();
+                 document.body.appendChild(div);
+      }, 3000);
+    </script>
+  </body>
+</html>

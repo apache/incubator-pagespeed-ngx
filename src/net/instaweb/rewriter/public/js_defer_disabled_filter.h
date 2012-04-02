@@ -40,6 +40,7 @@ class JsDeferDisabledFilter : public EmptyHtmlFilter {
   virtual ~JsDeferDisabledFilter();
 
   virtual void StartDocument();
+  virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
   virtual void EndDocument();
   virtual const char* Name() const { return "JsDeferDisabledFilter"; }
@@ -48,6 +49,8 @@ class JsDeferDisabledFilter : public EmptyHtmlFilter {
   static void Terminate();
 
  private:
+  void InsertJsDeferCode(HtmlElement* element);
+
   RewriteDriver* rewrite_driver_;
 
   // The script that will be inlined at the end of BODY.

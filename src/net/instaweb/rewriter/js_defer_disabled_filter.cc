@@ -55,32 +55,46 @@ void JsDeferDisabledFilter::StartDocument() {
   defer_js_enabled_ = rewrite_driver_->UserAgentSupportsJsDefer();
 }
 
-void JsDeferDisabledFilter::EndElement(HtmlElement* element) {
+void JsDeferDisabledFilter::StartElement(HtmlElement* element) {
   if (defer_js_enabled_ && element->keyword() == HtmlName::kBody &&
       !script_written_) {
-    HtmlElement* script_node =
-        rewrite_driver_->NewElement(element, HtmlName::kScript);
-    rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
-                              "text/javascript");
-    StaticJavascriptManager* static_js_manager =
-        rewrite_driver_->resource_manager()->static_javascript_manager();
-    StringPiece defer_js_script =
-        static_js_manager->GetJsSnippet(
-            StaticJavascriptManager::kDeferJs, rewrite_driver_->options());
-    const GoogleString& defer_js =
-        StrCat(defer_js_script, JsDeferDisabledFilter::kSuffix);
-    HtmlNode* script_code =
-        rewrite_driver_->NewCharactersNode(script_node, defer_js);
-    rewrite_driver_->InsertElementBeforeCurrent(script_node);
-    rewrite_driver_->AppendChild(script_node, script_code);
-    script_written_ = true;
+    HtmlElement* head_node =
+        rewrite_driver_->NewElement(element->parent(), HtmlName::kHead);
+    rewrite_driver_->InsertElementBeforeCurrent(head_node);
+    InsertJsDeferCode(head_node);
   }
+}
+
+void JsDeferDisabledFilter::EndElement(HtmlElement* element) {
+  if (defer_js_enabled_ && element->keyword() == HtmlName::kHead &&
+      !script_written_) {
+    InsertJsDeferCode(element);
+  }
+}
+
+void JsDeferDisabledFilter::InsertJsDeferCode(HtmlElement* element) {
+  HtmlElement* script_node =
+      rewrite_driver_->NewElement(element, HtmlName::kScript);
+  rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
+                                "text/javascript");
+  StaticJavascriptManager* static_js_manager =
+      rewrite_driver_->resource_manager()->static_javascript_manager();
+  StringPiece defer_js_script =
+      static_js_manager->GetJsSnippet(
+          StaticJavascriptManager::kDeferJs, rewrite_driver_->options());
+  const GoogleString& defer_js =
+      StrCat(defer_js_script, JsDeferDisabledFilter::kSuffix);
+  HtmlNode* script_code =
+      rewrite_driver_->NewCharactersNode(script_node, defer_js);
+  rewrite_driver_->AppendChild(element, script_node);
+  rewrite_driver_->AppendChild(script_node, script_code);
+  script_written_ = true;
 }
 
 void JsDeferDisabledFilter::EndDocument() {
   if (defer_js_enabled_ && !script_written_) {
     // Scripts never get executed if this happen.
-    rewrite_driver_->InfoHere("BODY tag didn't close after last script");
+    rewrite_driver_->InfoHere("HEAD tag didn't close or no BODY tag found");
     // TODO(atulvasu): Try to write here.
   }
 }

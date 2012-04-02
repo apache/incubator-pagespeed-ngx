@@ -71,13 +71,12 @@ pagespeed.DeferJs = function() {
   this.domReadyListeners_ = [];
 
   /**
-   * EvenListeners for document.onload or window.onload
+   * EvenListeners for element.onload
    * TODO(ksimbili): Handle body.onload. In IE body.onload is alias to
    * window.onload
-   * TODO(ksimbili): onload set in HTML for other elements need to be handled
-   * too.
+   * @private
    */
-  this.pageLoadListeners_ = [];
+  this.onloadListeners_ = [];
 
   /**
    * Valid Mime types for Javascript.
@@ -99,6 +98,12 @@ pagespeed.DeferJs = function() {
        'text/livescript',
        'text/x-ecmascript',
        'text/x-javascript'];
+  /**
+   * Indicates if scripts execution complete.
+   * @type {!boolean}
+   * @private
+   */
+  this.deferScriptsComplete_ = false;
 };
 
 /**
@@ -279,7 +284,9 @@ pagespeed.DeferJs.prototype.onComplete = function() {
   }
 
   this.executeDomReady();
-  this.executePageLoad();
+  this.executeOnload();
+
+  this.deferScriptsComplete_ = true;
 }
 
 /**
@@ -518,21 +525,33 @@ pagespeed.DeferJs.prototype.writeHtml = function(html) {
 
 /**
  * Adds DOMContentLoaded event listeners to our own list and called them later.
+ * @param {!Element} elem Element on which listener to be called.
  * @param {!function()} func domReady listener.
  */
-pagespeed.DeferJs.prototype.addDomReadyListeners = function(func) {
+pagespeed.DeferJs.prototype.addDomReadyListeners = function(elem, func) {
   this.log('domready: ' + func.toString());
-  this.domReadyListeners_.push(func);
+  this.domReadyListeners_.push(function() {
+    func.call(elem);
+  });
 };
 
 /**
  * Adds page onload event listeners to our own list and called them later.
+ * @param {!Element} elem Element on which listener to be called.
  * @param {!function()} func onload listener.
  */
-pagespeed.DeferJs.prototype.addPageLoadListeners = function(func) {
+pagespeed.DeferJs.prototype.addOnloadListeners = function(elem, func) {
   this.log('onload: ' + func.toString());
-  this.pageLoadListeners_.push(func);
+  if (this.deferScriptsComplete_) {
+    func.call(elem);
+    return;
+  }
+  this.onloadListeners_.push(function() {
+    func.call(elem);
+  });
 };
+pagespeed.DeferJs.prototype['addOnloadListeners'] =
+    pagespeed.DeferJs.prototype.addOnloadListeners;
 
 /**
  * Execute all handlers registered for DOMContentLoaded/onreadystatechange.
@@ -548,12 +567,12 @@ pagespeed.DeferJs.prototype.executeDomReady = function() {
 };
 
 /**
- * Execute all handlers registered for page onload.
+ * Execute all handlers registered for element onload.
  */
-pagespeed.DeferJs.prototype.executePageLoad = function() {
-  for (var i = 0; i < this.pageLoadListeners_.length; i++) {
-    this.log('executing pageload: ' + this.pageLoadListeners_[i].toString());
-    this.pageLoadListeners_[i].call(window);
+pagespeed.DeferJs.prototype.executeOnload = function() {
+  for (var i = 0; i < this.onloadListeners_.length; i++) {
+    this.log('executing pageload: ' + this.onloadListeners_[i].toString());
+    this.onloadListeners_[i].call();
   }
 };
 
@@ -567,11 +586,11 @@ pagespeed.DeferJs.prototype.executePageLoad = function() {
  */
 var psaAddEventListener = function(elem, eventName, func, capture) {
   if (eventName == 'DOMContentLoaded' || eventName == 'readystatechange') {
-    pagespeed.deferJs.addDomReadyListeners(func);
+    pagespeed.deferJs.addDomReadyListeners(elem, func);
     return;
   }
   if (eventName == 'load') {
-    pagespeed.deferJs.addPageLoadListeners(func);
+    pagespeed.deferJs.addOnloadListeners(elem, func);
     return;
   }
   elem.originalAddEventListener(eventName, func, capture);
@@ -586,11 +605,11 @@ var psaAddEventListener = function(elem, eventName, func, capture) {
  */
 var psaAttachEvent = function(elem, eventName, func) {
   if (eventName == 'onDOMContentLoaded' || eventName == 'onreadystatechange') {
-    pagespeed.deferJs.addDomReadyListeners(func);
+    pagespeed.deferJs.addDomReadyListeners(elem, func);
     return;
   }
   if (eventName == 'onload') {
-    pagespeed.deferJs.addPageLoadListeners(func);
+    pagespeed.deferJs.addOnloadListeners(elem, func);
     return;
   }
   elem.originalAttachEvent(eventName, func);

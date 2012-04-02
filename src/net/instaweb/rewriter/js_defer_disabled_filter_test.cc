@@ -67,11 +67,11 @@ TEST_F(JsDeferDisabledFilterTest, DeferScript) {
              "src='http://www.google.com/javascript/ajax_apis.js'></script>"
              "<script type='text/psajs'"
              "> func();</script>"
-             "</head><body>Hello, world!"
              "<script type=\"text/javascript\">",
              defer_js_code,
              JsDeferDisabledFilter::kSuffix,
-             "</script></body>"));
+             "</script></head><body>Hello, world!"
+             "</body>"));
 }
 
 TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
@@ -90,11 +90,28 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
              "<script type='text/psajs' "
              "src='http://www.google.com/javascript/ajax_apis.js'></script>"
              "<script type='text/psajs'> func(); </script>"
-             "</head><body>Hello, world!"
              "<script type=\"text/javascript\">",
              defer_js_code,
              JsDeferDisabledFilter::kSuffix,
-             "</script></body><body><script type='text/psajs'> func2(); "
+             "</script></head><body>Hello, world!"
+             "</body><body><script type='text/psajs'> func2(); "
+             "</script></body>"));
+}
+
+TEST_F(JsDeferDisabledFilterTest, DeferScriptNoHead) {
+  InitJsDeferDisabledFilter(false);
+  StringPiece defer_js_code =
+      resource_manager()->static_javascript_manager()->GetJsSnippet(
+          StaticJavascriptManager::kDeferJs, options());
+  ValidateExpected("defer_script_no_head",
+      "<body>Hello, world!</body><body>"
+      "<script type='text/psajs'> func2(); </script></body>",
+      StrCat("<head>"
+             "<script type=\"text/javascript\">",
+             defer_js_code,
+             JsDeferDisabledFilter::kSuffix,
+             "</script></head><body>Hello, world!"
+             "</body><body><script type='text/psajs'> func2(); "
              "</script></body>"));
 }
 
@@ -109,7 +126,8 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptOptimized) {
 TEST_F(JsDeferDisabledFilterTest, DeferScriptDebug) {
   InitJsDeferDisabledFilter(true);
   Parse("optimized",
-        "<body><script type='text/psajs' src='foo.js'></script></body>");
+        "<head></head><body><script type='text/psajs' src='foo.js'>"
+        "</script></body>");
   EXPECT_NE(GoogleString::npos, output_buffer_.find("/*"))
       << "There should still be some comments in the debug code";
 }

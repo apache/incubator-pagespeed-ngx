@@ -1354,7 +1354,6 @@ class RewriteOptions {
   DomainLawyer domain_lawyer_;
   FileLoadPolicy file_load_policy_;
 
-  // TODO(sriharis):  Consider this in ComputeSignature.
   WildcardGroup allow_resources_;
   WildcardGroup retain_comments_;
 

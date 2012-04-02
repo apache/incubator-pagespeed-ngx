@@ -210,6 +210,7 @@ ProxyFetchPropertyCallbackCollector::GetPropertyPageWithoutOwnership(
 
 void ProxyFetchPropertyCallbackCollector::Done(
     ProxyFetchPropertyCallback* callback, bool success) {
+  ResourceManager* resource_manager = NULL;
   ProxyFetch* fetch = NULL;
   scoped_ptr<std::vector<Function*> > post_lookup_task_vector;
   bool do_delete = false;
@@ -222,6 +223,11 @@ void ProxyFetchPropertyCallbackCollector::Done(
 
     if (pending_callbacks_.empty()) {
       done_ = true;
+      // There is a race where Detach() can be called immediately after we
+      // release the lock below, and it (Detach) deletes 'this' (because we
+      // just set done_ to true), which means we cannot rely on any data
+      // members being valid after releasing the lock, so we copy them all.
+      resource_manager = resource_manager_;
       fetch = proxy_fetch_;
       do_delete = detached_;
       post_lookup_task_vector.reset(post_lookup_task_vector_.release());
@@ -229,7 +235,7 @@ void ProxyFetchPropertyCallbackCollector::Done(
     }
   }
   if (call_post) {
-    ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
+    ThreadSynchronizer* sync = resource_manager->thread_synchronizer();
     sync->Signal(ProxyFetch::kCollectorReady);
     sync->Wait(ProxyFetch::kCollectorDone);
     if (post_lookup_task_vector.get() != NULL) {

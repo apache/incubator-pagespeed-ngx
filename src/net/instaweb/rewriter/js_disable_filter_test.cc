@@ -64,7 +64,8 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       kUnrelatedNoscriptTags,
       "<script src=\"blah1\" random=\"true\">hi1</script>",
       kUnrelatedTags,
-      "<script src=\"blah2\" random=\"false\">hi2</script>",
+      "<img src=\"abc.jpg\" onload=\"foo1();foo2();\">"
+      "<script src=\"blah2\" random=\"false\">hi2</script>"
       "</body>");
   const GoogleString expected = StrCat(
       "<body>"
@@ -75,6 +76,8 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "<script random=\"true\" orig_src=\"blah1\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
       kUnrelatedTags,
+      "<img src=\"abc.jpg\" onload=\"pagespeed.deferJs.addOnloadListeners(this,"
+      " function() {foo1();foo2();});\">"
       "<script random=\"false\" orig_src=\"blah2\" type=\"text/psajs\""
       " orig_index=\"1\">hi2</script>"
       "</body>");

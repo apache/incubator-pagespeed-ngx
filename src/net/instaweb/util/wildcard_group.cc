@@ -20,6 +20,7 @@
 #include "base/logging.h"
 #include "net/instaweb/util/public/wildcard_group.h"
 #include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/wildcard.h"
 
@@ -71,6 +72,14 @@ void WildcardGroup::AppendFrom(const WildcardGroup& src) {
     wildcards_.push_back(src.wildcards_[i]->Duplicate());
     allow_.push_back(src.allow_[i]);
   }
+}
+
+GoogleString WildcardGroup::Signature() const {
+  GoogleString signature;
+  for (int i = 0, n = wildcards_.size(); i < n; ++i) {
+    StrAppend(&signature, wildcards_[i]->spec(), (allow_[i] ? "A" : "D"), ",");
+  }
+  return signature;
 }
 
 }  // namespace net_instaweb

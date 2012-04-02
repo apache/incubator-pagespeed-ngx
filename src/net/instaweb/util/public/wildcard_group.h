@@ -21,6 +21,7 @@
 
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -63,6 +64,8 @@ class WildcardGroup {
 
   void CopyFrom(const WildcardGroup& src);
   void AppendFrom(const WildcardGroup& src);
+
+  GoogleString Signature() const;
 
  private:
   void Clear();
