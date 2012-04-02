@@ -79,9 +79,8 @@ ScriptTagScanner::ScriptClassification ScriptTagScanner::ParseScriptElement(
   if (type_attr == NULL) {
     check_lang_attr = true;
   } else {
-    bool decoding_error;
-    StringPiece type_str = type_attr->DecodedValue(&decoding_error);
-    if (decoding_error) {
+    StringPiece type_str = type_attr->DecodedValueOrNull();
+    if (type_attr->decoding_error()) {
       lang = kUnknownScript;                 // e.g. <script type=&#257;>
     } else if (type_str.data() == NULL) {    // e.g. <script type>
       // If the type attribute is empty (no =) then fall back to the lang attr.
@@ -106,9 +105,8 @@ ScriptTagScanner::ScriptClassification ScriptTagScanner::ParseScriptElement(
         HtmlName::kLanguage);
 
     if (lang_attr != NULL) {
-      bool decoding_error;
-      StringPiece lang_piece = lang_attr->DecodedValue(&decoding_error);
-      if (decoding_error) {
+      StringPiece lang_piece = lang_attr->DecodedValueOrNull();
+      if (lang_attr->decoding_error()) {
         lang = kUnknownScript;                 // e.g. <script language=&#257;>
       } else if (lang_piece.data() == NULL) {
         lang = kJavaScript;                    // e.g. <script language>

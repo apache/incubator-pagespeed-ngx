@@ -142,9 +142,8 @@ class AttrValuesSaverFilter : public EmptyHtmlFilter {
 
   virtual void StartElement(HtmlElement* element) {
     for (int i = 0; i < element->attribute_size(); ++i) {
-      bool decoding_error;
-      const char* value = element->attribute(i).DecodedValue(&decoding_error);
-      if (decoding_error) {
+      const char* value = element->attribute(i).DecodedValueOrNull();
+      if (element->attribute(i).decoding_error()) {
         value_ += "<ERROR>";
       } else if (value == NULL) {
         value_ += "(null)";
@@ -391,9 +390,8 @@ class AnnotatingHtmlFilter : public EmptyHtmlFilter {
     for (int i = 0; i < element->attribute_size(); ++i) {
       const HtmlElement::Attribute& attr = element->attribute(i);
       StrAppend(&buffer_, (i == 0 ? ":" : ","), attr.name_str());
-      bool decoding_error;
-      const char* value = attr.DecodedValue(&decoding_error);
-      if (decoding_error) {
+      const char* value = attr.DecodedValueOrNull();
+      if (attr.decoding_error()) {
         StrAppend(&buffer_, "=<ERROR>");
       } else if (value != NULL) {
         StrAppend(&buffer_, "=", attr.quote(), value, attr.quote());

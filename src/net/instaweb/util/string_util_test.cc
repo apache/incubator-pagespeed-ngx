@@ -467,6 +467,11 @@ TEST(BasicUtilsTest, SplitStringUsingSubstr3) {
   EXPECT_EQ("ac", components[1]);
 }
 
+TEST(BasicUtilsTest, StringPieceFindWithNull) {
+  StringPiece null_piece(NULL, 0);
+  EXPECT_EQ(StringPiece::npos, null_piece.find("not found"));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

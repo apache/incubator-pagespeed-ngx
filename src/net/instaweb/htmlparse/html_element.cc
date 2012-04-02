@@ -100,9 +100,8 @@ void HtmlElement::ToString(GoogleString* buf) const {
     const Attribute& attribute = *attributes_[i];
     *buf += ' ';
     *buf += attribute.name_str();
-    bool decoding_error;
-    const char* value = attribute.DecodedValue(&decoding_error);
-    if (decoding_error) {
+    const char* value = attribute.DecodedValueOrNull();
+    if (attribute.decoding_error()) {
       // This is a debug method; not used in serialization.
       *buf += "<DECODING ERROR>";
     } else if (value != NULL) {

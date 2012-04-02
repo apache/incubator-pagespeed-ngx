@@ -40,9 +40,8 @@ void CanonicalAttributes::StartDocument() {
 void CanonicalAttributes::StartElement(HtmlElement* element) {
   for (int i = 0; i < element->attribute_size(); ++i) {
     HtmlElement::Attribute& attribute = element->attribute(i);
-    bool decoding_error;
-    const char* value = attribute.DecodedValue(&decoding_error);
-    if (decoding_error) {
+    const char* value = attribute.DecodedValueOrNull();
+    if (attribute.decoding_error()) {
       ++num_errors_;
     } else if (value != NULL) {
       ++num_changes_;

@@ -53,9 +53,9 @@ class HtmlElement : public HtmlNode {
     // improperly escaped.  Browsers are generally tolerant of this.
     // But we want to avoid corrupting pages we do not understand.
 
-    // The result of value() and escaped_value() is still owned by this, and
-    // will be invalidated by a subsequent call to SetValue() or
-    // SetUnescapedValue
+    // The result of DecodedValueOrNull() and escaped_value() is still
+    // owned by this, and will be invalidated by a subsequent call to
+    // SetValue() or SetUnescapedValue
 
     // Returns the attribute name, which is not guaranteed to be case-folded.
     // Compare keyword() to the Keyword constant found in html_name.h for
@@ -74,16 +74,22 @@ class HtmlElement : public HtmlNode {
     // This may have HTML escapes in it, such as "&amp;".
     const char* escaped_value() const { return escaped_value_.get(); }
 
-    // The result of value() is still owned by this, and will be invalidated by
-    // a subsequent call to set_value().
+    // The result of DecodedValueOrNull() is still owned by this, and
+    // will be invalidated by a subsequent call to SetValue().
     //
     // The result will be a NUL-terminated string containing the value of the
     // attribute, or NULL if the attribute has no value at all (this is
-    // distinct from having the empty string for a value).
-
+    // distinct from having the empty string for a value), or there is
+    // a decoding error.  E.g.
+    //    <tag a="val">              --> "val"
+    //    <tag a="&amp;">            --> "&"
+    //    <tag a="">                 --> ""
+    //    <tag a>                    --> NULL
+    //    <tag a="muñecos">          --> NULL  (decoding_error()==true)
+    //
     // Returns the unescaped value, suitable for directly operating on
-    // in filters as URLs or other data.  Sets *decoding_error
-    // to true if the parsed value from HTML could not be decoded.  This
+    // in filters as URLs or other data.  Note that decoding_error() is
+    // true if the parsed value from HTML could not be decoded.  This
     // might occur if:
     //    - the charset is not known
     //    - the charset is not supported.  Currently none are supported and
@@ -93,27 +99,9 @@ class HtmlElement : public HtmlNode {
     //
     // The decoded value uses 8-bit characters to represent any unicode
     // code-point less than 256.
-    const char* DecodedValue(bool* decoding_error) const {
-      *decoding_error = decoding_error_;
-      return value_.get();
-    }
-
-    // Same as DecodedValue, but returns NULL on an decoding_error, making
-    // it indistinguishable from the case where the attribute is present,
-    // but there is no equals sign.  E.g.
-    //    <tag a="val">              --> "val"
-    //    <tag a="">                 --> ""
-    //    <tag a>                    --> NULL
-    //    <tag a="bogus_encoding">   --> NULL
-    //
-    // The decoded value uses 8-bit characters to represent any unicode
-    // code-point less than 256.
     const char* DecodedValueOrNull() const {
       return (decoding_error_ ? NULL : value_.get());
     }
-
-    // Deprecated method; must leave in until Page Speed is fixed.
-    const char* value() const { return DecodedValueOrNull(); }
 
     void set_decoding_error(bool x) { decoding_error_ = x; }
     bool decoding_error() const { return decoding_error_; }
