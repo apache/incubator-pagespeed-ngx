@@ -241,7 +241,7 @@
       'type': 'executable',
       'dependencies': [
         'test_infrastructure',
-        'apache.gyp:apache',
+        'instaweb_apr.gyp:instaweb_apr',
         '<(DEPTH)/testing/gmock.gyp:gmock',
         '<(DEPTH)/testing/gtest.gyp:gtest_main',
         '<(DEPTH)/third_party/apr/apr.gyp:apr',

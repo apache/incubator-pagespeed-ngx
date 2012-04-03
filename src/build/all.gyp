@@ -28,7 +28,7 @@
       'type': 'none',
       'dependencies': [
         '../net/instaweb/instaweb.gyp:instaweb_rewriter',
-        '../net/instaweb/apache.gyp:*',
+        '../net/instaweb/instaweb_apr.gyp:*',
         '../net/instaweb/mod_pagespeed.gyp:*',
         'install.gyp:*',
       ],},
@@ -46,7 +46,7 @@
       'dependencies': [
         '../net/instaweb/instaweb.gyp:*',
         '../net/instaweb/instaweb_core.gyp:*',
-        '../net/instaweb/apache.gyp:*',
+        '../net/instaweb/instaweb_apr.gyp:*',
         '../net/instaweb/test.gyp:mod_pagespeed_test',
         '../net/instaweb/test.gyp:mod_pagespeed_speed_test',
         'install.gyp:*',

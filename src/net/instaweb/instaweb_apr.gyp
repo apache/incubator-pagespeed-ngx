@@ -23,14 +23,14 @@
 
   'targets': [
     {
-      'target_name': 'apache',
+      'target_name': 'instaweb_apr',
       'type': '<(library)',
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
-        '<(DEPTH)/third_party/httpd/httpd.gyp:include',
-        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
         '<(DEPTH)/third_party/serf/serf.gyp:serf',
+        '<(DEPTH)/third_party/apr/apr.gyp:include',
+        '<(DEPTH)/third_party/aprutil/aprutil.gyp:include',
         '<(instaweb_root)/instaweb.gyp:instaweb_automatic',
         '<(instaweb_root)/instaweb.gyp:instaweb_htmlparse',
         '<(instaweb_root)/instaweb.gyp:instaweb_http',
@@ -44,19 +44,9 @@
         '<(DEPTH)',
       ],
       'sources': [
-        'apache/apache_config.cc',
-        'apache/apache_cache.cc',
-        'apache/apache_message_handler.cc',
-        'apache/apache_resource_manager.cc',
-        'apache/apache_rewrite_driver_factory.cc',
-        'apache/apache_slurp.cc',
         'apache/apache_thread_system.cc',
         'apache/apr_file_system.cc',
         'apache/apr_timer.cc',
-        'apache/header_util.cc',
-        'apache/instaweb_context.cc',
-        'apache/interface_mod_spdy.cc',
-        'apache/log_message_handler.cc',
         'apache/serf_url_async_fetcher.cc',
       ],
       'export_dependent_settings': [
