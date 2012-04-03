@@ -47,15 +47,21 @@ class JsDisableFilter : public EmptyHtmlFilter {
 
   virtual void StartElement(HtmlElement* element);
 
+  virtual void EndDocument();
+
   virtual const char* Name() const {
     return "JsDisableFilter";
   }
 
  private:
+  // Inserts the experimental js enable/disable code.
+  void InsertJsDeferExperimentalScript(HtmlElement* element);
+
   RewriteDriver* rewrite_driver_;
   ScriptTagScanner script_tag_scanner_;
   int index_;
   bool defer_js_experimental_script_written_;
+  bool defer_js_enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(JsDisableFilter);
 };

@@ -42,7 +42,8 @@ JsDisableFilter::JsDisableFilter(RewriteDriver* driver)
     : rewrite_driver_(driver),
       script_tag_scanner_(driver),
       index_(0),
-      defer_js_experimental_script_written_(false) {
+      defer_js_experimental_script_written_(false),
+      defer_js_enabled_(false) {
 }
 
 JsDisableFilter::~JsDisableFilter() {
@@ -51,15 +52,10 @@ JsDisableFilter::~JsDisableFilter() {
 void JsDisableFilter::StartDocument() {
   index_ = 0;
   defer_js_experimental_script_written_ = false;
+  defer_js_enabled_ = rewrite_driver_->UserAgentSupportsJsDefer();
 }
 
-void JsDisableFilter::StartElement(HtmlElement* element) {
-  if (!rewrite_driver_->UserAgentSupportsJsDefer()) {
-    return;
-  }
-
-  if (element->keyword() == HtmlName::kBody &&
-      !defer_js_experimental_script_written_) {
+void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {
     // We are not adding this code in js_defer_disabled_filter to avoid
     // duplication of code for blink and critical line code.
     bool defer_js_experimental =
@@ -76,9 +72,25 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
             (defer_js_experimental ?
              JsDisableFilter::kEnableJsExperimental :
              JsDisableFilter::kDisableJsExperimental));
-    rewrite_driver_->PrependChild(element, script_node);
+    rewrite_driver_->AppendChild(element, script_node);
     rewrite_driver_->AppendChild(script_node, script_code);
     defer_js_experimental_script_written_ = true;
+}
+
+void JsDisableFilter::StartElement(HtmlElement* element) {
+  if (!defer_js_enabled_) {
+    return;
+  }
+
+  if (element->keyword() == HtmlName::kHead &&
+      !defer_js_experimental_script_written_) {
+    InsertJsDeferExperimentalScript(element);
+  } else if (element->keyword() == HtmlName::kBody &&
+             !defer_js_experimental_script_written_) {
+    HtmlElement* head_node =
+        rewrite_driver_->NewElement(element->parent(), HtmlName::kHead);
+    rewrite_driver_->InsertElementBeforeCurrent(head_node);
+    InsertJsDeferExperimentalScript(head_node);
   } else {
     HtmlElement::Attribute* src;
     if (script_tag_scanner_.ParseScriptElement(element, &src) ==
@@ -107,16 +119,22 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
   }
 
   HtmlElement::Attribute* onload = element->FindAttribute(HtmlName::kOnload);
-  if (onload != NULL && (onload->DecodedValueOrNull() != NULL)) {
+  if ((onload != NULL) && (onload->DecodedValueOrNull() != NULL)) {
     // The onload value can be any script. It's not necessary that it is
     // always javascript. But we don't have any way of identifying it.
     // For now let us assume it is JS, which is the case in majority.
     // TODO(ksimbili): Try fixing not adding non-Js code, if we can.
-    GoogleString deferred_onload =
-        "pagespeed.deferJs.addOnloadListeners(this, function() {";
-    deferred_onload += onload->DecodedValueOrNull();
-    deferred_onload += "});";
+    GoogleString deferred_onload = StrCat(
+        "pagespeed.deferJs.addOnloadListeners(this, function() {",
+        onload->DecodedValueOrNull(),
+        "});");
     onload->SetValue(deferred_onload);
+  }
+}
+
+void JsDisableFilter::EndDocument() {
+  if (defer_js_enabled_ && !defer_js_experimental_script_written_) {
+    rewrite_driver_->InfoHere("Experimental flag code is not written");
   }
 }
 

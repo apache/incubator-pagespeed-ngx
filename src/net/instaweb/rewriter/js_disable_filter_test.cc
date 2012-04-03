@@ -68,10 +68,10 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "<script src=\"blah2\" random=\"false\">hi2</script>"
       "</body>");
   const GoogleString expected = StrCat(
-      "<body>"
-      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      "<head><script type=\"text/javascript\" pagespeed_no_defer=\"\">",
       JsDisableFilter::kDisableJsExperimental,
-      "</script>",
+      "</script></head>"
+      "<body>",
       kUnrelatedNoscriptTags,
       "<script random=\"true\" orig_src=\"blah1\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
@@ -104,10 +104,10 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithExperimental) {
       "<script src=\"blah2\" random=\"false\">hi2</script>",
       "</body>");
   const GoogleString expected = StrCat(
-      "<body>"
-      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      "<head><script type=\"text/javascript\" pagespeed_no_defer=\"\">",
       JsDisableFilter::kEnableJsExperimental,
-      "</script>",
+      "</script></head>"
+      "<body>",
       kUnrelatedNoscriptTags,
       "<script random=\"true\" orig_src=\"blah1\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
