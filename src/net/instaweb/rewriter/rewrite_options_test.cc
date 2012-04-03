@@ -21,6 +21,7 @@
 #include <set>
 
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -92,6 +93,7 @@ class RewriteOptionsTest : public ::testing::Test {
   void TestSetOptionFromName(bool test_log_variant);
 
   RewriteOptions options_;
+  net_instaweb::MockHasher hasher_;
 };
 
 TEST_F(RewriteOptionsTest, BotDetectEnabledByDefault) {
@@ -595,7 +597,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(71, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(72, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));
@@ -695,6 +697,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("MaxHtmlCacheTimeMs"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kMaxHtmlCacheTimeMs));
+  EXPECT_EQ(StringPiece("MaxImageSizeLowResolutionBytes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kMaxImageSizeLowResolutionBytes));
   EXPECT_EQ(StringPiece("MaxInlinedPreviewImagesIndex"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kMaxInlinedPreviewImagesIndex));
@@ -937,6 +942,30 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   EXPECT_EQ("Experiment: 2; ah,ai,hw,ig,cf,css:4096,im:0,js:2048;",
             options_.ToExperimentString());
   EXPECT_EQ("122333-4", options_.ga_id());
+}
+
+// TODO(sriharis):  Add thorough ComputeSignature tests
+
+TEST_F(RewriteOptionsTest, ComputeSignatureWildcardGroup) {
+  // hasher_ is a MockHasher and always returns 0.  This is fine for this test
+  // (and all tests that do not depend on Option<GoogleString>'s signature
+  // changing with change in value).  But if hasher is used more widely in
+  // ComputeSignature we need to revisit the usage of MockHasher here.
+  options_.ComputeSignature(&hasher_);
+  StringPiece signature1 = options_.signature();
+  // Tweak allow_resources_ and check that signature changes.
+  options_.ClearSignatureForTesting();
+  options_.Disallow("http://www.example.com/*");
+  options_.ComputeSignature(&hasher_);
+  StringPiece signature2 = options_.signature();
+  EXPECT_FALSE(signature1 == signature2);
+  // Tweak retain_comments and check that signature changes.
+  options_.ClearSignatureForTesting();
+  options_.RetainComment("TEST");
+  options_.ComputeSignature(&hasher_);
+  StringPiece signature3 = options_.signature();
+  EXPECT_FALSE(signature1 == signature3);
+  EXPECT_FALSE(signature2 == signature3);
 }
 
 }  // namespace

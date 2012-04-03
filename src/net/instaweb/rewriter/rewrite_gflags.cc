@@ -126,6 +126,10 @@ DEFINE_int64(min_image_size_low_resolution_bytes,
     net_instaweb::RewriteOptions::kDefaultMinImageSizeLowResolutionBytes,
     "Minimum image size above which low res image is generated.");
 
+DEFINE_int64(max_image_size_low_resolution_bytes,
+    net_instaweb::RewriteOptions::kDefaultMaxImageSizeLowResolutionBytes,
+    "Maximum image size below which low res image is generated.");
+
 DEFINE_int64(critical_images_cache_expiration_time_ms,
     net_instaweb::RewriteOptions::kDefaultCriticalImagesCacheExpirationMs,
     "Critical images ajax metadata cache expiration time in msec.");
@@ -260,6 +264,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("min_image_size_low_resolution_bytes")) {
     options->set_min_image_size_low_resolution_bytes(
         FLAGS_min_image_size_low_resolution_bytes);
+  }
+  if (WasExplicitlySet("max_image_size_low_resolution_bytes")) {
+    options->set_max_image_size_low_resolution_bytes(
+        FLAGS_max_image_size_low_resolution_bytes);
   }
   if (WasExplicitlySet("critical_images_cache_expiration_time_ms")) {
     options->set_critical_images_cache_expiration_time_ms(

@@ -83,8 +83,8 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
             "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
             net_instaweb::JsDisableFilter::kDisableJsExperimental,
             "</script>")) {
-    options_->set_min_image_size_low_resolution_bytes(1 * 1024);
-    options_->set_max_inlined_preview_images_index(-1);
+    options()->set_min_image_size_low_resolution_bytes(1 * 1024);
+    options()->set_max_inlined_preview_images_index(-1);
   }
 
  protected:
@@ -289,7 +289,7 @@ TEST_F(DelayImagesFilterTest, DelayJpegImage) {
 }
 
 TEST_F(DelayImagesFilterTest, TestMinImageSizeLowResolutionBytesFlag) {
-  options_->set_min_image_size_low_resolution_bytes(2 * 1024);
+  options()->set_min_image_size_low_resolution_bytes(2 * 1024);
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
   options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
@@ -317,8 +317,37 @@ TEST_F(DelayImagesFilterTest, TestMinImageSizeLowResolutionBytesFlag) {
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
+TEST_F(DelayImagesFilterTest, TestMaxImageSizeLowResolutionBytesFlag) {
+  options()->set_max_image_size_low_resolution_bytes(4 * 1024);
+  options()->EnableFilter(RewriteOptions::kDeferJavascript);
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
+                       kContentTypeJpeg, 100);
+  // Size of 1.webp is 1780 and size of 1.jpeg is 6245. As
+  // MaxImageSizeLowResolutionBytes is set to 4 KB only webp low quality image
+  // will be generated.
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<img src=\"http://test.com/1.webp\" />"
+      "<img src=\"http://test.com/1.jpeg\" />"
+      "</body>";
+  GoogleString output_html = StrCat(GetHeadHtmlWithDeferJsAndLazyload(),
+      "<body>",
+      kDisableDeferJsExperimentalString,
+      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
+      StrCat(GetInlineScript(),
+             GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
+             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
+             GetDelayImages(),
+             GenerateRewrittenImageTag("http://test.com/1.jpeg"), "</body>"));
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
 TEST_F(DelayImagesFilterTest, TestMaxInlinedPreviewImagesIndexFlag) {
-  options_->set_max_inlined_preview_images_index(1);
+  options()->set_max_inlined_preview_images_index(1);
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
   options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);

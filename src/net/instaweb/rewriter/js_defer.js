@@ -65,18 +65,39 @@ pagespeed.DeferJs = function() {
    */
   this.documentWriteHtml_ = '';
 
+  // TODO(sriharis):  Can we have a listener module that is used for the
+  // following.
+
   /**
-   * EvenListeners for DOMContentLoaded or onreadystatechange on document.
+   * EventListeners for DOMContentLoaded or onreadystatechange on document.
+   * @type {!Array.<function()>}
+   * @private
    */
   this.domReadyListeners_ = [];
 
   /**
-   * EvenListeners for element.onload
+   * EventListeners for element.onload
+   * @type {!Array.<function()>}
+   * @private
    * TODO(ksimbili): Handle body.onload. In IE body.onload is alias to
    * window.onload
-   * @private
    */
   this.onloadListeners_ = [];
+
+  /**
+   * Functions that run as the first thing in run().
+   * @type {!Array.<function()>}
+   * @private
+   */
+  this.beforeDeferRunFunctions_ = [];
+
+  /**
+   * Functions that run after all the deferred scripts, DOM ready
+   * listeners and onload listeners have run.
+   * @type {!Array.<function()>}
+   * @private
+   */
+  this.afterDeferRunFunctions_ = [];
 
   /**
    * Valid Mime types for Javascript.
@@ -287,6 +308,7 @@ pagespeed.DeferJs.prototype.onComplete = function() {
   this.executeOnload();
 
   this.deferScriptsComplete_ = true;
+  this.executeAfterDeferRun();
 }
 
 /**
@@ -362,6 +384,7 @@ pagespeed.DeferJs.prototype.setUp = function() {
  * Starts the execution of all the deferred scripts.
  */
 pagespeed.DeferJs.prototype.run = function() {
+  this.executeBeforeDeferRun();
   this.setUp();
   // Starts executing the defer_js closures.
   this.runNext();
@@ -554,6 +577,27 @@ pagespeed.DeferJs.prototype['addOnloadListeners'] =
     pagespeed.DeferJs.prototype.addOnloadListeners;
 
 /**
+ * Adds functions that run as the first thing in run().
+ * @param {!function()} func onload listener.
+ */
+pagespeed.DeferJs.prototype.addBeforeDeferRunFunctions = function(func) {
+  this.beforeDeferRunFunctions_.push(func);
+};
+pagespeed.DeferJs.prototype['addBeforeDeferRunFunctions'] =
+    pagespeed.DeferJs.prototype.addBeforeDeferRunFunctions;
+
+/**
+ * Adds functions that run after all the deferred scripts, DOM ready listeners
+ * and onload listeners have run.
+ * @param {!function()} func onload listener.
+ */
+pagespeed.DeferJs.prototype.addAfterDeferRunFunctions = function(func) {
+  this.afterDeferRunFunctions_.push(func);
+};
+pagespeed.DeferJs.prototype['addAfterDeferRunFunctions'] =
+    pagespeed.DeferJs.prototype.addAfterDeferRunFunctions;
+
+/**
  * Execute all handlers registered for DOMContentLoaded/onreadystatechange.
  */
 pagespeed.DeferJs.prototype.executeDomReady = function() {
@@ -573,6 +617,25 @@ pagespeed.DeferJs.prototype.executeOnload = function() {
   for (var i = 0; i < this.onloadListeners_.length; i++) {
     this.log('executing pageload: ' + this.onloadListeners_[i].toString());
     this.onloadListeners_[i].call();
+  }
+};
+
+/**
+ * Execute all functions to be executed as the first thing in run().
+ */
+pagespeed.DeferJs.prototype.executeBeforeDeferRun = function() {
+  for (var i = 0; i < this.beforeDeferRunFunctions_.length; i++) {
+    this.beforeDeferRunFunctions_[i].call(window);
+  }
+};
+
+/**
+ * Execute all functions to be executed after all the deferred scripts, DOM
+ * ready listeners and onload listeners have run.
+ */
+pagespeed.DeferJs.prototype.executeAfterDeferRun = function() {
+  for (var i = 0; i < this.afterDeferRunFunctions_.length; i++) {
+    this.afterDeferRunFunctions_[i].call(window);
   }
 };
 

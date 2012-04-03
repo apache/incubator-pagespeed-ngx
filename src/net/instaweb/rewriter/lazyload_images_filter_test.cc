@@ -73,18 +73,21 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
       "<input src=\"12.jpg\"type=\"image\" />"
       "<input src=\"12.jpg\" />"
       "<img src=\"1.jpg\" onload=\"blah();\" />"
+      "<img src=\"1.jpg\" class=\"123 dfcg-metabox\" />"
       "</body>",
       StrCat("<head><script type=\"text/javascript\">",
              lazyload_js_code,
              "\npagespeed.lazyLoadInit(false);\n"
              "</script></head><body>",
-             StrCat(GenerateRewrittenImageTag("img", "1.jpg", ""),
-                    "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
-                    GenerateRewrittenImageTag("img", "2's.jpg",
-                                              "height=\"300\" width=\"123\" "),
-                    "<input src=\"12.jpg\" type=\"image\"/>"
-                    "<input src=\"12.jpg\"/>"
-                    "<img src=\"1.jpg\" onload=\"blah();\"/></body>")));
+             GenerateRewrittenImageTag("img", "1.jpg", ""),
+             "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
+             GenerateRewrittenImageTag("img", "2's.jpg",
+                                       "height=\"300\" width=\"123\" "),
+             "<input src=\"12.jpg\" type=\"image\"/>"
+             "<input src=\"12.jpg\"/>"
+             "<img src=\"1.jpg\" onload=\"blah();\"/>"
+             "<img src=\"1.jpg\" class=\"123 dfcg-metabox\"/>"
+             "</body>"));
 }
 
 TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {

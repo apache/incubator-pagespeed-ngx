@@ -153,6 +153,9 @@ const GoogleString RewriteOptions::kDefaultBeaconUrl =
 
 const int RewriteOptions::kDefaultMaxInlinedPreviewImagesIndex = 5;
 const int64 RewriteOptions::kDefaultMinImageSizeLowResolutionBytes = 1 * 1024;
+const int64 RewriteOptions::kDefaultMaxImageSizeLowResolutionBytes =
+    1 * 1024 * 1024;  // 1 MB.
+
 const int64 RewriteOptions::kDefaultCriticalImagesCacheExpirationMs =
     Timer::kHourMs;
 const int64 RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs = 0;
@@ -467,8 +470,11 @@ RewriteOptions::RewriteOptions()
              &max_inlined_preview_images_index_, "mdii",
              kMaxInlinedPreviewImagesIndex);
   add_option(kDefaultMinImageSizeLowResolutionBytes,
-             &min_image_size_low_resolution_bytes_, "islr",
+             &min_image_size_low_resolution_bytes_, "nislr",
              kMinImageSizeLowResolutionBytes);
+  add_option(kDefaultMaxImageSizeLowResolutionBytes,
+             &max_image_size_low_resolution_bytes_, "xislr",
+             kMaxImageSizeLowResolutionBytes);
   add_option(kDefaultCriticalImagesCacheExpirationMs,
              &critical_images_cache_expiration_time_ms_, "cice",
              kCriticalImagesCacheExpirationTimeMs);

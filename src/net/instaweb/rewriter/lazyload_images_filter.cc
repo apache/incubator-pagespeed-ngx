@@ -36,6 +36,7 @@ const char kTrue[] = "true";
 const char kFalse[] = "false";
 const char kData[] = "data:";
 const char kJquerySlider[] = "jquery.sexyslider";
+const char kMetabox[] = "dfcg-metabox";
 
 }  // namespace
 
@@ -113,8 +114,18 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
     main_script_inserted_ = true;
   } else if (main_script_inserted_ && driver_->IsRewritable(element) &&
              element->keyword() == HtmlName::kImg) {
+    // Don't rewrite images with class="dfcg-metabox" since they are sliding
+    // animations.
+    HtmlElement::Attribute* class_attribute = element->FindAttribute(
+        HtmlName::kClass);
+    if (class_attribute != NULL) {
+      StringPiece class_value(class_attribute->DecodedValueOrNull());
+      if (class_value.find(kMetabox) != StringPiece::npos) {
+        return;
+      }
+    }
     // Only rewrite <img> tags. Don't rewrite <input> tags since the onload
-    // event is not fired for them.
+    // event is not fired for them in some browsers.
     HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
     if (src != NULL) {
       StringPiece url(src->DecodedValueOrNull());

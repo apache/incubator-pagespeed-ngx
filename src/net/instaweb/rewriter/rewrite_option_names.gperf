@@ -58,6 +58,7 @@ struct OptionName {
 "LogRewriteTiming",                     RewriteOptions::kLogRewriteTiming
 "LowercaseHtmlNames",                   RewriteOptions::kLowercaseHtmlNames
 "MaxHtmlCacheTimeMs",                   RewriteOptions::kMaxHtmlCacheTimeMs
+"MaxImageSizeLowResolutionBytes",       RewriteOptions::kMaxImageSizeLowResolutionBytes
 "MaxInlinedPreviewImagesIndex",         RewriteOptions::kMaxInlinedPreviewImagesIndex
 "MaxUrlSegmentSize",                    RewriteOptions::kMaxUrlSegmentSize
 "MaxUrlSize",                           RewriteOptions::kMaxUrlSize

@@ -45,10 +45,17 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
+const char BlinkFlowCriticalLine::kNumBlinkSharedFetchesStarted[] =
+    "num_blink_shared_fetches_started";
+const char BlinkFlowCriticalLine::kNumBlinkSharedFetchesCompleted[] =
+    "num_blink_shared_fetches_completed";
+const char BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls[] =
+    "num_compute_blink_critical_line_data_calls";
 const char BlinkFlowCriticalLine::kAboveTheFold[] = "Above the fold";
 
 namespace {
@@ -103,6 +110,11 @@ class SharedFetch : public SharedAsyncFetch {
     // on the rewrite_driver even if ComputeBlinkCriticalLineData() has not yet
     // been triggered.
     rewrite_driver_->increment_async_events_count();
+    Statistics* stats = resource_manager->statistics();
+    num_compute_blink_critical_line_data_calls_ = stats->GetTimedVariable(
+        BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls);
+    num_blink_shared_fetches_completed_ = stats->GetTimedVariable(
+        BlinkFlowCriticalLine::kNumBlinkSharedFetchesCompleted);
   }
 
   virtual ~SharedFetch() {
@@ -134,7 +146,7 @@ class SharedFetch : public SharedAsyncFetch {
   }
 
   virtual void HandleDone(bool success) {
-    // TODO(pulkitg): Add Statistics class variables.
+    num_blink_shared_fetches_completed_->IncBy(1);
     compute_critical_line_data_ &= success;
     if (!compute_critical_line_data_) {
       base_fetch()->Done(success);
@@ -177,6 +189,7 @@ class SharedFetch : public SharedAsyncFetch {
   void CompleteFinishParse() {
     StringPiece rewritten_content;
     value_.ExtractContents(&rewritten_content);
+    num_compute_blink_critical_line_data_calls_->IncBy(1);
     resource_manager_->blink_critical_line_data_finder()
         ->ComputeBlinkCriticalLineData(rewritten_content, rewrite_driver_);
     delete this;
@@ -194,6 +207,9 @@ class SharedFetch : public SharedAsyncFetch {
   RewriteDriver* rewrite_driver_;
   // RewriteDriver used to parse the buffered html content.
   RewriteDriver* critical_line_computation_driver_;
+
+  TimedVariable* num_blink_shared_fetches_completed_;
+  TimedVariable* num_compute_blink_critical_line_data_calls_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedFetch);
 };
@@ -218,6 +234,15 @@ void BlinkFlowCriticalLine::Start(
 BlinkFlowCriticalLine::~BlinkFlowCriticalLine() {
 }
 
+void BlinkFlowCriticalLine::Initialize(Statistics* stats) {
+  stats->AddTimedVariable(kNumBlinkSharedFetchesStarted,
+                          ResourceManager::kStatisticsGroup);
+  stats->AddTimedVariable(kNumBlinkSharedFetchesCompleted,
+                          ResourceManager::kStatisticsGroup);
+  stats->AddTimedVariable(kNumComputeBlinkCriticalLineDataCalls,
+                          ResourceManager::kStatisticsGroup);
+}
+
 BlinkFlowCriticalLine::BlinkFlowCriticalLine(
     const GoogleString& url,
     AsyncFetch* base_fetch,
@@ -231,7 +256,11 @@ BlinkFlowCriticalLine::BlinkFlowCriticalLine(
       factory_(factory),
       manager_(manager),
       property_callback_(property_callback),
-      finder_(manager->blink_critical_line_data_finder()) {}
+      finder_(manager->blink_critical_line_data_finder()) {
+  Statistics* stats = manager_->statistics();
+  num_blink_shared_fetches_started_ = stats->GetTimedVariable(
+      kNumBlinkSharedFetchesStarted);
+}
 
 void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
     ProxyFetchPropertyCallbackCollector* collector) {
@@ -354,6 +383,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
     options_->ClearFilters();
     manager_->ComputeSignature(options_);
     driver = manager_->NewCustomRewriteDriver(options_);
+    num_blink_shared_fetches_started_->IncBy(1);
     fetch = new SharedFetch(
         base_fetch_, url_, manager_, options, driver);
   }

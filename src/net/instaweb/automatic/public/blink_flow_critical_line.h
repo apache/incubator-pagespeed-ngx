@@ -31,9 +31,10 @@ class BlinkCriticalLineData;
 class BlinkCriticalLineDataFinder;
 class ProxyFetchPropertyCallbackCollector;
 class ProxyFetchFactory;
-class ResponseHeaders;
 class ResourceManager;
 class RewriteOptions;
+class Statistics;
+class TimedVariable;
 
 // This class manages the blink flow for looking up BlinkCriticalLineData in
 // cache, modifying the options for passthru and triggering asynchronous
@@ -49,7 +50,12 @@ class BlinkFlowCriticalLine {
 
   virtual ~BlinkFlowCriticalLine();
 
+  static void Initialize(Statistics* statistics);
+
   static const char kAboveTheFold[];
+  static const char kNumBlinkSharedFetchesStarted[];
+  static const char kNumBlinkSharedFetchesCompleted[];
+  static const char kNumComputeBlinkCriticalLineDataCalls[];
 
  private:
   BlinkFlowCriticalLine(const GoogleString& url,
@@ -106,6 +112,8 @@ class BlinkFlowCriticalLine {
   ProxyFetchPropertyCallbackCollector* property_callback_;
   scoped_ptr<BlinkCriticalLineData> blink_critical_line_data_;
   BlinkCriticalLineDataFinder* finder_;
+
+  TimedVariable* num_blink_shared_fetches_started_;
 
   DISALLOW_COPY_AND_ASSIGN(BlinkFlowCriticalLine);
 };

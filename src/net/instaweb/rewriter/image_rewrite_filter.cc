@@ -380,10 +380,11 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       SaveIfInlinable(input_resource->contents(), original_image_type, cached);
     }
 
+    int64 image_size = static_cast<int64>(image->output_size());
     if (options->NeedLowResImages() &&
         !cached->has_low_resolution_inlined_data() &&
-        static_cast<int64>(image->output_size()) >
-            options->min_image_size_low_resolution_bytes()) {
+        image_size >= options->min_image_size_low_resolution_bytes() &&
+        image_size <= options->max_image_size_low_resolution_bytes()) {
       Image::CompressionOptions* image_options =
           new Image::CompressionOptions();
       image_options->webp_preferred = false;

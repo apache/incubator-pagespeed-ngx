@@ -164,6 +164,7 @@ void ProxyInterface::Initialize(Statistics* statistics) {
   statistics->AddTimedVariable(kBlinkCriticalLineRequestCount,
                                ResourceManager::kStatisticsGroup);
   BlinkFlow::Initialize(statistics);
+  BlinkFlowCriticalLine::Initialize(statistics);
 }
 
 void ProxyInterface::set_server_version(const StringPiece& server_version) {

@@ -1,0 +1,33 @@
+<html>
+  <head>
+    <title>js_defer example</title>
+    <!-- Ensure that beforeDefer and afterDefer function hooks are executed at
+    the correct place by checking that insertion order in list is maintained.
+    The order of the script tags that push 1, 2 and 3 can be arbitrary in this
+    file - list will still be [1, 2, 3] at the end.   -->
+  </head>
+  <body>
+    <script type="text/javascript" pagespeed_no_defer="true" >
+      var list = [];
+    </script>
+    <script type="text/javascript" pagespeed_no_defer="true" >
+      var func = function() { list.push(3); }
+      pagespeed.deferJs.addAfterDeferRunFunctions(func);
+    </script>
+    <script type="text/javascript" pagespeed_no_defer="true" >
+      var func = function() { list.push(1); }
+      pagespeed.deferJs.addBeforeDeferRunFunctions(func);
+    </script>
+    <script type="text/javascript" >
+      list.push(2);
+    </script>
+    <script type="text/javascript" >
+      setTimeout(function() {
+                 var div = document.createElement('div');
+                 div.id = "listDiv";
+                 div.innerHTML = list.join();
+                 document.body.appendChild(div);
+      }, 3000);
+    </script>
+  </body>
+</html>

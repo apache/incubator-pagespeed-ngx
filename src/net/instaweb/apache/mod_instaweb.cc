@@ -157,6 +157,8 @@ const char* kModPagespeedMaxInlinedPreviewImagesIndex =
     "ModPagespeedMaxInlinedPreviewImagesIndex";
 const char* kModPagespeedMinImageSizeLowResolutionBytes =
     "ModPagespeedMinImageSizeLowResolutionBytes";
+const char* kModPagespeedMaxImageSizeLowResolutionBytes =
+    "ModPagespeedMaxImageSizeLowResolutionBytes";
 const char* kModPagespeedRunFurious = "ModPagespeedRunExperiment";
 const char* kModPagespeedFuriousSpec = "ModPagespeedExperimentSpec";
 const char* kModPagespeedXHeaderValue = "ModPagespeedXHeaderValue";
@@ -1247,6 +1249,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Negative values result in generation for all images."),
   APACHE_CONFIG_OPTION(kModPagespeedMinImageSizeLowResolutionBytes,
           "Minimum image size above which low resolution image is generated."),
+  APACHE_CONFIG_OPTION(kModPagespeedMaxImageSizeLowResolutionBytes,
+          "Maximum image size below which low resolution image is generated."),
   APACHE_CONFIG_OPTION(kModPagespeedXHeaderValue,
                        "Set the value for the X-Mod-Pagespeed HTTP header"),
 
