@@ -156,8 +156,9 @@ class SharedJsonFetch : public SharedAsyncFetch {
       // TODO(rahulbansal): Put an increased deadline on this driver.
       json_computation_driver_->SetWriter(&value_);
       json_computation_driver_->set_response_headers_ptr(&json_headers_);
-      json_computation_driver_->AddRewriteTask(
-          MakeFunction(this, &SharedJsonFetch::Parse));
+      json_computation_driver_->AddLowPriorityRewriteTask(
+          MakeFunction(this, &SharedJsonFetch::Parse,
+                       &SharedJsonFetch::CancelParse));
       // We call Done after scheduling the rewrite on the driver since we expect
       // this to be very low cost. Calling Done on base_fetch() before
       // scheduling the rewrite causes problems with testing.
@@ -176,6 +177,12 @@ class SharedJsonFetch : public SharedAsyncFetch {
       json_computation_driver_->Cleanup();
       delete this;
     }
+  }
+
+  void CancelParse() {
+    LOG(WARNING) << "Blink JSON computation dropped due to load";
+    json_computation_driver_->Cleanup();
+    delete this;
   }
 
   void CompleteFinishParse() {

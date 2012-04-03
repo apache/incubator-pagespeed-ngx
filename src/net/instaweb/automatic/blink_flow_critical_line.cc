@@ -50,6 +50,9 @@
 
 namespace net_instaweb {
 
+class MessageHandler;
+class PropertyPage;
+
 const char BlinkFlowCriticalLine::kNumBlinkSharedFetchesStarted[] =
     "num_blink_shared_fetches_started";
 const char BlinkFlowCriticalLine::kNumBlinkSharedFetchesCompleted[] =
@@ -165,8 +168,8 @@ class SharedFetch : public SharedAsyncFetch {
       critical_line_computation_driver_->SetWriter(&value_);
       critical_line_computation_driver_->set_response_headers_ptr(
           &critical_line_headers_);
-      critical_line_computation_driver_->AddRewriteTask(
-          MakeFunction(this, &SharedFetch::Parse));
+      critical_line_computation_driver_->AddLowPriorityRewriteTask(
+          MakeFunction(this, &SharedFetch::Parse, &SharedFetch::CancelParse));
       // We call Done after scheduling the rewrite on the driver since we expect
       // this to be very low cost. Calling Done on base_fetch() before
       // scheduling the rewrite causes problems with testing.
@@ -184,6 +187,12 @@ class SharedFetch : public SharedAsyncFetch {
       critical_line_computation_driver_->Cleanup();
       delete this;
     }
+  }
+
+  void CancelParse() {
+    LOG(WARNING) << "Blink critical line computation dropped due to load";
+    critical_line_computation_driver_->Cleanup();
+    delete this;
   }
 
   void CompleteFinishParse() {
