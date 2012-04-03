@@ -22,8 +22,8 @@
       'target_name': 'serf',
       'type': '<(library)',
       'dependencies': [
-        '<(DEPTH)/third_party/apache/apr/apr.gyp:include',
-        '<(DEPTH)/third_party/apache/aprutil/aprutil.gyp:include',
+        '<(DEPTH)/third_party/apr/apr.gyp:include',
+        '<(DEPTH)/third_party/aprutil/aprutil.gyp:include',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
       'sources': [

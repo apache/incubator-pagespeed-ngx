@@ -26,10 +26,6 @@ vars = {
   "libpagespeed_revision": "@head",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
 
-  "mod_spdy_trunk": "http://mod-spdy.googlecode.com/svn/trunk",
-  "mod_spdy_revision": "@143",
-  "mod_spdy_deps_root": "src/third_party/mod_spdy_deps",
-
   "serf_src": "http://serf.googlecode.com/svn/tags/0.7.2",
   "serf_revision": "@head",
 
@@ -97,20 +93,16 @@ deps = {
   "src/testing/gtest": From(Var("chromium_deps_root")),
   "src/testing/gmock": From(Var("chromium_deps_root")),
 
-  "src/third_party/apache":
-    Var("mod_spdy_trunk") + "/src/third_party/apache" +
-    Var("mod_spdy_revision"),
-
-  "src/third_party/apache/apr/src":
+  "src/third_party/apr/src":
     Var("apr_src") + Var("apr_revision"),
 
-  "src/third_party/apache/aprutil/src":
+  "src/third_party/aprutil/src":
     Var("aprutil_src") + Var("aprutil_revision"),
 
-  "src/third_party/apache/httpd/src/include":
+  "src/third_party/httpd/src/include":
     Var("apache_httpd_src") + "/include" + Var("apache_httpd_revision"),
 
-  "src/third_party/apache/httpd/src/os":
+  "src/third_party/httpd/src/os":
     Var("apache_httpd_src") + "/os" + Var("apache_httpd_revision"),
 
   "src/third_party/chromium/src/base": From(Var("libpagespeed_deps_root")),

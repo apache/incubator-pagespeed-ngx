@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO(sligocki): This is a confusing name for the gyp file where tests live.
-
 {
   'variables': {
     # chromium_code indicates that the code is not
@@ -29,7 +27,7 @@
       'dependencies': [
         'apache.gyp:apache',
         '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/apache/httpd/httpd.gyp:include',
+        '<(DEPTH)/third_party/httpd/httpd.gyp:include',
         '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
       ],
       'include_dirs': [

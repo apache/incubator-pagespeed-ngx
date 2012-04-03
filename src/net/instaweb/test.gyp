@@ -244,9 +244,9 @@
         'apache.gyp:apache',
         '<(DEPTH)/testing/gmock.gyp:gmock',
         '<(DEPTH)/testing/gtest.gyp:gtest_main',
-        '<(DEPTH)/third_party/apache/apr/apr.gyp:apr',
-        '<(DEPTH)/third_party/apache/aprutil/aprutil.gyp:aprutil',
-        '<(DEPTH)/third_party/apache/httpd/httpd.gyp:include',
+        '<(DEPTH)/third_party/apr/apr.gyp:apr',
+        '<(DEPTH)/third_party/aprutil/aprutil.gyp:aprutil',
+        '<(DEPTH)/third_party/httpd/httpd.gyp:include',
       ],
       'include_dirs': [
         '<(DEPTH)/third_party/protobuf/src',
