@@ -190,7 +190,8 @@ class SharedFetch : public SharedAsyncFetch {
   }
 
   void CancelParse() {
-    LOG(WARNING) << "Blink critical line computation dropped due to load";
+    LOG(WARNING) << "Blink critical line computation dropped due to load"
+                 << " for url: " << url_;
     critical_line_computation_driver_->Cleanup();
     delete this;
   }

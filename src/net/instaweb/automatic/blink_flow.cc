@@ -180,7 +180,8 @@ class SharedJsonFetch : public SharedAsyncFetch {
   }
 
   void CancelParse() {
-    LOG(WARNING) << "Blink JSON computation dropped due to load";
+    LOG(WARNING) << "Blink JSON computation dropped due to load for url: "
+                 << key_.substr(kJsonCachePrefixLength);
     json_computation_driver_->Cleanup();
     delete this;
   }
