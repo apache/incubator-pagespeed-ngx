@@ -71,8 +71,7 @@ const char kAlternateDomain[] = "http://alternate.com/";
 }  // namespace
 
 // Test fixture for JsCombineFilter unit tests.
-class JsCombineFilterTest : public ResourceManagerTestBase,
-                            public ::testing::WithParamInterface<bool> {
+class JsCombineFilterTest : public ResourceManagerTestBase {
  public:
   struct ScriptInfo {
     HtmlElement* element;
@@ -284,12 +283,12 @@ class JsFilterAndCombineFilterTest : public JsCombineFilterTest {
 };
 
 // Test for basic operation, including escaping and fetch reconstruction.
-TEST_P(JsCombineFilterTest, CombineJs) {
+TEST_F(JsCombineFilterTest, CombineJs) {
   TestCombineJs(MultiUrl("a.js", "b.js"), "g2Xe9o4bQ2", "KecOGCIjKt",
                 "dzsx6RqvJJ", false, kTestDomain);
 }
 
-TEST_P(JsFilterAndCombineFilterTest, MinifyCombineJs) {
+TEST_F(JsFilterAndCombineFilterTest, MinifyCombineJs) {
   // These hashes depend on the URL, which is different when using the
   // test url namer, so handle the difference.
   bool test_url_namer = factory()->use_test_url_namer();
@@ -303,7 +302,7 @@ TEST_P(JsFilterAndCombineFilterTest, MinifyCombineJs) {
 // Issue 308: ModPagespeedShardDomain disables combine_js.  Actually
 // the code (in url_partnership.cc) was already doing the right thing,
 // but was not previously confirmed in a unit-test.
-TEST_P(JsFilterAndCombineFilterTest, MinifyShardCombineJs) {
+TEST_F(JsFilterAndCombineFilterTest, MinifyShardCombineJs) {
   DomainLawyer* lawyer = options()->domain_lawyer();
   ASSERT_TRUE(lawyer->AddShard(kTestDomain, "a.com,b.com", &message_handler_));
 
@@ -319,7 +318,7 @@ TEST_P(JsFilterAndCombineFilterTest, MinifyShardCombineJs) {
                 "http://b.com/");
 }
 
-TEST_P(JsFilterAndCombineFilterTest, MinifyCombineAcrossHosts) {
+TEST_F(JsFilterAndCombineFilterTest, MinifyCombineAcrossHosts) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
   GoogleString js_url_2(StrCat(kAlternateDomain, kJsUrl2));
@@ -338,7 +337,7 @@ class JsFilterAndCombineProxyTest : public JsFilterAndCombineFilterTest {
   }
 };
 
-TEST_P(JsFilterAndCombineProxyTest, MinifyCombineSameHostProxy) {
+TEST_F(JsFilterAndCombineProxyTest, MinifyCombineSameHostProxy) {
   // TODO(jmarantz): This more intrusive test-helper fails.  I'd like
   // to look at it with Matt in the context of the new TestUrlNamer
   // infrastructure.  However that should not block the point of this
@@ -363,7 +362,7 @@ TEST_P(JsFilterAndCombineProxyTest, MinifyCombineSameHostProxy) {
   ASSERT_EQ(3, scripts.size()) << "successful combination yields 3 scripts";
 }
 
-TEST_P(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
+TEST_F(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
   GoogleString js_url_2(StrCat(kAlternateDomain, kJsUrl2));
@@ -379,7 +378,7 @@ TEST_P(JsFilterAndCombineProxyTest, MinifyCombineAcrossHostsProxy) {
             scripts[1].url);
 }
 
-TEST_P(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
+TEST_F(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
   // Testcase for case where we have cached metadata for results of JS rewrite,
   // but not its contents easily available.
   SimulateJsResource(kJsUrl1, kJsText1);
@@ -411,7 +410,7 @@ TEST_P(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
 }
 
 // Various things that prevent combining
-TEST_P(JsCombineFilterTest, TestBarriers) {
+TEST_F(JsCombineFilterTest, TestBarriers) {
   ValidateNoChanges("noscript",
                     StrCat("<noscript><script src=", kJsUrl1, "></script>",
                            "</noscript><script src=", kJsUrl2, "></script>"));
@@ -470,7 +469,7 @@ TEST_P(JsCombineFilterTest, TestBarriers) {
 // Make sure that rolling back a <script> that has both a source and inline data
 // out of the combination works even when we have more than one filter involved.
 // This used to crash under async flow.
-TEST_P(JsFilterAndCombineFilterTest, TestScriptInlineTextRollback) {
+TEST_F(JsFilterAndCombineFilterTest, TestScriptInlineTextRollback) {
   ValidateExpected("rollback1",
                    StrCat("<script src=", kJsUrl1, "></script>",
                           "<script src=", kJsUrl2, ">TEXT HERE</script>"),
@@ -485,7 +484,7 @@ TEST_P(JsFilterAndCombineFilterTest, TestScriptInlineTextRollback) {
 }
 
 // Things between scripts that should not prevent combination
-TEST_P(JsCombineFilterTest, TestNonBarriers) {
+TEST_F(JsCombineFilterTest, TestNonBarriers) {
   StringVector combined_url = MultiUrl(kJsUrl1, kJsUrl2);
 
   // Intervening text
@@ -527,7 +526,7 @@ TEST_P(JsCombineFilterTest, TestNonBarriers) {
 
 // Flush in the middle of first one --- should not change first one;
 // should combine the next two
-TEST_P(JsCombineFilterTest, TestFlushMiddle1) {
+TEST_F(JsCombineFilterTest, TestFlushMiddle1) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
   SetupWriter();
@@ -548,7 +547,7 @@ TEST_P(JsCombineFilterTest, TestFlushMiddle1) {
 
 // Flush in the middle of a second tag - should back it out and realize
 // that the single entry left should not be touched
-TEST_P(JsCombineFilterTest, TestFlushMiddle2) {
+TEST_F(JsCombineFilterTest, TestFlushMiddle2) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
   SetupWriter();
@@ -568,7 +567,7 @@ TEST_P(JsCombineFilterTest, TestFlushMiddle2) {
 }
 
 // Flush in the middle of a third tag -- first two should be combined.
-TEST_P(JsCombineFilterTest, TestFlushMiddle3) {
+TEST_F(JsCombineFilterTest, TestFlushMiddle3) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
   SetupWriter();
@@ -589,7 +588,7 @@ TEST_P(JsCombineFilterTest, TestFlushMiddle3) {
 // Make sure we honor <base> properly.
 // Note: this test relies on <base> tag implicitly authorizing things,
 // which we may wish to change in the future.
-TEST_P(JsCombineFilterTest, TestBase) {
+TEST_F(JsCombineFilterTest, TestBase) {
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);
   ParseUrl(kTestDomain, StrCat("<base href=", other_domain_, ">",
@@ -603,7 +602,7 @@ TEST_P(JsCombineFilterTest, TestBase) {
 }
 
 // Make sure we check for cross-domain rejections.
-TEST_P(JsCombineFilterTest, TestCrossDomainReject) {
+TEST_F(JsCombineFilterTest, TestCrossDomainReject) {
   ValidateNoChanges("xd",
                     StrCat("<script src=", other_domain_, kJsUrl1, "></script>",
                            "<script src=", kJsUrl2, "></script>"));
@@ -618,7 +617,7 @@ TEST_P(JsCombineFilterTest, TestCrossDomainReject) {
 }
 
 // Validate that we can recover a combination after a cross-domain rejection
-TEST_P(JsCombineFilterTest, TestCrossDomainRecover) {
+TEST_F(JsCombineFilterTest, TestCrossDomainRecover) {
   DomainLawyer* lawyer = options()->domain_lawyer();
   ASSERT_TRUE(lawyer->AddDomain(other_domain_, &message_handler_));
 
@@ -647,7 +646,7 @@ TEST_P(JsCombineFilterTest, TestCrossDomainRecover) {
   VerifyUseOnDomain(other_domain_, scripts[5], kJsUrl2);
 }
 
-TEST_P(JsCombineFilterTest, TestCombineStats) {
+TEST_F(JsCombineFilterTest, TestCombineStats) {
   Variable* num_reduced =
       statistics()->GetVariable(JsCombineFilter::kJsFileCountReduction);
   EXPECT_EQ(0, num_reduced->Get());
@@ -661,7 +660,7 @@ TEST_P(JsCombineFilterTest, TestCombineStats) {
   EXPECT_EQ(2, num_reduced->Get());
 }
 
-TEST_P(JsCombineFilterTest, TestCombineShard) {
+TEST_F(JsCombineFilterTest, TestCombineShard) {
   // Make sure we produce consistent output when sharding/serving off a
   // different host.
   GoogleString path =
@@ -680,7 +679,7 @@ TEST_P(JsCombineFilterTest, TestCombineShard) {
   EXPECT_EQ(src1, src2);
 }
 
-TEST_P(JsCombineFilterTest, PartlyInvalidFetchCache) {
+TEST_F(JsCombineFilterTest, PartlyInvalidFetchCache) {
   // Regression test where a combination involving a 404 gets fetched,
   // and then rewritten --- incorrectly.
   // Note: arguably this shouldn't get cached at all; but it certainly
@@ -697,16 +696,5 @@ TEST_P(JsCombineFilterTest, PartlyInvalidFetchCache) {
                            "<script src=b.js></script>"
                            "<script src=404.js></script>"));
 }
-
-INSTANTIATE_TEST_CASE_P(JsCombineFilterTestInstance,
-                        JsCombineFilterTest,
-                        ::testing::Bool());
-INSTANTIATE_TEST_CASE_P(JsCombineFilterTestInstance,
-                        JsFilterAndCombineFilterTest,
-                        ::testing::Bool());
-
-INSTANTIATE_TEST_CASE_P(JsFilterAndCombineProxyTestInstance,
-                        JsFilterAndCombineProxyTest,
-                        ::testing::Bool());
 
 }  // namespace net_instaweb

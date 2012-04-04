@@ -33,8 +33,7 @@ namespace net_instaweb {
 
 namespace {
 
-class CssInlineFilterTest : public ResourceManagerTestBase,
-                            public ::testing::WithParamInterface<bool> {
+class CssInlineFilterTest : public ResourceManagerTestBase {
  public:
   CssInlineFilterTest() : filters_added_(false) {}
 
@@ -101,14 +100,14 @@ class CssInlineFilterTest : public ResourceManagerTestBase,
   bool filters_added_;
 };
 
-TEST_P(CssInlineFilterTest, InlineCssSimple) {
+TEST_F(CssInlineFilterTest, InlineCssSimple) {
   const GoogleString css = "BODY { color: red; }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 "", css, true, css);
 }
 
-TEST_P(CssInlineFilterTest, InlineCss404) {
+TEST_F(CssInlineFilterTest, InlineCss404) {
   // Test to make sure that a missing input is handled well.
   SetFetchResponse404("404.css");
   ValidateNoChanges("404", "<link rel=stylesheet href='404.css'>");
@@ -117,7 +116,7 @@ TEST_P(CssInlineFilterTest, InlineCss404) {
   ValidateNoChanges("404", "<link rel=stylesheet href='404.css'>");
 }
 
-TEST_P(CssInlineFilterTest, InlineCssCached) {
+TEST_F(CssInlineFilterTest, InlineCssCached) {
   // Doing it twice should be safe, too.
   const GoogleString css = "BODY { color: red; }\n";
   TestInlineCss("http://www.example.com/index.html",
@@ -128,7 +127,7 @@ TEST_P(CssInlineFilterTest, InlineCssCached) {
                 "", css, true, css);
 }
 
-TEST_P(CssInlineFilterTest, InlineCssRewriteUrls1) {
+TEST_F(CssInlineFilterTest, InlineCssRewriteUrls1) {
   // CSS with a relative URL that needs to be changed:
   const GoogleString css1 =
       "BODY { background-image: url('bg.png'); }\n";
@@ -139,7 +138,7 @@ TEST_P(CssInlineFilterTest, InlineCssRewriteUrls1) {
                 "", css1, true, css2);
 }
 
-TEST_P(CssInlineFilterTest, InlineCssRewriteUrls2) {
+TEST_F(CssInlineFilterTest, InlineCssRewriteUrls2) {
   // CSS with a relative URL, this time with ".." in it:
   const GoogleString css1 =
       "BODY { background-image: url('../quux/bg.png'); }\n";
@@ -150,14 +149,14 @@ TEST_P(CssInlineFilterTest, InlineCssRewriteUrls2) {
                 "", css1, true, css2);
 }
 
-TEST_P(CssInlineFilterTest, NoRewriteUrlsSameDir) {
+TEST_F(CssInlineFilterTest, NoRewriteUrlsSameDir) {
   const GoogleString css = "BODY { background-image: url('bg.png'); }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/baz.css",
                 "", css, true, css);
 }
 
-TEST_P(CssInlineFilterTest, ShardSubresources) {
+TEST_F(CssInlineFilterTest, ShardSubresources) {
   UseMd5Hasher();
   DomainLawyer* lawyer = options()->domain_lawyer();
   lawyer->AddShard("www.example.com", "shard1.com,shard2.com",
@@ -174,21 +173,21 @@ TEST_P(CssInlineFilterTest, ShardSubresources) {
                 "", css_in, true, css_out);
 }
 
-TEST_P(CssInlineFilterTest, DoNotInlineCssWithMediaAttr) {
+TEST_F(CssInlineFilterTest, DoNotInlineCssWithMediaAttr) {
   const GoogleString css = "BODY { color: red; }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 "media=\"print\"", css, false, "");
 }
 
-TEST_P(CssInlineFilterTest, DoInlineCssWithMediaAll) {
+TEST_F(CssInlineFilterTest, DoInlineCssWithMediaAll) {
   const GoogleString css = "BODY { color: red; }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 "media=\"all\"", css, true, css);
 }
 
-TEST_P(CssInlineFilterTest, DoNotInlineCssTooBig) {
+TEST_F(CssInlineFilterTest, DoNotInlineCssTooBig) {
   // CSS too large to inline:
   const int64 length = 2 * RewriteOptions::kDefaultCssInlineMaxBytes;
   TestInlineCss("http://www.example.com/index.html",
@@ -198,14 +197,14 @@ TEST_P(CssInlineFilterTest, DoNotInlineCssTooBig) {
                 false, "");
 }
 
-TEST_P(CssInlineFilterTest, DoNotInlineCssDifferentDomain) {
+TEST_F(CssInlineFilterTest, DoNotInlineCssDifferentDomain) {
   // Note: This only fails because we haven't authorized www.example.org
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.org/styles.css",
                 "", "BODY { color: red; }\n", false, "");
 }
 
-TEST_P(CssInlineFilterTest, CorrectlyInlineCssWithImports) {
+TEST_F(CssInlineFilterTest, CorrectlyInlineCssWithImports) {
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/dir/styles.css", "",
                 "@import \"foo.css\"; BODY { color: red; }\n", true,
@@ -213,7 +212,7 @@ TEST_P(CssInlineFilterTest, CorrectlyInlineCssWithImports) {
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?q=css&id=252
-TEST_P(CssInlineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
+TEST_F(CssInlineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
   // XHTML text should not have unclosed links.  But if they do, like
   // in Issue 252, then we should leave them alone.
   static const char html_format[] =
@@ -239,7 +238,7 @@ TEST_P(CssInlineFilterTest, ClaimsXhtmlButHasUnclosedLink) {
                    StringPrintf(html_format, kXhtmlDtd, inlined_css));
 }
 
-TEST_P(CssInlineFilterTest, InlineCombined) {
+TEST_F(CssInlineFilterTest, InlineCombined) {
   // Make sure we interact with CSS combiner properly, including in cached
   // case.
   options()->EnableFilter(RewriteOptions::kInlineCss);
@@ -260,7 +259,7 @@ TEST_P(CssInlineFilterTest, InlineCombined) {
   ValidateExpected("inline_combined", html_input, html_output);
 }
 
-TEST_P(CssInlineFilterTest, InlineMinimizeInteraction) {
+TEST_F(CssInlineFilterTest, InlineMinimizeInteraction) {
   // There was a bug in async mode where we would accidentally prevent
   // minification results from rendering when inlining was not to be done.
   options()->EnableFilter(RewriteOptions::kRewriteCss);
@@ -275,11 +274,6 @@ TEST_P(CssInlineFilterTest, InlineMinimizeInteraction) {
       false,
       "div{display: none}");
 }
-
-INSTANTIATE_TEST_CASE_P(CssInlineFilterTestInstance,
-                        CssInlineFilterTest,
-                        ::testing::Bool());
-
 
 }  // namespace
 

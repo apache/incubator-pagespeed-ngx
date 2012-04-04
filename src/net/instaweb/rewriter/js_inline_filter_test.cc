@@ -31,8 +31,7 @@ namespace net_instaweb {
 
 namespace {
 
-class JsInlineFilterTest : public ResourceManagerTestBase,
-                           public ::testing::WithParamInterface<bool> {
+class JsInlineFilterTest : public ResourceManagerTestBase {
  public:
   JsInlineFilterTest() : filters_added_(false) {}
 
@@ -126,7 +125,7 @@ class JsInlineFilterTest : public ResourceManagerTestBase,
   bool filters_added_;
 };
 
-TEST_P(JsInlineFilterTest, DoInlineJavascriptSimple) {
+TEST_F(JsInlineFilterTest, DoInlineJavascriptSimple) {
   // Simple case:
   TestInlineJavascript("http://www.example.com/index.html",
                        "http://www.example.com/script.js",
@@ -135,7 +134,7 @@ TEST_P(JsInlineFilterTest, DoInlineJavascriptSimple) {
                        true);
 }
 
-TEST_P(JsInlineFilterTest, DoInlineJavascriptWhitespace) {
+TEST_F(JsInlineFilterTest, DoInlineJavascriptWhitespace) {
   // Whitespace between <script> and </script>:
   TestInlineJavascript("http://www.example.com/index2.html",
                        "http://www.example.com/script2.js",
@@ -144,7 +143,7 @@ TEST_P(JsInlineFilterTest, DoInlineJavascriptWhitespace) {
                        true);
 }
 
-TEST_P(JsInlineFilterTest, DoNotInlineJavascriptDifferentDomain) {
+TEST_F(JsInlineFilterTest, DoNotInlineJavascriptDifferentDomain) {
   // Different domains:
   TestInlineJavascript("http://www.example.net/index.html",
                        "http://scripts.example.org/script.js",
@@ -153,7 +152,7 @@ TEST_P(JsInlineFilterTest, DoNotInlineJavascriptDifferentDomain) {
                        false);
 }
 
-TEST_P(JsInlineFilterTest, DoNotInlineJavascriptInlineContents) {
+TEST_F(JsInlineFilterTest, DoNotInlineJavascriptInlineContents) {
   // Inline contents:
   TestInlineJavascript("http://www.example.com/index.html",
                        "http://www.example.com/script.js",
@@ -162,7 +161,7 @@ TEST_P(JsInlineFilterTest, DoNotInlineJavascriptInlineContents) {
                        false);
 }
 
-TEST_P(JsInlineFilterTest, DoNotInlineJavascriptTooBig) {
+TEST_F(JsInlineFilterTest, DoNotInlineJavascriptTooBig) {
   // Javascript too long:
   const int64 length = 2 * RewriteOptions::kDefaultJsInlineMaxBytes;
   TestInlineJavascript("http://www.example.com/index.html",
@@ -173,7 +172,7 @@ TEST_P(JsInlineFilterTest, DoNotInlineJavascriptTooBig) {
                        false);
 }
 
-TEST_P(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag) {
+TEST_F(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag) {
   // External script contains "</script>":
   TestInlineJavascript("http://www.example.com/index.html",
                        "http://www.example.com/script.js",
@@ -182,7 +181,7 @@ TEST_P(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag) {
                        false);
 }
 
-TEST_P(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag2) {
+TEST_F(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag2) {
   // HTML parsers will also accept junk like
   // </script  fofo  > as closing the script. (Spaces in the beginning do
   // cause it to be missed, hower).
@@ -193,7 +192,7 @@ TEST_P(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag2) {
                        false);
 }
 
-TEST_P(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag3) {
+TEST_F(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag3) {
   // HTML is case insensitive, so make sure we recognize </ScrIpt> as potential
   // closing tag, too.
   TestInlineJavascript("http://www.example.com/index.html",
@@ -203,7 +202,7 @@ TEST_P(JsInlineFilterTest, DoNotInlineJavascriptWithCloseTag3) {
                        false);
 }
 
-TEST_P(JsInlineFilterTest, ConservativeNonInlineCloseScript) {
+TEST_F(JsInlineFilterTest, ConservativeNonInlineCloseScript) {
   // We conservatively don't inline some things which contain things that
   // look a lot like </script> but aren't. This is safe, but it would be
   // better if we inlined it.
@@ -214,7 +213,7 @@ TEST_P(JsInlineFilterTest, ConservativeNonInlineCloseScript) {
                        false);
 }
 
-TEST_P(JsInlineFilterTest, DoInlineJavascriptXhtml) {
+TEST_F(JsInlineFilterTest, DoInlineJavascriptXhtml) {
   // Simple case:
   TestInlineJavascriptXhtml("http://www.example.com/index.html",
                             "http://www.example.com/script.js",
@@ -222,7 +221,7 @@ TEST_P(JsInlineFilterTest, DoInlineJavascriptXhtml) {
                             true);
 }
 
-TEST_P(JsInlineFilterTest, DoNotInlineJavascriptXhtmlWithCdataEnd) {
+TEST_F(JsInlineFilterTest, DoNotInlineJavascriptXhtmlWithCdataEnd) {
   // External script contains "]]>":
   TestInlineJavascriptXhtml("http://www.example.com/index.html",
                             "http://www.example.com/script.js",
@@ -230,7 +229,7 @@ TEST_P(JsInlineFilterTest, DoNotInlineJavascriptXhtmlWithCdataEnd) {
                             false);
 }
 
-TEST_P(JsInlineFilterTest, CachedRewrite) {
+TEST_F(JsInlineFilterTest, CachedRewrite) {
   // Make sure we work fine when result is cached.
   const char kPageUrl[] = "http://www.example.com/index.html";
   const char kJsUrl[] = "http://www.example.com/script.js";
@@ -240,7 +239,7 @@ TEST_P(JsInlineFilterTest, CachedRewrite) {
   TestInlineJavascript(kPageUrl, kJsUrl, kNothingInsideScript, kJs, true);
 }
 
-TEST_P(JsInlineFilterTest, CachedWithSuccesors) {
+TEST_F(JsInlineFilterTest, CachedWithSuccesors) {
   // Regression test: in async case, at one point we had a problem with
   // slot rendering of a following cache extender trying to manipulate
   // the source attribute which the inliner deleted while using
@@ -261,7 +260,7 @@ TEST_P(JsInlineFilterTest, CachedWithSuccesors) {
   ValidateExpected("inline_with_succ", html_input, html_output);
 }
 
-TEST_P(JsInlineFilterTest, CachedWithPredecessors) {
+TEST_F(JsInlineFilterTest, CachedWithPredecessors) {
   // Regression test for crash: trying to inline after combining would crash.
   // (Current state is not to inline after combining due to the
   //  <script> element with src= being new).
@@ -281,7 +280,7 @@ TEST_P(JsInlineFilterTest, CachedWithPredecessors) {
   Parse("inline_with_pred", html_input);
 }
 
-TEST_P(JsInlineFilterTest, InlineJs404) {
+TEST_F(JsInlineFilterTest, InlineJs404) {
   // Test to make sure that a missing input is handled well.
   SetFetchResponse404("404.js");
   AddFilter(RewriteOptions::kInlineJavascript);
@@ -291,7 +290,7 @@ TEST_P(JsInlineFilterTest, InlineJs404) {
   ValidateNoChanges("404", "<script src='404.js'></script>");
 }
 
-TEST_P(JsInlineFilterTest, InlineMinimizeInteraction) {
+TEST_F(JsInlineFilterTest, InlineMinimizeInteraction) {
   // There was a bug in async mode where we would accidentally prevent
   // minification results from rendering when inlining was not to be done.
   options()->EnableFilter(RewriteOptions::kRewriteJavascript);
@@ -308,7 +307,7 @@ TEST_P(JsInlineFilterTest, InlineMinimizeInteraction) {
       false);  // Not inlining
 }
 
-TEST_P(JsInlineFilterTest, FlushSplittingScriptTag) {
+TEST_F(JsInlineFilterTest, FlushSplittingScriptTag) {
   options()->EnableFilter(RewriteOptions::kInlineJavascript);
   rewrite_driver()->AddFilters();
   SetupWriter();
@@ -325,7 +324,7 @@ TEST_P(JsInlineFilterTest, FlushSplittingScriptTag) {
   EXPECT_EQ("<div><script src=\"script.js\"> </script> </div>", output_buffer_);
 }
 
-TEST_P(JsInlineFilterTest, NoFlushSplittingScriptTag) {
+TEST_F(JsInlineFilterTest, NoFlushSplittingScriptTag) {
   options()->EnableFilter(RewriteOptions::kInlineJavascript);
   rewrite_driver()->AddFilters();
   SetupWriter();
@@ -341,11 +340,6 @@ TEST_P(JsInlineFilterTest, NoFlushSplittingScriptTag) {
   EXPECT_EQ("<div><script>function id(x) { return x; }\n</script> </div>",
             output_buffer_);
 }
-
-// We test with asynchronous_rewrites() == GetParam() as both true and false.
-INSTANTIATE_TEST_CASE_P(JsInlineFilterTestInstance,
-                        JsInlineFilterTest,
-                        ::testing::Bool());
 
 }  // namespace
 

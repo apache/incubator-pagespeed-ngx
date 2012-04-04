@@ -34,8 +34,7 @@ namespace net_instaweb {
 class ResourceNamer;
 struct ContentType;
 
-class CssRewriteTestBase : public ResourceManagerTestBase,
-                           public ::testing::WithParamInterface<bool> {
+class CssRewriteTestBase : public ResourceManagerTestBase {
  protected:
   CssRewriteTestBase() {
     num_blocks_rewritten_ =

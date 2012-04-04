@@ -86,8 +86,7 @@ class HTTPCacheStringCallback : public OptionsAwareHTTPCacheCallback {
   DISALLOW_COPY_AND_ASSIGN(HTTPCacheStringCallback);
 };
 
-class ImageRewriteTest : public ResourceManagerTestBase,
-                         public ::testing::WithParamInterface<bool> {
+class ImageRewriteTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
@@ -324,11 +323,11 @@ class ImageRewriteTest : public ResourceManagerTestBase,
   }
 };
 
-TEST_P(ImageRewriteTest, ImgTag) {
+TEST_F(ImageRewriteTest, ImgTag) {
   RewriteImage("img", kContentTypeJpeg);
 }
 
-TEST_P(ImageRewriteTest, ImgTagWebp) {
+TEST_F(ImageRewriteTest, ImgTagWebp) {
   if (RunningOnValgrind()) {
     return;
   }
@@ -339,11 +338,11 @@ TEST_P(ImageRewriteTest, ImgTagWebp) {
   RewriteImage("img", kContentTypeWebp);
 }
 
-TEST_P(ImageRewriteTest, InputTag) {
+TEST_F(ImageRewriteTest, InputTag) {
   RewriteImage("input type=\"image\"", kContentTypeJpeg);
 }
 
-TEST_P(ImageRewriteTest, InputTagWebp) {
+TEST_F(ImageRewriteTest, InputTagWebp) {
   if (RunningOnValgrind()) {
     return;
   }
@@ -354,11 +353,11 @@ TEST_P(ImageRewriteTest, InputTagWebp) {
   RewriteImage("input type=\"image\"", kContentTypeWebp);
 }
 
-TEST_P(ImageRewriteTest, DataUrlTest) {
+TEST_F(ImageRewriteTest, DataUrlTest) {
   DataUrlResource();
 }
 
-TEST_P(ImageRewriteTest, AddDimTest) {
+TEST_F(ImageRewriteTest, AddDimTest) {
   // Make sure optimizable image isn't optimized, but
   // dimensions are inserted.
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
@@ -377,7 +376,7 @@ TEST_P(ImageRewriteTest, AddDimTest) {
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 }
 
-TEST_P(ImageRewriteTest, ResizeTest) {
+TEST_F(ImageRewriteTest, ResizeTest) {
   // Make sure we resize images, but don't optimize them in place.
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
@@ -390,7 +389,7 @@ TEST_P(ImageRewriteTest, ResizeTest) {
                     kResizedDims, kResizedDims, true, false);
 }
 
-TEST_P(ImageRewriteTest, ResizeWidthOnly) {
+TEST_F(ImageRewriteTest, ResizeWidthOnly) {
   // Make sure we resize images, but don't optimize them in place.
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
@@ -403,7 +402,7 @@ TEST_P(ImageRewriteTest, ResizeWidthOnly) {
                     kResizedDims, kResizedDims, true, false);
 }
 
-TEST_P(ImageRewriteTest, ResizeHeightOnly) {
+TEST_F(ImageRewriteTest, ResizeHeightOnly) {
   // Make sure we resize images, but don't optimize them in place.
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
@@ -416,7 +415,7 @@ TEST_P(ImageRewriteTest, ResizeHeightOnly) {
                     kResizedDims, kResizedDims, true, false);
 }
 
-TEST_P(ImageRewriteTest, ResizeStyleTest) {
+TEST_F(ImageRewriteTest, ResizeStyleTest) {
   // Make sure we resize images, but don't optimize them in place.
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
@@ -443,7 +442,7 @@ TEST_P(ImageRewriteTest, ResizeStyleTest) {
                       kUnparsableDims, kUnparsableDims, false, false);
 }
 
-TEST_P(ImageRewriteTest, NullResizeTest) {
+TEST_F(ImageRewriteTest, NullResizeTest) {
   // Make sure we don't crash on a value-less style attribute.
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
@@ -451,7 +450,7 @@ TEST_P(ImageRewriteTest, NullResizeTest) {
                     " style", " style", false, false);
 }
 
-TEST_P(ImageRewriteTest, InlineTest) {
+TEST_F(ImageRewriteTest, InlineTest) {
   // Make sure we resize and inline images, but don't optimize them in place.
   options()->set_image_inline_max_bytes(10000);
   options()->EnableFilter(RewriteOptions::kResizeImages);
@@ -470,7 +469,7 @@ TEST_P(ImageRewriteTest, InlineTest) {
                     kResizedDims, "", true, true);
 }
 
-TEST_P(ImageRewriteTest, InlineNoRewrite) {
+TEST_F(ImageRewriteTest, InlineNoRewrite) {
   // Make sure we inline an image that isn't otherwise altered in any way.
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
@@ -486,7 +485,7 @@ TEST_P(ImageRewriteTest, InlineNoRewrite) {
                     "", "", false, false);
 }
 
-TEST_P(ImageRewriteTest, InlineNoResize) {
+TEST_F(ImageRewriteTest, InlineNoResize) {
   // Make sure we inline an image if it meets the inlining threshold but can't
   // be resized.  Make sure we retain sizing information when this happens.
   options()->EnableFilter(RewriteOptions::kInlineImages);
@@ -502,7 +501,7 @@ TEST_P(ImageRewriteTest, InlineNoResize) {
                     kResizedDims, kResizedDims, false, true);
 }
 
-TEST_P(ImageRewriteTest, RespectsBaseUrl) {
+TEST_F(ImageRewriteTest, RespectsBaseUrl) {
   // Put original files into our fetcher.
   const char html_url[] = "http://image.test/base_url.html";
   const char png_url[]  = "http://other_domain.test/foo/bar/a.png";
@@ -572,7 +571,7 @@ TEST_P(ImageRewriteTest, RespectsBaseUrl) {
   EXPECT_EQ(encoded_gif_gurl.AllExceptLeaf(), new_gif_gurl.AllExceptLeaf());
 }
 
-TEST_P(ImageRewriteTest, FetchInvalid) {
+TEST_F(ImageRewriteTest, FetchInvalid) {
   // Make sure that fetching invalid URLs cleanly reports a problem by
   // calling Done(false).
   AddFilter(RewriteOptions::kRecompressImages);
@@ -588,7 +587,7 @@ TEST_P(ImageRewriteTest, FetchInvalid) {
   EXPECT_FALSE(FetchResourceUrl(encoded_url, &out));
 }
 
-TEST_P(ImageRewriteTest, Rewrite404) {
+TEST_F(ImageRewriteTest, Rewrite404) {
   // Make sure we don't fail when rewriting with invalid input.
   SetFetchResponse404("404.jpg");
   AddFilter(RewriteOptions::kRecompressImages);
@@ -598,15 +597,15 @@ TEST_P(ImageRewriteTest, Rewrite404) {
   ValidateNoChanges("404", "<img src='404.jpg'>");
 }
 
-TEST_P(ImageRewriteTest, NoExtensionCorruption) {
+TEST_F(ImageRewriteTest, NoExtensionCorruption) {
   TestCorruptUrl("%22", false);
 }
 
-TEST_P(ImageRewriteTest, NoQueryCorruption) {
+TEST_F(ImageRewriteTest, NoQueryCorruption) {
   TestCorruptUrl("?query", true);
 }
 
-TEST_P(ImageRewriteTest, NoCrashOnInvalidDim) {
+TEST_F(ImageRewriteTest, NoCrashOnInvalidDim) {
   options()->EnableFilter(RewriteOptions::kRecompressImages);
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   rewrite_driver()->AddFilters();
@@ -622,7 +621,7 @@ TEST_P(ImageRewriteTest, NoCrashOnInvalidDim) {
   ParseUrl(kTestDomain, "<img width=\"5\" height=\"-5\" src=\"a.png\">");
 }
 
-TEST_P(ImageRewriteTest, RewriteCacheExtendInteraction) {
+TEST_F(ImageRewriteTest, RewriteCacheExtendInteraction) {
   // There was a bug in async mode where rewriting failing would prevent
   // cache extension from working as well.
   options()->EnableFilter(RewriteOptions::kRecompressImages);
@@ -640,7 +639,7 @@ TEST_P(ImageRewriteTest, RewriteCacheExtendInteraction) {
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?id=324
-TEST_P(ImageRewriteTest, RetainExtraHeaders) {
+TEST_F(ImageRewriteTest, RetainExtraHeaders) {
   options()->EnableFilter(RewriteOptions::kRecompressImages);
   rewrite_driver()->AddFilters();
 
@@ -650,7 +649,7 @@ TEST_P(ImageRewriteTest, RetainExtraHeaders) {
   TestRetainExtraHeaders(kPuzzleJpgFile, "ic", "jpg");
 }
 
-TEST_P(ImageRewriteTest, NestedConcurrentRewritesLimit) {
+TEST_F(ImageRewriteTest, NestedConcurrentRewritesLimit) {
   // Make sure we're limiting # of concurrent rewrites properly even when we're
   // nested inside another filter, and that we do not cache that outcome
   // improperly.
@@ -703,10 +702,6 @@ TEST_P(ImageRewriteTest, NestedConcurrentRewritesLimit) {
   EXPECT_EQ(expected_out_css, out_css);
   EXPECT_EQ(1, drops->Get(TimedVariable::START));
 }
-
-INSTANTIATE_TEST_CASE_P(ImageRewriteTestInstance,
-                        ImageRewriteTest,
-                        ::testing::Bool());
 
 }  // namespace
 

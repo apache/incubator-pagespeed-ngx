@@ -59,8 +59,7 @@ namespace net_instaweb {
 
 class RewriteFilter;
 
-class RewriteDriverTest : public ResourceManagerTestBase,
-                          public ::testing::WithParamInterface<bool> {
+class RewriteDriverTest : public ResourceManagerTestBase {
  protected:
   RewriteDriverTest() {}
 
@@ -96,7 +95,7 @@ class RewriteDriverTest : public ResourceManagerTestBase,
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverTest);
 };
 
-TEST_P(RewriteDriverTest, NoChanges) {
+TEST_F(RewriteDriverTest, NoChanges) {
   ValidateNoChanges("no_changes",
                     "<head><script src=\"foo.js\"></script></head>"
                     "<body><form method=\"post\">"
@@ -104,7 +103,7 @@ TEST_P(RewriteDriverTest, NoChanges) {
                     "</form></body>");
 }
 
-TEST_P(RewriteDriverTest, TestLegacyUrl) {
+TEST_F(RewriteDriverTest, TestLegacyUrl) {
   rewrite_driver()->AddFilters();
   EXPECT_FALSE(CanDecodeUrl("http://example.com/dir/123/jm.0.orig"))
       << "not enough dots";
@@ -121,7 +120,7 @@ TEST_P(RewriteDriverTest, TestLegacyUrl) {
       << "invalid extension";
 }
 
-TEST_P(RewriteDriverTest, TestInferContentType) {
+TEST_F(RewriteDriverTest, TestInferContentType) {
   rewrite_driver()->AddFilters();
   SetBaseUrlForFetch("http://example.com/dir/123/index.html");
   EXPECT_TRUE(DecodeContentType(
@@ -143,7 +142,7 @@ TEST_P(RewriteDriverTest, TestInferContentType) {
                 Encode("http://example.com/dir/", "ic", "0", "xy", "gif")));
 }
 
-TEST_P(RewriteDriverTest, TestModernUrl) {
+TEST_F(RewriteDriverTest, TestModernUrl) {
   rewrite_driver()->AddFilters();
 
   // Sanity-check on a valid one
@@ -177,7 +176,7 @@ class RewriteDriverTestUrlNamer : public RewriteDriverTest {
   }
 };
 
-TEST_P(RewriteDriverTestUrlNamer, TestEncodedUrls) {
+TEST_F(RewriteDriverTestUrlNamer, TestEncodedUrls) {
   rewrite_driver()->AddFilters();
 
   // Sanity-check on a valid one
@@ -215,7 +214,7 @@ TEST_P(RewriteDriverTestUrlNamer, TestEncodedUrls) {
   EXPECT_FALSE(CanDecodeUrl(encoded_url));
 }
 
-TEST_P(RewriteDriverTestUrlNamer, TestDecodeUrls) {
+TEST_F(RewriteDriverTestUrlNamer, TestDecodeUrls) {
   // Sanity-check on a valid one
   GoogleUrl gurl_good(Encode(
       "http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpg"));
@@ -268,7 +267,7 @@ TEST_P(RewriteDriverTestUrlNamer, TestDecodeUrls) {
 
 // Test to make sure we do not put in extra things into the cache.
 // This is using the CSS rewriter, which caches the output.
-TEST_P(RewriteDriverTest, TestCacheUse) {
+TEST_F(RewriteDriverTest, TestCacheUse) {
   AddFilter(RewriteOptions::kRewriteCss);
 
   const char kCss[] = "* { display: none; }";
@@ -296,7 +295,7 @@ TEST_P(RewriteDriverTest, TestCacheUse) {
 }
 
 // Extension of above with cache invalidation.
-TEST_P(RewriteDriverTest, TestCacheUseWithInvalidation) {
+TEST_F(RewriteDriverTest, TestCacheUseWithInvalidation) {
   AddFilter(RewriteOptions::kRewriteCss);
 
   const char kCss[] = "* { display: none; }";
@@ -339,7 +338,7 @@ TEST_P(RewriteDriverTest, TestCacheUseWithInvalidation) {
 
 // Similar to TestCacheUse, but with cache-extender which reconstructs on the
 // fly.
-TEST_P(RewriteDriverTest, TestCacheUseOnTheFly) {
+TEST_F(RewriteDriverTest, TestCacheUseOnTheFly) {
   AddFilter(RewriteOptions::kExtendCacheCss);
 
   const char kCss[] = "* { display: none; }";
@@ -365,7 +364,7 @@ TEST_P(RewriteDriverTest, TestCacheUseOnTheFly) {
 }
 
 // Extension of above with cache invalidation.
-TEST_P(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
+TEST_F(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
   AddFilter(RewriteOptions::kExtendCacheCss);
 
   const char kCss[] = "* { display: none; }";
@@ -402,7 +401,7 @@ TEST_P(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
   EXPECT_EQ(1, lru_cache()->num_identical_reinserts());
 }
 
-TEST_P(RewriteDriverTest, BaseTags) {
+TEST_F(RewriteDriverTest, BaseTags) {
   // Starting the parse, the base-tag will be derived from the html url.
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
   rewrite_driver()->Flush();
@@ -434,7 +433,7 @@ TEST_P(RewriteDriverTest, BaseTags) {
   EXPECT_EQ("http://new.example.com/subdir/", BaseUrlSpec());
 }
 
-TEST_P(RewriteDriverTest, RelativeBaseTag) {
+TEST_F(RewriteDriverTest, RelativeBaseTag) {
   // Starting the parse, the base-tag will be derived from the html url.
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
   rewrite_driver()->ParseText("<base href='subdir/'>");
@@ -443,7 +442,7 @@ TEST_P(RewriteDriverTest, RelativeBaseTag) {
   EXPECT_EQ("http://example.com/subdir/", BaseUrlSpec());
 }
 
-TEST_P(RewriteDriverTest, InvalidBaseTag) {
+TEST_F(RewriteDriverTest, InvalidBaseTag) {
   // Encountering an invalid base tag should be ignored (except info message).
   ASSERT_TRUE(rewrite_driver()->StartParse("slwly://example.com/index.html"));
   rewrite_driver()->ParseText("<base href='subdir_not_allowed_on_slwly/'>");
@@ -458,7 +457,7 @@ TEST_P(RewriteDriverTest, InvalidBaseTag) {
   EXPECT_EQ("http://example.com/absolute/", BaseUrlSpec());
 }
 
-TEST_P(RewriteDriverTest, CreateOutputResourceTooLong) {
+TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
   const ContentType* content_types[] = { NULL, &kContentTypeJpeg};
   const OutputResourceKind resource_kinds[] = {
     kRewrittenResource,
@@ -505,7 +504,7 @@ TEST_P(RewriteDriverTest, CreateOutputResourceTooLong) {
   }
 }
 
-TEST_P(RewriteDriverTest, MultipleDomains) {
+TEST_F(RewriteDriverTest, MultipleDomains) {
   rewrite_driver()->AddFilters();
 
   // Make sure we authorize domains for resources properly. This is a regression
@@ -533,7 +532,7 @@ TEST_P(RewriteDriverTest, MultipleDomains) {
 
 // Test caching behavior for normal UrlInputResources.
 // This is the base case that LoadResourcesFromFiles below contrasts with.
-TEST_P(RewriteDriverTest, LoadResourcesFromTheWeb) {
+TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   rewrite_driver()->AddFilters();
 
   const char kStaticUrlPrefix[] = "http://www.example.com/";
@@ -595,7 +594,7 @@ TEST_P(RewriteDriverTest, LoadResourcesFromTheWeb) {
 // Test that we successfully load specified resources from files and that
 // file resources have the appropriate properties, such as being loaded from
 // file every time they are fetched (not being cached).
-TEST_P(RewriteDriverTest, LoadResourcesFromFiles) {
+TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
   rewrite_driver()->AddFilters();
 
   const char kStaticUrlPrefix[] = "http://www.example.com/static/";
@@ -643,7 +642,7 @@ TEST_P(RewriteDriverTest, LoadResourcesFromFiles) {
 
 // Make sure the content-type is set correctly, even for URLs with queries.
 // http://code.google.com/p/modpagespeed/issues/detail?id=405
-TEST_P(RewriteDriverTest, LoadResourcesContentType) {
+TEST_F(RewriteDriverTest, LoadResourcesContentType) {
   rewrite_driver()->AddFilters();
 
   // Tell RewriteDriver to associate static URLs with filenames.
@@ -668,7 +667,7 @@ TEST_P(RewriteDriverTest, LoadResourcesContentType) {
   EXPECT_TRUE(NULL == resource2->type());
 }
 
-TEST_P(RewriteDriverTest, ResolveAnchorUrl) {
+TEST_F(RewriteDriverTest, ResolveAnchorUrl) {
   rewrite_driver()->AddFilters();
   ASSERT_TRUE(rewrite_driver()->StartParse("http://example.com/index.html"));
   GoogleUrl resolved(rewrite_driver()->base_url(), "#anchor");
@@ -693,7 +692,7 @@ class MockRewriteContext : public SingleRewriteContext {
 
 }  // namespace
 
-TEST_P(RewriteDriverTest, DiagnosticsWithPercent) {
+TEST_F(RewriteDriverTest, DiagnosticsWithPercent) {
   // Regression test for crash in InfoAt where location has %stuff in it.
   // (make sure it actually shows up first, though).
   int prev_log_level = logging::GetMinLogLevel();
@@ -709,7 +708,7 @@ TEST_P(RewriteDriverTest, DiagnosticsWithPercent) {
 }
 
 // Tests that we reject https URLs quickly.
-TEST_P(RewriteDriverTest, RejectHttpsQuickly) {
+TEST_F(RewriteDriverTest, RejectHttpsQuickly) {
   // Need to expressly authorize https even though we don't support it.
   options()->domain_lawyer()->AddDomain("https://*/", message_handler());
   AddFilter(RewriteOptions::kRewriteJavascript);
@@ -731,20 +730,12 @@ TEST_P(RewriteDriverTest, RejectHttpsQuickly) {
 
 // Test that CreateInputResource doesn't crash when handed a data url.
 // This was causing a query of death in some circumstances.
-TEST_P(RewriteDriverTest, RejectDataResourceGracefully) {
+TEST_F(RewriteDriverTest, RejectDataResourceGracefully) {
   MockRewriteContext context(rewrite_driver());
   GoogleUrl dataUrl("data:");
   ResourcePtr resource(rewrite_driver()->CreateInputResource(dataUrl));
   EXPECT_TRUE(resource.get() == NULL);
 }
-
-INSTANTIATE_TEST_CASE_P(RewriteDriverTestInstance,
-                        RewriteDriverTest,
-                        ::testing::Bool());
-
-INSTANTIATE_TEST_CASE_P(RewriteDriverTestUrlNamerInstance,
-                        RewriteDriverTestUrlNamer,
-                        ::testing::Bool());
 
 class RewriteDriverInhibitTest : public RewriteDriverTest {
  protected:
@@ -785,7 +776,7 @@ class RewriteDriverInhibitTest : public RewriteDriverTest {
 
 // Tests that we stop the flush immediately before the EndElementEvent for an
 // inhibited element, and resume it when that element is uninhibited.
-TEST_P(RewriteDriverInhibitTest, InhibitEndElement) {
+TEST_F(RewriteDriverInhibitTest, InhibitEndElement) {
   SetUpDocument();
 
   // Inhibit </body>.
@@ -804,7 +795,7 @@ TEST_P(RewriteDriverInhibitTest, InhibitEndElement) {
 }
 
 // Tests that we can inhibit and uninhibit the flush in multiple places.
-TEST_P(RewriteDriverInhibitTest, MultipleInhibitEndElement) {
+TEST_F(RewriteDriverInhibitTest, MultipleInhibitEndElement) {
   SetUpDocument();
 
   // Inhibit </body> and </html>.
@@ -827,7 +818,7 @@ TEST_P(RewriteDriverInhibitTest, MultipleInhibitEndElement) {
 }
 
 // Tests that FinishParseAsync respects inhibits.
-TEST_P(RewriteDriverInhibitTest, InhibitWithFinishParse) {
+TEST_F(RewriteDriverInhibitTest, InhibitWithFinishParse) {
   SetUpDocument();
 
   // Inhibit </body>.
@@ -851,9 +842,5 @@ TEST_P(RewriteDriverInhibitTest, InhibitWithFinishParse) {
   EXPECT_EQ("<html><body><p></p></body></html>", output_buffer_);
 }
 
-
-INSTANTIATE_TEST_CASE_P(RewriteDriverInhibitTestInstance,
-                        RewriteDriverInhibitTest,
-                        ::testing::Bool());
 
 }  // namespace net_instaweb

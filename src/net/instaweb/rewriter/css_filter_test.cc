@@ -132,11 +132,11 @@ class CssFilterTest : public CssRewriteTestBase {
   }
 };
 
-TEST_P(CssFilterTest, SimpleRewriteCssTest) {
+TEST_F(CssFilterTest, SimpleRewriteCssTest) {
   ValidateRewrite("rewrite_css", kInputStyle, kOutputStyle);
 }
 
-TEST_P(CssFilterTest, RewriteCss404) {
+TEST_F(CssFilterTest, RewriteCss404) {
   // Test to make sure that a missing input is handled well.
   SetFetchResponse404("404.css");
   ValidateNoChanges("404", "<link rel=stylesheet href='404.css'>");
@@ -145,7 +145,7 @@ TEST_P(CssFilterTest, RewriteCss404) {
   ValidateNoChanges("404", "<link rel=stylesheet href='404.css'>");
 }
 
-TEST_P(CssFilterTest, LinkHrefCaseInsensitive) {
+TEST_F(CssFilterTest, LinkHrefCaseInsensitive) {
   // Make sure we check rel value case insensitively.
   // http://code.google.com/p/modpagespeed/issues/detail?id=354
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kInputStyle, 100);
@@ -156,7 +156,7 @@ TEST_P(CssFilterTest, LinkHrefCaseInsensitive) {
              ">"));
 }
 
-TEST_P(CssFilterTest, UrlTooLong) {
+TEST_F(CssFilterTest, UrlTooLong) {
   // Make the filename maximum size, so we cannot rewrite it.
   // -4 because .css will be appended.
   GoogleString filename(options()->max_url_segment_size() - 4, 'z');
@@ -167,7 +167,7 @@ TEST_P(CssFilterTest, UrlTooLong) {
 }
 
 // Make sure we can deal with 0 character nodes between open and close of style.
-TEST_P(CssFilterTest, RewriteEmptyCssTest) {
+TEST_F(CssFilterTest, RewriteEmptyCssTest) {
   ValidateRewriteInlineCss("rewrite_empty_css-inline", "", "",
                            kExpectChange | kExpectSuccess | kNoStatCheck);
   // Note: We must check stats ourselves because, for technical reasons,
@@ -184,7 +184,7 @@ TEST_P(CssFilterTest, RewriteEmptyCssTest) {
 
 // Make sure we do not recompute external CSS when re-processing an already
 // handled page.
-TEST_P(CssFilterTest, RewriteRepeated) {
+TEST_F(CssFilterTest, RewriteRepeated) {
   ValidateRewriteExternalCss("rep", " div { } ", "div{}",
                              kExpectChange | kExpectSuccess);
   int inserts_before = lru_cache()->num_inserts();
@@ -203,7 +203,7 @@ TEST_P(CssFilterTest, RewriteRepeated) {
 
 // Make sure we do not reparse external CSS when we know it already has
 // a parse error.
-TEST_P(CssFilterTest, RewriteRepeatedParseError) {
+TEST_F(CssFilterTest, RewriteRepeatedParseError) {
   const char kInvalidCss[] = "@media }}";
   // Note: It is important that these both have the same id so that the
   // generated CSS file names are identical.
@@ -221,7 +221,7 @@ TEST_P(CssFilterTest, RewriteRepeatedParseError) {
 
 // Make sure we don't change CSS with errors. Note: We can move these tests
 // to expected rewrites if we find safe ways to edit them.
-TEST_P(CssFilterTest, NoRewriteParseError) {
+TEST_F(CssFilterTest, NoRewriteParseError) {
   ValidateFailParse("non_unicode_charset",
                     "a { font-family: \"\xCB\xCE\xCC\xE5\"; }");
   // From http://www.baidu.com/
@@ -230,15 +230,15 @@ TEST_P(CssFilterTest, NoRewriteParseError) {
 }
 
 // Make sure bad requests do not corrupt our extension.
-TEST_P(CssFilterTest, NoExtensionCorruption) {
+TEST_F(CssFilterTest, NoExtensionCorruption) {
   TestCorruptUrl("%22", false);
 }
 
-TEST_P(CssFilterTest, NoQueryCorruption) {
+TEST_F(CssFilterTest, NoQueryCorruption) {
   TestCorruptUrl("?query", true);
 }
 
-TEST_P(CssFilterTest, RewriteVariousCss) {
+TEST_F(CssFilterTest, RewriteVariousCss) {
   // TODO(sligocki): Get these tests to pass with setlocale.
   // EXPECT_TRUE(setlocale(LC_ALL, "tr_TR.utf8"));
   // Distilled examples.
@@ -392,7 +392,7 @@ TEST_P(CssFilterTest, RewriteVariousCss) {
 
 // Things we could be optimizing.
 // This test will fail when we start optimizing these thing.
-TEST_P(CssFilterTest, ToOptimize) {
+TEST_F(CssFilterTest, ToOptimize) {
   const char* examples[][2] = {
     // Noticed from YUI minification.
     { "td { line-height: 0.8em; }",
@@ -413,7 +413,7 @@ TEST_P(CssFilterTest, ToOptimize) {
 }
 
 // Test more complicated CSS.
-TEST_P(CssFilterTest, ComplexCssTest) {
+TEST_F(CssFilterTest, ComplexCssTest) {
   // Real-world examples. Picked out of Wikipedia's CSS.
   const char* examples[][2] = {
     { "#userlogin, #userloginForm {\n"
@@ -915,7 +915,7 @@ TEST_P(CssFilterTest, ComplexCssTest) {
 // Most tests are run with set_always_rewrite_css(true),
 // but all production use has set_always_rewrite_css(false).
 // This test makes sure that setting to false still does what we intend.
-TEST_P(CssFilterTest, NoAlwaysRewriteCss) {
+TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   // When we force always_rewrite_css, we can expand some statements.
   // Note: when this example is fixed in the minifier, this test will break :/
   options()->ClearSignatureForTesting();
@@ -950,7 +950,7 @@ TEST_P(CssFilterTest, NoAlwaysRewriteCss) {
                   kExpectNoChange | kExpectFailure);
 }
 
-TEST_P(CssFilterTest, NoQuirksModeForXhtml) {
+TEST_F(CssFilterTest, NoQuirksModeForXhtml) {
   const char quirky_css[]     = "body {color:DECAFB}";
   const char normalized_css[] = "body{color:#decafb}";
   const char no_quirks_css[]  = "body{color:DECAFB}";
@@ -971,13 +971,13 @@ TEST_P(CssFilterTest, NoQuirksModeForXhtml) {
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?id=324
-TEST_P(CssFilterTest, RetainExtraHeaders) {
+TEST_F(CssFilterTest, RetainExtraHeaders) {
   GoogleString url = StrCat(kTestDomain, "retain.css");
   SetResponseWithDefaultHeaders(url, kContentTypeCss, kInputStyle, 300);
   TestRetainExtraHeaders("retain.css", "cf", "css");
 }
 
-TEST_P(CssFilterTest, RewriteStyleAttribute) {
+TEST_F(CssFilterTest, RewriteStyleAttribute) {
   // Test that nothing happens if rewriting is disabled (default).
   ValidateNoChanges("RewriteStyleAttribute",
                     "<div style='background-color: #f00; color: yellow;'/>");
@@ -1020,7 +1020,7 @@ TEST_P(CssFilterTest, RewriteStyleAttribute) {
                    "<style style='background-color: #f00; color: yellow;'/>");
 }
 
-TEST_P(CssFilterTest, DontAbsolutifyCssImportUrls) {
+TEST_F(CssFilterTest, DontAbsolutifyCssImportUrls) {
   // Since we are not using a proxy URL namer (TestUrlNamer) nor any
   // domain rewriting/sharding, we expect the relative URLs in
   // the @import's to be passed though untouched.
@@ -1048,7 +1048,7 @@ TEST_P(CssFilterTest, DontAbsolutifyCssImportUrls) {
   ValidateNoChanges("dont_absolutify_css_import_urls", html);
 }
 
-TEST_P(CssFilterTest, DontAbsolutifyEmptyUrl) {
+TEST_F(CssFilterTest, DontAbsolutifyEmptyUrl) {
   // Ensure that an empty URL is left as-is and is not absolutified.
   const char kEmptyUrlRule[] = "#gallery { list-style: none outside url(''); }";
   const char kNoUrlRule[] = "#gallery{list-style:none outside url()}";
@@ -1224,11 +1224,6 @@ TEST_F(CssFilterTestUrlNamer, AbsolutifyCursorUrlsWithProxy) {
                           true  /* enable_proxy_mode */,
                           false /* enable_mapping_and_sharding */);
 }
-
-// We test with asynchronous_rewrites() == GetParam() as both true and false.
-INSTANTIATE_TEST_CASE_P(CssFilterTestInstance,
-                        CssFilterTest,
-                        ::testing::Bool());
 
 }  // namespace
 

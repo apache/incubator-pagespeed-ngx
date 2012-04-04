@@ -54,7 +54,7 @@ class CssImageRewriterTest : public CssRewriteTestBase {
   }
 };
 
-TEST_P(CssImageRewriterTest, CacheExtendsImagesSimple) {
+TEST_F(CssImageRewriterTest, CacheExtendsImagesSimple) {
   // Simplified version of CacheExtendsImages, which doesn't have many copies of
   // the same URL.
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kImageData, 100);
@@ -77,7 +77,7 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesSimple) {
                              kNoOtherContexts | kNoClearFetcher);
 }
 
-TEST_P(CssImageRewriterTest, CacheExtendsImagesEmbeddedComma) {
+TEST_F(CssImageRewriterTest, CacheExtendsImagesEmbeddedComma) {
   // Makes sure image-URL rewriting doesn't corrupt URLs with embedded
   // commas.  Earlier, we were escaping commas in URLs by backslashing
   // the "," and IE8 interprets those backslashes as forward slashes,
@@ -103,7 +103,7 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesEmbeddedComma) {
                              kNoOtherContexts | kNoClearFetcher);
 }
 
-TEST_P(CssImageRewriterTest, CacheExtendsImagesEmbeddedSpace) {
+TEST_F(CssImageRewriterTest, CacheExtendsImagesEmbeddedSpace) {
   // Note that GoogleUrl will, internal to our system, convert the space to
   // a %20, so we'll be fetching the percentified form.
   SetResponseWithDefaultHeaders("foo%20bar.png", kContentTypePng,
@@ -127,7 +127,7 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesEmbeddedSpace) {
                              kNoOtherContexts | kNoClearFetcher);
 }
 
-TEST_P(CssImageRewriterTest, MinifyImagesEmbeddedSpace) {
+TEST_F(CssImageRewriterTest, MinifyImagesEmbeddedSpace) {
   options()->ClearSignatureForTesting();
   options()->DisableFilter(RewriteOptions::kExtendCacheImages);
   resource_manager()->ComputeSignature(options());
@@ -148,7 +148,7 @@ TEST_P(CssImageRewriterTest, MinifyImagesEmbeddedSpace) {
                              kNoOtherContexts | kNoClearFetcher);
 }
 
-TEST_P(CssImageRewriterTest, CacheExtendsWhenCssGrows) {
+TEST_F(CssImageRewriterTest, CacheExtendsWhenCssGrows) {
   // We run most tests with set_always_rewrite_css(true) which bypasses
   // checks on whether rewriting is worthwhile or not. Test to make sure we make
   // the right decision when we do do the check in the case where the produced
@@ -174,7 +174,7 @@ TEST_P(CssImageRewriterTest, CacheExtendsWhenCssGrows) {
                              kNoOtherContexts | kNoClearFetcher);
 }
 
-TEST_P(CssImageRewriterTest, CacheExtendsRepeatedTopLevel) {
+TEST_F(CssImageRewriterTest, CacheExtendsRepeatedTopLevel) {
   // Test to make sure that if we cache extend inside CSS we can do it
   // for the same image in HTML at the same time.
   const char kImg[] = "img.png";
@@ -205,7 +205,7 @@ TEST_P(CssImageRewriterTest, CacheExtendsRepeatedTopLevel) {
   EXPECT_EQ(StringPrintf(kCssTemplate, kExtendedImg.c_str()), css_out);
 }
 
-TEST_P(CssImageRewriterTest, CacheExtendsImages) {
+TEST_F(CssImageRewriterTest, CacheExtendsImages) {
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kImageData, 100);
   SetResponseWithDefaultHeaders("bar.png", kContentTypePng, kImageData, 100);
   SetResponseWithDefaultHeaders("baz.png", kContentTypePng, kImageData, 100);
@@ -258,7 +258,7 @@ TEST_P(CssImageRewriterTest, CacheExtendsImages) {
 }
 
 // See TrimsImageUrls below: change one, change them both!
-TEST_P(CssImageRewriterTest, TrimsImageUrls) {
+TEST_F(CssImageRewriterTest, TrimsImageUrls) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
   resource_manager()->ComputeSignature(options());
@@ -286,7 +286,7 @@ class CssImageRewriterTestUrlNamer : public CssImageRewriterTest {
 };
 
 // See TrimsImageUrls above: change one, change them both!
-TEST_P(CssImageRewriterTestUrlNamer, TrimsImageUrls) {
+TEST_F(CssImageRewriterTestUrlNamer, TrimsImageUrls) {
   // Check that we really are using TestUrlNamer and not UrlNamer.
   EXPECT_NE(Encode(kTestDomain, "ce", "0", "foo.png", "png"),
             EncodeNormal(kTestDomain, "ce", "0", "foo.png", "png"));
@@ -311,7 +311,7 @@ TEST_P(CssImageRewriterTestUrlNamer, TrimsImageUrls) {
                               kNoOtherContexts | kNoClearFetcher);
 }
 
-TEST_P(CssImageRewriterTest, InlinePaths) {
+TEST_F(CssImageRewriterTest, InlinePaths) {
   // Make sure we properly handle CSS relative references when we have the same
   // inline CSS in different places. This is also a regression test for a bug
   // during development of async + inline case which caused us to do
@@ -348,7 +348,7 @@ TEST_P(CssImageRewriterTest, InlinePaths) {
                            kExpectChange | kExpectSuccess);
 }
 
-TEST_P(CssImageRewriterTest, RewriteCached) {
+TEST_F(CssImageRewriterTest, RewriteCached) {
   // Make sure we produce the same output from cache.
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
@@ -384,7 +384,7 @@ TEST_P(CssImageRewriterTest, RewriteCached) {
   EXPECT_EQ(0, total_bytes_saved_->Get());
 }
 
-TEST_P(CssImageRewriterTest, CacheInlineParseFailures) {
+TEST_F(CssImageRewriterTest, CacheInlineParseFailures) {
   const char kInvalidCss[] = " div{";
 
   ValidateRewriteInlineCss("inline-invalid", kInvalidCss, kInvalidCss,
@@ -398,7 +398,7 @@ TEST_P(CssImageRewriterTest, CacheInlineParseFailures) {
   EXPECT_EQ(0, num_parse_failures_->Get());
 }
 
-TEST_P(CssImageRewriterTest, RecompressImages) {
+TEST_F(CssImageRewriterTest, RecompressImages) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRecompressImages);
   resource_manager()->ComputeSignature(options());
@@ -419,7 +419,7 @@ TEST_P(CssImageRewriterTest, RecompressImages) {
                               kNoOtherContexts | kNoClearFetcher);
 }
 
-TEST_P(CssImageRewriterTest, InlineImages) {
+TEST_F(CssImageRewriterTest, InlineImages) {
   // Make sure we can inline images in any kind of CSS.
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kInlineImages);
@@ -455,7 +455,7 @@ TEST_P(CssImageRewriterTest, InlineImages) {
                   kNoClearFetcher | kNoStatCheck);
 }
 
-TEST_P(CssImageRewriterTest, InlineImageOnlyInOutlineCss) {
+TEST_F(CssImageRewriterTest, InlineImageOnlyInOutlineCss) {
   // Make sure that we use image_inline_max_bytes to determine image inlining in
   // inline css (css that occurs in an html file), but that we use
   // css_image_inline_max_bytes for standalone css.
@@ -500,7 +500,7 @@ TEST_P(CssImageRewriterTest, InlineImageOnlyInOutlineCss) {
       kExpectChange | kExpectSuccess | kNoClearFetcher | kNoStatCheck);
 }
 
-TEST_P(CssImageRewriterTest, UseCorrectBaseUrl) {
+TEST_F(CssImageRewriterTest, UseCorrectBaseUrl) {
   // Initialize resources.
   static const char css_url[] = "http://www.example.com/bar/style.css";
   static const char css_before[] = "body { background: url(image.png); }";
@@ -538,7 +538,7 @@ TEST_P(CssImageRewriterTest, UseCorrectBaseUrl) {
   EXPECT_EQ(css_after, actual_css_after);
 }
 
-TEST_P(CssImageRewriterTest, CacheExtendsImagesInStyleAttributes) {
+TEST_F(CssImageRewriterTest, CacheExtendsImagesInStyleAttributes) {
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kImageData, 100);
   SetResponseWithDefaultHeaders("bar.png", kContentTypePng, kImageData, 100);
   SetResponseWithDefaultHeaders("baz.png", kContentTypePng, kImageData, 100);
@@ -594,9 +594,7 @@ TEST_P(CssImageRewriterTest, CacheExtendsImagesInStyleAttributes) {
                    "\"/>");
 }
 
-class CssRecompressImagesInStyleAttributes
-    : public ResourceManagerTestBase,
-      public ::testing::WithParamInterface<bool> {
+class CssRecompressImagesInStyleAttributes : public ResourceManagerTestBase {
  protected:
   CssRecompressImagesInStyleAttributes()
       : div_before_(
@@ -623,41 +621,29 @@ class CssRecompressImagesInStyleAttributes
 };
 
 // No rewriting if neither option is enabled.
-TEST_P(CssRecompressImagesInStyleAttributes, NeitherEnabled) {
+TEST_F(CssRecompressImagesInStyleAttributes, NeitherEnabled) {
   ValidateNoChanges("options_disabled", div_before_);
 }
 
 // No rewriting if only 'style' is enabled.
-TEST_P(CssRecompressImagesInStyleAttributes, OnlyStyleEnabled) {
+TEST_F(CssRecompressImagesInStyleAttributes, OnlyStyleEnabled) {
   AddFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
   ValidateNoChanges("recompress_images_disabled", div_before_);
 }
 
 // No rewriting if only 'recompress' is enabled.
-TEST_P(CssRecompressImagesInStyleAttributes, OnlyRecompressEnabled) {
+TEST_F(CssRecompressImagesInStyleAttributes, OnlyRecompressEnabled) {
   AddFilter(RewriteOptions::kRecompressImages);
   ValidateNoChanges("recompress_images_disabled", div_before_);
 }
 
 // Rewrite iff both options are enabled.
-TEST_P(CssRecompressImagesInStyleAttributes, RecompressAndStyleEnabled) {
+TEST_F(CssRecompressImagesInStyleAttributes, RecompressAndStyleEnabled) {
   options()->EnableFilter(RewriteOptions::kRecompressImages);
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
   rewrite_driver()->AddFilters();
   ValidateExpected("options_enabled", div_before_, div_after_);
 }
-
-INSTANTIATE_TEST_CASE_P(CssImageRewriterTestInstance,
-                        CssImageRewriterTest,
-                        ::testing::Bool());
-
-INSTANTIATE_TEST_CASE_P(CssImageRewriterTestUrlNamerInstance,
-                        CssImageRewriterTestUrlNamer,
-                        ::testing::Bool());
-
-INSTANTIATE_TEST_CASE_P(CssRecompressImagesInStyleAttributesInstance,
-                        CssRecompressImagesInStyleAttributes,
-                        ::testing::Bool());
 
 }  // namespace
 

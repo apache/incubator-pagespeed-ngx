@@ -299,7 +299,7 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
   GoogleString kFlattenedOneLevelDownContents1;
 };
 
-TEST_P(CssFlattenImportsTest, FlattenInlineCss) {
+TEST_F(CssFlattenImportsTest, FlattenInlineCss) {
   const char kFilename[] = "simple.css";
   const char css_in[] =
       "@import url(http://test.com/simple.css) ;";
@@ -320,7 +320,7 @@ TEST_P(CssFlattenImportsTest, FlattenInlineCss) {
             total_bytes_saved_->Get());
 }
 
-TEST_P(CssFlattenImportsTest, DontFlattenAttributeCss) {
+TEST_F(CssFlattenImportsTest, DontFlattenAttributeCss) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
   resource_manager()->ComputeSignature(options());
@@ -342,7 +342,7 @@ TEST_P(CssFlattenImportsTest, DontFlattenAttributeCss) {
                     "<div style='@import url(http://test.com/simple.css)'/>");
 }
 
-TEST_P(CssFlattenImportsTest, FlattenNoop) {
+TEST_F(CssFlattenImportsTest, FlattenNoop) {
   const char contents[] =
       ".background_red{background-color:red}"
       ".foreground_yellow{color:#ff0}";
@@ -353,7 +353,7 @@ TEST_P(CssFlattenImportsTest, FlattenNoop) {
                              kNoOtherContexts | kNoClearFetcher);
 }
 
-TEST_P(CssFlattenImportsTest, Flatten404) {
+TEST_F(CssFlattenImportsTest, Flatten404) {
   const char css_in[] =
       "@import url(http://test.com/404.css) ;";
 
@@ -363,7 +363,7 @@ TEST_P(CssFlattenImportsTest, Flatten404) {
                              kNoOtherContexts | kNoClearFetcher);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenInvalidCSS) {
+TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
   const char kInvalidMediaCss[] = "@media }}";
   ValidateRewriteExternalCss("flatten_invalid_css_media",
                              kInvalidMediaCss, kInvalidMediaCss,
@@ -394,13 +394,13 @@ TEST_P(CssFlattenImportsTest, FlattenInvalidCSS) {
   EXPECT_EQ(0, num_parse_failures_->Get());
 }
 
-TEST_P(CssFlattenImportsTest, FlattenEmptyMedia) {
+TEST_F(CssFlattenImportsTest, FlattenEmptyMedia) {
   ValidateRewriteExternalCss("flatten_empty_media",
                              "@media {}", "",
                              kExpectChange | kExpectSuccess);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenSimple) {
+TEST_F(CssFlattenImportsTest, FlattenSimple) {
   const char kFilename[] = "simple.css";
   const char css_in[] =
       "@import url(http://test.com/simple.css) ;";
@@ -419,7 +419,7 @@ TEST_P(CssFlattenImportsTest, FlattenSimple) {
                              kExpectChange | kExpectSuccess | kNoOtherContexts);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenEmpty) {
+TEST_F(CssFlattenImportsTest, FlattenEmpty) {
   const char kFilename[] = "empty.css";
   const char css_in[] = "@import url(http://test.com/empty.css) ;";
   const char css_out[] = "";
@@ -435,7 +435,7 @@ TEST_P(CssFlattenImportsTest, FlattenEmpty) {
                              kExpectChange | kExpectSuccess | kNoOtherContexts);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenSimpleRewriteOnTheFly) {
+TEST_F(CssFlattenImportsTest, FlattenSimpleRewriteOnTheFly) {
   // import.css @import's simple.css
   // simple.css contains some simple CSS
   // Fetch the rewritten filename of import.css and we should get the
@@ -477,7 +477,7 @@ TEST_P(CssFlattenImportsTest, FlattenSimpleRewriteOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_deletes());
 }
 
-TEST_P(CssFlattenImportsTest, FlattenNested) {
+TEST_F(CssFlattenImportsTest, FlattenNested) {
   const GoogleString css_in = StrCat("@import url(http://test.com/",
                                      kTopCssFile, ") ;");
 
@@ -487,7 +487,7 @@ TEST_P(CssFlattenImportsTest, FlattenNested) {
                              kNoOtherContexts | kNoClearFetcher);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenFromCacheDirectly) {
+TEST_F(CssFlattenImportsTest, FlattenFromCacheDirectly) {
   // Prime the pumps by loading all the CSS files into the cache.
   // Verifying that the resources fetched below _are_ cached is non-trivial
   // because they are stored against their partition key and determining that
@@ -548,7 +548,7 @@ TEST_P(CssFlattenImportsTest, FlattenFromCacheDirectly) {
   EXPECT_EQ(2, lru_cache()->num_hits());
 }
 
-TEST_P(CssFlattenImportsTest, FlattenFromCacheIndirectly) {
+TEST_F(CssFlattenImportsTest, FlattenFromCacheIndirectly) {
   // Prime the pumps by loading all the CSS files into the cache.
   // Verifying that the resources fetched below _are_ cached is non-trivial
   // because they are stored against their partition key and determining that
@@ -601,7 +601,7 @@ TEST_P(CssFlattenImportsTest, FlattenFromCacheIndirectly) {
   EXPECT_LE(2, lru_cache()->num_hits());
 }
 
-TEST_P(CssFlattenImportsTest, CacheExtendsAfterFlattening) {
+TEST_F(CssFlattenImportsTest, CacheExtendsAfterFlattening) {
   // Check that we flatten -then- cache extend the PNG in the resulting CSS.
   const char kCssFilename[] = "image.css";
   const GoogleString css_before =
@@ -631,18 +631,18 @@ TEST_P(CssFlattenImportsTest, CacheExtendsAfterFlattening) {
                              kNoOtherContexts | kNoClearFetcher);
 }
 
-TEST_P(CssFlattenImportsTest, CacheExtendsAfterFlatteningNestedAbsoluteUrls) {
+TEST_F(CssFlattenImportsTest, CacheExtendsAfterFlatteningNestedAbsoluteUrls) {
   TestCacheExtendsAfterFlatteningNested(false);
 }
 
-TEST_P(CssFlattenImportsTest, CacheExtendsAfterFlatteningNestedRelativeUrls) {
+TEST_F(CssFlattenImportsTest, CacheExtendsAfterFlatteningNestedRelativeUrls) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
   resource_manager()->ComputeSignature(options());
   TestCacheExtendsAfterFlatteningNested(true);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenRecursion) {
+TEST_F(CssFlattenImportsTest, FlattenRecursion) {
   const char kFilename[] = "recursive.css";
   const GoogleString css_in =
       StrCat("@import url(http://test.com/", kFilename, ") ;");
@@ -655,7 +655,7 @@ TEST_P(CssFlattenImportsTest, FlattenRecursion) {
                              kNoOtherContexts | kNoClearFetcher);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenSimpleMedia) {
+TEST_F(CssFlattenImportsTest, FlattenSimpleMedia) {
   const char kFilename[] = "simple.css";
   const GoogleString css_in =
       StrCat("@import url(http://test.com/", kFilename, ") screen ;");
@@ -677,7 +677,7 @@ TEST_P(CssFlattenImportsTest, FlattenSimpleMedia) {
                              kExpectChange | kExpectSuccess | kNoOtherContexts);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenNestedMedia) {
+TEST_F(CssFlattenImportsTest, FlattenNestedMedia) {
   const char kStylesFilename[] = "styles.css";
   const char kStylesCss[] =
       ".background_red{background-color:red}"
@@ -746,7 +746,7 @@ TEST_P(CssFlattenImportsTest, FlattenNestedMedia) {
                              kExpectChange | kExpectSuccess | kNoOtherContexts);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
+TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
   const char css_screen[] =
       "@media screen{"
       ".background_red{background-color:red}"
@@ -865,17 +865,17 @@ TEST_P(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
   EXPECT_EQ(7, lru_cache()->num_hits());
 }
 
-TEST_P(CssFlattenImportsTest, FlattenNestedCharsetsOk) {
+TEST_F(CssFlattenImportsTest, FlattenNestedCharsetsOk) {
   // HTML = utf-8 (1st argument), CSS = utf-8 (always).
   TestFlattenWithHtmlCharset("utf-8", "", "", true);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenNestedCharsetsMismatch) {
+TEST_F(CssFlattenImportsTest, FlattenNestedCharsetsMismatch) {
   // HTML = iso-8859-1 (default), CSS = utf-8 (always).
   TestFlattenWithHtmlCharset("", "", "", false);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenFailsIfLinkHasWrongCharset) {
+TEST_F(CssFlattenImportsTest, FlattenFailsIfLinkHasWrongCharset) {
   const char kStylesFilename[] = "styles.css";
   const char kStylesCss[] =
       ".background_red{background-color:red}"
@@ -893,35 +893,30 @@ TEST_P(CssFlattenImportsTest, FlattenFailsIfLinkHasWrongCharset) {
                              kLinkCharsetIsUTF8);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenRespectsMetaTagCharset) {
+TEST_F(CssFlattenImportsTest, FlattenRespectsMetaTagCharset) {
   // HTML = utf-8 (2nd argument), CSS = utf-8 (always).
   TestFlattenWithHtmlCharset("", "utf-8", "", true);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenRespectsHttpEquivCharset) {
+TEST_F(CssFlattenImportsTest, FlattenRespectsHttpEquivCharset) {
   // HTML = utf-8 (3rd argument), CSS = utf-8 (always).
   TestFlattenWithHtmlCharset("", "", "utf-8", true);
 }
 
-TEST_P(CssFlattenImportsTest, FlattenRespectsHttpEquivCharsetUnquoted) {
+TEST_F(CssFlattenImportsTest, FlattenRespectsHttpEquivCharsetUnquoted) {
   // HTML = iso-8859-1 (3rd argument), CSS = utf-8 (always).
   TestFlattenWithHtmlCharset("", "", "iso-8859-1", false);
 }
 
-TEST_P(CssFlattenImportsTest, HeaderTakesPrecendenceOverMetaTag1) {
+TEST_F(CssFlattenImportsTest, HeaderTakesPrecendenceOverMetaTag1) {
   // HTML = utf-8 (1st argument), CSS = utf-8 (always).
   TestFlattenWithHtmlCharset("utf-8", "iso-8859-1", "", true);
 }
 
-TEST_P(CssFlattenImportsTest, HeaderTakesPrecendenceOverMetaTag2) {
+TEST_F(CssFlattenImportsTest, HeaderTakesPrecendenceOverMetaTag2) {
   // HTML = iso-8859-1 (1st argument), CSS = utf-8 (always).
   TestFlattenWithHtmlCharset("iso-8859-1", "utf-8", "", false);
 }
-
-// We test with asynchronous_rewrites() == GetParam() as both true and false.
-INSTANTIATE_TEST_CASE_P(CssFlattenImportsTestInstance,
-                        CssFlattenImportsTest,
-                        ::testing::Bool());
 
 }  // namespace
 
