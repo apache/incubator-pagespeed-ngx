@@ -38,6 +38,12 @@ vars = {
   "apache_httpd_src": "http://svn.apache.org/repos/asf/httpd/httpd/tags/2.2.15",
   "apache_httpd_revision": "@head",
 
+  # TOD(morlovich) We can't actually run with 2.4.1; but 2.4.2 isn't tagged yet
+  # and the headers are certainly good enough.
+  "apache_httpd24_src":
+    "http://svn.apache.org/repos/asf/httpd/httpd/tags/2.4.1",
+  "apache_httpd24_revision": "@head",
+
   "opencv_src": "http://code.opencv.org/svn/opencv/tags/2.3.1",
   "opencv_revision": "@head",
 
@@ -104,6 +110,12 @@ deps = {
 
   "src/third_party/httpd/src/os":
     Var("apache_httpd_src") + "/os" + Var("apache_httpd_revision"),
+
+  "src/third_party/httpd24/src/include":
+    Var("apache_httpd24_src") + "/include" + Var("apache_httpd24_revision"),
+
+  "src/third_party/httpd24/src/os":
+    Var("apache_httpd24_src") + "/os" + Var("apache_httpd24_revision"),
 
   "src/third_party/chromium/src/base": From(Var("libpagespeed_deps_root")),
 
