@@ -698,7 +698,7 @@ void RewriteDriver::AddPreRenderFilters() {
     // filter-chain as it gets run immediately after every call to
     // ParseText, possibly inducing the system to trigger a Flush
     // based on the content it sees.
-    set_event_listener(new FlushHtmlFilter(this));
+    add_event_listener(new FlushHtmlFilter(this));
   }
 
   if (rewrite_options->Enabled(RewriteOptions::kAddHead) ||

@@ -68,6 +68,7 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
 HtmlParse::~HtmlParse() {
   delete lexer_;
   STLDeleteElements(&queue_);
+  STLDeleteElements(&event_listeners_);
   ClearElements();
 }
 
@@ -119,10 +120,12 @@ void HtmlParse::AddEvent(HtmlEvent* event) {
     leaf->set_iter(Last());
     message_handler_->Check(IsRewritable(leaf), "!IsRewritable(leaf)");
   }
-  HtmlFilter* listener = event_listener_.get();
-  if (listener != NULL) {
+  if (!event_listeners_.empty()) {
     running_filters_ = true;
-    event->Run(listener);
+    for (FilterVector::iterator it = event_listeners_.begin();
+        it != event_listeners_.end(); ++it) {
+      event->Run(*it);
+    }
     running_filters_ = false;
   }
 }
@@ -376,9 +379,9 @@ void HtmlParse::Flush() {
     return;
   }
 
-  HtmlFilter* listener = event_listener_.get();
-  if (listener != NULL) {
-    listener->Flush();
+  for (FilterVector::iterator it = event_listeners_.begin();
+      it != event_listeners_.end(); ++it) {
+    (*it)->Flush();
   }
 
   DCHECK(url_valid_) << "Invalid to call FinishParse with invalid url";
@@ -938,8 +941,8 @@ HtmlName HtmlParse::MakeName(const StringPiece& str_piece) {
   return HtmlName(keyword, str);
 }
 
-void HtmlParse::set_event_listener(HtmlFilter* listener) {
-  event_listener_.reset(listener);
+void HtmlParse::add_event_listener(HtmlFilter* listener) {
+  event_listeners_.push_back(listener);
 }
 
 }  // namespace net_instaweb

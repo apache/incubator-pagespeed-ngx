@@ -882,9 +882,15 @@ class HandlerCalledTest : public HtmlParseTest {
  protected:
   HandlerCalledTest() {
     html_parse_.AddFilter(&handler_called_filter_);
+    first_event_listener_ = new HandlerCalledFilter();
+    second_event_listener_ = new HandlerCalledFilter();
+    html_parse_.add_event_listener(first_event_listener_);
+    html_parse_.add_event_listener(second_event_listener_);
   }
 
   HandlerCalledFilter handler_called_filter_;
+  HandlerCalledFilter* first_event_listener_;
+  HandlerCalledFilter* second_event_listener_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HandlerCalledTest);
@@ -895,12 +901,20 @@ TEST_F(HandlerCalledTest, StartEndDocumentCalled) {
   Parse("start_end_document_called", "");
   EXPECT_TRUE(handler_called_filter_.called_start_document_.Test());
   EXPECT_TRUE(handler_called_filter_.called_end_document_.Test());
+  EXPECT_TRUE(first_event_listener_->called_start_document_.Test());
+  EXPECT_TRUE(first_event_listener_->called_end_document_.Test());
+  EXPECT_TRUE(second_event_listener_->called_start_document_.Test());
+  EXPECT_TRUE(second_event_listener_->called_end_document_.Test());
 }
 
 TEST_F(HandlerCalledTest, StartEndElementCalled) {
   Parse("start_end_element_called", "<p>...</p>");
   EXPECT_TRUE(handler_called_filter_.called_start_element_.Test());
   EXPECT_TRUE(handler_called_filter_.called_end_element_.Test());
+  EXPECT_TRUE(first_event_listener_->called_start_element_.Test());
+  EXPECT_TRUE(first_event_listener_->called_end_element_.Test());
+  EXPECT_TRUE(second_event_listener_->called_start_element_.Test());
+  EXPECT_TRUE(second_event_listener_->called_end_element_.Test());
 }
 
 TEST_F(HandlerCalledTest, CdataCalled) {
@@ -908,11 +922,17 @@ TEST_F(HandlerCalledTest, CdataCalled) {
   // Looks like a directive, but isn't.
   EXPECT_FALSE(handler_called_filter_.called_directive_.Test());
   EXPECT_TRUE(handler_called_filter_.called_cdata_.Test());
+  EXPECT_FALSE(first_event_listener_->called_directive_.Test());
+  EXPECT_TRUE(first_event_listener_->called_cdata_.Test());
+  EXPECT_FALSE(second_event_listener_->called_directive_.Test());
+  EXPECT_TRUE(second_event_listener_->called_cdata_.Test());
 }
 
 TEST_F(HandlerCalledTest, CommentCalled) {
   Parse("comment_called", "<!--...-->");
   EXPECT_TRUE(handler_called_filter_.called_comment_.Test());
+  EXPECT_TRUE(first_event_listener_->called_comment_.Test());
+  EXPECT_TRUE(second_event_listener_->called_comment_.Test());
 }
 
 TEST_F(HandlerCalledTest, IEDirectiveCalled1) {
@@ -920,6 +940,10 @@ TEST_F(HandlerCalledTest, IEDirectiveCalled1) {
   // Looks like a comment, but isn't.
   EXPECT_FALSE(handler_called_filter_.called_comment_.Test());
   EXPECT_TRUE(handler_called_filter_.called_ie_directive_.Test());
+  EXPECT_FALSE(first_event_listener_->called_comment_.Test());
+  EXPECT_TRUE(first_event_listener_->called_ie_directive_.Test());
+  EXPECT_FALSE(second_event_listener_->called_comment_.Test());
+  EXPECT_TRUE(second_event_listener_->called_ie_directive_.Test());
 }
 
 TEST_F(HandlerCalledTest, IEDirectiveCalled2) {
@@ -928,12 +952,20 @@ TEST_F(HandlerCalledTest, IEDirectiveCalled2) {
   Parse("ie_directive_called", "<!--[if lte IE 8]>...<![endif]-->");
   EXPECT_FALSE(handler_called_filter_.called_comment_.Test());
   EXPECT_TRUE(handler_called_filter_.called_ie_directive_.Test());
+  EXPECT_FALSE(first_event_listener_->called_comment_.Test());
+  EXPECT_TRUE(first_event_listener_->called_ie_directive_.Test());
+  EXPECT_FALSE(second_event_listener_->called_comment_.Test());
+  EXPECT_TRUE(second_event_listener_->called_ie_directive_.Test());
 }
 
 TEST_F(HandlerCalledTest, IEDirectiveCalled3) {
   Parse("ie_directive_called", "<!--[if false]>...<![endif]-->");
   EXPECT_FALSE(handler_called_filter_.called_comment_.Test());
   EXPECT_TRUE(handler_called_filter_.called_ie_directive_.Test());
+  EXPECT_FALSE(first_event_listener_->called_comment_.Test());
+  EXPECT_TRUE(first_event_listener_->called_ie_directive_.Test());
+  EXPECT_FALSE(second_event_listener_->called_comment_.Test());
+  EXPECT_TRUE(second_event_listener_->called_ie_directive_.Test());
 }
 
 // Downlevel-revealed commments normally look like <![if foo]>...<![endif]>.
@@ -946,11 +978,19 @@ TEST_F(HandlerCalledTest, IEDirectiveCalledRevealedOpen) {
   Parse("ie_directive_called", "<!--[if !IE]><!-->");
   EXPECT_FALSE(handler_called_filter_.called_comment_.Test());
   EXPECT_TRUE(handler_called_filter_.called_ie_directive_.Test());
+  EXPECT_FALSE(first_event_listener_->called_comment_.Test());
+  EXPECT_TRUE(first_event_listener_->called_ie_directive_.Test());
+  EXPECT_FALSE(second_event_listener_->called_comment_.Test());
+  EXPECT_TRUE(second_event_listener_->called_ie_directive_.Test());
 }
 TEST_F(HandlerCalledTest, IEDirectiveCalledRevealedClose) {
   Parse("ie_directive_called", "<!--<![endif]-->");
   EXPECT_FALSE(handler_called_filter_.called_comment_.Test());
   EXPECT_TRUE(handler_called_filter_.called_ie_directive_.Test());
+  EXPECT_FALSE(first_event_listener_->called_comment_.Test());
+  EXPECT_TRUE(first_event_listener_->called_ie_directive_.Test());
+  EXPECT_FALSE(second_event_listener_->called_comment_.Test());
+  EXPECT_TRUE(second_event_listener_->called_ie_directive_.Test());
 }
 
 // Unit tests for event-list manipulation.  In these tests, we do not parse

@@ -25,7 +25,6 @@
 #include <set>
 #include <vector>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -349,9 +348,9 @@ class HtmlParse {
   void set_timer(Timer* timer) { timer_ = timer; }
   void set_log_rewrite_timing(bool x) { log_rewrite_timing_ = x; }
 
-  // Sets up a filter to be called during parsing as new events are added.
+  // Adds a filter to be called during parsing as new events are added.
   // Takes ownership of the HtmlFilter passed in.
-  void set_event_listener(HtmlFilter* listener);
+  void add_event_listener(HtmlFilter* listener);
 
  protected:
   typedef std::vector<HtmlFilter*> FilterVector;
@@ -410,7 +409,7 @@ class HtmlParse {
     return string_table_.string_bytes_allocated();
   }
 
-  scoped_ptr<HtmlFilter> event_listener_;
+  FilterVector event_listeners_;
   SymbolTableSensitive string_table_;
   FilterVector filters_;
   HtmlLexer* lexer_;
