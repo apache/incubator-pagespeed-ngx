@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Google Inc.
+ * Copyright 2012 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,24 +17,27 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //
 //
+// TODO(jmarantz): As it stands now the use of WgetUrlFetcher makes
+// any speed-tests with resource rewriting meaningless, as it's not
+// really async.  This test still makes sense for pure DOM-rewriting
+// filters.  Later we can switch to the Serf fetcher and a real async
+// flow.
+//
+// with --rewrite_level=PassThrough --rewriters=trim_urls I get:
+//
 // CPU: Intel Westmere with HyperThreading (3 cores) dL1:32KB dL2:256KB
 // Benchmark                               Time(ns)    CPU(ns) Iterations
 // ----------------------------------------------------------------------
-// BM_ParseAndSerializeNewParserEachIter     433780     433690       1591
-// BM_ParseAndSerializeReuseParser           433498     436118       1628
-// BM_ParseAndSerializeReuseParserX50      22954185   22900000        100
-
-#include "net/instaweb/htmlparse/public/html_parse.h"
+// BM_ParseAndSerializeReuseParserX50   40979557   40900000        100
 
 #include <algorithm>
 #include <cstdlib>  // for exit
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/automatic/public/static_rewriter.h"
 #include "net/instaweb/util/public/benchmark.h"
 #include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
@@ -48,8 +51,8 @@ namespace {
 // never free this string but that's not considered a memory leak
 // in Google because it's reachable from a static.
 //
-// TODO(jmarantz): this function was duplicated to
-// net/instaweb/automatic/rewriter_speed_test.cc and should possibly
+// TODO(jmarantz): this function is duplicated from
+// net/instaweb/htmlparse/html_parse_speed_test.cc and should possibly
 // be factored out.
 GoogleString* sHtmlText = NULL;
 const StringPiece GetHtmlText() {
@@ -86,51 +89,6 @@ const StringPiece GetHtmlText() {
   return *sHtmlText;
 }
 
-static void BM_ParseAndSerializeNewParserEachIter(int iters) {
-  StopBenchmarkTiming();
-  StringPiece text = GetHtmlText();
-  if (text.empty()) {
-    return;
-  }
-  NullWriter writer;
-  NullMessageHandler handler;
-
-  StartBenchmarkTiming();
-  for (int i = 0; i < iters; ++i) {
-    HtmlParse parser(&handler);
-    HtmlWriterFilter writer_filter(&parser);
-    parser.AddFilter(&writer_filter);
-    writer_filter.set_writer(&writer);
-    parser.StartParse("http://example.com/benchmark");
-    parser.ParseText(text);
-    parser.FinishParse();
-  }
-}
-BENCHMARK(BM_ParseAndSerializeNewParserEachIter);
-
-static void BM_ParseAndSerializeReuseParser(int iters) {
-  StopBenchmarkTiming();
-  StringPiece text = GetHtmlText();
-  if (text.empty()) {
-    return;
-  }
-
-  NullWriter writer;
-  NullMessageHandler handler;
-  HtmlParse parser(&handler);
-  HtmlWriterFilter writer_filter(&parser);
-  parser.AddFilter(&writer_filter);
-  writer_filter.set_writer(&writer);
-
-  StartBenchmarkTiming();
-  for (int i = 0; i < iters; ++i) {
-    parser.StartParse("http://example.com/benchmark");
-    parser.ParseText(text);
-    parser.FinishParse();
-  }
-}
-BENCHMARK(BM_ParseAndSerializeReuseParser);
-
 static void BM_ParseAndSerializeReuseParserX50(int iters) {
   StopBenchmarkTiming();
   StringPiece orig = GetHtmlText();
@@ -144,18 +102,12 @@ static void BM_ParseAndSerializeReuseParserX50(int iters) {
     StrAppend(&text, orig);
   }
 
-  NullWriter writer;
-  NullMessageHandler handler;
-  HtmlParse parser(&handler);
-  HtmlWriterFilter writer_filter(&parser);
-  parser.AddFilter(&writer_filter);
-  writer_filter.set_writer(&writer);
-
+  StaticRewriter rewriter;
   StartBenchmarkTiming();
   for (int i = 0; i < iters; ++i) {
-    parser.StartParse("http://example.com/benchmark");
-    parser.ParseText(text);
-    parser.FinishParse();
+    NullWriter writer;
+    rewriter.ParseText("http://example.com/benchmark", "benchmark", text,
+                       "/tmp", &writer);
   }
 }
 BENCHMARK(BM_ParseAndSerializeReuseParserX50);

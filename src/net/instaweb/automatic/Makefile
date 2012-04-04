@@ -126,6 +126,7 @@ LIBS = $(addprefix $(MOD_PAGESPEED_ROOT)/xcodebuild/$(BUILDTYPE)/,$(notdir $(BAS
 BINDIR = /Developer/usr/bin
 CXX = $(BINDIR)/gcc-4.2 -arch i386 -fvisibility=hidden
 SYSLIBS = -Wl,-search_paths_first -framework AppKit -lpthread -lstdc++
+TESTBENCH_LIB = $(MOD_PAGESPEED_ROOT)/out/$(BUILDTYPE)/obj.target/libre2_bench_util.a
 
 build_libraries:
 	cd $(MOD_PAGESPEED_ROOT)/build && xcodebuild -project all.xcodeproj \
@@ -148,6 +149,7 @@ INCLUDE_ARCH = arch/linux/x64
 LIBS = $(addprefix $(MOD_PAGESPEED_ROOT)/out/$(BUILDTYPE)/obj.target/, $(BASE_LIBS))
 SYSLIBS = -lpthread -lrt
 CXX = /usr/bin/g++
+TESTBENCH_LIB = $(MOD_PAGESPEED_ROOT)/out/$(BUILDTYPE)/obj.target/third_party/re2/libre2_bench_util.a
 
 build_libraries:
 	cd $(MOD_PAGESPEED_ROOT) && make BUILDTYPE=$(BUILDTYPE)
@@ -158,19 +160,27 @@ INCLUDE_PATH = \
     -I$(MOD_PAGESPEED_ROOT) \
     -I$(MOD_PAGESPEED_ROOT)/third_party/chromium/src \
     -I$(MOD_PAGESPEED_ROOT)/third_party/gflags/gen/$(INCLUDE_ARCH)/include
-OBJS          = $(OUTPUT_DIR)/static_rewriter.o \
+OBJS          = $(OUTPUT_DIR)/static_rewriter_main.o \
+		$(OUTPUT_DIR)/static_rewriter.o \
+		$(OUTPUT_DIR)/pagespeed_automatic.a
+SPEED_TEST_OBJS = $(TESTBENCH_LIB) \
+		$(OUTPUT_DIR)/rewriter_speed_test.o \
+		$(OUTPUT_DIR)/static_rewriter.o \
 		$(OUTPUT_DIR)/pagespeed_automatic.a
 EXE           = $(OUTPUT_DIR)/static_rewriter
+SPEED_TEST    = $(OUTPUT_DIR)/rewriter_speed_test
 EXAMPLE_ROOT  = $(MOD_PAGESPEED_ROOT)/install/mod_pagespeed_example
 EXAMPLES      = $(OUTPUT_DIR)/collapse_whitespace.html
 
 exe : $(EXE)
+speed_test : $(SPEED_TEST)
 
 # Specifying 'build_libraries' as a dependency but recursively making
 # 'static_rewriter' allows 'make -j' to work.  This is needed because
 # we don't articulate all the dependencies required to build the libraries.
 all : build_libraries
 	$(MAKE) examples
+	$(MAKE) $(SPEED_TEST)
 
 # Flags used to compile static_rewriter.cc.  Note that these are not
 # the flags used to compile pagespeed_automatic, which is compiled
@@ -182,7 +192,7 @@ $(OUTPUT_DIR)/pagespeed_automatic.a : $(LIBS)
 	@./merge_libraries.sh $@ $(LIBS)
 
 
-$(OUTPUT_DIR)/static_rewriter.o : static_rewriter.cc
+$(OUTPUT_DIR)/%.o : %.cc
 	$(CXX) $(INCLUDE_PATH) $(CXXFLAGS) $(MOD_PAGESPEED_INCLUDE) -c $< -o $@
 
 $(EXE) : $(OBJS)
@@ -191,6 +201,9 @@ $(EXE) : $(OBJS)
 $(OUTPUT_DIR)/collapse_whitespace.html : $(EXE) $(EXAMPLE_ROOT)/collapse_whitespace.html
 	$(EXE) --rewriters=collapse_whitespace $(EXAMPLE_ROOT) $(OUTPUT_DIR) \
                 collapse_whitespace.html
+
+$(SPEED_TEST) : $(SPEED_TEST_OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(SYSLIBS)
 
 examples: $(EXAMPLES)
 

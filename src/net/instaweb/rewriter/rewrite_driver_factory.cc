@@ -452,10 +452,6 @@ PropertyCache* RewriteDriverFactory::client_property_cache() {
 }
 
 ResourceManager* RewriteDriverFactory::CreateResourceManager() {
-  CHECK(!filename_prefix_.empty())
-      << "Must specify --filename_prefix or call "
-      << "RewriteDriverFactory::set_filename_prefix.";
-
   ResourceManager* resource_manager = new ResourceManager(this);
   InitResourceManager(resource_manager);
   return resource_manager;

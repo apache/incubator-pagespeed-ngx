@@ -170,8 +170,6 @@ class RewriteDriverFactory {
   PropertyCache* MakePropertyCache(const GoogleString& cache_key_prefix,
                                    CacheInterface* cache) const;
 
-  StringPiece filename_prefix();
-
   // Computes URL fetchers using the based fetcher, and optionally,
   // slurp_directory and slurp_read_only.  These are not thread-safe;
   // they must be called once prior to spawning threads, e.g. via
@@ -278,6 +276,7 @@ class RewriteDriverFactory {
  protected:
   bool FetchersComputed() const;
   void StopCacheWrites();
+  StringPiece filename_prefix();
 
   // Implementors of RewriteDriverFactory must supply default definitions
   // for each of these methods, although they may be overridden via set_

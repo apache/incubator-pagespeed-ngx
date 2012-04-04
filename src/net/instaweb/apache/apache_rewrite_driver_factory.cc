@@ -313,6 +313,10 @@ void ApacheRewriteDriverFactory::ParentOrChildInit() {
 }
 
 void ApacheRewriteDriverFactory::RootInit() {
+  CHECK(!filename_prefix().empty())
+      << "Must specify --filename_prefix or call "
+      << "RewriteDriverFactory::set_filename_prefix.";
+
   ParentOrChildInit();
   for (ApacheResourceManagerSet::iterator p = uninitialized_managers_.begin(),
            e = uninitialized_managers_.end(); p != e; ++p) {
