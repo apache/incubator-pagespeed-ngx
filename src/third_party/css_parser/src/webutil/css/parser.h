@@ -182,6 +182,20 @@ class Parser {
     return unparseable_sections_seen_mask_;
   }
 
+  static const int kMaxErrorsRemembered = 16;
+  struct ErrorInfo {
+    int error_num;
+    int byte_offset;
+    string message;
+  };
+  // A vector of first kNumErrorsRemembered errors seen.
+  const std::vector<ErrorInfo> errors_seen() const { return errors_seen_; }
+
+  // Returns the error number based on the error flag.
+  //   Ex: ErrorNumber(kUtf8Error) == 0,
+  //       ErrorNumber(kDeclarationError) == 1, etc.
+  static int ErrorNumber(uint64 error_flag);
+
   friend class ParserTest;  // we need to unit test private Parse functions.
 
  private:
@@ -517,8 +531,8 @@ class Parser {
 
   static const int kErrorContext;
 
-  // Error type should be one of the static const k*Error's above.
-  void ReportParsingError(uint64 error_type, const StringPiece& message);
+  // error_flag should be one of the static const k*Error's above.
+  void ReportParsingError(uint64 error_flag, const StringPiece& message);
 
   const char *begin_;  // The beginning of the doc (used to report offset).
   const char *in_;     // The current point in the parse.
@@ -536,6 +550,8 @@ class Parser {
   // iff we failed to parse a section of CSS, but saved the text verbatim or
   // in some other way preserved the information from the original document.
   uint64 unparseable_sections_seen_mask_;
+  // Vector of all errors { error_type_number, location, message }.
+  std::vector<ErrorInfo> errors_seen_;
 
   FRIEND_TEST(ParserTest, color);
   FRIEND_TEST(ParserTest, url);

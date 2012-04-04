@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/css_filter.h"
 
+#include <vector>
+
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/doctype.h"
@@ -666,14 +668,14 @@ TimedBool CssFilter::RewriteCssText(Context* context,
     driver_->InfoAt(context, "CSS parsing error in %s",
                     css_base_gurl.spec_c_str());
     num_parse_failures_->Add(1);
-    // TODO(sligocki): Pass in some meaningful error message and pass an
-    // error for each component of the error mask (not just the mask).
-    // NOTE: We cast int64->int32 for the warning code. This should be safe
-    // for now since errors_seen_mask maxes out at 1 << 16, but we should
-    // translate the error bit into a number (1 << 13 -> 13) when we report
-    // each error as it happens.
-    driver_->resource_manager()->usage_data_reporter()->ReportWarning(
-        css_base_gurl, static_cast<int32>(parser.errors_seen_mask()), "");
+
+    // Report all parse errors (Note: Some of these are errors we recovered
+    // from by passing through unparsed sections of text).
+    for (int i = 0, n = parser.errors_seen().size(); i < n; ++i) {
+      Css::Parser::ErrorInfo error = parser.errors_seen()[i];
+      driver_->resource_manager()->usage_data_reporter()->ReportWarning(
+          css_base_gurl, error.error_num, error.message);
+    }
   } else {
     // Edit stylesheet.
     // Any problem with an @import results in the error mask bit kImportError

@@ -187,6 +187,13 @@ class ParserTest : public testing::Test {
 
 
 
+TEST_F(ParserTest, ErrorNumber) {
+  EXPECT_EQ(0, Parser::ErrorNumber(Parser::kUtf8Error));
+  EXPECT_EQ(1, Parser::ErrorNumber(Parser::kDeclarationError));
+  EXPECT_EQ(8, Parser::ErrorNumber(Parser::kRulesetError));
+  EXPECT_EQ(14, Parser::ErrorNumber(Parser::kAtRuleError));
+}
+
 TEST_F(ParserTest, unescape) {
   TestUnescape("\\abcdef aabc", 8, 0xABCDEF);
   TestUnescape("\\A", 2, 0xA);

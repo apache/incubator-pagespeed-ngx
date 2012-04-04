@@ -57,6 +57,7 @@ const uint64 Parser::kNumberError;
 const uint64 Parser::kImportError;
 const uint64 Parser::kAtRuleError;
 
+const int Parser::kMaxErrorsRemembered;
 
 // Using isascii with signed chars is unfortunately undefined.
 static inline bool IsAscii(char c) {
@@ -103,17 +104,34 @@ Parser::Parser(StringPiece s)
       unparseable_sections_seen_mask_(kNoError) {
 }
 
+int Parser::ErrorNumber(uint64 error_flag) {
+  for (int i = 0; i < 64; ++i) {
+    if (error_flag & (1ULL << i)) {
+      return i;
+    }
+  }
+  LOG(DFATAL) << "Invalid error flag.";
+  return -1;
+}
+
 const int Parser::kErrorContext = 20;
-void Parser::ReportParsingError(uint64 error_type,
+void Parser::ReportParsingError(uint64 error_flag,
                                 const StringPiece& message) {
-  errors_seen_mask_ |= error_type;
+  errors_seen_mask_ |= error_flag;
   // Make sure we don't print outside of the range in_ begin_ to end_.
   const char* context_begin = in_ - std::min(static_cast<int64>(kErrorContext),
                                              static_cast<int64>(in_ - begin_));
   const char* context_end = in_ + std::min(static_cast<int64>(kErrorContext),
                                            static_cast<int64>(end_ - in_));
-  VLOG(1) << message << " at " << CurrentOffset() << " \"..."
-          << StringPiece(context_begin, context_end - context_begin) << "...\"";
+  string context(context_begin, context_end - context_begin);
+  string full_message = StringPrintf(
+      "%s at %d \"...%s...\"",
+      message.as_string().c_str(), CurrentOffset(), context.c_str());
+  VLOG(1) << full_message;
+  if (errors_seen_.size() < kMaxErrorsRemembered) {
+    ErrorInfo info = {ErrorNumber(error_flag), CurrentOffset(), full_message};
+    errors_seen_.push_back(info);
+  }
 }
 
 // ****************
