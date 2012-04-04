@@ -57,6 +57,7 @@
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
+#include "net/instaweb/rewriter/public/detect_reflow_js_defer_filter.h"
 #include "net/instaweb/rewriter/public/div_structure_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
@@ -853,6 +854,12 @@ void RewriteDriver::AddPostRenderFilters() {
     // Defers javascript download and execution to post onload.
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
     AddOwnedPostRenderFilter(new JsDeferDisabledFilter(this));
+    if (rewrite_options->Enabled(
+        RewriteOptions::kDetectReflowWithDeferJavascript)) {
+      // Detects reflows that might be caused by deferred execution of
+      // javascript.
+      AddOwnedPostRenderFilter(new DetectReflowJsDeferFilter(this));
+    }
   }
   if (rewrite_options->Enabled(RewriteOptions::kRemoveQuotes)) {
     // Remove extraneous quotes from html attributes.  Does this save

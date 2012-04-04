@@ -34,6 +34,8 @@ extern const char* JS_js_defer;
 extern const char* JS_js_defer_opt;
 extern const char* JS_lazyload_images;
 extern const char* JS_lazyload_images_opt;
+extern const char* JS_detect_reflow;
+extern const char* JS_detect_reflow_opt;
 
 const char StaticJavascriptManager::kGStaticBase[] =
     "http://www.gstatic.com/psa/static/";
@@ -83,6 +85,8 @@ void StaticJavascriptManager::InitializeJsStrings() {
       JS_delay_images_inline_opt;
   opt_js_vector_[static_cast<int>(kLazyloadImagesJs)] =
       JS_lazyload_images_opt;
+  opt_js_vector_[static_cast<int>(kDetectReflowJs)] =
+      JS_detect_reflow_opt;
   // Initialize cleartext javascript strings.
   debug_js_vector_.resize(static_cast<int>(kEndOfModules));
   debug_js_vector_[static_cast<int>(kDeferJs)] = JS_js_defer;
@@ -92,6 +96,8 @@ void StaticJavascriptManager::InitializeJsStrings() {
       JS_delay_images_inline;
   debug_js_vector_[static_cast<int>(kLazyloadImagesJs)] =
       JS_lazyload_images;
+  debug_js_vector_[static_cast<int>(kDetectReflowJs)] =
+      JS_detect_reflow;
 }
 
 const char* StaticJavascriptManager::GetJsSnippet(

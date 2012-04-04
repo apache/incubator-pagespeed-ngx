@@ -56,25 +56,25 @@ void JsDisableFilter::StartDocument() {
 }
 
 void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {
-    // We are not adding this code in js_defer_disabled_filter to avoid
-    // duplication of code for blink and critical line code.
-    bool defer_js_experimental =
-        rewrite_driver_->options()->enable_defer_js_experimental();
-    HtmlElement* script_node =
-        rewrite_driver_->NewElement(element, HtmlName::kScript);
+  // We are not adding this code in js_defer_disabled_filter to avoid
+  // duplication of code for blink and critical line code.
+  bool defer_js_experimental =
+      rewrite_driver_->options()->enable_defer_js_experimental();
+  HtmlElement* script_node =
+      rewrite_driver_->NewElement(element, HtmlName::kScript);
 
-    rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
-                                  "text/javascript");
-    rewrite_driver_->AddAttribute(script_node, HtmlName::kPagespeedNoDefer, "");
-    HtmlNode* script_code =
-        rewrite_driver_->NewCharactersNode(
-            script_node,
-            (defer_js_experimental ?
-             JsDisableFilter::kEnableJsExperimental :
-             JsDisableFilter::kDisableJsExperimental));
-    rewrite_driver_->AppendChild(element, script_node);
-    rewrite_driver_->AppendChild(script_node, script_code);
-    defer_js_experimental_script_written_ = true;
+  rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
+                                "text/javascript");
+  rewrite_driver_->AddAttribute(script_node, HtmlName::kPagespeedNoDefer, "");
+  HtmlNode* script_code =
+      rewrite_driver_->NewCharactersNode(
+          script_node,
+          (defer_js_experimental ?
+           JsDisableFilter::kEnableJsExperimental :
+           JsDisableFilter::kDisableJsExperimental));
+  rewrite_driver_->AppendChild(element, script_node);
+  rewrite_driver_->AppendChild(script_node, script_code);
+  defer_js_experimental_script_written_ = true;
 }
 
 void JsDisableFilter::StartElement(HtmlElement* element) {
@@ -82,11 +82,8 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
     return;
   }
 
-  if (element->keyword() == HtmlName::kHead &&
+  if (element->keyword() == HtmlName::kBody &&
       !defer_js_experimental_script_written_) {
-    InsertJsDeferExperimentalScript(element);
-  } else if (element->keyword() == HtmlName::kBody &&
-             !defer_js_experimental_script_written_) {
     HtmlElement* head_node =
         rewrite_driver_->NewElement(element->parent(), HtmlName::kHead);
     rewrite_driver_->InsertElementBeforeCurrent(head_node);
@@ -129,6 +126,13 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
         onload->DecodedValueOrNull(),
         "});");
     onload->SetValue(deferred_onload);
+  }
+}
+
+void JsDisableFilter::EndElement(HtmlElement* element) {
+  if (defer_js_enabled_ && element->keyword() == HtmlName::kHead &&
+      !defer_js_experimental_script_written_) {
+    InsertJsDeferExperimentalScript(element);
   }
 }
 

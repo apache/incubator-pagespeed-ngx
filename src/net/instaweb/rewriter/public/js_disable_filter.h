@@ -47,6 +47,8 @@ class JsDisableFilter : public EmptyHtmlFilter {
 
   virtual void StartElement(HtmlElement* element);
 
+  virtual void EndElement(HtmlElement* element);
+
   virtual void EndDocument();
 
   virtual const char* Name() const {

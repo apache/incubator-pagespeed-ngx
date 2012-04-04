@@ -205,6 +205,7 @@ const RewriteOptions::Filter kTestFilterSet[] = {
 const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kComputePanelJson,  // internal, enabled conditionally
   RewriteOptions::kDeferJavascript,
+  RewriteOptions::kDetectReflowWithDeferJavascript,
   RewriteOptions::kDisableJavascript,
   RewriteOptions::kDivStructure,
   RewriteOptions::kExplicitCloseTags,
@@ -247,6 +248,8 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kDebug:                           return "Debug";
     case kDeferJavascript:                 return "Defer Javascript";
     case kDelayImages:                     return "Delay Images";
+    case kDetectReflowWithDeferJavascript:
+      return "Detect Reflow With Defer Javascript";
     case kDisableJavascript:
       return "Disables scripts by placing them inside noscript tags";
     case kDivStructure:                    return "Div Structure";
@@ -307,6 +310,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kDebug:                           return "db";
     case kDeferJavascript:                 return "dj";
     case kDelayImages:                     return "di";
+    case kDetectReflowWithDeferJavascript: return "dr";
     case kDisableJavascript:               return "jd";
     case kDivStructure:                    return "ds";
     case kElideAttributes:                 return "ea";

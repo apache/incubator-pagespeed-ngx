@@ -56,6 +56,7 @@ class RewriteOptions {
     kDebug,
     kDeferJavascript,
     kDelayImages,
+    kDetectReflowWithDeferJavascript,
     kDisableJavascript,
     kDivStructure,
     kElideAttributes,
