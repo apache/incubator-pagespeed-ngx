@@ -23,32 +23,20 @@
   'targets': [
     {
       'target_name': 'mod_pagespeed',
-      'type': 'loadable_module',
-      'dependencies': [
-        'instaweb_apr.gyp:instaweb_apr',
-        '<(DEPTH)/base/base.gyp:base',
+      'includes': [
+        'mod_pagespeed.gypi',
+      ],
+      'dependencies+': [
         '<(DEPTH)/third_party/httpd/httpd.gyp:include',
-        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
-        '<(DEPTH)/build/build_util.gyp:mod_pagespeed_version_header',
       ],
-      'include_dirs': [
-        '<(SHARED_INTERMEDIATE_DIR)/protoc_out/instaweb',
-        '<(DEPTH)',
+    },
+    {
+      'target_name': 'mod_pagespeed_ap24',
+      'includes': [
+        'mod_pagespeed.gypi',
       ],
-      'sources': [
-        'apache/apache_cache.cc',
-        'apache/apache_config.cc',
-        'apache/apache_message_handler.cc',
-        'apache/apache_resource_manager.cc',
-        'apache/apache_rewrite_driver_factory.cc',
-        'apache/apache_slurp.cc',
-        'apache/header_util.cc',
-        'apache/instaweb_context.cc',
-        'apache/instaweb_handler.cc',
-        'apache/interface_mod_spdy.cc',
-        'apache/log_message_handler.cc',
-        'util/mem_debug.cc',
-        'apache/mod_instaweb.cc',
+      'dependencies+': [
+        '<(DEPTH)/third_party/httpd24/httpd.gyp:include',
       ],
     },
   ],

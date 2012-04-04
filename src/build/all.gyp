@@ -29,9 +29,16 @@
       'dependencies': [
         '../net/instaweb/instaweb.gyp:instaweb_rewriter',
         '../net/instaweb/instaweb_apr.gyp:*',
-        '../net/instaweb/mod_pagespeed.gyp:*',
+        '../net/instaweb/mod_pagespeed.gyp:mod_pagespeed',
         'install.gyp:*',
-      ],},
+      ],
+      'conditions': [
+        ['use_system_apache_dev==0', {
+          'dependencies+': [
+            '../net/instaweb/mod_pagespeed.gyp:mod_pagespeed_ap24',
+          ],
+        }],
+      ]},
     {
       'target_name': 'pagespeed_automatic',
       'type': 'none',
