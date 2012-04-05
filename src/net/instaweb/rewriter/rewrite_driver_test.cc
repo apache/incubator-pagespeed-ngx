@@ -20,6 +20,7 @@
 
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/html_testing_peer.h"
+#include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
@@ -735,6 +736,66 @@ TEST_F(RewriteDriverTest, RejectDataResourceGracefully) {
   GoogleUrl dataUrl("data:");
   ResourcePtr resource(rewrite_driver()->CreateInputResource(dataUrl));
   EXPECT_TRUE(resource.get() == NULL);
+}
+
+namespace {
+
+class ResponseHeadersCheckingFilter : public EmptyHtmlFilter {
+ public:
+  explicit ResponseHeadersCheckingFilter(RewriteDriver* driver)
+      : driver_(driver),
+        flush_occurred_(false) {
+  }
+
+  void CheckAccess() {
+    EXPECT_TRUE(driver_->response_headers() != NULL);
+    if (flush_occurred_) {
+      EXPECT_TRUE(driver_->mutable_response_headers() == NULL);
+    } else {
+      EXPECT_EQ(driver_->mutable_response_headers(),
+                driver_->response_headers());
+    }
+  }
+
+  virtual void StartDocument() {
+    flush_occurred_ = false;
+    CheckAccess();
+  }
+
+  virtual void Flush() {
+    CheckAccess();  // We still can access the mutable headers during Flush.
+    flush_occurred_ = true;
+  }
+
+  virtual void StartElement(HtmlElement* element) { CheckAccess(); }
+  virtual void EndElement(HtmlElement* element) { CheckAccess(); }
+  virtual void EndDocument() { CheckAccess(); }
+
+  virtual const char* Name() const { return "ResponseHeadersCheckingFilter"; }
+
+ private:
+  RewriteDriver* driver_;
+  bool flush_occurred_;
+};
+
+}  // namespace
+
+// Tests that we access driver->response_headers() before/after Flush(),
+// and driver->mutable_response_headers() at only before Flush().
+TEST_F(RewriteDriverTest, ResponseHeadersAccess) {
+  RewriteDriver* driver = rewrite_driver();
+  ResponseHeaders headers;
+  driver->set_response_headers_ptr(&headers);
+  driver->AddOwnedEarlyPreRenderFilter(new ResponseHeadersCheckingFilter(
+      driver));
+  driver->AddOwnedPostRenderFilter(new ResponseHeadersCheckingFilter(driver));
+
+  // Starting the parse, the base-tag will be derived from the html url.
+  ASSERT_TRUE(driver->StartParse("http://example.com/index.html"));
+  rewrite_driver()->ParseText("<div>");
+  driver->Flush();
+  rewrite_driver()->ParseText("</div>");
+  driver->FinishParse();
 }
 
 class RewriteDriverInhibitTest : public RewriteDriverTest {

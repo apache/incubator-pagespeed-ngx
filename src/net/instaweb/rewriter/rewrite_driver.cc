@@ -164,6 +164,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       fully_rewrite_on_flush_(false),
       cleanup_on_fetch_complete_(false),
       flush_requested_(false),
+      flush_occurred_(false),
       release_driver_(false),
       inhibits_mutex_(NULL),
       finish_parse_on_hold_(NULL),
@@ -195,7 +196,9 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       writer_(NULL),
       client_state_(NULL),
       need_furious_cookie_(false),
-      num_inline_preview_images_(0) {
+      num_inline_preview_images_(0)
+      // NOTE:  Be sure to clear per-request member vars in Clear()
+{ // NOLINT  -- I want the initializer-list to end with that comment.
   // Set up default values for the amount of time an HTML rewrite will wait for
   // Rewrites to complete, based on whether compiled for debug or running on
   // valgrind.  Note that unit-tests can explicitly override this value via
@@ -267,10 +270,20 @@ void RewriteDriver::Clear() {
   DCHECK_EQ(0, possibly_quick_rewrites_);
   DCHECK(!fetch_queued_);
   DCHECK_EQ(0, pending_async_events_);
+  user_agent_supports_image_inlining_ = kNotSet;
+  user_agent_supports_js_defer_ = kNotSet;
+  user_agent_supports_webp_ = kNotSet;
+  need_furious_cookie_ = false;
+  client_state_.reset(NULL);
+  is_mobile_user_agent_ = kNotSet;
   pending_async_events_ = 0;
+  user_agent_is_bot_ = kNotSet;
   request_headers_ = NULL;
   response_headers_ = NULL;
   fetch_detached_ = false;
+  flush_requested_ = false;
+  flush_occurred_ = false;
+  base_was_set_ = false;
   detached_fetch_detached_path_complete_ = false;
   detached_fetch_main_path_complete_ = false;
   client_id_.clear();
@@ -438,6 +451,7 @@ void RewriteDriver::FlushAsync(Function* callback) {
     flush_in_progress_ = true;
   }
   flush_requested_ = false;
+
   // Hide the tail of the queue after an inhibited event.
   SplitQueueIfNecessary();
 
@@ -540,6 +554,8 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
   slots_.clear();
 
   HtmlParse::Flush();  // Clears the queue_.
+  flush_occurred_ = true;
+
   // Restore the tail of the queue_: an inhibited event and subsequent events.
   AppendEventsToQueue(&deferred_queue_);
   {
@@ -1661,7 +1677,7 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
 
 void RewriteDriver::WriteClientStateIntoPropertyCache() {
   if (client_state_.get() != NULL) {
-    client_state_.get()->WriteBackToPropertyCache();
+    client_state_->WriteBackToPropertyCache();
   }
 }
 

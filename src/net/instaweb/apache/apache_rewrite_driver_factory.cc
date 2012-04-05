@@ -250,6 +250,9 @@ UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(
 void ApacheRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
   // Set buffer size to 0 means turning it off
   if (shared_mem_runtime() != NULL && (message_buffer_size_ != 0)) {
+    // TODO(jmarantz): it appears that filename_prefix() is not actually
+    // established at the time of this construction, calling into question
+    // whether we are naming our shared-memory segments correctly.
     shared_circular_buffer_.reset(new SharedCircularBuffer(
         shared_mem_runtime(),
         message_buffer_size_,
@@ -270,6 +273,9 @@ void ApacheRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
 void ApacheRewriteDriverFactory::SharedMemRefererStatisticsInit(bool is_root) {
 #if ENABLE_REFERER_STATS
   if (shared_mem_runtime_ != NULL && config_->collect_referer_statistics()) {
+    // TODO(jmarantz): it appears that filename_prefix() is not actually
+    // established at the time of this construction, calling into question
+    // whether we are naming our shared-memory segments correctly.
     if (config_->hash_referer_statistics()) {
       // By making the hashes equal roughly to half the expected url length,
       // entries corresponding to referrals in the
@@ -313,10 +319,6 @@ void ApacheRewriteDriverFactory::ParentOrChildInit() {
 }
 
 void ApacheRewriteDriverFactory::RootInit() {
-  CHECK(!filename_prefix().empty())
-      << "Must specify --filename_prefix or call "
-      << "RewriteDriverFactory::set_filename_prefix.";
-
   ParentOrChildInit();
   for (ApacheResourceManagerSet::iterator p = uninitialized_managers_.begin(),
            e = uninitialized_managers_.end(); p != e; ++p) {
@@ -429,6 +431,10 @@ Statistics* ApacheRewriteDriverFactory::MakeSharedMemStatistics() {
     // Note that we create the statistics object in the parent process, and
     // it stays around in the kids but gets reinitialized for them
     // with a call to InitVariables(false) inside pagespeed_child_init.
+    //
+    // TODO(jmarantz): it appears that filename_prefix() is not actually
+    // established at the time of this construction, calling into question
+    // whether we are naming our shared-memory segments correctly.
     shared_mem_statistics_.reset(new SharedMemStatistics(
         shared_mem_runtime(), filename_prefix().as_string()));
     Initialize(shared_mem_statistics_.get());

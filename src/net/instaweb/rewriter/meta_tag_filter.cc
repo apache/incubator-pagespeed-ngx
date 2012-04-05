@@ -55,7 +55,7 @@ MetaTagFilter::~MetaTagFilter() {}
 void MetaTagFilter::StartDocumentImpl() {
   // This pointer will be nulled at first Flush to guarantee that we don't
   // write it after that (won't work).
-  response_headers_ = driver_->response_headers_ptr();
+  response_headers_ = driver_->mutable_response_headers();
 }
 
 

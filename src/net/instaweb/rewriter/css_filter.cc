@@ -580,7 +580,7 @@ bool CssFilter::GetApplicableCharset(const HtmlElement* element,
   // tag specifies a charset that is used.
   StringPiece our_charset("iso-8859-1");
   GoogleString headers_charset;
-  ResponseHeaders* headers = driver_->response_headers_ptr();
+  const ResponseHeaders* headers = driver_->response_headers();
   if (headers != NULL) {
     headers_charset = headers->DetermineCharset();
     if (!headers_charset.empty()) {

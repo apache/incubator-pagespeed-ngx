@@ -56,7 +56,7 @@ void DomainRewriteFilter::StartDocumentImpl() {
   if (rewrite_all_tags) {
     // TODO(nikhilmadan): Rewrite the domain for cookies.
     // Rewrite the Location header for redirects.
-    ResponseHeaders* headers = driver_->response_headers_ptr();
+    ResponseHeaders* headers = driver_->mutable_response_headers();
     if (headers != NULL) {
       const char* location = headers->Lookup1(HttpAttributes::kLocation);
       if (location != NULL) {

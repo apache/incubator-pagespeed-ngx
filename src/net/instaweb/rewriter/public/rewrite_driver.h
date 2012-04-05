@@ -184,15 +184,19 @@ class RewriteDriver : public HtmlParse {
   bool using_spdy() const { return using_spdy_; }
   void set_using_spdy(bool x) { using_spdy_ = x; }
 
-  // Return a pointer to the response headers that filters can update
-  // before the first flush.
+  // Return a mutable pointer to the response headers that filters can update
+  // before the first flush.  Returns NULL after Flush has occurred.
+  ResponseHeaders* mutable_response_headers() {
+    return flush_occurred_ ? NULL : response_headers_;
+  }
+
+  // Returns a const version of the ResponseHeaders*, indepdendent of whether
+  // Flush has occurred.   Note that ResponseHeaders* may still be NULL if
+  // no one has called set_response_headers_ptr.
   //
-  // TODO(sligocki): We should work out a better way for RewriteDriver to
-  // make ResponseHeaders always available filters for reading and available
-  // for writing until the first flush. Currently if these are edited after
-  // the first flush, the behavior is undefined, but probably the headers have
-  // already been sent, so the changes are silently ignored.
-  ResponseHeaders* response_headers_ptr() {
+  // TODO(jmarantz): Change API to require response_headers in StartParse so
+  // we can guarantee this is non-null.
+  const ResponseHeaders* response_headers() {
     return response_headers_;
   }
 
@@ -945,6 +949,7 @@ class RewriteDriver : public HtmlParse {
   bool cleanup_on_fetch_complete_;
 
   bool flush_requested_;
+  bool flush_occurred_;
 
   // Set to true if RewriteDriver can be released.
   bool release_driver_;

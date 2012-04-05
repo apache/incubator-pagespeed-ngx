@@ -251,7 +251,7 @@ class MockFilter : public EmptyHtmlFilter {
     //
     // IsCacheable is true for HTML files because of kHtmlCacheTimeSec
     // above.
-    EXPECT_TRUE(driver_->response_headers_ptr()->IsCacheable());
+    EXPECT_TRUE(driver_->response_headers()->IsCacheable());
 
     if (num_elements_property_ != NULL) {
       PropertyCache* page_cache =
