@@ -266,6 +266,15 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 #SHARED_MEM_LOCKS ModPagespeedSharedMemoryLocks on
 
 #HTTPS # This is used for testing https requests.
+#HTTPS <IfVersion >= 2.4>
+#HTTPS   <IfModule !socache_shmcb_module>
+#HTTPS     LoadModule socache_shmcb_module @@APACHE_MODULES@@/mod_socache_shmcb.so
+#HTTPS   </IfModule>
+#HTTPS   <IfModule !slotmem_shm_module>
+#HTTPS     LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
+#HTTPS   </IfModule>
+#HTTPS </IfVersion>
+
 #HTTPS Include conf/extra/httpd-ssl.conf
 #HTTPS <IfModule !ssl_module>
 #HTTPS   LoadModule ssl_module @@APACHE_MODULES@@/mod_ssl.so

@@ -58,6 +58,7 @@ STAGING_DIR = /tmp/mod_pagespeed.install
 # which is src/install.
 MOD_PAGESPEED_ROOT = ..
 PAGESPEED_MODULE = $(MOD_PAGESPEED_ROOT)/out/Release/libmod_pagespeed.so
+PAGESPEED_MODULE_24 = $(MOD_PAGESPEED_ROOT)/out/Release/libmod_pagespeed_ap24.so
 
 # On systems dervied from the NCSA configuration files by Rob McCool,
 # you enable a module by writing its .conf file into
@@ -282,15 +283,15 @@ setup_staging_dir :
 # Generate a configuration file and copy it to the staging area.
 # Also copy the example tree, and the built Apache module
 staging_except_module: setup_staging_dir $(CONF_TEMPLATES)
-	echo "LoadModule pagespeed_module $(APACHE_MODULES)/mod_pagespeed.so" \
-	 	> $(STAGING_DIR)/pagespeed.load
-	echo "LoadModule deflate_module $(APACHE_MODULES)/mod_deflate.so" \
-	 	>> $(STAGING_DIR)/pagespeed.load
+	cat common/pagespeed.load.template | \
+	    sed s/@@APACHE_MODULEDIR@@/$(APACHE_MODULES)/ | \
+	    sed s/@@COMMENT_OUT_DEFLATE@@// > $(STAGING_DIR)/pagespeed.load
 	$(MODS_ENABLED_STAGING_COMMANDS)
 	cp -rp mod_pagespeed_example mod_pagespeed_test $(STAGING_DIR)
 
 staging: staging_except_module
 	cp $(PAGESPEED_MODULE) $(STAGING_DIR)/mod_pagespeed.so
+	cp $(PAGESPEED_MODULE_24) $(STAGING_DIR)/mod_pagespeed_ap24.so
 
 install_except_module : mod_pagespeed_file_root
 	$(MODS_ENABLED_INSTALL_COMMANDS)
@@ -306,6 +307,7 @@ install_except_module : mod_pagespeed_file_root
 # run this as root, or under sudo.
 install : install_except_module
 	cp $(STAGING_DIR)/mod_pagespeed.so $(APACHE_MODULES)
+	cp $(STAGING_DIR)/mod_pagespeed_ap24.so $(APACHE_MODULES)
 
 mod_pagespeed_file_root :
 	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)/cache

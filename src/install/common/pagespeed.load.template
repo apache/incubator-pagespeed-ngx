@@ -1,4 +1,9 @@
-LoadModule pagespeed_module @@APACHE_MODULEDIR@@/mod_pagespeed.so
+<IfVersion < 2.4>
+  LoadModule pagespeed_module @@APACHE_MODULEDIR@@/mod_pagespeed.so
+</IfVersion>
+<IfVersion >= 2.4.2>
+  LoadModule pagespeed_module @@APACHE_MODULEDIR@@/mod_pagespeed_ap24.so
+</IfVersion>
 
 # Only attempt to load mod_deflate if it hasn't been loaded already.
 <IfModule !mod_deflate.c>
