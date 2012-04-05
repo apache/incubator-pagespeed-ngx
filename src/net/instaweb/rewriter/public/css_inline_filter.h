@@ -28,6 +28,7 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+class CachedResult;
 class GoogleUrl;
 class HtmlElement;
 class RewriteDriver;
@@ -48,8 +49,9 @@ class CssInlineFilter : public CommonFilter {
   friend class Context;
 
   bool ShouldInline(const StringPiece& input) const;
-  void RenderInline(const ResourcePtr& resource, const GoogleUrl& base_url,
-                    const StringPiece& text, HtmlElement* element);
+  void RenderInline(const ResourcePtr& resource, const CachedResult& cached,
+                    const GoogleUrl& base_url, const StringPiece& text,
+                    HtmlElement* element);
 
   const size_t size_threshold_bytes_;
 

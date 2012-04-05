@@ -74,6 +74,7 @@ class RewriteOptions {
     kInsertImageDimensions,
     kLazyloadImages,
     kLeftTrimUrls,
+    kLocalStorageCache,
     kMakeGoogleAnalyticsAsync,
     kMoveCssToHead,
     kOutlineCss,
@@ -188,6 +189,7 @@ class RewriteOptions {
   static const char kImageCompressionId[];
   static const char kJavascriptCombinerId[];
   static const char kJavascriptInlineId[];
+  static const char kLocalStorageCacheId[];
   static const char kJavascriptMinId[];
 
   static const char kPanelCommentPrefix[];

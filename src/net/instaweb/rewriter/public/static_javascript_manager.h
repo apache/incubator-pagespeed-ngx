@@ -41,6 +41,7 @@ class StaticJavascriptManager {
     kDelayImagesInlineJs,
     kLazyloadImagesJs,
     kDetectReflowJs,
+    kLocalStorageCacheJs,
     kEndOfModules,  // Keep this as the last enum value.
   };
 

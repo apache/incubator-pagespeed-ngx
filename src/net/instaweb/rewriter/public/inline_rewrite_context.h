@@ -66,6 +66,8 @@ class InlineRewriteContext : public RewriteContext {
   virtual void Render();
   virtual OutputResourceKind kind() const;
 
+  HtmlElement* get_element() { return element_; }
+
  private:
   CommonFilter* filter_;
   HtmlElement* element_;

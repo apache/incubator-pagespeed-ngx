@@ -68,6 +68,7 @@ const char RewriteOptions::kImageCompressionId[] = "ic";
 const char RewriteOptions::kJavascriptCombinerId[] = "jc";
 const char RewriteOptions::kJavascriptMinId[] = "jm";
 const char RewriteOptions::kJavascriptInlineId[] = "ji";
+const char RewriteOptions::kLocalStorageCacheId[] = "ls";
 const char RewriteOptions::kPanelCommentPrefix[] = "GooglePanel";
 
 // TODO(jmarantz): consider merging this threshold with the image-inlining
@@ -268,6 +269,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kInsertImageDimensions:           return "Insert Image Dimensions";
     case kLazyloadImages:                  return "Lazyload Images";
     case kLeftTrimUrls:                    return "Left Trim Urls";
+    case kLocalStorageCache:               return "Local Storage Cache";
     case kMakeGoogleAnalyticsAsync:        return "Make Google Analytics Async";
     case kMoveCssToHead:                   return "Move Css To Head";
     case kOutlineCss:                      return "Outline Css";
@@ -328,6 +330,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kInsertImageDimensions:           return "id";
     case kLazyloadImages:                  return "ll";
     case kLeftTrimUrls:                    return "tu";
+    case kLocalStorageCache:               return kLocalStorageCacheId;
     case kMakeGoogleAnalyticsAsync:        return "ga";
     case kMoveCssToHead:                   return "cm";
     case kOutlineCss:                      return "co";

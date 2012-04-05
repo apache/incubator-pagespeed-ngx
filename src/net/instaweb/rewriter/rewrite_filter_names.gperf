@@ -55,6 +55,7 @@ struct FilterMap {
 "insert_img_dimensions",             RewriteOptions::kInsertImageDimensions
 "insert_image_dimensions",           RewriteOptions::kInsertImageDimensions
 "lazyload_images",                   RewriteOptions::kLazyloadImages
+"local_storage_cache",               RewriteOptions::kLocalStorageCache
 "left_trim_urls",                    RewriteOptions::kLeftTrimUrls
 "make_google_analytics_async",       RewriteOptions::kMakeGoogleAnalyticsAsync
 "move_css_to_head",                  RewriteOptions::kMoveCssToHead

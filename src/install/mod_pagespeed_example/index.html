@@ -332,6 +332,28 @@ lazyload_images
 
 <tr>
   <td class="code">
+    <a href="http://code.google.com/speed/page-speed/docs/filter-local-storage-cache.html">
+local_storage_cache
+    </a>
+  </td>
+  <td class="desc">
+    Loads inlined CSS and image resources into HTML5 local storage whence the
+    client fetches them subsequently rather than the server sending them again.
+  </td>
+  <td class="before">
+    <a href="local_storage_cache.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="local_storage_cache.html?ModPagespeed=on&ModPagespeedFilters=local_storage_cache,inline_css,inline_images">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
     <a href="http://code.google.com/speed/page-speed/docs/filter-css-outline.html">
 outline_css
     </a>

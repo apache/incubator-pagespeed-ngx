@@ -32,6 +32,7 @@
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
+#include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -549,6 +550,16 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
 
   ResourcePtr input_resource = CreateInputResource(src->DecodedValueOrNull());
   if (input_resource.get() != NULL) {
+    // If the image will inlined and the local storage cache is enabled, add
+    // the LSC marker attribute to this element so that the LSC filter knows
+    // to insert the relevant javascript functions.
+    if (driver_->UserAgentSupportsImageInlining()) {
+      LocalStorageCacheFilter::InlineState state;
+      LocalStorageCacheFilter::AddStorableResource(src->DecodedValueOrNull(),
+                                                   driver_,
+                                                   true /* ignore cookie */,
+                                                   element, &state);
+    }
     Context* context = new Context(0 /* No CSS inlining, it's html */,
                                    this, driver_, NULL /*not nested */,
                                    resource_context.release(),
@@ -584,7 +595,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   const RewriteOptions* options = driver_->options();
   bool rewrote_url = false;
   bool image_inlined = false;
-  StringPiece src_value = src->DecodedValueOrNull();
+  GoogleString src_value(src->DecodedValueOrNull());
   if (src_value.empty()) {
     return false;
   }
@@ -607,10 +618,16 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
       element->DeleteAttribute(HtmlName::kWidth);
       element->DeleteAttribute(HtmlName::kHeight);
     }
+    // Note the use of the ORIGINAL url not the data url.
+    LocalStorageCacheFilter::AddLscAttributes(src_value, *cached,
+                                              true /* has_url */,
+                                              driver_, element);
     image_inline_count_->Add(1);
     rewrote_url = true;
     image_inlined = true;
   } else {
+    // Not inlined means we cannot store it in local storage.
+    LocalStorageCacheFilter::RemoveLscAttributes(element);
     if (cached->optimizable()) {
       // Rewritten HTTP url
       src->SetValue(cached->url());
@@ -762,12 +779,31 @@ void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
   if (driver_->ShouldNotRewriteImages()) {
     return;
   }
-  if (!driver_->HasChildrenInFlushWindow(element)) {
-    HtmlElement::Attribute *src = image_filter_->ParseImageElement(element);
-    if (src != NULL) {
-      BeginRewriteImageUrl(element, src);
-    }
+
+  // Don't rewrite it the image is broken by a flush.
+  if (driver_->HasChildrenInFlushWindow(element)) {
+    return;
   }
+
+  // Don't rewrite if we cannot find the src attribute.
+  HtmlElement::Attribute *src = image_filter_->ParseImageElement(element);
+  if (src == NULL || src->DecodedValueOrNull() == NULL) {
+    return;
+  }
+
+  // Ask the LSC filter to work out how to handle this element. A return
+  // value of true means we don't have to rewrite it so can skip that.
+  // The state is carried forward to after we initiate rewriting since
+  // we might still have to modify the element.
+  LocalStorageCacheFilter::InlineState state;
+  if (LocalStorageCacheFilter::AddStorableResource(src->DecodedValueOrNull(),
+                                                   driver_,
+                                                   false /* check cookie */,
+                                                   element, &state)) {
+    return;
+  }
+
+  BeginRewriteImageUrl(element, src);
 }
 
 const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {

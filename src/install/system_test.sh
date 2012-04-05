@@ -184,7 +184,8 @@ function test_filter() {
   shift;
   FILTER_DESCRIPTION=$@
   echo TEST: $FILTER_NAME $FILTER_DESCRIPTION
-  FILE=$FILTER_NAME.html
+  # Filename is the name of the first filter only.
+  FILE=${FILTER_NAME%%,*}.html
   if [ $filter_spec_method = "query_params" ]; then
     WGET_ARGS=""
     FILE="$FILE?ModPagespeedFilters=$FILTER_NAME"
@@ -822,6 +823,64 @@ URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 fetch_until $URL 'grep -c pagespeed.delayImagesInit' 3
 check run_wget_with_args $URL
+
+# Checks that local_storage_cache injects optimized javascript from
+# local_storage_cache.js, adds the pagespeed_lsc_ attributes, inlines the data
+# (if the cache were empty the inlining wouldn't make the timer cutoff but the
+# resources have been fetched above).
+test_filter local_storage_cache,inline_css,inline_images optimize mode
+echo run_wget_with_args "$URL"
+check run_wget_with_args "$URL"
+check grep -q "'pagespeed.localStorageCacheInit()'" $FETCHED
+check [ `grep -c ' pagespeed_lsc_url=' $FETCHED` = 2 ]
+check grep -q "'yellow {background-color: yellow'" $FETCHED
+check grep -q "'<img src=\"data:image/png;base64'" $FETCHED
+check grep -q "'<img .* alt=\"A cup of joe\"'" $FETCHED
+grep -q '/\*' $FETCHED; check [ $? = 1 ]
+
+# Checks that local_storage_cache,debug injects debug javascript from
+# local_storage_cache.js, adds the pagespeed_lsc_ attributes, inlines the data
+# (if the cache were empty the inlining wouldn't make the timer cutoff but the
+# resources have been fetched above).
+test_filter local_storage_cache,inline_css,inline_images,debug debug mode
+echo run_wget_with_args "$URL"
+check run_wget_with_args "$URL"
+check grep -q "'pagespeed.localStorageCacheInit()'" $FETCHED
+check [ `grep -c ' pagespeed_lsc_url=' $FETCHED` = 2 ]
+check grep -q "'yellow {background-color: yellow'" $FETCHED
+check grep -q "'<img src=\"data:image/png;base64'" $FETCHED
+check grep -q "'<img .* alt=\"A cup of joe\"'" $FETCHED
+check grep -q "'/\*'" $FETCHED
+
+# Checks that local_storage_cache doesn't send the inlined data for a resource
+# whose hash is in the magic cookie. First get the cookies from prior runs.
+HASHES=$(grep "pagespeed_lsc_hash=" $FETCHED |\
+         sed -e 's/^.*pagespeed_lsc_hash=.//' |\
+         sed -e 's/".*$//')
+HASHES=$(echo "$HASHES" | tr '\n' ',' | sed -e 's/,$//')
+check [ -n "$HASHES" ]
+COOKIE="Cookie: _GPSLSC=$HASHES"
+# Check that the prior run did inline the data.
+check grep -q "'background-color: yellow'" $FETCHED
+check grep -q "'src=.data:image/png;base64,'" $FETCHED
+check grep -q "'alt=.A cup of joe.'" $FETCHED
+# Fetch with the cookie set.
+test_filter local_storage_cache,inline_css,inline_images cookies set
+echo wget --save-headers --no-cookies --header "'"$COOKIE"'" $URL
+$WGET_PREREQ --save-headers --no-cookies --header "$COOKIE" $URL
+check [ $? = 0 ]
+# Check that this run did NOT inline the data.
+grep -q "yellow {background-color: yellow" $FETCHED
+check [ $? = 1 ]
+grep -q "'src=.data:image/png;base64,'" $FETCHED
+check [ $? = 1 ]
+# Check that this run inserted the expected scripts.
+check grep -q "'pagespeed.inlineCss(.http://.*/styles/yellow.css.);'" $FETCHED
+check grep -q "'pagespeed.inlineImg(.http://.*/images/Cuppa.png.," \
+              ".alt=A cup of joe.," \
+              ".alt=A cup of joe.," \
+              ".alt=A cup of joe.s ..joe...," \
+              ".alt=A cup of joe.s ..joe...);'" $FETCHED
 
 # Cleanup
 rm -rf $OUTDIR

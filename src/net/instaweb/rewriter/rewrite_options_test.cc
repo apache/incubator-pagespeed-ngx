@@ -931,8 +931,8 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   options_.SetFuriousState(7);
   // This should be all non-dangerous filters.
   EXPECT_EQ("Experiment: 7; ah,ai,cw,cc,ch,jc,jp,jw,mc,pj,db,di,ea,ec,ei,es,if,"
-            "hw,ci,ii,il,ji,ig,id,tu,ga,cm,co,jo,pv,ir,rc,rq,ri,rm,cf,rd,jm,cs,"
-            "cu,is,css:2048,im:2048,js:2048;",
+            "hw,ci,ii,il,ji,ig,id,tu,ls,ga,cm,co,jo,pv,ir,rc,rq,ri,rm,cf,rd,jm,"
+            "cs,cu,is,css:2048,im:2048,js:2048;",
             options_.ToExperimentString());
   options_.SetFuriousState(2);
   // This should be the filters we need to run an experiment (add_head,

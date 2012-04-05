@@ -20,6 +20,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/inline_rewrite_context.h"
+#include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -47,10 +48,19 @@ class CssInlineFilter::Context : public InlineRewriteContext {
     return filter_->ShouldInline(input);
   }
 
+  virtual void Render() {
+    if (num_output_partitions() < 1) {
+      // Remove any LSC attributes as they're pointless if we don't inline.
+      LocalStorageCacheFilter::RemoveLscAttributes(get_element());
+    }
+    InlineRewriteContext::Render();
+  }
+
   virtual void RenderInline(
       const ResourcePtr& resource, const StringPiece& text,
       HtmlElement* element) {
-    filter_->RenderInline(resource, base_url_, text, element);
+    filter_->RenderInline(resource, *(output_partition(0)),
+                          base_url_, text, element);
   }
 
   virtual const char* id() const { return RewriteOptions::kCssInlineId; }
@@ -93,10 +103,28 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
       return;  // We obviously can't inline if the URL isn't there.
     }
 
-    // StartInlining() transfers posession of ctx to RewriteDriver or deletes
-    // it on failure.
-    Context* ctx = new Context(this, base_url(), element, attr);
-    ctx->StartInlining();
+    // Ask the LSC filter to work out how to handle this element. A return
+    // value of true means we don't have to rewrite it so can skip that.
+    // The state is carried forward to after we initiate rewriting since
+    // we might still have to modify the element.
+    LocalStorageCacheFilter::InlineState state;
+    if (!LocalStorageCacheFilter::AddStorableResource(
+            attr->DecodedValueOrNull(), driver_, false /* check cookie */,
+            element, &state)) {
+      // StartInlining() transfers possession of ctx to RewriteDriver or
+      // deletes it on failure.
+      Context* ctx = new Context(this, base_url(), element, attr);
+      bool initiated = ctx->StartInlining();
+
+      // If we're rewriting we need the LSC filter to add the URL as an
+      // attribute so that it knows to insert the LSC specific javascript.
+      if (initiated) {
+        LocalStorageCacheFilter::AddStorableResource(attr->DecodedValueOrNull(),
+                                                     driver_,
+                                                     true /* ignore cookie */,
+                                                     element, &state);
+      }
+    }
   }
 }
 
@@ -109,6 +137,7 @@ bool CssInlineFilter::ShouldInline(const StringPiece& contents) const {
 }
 
 void CssInlineFilter::RenderInline(const ResourcePtr& resource,
+                                   const CachedResult& cached,
                                    const GoogleUrl& base_url,
                                    const StringPiece& contents,
                                    HtmlElement* element) {
@@ -121,26 +150,39 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
   GoogleString rewritten_contents;
   StringWriter writer(&rewritten_contents);
   GoogleUrl resource_url(resource->url());
+  bool resolved_ok = true;
   switch (driver_->ResolveCssUrls(resource_url, base_url.Spec(), contents,
                                   &writer, message_handler)) {
     case RewriteDriver::kNoResolutionNeeded:
       // We don't need to absolutify URLs if input directory is same as base.
       if (!writer.Write(contents, message_handler)) {
-        return;
+        resolved_ok = false;
       }
       break;
     case RewriteDriver::kWriteFailed:
-      return;
+      resolved_ok = false;
+      break;
     case RewriteDriver::kSuccess:
       break;
   }
-  // Inline the CSS.
-  HtmlElement* style_element =
-      driver_->NewElement(element->parent(), HtmlName::kStyle);
-  if (driver_->ReplaceNode(element, style_element)) {
-    driver_->AppendChild(
-        style_element,
-        driver_->NewCharactersNode(element, rewritten_contents));
+
+  if (resolved_ok) {
+    // Inline the CSS.
+    HtmlElement* style_element =
+        driver_->NewElement(element->parent(), HtmlName::kStyle);
+    if (driver_->ReplaceNode(element, style_element)) {
+      driver_->AppendChild(style_element,
+                           driver_->NewCharactersNode(element,
+                                                      rewritten_contents));
+    }
+
+    // Add the local storage cache attributes if it is enabled.
+    LocalStorageCacheFilter::AddLscAttributes(resource_url.Spec(), cached,
+                                              false /* has_url */,
+                                              driver_, style_element);
+  } else {
+    // Remove any LSC attributes as they're now pointless.
+    LocalStorageCacheFilter::RemoveLscAttributes(element);
   }
 }
 

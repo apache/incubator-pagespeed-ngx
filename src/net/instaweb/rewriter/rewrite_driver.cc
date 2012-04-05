@@ -77,6 +77,7 @@
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
 #include "net/instaweb/rewriter/public/js_outline_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
+#include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -643,6 +644,7 @@ void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
   RegisterRewriteFilter(image_rewriter);
   RegisterRewriteFilter(cache_extender);
   RegisterRewriteFilter(image_combiner);
+  RegisterRewriteFilter(new LocalStorageCacheFilter(this));
 
   // These filters are needed to rewrite and trim urls in modified CSS files.
   domain_rewriter_.reset(new DomainRewriteFilter(this, statistics()));
@@ -831,6 +833,9 @@ void RewriteDriver::AddPreRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kSpriteImages)) {
     EnableRewriteFilter(RewriteOptions::kImageCombineId);
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kLocalStorageCache)) {
+    EnableRewriteFilter(RewriteOptions::kLocalStorageCacheId);
   }
 }
 
@@ -1803,13 +1808,13 @@ void RewriteDriver::QueueFinishParseAfterFlush(Function* user_callback) {
     finish_parse_on_hold_ = finish_parse;
   } else {
     // We're really done: queue FinishParseAfterFlush now.
-    DCHECK(end_elements_inhibited_.size() == 0);
+    DCHECK_EQ(0U, end_elements_inhibited_.size());
     html_worker_->Add(finish_parse);
   }
 }
 
 void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
-  DCHECK(GetEventQueueSize() == 0);
+  DCHECK_EQ(0U, GetEventQueueSize());
   HtmlParse::EndFinishParse();
   WriteDomCohortIntoPropertyCache();
   WriteClientStateIntoPropertyCache();
