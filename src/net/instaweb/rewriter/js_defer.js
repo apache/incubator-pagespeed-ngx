@@ -119,12 +119,49 @@ pagespeed.DeferJs = function() {
        'text/livescript',
        'text/x-ecmascript',
        'text/x-javascript'];
+
   /**
-   * Indicates if scripts execution complete.
-   * @type {!boolean}
+   * Original document.getElementById handler.
    * @private
    */
-  this.deferScriptsComplete_ = false;
+  this.origGetElementById_ = document.getElementById;
+
+  /**
+   * Maintains the current state for the deferJs.
+   * @type {!number}
+   * @private
+   */
+  this.state_ = pagespeed.DeferJs.STATES.NOT_STARTED;
+};
+
+/**
+ * Indicates if experimental js in deferJS is active.
+ * @type {boolean}
+ */
+pagespeed.DeferJs.isExperimentalMode = false;
+
+/**
+ * Constants for different states of deferJs exeuction.
+ * @enum {number}
+ */
+pagespeed.DeferJs.STATES = {
+  /**
+   * State state.
+   */
+  NOT_STARTED: 0,
+  /**
+   * In this state all script tags with type as 'text/psajs' are registered for
+   * deferred execution.
+   */
+  SCRIPTS_REGISTERED: 1,
+  /**
+   * Script execution is in process.
+   */
+  SCRIPTS_EXECUTING: 2,
+  /**
+   * Final state.
+   */
+  SCRIPTS_DONE: 3
 };
 
 /**
@@ -307,7 +344,11 @@ pagespeed.DeferJs.prototype.onComplete = function() {
   this.executeDomReady();
   this.executeOnload();
 
-  this.deferScriptsComplete_ = true;
+  if (pagespeed.DeferJs.isExperimentalMode) {
+    document.getElementById = this.origGetElementById_;
+  }
+
+  this.state_ = pagespeed.DeferJs.STATES.SCRIPTS_DONE;
   this.executeAfterDeferRun();
 }
 
@@ -384,7 +425,11 @@ pagespeed.DeferJs.prototype.setUp = function() {
  * Starts the execution of all the deferred scripts.
  */
 pagespeed.DeferJs.prototype.run = function() {
+  if (this.state_ >= pagespeed.DeferJs.STATES.SCRIPTS_EXECUTING) {
+    return;
+  }
   this.executeBeforeDeferRun();
+  this.state_ = pagespeed.DeferJs.STATES.SCRIPTS_EXECUTING;
   this.setUp();
   // Starts executing the defer_js closures.
   this.runNext();
@@ -565,7 +610,7 @@ pagespeed.DeferJs.prototype.addDomReadyListeners = function(elem, func) {
  */
 pagespeed.DeferJs.prototype.addOnloadListeners = function(elem, func) {
   this.log('onload: ' + func.toString());
-  if (this.deferScriptsComplete_) {
+  if (this.state_ == pagespeed.DeferJs.STATES.SCRIPTS_DONE) {
     func.call(elem);
     return;
   }
@@ -701,6 +746,10 @@ pagespeed.DeferJs.prototype.overrideAddEventListener = function(elem) {
  * as the context element to the script embedded inside them.
  */
 pagespeed.DeferJs.prototype.registerScriptTags = function() {
+  if (this.state_ >= pagespeed.DeferJs.STATES.SCRIPTS_REGISTERED) {
+    return;
+  }
+  this.state_ = pagespeed.DeferJs.STATES.SCRIPTS_REGISTERED;
   var scripts = document.getElementsByTagName('script');
   var len = scripts.length;
   for (var i = 0; i < len; ++i) {
@@ -777,6 +826,15 @@ pagespeed.DeferJs.prototype.getIEVersion = function() {
  * Initialize defer javascript.
  */
 pagespeed.deferInit = function() {
+  if (pagespeed.deferJs) {
+    return;
+  }
+
+  if (window.localStorage) {
+    pagespeed.DeferJs.isExperimentalMode =
+        window.localStorage['defer_js_experimental'];
+  }
+
   pagespeed.deferJs = new pagespeed.DeferJs();
   pagespeed['deferJs'] = pagespeed.deferJs;
   // TODO(ksimbili): Restore the following functions to their original.
@@ -791,6 +849,12 @@ pagespeed.deferInit = function() {
     document.open = function() {};
     document.close = function() {};
   }
+
+  if (pagespeed.DeferJs.isExperimentalMode) {
+    document.getElementById = function(str) {
+      pagespeed.deferJs.handlePendingDocumentWrites();
+      return pagespeed.deferJs.origGetElementById_.call(document, str);
+    }
+  }
 };
 pagespeed['deferInit'] = pagespeed.deferInit;
-
