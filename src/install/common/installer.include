@@ -115,4 +115,5 @@ stage_install_common() {
 
   # app and resources
   install -m 644 -s "${BUILDDIR}/libmod_pagespeed.so" "${STAGEDIR}${APACHE_MODULEDIR}/mod_pagespeed.so"
+  install -m 644 -s "${BUILDDIR}/libmod_pagespeed_ap24.so" "${STAGEDIR}${APACHE_MODULEDIR}/mod_pagespeed_ap24.so"
 }

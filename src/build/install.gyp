@@ -43,6 +43,7 @@
         ],
         'packaging_files_binaries': [
           '<(PRODUCT_DIR)/libmod_pagespeed.so',
+          '<(PRODUCT_DIR)/libmod_pagespeed_ap24.so',
         ],
         'flock_bash': ['flock', '--', '/tmp/linux_package_lock', 'bash'],
         'deb_build': '<(PRODUCT_DIR)/install/debian/build.sh',
@@ -124,7 +125,7 @@
           'suppress_wildcard': 1,
           'type': 'none',
           'dependencies': [
-            '<(DEPTH)/net/instaweb/mod_pagespeed.gyp:mod_pagespeed',
+            '<(DEPTH)/net/instaweb/mod_pagespeed.gyp:*',
             'linux_installer_configs',
           ],
           'actions': [
@@ -152,7 +153,7 @@
           'suppress_wildcard': 1,
           'type': 'none',
           'dependencies': [
-            '<(DEPTH)/net/instaweb/mod_pagespeed.gyp:mod_pagespeed',
+            '<(DEPTH)/net/instaweb/mod_pagespeed.gyp:*',
             'linux_installer_configs',
           ],
           'actions': [

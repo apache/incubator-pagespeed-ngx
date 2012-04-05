@@ -36,6 +36,8 @@ gen_substvars() {
   pushd "${SUBSTFILEDIR}" >/dev/null
   dpkg-shlibdeps "${STAGEDIR}${APACHE_MODULEDIR}/mod_pagespeed.so" \
   -O >> "${DEB_SUBST}" 2>/dev/null
+  dpkg-shlibdeps "${STAGEDIR}${APACHE_MODULEDIR}/mod_pagespeed_ap24.so" \
+  -O >> "${DEB_SUBST}" 2>/dev/null
   popd >/dev/null
 }
 
