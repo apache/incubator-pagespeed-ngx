@@ -675,6 +675,7 @@
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
       ],
       'sources': [
+        'rewriter/css_combine_filter.cc',
         'rewriter/css_filter.cc',
         'rewriter/css_hierarchy.cc',
         'rewriter/css_image_rewriter_async.cc',
@@ -767,7 +768,6 @@
         'rewriter/cache_extender.cc',
         'rewriter/common_filter.cc',
         'rewriter/critical_images_callback.cc',
-        'rewriter/css_combine_filter.cc',
         'rewriter/css_inline_filter.cc',
         'rewriter/css_move_to_head_filter.cc',
         'rewriter/css_outline_filter.cc',

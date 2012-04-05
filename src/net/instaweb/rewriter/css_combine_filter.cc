@@ -50,6 +50,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
+#include "webutil/css/parser.h"
 
 namespace net_instaweb {
 
@@ -79,9 +80,30 @@ class CssCombineFilter::CssCombiner
     css_file_count_reduction_ = stats->GetVariable(kCssFileCountReduction);
   }
 
+  bool CleanParse(const StringPiece& contents) {
+    Css::Parser parser(contents);
+    // Note: We do not turn on preservation_mode because that could pass through
+    // verbatim text that will break other CSS files combined with this one.
+    // TODO(sligocki): Be less conservative here and actually scan verbatim
+    // text for bad constructs (Ex: contains "{").
+    // TODO(sligocki): Do parsing on low-priority worker thread.
+    scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
+    return (parser.errors_seen_mask() == Css::Parser::kNoError);
+  }
+
   virtual bool ResourceCombinable(Resource* resource, MessageHandler* handler) {
+    // If this CSS file is not parseable it may have errors that will break
+    // the rest of the files combined with this one. So we should not include
+    // it in the combination.
+    // TODO(sligocki): Just do the CSS parsing and rewriting here.
+    if (!CleanParse(resource->contents())) {
+      return false;
+    }
+
     // styles containing @import cannot be appended to others, as any
     // @import in the middle will be ignored.
+    // TODO(sligocki): Do CSS parsing and rewriting here so that we can
+    // git rid of this restriction.
     return ((num_urls() == 0)
             || !CssTagScanner::HasImport(resource->contents(), handler));
   }

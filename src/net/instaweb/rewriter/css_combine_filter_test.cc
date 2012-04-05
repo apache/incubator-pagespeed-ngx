@@ -332,8 +332,8 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 
     ResponseHeaders default_css_header;
     SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
-    SetFetchResponse(a_css_url, default_css_header, "A");
-    SetFetchResponse(b_css_url, default_css_header, "B");
+    SetFetchResponse(a_css_url, default_css_header, kYellow);
+    SetFetchResponse(b_css_url, default_css_header, kBlue);
 
     GoogleString combined_url = Encode(kTestDomain, "cc", "0",
                                        MultiUrl("a.css", "b.css"), "css");
@@ -989,8 +989,8 @@ TEST_F(CssCombineFilterTest, ShardSubresources) {
 TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   CssLink::Vector css_in, css_out;
   GoogleString long_name(600, 'z');
-  css_in.Add(long_name + "/a.css", "a", "", true);
-  css_in.Add(long_name + "/b.css", "b", "", true);
+  css_in.Add(long_name + "/a.css", kYellow, "", true);
+  css_in.Add(long_name + "/b.css", kBlue, "", true);
 
   // This last 'Add' causes the resolved path to change from long_path to "/".
   // Which makes the encoding way too long. So we expect this URL not to be
@@ -1008,7 +1008,7 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
   ResourceNamer namer;
   ASSERT_TRUE(namer.Decode(gurl.LeafWithQuery()));
   EXPECT_EQ("a.css+b.css", namer.name());
-  EXPECT_EQ("ab", actual_combination);
+  EXPECT_EQ(StrCat(kYellow, kBlue), actual_combination);
 }
 
 // Verifies that we don't allow path-crossing URLs if that option is turned off.
@@ -1017,8 +1017,8 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsDisallowed) {
   options()->set_combine_across_paths(false);
   resource_manager()->ComputeSignature(options());
   CssLink::Vector css_in, css_out;
-  css_in.Add("a/a.css", "a", "", true);
-  css_in.Add("b/b.css", "b", "", true);
+  css_in.Add("a/a.css", kYellow, "", true);
+  css_in.Add("b/b.css", kBlue, "", true);
   BarrierTestHelper("cross_paths", css_in, &css_out);
   ASSERT_EQ(2, css_out.size());
   EXPECT_EQ("a/a.css", css_out[0]->url_);
@@ -1123,6 +1123,16 @@ TEST_F(CssCombineFilterTest, InvalidFetchCache) {
                     StrCat(kXhtmlDtd,
                            CssLinkHref("404a.css"),
                            CssLinkHref("404b.css")));
+}
+
+TEST_F(CssCombineFilterTest, NoCombineParseErrors) {
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
+                                "h1 { color: red", 100);
+  SetResponseWithDefaultHeaders("b.css", kContentTypeCss,
+                                "h2 { color: blue; }", 100);
+
+  ValidateNoChanges("bad_parse", StrCat(CssLinkHref("a.css"),
+                                        CssLinkHref("b.css")));
 }
 
 class CssFilterWithCombineTest : public CssCombineFilterTest {
