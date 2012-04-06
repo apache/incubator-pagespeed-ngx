@@ -462,6 +462,10 @@ void ProxyInterface::ProxyRequestCallback(
                                                     property_callback,
                                                     options);
     if (is_blink_request && apply_blink_critical_line) {
+      // TODO(rahulbansal): Remove this LOG once we expect to have
+      // a lot of such requests.
+      LOG(INFO) << "Triggering Blink flow critical line for url "
+                << request_url->Spec().as_string();
       blink_critical_line_requests_->IncBy(1);
       BlinkFlowCriticalLine::Start(request_url->Spec().as_string(),
                                    async_fetch, options,

@@ -91,6 +91,8 @@ const char* kModPagespeedCssOutlineMinBytes = "ModPagespeedCssOutlineMinBytes";
 const char* kModPagespeedDisableFilters = "ModPagespeedDisableFilters";
 const char* kModPagespeedDisallow = "ModPagespeedDisallow";
 const char* kModPagespeedDomain = "ModPagespeedDomain";
+const char* kModPagespeedDomainRewriteHyperlinks =
+    "ModPagespeedDomainRewriteHyperlinks";
 const char* kModPagespeedEnableFilters = "ModPagespeedEnableFilters";
 const char* kModPagespeedFetchProxy = "ModPagespeedFetchProxy";
 const char* kModPagespeedFetcherTimeoutMs = "ModPagespeedFetcherTimeOutMs";
@@ -1141,6 +1143,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Disable mod_pagespeed for bots."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDomain,
         "Authorize mod_pagespeed to rewrite resources in a domain."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedDomainRewriteHyperlinks,
+                           "Allow rewrite_domains to rewrite <form> and <a> "
+                           "tags in addition to resource tags."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedEnableFilters,
         "Comma-separated list of enabled filters"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedHashRefererStatistics,

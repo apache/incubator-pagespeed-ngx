@@ -1,0 +1,21 @@
+<html>
+  <head>
+    <title>rewrite domains in HTML example</title>
+  </head>
+  <body>
+    <!-- This test HTML file works with the rewrite_domains filter only, and
+         by a Makefile tag that counts occurrences of the src and dst
+         domains.  -->
+
+    <!-- the A tag will be moved to dst iff ModPagespeedDomainRewriteHyperlinks
+         is on. -->
+    <a href="http://src.example.com/newpage">link</a>
+
+    <!-- the FORM tag will be moved to dst iff ModPagespeedDomainRewriteHyperlinks
+         is on. -->
+    <form action="http://src.example.com/newform">form</form>
+
+    <!-- the IMG tag will be moved to dst regardless of the setting. -->
+    <img src="http://src.example.com/image.png"/>
+  </body>
+</html>

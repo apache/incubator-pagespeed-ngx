@@ -285,12 +285,26 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
     BlinkCriticalLineDataHit();
     return;
   }
-  // If BlinkCriticalLineData is not present in the cache.
+  BlinkCriticalLineDataMiss();
+}
+
+void BlinkFlowCriticalLine::BlinkCriticalLineDataMiss() {
   TriggerProxyFetch(false);
 }
 
 void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
-  // TODO(rahulbansal): Add layout marker.
+  const GoogleString& critical_html =
+      blink_critical_line_data_->critical_html();
+  // NOTE: Since we compute critical html in background and only get it in
+  // serialized form, we have to strip everything after the layout marker.
+  size_t pos = critical_html.rfind(BlinkUtil::kLayoutMarker);
+  if (pos == StringPiece::npos) {
+    LOG(ERROR) << "Layout marker not found for url " << url_;
+    VLOG(1) << "Critical html without marker is " << critical_html;
+    BlinkCriticalLineDataMiss();
+    return;
+  }
+
   ResponseHeaders* response_headers = base_fetch_->response_headers();
   response_headers->set_status_code(HttpStatus::kOK);
   // TODO(pulkitg): Store content type in pcache.
@@ -323,8 +337,9 @@ void BlinkFlowCriticalLine::ServeAllPanelContents() {
 }
 
 void BlinkFlowCriticalLine::ServeCriticalPanelContents() {
-  GoogleString critical_html = blink_critical_line_data_->critical_html();
-  GoogleString pushed_images_str =
+  const GoogleString& critical_html =
+      blink_critical_line_data_->critical_html();
+  const GoogleString& pushed_images_str =
       blink_critical_line_data_->critical_images_map();
   SendCriticalHtml(critical_html);
   SendInlineImagesJson(pushed_images_str);
@@ -332,7 +347,8 @@ void BlinkFlowCriticalLine::ServeCriticalPanelContents() {
 
 void BlinkFlowCriticalLine::SendCriticalHtml(
     const GoogleString& critical_html) {
-  WriteString(critical_html);
+  WriteString(critical_html.substr(
+        0, critical_html.rfind(BlinkUtil::kLayoutMarker)));
   WriteString("<script>pagespeed.panelLoaderInit();</script>");
   Flush();
 }

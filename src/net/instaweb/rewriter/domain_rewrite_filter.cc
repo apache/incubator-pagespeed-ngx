@@ -49,11 +49,11 @@ DomainRewriteFilter::DomainRewriteFilter(RewriteDriver* rewrite_driver,
       rewrite_count_(stats->GetVariable(kDomainRewrites)) {}
 
 void DomainRewriteFilter::StartDocumentImpl() {
-  bool rewrite_all_tags = driver_->options()->domain_rewrite_all_tags();
-  tag_scanner_.set_find_a_tags(rewrite_all_tags);
-  tag_scanner_.set_find_form_tags(rewrite_all_tags);
+  bool rewrite_hyperlinks = driver_->options()->domain_rewrite_hyperlinks();
+  tag_scanner_.set_find_a_tags(rewrite_hyperlinks);
+  tag_scanner_.set_find_form_tags(rewrite_hyperlinks);
 
-  if (rewrite_all_tags) {
+  if (rewrite_hyperlinks) {
     // TODO(nikhilmadan): Rewrite the domain for cookies.
     // Rewrite the Location header for redirects.
     ResponseHeaders* headers = driver_->mutable_response_headers();

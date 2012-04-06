@@ -9,7 +9,8 @@
 #                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_HTTPS_TEST,
 #                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST,
 #                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST,
-#                       OPT_FURIOUS_TEST, OPT_XHEADER_TEST)
+#                       OPT_FURIOUS_TEST, OPT_XHEADER_TEST,
+#                       OPT_DOMAIN_HYPERLINKS, OPT_DOMAIN_RESOURCE_TAGS)
 #  apache_debug_restart
 #  apache_debug_stop
 #  apache_debug_leak_test, apache_debug_proxy_test, apache_debug_slurp_test
@@ -42,6 +43,8 @@ apache_system_tests :
 	$(MAKE) apache_debug_gzip_test
 	$(MAKE) apache_debug_furious_test
 	$(MAKE) apache_debug_xheader_test
+	$(MAKE) apache_debug_rewrite_hyperlinks_test
+	$(MAKE) apache_debug_rewrite_resource_tags_test
 	$(MAKE) apache_debug_vhost_only_test
 	$(MAKE) apache_debug_global_off_test
 	$(MAKE) apache_debug_shared_mem_lock_sanity_test
@@ -67,6 +70,8 @@ EXAMPLE = $(APACHE_SERVER)/mod_pagespeed_example
 EXAMPLE_IMAGE = $(EXAMPLE)/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 EXAMPLE_BIG_CSS = $(EXAMPLE)/styles/big.css.pagespeed.ce.01O-NppLwe.css
 EXAMPLE_COMBINE_CSS = $(EXAMPLE)/combine_css.html
+
+TEST_ROOT = $(APACHE_SERVER)/mod_pagespeed_test
 
 # Installs debug configuration and runs a smoke test against it.
 # This will blow away your existing pagespeed.conf,
@@ -188,6 +193,36 @@ apache_debug_xheader_test : xheader_test_prepare apache_install_conf \
 xheader_test_prepare:
 	$(eval OPT_XHEADER_TEST="XHEADER_TEST=1")
 	rm -rf $(PAGESPEED_ROOT)/cache/*
+
+rewrite_hyperlinks_test_prepare:
+	$(eval OPT_DOMAIN_HYPERLINKS_TEST="DOMAIN_HYPERLINKS_TEST=1")
+	rm -rf $(PAGESPEED_ROOT)/cache/*
+
+# This test checks that the ModPagespeedDomainRewriteHyperlinks directive
+# can turn on.  See mod_pagespeed_test/rewrite_domains.html: it has
+# one <img> URL, one <form> URL, and one <a> url, all referencing
+# src.example.com.  They should all be rewritten to dst.example.com.
+apache_debug_rewrite_hyperlinks_test : rewrite_hyperlinks_test_prepare \
+    apache_install_conf apache_debug_restart
+	@echo Testing ModPagespeedRewriteHyperlinks on directive:
+	matches=`$(WGET) -q -O - $(TEST_ROOT)/rewrite_domains.html \
+	  | grep -c http://dst.example.com`; \
+	test $$matches -eq 3
+
+rewrite_resource_tags_test_prepare:
+	$(eval OPT_DOMAIN_RESOURCE_TAGS_TEST="DOMAIN_RESOURCE_TAGS_TEST=1")
+	rm -rf $(PAGESPEED_ROOT)/cache/*
+
+# This test checks that the ModPagespeedDomainRewriteHyperlinks directive
+# can turn on.  See mod_pagespeed_test/rewrite_domains.html: it has
+# one <img> URL, one <form> URL, and one <a> url, all referencing
+# src.example.com.  Only the <img> url should be rewritten.
+apache_debug_rewrite_resource_tags_test : rewrite_resource_tags_test_prepare \
+    apache_install_conf apache_debug_restart
+	@echo Testing ModPagespeedRewriteHyperlinks off directive:
+	matches=`$(WGET) -q -O - $(TEST_ROOT)/rewrite_domains.html \
+	  | grep -c http://dst.example.com`; \
+	test $$matches -eq 1
 
 # Test to make sure we don't crash if we're off for global but on for vhosts.
 # We use the stress test config as a base for that, as it has the vhosts all

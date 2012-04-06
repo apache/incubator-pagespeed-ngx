@@ -75,6 +75,10 @@ class BlinkFlowCriticalLine {
   // for non cacheable content.
   void BlinkCriticalLineDataHit();
 
+  // Serves the request in passthru mode and triggers a background request to
+  // compute BlinkCriticalLineData.
+  void BlinkCriticalLineDataMiss();
+
   void TriggerProxyFetch(bool critical_line_data_found);
 
   // Serves all the panel contents including critical html, critical images json

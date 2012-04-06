@@ -75,6 +75,7 @@ struct OptionName {
 "XHeaderValue",                         RewriteOptions::kXModPagespeedHeaderValue
 # The following are Apache specific options.
 "CollectRefererStatistics",             RewriteOptions::kCollectRefererStatistics
+"DomainRewriteHyperlinks",              RewriteOptions::kDomainRewriteHyperlinks
 "FetchProxy",                           RewriteOptions::kFetcherProxy
 "FetcherTimeOutMs",                     RewriteOptions::kFetcherTimeOutMs
 "FileCacheCleanIntervalMs",             RewriteOptions::kFileCacheCleanIntervalMs
@@ -91,7 +92,6 @@ struct OptionName {
 "SlurpReadOnly",                        RewriteOptions::kSlurpReadOnly
 "Statistics",                           RewriteOptions::kStatisticsEnabled
 "TestProxy",                            RewriteOptions::kTestProxy
-"DomainRewriteAllTags",                 RewriteOptions::kDomainRewriteAllTags
 %%
 
 RewriteOptions::OptionEnum RewriteOptions::LookupOption(

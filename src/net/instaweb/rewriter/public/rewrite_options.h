@@ -175,7 +175,7 @@ class RewriteOptions {
     kUseSharedMemLocking,
 
     // This is always the last option.
-    kDomainRewriteAllTags,
+    kDomainRewriteHyperlinks,
     kEndOfOptions
   };
 
@@ -757,11 +757,11 @@ class RewriteOptions {
     set_option(x, &image_webp_recompress_quality_);
   }
 
-  bool domain_rewrite_all_tags() const {
-    return domain_rewrite_all_tags_.value();
+  bool domain_rewrite_hyperlinks() const {
+    return domain_rewrite_hyperlinks_.value();
   }
-  void set_domain_rewrite_all_tags(bool x) {
-    set_option(x, &domain_rewrite_all_tags_);
+  void set_domain_rewrite_hyperlinks(bool x) {
+    set_option(x, &domain_rewrite_hyperlinks_);
   }
 
   void set_disable_override_doc_open(bool x) {
@@ -1286,7 +1286,7 @@ class RewriteOptions {
   Option<bool> lazyload_images_after_onload_;
   // Indicates whether the DomainRewriteFilter should rewrite all tags,
   // including <a href> and <form action>.
-  Option<bool> domain_rewrite_all_tags_;
+  Option<bool> domain_rewrite_hyperlinks_;
 
   // Furious is the A/B experiment framework that uses cookies
   // and Google Analytics to track page speed statistics with

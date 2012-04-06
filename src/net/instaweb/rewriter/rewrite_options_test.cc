@@ -793,9 +793,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("TestProxy"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kTestProxy));
-  EXPECT_EQ(StringPiece("DomainRewriteAllTags"),
+  EXPECT_EQ(StringPiece("DomainRewriteHyperlinks"),
             RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kDomainRewriteAllTags));
+                RewriteOptions::kDomainRewriteHyperlinks));
 }
 
 TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies1) {

@@ -139,9 +139,9 @@ TEST_F(DomainRewriteFilterTest, DontTouchIfAlreadyRewritten) {
                  Encode(kFrom1Domain, "cf", "0", "a.css", "css"));
 }
 
-TEST_F(DomainRewriteFilterTest, RewriteAllTags) {
+TEST_F(DomainRewriteFilterTest, RewriteHyperlinks) {
   options()->ClearSignatureForTesting();
-  options()->set_domain_rewrite_all_tags(true);
+  options()->set_domain_rewrite_hyperlinks(true);
   ValidateExpected(
       "forms and a tags",
       StrCat("<a href=\"", kFrom1Domain, "link.html\"/>"
@@ -154,7 +154,7 @@ TEST_F(DomainRewriteFilterTest, RewriteAllTags) {
 
 TEST_F(DomainRewriteFilterTest, RewriteRedirectLocations) {
   options()->ClearSignatureForTesting();
-  options()->set_domain_rewrite_all_tags(true);
+  options()->set_domain_rewrite_hyperlinks(true);
   ResponseHeaders headers;
   headers.Add(HttpAttributes::kLocation,
               StrCat(kFrom1Domain, "redirect"));

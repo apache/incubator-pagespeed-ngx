@@ -460,7 +460,8 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultBeaconUrl, &beacon_url_, "bu", kBeaconUrl);
   add_option(false, &lazyload_images_after_onload_, "llio",
              kLazyloadImagesAfterOnload);
-  add_option(false, &domain_rewrite_all_tags_, "rat", kDomainRewriteAllTags);
+  add_option(false, &domain_rewrite_hyperlinks_, "drh",
+             kDomainRewriteHyperlinks);
   add_option(kDefaultImageJpegRecompressQuality,
              &image_jpeg_recompress_quality_, "iq",
              kImageJpegRecompressionQuality);

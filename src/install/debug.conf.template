@@ -294,3 +294,11 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 
 #XHEADER # Set the value of the X-Mod-Pagespeed header
 #XHEADER ModPagespeedXHeaderValue "UNSPECIFIED VERSION"
+
+#DOMAIN_HYPERLINKS ModPagespeedDomainRewriteHyperlinks on
+#DOMAIN_HYPERLINKS ModPagespeedMapRewriteDomain http://dst.example.com http://src.example.com
+#DOMAIN_HYPERLINKS ModPagespeedEnableFilters rewrite_domains
+
+#DOMAIN_RESOURCE_TAGS ModPagespeedDomainRewriteHyperlinks off
+#DOMAIN_RESOURCE_TAGS ModPagespeedMapRewriteDomain http://dst.example.com http://src.example.com
+#DOMAIN_RESOURCE_TAGS ModPagespeedEnableFilters rewrite_domains
