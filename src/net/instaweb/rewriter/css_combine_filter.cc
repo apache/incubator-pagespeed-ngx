@@ -44,6 +44,7 @@
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -54,7 +55,6 @@
 
 namespace net_instaweb {
 
-class MessageHandler;
 class HtmlIEDirectiveNode;
 class UrlSegmentEncoder;
 
@@ -97,6 +97,11 @@ class CssCombineFilter::CssCombiner
     // it in the combination.
     // TODO(sligocki): Just do the CSS parsing and rewriting here.
     if (!CleanParse(resource->contents())) {
+      handler->Message(kInfo, "Failed to combine %s because of parse error.",
+                       resource->url().c_str());
+      // TODO(sligocki): All parse failures are repeated twice because we will
+      // try to combine them in the normal combination, then we'll try again
+      // with this as the first of a new combination.
       return false;
     }
 
