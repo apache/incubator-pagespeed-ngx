@@ -350,6 +350,7 @@ void BlinkFlowCriticalLine::SendCriticalHtml(
   WriteString(critical_html.substr(
         0, critical_html.rfind(BlinkUtil::kLayoutMarker)));
   WriteString("<script>pagespeed.panelLoaderInit();</script>");
+  WriteString("<script>pagespeed.panelLoader.loadCriticalData({});</script>");
   Flush();
 }
 
