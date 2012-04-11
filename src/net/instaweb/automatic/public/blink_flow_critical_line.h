@@ -29,6 +29,7 @@ namespace net_instaweb {
 class AsyncFetch;
 class BlinkCriticalLineData;
 class BlinkCriticalLineDataFinder;
+class PropertyPage;
 class ProxyFetchPropertyCallbackCollector;
 class ProxyFetchFactory;
 class ResourceManager;
@@ -107,6 +108,9 @@ class BlinkFlowCriticalLine {
   // Modify the rewrite options to be used in the background and user-facing
   // request when BlinkCriticalLineData is found in the cache.
   void SetFilterOptions(RewriteOptions* options) const;
+
+  // Returns true if property cache has last response code as non 200.
+  bool IsLastResponseCodeInvalid(PropertyPage* page);
 
   GoogleString url_;
   AsyncFetch* base_fetch_;

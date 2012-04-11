@@ -127,6 +127,12 @@ pagespeed.DeferJs = function() {
   this.origGetElementById_ = document.getElementById;
 
   /**
+   * Original document.getElementsByTagName handler.
+   * @private
+   */
+  this.origGetElementsByTagName_ = document.getElementsByTagName;
+
+  /**
    * Maintains the current state for the deferJs.
    * @type {!number}
    * @private
@@ -163,6 +169,13 @@ pagespeed.DeferJs.STATES = {
    */
   SCRIPTS_DONE: 3
 };
+
+/**
+ * Name of the attribute set for the nodes that are not reached so far during
+ * scripts execution.
+ * @const {string}
+ */
+pagespeed.DeferJs.PSA_NOT_PROCESSED = 'psa_not_processed';
 
 /**
  * Add to defer_logs if logs are enabled.
@@ -241,34 +254,38 @@ pagespeed.DeferJs.prototype.addNode = function(script, opt_pos) {
   if (src) {
     this.addUrl(src, script, opt_pos);
   }
-  var str = script.innerHTML || script.textContent || script.data;
-  if (str) {
-    this.addStr(str, script, opt_pos);
+  // TODO(ksimbili): Replace the below condition with 'else' once experimental
+  // mode is tested.
+  if (!(src && pagespeed.DeferJs.isExperimentalMode)) {
+    var str = script.innerHTML || script.textContent || script.data;
+    if (str) {
+      this.addStr(str, script, opt_pos);
+    }
   }
 };
 
 /**
  * Defers execution of 'str', by adding it to the queue.
  * @param {!string} str valid javascript snippet.
- * @param {Element} opt_elem Optional context element.
+ * @param {Element} script_elem Psa inserted script used as context element.
  * @param {number} opt_pos Optional position for ordering.
  */
-pagespeed.DeferJs.prototype.addStr = function(str, opt_elem, opt_pos) {
+pagespeed.DeferJs.prototype.addStr = function(str, script_elem, opt_pos) {
   if (this.isFireFox()) {
     // This is due to some bug identified in firefox.
     // Got this workaround from the bug raised on firefox.
     // https://bugzilla.mozilla.org/show_bug.cgi?id=728151
     this.addUrl('data:text/javascript,' + encodeURIComponent(str),
-                opt_elem,
+                script_elem,
                 opt_pos);
     return;
   }
   this.logs.push('Add to queue str: ' + str);
   var me = this; // capture closure.
   this.submitTask(function() {
-    if (opt_elem) {
-      me.currentElem_ = opt_elem;
-    }
+    me.currentElem_ = script_elem;
+    me.removeNotProcessedAttributeTillNode(script_elem);
+
     try {
       me.globalEval(str);
     } catch (err) {
@@ -284,18 +301,31 @@ pagespeed.DeferJs.prototype['addStr'] = pagespeed.DeferJs.prototype.addStr;
 /**
  * Defers execution of contents of 'url'.
  * @param {!string} url returns javascript when fetched.
- * @param {Element} opt_elem Optional context element.
+ * @param {Element} script_elem Psa inserted script used as context element.
  * @param {number} opt_pos Optional position for ordering.
  */
-pagespeed.DeferJs.prototype.addUrl = function(url, opt_elem, opt_pos) {
+pagespeed.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
   this.logs.push('Add to queue url: ' + url);
   var me = this; // capture closure.
   this.submitTask(function() {
-    if (opt_elem) {
-      me.currentElem_ = opt_elem;
-    }
+    me.currentElem_ = script_elem;
+    me.removeNotProcessedAttributeTillNode(script_elem);
+
     var script = document.createElement('script');
     script.setAttribute('type', 'text/javascript');
+    if (pagespeed.DeferJs.isExperimentalMode) {
+      // If a script node with src also has a node inside it
+      // (as innerHTML etc.), we simply create an equivalent text node so
+      // that the DOM remains the same. Note that we do not try to execute
+      // the contents of this node.
+      var str = script_elem.innerHTML ||
+                script_elem.textContent ||
+                script_elem.data;
+      if (str) {
+        script.appendChild(document.createTextNode(str));
+      }
+    }
+
     var runNextHandler = function() {
       me.log('Executed: ' + url);
       me.runNext();
@@ -320,9 +350,48 @@ pagespeed.DeferJs.prototype.addUrl = function(url, opt_elem, opt_pos) {
 pagespeed.DeferJs.prototype['addUrl'] = pagespeed.DeferJs.prototype.addUrl;
 
 /**
+ * Remove 'psa_not_processed' attribute till the given node.
+ * @param {Node} opt_node Stop node.
+ */
+pagespeed.DeferJs.prototype.removeNotProcessedAttributeTillNode = function(
+    opt_node) {
+  if (!pagespeed.DeferJs.isExperimentalMode) {
+    return;
+  }
+  if (document.querySelectorAll && !(this.getIEVersion() <= 8)) {
+    var nodes = document.querySelectorAll(
+        '[' + pagespeed.DeferJs.PSA_NOT_PROCESSED + ']');
+    for (var i = 0; i < nodes.length; i++) {
+      var dom_node = nodes.item(i);
+      if (dom_node == opt_node) {
+        return;
+      }
+      if (dom_node.getAttribute('type') != 'text/psajs') {
+        dom_node.removeAttribute(pagespeed.DeferJs.PSA_NOT_PROCESSED);
+      }
+    }
+  }
+};
+
+/**
+ * Set 'psa_not_processed' attribute to all Nodes in DOM.
+ */
+pagespeed.DeferJs.prototype.setNotProcessedAttributeForNodes = function() {
+  if (!pagespeed.DeferJs.isExperimentalMode) {
+    return;
+  }
+  var nodes = this.origGetElementsByTagName_.call(document, '*');
+  for (var i = 0; i < nodes.length; i++) {
+    var dom_node = nodes.item(i);
+    dom_node.setAttribute(pagespeed.DeferJs.PSA_NOT_PROCESSED, '');
+  }
+};
+
+/**
  * Called when the script Queue execution is finished.
  */
 pagespeed.DeferJs.prototype.onComplete = function() {
+  this.removeNotProcessedAttributeTillNode();
   if (this.getIEVersion() && document.documentElement['originalDoScroll']) {
     document.documentElement.doScroll =
         document.documentElement['originalDoScroll'];
@@ -332,6 +401,13 @@ pagespeed.DeferJs.prototype.onComplete = function() {
     delete document['readyState'];
   }
 
+  if (pagespeed.DeferJs.isExperimentalMode) {
+    document.getElementById = this.origGetElementById_;
+
+    if (document.querySelectorAll && !(this.getIEVersion() <= 8)) {
+      document.getElementsByTagName = this.origGetElementsByTagName_;
+    }
+  }
   // TODO(ksimbili): Restore the handlers in a clean way.
   if (document.originalAddEventListener) {
     document.addEventListener = document.originalAddEventListener;
@@ -343,10 +419,6 @@ pagespeed.DeferJs.prototype.onComplete = function() {
 
   this.executeDomReady();
   this.executeOnload();
-
-  if (pagespeed.DeferJs.isExperimentalMode) {
-    document.getElementById = this.origGetElementById_;
-  }
 
   this.state_ = pagespeed.DeferJs.STATES.SCRIPTS_DONE;
   this.executeAfterDeferRun();
@@ -386,6 +458,8 @@ pagespeed.DeferJs.prototype.nodeListToArray = function(nodeList) {
  * SetUp needed before deferrred scripts execution.
  */
 pagespeed.DeferJs.prototype.setUp = function() {
+  this.setNotProcessedAttributeForNodes();
+
   if (Object.defineProperty) {
     try {
       // Shadow document.readyState
@@ -517,6 +591,9 @@ pagespeed.DeferJs.prototype.extractScriptNodes = function(node, scriptNodes) {
     if (child.nodeName == 'SCRIPT') {
       if (this.isJSNode(child)) {
         scriptNodes.push(child);
+        if (pagespeed.DeferJs.isExperimentalMode) {
+          child.setAttribute(pagespeed.DeferJs.PSA_NOT_PROCESSED, '');
+        }
         child.setAttribute('orig_type', child.type);
         child.setAttribute('type', 'text/psajs');
         child.setAttribute('orig_src', child.src);
@@ -755,6 +832,7 @@ pagespeed.DeferJs.prototype.registerScriptTags = function() {
   for (var i = 0; i < len; ++i) {
     var script = scripts[i];
     // TODO(atulvasu): Use orig_type
+    // TODO(ksimbili): Remove these script nodes from DOM.
     if (script.getAttribute('type') == 'text/psajs') {
       this.addNode(script);
     }
@@ -854,6 +932,14 @@ pagespeed.deferInit = function() {
     document.getElementById = function(str) {
       pagespeed.deferJs.handlePendingDocumentWrites();
       return pagespeed.deferJs.origGetElementById_.call(document, str);
+    }
+
+    if (document.querySelectorAll && !(pagespeed.deferJs.getIEVersion() <= 8)) {
+      // TODO(ksimbili): Support IE8
+      document.getElementsByTagName = function(tagName) {
+          return document.querySelectorAll(
+              tagName + ':not([' + pagespeed.DeferJs.PSA_NOT_PROCESSED + '])');
+      }
     }
   }
 };

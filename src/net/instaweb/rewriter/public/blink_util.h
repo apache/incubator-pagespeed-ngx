@@ -54,6 +54,7 @@ const char kImages[] = "images";
 const char kInstanceHtml[] = "instance_html";
 const char kLayoutMarker[] = "<!--GooglePanel **** Layout end ****-->";
 const char kJsonCachePrefix[] = "json:";
+const char kBlinkResponseCodePropertyName[] = "blink_last_response_code";
 
 // Checks whether the request for 'url' is a valid blink request.
 bool IsBlinkRequest(const GoogleUrl& url,

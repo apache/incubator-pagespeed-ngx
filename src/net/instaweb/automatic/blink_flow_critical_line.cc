@@ -280,8 +280,8 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
   // BlinkFlowCriticalLine.
   blink_critical_line_data_.reset(
       finder_->ExtractBlinkCriticalLineData(page, options_));
-
-  if (blink_critical_line_data_.get() != NULL) {
+  if (blink_critical_line_data_.get() != NULL &&
+      !IsLastResponseCodeInvalid(page)) {
     BlinkCriticalLineDataHit();
     return;
   }
@@ -290,6 +290,23 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
 
 void BlinkFlowCriticalLine::BlinkCriticalLineDataMiss() {
   TriggerProxyFetch(false);
+}
+
+bool BlinkFlowCriticalLine::IsLastResponseCodeInvalid(PropertyPage* page) {
+  const PropertyCache::Cohort* cohort =
+    manager_->page_property_cache()->GetCohort(RewriteDriver::kDomCohort);
+  if (cohort == NULL) {
+    return true;
+  }
+  PropertyValue* property_value = page->GetProperty(
+      cohort, BlinkUtil::kBlinkResponseCodePropertyName);
+
+  // TODO(rahulbansal): Use stability here.
+  if (!property_value->has_value() ||
+      property_value->value() == IntegerToString(HttpStatus::kOK)) {
+    return false;
+  }
+  return true;
 }
 
 void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
@@ -398,7 +415,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
     // base fetch. It also doesn't attach the response headers from the base
     // fetch since headers have already been flushed out.
     fetch = new AsyncFetchWithHeadersInhibited(base_fetch_);
-  } else {
+  } else if (blink_critical_line_data_ == NULL) {
     options = options_->Clone();
     SetFilterOptions(options);
     options->ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
@@ -413,6 +430,11 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
     num_blink_shared_fetches_started_->IncBy(1);
     fetch = new SharedFetch(
         base_fetch_, url_, manager_, options, driver);
+  } else {
+    // Non 200 status code.
+    manager_->ComputeSignature(options_);
+    driver = manager_->NewCustomRewriteDriver(options_);
+    fetch = base_fetch_;
   }
   factory_->StartNewProxyFetch(url_, fetch, driver, property_callback_);
   delete this;
