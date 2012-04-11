@@ -46,6 +46,14 @@ HtmlElement::Attribute* ResourceTagScanner::ScanElement(HtmlElement* element)
       attr = element->FindAttribute(HtmlName::kSrc);
       break;
     case HtmlName::kA:
+    case HtmlName::kArea:
+      // http://www.whatwg.org/specs/web-apps/current-work/multipage/
+      // section-index.html#attributes-1
+      // lists all HTML tags that have 'href'.  The only one we are not
+      // scanning for in this switch-statement is 'base'.
+      //
+      // TODO(jmarantz): Add tag-scanning for 'base', but do not use that for
+      // trimming or domain-rewriting.
       if (find_a_tags_) {
         attr = element->FindAttribute(HtmlName::kHref);
       }

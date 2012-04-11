@@ -40,6 +40,12 @@ class ResourceTagScanner {
   // the other attributes are.
   HtmlElement::Attribute* ScanElement(HtmlElement* element) const;
 
+  // Note: set_find_a_tags also finds "area" tags, as those are a different
+  // visualization for an anchor.  If we need to split this functionality
+  // in the future we add a new bool.
+  //
+  // TODO(jmarantz): merge these two flags (note url_left_trim_filter.cc only
+  // sets one currently) and rename to set_find_hyperlinks.
   void set_find_a_tags(bool val) { find_a_tags_ = val; }
   void set_find_form_tags(bool val) { find_form_tags_ = val; }
 

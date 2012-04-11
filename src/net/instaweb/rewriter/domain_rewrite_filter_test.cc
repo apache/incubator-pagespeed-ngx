@@ -146,10 +146,12 @@ TEST_F(DomainRewriteFilterTest, RewriteHyperlinks) {
       "forms and a tags",
       StrCat("<a href=\"", kFrom1Domain, "link.html\"/>"
              "<form action=\"", kFrom1Domain, "blank\"/>"
-             "<a href=\"https://from1.test.com/1.html\"/>"),
+             "<a href=\"https://from1.test.com/1.html\"/>"
+             "<area href=\"", kFrom1Domain, "2.html\"/>"),
       "<a href=\"http://to1.test.com/link.html\"/>"
       "<form action=\"http://to1.test.com/blank\"/>"
-      "<a href=\"https://from1.test.com/1.html\"/>");
+      "<a href=\"https://from1.test.com/1.html\"/>"
+      "<area href=\"http://to1.test.com/2.html\"/>");
 }
 
 TEST_F(DomainRewriteFilterTest, RewriteRedirectLocations) {

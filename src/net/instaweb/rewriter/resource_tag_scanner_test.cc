@@ -106,10 +106,12 @@ TEST_F(ResourceTagScannerTest, FindATags) {
   html_parse_.AddFilter(&collector);
   ValidateNoChanges(
       "simple_script",
-      "<a href=\"link\"/>"
+      "<a href=link0></a>"
+      "<area href=link1 />"
       "<form action=\"blank\"/>");
-  ASSERT_EQ(static_cast<size_t>(1), resources.size());
-  EXPECT_EQ(GoogleString("link"), resources[0]);
+  ASSERT_EQ(static_cast<size_t>(2), resources.size());
+  EXPECT_EQ(GoogleString("link0"), resources[0]);
+  EXPECT_EQ(GoogleString("link1"), resources[1]);
 }
 
 TEST_F(ResourceTagScannerTest, FindFormATags) {
