@@ -46,6 +46,13 @@ pagespeed.DetectReflow = function() {
    * @private
    */
   this.reflowElementHeights_ = '';
+
+  /**
+   * Completion of reflow detection is flagged by this being true.
+   * @type {!boolean}
+   * @private
+   */
+  this.reflowDetectionDone_ = false;
 };
 
 /**
@@ -60,9 +67,20 @@ pagespeed.DetectReflow.prototype['getReflowElementHeight'] =
   pagespeed.DetectReflow.prototype.getReflowElementHeight;
 
 /**
+ * Returns reflowDetectionDone_ boolean.
+ * @return {!boolean}  Returns true if reflow detection is done.
+ */
+pagespeed.DetectReflow.prototype.isReflowDetectionDone = function() {
+  return this.reflowDetectionDone_;
+};
+pagespeed.DetectReflow.prototype['isReflowDetectionDone'] =
+  pagespeed.DetectReflow.prototype.isReflowDetectionDone;
+
+/**
  * Global singleton instance of DetectReflow.
  */
 pagespeed.detectReflow = new pagespeed.DetectReflow();
+pagespeed['detectReflow'] = pagespeed.detectReflow;
 
 /**
  * For all divs with attribute 'id', adds a mapping from div 'id' to
@@ -106,6 +124,7 @@ pagespeed.findChangedDivsAfterDeferredJs = function() {
           String(div.clientHeight) + ',';
     }
   }
+  pagespeed.detectReflow.reflowDetectionDone_ = true;
 };
 
 // TODO(sriharis):  Make labelDivsBeforeDeferredJs and

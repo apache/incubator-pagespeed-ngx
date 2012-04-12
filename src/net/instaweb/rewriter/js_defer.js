@@ -292,7 +292,7 @@ pagespeed.DeferJs.prototype.addStr = function(str, script_elem, opt_pos) {
       me.log('Exception while evaluating.', err);
     }
     me.log('Evaluated: ' + str);
-    // TODO(atulvasu): Detach stack here to prevent recursion issues.
+    // TODO(ksimbili): Detach stack here to prevent recursion issues.
     me.runNext();
   }, opt_pos);
 };
@@ -313,18 +313,6 @@ pagespeed.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
 
     var script = document.createElement('script');
     script.setAttribute('type', 'text/javascript');
-    if (pagespeed.DeferJs.isExperimentalMode) {
-      // If a script node with src also has a node inside it
-      // (as innerHTML etc.), we simply create an equivalent text node so
-      // that the DOM remains the same. Note that we do not try to execute
-      // the contents of this node.
-      var str = script_elem.innerHTML ||
-                script_elem.textContent ||
-                script_elem.data;
-      if (str) {
-        script.appendChild(document.createTextNode(str));
-      }
-    }
 
     var runNextHandler = function() {
       me.log('Executed: ' + url);
@@ -344,6 +332,18 @@ pagespeed.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
       pagespeed.addHandler(script, 'readystatechange', stateChangeHandler);
     }
     script.setAttribute('src', url);
+    if (pagespeed.DeferJs.isExperimentalMode) {
+      // If a script node with src also has a node inside it
+      // (as innerHTML etc.), we simply create an equivalent text node so
+      // that the DOM remains the same. Note that we do not try to execute
+      // the contents of this node.
+      var str = script_elem.innerHTML ||
+          script_elem.textContent ||
+          script_elem.data;
+      if (str) {
+        script.appendChild(document.createTextNode(str));
+      }
+    }
     me.currentElem_.parentNode.insertBefore(script, me.currentElem_);
   }, opt_pos);
 };
@@ -458,6 +458,18 @@ pagespeed.DeferJs.prototype.nodeListToArray = function(nodeList) {
  * SetUp needed before deferrred scripts execution.
  */
 pagespeed.DeferJs.prototype.setUp = function() {
+  // TODO(ksimbili): Remove this once context is not optional.
+  // Place where document.write() happens if there is no context element
+  // present. Happens if there is no context registering that happened in
+  // registerNoScriptTags.
+  var initialContextNode = document.createElement('span');
+  initialContextNode.setAttribute('psa_dw_target', 'true');
+  document.body.appendChild(initialContextNode);
+  this.currentElem_ = initialContextNode;
+  if (this.getIEVersion()) {
+    this.createIdVars();
+  }
+
   this.setNotProcessedAttributeForNodes();
 
   if (Object.defineProperty) {
@@ -482,16 +494,32 @@ pagespeed.DeferJs.prototype.setUp = function() {
   this.overrideAddEventListener(document);
   this.overrideAddEventListener(window);
 
-  // TODO(atulvasu): Remove this once context is not optional.
-  // Place where document.write() happens if there is no context element
-  // present. Happens if there is no context registering that happened in
-  // registerNoScriptTags.
-  var initialContextNode = document.createElement('span');
-  initialContextNode.setAttribute('psa_dw_target', 'true');
-  document.body.appendChild(initialContextNode);
-  this.currentElem_ = initialContextNode;
-  if (this.getIEVersion()) {
-    this.createIdVars();
+  // TODO(ksimbili): Restore the following functions to their original.
+  document.writeln = function(x) {
+    pagespeed.deferJs.writeHtml(x + '\n');
+  };
+  document.write = function(x) {
+    pagespeed.deferJs.writeHtml(x);
+  };
+  if (!window.localStorage['psa_disable_override_doc_open'] &&
+      !window.localStorage['psa_disable_override_doc_open_debug']) {
+    document.open = function() {};
+    document.close = function() {};
+  }
+
+  if (pagespeed.DeferJs.isExperimentalMode) {
+    document.getElementById = function(str) {
+      pagespeed.deferJs.handlePendingDocumentWrites();
+      return pagespeed.deferJs.origGetElementById_.call(document, str);
+    }
+
+    if (document.querySelectorAll && !(pagespeed.deferJs.getIEVersion() <= 8)) {
+      // TODO(ksimbili): Support IE8
+      document.getElementsByTagName = function(tagName) {
+        return document.querySelectorAll(
+            tagName + ':not([' + pagespeed.DeferJs.PSA_NOT_PROCESSED + '])');
+      }
+    }
   }
 };
 
@@ -831,7 +859,7 @@ pagespeed.DeferJs.prototype.registerScriptTags = function() {
   var len = scripts.length;
   for (var i = 0; i < len; ++i) {
     var script = scripts[i];
-    // TODO(atulvasu): Use orig_type
+    // TODO(ksimbili): Use orig_type
     // TODO(ksimbili): Remove these script nodes from DOM.
     if (script.getAttribute('type') == 'text/psajs') {
       this.addNode(script);
@@ -915,32 +943,5 @@ pagespeed.deferInit = function() {
 
   pagespeed.deferJs = new pagespeed.DeferJs();
   pagespeed['deferJs'] = pagespeed.deferJs;
-  // TODO(ksimbili): Restore the following functions to their original.
-  document.writeln = function(x) {
-    pagespeed.deferJs.writeHtml(x + '\n');
-  };
-  document.write = function(x) {
-    pagespeed.deferJs.writeHtml(x);
-  };
-  if (!window.localStorage['psa_disable_override_doc_open'] &&
-          !window.localStorage['psa_disable_override_doc_open_debug']) {
-    document.open = function() {};
-    document.close = function() {};
-  }
-
-  if (pagespeed.DeferJs.isExperimentalMode) {
-    document.getElementById = function(str) {
-      pagespeed.deferJs.handlePendingDocumentWrites();
-      return pagespeed.deferJs.origGetElementById_.call(document, str);
-    }
-
-    if (document.querySelectorAll && !(pagespeed.deferJs.getIEVersion() <= 8)) {
-      // TODO(ksimbili): Support IE8
-      document.getElementsByTagName = function(tagName) {
-          return document.querySelectorAll(
-              tagName + ':not([' + pagespeed.DeferJs.PSA_NOT_PROCESSED + '])');
-      }
-    }
-  }
 };
 pagespeed['deferInit'] = pagespeed.deferInit;
