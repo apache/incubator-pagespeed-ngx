@@ -374,6 +374,16 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
 
         rewrite_result = kRewriteOk;
       }
+    } else if (resized) {
+      // Eliminate any image dimensions from a resize operation that succeeded,
+      // but yielded overly-large output.
+      driver_->InfoAt(
+          rewrite_context,
+          "Shrink of image `%s' doesn't save space; dropped.",
+          input_resource->url().c_str());
+      ImageDim* dims = cached->mutable_image_file_dims();
+      dims->clear_width();
+      dims->clear_height();
     }
 
     // Try inlining input image if output hasn't been inlined already.
@@ -529,7 +539,8 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
   StringPiece url(src->DecodedValueOrNull());
   if (options->Enabled(RewriteOptions::kConvertJpegToWebp) &&
       driver_->UserAgentSupportsWebp() &&
-      !url.ends_with(".png") && !url.ends_with(".gif")) {
+      (options->Enabled(RewriteOptions::kConvertPngToJpeg) ||
+       !(url.ends_with(".png") || url.ends_with(".gif")))) {
     // Note that we guess content type based on extension above. This avoids
     // the common case where we rewrite a .png twice, once for webp capable
     // browsers and once for non-webp browsers, even though neither rewrite uses
@@ -550,9 +561,9 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
 
   ResourcePtr input_resource = CreateInputResource(src->DecodedValueOrNull());
   if (input_resource.get() != NULL) {
-    // If the image will inlined and the local storage cache is enabled, add
-    // the LSC marker attribute to this element so that the LSC filter knows
-    // to insert the relevant javascript functions.
+    // If the image will be inlined and the local storage cache is enabled, add
+    // the LSC marker attribute to this element so that the LSC filter knows to
+    // insert the relevant javascript functions.
     if (driver_->UserAgentSupportsImageInlining()) {
       LocalStorageCacheFilter::InlineState state;
       LocalStorageCacheFilter::AddStorableResource(src->DecodedValueOrNull(),

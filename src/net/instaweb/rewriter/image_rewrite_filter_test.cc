@@ -53,6 +53,7 @@ const char kBikePngFile[] = "BikeCrashIcn.png";
 const char kPuzzleJpgFile[] = "Puzzle.jpg";
 const char kChefGifFile[] = "IronChef2.gif";
 const char kCuppaTPngFile[] = "CuppaT.png";
+const char kCuppaOPngFile[] = "CuppaO.png";
 
 // A callback for HTTP cache that stores body and string representation
 // of headers into given strings.
@@ -287,12 +288,13 @@ class ImageRewriteTest : public ResourceManagerTestBase {
   // Assumes rewrite_driver has already been appropriately configured for the
   // image rewrites under test.
   void TestSingleRewrite(const StringPiece& name,
-                         const ContentType& content_type,
+                         const ContentType& input_type,
+                         const ContentType& output_type,
                          const char* initial_dims, const char* final_dims,
                          bool expect_rewritten, bool expect_inline) {
     GoogleString initial_url = StrCat(kTestDomain, name);
     GoogleString page_url = StrCat(kTestDomain, "test.html");
-    AddFileToMockFetcher(initial_url, name, content_type, 100);
+    AddFileToMockFetcher(initial_url, name, input_type, 100);
 
     const char html_boilerplate[] = "<img src='%s'%s>";
     GoogleString html_input =
@@ -311,10 +313,22 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     if (expect_inline) {
       EXPECT_TRUE(rewritten_gurl.SchemeIs("data"))
           << rewritten_gurl.spec_c_str();
+      GoogleString expected_start =
+          StrCat("data:", output_type.mime_type(), ";base64,");
+      EXPECT_TRUE(rewritten_gurl.Spec().starts_with(expected_start))
+          << "expected " << expected_start << " got " << rewritten_url;
     } else if (expect_rewritten) {
       EXPECT_NE(initial_url, rewritten_url);
+      EXPECT_TRUE(rewritten_gurl.LeafSansQuery().ends_with(
+          output_type.file_extension()))
+          << "expected end " << output_type.file_extension()
+          << " got " << rewritten_gurl.LeafSansQuery();
     } else {
       EXPECT_EQ(initial_url, rewritten_url);
+      EXPECT_TRUE(rewritten_gurl.LeafSansQuery().ends_with(
+          output_type.file_extension()))
+          << "expected end " << output_type.file_extension()
+          << " got " << rewritten_gurl.LeafSansQuery();
     }
 
     GoogleString html_expected_output =
@@ -362,7 +376,7 @@ TEST_F(ImageRewriteTest, AddDimTest) {
   // dimensions are inserted.
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   rewrite_driver()->AddFilters();
-  TestSingleRewrite(kBikePngFile, kContentTypePng,
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
                     "", " width=\"100\" height=\"100\"", false, false);
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
@@ -371,9 +385,41 @@ TEST_F(ImageRewriteTest, AddDimTest) {
 
   // .. Now make sure we cached dimension insertion properly, and can do it
   // without re-fetching the image.
-  TestSingleRewrite(kBikePngFile, kContentTypePng,
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
                     "", " width=\"100\" height=\"100\"", false, false);
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(ImageRewriteTest, PngToJpeg) {
+  // Make sure we convert png to jpeg if we requested that.
+  // We lower compression quality to ensure the jpeg is smaller.
+  options()->EnableFilter(RewriteOptions::kRecompressImages);
+  options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->set_image_jpeg_recompress_quality(85);
+  rewrite_driver()->AddFilters();
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeJpeg,
+                    "", " width=\"100\" height=\"100\"", true, false);
+}
+
+TEST_F(ImageRewriteTest, PngToWebp) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+  // Make sure we convert png to webp if user agent permits.
+  // We lower compression quality to ensure the webp is smaller.
+  options()->EnableFilter(RewriteOptions::kRecompressImages);
+  options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->set_image_jpeg_recompress_quality(85);
+  rewrite_driver()->AddFilters();
+  rewrite_driver()->set_user_agent("webp");
+  // TODO(jmaessen): Make png->webp conversion work in image.cc and
+  // webp_optimizer.cc (the latter code is jpeg-specific right now).
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeJpeg,
+                    "", " width=\"100\" height=\"100\"", true, false);
 }
 
 TEST_F(ImageRewriteTest, ResizeTest) {
@@ -381,11 +427,11 @@ TEST_F(ImageRewriteTest, ResizeTest) {
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
   // Without explicit resizing, we leave the image alone.
-  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     "", "", false, false);
   // With resizing, we optimize.
   const char kResizedDims[] = " width=\"256\" height=\"192\"";
-  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     kResizedDims, kResizedDims, true, false);
 }
 
@@ -394,11 +440,11 @@ TEST_F(ImageRewriteTest, ResizeWidthOnly) {
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
   // Without explicit resizing, we leave the image alone.
-  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     "", "", false, false);
   // With resizing, we optimize.
   const char kResizedDims[] = " width=\"256\"";
-  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     kResizedDims, kResizedDims, true, false);
 }
 
@@ -407,11 +453,11 @@ TEST_F(ImageRewriteTest, ResizeHeightOnly) {
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
   // Without explicit resizing, we leave the image alone.
-  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     "", "", false, false);
   // With resizing, we optimize.
   const char kResizedDims[] = " height=\"192\"";
-  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     kResizedDims, kResizedDims, true, false);
 }
 
@@ -421,24 +467,24 @@ TEST_F(ImageRewriteTest, ResizeStyleTest) {
   rewrite_driver()->AddFilters();
   const char kResizedDims[] = " style=\"width:256px;height:192px;\"";
   // Without explicit resizing, we leave the image alone.
-  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     "", "", false, false);
   // With resizing, we optimize.
-  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     kResizedDims, kResizedDims, true, false);
 
   const char kMixedDims[] = " width=\"256\" style=\"height:192px;\"";
-  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     kMixedDims, kMixedDims, true, false);
 
   const char kMoreMixedDims[] =
       " height=\"197\" style=\"width:256px;broken:true;\"";
-  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     kMoreMixedDims, kMoreMixedDims, true, false);
 
   const char kUnparsableDims[] =
       " style=\"width:256cm;height:192cm;\"";
-    TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+    TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                       kUnparsableDims, kUnparsableDims, false, false);
 }
 
@@ -446,7 +492,7 @@ TEST_F(ImageRewriteTest, NullResizeTest) {
   // Make sure we don't crash on a value-less style attribute.
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
-  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     " style", " style", false, false);
 }
 
@@ -460,12 +506,12 @@ TEST_F(ImageRewriteTest, InlineTest) {
   const char kChefDims[] = " width=\"192\" height=\"256\"";
   const char kResizedDims[] = " width=48 height=64";
   // Without resize, it's not optimizable.
-  TestSingleRewrite(kChefGifFile, kContentTypeGif,
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", kChefDims, false, false);
   // With resize, the image shrinks quite a bit, and we can inline it
   // given the 10K threshold explicitly set above.  This also strips the
   // size information, which is now embedded in the image itself anyway.
-  TestSingleRewrite(kChefGifFile, kContentTypeGif,
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypePng,
                     kResizedDims, "", true, true);
 }
 
@@ -477,11 +523,11 @@ TEST_F(ImageRewriteTest, InlineNoRewrite) {
   const char kChefDims[] = " width=192 height=256";
   // This image is just small enough to inline, which also erases
   // dimension information.
-  TestSingleRewrite(kChefGifFile, kContentTypeGif,
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     kChefDims, "", false, true);
   // This image is too big to inline, and we don't insert missing
   // dimension information because that is not explicitly enabled.
-  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg,
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     "", "", false, false);
 }
 
@@ -494,10 +540,27 @@ TEST_F(ImageRewriteTest, InlineNoResize) {
   const char kOrigDims[] = " width=65 height=70";
   const char kResizedDims[] = " width=26 height=28";
   // At natural size, we should inline and erase dimensions.
-  TestSingleRewrite(kCuppaTPngFile, kContentTypePng,
+  TestSingleRewrite(kCuppaTPngFile, kContentTypePng, kContentTypePng,
                     kOrigDims, "", false, true);
   // Image is inlined but not resized, so preserve dimensions.
-  TestSingleRewrite(kCuppaTPngFile, kContentTypePng,
+  TestSingleRewrite(kCuppaTPngFile, kContentTypePng, kContentTypePng,
+                    kResizedDims, kResizedDims, false, true);
+}
+
+TEST_F(ImageRewriteTest, InlineLargerResize) {
+  // Make sure we inline an image if it meets the inlining threshold before
+  // resize, resizing succeeds, but the resulting image is larger than the
+  // original.  Make sure we retain sizing information when this happens.
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+  const char kOrigDims[] = " width=65 height=70";
+  const char kResizedDims[] = " width=64 height=69";
+  // At natural size, we should inline and erase dimensions.
+  TestSingleRewrite(kCuppaOPngFile, kContentTypePng, kContentTypePng,
+                    kOrigDims, "", false, true);
+  // Image is inlined but not resized, so preserve dimensions.
+  TestSingleRewrite(kCuppaOPngFile, kContentTypePng, kContentTypePng,
                     kResizedDims, kResizedDims, false, true);
 }
 

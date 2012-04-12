@@ -8,3 +8,5 @@ Info: img_tag_identification.html:52: Resized image `http://file.name/IronChef2.
 Info: img_tag_identification.html:52: Shrinking image `http://file.name/IronChef2.gif' (24941 bytes) to `http://file.name/96x128xIronChef2.gif.pagespeed.ic.0.png' (19178 bytes)
 Info: img_tag_identification.html:54: Shrinking image `http://file.name/Cuppa.png' (1763 bytes) to `http://file.name/xCuppa.png.pagespeed.ic.0.png' (770 bytes)
 Info: img_tag_identification.html:55: Couldn't resize image `http://file.name/CuppaT.png' from 65x70 to 26x28
+Info: img_tag_identification.html:56: Resized image `http://file.name/CuppaO.png' from 65x70 to 64x69
+Info: img_tag_identification.html:56: Shrink of image `http://file.name/CuppaO.png' doesn't save space; dropped.

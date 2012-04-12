@@ -1,3 +1,8 @@
+# Attempt to load mod_version if it wasn't loaded or compiled in (eg on Debian)
+<IfModule !mod_version.c>
+  LoadModule version_module @@APACHE_MODULEDIR@@/mod_version.so
+</IfModule>
+
 <IfVersion < 2.4>
   LoadModule pagespeed_module @@APACHE_MODULEDIR@@/mod_pagespeed.so
 </IfVersion>
