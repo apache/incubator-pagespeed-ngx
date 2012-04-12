@@ -526,6 +526,29 @@ TEST_F(CacheExtenderTest, TrimUrlInteraction) {
                    StringPrintf(kCssFormat, a_ext.c_str()));
 }
 
+TEST_F(CacheExtenderTest, DefangHtml) {
+  options()->EnableExtendCacheFilters();
+  rewrite_driver()->AddFilters();
+  // Make sure that we downgrade HTML and similar executable types
+  // to text/plain if we cache extend them. This closes off XSS
+  // vectors if the domain lawyer is (mis)configured too loosely.
+  SetResponseWithDefaultHeaders("a.html", kContentTypeHtml,
+                                "boo!", kShortTtlSec);
+  SetResponseWithDefaultHeaders("a.xhtml", kContentTypeXhtml,
+                                "bwahahaha!", kShortTtlSec);
+  SetResponseWithDefaultHeaders("a.xml", kContentTypeXml,
+                                "boo!", kShortTtlSec);
+
+  ValidateExpected(
+      "defang",
+      StrCat(CssLinkHref("a.html"),
+             CssLinkHref("a.xhtml"),
+             CssLinkHref("a.xml")),
+      StrCat(CssLinkHref(Encode(kTestDomain, "ce", "0", "a.html", "txt")),
+             CssLinkHref(Encode(kTestDomain, "ce", "0", "a.xhtml", "txt")),
+             CssLinkHref(Encode(kTestDomain, "ce", "0", "a.xml", "txt"))));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

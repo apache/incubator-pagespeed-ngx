@@ -206,7 +206,21 @@ RewriteResult CacheExtender::RewriteLoadedResource(
     // security.
     not_cacheable_count_->Add(1);
   } else if (ShouldRewriteResource(headers, now_ms, input_resource, url)) {
-    output_resource->SetType(input_resource->type());
+    // Be careful and turn mimetypes that may include executable scripts
+    // into plaintext if we're cache-extending. This closes off some XSS vectors
+    // in case of system misconfiguration. text/plain is a good choice here
+    // as per http://mimesniff.spec.whatwg.org/ it will never get turned into
+    // anything dangerous. Note that we also whitelist "safe" types here,
+    // to do the safe thing in the case of the unexpected.
+    const ContentType* input_type = input_resource->type();
+    if (input_type->IsImage() ||  // images get sniffed only to other images
+        input_type->type() == ContentType::kCss ||  // CSS + JS left as-is.
+        input_type->type() == ContentType::kJavascript) {
+      output_resource->SetType(input_resource->type());
+    } else {
+      // Text only gets sniffed to "safe" things.
+      output_resource->SetType(&kContentTypeText);
+    }
     ok = true;
   }
 
