@@ -124,7 +124,7 @@ void FileCache::Get(const GoogleString& key, Callback* callback) {
     NullMessageHandler null_handler;
     ret = file_system_->ReadFile(filename.c_str(), buffer, &null_handler);
   }
-  callback->Done(ret ? kAvailable : kNotFound);
+  ValidateAndReportResult(key, ret ? kAvailable : kNotFound, callback);
 }
 
 void FileCache::Put(const GoogleString& key, SharedString* value) {

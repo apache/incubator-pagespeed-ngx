@@ -32,8 +32,8 @@
 
 namespace net_instaweb {
 
-// This calls a passed-in callback with a mock time delay, forwarding
-// on lookup results.
+// Implements CacheInterface::Callback so underlying cache implementation
+// can notify the DelayCache that a value is available.
 class DelayCache::DelayCallback : public CacheInterface::Callback {
  public:
   DelayCallback(const GoogleString& key, DelayCache* delay_cache,
@@ -46,8 +46,11 @@ class DelayCache::DelayCallback : public CacheInterface::Callback {
 
   virtual ~DelayCallback() {}
 
-  // Implements CacheInterface::Callback so underlying cache implementation
-  // can notify the DelayCache that an time is available.
+  virtual bool ValidateCandidate(const GoogleString& key, KeyState state) {
+    *orig_callback_->value() = *value();
+    return orig_callback_->DelegatedValidateCandidate(key, state);
+  }
+
   virtual void Done(KeyState state) {
     *orig_callback_->value() = *value();
     state_ = state;
@@ -57,7 +60,7 @@ class DelayCache::DelayCallback : public CacheInterface::Callback {
   // Helper method so that DelayCache can call the callback for keys
   // that are not being delayed, or for keys that have been released.
   void Run() {
-    orig_callback_->Done(state_);
+    orig_callback_->DelegatedDone(state_);
     delete this;
   }
 

@@ -49,6 +49,8 @@ class MockTimeCache : public CacheInterface {
   virtual void Delete(const GoogleString& key);
 
   // Sets the delay the cache will inject before invoking the callbacks.
+  // Note that this only affects the 'Done' callback; 'ValidateCandidate'
+  // happens immediately.
   void set_delay_us(int64 delay_us) { delay_us_ = delay_us; }
   int64 delay_us() const { return delay_us_; }
 

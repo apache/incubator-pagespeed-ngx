@@ -108,4 +108,17 @@ TEST_F(WriteThroughCacheTest, SizeLimit) {
   CheckGet(&big_cache_, "Name", "Value");
 }
 
+TEST_F(WriteThroughCacheTest, FindShadowedValid) {
+  // Make sure we find a valid value in L2 if it's shadowed by an invalid one
+  // in L1.
+  CheckPut(&small_cache_, "Name", "invalid");
+  CheckPut(&big_cache_, "Name", "valid");
+  set_invalid_value("invalid");
+  CheckNotFound(&small_cache_, "Name");
+  CheckGet(&big_cache_, "Name", "valid");
+  CheckGet(&write_through_cache_, "Name", "valid");
+  // Make sure we fixed up the small_cache_
+  CheckGet(&small_cache_, "Name", "valid");
+}
+
 }  // namespace net_instaweb

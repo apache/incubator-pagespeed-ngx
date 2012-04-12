@@ -35,8 +35,45 @@ class CacheInterface {
   class Callback {
    public:
     virtual ~Callback();
-    virtual void Done(KeyState state) = 0;
     SharedString* value() { return &value_; }
+
+    // These methods are meant for use of callback subclasses that wrap
+    // around other callbacks. Normal cache implementations should
+    // just use CacheInterface::ValidateAndReportResult.
+    bool DelegatedValidateCandidate(const GoogleString& key, KeyState state) {
+      return ValidateCandidate(key, state);
+    }
+
+    void DelegatedDone(KeyState state) {
+      Done(state);
+    }
+
+   protected:
+    friend class CacheInterface;
+
+    // This method exists to let cache clients do application-specific
+    // validation of cache results. This is important for 2-level caches,
+    // as with distributed setups it's possible that an entry in the L1 is
+    // invalid (e.g. an HTTP resource past expiration), while the L2 cache
+    // has a valid result.
+    //
+    // This method will be invoked for all potential cache results,
+    // (with the value filled in into value()). Returning
+    // 'false' lets the implementation effectively veto a value as
+    // expired or invalid for semantic reasons.
+    //
+    // Note that implementations may not invoke any cache operations,
+    // as it may be invoked with locks held.
+    virtual bool ValidateCandidate(const GoogleString& key,
+                                   KeyState state) { return true; }
+
+    // This method is called once the cache implementation has found
+    // a match that was accepted by ValidateCandidate (in which
+    // case state == kAvailable) or it has failed to do so (state == kNotFound).
+    //
+    // Implementations are free to invoke cache operations, as all cache
+    // locks are guaranteed to be released.
+    virtual void Done(KeyState state) = 0;
 
    private:
     SharedString value_;
@@ -44,15 +81,24 @@ class CacheInterface {
 
   virtual ~CacheInterface();
 
-  // Initiates a cache fetch, calling callback->Done(state) when done.
+  // Initiates a cache fetch, calling callback->ValidateCandidate()
+  // and then callback->Done(state) when done.
+  //
+  // Note: implementations should normally invoke the callback via
+  // ValidateAndReportResult, which will combine ValidateCandidate() and
+  // Done() together properly.
   virtual void Get(const GoogleString& key, Callback* callback) = 0;
-  //   virtual bool Get(const GoogleString& key, SharedString* value) = 0;
 
   // Puts a value into the cache.  The value that is passed in is not modified,
   // but the SharedString is passed by non-const pointer because its reference
   // count is bumped.
   virtual void Put(const GoogleString& key, SharedString* value) = 0;
   virtual void Delete(const GoogleString& key) = 0;
+
+ protected:
+  // Invokes callback->ValidateCandidate() and callback->Done() as appropriate.
+  void ValidateAndReportResult(const GoogleString& key, KeyState state,
+                               Callback* callback);
 };
 
 }  // namespace net_instaweb

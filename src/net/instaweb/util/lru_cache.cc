@@ -55,7 +55,7 @@ void LRUCache::Get(const GoogleString& key, Callback* callback) {
   } else {
     ++num_misses_;
   }
-  callback->Done(key_state);
+  ValidateAndReportResult(key, key_state, callback);
 }
 
 void LRUCache::Put(const GoogleString& key, SharedString* new_value) {

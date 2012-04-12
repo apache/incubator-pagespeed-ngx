@@ -140,4 +140,15 @@ TEST_F(LRUCacheTest, LeastRecentlyUsed) {
   }
 }
 
+TEST_F(LRUCacheTest, BasicInvalid) {
+  // Check that we honor callback veto on validity.
+  CheckPut("nameA", "valueA");
+  CheckPut("nameB", "valueB");
+  CheckGet("nameA", "valueA");
+  CheckGet("nameB", "valueB");
+  set_invalid_value("valueA");
+  CheckNotFound("nameA");
+  CheckGet("nameB", "valueB");
+}
+
 }  // namespace net_instaweb

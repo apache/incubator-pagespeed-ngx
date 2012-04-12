@@ -38,13 +38,16 @@ class MockTimeCache::DelayCallback : public CacheInterface::Callback {
 
   virtual ~DelayCallback() {}
 
-  virtual void Done(KeyState state) {
+  virtual bool ValidateCandidate(const GoogleString& key, KeyState state) {
     *orig_callback_->value() = *value();
+    return orig_callback_->DelegatedValidateCandidate(key, state);
+  }
 
+  virtual void Done(KeyState state) {
     parent_->timer()->AddAlarm(
         parent_->timer()->NowUs() + parent_->delay_us(),
         new MemberFunction1<CacheInterface::Callback, CacheInterface::KeyState>(
-            &CacheInterface::Callback::Done, orig_callback_, state));
+            &CacheInterface::Callback::DelegatedDone, orig_callback_, state));
     delete this;
   };
 

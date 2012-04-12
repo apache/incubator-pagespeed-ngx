@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/threadsafe_cache.h"
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -34,33 +35,44 @@ namespace {
 class ThreadsafeCallback : public CacheInterface::Callback {
  public:
   ThreadsafeCallback(AbstractMutex* mutex,
-                     const GoogleString& key,
                      CacheInterface::Callback* callback)
       : mutex_(mutex),
-        key_(key),
-        callback_(callback) {
+        callback_(callback),
+        validate_candidate_called_(false) {
     mutex_->Lock();
   }
 
   virtual ~ThreadsafeCallback() {
   }
 
-  virtual void Done(CacheInterface::KeyState state) {
-    mutex_->Unlock();
+  // Note that we have to forward validity faithfully here, as if we're
+  // wrapping a 2-level cache it will need to know accurately if the value
+  // is valid or not.
+  virtual bool ValidateCandidate(const GoogleString& key,
+                                 CacheInterface::KeyState state) {
+    validate_candidate_called_ = true;
     *callback_->value() = *value();
-    callback_->Done(state);
+    return callback_->DelegatedValidateCandidate(key, state);
+  }
+
+  virtual void Done(CacheInterface::KeyState state) {
+    DCHECK(validate_candidate_called_);
+    // We don't have to do validation or value forwarding ourselves since
+    // whatever we are wrapping must have already called ValidateCandidate().
+    mutex_->Unlock();
+    callback_->DelegatedDone(state);
     delete this;
   }
 
   AbstractMutex* mutex_;
-  const GoogleString& key_;
   CacheInterface::Callback* callback_;
+  bool validate_candidate_called_;
 };
 
 }  // namespace
 
 void ThreadsafeCache::Get(const GoogleString& key, Callback* callback) {
-  ThreadsafeCallback* cb = new ThreadsafeCallback(mutex_.get(), key, callback);
+  ThreadsafeCallback* cb = new ThreadsafeCallback(mutex_.get(), callback);
   cache_->Get(key, cb);
 }
 

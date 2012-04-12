@@ -48,16 +48,21 @@ class WriteThroughCallback : public CacheInterface::Callback {
         trying_cache2_(false) {
   }
 
+  virtual bool ValidateCandidate(const GoogleString& key,
+                                 CacheInterface::KeyState state) {
+    *callback_->value() = *value();
+    return callback_->DelegatedValidateCandidate(key, state);
+  }
+
   virtual void Done(CacheInterface::KeyState state) {
     if (state == CacheInterface::kAvailable) {
       if (trying_cache2_) {
         write_through_cache_->PutInCache1(key_, value());
       }
-      *callback_->value() = *value();
-      callback_->Done(state);
+      callback_->DelegatedDone(state);
       delete this;
     } else if (trying_cache2_) {
-      callback_->Done(state);
+      callback_->DelegatedDone(state);
       delete this;
     } else {
       trying_cache2_ = true;

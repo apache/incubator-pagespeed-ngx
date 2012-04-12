@@ -26,4 +26,13 @@ CacheInterface::~CacheInterface() {
 CacheInterface::Callback::~Callback() {
 }
 
+void CacheInterface::ValidateAndReportResult(const GoogleString& key,
+                                             KeyState state,
+                                             Callback* callback) {
+  if (!callback->ValidateCandidate(key, state)) {
+    state = kNotFound;
+  }
+  callback->Done(state);
+}
+
 }  // namespace net_instaweb

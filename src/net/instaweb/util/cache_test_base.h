@@ -40,22 +40,43 @@ class CacheTestBase : public testing::Test {
     virtual ~Callback() {}
     Callback* Reset() {
       called_ = false;
+      validate_called_ = false;
       state_ = CacheInterface::kNotFound;
       SharedString empty;
       *value() = empty;
+      invalid_value_ = NULL;
       return this;
     }
+
+    virtual bool ValidateCandidate(const GoogleString& key,
+                                   CacheInterface::KeyState state) {
+      validate_called_ = true;
+      if ((invalid_value_ != NULL) && (*value()->get() == invalid_value_)) {
+        return false;
+      }
+      return true;
+    }
+
     virtual void Done(CacheInterface::KeyState state) {
+      EXPECT_TRUE(validate_called_);
       called_ = true;
       state_ = state;
     }
 
+    void set_invalid_value(const char* v) { invalid_value_ = v; }
+
     bool called_;
+    bool validate_called_;
     CacheInterface::KeyState state_;
 
    private:
+    const char* invalid_value_;
+
     DISALLOW_COPY_AND_ASSIGN(Callback);
   };
+
+  CacheTestBase() : invalid_value_(NULL) {
+  }
 
   void CheckGet(const char* key, const GoogleString& expected_value) {
     CheckGet(Cache(), key, expected_value);
@@ -63,7 +84,7 @@ class CacheTestBase : public testing::Test {
 
   void CheckGet(CacheInterface* cache, const char* key,
                 const GoogleString& expected_value) {
-    cache->Get(key, callback_.Reset());
+    cache->Get(key, ResetCallback());
     ASSERT_TRUE(callback_.called_);
     ASSERT_EQ(CacheInterface::kAvailable, callback_.state_)
         << "For key: " << key;
@@ -86,7 +107,7 @@ class CacheTestBase : public testing::Test {
   }
 
   void CheckNotFound(CacheInterface* cache, const char* key) {
-    cache->Get(key, callback_.Reset());
+    cache->Get(key, ResetCallback());
     ASSERT_TRUE(callback_.called_);
     EXPECT_NE(CacheInterface::kAvailable, callback_.state_)
         << "For key: " << key;
@@ -106,10 +127,14 @@ class CacheTestBase : public testing::Test {
   // passed into a CacheInterface method.
   Callback* ResetCallback() {
     callback_.Reset();
+    callback_.set_invalid_value(invalid_value_);
     return &callback_;
   }
 
+  void set_invalid_value(const char* v) { invalid_value_ = v; }
+
  private:
+  const char* invalid_value_;  // may be NULL.
   Callback callback_;
 };
 
