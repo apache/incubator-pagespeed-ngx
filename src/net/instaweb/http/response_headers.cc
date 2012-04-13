@@ -599,6 +599,15 @@ bool ResponseHeaders::WasGzippedLast() const {
 void ResponseHeaders::DetermineContentTypeAndCharset(
     const ContentType** content_type_out, GoogleString* charset_out) const {
   ConstStringStarVector content_types;
+
+  if (content_type_out != NULL) {
+    *content_type_out = NULL;
+  }
+
+  if (charset_out != NULL) {
+    charset_out->clear();
+  }
+
   // If there is more than one content-type header, we pick the LAST one,
   // (even if it's invalid!) as that's the behavior specified by the mime
   // sniffing spec (http://mimesniff.spec.whatwg.org/). We also use the

@@ -531,6 +531,34 @@ TEST_F(RewriteDriverTest, MultipleDomains) {
   EXPECT_TRUE(TryFetchResource(rewritten2));
 }
 
+TEST_F(RewriteDriverTest, ResourceCharset) {
+  // Make sure we properly pick up the charset into a resource on read.
+  const char kUrl[] = "http://www.example.com/foo.css";
+  ResponseHeaders resource_headers;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &resource_headers);
+  resource_headers.Replace(HttpAttributes::kContentType,
+                           "text/css; charset=koi8-r");
+
+  const char kContents[] = "\xF5\xD2\xC1!";  // Ура!
+  SetFetchResponse(kUrl, resource_headers, kContents);
+
+  // We do this twice to make sure the cached version is OK, too.
+  for (int round = 0; round < 2; ++round) {
+    ResourcePtr resource(
+        rewrite_driver()->CreateInputResourceAbsoluteUnchecked(kUrl));
+    MockResourceCallback mock_callback(resource);
+    EXPECT_TRUE(resource.get() != NULL);
+    resource_manager()->ReadAsync(Resource::kReportFailureIfNotCacheable,
+                                  &mock_callback);
+    EXPECT_TRUE(mock_callback.done());
+    EXPECT_TRUE(mock_callback.success());
+    EXPECT_EQ(kContents, resource->contents());
+    ASSERT_TRUE(resource->type() != NULL);
+    EXPECT_EQ(ContentType::kCss, resource->type()->type());
+    EXPECT_STREQ("koi8-r", resource->charset());
+  }
+}
+
 // Test caching behavior for normal UrlInputResources.
 // This is the base case that LoadResourcesFromFiles below contrasts with.
 TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {

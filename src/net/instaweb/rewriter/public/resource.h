@@ -127,12 +127,18 @@ class Resource : public RefCounted<Resource> {
   const ContentType* type() const { return type_; }
   virtual void SetType(const ContentType* type);
 
+  // Note: this is empty if the header is not specified.
+  StringPiece charset() const { return charset_; }
+  void set_charset(StringPiece c) { c.CopyToString(&charset_); }
+
   virtual bool IsCacheableTypeOfResource() const { return true; }
 
   // Gets the absolute URL of the resource
   virtual GoogleString url() const = 0;
 
-  virtual void DetermineContentType();
+  // Computes the content-type (and charset) based on response_headers and
+  // extension, and sets it via SetType.
+  void DetermineContentType();
 
   // Obtain rewrite options for this. Any resources which return true
   // for IsCacheable() but don't unconditionally return true for loaded()
@@ -224,6 +230,7 @@ class Resource : public RefCounted<Resource> {
   ResourceManager* resource_manager_;
 
   const ContentType* type_;
+  GoogleString charset_;
   HTTPValue value_;  // contains contents and meta-data
   ResponseHeaders response_headers_;
 

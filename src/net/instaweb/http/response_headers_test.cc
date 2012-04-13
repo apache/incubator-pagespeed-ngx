@@ -958,6 +958,20 @@ TEST_F(ResponseHeadersTest, DetermineContentTypeWithCharset) {
   EXPECT_STREQ("UTF-8", charset);
 }
 
+TEST_F(ResponseHeadersTest, DetermineContentTypeAndCharsetNonExisting) {
+  static const char headers[] =
+      "HTTP/1.1 200 OK\r\n"
+      "\r\n";
+  response_headers_.Clear();
+  ParseHeaders(headers);
+
+  const ContentType* content_type = &kContentTypeHtml;
+  GoogleString charset = "EBCDIC";
+  response_headers_.DetermineContentTypeAndCharset(&content_type, &charset);
+  EXPECT_EQ(NULL, content_type);
+  EXPECT_TRUE(charset.empty());
+}
+
 TEST_F(ResponseHeadersTest, DetermineCharset) {
   static const char headers_no_charset[] =
       "HTTP/1.1 200 OK\r\n"

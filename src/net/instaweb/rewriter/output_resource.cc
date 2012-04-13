@@ -233,8 +233,10 @@ void OutputResource::SetType(const ContentType* content_type) {
   Resource::SetType(content_type);
   // TODO(jmaessen): The addition of 1 below avoids the leading ".";
   // make this convention consistent and fix all code.
-  full_name_.set_ext(content_type->file_extension() + 1);
-  computed_url_.clear();  // Since dependent on full_name_.
+  if (content_type != NULL) {
+    full_name_.set_ext(content_type->file_extension() + 1);
+    computed_url_.clear();  // Since dependent on full_name_.
+  }
 }
 
 NamedLock* OutputResource::CreationLock() {

@@ -107,16 +107,16 @@ void Resource::SetType(const ContentType* type) {
 // the response headers.
 void Resource::DetermineContentType() {
   // First try the HTTP headers, the definitive source of Content-Type.
-  const ContentType* content_type = response_headers()->DetermineContentType();
+  const ContentType* content_type;
+  response_headers()->DetermineContentTypeAndCharset(&content_type, &charset_);
   // If there is no content type in headers, then guess from extension.
   if (content_type == NULL) {
     GoogleString trimmed_url;
     TrimWhitespace(url(), &trimmed_url);
     content_type = NameExtensionToContentType(trimmed_url);
   }
-  if (content_type != NULL) {
-    SetType(content_type);
-  }
+
+  SetType(content_type);
 }
 
 // Default, blocking implementation which calls Load.
