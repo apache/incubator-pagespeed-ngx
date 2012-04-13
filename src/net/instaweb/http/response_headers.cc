@@ -596,36 +596,41 @@ bool ResponseHeaders::WasGzippedLast() const {
 
 // TODO(sligocki): Perhaps we should take in a URL here and use that to
 // guess Content-Type as well. See Resource::DetermineContentType().
-const ContentType* ResponseHeaders::DetermineContentType() const {
-  const ContentType* content_type = NULL;
-
+void ResponseHeaders::DetermineContentTypeAndCharset(
+    const ContentType** content_type_out, GoogleString* charset_out) const {
   ConstStringStarVector content_types;
-  if (Lookup(HttpAttributes::kContentType, &content_types)) {
-    for (int i = 0, n = content_types.size(); (i < n) && (content_type == NULL);
-         ++i) {
-      if (content_types[i] != NULL) {
-        content_type = MimeTypeToContentType(*(content_types[i]));
-      }
+  // If there is more than one content-type header, we pick the LAST one,
+  // (even if it's invalid!) as that's the behavior specified by the mime
+  // sniffing spec (http://mimesniff.spec.whatwg.org/). We also use the
+  // charset that comes with the same header.
+  if (Lookup(HttpAttributes::kContentType, &content_types) &&
+      !content_types.empty()) {
+    GoogleString mime_type, charset;
+    if (!ParseContentType(*content_types.back(), &mime_type, &charset)) {
+      mime_type.clear();
+      charset.clear();
+    }
+
+    if (content_type_out != NULL) {
+      *content_type_out = MimeTypeToContentType(mime_type);
+    }
+
+    if (charset_out != NULL) {
+      *charset_out = charset;
     }
   }
-
-  return content_type;
 }
 
 GoogleString ResponseHeaders::DetermineCharset() const {
   GoogleString charset;
-
-  // Per the logic in DetermineContentType above we take the first charset
-  // specified and ignore Content-Type headers without a charset.
-  ConstStringStarVector content_types;
-  if (Lookup(HttpAttributes::kContentType, &content_types)) {
-    for (int i = 0, n = content_types.size(); i < n && charset.empty(); ++i) {
-      GoogleString mime_type;
-      ParseContentType(*(content_types[i]), &mime_type, &charset);
-    }
-  }
-
+  DetermineContentTypeAndCharset(NULL, &charset);
   return charset;
+}
+
+const ContentType* ResponseHeaders::DetermineContentType() const {
+  const ContentType* content_type = NULL;
+  DetermineContentTypeAndCharset(&content_type, NULL);
+  return content_type;
 }
 
 bool ResponseHeaders::ParseDateHeader(

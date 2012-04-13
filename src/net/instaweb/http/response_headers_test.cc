@@ -921,6 +921,27 @@ TEST_F(ResponseHeadersTest, DetermineContentType) {
   EXPECT_EQ(&kContentTypePng, response_headers_.DetermineContentType());
 }
 
+TEST_F(ResponseHeadersTest, DetermineContentTypeMulti) {
+  // Per the mime sniffing spec, the -last- content-type header wins.
+  static const char headers[] =
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: image/png\r\n"
+      "Content-Type: image/webp\r\n"
+      "\r\n";
+  response_headers_.Clear();
+  ParseHeaders(headers);
+  EXPECT_EQ(&kContentTypeWebp, response_headers_.DetermineContentType());
+
+  static const char headers2[] =
+      "HTTP/1.1 200 OK\r\n"
+      "Content-Type: image/png\r\n"
+      "Content-Type: nonsense\r\n"
+      "\r\n";
+  response_headers_.Clear();
+  ParseHeaders(headers2);
+  EXPECT_EQ(NULL, response_headers_.DetermineContentType());
+}
+
 TEST_F(ResponseHeadersTest, DetermineContentTypeWithCharset) {
   static const char headers[] =
       "HTTP/1.1 200 OK\r\n"
@@ -929,6 +950,12 @@ TEST_F(ResponseHeadersTest, DetermineContentTypeWithCharset) {
   response_headers_.Clear();
   ParseHeaders(headers);
   EXPECT_EQ(&kContentTypeHtml, response_headers_.DetermineContentType());
+
+  const ContentType* content_type;
+  GoogleString charset;
+  response_headers_.DetermineContentTypeAndCharset(&content_type, &charset);
+  EXPECT_EQ(&kContentTypeHtml, content_type);
+  EXPECT_STREQ("UTF-8", charset);
 }
 
 TEST_F(ResponseHeadersTest, DetermineCharset) {
@@ -946,13 +973,14 @@ TEST_F(ResponseHeadersTest, DetermineCharset) {
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: image/png\r\n"
       "Content-Type: image/png; charset=utf-8\r\n"
-      "Content-Type: image/png\r\n"
+      "Content-Type: image/png; charset=koi8-r\r\n"
       "\r\n";
   response_headers_.Clear();
   ParseHeaders(headers_with_charset);
-  EXPECT_EQ("utf-8", response_headers_.DetermineCharset());
+  EXPECT_EQ("koi8-r", response_headers_.DetermineCharset());
 
-  // We take the first charset specified.
+  // We take the charset that goes with the last content-type
+  // header, since that's the one that matches.
   static const char multiple_headers_with_charset[] =
       "HTTP/1.1 200 OK\r\n"
       "Content-Type: image/png\r\n"
@@ -963,7 +991,7 @@ TEST_F(ResponseHeadersTest, DetermineCharset) {
       "\r\n";
   response_headers_.Clear();
   ParseHeaders(multiple_headers_with_charset);
-  EXPECT_EQ("iso-8859-1", response_headers_.DetermineCharset());
+  EXPECT_TRUE(response_headers_.DetermineCharset().empty());
 }
 
 TEST_F(ResponseHeadersTest, FixupMissingDate) {

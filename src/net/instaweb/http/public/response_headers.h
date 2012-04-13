@@ -184,6 +184,14 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Get the charset. Empty string if none set in a Content-Type header.
   GoogleString DetermineCharset() const;
 
+  // Determine both the charset and content-type as above. See
+  // DetermineContentType() and DetermineCharset() for details.
+  // You may also pass in NULL for those of _out parameters you do not
+  // need (but in that case the individual functions would be more convenient)
+  void DetermineContentTypeAndCharset(const ContentType** content_type_out,
+                                      GoogleString* charset_out) const;
+
+
   // Parses a date header such as HttpAttributes::kDate or
   // HttpAttributes::kExpires, returning the timestamp as
   // number of milliseconds since 1970.
