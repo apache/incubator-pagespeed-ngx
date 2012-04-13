@@ -133,10 +133,10 @@ pagespeed.findChangedDivsAfterDeferredJs = function() {
 // function and on object to call the function on.
 
 if (pagespeed.deferJs != 'undefined' &&
-    pagespeed.deferJs.addBeforeDeferRunFunctions != 'undefined' &&
-    pagespeed.deferJs.addAfterDeferRunFunctions != 'undefined') {
-  pagespeed.deferJs.addBeforeDeferRunFunctions(
+    pagespeed.deferJs['addBeforeDeferRunFunctions'] != 'undefined' &&
+    pagespeed.deferJs['addAfterDeferRunFunctions'] != 'undefined') {
+  pagespeed.deferJs['addBeforeDeferRunFunctions'](
       pagespeed.labelDivsBeforeDeferredJs);
-  pagespeed.deferJs.addAfterDeferRunFunctions(
+  pagespeed.deferJs['addAfterDeferRunFunctions'](
       pagespeed.findChangedDivsAfterDeferredJs);
 }
