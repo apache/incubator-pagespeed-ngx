@@ -27,19 +27,19 @@ namespace {
 
 const ContentType kTypes[] = {
   // Canonical types:
-  {"text/html",               ".html",  ContentType::kHtml},  // RFC 2854
-  {"application/xhtml+xml",   ".xhtml", ContentType::kXhtml},  // RFC 3236
-  {"application/ce-html+xml", ".xhtml", ContentType::kCeHtml},
+  {"text/html",                     ".html",  ContentType::kHtml},  // RFC 2854
+  {"application/xhtml+xml",         ".xhtml", ContentType::kXhtml},  // RFC 3236
+  {"application/ce-html+xml",       ".xhtml", ContentType::kCeHtml},
 
-  {"text/javascript", ".js",   ContentType::kJavascript},
-  {"text/css",        ".css",  ContentType::kCss},
-  {"text/plain",      ".txt",  ContentType::kText},
-  {"text/xml",        ".xml",  ContentType::kXml},  // RFC 3023
-
-  {"image/png",       ".png",  ContentType::kPng},
-  {"image/gif",       ".gif",  ContentType::kGif},
-  {"image/jpeg",      ".jpg",  ContentType::kJpeg},
-  {"image/webp",      ".webp", ContentType::kWebp},
+  {"text/javascript",               ".js",   ContentType::kJavascript},
+  {"text/css",                      ".css",  ContentType::kCss},
+  {"text/plain",                    ".txt",  ContentType::kText},
+  {"text/xml",                      ".xml",  ContentType::kXml},  // RFC 3023
+  {"image/png",                     ".png",  ContentType::kPng},
+  {"image/gif",                     ".gif",  ContentType::kGif},
+  {"image/jpeg",                    ".jpg",  ContentType::kJpeg},
+  {"application/x-shockwave-flash", ".swf",  ContentType::kSwf},
+  {"image/webp",                    ".webp", ContentType::kWebp},
 
   // Synonyms; Note that the canonical types are referenced by index
   // in the named references declared below.
@@ -68,7 +68,8 @@ const ContentType& kContentTypeXml = kTypes[6];
 const ContentType& kContentTypePng = kTypes[7];
 const ContentType& kContentTypeGif = kTypes[8];
 const ContentType& kContentTypeJpeg = kTypes[9];
-const ContentType& kContentTypeWebp = kTypes[10];
+const ContentType& kContentTypeSwf = kTypes[10];
+const ContentType& kContentTypeWebp = kTypes[11];
 
 bool ContentType::IsHtmlLike() const {
   switch (type_) {
@@ -85,6 +86,15 @@ bool ContentType::IsXmlLike() const {
   switch (type_) {
     case kXhtml:
     case kXml:
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool ContentType::IsFlash() const {
+  switch (type_) {
+    case kSwf:
       return true;
     default:
       return false;

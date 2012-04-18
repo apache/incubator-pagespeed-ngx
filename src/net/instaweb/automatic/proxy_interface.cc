@@ -86,6 +86,7 @@ bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
     case ContentType::kPng:
     case ContentType::kGif:
     case ContentType::kJpeg:
+    case ContentType::kSwf:
     case ContentType::kWebp:
       return false;
   }

@@ -83,9 +83,9 @@ ApacheCache::ApacheCache(const StringPiece& path,
   http_cache_.reset(new HTTPCache(cache_.get(), factory->timer(),
                                   factory->hasher(), factory->statistics()));
   page_property_cache_.reset(factory->MakePropertyCache(
-      PropertyCache::kPagePropertyCacheKeyPrefix, cache_.get()));
+      PropertyCache::kPagePropertyCacheKeyPrefix, file_cache_));
   client_property_cache_.reset(factory->MakePropertyCache(
-      PropertyCache::kClientPropertyCacheKeyPrefix, cache_.get()));
+      PropertyCache::kClientPropertyCacheKeyPrefix, file_cache_));
 }
 
 ApacheCache::~ApacheCache() {

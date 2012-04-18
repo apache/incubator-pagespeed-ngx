@@ -153,6 +153,7 @@ class PropertyCache::CacheInterfaceCallback : public CacheInterface::Callback {
 void PropertyPage::AddValueFromProtobuf(
     const PropertyCache::Cohort* cohort,
     const PropertyValueProtobuf& pcache_value) {
+  ScopedMutex lock(mutex_.get());
   CohortDataMap::const_iterator p = cohort_data_map_.find(cohort);
   PropertyMap* pmap = NULL;
   if (p != cohort_data_map_.end()) {
@@ -171,30 +172,34 @@ void PropertyPage::AddValueFromProtobuf(
 
 bool PropertyPage::EncodeCacheEntry(const PropertyCache::Cohort* cohort,
                                     GoogleString* value) {
-  CohortDataMap::const_iterator p = cohort_data_map_.find(cohort);
   bool ret = false;
-  if (p != cohort_data_map_.end()) {
-    PropertyMap* pmap = p->second;
-    PropertyCacheValues values;
-    for (PropertyMap::iterator p = pmap->begin(), e = pmap->end();
-         p != e; ++p) {
-      PropertyValue* property = p->second;
-      PropertyValueProtobuf* pcache_value = property->protobuf();
-      if (pcache_value->name().empty()) {
-        pcache_value->set_name(p->first);
-      }
+  PropertyCacheValues values;
+  {
+    ScopedMutex lock(mutex_.get());
+    CohortDataMap::const_iterator p = cohort_data_map_.find(cohort);
+    if (p != cohort_data_map_.end()) {
+      PropertyMap* pmap = p->second;
+      for (PropertyMap::iterator p = pmap->begin(), e = pmap->end();
+           p != e; ++p) {
+        PropertyValue* property = p->second;
+        PropertyValueProtobuf* pcache_value = property->protobuf();
+        if (pcache_value->name().empty()) {
+          pcache_value->set_name(p->first);
+        }
 
-      // Why might the value be empty? If a cache lookup is performed, misses,
-      // and UpdateValue() is never called. In this case, we can skip the write.
-      if (!pcache_value->body().empty()) {
-        *values.add_value() = *pcache_value;
-        ret = true;
+        // Why might the value be empty? If a cache lookup is performed, misses,
+        // and UpdateValue() is never called. In this case, we can skip the
+        // write.
+        if (!pcache_value->body().empty()) {
+          *values.add_value() = *pcache_value;
+          ret = true;
+        }
       }
     }
-    if (ret) {
-      StringOutputStream sstream(value);
-      values.SerializeToZeroCopyStream(&sstream);
-    }
+  }
+  if (ret) {
+    StringOutputStream sstream(value);
+    values.SerializeToZeroCopyStream(&sstream);
   }
   return ret;
 }
@@ -349,6 +354,7 @@ PropertyPage::~PropertyPage() {
 
 PropertyValue* PropertyPage::GetProperty(const PropertyCache::Cohort* cohort,
                                          const StringPiece& property_name) {
+  ScopedMutex lock(mutex_.get());
   DCHECK(was_read_);
   DCHECK(cohort != NULL);
   PropertyValue* property = NULL;

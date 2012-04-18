@@ -222,6 +222,7 @@ void FallbackSharedAsyncFetch::HandleHeadersComplete() {
     fallback_.ExtractHeaders(response_headers(), handler_);
     // Add a warning header indicating that the response is stale.
     response_headers()->Add(HttpAttributes::kWarning, kStaleWarningHeaderValue);
+    response_headers()->ComputeCaching();
     base_fetch()->HeadersComplete();
     StringPiece contents;
     fallback_.ExtractContents(&contents);

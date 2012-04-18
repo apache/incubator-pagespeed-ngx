@@ -1036,6 +1036,11 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
   // If we are running in proxy mode we need to ignore URLs where the leaf is
   // encoded but the URL as a whole isn't proxy encoded, since that can happen
   // when proxying from a server using mod_pagespeed.
+  //
+  // This is also important for XSS avoidance when running in proxy mode with
+  // a relaxed lawyer, as it ensures that resources will only ever go under
+  // the low-privilege proxy domain and not the trusted site domain.
+  //
   // If we are running in proxy mode and the URL is in the proxy domain, we
   // also need to ensure that the URL decodes correctly as otherwise we end
   // up with an invalid decoded base URL, which ultimately leads to inability

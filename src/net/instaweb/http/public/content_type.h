@@ -39,6 +39,7 @@ struct ContentType {
     kPng,
     kGif,
     kJpeg,
+    kSwf,
     kWebp,
   };
 
@@ -54,6 +55,9 @@ struct ContentType {
   // Return true iff this content type is XML of some kind (either XHTML or
   // some other XML).
   bool IsXmlLike() const;
+
+  // Return true iff this content type is Flash.
+  bool IsFlash() const;
 
   // Return true iff this content type is Image.
   bool IsImage() const;
@@ -79,6 +83,7 @@ extern const ContentType& kContentTypeXml;
 extern const ContentType& kContentTypePng;
 extern const ContentType& kContentTypeGif;
 extern const ContentType& kContentTypeJpeg;
+extern const ContentType& kContentTypeSwf;
 extern const ContentType& kContentTypeWebp;
 
 // Given a name (file or url), see if it has the canonical extension

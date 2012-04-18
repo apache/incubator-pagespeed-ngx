@@ -29,10 +29,12 @@
 
 #include "net/instaweb/automatic/public/blink_flow_critical_line.h"
 
+#include <cstddef>
+
 #include "base/logging.h"
+#include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -45,13 +47,13 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
-class PropertyPage;
 
 const char BlinkFlowCriticalLine::kNumBlinkSharedFetchesStarted[] =
     "num_blink_shared_fetches_started";
@@ -107,8 +109,9 @@ class SharedFetch : public SharedAsyncFetch {
         url_(url),
         resource_manager_(resource_manager),
         options_(options),
-        compute_critical_line_data_(false),
-        rewrite_driver_(rewrite_driver) {
+        rewrite_driver_(rewrite_driver),
+        claims_html_(false),
+        probable_html_(false) {
     // Makes rewrite_driver live longer as ProxyFetch may called Cleanup()
     // on the rewrite_driver even if ComputeBlinkCriticalLineData() has not yet
     // been triggered.
@@ -127,13 +130,7 @@ class SharedFetch : public SharedAsyncFetch {
   virtual void HandleHeadersComplete() {
     base_fetch()->HeadersComplete();
     if (response_headers()->status_code() == HttpStatus::kOK) {
-      const ContentType* type = response_headers()->DetermineContentType();
-      // TODO(pulkitg): Use ProxyFetch logic to check whether it is Html or not.
-      if (type != NULL && type->IsHtmlLike()) {
-        compute_critical_line_data_ = true;
-      } else {
-        VLOG(1) << "Non html page, not rewritable: " << url_;
-      }
+      claims_html_ = response_headers()->IsHtmlLike();
     } else {
       VLOG(1) << "Non 200 response code for: " << url_;
     }
@@ -142,7 +139,17 @@ class SharedFetch : public SharedAsyncFetch {
   virtual bool HandleWrite(const StringPiece& content,
                            MessageHandler* handler) {
     bool ret = base_fetch()->Write(content, handler);
-    if (compute_critical_line_data_) {
+    if (!claims_html_) {
+      return ret;
+    }
+    if (!html_detector_.already_decided() &&
+        html_detector_.ConsiderInput(content)) {
+      if (html_detector_.probable_html()) {
+        probable_html_ = true;
+        html_detector_.ReleaseBuffered(&buffer_);
+      }
+    }
+    if (probable_html_) {
       content.AppendToString(&buffer_);
     }
     return ret;
@@ -150,8 +157,8 @@ class SharedFetch : public SharedAsyncFetch {
 
   virtual void HandleDone(bool success) {
     num_blink_shared_fetches_completed_->IncBy(1);
-    compute_critical_line_data_ &= success;
-    if (!compute_critical_line_data_) {
+    if (!success || !claims_html_ || !probable_html_) {
+      VLOG(1) << "Non html page, or not success: " << url_;
       base_fetch()->Done(success);
       delete this;
     } else {
@@ -209,14 +216,17 @@ class SharedFetch : public SharedAsyncFetch {
   GoogleString url_;
   ResourceManager* resource_manager_;
   scoped_ptr<RewriteOptions> options_;
-  bool compute_critical_line_data_;
   ResponseHeaders critical_line_headers_;
   GoogleString buffer_;
   HTTPValue value_;
+  HtmlDetector html_detector_;
+
   // RewriteDriver passed to ProxyFetch to serve user-facing request.
   RewriteDriver* rewrite_driver_;
   // RewriteDriver used to parse the buffered html content.
   RewriteDriver* critical_line_computation_driver_;
+  bool claims_html_;
+  bool probable_html_;
 
   TimedVariable* num_blink_shared_fetches_completed_;
   TimedVariable* num_compute_blink_critical_line_data_calls_;
@@ -325,7 +335,11 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
   ResponseHeaders* response_headers = base_fetch_->response_headers();
   response_headers->set_status_code(HttpStatus::kOK);
   // TODO(pulkitg): Store content type in pcache.
-  response_headers->Add(HttpAttributes::kContentType, "text/html");
+  // TODO(guptaa): Send response in source encoding to avoid inconsistencies and
+  // response bloating.
+  // Setting the charset as utf-8 since thats that output we get from webkit.
+  response_headers->Add(HttpAttributes::kContentType,
+                        "text/html; charset=utf-8");
   response_headers->Add(kPsaRewriterHeader,
                         BlinkFlowCriticalLine::kAboveTheFold);
   response_headers->ComputeCaching();

@@ -101,6 +101,9 @@ TEST_F(UserAgentMatcherTest, NotSupportsBlink) {
                 UserAgentStrings::kIe6UserAgent));
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
             user_agent_matcher_.GetBlinkUserAgentType(
+                UserAgentStrings::kIe8UserAgent));
+  EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
+            user_agent_matcher_.GetBlinkUserAgentType(
                 UserAgentStrings::kFirefox1UserAgent));
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
             user_agent_matcher_.GetBlinkUserAgentType(
@@ -127,6 +130,8 @@ TEST_F(UserAgentMatcherTest, SupportsJsDefer) {
 TEST_F(UserAgentMatcherTest, NotSupportsJsDefer) {
   EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(
       UserAgentStrings::kIe6UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(
+      UserAgentStrings::kIe8UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(
       UserAgentStrings::kFirefox1UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(

@@ -69,6 +69,7 @@ const char* kPanelSupportDesktopBlacklist[] = {
   "*MSIE 5.*",
   "*MSIE 6.*",
   "*MSIE 7.*",
+  "*MSIE 8.*",
 };
 // For webp rewriting, we whitelist Android, Chrome and Opera, but blacklist
 // older versions of the browsers that are not webp capable.  As other browsers
