@@ -1021,8 +1021,10 @@ GoogleString RewriteOptions::ToString() const {
       StrAppend(&output, "  ", option->id(), "\t", option->ToString(), "\n");
     }
   }
-  // TODO(mmohabey): Incorporate ToString() from the domain_lawyer,
-  // file_load_policy, allow_resources, and retain_comments.
+  output += "\nDomain Lawyer\n";
+  StrAppend(&output, domain_lawyer_.ToString("  "));
+  // TODO(mmohabey): Incorporate ToString() from the file_load_policy,
+  // allow_resources, and retain_comments.
   return output;
 }
 

@@ -182,6 +182,16 @@ class DomainLawyer {
   // classes (Domain).
   GoogleString Signature() const;
 
+  // Computes a string representation meant for debugging purposes only.
+  // (The format might change in unpredictable ways and is not meant for
+  //  machine consumption).
+  // Each domain will appear on a separate line, and each line will be prefixed
+  // with 'line_prefix'.
+  GoogleString ToString(StringPiece line_prefix) const;
+
+  // Version that's easier to call from debugger.
+  GoogleString ToString() const { return ToString(StringPiece()); }
+
  private:
   class Domain;
 

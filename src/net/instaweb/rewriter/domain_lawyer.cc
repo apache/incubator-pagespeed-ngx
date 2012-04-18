@@ -161,6 +161,32 @@ class DomainLawyer::Domain {
     return signature;
   }
 
+  GoogleString ToString() const {
+    GoogleString output = name_;
+
+    if (authorized_) {
+      StrAppend(&output, " Auth");
+    }
+
+    if (rewrite_domain_ != NULL) {
+      StrAppend(&output, " RewriteDomain:", rewrite_domain_->name());
+    }
+
+    if (origin_domain_ != NULL) {
+      StrAppend(&output, " OriginDomain:", origin_domain_->name());
+    }
+
+    if (!shards_.empty()) {
+      StrAppend(&output, " Shards:{");
+      for (int i = 0, n = shards_.size(); i < n; ++i) {
+        StrAppend(&output, (i == 0 ? "" : ", "), shards_[i]->name());
+      }
+      StrAppend(&output, "}");
+    }
+
+    return output;
+  }
+
  private:
   bool authorized_;
   Wildcard wildcard_;
@@ -621,6 +647,15 @@ GoogleString DomainLawyer::Signature() const {
   }
 
   return signature;
+}
+
+GoogleString DomainLawyer::ToString(StringPiece line_prefix) const {
+  GoogleString output;
+  for (DomainMap::const_iterator iterator = domain_map_.begin();
+      iterator != domain_map_.end(); ++iterator) {
+    StrAppend(&output, line_prefix, iterator->second->ToString(), "\n");
+  }
+  return output;
 }
 
 }  // namespace net_instaweb

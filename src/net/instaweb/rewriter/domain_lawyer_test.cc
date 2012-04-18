@@ -552,6 +552,9 @@ TEST_F(DomainLawyerTest, MapOriginDomain) {
   // authorized as a domain for input resources.
   GoogleUrl gurl("http://origin.com:8080/index.html");
   EXPECT_FALSE(MapRequest(gurl, "http://localhost:8080/blue.css", &mapped));
+  GoogleUrl page_url("http://origin.com:8080");
+  GoogleUrl candidate_url("http://localhost:8080");
+  EXPECT_FALSE(domain_lawyer_.IsDomainAuthorized(page_url, candidate_url));
 
   // Of course, if we were to explicitly authorize then it would be ok.
   // First use a wildcard, which will not cover the ":8080", so the
@@ -960,6 +963,32 @@ TEST_F(DomainLawyerTest, ComputeSignatureTest) {
   EXPECT_EQ("D:http://*abc*.com/__a_O:http://host1/_-D:http://domain1/__a_S:"
             "http://shard/_-D:http://host1/__n_-D:http://shard/__a_R:"
             "http://domain1/_-", first_lawyer.Signature());
+}
+
+TEST_F(DomainLawyerTest, ToStringTest) {
+  DomainLawyer first_lawyer, second_lawyer;
+  EXPECT_TRUE(first_lawyer.AddDomain("static.example.com", &message_handler_));
+  EXPECT_TRUE(first_lawyer.AddOriginDomainMapping("host1", "*abc*.com",
+                                                  &message_handler_));
+  EXPECT_STREQ(
+      "http://*abc*.com/ Auth OriginDomain:http://host1/\n"
+      "http://host1/\n"
+      "http://static.example.com/ Auth\n",
+      first_lawyer.ToString());
+
+  EXPECT_TRUE(second_lawyer.AddRewriteDomainMapping("myhost.cdn.com",
+                                                    "myhost1.com,myhost2.com",
+                                                    &message_handler_));
+  EXPECT_TRUE(
+      second_lawyer.AddShard("domain1", "shard,shard2", &message_handler_));
+  EXPECT_STREQ(
+      "http://domain1/ Auth Shards:{http://shard/, http://shard2/}\n"
+      "http://myhost.cdn.com/ Auth\n"
+      "http://myhost1.com/ Auth RewriteDomain:http://myhost.cdn.com/\n"
+      "http://myhost2.com/ Auth RewriteDomain:http://myhost.cdn.com/\n"
+      "http://shard/ Auth RewriteDomain:http://domain1/\n"
+      "http://shard2/ Auth RewriteDomain:http://domain1/\n",
+      second_lawyer.ToString());
 }
 
 }  // namespace net_instaweb
