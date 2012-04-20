@@ -10,3 +10,4 @@ Info: img_tag_identification.html:54: Shrinking image `http://file.name/Cuppa.pn
 Info: img_tag_identification.html:55: Couldn't resize image `http://file.name/CuppaT.png' from 65x70 to 26x28
 Info: img_tag_identification.html:56: Resized image `http://file.name/CuppaO.png' from 65x70 to 64x69
 Info: img_tag_identification.html:56: Shrink of image `http://file.name/CuppaO.png' doesn't save space; dropped.
+Info: img_tag_identification.html:70: Shrinking image `http://file.name/BikeCrashIcn.png' (26548 bytes) to `http://file.name/100x100xBikeCrashIcn.png.pagespeed.ic.0.png' (21420 bytes)

@@ -113,6 +113,7 @@ const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {
     case HttpStatus::kProxyPublisherFailure  : return "Proxy Publisher Failure";
     case HttpStatus::kProxyFailure             : return "Proxy Failure";
     case HttpStatus::kProxyConfigurationFailure: return "Proxy Config Failure";
+    case HttpStatus::kProxyDeclinedRequest    : return "Proxy Declined Request";
 
     default:
       // We don't have a name for this response code, so we'll just

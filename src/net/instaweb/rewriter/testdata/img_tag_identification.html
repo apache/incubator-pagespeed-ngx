@@ -48,8 +48,8 @@
 		<img src="b2?lots=terrible&amp;obnoxious=1&amp;nasty=17&amp;ick=54/j/&amp;cgi=arguments" style="display:none" width="0" height="0" alt=""/>
 	</div>
 </noscript>
-<img src="ExplosiveEgress.png" width="84" height="68"/>
-<img src="IronChef2.gif" width="96" height="128"/>
+<img src="ExplosiveEgress.png" width="84." height="68"/>
+<img src="IronChef2.gif" width="95.5" height="128"/>
 <img src="BikeCrashIcn.png" alt="Cheese" id="bbq-pitss"/>
 <img src="Cuppa.png" alt="Cuppa" id="cuppa"/>
 <img src="CuppaT.png" alt="Downsized transparent Cuppa" id="downsized" width="26" height="28"/>
@@ -65,8 +65,10 @@
 <img src="o.gif" width="14" height="1" alt="" border="0" vspace="0" hspace="0"/>
 
 <!-- And this tests the presence of unit-annotated width and height, which ought
-     to be preserved untouched.
+     to induce resizing just as with non-unit-annotated width and height.
   -->
 <img src="BikeCrashIcn.png" alt="Crackers" width="100px" height="100px"/>
+<!-- Whereas percentages should not resize. -->
+<img src="BikeCrashIcn.png" alt="Crackers" width="100%" height="99.5%"/>
 </body>
 </html>

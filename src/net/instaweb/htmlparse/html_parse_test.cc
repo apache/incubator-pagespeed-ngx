@@ -1026,6 +1026,7 @@ class EventListManipulationTest : public HtmlParseTest {
   HtmlCharactersNode* node1_;
   HtmlCharactersNode* node2_;
   HtmlCharactersNode* node3_;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(EventListManipulationTest);
 };
@@ -1350,15 +1351,6 @@ TEST_F(AttributeManipulationTest, PropertiesAndDeserialize) {
   EXPECT_TRUE(NULL == node_->AttributeValue(HtmlName::kNotAKeyword));
   // ... and for attributes which have no value.
   EXPECT_TRUE(NULL == node_->AttributeValue(HtmlName::kSelected));
-  int val = -35;
-  EXPECT_FALSE(node_->IntAttributeValue(HtmlName::kNotAKeyword, &val));
-  EXPECT_EQ(-35, val);
-  EXPECT_FALSE(node_->IntAttributeValue(HtmlName::kSelected, &val));
-  EXPECT_EQ(-35, val);
-  EXPECT_FALSE(node_->IntAttributeValue(HtmlName::kHref, &val));
-  EXPECT_EQ(0, val);
-  EXPECT_TRUE(node_->IntAttributeValue(HtmlName::kId, &val));
-  EXPECT_EQ(37, val);
   // Returns NULL for attributes that do not exist.
   EXPECT_TRUE(NULL == node_->FindAttribute(HtmlName::kNotAKeyword));
   // Returns an attribute reference for attributes without values.
@@ -1427,12 +1419,12 @@ TEST_F(AttributeManipulationTest, CloneElement) {
   EXPECT_EQ(node_->close_style(), clone->close_style());
   EXPECT_EQ(4, clone->attribute_size());
   EXPECT_EQ(HtmlName::kHref, clone->attribute(0).keyword());
-  EXPECT_EQ(GoogleString("http://www.google.com/"),
-            clone->attribute(0).DecodedValueOrNull());
+  EXPECT_STREQ("http://www.google.com/",
+               clone->attribute(0).DecodedValueOrNull());
   EXPECT_EQ(HtmlName::kId, clone->attribute(1).keyword());
-  EXPECT_EQ(GoogleString("37"), clone->attribute(1).DecodedValueOrNull());
+  EXPECT_STREQ("37", clone->attribute(1).DecodedValueOrNull());
   EXPECT_EQ(HtmlName::kClass, clone->attribute(2).keyword());
-  EXPECT_EQ(GoogleString("search!"), clone->attribute(2).DecodedValueOrNull());
+  EXPECT_STREQ("search!", clone->attribute(2).DecodedValueOrNull());
   EXPECT_EQ(HtmlName::kSelected, clone->attribute(3).keyword());
   EXPECT_EQ(NULL, clone->attribute(3).DecodedValueOrNull());
 

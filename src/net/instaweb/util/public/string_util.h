@@ -19,12 +19,12 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_STRING_UTIL_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_UTIL_H_
 
-
 #include <map>
 #include <set>
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
+
 
 #include <cstdlib>
 #include <string>
@@ -66,6 +66,8 @@ inline GoogleString PointerToString(void* pointer) {
   return StringPrintf("%p", pointer);
 }
 
+// NOTE: For a string of the form "45x", this sets *out = 45 but returns false.
+// It sets *out = 0 given "Junk45" or "".
 inline bool StringToInt(const char* in, int* out) {
   // TODO(bmcquade): Use char*-based StringToInt once we sync the
   // Chromium repository.

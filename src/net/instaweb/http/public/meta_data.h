@@ -119,6 +119,7 @@ enum Code {
   kProxyPublisherFailure = 520,
   kProxyFailure = 521,
   kProxyConfigurationFailure = 522,
+  kProxyDeclinedRequest = 523,
 
   // Instaweb-specific response codes: these are intentionally chosen to be
   // outside the normal HTTP range, but we consider these response codes

@@ -448,8 +448,6 @@ RewriteOptions::RewriteOptions()
   add_option(false, &respect_vary_, "rv", kRespectVary);
   add_option(false, &flush_html_, "fh", kFlushHtml);
   add_option(true, &serve_stale_if_fetch_error_, "ss", kServeStaleIfFetchError);
-  add_option(false, &disable_override_doc_open_, "dodo",
-             kDisableOverrideDocOpen);
   add_option(false, &enable_defer_js_experimental_, "edje",
              kEnableDeferJsExperimental);
   add_option(false, &enable_blink_critical_line_, "ebcl",
@@ -1081,7 +1079,7 @@ bool RewriteOptions::AvailableFuriousId(int id) {
 
 bool RewriteOptions::AddFuriousSpec(const StringPiece& spec,
                                     MessageHandler* handler) {
-  FuriousSpec* f_spec = new FuriousSpec(spec, handler);
+  FuriousSpec* f_spec = new FuriousSpec(spec, this, handler);
   return AddFuriousSpec(f_spec);
 }
 
@@ -1123,7 +1121,9 @@ void RewriteOptions::SetupFuriousRewriters() {
     return;
   }
 
-  set_ga_id(spec->ga_id());
+  if (!spec->ga_id().empty()) {
+    set_ga_id(spec->ga_id());
+  }
 
   if (spec->use_default()) {
     // We need these for the experiment to work properly.
@@ -1149,9 +1149,10 @@ void RewriteOptions::SetupFuriousRewriters() {
 }
 
 RewriteOptions::FuriousSpec::FuriousSpec(const StringPiece& spec,
+                                         RewriteOptions* options,
                                          MessageHandler* handler)
     : id_(furious::kFuriousNotSet),
-      ga_id_(""),
+      ga_id_(options->ga_id()),
       percent_(0),
       rewrite_level_(kPassThrough),
       css_inline_max_bytes_(kDefaultCssInlineMaxBytes),

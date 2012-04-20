@@ -90,9 +90,10 @@ class IntegerToStringToIntTest : public testing::Test {
     ValidateStringToInt64(s, static_cast<int64>(i));
   }
 
-  void InvalidStringToInt(GoogleString s) {
-    int i;
+  void InvalidStringToInt(GoogleString s, int expected) {
+    int i = -50;
     EXPECT_FALSE(StringToInt(s, &i));
+    EXPECT_EQ(expected, i);
     InvalidStringToInt64(s);
   }
 
@@ -148,19 +149,20 @@ TEST_F(IntegerToStringToIntTest, TestStringToInt) {
 }
 
 TEST_F(IntegerToStringToIntTest, TestInvalidString) {
-  InvalidStringToInt("");
-  InvalidStringToInt("-");
-  InvalidStringToInt("+");
-  InvalidStringToInt("--1");
-  InvalidStringToInt("++1");
-  InvalidStringToInt("1-");
-  InvalidStringToInt("1+");
-  InvalidStringToInt("1 000");
-  InvalidStringToInt("a");
-  InvalidStringToInt("1e2");
-  InvalidStringToInt("10^3");
-  InvalidStringToInt("1+3");
-  InvalidStringToInt("0x6A7");
+  InvalidStringToInt("", 0);
+  InvalidStringToInt("-", 0);
+  InvalidStringToInt("+", 0);
+  InvalidStringToInt("--1", 0);
+  InvalidStringToInt("++1", 0);
+  InvalidStringToInt("1-", 1);
+  InvalidStringToInt("1+", 1);
+  InvalidStringToInt("1 000", 1);
+  InvalidStringToInt("a", 0);
+  InvalidStringToInt("1e2", 1);
+  InvalidStringToInt("10^3", 10);
+  InvalidStringToInt("1+3", 1);
+  InvalidStringToInt("0x6A7", 0);
+  InvalidStringToInt("  45Junk", 45);
 }
 
 TEST_F(IntegerToStringToIntTest, TestIntegerToStringToInt) {

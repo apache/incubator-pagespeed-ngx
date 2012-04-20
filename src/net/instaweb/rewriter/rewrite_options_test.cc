@@ -597,7 +597,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(72, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(71, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));
@@ -889,18 +889,27 @@ TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies2) {
 }
 
 TEST_F(RewriteOptionsTest, FuriousSpecTest) {
+  // Test that we handle furious specs properly, and that when
+  // we set the options to one experiment or another, it works.
   NullMessageHandler handler;
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  options_.set_ga_id("UA-111111-1");
   EXPECT_FALSE(options_.AddFuriousSpec("id=0", &handler));
   EXPECT_TRUE(options_.AddFuriousSpec(
       "id=7;percent=10;level=CoreFilters;enabled=sprite_images;"
       "disabled=inline_css;inline_js=600000", &handler));
-  EXPECT_TRUE(options_.AddFuriousSpec("id=2;percent=15;disabled=insert_ga ",
+
+  // Extra spaces to test whitespace handling.
+  EXPECT_TRUE(options_.AddFuriousSpec("id=2;    percent=15;ga=UA-2222-1;"
+                                      "disabled=insert_ga ",
                                       &handler));
   options_.SetFuriousState(7);
   EXPECT_EQ(RewriteOptions::kCoreFilters, options_.level());
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kSpriteImages));
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kInlineCss));
+  // This experiment didn't have a ga_id, so make sure we still have the
+  // global ga_id.
+  EXPECT_EQ("UA-111111-1", options_.ga_id());
 
   // insert_ga can not be disabled in any furious experiment because
   // that filter injects the instrumentation we use to collect the data.
@@ -909,11 +918,14 @@ TEST_F(RewriteOptionsTest, FuriousSpecTest) {
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kSpriteImages));
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kLeftTrimUrls));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kInsertGA));
+  // This experiment specified a ga_id, so make sure that we set it.
+  EXPECT_EQ("UA-2222-1", options_.ga_id());
 }
 
 TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   NullMessageHandler handler;
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  options_.set_ga_id("UA-111111-1");
   EXPECT_FALSE(options_.AddFuriousSpec("id=2;enabled=rewrite_css;", &handler));
   EXPECT_TRUE(options_.AddFuriousSpec("id=1;percent=15;default", &handler));
   EXPECT_TRUE(options_.AddFuriousSpec("id=7;percent=15;level=AllFilters;",
@@ -941,6 +953,8 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   // only returns the threshold if inline_images is enabled.
   EXPECT_EQ("Experiment: 2; ah,ai,hw,ig,cf,css:4096,im:0,js:2048;",
             options_.ToExperimentString());
+
+  // Make sure we set the ga_id to the one specified by spec 2.
   EXPECT_EQ("122333-4", options_.ga_id());
 }
 

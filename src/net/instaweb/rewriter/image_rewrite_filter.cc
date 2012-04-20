@@ -197,10 +197,9 @@ void ImageRewriteFilter::StartDocumentImpl() {
   if (finder != NULL &&
       driver_->options()->Enabled(RewriteOptions::kDelayImages)) {
     finder->UpdateCriticalImagesSetInDriver(driver_);
-    if (driver_->critical_images() == NULL) {
-      // Compute critical images if critical images information is not present.
-      finder->ComputeCriticalImages(driver_->url(), driver_);
-    }
+    // Compute critical images if critical images information is not present.
+    finder->ComputeCriticalImages(driver_->url(), driver_,
+                                  (driver_->critical_images() == NULL));
   }
   image_counter_ = 0;
 }
@@ -714,10 +713,33 @@ bool ImageRewriteFilter::HasAnyDimensions(HtmlElement* element) {
 
 namespace {
 
+// Skip ascii whitespace, returning pointer to first non-whitespace character in
+// accordance with:
+//   http://www.whatwg.org/specs/web-apps/current-work/multipage/
+//                  common-microsyntaxes.html#space-character
+const char* SkipAsciiWhitespace(const char* position) {
+  while (*position <= ' ' &&  // Quickly skip if no leading whitespace
+         (*position == ' ' || *position == '\x09' || *position == '\x0A' ||
+          *position == '\x0C' || *position == '\x0D')) {
+    ++position;
+  }
+  return position;
+}
+
+bool GetDimensionAttribute(
+    const HtmlElement* element, HtmlName::Keyword name, int* value) {
+  const HtmlElement::Attribute* attribute = element->FindAttribute(name);
+  if (attribute == NULL) {
+    return false;
+  }
+  const char* position = attribute->DecodedValueOrNull();
+  return ImageRewriteFilter::ParseDimensionAttribute(position, value);
+}
+
 // If the element has a width attribute, set it in page_dim.
 void SetWidthFromAttribute(const HtmlElement* element, ImageDim* page_dim) {
   int32 width;
-  if (element->IntAttributeValue(HtmlName::kWidth, &width)) {
+  if (GetDimensionAttribute(element, HtmlName::kWidth, &width)) {
     page_dim->set_width(width);
   }
 }
@@ -725,12 +747,73 @@ void SetWidthFromAttribute(const HtmlElement* element, ImageDim* page_dim) {
 // If the element has a height attribute, set it in page_dim.
 void SetHeightFromAttribute(const HtmlElement* element, ImageDim* page_dim) {
   int32 height;
-  if (element->IntAttributeValue(HtmlName::kHeight, &height)) {
+  if (GetDimensionAttribute(element, HtmlName::kHeight, &height)) {
     page_dim->set_height(height);
   }
 }
 
 }  // namespace
+
+bool ImageRewriteFilter::ParseDimensionAttribute(
+    const char* position, int* value) {
+  if (position == NULL) {
+    return false;
+  }
+  // Note that we rely heavily on null-termination of char* here to cause our
+  // control flow to fall through when we reach end of string.  Numbered steps
+  // correspond to the steps in the spec.
+  //   http://www.whatwg.org/specs/web-apps/current-work/multipage/
+  //                  common-microsyntaxes.html#percentages-and-dimensions
+  // 3) Skip ascii whitespace
+  position = SkipAsciiWhitespace(position);
+  // 5) Skip leading plus
+  if (*position == '+') {
+    ++position;
+  }
+  unsigned int result = 0;  // unsigned for consistent overflow behavior.
+  // 6,7,9) Process digits
+  while ('0' <= *position && *position <= '9') {
+    unsigned int new_result = result * 10 + *position - '0';
+    if (new_result < result) {
+      // Integer overflow.  Reject.
+      return false;
+    }
+    result = new_result;
+    ++position;
+  }
+  // 6,7,8) Reject if no digits or only zeroes, or conversion to signed will
+  // fail.
+  if (result < 1 || INT_MAX < result) {
+    return false;
+  }
+  // 11) Process fraction (including 45. with nothing after the . )
+  if (*position == '.') {
+    ++position;
+    if ('5' <= *position && *position <= '9' && result < INT_MAX) {
+      // Round based on leading fraction digit, avoiding overflow.
+      ++result;
+      ++position;
+    }
+    // Discard all fraction digits.
+    while ('0' <= *position && *position <= '9') {
+      ++position;
+    }
+  }
+  // Skip whitespace before a possible trailing px.  The spec allows other junk,
+  // or a trailing percent, but we can't resize percentages and older browsers
+  // don't resize when they encounter junk.
+  position = SkipAsciiWhitespace(position);
+  if (position[0] == 'p' && position[1] == 'x') {
+    position = SkipAsciiWhitespace(position + 2);
+  }
+  // Reject if there's trailing junk.
+  if (*position != '\0') {
+    return false;
+  }
+  // 14) return result as length.
+  *value = static_cast<int>(result);
+  return true;
+}
 
 void ImageRewriteFilter::GetDimensions(HtmlElement* element,
                                        ImageDim* page_dim) {

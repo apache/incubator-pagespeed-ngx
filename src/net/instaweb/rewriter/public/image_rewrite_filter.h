@@ -69,6 +69,27 @@ class ImageRewriteFilter : public RewriteFilter {
       int64 image_inline_max_bytes, const CachedResult* cached_result,
       GoogleString* data_url);
 
+  // The valid contents of a dimension attribute on an image element have one of
+  // the following forms: "45%" "45%px" "+45.0%" [45% of browser width; we can't
+  // handle this] "45", "+45", "45px", "45arbitraryjunk" "45px%" [45 pixels
+  // regardless of junk] Technically 0 is an invalid dimension, so we'll reject
+  // those as well; note that 0 dimensions occur in the wild and Safari and
+  // Chrome at least don't display anything.
+  //
+  // We actually reject the arbitraryjunk cases, as older browsers (eg FF9,
+  // which isn't *that* old) don't deal with them at all.  So the only trailing
+  // stuff we allow is px possibly with some white space.  Note that some older
+  // browsers (like FF9) accept other units such as "in" or "pt" as synonyms for
+  // px!
+  //
+  // We round fractions, as fractional pixels appear to be rounded in practice
+  // (and our image resize algorithms require integer pixel sizes).
+  //
+  // Far more detail in the spec at:
+  //   http://www.whatwg.org/specs/web-apps/current-work/multipage/
+  //                  common-microsyntaxes.html#percentages-and-dimensions
+  static bool ParseDimensionAttribute(const char* position, int* value);
+
   // Creates a nested rewrite for an image inside a CSS file with the given
   // parent and slot, and returns it. The result is not registered with the
   // parent.

@@ -226,20 +226,6 @@ class HtmlElement : public HtmlNode {
     return NULL;
   }
 
-  // Look up attribute value by name.  false if no attribute exists,
-  // or attribute value cannot be converted to int.  Otherwise
-  // sets *value.
-  bool IntAttributeValue(HtmlName::Keyword name, int* value) const {
-    const Attribute* attribute = FindAttribute(name);
-    if (attribute != NULL) {
-      const char* attr_value = attribute->DecodedValueOrNull();
-      if (attr_value != NULL) {
-        return StringToInt(attr_value, value);
-      }
-    }
-    return false;
-  }
-
   // Small integer uniquely identifying the HTML element, primarily
   // for debugging.
   void set_sequence(int sequence) { sequence_ = sequence; }

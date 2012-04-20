@@ -112,7 +112,6 @@ class RewriteOptions {
     kCssInlineMaxBytes,
     kCssOutlineMinBytes,
     kDefaultCacheHtml,
-    kDisableOverrideDocOpen,
     kEnableBlinkCriticalLine,
     kEnabled,
     kEnableDeferJsExperimental,
@@ -307,7 +306,8 @@ class RewriteOptions {
     // If spec doesn't have an id, then id_ will be set to
     // furious::kFuriousNotSet.  These FuriousSpecs will then be rejected
     // by AddFuriousSpec().
-    FuriousSpec(const StringPiece& spec, MessageHandler* handler);
+    FuriousSpec(const StringPiece& spec, RewriteOptions* options,
+                MessageHandler* handler);
 
     // Creates a FuriousSpec with id_=id.  All other variables
     // are initialized to 0.
@@ -762,13 +762,6 @@ class RewriteOptions {
   }
   void set_domain_rewrite_hyperlinks(bool x) {
     set_option(x, &domain_rewrite_hyperlinks_);
-  }
-
-  void set_disable_override_doc_open(bool x) {
-    set_option(x, &disable_override_doc_open_);
-  }
-  bool disable_override_doc_open() const {
-    return disable_override_doc_open_.value();
   }
 
   void set_enable_defer_js_experimental(bool x) {
@@ -1296,9 +1289,6 @@ class RewriteOptions {
   // Increase the percentage of hits to 10% (current max) that have
   // site speed tracking in Google Analytics.
   Option<bool> increase_speed_tracking_;
-
-  // Disables the override of document open in defer js.
-  Option<bool> disable_override_doc_open_;
 
   // Enables experimental code in defer js.
   Option<bool> enable_defer_js_experimental_;

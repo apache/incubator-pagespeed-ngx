@@ -20,11 +20,11 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_IMAGES_FINDER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class CriticalImagesCallback;
 class RewriteDriver;
 
 // Finds critical images i.e. images which are above the fold for a given url.
@@ -43,7 +43,8 @@ class CriticalImagesFinder {
 
   // Compute the critical images for the given url.
   virtual void ComputeCriticalImages(StringPiece url,
-                                     RewriteDriver* driver);
+                                     RewriteDriver* driver,
+                                     bool must_compute);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CriticalImagesFinder);

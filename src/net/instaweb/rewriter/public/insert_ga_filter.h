@@ -52,11 +52,28 @@ class InsertGAFilter : public CommonFilter {
   virtual void EndElementImpl(HtmlElement* element);
   // HTML Events we expect to be in <script> elements.
   virtual void Characters(HtmlCharactersNode* characters);
-  virtual void Flush();
 
   virtual const char* Name() const { return "InsertGASnippet"; }
 
  private:
+  // Construct the custom variable part for Furious of the GA snippet.
+  GoogleString ConstructFuriousSnippet() const;
+
+  // Construct a stand-alone GA snippet to send back Furious info.
+  GoogleString MakeFullFuriousSnippet() const;
+
+  // If appropriate, insert the GA snippet at the end of the head element.
+  void HandleEndHead(HtmlElement* head);
+
+  // Look to see if the script had a GA snippet, and modify our code
+  // appropriately.
+  void HandleEndScript(HtmlElement* script);
+
+  // Add a script node to parent with text as the contents.
+  // Store a pointer to the resulting script element in script_element.
+  void AddScriptNode(HtmlElement* parent, const GoogleString& text,
+                     HtmlElement** script_element) const;
+
   // Indicates whether or not buffer_ contains a GA snippet with the
   // same id as ga_id_.
   bool FoundSnippetInBuffer() const;
@@ -69,6 +86,8 @@ class InsertGAFilter : public CommonFilter {
   HtmlElement* script_element_;
   // Element in which we added the GA snippet.
   HtmlElement* added_snippet_element_;
+  // Element in which we added a separate Furious snippet.
+  HtmlElement* added_furious_element_;
 
   // GA ID for this site.
   GoogleString ga_id_;

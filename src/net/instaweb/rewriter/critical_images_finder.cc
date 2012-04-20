@@ -18,7 +18,8 @@
 
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 
-#include "net/instaweb/rewriter/public/critical_images_callback.h"
+#include <map>
+
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -43,7 +44,7 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
 }
 
 void CriticalImagesFinder::ComputeCriticalImages(
-    StringPiece url, RewriteDriver* driver) {
+    StringPiece url, RewriteDriver* driver, bool must_compute) {
   // Default interface is empty and derived classes can override.
 }
 

@@ -55,7 +55,7 @@ const char kHtmlOutputFormat[] =
     "<script type=\"text/javascript\">%s</script>"
     "</head><body> Hello World!</body>";
 
-TEST_F(InsertGAFilterTest, simple_insert) {
+TEST_F(InsertGAFilterTest, SimpleInsert) {
   rewrite_driver()->AddFilters();
   GoogleString ga_snippet = StringPrintf(kGASnippet, kGaId, "test.com",
                                          kGASpeedTracking, "", "http://www");
@@ -76,7 +76,7 @@ const char kHtmlOutsideHead[] =
     "<script type=\"text/javascript\">%s</script>"
     "<body> Hello World!</body>";
 
-TEST_F(InsertGAFilterTest, no_double) {
+TEST_F(InsertGAFilterTest, NoDouble) {
   rewrite_driver()->AddFilters();
   GoogleString ga_snippet = StringPrintf(kGASnippet, kGaId, "test.com",
                                          kGASpeedTracking, "", "http://www");
@@ -84,7 +84,7 @@ TEST_F(InsertGAFilterTest, no_double) {
                                                  ga_snippet.c_str()));
 }
 
-TEST_F(InsertGAFilterTest, no_increased_speed) {
+TEST_F(InsertGAFilterTest, NoIncreasedSpeed) {
   options()->set_increase_speed_tracking(false);
   rewrite_driver()->AddFilters();
 
@@ -96,7 +96,7 @@ TEST_F(InsertGAFilterTest, no_increased_speed) {
   ValidateNoChanges("already_there", output);
 }
 
-TEST_F(InsertGAFilterTest, furious) {
+TEST_F(InsertGAFilterTest, Furious) {
   NullMessageHandler handler;
   RewriteOptions* options = rewrite_driver()->options()->Clone();
   options->set_running_furious_experiment(true);
@@ -119,6 +119,101 @@ TEST_F(InsertGAFilterTest, furious) {
   GoogleString output = StringPrintf(kHtmlOutputFormat, ga_snippet.c_str());
 
   ValidateExpected("simple_addition", kHtmlInput, output);
+}
+
+TEST_F(InsertGAFilterTest, FuriousNoDouble) {
+  NullMessageHandler handler;
+  RewriteOptions* options = rewrite_driver()->options()->Clone();
+  options->set_running_furious_experiment(true);
+  options->AddFuriousSpec("id=2", &handler);
+  options->AddFuriousSpec("id=7;level=CoreFilters", &handler);
+  options->SetFuriousState(2);
+
+  // Setting up Furious automatically enables AddInstrumentation.
+  // Turn it off so our output is easier to understand.
+  options->DisableFilter(RewriteOptions::kAddInstrumentation);
+  rewrite_driver()->set_custom_options(options);
+  rewrite_driver()->AddFilters();
+
+  GoogleString ga_snippet = StringPrintf(
+      kGASnippet, kGaId, "test.com", "" /*speed*/,
+      "" /*furious*/, "http://www");
+
+  // The input for this test already has a GA snippet in it.
+  GoogleString input = StringPrintf(kHtmlOutputFormat, ga_snippet.c_str());
+
+  GoogleString variable_value = StringPrintf(
+      "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s']);",
+      options->ToExperimentString().c_str());
+  GoogleString extra_script = StrCat(
+      ga_snippet, "</script><script type=\"text/javascript\">",
+      variable_value, kGASpeedTracking, "_gaq.push(['_trackPageview']);");
+  // The output should still have the original GA snippet as well as an inserted
+  // Furious snippet.
+  GoogleString output = StringPrintf(kHtmlOutputFormat, extra_script.c_str());
+
+  ValidateExpected("variable_added", input, output);
+}
+
+TEST_F(InsertGAFilterTest, ManyHeads) {
+  // Make sure we only add the GA snippet in one place.
+  rewrite_driver()->AddFilters();
+  const char* kHeadsFmt = "<head>%s</head><head></head><head></head></head>";
+  GoogleString input = StringPrintf(kHeadsFmt, "");
+  GoogleString ga_snippet = StringPrintf(kGASnippet, kGaId, "test.com",
+                                         kGASpeedTracking, "", "http://www");
+
+  GoogleString output = StringPrintf(kHeadsFmt,
+                                     StrCat("<script type=\"text/javascript\">",
+                                            ga_snippet, "</script>").c_str());
+  ValidateExpected("many_heads", input, output);
+}
+
+
+TEST_F(InsertGAFilterTest, FuriousBadHtml) {
+  // Tests for multiple heads while running furious.
+  NullMessageHandler handler;
+  RewriteOptions* options = rewrite_driver()->options()->Clone();
+  options->set_running_furious_experiment(true);
+  options->AddFuriousSpec("id=2", &handler);
+  options->AddFuriousSpec("id=7;default", &handler);
+  options->SetFuriousState(2);
+  options->DisableFilter(RewriteOptions::kAddInstrumentation);
+  rewrite_driver()->set_custom_options(options);
+  rewrite_driver()->AddFilters();
+  const char* kHeadsFmt = "<head>%s</head><head></head><body>%s</body>"
+      "<head></head></head>";
+
+  GoogleString variable_value = StringPrintf(
+      "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s']);",
+      options->ToExperimentString().c_str());
+  GoogleString ga_snippet = StringPrintf(
+      kGASnippet, kGaId, "test.com", kGASpeedTracking,
+      variable_value.c_str(), "http://www");
+
+  // Input with no GA snippets.
+  GoogleString input = StringPrintf(kHeadsFmt, "", "");
+  // Output should have one GA snippet, including the furious part.
+  GoogleString output = StringPrintf(
+      kHeadsFmt, StrCat("<script type=\"text/javascript\">", ga_snippet.c_str(),
+                        "</script>").c_str(),
+      "");
+  ValidateExpected("furious_heads", input, output);
+
+  GoogleString first_snippet = StrCat(
+      "<script type=\"text/javascript\">",
+      StringPrintf(kGASnippet, kGaId, "test.com", "", "", "http://www"),
+      "</script>");
+
+  // Input has non-furious part of the GA snippet already there, but after
+  // the first <head></head>.
+  // Make sure we add in only the furious part, and that it's after the
+  // original snippet.
+  input = StringPrintf(kHeadsFmt, "", first_snippet.c_str());
+  output = StringPrintf(kHeadsFmt, "", StrCat(
+      first_snippet, "<script type=\"text/javascript\">", variable_value,
+      kGASpeedTracking, "_gaq.push(['_trackPageview']);</script>").c_str());
+  ValidateExpected("furious_middle", input, output);
 }
 
 }  // namespace

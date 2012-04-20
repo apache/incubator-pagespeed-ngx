@@ -435,6 +435,160 @@ TEST_F(ImageRewriteTest, ResizeTest) {
                     kResizedDims, kResizedDims, true, false);
 }
 
+TEST_F(ImageRewriteTest, DimensionParsingOK) {
+  // First some tests that should succeed.
+  int value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      "5", &value));
+  EXPECT_EQ(value, 5);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      " 341  ", &value));
+  EXPECT_EQ(value, 341);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      " 000743  ", &value));
+  EXPECT_EQ(value, 743);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      "\n\r\t \f62", &value));
+  EXPECT_EQ(value, 62);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      "+40", &value));
+  EXPECT_EQ(value, 40);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      " +41", &value));
+  EXPECT_EQ(value, 41);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      "54px", &value));
+  EXPECT_EQ(value, 54);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      "  70.", &value));
+  EXPECT_EQ(value, 70);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      "71.3", &value));
+  EXPECT_EQ(value, 71);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      "71.523", &value));
+  EXPECT_EQ(value, 72);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      "73.4999990982589729048572938579287459874", &value));
+  EXPECT_EQ(value, 73);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      "75.px", &value));
+  EXPECT_EQ(value, 75);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      "75.6 px", &value));
+  EXPECT_EQ(value, 76);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      "77.34px", &value));
+  EXPECT_EQ(value, 77);
+  value = -34;
+  EXPECT_TRUE(ImageRewriteFilter::ParseDimensionAttribute(
+      "78px ", &value));
+  EXPECT_EQ(value, 78);
+}
+
+TEST_F(ImageRewriteTest, DimensionParsingFail) {
+  int value = -34;
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "0", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "+0", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "+0.9", &value));  // Bizarrely not allowed!
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "  0  ", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "junk5", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "  junk10", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "junk  50", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "-43", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "+ 43", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "21px%", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "21px junk", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "9123948572038209720561049018365037891046", &value));
+  EXPECT_EQ(-34, value);
+  // We don't handle percentages because we can't resize them.
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "73%", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "43.2 %", &value));
+  EXPECT_EQ(-34, value);
+  // Trailing junk OK according to spec, but older browsers flunk / treat
+  // inconsistently
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "5junk", &value));  // Doesn't ignore
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "25p%x", &value));  // 25% on FF9!
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "26px%", &value));  // 25% on FF9!
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "45 643", &value));  // 45 today
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "21%px", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "59 .", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "60 . 9", &value));  // 60 today
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "+61. 9", &value));  // 61 today
+  EXPECT_EQ(-34, value);
+  // Some other units that some old browsers treat as px, but we just ignore
+  // to avoid confusion / inconsistency.
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "29in", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "30cm", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "43pt", &value));
+  EXPECT_EQ(-34, value);
+  EXPECT_FALSE(ImageRewriteFilter::ParseDimensionAttribute(
+      "99em", &value));  // FF9 screws this up
+  EXPECT_EQ(-34, value);
+}
+
 TEST_F(ImageRewriteTest, ResizeWidthOnly) {
   // Make sure we resize images, but don't optimize them in place.
   options()->EnableFilter(RewriteOptions::kResizeImages);
@@ -486,6 +640,43 @@ TEST_F(ImageRewriteTest, ResizeStyleTest) {
       " style=\"width:256cm;height:192cm;\"";
     TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                       kUnparsableDims, kUnparsableDims, false, false);
+}
+
+TEST_F(ImageRewriteTest, ResizeWithPxInHtml) {
+  // Make sure we resize images if the html width and/or height specifies px.
+  // We rely on ImageRewriteTest.DimensionParsing above to test all the
+  // corner cases we might encounter and to cross-check the numbers.
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+  // Things that ought to work (ie result in resizing)
+  const char kResizedPx[] = " width='256px' height='192px'";
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
+                    kResizedPx, kResizedPx, true, false);
+  const char kResizedWidthDot[] = " width='256.'";
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
+                    kResizedWidthDot, kResizedWidthDot, true, false);
+  const char kResizedWidthDec[] = " width='255.536'";
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
+                    kResizedWidthDec, kResizedWidthDec, true, false);
+  const char kResizedWidthPx[] = " width='256px'";
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
+                    kResizedWidthPx, kResizedWidthPx, true, false);
+  const char kResizedWidthPxDot[] = " width='256.px'";
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
+                    kResizedWidthPxDot, kResizedWidthPxDot, true, false);
+  const char kResizedWidthPxDec[] = " width='255.5px'";
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
+                    kResizedWidthPxDec, kResizedWidthPxDec, true, false);
+  const char kResizedSpacePx[] = " width='256  px'";
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
+                    kResizedSpacePx, kResizedSpacePx, true, false);
+  // Things that ought not to work (ie not result in resizing)
+  const char kResizedJunk[] = " width='256earths' height='192earths'";
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
+                    kResizedJunk, kResizedJunk, false, false);
+  const char kResizedPercent[] = " width='20%' height='20%'";
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
+                    kResizedPercent, kResizedPercent, false, false);
 }
 
 TEST_F(ImageRewriteTest, NullResizeTest) {
