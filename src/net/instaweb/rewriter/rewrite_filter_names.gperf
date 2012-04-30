@@ -25,6 +25,9 @@ struct FilterMap {
   net_instaweb::RewriteOptions::Filter filter;
 };
 %%
+# IMPORTANT: Do not add any internal filters (that would blow up if triggered
+# from e.g. query params!) here.
+"add_base_tag",                      RewriteOptions::kAddBaseTag
 "add_head",                          RewriteOptions::kAddHead
 "add_instrumentation",               RewriteOptions::kAddInstrumentation
 "collapse_whitespace",               RewriteOptions::kCollapseWhitespace
@@ -38,6 +41,7 @@ struct FilterMap {
 "debug",                             RewriteOptions::kDebug
 "defer_javascript",                  RewriteOptions::kDeferJavascript
 "detect_reflow_with_defer_js",       RewriteOptions::kDetectReflowWithDeferJavascript
+"deterministic_js",                  RewriteOptions::kDeterministicJs
 "disable_javascript",                RewriteOptions::kDisableJavascript
 "div_structure",                     RewriteOptions::kDivStructure
 "elide_attributes",                  RewriteOptions::kElideAttributes

@@ -43,7 +43,7 @@ class DetectReflowJsDeferFilterTest : public ResourceManagerTestBase {
   scoped_ptr<DetectReflowJsDeferFilter> detect_reflow_filter_;
 };
 
-TEST_F(DetectReflowJsDeferFilterTest, NoJsDefer) {
+TEST_F(DetectReflowJsDeferFilterTest, DetectReflow) {
   InitDetectReflowJsDeferFilter();
   StringPiece detect_reflow_code =
       resource_manager()->static_javascript_manager()->GetJsSnippet(
@@ -59,10 +59,28 @@ TEST_F(DetectReflowJsDeferFilterTest, NoJsDefer) {
              "<script type='text/psajs' "
              "src='http://www.google.com/javascript/ajax_apis.js'></script>"
              "<script type='text/psajs'"
-             "> func();</script></head><body>Hello, world!"
+             "> func();</script>"
              "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
              detect_reflow_code,
-             "</script></body>"));
+             "</script></head><body>Hello, world!</body>"));
+}
+
+TEST_F(DetectReflowJsDeferFilterTest, DetectReflowNoHead) {
+  InitDetectReflowJsDeferFilter();
+  StringPiece detect_reflow_code =
+      resource_manager()->static_javascript_manager()->GetJsSnippet(
+          StaticJavascriptManager::kDetectReflowJs, options());
+  ValidateExpected("detect_reflow_no_head",
+      "<body>Hello, world!</body>"
+      "<body><script type='text/psajs'"
+      "> func();</script></body>",
+      StrCat("<head>"
+             "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+             detect_reflow_code,
+             "</script></head>"
+             "<body>Hello, world!</body>"
+             "<body><script type='text/psajs'"
+             "> func();</script></body>"));
 }
 
 TEST_F(DetectReflowJsDeferFilterTest, InvalidUserAgent) {

@@ -46,6 +46,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -55,6 +56,10 @@ namespace net_instaweb {
 
 class MessageHandler;
 
+const char BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits[] =
+    "num_blink_html_cache_hits";
+const char BlinkFlowCriticalLine::kNumBlinkHtmlCacheMisses[] =
+    "num_blink_html_cache_misses";
 const char BlinkFlowCriticalLine::kNumBlinkSharedFetchesStarted[] =
     "num_blink_shared_fetches_started";
 const char BlinkFlowCriticalLine::kNumBlinkSharedFetchesCompleted[] =
@@ -62,6 +67,11 @@ const char BlinkFlowCriticalLine::kNumBlinkSharedFetchesCompleted[] =
 const char BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls[] =
     "num_compute_blink_critical_line_data_calls";
 const char BlinkFlowCriticalLine::kAboveTheFold[] = "Above the fold";
+const char BlinkFlowCriticalLine::kNoScriptRedirectFormatter[] =
+    "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;url=%s\">"
+    "<style><!--table,div,span,font,p{display:none} --></style>"
+    "<div style=\"display:block\">Please click <a href=\"%s\">here</a> "
+    "if you are not redirected within a few seconds.</div></noscript>";
 
 namespace {
 
@@ -117,6 +127,8 @@ class SharedFetch : public SharedAsyncFetch {
     // been triggered.
     rewrite_driver_->increment_async_events_count();
     Statistics* stats = resource_manager->statistics();
+    num_blink_html_cache_misses_ = stats->GetTimedVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlCacheMisses);
     num_compute_blink_critical_line_data_calls_ = stats->GetTimedVariable(
         BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls);
     num_blink_shared_fetches_completed_ = stats->GetTimedVariable(
@@ -162,6 +174,7 @@ class SharedFetch : public SharedAsyncFetch {
       base_fetch()->Done(success);
       delete this;
     } else {
+      num_blink_html_cache_misses_->IncBy(1);
       // Store base_fetch() in a temp since it might get deleted before calling
       // Done.
       AsyncFetch* fetch = base_fetch();
@@ -228,6 +241,7 @@ class SharedFetch : public SharedAsyncFetch {
   bool claims_html_;
   bool probable_html_;
 
+  TimedVariable* num_blink_html_cache_misses_;
   TimedVariable* num_blink_shared_fetches_completed_;
   TimedVariable* num_compute_blink_critical_line_data_calls_;
 
@@ -255,6 +269,10 @@ BlinkFlowCriticalLine::~BlinkFlowCriticalLine() {
 }
 
 void BlinkFlowCriticalLine::Initialize(Statistics* stats) {
+  stats->AddTimedVariable(kNumBlinkHtmlCacheHits,
+                          ResourceManager::kStatisticsGroup);
+  stats->AddTimedVariable(kNumBlinkHtmlCacheMisses,
+                          ResourceManager::kStatisticsGroup);
   stats->AddTimedVariable(kNumBlinkSharedFetchesStarted,
                           ResourceManager::kStatisticsGroup);
   stats->AddTimedVariable(kNumBlinkSharedFetchesCompleted,
@@ -278,6 +296,8 @@ BlinkFlowCriticalLine::BlinkFlowCriticalLine(
       property_callback_(property_callback),
       finder_(manager->blink_critical_line_data_finder()) {
   Statistics* stats = manager_->statistics();
+  num_blink_html_cache_hits_ = stats->GetTimedVariable(
+      kNumBlinkHtmlCacheHits);
   num_blink_shared_fetches_started_ = stats->GetTimedVariable(
       kNumBlinkSharedFetchesStarted);
 }
@@ -320,20 +340,37 @@ bool BlinkFlowCriticalLine::IsLastResponseCodeInvalid(PropertyPage* page) {
 }
 
 void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
+  num_blink_html_cache_hits_->IncBy(1);
+
   const GoogleString& critical_html =
       blink_critical_line_data_->critical_html();
-  // NOTE: Since we compute critical html in background and only get it in
-  // serialized form, we have to strip everything after the layout marker.
-  size_t pos = critical_html.rfind(BlinkUtil::kLayoutMarker);
-  if (pos == StringPiece::npos) {
-    LOG(ERROR) << "Layout marker not found for url " << url_;
+  size_t start_body_pos = critical_html.find(BlinkUtil::kStartBodyMarker);
+  size_t end_body_pos = critical_html.rfind(BlinkUtil::kLayoutMarker);
+  if (start_body_pos == StringPiece::npos ||
+      end_body_pos == StringPiece::npos) {
+    LOG(ERROR) << "Marker not found for url " << url_;
     VLOG(1) << "Critical html without marker is " << critical_html;
     BlinkCriticalLineDataMiss();
     return;
   }
 
+  GoogleUrl url(url_);
+  GoogleUrl* url_with_psa_off = url.CopyAndAddQueryParam(
+      RewriteQuery::kModPagespeed, "off");
+  const int start_body_marker_length = strlen(BlinkUtil::kStartBodyMarker);
+  StringPiece url_str = url_with_psa_off->Spec();
+  critical_html_ = StrCat(
+      critical_html.substr(0, start_body_pos),
+      StringPrintf(
+          BlinkFlowCriticalLine::kNoScriptRedirectFormatter, url_str.data(),
+          url_str.data()),
+      critical_html.substr(start_body_pos + start_body_marker_length,
+                           end_body_pos -
+                           (start_body_pos + start_body_marker_length)));
+  delete url_with_psa_off;
+
   ResponseHeaders* response_headers = base_fetch_->response_headers();
-  response_headers->set_status_code(HttpStatus::kOK);
+  response_headers->SetStatusAndReason(HttpStatus::kOK);
   // TODO(pulkitg): Store content type in pcache.
   // TODO(guptaa): Send response in source encoding to avoid inconsistencies and
   // response bloating.
@@ -343,7 +380,7 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
   response_headers->Add(kPsaRewriterHeader,
                         BlinkFlowCriticalLine::kAboveTheFold);
   response_headers->ComputeCaching();
-  response_headers->SetDateAndCaching(response_headers->date_ms(), 0,
+  response_headers->SetDateAndCaching(manager_->timer()->NowMs(), 0,
                                       ", private, no-cache");
   base_fetch_->HeadersComplete();
 
@@ -368,18 +405,15 @@ void BlinkFlowCriticalLine::ServeAllPanelContents() {
 }
 
 void BlinkFlowCriticalLine::ServeCriticalPanelContents() {
-  const GoogleString& critical_html =
-      blink_critical_line_data_->critical_html();
   const GoogleString& pushed_images_str =
       blink_critical_line_data_->critical_images_map();
-  SendCriticalHtml(critical_html);
+  SendCriticalHtml(critical_html_);
   SendInlineImagesJson(pushed_images_str);
 }
 
 void BlinkFlowCriticalLine::SendCriticalHtml(
     const GoogleString& critical_html) {
-  WriteString(critical_html.substr(
-        0, critical_html.rfind(BlinkUtil::kLayoutMarker)));
+  WriteString(critical_html);
   WriteString("<script>pagespeed.panelLoaderInit();</script>");
   WriteString("<script>pagespeed.panelLoader.loadCriticalData({});</script>");
   Flush();

@@ -27,7 +27,7 @@ message NameValue {
   required string value = 2;
 };
 
-// NEXT ID: 10
+// NEXT ID: 13
 message HttpResponseHeaders {
   optional int32 status_code = 1;
   optional string reason_phrase = 2;
@@ -40,6 +40,7 @@ message HttpResponseHeaders {
   optional bool cacheable = 7;
   optional bool proxy_cacheable = 8;
   repeated NameValue header = 9;
+  optional bool is_implicitly_cacheable = 12;
 };
 
 // Contains everything in HttpRequest except url itself.

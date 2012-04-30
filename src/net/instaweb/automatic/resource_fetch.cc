@@ -46,7 +46,7 @@ void ResourceFetch::Start(ResourceManager* manager,
       manager->timer(), version);
   // TODO(sligocki): This will currently fail us on all non-pagespeed
   // resource requests. We should move the check somewhere else.
-  driver->FetchResource(url.Spec().as_string(), resource_fetch);
+  driver->FetchResource(url.Spec(), resource_fetch);
 }
 
 ResourceFetch::ResourceFetch(const GoogleUrl& url,

@@ -37,8 +37,10 @@ class WriteThroughCache : public CacheInterface {
   WriteThroughCache(CacheInterface* cache1, CacheInterface* cache2)
       : cache1_(cache1),
         cache2_(cache2),
-        cache1_size_limit_(kUnlimited) {
-  }
+        cache1_size_limit_(kUnlimited),
+        name_(StrCat("WriteThroughCache using backend 1 : ", cache1->Name(),
+                     " and backend 2 : ", cache2->Name())) {}
+
   virtual ~WriteThroughCache();
 
   virtual void Get(const GoogleString& key, Callback* callback);
@@ -53,6 +55,7 @@ class WriteThroughCache : public CacheInterface {
 
   CacheInterface* cache1() { return cache1_; }
   CacheInterface* cache2() { return cache2_; }
+  virtual const char* Name() const { return name_.c_str(); }
 
  private:
   void PutInCache1(const GoogleString& key, SharedString* value);
@@ -61,6 +64,7 @@ class WriteThroughCache : public CacheInterface {
   CacheInterface* cache1_;
   CacheInterface* cache2_;
   size_t cache1_size_limit_;
+  GoogleString name_;
 
   DISALLOW_COPY_AND_ASSIGN(WriteThroughCache);
 };

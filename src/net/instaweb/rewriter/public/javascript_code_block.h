@@ -105,7 +105,12 @@ class JavascriptCodeBlock {
 
   virtual ~JavascriptCodeBlock();
 
-  // Is it profitable to replace js code with rewritten version?
+  // Determines whether the javascript is brittle and will likely
+  // break if we alter its url.
+  static bool UnsafeToRename(const StringPiece& script);
+
+  // Rewrites the javascript code and returns whether that
+  // successfully made it smaller.
   bool ProfitableToRewrite() {
     RewriteIfNecessary();
     return (output_code_.size() < original_code_.size());

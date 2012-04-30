@@ -286,11 +286,13 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 #FURIOUS # This is used for testing the Furious experiment framework.
 #FURIOUS ModPagespeedRunExperiment on
 #FURIOUS ModPagespeedAnalyticsID "123-45-6734"
+#FURIOUS ModPagespeedExperimentVariable 2
 #FURIOUS # This specifies an experiment with rewrite_css and sprite_images on
 #FURIOUS # and resize_images off.
-#FURIOUS ModPagespeedExperimentSpec "id=7;level=CoreFilters;enable=rewrite_css,sprite_images;disable=resize_images;percent=10;ga=UA-29994820-1"
+#FURIOUS ModPagespeedExperimentSpec "id=7;level=CoreFilters;enable=rewrite_css,sprite_images;disable=resize_images;percent=10;ga=UA-29994820-1;slot=2"
 #FURIOUS # This specifies an experiment with no rewriters on.
-#FURIOUS ModPagespeedExperimentSpec "id=2;ga=UA-29994820-1;percent=10;"
+#FURIOUS # It should use Custom Variable slot 3.
+#FURIOUS ModPagespeedExperimentSpec "id=2;ga=UA-29994820-1;percent=10;slot=3"
 
 #XHEADER # Set the value of the X-Mod-Pagespeed header
 #XHEADER ModPagespeedXHeaderValue "UNSPECIFIED VERSION"

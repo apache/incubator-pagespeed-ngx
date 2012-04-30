@@ -56,12 +56,15 @@ class MockTimeCache : public CacheInterface {
 
   MockTimer* timer() { return timer_; }
 
+  virtual const char* Name() const { return name_.c_str(); }
+
  private:
   class DelayCallback;
 
   MockTimer* timer_;
   CacheInterface* cache_;
   int64 delay_us_;
+  GoogleString name_;
 
   DISALLOW_COPY_AND_ASSIGN(MockTimeCache);
 };

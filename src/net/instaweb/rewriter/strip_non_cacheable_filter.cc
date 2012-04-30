@@ -22,22 +22,15 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/strip_non_cacheable_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
-const char StripNonCacheableFilter::kNoScriptRedirectFormatter[] =
-    "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;url=%s\">"
-    "<style><!--table,div,span,font,p{display:none} --></style>"
-    "<div style=\"display:block\">Please click <a href=\"%s\">here</a> "
-    "if you are not redirected within a few seconds.</div></noscript>";
 
 StripNonCacheableFilter::StripNonCacheableFilter(
     RewriteDriver* rewrite_driver)
@@ -49,10 +42,10 @@ StripNonCacheableFilter::StripNonCacheableFilter(
 StripNonCacheableFilter::~StripNonCacheableFilter() {}
 
 void StripNonCacheableFilter::StartDocument() {
+  GoogleUrl url(rewrite_driver_->google_url().Spec());
   BlinkUtil::PopulateAttributeToNonCacheableValuesMap(
       rewrite_options_->prioritize_visible_content_non_cacheable_elements(),
-      &attribute_non_cacheable_values_map_,
-      &panel_number_num_instances_);
+      url, &attribute_non_cacheable_values_map_, &panel_number_num_instances_);
   script_written_ = false;
 }
 
@@ -72,17 +65,16 @@ void StripNonCacheableFilter::StartElement(HtmlElement* element) {
   }
 
   if (element->keyword() == HtmlName::kBody) {
-    GoogleUrl url(rewrite_driver_->url());
-    GoogleUrl* url_with_psa_off = url.CopyAndAddQueryParam(
-        RewriteQuery::kModPagespeed, "off");
-    StringPiece url_str = url_with_psa_off->Spec();
-
-    HtmlCharactersNode* noscript_node = rewrite_driver_->NewCharactersNode(
-        element,
-        StringPrintf(StripNonCacheableFilter::kNoScriptRedirectFormatter,
-                     url_str.data(), url_str.data()));
-    rewrite_driver_->PrependChild(element, noscript_node);
-    delete url_with_psa_off;
+    HtmlCharactersNode* comment = rewrite_driver_->NewCharactersNode(
+        element, BlinkUtil::kStartBodyMarker);
+    rewrite_driver_->PrependChild(element, comment);
+  }
+  // Webkit output escapes the contents of noscript tags on the page. This
+  // breaks the functionality of the noscript tags. Removing them from the
+  // page since in case javascript is turned off, we anyway redirect
+  // the user to the page with blink disabled.
+  if (element->keyword() == HtmlName::kNoscript) {
+    rewrite_driver_->DeleteElement(element);
   }
 }
 

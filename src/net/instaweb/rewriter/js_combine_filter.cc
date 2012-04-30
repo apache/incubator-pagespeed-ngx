@@ -85,6 +85,11 @@ class JsCombineFilter::JsCombiner
     if (resource->contents().find("use strict") != StringPiece::npos) {
       return false;
     }
+    const RewriteOptions* options = rewrite_driver_->options();
+    if (options->avoid_renaming_introspective_javascript() &&
+        JavascriptCodeBlock::UnsafeToRename(resource->contents())) {
+      return false;
+    }
 
     // TODO(morlovich): define a pragma that javascript authors can
     // include in their source to prevent inclusion in a js combination

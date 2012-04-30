@@ -153,6 +153,12 @@ DEFINE_int64(implicit_cache_ttl_ms,
 DEFINE_bool(enable_defer_js_experimental, false,
             "Enables experimental defer js");
 
+DEFINE_bool(avoid_renaming_introspective_javascript, false,
+            "Don't combine, inline, cache extend, or otherwise modify "
+            "javascript in ways that require changing the URL if we see "
+            "introspection in the form of "
+            "document.getElementsByTagName('script').");
+
 namespace net_instaweb {
 
 namespace {
@@ -219,7 +225,6 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_image_max_rewrites_at_once(
         FLAGS_image_max_rewrites_at_once);
   }
-
   if (WasExplicitlySet("log_rewrite_timing")) {
     options->set_log_rewrite_timing(FLAGS_log_rewrite_timing);
   }
@@ -284,6 +289,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_defer_js_experimental")) {
     options->set_enable_defer_js_experimental(
         FLAGS_enable_defer_js_experimental);
+  }
+  if (WasExplicitlySet("avoid_renaming_introspective_javascript")) {
+    options->set_avoid_renaming_introspective_javascript(
+        FLAGS_avoid_renaming_introspective_javascript);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

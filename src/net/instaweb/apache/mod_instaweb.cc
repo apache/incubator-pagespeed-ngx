@@ -162,8 +162,11 @@ const char* kModPagespeedMinImageSizeLowResolutionBytes =
 const char* kModPagespeedMaxImageSizeLowResolutionBytes =
     "ModPagespeedMaxImageSizeLowResolutionBytes";
 const char* kModPagespeedRunFurious = "ModPagespeedRunExperiment";
+const char* kModPagespeedFuriousSlot = "ModPagespeedExperimentVariable";
 const char* kModPagespeedFuriousSpec = "ModPagespeedExperimentSpec";
 const char* kModPagespeedXHeaderValue = "ModPagespeedXHeaderValue";
+const char* kModPagespeedAvoidRenamingIntrospectiveJavascript =
+    "ModPagespeedAvoidRenamingIntrospectiveJavascript";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -1045,6 +1048,10 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     if (!succeeded) {
       ret = "Invalid experiment ID.";
     }
+  } else if (StringCaseEqual(directive, kModPagespeedFuriousSlot)) {
+    ParseIntBoundedOption(options, cmd,
+                          &RewriteOptions::set_furious_ga_slot,
+                          arg, 1, 5);
   } else {
     ret = apr_pstrcat(cmd->pool, "Unknown directive ",
                       directive.as_string().c_str(), NULL);
@@ -1191,9 +1198,17 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "speed tracking"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedRunFurious,
          "Run an experiment to test the effectiveness of rewriters."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedFuriousSlot,
+         "Specify the custom variable slot with which to run experiments."
+         "Defaults to 1."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedFuriousSpec,
          "Configuration for one side of an experiment in the form: "
          "'id= ;enabled= ;disabled= ;ga= ;percent= ...'"),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedAvoidRenamingIntrospectiveJavascript,
+        "Don't combine, inline, cache extend, or otherwise modify javascript "
+        "in ways that require changing the URL if we see introspection in "
+        "the form of document.getElementsByTagName('script')."),
+
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)
   APACHE_CONFIG_OPTION(kModPagespeedFetcherTimeoutMs,
@@ -1253,11 +1268,11 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Number of first N images for which low resolution image is generated. "
         "Negative values result in generation for all images."),
   APACHE_CONFIG_OPTION(kModPagespeedMinImageSizeLowResolutionBytes,
-          "Minimum image size above which low resolution image is generated."),
+        "Minimum image size above which low resolution image is generated."),
   APACHE_CONFIG_OPTION(kModPagespeedMaxImageSizeLowResolutionBytes,
-          "Maximum image size below which low resolution image is generated."),
+        "Maximum image size below which low resolution image is generated."),
   APACHE_CONFIG_OPTION(kModPagespeedXHeaderValue,
-                       "Set the value for the X-Mod-Pagespeed HTTP header"),
+        "Set the value for the X-Mod-Pagespeed HTTP header"),
 
   // All two parameter options that are allowed in <Directory> blocks.
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,

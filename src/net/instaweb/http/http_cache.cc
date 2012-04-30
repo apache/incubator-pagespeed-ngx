@@ -72,7 +72,8 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
       cache_misses_(stats->GetVariable(kCacheMisses)),
       cache_expirations_(stats->GetVariable(kCacheExpirations)),
       cache_inserts_(stats->GetVariable(kCacheInserts)),
-      cache_deletes_(stats->GetVariable(kCacheDeletes)) {
+      cache_deletes_(stats->GetVariable(kCacheDeletes)),
+      name_(StrCat("HTTPCache using backend : ", cache->Name())) {
   remember_not_cacheable_ttl_seconds_ = kRememberNotCacheableTtl;
   remember_fetch_failed_ttl_seconds_ = kRememberFetchFailedTtl;
   max_cacheable_response_content_length_ = kCacheSizeUnlimited;

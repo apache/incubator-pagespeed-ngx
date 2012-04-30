@@ -34,6 +34,8 @@ extern const char* JS_js_defer;
 extern const char* JS_js_defer_opt;
 extern const char* JS_lazyload_images;
 extern const char* JS_lazyload_images_opt;
+extern const char* JS_deterministic;
+extern const char* JS_deterministic_opt;
 extern const char* JS_detect_reflow;
 extern const char* JS_detect_reflow_opt;
 extern const char* JS_local_storage_cache;
@@ -89,6 +91,8 @@ void StaticJavascriptManager::InitializeJsStrings() {
       JS_lazyload_images_opt;
   opt_js_vector_[static_cast<int>(kDetectReflowJs)] =
       JS_detect_reflow_opt;
+  opt_js_vector_[static_cast<int>(kDeterministicJs)] =
+      JS_deterministic_opt;
   opt_js_vector_[static_cast<int>(kLocalStorageCacheJs)] =
       JS_local_storage_cache_opt;
   // Initialize cleartext javascript strings.
@@ -102,6 +106,8 @@ void StaticJavascriptManager::InitializeJsStrings() {
       JS_lazyload_images;
   debug_js_vector_[static_cast<int>(kDetectReflowJs)] =
       JS_detect_reflow;
+  debug_js_vector_[static_cast<int>(kDeterministicJs)] =
+      JS_deterministic;
   debug_js_vector_[static_cast<int>(kLocalStorageCacheJs)] =
       JS_local_storage_cache;
 }

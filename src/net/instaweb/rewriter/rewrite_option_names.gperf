@@ -30,6 +30,7 @@ struct OptionName {
 "AjaxRewritingEnabled",                 RewriteOptions::kAjaxRewritingEnabled
 "AlwaysRewriteCss",                     RewriteOptions::kAlwaysRewriteCss
 "AnalyticsID",                          RewriteOptions::kAnalyticsID
+"AvoidRenamingIntrospectiveJavascript", RewriteOptions::kAvoidRenamingIntrospectiveJavascript
 "BeaconUrl",                            RewriteOptions::kBeaconUrl
 "BotdetectEnabled",                     RewriteOptions::kBotdetectEnabled
 "CombineAcrossPaths",                   RewriteOptions::kCombineAcrossPaths
@@ -39,6 +40,7 @@ struct OptionName {
 "CssOutlineMinBytes",                   RewriteOptions::kCssOutlineMinBytes
 "DefaultCacheHtml",                     RewriteOptions::kDefaultCacheHtml
 "EnableBlinkCriticalLine",              RewriteOptions::kEnableBlinkCriticalLine
+"EnableDeferJsExperimental",            RewriteOptions::kEnableDeferJsExperimental
 "FlushHtml",                            RewriteOptions::kFlushHtml
 "IdleFlushTimeMs",                      RewriteOptions::kIdleFlushTimeMs
 "ImageInlineMaxBytes",                  RewriteOptions::kImageInlineMaxBytes
@@ -65,11 +67,11 @@ struct OptionName {
 "MinImageSizeLowResolutionBytes",       RewriteOptions::kMinImageSizeLowResolutionBytes
 "MinResourceCacheTimeToRewriteMs",      RewriteOptions::kMinResourceCacheTimeToRewriteMs
 "ModifyCachingHeaders",                 RewriteOptions::kModifyCachingHeaders
-"PercentExperimentTraffic",             RewriteOptions::kFuriousPercent
 "ProgressiveJpegMinBytes",              RewriteOptions::kProgressiveJpegMinBytes
 "RespectVary",                          RewriteOptions::kRespectVary
 "RewriteLevel",                         RewriteOptions::kRewriteLevel
 "RunExperiment",                        RewriteOptions::kRunningFurious
+"ExperimentSlot",                       RewriteOptions::kFuriousSlot
 "ServeBlinkNonCritical",                RewriteOptions::kServeBlinkNonCritical
 "ServeStaleIfFetchError",               RewriteOptions::kServeStaleIfFetchError
 "XHeaderValue",                         RewriteOptions::kXModPagespeedHeaderValue

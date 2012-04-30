@@ -244,6 +244,8 @@ class PropertyCache {
   // possible to inject delays into the cache via DelayCache::DelayKey.
   GoogleString CacheKey(const StringPiece& key, const Cohort* cohort) const;
 
+  const CacheInterface* cache_backend() const { return cache_; }
+
   // TODO(jmarantz): add a some statistics tracking for stomps, stability, etc.
 
  private:

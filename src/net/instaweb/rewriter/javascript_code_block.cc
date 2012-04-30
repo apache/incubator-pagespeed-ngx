@@ -81,6 +81,20 @@ const JavascriptLibraryId JavascriptCodeBlock::ComputeJavascriptLibrary() {
   return JavascriptLibraryId::Find(rewritten_code_);
 }
 
+bool JavascriptCodeBlock::UnsafeToRename(const StringPiece& script) {
+  // If you're pulling out script elements it's probably because
+  // you're trying to do a kind of reflection that would break if we
+  // minified the code and mutated its url.
+  return script.find("document.getElementsByTagName('script')")
+           != StringPiece::npos ||
+         script.find("document.getElementsByTagName(\"script\")")
+           != StringPiece::npos ||
+         script.find("$('script')")  // jquery version
+           != StringPiece::npos ||
+         script.find("$(\"script\")")
+           != StringPiece::npos;
+}
+
 void JavascriptCodeBlock::Rewrite() {
   // Before attempting library identification, we minify.  However, we only
   // point output_code_ at the minified code if we actually want to serve it to

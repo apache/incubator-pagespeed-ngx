@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
+#include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -110,6 +111,12 @@ bool JsInlineFilter::ShouldInline(const StringPiece& contents) const {
   if (contents.size() > size_threshold_bytes_) {
     return false;
   }
+
+  if (driver_->options()->avoid_renaming_introspective_javascript() &&
+      JavascriptCodeBlock::UnsafeToRename(contents)) {
+    return false;
+  }
+
   size_t possible_end_script_pos = FindIgnoreCase(contents, "</script");
   return (possible_end_script_pos == StringPiece::npos);
 }

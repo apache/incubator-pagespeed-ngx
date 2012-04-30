@@ -100,8 +100,9 @@ TEST_F(InsertGAFilterTest, Furious) {
   NullMessageHandler handler;
   RewriteOptions* options = rewrite_driver()->options()->Clone();
   options->set_running_furious_experiment(true);
-  options->AddFuriousSpec("id=2", &handler);
-  options->AddFuriousSpec("id=7;level=CoreFilters", &handler);
+  ASSERT_TRUE(options->AddFuriousSpec("id=2;percent=10;slot=4;", &handler));
+  ASSERT_TRUE(options->AddFuriousSpec(
+      "id=7;percent=10;level=CoreFilters;slot=4;", &handler));
   options->SetFuriousState(2);
 
   // Setting up Furious automatically enables AddInstrumentation.
@@ -111,7 +112,7 @@ TEST_F(InsertGAFilterTest, Furious) {
   rewrite_driver()->AddFilters();
 
   GoogleString variable_value = StringPrintf(
-      "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s']);",
+      "_gaq.push(['_setCustomVar', 4, 'FuriousState', '%s']);",
       options->ToExperimentString().c_str());
   GoogleString ga_snippet = StringPrintf(
       kGASnippet, kGaId, "test.com", kGASpeedTracking,
@@ -125,8 +126,9 @@ TEST_F(InsertGAFilterTest, FuriousNoDouble) {
   NullMessageHandler handler;
   RewriteOptions* options = rewrite_driver()->options()->Clone();
   options->set_running_furious_experiment(true);
-  options->AddFuriousSpec("id=2", &handler);
-  options->AddFuriousSpec("id=7;level=CoreFilters", &handler);
+  ASSERT_TRUE(options->AddFuriousSpec("id=2;percent=10;", &handler));
+  ASSERT_TRUE(options->AddFuriousSpec("id=7;percent=10;level=CoreFilters",
+                                      &handler));
   options->SetFuriousState(2);
 
   // Setting up Furious automatically enables AddInstrumentation.
@@ -175,8 +177,8 @@ TEST_F(InsertGAFilterTest, FuriousBadHtml) {
   NullMessageHandler handler;
   RewriteOptions* options = rewrite_driver()->options()->Clone();
   options->set_running_furious_experiment(true);
-  options->AddFuriousSpec("id=2", &handler);
-  options->AddFuriousSpec("id=7;default", &handler);
+  ASSERT_TRUE(options->AddFuriousSpec("id=2;percent=15;", &handler));
+  ASSERT_TRUE(options->AddFuriousSpec("id=7;default;percent=15;", &handler));
   options->SetFuriousState(2);
   options->DisableFilter(RewriteOptions::kAddInstrumentation);
   rewrite_driver()->set_custom_options(options);

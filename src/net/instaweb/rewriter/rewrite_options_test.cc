@@ -597,7 +597,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(71, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(72, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));
@@ -640,6 +640,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("EnableBlinkCriticalLine"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kEnableBlinkCriticalLine));
+  EXPECT_EQ(StringPiece("EnableDeferJsExperimental"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kEnableDeferJsExperimental));
   EXPECT_EQ(StringPiece("FlushHtml"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kFlushHtml));
@@ -718,9 +721,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("ModifyCachingHeaders"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kModifyCachingHeaders));
-  EXPECT_EQ(StringPiece("PercentExperimentTraffic"),
-            RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kFuriousPercent));
   EXPECT_EQ(StringPiece("ProgressiveJpegMinBytes"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kProgressiveJpegMinBytes));
@@ -796,6 +796,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("DomainRewriteHyperlinks"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kDomainRewriteHyperlinks));
+  EXPECT_EQ(StringPiece("AvoidRenamingIntrospectiveJavascript"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kAvoidRenamingIntrospectiveJavascript));
 }
 
 TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies1) {
@@ -894,6 +897,8 @@ TEST_F(RewriteOptionsTest, FuriousSpecTest) {
   NullMessageHandler handler;
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
   options_.set_ga_id("UA-111111-1");
+  // Set the default slot to 4.
+  options_.set_furious_ga_slot(4);
   EXPECT_FALSE(options_.AddFuriousSpec("id=0", &handler));
   EXPECT_TRUE(options_.AddFuriousSpec(
       "id=7;percent=10;level=CoreFilters;enabled=sprite_images;"
@@ -901,8 +906,13 @@ TEST_F(RewriteOptionsTest, FuriousSpecTest) {
 
   // Extra spaces to test whitespace handling.
   EXPECT_TRUE(options_.AddFuriousSpec("id=2;    percent=15;ga=UA-2222-1;"
-                                      "disabled=insert_ga ",
+                                      "disabled=insert_ga ;slot=3;",
                                       &handler));
+
+  // Invalid slot - make sure the spec still gets added, and the slot defaults
+  // to the global slot (4).
+  EXPECT_TRUE(options_.AddFuriousSpec("id=17;percent=3;slot=8", &handler));
+
   options_.SetFuriousState(7);
   EXPECT_EQ(RewriteOptions::kCoreFilters, options_.level());
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kSpriteImages));
@@ -910,6 +920,7 @@ TEST_F(RewriteOptionsTest, FuriousSpecTest) {
   // This experiment didn't have a ga_id, so make sure we still have the
   // global ga_id.
   EXPECT_EQ("UA-111111-1", options_.ga_id());
+  EXPECT_EQ(4, options_.furious_ga_slot());
 
   // insert_ga can not be disabled in any furious experiment because
   // that filter injects the instrumentation we use to collect the data.
@@ -918,8 +929,12 @@ TEST_F(RewriteOptionsTest, FuriousSpecTest) {
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kSpriteImages));
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kLeftTrimUrls));
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kInsertGA));
+  EXPECT_EQ(3, options_.furious_ga_slot());
   // This experiment specified a ga_id, so make sure that we set it.
   EXPECT_EQ("UA-2222-1", options_.ga_id());
+
+  options_.SetFuriousState(17);
+  EXPECT_EQ(4, options_.furious_ga_slot());
 }
 
 TEST_F(RewriteOptionsTest, FuriousPrintTest) {
@@ -942,9 +957,9 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
             "jm,cu,css:2048,im:2048,js:2048;", options_.ToExperimentString());
   options_.SetFuriousState(7);
   // This should be all non-dangerous filters.
-  EXPECT_EQ("Experiment: 7; ah,ai,cw,cc,ch,jc,jp,jw,mc,pj,db,di,ea,ec,ei,es,if,"
-            "hw,ci,ii,il,ji,ig,id,tu,ls,ga,cm,co,jo,pv,ir,rc,rq,ri,rm,cf,rd,jm,"
-            "cs,cu,is,css:2048,im:2048,js:2048;",
+  EXPECT_EQ("Experiment: 7; ab,ah,ai,cw,cc,ch,jc,jp,jw,mc,pj,db,di,ea,ec,ei,es,"
+            "if,hw,ci,ii,il,ji,ig,id,tu,ls,ga,cm,co,jo,pv,ir,rc,rq,ri,rm,cf,rd,"
+            "jm,cs,cu,is,css:2048,im:2048,js:2048;",
             options_.ToExperimentString());
   options_.SetFuriousState(2);
   // This should be the filters we need to run an experiment (add_head,
@@ -966,20 +981,43 @@ TEST_F(RewriteOptionsTest, ComputeSignatureWildcardGroup) {
   // changing with change in value).  But if hasher is used more widely in
   // ComputeSignature we need to revisit the usage of MockHasher here.
   options_.ComputeSignature(&hasher_);
-  StringPiece signature1 = options_.signature();
+  GoogleString signature1 = options_.signature();
   // Tweak allow_resources_ and check that signature changes.
   options_.ClearSignatureForTesting();
   options_.Disallow("http://www.example.com/*");
   options_.ComputeSignature(&hasher_);
-  StringPiece signature2 = options_.signature();
-  EXPECT_FALSE(signature1 == signature2);
+  GoogleString signature2 = options_.signature();
+  EXPECT_NE(signature1, signature2);
   // Tweak retain_comments and check that signature changes.
   options_.ClearSignatureForTesting();
   options_.RetainComment("TEST");
   options_.ComputeSignature(&hasher_);
-  StringPiece signature3 = options_.signature();
-  EXPECT_FALSE(signature1 == signature3);
-  EXPECT_FALSE(signature2 == signature3);
+  GoogleString signature3 = options_.signature();
+  EXPECT_NE(signature1, signature3);
+  EXPECT_NE(signature2, signature3);
+}
+
+TEST_F(RewriteOptionsTest, ComputeSignatureOptionEffect) {
+  options_.ClearSignatureForTesting();
+  options_.set_css_image_inline_max_bytes(2048);
+  options_.set_ajax_rewriting_enabled(false);
+  options_.ComputeSignature(&hasher_);
+  GoogleString signature1 = options_.signature();
+
+  // Changing an Option used in signature computation will change the signature.
+  options_.ClearSignatureForTesting();
+  options_.set_css_image_inline_max_bytes(1024);
+  options_.ComputeSignature(&hasher_);
+  GoogleString signature2 = options_.signature();
+  EXPECT_NE(signature1, signature2);
+
+  // Changing an Option not used in signature computation will not change the
+  // signature.
+  options_.ClearSignatureForTesting();
+  options_.set_ajax_rewriting_enabled(true);
+  options_.ComputeSignature(&hasher_);
+  GoogleString signature3 = options_.signature();
+  EXPECT_EQ(signature2, signature3);
 }
 
 }  // namespace

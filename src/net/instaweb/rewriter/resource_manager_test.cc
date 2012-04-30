@@ -407,8 +407,8 @@ class MockRewriteFilter : public RewriteFilter {
   DISALLOW_COPY_AND_ASSIGN(MockRewriteFilter);
 };
 
-class CreateMockRewriterCallback : public
-TestRewriteDriverFactory::CreateRewriterCallback {
+class CreateMockRewriterCallback
+    : public TestRewriteDriverFactory::CreateRewriterCallback {
  public:
   CreateMockRewriterCallback() {}
   virtual ~CreateMockRewriterCallback() {}
@@ -418,6 +418,44 @@ TestRewriteDriverFactory::CreateRewriterCallback {
  private:
   DISALLOW_COPY_AND_ASSIGN(CreateMockRewriterCallback);
 };
+
+class MockPlatformConfigCallback
+    : public TestRewriteDriverFactory::PlatformSpecificConfigurationCallback {
+ public:
+  explicit MockPlatformConfigCallback(RewriteDriver** result_ptr)
+      : result_ptr_(result_ptr) {
+  }
+
+  virtual void Done(RewriteDriver* driver) {
+    *result_ptr_ = driver;
+  }
+
+ private:
+  RewriteDriver** result_ptr_;
+  DISALLOW_COPY_AND_ASSIGN(MockPlatformConfigCallback);
+};
+
+// Tests that platform-specific configuration hook runs for various
+// factory methods.
+TEST_F(ResourceManagerTest, TestPlatformSpecificConfiguration) {
+  RewriteDriver* rec_normal_driver = NULL;
+  RewriteDriver* rec_custom_driver = NULL;
+
+  MockPlatformConfigCallback normal_callback(&rec_normal_driver);
+  MockPlatformConfigCallback custom_callback(&rec_custom_driver);
+
+  factory()->AddPlatformSpecificConfigurationCallback(&normal_callback);
+  RewriteDriver* normal_driver = resource_manager()->NewRewriteDriver();
+  EXPECT_EQ(normal_driver, rec_normal_driver);
+  factory()->ClearPlatformSpecificConfigurationCallback();
+  normal_driver->Cleanup();
+
+  factory()->AddPlatformSpecificConfigurationCallback(&custom_callback);
+  RewriteDriver* custom_driver =
+      resource_manager()->NewCustomRewriteDriver(new RewriteOptions());
+  EXPECT_EQ(custom_driver, rec_custom_driver);
+  custom_driver->Cleanup();
+}
 
 // Tests that platform-specific rewriters are used for decoding fetches.
 TEST_F(ResourceManagerTest, TestPlatformSpecificRewritersDecoding) {
@@ -1146,6 +1184,8 @@ class ThreadAlternatingCache : public CacheInterface {
     backend_->Delete(key);
   }
 
+  virtual const char* Name() const { return "ThreadAlternatingCache"; }
+
  private:
   void GetImpl(GoogleString key, Callback* callback) {
     backend_->Get(key, callback);
@@ -1197,7 +1237,7 @@ class ResourceManagerTestThreadedCache : public ResourceManagerTest {
   scoped_ptr<HTTPCache> http_cache_;
 };
 
-} // namespace
+}  // namespace
 
 TEST_F(ResourceManagerTestThreadedCache, RepeatedFetches) {
   // Test of a crash scenario where we were aliasing resources between

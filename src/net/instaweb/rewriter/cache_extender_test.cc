@@ -63,6 +63,7 @@ const char kCssDataFormat[] = ".blue {color: blue; src: url(%sembedded.png);}";
 const char kFilterId[]      = "ce";
 const char kImageData[]     = "Not really JPEG but irrelevant for this test";
 const char kJsData[]        = "alert('hello, world!')";
+const char kJsDataIntrospective[] = "$('script')";
 const char kNewDomain[]     = "http://new.com/";
 const int kShortTtlSec      = 100;
 const int kMediumTtlSec     = 100000;
@@ -85,6 +86,8 @@ class CacheExtenderTest : public ResourceManagerTestBase {
     SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss, kCssData, ttl);
     SetResponseWithDefaultHeaders("b.jpg", kContentTypeJpeg, kImageData, ttl);
     SetResponseWithDefaultHeaders("c.js", kContentTypeJavascript, kJsData, ttl);
+    SetResponseWithDefaultHeaders("introspective.js", kContentTypeJavascript,
+                                  kJsDataIntrospective, ttl);
   }
 
   // Generate HTML loading 3 resources with the specified URLs
@@ -131,6 +134,28 @@ TEST_F(CacheExtenderTest, DoExtend) {
                      Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
                      Encode(kTestDomain, "ce", "0", "c.js", "js")));
   }
+}
+
+TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascript) {
+  options()->ClearSignatureForTesting();
+  options()->set_avoid_renaming_introspective_javascript(true);
+  InitTest(kShortTtlSec);
+  const char kJsTemplate[] = "<script src=\"%s\"></script>";
+  ValidateExpected(
+      "dont_extend_introspective_js",
+      StringPrintf(kJsTemplate, "introspective.js"),
+      StringPrintf(kJsTemplate, "introspective.js"));
+}
+
+TEST_F(CacheExtenderTest, DoExtendIntrospectiveJavascriptByDefault) {
+  InitTest(kShortTtlSec);
+  const char kJsTemplate[] = "<script src=\"%s\"></script>";
+  ValidateExpected(
+      "do_extend_introspective_js",
+      StringPrintf(kJsTemplate, "introspective.js"),
+      StringPrintf(kJsTemplate,
+                   Encode(kTestDomain, "ce", "0",
+                          "introspective.js", "js").c_str()));
 }
 
 TEST_F(CacheExtenderTest, DoExtendLinkRelCaseInsensitive) {

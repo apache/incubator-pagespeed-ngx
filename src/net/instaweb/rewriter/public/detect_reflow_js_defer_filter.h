@@ -37,9 +37,12 @@ class DetectReflowJsDeferFilter : public EmptyHtmlFilter {
   virtual ~DetectReflowJsDeferFilter();
 
   virtual void StartDocument();
+  virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
   virtual void EndDocument();
   virtual const char* Name() const { return "DetectReflowJsDeferFilter"; }
+
+  void InsertDetectReflowCode(HtmlElement* element);
 
   static void Initialize(Statistics* statistics);
   static void Terminate();

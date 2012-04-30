@@ -52,6 +52,7 @@ const char kCritical[] = "critical";
 const char kPanelId[] = "panel-id";
 const char kImages[] = "images";
 const char kInstanceHtml[] = "instance_html";
+const char kStartBodyMarker[] = "<!--GooglePanel **** Start body ****-->";
 const char kLayoutMarker[] = "<!--GooglePanel **** Layout end ****-->";
 const char kJsonCachePrefix[] = "json:";
 const char kBlinkResponseCodePropertyName[] = "blink_last_response_code";
@@ -125,9 +126,14 @@ void EscapeString(GoogleString* str);
 // TODO(rahulbansal): Move this function to net/instaweb/util/string_util
 bool StripTrailingNewline(GoogleString* s);
 
+// Gets non cacheable elements for this url.
+StringPiece GetNonCacheableElements(
+    const GoogleString& atf_non_cacheable_elements, const GoogleUrl& url);
+
 // Populates the attributes to non cacheable values map.
 void PopulateAttributeToNonCacheableValuesMap(
     const GoogleString& atf_non_cacheable_elements,
+    const GoogleUrl& url,
     AttributesToNonCacheableValuesMap* attribute_non_cacheable_values_map,
     std::vector<int>* panel_number_num_instances);
 

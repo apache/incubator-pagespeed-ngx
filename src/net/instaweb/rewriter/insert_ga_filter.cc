@@ -64,6 +64,12 @@ extern const char kGASnippet[] =
 extern const char kGASpeedTracking[] =
     "_gaq.push(['_setSiteSpeedSampleRate', 100]);";
 
+// The %u is for the variable slot (defaults to 1).
+// The %s is for the Experiment spec string.
+// This defaults to being a page-scoped variable.
+const char kFuriousSnippetFmt[] =
+    "_gaq.push(['_setCustomVar', %u, 'FuriousState', '%s']);";
+
 InsertGAFilter::InsertGAFilter(RewriteDriver* rewrite_driver)
     : CommonFilter(rewrite_driver),
       script_element_(NULL),
@@ -121,9 +127,8 @@ GoogleString InsertGAFilter::ConstructFuriousSnippet() const {
     int furious_state = driver_->options()->furious_id();
     if (furious_state != furious::kFuriousNotSet &&
         furious_state != furious::kFuriousNoExperiment) {
-      // This defaults to being a page-scoped variable.
-      furious = StringPrintf(
-          "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s']);",
+      furious = StringPrintf(kFuriousSnippetFmt,
+          driver_->options()->furious_ga_slot(),
           driver_->options()->ToExperimentString().c_str());
     }
   }

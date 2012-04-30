@@ -77,7 +77,8 @@ class DelayCache::DelayCallback : public CacheInterface::Callback {
 
 DelayCache::DelayCache(CacheInterface* cache, ThreadSystem* thread_system)
     : cache_(cache),
-      mutex_(thread_system->NewMutex()) {
+      mutex_(thread_system->NewMutex()),
+      name_(StrCat("DelayCache using ", cache_->Name())) {
 }
 
 DelayCache::~DelayCache() {

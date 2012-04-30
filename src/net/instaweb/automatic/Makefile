@@ -51,6 +51,8 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_delay_images_inline_opt_data2c.a \
   net/instaweb/libinstaweb_detect_reflow_data2c.a \
   net/instaweb/libinstaweb_detect_reflow_opt_data2c.a \
+  net/instaweb/libinstaweb_deterministic_data2c.a \
+  net/instaweb/libinstaweb_deterministic_opt_data2c.a \
   net/instaweb/libinstaweb_htmlparse_core.a \
   net/instaweb/libinstaweb_htmlparse_core_gperf.a \
   net/instaweb/libinstaweb_http.a \

@@ -161,6 +161,7 @@ const int64 RewriteOptions::kDefaultCriticalImagesCacheExpirationMs =
     Timer::kHourMs;
 const int64 RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs = 0;
 const int RewriteOptions::kDefaultFuriousTrafficPercent = 50;
+const int RewriteOptions::kDefaultFuriousSlot = 1;
 
 const char RewriteOptions::kClassName[] = "RewriteOptions";
 
@@ -207,6 +208,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kComputePanelJson,  // internal, enabled conditionally
   RewriteOptions::kDeferJavascript,
   RewriteOptions::kDetectReflowWithDeferJavascript,
+  RewriteOptions::kDeterministicJs,   // used for measurement
   RewriteOptions::kDisableJavascript,
   RewriteOptions::kDivStructure,
   RewriteOptions::kExplicitCloseTags,
@@ -235,6 +237,7 @@ bool IsInSet(const RewriteOptions::Filter* filters, int num,
 
 const char* RewriteOptions::FilterName(Filter filter) {
   switch (filter) {
+    case kAddBaseTag:                      return "Add Base Tag";
     case kAddHead:                         return "Add Head";
     case kAddInstrumentation:              return "Add Instrumentation";
     case kCollapseWhitespace:              return "Collapse Whitespace";
@@ -251,6 +254,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kDelayImages:                     return "Delay Images";
     case kDetectReflowWithDeferJavascript:
       return "Detect Reflow With Defer Javascript";
+    case kDeterministicJs:                 return "Deterministic Js";
     case kDisableJavascript:
       return "Disables scripts by placing them inside noscript tags";
     case kDivStructure:                    return "Div Structure";
@@ -298,6 +302,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
 
 const char* RewriteOptions::FilterId(Filter filter) {
   switch (filter) {
+    case kAddBaseTag:                      return "ab";
     case kAddHead:                         return "ah";
     case kAddInstrumentation:              return "ai";
     case kCollapseWhitespace:              return "cw";
@@ -313,6 +318,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kDeferJavascript:                 return "dj";
     case kDelayImages:                     return "di";
     case kDetectReflowWithDeferJavascript: return "dr";
+    case kDeterministicJs:                 return "mj";
     case kDisableJavascript:               return "jd";
     case kDivStructure:                    return "ds";
     case kElideAttributes:                 return "ea";
@@ -500,13 +506,30 @@ RewriteOptions::RewriteOptions()
   add_option("", &ga_id_, "ig", kAnalyticsID);
   add_option(true, &increase_speed_tracking_, "st", kIncreaseSpeedTracking);
   add_option(false, &running_furious_, "fur", kRunningFurious);
+  add_option(kDefaultFuriousSlot, &furious_ga_slot_, "fga", kFuriousSlot);
   add_option(kDefaultXModPagespeedHeaderValue, &x_header_value_, "xhv",
              kXModPagespeedHeaderValue);
+  add_option(false, &avoid_renaming_introspective_javascript_, "aris",
+             kAvoidRenamingIntrospectiveJavascript);
   // Sort all_options_ on enum.
   SortOptions();
   // Do not call add_option with OptionEnum fourth argument after this.
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
              &metadata_cache_staleness_threshold_ms_, "mcst");
+
+  ajax_rewriting_enabled_.DoNotUseForSignatureComputation();
+  botdetect_enabled_.DoNotUseForSignatureComputation();
+  log_rewrite_timing_.DoNotUseForSignatureComputation();
+  serve_stale_if_fetch_error_.DoNotUseForSignatureComputation();
+  enable_defer_js_experimental_.DoNotUseForSignatureComputation();
+  enable_blink_critical_line_.DoNotUseForSignatureComputation();
+  serve_blink_non_critical_.DoNotUseForSignatureComputation();
+  default_cache_html_.DoNotUseForSignatureComputation();
+  lazyload_images_after_onload_.DoNotUseForSignatureComputation();
+  ga_id_.DoNotUseForSignatureComputation();
+  increase_speed_tracking_.DoNotUseForSignatureComputation();
+  running_furious_.DoNotUseForSignatureComputation();
+  x_header_value_.DoNotUseForSignatureComputation();
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
@@ -720,6 +743,9 @@ bool RewriteOptions::AddByNameToFilterSet(
   if (filter == kEndOfFilters) {
     // Handle a compound filter name.  This is much less common, so we don't
     // have any special infrastructure for it; just code.
+    // WARNING: Be careful if you add things here; the filters you add
+    // here will be invokable by outside people, so they better not crash
+    // if that happens!
     if (option == "rewrite_images") {
       set->insert(kInlineImages);
       set->insert(kRecompressImages);
@@ -735,10 +761,6 @@ bool RewriteOptions::AddByNameToFilterSet(
     } else if (option == "core") {
       for (int i = 0, n = arraysize(kCoreFilterSet); i < n; ++i) {
         set->insert(kCoreFilterSet[i]);
-      }
-    } else if (option == "dangerous") {
-      for (int i = 0, n = arraysize(kDangerousFilterSet); i < n; ++i) {
-        set->insert(kDangerousFilterSet[i]);
       }
     } else {
       handler->Message(kWarning, "Invalid filter name: %s",
@@ -977,7 +999,7 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
     // Keep the signature relatively short by only including options
     // with values overridden from the default.
     OptionBase* option = all_options_[i];
-    if (option->was_set()) {
+    if (option->is_used_for_signature_computation() && option->was_set()) {
       StrAppend(&signature_, option->id(), ":", option->Signature(hasher), "_");
     }
   }
@@ -1125,6 +1147,8 @@ void RewriteOptions::SetupFuriousRewriters() {
     set_ga_id(spec->ga_id());
   }
 
+  set_furious_ga_slot(spec->slot());
+
   if (spec->use_default()) {
     // We need these for the experiment to work properly.
     ForceEnableFilter(RewriteOptions::kAddHead);
@@ -1153,6 +1177,7 @@ RewriteOptions::FuriousSpec::FuriousSpec(const StringPiece& spec,
                                          MessageHandler* handler)
     : id_(furious::kFuriousNotSet),
       ga_id_(options->ga_id()),
+      ga_variable_slot_(options->furious_ga_slot()),
       percent_(0),
       rewrite_level_(kPassThrough),
       css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
@@ -1165,6 +1190,7 @@ RewriteOptions::FuriousSpec::FuriousSpec(const StringPiece& spec,
 RewriteOptions::FuriousSpec::FuriousSpec(int id)
     : id_(id),
       ga_id_(""),
+      ga_variable_slot_(kDefaultFuriousSlot),
       percent_(0),
       rewrite_level_(kPassThrough),
       css_inline_max_bytes_(kDefaultCssInlineMaxBytes),
@@ -1184,6 +1210,7 @@ RewriteOptions::FuriousSpec* RewriteOptions::FuriousSpec::Clone() {
     ret->disabled_filters_.insert(*iter);
   }
   ret->ga_id_ = ga_id_;
+  ret->ga_variable_slot_ = ga_variable_slot_;
   ret->percent_ = percent_;
   ret->rewrite_level_ = rewrite_level_;
   ret->css_inline_max_bytes_ = css_inline_max_bytes_;
@@ -1235,6 +1262,15 @@ void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
       if (ga.length() > 0) {
         ga_id_ = GoogleString(ga.data(), ga.length());
       }
+    } else if (StringCaseStartsWith(piece, "slot")) {
+      StringPiece slot = PieceAfterEquals(piece);
+      int stored_id = ga_variable_slot_;
+      StringToInt(slot.as_string(), &ga_variable_slot_);
+      // Valid custom variable slots are 1-5 inclusive.
+      if (ga_variable_slot_ < 1 || ga_variable_slot_ > 5) {
+        LOG(INFO) << "Invalid custom variable slot.";
+        ga_variable_slot_ = stored_id;
+      }
     } else if (StringCaseStartsWith(piece, "level")) {
       StringPiece level = PieceAfterEquals(piece);
       if (level.length() > 0) {
@@ -1267,6 +1303,13 @@ void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
       }
     }
   }
+}
+
+void RewriteOptions::CheckFiltersAgainst(
+    const FilterSet& expected_enabled_filters,
+    const FilterSet& expected_disabled_filters) {
+  CHECK(expected_enabled_filters == enabled_filters_);
+  CHECK(expected_disabled_filters == disabled_filters_);
 }
 
 }  // namespace net_instaweb

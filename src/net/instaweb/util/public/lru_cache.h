@@ -85,6 +85,8 @@ class LRUCache : public CacheInterface {
   // Clear the stats -- note that this will not clear the content.
   void ClearStats();
 
+  virtual const char* Name() const { return "LRUCache"; }
+
  private:
   typedef std::pair<const GoogleString*, SharedString> KeyValuePair;
   typedef std::list<KeyValuePair*> EntryList;

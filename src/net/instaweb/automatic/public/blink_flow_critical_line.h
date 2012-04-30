@@ -54,9 +54,12 @@ class BlinkFlowCriticalLine {
   static void Initialize(Statistics* statistics);
 
   static const char kAboveTheFold[];
+  static const char kNumBlinkHtmlCacheHits[];
+  static const char kNumBlinkHtmlCacheMisses[];
   static const char kNumBlinkSharedFetchesStarted[];
   static const char kNumBlinkSharedFetchesCompleted[];
   static const char kNumComputeBlinkCriticalLineDataCalls[];
+  static const char kNoScriptRedirectFormatter[];
 
  private:
   BlinkFlowCriticalLine(const GoogleString& url,
@@ -113,6 +116,7 @@ class BlinkFlowCriticalLine {
   bool IsLastResponseCodeInvalid(PropertyPage* page);
 
   GoogleString url_;
+  GoogleString critical_html_;
   AsyncFetch* base_fetch_;
   RewriteOptions* options_;
   ProxyFetchFactory* factory_;
@@ -121,6 +125,7 @@ class BlinkFlowCriticalLine {
   scoped_ptr<BlinkCriticalLineData> blink_critical_line_data_;
   BlinkCriticalLineDataFinder* finder_;
 
+  TimedVariable* num_blink_html_cache_hits_;
   TimedVariable* num_blink_shared_fetches_started_;
 
   DISALLOW_COPY_AND_ASSIGN(BlinkFlowCriticalLine);

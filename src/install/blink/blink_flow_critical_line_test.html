@@ -1,0 +1,27 @@
+<!doctype html PUBLIC "HTML 4.0.1 Strict" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html>
+<body>
+  <div class="item">
+    <img src="../mod_pagespeed_example/images/OptPuzzle.jpg">
+  </div>
+  <div id="nocache">
+    This is non-cacheable item.
+  </div>
+  <div class="item">
+     <img src="../mod_pagespeed_example/images/Cuppa.png">
+  </div>
+  <div class="item">
+    <img src="../mod_pagespeed_example/images/Puzzle.jpg">
+  </div>
+  <div class="inspiration">
+    <img src="../mod_pagespeed_example/images/IronChef2.gif">
+  </div>
+  <div id="dyna">
+    This is dynamically added item.<br>
+  </div>
+  <script type="text/javascript">
+    var img=document.createElement('img');
+    img.src='../mod_pagespeed_example/images/BikeCrashIcn.png';
+    var div=document.getElementById('dyna');
+    div.appendChild(img);
+  </script>
+</body></html>

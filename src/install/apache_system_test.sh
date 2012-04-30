@@ -430,6 +430,63 @@ $WGET_DUMP $URL
 $WGET_DUMP $URL | grep -q "Cache-Control: private, max-age=3000"
 check [ $? = 0 ]
 
+test_filter combine_javascript combines 2 JS files into 1.
+echo TEST: combine_javascript with long URL still works
+URL=$TEST_ROOT/combine_js_very_many.html?ModPagespeedFilters=combine_javascript
+fetch_until $URL 'grep -c src=' 4
+
+echo TEST: aris disables js combining for introspective js and only i-js
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__on/?\
+ModPagespeedFilters=combine_javascript"
+fetch_until $URL 'grep -c src=' 2
+
+echo TEST: aris disables js combining only when enabled
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__off.html?\
+ModPagespeedFilters=combine_javascript"
+fetch_until $URL 'grep -c src=' 1
+
+test_filter inline_javascript inlines a small JS file
+echo TEST: aris disables js inlining for introspective js and only i-js
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__on/?\
+ModPagespeedFilters=inline_javascript"
+fetch_until $URL 'grep -c src=' 1
+
+echo TEST: aris disables js inlining only when enabled
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__off.html?\
+ModPagespeedFilters=inline_javascript"
+fetch_until $URL 'grep -c src=' 0
+
+test_filter rewrite_javascript minifies JavaScript and saves bytes.
+echo TEST: aris disables js cache extention for introspective js and only i-js
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__on/?\
+ModPagespeedFilters=rewrite_javascript"
+# first check something that should get rewritten to know we're done with
+# rewriting
+fetch_until $URL 'grep -c src=\"../normal.js\"' 0
+check [ $($WGET_DUMP $URL | grep -c src=\"../introspection.js\") = 1 ]
+
+echo TEST: aris disables js cache extension only when enabled
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__off.html?\
+ModPagespeedFilters=rewrite_javascript"
+fetch_until $URL 'grep -c src=\"normal.js\"' 0
+check [ $($WGET_DUMP $URL | grep -c src=\"introspection.js\") = 0 ]
+
+# Check that no filter changes urls for introspective javascript if
+# avoid_renaming_introspective_javascript is on
+echo TEST: aris disables url modification for introspective js
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__on/?\
+ModPagespeedFilters=testing,core"
+# first check something that should get rewritten to know we're done with
+# rewriting
+fetch_until $URL 'grep -c src=\"../normal.js\"' 0
+check [ $($WGET_DUMP $URL | grep -c src=\"../introspection.js\") = 1 ]
+
+echo TEST: aris disables url modification only when enabled
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__off.html?\
+ModPagespeedFilters=testing,core"
+fetch_until $URL 'grep -c src=\"normal.js\"' 0
+check [ $($WGET_DUMP $URL | grep -c src=\"introspection.js\") = 0 ]
+
 # Cleanup
 rm -rf $OUTDIR
 echo "PASS."

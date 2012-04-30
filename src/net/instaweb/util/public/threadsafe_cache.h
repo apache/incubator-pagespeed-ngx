@@ -38,17 +38,20 @@ class ThreadsafeCache : public CacheInterface {
   // Takes ownership of the cache and mutex that's passed in.
   ThreadsafeCache(CacheInterface* cache, AbstractMutex* mutex)
       : cache_(cache),
-        mutex_(mutex) {
+        mutex_(mutex),
+        name_(StrCat("ThreadsafeCache using ", cache_->Name())) {
   }
   virtual ~ThreadsafeCache();
 
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
+  virtual const char* Name() const { return name_.c_str(); }
 
  private:
   scoped_ptr<CacheInterface> cache_;
   scoped_ptr<AbstractMutex> mutex_;
+  GoogleString name_;
 
   DISALLOW_COPY_AND_ASSIGN(ThreadsafeCache);
 };

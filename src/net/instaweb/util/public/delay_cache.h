@@ -71,6 +71,8 @@ class DelayCache : public CacheInterface {
   void ReleaseKeyInSequence(const GoogleString& key,
                             QueuedWorkerPool::Sequence* sequence);
 
+  virtual const char* Name() const { return name_.c_str(); }
+
  private:
   class DelayCallback;
   friend class DelayCallback;
@@ -83,6 +85,8 @@ class DelayCache : public CacheInterface {
   scoped_ptr<AbstractMutex> mutex_;
   StringSet delay_requests_;
   DelayMap delay_map_;
+  GoogleString name_;
+
   DISALLOW_COPY_AND_ASSIGN(DelayCache);
 };
 

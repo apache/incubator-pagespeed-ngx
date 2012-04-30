@@ -308,8 +308,13 @@ void ConditionalSharedAsyncFetch::HandleHeadersComplete() {
     // If the fetch resulted in a 304 from the server, serve the cached response
     // and stop passing any events through to the base fetch.
     serving_cached_value_ = true;
+    int64 implicit_cache_ttl_ms = response_headers()->implicit_cache_ttl_ms();
     response_headers()->Clear();
     cached_value_.ExtractHeaders(response_headers(), handler_);
+    if (response_headers()->is_implicitly_cacheable()) {
+      response_headers()->SetCacheControlMaxAge(implicit_cache_ttl_ms);
+      response_headers()->ComputeCaching();
+    }
     base_fetch()->HeadersComplete();
     StringPiece contents;
     cached_value_.ExtractContents(&contents);

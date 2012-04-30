@@ -243,6 +243,8 @@ class HTTPCache {
 
   virtual void set_max_cacheable_response_content_length(int64 value);
 
+  virtual const char* Name() const { return name_.c_str(); }
+
  protected:
   virtual void PutInternal(const GoogleString& key, int64 start_us,
                            HTTPValue* value);
@@ -274,6 +276,7 @@ class HTTPCache {
   Variable* cache_expirations_;
   Variable* cache_inserts_;
   Variable* cache_deletes_;
+  GoogleString name_;
   int64 remember_not_cacheable_ttl_seconds_;
   int64 remember_fetch_failed_ttl_seconds_;
   int64 max_cacheable_response_content_length_;

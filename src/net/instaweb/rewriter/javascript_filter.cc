@@ -112,20 +112,27 @@ class JavascriptFilter::Context : public SingleRewriteContext {
                                input->url().c_str(),
                                library.name(), library.version());
     }
-
-    bool ok = code_block.ProfitableToRewrite();
-    if (ok) {
-      // Give the script a nice mimetype and extension.
-      // (There is no harm in doing this, they're ignored anyway).
-      output->SetType(&kContentTypeJavascript);
-      ok = WriteExternalScriptTo(input, code_block.Rewritten(), output);
-    } else {
+    // TODO(jefftk): look at the Context and don't apply this to the ajax flow.
+    if (Driver()->options()->avoid_renaming_introspective_javascript() &&
+        JavascriptCodeBlock::UnsafeToRename(script)) {
+      message_handler->Message(kInfo, "Script %s is unsafe to replace.",
+                               input->url().c_str());
+      return kRewriteFailed;
+    }
+    if (!code_block.ProfitableToRewrite()) {
       // Rewriting happened but wasn't useful; as we return false base class
       // will remember this for later so we don't attempt to rewrite twice.
-      message_handler->Message(kInfo, "Script %s didn't shrink",
+      message_handler->Message(kInfo, "Script %s didn't shrink.",
                                input->url().c_str());
+      return kRewriteFailed;
     }
-    return ok ? kRewriteOk : kRewriteFailed;
+    // Give the script a nice mimetype and extension.
+    // (There is no harm in doing this, they're ignored anyway).
+    output->SetType(&kContentTypeJavascript);
+    if (!WriteExternalScriptTo(input, code_block.Rewritten(), output)) {
+      return kRewriteFailed;
+    }
+    return kRewriteOk;
   }
 
  protected:

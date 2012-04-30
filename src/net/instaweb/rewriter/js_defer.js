@@ -601,11 +601,13 @@ pagespeed.DeferJs.prototype.isJSNode = function(node) {
 };
 
 /**
- * Given the list of nodes, separates into script nodes and regular nodes.
+ * Given the list of nodes, sets the not_processed attributes to all nodes and
+ * generates list of script nodes.
  * @param {!Node} node starting node for DFS.
  * @param {!Array.<Element>} scriptNodes array of script elements (output).
  */
-pagespeed.DeferJs.prototype.extractScriptNodes = function(node, scriptNodes) {
+pagespeed.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
+    node, scriptNodes) {
   if (!node.childNodes) {
     return;
   }
@@ -613,19 +615,21 @@ pagespeed.DeferJs.prototype.extractScriptNodes = function(node, scriptNodes) {
   var len = nodeArray.length;
   for (var i = 0; i < len; ++i) {
     var child = nodeArray[i];
+    if (pagespeed.DeferJs.isExperimentalMode) {
+      if (child.nodeType == 1) { // ELEMENT_NODE
+        child.setAttribute(pagespeed.DeferJs.PSA_NOT_PROCESSED, '');
+      }
+    }
     if (child.nodeName == 'SCRIPT') {
       if (this.isJSNode(child)) {
         scriptNodes.push(child);
-        if (pagespeed.DeferJs.isExperimentalMode) {
-          child.setAttribute(pagespeed.DeferJs.PSA_NOT_PROCESSED, '');
-        }
         child.setAttribute('orig_type', child.type);
         child.setAttribute('type', 'text/psajs');
         child.setAttribute('orig_src', child.src);
         child.setAttribute('src', '');
       }
     } else {
-      this.extractScriptNodes(child, scriptNodes);
+      this.markNodesAndExtractScriptNodes(child, scriptNodes);
     }
   }
 };
@@ -653,7 +657,7 @@ pagespeed.DeferJs.prototype.insertHtml = function(html, pos, opt_elem) {
 
   // Extract script nodes out for deferring them.
   var scriptNodes = [];
-  this.extractScriptNodes(node, scriptNodes);
+  this.markNodesAndExtractScriptNodes(node, scriptNodes);
 
   // Add non-script nodes before elem
   if (opt_elem) {

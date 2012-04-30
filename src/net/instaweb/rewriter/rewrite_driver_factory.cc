@@ -496,6 +496,10 @@ void RewriteDriverFactory::InitResourceManager(
   resource_manager->set_message_handler(message_handler());
   resource_manager->set_static_javascript_manager(
       static_javascript_manager());
+  SetupCohorts();
+  resource_manager->set_critical_images_finder(critical_images_finder());
+  resource_manager->set_blink_critical_line_data_finder(
+      blink_critical_line_data_finder());
   resource_manager->InitWorkersAndDecodingDriver();
   resource_managers_.insert(resource_manager);
 }
@@ -505,6 +509,10 @@ void RewriteDriverFactory::AddPlatformSpecificDecodingPasses(
 }
 
 void RewriteDriverFactory::AddPlatformSpecificRewritePasses(
+    RewriteDriver* driver) {
+}
+
+void RewriteDriverFactory::ApplyPlatformSpecificConfiguration(
     RewriteDriver* driver) {
 }
 

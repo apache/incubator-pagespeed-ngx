@@ -141,9 +141,8 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       scheduler_(factory->scheduler()),
       default_system_fetcher_(NULL),
       hasher_(NULL),
-      critical_images_finder_(factory->critical_images_finder()),
-      blink_critical_line_data_finder_(
-          factory->blink_critical_line_data_finder()),
+      critical_images_finder_(NULL),
+      blink_critical_line_data_finder_(NULL),
       lock_hasher_(20),
       contents_hasher_(21),
       statistics_(NULL),
@@ -203,6 +202,8 @@ void ResourceManager::InitWorkersAndDecodingDriver() {
   low_priority_rewrite_workers_ = factory_->WorkerPool(
       RewriteDriverFactory::kLowPriorityRewriteWorkers);
   decoding_driver_.reset(NewUnmanagedRewriteDriver());
+  // Apply platform configuration mutation for consistency's sake.
+  factory_->ApplyPlatformSpecificConfiguration(decoding_driver_.get());
   // Inserts platform-specific rewriters into the resource_filter_map_, so that
   // the decoding process can recognize those rewriter ids.
   factory_->AddPlatformSpecificDecodingPasses(decoding_driver_.get());
@@ -596,6 +597,9 @@ RewriteDriver* ResourceManager::NewCustomRewriteDriver(
     active_rewrite_drivers_.insert(rewrite_driver);
   }
   rewrite_driver->set_custom_options(options);
+  if (factory_ != NULL) {
+    factory_->ApplyPlatformSpecificConfiguration(rewrite_driver);
+  }
   rewrite_driver->AddFilters();
   if (factory_ != NULL) {
     factory_->AddPlatformSpecificRewritePasses(rewrite_driver);
@@ -618,6 +622,9 @@ RewriteDriver* ResourceManager::NewRewriteDriver() {
     available_rewrite_drivers_.pop_back();
   } else {
     rewrite_driver = NewUnmanagedRewriteDriver();
+    if (factory_ != NULL) {
+      factory_->ApplyPlatformSpecificConfiguration(rewrite_driver);
+    }
     rewrite_driver->AddFilters();
     if (factory_ != NULL) {
       factory_->AddPlatformSpecificRewritePasses(rewrite_driver);

@@ -162,7 +162,7 @@ class TrimWhitespaceSyncFilter : public SimpleTextFilter {
       HtmlElement::Attribute* href = element->FindAttribute(HtmlName::kHref);
       if (href != NULL) {
         GoogleUrl gurl(driver()->google_url(), href->DecodedValueOrNull());
-        href->SetValue(StrCat(gurl.Spec(), ".pagespeed.ts.0.css").c_str());
+        href->SetValue(StrCat(gurl.Spec(), ".pagespeed.ts.0.css"));
       }
     }
   }
@@ -3430,6 +3430,7 @@ TEST_F(RewriteContextTest, TestModifiedImplicitCacheTtl) {
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 
+  FetcherUpdateDateHeaders();
   SetupWaitFetcher();
   ClearStats();
   mock_timer()->AdvanceMs(200 * Timer::kSecondMs);
@@ -3438,7 +3439,94 @@ TEST_F(RewriteContextTest, TestModifiedImplicitCacheTtl) {
   CallFetcherCallbacks();
   EXPECT_EQ(0, trim_filter_->num_rewrites());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  SetupWaitFetcher();
+  ClearStats();
+  mock_timer()->AdvanceMs(600 * Timer::kSecondMs);
+  // Resource is still stale.
+  ValidateNoChanges("1200sec", CssLinkHref(kPath));
+  CallFetcherCallbacks();
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 }
+
+TEST_F(RewriteContextTest, TestModifiedImplicitCacheTtlWith304) {
+  options()->ClearSignatureForTesting();
+  options()->set_implicit_cache_ttl_ms(500 * Timer::kSecondMs);
+  options()->set_metadata_cache_staleness_threshold_ms(0);
+  options()->ComputeSignature(hasher());
+
+  const char kPath[] = "test.css";
+  const char kDataIn[] = "   data  ";
+  const GoogleString kOriginalRewriteUrl(Encode(kTestDomain, "tw", "0",
+                                                "test.css", "css"));
+  ResponseHeaders headers;
+  headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
+  headers.Add(HttpAttributes::kEtag, "new");
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  // Do not call ComputeCaching before calling SetFetchResponse because it will
+  // add an explicit max-age=300 cache control header. We do not want that
+  // header in this test.
+  mock_url_fetcher()->SetConditionalResponse(
+      AbsolutifyUrl(kPath), -1, "new", headers, kDataIn);
+
+  // Start with non-zero time, and init our resource..
+  mock_timer()->AdvanceMs(100 * Timer::kSecondMs);
+  InitTrimFilters(kRewrittenResource);
+  // First fetch + rewrite.
+  ValidateExpected("initial",
+                   CssLinkHref(kPath),
+                   CssLinkHref(kOriginalRewriteUrl));
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Resource should be in cache.
+  ClearStats();
+  mock_timer()->AdvanceMs(100 * Timer::kSecondMs);
+  ValidateExpected("200sec",
+                   CssLinkHref(kPath),
+                   CssLinkHref(kOriginalRewriteUrl));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+
+  // Advance time past original implicit cache ttl (300sec).
+  ClearStats();
+  mock_timer()->AdvanceMs(200 * Timer::kSecondMs);
+  // Resource should still be in cache.
+  ValidateExpected("400sec",
+                   CssLinkHref(kPath),
+                   CssLinkHref(kOriginalRewriteUrl));
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+
+  // Modify the implicit cache ttl.
+  options()->ClearSignatureForTesting();
+  options()->set_implicit_cache_ttl_ms(1000 * Timer::kSecondMs);
+  options()->ComputeSignature(hasher());
+  FetcherUpdateDateHeaders();
+
+  SetupWaitFetcher();
+  ClearStats();
+  mock_timer()->AdvanceMs(200 * Timer::kSecondMs);
+  // Resource is stale now. We got a 304 this time.
+  ValidateNoChanges("600sec", CssLinkHref(kPath));
+  CallFetcherCallbacks();
+  EXPECT_EQ(1, trim_filter_->num_rewrites());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
+
+  SetupWaitFetcher();
+  ClearStats();
+  mock_timer()->AdvanceMs(600 * Timer::kSecondMs);
+  // Resource is fresh this time.
+  ValidateExpected("1200sec",
+                   CssLinkHref(kPath),
+                   CssLinkHref(kOriginalRewriteUrl));
+  CallFetcherCallbacks();
+  EXPECT_EQ(0, trim_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+}
+
 TEST_F(RewriteContextTest, TestReuseNotFastEnough) {
   // Make sure we handle deadline passing when trying to reuse properly.
   FetcherUpdateDateHeaders();

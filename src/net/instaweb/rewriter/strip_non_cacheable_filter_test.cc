@@ -20,6 +20,7 @@
 
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {
@@ -30,7 +31,8 @@ const char kRequestUrl[] = "http://www.test.com";
 
 const char kHtmlInput[] =
     "<html>"
-    "<body>\n"
+    "<body>"
+    "<noscript>This should get removed</noscript>"
     "<div id=\"header\"> This is the header </div>"
     "<div id=\"container\" class>"
       "<h2 id=\"beforeItems\"> This is before Items </h2>"
@@ -62,7 +64,7 @@ class StripNonCacheableFilterTest : public ResourceManagerTestBase {
     options_ = new RewriteOptions();
     options_->EnableFilter(RewriteOptions::kStripNonCacheable);
     options_->set_prioritize_visible_content_non_cacheable_elements(
-        "class=item\nid=beforeItems");
+        "/:class=item,id=beforeItems");
     SetUseManagedRewriteDrivers(true);
     ResourceManagerTestBase::SetUp();
   }
@@ -77,8 +79,8 @@ TEST_F(StripNonCacheableFilterTest, StripNonCacheable) {
   GoogleString json_expected_output = StrCat(
       "<html><head>",
       kPsaHeadScriptNodes,
-      "</head><body><noscript>"
-      "<meta HTTP-EQUIV=\"refresh\" content=\"0;url=http://www.test.com/?ModPagespeed=off\"><style><!--table,div,span,font,p{display:none} --></style><div style=\"display:block\">Please click <a href=\"http://www.test.com/?ModPagespeed=off\">here</a> if you are not redirected within a few seconds.</div></noscript>\n"
+      "</head><body>",
+      BlinkUtil::kStartBodyMarker,
       "<div id=\"header\"> This is the header </div>"
       "<div id=\"container\" class>"
       "<!--GooglePanel begin panel-id-1.0--><!--GooglePanel end panel-id-1.0-->"

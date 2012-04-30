@@ -204,6 +204,11 @@ class RewriteDriverFactory {
   // platform-specific rewriter whose id might appear in a .pagespeed. URL.
   virtual void AddPlatformSpecificDecodingPasses(RewriteDriver* driver);
 
+  // Provides an optional hook for customizing the RewriteDriver object
+  // using the options set on it. This is called before
+  // RewriteDriver::AddFilters() and AddPlatformSpecificRewritePasses().
+  virtual void ApplyPlatformSpecificConfiguration(RewriteDriver* driver);
+
   ThreadSystem* thread_system() { return thread_system_.get(); }
 
   CriticalImagesFinder* critical_images_finder();
@@ -345,6 +350,10 @@ class RewriteDriverFactory {
   // an instance that disables serving of filter javascript via gstatic
   // (gstatic.com is the domain google uses for serving static content).
   virtual StaticJavascriptManager* DefaultStaticJavascriptManager();
+
+  // Sets up the property cache cohorts. Should be called only after the
+  // property cache is initialized.
+  virtual void SetupCohorts() {}
 
  private:
   void SetupSlurpDirectories();

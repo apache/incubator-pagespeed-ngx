@@ -39,6 +39,7 @@ class StaticJavascriptManager {
     kDeferJs,
     kDelayImagesJs,
     kDelayImagesInlineJs,
+    kDeterministicJs,
     kLazyloadImagesJs,
     kDetectReflowJs,
     kLocalStorageCacheJs,

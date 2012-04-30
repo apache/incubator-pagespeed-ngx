@@ -66,6 +66,24 @@ void ApacheConfig::Init() {
              RewriteOptions::kSlurpFlushLimit);
 
   SortOptions();
+
+  fetcher_proxy_.DoNotUseForSignatureComputation();
+  file_cache_path_.DoNotUseForSignatureComputation();
+  filename_prefix_.DoNotUseForSignatureComputation();
+  slurp_directory_.DoNotUseForSignatureComputation();
+  referer_statistics_output_level_.DoNotUseForSignatureComputation();
+  collect_referer_statistics_.DoNotUseForSignatureComputation();
+  hash_referer_statistics_.DoNotUseForSignatureComputation();
+  statistics_enabled_.DoNotUseForSignatureComputation();
+  test_proxy_.DoNotUseForSignatureComputation();
+  use_shared_mem_locking_.DoNotUseForSignatureComputation();
+  slurp_read_only_.DoNotUseForSignatureComputation();
+  fetcher_time_out_ms_.DoNotUseForSignatureComputation();
+  file_cache_clean_interval_ms_.DoNotUseForSignatureComputation();
+  file_cache_clean_size_kb_.DoNotUseForSignatureComputation();
+  lru_cache_byte_limit_.DoNotUseForSignatureComputation();
+  lru_cache_kb_per_process_.DoNotUseForSignatureComputation();
+  slurp_flush_limit_.DoNotUseForSignatureComputation();
 }
 
 bool ApacheConfig::ParseRefererStatisticsOutputLevel(

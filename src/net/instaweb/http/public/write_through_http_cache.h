@@ -23,6 +23,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -81,6 +82,8 @@ class WriteThroughHTTPCache : public HTTPCache {
   // torward the size.
   void set_cache1_limit(size_t limit) { cache1_size_limit_ = limit; }
 
+  virtual const char* Name() const { return name_.c_str(); }
+
  protected:
   // Implements HTTPCache::PutInternal().
   virtual void PutInternal(const GoogleString& key, int64 start_us,
@@ -92,6 +95,7 @@ class WriteThroughHTTPCache : public HTTPCache {
   scoped_ptr<HTTPCache> cache1_;
   scoped_ptr<HTTPCache> cache2_;
   size_t cache1_size_limit_;
+  GoogleString name_;
 
   DISALLOW_COPY_AND_ASSIGN(WriteThroughHTTPCache);
 };

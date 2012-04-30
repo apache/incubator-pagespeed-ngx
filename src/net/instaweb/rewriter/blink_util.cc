@@ -341,14 +341,38 @@ bool StripTrailingNewline(GoogleString* s) {
   return false;
 }
 
+StringPiece GetNonCacheableElements(
+    const GoogleString& atf_non_cacheable_elements, const GoogleUrl& url) {
+  StringPieceVector url_family_non_cacheable_elements;
+  SplitStringPieceToVector(atf_non_cacheable_elements,
+                           ";", &url_family_non_cacheable_elements, true);
+  for (size_t i = 0; i < url_family_non_cacheable_elements.size(); ++i) {
+    StringPieceVector url_family_non_cacheable_elements_pair;
+    SplitStringPieceToVector(url_family_non_cacheable_elements[i], ":",
+                             &url_family_non_cacheable_elements_pair, true);
+    if (url_family_non_cacheable_elements_pair.size() != 2) {
+      LOG(ERROR) << "Incorrect non cacheable element value "
+                 << url_family_non_cacheable_elements[i];
+      return "";
+    }
+    Wildcard wildcard(url_family_non_cacheable_elements_pair[0]);
+    if (wildcard.Match(url.PathAndLeaf())) {
+      return url_family_non_cacheable_elements_pair[1];
+    }
+  }
+  return "";
+}
+
 void PopulateAttributeToNonCacheableValuesMap(
-    const GoogleString& atf_non_cacheable_elements,
+    const GoogleString& atf_non_cacheable_elements, const GoogleUrl& url,
     AttributesToNonCacheableValuesMap* attribute_non_cacheable_values_map,
     std::vector<int>* panel_number_num_instances) {
+  StringPiece non_cacheable_elements =
+      GetNonCacheableElements(atf_non_cacheable_elements, url);
   // TODO(rahulbansal): Add more error checking.
   StringPieceVector non_cacheable_values;
-  SplitStringPieceToVector(atf_non_cacheable_elements,
-                           "\n", &non_cacheable_values, true);
+  SplitStringPieceToVector(non_cacheable_elements,
+                           ",", &non_cacheable_values, true);
   for (size_t i = 0; i < non_cacheable_values.size(); ++i) {
     StringPieceVector non_cacheable_values_pair;
     SplitStringPieceToVector(non_cacheable_values[i], "=",

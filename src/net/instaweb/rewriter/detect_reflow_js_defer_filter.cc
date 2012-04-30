@@ -48,25 +48,39 @@ void DetectReflowJsDeferFilter::StartDocument() {
   defer_js_enabled_ = rewrite_driver_->UserAgentSupportsJsDefer();
 }
 
-void DetectReflowJsDeferFilter::EndElement(HtmlElement* element) {
+void DetectReflowJsDeferFilter::StartElement(HtmlElement* element) {
   if (defer_js_enabled_ && element->keyword() == HtmlName::kBody &&
       !script_written_) {
-    StaticJavascriptManager* static_js_manager =
-        rewrite_driver_->resource_manager()->static_javascript_manager();
-    // Detect reflow functions script node.
-    HtmlElement* script_node = rewrite_driver_->NewElement(element,
-                                                           HtmlName::kScript);
-    rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
-                                  "text/javascript");
-    rewrite_driver_->AddAttribute(script_node, HtmlName::kPagespeedNoDefer, "");
-    StringPiece detect_reflow_script = static_js_manager->GetJsSnippet(
-        StaticJavascriptManager::kDetectReflowJs, rewrite_driver_->options());
-    HtmlNode* script_code = rewrite_driver_->NewCharactersNode(
-        script_node, detect_reflow_script);
-    rewrite_driver_->InsertElementBeforeCurrent(script_node);
-    rewrite_driver_->AppendChild(script_node, script_code);
-    script_written_ = true;
+    HtmlElement* head_node =
+        rewrite_driver_->NewElement(element->parent(), HtmlName::kHead);
+    rewrite_driver_->InsertElementBeforeCurrent(head_node);
+    InsertDetectReflowCode(head_node);
   }
+}
+
+void DetectReflowJsDeferFilter::EndElement(HtmlElement* element) {
+  if (defer_js_enabled_ && element->keyword() == HtmlName::kHead &&
+      !script_written_) {
+    InsertDetectReflowCode(element);
+  }
+}
+
+void DetectReflowJsDeferFilter::InsertDetectReflowCode(HtmlElement* element) {
+  StaticJavascriptManager* static_js_manager =
+      rewrite_driver_->resource_manager()->static_javascript_manager();
+  // Detect reflow functions script node.
+  HtmlElement* script_node = rewrite_driver_->NewElement(element,
+                                                         HtmlName::kScript);
+  rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
+                                "text/javascript");
+  rewrite_driver_->AddAttribute(script_node, HtmlName::kPagespeedNoDefer, "");
+  StringPiece detect_reflow_script = static_js_manager->GetJsSnippet(
+      StaticJavascriptManager::kDetectReflowJs, rewrite_driver_->options());
+  HtmlNode* script_code = rewrite_driver_->NewCharactersNode(
+      script_node, detect_reflow_script);
+  rewrite_driver_->AppendChild(element, script_node);
+  rewrite_driver_->AppendChild(script_node, script_code);
+  script_written_ = true;
 }
 
 void DetectReflowJsDeferFilter::EndDocument() {

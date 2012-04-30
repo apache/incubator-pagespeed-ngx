@@ -21,7 +21,6 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -30,7 +29,7 @@ namespace {
 
 // This sample code comes from Douglas Crockford's jsmin example.
 // The same code is used to test jsminify in pagespeed.
-const GoogleString kBeforeCompilation =
+const char kBeforeCompilation[] =
     "// is.js\n"
     "\n"
     "// (c) 2001 Douglas Crockford\n"
@@ -66,7 +65,7 @@ const GoogleString kBeforeCompilation =
     "    is.gecko = true;\n"
     "}\n";
 
-const GoogleString kTruncatedComment =
+const char kTruncatedComment[] =
     "// is.js\n"
     "\n"
     "// (c) 2001 Douglas Crockford\n"
@@ -80,7 +79,7 @@ const GoogleString kTruncatedComment =
     "   identifies itself, but there is no standard way of doing it, "
     "and some of\n";
 
-const GoogleString kTruncatedRewritten =
+const char kTruncatedRewritten[] =
     "// is.js\n"
     "\n"
     "// (c) 2001 Douglas Crockford\n"
@@ -94,11 +93,11 @@ const GoogleString kTruncatedRewritten =
     "   identifies itself, but there is no standard way of doing it, "
     "and some of";
 
-const GoogleString kTruncatedString =
+const char kTruncatedString[] =
     "var is = {\n"
     "    ie:      navigator.appName == 'Microsoft Internet Explo";
 
-const GoogleString kAfterCompilation =
+const char kAfterCompilation[] =
     "var is={ie:navigator.appName=='Microsoft Internet Explorer',"
     "java:navigator.javaEnabled(),ns:navigator.appName=='Netscape',"
     "ua:navigator.userAgent.toLowerCase(),version:parseFloat("
@@ -107,6 +106,18 @@ const GoogleString kAfterCompilation =
     "is.mac=is.ua.indexOf('mac')>=0;if(is.ua.indexOf('opera')>=0){"
     "is.ie=is.ns=false;is.opera=true;}\n"
     "if(is.ua.indexOf('gecko')>=0){is.ie=is.ns=false;is.gecko=true;}";
+
+const char kJsWithGetElementsByTagNameScript[] =
+    "// this shouldn't be altered"
+    "  var scripts = document.getElementsByTagName('script'),"
+    "      script = scripts[scripts.length - 1];"
+    "  var some_url = document.createElement(\"a\");";
+
+const char kJsWithJQueryScriptElementSelection[] =
+    "// this shouldn't be altered either"
+    "  var scripts = $(\"script\"),"
+    "      script = scripts[scripts.length - 1];"
+    "  var some_url = document.createElement(\"a\");";
 
 void ExpectStats(JavascriptRewriteConfig* config,
                  int blocks_minified, int minification_failures,
@@ -140,8 +151,18 @@ TEST(JsCodeBlockTest, Rewrite) {
   EXPECT_TRUE(block.ProfitableToRewrite());
   EXPECT_EQ(kAfterCompilation, block.Rewritten());
   ExpectStats(&config, 1, 0,
-              kBeforeCompilation.size() - kAfterCompilation.size(),
-              kBeforeCompilation.size());
+              STATIC_STRLEN(kBeforeCompilation) -
+              STATIC_STRLEN(kAfterCompilation),
+              STATIC_STRLEN(kBeforeCompilation));
+}
+
+TEST(JsCodeBlockTest, UnsafeToRename) {
+  EXPECT_TRUE(JavascriptCodeBlock::UnsafeToRename(
+      kJsWithGetElementsByTagNameScript));
+  EXPECT_TRUE(JavascriptCodeBlock::UnsafeToRename(
+      kJsWithJQueryScriptElementSelection));
+  EXPECT_FALSE(JavascriptCodeBlock::UnsafeToRename(
+      kBeforeCompilation));
 }
 
 TEST(JsCodeBlockTest, NoRewrite) {
@@ -154,7 +175,7 @@ TEST(JsCodeBlockTest, NoRewrite) {
   EXPECT_EQ(kAfterCompilation, block.Rewritten());
   // Note: We do record this as a successful minification.
   // Just with 0 bytes saved.
-  ExpectStats(&config, 1, 0, 0, kAfterCompilation.size());
+  ExpectStats(&config, 1, 0, 0, STATIC_STRLEN(kAfterCompilation));
 }
 
 TEST(JsCodeBlockTest, TruncatedComment) {
@@ -198,13 +219,14 @@ TEST(JsCodeBlockTest, DealWithSgmlComment) {
   JavascriptRewriteConfig::Initialize(&stats);
   JavascriptRewriteConfig config(&stats);
   GoogleMessageHandler handler;
-  const GoogleString original = "  <!--  \nvar x = 1;\n  //-->  ";
-  const GoogleString expected = "var x=1;";
-  JavascriptCodeBlock block(original, &config, "Test", &handler);
+  static const char kOriginal[] = "  <!--  \nvar x = 1;\n  //-->  ";
+  static const char kExpected[] = "var x=1;";
+  JavascriptCodeBlock block(kOriginal, &config, "Test", &handler);
   EXPECT_TRUE(block.ProfitableToRewrite());
-  EXPECT_EQ(expected, block.Rewritten());
+  EXPECT_EQ(kExpected, block.Rewritten());
   ExpectStats(&config, 1, 0,
-              original.size() - expected.size(), original.size());
+              STATIC_STRLEN(kOriginal) - STATIC_STRLEN(kExpected),
+              STATIC_STRLEN(kOriginal));
 }
 
 }  // namespace

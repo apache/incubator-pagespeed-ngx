@@ -331,19 +331,6 @@ class RewriteDriver : public HtmlParse {
   FileSystem* file_system() { return file_system_; }
   UrlAsyncFetcher* async_fetcher() { return url_async_fetcher_; }
 
-  // Does not take ownership of f. Fetcher settings outlast Clear().
-  void SetAsyncFetcher(UrlAsyncFetcher* f) {
-    url_async_fetcher_ = f;
-    owned_url_async_fetcher_.reset();
-  }
-
-  // Like SetAsyncFetcher, but takes ownership.
-  // Fetcher settings outlast Clear().
-  void SetOwnedAsyncFetcher(UrlAsyncFetcher* f) {
-    url_async_fetcher_ = f;
-    owned_url_async_fetcher_.reset(f);
-  }
-
   // Creates a cache fetcher that uses the driver's fetcher and its options.
   // Note: this means the driver's fetcher must survive as long as this does.
   CacheUrlAsyncFetcher* CreateCacheFetcher();
@@ -1041,10 +1028,6 @@ class RewriteDriver : public HtmlParse {
   UrlAsyncFetcher* url_async_fetcher_;
   ResourceManager* resource_manager_;
   Scheduler* scheduler_;
-
-  // In case 'this' owns url_async_fetcher_, owned_url_async_fetcher_ will
-  // point to it. Otherwise, this will be NULL.
-  scoped_ptr<UrlAsyncFetcher> owned_url_async_fetcher_;
 
   AddInstrumentationFilter* add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;

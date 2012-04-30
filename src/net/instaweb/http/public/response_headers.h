@@ -144,6 +144,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   int64 date_ms() const;  // Timestamp from Date header.
   bool has_date_ms() const;
   int64 cache_ttl_ms() const;
+  bool is_implicitly_cacheable() const;
 
   GoogleString ToString() const;
 

@@ -32,6 +32,7 @@ const char HttpAttributes::kCookie[] = "Cookie";
 const char HttpAttributes::kCookie2[] = "Cookie2";
 const char HttpAttributes::kDate[] = "Date";
 const char HttpAttributes::kDeflate[] = "deflate";
+const char HttpAttributes::kDnt[] = "DNT";
 const char HttpAttributes::kEtag[] = "Etag";
 const char HttpAttributes::kExpires[] = "Expires";
 const char HttpAttributes::kGzip[] = "gzip";

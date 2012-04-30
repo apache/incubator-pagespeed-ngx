@@ -157,6 +157,7 @@ void ResponseHeaders::Clear() {
   proto_->clear_status_code();
   proto_->clear_reason_phrase();
   proto_->clear_header();
+  proto_->clear_is_implicitly_cacheable();
   cache_fields_dirty_ = false;
 }
 
@@ -202,6 +203,12 @@ int64 ResponseHeaders::cache_ttl_ms() const {
 
 bool ResponseHeaders::has_date_ms() const {
   return proto_->has_date_ms();
+}
+
+bool ResponseHeaders::is_implicitly_cacheable() const {
+  DCHECK(!cache_fields_dirty_)
+      << "Call ComputeCaching() before is_implicitly_cacheable()";
+  return proto_->is_implicitly_cacheable();
 }
 
 void ResponseHeaders::Add(const StringPiece& name, const StringPiece& value) {
@@ -540,6 +547,7 @@ void ResponseHeaders::ComputeCaching() {
       // caching headers, explicitly set the caching headers.
       DCHECK(has_date);
       DCHECK(cache_ttl_ms == implicit_cache_ttl_ms());
+      proto_->set_is_implicitly_cacheable(true);
       SetDateAndCaching(date, cache_ttl_ms);
     }
   } else {
@@ -717,6 +725,8 @@ void ResponseHeaders::DebugPrint() const {
   fprintf(stderr, "%s\n", ToString().c_str());
   fprintf(stderr, "cache_fields_dirty_ = %s\n",
           BoolToString(cache_fields_dirty_));
+  fprintf(stderr, "is_implicitly_cacheable = %s\n",
+          BoolToString(proto_->is_implicitly_cacheable()));
   fprintf(stderr, "implicit_cache_ttl_ms_ = %s\n",
           Integer64ToString(implicit_cache_ttl_ms()).c_str());
   if (!cache_fields_dirty_) {

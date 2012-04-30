@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
+#include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -101,7 +102,13 @@ void CacheExtender::Initialize(Statistics* statistics) {
 bool CacheExtender::ShouldRewriteResource(
     const ResponseHeaders* headers, int64 now_ms,
     const ResourcePtr& input_resource, const StringPiece& url) const {
-  if (input_resource->type() == NULL) {
+  const ContentType* input_resource_type = input_resource->type();
+  if (input_resource_type == NULL) {
+    return false;
+  }
+  if (input_resource_type->type() == ContentType::kJavascript &&
+      driver_->options()->avoid_renaming_introspective_javascript() &&
+      JavascriptCodeBlock::UnsafeToRename(input_resource->contents())) {
     return false;
   }
   if ((headers->CacheExpirationTimeMs() - now_ms) < kMinThresholdMs) {

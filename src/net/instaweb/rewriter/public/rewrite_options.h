@@ -42,7 +42,8 @@ class RewriteOptions {
   // If you add or remove anything from this list, you need to update the
   // version number in rewrite_options.cc and FilterName().
   enum Filter {
-    kAddHead,  // Update kFirstFilter if you add something before this.
+    kAddBaseTag,  // Update kFirstFilter if you add something before this.
+    kAddHead,
     kAddInstrumentation,
     kCollapseWhitespace,
     kCombineCss,
@@ -57,6 +58,7 @@ class RewriteOptions {
     kDeferJavascript,
     kDelayImages,
     kDetectReflowWithDeferJavascript,
+    kDeterministicJs,
     kDisableJavascript,
     kDivStructure,
     kElideAttributes,
@@ -103,6 +105,7 @@ class RewriteOptions {
     kAjaxRewritingEnabled,
     kAlwaysRewriteCss,
     kAnalyticsID,
+    kAvoidRenamingIntrospectiveJavascript,
     kBeaconUrl,
     kBotdetectEnabled,
     kCacheInvalidationTimestamp,
@@ -112,11 +115,12 @@ class RewriteOptions {
     kCssInlineMaxBytes,
     kCssOutlineMinBytes,
     kDefaultCacheHtml,
+    kDomainRewriteHyperlinks,
     kEnableBlinkCriticalLine,
     kEnabled,
     kEnableDeferJsExperimental,
     kFlushHtml,
-    kFuriousPercent,
+    kFuriousSlot,
     kIdleFlushTimeMs,
     kImageInlineMaxBytes,
     kImageJpegNumProgressiveScans,
@@ -174,7 +178,6 @@ class RewriteOptions {
     kUseSharedMemLocking,
 
     // This is always the last option.
-    kDomainRewriteHyperlinks,
     kEndOfOptions
   };
 
@@ -202,7 +205,7 @@ class RewriteOptions {
   static const char* FilterId(Filter filter);
 
   // Used for enumerating over all entries in the Filter enum.
-  static const Filter kFirstFilter = kAddHead;
+  static const Filter kFirstFilter = kAddBaseTag;
 
   // Convenience name for a set of rewrite filters.
   typedef std::set<Filter> FilterSet;
@@ -287,6 +290,8 @@ class RewriteOptions {
   static const int64 kDefaultMetadataCacheStalenessThresholdMs;
 
   static const int kDefaultFuriousTrafficPercent;
+  // Default Custom Variable slot in which to put Furious information.
+  static const int kDefaultFuriousSlot;
 
   static const char kClassName[];
 
@@ -325,6 +330,7 @@ class RewriteOptions {
     int id() const { return id_; }
     int percent() const { return percent_; }
     GoogleString ga_id() const { return ga_id_; }
+    int slot() const { return ga_variable_slot_; }
     RewriteLevel rewrite_level() const { return rewrite_level_; }
     FilterSet enabled_filters() const { return enabled_filters_; }
     FilterSet disabled_filters() const { return disabled_filters_; }
@@ -343,6 +349,7 @@ class RewriteOptions {
 
     int id_;  // id for this experiment
     GoogleString ga_id_;  // Google Analytics ID for this experiment
+    int ga_variable_slot_;
     int percent_;  // percentage of traffic to go through this experiment.
     RewriteLevel rewrite_level_;
     FilterSet enabled_filters_;
@@ -458,6 +465,11 @@ class RewriteOptions {
   // Clear all explicitly enabled and disabled filters. Some filters may still
   // be enabled by the rewrite level and HtmlWriterFilter will be enabled.
   void ClearFilters();
+
+  // Check if the state of the filters is same as the arguments. Useful in
+  // tests.
+  void CheckFiltersAgainst(const FilterSet& enabled_filters,
+                           const FilterSet& disabled_filters);
 
   // Enables all three extend_cache filters.
   void EnableExtendCacheFilters();
@@ -816,6 +828,13 @@ class RewriteOptions {
     return running_furious_.value();
   }
 
+  // x should be between 1 and 5 inclusive.
+  void set_furious_ga_slot(int x) {
+    set_option(x, &furious_ga_slot_);
+  }
+
+  int furious_ga_slot() const { return furious_ga_slot_.value(); }
+
   void set_implicit_cache_ttl_ms(int64 x) {
     set_option(x, &implicit_cache_ttl_ms_);
   }
@@ -828,6 +847,13 @@ class RewriteOptions {
   }
   const GoogleString& x_header_value() const {
     return x_header_value_.value();
+  }
+
+  void set_avoid_renaming_introspective_javascript(bool x) {
+    set_option(x, &avoid_renaming_introspective_javascript_);
+  }
+  bool avoid_renaming_introspective_javascript() const {
+    return avoid_renaming_introspective_javascript_.value();
   }
 
   // Merge src into 'this'.  Generally, options that are explicitly
@@ -939,7 +965,9 @@ class RewriteOptions {
  protected:
   class OptionBase {
    public:
-    OptionBase() : id_(NULL), option_enum_(RewriteOptions::kEndOfOptions) {}
+    OptionBase()
+        : id_(NULL), option_enum_(RewriteOptions::kEndOfOptions),
+          do_not_use_for_signature_computation_(false) {}
     virtual ~OptionBase();
     virtual bool SetFromString(const GoogleString& value_string) = 0;
     virtual void Merge(const OptionBase* src) = 0;
@@ -953,9 +981,17 @@ class RewriteOptions {
     }
     void set_option_enum(OptionEnum option_enum) { option_enum_ = option_enum; }
     OptionEnum option_enum() const { return option_enum_; }
+    void DoNotUseForSignatureComputation() {
+      do_not_use_for_signature_computation_ = true;
+    }
+    bool is_used_for_signature_computation() const {
+      return !do_not_use_for_signature_computation_;
+    }
+
    private:
     const char* id_;
     OptionEnum option_enum_;  // To know where this is in all_options_.
+    bool do_not_use_for_signature_computation_;  // Default is false.
   };
 
   // Helper class to represent an Option, whose value is held in some class T.
@@ -1006,8 +1042,8 @@ class RewriteOptions {
     }
 
    private:
-    T value_;
     bool was_set_;
+    T value_;
 
     DISALLOW_COPY_AND_ASSIGN(OptionTemplateBase);
   };
@@ -1286,12 +1322,18 @@ class RewriteOptions {
   // multiple sets of rewriters.
   Option<bool> running_furious_;
 
+  Option<int> furious_ga_slot_;
+
   // Increase the percentage of hits to 10% (current max) that have
   // site speed tracking in Google Analytics.
   Option<bool> increase_speed_tracking_;
 
   // Enables experimental code in defer js.
   Option<bool> enable_defer_js_experimental_;
+
+  // Some introspective javascript is very brittle and may break if we
+  // make any changes.  Enables code to detect such cases and avoid renaming.
+  Option<bool> avoid_renaming_introspective_javascript_;
 
   // Number of first N images for which low res image is generated. Negative
   // values will bypass image index check.

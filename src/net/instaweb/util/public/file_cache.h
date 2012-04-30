@@ -36,7 +36,6 @@ class Timer;
 // Simple C++ implementation of file cache.
 class FileCache : public CacheInterface {
  public:
-
   struct CachePolicy {
     CachePolicy(Timer* timer, Hasher* hasher,
                 int64 clean_interval_ms, int64 target_size)
@@ -59,6 +58,8 @@ class FileCache : public CacheInterface {
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
   void set_worker(SlowWorker* worker) { worker_ = worker; }
+
+  virtual const char* Name() const { return "FileCache"; }
 
  private:
   class CacheCleanFunction;

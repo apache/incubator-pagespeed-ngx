@@ -59,7 +59,10 @@ class MockTimeCache::DelayCallback : public CacheInterface::Callback {
 };
 
 MockTimeCache::MockTimeCache(MockTimer* timer, CacheInterface* cache)
-    : timer_(timer), cache_(cache), delay_us_(0) {}
+    : timer_(timer),
+      cache_(cache),
+      delay_us_(0),
+      name_(StrCat("MockTimeCache using ", cache_->Name())) {}
 
 MockTimeCache::~MockTimeCache() {}
 
@@ -80,4 +83,3 @@ void MockTimeCache::Delete(const GoogleString& key) {
 }
 
 }  // namespace net_instaweb
-

@@ -61,7 +61,7 @@ TEST_F(MetaTagFilterTest, TestTags) {
   ConstStringStarVector values;
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
-  EXPECT_TRUE(StringCaseEqual(values[0]->c_str(), "text/html;  charset=UTF-8"));
+  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html;  charset=UTF-8"));
 }
 
 const char kMetaTagDoubleDoc[] =
@@ -77,7 +77,7 @@ TEST_F(MetaTagFilterTest, TestDoubleTags) {
   ConstStringStarVector values;
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
-  EXPECT_TRUE(StringCaseEqual(values[0]->c_str(), "text/html;  charset=UTF-8"));
+  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html;  charset=UTF-8"));
 }
 
 TEST_F(MetaTagFilterTest, TestEquivNoValue) {
@@ -98,7 +98,7 @@ TEST_F(MetaTagFilterTest, TestConflictingTags) {
   ConstStringStarVector values;
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
-  EXPECT_TRUE(StringCaseEqual(values[0]->c_str(), "text/html;  charset=UTF-8"));
+  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html;  charset=UTF-8"));
 }
 
 const char kMetaTagCharset[] =
@@ -115,7 +115,7 @@ TEST_F(MetaTagFilterTest, TestCharset) {
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
   const GoogleString* val = values[0];
-  EXPECT_TRUE(StringCaseEqual(val->c_str(), "text/html; charset=UTF-8"));
+  EXPECT_TRUE(StringCaseEqual(*val, "text/html; charset=UTF-8"));
 }
 
 const char kMetaTagCharsetOnly[] =
@@ -167,7 +167,7 @@ TEST_F(MetaTagFilterTest, TestNoQuotes) {
   ConstStringStarVector values;
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
-  EXPECT_TRUE(StringCaseEqual(values[0]->c_str(), "text/html; charset=UTF-8"));
+  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html; charset=UTF-8"));
 }
 
 }  // namespace

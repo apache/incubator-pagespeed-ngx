@@ -95,6 +95,9 @@ class CacheInterface {
   virtual void Put(const GoogleString& key, SharedString* value) = 0;
   virtual void Delete(const GoogleString& key) = 0;
 
+  // The name of this CacheInterface -- used for logging and debugging.
+  virtual const char* Name() const = 0;
+
  protected:
   // Invokes callback->ValidateCandidate() and callback->Done() as appropriate.
   void ValidateAndReportResult(const GoogleString& key, KeyState state,

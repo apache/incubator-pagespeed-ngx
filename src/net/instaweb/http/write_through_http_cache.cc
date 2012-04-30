@@ -164,10 +164,12 @@ WriteThroughHTTPCache::WriteThroughHTTPCache(CacheInterface* cache1,
                                              Timer* timer,
                                              Hasher* hasher,
                                              Statistics* statistics)
-    : HTTPCache(NULL, timer, hasher, statistics),
+    : HTTPCache(cache1, timer, hasher, statistics),
       cache1_(new HTTPCache(cache1, timer, hasher, statistics)),
       cache2_(new HTTPCache(cache2, timer, hasher, statistics)),
-      cache1_size_limit_(kUnlimited) {}
+      cache1_size_limit_(kUnlimited),
+      name_(StrCat("WriteThroughHTTPCache using backend 1 : ", cache1->Name(),
+                   " and backend 2 : ", cache2->Name())) {}
 
 WriteThroughHTTPCache::~WriteThroughHTTPCache() {
 }

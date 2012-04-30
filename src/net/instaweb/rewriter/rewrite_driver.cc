@@ -46,6 +46,7 @@
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
+#include "net/instaweb/rewriter/public/base_tag_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
@@ -58,6 +59,7 @@
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/detect_reflow_js_defer_filter.h"
+#include "net/instaweb/rewriter/public/deterministic_js_filter.h"
 #include "net/instaweb/rewriter/public/div_structure_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
@@ -719,15 +721,20 @@ void RewriteDriver::AddPreRenderFilters() {
     add_event_listener(new FlushHtmlFilter(this));
   }
 
-  if (rewrite_options->Enabled(RewriteOptions::kAddHead) ||
+  if (rewrite_options->Enabled(RewriteOptions::kAddBaseTag) ||
+      rewrite_options->Enabled(RewriteOptions::kAddHead) ||
       rewrite_options->Enabled(RewriteOptions::kCombineHeads) ||
       rewrite_options->Enabled(RewriteOptions::kMoveCssToHead) ||
       rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync) ||
-      rewrite_options->Enabled(RewriteOptions::kAddInstrumentation)) {
+      rewrite_options->Enabled(RewriteOptions::kAddInstrumentation) ||
+      rewrite_options->Enabled(RewriteOptions::kDeterministicJs)) {
     // Adds a filter that adds a 'head' section to html documents if
     // none found prior to the body.
     AddOwnedEarlyPreRenderFilter(new AddHeadFilter(
         this, rewrite_options->Enabled(RewriteOptions::kCombineHeads)));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kAddBaseTag)) {
+    AddOwnedEarlyPreRenderFilter(new BaseTagFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kStripScripts)) {
     // Experimental filter that blindly strips all scripts from a page.
@@ -887,6 +894,9 @@ void RewriteDriver::AddPostRenderFilters() {
     // enough bytes to be worth it after compression?  If we do it
     // everywhere it seems to give a small savings.
     AddOwnedPostRenderFilter(new HtmlAttributeQuoteRemoval(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kDeterministicJs)) {
+    AddOwnedPostRenderFilter(new DeterministicJsFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kAddInstrumentation)) {
     // Inject javascript to instrument loading-time.
