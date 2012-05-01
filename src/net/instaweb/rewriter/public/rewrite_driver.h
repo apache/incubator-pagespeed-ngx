@@ -331,6 +331,12 @@ class RewriteDriver : public HtmlParse {
   FileSystem* file_system() { return file_system_; }
   UrlAsyncFetcher* async_fetcher() { return url_async_fetcher_; }
 
+  // Set a fetcher that will be used by RewriteDriver for current request
+  // only (that is, until Clear()). RewriteDriver will take ownership of this
+  // fetcher, and will keep it around until Clear(), even if further calls
+  // to this method are made.
+  void SetSessionFetcher(UrlAsyncFetcher* f);
+
   // Creates a cache fetcher that uses the driver's fetcher and its options.
   // Note: this means the driver's fetcher must survive as long as this does.
   CacheUrlAsyncFetcher* CreateCacheFetcher();
@@ -1025,9 +1031,18 @@ class RewriteDriver : public HtmlParse {
   // These objects are provided on construction or later, and are
   // owned by the caller.
   FileSystem* file_system_;
-  UrlAsyncFetcher* url_async_fetcher_;
   ResourceManager* resource_manager_;
   Scheduler* scheduler_;
+  UrlAsyncFetcher* default_url_async_fetcher_;  // the fetcher we got at ctor
+
+  // This is the fetcher we use --- it's either the default_url_async_fetcher_,
+  // or whatever it was temporarily overridden to by SetSessionFetcher.
+  // This is either owned externally or via owned_url_async_fetchers_.
+  UrlAsyncFetcher* url_async_fetcher_;
+
+  // A list of all the UrlAsyncFetchers that we own, as set with
+  // SetSessionFetcher.
+  std::vector<UrlAsyncFetcher*> owned_url_async_fetchers_;
 
   AddInstrumentationFilter* add_instrumentation_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;

@@ -187,9 +187,10 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       possibly_quick_rewrites_(0),
       pending_async_events_(0),
       file_system_(file_system),
-      url_async_fetcher_(url_async_fetcher),
       resource_manager_(NULL),
       scheduler_(NULL),
+      default_url_async_fetcher_(url_async_fetcher),
+      url_async_fetcher_(default_url_async_fetcher_),
       add_instrumentation_filter_(NULL),
       scan_filter_(this),
       domain_rewriter_(NULL),
@@ -293,6 +294,11 @@ void RewriteDriver::Clear() {
   property_page_.reset(NULL);
   fully_rewrite_on_flush_ = false;
   num_inline_preview_images_ = 0;
+
+  // Reset to the default fetcher from any session fetcher
+  // (as the request is over).
+  url_async_fetcher_ = default_url_async_fetcher_;
+  STLDeleteElements(&owned_url_async_fetchers_);
 }
 
 // Must be called with rewrite_mutex() held.
@@ -997,6 +1003,11 @@ void RewriteDriver::SetWriter(Writer* writer) {
 
 Statistics* RewriteDriver::statistics() const {
   return (resource_manager_ == NULL) ? NULL : resource_manager_->statistics();
+}
+
+void RewriteDriver::SetSessionFetcher(UrlAsyncFetcher* f) {
+  url_async_fetcher_ = f;
+  owned_url_async_fetchers_.push_back(f);
 }
 
 CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {

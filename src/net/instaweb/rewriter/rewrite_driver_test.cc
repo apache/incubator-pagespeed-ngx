@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -824,6 +825,53 @@ TEST_F(RewriteDriverTest, ResponseHeadersAccess) {
   driver->Flush();
   rewrite_driver()->ParseText("</div>");
   driver->FinishParse();
+}
+
+TEST_F(RewriteDriverTest, SetSessionFetcherTest) {
+  AddFilter(RewriteOptions::kExtendCacheCss);
+
+  const char kFetcher1Css[] = "Fetcher #1";
+  const char kFetcher2Css[] = "Fetcher #2";
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kFetcher1Css, 100);
+
+  GoogleString url = Encode(kTestDomain, RewriteOptions::kCacheExtenderId,
+                            hasher()->Hash(kFetcher1Css), "a.css", "css");
+
+  // Fetch from default.
+  GoogleString output;
+  ResponseHeaders response_headers;
+  EXPECT_TRUE(FetchResourceUrl(url, &output, &response_headers));
+  EXPECT_STREQ(kFetcher1Css, output);
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // Load up a different file into a second fetcher.
+  // We misappropriate the response_headers from previous fetch for simplicity.
+  MockUrlFetcher mock2;
+  mock2.SetResponse(AbsolutifyUrl("a.css"), response_headers, kFetcher2Css);
+
+  // Switch over to new fetcher, making sure to set two of them to exercise
+  // memory management. Note the synchronous mock fetcher we still have to
+  // manage ourselves (as the RewriteDriver API is for async ones only).
+  RewriteDriver* driver = rewrite_driver();
+  driver->SetSessionFetcher(new FakeUrlAsyncFetcher(&mock2));
+  CountingUrlAsyncFetcher* counter =
+      new CountingUrlAsyncFetcher(driver->async_fetcher());
+  driver->SetSessionFetcher(counter);
+  EXPECT_EQ(counter, driver->async_fetcher());
+
+  // Note that FetchResourceUrl will call driver->Clear() so we cannot
+  // access 'counter' past this point.
+  lru_cache()->Clear();  // get rid of cached version of input
+  EXPECT_TRUE(FetchResourceUrl(url, &output, &response_headers));
+  EXPECT_STREQ(kFetcher2Css, output);
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // As FetchResourceUrl has cleared the driver, further fetcher should
+  // grab fetcher 1 version.
+  lru_cache()->Clear();  // get rid of cached version of input
+  EXPECT_TRUE(FetchResourceUrl(url, &output, &response_headers));
+  EXPECT_STREQ(kFetcher1Css, output);
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 }
 
 class RewriteDriverInhibitTest : public RewriteDriverTest {
