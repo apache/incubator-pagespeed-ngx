@@ -82,9 +82,8 @@ message InputInfo {
 message CachedResult {
   // Tags 1-7 are for internal use by output_resource.
 
-  // When this is false we have previously processed the URL and
-  // have marked down that we cannot do anything with it
-  // (by calling ResourceManager::WriteUnoptimizable).
+  // When this is false we have previously processed the URL and have marked
+  // down that we cannot do anything with it.
   optional bool optimizable = 1 [ default = true ];
 
   // The cached URL of this result. If this CachedResult was actually
@@ -152,6 +151,10 @@ message CachedResult {
   // low_resolution_inlined_data. It's set only if low_resolution_inlined_data
   // contains an image.
   optional int32 low_resolution_inlined_image_type = 17;
+
+  // When this is false we have previously processed the URL and marked down
+  // that the resource could potentially break if its url were changed.
+  optional bool url_relocatable = 18 [ default = true ];
 }
 
 // Contains the mapping of input URLs to output URLs.  In the general

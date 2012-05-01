@@ -302,7 +302,7 @@ setup_staging_dir :
 # Also copy the example tree, and the built Apache module
 staging_except_module: setup_staging_dir $(CONF_TEMPLATES)
 	cat common/pagespeed.load.template | \
-	    sed s/@@APACHE_MODULEDIR@@/$(APACHE_MODULES)/ | \
+	    sed s~@@APACHE_MODULEDIR@@~$(APACHE_MODULES)~ | \
 	    sed s/@@COMMENT_OUT_DEFLATE@@// > $(STAGING_DIR)/pagespeed.load
 	$(MODS_ENABLED_STAGING_COMMANDS)
 	cp -rp mod_pagespeed_example mod_pagespeed_test $(STAGING_DIR)

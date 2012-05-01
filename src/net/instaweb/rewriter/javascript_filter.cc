@@ -27,6 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -112,13 +113,6 @@ class JavascriptFilter::Context : public SingleRewriteContext {
                                input->url().c_str(),
                                library.name(), library.version());
     }
-    // TODO(jefftk): look at the Context and don't apply this to the ajax flow.
-    if (Driver()->options()->avoid_renaming_introspective_javascript() &&
-        JavascriptCodeBlock::UnsafeToRename(script)) {
-      message_handler->Message(kInfo, "Script %s is unsafe to replace.",
-                               input->url().c_str());
-      return kRewriteFailed;
-    }
     if (!code_block.ProfitableToRewrite()) {
       // Rewriting happened but wasn't useful; as we return false base class
       // will remember this for later so we don't attempt to rewrite twice.
@@ -131,6 +125,16 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     output->SetType(&kContentTypeJavascript);
     if (!WriteExternalScriptTo(input, code_block.Rewritten(), output)) {
       return kRewriteFailed;
+    }
+    if (Driver()->options()->avoid_renaming_introspective_javascript() &&
+        JavascriptCodeBlock::UnsafeToRename(script)) {
+      message_handler->Message(kInfo, "Script %s is unsafe to replace.",
+                               input->url().c_str());
+
+      // This is a 1-1 rewrite, so there should be exactly one output partition.
+      CHECK_EQ(1, num_output_partitions());
+      CachedResult* partition = output_partition(0);
+      partition->set_url_relocatable(false);
     }
     return kRewriteOk;
   }

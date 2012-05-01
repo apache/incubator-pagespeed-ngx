@@ -1437,7 +1437,12 @@ void RewriteContext::Propagate(bool render_slots) {
         if (render_slots_[slot_index]) {
           ResourcePtr resource(outputs_[p]);
           slots_[slot_index]->SetResource(resource);
-          if (render_slots) {
+          if (render_slots && partition->url_relocatable()) {
+            // This check for relocatable is potentially unsafe in that later
+            // filters might still try to relocate the resource.  We deal with
+            // this for the current case of javscript by having checks in each
+            // potential later filter (combine and inline) that duplicate the
+            // logic that went into setting url_relocatable on the partition.
             slots_[slot_index]->Render();
           }
         }
