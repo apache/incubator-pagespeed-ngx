@@ -375,7 +375,13 @@ bool AprFileSystem::Atime(const StringPiece& path,
   apr_finfo_t file_info;
   bool ret = Stat(path, &file_info, APR_FINFO_ATIME, handler);
   if (ret) {
-    *timestamp_sec = file_info.atime;
+    // file_info.atime is in microseconds (apr_time_t) despite the
+    // fact that the underlying Posix stat() call returns the data
+    // in seconds.
+    //
+    // http://apr.apache.org/docs/apr/1.4/
+    // group__apr__time.html#gadb4bde16055748190eae190c55aa02bb
+    *timestamp_sec = file_info.atime / Timer::kSecondUs;
   }
   return ret;
 }
@@ -385,7 +391,13 @@ bool AprFileSystem::Mtime(const StringPiece& path,
   apr_finfo_t file_info;
   bool ret = Stat(path, &file_info, APR_FINFO_MTIME, handler);
   if (ret) {
-    *timestamp_sec = file_info.mtime;
+    // file_info.mtime is in microseconds (apr_time_t) despite the
+    // fact that the underlying Posix stat() call returns the data
+    // in seconds.
+    //
+    // http://apr.apache.org/docs/apr/1.4/
+    // group__apr__time.html#gadb4bde16055748190eae190c55aa02bb
+    *timestamp_sec = file_info.mtime / Timer::kSecondUs;
   }
   return ret;
 }
@@ -428,13 +440,15 @@ BoolOrError AprFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
     // We got the lock, or the lock is ungettable.
     return result;
   }
-  int64 m_time_us;
-  if (!Mtime(lock_name, &m_time_us, handler)) {
+  int64 m_time_sec;
+  if (!Mtime(lock_name, &m_time_sec, handler)) {
     // We can't stat the lockfile.
     return BoolOrError();
   }
 
-  if (apr_time_now() - m_time_us < timeout_ms * 1000) {
+  int64 elapsed_since_lock_us = apr_time_now() - Timer::kSecondUs * m_time_sec;
+  int64 timeout_us = Timer::kMsUs * timeout_ms;
+  if (elapsed_since_lock_us < timeout_us) {
     // The lock is held and timeout hasn't elapsed.
     return BoolOrError(false);
   }
@@ -450,14 +464,14 @@ BoolOrError AprFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
     handler->Info(lock_str, 0,
                   "Breaking lock without reset! now-ctime=%d-%d > %d (sec)\n%s",
                   static_cast<int>(apr_time_now() / Timer::kSecondUs),
-                  static_cast<int>(m_time_us / Timer::kSecondUs),
+                  static_cast<int>(m_time_sec),
                   static_cast<int>(timeout_ms / Timer::kSecondMs),
                   StackTraceString().c_str());
     return BoolOrError(true);
   }
   handler->Info(lock_str, 0, "Broke lock! now-ctime=%d-%d > %d (sec)\n%s",
                 static_cast<int>(apr_time_now() / Timer::kSecondUs),
-                static_cast<int>(m_time_us / Timer::kSecondUs),
+                static_cast<int>(m_time_sec),
                 static_cast<int>(timeout_ms / Timer::kSecondMs),
                 StackTraceString().c_str());
   result = TryLock(lock_name, handler);

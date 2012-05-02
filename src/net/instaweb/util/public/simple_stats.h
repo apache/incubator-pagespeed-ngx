@@ -43,9 +43,7 @@ class SimpleStatsVariable : public Variable {
 };
 
 // Simple name/value pair statistics implementation.
-class SimpleStats : public StatisticsTemplate<SimpleStatsVariable,
-                                              NullHistogram,
-                                              FakeTimedVariable> {
+class SimpleStats : public ScalarStatisticsTemplate<SimpleStatsVariable> {
  public:
   static const int kNotFound;
 

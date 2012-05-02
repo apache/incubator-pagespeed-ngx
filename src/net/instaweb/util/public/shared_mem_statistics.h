@@ -157,8 +157,6 @@ class SharedMemHistogram : public Histogram {
   DISALLOW_COPY_AND_ASSIGN(SharedMemHistogram);
 };
 
-// NullStatisticsHistogram is for temporary util we have a shared memory
-// histogram implemented.
 class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
     SharedMemHistogram, FakeTimedVariable> {
  public:
@@ -181,6 +179,8 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
  protected:
   virtual SharedMemVariable* NewVariable(const StringPiece& name, int index);
   virtual SharedMemHistogram* NewHistogram(const StringPiece& name);
+  virtual FakeTimedVariable* NewTimedVariable(const StringPiece& name,
+                                              int index);
 
  private:
   GoogleString SegmentName() const;

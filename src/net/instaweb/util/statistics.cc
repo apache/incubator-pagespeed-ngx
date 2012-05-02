@@ -126,11 +126,7 @@ void Histogram::Render(const StringPiece& title,
 Statistics::~Statistics() {
 }
 
-Histogram* Statistics::NewHistogram(const StringPiece& name) {
-  return new NullHistogram();
-}
-
-TimedVariable* Statistics::NewTimedVariable(
+FakeTimedVariable* Statistics::NewFakeTimedVariable(
     const StringPiece& name, int index) {
   return new FakeTimedVariable(AddVariable(name));
 }

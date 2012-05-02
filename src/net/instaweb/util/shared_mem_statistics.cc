@@ -25,7 +25,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_mutex.h"
-#include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -417,10 +416,15 @@ SharedMemHistogram* SharedMemStatistics::NewHistogram(const StringPiece& name) {
   }
 }
 
+FakeTimedVariable* SharedMemStatistics::NewTimedVariable(
+    const StringPiece& name, int index) {
+  return NewFakeTimedVariable(name, index);
+}
+
 bool SharedMemStatistics::InitMutexes(size_t per_var,
                                       MessageHandler* message_handler) {
-  for (size_t i = 0; i < variables_.size(); ++i) {
-    SharedMemVariable* var = variables_[i];
+  for (size_t i = 0; i < variables_size(); ++i) {
+    SharedMemVariable* var = variables(i);
     if (!segment_->InitializeSharedMutex(i * per_var, message_handler)) {
       message_handler->Message(
           kError, "Unable to create mutex for statistics variable %s",
@@ -428,16 +432,15 @@ bool SharedMemStatistics::InitMutexes(size_t per_var,
       return false;
     }
   }
-  size_t pos = variables_.size() * per_var;
-  for (size_t i = 0; i < histograms_.size();) {
+  size_t pos = variables_size() * per_var;
+  for (size_t i = 0; i < histograms_size();) {
     if (!segment_->InitializeSharedMutex(pos, message_handler)) {
       message_handler->Message(
           kError, "Unable to create mutex for statistics histogram %s",
-          histogram_names_[i].c_str());
+          histogram_names(i).c_str());
       return false;
     }
-    SharedMemHistogram* hist = static_cast<SharedMemHistogram*>
-         (histograms_[i]);
+    SharedMemHistogram* hist = histograms(i);
     pos += shm_runtime_->SharedMutexSize() + hist->AllocationSize();
     i++;
   }
@@ -451,10 +454,9 @@ void SharedMemStatistics::Init(bool parent,
   // Compute size of shared memory
   size_t per_var = shm_runtime_->SharedMutexSize() +
                    sizeof(int64);  // NOLINT(runtime/sizeof)
-  size_t total = variables_.size() * per_var;
-  for (size_t i = 0; i < histograms_.size(); ++i) {
-    SharedMemHistogram* hist = static_cast<SharedMemHistogram*>
-       (histograms_[i]);
+  size_t total = variables_size() * per_var;
+  for (size_t i = 0; i < histograms_size(); ++i) {
+    SharedMemHistogram* hist = histograms(i);
     total += shm_runtime_->SharedMutexSize() + hist->AllocationSize();
   }
   bool ok = true;
@@ -489,18 +491,17 @@ void SharedMemStatistics::Init(bool parent,
   }
 
   // Now make the variable objects actually point to the right things.
-  for (size_t i = 0; i < variables_.size(); ++i) {
+  for (size_t i = 0; i < variables_size(); ++i) {
     if (ok) {
-      variables_[i]->AttachTo(segment_.get(), i * per_var, message_handler);
+      variables(i)->AttachTo(segment_.get(), i * per_var, message_handler);
     } else {
-      variables_[i]->Reset();
+      variables(i)->Reset();
     }
   }
   // Initialize Histogram buffers.
-  size_t pos = variables_.size() * per_var;
-  for (size_t i = 0; i < histograms_.size();) {
-    SharedMemHistogram* hist = static_cast<SharedMemHistogram*>
-        (histograms_[i]);
+  size_t pos = variables_size() * per_var;
+  for (size_t i = 0; i < histograms_size();) {
+    SharedMemHistogram* hist = histograms(i);
     if (ok) {
       hist->AttachTo(segment_.get(), pos, message_handler);
       if (parent) hist->Init();

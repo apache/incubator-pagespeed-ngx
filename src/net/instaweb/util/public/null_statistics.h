@@ -39,9 +39,7 @@ class NullStatisticsVariable : public Variable {
 };
 
 // Simple name/value pair statistics implementation.
-class NullStatistics : public StatisticsTemplate<NullStatisticsVariable,
-                                                 NullHistogram,
-                                                 FakeTimedVariable> {
+class NullStatistics : public ScalarStatisticsTemplate<NullStatisticsVariable> {
  public:
   static const int kNotFound;
 

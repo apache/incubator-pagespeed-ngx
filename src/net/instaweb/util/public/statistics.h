@@ -217,7 +217,7 @@ class FakeTimedVariable : public TimedVariable {
   Variable* var_;
 };
 
-// Helps build a statistics that can be exported as a CSV file.
+// Base class for implementations of monitoring statistics.
 class Statistics {
  public:
   virtual ~Statistics();
@@ -231,7 +231,7 @@ class Statistics {
   virtual Variable* FindVariable(const StringPiece& name) const = 0;
 
   // Find a variable from a name, aborting if not found.
-  virtual Variable* GetVariable(const StringPiece& name) const {
+  Variable* GetVariable(const StringPiece& name) const {
     Variable* var = FindVariable(name);
     CHECK(var != NULL) << "Variable not found: " << name;
     return var;
@@ -244,7 +244,7 @@ class Statistics {
   // Find a histogram from a name, returning NULL if not found.
   virtual Histogram* FindHistogram(const StringPiece& name) const = 0;
   // Find a histogram from a name, aborting if not found.
-  virtual Histogram* GetHistogram(const StringPiece& name) const {
+  Histogram* GetHistogram(const StringPiece& name) const {
     Histogram* hist = FindHistogram(name);
     CHECK(hist != NULL) << "Histogram not found: " << name;
     return hist;
@@ -260,16 +260,16 @@ class Statistics {
   virtual TimedVariable* FindTimedVariable(
       const StringPiece& name) const = 0;
   // Find a TimedVariable from a name, aborting if not found.
-  virtual TimedVariable* GetTimedVariable(
+  TimedVariable* GetTimedVariable(
       const StringPiece& name) const {
     TimedVariable* stat = FindTimedVariable(name);
     CHECK(stat != NULL) << "TimedVariable not found: " << name;
     return stat;
   }
   // Return the names of all the histograms for render.
-  virtual StringVector& HistogramNames() = 0;
+  virtual const StringVector& HistogramNames() = 0;
   // Return the map of groupnames and names of all timedvariables for render.
-  virtual std::map<GoogleString, StringVector>& TimedVariableMap() = 0;
+  virtual const std::map<GoogleString, StringVector>& TimedVariableMap() = 0;
   // Dump the variable-values to a writer.
   virtual void Dump(Writer* writer, MessageHandler* handler) = 0;
   // Export statistics to a writer. Statistics in a group are exported in one
@@ -283,9 +283,8 @@ class Statistics {
   virtual void Clear() = 0;
 
  protected:
-  virtual Histogram* NewHistogram(const StringPiece& name);
-  virtual TimedVariable* NewTimedVariable(const StringPiece& name, int index);
-  virtual Variable* NewVariable(const StringPiece& name, int index) = 0;
+  // A helper for subclasses that do not fully implement timed variables.
+  FakeTimedVariable* NewFakeTimedVariable(const StringPiece& name, int index);
 };
 
 }  // namespace net_instaweb
