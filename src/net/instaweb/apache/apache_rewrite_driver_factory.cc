@@ -453,6 +453,7 @@ Statistics* ApacheRewriteDriverFactory::MakeSharedMemStatistics() {
 void ApacheRewriteDriverFactory::Initialize(Statistics* statistics) {
   RewriteDriverFactory::Initialize(statistics);
   SerfUrlAsyncFetcher::Initialize(statistics);
+  ApacheResourceManager::Initialize(statistics);
 }
 
 void ApacheRewriteDriverFactory::AddHtmlRewriteTimeUs(int64 rewrite_time_us) {

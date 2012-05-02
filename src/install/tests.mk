@@ -102,8 +102,9 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	sleep 2
 	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER) \
 	                                   $(APACHE_HTTPS_SERVER)
-	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
-	                                          $(APACHE_HTTPS_SERVER)
+	CACHE_FLUSH_TEST=on APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	    $(INSTALL_DATA_DIR)/apache_system_test.sh \
+	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
 	grep ModPagespeedStatistics $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_stop

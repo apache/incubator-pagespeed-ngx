@@ -194,6 +194,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       add_instrumentation_filter_(NULL),
       scan_filter_(this),
       domain_rewriter_(NULL),
+      has_custom_options_(false),
       html_worker_(NULL),
       rewrite_worker_(NULL),
       low_priority_rewrite_worker_(NULL),
@@ -696,9 +697,7 @@ bool RewriteDriver::IsMobileUserAgent() const {
 void RewriteDriver::AddFilters() {
   CHECK(html_writer_filter_ == NULL);
   CHECK(!filters_added_);
-  if (has_custom_options()) {
-    resource_manager_->ComputeSignature(custom_options_.get());
-  }
+  resource_manager_->ComputeSignature(options_.get());
   filters_added_ = true;
 
   AddPreRenderFilters();

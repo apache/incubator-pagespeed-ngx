@@ -24,8 +24,19 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+
+namespace {
+
+// TODO(jmarantz): add a configuration that allows turning off cache.flush
+// checking or possibly customizes the filename.
+const int64 kDefaultCacheFlushIntervalSec = 5;
+
+const char kCacheFlushCount[] = "cache_flush_count";
+
+}  // namespace
 
 namespace net_instaweb {
 
@@ -44,7 +55,11 @@ ApacheResourceManager::ApacheResourceManager(
       hostname_identifier_(StrCat(server->server_hostname, ":",
                                   IntegerToString(server->port))),
       initialized_(false),
-      subresource_fetcher_(NULL) {
+      subresource_fetcher_(NULL),
+      cache_flush_mutex_(thread_system()->NewMutex()),
+      last_cache_flush_check_sec_(0),
+      cache_flush_check_interval_sec_(kDefaultCacheFlushIntervalSec),
+      cache_flush_count_(NULL) {  // Lazy-initialized under mutex.
   config()->set_description(hostname_identifier_);
   // We may need the message handler for error messages very early, before
   // we get to InitResourceManager in ChildInit().
@@ -52,6 +67,10 @@ ApacheResourceManager::ApacheResourceManager(
 }
 
 ApacheResourceManager::~ApacheResourceManager() {
+}
+
+void ApacheResourceManager::Initialize(Statistics* statistics) {
+  statistics->AddVariable(kCacheFlushCount);
 }
 
 bool ApacheResourceManager::InitFileCachePath() {
@@ -87,6 +106,13 @@ void ApacheResourceManager::ChildInit() {
     if (!config()->slurping_enabled_read_only()) {
       subresource_fetcher_ = fetcher;
     }
+
+    // To allow Flush to come in while multiple threads might be
+    // referencing the signature, we must be able to mutate the
+    // timestamp and signature atomically.  RewriteOptions supports
+    // an optional read/writer lock for this purpose.
+    global_options()->set_cache_invalidation_timestamp_mutex(
+        thread_system()->NewRWLock());
     apache_factory_->InitResourceManager(this);
   }
 }
@@ -94,6 +120,44 @@ void ApacheResourceManager::ChildInit() {
 bool ApacheResourceManager::PoolDestroyed() {
   ShutDownDrivers();
   return apache_factory_->PoolDestroyed(this);
+}
+
+// TODO(jmarantz): implement an HTTP request in instaweb_handler.cc that
+// writes the cache-flush file, so we can allow cache flush via:
+// http://yourhost.com:port/flushcache.  We still have to write the file
+// so that all child processes see the flush, and so the flush persists
+// across server restart.
+void ApacheResourceManager::PollFilesystemForCacheFlush() {
+  if (cache_flush_check_interval_sec_ > 0) {
+    int64 now_sec = timer()->NowMs() / Timer::kSecondMs;
+    bool check_cache_file = false;
+    {
+      ScopedMutex lock(cache_flush_mutex_.get());
+      if (now_sec >= (last_cache_flush_check_sec_ +
+                      cache_flush_check_interval_sec_)) {
+        last_cache_flush_check_sec_ = now_sec;
+        check_cache_file = true;
+      }
+      if (cache_flush_count_ == NULL) {
+        cache_flush_count_ = statistics()->AddVariable(kCacheFlushCount);
+      }
+    }
+
+    if (check_cache_file) {
+      GoogleString cache_flush_file =
+          StrCat(config()->file_cache_path(), "/cache.flush");
+      int64 cache_flush_timestamp_sec;
+      NullMessageHandler null_handler;
+      if (file_system()->Mtime(cache_flush_file, &cache_flush_timestamp_sec,
+                               &null_handler)) {
+        int64 timestamp_ms = cache_flush_timestamp_sec * Timer::kSecondMs;
+        if (global_options()->UpdateCacheInvalidationTimestampMs(
+                timestamp_ms, lock_hasher())) {
+          cache_flush_count_->Add(1);
+        }
+      }
+    }
+  }
 }
 
 }  // namespace net_instaweb

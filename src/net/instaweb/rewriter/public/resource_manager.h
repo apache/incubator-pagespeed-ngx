@@ -251,13 +251,17 @@ class ResourceManager {
   // url could not be parsed; in this case the request should be declined.
   bool HandleBeacon(const StringPiece& unparsed_url);
 
+  // Returns a RewriteDriver* suitable for decoding pagespeed URLs.  This
+  // driver does not necessarily have up-to-date Options, especially in the
+  // case of a cache flush.  However, this doesn't affect its ability to
+  // correctly decode options.
   RewriteDriver* decoding_driver() const { return decoding_driver_.get(); }
 
-  // Gets the options that are globally set on this resource manager.
-  //
-  // Note this is overridden by ApacheResourceManager which has
-  // apache-specific options.  This is thread-unsafe in its first
-  // call, when it lazily-initializes a RewriteOptions scoped_ptr.
+  // Returns a pointer to the master global_options.  These are not used
+  // directly in RewriteDrivers, but are Cloned into the drivers as they
+  // are created.  We generally do not expect global_options() to change once
+  // the system is processing requests, except in Apache when someone does
+  // a cache-flush by touching a file "cache.flush" in the file-cache directory.
   RewriteOptions* global_options();
 
   // Makes a new, empty set of RewriteOptions.
@@ -278,10 +282,15 @@ class ResourceManager {
   // but you can generate a RewriteDriver* for each thread.  The
   // returned drivers must be explicitly deleted by the caller.
   //
-  // Filters allocated using this mechanism have not yet frozen their
-  // filters, and so callers may explicitly enable individual filters
-  // on the driver, and then call AddFilters to freeze them.
-  RewriteDriver* NewUnmanagedRewriteDriver();
+  // RewriteDrivers allocated using this mechanism have not yet frozen
+  // their filters, and so callers may explicitly enable individual
+  // filters on the driver -- beyond those indicated in the options.
+  // After all extra filters are added, AddFilters must be called to
+  // freeze them and instantiate the filter-chain.
+  //
+  // Takes ownership of 'options'.
+  RewriteDriver* NewUnmanagedRewriteDriver(
+      bool is_custom, RewriteOptions* options);
 
   // Like NewUnmanagedRewriteDriver, but uses supplied options instead
   // of RewriteDriver's global_options().

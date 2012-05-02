@@ -446,10 +446,11 @@ void ProxyInterface::ProxyRequestCallback(
     // If we don't already have custom options, and the global options
     // say we're running furious, then clone them into custom_options so we
     // can manipulate custom options without affecting the global options.
-    const RewriteOptions* global_options =
-        resource_manager_->global_options();
-    if (options == NULL && global_options->running_furious()) {
-      options = global_options->Clone();
+    if (options == NULL) {
+      RewriteOptions* global_options = resource_manager_->global_options();
+      if (global_options->running_furious()) {
+        options = global_options->Clone();
+      }
     }
     const char* user_agent = async_fetch->request_headers()->Lookup1(
         HttpAttributes::kUserAgent);

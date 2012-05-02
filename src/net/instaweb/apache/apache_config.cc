@@ -67,23 +67,30 @@ void ApacheConfig::Init() {
 
   SortOptions();
 
-  fetcher_proxy_.DoNotUseForSignatureComputation();
-  file_cache_path_.DoNotUseForSignatureComputation();
-  filename_prefix_.DoNotUseForSignatureComputation();
-  slurp_directory_.DoNotUseForSignatureComputation();
-  referer_statistics_output_level_.DoNotUseForSignatureComputation();
-  collect_referer_statistics_.DoNotUseForSignatureComputation();
-  hash_referer_statistics_.DoNotUseForSignatureComputation();
-  statistics_enabled_.DoNotUseForSignatureComputation();
-  test_proxy_.DoNotUseForSignatureComputation();
-  use_shared_mem_locking_.DoNotUseForSignatureComputation();
+  // Leave this out of the signature as (a) we don't actually change this
+  // spontaneously, and (b) it's useful to keep the metadata cache between
+  // slurping read-only and slurp read/write.
   slurp_read_only_.DoNotUseForSignatureComputation();
-  fetcher_time_out_ms_.DoNotUseForSignatureComputation();
-  file_cache_clean_interval_ms_.DoNotUseForSignatureComputation();
-  file_cache_clean_size_kb_.DoNotUseForSignatureComputation();
-  lru_cache_byte_limit_.DoNotUseForSignatureComputation();
-  lru_cache_kb_per_process_.DoNotUseForSignatureComputation();
-  slurp_flush_limit_.DoNotUseForSignatureComputation();
+
+  // See the comment in RewriteOptions::RewriteOptions about leaving
+  // the Signature() fairly comprehensive for now.
+  //
+  // fetcher_proxy_.DoNotUseForSignatureComputation();
+  // file_cache_path_.DoNotUseForSignatureComputation();
+  // filename_prefix_.DoNotUseForSignatureComputation();
+  // slurp_directory_.DoNotUseForSignatureComputation();
+  // referer_statistics_output_level_.DoNotUseForSignatureComputation();
+  // collect_referer_statistics_.DoNotUseForSignatureComputation();
+  // hash_referer_statistics_.DoNotUseForSignatureComputation();
+  // statistics_enabled_.DoNotUseForSignatureComputation();
+  // test_proxy_.DoNotUseForSignatureComputation();
+  // use_shared_mem_locking_.DoNotUseForSignatureComputation();
+  // fetcher_time_out_ms_.DoNotUseForSignatureComputation();
+  // file_cache_clean_interval_ms_.DoNotUseForSignatureComputation();
+  // file_cache_clean_size_kb_.DoNotUseForSignatureComputation();
+  // lru_cache_byte_limit_.DoNotUseForSignatureComputation();
+  // lru_cache_kb_per_process_.DoNotUseForSignatureComputation();
+  // slurp_flush_limit_.DoNotUseForSignatureComputation();
 }
 
 bool ApacheConfig::ParseRefererStatisticsOutputLevel(

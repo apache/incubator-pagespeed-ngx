@@ -54,6 +54,9 @@ class ThreadSystem {
     DISALLOW_COPY_AND_ASSIGN(CondvarCapableMutex);
   };
 
+  // Interface for a Mutex with ReaderLocks().  It is possible for multiple
+  // Readers to simultaneously hold an RWLock.  A reader cannot hold the
+  // lock at the same time as a Writer, nor can two Writers hold the lock.
   class RWLock : public AbstractMutex {
    public:
     RWLock() {}
@@ -73,6 +76,36 @@ class ThreadSystem {
 
    private:
     DISALLOW_COPY_AND_ASSIGN(RWLock);
+  };
+
+  // Scoped reader-lock for using RWLock*.  Facilitates grabbing a
+  // reader-lock on entry to a scope, and releasing it on exit.
+  // Similar to ScopedMutex found in AbstractMutex, except that
+  // multiple ScopedReaders can be simultaneously instantiated on
+  // the same RWLock*.
+  class ScopedReader {
+   public:
+    explicit ScopedReader(RWLock* lock) : lock_(lock) {
+      lock_->ReaderLock();
+    }
+
+    void Release() {
+      // We allow Release called explicitly, before the ScopedReader goes
+      // out of scope and is destructed, calling Release again.
+      if (lock_ != NULL) {
+        lock_->ReaderUnlock();
+        lock_ = NULL;
+      }
+    }
+
+    ~ScopedReader() {
+      Release();
+    }
+
+   private:
+    RWLock* lock_;
+
+    DISALLOW_COPY_AND_ASSIGN(ScopedReader);
   };
 
   enum ThreadFlags {
@@ -123,6 +156,10 @@ class ThreadSystem::ThreadImpl {
  private:
   DISALLOW_COPY_AND_ASSIGN(ThreadImpl);
 };
+
+// Catch bug where variable name is omitted with ScopedReader, e.g.
+// ThreadSystem::ScopedReader(&lock);
+#define ScopedReader(x) COMPILE_ASSERT(0, mutex_lock_decl_missing_var_name)
 
 }  // namespace net_instaweb
 

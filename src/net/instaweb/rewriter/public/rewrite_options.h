@@ -24,11 +24,12 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/wildcard_group.h"
 
 namespace net_instaweb {
@@ -550,13 +551,37 @@ class RewriteOptions {
     set_option(x, &min_resource_cache_time_to_rewrite_ms_);
   }
 
-  // Cache invalidation timestamp is in milliseconds since 1970.
-  void set_cache_invalidation_timestamp(int64 x) {
-    set_option(x, &cache_invalidation_timestamp_);
+  // Supply optional mutex for setting a global cache invalidation
+  // timestamp.  Ownership of 'lock' is transfered to this.
+  void set_cache_invalidation_timestamp_mutex(ThreadSystem::RWLock* lock) {
+    cache_invalidation_timestamp_.set_mutex(lock);
   }
+
+  // Cache invalidation timestamp is in milliseconds since 1970.
   int64 cache_invalidation_timestamp() const {
+    ThreadSystem::ScopedReader lock(cache_invalidation_timestamp_.mutex());
     return cache_invalidation_timestamp_.value();
   }
+
+  // Sets the cache invalidation timestamp -- in milliseconds since
+  // 1970.  This function is meant to be called on a RewriteOptions*
+  // immediately after instantiation.  It cannot be used to mutate the
+  // value of one already in use in a RewriteDriver.
+  //
+  // See also UpdateCacheInvalidationTimestampMs.
+  void set_cache_invalidation_timestamp(int64 timestamp_ms) {
+    cache_invalidation_timestamp_.mutex()->DCheckLocked();
+    set_option(timestamp_ms, &cache_invalidation_timestamp_);
+  }
+
+  // Updates the cache invalidation timestamp of a mutexed RewriteOptions
+  // instance.  Currently this only occurs in Apache global_options,
+  // and is used for purging cache by touching a file in the cache directory.
+  //
+  // This function ignores requests to move the invalidation timestamp
+  // backwards.  It returns true if the timestamp was actually changed.
+  bool UpdateCacheInvalidationTimestampMs(int64 timestamp_ms,
+                                          const Hasher* hasher);
 
   // How much inactivity of HTML input will result in PSA introducing a flush.
   // Values <= 0 disable the feature.
@@ -938,6 +963,14 @@ class RewriteOptions {
   // Returns the computed signature.
   const GoogleString& signature() const {
     DCHECK(frozen_);
+    // We take a reader-lock because we may be looking at the
+    // global_options signature concurrent with updating it if someone
+    // flushes cache.  Note that the default mutex implementation is
+    // NullRWLock, which isn't actually a mutex.  Only (currently) for the
+    // Apache global_options() object do we create a real mutex.  We
+    // don't expect contention here because we take a reader-lock and the
+    // only time we Write is if someone flushes the cache.
+    ThreadSystem::ScopedReader lock(cache_invalidation_timestamp_.mutex());
     return signature_;
   }
 
@@ -1081,10 +1114,65 @@ class RewriteOptions {
   // Like Option<int64>, but merge by taking the Max of the two values.  Note
   // that this could be templatized on type in which case we'd need to inline
   // the implementation of Merge.
-  class OptionInt64MergeWithMax : public Option<int64> {
+  //
+  // This class has an optional mutex for allowing Apache to flush cache by
+  // mutating its global_options().  Note that global_options() is never used
+  // directly in a rewrite_driver, but is cloned with this optional Mutex held.
+  //
+  // The "optional" mutex is always present, but it defaults to a
+  // NullRWLock, which has empty implementations of all
+  // locking/unlocking functions.  Only in Apache (currently) do we
+  // override that with a real RWLock from the thread system.
+  class MutexedOptionInt64MergeWithMax : public Option<int64> {
    public:
-    virtual ~OptionInt64MergeWithMax();
+    MutexedOptionInt64MergeWithMax();
+    virtual ~MutexedOptionInt64MergeWithMax();
+
+    // Merges src_base into this by taking the maximum of the two values.
+    //
+    // We expect ot have exclusive access to 'this' and don't need to lock it,
+    // but we use locked access to src_base->value().
     virtual void Merge(const OptionBase* src_base);
+
+    // The value() must only be taken when the mutex is held.  This is
+    // only called by RewriteOptions::UpdateCacheInvalidationTimestampMs
+    // and MutexedOptionInt64MergeWithMax::Merge, which are holding
+    // locks when calling value().
+    //
+    // Note that we don't require or take the lock for set(), so we
+    // don't override set.  When updating or merging, we already have
+    // a lock and can't take it again.  When writing the invalidation
+    // timestamp at initial configuration time, we don't need the
+    // lock.
+    void set(const int64& value) {
+      mutex_->DCheckReaderLocked();
+      Option<int64>::set(value);
+    }
+
+    // Returns the mutex for this object.  When this class is
+    // constructed it gets a NullRWLock which doesn't actually lock
+    // anything.  This is because we generally initialize
+    // RewriteOptions from only one thread, and thereafter do only
+    // reads.  However, one exception is the cache-invalidation
+    // timestamp in the global_options for Apache ResourceManagers,
+    // which can be written from any thread handling a request,
+    // particularly with the Worker MPM.  So we install a real RWLock*
+    // for Apache's global_options.
+    //
+    // Also note that this mutex, when installed, is also used to
+    // lock access to RewriteOptions::signature(), which depends on
+    // the cache invalidation timestamp.
+    ThreadSystem::RWLock* mutex() const { return mutex_.get(); }
+
+    // Takes ownership of mutex.  Note that by default, mutex()
+    // has a NullRWLock.  Only by calling set_mutex do we add locking
+    // semantics for the invalidation timestamp & signature.  If
+    // we allow other settings to be spontaneously changed we will
+    // have to add further locking.
+    void set_mutex(ThreadSystem::RWLock* lock) { mutex_.reset(lock); }
+
+   private:
+    scoped_ptr<ThreadSystem::RWLock> mutex_;
   };
 
   // When adding an option, we take the default_value by value, not
@@ -1248,7 +1336,7 @@ class RewriteOptions {
   // we don't really care we'll try to keep the code structured better.
   Option<RewriteLevel> level_;
 
-  OptionInt64MergeWithMax cache_invalidation_timestamp_;
+  MutexedOptionInt64MergeWithMax cache_invalidation_timestamp_;
 
   Option<int64> css_inline_max_bytes_;
   Option<int64> image_inline_max_bytes_;

@@ -28,7 +28,6 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -71,6 +70,7 @@ class RewriteContext;
 class RewriteFilter;
 class ScopedMutex;
 class Statistics;
+class UrlAsyncFetcher;
 class UrlLeftTrimFilter;
 class UserAgentMatcher;
 class Writer;
@@ -350,17 +350,20 @@ class RewriteDriver : public HtmlParse {
 
   // Takes ownership of 'options'.
   void set_custom_options(RewriteOptions* options) {
-    custom_options_.reset(options);
+    set_options(true, options);
+  }
+
+  // Takes ownership of 'options'.
+  void set_options(bool is_custom, RewriteOptions* options) {
+    has_custom_options_ = is_custom;
+    options_.reset(options);
   }
 
   // Determines whether this RewriteDriver was built with custom options.
-  bool has_custom_options() const { return (custom_options_.get() != NULL); }
+  bool has_custom_options() const { return has_custom_options_; }
 
   // Return the options used for this RewriteDriver.
-  const RewriteOptions* options() const {
-    return (has_custom_options() ? custom_options_.get()
-            : resource_manager_->global_options());
-  }
+  const RewriteOptions* options() const { return options_.get(); }
 
   // Override HtmlParse's StartParseId to propagate any required options.
   virtual bool StartParseId(const StringPiece& url, const StringPiece& id,
@@ -1062,7 +1065,8 @@ class RewriteDriver : public HtmlParse {
 
   HtmlResourceSlotSet slots_;
 
-  scoped_ptr<RewriteOptions> custom_options_;
+  scoped_ptr<RewriteOptions> options_;
+  bool has_custom_options_;
 
   // The default resource encoder
   UrlSegmentEncoder default_encoder_;

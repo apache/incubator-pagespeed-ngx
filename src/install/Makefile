@@ -267,6 +267,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s!@@APACHE_DOMAIN@@!$(APACHE_DOMAIN)!g" \
 	    -e "s!@@APACHE_HTTPS_DOMAIN@@!$(APACHE_HTTPS_DOMAIN)!g" \
 	    -e "s!@@APACHE_MODULES@@!$(APACHE_MODULES)!g" \
+	    -e "s!@@APACHE_SECONDARY_PORT@@!$(APACHE_SECONDARY_PORT)!g" \
 	    -e "s!@@MODPAGESPEED_CACHE_ROOT@@!$(MOD_PAGESPEED_FILE_ROOT)!g" \
 	    -e "s@# ModPagespeedSlurpDirectory ...@$(APACHE_SLURP_DIR_COMMAND)@g" \
 	    -e "s@# ModPagespeedSlurpReadOnly on@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
@@ -361,7 +362,7 @@ restart : staging
 # Tests that the installed mod_pagespeed server is working.
 test :
 	./system_test.sh localhost
-	./apache_system_test.sh localhost
+	CACHE_FLUSH_TEST=on ./apache_system_test.sh localhost
 
 # Now hook in the full integration test suite. It needs to be run as root.
 apache_install_conf:

@@ -347,55 +347,6 @@ check $WGET_DUMP $TEST_ROOT/redirect/php/ > $OUTDIR/redirect_php.html
 check \
   [ `grep -ce "href=\"/mod_pagespeed_test/" $OUTDIR/redirect_php.html` = 2 ];
 
-# connection_refused.html references modpagespeed.com:1023/someimage.png.
-# mod_pagespeed will attempt to connect to that host and port to fetch the
-# input resource using serf.  We expect the connection to be refused.  Relies
-# on "ModPagespeedDomain modpagespeed.com:1023" in debug.conf.template.
-# Regrettably, this test requires invasively examining the pagespeed cache to
-# determine whether the connection will actually be attempted.
-echo TEST: Connection refused handling
-# Monitor the Apache log starting now.  tail -F will catch log rotations.
-SERF_REFUSED_PATH=/tmp/instaweb_apache_serf_refused
-tail --sleep-interval=0.1 -F $APACHE_LOG > $SERF_REFUSED_PATH &
-TAIL_PID=$!
-# If the fact that someimage.png couldn't be found is current in on-disk cache,
-# the serf fetch will not be attempted, so we are not expecting an error.
-CACHE_PATH="$PAGESPEED_ROOT/cache/http,3A/,2Fmodpagespeed.com,3A1023/someimage.png,"
-if [ -f $CACHE_PATH  ]; then
-  # It's in cache.  Check for currency.
-  AGE=$[$(date +%s) - $(stat -c %X $CACHE_PATH)]
-  echo age of cache for someimage.png is $AGE seconds
-  if [ $AGE -lt 300 ]; then
-    echo someimage.png cache is valid
-    EXPECTED_ERRS=0;
-  else
-    echo someimage.png cache is invalid
-    EXPECTED_ERRS=1;
-  fi;
-else
-  echo someimage.png is not in cache
-  EXPECTED_ERRS=1;
-fi;
-# Actually kick off the request.
-echo $WGET_DUMP $TEST_ROOT/connection_refused.html
-check $WGET_DUMP $TEST_ROOT/connection_refused.html > /dev/null
-# If we are spewing errors, this gives time to spew lots of them.
-sleep 1
-# Wait up to 10 seconds for the background fetch of someimage.png to fail.
-for i in {1..100}; do
-  ERRS=$(grep -c "Serf status 111" $SERF_REFUSED_PATH)
-  if [ $ERRS -ge $EXPECTED_ERRS ]; then
-    break;
-  fi;
-  /bin/echo -n "."
-  sleep 0.1
-done;
-/bin/echo "."
-# Kill the log monitor silently.
-kill $TAIL_PID
-wait $TAIL_PID 2> /dev/null
-check [ $ERRS -eq $EXPECTED_ERRS ]
-
 echo TEST: ModPagespeedLoadFromFile
 URL=$TEST_ROOT/load_from_file/index.html?ModPagespeedFilters=inline_css
 fetch_until $URL 'grep -c blue' 1
@@ -486,6 +437,112 @@ URL="$TEST_ROOT/avoid_renaming_introspective_javascript__off.html?\
 ModPagespeedFilters=testing,core"
 fetch_until $URL 'grep -c src=\"normal.js\"' 0
 check [ $($WGET_DUMP $URL | grep -c src=\"introspection.js\") = 0 ]
+
+if [ "$CACHE_FLUSH_TEST" == "on" ]; then
+  echo TEST: Cache flushing works by touching cache.flush in cache directory.
+
+  echo Clear out our existing state before we begin the test.
+  echo $SUDO touch $PAGESPEED_ROOT/cache/cache.flush
+  $SUDO touch $PAGESPEED_ROOT/cache/cache.flush
+  echo $SUDO touch $PAGESPEED_ROOT/secondary_cache/cache.flush
+  $SUDO touch $PAGESPEED_ROOT/secondary_cache/cache.flush
+
+  URL_PATH=cache_flush_test.html?ModPagespeedFilters=inline_css
+  URL=$TEST_ROOT/$URL_PATH
+  CSS_FILE=$APACHE_HTDOCS/mod_pagespeed_test/update.css
+  TMP_CSS_FILE=/tmp/update.css.$$
+
+  # First, write 'blue' into the css file and make sure it gets inlined into
+  # the html.
+  echo echo ".class myclass { color: blue; }" ">" $CSS_FILE
+  echo ".class myclass { color: blue; }" >$TMP_CSS_FILE
+  $SUDO cp $TMP_CSS_FILE $CSS_FILE
+  fetch_until $URL 'grep -c blue' 1
+
+  # Also do the same experiment using a different VirtualHost.  It points
+  # to the same htdocs, but uses a separate cache directory.
+  SECONDARY_HOSTNAME=`echo $HOSTNAME | sed -e s/8080/$APACHE_SECONDARY_PORT/g`
+  SECONDARY_TEST_ROOT=http://$SECONDARY_HOSTNAME/mod_pagespeed_test
+  SECONDARY_URL=http://$SECONDARY_HOSTNAME/mod_pagespeed_test/$URL_PATH
+  if [ "$SECONDARY_URL" == "$URL" ]; then
+    SECONDARY_URL=http://${SECONDARY_HOSTNAME}:$APACHE_SECONDARY_PORT/\
+mod_pagespeed_test/$URL_PATH
+  fi
+  fetch_until $SECONDARY_URL 'grep -c blue' 1
+
+  # Track how many flushes were noticed by Apache processes up till
+  # this point in time.  Note that each Apache process/vhost
+  # separately detects the 'flush'.
+  NUM_INITIAL_FLUSHES=$($WGET_DUMP $STATISTICS_URL | grep cache_flush_count \
+    | cut -d: -f2)
+
+  # Now change the file to 'green'.  Note that we'll have stale cache for
+  # 5 minutes so we expect the result to stay 'blue'.
+  echo echo ".class myclass { color: green; }" ">" $CSS_FILE
+  echo ".class myclass { color: green; }" >$TMP_CSS_FILE
+  $SUDO cp $TMP_CSS_FILE $CSS_FILE
+  fetch_until $URL 'grep -c blue' 1
+  fetch_until $SECONDARY_URL 'grep -c blue' 1
+
+  # Flush the cache by touching a special file in the cache directory.  Now
+  # css gets re-read and we get 'green' in the output.
+  echo $SUDO touch $PAGESPEED_ROOT/cache/cache.flush
+  $SUDO touch $PAGESPEED_ROOT/cache/cache.flush
+  fetch_until $URL 'grep -c green' 1
+
+  NUM_FLUSHES=$($WGET_DUMP $STATISTICS_URL | grep cache_flush_count | cut -d: -f2)
+  NUM_NEW_FLUSHES=$(expr $NUM_FLUSHES - $NUM_INITIAL_FLUSHES)
+  echo NUM_NEW_FLUSHES = $NUM_NEW_FLUSHES
+  check [ $NUM_NEW_FLUSHES -ge 1 ]
+  check [ $NUM_NEW_FLUSHES -lt 20 ]
+
+  # However, the secondary cache did not see this cache-flush.
+  fetch_until $SECONDARY_URL 'grep -c blue' 1
+  # Now flush the secondary cache too so it can see the change to 'green'.
+  echo $SUDO touch $PAGESPEED_ROOT/secondary_cache/cache.flush
+  $SUDO touch $PAGESPEED_ROOT/secondary_cache/cache.flush
+  fetch_until $SECONDARY_URL 'grep -c green' 1
+
+  # Clean up update.css from mod_pagespeed_test so it doesn't leave behind
+  # a stray file not under source control.
+  echo $SUDO rm -f $CSS_FILE
+  $SUDO rm -f $CSS_FILE
+
+  # connection_refused.html references modpagespeed.com:1023/someimage.png.
+  # mod_pagespeed will attempt to connect to that host and port to fetch the
+  # input resource using serf.  We expect the connection to be refused.  Relies
+  # on "ModPagespeedDomain modpagespeed.com:1023" in debug.conf.template.  Also
+  # relies on running after a cache-flush to avoid bypassing the serf fetch,
+  # since mod_pagespeed remembers fetch-failures in its cache for 5 minutes.
+  echo TEST: Connection refused handling
+
+  # Monitor the Apache log starting now.  tail -F will catch log rotations.
+  SERF_REFUSED_PATH=/tmp/instaweb_apache_serf_refused
+  echo APACHE_LOG = $APACHE_LOG
+  tail --sleep-interval=0.1 -F $APACHE_LOG > $SERF_REFUSED_PATH &
+  TAIL_PID=$!
+  # Actually kick off the request.
+  echo $WGET_DUMP $TEST_ROOT/connection_refused.html
+  echo checking...
+  check $WGET_DUMP $TEST_ROOT/connection_refused.html > /dev/null
+  echo check done
+  # If we are spewing errors, this gives time to spew lots of them.
+  sleep 1
+  # Wait up to 10 seconds for the background fetch of someimage.png to fail.
+  for i in {1..100}; do
+    ERRS=$(grep -c "Serf status 111" $SERF_REFUSED_PATH)
+    if [ $ERRS -ge 1 ]; then
+      break;
+    fi;
+    /bin/echo -n "."
+    sleep 0.1
+  done;
+  /bin/echo "."
+  # Kill the log monitor silently.
+  kill $TAIL_PID
+  wait $TAIL_PID 2> /dev/null
+  check [ $ERRS -eq 1 ]
+fi
 
 # Cleanup
 rm -rf $OUTDIR

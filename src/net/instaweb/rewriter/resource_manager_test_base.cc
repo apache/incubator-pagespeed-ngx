@@ -656,9 +656,8 @@ RewriteDriver* ResourceManagerTestBase::MakeDriver(
   // standard flow.
   RewriteDriver* rd;
   if (!use_managed_rewrite_drivers_) {
-    rd = resource_manager->NewUnmanagedRewriteDriver();
+    rd = resource_manager->NewUnmanagedRewriteDriver(true, options);
     rd->set_externally_managed(true);
-    rd->set_custom_options(options);
   } else {
     rd = resource_manager->NewCustomRewriteDriver(options);
   }

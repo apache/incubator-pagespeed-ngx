@@ -201,7 +201,9 @@ void ResourceManager::InitWorkersAndDecodingDriver() {
       RewriteDriverFactory::kRewriteWorkers);
   low_priority_rewrite_workers_ = factory_->WorkerPool(
       RewriteDriverFactory::kLowPriorityRewriteWorkers);
-  decoding_driver_.reset(NewUnmanagedRewriteDriver());
+  decoding_driver_.reset(NewUnmanagedRewriteDriver(
+      false /* !is_custom */,
+      global_options()->Clone()));
   // Apply platform configuration mutation for consistency's sake.
   factory_->ApplyPlatformSpecificConfiguration(decoding_driver_.get());
   // Inserts platform-specific rewriters into the resource_filter_map_, so that
@@ -591,12 +593,13 @@ bool ResourceManager::HandleBeacon(const StringPiece& unparsed_url) {
 
 RewriteDriver* ResourceManager::NewCustomRewriteDriver(
     RewriteOptions* options) {
-  RewriteDriver* rewrite_driver = NewUnmanagedRewriteDriver();
+  RewriteDriver* rewrite_driver = NewUnmanagedRewriteDriver(
+      true /* is_custom */,
+      options);
   {
     ScopedMutex lock(rewrite_drivers_mutex_.get());
     active_rewrite_drivers_.insert(rewrite_driver);
   }
-  rewrite_driver->set_custom_options(options);
   if (factory_ != NULL) {
     factory_->ApplyPlatformSpecificConfiguration(rewrite_driver);
   }
@@ -607,21 +610,48 @@ RewriteDriver* ResourceManager::NewCustomRewriteDriver(
   return rewrite_driver;
 }
 
-RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver() {
+RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver(
+    bool is_custom, RewriteOptions* options) {
   RewriteDriver* rewrite_driver = new RewriteDriver(
       message_handler_, file_system_, default_system_fetcher_);
+  rewrite_driver->set_options(is_custom, options);
   rewrite_driver->SetResourceManager(this);
   return rewrite_driver;
 }
 
 RewriteDriver* ResourceManager::NewRewriteDriver() {
-  ScopedMutex lock(rewrite_drivers_mutex_.get());
   RewriteDriver* rewrite_driver = NULL;
-  if (!available_rewrite_drivers_.empty()) {
-    rewrite_driver = available_rewrite_drivers_.back();
-    available_rewrite_drivers_.pop_back();
-  } else {
-    rewrite_driver = NewUnmanagedRewriteDriver();
+
+  // Note that options->signature() takes a reader-lock so it's thread-safe
+  // even if another thread is concurrently handling a cache-flush request.
+  GoogleString expected_signature = global_options()->signature();
+  {
+    ScopedMutex lock(rewrite_drivers_mutex_.get());
+    while (!available_rewrite_drivers_.empty() && (rewrite_driver == NULL)) {
+      rewrite_driver = available_rewrite_drivers_.back();
+      available_rewrite_drivers_.pop_back();
+
+      // Note: there is currently some activity to make the RewriteOptions
+      // signature insensitive to changes that need not affect the metadata
+      // cache key.  As we are dependent on a comprehensive signature in
+      // order to correctly determine whether we can recycle a RewriteDriver,
+      // we would have to use a seperate signature for metadata_cache_key
+      // vs this purpose.
+      //
+      // So for now, let us keep all the options incorporated into the
+      // signature, and revisit the issue of pulling options out if we
+      // find we are having poor hit-rate in the metadata cache during
+      // operations.
+      if (rewrite_driver->options()->signature() != expected_signature) {
+        delete rewrite_driver;
+        rewrite_driver = NULL;
+      }
+    }
+  }
+
+  if (rewrite_driver == NULL) {
+    rewrite_driver = NewUnmanagedRewriteDriver(false /* !is_custom */,
+                                               global_options()->Clone());
     if (factory_ != NULL) {
       factory_->ApplyPlatformSpecificConfiguration(rewrite_driver);
     }
@@ -630,7 +660,11 @@ RewriteDriver* ResourceManager::NewRewriteDriver() {
       factory_->AddPlatformSpecificRewritePasses(rewrite_driver);
     }
   }
-  active_rewrite_drivers_.insert(rewrite_driver);
+
+  {
+    ScopedMutex lock(rewrite_drivers_mutex_.get());
+    active_rewrite_drivers_.insert(rewrite_driver);
+  }
   return rewrite_driver;
 }
 

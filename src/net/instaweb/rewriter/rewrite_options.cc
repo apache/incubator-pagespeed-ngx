@@ -26,9 +26,11 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/null_rw_lock.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
@@ -517,19 +519,46 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
              &metadata_cache_staleness_threshold_ms_, "mcst");
 
-  ajax_rewriting_enabled_.DoNotUseForSignatureComputation();
-  botdetect_enabled_.DoNotUseForSignatureComputation();
-  log_rewrite_timing_.DoNotUseForSignatureComputation();
-  serve_stale_if_fetch_error_.DoNotUseForSignatureComputation();
-  enable_defer_js_experimental_.DoNotUseForSignatureComputation();
-  enable_blink_critical_line_.DoNotUseForSignatureComputation();
-  serve_blink_non_critical_.DoNotUseForSignatureComputation();
-  default_cache_html_.DoNotUseForSignatureComputation();
-  lazyload_images_after_onload_.DoNotUseForSignatureComputation();
-  ga_id_.DoNotUseForSignatureComputation();
-  increase_speed_tracking_.DoNotUseForSignatureComputation();
-  running_furious_.DoNotUseForSignatureComputation();
-  x_header_value_.DoNotUseForSignatureComputation();
+
+  //
+  // Recently sriharis@ excluded a variety of options from
+  // signature-computation which makes sense from the perspective
+  // of metadata cache, however it makes Signature() useless for
+  // determining equivalence of RewriteOptions.  This equivalence
+  // is needed in ResourceManager::NewRewriteDriver to determine
+  // whether the drivers in the freelist are still applicable, or
+  // whether options have changed.
+  //
+  // So we need to either compute two signatures: one for equivalence
+  // and one for metadata cache key, or just use the more comprehensive
+  // one for metadata_cache.  We should determine whether we are getting
+  // spurious cache fragmentation before investing in computing two
+  // signatures.
+  //
+  // Commenting these out for now.
+  //
+  // In particular, ProxyInterfaceTest.AjaxRewritingForCss will fail
+  // if we don't let ajax_rewriting_enabled_ affect the signature.
+  //
+  // TODO(jmarantz): consider whether there's any measurable benefit
+  // from excluding these options from the signature.  If there is,
+  // make 2 signatures: one for equivalence & one for metadata cache
+  // keys.  If not, just remove the DoNotUseForSignatureComputation
+  // infrastructure.
+  //
+  // ajax_rewriting_enabled_.DoNotUseForSignatureComputation();
+  // botdetect_enabled_.DoNotUseForSignatureComputation();
+  // log_rewrite_timing_.DoNotUseForSignatureComputation();
+  // serve_stale_if_fetch_error_.DoNotUseForSignatureComputation();
+  // enable_defer_js_experimental_.DoNotUseForSignatureComputation();
+  // enable_blink_critical_line_.DoNotUseForSignatureComputation();
+  // serve_blink_non_critical_.DoNotUseForSignatureComputation();
+  // default_cache_html_.DoNotUseForSignatureComputation();
+  // lazyload_images_after_onload_.DoNotUseForSignatureComputation();
+  // ga_id_.DoNotUseForSignatureComputation();
+  // increase_speed_tracking_.DoNotUseForSignatureComputation();
+  // running_furious_.DoNotUseForSignatureComputation();
+  // x_header_value_.DoNotUseForSignatureComputation();
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
@@ -934,15 +963,27 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   }
 }
 
-RewriteOptions::OptionInt64MergeWithMax::~OptionInt64MergeWithMax() {
+RewriteOptions::MutexedOptionInt64MergeWithMax::MutexedOptionInt64MergeWithMax()
+    : mutex_(new NullRWLock) {
 }
 
-void RewriteOptions::OptionInt64MergeWithMax::Merge(
+RewriteOptions::MutexedOptionInt64MergeWithMax::
+~MutexedOptionInt64MergeWithMax() {
+}
+
+void RewriteOptions::MutexedOptionInt64MergeWithMax::Merge(
     const OptionBase* src_base) {
-  const OptionInt64MergeWithMax* src =
-      static_cast<const OptionInt64MergeWithMax*>(src_base);
-  if (src->was_set() && (!was_set() || (src->value() > value()))) {
-    set(src->value());
+  // This option must be a MutexedOptionInt64 everywhere, so this cast is safe.
+  const MutexedOptionInt64MergeWithMax* src =
+      static_cast<const MutexedOptionInt64MergeWithMax*>(src_base);
+
+  int64 src_value;
+  {
+    ThreadSystem::ScopedReader lock(src->mutex());
+    src_value = src->value();
+  }
+  if (src->was_set() && (!was_set() || (src_value > value()))) {
+    set(src_value);
   }
 }
 
@@ -1310,6 +1351,23 @@ void RewriteOptions::CheckFiltersAgainst(
     const FilterSet& expected_disabled_filters) {
   CHECK(expected_enabled_filters == enabled_filters_);
   CHECK(expected_disabled_filters == disabled_filters_);
+}
+
+bool RewriteOptions::UpdateCacheInvalidationTimestampMs(int64 timestamp_ms,
+                                                        const Hasher* hasher) {
+  bool ret = false;
+  ScopedMutex lock(cache_invalidation_timestamp_.mutex());
+  if (cache_invalidation_timestamp_.value() < timestamp_ms) {
+    bool recompute_signature = frozen_;
+    frozen_ = false;
+    set_option(timestamp_ms, &cache_invalidation_timestamp_);
+    if (recompute_signature) {
+      signature_.clear();
+      ComputeSignature(hasher);
+    }
+    ret = true;
+  }
+  return ret;
 }
 
 }  // namespace net_instaweb

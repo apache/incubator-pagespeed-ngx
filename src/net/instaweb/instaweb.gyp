@@ -473,6 +473,7 @@
         'util/named_lock_manager.cc',
         'util/null_message_handler.cc',
         'util/null_mutex.cc',
+        'util/null_rw_lock.cc',
         'util/null_shared_mem.cc',
         'util/null_statistics.cc',
         'util/null_writer.cc',

@@ -1017,7 +1017,10 @@ TEST_F(RewriteOptionsTest, ComputeSignatureOptionEffect) {
   options_.set_ajax_rewriting_enabled(true);
   options_.ComputeSignature(&hasher_);
   GoogleString signature3 = options_.signature();
-  EXPECT_EQ(signature2, signature3);
+
+  // See the comment in RewriteOptions::RewriteOptions -- we need to leave
+  // signatures sensitive to ajax_rewriting.
+  EXPECT_NE(signature2, signature3);
 }
 
 }  // namespace
