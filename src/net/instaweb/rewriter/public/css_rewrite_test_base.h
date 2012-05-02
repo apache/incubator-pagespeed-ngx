@@ -22,15 +22,16 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_REWRITE_TEST_BASE_H_
 
 #include "base/logging.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
 class ResourceNamer;
 struct ContentType;
 
@@ -114,7 +115,16 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
   void ValidateRewriteExternalCss(const StringPiece& id,
                                   const GoogleString& css_input,
                                   const GoogleString& expected_css_output,
-                                  int flags);
+                                  int flags) {
+    ValidateRewriteExternalCssUrl(StrCat(kTestDomain, id, ".css"),
+                                  css_input, expected_css_output, flags);
+  }
+
+  void ValidateRewriteExternalCssUrl(const StringPiece& css_url,
+                                     const GoogleString& css_input,
+                                     const GoogleString& expected_css_output,
+                                     int flags);
+
 
   void ValidateRewrite(const StringPiece& id,
                        const GoogleString& css_input,

@@ -1149,6 +1149,32 @@ TEST_F(CssFilterTest, AbsolutifyCursorUrlsWithDomainMapping) {
                           true  /* enable_mapping_and_sharding */);
 }
 
+// Make sure we correctly decode the previously unexpected I.. format.
+// http://code.google.com/p/modpagespeed/issues/detail?id=427
+TEST_F(CssFilterTest, EmptyLeafFetch) {
+  // CSS URL ends in /
+  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "style/"),
+                                kContentTypeCss, kInputStyle, 100);
+
+  GoogleString output;
+  // Note: We intentionally do not use Encode() to make this test as explicit
+  // as possible. We just want to test that we correctly deal with the
+  // unexpected I.. format. EmptyLeafFull tests the full flow and thus
+  // will continue to test the right thing if the encoding changes.
+  ASSERT_TRUE(FetchResourceUrl(
+      StrCat(kTestDomain, "style/I..pagespeed.cf.Hash.css"), &output));
+  EXPECT_EQ(kOutputStyle, output);
+}
+
+// Make sure we correctly rewrite, encode and decode a CSS URL with empty leaf.
+// http://code.google.com/p/modpagespeed/issues/detail?id=427
+TEST_F(CssFilterTest, EmptyLeafFull) {
+  // CSS URL ends in /
+  ValidateRewriteExternalCssUrl(StrCat(kTestDomain, "style/"),
+                                kInputStyle, kOutputStyle,
+                                kExpectChange | kExpectSuccess);
+}
+
 class CssFilterTestUrlNamer : public CssFilterTest {
  public:
   CssFilterTestUrlNamer() {

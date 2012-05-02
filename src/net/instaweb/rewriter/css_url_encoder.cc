@@ -54,7 +54,7 @@ bool CssUrlEncoder::Decode(const StringPiece& encoded,
                            ResourceContext* data,
                            MessageHandler* handler) const {
   CHECK(data != NULL);
-  if ((encoded.size() < 3) || (encoded[1] != '.')) {
+  if ((encoded.size() < 2) || (encoded[1] != '.')) {
     handler->Message(kError, "Invalid CSS Encoding: %s",
                      encoded.as_string().c_str());
     return false;

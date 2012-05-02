@@ -117,13 +117,13 @@ GoogleString CssRewriteTestBase::ExpectedRewrittenUrl(
 }
 
 
-void CssRewriteTestBase::GetNamerForCss(const StringPiece& id,
+void CssRewriteTestBase::GetNamerForCss(const StringPiece& leaf_name,
                                         const GoogleString& expected_css_output,
                                         ResourceNamer* namer) {
   namer->set_id(RewriteOptions::kCssFilterId);
   namer->set_hash(hasher()->Hash(expected_css_output));
   namer->set_ext("css");
-  namer->set_name(StrCat(id, ".css"));
+  namer->set_name(leaf_name);
 }
 
 GoogleString CssRewriteTestBase::ExpectedUrlForNamer(
@@ -136,27 +136,23 @@ GoogleString CssRewriteTestBase::ExpectedUrlForCss(
     const StringPiece& id,
     const GoogleString& expected_css_output) {
   ResourceNamer namer;
-  GetNamerForCss(id, expected_css_output, &namer);
+  GetNamerForCss(StrCat(id, ".css"), expected_css_output, &namer);
   return ExpectedUrlForNamer(namer);
 }
 
 // Check that external CSS gets rewritten correctly.
-void CssRewriteTestBase::ValidateRewriteExternalCss(
-    const StringPiece& id,
+void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
+    const StringPiece& css_url,
     const GoogleString& css_input,
     const GoogleString& expected_css_output,
     int flags) {
   CheckFlags(flags);
 
-  // TODO(sligocki): Allow arbitrary URLs.
-  GoogleString css_url = StrCat(kTestDomain, id, ".css");
-
   // Set input file.
   if ((flags & kNoClearFetcher) == 0) {
     ClearFetcherResponses();
   }
-  SetResponseWithDefaultHeaders(StrCat(id, ".css"), kContentTypeCss,
-                                css_input, 300);
+  SetResponseWithDefaultHeaders(css_url, kContentTypeCss, css_input, 300);
 
   GoogleString link_extras("");
   if ((flags & kLinkCharsetIsUTF8) != 0) {
@@ -198,12 +194,16 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
       "</head>";
 
   GoogleString html_input  = StringPrintf(html_template, meta_tag.c_str(),
-                                          css_url.c_str(), link_extras.c_str());
+                                          css_url.as_string().c_str(),
+                                          link_extras.c_str());
   GoogleString html_output;
 
   ResourceNamer namer;
-  GetNamerForCss(id, expected_css_output, &namer);
-  GoogleString expected_new_url = ExpectedUrlForNamer(namer);
+  GoogleUrl css_gurl(css_url);
+  GetNamerForCss(css_gurl.LeafWithQuery(), expected_css_output, &namer);
+  GoogleString expected_new_url =
+      Encode(css_gurl.AllExceptLeaf(), namer.id(), namer.hash(),
+             namer.name(), namer.ext());
 
   if (flags & kExpectChange) {
     html_output = StringPrintf(html_template, meta_tag.c_str(),
@@ -212,15 +212,15 @@ void CssRewriteTestBase::ValidateRewriteExternalCss(
     html_output = html_input;
   }
 
-  ValidateWithStats(id, html_input, html_output,
+  ValidateWithStats(css_url, html_input, html_output,
                     css_input, expected_css_output, flags);
 
   // If we produced a new output resource, check it.
   if (flags & kExpectChange) {
     GoogleString actual_output;
     // TODO(sligocki): This will only work with mock_hasher.
-    EXPECT_TRUE(FetchResourceUrl(expected_new_url, &actual_output)) << id;
-    EXPECT_EQ(expected_css_output, actual_output) << id;
+    EXPECT_TRUE(FetchResourceUrl(expected_new_url, &actual_output)) << css_url;
+    EXPECT_EQ(expected_css_output, actual_output) << css_url;
 
     // Serve from new context.
     if ((flags & kNoOtherContexts) == 0) {
