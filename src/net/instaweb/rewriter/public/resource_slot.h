@@ -19,13 +19,13 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_SLOT_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_SLOT_H_
 
-#include <deque>
 #include <set>
 #include <vector>
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/deque_vector.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -129,7 +129,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
 
   // We track the RewriteContexts that are atempting to rewrite this
   // slot, to help us build a dependency graph between ResourceContexts.
-  std::deque<RewriteContext*> contexts_;
+  DequeVector<RewriteContext*> contexts_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceSlot);
 };

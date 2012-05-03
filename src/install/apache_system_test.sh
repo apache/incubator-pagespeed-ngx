@@ -507,6 +507,7 @@ mod_pagespeed_test/$URL_PATH
   # a stray file not under source control.
   echo $SUDO rm -f $CSS_FILE
   $SUDO rm -f $CSS_FILE
+  rm -f $TMP_CSS_FILE
 
   # connection_refused.html references modpagespeed.com:1023/someimage.png.
   # mod_pagespeed will attempt to connect to that host and port to fetch the

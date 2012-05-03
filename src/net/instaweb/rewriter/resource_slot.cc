@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/resource_slot.h"
 
-#include <deque>
-
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"

@@ -754,10 +754,10 @@ pagespeed.DeferJs.prototype['addAfterDeferRunFunctions'] =
 pagespeed.DeferJs.prototype.executeDomReady = function() {
   for (var i = 0; i < this.domReadyListeners_.length; i++) {
     this.log('executing domready: ' + this.domReadyListeners_[i].toString());
-    this.domReadyListeners_[i].call(window);
+    this.exec(this.domReadyListeners_[i]);
   }
   if (document.onreadystatechange) {
-    document.onreadystatechange();
+    this.exec(document.onreadystatechange, document);
   }
 };
 
@@ -767,7 +767,7 @@ pagespeed.DeferJs.prototype.executeDomReady = function() {
 pagespeed.DeferJs.prototype.executeOnload = function() {
   for (var i = 0; i < this.onloadListeners_.length; i++) {
     this.log('executing pageload: ' + this.onloadListeners_[i].toString());
-    this.onloadListeners_[i].call();
+    this.exec(this.onloadListeners_[i]);
   }
 };
 
@@ -776,7 +776,7 @@ pagespeed.DeferJs.prototype.executeOnload = function() {
  */
 pagespeed.DeferJs.prototype.executeBeforeDeferRun = function() {
   for (var i = 0; i < this.beforeDeferRunFunctions_.length; i++) {
-    this.beforeDeferRunFunctions_[i].call(window);
+    this.exec(this.beforeDeferRunFunctions_[i]);
   }
 };
 
@@ -786,7 +786,20 @@ pagespeed.DeferJs.prototype.executeBeforeDeferRun = function() {
  */
 pagespeed.DeferJs.prototype.executeAfterDeferRun = function() {
   for (var i = 0; i < this.afterDeferRunFunctions_.length; i++) {
-    this.afterDeferRunFunctions_[i].call(window);
+    this.exec(this.afterDeferRunFunctions_[i]);
+  }
+};
+
+/**
+ * Execute function under try catch.
+ * @param {!function()} func Function to be executed.
+ * @param {Window|Element|Document} opt_scopeObject Element to be used as scope.
+ */
+pagespeed.DeferJs.prototype.exec = function(func, opt_scopeObject) {
+  try {
+    func.call(opt_scopeObject || window);
+  } catch (err) {
+    this.log('Exception while evaluating.', err);
   }
 };
 
