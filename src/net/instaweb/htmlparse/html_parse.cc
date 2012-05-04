@@ -396,7 +396,9 @@ void HtmlParse::Flush() {
 
 void HtmlParse::ClearEvents() {
   // Detach all the elements from their events, as we are now invalidating
-  // the events, but not the elements.
+  // the events and deleting the contents of Closed elements, though we are
+  // leaving the HtmlElement* and other HtmlNodes allocated until EndFinishParse
+  // is called.
   for (current_ = queue_.begin(); current_ != queue_.end(); ++current_) {
     HtmlEvent* event = *current_;
     line_number_ = event->line_number();
@@ -407,6 +409,7 @@ void HtmlParse::ClearEvents() {
       element = event->GetElementIfEndEvent();
       if (element != NULL) {
         element->set_end(queue_.end());
+        element->FreeData();
       } else {
         HtmlLeafNode* leaf_node = event->GetLeafNode();
         if (leaf_node != NULL) {
@@ -782,7 +785,9 @@ HtmlElement* HtmlParse::CloneElement(HtmlElement* in_element) {
 }
 
 bool HtmlParse::IsRewritable(const HtmlNode* node) const {
-  return IsInEventWindow(node->begin()) && IsInEventWindow(node->end());
+  return (node->live() &&  // Avoid dereferencing NULL data for closed elements.
+          IsInEventWindow(node->begin()) &&
+          IsInEventWindow(node->end()));
 }
 
 bool HtmlParse::IsInEventWindow(const HtmlEventListIterator& iter) const {

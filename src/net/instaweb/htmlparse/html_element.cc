@@ -26,6 +26,7 @@
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -34,7 +35,17 @@ namespace net_instaweb {
 HtmlElement::HtmlElement(HtmlElement* parent, const HtmlName& name,
     const HtmlEventListIterator& begin, const HtmlEventListIterator& end)
     : HtmlNode(parent),
-      begin_line_number_(0),
+      data_(new Data(name, begin, end)) {
+}
+
+HtmlElement::~HtmlElement() {
+}
+
+HtmlElement::Data::Data(const HtmlName& name,
+                        const HtmlEventListIterator& begin,
+                        const HtmlEventListIterator& end)
+    : begin_line_number_(0),
+      live_(1),
       end_line_number_(0),
       close_style_(AUTO_CLOSE),
       name_(name),
@@ -42,9 +53,18 @@ HtmlElement::HtmlElement(HtmlElement* parent, const HtmlName& name,
       end_(end) {
 }
 
-HtmlElement::~HtmlElement() {
-  for (int i = 0, n = attribute_size(); i < n; ++i) {
-    delete attributes_[i];
+HtmlElement::Data::~Data() {
+  Clear();
+}
+
+void HtmlElement::Data::Clear() {
+  STLDeleteElements(&attributes_);
+}
+
+void HtmlElement::MarkAsDead(const HtmlEventListIterator& end) {
+  if (data_.get() != NULL) {
+    data_->live_ = false;
+    InvalidateIterators(end);
   }
 }
 
@@ -63,14 +83,14 @@ void HtmlElement::InvalidateIterators(const HtmlEventListIterator& end) {
 }
 
 void HtmlElement::DeleteAttribute(int i) {
-  std::vector<Attribute*>::iterator iter = attributes_.begin() + i;
+  std::vector<Attribute*>::iterator iter = data_->attributes_.begin() + i;
   delete *iter;
-  attributes_.erase(iter);
+  data_->attributes_.erase(iter);
 }
 
 bool HtmlElement::DeleteAttribute(HtmlName::Keyword keyword) {
   for (int i = 0; i < attribute_size(); ++i) {
-    const Attribute* attribute = attributes_[i];
+    const Attribute* attribute = data_->attributes_[i];
     if (attribute->keyword() == keyword) {
       DeleteAttribute(i);
       return true;
@@ -83,7 +103,7 @@ const HtmlElement::Attribute* HtmlElement::FindAttribute(
     HtmlName::Keyword keyword) const {
   const Attribute* ret = NULL;
   for (int i = 0; i < attribute_size(); ++i) {
-    const Attribute* attribute = attributes_[i];
+    const Attribute* attribute = data_->attributes_[i];
     if (attribute->keyword() == keyword) {
       ret = attribute;
       break;
@@ -94,9 +114,9 @@ const HtmlElement::Attribute* HtmlElement::FindAttribute(
 
 void HtmlElement::ToString(GoogleString* buf) const {
   *buf += "<";
-  *buf += name_.c_str();
+  *buf += data_->name_.c_str();
   for (int i = 0; i < attribute_size(); ++i) {
-    const Attribute& attribute = *attributes_[i];
+    const Attribute& attribute = *data_->attributes_[i];
     *buf += ' ';
     *buf += attribute.name_str();
     const char* value = attribute.DecodedValueOrNull();
@@ -111,24 +131,24 @@ void HtmlElement::ToString(GoogleString* buf) const {
       *buf += quote;
     }
   }
-  switch (close_style_) {
+  switch (data_->close_style_) {
     case AUTO_CLOSE:       *buf += "> (not yet closed)"; break;
     case IMPLICIT_CLOSE:   *buf += ">";  break;
     case EXPLICIT_CLOSE:   *buf += "></";
-                           *buf += name_.c_str();
+                           *buf += data_->name_.c_str();
                            *buf += ">";
                            break;
     case BRIEF_CLOSE:      *buf += "/>"; break;
     case UNCLOSED:         *buf += "> (unclosed)"; break;
   }
-  if ((begin_line_number_ != -1) || (end_line_number_ != -1)) {
+  if ((data_->begin_line_number_ != -1) || (data_->end_line_number_ != -1)) {
     *buf += " ";
-    if (begin_line_number_ != -1) {
-      *buf += IntegerToString(begin_line_number_);
+    if (data_->begin_line_number_ != -1) {
+      *buf += IntegerToString(data_->begin_line_number_);
     }
     *buf += "...";
-    if (end_line_number_ != -1) {
-      *buf += IntegerToString(end_line_number_);
+    if (data_->end_line_number_ != -1) {
+      *buf += IntegerToString(data_->end_line_number_);
     }
   }
 }
@@ -145,7 +165,7 @@ void HtmlElement::AddAttribute(const Attribute& src_attr) {
                                   src_attr.decoding_error(),
                                   src_attr.escaped_value(),
                                   src_attr.quote_style());
-  attributes_.push_back(attr);
+  data_->attributes_.push_back(attr);
 }
 
 void HtmlElement::AddAttribute(const HtmlName& name, const StringPiece& value,
@@ -154,7 +174,7 @@ void HtmlElement::AddAttribute(const HtmlName& name, const StringPiece& value,
   Attribute* attr = new Attribute(name, value, false,
                                   HtmlKeywords::Escape(value, &buf),
                                   quote_style);
-  attributes_.push_back(attr);
+  data_->attributes_.push_back(attr);
 }
 
 void HtmlElement::AddEscapedAttribute(const HtmlName& name,
@@ -166,7 +186,7 @@ void HtmlElement::AddEscapedAttribute(const HtmlName& name,
                                                  &buf, &decoding_error);
   Attribute* attr = new Attribute(name, unescaped, decoding_error,
                                   escaped_value, quote_style);
-  attributes_.push_back(attr);
+  data_->attributes_.push_back(attr);
 }
 
 void HtmlElement::Attribute::CopyValue(const StringPiece& src,

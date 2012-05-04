@@ -25,11 +25,12 @@ namespace net_instaweb {
 
 HtmlNode::~HtmlNode() {}
 
-void HtmlNode::MarkAsDead(const HtmlEventListIterator& end) {
+void HtmlLiveNode::MarkAsDead(const HtmlEventListIterator& end) {
   live_ = false;
   InvalidateIterators(end);
 }
 
+HtmlLiveNode::~HtmlLiveNode() {}
 HtmlLeafNode::~HtmlLeafNode() {}
 
 void HtmlLeafNode::InvalidateIterators(const HtmlEventListIterator& end) {

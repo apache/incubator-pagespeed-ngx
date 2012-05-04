@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_NODE_H_
 
 #include <cstddef>
+
 #include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
@@ -29,6 +30,8 @@
 
 namespace net_instaweb {
 
+class HtmlElement;
+
 // Base class for HtmlElement and HtmlLeafNode
 class HtmlNode {
  public:
@@ -36,12 +39,12 @@ class HtmlNode {
   friend class HtmlParse;
 
   HtmlElement* parent() const { return parent_; }
-  bool live() const { return live_; }
+  virtual bool live() const = 0;
 
   // Marks a node as dead.  The queue's end iterator should be passed in,
   // to remove references to stale iterators, and to force IsRewritable to
   // return false.
-  void MarkAsDead(const HtmlEventListIterator& end);
+  virtual void MarkAsDead(const HtmlEventListIterator& end) = 0;
 
   void* operator new(size_t size, Arena<HtmlNode>* arena) {
     return arena->Allocate(size);
@@ -57,7 +60,7 @@ class HtmlNode {
   // are instantiated from the lexer.  This is a little more difficult
   // when synthesizing new nodes, however.  We assert sanity, however,
   // when calling HtmlParse::ApplyFilter.
-  explicit HtmlNode(HtmlElement* parent) : parent_(parent), live_(true) {}
+  explicit HtmlNode(HtmlElement* parent) : parent_(parent) {}
 
   // Create new event object(s) representing this node, and insert them into
   // the queue just before the given iterator; also, update this node object as
@@ -87,19 +90,34 @@ class HtmlNode {
   void set_parent(HtmlElement* parent) { parent_ = parent; }
 
   HtmlElement* parent_;
-  bool live_;
   DISALLOW_COPY_AND_ASSIGN(HtmlNode);
 };
 
+class HtmlLiveNode : public HtmlNode {
+ public:
+  virtual ~HtmlLiveNode();
+  virtual bool live() const { return live_; }
+  virtual void MarkAsDead(const HtmlEventListIterator& end);
+
+ protected:
+  explicit HtmlLiveNode(HtmlElement* parent)
+      : HtmlNode(parent),
+        live_(true) {
+  }
+
+ private:
+  bool live_;
+};
+
 // Base class for leaf nodes (like HtmlCharactersNode and HtmlCommentNode)
-class HtmlLeafNode : public HtmlNode {
+class HtmlLeafNode : public HtmlLiveNode {
  public:
   virtual ~HtmlLeafNode();
   friend class HtmlParse;
 
  protected:
   HtmlLeafNode(HtmlElement* parent, const HtmlEventListIterator& iter)
-      : HtmlNode(parent),
+      : HtmlLiveNode(parent),
         iter_(iter) {}
   virtual HtmlEventListIterator begin() const { return iter_; }
   virtual HtmlEventListIterator end() const { return iter_; }
@@ -128,6 +146,8 @@ class HtmlCdataNode : public HtmlLeafNode {
                 const HtmlEventListIterator& iter)
       : HtmlLeafNode(parent, iter),
         contents_(contents.data(), contents.size()) {}
+
+  // TODO(jmarantz): consider clearing from HtmlParse::ClearEvents.
   const GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlCdataNode);
 };
@@ -153,6 +173,8 @@ class HtmlCharactersNode : public HtmlLeafNode {
                      const HtmlEventListIterator& iter)
       : HtmlLeafNode(parent, iter),
         contents_(contents.data(), contents.size()) {}
+
+  // TODO(jmarantz): consider clearing from HtmlParse::ClearEvents.
   GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlCharactersNode);
 };
@@ -174,6 +196,8 @@ class HtmlCommentNode : public HtmlLeafNode {
                   const HtmlEventListIterator& iter)
       : HtmlLeafNode(parent, iter),
         contents_(contents.data(), contents.size()) {}
+
+  // TODO(jmarantz): consider clearing from HtmlParse::ClearEvents.
   const GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlCommentNode);
 };
@@ -195,6 +219,8 @@ class HtmlIEDirectiveNode : public HtmlLeafNode {
                       const HtmlEventListIterator& iter)
       : HtmlLeafNode(parent, iter),
         contents_(contents.data(), contents.size()) {}
+
+  // TODO(jmarantz): consider clearing from HtmlParse::ClearEvents.
   const GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlIEDirectiveNode);
 };
@@ -216,6 +242,8 @@ class HtmlDirectiveNode : public HtmlLeafNode {
                     const HtmlEventListIterator& iter)
       : HtmlLeafNode(parent, iter),
         contents_(contents.data(), contents.size()) {}
+
+  // TODO(jmarantz): consider clearing from HtmlParse::ClearEvents.
   const GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlDirectiveNode);
 };

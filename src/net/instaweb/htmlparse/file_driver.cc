@@ -23,10 +23,18 @@
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/htmlparse/public/logging_html_filter.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/chunking_writer.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_writer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/writer.h"
+#include "net/instaweb/util/stack_buffer.h"
+
+namespace net_instaweb {
+
+class MessageHandler;
 
 namespace {
 
@@ -48,17 +56,33 @@ bool GenerateFilename(
   return ret;
 }
 
-}  // namespace
+// Provides a Writer interface to HtmlParse.
+class Rewriter : public Writer {
+ public:
+  explicit Rewriter(HtmlParse* parser) : parser_(parser) {}
+  virtual bool Flush(MessageHandler* handler) {
+    parser_->Flush();
+    return true;
+  }
+  virtual bool Write(const StringPiece& str, MessageHandler* handler) {
+    parser_->ParseText(str);
+    return true;
+  }
+ private:
+  HtmlParse* parser_;
 
-namespace net_instaweb {
-class MessageHandler;
+  DISALLOW_COPY_AND_ASSIGN(Rewriter);
+};
+
+}  // namespace
 
 FileDriver::FileDriver(HtmlParse* html_parse, FileSystem* file_system)
     : html_parse_(html_parse),
       logging_filter_(),
       html_write_filter_(html_parse_),
       filters_added_(false),
-      file_system_(file_system) {
+      file_system_(file_system),
+      flush_byte_count_(0) {
 }
 
 bool FileDriver::GenerateOutputFilename(
@@ -95,10 +119,12 @@ bool FileDriver::ParseFile(const char* infilename,
       // so we create a dummy URL.
       GoogleString dummy_url = StrCat("http://file.name/", infilename);
       html_parse_->StartParseId(dummy_url, infilename, kContentTypeHtml);
-      char buf[1000];
+      char buf[kStackBufferSize];
+      Rewriter rewriter(html_parse_);
+      ChunkingWriter chunker(&rewriter, flush_byte_count_);
       int nread;
       while ((nread = f->Read(buf, sizeof(buf), message_handler)) > 0) {
-        html_parse_->ParseText(buf, nread);
+        chunker.Write(StringPiece(buf, nread), message_handler);
       }
       file_system_->Close(f, message_handler);
       html_parse_->FinishParse();

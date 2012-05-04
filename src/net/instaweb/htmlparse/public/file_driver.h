@@ -26,7 +26,9 @@
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
+
 class FileSystem;
+class HtmlParse;
 class MessageHandler;
 class StatisticsLog;
 
@@ -58,6 +60,9 @@ class FileDriver {
                  const char* statsfilename,
                  MessageHandler* handler);
 
+  // Indicates that we should Flush the parser every x bytes.  Disabled if x<=0.
+  void set_flush_byte_count(int x) { flush_byte_count_ = x; }
+
  private:
   HtmlParse* html_parse_;
   LoggingFilter logging_filter_;
@@ -65,6 +70,7 @@ class FileDriver {
   HtmlWriterFilter html_write_filter_;
   bool filters_added_;
   FileSystem* file_system_;
+  int flush_byte_count_;
 
   DISALLOW_COPY_AND_ASSIGN(FileDriver);
 };

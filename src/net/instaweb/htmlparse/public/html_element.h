@@ -21,8 +21,8 @@
 
 #include <vector>
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
@@ -169,7 +169,11 @@ class HtmlElement : public HtmlNode {
     DISALLOW_COPY_AND_ASSIGN(Attribute);
   };
 
+ public:
   virtual ~HtmlElement();
+
+  virtual bool live() const { return (data_.get() != NULL) && data_->live_; }
+  virtual void MarkAsDead(const HtmlEventListIterator& end);
 
   // Add a copy of an attribute to this element.  The attribute may come
   // from this element, or another one.
@@ -231,73 +235,100 @@ class HtmlElement : public HtmlNode {
   // Returns the element tag name, which is not guaranteed to be
   // case-folded.  Compare keyword() to the Keyword constant found in
   // html_name.h for fast tag name comparisons.
-  const char* name_str() const { return name_.c_str(); }
+  const char* name_str() const { return data_->name_.c_str(); }
 
   // Returns the HTML keyword enum.  If this tag name is not
   // recognized, returns HtmlName::kNotAKeyword, and you can
   // examine name_str().
-  HtmlName::Keyword keyword() const { return name_.keyword(); }
+  HtmlName::Keyword keyword() const { return data_->name_.keyword(); }
 
-  const HtmlName& name() const { return name_; }
+  const HtmlName& name() const { return data_->name_; }
 
   // Changing that tag of an element should only occur if the caller knows
   // that the old attributes make sense for the new tag.  E.g. a div could
   // be changed to a span.
-  void set_name(const HtmlName& new_tag) { name_ = new_tag; }
+  void set_name(const HtmlName& new_tag) { data_->name_ = new_tag; }
 
-  int attribute_size() const {return attributes_.size(); }
-  const Attribute& attribute(int i) const { return *attributes_[i]; }
-  Attribute& attribute(int i) { return *attributes_[i]; }
+  int attribute_size() const { return data_->attributes_.size(); }
+  const Attribute& attribute(int i) const { return *data_->attributes_[i]; }
+  Attribute& attribute(int i) { return *data_->attributes_[i]; }
 
   friend class HtmlParse;
   friend class HtmlLexer;
 
-  CloseStyle close_style() const { return close_style_; }
-  void set_close_style(CloseStyle style) { close_style_ = style; }
+  CloseStyle close_style() const { return data_->close_style_; }
+  void set_close_style(CloseStyle style) { data_->close_style_ = style; }
 
   // Render an element as a string for debugging.  This is not
   // intended as a fully legal serialization.
   void ToString(GoogleString* buf) const;
   void DebugPrint() const;
 
-  int begin_line_number() const { return begin_line_number_; }
-  int end_line_number() const { return end_line_number_; }
+  int begin_line_number() const { return data_->begin_line_number_; }
+  int end_line_number() const { return data_->end_line_number_; }
 
  protected:
   virtual void SynthesizeEvents(const HtmlEventListIterator& iter,
                                 HtmlEventList* queue);
   virtual void InvalidateIterators(const HtmlEventListIterator& end);
 
-  virtual HtmlEventListIterator begin() const { return begin_; }
-  virtual HtmlEventListIterator end() const { return end_; }
+  virtual HtmlEventListIterator begin() const { return data_->begin_; }
+  virtual HtmlEventListIterator end() const { return data_->end_; }
 
  private:
+  // All of the data associated with an HtmlElement is indirected through this
+  // class, so we can delete it on Flush after a CloseElement event.
+  struct Data {
+    Data(const HtmlName& name,
+         const HtmlEventListIterator& begin,
+         const HtmlEventListIterator& end);
+    ~Data();
+    inline void Clear();
+
+    // Pack four fields into 64 bits using bitfields.  Warning: this
+    // stuff is quite sensitive to details, so make sure to look at
+    // object sizes before changing!  Interleaving the 24-bit and
+    // 8-bit member variables gives a total size of 8 bytes for these
+    // 4 variables on a gcc 64-bit compile.  But putting the two
+    // 24-bit integers together gives a total size of 16 bytes, so
+    // we interleave.
+    //
+    // HtmlParse::DeleteElement will set live_ to false without
+    // deleting element->data_.  Flushing an ElementClose deletes
+    // data_ but HtmlElement knows that null data_ implies !live().
+    unsigned begin_line_number_ : 24;
+    unsigned live_ : 8;
+    unsigned end_line_number_ : 24;
+    CloseStyle close_style_ : 8;
+
+    HtmlName name_;
+    std::vector<Attribute*> attributes_;
+    HtmlEventListIterator begin_;
+    HtmlEventListIterator end_;
+  };
+
   // Begin/end event iterators are used by HtmlParse to keep track
   // of the span of events underneath an element.  This is primarily to
   // help delete the element.  Events are not public.
-  void set_begin(const HtmlEventListIterator& begin) { begin_ = begin; }
-  void set_end(const HtmlEventListIterator& end) { end_ = end; }
+  void set_begin(const HtmlEventListIterator& begin) { data_->begin_ = begin; }
+  void set_end(const HtmlEventListIterator& end) { data_->end_ = end; }
 
-  void set_begin_line_number(int line) { begin_line_number_ = line; }
-  void set_end_line_number(int line) { end_line_number_ = line; }
+  void set_begin_line_number(int line) { data_->begin_line_number_ = line; }
+  void set_end_line_number(int line) { data_->end_line_number_ = line; }
 
   // construct via HtmlParse::NewElement
   HtmlElement(HtmlElement* parent, const HtmlName& name,
               const HtmlEventListIterator& begin,
               const HtmlEventListIterator& end);
 
-  // HtmlNode has a trailing bool, leaving us 7 bytes = 52 bits to play with.
-  // We therefore pack some stuff into it using bitfields.
-  // Warning: this stuff is quite sensitive to details, so make sure
-  // to look at object sizes before changing!
-  unsigned begin_line_number_ : 24;
-  unsigned end_line_number_ : 24;
-  CloseStyle close_style_ : 8;
+  // HtmlElement data is held in HtmlElement::Data*, which is freed
+  // when a CloseElement is Flushed.  The pointers themselves are
+  // retained and can correctly answer element->IsRewritable() and
+  // element->is_live(), but the rest of the data (attributes etc)
+  // is deleted.
+  void FreeData() { data_.reset(NULL); }
 
-  HtmlName name_;
-  std::vector<Attribute*> attributes_;
-  HtmlEventListIterator begin_;
-  HtmlEventListIterator end_;
+  scoped_ptr<Data> data_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlElement);
 };
