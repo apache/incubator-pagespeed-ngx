@@ -238,11 +238,13 @@ class HtmlParse {
 
   void AddAttribute(HtmlElement* element, HtmlName::Keyword keyword,
                     const StringPiece& value) {
-    return element->AddAttribute(MakeName(keyword), value, "\"");
+    return element->AddAttribute(MakeName(keyword), value,
+                                 HtmlElement::DOUBLE_QUOTE);
   }
   void AddEscapedAttribute(HtmlElement* element, HtmlName::Keyword keyword,
                     const StringPiece& escaped_value) {
-    return element->AddEscapedAttribute(MakeName(keyword), escaped_value, "\"");
+    return element->AddEscapedAttribute(MakeName(keyword), escaped_value,
+                                        HtmlElement::DOUBLE_QUOTE);
   }
   void AddAttribute(HtmlElement* element, HtmlName::Keyword keyword,
                     int value) {
@@ -413,7 +415,6 @@ class HtmlParse {
   SymbolTableSensitive string_table_;
   FilterVector filters_;
   HtmlLexer* lexer_;
-  int sequence_;
   Arena<HtmlNode> nodes_;
   HtmlEventList queue_;
   HtmlEventListIterator current_;

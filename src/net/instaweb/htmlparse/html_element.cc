@@ -34,13 +34,12 @@ namespace net_instaweb {
 HtmlElement::HtmlElement(HtmlElement* parent, const HtmlName& name,
     const HtmlEventListIterator& begin, const HtmlEventListIterator& end)
     : HtmlNode(parent),
-      sequence_(-1),
+      begin_line_number_(0),
+      end_line_number_(0),
+      close_style_(AUTO_CLOSE),
       name_(name),
       begin_(begin),
-      end_(end),
-      close_style_(AUTO_CLOSE),
-      begin_line_number_(-1),
-      end_line_number_(-1) {
+      end_(end) {
 }
 
 HtmlElement::~HtmlElement() {
@@ -106,7 +105,7 @@ void HtmlElement::ToString(GoogleString* buf) const {
       *buf += "<DECODING ERROR>";
     } else if (value != NULL) {
       *buf += "=";
-      const char* quote = (attribute.quote() != NULL) ? attribute.quote() : "?";
+      const char* quote = attribute.quote_str();
       *buf += quote;
       *buf += value;
       *buf += quote;
@@ -144,27 +143,29 @@ void HtmlElement::AddAttribute(const Attribute& src_attr) {
   Attribute* attr = new Attribute(src_attr.name(),
                                   src_attr.DecodedValueOrNull(),
                                   src_attr.decoding_error(),
-                                  src_attr.escaped_value(), src_attr.quote());
+                                  src_attr.escaped_value(),
+                                  src_attr.quote_style());
   attributes_.push_back(attr);
 }
 
 void HtmlElement::AddAttribute(const HtmlName& name, const StringPiece& value,
-                               const char* quote) {
+                               QuoteStyle quote_style) {
   GoogleString buf;
   Attribute* attr = new Attribute(name, value, false,
-                                  HtmlKeywords::Escape(value, &buf), quote);
+                                  HtmlKeywords::Escape(value, &buf),
+                                  quote_style);
   attributes_.push_back(attr);
 }
 
 void HtmlElement::AddEscapedAttribute(const HtmlName& name,
                                       const StringPiece& escaped_value,
-                                      const char* quote) {
+                                      QuoteStyle quote_style) {
   GoogleString buf;
   bool decoding_error;
   StringPiece unescaped = HtmlKeywords::Unescape(escaped_value,
                                                  &buf, &decoding_error);
   Attribute* attr = new Attribute(name, unescaped, decoding_error,
-                                  escaped_value, quote);
+                                  escaped_value, quote_style);
   attributes_.push_back(attr);
 }
 
@@ -186,8 +187,9 @@ HtmlElement::Attribute::Attribute(const HtmlName& name,
                                   const StringPiece& value,
                                   bool decoding_error,
                                   const StringPiece& escaped_value,
-                                  const char* quote)
-    : name_(name), quote_(quote),
+                                  QuoteStyle quote_style)
+    : name_(name),
+      quote_style_(quote_style),
       decoding_error_(decoding_error) {
   CopyValue(value, &value_);
   CopyValue(escaped_value, &escaped_value_);
@@ -223,6 +225,18 @@ void HtmlElement::Attribute::SetEscapedValue(const StringPiece& escaped_value) {
                                                        &decoding_error_);
   CopyValue(unescaped_value, &value_);
   CopyValue(escaped_value, &escaped_value_);
+}
+
+const char* HtmlElement::Attribute::quote_str() const {
+  switch (quote_style_) {
+    case NO_QUOTE:
+      return "";
+    case SINGLE_QUOTE:
+      return "'";
+    case DOUBLE_QUOTE:
+    default:
+      return "\"";
+  }
 }
 
 }  // namespace net_instaweb

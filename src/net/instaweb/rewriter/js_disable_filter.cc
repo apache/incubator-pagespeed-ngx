@@ -98,7 +98,8 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
       if ((src != NULL) && (src->DecodedValueOrNull() != NULL)) {
         GoogleString url(src->DecodedValueOrNull());
         element->AddAttribute(
-            rewrite_driver_->MakeName("orig_src"), url, "\"");
+            rewrite_driver_->MakeName("orig_src"), url,
+            HtmlElement::DOUBLE_QUOTE);
         element->DeleteAttribute(HtmlName::kSrc);
       }
       HtmlElement::Attribute* type = element->FindAttribute(HtmlName::kType);
@@ -106,12 +107,15 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
         GoogleString jstype(type->DecodedValueOrNull());
         element->DeleteAttribute(HtmlName::kType);
         element->AddAttribute(
-            rewrite_driver_->MakeName("orig_type"), jstype, "\"");
+            rewrite_driver_->MakeName("orig_type"), jstype,
+            HtmlElement::DOUBLE_QUOTE);
       }
       element->AddAttribute(
-          rewrite_driver_->MakeName(HtmlName::kType), "text/psajs", "\"");
-      element->AddAttribute(rewrite_driver_->MakeName("orig_index"),
-                            IntegerToString(index_++), "\"");
+          rewrite_driver_->MakeName(HtmlName::kType), "text/psajs",
+          HtmlElement::DOUBLE_QUOTE);
+      element->AddAttribute(
+          rewrite_driver_->MakeName("orig_index"), IntegerToString(index_++),
+          HtmlElement::DOUBLE_QUOTE);
     }
   }
 

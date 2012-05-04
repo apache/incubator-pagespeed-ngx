@@ -201,7 +201,7 @@ class HtmlLexer {
   GoogleString literal_;     // accumulates raw text to pass through
   GoogleString attr_name_;   // accumulates attribute name
   GoogleString attr_value_;  // accumulates attribute value
-  const char* attr_quote_;  // accumulates quote used to delimit attribute
+  HtmlElement::QuoteStyle attr_quote_;  // quote used to delimit attribute
   bool has_attr_value_;     // distinguishes <a n=> from <a n>
   HtmlElement* element_;    // current element; used to collect attributes
   int line_;

@@ -47,6 +47,13 @@ class HtmlElement : public HtmlNode {
     UNCLOSED         // Was never closed in source
   };
 
+  // Various ways things can be quoted (or not)
+  enum QuoteStyle {
+    NO_QUOTE,
+    SINGLE_QUOTE,
+    DOUBLE_QUOTE
+  };
+
   class Attribute {
    public:
     // A large quantity of HTML in the wild has attributes that are
@@ -107,9 +114,11 @@ class HtmlElement : public HtmlNode {
     bool decoding_error() const { return decoding_error_; }
 
     // See comment about quote on constructor for Attribute.
-    // Returns the quotation mark associated with this URL, typically
-    // ", ', or an empty string.
-    const char* quote() const { return quote_; }
+    // Returns the quotation mark associated with this URL.
+    QuoteStyle quote_style() const { return quote_style_; }
+
+    // Textual form of quote for printing.
+    const char* quote_str() const;
 
     // Two related methods to modify the value of attribute (eg to rewrite
     // dest of src or href). As  with the constructor, copies the string in,
@@ -136,32 +145,26 @@ class HtmlElement : public HtmlNode {
     // scanning the value for escape sequences.
     void SetEscapedValue(const StringPiece& value);
 
-    // See comment about quote on constructor for Attribute.
-    void set_quote(const char *quote) {
-      quote_ = quote;
+    void set_quote_style(QuoteStyle new_quote_style) {
+      quote_style_ = new_quote_style;
     }
 
     friend class HtmlElement;
 
    private:
-    // TODO(jmarantz): arg 'quote' must be a static string, or NULL,
-    // if quoting is not yet known (e.g. this is a synthesized attribute.
-    // This is hard-to-describe and we should probably use an enum for
-    // the quote.
-    //
     // This should only be called from AddAttribute
     Attribute(const HtmlName& name, const StringPiece& value,
               bool decoding_error, const StringPiece& escaped_value,
-              const char* quote);
+              QuoteStyle quote_style);
 
     static inline void CopyValue(const StringPiece& src,
                                  scoped_array<char>* dst);
 
     HtmlName name_;
+    QuoteStyle quote_style_ : 8;
+    bool decoding_error_;
     scoped_array<char> escaped_value_;
     scoped_array<char> value_;
-    const char* quote_;
-    bool decoding_error_;
 
     DISALLOW_COPY_AND_ASSIGN(Attribute);
   };
@@ -177,18 +180,17 @@ class HtmlElement : public HtmlNode {
   // TODO(sligocki): StringPiece(NULL) seems fragile because what it is or
   // how it's treated is not docutmented.
   //
-  // quote is assumed to be a static const char *.
   // Doesn't check for attribute duplication (which is illegal in html).
   //
   // The value, if non-null, is assumed to be unescaped.  See also
   // AddEscapedAttribute.
   void AddAttribute(const HtmlName& name,
                     const StringPiece& value,
-                    const char* quote);
+                    QuoteStyle quote_style);
   // As AddAttribute, but assumes value has been escaped for html output.
   void AddEscapedAttribute(const HtmlName& name,
                            const StringPiece& escaped_value,
-                           const char* quote);
+                           QuoteStyle quote_style);
 
   // Removes the attribute at the given index, shifting higher-indexed
   // attributes down.  Note that this operation is linear in the number of
@@ -225,10 +227,6 @@ class HtmlElement : public HtmlNode {
     }
     return NULL;
   }
-
-  // Small integer uniquely identifying the HTML element, primarily
-  // for debugging.
-  void set_sequence(int sequence) { sequence_ = sequence; }
 
   // Returns the element tag name, which is not guaranteed to be
   // case-folded.  Compare keyword() to the Keyword constant found in
@@ -288,14 +286,18 @@ class HtmlElement : public HtmlNode {
               const HtmlEventListIterator& begin,
               const HtmlEventListIterator& end);
 
-  int sequence_;
+  // HtmlNode has a trailing bool, leaving us 7 bytes = 52 bits to play with.
+  // We therefore pack some stuff into it using bitfields.
+  // Warning: this stuff is quite sensitive to details, so make sure
+  // to look at object sizes before changing!
+  unsigned begin_line_number_ : 24;
+  unsigned end_line_number_ : 24;
+  CloseStyle close_style_ : 8;
+
   HtmlName name_;
   std::vector<Attribute*> attributes_;
   HtmlEventListIterator begin_;
   HtmlEventListIterator end_;
-  CloseStyle close_style_;
-  int begin_line_number_;
-  int end_line_number_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlElement);
 };

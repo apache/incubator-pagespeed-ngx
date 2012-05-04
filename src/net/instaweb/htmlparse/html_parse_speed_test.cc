@@ -24,6 +24,7 @@
 // BM_ParseAndSerializeReuseParser           433498     436118       1628
 // BM_ParseAndSerializeReuseParserX50      22954185   22900000        100
 
+#define private public
 #include "net/instaweb/htmlparse/public/html_parse.h"
 
 #include <algorithm>
@@ -40,7 +41,20 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/html_event.h"
+
+#ifdef INSTAWEB_GOOGLE3
+#include "base/heap-profiler.h"
+#include "tcmalloc/tcmalloc.h"
+#endif
+
+#include <cstddef>
+
 namespace net_instaweb {
+
+#define my_offset_of(ptr, field) (reinterpret_cast<char*>(&ptr->field) - reinterpret_cast<char*>(ptr))
+
 
 namespace {
 
@@ -54,16 +68,32 @@ namespace {
 GoogleString* sHtmlText = NULL;
 const StringPiece GetHtmlText() {
   if (sHtmlText == NULL) {
+    LOG(ERROR) << sizeof(HtmlElement);
+    LOG(ERROR) << sizeof(HtmlElement::Attribute);
+    LOG(ERROR) << sizeof(HtmlCharactersNode);
+    LOG(ERROR) << sizeof(HtmlEvent);
+    LOG(ERROR) << sizeof(HtmlStartElementEvent);
+    HtmlElement* ptr = NULL;
+//     LOG(ERROR) << "begin_line_number_@" << my_offset_of(ptr, begin_line_number_);
+    LOG(ERROR) << "name @" << my_offset_of(ptr, name_);
+//     LOG(ERROR) << "end_line_number_@" << my_offset_of(ptr, end_line_number_);
+    LOG(ERROR) << "attributes_" << my_offset_of(ptr, attributes_);
+    LOG(ERROR) << "begin_" << my_offset_of(ptr, begin_);
+    LOG(ERROR) << "end_" << my_offset_of(ptr, end_);
+//    LOG(ERROR) << "sequence_" << my_offset_of(ptr, sequence_);
     sHtmlText = new GoogleString;
     StdioFileSystem file_system;
     StringVector files;
     GoogleMessageHandler handler;
+#if 0
     static const char kDir[] = "net/instaweb/htmlparse/testdata";
     if (!file_system.ListContents(kDir, &files, &handler)) {
       LOG(ERROR) << "Unable to find test data for HTML benchmark, skipping";
       return StringPiece();
     }
-    std::sort(files.begin(), files.end());
+#endif
+    files.push_back("/tmp/huge_file2.html");
+    //std::sort(files.begin(), files.end());
     for (int i = 0, n = files.size(); i < n; ++i) {
       GoogleString buffer;
       // Note that we do not want to include xmp_tag.html here as it
@@ -97,41 +127,48 @@ static void BM_ParseAndSerializeNewParserEachIter(int iters) {
 
   StartBenchmarkTiming();
   for (int i = 0; i < iters; ++i) {
+#ifdef INSTAWEB_GOOGLE3
+    //HeapProfilerStart("bm");
+#endif
     HtmlParse parser(&handler);
     HtmlWriterFilter writer_filter(&parser);
     parser.AddFilter(&writer_filter);
     writer_filter.set_writer(&writer);
     parser.StartParse("http://example.com/benchmark");
     parser.ParseText(text);
+#ifdef INSTAWEB_GOOGLE3
+    //HeapProfilerDump("After ParseText");
+    // tc_malloc_stats();
+#endif
     parser.FinishParse();
   }
 }
 BENCHMARK(BM_ParseAndSerializeNewParserEachIter);
 
-static void BM_ParseAndSerializeReuseParser(int iters) {
-  StopBenchmarkTiming();
-  StringPiece text = GetHtmlText();
-  if (text.empty()) {
-    return;
-  }
+// static void BM_ParseAndSerializeReuseParser(int iters) {
+//   StopBenchmarkTiming();
+//   StringPiece text = GetHtmlText();
+//   if (text.empty()) {
+//     return;
+//   }
+//
+//   NullWriter writer;
+//   NullMessageHandler handler;
+//   HtmlParse parser(&handler);
+//   HtmlWriterFilter writer_filter(&parser);
+//   parser.AddFilter(&writer_filter);
+//   writer_filter.set_writer(&writer);
+//
+//   StartBenchmarkTiming();
+//   for (int i = 0; i < iters; ++i) {
+//     parser.StartParse("http://example.com/benchmark");
+//     parser.ParseText(text);
+//     parser.FinishParse();
+//   }
+// }
+// BENCHMARK(BM_ParseAndSerializeReuseParser);
 
-  NullWriter writer;
-  NullMessageHandler handler;
-  HtmlParse parser(&handler);
-  HtmlWriterFilter writer_filter(&parser);
-  parser.AddFilter(&writer_filter);
-  writer_filter.set_writer(&writer);
-
-  StartBenchmarkTiming();
-  for (int i = 0; i < iters; ++i) {
-    parser.StartParse("http://example.com/benchmark");
-    parser.ParseText(text);
-    parser.FinishParse();
-  }
-}
-BENCHMARK(BM_ParseAndSerializeReuseParser);
-
-static void BM_ParseAndSerializeReuseParserX50(int iters) {
+/*static void BM_ParseAndSerializeReuseParserX50(int iters) {
   StopBenchmarkTiming();
   StringPiece orig = GetHtmlText();
   if (orig.empty()) {
@@ -157,8 +194,8 @@ static void BM_ParseAndSerializeReuseParserX50(int iters) {
     parser.ParseText(text);
     parser.FinishParse();
   }
-}
-BENCHMARK(BM_ParseAndSerializeReuseParserX50);
+}*/
+// BENCHMARK(BM_ParseAndSerializeReuseParserX50);
 
 }  // namespace
 

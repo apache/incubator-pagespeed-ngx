@@ -124,7 +124,7 @@ bool IsInSet(const HtmlName::Keyword* keywords, int num,
 HtmlLexer::HtmlLexer(HtmlParse* html_parse)
     : html_parse_(html_parse),
       state_(START),
-      attr_quote_(""),
+      attr_quote_(HtmlElement::NO_QUOTE),
       has_attr_value_(false),
       element_(NULL),
       line_(1),
@@ -663,7 +663,7 @@ void HtmlLexer::StartParse(const StringPiece& id,
   id.CopyToString(&id_);
   content_type_ = content_type;
   has_attr_value_ = false;
-  attr_quote_ = "";
+  attr_quote_ = HtmlElement::NO_QUOTE;
   state_ = START;
   element_stack_.clear();
   element_stack_.push_back(static_cast<HtmlElement*>(0));
@@ -729,7 +729,7 @@ void HtmlLexer::MakeAttribute(bool has_value) {
   }
   element_->AddEscapedAttribute(name, value, attr_quote_);
   attr_value_.clear();
-  attr_quote_ = "";
+  attr_quote_ = HtmlElement::NO_QUOTE;
   state_ = TAG_ATTRIBUTE;
 }
 
@@ -813,10 +813,10 @@ void HtmlLexer::FinishAttribute(char c, bool has_value, bool brief_close) {
 
 void HtmlLexer::EvalAttrEq(char c) {
   if (c == '"') {
-    attr_quote_ = "\"";
+    attr_quote_ = HtmlElement::DOUBLE_QUOTE;
     state_ = TAG_ATTR_VALDQ;
   } else if (c == '\'') {
-    attr_quote_ = "'";
+    attr_quote_ = HtmlElement::SINGLE_QUOTE;
     state_ = TAG_ATTR_VALSQ;
   } else if (isspace(c)) {
     // ignore -- spaces are allowed between "=" and the value
@@ -824,7 +824,7 @@ void HtmlLexer::EvalAttrEq(char c) {
     FinishAttribute(c, true, false);
   } else {
     state_ = TAG_ATTR_VAL;
-    attr_quote_ = "";
+    attr_quote_ = HtmlElement::NO_QUOTE;
     EvalAttrVal(c);
   }
 }

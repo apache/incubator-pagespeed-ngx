@@ -48,7 +48,6 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
     : lexer_(NULL),  // Can't initialize here, since "this" should not be used
                      // in the initializer list (it generates an error in
                      // Visual Studio builds).
-      sequence_(0),
       current_(queue_.end()),
       message_handler_(message_handler),
       line_number_(1),
@@ -176,7 +175,6 @@ HtmlDirectiveNode* HtmlParse::NewDirectiveNode(HtmlElement* parent,
 HtmlElement* HtmlParse::NewElement(HtmlElement* parent, const HtmlName& name) {
   HtmlElement* element =
       new (&nodes_) HtmlElement(parent, name, queue_.end(), queue_.end());
-  element->set_sequence(sequence_++);
   if (IsOptionallyClosedTag(name.keyword())) {
     // When we programmatically insert HTML nodes we should default to
     // including an explicit close-tag if they are optionally closed

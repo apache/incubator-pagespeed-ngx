@@ -101,9 +101,10 @@ void HtmlWriterFilter::StartElement(HtmlElement* element) {
     EmitName(attribute.name());
     if (attribute.escaped_value() != NULL) {
       EmitBytes("=");
-      EmitBytes(attribute.quote());
+      StringPiece quote = attribute.quote_str();
+      EmitBytes(quote);
       EmitBytes(attribute.escaped_value());
-      EmitBytes(attribute.quote());
+      EmitBytes(quote);
     }
   }
 
@@ -178,7 +179,7 @@ void HtmlWriterFilter::EndElement(HtmlElement* element) {
           const HtmlElement::Attribute& attribute = element->attribute(
               element->attribute_size() - 1);
           if ((attribute.escaped_value() == NULL) ||
-              (attribute.quote()[0] == '\0')) {
+              (attribute.quote_style() == HtmlElement::NO_QUOTE)) {
             EmitBytes(" ");
           }
         }

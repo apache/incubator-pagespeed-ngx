@@ -45,7 +45,8 @@ void DeterministicJsFilter::StartElement(HtmlElement* element) {
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
     driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
     script->AddAttribute(
-        driver_->MakeName(HtmlName::kPagespeedNoDefer), NULL, NULL);
+        driver_->MakeName(HtmlName::kPagespeedNoDefer), NULL,
+        HtmlElement::NO_QUOTE);
     StaticJavascriptManager* static_js_manager =
         driver_->resource_manager()->static_javascript_manager();
     StringPiece deterministic_js =

@@ -92,7 +92,8 @@ TEST_F(CssTagScannerTest, TestFull) {
   EXPECT_STREQ(kUrl, href->DecodedValueOrNull());
 
   // Add an unexpected attribute.  Now we don't know what to do with it.
-  link->AddAttribute(html_parse.MakeName("other"), "value", "\"");
+  link->AddAttribute(html_parse.MakeName("other"), "value",
+                     HtmlElement::DOUBLE_QUOTE);
   EXPECT_FALSE(scanner.ParseCssElement(link, &href, &media));
 
   // Mutate it to the correct attribute.
