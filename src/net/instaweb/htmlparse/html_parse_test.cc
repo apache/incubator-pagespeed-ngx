@@ -394,7 +394,7 @@ class AnnotatingHtmlFilter : public EmptyHtmlFilter {
       if (attr.decoding_error()) {
         StrAppend(&buffer_, "=<ERROR>");
       } else if (value != NULL) {
-        StrAppend(&buffer_, "=", attr.quote(), value, attr.quote());
+        StrAppend(&buffer_, "=", attr.quote_str(), value, attr.quote_str());
       }
     }
   }
@@ -1315,10 +1315,13 @@ class AttributeManipulationTest : public HtmlParseTest {
     node_ = html_parse_.NewElement(NULL, HtmlName::kA);
     html_parse_.AddElement(node_, 0);
     html_parse_.AddAttribute(node_, HtmlName::kHref, "http://www.google.com/");
-    node_->AddAttribute(html_parse_.MakeName(HtmlName::kId), "37", "");
-    node_->AddAttribute(html_parse_.MakeName(HtmlName::kClass), "search!", "'");
+    node_->AddAttribute(html_parse_.MakeName(HtmlName::kId), "37",
+                        HtmlElement::NO_QUOTE);
+    node_->AddAttribute(html_parse_.MakeName(HtmlName::kClass), "search!",
+                        HtmlElement::SINGLE_QUOTE);
     // Add a binary attribute (one without value).
-    node_->AddAttribute(html_parse_.MakeName(HtmlName::kSelected), NULL, "");
+    node_->AddAttribute(html_parse_.MakeName(HtmlName::kSelected), NULL,
+                        HtmlElement::NO_QUOTE);
     html_parse_.CloseElement(node_, HtmlElement::BRIEF_CLOSE, 0);
   }
 
@@ -1386,7 +1389,7 @@ TEST_F(AttributeManipulationTest, ModifyAttribute) {
       node_->FindAttribute(HtmlName::kHref);
   EXPECT_TRUE(href != NULL);
   href->SetValue("google");
-  href->set_quote("'");
+  href->set_quote_style(HtmlElement::SINGLE_QUOTE);
   html_parse_.SetAttributeName(href, HtmlName::kSrc);
   CheckExpected("<a src='google' id=37 class='search!' selected />");
 }
@@ -1397,7 +1400,7 @@ TEST_F(AttributeManipulationTest, ModifyKeepAttribute) {
   EXPECT_TRUE(href != NULL);
   // This apparently do-nothing call to SetValue exposed an allocation bug.
   href->SetValue(href->DecodedValueOrNull());
-  href->set_quote(href->quote());
+  href->set_quote_style(href->quote_style());
   href->set_name(href->name());
   CheckExpected("<a href=\"http://www.google.com/\" id=37 class='search!'"
                 " selected />");

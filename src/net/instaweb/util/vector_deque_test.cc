@@ -18,18 +18,18 @@
 
 // Unit-test a custom implementation of deque.
 
-#include "net/instaweb/util/public/deque_vector.h"
+#include "net/instaweb/util/public/vector_deque.h"
 #include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {
 
 namespace {
 
-class DequeVectorTest : public testing::Test {
+class VectorDequeTest : public testing::Test {
 };
 
-TEST_F(DequeVectorTest, Queue) {
-  DequeVector<int> dv;
+TEST_F(VectorDequeTest, Queue) {
+  VectorDeque<int> dv;
   for (int j = 0; j < 5; ++j) {
     for (int i = 0; i < 10; ++i) {
       dv.push_back(i);
@@ -45,8 +45,8 @@ TEST_F(DequeVectorTest, Queue) {
   }
 }
 
-TEST_F(DequeVectorTest, Stack) {
-  DequeVector<int> dv;
+TEST_F(VectorDequeTest, Stack) {
+  VectorDeque<int> dv;
   for (int j = 0; j < 5; ++j) {
     for (int i = 0; i < 10; ++i) {
       dv.push_back(i);
@@ -62,8 +62,8 @@ TEST_F(DequeVectorTest, Stack) {
   }
 }
 
-TEST_F(DequeVectorTest, Chase1Back) {
-  DequeVector<int> dv;
+TEST_F(VectorDequeTest, Chase1Back) {
+  VectorDeque<int> dv;
   for (int j = 0; j < 5; ++j) {
     for (int i = 0; i < 10; ++i) {
       dv.push_back(i);
@@ -73,12 +73,12 @@ TEST_F(DequeVectorTest, Chase1Back) {
     }
     EXPECT_EQ(0, dv.size());
     EXPECT_TRUE(dv.empty());
-    EXPECT_EQ(DequeVector<int>::initial_capacity(), dv.capacity());
+    EXPECT_EQ(VectorDeque<int>::initial_capacity(), dv.capacity());
   }
 }
 
-TEST_F(DequeVectorTest, Chase2Back) {
-  DequeVector<int> dv;
+TEST_F(VectorDequeTest, Chase2Back) {
+  VectorDeque<int> dv;
   for (int j = 0; j < 5; ++j) {
     dv.push_back(-1);
     for (int i = 0; i < 10; ++i) {
@@ -90,12 +90,12 @@ TEST_F(DequeVectorTest, Chase2Back) {
     EXPECT_EQ(9, dv.front());
     dv.pop_front();
     EXPECT_EQ(0, dv.size());
-    EXPECT_EQ(DequeVector<int>::initial_capacity(), dv.capacity());
+    EXPECT_EQ(VectorDeque<int>::initial_capacity(), dv.capacity());
   }
 }
 
-TEST_F(DequeVectorTest, Chase1Front) {
-  DequeVector<int> dv;
+TEST_F(VectorDequeTest, Chase1Front) {
+  VectorDeque<int> dv;
   for (int j = 0; j < 5; ++j) {
     for (int i = 0; i < 10; ++i) {
       dv.push_front(i);
@@ -105,12 +105,12 @@ TEST_F(DequeVectorTest, Chase1Front) {
     }
     EXPECT_EQ(0, dv.size());
     EXPECT_TRUE(dv.empty());
-    EXPECT_EQ(DequeVector<int>::initial_capacity(), dv.capacity());
+    EXPECT_EQ(VectorDeque<int>::initial_capacity(), dv.capacity());
   }
 }
 
-TEST_F(DequeVectorTest, Chase2Front) {
-  DequeVector<int> dv;
+TEST_F(VectorDequeTest, Chase2Front) {
+  VectorDeque<int> dv;
   for (int j = 0; j < 5; ++j) {
     dv.push_front(-1);
     for (int i = 0; i < 10; ++i) {
@@ -123,7 +123,7 @@ TEST_F(DequeVectorTest, Chase2Front) {
     dv.pop_back();
     EXPECT_EQ(0, dv.size());
     EXPECT_TRUE(dv.empty());
-    EXPECT_EQ(DequeVector<int>::initial_capacity(), dv.capacity());
+    EXPECT_EQ(VectorDeque<int>::initial_capacity(), dv.capacity());
   }
 }
 

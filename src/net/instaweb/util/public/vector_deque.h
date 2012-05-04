@@ -16,8 +16,8 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_DEQUE_VECTOR_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_DEQUE_VECTOR_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_VECTOR_DEQUE_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_VECTOR_DEQUE_H_
 
 #include <cstddef>    // for size_t
 #include <cstring>    // for memcpy
@@ -42,17 +42,17 @@
 // Please do not instantiate this class with an object that cannot be copied
 // with memcpy.  Pointers, integers, and floats are fine, as well as simple
 // structs of those.
-template<class T> class DequeVector {
+template<class T> class VectorDeque {
  public:
   // Constructor provides a small initial allocation, rather than constructing
   // with zero capacity, based on expected usage patterns.
-  DequeVector()
+  VectorDeque()
       : start_position_(0),
         size_minus_1_(static_cast<size_t>(-1)),
         capacity_minus_1_(initial_capacity() - 1),
         data_(new T[initial_capacity()]) {
   }
-  ~DequeVector() {
+  ~VectorDeque() {
     delete [] data_;
     data_ = NULL;
   }
@@ -186,7 +186,7 @@ template<class T> class DequeVector {
   size_t capacity_minus_1_;  // capacity is constrained to a power of 2.
   T* data_;
 
-  DISALLOW_COPY_AND_ASSIGN(DequeVector);
+  DISALLOW_COPY_AND_ASSIGN(VectorDeque);
 };
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_DEQUE_VECTOR_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_VECTOR_DEQUE_H_

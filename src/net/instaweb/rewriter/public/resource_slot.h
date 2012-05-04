@@ -25,9 +25,9 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/deque_vector.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/vector_deque.h"
 
 namespace net_instaweb {
 
@@ -129,7 +129,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
 
   // We track the RewriteContexts that are atempting to rewrite this
   // slot, to help us build a dependency graph between ResourceContexts.
-  DequeVector<RewriteContext*> contexts_;
+  VectorDeque<RewriteContext*> contexts_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceSlot);
 };

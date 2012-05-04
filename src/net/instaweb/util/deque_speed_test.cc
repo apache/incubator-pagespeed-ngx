@@ -24,11 +24,11 @@
 // ----------------------------------------------------------
 // BM_List4                        4846       4830     142857
 // BM_Deque4                        747        750    1000000
-// BM_DequeVector4                  468        470    1489362
+// BM_VectorDeque4                  468        470    1489362
 // BM_DequeUsingStdVector4         1874       1873     368421
 // BM_List100                    118003     118292       5833
 // BM_Deque100                    16389      16457      43750
-// BM_DequeVector100              10296      10214      63636
+// BM_VectorDeque100              10296      10214      63636
 // BM_DequeUsingStdVector100      75617      74286       8750
 
 #include <deque>
@@ -37,7 +37,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/benchmark.h"
-#include "net/instaweb/util/public/deque_vector.h"
+#include "net/instaweb/util/public/vector_deque.h"
 
 
 // Implementation of deque subset interface using vector, with O(N)
@@ -143,8 +143,8 @@ static void BM_Deque4(int iters) {
   FourElementWorkout<std::deque<int> >(iters, 4);
 }
 
-static void BM_DequeVector4(int iters) {
-  FourElementWorkout<DequeVector<int> >(iters, 4);
+static void BM_VectorDeque4(int iters) {
+  FourElementWorkout<VectorDeque<int> >(iters, 4);
 }
 
 static void BM_DequeUsingStdVector4(int iters) {
@@ -159,8 +159,8 @@ static void BM_Deque100(int iters) {
   FourElementWorkout<std::deque<int> >(iters, 100);
 }
 
-static void BM_DequeVector100(int iters) {
-  FourElementWorkout<DequeVector<int> >(iters, 100);
+static void BM_VectorDeque100(int iters) {
+  FourElementWorkout<VectorDeque<int> >(iters, 100);
 }
 
 static void BM_DequeUsingStdVector100(int iters) {
@@ -169,10 +169,10 @@ static void BM_DequeUsingStdVector100(int iters) {
 
 BENCHMARK(BM_List4);
 BENCHMARK(BM_Deque4);
-BENCHMARK(BM_DequeVector4);
+BENCHMARK(BM_VectorDeque4);
 BENCHMARK(BM_DequeUsingStdVector4);
 
 BENCHMARK(BM_List100);
 BENCHMARK(BM_Deque100);
-BENCHMARK(BM_DequeVector100);
+BENCHMARK(BM_VectorDeque100);
 BENCHMARK(BM_DequeUsingStdVector100);
