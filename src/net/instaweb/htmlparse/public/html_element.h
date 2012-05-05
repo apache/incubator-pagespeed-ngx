@@ -107,11 +107,19 @@ class HtmlElement : public HtmlNode {
     // The decoded value uses 8-bit characters to represent any unicode
     // code-point less than 256.
     const char* DecodedValueOrNull() const {
-      return (decoding_error_ ? NULL : value_.get());
+      if (!decoded_value_computed_) {
+        ComputeDecodedValue();
+      }
+      return decoded_value_.get();
     }
 
     void set_decoding_error(bool x) { decoding_error_ = x; }
-    bool decoding_error() const { return decoding_error_; }
+    bool decoding_error() const {
+      if (!decoded_value_computed_) {
+        ComputeDecodedValue();
+      }
+      return decoding_error_;
+    }
 
     // See comment about quote on constructor for Attribute.
     // Returns the quotation mark associated with this URL.
@@ -152,9 +160,10 @@ class HtmlElement : public HtmlNode {
     friend class HtmlElement;
 
    private:
+    void ComputeDecodedValue() const;
+
     // This should only be called from AddAttribute
-    Attribute(const HtmlName& name, const StringPiece& value,
-              bool decoding_error, const StringPiece& escaped_value,
+    Attribute(const HtmlName& name, const StringPiece& escaped_value,
               QuoteStyle quote_style);
 
     static inline void CopyValue(const StringPiece& src,
@@ -162,9 +171,36 @@ class HtmlElement : public HtmlNode {
 
     HtmlName name_;
     QuoteStyle quote_style_ : 8;
-    bool decoding_error_;
+    mutable bool decoding_error_;
+    mutable bool decoded_value_computed_;
+
+    // Attribute value represented as ascii and
+    // HTML-escape-sequences, typically parsed directly from an HTML
+    // file.  This is the canonical representation, and it can handle
+    // any arbitrary multi-byte characters.
+    //
+    // Note that it is acceptable to have 8-bit characters in escape
+    // sequences (typically iso8859).  However we will not be able to
+    // decode such attributes.
     scoped_array<char> escaped_value_;
-    scoped_array<char> value_;
+
+    // An 8-bit representation of the escaped_value.  Escape sequences
+    // that contain character-codes >= 256 are not decoded, and will
+    // result in decoding_error_==true.  Also note that a literal 8-bit
+    // code in escaped_value_ cannot be decoded either.
+    //
+    // We can get fewer decoding errors if we are careful to track the
+    // character-encoding for the document, and implement some of the
+    // popular ones, e.g. utf8, gb2312 and iso8859.  Note that failing
+    // to decode an attribute value does not impact our ability to
+    // parse and reserialize the document.  It just prevents us from
+    // looking at the decoded value, which is a requirement primarily
+    // for tags referencing URLs, e.g. <img src=...>.
+    //
+    // Note that we do not decode non-ASCII characters but we can
+    // represent them in escaped_value_.  We can get 8-bit characters
+    // into decoded_value_ via &#129; etc.
+    mutable scoped_array<char> decoded_value_;
 
     DISALLOW_COPY_AND_ASSIGN(Attribute);
   };
@@ -189,7 +225,7 @@ class HtmlElement : public HtmlNode {
   // The value, if non-null, is assumed to be unescaped.  See also
   // AddEscapedAttribute.
   void AddAttribute(const HtmlName& name,
-                    const StringPiece& value,
+                    const StringPiece& decoded_value,
                     QuoteStyle quote_style);
   // As AddAttribute, but assumes value has been escaped for html output.
   void AddEscapedAttribute(const HtmlName& name,

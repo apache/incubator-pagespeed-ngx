@@ -161,31 +161,33 @@ void HtmlElement::DebugPrint() const {
 
 void HtmlElement::AddAttribute(const Attribute& src_attr) {
   Attribute* attr = new Attribute(src_attr.name(),
-                                  src_attr.DecodedValueOrNull(),
-                                  src_attr.decoding_error(),
                                   src_attr.escaped_value(),
                                   src_attr.quote_style());
+  if (src_attr.decoded_value_computed_) {
+    attr->decoded_value_computed_ = true;
+    attr->decoding_error_ = src_attr.decoding_error_;
+    Attribute::CopyValue(src_attr.decoded_value_.get(), &attr->decoded_value_);
+  }
   data_->attributes_.push_back(attr);
 }
 
-void HtmlElement::AddAttribute(const HtmlName& name, const StringPiece& value,
+void HtmlElement::AddAttribute(const HtmlName& name,
+                               const StringPiece& decoded_value,
                                QuoteStyle quote_style) {
   GoogleString buf;
-  Attribute* attr = new Attribute(name, value, false,
-                                  HtmlKeywords::Escape(value, &buf),
+  Attribute* attr = new Attribute(name,
+                                  HtmlKeywords::Escape(decoded_value, &buf),
                                   quote_style);
+  attr->decoded_value_computed_ = true;
+  attr->decoding_error_ = false;
+  Attribute::CopyValue(decoded_value, &attr->decoded_value_);
   data_->attributes_.push_back(attr);
 }
 
 void HtmlElement::AddEscapedAttribute(const HtmlName& name,
                                       const StringPiece& escaped_value,
                                       QuoteStyle quote_style) {
-  GoogleString buf;
-  bool decoding_error;
-  StringPiece unescaped = HtmlKeywords::Unescape(escaped_value,
-                                                 &buf, &decoding_error);
-  Attribute* attr = new Attribute(name, unescaped, decoding_error,
-                                  escaped_value, quote_style);
+  Attribute* attr = new Attribute(name, escaped_value, quote_style);
   data_->attributes_.push_back(attr);
 }
 
@@ -204,31 +206,29 @@ void HtmlElement::Attribute::CopyValue(const StringPiece& src,
 }
 
 HtmlElement::Attribute::Attribute(const HtmlName& name,
-                                  const StringPiece& value,
-                                  bool decoding_error,
                                   const StringPiece& escaped_value,
                                   QuoteStyle quote_style)
     : name_(name),
       quote_style_(quote_style),
-      decoding_error_(decoding_error) {
-  CopyValue(value, &value_);
+      decoding_error_(false),
+      decoded_value_computed_(false) {
   CopyValue(escaped_value, &escaped_value_);
 }
 
 // Modify value of attribute (eg to rewrite dest of src or href).
 // As with the constructor, copies the string in, so caller retains
 // ownership of value.
-void HtmlElement::Attribute::SetValue(const StringPiece& value) {
+void HtmlElement::Attribute::SetValue(const StringPiece& decoded_value) {
   GoogleString buf;
   // Note that we execute the lines in this order in case value
   // is a substring of value_.  This copies the value just prior
   // to deallocation of the old value_.
   const char* escaped_chars = escaped_value_.get();
-  DCHECK(value.data() + value.size() < escaped_chars ||
-         escaped_chars + strlen(escaped_chars) < value.data())
+  DCHECK(decoded_value.data() + decoded_value.size() < escaped_chars ||
+         escaped_chars + strlen(escaped_chars) < decoded_value.data())
       << "Setting unescaped value from substring of escaped value.";
-  CopyValue(HtmlKeywords::Escape(value, &buf), &escaped_value_);
-  CopyValue(value, &value_);
+  CopyValue(HtmlKeywords::Escape(decoded_value, &buf), &escaped_value_);
+  CopyValue(decoded_value, &decoded_value_);
 }
 
 void HtmlElement::Attribute::SetEscapedValue(const StringPiece& escaped_value) {
@@ -236,14 +236,17 @@ void HtmlElement::Attribute::SetEscapedValue(const StringPiece& escaped_value) {
   // Note that we execute the lines in this order in case value
   // is a substring of value_.  This copies the value just prior
   // to deallocation of the old value_.
-  const char* value_chars = value_.get();
-  DCHECK(value_chars + strlen(value_chars) < escaped_value.data() ||
-         escaped_value.data() + escaped_value.size() < value_chars)
-      << "Setting escaped value from substring of unescaped value.";
+  const char* value_chars = decoded_value_.get();
+  if (value_chars != NULL) {
+    DCHECK(value_chars + strlen(value_chars) < escaped_value.data() ||
+           escaped_value.data() + escaped_value.size() < value_chars)
+        << "Setting escaped value from substring of unescaped value.";
+  }
 
-  StringPiece unescaped_value = HtmlKeywords::Unescape(escaped_value, &buf,
-                                                       &decoding_error_);
-  CopyValue(unescaped_value, &value_);
+  decoded_value_.reset(NULL);
+  decoding_error_ = false;
+  decoded_value_computed_ = false;
+
   CopyValue(escaped_value, &escaped_value_);
 }
 
@@ -257,6 +260,14 @@ const char* HtmlElement::Attribute::quote_str() const {
     default:
       return "\"";
   }
+}
+
+void HtmlElement::Attribute::ComputeDecodedValue() const {
+  GoogleString buf;
+  StringPiece unescaped_value = HtmlKeywords::Unescape(
+      escaped_value_.get(), &buf, &decoding_error_);
+  CopyValue(unescaped_value, &decoded_value_);
+  decoded_value_computed_ = true;
 }
 
 }  // namespace net_instaweb
