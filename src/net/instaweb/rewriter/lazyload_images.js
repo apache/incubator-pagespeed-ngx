@@ -102,6 +102,8 @@ pagespeed.LazyloadImages.prototype.compute_top_ = function(element) {
   if (parent) {
     position += this.compute_top_(parent);
   }
+  // Since position is absolute, it should always be >= 0.
+  position = Math.max(position, 0);
   element.setAttribute('pagespeed_lazy_position', position);
   return position;
 };
@@ -124,12 +126,46 @@ pagespeed.LazyloadImages.prototype.offset_ = function(element) {
 };
 
 /**
+ * Returns the value of the given style property for the element.
+ * @param {Element} element DOM element whose style property is to be computed.
+ * @return {string} The given property if found, and empty string otherwise.
+ * @private
+ */
+pagespeed.LazyloadImages.prototype.getStyle_ = function(element, property) {
+  if (element.currentStyle) {
+    // IE.
+    return element.currentStyle[property];
+  }
+  if (document.defaultView &&
+      document.defaultView.getComputedStyle) {
+    // Other browsers.
+    var style = document.defaultView.getComputedStyle(element, null);
+    if (style) {
+      return style.getPropertyValue(property);
+    }
+  }
+  if (element.style && element.style[property]) {
+    return element.style[property];
+  }
+  // Fallback.
+  return '';
+};
+
+/**
  * Returns true if an element is currently visible or within the buffer.
  * @param {Element} element The DOM element to check for visibility.
  * @return {boolean} True if the element is visible.
  * @private
  */
 pagespeed.LazyloadImages.prototype.isVisible_ = function(element) {
+  var element_position = this.getStyle_(element, 'position');
+  if (element_position == 'relative') {
+    // If the element contains a "position: relative" style attribute, assume
+    // it is visible since getBoundingClientRect() doesn't seem to work
+    // correctly here.
+    return true;
+  }
+
   var viewport = this.viewport_();
   var rect = element.getBoundingClientRect();
   var top_diff, bottom_diff;

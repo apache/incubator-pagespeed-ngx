@@ -712,7 +712,7 @@ pagespeed.DeferJs.prototype.addDomReadyListeners = function(elem, func) {
 /**
  * Adds page onload event listeners to our own list and called them later.
  * @param {!Element} elem Element on which listener to be called.
- * @param {!function()} func onload listener.
+ * @param {!Function} func onload listener.
  */
 pagespeed.DeferJs.prototype.addOnloadListeners = function(elem, func) {
   this.log('onload: ' + func.toString());
@@ -720,8 +720,18 @@ pagespeed.DeferJs.prototype.addOnloadListeners = function(elem, func) {
     func.call(elem);
     return;
   }
+  var loadEvent;
+  // TODO(ksimbili): Fix for IE8 too.
+  if (!(this.getIEVersion() <= 8)) {
+    // HACK HACK: This is specifically to solve for jquery libraries, who try to
+    // read the event being passed.
+    // Note we are not setting any of the other params in event. We don't see
+    // them as a need for now.
+    loadEvent = document.createEvent('HTMLEvents');
+    loadEvent.initEvent('load', false, false);
+  }
   this.onloadListeners_.push(function() {
-    func.call(elem);
+    func.call(elem, loadEvent);
   });
 };
 pagespeed.DeferJs.prototype['addOnloadListeners'] =

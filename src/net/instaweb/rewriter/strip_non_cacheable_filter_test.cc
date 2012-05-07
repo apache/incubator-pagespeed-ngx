@@ -18,8 +18,11 @@
 
 #include "net/instaweb/rewriter/public/strip_non_cacheable_filter.h"
 
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"
 
@@ -48,16 +51,23 @@ const char kHtmlInput[] =
       "</div>"
     "</body></html>";
 
-const char kPsaHeadScriptNodes[] =
-    "<script type=\"text/javascript\" pagespeed_no_defer=\"\" src=\"/psajs/blink.js\"></script>"
-    "<script type=\"text/javascript\" pagespeed_no_defer=\"\">pagespeed.deferInit();</script>";
-}  // namespace
+const char kBlinkUrlHandler[] = "/psajs/blink.js";
+const char kBlinkUrlGstatic[] = "http://www.gstatic.com/psa/static/1-blink.js";
+const char kPsaHeadScriptNodesStart[] =
+    "<script type=\"text/javascript\" pagespeed_no_defer=\"\" src=\"";
 
+const char kPsaHeadScriptNodesEnd[] =
+    "\"></script>"
+    "<script type=\"text/javascript\" pagespeed_no_defer=\"\">pagespeed.deferInit();</script>";
+
+}  // namespace
 
 
 class StripNonCacheableFilterTest : public ResourceManagerTestBase {
  public:
   StripNonCacheableFilterTest() {}
+
+  virtual ~StripNonCacheableFilterTest() {}
 
   virtual void SetUp() {
     delete options_;
@@ -71,24 +81,39 @@ class StripNonCacheableFilterTest : public ResourceManagerTestBase {
 
   virtual bool AddHtmlTags() const { return false; }
 
+ protected:
+  GoogleString GetExpectedOutput(const StringPiece blink_js) {
+    GoogleString psa_head_script_nodes = StrCat(
+        kPsaHeadScriptNodesStart, blink_js, kPsaHeadScriptNodesEnd);
+    return StrCat(
+        "<html><head>",
+        psa_head_script_nodes.c_str(),
+        "</head><body>",
+        BlinkUtil::kStartBodyMarker,
+        "<div id=\"header\"> This is the header </div>"
+        "<div id=\"container\" class>"
+        "<!--GooglePanel begin panel-id-1.0--><!--GooglePanel end panel-id-1.0-->"
+        "<!--GooglePanel begin panel-id-0.0--><!--GooglePanel end panel-id-0.0-->"
+        "<!--GooglePanel begin panel-id-0.1-->"
+        "<!--GooglePanel end panel-id-0.1-->", BlinkUtil::kLayoutMarker,
+        "</body></html>");
+  }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(StripNonCacheableFilterTest);
 };
 
 TEST_F(StripNonCacheableFilterTest, StripNonCacheable) {
-  GoogleString json_expected_output = StrCat(
-      "<html><head>",
-      kPsaHeadScriptNodes,
-      "</head><body>",
-      BlinkUtil::kStartBodyMarker,
-      "<div id=\"header\"> This is the header </div>"
-      "<div id=\"container\" class>"
-      "<!--GooglePanel begin panel-id-1.0--><!--GooglePanel end panel-id-1.0-->"
-      "<!--GooglePanel begin panel-id-0.0--><!--GooglePanel end panel-id-0.0-->"
-      "<!--GooglePanel begin panel-id-0.1-->"
-      "<!--GooglePanel end panel-id-0.1-->", BlinkUtil::kLayoutMarker,
-      "</body></html>");
-  ValidateExpectedUrl(kRequestUrl, kHtmlInput, json_expected_output);
+  ValidateExpectedUrl(kRequestUrl, kHtmlInput,
+                      GetExpectedOutput(kBlinkUrlHandler));
+}
+
+TEST_F(StripNonCacheableFilterTest, TestGstatic) {
+  UrlNamer url_namer;
+  StaticJavascriptManager js_manager(&url_namer, true, "1");
+  resource_manager()->set_static_javascript_manager(&js_manager);
+  ValidateExpectedUrl(kRequestUrl, kHtmlInput,
+                      GetExpectedOutput(kBlinkUrlGstatic));
 }
 
 }  // namespace net_instaweb

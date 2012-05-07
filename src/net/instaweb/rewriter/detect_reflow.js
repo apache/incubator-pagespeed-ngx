@@ -56,6 +56,16 @@ pagespeed.DetectReflow = function() {
 };
 
 /**
+ * Returns preScriptHeights_ object.
+ * @return {!Object.<string, number>} Height of divs before scripts executed.
+ */
+pagespeed.DetectReflow.prototype.getPreScriptHeights = function() {
+  return this.preScriptHeights_;
+};
+pagespeed.DetectReflow.prototype['getPreScriptHeights'] =
+  pagespeed.DetectReflow.prototype.getPreScriptHeights;
+
+/**
  * Returns reflowElementHeights_ string.
  * @return {!string}  A comma separated list of "div:height", where height
  * represents the final rendered height after scripts executed.
