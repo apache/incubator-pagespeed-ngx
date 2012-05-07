@@ -49,7 +49,7 @@ InstawebContext::InstawebContext(request_rec* request,
                                  ApacheResourceManager* manager,
                                  const GoogleString& absolute_url,
                                  bool use_custom_options,
-                                 const RewriteOptions& custom_options)
+                                 const RewriteOptions& options)
     : content_encoding_(kNone),
       content_type_(content_type),
       resource_manager_(manager),
@@ -60,21 +60,26 @@ InstawebContext::InstawebContext(request_rec* request,
       started_parse_(false),
       sent_headers_(false),
       populated_headers_(false) {
+  if (options.running_furious()) {
+    // Furious requires custom options because it has to make changes based on
+    // what ExperimentSpec the user should be seeing.
+    use_custom_options = true;
+  }
   if (use_custom_options) {
     // TODO(jmarantz): this is a temporary hack until we sort out better
     // memory management of RewriteOptions.  This will drag on performance.
     // We need to do this because we are changing RewriteDriver to keep
     // a reference to its options throughout its lifetime to refer to the
     // domain lawyer and other options.
-    RewriteOptions* options = custom_options.Clone();
+    RewriteOptions* custom_options = options.Clone();
 
     // If we're running a Furious experiment, determine the state of this
     // request and reset the options accordingly.
-    if (options->running_furious()) {
-      SetFuriousStateAndCookie(request, options);
+    if (custom_options->running_furious()) {
+      SetFuriousStateAndCookie(request, custom_options);
     }
-    resource_manager_->ComputeSignature(options);
-    rewrite_driver_ = resource_manager_->NewCustomRewriteDriver(options);
+    resource_manager_->ComputeSignature(custom_options);
+    rewrite_driver_ = resource_manager_->NewCustomRewriteDriver(custom_options);
   } else {
     rewrite_driver_ = resource_manager_->NewRewriteDriver();
   }

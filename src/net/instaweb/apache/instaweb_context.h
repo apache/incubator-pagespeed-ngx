@@ -63,7 +63,7 @@ class InstawebContext {
                   ApacheResourceManager* manager,
                   const GoogleString& base_url,
                   bool use_custom_options,
-                  const RewriteOptions& custom_options);
+                  const RewriteOptions& options);
   ~InstawebContext();
 
   void Rewrite(const char* input, int size);
