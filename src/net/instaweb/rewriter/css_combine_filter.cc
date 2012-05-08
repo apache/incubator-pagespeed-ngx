@@ -114,7 +114,7 @@ class CssCombineFilter::CssCombiner
   }
 
   OutputResourcePtr MakeOutput() {
-    return Combine(kContentTypeCss, rewrite_driver_->message_handler());
+    return Combine(rewrite_driver_->message_handler());
   }
 
   bool Write(const ResourceVector& in, const OutputResourcePtr& out) {
@@ -129,6 +129,10 @@ class CssCombineFilter::CssCombiner
   }
 
  private:
+  virtual const ContentType* CombinationContentType() {
+    return &kContentTypeCss;
+  }
+
   virtual bool WritePiece(int index, const Resource* input,
                           OutputResource* combination, Writer* writer,
                           MessageHandler* handler);

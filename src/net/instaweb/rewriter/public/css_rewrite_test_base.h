@@ -151,7 +151,7 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
       int flags);
 
   // Helper to test for how we handle trailing junk
-  void TestCorruptUrl(const char* junk, bool should_fetch_ok);
+  void TestCorruptUrl(const char* junk);
 
   Variable* num_blocks_rewritten_;
   Variable* num_parse_failures_;

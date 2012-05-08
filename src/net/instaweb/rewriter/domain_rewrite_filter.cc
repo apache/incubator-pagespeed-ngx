@@ -61,7 +61,8 @@ void DomainRewriteFilter::StartDocumentImpl() {
       const char* location = headers->Lookup1(HttpAttributes::kLocation);
       if (location != NULL) {
         GoogleString new_location;
-        Rewrite(location, driver_->base_url(), &new_location);
+        Rewrite(location, driver_->base_url(), false /* !apply_sharding */,
+                &new_location);
         headers->Replace(HttpAttributes::kLocation, new_location);
       }
     }
@@ -81,13 +82,17 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
       driver_->ShouldNotRewriteImages()) {
     return;
   }
-  HtmlElement::Attribute* attr = tag_scanner_.ScanElement(element);
+  bool is_hyperlink;
+  HtmlElement::Attribute* attr = tag_scanner_.ScanElement(
+      element, &is_hyperlink);
   if (attr != NULL) {
     StringPiece val(attr->DecodedValueOrNull());
     GoogleString rewritten_val;
+    bool apply_sharding = !is_hyperlink;
     if (!val.empty() &&
         BaseUrlIsValid() &&
-        Rewrite(val, driver_->base_url(), &rewritten_val) == kRewroteDomain) {
+        (Rewrite(val, driver_->base_url(), apply_sharding, &rewritten_val) ==
+         kRewroteDomain)) {
       attr->SetValue(rewritten_val);
       rewrite_count_->Add(1);
     }
@@ -97,7 +102,7 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
 // Resolve the url we want to rewrite, and then shard as appropriate.
 DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
     const StringPiece& url_to_rewrite, const GoogleUrl& base_url,
-    GoogleString* rewritten_url) {
+    bool apply_sharding, GoogleString* rewritten_url) {
   if (url_to_rewrite.empty()) {
     return kDomainUnchanged;
   }
@@ -156,7 +161,8 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
   resolved_request.Spec().CopyToString(rewritten_url);
   uint32 int_hash = HashString<CasePreserve, uint32>(
       rewritten_url->data(), rewritten_url->size());
-  if (lawyer->ShardDomain(domain, int_hash, &sharded_domain)) {
+  if (apply_sharding &&
+      lawyer->ShardDomain(domain, int_hash, &sharded_domain)) {
     *rewritten_url = StrCat(sharded_domain,
                             resolved_request.PathAndLeaf().substr(1));
   }

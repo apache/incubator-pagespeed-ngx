@@ -103,7 +103,7 @@ class JsCombineFilter::JsCombiner
 
   // Create the output resource for this combination.
   OutputResourcePtr MakeOutput() {
-    return Combine(kContentTypeJavascript, rewrite_driver_->message_handler());
+    return Combine(rewrite_driver_->message_handler());
   }
 
   // Stats.
@@ -112,6 +112,10 @@ class JsCombineFilter::JsCombiner
   }
 
  private:
+  virtual const ContentType* CombinationContentType() {
+    return &kContentTypeJavascript;
+  }
+
   virtual bool WritePiece(int index, const Resource* input,
                           OutputResource* combination, Writer* writer,
                           MessageHandler* handler);

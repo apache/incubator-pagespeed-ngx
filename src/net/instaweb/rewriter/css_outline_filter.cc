@@ -130,7 +130,12 @@ void CssOutlineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
 bool CssOutlineFilter::WriteResource(const StringPiece& content,
                                      OutputResource* resource,
                                      MessageHandler* handler) {
-  return resource_manager_->Write(ResourceVector(), content, resource, handler);
+  // We don't provide charset here since in general we can just inherit
+  // from the page.
+  // TODO(morlovich) check for proper behavior in case of embedded BOM.
+  return resource_manager_->Write(
+      ResourceVector(), content, &kContentTypeCss, StringPiece(),
+      resource, handler);
 }
 
 // Create file with style content and remove that element from DOM.
@@ -149,7 +154,7 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       OutputResourcePtr output_resource(
           driver_->CreateOutputResourceWithUnmappedPath(
               driver_->google_url().AllExceptLeaf(), kFilterId, "_",
-              &kContentTypeCss, kOutlinedResource));
+              kOutlinedResource));
 
       if (output_resource.get() != NULL) {
         // Rewrite URLs in content.

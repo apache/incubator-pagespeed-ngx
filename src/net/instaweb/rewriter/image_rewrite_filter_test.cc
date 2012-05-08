@@ -240,7 +240,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
   }
 
   // Helper to test for how we handle trailing junk in URLs
-  void TestCorruptUrl(const char* junk, bool should_fetch_ok) {
+  void TestCorruptUrl(StringPiece junk, bool append_junk) {
     const char kHtml[] =
         "<img src=\"a.jpg\"><img src=\"b.png\"><img src=\"c.gif\">";
     AddFileToMockFetcher(StrCat(kTestDomain, "a.jpg"), kPuzzleJpgFile,
@@ -268,9 +268,13 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     // Fetch messed up versions. Currently image rewriter doesn't actually
     // fetch them.
     GoogleString out;
-    EXPECT_EQ(should_fetch_ok, FetchResourceUrl(StrCat(url1, junk), &out));
-    EXPECT_EQ(should_fetch_ok, FetchResourceUrl(StrCat(url2, junk), &out));
-    EXPECT_EQ(should_fetch_ok, FetchResourceUrl(StrCat(url3, junk), &out));
+    EXPECT_TRUE(
+        FetchResourceUrl(ChangeSuffix(url1, append_junk, ".jpg", junk), &out));
+    EXPECT_TRUE(
+        FetchResourceUrl(ChangeSuffix(url2, append_junk, ".png", junk), &out));
+    // This actually has .png in the output since we convert gif -> png.
+    EXPECT_TRUE(
+        FetchResourceUrl(ChangeSuffix(url3, append_junk, ".png", junk), &out));
 
     // Now run through again to make sure we didn't cache the messed up URL
     img_srcs.clear();
@@ -852,11 +856,15 @@ TEST_F(ImageRewriteTest, Rewrite404) {
 }
 
 TEST_F(ImageRewriteTest, NoExtensionCorruption) {
-  TestCorruptUrl("%22", false);
+  TestCorruptUrl("%22", true /* append %22 */);
 }
 
 TEST_F(ImageRewriteTest, NoQueryCorruption) {
-  TestCorruptUrl("?query", true);
+  TestCorruptUrl("?query",  true /* append ?query*/);
+}
+
+TEST_F(ImageRewriteTest, NoWrongExtCorruption) {
+  TestCorruptUrl(".html", false /* replace ext with .html */);
 }
 
 TEST_F(ImageRewriteTest, NoCrashOnInvalidDim) {

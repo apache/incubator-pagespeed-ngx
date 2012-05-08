@@ -32,6 +32,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -133,7 +134,12 @@ void JsOutlineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
 bool JsOutlineFilter::WriteResource(const GoogleString& content,
                                     OutputResource* resource,
                                     MessageHandler* handler) {
-  return resource_manager_->Write(ResourceVector(), content, resource, handler);
+  // We don't provide charset here since in generally we can just inherit
+  // from the page.
+  // TODO(morlovich) check for proper behavior in case of embedded BOM.
+  return resource_manager_->Write(
+      ResourceVector(), content, &kContentTypeJavascript, StringPiece(),
+      resource, handler);
 }
 
 // Create file with script content and remove that element from DOM.
@@ -147,7 +153,7 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
     OutputResourcePtr resource(
         driver_->CreateOutputResourceWithUnmappedPath(
             driver_->google_url().AllExceptLeaf(), kFilterId, "_",
-            &kContentTypeJavascript, kOutlinedResource));
+            kOutlinedResource));
     if (resource.get() != NULL &&
         WriteResource(content, resource.get(), handler)) {
       HtmlElement* outline_element = driver_->CloneElement(inline_element);

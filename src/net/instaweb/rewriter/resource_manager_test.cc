@@ -181,11 +181,9 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     const char* filter_prefix = RewriteOptions::kCssFilterId;
     const char* name = "I.name";  // valid name for CSS filter.
     const char* contents = "contents";
-    const ContentType* content_type = &kContentTypeText;
     OutputResourcePtr output(
         rewrite_driver()->CreateOutputResourceWithPath(
-            kUrlPrefix, filter_prefix, name, content_type,
-            kRewrittenResource));
+            kUrlPrefix, filter_prefix, name, kRewrittenResource));
     ASSERT_TRUE(output.get() != NULL);
     // Check name_key against url_prefix/fp.name
     GoogleString name_key = output->name_key();
@@ -203,8 +201,7 @@ class ResourceManagerTest : public ResourceManagerTestBase {
       // case since we're just trying to create the resource, not fetch it.
       OutputResourcePtr output1(
           rewrite_driver()->CreateOutputResourceWithPath(
-              kUrlPrefix, filter_prefix, name, content_type,
-              kRewrittenResource));
+              kUrlPrefix, filter_prefix, name, kRewrittenResource));
       ASSERT_TRUE(output1.get() != NULL);
       EXPECT_FALSE(output1->TryLockForCreation());
       EXPECT_FALSE(output1->IsWritten());
@@ -232,11 +229,13 @@ class ResourceManagerTest : public ResourceManagerTestBase {
     ASSERT_TRUE(ResourceManagerTestingPeer::HasHash(output.get()));
     EXPECT_EQ(kRewrittenResource, output->kind());
     EXPECT_TRUE(resource_manager()->Write(
-        ResourceVector(), contents, output.get(), message_handler()));
+        ResourceVector(), contents, &kContentTypeText, "utf-8",
+        output.get(), message_handler()));
     EXPECT_TRUE(output->IsWritten());
     // Check that hash and ext are correct.
     EXPECT_EQ("0", output->hash());
     EXPECT_EQ("txt", output->extension());
+    EXPECT_STREQ("utf-8", output->charset());
 
     // With the URL (which contains the hash), we can retrieve it
     // from the http_cache.
@@ -386,8 +385,9 @@ TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
 
   // We need to 'Write' an output resource before we can determine its
   // URL.
-  resource_manager()->Write(ResourceVector(), StringPiece(kStyleContent),
-                            output.get(), message_handler());
+  resource_manager()->Write(
+      ResourceVector(), StringPiece(kStyleContent), &kContentTypeCss,
+      StringPiece(), output.get(), message_handler());
   EXPECT_EQ(Encode("http://cdn.com/", "ce", "0", "style.css", "css"),
             output->url());
 }
@@ -638,8 +638,7 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
-          kUrlPrefix, CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
-          kOutlinedResource));
+          kUrlPrefix, CssOutlineFilter::kFilterId, "_", kOutlinedResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -648,7 +647,8 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   resource_manager()->Write(
-      ResourceVector(), "", output_resource.get(), message_handler());
+      ResourceVector(), "", &kContentTypeCss, StringPiece(),
+      output_resource.get(), message_handler());
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -658,8 +658,7 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   // Now try fetching again. It should not get a cached_result either.
   output_resource.reset(
       rewrite_driver()->CreateOutputResourceWithPath(
-          kUrlPrefix, CssOutlineFilter::kFilterId, "_", &kContentTypeCss,
-          kOutlinedResource));
+          kUrlPrefix, CssOutlineFilter::kFilterId, "_", kOutlinedResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -680,8 +679,7 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
-          kUrlPrefix, RewriteOptions::kCssFilterId, "_", &kContentTypeCss,
-          kOnTheFlyResource));
+          kUrlPrefix, RewriteOptions::kCssFilterId, "_", kOnTheFlyResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -690,7 +688,8 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   resource_manager()->Write(
-      ResourceVector(), "", output_resource.get(), message_handler());
+      ResourceVector(), "", &kContentTypeCss, StringPiece(),
+      output_resource.get(), message_handler());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -719,8 +718,7 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
   OutputResourcePtr output_resource(
       rewrite_driver()->CreateOutputResourceWithPath(
-          kUrlPrefix, RewriteOptions::kCssFilterId, "_", &kContentTypeCss,
-          kRewrittenResource));
+          kUrlPrefix, RewriteOptions::kCssFilterId, "_", kRewrittenResource));
   ASSERT_TRUE(output_resource.get() != NULL);
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -729,7 +727,8 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   resource_manager()->Write(
-      ResourceVector(), "", output_resource.get(), message_handler());
+      ResourceVector(), "", &kContentTypeCss, StringPiece(),
+      output_resource.get(), message_handler());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -877,11 +876,12 @@ TEST_F(ResourceManagerShardedTest, TestNamed) {
           "http://example.com/dir/",
           "jm",
           "orig.js",
-          &kContentTypeJavascript,
           kRewrittenResource));
   ASSERT_TRUE(output_resource.get());
   ASSERT_TRUE(resource_manager()->Write(ResourceVector(),
                                         "alert('hello');",
+                                        &kContentTypeJavascript,
+                                        StringPiece(),
                                         output_resource.get(),
                                         message_handler()));
 
@@ -987,7 +987,8 @@ TEST_F(ResourceManagerTest, ApplyInputCacheControl) {
 
 TEST_F(ResourceManagerTest, WriteChecksInputVector) {
   // Make sure ->Write incorporates the cache control info from inputs,
-  // and doesn't cache a private resource improperly.
+  // and doesn't cache a private resource improperly. Also make sure
+  // we get the charset right (including quoting).
   ResourcePtr private_400(
       CreateCustomCachingResource("pri_400", 400, ",private"));
   // Should have the 'it's not cacheable!' entry here; see also below.
@@ -1000,12 +1001,16 @@ TEST_F(ResourceManagerTest, WriteChecksInputVector) {
 
   resource_manager()->Write(ResourceVector(1, private_400),
                             "boo!",
+                            &kContentTypeText,
+                            "\"\\koi8-r\"",  // covers escaping behavior, too.
                             output_resource.get(),
                             message_handler());
   ResponseHeaders* headers = output_resource->response_headers();
   EXPECT_FALSE(headers->HasValue(HttpAttributes::kCacheControl, "public"));
   EXPECT_TRUE(headers->HasValue(HttpAttributes::kCacheControl, "private"));
   EXPECT_TRUE(headers->HasValue(HttpAttributes::kCacheControl, "max-age=400"));
+  EXPECT_STREQ("text/plain; charset=\"\\koi8-r\"",
+               headers->Lookup1(HttpAttributes::kContentType));
 
   // Make sure nothing extra in the cache at this point.
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());

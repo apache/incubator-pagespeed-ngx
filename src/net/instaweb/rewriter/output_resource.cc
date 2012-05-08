@@ -19,6 +19,8 @@
 
 #include "net/instaweb/rewriter/public/output_resource.h"
 
+#include <cstddef>
+
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -70,10 +72,9 @@ OutputResource::OutputResource(ResourceManager* resource_manager,
                                const StringPiece& unmapped_base,
                                const StringPiece& original_base,
                                const ResourceNamer& full_name,
-                               const ContentType* type,
                                const RewriteOptions* options,
                                OutputResourceKind kind)
-    : Resource(resource_manager, type),
+    : Resource(resource_manager, NULL /* no type yet*/),
       writing_complete_(false),
       cached_result_owned_(false),
       cached_result_(NULL),
@@ -84,16 +85,6 @@ OutputResource::OutputResource(ResourceManager* resource_manager,
       kind_(kind) {
   DCHECK(options != NULL);
   full_name_.CopyFrom(full_name);
-  if (type == NULL) {
-    GoogleString ext_with_dot = StrCat(".", full_name.ext());
-    type_ = NameExtensionToContentType(ext_with_dot);
-  } else {
-    // This if + check used to be a 1-liner, but it was failing and this
-    // yields debuggable output.
-    // TODO(jmaessen): The addition of 1 below avoids the leading ".";
-    // make this convention consistent and fix all code.
-    CHECK_EQ((type->file_extension() + 1), full_name.ext());
-  }
   CHECK(EndsInSlash(resolved_base)) <<
       "resolved_base must end in a slash, was: " << resolved_base;
 }
@@ -151,18 +142,6 @@ void OutputResource::EndWrite(MessageHandler* handler) {
 StringPiece OutputResource::suffix() const {
   CHECK(type_ != NULL);
   return type_->file_extension();
-}
-
-void OutputResource::set_suffix(const StringPiece& ext) {
-  type_ = NameExtensionToContentType(ext);
-  if (type_ != NULL) {
-    // TODO(jmaessen): The addition of 1 below avoids the leading ".";
-    // make this convention consistent and fix all code.
-    full_name_.set_ext(type_->file_extension() + 1);
-  } else {
-    full_name_.set_ext(ext.substr(1));
-  }
-  computed_url_.clear();  // Since dependent on full_name_.
 }
 
 GoogleString OutputResource::DumpFileName() const {
@@ -231,11 +210,15 @@ bool OutputResource::IsWritten() const {
 
 void OutputResource::SetType(const ContentType* content_type) {
   Resource::SetType(content_type);
-  // TODO(jmaessen): The addition of 1 below avoids the leading ".";
-  // make this convention consistent and fix all code.
   if (content_type != NULL) {
+    // TODO(jmaessen): The addition of 1 below avoids the leading ".";
+    // make this convention consistent and fix all code.
     full_name_.set_ext(content_type->file_extension() + 1);
     computed_url_.clear();  // Since dependent on full_name_.
+    DCHECK_LE(full_name_.ext().size(),
+              static_cast<size_t>(ContentType::MaxProducedExtensionLength()))
+        << "OutputResource with extension length > "
+           "ContentType::MaxProducedExtensionLength()";
   }
 }
 

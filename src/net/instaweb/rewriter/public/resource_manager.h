@@ -97,7 +97,15 @@ class ResourceManager {
   // Also sets Content-Type headers if content_type is provided.
   // If content_type is null, the Content-Type header is omitted.
   void SetDefaultLongCacheHeaders(const ContentType* content_type,
-                                  ResponseHeaders* header) const;
+                                  ResponseHeaders* header) const {
+    SetDefaultLongCacheHeadersWithCharset(content_type, StringPiece(), header);
+  }
+
+  // As above, but also sets charset if it's non-empty and content_type
+  // is non-NULL.
+  void SetDefaultLongCacheHeadersWithCharset(
+      const ContentType* content_type, StringPiece charset,
+      ResponseHeaders* header) const;
 
   // Changes the content type of a pre-initialized header.
   void SetContentType(const ContentType* content_type, ResponseHeaders* header);
@@ -127,7 +135,16 @@ class ResourceManager {
   // as optimized. 'inputs' described the input resources that were used
   // to construct the output, and is used to determine whether the
   // result can be safely cache extended and be marked publicly cacheable.
+  // 'content_type' and 'charset' specify the mimetype and encoding of
+  // the contents, and will help form the Content-Type header.
+  // 'charset' may be empty when not specified.
+  //
+  // Note that this does not escape charset.
+  //
+  // Callers should take care that dangerous types like 'text/html' do not
+  // sneak into content_type.
   bool Write(const ResourceVector& inputs, const StringPiece& contents,
+             const ContentType* content_type, StringPiece charset,
              OutputResource* output, MessageHandler* handler);
 
   // Computes the most restrictive Cache-Control intersection of the input

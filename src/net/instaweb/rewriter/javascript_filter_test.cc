@@ -89,7 +89,7 @@ class JavascriptFilterTest : public ResourceManagerTestBase {
     return StringPrintf(kHtmlFormat, a);
   }
 
-  void TestCorruptUrl(const char* junk, bool should_fetch_ok) {
+  void TestCorruptUrl(const char* new_suffix) {
     // Do a normal rewrite test
     InitTest(100);
     ValidateExpected("no_ext_corruption",
@@ -97,9 +97,13 @@ class JavascriptFilterTest : public ResourceManagerTestBase {
                     GenerateHtml(expected_rewritten_path_.c_str()));
 
     // Fetch messed up URL.
+    ASSERT_TRUE(StringCaseEndsWith(expected_rewritten_path_, ".js"));
+    GoogleString munged_url =
+        ChangeSuffix(expected_rewritten_path_, false /* replace */,
+                     ".js", new_suffix);
+
     GoogleString out;
-    EXPECT_EQ(should_fetch_ok,
-              FetchResourceUrl(StrCat(expected_rewritten_path_, junk), &out));
+    EXPECT_TRUE(FetchResourceUrl(munged_url, &out));
 
     // Rewrite again; should still get normal URL
     ValidateExpected("no_ext_corruption",
@@ -200,11 +204,15 @@ TEST_F(JavascriptFilterTest, RewriteJs404) {
 
 // Make sure bad requests do not corrupt our extension.
 TEST_F(JavascriptFilterTest, NoExtensionCorruption) {
-  TestCorruptUrl("%22", false);
+  TestCorruptUrl(".js%22");
 }
 
 TEST_F(JavascriptFilterTest, NoQueryCorruption) {
-  TestCorruptUrl("?query", true);
+  TestCorruptUrl(".js?query");
+}
+
+TEST_F(JavascriptFilterTest, NoWrongExtCorruption) {
+  TestCorruptUrl(".html");
 }
 
 TEST_F(JavascriptFilterTest, InlineJavascript) {

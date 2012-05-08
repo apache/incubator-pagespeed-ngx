@@ -230,8 +230,7 @@ void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
 }
 
 // Helper to test for how we handle trailing junk
-void CssRewriteTestBase::TestCorruptUrl(const char* junk,
-                                        bool should_fetch_ok) {
+void CssRewriteTestBase::TestCorruptUrl(const char* new_suffix) {
   const char kInput[] = " div { } ";
   const char kOutput[] = "div{}";
   // Compute normal version
@@ -240,9 +239,12 @@ void CssRewriteTestBase::TestCorruptUrl(const char* junk,
 
   // Fetch with messed up extension
   GoogleString css_url = ExpectedUrlForCss("rep", kOutput);
+  ASSERT_TRUE(StringCaseEndsWith(css_url, ".css"));
+  GoogleString munged_url =
+      ChangeSuffix(css_url, false /*replace*/, ".css", new_suffix);
+
   GoogleString output;
-  EXPECT_EQ(should_fetch_ok,
-            FetchResourceUrl(StrCat(css_url, junk), &output));
+  EXPECT_TRUE(FetchResourceUrl(munged_url, &output));
 
   // Now see that output is correct
   ValidateRewriteExternalCss(

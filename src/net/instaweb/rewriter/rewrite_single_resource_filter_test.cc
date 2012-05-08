@@ -29,7 +29,6 @@
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -138,10 +137,11 @@ class TestRewriter : public RewriteFilter {
       return kTooBusy;
     }
 
-    output_resource->SetType(&kContentTypeText);
     bool ok = resource_manager_->Write(
         ResourceVector(1, input_resource),
         StrCat(contents, contents),
+        &kContentTypeText,
+        StringPiece(),  // no explicit charset
         output_resource.get(),
         driver_->message_handler());
     return ok ? kRewriteOk : kRewriteFailed;

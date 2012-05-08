@@ -438,25 +438,20 @@ class RewriteDriver : public HtmlParse {
   // So hrefs are:
   //    $(PATH)/$(NAME).pagespeed.$(FILTER_PREFIX).$(HASH).$(CONTENT_TYPE_EXT)
   //
-  // 'type' arg can be null if it's not known, or is not in our ContentType
-  // library.
-  //
   // Could be private since you should use one of the versions below but put
   // here with the rest like it and for documentation clarity.
   OutputResourcePtr CreateOutputResourceWithPath(
       const StringPiece& mapped_path, const StringPiece& unmapped_path,
       const StringPiece& base_url, const StringPiece& filter_id,
-      const StringPiece& name, const ContentType* content_type,
-      OutputResourceKind kind);
+      const StringPiece& name, OutputResourceKind kind);
 
   // Version of CreateOutputResourceWithPath where the unmapped and mapped
   // paths are the same and the base_url is this driver's base_url.
   OutputResourcePtr CreateOutputResourceWithUnmappedPath(
       const StringPiece& path, const StringPiece& filter_id,
-      const StringPiece& name, const ContentType* content_type,
-      OutputResourceKind kind) {
+      const StringPiece& name, OutputResourceKind kind) {
     return CreateOutputResourceWithPath(path, path, base_url_.AllExceptLeaf(),
-                                        filter_id, name, content_type, kind);
+                                        filter_id, name, kind);
   }
 
   // Version of CreateOutputResourceWithPath where the unmapped and mapped
@@ -464,20 +459,19 @@ class RewriteDriver : public HtmlParse {
   OutputResourcePtr CreateOutputResourceWithMappedPath(
       const StringPiece& mapped_path, const StringPiece& unmapped_path,
       const StringPiece& filter_id, const StringPiece& name,
-      const ContentType* content_type, OutputResourceKind kind) {
+      OutputResourceKind kind) {
     return CreateOutputResourceWithPath(mapped_path, unmapped_path,
                                         decoded_base_url_.AllExceptLeaf(),
-                                        filter_id, name, content_type, kind);
+                                        filter_id, name, kind);
   }
 
   // Version of CreateOutputResourceWithPath where the unmapped and mapped
   // paths and the base url are all the same. FOR TESTS ONLY.
   OutputResourcePtr CreateOutputResourceWithPath(
       const StringPiece& path, const StringPiece& filter_id,
-      const StringPiece& name, const ContentType* content_type,
-      OutputResourceKind kind) {
+      const StringPiece& name, OutputResourceKind kind) {
     return CreateOutputResourceWithPath(path, path, path, filter_id, name,
-                                        content_type, kind);
+                                        kind);
   }
 
   // Creates an input resource based on input_url.  Returns NULL if

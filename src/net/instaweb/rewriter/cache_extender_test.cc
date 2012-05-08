@@ -98,7 +98,7 @@ class CacheExtenderTest : public ResourceManagerTestBase {
   }
 
   // Helper to test for how we handle trailing junk in URLs
-  void TestCorruptUrl(const char* junk, bool should_fetch_ok) {
+  void TestCorruptUrl(StringPiece junk, bool append_junk) {
     InitTest(kShortTtlSec);
     GoogleString a_ext = Encode(kCssPath, "ce", "0", kCssTail, "css");
     GoogleString b_ext = Encode(kTestDomain, "ce", "0", "b.jpg", "jpg");
@@ -108,9 +108,15 @@ class CacheExtenderTest : public ResourceManagerTestBase {
                      GenerateHtml(kCssFile, "b.jpg", "c.js"),
                      GenerateHtml(a_ext, b_ext, c_ext));
     GoogleString output;
-    EXPECT_EQ(should_fetch_ok, FetchResourceUrl(StrCat(a_ext, junk), &output));
-    EXPECT_EQ(should_fetch_ok, FetchResourceUrl(StrCat(b_ext, junk), &output));
-    EXPECT_EQ(should_fetch_ok, FetchResourceUrl(StrCat(c_ext, junk), &output));
+    EXPECT_TRUE(
+        FetchResourceUrl(
+            ChangeSuffix(a_ext, append_junk, ".css", junk), &output));
+    EXPECT_TRUE(
+        FetchResourceUrl(
+            ChangeSuffix(b_ext, append_junk, ".jpg", junk), &output));
+    EXPECT_TRUE(
+        FetchResourceUrl(
+            ChangeSuffix(c_ext, append_junk, ".js", junk), &output));
     ValidateExpected("no_ext_corrupt_cached",
                      GenerateHtml(kCssFile, "b.jpg", "c.js"),
                      GenerateHtml(a_ext, b_ext, c_ext));
@@ -503,11 +509,15 @@ TEST_F(CacheExtenderTest, MinimizeCacheHits) {
 }
 
 TEST_F(CacheExtenderTest, NoExtensionCorruption) {
-  TestCorruptUrl("%22", false);
+  TestCorruptUrl("%22", true /* append %22 */);
 }
 
 TEST_F(CacheExtenderTest, NoQueryCorruption) {
-  TestCorruptUrl("?query", true);
+  TestCorruptUrl("?query", true /* append ?query*/);
+}
+
+TEST_F(CacheExtenderTest, NoWrongExtCorruption) {
+  TestCorruptUrl(".html", false /* replace ext with .html */);
 }
 
 TEST_F(CacheExtenderTest, MadeOnTheFly) {

@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 
 #include <cstddef>
+#include <vector>
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -41,16 +42,20 @@ class ResourceTagScannerTest : public HtmlParseTestBase {
   // Helper class to collect all external resources.
   class ResourceCollector : public EmptyHtmlFilter {
    public:
-    ResourceCollector(HtmlParse* html_parse, StringVector* resources)
+    ResourceCollector(HtmlParse* html_parse, StringVector* resources,
+                      std::vector<bool>* is_hyperlink)
         : resources_(resources),
-          resource_tag_scanner_(html_parse) {
+          resource_tag_scanner_(html_parse),
+          is_hyperlink_(is_hyperlink) {
     }
 
     virtual void StartElement(HtmlElement* element) {
+      bool is_hyperlink;
       HtmlElement::Attribute* src =
-          resource_tag_scanner_.ScanElement(element);
+          resource_tag_scanner_.ScanElement(element, &is_hyperlink);
       if (src != NULL) {
         resources_->push_back(src->DecodedValueOrNull());
+        is_hyperlink_->push_back(is_hyperlink);
       }
     }
 
@@ -63,6 +68,7 @@ class ResourceTagScannerTest : public HtmlParseTestBase {
    private:
     StringVector* resources_;
     ResourceTagScanner resource_tag_scanner_;
+    std::vector<bool>* is_hyperlink_;
 
     DISALLOW_COPY_AND_ASSIGN(ResourceCollector);
   };
@@ -73,7 +79,8 @@ class ResourceTagScannerTest : public HtmlParseTestBase {
 
 TEST_F(ResourceTagScannerTest, FindTags) {
   StringVector resources;
-  ResourceCollector collector(&html_parse_, &resources);
+  std::vector<bool> is_hyperlink;
+  ResourceCollector collector(&html_parse_, &resources, &is_hyperlink);
   html_parse_.AddFilter(&collector);
   ValidateNoChanges(
       "simple_script",
@@ -90,18 +97,27 @@ TEST_F(ResourceTagScannerTest, FindTags) {
       "<link rel=StyleSheet href='case.css'>");
   ASSERT_EQ(static_cast<size_t>(8), resources.size());
   EXPECT_EQ(GoogleString("myscript.js"), resources[0]);
+  EXPECT_FALSE(is_hyperlink[0]);
   EXPECT_EQ(GoogleString("action.as"), resources[1]);
+  EXPECT_FALSE(is_hyperlink[1]);
   EXPECT_EQ(GoogleString("image.jpg"), resources[2]);
+  EXPECT_FALSE(is_hyperlink[2]);
   EXPECT_EQ(GoogleString("nomedia.css"), resources[3]);
+  EXPECT_FALSE(is_hyperlink[3]);
   EXPECT_EQ(GoogleString("id.css"), resources[4]);
+  EXPECT_FALSE(is_hyperlink[4]);
   EXPECT_EQ(GoogleString("no_type.style"), resources[5]);
+  EXPECT_FALSE(is_hyperlink[5]);
   EXPECT_EQ(GoogleString("media.css"), resources[6]);
+  EXPECT_FALSE(is_hyperlink[6]);
   EXPECT_EQ(GoogleString("case.css"), resources[7]);
+  EXPECT_FALSE(is_hyperlink[7]);
 }
 
 TEST_F(ResourceTagScannerTest, FindATags) {
   StringVector resources;
-  ResourceCollector collector(&html_parse_, &resources);
+  std::vector<bool> is_hyperlink;
+  ResourceCollector collector(&html_parse_, &resources, &is_hyperlink);
   collector.resource_tag_scanner()->set_find_a_tags(true);
   html_parse_.AddFilter(&collector);
   ValidateNoChanges(
@@ -111,12 +127,15 @@ TEST_F(ResourceTagScannerTest, FindATags) {
       "<form action=\"blank\"/>");
   ASSERT_EQ(static_cast<size_t>(2), resources.size());
   EXPECT_EQ(GoogleString("link0"), resources[0]);
+  EXPECT_TRUE(is_hyperlink[0]);
   EXPECT_EQ(GoogleString("link1"), resources[1]);
+  EXPECT_TRUE(is_hyperlink[1]);
 }
 
 TEST_F(ResourceTagScannerTest, FindFormATags) {
   StringVector resources;
-  ResourceCollector collector(&html_parse_, &resources);
+  std::vector<bool> is_hyperlink;
+  ResourceCollector collector(&html_parse_, &resources, &is_hyperlink);
   collector.resource_tag_scanner()->set_find_form_tags(true);
   html_parse_.AddFilter(&collector);
   ValidateNoChanges(
@@ -125,6 +144,7 @@ TEST_F(ResourceTagScannerTest, FindFormATags) {
       "<form action=\"blank\"/>");
   ASSERT_EQ(static_cast<size_t>(1), resources.size());
   EXPECT_EQ(GoogleString("blank"), resources[0]);
+  EXPECT_TRUE(is_hyperlink[0]);
 }
 
 }  // namespace net_instaweb

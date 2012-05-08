@@ -1159,16 +1159,7 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(
   StringPiece base = gurl.AllExceptLeaf();
   OutputResourcePtr output_resource(new OutputResource(
       resource_manager_, base, base, base, namer,
-      NULL,  // content_type
       options(), kind));
-
-  // We also reject any unknown extensions, which includes rejecting requests
-  // with trailing junk. We do this now since OutputResource figures out
-  // the type for us.
-  if (output_resource->type() == NULL) {
-    output_resource.clear();
-    *filter = NULL;
-  }
 
   return output_resource;
 }
@@ -1343,7 +1334,7 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
     StringPiece base = gurl.AllExceptLeaf();
     ResourceNamer namer;
     output_resource.reset(new OutputResource(resource_manager_, base, base,
-        base, namer, NULL, options(), kRewrittenResource));
+        base, namer, options(), kRewrittenResource));
     SetBaseUrlForFetch(url);
     fetch_queued_ = true;
     AjaxRewriteContext* context = new AjaxRewriteContext(this, url.data());
@@ -1895,7 +1886,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
       encoder->Encode(v, data, &name);
       result.reset(CreateOutputResourceWithMappedPath(
           mapped_gurl.AllExceptLeaf(), gurl.AllExceptLeaf(),
-          filter_id, name, input_resource->type(), kind));
+          filter_id, name, kind));
     }
   }
   return result;
@@ -1907,25 +1898,20 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
     const StringPiece& base_url,
     const StringPiece& filter_id,
     const StringPiece& name,
-    const ContentType* content_type,
     OutputResourceKind kind) {
   ResourceNamer full_name;
   full_name.set_id(filter_id);
   full_name.set_name(name);
-  if (content_type != NULL) {
-    // TODO(jmaessen): The addition of 1 below avoids the leading ".";
-    // make this convention consistent and fix all code.
-    full_name.set_ext(content_type->file_extension() + 1);
-  }
   OutputResourcePtr resource;
 
-  int leaf_size = full_name.EventualSize(*resource_manager_->hasher());
-  int url_size = mapped_path.size() + leaf_size;
-  if ((leaf_size <= options()->max_url_segment_size()) &&
+  int max_leaf_size = full_name.EventualSize(*resource_manager_->hasher())
+                      + ContentType::MaxProducedExtensionLength();
+  int url_size = mapped_path.size() + max_leaf_size;
+  if ((max_leaf_size <= options()->max_url_segment_size()) &&
       (url_size <= options()->max_url_size())) {
     OutputResource* output_resource = new OutputResource(
         resource_manager_, mapped_path, unmapped_path, base_url,
-        full_name, content_type, options(), kind);
+        full_name, options(), kind);
     resource.reset(output_resource);
   }
   return resource;

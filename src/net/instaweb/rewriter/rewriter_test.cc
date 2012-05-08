@@ -95,8 +95,8 @@ TEST_F(RewriterTest, HandlingOfInvalidUrls) {
   EXPECT_TRUE(TryFetchResource(Encode(kTestDomain, RewriteOptions::kCssFilterId,
                                       "foobar", "a.css", "css")));
 
-  // ... however fetches with invalid extensions should fail
-  EXPECT_FALSE(
+  // ... we even accept fetches with invalid extensions.
+  EXPECT_TRUE(
       TryFetchResource(Encode(kTestDomain, RewriteOptions::kCssFilterId, hash,
                               "a.css", "ext")));
 

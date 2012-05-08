@@ -59,7 +59,8 @@ void UrlLeftTrimFilter::Initialize(Statistics* statistics) {
 void UrlLeftTrimFilter::StartElementImpl(HtmlElement* element) {
   if (element->keyword() != HtmlName::kBase &&
       BaseUrlIsValid()) {
-    TrimAttribute(tag_scanner_.ScanElement(element));
+    bool is_hyperlink;
+    TrimAttribute(tag_scanner_.ScanElement(element, &is_hyperlink));
   }
 }
 

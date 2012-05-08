@@ -61,6 +61,7 @@ class DomainRewriteFilter : public CommonFilter {
   // kDomainUnchanged returned.
   RewriteResult Rewrite(const StringPiece& input_url,
                         const GoogleUrl& base_url,
+                        bool apply_sharding,
                         GoogleString* output_url);
 
  private:

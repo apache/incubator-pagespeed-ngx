@@ -327,8 +327,13 @@ class NestedFilter : public RewriteFilter {
       }
       ResourceManager* resource_manager = Manager();
       MessageHandler* message_handler = resource_manager->message_handler();
+      // Warning: this uses input's content-type for simplicity, but real
+      // filters should not do that --- see comments in
+      // CacheExtender::RewriteLoadedResource as to why.
       if (resource_manager->Write(ResourceVector(1, slot(0)->resource()),
                                   new_content,
+                                  slot(0)->resource()->type(),
+                                  slot(0)->resource()->charset(),
                                   output(0).get(),
                                   message_handler)) {
         result = kRewriteOk;
@@ -418,7 +423,7 @@ class CombiningFilter : public RewriteFilter {
             driver, kContentTypeCss.file_extension() + 1, filter) {
     }
     OutputResourcePtr MakeOutput() {
-      return Combine(kContentTypeCss, rewrite_driver_->message_handler());
+      return Combine(rewrite_driver_->message_handler());
     }
     bool Write(const ResourceVector& in, const OutputResourcePtr& out) {
       return WriteCombination(in, out, rewrite_driver_->message_handler());
@@ -435,6 +440,10 @@ class CombiningFilter : public RewriteFilter {
     void set_prefix(const GoogleString& prefix) { prefix_ = prefix; }
 
    private:
+    virtual const ContentType* CombinationContentType() {
+      return &kContentTypeCss;
+    }
+
     GoogleString prefix_;
   };
 
@@ -661,10 +670,18 @@ class RewriteContextTest : public ResourceManagerTestBase {
 
     // trimmable
     SetFetchResponse("http://test.com/a.css", default_css_header, " a ");
+
     // not trimmable
     SetFetchResponse("http://test.com/b.css", default_css_header, "b");
     SetFetchResponse("http://test.com/c.css", default_css_header,
                      "a.css\nb.css\n");
+
+    // trimmable, with charset.
+    ResponseHeaders encoded_css_header;
+    resource_manager()->SetDefaultLongCacheHeadersWithCharset(
+        &kContentTypeCss, "koi8-r", &encoded_css_header);
+    SetFetchResponse("http://test.com/a_ru.css", encoded_css_header,
+                     " a = \xc1 ");
 
     // trimmable, private
     ResponseHeaders private_css_header;
@@ -1694,6 +1711,76 @@ TEST_F(RewriteContextTest, CacheExtendCacheableResource) {
                               ResourceManager::kGeneratedMaxAgeMs/1000),
                  headers.Lookup1(HttpAttributes::kCacheControl));
   }
+}
+
+// Make sure we preserve the charset properly.
+TEST_F(RewriteContextTest, PreserveCharsetRewritten) {
+  InitResources();
+  InitTrimFiltersSync(kRewrittenResource);
+
+  GoogleString content;
+  ResponseHeaders headers;
+  EXPECT_TRUE(FetchResource(kTestDomain,
+                            kTrimWhitespaceSyncFilterId,
+                            "a_ru.css",
+                            "css",
+                            &content,
+                            &headers));
+  EXPECT_STREQ("text/css; charset=koi8-r",
+               headers.Lookup1(HttpAttributes::kContentType));
+}
+
+TEST_F(RewriteContextTest, PreserveCharsetOnTheFly) {
+  InitResources();
+  InitTrimFiltersSync(kOnTheFlyResource);
+
+  GoogleString content;
+  ResponseHeaders headers;
+  EXPECT_TRUE(FetchResource(kTestDomain,
+                            kTrimWhitespaceSyncFilterId,
+                            "a_ru.css",
+                            "css",
+                            &content,
+                            &headers));
+  EXPECT_STREQ("text/css; charset=koi8-r",
+               headers.Lookup1(HttpAttributes::kContentType));
+}
+
+TEST_F(RewriteContextTest, PreserveCharsetNone) {
+  // Null test -- make sure we don't invent a charset when there is none.
+  InitResources();
+  InitTrimFiltersSync(kRewrittenResource);
+
+  GoogleString content;
+  ResponseHeaders headers;
+  EXPECT_TRUE(FetchResource(kTestDomain,
+                            kTrimWhitespaceSyncFilterId,
+                            "a.css",
+                            "css",
+                            &content,
+                            &headers));
+  EXPECT_STREQ("text/css", headers.Lookup1(HttpAttributes::kContentType));
+}
+
+// Make sure we preserve charset across 2 filters.
+TEST_F(RewriteContextTest, CharsetTwoFilters) {
+  InitTwoFilters(kRewrittenResource);
+  InitResources();
+
+  GoogleString content;
+  ResponseHeaders headers;
+
+  GoogleString url = Encode(kTestDomain, "tw", "0",
+                            Encode("", "uc", "0", "a_ru.css", "css"), "css");
+  // Need to rewrite HTML first as our test filters aren't registered and hence
+  // can't reconstruct.
+  ValidateExpected("two_filters",
+                   CssLinkHref("a_ru.css"),
+                   CssLinkHref(url));
+
+  EXPECT_TRUE(FetchResourceUrl(url, &content, &headers));
+  EXPECT_STREQ("text/css; charset=koi8-r",
+               headers.Lookup1(HttpAttributes::kContentType));
 }
 
 TEST_F(RewriteContextTest, FetchColdCacheOnTheFly) {

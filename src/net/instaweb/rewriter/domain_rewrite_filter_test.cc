@@ -154,6 +154,21 @@ TEST_F(DomainRewriteFilterTest, RewriteHyperlinks) {
       "<area href=\"http://to1.test.com/2.html\"/>");
 }
 
+TEST_F(DomainRewriteFilterTest, RewriteButDoNotShardHyperlinks) {
+  options()->ClearSignatureForTesting();
+  options()->set_domain_rewrite_hyperlinks(true);
+  ValidateExpected(
+      "forms and a tags",
+      StrCat("<a href=\"", kFrom2Domain, "link.html\"/>"
+             "<form action=\"", kFrom2Domain, "blank\"/>"
+             "<a href=\"https://from2.test.com/1.html\"/>"
+             "<area href=\"", kFrom2Domain, "2.html\"/>"),
+      "<a href=\"http://to2.test.com/link.html\"/>"
+      "<form action=\"http://to2.test.com/blank\"/>"
+      "<a href=\"https://from2.test.com/1.html\"/>"
+      "<area href=\"http://to2.test.com/2.html\"/>");
+}
+
 TEST_F(DomainRewriteFilterTest, RewriteRedirectLocations) {
   options()->ClearSignatureForTesting();
   options()->set_domain_rewrite_hyperlinks(true);

@@ -633,6 +633,23 @@ GoogleString ResourceManagerTestBase::EncodeCssName(const StringPiece& name,
   return encoded_url;
 }
 
+GoogleString ResourceManagerTestBase::ChangeSuffix(
+    GoogleString old_url, bool append_new_suffix,
+    StringPiece old_suffix, StringPiece new_suffix) {
+  if (!StringCaseEndsWith(old_url, old_suffix)) {
+    ADD_FAILURE() << "Can't seem to find old extension!";
+    return GoogleString();
+  }
+
+  if (append_new_suffix) {
+    return StrCat(old_url, new_suffix);
+  } else {
+    return StrCat(
+        old_url.substr(0, old_url.length() - old_suffix.length()),
+        new_suffix);
+  }
+}
+
 void ResourceManagerTestBase::SetupWaitFetcher() {
   factory_->SetupWaitFetcher();
 }

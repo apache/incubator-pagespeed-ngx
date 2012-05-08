@@ -59,7 +59,6 @@ class OutputResource : public Resource {
                  const StringPiece& unmapped_base, /* aka source domain */
                  const StringPiece& original_base, /* aka cnamed domain */
                  const ResourceNamer& resource_id,
-                 const ContentType* type,
                  const RewriteOptions* options,
                  OutputResourceKind kind);
 
@@ -146,12 +145,6 @@ class OutputResource : public Resource {
   // already known.  For now we'll assume we can commit to serving the
   // resource during the HTML rewriter.
   bool IsWritten() const;
-
-  // Sets the suffix for an output resource.  This must be called prior
-  // to Write if the content_type ctor arg was NULL.  This can happen if
-  // we are managing a resource whose content-type is not known to us.
-  // CacheExtender is currently the only place where we need this.
-  void set_suffix(const StringPiece& ext);
 
   // Sets the type of the output resource, and thus also its suffix.
   virtual void SetType(const ContentType* type);

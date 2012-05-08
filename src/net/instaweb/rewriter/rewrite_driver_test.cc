@@ -33,7 +33,6 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/mock_resource_callback.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr, etc
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -77,18 +76,6 @@ class RewriteDriverTest : public ResourceManagerTestBase {
     return (resource.get() != NULL);
   }
 
-  const ContentType* DecodeContentType(const StringPiece& url) {
-    GoogleUrl gurl(url);
-    const ContentType* type = NULL;
-    RewriteFilter* filter;
-    OutputResourcePtr output_resource(
-        rewrite_driver()->DecodeOutputResource(gurl, &filter));
-    if (output_resource.get() != NULL) {
-      type = output_resource->type();
-    }
-    return type;
-  }
-
   GoogleString BaseUrlSpec() {
     return rewrite_driver()->base_url().Spec().as_string();
   }
@@ -122,28 +109,6 @@ TEST_F(RewriteDriverTest, TestLegacyUrl) {
       << "invalid extension";
 }
 
-TEST_F(RewriteDriverTest, TestInferContentType) {
-  rewrite_driver()->AddFilters();
-  SetBaseUrlForFetch("http://example.com/dir/123/index.html");
-  EXPECT_TRUE(DecodeContentType(
-      Encode("http://example.com/", "jm", "0", "z", "unknown")) == NULL);
-  EXPECT_EQ(&kContentTypeJavascript,
-            DecodeContentType(
-                Encode("http://example.com/", "jm", "0", "orig", "js")));
-  EXPECT_EQ(&kContentTypeCss,
-            DecodeContentType(
-                Encode("http://example.com/", "cf", "0", "orig", "css")));
-  EXPECT_EQ(&kContentTypeJpeg,
-            DecodeContentType(
-                Encode("http://example.com/", "ic", "0", "orig", "jpg")));
-  EXPECT_EQ(&kContentTypePng,
-            DecodeContentType(
-                Encode("http://example.com/", "ce", "0", "orig", "png")));
-  EXPECT_EQ(&kContentTypeGif,
-            DecodeContentType(
-                Encode("http://example.com/dir/", "ic", "0", "xy", "gif")));
-}
-
 TEST_F(RewriteDriverTest, TestModernUrl) {
   rewrite_driver()->AddFilters();
 
@@ -160,8 +125,8 @@ TEST_F(RewriteDriverTest, TestModernUrl) {
   EXPECT_FALSE(CanDecodeUrl(
       Encode("http://example.com/", "NOFILTER", "HASH", "Puzzle.jpg", "jpg")));
 
-  // Nonsense extension
-  EXPECT_FALSE(CanDecodeUrl(
+  // Nonsense extension -- we will just ignore it these days.
+  EXPECT_TRUE(CanDecodeUrl(
       Encode("http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpgif")));
 
   // No hash
@@ -194,8 +159,8 @@ TEST_F(RewriteDriverTestUrlNamer, TestEncodedUrls) {
   EXPECT_FALSE(CanDecodeUrl(
       Encode("http://example.com/", "NOFILTER", "HASH", "Puzzle.jpg", "jpg")));
 
-  // Nonsense extension
-  EXPECT_FALSE(CanDecodeUrl(
+  // Nonsense extension -- we will just ignore it these days.
+  EXPECT_TRUE(CanDecodeUrl(
       Encode("http://example.com/", "ce", "HASH", "Puzzle.jpg", "jpgif")));
 
   // No hash
@@ -460,7 +425,6 @@ TEST_F(RewriteDriverTest, InvalidBaseTag) {
 }
 
 TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
-  const ContentType* content_types[] = { NULL, &kContentTypeJpeg};
   const OutputResourceKind resource_kinds[] = {
     kRewrittenResource,
     kOnTheFlyResource,
@@ -483,26 +447,21 @@ TEST_F(RewriteDriverTest, CreateOutputResourceTooLong) {
   GoogleString dummy_filter_id = "xy";
 
   OutputResourcePtr resource;
-  for (int t = 0; t < arraysize(content_types); ++t) {
-    for (int k = 0; k < arraysize(resource_kinds); ++k) {
-      // Short name should always succeed at creating new resource.
-      resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-          short_path, dummy_filter_id, short_name,
-          content_types[t], resource_kinds[k]));
-      EXPECT_TRUE(NULL != resource.get());
+  for (int k = 0; k < arraysize(resource_kinds); ++k) {
+    // Short name should always succeed at creating new resource.
+    resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
+        short_path, dummy_filter_id, short_name, resource_kinds[k]));
+    EXPECT_TRUE(NULL != resource.get());
 
-      // Long leaf-name should always fail at creating new resource.
-      resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-          short_path, dummy_filter_id, long_name,
-          content_types[t], resource_kinds[k]));
-      EXPECT_TRUE(NULL == resource.get());
+    // Long leaf-name should always fail at creating new resource.
+    resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
+        short_path, dummy_filter_id, long_name, resource_kinds[k]));
+    EXPECT_TRUE(NULL == resource.get());
 
-      // Long total URL length should always fail at creating new resource.
-      resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
-          long_path, dummy_filter_id, short_name,
-          content_types[t], resource_kinds[k]));
-      EXPECT_TRUE(NULL == resource.get());
-    }
+    // Long total URL length should always fail at creating new resource.
+    resource.reset(rewrite_driver()->CreateOutputResourceWithPath(
+        long_path, dummy_filter_id, short_name, resource_kinds[k]));
+    EXPECT_TRUE(NULL == resource.get());
   }
 }
 

@@ -38,7 +38,12 @@ class ResourceTagScanner {
   // anything that matches the pattern "<script src=...>", "<img src=...>",
   // or "<link rel="stylesheet" href=...>", without worrying about what
   // the other attributes are.
-  HtmlElement::Attribute* ScanElement(HtmlElement* element) const;
+  //
+  // Sets *is_hyperlink to true for <a>, <form>, and <area> tags, false
+  // otherwise.  These are of interest because we generally want to
+  // apply domain-sharding for resources, but not hyperlinks.
+  HtmlElement::Attribute* ScanElement(HtmlElement* element,
+                                      bool* is_hyperlink) const;
 
   // Note: set_find_a_tags also finds "area" tags, as those are a different
   // visualization for an anchor.  If we need to split this functionality

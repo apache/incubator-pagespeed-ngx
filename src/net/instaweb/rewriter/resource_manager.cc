@@ -217,15 +217,22 @@ void ResourceManager::InitWorkersAndDecodingDriver() {
 }
 
 // TODO(jmarantz): consider moving this method to ResponseHeaders
-void ResourceManager::SetDefaultLongCacheHeaders(
-    const ContentType* content_type, ResponseHeaders* header) const {
+void ResourceManager::SetDefaultLongCacheHeadersWithCharset(
+    const ContentType* content_type, StringPiece charset,
+    ResponseHeaders* header) const {
   header->set_major_version(1);
   header->set_minor_version(1);
   header->SetStatusAndReason(HttpStatus::kOK);
 
   header->RemoveAll(HttpAttributes::kContentType);
   if (content_type != NULL) {
-    header->Add(HttpAttributes::kContentType, content_type->mime_type());
+    GoogleString header_val = content_type->mime_type();
+    if (!charset.empty()) {
+      // Note: if charset was quoted, content_type's parsing would not unquote
+      // it, so here we just append it back in instead of quoting it again.
+      StrAppend(&header_val, "; charset=", charset);
+    }
+    header->Add(HttpAttributes::kContentType, header_val);
   }
 
   int64 now_ms = http_cache_->timer()->NowMs();
@@ -284,10 +291,14 @@ void ResourceManager::set_filename_prefix(const StringPiece& file_prefix) {
 
 bool ResourceManager::Write(const ResourceVector& inputs,
                             const StringPiece& contents,
+                            const ContentType* type,
+                            StringPiece charset,
                             OutputResource* output,
                             MessageHandler* handler) {
+  output->SetType(type);
+  output->set_charset(charset);
   ResponseHeaders* meta_data = output->response_headers();
-  SetDefaultLongCacheHeaders(output->type(), meta_data);
+  SetDefaultLongCacheHeadersWithCharset(type, charset, meta_data);
   meta_data->SetStatusAndReason(HttpStatus::kOK);
   ApplyInputCacheControl(inputs, meta_data);
 

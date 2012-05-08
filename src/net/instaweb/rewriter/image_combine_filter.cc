@@ -678,6 +678,8 @@ class ImageCombineFilter::Combiner
         CopyFrom(*result);
     if (!resource_manager_->Write(combine_resources,
                                   result_image->image()->Contents(),
+                                  &kContentTypePng,
+                                  StringPiece(),  // no charset on images.
                                   combination.get(),
                                   handler)) {
       handler->Error(UrlSafeId().c_str(), 0,
@@ -688,7 +690,7 @@ class ImageCombineFilter::Combiner
   }
 
   OutputResourcePtr MakeOutput() {
-    return Combine(kContentTypePng, rewrite_driver_->message_handler());
+    return Combine(rewrite_driver_->message_handler());
   }
 
   virtual void Clear() {
@@ -701,6 +703,10 @@ class ImageCombineFilter::Combiner
   }
 
  private:
+  virtual const ContentType* CombinationContentType() {
+    return &kContentTypePng;
+  }
+
   StringSet added_urls_;
   Library* library_;
 };

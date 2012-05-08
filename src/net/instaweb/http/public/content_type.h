@@ -43,6 +43,11 @@ struct ContentType {
     kWebp,
   };
 
+  // Returns the maximum extension length of any resource types our filters
+  // can create. Does not count the ".".
+  // See RewriteDriver::CreateOutputResourceWithPath()
+  static int MaxProducedExtensionLength();
+
   const char* mime_type() const { return mime_type_; }
   // TODO(sligocki): Stop returning '.' in file_extension().
   const char* file_extension() const { return file_extension_; }

@@ -64,9 +64,12 @@ void ScanFilter::StartElement(HtmlElement* element) {
       }
     }
     // TODO(jmarantz): handle base targets in addition to hrefs.
-  } else if (!seen_refs_ && !seen_base_ &&
-             tag_scanner_.ScanElement(element) != NULL) {
-    seen_refs_ = true;
+  } else {
+    bool is_hyperlink;
+    if (!seen_refs_ && !seen_base_ &&
+        tag_scanner_.ScanElement(element, &is_hyperlink) != NULL) {
+      seen_refs_ = true;
+    }
   }
 }
 

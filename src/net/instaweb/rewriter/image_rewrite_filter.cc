@@ -344,7 +344,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
         (image->output_size() * 100 <
          image->input_size() * options->image_limit_optimized_percent())) {
       // Here output image type could potentially be different from input type.
-      result->SetType(ImageToContentType(input_resource->url(), image.get()));
+      const ContentType* output_type =
+          ImageToContentType(input_resource->url(), image.get());
 
       // Consider inlining output image (no need to check input, it's bigger)
       // This needs to happen before Write to persist.
@@ -352,8 +353,9 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
 
       resource_manager_->MergeNonCachingResponseHeaders(input_resource, result);
       if (resource_manager_->Write(
-              ResourceVector(1, input_resource),
-              image->Contents(), result.get(), message_handler)) {
+              ResourceVector(1, input_resource), image->Contents(), output_type,
+              StringPiece() /* no charset for images */, result.get(),
+              message_handler)) {
         driver_->InfoAt(
             rewrite_context,
             "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",
@@ -367,7 +369,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
         image_rewrite_total_bytes_saved_->Add(
             image->input_size() - image->output_size());
         image_rewrite_total_original_bytes_->Add(image->input_size());
-        if (result->type() == &kContentTypeWebp) {
+        if (result->type()->type() == ContentType::kWebp) {
           image_webp_rewrites_->Add(1);
         }
 

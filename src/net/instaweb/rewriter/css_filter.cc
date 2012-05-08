@@ -316,12 +316,13 @@ void CssFilter::Context::Harvest() {
       &out_text, driver_->message_handler());
   if (ok) {
     if (rewrite_inline_element_ == NULL) {
-      output_resource_->SetType(&kContentTypeCss);
       ResourceManager* manager = Manager();
       manager->MergeNonCachingResponseHeaders(input_resource_,
                                               output_resource_);
       ok = manager->Write(ResourceVector(1, input_resource_),
                           out_text,
+                          &kContentTypeCss,
+                          input_resource_->charset(),
                           output_resource_.get(),
                           driver_->message_handler());
     } else {

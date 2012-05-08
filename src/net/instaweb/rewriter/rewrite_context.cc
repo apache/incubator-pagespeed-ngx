@@ -1612,7 +1612,10 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
                            gurl.AllExceptLeaf() /* resolved_base */,
                            gurl.AllExceptLeaf() /* unmapped_base */,
                            Driver()->base_url().Origin() /* original_base */,
-                           namer, content_type, Options(), kind()));
+                           namer, Options(), kind()));
+    // We trust the type here since we should have gotten it right when
+    // writing it into the cache.
+    (*output_resource)->SetType(content_type);
     ret = true;
   }
   return ret;

@@ -96,6 +96,10 @@ class TestCombineFilter : public RewriteFilter {
     }
 
    private:
+    virtual const ContentType* CombinationContentType() {
+      return &kContentTypeText;
+    }
+
     virtual bool ResourceCombinable(Resource* resource,
                                     MessageHandler* /*handler*/) {
       EXPECT_TRUE(resource->HttpStatusOk());

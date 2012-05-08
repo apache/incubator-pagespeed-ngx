@@ -25,8 +25,9 @@
 
 namespace net_instaweb {
 
-HtmlElement::Attribute* ResourceTagScanner::ScanElement(HtmlElement* element)
-    const {
+HtmlElement::Attribute* ResourceTagScanner::ScanElement(
+    HtmlElement* element, bool* is_hyperlink) const {
+  *is_hyperlink = false;
   HtmlName::Keyword keyword = element->keyword();
   HtmlElement::Attribute* attr = NULL;
   switch (keyword) {
@@ -56,11 +57,13 @@ HtmlElement::Attribute* ResourceTagScanner::ScanElement(HtmlElement* element)
       // trimming or domain-rewriting.
       if (find_a_tags_) {
         attr = element->FindAttribute(HtmlName::kHref);
+        *is_hyperlink = true;
       }
       break;
     case HtmlName::kForm:
       if (find_form_tags_) {
         attr = element->FindAttribute(HtmlName::kAction);
+        *is_hyperlink = true;
       }
       break;
     default:

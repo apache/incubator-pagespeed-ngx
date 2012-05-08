@@ -120,9 +120,6 @@ class JavascriptFilter::Context : public SingleRewriteContext {
                                input->url().c_str());
       return kRewriteFailed;
     }
-    // Give the script a nice mimetype and extension.
-    // (There is no harm in doing this, they're ignored anyway).
-    output->SetType(&kContentTypeJavascript);
     if (!WriteExternalScriptTo(input, code_block.Rewritten(), output)) {
       return kRewriteFailed;
     }
@@ -175,6 +172,8 @@ class JavascriptFilter::Context : public SingleRewriteContext {
         script_resource, script_dest);
     if (resource_manager->Write(ResourceVector(1, script_resource),
                                 script_out,
+                                &kContentTypeJavascript,
+                                script_resource->charset(),
                                 script_dest.get(),
                                 message_handler)) {
       ok = true;

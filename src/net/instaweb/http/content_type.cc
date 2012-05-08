@@ -71,6 +71,10 @@ const ContentType& kContentTypeJpeg = kTypes[9];
 const ContentType& kContentTypeSwf = kTypes[10];
 const ContentType& kContentTypeWebp = kTypes[11];
 
+int ContentType::MaxProducedExtensionLength() {
+  return 4;  // .jpeg or .webp
+}
+
 bool ContentType::IsHtmlLike() const {
   switch (type_) {
     case kHtml:

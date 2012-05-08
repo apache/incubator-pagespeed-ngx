@@ -32,7 +32,7 @@
 
 namespace net_instaweb {
 
-class ContentType;
+struct ContentType;
 class MessageHandler;
 class OutputResource;
 class RewriteDriver;
@@ -103,11 +103,10 @@ class ResourceCombiner {
   // creating it if necessary.  Caller takes ownership.  Returns NULL if the
   // combination does not exist and cannot be created. Will not combine fewer
   // than 2 resources.
-  OutputResourcePtr Combine(const ContentType& content_type,
-                            MessageHandler* handler);
+  OutputResourcePtr Combine(MessageHandler* handler);
 
   // Override this if your combination is not a matter of combining
-  // text pieces (perhaps adjusted by WritePiece)
+  // text pieces (perhaps adjusted by WritePiece).
   virtual bool WriteCombination(const ResourceVector& combine_resources,
                                 const OutputResourcePtr& combination,
                                 MessageHandler* handler);
@@ -129,6 +128,9 @@ class ResourceCombiner {
 
  private:
   friend class AggregateCombiner;
+
+  // Implement this to control the content-type given the combination.
+  virtual const ContentType* CombinationContentType() = 0;
 
   // Recomputes the leaf size if our base has changed
   void UpdateResolvedBase();

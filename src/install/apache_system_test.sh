@@ -171,10 +171,11 @@ function test_resource_ext_corruption() {
   $WGET_DUMP $URL | grep -qi $RESOURCE
   check [ $? = 0 ]
 
-  # Now fetch the broken version
+  # Now fetch the broken version. This should succeed anyway, as we now
+  # ignore the noise.
   BROKEN="$RESOURCE"broken
   $WGET_PREREQ $BROKEN
-  check [ $? != 0 ]
+  check [ $? = 0 ]
 
   # Fetch normal again; ensure rewritten url for RESOURCE doesn't contain broken
   $WGET_DUMP $URL | grep broken

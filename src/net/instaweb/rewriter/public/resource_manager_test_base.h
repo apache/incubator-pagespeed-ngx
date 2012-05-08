@@ -285,6 +285,14 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
                               const StringVector& name_vector,
                               const StringPiece& ext);
 
+  // If append_new_suffix is true, appends new_suffix to old_url.
+  // If append_new_suffix is false, replaces old_suffix at the end of old_url
+  // with new_suffix.
+  // Either way, precondition: old_url ends with old_suffix
+  static GoogleString ChangeSuffix(
+      GoogleString old_url, bool append_new_suffix,
+      StringPiece old_suffix, StringPiece new_suffix);
+
   // Overrides the async fetcher on the primary context to be a
   // wait fetcher which permits delaying callback invocation.
   // CallFetcherCallbacks can then be called to let the fetches complete

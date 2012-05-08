@@ -231,11 +231,15 @@ TEST_F(CssFilterTest, NoRewriteParseError) {
 
 // Make sure bad requests do not corrupt our extension.
 TEST_F(CssFilterTest, NoExtensionCorruption) {
-  TestCorruptUrl("%22", false);
+  TestCorruptUrl(".css%22");
 }
 
 TEST_F(CssFilterTest, NoQueryCorruption) {
-  TestCorruptUrl("?query", true);
+  TestCorruptUrl(".css?query");
+}
+
+TEST_F(CssFilterTest, NoWrongExtCorruption) {
+  TestCorruptUrl(".html");
 }
 
 TEST_F(CssFilterTest, RewriteVariousCss) {

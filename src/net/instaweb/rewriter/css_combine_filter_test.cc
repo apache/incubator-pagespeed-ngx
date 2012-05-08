@@ -304,7 +304,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
   }
 
   // Helper for testing handling of URLs with trailing junk
-  void TestCorruptUrl(const char* junk, bool should_fetch_ok) {
+  void TestCorruptUrl(const char* new_suffix) {
     CssLink::Vector css_in, css_out;
     css_in.Add("1.css", kYellow, "", true);
     css_in.Add("2.css", kYellow, "", true);
@@ -312,11 +312,15 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
     ASSERT_EQ(1, css_out.size());
     GoogleString normal_url = css_out[0]->url_;
 
-    GoogleString out;
-    EXPECT_EQ(should_fetch_ok,
-              FetchResourceUrl(StrCat(normal_url, junk),  &out));
+    ASSERT_TRUE(StringCaseEndsWith(normal_url, ".css"));
+    GoogleString munged_url = StrCat(
+        normal_url.substr(0, normal_url.length() - STATIC_STRLEN(".css")),
+        new_suffix);
 
-    // Now re-do it and make sure %22 didn't get stuck in the URL
+    GoogleString out;
+    EXPECT_TRUE(FetchResourceUrl(munged_url,  &out));
+
+    // Now re-do it and make sure the new suffix didn't get stuck in the URL
     STLDeleteElements(&css_out);
     css_out.clear();
     BarrierTestHelper("no_ext_corrupt", css_in, &css_out);
@@ -1073,11 +1077,15 @@ TEST_F(CssCombineFilterTest, CrossUnmappedDomain) {
 
 // Make sure bad requests do not corrupt our extension.
 TEST_F(CssCombineFilterTest, NoExtensionCorruption) {
-  TestCorruptUrl("%22", false);
+  TestCorruptUrl(".css%22");
 }
 
 TEST_F(CssCombineFilterTest, NoQueryCorruption) {
-  TestCorruptUrl("?query", true);
+  TestCorruptUrl(".css?query");
+}
+
+TEST_F(CssCombineFilterTest, NoWrongExtCorruption) {
+  TestCorruptUrl(".html");
 }
 
 TEST_F(CssCombineFilterTest, TwoCombinationsTwice) {

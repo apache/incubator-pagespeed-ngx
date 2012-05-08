@@ -47,8 +47,6 @@
 
 namespace net_instaweb {
 
-struct ContentType;
-
 ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
                                    const StringPiece& extension,
                                    RewriteFilter* filter)
@@ -198,8 +196,7 @@ void ResourceCombiner::UpdateResolvedBase() {
   accumulated_leaf_size_ = 0;
 }
 
-OutputResourcePtr ResourceCombiner::Combine(const ContentType& content_type,
-                                            MessageHandler* handler) {
+OutputResourcePtr ResourceCombiner::Combine(MessageHandler* handler) {
   OutputResourcePtr combination;
   if (resources_.size() <= 1) {
     // No point in combining.
@@ -212,8 +209,7 @@ OutputResourcePtr ResourceCombiner::Combine(const ContentType& content_type,
   // not committed to the combination, because the 'write' can fail.
   // TODO(jmaessen, jmarantz): encode based on partnership
   combination.reset(rewrite_driver_->CreateOutputResourceWithUnmappedPath(
-      ResolvedBase(), filter_->id(), url_safe_id, &content_type,
-      kRewrittenResource));
+      ResolvedBase(), filter_->id(), url_safe_id, kRewrittenResource));
   if (combination.get() != NULL) {
     if (combination->cached_result() != NULL &&
         combination->cached_result()->optimizable()) {
@@ -246,9 +242,12 @@ bool ResourceCombiner::WriteCombination(
     written = WritePiece(i, input.get(), combination.get(), &writer, handler);
   }
   if (written) {
+    // TODO(morlovich): Fix combiners to deal with charsets.
     written =
         resource_manager_->Write(
-            combine_resources, combined_contents, combination.get(), handler);
+            combine_resources, combined_contents, CombinationContentType(),
+            StringPiece() /* not computing charset for now */,
+            combination.get(), handler);
   }
   return written;
 }

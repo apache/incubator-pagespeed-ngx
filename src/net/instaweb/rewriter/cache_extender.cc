@@ -151,7 +151,9 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
     return;
   }
 
-  HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
+  bool is_hyperlink;
+  HtmlElement::Attribute* href = tag_scanner_.ScanElement(
+      element, &is_hyperlink);
   if (href == NULL) {
     ImageTagScanner image_scanner(driver_);
     href = image_scanner.ParseImageElement(element);
@@ -205,6 +207,7 @@ RewriteResult CacheExtender::RewriteLoadedResource(
   // See if the resource is cacheable; and if so whether there is any need
   // to cache extend it.
   bool ok = false;
+  const ContentType* output_type = NULL;
   if (!resource_manager_->http_cache()->force_caching() &&
       !(headers->IsCacheable() && headers->IsProxyCacheable())) {
     // Note: RewriteContextTest.PreserveNoCacheWithFailedRewrites
@@ -223,10 +226,12 @@ RewriteResult CacheExtender::RewriteLoadedResource(
     if (input_type->IsImage() ||  // images get sniffed only to other images
         input_type->type() == ContentType::kCss ||  // CSS + JS left as-is.
         input_type->type() == ContentType::kJavascript) {
-      output_resource->SetType(input_resource->type());
+      output_type = input_type;
     } else {
-      // Text only gets sniffed to "safe" things.
-      output_resource->SetType(&kContentTypeText);
+      // Depending on charset, text/plain will either get handled by the
+      // browser as-is or will undergo content-based detection; however that
+      // detection is spec'd to never produce things that can run scripts.
+      output_type = &kContentTypeText;
     }
     ok = true;
   }
@@ -239,7 +244,7 @@ RewriteResult CacheExtender::RewriteLoadedResource(
   GoogleString transformed_contents;
   StringWriter writer(&transformed_contents);
   GoogleUrl input_resource_gurl(input_resource->url());
-  if ((output_resource->type() == &kContentTypeCss)) {
+  if (output_type->type() == ContentType::kCss) {
     switch (driver_->ResolveCssUrls(input_resource_gurl,
                                     output_resource->resolved_base(),
                                     contents, &writer, message_handler)) {
@@ -260,6 +265,8 @@ RewriteResult CacheExtender::RewriteLoadedResource(
       input_resource, output_resource);
   if (resource_manager_->Write(ResourceVector(1, input_resource),
                                contents,
+                               output_type,
+                               input_resource->charset(),
                                output_resource.get(),
                                message_handler)) {
     return kRewriteOk;

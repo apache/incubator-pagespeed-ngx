@@ -21,6 +21,7 @@
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/flush_html_filter.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -59,7 +60,9 @@ void FlushHtmlFilter::Flush() {
 }
 
 void FlushHtmlFilter::StartElementImpl(HtmlElement* element) {
-  HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
+  bool is_hyperlink;
+  HtmlElement::Attribute* href = tag_scanner_.ScanElement(
+      element, &is_hyperlink);
   if (href != NULL) {
     HtmlName::Keyword keyword = element->name().keyword();
     if (keyword == HtmlName::kLink) {
@@ -75,7 +78,9 @@ void FlushHtmlFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void FlushHtmlFilter::EndElementImpl(HtmlElement* element) {
-  HtmlElement::Attribute* href = tag_scanner_.ScanElement(element);
+  bool is_hyperlink;
+  HtmlElement::Attribute* href = tag_scanner_.ScanElement(
+      element, &is_hyperlink);
   if (href != NULL) {
     if (score_ >= kFlushScoreThreshold) {
       score_ = 0;
