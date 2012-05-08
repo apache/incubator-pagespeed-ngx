@@ -110,51 +110,39 @@ bool CssMinify::AbsolutifyUrls(Css::Stylesheet* stylesheet,
     for (Css::Declarations::iterator decl_iter = decls.begin();
          decl_iter != decls.end(); ++decl_iter) {
       Css::Declaration* decl = *decl_iter;
-      switch (decl->prop()) {
-        case Css::Property::UNPARSEABLE:
-          if (handle_unparseable_sections) {
-            StringPiece original_bytes = decl->bytes_in_original_buffer();
-            GoogleString rewritten_bytes;
-            StringWriter writer(&rewritten_bytes);
-            if (CssTagScanner::TransformUrls(original_bytes, &writer,
-                                             &transformer, handler)) {
-              result = true;
-              decl->set_bytes_in_original_buffer(rewritten_bytes);
-            }
-            break;
+      if (decl->prop() == Css::Property::UNPARSEABLE) {
+        if (handle_unparseable_sections) {
+          StringPiece original_bytes = decl->bytes_in_original_buffer();
+          GoogleString rewritten_bytes;
+          StringWriter writer(&rewritten_bytes);
+          if (CssTagScanner::TransformUrls(original_bytes, &writer,
+                                           &transformer, handler)) {
+            result = true;
+            decl->set_bytes_in_original_buffer(rewritten_bytes);
           }
-        case Css::Property::BACKGROUND:
-        case Css::Property::BACKGROUND_IMAGE:
-        case Css::Property::CONTENT:  // In CSS2 but not CSS2.1
-        case Css::Property::CURSOR:
-        case Css::Property::LIST_STYLE:
-        case Css::Property::LIST_STYLE_IMAGE:
-          if (handle_parseable_sections) {
-            // [cribbed from css_image_rewriter_async.cc]
-            // Rewrite all URLs. Technically, background-image should only
-            // have a single value which is a URL, but background could have
-            // more values.
-            Css::Values* values = decl->mutable_values();
-            for (size_t value_index = 0; value_index < values->size();
-                 value_index++) {
-              Css::Value* value = values->at(value_index);
-              if (value->GetLexicalUnitType() == Css::Value::URI) {
-                result = true;
-                GoogleString in = UnicodeTextToUTF8(value->GetStringValue());
-                GoogleString out;
-                transformer.Transform(in, &out);
-                if (in != out) {
-                  delete (*values)[value_index];
-                  (*values)[value_index] =
-                      new Css::Value(Css::Value::URI,
-                                     UTF8ToUnicodeText(out.data(), out.size()));
-                }
-              }
+        }
+      } else if (handle_parseable_sections) {
+        // [cribbed from css_image_rewriter_async.cc]
+        // Rewrite all URLs.
+        // Note: We must rewrite all URLs. Not just ones from declarations
+        // we expect to have URLs.
+        Css::Values* values = decl->mutable_values();
+        for (size_t value_index = 0; value_index < values->size();
+             ++value_index) {
+          Css::Value* value = values->at(value_index);
+          if (value->GetLexicalUnitType() == Css::Value::URI) {
+            result = true;
+            GoogleString in = UnicodeTextToUTF8(value->GetStringValue());
+            GoogleString out;
+            transformer.Transform(in, &out);
+            if (in != out) {
+              delete (*values)[value_index];
+              (*values)[value_index] =
+                  new Css::Value(Css::Value::URI,
+                                 UTF8ToUnicodeText(out.data(), out.size()));
             }
-            break;
           }
-        default:
-          break;
+        }
       }
     }
   }
@@ -235,6 +223,11 @@ void CssMinify::WriteURL(const UnicodeText& url) {
     abs_url.Reset(base_url_, string_url);
     if (abs_url.is_valid()) {
       string_url = abs_url.Spec();
+    } else {
+      handler_->Message(kWarning, "Cannot absolutify to invalid URL. "
+                        "%s relative to %s produces invalid %s",
+                        string_url.as_string().c_str(),
+                        base_url_.spec_c_str(), abs_url.spec_c_str());
     }
   }
   Write(EscapeString(string_url, true));

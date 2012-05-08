@@ -1241,13 +1241,17 @@ TEST_F(CssFilterTestUrlNamer, AbsolutifyParseableUrls) {
                           false /* enable_mapping_and_sharding */);
 }
 
-TEST_F(CssFilterTestUrlNamer, AbsolutifyCursorUrlsWithProxy) {
-  // Ensure that cursor URLs are correctly absolutified.
+TEST_F(CssFilterTestUrlNamer, AbsolutifyOtherUrlsWithProxy) {
+  // Ensure that non-rewritten URLs are correctly absolutified.
   const char css_input[] =
-      ":link,:visited { cursor: url(example.svg) pointer }";
+      ":link,:visited { cursor: url(example.svg) pointer }\n"
+      ".png .itab_prev { behavior: url(/js/iepngfix.htc) }\n"
+      ".foo { bar: url('baz.ext'); }";
   const char expected_output[] =
-      ":link,:visited{cursor:url(http://test.com/example.svg) pointer}";
-  TestUrlAbsolutification("dont_absolutify_cursor_urls_with_proxy",
+      ":link,:visited{cursor:url(http://test.com/example.svg) pointer}"
+      ".png .itab_prev{behavior:url(http://test.com/js/iepngfix.htc)}"
+      ".foo{bar:url(http://test.com/baz.ext)}";
+  TestUrlAbsolutification("absolutify_other_urls_with_proxy",
                           css_input, expected_output,
                           false /* expect_unparseable_section */,
                           true  /* enable_image_rewriting */,
