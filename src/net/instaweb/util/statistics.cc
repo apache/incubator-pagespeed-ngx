@@ -154,8 +154,7 @@ void Statistics::RenderTimedVariables(Writer* writer,
   std::map<GoogleString, StringVector> group_map = TimedVariableMap();
   std::map<GoogleString, StringVector>::const_iterator p;
   // Export statistics in each group in one table.
-  for (p = group_map.begin(); p != group_map.end(); ++p)
-{
+  for (p = group_map.begin(); p != group_map.end(); ++p) {
     // Write table header for each group.
     const GoogleString begin = StrCat(
         "<p><table bgcolor=#eeeeff width=100%%>",
@@ -165,7 +164,7 @@ void Statistics::RenderTimedVariables(Writer* writer,
         "<table bgcolor=#fff5ee frame=box cellspacing=1 cellpadding=2>\n",
         "<tr bgcolor=#eee5de><td>"
         "<form action=\"/statusz/reset\" method = \"post\">"
-        "<input type=\"submit\" value = \"Reset Statistics\"</form></td>"
+        "<input type=\"submit\" value = \"Reset Statistics\"></form></td>"
         "<th align=right>TenSec</th><th align=right>Minute</th>"
         "<th align=right>Hour</th><th align=right>Total</th></tr>");
     writer->Write(begin, message_handler);

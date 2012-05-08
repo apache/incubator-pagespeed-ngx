@@ -69,35 +69,11 @@ pagespeed.DeferJs = function() {
   // following.
 
   /**
-   * EventListeners for DOMContentLoaded or onreadystatechange on document.
-   * @type {!Array.<function()>}
+   * Map of events to event listeners.
+   * @type {!Object}
    * @private
    */
-  this.domReadyListeners_ = [];
-
-  /**
-   * EventListeners for element.onload
-   * @type {!Array.<function()>}
-   * @private
-   * TODO(ksimbili): Handle body.onload. In IE body.onload is alias to
-   * window.onload
-   */
-  this.onloadListeners_ = [];
-
-  /**
-   * Functions that run as the first thing in run().
-   * @type {!Array.<function()>}
-   * @private
-   */
-  this.beforeDeferRunFunctions_ = [];
-
-  /**
-   * Functions that run after all the deferred scripts, DOM ready
-   * listeners and onload listeners have run.
-   * @type {!Array.<function()>}
-   * @private
-   */
-  this.afterDeferRunFunctions_ = [];
+  this.eventListernersMap_ = {};
 
   /**
    * Valid Mime types for Javascript.
@@ -131,6 +107,55 @@ pagespeed.DeferJs = function() {
    * @private
    */
   this.origGetElementsByTagName_ = document.getElementsByTagName;
+
+  /**
+   * Original document.write handler.
+   * @private
+   */
+  this.origDocWrite_ = document.write;
+
+  /**
+   * Original document.writeln handler.
+   * @private
+   */
+  this.origDocWriteln_ = document.writeln;
+
+  /**
+   * Original document.open handler.
+   * @private
+   */
+  this.origDocOpen_ = document.open;
+
+  /**
+   * Original document.close handler.
+   * @private
+   */
+  this.origDocClose_ = document.close;
+
+  /**
+   * Original document.addEventListener handler.
+   * @private
+   */
+  this.origDocAddEventListener_ = document.addEventListener;
+
+  /**
+   * Original window.addEventListener handler.
+   * @private
+   */
+  this.origWindowAddEventListener_ = window.addEventListener;
+
+  /**
+   * Original document.addEventListener handler.
+   * @private
+   */
+  this.origDocAttachEvent_ = document.attachEvent;
+
+  /**
+   * Original window.addEventListener handler.
+   * @private
+   */
+  this.origWindowAttachEvent_ = window.attachEvent;
+
 
   /**
    * Maintains the current state for the deferJs.
@@ -169,6 +194,31 @@ pagespeed.DeferJs.STATES = {
    */
   SCRIPTS_DONE: 3
 };
+
+/**
+ * Constants for different events used by deferJs.
+ * @enum {number}
+ */
+pagespeed.DeferJs.EVENT = {
+  /**
+   * Event corresponding to DOMContentLoaded.
+   */
+  DOM_READY: 0,
+  /**
+   * Event corresponding to onload.
+   */
+  LOAD: 1,
+  /**
+   * Event triggered before executing deferred scripts.
+   */
+  BEFORE_SCRIPTS: 2,
+  /**
+   * Event triggered after executing deferred scripts.
+   */
+  AFTER_SCRIPTS: 3
+};
+
+
 
 /**
  * Name of the attribute set for the nodes that are not reached so far during
@@ -408,20 +458,22 @@ pagespeed.DeferJs.prototype.onComplete = function() {
       document.getElementsByTagName = this.origGetElementsByTagName_;
     }
   }
-  // TODO(ksimbili): Restore the handlers in a clean way.
-  if (document.originalAddEventListener) {
-    document.addEventListener = document.originalAddEventListener;
-    window.addEventListener = window.originalAddEventListener;
-  } else if (document.originalAttachEvent) {
-    document.attachEvent = document.originalAttachEvent;
-    window.attachEvent = window.originalAttachEvent;
-  }
+  this.restoreAddEventListeners();
 
-  this.executeDomReady();
-  this.executeOnload();
+  document.open = this.origDocOpen_;
+  document.close = this.origDocClose_;
+  document.write = this.origDocWrite_;
+  document.writeln = this.origDocWriteln_;
+
+  this.fireEvent(pagespeed.DeferJs.EVENT.DOM_READY);
+
+  if (document.onreadystatechange) {
+    this.exec(document.onreadystatechange, document);
+  }
+  this.fireEvent(pagespeed.DeferJs.EVENT.LOAD);
 
   this.state_ = pagespeed.DeferJs.STATES.SCRIPTS_DONE;
-  this.executeAfterDeferRun();
+  this.fireEvent(pagespeed.DeferJs.EVENT.AFTER_SCRIPTS);
 }
 
 /**
@@ -491,8 +543,7 @@ pagespeed.DeferJs.prototype.setUp = function() {
     document.documentElement.doScroll = function() { throw ('psa exception');};
   }
   // override AddEventListeners.
-  this.overrideAddEventListener(document);
-  this.overrideAddEventListener(window);
+  this.overrideAddEventListeners();
 
   // TODO(ksimbili): Restore the following functions to their original.
   document.writeln = function(x) {
@@ -527,7 +578,7 @@ pagespeed.DeferJs.prototype.run = function() {
   if (this.state_ >= pagespeed.DeferJs.STATES.SCRIPTS_EXECUTING) {
     return;
   }
-  this.executeBeforeDeferRun();
+  this.fireEvent(pagespeed.DeferJs.EVENT.BEFORE_SCRIPTS);
   this.state_ = pagespeed.DeferJs.STATES.SCRIPTS_EXECUTING;
   this.setUp();
   // Starts executing the defer_js closures.
@@ -698,18 +749,6 @@ pagespeed.DeferJs.prototype.writeHtml = function(html) {
 };
 
 /**
- * Adds DOMContentLoaded event listeners to our own list and called them later.
- * @param {!Element} elem Element on which listener to be called.
- * @param {!function()} func domReady listener.
- */
-pagespeed.DeferJs.prototype.addDomReadyListeners = function(elem, func) {
-  this.log('domready: ' + func.toString());
-  this.domReadyListeners_.push(function() {
-    func.call(elem);
-  });
-};
-
-/**
  * Adds page onload event listeners to our own list and called them later.
  * @param {!Element} elem Element on which listener to be called.
  * @param {!Function} func onload listener.
@@ -730,7 +769,7 @@ pagespeed.DeferJs.prototype.addOnloadListeners = function(elem, func) {
     loadEvent = document.createEvent('HTMLEvents');
     loadEvent.initEvent('load', false, false);
   }
-  this.onloadListeners_.push(function() {
+  psaAddEventListener(elem, 'onload', function() {
     func.call(elem, loadEvent);
   });
 };
@@ -742,7 +781,7 @@ pagespeed.DeferJs.prototype['addOnloadListeners'] =
  * @param {!function()} func onload listener.
  */
 pagespeed.DeferJs.prototype.addBeforeDeferRunFunctions = function(func) {
-  this.beforeDeferRunFunctions_.push(func);
+  psaAddEventListener(window, 'onbeforescripts', func);
 };
 pagespeed.DeferJs.prototype['addBeforeDeferRunFunctions'] =
     pagespeed.DeferJs.prototype.addBeforeDeferRunFunctions;
@@ -753,50 +792,20 @@ pagespeed.DeferJs.prototype['addBeforeDeferRunFunctions'] =
  * @param {!function()} func onload listener.
  */
 pagespeed.DeferJs.prototype.addAfterDeferRunFunctions = function(func) {
-  this.afterDeferRunFunctions_.push(func);
+  psaAddEventListener(window, 'onafterscripts', func);
 };
 pagespeed.DeferJs.prototype['addAfterDeferRunFunctions'] =
     pagespeed.DeferJs.prototype.addAfterDeferRunFunctions;
 
 /**
- * Execute all handlers registered for DOMContentLoaded/onreadystatechange.
+ * Firing event will execute all listeners registered for the event.
+ * @param {!pagespeed.DeferJs.EVENT.<number>} evt Event to be fired.
  */
-pagespeed.DeferJs.prototype.executeDomReady = function() {
-  for (var i = 0; i < this.domReadyListeners_.length; i++) {
-    this.log('executing domready: ' + this.domReadyListeners_[i].toString());
-    this.exec(this.domReadyListeners_[i]);
-  }
-  if (document.onreadystatechange) {
-    this.exec(document.onreadystatechange, document);
-  }
-};
-
-/**
- * Execute all handlers registered for element onload.
- */
-pagespeed.DeferJs.prototype.executeOnload = function() {
-  for (var i = 0; i < this.onloadListeners_.length; i++) {
-    this.log('executing pageload: ' + this.onloadListeners_[i].toString());
-    this.exec(this.onloadListeners_[i]);
-  }
-};
-
-/**
- * Execute all functions to be executed as the first thing in run().
- */
-pagespeed.DeferJs.prototype.executeBeforeDeferRun = function() {
-  for (var i = 0; i < this.beforeDeferRunFunctions_.length; i++) {
-    this.exec(this.beforeDeferRunFunctions_[i]);
-  }
-};
-
-/**
- * Execute all functions to be executed after all the deferred scripts, DOM
- * ready listeners and onload listeners have run.
- */
-pagespeed.DeferJs.prototype.executeAfterDeferRun = function() {
-  for (var i = 0; i < this.afterDeferRunFunctions_.length; i++) {
-    this.exec(this.afterDeferRunFunctions_[i]);
+pagespeed.DeferJs.prototype.fireEvent = function(evt) {
+  this.log('Firing Event: ' + evt);
+  var eventListeners = this.eventListernersMap_[evt] || [];
+  for (var i = 0; i < eventListeners.length; ++i) {
+    this.exec(eventListeners[i]);
   }
 };
 
@@ -814,60 +823,84 @@ pagespeed.DeferJs.prototype.exec = function(func, opt_scopeObject) {
 };
 
 /**
- * Adds the function to list of listeners based on event.
- * TODO(ksimbili): Store 'this' and call func on 'this'.
- * @param {Window|Element|Document} elem Element on which event is registered.
- * @param {!string} eventName Name of the event.
- * @param {!function()} func handler getting registered.
- * @param {Boolean} capture Capture event.
+ * Override native event registration function on window and document objects.
  */
-var psaAddEventListener = function(elem, eventName, func, capture) {
-  if (eventName == 'DOMContentLoaded' || eventName == 'readystatechange') {
-    pagespeed.deferJs.addDomReadyListeners(elem, func);
-    return;
+pagespeed.DeferJs.prototype.overrideAddEventListeners = function() {
+  // override AddEventListeners.
+  if (window.addEventListener) {
+    document.addEventListener = function(eventName, func, capture) {
+      psaAddEventListener(document, 'on' + eventName, func, capture,
+                          pagespeed.deferJs.origDocAddEventListener_);
+    }
+    window.addEventListener = function(eventName, func, capture) {
+      psaAddEventListener(window, 'on' + eventName, func, capture,
+                          pagespeed.deferJs.origWindowAddEventListener_);
+    }
+  } else if (window.attachEvent) {
+    document.attachEvent = function(eventName, func) {
+      psaAddEventListener(document, eventName, func, undefined,
+                          pagespeed.deferJs.origDocAttachEvent_);
+    }
+    window.attachEvent = function(eventName, func) {
+      psaAddEventListener(window, eventName, func, undefined,
+                          pagespeed.deferJs.origWindowAttachEvent_);
+    }
   }
-  if (eventName == 'load') {
-    pagespeed.deferJs.addOnloadListeners(elem, func);
-    return;
-  }
-  elem.originalAddEventListener(eventName, func, capture);
 };
 
 /**
- * Adds the function to list of listeners based on event.
- * TODO(ksimbili): Store 'this' and call func on 'this'.
- * @param {Window|Element|Document} elem Element on which event is registered.
- * @param {!string} eventName Name of the event.
- * @param {!function()} func handler getting registered.
+ * Restore native event registration functions on window and document.
  */
-var psaAttachEvent = function(elem, eventName, func) {
+pagespeed.DeferJs.prototype.restoreAddEventListeners = function() {
+  if (window.addEventListener) {
+    document.addEventListener = this.origDocAddEventListener_;
+    window.addEventListener = this.origWindowAddEventListener_;
+  } else if (window.attachEvent) {
+    document.attachEvent = this.origDocAttachEvent_;
+    window.attachEvent = this.origWindowAttachEvent_;
+  }
+};
+
+/**
+ * Registers an event with the element.
+ * @param {!(Window|Element|Document)} elem Element which is registering for the
+ * event.
+ * @param {!string} eventName Name of the event.
+ * @param {(Function|EventListener|function())} func Event handler.
+ * @param {boolean} opt_capture Capture event.
+ * @param {Function} opt_originalAddEventListener Original Add event Listener
+ * funciton.
+ */
+var psaAddEventListener = function(elem, eventName, func, opt_capture,
+                                   opt_originalAddEventListener) {
+  if (pagespeed.deferJs.state_ >= pagespeed.DeferJs.STATES.SCRIPTS_DONE) {
+    return;
+  }
+  var eventListenerClosure = function() {
+    func.call(elem);
+  }
+  var deferJsEvent;
+
   if (eventName == 'onDOMContentLoaded' || eventName == 'onreadystatechange') {
-    pagespeed.deferJs.addDomReadyListeners(elem, func);
+    deferJsEvent = pagespeed.DeferJs.EVENT.DOM_READY;
+  } else if (eventName == 'onload') {
+    deferJsEvent = pagespeed.DeferJs.EVENT.LOAD;
+  } else if (eventName == 'onbeforescripts') {
+    deferJsEvent = pagespeed.DeferJs.EVENT.BEFORE_SCRIPTS;
+  } else if (eventName == 'onafterscripts') {
+    deferJsEvent = pagespeed.DeferJs.EVENT.AFTER_SCRIPTS;
+  } else {
+    if (opt_originalAddEventListener) {
+      opt_originalAddEventListener(eventName, func, opt_capture);
+    }
     return;
   }
-  if (eventName == 'onload') {
-    pagespeed.deferJs.addOnloadListeners(elem, func);
-    return;
-  }
-  elem.originalAttachEvent(eventName, func);
-};
 
-/**
- * Override addEventListener/attachEvent of Element.
- * @param {Window|Element|Document} elem Element whose handler to be overriden.
- */
-pagespeed.DeferJs.prototype.overrideAddEventListener = function(elem) {
-  if (elem.addEventListener && !elem.originalAddEventListener) {
-    elem.originalAddEventListener = elem.addEventListener;
-    elem.addEventListener = function (eventName, func, capture) {
-      psaAddEventListener(elem, eventName, func, capture);
-    };
-  } else if (elem.attachEvent && !elem.originalAttachEvent) {
-    elem.originalAttachEvent = elem.attachEvent;
-    elem.attachEvent = function (eventName, func) {
-      psaAttachEvent(elem, eventName, func);
-    };
+  if (!pagespeed.deferJs.eventListernersMap_[deferJsEvent]) {
+    pagespeed.deferJs.eventListernersMap_[deferJsEvent] = [];
   }
+  pagespeed.deferJs.eventListernersMap_[deferJsEvent].push(
+      eventListenerClosure);
 };
 
 /**

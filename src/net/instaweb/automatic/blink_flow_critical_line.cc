@@ -45,6 +45,7 @@
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/util/public/function.h"
@@ -415,6 +416,12 @@ void BlinkFlowCriticalLine::SendCriticalHtml(
     const GoogleString& critical_html) {
   WriteString(critical_html);
   WriteString("<script>pagespeed.panelLoaderInit();</script>");
+  const char* user_ip = base_fetch_->request_headers()->Lookup1(
+      HttpAttributes::kXForwardedFor);
+  if (user_ip != NULL && manager_->factory()->IsDebugClient(user_ip)) {
+    WriteString("<script>pagespeed.panelLoader.setRequestFromInternalIp();"
+                "</script>");
+  }
   WriteString("<script>pagespeed.panelLoader.loadCriticalData({});</script>");
   Flush();
 }
