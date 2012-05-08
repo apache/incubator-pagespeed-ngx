@@ -36,7 +36,6 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
-#include "net/instaweb/rewriter/public/resource_combiner_template.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
@@ -628,12 +627,11 @@ using spriter_binding::SpriteFuture;
 
 // The Combiner does all the work of spriting.  Each combiner takes a set of
 // images and produces a single sprite as a combination.
-class ImageCombineFilter::Combiner
-    : public ResourceCombinerTemplate<SpriteFuture*> {
+class ImageCombineFilter::Combiner : public ResourceCombiner {
  public:
   Combiner(ImageCombineFilter* filter, Library* library)
-      : ResourceCombinerTemplate<SpriteFuture*>(
-            filter->driver(), kContentTypePng.file_extension() + 1, filter),
+      : ResourceCombiner(filter->driver(), kContentTypePng.file_extension() + 1,
+                         filter),
         library_(library) { }
 
   virtual ~Combiner() {
@@ -694,7 +692,7 @@ class ImageCombineFilter::Combiner
   }
 
   virtual void Clear() {
-    ResourceCombinerTemplate<SpriteFuture*>::Clear();
+    ResourceCombiner::Clear();
     added_urls_.clear();
   }
 
@@ -1049,7 +1047,7 @@ class ImageCombineFilter::Context : public RewriteContext {
       if (!added) {
         for (int j = 0, m = combinations.size(); j < m; ++j) {
           ImageCombination* combo = combinations[j];
-          if (combo->AddElementNoFetch(future, resource, handler).value) {
+          if (combo->AddResourceNoFetch(resource, handler).value) {
             combo->AddResourceToPartition(resource.get(), i);
             urls_to_combos[resource_url] = combo;
             added = true;
@@ -1062,7 +1060,7 @@ class ImageCombineFilter::Context : public RewriteContext {
         if (!added) {
           scoped_ptr<ImageCombination> combo(new ImageCombination(
               filter_, &library_));
-          if (combo->AddElementNoFetch(future, resource, handler).value) {
+          if (combo->AddResourceNoFetch(resource, handler).value) {
             combo->set_partition(partitions->add_partition());
             combo->AddResourceToPartition(resource.get(), i);
             urls_to_combos[resource_url] = combo.get();

@@ -39,7 +39,6 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
-#include "net/instaweb/rewriter/public/resource_combiner_template.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
@@ -62,12 +61,11 @@ class UrlSegmentEncoder;
 const char JsCombineFilter::kJsFileCountReduction[] = "js_file_count_reduction";
 
 // See file comment and ResourceCombiner docs for this class's role.
-class JsCombineFilter::JsCombiner
-    : public ResourceCombinerTemplate<HtmlElement*> {
+class JsCombineFilter::JsCombiner : public ResourceCombiner {
  public:
   JsCombiner(JsCombineFilter* filter, RewriteDriver* driver)
-      : ResourceCombinerTemplate<HtmlElement*>(
-            driver, kContentTypeJavascript.file_extension() + 1, filter),
+      : ResourceCombiner(driver, kContentTypeJavascript.file_extension() + 1,
+                         filter),
         filter_(filter) {
     Statistics* stats = resource_manager_->statistics();
     js_file_count_reduction_ = stats->GetVariable(kJsFileCountReduction);
@@ -188,14 +186,13 @@ class JsCombineFilter::Context : public RewriteContext {
     for (int i = 0, n = num_slots(); i < n; ++i) {
       bool add_input = false;
       ResourcePtr resource(slot(i)->resource());
-      HtmlElement* element = elements_[i];
       if (resource->IsValidAndCacheable()) {
-        if (combiner_.AddElementNoFetch(element, resource, handler).value) {
+        if (combiner_.AddResourceNoFetch(resource, handler).value) {
           add_input = true;
         } else if (partition != NULL) {
           FinalizePartition(partitions, partition, outputs);
           partition = NULL;
-          if (combiner_.AddElementNoFetch(element, resource, handler).value) {
+          if (combiner_.AddResourceNoFetch(resource, handler).value) {
             add_input = true;
           }
         }

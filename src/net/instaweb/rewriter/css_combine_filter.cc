@@ -36,7 +36,6 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
-#include "net/instaweb/rewriter/public/resource_combiner_template.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
@@ -67,14 +66,12 @@ const char CssCombineFilter::kCssFileCountReduction[] =
 
 // Combining helper. Takes care of checking that media matches, that we do not
 // produce @import's in the middle and of URL absolutification.
-class CssCombineFilter::CssCombiner
-    : public ResourceCombinerTemplate<HtmlElement*> {
+class CssCombineFilter::CssCombiner : public ResourceCombiner {
  public:
   CssCombiner(RewriteDriver* driver,
               CssTagScanner* css_tag_scanner,
               CssCombineFilter* filter)
-      : ResourceCombinerTemplate<HtmlElement*>(
-          driver, kContentTypeCss.file_extension() + 1, filter),
+      : ResourceCombiner(driver, kContentTypeCss.file_extension() + 1, filter),
         css_tag_scanner_(css_tag_scanner) {
     Statistics* stats = resource_manager_->statistics();
     css_file_count_reduction_ = stats->GetVariable(kCssFileCountReduction);
@@ -139,15 +136,6 @@ class CssCombineFilter::CssCombiner
 
   void StripUTF8BOM(StringPiece* contents) const;
 
-  // Returns true iff all elements in current combination can be rewritten.
-  bool CanRewrite() const {
-    bool ret = (num_urls() > 0);
-    for (int i = 0; ret && (i < num_urls()); ++i) {
-      ret = rewrite_driver_->IsRewritable(element(i));
-    }
-    return ret;
-  }
-
   GoogleString media_;
   CssTagScanner* css_tag_scanner_;
   Variable* css_file_count_reduction_;
@@ -201,10 +189,9 @@ class CssCombineFilter::Context : public RewriteContext {
     for (int i = 0, n = num_slots(); i < n; ++i) {
       bool add_input = false;
       ResourcePtr resource(slot(i)->resource());
-      HtmlElement* element = elements_[i];
 
       if (resource->IsValidAndCacheable()) {
-        if (combiner_.AddElementNoFetch(element, resource, handler).value) {
+        if (combiner_.AddResourceNoFetch(resource, handler).value) {
           // This new element works in the existing partition.
           add_input = true;
         } else {
@@ -213,7 +200,7 @@ class CssCombineFilter::Context : public RewriteContext {
           if (partition != NULL) {
             FinalizePartition(partitions, partition, outputs);
             partition = NULL;
-            if (combiner_.AddElementNoFetch(element, resource, handler).value) {
+            if (combiner_.AddResourceNoFetch(resource, handler).value) {
               add_input = true;
             }
           }

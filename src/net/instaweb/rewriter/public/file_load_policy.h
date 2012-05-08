@@ -21,10 +21,9 @@
 
 #include <list>
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-
-#include "testing/gtest/include/gtest/gtest_prod.h"
 
 namespace net_instaweb {
 

@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -161,6 +162,11 @@ class ResourceCombiner {
   GoogleString resolved_base_;
   const int url_overhead_;
   RewriteFilter* filter_;
+
+  FRIEND_TEST(ResourceCombinerTest, TestRemove);
+  FRIEND_TEST(ResourceCombinerTest, TestRemoveFrom3);
+  FRIEND_TEST(ResourceCombinerTest, TestRebaseRemove);
+  FRIEND_TEST(ResourceCombinerTest, TestRebaseRemoveAdd);
 
   DISALLOW_COPY_AND_ASSIGN(ResourceCombiner);
 };
