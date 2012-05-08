@@ -64,7 +64,8 @@ void HtmlElement::Data::Clear() {
 void HtmlElement::MarkAsDead(const HtmlEventListIterator& end) {
   if (data_.get() != NULL) {
     data_->live_ = false;
-    InvalidateIterators(end);
+    set_begin(end);
+    set_end(end);
   }
 }
 
@@ -75,11 +76,6 @@ void HtmlElement::SynthesizeEvents(const HtmlEventListIterator& iter,
   set_begin(queue->insert(iter, start_tag));
   HtmlEvent* end_tag = new HtmlEndElementEvent(this, -1);
   set_end(queue->insert(iter, end_tag));
-}
-
-void HtmlElement::InvalidateIterators(const HtmlEventListIterator& end) {
-  set_begin(end);
-  set_end(end);
 }
 
 void HtmlElement::DeleteAttribute(int i) {

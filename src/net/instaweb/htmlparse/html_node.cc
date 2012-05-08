@@ -25,16 +25,20 @@ namespace net_instaweb {
 
 HtmlNode::~HtmlNode() {}
 
-void HtmlLiveNode::MarkAsDead(const HtmlEventListIterator& end) {
-  live_ = false;
-  InvalidateIterators(end);
+HtmlLeafNode::HtmlLeafNode(HtmlElement* parent,
+                           const HtmlEventListIterator& iter,
+                           const StringPiece& contents)
+    : HtmlNode(parent),
+      data_(new Data(iter, contents)) {
 }
 
-HtmlLiveNode::~HtmlLiveNode() {}
 HtmlLeafNode::~HtmlLeafNode() {}
 
-void HtmlLeafNode::InvalidateIterators(const HtmlEventListIterator& end) {
-  set_iter(end);
+void HtmlLeafNode::MarkAsDead(const HtmlEventListIterator& end) {
+  if (data_.get() != NULL) {
+    set_iter(end);
+    data_->is_live_ = false;
+  }
 }
 
 HtmlCdataNode::~HtmlCdataNode() {}

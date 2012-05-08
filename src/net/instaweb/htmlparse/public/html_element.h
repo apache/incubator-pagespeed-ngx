@@ -306,7 +306,6 @@ class HtmlElement : public HtmlNode {
  protected:
   virtual void SynthesizeEvents(const HtmlEventListIterator& iter,
                                 HtmlEventList* queue);
-  virtual void InvalidateIterators(const HtmlEventListIterator& end);
 
   virtual HtmlEventListIterator begin() const { return data_->begin_; }
   virtual HtmlEventListIterator end() const { return data_->end_; }

@@ -22,6 +22,7 @@
 #include <cstddef>
 
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/arena.h"
@@ -68,7 +69,6 @@ class HtmlNode {
   // the new event(s).  The line number for each event should probably be -1.
   virtual void SynthesizeEvents(const HtmlEventListIterator& iter,
                                 HtmlEventList* queue) = 0;
-  virtual void InvalidateIterators(const HtmlEventListIterator& end) = 0;
 
   // Return an iterator pointing to the first event associated with this node.
   virtual HtmlEventListIterator begin() const = 0;
@@ -93,47 +93,52 @@ class HtmlNode {
   DISALLOW_COPY_AND_ASSIGN(HtmlNode);
 };
 
-class HtmlLiveNode : public HtmlNode {
- public:
-  virtual ~HtmlLiveNode();
-  virtual bool live() const { return live_; }
-  virtual void MarkAsDead(const HtmlEventListIterator& end);
-
- protected:
-  explicit HtmlLiveNode(HtmlElement* parent)
-      : HtmlNode(parent),
-        live_(true) {
-  }
-
- private:
-  bool live_;
-};
-
-// Base class for leaf nodes (like HtmlCharactersNode and HtmlCommentNode)
-class HtmlLeafNode : public HtmlLiveNode {
+class HtmlLeafNode : public HtmlNode {
  public:
   virtual ~HtmlLeafNode();
-  friend class HtmlParse;
+  virtual bool live() const { return (data_.get() != NULL) && data_->is_live_; }
+  virtual void MarkAsDead(const HtmlEventListIterator& end);
+
+  const GoogleString& contents() const { return data_->contents_; }
+  virtual HtmlEventListIterator begin() const {
+    return data_->iter_;
+  }
+  virtual HtmlEventListIterator end() const {
+    return data_->iter_;
+  }
+  void set_iter(const HtmlEventListIterator& iter) {
+    data_->iter_ = iter;
+  }
+
+  void FreeData() { data_.reset(NULL); }
 
  protected:
-  HtmlLeafNode(HtmlElement* parent, const HtmlEventListIterator& iter)
-      : HtmlLiveNode(parent),
-        iter_(iter) {}
-  virtual HtmlEventListIterator begin() const { return iter_; }
-  virtual HtmlEventListIterator end() const { return iter_; }
-  void set_iter(const HtmlEventListIterator& iter) { iter_ = iter; }
-  virtual void InvalidateIterators(const HtmlEventListIterator& end);
+  HtmlLeafNode(HtmlElement* parent, const HtmlEventListIterator& iter,
+               const StringPiece& contents);
+
+  // Write-access to the contents is protected by default, and made
+  // accessible by subclasses that need to expose this method.
+  GoogleString* mutable_contents() { return &data_->contents_; }
 
  private:
-  HtmlEventListIterator iter_;
-  DISALLOW_COPY_AND_ASSIGN(HtmlLeafNode);
+  struct Data {
+    Data(const HtmlEventListIterator& iter, const StringPiece& contents)
+        : contents_(contents.data(), contents.size()),
+          is_live_(true),
+          iter_(iter) {
+    }
+    GoogleString contents_;
+    bool is_live_;
+    HtmlEventListIterator iter_;
+  };
+
+  scoped_ptr<Data> data_;
 };
 
 // Leaf node representing a CDATA section
 class HtmlCdataNode : public HtmlLeafNode {
  public:
   virtual ~HtmlCdataNode();
-  const GoogleString& contents() const { return contents_; }
   friend class HtmlParse;
 
  protected:
@@ -144,11 +149,9 @@ class HtmlCdataNode : public HtmlLeafNode {
   HtmlCdataNode(HtmlElement* parent,
                 const StringPiece& contents,
                 const HtmlEventListIterator& iter)
-      : HtmlLeafNode(parent, iter),
-        contents_(contents.data(), contents.size()) {}
+      : HtmlLeafNode(parent, iter, contents) {
+  }
 
-  // TODO(jmarantz): consider clearing from HtmlParse::ClearEvents.
-  const GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlCdataNode);
 };
 
@@ -156,12 +159,13 @@ class HtmlCdataNode : public HtmlLeafNode {
 class HtmlCharactersNode : public HtmlLeafNode {
  public:
   virtual ~HtmlCharactersNode();
-  const GoogleString& contents() const { return contents_; }
-  GoogleString* mutable_contents() { return &contents_; }
   void Append(const StringPiece& str) {
-    contents_.append(str.data(), str.size());
+    mutable_contents()->append(str.data(), str.size());
   }
   friend class HtmlParse;
+
+  // Expose writable contents for Characters nodes.
+  using HtmlLeafNode::mutable_contents;
 
  protected:
   virtual void SynthesizeEvents(const HtmlEventListIterator& iter,
@@ -171,11 +175,9 @@ class HtmlCharactersNode : public HtmlLeafNode {
   HtmlCharactersNode(HtmlElement* parent,
                      const StringPiece& contents,
                      const HtmlEventListIterator& iter)
-      : HtmlLeafNode(parent, iter),
-        contents_(contents.data(), contents.size()) {}
+      : HtmlLeafNode(parent, iter, contents) {
+  }
 
-  // TODO(jmarantz): consider clearing from HtmlParse::ClearEvents.
-  GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlCharactersNode);
 };
 
@@ -183,7 +185,6 @@ class HtmlCharactersNode : public HtmlLeafNode {
 class HtmlCommentNode : public HtmlLeafNode {
  public:
   virtual ~HtmlCommentNode();
-  const GoogleString& contents() const { return contents_; }
   friend class HtmlParse;
 
  protected:
@@ -194,11 +195,9 @@ class HtmlCommentNode : public HtmlLeafNode {
   HtmlCommentNode(HtmlElement* parent,
                   const StringPiece& contents,
                   const HtmlEventListIterator& iter)
-      : HtmlLeafNode(parent, iter),
-        contents_(contents.data(), contents.size()) {}
+      : HtmlLeafNode(parent, iter, contents) {
+  }
 
-  // TODO(jmarantz): consider clearing from HtmlParse::ClearEvents.
-  const GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlCommentNode);
 };
 
@@ -206,7 +205,6 @@ class HtmlCommentNode : public HtmlLeafNode {
 class HtmlIEDirectiveNode : public HtmlLeafNode {
  public:
   virtual ~HtmlIEDirectiveNode();
-  const GoogleString& contents() const { return contents_; }
   friend class HtmlParse;
 
  protected:
@@ -217,11 +215,9 @@ class HtmlIEDirectiveNode : public HtmlLeafNode {
   HtmlIEDirectiveNode(HtmlElement* parent,
                       const StringPiece& contents,
                       const HtmlEventListIterator& iter)
-      : HtmlLeafNode(parent, iter),
-        contents_(contents.data(), contents.size()) {}
+      : HtmlLeafNode(parent, iter, contents) {
+  }
 
-  // TODO(jmarantz): consider clearing from HtmlParse::ClearEvents.
-  const GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlIEDirectiveNode);
 };
 
@@ -229,7 +225,6 @@ class HtmlIEDirectiveNode : public HtmlLeafNode {
 class HtmlDirectiveNode : public HtmlLeafNode {
  public:
   virtual ~HtmlDirectiveNode();
-  const GoogleString& contents() const { return contents_; }
   friend class HtmlParse;
 
  protected:
@@ -240,11 +235,9 @@ class HtmlDirectiveNode : public HtmlLeafNode {
   HtmlDirectiveNode(HtmlElement* parent,
                     const StringPiece& contents,
                     const HtmlEventListIterator& iter)
-      : HtmlLeafNode(parent, iter),
-        contents_(contents.data(), contents.size()) {}
+      : HtmlLeafNode(parent, iter, contents) {
+  }
 
-  // TODO(jmarantz): consider clearing from HtmlParse::ClearEvents.
-  const GoogleString contents_;
   DISALLOW_COPY_AND_ASSIGN(HtmlDirectiveNode);
 };
 

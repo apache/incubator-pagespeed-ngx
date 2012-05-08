@@ -414,6 +414,7 @@ void HtmlParse::ClearEvents() {
         HtmlLeafNode* leaf_node = event->GetLeafNode();
         if (leaf_node != NULL) {
           leaf_node->set_iter(queue_.end());
+          leaf_node->FreeData();
         }
       }
     }
