@@ -143,6 +143,7 @@
         'rewriter/rewrite_query_test.cc',
         'rewriter/rewrite_single_resource_filter_test.cc',
         'rewriter/rewriter_test.cc',
+        'rewriter/scan_filter_test.cc',
         'rewriter/script_tag_scanner_test.cc',
         'rewriter/static_asserts_test.cc',
         'rewriter/strip_non_cacheable_filter_test.cc',

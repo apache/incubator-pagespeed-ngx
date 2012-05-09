@@ -90,11 +90,11 @@ class CommonFilter : public EmptyHtmlFilter {
   // returned then content will be empty for the HTML5 charset form and
   // non-empty for the HTML4 http-equiv form; also an http-equiv attribute
   // with a blank mime type returns false as it's not a valid format.
-  bool ExtractMetaTagDetails(const HtmlElement& element,
-                             const ResponseHeaders* headers,
-                             GoogleString* content,
-                             GoogleString* mime_type,
-                             GoogleString* charset) const;
+  static bool ExtractMetaTagDetails(const HtmlElement& element,
+                                    const ResponseHeaders* headers,
+                                    GoogleString* content,
+                                    GoogleString* mime_type,
+                                    GoogleString* charset);
 
  protected:
   // Overload these implementer methods:

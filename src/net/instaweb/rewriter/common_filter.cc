@@ -120,7 +120,7 @@ bool CommonFilter::ExtractMetaTagDetails(const HtmlElement& element,
                                          const ResponseHeaders* headers,
                                          GoogleString* content,
                                          GoogleString* mime_type,
-                                         GoogleString* charset) const {
+                                         GoogleString* charset) {
   // The charset can be specified in an http-equiv or a charset attribute.
   const HtmlElement::Attribute* equiv;
   const HtmlElement::Attribute* value;

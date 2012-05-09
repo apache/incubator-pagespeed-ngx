@@ -523,6 +523,15 @@ class RewriteDriver : public HtmlParse {
   // ScanFilter.
   void set_refs_before_base() { refs_before_base_ = true; }
 
+  // Get/set the charset of the containing HTML page. See scan_filter.cc for
+  // an explanation of how this is determined, but NOTE that the determined
+  // charset can change as more of the HTML is seen, in particular after a
+  // meta tag.
+  StringPiece containing_charset() { return containing_charset_; }
+  void set_containing_charset(const StringPiece charset) {
+    charset.CopyToString(&containing_charset_);
+  }
+
   // Establishes a HtmlElement slot for rewriting.
   HtmlResourceSlotPtr GetSlot(const ResourcePtr& resource,
                               HtmlElement* elt,
@@ -895,6 +904,9 @@ class RewriteDriver : public HtmlParse {
   // no base tag, this should be false.  If the base tag is before all
   // other url references, this should also be false.
   bool refs_before_base_;
+
+  // The charset of the containing HTML page.
+  GoogleString containing_charset_;
 
   bool filters_added_;
   bool externally_managed_;

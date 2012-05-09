@@ -1090,10 +1090,24 @@ GoogleString RewriteOptions::ToString() const {
 }
 
 GoogleString RewriteOptions::ToExperimentString() const {
-  GoogleString output;
   // Only add the experiment id if we're running this experiment.
   if (GetFuriousSpec(furious_id_) != NULL) {
-    output = StringPrintf("Experiment: %d; ", furious_id_);
+    return StringPrintf("Experiment: %d", furious_id_);
+  }
+  return GoogleString();
+}
+
+GoogleString RewriteOptions::ToExperimentDebugString() const {
+  GoogleString output = ToExperimentString();
+  if (!output.empty()) {
+    output += "; ";
+  }
+  if (!running_furious()) {
+    output += "off; ";
+  } else if (furious_id_ == furious::kFuriousNotSet) {
+    output += "not set; ";
+  } else if (furious_id_ == furious::kFuriousNoExperiment) {
+    output += "no experiment; ";
   }
   for (int f = kFirstFilter; f != kEndOfFilters; ++f) {
     Filter filter = static_cast<Filter>(f);

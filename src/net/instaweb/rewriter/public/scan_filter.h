@@ -24,7 +24,12 @@
 
 namespace net_instaweb {
 
+class HtmlCdataNode;
+class HtmlCharactersNode;
+class HtmlCommentNode;
+class HtmlDirectiveNode;
 class HtmlElement;
+class HtmlIEDirectiveNode;
 class RewriteDriver;
 
 // Filter that is run before any other, to help track base-tag usage and
@@ -40,6 +45,11 @@ class ScanFilter : public EmptyHtmlFilter {
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
+  virtual void Cdata(HtmlCdataNode* cdata);
+  virtual void Comment(HtmlCommentNode* comment);
+  virtual void IEDirective(HtmlIEDirectiveNode* directive);
+  virtual void Characters(HtmlCharactersNode* characters);
+  virtual void Directive(HtmlDirectiveNode* directive);
   virtual void Flush();
 
   virtual const char* Name() const { return "Scan"; }
@@ -47,8 +57,10 @@ class ScanFilter : public EmptyHtmlFilter {
  private:
   RewriteDriver* driver_;
   ResourceTagScanner tag_scanner_;
+  bool seen_any_nodes_;
   bool seen_refs_;
   bool seen_base_;
+  bool seen_meta_tag_charset_;
 };
 
 }  // namespace net_instaweb

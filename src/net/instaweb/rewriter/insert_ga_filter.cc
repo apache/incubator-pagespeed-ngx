@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -96,6 +97,11 @@ void InsertGAFilter::StartDocumentImpl() {
   added_snippet_element_ = NULL;
   added_furious_element_ = NULL;
   buffer_.clear();
+  if (driver_->options()->running_furious()) {
+    driver_->message_handler()->Message(
+        kInfo, "run_experiment: %s",
+        driver_->options()->ToExperimentDebugString().c_str());
+  }
 }
 
 // Start looking for ga snippet.

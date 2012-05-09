@@ -289,6 +289,8 @@ void RewriteDriver::Clear() {
   flush_requested_ = false;
   flush_occurred_ = false;
   base_was_set_ = false;
+  refs_before_base_ = false;
+  containing_charset_.clear();
   detached_fetch_detached_path_complete_ = false;
   detached_fetch_main_path_complete_ = false;
   client_id_.clear();

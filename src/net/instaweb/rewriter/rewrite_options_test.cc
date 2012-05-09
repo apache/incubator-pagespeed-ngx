@@ -941,6 +941,7 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   NullMessageHandler handler;
   options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
   options_.set_ga_id("UA-111111-1");
+  options_.set_running_furious_experiment(true);
   EXPECT_FALSE(options_.AddFuriousSpec("id=2;enabled=rewrite_css;", &handler));
   EXPECT_TRUE(options_.AddFuriousSpec("id=1;percent=15;default", &handler));
   EXPECT_TRUE(options_.AddFuriousSpec("id=7;percent=15;level=AllFilters;",
@@ -951,23 +952,28 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   options_.SetFuriousState(-7);
   // This should be the core filters.
   EXPECT_EQ("ah,cc,mc,ec,ei,es,hw,ci,ii,il,ji,tu,ir,ri,cf,jm,cu,"
-            "css:2048,im:2048,js:2048;", options_.ToExperimentString());
+            "css:2048,im:2048,js:2048;", options_.ToExperimentDebugString());
+  EXPECT_EQ("", options_.ToExperimentString());
   options_.SetFuriousState(1);
   EXPECT_EQ("Experiment: 1; ah,ai,cc,mc,ec,ei,es,hw,ci,ii,il,ji,ig,tu,ir,ri,cf,"
-            "jm,cu,css:2048,im:2048,js:2048;", options_.ToExperimentString());
+            "jm,cu,css:2048,im:2048,js:2048;",
+            options_.ToExperimentDebugString());
+  EXPECT_EQ("Experiment: 1", options_.ToExperimentString());
   options_.SetFuriousState(7);
   // This should be all non-dangerous filters.
   EXPECT_EQ("Experiment: 7; ab,ah,ai,cw,cc,ch,jc,jp,jw,mc,pj,db,di,ea,ec,ei,es,"
             "if,hw,ci,ii,il,ji,ig,id,tu,ls,ga,cm,co,jo,pv,ir,rc,rq,ri,rm,cf,rd,"
             "jm,cs,cu,is,css:2048,im:2048,js:2048;",
-            options_.ToExperimentString());
+            options_.ToExperimentDebugString());
+  EXPECT_EQ("Experiment: 7", options_.ToExperimentString());
   options_.SetFuriousState(2);
   // This should be the filters we need to run an experiment (add_head,
   // add_instrumentation, html_writer, insert_ga) plus rewrite_css.
   // The image inline threshold is 0 because ImageInlineMaxBytes()
   // only returns the threshold if inline_images is enabled.
   EXPECT_EQ("Experiment: 2; ah,ai,hw,ig,cf,css:4096,im:0,js:2048;",
-            options_.ToExperimentString());
+            options_.ToExperimentDebugString());
+  EXPECT_EQ("Experiment: 2", options_.ToExperimentString());
 
   // Make sure we set the ga_id to the one specified by spec 2.
   EXPECT_EQ("122333-4", options_.ga_id());
