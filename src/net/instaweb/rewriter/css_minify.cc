@@ -56,16 +56,6 @@ bool CssMinify::Stylesheet(const Css::Stylesheet& stylesheet,
   return minifier.ok_;
 }
 
-bool CssMinify::Stylesheet(const Css::Stylesheet& stylesheet,
-                           const GoogleUrl& base_url,
-                           Writer* writer,
-                           MessageHandler* handler) {
-  // Get an object to encapsulate writing.
-  CssMinify minifier(base_url, writer, handler);
-  minifier.Minify(stylesheet);
-  return minifier.ok_;
-}
-
 bool CssMinify::Declarations(const Css::Declarations& declarations,
                              Writer* writer,
                              MessageHandler* handler) {
@@ -195,13 +185,6 @@ GoogleString CssMinify::EscapeString(const StringPiece& src, bool in_url) {
   return dest;
 }
 
-CssMinify::CssMinify(const GoogleUrl& base_url,
-                     Writer* writer, MessageHandler* handler)
-    : base_url_(base_url.UncheckedSpec()),
-      writer_(writer), handler_(handler), ok_(true) {
-  DCHECK(base_url_.is_valid());
-}
-
 CssMinify::CssMinify(Writer* writer, MessageHandler* handler)
     : writer_(writer), handler_(handler), ok_(true) {
 }
@@ -218,18 +201,6 @@ void CssMinify::Write(const StringPiece& str) {
 
 void CssMinify::WriteURL(const UnicodeText& url) {
   StringPiece string_url(url.utf8_data(), url.utf8_length());
-  GoogleUrl abs_url;
-  if (!string_url.empty() && base_url_.is_valid()) {
-    abs_url.Reset(base_url_, string_url);
-    if (abs_url.is_valid()) {
-      string_url = abs_url.Spec();
-    } else {
-      handler_->Message(kWarning, "Cannot absolutify to invalid URL. "
-                        "%s relative to %s produces invalid %s",
-                        string_url.as_string().c_str(),
-                        base_url_.spec_c_str(), abs_url.spec_c_str());
-    }
-  }
   Write(EscapeString(string_url, true));
 }
 

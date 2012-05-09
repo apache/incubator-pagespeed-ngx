@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_MINIFY_H_
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -42,6 +41,7 @@ class UnicodeText;
 
 namespace net_instaweb {
 
+class GoogleUrl;
 class RewriteDriver;
 class MessageHandler;
 class Writer;
@@ -50,12 +50,6 @@ class CssMinify {
  public:
   // Write minified Stylesheet.
   static bool Stylesheet(const Css::Stylesheet& stylesheet,
-                         Writer* writer,
-                         MessageHandler* handler);
-
-  // Write minified Stylesheet absolutifying all relative URLs to base_url.
-  static bool Stylesheet(const Css::Stylesheet& stylesheet,
-                         const GoogleUrl& base_url,
                          Writer* writer,
                          MessageHandler* handler);
 
@@ -87,14 +81,11 @@ class CssMinify {
   static GoogleString EscapeString(const StringPiece& src, bool in_url);
 
  private:
-  CssMinify(const GoogleUrl& base_url, Writer* writer, MessageHandler* handler);
   CssMinify(Writer* writer, MessageHandler* handler);
   ~CssMinify();
 
   void Write(const StringPiece& str);
 
-  // Write the given URL absolutifying it iff base_url_ is not empty otherwise
-  // write it exactly as it is.
   void WriteURL(const UnicodeText& url);
 
   template<typename Container>
@@ -129,7 +120,6 @@ class CssMinify {
   // Emits the end of the @media rule iff required (non-empty media set).
   void MinifyRulesetMediaEnd(const Css::Ruleset& ruleset);
 
-  const GoogleUrl base_url_;
   Writer* writer_;
   MessageHandler* handler_;
   bool ok_;
