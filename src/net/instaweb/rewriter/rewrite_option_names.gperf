@@ -53,6 +53,7 @@ struct OptionName {
 "ImageRetainExifData",                  RewriteOptions::kImageRetainExifData
 "ImageWebpRecompressQuality",           RewriteOptions::kImageWebpRecompressQuality
 "ImplicitCacheTtlMs",                   RewriteOptions::kImplicitCacheTtlMs
+"IncreaseSpeedTracking",                RewriteOptions::kIncreaseSpeedTracking
 "JpegRecompressionQuality",             RewriteOptions::kImageJpegRecompressionQuality
 "JsInlineMaxBytes",                     RewriteOptions::kJsInlineMaxBytes
 "JsOutlineMinBytes",                    RewriteOptions::kJsOutlineMinBytes
@@ -62,7 +63,9 @@ struct OptionName {
 "MaxHtmlCacheTimeMs",                   RewriteOptions::kMaxHtmlCacheTimeMs
 "MaxImageSizeLowResolutionBytes",       RewriteOptions::kMaxImageSizeLowResolutionBytes
 "MaxInlinedPreviewImagesIndex",         RewriteOptions::kMaxInlinedPreviewImagesIndex
-"MaxUrlSegmentSize",                    RewriteOptions::kMaxUrlSegmentSize
+# TODO(sligocki): Put names in agreement. MaxSegmentLength is the
+# mod_pagespeed config name, MaxUrlSegmentSize is the name used in code.
+"MaxSegmentLength",                     RewriteOptions::kMaxUrlSegmentSize
 "MaxUrlSize",                           RewriteOptions::kMaxUrlSize
 "MinImageSizeLowResolutionBytes",       RewriteOptions::kMinImageSizeLowResolutionBytes
 "MinResourceCacheTimeToRewriteMs",      RewriteOptions::kMinResourceCacheTimeToRewriteMs

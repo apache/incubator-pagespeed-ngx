@@ -10,7 +10,8 @@
 #                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST,
 #                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST,
 #                       OPT_FURIOUS_TEST, OPT_XHEADER_TEST,
-#                       OPT_DOMAIN_HYPERLINKS, OPT_DOMAIN_RESOURCE_TAGS)
+#                       OPT_DOMAIN_HYPERLINKS_TEST,
+#                       OPT_DOMAIN_RESOURCE_TAGS_TEST, OPT_ALL_DIRECTIVES_TEST)
 #  apache_debug_restart
 #  apache_debug_stop
 #  apache_debug_leak_test, apache_debug_proxy_test, apache_debug_slurp_test
@@ -48,6 +49,7 @@ apache_system_tests :
 	$(MAKE) apache_debug_vhost_only_test
 	$(MAKE) apache_debug_global_off_test
 	$(MAKE) apache_debug_shared_mem_lock_sanity_test
+	$(MAKE) apache_debug_all_directives_test
 	$(MAKE) apache_install_conf
 # 'apache_install_conf' should always be last, to leave your debug
 # Apache server in a consistent state.
@@ -286,3 +288,9 @@ apache_debug_shared_mem_lock_sanity_test : shared_mem_lock_test_prepare \
 shared_mem_lock_test_prepare:
 	$(eval OPT_SLURP_TEST="SHARED_MEM_LOCK_TEST=1")
 	rm -rf $(PAGESPEED_ROOT)/cache/*
+
+# Test that all directives are accepted by the options parser.
+apache_debug_all_directives_test:
+	$(MAKE) apache_install_conf \
+	  OPT_ALL_DIRECTIVES_TEST="ALL_DIRECTIVES_TEST=1"
+	$(MAKE) apache_debug_restart

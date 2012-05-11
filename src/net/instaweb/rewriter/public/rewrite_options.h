@@ -79,6 +79,7 @@ class RewriteOptions {
     kLeftTrimUrls,
     kLocalStorageCache,
     kMakeGoogleAnalyticsAsync,
+    kMoveCssAboveScripts,
     kMoveCssToHead,
     kOutlineCss,
     kOutlineJavascript,

@@ -732,6 +732,7 @@ void RewriteDriver::AddPreRenderFilters() {
       rewrite_options->Enabled(RewriteOptions::kAddHead) ||
       rewrite_options->Enabled(RewriteOptions::kCombineHeads) ||
       rewrite_options->Enabled(RewriteOptions::kMoveCssToHead) ||
+      rewrite_options->Enabled(RewriteOptions::kMoveCssAboveScripts) ||
       rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync) ||
       rewrite_options->Enabled(RewriteOptions::kAddInstrumentation) ||
       rewrite_options->Enabled(RewriteOptions::kDeterministicJs)) {
@@ -767,10 +768,11 @@ void RewriteDriver::AddPreRenderFilters() {
     JsOutlineFilter* js_outline_filter = new JsOutlineFilter(this);
     AppendOwnedPreRenderFilter(js_outline_filter);
   }
-  if (rewrite_options->Enabled(RewriteOptions::kMoveCssToHead)) {
+  if (rewrite_options->Enabled(RewriteOptions::kMoveCssToHead) ||
+      rewrite_options->Enabled(RewriteOptions::kMoveCssAboveScripts)) {
     // It's good to move CSS links to the head prior to running CSS combine,
     // which only combines CSS links that are already in the head.
-    AppendOwnedPreRenderFilter(new CssMoveToHeadFilter(this, statistics()));
+    AppendOwnedPreRenderFilter(new CssMoveToHeadFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kCombineCss)) {
     // Combine external CSS resources after we've outlined them.

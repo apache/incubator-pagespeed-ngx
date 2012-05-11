@@ -598,15 +598,15 @@ void HtmlParse::FixParents(const HtmlEventListIterator& begin,
 
 bool HtmlParse::MoveCurrentInto(HtmlElement* new_parent) {
   bool moved = false;
-  if (current_ != queue_.end()) {
+  if (current_ == queue_.end()) {
+    DebugLogQueue();
+    LOG(DFATAL) << "MoveCurrentInto() called at queue_.end()";
+  } else if (new_parent->live()) {
     HtmlNode* current_node = (*current_)->GetNode();
     if (MoveCurrentBeforeEvent(new_parent->end())) {
       current_node->set_parent(new_parent);
       moved = true;
     }
-  } else {
-    DebugLogQueue();
-    LOG(DFATAL) << "MoveCurrentInto() called at queue_.end()";
   }
   return moved;
 }
@@ -614,15 +614,15 @@ bool HtmlParse::MoveCurrentInto(HtmlElement* new_parent) {
 bool HtmlParse::MoveCurrentBefore(HtmlNode* element) {
   bool moved = false;
   DCHECK(current_ != queue_.end());
-  if (current_ != queue_.end()) {
+  if (current_ == queue_.end()) {
+    DebugLogQueue();
+    LOG(DFATAL) << "MoveCurrentBefore() called at queue_.end()";
+  } else if (element->live()) {
     HtmlNode* current_node = (*current_)->GetNode();
     if (MoveCurrentBeforeEvent(element->begin())) {
       current_node->set_parent(element->parent());
       moved = true;
     }
-  } else {
-    DebugLogQueue();
-    LOG(DFATAL) << "MoveCurrentBefore() called at queue_.end()";
   }
   return moved;
 }
@@ -635,6 +635,8 @@ bool HtmlParse::MoveCurrentBeforeEvent(const HtmlEventListIterator& move_to) {
   if (move_to != queue_.end() && current_ != queue_.end()) {
     HtmlNode* move_to_node = (*move_to)->GetNode();
     HtmlNode* current_node = (*current_)->GetNode();
+    // TODO(sligocki): This and many other uses can now crash if called with
+    // a non-rewritable element :/
     HtmlEventListIterator begin = current_node->begin();
     HtmlEventListIterator end = current_node->end();
 

@@ -26,12 +26,12 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_QUEUED_WORKER_POOL_H_
 
 #include <cstddef>  // for size_t
+#include <deque>
 #include <set>
 #include <vector>
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/vector_deque.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -131,7 +131,7 @@ class QueuedWorkerPool {
     void Cancel();
 
     friend class QueuedWorkerPool;
-    VectorDeque<Function*> work_queue_;
+    std::deque<Function*> work_queue_;
     scoped_ptr<ThreadSystem::CondvarCapableMutex> sequence_mutex_;
     QueuedWorkerPool* pool_;
     bool shutdown_;
@@ -207,7 +207,7 @@ class QueuedWorkerPool {
   // queued_sequences_ and free_sequences_ are mutually exclusive, but
   // all_sequences contains all of them.
   std::vector<Sequence*> all_sequences_;
-  VectorDeque<Sequence*> queued_sequences_;
+  std::deque<Sequence*> queued_sequences_;
   std::vector<Sequence*> free_sequences_;
 
   size_t max_workers_;

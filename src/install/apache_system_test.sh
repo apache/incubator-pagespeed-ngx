@@ -439,6 +439,8 @@ ModPagespeedFilters=testing,core"
 fetch_until $URL 'grep -c src=\"normal.js\"' 0
 check [ $($WGET_DUMP $URL | grep -c src=\"introspection.js\") = 0 ]
 
+# TODO(sligocki): TEST: ModPagespeedMaxSegmentLength
+
 if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   echo TEST: Cache flushing works by touching cache.flush in cache directory.
 

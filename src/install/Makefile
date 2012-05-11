@@ -200,7 +200,7 @@ ifeq ($(SHARED_MEM_LOCK_TEST),1)
   SHARED_MEM_LOCK_TEST_SED_PATTERN=^\#SHARED_MEM_LOCKS
 else
   # remove whole line
-  SLURP_TEST_LOCK_TEST_SED_PATTERN=^\#SHARED_MEM_LOCKS.*\n
+  SHARED_MEM_LOCK_TEST_SED_PATTERN=^\#SHARED_MEM_LOCKS.*\n
 endif
 
 ifeq ($(SPELING_TEST),1)
@@ -259,6 +259,14 @@ else
   DOMAIN_RESOURCE_TAGS_TEST_SED_PATTERN=^\#DOMAIN_RESOURCE_TAGS.*\n
 endif
 
+ifeq ($(ALL_DIRECTIVES_TEST),1)
+  # remove prefix
+  ALL_DIRECTIVES_TEST_SED_PATTERN=^\#ALL_DIRECTIVES
+else
+  # remove whole line
+  ALL_DIRECTIVES_TEST_SED_PATTERN=^\#ALL_DIRECTIVES.*\n
+endif
+
 # Note that the quoted sed replacement for APACHE_SLURP_DIR_COMMAND is because
 # that might have embedded spaces, and 'sed' is interpreted first by bash.
 
@@ -285,6 +293,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(XHEADER_TEST_SED_PATTERN)@@" \
 	    -e "s@$(DOMAIN_HYPERLINKS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(DOMAIN_RESOURCE_TAGS_TEST_SED_PATTERN)@@" \
+	    -e "s@$(ALL_DIRECTIVES_TEST_SED_PATTERN)@@" \
 		$^ > $@
 	! grep '@@' $@  # Make sure we don't have any remaining @@variables@@
 
@@ -371,13 +380,15 @@ apache_install_conf:
 	    $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
 	    $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST) \
 	    $(OPT_GZIP_TEST) $(OPT_FURIOUS_TEST) $(OPT_XHEADER_TEST) \
-	    $(OPT_DOMAIN_HYPERLINKS_TEST) $(OPT_DOMAIN_RESOURCE_TAGS_TEST)
+	    $(OPT_DOMAIN_HYPERLINKS_TEST) $(OPT_DOMAIN_RESOURCE_TAGS_TEST) \
+	    $(OPT_ALL_DIRECTIVES_TEST)
 	$(MAKE) install_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
 	    $(OPT_SLURP_TEST) $(OPT_SPELING_TEST) \
 	    $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
 	    $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST) \
 	    $(OPT_GZIP_TEST) $(OPT_FURIOUS_TEST) $(OPT_XHEADER_TEST) \
-	    $(OPT_DOMAIN_HYPERLINKS_TEST) $(OPT_DOMAIN_RESOURCE_TAGS_TEST)
+	    $(OPT_DOMAIN_HYPERLINKS_TEST) $(OPT_DOMAIN_RESOURCE_TAGS_TEST) \
+	    $(OPT_ALL_DIRECTIVES_TEST)
 
 apache_debug_restart:
 	$(APACHE_CONTROL_PROGRAM) restart

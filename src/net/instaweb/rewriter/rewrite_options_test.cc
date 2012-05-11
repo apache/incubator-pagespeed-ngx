@@ -706,7 +706,7 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("MaxInlinedPreviewImagesIndex"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kMaxInlinedPreviewImagesIndex));
-  EXPECT_EQ(StringPiece("MaxUrlSegmentSize"),
+  EXPECT_EQ(StringPiece("MaxSegmentLength"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kMaxUrlSegmentSize));
   EXPECT_EQ(StringPiece("MaxUrlSize"),
@@ -962,8 +962,8 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   options_.SetFuriousState(7);
   // This should be all non-dangerous filters.
   EXPECT_EQ("Experiment: 7; ab,ah,ai,cw,cc,ch,jc,jp,jw,mc,pj,db,di,ea,ec,ei,es,"
-            "if,hw,ci,ii,il,ji,ig,id,tu,ls,ga,cm,co,jo,pv,ir,rc,rq,ri,rm,cf,rd,"
-            "jm,cs,cu,is,css:2048,im:2048,js:2048;",
+            "if,hw,ci,ii,il,ji,ig,id,tu,ls,ga,cj,cm,co,jo,pv,ir,rc,rq,ri,rm,cf,"
+            "rd,jm,cs,cu,is,css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 7", options_.ToExperimentString());
   options_.SetFuriousState(2);

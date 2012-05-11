@@ -277,6 +277,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kLeftTrimUrls:                    return "Left Trim Urls";
     case kLocalStorageCache:               return "Local Storage Cache";
     case kMakeGoogleAnalyticsAsync:        return "Make Google Analytics Async";
+    case kMoveCssAboveScripts:             return "Move Css Above Scripts";
     case kMoveCssToHead:                   return "Move Css To Head";
     case kOutlineCss:                      return "Outline Css";
     case kOutlineJavascript:               return "Outline Javascript";
@@ -340,6 +341,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kLeftTrimUrls:                    return "tu";
     case kLocalStorageCache:               return kLocalStorageCacheId;
     case kMakeGoogleAnalyticsAsync:        return "ga";
+    case kMoveCssAboveScripts:             return "cj";
     case kMoveCssToHead:                   return "cm";
     case kOutlineCss:                      return "co";
     case kOutlineJavascript:               return "jo";

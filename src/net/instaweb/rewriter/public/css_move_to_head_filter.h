@@ -19,33 +19,45 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_MOVE_TO_HEAD_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_MOVE_TO_HEAD_FILTER_H_
 
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
+
 class HtmlElement;
-class HtmlParse;
+class RewriteDriver;
 class Statistics;
 class Variable;
 
-class CssMoveToHeadFilter : public EmptyHtmlFilter {
+// Moves all CSS <link> and <style> tags either into the bottom of the <head>
+// or above the first <script> depending on settings.
+class CssMoveToHeadFilter : public CommonFilter {
  public:
-  CssMoveToHeadFilter(HtmlParse* html_parse, Statistics* statistics);
+  explicit CssMoveToHeadFilter(RewriteDriver* driver);
   virtual ~CssMoveToHeadFilter();
 
   static void Initialize(Statistics* statistics);
-  virtual void StartDocument();
-  virtual void StartElement(HtmlElement* element);
-  virtual void EndElement(HtmlElement* element);
+
+  virtual void StartDocumentImpl();
+  virtual void StartElementImpl(HtmlElement* element) {}
+  virtual void EndElementImpl(HtmlElement* element);
+
   virtual const char* Name() const { return "CssMoveToHead"; }
 
  private:
-  HtmlParse* html_parse_;
-  HtmlElement* head_element_;
-  HtmlElement* noscript_element_;
   CssTagScanner css_tag_scanner_;
-  Variable* counter_;
+
+  // Should we move CSS into head? If not, we just move it above scripts.
+  bool move_css_to_head_;
+  // Should we move CSS above scripts? If not, we just move CSS to the bottom
+  // of the head element.
+  bool move_css_above_scripts_;
+
+  HtmlElement* move_to_element_;
+  bool element_is_head_;
+
+  Variable* css_elements_moved_;
 
   DISALLOW_COPY_AND_ASSIGN(CssMoveToHeadFilter);
 };

@@ -992,6 +992,13 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     return ret;
   }
 
+  // Rename deprecated options so lookup below will succeed.
+  if (StringCaseEqual(directive, kModPagespeedImgInlineMaxBytes)) {
+    directive = kModPagespeedImageInlineMaxBytes;
+  } else if (StringCaseEqual(directive, kModPagespeedImgMaxRewritesAtOnce)) {
+    directive = kModPagespeedImageMaxRewritesAtOnce;
+  }
+
   // See whether generic RewriteOptions name handling can figure this one out.
   if (directive.starts_with(prefix)) {
     GoogleString msg;
@@ -1046,7 +1053,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedFuriousSpec)) {
     bool succeeded = options->AddFuriousSpec(arg, handler);
     if (!succeeded) {
-      ret = "Invalid experiment ID.";
+      ret = apr_pstrcat(cmd->pool, "Invalid experiment spec: ", arg, NULL);
     }
   } else if (StringCaseEqual(directive,
                              kModPagespeedListOutstandingUrlsOnError)) {

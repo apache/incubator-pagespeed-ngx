@@ -322,6 +322,71 @@ Listen @@APACHE_SECONDARY_PORT@@
 <VirtualHost *:@@APACHE_SECONDARY_PORT@@>
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeed on
-  ModPagespeedFileCachePath            "@@MODPAGESPEED_CACHE_ROOT@@/secondary_cache/"
-  ModPagespeedGeneratedFilePrefix      "@@MODPAGESPEED_CACHE_ROOT@@/secondary_files/"
+  ModPagespeedFileCachePath       "@@MODPAGESPEED_CACHE_ROOT@@/secondary_cache/"
+  ModPagespeedGeneratedFilePrefix "@@MODPAGESPEED_CACHE_ROOT@@/secondary_files/"
 </VirtualHost>
+
+#ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
+#ALL_DIRECTIVES ModPagespeedAllow foo
+#ALL_DIRECTIVES ModPagespeedAnalyticsID 1234
+#ALL_DIRECTIVES ModPagespeedAvoidRenamingIntrospectiveJavascript true
+#ALL_DIRECTIVES ModPagespeedBeaconUrl "http://example.com/beacon?ets="
+#ALL_DIRECTIVES ModPagespeedCollectRefererStatistics false
+#ALL_DIRECTIVES ModPagespeedCombineAcrossPaths true
+#ALL_DIRECTIVES ModPagespeedCssImageInlineMaxBytes 2000
+#ALL_DIRECTIVES ModPagespeedCssInlineMaxBytes 2000
+#ALL_DIRECTIVES ModPagespeedCssOutlineMinBytes 2000
+#ALL_DIRECTIVES ModPagespeedDisableFilters strip_scripts
+#ALL_DIRECTIVES ModPagespeedDisallow bar
+#ALL_DIRECTIVES ModPagespeedDomain example.com
+#ALL_DIRECTIVES ModPagespeedDomainRewriteHyperlinks true
+#ALL_DIRECTIVES ModPagespeedEnableFilters extend_cache
+#ALL_DIRECTIVES ModPagespeedExperimentSpec "id=8;percent=10"
+#ALL_DIRECTIVES ModPagespeedExperimentVariable 3
+#ALL_DIRECTIVES ModPagespeedFetchProxy localhost:4321
+#ALL_DIRECTIVES ModPagespeedFetchWithGzip on
+#ALL_DIRECTIVES ModPagespeedFetcherTimeOutMs 1000
+#ALL_DIRECTIVES ModPagespeedFileCacheCleanIntervalMs 3600000
+#ALL_DIRECTIVES ModPagespeedFileCachePath /tmp/cache/
+#ALL_DIRECTIVES ModPagespeedFileCacheSizeKb 1000
+#ALL_DIRECTIVES ModPagespeedForceCaching off
+#ALL_DIRECTIVES ModPagespeedGeneratedFilePrefix "/tmp/file/"
+#ALL_DIRECTIVES ModPagespeedHashRefererStatistics false
+#ALL_DIRECTIVES ModPagespeedImageInlineMaxBytes 2000
+#ALL_DIRECTIVES ModPagespeedImageLimitOptimizedPercent 80
+#ALL_DIRECTIVES ModPagespeedImageLimitResizeAreaPercent 80
+#ALL_DIRECTIVES ModPagespeedImageMaxRewritesAtOnce 5
+#ALL_DIRECTIVES ModPagespeedImgInlineMaxBytes 2000
+#ALL_DIRECTIVES ModPagespeedImgMaxRewritesAtOnce 5
+#ALL_DIRECTIVES ModPagespeedIncreaseSpeedTracking true
+#ALL_DIRECTIVES ModPagespeedJpegRecompressionQuality 80
+#ALL_DIRECTIVES ModPagespeedJsInlineMaxBytes 2000
+#ALL_DIRECTIVES ModPagespeedJsOutlineMinBytes 2000
+#ALL_DIRECTIVES ModPagespeedLRUCacheByteLimit 1000
+#ALL_DIRECTIVES ModPagespeedLRUCacheKbPerProcess 1
+#ALL_DIRECTIVES ModPagespeedLoadFromFile http://example.com/ /var/html/example/
+#ALL_DIRECTIVES ModPagespeedLogRewriteTiming false
+#ALL_DIRECTIVES ModPagespeedLowercaseHtmlNames true
+#ALL_DIRECTIVES ModPagespeedMapOriginDomain example.com localhost
+#ALL_DIRECTIVES ModPagespeedMapRewriteDomain example.com static.example.com
+#ALL_DIRECTIVES ModPagespeedMaxImageSizeLowResolutionBytes 1000
+#ALL_DIRECTIVES ModPagespeedMaxInlinedPreviewImagesIndex 80
+#ALL_DIRECTIVES ModPagespeedMaxSegmentLength 100
+#ALL_DIRECTIVES ModPagespeedMessageBufferSize 100
+#ALL_DIRECTIVES ModPagespeedMinImageSizeLowResolutionBytes 2000
+#ALL_DIRECTIVES ModPagespeedModifyCachingHeaders true
+#ALL_DIRECTIVES ModPagespeedNumShards 5
+#ALL_DIRECTIVES ModPagespeedRefererStatisticsOutputLevel simple
+#ALL_DIRECTIVES ModPagespeedRespectVary true
+#ALL_DIRECTIVES ModPagespeedRetainComment "special"
+#ALL_DIRECTIVES ModPagespeedRewriteLevel CoreFilters
+#ALL_DIRECTIVES ModPagespeedRunExperiment true
+#ALL_DIRECTIVES ModPagespeedShardDomain example.com 1.example.com,2.example.com
+#ALL_DIRECTIVES ModPagespeedSharedMemoryLocks true
+#ALL_DIRECTIVES ModPagespeedSlurpDirectory /tmp/slurp/
+#ALL_DIRECTIVES ModPagespeedSlurpFlushLimit 5
+#ALL_DIRECTIVES ModPagespeedSlurpReadOnly true
+#ALL_DIRECTIVES ModPagespeedStatistics true
+#ALL_DIRECTIVES ModPagespeedTestProxy off
+#ALL_DIRECTIVES ModPagespeedUrlPrefix "http://example.com/prefix/"
+#ALL_DIRECTIVES ModPagespeedXHeaderValue "test"

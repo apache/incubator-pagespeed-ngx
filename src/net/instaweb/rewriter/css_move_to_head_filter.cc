@@ -20,60 +20,72 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/statistics.h"
 
 namespace {
 
-// names for Statistics variables.
-const char kCssElements[] = "css_elements_moved_to_head";
+// Names for Statistics variables.
+const char kCssElementsMoved[] = "css_elements_moved";
 
 }  // namespace
 
 namespace net_instaweb {
 
-CssMoveToHeadFilter::CssMoveToHeadFilter(HtmlParse* html_parse,
-                                         Statistics* statistics)
-    : html_parse_(html_parse),
-      css_tag_scanner_(html_parse),
-      counter_(statistics->GetVariable(kCssElements)) {
+CssMoveToHeadFilter::CssMoveToHeadFilter(RewriteDriver* driver)
+    : CommonFilter(driver),
+      css_tag_scanner_(driver),
+      move_css_to_head_(
+          driver->options()->Enabled(RewriteOptions::kMoveCssToHead)),
+      move_css_above_scripts_(
+          driver->options()->Enabled(RewriteOptions::kMoveCssAboveScripts)) {
+  Statistics* stats = driver_->statistics();
+  css_elements_moved_ = stats->GetVariable(kCssElementsMoved);
 }
 
 CssMoveToHeadFilter::~CssMoveToHeadFilter() {}
 
 void CssMoveToHeadFilter::Initialize(Statistics* statistics) {
-  statistics->AddVariable(kCssElements);
+  statistics->AddVariable(kCssElementsMoved);
 }
 
-void CssMoveToHeadFilter::StartDocument() {
-  head_element_ = NULL;
-  noscript_element_ = NULL;
+void CssMoveToHeadFilter::StartDocumentImpl() {
+  move_to_element_ = NULL;
 }
 
-void CssMoveToHeadFilter::StartElement(HtmlElement* element) {
-  if (noscript_element_ == NULL && element->keyword() == HtmlName::kNoscript) {
-    noscript_element_ = element;  // Record top-level <noscript>.
-  }
-}
+void CssMoveToHeadFilter::EndElementImpl(HtmlElement* element) {
+  if (move_to_element_ == NULL) {
+    // We record the first we see, either </head> or <script>. That will be
+    // the anchor for where to move all styles.
+    if (move_css_to_head_ &&
+        element->keyword() == HtmlName::kHead) {
+      move_to_element_ = element;
+      element_is_head_ = true;
+    } else if (move_css_above_scripts_ &&
+               element->keyword() == HtmlName::kScript) {
+      move_to_element_ = element;
+      element_is_head_ = false;
+    }
 
-void CssMoveToHeadFilter::EndElement(HtmlElement* element) {
-  if ((head_element_ == NULL) && (element->keyword() == HtmlName::kHead)) {
-    head_element_ = element;
-
-  } else if (element == noscript_element_) {
-    noscript_element_ = NULL;  // We are exitting the top level </noscript>.
-
-  // Do not move anything out of a <noscript> element and we can only move
-  // this to <head> if <head> is still rewritable.
-  } else if (noscript_element_ == NULL && head_element_ != NULL &&
-             html_parse_->IsRewritable(head_element_)) {
+  // Do not move anything out of a <noscript> element.
+  // MoveCurrent* methods will check that that we are allowed to move these
+  // elements into the approriate places.
+  } else if (noscript_element() == NULL) {
     HtmlElement::Attribute* href;
     const char* media;
     if ((element->keyword() == HtmlName::kStyle) ||
         css_tag_scanner_.ParseCssElement(element, &href, &media)) {
-      html_parse_->MoveCurrentInto(head_element_);
-      counter_->Add(1);
+      css_elements_moved_->Add(1);
+
+      if (element_is_head_) {
+        // Move styles to end of head.
+        driver_->MoveCurrentInto(move_to_element_);
+      } else {
+        // Move styles directly before that first script.
+        driver_->MoveCurrentBefore(move_to_element_);
+      }
     }
   }
 }
