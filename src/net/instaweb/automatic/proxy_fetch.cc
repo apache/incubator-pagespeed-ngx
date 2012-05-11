@@ -78,7 +78,8 @@ ProxyFetchFactory::~ProxyFetchFactory() {
 void ProxyFetchFactory::StartNewProxyFetch(
     const GoogleString& url_in, AsyncFetch* async_fetch,
     RewriteDriver* driver,
-    ProxyFetchPropertyCallbackCollector* property_callback) {
+    ProxyFetchPropertyCallbackCollector* property_callback,
+    AsyncFetch* original_content_fetch) {
   const GoogleString* url_to_fetch = &url_in;
 
   // Check whether this an encoding of a non-rewritten resource served
@@ -114,7 +115,7 @@ void ProxyFetchFactory::StartNewProxyFetch(
 
   ProxyFetch* fetch = new ProxyFetch(
       *url_to_fetch, cross_domain, property_callback, async_fetch,
-      driver, manager_, timer_, this);
+      original_content_fetch, driver, manager_, timer_, this);
   if (cross_domain) {
     // If we're proxying resources from a different domain, the host header is
     // likely set to the proxy host rather than the origin host.  Depending on
@@ -300,6 +301,7 @@ ProxyFetch::ProxyFetch(
     bool cross_domain,
     ProxyFetchPropertyCallbackCollector* property_cache_callback,
     AsyncFetch* async_fetch,
+    AsyncFetch* original_content_fetch,
     RewriteDriver* driver,
     ResourceManager* manager,
     Timer* timer,
@@ -314,6 +316,7 @@ ProxyFetch::ProxyFetch(
       done_called_(false),
       start_time_us_(0),
       property_cache_callback_(property_cache_callback),
+      original_content_fetch_(original_content_fetch),
       driver_(driver),
       queue_run_job_created_(false),
       mutex_(manager->thread_system()->NewMutex()),
@@ -409,6 +412,11 @@ const RewriteOptions* ProxyFetch::Options() {
 }
 
 void ProxyFetch::HandleHeadersComplete() {
+  if (original_content_fetch_ != NULL) {
+    ResponseHeaders* headers = original_content_fetch_->response_headers();
+    headers->CopyFrom(*response_headers());
+    original_content_fetch_->HeadersComplete();
+  }
   // Figure out semantic info from response_headers_
   claims_html_ = response_headers()->IsHtmlLike();
 
@@ -584,6 +592,9 @@ AbstractClientState* ProxyFetch::GetClientState(
 bool ProxyFetch::HandleWrite(const StringPiece& str,
                              MessageHandler* message_handler) {
   // TODO(jmarantz): check if the server is being shut down and punt.
+  if (original_content_fetch_ != NULL) {
+    original_content_fetch_->Write(str, message_handler);
+  }
 
   if (claims_html_ && !html_detector_.already_decided()) {
     if (html_detector_.ConsiderInput(str)) {
@@ -665,6 +676,9 @@ bool ProxyFetch::HandleFlush(MessageHandler* message_handler) {
 void ProxyFetch::HandleDone(bool success) {
   // TODO(jmarantz): check if the server is being shut down and punt,
   // possibly by calling Finish(false).
+  if (original_content_fetch_ != NULL) {
+    original_content_fetch_->Done(success);
+  }
 
   bool finish = true;
 

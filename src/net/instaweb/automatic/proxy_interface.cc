@@ -508,7 +508,7 @@ void ProxyInterface::ProxyRequestCallback(
       driver->set_need_furious_cookie(need_cookie);
       proxy_fetch_factory_->StartNewProxyFetch(
           request_url->Spec().as_string(), async_fetch, driver,
-          property_callback);
+          property_callback, NULL);
       // ProxyFetch takes ownership of property_callback.
       // NULL it here so that we do not detach it below.
       property_callback = NULL;

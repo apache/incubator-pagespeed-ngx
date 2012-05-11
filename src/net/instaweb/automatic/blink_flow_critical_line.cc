@@ -49,9 +49,11 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -109,15 +111,13 @@ class AsyncFetchWithHeadersInhibited : public AsyncFetchUsingWriter {
 // fetch. It also determines if the page is html, and whether to trigger an
 // async computation of the critical line data.
 // TODO(rahulbansal): Buffer the html chunked rather than in one string.
-class SharedFetch : public SharedAsyncFetch {
+class CriticalLineFetch : public AsyncFetch {
  public:
-  SharedFetch(AsyncFetch* base_fetch,
-              const GoogleString& url,
-              ResourceManager* resource_manager,
-              RewriteOptions* options,
-              RewriteDriver* rewrite_driver)
-      : SharedAsyncFetch(base_fetch),
-        url_(url),
+  CriticalLineFetch(const GoogleString& url,
+                    ResourceManager* resource_manager,
+                    RewriteOptions* options,
+                    RewriteDriver* rewrite_driver)
+      : url_(url),
         resource_manager_(resource_manager),
         options_(options),
         rewrite_driver_(rewrite_driver),
@@ -136,12 +136,11 @@ class SharedFetch : public SharedAsyncFetch {
         BlinkFlowCriticalLine::kNumBlinkSharedFetchesCompleted);
   }
 
-  virtual ~SharedFetch() {
+  virtual ~CriticalLineFetch() {
     rewrite_driver_->decrement_async_events_count();
   }
 
   virtual void HandleHeadersComplete() {
-    base_fetch()->HeadersComplete();
     if (response_headers()->status_code() == HttpStatus::kOK) {
       claims_html_ = response_headers()->IsHtmlLike();
     } else {
@@ -151,9 +150,8 @@ class SharedFetch : public SharedAsyncFetch {
 
   virtual bool HandleWrite(const StringPiece& content,
                            MessageHandler* handler) {
-    bool ret = base_fetch()->Write(content, handler);
     if (!claims_html_) {
-      return ret;
+      return true;
     }
     if (!html_detector_.already_decided() &&
         html_detector_.ConsiderInput(content)) {
@@ -165,21 +163,21 @@ class SharedFetch : public SharedAsyncFetch {
     if (probable_html_) {
       content.AppendToString(&buffer_);
     }
-    return ret;
+    return true;
+  }
+
+  virtual bool HandleFlush(MessageHandler* handler) {
+    return true;
+    // No operation.
   }
 
   virtual void HandleDone(bool success) {
     num_blink_shared_fetches_completed_->IncBy(1);
     if (!success || !claims_html_ || !probable_html_) {
       VLOG(1) << "Non html page, or not success: " << url_;
-      base_fetch()->Done(success);
       delete this;
     } else {
       num_blink_html_cache_misses_->IncBy(1);
-      // Store base_fetch() in a temp since it might get deleted before calling
-      // Done.
-      AsyncFetch* fetch = base_fetch();
-      critical_line_headers_.CopyFrom(*response_headers());
       critical_line_computation_driver_ =
           resource_manager_->NewCustomRewriteDriver(
           options_.release());
@@ -188,13 +186,10 @@ class SharedFetch : public SharedAsyncFetch {
       critical_line_computation_driver_->set_fully_rewrite_on_flush(true);
       critical_line_computation_driver_->SetWriter(&value_);
       critical_line_computation_driver_->set_response_headers_ptr(
-          &critical_line_headers_);
+          response_headers());
       critical_line_computation_driver_->AddLowPriorityRewriteTask(
-          MakeFunction(this, &SharedFetch::Parse, &SharedFetch::CancelParse));
-      // We call Done after scheduling the rewrite on the driver since we expect
-      // this to be very low cost. Calling Done on base_fetch() before
-      // scheduling the rewrite causes problems with testing.
-      fetch->Done(success);
+          MakeFunction(this, &CriticalLineFetch::Parse,
+                       &CriticalLineFetch::CancelParse));
     }
   }
 
@@ -202,7 +197,7 @@ class SharedFetch : public SharedAsyncFetch {
     if (critical_line_computation_driver_->StartParse(url_)) {
       critical_line_computation_driver_->ParseText(buffer_);
       critical_line_computation_driver_->FinishParseAsync(MakeFunction(
-          this, &SharedFetch::CompleteFinishParse));
+          this, &CriticalLineFetch::CompleteFinishParse));
     } else {
       LOG(ERROR) << "StartParse failed for url: " << url_;
       critical_line_computation_driver_->Cleanup();
@@ -230,7 +225,6 @@ class SharedFetch : public SharedAsyncFetch {
   GoogleString url_;
   ResourceManager* resource_manager_;
   scoped_ptr<RewriteOptions> options_;
-  ResponseHeaders critical_line_headers_;
   GoogleString buffer_;
   HTTPValue value_;
   HtmlDetector html_detector_;
@@ -246,7 +240,7 @@ class SharedFetch : public SharedAsyncFetch {
   TimedVariable* num_blink_shared_fetches_completed_;
   TimedVariable* num_compute_blink_critical_line_data_calls_;
 
-  DISALLOW_COPY_AND_ASSIGN(SharedFetch);
+  DISALLOW_COPY_AND_ASSIGN(CriticalLineFetch);
 };
 
 }  // namespace
@@ -453,6 +447,7 @@ void BlinkFlowCriticalLine::Flush() {
 
 void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
   AsyncFetch* fetch = NULL;
+  AsyncFetch* secondary_fetch = NULL;
   RewriteOptions* options = NULL;
   RewriteDriver* driver = NULL;
 
@@ -475,23 +470,19 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
     SetFilterOptions(options);
     options->ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
     options->ForceEnableFilter(RewriteOptions::kStripNonCacheable);
-
-    // TODO(pulkitg): We are temporarily disabling all rewriters since
-    // SharedJsonFetch uses the output of ProxyFetch which may be rewritten. Fix
-    // this.
-    options_->ClearFilters();
+    fetch = base_fetch_;
     manager_->ComputeSignature(options_);
     driver = manager_->NewCustomRewriteDriver(options_);
     num_blink_shared_fetches_started_->IncBy(1);
-    fetch = new SharedFetch(
-        base_fetch_, url_, manager_, options, driver);
+    secondary_fetch = new CriticalLineFetch(url_, manager_, options, driver);
   } else {
     // Non 200 status code.
     manager_->ComputeSignature(options_);
     driver = manager_->NewCustomRewriteDriver(options_);
     fetch = base_fetch_;
   }
-  factory_->StartNewProxyFetch(url_, fetch, driver, property_callback_);
+  factory_->StartNewProxyFetch(
+      url_, fetch, driver, property_callback_, secondary_fetch);
   delete this;
 }
 

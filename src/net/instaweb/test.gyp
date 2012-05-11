@@ -75,6 +75,7 @@
         'http/http_value_test.cc',
         'http/inflating_fetch_test.cc',
         'http/mock_url_fetcher_test.cc',
+        'http/rate_controlling_url_async_fetcher_test.cc',
         'http/request_headers_test.cc',
         'http/response_headers_test.cc',
         'http/sync_fetcher_adapter_test.cc',

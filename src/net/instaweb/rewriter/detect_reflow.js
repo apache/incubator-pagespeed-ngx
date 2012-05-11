@@ -115,8 +115,6 @@ pagespeed.labelDivsBeforeDeferredJs = function() {
  * For all divs in preScriptHeights_, if the clientHeight now is different from
  * the div's height mapped in preScriptHeights_ then '<div id>:<current height>'
  * is appended to reflowElementHeights_.
- * [google]  This is not used in the webkit_headless flow in which this filter
- * [google]  is actually applied.  It is here for debugging.
  */
 pagespeed.findChangedDivsAfterDeferredJs = function() {
   if (!pagespeed.detectReflow.preScriptHeights_ && console) {

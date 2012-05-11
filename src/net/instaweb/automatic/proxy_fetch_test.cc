@@ -40,6 +40,7 @@ class MockProxyFetch : public ProxyFetch {
       : ProxyFetch("http://www.google.com", false,
                    NULL,  // callback
                    async_fetch,
+                   NULL,  // no original content fetch
                    resource_manager->NewRewriteDriver(),
                    resource_manager,
                    NULL,  // timer

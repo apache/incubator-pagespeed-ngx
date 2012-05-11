@@ -435,6 +435,7 @@
         'http/http_value_writer.cc',
         'http/inflating_fetch.cc',
         'http/meta_data.cc',
+        'http/rate_controlling_url_async_fetcher.cc',
         'http/sync_fetcher_adapter.cc',
         'http/sync_fetcher_adapter_callback.cc',
         'http/url_async_fetcher.cc',

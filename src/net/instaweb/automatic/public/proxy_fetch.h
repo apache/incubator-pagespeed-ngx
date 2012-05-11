@@ -63,7 +63,8 @@ class ProxyFetchFactory {
       const GoogleString& url,
       AsyncFetch* async_fetch,
       RewriteDriver* driver,
-      ProxyFetchPropertyCallbackCollector* property_callback);
+      ProxyFetchPropertyCallbackCollector* property_callback,
+      AsyncFetch* original_content_fetch);
 
   void set_server_version(const StringPiece& server_version) {
     server_version.CopyToString(&server_version_);
@@ -263,6 +264,7 @@ class ProxyFetch : public SharedAsyncFetch {
              bool cross_domain,
              ProxyFetchPropertyCallbackCollector* property_cache_callback,
              AsyncFetch* async_fetch,
+             AsyncFetch* original_content_fetch,
              RewriteDriver* driver,
              ResourceManager* manager,
              Timer* timer,
@@ -350,6 +352,11 @@ class ProxyFetch : public SharedAsyncFetch {
   // this to detach the callback if we decide we don't care about the
   // property-caches because we discovered we are not working with HTML.
   ProxyFetchPropertyCallbackCollector* property_cache_callback_;
+
+  // Fetch where raw original headers and contents are sent.
+  // To contrast, base_fetch() is sent rewritten contents and headers.
+  // If NULL, original_content_fetch_ is ignored.
+  AsyncFetch* original_content_fetch_;
 
   // ProxyFetch is responsible for getting RewriteDrivers from the pool and
   // putting them back.

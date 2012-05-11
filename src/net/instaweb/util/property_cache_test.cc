@@ -279,6 +279,37 @@ TEST_F(PropertyCacheTest, Expiration) {
   }
 }
 
+TEST_F(PropertyCacheTest, DeleteProperty) {
+  ReadWriteInitial(kCacheKey1, "Value1");
+  {
+    MockPage page(thread_system_->NewMutex());
+    property_cache_.Read(kCacheKey1, &page);
+    EXPECT_TRUE(page.valid());
+    EXPECT_TRUE(page.called());
+    // Deletes a property which already exists.
+    PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
+    EXPECT_STREQ("Value1", property->value());
+    page.DeleteProperty(cohort_, kPropertyName1);
+    property_cache_.WriteCohort(kCacheKey1, cohort_, &page);
+
+    property_cache_.Read(kCacheKey1, &page);
+    property = page.GetProperty(cohort_, kPropertyName1);
+    EXPECT_FALSE(property->has_value());
+
+    // Deletes a property which does not exist.
+    property = page.GetProperty(cohort_, kPropertyName2);
+    EXPECT_FALSE(property->has_value());
+    page.DeleteProperty(cohort_, kPropertyName2);
+    property = page.GetProperty(cohort_, kPropertyName2);
+    EXPECT_FALSE(property->has_value());
+
+    // Unknown Cohort. No crashes.
+    scoped_ptr<PropertyCache::Cohort> unknown_cohort(new PropertyCache::Cohort);
+    page.DeleteProperty(cohort_, kPropertyName2);
+    EXPECT_TRUE(page.valid());
+  }
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

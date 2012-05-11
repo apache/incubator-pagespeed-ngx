@@ -98,14 +98,12 @@ class AsyncFetchWithHeadersInhibited : public AsyncFetchUsingWriter {
 // fetch. It also determines if the page is html, and whether to trigger an
 // async computation of the json.
 // TODO(rahulbansal): Buffer the html chunked rather than in one string.
-class SharedJsonFetch : public SharedAsyncFetch {
+class JsonFetch : public AsyncFetch {
  public:
-  SharedJsonFetch(AsyncFetch* base_fetch,
-                  const GoogleString& key,
-                  ResourceManager* resource_manager,
-                  RewriteOptions* options)
-      : SharedAsyncFetch(base_fetch),
-        key_(key),
+  JsonFetch(const GoogleString& key,
+            ResourceManager* resource_manager,
+            RewriteOptions* options)
+      : key_(key),
         resource_manager_(resource_manager),
         options_(options),
         compute_json_(false) {
@@ -114,10 +112,9 @@ class SharedJsonFetch : public SharedAsyncFetch {
         BlinkFlow::kNumSharedJsonFetchesComplete);
   }
 
-  virtual ~SharedJsonFetch() {}
+  virtual ~JsonFetch() {}
 
   virtual void HandleHeadersComplete() {
-    base_fetch()->HeadersComplete();
     if (response_headers()->status_code() == HttpStatus::kOK) {
       const ContentType* type = response_headers()->DetermineContentType();
       if (type != NULL && type->IsHtmlLike()) {
@@ -132,37 +129,30 @@ class SharedJsonFetch : public SharedAsyncFetch {
 
   virtual bool HandleWrite(const StringPiece& content,
                            MessageHandler* handler) {
-    bool ret = base_fetch()->Write(content, handler);
     if (compute_json_) {
       content.AppendToString(&json_buffer_);
     }
-    return ret;
+    return true;
+  }
+
+  virtual bool HandleFlush(MessageHandler* handler) {
+    return true;
+    // No operation.
   }
 
   virtual void HandleDone(bool success) {
     num_shared_json_fetches_complete_->IncBy(1);
     compute_json_ &= success;
     if (!compute_json_) {
-      base_fetch()->Done(success);
       delete this;
     } else {
-      // Store base_fetch() in a temp since it might get deleted before calling
-      // Done.
-      AsyncFetch* fetch = base_fetch();
-      json_headers_.CopyFrom(*response_headers());
-
       json_computation_driver_ = resource_manager_->NewCustomRewriteDriver(
           options_.release());
       // TODO(rahulbansal): Put an increased deadline on this driver.
       json_computation_driver_->SetWriter(&value_);
-      json_computation_driver_->set_response_headers_ptr(&json_headers_);
+      json_computation_driver_->set_response_headers_ptr(response_headers());
       json_computation_driver_->AddLowPriorityRewriteTask(
-          MakeFunction(this, &SharedJsonFetch::Parse,
-                       &SharedJsonFetch::CancelParse));
-      // We call Done after scheduling the rewrite on the driver since we expect
-      // this to be very low cost. Calling Done on base_fetch() before
-      // scheduling the rewrite causes problems with testing.
-      fetch->Done(success);
+          MakeFunction(this, &JsonFetch::Parse, &JsonFetch::CancelParse));
     }
   }
 
@@ -171,7 +161,7 @@ class SharedJsonFetch : public SharedAsyncFetch {
     if (json_computation_driver_->StartParse(url)) {
       json_computation_driver_->ParseText(json_buffer_);
       json_computation_driver_->FinishParseAsync(MakeFunction(
-          this, &SharedJsonFetch::CompleteFinishParse));
+          this, &JsonFetch::CompleteFinishParse));
     } else {
       LOG(ERROR) << "StartParse failed for url: " << url;
       json_computation_driver_->Cleanup();
@@ -195,14 +185,13 @@ class SharedJsonFetch : public SharedAsyncFetch {
   ResourceManager* resource_manager_;
   scoped_ptr<RewriteOptions> options_;
   bool compute_json_;
-  ResponseHeaders json_headers_;
   GoogleString json_buffer_;
   HTTPValue value_;
   TimedVariable* num_shared_json_fetches_complete_;
 
   RewriteDriver* json_computation_driver_;
 
-  DISALLOW_COPY_AND_ASSIGN(SharedJsonFetch);
+  DISALLOW_COPY_AND_ASSIGN(JsonFetch);
 };
 
 }  // namespace
@@ -442,6 +431,7 @@ void BlinkFlow::JsonCacheMiss() {
 
 void BlinkFlow::TriggerProxyFetch(bool json_found) {
   AsyncFetch* fetch;
+  AsyncFetch* secondary_fetch = NULL;
   if (json_found) {
     // Remove any headers that can lead to a 304, since blink can't handle 304s.
     base_fetch_->request_headers()->RemoveAll(HttpAttributes::kIfNoneMatch);
@@ -453,13 +443,9 @@ void BlinkFlow::TriggerProxyFetch(bool json_found) {
   } else {
     RewriteOptions* options = options_->Clone();
     SetFilterOptions(options);
-    fetch = new SharedJsonFetch(base_fetch_, json_url_, manager_, options);
+    fetch = base_fetch_;
+    secondary_fetch = new JsonFetch(json_url_, manager_, options);
     num_shared_json_fetches_started_->IncBy(1);
-
-    // TODO(nikhilmadan): We are temporarily disabling all rewriters since
-    // SharedJsonFetch uses the output of ProxyFetch which may be rewritten. Fix
-    // this.
-    options_->ClearFilters();
   }
 
   // NewCustomRewriteDriver takes ownership of custom_options_.
@@ -467,7 +453,7 @@ void BlinkFlow::TriggerProxyFetch(bool json_found) {
   RewriteDriver* driver = manager_->NewCustomRewriteDriver(options_);
 
   // TODO(jmarantz): pass-through the property-cache callback rather than NULL.
-  factory_->StartNewProxyFetch(url_, fetch, driver, NULL);
+  factory_->StartNewProxyFetch(url_, fetch , driver, NULL, secondary_fetch);
   delete this;
 }
 

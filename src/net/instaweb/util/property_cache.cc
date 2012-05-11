@@ -155,13 +155,14 @@ void PropertyPage::AddValueFromProtobuf(
     const PropertyValueProtobuf& pcache_value) {
   ScopedMutex lock(mutex_.get());
   CohortDataMap::const_iterator p = cohort_data_map_.find(cohort);
-  PropertyMap* pmap = NULL;
+  PropertyMapStruct* pmap_struct = NULL;
   if (p != cohort_data_map_.end()) {
-    pmap = p->second;
+    pmap_struct = p->second;
   } else {
-    pmap = new PropertyMap;
-    cohort_data_map_[cohort] = pmap;
+    pmap_struct = new PropertyMapStruct;
+    cohort_data_map_[cohort] = pmap_struct;
   }
+  PropertyMap* pmap = &pmap_struct->pmap;
   PropertyValue* property = (*pmap)[pcache_value.name()];
   if (property == NULL) {
     property = new PropertyValue;
@@ -178,7 +179,7 @@ bool PropertyPage::EncodeCacheEntry(const PropertyCache::Cohort* cohort,
     ScopedMutex lock(mutex_.get());
     CohortDataMap::const_iterator p = cohort_data_map_.find(cohort);
     if (p != cohort_data_map_.end()) {
-      PropertyMap* pmap = p->second;
+      PropertyMap* pmap = &p->second->pmap;
       for (PropertyMap::iterator p = pmap->begin(), e = pmap->end();
            p != e; ++p) {
         PropertyValue* property = p->second;
@@ -200,6 +201,19 @@ bool PropertyPage::EncodeCacheEntry(const PropertyCache::Cohort* cohort,
   if (ret) {
     StringOutputStream sstream(value);
     values.SerializeToZeroCopyStream(&sstream);
+  }
+  return ret;
+}
+
+bool PropertyPage::HasPropertyValueDeleted(
+    const PropertyCache::Cohort* cohort) {
+  bool ret = false;
+  {
+    ScopedMutex lock(mutex_.get());
+    CohortDataMap::const_iterator p = cohort_data_map_.find(cohort);
+    if (p != cohort_data_map_.end()) {
+      ret = p->second->has_deleted_property;
+    }
   }
   return ret;
 }
@@ -295,7 +309,8 @@ void PropertyCache::WriteCohort(const StringPiece& key,
   if (enabled_) {
     DCHECK(GetCohort(*cohort) == cohort);
     SharedString value;
-    if (page->EncodeCacheEntry(cohort, value.get())) {
+    if (page->EncodeCacheEntry(cohort, value.get()) ||
+        page->HasPropertyValueDeleted(cohort)) {
       GoogleString cache_key = CacheKey(key, cohort);
       cache_->Put(cache_key, &value);
     }
@@ -337,7 +352,8 @@ const PropertyCache::Cohort* PropertyCache::GetCohort(
 PropertyPage::~PropertyPage() {
   while (!cohort_data_map_.empty()) {
     CohortDataMap::iterator p = cohort_data_map_.begin();
-    PropertyMap* pmap = p->second;
+    PropertyMapStruct* pmap_struct = p->second;
+    PropertyMap* pmap = &p->second->pmap;
     cohort_data_map_.erase(p);
 
     // TODO(jmarantz): Not currently Using STLDeleteValues because
@@ -348,7 +364,7 @@ PropertyPage::~PropertyPage() {
       PropertyValue* value = p->second;
       delete value;
     }
-    delete pmap;
+    delete pmap_struct;
   }
 }
 
@@ -359,18 +375,19 @@ PropertyValue* PropertyPage::GetProperty(const PropertyCache::Cohort* cohort,
   DCHECK(cohort != NULL);
   PropertyValue* property = NULL;
   CohortDataMap::iterator p = cohort_data_map_.find(cohort);
-  PropertyMap* pmap = NULL;
+  PropertyMapStruct* pmap_struct = NULL;
   GoogleString property_name_str(property_name.data(), property_name.size());
   std::pair<CohortDataMap::iterator, bool> insertion = cohort_data_map_.insert(
-      CohortDataMap::value_type(cohort, pmap));
+      CohortDataMap::value_type(cohort, pmap_struct));
   if (insertion.second) {
     // The insertion occured: mutate the returned iterator with a new map.
-    pmap = new PropertyMap;
-    insertion.first->second = pmap;
+    pmap_struct = new PropertyMapStruct;
+    insertion.first->second = pmap_struct;
   } else {
     // The entry was already in the cohort map, so pull out the pmap.
-    pmap = insertion.first->second;
+    pmap_struct = insertion.first->second;
   }
+  PropertyMap* pmap = &pmap_struct->pmap;
   property = (*pmap)[property_name_str];
   if (property == NULL) {
     property = new PropertyValue;
@@ -378,6 +395,27 @@ PropertyValue* PropertyPage::GetProperty(const PropertyCache::Cohort* cohort,
     property->set_was_read(was_read_);
   }
   return property;
+}
+
+void PropertyPage::DeleteProperty(const PropertyCache::Cohort* cohort,
+                                  const StringPiece& property_name) {
+  DCHECK(was_read_);
+  DCHECK(cohort != NULL);
+  ScopedMutex lock(mutex_.get());
+  CohortDataMap::iterator cohort_itr = cohort_data_map_.find(cohort);
+  if (cohort_itr == cohort_data_map_.end()) {
+    return;
+  }
+  PropertyMapStruct* pmap_struct = cohort_itr->second;
+  PropertyMap* pmap = &pmap_struct->pmap;
+  PropertyMap::iterator pmap_itr = pmap->find(property_name.as_string());
+  if (pmap_itr == pmap->end()) {
+    return;
+  }
+  PropertyValue* property = pmap_itr->second;
+  pmap->erase(pmap_itr);
+  pmap_struct->has_deleted_property = true;
+  delete property;
 }
 
 }  // namespace net_instaweb

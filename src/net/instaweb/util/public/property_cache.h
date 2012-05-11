@@ -288,6 +288,18 @@ class PropertyPage {
   PropertyValue* GetProperty(const PropertyCache::Cohort* cohort,
                              const StringPiece& property_name);
 
+  // Deletes a property given the property name.
+  //
+  // This function deletes the PropertyValue if it already exists, otherwise
+  // it is a no-op function.
+  //
+  // It is a programming error to call DeleteProperty on a PropertyPage
+  // that has not yet been read.
+  //
+  // This function actually does not commit it to cache.
+  void DeleteProperty(const PropertyCache::Cohort* cohort,
+                      const StringPiece& property_name);
+
  protected:
   // The Page takes ownership of the mutex.
   explicit PropertyPage(AbstractMutex* mutex)
@@ -309,6 +321,9 @@ class PropertyPage {
   bool EncodeCacheEntry(const PropertyCache::Cohort* cohort,
                         GoogleString* value);
 
+  // Returns true if for the given cohort any property is deleted.
+  bool HasPropertyValueDeleted(const PropertyCache::Cohort* cohort);
+
   void CallDone(bool success) {
     was_read_ = true;
     Done(success);
@@ -318,7 +333,16 @@ class PropertyPage {
                             const PropertyValueProtobuf& proto);
 
   typedef std::map<GoogleString, PropertyValue*> PropertyMap;
-  typedef std::map<const PropertyCache::Cohort*, PropertyMap*> CohortDataMap;
+
+  struct PropertyMapStruct {
+    PropertyMapStruct() {
+      has_deleted_property = false;
+    }
+    PropertyMap pmap;
+    bool has_deleted_property;
+  };
+  typedef std::map<const PropertyCache::Cohort*, PropertyMapStruct*>
+      CohortDataMap;
   CohortDataMap cohort_data_map_;
   scoped_ptr<AbstractMutex> mutex_;
   bool was_read_;
