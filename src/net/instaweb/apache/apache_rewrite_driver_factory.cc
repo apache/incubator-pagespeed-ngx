@@ -86,6 +86,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       statistics_frozen_(false),
       is_root_process_(true),
       fetch_with_gzip_(false),
+      list_outstanding_urls_on_error_(false),
       shared_mem_referer_statistics_(NULL),
       hostname_identifier_(StrCat(server->server_hostname,
                                   ":",
@@ -234,11 +235,14 @@ UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(
         fetcher = new FakeUrlAsyncFetcher(dump_writer);
       }
     } else {
-      fetcher = new SerfUrlAsyncFetcher(
+      SerfUrlAsyncFetcher* serf = new SerfUrlAsyncFetcher(
           proxy.c_str(),
           NULL,  // Do not use the Factory pool so we can control deletion.
           thread_system(), statistics(), timer(),
-          config->fetcher_time_out_ms());
+          config->fetcher_time_out_ms(),
+          message_handler());
+      serf->set_list_outstanding_urls_on_error(list_outstanding_urls_on_error_);
+      fetcher = serf;
       fetcher->set_fetch_with_gzip(fetch_with_gzip_);
     }
     iter->second = fetcher;

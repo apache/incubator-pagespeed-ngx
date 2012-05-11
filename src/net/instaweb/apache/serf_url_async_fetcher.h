@@ -63,7 +63,8 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
  public:
   SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
                       ThreadSystem* thread_system,
-                      Statistics* statistics, Timer* timer, int64 timeout_ms);
+                      Statistics* statistics, Timer* timer, int64 timeout_ms,
+                      MessageHandler* handler);
   SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent, const char* proxy);
   virtual ~SerfUrlAsyncFetcher();
 
@@ -108,6 +109,10 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   // Setting this variable causes the fetches to be threaded independent
   // of the value of UrlAsyncFetcher::Callback::EnableThreaded().
   void set_force_threaded(bool x) { force_threaded_ = x; }
+
+  // Indicates that Serf should enumerate failing URLs whenever the underlying
+  // Serf library reports an error.
+  void set_list_outstanding_urls_on_error(bool x);
 
  protected:
   typedef Pool<SerfFetch> SerfFetchPool;
@@ -173,6 +178,8 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   const int64 timeout_ms_;
   bool force_threaded_;
   bool shutdown_;
+  bool list_outstanding_urls_on_error_;
+  MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcher);
 };

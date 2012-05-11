@@ -519,7 +519,7 @@ mod_pagespeed_test/$URL_PATH
   echo TEST: Connection refused handling
 
   # Monitor the Apache log starting now.  tail -F will catch log rotations.
-  SERF_REFUSED_PATH=/tmp/instaweb_apache_serf_refused
+  SERF_REFUSED_PATH=/tmp/instaweb_apache_serf_refused.$$
   echo APACHE_LOG = $APACHE_LOG
   tail --sleep-interval=0.1 -F $APACHE_LOG > $SERF_REFUSED_PATH &
   TAIL_PID=$!
@@ -544,6 +544,12 @@ mod_pagespeed_test/$URL_PATH
   kill $TAIL_PID
   wait $TAIL_PID 2> /dev/null
   check [ $ERRS -eq 1 ]
+  # Make sure we have the URL detail we expect because
+  # ModPagespeedListOutstandingUrlsOnError is on in debug.conf.template.
+  echo Check that ModPagespeedSerfListOutstandingUrlsOnError works
+  grep "URL http://modpagespeed.com:1023/someimage.png active for " \
+      $SERF_REFUSED_PATH
+  check [ $? = 0 ]
 fi
 
 # Cleanup

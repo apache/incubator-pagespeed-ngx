@@ -849,7 +849,8 @@ bool SerfUrlAsyncFetcher::SetupProxy(const char* proxy) {
 SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
                                          ThreadSystem* thread_system,
                                          Statistics* statistics, Timer* timer,
-                                         int64 timeout_ms)
+                                         int64 timeout_ms,
+                                         MessageHandler* message_handler)
     : pool_(NULL),
       thread_system_(thread_system),
       timer_(timer),
@@ -865,7 +866,9 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       failure_count_(NULL),
       timeout_ms_(timeout_ms),
       force_threaded_(false),
-      shutdown_(false) {
+      shutdown_(false),
+      list_outstanding_urls_on_error_(false),
+      message_handler_(message_handler) {
   CHECK(statistics != NULL);
   request_count_  =
       statistics->GetVariable(SerfStats::kSerfFetchRequestCount);
@@ -897,9 +900,10 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
       failure_count_(parent->failure_count_),
       timeout_ms_(parent->timeout_ms()),
       force_threaded_(parent->force_threaded_),
-      shutdown_(false) {
+      shutdown_(false),
+      list_outstanding_urls_on_error_(parent->list_outstanding_urls_on_error_),
+      message_handler_(parent->message_handler_) {
   Init(parent->pool(), proxy);
-  threaded_fetcher_ = NULL;
 }
 
 SerfUrlAsyncFetcher::~SerfUrlAsyncFetcher() {
@@ -907,8 +911,9 @@ SerfUrlAsyncFetcher::~SerfUrlAsyncFetcher() {
   completed_fetches_.DeleteAll();
   int orphaned_fetches = active_fetches_.size();
   if (orphaned_fetches != 0) {
-    LOG(ERROR) << "SerfFecher destructed with " << orphaned_fetches
-               << " orphaned fetches.";
+    message_handler_->Message(
+        kError, "SerfFetcher destructed with %d orphaned fetches.",
+        orphaned_fetches);
     if (active_count_ != NULL) {
       active_count_->Add(-orphaned_fetches);
     }
@@ -958,7 +963,7 @@ void SerfUrlAsyncFetcher::Init(apr_pool_t* parent_pool, const char* proxy) {
   serf_context_ = serf_context_create(pool_);
 
   if (!SetupProxy(proxy)) {
-    LOG(WARNING) << "Proxy failed: " << proxy;
+    message_handler_->Message(kError, "Proxy failed: %s", proxy);
   }
 }
 
@@ -1055,9 +1060,11 @@ int SerfUrlAsyncFetcher::Poll(int64 max_wait_ms) {
           // This and subsequent fetches are still active, so we're done.
           break;
         }
-        LOG(WARNING) << "Fetch timed out: " << fetch->str_url() << " ("
-                     << active_fetches_.size() << " waiting for " << max_wait_ms
-                     << "ms)";
+        message_handler_->Message(
+            kWarning, "Fetch timed out: %s (%ld) waiting for %ld ms",
+            fetch->str_url(),
+            static_cast<long>(active_fetches_.size()),  // NOLINT
+            static_cast<long>(max_wait_ms));            // NOLINT
         timeouts++;
         // Note that canceling the fetch will ultimately call FetchComplete and
         // delete it from the pool.
@@ -1086,13 +1093,24 @@ int SerfUrlAsyncFetcher::Poll(int64 max_wait_ms) {
       // In the meantime by putting more detail into the log here, we'll
       // know whether we are accumulating active fetches to make the
       // server fall over.
-      LOG(ERROR) << "Serf status " << status << " ("
-                 << GetAprErrorString(status) << ") polling for "
-                 << active_fetches_.size()
-                 << ((threaded_fetcher_ == NULL) ? ": (threaded)"
-                     : ": (non-blocking)")
-                 << " (" << this << ") for " << max_wait_ms/1.0e3
-                 << " seconds";
+      message_handler_->Message(
+          kError,
+          "Serf status %d(%s) polling for %ld %s fetches for %g seconds",
+          status, GetAprErrorString(status).c_str(),
+          static_cast<long>(active_fetches_.size()),  // NOLINT
+          (threaded_fetcher_ == NULL) ? "threaded" : "non-blocking",
+          max_wait_ms/1.0e3);
+      if (list_outstanding_urls_on_error_) {
+        int64 now_ms = timer_->NowMs();
+        for (Pool<SerfFetch>::iterator p = active_fetches_.begin(),
+                 e = active_fetches_.end(); p != e; ++p) {
+          SerfFetch* fetch = *p;
+          int64 age_ms = now_ms - fetch->fetch_start_ms();
+          message_handler_->Message(kError, "URL %s active for %ld ms",
+                                    fetch->str_url(),
+                                    static_cast<long>(age_ms));  // NOLINT
+        }
+      }
       CleanupFetchesWithErrors();
     }
   }
@@ -1194,6 +1212,13 @@ void SerfUrlAsyncFetcher::Initialize(Statistics* statistics) {
   statistics->AddVariable(SerfStats::kSerfFetchActiveCount);
   statistics->AddVariable(SerfStats::kSerfFetchTimeoutCount);
   statistics->AddVariable(SerfStats::kSerfFetchFailureCount);
+}
+
+void SerfUrlAsyncFetcher::set_list_outstanding_urls_on_error(bool x) {
+  list_outstanding_urls_on_error_ = x;
+  if (threaded_fetcher_ != NULL) {
+    threaded_fetcher_->set_list_outstanding_urls_on_error(x);
+  }
 }
 
 }  // namespace net_instaweb

@@ -167,6 +167,8 @@ const char* kModPagespeedFuriousSpec = "ModPagespeedExperimentSpec";
 const char* kModPagespeedXHeaderValue = "ModPagespeedXHeaderValue";
 const char* kModPagespeedAvoidRenamingIntrospectiveJavascript =
     "ModPagespeedAvoidRenamingIntrospectiveJavascript";
+const char* kModPagespeedListOutstandingUrlsOnError =
+    "ModPagespeedListOutstandingUrlsOnError";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -1037,6 +1039,20 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
     ret = ParseBoolOption(static_cast<RewriteDriverFactory*>(factory),
                           cmd, &RewriteDriverFactory::set_force_caching, arg);
+  } else if (StringCaseEqual(directive, kModPagespeedFuriousSlot)) {
+    ParseIntBoundedOption(options, cmd,
+                          &RewriteOptions::set_furious_ga_slot,
+                          arg, 1, 5);
+  } else if (StringCaseEqual(directive, kModPagespeedFuriousSpec)) {
+    bool succeeded = options->AddFuriousSpec(arg, handler);
+    if (!succeeded) {
+      ret = "Invalid experiment ID.";
+    }
+  } else if (StringCaseEqual(directive,
+                             kModPagespeedListOutstandingUrlsOnError)) {
+    ParseBoolOption(
+        factory, cmd,
+        &ApacheRewriteDriverFactory::list_outstanding_urls_on_error, arg);
   } else if (StringCaseEqual(directive, kModPagespeedMessageBufferSize)) {
     ret = ParseIntOption(factory, cmd,
                          &ApacheRewriteDriverFactory::set_message_buffer_size,
@@ -1047,15 +1063,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     options->RetainComment(arg);
   } else if (StringCaseEqual(directive, kModPagespeedUrlPrefix)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
-  } else if (StringCaseEqual(directive, kModPagespeedFuriousSpec)) {
-    bool succeeded = options->AddFuriousSpec(arg, handler);
-    if (!succeeded) {
-      ret = "Invalid experiment ID.";
-    }
-  } else if (StringCaseEqual(directive, kModPagespeedFuriousSlot)) {
-    ParseIntBoundedOption(options, cmd,
-                          &RewriteOptions::set_furious_ga_slot,
-                          arg, 1, 5);
   } else {
     ret = apr_pstrcat(cmd->pool, "Unknown directive ",
                       directive.as_string().c_str(), NULL);
@@ -1249,6 +1256,10 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
                        "Consider resizing images whose area in pixels "
                        "is less than the given percent of original "
                        "image area; 100 means replace if smaller."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedListOutstandingUrlsOnError,
+        "Adds an error message into the log for every URL fetch in "
+        "flight when the HTTP stack encounters a system error, e.g. "
+        "Connection Refused"),
   APACHE_CONFIG_OPTION(kModPagespeedLRUCacheByteLimit,
         "Set the maximum byte size entry to store in the per-process "
         "in-memory LRU cache"),

@@ -31,8 +31,8 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/simple_stats.h"
@@ -55,6 +55,7 @@ const int kGoogleLogo = 2;
 const int kSteveSoudersCgi = 3;
 const int kModpagespeedBeacon = 4;
 const int kHttpsGoogleFavicon = 5;
+const int kConnectionRefused = 6;
 
 class SerfTestCallback : public UrlAsyncFetcher::Callback {
  public:
@@ -138,7 +139,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     thread_system_.reset(ThreadSystem::CreateThreadSystem());
     serf_url_async_fetcher_.reset(
         new SerfUrlAsyncFetcher(kProxy, pool_, thread_system_.get(),
-                                &statistics_, timer_.get(), kFetcherTimeoutMs));
+                                &statistics_, timer_.get(), kFetcherTimeoutMs,
+                                &message_handler_));
     mutex_.reset(thread_system_->NewMutex());
     AddTestUrl("http://www.modpagespeed.com/", "<!doctype html>");
     AddTestUrl("http://www.google.com/favicon.ico",
@@ -148,6 +150,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
                "var");
     AddTestUrl("http://modpagespeed.com/mod_pagespeed_beacon", "");
     AddTestUrl("https://www.google.com/favicon.ico", GoogleString());
+    AddTestUrl("http://modpagespeed.com:1023/refused.jpg", GoogleString());
     prev_done_count = 0;
   }
 
@@ -274,6 +277,16 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     return (done == (last - first + 1));
   }
 
+  // Exercise the Serf code when a connection is refused.
+  void ConnectionRefusedTest(bool threaded) {
+    StartFetches(kConnectionRefused, kConnectionRefused, threaded);
+    timer_->AdvanceMs(kTimerAdvanceMs);
+    ASSERT_EQ(WaitTillDone(kConnectionRefused, kConnectionRefused, kMaxMs), 1);
+    ASSERT_TRUE(callbacks_[kConnectionRefused]->IsDone());
+    EXPECT_EQ(HttpStatus::kNotFound,
+              response_headers_[kConnectionRefused]->status_code());
+  }
+
   apr_pool_t* pool_;
   std::vector<GoogleString> urls_;
   std::vector<GoogleString> content_starts_;
@@ -286,7 +299,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   scoped_ptr<SerfUrlAsyncFetcher> serf_url_async_fetcher_;
   scoped_ptr<MockTimer> timer_;
   SimpleStats statistics_;  // TODO(jmarantz): make this thread-safe
-  GoogleMessageHandler message_handler_;
+  MockMessageHandler message_handler_;
   size_t prev_done_count;
   scoped_ptr<AbstractMutex> mutex_;
   scoped_ptr<ThreadSystem> thread_system_;
@@ -520,6 +533,28 @@ TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFails) {
   // TODO(jmarantz): Consider using a 500 error code for https support.
   EXPECT_EQ(HttpStatus::kNotFound,
             response_headers_[kHttpsGoogleFavicon]->status_code());
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, ConnectionRefusedNoDetail) {
+  ConnectionRefusedTest(false);
+  EXPECT_EQ(1, message_handler_.SeriousMessages());
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, ConnectionRefusedWithDetail) {
+  serf_url_async_fetcher_->set_list_outstanding_urls_on_error(true);
+  ConnectionRefusedTest(false);
+  EXPECT_EQ(2, message_handler_.SeriousMessages());
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, ThreadedConnectionRefusedNoDetail) {
+  ConnectionRefusedTest(true);
+  EXPECT_EQ(1, message_handler_.SeriousMessages());
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, ThreadedConnectionRefusedWithDetail) {
+  serf_url_async_fetcher_->set_list_outstanding_urls_on_error(true);
+  ConnectionRefusedTest(true);
+  EXPECT_EQ(2, message_handler_.SeriousMessages());
 }
 
 }  // namespace net_instaweb

@@ -124,6 +124,14 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
     message_buffer_size_ = x;
   }
 
+  // When Serf gets a system error during polling, to avoid spamming
+  // the log we just print the number of outstanding fetch URLs.  To
+  // debug this it's useful to print the complete set of URLs, in
+  // which case this should be turned on.
+  void list_outstanding_urls_on_error(bool x) {
+    list_outstanding_urls_on_error_ = x;
+  }
+
   // Finds a Cache for the file_cache_path in the config.  If none exists,
   // creates one, using all the other parameters in the ApacheConfig.
   // Currently, no checking is done that the other parameters (e.g. cache
@@ -204,6 +212,7 @@ protected:
   bool statistics_frozen_;
   bool is_root_process_;
   bool fetch_with_gzip_;
+  bool list_outstanding_urls_on_error_;
 
   scoped_ptr<SharedMemRefererStatistics> shared_mem_referer_statistics_;
 
