@@ -364,6 +364,7 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedJsOutlineMinBytes 2000
 #ALL_DIRECTIVES ModPagespeedLRUCacheByteLimit 1000
 #ALL_DIRECTIVES ModPagespeedLRUCacheKbPerProcess 1
+#ALL_DIRECTIVES ModPagespeedListOutstandingUrlsOnError on
 #ALL_DIRECTIVES ModPagespeedLoadFromFile http://example.com/ /var/html/example/
 #ALL_DIRECTIVES ModPagespeedLogRewriteTiming false
 #ALL_DIRECTIVES ModPagespeedLowercaseHtmlNames true
