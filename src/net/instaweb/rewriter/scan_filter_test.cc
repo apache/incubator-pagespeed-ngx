@@ -24,7 +24,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -105,7 +105,7 @@ TEST_F(ScanFilterTest, CharsetFromBomDoesntOverride) {
   ResponseHeaders headers;
   headers.MergeContentType("text/html; charset=iso-8859-1");
   rewrite_driver()->set_response_headers_ptr(&headers);
-  SetDoctype(RewriteFilter::kUtf8Bom);
+  SetDoctype(kUtf8Bom);
   ValidateNoChanges(kTestName, "<head></head>");
   EXPECT_STREQ("iso-8859-1", rewrite_driver()->containing_charset());
 }
@@ -113,10 +113,9 @@ TEST_F(ScanFilterTest, CharsetFromBomDoesntOverride) {
 TEST_F(ScanFilterTest, CharsetFromBom) {
   // Check that a BOM sets the charset.
   const char kTestName[] = "charset_from_bom";
-  SetDoctype(RewriteFilter::kUtf8Bom);
+  SetDoctype(kUtf8Bom);
   ValidateNoChanges(kTestName, "<head></head>");
-  EXPECT_STREQ(RewriteFilter::kUtf8Charset,
-               rewrite_driver()->containing_charset());
+  EXPECT_STREQ(kUtf8Charset, rewrite_driver()->containing_charset());
 }
 
 TEST_F(ScanFilterTest, CharsetFromMetaTagDoesntOverrideHeaders) {
@@ -135,13 +134,12 @@ TEST_F(ScanFilterTest, CharsetFromMetaTagDoesntOverrideHeaders) {
 TEST_F(ScanFilterTest, CharsetFromMetaTagDoesntOverrideBom) {
   // Check that a meta tag does not override the charset from a BOM.
   const char kTestName[] = "charset_from_meta_tag_doesnt_override_bom";
-  SetDoctype(RewriteFilter::kUtf8Bom);
+  SetDoctype(kUtf8Bom);
   ValidateNoChanges(kTestName,
                     "<head>"
                     "<meta charset=\"us-ascii\">"
                     "</head>");
-  EXPECT_STREQ(RewriteFilter::kUtf8Charset,
-               rewrite_driver()->containing_charset());
+  EXPECT_STREQ(kUtf8Charset, rewrite_driver()->containing_charset());
 }
 
 TEST_F(ScanFilterTest, CharsetFromMetaTag) {

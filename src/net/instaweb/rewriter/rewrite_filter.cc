@@ -30,19 +30,6 @@ namespace net_instaweb {
 
 class RewriteContext;
 
-// All have a final NUL, for example: {0xEF, 0xBB, 0xBF, 0x0}
-const char RewriteFilter::kUtf8Bom[]              = "\xEF\xBB\xBF";
-const char RewriteFilter::kUtf16BigEndianBom[]    = "\xFE\xFF";
-const char RewriteFilter::kUtf16LittleEndianBom[] = "\xFF\xFE";
-const char RewriteFilter::kUtf32BigEndianBom[]    = "\x00\x00\xFE\xFF";
-const char RewriteFilter::kUtf32LittleEndianBom[] = "\xFF\xFE\x00\x00";
-
-const char RewriteFilter::kUtf8Charset[]              = "utf-8";
-const char RewriteFilter::kUtf16BigEndianCharset[]    = "utf-16be";
-const char RewriteFilter::kUtf16LittleEndianCharset[] = "utf-16le";
-const char RewriteFilter::kUtf32BigEndianCharset[]    = "utf-32be";
-const char RewriteFilter::kUtf32LittleEndianCharset[] = "utf-32le";
-
 RewriteFilter::~RewriteFilter() {
 }
 
@@ -81,56 +68,6 @@ RewriteContext* RewriteFilter::MakeRewriteContext() {
 
 RewriteContext* RewriteFilter::MakeNestedRewriteContext(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
-  return NULL;
-}
-
-bool RewriteFilter::StripUTF8BOM(StringPiece* contents) {
-  bool result = false;
-  StringPiece bom;
-  bom.set(kUtf8Bom, STATIC_STRLEN(kUtf8Bom));
-  if (contents->starts_with(bom)) {
-    contents->remove_prefix(bom.length());
-    result = true;
-  }
-  return result;
-}
-
-const char* RewriteFilter::GetCharsetForBOM(const StringPiece contents) {
-  // Bad/empty data?
-  if (contents == NULL || contents.length() == 0) {
-    return NULL;
-  }
-  // If it starts with a printable ASCII character it can't have a BOM, and
-  // since that's the most common case and the comparisons below are relatively
-  // expensive, test this here for early exit.
-  if (contents[0] >= ' ' && contents[0] <= '~') {
-    return NULL;
-  }
-
-  // Check for the BOMs we know about. Since some BOMs contain NUL(s) we have
-  // to use STATIC_STRLEN and manual StringPiece construction.
-  StringPiece bom;
-  bom.set(kUtf8Bom, STATIC_STRLEN(kUtf8Bom));
-  if (contents.starts_with(bom)) {
-    return kUtf8Charset;
-  }
-  bom.set(kUtf16BigEndianBom, STATIC_STRLEN(kUtf16BigEndianBom));
-  if (contents.starts_with(bom)) {
-    return kUtf16BigEndianCharset;
-  }
-  bom.set(kUtf16LittleEndianBom, STATIC_STRLEN(kUtf16LittleEndianBom));
-  if (contents.starts_with(bom)) {
-    return kUtf16LittleEndianCharset;
-  }
-  bom.set(kUtf32BigEndianBom, STATIC_STRLEN(kUtf32BigEndianBom));
-  if (contents.starts_with(bom)) {
-    return kUtf32BigEndianCharset;
-  }
-  bom.set(kUtf32LittleEndianBom, STATIC_STRLEN(kUtf32LittleEndianBom));
-  if (contents.starts_with(bom)) {
-    return kUtf32LittleEndianCharset;
-  }
-
   return NULL;
 }
 

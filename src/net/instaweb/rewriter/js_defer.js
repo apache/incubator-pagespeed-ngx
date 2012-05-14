@@ -759,19 +759,8 @@ pagespeed.DeferJs.prototype.addOnloadListeners = function(elem, func) {
     func.call(elem);
     return;
   }
-  var loadEvent;
-  // TODO(ksimbili): Fix for IE8 too.
-  if (!(this.getIEVersion() <= 8)) {
-    // HACK HACK: This is specifically to solve for jquery libraries, who try to
-    // read the event being passed.
-    // Note we are not setting any of the other params in event. We don't see
-    // them as a need for now.
-    loadEvent = document.createEvent('HTMLEvents');
-    loadEvent.initEvent('load', false, false);
-  }
-  psaAddEventListener(elem, 'onload', function() {
-    func.call(elem, loadEvent);
-  });
+
+  psaAddEventListener(elem, 'onload', func);
 };
 pagespeed.DeferJs.prototype['addOnloadListeners'] =
     pagespeed.DeferJs.prototype.addOnloadListeners;
@@ -829,11 +818,11 @@ pagespeed.DeferJs.prototype.overrideAddEventListeners = function() {
   // override AddEventListeners.
   if (window.addEventListener) {
     document.addEventListener = function(eventName, func, capture) {
-      psaAddEventListener(document, 'on' + eventName, func, capture,
+      psaAddEventListener(document, eventName, func, capture,
                           pagespeed.deferJs.origDocAddEventListener_);
     }
     window.addEventListener = function(eventName, func, capture) {
-      psaAddEventListener(window, 'on' + eventName, func, capture,
+      psaAddEventListener(window, eventName, func, capture,
                           pagespeed.deferJs.origWindowAddEventListener_);
     }
   } else if (window.attachEvent) {
@@ -876,14 +865,12 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
   if (pagespeed.deferJs.state_ >= pagespeed.DeferJs.STATES.SCRIPTS_DONE) {
     return;
   }
-  var eventListenerClosure = function() {
-    func.call(elem);
-  }
   var deferJsEvent;
 
-  if (eventName == 'onDOMContentLoaded' || eventName == 'onreadystatechange') {
+  if (eventName == 'DOMContentLoaded' || eventName == 'readystatechange' ||
+      eventName == 'onDOMContentLoaded' || eventName == 'onreadystatechange') {
     deferJsEvent = pagespeed.DeferJs.EVENT.DOM_READY;
-  } else if (eventName == 'onload') {
+  } else if (eventName == 'load' || eventName == 'onload') {
     deferJsEvent = pagespeed.DeferJs.EVENT.LOAD;
   } else if (eventName == 'onbeforescripts') {
     deferJsEvent = pagespeed.DeferJs.EVENT.BEFORE_SCRIPTS;
@@ -891,11 +878,25 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
     deferJsEvent = pagespeed.DeferJs.EVENT.AFTER_SCRIPTS;
   } else {
     if (opt_originalAddEventListener) {
-      opt_originalAddEventListener(eventName, func, opt_capture);
+      opt_originalAddEventListener.call(elem, eventName, func, opt_capture);
     }
     return;
   }
+  var loadEvent;
+  // TODO(ksimbili): Fix for IE8 too.
+  if (deferJsEvent == pagespeed.DeferJs.EVENT.LOAD &&
+      !(pagespeed.deferJs.getIEVersion() <= 8)) {
+    // HACK HACK: This is specifically to solve for jquery libraries, who try
+    // to read the event being passed.
+    // Note we are not setting any of the other params in event. We don't see
+    // them as a need for now.
+    loadEvent = document.createEvent('HTMLEvents');
+    loadEvent.initEvent('load', false, false);
+  }
 
+  var eventListenerClosure = function() {
+    func.call(elem, loadEvent);
+  }
   if (!pagespeed.deferJs.eventListernersMap_[deferJsEvent]) {
     pagespeed.deferJs.eventListernersMap_[deferJsEvent] = [];
   }

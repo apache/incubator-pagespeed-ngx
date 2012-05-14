@@ -42,6 +42,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
+#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/proto_util.h"
@@ -56,9 +57,6 @@ namespace net_instaweb {
 
 class HtmlIEDirectiveNode;
 class UrlSegmentEncoder;
-
-// {0xEF, 0xBB, 0xBF, 0x0}
-const char CssCombineFilter::kUtf8Bom[] = "\xEF\xBB\xBF";
 
 // names for Statistics variables.
 const char CssCombineFilter::kCssFileCountReduction[] =
@@ -133,8 +131,6 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
   virtual bool WritePiece(int index, const Resource* input,
                           OutputResource* combination, Writer* writer,
                           MessageHandler* handler);
-
-  void StripUTF8BOM(StringPiece* contents) const;
 
   GoogleString media_;
   CssTagScanner* css_tag_scanner_;
@@ -382,28 +378,6 @@ void CssCombineFilter::Flush() {
   NextCombination();
 }
 
-// In addition to specifying the encoding in the ContentType header,
-// one can also specify it at the beginning of the file using a Byte Order Mark.
-//
-// Bytes        Encoding Form
-// 00 00 FE FF  UTF-32, big-endian
-// FF FE 00 00  UTF-32, little-endian
-// FE FF        UTF-16, big-endian
-// FF FE        UTF-16, little-endian
-// EF BB BF     UTF-8
-// See: http://www.unicode.org/faq/utf_bom.html
-// TODO(nforman): Possibly handle stripping BOMs from non-utf-8 files.
-// We currently handle only utf-8 BOM because we assume the resources
-// we get are not in utf-16 or utf-32 when we read and parse them, anyway.
-// TODO(nforman): Figure out earlier on (and more rigorously) if a resource
-// is encoded in one of these other formats and cache that fact so we
-// don't continue to try to rewrite it.
-void CssCombineFilter::CssCombiner::StripUTF8BOM(StringPiece* contents) const {
-  if (contents->starts_with(kUtf8Bom)) {
-    contents->remove_prefix(STATIC_STRLEN(kUtf8Bom));
-  }
-}
-
 bool CssCombineFilter::CssCombiner::WritePiece(
     int index, const Resource* input, OutputResource* combination,
     Writer* writer, MessageHandler* handler) {
@@ -413,7 +387,7 @@ bool CssCombineFilter::CssCombiner::WritePiece(
   // Strip the BOM off of the contents (if it's there) if this is not the
   // first resource.
   if (index != 0) {
-    StripUTF8BOM(&contents);
+    StripUtf8Bom(&contents);
   }
   bool ret = false;
   switch (rewrite_driver_->ResolveCssUrls(

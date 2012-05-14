@@ -28,8 +28,8 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/statistics.h"
 
 namespace net_instaweb {
@@ -79,9 +79,8 @@ void ScanFilter::Characters(HtmlCharactersNode* characters) {
   // set the flag to false without using it, so if it's true on entry then
   // this must be the first event.
   if (!seen_any_nodes_ && driver_->containing_charset().empty()) {
-    const char* charset =
-        RewriteFilter::GetCharsetForBOM(characters->contents());
-    if (charset != NULL) {
+    StringPiece charset = GetCharsetForBom(characters->contents());
+    if (!charset.empty()) {
       driver_->set_containing_charset(charset);
     }
   }

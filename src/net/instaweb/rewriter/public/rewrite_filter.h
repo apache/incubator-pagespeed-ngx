@@ -23,7 +23,6 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -34,20 +33,6 @@ class UrlSegmentEncoder;
 
 class RewriteFilter : public CommonFilter {
  public:
-  // The Byte-Order-Mark (BOM) for the various UTF encodings.
-  static const char kUtf8Bom[];
-  static const char kUtf16BigEndianBom[];
-  static const char kUtf16LittleEndianBom[];
-  static const char kUtf32BigEndianBom[];
-  static const char kUtf32LittleEndianBom[];
-
-  // The charset equivalent for each of the above BOMs.
-  static const char kUtf8Charset[];
-  static const char kUtf16BigEndianCharset[];
-  static const char kUtf16LittleEndianCharset[];
-  static const char kUtf32BigEndianCharset[];
-  static const char kUtf32LittleEndianCharset[];
-
   explicit RewriteFilter(RewriteDriver* driver)
       : CommonFilter(driver) {
   }
@@ -84,30 +69,6 @@ class RewriteFilter : public CommonFilter {
   // This is used to implement ajax rewriting.
   virtual RewriteContext* MakeNestedRewriteContext(
       RewriteContext* parent, const ResourceSlotPtr& slot);
-
-  // Strips any initial UTF-8 BOM (Byte Order Mark) from the given contents.
-  // Returns true if a BOM was stripped, false if not.
-  //
-  // In addition to specifying the encoding in the ContentType header, one
-  // can also specify it at the beginning of the file using a Byte Order Mark.
-  //
-  // Bytes        Encoding Form
-  // 00 00 FE FF  UTF-32, big-endian
-  // FF FE 00 00  UTF-32, little-endian
-  // FE FF        UTF-16, big-endian
-  // FF FE        UTF-16, little-endian
-  // EF BB BF     UTF-8
-  // See: http://www.unicode.org/faq/utf_bom.html
-  //
-  // TODO(nforman): Possibly handle stripping BOMs from non-utf-8 files.
-  // We currently handle only utf-8 BOM because we assume the resources
-  // we get are not in utf-16 or utf-32 when we read and parse them, anyway.
-  static bool StripUTF8BOM(StringPiece* contents);
-
-  // Return the charset string for the given contents' BOM if any. If the
-  // contents start with one of the BOMs defined above then the corresponding
-  // charset string is returned, otherwise NULL.
-  static const char* GetCharsetForBOM(const StringPiece contents);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RewriteFilter);

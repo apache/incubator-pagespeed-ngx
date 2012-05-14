@@ -19,7 +19,6 @@
 
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 
-#include <cstring>
 #include <vector>
 
 #include "base/logging.h"
@@ -34,6 +33,7 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -527,14 +527,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithImportInSecond) {
   EXPECT_EQ(2, css_out.size());
 }
 
-TEST_F(CssCombineFilterTest, ProperBOM) {
-  EXPECT_EQ(3, std::strlen(CssCombineFilter::kUtf8Bom));
-  EXPECT_EQ(0xEF, static_cast<unsigned char>(CssCombineFilter::kUtf8Bom[0]));
-  EXPECT_EQ(0xBB, static_cast<unsigned char>(CssCombineFilter::kUtf8Bom[1]));
-  EXPECT_EQ(0xBF, static_cast<unsigned char>(CssCombineFilter::kUtf8Bom[2]));
-}
-
-TEST_F(CssCombineFilterTest, StripBOM) {
+TEST_F(CssCombineFilterTest, StripBom) {
   GoogleString html_url = StrCat(kDomain, "bom.html");
   GoogleString a_css_url = StrCat(kDomain, "a.css");
   GoogleString b_css_url = StrCat(kDomain, "b.css");
@@ -542,7 +535,7 @@ TEST_F(CssCombineFilterTest, StripBOM) {
   // BOM documentation: http://www.unicode.org/faq/utf_bom.html
   const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
   const char b_css_body[] = ".c4 {\n color: purple;\n}\n";
-  GoogleString bom_body = StrCat(CssCombineFilter::kUtf8Bom, b_css_body);
+  GoogleString bom_body = StrCat(kUtf8Bom, b_css_body);
 
   ResponseHeaders default_header;
   SetDefaultLongCacheHeaders(&kContentTypeCss, &default_header);
@@ -562,7 +555,7 @@ TEST_F(CssCombineFilterTest, StripBOM) {
   ASSERT_EQ(1UL, css_urls.size());
   GoogleString actual_combination;
   EXPECT_TRUE(FetchResourceUrl(css_urls[0], &actual_combination));
-  int bom_pos = actual_combination.find(CssCombineFilter::kUtf8Bom);
+  int bom_pos = actual_combination.find(kUtf8Bom);
   EXPECT_EQ(GoogleString::npos, bom_pos);
 
   GoogleString input_buffer_reversed(StrCat(
@@ -576,28 +569,28 @@ TEST_F(CssCombineFilterTest, StripBOM) {
   CollectCssLinks("combine_css_beginning_bom", output_buffer_, &css_urls);
   ASSERT_EQ(1UL, css_urls.size());
   EXPECT_TRUE(FetchResourceUrl(css_urls[0], &actual_combination));
-  bom_pos = actual_combination.find(CssCombineFilter::kUtf8Bom);
+  bom_pos = actual_combination.find(kUtf8Bom);
   EXPECT_EQ(0, bom_pos);
-  bom_pos = actual_combination.rfind(CssCombineFilter::kUtf8Bom);
+  bom_pos = actual_combination.rfind(kUtf8Bom);
   EXPECT_EQ(0, bom_pos);
 }
 
-TEST_F(CssCombineFilterTest, StripBOMReconstruct) {
+TEST_F(CssCombineFilterTest, StripBomReconstruct) {
   // Make sure we strip the BOM properly when reconstructing, too.
   const char kCssA[] = "a.css";
   const char kCssB[] = "b.css";
   const char kCssText[] = "div {background-image:url(fancy.png);}";
   SetResponseWithDefaultHeaders(kCssA, kContentTypeCss,
-                                StrCat(CssCombineFilter::kUtf8Bom, kCssText),
+                                StrCat(kUtf8Bom, kCssText),
                                 300);
   SetResponseWithDefaultHeaders(kCssB, kContentTypeCss,
-                                StrCat(CssCombineFilter::kUtf8Bom, kCssText),
+                                StrCat(kUtf8Bom, kCssText),
                                 300);
   GoogleString css_url =
       Encode(kTestDomain, "cc", "0", MultiUrl(kCssA, kCssB), "css");
   GoogleString css_out;
   EXPECT_TRUE(FetchResourceUrl(css_url, &css_out));
-  EXPECT_EQ(StrCat(CssCombineFilter::kUtf8Bom, kCssText, kCssText), css_out);
+  EXPECT_EQ(StrCat(kUtf8Bom, kCssText, kCssText), css_out);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {

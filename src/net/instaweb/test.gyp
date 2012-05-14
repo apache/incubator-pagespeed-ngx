@@ -155,6 +155,7 @@
         'spriter/image_spriter_test.cc',
         'util/arena_test.cc',
         'util/base64_test.cc',
+        'util/charset_util_test.cc',
         'util/chunking_writer_test.cc',
         'util/circular_buffer_test.cc',
         'util/client_state_test.cc',
