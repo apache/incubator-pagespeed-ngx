@@ -47,6 +47,7 @@
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/rewriter/public/usage_data_reporter.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -118,6 +119,7 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
                                     cache_extender, image_rewriter,
                                     image_combiner)),
       css_rewritten_(false),
+      has_utf8_bom_(false),
       rewrite_inline_element_(NULL),
       rewrite_inline_char_node_(NULL),
       rewrite_inline_attribute_(NULL),
@@ -224,6 +226,7 @@ void CssFilter::Context::RewriteSingle(
     css_trim_gurl_.Reset(output_resource_->UrlEvenIfHashNotSet());
   }
   in_text_size_ = input_contents.size();
+  has_utf8_bom_ = StripUtf8Bom(&input_contents);
   TimedBool result = filter_->RewriteCssText(
       this, css_base_gurl_, css_trim_gurl_, input_contents, in_text_size_,
       IsInlineAttribute() /* text_is_declarations */,
@@ -312,7 +315,7 @@ void CssFilter::Context::Harvest() {
   bool ok = filter_->SerializeCss(
       this, in_text_size_, hierarchy_.mutable_stylesheet(), css_base_gurl_,
       css_trim_gurl_, previously_optimized || absolutified_urls,
-      IsInlineAttribute() /* stylesheet_is_declarations */,
+      IsInlineAttribute() /* stylesheet_is_declarations */, has_utf8_bom_,
       &out_text, driver_->message_handler());
   if (ok) {
     if (rewrite_inline_element_ == NULL) {
@@ -699,12 +702,16 @@ bool CssFilter::SerializeCss(RewriteContext* context,
                              const GoogleUrl& css_trim_gurl,
                              bool previously_optimized,
                              bool stylesheet_is_declarations,
+                             bool add_utf8_bom,
                              GoogleString* out_text,
                              MessageHandler* handler) {
   bool ret = true;
 
   // Re-serialize stylesheet.
   StringWriter writer(out_text);
+  if (add_utf8_bom) {
+    writer.Write(kUtf8Bom, handler);
+  }
   if (stylesheet_is_declarations) {
     CssMinify::Declarations(stylesheet->ruleset(0).declarations(),
                             &writer, handler);

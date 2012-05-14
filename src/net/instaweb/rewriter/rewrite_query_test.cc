@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -44,8 +45,6 @@ class RewriteQueryTest : public ResourceManagerTestBase {
                                const StringPiece& in_header_string,
                                GoogleString* out_query,
                                GoogleString* out_header_string) {
-    options_.reset(new RewriteOptions);
-
     RequestHeaders request_headers;
     StringPieceVector components;
     SplitStringPieceToVector(in_header_string, ";", &components, true);
@@ -53,9 +52,17 @@ class RewriteQueryTest : public ResourceManagerTestBase {
     for (int i = 0, n = components.size(); i < n; i += 2) {
       request_headers.Add(components[i], components[i + 1]);
     }
+    return ParseAndScan(in_query, &request_headers, out_query,
+                        out_header_string);
+  }
 
+  RewriteOptions* ParseAndScan(const StringPiece& in_query,
+                               RequestHeaders* request_headers,
+                               GoogleString* out_query,
+                               GoogleString* out_header_string) {
+    options_.reset(new RewriteOptions);
     GoogleUrl url(StrCat("http://www.test.com/index.jsp?", in_query));
-    if (RewriteQuery::Scan(factory_.get(), &url, &request_headers,
+    if (RewriteQuery::Scan(factory_.get(), &url, request_headers,
                            &options_, &handler_)
         != RewriteQuery::kSuccess) {
       options_.reset(NULL);
@@ -64,7 +71,7 @@ class RewriteQueryTest : public ResourceManagerTestBase {
       out_query->assign(url.Query().data(), url.Query().size());
     }
     if (out_header_string != NULL) {
-      out_header_string->assign(request_headers.ToString());
+      out_header_string->assign(request_headers->ToString());
     }
     return options_.get();
   }
@@ -253,6 +260,23 @@ TEST_F(RewriteQueryTest, OutputQueryandHeaders) {
   ParseAndScan("ModPagespeedCssInlineMaxBytes=3", "",
                &output_query, &output_headers);
   EXPECT_EQ(output_query, "");
+}
+
+TEST_F(RewriteQueryTest, OutputQueryandHeadersPostRequest) {
+  GoogleString output_query, output_headers;
+  RequestHeaders request_headers;
+  request_headers.set_method(RequestHeaders::kPost);
+  request_headers.Add("ModPagespeedFilters", "inline_css");
+  request_headers.Add("xyz", "6");
+  request_headers.set_message_body("pqr");
+  ParseAndScan("ModPagespeedCssInlineMaxBytes=3"
+               "&abc=1"
+               "&def",
+               &request_headers,
+               &output_query, &output_headers);
+  EXPECT_EQ(output_query, "abc=1&def");
+  EXPECT_EQ(output_headers, "POST  HTTP/1.0\r\nxyz: 6\r\n\r\n");
+  EXPECT_EQ(request_headers.message_body(), "pqr");
 }
 
 }  // namespace net_instaweb

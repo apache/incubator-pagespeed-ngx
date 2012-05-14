@@ -1259,6 +1259,33 @@ TEST_F(CssFilterTestUrlNamer, AbsolutifyOtherUrlsWithProxy) {
                           false /* enable_mapping_and_sharding */);
 }
 
+TEST_F(CssFilterTestUrlNamer, AbsolutifyWithBom) {
+  // We ARE using a proxy URL namer (TestUrlNamer) so the URLs in unparseable
+  // CSS must be absolutified. The CSS is unparseable because of the BOM.
+  const char css_input[] =
+      "\xEF\xBB\xBF"
+      "@import url(x.ss);\n"
+      "body { background: url(a.png); }\n";
+  const char expected_output[] =
+      "\xEF\xBB\xBF"
+      "@import url(http://test.com/x.ss) ;"
+      "body{background:url(http://test.com/a.png)}";
+  // with image rewriting
+  TestUrlAbsolutification("absolutify_with_bom_with",
+                          css_input, expected_output,
+                          true  /* expect_unparseable_section */,
+                          true  /* enable_image_rewriting */,
+                          true  /* enable_proxy_mode */,
+                          false /* enable_mapping_and_sharding */);
+  // without image rewriting
+  TestUrlAbsolutification("do_absolutify_with_bom_without",
+                          css_input, expected_output,
+                          true  /* expect_unparseable_section */,
+                          false /* enable_image_rewriting */,
+                          true  /* enable_proxy_mode */,
+                          false /* enable_mapping_and_sharding */);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

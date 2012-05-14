@@ -96,6 +96,20 @@ bool CssMinify::AbsolutifyUrls(Css::Stylesheet* stylesheet,
   for (Css::Rulesets::iterator ruleset_iter = rulesets.begin();
        ruleset_iter != rulesets.end(); ++ruleset_iter) {
     Css::Ruleset* ruleset = *ruleset_iter;
+    // Check any unparseable selectors for any URLs and absolutify as required.
+    if (handle_unparseable_sections) {
+      Css::Selectors& selectors(ruleset->mutable_selectors());
+      if (selectors.is_dummy()) {
+        StringPiece original_bytes = selectors.bytes_in_original_buffer();
+        GoogleString rewritten_bytes;
+        StringWriter writer(&rewritten_bytes);
+        if (CssTagScanner::TransformUrls(original_bytes, &writer,
+                                         &transformer, handler)) {
+          selectors.set_bytes_in_original_buffer(rewritten_bytes);
+          result = true;
+        }
+      }
+    }
     Css::Declarations& decls = ruleset->mutable_declarations();
     for (Css::Declarations::iterator decl_iter = decls.begin();
          decl_iter != decls.end(); ++decl_iter) {

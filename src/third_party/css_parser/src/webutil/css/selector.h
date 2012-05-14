@@ -315,6 +315,9 @@ class Selectors: public std::vector<Selector*> {
   StringPiece bytes_in_original_buffer() const {
     return bytes_in_original_buffer_;
   }
+  void set_bytes_in_original_buffer(const StringPiece& new_bytes) {
+    bytes_in_original_buffer_ = string(new_bytes.data(), new_bytes.length());
+  }
 
   string ToString() const;
 

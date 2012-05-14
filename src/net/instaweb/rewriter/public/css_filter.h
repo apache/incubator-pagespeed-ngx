@@ -169,6 +169,7 @@ class CssFilter : public RewriteFilter {
                     const GoogleUrl& css_trim_gurl,
                     bool previously_optimized,
                     bool stylesheet_is_declarations,
+                    bool add_utf8_bom,
                     GoogleString* out_text,
                     MessageHandler* handler);
 
@@ -283,6 +284,7 @@ class CssFilter::Context : public SingleRewriteContext {
   CssResourceSlotFactory slot_factory_;
   CssHierarchy hierarchy_;
   bool css_rewritten_;
+  bool has_utf8_bom_;
 
   // Style element containing inline CSS (see StartInlineRewrite) -or-
   // any element with a style attribute (see StartAttributeRewrite), or

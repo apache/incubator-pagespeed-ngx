@@ -14,6 +14,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/google_url.h"
@@ -107,23 +108,29 @@ RewriteQuery::Status RewriteQuery::Scan(
                               request_url->AllAfterQuery()));
   }
 
-  RequestHeaders temp_request_headers;
+  // Tracks the headers that needs to be removed.
+  RequestHeaders request_headers_to_remove;
+
   for (int i = 0, n = request_headers->NumAttributes(); i < n; ++i) {
     switch (ScanNameValue(request_headers->Name(i), request_headers->Value(i),
                           options->get(), handler)) {
       case kNoneFound:
-        temp_request_headers.Add(request_headers->Name(i),
-                                 request_headers->Value(i));
         break;
       case kSuccess:
+        request_headers_to_remove.Add(request_headers->Name(i),
+                                 request_headers->Value(i));
         status = kSuccess;
         break;
       case kInvalid:
         return kInvalid;
     }
   }
+
   if (status == kSuccess) {
-    request_headers->CopyFrom(temp_request_headers);
+    for (int i = 0, n = request_headers_to_remove.NumAttributes(); i < n; ++i) {
+      request_headers->Remove(request_headers_to_remove.Name(i),
+                              request_headers_to_remove.Value(i));
+    }
 
     // This semantic provides for a mod_pagespeed server that has no rewriting
     // options configured at all.  Turning the module on should provide some
