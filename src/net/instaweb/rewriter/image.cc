@@ -565,7 +565,12 @@ bool ImageImpl::LoadOpenCvEmpty() {
       ok = true;
     } catch (cv::Exception& e) {
       handler_->Message(
+#ifdef USE_OPENCV_2_1
           kError, "OpenCv exception in LoadOpenCvEmpty: %s", e.what());
+#else
+          // No .what() on cv::Exception in OpenCv 2.0
+          kError, "OpenCv exception in LoadOpenCvEmpty");
+#endif
     }
   }
   return ok;
