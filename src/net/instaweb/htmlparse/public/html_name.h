@@ -124,6 +124,7 @@ class HtmlName {
     kLi,
     kLink,
     kLoop,
+    kManifest,
     kMark,
     kMedia,
     kMenu,
