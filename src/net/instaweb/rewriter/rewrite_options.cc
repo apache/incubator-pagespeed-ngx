@@ -169,6 +169,10 @@ const char RewriteOptions::kClassName[] = "RewriteOptions";
 
 const char RewriteOptions::kDefaultXModPagespeedHeaderValue[] = "__VERSION__";
 
+const char RewriteOptions::kDefaultBlinkDesktopUserAgentValue[] =
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 "
+    "(KHTML, like Gecko) Chrome/19.0.1084.46 Safari/536.5";
+
 const char* RewriteOptions::option_enum_to_name_array_[
     RewriteOptions::kEndOfOptions];
 
@@ -511,10 +515,18 @@ RewriteOptions::RewriteOptions()
   add_option(true, &increase_speed_tracking_, "st", kIncreaseSpeedTracking);
   add_option(false, &running_furious_, "fur", kRunningFurious);
   add_option(kDefaultFuriousSlot, &furious_ga_slot_, "fga", kFuriousSlot);
+  add_option(false, &report_unload_time_, "rut", kReportUnloadTime);
   add_option(kDefaultXModPagespeedHeaderValue, &x_header_value_, "xhv",
              kXModPagespeedHeaderValue);
   add_option(false, &avoid_renaming_introspective_javascript_, "aris",
              kAvoidRenamingIntrospectiveJavascript);
+  add_option(false, &enable_blink_for_mobile_devices_, "ebmd",
+             kEnableBlinkForMobileDevices);
+  add_option(false, &use_fixed_user_agent_for_blink_cache_misses_, "ufua",
+             kUseFixedUserAgentForBlinkCacheMisses);
+  add_option(kDefaultBlinkDesktopUserAgentValue,
+             &blink_desktop_user_agent_, "bdua",
+             kBlinkDesktopUserAgent);
   // Sort all_options_ on enum.
   SortOptions();
   // Do not call add_option with OptionEnum fourth argument after this.

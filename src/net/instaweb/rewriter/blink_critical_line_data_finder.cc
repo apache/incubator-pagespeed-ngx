@@ -36,7 +36,8 @@ BlinkCriticalLineDataFinder::ExtractBlinkCriticalLineData(
 }
 
 void BlinkCriticalLineDataFinder::ComputeBlinkCriticalLineData(
-    const StringPiece& html_content, RewriteDriver* driver) {
+    const StringPiece html_content, const ResponseHeaders* response_headers,
+    RewriteDriver* driver) {
   // Default interface is empty and derived classes can override.
 }
 

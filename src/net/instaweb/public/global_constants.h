@@ -34,6 +34,10 @@ const char kWPTUserAgentIdentifier[] = "PTST ";
 // The name of the header used to specify the rewriters that were
 // applied to the current request.
 const char kPsaRewriterHeader[] = "X-PSA-Rewriter";
+// The name of the header that pubilshers can use to send the time when the
+// cacheable content on the page was last modified.  This is used by
+// prioritize_visible_content filter to invalidate its cache.
+const char kPsaLastModified[] = "X-PSA-Last-Modified";
 
 }  // namespace
 

@@ -23,7 +23,7 @@ syntax = "proto2";
 package net_instaweb;
 
 // Protobuf to encapsulate the information use by blink flow.
-// Next id = 5
+// Next id = 6
 message BlinkCriticalLineData {
   // Url of the request.
   required string url = 1;
@@ -40,4 +40,7 @@ message BlinkCriticalLineData {
   // This is the part of the html which is not critical and will be sent to the
   // client after critical html and critical images.
   optional string non_critical_json = 4;
+
+  // The value of the X-PSA-Last-Modified header.
+  optional string last_modified_date = 5;
 }

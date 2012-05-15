@@ -88,6 +88,10 @@ const char kOperaMobi9[] =
 const char kFirefoxNokiaN800[] =  /* This is a tablet */
     "Mozilla/5.0 (X11; U; Linux armv6l; en-US; rv:1.9a6pre) Gecko/20070810 "
     "Firefox/3.0a1 Tablet browser 0.1.16 RX-34_2007SE_4.2007.38-2";
+const char kIPadUserAgent[] =
+    "Mozilla/5.0 (iPad; U; CPU OS 3_2 like Mac OS X; en-us) "
+    "AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 "
+    "Mobile/7B334b Safari/531.21.10";
 
 }  // namespace UserAgentStrings
 }  // namespace net_instaweb

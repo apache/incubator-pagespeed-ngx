@@ -601,6 +601,7 @@ const char RewriteDriver::kDomCohort[] = "dom";
 void RewriteDriver::Initialize(Statistics* statistics) {
   RewriteOptions::Initialize();
 
+  AddInstrumentationFilter::Initialize(statistics);
   CacheExtender::Initialize(statistics);
   CssCombineFilter::Initialize(statistics);
   CssFilter::Initialize(statistics);

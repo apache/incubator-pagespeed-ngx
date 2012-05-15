@@ -170,7 +170,7 @@ bool UserAgentMatcher::SupportsImageInlining(
 }
 
 UserAgentMatcher::BlinkUserAgentType UserAgentMatcher::GetBlinkUserAgentType(
-    const char* user_agent) const {
+    const char* user_agent, bool allow_mobile) const {
   if (user_agent == NULL) {
     // We were allowing empty user agents earlier in SupportsBlink.
     // TODO(sriharis):  But we should not do so now.
@@ -179,7 +179,10 @@ UserAgentMatcher::BlinkUserAgentType UserAgentMatcher::GetBlinkUserAgentType(
   if (IsAnyMobileUserAgent(user_agent)) {
     // TODO(srihari):  When blink supports mobile, we need to add a mobile
     // whitelist check here.
-    return kDoesNotSupportBlink;
+    // Please note that we don't have a mobile whitelist check here yet.
+    // Hence, if allow_mobile is true, blink will get applied to all mobile
+    // devices.
+    return allow_mobile ? kSupportsBlinkMobile : kDoesNotSupportBlink;
   }
   if (supports_blink_desktop_.Match(user_agent, false)) {
     return kSupportsBlinkDesktop;

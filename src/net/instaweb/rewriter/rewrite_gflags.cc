@@ -159,6 +159,16 @@ DEFINE_bool(avoid_renaming_introspective_javascript, false,
             "introspection in the form of "
             "document.getElementsByTagName('script').");
 
+DEFINE_bool(use_fixed_user_agent_for_blink_cache_misses, false,
+            "Enable use of fixed User-Agent for fetching content from origin "
+            "server for blink requests in case of cache misses.");
+
+DEFINE_string(blink_desktop_user_agent,
+              "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 "
+              "(KHTML, like Gecko) Chrome/19.0.1084.46 Safari/536.5",
+              "User-Agent string for fetching content from origin server "
+              "for blink in case of cache miss.");
+
 namespace net_instaweb {
 
 namespace {
@@ -325,6 +335,13 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("origin_domain_map")) {
     ret &= AddDomainMap(FLAGS_origin_domain_map, lawyer,
                         &DomainLawyer::AddOriginDomainMapping, handler);
+  }
+  if (WasExplicitlySet("use_fixed_user_agent_for_blink_cache_misses")) {
+    options->set_use_fixed_user_agent_for_blink_cache_misses(
+        FLAGS_use_fixed_user_agent_for_blink_cache_misses);
+  }
+  if (WasExplicitlySet("blink_desktop_user_agent")) {
+    options->set_blink_desktop_user_agent(FLAGS_blink_desktop_user_agent);
   }
 
   ret &= SetRewriters("rewriters", FLAGS_rewriters.c_str(),

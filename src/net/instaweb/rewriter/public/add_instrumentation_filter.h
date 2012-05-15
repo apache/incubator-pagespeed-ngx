@@ -27,26 +27,42 @@
 namespace net_instaweb {
 
 class HtmlElement;
-class HtmlParse;
+class RewriteDriver;
+class Statistics;
+class Variable;
 
 // Injects javascript instrumentation for monitoring page-rendering time.
 class AddInstrumentationFilter : public EmptyHtmlFilter {
  public:
   static const char kLoadTag[];
+  static const char kUnloadTag[];
 
-  explicit AddInstrumentationFilter(HtmlParse* parser,
-                                    const StringPiece& beacon_url);
+  // Counters.
+  static const char kInstrumentationScriptAddedCount[];
+
+  AddInstrumentationFilter(RewriteDriver* driver,
+                           const StringPiece& beacon_url);
   virtual ~AddInstrumentationFilter();
 
+  static void Initialize(Statistics* statistics);
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
   virtual const char* Name() const { return "AddInstrumentation"; }
 
+ protected:
+  // The total number of times instrumentation script is added.
+  Variable* instrumentation_script_added_count_;
+
  private:
-  HtmlParse* html_parse_;
+  RewriteDriver* driver_;
   bool found_head_;
   GoogleString beacon_url_;
+
+  // Adds a script node to given element using the specified format and
+  // tag name.
+  void AddScriptNode(HtmlElement* element, const GoogleString& script_format,
+                     const GoogleString& tag_name);
 
   DISALLOW_COPY_AND_ASSIGN(AddInstrumentationFilter);
 };

@@ -75,7 +75,8 @@ bool IsBlinkRequest(const GoogleUrl& url,
       options->MatchesPrioritizeVisibleContentCacheableFamilies(
           url.PathAndLeaf()) &&
       // user agent supports Blink.
-      user_agent_matcher_.GetBlinkUserAgentType(user_agent) !=
+      user_agent_matcher_.GetBlinkUserAgentType(
+          user_agent, options->enable_blink_for_mobile_devices()) !=
           UserAgentMatcher::kDoesNotSupportBlink) {
     return true;
   }

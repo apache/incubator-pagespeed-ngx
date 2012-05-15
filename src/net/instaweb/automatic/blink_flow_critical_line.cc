@@ -217,7 +217,9 @@ class CriticalLineFetch : public AsyncFetch {
     value_.ExtractContents(&rewritten_content);
     num_compute_blink_critical_line_data_calls_->IncBy(1);
     resource_manager_->blink_critical_line_data_finder()
-        ->ComputeBlinkCriticalLineData(rewritten_content, rewrite_driver_);
+        ->ComputeBlinkCriticalLineData(rewritten_content,
+                                       response_headers(),
+                                       rewrite_driver_);
     delete this;
   }
 
@@ -307,9 +309,11 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
       finder_->ExtractBlinkCriticalLineData(page, options_));
   if (blink_critical_line_data_.get() != NULL &&
       !IsLastResponseCodeInvalid(page)) {
+    LOG(INFO) << "HIT";
     BlinkCriticalLineDataHit();
     return;
   }
+  LOG(INFO) << "MISS";
   BlinkCriticalLineDataMiss();
 }
 
@@ -475,6 +479,14 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
     driver = manager_->NewCustomRewriteDriver(options_);
     num_blink_shared_fetches_started_->IncBy(1);
     secondary_fetch = new CriticalLineFetch(url_, manager_, options, driver);
+
+    // Setting a fixed user-agent for fetching content from origin server.
+    if (options->use_fixed_user_agent_for_blink_cache_misses()) {
+      base_fetch_->request_headers()->RemoveAll(HttpAttributes::kUserAgent);
+      base_fetch_->request_headers()->Add(
+          HttpAttributes::kUserAgent,
+          options->blink_desktop_user_agent());
+    }
   } else {
     // Non 200 status code.
     manager_->ComputeSignature(options_);

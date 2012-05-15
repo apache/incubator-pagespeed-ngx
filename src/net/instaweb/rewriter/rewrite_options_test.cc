@@ -597,7 +597,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(72, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(76, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));
@@ -640,6 +640,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("EnableBlinkCriticalLine"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kEnableBlinkCriticalLine));
+  EXPECT_EQ(StringPiece("EnableBlinkForMobileDevices"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kEnableBlinkForMobileDevices));
   EXPECT_EQ(StringPiece("EnableDeferJsExperimental"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kEnableDeferJsExperimental));
@@ -799,6 +802,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("AvoidRenamingIntrospectiveJavascript"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAvoidRenamingIntrospectiveJavascript));
+  EXPECT_EQ(StringPiece("UseFixedUserAgentForBlinkCacheMisses"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses));
 }
 
 TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies1) {

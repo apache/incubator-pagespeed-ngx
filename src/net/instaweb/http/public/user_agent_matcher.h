@@ -48,10 +48,10 @@ class UserAgentMatcher {
 
   bool SupportsImageInlining(const StringPiece& user_agent) const;
 
-  // Returns the user agent type for user_agent.  The return type currently
-  // supports desktop, mobile and not supported.  The current implementation
-  // always returns desktop or not supported.
-  BlinkUserAgentType GetBlinkUserAgentType(const char* user_agent) const;
+  // Returns the user agent type for user_agent. The return type currently
+  // supports desktop, mobile and not supported.
+  BlinkUserAgentType GetBlinkUserAgentType(const char* user_agent,
+                                           bool allow_mobile) const;
 
   bool SupportsJsDefer(const StringPiece& user_agent) const;
   bool SupportsWebp(const StringPiece& user_agent) const;

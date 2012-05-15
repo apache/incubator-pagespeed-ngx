@@ -109,6 +109,7 @@ class RewriteOptions {
     kAnalyticsID,
     kAvoidRenamingIntrospectiveJavascript,
     kBeaconUrl,
+    kBlinkDesktopUserAgent,
     kBotdetectEnabled,
     kCacheInvalidationTimestamp,
     kCombineAcrossPaths,
@@ -119,6 +120,7 @@ class RewriteOptions {
     kDefaultCacheHtml,
     kDomainRewriteHyperlinks,
     kEnableBlinkCriticalLine,
+    kEnableBlinkForMobileDevices,
     kEnabled,
     kEnableDeferJsExperimental,
     kFlushHtml,
@@ -152,11 +154,13 @@ class RewriteOptions {
     kPrioritizeVisibleContentCacheTime,
     kPrioritizeVisibleContentNonCacheableElements,
     kProgressiveJpegMinBytes,
+    kReportUnloadTime,
     kRespectVary,
     kRewriteLevel,
     kRunningFurious,
     kServeBlinkNonCritical,
     kServeStaleIfFetchError,
+    kUseFixedUserAgentForBlinkCacheMisses,
     kXModPagespeedHeaderValue,
 
     // Apache specific:
@@ -298,6 +302,8 @@ class RewriteOptions {
   static const char kClassName[];
 
   static const char kDefaultXModPagespeedHeaderValue[];
+
+  static const char kDefaultBlinkDesktopUserAgentValue[];
 
   // This class is a spearate subset of options for running a furious
   // experiment.
@@ -861,6 +867,13 @@ class RewriteOptions {
 
   int furious_ga_slot() const { return furious_ga_slot_.value(); }
 
+  void set_report_unload_time(bool x) {
+    set_option(x, &report_unload_time_);
+  }
+  bool report_unload_time() const {
+    return report_unload_time_.value();
+  }
+
   void set_implicit_cache_ttl_ms(int64 x) {
     set_option(x, &implicit_cache_ttl_ms_);
   }
@@ -880,6 +893,27 @@ class RewriteOptions {
   }
   bool avoid_renaming_introspective_javascript() const {
     return avoid_renaming_introspective_javascript_.value();
+  }
+
+  void set_enable_blink_for_mobile_devices(bool x) {
+    set_option(x, &enable_blink_for_mobile_devices_);
+  }
+  bool enable_blink_for_mobile_devices() const {
+    return enable_blink_for_mobile_devices_.value();
+  }
+
+  void set_use_fixed_user_agent_for_blink_cache_misses(bool x) {
+    set_option(x, &use_fixed_user_agent_for_blink_cache_misses_);
+  }
+  bool use_fixed_user_agent_for_blink_cache_misses() const {
+    return use_fixed_user_agent_for_blink_cache_misses_.value();
+  }
+
+  void set_blink_desktop_user_agent(const StringPiece& p) {
+    set_option(GoogleString(p.data(), p.size()), &blink_desktop_user_agent_);
+  }
+  const GoogleString& blink_desktop_user_agent() const {
+    return blink_desktop_user_agent_.value();
   }
 
   // Merge src into 'this'.  Generally, options that are explicitly
@@ -1421,6 +1455,11 @@ class RewriteOptions {
   // site speed tracking in Google Analytics.
   Option<bool> increase_speed_tracking_;
 
+  // If enabled we will report time taken before navigating to a new page. This
+  // won't have effect, if onload beacon is sent before unload event is
+  // trigggered.
+  Option<bool> report_unload_time_;
+
   // Enables experimental code in defer js.
   Option<bool> enable_defer_js_experimental_;
 
@@ -1470,6 +1509,15 @@ class RewriteOptions {
 
   // The value we put for the X-Mod-Pagespeed header. Default is our version.
   Option<GoogleString> x_header_value_;
+
+  // Whether to apply prioritize_visible_content for mobile user agents.
+  Option<bool> enable_blink_for_mobile_devices_;
+  // Whether to use a fixed user agent for prioritize_visible_content filter
+  // in case of cache miss.
+  Option<bool> use_fixed_user_agent_for_blink_cache_misses_;
+  // Fixed user agent string to be used for prioritize_visible_content cache
+  // miss cases if use_fixed_user_agent_for_blink_cache_misses_ is set to true.
+  Option<GoogleString> blink_desktop_user_agent_;
 
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,

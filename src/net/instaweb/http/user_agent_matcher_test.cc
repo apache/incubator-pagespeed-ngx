@@ -83,37 +83,37 @@ TEST_F(UserAgentMatcherTest, NotSupportsImageInlining) {
 TEST_F(UserAgentMatcherTest, SupportsBlinkDesktop) {
   EXPECT_EQ(UserAgentMatcher::kSupportsBlinkDesktop,
             user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kFirefoxUserAgent));
+                UserAgentStrings::kFirefoxUserAgent, false));
   EXPECT_EQ(UserAgentMatcher::kSupportsBlinkDesktop,
             user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kIe9UserAgent));
+                UserAgentStrings::kIe9UserAgent, false));
   EXPECT_EQ(UserAgentMatcher::kSupportsBlinkDesktop,
             user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kChromeUserAgent));
+                UserAgentStrings::kChromeUserAgent, false));
   EXPECT_EQ(UserAgentMatcher::kSupportsBlinkDesktop,
             user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kSafariUserAgent));
+                UserAgentStrings::kSafariUserAgent, false));
 }
 
 TEST_F(UserAgentMatcherTest, NotSupportsBlink) {
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
             user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kIe6UserAgent));
+                UserAgentStrings::kIe6UserAgent, false));
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
             user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kIe8UserAgent));
+                UserAgentStrings::kIe8UserAgent, false));
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
             user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kFirefox1UserAgent));
+                UserAgentStrings::kFirefox1UserAgent, false));
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
             user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kNokiaUserAgent));
+                UserAgentStrings::kNokiaUserAgent, false));
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
             user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kOpera5UserAgent));
+                UserAgentStrings::kOpera5UserAgent, false));
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
             user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kPSPUserAgent));
+                UserAgentStrings::kPSPUserAgent, false));
 }
 
 TEST_F(UserAgentMatcherTest, SupportsJsDefer) {

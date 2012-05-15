@@ -40,6 +40,7 @@ struct OptionName {
 "CssOutlineMinBytes",                   RewriteOptions::kCssOutlineMinBytes
 "DefaultCacheHtml",                     RewriteOptions::kDefaultCacheHtml
 "EnableBlinkCriticalLine",              RewriteOptions::kEnableBlinkCriticalLine
+"EnableBlinkForMobileDevices",          RewriteOptions::kEnableBlinkForMobileDevices
 "EnableDeferJsExperimental",            RewriteOptions::kEnableDeferJsExperimental
 "FlushHtml",                            RewriteOptions::kFlushHtml
 "IdleFlushTimeMs",                      RewriteOptions::kIdleFlushTimeMs
@@ -71,6 +72,7 @@ struct OptionName {
 "MinResourceCacheTimeToRewriteMs",      RewriteOptions::kMinResourceCacheTimeToRewriteMs
 "ModifyCachingHeaders",                 RewriteOptions::kModifyCachingHeaders
 "ProgressiveJpegMinBytes",              RewriteOptions::kProgressiveJpegMinBytes
+"ReportUnloadTime",                     RewriteOptions::kReportUnloadTime
 "RespectVary",                          RewriteOptions::kRespectVary
 "RewriteLevel",                         RewriteOptions::kRewriteLevel
 "RunExperiment",                        RewriteOptions::kRunningFurious
@@ -97,6 +99,7 @@ struct OptionName {
 "SlurpReadOnly",                        RewriteOptions::kSlurpReadOnly
 "Statistics",                           RewriteOptions::kStatisticsEnabled
 "TestProxy",                            RewriteOptions::kTestProxy
+"UseFixedUserAgentForBlinkCacheMisses", RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses
 %%
 
 RewriteOptions::OptionEnum RewriteOptions::LookupOption(

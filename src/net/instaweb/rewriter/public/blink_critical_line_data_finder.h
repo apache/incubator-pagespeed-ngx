@@ -26,6 +26,7 @@ namespace net_instaweb {
 
 class BlinkCriticalLineData;
 class PropertyPage;
+class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
 
@@ -43,8 +44,9 @@ class BlinkCriticalLineDataFinder {
       PropertyPage* page, const RewriteOptions* options);
 
   // Computes BlinkCriticalLineData for the given html content.
-  virtual void ComputeBlinkCriticalLineData(const StringPiece& html_content,
-                                            RewriteDriver* driver);
+  virtual void ComputeBlinkCriticalLineData(
+      const StringPiece html_content, const ResponseHeaders* response_headers,
+      RewriteDriver* driver);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BlinkCriticalLineDataFinder);

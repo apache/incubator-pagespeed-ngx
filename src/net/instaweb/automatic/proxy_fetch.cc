@@ -678,6 +678,9 @@ void ProxyFetch::HandleDone(bool success) {
   // possibly by calling Finish(false).
   if (original_content_fetch_ != NULL) {
     original_content_fetch_->Done(success);
+    // Null the pointer since original_content_fetch_ is not guaranteed to exist
+    // beyond this point.
+    original_content_fetch_ = NULL;
   }
 
   bool finish = true;
