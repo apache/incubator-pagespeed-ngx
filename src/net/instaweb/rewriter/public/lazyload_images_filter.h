@@ -66,13 +66,13 @@ class Statistics;
 //  </head>
 //  <body>
 //   <img pagespeed_lazy_src="1.jpeg" onload="kImageOnloadCode"
-//    src="kDefaultInlineImage" />
+//    src="kBlankImageSrc" />
 //  </body>
 //
 class LazyloadImagesFilter : public EmptyHtmlFilter {
  public:
   static const char* kImageLazyloadCode;
-  static const char* kDefaultInlineImage;
+  static const char* kBlankImageSrc;
   static const char* kImageOnloadCode;
   static const char* kLoadAllImages;
 

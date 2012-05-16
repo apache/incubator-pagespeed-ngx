@@ -40,7 +40,7 @@ TEST_F(ScanFilterTest, EmptyPage) {
   const char kTestName[] = "empty_page";
   ValidateNoChanges(kTestName, "<head></head>");
   EXPECT_STREQ(StrCat(kTestDomain, kTestName, ".html"),
-               rewrite_driver()->base_url().Spec().as_string());
+               rewrite_driver()->base_url().Spec());
   EXPECT_FALSE(rewrite_driver()->refs_before_base());
 }
 
@@ -52,7 +52,7 @@ TEST_F(ScanFilterTest, SetBase) {
                     StrCat("<head>"
                            "<base href=\"", kNewBase, "\">"
                            "</head>"));
-  EXPECT_STREQ(kNewBase, rewrite_driver()->base_url().Spec().as_string());
+  EXPECT_STREQ(kNewBase, rewrite_driver()->base_url().Spec());
   EXPECT_FALSE(rewrite_driver()->refs_before_base());
 }
 
@@ -65,7 +65,7 @@ TEST_F(ScanFilterTest, RefsAfterBase) {
                            "<base href=\"", kNewBase, "\">"
                            "<a href=\"help.html\">link</a>"
                            "</head>"));
-  EXPECT_STREQ(kNewBase, rewrite_driver()->base_url().Spec().as_string());
+  EXPECT_STREQ(kNewBase, rewrite_driver()->base_url().Spec());
   EXPECT_FALSE(rewrite_driver()->refs_before_base());
 }
 
@@ -78,7 +78,7 @@ TEST_F(ScanFilterTest, RefsBeforeBase) {
                            "<a href=\"help.html\">link</a>"
                            "<base href=\"", kNewBase, "\">"
                            "</head>"));
-  EXPECT_STREQ(kNewBase, rewrite_driver()->base_url().Spec().as_string());
+  EXPECT_STREQ(kNewBase, rewrite_driver()->base_url().Spec());
   EXPECT_TRUE(rewrite_driver()->refs_before_base());
 }
 

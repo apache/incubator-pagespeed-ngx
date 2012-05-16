@@ -87,7 +87,7 @@ class StripNonCacheableFilterTest : public ResourceManagerTestBase {
         kPsaHeadScriptNodesStart, blink_js, kPsaHeadScriptNodesEnd);
     return StrCat(
         "<html><head>",
-        psa_head_script_nodes.c_str(),
+        psa_head_script_nodes,
         "</head><body>",
         BlinkUtil::kStartBodyMarker,
         "<div id=\"header\"> This is the header </div>"

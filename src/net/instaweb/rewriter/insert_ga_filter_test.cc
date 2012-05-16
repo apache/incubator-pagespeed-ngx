@@ -197,7 +197,7 @@ TEST_F(InsertGAFilterTest, FuriousBadHtml) {
   GoogleString input = StringPrintf(kHeadsFmt, "", "");
   // Output should have one GA snippet, including the furious part.
   GoogleString output = StringPrintf(
-      kHeadsFmt, StrCat("<script type=\"text/javascript\">", ga_snippet.c_str(),
+      kHeadsFmt, StrCat("<script type=\"text/javascript\">", ga_snippet,
                         "</script>").c_str(),
       "");
   ValidateExpected("furious_heads", input, output);

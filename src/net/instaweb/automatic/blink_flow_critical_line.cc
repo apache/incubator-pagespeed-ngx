@@ -309,11 +309,9 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
       finder_->ExtractBlinkCriticalLineData(page, options_));
   if (blink_critical_line_data_.get() != NULL &&
       !IsLastResponseCodeInvalid(page)) {
-    LOG(INFO) << "HIT";
     BlinkCriticalLineDataHit();
     return;
   }
-  LOG(INFO) << "MISS";
   BlinkCriticalLineDataMiss();
 }
 

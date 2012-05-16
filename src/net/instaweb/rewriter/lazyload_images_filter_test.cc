@@ -51,7 +51,7 @@ class LazyloadImagesFilterTest : public ResourceManagerTestBase {
     return StrCat("<", tag, " pagespeed_lazy_src=\"", url, "\" ",
                   additional_attributes,
                   StrCat("src=\"",
-                         LazyloadImagesFilter::kDefaultInlineImage,
+                         LazyloadImagesFilter::kBlankImageSrc,
                          "\" onload=\"", LazyloadImagesFilter::kImageOnloadCode,
                          "\"/>"));
   }
@@ -77,17 +77,19 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
       "</body>",
       StrCat("<head><script type=\"text/javascript\">",
              lazyload_js_code,
-             "\npagespeed.lazyLoadInit(false);\n"
+             "\npagespeed.lazyLoadInit(false, \"",
+             LazyloadImagesFilter::kBlankImageSrc,
+             "\");\n"
              "</script></head><body>",
              GenerateRewrittenImageTag("img", "1.jpg", ""),
-             "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
-             GenerateRewrittenImageTag("img", "2's.jpg",
-                                       "height=\"300\" width=\"123\" "),
-             "<input src=\"12.jpg\" type=\"image\"/>"
-             "<input src=\"12.jpg\"/>"
-             "<img src=\"1.jpg\" onload=\"blah();\"/>"
-             "<img src=\"1.jpg\" class=\"123 dfcg-metabox\"/>"
-             "</body>"));
+             StrCat("<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
+                    GenerateRewrittenImageTag("img", "2's.jpg",
+                                              "height=\"300\" width=\"123\" "),
+                    "<input src=\"12.jpg\" type=\"image\"/>"
+                    "<input src=\"12.jpg\"/>"
+                    "<img src=\"1.jpg\" onload=\"blah();\"/>"
+                    "<img src=\"1.jpg\" class=\"123 dfcg-metabox\"/>"
+                    "</body>")));
 }
 
 TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {
@@ -104,7 +106,9 @@ TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {
       "</body>",
       StrCat("<head><script type=\"text/javascript\">",
              lazyload_js_code,
-             "\npagespeed.lazyLoadInit(true);\n",
+             "\npagespeed.lazyLoadInit(true, \"",
+             LazyloadImagesFilter::kBlankImageSrc,
+             "\");\n",
              "</script></head>"
              "<body></body>"));
 }
@@ -130,7 +134,9 @@ TEST_F(LazyloadImagesFilterTest, MultipleHeadTags) {
       "</body>",
       StrCat("<head><script type=\"text/javascript\">",
              lazyload_js_code,
-             "\npagespeed.lazyLoadInit(false);\n",
+             "\npagespeed.lazyLoadInit(false, \"",
+             LazyloadImagesFilter::kBlankImageSrc,
+             "\");\n",
              "</script></head>"
              "<head></head><body></body>"));
 }
@@ -180,7 +186,9 @@ TEST_F(LazyloadImagesFilterTest, LazyloadDisabledWithJquerySliderAfterHead) {
       input_html,
       StrCat("<head><script type=\"text/javascript\">",
              lazyload_js_code,
-             "\npagespeed.lazyLoadInit(false);\n",
+             "\npagespeed.lazyLoadInit(false, \"",
+             LazyloadImagesFilter::kBlankImageSrc,
+             "\");\n",
              "</script></head>"
              "<body>"
              "<script src=\"jquery.sexyslider.js\"/>"

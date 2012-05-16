@@ -29,8 +29,10 @@ var pagespeed = window['pagespeed'];
 
 /**
  * @constructor
+ * @param {string} blankImageSrc The blank placeholder image used for images
+ *   that are not visible.
  */
-pagespeed.LazyloadImages = function() {
+pagespeed.LazyloadImages = function(blankImageSrc) {
   /**
    * Array of images that have been deferred.
    * @type {Array.<Element>}
@@ -56,6 +58,13 @@ pagespeed.LazyloadImages = function() {
    * @private
    */
   this.force_load_ = false;
+
+  /**
+   * The blank placeholder image used for images that are not visible.
+   * @type {string}
+   * @private
+   */
+  this.blank_image_src_ = blankImageSrc;
 };
 
 /**
@@ -128,6 +137,7 @@ pagespeed.LazyloadImages.prototype.offset_ = function(element) {
 /**
  * Returns the value of the given style property for the element.
  * @param {Element} element DOM element whose style property is to be computed.
+ * @param {string} property The CSS property we are trying to find.
  * @return {string} The given property if found, and empty string otherwise.
  * @private
  */
@@ -193,7 +203,11 @@ pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
   window.setTimeout(function() {
     var data_src = element.getAttribute('pagespeed_lazy_src');
     if (data_src != null) {
-      if (context.force_load_ || context.isVisible_(element)) {
+      if ((context.force_load_ || context.isVisible_(element)) &&
+          element.src == context.blank_image_src_) {
+        // Only replace the src if the old value is the one we set. It is
+        // possible that a script has already changed it, in which case, we
+        // should not try to modify it.
         element.src = data_src;
         element.removeAttribute('pagespeed_lazy_src');
       } else {
@@ -258,12 +272,14 @@ pagespeed.addHandler = function(elem, ev, func) {
 
 /**
  * Initializes the lazyload module.
- * @param {boolean} loadAfterOnload If true, load images when the onload event
+ * @param {boolean} loadAfterOnload If true, load images when the onload event.
+ * @param {string} blankImageSrc The blank placeholder image used for images
+ *   that are not visible.
  * is fired. Otherwise, load images on scrolling as they become visible.
  */
-pagespeed.lazyLoadInit = function(loadAfterOnload) {
-  pagespeed.lazyLoadImages = new pagespeed.LazyloadImages();
-  pagespeed['lazyLoadImages'] = pagespeed.lazyLoadImages;
+pagespeed.lazyLoadInit = function(loadAfterOnload, blankImageSrc) {
+  var temp = new pagespeed.LazyloadImages(blankImageSrc);
+  pagespeed['lazyLoadImages'] = temp;
   // Add an event to the onload handler to check if any new images have now
   // become visible because of reflows or DOM manipulation. If loadAfterOnload
   // is true, load all images on the page.
@@ -271,14 +287,14 @@ pagespeed.lazyLoadInit = function(loadAfterOnload) {
     // Note that the timeout here should be greater than the timeout for the
     // delay_images filter to avoid CPU contention between the two filters.
     window.setTimeout(function() {
-      pagespeed.lazyLoadImages.force_load_ = loadAfterOnload;
-      pagespeed.lazyLoadImages.loadVisible_();
+      temp.force_load_ = loadAfterOnload;
+      temp.loadVisible_();
     }, 200);
   }
   pagespeed.addHandler(window, 'load', lazy_onload);
   if (!loadAfterOnload) {
     var lazy_onscroll = function() {
-      pagespeed.lazyLoadImages.loadVisible_();
+      temp.loadVisible_();
     };
     pagespeed.addHandler(window, 'scroll', lazy_onscroll);
   }

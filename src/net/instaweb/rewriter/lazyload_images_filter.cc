@@ -40,9 +40,9 @@ const char kMetabox[] = "dfcg-metabox";
 
 }  // namespace
 
-// base64 encoding of a blank 1x1 gif.
-const char* LazyloadImagesFilter::kDefaultInlineImage = "data:image/gif;base64"
-    ",R0lGODlhAQABAPAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==";
+// base64 encoding of a blank 1x1 gif with GIF comment "PSA".
+const char* LazyloadImagesFilter::kBlankImageSrc = "data:image/gif;base64,"
+    "R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7";
 
 const char* LazyloadImagesFilter::kImageOnloadCode =
     "pagespeed.lazyLoadImages.loadIfVisible(this);";
@@ -106,7 +106,7 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
             StaticJavascriptManager::kLazyloadImagesJs, driver_->options());
     const GoogleString& lazyload_js =
         StrCat(lazyload_images_js, "\npagespeed.lazyLoadInit(",
-               load_onload, ");\n");
+               load_onload, ", \"", kBlankImageSrc, "\");\n");
     HtmlNode* script_code = driver_->NewCharactersNode(
         script, lazyload_js);
     driver_->InsertElementBeforeCurrent(script);
@@ -136,7 +136,7 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
         // pagespeed_lazy_src attribute and is not inlined. If so, replace the
         // src with pagespeed_lazy_src and set the onload appropriately.
         driver_->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
-        driver_->AddAttribute(element, HtmlName::kSrc, kDefaultInlineImage);
+        driver_->AddAttribute(element, HtmlName::kSrc, kBlankImageSrc);
         driver_->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
       }
     }

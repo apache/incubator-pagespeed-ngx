@@ -62,14 +62,14 @@ const char kHeadHtmlWithDeferJsAndLazyloadTemplate[] =
     "</script>"
     "<script type=\"text/javascript\">"
     "%s"
-    "\npagespeed.lazyLoadInit(false);\n"
+    "\npagespeed.lazyLoadInit(false, \"%s\");\n"
     "</script></head>";
 
 const char kHeadHtmlWithLazyloadTemplate[] =
     "<head>"
     "<script type=\"text/javascript\">"
     "%s"
-    "\npagespeed.lazyLoadInit(false);\n"
+    "\npagespeed.lazyLoadInit(false, \"%s\");\n"
     "</script></head>";
 
 const char kInlineScriptTemplate[] =
@@ -113,26 +113,28 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
 
   GoogleString GenerateRewrittenImageTag(const StringPiece& url) {
     return StrCat("<img pagespeed_lazy_src=\"", url, "\" src=\"",
-                  LazyloadImagesFilter::kDefaultInlineImage, "\" onload=\"",
+                  LazyloadImagesFilter::kBlankImageSrc, "\" onload=\"",
                   LazyloadImagesFilter::kImageOnloadCode, "\"/>");
   }
 
   GoogleString GetHeadHtmlWithDeferJs() {
     return StringPrintf(kHeadHtmlWithDeferJsTemplate,
-                        net_instaweb::JsDisableFilter::kDisableJsExperimental,
+                        JsDisableFilter::kDisableJsExperimental,
                         GetDeferJsCode().c_str());
   }
 
   GoogleString GetHeadHtmlWithDeferJsAndLazyload() {
     return StringPrintf(kHeadHtmlWithDeferJsAndLazyloadTemplate,
-                        net_instaweb::JsDisableFilter::kDisableJsExperimental,
+                        JsDisableFilter::kDisableJsExperimental,
                         GetDeferJsCode().c_str(),
-                        GetLazyloadImagesCode().c_str());
+                        GetLazyloadImagesCode().c_str(),
+                        LazyloadImagesFilter::kBlankImageSrc);
   }
 
   GoogleString GetHeadHtmlWithLazyload() {
     return StringPrintf(kHeadHtmlWithLazyloadTemplate,
-                        GetLazyloadImagesCode().c_str());
+                        GetLazyloadImagesCode().c_str(),
+                        LazyloadImagesFilter::kBlankImageSrc);
   }
 
   GoogleString GetInlineScript() {
@@ -427,7 +429,7 @@ TEST_F(DelayImagesFilterTest, MultipleBodyTags) {
       StrCat(GetInlineScript(),
              GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
              "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(),"<body>",
+             GetDelayImages(), "<body>",
              GenerateRewrittenImageTag("http://test.com/2.jpeg"),
              "</body>"));
   MatchOutputAndCountBytes(input_html, output_html);
