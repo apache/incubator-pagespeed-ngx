@@ -463,6 +463,33 @@ bool DomainLawyer::AddOriginDomainMapping(
                          handler);
 }
 
+bool DomainLawyer::AddTwoProtocolOriginDomainMapping(
+    const StringPiece& to_domain_name,
+    const StringPiece& from_domain_name,
+    MessageHandler* handler) {
+  GoogleString http_to_url = NormalizeDomainName(to_domain_name);
+  GoogleString http_from_url =  NormalizeDomainName(from_domain_name);
+  if (!StringPiece(http_to_url).starts_with("http:") ||
+      !StringPiece(http_from_url).starts_with("http:")) {
+    return false;
+  }
+  GoogleString https_to_url = StrCat("https", http_to_url.substr(4));
+  GoogleString https_from_url = StrCat("https", http_from_url.substr(4));
+  return
+      (MapDomainHelper(http_to_url, http_from_url,
+                       &Domain::SetOriginDomain,
+                       false, /* allow_wildcards */
+                       false, /* allow_map_to_https */
+                       false, /* authorize */
+                       handler) &&
+       MapDomainHelper(https_to_url, https_from_url,
+                       &Domain::SetOriginDomain,
+                       false, /* allow_wildcards */
+                       true,  /* allow_map_to_https */
+                       false, /* authorize */
+                       handler));
+}
+
 bool DomainLawyer::AddShard(
     const StringPiece& shard_domain_name,
     const StringPiece& comma_separated_shards,

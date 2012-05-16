@@ -50,6 +50,7 @@ class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
 class SharedString;
+class Statistics;
 class Writer;
 
 // A RewriteContext is all the contextual information required to
@@ -100,6 +101,9 @@ class RewriteContext {
                  RewriteContext* parent,  // is non-null
                  ResourceContext* resource_context);
   virtual ~RewriteContext();
+
+  // Static initializer for statistics variables.
+  static void Initialize(Statistics* statistics);
 
   // Random access to slots.  This is not thread-safe.  Prior to
   // Initialize(), these can be called by the constructing thread.

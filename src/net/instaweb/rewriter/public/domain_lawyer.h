@@ -136,6 +136,15 @@ class DomainLawyer {
                               const StringPiece& comma_separated_from_domains,
                               MessageHandler* handler);
 
+  // Adds domain mappings that handle fetches on both http and https for the
+  // given from_domain.  No wildcards may be used in either domain, and both
+  // must be protocol-free and should not have port numbers.
+  //
+  // This routine can be called multiple times for the same to_domain.
+  bool AddTwoProtocolOriginDomainMapping(const StringPiece& to_domain_name,
+                                         const StringPiece& from_domain_name,
+                                         MessageHandler* handler);
+
   // Specifies domain-sharding.  This implicitly calls AddDomain(to_domain).
   //
   // Wildcards may not be used in the to_domain or the from_domain.

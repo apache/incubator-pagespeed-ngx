@@ -290,6 +290,20 @@ TEST_F(DomainLawyerTest, MapHttpsAcrossSchemesAndPorts) {
   EXPECT_EQ("http://localhost:8080/css/stylesheet.css", mapped);
 }
 
+TEST_F(DomainLawyerTest, AddTwoProtocolDomainMapping) {
+  ASSERT_TRUE(domain_lawyer_.AddTwoProtocolOriginDomainMapping(
+      "ref.nytimes.com", "www.nytimes.com", &message_handler_));
+  // This will rewrite domains of fetches, but not change urls in page:
+  EXPECT_FALSE(domain_lawyer_.can_rewrite_domains());
+  GoogleString mapped;
+  ASSERT_TRUE(domain_lawyer_.MapOrigin(
+      "http://www.nytimes.com/index.html", &mapped));
+  EXPECT_EQ("http://ref.nytimes.com/index.html", mapped);
+  ASSERT_TRUE(domain_lawyer_.MapOrigin(
+      "https://www.nytimes.com/index.html", &mapped));
+  EXPECT_EQ("https://ref.nytimes.com/index.html", mapped);
+}
+
 TEST_F(DomainLawyerTest, RewriteHttpsAcrossHosts) {
   ASSERT_TRUE(AddRewriteDomainMapping("http://insecure.nytimes.com",
                                       "https://secure.nytimes.com"));

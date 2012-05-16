@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -151,13 +152,13 @@ class CssFilter : public RewriteFilter {
   bool GetApplicableMedia(const HtmlElement* element,
                           StringVector* media) const;
 
-  bool RewriteCssText(Context* context,
-                      const GoogleUrl& css_base_gurl,
-                      const GoogleUrl& css_trim_gurl,
-                      const StringPiece& in_text,
-                      int64 in_text_size,
-                      bool text_is_declarations,
-                      MessageHandler* handler);
+  TimedBool RewriteCssText(Context* context,
+                           const GoogleUrl& css_base_gurl,
+                           const GoogleUrl& css_trim_gurl,
+                           const StringPiece& in_text,
+                           int64 in_text_size,
+                           bool text_is_declarations,
+                           MessageHandler* handler);
 
   // Tries to write out a (potentially edited) stylesheet out to out_text,
   // and returns whether we should consider the result as an improvement.
