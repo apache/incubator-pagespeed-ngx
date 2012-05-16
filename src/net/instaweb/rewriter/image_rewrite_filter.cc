@@ -247,8 +247,8 @@ bool ResizeImageIfNecessary(
   if (options->Enabled(RewriteOptions::kResizeImages) &&
       ImageUrlEncoder::HasValidDimension(*desired_dim) &&
       ImageUrlEncoder::HasValidDimensions(image_dim)) {
-    // Fill in a missing page height
     if (!desired_dim->has_width()) {
+      // Fill in a missing page height
       // multiply page_height * (image_width / image_height),
       // but to avoid fractions we instead group as
       // (page_height * image_width) / image_height and do the
@@ -260,13 +260,13 @@ bool ResizeImageIfNecessary(
           (page_height * image_dim.width()) / image_dim.height();
       desired_dim->set_width(static_cast<int32>(page_width));
     } else if (!desired_dim->has_height()) {
+      // Fill in a missing page width
       // Math as above, swapping width and height.
       int64 page_width = desired_dim->width();
       int64 page_height =
           (page_width * image_dim.height()) / image_dim.width();
       desired_dim->set_height(static_cast<int32>(page_height));
     }
-    // Fill in a missing page width
     int64 page_area =
         static_cast<int64>(desired_dim->width()) * desired_dim->height();
     int64 image_area =
@@ -502,7 +502,7 @@ void ImageRewriteFilter::ResizeLowQualityImage(
 void ImageRewriteFilter::SaveIfInlinable(const StringPiece& contents,
                                          const Image::Type image_type,
                                          CachedResult* cached) {
-  // We retain inlining information if the image size is >= the largest possible
+  // We retain inlining information if the image size is < the largest possible
   // inlining threshold, as an image might be used in both html and css and we
   // may see it first from the one with a smaller threshold. Note that this can
   // cause us to save inline information for an image that won't ever actually

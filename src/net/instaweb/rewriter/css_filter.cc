@@ -38,7 +38,6 @@
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -227,12 +226,12 @@ void CssFilter::Context::RewriteSingle(
   }
   in_text_size_ = input_contents.size();
   has_utf8_bom_ = StripUtf8Bom(&input_contents);
-  TimedBool result = filter_->RewriteCssText(
+  bool parsed = filter_->RewriteCssText(
       this, css_base_gurl_, css_trim_gurl_, input_contents, in_text_size_,
       IsInlineAttribute() /* text_is_declarations */,
       driver_->message_handler());
 
-  if (result.value) {
+  if (parsed) {
     if (num_nested() > 0) {
       StartNestedTasks();
     } else {
@@ -627,15 +626,13 @@ bool CssFilter::GetApplicableMedia(const HtmlElement* element,
 // css_trim_gurl is the URL used to trim absolute URLs to relative URLs.
 // Specifically, it should be the address of the CSS document itself for
 // external CSS or the HTML document that the CSS is in for inline CSS.
-// The expiry of the answer is the minimum of the expiries of all subresources
-// in the stylesheet, or kint64max if there are none or the sheet is invalid.
-TimedBool CssFilter::RewriteCssText(Context* context,
-                                    const GoogleUrl& css_base_gurl,
-                                    const GoogleUrl& css_trim_gurl,
-                                    const StringPiece& in_text,
-                                    int64 in_text_size,
-                                    bool text_is_declarations,
-                                    MessageHandler* handler) {
+bool CssFilter::RewriteCssText(Context* context,
+                               const GoogleUrl& css_base_gurl,
+                               const GoogleUrl& css_trim_gurl,
+                               const StringPiece& in_text,
+                               int64 in_text_size,
+                               bool text_is_declarations,
+                               MessageHandler* handler) {
   // Load stylesheet w/o expanding background attributes and preserving as
   // much content as possible from the original document.
   Css::Parser parser(in_text);
@@ -665,10 +662,10 @@ TimedBool CssFilter::RewriteCssText(Context* context,
     stylesheet.reset(parser.ParseRawStylesheet());
   }
 
-  TimedBool ret = {kint64max, true};
+  bool parsed = true;
   if (stylesheet.get() == NULL ||
       parser.errors_seen_mask() != Css::Parser::kNoError) {
-    ret.value = false;
+    parsed = false;
     driver_->InfoAt(context, "CSS parsing error in %s",
                     css_base_gurl.spec_c_str());
     num_parse_failures_->Add(1);
@@ -689,10 +686,9 @@ TimedBool CssFilter::RewriteCssText(Context* context,
                              Css::Parser::kNoError);
     context->RewriteCssFromRoot(in_text, in_text_size,
                                 has_unparseables, stylesheet.release());
-    // Rewrite OK thus far.
-    ret.value = true;
   }
-  return ret;
+
+  return parsed;
 }
 
 bool CssFilter::SerializeCss(RewriteContext* context,
