@@ -439,6 +439,16 @@ ModPagespeedFilters=testing,core"
 fetch_until $URL 'grep -c src=\"normal.js\"' 0
 check [ $($WGET_DUMP $URL | grep -c src=\"introspection.js\") = 0 ]
 
+echo TEST: HTML add_instrumentation lacks '&amp;' and contains CDATA
+$WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.html?ModPagespeedFilters=add_instrumentation
+check [ $(grep -c "\&amp;" $WGET_OUTPUT) = 0 ]
+check [ $(grep -c '//<\!\[CDATA\[' $WGET_OUTPUT) = 1 ]
+
+echo TEST: XHTML add_instrumentation also lacks '&amp;' and contains CDATA
+$WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.xhtml?ModPagespeedFilters=add_instrumentation
+check [ $(grep -c "\&amp;" $WGET_OUTPUT) = 0 ]
+check [ $(grep -c '//<\!\[CDATA\[' $WGET_OUTPUT) = 1 ]
+
 # TODO(sligocki): TEST: ModPagespeedMaxSegmentLength
 
 if [ "$CACHE_FLUSH_TEST" == "on" ]; then

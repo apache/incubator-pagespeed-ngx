@@ -64,6 +64,15 @@ ApacheResourceManager::ApacheResourceManager(
   // We may need the message handler for error messages very early, before
   // we get to InitResourceManager in ChildInit().
   set_message_handler(apache_factory_->message_handler());
+
+  // Currently, mod_pagespeed always runs upstream of mod_headers when used as
+  // an origin server.  Note that in a proxy application, this might not be the
+  // case.  I'm not sure how we can detect this on a per-request basis so
+  // that might require a small refactor.
+  //
+  // TODO(jmarantz): We'd like to change this for various reasons but are unsure
+  // of the impact.
+  set_response_headers_finalized(false);
 }
 
 ApacheResourceManager::~ApacheResourceManager() {

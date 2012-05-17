@@ -433,7 +433,7 @@ class RewriteContext::FetchContext {
     // TODO(sligocki): Log a variable for number of deadline hits.
     ResourcePtr input(rewrite_context_->slot(0)->resource());
     handler_->Message(
-        kError, "Deadline exceeded for rewrite of resource %s with %s.",
+        kInfo, "Deadline exceeded for rewrite of resource %s with %s.",
         input->url().c_str(), rewrite_context_->id());
     bool absolutify_contents = true;
     FetchFallbackDoneImpl(input->contents(), input->response_headers(),

@@ -415,6 +415,20 @@ class ResourceManager {
   // without additional considerations.
   static bool IsExcludedAttribute(const char* attribute);
 
+  // Determines whether we can assume that the response headers we see
+  // in rewrite_drivers when filters are applied reflect the final
+  // form from the origin.  In proxy applications, this is generally
+  // true.  But in Apache, it depends when the output_filter is
+  // applied relative to mod_headers and mod_expires.
+  //
+  // The default-value is 'true'.
+  bool response_headers_finalized() const {
+    return response_headers_finalized_;
+  }
+  void set_response_headers_finalized(bool x) {
+    response_headers_finalized_ = x;
+  }
+
  private:
   friend class ResourceManagerTest;
   typedef std::set<RewriteDriver*> RewriteDriverSet;
@@ -455,6 +469,7 @@ class ResourceManager {
 
   bool relative_path_;
   bool store_outputs_in_file_system_;
+  bool response_headers_finalized_;
 
   NamedLockManager* lock_manager_;
   MessageHandler* message_handler_;

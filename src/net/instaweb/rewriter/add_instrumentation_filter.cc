@@ -43,14 +43,16 @@ const char kHeadScript[] =
     "window.mod_pagespeed_start = Number(new Date());"
     "</script>";
 
-// The javascript tag to insert at the bottom of head.  The first %s will
-// be replaced with the custom beacon url, by default
-// "./mod_pagespeed_beacon?ets=".  The second %s will be replaced by
-// kUnoadTag.
+// The javascript tag to insert at the bottom of head.  Formatting args:
+//     1. %s : CDATA hack opener or "".
+//     2. %s : the custom beacon url, by default "./mod_pagespeed_beacon?ets=".
+//     3. %s : kUnloadTag.
+//     4. %s : URL of HTML.
+//     5. %s : CDATA hack closer or "".
 //
 //  Then our timing info, e.g. "unload:123", will be appended.
 const char kUnloadScriptFormat[] =
-    "<script type='text/javascript'>"
+    "<script type='text/javascript'>%s"
     "(function(){function g(){"
     "if(window.mod_pagespeed_loaded) {return;}"
     "var ifr=0;"
@@ -60,15 +62,14 @@ const char kUnloadScriptFormat[] =
     "&url='+encodeURIComponent('%s');};"
     "var f=window.addEventListener;if(f){f('beforeunload',g,false);}else{"
     "f=window.attachEvent;if(f){f('onbeforeunload',g);}}"
-    "})();</script>";
+    "})();%s</script>";
 
-// The javascript tag to insert at the bottom of document.  The first %s will
-// be replaced with the custom beacon url, by default
-// "./mod_pagespeed_beacon?ets=".  The second %s will be replaced by kLoadTag.
+// The javascript tag to insert at the bottom of document.  The same formatting
+// args are used for kUnloadScriptFormat.
 //
 // Then our timing info, e.g. "load:123", will be appended.
 const char kTailScriptFormat[] =
-    "<script type='text/javascript'>"
+    "<script type='text/javascript'>%s"
     "(function(){function g(){var ifr=0;"
     "if(window.parent != window){ifr=1}"
     "new Image().src='%s%s'+"
@@ -77,7 +78,23 @@ const char kTailScriptFormat[] =
     "window.mod_pagespeed_loaded=true;};"
     "var f=window.addEventListener;if(f){f('load',g,false);}else{"
     "f=window.attachEvent;if(f){f('onload',g);}}"
-    "})();</script>";
+    "})();%s</script>";
+
+// In mod_pagespeed, the output_filter gets run prior to mod_headers,
+// so we may not know the correct mimetype at the time we run.
+//
+// So we should use this hack from
+//     http://stackoverflow.com/questions/2375217
+//     should-i-use-or-for-closing-a-cdata-section-into-xhtml
+//
+//   <script type="text/javascript">//<![CDATA[
+//     INSTRUMENTATION CODE
+//   //]]></script>
+//
+// The %s format elements after <script> and before </script> are the
+// hooks that allow us to insert the cdata hacks.
+const char kCdataHackOpen[] = "//<![CDATA[\n";
+const char kCdataHackClose[] = "\n//]]>";
 
 }  // namespace
 
@@ -94,7 +111,9 @@ const char AddInstrumentationFilter::kInstrumentationScriptAddedCount[] =
 AddInstrumentationFilter::AddInstrumentationFilter(
     RewriteDriver* driver, const StringPiece& beacon_url)
     : driver_(driver),
-      found_head_(false) {
+      found_head_(false),
+      use_cdata_hack_(
+          !driver_->resource_manager()->response_headers_finalized()) {
   beacon_url.CopyToString(&beacon_url_);
   beacon_url.CopyToString(&xhtml_beacon_url_);
   GlobalReplaceSubstring("&", "&amp;", &xhtml_beacon_url_);
@@ -140,25 +159,15 @@ void AddInstrumentationFilter::StartElement(HtmlElement* element) {
   }
 }
 
-// TODO(jmarantz): In mod_pagespeed, the output_filter gets run prior to
-// mod_headers, so we may not know the correct mimetype at the time we run.
-//
-// When run in this mode, we should use this hack from
-//     http://stackoverflow.com/questions/2375217
-//     should-i-use-or-for-closing-a-cdata-section-into-xhtml
-
-//  <script type="text/javascript">//<![CDATA[
-//     INSTRUMENTATION CODE
-//  //]]></script>
-//
-// This will be done in a follow-up.
 bool AddInstrumentationFilter::IsXhtml() {
   bool is_xhtml = false;
-  const ResponseHeaders* headers = driver_->response_headers();
-  if (headers != NULL) {
-    const ContentType* content_type = headers->DetermineContentType();
-    if (content_type != NULL) {
-      is_xhtml = content_type->IsXmlLike();
+  if (!use_cdata_hack_) {
+    const ResponseHeaders* headers = driver_->response_headers();
+    if (headers != NULL) {
+      const ContentType* content_type = headers->DetermineContentType();
+      if (content_type != NULL) {
+        is_xhtml = content_type->IsXmlLike();
+      }
     }
   }
   return is_xhtml;
@@ -187,11 +196,18 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
                                              const GoogleString& script_format,
                                              const GoogleString& tag_name,
                                              bool is_xhtml) {
-  GoogleString html_url(driver_->google_url().Spec().as_string());
+  GoogleString html_url;
+  driver_->google_url().Spec().CopyToString(&html_url);
+  if (is_xhtml) {
+    GlobalReplaceSubstring("&", "&amp;", &html_url);
+  }
   GoogleString tail_script = StringPrintf(
       script_format.c_str(),
+      use_cdata_hack_ ? kCdataHackOpen : "",
       is_xhtml ? xhtml_beacon_url_.c_str() : beacon_url_.c_str(),
-      tag_name.c_str(), html_url.c_str());
+      tag_name.c_str(),
+      html_url.c_str(),
+      use_cdata_hack_ ? kCdataHackClose: "");
   HtmlCharactersNode* script =
       driver_->NewCharactersNode(element, tail_script);
   driver_->InsertElementBeforeCurrent(script);

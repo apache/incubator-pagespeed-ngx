@@ -68,6 +68,7 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
 
   RewriteDriver* driver_;
   bool found_head_;
+  bool use_cdata_hack_;
   GoogleString beacon_url_;
   GoogleString xhtml_beacon_url_;
 

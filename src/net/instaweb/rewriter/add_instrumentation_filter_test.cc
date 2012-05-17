@@ -21,6 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -38,31 +39,38 @@ class AddInstrumentationFilterTest : public ResourceManagerTestBase {
     AddInstrumentationFilter::Initialize(statistics());
     options()->EnableFilter(RewriteOptions::kAddInstrumentation);
     ResourceManagerTestBase::SetUp();
+    report_unload_time_ = false;
+    xhtml_mode_ = false;
+    cdata_mode_ = false;
   }
 
   virtual bool AddBody() const { return false; }
 
-  void RunInjection(bool report_unload_time, bool expect_escaped_ampersand) {
-    options()->set_report_unload_time(report_unload_time);
+  void RunInjection() {
+    options()->set_report_unload_time(report_unload_time_);
     rewrite_driver()->AddFilters();
-    Parse("test_script_injection", "<head></head><body></body>");
+    ParseUrl(StrCat(kTestDomain, "index.html?a&b"),
+             "<head></head><body></body>");
     EXPECT_TRUE(output_buffer_.find("/beacon?") != GoogleString::npos);
     EXPECT_TRUE(output_buffer_.find("ets=load") != GoogleString::npos);
-    EXPECT_EQ(report_unload_time,
+    EXPECT_EQ(report_unload_time_,
               output_buffer_.find("ets=unload") != GoogleString::npos);
 
     // All of the ampersands should be suffixed with "amp;" if that's what
     // we are looking for.
     for (int i = 0, n = output_buffer_.size(); i < n; ++i) {
       if (output_buffer_[i] == '&') {
-        EXPECT_EQ(expect_escaped_ampersand,
-                  output_buffer_.substr(i, 5) == "&amp;");
+        EXPECT_EQ(xhtml_mode_, output_buffer_.substr(i, 5) == "&amp;");
       }
     }
 
     EXPECT_TRUE(output_buffer_.find("&") != GoogleString::npos);
-    EXPECT_EQ(expect_escaped_ampersand,
+    EXPECT_EQ(xhtml_mode_,
               output_buffer_.find("&amp;") != GoogleString::npos);
+    EXPECT_EQ(cdata_mode_,
+              output_buffer_.find("//<![CDATA[\n") != GoogleString::npos);
+    EXPECT_EQ(cdata_mode_,
+              output_buffer_.find("\n//]]>") != GoogleString::npos);
     EXPECT_EQ(1, statistics()->GetVariable(
         AddInstrumentationFilter::kInstrumentationScriptAddedCount)->Get());
   }
@@ -72,46 +80,85 @@ class AddInstrumentationFilterTest : public ResourceManagerTestBase {
     response_headers_.Add(HttpAttributes::kContentType,
                           "application/xhtml+xml");
     response_headers_.ComputeCaching();
+    xhtml_mode_ = !cdata_mode_;
   }
 
- private:
+  void DoNotRelyOnContentType() {
+    cdata_mode_ = true;
+    resource_manager()->set_response_headers_finalized(false);
+  }
+
   ResponseHeaders response_headers_;
+  bool report_unload_time_;
+  bool xhtml_mode_;
+  bool cdata_mode_;
 };
 
-TEST_F(AddInstrumentationFilterTest, TestScriptInjection) {
-  RunInjection(false, false);
+TEST_F(AddInstrumentationFilterTest, ScriptInjection) {
+  RunInjection();
 }
 
-TEST_F(AddInstrumentationFilterTest, TestScriptInjectionWithNavigation) {
-  RunInjection(true, false);
+TEST_F(AddInstrumentationFilterTest, ScriptInjectionWithNavigation) {
+  report_unload_time_ = true;
 }
 
 // Note that the DOCTYPE is not signficiant in terms of how the browser
 // interprets ampersands in script tags, so we test here that we do not
 // expect &amp;.
-TEST_F(AddInstrumentationFilterTest, TestScriptInjectionXhtmlDoctype) {
+TEST_F(AddInstrumentationFilterTest, ScriptInjectionXhtmlDoctype) {
   SetDoctype(kXhtmlDtd);
-  RunInjection(false, false);
+  RunInjection();
 }
 
 // Same story here: the doctype is ignored and we do not get "&amp;".
 TEST_F(AddInstrumentationFilterTest,
        TestScriptInjectionWithNavigationXhtmlDoctype) {
   SetDoctype(kXhtmlDtd);
-  RunInjection(true, false);
+  report_unload_time_ = true;
+  RunInjection();
 }
 
 // With Mimetype, we expect "&amp;".
-TEST_F(AddInstrumentationFilterTest, TestScriptInjectionXhtmlMimetype) {
+TEST_F(AddInstrumentationFilterTest, ScriptInjectionXhtmlMimetype) {
   SetMimetypeToXhtml();
-  RunInjection(false, true);
+  RunInjection();
 }
 
 // With Mimetype, we expect "&amp;".
 TEST_F(AddInstrumentationFilterTest,
        TestScriptInjectionWithNavigationXhtmlMimetype) {
   SetMimetypeToXhtml();
-  RunInjection(true, true);
+  report_unload_time_ = true;
+  RunInjection();
+}
+
+// In mod_pagespeed, we cannot currently rely on the content-type
+// being set properly prior to running our output filter.
+TEST_F(AddInstrumentationFilterTest, ScriptInjectionCdata) {
+  DoNotRelyOnContentType();
+  RunInjection();
+}
+
+TEST_F(AddInstrumentationFilterTest, ScriptInjectionWithNavigationCdata) {
+  DoNotRelyOnContentType();
+  report_unload_time_ = true;
+  RunInjection();
+}
+
+// In mod_pagespeed, we cannot currently rely on the content-type
+// being set properly prior to running our output filter.
+TEST_F(AddInstrumentationFilterTest, ScriptInjectionCdataMime) {
+  DoNotRelyOnContentType();
+  SetMimetypeToXhtml();
+  RunInjection();
+}
+
+TEST_F(AddInstrumentationFilterTest,
+       TestScriptInjectionWithNavigationCdataMime) {
+  DoNotRelyOnContentType();
+  SetMimetypeToXhtml();
+  report_unload_time_ = true;
+  RunInjection();
 }
 
 }  // namespace net_instaweb

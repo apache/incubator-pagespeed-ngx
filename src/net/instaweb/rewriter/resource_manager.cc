@@ -152,6 +152,7 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       metadata_cache_(NULL),
       relative_path_(false),
       store_outputs_in_file_system_(false),
+      response_headers_finalized_(true),
       lock_manager_(NULL),
       message_handler_(NULL),
       trying_to_cleanup_rewrite_drivers_(false),
