@@ -58,6 +58,9 @@ vars = {
 
   "re2_src": "http://re2-svn.googlecode.com/svn/trunk/",
   "re2_revision": "@2",
+
+  "gyp_src": "http://gyp.googlecode.com/svn/trunk/",
+  "gyp_revision": "@1188",
 }
 
 deps = {
@@ -198,7 +201,7 @@ deps = {
 
   "src/tools/data_pack": From(Var("libpagespeed_deps_root")),
   "src/tools/grit": From(Var("libpagespeed_deps_root")),
-  "src/tools/gyp": From(Var("chromium_deps_root")),
+  "src/tools/gyp": Var("gyp_src") + Var("gyp_revision"),
 
   "src/third_party/modp_b64":
     Var("chromium_trunk") + "/src/third_party/modp_b64" +
