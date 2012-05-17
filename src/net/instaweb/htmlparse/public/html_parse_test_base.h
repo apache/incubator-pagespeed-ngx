@@ -36,6 +36,7 @@ namespace net_instaweb {
 class HtmlParseTestBaseNoAlloc : public testing::Test {
  protected:
   static const char kTestDomain[];
+  static const char kXhtmlDtd[];    // DOCTYPE string for claiming XHTML
 
   HtmlParseTestBaseNoAlloc()
       : write_to_string_(&output_buffer_),

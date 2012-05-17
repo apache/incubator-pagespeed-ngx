@@ -67,8 +67,7 @@ TEST_F(HtmlAttributeQuoteRemovalTest, NoValueNoChange) {
 }
 
 TEST_F(HtmlAttributeQuoteRemovalTest, DoNotRemoveQuotesInXhtml) {
-  SetDoctype("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" "
-             "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">");
+  SetDoctype(kXhtmlDtd);
   ValidateNoChanges("do_not_remove_quotes_in_xhtml",
                     "<div class=\"foo\" id='bar'>foobar</div>");
 }

@@ -620,6 +620,7 @@ void RewriteDriver::Initialize(Statistics* statistics) {
 
 void RewriteDriver::Terminate() {
   // Clean up statics.
+  AddInstrumentationFilter::Terminate();
   CssFilter::Terminate();
 }
 

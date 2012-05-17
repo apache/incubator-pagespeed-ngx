@@ -36,6 +36,8 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
  public:
   static const char kLoadTag[];
   static const char kUnloadTag[];
+  static GoogleString* kUnloadScriptFormatXhtml;
+  static GoogleString* kTailScriptFormatXhtml;
 
   // Counters.
   static const char kInstrumentationScriptAddedCount[];
@@ -45,6 +47,8 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
   virtual ~AddInstrumentationFilter();
 
   static void Initialize(Statistics* statistics);
+  static void Terminate();
+
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
@@ -55,14 +59,17 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
   Variable* instrumentation_script_added_count_;
 
  private:
-  RewriteDriver* driver_;
-  bool found_head_;
-  GoogleString beacon_url_;
+  bool IsXhtml();
 
   // Adds a script node to given element using the specified format and
   // tag name.
   void AddScriptNode(HtmlElement* element, const GoogleString& script_format,
-                     const GoogleString& tag_name);
+                     const GoogleString& tag_name, bool is_xhtml);
+
+  RewriteDriver* driver_;
+  bool found_head_;
+  GoogleString beacon_url_;
+  GoogleString xhtml_beacon_url_;
 
   DISALLOW_COPY_AND_ASSIGN(AddInstrumentationFilter);
 };

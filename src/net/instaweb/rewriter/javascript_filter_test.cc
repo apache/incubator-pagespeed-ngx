@@ -33,10 +33,6 @@
 
 namespace {
 
-const char kXhtmlHeader[] =
-    "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" "
-    "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">";
-
 const char kHtmlFormat[] =
     "<script type='text/javascript' src='%s'></script>\n";
 
@@ -270,12 +266,12 @@ TEST_F(JavascriptFilterTest, XHtmlInlineJavascript) {
   // where it must be wrapped in CDATA.
   InitTest(100);
   const GoogleString xhtml_script_format =
-      StrCat(kXhtmlHeader, StringPrintf(kInlineJs, kCdataWrapper));
+      StrCat(kXhtmlDtd, StringPrintf(kInlineJs, kCdataWrapper));
   ValidateExpected("xhtml inline javascript",
                    StringPrintf(xhtml_script_format.c_str(), kJsData),
                    StringPrintf(xhtml_script_format.c_str(), kJsMinData));
   const GoogleString xhtml_script_alt_format =
-      StrCat(kXhtmlHeader, StringPrintf(kInlineJs, kCdataAltWrapper));
+      StrCat(kXhtmlDtd, StringPrintf(kInlineJs, kCdataAltWrapper));
   ValidateExpected("xhtml inline javascript",
                    StringPrintf(xhtml_script_alt_format.c_str(), kJsData),
                    StringPrintf(xhtml_script_format.c_str(), kJsMinData));

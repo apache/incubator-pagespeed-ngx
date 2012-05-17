@@ -964,8 +964,7 @@ TEST_F(CssFilterTest, NoQuirksModeForXhtml) {
                   kExpectChange | kExpectSuccess);
 
   // But when in XHTML mode, we don't allow CSS quirks.
-  SetDoctype("<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
-             "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\">");
+  SetDoctype(kXhtmlDtd);
   ValidateRewrite("no_quirks_mode", quirky_css, no_quirks_css,
                   kExpectChange | kExpectSuccess | kNoOtherContexts);
   // NOTE: We must set kNoOtherContexts, because this change depends upon the

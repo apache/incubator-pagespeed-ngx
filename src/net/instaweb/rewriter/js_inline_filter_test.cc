@@ -62,8 +62,7 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
                                  bool expect_inline) {
     TestInlineJavascriptGeneral(
         html_url,
-        "<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" "
-        "\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">",
+        kXhtmlDtd,
         js_url,
         js_url,
         "",  // use an empty original inline body for these tests

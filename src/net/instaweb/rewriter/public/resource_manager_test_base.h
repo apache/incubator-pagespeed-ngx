@@ -64,7 +64,6 @@ struct ContentType;
 class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
  public:
   static const char kTestData[];    // Testdata directory.
-  static const char kXhtmlDtd[];    // DOCTYPE string for claming XHTML
 
   ResourceManagerTestBase();
   explicit ResourceManagerTestBase(Statistics* statistics);
