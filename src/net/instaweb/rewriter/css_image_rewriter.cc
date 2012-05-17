@@ -16,7 +16,7 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/rewriter/public/css_image_rewriter_async.h"
+#include "net/instaweb/rewriter/public/css_image_rewriter.h"
 
 #include <cstddef>
 #include <vector>

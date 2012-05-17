@@ -736,7 +736,7 @@
         'rewriter/css_combine_filter.cc',
         'rewriter/css_filter.cc',
         'rewriter/css_hierarchy.cc',
-        'rewriter/css_image_rewriter_async.cc',
+        'rewriter/css_image_rewriter.cc',
         'rewriter/css_inline_import_to_link_filter.cc',
         'rewriter/css_minify.cc',
         'rewriter/css_resource_slot.cc',

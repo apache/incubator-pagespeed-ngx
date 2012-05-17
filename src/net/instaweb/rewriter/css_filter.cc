@@ -31,7 +31,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_flatten_imports_context.h"
 #include "net/instaweb/rewriter/public/css_hierarchy.h"
-#include "net/instaweb/rewriter/public/css_image_rewriter_async.h"
+#include "net/instaweb/rewriter/public/css_image_rewriter.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/css_util.h"
@@ -113,7 +113,7 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
     : SingleRewriteContext(driver, parent, context),
       filter_(filter),
       driver_(driver),
-      image_rewriter_(
+      css_image_rewriter_(
           new CssImageRewriterAsync(this, filter, filter->driver_,
                                     cache_extender, image_rewriter,
                                     image_combiner)),
@@ -171,6 +171,10 @@ void CssFilter::Context::Render() {
 
   const CachedResult& result = *output_partition(0);
   if (result.optimizable()) {
+    // Note: We take care of rewriting external resource URLs in the normal
+    // ResourceSlot::Render() method. However, inline or in-attribute CSS
+    // is handled here. We could probably add a new slot type to encapsulate
+    // these specific difference, but we don't currently.
     if (rewrite_inline_char_node_ != NULL) {
       HtmlCharactersNode* new_style_char_node =
           driver_->NewCharactersNode(rewrite_inline_element_,
@@ -226,8 +230,8 @@ void CssFilter::Context::RewriteSingle(
   }
   in_text_size_ = input_contents.size();
   has_utf8_bom_ = StripUtf8Bom(&input_contents);
-  bool parsed = filter_->RewriteCssText(
-      this, css_base_gurl_, css_trim_gurl_, input_contents, in_text_size_,
+  bool parsed = RewriteCssText(
+      css_base_gurl_, css_trim_gurl_, input_contents, in_text_size_,
       IsInlineAttribute() /* text_is_declarations */,
       driver_->message_handler());
 
@@ -253,16 +257,16 @@ void CssFilter::Context::RewriteCssFromRoot(const StringPiece& contents,
                             driver_->doctype().IsXhtml(), has_unparseables,
                             stylesheet, driver_->message_handler());
 
-  css_rewritten_ = image_rewriter_->RewriteCss(ImageInlineMaxBytes(),
-                                               this,
-                                               &hierarchy_,
-                                               driver_->message_handler());
+  css_rewritten_ = css_image_rewriter_->RewriteCss(ImageInlineMaxBytes(),
+                                                   this,
+                                                   &hierarchy_,
+                                                   driver_->message_handler());
 }
 
 void CssFilter::Context::RewriteCssFromNested(RewriteContext* parent,
                                               CssHierarchy* hierarchy) {
-  image_rewriter_->RewriteCss(ImageInlineMaxBytes(), parent, hierarchy,
-                              driver_->message_handler());
+  css_image_rewriter_->RewriteCss(ImageInlineMaxBytes(), parent, hierarchy,
+                                  driver_->message_handler());
 }
 
 void CssFilter::Context::Harvest() {
@@ -311,8 +315,8 @@ void CssFilter::Context::Harvest() {
     }
   }
 
-  bool ok = filter_->SerializeCss(
-      this, in_text_size_, hierarchy_.mutable_stylesheet(), css_base_gurl_,
+  bool ok = SerializeCss(
+      in_text_size_, hierarchy_.mutable_stylesheet(), css_base_gurl_,
       css_trim_gurl_, previously_optimized || absolutified_urls,
       IsInlineAttribute() /* stylesheet_is_declarations */, has_utf8_bom_,
       &out_text, driver_->message_handler());
@@ -545,6 +549,9 @@ void CssFilter::StartExternalRewrite(HtmlElement* link,
   ResourceSlotPtr slot(driver_->GetSlot(input_resource, link, src));
   CssFilter::Context* rewriter = StartRewriting(slot);
   GoogleUrl input_resource_gurl(input_resource->url());
+  // TODO(sligocki): I don't think css_trim_gurl_ should be set to
+  // decoded_base_url(). But I also think that the values passed in here
+  // will always be overwritten later. This should be cleaned up.
   rewriter->SetupExternalRewrite(input_resource_gurl, decoded_base_url());
 
   // Get the applicable media and charset. If the charset on the link doesn't
@@ -626,24 +633,21 @@ bool CssFilter::GetApplicableMedia(const HtmlElement* element,
 // css_trim_gurl is the URL used to trim absolute URLs to relative URLs.
 // Specifically, it should be the address of the CSS document itself for
 // external CSS or the HTML document that the CSS is in for inline CSS.
-bool CssFilter::RewriteCssText(Context* context,
-                               const GoogleUrl& css_base_gurl,
-                               const GoogleUrl& css_trim_gurl,
-                               const StringPiece& in_text,
-                               int64 in_text_size,
-                               bool text_is_declarations,
-                               MessageHandler* handler) {
+bool CssFilter::Context::RewriteCssText(const GoogleUrl& css_base_gurl,
+                                        const GoogleUrl& css_trim_gurl,
+                                        const StringPiece& in_text,
+                                        int64 in_text_size,
+                                        bool text_is_declarations,
+                                        MessageHandler* handler) {
   // Load stylesheet w/o expanding background attributes and preserving as
   // much content as possible from the original document.
   Css::Parser parser(in_text);
   parser.set_preservation_mode(true);
   // If we think this is XHTML, turn off quirks-mode so that we don't "fix"
   // things we shouldn't.
-  // TODO(sligocki): We might need to do this in other cases too.
-  // TODO(nikhilmadan): For ajax rewrites, be conservative and assume its XHTML.
-  // Is this right?
-  if ((context != NULL && context->has_parent()) ||
-      driver_->doctype().IsXhtml()) {
+  // TODO(sligocki): We might want to turn off quirks mode in general to get
+  // a consistent and concervative parse.
+  if (has_parent() || driver_->doctype().IsXhtml()) {
     parser.set_quirks_mode(false);
   }
   // Create a stylesheet even if given declarations so that we don't need
@@ -666,9 +670,9 @@ bool CssFilter::RewriteCssText(Context* context,
   if (stylesheet.get() == NULL ||
       parser.errors_seen_mask() != Css::Parser::kNoError) {
     parsed = false;
-    driver_->InfoAt(context, "CSS parsing error in %s",
+    driver_->InfoAt(this, "CSS parsing error in %s",
                     css_base_gurl.spec_c_str());
-    num_parse_failures_->Add(1);
+    filter_->num_parse_failures_->Add(1);
 
     // Report all parse errors (Note: Some of these are errors we recovered
     // from by passing through unparsed sections of text).
@@ -684,23 +688,22 @@ bool CssFilter::RewriteCssText(Context* context,
     // successfully, thus, flattening is safe.
     bool has_unparseables = (parser.unparseable_sections_seen_mask() !=
                              Css::Parser::kNoError);
-    context->RewriteCssFromRoot(in_text, in_text_size,
-                                has_unparseables, stylesheet.release());
+    RewriteCssFromRoot(in_text, in_text_size,
+                       has_unparseables, stylesheet.release());
   }
 
   return parsed;
 }
 
-bool CssFilter::SerializeCss(RewriteContext* context,
-                             int64 in_text_size,
-                             const Css::Stylesheet* stylesheet,
-                             const GoogleUrl& css_base_gurl,
-                             const GoogleUrl& css_trim_gurl,
-                             bool previously_optimized,
-                             bool stylesheet_is_declarations,
-                             bool add_utf8_bom,
-                             GoogleString* out_text,
-                             MessageHandler* handler) {
+bool CssFilter::Context::SerializeCss(int64 in_text_size,
+                                      const Css::Stylesheet* stylesheet,
+                                      const GoogleUrl& css_base_gurl,
+                                      const GoogleUrl& css_trim_gurl,
+                                      bool previously_optimized,
+                                      bool stylesheet_is_declarations,
+                                      bool add_utf8_bom,
+                                      GoogleString* out_text,
+                                      MessageHandler* handler) {
   bool ret = true;
 
   // Re-serialize stylesheet.
@@ -723,31 +726,31 @@ bool CssFilter::SerializeCss(RewriteContext* context,
     // Don't rewrite if we didn't edit it or make it any smaller.
     if (!previously_optimized && bytes_saved <= 0) {
       ret = false;
-      driver_->InfoAt(context, "CSS parser increased size of CSS file %s by %s "
+      driver_->InfoAt(this, "CSS parser increased size of CSS file %s by %s "
                       "bytes.", css_base_gurl.spec_c_str(),
                       Integer64ToString(-bytes_saved).c_str());
-      num_rewrites_dropped_->Add(1);
+      filter_->num_rewrites_dropped_->Add(1);
     }
     // Don't rewrite if we blanked the CSS file. This is likely to be a parse
     // error unless the input was also blank.
     // TODO(sligocki): Don't error if in_text is all whitespace.
     if (out_text_size == 0 && in_text_size != 0) {
       ret = false;
-      driver_->InfoAt(context, "CSS parsing error in %s",
+      driver_->InfoAt(this, "CSS parsing error in %s",
                       css_base_gurl.spec_c_str());
-      num_parse_failures_->Add(1);
+      filter_->num_parse_failures_->Add(1);
     }
   }
 
   // Statistics
   if (ret) {
-    driver_->InfoAt(context, "Successfully rewrote CSS file %s saving %s "
-                    "bytes.", css_base_gurl.spec_c_str(),
+    driver_->InfoAt(this, "Successfully rewrote CSS file %s saving %s bytes.",
+                    css_base_gurl.spec_c_str(),
                     Integer64ToString(bytes_saved).c_str());
-    num_blocks_rewritten_->Add(1);
-    total_bytes_saved_->Add(bytes_saved);
+    filter_->num_blocks_rewritten_->Add(1);
+    filter_->total_bytes_saved_->Add(bytes_saved);
     // TODO(sligocki): Will this be misleading if we flatten @imports?
-    total_original_bytes_->Add(in_text_size);
+    filter_->total_original_bytes_->Add(in_text_size);
   }
   return ret;
 }

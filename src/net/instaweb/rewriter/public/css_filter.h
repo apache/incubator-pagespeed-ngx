@@ -151,27 +151,6 @@ class CssFilter : public RewriteFilter {
   bool GetApplicableMedia(const HtmlElement* element,
                           StringVector* media) const;
 
-  bool RewriteCssText(Context* context,
-                      const GoogleUrl& css_base_gurl,
-                      const GoogleUrl& css_trim_gurl,
-                      const StringPiece& in_text,
-                      int64 in_text_size,
-                      bool text_is_declarations,
-                      MessageHandler* handler);
-
-  // Tries to write out a (potentially edited) stylesheet out to out_text,
-  // and returns whether we should consider the result as an improvement.
-  bool SerializeCss(RewriteContext* context,
-                    int64 in_text_size,
-                    const Css::Stylesheet* stylesheet,
-                    const GoogleUrl& css_base_gurl,
-                    const GoogleUrl& css_trim_gurl,
-                    bool previously_optimized,
-                    bool stylesheet_is_declarations,
-                    bool add_utf8_bom,
-                    GoogleString* out_text,
-                    MessageHandler* handler);
-
   bool in_style_element_;  // Are we in a style element?
   // These are meaningless if in_style_element_ is false:
   HtmlElement* style_element_;  // The element we are in.
@@ -230,9 +209,6 @@ class CssFilter::Context : public SingleRewriteContext {
   void SetupExternalRewrite(const GoogleUrl& base_gurl,
                             const GoogleUrl& trim_gurl);
 
-  // Starts nested rewrite jobs for any imports or images contained in the CSS.
-  void RewriteCssFromRoot(const StringPiece& in_text, int64 in_text_size,
-                          bool has_unparseables, Css::Stylesheet* stylesheet);
   void RewriteCssFromNested(RewriteContext* parent, CssHierarchy* hierarchy);
 
   // Specialization to absolutify URLs in input resource in case of rewrite
@@ -257,6 +233,28 @@ class CssFilter::Context : public SingleRewriteContext {
   virtual const UrlSegmentEncoder* encoder() const;
 
  private:
+  bool RewriteCssText(const GoogleUrl& css_base_gurl,
+                      const GoogleUrl& css_trim_gurl,
+                      const StringPiece& in_text,
+                      int64 in_text_size,
+                      bool text_is_declarations,
+                      MessageHandler* handler);
+  // Starts nested rewrite jobs for any imports or images contained in the CSS.
+  void RewriteCssFromRoot(const StringPiece& in_text, int64 in_text_size,
+                          bool has_unparseables, Css::Stylesheet* stylesheet);
+
+  // Tries to write out a (potentially edited) stylesheet out to out_text,
+  // and returns whether we should consider the result as an improvement.
+  bool SerializeCss(int64 in_text_size,
+                    const Css::Stylesheet* stylesheet,
+                    const GoogleUrl& css_base_gurl,
+                    const GoogleUrl& css_trim_gurl,
+                    bool previously_optimized,
+                    bool stylesheet_is_declarations,
+                    bool add_utf8_bom,
+                    GoogleString* out_text,
+                    MessageHandler* handler);
+
   // Used by the asynchronous rewrite callbacks (RewriteSingle + Harvest) to
   // determine if what is being rewritten is a style attribute or a stylesheet,
   // since an attribute comprises only declarations, unlike a stlyesheet.
@@ -279,7 +277,7 @@ class CssFilter::Context : public SingleRewriteContext {
 
   CssFilter* filter_;
   RewriteDriver* driver_;
-  scoped_ptr<CssImageRewriterAsync> image_rewriter_;
+  scoped_ptr<CssImageRewriterAsync> css_image_rewriter_;
   CssResourceSlotFactory slot_factory_;
   CssHierarchy hierarchy_;
   bool css_rewritten_;

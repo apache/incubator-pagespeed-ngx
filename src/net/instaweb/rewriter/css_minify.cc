@@ -126,7 +126,7 @@ bool CssMinify::AbsolutifyUrls(Css::Stylesheet* stylesheet,
           }
         }
       } else if (handle_parseable_sections) {
-        // [cribbed from css_image_rewriter_async.cc]
+        // [cribbed from css_image_rewriter.cc]
         // Rewrite all URLs.
         // Note: We must rewrite all URLs. Not just ones from declarations
         // we expect to have URLs.

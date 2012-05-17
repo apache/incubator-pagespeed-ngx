@@ -61,7 +61,7 @@ void Histogram::WriteRawHistogramData(Writer* writer, MessageHandler* handler) {
   const char value_style[] = "<td style=\"text-align:right;padding:0 0.25em\">"
                              "%.f</td>";
   const char perc_style[] = "<td style=\"text-align:right;padding:0 0.25em\">"
-                            "%.1f%</td>";
+                            "%.1f%%</td>";
   const char bar_style[] = "<td><div style=\"width: %.fpx;height:%.fpx;"
                            "background-color:blue\"></div></td>";
   double count = CountInternal();
