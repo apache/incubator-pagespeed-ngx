@@ -146,7 +146,7 @@ void ClientState::WriteBackToPropertyCache() {
     return;
   }
   property_cache_->UpdateValue(bytes, value);
-  property_cache_->WriteCohort(client_id_, cohort, property_page_.get());
+  property_cache_->WriteCohort(cohort, property_page_.get());
 }
 
 }  // namespace net_instaweb

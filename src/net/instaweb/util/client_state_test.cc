@@ -27,6 +27,7 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
@@ -69,8 +70,8 @@ class ClientStateTest : public testing::Test {
 
 class MockPage : public PropertyPage {
  public:
-  explicit MockPage(AbstractMutex* mutex)
-      : PropertyPage(mutex),
+  MockPage(AbstractMutex* mutex, const StringPiece& key)
+      : PropertyPage(mutex, key),
         called_(false),
         valid_(false) {}
   virtual ~MockPage() {}
@@ -137,8 +138,9 @@ TEST_F(ClientStateTest, PropertyCacheWorks) {
   client_state_.client_id_ = client_id1;
 
   // Prime the PropertyCache with an initial read.
-  scoped_ptr<MockPage> page1(new MockPage(thread_system_->NewMutex()));
-  property_cache_.Read(client_id1, page1.get());
+  scoped_ptr<MockPage> page1(new MockPage(thread_system_->NewMutex(),
+                                          client_id1));
+  property_cache_.Read(page1.get());
   PropertyValue* property = page1.get()->GetProperty(
       cohort_, ClientState::kClientStatePropertyValue);
   EXPECT_FALSE(property->has_value());
@@ -149,12 +151,12 @@ TEST_F(ClientStateTest, PropertyCacheWorks) {
   GoogleString bytes;
   EXPECT_TRUE(proto.SerializeToString(&bytes));
   property_cache_.UpdateValue(bytes, property);
-  property_cache_.WriteCohort(client_id1, cohort_, page1.get());
+  property_cache_.WriteCohort(cohort_, page1.get());
   EXPECT_TRUE(property->has_value());
 
   // Read it back and test that we got the right thing.
-  MockPage* page2 = new MockPage(thread_system_->NewMutex());
-  property_cache_.Read(client_id1, page2);
+  MockPage* page2 = new MockPage(thread_system_->NewMutex(), client_id1);
+  property_cache_.Read(page2);
   ClientState new_clientstate;
   new_clientstate.InitFromPropertyCache(
       client_id1, &property_cache_, page2, &timer_);
@@ -164,8 +166,8 @@ TEST_F(ClientStateTest, PropertyCacheWorks) {
   // when the pcache read fails. Still need to prime the PropertyCache with
   // an initial read.
   GoogleString client_id2 = "client_id2";
-  MockPage* page4 = new MockPage(thread_system_->NewMutex());
-  property_cache_.Read(client_id2, page4);
+  MockPage* page4 = new MockPage(thread_system_->NewMutex(), client_id2);
+  property_cache_.Read(page4);
   property = page4->GetProperty(
       cohort_, ClientState::kClientStatePropertyValue);
   EXPECT_FALSE(property->has_value());

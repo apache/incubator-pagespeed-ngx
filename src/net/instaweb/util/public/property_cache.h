@@ -188,7 +188,7 @@ class PropertyCache {
   // Reads the all the PropertyValues in all the known Cohorts from
   // cache, calling PropertyPage::Done when done.  It is essential
   // that the Cohorts are established prior to calling this function.
-  void Read(const StringPiece& cache_key, PropertyPage* property_page) const;
+  void Read(PropertyPage* property_page) const;
 
   // Updates a Cohort of properties into the cache.  It is a
   // programming error (dcheck-fail) to Write a PropertyPage that
@@ -196,7 +196,7 @@ class PropertyCache {
   //
   // Even if a PropertyValue was not changed since it was read, Write
   // should be called periodically to update stability metrics.
-  void WriteCohort(const StringPiece& key, const Cohort* cohort,
+  void WriteCohort(const Cohort* cohort,
                    PropertyPage* property_page) const;
 
   // Determines whether a value that was read is reasonably stable.
@@ -300,10 +300,13 @@ class PropertyPage {
   void DeleteProperty(const PropertyCache::Cohort* cohort,
                       const StringPiece& property_name);
 
+  const GoogleString& key() const { return key_; }
+
  protected:
   // The Page takes ownership of the mutex.
-  explicit PropertyPage(AbstractMutex* mutex)
+  explicit PropertyPage(AbstractMutex* mutex, const StringPiece& key)
       : mutex_(mutex),
+        key_(key.as_string()),
         was_read_(false) {
   }
 
@@ -345,6 +348,7 @@ class PropertyPage {
       CohortDataMap;
   CohortDataMap cohort_data_map_;
   scoped_ptr<AbstractMutex> mutex_;
+  GoogleString key_;
   bool was_read_;
 
   DISALLOW_COPY_AND_ASSIGN(PropertyPage);

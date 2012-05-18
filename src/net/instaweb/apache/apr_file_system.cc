@@ -488,7 +488,8 @@ bool AprFileSystem::Unlock(const StringPiece& lock_name,
   const std::string lock_string = lock_name.as_string();
   const char* lock_str = lock_string.c_str();
   apr_status_t ret = apr_dir_remove(lock_str, pool_);
-  if (ret != APR_SUCCESS) {
+  if (ret != APR_SUCCESS && !APR_STATUS_IS_ENOENT(ret)) {
+    // We discard ENOENT, which indicates the lock was stolen or cleaned.
     AprReportError(handler, lock_str, 0, "removing dir", ret);
     return false;
   }

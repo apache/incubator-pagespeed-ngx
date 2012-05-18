@@ -21,6 +21,7 @@
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -97,7 +98,9 @@ class ProxyFetchPropertyCallbackCollectorTest : public ResourceManagerTestBase {
       ProxyFetchPropertyCallback::CacheType cache_type) {
     AbstractMutex* mutex = thread_system_->NewMutex();
     ProxyFetchPropertyCallback* callback =
-        new ProxyFetchPropertyCallback(cache_type, collector, mutex);
+        new ProxyFetchPropertyCallback(
+            cache_type, ResourceManagerTestBase::kTestDomain, collector,
+            mutex);
     EXPECT_EQ(cache_type, callback->cache_type());
     collector->AddCallback(callback);
     return callback;

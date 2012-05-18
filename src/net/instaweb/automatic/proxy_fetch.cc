@@ -147,9 +147,10 @@ void ProxyFetchFactory::Finish(ProxyFetch* fetch) {
 }
 
 ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(
-    CacheType cache_type, ProxyFetchPropertyCallbackCollector* collector,
+    CacheType cache_type, const StringPiece& key,
+    ProxyFetchPropertyCallbackCollector* collector,
     AbstractMutex* mutex)
-    : PropertyPage(mutex),
+    : PropertyPage(mutex, key),
       cache_type_(cache_type),
       collector_(collector) {
 }

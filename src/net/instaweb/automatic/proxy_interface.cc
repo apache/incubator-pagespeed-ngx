@@ -380,6 +380,7 @@ bool ProxyInterface::InitiatePropertyCacheLookup(
     AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
     property_callback = new ProxyFetchPropertyCallback(
         ProxyFetchPropertyCallback::kPagePropertyCache,
+        request_url.Spec(),
         callback_collector, mutex);
     callback_collector->AddCallback(property_callback);
     added_callback = true;
@@ -403,15 +404,16 @@ bool ProxyInterface::InitiatePropertyCacheLookup(
       ProxyFetchPropertyCallback* callback =
           new ProxyFetchPropertyCallback(
               ProxyFetchPropertyCallback::kClientPropertyCache,
+              client_id,
               callback_collector, mutex);
       callback_collector->AddCallback(callback);
       added_callback = true;
-      client_property_cache->Read(client_id, callback);
+      client_property_cache->Read(callback);
     }
   }
 
   if (page_property_cache != NULL) {
-    page_property_cache->Read(request_url.Spec(), property_callback);
+    page_property_cache->Read(property_callback);
   }
 
   return added_callback;

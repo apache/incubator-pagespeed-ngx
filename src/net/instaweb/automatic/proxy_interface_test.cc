@@ -654,10 +654,11 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     ProxyFetchPropertyCallback* callback =
         new ProxyFetchPropertyCallback(
             ProxyFetchPropertyCallback::kPagePropertyCache,
+            kUrl,
             callback_collector,
             resource_manager_->thread_system()->NewMutex());
     callback_collector->AddCallback(callback);
-    resource_manager()->page_property_cache()->Read(kUrl, callback);
+    resource_manager()->page_property_cache()->Read(callback);
     callback_collector->AddPostLookupTask(MakeFunction(
         this, &ProxyInterfaceTest::PostLookupTask, num_misses, num_inserts));
 

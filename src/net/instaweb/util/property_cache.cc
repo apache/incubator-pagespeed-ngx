@@ -273,7 +273,7 @@ GoogleString PropertyCache::CacheKey(const StringPiece& key,
   return StrCat(cache_key_prefix_, key, "@", *cohort);
 }
 
-void PropertyCache::Read(const StringPiece& key, PropertyPage* page) const {
+void PropertyCache::Read(PropertyPage* page) const {
   if (enabled_ && !cohorts_.empty()) {
     PropertyPage::CallbackCollector* collector =
         new PropertyPage::CallbackCollector(
@@ -281,7 +281,7 @@ void PropertyCache::Read(const StringPiece& key, PropertyPage* page) const {
     for (CohortSet::const_iterator p = cohorts_.begin(), e = cohorts_.end();
          p != e; ++p) {
       const Cohort& cohort = *p;
-      const GoogleString cache_key = CacheKey(key, &cohort);
+      const GoogleString cache_key = CacheKey(page->key(), &cohort);
       cache_->Get(cache_key,
                   new CacheInterfaceCallback(page, &cohort, collector));
     }
@@ -303,15 +303,14 @@ bool PropertyValue::IsStable(int mutations_per_1000_threshold) const {
   return (changes_per_1000_writes < mutations_per_1000_threshold);
 }
 
-void PropertyCache::WriteCohort(const StringPiece& key,
-                                const PropertyCache::Cohort* cohort,
+void PropertyCache::WriteCohort(const PropertyCache::Cohort* cohort,
                                 PropertyPage* page) const {
   if (enabled_) {
     DCHECK(GetCohort(*cohort) == cohort);
     SharedString value;
     if (page->EncodeCacheEntry(cohort, value.get()) ||
         page->HasPropertyValueDeleted(cohort)) {
-      GoogleString cache_key = CacheKey(key, cohort);
+      const GoogleString cache_key = CacheKey(page->key(), cohort);
       cache_->Put(cache_key, &value);
     }
   }

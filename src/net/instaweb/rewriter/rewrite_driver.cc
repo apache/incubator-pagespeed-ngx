@@ -1697,7 +1697,7 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
     if (dom != NULL) {
       // Page cannot be cleared yet because other cohorts may still need to be
       // written.
-      pcache->WriteCohort(url(), dom, property_page_.get());
+      pcache->WriteCohort(dom, property_page_.get());
     }
   }
 }

@@ -112,6 +112,7 @@ class ProxyFetchPropertyCallback : public PropertyPage {
 
   explicit ProxyFetchPropertyCallback(
       CacheType cache_type,
+      const StringPiece& key,
       ProxyFetchPropertyCallbackCollector* collector,
       AbstractMutex* mutex);
 
