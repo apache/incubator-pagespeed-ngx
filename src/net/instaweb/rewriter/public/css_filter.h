@@ -45,7 +45,7 @@ class Stylesheet;
 
 namespace net_instaweb {
 
-class CssImageRewriterAsync;
+class CssImageRewriter;
 class CacheExtender;
 class HtmlCharactersNode;
 class ImageCombineFilter;
@@ -277,7 +277,7 @@ class CssFilter::Context : public SingleRewriteContext {
 
   CssFilter* filter_;
   RewriteDriver* driver_;
-  scoped_ptr<CssImageRewriterAsync> css_image_rewriter_;
+  scoped_ptr<CssImageRewriter> css_image_rewriter_;
   CssResourceSlotFactory slot_factory_;
   CssHierarchy hierarchy_;
   bool css_rewritten_;

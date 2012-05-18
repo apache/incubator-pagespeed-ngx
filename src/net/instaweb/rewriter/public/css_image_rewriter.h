@@ -42,15 +42,15 @@ class RewriteContext;
 class RewriteDriver;
 class Statistics;
 
-class CssImageRewriterAsync {
+class CssImageRewriter {
  public:
-  CssImageRewriterAsync(CssFilter::Context* context,
-                        CssFilter* filter,
-                        RewriteDriver* driver,
-                        CacheExtender* cache_extender,
-                        ImageRewriteFilter* image_rewriter,
-                        ImageCombineFilter* image_combiner);
-  ~CssImageRewriterAsync();
+  CssImageRewriter(CssFilter::Context* context,
+                   CssFilter* filter,
+                   RewriteDriver* driver,
+                   CacheExtender* cache_extender,
+                   ImageRewriteFilter* image_rewriter,
+                   ImageCombineFilter* image_combiner);
+  ~CssImageRewriter();
 
   static void Initialize(Statistics* statistics);
 
@@ -96,7 +96,7 @@ class CssImageRewriterAsync {
   ImageCombineFilter* image_combiner_;
   ImageRewriteFilter* image_rewriter_;
 
-  DISALLOW_COPY_AND_ASSIGN(CssImageRewriterAsync);
+  DISALLOW_COPY_AND_ASSIGN(CssImageRewriter);
 };
 
 }  // namespace net_instaweb

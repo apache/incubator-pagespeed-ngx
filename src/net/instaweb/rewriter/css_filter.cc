@@ -114,9 +114,9 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
       filter_(filter),
       driver_(driver),
       css_image_rewriter_(
-          new CssImageRewriterAsync(this, filter, filter->driver_,
-                                    cache_extender, image_rewriter,
-                                    image_combiner)),
+          new CssImageRewriter(this, filter, filter->driver_,
+                               cache_extender, image_rewriter,
+                               image_combiner)),
       css_rewritten_(false),
       has_utf8_bom_(false),
       rewrite_inline_element_(NULL),
@@ -247,6 +247,73 @@ void CssFilter::Context::RewriteSingle(
   }
 }
 
+// Return value answers the question: May we rewrite?
+// css_base_gurl is the URL used to resolve relative URLs in the CSS.
+// css_trim_gurl is the URL used to trim absolute URLs to relative URLs.
+// Specifically, it should be the address of the CSS document itself for
+// external CSS or the HTML document that the CSS is in for inline CSS.
+bool CssFilter::Context::RewriteCssText(const GoogleUrl& css_base_gurl,
+                                        const GoogleUrl& css_trim_gurl,
+                                        const StringPiece& in_text,
+                                        int64 in_text_size,
+                                        bool text_is_declarations,
+                                        MessageHandler* handler) {
+  // Load stylesheet w/o expanding background attributes and preserving as
+  // much content as possible from the original document.
+  Css::Parser parser(in_text);
+  parser.set_preservation_mode(true);
+  // If we think this is XHTML, turn off quirks-mode so that we don't "fix"
+  // things we shouldn't.
+  // TODO(sligocki): We might want to turn off quirks mode in general to get
+  // a consistent and conservative parse.
+  if (has_parent() || driver_->doctype().IsXhtml()) {
+    parser.set_quirks_mode(false);
+  }
+  // Create a stylesheet even if given declarations so that we don't need
+  // two versions of everything, though they do need to handle a stylesheet
+  // with no selectors in it, which they currently do.
+  scoped_ptr<Css::Stylesheet> stylesheet(NULL);
+  if (text_is_declarations) {
+    Css::Declarations* declarations = parser.ParseRawDeclarations();
+    if (declarations != NULL) {
+      stylesheet.reset(new Css::Stylesheet());
+      Css::Ruleset* ruleset = new Css::Ruleset();
+      stylesheet->mutable_rulesets().push_back(ruleset);
+      ruleset->set_declarations(declarations);
+    }
+  } else {
+    stylesheet.reset(parser.ParseRawStylesheet());
+  }
+
+  bool parsed = true;
+  if (stylesheet.get() == NULL ||
+      parser.errors_seen_mask() != Css::Parser::kNoError) {
+    parsed = false;
+    driver_->InfoAt(this, "CSS parsing error in %s",
+                    css_base_gurl.spec_c_str());
+    filter_->num_parse_failures_->Add(1);
+
+    // Report all parse errors (Note: Some of these are errors we recovered
+    // from by passing through unparsed sections of text).
+    for (int i = 0, n = parser.errors_seen().size(); i < n; ++i) {
+      Css::Parser::ErrorInfo error = parser.errors_seen()[i];
+      driver_->resource_manager()->usage_data_reporter()->ReportWarning(
+          css_base_gurl, error.error_num, error.message);
+    }
+  } else {
+    // Edit stylesheet.
+    // Any problem with an @import results in the error mask bit kImportError
+    // being set, so if we get here we know that any @import rules were parsed
+    // successfully, thus, flattening is safe.
+    bool has_unparseables = (parser.unparseable_sections_seen_mask() !=
+                             Css::Parser::kNoError);
+    RewriteCssFromRoot(in_text, in_text_size,
+                       has_unparseables, stylesheet.release());
+  }
+
+  return parsed;
+}
+
 void CssFilter::Context::RewriteCssFromRoot(const StringPiece& contents,
                                             int64 in_text_size,
                                             bool has_unparseables,
@@ -341,6 +408,66 @@ void CssFilter::Context::Harvest() {
   } else {
     RewriteDone(kRewriteFailed, 0);
   }
+}
+
+bool CssFilter::Context::SerializeCss(int64 in_text_size,
+                                      const Css::Stylesheet* stylesheet,
+                                      const GoogleUrl& css_base_gurl,
+                                      const GoogleUrl& css_trim_gurl,
+                                      bool previously_optimized,
+                                      bool stylesheet_is_declarations,
+                                      bool add_utf8_bom,
+                                      GoogleString* out_text,
+                                      MessageHandler* handler) {
+  bool ret = true;
+
+  // Re-serialize stylesheet.
+  StringWriter writer(out_text);
+  if (add_utf8_bom) {
+    writer.Write(kUtf8Bom, handler);
+  }
+  if (stylesheet_is_declarations) {
+    CssMinify::Declarations(stylesheet->ruleset(0).declarations(),
+                            &writer, handler);
+  } else {
+    CssMinify::Stylesheet(*stylesheet, &writer, handler);
+  }
+
+  // Get signed versions so that we can subtract them.
+  int64 out_text_size = static_cast<int64>(out_text->size());
+  int64 bytes_saved = in_text_size - out_text_size;
+
+  if (!driver_->options()->always_rewrite_css()) {
+    // Don't rewrite if we didn't edit it or make it any smaller.
+    if (!previously_optimized && bytes_saved <= 0) {
+      ret = false;
+      driver_->InfoAt(this, "CSS parser increased size of CSS file %s by %s "
+                      "bytes.", css_base_gurl.spec_c_str(),
+                      Integer64ToString(-bytes_saved).c_str());
+      filter_->num_rewrites_dropped_->Add(1);
+    }
+    // Don't rewrite if we blanked the CSS file. This is likely to be a parse
+    // error unless the input was also blank.
+    // TODO(sligocki): Don't error if in_text is all whitespace.
+    if (out_text_size == 0 && in_text_size != 0) {
+      ret = false;
+      driver_->InfoAt(this, "CSS parsing error in %s",
+                      css_base_gurl.spec_c_str());
+      filter_->num_parse_failures_->Add(1);
+    }
+  }
+
+  // Statistics
+  if (ret) {
+    driver_->InfoAt(this, "Successfully rewrote CSS file %s saving %s bytes.",
+                    css_base_gurl.spec_c_str(),
+                    Integer64ToString(bytes_saved).c_str());
+    filter_->num_blocks_rewritten_->Add(1);
+    filter_->total_bytes_saved_->Add(bytes_saved);
+    // TODO(sligocki): Will this be misleading if we flatten @imports?
+    filter_->total_original_bytes_->Add(in_text_size);
+  }
+  return ret;
 }
 
 bool CssFilter::Context::Partition(OutputPartitions* partitions,
@@ -626,133 +753,6 @@ bool CssFilter::GetApplicableMedia(const HtmlElement* element,
     }
   }
   return result;
-}
-
-// Return value answers the question: May we rewrite?
-// css_base_gurl is the URL used to resolve relative URLs in the CSS.
-// css_trim_gurl is the URL used to trim absolute URLs to relative URLs.
-// Specifically, it should be the address of the CSS document itself for
-// external CSS or the HTML document that the CSS is in for inline CSS.
-bool CssFilter::Context::RewriteCssText(const GoogleUrl& css_base_gurl,
-                                        const GoogleUrl& css_trim_gurl,
-                                        const StringPiece& in_text,
-                                        int64 in_text_size,
-                                        bool text_is_declarations,
-                                        MessageHandler* handler) {
-  // Load stylesheet w/o expanding background attributes and preserving as
-  // much content as possible from the original document.
-  Css::Parser parser(in_text);
-  parser.set_preservation_mode(true);
-  // If we think this is XHTML, turn off quirks-mode so that we don't "fix"
-  // things we shouldn't.
-  // TODO(sligocki): We might want to turn off quirks mode in general to get
-  // a consistent and concervative parse.
-  if (has_parent() || driver_->doctype().IsXhtml()) {
-    parser.set_quirks_mode(false);
-  }
-  // Create a stylesheet even if given declarations so that we don't need
-  // two versions of everything, though they do need to handle a stylesheet
-  // with no selectors in it, which they currently do.
-  scoped_ptr<Css::Stylesheet> stylesheet(NULL);
-  if (text_is_declarations) {
-    Css::Declarations* declarations = parser.ParseRawDeclarations();
-    if (declarations != NULL) {
-      stylesheet.reset(new Css::Stylesheet());
-      Css::Ruleset* ruleset = new Css::Ruleset();
-      stylesheet->mutable_rulesets().push_back(ruleset);
-      ruleset->set_declarations(declarations);
-    }
-  } else {
-    stylesheet.reset(parser.ParseRawStylesheet());
-  }
-
-  bool parsed = true;
-  if (stylesheet.get() == NULL ||
-      parser.errors_seen_mask() != Css::Parser::kNoError) {
-    parsed = false;
-    driver_->InfoAt(this, "CSS parsing error in %s",
-                    css_base_gurl.spec_c_str());
-    filter_->num_parse_failures_->Add(1);
-
-    // Report all parse errors (Note: Some of these are errors we recovered
-    // from by passing through unparsed sections of text).
-    for (int i = 0, n = parser.errors_seen().size(); i < n; ++i) {
-      Css::Parser::ErrorInfo error = parser.errors_seen()[i];
-      driver_->resource_manager()->usage_data_reporter()->ReportWarning(
-          css_base_gurl, error.error_num, error.message);
-    }
-  } else {
-    // Edit stylesheet.
-    // Any problem with an @import results in the error mask bit kImportError
-    // being set, so if we get here we know that any @import rules were parsed
-    // successfully, thus, flattening is safe.
-    bool has_unparseables = (parser.unparseable_sections_seen_mask() !=
-                             Css::Parser::kNoError);
-    RewriteCssFromRoot(in_text, in_text_size,
-                       has_unparseables, stylesheet.release());
-  }
-
-  return parsed;
-}
-
-bool CssFilter::Context::SerializeCss(int64 in_text_size,
-                                      const Css::Stylesheet* stylesheet,
-                                      const GoogleUrl& css_base_gurl,
-                                      const GoogleUrl& css_trim_gurl,
-                                      bool previously_optimized,
-                                      bool stylesheet_is_declarations,
-                                      bool add_utf8_bom,
-                                      GoogleString* out_text,
-                                      MessageHandler* handler) {
-  bool ret = true;
-
-  // Re-serialize stylesheet.
-  StringWriter writer(out_text);
-  if (add_utf8_bom) {
-    writer.Write(kUtf8Bom, handler);
-  }
-  if (stylesheet_is_declarations) {
-    CssMinify::Declarations(stylesheet->ruleset(0).declarations(),
-                            &writer, handler);
-  } else {
-    CssMinify::Stylesheet(*stylesheet, &writer, handler);
-  }
-
-  // Get signed versions so that we can subtract them.
-  int64 out_text_size = static_cast<int64>(out_text->size());
-  int64 bytes_saved = in_text_size - out_text_size;
-
-  if (!driver_->options()->always_rewrite_css()) {
-    // Don't rewrite if we didn't edit it or make it any smaller.
-    if (!previously_optimized && bytes_saved <= 0) {
-      ret = false;
-      driver_->InfoAt(this, "CSS parser increased size of CSS file %s by %s "
-                      "bytes.", css_base_gurl.spec_c_str(),
-                      Integer64ToString(-bytes_saved).c_str());
-      filter_->num_rewrites_dropped_->Add(1);
-    }
-    // Don't rewrite if we blanked the CSS file. This is likely to be a parse
-    // error unless the input was also blank.
-    // TODO(sligocki): Don't error if in_text is all whitespace.
-    if (out_text_size == 0 && in_text_size != 0) {
-      ret = false;
-      driver_->InfoAt(this, "CSS parsing error in %s",
-                      css_base_gurl.spec_c_str());
-      filter_->num_parse_failures_->Add(1);
-    }
-  }
-
-  // Statistics
-  if (ret) {
-    driver_->InfoAt(this, "Successfully rewrote CSS file %s saving %s bytes.",
-                    css_base_gurl.spec_c_str(),
-                    Integer64ToString(bytes_saved).c_str());
-    filter_->num_blocks_rewritten_->Add(1);
-    filter_->total_bytes_saved_->Add(bytes_saved);
-    // TODO(sligocki): Will this be misleading if we flatten @imports?
-    filter_->total_original_bytes_->Add(in_text_size);
-  }
-  return ret;
 }
 
 CssFilter::Context* CssFilter::MakeContext(RewriteDriver* driver,

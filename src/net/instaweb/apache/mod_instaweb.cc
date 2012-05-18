@@ -88,6 +88,10 @@ const char* kModPagespeedAnalyticsID = "ModPagespeedAnalyticsID";
 const char* kModPagespeedAvoidRenamingIntrospectiveJavascript =
     "ModPagespeedAvoidRenamingIntrospectiveJavascript";
 const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
+const char* kModPagespeedCacheFlushFilename =
+    "ModPagespeedCacheFlushFilename";
+const char* kModPagespeedCacheFlushPollIntervalSec =
+    "ModPagespeedCacheFlushPollIntervalSec";
 const char* kModPagespeedCollectRefererStatistics =
     "ModPagespeedCollectRefererStatistics";
 const char* kModPagespeedCombineAcrossPaths = "ModPagespeedCombineAcrossPaths";
@@ -975,11 +979,16 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   // would catch this directive but miss the call to
   // give_apache_user_permissions.
   if (StringCaseEqual(directive, kModPagespeedFileCachePath)) {
-    config->set_file_cache_path(arg);
-    if (!manager->InitFileCachePath() ||
-        !give_apache_user_permissions(factory)) {
-      ret = apr_pstrcat(cmd->pool, "Directory ", arg,
-                        " does not exist and can't be created.", NULL);
+    if (*arg != '/') {
+      ret = apr_pstrcat(cmd->pool, kModPagespeedFileCachePath, " ", arg,
+                        " must start with a slash.", NULL);
+    } else {
+      config->set_file_cache_path(arg);
+      if (!manager->InitFileCachePath() ||
+          !give_apache_user_permissions(factory)) {
+        ret = apr_pstrcat(cmd->pool, "Directory ", arg,
+                          " does not exist and can't be created.", NULL);
+      }
     }
     return ret;
   }
@@ -1026,6 +1035,13 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseBoolOption(options, cmd, &RewriteOptions::set_enabled, arg);
   } else if (StringCaseEqual(directive, kModPagespeedAllow)) {
     options->Allow(arg);
+  } else if (StringCaseEqual(directive, kModPagespeedCacheFlushFilename)) {
+    manager->set_cache_flush_filename(arg);
+  } else if (StringCaseEqual(directive,
+                             kModPagespeedCacheFlushPollIntervalSec)) {
+    ret = ParseIntOption(
+        manager, cmd,
+        &ApacheResourceManager::set_cache_flush_poll_interval_sec, arg);
   } else if (StringCaseEqual(directive, kModPagespeedDisableFilters)) {
     if (!options->DisableFiltersByCommaSeparatedList(arg, handler)) {
       ret = "Failed to disable some filters.";
@@ -1235,6 +1251,12 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
 
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)
+  APACHE_CONFIG_OPTION(kModPagespeedCacheFlushFilename,
+        "Name of file to check for timestamp updates used to flush cache. "
+        "This file will be relative to the ModPagespeedFileCachePath if it "
+        "does not begin with a slash."),
+  APACHE_CONFIG_OPTION(kModPagespeedCacheFlushPollIntervalSec,
+        "Number of seconds to wait between polling for cache-flush requests"),
   APACHE_CONFIG_OPTION(kModPagespeedFetcherTimeoutMs,
         "Set internal fetcher timeout in milliseconds"),
   APACHE_CONFIG_OPTION(kModPagespeedFetchProxy, "Set the fetch proxy"),

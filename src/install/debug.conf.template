@@ -330,6 +330,12 @@ Listen @@APACHE_SECONDARY_PORT@@
   ModPagespeed on
   ModPagespeedFileCachePath       "@@MODPAGESPEED_CACHE_ROOT@@/secondary_cache/"
   ModPagespeedGeneratedFilePrefix "@@MODPAGESPEED_CACHE_ROOT@@/secondary_files/"
+
+  ModPagespeedCacheFlushFilename secondary.cache.flush
+
+  # If you uncomment this, the test will fail, proving we can disable
+  # cache-flush polling.
+  # ModPagespeedCacheFlushPollIntervalSec 0
 </VirtualHost>
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
@@ -337,6 +343,8 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedAnalyticsID 1234
 #ALL_DIRECTIVES ModPagespeedAvoidRenamingIntrospectiveJavascript true
 #ALL_DIRECTIVES ModPagespeedBeaconUrl "http://example.com/beacon?ets="
+#ALL_DIRECTIVES ModPagespeedCacheFlushFilename /tmp/cache.flush
+#ALL_DIRECTIVES ModPagespeedCacheFlushPollIntervalSec 10
 #ALL_DIRECTIVES ModPagespeedCollectRefererStatistics false
 #ALL_DIRECTIVES ModPagespeedCombineAcrossPaths true
 #ALL_DIRECTIVES ModPagespeedCssImageInlineMaxBytes 2000

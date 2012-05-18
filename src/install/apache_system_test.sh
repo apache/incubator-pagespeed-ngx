@@ -457,8 +457,8 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   echo Clear out our existing state before we begin the test.
   echo $SUDO touch $PAGESPEED_ROOT/cache/cache.flush
   $SUDO touch $PAGESPEED_ROOT/cache/cache.flush
-  echo $SUDO touch $PAGESPEED_ROOT/secondary_cache/cache.flush
-  $SUDO touch $PAGESPEED_ROOT/secondary_cache/cache.flush
+  echo $SUDO touch $PAGESPEED_ROOT/secondary_cache/secondary.cache.flush
+  $SUDO touch $PAGESPEED_ROOT/secondary_cache/secondary.cache.flush
 
   URL_PATH=cache_flush_test.html?ModPagespeedFilters=inline_css
   URL=$TEST_ROOT/$URL_PATH
@@ -512,8 +512,8 @@ mod_pagespeed_test/$URL_PATH
   # However, the secondary cache did not see this cache-flush.
   fetch_until $SECONDARY_URL 'grep -c blue' 1
   # Now flush the secondary cache too so it can see the change to 'green'.
-  echo $SUDO touch $PAGESPEED_ROOT/secondary_cache/cache.flush
-  $SUDO touch $PAGESPEED_ROOT/secondary_cache/cache.flush
+  echo $SUDO touch $PAGESPEED_ROOT/secondary_cache/secondary.cache.flush
+  $SUDO touch $PAGESPEED_ROOT/secondary_cache/secondary.cache.flush
   fetch_until $SECONDARY_URL 'grep -c green' 1
 
   # Clean up update.css from mod_pagespeed_test so it doesn't leave behind

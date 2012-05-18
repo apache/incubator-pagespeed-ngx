@@ -58,7 +58,7 @@ ApacheResourceManager::ApacheResourceManager(
       subresource_fetcher_(NULL),
       cache_flush_mutex_(thread_system()->NewMutex()),
       last_cache_flush_check_sec_(0),
-      cache_flush_check_interval_sec_(kDefaultCacheFlushIntervalSec),
+      cache_flush_poll_interval_sec_(kDefaultCacheFlushIntervalSec),
       cache_flush_count_(NULL) {  // Lazy-initialized under mutex.
   config()->set_description(hostname_identifier_);
   // We may need the message handler for error messages very early, before
@@ -137,13 +137,13 @@ bool ApacheResourceManager::PoolDestroyed() {
 // so that all child processes see the flush, and so the flush persists
 // across server restart.
 void ApacheResourceManager::PollFilesystemForCacheFlush() {
-  if (cache_flush_check_interval_sec_ > 0) {
+  if (cache_flush_poll_interval_sec_ > 0) {
     int64 now_sec = timer()->NowMs() / Timer::kSecondMs;
     bool check_cache_file = false;
     {
       ScopedMutex lock(cache_flush_mutex_.get());
       if (now_sec >= (last_cache_flush_check_sec_ +
-                      cache_flush_check_interval_sec_)) {
+                      cache_flush_poll_interval_sec_)) {
         last_cache_flush_check_sec_ = now_sec;
         check_cache_file = true;
       }
@@ -153,11 +153,20 @@ void ApacheResourceManager::PollFilesystemForCacheFlush() {
     }
 
     if (check_cache_file) {
-      GoogleString cache_flush_file =
-          StrCat(config()->file_cache_path(), "/cache.flush");
+      if (cache_flush_filename_.empty()) {
+        cache_flush_filename_ = "cache.flush";
+      }
+      if (cache_flush_filename_[0] != '/') {
+        // Note that we catch this in mod_instaweb.cc in the parsing of
+        // option kModPagespeedFileCachePath.
+        DCHECK_EQ('/', config()->file_cache_path()[0]);
+        cache_flush_filename_ = StrCat(config()->file_cache_path(), "/",
+                                       cache_flush_filename_);
+      }
       int64 cache_flush_timestamp_sec;
       NullMessageHandler null_handler;
-      if (file_system()->Mtime(cache_flush_file, &cache_flush_timestamp_sec,
+      if (file_system()->Mtime(cache_flush_filename_,
+                               &cache_flush_timestamp_sec,
                                &null_handler)) {
         int64 timestamp_ms = cache_flush_timestamp_sec * Timer::kSecondMs;
         if (global_options()->UpdateCacheInvalidationTimestampMs(

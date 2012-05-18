@@ -43,12 +43,12 @@
 
 namespace net_instaweb {
 
-CssImageRewriterAsync::CssImageRewriterAsync(CssFilter::Context* context,
-                                             CssFilter* filter,
-                                             RewriteDriver* driver,
-                                             CacheExtender* cache_extender,
-                                             ImageRewriteFilter* image_rewriter,
-                                             ImageCombineFilter* image_combiner)
+CssImageRewriter::CssImageRewriter(CssFilter::Context* context,
+                                   CssFilter* filter,
+                                   RewriteDriver* driver,
+                                   CacheExtender* cache_extender,
+                                   ImageRewriteFilter* image_rewriter,
+                                   ImageCombineFilter* image_combiner)
     : filter_(filter),
       driver_(driver),
       context_(context),
@@ -64,14 +64,14 @@ CssImageRewriterAsync::CssImageRewriterAsync(CssFilter::Context* context,
   // total images were cache-extended.
 }
 
-CssImageRewriterAsync::~CssImageRewriterAsync() {}
+CssImageRewriter::~CssImageRewriter() {}
 
-bool CssImageRewriterAsync::FlatteningEnabled() const {
+bool CssImageRewriter::FlatteningEnabled() const {
   const RewriteOptions* options = driver_->options();
   return options->Enabled(RewriteOptions::kFlattenCssImports);
 }
 
-bool CssImageRewriterAsync::RewritesEnabled(
+bool CssImageRewriter::RewritesEnabled(
     int64 image_inline_max_bytes) const {
   const RewriteOptions* options = driver_->options();
   return (image_inline_max_bytes > 0 ||
@@ -81,7 +81,7 @@ bool CssImageRewriterAsync::RewritesEnabled(
           options->Enabled(RewriteOptions::kSpriteImages));
 }
 
-void CssImageRewriterAsync::RewriteImport(
+void CssImageRewriter::RewriteImport(
     RewriteContext* parent,
     CssHierarchy* hierarchy) {
   GoogleUrl import_url(hierarchy->url());
@@ -95,7 +95,7 @@ void CssImageRewriterAsync::RewriteImport(
           resource, driver_->UrlLine(), context_, parent, hierarchy));
 }
 
-void CssImageRewriterAsync::RewriteImage(
+void CssImageRewriter::RewriteImage(
     int64 image_inline_max_bytes,
     const GoogleUrl& trim_url,
     const GoogleUrl& original_url,
@@ -132,10 +132,10 @@ void CssImageRewriterAsync::RewriteImage(
   }
 }
 
-bool CssImageRewriterAsync::RewriteCss(int64 image_inline_max_bytes,
-                                       RewriteContext* parent,
-                                       CssHierarchy* hierarchy,
-                                       MessageHandler* handler) {
+bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
+                                  RewriteContext* parent,
+                                  CssHierarchy* hierarchy,
+                                  MessageHandler* handler) {
   const RewriteOptions* options = driver_->options();
   bool spriting_ok = options->Enabled(RewriteOptions::kSpriteImages);
 

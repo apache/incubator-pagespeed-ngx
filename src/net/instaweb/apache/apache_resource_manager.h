@@ -70,7 +70,7 @@ class ApacheResourceManager : public ResourceManager {
 
   // Poll; if we haven't checked the timestamp of
   // $FILE_PREFIX/cache.flush in the past
-  // cache_flush_check_interval_sec_ (default 5) seconds do so, and if
+  // cache_flush_poll_interval_sec_ (default 5) seconds do so, and if
   // the timestamp has expired then update the
   // cache_invalidation_timestamp in global_options, thus flushing the
   // cache.
@@ -84,6 +84,13 @@ class ApacheResourceManager : public ResourceManager {
   void PollFilesystemForCacheFlush();
 
   static void Initialize(Statistics* statistics);
+
+  void set_cache_flush_poll_interval_sec(int num_seconds) {
+    cache_flush_poll_interval_sec_ = num_seconds;
+  }
+  void set_cache_flush_filename(const StringPiece& sp) {
+    sp.CopyToString(&cache_flush_filename_);
+  }
 
  private:
   ApacheRewriteDriverFactory* apache_factory_;
@@ -108,11 +115,12 @@ class ApacheResourceManager : public ResourceManager {
 
   // State used to implement periodic polling of $FILE_PREFIX/cache.flush.
   // last_cache_flush_check_sec_ is ctor-initialized to 0 so the first
-  // time we Poll we will read the file.  If cache_flush_check_interval_sec_<=0
+  // time we Poll we will read the file.  If cache_flush_poll_interval_sec_<=0
   // then we turn off polling for cache-flushes.
   scoped_ptr<AbstractMutex> cache_flush_mutex_;
   int64 last_cache_flush_check_sec_;  // seconds since 1970
-  int64 cache_flush_check_interval_sec_;
+  int64 cache_flush_poll_interval_sec_;
+  GoogleString cache_flush_filename_;
 
   Variable* cache_flush_count_;
 
