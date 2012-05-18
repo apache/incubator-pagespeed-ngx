@@ -170,7 +170,7 @@
       'targets': [
         {
           'target_name': 'highgui',
-          'type': 'settings',
+          'type': 'none',
           'cflags': [
             '<!@(pkg-config --cflags opencv)',
           ],

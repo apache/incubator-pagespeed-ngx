@@ -201,7 +201,7 @@
         },
         {
           'target_name': 'apr',
-          'type': 'settings',
+          'type': 'none',
           'dependencies': [
             'include',
           ],

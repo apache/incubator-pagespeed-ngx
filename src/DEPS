@@ -60,7 +60,10 @@ vars = {
   "re2_revision": "@2",
 
   "gyp_src": "http://gyp.googlecode.com/svn/trunk/",
-  "gyp_revision": "@1188",
+  # This version of gyp is new enough that it knows to use make for Linux 3.x
+  # and FreeBSD, but old enough that 'type': 'settings' works and
+  # LINKER_SUPPORTS_ICF hasn't been removed yet.
+  "gyp_revision": "@1175",
 }
 
 deps = {

@@ -142,7 +142,7 @@
         },
         {
           'target_name': 'aprutil',
-          'type': 'settings',
+          'type': 'none',
           'dependencies': [
             'include',
           ],
