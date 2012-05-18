@@ -117,6 +117,16 @@ bool CacheExtender::ShouldRewriteResource(
   }
   UrlNamer* url_namer = driver_->resource_manager()->url_namer();
   GoogleUrl origin_gurl(url);
+
+  // We won't initiate a CacheExtender::Context with a pagespeed
+  // resource URL.  However, an upstream filter might have rewritten
+  // the resource after we queued the request, but before our
+  // context is asked to rewrite it.  So we have to check again now
+  // that the resource URL is finalized.
+  if (resource_manager_->IsPagespeedResource(origin_gurl)) {
+    return false;
+  }
+
   if (url_namer->ProxyMode()) {
     return !url_namer->IsProxyEncoded(origin_gurl);
   }

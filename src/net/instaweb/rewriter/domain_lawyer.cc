@@ -628,18 +628,34 @@ bool DomainLawyer::ShardDomain(const StringPiece& domain_name,
 
 bool DomainLawyer::WillDomainChange(const StringPiece& domain_name) const {
   GoogleUrl domain_gurl(NormalizeDomainName(domain_name));
-  Domain* domain = FindDomain(domain_gurl);
+  Domain* domain = FindDomain(domain_gurl), *mapped_domain = domain;
   if (domain != NULL) {
-    if (domain->num_shards() != 0) {
-      return true;
+    // First check a mapping based on AddRewriteDomainMapping.
+    mapped_domain = domain->rewrite_domain();
+    if (mapped_domain == NULL)  {
+      // Even if there was no AddRewriteDomainMapping for this domain, there
+      // may still have been shards.
+      mapped_domain = domain;
     }
-    if (domain->rewrite_domain() != NULL) {
-      if (domain->rewrite_domain() != domain) {
-        return true;
+
+    // Now check mappings from the shard.
+    if (mapped_domain->num_shards() != 0) {
+      if (mapped_domain->num_shards() == 1) {
+        // Usually we don't expect exactly one shard, but if there is,
+        // we know exactly what it will be.
+        mapped_domain = mapped_domain->shard(0);
+      } else {
+        // We don't have enough data in this function to determine what
+        // the shard index will be, so we assume pessimistically that
+        // the domain will change.
+        //
+        // TODO(jmarantz): rename this method to MayDomainChange, or
+        // pass in the sharding index.
+        mapped_domain = NULL;
       }
     }
   }
-  return false;
+  return domain != mapped_domain;
 }
 
 bool DomainLawyer::DoDomainsServeSameContent(

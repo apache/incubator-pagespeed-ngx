@@ -741,6 +741,19 @@ TEST_F(DomainLawyerTest, WillDomainChange) {
   EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://other_domain.com/"));
 }
 
+TEST_F(DomainLawyerTest, WillDomainChangeOnlyOneShard) {
+  ASSERT_TRUE(AddShard("foo.com", "bar1.com"));
+  ASSERT_TRUE(AddRewriteDomainMapping("http://cdn.com", "http://origin.com"));
+  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://foo.com/"));
+  EXPECT_TRUE(domain_lawyer_.WillDomainChange("foo.com/"));
+  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://foo.com"));
+  EXPECT_TRUE(domain_lawyer_.WillDomainChange("foo.com"));
+  EXPECT_TRUE(domain_lawyer_.WillDomainChange("http://origin.com/"));
+  EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://bar1.com/"));
+  EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://cdn.com/"));
+  EXPECT_FALSE(domain_lawyer_.WillDomainChange("http://other_domain.com/"));
+}
+
 TEST_F(DomainLawyerTest, MapRewriteToOriginDomain) {
   ASSERT_TRUE(AddRewriteDomainMapping("rewrite.com", "myhost.com"));
   ASSERT_TRUE(AddOriginDomainMapping("localhost", "myhost.com"));

@@ -584,6 +584,28 @@ TEST_F(CacheExtenderTest, DefangHtml) {
              CssLinkHref(Encode(kTestDomain, "ce", "0", "a.xml", "txt"))));
 }
 
+// Negative test to ensure we do not cache-extend CSS that was already
+// minified (and thus has a long cache lifetime).
+TEST_F(CacheExtenderTest, DoNotExtendRewrittenCss) {
+  static const char kRewriteDomain[] = "http://rewrite.example.com/";
+  static const char kShard1Domain[] = "http://shard1.example.com/";
+  static const char kShard2Domain[] = "http://shard2.example.com/";
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  lawyer->AddRewriteDomainMapping(kRewriteDomain, kTestDomain,
+                                  message_handler());
+  lawyer->AddShard(kRewriteDomain,
+                   StrCat(kShard1Domain, ",", kShard2Domain),
+                   message_handler());
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  InitTest(kShortTtlSec);
+  ValidateExpected(
+      "do_not_extend_rewritten_css",
+      StringPrintf(kCssFormat, kCssFile),
+      StringPrintf(kCssFormat, Encode(
+          StrCat(kShard1Domain, kCssSubdir), RewriteOptions::kCssFilterId,
+          "0", kCssTail, "css").c_str()));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb
