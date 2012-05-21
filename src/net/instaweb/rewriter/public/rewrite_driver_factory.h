@@ -283,9 +283,14 @@ class RewriteDriverFactory {
   void StopCacheWrites();
   StringPiece filename_prefix();
 
+  // Used by subclasses to indicate that a ResourceManager has been
+  // terminated.  Returns true if this was the last resource manager
+  // known to this factory.
+  bool TerminateResourceManager(ResourceManager* rm);
+
   // Implementors of RewriteDriverFactory must supply default definitions
   // for each of these methods, although they may be overridden via set_
-  // methods above
+  // methods above.
   virtual UrlFetcher* DefaultUrlFetcher() = 0;
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher() = 0;
   virtual MessageHandler* DefaultHtmlParseMessageHandler() = 0;

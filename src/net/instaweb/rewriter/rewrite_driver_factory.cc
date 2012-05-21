@@ -610,6 +610,12 @@ void RewriteDriverFactory::StopCacheWrites() {
   }
 }
 
+bool RewriteDriverFactory::TerminateResourceManager(ResourceManager* rm) {
+  ScopedMutex lock(resource_manager_mutex_.get());
+  resource_managers_.erase(rm);
+  return resource_managers_.empty();
+}
+
 void RewriteDriverFactory::ShutDown() {
   StopCacheWrites();  // Maybe already stopped, but no harm stopping them twice.
 

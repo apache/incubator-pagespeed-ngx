@@ -477,7 +477,15 @@ bool ApacheRewriteDriverFactory::PoolDestroyed(ApacheResourceManager* rm) {
   if (uninitialized_managers_.erase(rm) == 1) {
     delete rm;
   }
-  return uninitialized_managers_.empty();
+
+  // Returns true if all the ResourceManagers known by the factory and its
+  // superclass are finished.  Then it's time to destroy the factory.  Note
+  // that ApacheRewriteDriverFactory keeps track of ResourceManagers that
+  // are partially constructed.  RewriteDriverFactory keeps track of
+  // ResourceManagers that are already serving requests.  We need to clean
+  // all of them out before we can terminate the driver.
+  bool no_active_resource_managers = TerminateResourceManager(rm);
+  return (no_active_resource_managers && uninitialized_managers_.empty());
 }
 
 RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptions() {
