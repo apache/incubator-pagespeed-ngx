@@ -171,11 +171,11 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     // Phew! Load them both. bar-then-foo.css should use cached data.
     ValidateRewriteExternalCss("flatten_then_cache_extend_nested1",
                                top1_before, top1_after,
-                               kExpectChange | kExpectSuccess |
+                               kExpectSuccess |
                                kNoOtherContexts | kNoClearFetcher);
     ValidateRewriteExternalCss("flatten_then_cache_extend_nested2",
                                top2_before, top2_after,
-                               kExpectChange | kExpectSuccess |
+                               kExpectSuccess |
                                kNoOtherContexts | kNoClearFetcher);
   }
 
@@ -269,26 +269,22 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
 
       ValidateRewriteExternalCss("flatten_nested_media",
                                  css_in, css_out,
-                                 kExpectChange | kExpectSuccess |
-                                 kNoOtherContexts | kNoClearFetcher |
-                                 meta_tag_flag);
+                                 kExpectSuccess | kNoOtherContexts |
+                                 kNoClearFetcher | meta_tag_flag);
       // Check things work when data is already cached.
       ValidateRewriteExternalCss("flatten_nested_media_repeat",
                                  css_in, css_out,
-                                 kExpectChange | kExpectSuccess |
-                                 kNoOtherContexts | kNoClearFetcher |
-                                 meta_tag_flag);
+                                 kExpectSuccess | kNoOtherContexts |
+                                 kNoClearFetcher | meta_tag_flag);
     } else {
       ValidateRewriteExternalCss("flatten_nested_media",
                                  css_in, css_in,
-                                 kExpectChange | kExpectSuccess |
-                                 kNoOtherContexts | kNoClearFetcher |
-                                 meta_tag_flag);
+                                 kExpectSuccess | kNoOtherContexts |
+                                 kNoClearFetcher | meta_tag_flag);
       ValidateRewriteExternalCss("flatten_nested_media_repeat",
                                  css_in, css_in,
-                                 kExpectChange | kExpectSuccess |
-                                 kNoOtherContexts | kNoClearFetcher |
-                                 meta_tag_flag);
+                                 kExpectSuccess | kNoOtherContexts |
+                                 kNoClearFetcher | meta_tag_flag);
     }
   }
 
@@ -309,9 +305,7 @@ TEST_F(CssFlattenImportsTest, FlattenInlineCss) {
 
   SetResponseWithDefaultHeaders(kFilename, kContentTypeCss, css_out, 100);
 
-  ValidateRewriteInlineCss("flatten_simple",
-                           css_in, css_out,
-                           kExpectChange | kExpectSuccess);
+  ValidateRewriteInlineCss("flatten_simple", css_in, css_out, kExpectSuccess);
   // TODO(sligocki): This suggests that we grew the number of bytes, which is
   // misleading because originally, the user would have loaded both files
   // and now they will only load one. So total bytes are less.
@@ -349,7 +343,7 @@ TEST_F(CssFlattenImportsTest, FlattenNoop) {
 
   ValidateRewriteExternalCss("flatten_noop",
                              contents, contents,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
 }
 
@@ -359,7 +353,7 @@ TEST_F(CssFlattenImportsTest, Flatten404) {
 
   ValidateRewriteExternalCss("flatten_404",
                              css_in, css_in,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
 }
 
@@ -367,13 +361,13 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
   const char kInvalidMediaCss[] = "@media }}";
   ValidateRewriteExternalCss("flatten_invalid_css_media",
                              kInvalidMediaCss, kInvalidMediaCss,
-                             kExpectNoChange | kExpectFailure);
+                             kExpectFailure);
   EXPECT_EQ(1, num_parse_failures_->Get());
 
   const char kInvalidImportCss[] = "@import styles.css; a { color:red }";
   ValidateRewriteExternalCss("flatten_invalid_css_import",
                              kInvalidImportCss, kInvalidImportCss,
-                             kExpectNoChange | kExpectFailure);
+                             kExpectFailure);
   EXPECT_EQ(1, num_parse_failures_->Get());
 
   // This gets a parse error but thanks to the idea of "unparseable sections"
@@ -390,14 +384,13 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
 
   ValidateRewriteExternalCss("flatten_invalid_css_rule",
                              kInvalidRuleCss, kFlattenedInvalidCss,
-                             kExpectChange | kExpectSuccess | kNoClearFetcher);
+                             kExpectSuccess | kNoClearFetcher);
   EXPECT_EQ(0, num_parse_failures_->Get());
 }
 
 TEST_F(CssFlattenImportsTest, FlattenEmptyMedia) {
   ValidateRewriteExternalCss("flatten_empty_media",
-                             "@media {}", "",
-                             kExpectChange | kExpectSuccess);
+                             "@media {}", "", kExpectSuccess);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenSimple) {
@@ -412,11 +405,11 @@ TEST_F(CssFlattenImportsTest, FlattenSimple) {
 
   ValidateRewriteExternalCss("flatten_simple",
                              css_in, css_out,
-                             kExpectChange | kExpectSuccess | kNoClearFetcher);
+                             kExpectSuccess | kNoClearFetcher);
   // Check things work when data is already cached.
   ValidateRewriteExternalCss("flatten_simple_repeat",
                              css_in, css_out,
-                             kExpectChange | kExpectSuccess | kNoOtherContexts);
+                             kExpectSuccess | kNoOtherContexts);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenEmpty) {
@@ -428,11 +421,11 @@ TEST_F(CssFlattenImportsTest, FlattenEmpty) {
 
   ValidateRewriteExternalCss("flatten_empty",
                              css_in, css_out,
-                             kExpectChange | kExpectSuccess | kNoClearFetcher);
+                             kExpectSuccess | kNoClearFetcher);
   // Check things work when data is already cached.
   ValidateRewriteExternalCss("flatten_empty_repeat",
                              css_in, css_out,
-                             kExpectChange | kExpectSuccess | kNoOtherContexts);
+                             kExpectSuccess | kNoOtherContexts);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenSimpleRewriteOnTheFly) {
@@ -483,7 +476,7 @@ TEST_F(CssFlattenImportsTest, FlattenNested) {
 
   ValidateRewriteExternalCss("flatten_nested",
                              css_in, kFlattenedTopCssContents,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
 }
 
@@ -498,7 +491,7 @@ TEST_F(CssFlattenImportsTest, FlattenFromCacheDirectly) {
                                kTopCssFile, ") ;");
   ValidateRewriteExternalCss("flatten_from_cache_directly",
                              css_in, kFlattenedTopCssContents,
-                             kExpectChange | kExpectSuccess | kNoClearFetcher);
+                             kExpectSuccess | kNoClearFetcher);
 
   // Check cache activity: everything cached has been inserted, no reinserts,
   // no deletes. Then note values we check against below.
@@ -514,11 +507,10 @@ TEST_F(CssFlattenImportsTest, FlattenFromCacheDirectly) {
   // total_bytes_saved_->Get() == 0 instead of negative something.
   ValidateRewriteExternalCss("flatten_from_cache_directly",
                              css_in, kFlattenedTopCssContents,
-                             kExpectChange | kExpectSuccess | kNoStatCheck |
-                             kNoOtherContexts);
+                             kExpectSuccess | kNoStatCheck | kNoOtherContexts);
 
   // Check that everything was read from the cache in one hit, taking into
-  // account that ValidateRewriteExternalCss with kExpectChange also reads
+  // account that ValidateRewriteExternalCss with kExpectSuccess also reads
   // the resource after rewriting it, hence there will be TWO cache hits.
   EXPECT_EQ(num_elements, lru_cache()->num_elements());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -530,7 +522,7 @@ TEST_F(CssFlattenImportsTest, FlattenFromCacheDirectly) {
   css_in = StrCat("@import url(http://test.com/", kTwoLevelsDownFile1, ") ;");
   ValidateRewriteExternalCss("flatten_from_cache_directly_repeat",
                              css_in, kTwoLevelsDownContents1,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
 
   // The sequence in this case, for the new external link (_repeat on the end):
@@ -541,7 +533,7 @@ TEST_F(CssFlattenImportsTest, FlattenFromCacheDirectly) {
   // INSERT for the rewritten external link's URL.
   // INSERT for the rewritten external link's partition key.
   // HIT    for the rewritten external link's URL (from the fetch done by
-  //     ValidateRewriteExternalCss with the kExpectChange flag).
+  //     ValidateRewriteExternalCss with the kExpectSuccess flag).
   // So, 3 new elements, 2 new misses, 2 new hits.
   EXPECT_EQ(num_elements + 3, lru_cache()->num_elements());
   EXPECT_EQ(2, lru_cache()->num_misses());
@@ -559,7 +551,7 @@ TEST_F(CssFlattenImportsTest, FlattenFromCacheIndirectly) {
                                kTopCssFile, ") ;");
   ValidateRewriteExternalCss("flatten_from_cache_indirectly",
                              css_in, kFlattenedTopCssContents,
-                             kExpectChange | kExpectSuccess | kNoClearFetcher);
+                             kExpectSuccess | kNoClearFetcher);
 
   // Check cache activity: everything cached has been inserted, no reinserts,
   // no deletes. Then note values we check against below.
@@ -576,7 +568,7 @@ TEST_F(CssFlattenImportsTest, FlattenFromCacheIndirectly) {
   SetResponseWithDefaultHeaders(filename, kContentTypeCss, contents, 100);
   ValidateRewriteExternalCss("flatten_from_cache_indirectly_repeat",
                              css_in, kFlattenedOneLevelDownContents1,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
 
   // The sequence in this case, for the new external link (_repeat on the end):
@@ -592,7 +584,7 @@ TEST_F(CssFlattenImportsTest, FlattenFromCacheIndirectly) {
   // INSERT for the rewritten external link's URL.
   // INSERT for the rewritten external link's partition key.
   // HIT    for the rewritten external link's URL (from the fetch done by
-  //     ValidateRewriteExternalCss with the kExpectChange flag).
+  //     ValidateRewriteExternalCss with the kExpectSuccess flag).
   // So, 6 new elements, 4 new misses, 2 new hits.
   EXPECT_EQ(num_elements + 6, lru_cache()->num_elements());
   EXPECT_EQ(4, lru_cache()->num_misses());
@@ -621,13 +613,13 @@ TEST_F(CssFlattenImportsTest, CacheExtendsAfterFlattening) {
 
   ValidateRewriteExternalCss("flatten_then_cache_extend",
                              css_before, css_after,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
 
   // Test when everything is already cached.
   ValidateRewriteExternalCss("flatten_then_cache_extend_repeat",
                              css_before, css_after,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
 }
 
@@ -651,7 +643,7 @@ TEST_F(CssFlattenImportsTest, FlattenRecursion) {
 
   ValidateRewriteExternalCss("flatten_recursive",
                              css_in, css_in,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
 }
 
@@ -669,12 +661,12 @@ TEST_F(CssFlattenImportsTest, FlattenSimpleMedia) {
 
   ValidateRewriteExternalCss("flatten_simple_media",
                              css_in, css_out,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
   // Check things work when data is already cached.
   ValidateRewriteExternalCss("flatten_simple_media_repeat",
                              css_in, css_out,
-                             kExpectChange | kExpectSuccess | kNoOtherContexts);
+                             kExpectSuccess | kNoOtherContexts);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenNestedMedia) {
@@ -738,12 +730,12 @@ TEST_F(CssFlattenImportsTest, FlattenNestedMedia) {
 
   ValidateRewriteExternalCss("flatten_nested_media",
                              css_in, css_out,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
   // Check things work when data is already cached.
   ValidateRewriteExternalCss("flatten_nested_media_repeat",
                              css_in, css_out,
-                             kExpectChange | kExpectSuccess | kNoOtherContexts);
+                             kExpectSuccess | kNoOtherContexts);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
@@ -768,7 +760,7 @@ TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
       StrCat("@import url(http://test.com/", kFilename, ") screen ;");
   ValidateRewriteExternalCss("flatten_mixed_media_screen",
                              screen_in, css_screen,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
   // The sequence is:
   // MISS   for the external link's partition key.
@@ -782,7 +774,7 @@ TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
   // INSERT for the rewritten external link's URL.
   // INSERT for the rewritten external link's partition key.
   // HIT    for the rewritten external link's URL (from the fetch done by
-  //        ValidateRewriteExternalCss with the kExpectChange flag).
+  //        ValidateRewriteExternalCss with the kExpectSuccess flag).
   // So, 6 inserts, 4 misses, 1 hit.
   EXPECT_EQ(6, lru_cache()->num_elements());
   EXPECT_EQ(6, lru_cache()->num_inserts());
@@ -796,7 +788,7 @@ TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
       StrCat("@import url(http://test.com/", kFilename, ") print ;");
   ValidateRewriteExternalCss("flatten_mixed_media_print",
                              print_in, css_print,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
 
   // The sequence in this case, for the new external link (_repeat on the end):
@@ -811,7 +803,7 @@ TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
   // INSERT for the rewritten external link's URL.
   // INSERT for the rewritten external link's partition key.
   // HIT    for the rewritten external link's URL (from the fetch done by
-  //        ValidateRewriteExternalCss with the kExpectChange flag).
+  //        ValidateRewriteExternalCss with the kExpectSuccess flag).
   // So, 5 inserts, 1 delete, 3 misses, 2 hits.
   EXPECT_EQ(10, lru_cache()->num_elements());
   EXPECT_EQ(11, lru_cache()->num_inserts());
@@ -825,7 +817,7 @@ TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
   // key which has the correct data for screen.
   ValidateRewriteExternalCss("flatten_mixed_media_screen_repeat",
                              screen_in, css_screen,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
   // The sequence is:
   // MISS   for the external link's partition key.
@@ -835,7 +827,7 @@ TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
   // INSERT for the rewritten external link's URL.
   // INSERT for the rewritten external link's partition key.
   // HIT    for the rewritten external link's URL (from the fetch done by
-  //        ValidateRewriteExternalCss with the kExpectChange flag).
+  //        ValidateRewriteExternalCss with the kExpectSuccess flag).
   // So, 3 inserts, 2 misses, 2 hit.
   EXPECT_EQ(13, lru_cache()->num_elements());
   EXPECT_EQ(14, lru_cache()->num_inserts());
@@ -846,7 +838,7 @@ TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
   // Ditto for re-fetching print.
   ValidateRewriteExternalCss("flatten_mixed_media_print_repeat",
                              print_in, css_print,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher);
   // The sequence is:
   // MISS   for the external link's partition key.
@@ -856,7 +848,7 @@ TEST_F(CssFlattenImportsTest, FlattenCacheDependsOnMedia) {
   // INSERT for the rewritten external link's URL.
   // INSERT for the rewritten external link's partition key.
   // HIT    for the rewritten external link's URL (from the fetch done by
-  //        ValidateRewriteExternalCss with the kExpectChange flag).
+  //        ValidateRewriteExternalCss with the kExpectSuccess flag).
   // So, 3 inserts, 2 misses, 2 hit.
   EXPECT_EQ(16, lru_cache()->num_elements());
   EXPECT_EQ(17, lru_cache()->num_inserts());
@@ -888,7 +880,7 @@ TEST_F(CssFlattenImportsTest, FlattenFailsIfLinkHasWrongCharset) {
 
   ValidateRewriteExternalCss("flatten_link_charset",
                              css_in, css_in,
-                             kExpectChange | kExpectSuccess |
+                             kExpectSuccess |
                              kNoOtherContexts | kNoClearFetcher |
                              kLinkCharsetIsUTF8);
 }

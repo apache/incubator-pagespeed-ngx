@@ -218,8 +218,8 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
   // At first try, not even the CSS gets loaded, so nothing gets
   // changed at all.
   ValidateRewriteExternalCss(
-      "wip", beforeCss, beforeCss, kNoOtherContexts | kNoClearFetcher |
-      kExpectNoChange | kExpectSuccess);
+      "wip", beforeCss, beforeCss,
+      kExpectNoChange | kNoOtherContexts | kNoClearFetcher);
 
   // Allow the images to load
   CallFetcherCallbacks();
@@ -235,8 +235,8 @@ TEST_F(CssImageCombineTest, SpritesImagesExternal) {
       "#div2{background:transparent url(", sprite,
       ");width:10px;height:10px;background-position:0px -70px}");
   ValidateRewriteExternalCss(
-      "wip", beforeCss, spriteCss, kNoOtherContexts | kNoClearFetcher |
-      kExpectChange | kExpectSuccess | kNoStatCheck);
+      "wip", beforeCss, spriteCss,
+      kExpectSuccess | kNoOtherContexts | kNoClearFetcher | kNoStatCheck);
 }
 
 TEST_F(CssImageCombineTest, SpritesOkAfter404) {

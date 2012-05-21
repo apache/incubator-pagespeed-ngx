@@ -57,37 +57,49 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
   }
 
   enum ValidationFlags {
-    kExpectNoChange = 1,
-    kExpectChange = 2,
-    kExpectFailure = 4,
-    kExpectSuccess = 8,
+    kExpectSuccess = 1,   // CSS parser succeeds and URL should be rewritten.
+    kExpectNoChange = 2,  // CSS parser succeeds but URL not rewritten because
+                          // we increased the size of contents.
+    kExpectFallback = 4,  // CSS parser fails, fallback succeeds.
+    kExpectFailure = 8,   // CSS parser fails, fallback failed or disabled.
+
+    // TODO(sligocki): Explain why we turn off stats check at each use-site.
     kNoStatCheck = 16,
+    // TODO(sligocki): Why would we ever want to clear fetcher?
     kNoClearFetcher = 32,
+    // TODO(sligocki): Explain why we turn off other contexts.
     kNoOtherContexts = 64,
+
     kLinkCharsetIsUTF8 = 128,
     kLinkScreenMedia = 256,
     kLinkPrintMedia = 512,
+
     kMetaCharsetUTF8 = 1024,
     kMetaCharsetISO88591 = 2048,
     kMetaHttpEquiv = 4096,
-    kMetaHttpEquivUnquoted = 8192
+    kMetaHttpEquivUnquoted = 8192,
   };
 
   static bool ExactlyOneTrue(bool a, bool b) {
     return a ^ b;
+  }
+  static bool ExactlyOneTrue(bool a, bool b, bool c) {
+    return ExactlyOneTrue(a, ExactlyOneTrue(b, c));
+  }
+  static bool ExactlyOneTrue(bool a, bool b, bool c, bool d) {
+    return ExactlyOneTrue(a, ExactlyOneTrue(b, c, d));
   }
 
   bool FlagSet(int flags, ValidationFlags f) {
     return (flags & f) != 0;
   }
 
-  // Sanity check on flags passed in -- should specify exactly
-  // one of kExpectChange/kExpectNoChange and kExpectFailure/kExpectSuccess
+  // Sanity check on flags passed in.
   void CheckFlags(int flags) {
-    CHECK(ExactlyOneTrue(FlagSet(flags, kExpectChange),
-                         FlagSet(flags, kExpectNoChange)));
-    CHECK(ExactlyOneTrue(FlagSet(flags, kExpectFailure),
-                         FlagSet(flags, kExpectSuccess)));
+    CHECK(ExactlyOneTrue(FlagSet(flags, kExpectSuccess),
+                         FlagSet(flags, kExpectNoChange),
+                         FlagSet(flags, kExpectFallback),
+                         FlagSet(flags, kExpectFailure)));
   }
 
   // Check that inline CSS gets rewritten correctly.
@@ -129,7 +141,7 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
   void ValidateRewrite(const StringPiece& id,
                        const GoogleString& css_input,
                        const GoogleString& gold_output,
-                       int flags = kExpectChange | kExpectSuccess) {
+                       int flags) {
     ValidateRewriteInlineCss(StrCat(id, "-inline"),
                              css_input, gold_output, flags);
     ValidateRewriteExternalCss(StrCat(id, "-external"),
@@ -137,7 +149,7 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
   }
 
   void ValidateFailParse(const StringPiece& id, const GoogleString& css_input) {
-    ValidateRewrite(id, css_input, css_input, kExpectNoChange | kExpectFailure);
+    ValidateRewrite(id, css_input, css_input, kExpectFailure);
   }
 
   // Reset all Variables.

@@ -68,13 +68,9 @@ TEST_F(CssImageRewriterTest, CacheExtendsImagesSimple) {
              Encode(kTestDomain, "ce", "0", "foo.png", "png"),
              ")}");
 
-  ValidateRewriteInlineCss("cache_extends_images-inline",
-                           css_before, css_after,
-                           kExpectChange | kExpectSuccess);
-  ValidateRewriteExternalCss("cache_extends_images-external",
-                             css_before, css_after,
-                             kExpectChange | kExpectSuccess |
-                             kNoOtherContexts | kNoClearFetcher);
+  ValidateRewrite("cache_extends_images",
+                  css_before, css_after,
+                  kExpectSuccess | kNoOtherContexts | kNoClearFetcher);
 }
 
 TEST_F(CssImageRewriterTest, CacheExtendsImagesEmbeddedComma) {
@@ -94,13 +90,9 @@ TEST_F(CssImageRewriterTest, CacheExtendsImagesEmbeddedComma) {
              Encode(kTestDomain, "ce", "0", kImageUrl, "png"),
              ")}");
 
-  ValidateRewriteInlineCss("cache_extends_images-inline",
-                           css_before, css_after,
-                           kExpectChange | kExpectSuccess);
-  ValidateRewriteExternalCss("cache_extends_images-external",
-                             css_before, css_after,
-                             kExpectChange | kExpectSuccess |
-                             kNoOtherContexts | kNoClearFetcher);
+  ValidateRewrite("cache_extends_images",
+                  css_before, css_after,
+                  kExpectSuccess | kNoOtherContexts | kNoClearFetcher);
 }
 
 TEST_F(CssImageRewriterTest, CacheExtendsImagesEmbeddedSpace) {
@@ -118,13 +110,9 @@ TEST_F(CssImageRewriterTest, CacheExtendsImagesEmbeddedSpace) {
              Encode(kTestDomain, "ce", "0", "foo%20bar.png", "png"),
              ")}");
 
-  ValidateRewriteInlineCss("cache_extends_images-inline",
-                           css_before, css_after,
-                           kExpectChange | kExpectSuccess);
-  ValidateRewriteExternalCss("cache_extends_images-external",
-                             css_before, css_after,
-                             kExpectChange | kExpectSuccess |
-                             kNoOtherContexts | kNoClearFetcher);
+  ValidateRewrite("cache_extends_images",
+                  css_before, css_after,
+                  kExpectSuccess | kNoOtherContexts | kNoClearFetcher);
 }
 
 TEST_F(CssImageRewriterTest, MinifyImagesEmbeddedSpace) {
@@ -139,13 +127,9 @@ TEST_F(CssImageRewriterTest, MinifyImagesEmbeddedSpace) {
   static const char css_after[] =
       "body{background-image:url(foo bar.png)}";
 
-  ValidateRewriteInlineCss("cache_extends_images-inline",
-                           css_before, css_after,
-                           kExpectChange | kExpectSuccess);
-  ValidateRewriteExternalCss("cache_extends_images-external",
-                             css_before, css_after,
-                             kExpectChange | kExpectSuccess |
-                             kNoOtherContexts | kNoClearFetcher);
+  ValidateRewrite("cache_extends_images",
+                  css_before, css_after,
+                  kExpectSuccess | kNoOtherContexts | kNoClearFetcher);
 }
 
 TEST_F(CssImageRewriterTest, CacheExtendsWhenCssGrows) {
@@ -165,13 +149,9 @@ TEST_F(CssImageRewriterTest, CacheExtendsWhenCssGrows) {
              Encode(kTestDomain, "ce", "0", "foo.png", "png)"),
              "}");
 
-  ValidateRewriteInlineCss("cache_extends_images_growcheck-inline",
-                           css_before, css_after,
-                           kExpectChange | kExpectSuccess);
-  ValidateRewriteExternalCss("cache_extends_images_growcheck-external",
-                             css_before, css_after,
-                             kExpectChange | kExpectSuccess |
-                             kNoOtherContexts | kNoClearFetcher);
+  ValidateRewrite("cache_extends_images_growcheck",
+                  css_before, css_after,
+                  kExpectSuccess | kNoOtherContexts | kNoClearFetcher);
 }
 
 TEST_F(CssImageRewriterTest, CacheExtendsRepeatedTopLevel) {
@@ -246,15 +226,10 @@ TEST_F(CssImageRewriterTest, CacheExtendsImages) {
       "-proprietary-background-property:url(foo.png)}");
 
   // Can't serve from new contexts yet, because we're using mock_fetcher_.
-  // TODO(sligocki): Resolve that and the just have:
-  // ValidateRewriteInlineCss("cache_extends_images", css_before, css_after);
-  ValidateRewriteInlineCss("cache_extends_images-inline",
-                           css_before, css_after,
-                           kExpectChange | kExpectSuccess);
-  ValidateRewriteExternalCss("cache_extends_images-external",
-                             css_before, css_after,
-                             kExpectChange | kExpectSuccess |
-                             kNoOtherContexts | kNoClearFetcher);
+  // TODO(sligocki): Resolve that.
+  ValidateRewrite("cache_extends_images",
+                  css_before, css_after,
+                  kExpectSuccess | kNoOtherContexts | kNoClearFetcher);
 }
 
 // See TrimsImageUrls below: change one, change them both!
@@ -274,7 +249,7 @@ TEST_F(CssImageRewriterTest, TrimsImageUrls) {
       ")}");
 
   ValidateRewriteExternalCss("trims_css_urls", kCss, kCssAfter,
-                              kExpectChange | kExpectSuccess |
+                              kExpectSuccess |
                               kNoOtherContexts | kNoClearFetcher);
 }
 
@@ -307,7 +282,7 @@ TEST_F(CssImageRewriterTestUrlNamer, TrimsImageUrls) {
       ")}");
 
   ValidateRewriteExternalCss("trims_css_urls", kCss, kCssAfter,
-                              kExpectChange | kExpectSuccess |
+                              kExpectSuccess |
                               kNoOtherContexts | kNoClearFetcher);
 }
 
@@ -335,17 +310,14 @@ TEST_F(CssImageRewriterTest, InlinePaths) {
       "body{background-image:url(",
       Encode("dir/", "ce", "0", "foo.png", "png"),
       ")}");
-  ValidateRewriteInlineCss("nosubdir",
-                           kCssBefore, kCssAfter,
-                           kExpectChange | kExpectSuccess);
+  ValidateRewriteInlineCss("nosubdir", kCssBefore, kCssAfter, kExpectSuccess);
 
   const GoogleString kCssAfterRel = StrCat(
       "body{background-image:url(",
       Encode("", "ce", "0", "foo.png", "png"),
       ")}");
-  ValidateRewriteInlineCss("dir/yessubdir",
-                           kCssBefore, kCssAfterRel,
-                           kExpectChange | kExpectSuccess);
+  ValidateRewriteInlineCss("dir/yessubdir", kCssBefore, kCssAfterRel,
+                           kExpectSuccess);
 }
 
 TEST_F(CssImageRewriterTest, RewriteCached) {
@@ -374,12 +346,12 @@ TEST_F(CssImageRewriterTest, RewriteCached) {
       ")}");
   ValidateRewriteInlineCss("nosubdir",
                            kCssBefore, kCssAfter,
-                           kExpectChange | kExpectSuccess);
+                           kExpectSuccess);
 
   statistics()->Clear();
   ValidateRewriteInlineCss("nosubdir2",
                            kCssBefore, kCssAfter,
-                           kExpectChange | kExpectSuccess | kNoStatCheck);
+                           kExpectSuccess | kNoStatCheck);
   // Should not re-serialize. Works only under the new flow...
   EXPECT_EQ(0, total_bytes_saved_->Get());
 }
@@ -388,12 +360,12 @@ TEST_F(CssImageRewriterTest, CacheInlineParseFailures) {
   const char kInvalidCss[] = " div{";
 
   ValidateRewriteInlineCss("inline-invalid", kInvalidCss, kInvalidCss,
-                           kExpectNoChange | kExpectFailure | kNoOtherContexts);
+                           kExpectFailure | kNoOtherContexts);
   EXPECT_EQ(1, num_parse_failures_->Get());
 
   ValidateRewriteInlineCss(
       "inline-invalid2", kInvalidCss, kInvalidCss,
-      kExpectNoChange | kExpectFailure | kNoOtherContexts | kNoStatCheck);
+      kExpectFailure | kNoOtherContexts | kNoStatCheck);
   // Shouldn't reparse -- and stats are reset between runs.
   EXPECT_EQ(0, num_parse_failures_->Get());
 }
@@ -415,7 +387,7 @@ TEST_F(CssImageRewriterTest, RecompressImages) {
       ")}");
 
   ValidateRewriteExternalCss("recompress_css_images", kCss, kCssAfter,
-                              kExpectChange | kExpectSuccess |
+                              kExpectSuccess |
                               kNoOtherContexts | kNoClearFetcher);
 }
 
@@ -451,7 +423,7 @@ TEST_F(CssImageRewriterTest, InlineImages) {
   // (which causes the check to fail).  That eliminates a resource fetch, so it
   // should normally be a net win in practice.
   ValidateRewrite("inline_css_images", kCss, kCssAfter,
-                  kExpectChange | kExpectSuccess |
+                  kExpectSuccess |
                   kNoClearFetcher | kNoStatCheck);
 }
 
@@ -493,11 +465,11 @@ TEST_F(CssImageRewriterTest, InlineImageOnlyInOutlineCss) {
 
   ValidateRewriteInlineCss(
       "no_inline_in_inline", kCss, kCssInlineAfter,
-      kExpectChange | kExpectSuccess | kNoClearFetcher);
+      kExpectSuccess | kNoClearFetcher);
   // Again skip the stat check because we are *increasing* the size of the CSS
   ValidateRewriteExternalCss(
       "inline_in_outline", kCss, kCssExternalAfter,
-      kExpectChange | kExpectSuccess | kNoClearFetcher | kNoStatCheck);
+      kExpectSuccess | kNoClearFetcher | kNoStatCheck);
 }
 
 TEST_F(CssImageRewriterTest, UseCorrectBaseUrl) {

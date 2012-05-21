@@ -76,8 +76,8 @@ void CssRewriteTestBase::ValidateWithStats(
   ValidateExpected(id, html_input, expected_html_output);
 
   // Check stats
-  if (!(flags & kNoStatCheck)) {
-    if (flags & kExpectChange) {
+  if (!FlagSet(flags, kNoStatCheck)) {
+    if (FlagSet(flags, kExpectSuccess)) {
       EXPECT_EQ(1, num_blocks_rewritten_->Get()) << id;
       EXPECT_EQ(0, num_parse_failures_->Get()) << id;
       EXPECT_EQ(0, num_rewrites_dropped_->Get()) << id;
@@ -85,16 +85,22 @@ void CssRewriteTestBase::ValidateWithStats(
                 total_bytes_saved_->Get()) << id;
       EXPECT_EQ(css_input.size(), total_original_bytes_->Get()) << id;
       EXPECT_EQ(1, num_uses_->Get()) << id;
-    } else {
+    } else if (FlagSet(flags, kExpectNoChange)) {
       EXPECT_EQ(0, num_blocks_rewritten_->Get()) << id;
-      if (flags & kExpectFailure) {
-        EXPECT_EQ(1, num_parse_failures_->Get()) << id;
-        EXPECT_EQ(0, num_rewrites_dropped_->Get()) << id;
-      } else {
-        EXPECT_EQ(0, num_parse_failures_->Get()) << id;
-        // TODO(sligocki): Test num_rewrites_dropped_
-        //EXPECT_EQ(1, num_rewrites_dropped_->Get()) << id;
-      }
+      EXPECT_EQ(0, num_parse_failures_->Get()) << id;
+      // TODO(sligocki): Test num_rewrites_dropped_
+      // EXPECT_EQ(1, num_rewrites_dropped_->Get()) << id;
+      EXPECT_EQ(0, total_bytes_saved_->Get()) << id;
+      EXPECT_EQ(0, total_original_bytes_->Get()) << id;
+      EXPECT_EQ(0, num_uses_->Get()) << id;
+    } else if (FlagSet(flags, kExpectFallback)) {
+      CHECK(false) << "kExpectFallback not supported.";
+      // TODO(sligocki): Implement fallback testing.
+    } else {
+      CHECK(FlagSet(flags, kExpectFailure));
+      EXPECT_EQ(0, num_blocks_rewritten_->Get()) << id;
+      EXPECT_EQ(1, num_parse_failures_->Get()) << id;
+      EXPECT_EQ(0, num_rewrites_dropped_->Get()) << id;
       EXPECT_EQ(0, total_bytes_saved_->Get()) << id;
       EXPECT_EQ(0, total_original_bytes_->Get()) << id;
       EXPECT_EQ(0, num_uses_->Get()) << id;
@@ -149,35 +155,35 @@ void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
   CheckFlags(flags);
 
   // Set input file.
-  if ((flags & kNoClearFetcher) == 0) {
+  if (!FlagSet(flags, kNoClearFetcher)) {
     ClearFetcherResponses();
   }
   SetResponseWithDefaultHeaders(css_url, kContentTypeCss, css_input, 300);
 
   GoogleString link_extras("");
-  if ((flags & kLinkCharsetIsUTF8) != 0) {
+  if (FlagSet(flags, kLinkCharsetIsUTF8)) {
     link_extras = " charset='utf-8'";
   }
-  if ((flags & kLinkScreenMedia) != 0 && (flags & kLinkPrintMedia) != 0) {
+  if (FlagSet(flags, kLinkScreenMedia) && FlagSet(flags, kLinkPrintMedia)) {
     StrAppend(&link_extras, " media='screen,print'");
-  } else if ((flags & kLinkScreenMedia) != 0) {
+  } else if (FlagSet(flags, kLinkScreenMedia)) {
     StrAppend(&link_extras, " media='screen'");
-  } else if ((flags & kLinkPrintMedia) != 0) {
+  } else if (FlagSet(flags, kLinkPrintMedia)) {
     StrAppend(&link_extras, " media='print'");
   }
   GoogleString meta_tag("");
-  if ((flags & kMetaCharsetUTF8) != 0) {
+  if (FlagSet(flags, kMetaCharsetUTF8)) {
     StrAppend(&meta_tag, "  <meta charset=\"utf-8\">");
   }
-  if ((flags & kMetaCharsetISO88591) != 0) {
+  if (FlagSet(flags, kMetaCharsetISO88591)) {
     StrAppend(&meta_tag, "  <meta charset=ISO-8859-1>");
   }
-  if ((flags & kMetaHttpEquiv) != 0) {
+  if (FlagSet(flags, kMetaHttpEquiv)) {
     StrAppend(&meta_tag,
               "  <meta http-equiv=\"Content-Type\" "
               "content=\"text/html; charset=UTF-8\">");
   }
-  if ((flags & kMetaHttpEquivUnquoted) != 0) {
+  if (FlagSet(flags, kMetaHttpEquivUnquoted)) {
     // Same as the previous one but content's value isn't quoted!
     StrAppend(&meta_tag,
               "  <meta http-equiv=\"Content-Type\" "
@@ -205,7 +211,7 @@ void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
       Encode(css_gurl.AllExceptLeaf(), namer.id(), namer.hash(),
              namer.name(), namer.ext());
 
-  if (flags & kExpectChange) {
+  if (FlagSet(flags, kExpectSuccess)) {
     html_output = StringPrintf(html_template, meta_tag.c_str(),
                                expected_new_url.c_str(), link_extras.c_str());
   } else {
@@ -216,14 +222,14 @@ void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
                     css_input, expected_css_output, flags);
 
   // If we produced a new output resource, check it.
-  if (flags & kExpectChange) {
+  if (FlagSet(flags, kExpectSuccess)) {
     GoogleString actual_output;
     // TODO(sligocki): This will only work with mock_hasher.
     EXPECT_TRUE(FetchResourceUrl(expected_new_url, &actual_output)) << css_url;
     EXPECT_EQ(expected_css_output, actual_output) << css_url;
 
     // Serve from new context.
-    if ((flags & kNoOtherContexts) == 0) {
+    if (!FlagSet(flags, kNoOtherContexts)) {
       ServeResourceFromManyContexts(expected_new_url, expected_css_output);
     }
   }
@@ -234,8 +240,7 @@ void CssRewriteTestBase::TestCorruptUrl(const char* new_suffix) {
   const char kInput[] = " div { } ";
   const char kOutput[] = "div{}";
   // Compute normal version
-  ValidateRewriteExternalCss("rep", kInput, kOutput,
-                             kExpectChange | kExpectSuccess);
+  ValidateRewriteExternalCss("rep", kInput, kOutput, kExpectSuccess);
 
   // Fetch with messed up extension
   GoogleString css_url = ExpectedUrlForCss("rep", kOutput);
@@ -249,7 +254,7 @@ void CssRewriteTestBase::TestCorruptUrl(const char* new_suffix) {
   // Now see that output is correct
   ValidateRewriteExternalCss(
       "rep", kInput, kOutput,
-      kExpectChange | kExpectSuccess | kNoClearFetcher | kNoStatCheck);
+      kExpectSuccess | kNoClearFetcher | kNoStatCheck);
 }
 
 }  // namespace net_instaweb

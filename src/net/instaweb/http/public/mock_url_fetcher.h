@@ -34,6 +34,7 @@ class RequestHeaders;
 class Writer;
 
 // Simple UrlFetcher meant for tests, you can set responses for individual URLs.
+// Meant only for testing.
 class MockUrlFetcher : public UrlFetcher {
  public:
   MockUrlFetcher() : enabled_(true), fail_on_unexpected_(true),
@@ -78,6 +79,9 @@ class MockUrlFetcher : public UrlFetcher {
 
   // Clear all set responses.
   void Clear();
+
+  // Remove a single response. Will be a no-op if no response was set for url.
+  void RemoveResponse(const StringPiece& url);
 
   // When disabled, fetcher will fail (but not crash) for all requests.
   // Use to simulate temporarily not having access to resources, for example.

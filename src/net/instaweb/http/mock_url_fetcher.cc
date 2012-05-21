@@ -73,12 +73,8 @@ void MockUrlFetcher::SetConditionalResponse(
     const StringPiece& url, int64 last_modified_time, const GoogleString& etag,
     const ResponseHeaders& response_header, const StringPiece& response_body) {
   GoogleString url_string = url.as_string();
-  // Delete any old response.
-  ResponseMap::iterator iter = response_map_.find(url_string);
-  if (iter != response_map_.end()) {
-    delete iter->second;
-    response_map_.erase(iter);
-  }
+  // Remove any old response.
+  RemoveResponse(url);
 
   // Add new response.
   HttpResponse* response = new HttpResponse(last_modified_time, etag,
@@ -90,6 +86,15 @@ void MockUrlFetcher::Clear() {
   STLDeleteContainerPairSecondPointers(response_map_.begin(),
                                        response_map_.end());
   response_map_.clear();
+}
+
+void MockUrlFetcher::RemoveResponse(const StringPiece& url) {
+  GoogleString url_string = url.as_string();
+  ResponseMap::iterator iter = response_map_.find(url_string);
+  if (iter != response_map_.end()) {
+    delete iter->second;
+    response_map_.erase(iter);
+  }
 }
 
 bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,

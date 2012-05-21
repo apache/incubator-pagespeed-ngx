@@ -133,7 +133,7 @@ class CssFilterTest : public CssRewriteTestBase {
 };
 
 TEST_F(CssFilterTest, SimpleRewriteCssTest) {
-  ValidateRewrite("rewrite_css", kInputStyle, kOutputStyle);
+  ValidateRewrite("rewrite_css", kInputStyle, kOutputStyle, kExpectSuccess);
 }
 
 TEST_F(CssFilterTest, RewriteCss404) {
@@ -163,21 +163,21 @@ TEST_F(CssFilterTest, UrlTooLong) {
   // If filename wasn't too long, this would be rewritten (like in
   // SimpleRewriteCssTest).
   ValidateRewriteExternalCss(filename, kInputStyle, kInputStyle,
-                             kExpectNoChange | kExpectSuccess);
+                             kExpectNoChange);
 }
 
 // Make sure we can deal with 0 character nodes between open and close of style.
 TEST_F(CssFilterTest, RewriteEmptyCssTest) {
-  ValidateRewriteInlineCss("rewrite_empty_css-inline", "", "",
-                           kExpectChange | kExpectSuccess | kNoStatCheck);
   // Note: We must check stats ourselves because, for technical reasons,
   // empty inline styles are not treated as being rewritten at all.
+  ValidateRewriteInlineCss("rewrite_empty_css-inline", "", "",
+                           kExpectSuccess | kNoStatCheck);
   EXPECT_EQ(0, num_blocks_rewritten_->Get());
   EXPECT_EQ(0, total_bytes_saved_->Get());
   EXPECT_EQ(0, num_parse_failures_->Get());
 
   ValidateRewriteExternalCss("rewrite_empty_css-external", "", "",
-                             kExpectChange | kExpectSuccess | kNoStatCheck);
+                             kExpectSuccess | kNoStatCheck);
   EXPECT_EQ(0, total_bytes_saved_->Get());
   EXPECT_EQ(0, num_parse_failures_->Get());
 }
@@ -185,15 +185,14 @@ TEST_F(CssFilterTest, RewriteEmptyCssTest) {
 // Make sure we do not recompute external CSS when re-processing an already
 // handled page.
 TEST_F(CssFilterTest, RewriteRepeated) {
-  ValidateRewriteExternalCss("rep", " div { } ", "div{}",
-                             kExpectChange | kExpectSuccess);
+  ValidateRewriteExternalCss("rep", " div { } ", "div{}", kExpectSuccess);
   int inserts_before = lru_cache()->num_inserts();
   EXPECT_EQ(1, num_blocks_rewritten_->Get());  // for factory_
   EXPECT_EQ(1, num_uses_->Get());
 
   ResetStats();
   ValidateRewriteExternalCss("rep", " div { } ", "div{}",
-                             kExpectChange | kExpectSuccess | kNoStatCheck);
+                             kExpectSuccess | kNoStatCheck);
   int inserts_after = lru_cache()->num_inserts();
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
   EXPECT_EQ(inserts_before, inserts_after);
@@ -209,12 +208,11 @@ TEST_F(CssFilterTest, RewriteRepeatedParseError) {
   // generated CSS file names are identical.
   // TODO(sligocki): This is sort of annoying for error reporting which
   // is suposed to use id to uniquely distinguish which test was running.
-  ValidateRewriteExternalCss("rep_fail", kInvalidCss, "",
-                             kExpectNoChange | kExpectFailure);
+  ValidateRewriteExternalCss("rep_fail", kInvalidCss, "", kExpectFailure);
   // First time, we fail to parse.
   EXPECT_EQ(1, num_parse_failures_->Get());
   ValidateRewriteExternalCss("rep_fail", kInvalidCss, "",
-                             kExpectNoChange | kExpectFailure | kNoStatCheck);
+                             kExpectFailure | kNoStatCheck);
   // Second time, we remember failure and so don't try to reparse.
   EXPECT_EQ(0, num_parse_failures_->Get());
 }
@@ -354,7 +352,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
     GoogleString id = StringPrintf("distilled_css_good%d", i);
-    ValidateRewrite(id, good_examples[i], good_examples[i]);
+    ValidateRewrite(id, good_examples[i], good_examples[i], kExpectSuccess);
   }
 
   const char* fail_examples[] = {
@@ -412,7 +410,7 @@ TEST_F(CssFilterTest, ToOptimize) {
 
   for (int i = 0; i < arraysize(examples); ++i) {
     GoogleString id = StringPrintf("to_optimize_%d", i);
-    ValidateRewrite(id, examples[i][0], examples[i][1]);
+    ValidateRewrite(id, examples[i][0], examples[i][1], kExpectSuccess);
   }
 }
 
@@ -877,7 +875,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
 
   for (int i = 0; i < arraysize(examples); ++i) {
     GoogleString id = StringPrintf("complex_css%d", i);
-    ValidateRewrite(id, examples[i][0], examples[i][1]);
+    ValidateRewrite(id, examples[i][0], examples[i][1], kExpectSuccess);
   }
 
   const char* parse_fail_examples[] = {
@@ -927,7 +925,9 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   resource_manager()->ComputeSignature(options());
   ValidateRewrite("expanding_example",
                   "@import url(http://www.example.com)",
-                  "@import url(http://www.example.com) ;");
+                  "@import url(http://www.example.com) ;",
+                  kExpectSuccess);
+
   // With it set false, we do not expand CSS (as long as we didn't do anything
   // else, like rewrite sub-resources.
   options()->ClearSignatureForTesting();
@@ -936,22 +936,20 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   ValidateRewrite("non_expanding_example",
                   "@import url(http://www.example.com)",
                   "@import url(http://www.example.com)",
-                  kExpectNoChange | kExpectSuccess);
-  // Here: kExpectSuccess means there was no error. (Minification that
-  // actually expands the statement is not considered an error.)
+                  kExpectNoChange);
 
   // When we force always_rewrite_css, we allow rewriting something to nothing.
   options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(true);
   resource_manager()->ComputeSignature(options());
-  ValidateRewrite("contracting_example",     "  ", "");
+  ValidateRewrite("contracting_example", "  ", "", kExpectSuccess);
+
   // With it set false, we do not allow something to be minified to nothing.
   // Note: We may allow this in the future if contents are all whitespace.
   options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(false);
   resource_manager()->ComputeSignature(options());
-  ValidateRewrite("non_contracting_example", "  ", "  ",
-                  kExpectNoChange | kExpectFailure);
+  ValidateRewrite("non_contracting_example", "  ", "  ", kExpectFailure);
 }
 
 TEST_F(CssFilterTest, NoQuirksModeForXhtml) {
@@ -960,13 +958,12 @@ TEST_F(CssFilterTest, NoQuirksModeForXhtml) {
   const char no_quirks_css[]  = "body{color:DECAFB}";
 
   // By default we parse the CSS with quirks-mode enabled and "fix" the CSS.
-  ValidateRewrite("quirks_mode", quirky_css, normalized_css,
-                  kExpectChange | kExpectSuccess);
+  ValidateRewrite("quirks_mode", quirky_css, normalized_css, kExpectSuccess);
 
   // But when in XHTML mode, we don't allow CSS quirks.
   SetDoctype(kXhtmlDtd);
   ValidateRewrite("no_quirks_mode", quirky_css, no_quirks_css,
-                  kExpectChange | kExpectSuccess | kNoOtherContexts);
+                  kExpectSuccess | kNoOtherContexts);
   // NOTE: We must set kNoOtherContexts, because this change depends upon the
   // rewriter knowing that the original resource was found in an XHTML page
   // which we don't know if we are recieving a Fetch request and don't have
@@ -1055,11 +1052,13 @@ TEST_F(CssFilterTest, DontAbsolutifyEmptyUrl) {
   // Ensure that an empty URL is left as-is and is not absolutified.
   const char kEmptyUrlRule[] = "#gallery { list-style: none outside url(''); }";
   const char kNoUrlRule[] = "#gallery{list-style:none outside url()}";
-  ValidateRewrite("empty_url_in_rule", kEmptyUrlRule, kNoUrlRule);
+  ValidateRewrite("empty_url_in_rule", kEmptyUrlRule, kNoUrlRule,
+                  kExpectSuccess);
 
   const char kEmptyUrlImport[] = "@import url('');";
   const char kNoUrlImport[] = "@import url() ;";
-  ValidateRewrite("empty_url_in_import", kEmptyUrlImport, kNoUrlImport);
+  ValidateRewrite("empty_url_in_import", kEmptyUrlImport, kNoUrlImport,
+                  kExpectSuccess);
 }
 
 TEST_F(CssFilterTest, DontAbsolutifyUrlsIfNoDomainMapping) {
@@ -1174,8 +1173,7 @@ TEST_F(CssFilterTest, EmptyLeafFetch) {
 TEST_F(CssFilterTest, EmptyLeafFull) {
   // CSS URL ends in /
   ValidateRewriteExternalCssUrl(StrCat(kTestDomain, "style/"),
-                                kInputStyle, kOutputStyle,
-                                kExpectChange | kExpectSuccess);
+                                kInputStyle, kOutputStyle, kExpectSuccess);
 }
 
 class CssFilterTestUrlNamer : public CssFilterTest {
