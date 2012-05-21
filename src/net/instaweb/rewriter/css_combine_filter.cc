@@ -383,7 +383,6 @@ bool CssCombineFilter::CssCombiner::WritePiece(
     Writer* writer, MessageHandler* handler) {
   StringPiece contents = input->contents();
   GoogleUrl input_url(input->url());
-  StringPiece input_dir = input_url.AllExceptLeaf();
   // Strip the BOM off of the contents (if it's there) if this is not the
   // first resource.
   if (index != 0) {
