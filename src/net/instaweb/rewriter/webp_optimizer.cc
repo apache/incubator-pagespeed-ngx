@@ -372,15 +372,20 @@ bool ReduceWebpImageQuality(const GoogleString& original_webp,
   const uint8* webp = reinterpret_cast<const uint8*>(original_webp.data());
   const int webp_size = original_webp.size();
   int width = 0, height = 0;
+  // TODO(jmaessen): code below used to use rgba, but that's still in a state of
+  // flux in libwebp and we aren't at present using the alpha channel.  Change
+  // this code to use 4 color planes and RGBA when transparent webp images
+  // become an active concern.
+  const int kColorPlanes = 3;
   scoped_ptr_malloc<uint8> rgb(
-      WebPDecodeRGBA(webp, webp_size, &width, &height));
+      WebPDecodeRGB(webp, webp_size, &width, &height));
   if (rgb == NULL) {
     // Webp decode function is not able to decode the provided images.
     return false;
   }
-  int stride = width * 4;
+  int stride = width * kColorPlanes;
   uint8* buf;
-  size_t size = WebPEncodeRGBA(rgb.get(), width, height, stride, quality, &buf);
+  size_t size = WebPEncodeRGB(rgb.get(), width, height, stride, quality, &buf);
   if (size == 0) {
     // Webp Encode failed.
     return false;

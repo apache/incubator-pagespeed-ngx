@@ -242,8 +242,11 @@ TEST_F(ImageTest, InputWebpTest) {
       30320, false);
 }
 
-// FYI: Takes ~20000 ms to run under Valgrind.
 TEST_F(ImageTest, WebpLowResTest) {
+  // FYI: Takes ~20000 ms to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
   GoogleString contents;
   ImagePtr image(ReadImageFromFile(Image::IMAGE_WEBP, kScenery, &contents,
                                    false));
@@ -446,8 +449,11 @@ TEST_F(ImageTest, JpegRetainExifDataTest) {
                                     GetExifDataMarker()));
 }
 
-// FYI: Takes ~70000 ms to run under Valgrind.
 TEST_F(ImageTest, WebpTest) {
+  // FYI: Takes ~70000 ms to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
   CheckImageFromFile(
       kPuzzle, Image::IMAGE_JPEG, Image::IMAGE_WEBP,
       8,  // Min bytes to bother checking file type at all.

@@ -307,8 +307,9 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
   // BlinkFlowCriticalLine.
   blink_critical_line_data_.reset(
       finder_->ExtractBlinkCriticalLineData(page, options_));
-  if (blink_critical_line_data_.get() != NULL &&
-      !IsLastResponseCodeInvalid(page)) {
+  // TODO(rahulbansal): Check for the last response code to ensure that the
+  // origin server is not flaky before considering a hit.
+  if (blink_critical_line_data_.get() != NULL) {
     BlinkCriticalLineDataHit();
     return;
   }
