@@ -440,18 +440,34 @@ fetch_until $URL 'grep -c src=\"normal.js\"' 0
 check [ $($WGET_DUMP $URL | grep -c src=\"introspection.js\") = 0 ]
 
 echo TEST: HTML add_instrumentation lacks '&amp;' and contains CDATA
-$WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.html?ModPagespeedFilters=add_instrumentation
+$WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.html\
+?ModPagespeedFilters=add_instrumentation
 check [ $(grep -c "\&amp;" $WGET_OUTPUT) = 0 ]
 check [ $(grep -c '//<\!\[CDATA\[' $WGET_OUTPUT) = 1 ]
 
 echo TEST: XHTML add_instrumentation also lacks '&amp;' and contains CDATA
-$WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.xhtml?ModPagespeedFilters=add_instrumentation
+$WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.xhtml\
+?ModPagespeedFilters=add_instrumentation
 check [ $(grep -c "\&amp;" $WGET_OUTPUT) = 0 ]
 check [ $(grep -c '//<\!\[CDATA\[' $WGET_OUTPUT) = 1 ]
 
 # TODO(sligocki): TEST: ModPagespeedMaxSegmentLength
 
 if [ "$CACHE_FLUSH_TEST" == "on" ]; then
+  SECONDARY_HOSTNAME=`echo $HOSTNAME | sed -e s/8080/$APACHE_SECONDARY_PORT/g`
+  if [ "$SECONDARY_HOSTNAME" == "$HOSTNAME" ]; then
+    SECONDARY_HOSTNAME=${HOSTNAME}:$APACHE_SECONDARY_PORT
+  fi
+  SECONDARY_TEST_ROOT=http://$SECONDARY_HOSTNAME/mod_pagespeed_test
+
+  echo TEST: add_instrumentation has added unload handler with \
+      ModPagespeedReportUnloadTime enabled in APACHE_SECONDARY_PORT.
+  $WGET -O $WGET_OUTPUT \
+      $SECONDARY_TEST_ROOT/add_instrumentation.html\
+?ModPagespeedFilters=add_instrumentation
+  check [ $(grep -c "<script" $WGET_OUTPUT) = 3 ]
+  check [ $(grep -c 'ets=unload' $WGET_OUTPUT) = 1 ]
+
   echo TEST: Cache flushing works by touching cache.flush in cache directory.
 
   echo Clear out our existing state before we begin the test.
@@ -474,9 +490,8 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
 
   # Also do the same experiment using a different VirtualHost.  It points
   # to the same htdocs, but uses a separate cache directory.
-  SECONDARY_HOSTNAME=`echo $HOSTNAME | sed -e s/8080/$APACHE_SECONDARY_PORT/g`
-  SECONDARY_TEST_ROOT=http://$SECONDARY_HOSTNAME/mod_pagespeed_test
-  SECONDARY_URL=http://$SECONDARY_HOSTNAME/mod_pagespeed_test/$URL_PATH
+  SECONDARY_URL=$SECONDARY_TEST_ROOT/$URL_PATH
+
   if [ "$SECONDARY_URL" == "$URL" ]; then
     SECONDARY_URL=http://${SECONDARY_HOSTNAME}:$APACHE_SECONDARY_PORT/\
 mod_pagespeed_test/$URL_PATH
@@ -503,14 +518,19 @@ mod_pagespeed_test/$URL_PATH
   $SUDO touch $PAGESPEED_ROOT/cache/cache.flush
   fetch_until $URL 'grep -c green' 1
 
-  NUM_FLUSHES=$($WGET_DUMP $STATISTICS_URL | grep cache_flush_count | cut -d: -f2)
+  NUM_FLUSHES=$($WGET_DUMP $STATISTICS_URL | grep cache_flush_count \
+    | cut -d: -f2)
   NUM_NEW_FLUSHES=$(expr $NUM_FLUSHES - $NUM_INITIAL_FLUSHES)
   echo NUM_NEW_FLUSHES = $NUM_NEW_FLUSHES
   check [ $NUM_NEW_FLUSHES -ge 1 ]
   check [ $NUM_NEW_FLUSHES -lt 20 ]
 
-  # However, the secondary cache did not see this cache-flush.
-  fetch_until $SECONDARY_URL 'grep -c blue' 1
+  # However, the secondary cache might not have sees this cache-flush, but
+  # due to the multiple child processes, each of which does polling separately,
+  # we cannot guarantee it.  I think if we knew we were running a 'worker' mpm
+  # with just 1 child process we could do this test.
+  # fetch_until $SECONDARY_URL 'grep -c blue' 1
+
   # Now flush the secondary cache too so it can see the change to 'green'.
   echo $SUDO touch $PAGESPEED_ROOT/secondary_cache/secondary.cache.flush
   $SUDO touch $PAGESPEED_ROOT/secondary_cache/secondary.cache.flush

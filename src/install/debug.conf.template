@@ -321,21 +321,25 @@ ModPagespeedListOutstandingUrlsOnError on
 #DOMAIN_RESOURCE_TAGS ModPagespeedMapRewriteDomain http://dst.example.com http://src.example.com
 #DOMAIN_RESOURCE_TAGS ModPagespeedEnableFilters rewrite_domains
 
-# Another VirtualHost can be enabled by default as it does no harm.  This is
-# for testing whether cache-flushes are constrained to VirtualHost based on
-# the cache settings.
+# Another VirtualHost can be enabled by default as it does no harm.  This can
+# be used for testing alternate configuration settings in system tests without
+# restarting Apache.
 Listen @@APACHE_SECONDARY_PORT@@
 <VirtualHost *:@@APACHE_SECONDARY_PORT@@>
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeed on
+
+  # Helps test whether cache-flushes are constrained to VirtualHost based on
+  # the cache settings.
   ModPagespeedFileCachePath       "@@MODPAGESPEED_CACHE_ROOT@@/secondary_cache/"
   ModPagespeedGeneratedFilePrefix "@@MODPAGESPEED_CACHE_ROOT@@/secondary_files/"
-
   ModPagespeedCacheFlushFilename secondary.cache.flush
-
   # If you uncomment this, the test will fail, proving we can disable
   # cache-flush polling.
   # ModPagespeedCacheFlushPollIntervalSec 0
+
+  # Helps testing whether the configuration of reporting 'unload' time works.
+  ModPagespeedReportUnloadTime on
 </VirtualHost>
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
