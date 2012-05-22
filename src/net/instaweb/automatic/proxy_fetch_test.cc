@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -71,10 +72,16 @@ class MockProxyFetch : public ProxyFetch {
 
 
 class ProxyFetchPropertyCallbackCollectorTest : public ResourceManagerTestBase {
+ public:
+  void PostLookupTask() {
+    post_lookup_called_ = true;
+  }
+
  protected:
   ProxyFetchPropertyCallbackCollectorTest() :
     thread_system_(ThreadSystem::CreateThreadSystem()),
-    resource_manager_(resource_manager()) { }
+    resource_manager_(resource_manager()),
+    post_lookup_called_(false) { }
 
   scoped_ptr<ThreadSystem> thread_system_;
   ResourceManager* resource_manager_;
@@ -106,7 +113,65 @@ class ProxyFetchPropertyCallbackCollectorTest : public ResourceManagerTestBase {
     return callback;
   }
 
+  void AddPostLookupConnectProxyFetchCallDone(
+      ProxyFetchPropertyCallbackCollector* collector,
+      MockProxyFetch* mock_proxy_fetch,
+      ProxyFetchPropertyCallback* callback) {
+    collector->AddPostLookupTask(MakeFunction(
+        this, &ProxyFetchPropertyCallbackCollectorTest::PostLookupTask));
+    collector->ConnectProxyFetch(mock_proxy_fetch);
+    callback->Done(true);
+  }
+
+  void ConnectProxyFetchAddPostLookupCallDone(
+      ProxyFetchPropertyCallbackCollector* collector,
+      MockProxyFetch* mock_proxy_fetch,
+      ProxyFetchPropertyCallback* callback) {
+    collector->ConnectProxyFetch(mock_proxy_fetch);
+    collector->AddPostLookupTask(MakeFunction(
+        this, &ProxyFetchPropertyCallbackCollectorTest::PostLookupTask));
+    callback->Done(true);
+  }
+
+  void CallDoneAddPostLookupConnectProxyFetch(
+      ProxyFetchPropertyCallbackCollector* collector,
+      MockProxyFetch* mock_proxy_fetch,
+      ProxyFetchPropertyCallback* callback) {
+    callback->Done(true);
+    collector->AddPostLookupTask(MakeFunction(
+        this, &ProxyFetchPropertyCallbackCollectorTest::PostLookupTask));
+    collector->ConnectProxyFetch(mock_proxy_fetch);
+  }
+
+  void TestAddPostlookupTask(bool add_before_done, bool add_before_proxy_fetch) {
+    GoogleString kUrl("http://www.test.com/");
+    scoped_ptr<ProxyFetchPropertyCallbackCollector> collector;
+    collector.reset(MakeCollector());
+    ProxyFetchPropertyCallback* page_callback = AddCallback(
+        collector.get(), ProxyFetchPropertyCallback::kPagePropertyCache);
+    ExpectStringAsyncFetch async_fetch(true);
+    ProxyFetchFactory factory(resource_manager_);
+    MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
+        &async_fetch, &factory, resource_manager_);
+    if (add_before_done && add_before_proxy_fetch) {
+      AddPostLookupConnectProxyFetchCallDone(
+          collector.get(), mock_proxy_fetch, page_callback);
+    } else if (add_before_done && !add_before_proxy_fetch) {
+      ConnectProxyFetchAddPostLookupCallDone(
+          collector.get(), mock_proxy_fetch, page_callback);
+    } else if (!add_before_done && add_before_proxy_fetch) {
+      CallDoneAddPostLookupConnectProxyFetch(
+          collector.get(), mock_proxy_fetch, page_callback);
+    } else {
+      // Not handled. Make this fail.
+    }
+    EXPECT_TRUE(post_lookup_called_);
+    mock_proxy_fetch->Done(true);
+  }
+
  private:
+  bool post_lookup_called_;
+
   DISALLOW_COPY_AND_ASSIGN(ProxyFetchPropertyCallbackCollectorTest);
 };
 
@@ -277,6 +342,18 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, BothCallbacksComplete) {
 
   // Needed for cleanup.
   mock_proxy_fetch->Done(true);
+}
+
+TEST_F(ProxyFetchPropertyCallbackCollectorTest, PostLookupProxyFetchDone) {
+  TestAddPostlookupTask(true, true);
+}
+
+TEST_F(ProxyFetchPropertyCallbackCollectorTest, DonePostLookupProxyFetch) {
+  TestAddPostlookupTask(false, true);
+}
+
+TEST_F(ProxyFetchPropertyCallbackCollectorTest, ProxyFetchPostLookupDone) {
+  TestAddPostlookupTask(true, false);
 }
 
 }  // namespace net_instaweb

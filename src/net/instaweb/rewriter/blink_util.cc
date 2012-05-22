@@ -85,14 +85,11 @@ bool IsBlinkRequest(const GoogleUrl& url,
 
 bool ShouldApplyBlinkFlowCriticalLine(
     const ResourceManager* manager,
-    const ProxyFetchPropertyCallbackCollector* property_callback,
     const RewriteOptions* options) {
   return options != NULL &&
       // Blink flow critical line is enabled in rewrite options.
       options->enable_blink_critical_line() &&
-      manager->blink_critical_line_data_finder() != NULL &&
-      // Property cache callback is not NULL.
-      property_callback != NULL;
+      manager->blink_critical_line_data_finder() != NULL;
 }
 
 const Layout* ExtractBlinkLayout(const GoogleUrl& url,

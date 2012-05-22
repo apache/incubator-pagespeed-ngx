@@ -106,13 +106,22 @@ class ProxyInterface : public UrlAsyncFetcher {
       AsyncFetch* async_fetch,
       RewriteOptions* domain_options,
       RewriteOptions* query_options,
-      ProxyFetchPropertyCallbackCollector* property_callback,
       MessageHandler* handler);
 
   static const char kBlinkRequestCount[];
   static const char kBlinkCriticalLineRequestCount[];
 
+ protected:
+  // Initiates the PropertyCache look up.
+  virtual ProxyFetchPropertyCallbackCollector* InitiatePropertyCacheLookup(
+      bool is_resource_fetch,
+      const GoogleUrl& request_url,
+      RewriteOptions* options,
+      AsyncFetch* async_fetch);
+
  private:
+  friend class ProxyInterfaceTest;
+
   // Handle requests that are being proxied.
   // * HTML requests are rewritten.
   // * Resource requests are proxied verbatim.
@@ -120,13 +129,6 @@ class ProxyInterface : public UrlAsyncFetcher {
                     const GoogleUrl& requested_url,
                     AsyncFetch* async_fetch,
                     MessageHandler* handler);
-
-  // Initiates the PropertyCache look up.
-  bool InitiatePropertyCacheLookup(
-      bool is_resource_fetch,
-      const GoogleUrl& request_url,
-      AsyncFetch* async_fetch,
-      ProxyFetchPropertyCallbackCollector* callback_collector);
 
   // Is this url_string well-formed enough to proxy through?
   bool IsWellFormedUrl(const GoogleUrl& url);

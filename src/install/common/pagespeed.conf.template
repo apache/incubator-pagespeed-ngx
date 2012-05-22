@@ -137,6 +137,14 @@
     #
     # ModPagespeedEnableFilters add_instrumentation
 
+    # The add_instrumentation filter sends a beacon after the page onload
+    # handler is called. The user might navigate to a new URL before this. If
+    # you enable the following directive, the beacon is sent as part of an
+    # onbeforeunload handler, for pages where navigation happens before the
+    # onload event.
+    #
+    # ModPagespeedReportUnloadTime on
+
     # Uncomment the following line so that ModPagespeed will not cache or
     # rewrite resources with Vary: in the header, e.g. Vary: User-Agent.
     # ModPagespeedRespectVary on

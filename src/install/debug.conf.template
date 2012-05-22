@@ -392,6 +392,7 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedModifyCachingHeaders true
 #ALL_DIRECTIVES ModPagespeedNumShards 5
 #ALL_DIRECTIVES ModPagespeedRefererStatisticsOutputLevel simple
+#ALL_DIRECTIVES ModPagespeedReportUnloadTime true
 #ALL_DIRECTIVES ModPagespeedRespectVary true
 #ALL_DIRECTIVES ModPagespeedRetainComment "special"
 #ALL_DIRECTIVES ModPagespeedRewriteLevel CoreFilters

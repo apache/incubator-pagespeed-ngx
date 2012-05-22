@@ -156,6 +156,7 @@ const char* kModPagespeedModifyCachingHeaders =
 const char* kModPagespeedNumShards = "ModPagespeedNumShards";
 const char* kModPagespeedRefererStatisticsOutputLevel =
     "ModPagespeedRefererStatisticsOutputLevel";
+const char* kModPagespeedReportUnloadTime = "ModPagespeedReportUnloadTime";
 const char* kModPagespeedRespectVary = "ModPagespeedRespectVary";
 const char* kModPagespeedRetainComment = "ModPagespeedRetainComment";
 const char* kModPagespeedRewriteLevel = "ModPagespeedRewriteLevel";
@@ -1304,6 +1305,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedMinImageSizeLowResolutionBytes,
         "Minimum image size above which low resolution image is generated."),
   APACHE_CONFIG_OPTION(kModPagespeedNumShards, "Set number of shards"),
+  APACHE_CONFIG_OPTION(kModPagespeedReportUnloadTime,
+         "If set reports optional page unload time."),
   APACHE_CONFIG_OPTION(kModPagespeedSharedMemoryLocks,
         "Use shared memory for internal named lock service"),
   APACHE_CONFIG_OPTION(kModPagespeedSlurpDirectory,

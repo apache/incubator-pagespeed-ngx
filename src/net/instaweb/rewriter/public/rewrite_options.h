@@ -988,11 +988,21 @@ class RewriteOptions {
   // to modify a RewriteOptions after freezing will DCHECK.
   void ComputeSignature(const Hasher* hasher);
 
+  // Clears the computed signature, unfreezing the options object.
+  // Warning: Please note that using this method is extremely risky and should
+  // be avoided as much as possible. If you are planning to use this, please
+  // discuss this with your team-mates and ensure that you clearly understand
+  // its implications. Also, please do repeat this warning at every place you
+  // use this method.
+  void ClearSignatureWithCaution() {
+    frozen_ = false;
+    signature_.clear();
+  }
+
   // Clears a computed signature, unfreezing the options object.  This
   // is intended for testing.
   void ClearSignatureForTesting() {
-    frozen_ = false;
-    signature_.clear();
+    ClearSignatureWithCaution();
   }
 
   // Returns the computed signature.

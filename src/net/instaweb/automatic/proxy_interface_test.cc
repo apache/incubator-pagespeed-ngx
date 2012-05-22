@@ -342,6 +342,8 @@ class BackgroundFetchCheckingUrlAsyncFetcher : public UrlAsyncFetcher {
   DISALLOW_COPY_AND_ASSIGN(BackgroundFetchCheckingUrlAsyncFetcher);
 };
 
+}  // namespace
+
 // TODO(morlovich): This currently relies on ResourceManagerTestBase to help
 // setup fetchers; and also indirectly to prevent any rewrites from timing out
 // (as it runs the tests with real scheduler but mock timer). It would probably
@@ -462,25 +464,6 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
       sync_->Wait();
     }
     mock_scheduler()->AwaitQuiescence();
-  }
-
-  void FetchViaProxyRequestCallback(
-      GoogleUrl* url,
-      ProxyFetchPropertyCallbackCollector* property_callback,
-      GoogleString* string_out,
-      ResponseHeaders* headers_out) {
-    RequestHeaders request_headers;
-    WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
-    AsyncExpectStringAsyncFetch callback(
-        true, &sync, resource_manager()->thread_synchronizer());
-    callback.set_response_headers(headers_out);
-    proxy_interface_->ProxyRequestCallback(
-        false, url, &callback, NULL, NULL, property_callback,
-        message_handler());
-    sync.Wait();
-    mock_scheduler()->AwaitQuiescence();
-    *string_out = callback.buffer();
-    timing_info_.CopyFrom(*callback.timing_info());
   }
 
   void CheckHeaders(const ResponseHeaders& headers,
@@ -632,46 +615,20 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     EXPECT_EQ(2, lru_cache()->num_misses());   // http-cache & prop-cache
   }
 
-  void PostLookupTask(int num_misses, int num_inserts) {
-    EXPECT_EQ(num_inserts, lru_cache()->num_inserts());
-    EXPECT_EQ(num_misses, lru_cache()->num_misses());
-  }
-
-  void TestAddTaskProxyFetchPropertyCallback(
-      bool delay_pcache, int num_misses, int num_inserts) {
-    GoogleString kUrl("http://www.test.com/");
-    GoogleString delay_cache_key;
-    SetResponseWithDefaultHeaders(kUrl, kContentTypeHtml, "html data", 300);
-    if (delay_pcache) {
-      PropertyCache* pcache = resource_manager()->page_property_cache();
-      const PropertyCache::Cohort* cohort =
-          pcache->GetCohort(RewriteDriver::kDomCohort);
-      delay_cache_key = pcache->CacheKey(kUrl, cohort);
-      delay_cache()->DelayKey(delay_cache_key);
-    }
-    ProxyFetchPropertyCallbackCollector* callback_collector(
-        new ProxyFetchPropertyCallbackCollector(resource_manager()));
-    ProxyFetchPropertyCallback* callback =
-        new ProxyFetchPropertyCallback(
-            ProxyFetchPropertyCallback::kPagePropertyCache,
-            kUrl,
-            callback_collector,
-            resource_manager_->thread_system()->NewMutex());
-    callback_collector->AddCallback(callback);
-    resource_manager()->page_property_cache()->Read(callback);
-    callback_collector->AddPostLookupTask(MakeFunction(
-        this, &ProxyInterfaceTest::PostLookupTask, num_misses, num_inserts));
-
-    GoogleUrl* gurl = new GoogleUrl(kUrl);
-    GoogleString out;
-    ResponseHeaders headers_out;
-    FetchViaProxyRequestCallback(gurl, callback_collector, &out, &headers_out);
-    if (delay_pcache) {
-      delay_cache()->ReleaseKey(delay_cache_key);
-    }
-    EXPECT_EQ(1, lru_cache()->num_inserts());  // http-cache
-    // meta-data, http-cache & prop-cache
-    EXPECT_EQ(3, lru_cache()->num_misses());
+  void TestOptionsUsedInCacheKey() {
+    GoogleUrl gurl("http://www.test.com/");
+    StringAsyncFetch callback;
+    scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
+        proxy_interface_->InitiatePropertyCacheLookup(
+        false, gurl, options(), &callback));
+    EXPECT_NE(static_cast<ProxyFetchPropertyCallbackCollector*>(NULL),
+              callback_collector.get());
+    PropertyPage* page = callback_collector->GetPropertyPageWithoutOwnership(
+        ProxyFetchPropertyCallback::kPagePropertyCache);
+    EXPECT_NE(static_cast<PropertyPage*>(NULL), page);
+    resource_manager()->ComputeSignature(options());
+    GoogleString expected = StrCat(gurl.Spec(), "_", options()->signature());
+    EXPECT_EQ(expected, page->key());
   }
 
   void DisableAjax() {
@@ -2790,16 +2747,8 @@ TEST_F(ProxyInterfaceTest, ClientStateTest) {
             text_out);
 }
 
-TEST_F(ProxyInterfaceTest, TestAddTaskProxyFetchPropertyCallback) {
-  // Added Task is executed before ProxyFetch is Started.
-  TestAddTaskProxyFetchPropertyCallback(false, 1, 0);
+TEST_F(ProxyInterfaceTest, TestOptionsUsedInCacheKey) {
+  TestOptionsUsedInCacheKey();
 }
-
-TEST_F(ProxyInterfaceTest, TestAddTaskProxyFetchPropertyCallbackDelayedCache) {
-  // Added Task is executed after ProxyFetch is Started.
-  TestAddTaskProxyFetchPropertyCallback(true, 3, 1);
-}
-
-}  // namespace
 
 }  // namespace net_instaweb

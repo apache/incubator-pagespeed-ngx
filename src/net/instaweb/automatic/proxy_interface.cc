@@ -103,14 +103,12 @@ class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
       bool is_resource_fetch,
       GoogleUrl* request_url,
       AsyncFetch* async_fetch,
-      ProxyFetchPropertyCallbackCollector* property_callback,
       ProxyInterface* proxy_interface,
       RewriteOptions* query_options,
       MessageHandler* handler)
       : is_resource_fetch_(is_resource_fetch),
         request_url_(request_url),
         async_fetch_(async_fetch),
-        property_callback_(property_callback),
         handler_(handler),
         proxy_interface_(proxy_interface),
         query_options_(query_options) {
@@ -119,7 +117,7 @@ class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
   virtual void Done(RewriteOptions* rewrite_options) {
     proxy_interface_->ProxyRequestCallback(
         is_resource_fetch_, request_url_, async_fetch_, rewrite_options,
-        query_options_, property_callback_, handler_);
+        query_options_, handler_);
     delete this;
   }
 
@@ -333,31 +331,12 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
     return;
   }
 
-  // Initiate pcache lookups early, before we know the RewriteOptions,
-  // in order to avoid adding latency to the serving flow. This has
-  // the downside of adding more cache pressure. OTOH we do a lot of
-  // cache lookups for HTML files: usually one per resource. So adding
-  // one more shouldn't significantly increase the cache RPC pressure.
-  // One thing to look out for is if we serve a lot of JPGs that don't
-  // end in .jpg or .jpeg -- we'll pessimistically assume they are HTML
-  // and do pcache lookups for them.
-  ProxyFetchPropertyCallbackCollector* callback_collector =
-      new ProxyFetchPropertyCallbackCollector(resource_manager_);
-  if (!InitiatePropertyCacheLookup(is_resource_fetch,
-                                   *gurl.get(),
-                                   async_fetch,
-                                   callback_collector)) {
-    // Didn't need the collector after all
-    delete callback_collector;
-    callback_collector = NULL;
-  }
-
   // Owned by ProxyInterfaceUrlNamerCallback.
   GoogleUrl* released_gurl(gurl.release());
 
   ProxyInterfaceUrlNamerCallback* proxy_interface_url_namer_callback =
       new ProxyInterfaceUrlNamerCallback(is_resource_fetch, released_gurl,
-                                         async_fetch, callback_collector, this,
+                                         async_fetch, this,
                                          query_options_success.first, handler);
 
   resource_manager_->url_namer()->DecodeOptions(
@@ -365,11 +344,14 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
       proxy_interface_url_namer_callback, handler);
 }
 
-bool ProxyInterface::InitiatePropertyCacheLookup(
+ProxyFetchPropertyCallbackCollector*
+    ProxyInterface::InitiatePropertyCacheLookup(
     bool is_resource_fetch,
     const GoogleUrl& request_url,
-    AsyncFetch* async_fetch,
-    ProxyFetchPropertyCallbackCollector* callback_collector) {
+    RewriteOptions* options,
+    AsyncFetch* async_fetch) {
+  scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
+      new ProxyFetchPropertyCallbackCollector(resource_manager_));
   bool added_callback = false;
   ProxyFetchPropertyCallback* property_callback = NULL;
   PropertyCache* page_property_cache = NULL;
@@ -378,10 +360,18 @@ bool ProxyInterface::InitiatePropertyCacheLookup(
       UrlMightHavePropertyCacheEntry(request_url)) {
     page_property_cache = resource_manager_->page_property_cache();
     AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
-    property_callback = new ProxyFetchPropertyCallback(
-        ProxyFetchPropertyCallback::kPagePropertyCache,
-        request_url.Spec(),
-        callback_collector, mutex);
+    if (options != NULL) {
+      resource_manager_->ComputeSignature(options);
+      property_callback = new ProxyFetchPropertyCallback(
+          ProxyFetchPropertyCallback::kPagePropertyCache,
+          StrCat(request_url.Spec(), "_", options->signature()),
+          callback_collector.get(), mutex);
+    } else {
+      property_callback = new ProxyFetchPropertyCallback(
+          ProxyFetchPropertyCallback::kPagePropertyCache,
+          request_url.Spec(),
+          callback_collector.get(), mutex);
+    }
     callback_collector->AddCallback(property_callback);
     added_callback = true;
 
@@ -405,18 +395,19 @@ bool ProxyInterface::InitiatePropertyCacheLookup(
           new ProxyFetchPropertyCallback(
               ProxyFetchPropertyCallback::kClientPropertyCache,
               client_id,
-              callback_collector, mutex);
+              callback_collector.get(), mutex);
       callback_collector->AddCallback(callback);
       added_callback = true;
       client_property_cache->Read(callback);
     }
   }
-
   if (page_property_cache != NULL) {
     page_property_cache->Read(property_callback);
   }
-
-  return added_callback;
+  if (!added_callback) {
+    callback_collector.reset(NULL);
+  }
+  return callback_collector.release();
 }
 
 void ProxyInterface::ProxyRequestCallback(
@@ -425,11 +416,11 @@ void ProxyInterface::ProxyRequestCallback(
     AsyncFetch* async_fetch,
     RewriteOptions* domain_options,
     RewriteOptions* query_options,
-    ProxyFetchPropertyCallbackCollector* property_callback,
     MessageHandler* handler) {
   RewriteOptions* options = GetCustomOptions(
       request_url, async_fetch->request_headers(), domain_options,
       query_options, handler);
+  scoped_ptr<ProxyFetchPropertyCallbackCollector> property_callback;
 
   // Update request_headers.
   // We deal with encodings. So strip the users Accept-Encoding headers.
@@ -463,9 +454,24 @@ void ProxyInterface::ProxyRequestCallback(
         options, user_agent, resource_manager_->user_agent_matcher());
     bool apply_blink_critical_line =
         BlinkUtil::ShouldApplyBlinkFlowCriticalLine(resource_manager_,
-                                                    property_callback,
                                                     options);
     if (is_blink_request && apply_blink_critical_line) {
+      property_callback.reset(InitiatePropertyCacheLookup(
+          is_resource_fetch, *request_url, options, async_fetch));
+    }
+    if (is_blink_request && apply_blink_critical_line &&
+        property_callback.get() != NULL) {
+      // In blink flow, we have to modify RewriteOptions after the
+      // property cache read is completed. Hence, we clear the signature to
+      // unfreeze RewriteOptions, which was frozen during signature computation
+      // for generating key for property cache read.
+      // Warning: Please note that using this method is extremely risky and
+      // should be avoided as much as possible. If you are planning to use
+      // this, please discuss this with your team-mates and ensure that you
+      // clearly understand its implications. Also, please do repeat this
+      // warning at every place you use this method.
+      options->ClearSignatureWithCaution();
+
       // TODO(rahulbansal): Remove this LOG once we expect to have
       // a lot of such requests.
       LOG(INFO) << "Triggering Blink flow critical line for url "
@@ -474,10 +480,8 @@ void ProxyInterface::ProxyRequestCallback(
       BlinkFlowCriticalLine::Start(request_url->Spec().as_string(),
                                    async_fetch, options,
                                    proxy_fetch_factory_.get(),
-                                   resource_manager_, property_callback);
-      // BlinkFlowCriticalLine takes ownership of property_callback.
-      // NULL it here so that we do not detach it below.
-      property_callback = NULL;
+                                   resource_manager_,
+                                   property_callback.release());
     } else if (is_blink_request && layout != NULL) {
       // TODO(rahulbansal): Remove this LOG once we expect to have
       // Blink requests.
@@ -487,7 +491,6 @@ void ProxyInterface::ProxyRequestCallback(
       BlinkFlow::Start(request_url->Spec().as_string(), async_fetch, layout,
                        options, proxy_fetch_factory_.get(),
                        resource_manager_);
-      // TODO(jmarantz): provide property-cache data to blink.
     } else {
       RewriteDriver* driver = NULL;
       bool need_cookie = false;
@@ -500,27 +503,26 @@ void ProxyInterface::ProxyRequestCallback(
         }
         options->SetFuriousState(furious_value);
       }
+      // Starting property cache lookup after the furious state is set.
+      property_callback.reset(InitiatePropertyCacheLookup(
+          is_resource_fetch, *request_url, options, async_fetch));
       if (options == NULL) {
         driver = resource_manager_->NewRewriteDriver();
       } else {
-        resource_manager_->ComputeSignature(options);
         // NewCustomRewriteDriver takes ownership of custom_options_.
         driver = resource_manager_->NewCustomRewriteDriver(options);
       }
       driver->set_need_furious_cookie(need_cookie);
       proxy_fetch_factory_->StartNewProxyFetch(
           request_url->Spec().as_string(), async_fetch, driver,
-          property_callback, NULL);
-      // ProxyFetch takes ownership of property_callback.
-      // NULL it here so that we do not detach it below.
-      property_callback = NULL;
+          property_callback.release(), NULL);
     }
   }
 
-  if (property_callback != NULL) {
+  if (property_callback.get() != NULL) {
     // If management of the callback was not transferred to proxy fetch,
     // then we must detach it so it deletes itself when complete.
-    property_callback->Detach();
+    property_callback.release()->Detach();
   }
   delete request_url;
 }
