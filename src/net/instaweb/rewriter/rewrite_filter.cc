@@ -22,6 +22,7 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
@@ -69,6 +70,35 @@ RewriteContext* RewriteFilter::MakeRewriteContext() {
 RewriteContext* RewriteFilter::MakeNestedRewriteContext(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
   return NULL;
+}
+
+StringPiece RewriteFilter::GetCharsetForScript(
+    const Resource* script,
+    const StringPiece attribute_charset,
+    const StringPiece enclosing_charset) {
+  // 1. If the script has a Content-Type with a charset, use that.
+  if (!script->charset().empty()) {
+    return script->charset();
+  }
+
+  // 2. If the element has a charset attribute, use that.
+  if (!attribute_charset.empty()) {
+    return attribute_charset;
+  }
+
+  // 3. If the script has a BOM, use that.
+  StringPiece bom_charset = GetCharsetForBom(script->contents());
+  if (!bom_charset.empty()) {
+    return bom_charset;
+  }
+
+  // 4. Use the charset of the enclosing page, if any.
+  if (!enclosing_charset.empty()) {
+    return enclosing_charset;
+  }
+
+  // Well, we really have no idea.
+  return StringPiece(NULL);
 }
 
 }  // namespace net_instaweb

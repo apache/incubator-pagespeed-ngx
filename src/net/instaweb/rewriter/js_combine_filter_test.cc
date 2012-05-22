@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -38,6 +39,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -724,6 +726,217 @@ TEST_F(JsCombineFilterTest, PartlyInvalidFetchCache) {
                     StrCat("<script src=a.js></script>",
                            "<script src=b.js></script>"
                            "<script src=404.js></script>"));
+}
+
+TEST_F(JsCombineFilterTest, CharsetDetermination) {
+  GoogleString x_js_url = "x.js";
+  GoogleString y_js_url = "y.js";
+  GoogleString z_js_url = "z.js";
+  const char x_js_body[] = "var x;";
+  const char y_js_body[] = "var y;";
+  const char z_js_body[] = "var z;";
+  GoogleString bom_body = StrCat(kUtf8Bom, y_js_body);
+
+  // x.js has no charset header nor a BOM.
+  // y.js has no charset header but has a BOM.
+  // z.js has a charset header but no BOM.
+  ResponseHeaders default_header;
+  SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_header);
+  SetFetchResponse(StrCat(kTestDomain, x_js_url), default_header, x_js_body);
+  SetFetchResponse(StrCat(kTestDomain, y_js_url), default_header, bom_body);
+  default_header.MergeContentType("text/javascript; charset=iso-8859-1");
+  SetFetchResponse(StrCat(kTestDomain, z_js_url), default_header, z_js_body);
+
+  ResourcePtr x_js_resource(CreateResource(kTestDomain, x_js_url));
+  ResourcePtr y_js_resource(CreateResource(kTestDomain, y_js_url));
+  ResourcePtr z_js_resource(CreateResource(kTestDomain, z_js_url));
+  EXPECT_TRUE(ReadIfCached(x_js_resource));
+  EXPECT_TRUE(ReadIfCached(y_js_resource));
+  EXPECT_TRUE(ReadIfCached(z_js_resource));
+
+  StringPiece result;
+  const StringPiece kUsAsciiCharset("us-ascii");
+
+  // Nothing set: charset should be empty.
+  result = RewriteFilter::GetCharsetForScript(x_js_resource.get(), "", "");
+  EXPECT_TRUE(result.empty());
+
+  // Only the containing charset is set.
+  result = RewriteFilter::GetCharsetForScript(x_js_resource.get(),
+                                              "", kUsAsciiCharset);
+  EXPECT_STREQ(result, kUsAsciiCharset);
+
+  // The containing charset is trumped by the resource's BOM.
+  result = RewriteFilter::GetCharsetForScript(y_js_resource.get(),
+                                              "", kUsAsciiCharset);
+  EXPECT_STREQ("utf-8", result);
+
+  // The resource's BOM is trumped by the element's charset attribute.
+  result = RewriteFilter::GetCharsetForScript(y_js_resource.get(),
+                                              "gb", kUsAsciiCharset);
+  EXPECT_STREQ("gb", result);
+
+  // The element's charset attribute is trumped by the resource's header.
+  result = RewriteFilter::GetCharsetForScript(z_js_resource.get(),
+                                              "gb", kUsAsciiCharset);
+  EXPECT_STREQ("iso-8859-1", result);
+}
+
+TEST_F(JsCombineFilterTest, AllDifferentCharsets) {
+  GoogleString html_url = StrCat(kTestDomain, "bom.html");
+  GoogleString a_js_url = "a.js";
+  GoogleString b_js_url = "b.js";
+  GoogleString c_js_url = "c.js";
+  GoogleString d_js_url = "d.js";
+  const char a_js_body[] = "var a;";
+  const char b_js_body[] = "var b;";
+  const char c_js_body[] = "var c;";
+  const char d_js_body[] = "var d;";
+  GoogleString bom_body = StrCat(kUtf8Bom, c_js_body);
+
+  // a.js has no charset header nor BOM nor an attribute: use the page.
+  // b.js has no charset header nor a BOM but has an attribute: use the attr.
+  // c.js has no charset header nor attribute but has a BOM: use the BOM.
+  // d.js has a charset header but no BOM nor attribute: use the charset.
+  ResponseHeaders default_header;
+  SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_header);
+  SetFetchResponse(StrCat(kTestDomain, a_js_url), default_header, a_js_body);
+  SetFetchResponse(StrCat(kTestDomain, b_js_url), default_header, b_js_body);
+  SetFetchResponse(StrCat(kTestDomain, c_js_url), default_header, bom_body);
+  default_header.MergeContentType("text/javascript; charset=iso-8859-1");
+  SetFetchResponse(StrCat(kTestDomain, d_js_url), default_header, d_js_body);
+
+  ScriptInfoVector scripts;
+  PrepareToCollectScriptsInto(&scripts);
+  GoogleString input_buffer(StrCat(
+      "<head>\n"
+      "  <meta charset=\"gb\">\n"
+      "  <script src=a.js></script>",
+      "  <script src=b.js charset=us-ascii></script>",
+      "  <script src=c.js></script>",
+      "  <script src=d.js></script>",
+      "</head>\n"));
+  ParseUrl(html_url, input_buffer);
+
+  // This should leave the same 4 original scripts.
+  EXPECT_EQ(4, scripts.size());
+  EXPECT_EQ("a.js", scripts[0].url);
+  EXPECT_EQ("b.js", scripts[1].url);
+  EXPECT_EQ("c.js", scripts[2].url);
+  EXPECT_EQ("d.js", scripts[3].url);
+}
+
+TEST_F(JsCombineFilterTest, BomMismatch) {
+  GoogleString html_url = StrCat(kTestDomain, "bom.html");
+  GoogleString x_js_url = "x.js";
+  GoogleString y_js_url = "y.js";
+
+  // BOM documentation: http://www.unicode.org/faq/utf_bom.html
+  const char x_js_body[] = "var x;";
+  const char y_js_body[] = "var y;";
+  GoogleString bom_body = StrCat(kUtf8Bom, y_js_body);
+
+  ResponseHeaders default_header;
+  SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_header);
+  SetFetchResponse(StrCat(kTestDomain, x_js_url), default_header, x_js_body);
+  SetFetchResponse(StrCat(kTestDomain, y_js_url), default_header, bom_body);
+
+  ScriptInfoVector scripts;
+  PrepareToCollectScriptsInto(&scripts);
+
+  // x.js will have an indeterminate charset: it's not in the resource headers,
+  // nor the element's attribute, there's no BOM, and the HTML doesn't set it.
+  GoogleString input_buffer(StrCat(
+      "<head>\n"
+      "  <script src=x.js></script>\n",
+      "  <script src=y.js></script>\n",
+      "</head>\n"));
+  ParseUrl(html_url, input_buffer);
+
+  ASSERT_EQ(2, scripts.size());
+
+  GoogleString input_buffer_reversed(StrCat(
+      "<head>\n"
+      "  <script src=y.js></script>\n",
+      "  <script src=x.js></script>\n",
+      "</head>\n"));
+  scripts.clear();
+  ParseUrl(html_url, input_buffer_reversed);
+  ASSERT_EQ(2, scripts.size());
+}
+
+TEST_F(JsCombineFilterTest, EmbeddedBom) {
+  // Test that we can combine 2 JS, one with a BOM and one without, and that
+  // the BOM is retained in the combination.
+  GoogleString html_url = StrCat(kTestDomain, "bom.html");
+  GoogleString x_js_url = "x.js";
+  GoogleString y_js_url = "y.js";
+
+  // BOM documentation: http://www.unicode.org/faq/utf_bom.html
+  const char x_js_body[] = "var x;";
+  const char y_js_body[] = "var y;";
+  GoogleString bom_body = StrCat(kUtf8Bom, y_js_body);
+
+  ResponseHeaders default_header;
+  SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_header);
+  SetFetchResponse(StrCat(kTestDomain, x_js_url), default_header, x_js_body);
+  SetFetchResponse(StrCat(kTestDomain, y_js_url), default_header, bom_body);
+
+  ScriptInfoVector scripts;
+  PrepareToCollectScriptsInto(&scripts);
+
+  // x.js now has a charset of utf-8 thanks to the meta tag.
+  GoogleString input_buffer(StrCat(
+      "<head>\n"
+      "  <meta charset=\"UTF-8\">\n"
+      "  <script src=x.js></script>\n",
+      "  <script src=y.js></script>\n",
+      "</head>\n"));
+  ParseUrl(html_url, input_buffer);
+
+  ASSERT_EQ(3, scripts.size());
+  VerifyCombined(scripts[0], MultiUrl(x_js_url, y_js_url));
+  VerifyUse(scripts[1], x_js_url);
+  VerifyUse(scripts[2], y_js_url);
+
+  GoogleString actual_combination;
+  EXPECT_TRUE(FetchResourceUrl(scripts[0].url, &actual_combination));
+  int bom_pos = actual_combination.find(kUtf8Bom);
+  EXPECT_EQ(73, bom_pos);  // WARNING: MAGIC VALUE!
+
+  GoogleString input_buffer_reversed(StrCat(
+      "<head>\n"
+      "  <meta charset=\"UTF-8\">\n"
+      "  <script src=y.js></script>\n",
+      "  <script src=x.js></script>\n",
+      "</head>\n"));
+  scripts.clear();
+  ParseUrl(html_url, input_buffer_reversed);
+  actual_combination.clear();
+  ASSERT_EQ(3UL, scripts.size());
+  VerifyCombined(scripts[0], MultiUrl(y_js_url, x_js_url));
+  VerifyUse(scripts[1], y_js_url);
+  VerifyUse(scripts[2], x_js_url);
+  EXPECT_TRUE(FetchResourceUrl(scripts[0].url, &actual_combination));
+  bom_pos = actual_combination.find(kUtf8Bom);
+  EXPECT_EQ(32, bom_pos);  // WARNING: MAGIC VALUE!
+}
+
+TEST_F(JsCombineFilterTest, EmbeddedBomReconstruct) {
+  // Make sure we that BOMs are retained when reconstructing.
+  const char kJsX[] = "x.js";
+  const char kJsY[] = "y.js";
+  const GoogleString kJsText = StrCat(kUtf8Bom, "var z;");
+  SetResponseWithDefaultHeaders(kJsX, kContentTypeJavascript, kJsText, 300);
+  SetResponseWithDefaultHeaders(kJsY, kContentTypeJavascript, kJsText, 300);
+  GoogleString js_url =
+      Encode(kTestDomain, "jc", "0", MultiUrl(kJsX, kJsY), "js");
+  GoogleString js_min =
+      StrCat("var mod_pagespeed_CpWSqUZO1U = \"", kJsText, "\";\n"
+             "var mod_pagespeed_YdaXhTyTOx = \"", kJsText, "\";\n");
+  GoogleString js_out;
+  EXPECT_TRUE(FetchResourceUrl(js_url, &js_out));
+  EXPECT_EQ(js_min, js_out);
 }
 
 }  // namespace net_instaweb

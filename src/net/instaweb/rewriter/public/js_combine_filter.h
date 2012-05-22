@@ -96,10 +96,6 @@ class JsCombineFilter : public RewriteFilter {
   void ConsiderJsForCombination(HtmlElement* element,
                                 HtmlElement::Attribute* src);
 
-  // Return true if the current outermost <script> element exists and
-  // is included  inside the set we're accumulating in combiner_.
-  bool IsCurrentScriptInCombination() const;
-
   // Returns JS variable name where code for given URL should be stored.
   GoogleString VarName(const GoogleString& url) const;
 

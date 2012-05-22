@@ -23,6 +23,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -69,6 +70,22 @@ class RewriteFilter : public CommonFilter {
   // This is used to implement ajax rewriting.
   virtual RewriteContext* MakeNestedRewriteContext(
       RewriteContext* parent, const ResourceSlotPtr& slot);
+
+  // Determine the charset of a script. Logic taken from:
+  //   http://www.whatwg.org/specs/web-apps/current-work/multipage/
+  //   scripting-1.html#establish-script-block-source
+  // 1. If the script has a Content-Type with a charset, use that, else
+  // 2. If the script has a charset attribute, use that, else
+  // 3. If the script has a BOM, use that, else
+  // 4. Use the charset of the enclosing page.
+  // If none of these are specified we return StringPiece(NULL).
+  // Note that Chrome and Opera do not actually implement this spec - it seems
+  // that for them a BOM overrules a charset attribute (swap rules 2 and 3).
+  // Note that the return value might point into one of the given arguments so
+  // you must ensure that it isn't used past the life of any of the arguments.
+  static StringPiece GetCharsetForScript(const Resource* script,
+                                         const StringPiece attribute_charset,
+                                         const StringPiece enclosing_charset);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RewriteFilter);

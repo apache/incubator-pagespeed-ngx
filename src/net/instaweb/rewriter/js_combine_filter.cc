@@ -75,6 +75,19 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
   }
 
   virtual bool ResourceCombinable(Resource* resource, MessageHandler* handler) {
+    // Get the charset for the given resource.
+    StringPiece this_charset = RewriteFilter::GetCharsetForScript(
+        resource, attribute_charset_, rewrite_driver_->containing_charset());
+
+    // This resource's charset must match that of the combination so far.
+    // TODO(matterbury): Correctly handle UTF-16 and UTF-32 without the BE/LE
+    // suffixes, which are legal if we can determine endianness some other way.
+    if (num_urls() == 0) {
+      combined_charset_ = this_charset;
+    } else if (!StringCaseEqual(combined_charset_, this_charset)) {
+      return false;
+    }
+
     // In strict mode of ES262-5 eval runs in a private variable scope,
     // (see 10.4.2 step 3 and 10.4.2.1), so our transformation is not safe.
     // Strict mode is identified by 'use strict' or "use strict" string literals
@@ -109,6 +122,12 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
     js_file_count_reduction_->Add(files);
   }
 
+  // Set the attribute charset of the resource being combined. This is the
+  // charset taken from the resource's element's charset= attribute, if any.
+  void set_resources_attribute_charset(StringPiece charset) {
+    attribute_charset_ = charset;
+  }
+
  private:
   virtual const ContentType* CombinationContentType() {
     return &kContentTypeJavascript;
@@ -120,6 +139,14 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
 
   JsCombineFilter* filter_;
   Variable* js_file_count_reduction_;
+  // The charset from the resource's element, set by our owning Context's
+  // Partition() method each time it checks if a resource can be added to the
+  // current combination. The value is only safe to use in ResourceCombinable()
+  // since it's set just before that's called and its life past that is not
+  // guaranteed.
+  StringPiece attribute_charset_;
+  // The charset of the combination so far.
+  StringPiece combined_charset_;
 
   DISALLOW_COPY_AND_ASSIGN(JsCombiner);
 };
@@ -141,8 +168,11 @@ class JsCombineFilter::Context : public RewriteContext {
     if (resource.get() != NULL) {
       ResourceSlotPtr slot(Driver()->GetSlot(resource, element, href));
       AddSlot(slot);
-      elements_.push_back(element);
       fresh_combination_ = false;
+      elements_.push_back(element);
+      // Extract the charset, if any, from the element while it's valid.
+      StringPiece elements_charset(element->AttributeValue(HtmlName::kCharset));
+      elements_charset.CopyToString(StringVectorAdd(&elements_charsets_));
     } else {
       ret = false;
     }
@@ -155,11 +185,12 @@ class JsCombineFilter::Context : public RewriteContext {
   // because we are no longer handling the resource associated with it.
   void RemoveLastElement() {
     RemoveLastSlot();
-    elements_.resize(elements_.size() - 1);
+    elements_.pop_back();
+    elements_charsets_.pop_back();
   }
 
   bool HasElementLast(HtmlElement* element) {
-    return !empty() && elements_[elements_.size() - 1] == element;
+    return !empty() && elements_.back() == element;
   }
 
   JsCombiner* combiner() { return &combiner_; }
@@ -179,6 +210,7 @@ class JsCombineFilter::Context : public RewriteContext {
     MessageHandler* handler = Driver()->message_handler();
     CachedResult* partition = NULL;
     CHECK_EQ(static_cast<int>(elements_.size()), num_slots());
+    CHECK_EQ(static_cast<int>(elements_charsets_.size()), num_slots());
 
     // For each slot, try to add its resource to the current partition.
     // If we can't, then finalize the last combination, and then
@@ -187,6 +219,7 @@ class JsCombineFilter::Context : public RewriteContext {
       bool add_input = false;
       ResourcePtr resource(slot(i)->resource());
       if (resource->IsValidAndCacheable()) {
+        combiner_.set_resources_attribute_charset(elements_charsets_[i]);
         if (combiner_.AddResourceNoFetch(resource, handler).value) {
           add_input = true;
         } else if (partition != NULL) {
@@ -333,9 +366,15 @@ class JsCombineFilter::Context : public RewriteContext {
 
   JsCombineFilter::JsCombiner combiner_;
   JsCombineFilter* filter_;
-  std::vector<HtmlElement*> elements_;
   bool fresh_combination_;
   UrlMultipartEncoder encoder_;
+  // Each of the elements for the resources being combined are added to this
+  // vector, but those elements will be free'd after the end of the document,
+  // though this context might survive past that (as it's an asynchronous
+  // rewriting thread). Therefore the contents of this vector are not usable
+  // in any of the rewriting callbacks: Partition, Rewrite, and Render.
+  std::vector<HtmlElement*> elements_;
+  StringVector elements_charsets_;  // charset for each element added, if any.
 };
 
 bool JsCombineFilter::JsCombiner::WritePiece(
@@ -382,7 +421,7 @@ void JsCombineFilter::StartElementImpl(HtmlElement* element) {
         // We somehow got some tag inside a script. Be conservative ---
         // it may be meaningful so we don't want to destroy it;
         // so flush the complete things before us, and call it a day.
-        if (IsCurrentScriptInCombination()) {
+        if (context_->HasElementLast(current_js_script_)) {
           context_->RemoveLastElement();
         }
         NextCombination();
@@ -419,7 +458,7 @@ void JsCombineFilter::Characters(HtmlCharactersNode* characters) {
   // If a script has non-whitespace data inside of it, we cannot
   // replace its contents with a call to eval, as they may be needed.
   if (script_depth_ > 0 && !OnlyWhitespace(characters->contents())) {
-    if (IsCurrentScriptInCombination()) {
+    if (context_->HasElementLast(current_js_script_)) {
       context_->RemoveLastElement();
       NextCombination();
     }
@@ -481,10 +520,6 @@ void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
 
   // Now we see if policy permits us merging this element with previous ones.
   context_->AddElement(element, src);
-}
-
-bool JsCombineFilter::IsCurrentScriptInCombination() const {
-  return context_->HasElementLast(current_js_script_);
 }
 
 GoogleString JsCombineFilter::VarName(const GoogleString& url) const {
