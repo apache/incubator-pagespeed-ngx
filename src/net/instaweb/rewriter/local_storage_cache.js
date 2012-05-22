@@ -242,15 +242,15 @@ pagespeed.addHandler = function(elem, ev, func) {
 pagespeed.localStorageCacheInit = function() {
   // Do nothing if any required API is missing.
   if (window.localStorage) {
-    pagespeed.localStorageCache = new pagespeed.LocalStorageCache();
-    pagespeed['localStorageCache'] = pagespeed.localStorageCache;
+    var temp= new pagespeed.LocalStorageCache();
+    pagespeed['localStorageCache'] = temp;
     pagespeed.addHandler(window, 'load',
                          function() {
-                           pagespeed.localStorageCache.saveInlinedData_();
+                           temp.saveInlinedData_();
                          });
     pagespeed.addHandler(window, 'load',
                          function() {
-                           pagespeed.localStorageCache.generateCookie_();
+                           temp.generateCookie_();
                          });
   }
 };

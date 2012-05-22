@@ -546,22 +546,23 @@ pagespeed.DeferJs.prototype.setUp = function() {
   this.overrideAddEventListeners();
 
   // TODO(ksimbili): Restore the following functions to their original.
+  var me = this;
   document.writeln = function(x) {
-    pagespeed.deferJs.writeHtml(x + '\n');
+    me.writeHtml(x + '\n');
   };
   document.write = function(x) {
-    pagespeed.deferJs.writeHtml(x);
+    me.writeHtml(x);
   };
   document.open = function() {};
   document.close = function() {};
 
   if (pagespeed.DeferJs.isExperimentalMode) {
     document.getElementById = function(str) {
-      pagespeed.deferJs.handlePendingDocumentWrites();
-      return pagespeed.deferJs.origGetElementById_.call(document, str);
+      me.handlePendingDocumentWrites();
+      return me.origGetElementById_.call(document, str);
     }
 
-    if (document.querySelectorAll && !(pagespeed.deferJs.getIEVersion() <= 8)) {
+    if (document.querySelectorAll && !(me.getIEVersion() <= 8)) {
       // TODO(ksimbili): Support IE8
       document.getElementsByTagName = function(tagName) {
         return document.querySelectorAll(
@@ -815,24 +816,25 @@ pagespeed.DeferJs.prototype.exec = function(func, opt_scopeObject) {
  * Override native event registration function on window and document objects.
  */
 pagespeed.DeferJs.prototype.overrideAddEventListeners = function() {
+  var me = this;
   // override AddEventListeners.
   if (window.addEventListener) {
     document.addEventListener = function(eventName, func, capture) {
       psaAddEventListener(document, eventName, func, capture,
-                          pagespeed.deferJs.origDocAddEventListener_);
+                          me.origDocAddEventListener_);
     }
     window.addEventListener = function(eventName, func, capture) {
       psaAddEventListener(window, eventName, func, capture,
-                          pagespeed.deferJs.origWindowAddEventListener_);
+                          me.origWindowAddEventListener_);
     }
   } else if (window.attachEvent) {
     document.attachEvent = function(eventName, func) {
       psaAddEventListener(document, eventName, func, undefined,
-                          pagespeed.deferJs.origDocAttachEvent_);
+                          me.origDocAttachEvent_);
     }
     window.attachEvent = function(eventName, func) {
       psaAddEventListener(window, eventName, func, undefined,
-                          pagespeed.deferJs.origWindowAttachEvent_);
+                          me.origWindowAttachEvent_);
     }
   }
 };
@@ -862,7 +864,8 @@ pagespeed.DeferJs.prototype.restoreAddEventListeners = function() {
  */
 var psaAddEventListener = function(elem, eventName, func, opt_capture,
                                    opt_originalAddEventListener) {
-  if (pagespeed.deferJs.state_ >= pagespeed.DeferJs.STATES.SCRIPTS_DONE) {
+  var deferJs = pagespeed['deferJs'];
+  if (deferJs.state_ >= pagespeed.DeferJs.STATES.SCRIPTS_DONE) {
     return;
   }
   var deferJsEvent;
@@ -885,7 +888,7 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
   var loadEvent;
   // TODO(ksimbili): Fix for IE8 too.
   if (deferJsEvent == pagespeed.DeferJs.EVENT.LOAD &&
-      !(pagespeed.deferJs.getIEVersion() <= 8)) {
+      !(deferJs.getIEVersion() <= 8)) {
     // HACK HACK: This is specifically to solve for jquery libraries, who try
     // to read the event being passed.
     // Note we are not setting any of the other params in event. We don't see
@@ -897,10 +900,10 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
   var eventListenerClosure = function() {
     func.call(elem, loadEvent);
   }
-  if (!pagespeed.deferJs.eventListernersMap_[deferJsEvent]) {
-    pagespeed.deferJs.eventListernersMap_[deferJsEvent] = [];
+  if (!deferJs.eventListernersMap_[deferJsEvent]) {
+    deferJs.eventListernersMap_[deferJsEvent] = [];
   }
-  pagespeed.deferJs.eventListernersMap_[deferJsEvent].push(
+  deferJs.eventListernersMap_[deferJsEvent].push(
       eventListenerClosure);
 };
 
@@ -990,7 +993,7 @@ pagespeed.DeferJs.prototype.getIEVersion = function() {
  * Initialize defer javascript.
  */
 pagespeed.deferInit = function() {
-  if (pagespeed.deferJs) {
+  if (pagespeed['deferJs']) {
     return;
   }
 
@@ -999,7 +1002,7 @@ pagespeed.deferInit = function() {
         window.localStorage['defer_js_experimental'];
   }
 
-  pagespeed.deferJs = new pagespeed.DeferJs();
-  pagespeed['deferJs'] = pagespeed.deferJs;
+  var temp = new pagespeed.DeferJs();
+  pagespeed['deferJs'] = temp;
 };
 pagespeed['deferInit'] = pagespeed.deferInit;

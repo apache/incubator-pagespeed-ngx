@@ -70,7 +70,7 @@ pagespeed.DelayImagesInline.prototype['replaceWithLowRes'] =
  * Initializes the inline delay images module.
  */
 pagespeed.delayImagesInlineInit = function() {
-  pagespeed.delayImagesInline = new pagespeed.DelayImagesInline();
-  pagespeed['delayImagesInline'] = pagespeed.delayImagesInline;
+  var temp = new pagespeed.DelayImagesInline();
+  pagespeed['delayImagesInline'] = temp;
 };
 pagespeed['delayImagesInlineInit'] = pagespeed.delayImagesInlineInit;

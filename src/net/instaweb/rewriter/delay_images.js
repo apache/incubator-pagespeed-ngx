@@ -50,8 +50,8 @@ pagespeed.DelayImages.prototype.replaceWithHighRes = function() {
  * Initializes the delay images module.
  */
 pagespeed.delayImagesInit = function() {
-  pagespeed.delayImages = new pagespeed.DelayImages();
-  pagespeed.delayImages.replaceWithHighRes();
+  var temp = new pagespeed.DelayImages();
+  temp.replaceWithHighRes();
 };
 
 pagespeed['delayImagesInit'] = pagespeed.delayImagesInit;
