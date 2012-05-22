@@ -94,12 +94,29 @@
           'dependencies': [
             '../zlib/zlib.gyp:zlib',
           ],
+          'variables': {
+            # Quoth libpagespeed's libpng.gyp:
+            # "The PNG_FREE_ME_SUPPORTED define was dropped in libpng
+            #  1.4.0beta78, with its behavior becoming the default
+            #  behavior."
+            #
+            # Hence, we define it ourselves for version >= 1.4.0 so that
+            # libpagespeed's code (which checks PNG_FREE_ME_SUPPORTED for
+            # compatibility with earlier versions) will run with both earlier
+            # and later versions of libpng.
+            #
+            # This detects the version and sets the variable to non-zero for
+            # pre-1.4 versions.
+            'png_free_me_suported_define_in_libpng' :
+              '<!(<(pkg-config) --atleast-version=1.4.0 libpng; echo $?)'
+          },
           'direct_dependent_settings': {
             'cflags': [
               '<!@(<(pkg-config) --cflags libpng)',
             ],
-            'defines': [
+            'defines+': [
               'USE_SYSTEM_LIBPNG',
+              'DBG=<(png_free_me_suported_define_in_libpng)',
 
               # We end up including setjmp.h directly, but libpng
               # doesn't like that. This define tells libpng to not
@@ -107,6 +124,15 @@
               'PNG_SKIP_SETJMP_CHECK',
             ],
           },
+          'conditions': [
+            ['<(png_free_me_suported_define_in_libpng)==0', {
+              'direct_dependent_settings': {
+                'defines+': [
+                  'PNG_FREE_ME_SUPPORTED',
+                ],
+              }
+            }],
+          ],
           'link_settings': {
             'ldflags': [
               '<!@(<(pkg-config) --libs-only-L --libs-only-other libpng)',
