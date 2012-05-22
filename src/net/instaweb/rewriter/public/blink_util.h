@@ -53,6 +53,7 @@ const char kPanelId[] = "panel-id";
 const char kImages[] = "images";
 const char kInstanceHtml[] = "instance_html";
 const char kStartBodyMarker[] = "<!--GooglePanel **** Start body ****-->";
+const char kEndBodyTag[] = "</body>";
 const char kLayoutMarker[] = "<!--GooglePanel **** Layout end ****-->";
 const char kJsonCachePrefix[] = "json:";
 const char kBlinkResponseCodePropertyName[] = "blink_last_response_code";

@@ -79,12 +79,6 @@ void StripNonCacheableFilter::StartElement(HtmlElement* element) {
 }
 
 void StripNonCacheableFilter::EndElement(HtmlElement* element) {
-  if (element->keyword() == HtmlName::kBody) {
-    HtmlCharactersNode* comment = rewrite_driver_->NewCharactersNode(
-        element, BlinkUtil::kLayoutMarker);
-    rewrite_driver_->AppendChild(element, comment);
-  }
-
   if (element->keyword() == HtmlName::kHead && !script_written_) {
     InsertBlinkJavascript(element);
   }

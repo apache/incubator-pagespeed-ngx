@@ -53,12 +53,15 @@
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
 
+const char BlinkFlowCriticalLine::kBackgroundComputationDone[] =
+    "BackgroundComputation:Done";
 const char BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits[] =
     "num_blink_html_cache_hits";
 const char BlinkFlowCriticalLine::kNumBlinkHtmlCacheMisses[] =
@@ -138,6 +141,8 @@ class CriticalLineFetch : public AsyncFetch {
 
   virtual ~CriticalLineFetch() {
     rewrite_driver_->decrement_async_events_count();
+    ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
+    sync->Signal(BlinkFlowCriticalLine::kBackgroundComputationDone);
   }
 
   virtual void HandleHeadersComplete() {
@@ -343,7 +348,7 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
   const GoogleString& critical_html =
       blink_critical_line_data_->critical_html();
   size_t start_body_pos = critical_html.find(BlinkUtil::kStartBodyMarker);
-  size_t end_body_pos = critical_html.rfind(BlinkUtil::kLayoutMarker);
+  size_t end_body_pos = critical_html.rfind(BlinkUtil::kEndBodyTag);
   if (start_body_pos == StringPiece::npos ||
       end_body_pos == StringPiece::npos) {
     LOG(ERROR) << "Marker not found for url " << url_;

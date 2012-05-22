@@ -42,6 +42,10 @@ class TimedVariable;
 // lookups to compute the critical line and insert it into cache.
 class BlinkFlowCriticalLine {
  public:
+  // These strings identify sync-points for reproducing races between foreground
+  // serving request and background blink computation requests in tests.
+  static const char kBackgroundComputationDone[];
+
   static void Start(const GoogleString& url,
                     AsyncFetch* base_fetch,
                     RewriteOptions* options,

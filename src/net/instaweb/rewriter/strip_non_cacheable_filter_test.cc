@@ -95,7 +95,7 @@ class StripNonCacheableFilterTest : public ResourceManagerTestBase {
         "<!--GooglePanel begin panel-id-1.0--><!--GooglePanel end panel-id-1.0-->"
         "<!--GooglePanel begin panel-id-0.0--><!--GooglePanel end panel-id-0.0-->"
         "<!--GooglePanel begin panel-id-0.1-->"
-        "<!--GooglePanel end panel-id-0.1-->", BlinkUtil::kLayoutMarker,
+        "<!--GooglePanel end panel-id-0.1-->"
         "</body></html>");
   }
 
