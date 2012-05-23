@@ -394,6 +394,8 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedMessageBufferSize 100
 #ALL_DIRECTIVES ModPagespeedMinImageSizeLowResolutionBytes 2000
 #ALL_DIRECTIVES ModPagespeedModifyCachingHeaders true
+#ALL_DIRECTIVES ModPagespeedNumExpensiveRewriteThreads 2
+#ALL_DIRECTIVES ModPagespeedNumRewriteThreads 4
 #ALL_DIRECTIVES ModPagespeedNumShards 5
 #ALL_DIRECTIVES ModPagespeedRefererStatisticsOutputLevel simple
 #ALL_DIRECTIVES ModPagespeedReportUnloadTime true

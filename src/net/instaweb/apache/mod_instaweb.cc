@@ -153,6 +153,9 @@ const char* kModPagespeedMinImageSizeLowResolutionBytes =
     "ModPagespeedMinImageSizeLowResolutionBytes";
 const char* kModPagespeedModifyCachingHeaders =
     "ModPagespeedModifyCachingHeaders";
+const char kModPagespeedNumExpensiveRewriteThreads[] =
+    "ModPagespeedNumExpensiveRewriteThreads";
+const char kModPagespeedNumRewriteThreads[] = "ModPagespeedNumRewriteThreads";
 const char* kModPagespeedNumShards = "ModPagespeedNumShards";
 const char* kModPagespeedRefererStatisticsOutputLevel =
     "ModPagespeedRefererStatisticsOutputLevel";
@@ -1083,6 +1086,23 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseIntOption(factory, cmd,
                          &ApacheRewriteDriverFactory::set_message_buffer_size,
                          arg);
+  } else if (StringCaseEqual(directive, kModPagespeedNumRewriteThreads)) {
+    if (manager->server()->is_virtual) {
+      ret = "Thread counts can only be configured globally, not per vhost. ";
+    } else {
+      ret = ParseIntOption(
+          factory, cmd,
+          &ApacheRewriteDriverFactory::set_num_rewrite_threads, arg);
+    }
+  } else if (StringCaseEqual(directive,
+                             kModPagespeedNumExpensiveRewriteThreads)) {
+    if (manager->server()->is_virtual) {
+      ret = "Thread counts can only be configured globally, not per vhost. ";
+    } else {
+      ret = ParseIntOption(
+          factory, cmd,
+          &ApacheRewriteDriverFactory::set_num_expensive_rewrite_threads, arg);
+    }
   } else if (StringCaseEqual(directive, kModPagespeedNumShards)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (StringCaseEqual(directive, kModPagespeedRetainComment)) {
@@ -1304,6 +1324,12 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Set the size of buffer used for /mod_pagespeed_message."),
   APACHE_CONFIG_OPTION(kModPagespeedMinImageSizeLowResolutionBytes,
         "Minimum image size above which low resolution image is generated."),
+  APACHE_CONFIG_OPTION(kModPagespeedNumRewriteThreads,
+        "Number of threads to use for inexpensive portions of "
+        "resource-rewriting. <= 0 to auto-detect"),
+  APACHE_CONFIG_OPTION(kModPagespeedNumExpensiveRewriteThreads,
+        "Number of threads to use for computation-intensive portions of "
+        "resource-rewriting. <= 0 to auto-detect"),
   APACHE_CONFIG_OPTION(kModPagespeedNumShards, "Set number of shards"),
   APACHE_CONFIG_OPTION(kModPagespeedReportUnloadTime,
          "If set reports optional page unload time."),

@@ -17,8 +17,11 @@
 
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 
+#include <algorithm>
+
 #include "apr_pools.h"
 #include "httpd.h"
+#include "ap_mpm.h"
 
 #include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_message_handler.h"
@@ -96,6 +99,9 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       apache_html_parse_message_handler_(new ApacheMessageHandler(
           server_rec_, version_, timer())),
       html_rewrite_time_us_histogram_(NULL),
+      thread_counts_finalized_(false),
+      num_rewrite_threads_(-1),
+      num_expensive_rewrite_threads_(-1),
       message_buffer_size_(0) {
   apr_pool_create(&pool_, NULL);
 
@@ -187,6 +193,72 @@ UrlFetcher* ApacheRewriteDriverFactory::DefaultUrlFetcher() {
 UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   LOG(DFATAL) << "In Apache the fetchers are not global, but kept in a map.";
   return NULL;
+}
+
+QueuedWorkerPool* ApacheRewriteDriverFactory::CreateWorkerPool(
+    WorkerPoolName name) {
+  AutoDetectThreadCounts();
+  switch (name) {
+    case kHtmlWorkers:
+      // In practice this is 0, as we don't use HTML threads in Apache.
+      return new QueuedWorkerPool(1, thread_system());
+    case kRewriteWorkers:
+      return new QueuedWorkerPool(num_rewrite_threads_, thread_system());
+    case kLowPriorityRewriteWorkers:
+      return new QueuedWorkerPool(num_expensive_rewrite_threads_,
+                                  thread_system());
+    default:
+      return RewriteDriverFactory::CreateWorkerPool(name);
+  }
+}
+
+void ApacheRewriteDriverFactory::AutoDetectThreadCounts() {
+  if (thread_counts_finalized_) {
+    return;
+  }
+
+  // Detect whether we're using a threaded MPM.
+  apr_status_t status;
+  int result = 0, threads = 1;
+  status = ap_mpm_query(AP_MPMQ_IS_THREADED, &result);
+  if (status == APR_SUCCESS &&
+      (result == AP_MPMQ_STATIC || result == AP_MPMQ_DYNAMIC)) {
+    status = ap_mpm_query(AP_MPMQ_MAX_THREADS, &threads);
+    if (status != APR_SUCCESS) {
+      threads = 0;
+    }
+  }
+
+  threads = std::max(1, threads);
+
+  if (threads > 1) {
+    // Apply defaults for threaded.
+    if (num_rewrite_threads_ <= 0) {
+      num_rewrite_threads_ = 4;
+    }
+    if (num_expensive_rewrite_threads_ <= 0) {
+      num_expensive_rewrite_threads_ = 4;
+    }
+    message_handler()->Message(
+        kInfo, "Detected threaded MPM with up to %d threads."
+        " Own threads: %d Rewrite, %d Expensive Rewrite.",
+        threads, num_rewrite_threads_, num_expensive_rewrite_threads_);
+
+  } else {
+    // Apply defaults for non-threaded.
+    if (num_rewrite_threads_ <= 0) {
+      num_rewrite_threads_ = 1;
+    }
+    if (num_expensive_rewrite_threads_ <= 0) {
+      num_expensive_rewrite_threads_ = 1;
+    }
+    message_handler()->Message(
+        kInfo, "No threading detected in MPM."
+        " Own threads: %d Rewrite, %d Expensive Rewrite.",
+        num_rewrite_threads_, num_expensive_rewrite_threads_);
+  }
+
+  thread_counts_finalized_ = true;
 }
 
 UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(

@@ -92,6 +92,8 @@ class ApacheResourceManager : public ResourceManager {
     sp.CopyToString(&cache_flush_filename_);
   }
 
+  const server_rec* server() const { return server_rec_; }
+
  private:
   ApacheRewriteDriverFactory* apache_factory_;
   server_rec* server_rec_;

@@ -79,6 +79,20 @@
     #
     # ModPagespeedImageMaxRewritesAtOnce      8
 
+    # You can also customize the number of threads per Apache process
+    # mod_pagespeed will use to do resource optimization. Plain
+    # "rewrite threads" are used to do short, latency-sensitive work,
+    # while "expensive rewrite threads" are used for actual optimization
+    # work that's more computationally expensive. If you live these unset,
+    # or use values <= 0 the defaults will be used, which is 1 for both
+    # values when using non-threaded MPMs (e.g. prefork) and 4 for both
+    # on threaded MPMs (e.g. worker and event). These settings can only
+    # be changed globally, and not per virtual host.
+    #
+    # ModPagespeedNumRewriteThreads 4
+    # ModPagespeedNumExpensiveRewriteThreads 4
+
+
     # Settings for image optimization:
     #
     # Jpeg recompression quality (0 to 100, -1 strips metadata):

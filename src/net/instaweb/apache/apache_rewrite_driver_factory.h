@@ -120,6 +120,11 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // cleartext.  We'll decompress as we read the content if needed.
   void set_fetch_with_gzip(bool x) { fetch_with_gzip_ = x; }
 
+  void set_num_rewrite_threads(int x) { num_rewrite_threads_ = x; }
+  void set_num_expensive_rewrite_threads(int x) {
+    num_expensive_rewrite_threads_ = x;
+  }
+
   void set_message_buffer_size(int x) {
     message_buffer_size_ = x;
   }
@@ -175,6 +180,7 @@ protected:
   virtual Timer* DefaultTimer();
   virtual CacheInterface* DefaultCacheInterface();
   virtual NamedLockManager* DefaultLockManager();
+  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolName name);
 
   // Disable the Resource Manager's filesystem since we have a
   // write-through http_cache.
@@ -196,6 +202,10 @@ protected:
   virtual void ShutDown();
 
  private:
+  // Updates num_rewrite_threads_ and num_expensive_rewrite_threads_
+  // with sensible values if they are not explicitly set.
+  void AutoDetectThreadCounts();
+
   apr_pool_t* pool_;
   server_rec* server_rec_;
   scoped_ptr<SharedMemStatistics> shared_mem_statistics_;
@@ -243,6 +253,13 @@ protected:
   ApacheResourceManagerSet uninitialized_managers_;
 
   Histogram* html_rewrite_time_us_histogram_;
+
+  // true iff we ran through AutoDetectThreadCounts()
+  bool thread_counts_finalized_;
+
+  // These are <= 0 if we should autodetect.
+  int num_rewrite_threads_;
+  int num_expensive_rewrite_threads_;
 
   // Size of shared circular buffer for displaying Info messages in
   // /mod_pagespeed_messages.
