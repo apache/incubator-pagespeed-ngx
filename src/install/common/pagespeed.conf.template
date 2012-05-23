@@ -130,6 +130,13 @@
     #
     # ModPagespeedCombineAcrossPaths off
 
+    # Renaming JavaScript URLs can sometimes break them.  With this
+    # option enabled, mod_pagespeed uses a simple heuristic to decide
+    # not to rename JavaScript that it thinks is introspective.
+    #
+    # You can turn this off to let mod_pagespeed rename all JS files.
+    ModPagespeedAvoidRenamingIntrospectiveJavascript on
+
     # Explicitly tell mod_pagespeed to load some resources from disk.
     # This will speed up load time and update frequency.
     #
