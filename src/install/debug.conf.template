@@ -122,6 +122,8 @@ ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_
 # this here cause it's a hassle; we just depend on the unit-tests for that.
 ModPagespeedListOutstandingUrlsOnError on
 
+ModPagespeedAvoidRenamingIntrospectiveJavascript off
+
 #SPELING # Enable mod_speling to ensure that we don't regress Issue 194
 #SPELING <IfModule !speling_module>
 #SPELING   LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so
