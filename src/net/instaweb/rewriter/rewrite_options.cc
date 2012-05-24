@@ -151,8 +151,7 @@ const int RewriteOptions::kDefaultImageWebpRecompressQuality = -1;
 // Apache.  See http://code.google.com/p/modpagespeed/issues/detail?id=176
 const int RewriteOptions::kDefaultMaxUrlSegmentSize = 1024;
 
-const GoogleString RewriteOptions::kDefaultBeaconUrl =
-    "/mod_pagespeed_beacon?ets=";
+const char RewriteOptions::kDefaultBeaconUrl[] = "/mod_pagespeed_beacon?ets=";
 
 const int RewriteOptions::kDefaultMaxInlinedPreviewImagesIndex = 5;
 const int64 RewriteOptions::kDefaultMinImageSizeLowResolutionBytes = 1 * 1024;
@@ -393,6 +392,27 @@ bool RewriteOptions::ParseRewriteLevel(
   return ret;
 }
 
+bool RewriteOptions::ParseBeaconUrl(const StringPiece& in, BeaconUrl* out) {
+  StringPieceVector urls;
+  SplitStringPieceToVector(in, " ", &urls, true);
+
+  if (urls.size() > 2 || urls.size() < 1) {
+    return false;
+  }
+  urls[0].CopyToString(&out->http);
+  if (urls.size() == 2) {
+    urls[1].CopyToString(&out->https);
+    return true;
+  }
+  if (urls[0].starts_with("http:")) {
+    out->https.clear();
+    StrAppend(&out->https, "https:", urls[0].substr(STATIC_STRLEN("http:")));
+  } else {
+    urls[0].CopyToString(&out->https);
+  }
+  return true;
+}
+
 RewriteOptions::RewriteOptions()
     : modified_(false),
       frozen_(false),
@@ -469,7 +489,10 @@ RewriteOptions::RewriteOptions()
   add_option(false, &serve_blink_non_critical_, "snc", kServeBlinkNonCritical);
   add_option(false, &default_cache_html_, "dch", kDefaultCacheHtml);
   add_option(true, &modify_caching_headers_, "mch", kModifyCachingHeaders);
-  add_option(kDefaultBeaconUrl, &beacon_url_, "bu", kBeaconUrl);
+  // This is not Plain Old Data, so we initialize it here.
+  const RewriteOptions::BeaconUrl kDefaultBeaconUrls =
+      { kDefaultBeaconUrl, kDefaultBeaconUrl };
+  add_option(kDefaultBeaconUrls, &beacon_url_, "bu", kBeaconUrl);
   add_option(false, &lazyload_images_after_onload_, "llio",
              kLazyloadImagesAfterOnload);
   add_option(false, &domain_rewrite_hyperlinks_, "drh",
@@ -1025,6 +1048,11 @@ GoogleString RewriteOptions::OptionSignature(RewriteLevel level,
   return "?";
 }
 
+GoogleString RewriteOptions::OptionSignature(const BeaconUrl& beacon_url,
+                                             const Hasher* hasher) {
+  return hasher->Hash(ToString(beacon_url));
+}
+
 void RewriteOptions::ComputeSignature(const Hasher* hasher) {
   if (frozen_) {
     return;
@@ -1076,6 +1104,14 @@ GoogleString RewriteOptions::ToString(RewriteLevel level) {
     case kAllFilters: return "All Filters";
   }
   return "?";
+}
+
+GoogleString RewriteOptions::ToString(const BeaconUrl& beacon_url) {
+  GoogleString result = beacon_url.http;
+  if (beacon_url.http != beacon_url.https) {
+    StrAppend(&result, " ", beacon_url.https);
+  }
+  return result;
 }
 
 GoogleString RewriteOptions::ToString() const {

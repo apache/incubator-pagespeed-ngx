@@ -509,6 +509,9 @@ class RewriteDriver : public HtmlParse {
   const GoogleUrl& decoded_base_url() const { return decoded_base_url_; }
   StringPiece decoded_base() const { return decoded_base_url_.Spec(); }
 
+  // Quick way to tell if the document url is https (ie was fetched via https).
+  bool IsHttps() const { return google_url().SchemeIs("https"); }
+
   const UrlSegmentEncoder* default_encoder() const { return &default_encoder_; }
 
   // Finds a filter with the given ID, or returns NULL if none found.

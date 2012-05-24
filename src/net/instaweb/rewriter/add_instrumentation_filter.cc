@@ -108,15 +108,11 @@ GoogleString* AddInstrumentationFilter::kUnloadScriptFormatXhtml = NULL;
 // Counters.
 const char AddInstrumentationFilter::kInstrumentationScriptAddedCount[] =
     "instrumentation_filter_script_added_count";
-AddInstrumentationFilter::AddInstrumentationFilter(
-    RewriteDriver* driver, const StringPiece& beacon_url)
+AddInstrumentationFilter::AddInstrumentationFilter(RewriteDriver* driver)
     : driver_(driver),
       found_head_(false),
       use_cdata_hack_(
           !driver_->resource_manager()->response_headers_finalized()) {
-  beacon_url.CopyToString(&beacon_url_);
-  beacon_url.CopyToString(&xhtml_beacon_url_);
-  GlobalReplaceSubstring("&", "&amp;", &xhtml_beacon_url_);
   Statistics* stats = driver->resource_manager()->statistics();
   instrumentation_script_added_count_ = stats->GetVariable(
       kInstrumentationScriptAddedCount);
@@ -201,12 +197,19 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
   if (is_xhtml) {
     GlobalReplaceSubstring("&", "&amp;", &html_url);
   }
+  const RewriteOptions::BeaconUrl& beacons = driver_->options()->beacon_url();
+  const GoogleString* beacon_url =
+      driver_->IsHttps() ? &beacons.https : &beacons.http;
+  GoogleString xhtml_conversion_buffer;
+  if (is_xhtml) {
+    xhtml_conversion_buffer = *beacon_url;
+    GlobalReplaceSubstring("&", "&amp;", &xhtml_conversion_buffer);
+    beacon_url = &xhtml_conversion_buffer;
+  }
   GoogleString tail_script = StringPrintf(
       script_format.c_str(),
       use_cdata_hack_ ? kCdataHackOpen : "",
-      is_xhtml ? xhtml_beacon_url_.c_str() : beacon_url_.c_str(),
-      tag_name.c_str(),
-      html_url.c_str(),
+      beacon_url->c_str(), tag_name.c_str(), html_url.c_str(),
       use_cdata_hack_ ? kCdataHackClose: "");
   HtmlCharactersNode* script =
       driver_->NewCharactersNode(element, tail_script);

@@ -556,9 +556,24 @@ void RewriteOptionsTest::TestSetOptionFromName(bool test_log_variant) {
   TestNameSet(RewriteOptions::kOptionOk,
               test_log_variant,
               "BeaconUrl",
-              "example",
+              "http://www.example.com/beacon",
               &handler);
-  EXPECT_EQ("example", options_.beacon_url());
+  EXPECT_EQ("http://www.example.com/beacon", options_.beacon_url().http);
+  EXPECT_EQ("https://www.example.com/beacon", options_.beacon_url().https);
+  TestNameSet(RewriteOptions::kOptionOk,
+              test_log_variant,
+              "BeaconUrl",
+              "http://www.example.com/beacon2 https://www.example.com/beacon3",
+              &handler);
+  EXPECT_EQ("http://www.example.com/beacon2", options_.beacon_url().http);
+  EXPECT_EQ("https://www.example.com/beacon3", options_.beacon_url().https);
+  TestNameSet(RewriteOptions::kOptionOk,
+              test_log_variant,
+              "BeaconUrl",
+              "/pagespeed_beacon?",
+              &handler);
+  EXPECT_EQ("/pagespeed_beacon?", options_.beacon_url().http);
+  EXPECT_EQ("/pagespeed_beacon?", options_.beacon_url().https);
 
   RewriteOptions::RewriteLevel old_level = options_.level();
   TestNameSet(RewriteOptions::kOptionValueInvalid,

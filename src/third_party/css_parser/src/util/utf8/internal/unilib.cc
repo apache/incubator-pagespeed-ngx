@@ -23,8 +23,6 @@
 
 namespace UniLib {
 
-namespace {
-
 // MOE: start_strip
 // MOE: end_strip
 // Codepoints not allowed for interchange are:
@@ -34,14 +32,12 @@ namespace {
 //   C1 controls: U+007F to U+009F
 //   Surrogates: U+D800 to U+DFFF
 //   Non-characters: U+FDD0 to U+FDEF and U+xxFFFE to U+xxFFFF for all xx
-inline bool IsInterchangeValidCodepoint(char32 c) {
+bool IsInterchangeValid(char32 c) {
   return !((c >= 0x00 && c <= 0x08) || c == 0x0B || (c >= 0x0E && c <= 0x1F) ||
            (c >= 0x7F && c <= 0x9F) ||
            (c >= 0xD800 && c <= 0xDFFF) ||
            (c >= 0xFDD0 && c <= 0xFDEF) || (c&0xFFFE) == 0xFFFE);
 }
-
-}  // namespace
 
 int SpanInterchangeValid(const char* begin, int byte_length) {
   char32 rune;
@@ -53,7 +49,7 @@ int SpanInterchangeValid(const char* begin, int byte_length) {
     // by chartorune to indicate error. Luckily, the real codepoint is size 3
     // while errors return bytes_consumed == 1.
     if ((rune == Runeerror && bytes_consumed == 1) ||
-        !IsInterchangeValidCodepoint(rune)) {
+        !IsInterchangeValid(rune)) {
       break;  // Found
     }
     p += bytes_consumed;

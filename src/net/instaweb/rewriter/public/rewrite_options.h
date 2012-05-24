@@ -187,6 +187,11 @@ class RewriteOptions {
     kEndOfOptions
   };
 
+  struct BeaconUrl {
+    GoogleString http;
+    GoogleString https;
+  };
+
   static const char kAjaxRewriteId[];
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
@@ -260,7 +265,7 @@ class RewriteOptions {
   static const int64 kDefaultIdleFlushTimeMs;
   static const int64 kDefaultImplicitCacheTtlMs;
   static const int64 kDefaultPrioritizeVisibleContentCacheTimeMs;
-  static const GoogleString kDefaultBeaconUrl;
+  static const char kDefaultBeaconUrl[];
   static const int kDefaultImageJpegRecompressQuality;
   static const int kDefaultImageLimitOptimizedPercent;
   static const int kDefaultImageLimitResizeAreaPercent;
@@ -372,6 +377,11 @@ class RewriteOptions {
   };
 
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
+
+  // Parse a beacon url, or a pair of beacon urls (http https) separated by a
+  // space.  If only an http url is given, the https url is derived from it
+  // by simply substituting the protocol.
+  static bool ParseBeaconUrl(const StringPiece& in, BeaconUrl* out);
 
   RewriteOptions();
   virtual ~RewriteOptions();
@@ -759,9 +769,9 @@ class RewriteOptions {
     return metadata_cache_staleness_threshold_ms_.value();
   }
 
-  const GoogleString& beacon_url() const { return beacon_url_.value(); }
-  void set_beacon_url(const StringPiece& p) {
-    set_option(GoogleString(p.data(), p.size()), &beacon_url_);
+  const BeaconUrl& beacon_url() const { return beacon_url_.value(); }
+  void set_beacon_url(const GoogleString& beacon_url) {
+    beacon_url_.SetFromString(beacon_url);
   }
 
   // Return false in a subclass if you want to disallow all URL trimming in CSS.
@@ -1326,6 +1336,10 @@ class RewriteOptions {
                               RewriteLevel* value) {
     return ParseRewriteLevel(value_string, value);
   }
+  static bool ParseFromString(const GoogleString& value_string,
+                              BeaconUrl* value) {
+    return ParseBeaconUrl(value_string, value);
+  }
 
   // These static methods enable us to generate signatures for all
   // instantiated option-types from Option<T>::Signature().
@@ -1341,6 +1355,8 @@ class RewriteOptions {
   static GoogleString OptionSignature(const GoogleString& x,
                                       const Hasher* hasher);
   static GoogleString OptionSignature(RewriteLevel x,
+                                      const Hasher* hasher);
+  static GoogleString OptionSignature(const BeaconUrl& beacon_url,
                                       const Hasher* hasher);
 
   // These static methods enable us to generate strings for all
@@ -1358,6 +1374,7 @@ class RewriteOptions {
     return x;
   }
   static GoogleString ToString(RewriteLevel x);
+  static GoogleString ToString(const BeaconUrl& beacon_url);
 
   // Returns true if option1's enum is less than option2's. Used to order
   // all_options_.
@@ -1514,7 +1531,7 @@ class RewriteOptions {
 
   scoped_ptr<PublisherConfig> panel_config_;
 
-  Option<GoogleString> beacon_url_;
+  Option<BeaconUrl> beacon_url_;
   Option<GoogleString> ga_id_;
 
   // The value we put for the X-Mod-Pagespeed header. Default is our version.

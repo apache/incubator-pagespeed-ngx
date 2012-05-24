@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -42,6 +43,7 @@ class AddInstrumentationFilterTest : public ResourceManagerTestBase {
     report_unload_time_ = false;
     xhtml_mode_ = false;
     cdata_mode_ = false;
+    https_mode_ = false;
   }
 
   virtual bool AddBody() const { return false; }
@@ -49,24 +51,30 @@ class AddInstrumentationFilterTest : public ResourceManagerTestBase {
   void RunInjection() {
     options()->set_report_unload_time(report_unload_time_);
     rewrite_driver()->AddFilters();
-    ParseUrl(StrCat(kTestDomain, "index.html?a&b"),
-             "<head></head><body></body>");
-    EXPECT_TRUE(output_buffer_.find("/beacon?") != GoogleString::npos);
+    GoogleString url =
+        StrCat((https_mode_ ? "https://example.com/" : kTestDomain),
+               "index.html?a&b");
+    ParseUrl(url, "<head></head><body></body>");
+    EXPECT_EQ(https_mode_,
+              output_buffer_.find("https://example.com/beacon?") !=
+              GoogleString::npos);
+    EXPECT_EQ(https_mode_,
+              output_buffer_.find("http://example.com/beacon?") ==
+              GoogleString::npos);
     EXPECT_TRUE(output_buffer_.find("ets=load") != GoogleString::npos);
     EXPECT_EQ(report_unload_time_,
               output_buffer_.find("ets=unload") != GoogleString::npos);
 
     // All of the ampersands should be suffixed with "amp;" if that's what
     // we are looking for.
+    int amp_count = 0;
     for (int i = 0, n = output_buffer_.size(); i < n; ++i) {
       if (output_buffer_[i] == '&') {
+        ++amp_count;
         EXPECT_EQ(xhtml_mode_, output_buffer_.substr(i, 5) == "&amp;");
       }
     }
-
-    EXPECT_TRUE(output_buffer_.find("&") != GoogleString::npos);
-    EXPECT_EQ(xhtml_mode_,
-              output_buffer_.find("&amp;") != GoogleString::npos);
+    EXPECT_LT(0, amp_count);
     EXPECT_EQ(cdata_mode_,
               output_buffer_.find("//<![CDATA[\n") != GoogleString::npos);
     EXPECT_EQ(cdata_mode_,
@@ -88,10 +96,15 @@ class AddInstrumentationFilterTest : public ResourceManagerTestBase {
     resource_manager()->set_response_headers_finalized(false);
   }
 
+  void AssumeHttps() {
+    https_mode_ = true;
+  }
+
   ResponseHeaders response_headers_;
   bool report_unload_time_;
   bool xhtml_mode_;
   bool cdata_mode_;
+  bool https_mode_;
 };
 
 TEST_F(AddInstrumentationFilterTest, ScriptInjection) {
@@ -100,6 +113,7 @@ TEST_F(AddInstrumentationFilterTest, ScriptInjection) {
 
 TEST_F(AddInstrumentationFilterTest, ScriptInjectionWithNavigation) {
   report_unload_time_ = true;
+  RunInjection();
 }
 
 // Note that the DOCTYPE is not signficiant in terms of how the browser
@@ -157,6 +171,22 @@ TEST_F(AddInstrumentationFilterTest,
        TestScriptInjectionWithNavigationCdataMime) {
   DoNotRelyOnContentType();
   SetMimetypeToXhtml();
+  report_unload_time_ = true;
+  RunInjection();
+}
+
+// Test an https fetch.
+TEST_F(AddInstrumentationFilterTest,
+       TestScriptInjectionWithHttps) {
+  AssumeHttps();
+  RunInjection();
+}
+
+// Test an https fetch, reporting unload and using Xhtml
+TEST_F(AddInstrumentationFilterTest,
+       TestScriptInjectionWithHttpsUnloadAndXhtml) {
+  SetMimetypeToXhtml();
+  AssumeHttps();
   report_unload_time_ = true;
   RunInjection();
 }

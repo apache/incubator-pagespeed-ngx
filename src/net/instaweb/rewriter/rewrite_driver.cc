@@ -911,8 +911,7 @@ void RewriteDriver::AddPostRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kAddInstrumentation)) {
     // Inject javascript to instrument loading-time.
-    add_instrumentation_filter_ = new AddInstrumentationFilter(
-        this, rewrite_options->beacon_url());
+    add_instrumentation_filter_ = new AddInstrumentationFilter(this);
     AddOwnedPostRenderFilter(add_instrumentation_filter_);
   }
   if (rewrite_options->Enabled(RewriteOptions::kConvertMetaTags)) {

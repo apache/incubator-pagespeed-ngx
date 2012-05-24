@@ -83,6 +83,7 @@ inline int SpanInterchangeValid(const std::string& src) {
 // Returns true if the source is all interchange valid UTF-8
 // "Interchange valid" is a stronger than structurally valid --
 // no C0 or C1 control codes (other than CR LF HT FF) and no non-characters.
+bool IsInterchangeValid(char32 codepoint);
 inline bool IsInterchangeValid(const char* src, int byte_length) {
   return (byte_length == SpanInterchangeValid(src, byte_length));
 }

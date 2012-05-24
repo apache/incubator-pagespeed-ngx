@@ -22,7 +22,6 @@
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -42,8 +41,7 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
   // Counters.
   static const char kInstrumentationScriptAddedCount[];
 
-  AddInstrumentationFilter(RewriteDriver* driver,
-                           const StringPiece& beacon_url);
+  explicit AddInstrumentationFilter(RewriteDriver* driver);
   virtual ~AddInstrumentationFilter();
 
   static void Initialize(Statistics* statistics);
@@ -69,8 +67,6 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
   RewriteDriver* driver_;
   bool found_head_;
   bool use_cdata_hack_;
-  GoogleString beacon_url_;
-  GoogleString xhtml_beacon_url_;
 
   DISALLOW_COPY_AND_ASSIGN(AddInstrumentationFilter);
 };
