@@ -493,14 +493,36 @@ check grep "'<script src=\".*ckeditor\.js\">'" $FETCHED
 check grep "'<script src=\".*swfobject\.js\.pagespeed\..*\.js\">'" $FETCHED
 check grep "'<script src=\".*another_normal\.js\.pagespeed\..*\.js\">'" $FETCHED
 
-test_filter move_css_to_head does what it says on the tin.
-check run_wget_with_args $URL
-check grep -q "'styles/all_styles.css\"></head>'" $FETCHED  # link moved to head
+WGET_ARGS=""
+echo TEST: move_css_above_scripts works.
+URL=$EXAMPLE_ROOT/move_css_above_scripts.html?ModPagespeedFilters=move_css_above_scripts
+$WGET_DUMP $URL > $FETCHED
+# Link moved before script.
+cat $FETCHED
+check grep -q "'styles/all_styles.css\"><script'" $FETCHED
 
-test_filter inline_css converts a link tag to a style tag
+echo TEST: move_css_above_scripts off.
+URL=$EXAMPLE_ROOT/move_css_above_scripts.html?ModPagespeedFilters=
+$WGET_DUMP $URL > $FETCHED
+# Link not moved before script.
+check ! grep "'styles/all_styles.css\"><script'" $FETCHED
+
+echo TEST: move_css_to_head does what it says on the tin.
+URL=$EXAMPLE_ROOT/move_css_to_head.html?ModPagespeedFilters=move_css_to_head
+$WGET_DUMP $URL > $FETCHED
+# Link moved to head.
+check grep -q "'styles/all_styles.css\"></head>'" $FETCHED
+
+echo TEST: move_css_to_head off.
+URL=$EXAMPLE_ROOT/move_css_to_head.html?ModPagespeedFilters=
+$WGET_DUMP $URL > $FETCHED
+# Link not moved to head.
+check ! grep "'styles/all_styles.css\"></head>'" $FETCHED
+
+test_filter inline_css converts a link tag to a style tag.
 fetch_until $URL 'grep -c style' 2
 
-test_filter inline_javascript inlines a small JS file
+test_filter inline_javascript inlines a small JS file.
 fetch_until $URL 'grep -c document.write' 1
 
 test_filter outline_css outlines large styles, but not small ones.
@@ -606,31 +628,32 @@ check grep -e '"HTTP/1\.. 200 OK"' $WGET_OUTPUT
 
 # These have to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.
-test_filter rewrite_css,extend_cache extends cache of images in CSS
-FILE=rewrite_css_images.html?ModPagespeedFilters=$FILTER_NAME
+WGET_ARGS=""
+echo TEST: rewrite_css,extend_cache extends cache of images in CSS
+FILE=rewrite_css_images.html?ModPagespeedFilters=rewrite_css,extend_cache
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 fetch_until $URL 'grep -c .pagespeed.ce.' 1  # image cache extended
 check run_wget_with_args $URL
 
 # Rewrite images in styles.
-test_filter rewrite_images,rewrite_style_attributes_with_url optimizes images in style
-FILE=rewrite_style_attributes.html
+echo TEST: rewrite_images,rewrite_css,rewrite_style_attributes_with_url optimizes images in style
+FILE=rewrite_style_attributes.html?ModPagespeedFilters=rewrite_images,rewrite_css,rewrite_style_attributes_with_url
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 fetch_until $URL 'grep -c .pagespeed.ic.' 1  # image cache extended
 check run_wget_with_args $URL
 
-test_filter rewrite_css,rewrite_images rewrites images in CSS
-FILE=rewrite_css_images.html?ModPagespeedFilters=$FILTER_NAME
+echo TEST: rewrite_css,rewrite_images rewrites images in CSS
+FILE=rewrite_css_images.html?ModPagespeedFilters=rewrite_css,rewrite_images
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 fetch_until $URL 'grep -c url.data:image/png;base64,' 1  # image inlined
 check run_wget_with_args $URL
 
 # This test is only valid for async.
-test_filter inline_css,rewrite_css,sprite_images sprites images in CSS
-FILE=sprite_images.html?ModPagespeedFilters=$FILTER_NAME
+echo TEST: inline_css,rewrite_css,sprite_images sprites images in CSS
+FILE=sprite_images.html?ModPagespeedFilters=inline_css,rewrite_css,sprite_images
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 echo $WGET_DUMP $URL
@@ -638,8 +661,8 @@ fetch_until $URL \
 'grep -c Cuppa.png.*BikeCrashIcn.png.*IronChef2.gif.*.pagespeed.is.*.png' 1
 
 # This test is only valid for async.
-test_filter rewrite_css,sprite_images sprites images in CSS
-FILE=sprite_images.html?ModPagespeedFilters=$FILTER_NAME
+echo TEST: rewrite_css,sprite_images sprites images in CSS
+FILE=sprite_images.html?ModPagespeedFilters=rewrite_css,sprite_images
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 echo $WGET_DUMP $URL
