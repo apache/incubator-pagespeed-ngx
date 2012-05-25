@@ -195,7 +195,8 @@ TEST_F(ParserTest, ErrorNumber) {
 }
 
 TEST_F(ParserTest, unescape) {
-  TestUnescape("\\abcdef aabc", 8, 0xABCDEF);
+  // Invalid Unicode char.
+  TestUnescape("\\abcdef aabc", 8, ' ');
   TestUnescape("\\A", 2, 0xA);
   TestUnescape("\\A0b5C\r\n", 8, 0xa0b5C);
   TestUnescape("\\AB ", 4, 0xAB);

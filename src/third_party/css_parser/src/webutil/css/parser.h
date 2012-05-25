@@ -287,6 +287,10 @@ class Parser {
   //
   // So, if the escape sequence is a hex escape and the character following
   // the last hex digit is a space, then ParseEscape() consumes it.
+  //
+  // Only interchange valid Unicode characters will be returned.
+  // all other characters will be replaced with space (" ") and
+  // a kUtf8Error will be recorded in errors_seen_mask_.
   char32 ParseEscape();  // return the codepoint for the current escape \12a76f
 
   // Starting at delim, ParseString<char delim>() consumes the string,

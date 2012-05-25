@@ -217,14 +217,60 @@ TEST_F(CssFilterTest, RewriteRepeatedParseError) {
   EXPECT_EQ(0, num_parse_failures_->Get());
 }
 
-// Make sure we don't change CSS with errors. Note: We can move these tests
-// to expected rewrites if we find safe ways to edit them.
-TEST_F(CssFilterTest, NoRewriteParseError) {
-  ValidateFailParse("non_unicode_charset",
-                    "a { font-family: \"\xCB\xCE\xCC\xE5\"; }");
-  // From http://www.baidu.com/
-  ValidateFailParse("non_unicode_baidu",
-                    "#lk span {font:14px \"\xCB\xCE\xCC\xE5\"}");
+// Deal nicely with non-UTF8 encodings.
+TEST_F(CssFilterTest, NonUtf8) {
+  // Distilled examples.
+  // gb2312 (Not valid UTF-8, multi-byte).
+  ValidateRewrite("font", "a { font-family: \"\xCB\xCE\xCC\xE5\"; }",
+                          "a{font-family: \"\xCB\xCE\xCC\xE5\"}",
+                  kExpectSuccess);
+  // Windows-1252 (Not valid UTF-8, single-byte).
+  ValidateRewrite("string", ".foo { content: \"r\xE9sum\xE9\"; }",
+                            ".foo{content: \"r\xE9sum\xE9\"}",
+                  kExpectSuccess);
+  // Shift_JIS (Not valid UTF-8, multi-byte, second byte may not set high bit).
+  ValidateRewrite("ident_value",
+                  ".foo { -moz-charset: \x83\x56\x83\x74\x83\x67\x83\x57; }",
+                  ".foo{-moz-charset: \x83\x56\x83\x74\x83\x67\x83\x57}",
+                  kExpectSuccess);
+  // KOI8-R (Not valid UTF-8, single-byte).
+  ValidateRewrite("ident_param", ".foo { \xEB\xEF\xE9-8: standard; }",
+                                 ".foo{\xEB\xEF\xE9-8: standard}",
+                  kExpectSuccess);
+  // EUC-KR (Not valid UTF-8, multi-byte).
+  ValidateRewrite("ident_selector", ".\xB8\xC0 { color: red; }",
+                                    ".\xB8\xC0 {color:red}",
+                  kExpectSuccess);
+
+  // Verbatim example from http://www.baidu.com/
+  ValidateRewrite("baidu", "#lk span {font:14px \"\xCB\xCE\xCC\xE5\"}",
+                           "#lk span{font:14px \"\xCB\xCE\xCC\xE5\"}",
+                           kExpectSuccess);
+}
+
+// In UTF-8, all multi-byte characters have high bit set. This is not true in
+// other common web encodings.
+TEST_F(CssFilterTest, Non8BitEncoding) {
+  // Shift_JIS can have second bytes in range 0x40-0x7F,
+  // which includes ASCII chars: @ A-Z [/]^_` a-z {|}~
+
+  // 0x83 0x7D == KATAKANA LETTER MA
+  // 0x7D == RIGHT CURLY BRACKET }
+  ValidateRewrite("string-ma", ".foo { font-family: \"\x83\x7D\"; color: red }",
+                               ".foo{font-family: \"\x83\x7D\";color:red}",
+                  kExpectSuccess);
+  // Note: This text currently fails to be parsed. But if that changes,
+  // update this test to the correct golden rewrite.
+  ValidateFailParse("ident-ma", ".foo { -win-magic: bar\x83\x7D; color: red }");
+
+  // 0x83 0x7B == KATAKANA LETTER BO
+  // 0x7B == LEFT CURLY BRACKET {
+  ValidateRewrite("string-bo", ".foo { font-family: \"\x83\x7B\"; color: red }",
+                               ".foo{font-family: \"\x83\x7B\";color:red}",
+                  kExpectSuccess);
+  // Note: This text currently fails to be parsed. But if that changes,
+  // update this test to the correct golden rewrite.
+  ValidateFailParse("ident-bo", ".foo { -win-magic: bar\x83\x7B; color: red }");
 }
 
 // Make sure bad requests do not corrupt our extension.
@@ -303,6 +349,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // IE8 Hack \0/
     // See http://dimox.net/personal-css-hacks-for-ie6-ie7-ie8/
     "a{color: red\\0/ ;background-color:green}",
+    "a{font-family: font\\0  ;color:red}",
 
     "a{font:bold verdana 10px }",
     "a{foo: +bar }",
