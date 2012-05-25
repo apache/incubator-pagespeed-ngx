@@ -1013,13 +1013,16 @@ void RewriteOptions::MutexedOptionInt64MergeWithMax::Merge(
   // This option must be a MutexedOptionInt64 everywhere, so this cast is safe.
   const MutexedOptionInt64MergeWithMax* src =
       static_cast<const MutexedOptionInt64MergeWithMax*>(src_base);
-
+  bool src_was_set;
   int64 src_value;
   {
-    ThreadSystem::ScopedReader lock(src->mutex());
+    ThreadSystem::ScopedReader read_lock(src->mutex());
+    src_was_set = src->was_set();
     src_value = src->value();
   }
-  if (src->was_set() && (!was_set() || (src_value > value()))) {
+  // We don't grab a writer lock because at merge time this is
+  // only accessible to the current thread.
+  if (src_was_set && (!was_set() || src_value > value())) {
     set(src_value);
   }
 }
@@ -1424,7 +1427,8 @@ bool RewriteOptions::UpdateCacheInvalidationTimestampMs(int64 timestamp_ms,
   if (cache_invalidation_timestamp_.value() < timestamp_ms) {
     bool recompute_signature = frozen_;
     frozen_ = false;
-    set_option(timestamp_ms, &cache_invalidation_timestamp_);
+    cache_invalidation_timestamp_.checked_set(timestamp_ms);
+    Modify();
     if (recompute_signature) {
       signature_.clear();
       ComputeSignature(hasher);

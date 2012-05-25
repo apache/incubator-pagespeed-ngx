@@ -1203,8 +1203,8 @@ class RewriteOptions {
     // a lock and can't take it again.  When writing the invalidation
     // timestamp at initial configuration time, we don't need the
     // lock.
-    void set(const int64& value) {
-      mutex_->DCheckReaderLocked();
+    void checked_set(const int64& value) {
+      mutex_->DCheckLocked();
       Option<int64>::set(value);
     }
 
