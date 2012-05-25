@@ -109,7 +109,9 @@ BASE_LIBS = \
   third_party/libpagespeed/src/third_party/optipng/libopngreduc.a \
   third_party/libpng/libpng.a \
   third_party/libwebp/libwebp_dec.a \
+  third_party/libwebp/libwebp_dsp.a \
   third_party/libwebp/libwebp_enc.a \
+  third_party/libwebp/libwebp_utils.a \
   third_party/opencv/libhighgui.a \
   third_party/opencv/libopencv_imgproc.a \
   third_party/opencv/libopencv_core.a \

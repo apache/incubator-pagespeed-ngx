@@ -21,6 +21,12 @@ vars = {
   "chromium_revision": "@90205",
   "chromium_deps_root": "src/third_party/chromium_deps",
 
+  # We use libwebp from the chromium trunk (to get the .gyp file), but we need a
+  # later revision (v0.1.3) than is used in the above Chromium checkout.  If the
+  # chromium dependency is brought up to date, this should be dropped, and the
+  # definition of order_profiling should be removed from src/build/common.gypi .
+  "chromium_webp_revision": "@138145",
+
   "libpagespeed_svn_root": "http://page-speed.googlecode.com/svn",
   "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.12.8.0",
   "libpagespeed_revision": "@head",
@@ -200,7 +206,7 @@ deps = {
   # We check libwebp out of Chromium repo to get the .gyp file.
   "src/third_party/libwebp":
      Var("chromium_trunk") + "/src/third_party/libwebp" +
-     Var("chromium_revision"),
+     Var("chromium_webp_revision"),
 
   "src/tools/data_pack": From(Var("libpagespeed_deps_root")),
   "src/tools/grit": From(Var("libpagespeed_deps_root")),

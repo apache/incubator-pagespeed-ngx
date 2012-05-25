@@ -35,6 +35,10 @@
     # get -Werror
     'gcc_devel_version%': '44',
 
+    # This variable is required to build a recent webp gyp given an older
+    # surrounding Chromium checkout.
+    'order_profiling': 0,
+
     # We need inter-process mutexes to support POSIX shared memory, and they're
     # unfortunately not supported on some common systems.
     'support_posix_shared_mem%': 0,

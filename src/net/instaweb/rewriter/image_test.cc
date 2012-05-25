@@ -237,7 +237,7 @@ TEST_F(ImageTest, InputWebpTest) {
   CheckImageFromFile(
       kScenery, Image::IMAGE_WEBP, Image::IMAGE_WEBP,
       20,  // Min bytes to bother checking file type at all.
-      30,
+      32,
       550, 368,
       30320, false);
 }
