@@ -23,7 +23,6 @@
 #include <cstdlib>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "pagespeed/image_compression/jpeg_reader.h"
