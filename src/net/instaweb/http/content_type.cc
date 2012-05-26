@@ -40,6 +40,8 @@ const ContentType kTypes[] = {
   {"image/jpeg",                    ".jpg",  ContentType::kJpeg},
   {"application/x-shockwave-flash", ".swf",  ContentType::kSwf},
   {"image/webp",                    ".webp", ContentType::kWebp},
+  // MIME Type from: http://technet.microsoft.com/en-us/library/bb742440.aspx
+  {"text/x-component",              ".htc",  ContentType::kHtc},
 
   // Synonyms; Note that the canonical types are referenced by index
   // in the named references declared below.
@@ -70,6 +72,7 @@ const ContentType& kContentTypeGif = kTypes[8];
 const ContentType& kContentTypeJpeg = kTypes[9];
 const ContentType& kContentTypeSwf = kTypes[10];
 const ContentType& kContentTypeWebp = kTypes[11];
+const ContentType& kContentTypeHtc = kTypes[12];
 
 int ContentType::MaxProducedExtensionLength() {
   return 4;  // .jpeg or .webp
