@@ -51,6 +51,7 @@ class RewriteOptions {
     kCombineHeads,
     kCombineJavascript,
     kComputePanelJson,
+    kConvertGifToPng,
     kConvertJpegToProgressive,
     kConvertJpegToWebp,
     kConvertMetaTags,
@@ -84,7 +85,9 @@ class RewriteOptions {
     kOutlineCss,
     kOutlineJavascript,
     kPrioritizeVisibleContent,
-    kRecompressImages,
+    kRecompressJpeg,
+    kRecompressPng,
+    kRecompressWebp,
     kRemoveComments,
     kRemoveQuotes,
     kResizeImages,
@@ -382,6 +385,11 @@ class RewriteOptions {
   // space.  If only an http url is given, the https url is derived from it
   // by simply substituting the protocol.
   static bool ParseBeaconUrl(const StringPiece& in, BeaconUrl* out);
+
+  // Checks if either of the optimizing rewrite options are ON and it includes
+  // kRecompressJPeg, kRecompressPng, kRecompressWebp, kConvertGifToPng,
+  // kConvertJpegToWebp and kConvertPngToJpeg.
+  bool ImageOptimizationEnabled() const;
 
   RewriteOptions();
   virtual ~RewriteOptions();

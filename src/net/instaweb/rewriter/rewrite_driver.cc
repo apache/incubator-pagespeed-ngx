@@ -820,13 +820,12 @@ void RewriteDriver::AddPreRenderFilters() {
     CHECK(resource_manager_ != NULL);
     AppendOwnedPreRenderFilter(new JsInlineFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kConvertJpegToWebp) ||
-      rewrite_options->Enabled(RewriteOptions::kConvertJpegToProgressive) ||
+  if (rewrite_options->Enabled(RewriteOptions::kConvertJpegToProgressive) ||
       rewrite_options->NeedLowResImages() ||
       rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
       rewrite_options->Enabled(RewriteOptions::kInsertImageDimensions) ||
-      rewrite_options->Enabled(RewriteOptions::kRecompressImages) ||
-      rewrite_options->Enabled(RewriteOptions::kResizeImages)) {
+      rewrite_options->Enabled(RewriteOptions::kResizeImages) ||
+      rewrite_options->ImageOptimizationEnabled()) {
     EnableRewriteFilter(RewriteOptions::kImageCompressionId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kRemoveComments)) {

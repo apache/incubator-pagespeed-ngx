@@ -372,7 +372,7 @@ TEST_F(CssImageRewriterTest, CacheInlineParseFailures) {
 
 TEST_F(CssImageRewriterTest, RecompressImages) {
   options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kRecompressImages);
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
   resource_manager()->ComputeSignature(options());
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
                         kContentTypePng, 100);
@@ -605,13 +605,14 @@ TEST_F(CssRecompressImagesInStyleAttributes, OnlyStyleEnabled) {
 
 // No rewriting if only 'recompress' is enabled.
 TEST_F(CssRecompressImagesInStyleAttributes, OnlyRecompressEnabled) {
-  AddFilter(RewriteOptions::kRecompressImages);
+  AddRecompressImageFilters();
+  rewrite_driver()->AddFilters();
   ValidateNoChanges("recompress_images_disabled", div_before_);
 }
 
 // Rewrite iff both options are enabled.
 TEST_F(CssRecompressImagesInStyleAttributes, RecompressAndStyleEnabled) {
-  options()->EnableFilter(RewriteOptions::kRecompressImages);
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
   rewrite_driver()->AddFilters();
   ValidateExpected("options_enabled", div_before_, div_after_);

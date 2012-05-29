@@ -75,7 +75,7 @@ bool CssImageRewriter::RewritesEnabled(
     int64 image_inline_max_bytes) const {
   const RewriteOptions* options = driver_->options();
   return (image_inline_max_bytes > 0 ||
-          options->Enabled(RewriteOptions::kRecompressImages) ||
+          options->ImageOptimizationEnabled() ||
           options->Enabled(RewriteOptions::kLeftTrimUrls) ||
           options->Enabled(RewriteOptions::kExtendCacheImages) ||
           options->Enabled(RewriteOptions::kSpriteImages));
@@ -111,7 +111,7 @@ void CssImageRewriter::RewriteImage(
   CssResourceSlotPtr slot(
       context_->slot_factory()->GetSlot(resource, values, value_index));
 
-  if (options->Enabled(RewriteOptions::kRecompressImages) ||
+  if (options->ImageOptimizationEnabled() ||
       image_inline_max_bytes > 0) {
     parent->AddNestedContext(
         image_rewriter_->MakeNestedRewriteContextForCss(image_inline_max_bytes,

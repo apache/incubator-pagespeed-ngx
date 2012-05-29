@@ -79,6 +79,10 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // It can go ahead and add the <html> and </html>, however.
   virtual bool AddBody() const { return false; }
 
+  // Adds kRecompressJpeg, kRecompressPng, kRecompressWebp, kConvertPngToJpeg,
+  // kConvertJpegToWebp and kConvertGifToPng.
+  void AddRecompressImageFilters();
+
   // Add a single rewrite filter to rewrite_driver_.
   void AddFilter(RewriteOptions::Filter filter);
 

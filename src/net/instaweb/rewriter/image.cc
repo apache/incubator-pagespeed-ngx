@@ -95,13 +95,14 @@ const int kMaxJpegQuality = 100;
 
 class ImageImpl : public Image {
  public:
-  ImageImpl(int width, int height, Type type,
-            const StringPiece& tmp_dir, MessageHandler* handler);
   ImageImpl(const StringPiece& original_contents,
             const GoogleString& url,
             const StringPiece& file_prefix,
             CompressionOptions* options,
             MessageHandler* handler);
+  ImageImpl(int width, int height, Type type,
+            const StringPiece& tmp_dir, MessageHandler* handler,
+            CompressionOptions* options);
 
   virtual void Dimensions(ImageDim* natural_dim);
   virtual bool ResizeTo(const ImageDim& new_dim);
@@ -216,7 +217,8 @@ Image::Image(Type type)
       output_valid_(false) { }
 
 ImageImpl::ImageImpl(int width, int height, Type type,
-                     const StringPiece& tmp_dir, MessageHandler* handler)
+                     const StringPiece& tmp_dir, MessageHandler* handler,
+                     Image::CompressionOptions* options)
     : Image(type),
       file_prefix_(tmp_dir.data(), tmp_dir.size()),
       handler_(handler),
@@ -225,14 +227,16 @@ ImageImpl::ImageImpl(int width, int height, Type type,
       changed_(false),
       url_(),
       low_quality_enabled_(false) {
-  options_.reset(new Image::CompressionOptions());
+  options_.reset(options);
   dims_.set_width(width);
   dims_.set_height(height);
 }
 
-Image* BlankImage(int width, int height, Image::Type type,
-                  const StringPiece& tmp_dir, MessageHandler* handler) {
-  return new ImageImpl(width, height, type, tmp_dir, handler);
+Image* BlankImageWithOptions(int width, int height, Image::Type type,
+                             const StringPiece& tmp_dir,
+                             MessageHandler* handler,
+                             Image::CompressionOptions* options) {
+  return new ImageImpl(width, height, type, tmp_dir, handler, options);
 }
 
 Image::~Image() {
@@ -713,9 +717,11 @@ bool ImageImpl::ComputeOutputContents() {
     StringPiece contents = original_contents_;
     // Choose appropriate source for image contents.
     // Favor original contents if image unchanged.
+    bool resized = false;
     if (changed_ && opencv_image_ != NULL) {
       ok = SaveOpenCvToBuffer(&opencv_contents);
       if (ok) {
+        resized = true;
         contents = OpenCvBufferToStringPiece(opencv_contents);
       }
     }
@@ -734,9 +740,11 @@ bool ImageImpl::ComputeOutputContents() {
         case IMAGE_UNKNOWN:
           break;
         case IMAGE_WEBP:
+          if (resized || options_->recompress_webp) {
             ok = ReduceWebpImageQuality(string_for_image,
                                         options_->webp_quality,
                                         &output_contents_);
+          }
             // TODO(pulkitg): Convert a webp image to jpeg image if
             // web_preferred_ is false.
           break;
@@ -755,7 +763,7 @@ bool ImageImpl::ComputeOutputContents() {
           }
           if (ok) {  // && webp_preferred, which is implied.
             image_type_ = IMAGE_WEBP;
-          } else {
+          } else if (resized || options_->recompress_jpeg) {
             JpegCompressionOptions jpeg_options;
             ConvertToJpegOptions(*options_.get(), &jpeg_options);
             ok = pagespeed::image_compression::OptimizeJpegWithOptions(
@@ -776,7 +784,7 @@ bool ImageImpl::ComputeOutputContents() {
             if (ok && !is_png) {
               image_type_ = IMAGE_JPEG;
             }
-          } else {
+          } else if (resized || options_->recompress_png) {
             pagespeed::image_compression::PngReader png_reader;
             ok = PngOptimizer::OptimizePngBestCompression
                 (png_reader, string_for_image, &output_contents_);
@@ -784,14 +792,11 @@ bool ImageImpl::ComputeOutputContents() {
           break;
         }
         case IMAGE_GIF: {
-          if (low_quality_enabled_) {
-            // Currently, gif to jpeg conversion is not present in pagespeed
-            // library.
-            ok = false;
-          } else {
+          if (!low_quality_enabled_ && options_->convert_gif_to_png) {
             pagespeed::image_compression::GifReader gif_reader;
-            ok = PngOptimizer::OptimizePngBestCompression
-                (gif_reader, string_for_image, &output_contents_);
+            ok = PngOptimizer::OptimizePngBestCompression(gif_reader,
+                                                          string_for_image,
+                                                          &output_contents_);
             if (ok) {
               image_type_ = IMAGE_PNG;
             }

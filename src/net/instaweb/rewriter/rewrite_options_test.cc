@@ -196,8 +196,11 @@ TEST_F(RewriteOptionsTest, CompoundFlag) {
   FilterSet s;
   // TODO(jmaessen): add kConvertJpegToWebp here when it becomes part of
   // rewrite_images.
+  s.insert(RewriteOptions::kConvertGifToPng);
   s.insert(RewriteOptions::kInlineImages);
-  s.insert(RewriteOptions::kRecompressImages);
+  s.insert(RewriteOptions::kRecompressJpeg);
+  s.insert(RewriteOptions::kRecompressPng);
+  s.insert(RewriteOptions::kRecompressWebp);
   s.insert(RewriteOptions::kResizeImages);
   s.insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
   const char* kList = "rewrite_images";
@@ -210,6 +213,22 @@ TEST_F(RewriteOptionsTest, CompoundFlag) {
   ASSERT_TRUE(OnlyEnabled(RewriteOptions::kHtmlWriterFilter));  // default
 }
 
+TEST_F(RewriteOptionsTest, CompoundFlagRecompressImages) {
+  FilterSet s;
+  s.insert(RewriteOptions::kConvertGifToPng);
+  s.insert(RewriteOptions::kRecompressJpeg);
+  s.insert(RewriteOptions::kRecompressPng);
+  s.insert(RewriteOptions::kRecompressWebp);
+  s.insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
+  const char* kList = "recompress_images";
+  NullMessageHandler handler;
+  ASSERT_TRUE(
+      options_.EnableFiltersByCommaSeparatedList(kList, &handler));
+  ASSERT_TRUE(OnlyEnabled(s));
+  ASSERT_TRUE(
+      options_.DisableFiltersByCommaSeparatedList(kList, &handler));
+  ASSERT_TRUE(OnlyEnabled(RewriteOptions::kHtmlWriterFilter));  // default
+}
 TEST_F(RewriteOptionsTest, ParseRewriteLevel) {
   RewriteOptions::RewriteLevel level;
   ASSERT_TRUE(RewriteOptions::ParseRewriteLevel("PassThrough", &level));
@@ -972,19 +991,19 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
                                       &handler));
   options_.SetFuriousState(-7);
   // This should be the core filters.
-  EXPECT_EQ("ah,cc,mc,ec,ei,es,hw,ci,ii,il,ji,ir,ri,cf,jm,cu,"
+  EXPECT_EQ("ah,cc,gp,mc,ec,ei,es,hw,ci,ii,il,ji,rj,rp,rw,ri,cf,jm,cu,"
             "css:2048,im:2048,js:2048;", options_.ToExperimentDebugString());
   EXPECT_EQ("", options_.ToExperimentString());
   options_.SetFuriousState(1);
-  EXPECT_EQ("Experiment: 1; ah,ai,cc,mc,ec,ei,es,hw,ci,ii,il,ji,ig,ir,ri,cf,"
-            "jm,cu,css:2048,im:2048,js:2048;",
+  EXPECT_EQ("Experiment: 1; ah,ai,cc,gp,mc,ec,ei,es,hw,ci,ii,il,ji,ig,rj,"
+            "rp,rw,ri,cf,jm,cu,css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 1", options_.ToExperimentString());
   options_.SetFuriousState(7);
   // This should be all non-dangerous filters.
-  EXPECT_EQ("Experiment: 7; ab,ah,ai,cw,cc,ch,jc,jp,jw,mc,pj,db,di,ea,ec,ei,es,"
-            "if,hw,ci,ii,il,ji,ig,id,tu,ls,ga,cj,cm,co,jo,pv,ir,rc,rq,ri,rm,cf,"
-            "rd,jm,cs,cu,is,css:2048,im:2048,js:2048;",
+  EXPECT_EQ("Experiment: 7; ab,ah,ai,cw,cc,ch,jc,gp,jp,jw,mc,pj,db,di,ea,ec,ei,"
+            "es,if,hw,ci,ii,il,ji,ig,id,tu,ls,ga,cj,cm,co,jo,pv,rj,rp,rw,rc,rq,"
+            "ri,rm,cf,rd,jm,cs,cu,is,css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 7", options_.ToExperimentString());
   options_.SetFuriousState(2);
@@ -1048,6 +1067,39 @@ TEST_F(RewriteOptionsTest, ComputeSignatureOptionEffect) {
   // See the comment in RewriteOptions::RewriteOptions -- we need to leave
   // signatures sensitive to ajax_rewriting.
   EXPECT_NE(signature2, signature3);
+}
+
+TEST_F(RewriteOptionsTest, ImageOptimizableCheck) {
+  options_.ClearFilters();
+  options_.EnableFilter(RewriteOptions::kRecompressJpeg);
+  EXPECT_TRUE(options_.ImageOptimizationEnabled());
+  options_.DisableFilter(RewriteOptions::kRecompressJpeg);
+  EXPECT_FALSE(options_.ImageOptimizationEnabled());
+
+  options_.EnableFilter(RewriteOptions::kRecompressPng);
+  EXPECT_TRUE(options_.ImageOptimizationEnabled());
+  options_.DisableFilter(RewriteOptions::kRecompressPng);
+  EXPECT_FALSE(options_.ImageOptimizationEnabled());
+
+  options_.EnableFilter(RewriteOptions::kRecompressWebp);
+  EXPECT_TRUE(options_.ImageOptimizationEnabled());
+  options_.DisableFilter(RewriteOptions::kRecompressWebp);
+  EXPECT_FALSE(options_.ImageOptimizationEnabled());
+
+  options_.EnableFilter(RewriteOptions::kConvertGifToPng);
+  EXPECT_TRUE(options_.ImageOptimizationEnabled());
+  options_.DisableFilter(RewriteOptions::kConvertGifToPng);
+  EXPECT_FALSE(options_.ImageOptimizationEnabled());
+
+  options_.EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  EXPECT_TRUE(options_.ImageOptimizationEnabled());
+  options_.DisableFilter(RewriteOptions::kConvertJpegToWebp);
+  EXPECT_FALSE(options_.ImageOptimizationEnabled());
+
+  options_.EnableFilter(RewriteOptions::kConvertPngToJpeg);
+  EXPECT_TRUE(options_.ImageOptimizationEnabled());
+  options_.DisableFilter(RewriteOptions::kConvertPngToJpeg);
+  EXPECT_FALSE(options_.ImageOptimizationEnabled());
 }
 
 }  // namespace

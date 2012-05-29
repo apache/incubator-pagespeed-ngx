@@ -34,6 +34,7 @@ struct FilterMap {
 "combine_css",                       RewriteOptions::kCombineCss
 "combine_javascript",                RewriteOptions::kCombineJavascript
 "combine_heads",                     RewriteOptions::kCombineHeads
+"convert_gif_to_png",                RewriteOptions::kConvertGifToPng
 "convert_jpeg_to_progressive",       RewriteOptions::kConvertJpegToProgressive
 "convert_jpeg_to_webp",              RewriteOptions::kConvertJpegToWebp
 "convert_meta_tags",                 RewriteOptions::kConvertMetaTags
@@ -67,7 +68,9 @@ struct FilterMap {
 "outline_css",                       RewriteOptions::kOutlineCss
 "outline_javascript",                RewriteOptions::kOutlineJavascript
 "prioritize_visible_content",        RewriteOptions::kPrioritizeVisibleContent
-"recompress_images",                 RewriteOptions::kRecompressImages
+"recompress_jpeg",                   RewriteOptions::kRecompressJpeg
+"recompress_png",                    RewriteOptions::kRecompressPng
+"recompress_webp",                   RewriteOptions::kRecompressWebp
 "remove_comments",                   RewriteOptions::kRemoveComments
 "remove_quotes",                     RewriteOptions::kRemoveQuotes
 "resize_images",                     RewriteOptions::kResizeImages

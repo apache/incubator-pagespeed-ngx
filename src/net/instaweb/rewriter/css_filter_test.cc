@@ -62,7 +62,12 @@ class CssFilterTest : public CssRewriteTestBase {
     options()->ClearSignatureForTesting();
     options()->EnableFilter(RewriteOptions::kRewriteCss);
     if (!enable_image_rewriting) {
-      options()->DisableFilter(RewriteOptions::kRecompressImages);
+      options()->DisableFilter(RewriteOptions::kRecompressJpeg);
+      options()->DisableFilter(RewriteOptions::kRecompressPng);
+      options()->DisableFilter(RewriteOptions::kRecompressWebp);
+      options()->DisableFilter(RewriteOptions::kConvertPngToJpeg);
+      options()->DisableFilter(RewriteOptions::kConvertJpegToWebp);
+      options()->DisableFilter(RewriteOptions::kConvertGifToPng);
       options()->DisableFilter(RewriteOptions::kLeftTrimUrls);
       options()->DisableFilter(RewriteOptions::kExtendCacheImages);
       options()->DisableFilter(RewriteOptions::kSpriteImages);

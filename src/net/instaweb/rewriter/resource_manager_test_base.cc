@@ -152,6 +152,16 @@ void ResourceManagerTestBase::TearDown() {
   HtmlParseTestBaseNoAlloc::TearDown();
 }
 
+// Adds rewrite filters related to recompress images.
+void ResourceManagerTestBase::AddRecompressImageFilters() {
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->EnableFilter(RewriteOptions::kRecompressWebp);
+  options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+}
+
 // Add a single rewrite filter to rewrite_driver_.
 void ResourceManagerTestBase::AddFilter(RewriteOptions::Filter filter) {
   options()->EnableFilter(filter);

@@ -180,6 +180,7 @@ namespace {
 const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kAddHead,
   RewriteOptions::kCombineCss,
+  RewriteOptions::kConvertGifToPng,
   RewriteOptions::kConvertMetaTags,
   RewriteOptions::kExtendCacheCss,
   RewriteOptions::kExtendCacheImages,
@@ -189,7 +190,9 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kInlineImages,
   RewriteOptions::kInlineImportToLink,
   RewriteOptions::kInlineJavascript,
-  RewriteOptions::kRecompressImages,
+  RewriteOptions::kRecompressJpeg,
+  RewriteOptions::kRecompressPng,
+  RewriteOptions::kRecompressWebp,
   RewriteOptions::kResizeImages,
   RewriteOptions::kRewriteCss,
   RewriteOptions::kRewriteJavascript,
@@ -250,6 +253,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kCombineHeads:                    return "Combine Heads";
     case kCombineJavascript:               return "Combine Javascript";
     case kComputePanelJson:                return "Computes panel json";
+    case kConvertGifToPng:                 return "Convert Gif to Png";
     case kConvertJpegToProgressive:        return "Convert Jpeg to Progressive";
     case kConvertJpegToWebp:               return "Convert Jpeg To Webp";
     case kConvertMetaTags:                 return "Convert Meta Tags";
@@ -285,7 +289,9 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kOutlineCss:                      return "Outline Css";
     case kOutlineJavascript:               return "Outline Javascript";
     case kPrioritizeVisibleContent:        return "Prioritize Visible Content";
-    case kRecompressImages:                return "Recompress Images";
+    case kRecompressJpeg:                  return "Recompress Jpeg";
+    case kRecompressPng:                   return "Recompress Png";
+    case kRecompressWebp:                  return "Recompress Webp";
     case kRemoveComments:                  return "Remove Comments";
     case kRemoveQuotes:                    return "Remove Quotes";
     case kResizeImages:                    return "Resize Images";
@@ -316,6 +322,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kCombineHeads:                    return "ch";
     case kCombineJavascript:               return kJavascriptCombinerId;
     case kComputePanelJson:                return "bp";
+    case kConvertGifToPng:                 return "gp";
     case kConvertJpegToProgressive:        return "jp";
     case kConvertJpegToWebp:               return "jw";
     case kConvertMetaTags:                 return "mc";
@@ -349,7 +356,9 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kOutlineCss:                      return "co";
     case kOutlineJavascript:               return "jo";
     case kPrioritizeVisibleContent:        return "pv";
-    case kRecompressImages:                return "ir";
+    case kRecompressJpeg:                  return "rj";
+    case kRecompressPng:                   return "rp";
+    case kRecompressWebp:                  return "rw";
     case kRemoveComments:                  return "rc";
     case kRemoveQuotes:                    return "rq";
     case kResizeImages:                    return "ri";
@@ -411,6 +420,15 @@ bool RewriteOptions::ParseBeaconUrl(const StringPiece& in, BeaconUrl* out) {
     urls[0].CopyToString(&out->https);
   }
   return true;
+}
+
+bool RewriteOptions::ImageOptimizationEnabled() const {
+  return (this->Enabled(RewriteOptions::kRecompressJpeg) ||
+          this->Enabled(RewriteOptions::kRecompressPng) ||
+          this->Enabled(RewriteOptions::kRecompressWebp) ||
+          this->Enabled(RewriteOptions::kConvertGifToPng) ||
+          this->Enabled(RewriteOptions::kConvertPngToJpeg) ||
+          this->Enabled(RewriteOptions::kConvertJpegToWebp));
 }
 
 RewriteOptions::RewriteOptions()
@@ -813,9 +831,17 @@ bool RewriteOptions::AddByNameToFilterSet(
     // here will be invokable by outside people, so they better not crash
     // if that happens!
     if (option == "rewrite_images") {
+      set->insert(kConvertGifToPng);
       set->insert(kInlineImages);
-      set->insert(kRecompressImages);
+      set->insert(kRecompressJpeg);
+      set->insert(kRecompressPng);
+      set->insert(kRecompressWebp);
       set->insert(kResizeImages);
+    } else if (option == "recompress_images") {
+      set->insert(kConvertGifToPng);
+      set->insert(kRecompressJpeg);
+      set->insert(kRecompressPng);
+      set->insert(kRecompressWebp);
     } else if (option == "extend_cache") {
       set->insert(kExtendCacheCss);
       set->insert(kExtendCacheImages);

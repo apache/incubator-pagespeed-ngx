@@ -220,6 +220,14 @@ Image::CompressionOptions* ImageOptionsForLoadedResource(
           options->progressive_jpeg_min_bytes();
   image_options->convert_png_to_jpeg =
       options->Enabled(RewriteOptions::kConvertPngToJpeg);
+  image_options->convert_gif_to_png =
+      options->Enabled(RewriteOptions::kConvertGifToPng);
+  image_options->recompress_jpeg =
+      options->Enabled(RewriteOptions::kRecompressJpeg);
+  image_options->recompress_png =
+      options->Enabled(RewriteOptions::kRecompressPng);
+  image_options->recompress_webp =
+      options->Enabled(RewriteOptions::kRecompressWebp);
   image_options->retain_color_profile = options->image_retain_color_profile();
   image_options->retain_exif_data = options->image_retain_exif_data();
   image_options->jpeg_num_progressive_scans =
@@ -246,7 +254,10 @@ bool ResizeImageIfNecessary(
   const ImageDim* post_resize_dim = &image_dim;
   if (options->Enabled(RewriteOptions::kResizeImages) &&
       ImageUrlEncoder::HasValidDimension(*desired_dim) &&
-      ImageUrlEncoder::HasValidDimensions(image_dim)) {
+      ImageUrlEncoder::HasValidDimensions(image_dim) &&
+      (image->content_type()->type() != ContentType::kGif ||
+       options->Enabled(RewriteOptions::kConvertGifToPng) ||
+       options->NeedLowResImages())) {
     if (!desired_dim->has_width()) {
       // Fill in a missing page height
       // multiply page_height * (image_width / image_height),
@@ -340,7 +351,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
 
     // Now re-compress the (possibly resized) image, and decide if it's
     // saved us anything.
-    if ((resized || options->Enabled(RewriteOptions::kRecompressImages)) &&
+    if ((resized || options->ImageOptimizationEnabled()) &&
         (image->output_size() * 100 <
          image->input_size() * options->image_limit_optimized_percent())) {
       // Here output image type could potentially be different from input type.
@@ -404,6 +415,12 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       image_options->progressive_jpeg = false;
       image_options->convert_png_to_jpeg =
           options->Enabled(RewriteOptions::kConvertPngToJpeg);
+
+      // Set to true since we optimize a gif to png before resize.
+      image_options->convert_gif_to_png = true;
+      image_options->recompress_jpeg = true;
+      image_options->recompress_png = true;
+      image_options->recompress_webp = true;
       image_options->retain_color_profile =
           options->image_retain_color_profile();
       image_options->retain_exif_data = options->image_retain_exif_data();
@@ -460,6 +477,14 @@ void ImageRewriteFilter::ResizeLowQualityImage(
     image_options->progressive_jpeg = false;
     image_options->convert_png_to_jpeg =
         options->Enabled(RewriteOptions::kConvertPngToJpeg);
+    image_options->convert_gif_to_png =
+        options->Enabled(RewriteOptions::kConvertGifToPng);
+    image_options->recompress_jpeg =
+        options->Enabled(RewriteOptions::kRecompressJpeg);
+    image_options->recompress_png =
+        options->Enabled(RewriteOptions::kRecompressPng);
+    image_options->recompress_webp =
+        options->Enabled(RewriteOptions::kRecompressWebp);
     scoped_ptr<Image> image(
         NewImage(low_image->Contents(), input_resource->url(),
                  resource_manager_->filename_prefix(), image_options,

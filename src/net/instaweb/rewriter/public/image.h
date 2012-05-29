@@ -61,6 +61,10 @@ class Image {
           jpeg_quality(RewriteOptions::kDefaultImageJpegRecompressQuality),
           progressive_jpeg(false),
           convert_png_to_jpeg(false),
+          convert_gif_to_png(false),
+          recompress_jpeg(false),
+          recompress_png(false),
+          recompress_webp(false),
           retain_color_profile(false),
           retain_color_sampling(false),
           retain_exif_data(false),
@@ -71,6 +75,10 @@ class Image {
     int jpeg_quality;
     bool progressive_jpeg;
     bool convert_png_to_jpeg;
+    bool convert_gif_to_png;
+    bool recompress_jpeg;
+    bool recompress_png;
+    bool recompress_webp;
     bool retain_color_profile;
     bool retain_color_sampling;
     bool retain_exif_data;
@@ -190,8 +198,10 @@ Image* NewImage(const StringPiece& original_contents,
 
 // Creates a blank image of the given dimensions and type.
 // For now, this is assumed to be an 8-bit 3-channel image.
-Image* BlankImage(int width, int height, Image::Type type,
-                  const StringPiece& tmp_dir, MessageHandler* handler);
+Image* BlankImageWithOptions(int width, int height, Image::Type type,
+                             const StringPiece& tmp_dir,
+                             MessageHandler* handler,
+                             Image::CompressionOptions* options);
 
 }  // namespace net_instaweb
 
