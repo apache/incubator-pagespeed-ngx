@@ -24,6 +24,7 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -157,6 +158,8 @@ class RewriteOptions {
     kPrioritizeVisibleContentCacheTime,
     kPrioritizeVisibleContentNonCacheableElements,
     kProgressiveJpegMinBytes,
+    kRejectBlacklisted,
+    kRejectBlacklistedStatusCode,
     kReportUnloadTime,
     kRespectVary,
     kRewriteLevel,
@@ -934,6 +937,19 @@ class RewriteOptions {
     return blink_desktop_user_agent_.value();
   }
 
+  bool reject_blacklisted() const { return reject_blacklisted_.value(); }
+  void set_reject_blacklisted(bool x) {
+    set_option(x, &reject_blacklisted_);
+  }
+
+  HttpStatus::Code reject_blacklisted_status_code() const {
+    return static_cast<HttpStatus::Code>(
+        reject_blacklisted_status_code_.value());
+  }
+  void set_reject_blacklisted_status_code(HttpStatus::Code x) {
+    set_option(x, &reject_blacklisted_status_code_);
+  }
+
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this', although
   // option Merge implementations can be redefined by specific Option
@@ -1553,6 +1569,14 @@ class RewriteOptions {
   // Fixed user agent string to be used for prioritize_visible_content cache
   // miss cases if use_fixed_user_agent_for_blink_cache_misses_ is set to true.
   Option<GoogleString> blink_desktop_user_agent_;
+
+  // If this is true (it defaults to false) ProxyInterface frontend will
+  // reject requests where PSA is not enabled or URL is blacklisted with
+  // status code reject_blacklisted_status_code_ (default 403) rather than
+  // proxy them in passthrough mode. This does not affect behavior for
+  // resource rewriting.
+  Option<bool> reject_blacklisted_;
+  Option<int> reject_blacklisted_status_code_;
 
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,

@@ -512,14 +512,35 @@ void ProxyFetch::StartFetch() {
 
 void ProxyFetch::DoFetch() {
   if (prepare_success_) {
-    if (driver_->options()->enabled() &&
-        driver_->options()->ajax_rewriting_enabled() &&
-        driver_->options()->IsAllowed(url_)) {
-      driver_->FetchResource(url_, this);
+    const RewriteOptions* options = driver_->options();
+
+    if (options->enabled() && options->IsAllowed(url_)) {
+      // Pagespeed enabled on URL.
+      if (options->ajax_rewriting_enabled()) {
+        // For Ajax rewrites, we go through RewriteDriver to give it
+        // a chance to optimize resources. (If they are HTML, it will
+        // not touch them, and we will stream them to the parser here).
+        driver_->FetchResource(url_, this);
+        return;
+      }
+      // Otherwise we just do a normal fetch from cache, and if it's
+      // HTML we will do a streaming rewrite.
     } else {
-      cache_fetcher_.reset(driver_->CreateCacheFetcher());
-      cache_fetcher_->Fetch(url_, factory_->handler_, this);
+      // Pagespeed disabled on URL.
+      if (options->reject_blacklisted()) {
+        // We were asked to error out in this case.
+        response_headers()->SetStatusAndReason(
+            options->reject_blacklisted_status_code());
+        Done(true);
+        return;
+      }
+      // Else we should do a passthrough. In that case, we still do a normal
+      // origin fetch, but we will never rewrite anything, since
+      // SetupForHtml() will re-check enabled() and IsAllowed();
     }
+
+    cache_fetcher_.reset(driver_->CreateCacheFetcher());
+    cache_fetcher_->Fetch(url_, factory_->handler_, this);
   } else {
     Done(false);
   }

@@ -568,6 +568,9 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultBlinkDesktopUserAgentValue,
              &blink_desktop_user_agent_, "bdua",
              kBlinkDesktopUserAgent);
+  add_option(false, &reject_blacklisted_, "rbl", kRejectBlacklisted);
+  add_option(HttpStatus::kForbidden, &reject_blacklisted_status_code_,
+             "rbls", kRejectBlacklistedStatusCode);
   // Sort all_options_ on enum.
   SortOptions();
   // Do not call add_option with OptionEnum fourth argument after this.

@@ -42,6 +42,7 @@ struct OptionName {
 "EnableBlinkCriticalLine",              RewriteOptions::kEnableBlinkCriticalLine
 "EnableBlinkForMobileDevices",          RewriteOptions::kEnableBlinkForMobileDevices
 "EnableDeferJsExperimental",            RewriteOptions::kEnableDeferJsExperimental
+"ExperimentSlot",                       RewriteOptions::kFuriousSlot
 "FlushHtml",                            RewriteOptions::kFlushHtml
 "IdleFlushTimeMs",                      RewriteOptions::kIdleFlushTimeMs
 "ImageInlineMaxBytes",                  RewriteOptions::kImageInlineMaxBytes
@@ -72,11 +73,12 @@ struct OptionName {
 "MinResourceCacheTimeToRewriteMs",      RewriteOptions::kMinResourceCacheTimeToRewriteMs
 "ModifyCachingHeaders",                 RewriteOptions::kModifyCachingHeaders
 "ProgressiveJpegMinBytes",              RewriteOptions::kProgressiveJpegMinBytes
+"RejectBlacklisted",                    RewriteOptions::kRejectBlacklisted
+"RejectBlacklistedStatusCode",          RewriteOptions::kRejectBlacklistedStatusCode
 "ReportUnloadTime",                     RewriteOptions::kReportUnloadTime
 "RespectVary",                          RewriteOptions::kRespectVary
 "RewriteLevel",                         RewriteOptions::kRewriteLevel
 "RunExperiment",                        RewriteOptions::kRunningFurious
-"ExperimentSlot",                       RewriteOptions::kFuriousSlot
 "ServeBlinkNonCritical",                RewriteOptions::kServeBlinkNonCritical
 "ServeStaleIfFetchError",               RewriteOptions::kServeStaleIfFetchError
 "XHeaderValue",                         RewriteOptions::kXModPagespeedHeaderValue

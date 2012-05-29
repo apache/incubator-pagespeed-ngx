@@ -638,6 +638,14 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     resource_manager()->ComputeSignature(options);
   }
 
+  void RejectBlacklisted() {
+    RewriteOptions* options = resource_manager()->global_options();
+    options->ClearSignatureForTesting();
+    options->set_reject_blacklisted(true);
+    options->set_reject_blacklisted_status_code(HttpStatus::kImATeapot);
+    resource_manager()->ComputeSignature(options);
+  }
+
   scoped_ptr<ProxyInterface> proxy_interface_;
   scoped_ptr<BackgroundFetchCheckingUrlAsyncFetcher> background_fetch_fetcher_;
   int64 start_time_ms_;
@@ -1640,6 +1648,32 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingSkippedIfBlacklisted) {
   EXPECT_EQ(1, lru_cache()->num_hits());
 }
 
+TEST_F(ProxyInterfaceTest, AjaxRewritingBlacklistReject) {
+  // Makes sure that we honor reject_blacklisted() when ajax rewriting may
+  // have normally happened.
+  RejectBlacklisted();
+
+  ResponseHeaders headers;
+  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
+  headers.SetDate(MockTimer::kApr_5_2010_ms);
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("blacklistCoffee.css"), headers, kCssContent);
+  SetFetchResponse(AbsolutifyUrl("tea.css"), headers, kCssContent);
+
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxy("blacklistCoffee.css", true, &text, &response_headers);
+  EXPECT_EQ(HttpStatus::kImATeapot, response_headers.status_code());
+  EXPECT_TRUE(text.empty());
+
+  // Non-blacklisted stuff works OK.
+  FetchFromProxy("tea.css", true, &text, &response_headers);
+  EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+  EXPECT_EQ(kCssContent, text);
+}
+
 TEST_F(ProxyInterfaceTest, EatCookiesOnReconstructFailure) {
   // Make sure we don't pass through a Set-Cookie[2] when reconstructing
   // a resource on demand fails.
@@ -1725,6 +1759,29 @@ TEST_F(ProxyInterfaceTest, DontRewriteDisallowedHtml) {
   FetchFromProxy("blacklist.html", true, &text, &headers);
   CheckHeaders(headers, kContentTypeHtml);
   EXPECT_EQ(CssLinkHref("a.css"), text);
+}
+
+TEST_F(ProxyInterfaceTest, DontRewriteDisallowedHtmlRejectMode) {
+  // If we're in reject_blacklisted mode, we should just respond with the
+  // configured status.
+  RejectBlacklisted();
+  SetResponseWithDefaultHeaders("blacklistCoffee.html", kContentTypeHtml,
+                                CssLinkHref("a.css"), kHtmlCacheTimeSec * 2),
+  SetResponseWithDefaultHeaders("tea.html", kContentTypeHtml,
+                                "tasty", kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
+                                kHtmlCacheTimeSec * 2);
+
+  GoogleString text;
+  ResponseHeaders headers;
+  FetchFromProxy("blacklistCoffee.html", true, &text, &headers);
+  EXPECT_EQ(HttpStatus::kImATeapot, headers.status_code());
+  EXPECT_TRUE(text.empty());
+
+  // Fetching non-blacklisted one works fine.
+  FetchFromProxy("tea.html", true, &text, &headers);
+  EXPECT_EQ(HttpStatus::kOK, headers.status_code());
+  EXPECT_STREQ("tasty", text);
 }
 
 TEST_F(ProxyInterfaceTest, DontRewriteMislabeledAsHtml) {

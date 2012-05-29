@@ -631,7 +631,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(76, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(78, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));
@@ -761,6 +761,12 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("ProgressiveJpegMinBytes"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kProgressiveJpegMinBytes));
+  EXPECT_EQ(StringPiece("RejectBlacklisted"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kRejectBlacklisted));
+  EXPECT_EQ(StringPiece("RejectBlacklistedStatusCode"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kRejectBlacklistedStatusCode));
   EXPECT_EQ(StringPiece("RespectVary"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kRespectVary));
