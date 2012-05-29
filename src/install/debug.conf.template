@@ -4,10 +4,10 @@
 # 8082 -- SLURP
 # @@APACHE_SECONDARY_PORT@@ -- secondary configuration (8083 debug, 8084 root)
 
-# We don't enable XHTML in the default pagespeec.conf.  For the add_instrumentation
-# xhtml tests to work, though, we have to enable it here.  If we change
-# pagespeed.conf.template to enable XHTML by default then we can eliminate
-# this line.
+# We don't enable XHTML in the default pagespeed.conf.  For the
+# add_instrumentation xhtml tests to work, though, we have to enable
+# it here.  If we change pagespeed.conf.template to enable XHTML by
+# default then we can eliminate this line.
 AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 
 # These caching headers are set up for the document root, and
@@ -143,19 +143,10 @@ ModPagespeedAvoidRenamingIntrospectiveJavascript off
 #STRESS </Directory>
 #STRESS AddHandler cgi-script .cgi
 #STRESS <IfVersion >= 2.4.2>
-#STRESS   <IfModule !slotmem_shm_module> 
+#STRESS   <IfModule !slotmem_shm_module>
 #STRESS     LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
 #STRESS   </IfModule>
 #STRESS </IfVersion>
-
-#REWRITE # These lines are only needed for the mod_rewrite test, where
-#REWRITE # we are just trying to prove that we remove mod_rewrite from
-#REWRITE # the request if the URL is going to be handled by mod_pagespeed.
-#REWRITE Options +Indexes
-#REWRITE RewriteEngine on
-#REWRITE RewriteRule (.*).jpg.pagespeed.(.*).jpg /broken.jpg
-#REWRITE RewriteRule mod_pagespeed_statistics /broken
-#REWRITE RewriteRule shortcut.html /mod_pagespeed_example/index.html
 
 #COVERAGE # These lines are used for large-scale code coverage testing.
 #COVERAGE # We use 2 servers for it, one doing rewriting and fetching
@@ -351,6 +342,19 @@ Listen @@APACHE_SECONDARY_PORT@@
 
   # Helps testing whether the configuration of reporting 'unload' time works.
   ModPagespeedReportUnloadTime on
+
+#REWRITE   # These lines are only needed for the mod_rewrite test, where
+#REWRITE   # we are just trying to prove that we remove mod_rewrite from
+#REWRITE   # the request if the URL is going to be handled by mod_pagespeed.
+#REWRITE   # In the root install test, this mod_rewrite seems to only take
+#REWRITE   # effect in a vhost.  I haven't explored why that is because it
+#REWRITE   # doesn't affect the point of the test.
+#REWRITE   Options +Indexes
+#REWRITE   RewriteEngine on
+#REWRITE   RewriteRule (.*).jpg.pagespeed.(.*).jpg /broken.jpg
+#REWRITE   RewriteRule mod_pagespeed_statistics /broken
+#REWRITE   RewriteRule shortcut.html /mod_pagespeed_example/index.html
+
 </VirtualHost>
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:

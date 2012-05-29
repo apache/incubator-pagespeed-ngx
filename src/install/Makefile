@@ -45,6 +45,7 @@ APACHE_DOC_ROOT = /var/www
 #APACHE_DOMAIN = localhost:8080  # For test-server.
 APACHE_DOMAIN = localhost
 APACHE_HTTPS_DOMAIN = localhost
+APACHE_SECONDARY_PORT = 8084
 
 APACHE_CONTROL_PROGRAM = /etc/init.d/apache2
 APACHE_START = $(APACHE_CONTROL_PROGRAM) start
@@ -67,6 +68,8 @@ PAGESPEED_MODULE_24 = $(MOD_PAGESPEED_ROOT)/out/Release/libmod_pagespeed_ap24.so
 # try to automate that.
 MODS_ENABLED_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-enabled ]; then \
 	echo $(APACHE_ROOT)/mods-enabled; fi)
+MODS_AVAILABLE_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-available ]; then \
+	echo $(APACHE_ROOT)/mods-available; fi)
 
 # Determines should mod_pagespeed should write files
 MOD_PAGESPEED_FILE_ROOT = /var/mod_pagespeed
@@ -93,6 +96,7 @@ echo_vars:
 	@echo "   APACHE_STOP=$(APACHE_STOP)"
 	@echo "   MOD_PAGESPEED_FILE_ROOT=$(MOD_PAGESPEED_FILE_ROOT)"
 	@echo "   MODS_ENABLED_DIR=$(MODS_ENABLED_DIR)"
+	@echo "   MODS_AVAILABLE_DIR=$(MODS_AVAILABLE_DIR)"
 	@echo "   STAGING_DIR=$(STAGING_DIR)"
 	@echo "   ENABLE_PROXY=${ENABLE_PROXY}"
 	@echo "   SLURP_DIR=${SLURP_DIR}"
@@ -129,7 +133,7 @@ MODS_ENABLED_INSTALL_COMMANDS = \
 	rm -f $(MODS_ENABLED_DIR)/deflate.load ; \
 	cd $(MODS_ENABLED_DIR) && ln -s ../mods-available/deflate.load
 
-APACHE_CONF = $(MODS_ENABLED_DIR)
+APACHE_CONF = $(MODS_AVAILABLE_DIR)
 CONF_SOURCES = $(STAGING_DIR)/pagespeed.conf
 
 endif
@@ -209,6 +213,14 @@ ifeq ($(SPELING_TEST),1)
 else
   # remove whole line
   SPELING_TEST_SED_PATTERN=^\#SPELING.*\n
+endif
+
+ifeq ($(REWRITE_TEST),1)
+  # remove prefix
+  REWRITE_TEST_SED_PATTERN=^\#REWRITE
+else
+  # remove whole line
+  REWRITE_TEST_SED_PATTERN=^\#REWRITE.*\n
 endif
 
 ifeq ($(GZIP_TEST),1)
@@ -364,6 +376,7 @@ restart : staging
 	    APACHE_CONF=$(APACHE_CONF) \
 	    APACHE_MODULES=$(APACHE_MODULES) \
 	    MODS_ENABLED_DIR=$(MODS_ENABLED_DIR) \
+	    MODS_AVAILABLE_DIR=$(MODS_AVAILABLE_DIR) \
 	    APACHE_USER=$(APACHE_USER) \
 	    ENABLE_PROXY=$(ENABLE_PROXY)
 	sudo $(APACHE_START)
@@ -371,7 +384,8 @@ restart : staging
 # Tests that the installed mod_pagespeed server is working.
 test :
 	./system_test.sh localhost
-	CACHE_FLUSH_TEST=on ./apache_system_test.sh localhost
+	CACHE_FLUSH_TEST=on APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
+		./apache_system_test.sh localhost
 
 # Now hook in the full integration test suite. It needs to be run as root.
 apache_install_conf:

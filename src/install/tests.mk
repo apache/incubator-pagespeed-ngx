@@ -55,12 +55,16 @@ apache_system_tests :
 # Apache server in a consistent state.
 
 WGET = wget --no-proxy
-WGET_PROXY = http_proxy=$(APACHE_SERVER) wget -q -O -
+APACHE_HOST = localhost
 ifeq ($(APACHE_DEBUG_PORT),80)
-  APACHE_SERVER = localhost
+  APACHE_SERVER = $(APACHE_HOST)
 else
-  APACHE_SERVER = localhost:$(APACHE_DEBUG_PORT)
+  APACHE_SERVER = $(APACHE_HOST):$(APACHE_DEBUG_PORT)
 endif
+APACHE_SECONDARY_SERVER = $(APACHE_HOST):$(APACHE_SECONDARY_PORT)
+
+WGET_PROXY = http_proxy=$(APACHE_SERVER) wget -q -O -
+
 ifeq ($(APACHE_HTTPS_PORT),)
   APACHE_HTTPS_SERVER =
 else ifeq ($(APACHE_HTTPS_PORT),443)
@@ -106,7 +110,9 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	sleep 2
 	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER) \
 	                                   $(APACHE_HTTPS_SERVER)
-	CACHE_FLUSH_TEST=on APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	CACHE_FLUSH_TEST=on \
+	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	    $(INSTALL_DATA_DIR)/apache_system_test.sh \
 	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
 	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
@@ -119,9 +125,9 @@ apache_debug_rewrite_test : rewrite_test_prepare apache_install_conf \
 	sleep 2
 	$(WGET) -q -O - --save-headers $(EXAMPLE_IMAGE) \
 	  | head -13 | grep "Content-Type: image/jpeg"
-	$(WGET) -q -O - $(APACHE_SERVER)/mod_pagespeed_statistics \
+	$(WGET) -q -O - $(APACHE_SECONDARY_SERVER)/mod_pagespeed_statistics \
 	  | grep cache_hits
-	$(WGET) -q -O - $(APACHE_SERVER)/shortcut.html \
+	$(WGET) -q -O - $(APACHE_SECONDARY_SERVER)/shortcut.html \
 	  | grep "Filter Examples"
 
 rewrite_test_prepare:
