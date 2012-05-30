@@ -148,6 +148,7 @@ class HtmlName {
     kOther,
     kP,
     kPagespeedHighResSrc,
+    kPagespeedIframe,
     kPagespeedLazySrc,
     kPagespeedLowResSrc,
     kPagespeedLscExpiry,

@@ -58,6 +58,7 @@ class RewriteOptions {
     kConvertMetaTags,
     kConvertPngToJpeg,
     kDebug,
+    kDeferIframe,
     kDeferJavascript,
     kDelayImages,
     kDetectReflowWithDeferJavascript,

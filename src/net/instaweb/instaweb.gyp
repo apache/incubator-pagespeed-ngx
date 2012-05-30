@@ -44,6 +44,34 @@
       ],
     },
     {
+      'target_name': 'instaweb_defer_iframe_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'var_name': 'defer_iframe',
+      },
+      'sources': [
+        'rewriter/defer_iframe.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_defer_iframe_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'defer_iframe_opt',
+      },
+      'sources': [
+        'genfiles/rewriter/defer_iframe_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_delay_images_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -797,6 +825,8 @@
       'dependencies': [
         'instaweb_core.gyp:instaweb_rewriter_html',
         'instaweb_http',
+        'instaweb_defer_iframe_data2c',
+        'instaweb_defer_iframe_opt_data2c',
         'instaweb_delay_images_data2c',
         'instaweb_delay_images_opt_data2c',
         'instaweb_delay_images_inline_data2c',
@@ -836,6 +866,7 @@
         'rewriter/css_outline_filter.cc',
         'rewriter/css_tag_scanner.cc',
         'rewriter/data_url_input_resource.cc',
+        'rewriter/defer_iframe_filter.cc',
         'rewriter/delay_images_filter.cc',
         'rewriter/detect_reflow_js_defer_filter.cc',
         'rewriter/deterministic_js_filter.cc',

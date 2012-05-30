@@ -57,6 +57,7 @@
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
+#include "net/instaweb/rewriter/public/defer_iframe_filter.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/detect_reflow_js_defer_filter.h"
 #include "net/instaweb/rewriter/public/deterministic_js_filter.h"
@@ -889,7 +890,13 @@ void RewriteDriver::AddPostRenderFilters() {
     AddUnownedPostRenderFilter(url_trim_filter_.get());
   }
   if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
-    // Defers javascript download and execution to post onload.
+    // Defers javascript download and execution to post onload. This filter
+    // should be applied before JsDisableFilter and JsDeferFilter.
+    if (rewrite_options->Enabled(RewriteOptions::kDeferIframe)) {
+      // kDeferIframe filter should never be turned on when either defer_js
+      // or disable_js is enabled.
+      AddOwnedPostRenderFilter(new DeferIframeFilter(this));
+    }
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
     AddOwnedPostRenderFilter(new JsDeferDisabledFilter(this));
     if (rewrite_options->Enabled(
@@ -917,6 +924,11 @@ void RewriteDriver::AddPostRenderFilters() {
     AddOwnedPostRenderFilter(new MetaTagFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kDisableJavascript)) {
+    if (rewrite_options->Enabled(RewriteOptions::kDeferIframe)) {
+      // kDeferIframe filter should never be turned on when either defer_js
+      // or disable_js is enabled.
+      AddOwnedPostRenderFilter(new DeferIframeFilter(this));
+    }
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kDelayImages)) {

@@ -214,6 +214,7 @@ const RewriteOptions::Filter kTestFilterSet[] = {
 // Note: These filters should not be included even if the level is "All".
 const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kComputePanelJson,  // internal, enabled conditionally
+  RewriteOptions::kDeferIframe,
   RewriteOptions::kDeferJavascript,
   RewriteOptions::kDetectReflowWithDeferJavascript,
   RewriteOptions::kDeterministicJs,   // used for measurement
@@ -259,6 +260,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kConvertMetaTags:                 return "Convert Meta Tags";
     case kConvertPngToJpeg:                return "Convert Png to Jpeg";
     case kDebug:                           return "Debug";
+    case kDeferIframe:                     return "Defer Iframe";
     case kDeferJavascript:                 return "Defer Javascript";
     case kDelayImages:                     return "Delay Images";
     case kDetectReflowWithDeferJavascript:
@@ -328,6 +330,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kConvertMetaTags:                 return "mc";
     case kConvertPngToJpeg:                return "pj";
     case kDebug:                           return "db";
+    case kDeferIframe:                     return "df";
     case kDeferJavascript:                 return "dj";
     case kDelayImages:                     return "di";
     case kDetectReflowWithDeferJavascript: return "dr";

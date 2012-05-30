@@ -613,7 +613,10 @@ pagespeed.DeferJs.prototype.setUp = function() {
   if (pagespeed.DeferJs.isExperimentalMode) {
     document.getElementById = function(str) {
       me.handlePendingDocumentWrites();
-      return me.origGetElementById_.call(document, str);
+      var node = me.origGetElementById_.call(document, str);
+      return node == null ||
+          node.hasAttribute(pagespeed.DeferJs.PSA_NOT_PROCESSED) ?
+            null : node;
     }
 
     if (document.querySelectorAll && !(me.getIEVersion() <= 8)) {

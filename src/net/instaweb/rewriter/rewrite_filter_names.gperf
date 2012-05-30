@@ -40,6 +40,7 @@ struct FilterMap {
 "convert_meta_tags",                 RewriteOptions::kConvertMetaTags
 "convert_png_to_jpeg",               RewriteOptions::kConvertPngToJpeg
 "debug",                             RewriteOptions::kDebug
+"defer_iframe",                      RewriteOptions::kDeferIframe
 "defer_javascript",                  RewriteOptions::kDeferJavascript
 "detect_reflow_with_defer_js",       RewriteOptions::kDetectReflowWithDeferJavascript
 "deterministic_js",                  RewriteOptions::kDeterministicJs
