@@ -181,21 +181,25 @@ class CriticalLineFetch : public AsyncFetch {
     if (!success || !claims_html_ || !probable_html_) {
       VLOG(1) << "Non html page, or not success: " << url_;
       delete this;
-    } else {
-      num_blink_html_cache_misses_->IncBy(1);
-      critical_line_computation_driver_ =
-          resource_manager_->NewCustomRewriteDriver(
-          options_.release());
-      // Wait for all rewrites to complete. This is important because fully
-      // rewritten html is used to compute BlinkCriticalLineData.
-      critical_line_computation_driver_->set_fully_rewrite_on_flush(true);
-      critical_line_computation_driver_->SetWriter(&value_);
-      critical_line_computation_driver_->set_response_headers_ptr(
-          response_headers());
-      critical_line_computation_driver_->AddLowPriorityRewriteTask(
-          MakeFunction(this, &CriticalLineFetch::Parse,
-                       &CriticalLineFetch::CancelParse));
+      return;
     }
+    rewrite_driver_->UpdatePropertyValueInDomCohort(
+        BlinkUtil::kBlinkResponseCodePropertyName,
+        IntegerToString(response_headers()->status_code()));
+
+    num_blink_html_cache_misses_->IncBy(1);
+    critical_line_computation_driver_ =
+        resource_manager_->NewCustomRewriteDriver(
+            options_.release());
+    // Wait for all rewrites to complete. This is important because fully
+    // rewritten html is used to compute BlinkCriticalLineData.
+    critical_line_computation_driver_->set_fully_rewrite_on_flush(true);
+    critical_line_computation_driver_->SetWriter(&value_);
+    critical_line_computation_driver_->set_response_headers_ptr(
+        response_headers());
+    critical_line_computation_driver_->AddLowPriorityRewriteTask(
+        MakeFunction(this, &CriticalLineFetch::Parse,
+                     &CriticalLineFetch::CancelParse));
   }
 
   void Parse() {
@@ -248,6 +252,39 @@ class CriticalLineFetch : public AsyncFetch {
   TimedVariable* num_compute_blink_critical_line_data_calls_;
 
   DISALLOW_COPY_AND_ASSIGN(CriticalLineFetch);
+};
+
+// SharedAsyncFetch that only updates property cache with response code.  Used
+// in the case of a cache hit with last response code not OK.
+class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
+ public:
+  UpdateResponseCodeSharedAyncFetch(AsyncFetch* base_fetch,
+                                    RewriteDriver* rewrite_driver)
+      : SharedAsyncFetch(base_fetch), rewrite_driver_(rewrite_driver) {
+    rewrite_driver_->increment_async_events_count();
+  }
+
+  virtual ~UpdateResponseCodeSharedAyncFetch() {
+    rewrite_driver_->decrement_async_events_count();
+  }
+
+ protected:
+  virtual void HandleHeadersComplete() {
+    SharedAsyncFetch::HandleHeadersComplete();
+    rewrite_driver_->UpdatePropertyValueInDomCohort(
+        BlinkUtil::kBlinkResponseCodePropertyName,
+        IntegerToString(response_headers()->status_code()));
+  }
+
+  virtual void HandleDone(bool success) {
+    SharedAsyncFetch::HandleDone(success);
+    delete this;
+  }
+
+ private:
+  RewriteDriver* rewrite_driver_;  // We do not own this.
+
+  DISALLOW_COPY_AND_ASSIGN(UpdateResponseCodeSharedAyncFetch);
 };
 
 }  // namespace
@@ -312,9 +349,9 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
   // BlinkFlowCriticalLine.
   blink_critical_line_data_.reset(
       finder_->ExtractBlinkCriticalLineData(page, options_));
-  // TODO(rahulbansal): Check for the last response code to ensure that the
-  // origin server is not flaky before considering a hit.
-  if (blink_critical_line_data_.get() != NULL) {
+  if (blink_critical_line_data_ != NULL &&
+      !(options_->passthrough_blink_for_last_invalid_response_code() &&
+        IsLastResponseCodeInvalid(page))) {
     BlinkCriticalLineDataHit();
     return;
   }
@@ -329,7 +366,9 @@ bool BlinkFlowCriticalLine::IsLastResponseCodeInvalid(PropertyPage* page) {
   const PropertyCache::Cohort* cohort =
     manager_->page_property_cache()->GetCohort(RewriteDriver::kDomCohort);
   if (cohort == NULL) {
-    return true;
+    // If dom cohort is not available then we do not want to invalidate cache
+    // hits based on response code check.
+    return false;
   }
   PropertyValue* property_value = page->GetProperty(
       cohort, BlinkUtil::kBlinkResponseCodePropertyName);
@@ -495,7 +534,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
     // Non 200 status code.
     manager_->ComputeSignature(options_);
     driver = manager_->NewCustomRewriteDriver(options_);
-    fetch = base_fetch_;
+    fetch = new UpdateResponseCodeSharedAyncFetch(base_fetch_, driver);
   }
   factory_->StartNewProxyFetch(
       url_, fetch, driver, property_callback_, secondary_fetch);

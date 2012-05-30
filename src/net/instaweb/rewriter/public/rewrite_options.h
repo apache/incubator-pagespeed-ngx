@@ -155,6 +155,7 @@ class RewriteOptions {
     kMinImageSizeLowResolutionBytes,
     kMinResourceCacheTimeToRewriteMs,
     kModifyCachingHeaders,
+    kPassthroughBlinkForInvalidResponseCode,
     kPrioritizeVisibleContentCacheTime,
     kPrioritizeVisibleContentNonCacheableElements,
     kProgressiveJpegMinBytes,
@@ -937,6 +938,13 @@ class RewriteOptions {
     return blink_desktop_user_agent_.value();
   }
 
+  void set_passthrough_blink_for_last_invalid_response_code(bool x) {
+    set_option(x, &passthrough_blink_for_last_invalid_response_code_);
+  }
+  bool passthrough_blink_for_last_invalid_response_code() const {
+    return passthrough_blink_for_last_invalid_response_code_.value();
+  }
+
   bool reject_blacklisted() const { return reject_blacklisted_.value(); }
   void set_reject_blacklisted(bool x) {
     set_option(x, &reject_blacklisted_);
@@ -1569,6 +1577,9 @@ class RewriteOptions {
   // Fixed user agent string to be used for prioritize_visible_content cache
   // miss cases if use_fixed_user_agent_for_blink_cache_misses_ is set to true.
   Option<GoogleString> blink_desktop_user_agent_;
+  // Pass-through request in prioritize_visible_content filter, if we got a
+  // non-200 response from origin on the last fetch.
+  Option<bool> passthrough_blink_for_last_invalid_response_code_;
 
   // If this is true (it defaults to false) ProxyInterface frontend will
   // reject requests where PSA is not enabled or URL is blacklisted with

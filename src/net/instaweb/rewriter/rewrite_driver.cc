@@ -1706,6 +1706,22 @@ void RewriteDriver::WriteClientStateIntoPropertyCache() {
   }
 }
 
+void RewriteDriver::UpdatePropertyValueInDomCohort(StringPiece property_name,
+                                                   StringPiece property_value) {
+  PropertyCache* pcache = resource_manager_->page_property_cache();
+  if (pcache == NULL) {
+    LOG(DFATAL) << "Property cache is not available.";
+    return;
+  }
+  const PropertyCache::Cohort* dom = pcache->GetCohort(kDomCohort);
+  if (dom == NULL) {
+    LOG(DFATAL) << "dom cohort is not available.";
+    return;
+  }
+  PropertyValue* value = property_page()->GetProperty(dom, property_name);
+  pcache->UpdateValue(property_value, value);
+}
+
 void RewriteDriver::Cleanup() {
   if (!externally_managed_) {
     bool should_release = false;

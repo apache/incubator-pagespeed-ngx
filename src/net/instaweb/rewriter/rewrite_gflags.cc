@@ -169,6 +169,10 @@ DEFINE_string(blink_desktop_user_agent,
               "User-Agent string for fetching content from origin server "
               "for blink in case of cache miss.");
 
+DEFINE_bool(passthrough_blink_for_last_invalid_response_code, false,
+            "Pass-through blink request if we got a non-200 response from "
+            "origin on the last fetch.");
+
 namespace net_instaweb {
 
 namespace {
@@ -342,6 +346,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("blink_desktop_user_agent")) {
     options->set_blink_desktop_user_agent(FLAGS_blink_desktop_user_agent);
+  }
+  if (WasExplicitlySet("passthrough_blink_for_last_invalid_response_code")) {
+    options->set_passthrough_blink_for_last_invalid_response_code(
+        FLAGS_passthrough_blink_for_last_invalid_response_code);
   }
 
   ret &= SetRewriters("rewriters", FLAGS_rewriters.c_str(),

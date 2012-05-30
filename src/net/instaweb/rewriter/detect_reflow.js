@@ -89,36 +89,13 @@ pagespeed.DetectReflow.prototype['isJsDeferDone'] =
   pagespeed.DetectReflow.prototype.isJsDeferDone;
 
 /**
- * Global singleton instance of DetectReflow.
- */
-pagespeed.detectReflow = new pagespeed.DetectReflow();
-pagespeed['detectReflow'] = pagespeed.detectReflow;
-
-/**
- * For all divs with attribute 'id', adds a mapping from div 'id' to
- * clientHeight in preScriptHeights_.
- */
-pagespeed.labelDivsBeforeDeferredJs = function() {
-  var divs = document.getElementsByTagName('div');
-  var len = divs.length;
-  for (var i = 0; i < len; ++i) {
-    var div = divs[i];
-    if (div.hasAttribute('id') && div.clientHeight != undefined) {
-      pagespeed.detectReflow.preScriptHeights_[div.getAttribute('id')] =
-          div.clientHeight;
-    }
-    // TODO(sriharis):  How to handle divs with 'class' and no 'id'?
-  }
-};
-
-/**
  * For all divs in preScriptHeights_, if the clientHeight now is different from
  * the div's height mapped in preScriptHeights_ then '<div id>:<current height>'
  * is appended to reflowElementHeights_.
  */
-pagespeed.findChangedDivsAfterDeferredJs = function() {
-  if (!pagespeed.detectReflow.preScriptHeights_ && console) {
-    console.log('pagespeed.detectReflow.preScriptHeights_ is not available');
+pagespeed.DetectReflow.prototype.findChangedDivsAfterDeferredJs = function() {
+  if (!this.preScriptHeights_ && console) {
+    console.log('preScriptHeights_ is not available');
   }
   // Check reflow
   var newDivs = document.getElementsByTagName('div');
@@ -129,34 +106,59 @@ pagespeed.findChangedDivsAfterDeferredJs = function() {
       continue;
     }
     var divId = div.getAttribute('id');
-    if (pagespeed.detectReflow.preScriptHeights_[divId] != undefined) {
-      if (pagespeed.detectReflow.preScriptHeights_[divId] != div.clientHeight) {
-        pagespeed.detectReflow.reflowElementHeights_ =
-            pagespeed.detectReflow.reflowElementHeights_ + divId + ':' +
+    if (this.preScriptHeights_[divId] != undefined) {
+      if (this.preScriptHeights_[divId] != div.clientHeight) {
+        this.reflowElementHeights_ = this.reflowElementHeights_ + divId + ':' +
             window.getComputedStyle(div, null).getPropertyValue('height') + ',';
       }
     }
   }
 };
+pagespeed.DetectReflow.prototype['findChangedDivsAfterDeferredJs'] =
+  pagespeed.DetectReflow.prototype.findChangedDivsAfterDeferredJs;
 
 /**
- * To be run as an 'AfterDeferRun' hook in js_defer.js.  Sets the jsDeferDone_
- * flag to true.
+ * For all divs with attribute 'id', adds a mapping from div 'id' to
+ * clientHeight in preScriptHeights_.  Executed as 'BeforeDeferRun' hook in
+ * js_defer.js.
  */
-pagespeed.setJsDeferDone = function() {
-  pagespeed.detectReflow.jsDeferDone_ = true;
+pagespeed.DetectReflow.prototype.labelDivsBeforeDeferredJs = function() {
+  var divs = document.getElementsByTagName('div');
+  var len = divs.length;
+  for (var i = 0; i < len; ++i) {
+    var div = divs[i];
+    if (div.hasAttribute('id') && div.clientHeight != undefined) {
+      this.preScriptHeights_[div.getAttribute('id')] = div.clientHeight;
+    }
+    // TODO(sriharis):  How to handle divs with 'class' and no 'id'?
+  }
 };
+pagespeed.DetectReflow.prototype['labelDivsBeforeDeferredJs'] =
+  pagespeed.DetectReflow.prototype.labelDivsBeforeDeferredJs;
 
-// TODO(sriharis):  Make labelDivsBeforeDeferredJs and
-// setJsDeferDone prototype functions and change js_defer.js so that
-// addBeforeDeferRunFunctions and addAfterDeferRunFunctions takes a function and
-// on object to call the function on.
+/**
+ * To be executed from 'AfterDeferRun' hook in js_defer.js.  Sets the
+ * jsDeferDone_ flag to true.
+ */
+pagespeed.DetectReflow.prototype.setJsDeferDone = function() {
+  this.jsDeferDone_ = true;
+};
+pagespeed.DetectReflow.prototype['setJsDeferDone'] =
+  pagespeed.DetectReflow.prototype.setJsDeferDone;
 
-if (pagespeed.deferJs != 'undefined' &&
-    pagespeed.deferJs['addBeforeDeferRunFunctions'] != 'undefined' &&
-    pagespeed.deferJs['addAfterDeferRunFunctions'] != 'undefined') {
-  pagespeed.deferJs['addBeforeDeferRunFunctions'](
-      pagespeed.labelDivsBeforeDeferredJs);
-  pagespeed.deferJs['addAfterDeferRunFunctions'](
-      pagespeed.setJsDeferDone);
+if (pagespeed['deferJs'] != 'undefined' &&
+    pagespeed['deferJs']['addBeforeDeferRunFunctions'] != 'undefined' &&
+    pagespeed['deferJs']['addAfterDeferRunFunctions'] != 'undefined') {
+  var x = new pagespeed.DetectReflow();
+  pagespeed['detectReflow'] = x;
+
+  var pre = function() {
+    pagespeed['detectReflow']['labelDivsBeforeDeferredJs']();
+  };
+  pagespeed['deferJs']['addBeforeDeferRunFunctions'](pre);
+
+  var post = function() {
+    pagespeed['detectReflow']['setJsDeferDone']();
+  };
+  pagespeed['deferJs']['addAfterDeferRunFunctions'](post);
 }

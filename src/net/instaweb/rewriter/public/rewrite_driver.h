@@ -726,6 +726,16 @@ class RewriteDriver : public HtmlParse {
                            const GoogleUrl& output_base,
                            bool* proxy_mode) const;
 
+  // Update the PropertyValue named 'property_name' in dom cohort with
+  // the value 'property_value'.  It is the responsibility of the client to
+  // ensure that property cache and dom cohort are enabled when this function is
+  // called.  It is a programming error to call this function when property
+  // cache or dom cohort is not available, more so since the value payload has
+  // to be serialised before calling this function.  Hence this function will
+  // DFATAL if property cache or dom cohort is not available.
+  void UpdatePropertyValueInDomCohort(StringPiece property_name,
+                                      StringPiece property_value);
+
   // Sets the pointer to the client state associated with this driver.
   // RewriteDriver takes ownership of the provided AbstractClientState object.
   void set_client_state(AbstractClientState* client_state) {
