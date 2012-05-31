@@ -202,7 +202,7 @@ bool Wildcard::Match(const StringPiece& actual) const {
     // Now check for a match here.  We already know pat[0] == str[0].
     ofs = 1 + MatchBlock(pat + 1, str + 1);
     if (pat[ofs] != kMatchAny) {
-      // We failed to match leftmost occurence of *pat in str.
+      // We failed to match leftmost occurrence of *pat in str.
       // Move further right in str and try to match current block again.
       ++str;
       --chars_to_skip;

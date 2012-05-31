@@ -27,7 +27,7 @@ namespace net_instaweb {
 
 // Global constants for common HTML attributes names and values.
 //
-// TODO(jmarantz): proactively change all the occurences of the static strings
+// TODO(jmarantz): Proactively change all the occurrences of the static strings
 // to use these shared constants.
 struct HttpAttributes {
   static const char kAcceptEncoding[];

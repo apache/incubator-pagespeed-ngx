@@ -132,7 +132,7 @@ void JsInlineFilter::RenderInline(
   // and http://code.google.com/p/modpagespeed/issues/detail?id=125
   if (driver_->doctype().IsXhtml()) {
     // CDATA sections cannot be nested because they end with the first
-    // occurance of "]]>", so if the script contains that string
+    // occurrence of "]]>", so if the script contains that string
     // anywhere (and we're in XHTML) we can't inline.
     // TODO(mdsteele): Again, we should consider escaping somehow.
     if (contents.find("]]>") == StringPiece::npos) {
