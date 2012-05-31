@@ -19,17 +19,24 @@
 //
 // Character classification functions similar to standard <ctype.h>.
 // Some C++ implementations provide locale-sensitive implementations
-// of some of these functions.  Our versions are hard-wired for ASCII.
-// Hard-wired for ASCII is much faster.
+// of some <ctype.h> functions.  These ascii_* functions are
+// hard-wired for ASCII.  Hard-wired for ASCII is much faster.
 //
-// List of functions:
-//   ascii_isalnum, ascii_isalpha, ascii_isblank, ascii_iscntrl,
-//   ascii_isdigit, ascii_isgraph, ascii_islower, ascii_isprint,
-//   ascii_ispunct, ascii_isspace, ascii_isupper, ascii_isxdigit,
-//   ascii_tolower, ascii_toupper
+// ascii_isalnum, ascii_isalpha, ascii_isascii, ascii_isblank,
+// ascii_iscntrl, ascii_isdigit, ascii_isgraph, ascii_islower,
+// ascii_isprint, ascii_ispunct, ascii_isspace, ascii_isupper,
+// ascii_isxdigit
+//   Similar to the <ctype.h> functions with similar names.
+//   Input parameter is an unsigned char.  Return value is a bool.
+//   If the input has a numerical value greater than 127
+//   then the output is "false".
 //
-// These functions return false for characters with an unsigned value
-// above \x7f.
+// ascii_tolower, ascii_toupper
+//   Similar to the <ctype.h> functions with similar names.
+//   Input parameter is an unsigned char.  Return value is a char.
+//   If the input is not an ascii {lower,upper}-case letter
+//   (including numerical values greater than 127)
+//   then the output is the same as the input.
 
 #ifndef STRINGS_ASCII_CTYPE_H_
 #define STRINGS_ASCII_CTYPE_H_
