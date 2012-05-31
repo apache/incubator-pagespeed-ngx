@@ -74,8 +74,15 @@ TEST_F(MessageHandlerTest, Simple) {
   ASSERT_EQ(messages()[1], "Info: filename.cc: 1: here is another message");
   ASSERT_EQ(kWarning, MessageHandler::StringToMessageType("Warning"));
   ASSERT_EQ(kFatal, MessageHandler::StringToMessageType("Fatal"));
-  ASSERT_DEATH_IF_SUPPORTED(MessageHandler::StringToMessageType("Random"),
-                            "Invalid msg level: Random");
+  //
+  // ASSERT_DEATH_IF_SUPPORTED is a cool idea, but it prints:
+  //   [WARNING] testing/gtest/src/gtest-death-test.cc:789:: Death tests use
+  //   fork(), which is unsafe particularly in a threaded context. For this
+  //   test, Google Test couldn't detect the number of threads.
+  // and seems to core-dump sporadically.
+  //
+  // ASSERT_DEATH_IF_SUPPORTED(MessageHandler::StringToMessageType("Random"),
+  //                           "Invalid msg level: Random");
 }
 
 TEST_F(MessageHandlerTest, MinMessageType) {
