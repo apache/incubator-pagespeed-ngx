@@ -3,6 +3,10 @@
 # 8081 -- COVERAGE / PROXY / SLURP
 # 8082 -- SLURP
 # @@APACHE_SECONDARY_PORT@@ -- secondary configuration (8083 debug, 8084 root)
+#
+# Note that when system-testing on CentOS installs we need to authorize these
+# ports via semanage.  Any new ports should thus be added to the Makefile in
+# this directory, target enable_ports_and_file_access.
 
 # We don't enable XHTML in the default pagespeed.conf.  For the
 # add_instrumentation xhtml tests to work, though, we have to enable
@@ -75,10 +79,7 @@ ModPagespeedEnableFilters add_instrumentation
     # the right header.
     Header set Cache-control "max-age=600"
     Header append 'Content-Encoding' 'gzip'
-
-    # This is needed to allow tests to pass in Apache 2.4.
-    # It doesn't harm 2.2.
-    Header set 'Content-Type' 'text/javascript'
+    AddType text/javascript .custom_ext
 </Directory>
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/no_cache/" >

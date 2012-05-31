@@ -4,6 +4,7 @@
 # Its interface is as follows:
 # Exports:
 #  apache_system_tests
+#  apache_vm_system_tests  (includes tests that can be run on VMs)
 # Imports:
 #  apache_install_conf (should read OPT_REWRITE_TEST, OPT_PROXY_TEST,
 #                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_HTTPS_TEST,
@@ -33,13 +34,12 @@ export APACHE_DEBUG_PAGESPEED_CONF
 export APACHE_LOG
 export PAGESPEED_ROOT
 
-apache_system_tests :
+apache_vm_system_tests :
 	$(MAKE) apache_debug_smoke_test
 	$(MAKE) apache_debug_leak_test
 	$(MAKE) apache_debug_rewrite_test
 	$(MAKE) apache_debug_proxy_test
 	$(MAKE) apache_debug_slurp_test
-	$(MAKE) apache_debug_serf_empty_header_test
 	$(MAKE) apache_debug_speling_test
 	$(MAKE) apache_debug_gzip_test
 	$(MAKE) apache_debug_furious_test
@@ -54,7 +54,15 @@ apache_system_tests :
 # 'apache_install_conf' should always be last, to leave your debug
 # Apache server in a consistent state.
 
-WGET = wget --no-proxy
+# apache_debug_serf_empty_header_test fails when testing on VMs for
+# release builds.  This appears to be due to the complicated proxy
+# setup.
+# TODO(jmarantz): fix this.
+apache_system_tests : apache_vm_system_tests
+	$(MAKE) apache_debug_serf_empty_header_test
+	$(MAKE) apache_install_conf
+	$(MAKE) apache_debug_restart
+
 APACHE_HOST = localhost
 ifeq ($(APACHE_DEBUG_PORT),80)
   APACHE_SERVER = $(APACHE_HOST)
@@ -63,7 +71,10 @@ else
 endif
 APACHE_SECONDARY_SERVER = $(APACHE_HOST):$(APACHE_SECONDARY_PORT)
 
-WGET_PROXY = http_proxy=$(APACHE_SERVER) wget -q -O -
+WGET = wget
+WGET_PROXY = http_proxy=$(APACHE_SERVER) $(WGET) -q -O -
+WGET_NO_PROXY = $(WGET) --no-proxy
+export WGET
 
 ifeq ($(APACHE_HTTPS_PORT),)
   APACHE_HTTPS_SERVER =
@@ -89,7 +100,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	@echo '***' System-test with cold cache
 	-$(APACHE_CTRL_BIN) stop
 	sleep 2
-	rm -rf $(PAGESPEED_ROOT)/cache
+	rm -rf $(PAGESPEED_ROOT)/cache/*
 	$(APACHE_CTRL_BIN) start
 	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER) \
 	                                   $(APACHE_HTTPS_SERVER)
@@ -123,11 +134,11 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 apache_debug_rewrite_test : rewrite_test_prepare apache_install_conf \
     apache_debug_restart
 	sleep 2
-	$(WGET) -q -O - --save-headers $(EXAMPLE_IMAGE) \
+	$(WGET_NO_PROXY) -q -O - --save-headers $(EXAMPLE_IMAGE) \
 	  | head -13 | grep "Content-Type: image/jpeg"
-	$(WGET) -q -O - $(APACHE_SECONDARY_SERVER)/mod_pagespeed_statistics \
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/mod_pagespeed_statistics \
 	  | grep cache_hits
-	$(WGET) -q -O - $(APACHE_SECONDARY_SERVER)/shortcut.html \
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/shortcut.html \
 	  | grep "Filter Examples"
 
 rewrite_test_prepare:
@@ -141,7 +152,7 @@ rewrite_test_prepare:
 apache_debug_speling_test : speling_test_prepare apache_install_conf \
     apache_debug_restart
 	@echo Testing compatibility with mod_speling:
-	$(WGET) -O /dev/null --save-headers $(EXAMPLE_IMAGE) 2>&1 \
+	$(WGET_NO_PROXY) -O /dev/null --save-headers $(EXAMPLE_IMAGE) 2>&1 \
 	  | head | grep "HTTP request sent, awaiting response... 200 OK"
 
 speling_test_prepare:
@@ -157,9 +168,9 @@ speling_test_prepare:
 apache_debug_gzip_test : gzip_test_prepare apache_install_conf \
     apache_debug_restart
 	@echo Testing efficacy of ModPagespeedFetchWithGzip:
-	$(WGET) -O /dev/null --save-headers $(EXAMPLE_BIG_CSS) 2>&1 \
+	$(WGET_NO_PROXY) -O /dev/null --save-headers $(EXAMPLE_BIG_CSS) 2>&1 \
 	  | head | grep "HTTP request sent, awaiting response... 200 OK"
-	bytes=`$(WGET) -q -O - $(APACHE_SERVER)/mod_pagespeed_statistics \
+	bytes=`$(WGET_NO_PROXY) -q -O - $(APACHE_SERVER)/mod_pagespeed_statistics \
 	  | grep 'serf_fetch_bytes_count: ' | cut -d\  -f2`; \
 	  echo Compressed big.css took $$bytes bytes; \
 	  test $$bytes -gt 200 -a $$bytes -lt 500
@@ -180,20 +191,20 @@ apache_debug_furious_test : furious_test_prepare apache_install_conf \
 	   echo "       them."; \
 	   false ; \
 	fi
-	$(WGET) -q -O - --save-headers $(EXAMPLE) | grep "_GFURIOUS="
+	$(WGET_NO_PROXY) -q -O - --save-headers $(EXAMPLE) | grep "_GFURIOUS="
 	if [[ -f $(TEST_ROOT_FILE_DIR)/.htaccess ]] ; then \
 	   echo "ERROR: $(TEST_ROOT_FILE_DIR) can't have a .htaccess file"; \
 	   echo "       because we're testing whether Furious works on"; \
 	   echo "       directories that don't have one."; \
 	   false ; \
 	fi
-	$(WGET) -q -O - --save-headers $(TEST_ROOT) | grep "_GFURIOUS="
-	matches=`$(WGET) -q -O - --save-headers \
+	$(WGET_NO_PROXY) -q -O - --save-headers $(TEST_ROOT) | grep "_GFURIOUS="
+	matches=`$(WGET_NO_PROXY) -q -O - --save-headers \
           '$(EXAMPLE)?ModPagespeed=on&ModPagespeedFilters=rewrite_css' \
 	  | grep -c '_GFURIOUS='`; \
 	test $$matches -eq 0
 
-	matches=`$(WGET) --header='Cookie: _GFURIOUS=2' -q -O - --save-headers \
+	matches=`$(WGET_NO_PROXY) --header='Cookie: _GFURIOUS=2' -q -O - --save-headers \
         '$(EXAMPLE)' | grep -c '_GFURIOUS='`; \
         test $$matches -eq 0
 
@@ -205,9 +216,9 @@ furious_test_prepare:
 apache_debug_xheader_test : xheader_test_prepare apache_install_conf \
     apache_debug_restart
 	@echo Testing ModPagespeedXHeaderValue directive:
-	$(WGET) -q -O - --save-headers $(EXAMPLE) \
+	$(WGET_NO_PROXY) -q -O - --save-headers $(EXAMPLE) \
 	  | egrep "^X-Mod-Pagespeed:|^X-Page-Speed:"
-	value=`$(WGET) -q -O - --save-headers '$(EXAMPLE)' \
+	value=`$(WGET_NO_PROXY) -q -O - --save-headers '$(EXAMPLE)' \
 	  | egrep "^X-Mod-Pagespeed:|^X-Page-Speed:" \
 	  | sed -e 's/^X-Mod-Pagespeed: *//' \
 	  | sed -e 's/^X-Page-Speed: *//' \
@@ -229,7 +240,7 @@ rewrite_hyperlinks_test_prepare:
 apache_debug_rewrite_hyperlinks_test : rewrite_hyperlinks_test_prepare \
     apache_install_conf apache_debug_restart
 	@echo Testing ModPagespeedRewriteHyperlinks on directive:
-	matches=`$(WGET) -q -O - $(TEST_ROOT)/rewrite_domains.html \
+	matches=`$(WGET_NO_PROXY) -q -O - $(TEST_ROOT)/rewrite_domains.html \
 	  | grep -c http://dst.example.com`; \
 	test $$matches -eq 3
 
@@ -244,7 +255,7 @@ rewrite_resource_tags_test_prepare:
 apache_debug_rewrite_resource_tags_test : rewrite_resource_tags_test_prepare \
     apache_install_conf apache_debug_restart
 	@echo Testing ModPagespeedRewriteHyperlinks off directive:
-	matches=`$(WGET) -q -O - $(TEST_ROOT)/rewrite_domains.html \
+	matches=`$(WGET_NO_PROXY) -q -O - $(TEST_ROOT)/rewrite_domains.html \
 	  | grep -c http://dst.example.com`; \
 	test $$matches -eq 1
 
@@ -257,7 +268,7 @@ apache_debug_vhost_only_test:
 	  OPT_STRESS_TEST=STRESS_TEST=1
 	echo 'ModPagespeed off' >> $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_restart
-	$(WGET) -O /dev/null --save-headers $(EXAMPLE) 2>&1 \
+	$(WGET_NO_PROXY) -O /dev/null --save-headers $(EXAMPLE) 2>&1 \
 	  | head | grep "HTTP request sent, awaiting response... 200 OK"
 
 # Regression test for serf fetching something with an empty header.
@@ -279,16 +290,18 @@ apache_debug_global_off_test:
 	$(MAKE) apache_install_conf
 	echo 'ModPagespeed off' >> $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_restart
-	$(WGET) -O /dev/null --save-headers $(EXAMPLE)?ModPagespeed=on 2>&1 \
+	$(WGET_NO_PROXY) -O /dev/null --save-headers $(EXAMPLE)?ModPagespeed=on 2>&1 \
 	  | head | grep "HTTP request sent, awaiting response... 200 OK"
 
 # Sanity-check that enabling shared-memory locks don't cause the
 # system to crash, and a rewrite does successfully happen.
 apache_debug_shared_mem_lock_sanity_test : shared_mem_lock_test_prepare \
     apache_install_conf apache_debug_restart
-	$(WGET) -q -O /dev/null $(EXAMPLE_COMBINE_CSS)?ModPagespeedFilters=combine_css
+	$(WGET_NO_PROXY) -q -O /dev/null \
+	    $(EXAMPLE_COMBINE_CSS)?ModPagespeedFilters=combine_css
 	sleep 1
-	$(WGET) -q -O - $(EXAMPLE_COMBINE_CSS)?ModPagespeedFilters=combine_css \
+	$(WGET_NO_PROXY) -q -O - \
+	    $(EXAMPLE_COMBINE_CSS)?ModPagespeedFilters=combine_css \
 	 | grep "\.pagespeed\.cc\."
 
 shared_mem_lock_test_prepare:

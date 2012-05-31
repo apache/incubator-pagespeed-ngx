@@ -37,8 +37,9 @@ else
   echo CURL = $CURL
 fi
 
-$CURL --version > /dev/null 2>&1
-if [ $? != 0 ]; then
+# Note that 'curl --version' exits with status 2 on CentOS even when
+# curl is installed.
+if ! which $CURL > /dev/null 2>&1; then
   echo "curl ($CURL) is not installed."
   exit 1
 fi

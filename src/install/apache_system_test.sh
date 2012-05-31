@@ -365,7 +365,7 @@ echo $HTML_HEADERS | egrep -q 'Cache-Control: max-age=0, no-cache'
 check [ $? = 0 ]
 
 echo TEST: Custom headers remain on resources, but cache should be 1 year.
-URL="$TEST_ROOT/compressed/hello_js.pagespeed.ce.HdziXmtLIV.txt"
+URL="$TEST_ROOT/compressed/hello_js.custom_ext.pagespeed.ce.HdziXmtLIV.txt"
 echo $WGET_DUMP $URL
 RESOURCE_HEADERS=$($WGET_DUMP $URL)
 echo $RESOURCE_HEADERS | egrep -q 'X-Extra-Header: 1'
@@ -513,7 +513,10 @@ mod_pagespeed_test/$URL_PATH
   fetch_until $SECONDARY_URL 'grep -c blue' 1
 
   # Flush the cache by touching a special file in the cache directory.  Now
-  # css gets re-read and we get 'green' in the output.
+  # css gets re-read and we get 'green' in the output.  Sleep here to avoid
+  # a race due to 1-second granularity of file-system timestamp checks.  For
+  # the test to pass we need to see time pass from the previous 'touch'.
+  sleep 2
   echo $SUDO touch $PAGESPEED_ROOT/cache/cache.flush
   $SUDO touch $PAGESPEED_ROOT/cache/cache.flush
   fetch_until $URL 'grep -c green' 1
@@ -575,7 +578,7 @@ mod_pagespeed_test/$URL_PATH
   # Kill the log monitor silently.
   kill $TAIL_PID
   wait $TAIL_PID 2> /dev/null
-  check [ $ERRS -eq 1 ]
+  check [ $ERRS -ge 1 ]
   # Make sure we have the URL detail we expect because
   # ModPagespeedListOutstandingUrlsOnError is on in debug.conf.template.
   echo Check that ModPagespeedSerfListOutstandingUrlsOnError works

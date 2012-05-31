@@ -49,7 +49,8 @@ APACHE_SECONDARY_PORT = 8084
 
 APACHE_CONTROL_PROGRAM = /etc/init.d/apache2
 APACHE_START = $(APACHE_CONTROL_PROGRAM) start
-APACHE_STOP = $(APACHE_CONTROL_PROGRAM) stop
+APACHE_STOP = $(APACHE_CONTROL_PROGRAM) graceful-stop || \
+	      $(APACHE_CONTROL_PROGRAM) stop
 
 # A temp directory to stage generated configuration files.  This must be
 # writable by the user, and readable by root.
@@ -351,7 +352,11 @@ install : install_except_module
 
 mod_pagespeed_file_root :
 	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)/cache
+	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)/secondary_cache
 	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)/files
+	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)-alt/cache
+	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)-alt/secondary_cache
+	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)-alt/files
 	chown -R $(APACHE_USER) $(MOD_PAGESPEED_FILE_ROOT)
 
 flush_disk_cache :
@@ -408,6 +413,29 @@ apache_debug_restart:
 	$(APACHE_CONTROL_PROGRAM) restart
 
 apache_debug_stop: stop
+
+# Enables a few ports that are needed by system tests.  This is needed on
+# CentOS only to work around barriers erected by SELinux.  See
+# http://linux.die.net/man/8/semanage
+# http://wiki.centos.org/HowTos/
+# SELinux#head-ad837f60830442ae77a81aedd10c20305a811388
+#
+# The port-list below must be kept in sync with debug.conf.template.  1023 is
+# used to test connection-refused handling via modpagespeed.com.  We don't
+# actually create a VirtualHost on 1023.
+enable_ports_and_file_access :
+	set -x; \
+	for port in 1023 8081 8082 8084; do \
+	    /usr/sbin/semanage port -a -t http_port_t -p tcp $$port || \
+	    /usr/sbin/semanage port -m -t http_port_t -p tcp $$port; \
+	done
+	set -x; \
+	for dir in $(MOD_PAGESPEED_FILE_ROOT) \
+	           $(MOD_PAGESPEED_FILE_ROOT)-alt; do \
+	  mkdir $$dir; \
+	  chown $(APACHE_USER) $dir; \
+	  chcon -R -t httpd_sys_content_t $$dir; \
+	done
 
 # Hooks for tests we can only run in development due to needing extensive
 # configuration changes in Apache (and potentially different build flags).
