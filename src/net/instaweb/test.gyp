@@ -87,6 +87,7 @@
         'js/js_lexer_test.cc',
         'rewriter/add_instrumentation_filter_test.cc',
         'rewriter/ajax_rewrite_context_test.cc',
+        'rewriter/association_transformer_test.cc',
         'rewriter/base_tag_filter_test.cc',
         'rewriter/blink_util_test.cc',
         'rewriter/cache_extender_test.cc',

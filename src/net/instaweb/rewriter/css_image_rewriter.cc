@@ -43,7 +43,7 @@
 
 namespace net_instaweb {
 
-CssImageRewriter::CssImageRewriter(CssFilter::Context* context,
+CssImageRewriter::CssImageRewriter(CssFilter::Context* root_context,
                                    CssFilter* filter,
                                    RewriteDriver* driver,
                                    CacheExtender* cache_extender,
@@ -51,7 +51,7 @@ CssImageRewriter::CssImageRewriter(CssFilter::Context* context,
                                    ImageCombineFilter* image_combiner)
     : filter_(filter),
       driver_(driver),
-      context_(context),
+      root_context_(root_context),
       // For now we use the same options as for rewriting and cache-extending
       // images found in HTML.
       cache_extender_(cache_extender),
@@ -92,16 +92,14 @@ void CssImageRewriter::RewriteImport(
 
   parent->AddNestedContext(
       filter_->MakeNestedFlatteningContextInNewSlot(
-          resource, driver_->UrlLine(), context_, parent, hierarchy));
+          resource, driver_->UrlLine(), root_context_, parent, hierarchy));
 }
 
-void CssImageRewriter::RewriteImage(
-    int64 image_inline_max_bytes,
-    const GoogleUrl& trim_url,
-    const GoogleUrl& original_url,
-    RewriteContext* parent,
-    Css::Values* values, size_t value_index,
-    MessageHandler* handler) {
+void CssImageRewriter::RewriteImage(int64 image_inline_max_bytes,
+                                    const GoogleUrl& trim_url,
+                                    const GoogleUrl& original_url,
+                                    RewriteContext* parent,
+                                    Css::Values* values, size_t value_index) {
   const RewriteOptions* options = driver_->options();
   ResourcePtr resource = driver_->CreateInputResource(original_url);
   if (resource.get() == NULL) {
@@ -109,27 +107,36 @@ void CssImageRewriter::RewriteImage(
   }
 
   CssResourceSlotPtr slot(
-      context_->slot_factory()->GetSlot(resource, values, value_index));
+      root_context_->slot_factory()->GetSlot(resource, values, value_index));
 
-  if (options->ImageOptimizationEnabled() ||
-      image_inline_max_bytes > 0) {
-    parent->AddNestedContext(
-        image_rewriter_->MakeNestedRewriteContextForCss(image_inline_max_bytes,
-            parent, ResourceSlotPtr(slot)));
-  }
+  RewriteSlot(ResourceSlotPtr(slot), image_inline_max_bytes, parent);
 
-  if (driver_->MayCacheExtendImages()) {
-    parent->AddNestedContext(
-        cache_extender_->MakeNestedContext(parent, ResourceSlotPtr(slot)));
-  }
-
-  // TODO(sligocki): DomainRewriter or is this done automatically?
-
+  // Note: We don't do this for RewriteSlot, because EnableTrim is a
+  // CssResourceSlot-specific method.
   if (options->trim_urls_in_css() &&
       options->Enabled(RewriteOptions::kLeftTrimUrls)) {
     // TODO(sligocki): Make sure this is the correct (final) URL of the CSS.
     slot->EnableTrim(trim_url);
   }
+}
+
+void CssImageRewriter::RewriteSlot(const ResourceSlotPtr& slot,
+                                   int64 image_inline_max_bytes,
+                                   RewriteContext* parent) {
+  const RewriteOptions* options = driver_->options();
+  if (options->ImageOptimizationEnabled() ||
+      image_inline_max_bytes > 0) {
+    parent->AddNestedContext(
+        image_rewriter_->MakeNestedRewriteContextForCss(image_inline_max_bytes,
+            parent, slot));
+  }
+
+  if (driver_->MayCacheExtendImages()) {
+    parent->AddNestedContext(
+        cache_extender_->MakeNestedContext(parent, slot));
+  }
+
+  // TODO(sligocki): DomainRewriter or is this done automatically?
 }
 
 bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
@@ -215,12 +222,12 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
                 handler->Message(kInfo, "Found image URL %s", rel_url.c_str());
                 if (spriting_ok) {
                   image_combiner_->AddCssBackgroundContext(
-                      original_url, values, value_index, context_,
+                      original_url, values, value_index, root_context_,
                       &decls, handler);
                 }
                 RewriteImage(image_inline_max_bytes,
                              hierarchy->css_trim_url(), original_url,
-                             parent, values, value_index, handler);
+                             parent, values, value_index);
               }
             }
             break;

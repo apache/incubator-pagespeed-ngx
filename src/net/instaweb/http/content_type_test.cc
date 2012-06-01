@@ -47,7 +47,6 @@ TEST_F(ContentTypeTest, TestExtensions) {
   EXPECT_EQ(ContentType::kXml,        ExtToType(".xml"));
   EXPECT_EQ(ContentType::kPng,        ExtToType(".png"));
   EXPECT_EQ(ContentType::kGif,        ExtToType(".gif"));
-  EXPECT_EQ(ContentType::kHtc,        ExtToType(".htc"));
 }
 
 TEST_F(ContentTypeTest, TestMimeType) {
@@ -67,7 +66,6 @@ TEST_F(ContentTypeTest, TestMimeType) {
   EXPECT_EQ(ContentType::kXml,        MimeToType("text/xml"));
   EXPECT_EQ(ContentType::kPng,        MimeToType("image/png"));
   EXPECT_EQ(ContentType::kGif,        MimeToType("image/gif"));
-  EXPECT_EQ(ContentType::kHtc,        MimeToType("text/x-component"));
 }
 
 }  // namespace net_instaweb

@@ -631,7 +631,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(79, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(80, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));
@@ -647,6 +647,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("AnalyticsID"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAnalyticsID));
+  EXPECT_EQ(StringPiece("AvoidRenamingIntrospectiveJavascript"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kAvoidRenamingIntrospectiveJavascript));
   EXPECT_EQ(StringPiece("BeaconUrl"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kBeaconUrl));
@@ -671,6 +674,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("DefaultCacheHtml"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kDefaultCacheHtml));
+  EXPECT_EQ(StringPiece("DomainRewriteHyperlinks"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kDomainRewriteHyperlinks));
   EXPECT_EQ(StringPiece("EnableBlinkCriticalLine"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kEnableBlinkCriticalLine));
@@ -680,6 +686,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("EnableDeferJsExperimental"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kEnableDeferJsExperimental));
+  EXPECT_EQ(StringPiece("FallbackRewriteCssUrls"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kFallbackRewriteCssUrls));
   EXPECT_EQ(StringPiece("FlushHtml"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kFlushHtml));
@@ -782,9 +791,13 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("ServeStaleIfFetchError"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kServeStaleIfFetchError));
+  EXPECT_EQ(StringPiece("UseFixedUserAgentForBlinkCacheMisses"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses));
   EXPECT_EQ(StringPiece("XHeaderValue"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kXModPagespeedHeaderValue));
+
   EXPECT_EQ(StringPiece("CollectRefererStatistics"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kCollectRefererStatistics));
@@ -836,15 +849,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("TestProxy"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kTestProxy));
-  EXPECT_EQ(StringPiece("DomainRewriteHyperlinks"),
-            RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kDomainRewriteHyperlinks));
-  EXPECT_EQ(StringPiece("AvoidRenamingIntrospectiveJavascript"),
-            RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kAvoidRenamingIntrospectiveJavascript));
-  EXPECT_EQ(StringPiece("UseFixedUserAgentForBlinkCacheMisses"),
-            RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses));
 }
 
 TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies1) {

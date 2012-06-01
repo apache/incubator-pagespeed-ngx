@@ -22,6 +22,7 @@
 #include <cstddef>
 
 #include "net/instaweb/rewriter/public/css_filter.h"
+#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/util/public/basictypes.h"
 
 namespace Css {
@@ -44,7 +45,7 @@ class Statistics;
 
 class CssImageRewriter {
  public:
-  CssImageRewriter(CssFilter::Context* context,
+  CssImageRewriter(CssFilter::Context* root_context,
                    CssFilter* filter,
                    RewriteDriver* driver,
                    CacheExtender* cache_extender,
@@ -69,6 +70,12 @@ class CssImageRewriter {
   // Are any rewrites enabled?
   bool RewritesEnabled(int64 image_inline_max_bytes) const;
 
+  // Rewrite an image already loaded into a slot. Used by RewriteImage and
+  // AssociationTransformer to rewrite images in either case.
+  void RewriteSlot(const ResourceSlotPtr& slot,
+                   int64 image_inline_max_bytes,
+                   RewriteContext* parent);
+
  private:
   void RewriteImport(RewriteContext* parent,
                      CssHierarchy* hierarchy);
@@ -77,8 +84,7 @@ class CssImageRewriter {
                     const GoogleUrl& trim_url,
                     const GoogleUrl& original_url,
                     RewriteContext* parent,
-                    Css::Values* values, size_t value_index,
-                    MessageHandler* handler);
+                    Css::Values* values, size_t value_index);
 
   // Needed for import flattening.
   CssFilter* filter_;
@@ -86,8 +92,8 @@ class CssImageRewriter {
   // Needed for resource_manager and options.
   RewriteDriver* driver_;
 
-  // For parenting our nested contexts.
-  CssFilter::Context* context_;
+  // Top level context for rewriting root CSS file itself.
+  CssFilter::Context* root_context_;
 
   // Pointers to other HTML filters used to rewrite images.
   // TODO(sligocki): morlovich suggests separating this out as some

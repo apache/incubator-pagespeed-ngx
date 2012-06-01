@@ -40,6 +40,8 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
   CssRewriteTestBase() {
     num_blocks_rewritten_ =
         statistics()->GetVariable(CssFilter::kBlocksRewritten);
+    num_fallback_rewrites_ =
+        statistics()->GetVariable(CssFilter::kFallbackRewrites);
     num_parse_failures_ = statistics()->GetVariable(CssFilter::kParseFailures);
     num_rewrites_dropped_ =
         statistics()->GetVariable(CssFilter::kRewritesDropped);
@@ -166,6 +168,7 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
   void TestCorruptUrl(const char* junk);
 
   Variable* num_blocks_rewritten_;
+  Variable* num_fallback_rewrites_;
   Variable* num_parse_failures_;
   Variable* num_rewrites_dropped_;
   Variable* total_bytes_saved_;

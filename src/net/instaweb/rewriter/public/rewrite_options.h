@@ -128,6 +128,7 @@ class RewriteOptions {
     kEnableBlinkForMobileDevices,
     kEnabled,
     kEnableDeferJsExperimental,
+    kFallbackRewriteCssUrls,
     kFlushHtml,
     kFuriousSlot,
     kIdleFlushTimeMs,
@@ -939,6 +940,13 @@ class RewriteOptions {
     return blink_desktop_user_agent_.value();
   }
 
+  void set_fallback_rewrite_css_urls(bool x) {
+    set_option(x, &fallback_rewrite_css_urls_);
+  }
+  bool fallback_rewrite_css_urls() const {
+    return fallback_rewrite_css_urls_.value();
+  }
+
   void set_passthrough_blink_for_last_invalid_response_code(bool x) {
     set_option(x, &passthrough_blink_for_last_invalid_response_code_);
   }
@@ -1581,6 +1589,10 @@ class RewriteOptions {
   // Pass-through request in prioritize_visible_content filter, if we got a
   // non-200 response from origin on the last fetch.
   Option<bool> passthrough_blink_for_last_invalid_response_code_;
+
+  // Should we try to rewrite CSS URLs using CssTagScanner if CSS parser fails?
+  // TODO(sligocki): Add command-line flag and pagespeed.conf hookup.
+  Option<bool> fallback_rewrite_css_urls_;
 
   // If this is true (it defaults to false) ProxyInterface frontend will
   // reject requests where PSA is not enabled or URL is blacklisted with

@@ -571,6 +571,9 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultBlinkDesktopUserAgentValue,
              &blink_desktop_user_agent_, "bdua",
              kBlinkDesktopUserAgent);
+  // TODO(sligocki): Default this to true once stable.
+  add_option(false, &fallback_rewrite_css_urls_, "frcu",
+             kFallbackRewriteCssUrls);
   add_option(false, &passthrough_blink_for_last_invalid_response_code_, "ptbi",
              kPassthroughBlinkForInvalidResponseCode);
   add_option(false, &reject_blacklisted_, "rbl", kRejectBlacklisted);

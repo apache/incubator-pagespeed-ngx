@@ -761,6 +761,7 @@
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
       ],
       'sources': [
+        'rewriter/association_transformer.cc',
         'rewriter/css_combine_filter.cc',
         'rewriter/css_filter.cc',
         'rewriter/css_hierarchy.cc',
@@ -768,6 +769,7 @@
         'rewriter/css_inline_import_to_link_filter.cc',
         'rewriter/css_minify.cc',
         'rewriter/css_resource_slot.cc',
+        'rewriter/css_url_counter.cc',
         'rewriter/css_url_encoder.cc',
         'rewriter/css_util.cc',
         'rewriter/image_combine_filter.cc',

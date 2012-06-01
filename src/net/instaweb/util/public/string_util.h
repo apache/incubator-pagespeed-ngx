@@ -46,6 +46,7 @@ namespace net_instaweb {
 struct StringCompareInsensitive;
 
 typedef std::map<GoogleString, GoogleString> StringStringMap;
+typedef std::map<GoogleString, int> StringIntMap;
 typedef std::set<GoogleString> StringSet;
 typedef std::set<GoogleString, StringCompareInsensitive> StringSetInsensitive;
 typedef std::vector<GoogleString> StringVector;

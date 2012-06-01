@@ -45,6 +45,7 @@ class Stylesheet;
 
 namespace net_instaweb {
 
+class AssociationTransformer;
 class CssImageRewriter;
 class CacheExtender;
 class HtmlCharactersNode;
@@ -54,6 +55,7 @@ class MessageHandler;
 class OutputPartitions;
 class ResourceContext;
 class RewriteContext;
+class RewriteDomainTransformer;
 class Statistics;
 class UrlSegmentEncoder;
 class Variable;
@@ -100,6 +102,8 @@ class CssFilter : public RewriteFilter {
 
   static const char kBlocksRewritten[];
   static const char kParseFailures[];
+  static const char kFallbackRewrites[];
+  static const char kFallbackFailures[];
   static const char kRewritesDropped[];
   static const char kTotalBytesSaved[];
   static const char kTotalOriginalBytes[];
@@ -170,6 +174,11 @@ class CssFilter : public RewriteFilter {
   Variable* num_blocks_rewritten_;
   // # of CSS blocks that rewriter failed to parse.
   Variable* num_parse_failures_;
+  // # of CSS blocks that failed to be parsed, but were rewritten in the
+  // fallback path.
+  Variable* num_fallback_rewrites_;
+  // # of CSS blocks that failed to be rewritten in the fallback path.
+  Variable* num_fallback_failures_;
   // # of CSS rewrites which were not applied because they made the CSS larger
   // and did not rewrite any images in it/flatten any other CSS files into it.
   Variable* num_rewrites_dropped_;
@@ -209,6 +218,8 @@ class CssFilter::Context : public SingleRewriteContext {
   void SetupExternalRewrite(const GoogleUrl& base_gurl,
                             const GoogleUrl& trim_gurl);
 
+  // Starts nested rewrite jobs for any imports or images contained in the CSS.
+  // Marked public, so that it's accessible from CssHierarchy.
   void RewriteCssFromNested(RewriteContext* parent, CssHierarchy* hierarchy);
 
   // Specialization to absolutify URLs in input resource in case of rewrite
@@ -239,9 +250,17 @@ class CssFilter::Context : public SingleRewriteContext {
                       int64 in_text_size,
                       bool text_is_declarations,
                       MessageHandler* handler);
+
   // Starts nested rewrite jobs for any imports or images contained in the CSS.
   void RewriteCssFromRoot(const StringPiece& in_text, int64 in_text_size,
                           bool has_unparseables, Css::Stylesheet* stylesheet);
+
+  // Fall back to using CssTagScanner to find the URLs and rewrite them
+  // that way. Like RewriteCssFromRoot, output is written into output
+  // resource in Harvest(). Called if CSS Parser fails to parse doc.
+  // Returns whether or not fallback rewriting succeeds. Fallback can fail
+  // if URLs in CSS are not parseable.
+  bool FallbackRewriteUrls(const StringPiece& in_text);
 
   // Tries to write out a (potentially edited) stylesheet out to out_text,
   // and returns whether we should consider the result as an improvement.
@@ -282,6 +301,15 @@ class CssFilter::Context : public SingleRewriteContext {
   CssHierarchy hierarchy_;
   bool css_rewritten_;
   bool has_utf8_bom_;
+
+  // Are we performing a fallback rewrite?
+  bool fallback_mode_;
+  // Transformer used by CssTagScanner to rewrite URLs if we failed to
+  // parse CSS. This will only be defined if CSS parsing failed.
+  scoped_ptr<AssociationTransformer> fallback_transformer_;
+  // Backup transformer for AssociationTransformer. Absolutifies URLs and
+  // rewrites their domains as necessary if they can't be cache extended.
+  scoped_ptr<RewriteDomainTransformer> absolutifier_;
 
   // Style element containing inline CSS (see StartInlineRewrite) -or-
   // any element with a style attribute (see StartAttributeRewrite), or
