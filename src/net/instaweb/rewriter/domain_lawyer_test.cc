@@ -433,6 +433,37 @@ TEST_F(DomainLawyerTest, RewriteHttpsToHttps) {
   EXPECT_EQ("https://localhost:8443/", mapped_domain_name);
 }
 
+TEST_F(DomainLawyerTest, AddTwoProtocolRewriteDomainMapping) {
+  ASSERT_TRUE(domain_lawyer_.AddTwoProtocolRewriteDomainMapping(
+      "www.nytimes.com", "ref.nytimes.com", &message_handler_));
+  EXPECT_TRUE(domain_lawyer_.can_rewrite_domains());
+  GoogleString mapped_domain;
+  GoogleUrl containing_page_http("http://www.nytimes.com/index.html");
+  GoogleUrl containing_page_https("https://www.nytimes.com/index.html");
+  // http page asks for http stylesheet.
+  ASSERT_TRUE(MapRequest(
+      containing_page_http,
+      "http://ref.nytimes.com/css/stylesheet.css", &mapped_domain));
+  EXPECT_EQ("http://www.nytimes.com/", mapped_domain);
+  // http page asks for an https stylesheet.  Should still re-map.
+  ASSERT_TRUE(MapRequest(
+      containing_page_http,
+      "https://ref.nytimes.com/css/stylesheet.css", &mapped_domain));
+  EXPECT_EQ("https://www.nytimes.com/", mapped_domain);
+  // https page asks for an https stylesheet.
+  ASSERT_TRUE(MapRequest(
+      containing_page_https,
+      "https://ref.nytimes.com/css/stylesheet.css", &mapped_domain));
+  EXPECT_EQ("https://www.nytimes.com/", mapped_domain);
+  // https page asks for an http stylesheet.  It shouldn't be doing that, but we
+  // preserve the bad behavior so the user realizes something fishy could
+  // happen.
+  ASSERT_TRUE(MapRequest(
+      containing_page_https,
+      "http://ref.nytimes.com/css/stylesheet.css", &mapped_domain));
+  EXPECT_EQ("http://www.nytimes.com/", mapped_domain);
+}
+
 TEST_F(DomainLawyerTest, AddDomainRedundantly) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("www.nytimes.com", &message_handler_));
   ASSERT_FALSE(domain_lawyer_.AddDomain("www.nytimes.com", &message_handler_));
