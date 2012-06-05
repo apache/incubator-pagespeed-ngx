@@ -58,7 +58,7 @@ class CssImageRewriterTest : public CssRewriteTestBase {
     // We setup the options before the upcall so that the
     // CSS filter is created aware of these.
     options()->EnableFilter(RewriteOptions::kExtendCacheImages);
-    options()->set_fallback_rewrite_css_urls(true);
+    options()->EnableFilter(RewriteOptions::kFallbackRewriteCssUrls);
     CssRewriteTestBase::SetUp();
   }
 };
@@ -771,8 +771,8 @@ class CssRecompressImagesInStyleAttributes : public ResourceManagerTestBase {
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
     options()->EnableFilter(RewriteOptions::kRewriteCss);
+    options()->EnableFilter(RewriteOptions::kFallbackRewriteCssUrls);
     options()->set_always_rewrite_css(true);
-    options()->set_fallback_rewrite_css_urls(true);
     AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
                          kContentTypePng, 100);
     div_after_ = StrCat(

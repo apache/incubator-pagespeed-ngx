@@ -318,7 +318,8 @@ bool CssFilter::Context::RewriteCssText(const GoogleUrl& css_base_gurl,
                        has_unparseables, stylesheet.release());
   }
 
-  if (!parsed && driver_->options()->fallback_rewrite_css_urls()) {
+  if (!parsed &&
+      driver_->options()->Enabled(RewriteOptions::kFallbackRewriteCssUrls)) {
     parsed = FallbackRewriteUrls(in_text);
   }
 

@@ -20,6 +20,8 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_URL_COUNTER_H_
 
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -27,7 +29,8 @@ namespace net_instaweb {
 class GoogleUrl;
 class MessageHandler;
 
-// "Transformer" that really just records the URLs it sees (with counts).
+// "Transformer" that records the URLs it sees (with counts) instead of
+// applying any transformation.
 class CssUrlCounter : public CssTagScanner::Transformer {
  public:
   // base_url and handler must live longer than CssUrlCounter.

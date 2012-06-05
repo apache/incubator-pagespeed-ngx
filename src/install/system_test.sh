@@ -593,15 +593,15 @@ check [ $? = 0 ]
 echo "$IMG_HEADERS" | grep -qi 'Content-Type: image/jpeg'
 check [ $? = 0 ]
 # Make sure the response was not gzipped.
-echo TEST: Images are not gzipped
+echo TEST: Images are not gzipped.
 echo "$IMG_HEADERS" | grep -qi 'Content-Encoding: gzip'
 check [ $? != 0 ]
 # Make sure there is no vary-encoding
-echo TEST: Vary is not set for images
+echo TEST: Vary is not set for images.
 echo "$IMG_HEADERS" | grep -qi 'Vary: Accept-Encoding'
 check [ $? != 0 ]
 # Make sure there is an etag
-echo TEST: Etags is present
+echo TEST: Etags is present.
 echo "$IMG_HEADERS" | grep -qi 'Etag: W/0'
 check [ $? = 0 ]
 # TODO(sligocki): Allow setting arbitrary headers in static_server.
@@ -611,18 +611,18 @@ check [ $? = 0 ]
 #echo "$IMG_HEADERS" | grep -qi 'X-Extra-Header'
 #check [ $? = 0 ]
 # Make sure there is a last-modified tag
-echo TEST: Last-modified is present
+echo TEST: Last-modified is present.
 echo "$IMG_HEADERS" | grep -qi 'Last-Modified'
 check [ $? = 0 ]
 
 BAD_IMG_URL=$REWRITTEN_ROOT/images/xBadName.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
-echo TEST: rewrite_images fails broken image \"$BAD_IMG_URL\"
+echo TEST: rewrite_images fails broken image \"$BAD_IMG_URL\".
 echo run_wget_with_args $BAD_IMG_URL
 run_wget_with_args $BAD_IMG_URL  # fails
 check grep '"404 Not Found"' $WGET_OUTPUT
 
 # [google] b/3328110
-echo "TEST: rewrite_images doesn't 500 on unoptomizable image"
+echo "TEST: rewrite_images doesn't 500 on unoptomizable image."
 IMG_URL=$REWRITTEN_ROOT/images/xOptPuzzle.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
 run_wget_with_args $IMG_URL
 check grep -e '"HTTP/1\.. 200 OK"' $WGET_OUTPUT
@@ -630,30 +630,42 @@ check grep -e '"HTTP/1\.. 200 OK"' $WGET_OUTPUT
 # These have to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.
 WGET_ARGS=""
-echo TEST: rewrite_css,extend_cache extends cache of images in CSS
+echo TEST: rewrite_css,extend_cache extends cache of images in CSS.
 FILE=rewrite_css_images.html?ModPagespeedFilters=rewrite_css,extend_cache
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
-fetch_until $URL 'grep -c .pagespeed.ce.' 1  # image cache extended
+fetch_until $URL 'grep -c Cuppa.png.pagespeed.ce.' 1  # image cache extended
+fetch_until $URL 'grep -c rewrite_css_images.css.pagespeed.cf.' 1
 check run_wget_with_args $URL
 
+echo TEST: fallback_rewrite_css_urls works.
+FILE=fallback_rewrite_css_urls.html?\
+ModPagespeedFilters=fallback_rewrite_css_urls,rewrite_css,extend_cache
+URL=$EXAMPLE_ROOT/$FILE
+FETCHED=$OUTDIR/$FILE
+fetch_until $URL 'grep -c Cuppa.png.pagespeed.ce.' 1  # image cache extended
+fetch_until $URL 'grep -c fallback_rewrite_css_urls.css.pagespeed.cf.' 1
+check run_wget_with_args $URL
+# Test this was fallback flow -> no minification.
+check grep -q '"body { background"' $FETCHED
+
 # Rewrite images in styles.
-echo TEST: rewrite_images,rewrite_css,rewrite_style_attributes_with_url optimizes images in style
+echo TEST: rewrite_images,rewrite_css,rewrite_style_attributes_with_url optimizes images in style.
 FILE=rewrite_style_attributes.html?ModPagespeedFilters=rewrite_images,rewrite_css,rewrite_style_attributes_with_url
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
-fetch_until $URL 'grep -c .pagespeed.ic.' 1  # image cache extended
+fetch_until $URL 'grep -c BikeCrashIcn.png.pagespeed.ic.' 1
 check run_wget_with_args $URL
 
-echo TEST: rewrite_css,rewrite_images rewrites images in CSS
+echo TEST: rewrite_css,rewrite_images rewrites images in CSS.
 FILE=rewrite_css_images.html?ModPagespeedFilters=rewrite_css,rewrite_images
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 fetch_until $URL 'grep -c url.data:image/png;base64,' 1  # image inlined
+fetch_until $URL 'grep -c rewrite_css_images.css.pagespeed.cf.' 1
 check run_wget_with_args $URL
 
-# This test is only valid for async.
-echo TEST: inline_css,rewrite_css,sprite_images sprites images in CSS
+echo TEST: inline_css,rewrite_css,sprite_images sprites images in CSS.
 FILE=sprite_images.html?ModPagespeedFilters=inline_css,rewrite_css,sprite_images
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
@@ -661,8 +673,7 @@ echo $WGET_DUMP $URL
 fetch_until $URL \
 'grep -c Cuppa.png.*BikeCrashIcn.png.*IronChef2.gif.*.pagespeed.is.*.png' 1
 
-# This test is only valid for async.
-echo TEST: rewrite_css,sprite_images sprites images in CSS
+echo TEST: rewrite_css,sprite_images sprites images in CSS.
 FILE=sprite_images.html?ModPagespeedFilters=rewrite_css,sprite_images
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE

@@ -44,7 +44,6 @@ struct OptionName {
 "EnableBlinkForMobileDevices",          RewriteOptions::kEnableBlinkForMobileDevices
 "EnableDeferJsExperimental",            RewriteOptions::kEnableDeferJsExperimental
 "ExperimentSlot",                       RewriteOptions::kFuriousSlot
-"FallbackRewriteCssUrls",               RewriteOptions::kFallbackRewriteCssUrls
 "FlushHtml",                            RewriteOptions::kFlushHtml
 "IdleFlushTimeMs",                      RewriteOptions::kIdleFlushTimeMs
 "ImageInlineMaxBytes",                  RewriteOptions::kImageInlineMaxBytes

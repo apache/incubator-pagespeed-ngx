@@ -209,6 +209,8 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
 // this is managed in the c++ switch statement.
 const RewriteOptions::Filter kTestFilterSet[] = {
   RewriteOptions::kConvertJpegToWebp,
+  // TODO(sligocki): Move kFallbackRewriteCssUrls to kCoreFilterSet when ready.
+  RewriteOptions::kFallbackRewriteCssUrls,
   RewriteOptions::kInsertGA,
   RewriteOptions::kInsertImageDimensions,
   RewriteOptions::kLeftTrimUrls,
@@ -280,6 +282,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kExtendCacheCss:                  return "Cache Extend Css";
     case kExtendCacheImages:               return "Cache Extend Images";
     case kExtendCacheScripts:              return "Cache Extend Scripts";
+    case kFallbackRewriteCssUrls:          return "Fallback Rewrite Css Urls";
     case kFlattenCssImports:               return "Flatten CSS Imports";
     case kHtmlWriterFilter:                return "Flushes html";
     case kInlineCss:                       return "Inline Css";
@@ -348,6 +351,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kExtendCacheCss:                  return "ec";
     case kExtendCacheImages:               return "ei";
     case kExtendCacheScripts:              return "es";
+    case kFallbackRewriteCssUrls:          return "fc";
     case kFlattenCssImports:               return kCssImportFlattenerId;
     case kHtmlWriterFilter:                return "hw";
     case kInlineCss:                       return kCssInlineId;
@@ -579,9 +583,6 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultBlinkDesktopUserAgentValue,
              &blink_desktop_user_agent_, "bdua",
              kBlinkDesktopUserAgent);
-  // TODO(sligocki): Default this to true once stable.
-  add_option(false, &fallback_rewrite_css_urls_, "frcu",
-             kFallbackRewriteCssUrls);
   add_option(false, &passthrough_blink_for_last_invalid_response_code_, "ptbi",
              kPassthroughBlinkForInvalidResponseCode);
   add_option(false, &reject_blacklisted_, "rbl", kRejectBlacklisted);

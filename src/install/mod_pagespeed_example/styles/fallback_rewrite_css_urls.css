@@ -1,0 +1,5 @@
+.foo {
+    background-image: url(../images/BikeCrashIcn.png);
+    width: 100px;
+    height: 100px;
+}}}} /* Extra }s make sure that CSS parser cannot parse this. */

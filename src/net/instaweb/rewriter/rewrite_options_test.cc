@@ -631,7 +631,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(82, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(81, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));
@@ -689,9 +689,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("EnableDeferJsExperimental"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kEnableDeferJsExperimental));
-  EXPECT_EQ(StringPiece("FallbackRewriteCssUrls"),
-            RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kFallbackRewriteCssUrls));
   EXPECT_EQ(StringPiece("FlushHtml"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kFlushHtml));
@@ -1053,8 +1050,8 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   options_.SetFuriousState(7);
   // This should be all non-dangerous filters.
   EXPECT_EQ("Experiment: 7; ab,ah,ai,cw,cc,ch,jc,gp,jp,jw,mc,pj,db,di,ea,ec,ei,"
-            "es,if,hw,ci,ii,il,ji,ig,id,tu,ls,ga,cj,cm,co,jo,pv,rj,rp,rw,rc,rq,"
-            "ri,rm,cf,rd,jm,cs,cu,is,css:2048,im:2048,js:2048;",
+            "es,fc,if,hw,ci,ii,il,ji,ig,id,tu,ls,ga,cj,cm,co,jo,pv,rj,rp,rw,rc,"
+            "rq,ri,rm,cf,rd,jm,cs,cu,is,css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 7", options_.ToExperimentString());
   options_.SetFuriousState(2);

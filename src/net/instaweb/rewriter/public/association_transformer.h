@@ -19,11 +19,16 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_ASSOCIATION_TRANSFORMER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_ASSOCIATION_TRANSFORMER_H_
 
+#include <map>
+
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest_prod.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 
 namespace net_instaweb {
 
