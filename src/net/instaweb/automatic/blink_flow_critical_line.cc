@@ -328,6 +328,7 @@ BlinkFlowCriticalLine::BlinkFlowCriticalLine(
     ResourceManager* manager,
     ProxyFetchPropertyCallbackCollector* property_callback)
     : url_(url),
+      google_url_(url),
       base_fetch_(base_fetch),
       options_(options),
       factory_(factory),
@@ -347,8 +348,8 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
       ProxyFetchPropertyCallback::kPagePropertyCache);
   // finder_ will be never NULL because it is checked before entering
   // BlinkFlowCriticalLine.
-  blink_critical_line_data_.reset(
-      finder_->ExtractBlinkCriticalLineData(page, options_));
+  blink_critical_line_data_.reset(finder_->ExtractBlinkCriticalLineData(
+          options_->GetBlinkCacheTimeFor(google_url_.PathAndLeaf()), page));
   if (blink_critical_line_data_ != NULL &&
       !(options_->passthrough_blink_for_last_invalid_response_code() &&
         IsLastResponseCodeInvalid(page))) {
@@ -396,8 +397,7 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
     return;
   }
 
-  GoogleUrl url(url_);
-  GoogleUrl* url_with_psa_off = url.CopyAndAddQueryParam(
+  GoogleUrl* url_with_psa_off = google_url_.CopyAndAddQueryParam(
       RewriteQuery::kModPagespeed, "off");
   const int start_body_marker_length = strlen(BlinkUtil::kStartBodyMarker);
   StringPiece url_str = url_with_psa_off->Spec();
@@ -427,7 +427,9 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
   base_fetch_->HeadersComplete();
 
   bool non_cacheable_present =
-      !options_->prioritize_visible_content_non_cacheable_elements().empty();
+      !(options_->prioritize_visible_content_non_cacheable_elements().empty() &&
+        options_->GetBlinkNonCacheableElementsFor(
+            google_url_.PathAndLeaf()).empty());
 
   if (!non_cacheable_present) {
     ServeAllPanelContents();

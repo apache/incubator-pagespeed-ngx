@@ -83,7 +83,7 @@ class CachePutFetch : public SharedAsyncFetch {
     }
     headers->ComputeCaching();
 
-    cacheable_ = headers->IsProxyCacheable();
+    cacheable_ = headers->IsProxyCacheableGivenRequest(*request_headers());
     if (cacheable_ && (respect_vary_ || is_html)) {
       cacheable_ = headers->VaryCacheable();
     }

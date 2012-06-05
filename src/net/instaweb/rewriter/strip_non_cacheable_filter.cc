@@ -42,10 +42,9 @@ StripNonCacheableFilter::StripNonCacheableFilter(
 StripNonCacheableFilter::~StripNonCacheableFilter() {}
 
 void StripNonCacheableFilter::StartDocument() {
-  GoogleUrl url(rewrite_driver_->google_url().Spec());
   BlinkUtil::PopulateAttributeToNonCacheableValuesMap(
-      rewrite_options_->prioritize_visible_content_non_cacheable_elements(),
-      url, &attribute_non_cacheable_values_map_, &panel_number_num_instances_);
+      rewrite_options_, rewrite_driver_->google_url(),
+      &attribute_non_cacheable_values_map_, &panel_number_num_instances_);
   script_written_ = false;
 }
 

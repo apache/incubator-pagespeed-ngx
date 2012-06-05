@@ -173,6 +173,12 @@ DEFINE_bool(passthrough_blink_for_last_invalid_response_code, false,
             "Pass-through blink request if we got a non-200 response from "
             "origin on the last fetch.");
 
+DEFINE_string(blocking_rewrite_key,
+              net_instaweb::RewriteOptions::kDefaultBlockingRewriteKey,
+              "Enables rewrites to finish before the response is sent to "
+              "the client, if X-PSA-Blocking-Rewrite http request header's "
+              "value is same as this flag's value.");
+
 namespace net_instaweb {
 
 namespace {
@@ -307,6 +313,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("avoid_renaming_introspective_javascript")) {
     options->set_avoid_renaming_introspective_javascript(
         FLAGS_avoid_renaming_introspective_javascript);
+  }
+  if (WasExplicitlySet("blocking_rewrite_key")) {
+    options->set_blocking_rewrite_key(FLAGS_blocking_rewrite_key);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

@@ -233,7 +233,8 @@ TEST_F(RewriteQueryTest, MultipleInt64Params) {
   RewriteOptions* options = ParseAndScan("ModPagespeedCssInlineMaxBytes=3"
                                          "&ModPagespeedImageInlineMaxBytes=5"
                                          "&ModPagespeedCssImageInlineMaxBytes=7"
-                                         "&ModPagespeedJsInlineMaxBytes=11",
+                                         "&ModPagespeedJsInlineMaxBytes=11"
+                                         "&ModPagespeedDomainShardCount=2",
                                          "");
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->enabled());
@@ -241,6 +242,7 @@ TEST_F(RewriteQueryTest, MultipleInt64Params) {
   EXPECT_EQ(5, options->ImageInlineMaxBytes());
   EXPECT_EQ(7, options->CssImageInlineMaxBytes());
   EXPECT_EQ(11, options->js_inline_max_bytes());
+  EXPECT_EQ(2, options->domain_shard_count());
 }
 
 TEST_F(RewriteQueryTest, OutputQueryandHeaders) {
@@ -249,6 +251,7 @@ TEST_F(RewriteQueryTest, OutputQueryandHeaders) {
                "&ModPagespeedImageInlineMaxBytes=5"
                "&ModPagespeedCssImageInlineMaxBytes=7"
                "&ModPagespeedJsInlineMaxBytes=11"
+               "&ModPagespeedDomainShardCount=100"
                "&abc=1"
                "&def",
                "ModPagespeedFilters;inline_css;"

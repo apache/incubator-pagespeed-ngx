@@ -33,6 +33,7 @@ namespace net_instaweb {
 class CacheInterface;
 class Hasher;
 class MessageHandler;
+class RequestHeaders;
 class Statistics;
 class Timer;
 class TimingInfo;
@@ -161,6 +162,8 @@ class HTTPCache {
 
   // Note that Put takes a non-const pointer for ResponseHeaders* so it
   // can update the caching fields prior to storing.
+  // If you call this method, you must be certain that the outgoing
+  // request was not sent with Authorization:.
   virtual void Put(const GoogleString& key, ResponseHeaders* headers,
                    const StringPiece& content, MessageHandler* handler);
 
@@ -203,10 +206,17 @@ class HTTPCache {
   // Initialize statistics variables for the cache
   static void Initialize(Statistics* statistics);
 
-  // Returns true if the resource is already at the point of expiration,
-  // and would never be used if inserted into the cache. Otherwise, returns
-  // false and increments the cache expirations statistic
-  bool IsAlreadyExpired(const ResponseHeaders& headers);
+  // Returns true if the resource is already at the point of expiration
+  // (or not cacheable by us), and would never be used if inserted into the
+  // cache. Otherwise, returns false. If the entry was rejected because of
+  // expiration but would otherwise have been cacheable, this also increments
+  // the cache expirations statistic.
+  //
+  // request_headers is used to check for resources requested with
+  // authorization. It is OK to pass NULL if you're certain that the fetch
+  // was done without authorization headers.
+  bool IsAlreadyExpired(const RequestHeaders* request_headers,
+                        const ResponseHeaders& headers);
 
   Variable* cache_time_us()     { return cache_time_us_; }
   Variable* cache_hits()        { return cache_hits_; }
@@ -253,7 +263,8 @@ class HTTPCache {
   friend class HTTPCacheCallback;
   friend class WriteThroughHTTPCache;
 
-  bool IsCurrentlyValid(const ResponseHeaders& headers, int64 now_ms);
+  bool IsCurrentlyValid(const RequestHeaders* request_headers,
+                        const ResponseHeaders& headers, int64 now_ms);
   // Requires either content or value to be non-NULL.
   // Applies changes to headers. If the headers are actually changed or if value
   // is NULL then it builds and returns a new HTTPValue. If content is NULL

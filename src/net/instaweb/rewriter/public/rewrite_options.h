@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/wildcard.h"
 #include "net/instaweb/util/public/wildcard_group.h"
 
 namespace net_instaweb {
@@ -124,6 +125,7 @@ class RewriteOptions {
     kCssOutlineMinBytes,
     kDefaultCacheHtml,
     kDomainRewriteHyperlinks,
+    kDomainShardCount,
     kEnableBlinkCriticalLine,
     kEnableBlinkForMobileDevices,
     kEnabled,
@@ -158,6 +160,8 @@ class RewriteOptions {
     kMinResourceCacheTimeToRewriteMs,
     kModifyCachingHeaders,
     kPassthroughBlinkForInvalidResponseCode,
+    // TODO(sriharis):  Remove the following two options once we migrate to
+    // using the new prioritize_visible_content_families_ field.
     kPrioritizeVisibleContentCacheTime,
     kPrioritizeVisibleContentNonCacheableElements,
     kProgressiveJpegMinBytes,
@@ -170,6 +174,7 @@ class RewriteOptions {
     kServeBlinkNonCritical,
     kServeStaleIfFetchError,
     kUseFixedUserAgentForBlinkCacheMisses,
+    kXPsaBlockingRewrite,
     kXModPagespeedHeaderValue,
 
     // Apache specific:
@@ -280,6 +285,7 @@ class RewriteOptions {
   static const int kDefaultImageLimitResizeAreaPercent;
   static const int kDefaultImageJpegNumProgressiveScans;
   static const int kDefaultImageWebpRecompressQuality;
+  static const int kDefaultDomainShardCount;
 
   // IE limits URL size overall to about 2k characters.  See
   // http://support.microsoft.com/kb/208427/EN-US
@@ -318,6 +324,8 @@ class RewriteOptions {
   static const char kDefaultXModPagespeedHeaderValue[];
 
   static const char kDefaultBlinkDesktopUserAgentValue[];
+
+  static const char kDefaultBlockingRewriteKey[];
 
   // This class is a spearate subset of options for running a furious
   // experiment.
@@ -643,6 +651,14 @@ class RewriteOptions {
     set_option(x, &max_url_size_);
   }
 
+  int domain_shard_count() const { return domain_shard_count_.value(); }
+  // The argument is int64 to allow it to be set from the http header or url
+  // query param and int64_query_params_ only allows setting of 64 bit values.
+  void set_domain_shard_count(int64 x) {
+    int value = x;
+    set_option(value, &domain_shard_count_);
+  }
+
   void set_enabled(bool x) {
     set_option(x, &enabled_);
   }
@@ -838,6 +854,14 @@ class RewriteOptions {
   bool enable_defer_js_experimental() const {
     return enable_defer_js_experimental_.value();
   }
+
+  const GoogleString& blocking_rewrite_key() const {
+    return blocking_rewrite_key_.value();
+  }
+  void set_blocking_rewrite_key(const StringPiece& p) {
+    set_option(GoogleString(p.data(), p.size()), &blocking_rewrite_key_);
+  }
+
   // Functions for checking against and adding to prioritize_visible_content
   // cacheable family option (prioritize_visible_content_cacheable_families_
   // field).  Checks if str is an URL for which prioritize_visible_content
@@ -872,6 +896,28 @@ class RewriteOptions {
   void set_prioritize_visible_content_cache_time_ms(int64 x) {
     set_option(x, &prioritize_visible_content_cache_time_ms_);
   }
+
+  // Does url match a cacheable family pattern?  Returns true if url matches a
+  // url_pattern in prioritize_visible_content_families_ OR it matches
+  // prioritize_visible_content_cacheable_families_.
+  bool IsInBlinkCacheableFamily(const StringPiece url) const;
+
+  // Get the cache time for url for prioritize_visible_content filter.  In case
+  // url matches a url_pattern in prioritize_visible_content_families_ we return
+  // the corresponding cache_time_ms field, else we return
+  // prioritize_visible_content_cache_time_ms_.
+  int64 GetBlinkCacheTimeFor(const StringPiece url) const;
+
+  // Get elements to be treated as non-cacheable for url.  In case
+  // url matches a url_pattern in prioritize_visible_content_families_ we return
+  // the corresponding non_cacheable_elements field, else we return empty
+  // string.
+  GoogleString GetBlinkNonCacheableElementsFor(const StringPiece url) const;
+
+  // Create and add a PrioritizeVisibleContentFamily object the given fields.
+  void AddBlinkCacheableFamily(const StringPiece url_pattern,
+                               int64 cache_time_ms,
+                               const StringPiece non_cacheable_elements);
 
   // Takes ownership of the config.
   void set_panel_config(PublisherConfig* panel_config);
@@ -1328,6 +1374,42 @@ class RewriteOptions {
  private:
   typedef std::vector<Filter> FilterVector;
 
+  // A family of urls for which prioritize_visible_content filter can be
+  // applied.  url_pattern represents the actual set of urls,
+  // cache_time_ms is the duration for which the cacheable portions of pages of
+  // the family can be cached, and non_cacheable_elements is a comma-separated
+  // list of elements (e.g., "id:foo,class:bar") that cannot be cached for the
+  // family.
+  struct PrioritizeVisibleContentFamily {
+    PrioritizeVisibleContentFamily(StringPiece url_pattern_string,
+                                   int64 cache_time_ms_in,
+                                   StringPiece non_cacheable_elements_in)
+        : url_pattern(url_pattern_string),
+          cache_time_ms(cache_time_ms_in),
+          non_cacheable_elements(non_cacheable_elements_in.data(),
+                                 non_cacheable_elements_in.size()) {}
+
+    PrioritizeVisibleContentFamily* Clone() const {
+      return new PrioritizeVisibleContentFamily(
+          url_pattern.spec(), cache_time_ms, non_cacheable_elements);
+    }
+
+    GoogleString ComputeSignature() const {
+      return StrCat(url_pattern.spec(), ";", Integer64ToString(cache_time_ms),
+                    ";", non_cacheable_elements);
+    }
+
+    GoogleString ToString() const {
+      return StrCat("URL pattern: ", url_pattern.spec(), ",  Cache time (ms): ",
+                    Integer64ToString(cache_time_ms), ",  Non-cacheable: ",
+                    non_cacheable_elements);
+    }
+
+    Wildcard url_pattern;
+    int64 cache_time_ms;
+    GoogleString non_cacheable_elements;
+  };
+
   void SetUp();
   bool AddCommaSeparatedListToFilterSetState(
       const StringPiece& filters, MessageHandler* handler, FilterSet* set);
@@ -1343,6 +1425,10 @@ class RewriteOptions {
   // Initialize the option-enum to option-name array for fast lookups by
   // OptionEnum.
   static void InitOptionEnumToNameArray();
+  // If str match a cacheable family pattern then returns the
+  // PrioritizeVisibleContentFamily that it matches, else returns NULL.
+  const PrioritizeVisibleContentFamily* FindPrioritizeVisibleContentFamily(
+      const StringPiece str) const;
 
   // These static methods are used by Option<T>::SetFromString to set
   // Option<T>::value_ from a string representation of it.
@@ -1476,6 +1562,9 @@ class RewriteOptions {
   Option<int> max_url_segment_size_;  // For http://a/b/c.d, use strlen("c.d").
   Option<int> max_url_size_;          // This is strlen("http://a/b/c.d").
 
+  // Maximum number of shards for rewritten resources in a directory.
+  Option<int> domain_shard_count_;
+
   Option<bool> enabled_;
   Option<bool> ajax_rewriting_enabled_;  // Should ajax rewriting be enabled?
   Option<bool> botdetect_enabled_;
@@ -1535,6 +1624,13 @@ class RewriteOptions {
   // make any changes.  Enables code to detect such cases and avoid renaming.
   Option<bool> avoid_renaming_introspective_javascript_;
 
+  // Enables blocking rewrite of html. RewriteDriver provides a flag
+  // fully_rewrite_on_flush which makes sure that all rewrites are done before
+  // the response is flushed to the client. If the value of the
+  // X-PSA-Blocking-Rewrite header matches this key, the
+  // RewriteDriver::fully_rewrite_on_flush flag will be set.
+  Option<GoogleString> blocking_rewrite_key_;
+
   // Number of first N images for which low res image is generated. Negative
   // values will bypass image index check.
   Option<int> max_inlined_preview_images_index_;
@@ -1556,6 +1652,8 @@ class RewriteOptions {
   Option<int64> implicit_cache_ttl_ms_;
 
   // prioritize_visible_content related options.
+  // TODO(sriharis):  Remove the next three options once the transition to using
+  // prioritize_visible_content_cacheable_families_ is complete.
   // List of elements that will be treated as non-cacheable by
   // prioritize_visible_content filter.
   Option<GoogleString> prioritize_visible_content_non_cacheable_elements_;
@@ -1569,6 +1667,15 @@ class RewriteOptions {
   // Note:  This field is not used in signature computation.  It does not affect
   // meta-data and so this is ok.
   WildcardGroup prioritize_visible_content_cacheable_families_;
+
+  // Option for the prioritize_visible_content filter.
+  //
+  // Represents the following information:
+  // "<url family wildcard 1>;<cache time 1>;<comma separated list of non-cacheable elements 1>",
+  // "<url family wildcard 2>;<cache time 2>;<comma separated list of non-cacheable elements 2>",
+  //  ...
+  std::vector<PrioritizeVisibleContentFamily*>
+      prioritize_visible_content_families_;
 
   scoped_ptr<PublisherConfig> panel_config_;
 

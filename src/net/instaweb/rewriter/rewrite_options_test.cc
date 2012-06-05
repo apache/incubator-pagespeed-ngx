@@ -631,7 +631,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(80, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(82, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));
@@ -677,6 +677,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("DomainRewriteHyperlinks"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kDomainRewriteHyperlinks));
+  EXPECT_EQ(StringPiece("DomainShardCount"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kDomainShardCount));
   EXPECT_EQ(StringPiece("EnableBlinkCriticalLine"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kEnableBlinkCriticalLine));
@@ -939,6 +942,44 @@ TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies2) {
       "twoANYTHING"));
   EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
       "three"));
+}
+
+TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {
+  EXPECT_FALSE(options_.IsInBlinkCacheableFamily("/one.html"));
+  EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
+            options_.GetBlinkCacheTimeFor("/one.html"));
+  EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
+            options_.GetBlinkCacheTimeFor("/two.html"));
+  EXPECT_EQ("", options_.GetBlinkNonCacheableElementsFor("/one.html"));
+  EXPECT_EQ("", options_.GetBlinkNonCacheableElementsFor("/two.html"));
+
+  options_.AddBlinkCacheableFamily("/one*", 10, "something");
+  EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/one.html"));
+  EXPECT_FALSE(options_.IsInBlinkCacheableFamily("/two.html"));
+  EXPECT_EQ(10, options_.GetBlinkCacheTimeFor("/one.html"));
+  EXPECT_EQ("something", options_.GetBlinkNonCacheableElementsFor("/one.html"));
+
+  options_.AddToPrioritizeVisibleContentCacheableFamilies("/two*");
+  EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/two.html"));
+  EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
+            options_.GetBlinkCacheTimeFor("/two.html"));
+
+  RewriteOptions options1;
+  options1.AddBlinkCacheableFamily("/two*", 20, "something");
+  options_.AddToPrioritizeVisibleContentCacheableFamilies("/three*");
+  options_.set_prioritize_visible_content_cache_time_ms(50);
+  options_.Merge(options1);
+  EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/one.html"));
+  EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/two.html"));
+  EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/three.html"));
+  EXPECT_EQ(10, options_.GetBlinkCacheTimeFor("/one.html"));
+  EXPECT_EQ(20, options_.GetBlinkCacheTimeFor("/two.html"));
+  EXPECT_EQ(50, options_.GetBlinkCacheTimeFor("/three.html"));
+
+  RewriteOptions options2;
+  options2.AddBlinkCacheableFamily("/two*", 40, "else");
+  options_.Merge(options2);
+  EXPECT_EQ(20, options_.GetBlinkCacheTimeFor("/two.html"));
 }
 
 TEST_F(RewriteOptionsTest, FuriousSpecTest) {

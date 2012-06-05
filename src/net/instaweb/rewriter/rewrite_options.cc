@@ -172,6 +172,12 @@ const char RewriteOptions::kDefaultBlinkDesktopUserAgentValue[] =
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 "
     "(KHTML, like Gecko) Chrome/19.0.1084.46 Safari/536.5";
 
+// An empty default key indicates that the blocking rewrite feature is disabled.
+const char RewriteOptions::kDefaultBlockingRewriteKey[] = "";
+
+// Allow all the declared shards.
+const int RewriteOptions::kDefaultDomainShardCount = 0;
+
 const char* RewriteOptions::option_enum_to_name_array_[
     RewriteOptions::kEndOfOptions];
 
@@ -509,6 +515,8 @@ RewriteOptions::RewriteOptions()
              kEnableBlinkCriticalLine);
   add_option(false, &serve_blink_non_critical_, "snc", kServeBlinkNonCritical);
   add_option(false, &default_cache_html_, "dch", kDefaultCacheHtml);
+  add_option(kDefaultDomainShardCount, &domain_shard_count_, "dsc",
+             kDomainShardCount);
   add_option(true, &modify_caching_headers_, "mch", kModifyCachingHeaders);
   // This is not Plain Old Data, so we initialize it here.
   const RewriteOptions::BeaconUrl kDefaultBeaconUrls =
@@ -579,6 +587,8 @@ RewriteOptions::RewriteOptions()
   add_option(false, &reject_blacklisted_, "rbl", kRejectBlacklisted);
   add_option(HttpStatus::kForbidden, &reject_blacklisted_status_code_,
              "rbls", kRejectBlacklistedStatusCode);
+  add_option(kDefaultBlockingRewriteKey, &blocking_rewrite_key_, "blrw",
+             kXPsaBlockingRewrite);
   // Sort all_options_ on enum.
   SortOptions();
   // Do not call add_option with OptionEnum fourth argument after this.
@@ -632,6 +642,7 @@ RewriteOptions::RewriteOptions()
 
 RewriteOptions::~RewriteOptions() {
   STLDeleteElements(&furious_specs_);
+  STLDeleteElements(&prioritize_visible_content_families_);
 }
 
 RewriteOptions::OptionBase::~OptionBase() {
@@ -985,6 +996,52 @@ void RewriteOptions::AddToPrioritizeVisibleContentCacheableFamilies(
   prioritize_visible_content_cacheable_families_.Allow(str);
 }
 
+bool RewriteOptions::IsInBlinkCacheableFamily(const StringPiece url) const {
+  return (FindPrioritizeVisibleContentFamily(url) != NULL) ||
+      MatchesPrioritizeVisibleContentCacheableFamilies(url);
+}
+
+int64 RewriteOptions::GetBlinkCacheTimeFor(const StringPiece url) const {
+  const PrioritizeVisibleContentFamily* family =
+      FindPrioritizeVisibleContentFamily(url);
+  if (family != NULL) {
+    return family->cache_time_ms;
+  }
+  return prioritize_visible_content_cache_time_ms();
+}
+
+GoogleString RewriteOptions::GetBlinkNonCacheableElementsFor(
+    const StringPiece url) const {
+  const PrioritizeVisibleContentFamily* family =
+      FindPrioritizeVisibleContentFamily(url);
+  if (family != NULL) {
+    return family->non_cacheable_elements;
+  }
+  return "";
+}
+
+const RewriteOptions::PrioritizeVisibleContentFamily*
+RewriteOptions::FindPrioritizeVisibleContentFamily(
+    const StringPiece url) const {
+  for (int i = 0, n = prioritize_visible_content_families_.size(); i < n; ++i) {
+    const PrioritizeVisibleContentFamily* family =
+        prioritize_visible_content_families_[i];
+    if (family->url_pattern.Match(url)) {
+      return family;
+    }
+  }
+  return NULL;
+}
+
+void RewriteOptions::AddBlinkCacheableFamily(
+    const StringPiece url_pattern, int64 cache_time_ms,
+    const StringPiece non_cacheable_elements) {
+  Modify();
+  prioritize_visible_content_families_.push_back(
+      new PrioritizeVisibleContentFamily(
+          url_pattern, cache_time_ms, non_cacheable_elements));
+}
+
 void RewriteOptions::Merge(const RewriteOptions& src) {
   DCHECK(!frozen_);
   modified_ |= src.modified_;
@@ -1031,6 +1088,19 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   // Merge logic for prioritize visible content cacheable families.
   prioritize_visible_content_cacheable_families_.AppendFrom(
       src.prioritize_visible_content_cacheable_families_);
+
+  // We assume that src and this does not have any
+  // PrioritizeVisibleContentFamily with same url_pattern. Hence we can copy and
+  // insert every PrioritizeVisibleContentFamily from src to this.
+  // If src has a url_pattern that is the same as one in this, then since src
+  // families are appended, we will match this first.
+  // TODO(sriharis):  We need to revisit the above assumption and the Merge
+  // logic to be used for prioritize_visible_content_families_.
+  for (int i = 0, n = src.prioritize_visible_content_families_.size(); i < n;
+       ++i) {
+    prioritize_visible_content_families_.push_back(
+        src.prioritize_visible_content_families_[i]->Clone());
+  }
 
   if (src.panel_config() != NULL) {
     set_panel_config(new PublisherConfig(*(src.panel_config())));
@@ -1129,6 +1199,11 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
   StrAppend(&signature_, domain_lawyer_.Signature(), "_");
   StrAppend(&signature_, "AR:", allow_resources_.Signature(), "_");
   StrAppend(&signature_, "RC:", retain_comments_.Signature(), "_");
+  StrAppend(&signature_, "PVC:");
+  for (int i = 0, n = prioritize_visible_content_families_.size(); i < n; ++i) {
+    StrAppend(&signature_,
+              prioritize_visible_content_families_[i]->ComputeSignature(), "|");
+  }
   frozen_ = true;
 
   // TODO(jmarantz): Incorporate signature from file_load_policy.  However, the
@@ -1176,6 +1251,11 @@ GoogleString RewriteOptions::ToString() const {
   StrAppend(&output, domain_lawyer_.ToString("  "));
   // TODO(mmohabey): Incorporate ToString() from the file_load_policy,
   // allow_resources, and retain_comments.
+  StrAppend(&output, "\nPrioritize visible content cacheable families\n");
+  for (int i = 0, n = prioritize_visible_content_families_.size(); i < n; ++i) {
+    StrAppend(&output, "  ",
+              prioritize_visible_content_families_[i]->ToString(), "\n");
+  }
   return output;
 }
 

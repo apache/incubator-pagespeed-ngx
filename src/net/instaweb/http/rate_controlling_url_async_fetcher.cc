@@ -18,7 +18,9 @@
 
 #include "net/instaweb/http/public/rate_controlling_url_async_fetcher.h"
 
+#include <cstddef>
 #include <queue>
+#include <utility>
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
@@ -26,6 +28,7 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -60,8 +63,6 @@ const char RateControllingUrlAsyncFetcher::kDroppedFetchCount[] =
     "dropped-fetch-count";
 const char RateControllingUrlAsyncFetcher::kCurrentGlobalFetchQueueSize[] =
     "current-fetch-queue-size";
-
-class MessageHandler;
 
 // Keeps track of all the pending and enqueued fetches for a given host.
 class RateControllingUrlAsyncFetcher::HostFetchInfo
@@ -277,7 +278,7 @@ bool RateControllingUrlAsyncFetcher::Fetch(const GoogleString& url,
   }
 
   dropped_fetch_count_->IncBy(1);
-  LOG(WARNING) << "Dropping request for " << url;
+  message_handler->Message(kInfo, "Dropping request for %s", url.c_str());
   fetch->Done(false);
   return true;
 }

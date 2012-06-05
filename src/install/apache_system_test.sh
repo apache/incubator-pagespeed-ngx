@@ -451,6 +451,17 @@ $WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.xhtml\
 check [ $(grep -c "\&amp;" $WGET_OUTPUT) = 0 ]
 check [ $(grep -c '//<\!\[CDATA\[' $WGET_OUTPUT) = 1 ]
 
+echo "TEST: Blocking rewrite enabled."
+# We assume that Puzzle1.jpg will not be rewritten on the first request since it
+# takes significantly more time to rewrite than the rewrite deadline and it is
+# not already accessed by another request earlier.
+BLOCKING_REWRITE_URL="$TEST_ROOT/blocking_rewrite.html?\
+ModPagespeedFilters=rewrite_images"
+OUTFILE=$OUTDIR/blocking_rewrite.out.html
+$WGET_DUMP --header 'X-PSA-Blocking-Rewrite: mps' $BLOCKING_REWRITE_URL > $OUTFILE
+check [ $? = 0 ]
+check [ $(grep -c "[.]pagespeed[.]" $OUTFILE) = 2 ]
+
 # TODO(sligocki): TEST: ModPagespeedMaxSegmentLength
 
 if [ "$CACHE_FLUSH_TEST" == "on" ]; then
@@ -487,6 +498,17 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   echo ".class myclass { color: blue; }" >$TMP_CSS_FILE
   $SUDO cp $TMP_CSS_FILE $CSS_FILE
   fetch_until $URL 'grep -c blue' 1
+
+  echo "TEST: Blocking rewrite enabled using wrong key."
+  BLOCKING_REWRITE_URL="$SECONDARY_TEST_ROOT/\
+blocking_rewrite.html?ModPagespeedFilters=rewrite_images"
+  OUTFILE=$OUTDIR/blocking_rewrite.out.html
+  $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: junk' \
+    $BLOCKING_REWRITE_URL > $OUTFILE
+  check [ $? = 0 ]
+  check [ $(grep -c "[.]pagespeed[.]" $OUTFILE) -lt 2 ]
+
+  fetch_until $BLOCKING_REWRITE_URL 'grep -c [.]pagespeed[.]' 2
 
   # Also do the same experiment using a different VirtualHost.  It points
   # to the same htdocs, but uses a separate cache directory.

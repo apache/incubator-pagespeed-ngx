@@ -17,7 +17,6 @@
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/log_message_handler.h"
-#include "net/instaweb/util/public/time_util.h"
 
 #include "httpd.h"
 #include "net/instaweb/apache/apache_logging_includes.h"
@@ -93,9 +92,13 @@ void ApacheMessageHandler::MessageVImpl(MessageType type, const char* msg,
     // Prepend time (down to microseconds) and severity to message.
     // Format is [time:microseconds] [severity] [pid] message.
     GoogleString message;
-    GoogleString time_us;
-    ConvertTimeToStringWithUs(timer_->NowUs(), &time_us);
-    StrAppend(&message, "[", time_us, "] ",
+    char time_buffer[APR_CTIME_LEN + 1];
+    const char* time = time_buffer;
+    apr_status_t status = apr_ctime(time_buffer, apr_time_now());
+    if (status != APR_SUCCESS) {
+      time = "?";
+    }
+    StrAppend(&message, "[", time, "] ",
               "[", MessageTypeToString(type), "] ");
     StrAppend(&message, pid_string_, " ", formatted_message, "\n");
     buffer_->Write(message);

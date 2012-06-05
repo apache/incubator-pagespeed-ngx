@@ -22,6 +22,7 @@
 #include <algorithm>
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -45,6 +46,7 @@ class ResponseHeadersTest : public testing::Test {
                         &start_time_plus_5_minutes_string_);
     ConvertTimeToString(MockTimer::kApr_5_2010_ms + 6 * Timer::kMinuteMs,
                         &start_time_plus_6_minutes_string_);
+    with_auth_.Add(HttpAttributes::kAuthorization, "iris scan");
   }
 
   void CheckGoogleHeaders(const ResponseHeaders& response_headers) {
@@ -143,6 +145,10 @@ class ResponseHeadersTest : public testing::Test {
   GoogleMessageHandler message_handler_;
   ResponseHeaders response_headers_;
   ResponseHeadersParser parser_;
+
+  // RequestHeaders with and without an 'Authorization:' header.
+  RequestHeaders with_auth_;
+  RequestHeaders without_auth_;
 
   GoogleString start_time_string_;
   GoogleString start_time_plus_5_minutes_string_;
@@ -263,8 +269,11 @@ TEST_F(ResponseHeadersTest, TestCachingPublic) {
   ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
                       "Date: ", start_time_string_, "\r\n"
                       "Cache-control: public, max-age=300\r\n\r\n"));
+
   EXPECT_TRUE(response_headers_.IsCacheable());
   EXPECT_TRUE(response_headers_.IsProxyCacheable());
+  EXPECT_TRUE(response_headers_.IsProxyCacheableGivenRequest(with_auth_));
+  EXPECT_TRUE(response_headers_.IsProxyCacheableGivenRequest(without_auth_));
   EXPECT_EQ(300 * 1000,
             response_headers_.CacheExpirationTimeMs() -
             response_headers_.date_ms());
@@ -277,18 +286,22 @@ TEST_F(ResponseHeadersTest, TestCachingPrivate) {
                       "Cache-control: private, max-age=10\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsCacheable());
   EXPECT_FALSE(response_headers_.IsProxyCacheable());
+  EXPECT_FALSE(response_headers_.IsProxyCacheableGivenRequest(with_auth_));
+  EXPECT_FALSE(response_headers_.IsProxyCacheableGivenRequest(without_auth_));
   EXPECT_EQ(10 * 1000,
             response_headers_.CacheExpirationTimeMs() -
             response_headers_.date_ms());
 }
 
-// Default caching (when in doubt, it's public)
+// Default caching (public unless request has authorization headers)
 TEST_F(ResponseHeadersTest, TestCachingDefault) {
   ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
                       "Date: ", start_time_string_, "\r\n"
                       "Cache-control: max-age=100\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsCacheable());
   EXPECT_TRUE(response_headers_.IsProxyCacheable());
+  EXPECT_FALSE(response_headers_.IsProxyCacheableGivenRequest(with_auth_));
+  EXPECT_TRUE(response_headers_.IsProxyCacheableGivenRequest(without_auth_));
   EXPECT_EQ(100 * 1000,
             response_headers_.CacheExpirationTimeMs() -
             response_headers_.date_ms());

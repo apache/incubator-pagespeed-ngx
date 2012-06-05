@@ -84,6 +84,8 @@ InstawebContext::InstawebContext(request_rec* request,
     rewrite_driver_ = resource_manager_->NewRewriteDriver();
   }
 
+  rewrite_driver_->EnableBlockingRewrite(request_headers);
+
   ComputeContentEncoding(request);
   apr_pool_cleanup_register(request->pool, this, Cleanup,
                             apr_pool_cleanup_null);

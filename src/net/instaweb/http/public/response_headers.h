@@ -28,6 +28,7 @@
 namespace net_instaweb {
 
 class HttpResponseHeaders;
+class RequestHeaders;
 class MessageHandler;
 class Writer;
 
@@ -96,7 +97,19 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // accessors before ComputeCaching is called.
   void ComputeCaching();
   bool IsCacheable() const;
+
+  // Returns true if these response headers indicate the response is cacheable
+  // if it was fetched w/o special authorization headers.
+  //
+  // Generally you want to use IsProxyCacheableGivenRequest() instead which will
+  // also take the request headers into account, unless you know the request
+  // was synthesized with known headers which do not include authorization.
   bool IsProxyCacheable() const;
+
+  // Returns true if these response header indicate the response is cacheable
+  // if it was fetched with given 'request_headers'.
+  bool IsProxyCacheableGivenRequest(const RequestHeaders& req_headers) const;
+
   // Note(sligocki): I think CacheExpirationTimeMs will return 0 if !IsCacheable
   // TODO(sligocki): Look through callsites and make sure this is being
   // interpretted correctly.

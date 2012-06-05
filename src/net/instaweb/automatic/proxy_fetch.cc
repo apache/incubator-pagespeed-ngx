@@ -127,6 +127,15 @@ void ProxyFetchFactory::StartNewProxyFetch(
     // sending any cookies to origin, as a precaution against contamination.
     fetch->request_headers()->RemoveAll(HttpAttributes::kCookie);
     fetch->request_headers()->RemoveAll(HttpAttributes::kCookie2);
+
+    // Similarly we don't want to forward authorization, since we may end up
+    // forwarding it to wrong host. For proxy-authorization, we remove it here
+    // since if our own server implements it, it should do so before touching
+    // ProxyInterface, and this prevents it from accidentally leaking.
+    // TODO(morlovich): Should we also change 401 and 407 into a 403 on
+    // response?
+    fetch->request_headers()->RemoveAll(HttpAttributes::kAuthorization);
+    fetch->request_headers()->RemoveAll(HttpAttributes::kProxyAuthorization);
   } else {
     // If we didn't already remove all the cookies, remove the furious
     // ones so we don't confuse the origin.
@@ -352,6 +361,8 @@ ProxyFetch::ProxyFetch(
   } else {
     VLOG(1) << "User-agent empty";
   }
+
+  driver_->EnableBlockingRewrite(request_headers());
 
   // Set the implicit cache ttl for the response headers based on the value
   // specified in the options.

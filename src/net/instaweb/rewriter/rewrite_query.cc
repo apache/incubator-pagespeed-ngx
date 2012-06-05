@@ -50,7 +50,9 @@ static struct Int64QueryParam int64_query_params_[] = {
   { "ModPagespeedCssImageInlineMaxBytes",
     &RewriteOptions::set_css_image_inline_max_bytes },
   { "ModPagespeedJsInlineMaxBytes",
-    &RewriteOptions::set_js_inline_max_bytes }
+    &RewriteOptions::set_js_inline_max_bytes },
+  { "ModPagespeedDomainShardCount",
+    &RewriteOptions::set_domain_shard_count },
 };
 
 // Scan for option-sets in query-params.  We will only allow a limited

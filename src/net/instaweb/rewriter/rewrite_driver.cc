@@ -2159,4 +2159,20 @@ void RewriteDriver::decrement_async_events_count() {
   }
 }
 
+void RewriteDriver::EnableBlockingRewrite(RequestHeaders* request_headers) {
+  if (!options()->blocking_rewrite_key().empty()) {
+    const char* blocking_rewrite_key = request_headers->Lookup1(
+        HttpAttributes::kXPsaBlockingRewrite);
+    if (blocking_rewrite_key != NULL) {
+      if (options()->blocking_rewrite_key() == blocking_rewrite_key) {
+        set_fully_rewrite_on_flush(true);
+      }
+      // TODO(bharathbhushan): Allow for multiple PSAs on the request path by
+      // interpreting the value as a comma separated list of keys and avoid
+      // removing this header unconditionally.
+      request_headers->RemoveAll(HttpAttributes::kXPsaBlockingRewrite);
+    }
+  }
+}
+
 }  // namespace net_instaweb

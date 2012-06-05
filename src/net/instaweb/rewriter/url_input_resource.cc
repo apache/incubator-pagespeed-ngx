@@ -71,7 +71,8 @@ bool IsValidAndCacheableImpl(HTTPCache* http_cache,
     return false;
   }
 
-  return !http_cache->IsAlreadyExpired(headers);
+  // NULL is OK here since we make the request_headers ourselves.
+  return !http_cache->IsAlreadyExpired(NULL, headers);
 }
 
 // Returns true if the input didn't change and we could successfully update

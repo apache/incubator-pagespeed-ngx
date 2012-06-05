@@ -85,11 +85,18 @@ void HTTPCache::SetIgnoreFailurePuts() {
   ignore_failure_puts_.set_value(true);
 }
 
-bool HTTPCache::IsCurrentlyValid(const ResponseHeaders& headers, int64 now_ms) {
+bool HTTPCache::IsCurrentlyValid(const RequestHeaders* request_headers,
+                                 const ResponseHeaders& headers, int64 now_ms) {
   if (force_caching_) {
     return true;
   }
-  if (!headers.IsCacheable() || !headers.IsProxyCacheable()) {
+  if (!headers.IsCacheable()) {
+    return false;
+  }
+
+  if ((request_headers == NULL && !headers.IsProxyCacheable()) ||
+      (request_headers != NULL &&
+       !headers.IsProxyCacheableGivenRequest(*request_headers))) {
     // TODO(jmarantz): Should we have a separate 'force' bit that doesn't
     // expired resources to be valid, but does ignore cache-control:private?
     return false;
@@ -101,8 +108,9 @@ bool HTTPCache::IsCurrentlyValid(const ResponseHeaders& headers, int64 now_ms) {
   return false;
 }
 
-bool HTTPCache::IsAlreadyExpired(const ResponseHeaders& headers) {
-  return !IsCurrentlyValid(headers, timer_->NowMs());
+bool HTTPCache::IsAlreadyExpired(const RequestHeaders* request_headers,
+                                 const ResponseHeaders& headers) {
+  return !IsCurrentlyValid(request_headers, headers, timer_->NowMs());
 }
 
 class HTTPCacheCallback : public CacheInterface::Callback {
@@ -136,8 +144,10 @@ class HTTPCacheCallback : public CacheInterface::Callback {
       // two-level HTTPCache, while freshening a resource, this ensures that we
       // check both caches and don't return a valid response from the L1 cache
       // that is about to expire soon. We instead also check the L2 cache which
-      // could have a fresher response.
-      bool is_valid = http_cache_->IsCurrentlyValid(*headers, now_ms) &&
+      // could have a fresher response. We don't need to pass request_headers
+      // here, as we shouldn't have put things in here that required
+      // Authorization in the first place.
+      bool is_valid = http_cache_->IsCurrentlyValid(NULL, *headers, now_ms) &&
           callback_->IsFresh(*headers);
       int http_status = headers->status_code();
       if (http_status == HttpStatus::kRememberNotCacheableStatusCode ||
@@ -361,7 +371,10 @@ void HTTPCache::Put(const GoogleString& key, ResponseHeaders* headers,
                     const StringPiece& content, MessageHandler* handler) {
   int64 start_us = timer_->NowUs();
   int64 now_ms = start_us / 1000;
-  if ((!IsCurrentlyValid(*headers, now_ms) ||
+  // Note: this check is only valid if the caller didn't send an Authorization:
+  // header.
+  // TODO(morlovich): expose the request_headers in the API?
+  if ((!IsCurrentlyValid(NULL, *headers, now_ms) ||
        !IsCacheableBodySize(content.size()))
       && !force_caching_) {
     return;

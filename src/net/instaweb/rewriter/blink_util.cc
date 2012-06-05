@@ -72,8 +72,7 @@ bool IsBlinkRequest(const GoogleUrl& url,
       // (ProxyFetch).  Should we combine these?
       options->IsAllowed(url.Spec()) &&
       // Does url match a cacheable family pattern specified in config?
-      options->MatchesPrioritizeVisibleContentCacheableFamilies(
-          url.PathAndLeaf()) &&
+      options->IsInBlinkCacheableFamily(url.PathAndLeaf()) &&
       // user agent supports Blink.
       user_agent_matcher_.GetBlinkUserAgentType(
           user_agent, options->enable_blink_for_mobile_devices()) !=
@@ -362,11 +361,17 @@ StringPiece GetNonCacheableElements(
 }
 
 void PopulateAttributeToNonCacheableValuesMap(
-    const GoogleString& atf_non_cacheable_elements, const GoogleUrl& url,
+    const RewriteOptions* rewrite_options, const GoogleUrl& url,
     AttributesToNonCacheableValuesMap* attribute_non_cacheable_values_map,
     std::vector<int>* panel_number_num_instances) {
-  StringPiece non_cacheable_elements =
-      GetNonCacheableElements(atf_non_cacheable_elements, url);
+  GoogleString non_cacheable_elements_str =
+      rewrite_options->GetBlinkNonCacheableElementsFor(url.PathAndLeaf());
+  StringPiece non_cacheable_elements(non_cacheable_elements_str);
+  if (non_cacheable_elements.empty()) {
+    non_cacheable_elements = GetNonCacheableElements(
+        rewrite_options->prioritize_visible_content_non_cacheable_elements(),
+        url);
+  }
   // TODO(rahulbansal): Add more error checking.
   StringPieceVector non_cacheable_values;
   SplitStringPieceToVector(non_cacheable_elements,

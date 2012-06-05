@@ -39,6 +39,7 @@ struct OptionName {
 "CssInlineMaxBytes",                    RewriteOptions::kCssInlineMaxBytes
 "CssOutlineMinBytes",                   RewriteOptions::kCssOutlineMinBytes
 "DefaultCacheHtml",                     RewriteOptions::kDefaultCacheHtml
+"DomainShardCount",                     RewriteOptions::kDomainShardCount
 "EnableBlinkCriticalLine",              RewriteOptions::kEnableBlinkCriticalLine
 "EnableBlinkForMobileDevices",          RewriteOptions::kEnableBlinkForMobileDevices
 "EnableDeferJsExperimental",            RewriteOptions::kEnableDeferJsExperimental

@@ -24,6 +24,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_multi_map.h"
@@ -359,6 +360,23 @@ bool ResponseHeaders::IsProxyCacheable() const {
   DCHECK(!cache_fields_dirty_)
       << "Call ComputeCaching() before IsProxyCacheable()";
   return proto_->proxy_cacheable();
+}
+
+bool ResponseHeaders::IsProxyCacheableGivenRequest(
+    const RequestHeaders& req_headers) const {
+  if (!IsProxyCacheable()) {
+    return false;
+  }
+
+  if (req_headers.Has(HttpAttributes::kAuthorization)) {
+    // For something requested with authorization to be cacheable, it must
+    // either  be something that goes through revalidation (which we currently
+    // do not do) or something that has a Cache-Control: public.
+    // See RFC2616, 14.8
+    // (http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.8)
+    return HasValue(HttpAttributes::kCacheControl, "public");
+  }
+  return true;
 }
 
 // Returns the ms-since-1970 absolute time when this resource

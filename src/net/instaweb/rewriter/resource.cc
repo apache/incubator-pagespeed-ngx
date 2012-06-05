@@ -51,9 +51,12 @@ Resource::~Resource() {
 }
 
 bool Resource::IsValidAndCacheable() const {
+  // We don't have to worry about request_headers here since
+  // if we have some we should be using UrlInputResource's implementation
+  // of this method.
   return ((response_headers_.status_code() == HttpStatus::kOK) &&
           !resource_manager_->http_cache()->IsAlreadyExpired(
-              response_headers_));
+              NULL, response_headers_));
 }
 
 GoogleString Resource::ContentsHash() const {

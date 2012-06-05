@@ -21,6 +21,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -120,6 +121,7 @@ class BlinkFlowCriticalLine {
   bool IsLastResponseCodeInvalid(PropertyPage* page);
 
   GoogleString url_;
+  GoogleUrl google_url_;
   GoogleString critical_html_;
   AsyncFetch* base_fetch_;
   RewriteOptions* options_;

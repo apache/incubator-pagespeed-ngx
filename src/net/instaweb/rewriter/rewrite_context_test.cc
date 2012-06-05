@@ -1113,8 +1113,6 @@ TEST_F(RewriteContextTest, TrimDelayed) {
 
   // Now we'll let the fetcher call its callbacks -- we'll see the
   // cache-inserts now, and the next rewrite will succeed.
-  //
-  // TODO(jmarantz): Implement and test a threaded Rewrite.
   CallFetcherCallbacks();
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -4269,6 +4267,24 @@ TEST_F(NestedResourceUpdateTest, NestedDifferentTTLs) {
   EXPECT_EQ(1, file_system()->num_input_file_opens());
   EXPECT_EQ(2, file_system()->num_input_file_stats());
   ClearStats();
+}
+
+// Even though the rewrite delay is more than the deadline, the rewrite is
+// finished by the time the response is completely flushed.
+TEST_F(RewriteContextTest, BlockingRewrite) {
+  InitCombiningFilter(kRewriteDelayMs);
+  InitResources();
+  GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
+                                     MultiUrl("a.css", "b.css"), "css");
+  rewrite_driver()->set_fully_rewrite_on_flush(true);
+
+  ValidateExpected(
+      "combination_rewrite", StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+      CssLinkHref(combined_url));
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_misses());   // partition, and 2 inputs.
+  EXPECT_EQ(4, lru_cache()->num_inserts());  // partition, output, and 2 inputs.
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 }
 
 }  // namespace net_instaweb

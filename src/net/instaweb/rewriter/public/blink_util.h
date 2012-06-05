@@ -132,7 +132,7 @@ StringPiece GetNonCacheableElements(
 
 // Populates the attributes to non cacheable values map.
 void PopulateAttributeToNonCacheableValuesMap(
-    const GoogleString& atf_non_cacheable_elements,
+    const RewriteOptions* rewrite_options,
     const GoogleUrl& url,
     AttributesToNonCacheableValuesMap* attribute_non_cacheable_values_map,
     std::vector<int>* panel_number_num_instances);

@@ -34,6 +34,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/reflecting_test_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/timing.pb.h"
@@ -913,6 +914,104 @@ TEST_F(ProxyInterfaceTest, SetCookie2NotCached) {
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
 }
 
+TEST_F(ProxyInterfaceTest, NotCachedIfAuthorizedAndNotPublic) {
+  // We should not cache things which are default cache-control if we
+  // are sending Authorization:. See RFC 2616, 14.8.
+  ReflectingTestFetcher reflect;
+  resource_manager()->set_default_system_fetcher(&reflect);
+
+  RequestHeaders request_headers;
+  request_headers.Add("Was", "Here");
+  request_headers.Add(HttpAttributes::kAuthorization, "Secret");
+  // This will get reflected as well, and hence will determine whether
+  // cacheable or not.
+  request_headers.Replace(HttpAttributes::kCacheControl, "max-age=600000");
+
+  ResponseHeaders out_headers;
+  GoogleString out_text;
+  // Using .txt here so we don't try any AJAX rewriting.
+  FetchFromProxy("http://test.com/file.txt",
+                 request_headers,  true, &out_text, &out_headers);
+  // We should see the request headers we sent back as the response headers
+  // as we're using a ReflectingTestFetcher.
+  EXPECT_STREQ("Here", out_headers.Lookup1("Was"));
+
+  // Not cross-domain, so should propagate out header.
+  EXPECT_TRUE(out_headers.Has(HttpAttributes::kAuthorization));
+
+  // Should not have written anything to cache, due to the authorization
+  // header.
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+
+  ClearStats();
+
+  // Now try again. This time no authorization header, different 'Was'.
+  request_headers.Replace("Was", "There");
+  request_headers.RemoveAll(HttpAttributes::kAuthorization);
+
+  FetchFromProxy("http://test.com/file.txt",
+                 request_headers,  true, &out_text, &out_headers);
+  // Should get different headers since we should not be cached.
+  EXPECT_STREQ("There", out_headers.Lookup1("Was"));
+  EXPECT_FALSE(out_headers.Has(HttpAttributes::kAuthorization));
+
+  // And should be a miss per stats.
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+
+  mock_scheduler()->AwaitQuiescence();
+}
+
+TEST_F(ProxyInterfaceTest, CachedIfAuthorizedAndPublic) {
+  // This with Cache-Control: public should be cached even if
+  // we are sending Authorization:. See RFC 2616.
+  ReflectingTestFetcher reflect;
+  resource_manager()->set_default_system_fetcher(&reflect);
+
+  RequestHeaders request_headers;
+  request_headers.Add("Was", "Here");
+  request_headers.Add(HttpAttributes::kAuthorization, "Secret");
+  // This will get reflected as well, and hence will determine whether
+  // cacheable or not.
+  request_headers.Replace(HttpAttributes::kCacheControl, "max-age=600000");
+  request_headers.Add(HttpAttributes::kCacheControl, "public");  // unlike above
+
+  ResponseHeaders out_headers;
+  GoogleString out_text;
+  // Using .txt here so we don't try any AJAX rewriting.
+  FetchFromProxy("http://test.com/file.txt",
+                 request_headers,  true, &out_text, &out_headers);
+  EXPECT_STREQ("Here", out_headers.Lookup1("Was"));
+
+  // Not cross-domain, so should propagate out header.
+  EXPECT_TRUE(out_headers.Has(HttpAttributes::kAuthorization));
+
+  // Should have written the result to the cache, despite the request having
+  // Authorization: thanks to cache-control: public,
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+
+  ClearStats();
+
+  // Now try again. This time no authorization header, different 'Was'.
+  request_headers.Replace("Was", "There");
+  request_headers.RemoveAll(HttpAttributes::kAuthorization);
+
+  FetchFromProxy("http://test.com/file.txt",
+                 request_headers,  true, &out_text, &out_headers);
+  // Should get old headers, since original was cacheable.
+  EXPECT_STREQ("Here", out_headers.Lookup1("Was"));
+
+  // ... of course hopefully a real server won't serve secrets on a
+  // cache-control: public page.
+  EXPECT_STREQ("Secret", out_headers.Lookup1(HttpAttributes::kAuthorization));
+
+  // And should be a hit per stats.
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+
+  mock_scheduler()->AwaitQuiescence();
+}
+
 TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";
@@ -1577,6 +1676,62 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingForCss) {
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, lru_cache()->num_misses());
+}
+
+TEST_F(ProxyInterfaceTest, NoAjaxRewritingWhenAuthorizationSent) {
+  // We should not do ajax rewriting when sending over an authorization
+  // header if the original isn't cache-control: public.
+  ResponseHeaders headers;
+  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
+  headers.SetDate(MockTimer::kApr_5_2010_ms);
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.css"), headers, kCssContent);
+
+  // The first response served by the fetcher and is not rewritten. An ajax
+  // rewrite is triggered.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  RequestHeaders request_headers;
+  request_headers.Add(HttpAttributes::kAuthorization, "Paperwork");
+  FetchFromProxy("text.css", request_headers, true, &text, &response_headers);
+  EXPECT_EQ(kCssContent, text);
+
+  // The second version should still be unoptimized, since original wasn't
+  // cacheable.
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.css", request_headers, true, &text, &response_headers);
+  EXPECT_EQ(kCssContent, text);
+}
+
+TEST_F(ProxyInterfaceTest, AjaxRewritingWhenAuthorizationButPublic) {
+  // We should do ajax rewriting when sending over an authorization
+  // header if the original is cache-control: public.
+  ResponseHeaders headers;
+  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
+  headers.SetDate(MockTimer::kApr_5_2010_ms);
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  headers.Add(HttpAttributes::kCacheControl, "public, max-age=400");
+  headers.ComputeCaching();
+  SetFetchResponse(AbsolutifyUrl("text.css"), headers, kCssContent);
+
+  // The first response served by the fetcher and is not rewritten. An ajax
+  // rewrite is triggered.
+  GoogleString text;
+  ResponseHeaders response_headers;
+  RequestHeaders request_headers;
+  request_headers.Add(HttpAttributes::kAuthorization, "Paperwork");
+  FetchFromProxy("text.css", request_headers, true, &text, &response_headers);
+  EXPECT_EQ(kCssContent, text);
+
+  // The second version should be optimized in this case.
+  text.clear();
+  response_headers.Clear();
+  FetchFromProxy("text.css", request_headers, true, &text, &response_headers);
+  EXPECT_EQ(kMinimizedCssContent, text);
 }
 
 TEST_F(ProxyInterfaceTest, AjaxRewritingDisabledByGlobalDisable) {
@@ -2327,6 +2482,34 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeaders) {
       true, &out_text, &out_headers);
   EXPECT_STREQ(kText, out_text);
   EXPECT_STREQ(NULL, out_headers.Lookup1(HttpAttributes::kSetCookie));
+}
+
+TEST_F(ProxyInterfaceTest, CrossDomainAuthorization) {
+  // If we're serving content from evil.com via kProxyHostUrl, we need to make
+  // sure we don't propagate through any (non-proxy) authorization headers, as
+  // they may have been cached from good.com (as both would look like
+  // kProxyHost to the browser).
+  ReflectingTestFetcher reflect;
+  resource_manager()->set_default_system_fetcher(&reflect);
+
+  ProxyUrlNamer url_namer;
+  resource_manager()->set_url_namer(&url_namer);
+
+  RequestHeaders request_headers;
+  request_headers.Add("Was", "Here");
+  request_headers.Add(HttpAttributes::kAuthorization, "Secret");
+  request_headers.Add(HttpAttributes::kProxyAuthorization, "OurSecret");
+
+  ResponseHeaders out_headers;
+  GoogleString out_text;
+  // Using .txt here so we don't try any AJAX rewriting.
+  FetchFromProxy(StrCat("http://", ProxyUrlNamer::kProxyHost,
+                        "/test.com/test.com/file.txt"),
+                 request_headers,  true, &out_text, &out_headers);
+  EXPECT_STREQ("Here", out_headers.Lookup1("Was"));
+  EXPECT_FALSE(out_headers.Has(HttpAttributes::kAuthorization));
+  EXPECT_FALSE(out_headers.Has(HttpAttributes::kProxyAuthorization));
+  mock_scheduler()->AwaitQuiescence();
 }
 
 TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnProxy) {

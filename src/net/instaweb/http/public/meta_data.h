@@ -31,6 +31,7 @@ namespace net_instaweb {
 // to use these shared constants.
 struct HttpAttributes {
   static const char kAcceptEncoding[];
+  static const char kAuthorization[];
   static const char kCacheControl[];
   static const char kConnection[];
   static const char kContentEncoding[];
@@ -52,6 +53,7 @@ struct HttpAttributes {
   static const char kLocation[];
   static const char kNoCache[];
   static const char kPragma[];
+  static const char kProxyAuthorization[];
   static const char kReferer[];  // sic
   static const char kServer[];
   static const char kSetCookie[];
@@ -63,6 +65,9 @@ struct HttpAttributes {
   static const char kXAssociatedContent[];
   static const char kXForwardedFor[];
   static const char kXGooglePagespeedClientId[];
+  // If this header's value matches the configured blocking rewrite key, then
+  // all rewrites are completed before the response is sent to the client.
+  static const char kXPsaBlockingRewrite[];
 };
 
 namespace HttpStatus {

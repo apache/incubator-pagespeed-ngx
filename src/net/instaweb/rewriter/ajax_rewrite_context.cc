@@ -119,6 +119,8 @@ bool RecordingFetch::CanAjaxRewrite() {
   if (type == NULL) {
     return false;
   }
+  // Note that this only checks the length, not the caching headers; the
+  // latter are checked in IsAlreadyExpired.
   if (!cache_value_writer_.CheckCanCacheElseClear(response_headers())) {
     return false;
   }
@@ -126,7 +128,7 @@ bool RecordingFetch::CanAjaxRewrite() {
       type->type() == ContentType::kJavascript ||
       type->IsImage()) {
     if (!context_->driver_->resource_manager()->http_cache()->IsAlreadyExpired(
-        *response_headers())) {
+        request_headers(), *response_headers())) {
       return true;
     }
   }

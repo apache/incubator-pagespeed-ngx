@@ -14,6 +14,11 @@
 # default then we can eliminate this line.
 AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 
+# If X-PSA-Blocking-Rewrite request header is present and its value matches the
+# value of ModPagespeedBlockingRewriteKey below, the response will be fully
+# rewritten before being flushed to the client.
+ModPagespeedBlockingRewriteKey mps
+
 # These caching headers are set up for the document root, and
 # also serve as a demonstration of good values to set for the entire
 # site, if it is to be optimized by mod_pagespeed.
@@ -365,6 +370,7 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedBeaconUrl "http://example.com/beacon?ets="
 #ALL_DIRECTIVES ModPagespeedCacheFlushFilename /tmp/cache.flush
 #ALL_DIRECTIVES ModPagespeedCacheFlushPollIntervalSec 10
+#ALL_DIRECTIVES ModPagespeedBlockingRewriteKey test
 #ALL_DIRECTIVES ModPagespeedCollectRefererStatistics false
 #ALL_DIRECTIVES ModPagespeedCombineAcrossPaths true
 #ALL_DIRECTIVES ModPagespeedCssImageInlineMaxBytes 2000

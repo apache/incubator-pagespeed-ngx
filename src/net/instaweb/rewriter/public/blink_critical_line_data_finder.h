@@ -28,7 +28,6 @@ class BlinkCriticalLineData;
 class PropertyPage;
 class ResponseHeaders;
 class RewriteDriver;
-class RewriteOptions;
 
 // Finds BlinkCriticalLineData from the given html content. This information
 // will be used by BlinkFlowCriticalLine.
@@ -41,7 +40,7 @@ class BlinkCriticalLineDataFinder {
 
   // Gets BlinkCriticalLineData from the given PropertyPage.
   virtual BlinkCriticalLineData* ExtractBlinkCriticalLineData(
-      PropertyPage* page, const RewriteOptions* options);
+      int64 cache_time_ms, PropertyPage* page);
 
   // Computes BlinkCriticalLineData for the given html content.
   virtual void ComputeBlinkCriticalLineData(

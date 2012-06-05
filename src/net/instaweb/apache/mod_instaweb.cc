@@ -179,6 +179,8 @@ const char* kModPagespeedXHeaderValue = "ModPagespeedXHeaderValue";
 const char* kModPagespeedImgInlineMaxBytes = "ModPagespeedImgInlineMaxBytes";
 const char* kModPagespeedImgMaxRewritesAtOnce =
     "ModPagespeedImgMaxRewritesAtOnce";
+const char* kModPagespeedBlockingRewriteKey =
+    "ModPagespeedBlockingRewriteKey";
 
 // TODO(jmarantz): determine the version-number from SVN at build time.
 const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
@@ -1109,6 +1111,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     options->RetainComment(arg);
   } else if (StringCaseEqual(directive, kModPagespeedUrlPrefix)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
+  } else if (StringCaseEqual(directive, kModPagespeedBlockingRewriteKey)) {
+    options->set_blocking_rewrite_key(arg);
   } else {
     ret = apr_pstrcat(cmd->pool, "Unknown directive ",
                       directive.as_string().c_str(), NULL);
@@ -1348,6 +1352,10 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "Set the url prefix"),
   APACHE_CONFIG_OPTION(kModPagespeedXHeaderValue,
         "Set the value for the X-Mod-Pagespeed HTTP header"),
+  APACHE_CONFIG_OPTION(kModPagespeedBlockingRewriteKey,
+        "If the X-PSA-Pagespeed-Blocking-Rewrite header is present, and its "
+        "value matches the configured value, ensure that all rewrites are "
+        "completed before sending the response to the client."),
 
   // All two parameter options that are allowed in <Directory> blocks.
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,

@@ -590,6 +590,10 @@ class RewriteDriver : public HtmlParse {
     fully_rewrite_on_flush_ = x;
   }
 
+  // If the value of X-PSA-Blocking-Rewrite request header matches the blocking
+  // rewrite key, set fully_rewrite_on_flush flag.
+  void EnableBlockingRewrite(RequestHeaders* request_headers);
+
   // Indicate that this RewriteDriver will be explicitly deleted, and
   // thus should not be auto-deleted at the end of the parse.  This is
   // primarily for tests.
