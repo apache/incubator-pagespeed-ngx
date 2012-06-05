@@ -704,6 +704,28 @@ void RewriteOptions::DisallowTroublesomeResources() {
   // http://code.google.com/p/modpagespeed/issues/detail?id=142
   // Not clear which JS file is broken and proxying is not working correctly.
 
+  // Disable resources that are already being shared across multiple sites and
+  // have strong CDN support (ie they are already cheap to fetch and are also
+  // very likely to reside in the browser cache from visits to another site).
+  // We keep these patterns as specific as possible while avoiding internal
+  // wildcards.  Note that all of these urls have query parameters in long-tail
+  // requests.  [google] These are based on popular cross-site js hashes in PSS.
+  // TODO(jmaessen): Consider setting up the blacklist by domain name and using
+  // regexps only after a match has been found.  Alternatively, since we're
+  // setting up a binary choice here, consider using RE2 to make the yes/no
+  // decision.
+  Disallow("*//ajax.googleapis.com/ajax/libs/*");
+  Disallow("*//pagead2.googlesyndication.com/pagead/show_ads.js*");
+  Disallow("*//partner.googleadservices.com/gampad/google_service.js*");
+  Disallow("*//platform.twitter.com/widgets.js*");
+  Disallow("*//s7.addthis.com/js/250/addthis_widget.js*");
+  Disallow("*//www.google.com/coop/cse/brand*");
+  Disallow("*//www.google-analytics.com/urchin.js*");
+  Disallow("*//www.googleadservices.com/pagead/conversion.js*");
+  // The following url pattern shows up often, but under too many different
+  // unique urls:
+  // Disallow("*//stats.wordpress.com/e-*");
+
   if (Enabled(kComputePanelJson)) {
     RetainComment(StrCat(kPanelCommentPrefix, "*"));
   }

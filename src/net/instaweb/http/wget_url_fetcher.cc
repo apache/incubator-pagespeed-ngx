@@ -87,6 +87,7 @@ bool WgetUrlFetcher::StreamingFetchUrl(const GoogleString& url,
   BackslashEscape(url, kEscapeChars, &escaped_url);
   cmd += StrCat(" \"", escaped_url, "\"");
   handler->Message(kInfo, "wget %s\n", url.c_str());
+  VLOG(2) << "Running: " << cmd.c_str();
   FILE* wget_stdout = popen(cmd.c_str(), "r");
 
   bool ret = false;
