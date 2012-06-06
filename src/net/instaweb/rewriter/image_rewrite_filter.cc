@@ -228,10 +228,14 @@ Image::CompressionOptions* ImageOptionsForLoadedResource(
       options->Enabled(RewriteOptions::kRecompressPng);
   image_options->recompress_webp =
       options->Enabled(RewriteOptions::kRecompressWebp);
-  image_options->retain_color_profile = options->image_retain_color_profile();
-  image_options->retain_exif_data = options->image_retain_exif_data();
+  image_options->retain_color_profile =
+      !options->Enabled(RewriteOptions::kStripImageColorProfile);
+  image_options->retain_exif_data =
+      !options->Enabled(RewriteOptions::kStripImageMetaData);
   image_options->jpeg_num_progressive_scans =
       options->image_jpeg_num_progressive_scans();
+  image_options->retain_color_sampling =
+      !options->Enabled(RewriteOptions::kJpegSubsampling);
   return image_options;
 }
 
@@ -421,9 +425,12 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       image_options->recompress_jpeg = true;
       image_options->recompress_png = true;
       image_options->recompress_webp = true;
-      image_options->retain_color_profile =
-          options->image_retain_color_profile();
-      image_options->retain_exif_data = options->image_retain_exif_data();
+
+      // Since these are replaced with their high res versions, stripping
+      // them off for low res images will further reduce bytes.
+      image_options->retain_color_profile = false;
+      image_options->retain_exif_data = false;
+      image_options->retain_color_sampling = false;
       image_options->jpeg_num_progressive_scans =
           options->image_jpeg_num_progressive_scans();
       scoped_ptr<Image> low_image(

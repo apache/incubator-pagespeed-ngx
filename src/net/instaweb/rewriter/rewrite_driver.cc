@@ -822,11 +822,14 @@ void RewriteDriver::AddPreRenderFilters() {
     AppendOwnedPreRenderFilter(new JsInlineFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kConvertJpegToProgressive) ||
-      rewrite_options->NeedLowResImages() ||
+      rewrite_options->ImageOptimizationEnabled() ||
+      rewrite_options->Enabled(RewriteOptions::kResizeImages) ||
       rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
       rewrite_options->Enabled(RewriteOptions::kInsertImageDimensions) ||
-      rewrite_options->Enabled(RewriteOptions::kResizeImages) ||
-      rewrite_options->ImageOptimizationEnabled()) {
+      rewrite_options->Enabled(RewriteOptions::kJpegSubsampling) ||
+      rewrite_options->Enabled(RewriteOptions::kStripImageColorProfile) ||
+      rewrite_options->Enabled(RewriteOptions::kStripImageMetaData) ||
+      rewrite_options->NeedLowResImages()) {
     EnableRewriteFilter(RewriteOptions::kImageCompressionId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kRemoveComments)) {

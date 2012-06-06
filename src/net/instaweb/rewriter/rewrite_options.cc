@@ -188,6 +188,7 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kCombineCss,
   RewriteOptions::kConvertGifToPng,
   RewriteOptions::kConvertMetaTags,
+  RewriteOptions::kConvertPngToJpeg,
   RewriteOptions::kExtendCacheCss,
   RewriteOptions::kExtendCacheImages,
   RewriteOptions::kExtendCacheScripts,
@@ -196,6 +197,8 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kInlineImages,
   RewriteOptions::kInlineImportToLink,
   RewriteOptions::kInlineJavascript,
+  RewriteOptions::kJpegSubsampling,
+  RewriteOptions::kLeftTrimUrls,
   RewriteOptions::kRecompressJpeg,
   RewriteOptions::kRecompressPng,
   RewriteOptions::kRecompressWebp,
@@ -203,6 +206,8 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kRewriteCss,
   RewriteOptions::kRewriteJavascript,
   RewriteOptions::kRewriteStyleAttributesWithUrl,
+  RewriteOptions::kStripImageColorProfile,
+  RewriteOptions::kStripImageMetaData,
 };
 
 // Note: all Core filters are Test filters as well.  For maintainability,
@@ -291,6 +296,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kInlineJavascript:                return "Inline Javascript";
     case kInsertGA:                        return "Insert Google Analytics";
     case kInsertImageDimensions:           return "Insert Image Dimensions";
+    case kJpegSubsampling:                 return "Jpeg Subsampling";
     case kLazyloadImages:                  return "Lazyload Images";
     case kLeftTrimUrls:                    return "Left Trim Urls";
     case kLocalStorageCache:               return "Local Storage Cache";
@@ -317,6 +323,8 @@ const char* RewriteOptions::FilterName(Filter filter) {
         return "Serve Non Cacheable and Non Critical Content";
     case kSpriteImages:                    return "Sprite Images";
     case kStripNonCacheable:               return "Strip Non Cacheable";
+    case kStripImageColorProfile:          return "Strip Image Color Profiles";
+    case kStripImageMetaData:              return "Strip Image Meta Data";
     case kStripScripts:                    return "Strip Scripts";
     case kEndOfFilters:                    return "End of Filters";
   }
@@ -360,6 +368,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kInlineJavascript:                return kJavascriptInlineId;
     case kInsertGA:                        return "ig";
     case kInsertImageDimensions:           return "id";
+    case kJpegSubsampling:                 return "js";
     case kLazyloadImages:                  return "ll";
     case kLeftTrimUrls:                    return "tu";
     case kLocalStorageCache:               return kLocalStorageCacheId;
@@ -384,6 +393,8 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kServeNonCacheableNonCritical:    return "sn";
     case kStripNonCacheable:               return "nc";
     case kSpriteImages:                    return kImageCombineId;
+    case kStripImageColorProfile:          return "cp";
+    case kStripImageMetaData:              return "md";
     case kStripScripts:                    return "ss";
     case kEndOfFilters:
       LOG(DFATAL) << "EndOfFilters passed as code: " << filter;
@@ -710,7 +721,7 @@ void RewriteOptions::DisallowTroublesomeResources() {
   // very likely to reside in the browser cache from visits to another site).
   // We keep these patterns as specific as possible while avoiding internal
   // wildcards.  Note that all of these urls have query parameters in long-tail
-  // requests.  [google] These are based on popular cross-site js hashes in PSS.
+  // requests.
   // TODO(jmaessen): Consider setting up the blacklist by domain name and using
   // regexps only after a match has been found.  Alternatively, since we're
   // setting up a binary choice here, consider using RE2 to make the yes/no
@@ -878,15 +889,21 @@ bool RewriteOptions::AddByNameToFilterSet(
     if (option == "rewrite_images") {
       set->insert(kConvertGifToPng);
       set->insert(kInlineImages);
+      set->insert(kJpegSubsampling);
       set->insert(kRecompressJpeg);
       set->insert(kRecompressPng);
       set->insert(kRecompressWebp);
       set->insert(kResizeImages);
+      set->insert(kStripImageMetaData);
+      set->insert(kStripImageColorProfile);
     } else if (option == "recompress_images") {
       set->insert(kConvertGifToPng);
+      set->insert(kJpegSubsampling);
       set->insert(kRecompressJpeg);
       set->insert(kRecompressPng);
       set->insert(kRecompressWebp);
+      set->insert(kStripImageMetaData);
+      set->insert(kStripImageColorProfile);
     } else if (option == "extend_cache") {
       set->insert(kExtendCacheCss);
       set->insert(kExtendCacheImages);

@@ -458,7 +458,8 @@ echo "TEST: Blocking rewrite enabled."
 BLOCKING_REWRITE_URL="$TEST_ROOT/blocking_rewrite.html?\
 ModPagespeedFilters=rewrite_images"
 OUTFILE=$OUTDIR/blocking_rewrite.out.html
-$WGET_DUMP --header 'X-PSA-Blocking-Rewrite: mps' $BLOCKING_REWRITE_URL > $OUTFILE
+$WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $BLOCKING_REWRITE_URL \
+    > $OUTFILE
 check [ $? = 0 ]
 check [ $(grep -c "[.]pagespeed[.]" $OUTFILE) = 2 ]
 

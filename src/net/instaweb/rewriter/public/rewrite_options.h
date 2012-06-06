@@ -80,6 +80,7 @@ class RewriteOptions {
     kInlineJavascript,
     kInsertGA,
     kInsertImageDimensions,
+    kJpegSubsampling,
     kLazyloadImages,
     kLeftTrimUrls,
     kLocalStorageCache,
@@ -103,6 +104,8 @@ class RewriteOptions {
     kRewriteStyleAttributesWithUrl,
     kServeNonCacheableNonCritical,
     kSpriteImages,
+    kStripImageColorProfile,
+    kStripImageMetaData,
     kStripNonCacheable,
     kStripScripts,
     kEndOfFilters
@@ -110,6 +113,10 @@ class RewriteOptions {
 
   // Any new Option added, should have a corresponding enum here and this should
   // be passed in when add_option is called in the constructor.
+  //
+  // TODO(satyanarayana): Deprecate kImageRetainColorProfile,
+  // kImageRetainExifData and kImageRetainColorSampling as they are now
+  // converted to filters.
   enum OptionEnum {
     kAjaxRewritingEnabled,
     kAlwaysRewriteCss,

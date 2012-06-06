@@ -198,10 +198,13 @@ TEST_F(RewriteOptionsTest, CompoundFlag) {
   // rewrite_images.
   s.insert(RewriteOptions::kConvertGifToPng);
   s.insert(RewriteOptions::kInlineImages);
+  s.insert(RewriteOptions::kJpegSubsampling);
   s.insert(RewriteOptions::kRecompressJpeg);
   s.insert(RewriteOptions::kRecompressPng);
   s.insert(RewriteOptions::kRecompressWebp);
   s.insert(RewriteOptions::kResizeImages);
+  s.insert(RewriteOptions::kStripImageMetaData);
+  s.insert(RewriteOptions::kStripImageColorProfile);
   s.insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
   const char* kList = "rewrite_images";
   NullMessageHandler handler;
@@ -216,9 +219,12 @@ TEST_F(RewriteOptionsTest, CompoundFlag) {
 TEST_F(RewriteOptionsTest, CompoundFlagRecompressImages) {
   FilterSet s;
   s.insert(RewriteOptions::kConvertGifToPng);
+  s.insert(RewriteOptions::kJpegSubsampling);
   s.insert(RewriteOptions::kRecompressJpeg);
   s.insert(RewriteOptions::kRecompressPng);
   s.insert(RewriteOptions::kRecompressWebp);
+  s.insert(RewriteOptions::kStripImageMetaData);
+  s.insert(RewriteOptions::kStripImageColorProfile);
   s.insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
   const char* kList = "recompress_images";
   NullMessageHandler handler;
@@ -229,6 +235,7 @@ TEST_F(RewriteOptionsTest, CompoundFlagRecompressImages) {
       options_.DisableFiltersByCommaSeparatedList(kList, &handler));
   ASSERT_TRUE(OnlyEnabled(RewriteOptions::kHtmlWriterFilter));  // default
 }
+
 TEST_F(RewriteOptionsTest, ParseRewriteLevel) {
   RewriteOptions::RewriteLevel level;
   ASSERT_TRUE(RewriteOptions::ParseRewriteLevel("PassThrough", &level));
@@ -1039,19 +1046,20 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
                                       &handler));
   options_.SetFuriousState(-7);
   // This should be the core filters.
-  EXPECT_EQ("ah,cc,gp,mc,ec,ei,es,hw,ci,ii,il,ji,rj,rp,rw,ri,cf,jm,cu,"
-            "css:2048,im:2048,js:2048;", options_.ToExperimentDebugString());
+  EXPECT_EQ("ah,cc,gp,mc,pj,ec,ei,es,hw,ci,ii,il,ji,js,tu,rj,rp,rw,ri,cf,jm,cu,"
+            "cp,md,css:2048,im:2048,js:2048;",
+            options_.ToExperimentDebugString());
   EXPECT_EQ("", options_.ToExperimentString());
   options_.SetFuriousState(1);
-  EXPECT_EQ("Experiment: 1; ah,ai,cc,gp,mc,ec,ei,es,hw,ci,ii,il,ji,ig,rj,"
-            "rp,rw,ri,cf,jm,cu,css:2048,im:2048,js:2048;",
+  EXPECT_EQ("Experiment: 1; ah,ai,cc,gp,mc,pj,ec,ei,es,hw,ci,ii,il,ji,ig,js,tu,"
+            "rj,rp,rw,ri,cf,jm,cu,cp,md,css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 1", options_.ToExperimentString());
   options_.SetFuriousState(7);
   // This should be all non-dangerous filters.
   EXPECT_EQ("Experiment: 7; ab,ah,ai,cw,cc,ch,jc,gp,jp,jw,mc,pj,db,di,ea,ec,ei,"
-            "es,fc,if,hw,ci,ii,il,ji,ig,id,tu,ls,ga,cj,cm,co,jo,pv,rj,rp,rw,rc,"
-            "rq,ri,rm,cf,rd,jm,cs,cu,is,css:2048,im:2048,js:2048;",
+            "es,fc,if,hw,ci,ii,il,ji,ig,id,js,tu,ls,ga,cj,cm,co,jo,pv,rj,rp,rw,"
+            "rc,rq,ri,rm,cf,rd,jm,cs,cu,is,cp,md,css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 7", options_.ToExperimentString());
   options_.SetFuriousState(2);

@@ -17,7 +17,7 @@ AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 # If X-PSA-Blocking-Rewrite request header is present and its value matches the
 # value of ModPagespeedBlockingRewriteKey below, the response will be fully
 # rewritten before being flushed to the client.
-ModPagespeedBlockingRewriteKey mps
+ModPagespeedBlockingRewriteKey psatest
 
 # These caching headers are set up for the document root, and
 # also serve as a demonstration of good values to set for the entire

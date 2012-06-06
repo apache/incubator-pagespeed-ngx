@@ -335,7 +335,23 @@ pagespeed.DeferJs.prototype.createIdVars = function() {
 pagespeed.DeferJs.prototype.addNode = function(script, opt_pos) {
   var src = script.getAttribute('orig_src') || script.getAttribute('src');
   if (src) {
-    this.addUrl(src, script, opt_pos);
+    if (pagespeed.DeferJs.isExperimentalMode) {
+      var img;
+      img = new Image();
+      img.src = src;
+      img.loaded = false;
+      var me = this;
+      img.onerror = img.onload = function() {
+        img.loaded = true;
+        if (img.deferJsWaiting) {
+          img.deferJsWaiting = false;
+          me.runNext();
+        }
+      }
+      this.addUrl(src, script, opt_pos, img);
+    } else {
+      this.addUrl(src, script, opt_pos);
+    }
   } else {
     var str = script.innerHTML || script.textContent || script.data;
     if (str) {
@@ -384,11 +400,20 @@ pagespeed.DeferJs.prototype['addStr'] = pagespeed.DeferJs.prototype.addStr;
  * @param {!string} url returns javascript when fetched.
  * @param {Element} script_elem Psa inserted script used as context element.
  * @param {number} opt_pos Optional position for ordering.
+ * @param {Element} opt_img image whose src is used to fetch the external script 
  */
-pagespeed.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
+pagespeed.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos,
+                                              opt_img) {
   this.logs.push('Add to queue url: ' + url);
   var me = this; // capture closure.
   this.submitTask(function() {
+    if (this.isExperimentalMode) {
+      if (opt_img && !opt_img.loaded) {
+        me.next_--;
+        opt_img.deferJsWaiting = true;
+        return;
+      }
+    }
     me.removeNotProcessedAttributeTillNode(script_elem);
 
     var script = me.origCreateElement_.call(document, 'script');
