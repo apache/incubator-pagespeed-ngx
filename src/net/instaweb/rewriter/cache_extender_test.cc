@@ -574,14 +574,10 @@ TEST_F(CacheExtenderTest, DefangHtml) {
   SetResponseWithDefaultHeaders("a.xml", kContentTypeXml,
                                 "boo!", kShortTtlSec);
 
-  ValidateExpected(
-      "defang",
-      StrCat(CssLinkHref("a.html"),
-             CssLinkHref("a.xhtml"),
-             CssLinkHref("a.xml")),
-      StrCat(CssLinkHref(Encode(kTestDomain, "ce", "0", "a.html", "txt")),
-             CssLinkHref(Encode(kTestDomain, "ce", "0", "a.xhtml", "txt")),
-             CssLinkHref(Encode(kTestDomain, "ce", "0", "a.xml", "txt"))));
+  const GoogleString css_before = StrCat(CssLinkHref("a.html"),
+                                         CssLinkHref("a.xhtml"),
+                                         CssLinkHref("a.xml"));
+  ValidateNoChanges("defang", css_before);
 }
 
 // Negative test to ensure we do not cache-extend CSS that was already

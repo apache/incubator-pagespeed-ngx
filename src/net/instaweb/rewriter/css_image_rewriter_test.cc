@@ -700,18 +700,14 @@ TEST_F(CssImageRewriterTest, FallbackImportsAndUnknownContentType) {
       "  background-image: url(%s);\n"
       // Unapproved Content-Types do not get cache extended.
       "  behavior: url(behavior.htc);\n"
-      "  -moz-content-file: url(%s);\n"
+      "  -moz-content-file: url(doc.html);\n"
       "}}}}}\n";
   const GoogleString css_before = StringPrintf(
-      css_template, "style.css", "image.png", "doc.html");
+      css_template, "style.css", "image.png");
   const GoogleString css_after = StringPrintf(
       css_template,
       Encode(kTestDomain, "ce", "0", "style.css", "css").c_str(),
-      Encode(kTestDomain, "ic", "0", "image.png", "png").c_str(),
-      // TODO(sligocki): HTML, etc. should not be Cache-Extended here.
-      // Currently all recognized non-CSS/JS/image Content-Types will be
-      // cache extended as .txt text/plain.
-      Encode(kTestDomain, "ce", "0", "doc.html", "txt").c_str());
+      Encode(kTestDomain, "ic", "0", "image.png", "png").c_str());
 
   ValidateRewriteExternalCss("recompress_css_images", css_before, css_after,
                              kExpectFallback | kNoClearFetcher);

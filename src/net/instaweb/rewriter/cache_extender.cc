@@ -226,24 +226,32 @@ RewriteResult CacheExtender::RewriteLoadedResource(
     // security.
     not_cacheable_count_->Add(1);
   } else if (ShouldRewriteResource(headers, now_ms, input_resource, url)) {
-    // Be careful and turn mimetypes that may include executable scripts
-    // into plaintext if we're cache-extending. This closes off some XSS vectors
-    // in case of system misconfiguration. text/plain is a good choice here
-    // as per http://mimesniff.spec.whatwg.org/ it will never get turned into
-    // anything dangerous. Note that we also whitelist "safe" types here,
-    // to do the safe thing in the case of the unexpected.
+    // We must be careful what Content-Types we allow to be cache extended.
+    // Specifically, we do not want to cache extend any Content-Types that
+    // could execute scripts when loaded in a browser because that could
+    // open XSS vectors in case of system misconfiguration.
+    //
+    // We whitelist a set of safe Content-Types here.
+    //
+    // TODO(sligocki): Should we whitelist more Content-Types as well?
+    // We would also have to find and rewrite the URLs to these resources
+    // if we want to cache extend them.
     const ContentType* input_type = input_resource->type();
     if (input_type->IsImage() ||  // images get sniffed only to other images
         input_type->type() == ContentType::kCss ||  // CSS + JS left as-is.
         input_type->type() == ContentType::kJavascript) {
       output_type = input_type;
+      ok = true;
     } else {
-      // Depending on charset, text/plain will either get handled by the
-      // browser as-is or will undergo content-based detection; however that
-      // detection is spec'd to never produce things that can run scripts.
+      // Fail to cache extend a file that isn't an approved type.
+      ok = false;
+
+      // If we decide not to fail to cache extend unapproved types, we
+      // should convert their Content-Type to text/plain because as per
+      // http://mimesniff.spec.whatwg.org/ it will never get turned into
+      // anything dangerous.
       output_type = &kContentTypeText;
     }
-    ok = true;
   }
 
   if (!ok) {
