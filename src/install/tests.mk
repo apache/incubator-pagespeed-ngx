@@ -20,7 +20,7 @@
 #  APACHE_HTTPS_PORT
 #  APACHE_CTRL_BIN
 #  APACHE_DEBUG_PAGESPEED_CONF
-#  PAGESPEED_ROOT
+#  MOD_PAGESPEED_CACHE
 #  INSTALL_DATA_DIR
 
 # We want order of dependencies honored..
@@ -32,7 +32,7 @@ SHELL=/bin/bash
 # Make conf, log, and cache file locations accessible to apache_system_test.sh
 export APACHE_DEBUG_PAGESPEED_CONF
 export APACHE_LOG
-export PAGESPEED_ROOT
+export MOD_PAGESPEED_CACHE
 
 apache_vm_system_tests :
 	$(MAKE) apache_debug_smoke_test
@@ -100,7 +100,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	@echo '***' System-test with cold cache
 	-$(APACHE_CTRL_BIN) stop
 	sleep 2
-	rm -rf $(PAGESPEED_ROOT)/cache/*
+	rm -rf $(MOD_PAGESPEED_CACHE)
 	$(APACHE_CTRL_BIN) start
 	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER) \
 	                                   $(APACHE_HTTPS_SERVER)
@@ -143,7 +143,7 @@ apache_debug_rewrite_test : rewrite_test_prepare apache_install_conf \
 
 rewrite_test_prepare:
 	$(eval OPT_REWRITE_TEST="REWRITE_TEST=1")
-	rm -rf $(PAGESPEED_ROOT)/cache/*
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 # This test checks that when mod_speling is enabled we handle the
 # resource requests properly by nulling out request->filename.  If
@@ -157,7 +157,7 @@ apache_debug_speling_test : speling_test_prepare apache_install_conf \
 
 speling_test_prepare:
 	$(eval OPT_SPELING_TEST="SPELING_TEST=1")
-	rm -rf $(PAGESPEED_ROOT)/cache/*
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 # This test checks that when ModPagespeedFetchWithGzip is enabled we
 # fetch resources from origin with the gzip flag.  Note that big.css
@@ -177,7 +177,7 @@ apache_debug_gzip_test : gzip_test_prepare apache_install_conf \
 
 gzip_test_prepare:
 	$(eval OPT_GZIP_TEST="GZIP_TEST=1")
-	rm -rf $(PAGESPEED_ROOT)/cache/*
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 # Test to make sure Furious is sending its headers
 # TODO(nforman): Make this run multiple times and make sure we don't *always*
@@ -210,7 +210,7 @@ apache_debug_furious_test : furious_test_prepare apache_install_conf \
 
 furious_test_prepare:
 	$(eval OPT_FURIOUS_TEST="FURIOUS_TEST=1")
-	rm -rf $(PAGESPEED_ROOT)/cache/*
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 # This test checks that the ModPagespeedXHeaderValue directive works.
 apache_debug_xheader_test : xheader_test_prepare apache_install_conf \
@@ -227,11 +227,11 @@ apache_debug_xheader_test : xheader_test_prepare apache_install_conf \
 
 xheader_test_prepare:
 	$(eval OPT_XHEADER_TEST="XHEADER_TEST=1")
-	rm -rf $(PAGESPEED_ROOT)/cache/*
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 rewrite_hyperlinks_test_prepare:
 	$(eval OPT_DOMAIN_HYPERLINKS_TEST="DOMAIN_HYPERLINKS_TEST=1")
-	rm -rf $(PAGESPEED_ROOT)/cache/*
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 # This test checks that the ModPagespeedDomainRewriteHyperlinks directive
 # can turn on.  See mod_pagespeed_test/rewrite_domains.html: it has
@@ -246,7 +246,7 @@ apache_debug_rewrite_hyperlinks_test : rewrite_hyperlinks_test_prepare \
 
 rewrite_resource_tags_test_prepare:
 	$(eval OPT_DOMAIN_RESOURCE_TAGS_TEST="DOMAIN_RESOURCE_TAGS_TEST=1")
-	rm -rf $(PAGESPEED_ROOT)/cache/*
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 # This test checks that the ModPagespeedDomainRewriteHyperlinks directive
 # can turn on.  See mod_pagespeed_test/rewrite_domains.html: it has
@@ -306,7 +306,7 @@ apache_debug_shared_mem_lock_sanity_test : shared_mem_lock_test_prepare \
 
 shared_mem_lock_test_prepare:
 	$(eval OPT_SLURP_TEST="SHARED_MEM_LOCK_TEST=1")
-	rm -rf $(PAGESPEED_ROOT)/cache/*
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 # Test that all directives are accepted by the options parser.
 apache_debug_all_directives_test:

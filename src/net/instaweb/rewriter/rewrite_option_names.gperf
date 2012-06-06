@@ -91,7 +91,6 @@ struct OptionName {
 "FileCacheCleanIntervalMs",             RewriteOptions::kFileCacheCleanIntervalMs
 "FileCachePath",                        RewriteOptions::kFileCachePath
 "FileCacheSizeKb",                      RewriteOptions::kFileCacheCleanSizeKb
-"GeneratedFilePrefix",                  RewriteOptions::kFileNamePrefix
 "HashRefererStatistics",                RewriteOptions::kHashRefererStatistics
 "LRUCacheByteLimit",                    RewriteOptions::kLruCacheByteLimit
 "LRUCacheKbPerProcess",                 RewriteOptions::kLruCacheKbPerProcess

@@ -170,4 +170,23 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithNullSrc) {
   ValidateExpected("http://example.com/", input_html, expected);
 }
 
+TEST_F(JsDisableFilterTest, DisablesScriptOnlyFromFirstSrc) {
+  options()->set_enable_defer_js_experimental(true);
+  const GoogleString input_html = StrCat(
+      kUnrelatedNoscriptTags,
+      "<script random=\"true\">hi1</script>",
+      kUnrelatedTags,
+      "<script random=\"false\">hi2</script>"
+      "<script src=\"1.js\"></script>");
+  const GoogleString expected = StrCat(
+      kUnrelatedNoscriptTags,
+      "<script random=\"true\">hi1</script>",
+      kUnrelatedTags,
+      "<script random=\"false\">hi2</script>"
+      "<script orig_src=\"1.js\" type=\"text/psajs\" orig_index=\"0\">"
+      "</script>");
+
+  ValidateExpected("http://example.com/", input_html, expected);
+}
+
 }  // namespace net_instaweb

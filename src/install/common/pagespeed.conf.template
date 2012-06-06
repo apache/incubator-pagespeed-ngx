@@ -11,12 +11,9 @@
     # line.
     # AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 
-    # The ModPagespeedFileCachePath and
-    # ModPagespeedGeneratedFilePrefix directories must exist and be
-    # writable by the apache user (as specified by the User
-    # directive).
-    ModPagespeedFileCachePath            "@@MODPAGESPEED_CACHE_ROOT@@/cache/"
-    ModPagespeedGeneratedFilePrefix      "@@MODPAGESPEED_CACHE_ROOT@@/files/"
+    # The ModPagespeedFileCachePath directory must exist and be writable
+    # by the apache user (as specified by the User directive).
+    ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
 
     # Override the mod_pagespeed 'rewrite level'. The default level
     # "CoreFilters" uses a set of rewrite filters that are generally

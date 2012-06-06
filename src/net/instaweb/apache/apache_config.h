@@ -131,12 +131,6 @@ class ApacheConfig : public RewriteOptions {
   void set_file_cache_path(GoogleString x) {
     set_option(x, &file_cache_path_);
   }
-  const GoogleString& filename_prefix() const {
-    return filename_prefix_.value();
-  }
-  void set_filename_prefix(GoogleString x) {
-    set_option(x, &filename_prefix_);
-  }
   const GoogleString& slurp_directory() const {
     return slurp_directory_.value();
   }
@@ -232,7 +226,6 @@ class ApacheConfig : public RewriteOptions {
 
   Option<GoogleString> fetcher_proxy_;
   Option<GoogleString> file_cache_path_;
-  Option<GoogleString> filename_prefix_;
   Option<GoogleString> slurp_directory_;
 
   ApacheOption<RefererStatisticsOutputLevel> referer_statistics_output_level_;

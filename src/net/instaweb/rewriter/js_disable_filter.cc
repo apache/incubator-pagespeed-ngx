@@ -53,13 +53,13 @@ void JsDisableFilter::StartDocument() {
   index_ = 0;
   defer_js_experimental_script_written_ = false;
   defer_js_enabled_ = rewrite_driver_->UserAgentSupportsJsDefer();
+  defer_js_experimental_ =
+      rewrite_driver_->options()->enable_defer_js_experimental();
 }
 
 void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {
   // We are not adding this code in js_defer_disabled_filter to avoid
   // duplication of code for blink and critical line code.
-  bool defer_js_experimental =
-      rewrite_driver_->options()->enable_defer_js_experimental();
   HtmlElement* script_node =
       rewrite_driver_->NewElement(element, HtmlName::kScript);
 
@@ -69,7 +69,7 @@ void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {
   HtmlNode* script_code =
       rewrite_driver_->NewCharactersNode(
           script_node,
-          (defer_js_experimental ?
+          (defer_js_experimental_ ?
            JsDisableFilter::kEnableJsExperimental :
            JsDisableFilter::kDisableJsExperimental));
   rewrite_driver_->AppendChild(element, script_node);
@@ -101,6 +101,8 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
             rewrite_driver_->MakeName("orig_src"), url,
             HtmlElement::DOUBLE_QUOTE);
         element->DeleteAttribute(HtmlName::kSrc);
+      } else if (defer_js_experimental_ && index_ == 0) {
+        return;
       }
       HtmlElement::Attribute* type = element->FindAttribute(HtmlName::kType);
       if ((type != NULL) && (type->DecodedValueOrNull() != NULL)) {

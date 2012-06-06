@@ -79,7 +79,7 @@ stage_install_debian() {
 do_package_in_fakeroot() {
   FAKEROOTFILE=$(mktemp -t fakeroot.tmp.XXXXXX) || exit 1
   fakeroot -s "${FAKEROOTFILE}" -- \
-    chown -R ${APACHE_USER}:${APACHE_USER} ${STAGEDIR}${MODPAGESPEED_CACHE_ROOT}
+    chown -R ${APACHE_USER}:${APACHE_USER} ${STAGEDIR}${MOD_PAGESPEED_CACHE}
   fakeroot -i "${FAKEROOTFILE}" -- \
     dpkg-deb -b "${STAGEDIR}" .
   rm -f "${FAKEROOTFILE}"
@@ -227,7 +227,7 @@ COMMON_PREDEPS="dpkg (>= 1.14.0)"
 
 APACHE_MODULEDIR="/usr/lib/apache2/modules"
 APACHE_CONFDIR="/etc/apache2/mods-available"
-MODPAGESPEED_CACHE_ROOT="/var/mod_pagespeed"
+MOD_PAGESPEED_CACHE="/var/cache/mod_pagespeed"
 APACHE_USER="www-data"
 COMMENT_OUT_DEFLATE=
 

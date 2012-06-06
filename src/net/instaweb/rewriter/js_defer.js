@@ -407,7 +407,7 @@ pagespeed.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos,
   this.logs.push('Add to queue url: ' + url);
   var me = this; // capture closure.
   this.submitTask(function() {
-    if (this.isExperimentalMode) {
+    if (pagespeed.DeferJs.isExperimentalMode) {
       if (opt_img && !opt_img.loaded) {
         me.next_--;
         opt_img.deferJsWaiting = true;

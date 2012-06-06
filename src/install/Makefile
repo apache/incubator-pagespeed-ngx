@@ -73,7 +73,7 @@ MODS_AVAILABLE_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-available ]; then \
 	echo $(APACHE_ROOT)/mods-available; fi)
 
 # Determines should mod_pagespeed should write files
-MOD_PAGESPEED_FILE_ROOT = /var/mod_pagespeed
+MOD_PAGESPEED_CACHE = /var/cache/mod_pagespeed
 
 # The username used to run apache.  This is needed to create the directory
 # used to store mod_pagespeed files and cache data.
@@ -95,7 +95,7 @@ echo_vars:
 	@echo "   APACHE_ROOT=$(APACHE_ROOT)"
 	@echo "   APACHE_START=$(APACHE_START)"
 	@echo "   APACHE_STOP=$(APACHE_STOP)"
-	@echo "   MOD_PAGESPEED_FILE_ROOT=$(MOD_PAGESPEED_FILE_ROOT)"
+	@echo "   MOD_PAGESPEED_CACHE=$(MOD_PAGESPEED_CACHE)"
 	@echo "   MODS_ENABLED_DIR=$(MODS_ENABLED_DIR)"
 	@echo "   MODS_AVAILABLE_DIR=$(MODS_AVAILABLE_DIR)"
 	@echo "   STAGING_DIR=$(STAGING_DIR)"
@@ -289,7 +289,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s!@@APACHE_HTTPS_DOMAIN@@!$(APACHE_HTTPS_DOMAIN)!g" \
 	    -e "s!@@APACHE_MODULES@@!$(APACHE_MODULES)!g" \
 	    -e "s!@@APACHE_SECONDARY_PORT@@!$(APACHE_SECONDARY_PORT)!g" \
-	    -e "s!@@MODPAGESPEED_CACHE_ROOT@@!$(MOD_PAGESPEED_FILE_ROOT)!g" \
+	    -e "s!@@MOD_PAGESPEED_CACHE@@!$(MOD_PAGESPEED_CACHE)!g" \
 	    -e "s@# ModPagespeedSlurpDirectory ...@$(APACHE_SLURP_DIR_COMMAND)@g" \
 	    -e "s@# ModPagespeedSlurpReadOnly on@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
 	    -e "s|@@TMP_SLURP_DIR@@|$(TMP_SLURP_DIR)|g" \
@@ -351,17 +351,15 @@ install : install_except_module
 	cp $(STAGING_DIR)/mod_pagespeed_ap24.so $(APACHE_MODULES)
 
 mod_pagespeed_file_root :
-	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)/cache
-	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)/secondary_cache
-	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)/files
-	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)-alt/cache
-	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)-alt/secondary_cache
-	mkdir -p $(MOD_PAGESPEED_FILE_ROOT)-alt/files
-	chown -R $(APACHE_USER) $(MOD_PAGESPEED_FILE_ROOT)
+	mkdir -p $(MOD_PAGESPEED_CACHE)
+	chown -R $(APACHE_USER) $(MOD_PAGESPEED_CACHE)
+
+	mkdir -p $(MOD_PAGESPEED_CACHE)-alt
+	chown -R $(APACHE_USER) $(MOD_PAGESPEED_CACHE)-alt
 
 flush_disk_cache :
-	rm -rf $(MOD_PAGESPEED_FILE_ROOT)
-	$(MAKE) MOD_PAGESPEED_FILE_ROOT=$(MOD_PAGESPEED_FILE_ROOT) \
+	rm -rf $(MOD_PAGESPEED_CACHE)
+	$(MAKE) MOD_PAGESPEED_CACHE=$(MOD_PAGESPEED_CACHE) \
 		APACHE_USER=$(APACHE_USER) mod_pagespeed_file_root
 
 # Starts Apache server
@@ -430,8 +428,8 @@ enable_ports_and_file_access :
 	    /usr/sbin/semanage port -m -t http_port_t -p tcp $$port; \
 	done
 	set -x; \
-	for dir in $(MOD_PAGESPEED_FILE_ROOT) \
-	           $(MOD_PAGESPEED_FILE_ROOT)-alt; do \
+	for dir in $(MOD_PAGESPEED_CACHE) \
+	           $(MOD_PAGESPEED_CACHE)-alt; do \
 	  mkdir $$dir; \
 	  chown $(APACHE_USER) $dir; \
 	  chcon -R -t httpd_sys_content_t $$dir; \
@@ -448,7 +446,6 @@ APACHE_DEBUG_PORT=80
 APACHE_HTTPS_PORT=
 APACHE_CTRL_BIN=$(APACHE_CONTROL_PROGRAM)
 APACHE_DEBUG_PAGESPEED_CONF=$(APACHE_CONF)/pagespeed.conf
-PAGESPEED_ROOT=$(MOD_PAGESPEED_FILE_ROOT)
 INSTALL_DATA_DIR=.
 
 include tests.mk

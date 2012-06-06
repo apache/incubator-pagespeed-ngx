@@ -201,7 +201,7 @@ REPOCONFIG="http://dl.google.com/linux/${PACKAGE#google-}/rpm/stable"
 verify_channel
 
 APACHE_CONFDIR="/etc/httpd/conf.d"
-MODPAGESPEED_CACHE_ROOT="/var/www/mod_pagespeed"
+MOD_PAGESPEED_CACHE="/var/cache/mod_pagespeed"
 APACHE_USER="apache"
 COMMENT_OUT_DEFLATE=
 

@@ -638,7 +638,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(81, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(80, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));
@@ -823,9 +823,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("FileCacheSizeKb"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kFileCacheCleanSizeKb));
-  EXPECT_EQ(StringPiece("GeneratedFilePrefix"),
-            RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kFileNamePrefix));
   EXPECT_EQ(StringPiece("HashRefererStatistics"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kHashRefererStatistics));

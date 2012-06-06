@@ -728,16 +728,10 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
 
       if (config->enabled()) {
         GoogleString file_cache_path = config->file_cache_path();
-        if (config->filename_prefix().empty() || file_cache_path.empty()) {
-          GoogleString buf = StrCat(
-              "mod_pagespeed is enabled.  "
-              "The following directives must not be NULL\n",
-              kModPagespeedFileCachePath, "=",
-              StrCat(
-                  config->file_cache_path(), "\n",
-                  kModPagespeedGeneratedFilePrefix, "=",
-                  config->filename_prefix(), "\n"));
-          manager->message_handler()->Message(kError, "%s", buf.c_str());
+        if (file_cache_path.empty()) {
+          manager->message_handler()->Message(
+              kError, "mod_pagespeed is enabled. %s must not be empty\n",
+              kModPagespeedFileCachePath);
           return HTTP_INTERNAL_SERVER_ERROR;
         }
       }
@@ -999,16 +993,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     return ret;
   }
 
-  // Likewise for GeneratedFilePrefix.
-  if (StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix)) {
-    config->set_filename_prefix(arg);
-    if (!give_apache_user_permissions(factory)) {
-      ret = apr_pstrcat(cmd->pool, "Directory ", arg,
-                        " does not exist and can't be created.", NULL);
-    }
-    return ret;
-  }
-
   // Rename deprecated options so lookup below will succeed.
   if (StringCaseEqual(directive, kModPagespeedImgInlineMaxBytes)) {
     directive = kModPagespeedImageInlineMaxBytes;
@@ -1110,6 +1094,8 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedRetainComment)) {
     options->RetainComment(arg);
   } else if (StringCaseEqual(directive, kModPagespeedUrlPrefix)) {
+    warn_deprecated(cmd, "Please remove it from your configuration.");
+  } else if (StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (StringCaseEqual(directive, kModPagespeedBlockingRewriteKey)) {
     options->set_blocking_rewrite_key(arg);
@@ -1296,7 +1282,7 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedForceCaching,
         "Ignore HTTP cache headers and TTLs"),
   APACHE_CONFIG_OPTION(kModPagespeedGeneratedFilePrefix,
-        "Set generated file's prefix"),
+        "Deprecated.  No longer used."),
   APACHE_CONFIG_OPTION(kModPagespeedImageMaxRewritesAtOnce,
         "Set bound on number of images being rewritten at one time "
         "(0 = unbounded)."),

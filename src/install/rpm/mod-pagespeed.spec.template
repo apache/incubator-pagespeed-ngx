@@ -71,8 +71,7 @@ rm -rf "$RPM_BUILD_ROOT"
 @@APACHE_MODULEDIR@@/mod_pagespeed_ap24.so
 %config(noreplace) @@APACHE_CONFDIR@@/pagespeed.conf
 /etc/cron.daily/mod-pagespeed
-%attr(-, @@APACHE_USER@@, @@APACHE_USER@@) @@MODPAGESPEED_CACHE_ROOT@@/cache
-%attr(-, @@APACHE_USER@@, @@APACHE_USER@@) @@MODPAGESPEED_CACHE_ROOT@@/files
+%attr(-, @@APACHE_USER@@, @@APACHE_USER@@) @@MOD_PAGESPEED_CACHE@@
 
 #------------------------------------------------------------------------------
 #   Pre install script

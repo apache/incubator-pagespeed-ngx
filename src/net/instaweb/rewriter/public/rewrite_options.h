@@ -191,7 +191,6 @@ class RewriteOptions {
     kFileCacheCleanIntervalMs,
     kFileCacheCleanSizeKb,
     kFileCachePath,
-    kFileNamePrefix,
     kHashRefererStatistics,
     kLruCacheByteLimit,
     kLruCacheKbPerProcess,

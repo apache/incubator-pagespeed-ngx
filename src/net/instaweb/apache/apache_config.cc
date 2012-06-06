@@ -33,7 +33,6 @@ ApacheConfig::ApacheConfig() {
 void ApacheConfig::Init() {
   add_option("", &fetcher_proxy_, "afp", RewriteOptions::kFetcherProxy);
   add_option("", &file_cache_path_, "afcp", RewriteOptions::kFileCachePath);
-  add_option("", &filename_prefix_, "afnp", RewriteOptions::kFileNamePrefix);
   add_option("", &slurp_directory_, "asd", RewriteOptions::kSlurpDirectory);
 
   add_option(kOrganized, &referer_statistics_output_level_, "arso",
@@ -77,7 +76,6 @@ void ApacheConfig::Init() {
   //
   // fetcher_proxy_.DoNotUseForSignatureComputation();
   // file_cache_path_.DoNotUseForSignatureComputation();
-  // filename_prefix_.DoNotUseForSignatureComputation();
   // slurp_directory_.DoNotUseForSignatureComputation();
   // referer_statistics_output_level_.DoNotUseForSignatureComputation();
   // collect_referer_statistics_.DoNotUseForSignatureComputation();

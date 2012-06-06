@@ -483,10 +483,10 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   echo TEST: Cache flushing works by touching cache.flush in cache directory.
 
   echo Clear out our existing state before we begin the test.
-  echo $SUDO touch $PAGESPEED_ROOT/cache/cache.flush
-  $SUDO touch $PAGESPEED_ROOT/cache/cache.flush
-  echo $SUDO touch $PAGESPEED_ROOT/secondary_cache/secondary.cache.flush
-  $SUDO touch $PAGESPEED_ROOT/secondary_cache/secondary.cache.flush
+  echo $SUDO touch $MOD_PAGESPEED_CACHE/cache.flush
+  $SUDO touch $MOD_PAGESPEED_CACHE/cache.flush
+  echo $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
+  $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
 
   URL_PATH=cache_flush_test.html?ModPagespeedFilters=inline_css
   URL=$TEST_ROOT/$URL_PATH
@@ -540,8 +540,8 @@ mod_pagespeed_test/$URL_PATH
   # a race due to 1-second granularity of file-system timestamp checks.  For
   # the test to pass we need to see time pass from the previous 'touch'.
   sleep 2
-  echo $SUDO touch $PAGESPEED_ROOT/cache/cache.flush
-  $SUDO touch $PAGESPEED_ROOT/cache/cache.flush
+  echo $SUDO touch $MOD_PAGESPEED_CACHE/cache.flush
+  $SUDO touch $MOD_PAGESPEED_CACHE/cache.flush
   fetch_until $URL 'grep -c green' 1
 
   NUM_FLUSHES=$($WGET_DUMP $STATISTICS_URL | grep cache_flush_count \
@@ -558,8 +558,8 @@ mod_pagespeed_test/$URL_PATH
   # fetch_until $SECONDARY_URL 'grep -c blue' 1
 
   # Now flush the secondary cache too so it can see the change to 'green'.
-  echo $SUDO touch $PAGESPEED_ROOT/secondary_cache/secondary.cache.flush
-  $SUDO touch $PAGESPEED_ROOT/secondary_cache/secondary.cache.flush
+  echo $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
+  $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
   fetch_until $SECONDARY_URL 'grep -c green' 1
 
   # Clean up update.css from mod_pagespeed_test so it doesn't leave behind
