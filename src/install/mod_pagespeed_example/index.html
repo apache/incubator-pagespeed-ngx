@@ -22,6 +22,7 @@
       the <span class="code">mod_pagespeed</span> difference!
     </p>
     <table>
+
 <tr>
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-instrumentation-add">
@@ -38,27 +39,6 @@
   </td>
   <td class="after">
     <a href="add_instrumentation.html?ModPagespeed=on&ModPagespeedFilters=add_instrumentation">
-      after
-    </a>
-  </td>
-</tr>
-
-<tr>
-  <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-cache-extend">
-      extend_cache
-    </a>
-  </td>
-  <td class="desc">
-    Improves cacheability.
-  </td>
-  <td class="before">
-    <a href="extend_cache.html?ModPagespeed=off">
-      before
-    </a>
-  </td>
-  <td class="after">
-    <a href="extend_cache.html?ModPagespeed=on&ModPagespeedFilters=extend_cache">
       after
     </a>
   </td>
@@ -108,27 +88,6 @@
 
 <tr>
   <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-js-combine">
-      combine_javascript
-    </a>
-  </td>
-  <td class="desc">
-    Combines multiple JavaScript files into one.
-  </td>
-  <td class="before">
-    <a href="combine_javascript.html?ModPagespeed=off">
-      before
-    </a>
-  </td>
-  <td class="after">
-    <a href="combine_javascript.html?ModPagespeed=on&ModPagespeedFilters=combine_javascript">
-      after
-    </a>
-  </td>
-</tr>
-
-<tr>
-  <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-head-combine">
       combine_heads
     </a>
@@ -143,6 +102,27 @@
   </td>
   <td class="after">
     <a href="combine_heads.html?ModPagespeed=on&ModPagespeedFilters=combine_heads">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-js-combine">
+      combine_javascript
+    </a>
+  </td>
+  <td class="desc">
+    Combines multiple JavaScript files into one.
+  </td>
+  <td class="before">
+    <a href="combine_javascript.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="combine_javascript.html?ModPagespeed=on&ModPagespeedFilters=combine_javascript">
       after
     </a>
   </td>
@@ -171,6 +151,48 @@
 
 <tr>
   <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-attribute-elide">
+      elide_attributes
+    </a>
+  </td>
+  <td class="desc">
+    Removes unnecessary attributes in HTML tags.
+  </td>
+  <td class="before">
+    <a href="elide_attributes.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="elide_attributes.html?ModPagespeed=on&ModPagespeedFilters=elide_attributes">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-cache-extend">
+      extend_cache
+    </a>
+  </td>
+  <td class="desc">
+    Improves cacheability.
+  </td>
+  <td class="before">
+    <a href="extend_cache.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="extend_cache.html?ModPagespeed=on&ModPagespeedFilters=extend_cache">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-rewrite">
       fallback_rewrite_css_urls
     </a>
@@ -192,62 +214,21 @@
 
 <tr>
   <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-above_scripts">
-      move_css_above_scripts
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-flatten-css-imports">
+      flatten_css_imports
     </a>
   </td>
   <td class="desc">
-    Moves CSS Above Scripts.
+    Flattens @import rules in CSS by replacing the rule with the contents of
+    the imported resource.
   </td>
   <td class="before">
-    <a href="move_css_above_scripts.html?ModPagespeed=off">
+    <a href="flatten_css_imports.html?ModPagespeed=off">
       before
     </a>
   </td>
   <td class="after">
-    <a href="move_css_above_scripts.html?ModPagespeed=on&ModPagespeedFilters=move_css_above_scripts">
-      after
-    </a>
-  </td>
-</tr>
-
-<tr>
-  <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-to-head">
-      move_css_to_head
-    </a>
-  </td>
-  <td class="desc">
-    Moves CSS into the &lt;head&gt; element.
-  </td>
-  <td class="before">
-    <a href="move_css_to_head.html?ModPagespeed=off">
-      before
-    </a>
-  </td>
-  <td class="after">
-    <a href="move_css_to_head.html?ModPagespeed=on&ModPagespeedFilters=move_css_to_head">
-      after
-    </a>
-  </td>
-</tr>
-
-<tr>
-  <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-attribute-elide">
-      elide_attributes
-    </a>
-  </td>
-  <td class="desc">
-    Removes unnecessary attributes in HTML tags.
-  </td>
-  <td class="before">
-    <a href="elide_attributes.html?ModPagespeed=off">
-      before
-    </a>
-  </td>
-  <td class="after">
-    <a href="elide_attributes.html?ModPagespeed=on&ModPagespeedFilters=elide_attributes">
+    <a href="flatten_css_imports.html?ModPagespeed=on&ModPagespeedFilters=rewrite_css,flatten_css_imports">
       after
     </a>
   </td>
@@ -298,28 +279,6 @@
 
 <tr>
   <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-flatten-css-imports">
-      flatten_css_imports
-    </a>
-  </td>
-  <td class="desc">
-    Flattens @import rules in CSS by replacing the rule with the contents of
-    the imported resource.
-  </td>
-  <td class="before">
-    <a href="flatten_css_imports.html?ModPagespeed=off">
-      before
-    </a>
-  </td>
-  <td class="after">
-    <a href="flatten_css_imports.html?ModPagespeed=on&ModPagespeedFilters=rewrite_css,flatten_css_imports">
-      after
-    </a>
-  </td>
-</tr>
-
-<tr>
-  <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-js-inline">
       inline_javascript
     </a>
@@ -334,6 +293,49 @@
   </td>
   <td class="after">
     <a href="inline_javascript.html?ModPagespeed=on&ModPagespeedFilters=inline_javascript">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-image-optimize#inline_preview_images">
+      inline_preview_images
+    </a>
+  </td>
+  <td class="desc">
+    Delays original images; serves inlined, low-quality placeholder images until
+    originals are loaded.
+  </td>
+  <td class="before">
+    <a href="inline_preview_images.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="inline_preview_images.html?ModPagespeed=on&ModPagespeedFilters=inline_preview_images,insert_image_dimensions">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-insert-ga">
+      insert_ga
+    </a>
+  </td>
+  <td class="desc">
+    Inserts Google Analytics javascript snippet.
+  </td>
+  <td class="before">
+    <a href="insert_ga.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="insert_ga.html?ModPagespeed=on&ModPagespeedFilters=insert_ga">
       after
     </a>
   </td>
@@ -385,6 +387,69 @@
 
 <tr>
   <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-make-google-analytics-async">
+      make_google_analytics_async
+    </a>
+  </td>
+  <td class="desc">
+    Converts synchronous Google Analytics code to load asynchronously.
+  </td>
+  <td class="before">
+    <a href="make_google_analytics_async.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="make_google_analytics_async.html?ModPagespeed=on&ModPagespeedFilters=make_google_analytics_async">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-above_scripts">
+      move_css_above_scripts
+    </a>
+  </td>
+  <td class="desc">
+    Moves CSS Above Scripts.
+  </td>
+  <td class="before">
+    <a href="move_css_above_scripts.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="move_css_above_scripts.html?ModPagespeed=on&ModPagespeedFilters=move_css_above_scripts">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-to-head">
+      move_css_to_head
+    </a>
+  </td>
+  <td class="desc">
+    Moves CSS into the &lt;head&gt; element.
+  </td>
+  <td class="before">
+    <a href="move_css_to_head.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="move_css_to_head.html?ModPagespeed=on&ModPagespeedFilters=move_css_to_head">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-outline">
       outline_css
     </a>
@@ -427,27 +492,6 @@
 
 <tr>
   <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-quote-remove">
-      remove_quotes
-    </a>
-  </td>
-  <td class="desc">
-    Removes unnecessary quotes in HTML tags.
-  </td>
-  <td class="before">
-    <a href="remove_quotes.html?ModPagespeed=off">
-      before
-    </a>
-  </td>
-  <td class="after">
-    <a href="remove_quotes.html?ModPagespeed=on&ModPagespeedFilters=remove_quotes">
-      after
-    </a>
-  </td>
-</tr>
-
-<tr>
-  <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-comment-remove">
       remove_comments
     </a>
@@ -469,21 +513,20 @@
 
 <tr>
   <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-rewrite-style-attributes">
-      rewrite_style_attributes
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-quote-remove">
+      remove_quotes
     </a>
   </td>
   <td class="desc">
-    Rewrite the CSS in style attributes by applying the configured rewrite_css
-    filter to it.
+    Removes unnecessary quotes in HTML tags.
   </td>
   <td class="before">
-    <a href="rewrite_style_attributes.html?ModPagespeed=off">
+    <a href="remove_quotes.html?ModPagespeed=off">
       before
     </a>
   </td>
   <td class="after">
-    <a href="rewrite_style_attributes.html?ModPagespeed=on&ModPagespeedFilters=rewrite_style_attributes,rewrite_css,rewrite_images">
+    <a href="remove_quotes.html?ModPagespeed=on&ModPagespeedFilters=remove_quotes">
       after
     </a>
   </td>
@@ -491,63 +534,21 @@
 
 <tr>
   <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-rewrite-style-attributes">
-      rewrite_style_attributes_with_url
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-image-optimize#resize_mobile_images">
+      resize_mobile_images
     </a>
   </td>
   <td class="desc">
-    Rewrite the CSS in style attributes by applying the configured rewrite_css
-    filter to it, but only if the attribute contains the text 'url('.
+    Just like inline_preview_images, but uses smaller placeholder images for mobile
+    browsers.
   </td>
   <td class="before">
-    <a href="rewrite_style_attributes.html?ModPagespeed=off">
+    <a href="resize_mobile_images.html?ModPagespeed=off">
       before
     </a>
   </td>
   <td class="after">
-    <a href="rewrite_style_attributes.html?ModPagespeed=on&ModPagespeedFilters=rewrite_style_attributes_with_url,rewrite_css,rewrite_images">
-      after
-    </a>
-  </td>
-</tr>
-
-<tr>
-  <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-trim-urls">
-      trim_urls
-    </a>
-  </td>
-  <td class="desc">
-    Removes unnecessary prefixes from URLs.
-  </td>
-  <td class="before">
-    <a href="trim_urls.html?ModPagespeed=off">
-      before
-    </a>
-  </td>
-  <td class="after">
-    <a href="trim_urls.html?ModPagespeed=on&ModPagespeedFilters=trim_urls">
-      after
-    </a>
-  </td>
-</tr>
-
-<tr>
-  <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-make-google-analytics-async">
-      make_google_analytics_async
-    </a>
-  </td>
-  <td class="desc">
-    Converts synchronous Google Analytics code to load asynchronously.
-  </td>
-  <td class="before">
-    <a href="make_google_analytics_async.html?ModPagespeed=off">
-      before
-    </a>
-  </td>
-  <td class="after">
-    <a href="make_google_analytics_async.html?ModPagespeed=on&ModPagespeedFilters=make_google_analytics_async">
+    <a href="resize_mobile_images.html?ModPagespeed=on&ModPagespeedFilters=resize_mobile_images,insert_image_dimensions">
       after
     </a>
   </td>
@@ -576,7 +577,7 @@
 
 <tr>
   <td class="code">
-    rewrite_css + cache_extend
+    rewrite_css + extend_cache
   </td>
   <td class="desc">
     Cache extends images in CSS.
@@ -653,6 +654,51 @@
     </a>
   </td>
 </tr>
+
+<tr>
+  <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-rewrite-style-attributes">
+      rewrite_style_attributes
+    </a>
+  </td>
+  <td class="desc">
+    Rewrite the CSS in style attributes by applying the configured rewrite_css
+    filter to it.
+  </td>
+  <td class="before">
+    <a href="rewrite_style_attributes.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="rewrite_style_attributes.html?ModPagespeed=on&ModPagespeedFilters=rewrite_style_attributes,rewrite_css,rewrite_images">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr>
+  <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-rewrite-style-attributes">
+      rewrite_style_attributes_with_url
+    </a>
+  </td>
+  <td class="desc">
+    Rewrite the CSS in style attributes by applying the configured rewrite_css
+    filter to it, but only if the attribute contains the text 'url('.
+  </td>
+  <td class="before">
+    <a href="rewrite_style_attributes.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="rewrite_style_attributes.html?ModPagespeed=on&ModPagespeedFilters=rewrite_style_attributes_with_url,rewrite_css,rewrite_images">
+      after
+    </a>
+  </td>
+</tr>
+
 <tr>
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-image-sprite">
@@ -673,68 +719,28 @@
     </a>
   </td>
 </tr>
+
 <tr>
   <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-insert-ga">
-      insert_ga
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-trim-urls">
+      trim_urls
     </a>
   </td>
   <td class="desc">
-    Inserts Google Analytics javascript snippet.
+    Removes unnecessary prefixes from URLs.
   </td>
   <td class="before">
-    <a href="insert_ga.html?ModPagespeed=off">
+    <a href="trim_urls.html?ModPagespeed=off">
       before
     </a>
   </td>
   <td class="after">
-    <a href="insert_ga.html?ModPagespeed=on&ModPagespeedFilters=insert_ga">
+    <a href="trim_urls.html?ModPagespeed=on&ModPagespeedFilters=trim_urls">
       after
     </a>
   </td>
 </tr>
-<tr>
-  <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-image-optimize#inline_preview_images">
-      inline_preview_images
-    </a>
-  </td>
-  <td class="desc">
-    Delays original images; serves inlined, low-quality placeholder images until
-    originals are loaded.
-  </td>
-  <td class="before">
-    <a href="inline_preview_images.html?ModPagespeed=off">
-      before
-    </a>
-  </td>
-  <td class="after">
-    <a href="inline_preview_images.html?ModPagespeed=on&ModPagespeedFilters=inline_preview_images,insert_image_dimensions">
-      after
-    </a>
-  </td>
-</tr>
-<tr>
-  <td class="code">
-    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-image-optimize#resize_mobile_images">
-      resize_mobile_images
-    </a>
-  </td>
-  <td class="desc">
-    Just like inline_preview_images, but uses smaller placeholder images for mobile
-    browsers.
-  </td>
-  <td class="before">
-    <a href="resize_mobile_images.html?ModPagespeed=off">
-      before
-    </a>
-  </td>
-  <td class="after">
-    <a href="resize_mobile_images.html?ModPagespeed=on&ModPagespeedFilters=resize_mobile_images,insert_image_dimensions">
-      after
-    </a>
-  </td>
-</tr>
+
     </table>
   </body>
 <html>
