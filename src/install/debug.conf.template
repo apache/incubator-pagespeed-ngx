@@ -172,9 +172,10 @@ ModPagespeedAvoidRenamingIntrospectiveJavascript off
 #COVERAGE   ModPagespeedFileCacheCleanIntervalMs 3600000
 #COVERAGE   ModPagespeedLRUCacheKbPerProcess     1024
 #COVERAGE   ModPagespeedLRUCacheByteLimit        16384
+#COVERAGE   ModPagespeedCssFlattenMaxBytes       2048
 #COVERAGE   ModPagespeedCssInlineMaxBytes        2048
-#COVERAGE   ModPagespeedImageInlineMaxBytes      2048
 #COVERAGE   ModPagespeedCssImageInlineMaxBytes   2048
+#COVERAGE   ModPagespeedImageInlineMaxBytes      2048
 #COVERAGE   ModPagespeedJsInlineMaxBytes         2048
 #COVERAGE   ModPagespeedCssOutlineMinBytes       3000
 #COVERAGE   ModPagespeedJsOutlineMinBytes        3000
@@ -361,6 +362,7 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedBlockingRewriteKey test
 #ALL_DIRECTIVES ModPagespeedCollectRefererStatistics false
 #ALL_DIRECTIVES ModPagespeedCombineAcrossPaths true
+#ALL_DIRECTIVES ModPagespeedCssFlattenMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssImageInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssOutlineMinBytes 2000

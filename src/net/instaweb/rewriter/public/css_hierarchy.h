@@ -76,6 +76,7 @@ class CssHierarchy {
                       const StringPiece input_contents,
                       bool is_xhtml,
                       bool has_unparseables,
+                      int64 flattened_result_limit,
                       Css::Stylesheet* stylesheet,
                       MessageHandler* message_handler);
 
@@ -118,6 +119,9 @@ class CssHierarchy {
 
   bool unparseable_detected() const { return unparseable_detected_; }
   void set_unparseable_detected(bool ok) { unparseable_detected_ = ok; }
+
+  bool flattened_result_limit() const { return flattened_result_limit_; }
+  void set_flattened_result_limit(int64 x) { flattened_result_limit_ = x; }
 
   // If we haven't already, determine the charset of this CSS, then check if
   // it is compatible with the charset of its parent; currently they are
@@ -268,6 +272,16 @@ class CssHierarchy {
 
   // An indication of whether anything unparseable was detected in this CSS.
   bool unparseable_detected_;
+
+  // The limit to the size of the result of flattening (0 means no limit).
+  // If the flattened result would be this much or more, flattening will be
+  // aborted. TODO(matterbury): Investigate whether we can, or ought to,
+  // flatten nested @imports that do fit within the limit [eg. a.css imports
+  // b.css then has a load of CSS; b.css imports c.ss then some CSS; say the
+  // flattened version of b.css fits in the limit, but the flattened version
+  // of a.css does not; we could flatten b.css then change the @import in
+  // a.css to import the flattened version, saving the fetch of c.css].
+  int64 flattened_result_limit_;
 
   // For logging messages.
   MessageHandler* message_handler_;

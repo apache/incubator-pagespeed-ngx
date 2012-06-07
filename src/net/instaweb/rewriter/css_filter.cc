@@ -334,6 +334,7 @@ void CssFilter::Context::RewriteCssFromRoot(const StringPiece& contents,
 
   hierarchy_.InitializeRoot(css_base_gurl_, css_trim_gurl_, contents,
                             driver_->doctype().IsXhtml(), has_unparseables,
+                            driver_->options()->css_flatten_max_bytes(),
                             stylesheet, driver_->message_handler());
 
   css_rewritten_ = css_image_rewriter_->RewriteCss(ImageInlineMaxBytes(),
@@ -424,6 +425,13 @@ void CssFilter::Context::Harvest() {
     }
 
   } else {
+    // If we are limiting the size of the flattened result, work that out now;
+    // simply rolling up the contents does that nicely.
+    if (hierarchy_.flattening_succeeded() &&
+      hierarchy_.flattened_result_limit() > 0) {
+      hierarchy_.RollUpContents();
+    }
+
     // If CSS was successfully parsed.
     hierarchy_.RollUpStylesheets();
 

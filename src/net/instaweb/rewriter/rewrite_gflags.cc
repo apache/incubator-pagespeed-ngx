@@ -72,6 +72,9 @@ DEFINE_int32(
 DEFINE_int64(js_inline_max_bytes,
              net_instaweb::RewriteOptions::kDefaultJsInlineMaxBytes,
              "Number of bytes below which javascript will be inlined.");
+DEFINE_int64(css_flatten_max_bytes,
+             net_instaweb::RewriteOptions::kDefaultCssFlattenMaxBytes,
+             "Number of bytes below which stylesheets will be flattened.");
 DEFINE_int64(css_inline_max_bytes,
              net_instaweb::RewriteOptions::kDefaultCssInlineMaxBytes,
              "Number of bytes below which stylesheets will be inlined.");
@@ -231,6 +234,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("image_inline_max_bytes")) {
     options->set_image_inline_max_bytes(FLAGS_image_inline_max_bytes);
+  }
+  if (WasExplicitlySet("css_flatten_max_bytes")) {
+    options->set_css_flatten_max_bytes(FLAGS_css_flatten_max_bytes);
   }
   if (WasExplicitlySet("css_image_inline_max_bytes")) {
     options->set_css_image_inline_max_bytes(FLAGS_css_image_inline_max_bytes);

@@ -252,6 +252,7 @@ TEST_F(RewriteQueryTest, OutputQueryandHeaders) {
                "&ModPagespeedCssImageInlineMaxBytes=7"
                "&ModPagespeedJsInlineMaxBytes=11"
                "&ModPagespeedDomainShardCount=100"
+               "&ModPagespeedCssFlattenMaxBytes=13"
                "&abc=1"
                "&def",
                "ModPagespeedFilters;inline_css;"

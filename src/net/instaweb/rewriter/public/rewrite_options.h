@@ -128,6 +128,7 @@ class RewriteOptions {
     kCacheInvalidationTimestamp,
     kCombineAcrossPaths,
     kCriticalImagesCacheExpirationTimeMs,
+    kCssFlattenMaxBytes,
     kCssImageInlineMaxBytes,
     kCssInlineMaxBytes,
     kCssOutlineMinBytes,
@@ -272,11 +273,12 @@ class RewriteOptions {
     kOptionValueInvalid
   };
 
-  static const int64 kDefaultCssInlineMaxBytes;
-  static const int64 kDefaultImageInlineMaxBytes;
+  static const int64 kDefaultCssFlattenMaxBytes;
   static const int64 kDefaultCssImageInlineMaxBytes;
-  static const int64 kDefaultJsInlineMaxBytes;
+  static const int64 kDefaultCssInlineMaxBytes;
   static const int64 kDefaultCssOutlineMinBytes;
+  static const int64 kDefaultImageInlineMaxBytes;
+  static const int64 kDefaultJsInlineMaxBytes;
   static const int64 kDefaultJsOutlineMinBytes;
   static const int64 kDefaultProgressiveJpegMinBytes;
   static const int64 kDefaultMaxHtmlCacheTimeMs;
@@ -565,6 +567,10 @@ class RewriteOptions {
     set_option(x, &progressive_jpeg_min_bytes_);
   }
 
+  int64 css_flatten_max_bytes() const { return css_flatten_max_bytes_.value(); }
+  void set_css_flatten_max_bytes(int64 x) {
+    set_option(x, &css_flatten_max_bytes_);
+  }
   // Retrieve the image inlining threshold, but return 0 if it's disabled.
   int64 ImageInlineMaxBytes() const;
   void set_image_inline_max_bytes(int64 x);
@@ -1530,11 +1536,12 @@ class RewriteOptions {
 
   MutexedOptionInt64MergeWithMax cache_invalidation_timestamp_;
 
-  Option<int64> css_inline_max_bytes_;
-  Option<int64> image_inline_max_bytes_;
+  Option<int64> css_flatten_max_bytes_;
   Option<int64> css_image_inline_max_bytes_;
-  Option<int64> js_inline_max_bytes_;
+  Option<int64> css_inline_max_bytes_;
   Option<int64> css_outline_min_bytes_;
+  Option<int64> image_inline_max_bytes_;
+  Option<int64> js_inline_max_bytes_;
   Option<int64> js_outline_min_bytes_;
   Option<int64> progressive_jpeg_min_bytes_;
   // The max Cache-Control TTL for HTML.

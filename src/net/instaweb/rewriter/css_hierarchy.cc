@@ -58,6 +58,7 @@ void CssHierarchy::InitializeRoot(const GoogleUrl& css_base_url,
                                   const StringPiece input_contents,
                                   bool is_xhtml,
                                   bool has_unparseables,
+                                  int64 flattened_result_limit,
                                   Css::Stylesheet* stylesheet,
                                   MessageHandler* message_handler) {
   css_base_url_.Reset(css_base_url);
@@ -66,6 +67,7 @@ void CssHierarchy::InitializeRoot(const GoogleUrl& css_base_url,
   stylesheet_.reset(stylesheet);
   is_xhtml_ = is_xhtml;
   unparseable_detected_ = has_unparseables;
+  flattened_result_limit_ = flattened_result_limit;
   message_handler_ = message_handler;
 }
 
@@ -77,6 +79,7 @@ void CssHierarchy::InitializeNested(const CssHierarchy& parent,
   // These are invariant and propagate from our parent.
   css_trim_url_.Reset(parent.css_trim_url());
   is_xhtml_ = parent.is_xhtml_;
+  flattened_result_limit_ = parent.flattened_result_limit_;
   message_handler_ = parent.message_handler_;
 }
 
@@ -233,11 +236,13 @@ bool CssHierarchy::ExpandChildren() {
     GoogleString url(import->link.utf8_data(), import->link.utf8_length());
     const GoogleUrl import_url(css_base_url_, url);
     if (!import_url.is_valid()) {
+      // TODO(matterbury): Add statistics to count these.
       message_handler_->Message(kInfo, "Invalid import URL %s", url.c_str());
       child->set_flattening_succeeded(false);
     } else if (child->DetermineImportMedia(media_, import->media)) {
       child->InitializeNested(*this, import_url);
       if (child->IsRecursive()) {
+        // TODO(matterbury): Add statistics to count these.
         child->set_flattening_succeeded(false);
       } else {
         result = true;
@@ -302,17 +307,45 @@ void CssHierarchy::RollUpContents() {
       StrAppend(&minified_contents_, children_[i]->minified_contents());
     }
 
-    // @charset and @import rules are discarded by flattening.
-    stylesheet_->mutable_charsets().clear();
-    STLDeleteElements(&stylesheet_->mutable_imports());
+    // @charset and @import rules are discarded by flattening, but save them
+    // until we know that the regeneration and limit check both went ok so we
+    // restore the stylesheet back to its original state if not.
+    Css::Charsets saved_charsets;
+    Css::Imports saved_imports;
+    stylesheet_->mutable_charsets().swap(saved_charsets);
+    stylesheet_->mutable_imports().swap(saved_imports);
 
+    // If we can't regenerate the stylesheet, or we have a result limit and the
+    // flattened result is at or over that limit, flattening hasn't succeeded.
     StringWriter writer(&minified_contents_);
-    if (!CssMinify::Stylesheet(*stylesheet_.get(), &writer, message_handler_)) {
+    bool minified_ok = CssMinify::Stylesheet(*stylesheet_.get(), &writer,
+                                             message_handler_);
+    if (!minified_ok) {
+      // TODO(matterbury): Add statistics to count these.
       flattening_succeeded_ = false;
-      STLDeleteElements(&children_);   // our children are useless now
-      // If we can't minify just use our contents, albeit not minified.
-      input_contents_.CopyToString(&minified_contents_);
+    } else if (flattened_result_limit_ > 0) {
+      int64 flattened_result_size = minified_contents_.size();
+      if (flattened_result_size >= flattened_result_limit_) {
+        // TODO(matterbury): Add statistics to count these.
+        flattening_succeeded_ = false;
+      }
     }
+    if (!flattening_succeeded_) {
+      STLDeleteElements(&children_);   // our children are useless now
+      // Revert the stylesheet back to how it was.
+      stylesheet_->mutable_charsets().swap(saved_charsets);
+      stylesheet_->mutable_imports().swap(saved_imports);
+      // If minification succeeded but flattening failed, it can only be
+      // because we exceeded the flattening limit, in which case we must fall
+      // back to the minified form of the original unflattened stylesheet.
+      minified_contents_.clear();
+      if (!minified_ok || !CssMinify::Stylesheet(*stylesheet_.get(), &writer,
+                                                 message_handler_)) {
+        // If we can't minify just use our contents, albeit not minified.
+        input_contents_.CopyToString(&minified_contents_);
+      }
+    }
+    STLDeleteElements(&saved_imports);  // no-op if empty (was swapped back).
   }
 }
 
@@ -331,6 +364,7 @@ bool CssHierarchy::RollUpStylesheets() {
       // or @import rules then they must have failed to flatten when they
       // were first cached because we expressly remove these below.
       if (!stylesheet_->charsets().empty() || !stylesheet_->imports().empty()) {
+        // TODO(matterbury): Add statistics to count these.
         flattening_succeeded_ = false;
       }
     }

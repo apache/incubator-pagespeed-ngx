@@ -95,6 +95,7 @@ const char* kModPagespeedCacheFlushPollIntervalSec =
 const char* kModPagespeedCollectRefererStatistics =
     "ModPagespeedCollectRefererStatistics";
 const char* kModPagespeedCombineAcrossPaths = "ModPagespeedCombineAcrossPaths";
+const char* kModPagespeedCssFlattenMaxBytes = "ModPagespeedCssFlattenMaxBytes";
 const char* kModPagespeedCssImageInlineMaxBytes =
     "ModPagespeedCssImageInlineMaxBytes";
 const char* kModPagespeedCssInlineMaxBytes = "ModPagespeedCssInlineMaxBytes";
@@ -1191,6 +1192,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Track page, resource, and div location referrals for prefetching."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCombineAcrossPaths,
         "Allow combining resources from different paths"),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedCssFlattenMaxBytes,
+        "Number of bytes below which stylesheets will be flattened."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCssImageInlineMaxBytes,
         "Number of bytes below which images will be inlined in external CSS."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCssInlineMaxBytes,

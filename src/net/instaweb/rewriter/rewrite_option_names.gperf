@@ -35,6 +35,7 @@ struct OptionName {
 "BotdetectEnabled",                     RewriteOptions::kBotdetectEnabled
 "CombineAcrossPaths",                   RewriteOptions::kCombineAcrossPaths
 "CriticalImagesCacheExpirationTimeMs",  RewriteOptions::kCriticalImagesCacheExpirationTimeMs
+"CssFlattenMaxBytes",                   RewriteOptions::kCssFlattenMaxBytes
 "CssImageInlineMaxBytes",               RewriteOptions::kCssImageInlineMaxBytes
 "CssInlineMaxBytes",                    RewriteOptions::kCssInlineMaxBytes
 "CssOutlineMinBytes",                   RewriteOptions::kCssOutlineMinBytes

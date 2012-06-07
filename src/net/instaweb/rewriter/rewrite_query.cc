@@ -43,6 +43,8 @@ struct Int64QueryParam {
   RewriteOptionsInt64PMF method_;
 };
 static struct Int64QueryParam int64_query_params_[] = {
+  { "ModPagespeedCssFlattenMaxBytes",
+    &RewriteOptions::set_css_flatten_max_bytes },
   { "ModPagespeedCssInlineMaxBytes",
     &RewriteOptions::set_css_inline_max_bytes },
   { "ModPagespeedImageInlineMaxBytes",

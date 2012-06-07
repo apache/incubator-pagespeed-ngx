@@ -100,10 +100,11 @@ const char RewriteOptions::kPanelCommentPrefix[] = "GooglePanel";
 const int64 RewriteOptions::kDefaultCssInlineMaxBytes = 2048;
 // TODO(jmaessen): Adjust these thresholds in a subsequent CL
 // (Will require re-golding tests.)
-const int64 RewriteOptions::kDefaultImageInlineMaxBytes = 2048;
+const int64 RewriteOptions::kDefaultCssFlattenMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultCssImageInlineMaxBytes = 2048;
-const int64 RewriteOptions::kDefaultJsInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultCssOutlineMinBytes = 3000;
+const int64 RewriteOptions::kDefaultImageInlineMaxBytes = 2048;
+const int64 RewriteOptions::kDefaultJsInlineMaxBytes = 2048;
 const int64 RewriteOptions::kDefaultJsOutlineMinBytes = 3000;
 const int64 RewriteOptions::kDefaultProgressiveJpegMinBytes = 10240;
 
@@ -484,16 +485,18 @@ RewriteOptions::RewriteOptions()
   // TODO(jmarantz): consider adding these on demand so that the cost of
   // initializing an empty RewriteOptions object is closer to zero.
   add_option(kPassThrough, &level_, "l", kRewriteLevel);
-  add_option(kDefaultCssInlineMaxBytes, &css_inline_max_bytes_, "ci",
-             kCssInlineMaxBytes);
-  add_option(kDefaultImageInlineMaxBytes, &image_inline_max_bytes_, "ii",
-             kImageInlineMaxBytes);
+  add_option(kDefaultCssFlattenMaxBytes, &css_flatten_max_bytes_, "cf",
+             kCssFlattenMaxBytes);
   add_option(kDefaultCssImageInlineMaxBytes, &css_image_inline_max_bytes_,
              "cii", kCssImageInlineMaxBytes);
-  add_option(kDefaultJsInlineMaxBytes, &js_inline_max_bytes_, "ji",
-             kJsInlineMaxBytes);
+  add_option(kDefaultCssInlineMaxBytes, &css_inline_max_bytes_, "ci",
+             kCssInlineMaxBytes);
   add_option(kDefaultCssOutlineMinBytes, &css_outline_min_bytes_, "co",
              kCssOutlineMinBytes);
+  add_option(kDefaultImageInlineMaxBytes, &image_inline_max_bytes_, "ii",
+             kImageInlineMaxBytes);
+  add_option(kDefaultJsInlineMaxBytes, &js_inline_max_bytes_, "ji",
+             kJsInlineMaxBytes);
   add_option(kDefaultJsOutlineMinBytes, &js_outline_min_bytes_, "jo",
              kJsOutlineMinBytes);
   add_option(kDefaultProgressiveJpegMinBytes, &progressive_jpeg_min_bytes_,
