@@ -1724,8 +1724,8 @@ void RewriteDriver::WriteClientStateIntoPropertyCache() {
 void RewriteDriver::UpdatePropertyValueInDomCohort(StringPiece property_name,
                                                    StringPiece property_value) {
   PropertyCache* pcache = resource_manager_->page_property_cache();
-  if (pcache == NULL) {
-    LOG(DFATAL) << "Property cache is not available.";
+  if (pcache == NULL || property_page() == NULL) {
+    LOG(DFATAL) << "Property cache or property page not available.";
     return;
   }
   const PropertyCache::Cohort* dom = pcache->GetCohort(kDomCohort);

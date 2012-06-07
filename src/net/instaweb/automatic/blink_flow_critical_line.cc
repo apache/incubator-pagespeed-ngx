@@ -183,9 +183,12 @@ class CriticalLineFetch : public AsyncFetch {
       delete this;
       return;
     }
-    rewrite_driver_->UpdatePropertyValueInDomCohort(
-        BlinkUtil::kBlinkResponseCodePropertyName,
-        IntegerToString(response_headers()->status_code()));
+    if (rewrite_driver_->options()->
+        passthrough_blink_for_last_invalid_response_code()) {
+      rewrite_driver_->UpdatePropertyValueInDomCohort(
+          BlinkUtil::kBlinkResponseCodePropertyName,
+          IntegerToString(response_headers()->status_code()));
+    }
 
     num_blink_html_cache_misses_->IncBy(1);
     critical_line_computation_driver_ =
@@ -260,7 +263,9 @@ class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
  public:
   UpdateResponseCodeSharedAyncFetch(AsyncFetch* base_fetch,
                                     RewriteDriver* rewrite_driver)
-      : SharedAsyncFetch(base_fetch), rewrite_driver_(rewrite_driver) {
+      : SharedAsyncFetch(base_fetch),
+        rewrite_driver_(rewrite_driver),
+        updated_response_code_(false) {
     rewrite_driver_->increment_async_events_count();
   }
 
@@ -269,11 +274,17 @@ class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
   }
 
  protected:
-  virtual void HandleHeadersComplete() {
-    SharedAsyncFetch::HandleHeadersComplete();
-    rewrite_driver_->UpdatePropertyValueInDomCohort(
-        BlinkUtil::kBlinkResponseCodePropertyName,
-        IntegerToString(response_headers()->status_code()));
+  virtual bool HandleWrite(const StringPiece& str,
+                           MessageHandler* message_handler) {
+    bool ret = SharedAsyncFetch::HandleWrite(str, message_handler);
+    if (!updated_response_code_ &&
+        rewrite_driver_->property_page() != NULL) {
+      updated_response_code_ = true;
+      rewrite_driver_->UpdatePropertyValueInDomCohort(
+          BlinkUtil::kBlinkResponseCodePropertyName,
+          IntegerToString(response_headers()->status_code()));
+    }
+    return ret;
   }
 
   virtual void HandleDone(bool success) {
@@ -283,6 +294,7 @@ class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
 
  private:
   RewriteDriver* rewrite_driver_;  // We do not own this.
+  bool updated_response_code_;
 
   DISALLOW_COPY_AND_ASSIGN(UpdateResponseCodeSharedAyncFetch);
 };
@@ -534,9 +546,16 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
     }
   } else {
     // Non 200 status code.
+    // TODO(srihari):  Write system tests for this.  This will require a test
+    // harness where we can vary the response (status code) for the url being
+    // fetched.
     manager_->ComputeSignature(options_);
     driver = manager_->NewCustomRewriteDriver(options_);
-    fetch = new UpdateResponseCodeSharedAyncFetch(base_fetch_, driver);
+    if (options_->passthrough_blink_for_last_invalid_response_code()) {
+      fetch = new UpdateResponseCodeSharedAyncFetch(base_fetch_, driver);
+    } else {
+      fetch = base_fetch_;
+    }
   }
   factory_->StartNewProxyFetch(
       url_, fetch, driver, property_callback_, secondary_fetch);
