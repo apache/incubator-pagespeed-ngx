@@ -181,21 +181,18 @@ filter_spec_method="query_params"
 function test_filter() {
   rm -rf $OUTDIR
   mkdir -p $OUTDIR
-  QUERY_PARAMS=$1;
+  FILTER_NAME=$1;
   shift;
   FILTER_DESCRIPTION=$@
-  echo TEST: $QUERY_PARAMS $FILTER_DESCRIPTION
+  echo TEST: $FILTER_NAME $FILTER_DESCRIPTION
   # Filename is the name of the first filter only.
-  FILE=${QUERY_PARAMS%%,*}.html
+  FILE=${FILTER_NAME%%,*}.html
   if [ $filter_spec_method = "query_params" ]; then
     WGET_ARGS=""
-    FILE="$FILE?ModPagespeedFilters=$QUERY_PARAMS"
+    FILE="$FILE?ModPagespeedFilters=$FILTER_NAME"
     filter_spec_method="headers"
   else
-    # We accept query parameters separated by '&' but we need to turn each one
-    # into its own --header switch.
-    temp=$(echo "$QUERY_PARAMS" | sed -e 's/=/:/' -e 's/&/ --header=/')
-    WGET_ARGS="--header=ModPagespeedFilters:"$temp
+    WGET_ARGS="--header=ModPagespeedFilters:$FILTER_NAME"
     filter_spec_method="query_params"
   fi
   URL=$EXAMPLE_ROOT/$FILE
@@ -810,7 +807,7 @@ check [ $? = 1 ]
 # Checks that defer_javascript,debug injects 'pagespeed.deferJs' from
 # defer_js.js, but retains the comments.
 test_filter defer_javascript,debug optimize mode
-FILE=defer_javascript.html?ModPagespeedFilters=$QUERY_PARAMS
+FILE=defer_javascript.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 check run_wget_with_args "$URL"
@@ -834,7 +831,7 @@ check [ $? = 1 ]
 # Checks that lazyload_images,debug injects non compiled javascript from
 # lazyload_images.js
 test_filter lazyload_images,debug debug mode
-FILE=lazyload_images.html?ModPagespeedFilters=$QUERY_PARAMS
+FILE=lazyload_images.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 check run_wget_with_args "$URL"
@@ -845,7 +842,7 @@ check [ $? = 0 ]
 
 # Checks that inline_preview_images injects compiled javascript
 test_filter inline_preview_images optimize mode
-FILE=delay_images.html?ModPagespeedFilters=$QUERY_PARAMS
+FILE=delay_images.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 echo run_wget_with_args $URL
@@ -856,7 +853,7 @@ check run_wget_with_args $URL
 # Checks that inline_preview_images,debug injects from javascript
 # in non-compiled mode
 test_filter inline_preview_images,debug debug mode
-FILE=delay_images.html?ModPagespeedFilters=$QUERY_PARAMS
+FILE=delay_images.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 fetch_until $URL 'grep -c pagespeed.delayImagesInit' 3
@@ -928,32 +925,34 @@ check grep -q "'pagespeed.inlineImg(.http://.*/images/Cuppa.png.," \
 test_filter flatten_css_imports,rewrite_css default limit
 # Force the request to be rewritten with all applicable filters.
 WGET_ARGS="${WGET_ARGS} --header=X-PSA-Blocking-Rewrite:psatest"
-echo run_wget_with_args "$URL"
-check run_wget_with_args "$URL"
-check ! grep -q @import.url "$FETCHED"
-check   grep -q "yellow.background-color:" "$FETCHED"
+echo run_wget_with_args $URL
+check run_wget_with_args $URL
+check ! grep -q @import.url $FETCHED
+check   grep -q "yellow.background-color:" $FETCHED
 
 # Fetch with a tiny limit so no file can be inlined.
-LIMIT=ModPagespeedCssFlattenMaxBytes=5
-test_filter "flatten_css_imports,rewrite_css&$LIMIT" tiny limit
+test_filter flatten_css_imports,rewrite_css tiny limit
+WGET_ARGS="${WGET_ARGS} --header=ModPagespeedCssFlattenMaxBytes:5"
 # Force the request to be rewritten with all applicable filters.
 WGET_ARGS="${WGET_ARGS} --header=X-PSA-Blocking-Rewrite:psatest"
-echo run_wget_with_args "$URL"
-# Note that URL and FETCHED contain a '&' hence the single quoting of args.
-check run_wget_with_args '$URL'
-check   grep -q @import.url '$FETCHED'
-check ! grep -q "yellow.background-color:" '$FETCHED'
+echo run_wget_with_args $URL
+check run_wget_with_args $URL
+check   grep -q @import.url $FETCHED
+check ! grep -q "yellow.background-color:" $FETCHED
 
 # Fetch with a medium limit so any one file can be inlined but not all of them.
-LIMIT=ModPagespeedCssFlattenMaxBytes=50
-test_filter "flatten_css_imports,rewrite_css&$LIMIT" medium limit
+test_filter flatten_css_imports,rewrite_css medium limit
+WGET_ARGS="${WGET_ARGS} --header=ModPagespeedCssFlattenMaxBytes:50"
 # Force the request to be rewritten with all applicable filters.
 WGET_ARGS="${WGET_ARGS} --header=X-PSA-Blocking-Rewrite:psatest"
-echo run_wget_with_args "$URL"
-# Note that URL and FETCHED contain a '&' hence the single quoting of args.
-check run_wget_with_args '$URL'
-check   grep -q @import.url '$FETCHED'
-check ! grep -q "yellow.background-color:" '$FETCHED'
+echo run_wget_with_args $URL
+check run_wget_with_args $URL
+check   grep -q @import.url $FETCHED
+check ! grep -q "yellow.background-color:" $FETCHED
+
+# Ensure an EVEN number of tests because later tests depend on the value
+# of $filter_spec_method and it flips between 'query_params' and 'headers'.
+test_filter flatten_css_imports,rewrite_css medium limit
 
 # Cleanup
 rm -rf $OUTDIR
