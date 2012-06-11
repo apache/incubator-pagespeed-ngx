@@ -58,10 +58,6 @@ class ApacheResourceManager : public ResourceManager {
   // Should be called after the child process is forked.
   void ChildInit();
 
-  UrlPollableAsyncFetcher* subresource_fetcher() {
-    return subresource_fetcher_;
-  }
-
   bool initialized() const { return initialized_; }
 
   // Called on notification from Apache on child exit. Returns true
@@ -105,15 +101,6 @@ class ApacheResourceManager : public ResourceManager {
   GoogleString hostname_identifier_;
 
   bool initialized_;
-
-  // A pollable fetcher provides a Poll() to wait for outstanding
-  // fetches to complete.  This is used in
-  // instaweb_handler.cc:handle_as_resource() to block the apache
-  // request thread until the requested resource has been delivered.
-  //
-  // TODO(jmarantz): use the scheduler & condition variables to
-  // accomplish this instead.
-  UrlPollableAsyncFetcher* subresource_fetcher_;
 
   // State used to implement periodic polling of $FILE_PREFIX/cache.flush.
   // last_cache_flush_check_sec_ is ctor-initialized to 0 so the first

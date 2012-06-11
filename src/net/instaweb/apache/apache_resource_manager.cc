@@ -55,7 +55,6 @@ ApacheResourceManager::ApacheResourceManager(
       hostname_identifier_(StrCat(server->server_hostname, ":",
                                   IntegerToString(server->port))),
       initialized_(false),
-      subresource_fetcher_(NULL),
       cache_flush_mutex_(thread_system()->NewMutex()),
       last_cache_flush_check_sec_(0),
       cache_flush_poll_interval_sec_(kDefaultCacheFlushIntervalSec),
@@ -110,11 +109,8 @@ void ApacheResourceManager::ChildInit() {
     set_client_property_cache(cache->client_property_cache());
     set_metadata_cache(cache->cache());
     set_lock_manager(cache->lock_manager());
-    UrlPollableAsyncFetcher* fetcher = apache_factory_->GetFetcher(config());
+    UrlAsyncFetcher* fetcher = apache_factory_->GetFetcher(config());
     set_default_system_fetcher(fetcher);
-    if (!config()->slurping_enabled_read_only()) {
-      subresource_fetcher_ = fetcher;
-    }
 
     // To allow Flush to come in while multiple threads might be
     // referencing the signature, we must be able to mutate the

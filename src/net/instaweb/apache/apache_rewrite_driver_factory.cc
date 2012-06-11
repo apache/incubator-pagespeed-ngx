@@ -261,8 +261,7 @@ void ApacheRewriteDriverFactory::AutoDetectThreadCounts() {
   thread_counts_finalized_ = true;
 }
 
-UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(
-    ApacheConfig* config) {
+UrlAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(ApacheConfig* config) {
   const GoogleString& proxy = config->fetcher_proxy();
 
   // Fetcher-key format: "[(R|W)slurp_directory][\nproxy]"
@@ -279,10 +278,10 @@ UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(
   }
 
   std::pair<FetcherMap::iterator, bool> result = fetcher_map_.insert(
-      FetcherMap::value_type(key, static_cast<UrlPollableAsyncFetcher*>(NULL)));
+      std::make_pair(key, static_cast<UrlAsyncFetcher*>(NULL)));
   FetcherMap::iterator iter = result.first;
   if (result.second) {
-    UrlPollableAsyncFetcher* fetcher = NULL;
+    UrlAsyncFetcher* fetcher = NULL;
     if (config->slurping_enabled()) {
       if (config->slurp_read_only()) {
         HttpDumpUrlFetcher* dump_fetcher = new HttpDumpUrlFetcher(
@@ -290,12 +289,7 @@ UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(
         defer_delete(new Deleter<HttpDumpUrlFetcher>(dump_fetcher));
         fetcher = new FakeUrlAsyncFetcher(dump_fetcher);
       } else {
-        // Make a copy of the passed-in config with the slurp directory
-        // erased, and use that to construct the base fetcher.
-        ApacheConfig no_slurp_config("");
-        no_slurp_config.Merge(*config);
-        no_slurp_config.set_slurp_directory("");
-        UrlPollableAsyncFetcher* base_fetcher = GetFetcher(&no_slurp_config);
+        SerfUrlAsyncFetcher* base_fetcher = GetSerfFetcher(config);
 
         UrlFetcher* sync_fetcher = new SyncFetcherAdapter(
             timer(), config->fetcher_time_out_ms(), base_fetcher,
@@ -307,17 +301,30 @@ UrlPollableAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(
         fetcher = new FakeUrlAsyncFetcher(dump_writer);
       }
     } else {
-      SerfUrlAsyncFetcher* serf = new SerfUrlAsyncFetcher(
-          proxy.c_str(),
-          NULL,  // Do not use the Factory pool so we can control deletion.
-          thread_system(), statistics(), timer(),
-          config->fetcher_time_out_ms(),
-          message_handler());
-      serf->set_list_outstanding_urls_on_error(list_outstanding_urls_on_error_);
-      fetcher = serf;
-      fetcher->set_fetch_with_gzip(fetch_with_gzip_);
+      fetcher = GetSerfFetcher(config);
     }
     iter->second = fetcher;
+  }
+  return iter->second;
+}
+
+SerfUrlAsyncFetcher* ApacheRewriteDriverFactory::GetSerfFetcher(
+    ApacheConfig* config) {
+  // Since we don't do slurping a this level, our key is just the proxy setting.
+  const GoogleString& proxy = config->fetcher_proxy();
+  std::pair<SerfFetcherMap::iterator, bool> result = serf_fetcher_map_.insert(
+      std::make_pair(proxy, static_cast<SerfUrlAsyncFetcher*>(NULL)));
+  SerfFetcherMap::iterator iter = result.first;
+  if (result.second) {
+    SerfUrlAsyncFetcher* serf = new SerfUrlAsyncFetcher(
+        proxy.c_str(),
+        NULL,  // Do not use the Factory pool so we can control deletion.
+        thread_system(), statistics(), timer(),
+        config->fetcher_time_out_ms(),
+        message_handler());
+    serf->set_list_outstanding_urls_on_error(list_outstanding_urls_on_error_);
+    serf->set_fetch_with_gzip(fetch_with_gzip_);
+    iter->second = serf;
   }
   return iter->second;
 }

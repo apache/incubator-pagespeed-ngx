@@ -146,7 +146,11 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // Finds a fetcher for the settings in this config, sharing with
   // existing fetchers if possible, otherwise making a new one (and
   // its required thread).
-  UrlPollableAsyncFetcher* GetFetcher(ApacheConfig* config);
+  UrlAsyncFetcher* GetFetcher(ApacheConfig* config);
+
+  // As above, but just gets a Serf fetcher --- not a slurp fetcher or a rate
+  // limiting one, etc.
+  SerfUrlAsyncFetcher* GetSerfFetcher(ApacheConfig* config);
 
   // Accumulate in a histogram the amount of time spent rewriting HTML.
   void AddHtmlRewriteTimeUs(int64 rewrite_time_us);
@@ -273,8 +277,10 @@ protected:
   // Serf fetchers are expensive -- they each cost a thread. Allocate
   // one for each proxy/slurp-setting.  Currently there is no
   // consistency checking for fetcher timeout.
-  typedef std::map<GoogleString, UrlPollableAsyncFetcher*> FetcherMap;
+  typedef std::map<GoogleString, UrlAsyncFetcher*> FetcherMap;
   FetcherMap fetcher_map_;
+  typedef std::map<GoogleString, SerfUrlAsyncFetcher*> SerfFetcherMap;
+  SerfFetcherMap serf_fetcher_map_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };
