@@ -27,7 +27,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
-#include "net/instaweb/rewriter/public/css_resource_slot.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/image_tag_scanner.h"
@@ -127,9 +126,8 @@ void ImageRewriteFilter::Context::Render() {
   bool rewrote_url = false;
   ResourceSlot* resource_slot = slot(0).get();
   if (is_css_) {
-    CssResourceSlot* css_slot = static_cast<CssResourceSlot*>(resource_slot);
     rewrote_url = filter_->FinishRewriteCssImageUrl(css_image_inline_max_bytes_,
-                                                    result, css_slot);
+                                                    result, resource_slot);
   } else {
     if (!has_parent()) {
       // We use manual rendering for HTML, as we have to consider whether to
@@ -616,13 +614,13 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
 
 bool ImageRewriteFilter::FinishRewriteCssImageUrl(
     int64 css_image_inline_max_bytes,
-    const CachedResult* cached, CssResourceSlot* slot) {
+    const CachedResult* cached, ResourceSlot* slot) {
   GoogleString data_url;
   if (driver_->UserAgentSupportsImageInlining() &&
       TryInline(css_image_inline_max_bytes, cached, &data_url)) {
     // TODO(jmaessen): Can we make output URL reflect actual *usage*
     // of image inlining and/or webp images?
-    slot->UpdateUrlInCss(data_url);
+    slot->DirectSetUrl(data_url);
     image_inline_count_->Add(1);
     return true;
   } else if (cached->optimizable()) {

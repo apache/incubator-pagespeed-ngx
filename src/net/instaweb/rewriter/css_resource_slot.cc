@@ -61,7 +61,7 @@ void CssResourceSlot::Render() {
         url = trimmed_url;
       }
     }
-    UpdateUrlInCss(url);
+    DirectSetUrl(url);
   }
 }
 
@@ -81,7 +81,7 @@ void CssResourceSlot::EnableTrim(const GoogleUrl& base_url) {
   trim_base_->Reset(base_url);
 }
 
-void CssResourceSlot::UpdateUrlInCss(const StringPiece& url) {
+void CssResourceSlot::DirectSetUrl(const StringPiece& url) {
   delete (*values_)[value_index_];
   (*values_)[value_index_] =
       new Css::Value(Css::Value::URI,

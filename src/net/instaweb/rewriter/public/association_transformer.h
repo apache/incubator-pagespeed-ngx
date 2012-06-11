@@ -103,7 +103,13 @@ class AssociationSlot : public ResourceSlot {
   // All Render() calls are from the same thread, so this doesn't need to be
   // thread-safe.
   virtual void Render() {
-    (*map_)[key_] = resource()->url();
+    if (!disable_rendering()) {
+      (*map_)[key_] = resource()->url();
+    }
+  }
+
+  virtual void DirectSetUrl(const StringPiece& url) {
+    url.CopyToString(&((*map_)[key_]));
   }
 
   virtual GoogleString LocationString() {

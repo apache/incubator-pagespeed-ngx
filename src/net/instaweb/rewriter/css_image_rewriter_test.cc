@@ -426,6 +426,42 @@ TEST_F(CssImageRewriterTest, InlineImages) {
                   kExpectSuccess | kNoClearFetcher | kNoStatCheck);
 }
 
+TEST_F(CssImageRewriterTest, InlineImagesFallback) {
+  // Make sure we can inline images when CSS parsing goes to fallback mode.
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->set_image_inline_max_bytes(2000);
+  options()->set_css_image_inline_max_bytes(2000);
+  resource_manager()->ComputeSignature(options());
+  // Here Cuppa.png is 1763 bytes, so should be inlined.
+  AddFileToMockFetcher(StrCat(kTestDomain, "Cuppa.png"), kCuppaPngFile,
+                       kContentTypePng, 100);
+
+  // This ought to not parse..
+  static const char kCssTemplate[] =
+      "body {\n"
+      "  background-image: url(%s);\n"
+      "}}}}}\n";
+  GoogleString css_before = StringPrintf(kCssTemplate, "Cuppa.png");
+
+  // Read original image file and create data url for comparison purposes.
+  GoogleString contents;
+  StdioFileSystem stdio_file_system;
+  GoogleString filename = StrCat(GTestSrcDir(), kTestData, kCuppaPngFile);
+  ASSERT_TRUE(stdio_file_system.ReadFile(
+      filename.c_str(), &contents, message_handler()));
+  GoogleString data_url;
+  DataUrl(kContentTypePng, BASE64, contents, &data_url);
+
+  GoogleString css_after = StringPrintf(kCssTemplate, data_url.c_str());
+
+  // Here we skip the stat check because we are *increasing* the size of the CSS
+  // (which causes the check to fail).  That eliminates a resource fetch, so it
+  // should normally be a net win in practice.
+  ValidateRewrite("inline_css_images", css_before, css_after,
+                  kExpectFallback | kNoClearFetcher | kNoStatCheck);
+}
+
 TEST_F(CssImageRewriterTest, InlineImageOnlyInOutlineCss) {
   // Make sure that we use image_inline_max_bytes to determine image inlining in
   // inline css (css that occurs in an html file), but that we use

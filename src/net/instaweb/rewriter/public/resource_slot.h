@@ -27,6 +27,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/vector_deque.h"
 
 namespace net_instaweb {
@@ -101,6 +102,15 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // This is especially useful for cases where Render was never called
   // but you want something to be done to all slots.
   virtual void Finished() {}
+
+  // Update the URL in the slot target without touching the resource. This is
+  // intended for when we're inlining things as data: URLs. Note that if you
+  // call this you should also call set_disable_rendering(true), or otherwise
+  // the result will be overwritten. Does not alter the URL in any way.
+  // Not supported on all slot types --- presently only slots representing
+  // things within CSS have this operation (others will DCHECK-fail).
+  // Must be called from within a context's Render() method.
+  virtual void DirectSetUrl(const StringPiece& url);
 
   // Return the last context to have been added to this slot.  Returns NULL
   // if no context has been added to the slot so far.

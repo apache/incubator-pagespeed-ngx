@@ -36,7 +36,6 @@
 namespace net_instaweb {
 
 class CachedResult;
-class CssResourceSlot;
 class ContentType;
 class ImageDim;
 class ImageTagScanner;
@@ -131,7 +130,7 @@ class ImageRewriteFilter : public RewriteFilter {
   // Returns true if it rewrote (ie inlined) the URL.
   bool FinishRewriteCssImageUrl(
       int64 css_image_inline_max_bytes,
-      const CachedResult* cached, CssResourceSlot* slot);
+      const CachedResult* cached, ResourceSlot* slot);
 
   // Returns true if it rewrote the URL.
   bool FinishRewriteImageUrl(
