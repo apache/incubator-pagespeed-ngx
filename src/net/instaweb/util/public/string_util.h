@@ -212,6 +212,9 @@ inline void TrimWhitespace(const StringPiece& in, GoogleString* output) {
 
 void TrimWhitespace(StringPiece* str);
 
+// In-place removal of leading and trailing quote.
+void TrimQuote(StringPiece* str);
+
 // Trims only whitespace at the beginning of the string.
 void TrimLeadingWhitespace(StringPiece* str);
 

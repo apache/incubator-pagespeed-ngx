@@ -571,6 +571,7 @@ void BlinkFlowCriticalLine::SetFilterOptions(RewriteOptions* options) const {
   // which actually causes a SIGSEGV.
   options->DisableFilter(RewriteOptions::kConvertMetaTags);
   options->DisableFilter(RewriteOptions::kDeferJavascript);
+  options->DisableFilter(RewriteOptions::kDelayImages);
 
   options->ForceEnableFilter(RewriteOptions::kDisableJavascript);
 

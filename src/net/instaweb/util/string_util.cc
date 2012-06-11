@@ -332,6 +332,17 @@ void TrimWhitespace(StringPiece* str) {
   }
 }
 
+void TrimQuote(StringPiece* str) {
+  TrimWhitespace(str);
+  if (str->starts_with("\"") || str->starts_with("'")) {
+    str->remove_prefix(1);
+  }
+  if (str->ends_with("\"") || str->ends_with("'")) {
+    str->remove_suffix(1);
+  }
+  TrimWhitespace(str);
+}
+
 void TrimLeadingWhitespace(StringPiece* str) {
   while (str->size() && isspace(str->data()[0])) {
     str->remove_prefix(1);

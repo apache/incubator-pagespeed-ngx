@@ -27,10 +27,13 @@
 window['pagespeed'] = window['pagespeed'] || {};
 var pagespeed = window['pagespeed'];
 
+pagespeed['deferJsNs'] = {};
+var deferJsNs = pagespeed['deferJsNs'];
+
 /**
  * @constructor
  */
-pagespeed.DeferJs = function() {
+deferJsNs.DeferJs = function() {
   /**
    * Queue of tasks that need to be executed in order.
    * @type {!Array.<function()>}
@@ -174,20 +177,20 @@ pagespeed.DeferJs = function() {
    * @type {!number}
    * @private
    */
-  this.state_ = pagespeed.DeferJs.STATES.NOT_STARTED;
+  this.state_ = deferJsNs.DeferJs.STATES.NOT_STARTED;
 };
 
 /**
  * Indicates if experimental js in deferJS is active.
  * @type {boolean}
  */
-pagespeed.DeferJs.isExperimentalMode = false;
+deferJsNs.DeferJs.isExperimentalMode = false;
 
 /**
  * Constants for different states of deferJs exeuction.
  * @enum {number}
  */
-pagespeed.DeferJs.STATES = {
+deferJsNs.DeferJs.STATES = {
   /**
    * State state.
    */
@@ -216,7 +219,7 @@ pagespeed.DeferJs.STATES = {
  * Constants for different events used by deferJs.
  * @enum {number}
  */
-pagespeed.DeferJs.EVENT = {
+deferJsNs.DeferJs.EVENT = {
   /**
    * Event corresponding to DOMContentLoaded.
    */
@@ -240,19 +243,19 @@ pagespeed.DeferJs.EVENT = {
  * scripts execution.
  * @const {string}
  */
-pagespeed.DeferJs.PSA_NOT_PROCESSED = 'psa_not_processed';
+deferJsNs.DeferJs.PSA_NOT_PROCESSED = 'psa_not_processed';
 
 /**
  * Name of the attribute set for the current node to mark the current location.
  * @const {string}
  */
-pagespeed.DeferJs.PSA_CURRENT_NODE = 'psa_current_node';
+deferJsNs.DeferJs.PSA_CURRENT_NODE = 'psa_current_node';
 
 /**
  * Value for psa dummy script nodes.
  * @const {string}
  */
-pagespeed.DeferJs.PSA_SCRIPT_TYPE = 'text/psajs';
+deferJsNs.DeferJs.PSA_SCRIPT_TYPE = 'text/psajs';
 
 
 /**
@@ -260,7 +263,7 @@ pagespeed.DeferJs.PSA_SCRIPT_TYPE = 'text/psajs';
  * @param {string} line line to be added to log.
  * @param {Error} opt_exception optional exception to pass to log.
  */
-pagespeed.DeferJs.prototype.log = function(line, opt_exception) {
+deferJsNs.DeferJs.prototype.log = function(line, opt_exception) {
   if (this.logs) {
     this.logs.push('' + line);
     if (opt_exception) {
@@ -278,7 +281,7 @@ pagespeed.DeferJs.prototype.log = function(line, opt_exception) {
  * @param {!function()} task Function closure to be executed later.
  * @param {number} opt_pos optional position for ordering of jobs.
  */
-pagespeed.DeferJs.prototype.submitTask = function(task, opt_pos) {
+deferJsNs.DeferJs.prototype.submitTask = function(task, opt_pos) {
   var pos = opt_pos ? opt_pos : this.queue_.length;
   this.queue_.splice(pos, 0, task);
 };
@@ -286,7 +289,7 @@ pagespeed.DeferJs.prototype.submitTask = function(task, opt_pos) {
 /**
  * @param {string} str to be evaluated.
  */
-pagespeed.DeferJs.prototype.globalEval = function(str) {
+deferJsNs.DeferJs.prototype.globalEval = function(str) {
   var script = this.origCreateElement_.call(document, 'script');
   script.text=str;
   script.setAttribute('type', 'text/javascript');
@@ -302,7 +305,7 @@ pagespeed.DeferJs.prototype.globalEval = function(str) {
  * These characters are allowed in id names but not allowed in variable
  * names.
  */
-pagespeed.DeferJs.prototype.createIdVars = function() {
+deferJsNs.DeferJs.prototype.createIdVars = function() {
   var elems = document.getElementsByTagName("*");
   var idVarsString = "";
   for (var i = 0; i < elems.length; i++) {
@@ -332,10 +335,11 @@ pagespeed.DeferJs.prototype.createIdVars = function() {
  * @param {Element} script script node.
  * @param {number} opt_pos Optional position for ordering.
  */
-pagespeed.DeferJs.prototype.addNode = function(script, opt_pos) {
+deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos) {
   var src = script.getAttribute('orig_src') || script.getAttribute('src');
   if (src) {
-    if (pagespeed.DeferJs.isExperimentalMode) {
+    if (deferJsNs.DeferJs.isExperimentalMode &&
+        src.match(/\S+\.pagespeed\.\S+/)) {
       var img;
       img = new Image();
       img.src = src;
@@ -366,7 +370,7 @@ pagespeed.DeferJs.prototype.addNode = function(script, opt_pos) {
  * @param {Element} script_elem Psa inserted script used as context element.
  * @param {number} opt_pos Optional position for ordering.
  */
-pagespeed.DeferJs.prototype.addStr = function(str, script_elem, opt_pos) {
+deferJsNs.DeferJs.prototype.addStr = function(str, script_elem, opt_pos) {
   if (this.isFireFox()) {
     // This is due to some bug identified in firefox.
     // Got this workaround from the bug raised on firefox.
@@ -382,7 +386,7 @@ pagespeed.DeferJs.prototype.addStr = function(str, script_elem, opt_pos) {
     me.removeNotProcessedAttributeTillNode(script_elem);
 
     var node = me.nextPsaJsNode();
-    node.setAttribute(pagespeed.DeferJs.PSA_CURRENT_NODE, '');
+    node.setAttribute(deferJsNs.DeferJs.PSA_CURRENT_NODE, '');
     try {
       me.globalEval(str);
     } catch (err) {
@@ -393,7 +397,7 @@ pagespeed.DeferJs.prototype.addStr = function(str, script_elem, opt_pos) {
     me.runNext();
   }, opt_pos);
 };
-pagespeed.DeferJs.prototype['addStr'] = pagespeed.DeferJs.prototype.addStr;
+deferJsNs.DeferJs.prototype['addStr'] = deferJsNs.DeferJs.prototype.addStr;
 
 /**
  * Defers execution of contents of 'url'.
@@ -402,12 +406,12 @@ pagespeed.DeferJs.prototype['addStr'] = pagespeed.DeferJs.prototype.addStr;
  * @param {number} opt_pos Optional position for ordering.
  * @param {Element} opt_img image whose src is used to fetch the external script 
  */
-pagespeed.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos,
+deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos,
                                               opt_img) {
   this.logs.push('Add to queue url: ' + url);
   var me = this; // capture closure.
   this.submitTask(function() {
-    if (pagespeed.DeferJs.isExperimentalMode) {
+    if (deferJsNs.DeferJs.isExperimentalMode) {
       if (opt_img && !opt_img.loaded) {
         me.next_--;
         opt_img.deferJsWaiting = true;
@@ -423,8 +427,8 @@ pagespeed.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos,
       me.log('Executed: ' + url);
       me.runNext();
     };
-    pagespeed.addOnload(script, runNextHandler);
-    pagespeed.addHandler(script, 'error', runNextHandler);
+    deferJsNs.addOnload(script, runNextHandler);
+    deferJsNs.addHandler(script, 'error', runNextHandler);
     if (me.getIEVersion() < 9) {
       var stateChangeHandler = function() {
         if (script.readyState == 'complete' ||
@@ -434,7 +438,7 @@ pagespeed.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos,
         }
       }
 
-      pagespeed.addHandler(script, 'readystatechange', stateChangeHandler);
+      deferJsNs.addHandler(script, 'readystatechange', stateChangeHandler);
     }
     script.setAttribute('src', url);
     // If a script node with src also has a node inside it
@@ -448,28 +452,28 @@ pagespeed.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos,
       script.appendChild(document.createTextNode(str));
     }
     var currentElem = me.nextPsaJsNode();
-    currentElem.setAttribute(pagespeed.DeferJs.PSA_CURRENT_NODE, '');
+    currentElem.setAttribute(deferJsNs.DeferJs.PSA_CURRENT_NODE, '');
     currentElem.parentNode.insertBefore(script, currentElem);
   }, opt_pos);
 };
-pagespeed.DeferJs.prototype['addUrl'] = pagespeed.DeferJs.prototype.addUrl;
+deferJsNs.DeferJs.prototype['addUrl'] = deferJsNs.DeferJs.prototype.addUrl;
 
 /**
  * Remove 'psa_not_processed' attribute till the given node.
  * @param {Node} opt_node Stop node.
  */
-pagespeed.DeferJs.prototype.removeNotProcessedAttributeTillNode = function(
+deferJsNs.DeferJs.prototype.removeNotProcessedAttributeTillNode = function(
     opt_node) {
   if (document.querySelectorAll && !(this.getIEVersion() <= 8)) {
     var nodes = document.querySelectorAll(
-        '[' + pagespeed.DeferJs.PSA_NOT_PROCESSED + ']');
+        '[' + deferJsNs.DeferJs.PSA_NOT_PROCESSED + ']');
     for (var i = 0; i < nodes.length; i++) {
       var dom_node = nodes.item(i);
       if (dom_node == opt_node) {
         return;
       }
-      if (dom_node.getAttribute('type') != pagespeed.DeferJs.PSA_SCRIPT_TYPE) {
-        dom_node.removeAttribute(pagespeed.DeferJs.PSA_NOT_PROCESSED);
+      if (dom_node.getAttribute('type') != deferJsNs.DeferJs.PSA_SCRIPT_TYPE) {
+        dom_node.removeAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED);
       }
     }
   }
@@ -478,11 +482,11 @@ pagespeed.DeferJs.prototype.removeNotProcessedAttributeTillNode = function(
 /**
  * Set 'psa_not_processed' attribute to all Nodes in DOM.
  */
-pagespeed.DeferJs.prototype.setNotProcessedAttributeForNodes = function() {
+deferJsNs.DeferJs.prototype.setNotProcessedAttributeForNodes = function() {
   var nodes = this.origGetElementsByTagName_.call(document, '*');
   for (var i = 0; i < nodes.length; i++) {
     var dom_node = nodes.item(i);
-    dom_node.setAttribute(pagespeed.DeferJs.PSA_NOT_PROCESSED, '');
+    dom_node.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, '');
   }
 };
 
@@ -490,11 +494,11 @@ pagespeed.DeferJs.prototype.setNotProcessedAttributeForNodes = function() {
  * Get the next script psajs node to be executed.
  * @return {Element} Element having type attribute set to 'text/psajs'.
  */
-pagespeed.DeferJs.prototype.nextPsaJsNode = function() {
+deferJsNs.DeferJs.prototype.nextPsaJsNode = function() {
   var current_node = null;
   if (document.querySelector) {
     current_node = document.querySelector(
-        '[type="' + pagespeed.DeferJs.PSA_SCRIPT_TYPE + '"]');
+        '[type="' + deferJsNs.DeferJs.PSA_SCRIPT_TYPE + '"]');
   }
   return current_node;
 };
@@ -504,11 +508,11 @@ pagespeed.DeferJs.prototype.nextPsaJsNode = function() {
  * inserted before the returned node.
  * @return {Element} Element having 'psa_current_node' attribute.
  */
-pagespeed.DeferJs.prototype.getCurrentDomLocation = function() {
+deferJsNs.DeferJs.prototype.getCurrentDomLocation = function() {
   var current_node;
   if (document.querySelector) {
     current_node = document.querySelector(
-        '[' + pagespeed.DeferJs.PSA_CURRENT_NODE + ']');
+        '[' + deferJsNs.DeferJs.PSA_CURRENT_NODE + ']');
   }
   return current_node ||
       this.origGetElementsByTagName_.call(document, 'psanode')[0];
@@ -517,7 +521,7 @@ pagespeed.DeferJs.prototype.getCurrentDomLocation = function() {
 /**
  * Removes the processed script node with 'text/psajs'.
  */
-pagespeed.DeferJs.prototype.removeCurrentDomLocation = function() {
+deferJsNs.DeferJs.prototype.removeCurrentDomLocation = function() {
   var oldNode = this.getCurrentDomLocation();
   // getCurrentDomLocation can return 'psanode' which is not a script.
   if (oldNode.nodeName == 'SCRIPT') {
@@ -528,8 +532,8 @@ pagespeed.DeferJs.prototype.removeCurrentDomLocation = function() {
 /**
  * Called when the script Queue execution is finished.
  */
-pagespeed.DeferJs.prototype.onComplete = function() {
-  if (this.state_ == pagespeed.DeferJs.STATES.SCRIPTS_DONE) {
+deferJsNs.DeferJs.prototype.onComplete = function() {
+  if (this.state_ == deferJsNs.DeferJs.STATES.SCRIPTS_DONE) {
     return;
   }
 
@@ -548,7 +552,7 @@ pagespeed.DeferJs.prototype.onComplete = function() {
   if (document.querySelectorAll && !(this.getIEVersion() <= 8)) {
     document.getElementsByTagName = this.origGetElementsByTagName_;
   }
-  if (pagespeed.DeferJs.isExperimentalMode) {
+  if (deferJsNs.DeferJs.isExperimentalMode) {
       document.createElement = this.origCreateElement_;
   }
   this.restoreAddEventListeners();
@@ -558,7 +562,7 @@ pagespeed.DeferJs.prototype.onComplete = function() {
   document.write = this.origDocWrite_;
   document.writeln = this.origDocWriteln_;
 
-  this.fireEvent(pagespeed.DeferJs.EVENT.DOM_READY);
+  this.fireEvent(deferJsNs.DeferJs.EVENT.DOM_READY);
 
   if (document.onreadystatechange) {
     this.exec(document.onreadystatechange, document);
@@ -567,16 +571,16 @@ pagespeed.DeferJs.prototype.onComplete = function() {
   if (window.onload) {
     psaAddEventListener(window, 'onload', window.onload);
   }
-  this.fireEvent(pagespeed.DeferJs.EVENT.LOAD);
+  this.fireEvent(deferJsNs.DeferJs.EVENT.LOAD);
 
-  this.state_ = pagespeed.DeferJs.STATES.SCRIPTS_DONE;
-  this.fireEvent(pagespeed.DeferJs.EVENT.AFTER_SCRIPTS);
+  this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_DONE;
+  this.fireEvent(deferJsNs.DeferJs.EVENT.AFTER_SCRIPTS);
 }
 
 /**
  * Schedules the next task in the queue.
  */
-pagespeed.DeferJs.prototype.runNext = function() {
+deferJsNs.DeferJs.prototype.runNext = function() {
   this.handlePendingDocumentWrites();
   this.removeCurrentDomLocation();
   if (this.next_ < this.queue_.length) {
@@ -586,8 +590,8 @@ pagespeed.DeferJs.prototype.runNext = function() {
     this.next_++;
     this.queue_[this.next_ - 1].call(window);
   } else {
-    if (pagespeed.DeferJs.isExperimentalMode) {
-      this.state_ = pagespeed.DeferJs.STATES.SYNC_SCRIPTS_DONE;
+    if (deferJsNs.DeferJs.isExperimentalMode) {
+      this.state_ = deferJsNs.DeferJs.STATES.SYNC_SCRIPTS_DONE;
       if (this.dynamicInsertedScriptCount_ != 0) {
         // Script onload is not triggered if src is empty because such scripts
         // are not async scripts as these scripts will be executed while parsing
@@ -615,7 +619,7 @@ pagespeed.DeferJs.prototype.runNext = function() {
  * @param {!NodeList} nodeList NodeList from a DOM node.
  * @return {!Array.<Node>} Array of nodes returned.
  */
-pagespeed.DeferJs.prototype.nodeListToArray = function(nodeList) {
+deferJsNs.DeferJs.prototype.nodeListToArray = function(nodeList) {
   var arr = [];
   var len = nodeList.length;
   for (var i = 0; i < len; ++i) {
@@ -627,7 +631,7 @@ pagespeed.DeferJs.prototype.nodeListToArray = function(nodeList) {
 /**
  * SetUp needed before deferrred scripts execution.
  */
-pagespeed.DeferJs.prototype.setUp = function() {
+deferJsNs.DeferJs.prototype.setUp = function() {
   // TODO(ksimbili): Remove this once context is not optional.
   // Place where document.write() happens if there is no context element
   // present. Happens if there is no context registering that happened in
@@ -682,11 +686,11 @@ pagespeed.DeferJs.prototype.setUp = function() {
     // TODO(ksimbili): Support IE8
     document.getElementsByTagName = function(tagName) {
       return document.querySelectorAll(
-          tagName + ':not([' + pagespeed.DeferJs.PSA_NOT_PROCESSED + '])');
+          tagName + ':not([' + deferJsNs.DeferJs.PSA_NOT_PROCESSED + '])');
     }
   }
 
-  if (pagespeed.DeferJs.isExperimentalMode) {
+  if (deferJsNs.DeferJs.isExperimentalMode) {
     // Overriding createElement().
     // Attaching onload & onerror function if script node is created.
     document.createElement = function(str) {
@@ -697,12 +701,12 @@ pagespeed.DeferJs.prototype.setUp = function() {
         var onload = function() {
           me.dynamicInsertedScriptCount_--;
           if (me.dynamicInsertedScriptCount_ == 0 &&
-              me.state_ == pagespeed.DeferJs.STATES.SYNC_SCRIPTS_DONE) {
+              me.state_ == deferJsNs.DeferJs.STATES.SYNC_SCRIPTS_DONE) {
             me.onComplete();
           }
         };
-        pagespeed.addOnload(elem, onload);
-        pagespeed.addHandler(elem, 'error', onload);
+        deferJsNs.addOnload(elem, onload);
+        deferJsNs.addHandler(elem, 'error', onload);
       }
       return elem;
     }
@@ -712,24 +716,24 @@ pagespeed.DeferJs.prototype.setUp = function() {
 /**
  * Starts the execution of all the deferred scripts.
  */
-pagespeed.DeferJs.prototype.run = function() {
-  if (this.state_ >= pagespeed.DeferJs.STATES.SCRIPTS_EXECUTING) {
+deferJsNs.DeferJs.prototype.run = function() {
+  if (this.state_ >= deferJsNs.DeferJs.STATES.SCRIPTS_EXECUTING) {
     return;
   }
-  this.fireEvent(pagespeed.DeferJs.EVENT.BEFORE_SCRIPTS);
-  this.state_ = pagespeed.DeferJs.STATES.SCRIPTS_EXECUTING;
+  this.fireEvent(deferJsNs.DeferJs.EVENT.BEFORE_SCRIPTS);
+  this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_EXECUTING;
   this.setUp();
   // Starts executing the defer_js closures.
   this.runNext();
 };
-pagespeed.DeferJs.prototype['run'] = pagespeed.DeferJs.prototype.run;
+deferJsNs.DeferJs.prototype['run'] = deferJsNs.DeferJs.prototype.run;
 
 /**
  * Parses the given html snippet.
  * @param {!string} html to be parsed.
  * @return {!Node} returns a DIV containing parsed nodes as children.
  */
-pagespeed.DeferJs.prototype.parseHtml = function(html) {
+deferJsNs.DeferJs.prototype.parseHtml = function(html) {
   var div = this.origCreateElement_.call(document, 'div');
   // IE HACK -- Two options.
   // 1) Either add a dummy character at the start and delete it after parsing.
@@ -743,7 +747,7 @@ pagespeed.DeferJs.prototype.parseHtml = function(html) {
  * Removes the node from its parent if it has one.
  * @param {Node} node Node to be disowned from parent.
  */
-pagespeed.DeferJs.prototype.disown = function(node) {
+deferJsNs.DeferJs.prototype.disown = function(node) {
   var parentNode = node.parentNode;
   if (parentNode) {
     parentNode.removeChild(node);
@@ -756,7 +760,7 @@ pagespeed.DeferJs.prototype.disown = function(node) {
  * @param {!NodeList} nodes to insert.
  * @param {!Node} elem context element.
  */
-pagespeed.DeferJs.prototype.insertNodesBeforeElem = function(nodes, elem) {
+deferJsNs.DeferJs.prototype.insertNodesBeforeElem = function(nodes, elem) {
   var nodeArray = this.nodeListToArray(nodes);
   var len = nodeArray.length;
   var parentNode = elem.parentNode;
@@ -772,7 +776,7 @@ pagespeed.DeferJs.prototype.insertNodesBeforeElem = function(nodes, elem) {
  * @param {!Node} node valid script Node.
  * @return {boolean} true if script node is javascript node.
  */
-pagespeed.DeferJs.prototype.isJSNode = function(node) {
+deferJsNs.DeferJs.prototype.isJSNode = function(node) {
   if (node.nodeName != 'SCRIPT') {
     return false;
   }
@@ -795,7 +799,7 @@ pagespeed.DeferJs.prototype.isJSNode = function(node) {
  * @param {!Node} node starting node for DFS.
  * @param {!Array.<Element>} scriptNodes array of script elements (output).
  */
-pagespeed.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
+deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
     node, scriptNodes) {
   if (!node.childNodes) {
     return;
@@ -805,13 +809,13 @@ pagespeed.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
   for (var i = 0; i < len; ++i) {
     var child = nodeArray[i];
     if (child.nodeType == 1) { // ELEMENT_NODE
-      child.setAttribute(pagespeed.DeferJs.PSA_NOT_PROCESSED, '');
+      child.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, '');
     }
     if (child.nodeName == 'SCRIPT') {
       if (this.isJSNode(child)) {
         scriptNodes.push(child);
         child.setAttribute('orig_type', child.type);
-        child.setAttribute('type', pagespeed.DeferJs.PSA_SCRIPT_TYPE);
+        child.setAttribute('type', deferJsNs.DeferJs.PSA_SCRIPT_TYPE);
         child.setAttribute('orig_src', child.src);
         child.setAttribute('src', '');
       }
@@ -825,7 +829,7 @@ pagespeed.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
  * @param {!Array.<Element>} scripts Array of script nodes to be deferred.
  * @param {!number} pos position for script ordering.
  */
-pagespeed.DeferJs.prototype.deferScripts = function(scripts, pos) {
+deferJsNs.DeferJs.prototype.deferScripts = function(scripts, pos) {
   var len = scripts.length;
   for (var i = 0; i < len; ++i) {
     this.addNode(scripts[i], pos + i);
@@ -838,7 +842,7 @@ pagespeed.DeferJs.prototype.deferScripts = function(scripts, pos) {
  * @param {!number} pos optional position to add to queue.
  * @param {Element} opt_elem optional context element.
  */
-pagespeed.DeferJs.prototype.insertHtml = function(html, pos, opt_elem) {
+deferJsNs.DeferJs.prototype.insertHtml = function(html, pos, opt_elem) {
   // Parse the html.
   var node = this.parseHtml(html);
 
@@ -861,7 +865,7 @@ pagespeed.DeferJs.prototype.insertHtml = function(html, pos, opt_elem) {
  * Renders the document.write() buffer before the context
  * element.
  */
-pagespeed.DeferJs.prototype.handlePendingDocumentWrites = function() {
+deferJsNs.DeferJs.prototype.handlePendingDocumentWrites = function() {
   if (this.documentWriteHtml_ == '') {
     return;
   }
@@ -880,7 +884,7 @@ pagespeed.DeferJs.prototype.handlePendingDocumentWrites = function() {
  * Writes html like document.write to the current context item.
  * @param {string} html Html to be written before current context elem.
  */
-pagespeed.DeferJs.prototype.writeHtml = function(html) {
+deferJsNs.DeferJs.prototype.writeHtml = function(html) {
   this.log('dw: ' + html);
   this.documentWriteHtml_ += html;
 };
@@ -890,44 +894,44 @@ pagespeed.DeferJs.prototype.writeHtml = function(html) {
  * @param {!Element} elem Element on which listener to be called.
  * @param {!Function} func onload listener.
  */
-pagespeed.DeferJs.prototype.addOnloadListeners = function(elem, func) {
+deferJsNs.DeferJs.prototype.addOnloadListeners = function(elem, func) {
   this.log('onload: ' + func.toString());
-  if (this.state_ == pagespeed.DeferJs.STATES.SCRIPTS_DONE) {
+  if (this.state_ == deferJsNs.DeferJs.STATES.SCRIPTS_DONE) {
     func.call(elem);
     return;
   }
 
   psaAddEventListener(elem, 'onload', func);
 };
-pagespeed.DeferJs.prototype['addOnloadListeners'] =
-    pagespeed.DeferJs.prototype.addOnloadListeners;
+deferJsNs.DeferJs.prototype['addOnloadListeners'] =
+    deferJsNs.DeferJs.prototype.addOnloadListeners;
 
 /**
  * Adds functions that run as the first thing in run().
  * @param {!function()} func onload listener.
  */
-pagespeed.DeferJs.prototype.addBeforeDeferRunFunctions = function(func) {
+deferJsNs.DeferJs.prototype.addBeforeDeferRunFunctions = function(func) {
   psaAddEventListener(window, 'onbeforescripts', func);
 };
-pagespeed.DeferJs.prototype['addBeforeDeferRunFunctions'] =
-    pagespeed.DeferJs.prototype.addBeforeDeferRunFunctions;
+deferJsNs.DeferJs.prototype['addBeforeDeferRunFunctions'] =
+    deferJsNs.DeferJs.prototype.addBeforeDeferRunFunctions;
 
 /**
  * Adds functions that run after all the deferred scripts, DOM ready listeners
  * and onload listeners have run.
  * @param {!function()} func onload listener.
  */
-pagespeed.DeferJs.prototype.addAfterDeferRunFunctions = function(func) {
+deferJsNs.DeferJs.prototype.addAfterDeferRunFunctions = function(func) {
   psaAddEventListener(window, 'onafterscripts', func);
 };
-pagespeed.DeferJs.prototype['addAfterDeferRunFunctions'] =
-    pagespeed.DeferJs.prototype.addAfterDeferRunFunctions;
+deferJsNs.DeferJs.prototype['addAfterDeferRunFunctions'] =
+    deferJsNs.DeferJs.prototype.addAfterDeferRunFunctions;
 
 /**
  * Firing event will execute all listeners registered for the event.
- * @param {!pagespeed.DeferJs.EVENT.<number>} evt Event to be fired.
+ * @param {!deferJsNs.DeferJs.EVENT.<number>} evt Event to be fired.
  */
-pagespeed.DeferJs.prototype.fireEvent = function(evt) {
+deferJsNs.DeferJs.prototype.fireEvent = function(evt) {
   this.log('Firing Event: ' + evt);
   var eventListeners = this.eventListernersMap_[evt] || [];
   for (var i = 0; i < eventListeners.length; ++i) {
@@ -941,7 +945,7 @@ pagespeed.DeferJs.prototype.fireEvent = function(evt) {
  * @param {!function()} func Function to be executed.
  * @param {Window|Element|Document} opt_scopeObject Element to be used as scope.
  */
-pagespeed.DeferJs.prototype.exec = function(func, opt_scopeObject) {
+deferJsNs.DeferJs.prototype.exec = function(func, opt_scopeObject) {
   try {
     func.call(opt_scopeObject || window);
   } catch (err) {
@@ -952,7 +956,7 @@ pagespeed.DeferJs.prototype.exec = function(func, opt_scopeObject) {
 /**
  * Override native event registration function on window and document objects.
  */
-pagespeed.DeferJs.prototype.overrideAddEventListeners = function() {
+deferJsNs.DeferJs.prototype.overrideAddEventListeners = function() {
   var me = this;
   // override AddEventListeners.
   if (window.addEventListener) {
@@ -979,7 +983,7 @@ pagespeed.DeferJs.prototype.overrideAddEventListeners = function() {
 /**
  * Restore native event registration functions on window and document.
  */
-pagespeed.DeferJs.prototype.restoreAddEventListeners = function() {
+deferJsNs.DeferJs.prototype.restoreAddEventListeners = function() {
   if (window.addEventListener) {
     document.addEventListener = this.origDocAddEventListener_;
     window.addEventListener = this.origWindowAddEventListener_;
@@ -1002,20 +1006,20 @@ pagespeed.DeferJs.prototype.restoreAddEventListeners = function() {
 var psaAddEventListener = function(elem, eventName, func, opt_capture,
                                    opt_originalAddEventListener) {
   var deferJs = pagespeed['deferJs'];
-  if (deferJs.state_ >= pagespeed.DeferJs.STATES.SCRIPTS_DONE) {
+  if (deferJs.state_ >= deferJsNs.DeferJs.STATES.SCRIPTS_DONE) {
     return;
   }
   var deferJsEvent;
 
   if (eventName == 'DOMContentLoaded' || eventName == 'readystatechange' ||
       eventName == 'onDOMContentLoaded' || eventName == 'onreadystatechange') {
-    deferJsEvent = pagespeed.DeferJs.EVENT.DOM_READY;
+    deferJsEvent = deferJsNs.DeferJs.EVENT.DOM_READY;
   } else if (eventName == 'load' || eventName == 'onload') {
-    deferJsEvent = pagespeed.DeferJs.EVENT.LOAD;
+    deferJsEvent = deferJsNs.DeferJs.EVENT.LOAD;
   } else if (eventName == 'onbeforescripts') {
-    deferJsEvent = pagespeed.DeferJs.EVENT.BEFORE_SCRIPTS;
+    deferJsEvent = deferJsNs.DeferJs.EVENT.BEFORE_SCRIPTS;
   } else if (eventName == 'onafterscripts') {
-    deferJsEvent = pagespeed.DeferJs.EVENT.AFTER_SCRIPTS;
+    deferJsEvent = deferJsNs.DeferJs.EVENT.AFTER_SCRIPTS;
   } else {
     if (opt_originalAddEventListener) {
       opt_originalAddEventListener.call(elem, eventName, func, opt_capture);
@@ -1024,7 +1028,7 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
   }
   var loadEvent;
   // TODO(ksimbili): Fix for IE8 too.
-  if (deferJsEvent == pagespeed.DeferJs.EVENT.LOAD &&
+  if (deferJsEvent == deferJsNs.DeferJs.EVENT.LOAD &&
       !(deferJs.getIEVersion() <= 8)) {
     // HACK HACK: This is specifically to solve for jquery libraries, who try
     // to read the event being passed.
@@ -1048,34 +1052,34 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
  * Registers all script tags which are marked text/psajs, by adding themselves
  * as the context element to the script embedded inside them.
  */
-pagespeed.DeferJs.prototype.registerScriptTags = function() {
-  if (this.state_ >= pagespeed.DeferJs.STATES.SCRIPTS_REGISTERED) {
+deferJsNs.DeferJs.prototype.registerScriptTags = function() {
+  if (this.state_ >= deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED) {
     return;
   }
-  this.state_ = pagespeed.DeferJs.STATES.SCRIPTS_REGISTERED;
+  this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED;
   var scripts = document.getElementsByTagName('script');
   var len = scripts.length;
   for (var i = 0; i < len; ++i) {
     var script = scripts[i];
     // TODO(ksimbili): Use orig_type
     // TODO(ksimbili): Remove these script nodes from DOM.
-    if (script.getAttribute('type') == pagespeed.DeferJs.PSA_SCRIPT_TYPE) {
+    if (script.getAttribute('type') == deferJsNs.DeferJs.PSA_SCRIPT_TYPE) {
       this.addNode(script);
     }
   }
 };
-pagespeed.DeferJs.prototype['registerScriptTags'] =
-    pagespeed.DeferJs.prototype.registerScriptTags;
+deferJsNs.DeferJs.prototype['registerScriptTags'] =
+    deferJsNs.DeferJs.prototype.registerScriptTags;
 
 /**
  * Runs the function when element is loaded.
  * @param {Window|Element} elem Element to attach handler.
  * @param {!function()} func New onload handler.
  */
-pagespeed.addOnload = function(elem, func) {
-  pagespeed.addHandler(elem, 'load', func);
+deferJsNs.addOnload = function(elem, func) {
+  deferJsNs.addHandler(elem, 'load', func);
 };
-pagespeed['addOnload'] = pagespeed.addOnload;
+pagespeed['addOnload'] = deferJsNs.addOnload;
 
 /**
  * Runs the function when event is triggered.
@@ -1083,7 +1087,7 @@ pagespeed['addOnload'] = pagespeed.addOnload;
  * @param {!string} eventName Name of the event.
  * @param {!function()} func New onload handler.
  */
-pagespeed.addHandler = function(elem, eventName, func) {
+deferJsNs.addHandler = function(elem, eventName, func) {
   if (elem.addEventListener) {
     elem.addEventListener(eventName, func, false);
   } else if (elem.attachEvent) {
@@ -1098,28 +1102,19 @@ pagespeed.addHandler = function(elem, eventName, func) {
     }
   }
 };
-pagespeed['addHandler'] = pagespeed.addHandler;
-
-/**
- * Returns the outerHTML of node in a browser independent fashion.
- * @param {!Element} node whose outerHTML is computed.
- * @return {string} html.
- */
-pagespeed.outerHTML = function(node) {
-  return node.outerHTML || new XMLSerializer().serializeToString(node);
-};
+pagespeed['addHandler'] = deferJsNs.addHandler;
 
 /**
  * Returns true if browser is Firefox.
  */
-pagespeed.DeferJs.prototype.isFireFox = function() {
+deferJsNs.DeferJs.prototype.isFireFox = function() {
   return (navigator.userAgent.indexOf("Firefox") != -1);
 };
 
 /**
  * Returns version number if browser is IE.
  */
-pagespeed.DeferJs.prototype.getIEVersion = function() {
+deferJsNs.DeferJs.prototype.getIEVersion = function() {
   var version = /(?:MSIE.(\d+\.\d+))/.exec(navigator.userAgent);
   return (version && version[1]) ?
          (document.documentMode || parseFloat(version[1])) :
@@ -1129,17 +1124,17 @@ pagespeed.DeferJs.prototype.getIEVersion = function() {
 /**
  * Initialize defer javascript.
  */
-pagespeed.deferInit = function() {
+deferJsNs.deferInit = function() {
   if (pagespeed['deferJs']) {
     return;
   }
 
   if (window.localStorage) {
-    pagespeed.DeferJs.isExperimentalMode =
+    deferJsNs.DeferJs.isExperimentalMode =
         window.localStorage['defer_js_experimental'];
   }
 
-  var temp = new pagespeed.DeferJs();
+  var temp = new deferJsNs.DeferJs();
   pagespeed['deferJs'] = temp;
 };
-pagespeed['deferInit'] = pagespeed.deferInit;
+pagespeed['deferInit'] = deferJsNs.deferInit;

@@ -30,7 +30,7 @@ static const double kChromiumTimeOfDay = 1204251968254LL;
 const char kModPagespeedHeader[] = "X-Mod-Pagespeed";
 const char kPageSpeedHeader[] = "X-Page-Speed";
 const char kRequestStartTimeHeader[] = "X-Request-Start-Time";
-const char kWPTUserAgentIdentifier[] = "PTST ";
+const char kWPTUserAgentIdentifier[] = "PTST";
 // The name of the header used to specify the rewriters that were
 // applied to the current request.
 const char kPsaRewriterHeader[] = "X-PSA-Rewriter";

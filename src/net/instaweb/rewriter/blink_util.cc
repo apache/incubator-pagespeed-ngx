@@ -52,6 +52,26 @@ bool IsBlacklistedBrowser(const StringPiece& user_agent,
   return false;
 }
 
+bool IsAllIncludedIn(const StringPieceVector& spec_vector,
+                     const StringPieceVector& value_vector) {
+  for (int i = 0, m = spec_vector.size(); i < m; ++i) {
+    bool found_spec_item = false;
+    for (int j = 0, n = value_vector.size(); j < n; ++j) {
+      if (StringCaseCompare(value_vector[j], spec_vector[i]) == 0) {
+        // The i'th token in spec is there in value.
+        found_spec_item = true;
+        break;
+      }
+    }
+    if (!found_spec_item) {
+      // If a token in spec is not found in value then we can return false.
+      return false;
+    }
+  }
+  // Found all in spec in value.
+  return true;
+}
+
 }  // namespace
 
 // TODO(rahulbansal): Add tests for this.
@@ -381,13 +401,15 @@ void PopulateAttributeToNonCacheableValuesMap(
     SplitStringPieceToVector(non_cacheable_values[i], "=",
                              &non_cacheable_values_pair, true);
     if (non_cacheable_values_pair.size() != 2) {
-      LOG(ERROR) << "Incorrect non cacheable element value " <<
-          non_cacheable_values[i];
+      LOG(ERROR) << "Incorrect non cacheable element value "
+                 << non_cacheable_values[i];
       return;
     }
+    StringPiece attribute_value = non_cacheable_values_pair[1];
+    TrimQuote(&attribute_value);
     attribute_non_cacheable_values_map->insert(make_pair(
         non_cacheable_values_pair[0].as_string(),
-        make_pair(non_cacheable_values_pair[1].as_string(), i)));
+        make_pair(attribute_value.as_string(), i)));
     panel_number_num_instances->push_back(0);
   }
 }
@@ -402,15 +424,32 @@ int GetPanelNumberForNonCacheableElement(
     if (value.empty()) {
       continue;
     }
-    std::pair<AttributesToNonCacheableValuesMap::const_iterator,
-        AttributesToNonCacheableValuesMap::const_iterator> ret =
-            attribute_non_cacheable_values_map.equal_range(
-                attribute.name().c_str());
-    AttributesToNonCacheableValuesMap::const_iterator it;
-    for (it = ret.first; it != ret.second; ++it) {
-      if ((it->first == attribute.name().c_str()) &&
-          (value == it->second.first)) {
-        return it->second.second;
+    // Get all items in the map with matching attribute name.
+    // TODO(sriharis):  We need case insensitive compare here.
+    typedef AttributesToNonCacheableValuesMap::const_iterator Iterator;
+    std::pair<Iterator, Iterator> ret =
+        attribute_non_cacheable_values_map.equal_range(
+            attribute.name().c_str());
+
+    if (attribute.name().keyword() == HtmlName::kClass) {
+      // Split class attribute value on whitespace.
+      StringPieceVector value_vector;
+      SplitStringPieceToVector(value, " \r\n\t", &value_vector, true);
+      for (Iterator it = ret.first; it != ret.second; ++it) {
+        StringPieceVector spec_vector;
+        SplitStringPieceToVector(it->second.first, " \t", &spec_vector, true);
+        // If spec_vector is a subset of value_vector return the index
+        // (it->second.second).
+        if (IsAllIncludedIn(spec_vector, value_vector)) {
+          return it->second.second;
+        }
+      }
+    } else {
+      for (Iterator it = ret.first; it != ret.second; ++it) {
+        if (value == it->second.first) {
+          // Returning the index.
+          return it->second.second;
+        }
       }
     }
   }

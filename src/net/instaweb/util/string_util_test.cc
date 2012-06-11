@@ -474,6 +474,22 @@ TEST(BasicUtilsTest, StringPieceFindWithNull) {
   EXPECT_EQ(StringPiece::npos, null_piece.find("not found"));
 }
 
+class TrimQuoteTest : public testing::Test {
+ protected:
+  static void CheckTrimQuote(StringPiece in, StringPiece expected_out) {
+    TrimQuote(&in);
+    EXPECT_EQ(expected_out, in);
+  }
+};
+
+TEST_F(TrimQuoteTest, TrimQuoteTestAll) {
+  CheckTrimQuote(" \"one\"", "one");
+  CheckTrimQuote(" \'one \"  ", "one");
+  CheckTrimQuote(" \"one \'", "one");
+  CheckTrimQuote(" \'one\'", "one");
+  CheckTrimQuote("\"one two\"", "one two");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

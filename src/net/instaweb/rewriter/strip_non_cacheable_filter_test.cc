@@ -39,15 +39,24 @@ const char kHtmlInput[] =
     "<div id=\"header\"> This is the header </div>"
     "<div id=\"container\" class>"
       "<h2 id=\"beforeItems\"> This is before Items </h2>"
-      "<div class=\"item\">"
+      "<div class=\"Item\">"
          "<img src=\"image1\">"
          "<img src=\"image2\">"
       "</div>"
-      "<div class=\"item\">"
+      "<div class=\"item lots of classes here for testing\">"
          "<img src=\"image3\">"
           "<div class=\"item\">"
              "<img src=\"image4\">"
           "</div>"
+      "</div>"
+      "<div class=\"itema itemb others are ok\">"
+        "<img src=\"image5\">"
+      "</div>"
+      "<div class=\"itemb before itema\">"
+        "<img src=\"image6\">"
+      "</div>"
+      "<div class=\"itemb only\">"
+        "<img src=\"image7\">"
       "</div>"
     "</body></html>";
 
@@ -82,11 +91,11 @@ class StripNonCacheableFilterTest : public ResourceManagerTestBase {
         ::testing::UnitTest::GetInstance()->current_test_info();
     if (strcmp(test_info->name(), "StripNonCacheableOldOption") == 0) {
       options_->set_prioritize_visible_content_non_cacheable_elements(
-          "/:class=item,id=beforeItems");
+          "/:class=\"item\",id=beforeItems,class=\"itema itemb\"");
     } else {
       options_->AddBlinkCacheableFamily(
           "/", RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
-          "class=item,id=beforeItems");
+          "class=\"item\",id=beforeItems,class=\"itema itemb\"");
     }
 
     SetUseManagedRewriteDrivers(true);
@@ -110,6 +119,11 @@ class StripNonCacheableFilterTest : public ResourceManagerTestBase {
         "<!--GooglePanel begin panel-id-0.0--><!--GooglePanel end panel-id-0.0-->"
         "<!--GooglePanel begin panel-id-0.1-->"
         "<!--GooglePanel end panel-id-0.1-->"
+        "<!--GooglePanel begin panel-id-2.0-->"
+        "<!--GooglePanel end panel-id-2.0-->"
+        "<!--GooglePanel begin panel-id-2.1-->"
+        "<!--GooglePanel end panel-id-2.1-->"
+        "<div class=\"itemb only\"><img src=\"image7\"></div>"
         "</body></html>");
   }
 
