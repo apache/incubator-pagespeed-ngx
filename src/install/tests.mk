@@ -102,13 +102,9 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	sleep 2
 	rm -rf $(MOD_PAGESPEED_CACHE)
 	$(APACHE_CTRL_BIN) start
-	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER) \
-	                                   $(APACHE_HTTPS_SERVER)
 	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
 	                                          $(APACHE_HTTPS_SERVER)
 	@echo '***' System-test with warm cache
-	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER) \
-	                                   $(APACHE_HTTPS_SERVER)
 	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
 	                                          $(APACHE_HTTPS_SERVER)
 	@echo '***' System-test With statistics off
@@ -119,8 +115,6 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	grep ModPagespeedStatistics $(APACHE_DEBUG_PAGESPEED_CONF)
 	-$(APACHE_CTRL_BIN) restart
 	sleep 2
-	$(INSTALL_DATA_DIR)/system_test.sh $(APACHE_SERVER) \
-	                                   $(APACHE_HTTPS_SERVER)
 	CACHE_FLUSH_TEST=on \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \

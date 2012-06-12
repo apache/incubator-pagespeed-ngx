@@ -386,7 +386,6 @@ restart : staging
 
 # Tests that the installed mod_pagespeed server is working.
 test :
-	./system_test.sh localhost
 	CACHE_FLUSH_TEST=on APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 		./apache_system_test.sh localhost
 
