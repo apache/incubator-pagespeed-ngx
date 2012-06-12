@@ -32,7 +32,7 @@ CriticalImagesFinder::~CriticalImagesFinder() {
 }
 
 bool CriticalImagesFinder::IsCriticalImage(
-    const GoogleString& image_url, RewriteDriver* driver) const {
+    const GoogleString& image_url, const RewriteDriver* driver) const {
   const StringSet* critical_images_set = driver->critical_images();
   return critical_images_set != NULL &&
       critical_images_set->find(image_url) != critical_images_set->end();

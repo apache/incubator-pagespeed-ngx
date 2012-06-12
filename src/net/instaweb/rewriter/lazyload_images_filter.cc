@@ -21,10 +21,12 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -129,12 +131,38 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
     HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
     if (src != NULL) {
       StringPiece url(src->DecodedValueOrNull());
-      if (!url.starts_with(kData) &&
+      if (!url.empty() && !url.starts_with(kData) &&
           element->FindAttribute(HtmlName::kOnload) == NULL &&
-          element->FindAttribute(HtmlName::kPagespeedLazySrc) == NULL) {
-        // Check that the image has a src, does not have an onload or
-        // pagespeed_lazy_src attribute and is not inlined. If so, replace the
-        // src with pagespeed_lazy_src and set the onload appropriately.
+          element->FindAttribute(HtmlName::kPagespeedLazySrc) == NULL &&
+          !element->DeleteAttribute(HtmlName::kPagespeedNoDefer)) {
+        // Lazily load the image if it has a src, does not have an onload /
+        // pagespeed_lazy_src attribute / pagespeed_no_defer attribute and is
+        // not inlined.
+        // Note that we remove the pagespeed_no_defer if it was present.
+        CriticalImagesFinder* finder =
+            driver_->resource_manager()->critical_images_finder();
+        // Note that if the platform lacks a CriticalImageFinder
+        // implementation, we consider all images to be non-critical and try
+        // to lazily load them.
+        if (finder != NULL) {
+          // Decode the url since the critical images in the finder are not
+          // rewritten.
+          GoogleUrl gurl(driver_->base_url(), url);
+          StringVector decoded_url_vector;
+          if (driver_->DecodeUrl(gurl, &decoded_url_vector) &&
+              decoded_url_vector.size() == 1) {
+            // We only handle the case where the rewritten url corresponds to a
+            // single original url which should be sufficient for all cases
+            // other than image sprites.
+            gurl.Reset(decoded_url_vector[0]);
+          }
+          if (finder->IsCriticalImage(gurl.spec_c_str(), driver_)) {
+            // Do not try to lazily load this image since it is critical.
+            return;
+          }
+        }
+        // Replace the src with pagespeed_lazy_src and set the onload
+        // appropriately.
         driver_->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
         driver_->AddAttribute(element, HtmlName::kSrc, kBlankImageSrc);
         driver_->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);

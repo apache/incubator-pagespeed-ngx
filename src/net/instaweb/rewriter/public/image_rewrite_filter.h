@@ -160,7 +160,7 @@ class ImageRewriteFilter : public RewriteFilter {
   // An image is considered critical if it is in the critical list as determined
   // by CriticalImageFinder. Images are considered critical if the platform
   // lacks a CriticalImageFinder implementation.
-  bool IsCriticalImage(const StringPiece& image_url, int image_index) const;
+  bool IsCriticalImage(const StringPiece& image_url) const;
 
   scoped_ptr<const ImageTagScanner> image_filter_;
   scoped_ptr<WorkBound> work_bound_;

@@ -36,7 +36,7 @@ class CriticalImagesFinder {
 
   // Checks whether the requested image is present in the critical set or not.
   virtual bool IsCriticalImage(const GoogleString& image_url,
-                               RewriteDriver* driver) const;
+                               const RewriteDriver* driver) const;
 
   // Gets critical images and update the critical images set in RewriteDriver.
   virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver);

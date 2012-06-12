@@ -706,7 +706,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   if (driver_->UserAgentSupportsImageInlining() && !image_inlined &&
       options->NeedLowResImages() &&
       cached->has_low_resolution_inlined_data() &&
-      IsCriticalImage(src_value, image_index)) {
+      IsCriticalImage(src_value)) {
     int max_preview_image_index =
         driver_->options()->max_inlined_preview_images_index();
     if (max_preview_image_index < 0 || image_index < max_preview_image_index) {
@@ -730,8 +730,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   return rewrote_url;
 }
 
-bool ImageRewriteFilter::IsCriticalImage(const StringPiece& image_url,
-                                         int image_index) const {
+bool ImageRewriteFilter::IsCriticalImage(const StringPiece& image_url) const {
   GoogleUrl image_gurl(driver_->base_url(), image_url);
   CriticalImagesFinder* finder =
       driver_->resource_manager()->critical_images_finder();
