@@ -650,12 +650,20 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
       TryInline(driver_->options()->ImageInlineMaxBytes(),
                 cached, &data_url)) {
     src->SetValue(data_url);
+    // TODO(jmaessen): We used to take the absence of desired_image_dims here as
+    // license to delete dimensions.  That was incorrect, as sometimes there
+    // were dimensions in the page but the image was being enlarged on page and
+    // we can't strip the enlargement out safely.  So right now, if the size
+    // information exactly matches the size of the image, we'll inline the
+    // image, but resource_context->has_desired_image_dims() will be false (so
+    // that the rewritten image url doesn't contain the image dimensions) and
+    // we'll leave the dimensions in place unnecessarily.
     if (cached->has_image_file_dims() &&
-        (!resource_context->has_desired_image_dims() ||
-         ((cached->image_file_dims().width() ==
-           resource_context->desired_image_dims().width()) &&
-          (cached->image_file_dims().height() ==
-           resource_context->desired_image_dims().height())))) {
+        resource_context->has_desired_image_dims() &&
+        (cached->image_file_dims().width() ==
+         resource_context->desired_image_dims().width()) &&
+        (cached->image_file_dims().height() ==
+         resource_context->desired_image_dims().height())) {
       // Delete dimensions, as they they match the given inline image data.
       element->DeleteAttribute(HtmlName::kWidth);
       element->DeleteAttribute(HtmlName::kHeight);

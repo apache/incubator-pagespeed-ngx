@@ -728,8 +728,11 @@ TEST_F(ImageRewriteTest, InlineNoRewrite) {
   const char kChefDims[] = " width=192 height=256";
   // This image is just small enough to inline, which also erases
   // dimension information.
+  // TODO(jmaessen): At present we're conservatively leaving it in
+  // due to problems with resizing in the field.  The second set
+  // of dimensions ought to be "".
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
-                    kChefDims, "", false, true);
+                    kChefDims, kChefDims, false, true);
   // This image is too big to inline, and we don't insert missing
   // dimension information because that is not explicitly enabled.
   TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
@@ -768,6 +771,18 @@ TEST_F(ImageRewriteTest, InlineLargerResize) {
   // Image is inlined but not resized, so preserve dimensions.
   TestSingleRewrite(kCuppaOPngFile, kContentTypePng, kContentTypePng,
                     kResizedDims, kResizedDims, false, true);
+}
+
+TEST_F(ImageRewriteTest, InlineEnlargedImage) {
+  // Make sure we inline an image that meets the inlining threshold,
+  // but retain its sizing information if the image has been enlarged.
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  rewrite_driver()->AddFilters();
+  const char kDoubledDims[] = " width=130 height=140";
+  TestSingleRewrite(kCuppaOPngFile, kContentTypePng, kContentTypePng,
+                    kDoubledDims, kDoubledDims, false, true);
 }
 
 TEST_F(ImageRewriteTest, RespectsBaseUrl) {
