@@ -107,6 +107,23 @@ class RewriteDriver : public HtmlParse {
     kTrue = 1
   };
 
+  // Indicates document's mimetype as XHTML, HTML, or is not
+  // known/something else.  Note that in Apache we might not know the
+  // correct mimetype because a downstream module might change it.
+  // It's not clear how likely this is, since mod_rewrite and mod_mime
+  // run upstream of mod_pagespeed.  However if anyone sets mimetype
+  // via "Header Add", it would affect the Browser's view of the
+  // document's mimetype (which is what determines the parsing) but
+  // mod_pagespeed would not know.
+  //
+  // Note that we also have doctype().IsXhtml() but that indicates quirks-mode
+  // for CSS, and does not control how the parser parses the document.
+  enum XhtmlStatus {
+    kXhtmlUnknown,
+    kIsXhtml,
+    kIsNotXhtml
+  };
+
   // A list of HTTP request headers.  These are the headers which
   // should be passed through from the client request into the
   // ResponseHeaders request_headers sent to the rewrite driver.
@@ -787,6 +804,10 @@ class RewriteDriver : public HtmlParse {
   bool need_furious_cookie() const { return need_furious_cookie_; }
   void set_need_furious_cookie(bool x) { need_furious_cookie_ = x; }
 
+  // Determines whether the document's Content-Type has a mimetype indicating
+  // that browsers should parse it as XHTML.
+  XhtmlStatus MimeTypeXhtmlStatus();
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -1124,6 +1145,10 @@ class RewriteDriver : public HtmlParse {
 
   // Do we need to add a Set-Cookie header for Furious?
   bool need_furious_cookie_;
+
+  // Memoized computation of whether the current doc has an XHTML mimetype.
+  bool xhtml_mimetype_computed_;
+  XhtmlStatus xhtml_status_ : 8;
 
   // Number of images whose low quality images are inlined in the html page by
   // InlinePreviewFilter.

@@ -24,7 +24,6 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
@@ -175,7 +174,7 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
           // Create new link element to replace the style element with.
           HtmlElement* link_element =
               driver_->NewElement(style_element_->parent(), HtmlName::kLink);
-          if (driver_->doctype().IsXhtml()) {
+          if (driver_->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) {
             link_element->set_close_style(HtmlElement::BRIEF_CLOSE);
           }
           driver_->AddAttribute(link_element, HtmlName::kRel,

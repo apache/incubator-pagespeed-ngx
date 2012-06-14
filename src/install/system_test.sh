@@ -731,14 +731,14 @@ if [ -n "$HTTPS_HOST" ]; then
 
   echo Checking for combined CSS URL
   EXPECTED='href="styles/yellow\.css+blue\.css+big\.css+bold\.css'
-  EXPECTED="$EXPECTED"'\.pagespeed\.cc\..*\.css">'
+  EXPECTED="$EXPECTED"'\.pagespeed\.cc\..*\.css"/>'
   fetch_until "$URL?ModPagespeedFilters=combine_css,trim_urls" \
       "grep -ic $EXPECTED" 1
 
   echo Checking for combined CSS URL without URL trimming
   EXPECTED="href=\"$HTTPS_EXAMPLE_ROOT/"
   EXPECTED="$EXPECTED"'styles/yellow\.css+blue\.css+big\.css+bold\.css'
-  EXPECTED="$EXPECTED"'\.pagespeed\.cc\..*\.css">'
+  EXPECTED="$EXPECTED"'\.pagespeed\.cc\..*\.css"/>'
   fetch_until "$URL?ModPagespeedFilters=combine_css" "grep -ic $EXPECTED" 1
 fi
 

@@ -825,6 +825,12 @@ HTTPCache::FindResult ResourceManagerTestBase::HttpBlockingFind(
   return callback.result();
 }
 
+void ResourceManagerTestBase::SetMimetype(const StringPiece& mimetype) {
+  rewrite_driver()->set_response_headers_ptr(&response_headers_);
+  response_headers_.Add(HttpAttributes::kContentType, mimetype);
+  response_headers_.ComputeCaching();
+}
+
 // Logging at the INFO level slows down tests, adds to the noise, and
 // adds considerably to the speed variability.
 class ResourceManagerProcessContext {

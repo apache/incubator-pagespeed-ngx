@@ -22,7 +22,6 @@
 #include <cstddef>
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
@@ -237,7 +236,7 @@ void JavascriptFilter::RewriteInlineScript() {
     if (code_block.ProfitableToRewrite()) {
       // Replace the old script string with the new, minified one.
       GoogleString* rewritten_script = code_block.RewrittenString();
-      if (driver_->doctype().IsXhtml() &&
+      if ((driver_->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) &&
           script->find("<![CDATA[") != StringPiece::npos) {
         // Minifier strips leading and trailing CDATA comments from scripts.
         // Restore them if necessary and safe according to the original script.

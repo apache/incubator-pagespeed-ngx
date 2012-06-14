@@ -22,8 +22,6 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/http/public/content_type.h"  // for ContentType
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -155,33 +153,19 @@ void AddInstrumentationFilter::StartElement(HtmlElement* element) {
   }
 }
 
-bool AddInstrumentationFilter::IsXhtml() {
-  bool is_xhtml = false;
-  if (!use_cdata_hack_) {
-    const ResponseHeaders* headers = driver_->response_headers();
-    if (headers != NULL) {
-      const ContentType* content_type = headers->DetermineContentType();
-      if (content_type != NULL) {
-        is_xhtml = content_type->IsXmlLike();
-      }
-    }
-  }
-  return is_xhtml;
-}
-
 void AddInstrumentationFilter::EndElement(HtmlElement* element) {
   if (element->keyword() == HtmlName::kBody) {
     // We relied on the existence of a <head> element.  This should have been
     // assured by add_head_filter.
     CHECK(found_head_) << "Reached end of document without finding <head>."
         "  Please turn on the add_head filter.";
-    bool is_xhtml = IsXhtml();
+    bool is_xhtml = (driver_->MimeTypeXhtmlStatus() == RewriteDriver::kIsXhtml);
     const char* script = is_xhtml
         ? kTailScriptFormatXhtml->c_str() : kTailScriptFormat;
     AddScriptNode(element, script, kLoadTag, is_xhtml);
   } else if (found_head_ && element->keyword() == HtmlName::kHead &&
              driver_->options()->report_unload_time()) {
-    bool is_xhtml = IsXhtml();
+    bool is_xhtml = (driver_->MimeTypeXhtmlStatus() == RewriteDriver::kIsXhtml);
     const char* script = is_xhtml
         ? kUnloadScriptFormatXhtml->c_str() : kUnloadScriptFormat;
     AddScriptNode(element, script, kUnloadTag, is_xhtml);

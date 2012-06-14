@@ -202,6 +202,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       writer_(NULL),
       client_state_(NULL),
       need_furious_cookie_(false),
+      xhtml_mimetype_computed_(false),
+      xhtml_status_(kXhtmlUnknown),
       num_inline_preview_images_(0)
       // NOTE:  Be sure to clear per-request member vars in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
@@ -280,6 +282,9 @@ void RewriteDriver::Clear() {
   user_agent_supports_js_defer_ = kNotSet;
   user_agent_supports_webp_ = kNotSet;
   need_furious_cookie_ = false;
+  xhtml_mimetype_computed_ = false;
+  xhtml_status_ = kXhtmlUnknown;
+
   client_state_.reset(NULL);
   is_mobile_user_agent_ = kNotSet;
   pending_async_events_ = 0;
@@ -2177,5 +2182,23 @@ void RewriteDriver::EnableBlockingRewrite(RequestHeaders* request_headers) {
     }
   }
 }
+
+RewriteDriver::XhtmlStatus RewriteDriver::MimeTypeXhtmlStatus() {
+  if (!xhtml_mimetype_computed_ &&
+      resource_manager_->response_headers_finalized() &&
+      (response_headers_ != NULL)) {
+    xhtml_mimetype_computed_ = true;
+    const ContentType* content_type = response_headers_->DetermineContentType();
+    if (content_type != NULL) {
+      if (content_type->IsXmlLike()) {
+        xhtml_status_ = kIsXhtml;
+      } else {
+        xhtml_status_ = kIsNotXhtml;
+      }
+    }
+  }
+  return xhtml_status_;
+}
+
 
 }  // namespace net_instaweb

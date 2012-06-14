@@ -233,6 +233,10 @@ ElideAttributesFilter::~ElideAttributesFilter() {}
 void ElideAttributesFilter::StartElement(HtmlElement* element) {
   const DocType& doctype = html_parse_->doctype();
 
+  // TODO(jmarantz): switch to using mimetype.  To do that we need to have
+  // access to the RewriteDriver* to get the response-headers, and so this
+  // is not compatible with PageSpeed Insights that uses this filter for
+  // HTML minification.
   if (!doctype.IsXhtml()) {
     // Check for boolean attributes.
     KeywordSetMap::const_iterator iter =

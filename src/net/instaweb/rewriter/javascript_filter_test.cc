@@ -247,18 +247,49 @@ TEST_F(JavascriptFilterTest, RetainInlineData) {
                           "'> data </script>"));
 }
 
-TEST_F(JavascriptFilterTest, CdataJavascript) {
-  // Test minification of a simple inline script in html (NOT xhtml) where the
-  // script is wrapped in a commented-out CDATA.
+// Test minification of a simple inline script in markup with no
+// mimetype, where the script is wrapped in a commented-out CDATA.
+//
+// Note that javascript_filter never adds CDATA.  It only removes it
+// if it's sure the mimetype is HTML.
+TEST_F(JavascriptFilterTest, CdataJavascriptNoMimetype) {
   InitTest(100);
   ValidateExpected(
-      "cdata non-xhtml javascript",
+      "cdata javascript no mimetype",
+      StringPrintf(kInlineJs, StringPrintf(kCdataWrapper, kJsData).c_str()),
+      StringPrintf(kInlineJs, StringPrintf(kCdataWrapper, kJsMinData).c_str()));
+  ValidateExpected(
+      "cdata javascript no mimetype with \\r",
+      StringPrintf(kInlineJs, StringPrintf(kCdataAltWrapper, kJsData).c_str()),
+      StringPrintf(kInlineJs, StringPrintf(kCdataWrapper, kJsMinData).c_str()));
+}
+
+// Same as CdataJavascriptNoMimetype, but with explicit HTML mimetype.
+TEST_F(JavascriptFilterTest, CdataJavascriptHtmlMimetype) {
+  SetHtmlMimetype();
+  InitTest(100);
+  ValidateExpected(
+      "cdata javascript with explicit HTML mimetype",
       StringPrintf(kInlineJs, StringPrintf(kCdataWrapper, kJsData).c_str()),
       StringPrintf(kInlineJs, kJsMinData));
   ValidateExpected(
-      "cdata non-xhtml javascript",
+      "cdata javascript with explicit HTML mimetype and \\r",
       StringPrintf(kInlineJs, StringPrintf(kCdataAltWrapper, kJsData).c_str()),
       StringPrintf(kInlineJs, kJsMinData));
+}
+
+// Same as CdataJavascriptNoMimetype, but with explicit XHTML mimetype.
+TEST_F(JavascriptFilterTest, CdataJavascriptXhtmlMimetype) {
+  SetXhtmlMimetype();
+  InitTest(100);
+  ValidateExpected(
+      "cdata javascript with explicit XHTML mimetype",
+      StringPrintf(kInlineJs, StringPrintf(kCdataWrapper, kJsData).c_str()),
+      StringPrintf(kInlineJs, StringPrintf(kCdataWrapper, kJsMinData).c_str()));
+  ValidateExpected(
+      "cdata javascript with explicit XHTML mimetype and \\r",
+      StringPrintf(kInlineJs, StringPrintf(kCdataAltWrapper, kJsData).c_str()),
+      StringPrintf(kInlineJs, StringPrintf(kCdataWrapper, kJsMinData).c_str()));
 }
 
 TEST_F(JavascriptFilterTest, XHtmlInlineJavascript) {

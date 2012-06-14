@@ -26,7 +26,6 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -253,11 +252,16 @@ class CssCombineFilter::Context : public RewriteContext {
         continue;
       }
 
-      if (filter_->driver()->doctype().IsXhtml()) {
+      // We need to be sure this is HTML to omit the "/" before the
+      // ">".  If the content-type is not known then make sure we use
+      // "<link ... />".
+      if (filter_->driver()->MimeTypeXhtmlStatus() !=
+          RewriteDriver::kIsNotXhtml) {
         int first_element_index = partition->input(0).index();
         HtmlElement* first_element = elements_[first_element_index];
         first_element->set_close_style(HtmlElement::BRIEF_CLOSE);
       }
+
       for (int i = 1; i < partition->input_size(); ++i) {
         int slot_index = partition->input(i).index();
         slot(slot_index)->set_should_delete_element(true);

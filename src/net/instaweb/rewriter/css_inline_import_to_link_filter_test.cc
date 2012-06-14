@@ -40,6 +40,7 @@ class CssInlineImportToLinkFilterTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
+    SetHtmlMimetype();
   }
 
   // Test general situations.

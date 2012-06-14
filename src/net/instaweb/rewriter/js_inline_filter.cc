@@ -17,7 +17,6 @@
 #include "net/instaweb/rewriter/public/js_inline_filter.h"
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
@@ -130,7 +129,7 @@ void JsInlineFilter::RenderInline(
   // we have to hide the CDATA delimiters behind Javascript comments.
   // See http://lachy.id.au/log/2006/11/xhtml-script
   // and http://code.google.com/p/modpagespeed/issues/detail?id=125
-  if (driver_->doctype().IsXhtml()) {
+  if (driver_->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) {
     // CDATA sections cannot be nested because they end with the first
     // occurrence of "]]>", so if the script contains that string
     // anywhere (and we're in XHTML) we can't inline.

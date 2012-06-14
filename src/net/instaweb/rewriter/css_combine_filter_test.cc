@@ -343,6 +343,8 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
                                        MultiUrl("a.css", "b.css"), "css");
 
     SetupWriter();
+    SetXhtmlMimetype();
+
     rewrite_driver()->StartParse(kTestDomain);
     GoogleString input_beginning =
         StrCat(kXhtmlDtd, "<div>", Link("a.css"), Link("b.css"));
@@ -398,10 +400,12 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 };
 
 TEST_F(CssCombineFilterTest, CombineCss) {
+  SetHtmlMimetype();
   CombineCss("combine_css_no_hash", "", false);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssMD5) {
+  SetHtmlMimetype();
   UseMd5Hasher();
   CombineCss("combine_css_md5", "", false);
 }
@@ -409,6 +413,7 @@ TEST_F(CssCombineFilterTest, CombineCssMD5) {
 // Make sure that if we re-parse the same html twice we do not
 // end up recomputing the CSS (and writing to cache) again
 TEST_F(CssCombineFilterTest, CombineCssRecombine) {
+  SetHtmlMimetype();
   UseMd5Hasher();
   CombineCss("combine_css_recombine", "", false);
   int inserts_before = lru_cache()->num_inserts();
@@ -422,6 +427,7 @@ TEST_F(CssCombineFilterTest, CombineCssRecombine) {
 
 // http://code.google.com/p/modpagespeed/issues/detail?q=css&id=39
 TEST_F(CssCombineFilterTest, DealWithParams) {
+  SetHtmlMimetype();
   CombineCssWithNames("with_params", "", false, "a.css?U", "b.css?rev=138");
 }
 
@@ -487,6 +493,7 @@ TEST_F(CssCombineFilterTest, XhtmlCombineLinkClosed) {
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithIEDirective) {
+  SetHtmlMimetype();
   GoogleString ie_directive_barrier(StrCat(
       "<!--[if IE]>\n",
       Link("http://graphics8.nytimes.com/css/0.1/screen/build/homepage/ie.css"),
@@ -496,12 +503,14 @@ TEST_F(CssCombineFilterTest, CombineCssWithIEDirective) {
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithStyle) {
+  SetHtmlMimetype();
   const char style_barrier[] = "<style>a { color: red }</style>\n";
   UseMd5Hasher();
   CombineCss("combine_css_style", style_barrier, true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithBogusLink) {
+  SetHtmlMimetype();
   const char bogus_barrier[] = "<link rel='stylesheet' "
       "href='crazee://big/blue/fake' type='text/css'>\n";
   UseMd5Hasher();
@@ -594,6 +603,7 @@ TEST_F(CssCombineFilterTest, StripBomReconstruct) {
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
+  SetHtmlMimetype();
   const char noscript_barrier[] =
       "<noscript>\n"
       "  <link rel='stylesheet' href='d.css' type='text/css'>\n"
@@ -611,6 +621,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithFakeNoscriptBarrier) {
+  SetHtmlMimetype();
   const char non_barrier[] =
       "<noscript>\n"
       "  <p>You have no scripts installed</p>\n"
@@ -620,6 +631,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithFakeNoscriptBarrier) {
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
+  SetHtmlMimetype();
   const char media_barrier[] =
       "<link rel='stylesheet' href='d.css' type='text/css' media='print'>\n";
 
@@ -634,6 +646,8 @@ TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
+  SetHtmlMimetype();
+
   // Put original CSS files into our fetcher.
   GoogleString html_url = StrCat(kDomain, "no_media_barrier.html");
   GoogleString a_css_url = StrCat(kDomain, "a.css");
@@ -688,6 +702,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
 // to combine urls after the base tag.  Since this test has only one css after
 // the base tag, it should leave that one alone.
 TEST_F(CssCombineFilterTest, NoCombineCssBaseUrlOutOfOrder) {
+  SetHtmlMimetype();
   StringVector css_urls;
   GoogleString input_buffer(StrCat(
       "<head>\n"
@@ -703,6 +718,7 @@ TEST_F(CssCombineFilterTest, NoCombineCssBaseUrlOutOfOrder) {
 // Same invalid configuration, but now with two css refs after the base tag,
 // which should get combined.
 TEST_F(CssCombineFilterTest, CombineCssBaseUrlOutOfOrder) {
+  SetHtmlMimetype();
   StringVector css_urls;
   GoogleString input_buffer(StrCat(
       "<head>\n"
@@ -732,6 +748,7 @@ TEST_F(CssCombineFilterTest, CombineCssBaseUrlOutOfOrder) {
 // Same invalid configuration, but now with a full qualified url before
 // the base tag.  We should be able to find and combine that one.
 TEST_F(CssCombineFilterTest, CombineCssAbsoluteBaseUrlOutOfOrder) {
+  SetHtmlMimetype();
   StringVector css_urls;
   GoogleString input_buffer(StrCat(
       "<head>\n"
@@ -759,6 +776,7 @@ TEST_F(CssCombineFilterTest, CombineCssAbsoluteBaseUrlOutOfOrder) {
 // Here's the same test as NoCombineCssBaseUrlOutOfOrder, legalized to have
 // the base url before the first link.
 TEST_F(CssCombineFilterTest, CombineCssBaseUrlCorrectlyOrdered) {
+  SetHtmlMimetype();
   // <base> tag correctly precedes any urls.
   StringVector css_urls;
   CombineWithBaseTag(StrCat(
@@ -1148,6 +1166,8 @@ class CssFilterWithCombineTest : public CssCombineFilterTest {
 
 // See TestFollowCombine below: change one, change them both!
 TEST_F(CssFilterWithCombineTest, TestFollowCombine) {
+  SetHtmlMimetype();
+
   // Make sure we don't regress dealing with combiner deleting things sanely
   // in rewrite filter.
   const char kCssA[] = "a.css";
@@ -1180,6 +1200,8 @@ class CssFilterWithCombineTestUrlNamer : public CssFilterWithCombineTest {
 
 // See TestFollowCombine above: change one, change them both!
 TEST_F(CssFilterWithCombineTestUrlNamer, TestFollowCombine) {
+  SetHtmlMimetype();
+
   // Check that we really are using TestUrlNamer and not UrlNamer.
   EXPECT_NE(Encode(kTestDomain, "cc", "0", "a.css", "css"),
             EncodeNormal(kTestDomain, "cc", "0", "a.css", "css"));

@@ -83,6 +83,10 @@ bool HtmlAttributeQuoteRemoval::NeedsQuotes(const char *val) {
 }
 
 void HtmlAttributeQuoteRemoval::StartElement(HtmlElement* element) {
+  // TODO(jmarantz): switch to using mimetype.  To do that we need to have
+  // access to the RewriteDriver* to get the response-headers, and so this
+  // is not compatible with PageSpeed Insights that uses this filter for
+  // HTML minification.
   if (html_parse_->doctype().IsXhtml()) {
     return;  // XHTML doctypes require quotes, so don't remove any.
   }

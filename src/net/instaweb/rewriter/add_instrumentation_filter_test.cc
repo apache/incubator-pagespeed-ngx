@@ -19,8 +19,6 @@
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -84,10 +82,7 @@ class AddInstrumentationFilterTest : public ResourceManagerTestBase {
   }
 
   void SetMimetypeToXhtml() {
-    rewrite_driver()->set_response_headers_ptr(&response_headers_);
-    response_headers_.Add(HttpAttributes::kContentType,
-                          "application/xhtml+xml");
-    response_headers_.ComputeCaching();
+    SetXhtmlMimetype();
     xhtml_mode_ = !cdata_mode_;
   }
 
@@ -100,7 +95,6 @@ class AddInstrumentationFilterTest : public ResourceManagerTestBase {
     https_mode_ = true;
   }
 
-  ResponseHeaders response_headers_;
   bool report_unload_time_;
   bool xhtml_mode_;
   bool cdata_mode_;

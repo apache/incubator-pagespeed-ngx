@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/http/public/response_headers.h"
 // We need to include rewrite_driver.h due to covariant return of html_parse()
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -54,7 +55,6 @@ class MessageHandler;
 class MockScheduler;
 class MockTimer;
 class ResourceNamer;
-class ResponseHeaders;
 class RewriteFilter;
 class Statistics;
 class UrlNamer;
@@ -451,6 +451,15 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
       const GoogleString& key, HTTPCache* http_cache, HTTPValue* value_out,
       ResponseHeaders* headers);
 
+  // Sets the response-headers Content-Type to "application/xhtml+xml".
+  void SetXhtmlMimetype() { SetMimetype("application/xhtml+xml"); }
+
+  // Sets the response-headers Content-Type to "text/html".
+  void SetHtmlMimetype() { SetMimetype("text/html"); }
+
+  // Sets the response-headers Content-Type as specified.
+  void SetMimetype(const StringPiece& mimetype);
+
  protected:
   void Init();
 
@@ -481,6 +490,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   RewriteOptions* options_;  // owned by rewrite_driver_.
   RewriteOptions* other_options_;  // owned by other_rewrite_driver_.
   UrlSegmentEncoder default_encoder_;
+  ResponseHeaders response_headers_;
 };
 
 }  // namespace net_instaweb

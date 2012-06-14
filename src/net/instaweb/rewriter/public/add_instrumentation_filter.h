@@ -57,8 +57,6 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
   Variable* instrumentation_script_added_count_;
 
  private:
-  bool IsXhtml();
-
   // Adds a script node to given element using the specified format and
   // tag name.
   void AddScriptNode(HtmlElement* element, const GoogleString& script_format,

@@ -273,6 +273,16 @@ bool CssFilter::Context::RewriteCssText(const GoogleUrl& css_base_gurl,
   // things we shouldn't.
   // TODO(sligocki): We might want to turn off quirks mode in general to get
   // a consistent and conservative parse.
+  //
+  // Note: this use of doctype().IsXhtml is correct: we are interested in
+  // quirks-mode for CSS parsing, not XML vs HTML parsing here.
+  //
+  //  We're in strict mode if:
+  //   1. We're using HTML syntax and have a valid doctype --- in particular
+  //      valid HTML4.01 doctypes, valid XHTML ones, or the HTML5+ one, but I
+  //      think the spec accepts a few more.
+  //   2. We're using XML syntax.  See http://dvcs.w3.org/hg/domcore/raw-file/
+  //      tip/Overview.html#concept-document-quirks for more detail.
   if (has_parent() || driver_->doctype().IsXhtml()) {
     parser.set_quirks_mode(false);
   }
@@ -332,6 +342,8 @@ void CssFilter::Context::RewriteCssFromRoot(const StringPiece& contents,
                                             Css::Stylesheet* stylesheet) {
   DCHECK_EQ(in_text_size_, in_text_size);
 
+  // Note: this use of doctype().IsXhtml is correct: we are interested in
+  // quirks-mode for CSS parsing, not XML vs HTML parsing here.
   hierarchy_.InitializeRoot(css_base_gurl_, css_trim_gurl_, contents,
                             driver_->doctype().IsXhtml(), has_unparseables,
                             driver_->options()->css_flatten_max_bytes(),
@@ -588,6 +600,9 @@ GoogleString CssFilter::Context::CacheKeySuffix() const {
   // name; as ignoring it on the fetch path is unsafe.
   // TODO(nikhilmadan): For ajax rewrites, be conservative and assume its XHTML.
   // Is this right?
+  //
+  // Note: this use of doctype().IsXhtml is correct: we are interested in
+  // quirks-mode for CSS parsing, not XML vs HTML parsing here.
   GoogleString suffix = (has_parent() || driver_->doctype().IsXhtml())
       ? "X" : "h";
 

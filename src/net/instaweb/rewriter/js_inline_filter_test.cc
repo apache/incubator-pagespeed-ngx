@@ -124,7 +124,17 @@ class JsInlineFilterTest : public ResourceManagerTestBase {
   bool filters_added_;
 };
 
-TEST_F(JsInlineFilterTest, DoInlineJavascriptSimple) {
+TEST_F(JsInlineFilterTest, DoInlineJavascriptNoMimetype) {
+  // Simple case:
+  TestInlineJavascriptXhtml("http://www.example.com/index.html",
+                            "http://www.example.com/script.js",
+                            "function id(x) { return x; }\n",
+                            true);
+}
+
+TEST_F(JsInlineFilterTest, DoInlineJavascriptSimpleHtml) {
+  SetHtmlMimetype();
+
   // Simple case:
   TestInlineJavascript("http://www.example.com/index.html",
                        "http://www.example.com/script.js",
@@ -133,7 +143,19 @@ TEST_F(JsInlineFilterTest, DoInlineJavascriptSimple) {
                        true);
 }
 
+TEST_F(JsInlineFilterTest, DoInlineJavascriptSimpleXhtml) {
+  SetXhtmlMimetype();
+
+  // Simple case:
+  TestInlineJavascriptXhtml("http://www.example.com/index.html",
+                            "http://www.example.com/script.js",
+                            "function id(x) { return x; }\n",
+                            true);
+}
+
 TEST_F(JsInlineFilterTest, DoInlineJavascriptWhitespace) {
+  SetHtmlMimetype();
+
   // Whitespace between <script> and </script>:
   TestInlineJavascript("http://www.example.com/index2.html",
                        "http://www.example.com/script2.js",
@@ -225,6 +247,8 @@ TEST_F(JsInlineFilterTest, DoNotInlineIntrospectiveJavascript) {
 }
 
 TEST_F(JsInlineFilterTest, InlineIntrospectiveJavascriptByDefault) {
+  SetHtmlMimetype();
+
   // The same situation as DoNotInlineIntrospectiveJavascript, but in the
   // default configuration we want to be sure we're still inlining.
   TestInlineJavascript("http://www.example.com/index.html",
@@ -256,15 +280,19 @@ TEST_F(JsInlineFilterTest, CachedRewrite) {
   const char kJsUrl[] = "http://www.example.com/script.js";
   const char kJs[] = "function id(x) { return x; }\n";
   const char kNothingInsideScript[] = "";
+  SetHtmlMimetype();
   TestInlineJavascript(kPageUrl, kJsUrl, kNothingInsideScript, kJs, true);
   TestInlineJavascript(kPageUrl, kJsUrl, kNothingInsideScript, kJs, true);
 }
 
 TEST_F(JsInlineFilterTest, CachedWithSuccesors) {
+  SetHtmlMimetype();
+
   // Regression test: in async case, at one point we had a problem with
   // slot rendering of a following cache extender trying to manipulate
   // the source attribute which the inliner deleted while using
   // cached filter results.
+  SetHtmlMimetype();
   options()->EnableFilter(RewriteOptions::kInlineJavascript);
   options()->EnableFilter(RewriteOptions::kExtendCacheScripts);
   rewrite_driver()->AddFilters();
@@ -285,6 +313,7 @@ TEST_F(JsInlineFilterTest, CachedWithPredecessors) {
   // Regression test for crash: trying to inline after combining would crash.
   // (Current state is not to inline after combining due to the
   //  <script> element with src= being new).
+  SetHtmlMimetype();
   options()->EnableFilter(RewriteOptions::kInlineJavascript);
   options()->EnableFilter(RewriteOptions::kCombineJavascript);
   rewrite_driver()->AddFilters();
@@ -303,6 +332,7 @@ TEST_F(JsInlineFilterTest, CachedWithPredecessors) {
 
 TEST_F(JsInlineFilterTest, InlineJs404) {
   // Test to make sure that a missing input is handled well.
+  SetHtmlMimetype();
   SetFetchResponse404("404.js");
   AddFilter(RewriteOptions::kInlineJavascript);
   ValidateNoChanges("404", "<script src='404.js'></script>");
@@ -314,6 +344,7 @@ TEST_F(JsInlineFilterTest, InlineJs404) {
 TEST_F(JsInlineFilterTest, InlineMinimizeInteraction) {
   // There was a bug in async mode where we would accidentally prevent
   // minification results from rendering when inlining was not to be done.
+  SetHtmlMimetype();
   options()->EnableFilter(RewriteOptions::kRewriteJavascript);
   options()->set_js_inline_max_bytes(4);
 
@@ -329,6 +360,7 @@ TEST_F(JsInlineFilterTest, InlineMinimizeInteraction) {
 }
 
 TEST_F(JsInlineFilterTest, FlushSplittingScriptTag) {
+  SetHtmlMimetype();
   options()->EnableFilter(RewriteOptions::kInlineJavascript);
   rewrite_driver()->AddFilters();
   SetupWriter();
@@ -346,6 +378,7 @@ TEST_F(JsInlineFilterTest, FlushSplittingScriptTag) {
 }
 
 TEST_F(JsInlineFilterTest, NoFlushSplittingScriptTag) {
+  SetHtmlMimetype();
   options()->EnableFilter(RewriteOptions::kInlineJavascript);
   rewrite_driver()->AddFilters();
   SetupWriter();
