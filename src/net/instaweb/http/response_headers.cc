@@ -411,23 +411,27 @@ bool ResponseHeaders::Sanitize() {
   return cookie || cookie2;
 }
 
-bool ResponseHeaders::VaryCacheable() const {
+bool ResponseHeaders::VaryCacheable(bool request_has_cookie) const {
   if (IsCacheable()) {
     ConstStringStarVector values;
     Lookup(HttpAttributes::kVary, &values);
-    bool vary_uncacheable = false;
+    bool vary_cacheable = true;
     for (int i = 0, n = values.size(); i < n; ++i) {
       StringPiece val(*values[i]);
-      if (!val.empty() &&
-          !StringCaseEqual(HttpAttributes::kAcceptEncoding, val)) {
-        vary_uncacheable = true;
-        break;
+      if (val.empty() ||
+          StringCaseEqual(HttpAttributes::kAcceptEncoding, val) ||
+          (!request_has_cookie &&
+           StringCaseEqual(HttpAttributes::kCookie, val))) {
+        // If the request doesn't have cookies set, we consider Vary: Cookie as
+        // cacheable.
+        continue;
       }
+      vary_cacheable = false;
+      break;
     }
-    return !vary_uncacheable;
-  } else {
-    return false;
+    return vary_cacheable;
   }
+  return false;
 }
 
 namespace {

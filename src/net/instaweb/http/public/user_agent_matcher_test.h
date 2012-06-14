@@ -92,6 +92,11 @@ const char kIPadUserAgent[] =
     "Mozilla/5.0 (iPad; U; CPU OS 3_2 like Mac OS X; en-us) "
     "AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 "
     "Mobile/7B334b Safari/531.21.10";
+const char kAcceptHeaderValueNonMobile[] = "text/html";
+const char kAcceptHeaderValueMobile[] =
+    "text/html,application/vnd.wap.xhtml+xml";
+const char kXWapProfile[] = "x-wap-profile";
+const char kXWapProfileHeaderValue[] = "http://foo.bar.xml";
 
 }  // namespace UserAgentStrings
 }  // namespace net_instaweb

@@ -21,6 +21,8 @@
 
 namespace net_instaweb {
 
+class RequestHeaders;
+
 // This class contains various user agent based checks.  Currently all of these
 // are based on simple wildcard based white- and black-lists.
 //
@@ -30,7 +32,7 @@ namespace net_instaweb {
 // clients.
 class UserAgentMatcher {
  public:
-  enum BlinkUserAgentType {
+  enum BlinkRequestType {
     kSupportsBlinkDesktop,
     kSupportsBlinkMobile,
     kDoesNotSupportBlink,
@@ -48,10 +50,11 @@ class UserAgentMatcher {
 
   bool SupportsImageInlining(const StringPiece& user_agent) const;
 
-  // Returns the user agent type for user_agent. The return type currently
+  // Returns the request type for the given request. The return type currently
   // supports desktop, mobile and not supported.
-  BlinkUserAgentType GetBlinkUserAgentType(const char* user_agent,
-                                           bool allow_mobile) const;
+  BlinkRequestType GetBlinkRequestType(
+      const char* user_agent, const RequestHeaders* request_headers,
+      bool allow_mobile) const;
 
   bool SupportsJsDefer(const StringPiece& user_agent) const;
   bool SupportsWebp(const StringPiece& user_agent) const;
@@ -65,6 +68,10 @@ class UserAgentMatcher {
   // refactor the names.
   bool IsMobileUserAgent(const StringPiece& user_agent) const;
   virtual bool IsAnyMobileUserAgent(const char* user_agent) const;
+  virtual bool IsMobileRequest(
+      const StringPiece& user_agent,
+      const RequestHeaders* request_headers) const;
+
  private:
   WildcardGroup supports_image_inlining_;
   WildcardGroup supports_blink_desktop_;

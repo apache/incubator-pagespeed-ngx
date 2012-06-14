@@ -59,7 +59,14 @@ bool IsValidAndCacheableImpl(HTTPCache* http_cache,
 
   bool cacheable = true;
   if (respect_vary) {
-    cacheable = headers.VaryCacheable();
+    // Conservatively assume that the request has cookies, since the site may
+    // want to serve different content based on the cookie. If we consider the
+    // response to be cacheable here, we will serve the optimized version
+    // without contacting the origin which would be against the webmaster's
+    // intent. We also don't have cookies available at lookup time, so we
+    // cannot try to use this response only when the request doesn't have a
+    // cookie.
+    cacheable = headers.VaryCacheable(true);
   } else {
     cacheable = headers.IsCacheable();
   }

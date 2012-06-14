@@ -684,6 +684,48 @@ TEST_F(ResponseHeadersTest, TestCachingVaryStar) {
                       "Cache-control: public, max-age=300\r\n"
                       "Vary: *\r\n\r\n\r\n"));
   EXPECT_FALSE(response_headers_.IsCacheable());
+  EXPECT_FALSE(response_headers_.VaryCacheable(true));
+  EXPECT_FALSE(response_headers_.VaryCacheable(false));
+}
+
+TEST_F(ResponseHeadersTest, TestCachingVaryCookie) {
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: public, max-age=300\r\n"
+                      "Vary: Cookie\r\n\r\n\r\n"));
+  EXPECT_TRUE(response_headers_.IsCacheable());
+  EXPECT_FALSE(response_headers_.VaryCacheable(true));
+  EXPECT_TRUE(response_headers_.VaryCacheable(false));
+}
+
+TEST_F(ResponseHeadersTest, TestCachingVaryCookieUserAgent) {
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: public, max-age=300\r\n"
+                      "Vary: Cookie,User-Agent\r\n\r\n\r\n"));
+  EXPECT_TRUE(response_headers_.IsCacheable());
+  EXPECT_FALSE(response_headers_.VaryCacheable(true));
+  EXPECT_FALSE(response_headers_.VaryCacheable(false));
+}
+
+TEST_F(ResponseHeadersTest, TestCachingVaryAcceptEncoding) {
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: public, max-age=300\r\n"
+                      "Vary: Accept-Encoding\r\n\r\n\r\n"));
+  EXPECT_TRUE(response_headers_.IsCacheable());
+  EXPECT_TRUE(response_headers_.VaryCacheable(true));
+  EXPECT_TRUE(response_headers_.VaryCacheable(false));
+}
+
+TEST_F(ResponseHeadersTest, TestCachingVaryAcceptEncodingCookie) {
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Cache-control: public, max-age=300\r\n"
+                      "Vary: Accept-Encoding,Cookie\r\n\r\n\r\n"));
+  EXPECT_TRUE(response_headers_.IsCacheable());
+  EXPECT_FALSE(response_headers_.VaryCacheable(true));
+  EXPECT_TRUE(response_headers_.VaryCacheable(false));
 }
 
 TEST_F(ResponseHeadersTest, TestSetDateAndCaching) {

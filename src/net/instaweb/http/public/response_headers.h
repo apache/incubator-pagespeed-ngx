@@ -233,15 +233,15 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   }
 
   // Returns whether or not we can cache these headers if we take into
-  // account the Vary: headers.
-  bool VaryCacheable() const;
+  // account the Vary: headers. Note that we consider Vary: Cookie as cacheable
+  // if request_has_cookie is false.
+  bool VaryCacheable(bool request_has_cookie) const;
 
   // Finds Content-Length in the response headers, returning true and putting
   // it in *content_length if successful.
   bool FindContentLength(int64* content_length);
 
  private:
-
   // Parse the original and fresh content types, and add a new header based
   // on the two of them, giving preference to the original.
   // e.g. if the original specified charset=UTF-8 and the new one specified

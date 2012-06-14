@@ -169,14 +169,15 @@ bool UserAgentMatcher::SupportsImageInlining(
   return supports_image_inlining_.Match(user_agent, false);
 }
 
-UserAgentMatcher::BlinkUserAgentType UserAgentMatcher::GetBlinkUserAgentType(
-    const char* user_agent, bool allow_mobile) const {
+UserAgentMatcher::BlinkRequestType UserAgentMatcher::GetBlinkRequestType(
+    const char* user_agent, const RequestHeaders* request_headers,
+    bool allow_mobile) const {
   if (user_agent == NULL) {
     // We were allowing empty user agents earlier in SupportsBlink.
     // TODO(sriharis):  But we should not do so now.
     return kSupportsBlinkDesktop;
   }
-  if (IsAnyMobileUserAgent(user_agent)) {
+  if (IsMobileRequest(user_agent, request_headers)) {
     // TODO(srihari):  When blink supports mobile, we need to add a mobile
     // whitelist check here.
     // Please note that we don't have a mobile whitelist check here yet.
@@ -209,6 +210,12 @@ bool UserAgentMatcher::IsMobileUserAgent(const StringPiece& user_agent) const {
 // will override this IsAny method as required.
 bool UserAgentMatcher::IsAnyMobileUserAgent(
     const char* user_agent) const {
+  return IsMobileUserAgent(user_agent);
+}
+
+bool UserAgentMatcher::IsMobileRequest(
+    const StringPiece& user_agent,
+    const RequestHeaders* request_headers) const {
   return IsMobileUserAgent(user_agent);
 }
 

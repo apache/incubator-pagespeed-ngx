@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -81,39 +82,41 @@ TEST_F(UserAgentMatcherTest, NotSupportsImageInlining) {
 }
 
 TEST_F(UserAgentMatcherTest, SupportsBlinkDesktop) {
+  const RequestHeaders headers;
   EXPECT_EQ(UserAgentMatcher::kSupportsBlinkDesktop,
-            user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kFirefoxUserAgent, false));
+            user_agent_matcher_.GetBlinkRequestType(
+                UserAgentStrings::kFirefoxUserAgent, &headers, false));
   EXPECT_EQ(UserAgentMatcher::kSupportsBlinkDesktop,
-            user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kIe9UserAgent, false));
+            user_agent_matcher_.GetBlinkRequestType(
+                UserAgentStrings::kIe9UserAgent, &headers, false));
   EXPECT_EQ(UserAgentMatcher::kSupportsBlinkDesktop,
-            user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kChromeUserAgent, false));
+            user_agent_matcher_.GetBlinkRequestType(
+                UserAgentStrings::kChromeUserAgent, &headers, false));
   EXPECT_EQ(UserAgentMatcher::kSupportsBlinkDesktop,
-            user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kSafariUserAgent, false));
+            user_agent_matcher_.GetBlinkRequestType(
+                UserAgentStrings::kSafariUserAgent, &headers, false));
 }
 
 TEST_F(UserAgentMatcherTest, NotSupportsBlink) {
+  const RequestHeaders headers;
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
-            user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kIe6UserAgent, false));
+            user_agent_matcher_.GetBlinkRequestType(
+                UserAgentStrings::kIe6UserAgent, &headers, false));
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
-            user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kIe8UserAgent, false));
+            user_agent_matcher_.GetBlinkRequestType(
+                UserAgentStrings::kIe8UserAgent, &headers, false));
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
-            user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kFirefox1UserAgent, false));
+            user_agent_matcher_.GetBlinkRequestType(
+                UserAgentStrings::kFirefox1UserAgent, &headers, false));
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
-            user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kNokiaUserAgent, false));
+            user_agent_matcher_.GetBlinkRequestType(
+                UserAgentStrings::kNokiaUserAgent, &headers, false));
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
-            user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kOpera5UserAgent, false));
+            user_agent_matcher_.GetBlinkRequestType(
+                UserAgentStrings::kOpera5UserAgent, &headers, false));
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
-            user_agent_matcher_.GetBlinkUserAgentType(
-                UserAgentStrings::kPSPUserAgent, false));
+            user_agent_matcher_.GetBlinkRequestType(
+                UserAgentStrings::kPSPUserAgent, &headers, false));
 }
 
 TEST_F(UserAgentMatcherTest, SupportsJsDefer) {

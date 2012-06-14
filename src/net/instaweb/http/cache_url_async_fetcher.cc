@@ -85,7 +85,8 @@ class CachePutFetch : public SharedAsyncFetch {
 
     cacheable_ = headers->IsProxyCacheableGivenRequest(*request_headers());
     if (cacheable_ && (respect_vary_ || is_html)) {
-      cacheable_ = headers->VaryCacheable();
+      cacheable_ = headers->VaryCacheable(
+          request_headers()->Has(HttpAttributes::kCookie));
     }
 
     if (cacheable_) {
@@ -251,7 +252,20 @@ class CacheFindCallback : public HTTPCache::Callback {
   }
 
   virtual bool IsCacheValid(const ResponseHeaders& headers) {
-    return base_fetch_->IsCachedResultValid(headers);
+    if (base_fetch_->IsCachedResultValid(headers)) {
+      // The response may have been cached when respect_vary_ was disabled.
+      // Hence we need to make sure that it is still usable for the current
+      // request.
+      // Also, if we cached a response with "Vary: Cookie", we cannot use it if
+      // the current request has a Cookie header in the request.
+      bool is_html = headers.IsHtmlLike();
+      if (respect_vary_ || is_html) {
+        return headers.VaryCacheable(
+            request_headers()->Has(HttpAttributes::kCookie));
+      }
+      return true;
+    }
+    return false;
   }
 
  private:

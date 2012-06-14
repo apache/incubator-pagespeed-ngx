@@ -94,8 +94,9 @@ bool IsBlinkRequest(const GoogleUrl& url,
       // Does url match a cacheable family pattern specified in config?
       options->IsInBlinkCacheableFamily(url.PathAndLeaf()) &&
       // user agent supports Blink.
-      user_agent_matcher_.GetBlinkUserAgentType(
-          user_agent, options->enable_blink_for_mobile_devices()) !=
+      user_agent_matcher_.GetBlinkRequestType(
+          user_agent, request_headers,
+          options->enable_blink_for_mobile_devices()) !=
           UserAgentMatcher::kDoesNotSupportBlink) {
     return true;
   }
