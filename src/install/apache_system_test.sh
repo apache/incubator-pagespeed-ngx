@@ -135,7 +135,7 @@ check [ x"$IMG_URL" != x ]
 echo TEST: headers for rewritten image "$IMG_URL"
 IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $IMG_URL 2>&1)
-echo IMG_HEADERS=\"$IMG_HEADERS\"
+echo "IMG_HEADERS=\"$IMG_HEADERS\""
 echo $IMG_HEADERS | check egrep -qi 'HTTP/1[.]. 200 OK'
 # Make sure we have some valid headers.
 echo "$IMG_HEADERS" | check fgrep -qi 'Content-Type: image/jpeg'
@@ -160,8 +160,7 @@ echo "$IMG_HEADERS" | check fgrep -qi 'Last-Modified'
 echo TEST: respect vary user-agent
 URL=$TEST_ROOT/vary/index.html?ModPagespeedFilters=inline_css
 echo $WGET_DUMP $URL
-$WGET_DUMP $URL | grep -q "<style>"
-check [ $? != 0 ]
+$WGET_DUMP $URL | check_not fgrep "<style>"
 
 echo TEST: ModPagespeedShardDomain directive in .htaccess file
 rm -rf $OUTDIR
@@ -169,8 +168,8 @@ mkdir $OUTDIR
 echo $WGET_DUMP $TEST_ROOT/shard/shard.html
 fetch_until $TEST_ROOT/shard/shard.html 'grep -c \.pagespeed\.' 4
 check $WGET_DUMP $TEST_ROOT/shard/shard.html > $OUTDIR/shard.out.html
-check [ `grep -ce href=\"http://shard1 $OUTDIR/shard.out.html` = 2 ];
-check [ `grep -ce href=\"http://shard2 $OUTDIR/shard.out.html` = 2 ];
+check [ $(grep -ce href=\"http://shard1 $OUTDIR/shard.out.html) = 2 ];
+check [ $(grep -ce href=\"http://shard2 $OUTDIR/shard.out.html) = 2 ];
 
 echo TEST: server-side includes
 rm -rf $OUTDIR
@@ -180,13 +179,13 @@ fetch_until $TEST_ROOT/ssi/ssi.shtml?ModPagespeedFilters=combine_css \
     'grep -c \.pagespeed\.' 1
 check $WGET_DUMP $TEST_ROOT/ssi/ssi.shtml?ModPagespeedFilters=combine_css \
   > $OUTDIR/ssi.out.html
-check [ `grep -ce $combine_css_filename $OUTDIR/ssi.out.html` = 1 ];
+check [ $(grep -ce $combine_css_filename $OUTDIR/ssi.out.html) = 1 ];
 
 echo TEST: mod_rewrite
 echo $WGET_DUMP $TEST_ROOT/redirect/php/
 check $WGET_DUMP $TEST_ROOT/redirect/php/ > $OUTDIR/redirect_php.html
 check \
-  [ `grep -ce "href=\"/mod_pagespeed_test/" $OUTDIR/redirect_php.html` = 2 ];
+  [ $(grep -ce "href=\"/mod_pagespeed_test/" $OUTDIR/redirect_php.html) = 2 ];
 
 echo TEST: ModPagespeedLoadFromFile
 URL=$TEST_ROOT/load_from_file/index.html?ModPagespeedFilters=inline_css
@@ -196,31 +195,24 @@ echo TEST: Custom headers remain on HTML, but cache should be disabled.
 URL=$TEST_ROOT/rewrite_compressed_js.html
 echo $WGET_DUMP $URL
 HTML_HEADERS=$($WGET_DUMP $URL)
-echo $HTML_HEADERS | egrep -q "X-Extra-Header: 1"
-check [ $? = 0 ]
+echo $HTML_HEADERS | check egrep -q "X-Extra-Header: 1"
 # The extra header should only be added once, not twice.
-echo $HTML_HEADERS | egrep -q -v "X-Extra-Header: 1, 1"
-check [ $? = 0 ]
-echo $HTML_HEADERS | egrep -q 'Cache-Control: max-age=0, no-cache'
-check [ $? = 0 ]
+echo $HTML_HEADERS | check egrep -q -v "X-Extra-Header: 1, 1"
+echo $HTML_HEADERS | check egrep -q 'Cache-Control: max-age=0, no-cache'
 
 echo TEST: Custom headers remain on resources, but cache should be 1 year.
 URL="$TEST_ROOT/compressed/hello_js.custom_ext.pagespeed.ce.HdziXmtLIV.txt"
 echo $WGET_DUMP $URL
 RESOURCE_HEADERS=$($WGET_DUMP $URL)
-echo $RESOURCE_HEADERS | egrep -q 'X-Extra-Header: 1'
-check [ $? = 0 ]
+echo $RESOURCE_HEADERS | check egrep -q 'X-Extra-Header: 1'
 # The extra header should only be added once, not twice.
-echo $RESOURCE_HEADERS | egrep -q -v 'X-Extra-Header: 1, 1'
-check [ $? = 0 ]
-echo $RESOURCE_HEADERS | egrep -q 'Cache-Control: max-age=31536000'
-check [ $? = 0 ]
+echo $RESOURCE_HEADERS | check egrep -q -v 'X-Extra-Header: 1, 1'
+echo $RESOURCE_HEADERS | check egrep -q 'Cache-Control: max-age=31536000'
 
 echo TEST: ModPagespeedModifyCachingHeaders
 URL=$TEST_ROOT/retain_cache_control/index.html
 $WGET_DUMP $URL
-$WGET_DUMP $URL | grep -q "Cache-Control: private, max-age=3000"
-check [ $? = 0 ]
+$WGET_DUMP $URL | check grep -q "Cache-Control: private, max-age=3000"
 
 test_filter combine_javascript combines 2 JS files into 1.
 echo TEST: combine_javascript with long URL still works
@@ -308,7 +300,7 @@ check [ $(grep -c "[.]pagespeed[.]" $OUTFILE) = 2 ]
 if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   WGET_ARGS=""
 
-  SECONDARY_HOSTNAME=`echo $HOSTNAME | sed -e s/8080/$APACHE_SECONDARY_PORT/g`
+  SECONDARY_HOSTNAME=$(echo $HOSTNAME | sed -e s/8080/$APACHE_SECONDARY_PORT/g)
   if [ "$SECONDARY_HOSTNAME" == "$HOSTNAME" ]; then
     SECONDARY_HOSTNAME=${HOSTNAME}:$APACHE_SECONDARY_PORT
   fi
@@ -447,9 +439,8 @@ mod_pagespeed_test/$URL_PATH
   # Make sure we have the URL detail we expect because
   # ModPagespeedListOutstandingUrlsOnError is on in debug.conf.template.
   echo Check that ModPagespeedSerfListOutstandingUrlsOnError works
-  grep "URL http://modpagespeed.com:1023/someimage.png active for " \
+  check grep "URL http://modpagespeed.com:1023/someimage.png active for " \
       $SERF_REFUSED_PATH
-  check [ $? = 0 ]
 fi
 
 # Cleanup

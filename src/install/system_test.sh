@@ -86,7 +86,7 @@ export ftp_proxy=$3
 export no_proxy=""
 
 # Version timestamped with nanoseconds, making it extremely unlikely to hit.
-BAD_RND_RESOURCE_URL="http://$HOSTNAME/mod_pagespeed/bad`date +%N`.\
+BAD_RND_RESOURCE_URL="http://$HOSTNAME/mod_pagespeed/bad$(date +%N).\
 pagespeed.cf.hash.css"
 
 combine_css_filename=\
@@ -139,7 +139,7 @@ function run_wget_with_args() {
 # Call with a command and its args.  Echos the command, then tries to eval it.
 # If it returns false, fail the tests.
 function check() {
-  echo "     " "$@"
+  echo "     check" "$@"
   if "$@"; then
     return;
   else
@@ -150,7 +150,7 @@ function check() {
 
 # Same as check(), but expects command to fail.
 function check_not() {
-  echo "     " "$@"
+  echo "     check_not" "$@"
   if "$@"; then
     echo FAIL.
     exit 1;
@@ -171,7 +171,7 @@ function fetch_until() {
   WGET_ARGS="$WGET_ARGS $4"
 
   TIMEOUT=10
-  START=`date +%s`
+  START=$(date +%s)
   STOP=$((START+$TIMEOUT))
   WGET_HERE="$WGET -q $WGET_ARGS"
   echo "      Fetching $REQUESTURL $WGET_ARGS until \$($COMMAND) = $RESULT"
@@ -181,7 +181,7 @@ function fetch_until() {
       /bin/echo ".";
       return;
     fi;
-    if [ `date +%s` -gt $STOP ]; then
+    if [ $(date +%s) -gt $STOP ]; then
       /bin/echo "FAIL."
       exit 1;
     fi;
@@ -268,8 +268,10 @@ function CheckBots() {
   rm -f $OUTDIR/*jpg*
   check $WGET_PREREQ $ARGS $URL;
   if [ "$DRY_RUN_OR_TEST" = "test" ]; then
-    check [ `stat -c %s $OUTDIR/*BikeCrashIcn*` $COMPARE 25000 ] # recoded | not
-    check [ `stat -c %s $OUTDIR/*Puzzle*`  $COMPARE 24126  ] # resized | not
+    # Test if file was re-encoded or not.
+    check [ $(stat -c %s $OUTDIR/*BikeCrashIcn*) $COMPARE 25000 ]
+    # Test if file was re-sized or not.
+    check [ $(stat -c %s $OUTDIR/*Puzzle*) $COMPARE 24126 ]
   fi
 }
 
@@ -324,7 +326,7 @@ echo Checking for X-Mod-Pagespeed header
 check egrep -q 'X-Mod-Pagespeed|X-Page-Speed' $HTTP_FILE
 
 echo "Checking that we don't have duplicate X-Mod-Pagespeed headers"
-check [ `egrep -c 'X-Mod-Pagespeed|X-Page-Speed' $HTTP_FILE` = 1 ]
+check [ $(egrep -c 'X-Mod-Pagespeed|X-Page-Speed' $HTTP_FILE) = 1 ]
 
 echo "Checking that we don't have duplicate headers"
 # Note: uniq -d prints only repeated lines. So this should only != "" if
@@ -402,8 +404,7 @@ echo "TEST: Make sure 404s aren't rewritten"
 # easiest to detect which changes every page
 THIS_BAD_URL=$BAD_RESOURCE_URL?ModPagespeedFilters=add_instrumentation
 # We use curl, because wget does not save 404 contents
-$CURL --silent $THIS_BAD_URL | fgrep /mod_pagespeed_beacon
-check [ $? != 0 ]
+$CURL --silent $THIS_BAD_URL | check_not fgrep "/mod_pagespeed_beacon"
 
 test_filter collapse_whitespace removes whitespace, but not from pre tags.
 check run_wget_with_args $URL
@@ -435,10 +436,9 @@ big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
 big.css+bold.css+yellow.css+blue.css+big.css+\
 bold.css.pagespeed.cc.46IlzLf_NK.css"
 echo "$WGET --save-headers -q -O - $LARGE_URL | head -1 | egrep \"HTTP/1[.]. 200 OK\""
-$WGET --save-headers -q -O - $LARGE_URL | head -1 | egrep "HTTP/1[.]. 200 OK"
-check [ $? = 0 ];
+$WGET --save-headers -q -O - $LARGE_URL | head -1 \
+  | check egrep -q "HTTP/1[.]. 200 OK"
 LARGE_URL_LINE_COUNT=$($WGET -q -O - $LARGE_URL | wc -l)
-check [ $? = 0 ]
 echo Checking that response body is at least 900 lines -- it should be 954
 check [ $LARGE_URL_LINE_COUNT -gt 900 ]
 
@@ -452,7 +452,7 @@ fetch_until $URL 'fgrep -c src=' 4
 
 test_filter combine_heads combines 2 heads into 1
 check run_wget_with_args $URL
-check [ `fgrep -c '<head>' $FETCHED` = 1 ]
+check [ $(fgrep -c '<head>' $FETCHED) = 1 ]
 
 test_filter elide_attributes removes boolean and default attributes.
 check run_wget_with_args $URL
@@ -472,9 +472,9 @@ check fgrep "404 Not Found" $WGET_OUTPUT
 
 echo TEST: Cache-extended image should respond 304 to an If-Modified-Since.
 URL=$REWRITTEN_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
-DATE=`date -R`
+DATE=$(date -R)
 run_wget_with_args --header "If-Modified-Since: $DATE" $URL
-check grep "304 Not Modified" $WGET_OUTPUT
+check fgrep "304 Not Modified" $WGET_OUTPUT
 
 echo TEST: Legacy format URLs should still work.
 URL=$REWRITTEN_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
@@ -565,17 +565,17 @@ check run_wget_with_args $URL
 num_quoted=$(sed 's/ /\n/g' $FETCHED | grep -c '"')
 check [ $num_quoted -eq 2 ]  # 2 quoted attrs
 num_apos=$(grep -c "'" $FETCHED)
-check [ $num_apos -eq 0 ]                    # no apostrophes
+check [ $num_apos -eq 0 ]    # no apostrophes
 
 test_filter trim_urls makes urls relative
 check run_wget_with_args $URL
 check_not grep "mod_pagespeed_example" $FETCHED  # base dir, shouldn't find
-check [ `stat -c %s $FETCHED` -lt 153 ]        # down from 157
+check [ $(stat -c %s $FETCHED) -lt 153 ]  # down from 157
 
 test_filter rewrite_css minifies CSS and saves bytes.
 fetch_until $URL 'grep -c comment' 0
 check run_wget_with_args $URL
-check [ `stat -c %s $FETCHED` -lt 680 ]  # down from 689
+check [ $(stat -c %s $FETCHED) -lt 680 ]  # down from 689
 
 test_filter rewrite_images inlines, compresses, and resizes.
 fetch_until $URL 'grep -c data:image/png' 1  # inlined
@@ -612,7 +612,7 @@ echo TEST: Last-modified is present.
 echo "$IMG_HEADERS" | check fgrep -qi 'Last-Modified'
 
 BAD_IMG_URL=$REWRITTEN_ROOT/images/xBadName.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
-echo TEST: rewrite_images fails broken image \"$BAD_IMG_URL\".
+echo "TEST: rewrite_images fails broken image \"$BAD_IMG_URL\"."
 echo run_wget_with_args $BAD_IMG_URL
 run_wget_with_args $BAD_IMG_URL  # fails
 check grep "404 Not Found" $WGET_OUTPUT
@@ -677,19 +677,18 @@ echo $WGET_DUMP $URL
 fetch_until $URL 'grep -c css.pagespeed.cf' 1
 echo $WGET_DUMP $URL
 $WGET_DUMP $URL > $OUTDIR/sprite_output
-CSS=`grep stylesheet $OUTDIR/sprite_output | cut -d\" -f 6`
+CSS=$(grep stylesheet $OUTDIR/sprite_output | cut -d\" -f 6)
 echo css is $CSS
 $WGET_DUMP $CSS > $OUTDIR/sprite_css_output
 cat $OUTDIR/sprite_css_output
 echo ""
-check [ `grep -c "ic.pagespeed.is" $OUTDIR/sprite_css_output` -gt 0 ]
+check [ $(grep -c "ic.pagespeed.is" $OUTDIR/sprite_css_output) -gt 0 ]
 
 test_filter rewrite_javascript minifies JavaScript and saves bytes.
 # External scripts rewritten.
 fetch_until $URL 'grep -c src.*/rewrite_javascript\.js\.pagespeed\.jm\.' 2
 check run_wget_with_args $URL
-grep -R "removed" $OUTDIR                 # Comments, should not find any.
-check [ $? != 0 ]
+check_not grep -R "removed" $OUTDIR          # Comments, should not find any.
 check [ "$(stat -c %s $FETCHED)" -lt 1560 ]  # Net savings
 check grep -q preserved $FETCHED             # Preserves certain comments.
 # Rewritten JS is cache-extended.
@@ -726,8 +725,7 @@ if [ -n "$HTTPS_HOST" ]; then
   HTML_HEADERS=$($WGET_DUMP_HTTPS $URL)
 
   echo Checking for X-Mod-Pagespeed header
-  echo $HTML_HEADERS | egrep -q 'X-Mod-Pagespeed|X-Page-Speed'
-  check [ $? = 0 ]
+  echo $HTML_HEADERS | check egrep -q 'X-Mod-Pagespeed|X-Page-Speed'
 
   echo Checking for combined CSS URL
   EXPECTED='href="styles/yellow\.css+blue\.css+big\.css+bold\.css'
@@ -747,8 +745,7 @@ test_filter convert_meta_tags
 run_wget_with_args $URL
 
 echo Checking for Charset header.
-grep -qi "CONTENT-TYPE: text/html; *charset=UTF-8" $WGET_OUTPUT
-check [ $? = 0 ]
+check grep -qi "CONTENT-TYPE: text/html; *charset=UTF-8" $WGET_OUTPUT
 
 # This filter loads below the fold images lazily.
 test_filter lazyload_images
@@ -793,12 +790,9 @@ check fgrep -q "no-cache" $WGET_OUTPUT
 test_filter defer_javascript optimize mode
 echo run_wget_with_args $URL
 check run_wget_with_args $URL
-grep pagespeed.deferJs $FETCHED >/dev/null
-check [ $? = 0 ]
-grep text/psajs $FETCHED >/dev/null
-check [ $? = 0 ]
-grep '/\*' $FETCHED >/dev/null
-check [ $? = 1 ]
+check grep -q pagespeed.deferJs $FETCHED
+check grep -q text/psajs $FETCHED
+check_not grep '/\*' $FETCHED
 
 # Checks that defer_javascript,debug injects 'pagespeed.deferJs' from
 # defer_js.js, but retains the comments.
@@ -807,22 +801,17 @@ FILE=defer_javascript.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 check run_wget_with_args "$URL"
-grep pagespeed.deferJs $FETCHED >/dev/null
-check [ $? = 0 ]
-grep text/psajs $FETCHED >/dev/null
-check [ $? = 0 ]
-grep '/\*' $FETCHED >/dev/null
-check [ $? = 0 ]
+check grep -q pagespeed.deferJs $FETCHED
+check grep -q text/psajs $FETCHED
+check grep -q '/\*' $FETCHED
 
 # Checks that lazyload_images injects compiled javascript from
 # lazyload_images.js.
 test_filter lazyload_images optimize mode
 echo run_wget_with_args $URL
 check run_wget_with_args $URL
-grep pagespeed.lazyLoad $FETCHED >/dev/null
-check [ $? = 0 ]
-grep '/\*' $FETCHED >/dev/null
-check [ $? = 1 ]
+check grep -q pagespeed.lazyLoad $FETCHED
+check_not grep '/\*' $FETCHED
 
 # Checks that lazyload_images,debug injects non compiled javascript from
 # lazyload_images.js
@@ -831,10 +820,8 @@ FILE=lazyload_images.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 check run_wget_with_args "$URL"
-grep pagespeed.lazyLoad $FETCHED >/dev/null
-check [ $? = 0 ]
-grep '/\*' $FETCHED >/dev/null
-check [ $? = 0 ]
+check grep -q pagespeed.lazyLoad $FETCHED
+check grep -q '/\*' $FETCHED
 
 # Checks that inline_preview_images injects compiled javascript
 test_filter inline_preview_images optimize mode
@@ -864,7 +851,7 @@ fetch_until $URL  'grep -c pagespeed.localStorageCacheInit()' 1
 echo run_wget_with_args "$URL"
 check run_wget_with_args "$URL"
 check grep -q "pagespeed.localStorageCacheInit()" $FETCHED
-check [ `grep -c ' pagespeed_lsc_url=' $FETCHED` = 2 ]
+check [ $(grep -c ' pagespeed_lsc_url=' $FETCHED) = 2 ]
 check grep -q "yellow {background-color: yellow" $FETCHED
 check grep -q "<img src=\"data:image/png;base64" $FETCHED
 check grep -q "<img .* alt=\"A cup of joe\"" $FETCHED
@@ -879,7 +866,7 @@ fetch_until $URL  'grep -c pagespeed.localStorageCacheInit()' 1
 echo run_wget_with_args "$URL"
 check run_wget_with_args "$URL"
 check grep -q "pagespeed.localStorageCacheInit()" $FETCHED
-check [ `grep -c ' pagespeed_lsc_url=' $FETCHED` = 2 ]
+check [ $(grep -c ' pagespeed_lsc_url=' $FETCHED) = 2 ]
 check grep -q "yellow {background-color: yellow" $FETCHED
 check grep -q "<img src=\"data:image/png;base64" $FETCHED
 check grep -q "<img .* alt=\"A cup of joe\"" $FETCHED
