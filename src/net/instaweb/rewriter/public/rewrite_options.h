@@ -1426,14 +1426,11 @@ class RewriteOptions {
 
   void SetUp();
   bool AddCommaSeparatedListToFilterSetState(
-      const StringPiece& filters, MessageHandler* handler, FilterSet* set);
+      const StringPiece& filters, FilterSet* set, MessageHandler* handler);
   static bool AddCommaSeparatedListToFilterSet(
-      const StringPiece& filters, MessageHandler* handler, FilterSet* set);
-  bool AddCommaSeparatedListToPlusAndMinusFilterSets(
-      const StringPiece& filters, MessageHandler* handler,
-      FilterSet* plus_set, FilterSet* minus_set);
+      const StringPiece& filters, FilterSet* set, MessageHandler* handler);
   static bool AddByNameToFilterSet(
-      const StringPiece& option, MessageHandler* handler, FilterSet* set);
+      const StringPiece& option, FilterSet* set, MessageHandler* handler);
   static Filter LookupFilter(const StringPiece& filter_name);
   static OptionEnum LookupOption(const StringPiece& option_name);
   // Initialize the option-enum to option-name array for fast lookups by

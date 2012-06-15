@@ -197,9 +197,7 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
   } else if (name == kModPagespeedFilters) {
     // When using ModPagespeedFilters query param, only the
     // specified filters should be enabled.
-    options->SetRewriteLevel(RewriteOptions::kPassThrough);
     if (options->AdjustFiltersByCommaSeparatedList(value, handler)) {
-      options->DisableAllFiltersNotExplicitlyEnabled();
       status = kSuccess;
     } else {
       status = kInvalid;

@@ -751,22 +751,16 @@ void RewriteOptions::DisallowTroublesomeResources() {
   }
 }
 
-bool RewriteOptions::AdjustFiltersByCommaSeparatedList(
-    const StringPiece& filters, MessageHandler* handler) {
-  return AddCommaSeparatedListToPlusAndMinusFilterSets(
-      filters, handler, &enabled_filters_, &disabled_filters_);
-}
-
 bool RewriteOptions::EnableFiltersByCommaSeparatedList(
     const StringPiece& filters, MessageHandler* handler) {
   return AddCommaSeparatedListToFilterSetState(
-      filters, handler, &enabled_filters_);
+      filters, &enabled_filters_, handler);
 }
 
 bool RewriteOptions::DisableFiltersByCommaSeparatedList(
     const StringPiece& filters, MessageHandler* handler) {
   return AddCommaSeparatedListToFilterSetState(
-      filters, handler, &disabled_filters_);
+      filters, &disabled_filters_, handler);
 }
 
 void RewriteOptions::DisableAllFiltersNotExplicitlyEnabled() {
@@ -837,55 +831,74 @@ void RewriteOptions::ClearFilters() {
 }
 
 bool RewriteOptions::AddCommaSeparatedListToFilterSetState(
-    const StringPiece& filters, MessageHandler* handler, FilterSet* set) {
+    const StringPiece& filters, FilterSet* set, MessageHandler* handler) {
   DCHECK(!frozen_);
   size_t prev_set_size = set->size();
-  bool ret = AddCommaSeparatedListToFilterSet(filters, handler, set);
+  bool ret = AddCommaSeparatedListToFilterSet(filters, set, handler);
   modified_ |= (set->size() != prev_set_size);
   return ret;
 }
 
 bool RewriteOptions::AddCommaSeparatedListToFilterSet(
-    const StringPiece& filters, MessageHandler* handler, FilterSet* set) {
+    const StringPiece& filters, FilterSet* set, MessageHandler* handler) {
   StringPieceVector names;
   SplitStringPieceToVector(filters, ",", &names, true);
   bool ret = true;
   for (int i = 0, n = names.size(); i < n; ++i) {
-    ret = AddByNameToFilterSet(names[i], handler, set);
+    ret = AddByNameToFilterSet(names[i], set, handler);
   }
   return ret;
 }
 
-bool RewriteOptions::AddCommaSeparatedListToPlusAndMinusFilterSets(
-    const StringPiece& filters, MessageHandler* handler,
-    FilterSet* plus_set, FilterSet* minus_set) {
+bool RewriteOptions::AdjustFiltersByCommaSeparatedList(
+    const StringPiece& filters, MessageHandler* handler) {
   DCHECK(!frozen_);
   StringPieceVector names;
   SplitStringPieceToVector(filters, ",", &names, true);
   bool ret = true;
-  size_t sets_size_sum_before = (plus_set->size() + minus_set->size());
+  size_t sets_size_sum_before =
+      (enabled_filters_.size() + disabled_filters_.size());
+
+  // Default to false unless no filters are specified.
+  // "ModPagespeedFilters=" -> disable all filters.
+  bool non_incremental = names.empty();
   for (int i = 0, n = names.size(); i < n; ++i) {
     StringPiece& option = names[i];
     if (!option.empty()) {
       if (option[0] == '-') {
         option.remove_prefix(1);
-        ret = AddByNameToFilterSet(names[i], handler, minus_set);
+        ret = AddByNameToFilterSet(names[i], &disabled_filters_, handler);
       } else if (option[0] == '+') {
         option.remove_prefix(1);
-        ret = AddByNameToFilterSet(names[i], handler, plus_set);
+        ret = AddByNameToFilterSet(names[i], &enabled_filters_, handler);
       } else {
-        // No prefix is treated the same as '+'. Arbitrary but reasonable.
-        ret = AddByNameToFilterSet(names[i], handler, plus_set);
+        // No prefix means: reset to pass-through mode prior to
+        // applying any of the filters.  +a,-b,+c" will just add
+        // a and c and remove b to current default config, but
+        // "+a,-b,+c,d" will just run with filters a, c and d.
+        ret = AddByNameToFilterSet(names[i], &enabled_filters_, handler);
+        non_incremental = true;
       }
     }
   }
-  size_t sets_size_sum_after = (plus_set->size() + minus_set->size());
-  modified_ |= (sets_size_sum_before != sets_size_sum_after);
+
+  if (non_incremental) {
+    SetRewriteLevel(RewriteOptions::kPassThrough);
+    DisableAllFiltersNotExplicitlyEnabled();
+    modified_ = true;
+  } else {
+    // TODO(jmarantz): this modified_ computation for query-params doesn't
+    // work as we'd like in RewriteQueryTest.NoChangesShouldNotModify.  See
+    // a more detailed TODO there.
+    size_t sets_size_sum_after =
+        (enabled_filters_.size() + disabled_filters_.size());
+    modified_ |= (sets_size_sum_before != sets_size_sum_after);
+  }
   return ret;
 }
 
 bool RewriteOptions::AddByNameToFilterSet(
-    const StringPiece& option, MessageHandler* handler, FilterSet* set) {
+    const StringPiece& option, FilterSet* set, MessageHandler* handler) {
   bool ret = true;
   Filter filter = LookupFilter(option);
   if (filter == kEndOfFilters) {
@@ -1556,12 +1569,12 @@ void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
     } else if (StringCaseStartsWith(piece, "enable")) {
       StringPiece enabled = PieceAfterEquals(piece);
       if (enabled.length() > 0) {
-        AddCommaSeparatedListToFilterSet(enabled, handler, &enabled_filters_);
+        AddCommaSeparatedListToFilterSet(enabled, &enabled_filters_, handler);
       }
     } else if (StringCaseStartsWith(piece, "disable")) {
       StringPiece disabled = PieceAfterEquals(piece);
       if (disabled.length() > 0) {
-        AddCommaSeparatedListToFilterSet(disabled, handler, &disabled_filters_);
+        AddCommaSeparatedListToFilterSet(disabled, &disabled_filters_, handler);
       }
     } else if (StringCaseStartsWith(piece, "inline_css")) {
       StringPiece max_bytes = PieceAfterEquals(piece);

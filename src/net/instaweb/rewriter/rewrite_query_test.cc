@@ -27,6 +27,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -62,7 +63,7 @@ class RewriteQueryTest : public ResourceManagerTestBase {
                                GoogleString* out_header_string) {
     options_.reset(new RewriteOptions);
     GoogleUrl url(StrCat("http://www.test.com/index.jsp?", in_query));
-    if (RewriteQuery::Scan(factory_.get(), &url, request_headers,
+    if (RewriteQuery::Scan(factory(), &url, request_headers,
                            &options_, &handler_)
         != RewriteQuery::kSuccess) {
       options_.reset(NULL);
@@ -80,6 +81,18 @@ class RewriteQueryTest : public ResourceManagerTestBase {
     EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheCss));
     EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheImages));
     EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheScripts));
+  }
+
+  // In a fashion patterned after the usage in mod_instaweb.cc, establish
+  // a base configuration, and update it based on the passed-in query string.
+  void Incremental(const StringPiece& query, RewriteOptions* options) {
+    scoped_ptr<RewriteOptions> query_options;
+    GoogleUrl gurl(StrCat("http://example.com/?ModPagespeedFilters=", query));
+    RequestHeaders request_headers;
+    EXPECT_EQ(RewriteQuery::kSuccess,
+              RewriteQuery::Scan(factory(), &gurl, &request_headers,
+                                 &query_options, message_handler()));
+    options->Merge(*query_options.get());
   }
 
   GoogleMessageHandler handler_;
@@ -281,6 +294,83 @@ TEST_F(RewriteQueryTest, OutputQueryandHeadersPostRequest) {
   EXPECT_EQ(output_query, "abc=1&def");
   EXPECT_EQ(output_headers, "POST  HTTP/1.0\r\nxyz: 6\r\n\r\n");
   EXPECT_EQ(request_headers.message_body(), "pqr");
+}
+
+// Tests the ability to add an additional filter on the command-line based
+// on whatever set is already installed in the configuration.
+TEST_F(RewriteQueryTest, IncrementalAdd) {
+  RewriteOptions options;
+  options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  options.EnableFilter(RewriteOptions::kStripScripts);
+  Incremental("+debug", &options);
+  EXPECT_TRUE(options.Enabled(RewriteOptions::kStripScripts));
+  EXPECT_TRUE(options.Enabled(RewriteOptions::kDebug));
+  EXPECT_TRUE(options.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_FALSE(options.Enabled(RewriteOptions::kAddBaseTag));
+  EXPECT_TRUE(options.modified());
+}
+
+// Same exact test as above, except that we omit the "+".  This wipes out
+// the explicitly enabled filter in the configuration and also the core
+// level.
+TEST_F(RewriteQueryTest, NonIncrementalAdd) {
+  RewriteOptions options;
+  options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  options.EnableFilter(RewriteOptions::kStripScripts);
+  Incremental("debug", &options);
+  EXPECT_FALSE(options.Enabled(RewriteOptions::kStripScripts));
+  EXPECT_TRUE(options.Enabled(RewriteOptions::kDebug));
+  EXPECT_FALSE(options.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options.modified());
+}
+
+// In this version we specify nothing, and that should erase the filters.
+TEST_F(RewriteQueryTest, IncrementalEmpty) {
+  RewriteOptions options;
+  options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  options.EnableFilter(RewriteOptions::kStripScripts);
+  Incremental("", &options);
+  EXPECT_FALSE(options.Enabled(RewriteOptions::kStripScripts));
+  EXPECT_FALSE(options.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options.modified());
+}
+
+TEST_F(RewriteQueryTest, IncrementalRemoveExplicit) {
+  RewriteOptions options;
+  options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  options.EnableFilter(RewriteOptions::kStripScripts);
+  Incremental("-strip_scripts", &options);
+  EXPECT_FALSE(options.Enabled(RewriteOptions::kStripScripts));
+  EXPECT_TRUE(options.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options.modified());
+}
+
+TEST_F(RewriteQueryTest, IncrementalRemoveFromCore) {
+  RewriteOptions options;
+  options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  options.EnableFilter(RewriteOptions::kStripScripts);
+  Incremental("-combine_css", &options);
+  EXPECT_TRUE(options.Enabled(RewriteOptions::kStripScripts));
+  EXPECT_FALSE(options.Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options.modified());
+}
+
+TEST_F(RewriteQueryTest, NoChangesShouldNotModify) {
+  RewriteOptions options;
+  options.SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
+  Incremental("+combine_css", &options);
+  EXPECT_FALSE(options.Enabled(RewriteOptions::kStripScripts));
+  EXPECT_TRUE(options.Enabled(RewriteOptions::kCombineCss));
+  //
+  // TODO(jmarantz): We would like at this point to have options show up
+  // as unmodified.  However our implementation of query-params parsing
+  // does not allow for this at this point, because it doesn't know
+  // that it is working with the core filters.  Right now this is not
+  // that important as the only usage of RewriteOptions::modified() is
+  // in apache/mod_instaweb.cc which is just checking to see if there are
+  // any directory-specific options set.
+  //
+  // EXPECT_FALSE(options.modified());
 }
 
 }  // namespace net_instaweb
