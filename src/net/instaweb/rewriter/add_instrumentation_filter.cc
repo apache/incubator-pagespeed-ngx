@@ -22,6 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -57,7 +58,7 @@ const char kUnloadScriptFormat[] =
     "if(window.parent != window){ifr=1}"
     "new Image().src='%s%s'+"
     "(Number(new Date())-window.mod_pagespeed_start)+'&ifr='+ifr+'"
-    "&url='+encodeURIComponent('%s');};"
+    "%s&url='+encodeURIComponent('%s');};"
     "var f=window.addEventListener;if(f){f('beforeunload',g,false);}else{"
     "f=window.attachEvent;if(f){f('onbeforeunload',g);}}"
     "})();%s</script>";
@@ -72,7 +73,7 @@ const char kTailScriptFormat[] =
     "if(window.parent != window){ifr=1}"
     "new Image().src='%s%s'+"
     "(Number(new Date())-window.mod_pagespeed_start)+'&ifr='+ifr+'"
-    "&url='+encodeURIComponent('%s');"
+    "%s&url='+encodeURIComponent('%s');"
     "window.mod_pagespeed_loaded=true;};"
     "var f=window.addEventListener;if(f){f('load',g,false);}else{"
     "f=window.attachEvent;if(f){f('onload',g);}}"
@@ -110,7 +111,9 @@ AddInstrumentationFilter::AddInstrumentationFilter(RewriteDriver* driver)
     : driver_(driver),
       found_head_(false),
       use_cdata_hack_(
-          !driver_->resource_manager()->response_headers_finalized()) {
+          !driver_->resource_manager()->response_headers_finalized()),
+      added_tail_script_(false),
+      added_unload_script_(false) {
   Statistics* stats = driver->resource_manager()->statistics();
   instrumentation_script_added_count_ = stats->GetVariable(
       kInstrumentationScriptAddedCount);
@@ -137,6 +140,8 @@ void AddInstrumentationFilter::Terminate() {
 
 void AddInstrumentationFilter::StartDocument() {
   found_head_ = false;
+  added_tail_script_ = false;
+  added_unload_script_ = false;
 }
 
 void AddInstrumentationFilter::StartElement(HtmlElement* element) {
@@ -154,7 +159,7 @@ void AddInstrumentationFilter::StartElement(HtmlElement* element) {
 }
 
 void AddInstrumentationFilter::EndElement(HtmlElement* element) {
-  if (element->keyword() == HtmlName::kBody) {
+  if (!added_tail_script_ && element->keyword() == HtmlName::kBody) {
     // We relied on the existence of a <head> element.  This should have been
     // assured by add_head_filter.
     CHECK(found_head_) << "Reached end of document without finding <head>."
@@ -163,12 +168,15 @@ void AddInstrumentationFilter::EndElement(HtmlElement* element) {
     const char* script = is_xhtml
         ? kTailScriptFormatXhtml->c_str() : kTailScriptFormat;
     AddScriptNode(element, script, kLoadTag, is_xhtml);
+    added_tail_script_ = true;
   } else if (found_head_ && element->keyword() == HtmlName::kHead &&
-             driver_->options()->report_unload_time()) {
+             driver_->options()->report_unload_time() &&
+             !added_unload_script_) {
     bool is_xhtml = (driver_->MimeTypeXhtmlStatus() == RewriteDriver::kIsXhtml);
     const char* script = is_xhtml
         ? kUnloadScriptFormatXhtml->c_str() : kUnloadScriptFormat;
     AddScriptNode(element, script, kUnloadTag, is_xhtml);
+    added_unload_script_ = true;
   }
 }
 
@@ -190,10 +198,21 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
     GlobalReplaceSubstring("&", "&amp;", &xhtml_conversion_buffer);
     beacon_url = &xhtml_conversion_buffer;
   }
+  GoogleString expt_id_param;
+  if (driver_->options()->running_furious()) {
+    int furious_state = driver_->options()->furious_id();
+    if (furious_state != furious::kFuriousNotSet &&
+        furious_state != furious::kFuriousNoExperiment) {
+      expt_id_param = StringPrintf("&exptid=%d",
+                                   driver_->options()->furious_id());
+    }
+  }
   GoogleString tail_script = StringPrintf(
       script_format.c_str(),
       use_cdata_hack_ ? kCdataHackOpen : "",
-      beacon_url->c_str(), tag_name.c_str(), html_url.c_str(),
+      beacon_url->c_str(), tag_name.c_str(),
+      expt_id_param.c_str(),
+      html_url.c_str(),
       use_cdata_hack_ ? kCdataHackClose: "");
   HtmlCharactersNode* script =
       driver_->NewCharactersNode(element, tail_script);

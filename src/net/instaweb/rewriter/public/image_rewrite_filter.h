@@ -105,6 +105,9 @@ class ImageRewriteFilter : public RewriteFilter {
   // name for statistic used to bound rewriting work.
   static const char kImageOngoingRewrites[];
 
+  // # of images that we decided not to rewrite because of size constraint.
+  static const char kImageNoRewritesHighResolution[];
+
   // TimedVariable denoting image rewrites we dropped due to
   // load (too many concurrent rewrites)
   static const char kImageRewritesDroppedDueToLoad[];
@@ -169,6 +172,8 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // # of images rewritten successfully.
   Variable* image_rewrites_;
+  // # of images that we decided not to rewrite because of size constraint.
+  Variable* image_norewrites_high_resolution_;
   // # of images that we decided not to serve rewritten. This could be because
   // the rewrite failed, recompression wasn't effective enough, the image
   // couldn't be resized because it had an alpha-channel, etc.

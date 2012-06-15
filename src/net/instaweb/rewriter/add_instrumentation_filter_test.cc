@@ -18,12 +18,15 @@
 
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 
+#include <cstddef>
+
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -52,16 +55,26 @@ class AddInstrumentationFilterTest : public ResourceManagerTestBase {
     GoogleString url =
         StrCat((https_mode_ ? "https://example.com/" : kTestDomain),
                "index.html?a&b");
-    ParseUrl(url, "<head></head><body></body>");
+    ParseUrl(url, "<head></head><head></head><body></body><body></body>");
     EXPECT_EQ(https_mode_,
               output_buffer_.find("https://example.com/beacon?") !=
               GoogleString::npos);
     EXPECT_EQ(https_mode_,
               output_buffer_.find("http://example.com/beacon?") ==
               GoogleString::npos);
-    EXPECT_TRUE(output_buffer_.find("ets=load") != GoogleString::npos);
+    size_t index = output_buffer_.find("ets=load");
+    EXPECT_TRUE(index != GoogleString::npos);
+    EXPECT_FALSE(
+        output_buffer_.find("ets=load", index + 8) != GoogleString::npos);
+    size_t unload_index = output_buffer_.find("ets=unload");
     EXPECT_EQ(report_unload_time_,
-              output_buffer_.find("ets=unload") != GoogleString::npos);
+              unload_index != GoogleString::npos);
+    // Whether report unload time is enabled or not, it should not be present
+    // second time.
+    if (unload_index!=GoogleString::npos) {
+      EXPECT_FALSE(output_buffer_.find("ets=unload", unload_index + 10) !=
+                  GoogleString::npos);
+    }
 
     // All of the ampersands should be suffixed with "amp;" if that's what
     // we are looking for.
@@ -184,5 +197,19 @@ TEST_F(AddInstrumentationFilterTest,
   report_unload_time_ = true;
   RunInjection();
 }
+
+// Test that experiment id reporting is done correctly.
+TEST_F(AddInstrumentationFilterTest,
+       TestFuriousExperimentIdReporting) {
+  NullMessageHandler handler;
+  options()->set_running_furious_experiment(true);
+  options()->AddFuriousSpec("id=2;percent=10;slot=4;", &handler);
+  options()->AddFuriousSpec("id=7;percent=10;level=CoreFilters;slot=4;",
+                            &handler);
+  options()->SetFuriousState(2);
+  RunInjection();
+  EXPECT_TRUE(output_buffer_.find("exptid=2") != GoogleString::npos);
+}
+
 
 }  // namespace net_instaweb

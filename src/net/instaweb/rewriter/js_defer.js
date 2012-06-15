@@ -178,6 +178,13 @@ deferJsNs.DeferJs = function() {
    * @private
    */
   this.state_ = deferJsNs.DeferJs.STATES.NOT_STARTED;
+
+  /**
+   * Maintains the last fired event.
+   * @type {!number}
+   * @private
+   */
+  this.eventState_ = deferJsNs.DeferJs.EVENT.NOT_STARTED;
 };
 
 /**
@@ -221,21 +228,25 @@ deferJsNs.DeferJs.STATES = {
  */
 deferJsNs.DeferJs.EVENT = {
   /**
-   * Event corresponding to DOMContentLoaded.
+   * Start event state.
    */
-  DOM_READY: 0,
-  /**
-   * Event corresponding to onload.
-   */
-  LOAD: 1,
+  NOT_STARTED: 0,
   /**
    * Event triggered before executing deferred scripts.
    */
-  BEFORE_SCRIPTS: 2,
+  BEFORE_SCRIPTS: 1,
+  /**
+   * Event corresponding to DOMContentLoaded.
+   */
+  DOM_READY: 2,
+  /**
+   * Event corresponding to onload.
+   */
+  LOAD: 3,
   /**
    * Event triggered after executing deferred scripts.
    */
-  AFTER_SCRIPTS: 3
+  AFTER_SCRIPTS: 4
 };
 
 /**
@@ -555,7 +566,6 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
   if (deferJsNs.DeferJs.isExperimentalMode) {
       document.createElement = this.origCreateElement_;
   }
-  this.restoreAddEventListeners();
 
   document.open = this.origDocOpen_;
   document.close = this.origDocClose_;
@@ -571,11 +581,66 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
   if (window.onload) {
     psaAddEventListener(window, 'onload', window.onload);
   }
+  this.restoreAddEventListeners();
   this.fireEvent(deferJsNs.DeferJs.EVENT.LOAD);
 
   this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_DONE;
   this.fireEvent(deferJsNs.DeferJs.EVENT.AFTER_SCRIPTS);
 }
+
+/**
+ * Checks if node is present in the dom.
+ * @param {Node} node Node whose presence in the dom is checked.
+ * @return {boolean} returns true if node is present in the Node, false
+ * otherwise.
+ */
+deferJsNs.DeferJs.prototype.checkNodeInDom = function(node) {
+  while (node = node.parentNode) {
+    if (node == document) {
+      return true;
+    }
+  }
+  return false;
+};
+
+/**
+ *  Checks if onComplete() function can be called or not.
+ *  @return {boolean} returns true if onComplete() can be called.
+ */
+deferJsNs.DeferJs.prototype.canCallOnComplete = function() {
+  // TODO(pulkitg): Handle scenario where somebody sets innetHTML and references
+  // in the this.dynamicInsertedScriptCount_ become invalid.
+  if (this.state_ != deferJsNs.DeferJs.STATES.SYNC_SCRIPTS_DONE) {
+    return false;
+  }
+  var count = 0;
+  if (this.dynamicInsertedScriptCount_ != 0) {
+    // Script onload is not triggered if src is empty because such scripts
+    // are not async scripts as these scripts will be executed while parsing
+    // the dom.
+    var len = this.dynamicInsertedScript_.length;
+    for (var i = 0; i < len; ++i) {
+      var node = this.dynamicInsertedScript_[i];
+      var parent = node.parentNode;
+      var src = node.src;
+      var text = node.textContent;
+      // IE behaves differently for async scripts compared to other browsers.
+      // IE triggeres script onload only if parent is not null and src or
+      // textContent is not empty. But other browsers trigger onload only if
+      // node is present in the dom and src is not empty.
+      if (((this.getIEVersion() > 8) &&
+              (!parent || (src == '' && text == ''))) ||
+          (!this.getIEVersion() &&
+                  (!this.checkNodeInDom(node) || src == ''))) {
+        count++;
+      }
+    }
+  }
+  if (this.dynamicInsertedScriptCount_ == count) {
+    return true;
+  }
+  return false;
+};
 
 /**
  * Schedules the next task in the queue.
@@ -592,20 +657,7 @@ deferJsNs.DeferJs.prototype.runNext = function() {
   } else {
     if (deferJsNs.DeferJs.isExperimentalMode) {
       this.state_ = deferJsNs.DeferJs.STATES.SYNC_SCRIPTS_DONE;
-      if (this.dynamicInsertedScriptCount_ != 0) {
-        // Script onload is not triggered if src is empty because such scripts
-        // are not async scripts as these scripts will be executed while parsing
-        // the dom.
-        var len = this.dynamicInsertedScript_.length;
-        for (var i = 0; i < len; ++i) {
-          if (!this.dynamicInsertedScript_[i].parentNode ||
-              this.dynamicInsertedScript_[i].src == '') {
-            this.dynamicInsertedScriptCount_--;
-          }
-        }
-      }
-      // TODO(pulkitg): Make this check == 0 once the bug is fixed.
-      if (this.dynamicInsertedScriptCount_ <= 0) {
+      if (this.canCallOnComplete()) {
         this.onComplete();
       }
     } else {
@@ -700,9 +752,12 @@ deferJsNs.DeferJs.prototype.setUp = function() {
         me.dynamicInsertedScriptCount_++;
         var onload = function() {
           me.dynamicInsertedScriptCount_--;
-          if (me.dynamicInsertedScriptCount_ == 0 &&
-              me.state_ == deferJsNs.DeferJs.STATES.SYNC_SCRIPTS_DONE) {
-            me.onComplete();
+          var index = me.dynamicInsertedScript_.indexOf(this);
+          if (index != -1) {
+            me.dynamicInsertedScript_.splice(index, 1);
+            if (me.canCallOnComplete()) {
+              me.onComplete();
+            }
           }
         };
         deferJsNs.addOnload(elem, onload);
@@ -932,6 +987,7 @@ deferJsNs.DeferJs.prototype['addAfterDeferRunFunctions'] =
  * @param {!deferJsNs.DeferJs.EVENT.<number>} evt Event to be fired.
  */
 deferJsNs.DeferJs.prototype.fireEvent = function(evt) {
+  this.eventState_ = evt;
   this.log('Firing Event: ' + evt);
   var eventListeners = this.eventListernersMap_[evt] || [];
   for (var i = 0; i < eventListeners.length; ++i) {
@@ -1011,10 +1067,12 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
   }
   var deferJsEvent;
 
-  if (eventName == 'DOMContentLoaded' || eventName == 'readystatechange' ||
-      eventName == 'onDOMContentLoaded' || eventName == 'onreadystatechange') {
+  if (deferJs.eventState_ < deferJsNs.DeferJs.EVENT.DOM_READY &&
+     (eventName == 'DOMContentLoaded' || eventName == 'readystatechange' ||
+      eventName == 'onDOMContentLoaded' || eventName == 'onreadystatechange')) {
     deferJsEvent = deferJsNs.DeferJs.EVENT.DOM_READY;
-  } else if (eventName == 'load' || eventName == 'onload') {
+  } else if (deferJs.eventState_ < deferJsNs.DeferJs.EVENT.LOAD &&
+            (eventName == 'load' || eventName == 'onload')) {
     deferJsEvent = deferJsNs.DeferJs.EVENT.LOAD;
   } else if (eventName == 'onbeforescripts') {
     deferJsEvent = deferJsNs.DeferJs.EVENT.BEFORE_SCRIPTS;

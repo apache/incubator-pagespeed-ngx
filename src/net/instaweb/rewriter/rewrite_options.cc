@@ -140,6 +140,9 @@ const int RewriteOptions::kDefaultImageJpegNumProgressiveScans = -1;
 const int RewriteOptions::kDefaultImageLimitOptimizedPercent = 100;
 const int RewriteOptions::kDefaultImageLimitResizeAreaPercent = 100;
 
+// Sets limit for image optimization to 32MB.
+const int64 RewriteOptions::kDefaultImageResolutionLimitBytes = 32*1024*1024;
+
 // WebP quality that needs to be used while recompressing. If set to -1, we
 // use source image quality parameters.
 const int RewriteOptions::kDefaultImageWebpRecompressQuality = -1;
@@ -571,6 +574,8 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultImageJpegNumProgressiveScans,
              &image_jpeg_num_progressive_scans_, "ijps",
              kImageJpegNumProgressiveScans);
+  add_option(kDefaultImageResolutionLimitBytes, &image_resolution_limit_bytes_,
+             "irlb", kImageResolutionLimitBytes);
   add_option(false, &image_retain_color_profile_, "ircp",
              kImageRetainColorProfile);
   add_option(false, &image_retain_color_sampling_, "ircs",
@@ -1040,7 +1045,11 @@ void RewriteOptions::AddToPrioritizeVisibleContentCacheableFamilies(
 }
 
 bool RewriteOptions::IsInBlinkCacheableFamily(const StringPiece url) const {
-  return (FindPrioritizeVisibleContentFamily(url) != NULL) ||
+  // If there are no families added then the default behaviour is to allow all
+  // urls.
+  return (prioritize_visible_content_families_.empty() &&
+          prioritize_visible_content_cacheable_families_.Signature().empty()) ||
+      (FindPrioritizeVisibleContentFamily(url) != NULL) ||
       MatchesPrioritizeVisibleContentCacheableFamilies(url);
 }
 

@@ -151,6 +151,7 @@ class RewriteOptions {
     kImageRetainColorProfile,
     kImageRetainColorSampling,
     kImageRetainExifData,
+    kImageResolutionLimitBytes,
     kImageWebpRecompressQuality,
     kImplicitCacheTtlMs,
     kIncreaseSpeedTracking,
@@ -291,6 +292,7 @@ class RewriteOptions {
   static const int kDefaultImageJpegRecompressQuality;
   static const int kDefaultImageLimitOptimizedPercent;
   static const int kDefaultImageLimitResizeAreaPercent;
+  static const int64 kDefaultImageResolutionLimitBytes;
   static const int kDefaultImageJpegNumProgressiveScans;
   static const int kDefaultImageWebpRecompressQuality;
   static const int kDefaultDomainShardCount;
@@ -571,6 +573,13 @@ class RewriteOptions {
   void set_css_flatten_max_bytes(int64 x) {
     set_option(x, &css_flatten_max_bytes_);
   }
+  int64 image_resolution_limit_bytes() const {
+    return image_resolution_limit_bytes_.value();
+  }
+  void set_image_resolution_limit_bytes(int64 x) {
+    set_option(x, &image_resolution_limit_bytes_);
+  }
+
   // Retrieve the image inlining threshold, but return 0 if it's disabled.
   int64 ImageInlineMaxBytes() const;
   void set_image_inline_max_bytes(int64 x);
@@ -1537,6 +1546,8 @@ class RewriteOptions {
   MutexedOptionInt64MergeWithMax cache_invalidation_timestamp_;
 
   Option<int64> css_flatten_max_bytes_;
+  // Sets limit for image optimization
+  Option<int64> image_resolution_limit_bytes_;
   Option<int64> css_image_inline_max_bytes_;
   Option<int64> css_inline_max_bytes_;
   Option<int64> css_outline_min_bytes_;

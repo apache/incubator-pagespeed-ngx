@@ -173,9 +173,7 @@ UserAgentMatcher::BlinkRequestType UserAgentMatcher::GetBlinkRequestType(
     const char* user_agent, const RequestHeaders* request_headers,
     bool allow_mobile) const {
   if (user_agent == NULL) {
-    // We were allowing empty user agents earlier in SupportsBlink.
-    // TODO(sriharis):  But we should not do so now.
-    return kSupportsBlinkDesktop;
+    return kDoesNotSupportBlink;
   }
   if (IsMobileRequest(user_agent, request_headers)) {
     // TODO(srihari):  When blink supports mobile, we need to add a mobile

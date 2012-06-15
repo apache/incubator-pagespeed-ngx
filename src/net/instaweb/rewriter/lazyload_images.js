@@ -208,13 +208,25 @@ pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
         // Only replace the src if the old value is the one we set. It is
         // possible that a script has already changed it, in which case, we
         // should not try to modify it.
-        element.src = data_src;
         element.removeAttribute('pagespeed_lazy_src');
+        element.removeAttribute('onload');
+        element.removeAttribute('src');
+        // Create a new image element and replace the old image with the new
+        // one since setting the src doesn't seem to always work in chrome.
+        var newElement = new Image();
+        // Copy attributes.
+        for (var i = 0, a = element.attributes, n = a.length; i < n; ++i) {
+          newElement.setAttribute(a[i].name, a[i].value);
+        }
+        newElement.setAttribute('src', data_src);
+
+        // Replace the old element with the new one.
+        element.parentNode.replaceChild(newElement, element);
       } else {
         context.deferred_.push(element);
       }
     }
-  }, 100);
+  }, 0);
 };
 
 pagespeed.LazyloadImages.prototype['loadIfVisible'] =

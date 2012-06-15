@@ -54,6 +54,7 @@ const char kPuzzleJpgFile[] = "Puzzle.jpg";
 const char kChefGifFile[] = "IronChef2.gif";
 const char kCuppaTPngFile[] = "CuppaT.png";
 const char kCuppaOPngFile[] = "CuppaO.png";
+const char kLargePngFile[] = "Large.png";
 
 // A callback for HTTP cache that stores body and string representation
 // of headers into given strings.
@@ -437,6 +438,17 @@ TEST_F(ImageRewriteTest, ResizeTest) {
   const char kResizedDims[] = " width=\"256\" height=\"192\"";
   TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     kResizedDims, kResizedDims, true, false);
+}
+
+TEST_F(ImageRewriteTest, ResizeHigherDimensionTest) {
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+  const char kOriginalDims[] = " width=\"100000\" height=\"100000\"";
+  TestSingleRewrite(kLargePngFile, kContentTypePng, kContentTypePng,
+                    kOriginalDims, kOriginalDims, false, false);
+  Variable* no_rewrites = statistics()->GetVariable(
+      net_instaweb::ImageRewriteFilter::kImageNoRewritesHighResolution);
+  EXPECT_EQ(1, no_rewrites->Get());
 }
 
 TEST_F(ImageRewriteTest, DimensionParsingOK) {

@@ -638,7 +638,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(81, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(82, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));
@@ -720,6 +720,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("ImageMaxRewritesAtOnce"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kImageMaxRewritesAtOnce));
+  EXPECT_EQ(StringPiece("ImageResolutionLimitBytes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kImageResolutionLimitBytes));
   EXPECT_EQ(StringPiece("ImageRetainColorProfile"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kImageRetainColorProfile));
@@ -949,7 +952,7 @@ TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies2) {
 }
 
 TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {
-  EXPECT_FALSE(options_.IsInBlinkCacheableFamily("/one.html"));
+  EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/one.html"));
   EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
             options_.GetBlinkCacheTimeFor("/one.html"));
   EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,

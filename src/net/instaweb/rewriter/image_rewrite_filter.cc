@@ -58,6 +58,8 @@ class UrlSegmentEncoder;
 
 // names for Statistics variables.
 const char kImageRewrites[] = "image_rewrites";
+const char ImageRewriteFilter::kImageNoRewritesHighResolution[] =
+    "image_norewrites_high_resolution";
 const char kImageRewritesDroppedIntentionally[] =
     "image_rewrites_dropped_intentionally";
 const char ImageRewriteFilter::kImageRewritesDroppedDueToLoad[] =
@@ -157,6 +159,8 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
       image_counter_(0) {
   Statistics* stats = resource_manager_->statistics();
   image_rewrites_ = stats->GetVariable(kImageRewrites);
+  image_norewrites_high_resolution_ = stats->GetVariable(
+      kImageNoRewritesHighResolution);
   image_rewrites_dropped_intentionally_ =
       stats->GetVariable(kImageRewritesDroppedIntentionally);
   image_rewrites_dropped_due_to_load_ =
@@ -178,6 +182,7 @@ ImageRewriteFilter::~ImageRewriteFilter() {}
 
 void ImageRewriteFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kImageRewrites);
+  statistics->AddVariable(kImageNoRewritesHighResolution);
   statistics->AddVariable(kImageRewritesDroppedIntentionally);
   statistics->AddTimedVariable(kImageRewritesDroppedDueToLoad,
                                ResourceManager::kStatisticsGroup);
@@ -344,6 +349,14 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   // now rely on caching headers instead as this was missing a lot of padding
   // images that were ripe for inlining.
   RewriteResult rewrite_result = kTooBusy;
+
+  ImageDim image_dim;
+  image->Dimensions(&image_dim);
+  int64 image_width = image_dim.width(), image_height = image_dim.height();
+  if ((image_width*image_height*4) > options->image_resolution_limit_bytes()) {
+    image_norewrites_high_resolution_->Add(1);
+    return kRewriteFailed;
+  }
   if (work_bound_->TryToWork()) {
     rewrite_result = kRewriteFailed;
     CachedResult* cached = result->EnsureCachedResultCreated();
