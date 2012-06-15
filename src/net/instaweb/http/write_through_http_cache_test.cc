@@ -32,9 +32,9 @@
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_stats.h"
-#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace {
 // Set the cache size large enough so nothing gets evicted during this test.
@@ -379,6 +379,21 @@ TEST_F(WriteThroughHTTPCacheTest, RememberFetchFailedOrNotCacheable) {
   // Now advance time 301 seconds; the cache should allow us to try fetching
   // again.
   mock_timer_.AdvanceMs(301 * 1000);
+  EXPECT_EQ(HTTPCache::kNotFound,
+            Find(key_, &value, &headers_out, &message_handler_));
+}
+
+TEST_F(WriteThroughHTTPCacheTest, RememberFetchDropped) {
+  ClearStats();
+  ResponseHeaders headers_out;
+  http_cache_->RememberFetchDropped(key_, &message_handler_);
+  HTTPValue value;
+  EXPECT_EQ(HTTPCache::kRecentFetchFailed,
+            Find(key_, &value, &headers_out, &message_handler_));
+
+  // Now advance time 11 seconds; the cache should allow us to try fetching
+  // again.
+  mock_timer_.AdvanceMs(11 * Timer::kSecondMs);
   EXPECT_EQ(HTTPCache::kNotFound,
             Find(key_, &value, &headers_out, &message_handler_));
 }

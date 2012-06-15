@@ -46,6 +46,10 @@ namespace {
 const int kRememberNotCacheableTtl = 300;
 const int kRememberFetchFailedTtl = 300;
 
+// We use an extremely low TTL for load-shed resources since we don't
+// want this to get in the way of debugging.
+const int kRememberFetchDroppedTtl = 10;
+
 // Maximum size of response content in bytes. -1 indicates that there is no size
 // limit.
 const int64 kCacheSizeUnlimited = -1;
@@ -76,6 +80,7 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
       name_(StrCat("HTTPCache using backend : ", cache->Name())) {
   remember_not_cacheable_ttl_seconds_ = kRememberNotCacheableTtl;
   remember_fetch_failed_ttl_seconds_ = kRememberFetchFailedTtl;
+  remember_fetch_dropped_ttl_seconds_ = kRememberFetchDroppedTtl;
   max_cacheable_response_content_length_ = kCacheSizeUnlimited;
 }
 
@@ -265,6 +270,13 @@ void HTTPCache::RememberFetchFailed(const GoogleString& key,
   RememberFetchFailedorNotCacheableHelper(key, handler,
       HttpStatus::kRememberFetchFailedStatusCode,
       remember_fetch_failed_ttl_seconds_);
+}
+
+void HTTPCache::RememberFetchDropped(const GoogleString& key,
+                                    MessageHandler* handler) {
+  RememberFetchFailedorNotCacheableHelper(key, handler,
+      HttpStatus::kRememberFetchFailedStatusCode,
+      remember_fetch_dropped_ttl_seconds_);
 }
 
 void HTTPCache::set_max_cacheable_response_content_length(int64 value) {

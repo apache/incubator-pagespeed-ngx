@@ -212,7 +212,11 @@ class UrlResourceFetchCallback : public AsyncFetch {
         http_cache()->RememberNotCacheable(url(), message_handler_);
       }
     } else {
-      http_cache()->RememberFetchFailed(url(), message_handler_);
+      if (headers->Has(HttpAttributes::kXPsaLoadShed)) {
+        http_cache()->RememberFetchDropped(url(), message_handler_);
+      } else {
+        http_cache()->RememberFetchFailed(url(), message_handler_);
+      }
     }
     return false;
   }

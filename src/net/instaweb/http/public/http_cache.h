@@ -182,7 +182,7 @@ class HTTPCache {
   // The not-cacheable setting will be 'remembered' for
   // remember_not_cacheable_ttl_seconds_.
   virtual void RememberNotCacheable(const GoogleString& key,
-                                    MessageHandler * handler);
+                                    MessageHandler* handler);
 
   // Tell the HTTP Cache to remember that a particular key is not cacheable
   // because the associated URL failing Fetch.
@@ -190,7 +190,13 @@ class HTTPCache {
   // The not-cacheable setting will be 'remembered' for
   // remember_fetch_failed_ttl_seconds_.
   virtual void RememberFetchFailed(const GoogleString& key,
-                                   MessageHandler * handler);
+                                   MessageHandler* handler);
+
+  // Tell the HTTP Cache to remember that we had to give up on doing a
+  // background fetch due to load. This will remember it for
+  // remember_fetch_load_shed_ttl_seconds_.
+  virtual void RememberFetchDropped(const GoogleString& key,
+                                    MessageHandler* handler);
 
   // Indicates if the response is within the cacheable size limit. Clients of
   // HTTPCache must check if they will be eventually able to cache their entries
@@ -247,6 +253,17 @@ class HTTPCache {
     }
   }
 
+  int64 remember_fetch_dropped_ttl_seconds() {
+    return remember_fetch_dropped_ttl_seconds_;
+  }
+
+  virtual void set_remember_fetch_dropped_ttl_seconds(int64 value) {
+    DCHECK_LE(0, value);
+    if (value >= 0) {
+      remember_fetch_dropped_ttl_seconds_ = value;
+    }
+  }
+
   int max_cacheable_response_content_length() {
     return max_cacheable_response_content_length_;
   }
@@ -290,6 +307,7 @@ class HTTPCache {
   GoogleString name_;
   int64 remember_not_cacheable_ttl_seconds_;
   int64 remember_fetch_failed_ttl_seconds_;
+  int64 remember_fetch_dropped_ttl_seconds_;
   int64 max_cacheable_response_content_length_;
   AtomicBool ignore_failure_puts_;
 

@@ -24,6 +24,8 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -201,13 +203,13 @@ RateControllingUrlAsyncFetcher::RateControllingUrlAsyncFetcher(
     int per_host_queued_request_threshold,
     ThreadSystem* thread_system,
     Statistics* statistics)
-    :  base_fetcher_(fetcher),
-       max_global_queue_size_(max_global_queue_size),
-       per_host_outgoing_request_threshold_(
-           per_host_outgoing_request_threshold),
-       per_host_queued_request_threshold_(per_host_queued_request_threshold),
-       thread_system_(thread_system),
-       mutex_(thread_system->NewMutex()) {
+    : base_fetcher_(fetcher),
+      max_global_queue_size_(max_global_queue_size),
+      per_host_outgoing_request_threshold_(
+          per_host_outgoing_request_threshold),
+      per_host_queued_request_threshold_(per_host_queued_request_threshold),
+      thread_system_(thread_system),
+      mutex_(thread_system->NewMutex()) {
   CHECK_GT(max_global_queue_size, 0);
   CHECK_GT(per_host_outgoing_request_threshold, 0);
   CHECK_GT(per_host_queued_request_threshold, 0);
@@ -279,6 +281,7 @@ bool RateControllingUrlAsyncFetcher::Fetch(const GoogleString& url,
 
   dropped_fetch_count_->IncBy(1);
   message_handler->Message(kInfo, "Dropping request for %s", url.c_str());
+  fetch->response_headers()->Add(HttpAttributes::kXPsaLoadShed, "1");
   fetch->Done(false);
   return true;
 }

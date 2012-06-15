@@ -23,7 +23,6 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -65,6 +64,9 @@ class WriteThroughHTTPCache : public HTTPCache {
   // Implements HTTPCache::set_remember_fetch_failed_ttl_seconds().
   virtual void set_remember_fetch_failed_ttl_seconds(int64 value);
 
+  // Implements HTTPCache::set_remember_fetch_dropped_ttl_seconds();
+  virtual void set_remember_fetch_dropped_ttl_seconds(int64 value);
+
   // Implements HTTPCache::set_max_cacheable_response_content_length().
   virtual void set_max_cacheable_response_content_length(int64 value);
 
@@ -75,6 +77,10 @@ class WriteThroughHTTPCache : public HTTPCache {
   // Implements HTTPCache::RememberFetchFailed().
   virtual void RememberFetchFailed(const GoogleString& key,
                                    MessageHandler * handler);
+
+  // Implements HTTPCache::RememberFetchDropped().
+  virtual void RememberFetchDropped(const GoogleString& key,
+                                    MessageHandler * handler);
 
   // By default, all data goes into both cache1 and cache2.  But
   // if you only want to put small items in cache1, you can set the

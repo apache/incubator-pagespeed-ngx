@@ -31,9 +31,9 @@
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_stats.h"
-#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace {
 // Set the cache size large enough so nothing gets evicted during this test.
@@ -331,6 +331,38 @@ TEST_F(HTTPCacheTest, RememberNotCacheable) {
   // failed previously.
   mock_timer_.AdvanceMs(301 * 1000);
   EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable,
+            Find("mykey", &value, &meta_data_out, &message_handler_));
+}
+
+// Verifies that the cache will 'remember' 'dropped' for
+// remember_dropped_ttl_seconds_.
+TEST_F(HTTPCacheTest, RememberDropped) {
+  ResponseHeaders meta_data_out;
+  http_cache_.RememberFetchDropped("mykey", &message_handler_);
+  HTTPValue value;
+  EXPECT_EQ(HTTPCache::kRecentFetchFailed,
+            Find("mykey", &value, &meta_data_out, &message_handler_));
+
+  // Advance by 5 seconds: must still be here.
+  mock_timer_.AdvanceMs(5 * Timer::kSecondMs);
+  EXPECT_EQ(HTTPCache::kRecentFetchFailed,
+            Find("mykey", &value, &meta_data_out, &message_handler_));
+
+  // After 6 more => 11 seconds later the cache should now let us retry
+  // again.
+  mock_timer_.AdvanceMs(6 * Timer::kSecondMs);
+  EXPECT_EQ(HTTPCache::kNotFound,
+            Find("mykey", &value, &meta_data_out, &message_handler_));
+
+  http_cache_.set_remember_fetch_dropped_ttl_seconds(60);
+  http_cache_.RememberFetchDropped("mykey", &message_handler_);
+  // Now should remember after 11 seconds.
+  mock_timer_.AdvanceMs(11 * Timer::kSecondMs);
+  EXPECT_EQ(HTTPCache::kRecentFetchFailed,
+            Find("mykey", &value, &meta_data_out, &message_handler_));
+  // ... but not after 61.
+  mock_timer_.AdvanceMs(50 * Timer::kSecondMs);
+  EXPECT_EQ(HTTPCache::kNotFound,
             Find("mykey", &value, &meta_data_out, &message_handler_));
 }
 

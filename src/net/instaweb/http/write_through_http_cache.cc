@@ -23,13 +23,13 @@
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/timing.pb.h"
+#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
-
-class CacheInterface;
 
 namespace {
 
@@ -233,6 +233,13 @@ void WriteThroughHTTPCache::set_remember_fetch_failed_ttl_seconds(
   cache2_->set_remember_fetch_failed_ttl_seconds(value);
 }
 
+void WriteThroughHTTPCache::set_remember_fetch_dropped_ttl_seconds(
+    int64 value) {
+  HTTPCache::set_remember_fetch_dropped_ttl_seconds(value);
+  cache1_->set_remember_fetch_dropped_ttl_seconds(value);
+  cache2_->set_remember_fetch_dropped_ttl_seconds(value);
+}
+
 void WriteThroughHTTPCache::set_max_cacheable_response_content_length(
     int64 value) {
   HTTPCache::set_max_cacheable_response_content_length(value);
@@ -252,6 +259,12 @@ void WriteThroughHTTPCache::RememberFetchFailed(
     MessageHandler* handler) {
   cache1_->RememberFetchFailed(key, handler);
   cache2_->RememberFetchFailed(key, handler);
+}
+
+void WriteThroughHTTPCache::RememberFetchDropped(const GoogleString& key,
+                                                 MessageHandler * handler) {
+  cache1_->RememberFetchDropped(key, handler);
+  cache2_->RememberFetchDropped(key, handler);
 }
 
 }  // namespace net_instaweb

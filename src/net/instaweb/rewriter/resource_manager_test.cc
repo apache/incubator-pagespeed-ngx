@@ -553,6 +553,29 @@ TEST_F(ResourceManagerTest, TestRemember404) {
       "http://example.com/404", http_cache(), &value_out, &headers_out));
 }
 
+TEST_F(ResourceManagerTest, TestRememberDropped) {
+  // Fake resource being dropped by adding the appropriate header to the
+  // resource proper.
+  ResponseHeaders not_found;
+  SetDefaultLongCacheHeaders(&kContentTypeHtml, &not_found);
+  not_found.SetStatusAndReason(HttpStatus::kNotFound);
+  not_found.Add(HttpAttributes::kXPsaLoadShed, "1");
+  SetFetchResponse("http://example.com/404", not_found, "");
+
+  ResourcePtr resource(
+      CreateInputResourceAndReadIfCached("http://example.com/404"));
+  EXPECT_EQ(NULL, resource.get());
+
+  HTTPValue value_out;
+  ResponseHeaders headers_out;
+  EXPECT_EQ(HTTPCache::kRecentFetchFailed, HttpBlockingFind(
+      "http://example.com/404", http_cache(), &value_out, &headers_out));
+
+  mock_timer()->AdvanceMs(11 * Timer::kSecondMs);
+  EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFind(
+      "http://example.com/404", http_cache(), &value_out, &headers_out));
+}
+
 TEST_F(ResourceManagerTest, TestNonCacheable) {
   const GoogleString kContents = "ok";
 
