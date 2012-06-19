@@ -731,7 +731,10 @@ deferJsNs.DeferJs.prototype.setUp = function() {
 
   document.getElementById = function(str) {
     me.handlePendingDocumentWrites();
-    return me.origGetElementById_.call(document, str);
+    var node = me.origGetElementById_.call(document, str);
+    return node == null ||
+        node.hasAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED) ?
+          null : node;
   }
 
   if (document.querySelectorAll && !(me.getIEVersion() <= 8)) {
@@ -863,9 +866,18 @@ deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
   var len = nodeArray.length;
   for (var i = 0; i < len; ++i) {
     var child = nodeArray[i];
-    if (child.nodeType == 1) { // ELEMENT_NODE
-      child.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, '');
-    }
+    // <script id='A'>
+    //  command1
+    //  document.write('<script id='B'>command2<script>');
+    //  command3
+    // </script>
+    // Browser behaviour for above script node is as follows- first execute
+    // command1 and after the execution of command1, scriptB starts executing
+    // and only after the complete execution of script B, command3 will execute.
+    // But with deferJs turned on, after the execution of command 1, command3
+    // gets executed and only after the complete execution of script A, script B
+    // will execute.
+    // TODO(pulkitg): Make both behaviour consistent.
     if (child.nodeName == 'SCRIPT') {
       if (this.isJSNode(child)) {
         scriptNodes.push(child);
@@ -873,6 +885,7 @@ deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
         child.setAttribute('type', deferJsNs.DeferJs.PSA_SCRIPT_TYPE);
         child.setAttribute('orig_src', child.src);
         child.setAttribute('src', '');
+        child.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, '');
       }
     } else {
       this.markNodesAndExtractScriptNodes(child, scriptNodes);

@@ -976,17 +976,17 @@ TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {
   options_.AddToPrioritizeVisibleContentCacheableFamilies("/three*");
   options_.set_prioritize_visible_content_cache_time_ms(50);
   options_.Merge(options1);
-  EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/one.html"));
+  EXPECT_FALSE(options_.IsInBlinkCacheableFamily("/one.html"));
   EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/two.html"));
   EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/three.html"));
-  EXPECT_EQ(10, options_.GetBlinkCacheTimeFor("/one.html"));
+  EXPECT_EQ(50, options_.GetBlinkCacheTimeFor("/one.html"));
   EXPECT_EQ(20, options_.GetBlinkCacheTimeFor("/two.html"));
   EXPECT_EQ(50, options_.GetBlinkCacheTimeFor("/three.html"));
 
   RewriteOptions options2;
   options2.AddBlinkCacheableFamily("/two*", 40, "else");
   options_.Merge(options2);
-  EXPECT_EQ(20, options_.GetBlinkCacheTimeFor("/two.html"));
+  EXPECT_EQ(40, options_.GetBlinkCacheTimeFor("/two.html"));
 }
 
 TEST_F(RewriteOptionsTest, FuriousSpecTest) {

@@ -2,28 +2,66 @@
 <html>
   <head>
     <title>mod_pagespeed Examples Directory</title>
-    <style type="text/css">
-      table { width: 100%; border-collapse: collapse; text-color: black;}
-      td { padding: 1em }
-      tr { background-color: #eee; border: 1px solid black;  }
-      td.doc { width: 20%;}
-      .code {font-family:monospace;}
-      td.before, td.after { width: 10% }
-    </style>
+    <link rel="stylesheet" href="styles/index_style.css" type ="css"/>
   </head>
   <body>
-    <h2><span class="code">mod_pagespeed</span> Filter Examples</h2>
-    <p>
-      Here are some of the most useful filters provided by mod_pagespeed.  Each
-      one has a simple HTML example attached; click "before" to see the original
-      file, and "after" to see what mod_pagespeed produces with that filter (and
-      only that filter) enabled.  The two versions should look exactly the same,
-      but the "after" one will be (slightly) speedier.  Use "view source" to see
-      the <span class="code">mod_pagespeed</span> difference!
-    </p>
-    <table>
+    <table style="padding:0px; margin: 0px 0px 10px 0px; width:100%" cellpadding="0" cellspacing="0">
+      <tbody><tr style="height: 58px; display: block;">
+          <td id="plogo">
+            <img src="http://www.gstatic.com/codesite/ph/images/search-48.gif" alt="Logo">
+         </td>
+          <td style="padding-left: 0.5em">
+            <div id="pname">mod_pagespeed</div>
+            <div id="psum">Apache module for rewriting web pages to reduce
+              latency and bandwidth</div>
+          </td>
+        </tr>
+    </table>
 
-<tr>
+    <div style="background-color:#EBEFF9; width:100%"><table>
+      <tbody><tr>
+          <td class="menu"><img src="images/pagespeed_logo.png" width=30 height=30 /></td>
+          <td class="menu"><a href="https://developers.google.com/speed/pagespeed/"
+                              >Google Page Speed Family</a></td>
+          <td class="menu"><a href="https://developers.google.com/speed/docs/mod_pagespeed/using_mod"
+                              >Doc</a></td>
+          <td class="menu"><a href="https://developers.google.com/speed/docs/mod_pagespeed/download"
+                              >Binaries</a></td>
+          <td class="menu"><a href="http://code.google.com/p/modpagespeed/wiki/HowToBuild"
+                              >Source Builds</a></td>
+          <td class="menu">
+            <a href="http://code.google.com/p/modpagespeed/source/browse/#svn%2Ftrunk%2Fsrc%2Fnet%2Finstaweb">Source Code Browser</a></td>
+          <td class="menu"><a href="http://modpagespeed.com/psol/annotated.html">API</a></td>
+          <td class="menu"><a href="https://groups.google.com/group/mod-pagespeed-discuss"
+                              >Discussion Forum</a></td>
+          <td class="menu"><a href="http://code.google.com/p/modpagespeed/issues/list"
+                              >Issue Tracker</a></td>
+          <td class="menu"><a href="http://code.google.com/p/modpagespeed/">Project</a></td>
+      </tr></tbody>
+    </table></div>
+    <br/>
+
+ <span class="inline_code">mod_pagespeed</span> is an open-source
+ Apache module created by Google to help Make the Web Faster by
+ rewriting web pages to reduce latency and bandwidth.
+
+    <h2><span class="inline_code">mod_pagespeed</span> Filter Examples</h2>
+    <p>
+      Here are some of the most useful filters provided
+      by <span class="inline_code">mod_pagespeed</span>.  Each one has
+      a simple HTML example attached; click "before" to see the
+      original file, and "after" to see what mod_pagespeed produces
+      with that filter (and only that filter) enabled.  The two
+      versions should look exactly the same, but the "after" one will
+      be (slightly) speedier.  Use "view source" to see
+      the <span class="inline_code">mod_pagespeed</span> difference!
+    </p>
+    <table style="width: 100%; border-collapse: collapse; text-color:
+      black;" id="filters">
+
+<!-- TODO(jmarantz): re-indent this whole file -->
+
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-instrumentation-add">
       add_instrumentation
@@ -44,7 +82,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-whitespace-collapse">
       collapse_whitespace
@@ -65,7 +103,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-combine">
       combine_css
@@ -86,7 +124,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-head-combine">
       combine_heads
@@ -107,7 +145,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-js-combine">
       combine_javascript
@@ -128,7 +166,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-js-defer">
       defer_javascript
@@ -149,7 +187,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-attribute-elide">
       elide_attributes
@@ -170,7 +208,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-cache-extend">
       extend_cache
@@ -191,7 +229,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-rewrite">
       fallback_rewrite_css_urls
@@ -212,7 +250,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-flatten-css-imports">
       flatten_css_imports
@@ -234,7 +272,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-inline">
       inline_css
@@ -255,7 +293,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-inline-import">
       inline_import_to_link
@@ -277,7 +315,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-js-inline">
       inline_javascript
@@ -298,7 +336,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-image-optimize#inline_preview_images">
       inline_preview_images
@@ -320,7 +358,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-insert-ga">
       insert_ga
@@ -341,7 +379,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-lazyload-images">
       lazyload_images
@@ -363,7 +401,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-local-storage-cache">
       local_storage_cache
@@ -385,7 +423,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-make-google-analytics-async">
       make_google_analytics_async
@@ -406,7 +444,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-above_scripts">
       move_css_above_scripts
@@ -427,7 +465,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-to-head">
       move_css_to_head
@@ -448,7 +486,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-outline">
       outline_css
@@ -469,7 +507,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-js-outline">
       outline_javascript
@@ -490,7 +528,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-comment-remove">
       remove_comments
@@ -511,7 +549,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-quote-remove">
       remove_quotes
@@ -532,7 +570,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-image-optimize#resize_mobile_images">
       resize_mobile_images
@@ -554,7 +592,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-css-rewrite">
       rewrite_css
@@ -575,7 +613,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     rewrite_css + extend_cache
   </td>
@@ -594,7 +632,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     rewrite_css + rewrite_images
   </td>
@@ -613,7 +651,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-image-optimize">
       rewrite_images
@@ -634,7 +672,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-js-minify">
       rewrite_javascript
@@ -655,7 +693,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-rewrite-style-attributes">
       rewrite_style_attributes
@@ -677,7 +715,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-rewrite-style-attributes">
       rewrite_style_attributes_with_url
@@ -699,7 +737,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-image-sprite">
       sprite_images
@@ -720,7 +758,7 @@
   </td>
 </tr>
 
-<tr>
+<tr class="filter_row">
   <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-trim-urls">
       trim_urls

@@ -11,6 +11,7 @@ ModPagespeedAllow *.htm*
 ModPagespeedAllow *.shtm*
 ModPagespeedAllow *.xhtm*
 ModPagespeedAllow */
+ModPagespeedAllow */?ModPagespeed*
 ModPagespeedAllow http*://*/images/*.png*
 ModPagespeedAllow http*://*/images/*.jpg*
 ModPagespeedAllow http*://*/images/*.gif*

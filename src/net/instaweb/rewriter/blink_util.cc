@@ -406,10 +406,12 @@ void PopulateAttributeToNonCacheableValuesMap(
                  << non_cacheable_values[i];
       return;
     }
+    StringPiece attribute_name = non_cacheable_values_pair[0];
     StringPiece attribute_value = non_cacheable_values_pair[1];
+    TrimWhitespace(&attribute_name);
     TrimQuote(&attribute_value);
     attribute_non_cacheable_values_map->insert(make_pair(
-        non_cacheable_values_pair[0].as_string(),
+        attribute_name.as_string(),
         make_pair(attribute_value.as_string(), i)));
     panel_number_num_instances->push_back(0);
   }

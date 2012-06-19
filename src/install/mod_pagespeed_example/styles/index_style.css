@@ -1,0 +1,36 @@
+body {
+    font-family:arial;
+    font-size: 0.9em;
+}
+
+.filter_row {
+    background-color: #eee;
+    border: 1px solid black;
+    padding: 1em;
+}
+
+.code {
+    font-family:monospace;
+    width: 20%;
+    padding: 1em;
+}
+
+.inline_code {
+    font-family:monospace;
+    width: 20%;
+}
+
+.menu {
+    padding-right: 1em;
+}
+
+td.before, td.after {
+    padding-left: 1em;
+    width: 10%;
+}
+
+#pname {
+    font-size: 200%;
+    margin: 0;
+    padding: 0;
+}

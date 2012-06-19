@@ -95,7 +95,7 @@ class StripNonCacheableFilterTest : public ResourceManagerTestBase {
     } else {
       options_->AddBlinkCacheableFamily(
           "/", RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
-          "class=\"item\",id=beforeItems,class=\"itema itemb\"");
+          "class= \"item \" , id\t =beforeItems \t , class=\"itema itemb\"");
     }
 
     SetUseManagedRewriteDrivers(true);

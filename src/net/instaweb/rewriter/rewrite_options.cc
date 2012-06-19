@@ -1154,17 +1154,21 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   prioritize_visible_content_cacheable_families_.AppendFrom(
       src.prioritize_visible_content_cacheable_families_);
 
-  // We assume that src and this does not have any
-  // PrioritizeVisibleContentFamily with same url_pattern. Hence we can copy and
-  // insert every PrioritizeVisibleContentFamily from src to this.
-  // If src has a url_pattern that is the same as one in this, then since src
-  // families are appended, we will match this first.
-  // TODO(sriharis):  We need to revisit the above assumption and the Merge
-  // logic to be used for prioritize_visible_content_families_.
-  for (int i = 0, n = src.prioritize_visible_content_families_.size(); i < n;
-       ++i) {
-    prioritize_visible_content_families_.push_back(
-        src.prioritize_visible_content_families_[i]->Clone());
+  // If src's prioritize_visible_content_families_ is non-empty we simply
+  // replace this' prioritize_visible_content_families_ with src's.  Naturally,
+  // this means that families in this are lost.
+  // TODO(sriharis):  Revisit the Merge logic to be used for
+  // prioritize_visible_content_families_.
+  if (!src.prioritize_visible_content_families_.empty()) {
+    if (!prioritize_visible_content_families_.empty()) {
+      STLDeleteElements(&prioritize_visible_content_families_);
+      prioritize_visible_content_families_.clear();
+    }
+    for (int i = 0, n = src.prioritize_visible_content_families_.size(); i < n;
+         ++i) {
+      prioritize_visible_content_families_.push_back(
+          src.prioritize_visible_content_families_[i]->Clone());
+    }
   }
 
   if (src.panel_config() != NULL) {
