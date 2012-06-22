@@ -32,7 +32,6 @@ class RewriteQuery {
  public:
   // The names of query-params.
   static const char kModPagespeed[];
-  static const char kModPagespeedDisableForBots[];
   static const char kModPagespeedFilters[];
 
   enum Status {

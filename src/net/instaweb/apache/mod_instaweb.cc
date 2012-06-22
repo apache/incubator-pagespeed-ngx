@@ -101,6 +101,7 @@ const char* kModPagespeedCssImageInlineMaxBytes =
 const char* kModPagespeedCssInlineMaxBytes = "ModPagespeedCssInlineMaxBytes";
 const char* kModPagespeedCssOutlineMinBytes = "ModPagespeedCssOutlineMinBytes";
 const char* kModPagespeedDisableFilters = "ModPagespeedDisableFilters";
+const char* kModPagespeedDisableForBots = "ModPagespeedDisableForBots";
 const char* kModPagespeedDisallow = "ModPagespeedDisallow";
 const char* kModPagespeedDomain = "ModPagespeedDomain";
 const char* kModPagespeedDomainRewriteHyperlinks =
@@ -1039,10 +1040,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     }
   } else if (StringCaseEqual(directive, kModPagespeedDisallow)) {
     options->Disallow(arg);
-  } else if (StringCaseEqual(directive,
-                             RewriteQuery::kModPagespeedDisableForBots)) {
-    ret = ParseBoolOption(options, cmd,
-                          &RewriteOptions::set_botdetect_enabled, arg);
   } else if (StringCaseEqual(directive, kModPagespeedDomain)) {
     options->domain_lawyer()->AddDomain(arg, factory->message_handler());
   } else if (StringCaseEqual(directive, kModPagespeedEnableFilters)) {
@@ -1090,13 +1087,12 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
           factory, cmd,
           &ApacheRewriteDriverFactory::set_num_expensive_rewrite_threads, arg);
     }
-  } else if (StringCaseEqual(directive, kModPagespeedNumShards)) {
-    warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (StringCaseEqual(directive, kModPagespeedRetainComment)) {
     options->RetainComment(arg);
-  } else if (StringCaseEqual(directive, kModPagespeedUrlPrefix)) {
-    warn_deprecated(cmd, "Please remove it from your configuration.");
-  } else if (StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix)) {
+  } else if (StringCaseEqual(directive, kModPagespeedNumShards) ||
+             StringCaseEqual(directive, kModPagespeedUrlPrefix) ||
+             StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix) ||
+             StringCaseEqual(directive, kModPagespeedDisableForBots)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (StringCaseEqual(directive, kModPagespeedBlockingRewriteKey)) {
     options->set_blocking_rewrite_key(arg);
@@ -1204,8 +1200,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Comma-separated list of disabled filters"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDisallow,
         "wildcard_spec for urls"),
-  APACHE_CONFIG_DIR_OPTION(RewriteQuery::kModPagespeedDisableForBots,
-        "Disable mod_pagespeed for bots."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedDisableForBots,
+        "No longer used."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDomain,
         "Authorize mod_pagespeed to rewrite resources in a domain."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDomainRewriteHyperlinks,

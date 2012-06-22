@@ -522,7 +522,6 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultMaxUrlSize, &max_url_size_, "us", kMaxUrlSize);
   add_option(true, &enabled_, "e", kEnabled);
   add_option(false, &ajax_rewriting_enabled_, "ar", kAjaxRewritingEnabled);
-  add_option(false, &botdetect_enabled_, "be", kBotdetectEnabled);
   add_option(true, &combine_across_paths_, "cp", kCombineAcrossPaths);
   add_option(false, &log_rewrite_timing_, "lr", kLogRewriteTiming);
   add_option(false, &lowercase_html_names_, "lh", kLowercaseHtmlNames);
@@ -643,7 +642,6 @@ RewriteOptions::RewriteOptions()
   // infrastructure.
   //
   // ajax_rewriting_enabled_.DoNotUseForSignatureComputation();
-  // botdetect_enabled_.DoNotUseForSignatureComputation();
   // log_rewrite_timing_.DoNotUseForSignatureComputation();
   // serve_stale_if_fetch_error_.DoNotUseForSignatureComputation();
   // enable_defer_js_experimental_.DoNotUseForSignatureComputation();

@@ -29,8 +29,6 @@ namespace net_instaweb {
 
 const char RewriteQuery::kModPagespeed[] =
     "ModPagespeed";
-const char RewriteQuery::kModPagespeedDisableForBots[] =
-    "ModPagespeedDisableForBots";
 const char RewriteQuery::kModPagespeedFilters[] =
     "ModPagespeedFilters";
 
@@ -176,18 +174,6 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     } else {
       // TODO(sligocki): Return 404s instead of logging server errors here
       // and below.
-      handler->Message(kWarning, "Invalid value for %s: %s "
-                       "(should be on or off)",
-                       name.as_string().c_str(),
-                       value.c_str());
-      status = kInvalid;
-    }
-  } else if (name == kModPagespeedDisableForBots) {
-    bool is_on = value == "on";
-    if (is_on || (value == "off")) {
-      options->set_botdetect_enabled(is_on);
-      status = kSuccess;
-    } else {
       handler->Message(kWarning, "Invalid value for %s: %s "
                        "(should be on or off)",
                        name.as_string().c_str(),

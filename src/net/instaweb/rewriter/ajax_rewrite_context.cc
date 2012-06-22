@@ -272,8 +272,7 @@ RewriteFilter* AjaxRewriteContext::GetRewriteFilter(
       options->Enabled(RewriteOptions::kRewriteJavascript)) {
     return driver_->FindFilter(RewriteOptions::kJavascriptMinId);
   }
-  if (type.IsImage() && options->ImageOptimizationEnabled() &&
-      !driver_->ShouldNotRewriteImages()) {
+  if (type.IsImage() && options->ImageOptimizationEnabled()) {
     // TODO(nikhilmadan): This converts one image format to another. We
     // shouldn't do inter-conversion since we can't change the file extension.
     return driver_->FindFilter(RewriteOptions::kImageCompressionId);
@@ -345,11 +344,4 @@ void AjaxRewriteContext::StartFetchReconstruction() {
 void AjaxRewriteContext::StartFetchReconstructionParent() {
   RewriteContext::StartFetchReconstruction();
 }
-
-GoogleString AjaxRewriteContext::CacheKeySuffix() const {
-  // Include driver_->ShouldNotRewriteImages() in the cache key to
-  // prevent image rewrites when bot detection is enabled.
-  return driver_->ShouldNotRewriteImages() ? "0" : "1";
-}
-
 }  // namespace net_instaweb

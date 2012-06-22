@@ -920,12 +920,6 @@ bool ImageRewriteFilter::TryInline(
 }
 
 void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
-  // Don't rewrite if ModPagespeedDisableForBots is on
-  // and the user-agent is a bot.
-  if (driver_->ShouldNotRewriteImages()) {
-    return;
-  }
-
   // Don't rewrite it the image is broken by a flush.
   if (driver_->HasChildrenInFlushWindow(element)) {
     return;

@@ -96,20 +96,6 @@ class RewriteOptionsTest : public ::testing::Test {
   net_instaweb::MockHasher hasher_;
 };
 
-TEST_F(RewriteOptionsTest, BotDetectEnabledByDefault) {
-  ASSERT_FALSE(options_.botdetect_enabled());
-}
-
-TEST_F(RewriteOptionsTest, BotDetectEnable) {
-  options_.set_botdetect_enabled(true);
-  ASSERT_TRUE(options_.botdetect_enabled());
-}
-
-TEST_F(RewriteOptionsTest, BotDetectDisable) {
-  options_.set_botdetect_enabled(false);
-  ASSERT_FALSE(options_.botdetect_enabled());
-}
-
 TEST_F(RewriteOptionsTest, DefaultEnabledFilters) {
   ASSERT_TRUE(OnlyEnabled(RewriteOptions::kHtmlWriterFilter));
 }
@@ -638,7 +624,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(82, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(81, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));
@@ -660,9 +646,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("BeaconUrl"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kBeaconUrl));
-  EXPECT_EQ(StringPiece("BotdetectEnabled"),
-            RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kBotdetectEnabled));
   EXPECT_EQ(StringPiece("CombineAcrossPaths"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kCombineAcrossPaths));

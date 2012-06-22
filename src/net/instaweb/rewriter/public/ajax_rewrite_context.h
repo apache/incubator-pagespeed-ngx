@@ -85,8 +85,6 @@ class AjaxRewriteContext : public SingleRewriteContext {
                                GoogleUrlStarVector* url_vector);
   // Implements RewriteContext::StartFetchReconstruction().
   virtual void StartFetchReconstruction();
-  // Implements RewriteContext::CacheKeySuffix().
-  virtual GoogleString CacheKeySuffix() const;
 
  private:
   friend class RecordingFetch;

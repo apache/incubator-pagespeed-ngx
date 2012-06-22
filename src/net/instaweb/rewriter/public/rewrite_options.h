@@ -124,7 +124,6 @@ class RewriteOptions {
     kAvoidRenamingIntrospectiveJavascript,
     kBeaconUrl,
     kBlinkDesktopUserAgent,
-    kBotdetectEnabled,
     kCacheInvalidationTimestamp,
     kCombineAcrossPaths,
     kCriticalImagesCacheExpirationTimeMs,
@@ -692,11 +691,6 @@ class RewriteOptions {
   bool ajax_rewriting_enabled() const {
     return ajax_rewriting_enabled_.value();
   }
-
-  void set_botdetect_enabled(bool x) {
-    set_option(x, &botdetect_enabled_);
-  }
-  bool botdetect_enabled() const { return botdetect_enabled_.value(); }
 
   void set_combine_across_paths(bool x) {
     set_option(x, &combine_across_paths_);
@@ -1581,7 +1575,6 @@ class RewriteOptions {
 
   Option<bool> enabled_;
   Option<bool> ajax_rewriting_enabled_;  // Should ajax rewriting be enabled?
-  Option<bool> botdetect_enabled_;
   Option<bool> combine_across_paths_;
   Option<bool> log_rewrite_timing_;   // Should we time HtmlParser?
   Option<bool> lowercase_html_names_;

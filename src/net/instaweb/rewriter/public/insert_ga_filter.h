@@ -72,7 +72,7 @@ class InsertGAFilter : public CommonFilter {
   // Add a script node to parent with text as the contents.
   // Store a pointer to the resulting script element in script_element.
   void AddScriptNode(HtmlElement* parent, const GoogleString& text,
-                     HtmlElement** script_element) const;
+                     bool insert_before, HtmlElement** script_element) const;
 
   // Indicates whether or not buffer_ contains a GA snippet with the
   // same id as ga_id_.

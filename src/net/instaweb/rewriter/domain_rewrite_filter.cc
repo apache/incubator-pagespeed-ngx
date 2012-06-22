@@ -76,12 +76,6 @@ void DomainRewriteFilter::Initialize(Statistics* statistics) {
 }
 
 void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
-  // Disable domain_rewrite for img if ModPagespeedDisableForBots is on
-  // and the user-agent is a bot.
-  if (element->keyword() == HtmlName::kImg &&
-      driver_->ShouldNotRewriteImages()) {
-    return;
-  }
   bool is_hyperlink;
   HtmlElement::Attribute* attr = tag_scanner_.ScanElement(
       element, &is_hyperlink);

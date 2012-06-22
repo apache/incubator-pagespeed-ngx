@@ -172,13 +172,6 @@ class RewriteDriver : public HtmlParse {
   // resources. This will replace any previous resource managers.
   void SetResourceManager(ResourceManager* resource_manager);
 
-  // Determines whether images should be rewritten.
-  // TODO(jmarantz): Another approach to allow rewriting to be friendly
-  // to image-search link rel=canonical, described in:
-  //   http://googlewebmastercentral.blogspot.com/2011/06/
-  //   supporting-relcanonical-http-headers.html
-  bool ShouldNotRewriteImages() const;
-
   // Returns true if we may cache extend Css, Images or Scripts respectively.
   bool MayCacheExtendCss() const;
   bool MayCacheExtendImages() const;

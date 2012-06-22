@@ -94,6 +94,7 @@ styles/yellow.css+blue.css+big.css+bold.css.pagespeed.cc.xo4He3_gYf.css
 
 OUTDIR=$TEMPDIR/fetched_directory
 rm -rf $OUTDIR
+mkdir -p $OUTDIR
 
 # Wget is used three different ways.  The first way is nonrecursive and dumps a
 # single page (with headers) to standard out.  This is useful for grepping for a
@@ -233,89 +234,10 @@ function test_resource_ext_corruption() {
   $WGET_DUMP $WGET_ARGS $URL | check_not fgrep "broken"
 }
 
-# Inner helper to test directive ModPagespeedForBots By default
-# directive ModPagespeedForBots is off; otherwise image rewriting is
-# disabled for bots while other filters such as inline_css still work.
-function CheckBots() {
-  WGET_ARGS=""
-  ON=$1
-  COMPARE=$2
-  USER_AGENT=$3
-  DRY_RUN_OR_TEST=$4
-  ARGS="--header=ModPagespeedFilters:inline_css,rewrite_images"
-  FILE="bot_test.html"
-
-  rm -rf $OUTDIR
-  mkdir -p $OUTDIR
-
-  # By default ModPagespeedDisableForBots is false, no need to set it in url.
-  # If the test wants to set it explicitly, set it in url.
-  if [[ $ON != "default" ]]; then
-    ARGS="$ARGS --header=ModPagespeedDisableForBots:$ON"
-  fi
-  if [[ $USER_AGENT != "default" ]]; then
-    ARGS="$ARGS -U $USER_AGENT"
-  fi
-
-  FETCHED=$OURDIR/$FILE
-  URL=$TEST_ROOT/$FILE
-  # Filters such as inline_css work no matter if ModPagespeedDisable is on
-  # Fetch until CSS is inlined, so that we know rewriting succeeded.
-  fetch_until $URL 'grep -c style' 2 "$ARGS"
-
-  # Check if the images are rewritten
-  rm -f $OUTDIR/*png*
-  rm -f $OUTDIR/*jpg*
-  check $WGET_PREREQ $ARGS $URL;
-  if [ "$DRY_RUN_OR_TEST" = "test" ]; then
-    # Test if file was re-encoded or not.
-    check [ $(stat -c %s $OUTDIR/*BikeCrashIcn*) $COMPARE 25000 ]
-    # Test if file was re-sized or not.
-    check [ $(stat -c %s $OUTDIR/*Puzzle*) $COMPARE 24126 ]
-  fi
-}
-
-# Outer helper function to test bots.  This is used to initiate a "dry run"
-# for the bot-tests early in the system-test, ignoring the results.  This
-# initiates asynchronous rewrites which will almost certainly finish by the
-# end of the system-tests, when we'll re-run the test with checking enabled.
-#
-# This process is inherently racy.  A robust implementation could be
-# built by polling mod_pagespeed statistics and waiting until all
-# outstanding rewrites are complete.
-#
-# TODO(jmarantz): Instead of warming the meta-data cache with a dry run,
-# use a statistics 'rewrite_cached_output_missed_deadline' to determine
-# whether the system is settled yet.
-function CheckBotTest() {
-  echo "$1: UserAgent is a bot; ModPagespeedDisableForBots=off"
-  CheckBots 'off' '-lt' 'Googlebot/2.1' "$1"
-  echo "$1: UserAgent is a bot; ModPagespeedDisableForBots=on"
-  CheckBots 'on' '-gt' 'Googlebot/2.1' "$1"
-  echo "$1: UserAgent is a bot; ModPagespeedDisableForBots is default"
-  CheckBots 'default' '-lt' 'Googlebot/2.1' "$1"
-  echo "$1: UserAgent is not a bot, ModPagespeedDisableForBots=off"
-  CheckBots 'off' '-lt' default "$1"
-  echo "$1: UserAgent is not a bot, ModPagespeedDisableForBots=on"
-  CheckBots 'on' '-lt' default "$1"
-  echo "$1: UserAgent is not a bot, ModPagespeedDisableForBots is default"
-  CheckBots 'default' '-lt' default "$1"
-}
-
 # General system tests
 
 echo TEST: Page Speed Automatic is running and writes the expected header.
 echo $WGET_DUMP $EXAMPLE_ROOT/combine_css.html
-
-# Due to the extreme pickiness of our metadata cache, and the negative
-# checks done in bot-testing (checking for the absence of image rewrites)
-# we need to warm the metadata cache with a dry run.  Here we do all the
-# bot tests, but we don't expect the outputs to be correct yet.  We will
-# need to perform new image compressions for every option-change.
-#
-# This is required because we sign metadata cache keys using the entire
-# contents of RewriteOptions.
-CheckBotTest "Dry Run"
 
 HTTP_FILE=$OUTDIR/http_file
 # Note: We pipe this to a file instead of storing it in a variable because
@@ -710,8 +632,6 @@ $WGET -O /dev/null -o /dev/null --tries=1 --read-timeout=3 $URL
 # We want status code 8 (server-issued error) and not 4
 # (network failure/timeout)
 check [ $? = 8 ]
-
-CheckBotTest "test"
 
 WGET_ARGS=""
 

@@ -32,7 +32,6 @@ struct OptionName {
 "AnalyticsID",                          RewriteOptions::kAnalyticsID
 "AvoidRenamingIntrospectiveJavascript", RewriteOptions::kAvoidRenamingIntrospectiveJavascript
 "BeaconUrl",                            RewriteOptions::kBeaconUrl
-"BotdetectEnabled",                     RewriteOptions::kBotdetectEnabled
 "CombineAcrossPaths",                   RewriteOptions::kCombineAcrossPaths
 "CriticalImagesCacheExpirationTimeMs",  RewriteOptions::kCriticalImagesCacheExpirationTimeMs
 "CssFlattenMaxBytes",                   RewriteOptions::kCssFlattenMaxBytes

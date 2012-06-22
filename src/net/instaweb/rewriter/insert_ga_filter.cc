@@ -69,6 +69,7 @@ extern const char kGASpeedTracking[] =
 // The %s is for the Experiment spec string.
 // This defaults to being a page-scoped variable.
 const char kFuriousSnippetFmt[] =
+    "var _gaq = _gaq || []; "
     "_gaq.push(['_setCustomVar', %u, 'FuriousState', '%s']);";
 
 InsertGAFilter::InsertGAFilter(RewriteDriver* rewrite_driver)
@@ -141,17 +142,22 @@ GoogleString InsertGAFilter::ConstructFuriousSnippet() const {
   return furious;
 }
 
-void InsertGAFilter::AddScriptNode(HtmlElement* parent,
+void InsertGAFilter::AddScriptNode(HtmlElement* element,
                                    const GoogleString& text,
+                                   bool insert_before,
                                    HtmlElement** script_element) const {
-  *script_element = driver_->NewElement(parent,
+  *script_element = driver_->NewElement(element,
                                         HtmlName::kScript);
   (*script_element)->set_close_style(HtmlElement::EXPLICIT_CLOSE);
   driver_->AddAttribute(*script_element, HtmlName::kType,
                         "text/javascript");
   HtmlNode* snippet =
       driver_->NewCharactersNode(*script_element, text);
-  driver_->AppendChild(parent, *script_element);
+  if (insert_before) {
+    driver_->InsertElementBeforeElement(element, *script_element);
+  } else {
+    driver_->AppendChild(element, *script_element);
+  }
   driver_->AppendChild(*script_element, snippet);
 }
 
@@ -159,7 +165,7 @@ GoogleString InsertGAFilter::MakeFullFuriousSnippet() const {
   GoogleString furious = ConstructFuriousSnippet();
   if (!furious.empty()) {
     // Always increase speed tracking to 100% for Furious.
-    StrAppend(&furious, kGASpeedTracking, "_gaq.push(['_trackPageview']);");
+    StrAppend(&furious, kGASpeedTracking);
   }
   return furious;
 }
@@ -176,20 +182,11 @@ GoogleString InsertGAFilter::MakeFullFuriousSnippet() const {
 void InsertGAFilter::HandleEndHead(HtmlElement* head) {
   // There is a chance (e.g. if there are two heads), that we have
   // already inserted the snippet.  In that case, don't do it again.
-  if (added_snippet_element_ != NULL || added_furious_element_ != NULL) {
+  if (added_snippet_element_ != NULL || added_furious_element_ != NULL ||
+      found_snippet_) {
     return;
   }
 
-  if (found_snippet_) {
-    // We found a snippet, but we now need to set the custom variable.
-    // We also need to send a trackPageview request after the variable
-    // has been set.
-    GoogleString furious = MakeFullFuriousSnippet();
-    if (!furious.empty()) {
-      AddScriptNode(head, furious, &added_furious_element_);
-    }
-    return;
-  }
   // No snippets have been found, and we haven't added any snippets
   // yet, so add one now.
 
@@ -211,7 +208,7 @@ void InsertGAFilter::HandleEndHead(HtmlElement* head) {
   GoogleString snippet_text = StringPrintf(
       kGASnippet, ga_id_.c_str(), domain.c_str(),
       speed_snippet.c_str(), furious.c_str(), kUrlPrefix);
-  AddScriptNode(head, snippet_text, &added_snippet_element_);
+  AddScriptNode(head, snippet_text, false, &added_snippet_element_);
   inserted_ga_snippets_count_->Add(1);
   return;
 }
@@ -242,12 +239,18 @@ void InsertGAFilter::HandleEndScript(HtmlElement* script) {
           added_snippet_element_ = NULL;
           inserted_ga_snippets_count_->Add(-1);
           // If we deleted the snippet, and we're running furious, we now need
-          // to add back in the furious bit.
+          // to add the furious bit containing custom variables before this.
           GoogleString furious = MakeFullFuriousSnippet();
           if (!furious.empty()) {
-            AddScriptNode(script->parent(), furious,
-                          &added_furious_element_);
+            AddScriptNode(script, furious, true, &added_furious_element_);
           }
+        }
+      } else {
+        // Since the analytics snippet is already there, just add the furious
+        // bit containing custom variables before this.
+        GoogleString furious = MakeFullFuriousSnippet();
+        if (!furious.empty()) {
+          AddScriptNode(script, furious, true, &added_furious_element_);
         }
       }
     }

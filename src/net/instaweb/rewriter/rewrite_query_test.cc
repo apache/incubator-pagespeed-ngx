@@ -233,15 +233,6 @@ TEST_F(RewriteQueryTest, MultipleBroken) {
   EXPECT_TRUE(options == NULL);
 }
 
-TEST_F(RewriteQueryTest, Bots) {
-  RewriteOptions* options = ParseAndScan("ModPagespeedDisableForBots=on", "");
-  ASSERT_TRUE(options != NULL);
-  EXPECT_TRUE(options->botdetect_enabled());
-  options = ParseAndScan("ModPagespeedDisableForBots=off", "");
-  ASSERT_TRUE(options != NULL);
-  EXPECT_FALSE(options->botdetect_enabled());
-}
-
 TEST_F(RewriteQueryTest, MultipleInt64Params) {
   RewriteOptions* options = ParseAndScan("ModPagespeedCssInlineMaxBytes=3"
                                          "&ModPagespeedImageInlineMaxBytes=5"

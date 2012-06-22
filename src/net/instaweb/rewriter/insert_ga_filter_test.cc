@@ -112,6 +112,7 @@ TEST_F(InsertGAFilterTest, Furious) {
   rewrite_driver()->AddFilters();
 
   GoogleString variable_value = StringPrintf(
+      "var _gaq = _gaq || []; "
       "_gaq.push(['_setCustomVar', 4, 'FuriousState', '%s']);",
       options->ToExperimentString().c_str());
   GoogleString ga_snippet = StringPrintf(
@@ -145,11 +146,13 @@ TEST_F(InsertGAFilterTest, FuriousNoDouble) {
   GoogleString input = StringPrintf(kHtmlOutputFormat, ga_snippet.c_str());
 
   GoogleString variable_value = StringPrintf(
+      "var _gaq = _gaq || []; "
       "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s']);",
       options->ToExperimentString().c_str());
   GoogleString extra_script = StrCat(
-      ga_snippet, "</script><script type=\"text/javascript\">",
-      variable_value, kGASpeedTracking, "_gaq.push(['_trackPageview']);");
+      variable_value, kGASpeedTracking,
+      "</script><script type=\"text/javascript\">",
+      ga_snippet);
   // The output should still have the original GA snippet as well as an inserted
   // Furious snippet.
   GoogleString output = StringPrintf(kHtmlOutputFormat, extra_script.c_str());
@@ -187,6 +190,7 @@ TEST_F(InsertGAFilterTest, FuriousBadHtml) {
       "<head></head></head>";
 
   GoogleString variable_value = StringPrintf(
+      "var _gaq = _gaq || []; "
       "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s']);",
       options->ToExperimentString().c_str());
   GoogleString ga_snippet = StringPrintf(
@@ -209,12 +213,12 @@ TEST_F(InsertGAFilterTest, FuriousBadHtml) {
 
   // Input has non-furious part of the GA snippet already there, but after
   // the first <head></head>.
-  // Make sure we add in only the furious part, and that it's after the
+  // Make sure we add in only the furious part, and that it's before the
   // original snippet.
   input = StringPrintf(kHeadsFmt, "", first_snippet.c_str());
   output = StringPrintf(kHeadsFmt, "", StrCat(
-      first_snippet, "<script type=\"text/javascript\">", variable_value,
-      kGASpeedTracking, "_gaq.push(['_trackPageview']);</script>").c_str());
+      "<script type=\"text/javascript\">", variable_value,
+      kGASpeedTracking, "</script>", first_snippet).c_str());
   ValidateExpected("furious_middle", input, output);
 }
 

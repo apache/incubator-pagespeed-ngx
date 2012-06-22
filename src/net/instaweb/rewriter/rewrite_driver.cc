@@ -2044,24 +2044,12 @@ void RewriteDriver::InitiateFetch(RewriteContext* rewrite_context) {
   rewrites_.push_back(rewrite_context);
 }
 
-bool RewriteDriver::ShouldNotRewriteImages() const {
-  if (user_agent_is_bot_ == kNotSet) {
-    if (options()->botdetect_enabled() && BotChecker::Lookup(user_agent_)) {
-      user_agent_is_bot_ = kTrue;
-    } else {
-      user_agent_is_bot_ = kFalse;
-    }
-  }
-  return (user_agent_is_bot_ == kTrue);
-}
-
 bool RewriteDriver::MayCacheExtendCss() const {
   return options()->Enabled(RewriteOptions::kExtendCacheCss);
 }
 
 bool RewriteDriver::MayCacheExtendImages() const {
-  return options()->Enabled(RewriteOptions::kExtendCacheImages) &&
-      !ShouldNotRewriteImages();
+  return options()->Enabled(RewriteOptions::kExtendCacheImages);
 }
 
 bool RewriteDriver::MayCacheExtendScripts() const {

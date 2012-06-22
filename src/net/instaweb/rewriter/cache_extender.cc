@@ -136,8 +136,6 @@ bool CacheExtender::ShouldRewriteResource(
 }
 
 void CacheExtender::StartElementImpl(HtmlElement* element) {
-  // Disable extend_cache for img if ModPagespeedDisableForBots is on
-  // and the user-agent is a bot.
   HtmlName::Keyword keyword = element->keyword();
   bool may_rewrite = false;
   switch (keyword) {
