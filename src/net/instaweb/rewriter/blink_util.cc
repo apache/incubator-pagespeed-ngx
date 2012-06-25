@@ -344,8 +344,55 @@ bool ComputePanels(const PanelSet* panel_set_,
 }
 
 void EscapeString(GoogleString* str) {
-  GlobalReplaceSubstring("<", "__psa_lt;", str);
-  GlobalReplaceSubstring(">", "__psa_gt;", str);
+  // TODO(sriharis):  Check whether we need to do any other escaping.  Also
+  // change the escaping of '<' and '>' to use standard '\u' mechanism.
+  // See //net/proto2/util/internal/json_format.cc, function  [google]
+  // JsonFormat::EscapeString                                 [google]
+  int num_replacements = 0;
+  GoogleString tmp;
+  const int length = str->length();
+  for (int i = 0; i < length; ++i) {
+    const unsigned char c = (*str)[i];
+    switch (c) {
+      case '<': {
+        ++num_replacements;
+        tmp.append("__psa_lt;");
+        break;
+      }
+      case '>': {
+        ++num_replacements;
+        tmp.append("__psa_gt;");
+        break;
+      }
+      // The following logic is based on                      [google]
+      // //net/proto2/util/internal/json_format.cc, function  [google]
+      // JsonFormat::EscapeString   (case '\xe2')             [google]
+      case 0xe2: {
+        if ((i + 2 < length) && ((*str)[i + 1] == '\x80')) {
+          if ((*str)[i + 2] == '\xa8') {
+            ++num_replacements;
+            tmp.append("\\u2028");
+            i += 2;
+            break;
+          } else if ((*str)[i + 2] == '\xa9') {
+            ++num_replacements;
+            tmp.append("\\u2029");
+            i += 2;
+            break;
+          }
+        }
+        tmp.push_back(c);
+        break;
+      }
+      default: {
+        tmp.push_back(c);
+        break;
+      }
+    }
+  }
+  if (num_replacements > 0) {
+    str->swap(tmp);
+  }
 }
 
 bool StripTrailingNewline(GoogleString* s) {

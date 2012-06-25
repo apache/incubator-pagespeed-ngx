@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_SCAN_FILTER_H_
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 
 namespace net_instaweb {
 
@@ -56,7 +55,6 @@ class ScanFilter : public EmptyHtmlFilter {
 
  private:
   RewriteDriver* driver_;
-  ResourceTagScanner tag_scanner_;
   bool seen_any_nodes_;
   bool seen_refs_;
   bool seen_base_;

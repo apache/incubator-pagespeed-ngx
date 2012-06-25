@@ -61,7 +61,7 @@ TEST_F(ScanFilterTest, RefsAfterBase) {
   const char kTestName[] = "refs_after_base";
   const char kNewBase[] = "http://example.com/index.html";
   ValidateNoChanges(kTestName,
-                    StrCat("<head>"
+                    StrCat("<head profile='no problem'>"
                            "<base href=\"", kNewBase, "\">"
                            "<a href=\"help.html\">link</a>"
                            "</head>"));

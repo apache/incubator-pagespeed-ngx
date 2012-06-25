@@ -21,7 +21,6 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -71,7 +70,6 @@ class UrlLeftTrimFilter : public CommonFilter {
 
   friend class UrlLeftTrimFilterTest;
 
-  ResourceTagScanner tag_scanner_;
   // Stats on how much trimming we've done.
   Variable* trim_count_;
   Variable* trim_saved_bytes_;

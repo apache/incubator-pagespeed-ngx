@@ -45,7 +45,6 @@ namespace net_instaweb {
 
 FlushHtmlFilter::FlushHtmlFilter(RewriteDriver* driver)
     : CommonFilter(driver),
-      tag_scanner_(driver_),
       score_(0) {
 }
 
@@ -60,32 +59,36 @@ void FlushHtmlFilter::Flush() {
 }
 
 void FlushHtmlFilter::StartElementImpl(HtmlElement* element) {
-  bool is_hyperlink;
-  HtmlElement::Attribute* href = tag_scanner_.ScanElement(
-      element, &is_hyperlink);
-  if (href != NULL) {
-    HtmlName::Keyword keyword = element->name().keyword();
-    if (keyword == HtmlName::kLink) {
+  ContentType::Category category;
+  HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
+      element, driver_, &category);
+
+  if (href == NULL) {
+    return;
+  }
+  switch (category) {
+    case ContentType::kStylesheet:
       score_ += kFlushCssScore;
-    } else if (keyword == HtmlName::kScript) {
+      break;
+    case ContentType::kScript:
       score_ += kFlushScriptScore;
-    } else if (keyword == HtmlName::kImg) {
+      break;
+    case ContentType::kImage:
       score_ += kFlushScriptScore;
-    } else {
-      DLOG(FATAL) << "expected Link, Script, or Img";
-    }
+      break;
+    default:
+      break;
   }
 }
 
 void FlushHtmlFilter::EndElementImpl(HtmlElement* element) {
-  bool is_hyperlink;
-  HtmlElement::Attribute* href = tag_scanner_.ScanElement(
-      element, &is_hyperlink);
-  if (href != NULL) {
-    if (score_ >= kFlushScoreThreshold) {
-      score_ = 0;
-      driver_->RequestFlush();
-    }
+  ContentType::Category category;
+  HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
+      element, driver_, &category);
+
+  if (href != NULL && score_ >= kFlushScoreThreshold) {
+    score_ = 0;
+    driver_->RequestFlush();
   }
 }
 

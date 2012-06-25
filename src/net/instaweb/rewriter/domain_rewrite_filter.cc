@@ -45,13 +45,10 @@ namespace net_instaweb {
 DomainRewriteFilter::DomainRewriteFilter(RewriteDriver* rewrite_driver,
                                          Statistics *stats)
     : CommonFilter(rewrite_driver),
-      tag_scanner_(rewrite_driver),
       rewrite_count_(stats->GetVariable(kDomainRewrites)) {}
 
 void DomainRewriteFilter::StartDocumentImpl() {
   bool rewrite_hyperlinks = driver_->options()->domain_rewrite_hyperlinks();
-  tag_scanner_.set_find_a_tags(rewrite_hyperlinks);
-  tag_scanner_.set_find_form_tags(rewrite_hyperlinks);
 
   if (rewrite_hyperlinks) {
     // TODO(nikhilmadan): Rewrite the domain for cookies.
@@ -76,18 +73,27 @@ void DomainRewriteFilter::Initialize(Statistics* statistics) {
 }
 
 void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
-  bool is_hyperlink;
-  HtmlElement::Attribute* attr = tag_scanner_.ScanElement(
-      element, &is_hyperlink);
-  if (attr != NULL) {
-    StringPiece val(attr->DecodedValueOrNull());
+  ContentType::Category category;
+  HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
+      element, driver_, &category);
+
+  // Disable domain_rewrite for non-image, non-script, non-stylesheet urls
+  // unless ModPagespeedDomainRewriteHyperlinks is on
+  if (category != ContentType::kImage &&
+      category != ContentType::kScript &&
+      category != ContentType::kStylesheet &&
+      !driver_->options()->domain_rewrite_hyperlinks()) {
+    return;
+  }
+  if (href != NULL) {
+    StringPiece val(href->DecodedValueOrNull());
     GoogleString rewritten_val;
-    bool apply_sharding = !is_hyperlink;
+    bool apply_sharding = category != ContentType::kOtherNonShardable;
     if (!val.empty() &&
         BaseUrlIsValid() &&
         (Rewrite(val, driver_->base_url(), apply_sharding, &rewritten_val) ==
          kRewroteDomain)) {
-      attr->SetValue(rewritten_val);
+      href->SetValue(rewritten_val);
       rewrite_count_->Add(1);
     }
   }

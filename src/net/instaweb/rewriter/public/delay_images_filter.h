@@ -72,14 +72,12 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_DELAY_IMAGES_FILTER_H_
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class HtmlElement;
-class ImageTagScanner;
 class RewriteDriver;
 class StaticJavascriptManager;
 class Statistics;
@@ -113,7 +111,6 @@ class DelayImagesFilter : public EmptyHtmlFilter {
 
   RewriteDriver* driver_;
   StaticJavascriptManager* static_js_manager_;
-  scoped_ptr<const ImageTagScanner> tag_scanner_;
 
   // pagespeed_low_res_src will be added to the low_res_data_map_ until
   // low_res_inserted is false. As soon as low_res_map_inserted_ is true, there

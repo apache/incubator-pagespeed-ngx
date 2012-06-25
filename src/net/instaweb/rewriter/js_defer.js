@@ -870,7 +870,7 @@ deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
     //  command1
     //  document.write('<script id='B'>command2<script>');
     //  command3
-    // </script>
+    // <\/script>
     // Browser behaviour for above script node is as follows- first execute
     // command1 and after the execution of command1, scriptB starts executing
     // and only after the complete execution of script B, command3 will execute.

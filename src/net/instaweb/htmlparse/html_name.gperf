@@ -39,6 +39,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "autofocus",              HtmlName::kAutofocus
 "autoplay",               HtmlName::kAutoplay
 "b",                      HtmlName::kB
+"background",             HtmlName::kBackground
 "base",                   HtmlName::kBase
 "bdi",                    HtmlName::kBdi
 "bdo",                    HtmlName::kBdo
@@ -62,6 +63,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "defaultchecked",         HtmlName::kDefaultchecked
 "defaultselected",        HtmlName::kDefaultselected
 "defer",                  HtmlName::kDefer
+"del",                    HtmlName::kDel
 "details",                HtmlName::kDetails
 "dfn",                    HtmlName::kDfn
 "dir",                    HtmlName::kDir
@@ -79,6 +81,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "footer",                 HtmlName::kFooter
 "for",                    HtmlName::kFor
 "form",                   HtmlName::kForm
+"formaction",             HtmlName::kFormaction
 "formnovalidate",         HtmlName::kFormnovalidate
 "frame",                  HtmlName::kFrame
 "frameborder",            HtmlName::kFrameborder
@@ -97,10 +100,12 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "html",                   HtmlName::kHtml
 "http-equiv",             HtmlName::kHttpEquiv
 "i",                      HtmlName::kI
+"icon",                   HtmlName::kIcon
 "id",                     HtmlName::kId
 "iframe",                 HtmlName::kIframe
 "img",                    HtmlName::kImg
 "indeterminate",          HtmlName::kIndeterminate
+"ins",                    HtmlName::kIns
 "input",                  HtmlName::kInput
 "ismap",                  HtmlName::kIsmap
 "kbd",                    HtmlName::kKbd
@@ -144,6 +149,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "pagespeed_no_defer",     HtmlName::kPagespeedNoDefer
 "param",                  HtmlName::kParam
 "pre",                    HtmlName::kPre
+"profile",                HtmlName::kProfile
 "q",                      HtmlName::kQ
 "readonly",               HtmlName::kReadonly
 "rel",                    HtmlName::kRel

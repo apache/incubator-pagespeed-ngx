@@ -29,7 +29,6 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/image.h"
-#include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -37,6 +36,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
@@ -155,7 +155,6 @@ const UrlSegmentEncoder* ImageRewriteFilter::Context::encoder() const {
 
 ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
-      image_filter_(new ImageTagScanner(driver)),
       image_counter_(0) {
   Statistics* stats = resource_manager_->statistics();
   image_rewrites_ = stats->GetVariable(kImageRewrites);
@@ -924,13 +923,14 @@ void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
   if (driver_->HasChildrenInFlushWindow(element)) {
     return;
   }
-
-  // Don't rewrite if we cannot find the src attribute.
-  HtmlElement::Attribute *src = image_filter_->ParseImageElement(element);
-  if (src == NULL || src->DecodedValueOrNull() == NULL) {
+  // Don't rewrite if we cannot find the src attribute or if it's not an image.
+  ContentType::Category category;
+  HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
+      element, driver_, &category);
+  if (src == NULL || src->DecodedValueOrNull() == NULL ||
+      category != ContentType::kImage) {
     return;
   }
-
   // Ask the LSC filter to work out how to handle this element. A return
   // value of true means we don't have to rewrite it so can skip that.
   // The state is carried forward to after we initiate rewriting since

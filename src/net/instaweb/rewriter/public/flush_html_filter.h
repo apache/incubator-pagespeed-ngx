@@ -44,7 +44,6 @@ class FlushHtmlFilter : public CommonFilter {
   virtual const char* Name() const { return "FlushHtmlFilter"; }
 
  private:
-  ResourceTagScanner tag_scanner_;
   int score_;
 
   DISALLOW_COPY_AND_ASSIGN(FlushHtmlFilter);

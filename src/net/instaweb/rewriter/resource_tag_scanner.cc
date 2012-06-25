@@ -14,65 +14,139 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
-
+// Authors: jmarantz@google.com (Joshua Marantz)
+//          jefftk@google.com (Jeff Kaufman)
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
-
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+namespace resource_tag_scanner {
 
-HtmlElement::Attribute* ResourceTagScanner::ScanElement(
-    HtmlElement* element, bool* is_hyperlink) const {
-  *is_hyperlink = false;
+const char kIcon[] = "icon";  // favicons
+
+// See http://developer.apple.com/library/ios/#DOCUMENTATION/
+//   AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/
+//   ConfiguringWebApplications.html
+const char kAppleTouchIcon[] = "apple-touch-icon";
+const char kAppleTouchIconPrecomposed[] = "apple-touch-icon-precomposed";
+const char kAppleTouchStartupImage[] = "apple-touch-startup-image";
+
+const char kAttrValImage[] = "image";  // <input type="image" src=...>
+
+HtmlElement::Attribute* ScanElement(
+    HtmlElement* element,
+    RewriteDriver* driver,  // Can be NULL.
+    ContentType::Category* category) {
   HtmlName::Keyword keyword = element->keyword();
   HtmlElement::Attribute* attr = NULL;
+  *category = ContentType::kUndefined;
   switch (keyword) {
     case HtmlName::kLink: {
       // See http://www.whatwg.org/specs/web-apps/current-work/multipage/
       // links.html#linkTypes
+      attr = element->FindAttribute(HtmlName::kHref);
+      *category = ContentType::kOtherNonShardable;
       HtmlElement::Attribute* rel_attr = element->FindAttribute(HtmlName::kRel);
-      if ((rel_attr != NULL) &&
-          StringCaseEqual(rel_attr->DecodedValueOrNull(),
-                          CssTagScanner::kStylesheet)) {
-        attr = element->FindAttribute(HtmlName::kHref);
+      if (rel_attr != NULL) {
+        if (StringCaseEqual(rel_attr->DecodedValueOrNull(),
+                            CssTagScanner::kStylesheet)) {
+          *category = ContentType::kStylesheet;
+        } else if (StringCaseEqual(rel_attr->DecodedValueOrNull(),
+                                   kIcon) ||
+                   StringCaseEqual(rel_attr->DecodedValueOrNull(),
+                                   kAppleTouchIcon) ||
+                   StringCaseEqual(rel_attr->DecodedValueOrNull(),
+                                   kAppleTouchIconPrecomposed) ||
+                   StringCaseEqual(rel_attr->DecodedValueOrNull(),
+                                   kAppleTouchStartupImage)) {
+          *category = ContentType::kImage;
+        }
       }
       break;
     }
     case HtmlName::kScript:
+      attr = element->FindAttribute(HtmlName::kSrc);
+      *category = ContentType::kScript;
+      break;
     case HtmlName::kImg:
       attr = element->FindAttribute(HtmlName::kSrc);
+      *category = ContentType::kImage;
+      break;
+    case HtmlName::kBody:
+    case HtmlName::kTd:
+    case HtmlName::kTh:
+    case HtmlName::kTable:
+    case HtmlName::kTbody:
+    case HtmlName::kTfoot:
+    case HtmlName::kThead:
+      attr = element->FindAttribute(HtmlName::kBackground);
+      *category = ContentType::kImage;
+      break;
+    case HtmlName::kInput:
+      if (StringCaseEqual(element->AttributeValue(HtmlName::kType),
+                          kAttrValImage)) {
+        attr = element->FindAttribute(HtmlName::kSrc);
+        *category = ContentType::kImage;
+      } else {
+        *category = ContentType::kOtherNonShardable;
+      }
+      break;
+    case HtmlName::kCommand:
+      attr = element->FindAttribute(HtmlName::kIcon);
+      *category = ContentType::kImage;
       break;
     case HtmlName::kA:
     case HtmlName::kArea:
-      // http://www.whatwg.org/specs/web-apps/current-work/multipage/
-      // section-index.html#attributes-1
-      // lists all HTML tags that have 'href'.  The only one we are not
-      // scanning for in this switch-statement is 'base'.
-      //
-      // TODO(jmarantz): Add tag-scanning for 'base', but do not use that for
-      // trimming or domain-rewriting.
-      if (find_a_tags_) {
-        attr = element->FindAttribute(HtmlName::kHref);
-        *is_hyperlink = true;
-      }
+      attr = element->FindAttribute(HtmlName::kHref);
+      *category = ContentType::kOtherNonShardable;
       break;
     case HtmlName::kForm:
-      if (find_form_tags_) {
-        attr = element->FindAttribute(HtmlName::kAction);
-        *is_hyperlink = true;
-      }
+      attr = element->FindAttribute(HtmlName::kAction);
+      *category = ContentType::kOtherNonShardable;
+      break;
+    case HtmlName::kAudio:
+    case HtmlName::kVideo:
+    case HtmlName::kSource:
+    case HtmlName::kTrack:
+      attr = element->FindAttribute(HtmlName::kSrc);
+      *category = ContentType::kOtherShardable;
+      break;
+    case HtmlName::kHtml:
+      attr = element->FindAttribute(HtmlName::kManifest);
+      *category = ContentType::kOtherShardable;
+      break;
+    case HtmlName::kEmbed:
+    case HtmlName::kFrame:
+    case HtmlName::kIframe:
+      attr = element->FindAttribute(HtmlName::kSrc);
+      *category = ContentType::kOtherNonShardable;
+      break;
+    case HtmlName::kBlockquote:
+    case HtmlName::kQ:
+    case HtmlName::kIns:
+    case HtmlName::kDel:
+      attr = element->FindAttribute(HtmlName::kCite);
+      *category = ContentType::kOtherNonShardable;
+      break;
+    case HtmlName::kButton:
+      attr = element->FindAttribute(HtmlName::kFormaction);
+      *category = ContentType::kOtherNonShardable;
       break;
     default:
       break;
   }
-  if ((attr != NULL) && attr->decoding_error()) {
+  if (attr == NULL || attr->decoding_error() ||
+      *category == ContentType::kUndefined) {
     attr = NULL;
+    *category = ContentType::kUndefined;
   }
   return attr;
 }
 
+}  // namespace resource_tag_scanner
 }  // namespace net_instaweb

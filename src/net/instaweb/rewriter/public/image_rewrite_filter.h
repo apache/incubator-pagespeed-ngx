@@ -38,7 +38,6 @@ namespace net_instaweb {
 class CachedResult;
 class ContentType;
 class ImageDim;
-class ImageTagScanner;
 class ResourceContext;
 class RewriteContext;
 class RewriteDriver;
@@ -165,7 +164,6 @@ class ImageRewriteFilter : public RewriteFilter {
   // lacks a CriticalImageFinder implementation.
   bool IsCriticalImage(const StringPiece& image_url) const;
 
-  scoped_ptr<const ImageTagScanner> image_filter_;
   scoped_ptr<WorkBound> work_bound_;
 
   // Statistics

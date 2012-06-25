@@ -28,6 +28,7 @@ namespace net_instaweb {
 
 struct ContentType {
  public:
+  // The MIME types we process.
   enum Type {
     kHtml,
     kXhtml,
@@ -42,6 +43,20 @@ struct ContentType {
     kSwf,
     kWebp,
     kOther,  // Used to specify a new local ContentType in one test file.
+  };
+
+  // When we see a url, we know what kind of resource it points to from context.
+  // See resource_tag_scanner.h for the definitions of the categories.  They are
+  // broader categories than Type above because contextual information is
+  // limited.  <img src="URL"> can be for kPng, kGif, kJpeg, kWebp, or another
+  // image type.
+  enum Category {
+    kScript,
+    kImage,
+    kStylesheet,
+    kOtherShardable,
+    kOtherNonShardable,
+    kUndefined
   };
 
   // Returns the maximum extension length of any resource types our filters

@@ -35,9 +35,7 @@
 namespace net_instaweb {
 
 ScanFilter::ScanFilter(RewriteDriver* driver)
-    : driver_(driver),
-      tag_scanner_(driver) {
-  tag_scanner_.set_find_a_tags(true);
+    : driver_(driver) {
 }
 
 ScanFilter::~ScanFilter() {
@@ -108,9 +106,16 @@ void ScanFilter::StartElement(HtmlElement* element) {
     }
     // TODO(jmarantz): handle base targets in addition to hrefs.
   } else {
-    bool is_hyperlink;
-    if (!seen_refs_ && !seen_base_ &&
-        tag_scanner_.ScanElement(element, &is_hyperlink) != NULL) {
+    ContentType::Category category;
+    HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
+        element, driver_, &category);
+
+    // Don't count <html manifest=...> as a ref for the purpose of determining
+    // if there are refs before base.  It's also important not to count <head
+    // profile=...> but ScanElement skips that.
+    if (!seen_refs_ && !seen_base_ && href != NULL &&
+        !(element->keyword() == HtmlName::kHtml &&
+          href->keyword() == HtmlName::kManifest)) {
       seen_refs_ = true;
     }
   }

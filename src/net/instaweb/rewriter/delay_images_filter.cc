@@ -28,8 +28,8 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
@@ -47,7 +47,6 @@ DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
     : driver_(driver),
       static_js_manager_(
           driver->resource_manager()->static_javascript_manager()),
-      tag_scanner_(new ImageTagScanner(driver)),
       low_res_map_inserted_(false),
       num_low_res_inlined_images_(0) {
   // Low res images will be placed inside the respective image tag if any one of
@@ -74,8 +73,12 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
       !low_res_data_map_.empty()) {
     InsertDelayImagesInlineJS(element);
   } else if (driver_->IsRewritable(element)) {
-    HtmlElement::Attribute* src = tag_scanner_->ParseImageElement(element);
-    if ((src != NULL) && (src->DecodedValueOrNull() != NULL)) {
+    ContentType::Category category;
+    HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
+        element, driver_, &category);
+
+    if (src != NULL && src->DecodedValueOrNull() != NULL &&
+        category == ContentType::kImage) {
       // Remove the inline_src which is low quality base64 encoded data url and
       // add them to a map so that all inline data urls will be available at the
       // end of body tag.

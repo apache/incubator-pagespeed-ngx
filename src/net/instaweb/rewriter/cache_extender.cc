@@ -25,7 +25,6 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -85,8 +84,7 @@ class CacheExtender::Context : public SingleRewriteContext {
 };
 
 CacheExtender::CacheExtender(RewriteDriver* driver)
-    : RewriteFilter(driver),
-      tag_scanner_(driver_) {
+    : RewriteFilter(driver) {
   Statistics* stats = resource_manager_->statistics();
   extension_count_ = stats->GetVariable(kCacheExtensions);
   not_cacheable_count_ = stats->GetVariable(kNotCacheable);
@@ -136,35 +134,25 @@ bool CacheExtender::ShouldRewriteResource(
 }
 
 void CacheExtender::StartElementImpl(HtmlElement* element) {
-  HtmlName::Keyword keyword = element->keyword();
+  ContentType::Category category;
+  HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
+      element, driver_, &category);
   bool may_rewrite = false;
-  switch (keyword) {
-    case HtmlName::kLink: {
+  switch (category) {
+    case ContentType::kStylesheet:
       may_rewrite = driver_->MayCacheExtendCss();
       break;
-    }
-    case HtmlName::kImg:
-    case HtmlName::kInput: {
+    case ContentType::kImage:
       may_rewrite = driver_->MayCacheExtendImages();
       break;
-    }
-    case HtmlName::kScript: {
+    case ContentType::kScript:
       may_rewrite = driver_->MayCacheExtendScripts();
       break;
-    }
     default:
       break;
   }
   if (!may_rewrite) {
     return;
-  }
-
-  bool is_hyperlink;
-  HtmlElement::Attribute* href = tag_scanner_.ScanElement(
-      element, &is_hyperlink);
-  if (href == NULL) {
-    ImageTagScanner image_scanner(driver_);
-    href = image_scanner.ParseImageElement(element);
   }
 
   // TODO(jmarantz): We ought to be able to domain-shard even if the

@@ -22,7 +22,6 @@
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
-#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
@@ -80,7 +79,6 @@ class CacheExtender : public RewriteFilter {
       const ResponseHeaders* headers, int64 now_ms,
       const ResourcePtr& input_resource, const StringPiece& url) const;
 
-  ResourceTagScanner tag_scanner_;
   Variable* extension_count_;
   Variable* not_cacheable_count_;
 

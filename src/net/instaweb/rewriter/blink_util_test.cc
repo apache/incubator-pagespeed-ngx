@@ -228,5 +228,14 @@ TEST_F(BlinkUtilTest, IsJsonEmpty) {
   EXPECT_FALSE(BlinkUtil::IsJsonEmpty(val_obj));
 }
 
+TEST_F(BlinkUtilTest, EscapeString) {
+  GoogleString str1 = "<stuff\xe2\x80\xa8>\n\\n";
+  BlinkUtil::EscapeString(&str1);
+  EXPECT_EQ("__psa_lt;stuff\\u2028__psa_gt;\n\\n", str1);
+  GoogleString str2 = "<|  |\\n";  // Has couple of U+2028's betwen the |
+  BlinkUtil::EscapeString(&str2);
+  EXPECT_EQ("__psa_lt;|\\u2028\\u2028|\\n", str2);
+}
+
 }  // namespace
 }  // namespace net_instaweb

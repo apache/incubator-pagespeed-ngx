@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_DOMAIN_REWRITE_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -65,7 +64,6 @@ class DomainRewriteFilter : public CommonFilter {
                         GoogleString* output_url);
 
  private:
-  ResourceTagScanner tag_scanner_;
   // Stats on how much domain-rewriting we've done.
   Variable* rewrite_count_;
 

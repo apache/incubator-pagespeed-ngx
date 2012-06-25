@@ -710,8 +710,8 @@
       ],
       'sources': [
         'rewriter/image.cc',
-        'rewriter/image_tag_scanner.cc',
         'rewriter/image_url_encoder.cc',
+        'rewriter/resource_tag_scanner.cc',
         'rewriter/webp_optimizer.cc',
       ],
       'include_dirs': [

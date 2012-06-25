@@ -28,9 +28,9 @@
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
-#include "net/instaweb/rewriter/public/image_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -170,13 +170,14 @@ class ImageRewriteTest : public ResourceManagerTestBase {
   class ImageCollector : public EmptyHtmlFilter {
    public:
     ImageCollector(HtmlParse* html_parse, StringVector* img_srcs)
-        : img_srcs_(img_srcs),
-          image_filter_(html_parse) {
+        : img_srcs_(img_srcs) {
     }
 
     virtual void StartElement(HtmlElement* element) {
-      HtmlElement::Attribute* src = image_filter_.ParseImageElement(element);
-      if (src != NULL) {
+      ContentType::Category category;
+      HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
+          element, NULL /* driver */, &category);
+      if (src != NULL && category == ContentType::kImage) {
         img_srcs_->push_back(src->DecodedValueOrNull());
       }
     }
@@ -185,7 +186,6 @@ class ImageRewriteTest : public ResourceManagerTestBase {
 
    private:
     StringVector* img_srcs_;
-    ImageTagScanner image_filter_;
 
     DISALLOW_COPY_AND_ASSIGN(ImageCollector);
   };
