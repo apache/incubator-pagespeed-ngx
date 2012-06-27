@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -163,6 +164,7 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       low_priority_rewrite_workers_(NULL),
       static_javascript_manager_(NULL),
       thread_synchronizer_(new ThreadSynchronizer(thread_system_)),
+      furious_matcher_(factory_->NewFuriousMatcher()),
       usage_data_reporter_(factory_->usage_data_reporter()) {
   // Make sure the excluded-attributes are in abc order so binary_search works.
   // Make sure to use the same comparator that we pass to the binary_search.

@@ -38,6 +38,7 @@ class CacheInterface;
 class CriticalImagesFinder;
 class FileSystem;
 class FilenameEncoder;
+class FuriousMatcher;
 class Hasher;
 class HTTPCache;
 class MessageHandler;
@@ -277,6 +278,10 @@ class RewriteDriverFactory {
   // Subclasses can override this to create an appropriate AbstractClientState
   // subclass if the default isn't acceptable.
   virtual AbstractClientState* NewClientState();
+
+  // Creates a FuriousMatcher, which is used to match clients or sessions to
+  // a specific furious experiment.
+  virtual FuriousMatcher* NewFuriousMatcher();
 
  protected:
   bool FetchersComputed() const;

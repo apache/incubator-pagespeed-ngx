@@ -84,7 +84,7 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
       // end of body tag.
       HtmlElement::Attribute* low_res_src =
           element->FindAttribute(HtmlName::kPagespeedLowResSrc);
-      if (!low_res_map_inserted_ && (low_res_src != NULL) &&
+      if ((low_res_src != NULL) &&
           (low_res_src->DecodedValueOrNull() != NULL)) {
         ++num_low_res_inlined_images_;
         // TODO(pulkitg): Add support for input tag.
@@ -131,13 +131,19 @@ void DelayImagesFilter::InsertDelayImagesInlineJS(HtmlElement* element) {
               "\npagespeed.delayImagesInline.addLowResImages('",
               it->first, "', '", it->second, "');");
   }
-  GoogleString inline_script = StrCat(
-      static_js_manager_->GetJsSnippet(
-          StaticJavascriptManager::kDelayImagesInlineJs,
-          driver_->options()),
-      kDelayImagesInlineSuffix,
-      inline_data_script,
-      "\npagespeed.delayImagesInline.replaceWithLowRes();\n");
+  low_res_data_map_.clear();
+  GoogleString inline_script;
+  // Check script for changing src to low res data url is inserted once.
+  if (!low_res_map_inserted_) {
+    inline_script = StrCat(
+        static_js_manager_->GetJsSnippet(
+            StaticJavascriptManager::kDelayImagesInlineJs,
+            driver_->options()),
+        kDelayImagesInlineSuffix);
+  }
+  StrAppend(&inline_script,
+            inline_data_script,
+            "\npagespeed.delayImagesInline.replaceWithLowRes();\n");
   HtmlElement* script = driver_->NewElement(element,
                                             HtmlName::kScript);
   driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
@@ -152,11 +158,17 @@ void DelayImagesFilter::InsertDelayImagesJS(HtmlElement* element) {
   HtmlElement* script = driver_->NewElement(element,
                                             HtmlName::kScript);
   driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
-  const GoogleString& delay_images_js = StrCat(
+  GoogleString delay_images_js;
+  // Check script for changing src to high res src is inserted once.
+  if (!low_res_map_inserted_) {
+  delay_images_js = StrCat(
       static_js_manager_->GetJsSnippet(
           StaticJavascriptManager::kDelayImagesJs,
           driver_->options()),
       kDelayImagesSuffix);
+  } else {
+    delay_images_js = "\npagespeed.delayImages.replaceWithHighRes();\n";
+  }
   HtmlCharactersNode* script_content = driver_->NewCharactersNode(
       script, delay_images_js);
   driver_->InsertElementAfterElement(element, script);

@@ -512,6 +512,11 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
   RewriteOptions* options = NULL;
   RewriteDriver* driver = NULL;
 
+  // Disable filters which trigger render requests. This is not needed for
+  // when we have non-200 code but we just blanket disable here.
+  options_->DisableFilter(RewriteOptions::kLazyloadImages);
+  options_->DisableFilter(RewriteOptions::kDelayImages);
+
   if (critical_line_data_found) {
     SetFilterOptions(options_);
     options_->ForceEnableFilter(RewriteOptions::kServeNonCacheableNonCritical);
@@ -566,7 +571,6 @@ void BlinkFlowCriticalLine::SetFilterOptions(RewriteOptions* options) const {
   options->DisableFilter(RewriteOptions::kCombineCss);
   options->DisableFilter(RewriteOptions::kCombineJavascript);
   options->DisableFilter(RewriteOptions::kMoveCssToHead);
-  options->DisableFilter(RewriteOptions::kLazyloadImages);
   // TODO(rahulbansal): ConvertMetaTags is a special case incompatible filter
   // which actually causes a SIGSEGV.
   options->DisableFilter(RewriteOptions::kConvertMetaTags);

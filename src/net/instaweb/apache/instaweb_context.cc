@@ -22,7 +22,7 @@
 #include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/rewriter/public/furious_util.h"
+#include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
@@ -317,22 +317,20 @@ const char* InstawebContext::MakeRequestUrl(request_rec* request) {
 
 void InstawebContext::SetFuriousStateAndCookie(request_rec* request,
                                                RewriteOptions* options) {
-  int furious_value;
   // If we didn't get a valid (i.e. currently-running experiment) value from
   // the cookie, determine which experiment this request should end up in
   // and set the cookie accordingly.
-  if (!furious::GetFuriousCookieState(*request_headers_, &furious_value)) {
+  bool need_cookie = resource_manager_->furious_matcher()->
+      ClassifyIntoExperiment(*request_headers_, options);
+  if (need_cookie) {
     ResponseHeaders resp_headers;
     AprTimer timer;
     const char* url = apr_table_get(request->notes, kPagespeedOriginalUrl);
-    furious_value = furious::DetermineFuriousState(options);
-    if (furious_value != furious::kFuriousNotSet) {
-      furious::SetFuriousCookie(&resp_headers, furious_value, url,
-                                timer.NowMs());
-      AddResponseHeadersToRequest(resp_headers, request);
-    }
+    int furious_value = options->furious_id();
+    resource_manager_->furious_matcher()->StoreExperimentData(
+        furious_value, url, timer.NowMs(), &resp_headers);
+    AddResponseHeadersToRequest(resp_headers, request);
   }
-  options->SetFuriousState(furious_value);
 }
 
 }  // namespace net_instaweb

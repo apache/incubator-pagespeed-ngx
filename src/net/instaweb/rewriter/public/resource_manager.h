@@ -46,6 +46,7 @@ class CriticalImagesFinder;
 class FileSystem;
 class FilenameEncoder;
 class Function;
+class FuriousMatcher;
 class GoogleUrl;
 class Hasher;
 class MessageHandler;
@@ -130,6 +131,7 @@ class ResourceManager {
   ThreadSynchronizer* thread_synchronizer() {
     return thread_synchronizer_.get();
   }
+  FuriousMatcher* furious_matcher() { return furious_matcher_.get(); }
 
   // Writes the specified contents into the output resource, and marks it
   // as optimized. 'inputs' described the input resources that were used
@@ -531,6 +533,9 @@ class ResourceManager {
   // Used to help inject sync-points into thread-intensive code for the purposes
   // of controlling thread interleaving to test code for possible races.
   scoped_ptr<ThreadSynchronizer> thread_synchronizer_;
+
+  // Used to match clients or sessions to a specific furious experiment.
+  scoped_ptr<FuriousMatcher> furious_matcher_;
 
   UsageDataReporter* usage_data_reporter_;
 

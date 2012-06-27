@@ -110,6 +110,7 @@ class ProxyInterface : public UrlAsyncFetcher {
 
   static const char kBlinkRequestCount[];
   static const char kBlinkCriticalLineRequestCount[];
+  static const char kXmlHttpRequest[];
 
  protected:
   // Initiates the PropertyCache look up.
@@ -136,6 +137,12 @@ class ProxyInterface : public UrlAsyncFetcher {
   // If the URL and port are for this server, don't proxy those (to avoid
   // infinite fetching loops). This might be the favicon or something...
   bool UrlAndPortMatchThisServer(const GoogleUrl& url);
+
+  // Returns true if current request is XmlHttp request (i.e. ajax request).
+  // XmlHttp request is checked based on the request headers. This mechanism is
+  // not reliable because sometimes this header is not set even for XmlHttp
+  // requests.
+  bool IsXmlHttpRequest(RequestHeaders* headers) const;
 
   // References to unowned objects.
   ResourceManager* resource_manager_;     // thread-safe

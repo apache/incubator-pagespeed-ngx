@@ -178,7 +178,43 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
     return StrCat(code, call);
   }
 };
+TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
+  options()->EnableFilter(RewriteOptions::kDeferJavascript);
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                         kContentTypeWebp, 100);
+  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
+                       kContentTypeJpeg, 100);
+  GoogleString flush1 = "<head></head>"
+      "<body>"
+      "<img src=\"http://test.com/1.webp\" />";
+  GoogleString flush2="<img src=\"http://test.com/1.jpeg\" />"
+      "</body>";
+  GoogleString input = StrCat(flush1, flush2);
+  SetupWriter();
+  html_parse()->StartParse("http://test.com/");
+  html_parse()->ParseText(flush1);
+  html_parse()->Flush();
+  html_parse()->ParseText(flush2);
+  html_parse()->FinishParse();
 
+  GoogleString output_html = StrCat(GetHeadHtmlWithDeferJsAndLazyload(),
+      "<body>",
+      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
+      GetInlineScript(),
+      GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
+      "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
+      GetDelayImages(),
+      StrCat("<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
+             "<script type=\"text/javascript\">",
+             GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
+             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>"
+             "<script type=\"text/javascript\">"
+             "\npagespeed.delayImages.replaceWithHighRes();\n</script>"
+             "</body>"));
+  EXPECT_TRUE(Wildcard(output_html).Match(output_buffer_));
+}
 TEST_F(DelayImagesFilterTest, DelayImageWithDeferJavascriptDisabled) {
   options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
@@ -429,8 +465,13 @@ TEST_F(DelayImagesFilterTest, MultipleBodyTags) {
       StrCat(GetInlineScript(),
              GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
              "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(), "<body>",
-             GenerateRewrittenImageTag("http://test.com/2.jpeg"),
+             GetDelayImages(),
+             "<body><img pagespeed_high_res_src=\"http://test.com/2.jpeg\"/>"
+             "<script type=\"text/javascript\">",
+             GenerateAddLowResString("http://test.com/2.jpeg", kSampleJpegData),
+             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>"
+             "<script type=\"text/javascript\">"
+             "\npagespeed.delayImages.replaceWithHighRes();\n</script>"
              "</body>"));
   MatchOutputAndCountBytes(input_html, output_html);
 }

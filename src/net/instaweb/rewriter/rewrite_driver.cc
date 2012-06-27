@@ -32,7 +32,6 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/bot_checker.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -201,7 +200,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       low_priority_rewrite_worker_(NULL),
       writer_(NULL),
       client_state_(NULL),
-      need_furious_cookie_(false),
+      need_to_store_experiment_data_(false),
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
       num_inline_preview_images_(0)
@@ -281,7 +280,7 @@ void RewriteDriver::Clear() {
   user_agent_supports_image_inlining_ = kNotSet;
   user_agent_supports_js_defer_ = kNotSet;
   user_agent_supports_webp_ = kNotSet;
-  need_furious_cookie_ = false;
+  need_to_store_experiment_data_ = false;
   xhtml_mimetype_computed_ = false;
   xhtml_status_ = kXhtmlUnknown;
 

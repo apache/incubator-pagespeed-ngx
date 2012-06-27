@@ -45,12 +45,15 @@ pagespeed.DelayImages.prototype.replaceWithHighRes = function() {
      }
   }
 };
+pagespeed.DelayImages.prototype['replaceWithHighRes'] =
+  pagespeed.DelayImages.prototype.replaceWithHighRes;
 
 /**
  * Initializes the delay images module.
  */
 pagespeed.delayImagesInit = function() {
   var temp = new pagespeed.DelayImages();
+  pagespeed['delayImages'] = temp;
   temp.replaceWithHighRes();
 };
 

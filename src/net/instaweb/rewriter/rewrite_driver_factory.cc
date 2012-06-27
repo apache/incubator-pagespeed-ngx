@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -682,6 +683,10 @@ RewriteOptions* RewriteDriverFactory::NewRewriteOptionsForQuery() {
 
 AbstractClientState* RewriteDriverFactory::NewClientState() {
   return new ClientState;
+}
+
+FuriousMatcher* RewriteDriverFactory::NewFuriousMatcher() {
+  return new FuriousMatcher;
 }
 
 }  // namespace net_instaweb

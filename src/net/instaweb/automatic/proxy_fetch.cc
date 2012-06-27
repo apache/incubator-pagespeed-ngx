@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -390,12 +391,12 @@ bool ProxyFetch::StartParse() {
   // which rewrite options we need (in proxy_interface.cc) and here.
   // Therefore, we can not set the Set-Cookie header there, and must
   // do it here instead.
-  if (driver_->need_furious_cookie() && Options()->running_furious()) {
+  if (driver_->need_to_store_experiment_data() &&
+      Options()->running_furious()) {
     int furious_value = Options()->furious_id();
-    // TODO(nforman): This seems to be returning times farther ahead than
-    // one week.  Investigate.
-    furious::SetFuriousCookie(response_headers(), furious_value, url_,
-                              resource_manager_->timer()->NowUs());
+    resource_manager_->furious_matcher()->StoreExperimentData(
+        furious_value, url_, resource_manager_->timer()->NowMs(),
+        response_headers());
   }
   driver_->set_response_headers_ptr(response_headers());
   {

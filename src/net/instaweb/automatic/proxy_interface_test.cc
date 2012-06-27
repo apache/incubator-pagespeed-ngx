@@ -2070,12 +2070,41 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithNoUrlNamerOptions) {
   GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
   EXPECT_FALSE(proxy_interface_->GetQueryOptions(&gurl, &request_headers,
                                                  message_handler()).second);
+
+  // The default url_namer does not yield any name-derived options, and we
+  // have not specified any URL params or request-headers, and kXRequestedWith
+  // header is set with bogus value, so there will be no custom options, and no
+  // errors.
+  request_headers.Add(
+      HttpAttributes::kXRequestedWith, "bogus");
+  options.reset(
+      GetCustomOptions("http://example.com/", &request_headers, NULL));
+  ASSERT_TRUE(options.get() == NULL);
+
+  // The default url_namer does not yield any name-derived options, and we
+  // have not specified any URL params or request-headers, but kXRequestedWith
+  // header is set to 'XmlHttpRequest', so there will be custom options with
+  // all js inserted filters disabled.
+  request_headers.RemoveAll(HttpAttributes::kXRequestedWith);
+  request_headers.Add(
+      HttpAttributes::kXRequestedWith, ProxyInterface::kXmlHttpRequest);
+  options.reset(
+      GetCustomOptions("http://example.com/", &request_headers, NULL));
+  // Disable DelayImages for XmlHttpRequests.
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kDelayImages));
+  // As kDelayImages filter is present in the disabled list, so it will not get
+  // enabled even if it is enabled via EnableFilter().
+  options->EnableFilter(RewriteOptions::kDelayImages);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kDelayImages));
 }
 
 TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
   // Inject a url-namer that will establish a domain configuration.
   RewriteOptions namer_options;
   namer_options.EnableFilter(RewriteOptions::kCombineJavascript);
+  namer_options.EnableFilter(RewriteOptions::kDelayImages);
 
   RequestHeaders request_headers;
   scoped_ptr<RewriteOptions> options(
@@ -2088,6 +2117,7 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
   CheckExtendCache(options.get(), false);
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineJavascript));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kDelayImages));
 
   // Now combine with query params, which turns core-filters on.
   options.reset(GetCustomOptions(
@@ -2117,6 +2147,33 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
   GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
   EXPECT_FALSE(proxy_interface_->GetQueryOptions(&gurl, &request_headers,
                                                  message_handler()).second);
+
+  request_headers.Add(
+      HttpAttributes::kXRequestedWith, "bogus");
+  options.reset(
+      GetCustomOptions("http://example.com/", &request_headers,
+                       &namer_options));
+  // Don't disable DelayImages for Non-XmlHttpRequests.
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  CheckExtendCache(options.get(), false);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineJavascript));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kDelayImages));
+
+  request_headers.RemoveAll(HttpAttributes::kXRequestedWith);
+  request_headers.Add(
+      HttpAttributes::kXRequestedWith, ProxyInterface::kXmlHttpRequest);
+  options.reset(
+      GetCustomOptions("http://example.com/", &request_headers,
+                       &namer_options));
+  // Disable DelayImages for XmlHttpRequests.
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  CheckExtendCache(options.get(), false);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineJavascript));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kDelayImages));
 }
 
 TEST_F(ProxyInterfaceTest, MinResourceTimeZero) {

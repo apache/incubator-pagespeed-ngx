@@ -30,7 +30,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
-#include "net/instaweb/rewriter/public/furious_util.h"
+#include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -53,6 +53,7 @@ class MessageHandler;
 const char ProxyInterface::kBlinkRequestCount[] = "blink-requests";
 const char ProxyInterface::kBlinkCriticalLineRequestCount[] =
     "blink-critical-line-requests";
+const char ProxyInterface::kXmlHttpRequest[] = "XMLHttpRequest";
 
 namespace {
 
@@ -284,7 +285,40 @@ RewriteOptions* ProxyInterface::GetCustomOptions(
     custom_options->set_running_furious_experiment(false);
   }
 
+  if (IsXmlHttpRequest(request_headers)) {
+    // For XmlHttpRequests, disable filters that insert js. Otherwise, there
+    // will be two copies of the same scripts in the html dom- one from main
+    // html page and another from html content fetched from ajax and this
+    // will messed up many global variable states.
+    // Sometimes, js present in the ajax request does not get executed.
+    if (custom_options == NULL) {
+      custom_options.reset(options->Clone());
+    }
+    custom_options->DisableFilter(RewriteOptions::kLazyloadImages);
+    custom_options->DisableFilter(RewriteOptions::kDelayImages);
+    custom_options->DisableFilter(RewriteOptions::kPrioritizeVisibleContent);
+    custom_options->DisableFilter(RewriteOptions::kDeferJavascript);
+    custom_options->DisableFilter(RewriteOptions::kLocalStorageCache);
+  }
+
   return custom_options.release();
+}
+
+bool ProxyInterface::IsXmlHttpRequest(RequestHeaders* headers) const {
+  // Check if kXRequestedWith header is present to determine whether it is
+  // XmlHttpRequest or not.
+  // Note: Not every ajax request sends this header but many libraries like
+  // jquery, prototype and mootools etc. send this header. Google closure and
+  // custom ajax hacks will not set this header.
+  // It is not guaranteed that javascript present in the html loaded via
+  // ajax request will execute.
+  const char* x_requested_with =
+      headers->Lookup1(HttpAttributes::kXRequestedWith);
+  if (x_requested_with != NULL &&
+      StringCaseEqual(x_requested_with, kXmlHttpRequest)) {
+    return true;
+  }
+  return false;
 }
 
 ProxyInterface::OptionsBoolPair ProxyInterface::GetQueryOptions(
@@ -494,15 +528,10 @@ void ProxyInterface::ProxyRequestCallback(
                        resource_manager_);
     } else {
       RewriteDriver* driver = NULL;
-      bool need_cookie = false;
+      bool need_to_store_experiment_data = false;
       if (options != NULL && options->running_furious()) {
-        int furious_value = furious::kFuriousNotSet;
-        if (!furious::GetFuriousCookieState(*async_fetch->request_headers(),
-                                            &furious_value)) {
-          furious_value = furious::DetermineFuriousState(options);
-          need_cookie = true;
-        }
-        options->SetFuriousState(furious_value);
+        need_to_store_experiment_data = resource_manager_->furious_matcher()->
+            ClassifyIntoExperiment(*async_fetch->request_headers(), options);
       }
       // Starting property cache lookup after the furious state is set.
       property_callback.reset(InitiatePropertyCacheLookup(
@@ -513,7 +542,7 @@ void ProxyInterface::ProxyRequestCallback(
         // NewCustomRewriteDriver takes ownership of custom_options_.
         driver = resource_manager_->NewCustomRewriteDriver(options);
       }
-      driver->set_need_furious_cookie(need_cookie);
+      driver->set_need_to_store_experiment_data(need_to_store_experiment_data);
       proxy_fetch_factory_->StartNewProxyFetch(
           request_url->Spec().as_string(), async_fetch, driver,
           property_callback.release(), NULL);

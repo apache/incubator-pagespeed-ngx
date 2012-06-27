@@ -59,6 +59,7 @@ const char HttpAttributes::kXGooglePagespeedClientId[] =
     "X-Google-Pagespeed-Client-Id";
 const char HttpAttributes::kXPsaBlockingRewrite[] = "X-PSA-Blocking-Rewrite";
 const char HttpAttributes::kXPsaLoadShed[] = "X-Psa-Load-Shed";
+const char HttpAttributes::kXRequestedWith[] = "X-Requested-With";
 
 
 const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {
