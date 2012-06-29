@@ -171,9 +171,12 @@ const char* kModPagespeedSharedMemoryLocks = "ModPagespeedSharedMemoryLocks";
 const char* kModPagespeedSlurpDirectory = "ModPagespeedSlurpDirectory";
 const char* kModPagespeedSlurpFlushLimit = "ModPagespeedSlurpFlushLimit";
 const char* kModPagespeedSlurpReadOnly = "ModPagespeedSlurpReadOnly";
+const char* kModPagespeedSupportNoScriptEnabled =
+    "ModPagespeedSupportNoScriptEnabled";
 const char* kModPagespeedStatistics = "ModPagespeedStatistics";
 const char* kModPagespeedTestProxy = "ModPagespeedTestProxy";
 const char* kModPagespeedUrlPrefix = "ModPagespeedUrlPrefix";
+const char* kModPagespeedUrlValuedAttribute = "ModPagespeedUrlValuedAttribute";
 const char* kModPagespeedSpeedTracking = "ModPagespeedIncreaseSpeedTracking";
 const char* kModPagespeedXHeaderValue = "ModPagespeedXHeaderValue";
 
@@ -1131,6 +1134,31 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
   return ret;
 }
 
+// Callback function that parses a three-argument directive.  This is called
+// by the Apache config parser.
+static const char* ParseDirective3(
+    cmd_parms* cmd, void* data,
+    const char* arg1, const char* arg2, const char* arg3) {
+  RewriteOptions* options = CmdOptions(cmd, data);
+  const char* directive = cmd->directive->directive;
+  if (StringCaseEqual(directive, kModPagespeedUrlValuedAttribute)) {
+    // Examples:
+    //   ModPagespeedUrlValuedAttribute span src Hyperlink
+    //     - <span src=...> indicates a hyperlink
+    //   ModPagespeedUrlValuedAttribute hr imgsrc Image
+    //     - <hr image=...> indicates an image resource
+    ContentType::Category category;
+    if (!ParseCategory(arg3, &category)) {
+      return apr_pstrcat(cmd->pool, "Invalid resource category: ", arg3, NULL);
+    } else {
+      options->AddUrlValuedAttribute(arg1, arg2, category);
+    }
+  } else {
+    return "Unknown directive.";
+  }
+  return NULL;
+}
+
 // Setting up Apache options is cumbersome for several reasons:
 //
 // 1. Apache appears to require the option table be entirely constructed
@@ -1169,6 +1197,11 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
                 NULL, RSRC_CONF, help)
 #define APACHE_CONFIG_DIR_OPTION2(name, help) \
   AP_INIT_TAKE2(name, reinterpret_cast<const char*(*)()>(ParseDirective2), \
+                NULL, OR_ALL, help)
+
+// APACHE_CONFIG_OPTION for 3 arguments
+#define APACHE_CONFIG_DIR_OPTION3(name, help) \
+  AP_INIT_TAKE3(name, reinterpret_cast<const char*(*)()>(ParseDirective3), \
                 NULL, OR_ALL, help)
 
 static const command_rec mod_pagespeed_filter_cmds[] = {
@@ -1332,6 +1365,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedSlurpReadOnly,
         "Only read from the slurped directory, fail to fetch "
         "URLs not already in the slurped directory"),
+  APACHE_CONFIG_OPTION(kModPagespeedSupportNoScriptEnabled,
+        "Support for clients with no script support, in filters that "
+        "insert new javascript."),
   APACHE_CONFIG_OPTION(kModPagespeedTestProxy,
         "Act as a proxy without maintaining a slurp dump."),
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "Set the url prefix"),
@@ -1354,6 +1390,10 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   // (Not in <Directory> blocks.)
   APACHE_CONFIG_OPTION2(kModPagespeedLoadFromFile,
         "url_prefix filename_prefix"),
+
+  // All three parameter options that are allowed in <Directory> blocks.
+  APACHE_CONFIG_DIR_OPTION3(kModPagespeedUrlValuedAttribute,
+        "Specify an additional url-valued attribute."),
 
   {NULL}
 };

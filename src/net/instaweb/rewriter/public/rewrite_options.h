@@ -24,6 +24,7 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -181,6 +182,7 @@ class RewriteOptions {
     kRunningFurious,
     kServeBlinkNonCritical,
     kServeStaleIfFetchError,
+    kSupportNoScriptEnabled,
     kUseFixedUserAgentForBlinkCacheMisses,
     kXPsaBlockingRewrite,
     kXModPagespeedHeaderValue,
@@ -336,7 +338,7 @@ class RewriteOptions {
 
   static const char kDefaultBlockingRewriteKey[];
 
-  // This class is a spearate subset of options for running a furious
+  // This class is a separate subset of options for running a furious
   // experiment.
   // These options can be specified by a spec string that looks like:
   // "id=<number greater than 0>;level=<rewrite level>;enabled=
@@ -400,6 +402,13 @@ class RewriteOptions {
     // for this experiment.
     bool use_default_;
     DISALLOW_COPY_AND_ASSIGN(FuriousSpec);
+  };
+
+  // Represents the content type of user-defined url-valued attributes.
+  struct ElementAttributeCategory {
+    GoogleString element;
+    GoogleString attribute;
+    ContentType::Category category;
   };
 
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
@@ -472,7 +481,37 @@ class RewriteOptions {
 
   int num_furious_experiments() const { return furious_specs_.size(); }
 
-  RewriteLevel level() const { return level_.value();}
+  // Store that when we see <element attribute=X> we should treat X as a URL
+  // pointing to a resource of the type indicated by category.  For example,
+  // while by default we would treat the 'src' attribute of an a 'img' element
+  // as the URL for an image and will cache-extend, inline, or otherwise
+  // optimize it as appropriate, we would not do the same for the 'src'
+  // atrtribute of a 'span' element (<span src=...>) because there's no "src"
+  // attribute of "span" in the HTML spec.  If someone needed us to treat
+  // span.src as a URL, however, they could call:
+  //    AddUrlValuedAttribute("src", "span", appropriate_category)
+  //
+  // Makes copies of element and attribute.
+  void AddUrlValuedAttribute(const StringPiece& element,
+                             const StringPiece& attribute,
+                             ContentType::Category category);
+
+  // Look up a url-valued attribute, return details via element, attribute,
+  // and category.  index must be less than num_url_valued_attributes().
+  void UrlValuedAttribute(int index,
+                          StringPiece* element,
+                          StringPiece* attribute,
+                          ContentType::Category* category) const;
+
+  int num_url_valued_attributes() const {
+    if (url_valued_attributes_ == NULL) {
+      return 0;
+    } else {
+      return url_valued_attributes_->size();
+    }
+  }
+
+  RewriteLevel level() const { return level_.value(); }
 
   // Enables filters specified without a prefix or with a prefix of '+' and
   // disables filters specified with a prefix of '-'. Returns false if any
@@ -524,6 +563,10 @@ class RewriteOptions {
   void EnableExtendCacheFilters();
 
   bool Enabled(Filter filter) const;
+
+  // Returns true if any filter that depends on executing custom javascript is
+  // enabled.
+  bool IsAnyFilterRequiringScriptExecutionEnabled() const;
 
   // Set Option 'name' to 'value'. Returns whether it succeeded or the kind of
   // failure (wrong name or value), and writes the diagnostic into 'msg'.
@@ -1019,6 +1062,13 @@ class RewriteOptions {
   }
   void set_reject_blacklisted_status_code(HttpStatus::Code x) {
     set_option(x, &reject_blacklisted_status_code_);
+  }
+
+  bool support_noscript_enabled() const {
+    return support_noscript_enabled_.value();
+  }
+  void set_support_noscript_enabled(bool x) {
+    set_option(x, &support_noscript_enabled_);
   }
 
   // Merge src into 'this'.  Generally, options that are explicitly
@@ -1712,6 +1762,11 @@ class RewriteOptions {
   Option<bool> reject_blacklisted_;
   Option<int> reject_blacklisted_status_code_;
 
+  // Support handling of clients without javascript support.  This is applicable
+  // only if any filter that inserts new javascript (e.g., lazyload_images) is
+  // enabled.
+  Option<bool> support_noscript_enabled_;
+
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,
   // Compare.
@@ -1732,6 +1787,10 @@ class RewriteOptions {
   int furious_id_;
   int furious_percent_;  // Total traffic going through experiments.
   std::vector<FuriousSpec*> furious_specs_;
+
+  // If this is non-NULL it tells us additional attributes that should be
+  // interpreted as containing urls.
+  scoped_ptr<std::vector<ElementAttributeCategory> > url_valued_attributes_;
 
   DomainLawyer domain_lawyer_;
   FileLoadPolicy file_load_policy_;

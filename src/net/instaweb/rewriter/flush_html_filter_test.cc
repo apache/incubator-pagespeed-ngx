@@ -61,16 +61,29 @@ TEST_F(FlushFilterTest, NoExtraFlushes) {
 
 TEST_F(FlushFilterTest, InduceFlushes) {
   GoogleString lots_of_links;
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < 7; ++i) {
     StrAppend(&lots_of_links,
-              StringPrintf(kCssFormat, "a.css"),
-              StringPrintf(kImgFormat, "b.png"));
+              StringPrintf(kCssFormat, "a.css"));
   }
+  StrAppend(&lots_of_links,
+            StringPrintf(kScriptFormat, "b.js"));
   html_parse()->ParseText(lots_of_links);
   html_parse()->ExecuteFlushIfRequested();
   EXPECT_EQ(1, resource_manager()->rewrite_stats()->num_flushes()->Get());
 }
 
+TEST_F(FlushFilterTest, NotEnoughToInduceFlushes) {
+  GoogleString lots_of_links;
+  for (int i = 0; i < 7; ++i) {
+    StrAppend(&lots_of_links,
+              StringPrintf(kCssFormat, "a.css"));
+  }
+  StrAppend(&lots_of_links,
+            StringPrintf(kImgFormat, "b.png"));
+  html_parse()->ParseText(lots_of_links);
+  html_parse()->ExecuteFlushIfRequested();
+  EXPECT_EQ(0, resource_manager()->rewrite_stats()->num_flushes()->Get());
+}
 
 }  // namespace
 

@@ -312,6 +312,14 @@ ModPagespeedAvoidRenamingIntrospectiveJavascript off
 #FURIOUS # It should use Custom Variable slot 3.
 #FURIOUS ModPagespeedExperimentSpec "id=2;ga=UA-29994820-1;percent=10;slot=3"
 
+#URL_ATTRIBUTE # This is used for testing dynamically defined url-valued
+#URL_ATTRIBUTE # attributes
+#URL_ATTRIBUTE ModPagespeedUrlValuedAttribute span src Hyperlink
+#URL_ATTRIBUTE ModPagespeedUrlValuedAttribute hr imgsrc Image
+#URL_ATTRIBUTE ModPagespeedDomainRewriteHyperlinks on
+#URL_ATTRIBUTE ModPagespeedMapRewriteDomain http://dst.example.com http://src.example.com
+#URL_ATTRIBUTE ModPagespeedEnableFilters rewrite_domains
+
 #XHEADER # Set the value of the X-Mod-Pagespeed header
 #XHEADER ModPagespeedXHeaderValue "UNSPECIFIED VERSION"
 
@@ -419,6 +427,7 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedSlurpDirectory /tmp/slurp/
 #ALL_DIRECTIVES ModPagespeedSlurpFlushLimit 5
 #ALL_DIRECTIVES ModPagespeedSlurpReadOnly true
+#ALL_DIRECTIVES ModPagespeedSupportNoScriptEnabled true
 #ALL_DIRECTIVES ModPagespeedStatistics true
 #ALL_DIRECTIVES ModPagespeedTestProxy off
 #ALL_DIRECTIVES ModPagespeedUrlPrefix "http://example.com/prefix/"

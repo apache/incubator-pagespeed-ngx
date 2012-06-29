@@ -68,4 +68,22 @@ TEST_F(ContentTypeTest, TestMimeType) {
   EXPECT_EQ(ContentType::kGif,        MimeToType("image/gif"));
 }
 
+TEST_F(ContentTypeTest, TestParseCategory) {
+  ContentType::Category category;
+  EXPECT_TRUE(ParseCategory("image", &category));
+  EXPECT_EQ(ContentType::kImage, category);
+  EXPECT_TRUE(ParseCategory("iMaGe", &category));  // check case-insensitivity
+  EXPECT_EQ(ContentType::kImage, category);
+  EXPECT_TRUE(ParseCategory("script", &category));
+  EXPECT_EQ(ContentType::kScript, category);
+  EXPECT_TRUE(ParseCategory("stylesheet", &category));
+  EXPECT_EQ(ContentType::kStylesheet, category);
+  EXPECT_TRUE(ParseCategory("OtherResource", &category));
+  EXPECT_EQ(ContentType::kOtherResource, category);
+  EXPECT_TRUE(ParseCategory("Hyperlink", &category));
+  EXPECT_EQ(ContentType::kHyperlink, category);
+  EXPECT_FALSE(ParseCategory("", &category));
+  EXPECT_FALSE(ParseCategory("Undefined", &category));
+}
+
 }  // namespace net_instaweb

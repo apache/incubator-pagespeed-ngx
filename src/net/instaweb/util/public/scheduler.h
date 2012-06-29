@@ -64,12 +64,12 @@ class Scheduler {
   // condition-variable-style interface that can be used to coordinate the
   // threads sharing the scheduler.
 
-  // Wait at most timeout_us, or until Signal() is called.  mutex() must be held
+  // Wait at most timeout_ms, or until Signal() is called.  mutex() must be held
   // when calling BlockingTimedWait.
   void BlockingTimedWait(int64 timeout_ms);
 
   // Non-blocking invocation of callback either when Signal() is called, or
-  // after timeout_us have passed.  Ownership of callback passes to the
+  // after timeout_ms have passed.  Ownership of callback passes to the
   // scheduler, which deallocates it after invocation.  mutex() must be held on
   // the initial call, and is locked for the duration of callback.  Note that
   // callback may be invoked in a different thread from the calling thread.

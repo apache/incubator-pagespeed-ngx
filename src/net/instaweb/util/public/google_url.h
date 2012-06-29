@@ -59,7 +59,7 @@ class GoogleUrl {
   // for the management of the new object's memory (the caller owns the
   // pointer).
   GoogleUrl* CopyAndAddQueryParam(const StringPiece& name,
-                                  const StringPiece& value);
+                                  const StringPiece& value) const;
 
   // For "http://a.com/b/c/d?e=f/g#r" returns "http://a.com/b/c/d"
   // Returns a StringPiece, only valid for the lifetime of this object.

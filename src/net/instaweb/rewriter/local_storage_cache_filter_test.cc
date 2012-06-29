@@ -20,6 +20,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -126,7 +127,7 @@ class LocalStorageCacheTest : public ResourceManagerTestBase,
     StringPiece local_storage_cache_js =
         static_js_manager->GetJsSnippet(
             StaticJavascriptManager::kLocalStorageCacheJs, options());
-    const char kWrapperFormat[] =
+    const char kInWrapperFormat[] =
         "<head>\n"
         "  <title>Local Storage Cache Test</title>\n"
         "%s"
@@ -134,11 +135,24 @@ class LocalStorageCacheTest : public ResourceManagerTestBase,
         "<body>\n"
         "%s"
         "</body>\n";
+    const GoogleString out_wrapper_format = StrCat(
+        "<head>\n"
+        "  <title>Local Storage Cache Test</title>\n"
+        "%s"
+        "</head>\n"
+        "<body>",
+        kNoScriptRedirectFormatter, "\n"
+        "%s"
+        "</body>\n");
+
+    GoogleString url = StrCat(
+        "http://test.com/", case_id, ".html?ModPagespeed=off");
 
     GoogleString html_in(StringPrintf(
-        kWrapperFormat, head_html_in.c_str(), body_html_in.c_str()));
+        kInWrapperFormat, head_html_in.c_str(), body_html_in.c_str()));
     GoogleString html_out(StringPrintf(
-        kWrapperFormat, head_html_out.c_str(), body_html_out.c_str()));
+        out_wrapper_format.c_str(), head_html_out.c_str(), url.c_str(),
+        url.c_str(), body_html_out.c_str()));
 
     // Set this for every test.
     rewrite_driver()->set_request_headers(&request_headers_);

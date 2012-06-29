@@ -64,7 +64,6 @@ class BlinkFlowCriticalLine {
   static const char kNumBlinkSharedFetchesStarted[];
   static const char kNumBlinkSharedFetchesCompleted[];
   static const char kNumComputeBlinkCriticalLineDataCalls[];
-  static const char kNoScriptRedirectFormatter[];
 
  private:
   BlinkFlowCriticalLine(const GoogleString& url,

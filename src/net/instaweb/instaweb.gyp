@@ -905,6 +905,7 @@
         'rewriter/single_rewrite_context.cc',
         'rewriter/strip_non_cacheable_filter.cc',
         'rewriter/strip_scripts_filter.cc',
+        'rewriter/support_noscript_filter.cc',
         'rewriter/url_input_resource.cc',
         'rewriter/url_left_trim_filter.cc',
         'rewriter/url_partnership.cc',

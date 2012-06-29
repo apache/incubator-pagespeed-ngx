@@ -54,8 +54,8 @@ struct ContentType {
     kScript,
     kImage,
     kStylesheet,
-    kOtherShardable,
-    kOtherNonShardable,
+    kOtherResource,
+    kHyperlink,
     kUndefined
   };
 
@@ -120,6 +120,22 @@ const ContentType* MimeTypeToContentType(const StringPiece& mime_type);
 bool ParseContentType(const StringPiece& content_type_str,
                       GoogleString* mime_type,
                       GoogleString* charset);
+
+// Determine the value of the category enum corresponding to the given string.
+// Case insensitive. Valid categories are:
+//   Script
+//   Image
+//   Stylesheet
+//   OtherResource
+//    - This is any other url that will be automatically loaded by the browser
+//      along with the main page.  For example, the 'manifest' attribute of the
+//      'html' element or the 'src' attribute of an 'iframe' element.
+//   Hyperlink
+//    - A link to another page or other resource that a browser wouldn't
+//      normally load in connection to this page. For example the 'href'
+//      attribute of an 'a' element.
+bool ParseCategory(const StringPiece& category_str,
+                   ContentType::Category* category);
 
 }  // namespace net_instaweb
 

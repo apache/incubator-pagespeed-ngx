@@ -92,7 +92,7 @@ bool GoogleUrl::Reset(const GoogleUrl& base, const char* str) {
 }
 
 GoogleUrl* GoogleUrl::CopyAndAddQueryParam(const StringPiece& name,
-                                          const StringPiece& value) {
+                                           const StringPiece& value) const {
   QueryParams query_params;
   query_params.Parse(Query());
   query_params.Add(name, value);

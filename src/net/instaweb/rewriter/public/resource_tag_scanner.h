@@ -53,25 +53,24 @@ namespace resource_tag_scanner {
 //     <tfoot background=...>
 //     <input type="image" src=...>
 //     <command icon=...>
-//   OtherNonShardable:
+//   Hyperlink:
 //     <a href=...>
 //     <area href=...>
 //     <form action=...>
-//     <frame src="">
-//     <iframe src="">
 //     <blockquote cite="">
 //     <q cite="">
 //     <ins cite="">
 //     <del cite="">
 //     <button formaction="">
-//     <embed src="">
-//       - Embeds can be flash, which can contain scripts.
-//   OtherShardable:
+//   OtherResource:
 //     <audio src="">
 //     <video src="">
 //     <source src="">
 //     <track src="">
 //     <html manifest=...>
+//     <embed src="">
+//     <frame src="">
+//     <iframe src="">
 //
 // Exceptions:
 //

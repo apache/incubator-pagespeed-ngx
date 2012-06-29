@@ -74,7 +74,7 @@ void FlushHtmlFilter::StartElementImpl(HtmlElement* element) {
       score_ += kFlushScriptScore;
       break;
     case ContentType::kImage:
-      score_ += kFlushScriptScore;
+      score_ += kFlushImageScore;
       break;
     default:
       break;

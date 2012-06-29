@@ -182,6 +182,10 @@ DEFINE_string(blocking_rewrite_key,
               "the client, if X-PSA-Blocking-Rewrite http request header's "
               "value is same as this flag's value.");
 
+DEFINE_bool(support_noscript_enabled, true,
+            "Support for clients with no script support, in filters that "
+            "insert new javascript.");
+
 namespace net_instaweb {
 
 namespace {
@@ -365,6 +369,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("passthrough_blink_for_last_invalid_response_code")) {
     options->set_passthrough_blink_for_last_invalid_response_code(
         FLAGS_passthrough_blink_for_last_invalid_response_code);
+  }
+  if (WasExplicitlySet("support_noscript_enabled")) {
+    options->set_support_noscript_enabled(FLAGS_support_noscript_enabled);
   }
 
   ret &= SetRewriters("rewriters", FLAGS_rewriters.c_str(),

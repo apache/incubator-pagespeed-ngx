@@ -153,6 +153,7 @@
         'rewriter/static_asserts_test.cc',
         'rewriter/strip_non_cacheable_filter_test.cc',
         'rewriter/strip_scripts_filter_test.cc',
+        'rewriter/support_noscript_filter_test.cc',
         'rewriter/url_left_trim_filter_test.cc',
         'rewriter/url_partnership_test.cc',
         'spriter/libpng_image_library_test.cc',

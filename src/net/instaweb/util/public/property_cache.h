@@ -78,7 +78,7 @@
 //    "prop/http://example.com/index.html@render_data".
 //
 // Within the values for
-//    "pcache/http://example.com/index.html@dom_metrics"
+//    "prop/http://example.com/index.html@dom_metrics"
 // we'll have a 2-element array of Property values for "num_divs" and
 // "num_a_tags".  We'll write to that cache entry; possibly every
 // time http://example.com/index.html is rewritten, so that we can track

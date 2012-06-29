@@ -36,10 +36,16 @@ namespace net_instaweb {
 
 const char JsDeferDisabledFilter::kSuffix[] =
       "\npagespeed.deferInit();\n"
-      "pagespeed.addOnload(window, function() {\n"
+      "var startDeferJs = function() {\n"
       "  pagespeed.deferJs.registerScriptTags();\n"
       "  pagespeed.deferJs.run();\n"
-      "});\n";
+      "}\n"
+      "if (window.addEventListener &&"
+      "    pagespeed.deferJs.isExperimentalMode()) {\n"
+      "  window.addEventListener('DOMContentLoaded', startDeferJs, false);\n"
+      "} else {\n"
+      "  pagespeed.addOnload(window, startDeferJs);\n"
+      "}\n";
 
 JsDeferDisabledFilter::JsDeferDisabledFilter(RewriteDriver* driver)
     : rewrite_driver_(driver),

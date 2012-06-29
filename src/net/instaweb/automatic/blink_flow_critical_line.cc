@@ -73,11 +73,6 @@ const char BlinkFlowCriticalLine::kNumBlinkSharedFetchesCompleted[] =
 const char BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls[] =
     "num_compute_blink_critical_line_data_calls";
 const char BlinkFlowCriticalLine::kAboveTheFold[] = "Above the fold";
-const char BlinkFlowCriticalLine::kNoScriptRedirectFormatter[] =
-    "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;url=%s\">"
-    "<style><!--table,div,span,font,p{display:none} --></style>"
-    "<div style=\"display:block\">Please click <a href=\"%s\">here</a> "
-    "if you are not redirected within a few seconds.</div></noscript>";
 
 namespace {
 
@@ -412,12 +407,12 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
   GoogleUrl* url_with_psa_off = google_url_.CopyAndAddQueryParam(
       RewriteQuery::kModPagespeed, "off");
   const int start_body_marker_length = strlen(BlinkUtil::kStartBodyMarker);
-  StringPiece url_str = url_with_psa_off->Spec();
+  GoogleString url_str(url_with_psa_off->Spec().data(),
+                       url_with_psa_off->Spec().size());
   critical_html_ = StrCat(
       critical_html.substr(0, start_body_pos),
       StringPrintf(
-          BlinkFlowCriticalLine::kNoScriptRedirectFormatter, url_str.data(),
-          url_str.data()),
+          kNoScriptRedirectFormatter, url_str.c_str(), url_str.c_str()),
       critical_html.substr(start_body_pos + start_body_marker_length,
                            end_body_pos -
                            (start_body_pos + start_body_marker_length)));

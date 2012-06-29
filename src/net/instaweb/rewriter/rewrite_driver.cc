@@ -95,6 +95,7 @@
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/strip_non_cacheable_filter.h"
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
+#include "net/instaweb/rewriter/public/support_noscript_filter.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -946,6 +947,10 @@ void RewriteDriver::AddPostRenderFilters() {
   // LazyLoadImagesFilter should be applied after DelayImagesFilter.
   if (rewrite_options->Enabled(RewriteOptions::kLazyloadImages)) {
     AddOwnedPostRenderFilter(new LazyloadImagesFilter(this));
+  }
+  if (rewrite_options->support_noscript_enabled() &&
+      rewrite_options->IsAnyFilterRequiringScriptExecutionEnabled()) {
+    AddOwnedPostRenderFilter(new SupportNoscriptFilter(this));
   }
 
   if (rewrite_options->Enabled(RewriteOptions::kStripNonCacheable)) {

@@ -11,11 +11,23 @@
          is on. -->
     <a href="http://src.example.com/newpage">link</a>
 
-    <!-- the FORM tag will be moved to dst iff ModPagespeedDomainRewriteHyperlinks
-         is on. -->
+    <!-- the FORM tag will be moved to dst iff
+         ModPagespeedDomainRewriteHyperlinks is on. -->
     <form action="http://src.example.com/newform">form</form>
 
     <!-- the IMG tag will be moved to dst regardless of the setting. -->
-    <img src="http://src.example.com/image.png"/>
+    <img src="http://src.example.com/image.png" alt="">
+
+    <!-- span.src will be moved to dst if there's a
+         ModPagespeedUrlValuedAttribute specifying so. -->
+    <span src=http://src.example.com/span >&nbsp;</span>
+
+    <!-- hr.imgsrc will be moved to dst if there's a
+         ModPagespeedUrlValuedAttribute specifying so. -->
+    <hr imgsrc=http://src.example.com/hr-image>
+
+    <!-- hr.src will not be moved to dst because there's never a
+         ModPagespeedUrlValuedAttribute specifying so. -->
+    <hr src=http://src.example.com/hr-image>
   </body>
 </html>

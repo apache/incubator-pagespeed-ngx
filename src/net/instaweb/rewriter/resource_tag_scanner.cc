@@ -45,12 +45,15 @@ HtmlElement::Attribute* ScanElement(
   HtmlName::Keyword keyword = element->keyword();
   HtmlElement::Attribute* attr = NULL;
   *category = ContentType::kUndefined;
+  if (element->attribute_size() == 0) {
+    return NULL;  // No attributes.
+  }
   switch (keyword) {
     case HtmlName::kLink: {
       // See http://www.whatwg.org/specs/web-apps/current-work/multipage/
       // links.html#linkTypes
       attr = element->FindAttribute(HtmlName::kHref);
-      *category = ContentType::kOtherNonShardable;
+      *category = ContentType::kHyperlink;
       HtmlElement::Attribute* rel_attr = element->FindAttribute(HtmlName::kRel);
       if (rel_attr != NULL) {
         if (StringCaseEqual(rel_attr->DecodedValueOrNull(),
@@ -92,8 +95,6 @@ HtmlElement::Attribute* ScanElement(
                           kAttrValImage)) {
         attr = element->FindAttribute(HtmlName::kSrc);
         *category = ContentType::kImage;
-      } else {
-        *category = ContentType::kOtherNonShardable;
       }
       break;
     case HtmlName::kCommand:
@@ -103,42 +104,61 @@ HtmlElement::Attribute* ScanElement(
     case HtmlName::kA:
     case HtmlName::kArea:
       attr = element->FindAttribute(HtmlName::kHref);
-      *category = ContentType::kOtherNonShardable;
+      *category = ContentType::kHyperlink;
       break;
     case HtmlName::kForm:
       attr = element->FindAttribute(HtmlName::kAction);
-      *category = ContentType::kOtherNonShardable;
+      *category = ContentType::kHyperlink;
       break;
     case HtmlName::kAudio:
     case HtmlName::kVideo:
     case HtmlName::kSource:
     case HtmlName::kTrack:
-      attr = element->FindAttribute(HtmlName::kSrc);
-      *category = ContentType::kOtherShardable;
-      break;
-    case HtmlName::kHtml:
-      attr = element->FindAttribute(HtmlName::kManifest);
-      *category = ContentType::kOtherShardable;
-      break;
     case HtmlName::kEmbed:
     case HtmlName::kFrame:
     case HtmlName::kIframe:
       attr = element->FindAttribute(HtmlName::kSrc);
-      *category = ContentType::kOtherNonShardable;
+      *category = ContentType::kOtherResource;
+      break;
+    case HtmlName::kHtml:
+      attr = element->FindAttribute(HtmlName::kManifest);
+      *category = ContentType::kOtherResource;
       break;
     case HtmlName::kBlockquote:
     case HtmlName::kQ:
     case HtmlName::kIns:
     case HtmlName::kDel:
       attr = element->FindAttribute(HtmlName::kCite);
-      *category = ContentType::kOtherNonShardable;
+      *category = ContentType::kHyperlink;
       break;
     case HtmlName::kButton:
       attr = element->FindAttribute(HtmlName::kFormaction);
-      *category = ContentType::kOtherNonShardable;
+      *category = ContentType::kHyperlink;
       break;
     default:
       break;
+  }
+  if (*category == ContentType::kUndefined && driver != NULL) {
+    // Find matching elements.
+    for (int i = 0, n = driver->options()->num_url_valued_attributes();
+         i < n; ++i) {
+      StringPiece element_i;
+      StringPiece attribute_i;
+      ContentType::Category category_i;
+      driver->options()->UrlValuedAttribute(
+          i, &element_i, &attribute_i, &category_i);
+      if (StringCaseEqual(element->name_str(), element_i)) {
+        // Find matching attributes.
+        for (int j = 0, k = element->attribute_size(); j < k; ++j) {
+          HtmlElement::Attribute* attribute_j = &element->attribute(j);
+          if (StringCaseEqual(attribute_j->name_str(), attribute_i) &&
+              !attribute_j->decoding_error()) {
+            *category = category_i;
+            return attribute_j;
+          }
+        }
+      }
+    }
   }
   if (attr == NULL || attr->decoding_error() ||
       *category == ContentType::kUndefined) {

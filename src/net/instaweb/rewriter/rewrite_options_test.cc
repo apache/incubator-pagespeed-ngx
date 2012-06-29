@@ -624,7 +624,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(81, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(82, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));
@@ -787,6 +787,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("ServeStaleIfFetchError"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kServeStaleIfFetchError));
+  EXPECT_EQ(StringPiece("SupportNoScriptEnabled"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kSupportNoScriptEnabled));
   EXPECT_EQ(StringPiece("UseFixedUserAgentForBlinkCacheMisses"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses));
@@ -935,7 +938,7 @@ TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies2) {
 }
 
 TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {
-  EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/one.html"));
+  EXPECT_FALSE(options_.IsInBlinkCacheableFamily("/one.html"));
   EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
             options_.GetBlinkCacheTimeFor("/one.html"));
   EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,

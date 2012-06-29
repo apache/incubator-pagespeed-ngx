@@ -88,9 +88,12 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
   if (href != NULL) {
     StringPiece val(href->DecodedValueOrNull());
     GoogleString rewritten_val;
-    bool apply_sharding = category != ContentType::kOtherNonShardable;
-    if (!val.empty() &&
-        BaseUrlIsValid() &&
+    // Don't shard hyperlinks, embeds, frames, or iframes.
+    bool apply_sharding = (category != ContentType::kHyperlink &&
+                           element->keyword() != HtmlName::kEmbed &&
+                           element->keyword() != HtmlName::kFrame &&
+                           element->keyword() != HtmlName::kIframe);
+    if (!val.empty() && BaseUrlIsValid() &&
         (Rewrite(val, driver_->base_url(), apply_sharding, &rewritten_val) ==
          kRewroteDomain)) {
       href->SetValue(rewritten_val);

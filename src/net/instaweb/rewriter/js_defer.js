@@ -580,6 +580,7 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
   // Execute window.onload
   if (window.onload) {
     psaAddEventListener(window, 'onload', window.onload);
+    window.onload = null;
   }
   this.restoreAddEventListeners();
   this.fireEvent(deferJsNs.DeferJs.EVENT.LOAD);
@@ -1191,6 +1192,15 @@ deferJsNs.DeferJs.prototype.getIEVersion = function() {
          (document.documentMode || parseFloat(version[1])) :
          NaN;
 };
+
+/**
+ * @return {boolean} true if deferJs is running with experimental flag.
+ */
+deferJsNs.DeferJs.prototype.isExperimentalMode = function() {
+  return deferJsNs.DeferJs.isExperimentalMode;
+};
+deferJsNs.DeferJs.prototype['isExperimentalMode'] =
+    deferJsNs.DeferJs.prototype.isExperimentalMode;
 
 /**
  * Initialize defer javascript.

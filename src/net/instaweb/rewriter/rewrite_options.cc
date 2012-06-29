@@ -245,6 +245,16 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kStripScripts,
 };
 
+// List of filters whose correct behaviour requires script execuction.
+const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
+  RewriteOptions::kDeferIframe,
+  RewriteOptions::kDeferJavascript,
+  RewriteOptions::kDelayImages,
+  RewriteOptions::kDetectReflowWithDeferJavascript,
+  RewriteOptions::kLazyloadImages,
+  RewriteOptions::kLocalStorageCache,
+};
+
 #ifndef NDEBUG
 void CheckFilterSetOrdering(const RewriteOptions::Filter* filters, int num) {
   for (int i = 1; i < num; ++i) {
@@ -464,7 +474,8 @@ RewriteOptions::RewriteOptions()
       frozen_(false),
       options_uniqueness_checked_(false),
       furious_id_(furious::kFuriousNotSet),
-      furious_percent_(0) {
+      furious_percent_(0),
+      url_valued_attributes_(NULL) {
   // Sanity-checks -- will be active only when compiled for debug.
 #ifndef NDEBUG
   CheckFilterSetOrdering(kCoreFilterSet, arraysize(kCoreFilterSet));
@@ -608,6 +619,8 @@ RewriteOptions::RewriteOptions()
              "rbls", kRejectBlacklistedStatusCode);
   add_option(kDefaultBlockingRewriteKey, &blocking_rewrite_key_, "blrw",
              kXPsaBlockingRewrite);
+  add_option(true, &support_noscript_enabled_, "snse",
+             kSupportNoScriptEnabled);
   // Sort all_options_ on enum.
   SortOptions();
   // Do not call add_option with OptionEnum fourth argument after this.
@@ -1056,11 +1069,7 @@ void RewriteOptions::AddToPrioritizeVisibleContentCacheableFamilies(
 }
 
 bool RewriteOptions::IsInBlinkCacheableFamily(const StringPiece url) const {
-  // If there are no families added then the default behaviour is to allow all
-  // urls.
-  return (prioritize_visible_content_families_.empty() &&
-          prioritize_visible_content_cacheable_families_.Signature().empty()) ||
-      (FindPrioritizeVisibleContentFamily(url) != NULL) ||
+  return (FindPrioritizeVisibleContentFamily(url) != NULL) ||
       MatchesPrioritizeVisibleContentCacheableFamilies(url);
 }
 
@@ -1105,6 +1114,16 @@ void RewriteOptions::AddBlinkCacheableFamily(
           url_pattern, cache_time_ms, non_cacheable_elements));
 }
 
+bool RewriteOptions::IsAnyFilterRequiringScriptExecutionEnabled() const {
+  for (int i = 0, n = arraysize(kRequiresScriptExecutionFilterSet); i < n;
+       ++i) {
+    if (Enabled(kRequiresScriptExecutionFilterSet[i])) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void RewriteOptions::Merge(const RewriteOptions& src) {
   DCHECK(!frozen_);
   modified_ |= src.modified_;
@@ -1127,6 +1146,14 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   for (int i = 0, n = src.furious_specs_.size(); i < n; ++i) {
     FuriousSpec* spec = src.furious_specs_[i]->Clone();
     AddFuriousSpec(spec);
+  }
+
+  for (int i = 0, n = src.num_url_valued_attributes(); i < n; ++i) {
+    StringPiece element;
+    StringPiece attribute;
+    ContentType::Category category;
+    src.UrlValuedAttribute(i, &element, &attribute, &category);
+    AddUrlValuedAttribute(element, attribute, category);
   }
 
   // Note that from the perspective of this class, we can be merging
@@ -1595,6 +1622,28 @@ void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
       }
     }
   }
+}
+
+void RewriteOptions::AddUrlValuedAttribute(
+    const StringPiece& element, const StringPiece& attribute,
+    ContentType::Category category) {
+  if (url_valued_attributes_ == NULL) {
+    url_valued_attributes_.reset(new std::vector<ElementAttributeCategory>());
+  }
+  ElementAttributeCategory eac;
+  element.CopyToString(&eac.element);
+  attribute.CopyToString(&eac.attribute);
+  eac.category = category;
+  url_valued_attributes_->push_back(eac);
+}
+
+void RewriteOptions::UrlValuedAttribute(
+    int index, StringPiece* element, StringPiece* attribute,
+    ContentType::Category* category) const {
+  const ElementAttributeCategory& eac = (*url_valued_attributes_)[index];
+  *element = StringPiece(eac.element);
+  *attribute = StringPiece(eac.attribute);
+  *category = eac.category;
 }
 
 void RewriteOptions::CheckFiltersAgainst(

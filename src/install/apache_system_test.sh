@@ -51,7 +51,7 @@ if fgrep -q "# ModPagespeedStatistics off" $APACHE_DEBUG_PAGESPEED_CONF; then
   $WGET -O /dev/null $BAD_RESOURCE_URL 2>&1 \
     | check fgrep -q "404 Not Found"
   $WGET_DUMP $STATISTICS_URL > $FETCHED
-  check fgrep -q "resource_404_count: $NUM_404" $FETCHED
+  check egrep -q "^resource_404_count: *$NUM_404$" $FETCHED
 else
   echo TEST: 404s are served.  Statistics are disabled so not checking them.
   $WGET -O /dev/null $BAD_RESOURCE_URL 2>&1 \

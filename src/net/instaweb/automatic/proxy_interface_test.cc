@@ -3010,6 +3010,46 @@ TEST_F(ProxyInterfaceTest, FuriousTest) {
   EXPECT_FALSE(headers.Has(HttpAttributes::kSetCookie));
 }
 
+TEST_F(ProxyInterfaceTest, UrlAttributeTest) {
+  RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
+  options->EnableFilter(RewriteOptions::kRewriteDomains);
+  options->set_domain_rewrite_hyperlinks(true);
+  NullMessageHandler handler;
+  options->domain_lawyer()->AddRewriteDomainMapping(
+      "http://dst.example.com", "http://src.example.com", &handler);
+  options->AddUrlValuedAttribute(
+      "span", "src", ContentType::kHyperlink);
+  options->AddUrlValuedAttribute("hr", "imgsrc", ContentType::kImage);
+  resource_manager()->ComputeSignature(options);
+
+  SetResponseWithDefaultHeaders(
+      "http://src.example.com/null", kContentTypeHtml, "", 0);
+  ResponseHeaders headers;
+  const char kContent[] = "<html><head></head><body>"
+      "<img src=\"http://src.example.com/null\">"
+      "<hr imgsrc=\"http://src.example.com/null\">"
+      "<span src=\"http://src.example.com/null\"></span>"
+      "<other src=\"http://src.example.com/null\"></other></body></html>";
+  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  SetFetchResponse(AbsolutifyUrl("text.html"), headers, kContent);
+  headers.Clear();
+  GoogleString text;
+  FetchFromProxy("text.html", true, &text, &headers);
+
+  // img.src, hr.imgsrc, and span.src are all rewritten
+  EXPECT_TRUE(text.find("<img src=\"http://dst.example.com/null\"") !=
+              GoogleString::npos);
+  EXPECT_TRUE(text.find("<hr imgsrc=\"http://dst.example.com/null\"") !=
+              GoogleString::npos);
+  EXPECT_TRUE(text.find("<span src=\"http://dst.example.com/null\"") !=
+              GoogleString::npos);
+  // other.src not rewritten
+  EXPECT_TRUE(text.find("<other src=\"http://src.example.com/null\"") !=
+              GoogleString::npos);
+}
+
 // Test that ClientState is properly read from the client property cache.
 TEST_F(ProxyInterfaceTest, ClientStateTest) {
   CreateFilterCallback create_filter_callback;

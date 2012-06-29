@@ -38,7 +38,13 @@ const char kPsaRewriterHeader[] = "X-PSA-Rewriter";
 // cacheable content on the page was last modified.  This is used by
 // prioritize_visible_content filter to invalidate its cache.
 const char kPsaLastModified[] = "X-PSA-Last-Modified";
-
+// Noscript element that redirects to ModPagespeed=off.  This is applied when
+// a filter that inserts custom javascript is enabled.
+const char kNoScriptRedirectFormatter[] =
+    "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;url=%s\">"
+    "<style><!--table,div,span,font,p{display:none} --></style>"
+    "<div style=\"display:block\">Please click <a href=\"%s\">here</a> "
+    "if you are not redirected within a few seconds.</div></noscript>";
 }  // namespace
 
 #endif  // NET_INSTAWEB_PUBLIC_GLOBAL_CONSTANTS_H_

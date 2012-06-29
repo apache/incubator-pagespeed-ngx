@@ -10,8 +10,8 @@
 #                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_HTTPS_TEST,
 #                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST,
 #                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST,
-#                       OPT_FURIOUS_TEST, OPT_XHEADER_TEST,
-#                       OPT_DOMAIN_HYPERLINKS_TEST,
+#                       OPT_FURIOUS_TEST, OPT_URL_ATTRIBUTES_TEST,
+#                       OPT_XHEADER_TEST, OPT_DOMAIN_HYPERLINKS_TEST,
 #                       OPT_DOMAIN_RESOURCE_TAGS_TEST, OPT_ALL_DIRECTIVES_TEST)
 #  apache_debug_restart
 #  apache_debug_stop
@@ -43,6 +43,7 @@ apache_vm_system_tests :
 	$(MAKE) apache_debug_speling_test
 	$(MAKE) apache_debug_gzip_test
 	$(MAKE) apache_debug_furious_test
+	$(MAKE) apache_debug_url_attribute_test
 	$(MAKE) apache_debug_xheader_test
 	$(MAKE) apache_debug_rewrite_hyperlinks_test
 	$(MAKE) apache_debug_rewrite_resource_tags_test
@@ -165,7 +166,7 @@ apache_debug_gzip_test : gzip_test_prepare apache_install_conf \
 	$(WGET_NO_PROXY) -O /dev/null --save-headers $(EXAMPLE_BIG_CSS) 2>&1 \
 	  | head | grep "HTTP request sent, awaiting response... 200 OK"
 	bytes=`$(WGET_NO_PROXY) -q -O - $(APACHE_SERVER)/mod_pagespeed_statistics \
-	  | grep 'serf_fetch_bytes_count: ' | cut -d\  -f2`; \
+	  | sed -n 's/serf_fetch_bytes_count: *//p'`; \
 	  echo Compressed big.css took $$bytes bytes; \
 	  test $$bytes -gt 200 -a $$bytes -lt 500
 
@@ -235,8 +236,30 @@ apache_debug_rewrite_hyperlinks_test : rewrite_hyperlinks_test_prepare \
     apache_install_conf apache_debug_restart
 	@echo Testing ModPagespeedRewriteHyperlinks on directive:
 	matches=`$(WGET_NO_PROXY) -q -O - $(TEST_ROOT)/rewrite_domains.html \
-	  | grep -c http://dst.example.com`; \
+	  | grep -c http://dst\.example\.com`; \
 	test $$matches -eq 3
+
+# Test to make sure dynamically defined url-valued attributes are rewritten by
+# rewrite_domains.  See mod_pagespeed_test/rewrite_domains.html: in addition to
+# having one <img> URL, one <form> URL, and one <a> url it also has one <span
+# src=...> URL, one <hr imgsrc=...> URL, and one <hr src=...> URL, all
+# referencing src.example.com.  The first three should be rewritten because of
+# hardcoded rules, the span.src and hr.imgsrc should be rewritten because of
+# ModPagespeedUrlValuedAttribute directives, and the hr.src should be left
+# unmodified.  The rewritten ones should all be rewritten to dst.example.com.
+apache_debug_url_attribute_test : url_attribute_test_prepare \
+    apache_install_conf apache_debug_restart
+	@echo Testing rewriting dynamically defined url-valued attributes
+	matches=`$(WGET_NO_PROXY) -q -O - $(TEST_ROOT)/rewrite_domains.html \
+	  | grep -c http://dst\.example\.com`; \
+	test $$matches -eq 5
+	matches=`$(WGET_NO_PROXY) -q -O - $(TEST_ROOT)/rewrite_domains.html \
+	  | grep -c '<hr src=http://src\.example\.com/hr-image>'`; \
+	test $$matches -eq 1
+
+url_attribute_test_prepare:
+	$(eval OPT_URL_ATTRIBUTE_TEST="URL_ATTRIBUTE_TEST=1")
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 rewrite_resource_tags_test_prepare:
 	$(eval OPT_DOMAIN_RESOURCE_TAGS_TEST="DOMAIN_RESOURCE_TAGS_TEST=1")
@@ -250,7 +273,7 @@ apache_debug_rewrite_resource_tags_test : rewrite_resource_tags_test_prepare \
     apache_install_conf apache_debug_restart
 	@echo Testing ModPagespeedRewriteHyperlinks off directive:
 	matches=`$(WGET_NO_PROXY) -q -O - $(TEST_ROOT)/rewrite_domains.html \
-	  | grep -c http://dst.example.com`; \
+	  | grep -c http://dst\.example\.com`; \
 	test $$matches -eq 1
 
 # Test to make sure we don't crash if we're off for global but on for vhosts.
