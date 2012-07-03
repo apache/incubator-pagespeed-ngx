@@ -64,7 +64,7 @@ bool InlineRewriteContext::Partition(OutputPartitions* partitions,
                                      OutputResourceVector* outputs) {
   CHECK(num_slots() == 1) << "InlineRewriteContext only handles one slot";
   ResourcePtr resource(slot(0)->resource());
-  if (resource->IsValidAndCacheable() && ShouldInline(resource->contents())) {
+  if (resource->IsValidAndCacheable() && ShouldInline(resource)) {
     CachedResult* partition = partitions->add_partition();
     resource->AddInputInfoToPartition(Resource::kOmitInputHash, 0, partition);
     partition->set_inlined_data(resource->contents().as_string());

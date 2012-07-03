@@ -44,8 +44,8 @@ class CssInlineFilter::Context : public InlineRewriteContext {
     base_url_.Reset(base_url);
   }
 
-  virtual bool ShouldInline(const StringPiece& input) const {
-    return filter_->ShouldInline(input);
+  virtual bool ShouldInline(const ResourcePtr& resource) const {
+    return filter_->ShouldInline(resource);
   }
 
   virtual void Render() {
@@ -128,8 +128,8 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
   }
 }
 
-bool CssInlineFilter::ShouldInline(const StringPiece& contents) const {
-  if (contents.size() > size_threshold_bytes_) {
+bool CssInlineFilter::ShouldInline(const ResourcePtr& resource) const {
+  if (resource->contents().size() > size_threshold_bytes_) {
     return false;
   }
 

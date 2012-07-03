@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -37,8 +38,8 @@ class JsInlineFilter::Context : public InlineRewriteContext {
           HtmlElement::Attribute* src)
       : InlineRewriteContext(filter, element, src), filter_(filter) {}
 
-  virtual bool ShouldInline(const StringPiece& input) const {
-    return filter_->ShouldInline(input);
+  virtual bool ShouldInline(const ResourcePtr& resource) const {
+    return filter_->ShouldInline(resource);
   }
 
   virtual void RenderInline(
@@ -97,7 +98,9 @@ void JsInlineFilter::EndElementImpl(HtmlElement* element) {
   should_inline_ = false;
 }
 
-bool JsInlineFilter::ShouldInline(const StringPiece& contents) const {
+bool JsInlineFilter::ShouldInline(const ResourcePtr& resource) const {
+  StringPiece contents(resource->contents());
+
   // Only inline if it's small enough, and if it doesn't contain
   // "</script" anywhere.  If we inline an external script containing
   // "</script>" and a few variations like </script    > or even

@@ -51,7 +51,7 @@ class InlineRewriteContext : public RewriteContext {
 
  protected:
   // Subclasses of InlineRewriteContext must override these:
-  virtual bool ShouldInline(const StringPiece& input) const = 0;
+  virtual bool ShouldInline(const ResourcePtr& resource) const = 0;
   virtual void RenderInline(const ResourcePtr& resource,
                             const StringPiece& text,
                             HtmlElement* element) = 0;
@@ -66,7 +66,7 @@ class InlineRewriteContext : public RewriteContext {
   virtual void Render();
   virtual OutputResourceKind kind() const;
 
-  HtmlElement* get_element() { return element_; }
+  HtmlElement* get_element() const { return element_; }
 
  private:
   CommonFilter* filter_;

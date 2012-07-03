@@ -48,7 +48,7 @@ class CssInlineFilter : public CommonFilter {
   class Context;
   friend class Context;
 
-  bool ShouldInline(const StringPiece& input) const;
+  bool ShouldInline(const ResourcePtr& resource) const;
   void RenderInline(const ResourcePtr& resource, const CachedResult& cached,
                     const GoogleUrl& base_url, const StringPiece& text,
                     HtmlElement* element);
