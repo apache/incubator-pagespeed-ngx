@@ -140,6 +140,12 @@ class Parser {
   // mod_pagespeed's conversion to a link of this inside a style element.
   Import* ParseAsSingleImport();
 
+  // Extract the leading @charset from the document. The return value is
+  // valid iff it is not empty -and- errors_seen_mask() is zero. Added so
+  // that mod_pagespeed can determine the charset of a CSS file without
+  // duplicating a ton of our code.
+  UnicodeText ExtractCharset();
+
   // current position in the parse.
   const char* getpos() const { return in_; }
 
@@ -513,6 +519,9 @@ class Parser {
   // Consumes the @-rule, including the closing ';' or '}'.  Does not
   // consume trailing whitespace.
   void ParseAtRule(Stylesheet* stylesheet);  // parse @ rules.
+
+  // Parse the charset after an @charset rule.
+  UnicodeText ParseCharset();
 
   // Skip until the end of the at-rule. Used for at-rules that we do not
   // recognize.

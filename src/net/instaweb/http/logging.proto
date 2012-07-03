@@ -1,4 +1,4 @@
-// Copyright 2011 Google Inc.
+// Copyright 2012 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Author: mmohabey@google.com (Megha Mohabey)
-// Protobufs to store timing and latency.
-
+// Author: snagori@google.com (Shrikant Nagori)
+// Protobufs to store all information related to logging.
 syntax = "proto2";
 
 option optimize_for = LITE_RUNTIME;
 
 package net_instaweb;
 
-message TimingInfo {
+
+// This proto stores all information related to latency.
+message TimingInfo  {
   // Local cache lookup time in ms.
   optional int64 cache1_ms = 1;
   // Remote cache lookup time in ms.
@@ -32,4 +33,10 @@ message TimingInfo {
   optional int64 fetch_ms = 4;
   // Time taken to send the first byte back to the client.
   optional int64 time_to_first_byte_ms = 5;
+}
+
+// This proto stores all information which we would like to log.
+// Next id for LoggingInfo: 2
+message LoggingInfo {
+  optional TimingInfo timing_info = 1;
 }

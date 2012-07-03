@@ -105,6 +105,9 @@ void ProxyFetchFactory::StartNewProxyFetch(
         async_fetch->response_headers()->SetStatusAndReason(
             HttpStatus::kForbidden);
         async_fetch->Done(false);
+        if (original_content_fetch != NULL) {
+          original_content_fetch->Done(false);
+        }
         driver->Cleanup();
         if (property_callback != NULL) {
           property_callback->Detach();

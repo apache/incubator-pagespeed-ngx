@@ -67,6 +67,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_lazyload_images_opt_data2c.a \
   net/instaweb/libinstaweb_local_storage_cache_data2c.a \
   net/instaweb/libinstaweb_local_storage_cache_opt_data2c.a \
+  net/instaweb/libinstaweb_logging_pb.a \
   net/instaweb/libinstaweb_panel_config_pb.a \
   net/instaweb/libinstaweb_propcache_pb.a \
   net/instaweb/libinstaweb_rewriter.a \
@@ -80,7 +81,6 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_rewriter_pb.a \
   net/instaweb/libinstaweb_spriter.a \
   net/instaweb/libinstaweb_spriter_pb.a \
-  net/instaweb/libinstaweb_timing_pb.a \
   net/instaweb/libinstaweb_util.a \
   net/instaweb/libinstaweb_util_core.a \
   net/instaweb/libinstaweb_util_pthread.a \

@@ -35,7 +35,7 @@
 
 namespace net_instaweb {
 
-class TimingInfo;
+class LoggingInfo;
 
 namespace {
 
@@ -164,8 +164,8 @@ class CacheFindCallback : public HTTPCache::Callback {
   }
   virtual ~CacheFindCallback() {}
 
-  virtual TimingInfo* timing_info() {
-    return base_fetch_->timing_info();
+  virtual LoggingInfo* logging_info() {
+    return base_fetch_->logging_info();
   }
 
   virtual void Done(HTTPCache::FindResult find_result) {

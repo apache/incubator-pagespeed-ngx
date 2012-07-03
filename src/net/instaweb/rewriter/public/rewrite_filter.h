@@ -23,6 +23,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -86,6 +87,23 @@ class RewriteFilter : public CommonFilter {
   static StringPiece GetCharsetForScript(const Resource* script,
                                          const StringPiece attribute_charset,
                                          const StringPiece enclosing_charset);
+
+  // Determine the charset of a stylesheet. Logic taken from:
+  //   http://www.opentag.com/xfaq_enc.htm#enc_howspecifyforcss
+  // with the BOM rule below added somewhat arbitrarily. In essence, we take
+  // the -last- charset we see, if you pretend that headers come last.
+  // 1. If the stylesheet has a Content-Type with a charset, use that, else
+  // 2. If the stylesheet has an initial @charset, use that, else
+  // 3. If the stylesheet has a BOM, use that, else
+  // 4. If the style element has a charset attribute, use that, else
+  // 5. Use the charset of the enclosing page.
+  // If none of these are specified we return StringPiece(NULL).
+  // Note that I do not know which browsers implement this, but I know they
+  // aren't consistent, so some definitely don't.
+  static GoogleString GetCharsetForStylesheet(
+      const Resource* stylesheet,
+      const StringPiece attribute_charset,
+      const StringPiece enclosing_charset);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RewriteFilter);

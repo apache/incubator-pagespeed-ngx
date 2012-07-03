@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -125,6 +126,7 @@ class RewriteOptions {
     kAvoidRenamingIntrospectiveJavascript,
     kBeaconUrl,
     kBlinkDesktopUserAgent,
+    kBlinkMaxHtmlSizeRewritable,
     kCacheInvalidationTimestamp,
     kCombineAcrossPaths,
     kCriticalImagesCacheExpirationTimeMs,
@@ -184,6 +186,7 @@ class RewriteOptions {
     kServeStaleIfFetchError,
     kSupportNoScriptEnabled,
     kUseFixedUserAgentForBlinkCacheMisses,
+    kUseFullUrlInBlinkFamilies,
     kXPsaBlockingRewrite,
     kXModPagespeedHeaderValue,
 
@@ -275,6 +278,7 @@ class RewriteOptions {
     kOptionValueInvalid
   };
 
+  static const int64 kDefaultBlinkMaxHtmlSizeRewritable;
   static const int64 kDefaultCssFlattenMaxBytes;
   static const int64 kDefaultCssImageInlineMaxBytes;
   static const int64 kDefaultCssInlineMaxBytes;
@@ -581,7 +585,6 @@ class RewriteOptions {
 
   // TODO(jmarantz): consider setting flags in the set_ methods so that
   // first's explicit settings can override default values from second.
-
   int64 css_outline_min_bytes() const { return css_outline_min_bytes_.value(); }
   void set_css_outline_min_bytes(int64 x) {
     set_option(x, &css_outline_min_bytes_);
@@ -958,19 +961,19 @@ class RewriteOptions {
   // Does url match a cacheable family pattern?  Returns true if url matches a
   // url_pattern in prioritize_visible_content_families_ OR it matches
   // prioritize_visible_content_cacheable_families_.
-  bool IsInBlinkCacheableFamily(const StringPiece url) const;
+  bool IsInBlinkCacheableFamily(const GoogleUrl& gurl) const;
 
-  // Get the cache time for url for prioritize_visible_content filter.  In case
-  // url matches a url_pattern in prioritize_visible_content_families_ we return
-  // the corresponding cache_time_ms field, else we return
+  // Get the cache time for gurl for prioritize_visible_content filter.  In case
+  // gurl matches a url_pattern in prioritize_visible_content_families_ we
+  // return the corresponding cache_time_ms field, else we return
   // prioritize_visible_content_cache_time_ms_.
-  int64 GetBlinkCacheTimeFor(const StringPiece url) const;
+  int64 GetBlinkCacheTimeFor(const GoogleUrl& gurl) const;
 
-  // Get elements to be treated as non-cacheable for url.  In case
-  // url matches a url_pattern in prioritize_visible_content_families_ we return
-  // the corresponding non_cacheable_elements field, else we return empty
+  // Get elements to be treated as non-cacheable for gurl.  In case
+  // gurl matches a url_pattern in prioritize_visible_content_families_ we
+  // return the corresponding non_cacheable_elements field, else we return empty
   // string.
-  GoogleString GetBlinkNonCacheableElementsFor(const StringPiece url) const;
+  GoogleString GetBlinkNonCacheableElementsFor(const GoogleUrl& gurl) const;
 
   // Create and add a PrioritizeVisibleContentFamily object the given fields.
   void AddBlinkCacheableFamily(const StringPiece url_pattern,
@@ -1049,6 +1052,27 @@ class RewriteOptions {
   }
   bool passthrough_blink_for_last_invalid_response_code() const {
     return passthrough_blink_for_last_invalid_response_code_.value();
+  }
+
+  int64 blink_max_html_size_rewritable() const {
+    return blink_max_html_size_rewritable_.value();
+  }
+  void set_blink_max_html_size_rewritable(int64 x) {
+    set_option(x, &blink_max_html_size_rewritable_);
+  }
+
+  void set_apply_blink_if_no_families(bool x) {
+    set_option(x, &apply_blink_if_no_families_);
+  }
+  bool apply_blink_if_no_families() const {
+    return apply_blink_if_no_families_.value();
+  }
+
+  void set_use_full_url_in_blink_families(bool x) {
+    set_option(x, &use_full_url_in_blink_families_);
+  }
+  bool use_full_url_in_blink_families() const {
+    return use_full_url_in_blink_families_.value();
   }
 
   bool reject_blacklisted() const { return reject_blacklisted_.value(); }
@@ -1585,7 +1609,6 @@ class RewriteOptions {
   Option<RewriteLevel> level_;
 
   MutexedOptionInt64MergeWithMax cache_invalidation_timestamp_;
-
   Option<int64> css_flatten_max_bytes_;
   // Sets limit for image optimization
   Option<int64> image_resolution_limit_bytes_;
@@ -1753,6 +1776,15 @@ class RewriteOptions {
   // Pass-through request in prioritize_visible_content filter, if we got a
   // non-200 response from origin on the last fetch.
   Option<bool> passthrough_blink_for_last_invalid_response_code_;
+  // Sets limit for max html size that is rewritten in Blink.
+  Option<int64> blink_max_html_size_rewritable_;
+  // If prioritize_visible_content_families_ is empty and the following is true,
+  // then prioritize_visible_content applies on all URLs (with default cache
+  // time and no non-cacheables).
+  Option<bool> apply_blink_if_no_families_;
+  // Consider the prioritize_visible_content_families_ url_patterns to be on
+  // full URL and not URL path.
+  Option<bool> use_full_url_in_blink_families_;
 
   // If this is true (it defaults to false) ProxyInterface frontend will
   // reject requests where PSA is not enabled or URL is blacklisted with

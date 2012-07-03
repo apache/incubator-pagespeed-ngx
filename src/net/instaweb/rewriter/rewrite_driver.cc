@@ -150,7 +150,7 @@ class RemoveCommentsFilterOptions
 }  // namespace
 
 class FileSystem;
-class TimingInfo;
+class LoggingInfo;
 
 RewriteDriver::RewriteDriver(MessageHandler* message_handler,
                              FileSystem* file_system,
@@ -1325,8 +1325,8 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
     }
   }
 
-  virtual TimingInfo* timing_info() {
-    return async_fetch_->timing_info();
+  virtual LoggingInfo* logging_info() {
+    return async_fetch_->logging_info();
   }
 
  private:

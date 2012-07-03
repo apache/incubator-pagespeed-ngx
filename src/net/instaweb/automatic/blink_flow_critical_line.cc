@@ -120,7 +120,8 @@ class CriticalLineFetch : public AsyncFetch {
         options_(options),
         rewrite_driver_(rewrite_driver),
         claims_html_(false),
-        probable_html_(false) {
+        probable_html_(false),
+        content_length_over_threshold_(false) {
     // Makes rewrite_driver live longer as ProxyFetch may called Cleanup()
     // on the rewrite_driver even if ComputeBlinkCriticalLineData() has not yet
     // been triggered.
@@ -143,6 +144,13 @@ class CriticalLineFetch : public AsyncFetch {
   virtual void HandleHeadersComplete() {
     if (response_headers()->status_code() == HttpStatus::kOK) {
       claims_html_ = response_headers()->IsHtmlLike();
+      int64 content_length;
+      bool content_length_found = response_headers()->FindContentLength(
+          &content_length);
+      if (content_length_found && content_length >
+          options_->blink_max_html_size_rewritable()) {
+        content_length_over_threshold_ = true;
+      }
     } else {
       VLOG(1) << "Non 200 response code for: " << url_;
     }
@@ -150,7 +158,7 @@ class CriticalLineFetch : public AsyncFetch {
 
   virtual bool HandleWrite(const StringPiece& content,
                            MessageHandler* handler) {
-    if (!claims_html_) {
+    if (!claims_html_ || content_length_over_threshold_) {
       return true;
     }
     if (!html_detector_.already_decided() &&
@@ -160,8 +168,16 @@ class CriticalLineFetch : public AsyncFetch {
         html_detector_.ReleaseBuffered(&buffer_);
       }
     }
+    // TODO(poojatandon): share this logic of finding the length and setting a
+    // limit with http_cache code.
     if (probable_html_) {
-      content.AppendToString(&buffer_);
+      if (unsigned(buffer_.size() + content.size()) >
+          options_->blink_max_html_size_rewritable()) {
+        content_length_over_threshold_ = true;
+        buffer_.clear();
+      } else {
+        content.AppendToString(&buffer_);
+      }
     }
     return true;
   }
@@ -173,8 +189,10 @@ class CriticalLineFetch : public AsyncFetch {
 
   virtual void HandleDone(bool success) {
     num_blink_shared_fetches_completed_->IncBy(1);
-    if (!success || !claims_html_ || !probable_html_) {
-      VLOG(1) << "Non html page, or not success: " << url_;
+    if (!success || !claims_html_ || !probable_html_ ||
+        content_length_over_threshold_) {
+      VLOG(1) << "Non html page, or not success or above maximum "
+              << "rewriteable size: " << url_;
       delete this;
       return;
     }
@@ -244,6 +262,7 @@ class CriticalLineFetch : public AsyncFetch {
   RewriteDriver* critical_line_computation_driver_;
   bool claims_html_;
   bool probable_html_;
+  bool content_length_over_threshold_;
 
   TimedVariable* num_blink_html_cache_misses_;
   TimedVariable* num_blink_shared_fetches_completed_;
@@ -356,7 +375,7 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
   // finder_ will be never NULL because it is checked before entering
   // BlinkFlowCriticalLine.
   blink_critical_line_data_.reset(finder_->ExtractBlinkCriticalLineData(
-          options_->GetBlinkCacheTimeFor(google_url_.PathAndLeaf()), page));
+          options_->GetBlinkCacheTimeFor(google_url_), page));
   if (blink_critical_line_data_ != NULL &&
       !(options_->passthrough_blink_for_last_invalid_response_code() &&
         IsLastResponseCodeInvalid(page))) {
@@ -435,8 +454,7 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
 
   bool non_cacheable_present =
       !(options_->prioritize_visible_content_non_cacheable_elements().empty() &&
-        options_->GetBlinkNonCacheableElementsFor(
-            google_url_.PathAndLeaf()).empty());
+        options_->GetBlinkNonCacheableElementsFor(google_url_).empty());
 
   if (!non_cacheable_present) {
     ServeAllPanelContents();

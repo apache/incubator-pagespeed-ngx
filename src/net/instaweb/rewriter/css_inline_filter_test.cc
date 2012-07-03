@@ -21,10 +21,13 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -44,6 +47,7 @@ class CssInlineFilterTest : public ResourceManagerTestBase {
 
   void TestInlineCssWithOutputUrl(
                      const GoogleString& html_url,
+                     const GoogleString& head_extras,
                      const GoogleString& css_url,
                      const GoogleString& css_out_url,
                      const GoogleString& other_attrs,
@@ -57,9 +61,10 @@ class CssInlineFilterTest : public ResourceManagerTestBase {
 
     GoogleString html_template = StrCat(
         "<head>\n",
+        head_extras,
         "  <link rel=\"stylesheet\" href=\"%s\"",
         (other_attrs.empty() ? "" : " " + other_attrs) + ">\n",
-        "</head>\n",
+        "</head>\n"
         "<body>Hello, world!</body>\n");
 
     const GoogleString html_input =
@@ -78,10 +83,11 @@ class CssInlineFilterTest : public ResourceManagerTestBase {
 
     const GoogleString expected_output =
         (!expect_inline ? outline_html_output :
-         "<head>\n"
-         "  <style>" + css_rewritten_body + "</style>\n"
-         "</head>\n"
-         "<body>Hello, world!</body>\n");
+         StrCat("<head>\n",
+                head_extras,
+                "  <style>", css_rewritten_body, "</style>\n"
+                "</head>\n"
+                "<body>Hello, world!</body>\n"));
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
   }
 
@@ -92,7 +98,7 @@ class CssInlineFilterTest : public ResourceManagerTestBase {
                      bool expect_inline,
                      const GoogleString& css_rewritten_body) {
     TestInlineCssWithOutputUrl(
-        html_url, css_url, css_url, other_attrs, css_original_body,
+        html_url, "", css_url, css_url, other_attrs, css_original_body,
         expect_inline, css_rewritten_body);
   }
 
@@ -266,13 +272,70 @@ TEST_F(CssInlineFilterTest, InlineMinimizeInteraction) {
   options()->set_css_inline_max_bytes(4);
 
   TestInlineCssWithOutputUrl(
-      StrCat(kTestDomain, "minimize_but_not_inline.html"),
+      StrCat(kTestDomain, "minimize_but_not_inline.html"), "",
       StrCat(kTestDomain, "a.css"),
       Encode(kTestDomain, "cf", "0", "a.css", "css"),
       "", /* no other attributes*/
       "div{display: none;}",
       false,
       "div{display: none}");
+}
+
+TEST_F(CssInlineFilterTest, CharsetDetermination) {
+  // Sigh. rewrite_filter.cc doesn't have its own unit test so we test this
+  // method here since we're the only ones that use it.
+  GoogleString x_css_url = "x.css";
+  GoogleString y_css_url = "y.css";
+  GoogleString z_css_url = "z.css";
+  const char x_css_body[] = "BODY { color: red; }";
+  const char y_css_body[] = "BODY { color: green; }";
+  const char z_css_body[] = "BODY { color: blue; }";
+  GoogleString y_bom_body = StrCat(kUtf8Bom, y_css_body);
+  GoogleString z_bom_body = StrCat(kUtf8Bom, z_css_body);
+
+  // x.css has no charset header nor a BOM.
+  // y.css has no charset header but has a BOM.
+  // z.css has a charset header and a BOM.
+  ResponseHeaders default_header;
+  SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_header);
+  SetFetchResponse(StrCat(kTestDomain, x_css_url), default_header, x_css_body);
+  SetFetchResponse(StrCat(kTestDomain, y_css_url), default_header, y_bom_body);
+  default_header.MergeContentType("text/css; charset=iso-8859-1");
+  SetFetchResponse(StrCat(kTestDomain, z_css_url), default_header, z_bom_body);
+
+  ResourcePtr x_css_resource(CreateResource(kTestDomain, x_css_url));
+  ResourcePtr y_css_resource(CreateResource(kTestDomain, y_css_url));
+  ResourcePtr z_css_resource(CreateResource(kTestDomain, z_css_url));
+  EXPECT_TRUE(ReadIfCached(x_css_resource));
+  EXPECT_TRUE(ReadIfCached(y_css_resource));
+  EXPECT_TRUE(ReadIfCached(z_css_resource));
+
+  GoogleString result;
+  const StringPiece kUsAsciiCharset("us-ascii");
+
+  // Nothing set: charset should be empty.
+  result = RewriteFilter::GetCharsetForStylesheet(x_css_resource.get(), "", "");
+  EXPECT_TRUE(result.empty());
+
+  // Only the containing charset is set.
+  result = RewriteFilter::GetCharsetForStylesheet(x_css_resource.get(),
+                                                  "", kUsAsciiCharset);
+  EXPECT_STREQ(result, kUsAsciiCharset);
+
+  // The containing charset is trumped by the element's charset attribute.
+  result = RewriteFilter::GetCharsetForStylesheet(x_css_resource.get(),
+                                                  "gb", kUsAsciiCharset);
+  EXPECT_STREQ("gb", result);
+
+  // The element's charset attribute is trumped by the resource's BOM.
+  result = RewriteFilter::GetCharsetForStylesheet(y_css_resource.get(),
+                                                  "gb", kUsAsciiCharset);
+  EXPECT_STREQ("utf-8", result);
+
+  // The resource's BOM is trumped by the resource's header.
+  result = RewriteFilter::GetCharsetForStylesheet(z_css_resource.get(),
+                                                  "gb", kUsAsciiCharset);
+  EXPECT_STREQ("iso-8859-1", result);
 }
 
 }  // namespace

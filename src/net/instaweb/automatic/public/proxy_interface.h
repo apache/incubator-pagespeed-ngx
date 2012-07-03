@@ -108,11 +108,13 @@ class ProxyInterface : public UrlAsyncFetcher {
       RewriteOptions* query_options,
       MessageHandler* handler);
 
+  // Is this url_string well-formed enough to proxy through?
+  bool IsWellFormedUrl(const GoogleUrl& url);
+
   static const char kBlinkRequestCount[];
   static const char kBlinkCriticalLineRequestCount[];
   static const char kXmlHttpRequest[];
 
- protected:
   // Initiates the PropertyCache look up.
   virtual ProxyFetchPropertyCallbackCollector* InitiatePropertyCacheLookup(
       bool is_resource_fetch,
@@ -130,9 +132,6 @@ class ProxyInterface : public UrlAsyncFetcher {
                     const GoogleUrl& requested_url,
                     AsyncFetch* async_fetch,
                     MessageHandler* handler);
-
-  // Is this url_string well-formed enough to proxy through?
-  bool IsWellFormedUrl(const GoogleUrl& url);
 
   // If the URL and port are for this server, don't proxy those (to avoid
   // infinite fetching loops). This might be the favicon or something...

@@ -92,7 +92,7 @@ bool IsBlinkRequest(const GoogleUrl& url,
       // (ProxyFetch).  Should we combine these?
       options->IsAllowed(url.Spec()) &&
       // Does url match a cacheable family pattern specified in config?
-      options->IsInBlinkCacheableFamily(url.PathAndLeaf()) &&
+      options->IsInBlinkCacheableFamily(url) &&
       // user agent supports Blink.
       user_agent_matcher_.GetBlinkRequestType(
           user_agent, request_headers,
@@ -433,7 +433,7 @@ void PopulateAttributeToNonCacheableValuesMap(
     AttributesToNonCacheableValuesMap* attribute_non_cacheable_values_map,
     std::vector<int>* panel_number_num_instances) {
   GoogleString non_cacheable_elements_str =
-      rewrite_options->GetBlinkNonCacheableElementsFor(url.PathAndLeaf());
+      rewrite_options->GetBlinkNonCacheableElementsFor(url);
   StringPiece non_cacheable_elements(non_cacheable_elements_str);
   if (non_cacheable_elements.empty()) {
     non_cacheable_elements = GetNonCacheableElements(

@@ -1687,6 +1687,41 @@ TEST_F(ParserTest, ParseSingleImport) {
   EXPECT_TRUE(import.get() == NULL);
 }
 
+TEST_F(ParserTest, ExtractCharset) {
+  scoped_ptr<Parser> parser;
+  UnicodeText charset;
+
+  parser.reset(new Parser("@charset \"ISO-8859-1\" ;"));
+  charset = parser->ExtractCharset();
+  EXPECT_EQ(Parser::kNoError, parser->errors_seen_mask());
+  EXPECT_EQ("ISO-8859-1", UnicodeTextToUTF8(charset));
+
+  parser.reset(new Parser("@charset foobar;"));
+  charset = parser->ExtractCharset();
+  EXPECT_EQ(Parser::kCharsetError, parser->errors_seen_mask());
+  EXPECT_EQ("", UnicodeTextToUTF8(charset));
+
+  parser.reset(new Parser("@charset \"UTF-8\" \"or 9\";"));
+  charset = parser->ExtractCharset();
+  EXPECT_EQ(Parser::kCharsetError, parser->errors_seen_mask());
+  EXPECT_EQ("UTF-8", UnicodeTextToUTF8(charset));
+
+  parser.reset(new Parser("@charsets \"UTF-8\" and \"ISO-8859-1\";"));
+  charset = parser->ExtractCharset();
+  EXPECT_EQ(Parser::kNoError, parser->errors_seen_mask());
+  EXPECT_EQ("", UnicodeTextToUTF8(charset));
+
+  parser.reset(new Parser("@IMPORT url(assets/style.css) screen,printer"));
+  charset = parser->ExtractCharset();
+  EXPECT_EQ(Parser::kNoError, parser->errors_seen_mask());
+  EXPECT_EQ("", UnicodeTextToUTF8(charset));
+
+  parser.reset(new Parser("wotcha!"));
+  charset = parser->ExtractCharset();
+  EXPECT_EQ(Parser::kNoError, parser->errors_seen_mask());
+  EXPECT_EQ("", UnicodeTextToUTF8(charset));
+}
+
 TEST_F(ParserTest, UnexpectedAtRule) {
   scoped_ptr<Parser> parser;
   scoped_ptr<Stylesheet> stylesheet;

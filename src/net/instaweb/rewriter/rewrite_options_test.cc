@@ -624,7 +624,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(82, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(84, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kPrioritizeVisibleContentCacheTime));
@@ -646,6 +646,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("BeaconUrl"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kBeaconUrl));
+  EXPECT_EQ(StringPiece("BlinkMaxHtmlSizeRewritable"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kBlinkMaxHtmlSizeRewritable));
   EXPECT_EQ(StringPiece("CombineAcrossPaths"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kCombineAcrossPaths));
@@ -793,6 +796,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("UseFixedUserAgentForBlinkCacheMisses"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses));
+  EXPECT_EQ(StringPiece("UseFullUrlInBlinkFamilies"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kUseFullUrlInBlinkFamilies));
   EXPECT_EQ(StringPiece("XHeaderValue"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kXModPagespeedHeaderValue));
@@ -938,41 +944,70 @@ TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies2) {
 }
 
 TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {
-  EXPECT_FALSE(options_.IsInBlinkCacheableFamily("/one.html"));
+  net_instaweb::GoogleUrl gurl_one("http://www.test.org/one.html");
+  net_instaweb::GoogleUrl gurl_two("http://www.test.org/two.html");
+  net_instaweb::GoogleUrl gurl_three("http://www.test.org/three.html");
+
+  EXPECT_FALSE(options_.IsInBlinkCacheableFamily(gurl_one));
+  options_.set_apply_blink_if_no_families(true);
+  EXPECT_TRUE(options_.IsInBlinkCacheableFamily(gurl_one));
   EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
-            options_.GetBlinkCacheTimeFor("/one.html"));
+            options_.GetBlinkCacheTimeFor(gurl_one));
   EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
-            options_.GetBlinkCacheTimeFor("/two.html"));
-  EXPECT_EQ("", options_.GetBlinkNonCacheableElementsFor("/one.html"));
-  EXPECT_EQ("", options_.GetBlinkNonCacheableElementsFor("/two.html"));
+            options_.GetBlinkCacheTimeFor(gurl_two));
+  EXPECT_EQ("", options_.GetBlinkNonCacheableElementsFor(gurl_one));
+  EXPECT_EQ("", options_.GetBlinkNonCacheableElementsFor(gurl_two));
 
   options_.AddBlinkCacheableFamily("/one*", 10, "something");
-  EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/one.html"));
-  EXPECT_FALSE(options_.IsInBlinkCacheableFamily("/two.html"));
-  EXPECT_EQ(10, options_.GetBlinkCacheTimeFor("/one.html"));
-  EXPECT_EQ("something", options_.GetBlinkNonCacheableElementsFor("/one.html"));
+  EXPECT_TRUE(options_.IsInBlinkCacheableFamily(gurl_one));
+  EXPECT_FALSE(options_.IsInBlinkCacheableFamily(gurl_two));
+  EXPECT_EQ(10, options_.GetBlinkCacheTimeFor(gurl_one));
+  EXPECT_EQ("something", options_.GetBlinkNonCacheableElementsFor(gurl_one));
 
   options_.AddToPrioritizeVisibleContentCacheableFamilies("/two*");
-  EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/two.html"));
+  EXPECT_TRUE(options_.IsInBlinkCacheableFamily(gurl_two));
   EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
-            options_.GetBlinkCacheTimeFor("/two.html"));
+            options_.GetBlinkCacheTimeFor(gurl_two));
 
   RewriteOptions options1;
   options1.AddBlinkCacheableFamily("/two*", 20, "something");
   options_.AddToPrioritizeVisibleContentCacheableFamilies("/three*");
   options_.set_prioritize_visible_content_cache_time_ms(50);
   options_.Merge(options1);
-  EXPECT_FALSE(options_.IsInBlinkCacheableFamily("/one.html"));
-  EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/two.html"));
-  EXPECT_TRUE(options_.IsInBlinkCacheableFamily("/three.html"));
-  EXPECT_EQ(50, options_.GetBlinkCacheTimeFor("/one.html"));
-  EXPECT_EQ(20, options_.GetBlinkCacheTimeFor("/two.html"));
-  EXPECT_EQ(50, options_.GetBlinkCacheTimeFor("/three.html"));
+  EXPECT_FALSE(options_.IsInBlinkCacheableFamily(gurl_one));
+  EXPECT_TRUE(options_.IsInBlinkCacheableFamily(gurl_two));
+  EXPECT_TRUE(options_.IsInBlinkCacheableFamily(gurl_three));
+  EXPECT_EQ(50, options_.GetBlinkCacheTimeFor(gurl_one));
+  EXPECT_EQ(20, options_.GetBlinkCacheTimeFor(gurl_two));
+  EXPECT_EQ(50, options_.GetBlinkCacheTimeFor(gurl_three));
 
   RewriteOptions options2;
   options2.AddBlinkCacheableFamily("/two*", 40, "else");
   options_.Merge(options2);
-  EXPECT_EQ(40, options_.GetBlinkCacheTimeFor("/two.html"));
+  EXPECT_EQ(40, options_.GetBlinkCacheTimeFor(gurl_two));
+}
+
+TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamilyFullUrl) {
+  options_.set_use_full_url_in_blink_families(true);
+  net_instaweb::GoogleUrl gurl_one("http://www.test.org/one.html");
+  net_instaweb::GoogleUrl gurl_two("http://www.test.org/two.html");
+
+  EXPECT_FALSE(options_.IsInBlinkCacheableFamily(gurl_one));
+  options_.set_apply_blink_if_no_families(true);
+  EXPECT_TRUE(options_.IsInBlinkCacheableFamily(gurl_one));
+  EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
+            options_.GetBlinkCacheTimeFor(gurl_one));
+  EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
+            options_.GetBlinkCacheTimeFor(gurl_two));
+  EXPECT_EQ("", options_.GetBlinkNonCacheableElementsFor(gurl_one));
+  EXPECT_EQ("", options_.GetBlinkNonCacheableElementsFor(gurl_two));
+
+  options_.AddBlinkCacheableFamily("http://www.test.org/one*", 10, "something");
+  options_.AddBlinkCacheableFamily("/two*", 40, "else");
+  EXPECT_TRUE(options_.IsInBlinkCacheableFamily(gurl_one));
+  EXPECT_FALSE(options_.IsInBlinkCacheableFamily(gurl_two));
+  EXPECT_EQ(10, options_.GetBlinkCacheTimeFor(gurl_one));
+  EXPECT_EQ("something", options_.GetBlinkNonCacheableElementsFor(gurl_one));
 }
 
 TEST_F(RewriteOptionsTest, FuriousSpecTest) {

@@ -176,6 +176,15 @@ DEFINE_bool(passthrough_blink_for_last_invalid_response_code, false,
             "Pass-through blink request if we got a non-200 response from "
             "origin on the last fetch.");
 
+DEFINE_bool(apply_blink_if_no_families, false,
+            "If prioritize_visible_content_families_ is empty, apply "
+            "prioritize visible content rewriter on all URLs (with default "
+            "cache time and no non-cacheables).");
+
+DEFINE_bool(use_full_url_in_blink_families, false,
+            "Consider the prioritize_visible_content_families_ url_patterns to "
+            "represent full URLs and not URL paths.");
+
 DEFINE_string(blocking_rewrite_key,
               net_instaweb::RewriteOptions::kDefaultBlockingRewriteKey,
               "Enables rewrites to finish before the response is sent to "
@@ -369,6 +378,13 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("passthrough_blink_for_last_invalid_response_code")) {
     options->set_passthrough_blink_for_last_invalid_response_code(
         FLAGS_passthrough_blink_for_last_invalid_response_code);
+  }
+  if (WasExplicitlySet("apply_blink_if_no_families")) {
+    options->set_apply_blink_if_no_families(FLAGS_apply_blink_if_no_families);
+  }
+  if (WasExplicitlySet("use_full_url_in_blink_families")) {
+    options->set_use_full_url_in_blink_families(
+        FLAGS_use_full_url_in_blink_families);
   }
   if (WasExplicitlySet("support_noscript_enabled")) {
     options->set_support_noscript_enabled(FLAGS_support_noscript_enabled);

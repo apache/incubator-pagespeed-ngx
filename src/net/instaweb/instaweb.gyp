@@ -440,8 +440,8 @@
         'instaweb_http',
         'instaweb_http_gperf',
         'instaweb_clientstate_pb',
+        'instaweb_logging_pb',
         'instaweb_propcache_pb',
-        'instaweb_timing_pb',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
         '<(DEPTH)/base/base.gyp:base',
@@ -851,6 +851,7 @@
         'instaweb_spriter',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
         '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
         '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
@@ -913,6 +914,7 @@
       ],
       'include_dirs': [
         '<(instaweb_root)',
+        '<(DEPTH)/third_party/css_parser/src',
         '<(DEPTH)',
       ],
       'direct_dependent_settings': {
@@ -936,13 +938,13 @@
       ],
     },
     {
-      'target_name': 'instaweb_timing_pb',
+      'target_name': 'instaweb_logging_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/http',
       },
       'sources': [
-        'http/timing.proto',
-        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/timing.pb.cc',
+        'http/logging.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/logging.pb.cc',
       ],
       'includes': [
         'protoc.gypi',

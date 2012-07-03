@@ -419,21 +419,23 @@ ProxyFetchPropertyCallbackCollector*
   }
 
   // Initiate client property cache lookup.
-  const char* client_id = async_fetch->request_headers()->Lookup1(
-      HttpAttributes::kXGooglePagespeedClientId);
-  if (client_id != NULL) {
-    PropertyCache* client_property_cache =
-        resource_manager_->client_property_cache();
-    if (client_property_cache->enabled()) {
-      AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
-      ProxyFetchPropertyCallback* callback =
-          new ProxyFetchPropertyCallback(
-              ProxyFetchPropertyCallback::kClientPropertyCache,
-              client_id,
-              callback_collector.get(), mutex);
-      callback_collector->AddCallback(callback);
-      added_callback = true;
-      client_property_cache->Read(callback);
+  if (async_fetch != NULL) {
+    const char* client_id = async_fetch->request_headers()->Lookup1(
+        HttpAttributes::kXGooglePagespeedClientId);
+    if (client_id != NULL) {
+      PropertyCache* client_property_cache =
+          resource_manager_->client_property_cache();
+      if (client_property_cache->enabled()) {
+        AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
+        ProxyFetchPropertyCallback* callback =
+            new ProxyFetchPropertyCallback(
+                ProxyFetchPropertyCallback::kClientPropertyCache,
+                client_id,
+                callback_collector.get(), mutex);
+        callback_collector->AddCallback(callback);
+        added_callback = true;
+        client_property_cache->Read(callback);
+      }
     }
   }
   if (page_property_cache != NULL) {

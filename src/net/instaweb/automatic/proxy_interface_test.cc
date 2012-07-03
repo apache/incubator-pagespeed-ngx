@@ -28,6 +28,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -37,7 +38,6 @@
 #include "net/instaweb/http/public/reflecting_test_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/timing.pb.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -422,7 +422,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     FetchFromProxyNoWait(url, request_headers, expect_success, headers_out);
     WaitForFetch();
     *string_out = callback_->buffer();
-    timing_info_.CopyFrom(*callback_->timing_info());
+    logging_info_.CopyFrom(*callback_->logging_info());
   }
 
   // TODO(jmarantz): eliminate this interface as it's annoying to have
@@ -653,7 +653,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   GoogleString start_time_string_;
   GoogleString start_time_plus_300s_string_;
   GoogleString old_time_string_;
-  TimingInfo timing_info_;
+  LoggingInfo logging_info_;
   const GoogleString max_age_300_;
   int64 request_start_time_ms_;
 
@@ -667,7 +667,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceTest);
 };
 
-TEST_F(ProxyInterfaceTest, TimingInfo) {
+TEST_F(ProxyInterfaceTest, LoggingInfo) {
   GoogleString url = "http://www.example.com/";
   GoogleString text;
   RequestHeaders request_headers;
@@ -680,6 +680,7 @@ TEST_F(ProxyInterfaceTest, TimingInfo) {
   FetchFromProxy(url, request_headers, true, &text, &headers);
   CheckBackgroundFetch(headers, false);
   CheckNumBackgroundFetches(0);
+  const TimingInfo timing_info_ = logging_info_.timing_info();
   ASSERT_TRUE(timing_info_.has_cache1_ms());
   EXPECT_EQ(timing_info_.cache1_ms(), 0);
   EXPECT_FALSE(timing_info_.has_cache2_ms());

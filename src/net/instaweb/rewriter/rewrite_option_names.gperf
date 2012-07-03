@@ -32,6 +32,7 @@ struct OptionName {
 "AnalyticsID",                          RewriteOptions::kAnalyticsID
 "AvoidRenamingIntrospectiveJavascript", RewriteOptions::kAvoidRenamingIntrospectiveJavascript
 "BeaconUrl",                            RewriteOptions::kBeaconUrl
+"BlinkMaxHtmlSizeRewritable",           RewriteOptions::kBlinkMaxHtmlSizeRewritable
 "CombineAcrossPaths",                   RewriteOptions::kCombineAcrossPaths
 "CriticalImagesCacheExpirationTimeMs",  RewriteOptions::kCriticalImagesCacheExpirationTimeMs
 "CssFlattenMaxBytes",                   RewriteOptions::kCssFlattenMaxBytes
@@ -84,6 +85,7 @@ struct OptionName {
 "ServeBlinkNonCritical",                RewriteOptions::kServeBlinkNonCritical
 "ServeStaleIfFetchError",               RewriteOptions::kServeStaleIfFetchError
 "SupportNoScriptEnabled",               RewriteOptions::kSupportNoScriptEnabled
+"UseFullUrlInBlinkFamilies",            RewriteOptions::kUseFullUrlInBlinkFamilies
 "XHeaderValue",                         RewriteOptions::kXModPagespeedHeaderValue
 # The following are Apache specific options.
 "CollectRefererStatistics",             RewriteOptions::kCollectRefererStatistics

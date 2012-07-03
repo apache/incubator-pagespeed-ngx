@@ -73,6 +73,10 @@ const char RewriteOptions::kJavascriptInlineId[] = "ji";
 const char RewriteOptions::kLocalStorageCacheId[] = "ls";
 const char RewriteOptions::kPanelCommentPrefix[] = "GooglePanel";
 
+// Sets limit for buffering html in blink secondary fetch to 10MB default.
+const int64 RewriteOptions::kDefaultBlinkMaxHtmlSizeRewritable =
+    10 * 1024 * 1024;
+
 // TODO(jmarantz): consider merging this threshold with the image-inlining
 // threshold, which is currently defaulting at 2000, so we have a single
 // byte-count threshold, above which inlined resources get outlined, and
@@ -499,6 +503,9 @@ RewriteOptions::RewriteOptions()
   // TODO(jmarantz): consider adding these on demand so that the cost of
   // initializing an empty RewriteOptions object is closer to zero.
   add_option(kPassThrough, &level_, "l", kRewriteLevel);
+  add_option(kDefaultBlinkMaxHtmlSizeRewritable,
+             &blink_max_html_size_rewritable_,
+             "bmhsr", kBlinkMaxHtmlSizeRewritable);
   add_option(kDefaultCssFlattenMaxBytes, &css_flatten_max_bytes_, "cf",
              kCssFlattenMaxBytes);
   add_option(kDefaultCssImageInlineMaxBytes, &css_image_inline_max_bytes_,
@@ -614,6 +621,8 @@ RewriteOptions::RewriteOptions()
              kBlinkDesktopUserAgent);
   add_option(false, &passthrough_blink_for_last_invalid_response_code_, "ptbi",
              kPassthroughBlinkForInvalidResponseCode);
+  add_option(false, &use_full_url_in_blink_families_, "bffu",
+             kUseFullUrlInBlinkFamilies);
   add_option(false, &reject_blacklisted_, "rbl", kRejectBlacklisted);
   add_option(HttpStatus::kForbidden, &reject_blacklisted_status_code_,
              "rbls", kRejectBlacklistedStatusCode);
@@ -626,6 +635,7 @@ RewriteOptions::RewriteOptions()
   // Do not call add_option with OptionEnum fourth argument after this.
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
              &metadata_cache_staleness_threshold_ms_, "mcst");
+  add_option(false, &apply_blink_if_no_families_, "abnf");
 
 
   //
@@ -1068,14 +1078,25 @@ void RewriteOptions::AddToPrioritizeVisibleContentCacheableFamilies(
   prioritize_visible_content_cacheable_families_.Allow(str);
 }
 
-bool RewriteOptions::IsInBlinkCacheableFamily(const StringPiece url) const {
-  return (FindPrioritizeVisibleContentFamily(url) != NULL) ||
-      MatchesPrioritizeVisibleContentCacheableFamilies(url);
+bool RewriteOptions::IsInBlinkCacheableFamily(const GoogleUrl& gurl) const {
+  // If there are no families added and apply_blink_if_no_families is
+  // true, then the default behaviour is to allow all urls.
+  if (apply_blink_if_no_families() &&
+      prioritize_visible_content_families_.empty() &&
+      prioritize_visible_content_cacheable_families_.Signature().empty()) {
+    return true;
+  }
+  StringPiece url_to_match = (use_full_url_in_blink_families() ?
+                              gurl.Spec() : gurl.PathAndLeaf());
+  return (FindPrioritizeVisibleContentFamily(url_to_match) != NULL) ||
+      MatchesPrioritizeVisibleContentCacheableFamilies(url_to_match);
 }
 
-int64 RewriteOptions::GetBlinkCacheTimeFor(const StringPiece url) const {
+int64 RewriteOptions::GetBlinkCacheTimeFor(const GoogleUrl& gurl) const {
+  StringPiece url_to_match = (use_full_url_in_blink_families() ?
+                              gurl.Spec() : gurl.PathAndLeaf());
   const PrioritizeVisibleContentFamily* family =
-      FindPrioritizeVisibleContentFamily(url);
+      FindPrioritizeVisibleContentFamily(url_to_match);
   if (family != NULL) {
     return family->cache_time_ms;
   }
@@ -1083,9 +1104,11 @@ int64 RewriteOptions::GetBlinkCacheTimeFor(const StringPiece url) const {
 }
 
 GoogleString RewriteOptions::GetBlinkNonCacheableElementsFor(
-    const StringPiece url) const {
+    const GoogleUrl& gurl) const {
+  StringPiece url_to_match = (use_full_url_in_blink_families() ?
+                              gurl.Spec() : gurl.PathAndLeaf());
   const PrioritizeVisibleContentFamily* family =
-      FindPrioritizeVisibleContentFamily(url);
+      FindPrioritizeVisibleContentFamily(url_to_match);
   if (family != NULL) {
     return family->non_cacheable_elements;
   }

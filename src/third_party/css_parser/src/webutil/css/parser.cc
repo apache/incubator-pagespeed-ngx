@@ -1803,6 +1803,49 @@ Import* Parser::ParseAsSingleImport() {
   return NULL;
 }
 
+UnicodeText Parser::ExtractCharset() {
+  Tracer trace(__func__, &in_);
+
+  UnicodeText result;
+  if (*in_ == '@') {
+    ++in_;
+    UnicodeText ident = ParseIdent();
+    if (ident.utf8_length() == 7 &&
+        memcasecmp(ident.utf8_data(), "charset", 7) == 0) {
+      result = ParseCharset();
+    }
+  }
+  return result;
+}
+
+UnicodeText Parser::ParseCharset() {
+  Tracer trace(__func__, &in_);
+
+  UnicodeText result;
+  SkipSpace();
+  switch (*in_) {
+    case '\'': {
+      result = ParseString<'\''>();
+      break;
+    }
+    case '"': {
+      result = ParseString<'"'>();
+      break;
+    }
+    default: {
+      ReportParsingError(kCharsetError, "@charset lacks string.");
+      break;
+    }
+  }
+  SkipSpace();
+  if (*in_ != ';') {
+    ReportParsingError(kCharsetError,
+                       "Ignoring chars at end of charset declaration.");
+  }
+  SkipPastDelimiter(';');
+  return result;
+}
+
 Ruleset* Parser::ParseRuleset() {
   Tracer trace(__func__, &in_);
 
@@ -1943,28 +1986,7 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
   // @charset string ;
   } else if (ident.utf8_length() == 7 &&
              memcasecmp(ident.utf8_data(), "charset", 7) == 0) {
-    SkipSpace();
-    UnicodeText s;
-    switch (*in_) {
-      case '\'': {
-        s = ParseString<'\''>();
-        break;
-      }
-      case '"': {
-        s = ParseString<'"'>();
-        break;
-      }
-      default: {
-        ReportParsingError(kCharsetError, "@charset lacks string.");
-        break;
-      }
-    }
-    SkipSpace();
-    if (*in_ != ';') {
-      ReportParsingError(kCharsetError,
-                         "Ignoring chars at end of charset declaration.");
-    }
-    SkipPastDelimiter(';');
+    UnicodeText s = ParseCharset();
     stylesheet->mutable_charsets().push_back(s);
 
   // @media medium-list { ruleset-list }

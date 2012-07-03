@@ -32,8 +32,8 @@
 namespace net_instaweb {
 
 class MessageHandler;
+class LoggingInfo;
 class RequestHeaders;
-class TimingInfo;
 class Variable;
 
 // Abstract base class for encapsulating streaming, asynchronous HTTP fetches.
@@ -53,11 +53,11 @@ class AsyncFetch : public Writer {
   AsyncFetch() :
       request_headers_(NULL),
       response_headers_(NULL),
-      timing_info_(NULL),
+      logging_info_(NULL),
       owns_request_headers_(false),
       owns_response_headers_(false),
       headers_complete_(false),
-      owns_timing_info_(false) {
+      owns_logging_info_(false) {
   }
 
   virtual ~AsyncFetch();
@@ -121,20 +121,20 @@ class AsyncFetch : public Writer {
 
   bool headers_complete() const { return headers_complete_; }
 
-  // Sets the TimingInfo to the specified pointer.  The caller must
-  // guarantee that the pointed-to TimingInfo remains valid as long as the
+  // Sets the LoggingInfo to the specified pointer.  The caller must
+  // guarantee that the pointed-to LoggingInfo remains valid as long as the
   // AsyncFetch is running.
-  void set_timing_info(TimingInfo* timing_info);
+  void set_logging_info(LoggingInfo* logging_info);
 
-  // Returns a pointer to the timing info, lazily constructing
+  // Returns a pointer to the logging info, lazily constructing
   // them if needed.  If they are constructed here (as opposed to
-  // being set with set_timing_info) then they will be owned by
+  // being set with set_logging_info) then they will be owned by
   // the class instance.
-  virtual TimingInfo* timing_info();
+  virtual LoggingInfo* logging_info();
 
-  // Returns a Timing information in a string eg. c1:0;c2:2;hf:45;.
+  // Returns a logging information in a string eg. c1:0;c2:2;hf:45;.
   // c1 is cache 1, c2 is cache 2, hf is headers fetch.
-  GoogleString TimingString() const;
+  GoogleString LoggingString() const;
 
  protected:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler) = 0;
@@ -145,11 +145,11 @@ class AsyncFetch : public Writer {
  private:
   RequestHeaders* request_headers_;
   ResponseHeaders* response_headers_;
-  TimingInfo* timing_info_;
+  LoggingInfo* logging_info_;
   bool owns_request_headers_;
   bool owns_response_headers_;
   bool headers_complete_;
-  bool owns_timing_info_;
+  bool owns_logging_info_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncFetch);
 };

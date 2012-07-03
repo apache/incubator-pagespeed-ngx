@@ -19,10 +19,10 @@
 #include "net/instaweb/http/public/write_through_http_cache.h"
 #include <cstddef>
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/timing.pb.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -80,11 +80,12 @@ class FallbackCacheCallback: public HTTPCache::Callback {
   }
 
   virtual void SetTimingMs(int64 timing_value_ms) {
-    client_callback_->timing_info()->set_cache2_ms(timing_value_ms);
+    client_callback_->logging_info()->mutable_timing_info()->set_cache2_ms(
+        timing_value_ms);
   }
 
-  virtual TimingInfo* timing_info() {
-    return client_callback_->timing_info();
+  virtual LoggingInfo* logging_info() {
+    return client_callback_->logging_info();
   }
 
  private:
@@ -137,11 +138,12 @@ class Cache1Callback: public HTTPCache::Callback {
   }
 
   virtual void SetTimingMs(int64 timing_value_ms) {
-    client_callback_->timing_info()->set_cache1_ms(timing_value_ms);
+    client_callback_->logging_info()->mutable_timing_info()->set_cache1_ms(
+          timing_value_ms);
   }
 
-  virtual TimingInfo* timing_info() {
-    return client_callback_->timing_info();
+  virtual LoggingInfo* logging_info() {
+    return client_callback_->logging_info();
   }
 
  private:

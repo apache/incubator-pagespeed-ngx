@@ -22,10 +22,10 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/timing.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -431,30 +431,30 @@ HTTPCache::Callback::~Callback() {
   if (owns_response_headers_) {
     delete response_headers_;
   }
-  if (owns_timing_info_) {
-    delete timing_info_;
+  if (owns_logging_info_) {
+    delete logging_info_;
   }
 }
 
 void HTTPCache::Callback::SetTimingMs(int64 timing_value_ms) {
-  timing_info()->set_cache1_ms(timing_value_ms);
+  logging_info()->mutable_timing_info()->set_cache1_ms(timing_value_ms);
 }
 
-void HTTPCache::Callback::set_timing_info(TimingInfo* timing_info) {
-  DCHECK(!owns_timing_info_);
-  if (owns_timing_info_) {
-    delete timing_info_;
+void HTTPCache::Callback::set_logging_info(LoggingInfo* logging_info) {
+  DCHECK(!owns_logging_info_);
+  if (owns_logging_info_) {
+    delete logging_info_;
   }
-  timing_info_ = timing_info;
-  owns_timing_info_ = false;
+  logging_info_ = logging_info;
+  owns_logging_info_ = false;
 }
 
-TimingInfo* HTTPCache::Callback::timing_info() {
-  if (timing_info_ == NULL) {
-    timing_info_ = new TimingInfo;
-    owns_timing_info_ = true;
+LoggingInfo* HTTPCache::Callback::logging_info() {
+  if (logging_info_ == NULL) {
+    logging_info_ = new LoggingInfo;
+    owns_logging_info_ = true;
   }
-  return timing_info_;
+  return logging_info_;
 }
 
 }  // namespace net_instaweb
