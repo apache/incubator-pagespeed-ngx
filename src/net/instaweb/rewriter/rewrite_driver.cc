@@ -46,6 +46,7 @@
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
 #include "net/instaweb/rewriter/public/base_tag_filter.h"
+#include "net/instaweb/rewriter/public/blink_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
@@ -897,6 +898,7 @@ void RewriteDriver::AddPostRenderFilters() {
     // we Must left trim urls BEFORE quote removal.
     AddUnownedPostRenderFilter(url_trim_filter_.get());
   }
+
   if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
     // Defers javascript download and execution to post onload. This filter
     // should be applied before JsDisableFilter and JsDeferFilter.
@@ -1018,7 +1020,11 @@ void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {
 void RewriteDriver::SetWriter(Writer* writer) {
   writer_ = writer;
   if (html_writer_filter_ == NULL) {
-    html_writer_filter_.reset(new HtmlWriterFilter(this));
+    if (options()->Enabled(RewriteOptions::kServeNonCacheableNonCritical)) {
+      html_writer_filter_.reset(new BlinkFilter(this));
+    } else {
+      html_writer_filter_.reset(new HtmlWriterFilter(this));
+    }
     html_writer_filter_->set_case_fold(options()->lowercase_html_names());
     if (options()->Enabled(RewriteOptions::kHtmlWriterFilter)) {
       HtmlParse::AddFilter(html_writer_filter_.get());

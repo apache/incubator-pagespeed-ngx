@@ -826,6 +826,7 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_core.gyp:instaweb_rewriter_html',
+        'instaweb_blink_critical_line_data_pb',
         'instaweb_http',
         'instaweb_defer_iframe_data2c',
         'instaweb_defer_iframe_opt_data2c',
@@ -860,6 +861,7 @@
         'rewriter/add_instrumentation_filter.cc',
         'rewriter/ajax_rewrite_context.cc',
         'rewriter/base_tag_filter.cc',
+        'rewriter/blink_filter.cc',
         'rewriter/blink_util.cc',
         'rewriter/cache_extender.cc',
         'rewriter/common_filter.cc',

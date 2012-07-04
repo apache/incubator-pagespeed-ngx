@@ -533,7 +533,6 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
   if (critical_line_data_found) {
     SetFilterOptions(options_);
     options_->ForceEnableFilter(RewriteOptions::kServeNonCacheableNonCritical);
-    options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
     manager_->ComputeSignature(options_);
     driver = manager_->NewCustomRewriteDriver(options_);
 
@@ -547,7 +546,6 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
   } else if (blink_critical_line_data_ == NULL) {
     options = options_->Clone();
     SetFilterOptions(options);
-    options->ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
     options->ForceEnableFilter(RewriteOptions::kStripNonCacheable);
     fetch = base_fetch_;
     manager_->ComputeSignature(options_);

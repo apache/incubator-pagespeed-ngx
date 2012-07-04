@@ -20,6 +20,8 @@
 
 syntax = "proto2";
 
+option optimize_for = LITE_RUNTIME;
+
 package net_instaweb;
 
 // Protobuf to encapsulate the information use by blink flow.

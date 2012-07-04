@@ -57,6 +57,7 @@
       ],
       'sources': [
         'automatic/html_detector_test.cc',
+        'automatic/blink_flow_critical_line_test.cc',
         'automatic/proxy_fetch_test.cc',
         'automatic/proxy_interface_test.cc',
         'htmlparse/canonical_attributes_test.cc',
@@ -89,6 +90,7 @@
         'rewriter/ajax_rewrite_context_test.cc',
         'rewriter/association_transformer_test.cc',
         'rewriter/base_tag_filter_test.cc',
+        'rewriter/blink_filter_test.cc',
         'rewriter/blink_util_test.cc',
         'rewriter/cache_extender_test.cc',
         'rewriter/collapse_whitespace_filter_test.cc',

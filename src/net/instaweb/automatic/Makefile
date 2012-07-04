@@ -44,6 +44,7 @@ BASE_LIBS = \
   build/temp_gyp/libgoogleurl.a \
   net/instaweb/libautomatic_util.a \
   net/instaweb/libhttp_core.a \
+  net/instaweb/libinstaweb_blink_critical_line_data_pb.a \
   net/instaweb/libinstaweb_clientstate_pb.a \
   net/instaweb/libinstaweb_defer_iframe_data2c.a \
   net/instaweb/libinstaweb_defer_iframe_opt_data2c.a \
