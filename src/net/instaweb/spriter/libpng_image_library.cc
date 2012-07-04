@@ -86,7 +86,7 @@ bool LibpngImageLibrary::Canvas::WriteToFile(const FilePath& filename,
   GoogleString write_path = StrCat(base_out_path_, filename);
   FILE* file = fopen(write_path.c_str(), "wb");
   if (file == NULL) {
-    delegate_.OnError(
+    delegate_->OnError(
         StrCat("Writing image " , write_path, ": ", strerror(errno)));
     fclose(file);
     return false;
@@ -95,21 +95,21 @@ bool LibpngImageLibrary::Canvas::WriteToFile(const FilePath& filename,
   png_structp png_struct = png_create_write_struct(
       PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
   if (png_struct == NULL) {
-    delegate_.OnError(
+    delegate_->OnError(
         StrCat("Writing image " , write_path, ": cannot create png struct"));
     fclose(file);
     return false;
   }
   png_infop png_info = png_create_info_struct(png_struct);
   if (png_info == NULL) {
-    delegate_.OnError(
+    delegate_->OnError(
         StrCat("Writing image " , write_path, ": cannot create png info"));
     png_destroy_write_struct(&png_struct, &png_info);
     fclose(file);
     return false;
   }
   if (setjmp(png_jmpbuf(png_struct))) {
-    delegate_.OnError(
+    delegate_->OnError(
         StrCat("Writing image " , write_path, ": cannot initialize libpng"));
     png_destroy_write_struct(&png_struct, &png_info);
     fclose(file);
@@ -117,7 +117,7 @@ bool LibpngImageLibrary::Canvas::WriteToFile(const FilePath& filename,
   }
   png_init_io(png_struct, file);
   if (setjmp(png_jmpbuf(png_struct))) {
-    delegate_.OnError(
+    delegate_->OnError(
         StrCat("Writing image " , write_path, ": cannot write header"));
     png_destroy_write_struct(&png_struct, &png_info);
     fclose(file);
@@ -131,7 +131,7 @@ bool LibpngImageLibrary::Canvas::WriteToFile(const FilePath& filename,
   png_write_info(png_struct, png_info);
 
   if (setjmp(png_jmpbuf(png_struct))) {
-    delegate_.OnError(
+    delegate_->OnError(
         StrCat("Writing image " , write_path, ": cannot write body"));
     png_destroy_write_struct(&png_struct, &png_info);
     fclose(file);
@@ -140,7 +140,7 @@ bool LibpngImageLibrary::Canvas::WriteToFile(const FilePath& filename,
   png_write_image(png_struct, rows_);
 
   if (setjmp(png_jmpbuf(png_struct))) {
-    delegate_.OnError(
+    delegate_->OnError(
         StrCat("Writing image " , write_path, ": cannot write end"));
     fclose(file);
     return false;
@@ -148,14 +148,14 @@ bool LibpngImageLibrary::Canvas::WriteToFile(const FilePath& filename,
   png_write_end(png_struct, NULL);
   png_destroy_write_struct(&png_struct, &png_info);
   if (fclose(file) != 0) {
-    delegate_.OnError(
+    delegate_->OnError(
         StrCat("Writing image " , write_path, ": ", strerror(errno)));
     return false;
   }
   return true;
 }
 LibpngImageLibrary::Canvas::Canvas(ImageLibraryInterface* lib,
-                                   const Delegate& d,
+                                   const Delegate* d,
                                    const GoogleString& base_out_path,
                                    int width, int height)
     : ImageLibraryInterface::Canvas(lib), delegate_(d),
@@ -174,7 +174,7 @@ LibpngImageLibrary::Canvas::~Canvas() {
 }
 ImageLibraryInterface::Canvas* LibpngImageLibrary::CreateCanvas(int width,
                                                                 int height) {
-  return new Canvas(this, *delegate(), base_output_path(), width, height);
+  return new Canvas(this, delegate(), base_output_path(), width, height);
 }
 
 
