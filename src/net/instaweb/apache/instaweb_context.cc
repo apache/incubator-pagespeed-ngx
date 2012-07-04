@@ -265,7 +265,7 @@ ApacheResourceManager* InstawebContext::ManagerFromServerRec(
 // there was a previous request in this chain, and use its url as the
 // original.
 const char* InstawebContext::MakeRequestUrl(request_rec* request) {
-  const char *url = apr_table_get(request->notes, kPagespeedOriginalUrl);
+  const char* url = apr_table_get(request->notes, kPagespeedOriginalUrl);
 
   // Go down the prev chain to see if there this request was a rewrite
   // from another one.  We want to store the uri the user passed in,
@@ -311,6 +311,8 @@ const char* InstawebContext::MakeRequestUrl(request_rec* request) {
       url = ap_construct_url(request->pool, request->unparsed_uri, request);
     }
   }
+  // Note: apr_table_setn does not take ownership of url, it is owned by
+  // the Apache pool.
   apr_table_setn(request->notes, kPagespeedOriginalUrl, url);
   return url;
 }

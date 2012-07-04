@@ -432,6 +432,7 @@ class RewriteDriverFactory {
   std::vector<Function*> deferred_deletes_;
 
   // Version string to put into HTTP response headers.
+  // TODO(sligocki): Remove. Redundant with RewriteOptions::x_header_value().
   GoogleString version_string_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);

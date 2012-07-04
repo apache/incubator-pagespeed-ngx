@@ -237,6 +237,7 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   bool ret = true;
   factory->set_filename_prefix(FLAGS_filename_prefix);
   factory->set_force_caching(FLAGS_force_caching);
+  // TODO(sligocki): Remove this (redundant with option setting below).
   factory->set_version_string(FLAGS_pagespeed_version);
 
   if (WasExplicitlySet("css_outline_min_bytes")) {
@@ -335,6 +336,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("blocking_rewrite_key")) {
     options->set_blocking_rewrite_key(FLAGS_blocking_rewrite_key);
+  }
+  if (WasExplicitlySet("pagespeed_version")) {
+    options->set_x_header_value(FLAGS_pagespeed_version);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

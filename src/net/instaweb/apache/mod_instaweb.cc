@@ -187,10 +187,6 @@ const char* kModPagespeedImgMaxRewritesAtOnce =
 const char* kModPagespeedBlockingRewriteKey =
     "ModPagespeedBlockingRewriteKey";
 
-// TODO(jmarantz): determine the version-number from SVN at build time.
-const char kModPagespeedVersion[] = MOD_PAGESPEED_VERSION_STRING "-"
-    LASTCHANGE_STRING;
-
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
 
 // TODO(sligocki): Move inside PSA.
@@ -501,12 +497,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   // Set X-Mod-Pagespeed header.
   // TODO(sligocki): Move inside PSA.
-  const GoogleString& x_header_value(options->x_header_value());
-  apr_table_setn(
-      request->headers_out,
-      kModPagespeedHeader,
-      (x_header_value == RewriteOptions::kDefaultXModPagespeedHeaderValue
-       ? kModPagespeedVersion : x_header_value.c_str()));
+  apr_table_set(request->headers_out,
+                kModPagespeedHeader, options->x_header_value().c_str());
 
   apr_table_unset(request->headers_out, HttpAttributes::kLastModified);
   apr_table_unset(request->headers_out, HttpAttributes::kContentLength);

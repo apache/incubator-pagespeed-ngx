@@ -26,7 +26,6 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -45,8 +44,7 @@ class ResourceFetch : public SharedAsyncFetch {
   static void Start(ResourceManager* resource_manager,
                     const GoogleUrl& url,
                     AsyncFetch* async_fetch,
-                    RewriteOptions* custom_options,
-                    const GoogleString& version);
+                    RewriteOptions* custom_options);
 
  protected:
   // Protected interface from AsyncFetch.
@@ -58,15 +56,13 @@ class ResourceFetch : public SharedAsyncFetch {
                          AsyncFetch* async_fetch,
                          MessageHandler* handler,
                          RewriteDriver* driver,
-                         Timer* timer,
-                         const GoogleString& version);
+                         Timer* timer);
   virtual ~ResourceFetch();
 
   GoogleUrl resource_url_;
   MessageHandler* message_handler_;
   RewriteDriver* driver_;
   Timer* timer_;
-  const GoogleString& version_;
 
   int64 start_time_us_;
   int redirect_count_;

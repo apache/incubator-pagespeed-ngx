@@ -168,10 +168,6 @@ void ProxyInterface::Initialize(Statistics* statistics) {
   BlinkFlowCriticalLine::Initialize(statistics);
 }
 
-void ProxyInterface::set_server_version(const StringPiece& server_version) {
-  proxy_fetch_factory_->set_server_version(server_version);
-}
-
 bool ProxyInterface::IsWellFormedUrl(const GoogleUrl& url) {
   bool ret = false;
   if (url.is_valid()) {
@@ -468,8 +464,7 @@ void ProxyInterface::ProxyRequestCallback(
   // Start fetch and rewrite.  If GetCustomOptions found options for us,
   // the RewriteDriver created by StartNewProxyFetch will take ownership.
   if (is_resource_fetch) {
-    ResourceFetch::Start(resource_manager_, *request_url, async_fetch,
-                         options, proxy_fetch_factory_->server_version());
+    ResourceFetch::Start(resource_manager_, *request_url, async_fetch, options);
   } else {
     // TODO(nforman): If we are not running an experiment, remove the
     // furious cookie.

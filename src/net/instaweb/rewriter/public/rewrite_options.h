@@ -29,7 +29,6 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -38,6 +37,7 @@
 
 namespace net_instaweb {
 
+class GoogleUrl;
 class Hasher;
 class MessageHandler;
 class PublisherConfig;
@@ -335,8 +335,6 @@ class RewriteOptions {
   static const int kDefaultFuriousSlot;
 
   static const char kClassName[];
-
-  static const char kDefaultXModPagespeedHeaderValue[];
 
   static const char kDefaultBlinkDesktopUserAgentValue[];
 
@@ -1013,7 +1011,7 @@ class RewriteOptions {
   }
 
   void set_x_header_value(const StringPiece& p) {
-    set_option(GoogleString(p.data(), p.size()), &x_header_value_);
+    set_option(p.as_string(), &x_header_value_);
   }
   const GoogleString& x_header_value() const {
     return x_header_value_.value();
@@ -1451,6 +1449,11 @@ class RewriteOptions {
   // Return the list of all options.
   const OptionBaseVector& all_options() const {
     return all_options_;
+  }
+
+ protected:
+  void set_default_x_header_value(const StringPiece& x_header_value) {
+    x_header_value_.set_default(x_header_value.as_string());
   }
 
  private:

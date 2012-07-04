@@ -96,8 +96,6 @@ class ProxyInterface : public UrlAsyncFetcher {
                                    RewriteOptions* query_options,
                                    MessageHandler* handler);
 
-  void set_server_version(const StringPiece& server_version);
-
   // Callback function passed to UrlNamer to finish handling requests once we
   // have rewrite_options for requests that are being proxied.
   void ProxyRequestCallback(

@@ -32,6 +32,10 @@ mkdir -p $OUTDIR
 
 # General system tests
 
+echo Checking for correct default X-Mod-Pagespeed header format.
+$WGET_DUMP $EXAMPLE_ROOT/combine_css.html | \
+  check egrep -q '^X-Mod-Pagespeed: [0-9]+[.][0-9]+[.][0-9]+[.][0-9]+-[0-9]+'
+
 echo TEST: mod_pagespeed is running in Apache and writes the expected header.
 echo $WGET_DUMP $EXAMPLE_ROOT/combine_css.html
 HTML_HEADERS=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)

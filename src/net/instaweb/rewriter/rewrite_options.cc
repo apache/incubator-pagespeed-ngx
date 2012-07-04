@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_rw_lock.h"
@@ -173,8 +174,6 @@ const int RewriteOptions::kDefaultFuriousTrafficPercent = 50;
 const int RewriteOptions::kDefaultFuriousSlot = 1;
 
 const char RewriteOptions::kClassName[] = "RewriteOptions";
-
-const char RewriteOptions::kDefaultXModPagespeedHeaderValue[] = "__VERSION__";
 
 const char RewriteOptions::kDefaultBlinkDesktopUserAgentValue[] =
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 "
@@ -608,8 +607,7 @@ RewriteOptions::RewriteOptions()
   add_option(false, &running_furious_, "fur", kRunningFurious);
   add_option(kDefaultFuriousSlot, &furious_ga_slot_, "fga", kFuriousSlot);
   add_option(false, &report_unload_time_, "rut", kReportUnloadTime);
-  add_option(kDefaultXModPagespeedHeaderValue, &x_header_value_, "xhv",
-             kXModPagespeedHeaderValue);
+  add_option("", &x_header_value_, "xhv", kXModPagespeedHeaderValue);
   add_option(false, &avoid_renaming_introspective_javascript_, "aris",
              kAvoidRenamingIntrospectiveJavascript);
   add_option(false, &enable_blink_for_mobile_devices_, "ebmd",

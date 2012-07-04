@@ -15,6 +15,7 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/apache/apache_config.h"
+#include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -89,6 +90,9 @@ void ApacheConfig::Init() {
   // lru_cache_byte_limit_.DoNotUseForSignatureComputation();
   // lru_cache_kb_per_process_.DoNotUseForSignatureComputation();
   // slurp_flush_limit_.DoNotUseForSignatureComputation();
+
+  // Set mod_pagespeed-specific default header value.
+  set_default_x_header_value(kModPagespeedVersion);
 }
 
 bool ApacheConfig::ParseRefererStatisticsOutputLevel(

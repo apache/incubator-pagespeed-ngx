@@ -23,3 +23,11 @@
 // Changelist Information
 
 #define LASTCHANGE_STRING "@LASTCHANGE@"
+
+namespace net_instaweb {
+
+// TODO(jmarantz): determine the version-number from SVN at build time.
+const char kModPagespeedVersion[] =
+    MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING;
+
+}

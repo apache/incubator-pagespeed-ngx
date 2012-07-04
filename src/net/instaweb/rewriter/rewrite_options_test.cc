@@ -20,6 +20,7 @@
 
 #include <set>
 
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/null_message_handler.h"

@@ -66,11 +66,6 @@ class ProxyFetchFactory {
       ProxyFetchPropertyCallbackCollector* property_callback,
       AsyncFetch* original_content_fetch);
 
-  void set_server_version(const StringPiece& server_version) {
-    server_version.CopyToString(&server_version_);
-  }
-  const GoogleString& server_version() const { return server_version_; }
-
   MessageHandler* message_handler() const { return handler_; }
 
  private:
@@ -86,7 +81,6 @@ class ProxyFetchFactory {
   ResourceManager* manager_;
   Timer* timer_;
   MessageHandler* handler_;
-  GoogleString server_version_;
 
   scoped_ptr<AbstractMutex> outstanding_proxy_fetches_mutex_;
   std::set<ProxyFetch*> outstanding_proxy_fetches_;

@@ -494,6 +494,11 @@ class SerfFetch : public PoolElement<SerfFetch> {
           (StringCaseEqual(name, HttpAttributes::kAcceptEncoding)) ||
           (StringCaseEqual(name, HttpAttributes::kReferer)) ||
           (StringCaseEqual(name, HttpAttributes::kCookie))) {
+        // Note: *_setn() stores a pointer to name and value instead of a
+        // copy of those values. So name and value must have long lifetimes.
+        // In this case, we depend on request_headers being unchanged for
+        // the lifetime of hdrs_bkt, which is a documented requirement of
+        // the UrlAsyncFetcher interface.
         serf_bucket_headers_setn(hdrs_bkt, name.c_str(), value.c_str());
       }
     }

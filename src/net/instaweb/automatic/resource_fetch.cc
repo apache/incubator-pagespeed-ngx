@@ -25,9 +25,9 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -36,14 +36,12 @@ namespace net_instaweb {
 void ResourceFetch::Start(ResourceManager* manager,
                           const GoogleUrl& url,
                           AsyncFetch* async_fetch,
-                          RewriteOptions* custom_options,
-                          const GoogleString& version) {
+                          RewriteOptions* custom_options) {
   RewriteDriver* driver = (custom_options == NULL)
       ? manager->NewRewriteDriver()
       : manager->NewCustomRewriteDriver(custom_options);
   ResourceFetch* resource_fetch = new ResourceFetch(
-      url, async_fetch, manager->message_handler(), driver,
-      manager->timer(), version);
+      url, async_fetch, manager->message_handler(), driver, manager->timer());
   // TODO(sligocki): This will currently fail us on all non-pagespeed
   // resource requests. We should move the check somewhere else.
   driver->FetchResource(url.Spec(), resource_fetch);
@@ -53,13 +51,11 @@ ResourceFetch::ResourceFetch(const GoogleUrl& url,
                              AsyncFetch* async_fetch,
                              MessageHandler* handler,
                              RewriteDriver* driver,
-                             Timer* timer,
-                             const GoogleString& version)
+                             Timer* timer)
     : SharedAsyncFetch(async_fetch),
       message_handler_(handler),
       driver_(driver),
       timer_(timer),
-      version_(version),
       start_time_us_(timer->NowUs()),
       redirect_count_(0) {
   resource_url_.Reset(url);
@@ -81,7 +77,8 @@ void ResourceFetch::HandleHeadersComplete() {
   // Server ought to set these, I suppose.
   // response_headers()->Add(HttpAttributes::kVary, "Accept-Encoding");
 
-  response_headers()->Add(kPageSpeedHeader, version_);
+  response_headers()->Add(kPageSpeedHeader,
+                          driver_->options()->x_header_value());
   base_fetch()->HeadersComplete();
 }
 
