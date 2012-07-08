@@ -199,7 +199,6 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kExtendCacheCss,
   RewriteOptions::kExtendCacheImages,
   RewriteOptions::kExtendCacheScripts,
-  RewriteOptions::kHtmlWriterFilter,
   RewriteOptions::kInlineCss,
   RewriteOptions::kInlineImages,
   RewriteOptions::kInlineImportToLink,
@@ -306,6 +305,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kExtendCacheScripts:              return "Cache Extend Scripts";
     case kFallbackRewriteCssUrls:          return "Fallback Rewrite Css Urls";
     case kFlattenCssImports:               return "Flatten CSS Imports";
+    case kFlushSubresources:               return "Flush Subresources";
     case kHtmlWriterFilter:                return "Flushes html";
     case kInlineCss:                       return "Inline Css";
     case kInlineImages:                    return "Inline Images";
@@ -378,6 +378,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kExtendCacheScripts:              return "es";
     case kFallbackRewriteCssUrls:          return "fc";
     case kFlattenCssImports:               return kCssImportFlattenerId;
+    case kFlushSubresources:               return "fs";
     case kHtmlWriterFilter:                return "hw";
     case kInlineCss:                       return kCssInlineId;
     case kInlineImages:                    return "ii";
@@ -597,11 +598,6 @@ RewriteOptions::RewriteOptions()
   add_option(false, &image_retain_color_sampling_, "ircs",
              kImageRetainColorSampling);
   add_option(false, &image_retain_exif_data_, "ired", kImageRetainExifData);
-  add_option("", &prioritize_visible_content_non_cacheable_elements_, "nce",
-             kPrioritizeVisibleContentNonCacheableElements);
-  add_option(kDefaultPrioritizeVisibleContentCacheTimeMs,
-             &prioritize_visible_content_cache_time_ms_, "ctm",
-             kPrioritizeVisibleContentCacheTime);
   add_option("", &ga_id_, "ig", kAnalyticsID);
   add_option(true, &increase_speed_tracking_, "st", kIncreaseSpeedTracking);
   add_option(false, &running_furious_, "fur", kRunningFurious);
@@ -1069,25 +1065,16 @@ int64 RewriteOptions::MaxImageInlineMaxBytes() const {
                   CssImageInlineMaxBytes());
 }
 
-void RewriteOptions::AddToPrioritizeVisibleContentCacheableFamilies(
-    const StringPiece& str) {
-  // We do not call Modify here, since
-  // prioritize_visible_content_cacheable_families does not affect signature.
-  prioritize_visible_content_cacheable_families_.Allow(str);
-}
-
 bool RewriteOptions::IsInBlinkCacheableFamily(const GoogleUrl& gurl) const {
   // If there are no families added and apply_blink_if_no_families is
   // true, then the default behaviour is to allow all urls.
   if (apply_blink_if_no_families() &&
-      prioritize_visible_content_families_.empty() &&
-      prioritize_visible_content_cacheable_families_.Signature().empty()) {
+      prioritize_visible_content_families_.empty()) {
     return true;
   }
   StringPiece url_to_match = (use_full_url_in_blink_families() ?
                               gurl.Spec() : gurl.PathAndLeaf());
-  return (FindPrioritizeVisibleContentFamily(url_to_match) != NULL) ||
-      MatchesPrioritizeVisibleContentCacheableFamilies(url_to_match);
+  return FindPrioritizeVisibleContentFamily(url_to_match) != NULL;
 }
 
 int64 RewriteOptions::GetBlinkCacheTimeFor(const GoogleUrl& gurl) const {
@@ -1098,7 +1085,7 @@ int64 RewriteOptions::GetBlinkCacheTimeFor(const GoogleUrl& gurl) const {
   if (family != NULL) {
     return family->cache_time_ms;
   }
-  return prioritize_visible_content_cache_time_ms();
+  return kDefaultPrioritizeVisibleContentCacheTimeMs;
 }
 
 GoogleString RewriteOptions::GetBlinkNonCacheableElementsFor(
@@ -1195,10 +1182,6 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   file_load_policy_.Merge(src.file_load_policy_);
   allow_resources_.AppendFrom(src.allow_resources_);
   retain_comments_.AppendFrom(src.retain_comments_);
-
-  // Merge logic for prioritize visible content cacheable families.
-  prioritize_visible_content_cacheable_families_.AppendFrom(
-      src.prioritize_visible_content_cacheable_families_);
 
   // If src's prioritize_visible_content_families_ is non-empty we simply
   // replace this' prioritize_visible_content_families_ with src's.  Naturally,

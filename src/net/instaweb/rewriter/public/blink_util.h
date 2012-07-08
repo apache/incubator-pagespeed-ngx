@@ -126,10 +126,6 @@ void EscapeString(GoogleString* str);
 // TODO(rahulbansal): Move this function to net/instaweb/util/string_util
 bool StripTrailingNewline(GoogleString* s);
 
-// Gets non cacheable elements for this url.
-StringPiece GetNonCacheableElements(
-    const GoogleString& atf_non_cacheable_elements, const GoogleUrl& url);
-
 // Populates the attributes to non cacheable values map.
 void PopulateAttributeToNonCacheableValuesMap(
     const RewriteOptions* rewrite_options,

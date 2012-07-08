@@ -53,6 +53,7 @@ struct FilterMap {
 "extend_cache_scripts",              RewriteOptions::kExtendCacheScripts
 "fallback_rewrite_css_urls",         RewriteOptions::kFallbackRewriteCssUrls
 "flatten_css_imports",               RewriteOptions::kFlattenCssImports
+"flush_subresources",                RewriteOptions::kFlushSubresources
 "inline_css",                        RewriteOptions::kInlineCss
 "inline_images",                     RewriteOptions::kInlineImages
 "inline_import_to_link",             RewriteOptions::kInlineImportToLink

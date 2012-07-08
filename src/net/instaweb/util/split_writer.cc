@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,24 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef STRINGS_ESCAPING_H_
-#define STRINGS_ESCAPING_H_
 
-#include "base/logging.h"
+// Author: sligocki@google.com (Shawn Ligocki)
 
-namespace strings {
+#include "net/instaweb/util/public/split_writer.h"
 
-inline int hex_digit_to_int(char c) {
-  /* Assume ASCII. */
-  DCHECK('0' == 0x30 && 'A' == 0x41 && 'a' == 0x61);
-  DCHECK(isxdigit(c));
-  int x = static_cast<unsigned char>(c);
-  if (x > '9') {
-    x += 9;
-  }
-  return x & 0xf;
+namespace net_instaweb {
+
+SplitWriter::~SplitWriter() {
 }
 
-}  // namespace strings
-
-#endif  // STRINGS_ESCAPING_H_
+}  // namespace net_instaweb

@@ -83,20 +83,9 @@ class StripNonCacheableFilterTest : public ResourceManagerTestBase {
     options_ = new RewriteOptions();
     options_->EnableFilter(RewriteOptions::kStripNonCacheable);
 
-    // The following is to test with both option setting mechanisms for
-    // non-cacheable panels.
-    // TODO(sriharis): Remove this (keep only AddBlinkCacheableFamily) once
-    // transition to new prioritize_visible_content options is complete.
-    const ::testing::TestInfo* const test_info =
-        ::testing::UnitTest::GetInstance()->current_test_info();
-    if (strcmp(test_info->name(), "StripNonCacheableOldOption") == 0) {
-      options_->set_prioritize_visible_content_non_cacheable_elements(
-          "/:class=\"item\",id=beforeItems,class=\"itema itemb\"");
-    } else {
-      options_->AddBlinkCacheableFamily(
-          "/", RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
-          "class= \"item \" , id\t =beforeItems \t , class=\"itema itemb\"");
-    }
+    options_->AddBlinkCacheableFamily(
+        "/", RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
+        "class= \"item \" , id\t =beforeItems \t , class=\"itema itemb\"");
 
     SetUseManagedRewriteDrivers(true);
     ResourceManagerTestBase::SetUp();
@@ -130,11 +119,6 @@ class StripNonCacheableFilterTest : public ResourceManagerTestBase {
  private:
   DISALLOW_COPY_AND_ASSIGN(StripNonCacheableFilterTest);
 };
-
-TEST_F(StripNonCacheableFilterTest, StripNonCacheableOldOption) {
-  ValidateExpectedUrl(kRequestUrl, kHtmlInput,
-                      GetExpectedOutput(kBlinkUrlHandler));
-}
 
 TEST_F(StripNonCacheableFilterTest, StripNonCacheable) {
   ValidateExpectedUrl(kRequestUrl, kHtmlInput,

@@ -625,13 +625,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(84, RewriteOptions::kEndOfOptions);
-  EXPECT_EQ(StringPiece("AboveTheFoldCacheTime"),
-            RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kPrioritizeVisibleContentCacheTime));
-  EXPECT_EQ(StringPiece("AboveTheFoldNonCacheableElements"),
-            RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kPrioritizeVisibleContentNonCacheableElements));
+  EXPECT_EQ(82, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAjaxRewritingEnabled));
@@ -854,100 +848,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
                 RewriteOptions::kTestProxy));
 }
 
-TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies1) {
-  // Default matches nothing.
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "MatchesNothing"));
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(""));
-
-  // Set explicitly.
-  options_.AddToPrioritizeVisibleContentCacheableFamilies("zero*?");
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "MatchesNothing"));
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(""));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "zero1"));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "zerooooo1"));
-
-  // Merge in an options with default cacheable families.  This should not
-  // affect options_.
-  RewriteOptions options1;
-  options_.Merge(options1);
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "MatchesNothing"));
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(""));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "zero1"));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "zerooooo1"));
-
-  // Merge in an options with explicit options.
-  options1.AddToPrioritizeVisibleContentCacheableFamilies("one?");
-  options1.AddToPrioritizeVisibleContentCacheableFamilies("?two*");
-  options1.AddToPrioritizeVisibleContentCacheableFamilies("three");
-  options_.Merge(options1);
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "MatchesNothing"));
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(""));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "zero1"));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "zerooooo1"));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "one1"));
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "one"));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "2two"));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "2twoANYTHING"));
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "twoANYTHING"));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "three"));
-}
-
-TEST_F(RewriteOptionsTest, PrioritizeCacheableFamilies2) {
-  // Default matches nothing.
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "MatchesNothing"));
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(""));
-
-  // Merge in an options with default cacheable families.  This should not
-  // affect options_.
-  RewriteOptions options1;
-  options_.Merge(options1);
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "MatchesNothing"));
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(""));
-
-  // Merge in an options with explicit options.
-  options1.AddToPrioritizeVisibleContentCacheableFamilies("one?");
-  options1.AddToPrioritizeVisibleContentCacheableFamilies("?two*");
-  options1.AddToPrioritizeVisibleContentCacheableFamilies("three");
-  options_.Merge(options1);
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "MatchesNothing"));
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(""));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "one1"));
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "one"));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "2two"));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "2twoANYTHING"));
-  EXPECT_FALSE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "twoANYTHING"));
-  EXPECT_TRUE(options_.MatchesPrioritizeVisibleContentCacheableFamilies(
-      "three"));
-}
-
 TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {
   net_instaweb::GoogleUrl gurl_one("http://www.test.org/one.html");
   net_instaweb::GoogleUrl gurl_two("http://www.test.org/two.html");
-  net_instaweb::GoogleUrl gurl_three("http://www.test.org/three.html");
 
   EXPECT_FALSE(options_.IsInBlinkCacheableFamily(gurl_one));
   options_.set_apply_blink_if_no_families(true);
@@ -965,22 +868,14 @@ TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {
   EXPECT_EQ(10, options_.GetBlinkCacheTimeFor(gurl_one));
   EXPECT_EQ("something", options_.GetBlinkNonCacheableElementsFor(gurl_one));
 
-  options_.AddToPrioritizeVisibleContentCacheableFamilies("/two*");
-  EXPECT_TRUE(options_.IsInBlinkCacheableFamily(gurl_two));
-  EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
-            options_.GetBlinkCacheTimeFor(gurl_two));
-
   RewriteOptions options1;
   options1.AddBlinkCacheableFamily("/two*", 20, "something");
-  options_.AddToPrioritizeVisibleContentCacheableFamilies("/three*");
-  options_.set_prioritize_visible_content_cache_time_ms(50);
   options_.Merge(options1);
   EXPECT_FALSE(options_.IsInBlinkCacheableFamily(gurl_one));
   EXPECT_TRUE(options_.IsInBlinkCacheableFamily(gurl_two));
-  EXPECT_TRUE(options_.IsInBlinkCacheableFamily(gurl_three));
-  EXPECT_EQ(50, options_.GetBlinkCacheTimeFor(gurl_one));
+  EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
+            options_.GetBlinkCacheTimeFor(gurl_one));
   EXPECT_EQ(20, options_.GetBlinkCacheTimeFor(gurl_two));
-  EXPECT_EQ(50, options_.GetBlinkCacheTimeFor(gurl_three));
 
   RewriteOptions options2;
   options2.AddBlinkCacheableFamily("/two*", 40, "else");
@@ -1083,8 +978,8 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   options_.SetFuriousState(7);
   // This should be all non-dangerous filters.
   EXPECT_EQ("Experiment: 7; ab,ah,ai,cw,cc,ch,jc,gp,jp,jw,mc,pj,db,di,ea,ec,ei,"
-            "es,fc,if,hw,ci,ii,il,ji,ig,id,js,tu,ls,ga,cj,cm,co,jo,pv,rj,rp,rw,"
-            "rc,rq,ri,rm,cf,rd,jm,cs,cu,is,cp,md,css:2048,im:2048,js:2048;",
+            "es,fc,if,fs,hw,ci,ii,il,ji,ig,id,js,tu,ls,ga,cj,cm,co,jo,pv,rj,rp,"
+            "rw,rc,rq,ri,rm,cf,rd,jm,cs,cu,is,cp,md,css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 7", options_.ToExperimentString());
   options_.SetFuriousState(2);

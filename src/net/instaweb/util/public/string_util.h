@@ -47,6 +47,7 @@ struct StringCompareInsensitive;
 
 typedef std::map<GoogleString, GoogleString> StringStringMap;
 typedef std::map<GoogleString, int> StringIntMap;
+typedef std::map<int, GoogleString> IntStringMap;
 typedef std::set<GoogleString> StringSet;
 typedef std::set<GoogleString, StringCompareInsensitive> StringSetInsensitive;
 typedef std::vector<GoogleString> StringVector;

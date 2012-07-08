@@ -42,6 +42,9 @@ class AbstractMutex;
 
 namespace {
 
+const int64 kCacheTimeMs =
+    RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs;
+
 const char kRequestUrl[] = "http://www.test.com";
 
 const char kRequestUrlWithPath[] = "http://www.test.com/path";
@@ -202,8 +205,8 @@ class BlinkFilterTest : public ResourceManagerTestBase {
 TEST_F(BlinkFilterTest, SendNonCritical404) {
   WriteBlinkCriticalLineData(NULL);
   response_headers_.set_status_code(HttpStatus::kNotFound);
-  options_->set_prioritize_visible_content_non_cacheable_elements(
-      "/:class=item,id=beforeItems");
+  options_->AddBlinkCacheableFamily(
+      "/", kCacheTimeMs, "class=item,id=beforeItems");
   options_->set_serve_blink_non_critical(true);
   // The following is a little odd (the output does not like anything like a
   // 404!).
@@ -213,8 +216,8 @@ TEST_F(BlinkFilterTest, SendNonCritical404) {
 
 TEST_F(BlinkFilterTest, SendNonCritical) {
   WriteBlinkCriticalLineData(NULL);
-  options_->set_prioritize_visible_content_non_cacheable_elements(
-      "/:class=\"item\",id='beforeItems'");
+  options_->AddBlinkCacheableFamily(
+      "/", kCacheTimeMs, "class=\"item\",id='beforeItems'");
   options_->set_serve_blink_non_critical(true);
   ValidateExpectedUrl(kRequestUrl, kHtmlInput, kJsonExpectedOutput);
   CheckResponseCodeInPropertyCache(HttpStatus::kOK);
@@ -223,8 +226,8 @@ TEST_F(BlinkFilterTest, SendNonCritical) {
 
 TEST_F(BlinkFilterTest, SendNonCriticalDoNotWriteResponseCode) {
   WriteBlinkCriticalLineData(NULL);
-  options_->set_prioritize_visible_content_non_cacheable_elements(
-      "/:class=item,id=beforeItems");
+  options_->AddBlinkCacheableFamily(
+      "/", kCacheTimeMs, "class=item,id=beforeItems");
   options_->set_serve_blink_non_critical(true);
   options_->set_passthrough_blink_for_last_invalid_response_code(false);
   ValidateExpectedUrl(kRequestUrl, kHtmlInput, kJsonExpectedOutput);
@@ -234,8 +237,10 @@ TEST_F(BlinkFilterTest, SendNonCriticalDoNotWriteResponseCode) {
 
 TEST_F(BlinkFilterTest, SendNonCriticalWithMultipleFamilies) {
   WriteBlinkCriticalLineData(NULL);
-  options_->set_prioritize_visible_content_non_cacheable_elements(
-      "/:id=random;/path:class=item,id=beforeItems");
+  options_->AddBlinkCacheableFamily(
+      "/", kCacheTimeMs, "id=random");
+  options_->AddBlinkCacheableFamily(
+      "/path", kCacheTimeMs, "class=item,id=beforeItems");
   options_->set_serve_blink_non_critical(true);
   ValidateExpectedUrl(kRequestUrlWithPath, kHtmlInput, kJsonExpectedOutput);
   CheckResponseCodeInPropertyCache(HttpStatus::kOK);
@@ -256,8 +261,8 @@ TEST_F(BlinkFilterTest, SendOnlyCookies) {
 TEST_F(BlinkFilterTest, RequestLastModifiedNotInCache) {
   WriteBlinkCriticalLineData(NULL);
   response_headers_.Add(kPsaLastModified, "dummy");
-  options_->set_prioritize_visible_content_non_cacheable_elements(
-      "/:class=item,id=beforeItems");
+  options_->AddBlinkCacheableFamily(
+      "/", kCacheTimeMs, "class=item,id=beforeItems");
   options_->set_serve_blink_non_critical(true);
   ValidateExpectedUrl(kRequestUrl, kHtmlInput, kJsonExpectedOutput);
   CheckResponseCodeInPropertyCache(HttpStatus::kOK);
@@ -267,8 +272,8 @@ TEST_F(BlinkFilterTest, RequestLastModifiedNotInCache) {
 TEST_F(BlinkFilterTest, RequestLastModifiedSameInCacheSendNonCritical) {
   WriteBlinkCriticalLineData("old");
   response_headers_.Add(kPsaLastModified, "old");
-  options_->set_prioritize_visible_content_non_cacheable_elements(
-      "/:class=item,id=beforeItems");
+  options_->AddBlinkCacheableFamily(
+      "/", kCacheTimeMs, "class=item,id=beforeItems");
   options_->set_serve_blink_non_critical(true);
   ValidateExpectedUrl(kRequestUrl, kHtmlInput, kJsonExpectedOutput);
   CheckResponseCodeInPropertyCache(HttpStatus::kOK);
@@ -279,8 +284,8 @@ TEST_F(BlinkFilterTest, RequestLastModifiedSameInCacheSendNonCritical) {
 TEST_F(BlinkFilterTest, RequestLastModifiedDifferentFromCache1) {
   WriteBlinkCriticalLineData("old");
   response_headers_.Add(kPsaLastModified, "changed");
-  options_->set_prioritize_visible_content_non_cacheable_elements(
-      "/:class=item,id=beforeItems");
+  options_->AddBlinkCacheableFamily(
+      "/", kCacheTimeMs, "class=item,id=beforeItems");
   options_->set_serve_blink_non_critical(true);
   GoogleString json_expected_output = StrCat(BlinkFilter::kRefreshPageJs,
                                              "\n</body></html>\n");

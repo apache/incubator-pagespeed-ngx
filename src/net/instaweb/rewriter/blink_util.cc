@@ -406,28 +406,6 @@ bool StripTrailingNewline(GoogleString* s) {
   return false;
 }
 
-StringPiece GetNonCacheableElements(
-    const GoogleString& atf_non_cacheable_elements, const GoogleUrl& url) {
-  StringPieceVector url_family_non_cacheable_elements;
-  SplitStringPieceToVector(atf_non_cacheable_elements,
-                           ";", &url_family_non_cacheable_elements, true);
-  for (size_t i = 0; i < url_family_non_cacheable_elements.size(); ++i) {
-    StringPieceVector url_family_non_cacheable_elements_pair;
-    SplitStringPieceToVector(url_family_non_cacheable_elements[i], ":",
-                             &url_family_non_cacheable_elements_pair, true);
-    if (url_family_non_cacheable_elements_pair.size() != 2) {
-      LOG(ERROR) << "Incorrect non cacheable element value "
-                 << url_family_non_cacheable_elements[i];
-      return "";
-    }
-    Wildcard wildcard(url_family_non_cacheable_elements_pair[0]);
-    if (wildcard.Match(url.PathAndLeaf())) {
-      return url_family_non_cacheable_elements_pair[1];
-    }
-  }
-  return "";
-}
-
 void PopulateAttributeToNonCacheableValuesMap(
     const RewriteOptions* rewrite_options, const GoogleUrl& url,
     AttributesToNonCacheableValuesMap* attribute_non_cacheable_values_map,
@@ -435,11 +413,6 @@ void PopulateAttributeToNonCacheableValuesMap(
   GoogleString non_cacheable_elements_str =
       rewrite_options->GetBlinkNonCacheableElementsFor(url);
   StringPiece non_cacheable_elements(non_cacheable_elements_str);
-  if (non_cacheable_elements.empty()) {
-    non_cacheable_elements = GetNonCacheableElements(
-        rewrite_options->prioritize_visible_content_non_cacheable_elements(),
-        url);
-  }
   // TODO(rahulbansal): Add more error checking.
   StringPieceVector non_cacheable_values;
   SplitStringPieceToVector(non_cacheable_elements,

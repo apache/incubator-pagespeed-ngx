@@ -324,6 +324,19 @@
       ],
     },
     {
+      'target_name': 'instaweb_flush_early_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        'rewriter/flush_early.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/flush_early.pb.cc',
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_panel_config_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -522,7 +535,7 @@
         'util/simple_stats.cc',
         'util/scheduler_thread.cc',
         'util/slow_worker.cc',
-#        'util/split_writer.cc',                Not currently needed
+        'util/split_writer.cc',
         'util/statistics.cc',
         'util/statistics_work_bound.cc',
         'util/stdio_file_system.cc',
@@ -661,6 +674,7 @@
       'dependencies': [
         'instaweb_util',
         'instaweb_core.gyp:instaweb_htmlparse_core',
+        'instaweb_flush_early_pb',
         'instaweb_panel_config_pb',
         'instaweb_rewriter_html_gperf',
         'instaweb_rewriter_html_option_gperf',
@@ -838,6 +852,7 @@
         'instaweb_detect_reflow_opt_data2c',
         'instaweb_deterministic_data2c',
         'instaweb_deterministic_opt_data2c',
+        'instaweb_flush_early_pb',
         'instaweb_js_defer_data2c',
         'instaweb_js_defer_opt_data2c',
         'instaweb_lazyload_images_data2c',
@@ -865,6 +880,7 @@
         'rewriter/blink_util.cc',
         'rewriter/cache_extender.cc',
         'rewriter/common_filter.cc',
+        'rewriter/collect_subresources_filter.cc',
         'rewriter/critical_images_callback.cc',
         'rewriter/css_inline_filter.cc',
         'rewriter/css_move_to_head_filter.cc',
@@ -909,6 +925,7 @@
         'rewriter/strip_non_cacheable_filter.cc',
         'rewriter/strip_scripts_filter.cc',
         'rewriter/support_noscript_filter.cc',
+        'rewriter/suppress_prehead_filter.cc',
         'rewriter/url_input_resource.cc',
         'rewriter/url_left_trim_filter.cc',
         'rewriter/url_partnership.cc',
@@ -958,11 +975,13 @@
       'dependencies': [
         'instaweb_blink_critical_line_data_pb',
         'instaweb_http',
+        'instaweb_flush_early_pb',
         'instaweb_panel_config_pb',
         'instaweb_rewriter',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
+        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/js/js.gyp:pagespeed_jsminify',
       ],
       'sources': [
         'automatic/blink_flow.cc',

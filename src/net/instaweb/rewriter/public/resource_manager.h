@@ -205,7 +205,9 @@ class ResourceManager {
   void set_critical_images_finder(CriticalImagesFinder* finder) {
     critical_images_finder_ = finder;
   }
-  const UserAgentMatcher& user_agent_matcher() { return *user_agent_matcher_; }
+  const UserAgentMatcher& user_agent_matcher() const {
+    return *user_agent_matcher_;
+  }
   void set_user_agent_matcher(UserAgentMatcher* n) { user_agent_matcher_ = n; }
 
   BlinkCriticalLineDataFinder* blink_critical_line_data_finder() const {

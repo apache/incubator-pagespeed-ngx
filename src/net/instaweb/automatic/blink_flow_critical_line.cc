@@ -453,8 +453,7 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
   base_fetch_->HeadersComplete();
 
   bool non_cacheable_present =
-      !(options_->prioritize_visible_content_non_cacheable_elements().empty() &&
-        options_->GetBlinkNonCacheableElementsFor(google_url_).empty());
+      !options_->GetBlinkNonCacheableElementsFor(google_url_).empty();
 
   if (!non_cacheable_present) {
     ServeAllPanelContents();

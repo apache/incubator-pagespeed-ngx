@@ -53,6 +53,10 @@ class HtmlWriterFilter : public HtmlFilter {
 
   virtual const char* Name() const { return "HtmlWriter"; }
 
+ protected:
+  // Clear various variables for rewriting a new html file.
+  virtual void Clear();
+
  private:
   void EmitBytes(const StringPiece& str);
 
@@ -61,7 +65,6 @@ class HtmlWriterFilter : public HtmlFilter {
   void EmitName(const HtmlName& name);
 
   HtmlElement::CloseStyle GetCloseStyle(HtmlElement* element);
-  void Clear();
 
   // Escapes arbitrary text as HTML, e.g. turning & into &amp;.  If quoteChar
   // is non-zero, e.g. '"', then it would escape " as well.

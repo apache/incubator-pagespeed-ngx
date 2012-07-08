@@ -731,7 +731,9 @@ const unsigned char HtmlColor::kBadColorName;
 const unsigned char HtmlColor::kBadColorHex;
 
 static inline int TwoXDigitsToNum(const char *xstr) {
-  return (hex_digit_to_int(xstr[0])*16 + hex_digit_to_int(xstr[1]));
+  return (
+      strings::hex_digit_to_int(
+          xstr[0])*16 + strings::hex_digit_to_int(xstr[1]));
 }
 
 void HtmlColor::SetValueFromHexStr(const char *hexstr) {

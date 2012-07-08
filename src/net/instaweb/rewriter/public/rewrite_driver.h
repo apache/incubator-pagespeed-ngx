@@ -56,6 +56,7 @@ class CacheUrlAsyncFetcher;
 class CommonFilter;
 class DomainRewriteFilter;
 class FileSystem;
+class FlushEarlyInfo;
 class Function;
 class HtmlEvent;
 class HtmlFilter;
@@ -135,14 +136,11 @@ class RewriteDriver : public HtmlParse {
   // This string identifies, for the PropertyCache, a group of properties
   // that are computed from the DOM, and thus can, if desired, be rewritten
   // on every HTML request.
-  //
-  // TODO(jmarantz): The "DOM" cohort is here as a placeholder.  There's no
-  // existing filter that needs this yet, although a pending test in
-  // proxy_interface_test.cc that will need it.  If, by the time the
-  // PropertyCache comes into use in a product, the DOM cohort is not in
-  // use, we should remove it since its presence will cause an extra
-  // cache-lookup per HTML request.
   static const char kDomCohort[];
+
+  // This proprty is used to store information regarding the subresources
+  // associted with the HTML page.
+  static const char kSubresourcesPropertyName[];
 
   RewriteDriver(MessageHandler* message_handler,
                 FileSystem* file_system,
@@ -805,6 +803,15 @@ class RewriteDriver : public HtmlParse {
   // that browsers should parse it as XHTML.
   XhtmlStatus MimeTypeXhtmlStatus();
 
+  void set_flushed_early(bool x) { flushed_early_ = x; }
+  bool flushed_early() { return flushed_early_; }
+
+  FlushEarlyInfo* flush_early_info();
+
+  // Adds the sub resource link to the sub_resources_ map. The id is used to
+  // ensure the order.
+  void AddResourceToSubresourcesMap(const StringPiece& url, int id);
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;
@@ -988,6 +995,10 @@ class RewriteDriver : public HtmlParse {
   bool flush_requested_;
   bool flush_occurred_;
 
+  // If it is true, then the bytes were flushed before receiving bytes from the
+  // origin server.
+  bool flushed_early_;
+
   // Set to true if RewriteDriver can be released.
   bool release_driver_;
 
@@ -1150,6 +1161,11 @@ class RewriteDriver : public HtmlParse {
   // Number of images whose low quality images are inlined in the html page by
   // InlinePreviewFilter.
   int num_inline_preview_images_;
+
+  // The subresources seen in the head of the page added by
+  // CollectSubresourcesFilter Filter.
+  IntStringMap subresources_;
+  scoped_ptr<FlushEarlyInfo> flush_early_info_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

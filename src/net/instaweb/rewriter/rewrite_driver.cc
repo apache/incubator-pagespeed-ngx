@@ -42,6 +42,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
@@ -67,7 +68,9 @@
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
+#include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
 #include "net/instaweb/rewriter/public/flush_html_filter.h"
+#include "net/instaweb/rewriter/public/collect_subresources_filter.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
@@ -170,6 +173,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       cleanup_on_fetch_complete_(false),
       flush_requested_(false),
       flush_occurred_(false),
+      flushed_early_(false),
       release_driver_(false),
       inhibits_mutex_(NULL),
       finish_parse_on_hold_(NULL),
@@ -295,6 +299,7 @@ void RewriteDriver::Clear() {
   fetch_detached_ = false;
   flush_requested_ = false;
   flush_occurred_ = false;
+  flushed_early_ = false;
   base_was_set_ = false;
   refs_before_base_ = false;
   containing_charset_.clear();
@@ -304,6 +309,8 @@ void RewriteDriver::Clear() {
   property_page_.reset(NULL);
   fully_rewrite_on_flush_ = false;
   num_inline_preview_images_ = 0;
+  flush_early_info_.reset(NULL);
+  subresources_.clear();
 
   // Reset to the default fetcher from any session fetcher
   // (as the request is over).
@@ -604,6 +611,7 @@ const char* RewriteDriver::kPassThroughRequestAttributes[3] = {
 };
 
 const char RewriteDriver::kDomCohort[] = "dom";
+const char RewriteDriver::kSubresourcesPropertyName[] = "subresources";
 
 void RewriteDriver::Initialize(Statistics* statistics) {
   RewriteOptions::Initialize();
@@ -864,6 +872,11 @@ void RewriteDriver::AddPreRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kLocalStorageCache)) {
     EnableRewriteFilter(RewriteOptions::kLocalStorageCacheId);
   }
+  // Enable Flush subresources early filter to extract the subresources from
+  // head. This should be the last prerender filter.
+  if (rewrite_options->Enabled(RewriteOptions::kFlushSubresources)) {
+    AppendOwnedPreRenderFilter(new CollectSubresourcesFilter(this));
+  }
 }
 
 void RewriteDriver::AddPostRenderFilters() {
@@ -1020,8 +1033,11 @@ void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {
 void RewriteDriver::SetWriter(Writer* writer) {
   writer_ = writer;
   if (html_writer_filter_ == NULL) {
+    html_writer_filter_.reset(new HtmlWriterFilter(this));
     if (options()->Enabled(RewriteOptions::kServeNonCacheableNonCritical)) {
       html_writer_filter_.reset(new BlinkFilter(this));
+    } else if (options()->Enabled(RewriteOptions::kFlushSubresources)) {
+      html_writer_filter_.reset(new SuppressPreheadFilter(this));
     } else {
       html_writer_filter_.reset(new HtmlWriterFilter(this));
     }
@@ -1719,13 +1735,27 @@ void RewriteDriver::DeregisterForPartitionKey(const GoogleString& partition_key,
 }
 
 void RewriteDriver::WriteDomCohortIntoPropertyCache() {
-  if (property_page_.get() != NULL) {
+  bool flush_subresources_rewriter_enabled =
+      options()->Enabled(RewriteOptions::kFlushSubresources);
+  if (flush_subresources_rewriter_enabled) {
+    CollectSubresourcesFilter::AddSubresourcesToFlushEarlyInfo(
+        subresources_, flush_early_info());
+  }
+  PropertyPage* page = property_page();
+  if (page != NULL) {
     PropertyCache* pcache = resource_manager_->page_property_cache();
-    const PropertyCache::Cohort* dom = pcache->GetCohort(kDomCohort);
-    if (dom != NULL) {
+    const PropertyCache::Cohort* dom_cohort = pcache->GetCohort(kDomCohort);
+    if (dom_cohort != NULL) {
+      if (flush_subresources_rewriter_enabled) {
+        PropertyValue* subresources_property_value = page->GetProperty(
+            dom_cohort, RewriteDriver::kSubresourcesPropertyName);
+        GoogleString value;
+        flush_early_info_->SerializeToString(&value);
+        pcache->UpdateValue(value, subresources_property_value);
+      }
       // Page cannot be cleared yet because other cohorts may still need to be
       // written.
-      pcache->WriteCohort(dom, property_page_.get());
+      pcache->WriteCohort(dom_cohort, page);
     }
   }
 }
@@ -2198,5 +2228,19 @@ RewriteDriver::XhtmlStatus RewriteDriver::MimeTypeXhtmlStatus() {
   return xhtml_status_;
 }
 
+
+FlushEarlyInfo* RewriteDriver::flush_early_info() {
+  if (flush_early_info_.get() == NULL) {
+    flush_early_info_.reset(new FlushEarlyInfo);
+  }
+  return flush_early_info_.get();
+}
+
+void RewriteDriver::AddResourceToSubresourcesMap(const StringPiece& url,
+                                                 int id) {
+  if (url.size() != 0) {
+    subresources_[id].assign(url.data(), url.size());
+  }
+}
 
 }  // namespace net_instaweb

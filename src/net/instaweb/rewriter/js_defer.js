@@ -349,8 +349,7 @@ deferJsNs.DeferJs.prototype.createIdVars = function() {
 deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos) {
   var src = script.getAttribute('orig_src') || script.getAttribute('src');
   if (src) {
-    if (deferJsNs.DeferJs.isExperimentalMode &&
-        src.match(/\S+\.pagespeed\.\S+/)) {
+    if (deferJsNs.DeferJs.isExperimentalMode) {
       var img;
       img = new Image();
       img.src = src;
@@ -574,20 +573,44 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
 
   this.fireEvent(deferJsNs.DeferJs.EVENT.DOM_READY);
 
-  if (document.onreadystatechange) {
-    this.exec(document.onreadystatechange, document);
-  }
-  // Execute window.onload
-  if (window.onload) {
-    psaAddEventListener(window, 'onload', window.onload);
-    window.onload = null;
-  }
   this.restoreAddEventListeners();
+
+  var me = this;
+  if (document.readyState != 'complete') {
+    deferJsNs.addOnload(window, function() {
+      me.fireOnload();
+    });
+  } else {
+    // Here there is a chance that window.onload is triggered twice.
+    // But we have no way of finding this.
+    // TODO(ksimbili): Fix the above scenario.
+    if (document.onreadystatechange) {
+      this.exec(document.onreadystatechange, document);
+    }
+    // Execute window.onload
+    if (window.onload) {
+      psaAddEventListener(window, 'onload', window.onload);
+      window.onload = null;
+    }
+    this.fireOnload();
+  }
+};
+
+/**
+ * Fires 'onload' event.
+ */
+deferJsNs.DeferJs.prototype.fireOnload = function() {
   this.fireEvent(deferJsNs.DeferJs.EVENT.LOAD);
+
+  // Clean up psanode elements from the DOM.
+  var psanodes = document.body.getElementsByTagName('psanode');
+  for (var i = (psanodes.length - 1); i >= 0; i--) {
+    document.body.removeChild(psanodes[i]);
+  }
 
   this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_DONE;
   this.fireEvent(deferJsNs.DeferJs.EVENT.AFTER_SCRIPTS);
-}
+};
 
 /**
  * Checks if node is present in the dom.
@@ -642,6 +665,17 @@ deferJsNs.DeferJs.prototype.canCallOnComplete = function() {
   }
   return false;
 };
+
+/**
+ * Whether all the deferred scripts are done executing.
+ * @return {boolean} true if all deferred scripts are done executing, false
+ * otherwise.
+ */
+deferJsNs.DeferJs.prototype.scriptsAreDone = function() {
+  return this.state_ === deferJsNs.DeferJs.STATES.SCRIPTS_DONE;
+};
+deferJsNs.DeferJs.prototype['scriptsAreDone'] =
+    deferJsNs.DeferJs.prototype.scriptsAreDone;
 
 /**
  * Schedules the next task in the queue.
@@ -705,7 +739,7 @@ deferJsNs.DeferJs.prototype.setUp = function() {
       propertyDescriptor.get = function() { return 'loading';}
       Object.defineProperty(document, 'readyState', propertyDescriptor);
     } catch (err) {
-      this.log('Exception while overriding document.readyState.', err);
+      this.log('Exception while overriding document.readyState: ', err);
     }
   }
   if (this.getIEVersion()) {

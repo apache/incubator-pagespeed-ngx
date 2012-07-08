@@ -75,6 +75,7 @@ class RewriteOptions {
     kExtendCacheScripts,
     kFallbackRewriteCssUrls,
     kFlattenCssImports,
+    kFlushSubresources,
     kHtmlWriterFilter,
     kInlineCss,
     kInlineImages,
@@ -171,10 +172,6 @@ class RewriteOptions {
     kMinResourceCacheTimeToRewriteMs,
     kModifyCachingHeaders,
     kPassthroughBlinkForInvalidResponseCode,
-    // TODO(sriharis):  Remove the following two options once we migrate to
-    // using the new prioritize_visible_content_families_ field.
-    kPrioritizeVisibleContentCacheTime,
-    kPrioritizeVisibleContentNonCacheableElements,
     kProgressiveJpegMinBytes,
     kRejectBlacklisted,
     kRejectBlacklistedStatusCode,
@@ -921,50 +918,14 @@ class RewriteOptions {
     set_option(GoogleString(p.data(), p.size()), &blocking_rewrite_key_);
   }
 
-  // Functions for checking against and adding to prioritize_visible_content
-  // cacheable family option (prioritize_visible_content_cacheable_families_
-  // field).  Checks if str is an URL for which prioritize_visible_content
-  // filter is applicable.  Returns true if str matches any of the patterns in
-  // prioritize_visible_content_cacheable_families_.
-  bool MatchesPrioritizeVisibleContentCacheableFamilies(
-      const StringPiece& str) const {
-    return prioritize_visible_content_cacheable_families_.Match(str, false);
-  }
-  // Adds str as a URL pattern for which prioritize_visible_content is
-  // applicable, i.e., visible content (html above the fold) will be cached.
-  void AddToPrioritizeVisibleContentCacheableFamilies(const StringPiece& str);
-
-  // Returns the elements that should not be cached by
-  // prioritize_visible_content filter.
-  const GoogleString&
-      prioritize_visible_content_non_cacheable_elements() const {
-    return prioritize_visible_content_non_cacheable_elements_.value();
-  }
-  // Sets the elements that should be cached by prioritize_visible_content
-  // filter.
-  void set_prioritize_visible_content_non_cacheable_elements(
-      const StringPiece& p) {
-    set_option(GoogleString(p.data(), p.size()),
-               &prioritize_visible_content_non_cacheable_elements_);
-  }
-
-  // Getter and setter for the prioritize_visible_content cache time.
-  int64 prioritize_visible_content_cache_time_ms() const {
-    return prioritize_visible_content_cache_time_ms_.value();
-  }
-  void set_prioritize_visible_content_cache_time_ms(int64 x) {
-    set_option(x, &prioritize_visible_content_cache_time_ms_);
-  }
-
   // Does url match a cacheable family pattern?  Returns true if url matches a
-  // url_pattern in prioritize_visible_content_families_ OR it matches
-  // prioritize_visible_content_cacheable_families_.
+  // url_pattern in prioritize_visible_content_families_.
   bool IsInBlinkCacheableFamily(const GoogleUrl& gurl) const;
 
   // Get the cache time for gurl for prioritize_visible_content filter.  In case
   // gurl matches a url_pattern in prioritize_visible_content_families_ we
   // return the corresponding cache_time_ms field, else we return
-  // prioritize_visible_content_cache_time_ms_.
+  // kDefaultPrioritizeVisibleContentCacheTimeMs.
   int64 GetBlinkCacheTimeFor(const GoogleUrl& gurl) const;
 
   // Get elements to be treated as non-cacheable for gurl.  In case
@@ -1733,23 +1694,6 @@ class RewriteOptions {
   // are "likely cacheable" (e.g. images, js, css, not html) and have no
   // explicit cache ttl or expiration date.
   Option<int64> implicit_cache_ttl_ms_;
-
-  // prioritize_visible_content related options.
-  // TODO(sriharis):  Remove the next three options once the transition to using
-  // prioritize_visible_content_cacheable_families_ is complete.
-  // List of elements that will be treated as non-cacheable by
-  // prioritize_visible_content filter.
-  Option<GoogleString> prioritize_visible_content_non_cacheable_elements_;
-  // Caching time for prioritize_visible_content filter.
-  Option<int64> prioritize_visible_content_cache_time_ms_;
-  // URL patterns for which prioritize_visible_content filter will be applied,
-  // i.e., above the fold html will be cached for URLs that match these wildcard
-  // patterns (excluding the elements in
-  // prioritize_visible_content_non_cacheable_elements_).  Any URL not matching
-  // this does not have prioritize_visible_content applied.
-  // Note:  This field is not used in signature computation.  It does not affect
-  // meta-data and so this is ok.
-  WildcardGroup prioritize_visible_content_cacheable_families_;
 
   // Option for the prioritize_visible_content filter.
   //
