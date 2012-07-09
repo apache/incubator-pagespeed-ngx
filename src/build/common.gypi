@@ -109,6 +109,12 @@
       }],
     ],
 
+    # We don't want -std=gnu++0x (enabled by some versions of libpagespeed)
+    # since it can cause binary compatibility problems; see issue 453.
+    'cflags!': [
+      '-std=gnu++0x'
+    ],
+
     # Permit building us with coverage information
     'configurations': {
       'Debug_Coverage': {
