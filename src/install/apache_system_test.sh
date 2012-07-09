@@ -352,11 +352,6 @@ blocking_rewrite.html?ModPagespeedFilters=rewrite_images"
   # Also do the same experiment using a different VirtualHost.  It points
   # to the same htdocs, but uses a separate cache directory.
   SECONDARY_URL=$SECONDARY_TEST_ROOT/$URL_PATH
-
-  if [ "$SECONDARY_URL" == "$URL" ]; then
-    SECONDARY_URL=http://${SECONDARY_HOSTNAME}:$APACHE_SECONDARY_PORT/\
-mod_pagespeed_test/$URL_PATH
-  fi
   fetch_until $SECONDARY_URL 'grep -c blue' 1
 
   # Track how many flushes were noticed by Apache processes up till
@@ -365,13 +360,15 @@ mod_pagespeed_test/$URL_PATH
   NUM_INITIAL_FLUSHES=$($WGET_DUMP $STATISTICS_URL | grep cache_flush_count \
     | cut -d: -f2)
 
-  # Now change the file to 'green'.  Note that we'll have stale cache for
-  # 5 minutes so we expect the result to stay 'blue'.
+  # Now change the file to 'green'.
   echo echo ".class myclass { color: green; }" ">" $CSS_FILE
   echo ".class myclass { color: green; }" >$TMP_CSS_FILE
   $SUDO cp $TMP_CSS_FILE $CSS_FILE
-  fetch_until $URL 'grep -c blue' 1
-  fetch_until $SECONDARY_URL 'grep -c blue' 1
+
+  # We might have stale cache for 5 minutes, so the result might stay
+  # 'blue', but we can't really test for that since the child process
+  # handling this request might not have it in cache.
+  # fetch_until $URL 'grep -c blue' 1
 
   # Flush the cache by touching a special file in the cache directory.  Now
   # css gets re-read and we get 'green' in the output.  Sleep here to avoid

@@ -59,15 +59,8 @@ class UserAgentMatcher {
   bool SupportsJsDefer(const StringPiece& user_agent) const;
   bool SupportsWebp(const StringPiece& user_agent) const;
 
-  // The following two functions have similar names, but different
-  // functionality. The first one implements a simple restricted wildcard based
-  // check of whether user_agent corresponds to a mobile. It is not exhaustive.
-  // The second one is meant to check if user_agent matches all currently known
-  // mobile user agent pattern.
-  // TODO(sriharis): Remove the need for these two separate functions, and
-  // refactor the names.
-  bool IsMobileUserAgent(const StringPiece& user_agent) const;
-  virtual bool IsAnyMobileUserAgent(const char* user_agent) const;
+
+  virtual bool IsMobileUserAgent(const StringPiece& user_agent) const;
   virtual bool IsMobileRequest(
       const StringPiece& user_agent,
       const RequestHeaders* request_headers) const;

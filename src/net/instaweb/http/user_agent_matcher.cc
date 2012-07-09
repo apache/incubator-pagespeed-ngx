@@ -204,13 +204,6 @@ bool UserAgentMatcher::IsMobileUserAgent(const StringPiece& user_agent) const {
   return mobile_user_agents_.Match(user_agent, false);
 }
 
-// The DEFAULT implementation is the same as IsMobileUserAgent but subclasses
-// will override this IsAny method as required.
-bool UserAgentMatcher::IsAnyMobileUserAgent(
-    const char* user_agent) const {
-  return IsMobileUserAgent(user_agent);
-}
-
 bool UserAgentMatcher::IsMobileRequest(
     const StringPiece& user_agent,
     const RequestHeaders* request_headers) const {
