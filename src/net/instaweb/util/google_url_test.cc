@@ -305,6 +305,25 @@ TEST_F(GoogleUrlTest, TestExtraSlash) {
   EXPECT_STREQ("http://a.com/extra_slash/index.html", a_extra_slash.Spec());
 }
 
+TEST_F(GoogleUrlTest, SchemeRelativeBase) {
+  GoogleUrl base("http://www.example.com");
+  GoogleUrl resolved(base, "//other.com/file.ext");
+  ASSERT_TRUE(resolved.is_valid());
+  EXPECT_STREQ("http://other.com/file.ext", resolved.Spec());
+}
+
+TEST_F(GoogleUrlTest, SchemeRelativeHttpsBase) {
+  GoogleUrl base("https://www.example.com");
+  GoogleUrl resolved(base, "//other.com/file.ext");
+  ASSERT_TRUE(resolved.is_valid());
+  EXPECT_STREQ("https://other.com/file.ext", resolved.Spec());
+}
+
+TEST_F(GoogleUrlTest, SchemeRelativeNoBase) {
+  GoogleUrl gurl("//other.com/file.ext");
+  EXPECT_FALSE(gurl.is_valid());
+}
+
 // Make sure weird URLs don't crash our system.
 TEST_F(GoogleUrlTest, TestNoCrash) {
   RunAllMethods("http://www.example.com/");
