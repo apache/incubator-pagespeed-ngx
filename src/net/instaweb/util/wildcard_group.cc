@@ -49,13 +49,11 @@ void WildcardGroup::Disallow(const StringPiece& expr) {
 
 bool WildcardGroup::Match(const StringPiece& str, bool allow) const {
   CHECK_EQ(wildcards_.size(), allow_.size());
-  for (int i = 0, n = wildcards_.size(); i < n; ++i) {
-    // Do not bother to execute the wildcard match if a match would
-    // not change the current 'allow' status.  E.g. once we have found
-    // an 'allow' match, we can ignore all subsequent 'allow' tests
-    // until a rule disallows the match.
-    if ((allow != allow_[i]) && wildcards_[i]->Match(str)) {
-      allow = !allow;
+  for (int i = wildcards_.size() - 1; i >= 0; --i) {
+    // Match from last-inserted to first-inserted, returning status of
+    // last-inserted match found.
+    if (wildcards_[i]->Match(str)) {
+      return allow_[i];
     }
   }
   return allow;

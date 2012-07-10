@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstddef>
+
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
@@ -117,6 +119,24 @@ TEST_F(UserAgentMatcherTest, NotSupportsBlink) {
   EXPECT_EQ(UserAgentMatcher::kDoesNotSupportBlink,
             user_agent_matcher_.GetBlinkRequestType(
                 UserAgentStrings::kPSPUserAgent, &headers, false));
+}
+
+TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
+  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
+            user_agent_matcher_.GetPrefetchMechanism(
+                UserAgentStrings::kFirefoxUserAgent));
+  EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
+            user_agent_matcher_.GetPrefetchMechanism(
+                UserAgentStrings::kIe9UserAgent));
+  EXPECT_EQ(UserAgentMatcher::kPrefetchLinkRelSubresource,
+            user_agent_matcher_.GetPrefetchMechanism(
+                UserAgentStrings::kChromeUserAgent));
+  EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
+            user_agent_matcher_.GetPrefetchMechanism(
+                UserAgentStrings::kSafariUserAgent));
+  EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
+            user_agent_matcher_.GetPrefetchMechanism(
+                NULL));
 }
 
 TEST_F(UserAgentMatcherTest, SupportsJsDefer) {

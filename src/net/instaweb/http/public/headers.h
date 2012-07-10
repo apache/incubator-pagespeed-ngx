@@ -19,12 +19,14 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
+class NameValue;
 class StringMultiMapInsensitive;
 class Writer;
 
@@ -102,6 +104,10 @@ template<class Proto> class Headers {
   // Removes all headers whose name is in |names|.
   // Return true if anything was removed.
   virtual bool RemoveAllFromSet(const StringSetInsensitive& names);
+
+  // Removes all headers whose name is in |names|.
+  static void RemoveFromHeaders(const StringSetInsensitive& names,
+                                protobuf::RepeatedPtrField<NameValue>* headers);
 
   // Removes all headers whose name starts with prefix.
   virtual void RemoveAllWithPrefix(const StringPiece& prefix);

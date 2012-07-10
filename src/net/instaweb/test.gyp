@@ -42,6 +42,7 @@
         'instaweb.gyp:instaweb_javascript',
         'instaweb.gyp:instaweb_spriter_test',
         'instaweb.gyp:instaweb_util_pthread',
+        'instaweb_core.gyp:instaweb_util_core',
         '<(DEPTH)/testing/gmock.gyp:gmock',
         '<(DEPTH)/testing/gtest.gyp:gtest_main',
         '<(DEPTH)/third_party/libpng/libpng.gyp:libpng',
@@ -316,6 +317,7 @@
         'test_infrastructure',
         '<(DEPTH)/third_party/re2/re2.gyp:re2_bench_util',
         'instaweb.gyp:instaweb_util_pthread',
+        'instaweb_core.gyp:instaweb_util_core',
       ],
       'include_dirs': [
         '<(DEPTH)',

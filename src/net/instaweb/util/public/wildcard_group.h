@@ -29,7 +29,7 @@ namespace net_instaweb {
 class Wildcard;
 
 // This forms the basis of a wildcard selection mechanism, allowing
-// a user to issue sequence of commands like:
+// a user to issue a sequence of commands like:
 //
 //   1. allow *.cc
 //   2. allow *.h
@@ -37,7 +37,7 @@ class Wildcard;
 //   4. allow ab*.h
 //   5. disallow c*.cc
 //
-// This sequence would yield the following results whnen
+// This sequence would yield the following results:
 //   Match("x.cc") --> true  due to rule #1
 //   Match("c.cc") --> false due to rule #5 which overrides rule #1
 //   Match("y.h")  --> true  due to rule #2
@@ -49,9 +49,8 @@ class WildcardGroup {
   WildcardGroup() {}
   ~WildcardGroup();
 
-  // Determines whether a string matches the wildcard group.  If
-  // none of the wildcards in the group matches, allow_by_default is
-  // returned.
+  // Determines whether a string is allowed by the wildcard group.  If none of
+  // the wildcards in the group matches, allow_by_default is returned.
   bool Match(const StringPiece& str, bool allow_by_default) const;
 
   // Add an expression to Allow, potentially overriding previous calls to

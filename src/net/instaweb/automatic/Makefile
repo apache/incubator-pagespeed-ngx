@@ -169,7 +169,8 @@ endif
 INCLUDE_PATH = \
     -I$(MOD_PAGESPEED_ROOT) \
     -I$(MOD_PAGESPEED_ROOT)/third_party/chromium/src \
-    -I$(MOD_PAGESPEED_ROOT)/third_party/gflags/gen/$(INCLUDE_ARCH)/include
+    -I$(MOD_PAGESPEED_ROOT)/third_party/gflags/gen/$(INCLUDE_ARCH)/include \
+    -I$(MOD_PAGESPEED_ROOT)/third_party/protobuf/src
 OBJS          = $(OUTPUT_DIR)/static_rewriter_main.o \
 		$(OUTPUT_DIR)/static_rewriter.o \
 		$(OUTPUT_DIR)/pagespeed_automatic.a

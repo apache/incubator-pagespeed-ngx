@@ -38,6 +38,13 @@ class UserAgentMatcher {
     kDoesNotSupportBlink,
   };
 
+  enum PrefetchMechanism {
+    kPrefetchNotSupported,
+    kPrefetchLinkRelSubresource,
+    kPrefetchImageTag,
+    kPrefetchObjectTag,
+  };
+
   UserAgentMatcher();
   virtual ~UserAgentMatcher();
 
@@ -56,6 +63,9 @@ class UserAgentMatcher {
       const char* user_agent, const RequestHeaders* request_headers,
       bool allow_mobile) const;
 
+  // Returns the supported prefetch mechanism depending upon the user agent.
+  PrefetchMechanism GetPrefetchMechanism(const StringPiece& user_agent) const;
+
   bool SupportsJsDefer(const StringPiece& user_agent) const;
   bool SupportsWebp(const StringPiece& user_agent) const;
 
@@ -70,6 +80,8 @@ class UserAgentMatcher {
   WildcardGroup supports_blink_desktop_;
   WildcardGroup supports_webp_;
   WildcardGroup mobile_user_agents_;
+  WildcardGroup supports_prefetch_link_rel_subresource_;
+  WildcardGroup supports_prefetch_image_tag_;
 
   DISALLOW_COPY_AND_ASSIGN(UserAgentMatcher);
 };

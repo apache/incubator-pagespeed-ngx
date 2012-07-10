@@ -348,17 +348,23 @@ template<class Proto> bool Headers<Proto>::RemoveAllFromSet(
   if (removed_anything) {
     // Remove all headers that are slated for removal.
     protobuf::RepeatedPtrField<NameValue>* headers = proto_->mutable_header();
-    std::vector<bool> to_keep;
-    to_keep.reserve(headers->size());
-
-    for (int i = 0, n = headers->size(); i < n; ++i) {
-      to_keep.push_back(names.find(headers->Get(i).name()) == names.end());
-    }
-
-    RemoveUnneeded(to_keep, headers);
+    RemoveFromHeaders(names, headers);
   }
 
   return removed_anything;
+}
+
+template<class Proto> void Headers<Proto>::RemoveFromHeaders(
+    const StringSetInsensitive& names,
+    protobuf::RepeatedPtrField<NameValue>* headers) {
+  // Remove all headers that are slated for removal.
+  std::vector<bool> to_keep;
+  to_keep.reserve(headers->size());
+
+  for (int i = 0, n = headers->size(); i < n; ++i) {
+    to_keep.push_back(names.find(headers->Get(i).name()) == names.end());
+  }
+  RemoveUnneeded(to_keep, headers);
 }
 
 template<class Proto> void Headers<Proto>::RemoveAllWithPrefix(

@@ -80,6 +80,10 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // so that we don't expose the base UpdateFrom (and to avoid "hiding" errors).
   virtual void UpdateFrom(const Headers<HttpResponseHeaders>& other);
 
+  // Initializes the response headers with the one in proto, clearing the
+  // existing fields.
+  void UpdateFromProto(const HttpResponseHeaders& proto);
+
   // Serialize HTTP response header to a binary stream.
   virtual bool WriteAsBinary(Writer* writer, MessageHandler* message_handler);
 
@@ -139,6 +143,10 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
 
   // Removes cookie headers, and returns true if any changes were made.
   bool Sanitize();
+
+  // Copies the HttpResponseHeaders proto from the response headers to the given
+  // input after removing the Set-Cookie fields.
+  void GetSanitizedProto(HttpResponseHeaders* proto);
 
   // TODO(jmarantz): consider an alternative representation
   bool headers_complete() const { return has_status_code(); }

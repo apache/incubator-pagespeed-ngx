@@ -20,6 +20,7 @@
 
 #include <cstddef>                     // for size_t
 #include <algorithm>
+#include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes
 #include "net/instaweb/http/public/request_headers.h"
@@ -467,6 +468,29 @@ TEST_F(ResponseHeadersTest, TestSetCookieCacheabilityForNonHtml) {
                       "Cache-control: max-age=300\r\n\r\n"));
   EXPECT_TRUE(response_headers_.IsCacheable());
   EXPECT_TRUE(response_headers_.IsProxyCacheable());
+}
+
+TEST_F(ResponseHeadersTest, GetSanitizedProto) {
+  ParseHeaders(StrCat("HTTP/1.0 200 OK\r\n"
+                      "Date: ", start_time_string_, "\r\n"
+                      "Set-Cookie: CG=US:CA:Mountain+View\r\n"
+                      "Set-Cookie: UA=chrome\r\n"
+                      "Cache-Control: max-age=100\r\n"
+                      "Set-Cookie: path=/\r\n"
+                      "Vary: User-Agent\r\n"
+                      "Set-Cookie2: LA=1275937193\r\n"
+                      "Vary: Accept-Encoding\r\n"
+                      "\r\n"));
+  HttpResponseHeaders proto;
+  response_headers_.GetSanitizedProto(&proto);
+  ASSERT_EQ(proto.header_size(), 4);
+  EXPECT_EQ(proto.header(0).name(), HttpAttributes::kDate);
+  EXPECT_EQ(proto.header(1).name(), HttpAttributes::kCacheControl);
+  EXPECT_EQ(proto.header(1).value(), "max-age=100");
+  EXPECT_EQ(proto.header(2).name(), HttpAttributes::kVary);
+  EXPECT_EQ(proto.header(2).value(), "User-Agent");
+  EXPECT_EQ(proto.header(3).name(), HttpAttributes::kVary);
+  EXPECT_EQ(proto.status_code(), 200);
 }
 
 TEST_F(ResponseHeadersTest, TestRemoveAll) {

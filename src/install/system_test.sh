@@ -767,7 +767,8 @@ check run_wget_with_args $URL
 # (if the cache were empty the inlining wouldn't make the timer cutoff but the
 # resources have been fetched above).
 test_filter local_storage_cache,inline_css,inline_images optimize mode
-fetch_until $URL  'grep -c pagespeed.localStorageCacheInit()' 1
+# Force the request to be rewritten with all applicable filters.
+WGET_ARGS="${WGET_ARGS} --header=X-PSA-Blocking-Rewrite:psatest"
 echo run_wget_with_args "$URL"
 check run_wget_with_args "$URL"
 check grep -q "pagespeed.localStorageCacheInit()" $FETCHED
@@ -782,7 +783,8 @@ check_not grep -q "/\*" $FETCHED
 # (if the cache were empty the inlining wouldn't make the timer cutoff but the
 # resources have been fetched above).
 test_filter local_storage_cache,inline_css,inline_images,debug debug mode
-fetch_until $URL  'grep -c pagespeed.localStorageCacheInit()' 1
+# Force the request to be rewritten with all applicable filters.
+WGET_ARGS="${WGET_ARGS} --header=X-PSA-Blocking-Rewrite:psatest"
 echo run_wget_with_args "$URL"
 check run_wget_with_args "$URL"
 check grep -q "pagespeed.localStorageCacheInit()" $FETCHED

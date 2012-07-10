@@ -319,6 +319,12 @@ void ResponseHeaders::UpdateFrom(const Headers<HttpResponseHeaders>& other) {
   Headers<HttpResponseHeaders>::UpdateFrom(other);
 }
 
+void ResponseHeaders::UpdateFromProto(const HttpResponseHeaders& proto) {
+  Clear();
+  cache_fields_dirty_ = true;
+  proto_->CopyFrom(proto);
+}
+
 bool ResponseHeaders::WriteAsBinary(Writer* writer, MessageHandler* handler) {
   if (cache_fields_dirty_) {
     ComputeCaching();
@@ -409,6 +415,15 @@ bool ResponseHeaders::Sanitize() {
   bool cookie = RemoveAll(HttpAttributes::kSetCookie);
   bool cookie2 = RemoveAll(HttpAttributes::kSetCookie2);
   return cookie || cookie2;
+}
+
+void ResponseHeaders::GetSanitizedProto(HttpResponseHeaders* proto) {
+  proto->CopyFrom(*proto_.get());
+  protobuf::RepeatedPtrField<NameValue>* headers = proto->mutable_header();
+  StringSetInsensitive names;
+  names.insert(HttpAttributes::kSetCookie);
+  names.insert(HttpAttributes::kSetCookie2);
+  RemoveFromHeaders(names, headers);
 }
 
 bool ResponseHeaders::VaryCacheable(bool request_has_cookie) const {

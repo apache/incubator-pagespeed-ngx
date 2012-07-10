@@ -296,6 +296,7 @@ inline GoogleString* StringVectorAdd(StringVector* v) {
   return &v->back();
 }
 
+
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_STRING_UTIL_H_
