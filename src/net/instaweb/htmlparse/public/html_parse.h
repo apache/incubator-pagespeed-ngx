@@ -354,6 +354,11 @@ class HtmlParse {
   // Takes ownership of the HtmlFilter passed in.
   void add_event_listener(HtmlFilter* listener);
 
+  // Inserts a comment before or after the current node.  The function tries to
+  // pick an intelligent place depending on the document structure and
+  // whether the current node is a start-element, end-element, or a leaf.
+  void InsertComment(const StringPiece& sp);
+
  protected:
   typedef std::vector<HtmlFilter*> FilterVector;
   typedef std::list<HtmlFilter*> FilterList;

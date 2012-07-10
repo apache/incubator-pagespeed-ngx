@@ -69,7 +69,8 @@ class HtmlLexer {
   // Print element stack to stdout (for debugging).
   void DebugPrintStack();
 
-  // Returns the current lowest-level parent element in the element stack
+  // Returns the current lowest-level parent element in the element stack, or
+  // NULL if the stack is empty.
   HtmlElement* Parent() const;
 
   // Return the current assumed doctype of the document (based on the content

@@ -951,4 +951,49 @@ void HtmlParse::add_event_listener(HtmlFilter* listener) {
   event_listeners_.push_back(listener);
 }
 
+void HtmlParse::InsertComment(const StringPiece& sp) {
+  HtmlElement* parent = NULL;
+
+  if (queue_.begin() != queue_.end()) {
+    HtmlEventListIterator pos = current_;
+    HtmlEvent* event;
+
+    // Get the last event.
+    if (pos == queue_.end()) {
+      --pos;
+    }
+    event = *pos;
+
+    // Be careful where we insert comments into HTML Elements, as some of
+    // them cannot tolerate new children -- even comments (e.g. textarea,
+    // script).  So if we are looking at a start_element, then insert before,
+    // but if we are looking at an end_element, then insert after.
+    HtmlElement* start_element = event->GetElementIfStartEvent();
+    HtmlElement* end_element = event->GetElementIfEndEvent();
+    if (start_element != NULL) {
+      parent = start_element->parent();
+      InsertElementBeforeEvent(pos, NewCommentNode(parent, sp));
+    } else if (end_element != NULL) {
+      parent = end_element->parent();
+      InsertElementAfterEvent(pos, NewCommentNode(parent, sp));
+    } else {
+      // The current node must not be an element, but instead a leaf
+      // node such as another Comment, IEDirective, or Characters.
+      // Insert the comment immediately after the node if we are at the
+      // end, otherwise insert the comment before the current node.
+      HtmlNode* node = event->GetNode();
+      if (node != NULL) {
+        parent = node->parent();
+      }
+      if (current_ == queue_.end()) {
+        InsertElementAfterEvent(pos, NewCommentNode(parent, sp));
+      } else {
+        InsertElementBeforeEvent(pos, NewCommentNode(parent, sp));
+      }
+    }
+  } else {
+    AddEvent(new HtmlCommentEvent(NewCommentNode(NULL, sp), 0));
+  }
+}
+
 }  // namespace net_instaweb

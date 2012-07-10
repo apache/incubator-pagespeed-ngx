@@ -23,7 +23,6 @@
 #include <cstdarg>
 #include <cstddef>  // for size_t
 #include <cstdio>
-#include <utility>  // for pair
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/html_event.h"
@@ -640,8 +639,9 @@ void HtmlLexer::EmitTagBriefClose() {
 }
 
 HtmlElement* HtmlLexer::Parent() const {
-  html_parse_->message_handler()->Check(!element_stack_.empty(),
-                                        "element_stack_.empty()");
+  if (element_stack_.empty()) {
+    return NULL;
+  }
   return element_stack_.back();
 }
 

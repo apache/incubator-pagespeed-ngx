@@ -1300,6 +1300,103 @@ TEST_F(EventListManipulationTest, TestHasChildren) {
   EXPECT_FALSE(html_parse_.HasChildrenInFlushWindow(div));
 }
 
+TEST_F(EventListManipulationTest, AppendComment) {
+  html_parse_.InsertComment("hello");
+  CheckExpected("1<!--hello-->");
+}
+
+TEST_F(EventListManipulationTest, CommentBeforeDiv1) {
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
+  html_parse_.AddElement(div, -1);
+  html_parse_.InsertComment("hello");
+  html_parse_.CloseElement(div, HtmlElement::EXPLICIT_CLOSE, -1);
+  CheckExpected("1<!--hello--><div></div>");
+}
+
+TEST_F(EventListManipulationTest, CommentBeforeDiv2) {
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
+  html_parse_.InsertComment("hello");
+  html_parse_.AddElement(div, -1);
+  html_parse_.CloseElement(div, HtmlElement::EXPLICIT_CLOSE, -1);
+  CheckExpected("1<!--hello--><div></div>");
+}
+
+TEST_F(EventListManipulationTest, CommentAfterDiv) {
+  HtmlElement* div = html_parse_.NewElement(NULL, HtmlName::kDiv);
+  html_parse_.AddElement(div, -1);
+  html_parse_.CloseElement(div, HtmlElement::EXPLICIT_CLOSE, -1);
+  html_parse_.InsertComment("hello");
+  CheckExpected("1<div></div><!--hello-->");
+}
+
+TEST_F(EventListManipulationTest, CommentAfterFirstDiv) {
+  HtmlElement* div1 = html_parse_.NewElement(NULL, HtmlName::kDiv);
+  html_parse_.AddElement(div1, -1);
+  html_parse_.CloseElement(div1, HtmlElement::EXPLICIT_CLOSE, -1);
+  HtmlElement* div2 = html_parse_.NewElement(NULL, HtmlName::kDiv);
+  html_parse_.AddElement(div2, -1);
+  html_parse_.CloseElement(div2, HtmlElement::EXPLICIT_CLOSE, -1);
+  HtmlTestingPeer::SetCurrent(&html_parse_, div1);
+  html_parse_.InsertComment("hello");
+  CheckExpected("1<div></div><!--hello--><div></div>");
+}
+
+class InsertCommentOnFirstDivFilter : public EmptyHtmlFilter {
+ public:
+  InsertCommentOnFirstDivFilter(bool at_start, HtmlParse* parse)
+      : html_parse_(parse),
+        at_start_(at_start),
+        first_(true) {
+  }
+
+  virtual void StartDocument() { first_ = true; }
+  virtual void StartElement(HtmlElement* element) { Insert(true, element); }
+  virtual void EndElement(HtmlElement* element) { Insert(false, element); }
+  virtual const char* Name() const { return "InsertCommentOnFirstDivFilter"; }
+
+ private:
+  void Insert(bool at_start, HtmlElement* element) {
+    if (first_ && (at_start == at_start_) &&
+        (element->keyword() == HtmlName::kDiv)) {
+      html_parse_->InsertComment("hello");
+      first_ = false;
+    }
+  }
+
+
+ private:
+  HtmlParse* html_parse_;
+  bool at_start_;
+  bool first_;
+
+  DISALLOW_COPY_AND_ASSIGN(InsertCommentOnFirstDivFilter);
+};
+
+TEST_F(HtmlParseTestNoBody, CommentInsideFirstDiv) {
+  InsertCommentOnFirstDivFilter insert_at_first_div(true, &html_parse_);
+  html_parse_.AddFilter(&insert_at_first_div);
+  SetupWriter();
+  ValidateExpected("comment_inside_first_div",
+                   "1<div>2</div>3<div>4</div>5",
+                   "1<!--hello--><div>2</div>3<div>4</div>5");
+}
+
+TEST_F(HtmlParseTestNoBody, CommentAfterFirstDiv) {
+  InsertCommentOnFirstDivFilter insert_at_first_div(false, &html_parse_);
+  html_parse_.AddFilter(&insert_at_first_div);
+  SetupWriter();
+  ValidateExpected("comment_inside_first_div",
+                   "1<div>2</div>3<div>4</div>5",
+                   "1<div>2</div><!--hello-->3<div>4</div>5");
+}
+
+TEST_F(HtmlParseTestNoBody, InsertCommentFromEmpty) {
+  html_parse_.InsertComment("hello");
+  SetupWriter();
+  html_parse()->ApplyFilter(html_writer_filter_.get());
+  EXPECT_EQ("<!--hello-->", output_buffer_);
+}
+
 // Unit tests for attribute manipulation.
 // Goal is to make sure we don't (eg) read deallocated storage
 // while manipulating attribute values.
