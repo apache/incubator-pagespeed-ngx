@@ -18,6 +18,8 @@
 // Register handlers, define configuration options and set up other things
 // that mod_pagespeed needs to do to be an Apache module.
 
+#include <unistd.h>
+
 #include <set>
 #include <string>
 

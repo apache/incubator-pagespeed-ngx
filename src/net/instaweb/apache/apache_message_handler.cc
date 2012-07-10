@@ -15,6 +15,9 @@
 // Author: sligocki@google.com (Shawn Ligocki)
 
 #include "net/instaweb/apache/apache_message_handler.h"
+
+#include <unistd.h>
+
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/log_message_handler.h"
 

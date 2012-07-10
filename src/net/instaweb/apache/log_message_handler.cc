@@ -17,6 +17,8 @@
 
 #include "net/instaweb/apache/log_message_handler.h"
 
+#include <unistd.h>
+
 #include <limits>
 #include <string>
 

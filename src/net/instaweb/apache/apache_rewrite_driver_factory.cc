@@ -17,6 +17,8 @@
 
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 
+#include <unistd.h>
+
 #include <algorithm>
 
 #include "apr_pools.h"
