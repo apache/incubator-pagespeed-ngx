@@ -19,7 +19,6 @@
 #include "net/instaweb/util/public/file_cache.h"
 
 #include <cstddef>
-#include <cstdlib>
 #include <vector>
 #include <queue>
 #include "base/scoped_ptr.h"
@@ -100,10 +99,7 @@ FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
       cache_policy_(policy),
       path_length_limit_(file_system_->MaxPathLength(path)),
       clean_time_path_(path) {
-  // NOTE(abliss): We don't want all the caches racing for the
-  // lock at startup, so each one gets a random offset.
-  next_clean_ms_ = policy->timer->NowMs()
-      + (random() % policy->clean_interval_ms);
+  next_clean_ms_ = policy->timer->NowMs() + policy->clean_interval_ms / 2;
   EnsureEndsInSlash(&clean_time_path_);
   clean_time_path_ += kCleanTimeName;
 }
