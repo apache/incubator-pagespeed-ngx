@@ -154,6 +154,7 @@ class RewriteOptions {
     kImageRetainColorProfile,
     kImageRetainColorSampling,
     kImageRetainExifData,
+    kCacheSmallImagesUnrewritten,
     kImageResolutionLimitBytes,
     kImageWebpRecompressQuality,
     kImplicitCacheTtlMs,
@@ -612,6 +613,12 @@ class RewriteOptions {
   int64 css_flatten_max_bytes() const { return css_flatten_max_bytes_.value(); }
   void set_css_flatten_max_bytes(int64 x) {
     set_option(x, &css_flatten_max_bytes_);
+  }
+  bool cache_small_images_unrewritten() const {
+    return cache_small_images_unrewritten_.value();
+  }
+  void set_cache_small_images_unrewritten(bool x) {
+    set_option(x, &cache_small_images_unrewritten_);
   }
   int64 image_resolution_limit_bytes() const {
     return image_resolution_limit_bytes_.value();
@@ -1574,6 +1581,7 @@ class RewriteOptions {
 
   MutexedOptionInt64MergeWithMax cache_invalidation_timestamp_;
   Option<int64> css_flatten_max_bytes_;
+  Option<bool> cache_small_images_unrewritten_;
   // Sets limit for image optimization
   Option<int64> image_resolution_limit_bytes_;
   Option<int64> css_image_inline_max_bytes_;

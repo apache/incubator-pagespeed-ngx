@@ -16,10 +16,12 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
+#include "base/scoped_ptr.h"  // for scoped_ptr
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -33,18 +35,23 @@
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
+
+class AbstractMutex;
 
 namespace {
 
@@ -88,10 +95,28 @@ class HTTPCacheStringCallback : public OptionsAwareHTTPCacheCallback {
   DISALLOW_COPY_AND_ASSIGN(HTTPCacheStringCallback);
 };
 
+class MockPage : public PropertyPage {
+ public:
+  MockPage(AbstractMutex* mutex, const StringPiece& key)
+      : PropertyPage(mutex, key) {}
+  virtual ~MockPage() {}
+  virtual void Done(bool valid) {}
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockPage);
+};
+
 class ImageRewriteTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
+    PropertyCache* pcache = factory()->page_property_cache();
+    factory()->set_enable_property_cache(true);
+    pcache->AddCohort(RewriteDriver::kDomCohort);
     ResourceManagerTestBase::SetUp();
+    MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),
+                                  kTestDomain);
+    pcache->set_enabled(true);
+    rewrite_driver()->set_property_page(page);
+    pcache->Read(page);
   }
 
   // Simple image rewrite test to check resource fetching functionality.
@@ -341,6 +366,26 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     GoogleString html_expected_output =
         StringPrintf(html_boilerplate, rewritten_url.c_str(), final_dims);
     EXPECT_EQ(AddHtmlBody(html_expected_output), output_buffer_);
+  }
+
+  // Returns the property cache value for kInlinableImageUrlsPropertyName,
+  // or NULL if it is not present.
+  const PropertyValue* FetchInlinablePropertyCacheValue() {
+    PropertyCache* pcache = factory()->page_property_cache();
+    if (pcache == NULL) {
+      return NULL;
+    }
+    const PropertyCache::Cohort* cohort = pcache->GetCohort(
+        RewriteDriver::kDomCohort);
+    if (cohort == NULL) {
+      return NULL;
+    }
+    PropertyPage* property_page = rewrite_driver()->property_page();
+    if (property_page == NULL) {
+      return NULL;
+    }
+    return property_page->GetProperty(
+        cohort, ImageRewriteFilter::kInlinableImageUrlsPropertyName);
   }
 };
 
@@ -1041,6 +1086,68 @@ TEST_F(ImageRewriteTest, GifToPngTestWithoutResizeWithoutOptimize) {
   // Without resize and without optimization
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, false);
+}
+
+TEST_F(ImageRewriteTest, InlinableImagesInsertedIntoPropertyCache) {
+  // If image_inlining_identify_and_cache_without_rewriting() is set in
+  // RewriteOptions, images that would have been inlined are instead inserted
+  // into the property cache.
+  const char kChefDims[] = " width=192 height=256";
+  options()->set_image_inline_max_bytes(30000);
+  options()->set_cache_small_images_unrewritten(true);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  rewrite_driver()->AddFilters();
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    kChefDims, kChefDims, false, false);
+  EXPECT_STREQ("\"http://test.com/IronChef2.gif\"",
+               FetchInlinablePropertyCacheValue()->value());
+}
+
+TEST_F(ImageRewriteTest, InlinableCssImagesInsertedIntoPropertyCache) {
+  // If image_inlining_identify_and_cache_without_rewriting() is set in
+  // RewriteOptions, CSS images that would have been inlined are instead
+  // inserted into the property cache.
+  options()->set_image_inline_max_bytes(30000);
+  options()->set_cache_small_images_unrewritten(true);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  rewrite_driver()->AddFilters();
+  const char kPngFile1[] = "a.png";
+  const char kPngFile2[] = "b.png";
+  AddFileToMockFetcher(StrCat(kTestDomain, kPngFile1), kBikePngFile,
+                       kContentTypePng, 100);
+  AddFileToMockFetcher(StrCat(kTestDomain, kPngFile2), kCuppaTPngFile,
+                       kContentTypePng, 100);
+  const char kCssFile[] = "a.css";
+  // We include a duplicate image here to verify that duplicate suppression
+  // is working.
+  GoogleString css_contents = StringPrintf(
+      "div{background-image:url(%s)}"
+      "h1{background-image:url(%s)}"
+      "p{background-image:url(%s)}", kPngFile1, kPngFile1, kPngFile2);
+  SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss, css_contents, 100);
+  // Parse the CSS and ensure contents are unchanged.
+  GoogleString out_css_url = Encode(kTestDomain, "cf", "0", kCssFile, "css");
+  GoogleString out_css;
+  StringAsyncFetch async_fetch(&out_css);
+  ResponseHeaders response;
+  async_fetch.set_response_headers(&response);
+  EXPECT_TRUE(rewrite_driver_->FetchResource(out_css_url, &async_fetch));
+  rewrite_driver_->WaitForShutDown();
+  EXPECT_TRUE(async_fetch.success());
+
+  // The CSS is unmodified and the image URL is stored in the property cache.
+  EXPECT_STREQ(css_contents, out_css);
+  // The expected URLs are present.
+  StringPieceVector urls;
+  StringSet expected_urls;
+  expected_urls.insert("\"http://test.com/a.png\"");
+  expected_urls.insert("\"http://test.com/b.png\"");
+  SplitStringPieceToVector(FetchInlinablePropertyCacheValue()->value(), ",",
+                           &urls, false);
+  EXPECT_EQ(expected_urls.size(), urls.size());
+  for (int i = 0; i < urls.size(); ++i) {
+    EXPECT_EQ(1, expected_urls.count(urls[i].as_string()));
+  }
 }
 
 }  // namespace

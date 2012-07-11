@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 
 #include <limits.h>
+#include <utility>
 
 #include "base/logging.h"               // for CHECK, etc
 #include "base/scoped_ptr.h"
@@ -44,6 +45,7 @@
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_work_bound.h"
@@ -72,6 +74,8 @@ const char kImageInline[] = "image_inline";
 const char ImageRewriteFilter::kImageOngoingRewrites[] =
     "image_ongoing_rewrites";
 const char kImageWebpRewrites[] = "image_webp_rewrites";
+const char ImageRewriteFilter::kInlinableImageUrlsPropertyName[] =
+    "ImageRewriter-inlinable-urls";
 
 const int kNotCriticalIndex = INT_MAX;
 
@@ -138,7 +142,8 @@ void ImageRewriteFilter::Context::Render() {
           resource_slot);
       rewrote_url = filter_->FinishRewriteImageUrl(
           result, resource_context(),
-          html_slot->element(), html_slot->attribute(), html_index_);
+          html_slot->element(), html_slot->attribute(), html_index_,
+          resource_slot);
     }
     // Use standard rendering in case the rewrite is nested and not inside CSS.
   }
@@ -204,6 +209,7 @@ void ImageRewriteFilter::StartDocumentImpl() {
                                   (driver_->critical_images() == NULL));
   }
   image_counter_ = 0;
+  inlinable_urls_.clear();
 }
 
 namespace {
@@ -629,9 +635,13 @@ bool ImageRewriteFilter::FinishRewriteCssImageUrl(
     const CachedResult* cached, ResourceSlot* slot) {
   GoogleString data_url;
   if (driver_->UserAgentSupportsImageInlining() &&
-      TryInline(css_image_inline_max_bytes, cached, &data_url)) {
+      TryInline(css_image_inline_max_bytes, cached, slot, &data_url)) {
     // TODO(jmaessen): Can we make output URL reflect actual *usage*
     // of image inlining and/or webp images?
+    const RewriteOptions* options = driver_->options();
+    DCHECK(!options->cache_small_images_unrewritten())
+        << "Modifying a URL slot despite "
+        << "image_inlining_identify_and_cache_without_rewriting set.";
     slot->DirectSetUrl(data_url);
     image_inline_count_->Add(1);
     return true;
@@ -645,7 +655,8 @@ bool ImageRewriteFilter::FinishRewriteCssImageUrl(
 
 bool ImageRewriteFilter::FinishRewriteImageUrl(
     const CachedResult* cached, const ResourceContext* resource_context,
-    HtmlElement* element, HtmlElement::Attribute* src, int image_index) {
+    HtmlElement* element, HtmlElement::Attribute* src, int image_index,
+    ResourceSlot* slot) {
   const RewriteOptions* options = driver_->options();
   bool rewrote_url = false;
   bool image_inlined = false;
@@ -660,7 +671,11 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   GoogleString data_url;
   if (driver_->UserAgentSupportsImageInlining() &&
       TryInline(driver_->options()->ImageInlineMaxBytes(),
-                cached, &data_url)) {
+                cached, slot, &data_url)) {
+    const RewriteOptions* options = driver_->options();
+    DCHECK(!options->cache_small_images_unrewritten())
+        << "Modifying a URL slot despite "
+        << "image_inlining_identify_and_cache_without_rewriting set.";
     src->SetValue(data_url);
     // TODO(jmaessen): We used to take the absence of desired_image_dims here as
     // license to delete dimensions.  That was incorrect, as sometimes there
@@ -687,7 +702,9 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     image_inline_count_->Add(1);
     rewrote_url = true;
     image_inlined = true;
-  } else {
+  }
+
+  if (!image_inlined && !slot->disable_rendering()) {
     // Not inlined means we cannot store it in local storage.
     LocalStorageCacheFilter::RemoveLscAttributes(element);
     if (cached->optimizable()) {
@@ -715,7 +732,8 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     }
   }
 
-  if (driver_->UserAgentSupportsImageInlining() && !image_inlined &&
+  if (!slot->disable_rendering() &&
+      driver_->UserAgentSupportsImageInlining() && !image_inlined &&
       options->NeedLowResImages() &&
       cached->has_low_resolution_inlined_data() &&
       IsCriticalImage(src_value)) {
@@ -749,6 +767,41 @@ bool ImageRewriteFilter::IsCriticalImage(const StringPiece& image_url) const {
   bool is_image_critical = (finder == NULL) ||
       (finder->IsCriticalImage(image_gurl.spec_c_str(), driver_));
   return is_image_critical;
+}
+
+bool ImageRewriteFilter::StoreUrlInPropertyCache(const StringPiece& url) {
+  if (url.length() == 0) {
+    return true;
+  }
+  PropertyCache* pcache = resource_manager_->page_property_cache();
+  if (pcache == NULL) {
+    LOG(WARNING) << "image_inlining_identify_and_cache_without_rewriting "
+                 << "without property cache enabled.";
+    return false;
+  }
+  PropertyPage* property_page = driver()->property_page();
+  if (property_page == NULL) {
+    LOG(WARNING) << "image_inlining_identify_and_cache_without_rewriting "
+                 << "without PropertyPage.";
+    return false;
+  }
+  const PropertyCache::Cohort* cohort = pcache->GetCohort(
+      RewriteDriver::kDomCohort);
+  if (cohort == NULL) {
+    LOG(WARNING) << "image_inlining_identify_and_cache_without_rewriting "
+                 << "without configured DOM cohort.";
+    return false;
+  }
+  PropertyValue* value = property_page->GetProperty(
+      cohort, kInlinableImageUrlsPropertyName);
+  VLOG(3) << "image_inlining_identify_and_cache_without_rewriting value "
+          << "inserted into pcache: " << url;
+  GoogleString new_value(StrCat("\"", url, "\""));
+  if (value->has_value()) {
+    StrAppend(&new_value, ",", value->value());
+  }
+  pcache->UpdateValue(new_value, value);
+  return true;
 }
 
 bool ImageRewriteFilter::HasAnyDimensions(HtmlElement* element) {
@@ -903,12 +956,38 @@ void ImageRewriteFilter::GetDimensions(HtmlElement* element,
 
 bool ImageRewriteFilter::TryInline(
     int64 image_inline_max_bytes, const CachedResult* cached_result,
-    GoogleString* data_url) {
+    ResourceSlot* slot, GoogleString* data_url) {
   if (!cached_result->has_inlined_data()) {
     return false;
   }
   StringPiece data = cached_result->inlined_data();
   if (static_cast<int64>(data.size()) >= image_inline_max_bytes) {
+    return false;
+  }
+  GoogleUrl absolute_url(base_url(), slot->resource()->url());
+  if (!absolute_url.is_valid()) {
+    return false;
+  }
+  // This is the decision point for whether or not an image is suitable for
+  // inlining. After this point, we may skip inlining an image, but not because
+  // of properties of the image.
+  GoogleString absolute_url_string(absolute_url.UncheckedSpec().as_string());
+
+  // If we are skipping rewriting, record the URL for storage in the property
+  // cache, suppress future rewrites to this slot, and return immediately.
+  const RewriteOptions* options = driver_->options();
+  if (options->cache_small_images_unrewritten()) {
+    // Duplicate URLs are suppressed.
+    if (inlinable_urls_.insert(absolute_url_string).second) {
+      // This write to the property value allows downstream filters to observe
+      // inlinable images within the same flush window. Note that this does not
+      // induce a write to the underlying cache -- the value is written only
+      // when the filter chain has finished execution.
+      StoreUrlInPropertyCache(absolute_url.Spec().as_string());
+    }
+    // We disable rendering to prevent any rewriting of the URL that we'll
+    // advertise in the property cache.
+    slot->set_disable_rendering(true);
     return false;
   }
   DataUrl(

@@ -625,7 +625,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(82, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(83, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAjaxRewritingEnabled));
@@ -713,6 +713,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("ImageRetainExifData"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kImageRetainExifData));
+  EXPECT_EQ(StringPiece("CacheSmallImagesUnrewritten"),
+            RewriteOptions::LookupOptionEnum(
+                  RewriteOptions::kCacheSmallImagesUnrewritten));
   EXPECT_EQ(StringPiece("ImageWebpRecompressQuality"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kImageWebpRecompressQuality));

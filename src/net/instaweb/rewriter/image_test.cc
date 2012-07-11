@@ -25,11 +25,11 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/image_data_lookup.h"
-#include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/image_test_base.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -141,8 +141,10 @@ class ImageTest : public ImageTestBase {
 
     cached.set_inlined_data(image_contents.data(), image_contents.size());
     cached.set_inlined_image_type(static_cast<int>(image->image_type()));
-    EXPECT_TRUE(ImageRewriteFilter::TryInline(
-        image->output_size() + 1, &cached, &data_url));
+    DataUrl(
+        *Image::TypeToContentType(
+            static_cast<Image::Type>(cached.inlined_image_type())),
+        BASE64, cached.inlined_data(), &data_url);
     GoogleString data_header("data:");
     data_header.append(image->content_type()->mime_type());
     data_header.append(";base64,");

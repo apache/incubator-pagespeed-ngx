@@ -591,6 +591,8 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultImageJpegNumProgressiveScans,
              &image_jpeg_num_progressive_scans_, "ijps",
              kImageJpegNumProgressiveScans);
+  add_option(false, &cache_small_images_unrewritten_, "csiu",
+             kCacheSmallImagesUnrewritten);
   add_option(kDefaultImageResolutionLimitBytes, &image_resolution_limit_bytes_,
              "irlb", kImageResolutionLimitBytes);
   add_option(false, &image_retain_color_profile_, "ircp",

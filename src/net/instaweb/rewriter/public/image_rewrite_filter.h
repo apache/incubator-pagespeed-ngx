@@ -63,9 +63,9 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Can we inline resource?  If so, encode its contents into the data_url,
   // otherwise leave data_url alone.
-  static bool TryInline(
+  bool TryInline(
       int64 image_inline_max_bytes, const CachedResult* cached_result,
-      GoogleString* data_url);
+      ResourceSlot* slot, GoogleString* data_url);
 
   // The valid contents of a dimension attribute on an image element have one of
   // the following forms: "45%" "45%px" "+45.0%" [45% of browser width; we can't
@@ -111,6 +111,11 @@ class ImageRewriteFilter : public RewriteFilter {
   // load (too many concurrent rewrites)
   static const char kImageRewritesDroppedDueToLoad[];
 
+  // The property cache property name used to store URLs discovered when
+  // image_inlining_identify_and_cache_without_rewriting() is set in the
+  // RewriteOptions.
+  static const char kInlinableImageUrlsPropertyName[];
+
  protected:
   virtual const UrlSegmentEncoder* encoder() const;
 
@@ -137,7 +142,8 @@ class ImageRewriteFilter : public RewriteFilter {
   // Returns true if it rewrote the URL.
   bool FinishRewriteImageUrl(
       const CachedResult* cached, const ResourceContext* resource_context,
-      HtmlElement* element, HtmlElement::Attribute* src, int image_index);
+      HtmlElement* element, HtmlElement::Attribute* src, int image_index,
+      ResourceSlot* slot);
 
   // Save image contents in cached if the image is inlinable.
   void SaveIfInlinable(const StringPiece& contents,
@@ -163,6 +169,11 @@ class ImageRewriteFilter : public RewriteFilter {
   // by CriticalImageFinder. Images are considered critical if the platform
   // lacks a CriticalImageFinder implementation.
   bool IsCriticalImage(const StringPiece& image_url) const;
+
+  // Persist a URL that would have be inlined to the property cache, if
+  // options()->image_inlining_identify_and_cache_without_rewriting(). Returns
+  // true if a PropertyValue was written.
+  bool StoreUrlInPropertyCache(const StringPiece& url);
 
   scoped_ptr<WorkBound> work_bound_;
 
@@ -199,6 +210,11 @@ class ImageRewriteFilter : public RewriteFilter {
   // Counter to help associate each <img> tag in the HTML with a unique index,
   // for use in determining whether the image should be previewed.
   int image_counter_;
+
+  // The set of inlinable URLs, populated as the page is parsed, if
+  // image_inlining_identify_and_cache_without_rewriting() is set in the
+  // RewriteOptions.
+  StringSet inlinable_urls_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageRewriteFilter);
 };
