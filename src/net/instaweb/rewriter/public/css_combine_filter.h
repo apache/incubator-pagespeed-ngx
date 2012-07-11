@@ -64,7 +64,7 @@ class CssCombineFilter : public RewriteFilter {
   class CssCombiner;
 
   CssCombiner* combiner();
-  void NextCombination();
+  void NextCombination(const char* debug_help);
   Context* MakeContext();
 
   CssTagScanner css_tag_scanner_;

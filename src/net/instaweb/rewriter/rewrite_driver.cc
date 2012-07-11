@@ -2228,7 +2228,6 @@ RewriteDriver::XhtmlStatus RewriteDriver::MimeTypeXhtmlStatus() {
   return xhtml_status_;
 }
 
-
 FlushEarlyInfo* RewriteDriver::flush_early_info() {
   if (flush_early_info_.get() == NULL) {
     flush_early_info_.reset(new FlushEarlyInfo);

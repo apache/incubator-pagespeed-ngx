@@ -63,9 +63,12 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
   }
 
   // Test spriting CSS with options to write headers and use a hasher.
-  void CombineCss(const StringPiece& id, const StringPiece& barrier_text,
+  void CombineCss(const StringPiece& id,
+                  const StringPiece& barrier_text,
+                  const StringPiece& debug_text,
                   bool is_barrier) {
-    CombineCssWithNames(id, barrier_text, is_barrier, "a.css", "b.css");
+    CombineCssWithNames(id, barrier_text, debug_text, is_barrier,
+                        "a.css", "b.css");
   }
 
   // Synthesizes an HTML css link element, with no media tag.
@@ -91,6 +94,7 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 
   void CombineCssWithNames(const StringPiece& id,
                            const StringPiece& barrier_text,
+                           const StringPiece& debug_text,
                            bool is_barrier,
                            const char* a_css_name,
                            const char* b_css_name) {
@@ -159,11 +163,12 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 
     EXPECT_EQ(expected_file_count_reduction, css_file_count_reduction->Get());
 
-    GoogleString expected_output(StrCat(
+    GoogleString expected_output(AddHtmlBody(StrCat(
         "<head>\n"
         "  ", Link(combine_url), "\n"
         "  \n"  // The whitespace from the original link is preserved here ...
         "  <title>Hello, Instaweb</title>\n",
+        debug_text,
         barrier_text,
         "</head>\n"
         "<body>\n"
@@ -173,8 +178,11 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
         "    </div>\n"
         "  </div>\n"
         "  ", (is_barrier ? Link("c.css") : ""), "\n"
-        "</body>\n"));
-    EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
+        "</body>\n")));
+    if (!debug_text.empty()) {
+      StrAppend(&expected_output, "<!--css_combine: flush-->");
+    }
+    EXPECT_EQ(expected_output, output_buffer_);
 
     // Fetch the combination to make sure we can serve the result from above.
     ExpectStringAsyncFetch expect_callback(true);
@@ -401,13 +409,13 @@ class CssCombineFilterTest : public ResourceManagerTestBase {
 
 TEST_F(CssCombineFilterTest, CombineCss) {
   SetHtmlMimetype();
-  CombineCss("combine_css_no_hash", "", false);
+  CombineCss("combine_css_no_hash", "", "", false);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssMD5) {
   SetHtmlMimetype();
   UseMd5Hasher();
-  CombineCss("combine_css_md5", "", false);
+  CombineCss("combine_css_md5", "", "", false);
 }
 
 // Make sure that if we re-parse the same html twice we do not
@@ -415,10 +423,10 @@ TEST_F(CssCombineFilterTest, CombineCssMD5) {
 TEST_F(CssCombineFilterTest, CombineCssRecombine) {
   SetHtmlMimetype();
   UseMd5Hasher();
-  CombineCss("combine_css_recombine", "", false);
+  CombineCss("combine_css_recombine", "", "", false);
   int inserts_before = lru_cache()->num_inserts();
 
-  CombineCss("combine_css_recombine", "", false);
+  CombineCss("combine_css_recombine", "", "", false);
   int inserts_after = lru_cache()->num_inserts();
   EXPECT_EQ(inserts_before, inserts_after);
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
@@ -428,7 +436,7 @@ TEST_F(CssCombineFilterTest, CombineCssRecombine) {
 // http://code.google.com/p/modpagespeed/issues/detail?q=css&id=39
 TEST_F(CssCombineFilterTest, DealWithParams) {
   SetHtmlMimetype();
-  CombineCssWithNames("with_params", "", false, "a.css?U", "b.css?rev=138");
+  CombineCssWithNames("with_params", "", "", false, "a.css?U", "b.css?rev=138");
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?q=css&id=252
@@ -499,14 +507,43 @@ TEST_F(CssCombineFilterTest, CombineCssWithIEDirective) {
       Link("http://graphics8.nytimes.com/css/0.1/screen/build/homepage/ie.css"),
       "\n<![endif]-->"));
   UseMd5Hasher();
-  CombineCss("combine_css_ie", ie_directive_barrier, true);
+  CombineCss("combine_css_ie", ie_directive_barrier, "", true);
+}
+
+class CssCombineFilterWithDebugTest : public CssCombineFilterTest {
+ protected:
+  virtual void SetUp() {
+    // We setup the options before the upcall so that the
+    // CSS filter is created aware of these.
+    options()->EnableFilter(RewriteOptions::kDebug);
+    CssCombineFilterTest::SetUp();
+  }
+};
+
+TEST_F(CssCombineFilterWithDebugTest, CombineCssWithIEDirectiveDebug) {
+  SetHtmlMimetype();
+  GoogleString ie_directive_barrier(StrCat(
+      "<!--[if IE]>\n",
+      Link("http://graphics8.nytimes.com/css/0.1/screen/build/homepage/ie.css"),
+      "\n<![endif]-->"));
+  UseMd5Hasher();
+  CombineCss("combine_css_ie", ie_directive_barrier,
+             "<!--css_combine: ie directive-->", true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithStyle) {
   SetHtmlMimetype();
   const char style_barrier[] = "<style>a { color: red }</style>\n";
   UseMd5Hasher();
-  CombineCss("combine_css_style", style_barrier, true);
+  CombineCss("combine_css_style", style_barrier, "", true);
+}
+
+TEST_F(CssCombineFilterWithDebugTest, CombineCssWithStyleDebug) {
+  SetHtmlMimetype();
+  const char style_barrier[] = "<style>a { color: red }</style>\n";
+  UseMd5Hasher();
+  CombineCss("combine_css_style", style_barrier,
+             "<!--css_combine: inline style-->", true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithBogusLink) {
@@ -514,7 +551,16 @@ TEST_F(CssCombineFilterTest, CombineCssWithBogusLink) {
   const char bogus_barrier[] = "<link rel='stylesheet' "
       "href='crazee://big/blue/fake' type='text/css'>\n";
   UseMd5Hasher();
-  CombineCss("combine_css_bogus_link", bogus_barrier, true);
+  CombineCss("combine_css_bogus_link", bogus_barrier, "",  true);
+}
+
+TEST_F(CssCombineFilterWithDebugTest, CombineCssWithBogusLink) {
+  SetHtmlMimetype();
+  const char bogus_barrier[] = "<link rel='stylesheet' "
+      "href='crazee://big/blue/fake' type='text/css'>\n";
+  UseMd5Hasher();
+  CombineCss("combine_css_bogus_link", bogus_barrier,
+             "<!--css_combine: resource not rewriteable-->",  true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithImportInFirst) {
@@ -617,7 +663,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithNoscriptBarrier) {
   SetFetchResponse(d_css_url, default_css_header, d_css_body);
 
   UseMd5Hasher();
-  CombineCss("combine_css_noscript", noscript_barrier, true);
+  CombineCss("combine_css_noscript", noscript_barrier, "", true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithFakeNoscriptBarrier) {
@@ -627,7 +673,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithFakeNoscriptBarrier) {
       "  <p>You have no scripts installed</p>\n"
       "</noscript>\n";
   UseMd5Hasher();
-  CombineCss("combine_css_fake_noscript", non_barrier, false);
+  CombineCss("combine_css_fake_noscript", non_barrier, "", false);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
@@ -642,7 +688,7 @@ TEST_F(CssCombineFilterTest, CombineCssWithMediaBarrier) {
   SetFetchResponse(d_css_url, default_css_header, d_css_body);
 
   UseMd5Hasher();
-  CombineCss("combine_css_media", media_barrier, true);
+  CombineCss("combine_css_media", media_barrier, "", true);
 }
 
 TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
@@ -934,7 +980,7 @@ TEST_F(CssCombineFilterTest, CombineStyleTag) {
   StringVector segments;
   ASSERT_TRUE(css_out[0]->DecomposeCombinedUrl(&base, &segments,
                                                &message_handler_));
-  EXPECT_EQ(2, segments.size());
+  ASSERT_EQ(2, segments.size());
   EXPECT_EQ("1.css", segments[0]);
   EXPECT_EQ("2.css", segments[1]);
   EXPECT_EQ("4.css", css_out[1]->url_);

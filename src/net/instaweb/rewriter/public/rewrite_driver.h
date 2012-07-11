@@ -812,6 +812,10 @@ class RewriteDriver : public HtmlParse {
   // ensure the order.
   void AddResourceToSubresourcesMap(const StringPiece& url, int id);
 
+  // Determines whether we are currently in Debug mode; meaning that the
+  // site owner or user has enabled filter kDebug.
+  bool DebugMode() const { return options()->Enabled(RewriteOptions::kDebug); }
+
  private:
   friend class ResourceManagerTestBase;
   friend class ResourceManagerTest;

@@ -22,6 +22,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -30,7 +31,6 @@ class GoogleUrl;
 class HtmlElement;
 class ResourceManager;
 class ResponseHeaders;
-class RewriteDriver;
 class RewriteOptions;
 
 // CommonFilter encapsulates useful functionality that many filters will want.
@@ -77,6 +77,12 @@ class CommonFilter : public EmptyHtmlFilter {
   bool BaseUrlIsValid() const;
 
   RewriteDriver* driver() { return driver_; }
+
+  // Returns whether the current options specify the "debug" filter.
+  // If set, then other filters can annotate output HTML with HTML
+  // comments indicating why they did or did not do an optimization,
+  // using HtmlParse::InsertComment.
+  bool DebugMode() const { return driver_->DebugMode(); }
 
   // Utility function to extract the mime type and/or charset from a meta tag,
   // either the HTML4 http-equiv form or the HTML5 charset form:

@@ -330,12 +330,24 @@ void CssCombineFilter::StartDocumentImpl() {
 void CssCombineFilter::StartElementImpl(HtmlElement* element) {
   HtmlElement::Attribute* href;
   const char* media;
-  if (!driver_->HasChildrenInFlushWindow(element) &&
-      css_tag_scanner_.ParseCssElement(element, &href, &media)) {
+  if (element->keyword() == HtmlName::kStyle) {
+    // We can't reorder styles on a page, so if we are only combining <link>
+    // tags, we can't combine them across a <style> tag.
+    // TODO(sligocki): Maybe we should just combine <style>s too?
+    // We can run outline_css first for now to make all <style>s into <link>s.
+    NextCombination("css_combine: inline style");
+  } else if (driver_->HasChildrenInFlushWindow(element)) {
+    // TODO(jmarantz): Call NextCombination here to avoid combining across
+    // a malformed link.
+    if (DebugMode() &&
+        css_tag_scanner_.ParseCssElement(element, &href, &media)) {
+      driver_->InsertComment("css_combine: children in flush window");
+    }
+  } else if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
     // We cannot combine with a link in <noscript> tag and we cannot combine
     // over a link in a <noscript> tag, so this is a barrier.
     if (noscript_element() != NULL) {
-      NextCombination();
+      NextCombination("css_combine: noscript");
     } else {
       if (context_->new_combination()) {
         context_->SetMedia(media);
@@ -346,24 +358,21 @@ void CssCombineFilter::StartElementImpl(HtmlElement* element) {
         // thing?  sligocki thinks mdsteele looked into this and it
         // depended on HTML version.  In one display was default, in the
         // other screen was IIRC.
-        NextCombination();
+        NextCombination("css_combine: media mismatch");
         context_->SetMedia(media);
       }
       if (!context_->AddElement(element, href)) {
-        NextCombination();
+        NextCombination("css_combine: resource not rewriteable");
       }
     }
-  } else if (element->keyword() == HtmlName::kStyle) {
-    // We can't reorder styles on a page, so if we are only combining <link>
-    // tags, we can't combine them across a <style> tag.
-    // TODO(sligocki): Maybe we should just combine <style>s too?
-    // We can run outline_css first for now to make all <style>s into <link>s.
-    NextCombination();
   }
 }
 
-void CssCombineFilter::NextCombination() {
+void CssCombineFilter::NextCombination(const char* debug_help) {
   if (!context_->empty()) {
+    if (DebugMode()) {
+      driver_->InsertComment(debug_help);
+    }
     driver_->InitiateRewrite(context_.release());
     context_.reset(MakeContext());
   }
@@ -375,11 +384,11 @@ void CssCombineFilter::NextCombination() {
 void CssCombineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
   // TODO(sligocki): Figure out how to safely parse IEDirectives, for now we
   // just consider them black boxes / solid barriers.
-  NextCombination();
+  NextCombination("css_combine: ie directive");
 }
 
 void CssCombineFilter::Flush() {
-  NextCombination();
+  NextCombination("css_combine: flush");
 }
 
 bool CssCombineFilter::CssCombiner::WritePiece(
