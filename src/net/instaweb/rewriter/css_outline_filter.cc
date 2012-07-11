@@ -133,6 +133,7 @@ bool CssOutlineFilter::WriteResource(const StringPiece& content,
   // We don't provide charset here since in general we can just inherit
   // from the page.
   // TODO(morlovich) check for proper behavior in case of embedded BOM.
+  // TODO(matterbury) but AFAICT you cannot have a BOM in a <style> tag.
   return resource_manager_->Write(
       ResourceVector(), content, &kContentTypeCss, StringPiece(),
       resource, handler);

@@ -338,6 +338,26 @@ TEST_F(CssInlineFilterTest, CharsetDetermination) {
   EXPECT_STREQ("iso-8859-1", result);
 }
 
+TEST_F(CssInlineFilterTest, InlineWithCompatibleBom) {
+  const GoogleString css = "BODY { color: red; }\n";
+  const GoogleString css_with_bom = StrCat(kUtf8Bom, css);
+  TestInlineCssWithOutputUrl("http://www.example.com/index.html",
+                             "  <meta charset=\"UTF-8\">\n",
+                             "http://www.example.com/styles.css",
+                             "http://www.example.com/styles.css",
+                             "", css_with_bom, true, css);
+}
+
+TEST_F(CssInlineFilterTest, DoNotInlineWithIncompatibleBom) {
+  const GoogleString css = "BODY { color: red; }\n";
+  const GoogleString css_with_bom = StrCat(kUtf8Bom, css);
+  TestInlineCssWithOutputUrl("http://www.example.com/index.html",
+                             "  <meta charset=\"ISO-8859-1\">\n",
+                             "http://www.example.com/styles.css",
+                             "http://www.example.com/styles.css",
+                             "", css_with_bom, false, "");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

@@ -23,8 +23,10 @@
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -42,10 +44,14 @@ class CssInlineFilter::Context : public InlineRewriteContext {
       : InlineRewriteContext(filter, element, src),
         filter_(filter) {
     base_url_.Reset(base_url);
+    const char* charset = element->AttributeValue(HtmlName::kCharset);
+    if (charset != NULL) {
+      attrs_charset_ = GoogleString(charset);
+    }
   }
 
   virtual bool ShouldInline(const ResourcePtr& resource) const {
-    return filter_->ShouldInline(resource);
+    return filter_->ShouldInline(resource, attrs_charset_);
   }
 
   virtual void Render() {
@@ -68,6 +74,7 @@ class CssInlineFilter::Context : public InlineRewriteContext {
  private:
   CssInlineFilter* filter_;
   GoogleUrl base_url_;
+  GoogleString attrs_charset_;
 
   DISALLOW_COPY_AND_ASSIGN(Context);
 };
@@ -128,8 +135,18 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
   }
 }
 
-bool CssInlineFilter::ShouldInline(const ResourcePtr& resource) const {
+bool CssInlineFilter::ShouldInline(const ResourcePtr& resource,
+                                   const StringPiece& attrs_charset) const {
+  // If the contents are bigger than our threshold, don't inline.
   if (resource->contents().size() > size_threshold_bytes_) {
+    return false;
+  }
+
+  // If the charset is incompatible with the HTML's, don't inline.
+  StringPiece htmls_charset(driver_->containing_charset());
+  GoogleString css_charset = RewriteFilter::GetCharsetForStylesheet(
+      resource.get(), attrs_charset, htmls_charset);
+  if (!StringCaseEqual(htmls_charset, css_charset)) {
     return false;
   }
 
@@ -147,15 +164,17 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
   // Note that we have to do this at rendering stage, since the same stylesheet
   // may be included from HTML in different directories.
   // TODO(jmarantz): fix bug 295:  domain-rewrite & shard here.
+  StringPiece clean_contents(contents);
+  StripUtf8Bom(&clean_contents);
   GoogleString rewritten_contents;
   StringWriter writer(&rewritten_contents);
   GoogleUrl resource_url(resource->url());
   bool resolved_ok = true;
-  switch (driver_->ResolveCssUrls(resource_url, base_url.Spec(), contents,
+  switch (driver_->ResolveCssUrls(resource_url, base_url.Spec(), clean_contents,
                                   &writer, message_handler)) {
     case RewriteDriver::kNoResolutionNeeded:
       // We don't need to absolutify URLs if input directory is same as base.
-      if (!writer.Write(contents, message_handler)) {
+      if (!writer.Write(clean_contents, message_handler)) {
         resolved_ok = false;
       }
       break;
