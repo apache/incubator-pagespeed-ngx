@@ -23,6 +23,7 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/automatic/public/proxy_interface.h"
+#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
@@ -202,6 +203,24 @@ class FakeUrlNamer : public UrlNamer {
   DISALLOW_COPY_AND_ASSIGN(FakeUrlNamer);
 };
 
+// This class is used to simulate HandleDone(false).
+class FlakyFakeUrlNamer : public FakeUrlNamer {
+ public:
+  explicit FlakyFakeUrlNamer(Statistics* statistics)
+    : FakeUrlNamer(statistics) {}
+
+  virtual bool Decode(const GoogleUrl& request_url,
+                      GoogleUrl* owner_domain,
+                      GoogleString* decoded) const {
+    return true;
+  }
+
+  virtual bool IsAuthorized(const GoogleUrl& request_url,
+                            const RewriteOptions& options) const {
+    return false;
+  }
+};
+
 class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
  public:
   FakeBlinkCriticalLineDataFinder()
@@ -372,6 +391,9 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
     statistics()->AddVariable(kNumPrepareRequestCalls);
     fake_url_namer_.reset(new FakeUrlNamer(statistics()));
     fake_url_namer_->set_options(options_.get());
+    flaky_fake_url_namer_.reset(new FlakyFakeUrlNamer(statistics()));
+    flaky_fake_url_namer_->set_options(options_.get());
+
     resource_manager()->set_url_namer(fake_url_namer_.get());
 
     mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
@@ -519,6 +541,9 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
       user_agent_out->assign(
           callback.request_headers()->Lookup1(HttpAttributes::kUserAgent));
     }
+    if (callback.logging_info() != NULL) {
+      logging_info_.CopyFrom(*(callback.logging_info()));
+    }
   }
 
   void FetchFromProxyWithDelayCache(
@@ -556,6 +581,7 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
 
   scoped_ptr<ProxyInterface> proxy_interface_;
   scoped_ptr<FakeUrlNamer> fake_url_namer_;
+  scoped_ptr<FlakyFakeUrlNamer> flaky_fake_url_namer_;
   scoped_ptr<RewriteOptions> options_;
   int64 start_time_ms_;
   GoogleString start_time_string_;
@@ -578,9 +604,15 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
   }
 
   void SetBlinkCriticalLineData() {
+    SetBlinkCriticalLineData(true);
+  }
+
+  void SetBlinkCriticalLineData(bool value) {
     BlinkCriticalLineData* data = new BlinkCriticalLineData();
     data->set_url("url");
-    data->set_critical_html(kCriticalHtml);
+    if (value) {
+      data->set_critical_html(kCriticalHtml);
+    }
     fake_blink_critical_line_data_finder_->set_blink_critical_line_data(data);
   }
 
@@ -595,6 +627,7 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
   ResponseHeaders response_headers_;
   GoogleString noblink_output_;
   FakeBlinkCriticalLineDataFinder* fake_blink_critical_line_data_finder_;
+  LoggingInfo logging_info_;
   const GoogleString blink_output_;
   const GoogleString blink_output_with_cacheable_panels_no_cookies_;
   const GoogleString blink_output_with_cacheable_panels_cookies_;
@@ -615,6 +648,9 @@ TEST_F(BlinkFlowCriticalLineTest, TestFlakyNon200ResponseCodeValidHitAfter404) {
   EXPECT_STREQ(kHtmlInput, text);
   // Cache lookup for original plain text, BlinkCriticalLineData and Dom Cohort
   // in property cache.
+  BlinkInfo* blink_info_ = logging_info_.mutable_blink_info();
+  EXPECT_EQ(BlinkInfo::BLINK_CACHE_MISS_TRIGGERED_REWRITE,
+      blink_info_->blink_request_flow());
   EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, num_compute_calls());
 
@@ -642,19 +678,51 @@ TEST_F(BlinkFlowCriticalLineTest, TestFlakyNon200ResponseCodeValidHitAfter404) {
       "flaky.html", true, &text, &response_headers_out);
   UnEscapeString(&text);
   EXPECT_STREQ(kHtmlInput, text);
+  EXPECT_EQ(BlinkInfo::FOUND_LAST_STATUS_CODE_NON_OK,
+      blink_info_->blink_request_flow());
   EXPECT_EQ(1, num_compute_calls());
 
   ClearStats();
   response_headers_out.Clear();
   SetFetchHtmlResponseWithStatus("http://test.com/flaky.html", HttpStatus::kOK);
   SetBlinkCriticalLineData();
-
   // Cache hit with previous response being 200.
   FetchFromProxyNoWaitForBackground(
       "flaky.html", true, &text, &response_headers_out);
   UnEscapeString(&text);
   EXPECT_STREQ(blink_output_with_cacheable_panels_no_cookies_, text);
+  // Normal Hit case.
+  EXPECT_EQ(BlinkInfo::BLINK_CACHE_HIT, blink_info_->blink_request_flow());
   EXPECT_EQ(1, num_compute_calls());
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkInfoErrorScenarios) {
+  GoogleString text;
+  ResponseHeaders response_headers_out;
+  resource_manager()->set_url_namer(flaky_fake_url_namer_.get());
+  SetFetchHtmlResponseWithStatus("http://test.com/flaky.html",
+      HttpStatus::kOK);
+  FetchFromProxyNoWaitForBackground(
+      "flaky.html", false, &text, &response_headers_out);
+
+  // HandleDone(False) case.
+  BlinkInfo* blink_info_ = logging_info_.mutable_blink_info();
+  // Miss Fetch Non-ok.
+  EXPECT_EQ(BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK,
+      blink_info_->blink_request_flow());
+
+  ClearStats();
+  response_headers_out.Clear();
+  resource_manager()->set_url_namer(fake_url_namer_.get());
+  SetFetchHtmlResponseWithStatus("http://test.com/flaky.html",
+                                 HttpStatus::kNotFound);
+  SetBlinkCriticalLineData(false);
+  FetchFromProxyNoWaitForBackground(
+      "flaky.html", true, &text, &response_headers_out);
+  UnEscapeString(&text);
+  // Malformed HTML case.
+  EXPECT_EQ(BlinkInfo::FOUND_MALFORMED_HTML,
+      blink_info_->blink_request_flow());
 }
 
 TEST_F(BlinkFlowCriticalLineTest,
@@ -1026,7 +1094,8 @@ TEST_F(BlinkFlowCriticalLineTest, NonHtmlContent) {
   EXPECT_STREQ(kHtmlInput, text);
   EXPECT_STREQ("text/plain",
                response_headers.Lookup1(HttpAttributes::kContentType));
-
+  EXPECT_EQ(BlinkInfo::BLINK_CACHE_MISS_FOUND_RESOURCE,
+      logging_info_.blink_info().blink_request_flow());
   // Cache lookup for original plain text, BlinkCriticalLineData and Dom Cohort
   // in property cache.
   EXPECT_EQ(3, lru_cache()->num_misses());

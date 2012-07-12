@@ -35,8 +35,27 @@ message TimingInfo  {
   optional int64 time_to_first_byte_ms = 5;
 }
 
+// This proto stores all Blink related information.
+// Next id for BlinkInfo : 2
+message BlinkInfo {
+  enum BlinkRequestFlow {
+    BLINK_CACHE_HIT = 1;
+    BLINK_CACHE_MISS_FOUND_RESOURCE = 2;
+    BLINK_CACHE_MISS_FETCH_NON_OK = 3;
+    BLINK_CACHE_MISS_TRIGGERED_REWRITE = 4;
+    FOUND_MALFORMED_HTML = 5;
+    FOUND_LAST_STATUS_CODE_NON_OK = 6;
+  };
+  // Tracks the flow of a Blink request.
+  optional BlinkRequestFlow blink_request_flow = 1;
+}
+
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 2
+// Next id for LoggingInfo: 3
 message LoggingInfo {
+  // Used to track time taken by various components of page speed service
+  // processing.
   optional TimingInfo timing_info = 1;
+  // Stores all Blink related information.
+  optional BlinkInfo blink_info = 2;
 }

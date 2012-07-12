@@ -366,7 +366,7 @@ class RewriteContext {
   // metadata cache key.  The default implementation returns "".
   virtual GoogleString CacheKeySuffix() const;
 
-  // Returrns the filter ID.
+  // Returns the filter ID.
   virtual const char* id() const = 0;
 
   // Rewrites come in three flavors, as described in output_resource_kind.h,

@@ -32,7 +32,7 @@ class MessageHandler;
 class ResponseHeaders;
 class Writer;
 
-// Helper class to fascilitate parsing a raw streaming HTTP response including
+// Helper class to facilitate parsing a raw streaming HTTP response including
 // headers and body.
 class HttpResponseParser {
  public:

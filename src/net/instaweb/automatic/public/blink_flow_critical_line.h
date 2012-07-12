@@ -30,6 +30,7 @@ namespace net_instaweb {
 class AsyncFetch;
 class BlinkCriticalLineData;
 class BlinkCriticalLineDataFinder;
+class BlinkInfo;
 class PropertyPage;
 class ProxyFetchPropertyCallbackCollector;
 class ProxyFetchFactory;
@@ -123,6 +124,7 @@ class BlinkFlowCriticalLine {
   GoogleUrl google_url_;
   GoogleString critical_html_;
   AsyncFetch* base_fetch_;
+  BlinkInfo* blink_info_;
   RewriteOptions* options_;
   ProxyFetchFactory* factory_;
   ResourceManager* manager_;

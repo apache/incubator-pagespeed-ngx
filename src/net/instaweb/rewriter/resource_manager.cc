@@ -649,7 +649,7 @@ RewriteDriver* ResourceManager::NewRewriteDriver() {
       // signature insensitive to changes that need not affect the metadata
       // cache key.  As we are dependent on a comprehensive signature in
       // order to correctly determine whether we can recycle a RewriteDriver,
-      // we would have to use a seperate signature for metadata_cache_key
+      // we would have to use a separate signature for metadata_cache_key
       // vs this purpose.
       //
       // So for now, let us keep all the options incorporated into the

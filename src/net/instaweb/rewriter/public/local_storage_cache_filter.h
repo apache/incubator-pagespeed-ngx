@@ -35,10 +35,10 @@ class RewriteDriver;
 
 /*
  * The Local Storage Cache rewriter reduces HTTP requests by inlining resources
- * and using browser-side javasript to store the inlined resources in local
+ * and using browser-side javascript to store the inlined resources in local
  * storage. The javascript also creates a cookie that reflects the resources it
  * has in local storage. On a repeat view, the server uses the cookie to
- * determine if it should replace an inlined resource with a script snipper
+ * determine if it should replace an inlined resource with a script snippet
  * that loads the resource from local storage. In effect, we get browser
  * caching of inlined resources, theoretically speeding up first view (by
  * inlining) and repeat view (by not resending the inlined resource).

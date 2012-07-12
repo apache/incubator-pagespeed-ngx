@@ -185,6 +185,33 @@ deferJsNs.DeferJs = function() {
    * @private
    */
   this.eventState_ = deferJsNs.DeferJs.EVENT.NOT_STARTED;
+
+  /**
+   * Maintains the last 'orig_index' of the script executed so far.
+   * @type {!number}
+   * @private
+   */
+  this.nextScriptIndexInHtml_ = 0;
+
+  /**
+   * This variable indicates whether deferJs is called for the first time.
+   * This is set to false if deferJs is called again.
+   * @private
+   */
+  this.firstIncrementalRun_ = true;
+
+  /**
+   * This variable indicates whether deferJs is called for the last time.
+   * This is set to false in registerScriptTags if deferJs will be called again
+   * @private
+   */
+  this.lastIncrementalRun_ = true;
+
+  /**
+   * Callback to call when current incremental scripts are done executing.
+   * @private
+   */
+  this.incrementalScriptsDoneCallback_ = null;
 };
 
 /**
@@ -199,27 +226,31 @@ deferJsNs.DeferJs.isExperimentalMode = false;
  */
 deferJsNs.DeferJs.STATES = {
   /**
-   * State state.
+   * Start state.
    */
   NOT_STARTED: 0,
+  /**
+   * This state used to mark when critical scripts are done.
+   */
+  WAITING_FOR_NEXT_RUN: 1,
   /**
    * In this state all script tags with type as 'text/psajs' are registered for
    * deferred execution.
    */
-  SCRIPTS_REGISTERED: 1,
+  SCRIPTS_REGISTERED: 2,
   /**
    * Script execution is in process.
    */
-  SCRIPTS_EXECUTING: 2,
+  SCRIPTS_EXECUTING: 3,
   /**
    * All the sync scripts are executed but some async scripts may not executed
    * till now.
    */
-  SYNC_SCRIPTS_DONE: 3,
+  SYNC_SCRIPTS_DONE: 4,
   /**
    * Final state.
    */
-  SCRIPTS_DONE: 4
+  SCRIPTS_DONE: 5
 };
 
 /**
@@ -414,7 +445,7 @@ deferJsNs.DeferJs.prototype['addStr'] = deferJsNs.DeferJs.prototype.addStr;
  * @param {!string} url returns javascript when fetched.
  * @param {Element} script_elem Psa inserted script used as context element.
  * @param {number} opt_pos Optional position for ordering.
- * @param {Element} opt_img image whose src is used to fetch the external script 
+ * @param {Element} opt_img img whose src is used to fetch the external script.
  */
 deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos,
                                               opt_img) {
@@ -547,14 +578,19 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
     return;
   }
 
-  this.removeNotProcessedAttributeTillNode();
-  if (this.getIEVersion() && document.documentElement['originalDoScroll']) {
-    document.documentElement.doScroll =
-        document.documentElement['originalDoScroll'];
-  }
-  if (Object.defineProperty) {
-    // Delete document.readyState so that browser can restore it.
-    delete document['readyState'];
+  if (this.lastIncrementalRun_) {
+    // ReadyState should be restored only during the last onComplete,
+    // so that document.readyState returns 'loading' till the last deferred
+    // script is executed.
+    this.removeNotProcessedAttributeTillNode();
+    if (this.getIEVersion() && document.documentElement['originalDoScroll']) {
+      document.documentElement.doScroll =
+          document.documentElement['originalDoScroll'];
+    }
+    if (Object.defineProperty) {
+      // Delete document.readyState so that browser can restore it.
+      delete document['readyState'];
+    }
   }
 
   document.getElementById = this.origGetElementById_;
@@ -571,28 +607,38 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
   document.write = this.origDocWrite_;
   document.writeln = this.origDocWriteln_;
 
-  this.fireEvent(deferJsNs.DeferJs.EVENT.DOM_READY);
+  if (this.lastIncrementalRun_) {
+    this.fireEvent(deferJsNs.DeferJs.EVENT.DOM_READY);
 
-  this.restoreAddEventListeners();
+    this.restoreAddEventListeners();
 
-  var me = this;
-  if (document.readyState != 'complete') {
-    deferJsNs.addOnload(window, function() {
-      me.fireOnload();
-    });
+    var me = this;
+    if (document.readyState != 'complete') {
+      deferJsNs.addOnload(window, function() {
+        me.fireOnload();
+      });
+    } else {
+      // Here there is a chance that window.onload is triggered twice.
+      // But we have no way of finding this.
+      // TODO(ksimbili): Fix the above scenario.
+      if (document.onreadystatechange) {
+        this.exec(document.onreadystatechange, document);
+      }
+      // Execute window.onload
+      if (window.onload) {
+        psaAddEventListener(window, 'onload', window.onload);
+        window.onload = null;
+      }
+      this.fireOnload();
+    }
   } else {
-    // Here there is a chance that window.onload is triggered twice.
-    // But we have no way of finding this.
-    // TODO(ksimbili): Fix the above scenario.
-    if (document.onreadystatechange) {
-      this.exec(document.onreadystatechange, document);
+    // The following state change is only for debugging.
+    this.state_ = deferJsNs.DeferJs.STATES.WAITING_FOR_NEXT_RUN;
+    this.firstIncrementalRun_ = false;
+    if (this.incrementalScriptsDoneCallback_) {
+      this.exec(this.incrementalScriptsDoneCallback_);
+      this.incrementalScriptsDoneCallback_ = null;
     }
-    // Execute window.onload
-    if (window.onload) {
-      psaAddEventListener(window, 'onload', window.onload);
-      window.onload = null;
-    }
-    this.fireOnload();
   }
 };
 
@@ -690,7 +736,7 @@ deferJsNs.DeferJs.prototype.runNext = function() {
     this.next_++;
     this.queue_[this.next_ - 1].call(window);
   } else {
-    if (deferJsNs.DeferJs.isExperimentalMode) {
+    if (deferJsNs.DeferJs.isExperimentalMode && this.lastIncrementalRun_) {
       this.state_ = deferJsNs.DeferJs.STATES.SYNC_SCRIPTS_DONE;
       if (this.canCallOnComplete()) {
         this.onComplete();
@@ -719,37 +765,40 @@ deferJsNs.DeferJs.prototype.nodeListToArray = function(nodeList) {
  * SetUp needed before deferrred scripts execution.
  */
 deferJsNs.DeferJs.prototype.setUp = function() {
-  // TODO(ksimbili): Remove this once context is not optional.
-  // Place where document.write() happens if there is no context element
-  // present. Happens if there is no context registering that happened in
-  // registerNoScriptTags.
-  var initialContextNode = document.createElement('psanode');
-  initialContextNode.setAttribute('psa_dw_target', 'true');
-  document.body.appendChild(initialContextNode);
-  if (this.getIEVersion()) {
-    this.createIdVars();
-  }
+  if (this.firstIncrementalRun_) {
+    // TODO(ksimbili): Remove this once context is not optional.
+    // Place where document.write() happens if there is no context element
+    // present. Happens if there is no context registering that happened in
+    // registerNoScriptTags.
+    var initialContextNode = document.createElement('psanode');
+    initialContextNode.setAttribute('psa_dw_target', 'true');
+    document.body.appendChild(initialContextNode);
+    if (this.getIEVersion()) {
+      this.createIdVars();
+    }
 
-  this.setNotProcessedAttributeForNodes();
-
-  if (Object.defineProperty) {
-    try {
-      // Shadow document.readyState
-      var propertyDescriptor = { configurable: true };
-      propertyDescriptor.get = function() { return 'loading';}
-      Object.defineProperty(document, 'readyState', propertyDescriptor);
-    } catch (err) {
-      this.log('Exception while overriding document.readyState: ', err);
+    if (Object.defineProperty) {
+      try {
+        // Shadow document.readyState
+        var propertyDescriptor = { configurable: true };
+        propertyDescriptor.get = function() { return 'loading';}
+        Object.defineProperty(document, 'readyState', propertyDescriptor);
+      } catch (err) {
+        this.log('Exception while overriding document.readyState.', err);
+      }
+    }
+    if (this.getIEVersion()) {
+      // In IE another approach for identifying DOMContentLoaded is popularly
+      // used. It is described in http://javascript.nwbox.com/IEContentLoaded/ .
+      // And JQuery is one of the libraries which employs this strategy.
+      document.documentElement['originalDoScroll'] =
+          document.documentElement.doScroll;
+      document.documentElement.doScroll = function() {
+        throw ('psa exception');
+      };
     }
   }
-  if (this.getIEVersion()) {
-    // In IE another approach for identifying DOMContentLoaded is popularly
-    // used. It is described in http://javascript.nwbox.com/IEContentLoaded/ .
-    // And JQuery is one of the libraries which employs this strategy.
-    document.documentElement['originalDoScroll'] =
-        document.documentElement.doScroll;
-    document.documentElement.doScroll = function() { throw ('psa exception');};
-  }
+  this.setNotProcessedAttributeForNodes();
   // override AddEventListeners.
   this.overrideAddEventListeners();
 
@@ -810,10 +859,12 @@ deferJsNs.DeferJs.prototype.setUp = function() {
  * Starts the execution of all the deferred scripts.
  */
 deferJsNs.DeferJs.prototype.run = function() {
-  if (this.state_ >= deferJsNs.DeferJs.STATES.SCRIPTS_EXECUTING) {
+  if (this.state_ != deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED) {
     return;
   }
-  this.fireEvent(deferJsNs.DeferJs.EVENT.BEFORE_SCRIPTS);
+  if (this.firstIncrementalRun_) {
+    this.fireEvent(deferJsNs.DeferJs.EVENT.BEFORE_SCRIPTS);
+  }
   this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_EXECUTING;
   this.setUp();
   // Starts executing the defer_js closures.
@@ -1157,11 +1208,24 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
 /**
  * Registers all script tags which are marked text/psajs, by adding themselves
  * as the context element to the script embedded inside them.
+ * @param {function()} opt_callback Called when critical scripts are
+ *     done executing.
  */
-deferJsNs.DeferJs.prototype.registerScriptTags = function() {
+deferJsNs.DeferJs.prototype.registerScriptTags = function(opt_callback) {
   if (this.state_ >= deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED) {
     return;
   }
+  if (opt_callback) {
+    if (!deferJsNs.DeferJs.isExperimentalMode) {
+      opt_callback();
+      return;
+    }
+    this.lastIncrementalRun_ = false;
+    this.incrementalScriptsDoneCallback_ = opt_callback;
+  } else {
+    this.lastIncrementalRun_ = true;
+  }
+
   this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED;
   var scripts = document.getElementsByTagName('script');
   var len = scripts.length;
@@ -1170,7 +1234,18 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function() {
     // TODO(ksimbili): Use orig_type
     // TODO(ksimbili): Remove these script nodes from DOM.
     if (script.getAttribute('type') == deferJsNs.DeferJs.PSA_SCRIPT_TYPE) {
-      this.addNode(script);
+      if (opt_callback) {
+        if (script.getAttribute('orig_index') == this.nextScriptIndexInHtml_) {
+          this.nextScriptIndexInHtml_++;
+          this.addNode(script);
+        }
+      } else {
+        if (script.getAttribute('orig_index') < this.nextScriptIndexInHtml_) {
+          this.log('Executing a script twice. Orig_Index: ' +
+                   script.getAttribute('orig_index'), new Error(''));
+        }
+        this.addNode(script);
+      }
     }
   }
 };

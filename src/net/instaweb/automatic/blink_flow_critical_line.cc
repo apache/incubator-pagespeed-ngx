@@ -34,6 +34,7 @@
 #include "base/logging.h"
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
+#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -114,11 +115,13 @@ class CriticalLineFetch : public AsyncFetch {
   CriticalLineFetch(const GoogleString& url,
                     ResourceManager* resource_manager,
                     RewriteOptions* options,
-                    RewriteDriver* rewrite_driver)
+                    RewriteDriver* rewrite_driver,
+                    BlinkInfo* blink_info)
       : url_(url),
         resource_manager_(resource_manager),
         options_(options),
         rewrite_driver_(rewrite_driver),
+        blink_info_(blink_info),
         claims_html_(false),
         probable_html_(false),
         content_length_over_threshold_(false) {
@@ -193,9 +196,18 @@ class CriticalLineFetch : public AsyncFetch {
         content_length_over_threshold_) {
       VLOG(1) << "Non html page, or not success or above maximum "
               << "rewriteable size: " << url_;
+      if (!success) {
+        blink_info_->set_blink_request_flow(
+            BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK);
+      } else if (!claims_html_ || !probable_html_) {
+        blink_info_->set_blink_request_flow(
+            BlinkInfo::BLINK_CACHE_MISS_FOUND_RESOURCE);
+      }
       delete this;
       return;
     }
+    blink_info_->set_blink_request_flow(
+        BlinkInfo::BLINK_CACHE_MISS_TRIGGERED_REWRITE);
     if (rewrite_driver_->options()->
         passthrough_blink_for_last_invalid_response_code()) {
       rewrite_driver_->UpdatePropertyValueInDomCohort(
@@ -260,6 +272,7 @@ class CriticalLineFetch : public AsyncFetch {
   RewriteDriver* rewrite_driver_;
   // RewriteDriver used to parse the buffered html content.
   RewriteDriver* critical_line_computation_driver_;
+  BlinkInfo* blink_info_;
   bool claims_html_;
   bool probable_html_;
   bool content_length_over_threshold_;
@@ -356,6 +369,7 @@ BlinkFlowCriticalLine::BlinkFlowCriticalLine(
     : url_(url),
       google_url_(url),
       base_fetch_(base_fetch),
+      blink_info_(base_fetch_->logging_info()->mutable_blink_info()),
       options_(options),
       factory_(factory),
       manager_(manager),
@@ -381,6 +395,11 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
         IsLastResponseCodeInvalid(page))) {
     BlinkCriticalLineDataHit();
     return;
+  }
+  if (options_->passthrough_blink_for_last_invalid_response_code() &&
+        IsLastResponseCodeInvalid(page)) {
+    blink_info_->set_blink_request_flow(
+        BlinkInfo::FOUND_LAST_STATUS_CODE_NON_OK);
   }
   BlinkCriticalLineDataMiss();
 }
@@ -419,10 +438,11 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
       end_body_pos == StringPiece::npos) {
     LOG(ERROR) << "Marker not found for url " << url_;
     VLOG(1) << "Critical html without marker is " << critical_html;
+    blink_info_->set_blink_request_flow(BlinkInfo::FOUND_MALFORMED_HTML);
     BlinkCriticalLineDataMiss();
     return;
   }
-
+  blink_info_->set_blink_request_flow(BlinkInfo::BLINK_CACHE_HIT);
   GoogleUrl* url_with_psa_off = google_url_.CopyAndAddQueryParam(
       RewriteQuery::kModPagespeed, "off");
   const int start_body_marker_length = strlen(BlinkUtil::kStartBodyMarker);
@@ -550,7 +570,8 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
     manager_->ComputeSignature(options_);
     driver = manager_->NewCustomRewriteDriver(options_);
     num_blink_shared_fetches_started_->IncBy(1);
-    secondary_fetch = new CriticalLineFetch(url_, manager_, options, driver);
+    secondary_fetch = new CriticalLineFetch(url_, manager_, options, driver,
+        blink_info_);
 
     // Setting a fixed user-agent for fetching content from origin server.
     if (options->use_fixed_user_agent_for_blink_cache_misses()) {
@@ -560,7 +581,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
           options->blink_desktop_user_agent());
     }
   } else {
-    // Non 200 status code.
+    // Non 200 status code and Malformed HTML case.
     // TODO(srihari):  Write system tests for this.  This will require a test
     // harness where we can vary the response (status code) for the url being
     // fetched.

@@ -248,7 +248,7 @@ class RewriteOptions {
   enum RewriteLevel {
     // Enable no filters. Parse HTML but do not perform any
     // transformations. This is the default value. Most users should
-    // explcitly enable the kCoreFilters level by calling
+    // explicitly enable the kCoreFilters level by calling
     // SetRewriteLevel(kCoreFilters).
     kPassThrough,
 
