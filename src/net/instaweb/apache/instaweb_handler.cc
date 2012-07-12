@@ -18,9 +18,6 @@
 #include "net/instaweb/apache/instaweb_handler.h"
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/apache/apache_slurp.h"
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apr_timer.h"
@@ -28,19 +25,25 @@
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
+#include "net/instaweb/automatic/public/resource_fetch.h"
+#include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string_writer.h"
 
 #include "apr_strings.h"
 #include "http_config.h"
@@ -115,47 +118,57 @@ void send_out_headers_and_body(
 bool handle_as_resource(ApacheResourceManager* manager,
                         request_rec* request,
                         const GoogleString& url) {
-  ApacheRewriteDriverFactory* factory = manager->apache_factory();
-  ApacheConfig* config = manager->config();
-  RewriteDriver* rewrite_driver = manager->NewRewriteDriver();
-  int n = arraysize(RewriteDriver::kPassThroughRequestAttributes);
-  GoogleString output;  // TODO(jmarantz): quit buffering resource output
-  StringWriter writer(&output);
-  SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
-      factory->thread_system(), &writer);
-
-  RequestHeaders* request_headers = callback->request_headers();
-  for (int i = 0; i < n; ++i) {
-    const char* value = apr_table_get(
-        request->headers_in,
-        RewriteDriver::kPassThroughRequestAttributes[i]);
-    if (value != NULL) {
-      request_headers->Add(RewriteDriver::kPassThroughRequestAttributes[i],
-                           value);
-    }
-  }
-
-  rewrite_driver->set_using_spdy(
-      mod_spdy_get_spdy_version(request->connection) != 0);
-
-  MessageHandler* message_handler = manager->message_handler();
-  bool handled = rewrite_driver->FetchResource(url, callback);
-  if (handled) {
-    AprTimer timer;
+  GoogleUrl gurl(url);
+  bool is_ps_url = manager->IsPagespeedResource(gurl);
+  if (is_ps_url) {
+    MessageHandler* message_handler = manager->message_handler();
     message_handler->Message(kInfo, "Fetching resource %s...", url.c_str());
+
+    GoogleString output;  // TODO(jmarantz): quit buffering resource output
+    StringWriter writer(&output);
+
+    SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
+        manager->thread_system(), &writer);
+
+    // Filter limited request headers into backend fetch.
+    // TODO(sligocki): Put this filtering in ResourceFetch and instead use:
+    // ApacheRequestToRequestHeaders(*request, callback->request_headers());
+    for (int i = 0, n = arraysize(RewriteDriver::kPassThroughRequestAttributes);
+         i < n; ++i) {
+      const char* value = apr_table_get(
+          request->headers_in,
+          RewriteDriver::kPassThroughRequestAttributes[i]);
+      if (value != NULL) {
+        callback->request_headers()->Add(
+            RewriteDriver::kPassThroughRequestAttributes[i], value);
+      }
+    }
+
+    // TODO(sligocki): Should we be sending in special custom options depending
+    // on the directory?
+    RewriteDriver* rewrite_driver = manager->NewRewriteDriver();
+    // This is intentionally not set in RewriteOptions because it is not
+    // so much an option as request-specific/client-specific info similar
+    // to User-Agent (also not an option).
+    rewrite_driver->set_using_spdy(
+        mod_spdy_get_spdy_version(request->connection) != 0);
+
+    ResourceFetch* resource_fetch = new ResourceFetch(
+        gurl, callback, message_handler, rewrite_driver, manager->timer());
+    rewrite_driver->FetchResource(gurl.Spec(), resource_fetch);
+
+    // Wait for resource fetch to complete.
+    // TODO(sligocki): Take care of all of this inside a new
+    // ResourceFetch::BlockingRewrite() method.
     if (!callback->done()) {
-      int64 max_ms = config->fetcher_time_out_ms();
-      for (int64 start_ms = timer.NowMs(), now_ms = start_ms;
+      int64 max_ms = manager->config()->fetcher_time_out_ms();
+      for (int64 start_ms = manager->timer()->NowMs(), now_ms = start_ms;
            !callback->done() && now_ms - start_ms < max_ms;
-           now_ms = timer.NowMs()) {
+           now_ms = manager->timer()->NowMs()) {
         int64 remaining_ms = max_ms - (now_ms - start_ms);
 
         rewrite_driver->BoundedWaitFor(
             RewriteDriver::kWaitForCompletion, remaining_ms);
-      }
-
-      if (!callback->done()) {
-        message_handler->Message(kError, "Timeout on url %s", url.c_str());
       }
     }
 
@@ -163,7 +176,15 @@ bool handle_as_resource(ApacheResourceManager* manager,
     if (callback->done()) {
       ResponseHeaders* response_headers = callback->response_headers();
       if (callback->success()) {
-        response_headers->SetDate(timer.NowMs());
+        // TODO(sligocki): Check that this is already done in ResourceFetch
+        // and remove redundant setting here.
+        response_headers->SetDate(manager->timer()->NowMs());
+        // ResourceFetch adds X-Page-Speed header, old mod_pagespeed code
+        // did not. For now, we remove that header for consistency.
+        // TODO(sligocki): Consistently use X- headers in MPS and PSA.
+        // I think it would be good to change X-Mod-Pagespeed -> X-Page-Speed
+        // and use that for all HTML and resource requests.
+        response_headers->RemoveAll(kPageSpeedHeader);
         message_handler->Message(kInfo, "Fetch succeeded for %s, status=%d",
                                  url.c_str(), response_headers->status_code());
         send_out_headers_and_body(request, *response_headers, output);
@@ -176,16 +197,15 @@ bool handle_as_resource(ApacheResourceManager* manager,
       message_handler->Message(kError, "Fetch timed out for %s", url.c_str());
     }
     if (!ok) {
-      RewriteStats* stats = rewrite_driver->resource_manager()->rewrite_stats();
+      RewriteStats* stats = manager->rewrite_stats();
       stats->resource_404_count()->Add(1);
       instaweb_default_handler(url, request);
     }
-  } else {
-    callback->Done(false);
+
+    callback->Release();
   }
-  callback->Release();
-  rewrite_driver->Cleanup();
-  return handled;
+
+  return is_ps_url;
 }
 
 void send_out_headers_and_body(
@@ -272,7 +292,9 @@ apr_status_t instaweb_handler(request_rec* request) {
       InstawebContext::ManagerFromServerRec(request->server);
   ApacheConfig* config = manager->config();
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
+
   log_resource_referral(request, factory);
+
   if (strcmp(request->handler, kStatisticsHandler) == 0) {
     GoogleString output;
     StringWriter writer(&output);
@@ -316,6 +338,7 @@ apr_status_t instaweb_handler(request_rec* request) {
   } else if (strcmp(request->handler, kBeaconHandler) == 0) {
     manager->HandleBeacon(request->unparsed_uri);
     ret = HTTP_NO_CONTENT;
+
   } else if (url != NULL) {
     // Only handle GET request
     if (request->method_number != M_GET) {

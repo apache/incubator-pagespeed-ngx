@@ -58,6 +58,12 @@ void ApacheRequestToRequestHeaders(const request_rec& request,
 
 void ApacheRequestToResponseHeaders(const request_rec& request,
                                     ResponseHeaders* response_headers) {
+  response_headers->set_status_code(request.status);
+  if (request.proto_num >= 1000) {
+    // proto_num is the version number of protocol; 1.1 = 1001
+    response_headers->set_major_version(request.proto_num / 1000);
+    response_headers->set_minor_version(request.proto_num % 1000);
+  }
   apr_table_do(AddResponseAttributeCallback, response_headers,
                request.headers_out, NULL);
 }
@@ -66,9 +72,8 @@ void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
                                     request_rec* request) {
   request->status = response_headers.status_code();
   // proto_num is the version number of protocol; 1.1 = 1001
-  request->proto_num =
-      (response_headers.major_version() * 1000) +
-      response_headers.minor_version();
+  request->proto_num = response_headers.major_version() * 1000 +
+                       response_headers.minor_version();
   AddResponseHeadersToRequest(response_headers, request);
 }
 

@@ -38,13 +38,21 @@ class Timer;
 // Manages a single fetch of a pagespeed rewritten resource.
 // Fetch is initialized by calling ResourceFetch::Start()
 //
-// TODO(sligocki): Rename to ProxyResourceFetch or something else ...
+// TODO(sligocki): Rename to PagespeedResourceFetch or something else ...
 class ResourceFetch : public SharedAsyncFetch {
  public:
+  // Start an async fetch for pagespeed resource. Response will be streamed
+  // to async_fetch and ResourceFetch will delete itself on completion.
   static void Start(ResourceManager* resource_manager,
                     const GoogleUrl& url,
                     AsyncFetch* async_fetch,
                     RewriteOptions* custom_options);
+
+  // Temporarily exposed for instaweb_handler.cc. Most users should use Start().
+  // TODO(sligocki): Add a new method for blocking fetches and use that in
+  // instaweb_handler.cc.
+  ResourceFetch(const GoogleUrl& url, AsyncFetch* async_fetch,
+                MessageHandler* handler, RewriteDriver* driver, Timer* timer);
 
  protected:
   // Protected interface from AsyncFetch.
@@ -52,11 +60,6 @@ class ResourceFetch : public SharedAsyncFetch {
   virtual void HandleDone(bool success);
 
  private:
-  explicit ResourceFetch(const GoogleUrl& url,
-                         AsyncFetch* async_fetch,
-                         MessageHandler* handler,
-                         RewriteDriver* driver,
-                         Timer* timer);
   virtual ~ResourceFetch();
 
   GoogleUrl resource_url_;

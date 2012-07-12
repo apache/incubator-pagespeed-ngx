@@ -28,13 +28,13 @@ namespace net_instaweb {
 
 // Converts Apache header structure into RequestHeaders.
 void ApacheRequestToRequestHeaders(const request_rec& request,
-                                   RequestHeaders* meta_data);
+                                   RequestHeaders* request_headers);
 
 void ApacheRequestToResponseHeaders(const request_rec& request,
-                                    ResponseHeaders* meta_data);
+                                    ResponseHeaders* response_headers);
 
 // Converts ResponseHeaders into an Apache request.
-void ResponseHeadersToApacheRequest(const ResponseHeaders& meta_data,
+void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
                                     request_rec* request);
 
 // Adds the name/value pairs in response_headers to the request's

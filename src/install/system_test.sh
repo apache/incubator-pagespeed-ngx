@@ -134,6 +134,7 @@ WGET_PREREQ="$WGET -H -p -S -o $WGET_OUTPUT -nd -P $OUTDIR -e robots=off"
 WGET_ARGS=""
 
 function run_wget_with_args() {
+  echo $WGET_PREREQ $WGET_ARGS "$@"
   $WGET_PREREQ $WGET_ARGS "$@"
 }
 
