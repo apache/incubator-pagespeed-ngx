@@ -209,7 +209,9 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       need_to_store_experiment_data_(false),
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
-      num_inline_preview_images_(0)
+      num_inline_preview_images_(0),
+      serve_blink_non_critical_(false),
+      is_blink_request_(false)
       // NOTE:  Be sure to clear per-request member vars in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // Set up default values for the amount of time an HTML rewrite will wait for
@@ -311,6 +313,8 @@ void RewriteDriver::Clear() {
   num_inline_preview_images_ = 0;
   flush_early_info_.reset(NULL);
   subresources_.clear();
+  serve_blink_non_critical_ = false;
+  is_blink_request_ = false;
 
   // Reset to the default fetcher from any session fetcher
   // (as the request is over).

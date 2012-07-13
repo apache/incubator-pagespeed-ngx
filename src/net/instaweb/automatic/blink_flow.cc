@@ -338,12 +338,11 @@ void BlinkFlow::JsonCacheHit(const StringPiece& content,
     ServeAllPanelContents(json, panel_id_to_spec_);
   } else {
     ServeCriticalPanelContents(json, panel_id_to_spec_);
-    options_->set_serve_blink_non_critical(true);
   }
 
   // Trigger a fetch for non cacheable panels and cookies.
   SetFilterOptions(options_);
-  TriggerProxyFetch(true);
+  TriggerProxyFetch(true, non_cacheable_present);
 }
 
 void BlinkFlow::ServeCriticalPanelContents(
@@ -426,10 +425,10 @@ void BlinkFlow::Flush() {
 }
 
 void BlinkFlow::JsonCacheMiss() {
-  TriggerProxyFetch(false);
+  TriggerProxyFetch(false, false);
 }
 
-void BlinkFlow::TriggerProxyFetch(bool json_found) {
+void BlinkFlow::TriggerProxyFetch(bool json_found, bool serve_non_critical) {
   AsyncFetch* fetch;
   AsyncFetch* secondary_fetch = NULL;
   if (json_found) {
@@ -451,6 +450,7 @@ void BlinkFlow::TriggerProxyFetch(bool json_found) {
   // NewCustomRewriteDriver takes ownership of custom_options_.
   manager_->ComputeSignature(options_);
   RewriteDriver* driver = manager_->NewCustomRewriteDriver(options_);
+  driver->set_serve_blink_non_critical(serve_non_critical);
 
   // TODO(jmarantz): pass-through the property-cache callback rather than NULL.
   factory_->StartNewProxyFetch(url_, fetch , driver, NULL, secondary_fetch);

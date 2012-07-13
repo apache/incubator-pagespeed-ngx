@@ -405,7 +405,7 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
 }
 
 void BlinkFlowCriticalLine::BlinkCriticalLineDataMiss() {
-  TriggerProxyFetch(false);
+  TriggerProxyFetch(false, false);
 }
 
 bool BlinkFlowCriticalLine::IsLastResponseCodeInvalid(PropertyPage* page) {
@@ -479,10 +479,9 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
     ServeAllPanelContents();
   } else {
     ServeCriticalPanelContents();
-    options_->set_serve_blink_non_critical(true);
   }
 
-  TriggerProxyFetch(true);
+  TriggerProxyFetch(true, non_cacheable_present);
 }
 
 void BlinkFlowCriticalLine::ServeAllPanelContents() {
@@ -538,7 +537,8 @@ void BlinkFlowCriticalLine::Flush() {
   base_fetch_->Flush(manager_->message_handler());
 }
 
-void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
+void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
+                                              bool serve_non_critical) {
   AsyncFetch* fetch = NULL;
   AsyncFetch* secondary_fetch = NULL;
   RewriteOptions* options = NULL;
@@ -548,6 +548,12 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
   // when we have non-200 code but we just blanket disable here.
   options_->DisableFilter(RewriteOptions::kLazyloadImages);
   options_->DisableFilter(RewriteOptions::kDelayImages);
+  // TODO(sriharis):  We need to also set                               [google]
+  // GoogleRewriteOptions::fix_reflow_enabled to false.  But this is    [google]
+  // open-source.  This is ok for now since fix_reflow_enabled is false [google]
+  // always.  But before we turn it on (or expose it in console) we     [google]
+  // need to move the fix_reflow_enabled option to RewriteOptions and   [google]
+  // add an explicit disable for it here.                               [google]
 
   if (critical_line_data_found) {
     SetFilterOptions(options_);
@@ -593,6 +599,8 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found) {
       fetch = base_fetch_;
     }
   }
+  driver->set_is_blink_request(true);  // Mark this as a blink request.
+  driver->set_serve_blink_non_critical(serve_non_critical);
   factory_->StartNewProxyFetch(
       url_, fetch, driver, property_callback_, secondary_fetch);
   delete this;

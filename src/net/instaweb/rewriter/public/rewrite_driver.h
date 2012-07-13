@@ -808,6 +808,12 @@ class RewriteDriver : public HtmlParse {
 
   FlushEarlyInfo* flush_early_info();
 
+  void set_serve_blink_non_critical(bool x) { serve_blink_non_critical_ = x; }
+  bool serve_blink_non_critical() const { return serve_blink_non_critical_; }
+
+  void set_is_blink_request(bool x) { is_blink_request_ = x; }
+  bool is_blink_request() const { return is_blink_request_; }
+
   // Adds the sub resource link to the sub_resources_ map. The id is used to
   // ensure the order.
   void AddResourceToSubresourcesMap(const StringPiece& url, int id);
@@ -1170,6 +1176,13 @@ class RewriteDriver : public HtmlParse {
   // CollectSubresourcesFilter Filter.
   IntStringMap subresources_;
   scoped_ptr<FlushEarlyInfo> flush_early_info_;
+
+  // When non-cacheable panels are absent, non-critical content is already
+  // served in blink flow. This flag indicates whether to serve non-critical
+  // from panel_filter / blink_filter or not.
+  bool serve_blink_non_critical_;
+  // Is this a blink request?
+  bool is_blink_request_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

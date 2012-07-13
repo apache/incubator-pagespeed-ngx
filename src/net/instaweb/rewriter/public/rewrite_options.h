@@ -180,7 +180,6 @@ class RewriteOptions {
     kRespectVary,
     kRewriteLevel,
     kRunningFurious,
-    kServeBlinkNonCritical,
     kServeStaleIfFetchError,
     kSupportNoScriptEnabled,
     kUseFixedUserAgentForBlinkCacheMisses,
@@ -780,13 +779,6 @@ class RewriteOptions {
   }
   bool enable_blink_critical_line() const {
     return enable_blink_critical_line_.value();
-  }
-
-  void set_serve_blink_non_critical(bool x) {
-    set_option(x, &serve_blink_non_critical_);
-  }
-  bool serve_blink_non_critical() const {
-    return serve_blink_non_critical_.value();
   }
 
   void set_default_cache_html(bool x) { set_option(x, &default_cache_html_); }
@@ -1631,10 +1623,6 @@ class RewriteOptions {
   Option<bool> serve_stale_if_fetch_error_;
   // Whether blink critical line flow should be enabled.
   Option<bool> enable_blink_critical_line_;
-  // When non-cacheable panels are absent, non-critical content is already
-  // served in blink flow. This flag indicates whether to serve non-critical
-  // from panel_filter or not.
-  Option<bool> serve_blink_non_critical_;
   // When default_cache_html_ is false (default) we do not cache
   // input HTML which lacks Cache-Control headers. But, when set true,
   // we will cache those inputs for the implicit lifetime just like we

@@ -551,7 +551,6 @@ RewriteOptions::RewriteOptions()
              kEnableDeferJsExperimental);
   add_option(false, &enable_blink_critical_line_, "ebcl",
              kEnableBlinkCriticalLine);
-  add_option(false, &serve_blink_non_critical_, "snc", kServeBlinkNonCritical);
   add_option(false, &default_cache_html_, "dch", kDefaultCacheHtml);
   add_option(kDefaultDomainShardCount, &domain_shard_count_, "dsc",
              kDomainShardCount);

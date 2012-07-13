@@ -200,8 +200,7 @@ GoogleString BlinkFilter::GetXpathOfCurrentElement(HtmlElement* element) {
 }
 
 void BlinkFilter::EndDocument() {
-  if (!abort_filter_ &&
-      rewrite_driver_->options()->serve_blink_non_critical()) {
+  if (!abort_filter_ && rewrite_driver_->serve_blink_non_critical()) {
     ServeNonCriticalPanelContents();
   }
   WriteString("\n</body></html>\n");

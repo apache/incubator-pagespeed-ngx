@@ -81,7 +81,6 @@ struct OptionName {
 "RespectVary",                          RewriteOptions::kRespectVary
 "RewriteLevel",                         RewriteOptions::kRewriteLevel
 "RunExperiment",                        RewriteOptions::kRunningFurious
-"ServeBlinkNonCritical",                RewriteOptions::kServeBlinkNonCritical
 "ServeStaleIfFetchError",               RewriteOptions::kServeStaleIfFetchError
 "SupportNoScriptEnabled",               RewriteOptions::kSupportNoScriptEnabled
 "UseFullUrlInBlinkFamilies",            RewriteOptions::kUseFullUrlInBlinkFamilies

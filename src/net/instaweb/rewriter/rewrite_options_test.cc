@@ -625,7 +625,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(83, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(82, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAjaxRewritingEnabled));
@@ -782,9 +782,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("RunExperiment"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kRunningFurious));
-  EXPECT_EQ(StringPiece("ServeBlinkNonCritical"),
-            RewriteOptions::LookupOptionEnum(
-                RewriteOptions::kServeBlinkNonCritical));
   EXPECT_EQ(StringPiece("ServeStaleIfFetchError"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kServeStaleIfFetchError));

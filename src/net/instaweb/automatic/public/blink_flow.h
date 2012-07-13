@@ -21,6 +21,7 @@
 
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/json.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -75,7 +76,7 @@ class BlinkFlow {
 
   void JsonCacheMiss();
 
-  void TriggerProxyFetch(bool layout_found);
+  void TriggerProxyFetch(bool layout_found, bool serve_non_critical);
 
   void ServeAllPanelContents(const Json::Value& json,
                              const PanelIdToSpecMap& panel_id_to_spec);

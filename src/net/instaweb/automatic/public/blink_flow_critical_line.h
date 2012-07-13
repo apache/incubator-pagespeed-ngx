@@ -88,7 +88,12 @@ class BlinkFlowCriticalLine {
   // compute BlinkCriticalLineData.
   void BlinkCriticalLineDataMiss();
 
-  void TriggerProxyFetch(bool critical_line_data_found);
+  // Creates a rewrite driver and triggers proxy fetch.
+  // critical_line_data_found indicates whether it is a cache hit case, while
+  // serve_non_critical means that non critical needs to be served (i.e., not
+  // yet served).
+  void TriggerProxyFetch(bool critical_line_data_found,
+                         bool serve_non_critical);
 
   // Serves all the panel contents including critical html, critical images json
   // and non critical json. This is the case when there are no cacheable panels
