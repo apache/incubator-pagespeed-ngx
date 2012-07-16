@@ -633,6 +633,8 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
              &metadata_cache_staleness_threshold_ms_, "mcst");
   add_option(false, &apply_blink_if_no_families_, "abnf");
+  add_option(5 * Timer::kSecondMs, &blocking_fetch_timeout_ms_, "bfto",
+             RewriteOptions::kFetcherTimeOutMs);
 
 
   //
@@ -673,6 +675,7 @@ RewriteOptions::RewriteOptions()
   // increase_speed_tracking_.DoNotUseForSignatureComputation();
   // running_furious_.DoNotUseForSignatureComputation();
   // x_header_value_.DoNotUseForSignatureComputation();
+  // blocking_fetch_timeout_ms_.DoNotUseForSignatureComputation();
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
@@ -1438,11 +1441,7 @@ bool RewriteOptions::AddFuriousSpec(int furious_id) {
 
 bool RewriteOptions::AddFuriousSpec(FuriousSpec* spec) {
   if (!AvailableFuriousId(spec->id()) || spec->percent() <= 0 ||
-      spec->percent() > 100) {
-    delete spec;
-    return false;
-  }
-  if (furious_percent_ + spec->percent() > 100) {
+      furious_percent_ + spec->percent() > 100) {
     delete spec;
     return false;
   }

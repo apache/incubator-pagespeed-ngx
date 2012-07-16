@@ -124,7 +124,7 @@ bool handle_as_resource(ApacheResourceManager* manager,
     MessageHandler* message_handler = manager->message_handler();
     message_handler->Message(kInfo, "Fetching resource %s...", url.c_str());
 
-    GoogleString output;  // TODO(jmarantz): quit buffering resource output
+    GoogleString output;  // TODO(jmarantz): Quit buffering resource output.
     StringWriter writer(&output);
 
     SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
@@ -146,57 +146,24 @@ bool handle_as_resource(ApacheResourceManager* manager,
 
     // TODO(sligocki): Should we be sending in special custom options depending
     // on the directory?
-    RewriteDriver* rewrite_driver = manager->NewRewriteDriver();
-    // This is intentionally not set in RewriteOptions because it is not
-    // so much an option as request-specific/client-specific info similar
-    // to User-Agent (also not an option).
-    rewrite_driver->set_using_spdy(
-        mod_spdy_get_spdy_version(request->connection) != 0);
-
-    ResourceFetch* resource_fetch = new ResourceFetch(
-        gurl, callback, message_handler, rewrite_driver, manager->timer());
-    rewrite_driver->FetchResource(gurl.Spec(), resource_fetch);
-
-    // Wait for resource fetch to complete.
-    // TODO(sligocki): Take care of all of this inside a new
-    // ResourceFetch::BlockingRewrite() method.
-    if (!callback->done()) {
-      int64 max_ms = manager->config()->fetcher_time_out_ms();
-      for (int64 start_ms = manager->timer()->NowMs(), now_ms = start_ms;
-           !callback->done() && now_ms - start_ms < max_ms;
-           now_ms = manager->timer()->NowMs()) {
-        int64 remaining_ms = max_ms - (now_ms - start_ms);
-
-        rewrite_driver->BoundedWaitFor(
-            RewriteDriver::kWaitForCompletion, remaining_ms);
-      }
-    }
-
-    bool ok = false;
-    if (callback->done()) {
+    RewriteOptions* custom_options = NULL;
+    bool using_spdy = (mod_spdy_get_spdy_version(request->connection) != 0);
+    if (ResourceFetch::BlockingFetch(gurl, custom_options, using_spdy,
+                                     manager, callback)) {
       ResponseHeaders* response_headers = callback->response_headers();
-      if (callback->success()) {
-        // TODO(sligocki): Check that this is already done in ResourceFetch
-        // and remove redundant setting here.
-        response_headers->SetDate(manager->timer()->NowMs());
-        // ResourceFetch adds X-Page-Speed header, old mod_pagespeed code
-        // did not. For now, we remove that header for consistency.
-        // TODO(sligocki): Consistently use X- headers in MPS and PSA.
-        // I think it would be good to change X-Mod-Pagespeed -> X-Page-Speed
-        // and use that for all HTML and resource requests.
-        response_headers->RemoveAll(kPageSpeedHeader);
-        message_handler->Message(kInfo, "Fetch succeeded for %s, status=%d",
-                                 url.c_str(), response_headers->status_code());
-        send_out_headers_and_body(request, *response_headers, output);
-        ok = true;
-      } else {
-        message_handler->Message(kError, "Fetch failed for %s, status=%d",
-                                 url.c_str(), response_headers->status_code());
-      }
+      // TODO(sligocki): Check that this is already done in ResourceFetch
+      // and remove redundant setting here.
+      response_headers->SetDate(manager->timer()->NowMs());
+      // ResourceFetch adds X-Page-Speed header, old mod_pagespeed code
+      // did not. For now, we remove that header for consistency.
+      // TODO(sligocki): Consistently use X- headers in MPS and PSA.
+      // I think it would be good to change X-Mod-Pagespeed -> X-Page-Speed
+      // and use that for all HTML and resource requests.
+      response_headers->RemoveAll(kPageSpeedHeader);
+      message_handler->Message(kInfo, "Fetch succeeded for %s, status=%d",
+                               url.c_str(), response_headers->status_code());
+      send_out_headers_and_body(request, *response_headers, output);
     } else {
-      message_handler->Message(kError, "Fetch timed out for %s", url.c_str());
-    }
-    if (!ok) {
       RewriteStats* stats = manager->rewrite_stats();
       stats->resource_404_count()->Add(1);
       instaweb_default_handler(url, request);

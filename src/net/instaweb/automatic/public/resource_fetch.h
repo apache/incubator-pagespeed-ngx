@@ -33,6 +33,7 @@ class MessageHandler;
 class ResourceManager;
 class RewriteDriver;
 class RewriteOptions;
+class SyncFetcherAdapterCallback;
 class Timer;
 
 // Manages a single fetch of a pagespeed rewritten resource.
@@ -42,17 +43,27 @@ class Timer;
 class ResourceFetch : public SharedAsyncFetch {
  public:
   // Start an async fetch for pagespeed resource. Response will be streamed
-  // to async_fetch and ResourceFetch will delete itself on completion.
-  static void Start(ResourceManager* resource_manager,
-                    const GoogleUrl& url,
-                    AsyncFetch* async_fetch,
-                    RewriteOptions* custom_options);
+  // to async_fetch.
+  static void Start(const GoogleUrl& url,
+                    RewriteOptions* custom_options,
+                    // This is intentionally not set in RewriteOptions because
+                    // it is not so much an option as request-specific info
+                    // similar to User-Agent (also not an option).
+                    bool using_spdy,
+                    ResourceManager* resource_manager,
+                    AsyncFetch* async_fetch);
 
-  // Temporarily exposed for instaweb_handler.cc. Most users should use Start().
-  // TODO(sligocki): Add a new method for blocking fetches and use that in
-  // instaweb_handler.cc.
-  ResourceFetch(const GoogleUrl& url, AsyncFetch* async_fetch,
-                MessageHandler* handler, RewriteDriver* driver, Timer* timer);
+  // Fetch a pagespeed resource in a blocking fashion. Response will be
+  // streamed back to async_fetch, but this function will not return until
+  // fetch has completed.
+  //
+  // Returns true iff the fetch succeeded and thus response headers and
+  // contents were sent to async_fetch.
+  static bool BlockingFetch(const GoogleUrl& url,
+                            RewriteOptions* custom_options,
+                            bool using_spdy,
+                            ResourceManager* resource_manager,
+                            SyncFetcherAdapterCallback* async_fetch);
 
  protected:
   // Protected interface from AsyncFetch.
@@ -60,12 +71,22 @@ class ResourceFetch : public SharedAsyncFetch {
   virtual void HandleDone(bool success);
 
  private:
+  ResourceFetch(const GoogleUrl& url, RewriteDriver* driver, Timer* timer,
+                MessageHandler* handler, AsyncFetch* async_fetch);
   virtual ~ResourceFetch();
 
+  // Same as Start(), but returns the RewriteDriver created. Used by
+  // BlockingFetch() to wait for completion.
+  static RewriteDriver* StartAndGetDriver(const GoogleUrl& url,
+                                          RewriteOptions* custom_options,
+                                          bool using_spdy,
+                                          ResourceManager* resource_manager,
+                                          AsyncFetch* async_fetch);
+
   GoogleUrl resource_url_;
-  MessageHandler* message_handler_;
   RewriteDriver* driver_;
   Timer* timer_;
+  MessageHandler* message_handler_;
 
   int64 start_time_us_;
   int redirect_count_;

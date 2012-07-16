@@ -16,20 +16,13 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 //
-// NOTE: This interface is actively under development and may be
-// changed extensively. Contact us at mod-pagespeed-discuss@googlegroups.com
-// if you are interested in using it.
-//
 // Simple interface for running Page Speed Automatic as a proxy.
 //
 // When implementing a Page Speed Automatic proxy, simply construct a
-// ProxyInterface at start up time and call StreamingFetch for every
-// requested resource. StreamingFetch decides how to deal with requests
+// ProxyInterface at start up time and call Fetch for every
+// requested resource. Fetch decides how to deal with requests
 // (pagespeed resources will be computed, HTML pages will be proxied
 // and rewritten, and other resources will just be proxied).
-//
-// Page Speed Automatic currently does not deal with some requests
-// such as POSTs.
 
 #ifndef NET_INSTAWEB_AUTOMATIC_PUBLIC_PROXY_INTERFACE_H_
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_PROXY_INTERFACE_H_

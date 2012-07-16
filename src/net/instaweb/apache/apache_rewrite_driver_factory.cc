@@ -294,7 +294,7 @@ UrlAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(ApacheConfig* config) {
         SerfUrlAsyncFetcher* base_fetcher = GetSerfFetcher(config);
 
         UrlFetcher* sync_fetcher = new SyncFetcherAdapter(
-            timer(), config->fetcher_time_out_ms(), base_fetcher,
+            timer(), config->blocking_fetch_timeout_ms(), base_fetcher,
             thread_system());
         defer_delete(new Deleter<UrlFetcher>(sync_fetcher));
         HttpDumpUrlWriter* dump_writer = new HttpDumpUrlWriter(
@@ -322,7 +322,7 @@ SerfUrlAsyncFetcher* ApacheRewriteDriverFactory::GetSerfFetcher(
         proxy.c_str(),
         NULL,  // Do not use the Factory pool so we can control deletion.
         thread_system(), statistics(), timer(),
-        config->fetcher_time_out_ms(),
+        config->blocking_fetch_timeout_ms(),
         message_handler());
     serf->set_list_outstanding_urls_on_error(list_outstanding_urls_on_error_);
     serf->set_fetch_with_gzip(fetch_with_gzip_);

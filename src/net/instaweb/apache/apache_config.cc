@@ -51,8 +51,6 @@ void ApacheConfig::Init() {
   add_option(false, &slurp_read_only_, "asro",
              RewriteOptions::kSlurpReadOnly);
 
-  add_option(5 * Timer::kSecondMs, &fetcher_time_out_ms_, "afto",
-             RewriteOptions::kFetcherTimeOutMs);
   add_option(Timer::kHourMs, &file_cache_clean_interval_ms_, "afcci",
              RewriteOptions::kFileCacheCleanIntervalMs);
 
@@ -84,7 +82,6 @@ void ApacheConfig::Init() {
   // statistics_enabled_.DoNotUseForSignatureComputation();
   // test_proxy_.DoNotUseForSignatureComputation();
   // use_shared_mem_locking_.DoNotUseForSignatureComputation();
-  // fetcher_time_out_ms_.DoNotUseForSignatureComputation();
   // file_cache_clean_interval_ms_.DoNotUseForSignatureComputation();
   // file_cache_clean_size_kb_.DoNotUseForSignatureComputation();
   // lru_cache_byte_limit_.DoNotUseForSignatureComputation();

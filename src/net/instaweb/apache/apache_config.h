@@ -77,12 +77,6 @@ class ApacheConfig : public RewriteOptions {
   void set_lru_cache_kb_per_process(int64 x) {
     set_option(x, &lru_cache_kb_per_process_);
   }
-  int64 fetcher_time_out_ms() const {
-    return fetcher_time_out_ms_.value();
-  }
-  void set_fetcher_time_out_ms(int64 x) {
-    set_option(x, &fetcher_time_out_ms_);
-  }
   int64 slurp_flush_limit() const {
     return slurp_flush_limit_.value();
   }
@@ -237,7 +231,6 @@ class ApacheConfig : public RewriteOptions {
   Option<bool> use_shared_mem_locking_;
   Option<bool> slurp_read_only_;
 
-  Option<int64> fetcher_time_out_ms_;
   Option<int64> file_cache_clean_interval_ms_;
   Option<int64> file_cache_clean_size_kb_;
   Option<int64> lru_cache_byte_limit_;

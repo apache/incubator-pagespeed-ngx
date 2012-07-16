@@ -657,6 +657,12 @@ class RewriteOptions {
   void set_min_resource_cache_time_to_rewrite_ms(int64 x) {
     set_option(x, &min_resource_cache_time_to_rewrite_ms_);
   }
+  int64 blocking_fetch_timeout_ms() const {
+    return blocking_fetch_timeout_ms_.value();
+  }
+  void set_blocking_fetch_timeout_ms(int64 x) {
+    set_option(x, &blocking_fetch_timeout_ms_);
+  }
 
   // Supply optional mutex for setting a global cache invalidation
   // timestamp.  Ownership of 'lock' is transfered to this.
@@ -1596,6 +1602,10 @@ class RewriteOptions {
   // Resources with Cache-Control TTL less than this will not be rewritten.
   Option<int64> min_resource_cache_time_to_rewrite_ms_;
   Option<int64> idle_flush_time_ms_;
+  // How long to wait in blocking fetches before timing out.
+  // Applies to ResourceFetch::BlockingFetch() and class SyncFetcherAdapter.
+  // Does not apply to async fetches.
+  Option<int64> blocking_fetch_timeout_ms_;
 
   // Options related to jpeg compression.
   Option<int> image_jpeg_recompress_quality_;

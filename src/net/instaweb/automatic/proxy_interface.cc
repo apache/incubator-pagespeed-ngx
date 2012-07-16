@@ -464,7 +464,10 @@ void ProxyInterface::ProxyRequestCallback(
   // Start fetch and rewrite.  If GetCustomOptions found options for us,
   // the RewriteDriver created by StartNewProxyFetch will take ownership.
   if (is_resource_fetch) {
-    ResourceFetch::Start(resource_manager_, *request_url, async_fetch, options);
+    // TODO(sligocki): Set using_spdy appropriately.
+    bool using_spdy = false;
+    ResourceFetch::Start(*request_url, options, using_spdy,
+                         resource_manager_, async_fetch);
   } else {
     // TODO(nforman): If we are not running an experiment, remove the
     // furious cookie.
