@@ -156,6 +156,9 @@ DEFINE_int64(implicit_cache_ttl_ms,
 DEFINE_bool(enable_defer_js_experimental, false,
             "Enables experimental defer js");
 
+DEFINE_bool(enable_inline_preview_images_experimental, false,
+            "Enables experimental inline preview images");
+
 DEFINE_bool(avoid_renaming_introspective_javascript, false,
             "Don't combine, inline, cache extend, or otherwise modify "
             "javascript in ways that require changing the URL if we see "
@@ -329,6 +332,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_defer_js_experimental")) {
     options->set_enable_defer_js_experimental(
         FLAGS_enable_defer_js_experimental);
+  }
+  if (WasExplicitlySet("enable_inline_preview_images_experimental")) {
+    options->set_enable_inline_preview_images_experimental(
+        FLAGS_enable_inline_preview_images_experimental);
   }
   if (WasExplicitlySet("avoid_renaming_introspective_javascript")) {
     options->set_avoid_renaming_introspective_javascript(

@@ -124,7 +124,8 @@ class CriticalLineFetch : public AsyncFetch {
         blink_info_(blink_info),
         claims_html_(false),
         probable_html_(false),
-        content_length_over_threshold_(false) {
+        content_length_over_threshold_(false),
+        non_ok_status_code_(false) {
     // Makes rewrite_driver live longer as ProxyFetch may called Cleanup()
     // on the rewrite_driver even if ComputeBlinkCriticalLineData() has not yet
     // been triggered.
@@ -155,6 +156,7 @@ class CriticalLineFetch : public AsyncFetch {
         content_length_over_threshold_ = true;
       }
     } else {
+      non_ok_status_code_ = true;
       VLOG(1) << "Non 200 response code for: " << url_;
     }
   }
@@ -192,11 +194,9 @@ class CriticalLineFetch : public AsyncFetch {
 
   virtual void HandleDone(bool success) {
     num_blink_shared_fetches_completed_->IncBy(1);
-    if (!success || !claims_html_ || !probable_html_ ||
+    if (non_ok_status_code_ || !success || !claims_html_ || !probable_html_ ||
         content_length_over_threshold_) {
-      VLOG(1) << "Non html page, or not success or above maximum "
-              << "rewriteable size: " << url_;
-      if (!success) {
+      if (non_ok_status_code_ || !success) {
         blink_info_->set_blink_request_flow(
             BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK);
       } else if (!claims_html_ || !probable_html_) {
@@ -276,6 +276,7 @@ class CriticalLineFetch : public AsyncFetch {
   bool claims_html_;
   bool probable_html_;
   bool content_length_over_threshold_;
+  bool non_ok_status_code_;
 
   TimedVariable* num_blink_html_cache_misses_;
   TimedVariable* num_blink_shared_fetches_completed_;

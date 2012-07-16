@@ -549,6 +549,8 @@ RewriteOptions::RewriteOptions()
   add_option(true, &serve_stale_if_fetch_error_, "ss", kServeStaleIfFetchError);
   add_option(false, &enable_defer_js_experimental_, "edje",
              kEnableDeferJsExperimental);
+  add_option(false, &enable_inline_preview_images_experimental_, "eipie",
+             kEnableInlinePreviewImagesExperimental);
   add_option(false, &enable_blink_critical_line_, "ebcl",
              kEnableBlinkCriticalLine);
   add_option(false, &default_cache_html_, "dch", kDefaultCacheHtml);

@@ -85,8 +85,8 @@ class Statistics;
 class DelayImagesFilter : public EmptyHtmlFilter {
  public:
   static const char kDelayImagesSuffix[];
-
   static const char kDelayImagesInlineSuffix[];
+  static const char kOnloadFunction[];
 
   explicit DelayImagesFilter(RewriteDriver* driver);
   virtual ~DelayImagesFilter();
@@ -124,6 +124,11 @@ class DelayImagesFilter : public EmptyHtmlFilter {
   // end of body tag.
   bool insert_low_res_images_inplace_;
 
+  // is_experimental_enabled_ is set to true if
+  // enable_inline_preview_images_experimental is true.
+  // It allows us to test the performance of experimental features on  [google]
+  // staging.                                                          [google]
+  bool is_experimental_enabled_;
   DISALLOW_COPY_AND_ASSIGN(DelayImagesFilter);
 };
 

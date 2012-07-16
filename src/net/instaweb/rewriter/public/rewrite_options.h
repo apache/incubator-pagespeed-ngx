@@ -142,6 +142,7 @@ class RewriteOptions {
     kEnableBlinkForMobileDevices,
     kEnabled,
     kEnableDeferJsExperimental,
+    kEnableInlinePreviewImagesExperimental,
     kFlushHtml,
     kFuriousSlot,
     kIdleFlushTimeMs,
@@ -910,6 +911,13 @@ class RewriteOptions {
     return enable_defer_js_experimental_.value();
   }
 
+  void set_enable_inline_preview_images_experimental(bool x) {
+    set_option(x, &enable_inline_preview_images_experimental_);
+  }
+  bool enable_inline_preview_images_experimental() const {
+    return enable_inline_preview_images_experimental_.value();
+  }
+
   const GoogleString& blocking_rewrite_key() const {
     return blocking_rewrite_key_.value();
   }
@@ -1659,6 +1667,9 @@ class RewriteOptions {
 
   // Enables experimental code in defer js.
   Option<bool> enable_defer_js_experimental_;
+
+  // Enables experimental code in inline preview images.
+  Option<bool> enable_inline_preview_images_experimental_;
 
   // Some introspective javascript is very brittle and may break if we
   // make any changes.  Enables code to detect such cases and avoid renaming.

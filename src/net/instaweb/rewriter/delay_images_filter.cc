@@ -43,16 +43,24 @@ const char DelayImagesFilter::kDelayImagesSuffix[] =
 const char DelayImagesFilter::kDelayImagesInlineSuffix[] =
       "\npagespeed.delayImagesInlineInit();";
 
+const char DelayImagesFilter::kOnloadFunction[] =
+      "this.src=this.getAttribute('pagespeed_high_res_src');"
+      "this.removeAttribute('onload')";
+
 DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
     : driver_(driver),
       static_js_manager_(
           driver->resource_manager()->static_javascript_manager()),
       low_res_map_inserted_(false),
-      num_low_res_inlined_images_(0) {
+      num_low_res_inlined_images_(0),
+      is_experimental_enabled_(
+          driver_->options()->enable_inline_preview_images_experimental()) {
   // Low res images will be placed inside the respective image tag if any one of
-  // kDeferJavascript or kLazyloadImages is turned off. Otherwise, low res
-  // images will be blocked by javascript or images which are not critical.
+  // kDeferJavascript or kLazyloadImages is turned off or
+  // enable_inline_preview_images_experimental is set to true. Otherwise, low
+  // res images will be blocked by javascript or images which are not critical.
   insert_low_res_images_inplace_ =
+      is_experimental_enabled_ ||
       !driver_->options()->Enabled(RewriteOptions::kDeferJavascript) ||
       !driver_->options()->Enabled(RewriteOptions::kLazyloadImages);
 }
@@ -89,21 +97,32 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
         ++num_low_res_inlined_images_;
         // TODO(pulkitg): Add support for input tag.
         if (element->keyword() == HtmlName::kImg) {
-          // Low res image data is collected in low_res_data_map_ map. This
-          // low_res_src will be moved just after last low res image in the
-          // html DOM.
-          // It is better to move inlined low resolution data later in the DOM,
-          // otherwise they will block further parsing and rendering of
-          // the html page.
-          // High res src is added and original img src attribute is removed
-          // from img tag.
-          driver_->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
-          if (insert_low_res_images_inplace_) {
-            driver_->AddAttribute(element, HtmlName::kSrc,
-                                  low_res_src->DecodedValueOrNull());
-          } else {
-            const GoogleString& src_content = src->DecodedValueOrNull();
-            low_res_data_map_[src_content] = low_res_src->DecodedValueOrNull();
+          // Experimental mode adds an onload attribute of the image tag. So,
+          // low res image is only added if onload function is not already
+          // present.
+          if (!is_experimental_enabled_ ||
+              element->FindAttribute(HtmlName::kOnload) == NULL) {
+            // Low res image data is collected in low_res_data_map_ map. This
+            // low_res_src will be moved just after last low res image in the
+            // html DOM.
+            // It is better to move inlined low resolution data later in the
+            // DOM, otherwise they will block further parsing and rendering of
+            // the html page.
+            // High res src is added and original img src attribute is removed
+            // from img tag.
+            driver_->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
+            if (insert_low_res_images_inplace_) {
+              driver_->AddAttribute(element, HtmlName::kSrc,
+                                    low_res_src->DecodedValueOrNull());
+              if (is_experimental_enabled_) {
+                driver_->AddEscapedAttribute(
+                    element, HtmlName::kOnload, kOnloadFunction);
+              }
+            } else {
+              const GoogleString& src_content = src->DecodedValueOrNull();
+              low_res_data_map_[src_content] =
+                  low_res_src->DecodedValueOrNull();
+            }
           }
         }
         if (num_low_res_inlined_images_ ==
@@ -155,6 +174,9 @@ void DelayImagesFilter::InsertDelayImagesInlineJS(HtmlElement* element) {
 }
 
 void DelayImagesFilter::InsertDelayImagesJS(HtmlElement* element) {
+  if (is_experimental_enabled_) {
+    return;
+  }
   HtmlElement* script = driver_->NewElement(element,
                                             HtmlName::kScript);
   driver_->AddAttribute(script, HtmlName::kType, "text/javascript");

@@ -161,6 +161,27 @@ function check_not() {
   fi;
 }
 
+function check_stat() {
+  OLD_STATS_FILE=$1
+  NEW_STATS_FILE=$2
+  COUNTER_NAME=$3
+  EXPECTED_DIFF=$4
+
+  OLD_VAL=$(grep -w ${COUNTER_NAME} ${OLD_STATS_FILE} | cut -d: -f2)
+  NEW_VAL=$(grep -w ${COUNTER_NAME} ${NEW_STATS_FILE} | cut -d: -f2)
+  if [ $((${NEW_VAL} - ${OLD_VAL})) = ${EXPECTED_DIFF} ]; then
+    return;
+  else
+    OLD_VAL=`echo ${OLD_VAL} | tr -d ' '`
+    NEW_VAL=`echo ${NEW_VAL} | tr -d ' '`
+    EXPECTED_VAL=$((${OLD_VAL} + ${EXPECTED_DIFF}))
+    echo -n "Mismatched counter value : ${COUNTER_NAME} : "
+    echo "Expected=${EXPECTED_VAL} Actual=${NEW_VAL}";
+    echo FAIL.
+    exit 1;
+  fi
+}
+
 # Continuously fetches URL and pipes the output to COMMAND.  Loops until
 # COMMAND outputs RESULT, in which case we return 0, or until 10 seconds have
 # passed, in which case we return 1.

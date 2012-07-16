@@ -1156,7 +1156,8 @@ TEST_F(BlinkFlowCriticalLineTest, Non200StatusCode) {
   EXPECT_STREQ(kHtmlInput, text);
   EXPECT_STREQ("text/plain",
                response_headers.Lookup1(HttpAttributes::kContentType));
-
+  EXPECT_EQ(BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK,
+      logging_info_.blink_info().blink_request_flow());
   // Cache lookup for original plain text, BlinkCriticalLineData and Dom Cohort
   // in property cache.
   EXPECT_EQ(3, lru_cache()->num_misses());

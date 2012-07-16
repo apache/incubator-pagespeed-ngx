@@ -617,4 +617,23 @@ TEST_F(DelayImagesFilterTest, DelayImagesScriptDebug) {
       << "There should still be some comments in the debug code";
 }
 
+TEST_F(DelayImagesFilterTest, ExperimentalIsTrue) {
+  options()->set_enable_inline_preview_images_experimental(true);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
+                       kContentTypeJpeg, 100);
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<img src=\"http://test.com/1.jpeg\" onload=\"blah();\"/>"
+      "<img src=\"http://test.com/1.jpeg\" />"
+      "</body>";
+  GoogleString output_html = StrCat("<head></head><body>",
+      GetNoscript(),
+      "<img src=\"http://test.com/1.jpeg\" onload=\"blah();\"/>"
+      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\" src=\"",
+      kSampleJpegData, "\" onload=\"",
+      DelayImagesFilter::kOnloadFunction, "\"/></body>");
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
 }  // namespace net_instaweb
