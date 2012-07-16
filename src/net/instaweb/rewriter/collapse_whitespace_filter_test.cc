@@ -18,25 +18,30 @@
 
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 
-#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class CollapseWhitespaceFilterTest : public HtmlParseTestBase {
+class CollapseWhitespaceFilterTest : public ResourceManagerTestBase {
  protected:
-  CollapseWhitespaceFilterTest()
-      : collapse_whitespace_filter_(&html_parse_) {
-    html_parse_.AddFilter(&collapse_whitespace_filter_);
+  CollapseWhitespaceFilterTest() {}
+  ~CollapseWhitespaceFilterTest() {}
+  virtual void SetUp() {
+    ResourceManagerTestBase::SetUp();
+    AddFilter(RewriteOptions::kCollapseWhitespace);
+    AddOtherFilter(RewriteOptions::kCollapseWhitespace);
   }
 
-  virtual bool AddBody() const { return false; }
-
  private:
-  CollapseWhitespaceFilter collapse_whitespace_filter_;
-
   DISALLOW_COPY_AND_ASSIGN(CollapseWhitespaceFilterTest);
 };
 
@@ -94,6 +99,52 @@ TEST_F(CollapseWhitespaceFilterTest, DoNotCollapseWithinTextarea) {
   ValidateNoChanges("do_not_collapse_within_textarea",
                     "<body><textarea>hello   world,   it\n"
                     "    is good  to     see you   </textarea></body>");
+}
+
+class CollapseWhitespaceGeneralTest : public ResourceManagerTestBase {
+  // Don't add any text to our tests.
+  virtual bool AddHtmlTags() const { return false; }
+};
+
+// Issue 463: Collapse whitespace after other filters have been applied
+// for maximum effectiveness.
+TEST_F(CollapseWhitespaceGeneralTest, CollapseAfterCombine) {
+  // Note: Even though we enable collapse_whitespace first, it should run
+  // after combine_css.
+  options()->EnableFilter(RewriteOptions::kCollapseWhitespace);
+  options()->EnableFilter(RewriteOptions::kCombineCss);
+  rewrite_driver()->AddFilters();
+
+  // Setup resources for combine_css.
+  ResponseHeaders default_css_header;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(AbsolutifyUrl("a.css"),
+                   default_css_header, ".a { color: red; }");
+  SetFetchResponse(AbsolutifyUrl("b.css"),
+                   default_css_header, ".b { color: green; }");
+  SetFetchResponse(AbsolutifyUrl("c.css"),
+                   default_css_header, ".c { color: blue; }");
+
+  // Before and expected after text.
+  const char before[] =
+      "<html>\n"
+      "  <head>\n"
+      "    <link rel=stylesheet type=text/css href=a.css>\n"
+      "    <link rel=stylesheet type=text/css href=b.css>\n"
+      "    <link rel=stylesheet type=text/css href=c.css>\n"
+      "  </head>\n"
+      "</html>\n";
+  const char after_template[] =
+      "<html>\n"
+      "<head>\n"
+      "<link rel=stylesheet type=text/css href=%s />\n"
+      "</head>\n"
+      "</html>\n";
+  GoogleString after = StringPrintf(after_template, Encode(
+      kTestDomain, "cc", "0", MultiUrl("a.css", "b.css", "c.css"),
+      "css").c_str());
+
+  ValidateExpected("collapse_after_combine", before, after);
 }
 
 }  // namespace net_instaweb

@@ -854,10 +854,6 @@ void RewriteDriver::AddPreRenderFilters() {
     AppendOwnedPreRenderFilter(new RemoveCommentsFilter(
         this, new RemoveCommentsFilterOptions(rewrite_options)));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kCollapseWhitespace)) {
-    // Remove excess whitespace in HTML
-    AppendOwnedPreRenderFilter(new CollapseWhitespaceFilter(this));
-  }
   if (rewrite_options->Enabled(RewriteOptions::kElideAttributes)) {
     // Remove HTML element attribute values where
     // http://www.w3.org/TR/html4/loose.dtd says that the name is all
@@ -933,12 +929,6 @@ void RewriteDriver::AddPostRenderFilters() {
       AddOwnedPostRenderFilter(new DetectReflowJsDeferFilter(this));
     }
   }
-  if (rewrite_options->Enabled(RewriteOptions::kRemoveQuotes)) {
-    // Remove extraneous quotes from html attributes.  Does this save
-    // enough bytes to be worth it after compression?  If we do it
-    // everywhere it seems to give a small savings.
-    AddOwnedPostRenderFilter(new HtmlAttributeQuoteRemoval(this));
-  }
   if (rewrite_options->Enabled(RewriteOptions::kDeterministicJs)) {
     AddOwnedPostRenderFilter(new DeterministicJsFilter(this));
   }
@@ -975,6 +965,16 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kStripNonCacheable)) {
     StripNonCacheableFilter* filter = new StripNonCacheableFilter(this);
     AddOwnedPostRenderFilter(filter);
+  }
+
+  // Remove quotes and collapse whitespace at the very end for maximum effect.
+  if (rewrite_options->Enabled(RewriteOptions::kRemoveQuotes)) {
+    // Remove extraneous quotes from html attributes.
+    AddOwnedPostRenderFilter(new HtmlAttributeQuoteRemoval(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kCollapseWhitespace)) {
+    // Remove excess whitespace in HTML.
+    AddOwnedPostRenderFilter(new CollapseWhitespaceFilter(this));
   }
 
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
