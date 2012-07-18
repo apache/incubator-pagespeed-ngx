@@ -305,12 +305,8 @@ ModPagespeedAvoidRenamingIntrospectiveJavascript off
 #FURIOUS ModPagespeedRunExperiment on
 #FURIOUS ModPagespeedAnalyticsID "123-45-6734"
 #FURIOUS ModPagespeedExperimentVariable 2
-#FURIOUS # This specifies an experiment with rewrite_css and sprite_images on
-#FURIOUS # and resize_images off.
-#FURIOUS ModPagespeedExperimentSpec "id=7;level=CoreFilters;enable=rewrite_css,sprite_images;disable=resize_images;percent=10;ga=UA-29994820-1;slot=2"
-#FURIOUS # This specifies an experiment with no rewriters on.
-#FURIOUS # It should use Custom Variable slot 3.
-#FURIOUS ModPagespeedExperimentSpec "id=2;ga=UA-29994820-1;percent=10;slot=3"
+#FURIOUS ModPagespeedExperimentSpec "id=7;enable=recompress_images;percent=50"
+#FURIOUS ModPagespeedExperimentSpec "id=2;enable=recompress_images,convert_jpeg_to_progressive;percent=50"
 
 #URL_ATTRIBUTE # This is used for testing dynamically defined url-valued
 #URL_ATTRIBUTE # attributes

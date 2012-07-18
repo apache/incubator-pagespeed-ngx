@@ -46,15 +46,44 @@ TEST_F(ResourceNamerTest, TestEncode) {
             full_name_.Encode());
   EXPECT_EQ(GoogleString("id.name.ext.as.many.as.I.like"),
             full_name_.EncodeIdName());
+  full_name_.set_experiment("q");
+  EXPECT_EQ(GoogleString("name.ext.as.many.as.I.like.pagespeed.q.id.hash.ext"),
+            full_name_.Encode());
 }
 
 TEST_F(ResourceNamerTest, TestDecode) {
   EXPECT_TRUE(full_name_.Decode(
       "name.ext.as.many.as.I.like.pagespeed.id.hash.ext"));
+  EXPECT_FALSE(full_name_.has_experiment());
   EXPECT_EQ("id", full_name_.id());
   EXPECT_EQ("name.ext.as.many.as.I.like", full_name_.name());
   EXPECT_EQ("hash", full_name_.hash());
   EXPECT_EQ("ext", full_name_.ext());
+}
+
+TEST_F(ResourceNamerTest, TestDecodeExperiment) {
+  EXPECT_TRUE(full_name_.Decode(
+      "name.ext.as.many.as.I.like.pagespeed.d.id.hash.ext"));
+  EXPECT_EQ("d", full_name_.experiment());
+  EXPECT_TRUE(full_name_.has_experiment());
+  EXPECT_EQ("id", full_name_.id());
+  EXPECT_EQ("name.ext.as.many.as.I.like", full_name_.name());
+  EXPECT_EQ("hash", full_name_.hash());
+  EXPECT_EQ("ext", full_name_.ext());
+  EXPECT_FALSE(full_name_.Decode(
+      "name.ext.as.many.as.I.like.pagespeed.de.id.hash.ext"));
+  EXPECT_FALSE(full_name_.Decode(
+      "name.ext.as.many.as.I.like.pagespeed..id.hash.ext"));
+  EXPECT_FALSE(full_name_.Decode(
+      "name.ext.as.many.as.I.like.pagespeed.D.id.hash.ext"));
+  EXPECT_FALSE(full_name_.Decode(
+      "name.ext.as.many.as.I.like.pagespeed.`.id.hash.ext"));
+  EXPECT_FALSE(full_name_.Decode(
+      "name.ext.as.many.as.I.like.pagespeed.{.id.hash.ext"));
+  EXPECT_TRUE(full_name_.Decode(
+      "name.ext.as.many.as.I.like.pagespeed.a.id.hash.ext"));
+  EXPECT_TRUE(full_name_.Decode(
+      "name.ext.as.many.as.I.like.pagespeed.z.id.hash.ext"));
 }
 
 TEST_F(ResourceNamerTest, TestDecodeTooMany) {
@@ -76,6 +105,13 @@ TEST_F(ResourceNamerTest, TestLegacyDecode) {
 TEST_F(ResourceNamerTest, TestEventualSize) {
   MockHasher mock_hasher;
   GoogleString file = "some_name.pagespeed.idn.0.extension";
+  EXPECT_TRUE(full_name_.Decode(file));
+  EXPECT_EQ(file.size(), full_name_.EventualSize(mock_hasher));
+}
+
+TEST_F(ResourceNamerTest, TestEventualSizeExperiment) {
+  MockHasher mock_hasher;
+  GoogleString file = "some_name.pagespeed.c.idn.0.extension";
   EXPECT_TRUE(full_name_.Decode(file));
   EXPECT_EQ(file.size(), full_name_.EventualSize(mock_hasher));
 }

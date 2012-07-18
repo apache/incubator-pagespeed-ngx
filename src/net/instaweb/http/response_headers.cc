@@ -417,7 +417,7 @@ bool ResponseHeaders::Sanitize() {
   return cookie || cookie2;
 }
 
-void ResponseHeaders::GetSanitizedProto(HttpResponseHeaders* proto) {
+void ResponseHeaders::GetSanitizedProto(HttpResponseHeaders* proto) const {
   proto->CopyFrom(*proto_.get());
   protobuf::RepeatedPtrField<NameValue>* headers = proto->mutable_header();
   StringSetInsensitive names;

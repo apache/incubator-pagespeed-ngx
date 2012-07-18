@@ -41,12 +41,12 @@ class ResourceNamer {
 
   // Encoding and decoding in various formats.
 
-  // Decodes an entire resource name (NAME.pagespeed.ID.HASH.EXT), placing
-  // the result in the fields in this encoder.
+  // Decodes an entire resource name (NAME.pagespeed[.EXPT].ID.HASH.EXT),
+  // placing the result in the fields in this encoder.
   bool Decode(const StringPiece& encoded_string);
 
   // Encodes the fields in this encoder into an absolute url, with the
-  // trailing portion "NAME.pagespeed.ID.HASH.EXT".
+  // trailing portion "NAME.pagespeed[.EXPT].ID.HASH.EXT".
   GoogleString Encode() const;
 
   // Encode a key that can used to do a lookup based on an id
@@ -68,6 +68,9 @@ class ResourceNamer {
   StringPiece name() const { return name_; }
   StringPiece hash() const { return hash_; }
   StringPiece ext() const { return ext_; }
+  StringPiece experiment() const { return experiment_; }
+
+  bool has_experiment() const { return !experiment_.empty(); }
 
   // Simple setters
   void set_id(const StringPiece& p) { p.CopyToString(&id_); }
@@ -79,6 +82,7 @@ class ResourceNamer {
     CHECK(e.empty() || e[0] != '.');
     e.CopyToString(&ext_);
   }
+  void set_experiment(const StringPiece& e) { e.CopyToString(&experiment_); }
 
   // Other setter-like operations
   void ClearHash() { hash_.clear(); }
@@ -100,6 +104,7 @@ class ResourceNamer {
   GoogleString name_;
   GoogleString hash_;
   GoogleString ext_;
+  GoogleString experiment_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceNamer);
 };

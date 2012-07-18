@@ -21,12 +21,12 @@
 
 #include <cstddef>
 
+#include "net/instaweb/js/public/js_minify.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "pagespeed/js/js_minify.h"
 
 namespace net_instaweb {
 

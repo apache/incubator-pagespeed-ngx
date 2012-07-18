@@ -24,6 +24,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -89,18 +90,24 @@ class CollectSubresourcesFilter::Context : public SingleRewriteContext {
 CollectSubresourcesFilter::CollectSubresourcesFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
       num_resources_(0),
+      is_enabled_(false),
       property_cache_(driver->resource_manager()->page_property_cache()) {}
 
 void CollectSubresourcesFilter::StartDocumentImpl() {
   in_first_head_ = false;
   seen_first_head_ = false;
   num_resources_ = 0;
+  is_enabled_ = (driver()->user_agent_matcher().GetPrefetchMechanism(
+      driver()->user_agent()) == UserAgentMatcher::kPrefetchLinkRelSubresource);
 }
 
 CollectSubresourcesFilter::~CollectSubresourcesFilter() {
 }
 
 void CollectSubresourcesFilter::StartElementImpl(HtmlElement* element) {
+  if (!is_enabled_) {
+    return;
+  }
   if (element->keyword() == HtmlName::kHead && !seen_first_head_) {
     seen_first_head_ = true;
     in_first_head_ = true;
@@ -108,6 +115,9 @@ void CollectSubresourcesFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void CollectSubresourcesFilter::EndElementImpl(HtmlElement* element) {
+  if (!is_enabled_) {
+    return;
+  }
   if (element->keyword() == HtmlName::kHead && in_first_head_) {
     in_first_head_ = false;
   }

@@ -121,6 +121,7 @@ class OutputResource : public Resource {
   const GoogleString& original_base() const { return original_base_; }
   const ResourceNamer& full_name() const { return full_name_; }
   StringPiece name() const { return full_name_.name(); }
+  StringPiece experiment() const { return full_name_.experiment(); }
   StringPiece suffix() const;
   StringPiece filter_prefix() const { return full_name_.id(); }
   StringPiece hash() const { return full_name_.hash(); }

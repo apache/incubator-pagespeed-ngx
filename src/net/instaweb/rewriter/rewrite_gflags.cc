@@ -165,6 +165,11 @@ DEFINE_bool(avoid_renaming_introspective_javascript, false,
             "introspection in the form of "
             "document.getElementsByTagName('script').");
 
+DEFINE_string(experiment_specs, "",
+              "A '+'-separated list of experiment_specs. For example "
+              "'id=7;enable=recompress_images;percent=50+id=2;enable="
+              "recompress_images,convert_jpeg_to_progressive;percent=5'.");
+
 DEFINE_bool(use_fixed_user_agent_for_blink_cache_misses, false,
             "Enable use of fixed User-Agent for fetching content from origin "
             "server for blink requests in case of cache misses.");
@@ -399,6 +404,19 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("support_noscript_enabled")) {
     options->set_support_noscript_enabled(FLAGS_support_noscript_enabled);
+  }
+  if (WasExplicitlySet("experiment_specs")) {
+    options->set_running_furious_experiment(true);
+    StringPieceVector experiment_specs;
+    SplitStringPieceToVector(FLAGS_experiment_specs, "+",
+                             &experiment_specs, true);
+    for (int i = 0, n = experiment_specs.size(); i < n; ++i) {
+      if (!options->AddFuriousSpec(experiment_specs[i], handler)) {
+        LOG(ERROR) << "Invalid experiment specification: "
+                   << experiment_specs[i];
+        ret = false;
+      }
+    }
   }
 
   ret &= SetRewriters("rewriters", FLAGS_rewriters.c_str(),

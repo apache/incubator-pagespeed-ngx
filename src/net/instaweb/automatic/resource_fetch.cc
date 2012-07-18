@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
@@ -35,11 +36,34 @@
 
 namespace net_instaweb {
 
-RewriteDriver* ResourceFetch::StartAndGetDriver(const GoogleUrl& url,
-                                                RewriteOptions* custom_options,
-                                                bool using_spdy,
-                                                ResourceManager* manager,
-                                                AsyncFetch* async_fetch) {
+void ResourceFetch::ApplyFuriousOptions(const ResourceManager* manager,
+                                        const GoogleUrl& url,
+                                        RewriteOptions** custom_options) {
+  const RewriteOptions* active_options;
+  if (*custom_options == NULL) {
+    active_options = manager->global_options();
+  } else {
+    active_options = *custom_options;
+  }
+  if (active_options->running_furious()) {
+    // If we're running an experiment and this resource url specifies a
+    // furious_spec, make sure the custom options have that experiment selected.
+    ResourceNamer namer;
+    namer.Decode(url.LeafSansQuery());
+    if (namer.has_experiment()) {
+      if (*custom_options == NULL) {
+        *custom_options = active_options->Clone();
+      }
+      (*custom_options)->SetFuriousStateStr(namer.experiment());
+      manager->ComputeSignature(*custom_options);
+    }
+  }
+}
+
+RewriteDriver* ResourceFetch::StartAndGetDriver(
+    const GoogleUrl& url, RewriteOptions* custom_options, bool using_spdy,
+    ResourceManager* manager, AsyncFetch* async_fetch) {
+  ApplyFuriousOptions(manager, url, &custom_options);
   RewriteDriver* driver = (custom_options == NULL)
       ? manager->NewRewriteDriver()
       : manager->NewCustomRewriteDriver(custom_options);

@@ -146,7 +146,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
 
   // Copies the HttpResponseHeaders proto from the response headers to the given
   // input after removing the Set-Cookie fields.
-  void GetSanitizedProto(HttpResponseHeaders* proto);
+  void GetSanitizedProto(HttpResponseHeaders* proto) const;
 
   // TODO(jmarantz): consider an alternative representation
   bool headers_complete() const { return has_status_code(); }

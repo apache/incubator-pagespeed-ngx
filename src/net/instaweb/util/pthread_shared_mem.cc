@@ -56,6 +56,10 @@ class PthreadSharedMemMutex : public AbstractMutex {
   explicit PthreadSharedMemMutex(pthread_mutex_t* external_mutex)
       : external_mutex_(external_mutex) {}
 
+  virtual bool TryLock() {
+    return pthread_mutex_trylock(external_mutex_);
+  }
+
   virtual void Lock() {
     pthread_mutex_lock(external_mutex_);
   }

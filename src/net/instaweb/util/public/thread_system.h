@@ -65,6 +65,8 @@ class ThreadSystem {
     // ReaderLock/Unlock are different from normal locks. Reader locks are
     // shared while normal locks are exclusive. Normal lock cannot happen when
     // reader has a lock.
+    // Try to acquire a read share of this lock without blocking.
+    virtual bool ReaderTryLock() = 0;
     // Block until this Mutex is free, or shared, then acquire a share of it.
     virtual void ReaderLock() = 0;
     // Release a read share of this Mutex.

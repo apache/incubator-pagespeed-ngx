@@ -38,6 +38,9 @@
 #include "net/instaweb/http/public/reflecting_test_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/http/public/user_agent_matcher_test.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -86,6 +89,57 @@ const char kPageUrl[] = "page.html";
 const char kCssContent[] = "* { display: none; }";
 const char kMinimizedCssContent[] = "*{display:none}";
 const char kBackgroundFetchHeader[] = "X-Background-Fetch";
+const char kFlushEarlyHtml[] =
+    "<html>"
+    "<head>"
+    "<title>Flush Subresources Early example</title>"
+    "<link rel=\"stylesheet\" type=\"text/css\" href=\"1.css\">"
+    "<link rel=\"stylesheet\" type=\"text/css\" href=\"2.css\">"
+    "<script src=\"1.js\"></script>"
+    "</head>"
+    "<body>"
+    "Hello, mod_pagespeed!"
+    "</body>"
+    "</html>";
+const char kRewrittenHtml[] =
+    "<html>"
+    "<head>"
+    "<title>Flush Subresources Early example</title>"
+    "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
+    "<script src=\"%s\"></script>"
+    "</head>"
+    "<body>"
+    "Hello, mod_pagespeed!"
+    "</body>"
+    "</html>";
+const char kFlushEarlyRewritenHtmlImageTag[] =
+    "<html>"
+    "<head><script type=\"text/javascript\">(function(){"
+    "new Image().src=\"%s\";"
+    "new Image().src=\"%s\";})()</script>"
+    "</head><head>"
+    "<title>Flush Subresources Early example</title>"
+    "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
+    "<script src=\"%s\"></script>"
+    "</head>"
+    "<body>"
+    "Hello, mod_pagespeed!"
+    "</body>"
+    "</html>";
+const char kFlushEarlyRewritenHtmlLinkRelSubresource[] =
+    "<html>"
+    "<head>"
+    "<link rel=\"subresource\" href=\"%s\"/>"
+    "<link rel=\"subresource\" href=\"%s\"/>"
+    "</head><head>"
+    "<title>Flush Subresources Early example</title>"
+    "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
+    "<script src=\"%s\"></script>"
+    "</head>"
+    "<body>"
+    "Hello, mod_pagespeed!"
+    "</body>"
+    "</html>";
 
 // Like ExpectStringAsyncFetch but for asynchronous invocation -- it lets
 // one specify a WorkerTestBase::SyncPoint to help block until completion.
@@ -647,6 +701,55 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     resource_manager()->ComputeSignature(options);
   }
 
+  void SetupForFlushEarlyFlow() {
+    // Setup
+    ResponseHeaders headers;
+    headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+    headers.SetStatusAndReason(HttpStatus::kOK);
+    mock_url_fetcher_.SetResponse(kTestDomain, headers, kFlushEarlyHtml);
+
+    // Enable FlushSubresourcesFilter filter.
+    RewriteOptions* rewrite_options = resource_manager()->global_options();
+    rewrite_options->ClearSignatureForTesting();
+    rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
+    rewrite_options->EnableExtendCacheFilters();
+    // Disabling the inline filters so that the resources get flushed early
+    // else our dummy resources are too small and always get inlined.
+    rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
+    rewrite_options->DisableFilter(RewriteOptions::kInlineJavascript);
+    rewrite_options->ComputeSignature(hasher());
+
+    SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.css"), kContentTypeCss,
+                                  kCssContent, kHtmlCacheTimeSec * 2);
+    SetResponseWithDefaultHeaders(StrCat(kTestDomain, "2.css"), kContentTypeCss,
+                                  kCssContent, kHtmlCacheTimeSec * 2);
+    const char kContent[] = "function f() {alert('foo');}";
+    SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.js"),
+                                  kContentTypeJavascript, kContent,
+                                  kHtmlCacheTimeSec * 2);
+  }
+
+  GoogleString flush_early_rewritten_html(
+      UserAgentMatcher::PrefetchMechanism value) {
+    GoogleString combined_css_url = Encode("", "cc", "0",
+                                           MultiUrl("1.css", "2.css"), "css");
+    GoogleString rewritten_css_url = Encode("", "cf", "0", combined_css_url,
+                                            "css");
+    GoogleString rewritten_js_url = Encode("", "jm", "0", "1.js", "js");
+    if (value == UserAgentMatcher::kPrefetchNotSupported) {
+      return StringPrintf(kRewrittenHtml, rewritten_css_url.data(),
+          rewritten_js_url.data());
+    } else {
+      return StringPrintf(
+          value == UserAgentMatcher::kPrefetchLinkRelSubresource ?
+          kFlushEarlyRewritenHtmlLinkRelSubresource :
+          kFlushEarlyRewritenHtmlImageTag,
+          StrCat(kTestDomain, rewritten_css_url).data(),
+          StrCat(kTestDomain, rewritten_js_url).data(),
+          rewritten_css_url.data(), rewritten_js_url.data());
+    }
+  }
+
   scoped_ptr<ProxyInterface> proxy_interface_;
   scoped_ptr<BackgroundFetchCheckingUrlAsyncFetcher> background_fetch_fetcher_;
   int64 start_time_ms_;
@@ -666,6 +769,36 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
 
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceTest);
 };
+
+TEST_F(ProxyInterfaceTest, FlushEarlyFlowTest) {
+  SetupForFlushEarlyFlow();
+  GoogleString text;
+  RequestHeaders request_headers;
+  ResponseHeaders headers;
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+  // Fetch the url again. This time FlushEarlyFlow should not be triggered.
+  // None
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_EQ(flush_early_rewritten_html(
+      UserAgentMatcher::kPrefetchNotSupported), text);
+}
+
+TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestUserAgent) {
+  SetupForFlushEarlyFlow();
+  GoogleString text;
+  RequestHeaders request_headers;
+  request_headers.Replace(HttpAttributes::kUserAgent,
+                          UserAgentStrings::kChromeUserAgent);
+  ResponseHeaders headers;
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+  // Fetch the url again. This time FlushEarlyFlow should be triggered.
+  // Chrome
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_EQ(flush_early_rewritten_html(
+      UserAgentMatcher::kPrefetchLinkRelSubresource), text);
+}
 
 TEST_F(ProxyInterfaceTest, LoggingInfo) {
   GoogleString url = "http://www.example.com/";
@@ -2972,12 +3105,15 @@ TEST_F(ProxyInterfaceTest, FuriousTest) {
   options->set_ga_id("123-455-2341");
   options->set_running_furious_experiment(true);
   NullMessageHandler handler;
-  options->AddFuriousSpec("id=2", &handler);
+  options->AddFuriousSpec("id=2;enable=extend_cache;percent=100", &handler);
   resource_manager()->ComputeSignature(options);
+
+  SetResponseWithDefaultHeaders("example.jpg", kContentTypeJpeg,
+                                "image data", 300);
 
   ResponseHeaders headers;
   const char kContent[] = "<html><head></head><body>A very compelling "
-      "article</body></html>";
+      "article with an image: <img src=example.jpg></body></html>";
   headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
   headers.SetStatusAndReason(HttpStatus::kOK);
   SetFetchResponse(AbsolutifyUrl("text.html"), headers, kContent);
@@ -2985,6 +3121,7 @@ TEST_F(ProxyInterfaceTest, FuriousTest) {
 
   GoogleString text;
   FetchFromProxy("text.html", true, &text, &headers);
+  // Assign all visitors to a furious_spec.
   EXPECT_TRUE(headers.Has(HttpAttributes::kSetCookie));
   ConstStringStarVector values;
   headers.Lookup(HttpAttributes::kSetCookie, &values);
@@ -2996,6 +3133,8 @@ TEST_F(ProxyInterfaceTest, FuriousTest) {
     }
   }
   EXPECT_TRUE(found);
+  // Image cache-extended and including furious_spec 'a'.
+  EXPECT_TRUE(text.find("example.jpg.pagespeed.a.ce") != GoogleString::npos);
 
   headers.Clear();
   headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
@@ -3008,7 +3147,26 @@ TEST_F(ProxyInterfaceTest, FuriousTest) {
   req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=2");
 
   FetchFromProxy("text2.html", req_headers, true, &text, &headers);
+  // Visitor already has cookie with id=2; don't give them a new one.
   EXPECT_FALSE(headers.Has(HttpAttributes::kSetCookie));
+  // Image cache-extended and including furious_spec 'a'.
+  EXPECT_TRUE(text.find("example.jpg.pagespeed.a.ce") != GoogleString::npos);
+
+  // Check that we don't include a furious_spec index in urls for the "no
+  // experiment" group (id=0).
+  headers.Clear();
+  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+  headers.SetStatusAndReason(HttpStatus::kOK);
+  SetFetchResponse(AbsolutifyUrl("text3.html"), headers, kContent);
+  headers.Clear();
+  text.clear();
+
+  RequestHeaders req_headers2;
+  req_headers2.Add(HttpAttributes::kCookie, "_GFURIOUS=0");
+
+  FetchFromProxy("text3.html", req_headers2, true, &text, &headers);
+  EXPECT_FALSE(headers.Has(HttpAttributes::kSetCookie));
+  EXPECT_TRUE(text.find("example.jpg.pagespeed.ce") != GoogleString::npos);
 }
 
 TEST_F(ProxyInterfaceTest, UrlAttributeTest) {

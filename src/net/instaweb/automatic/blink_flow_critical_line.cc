@@ -616,6 +616,7 @@ void BlinkFlowCriticalLine::SetFilterOptions(RewriteOptions* options) const {
   options->DisableFilter(RewriteOptions::kConvertMetaTags);
   options->DisableFilter(RewriteOptions::kDeferJavascript);
   options->DisableFilter(RewriteOptions::kDelayImages);
+  options->DisableFilter(RewriteOptions::kFlushSubresources);
 
   options->ForceEnableFilter(RewriteOptions::kDisableJavascript);
 

@@ -986,6 +986,7 @@
       'sources': [
         'automatic/blink_flow.cc',
         'automatic/blink_flow_critical_line.cc',
+        'automatic/flush_early_flow.cc',
         'automatic/html_detector.cc',
         'automatic/proxy_fetch.cc',
         'automatic/proxy_interface.cc',

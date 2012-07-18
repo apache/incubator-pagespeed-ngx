@@ -1,0 +1,105 @@
+/*
+ * Copyright 2012 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Author: mmohabey@google.com (Megha Mohabey)
+
+#ifndef NET_INSTAWEB_AUTOMATIC_PUBLIC_FLUSH_EARLY_FLOW_H_
+#define NET_INSTAWEB_AUTOMATIC_PUBLIC_FLUSH_EARLY_FLOW_H_
+
+#include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
+
+namespace net_instaweb {
+
+class AsyncFetch;
+class FlushEarlyInfo;
+class MessageHandler;
+class ProxyFetchPropertyCallbackCollector;
+class ProxyFetchFactory;
+class ResourceManager;
+class RewriteDriver;
+class RewriteOptions;
+class Statistics;
+class TimedVariable;
+
+// FlushEarlyFlow manages the flow for the rewriters which flush a response to
+// the client before receiving a response from the origin server. If a request
+// can be responded to early, then FlushEarlyFlow is initiated. It also has
+// helper functions to update the property cache with the response headers which
+// are used when a request is responded to early.
+class FlushEarlyFlow {
+ public:
+  static void Start(
+      const GoogleString& url,
+      AsyncFetch* base_fetch,
+      RewriteDriver* driver,
+      ProxyFetchFactory* factory,
+      ProxyFetchPropertyCallbackCollector* property_callback);
+
+  static void Initialize(Statistics* stats);
+
+  virtual ~FlushEarlyFlow();
+
+  // Checks whether the request can be flushed early.
+  static bool CanFlushEarly(const GoogleString& url,
+                            const RewriteOptions* options,
+                            const AsyncFetch* async_fetch,
+                            const StringPiece& user_agent,
+                            const ResourceManager* manager);
+
+  static const char kNumRequestsFlushedEarly[];
+  static const char kNumResourcesFlushedEarly[];
+
+ private:
+  // Flush some response for this request before receiving the fetch response
+  // from the origin server.
+  void FlushEarly();
+
+  FlushEarlyFlow(const GoogleString& url,
+                 AsyncFetch* base_fetch,
+                 RewriteDriver* driver,
+                 ProxyFetchFactory* factory,
+                 ProxyFetchPropertyCallbackCollector* property_cache_callback);
+
+  // Generates a dummy head with subresources and writes it to the base_fetch.
+  void GenerateDummyHeadAndFlush(const FlushEarlyInfo& flush_early_info);
+
+  // Generates response headers from previous values stored in property cache.
+  void GenerateResponseHeaders(const FlushEarlyInfo& flush_early_info);
+
+  void Write(const StringPiece& val);
+
+  GoogleString url_;
+
+  AsyncFetch* base_fetch_;
+  AsyncFetch* flush_early_fetch_;
+  RewriteDriver* driver_;
+  ProxyFetchFactory* factory_;
+  ResourceManager* manager_;
+  ProxyFetchPropertyCallbackCollector* property_cache_callback_;
+  MessageHandler* handler_;
+
+  TimedVariable* num_requests_flushed_early_;
+  TimedVariable* num_resources_flushed_early_;
+
+  DISALLOW_COPY_AND_ASSIGN(FlushEarlyFlow);
+};
+
+}  // namespace net_instaweb
+
+#endif  // NET_INSTAWEB_AUTOMATIC_PUBLIC_FLUSH_EARLY_FLOW_H_

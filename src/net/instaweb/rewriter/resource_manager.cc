@@ -751,11 +751,18 @@ RewriteOptions* ResourceManager::global_options() {
   return base_class_options_.get();
 }
 
+const RewriteOptions* ResourceManager::global_options() const {
+  if (base_class_options_.get() == NULL) {
+    return factory_->default_options();
+  }
+  return base_class_options_.get();
+}
+
 RewriteOptions* ResourceManager::NewOptions() {
   return factory_->NewRewriteOptions();
 }
 
-void ResourceManager::ComputeSignature(RewriteOptions* rewrite_options) {
+void ResourceManager::ComputeSignature(RewriteOptions* rewrite_options) const {
   rewrite_options->ComputeSignature(lock_hasher());
 }
 

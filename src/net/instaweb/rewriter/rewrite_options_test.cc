@@ -20,11 +20,13 @@
 
 #include <set>
 
+#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace {
 
@@ -950,6 +952,46 @@ TEST_F(RewriteOptionsTest, FuriousSpecTest) {
 
   options_.SetFuriousState(17);
   EXPECT_EQ(4, options_.furious_ga_slot());
+
+  options_.SetFuriousState(7);
+  EXPECT_EQ("a", options_.GetFuriousStateStr());
+  options_.SetFuriousState(2);
+  EXPECT_EQ("b", options_.GetFuriousStateStr());
+  options_.SetFuriousState(17);
+  EXPECT_EQ("c", options_.GetFuriousStateStr());
+  options_.SetFuriousState(net_instaweb::furious::kFuriousNotSet);
+  EXPECT_EQ("", options_.GetFuriousStateStr());
+  options_.SetFuriousState(net_instaweb::furious::kFuriousNoExperiment);
+  EXPECT_EQ("", options_.GetFuriousStateStr());
+
+  options_.SetFuriousStateStr("a");
+  EXPECT_EQ("a", options_.GetFuriousStateStr());
+  options_.SetFuriousStateStr("b");
+  EXPECT_EQ("b", options_.GetFuriousStateStr());
+  options_.SetFuriousStateStr("c");
+  EXPECT_EQ("c", options_.GetFuriousStateStr());
+
+  // Invalid state index 'd'; we only added three specs above.
+  options_.SetFuriousStateStr("d");
+  // No effect on the furious state; stay with 'c' from before.
+  EXPECT_EQ("c", options_.GetFuriousStateStr());
+
+  // Check a state index that will be out of bounds in the other direction.
+  options_.SetFuriousStateStr("`");
+  // Still no effect on the furious state.
+  EXPECT_EQ("c", options_.GetFuriousStateStr());
+
+  // Check that we have a maximum size of 26 concurrent experiment specs.
+  // Get us up to 26.
+  for(int i = options_.num_furious_experiments(); i < 26 ; i++) {
+    int tmp_id = i+100;  // Don't want conflict with experiments added above.
+    EXPECT_TRUE(options_.AddFuriousSpec(
+        net_instaweb::StrCat("id=", net_instaweb::IntegerToString(tmp_id),
+                             ";percent=1;default"), &handler));
+  }
+  EXPECT_EQ(26, options_.num_furious_experiments());
+  // Object to adding a 27th.
+  EXPECT_FALSE(options_.AddFuriousSpec("id=200;percent=1;default", &handler));
 }
 
 TEST_F(RewriteOptionsTest, FuriousPrintTest) {
@@ -993,6 +1035,70 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
 
   // Make sure we set the ga_id to the one specified by spec 2.
   EXPECT_EQ("122333-4", options_.ga_id());
+}
+
+TEST_F(RewriteOptionsTest, FuriousUndoOptionsTest) {
+  NullMessageHandler handler;
+  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  options_.set_running_furious_experiment(true);
+
+  // Default for this is 2048.
+  EXPECT_EQ(2048L, options_.ImageInlineMaxBytes());
+  EXPECT_TRUE(options_.AddFuriousSpec(
+      "id=1;percent=15;enable=inline_images;"
+      "inline_images=1024", &handler));
+  options_.SetFuriousState(1);
+  EXPECT_EQ(1024L, options_.ImageInlineMaxBytes());
+  EXPECT_TRUE(options_.AddFuriousSpec(
+      "id=2;percent=15;enable=inline_images", &handler));
+  options_.SetFuriousState(2);
+  EXPECT_EQ(2048L, options_.ImageInlineMaxBytes());
+}
+
+TEST_F(RewriteOptionsTest, FuriousOptionsTest) {
+  NullMessageHandler handler;
+  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  options_.set_running_furious_experiment(true);
+
+  // Default for this is 2048.
+  EXPECT_EQ(2048L, options_.css_inline_max_bytes());
+  EXPECT_TRUE(options_.AddFuriousSpec(
+      "id=1;percent=15;enable=defer_javascript;"
+      "options=CssInlineMaxBytes=1024", &handler));
+  options_.SetFuriousState(1);
+  EXPECT_EQ(1024L, options_.css_inline_max_bytes());
+  EXPECT_TRUE(options_.AddFuriousSpec(
+      "id=2;percent=15;enable=resize_images;options=BogusOption=35", &handler));
+  EXPECT_TRUE(options_.AddFuriousSpec(
+      "id=3;percent=15;enable=defer_javascript", &handler));
+  options_.SetFuriousState(3);
+  EXPECT_EQ(2048L, options_.css_inline_max_bytes());
+  EXPECT_TRUE(options_.AddFuriousSpec(
+      "id=4;percent=15;enable=defer_javascript;"
+      "options=CssInlineMaxBytes=Cabbage", &handler));
+  options_.SetFuriousState(4);
+  EXPECT_EQ(2048L, options_.css_inline_max_bytes());
+  EXPECT_TRUE(options_.AddFuriousSpec(
+      "id=5;percent=15;enable=defer_javascript;"
+      "options=Potato=Carrot,5=10,6==9,CssInlineMaxBytes=1024", &handler));
+  options_.SetFuriousState(5);
+  EXPECT_EQ(1024L, options_.css_inline_max_bytes());
+  EXPECT_TRUE(options_.AddFuriousSpec(
+      "id=6;percent=15;enable=defer_javascript;"
+      "options=JsOutlineMinBytes=4096,JpegRecompresssionQuality=50,"
+      "CssInlineMaxBytes=100,JsInlineMaxBytes=123", &handler));
+  options_.SetFuriousState(6);
+  EXPECT_EQ(100L, options_.css_inline_max_bytes());
+}
+
+TEST_F(RewriteOptionsTest, SetOptionsFromName) {
+  RewriteOptions::OptionSet option_set;
+  option_set.insert(RewriteOptions::OptionStringPair(
+      "CssInlineMaxBytes", "1024"));
+  EXPECT_TRUE(options_.SetOptionsFromName(option_set));
+  option_set.insert(RewriteOptions::OptionStringPair(
+      "Not an Option", "nothing"));
+  EXPECT_FALSE(options_.SetOptionsFromName(option_set));
 }
 
 // TODO(sriharis):  Add thorough ComputeSignature tests

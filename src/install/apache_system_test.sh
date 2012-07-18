@@ -25,7 +25,7 @@ fi
 
 # Run General system tests.
 this_dir=$(dirname $0)
-source $this_dir/system_test.sh
+source "$this_dir/system_test.sh" || exit 1
 
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
@@ -52,24 +52,22 @@ if fgrep -q "# ModPagespeedStatistics off" $APACHE_DEBUG_PAGESPEED_CONF; then
   NUM_404=$($WGET_DUMP $STATISTICS_URL | grep resource_404_count | cut -d: -f2)
   NUM_404=$(($NUM_404+1))
   FETCHED=$OUTDIR/stats
-  $WGET -O /dev/null $BAD_RESOURCE_URL 2>&1 \
-    | check fgrep -q "404 Not Found"
+  check fgrep -q "404 Not Found" <($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
   $WGET_DUMP $STATISTICS_URL > $FETCHED
   check egrep -q "^resource_404_count: *$NUM_404$" $FETCHED
 else
   echo TEST: 404s are served.  Statistics are disabled so not checking them.
-  $WGET -O /dev/null $BAD_RESOURCE_URL 2>&1 \
-    | check fgrep -q "404 Not Found"
+  check fgrep -q "404 Not Found" <($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
 
   echo TEST: 404s properly on uncached invalid resource.
-  $WGET -O /dev/null $BAD_RND_RESOURCE_URL 2>&1 \
-    | check fgrep -q "404 Not Found"
+  check fgrep -q "404 Not Found" <(
+    $WGET -O /dev/null $BAD_RND_RESOURCE_URL 2>&1)
 fi
 
 # Test /mod_pagespeed_message exists.
 echo TEST: Check if /mod_pagespeed_message page exists.
-$WGET --save-headers -q -O - $MESSAGE_URL | head -1 \
-  | check fgrep "HTTP/1.1 200 OK"
+check fgrep "HTTP/1.1 200 OK" <(
+  $WGET --save-headers -q -O - $MESSAGE_URL | head -1)
 
 # Note: There is a similar test in system_test.sh
 #
@@ -114,11 +112,11 @@ echo "JS_URL=\$\(egrep -o http://.*[.]pagespeed.*[.]js $FETCHED\)=\"$JS_URL\""
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1)
 echo JS_HEADERS=$JS_HEADERS
-echo $JS_HEADERS | check egrep -qi 'HTTP/1[.]. 200 OK'
-echo $JS_HEADERS | check fgrep -qi 'Content-Encoding: gzip'
-echo $JS_HEADERS | check fgrep -qi 'Vary: Accept-Encoding'
-echo $JS_HEADERS | check fgrep -qi 'Etag: W/0'
-echo $JS_HEADERS | check fgrep -qi 'Last-Modified:'
+check egrep -qi 'HTTP/1[.]. 200 OK' <(echo $JS_HEADERS)
+check fgrep -qi 'Content-Encoding: gzip' <(echo $JS_HEADERS)
+check fgrep -qi 'Vary: Accept-Encoding' <(echo $JS_HEADERS)
+check fgrep -qi 'Etag: W/0' <(echo $JS_HEADERS)
+check fgrep -qi 'Last-Modified:' <(echo $JS_HEADERS)
 
 # Test RetainComment directive.
 test_filter remove_comments retains appropriate comments.
@@ -140,31 +138,31 @@ echo TEST: headers for rewritten image "$IMG_URL"
 IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $IMG_URL 2>&1)
 echo "IMG_HEADERS=\"$IMG_HEADERS\""
-echo $IMG_HEADERS | check egrep -qi 'HTTP/1[.]. 200 OK'
+check egrep -qi 'HTTP/1[.]. 200 OK' <(echo $IMG_HEADERS)
 # Make sure we have some valid headers.
-echo "$IMG_HEADERS" | check fgrep -qi 'Content-Type: image/jpeg'
+check fgrep -qi 'Content-Type: image/jpeg' <(echo "$IMG_HEADERS")
 # Make sure the response was not gzipped.
 echo TEST: Images are not gzipped.
-echo "$IMG_HEADERS" | check_not fgrep -i 'Content-Encoding: gzip'
+check_not fgrep -i 'Content-Encoding: gzip' <(echo "$IMG_HEADERS")
 # Make sure there is no vary-encoding
 echo TEST: Vary is not set for images.
-echo "$IMG_HEADERS" | check_not fgrep -i 'Vary: Accept-Encoding'
+check_not fgrep -i 'Vary: Accept-Encoding' <(echo "$IMG_HEADERS")
 # Make sure there is an etag
 echo TEST: Etags is present.
-echo "$IMG_HEADERS" | check fgrep -qi 'Etag: W/0'
+check fgrep -qi 'Etag: W/0' <(echo "$IMG_HEADERS")
 # Make sure an extra header is propagated from input resource to output
 # resource.  X-Extra-Header is added in debug.conf.template.
 echo TEST: Extra header is present
-echo "$IMG_HEADERS" | check fgrep -qi 'X-Extra-Header'
+check fgrep -qi 'X-Extra-Header' <(echo "$IMG_HEADERS")
 # Make sure there is a last-modified tag
 echo TEST: Last-modified is present.
-echo "$IMG_HEADERS" | check fgrep -qi 'Last-Modified'
+check fgrep -qi 'Last-Modified' <(echo "$IMG_HEADERS")
 
 # Depends upon "Header append Vary User-Agent" and ModPagespeedRespectVary.
 echo TEST: respect vary user-agent
 URL=$TEST_ROOT/vary/index.html?ModPagespeedFilters=inline_css
 echo $WGET_DUMP $URL
-$WGET_DUMP $URL | check_not fgrep "<style>"
+check_not fgrep "<style>" <($WGET_DUMP $URL)
 
 echo TEST: ModPagespeedShardDomain directive in .htaccess file
 rm -rf $OUTDIR
@@ -199,24 +197,24 @@ echo TEST: Custom headers remain on HTML, but cache should be disabled.
 URL=$TEST_ROOT/rewrite_compressed_js.html
 echo $WGET_DUMP $URL
 HTML_HEADERS=$($WGET_DUMP $URL)
-echo $HTML_HEADERS | check egrep -q "X-Extra-Header: 1"
+check egrep -q "X-Extra-Header: 1" <(echo $HTML_HEADERS)
 # The extra header should only be added once, not twice.
-echo $HTML_HEADERS | check egrep -q -v "X-Extra-Header: 1, 1"
-echo $HTML_HEADERS | check egrep -q 'Cache-Control: max-age=0, no-cache'
+check egrep -q -v "X-Extra-Header: 1, 1" <(echo $HTML_HEADERS)
+check egrep -q 'Cache-Control: max-age=0, no-cache' <(echo $HTML_HEADERS)
 
 echo TEST: Custom headers remain on resources, but cache should be 1 year.
 URL="$TEST_ROOT/compressed/hello_js.custom_ext.pagespeed.ce.HdziXmtLIV.txt"
 echo $WGET_DUMP $URL
 RESOURCE_HEADERS=$($WGET_DUMP $URL)
-echo $RESOURCE_HEADERS | check egrep -q 'X-Extra-Header: 1'
+check egrep -q 'X-Extra-Header: 1' <(echo $RESOURCE_HEADERS)
 # The extra header should only be added once, not twice.
-echo $RESOURCE_HEADERS | check egrep -q -v 'X-Extra-Header: 1, 1'
-echo $RESOURCE_HEADERS | check egrep -q 'Cache-Control: max-age=31536000'
+check egrep -q -v 'X-Extra-Header: 1, 1' <(echo $RESOURCE_HEADERS)
+check egrep -q 'Cache-Control: max-age=31536000' <(echo $RESOURCE_HEADERS)
 
 echo TEST: ModPagespeedModifyCachingHeaders
 URL=$TEST_ROOT/retain_cache_control/index.html
 $WGET_DUMP $URL
-$WGET_DUMP $URL | check grep -q "Cache-Control: private, max-age=3000"
+check grep -q "Cache-Control: private, max-age=3000" <($WGET_DUMP $URL)
 
 test_filter combine_javascript combines 2 JS files into 1.
 echo TEST: combine_javascript with long URL still works
@@ -286,6 +284,18 @@ $WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.xhtml\
 ?ModPagespeedFilters=add_instrumentation
 check [ $(grep -c "\&amp;" $WGET_OUTPUT) = 0 ]
 check [ $(grep -c '//<\!\[CDATA\[' $WGET_OUTPUT) = 1 ]
+
+echo "TEST: flush_subresources rewriter is not applied"
+URL="$TEST_ROOT/flush_subresources.html?\
+ModPagespeedFilters=flush_subresources,extend_cache_css,\
+extend_cache_scripts"
+# Fetch once with X-PSA-Blocking-Rewrite so that the resources get rewritten and
+# property cache is updated with them.
+wget -O - --header 'X-PSA-Blocking-Rewrite: psatest' $URL
+# Fetch again. The property cache has the subresources this time but
+# flush_subresources rewriter is not applied. This is a negative test case
+# because this rewriter does not exist in mod_pagespeed yet.
+check [ `wget -O - $URL | grep -o 'link rel="subresource"' | wc -l` = 0 ]
 
 # TODO(sligocki): TEST: ModPagespeedMaxSegmentLength
 
@@ -431,9 +441,8 @@ ModPagespeedFilters=rewrite_images"
   OLDSTATS=$OUTDIR/blocking_rewrite_stats.old
   NEWSTATS=$OUTDIR/blocking_rewrite_stats.new
   $WGET_DUMP $STATISTICS_URL > $OLDSTATS
-  $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' $BLOCKING_REWRITE_URL \
-    > $OUTFILE
-  check [ $? = 0 ]
+  check $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest'\
+    $BLOCKING_REWRITE_URL > $OUTFILE
   $WGET_DUMP $STATISTICS_URL > $NEWSTATS
   check_stat $OLDSTATS $NEWSTATS image_rewrites 1
   check_stat $OLDSTATS $NEWSTATS cache_hits 0
@@ -445,9 +454,8 @@ ModPagespeedFilters=rewrite_images"
   BLOCKING_REWRITE_URL="$SECONDARY_TEST_ROOT/\
 blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
   OUTFILE=$OUTDIR/blocking_rewrite.out.html
-  $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: junk' \
+  check $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: junk' \
     $BLOCKING_REWRITE_URL > $OUTFILE
-  check [ $? = 0 ]
   check [ $(grep -c "[.]pagespeed[.]" $OUTFILE) -lt 1 ]
 
   fetch_until $BLOCKING_REWRITE_URL 'grep -c [.]pagespeed[.]' 1

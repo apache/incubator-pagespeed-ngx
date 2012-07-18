@@ -444,7 +444,10 @@ class RewriteDriver : public HtmlParse {
   // This name is prepended with path for writing hrefs, and the resulting url
   // is encoded and stored at file_prefix when working with the file system.
   // So hrefs are:
-  //    $(PATH)/$(NAME).pagespeed.$(FILTER_PREFIX).$(HASH).$(CONTENT_TYPE_EXT)
+  //    $(PATH)/$(NAME).pagespeed[.$EXPERIMENT].$(FILTER_PREFIX).
+  //        $(HASH).$(CONTENT_TYPE_EXT)
+  //
+  // EXPERIMENT is set only when there is an active furious_spec.
   //
   // Could be private since you should use one of the versions below but put
   // here with the rest like it and for documentation clarity.
@@ -821,6 +824,10 @@ class RewriteDriver : public HtmlParse {
   // Determines whether we are currently in Debug mode; meaning that the
   // site owner or user has enabled filter kDebug.
   bool DebugMode() const { return options()->Enabled(RewriteOptions::kDebug); }
+
+  // Saves the origin headers for a request in flush_early_info so that it can
+  // be used in subsequent request.
+  void SaveOriginalHeaders(ResponseHeaders* response_headers);
 
  private:
   friend class ResourceManagerTestBase;

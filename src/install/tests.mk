@@ -85,13 +85,10 @@ else
   APACHE_HTTPS_SERVER = localhost:$(APACHE_HTTPS_PORT)
 endif
 EXAMPLE = $(APACHE_SERVER)/mod_pagespeed_example
-EXAMPLE_FILE_DIR = $(INSTALL_DATA_DIR)/mod_pagespeed_example
 EXAMPLE_IMAGE = $(EXAMPLE)/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 EXAMPLE_BIG_CSS = $(EXAMPLE)/styles/big.css.pagespeed.ce.01O-NppLwe.css
 EXAMPLE_COMBINE_CSS = $(EXAMPLE)/combine_css.html
-
 TEST_ROOT = $(APACHE_SERVER)/mod_pagespeed_test
-TEST_ROOT_FILE_DIR = $(INSTALL_DATA_DIR)/mod_pagespeed_test
 
 # Installs debug configuration and runs a smoke test against it.
 # This will blow away your existing pagespeed.conf,
@@ -180,29 +177,7 @@ gzip_test_prepare:
 # get the same result.
 apache_debug_furious_test : furious_test_prepare apache_install_conf \
     apache_debug_restart
-	@echo Testing whether or not Furious is working:
-	if [[ -f $(EXAMPLE_FILE_DIR)/.htaccess ]] ; then true ; else \
-	   echo "ERROR: $(EXAMPLE_FILE_DIR) must have a .htaccess file"; \
-	   echo "       because we're testing whether Furious works with"; \
-	   echo "       them."; \
-	   false ; \
-	fi
-	$(WGET_NO_PROXY) -q -O - --save-headers $(EXAMPLE) | grep "_GFURIOUS="
-	if [[ -f $(TEST_ROOT_FILE_DIR)/.htaccess ]] ; then \
-	   echo "ERROR: $(TEST_ROOT_FILE_DIR) can't have a .htaccess file"; \
-	   echo "       because we're testing whether Furious works on"; \
-	   echo "       directories that don't have one."; \
-	   false ; \
-	fi
-	$(WGET_NO_PROXY) -q -O - --save-headers $(TEST_ROOT) | grep "_GFURIOUS="
-	matches=`$(WGET_NO_PROXY) -q -O - --save-headers \
-          '$(EXAMPLE)?ModPagespeed=on&ModPagespeedFilters=rewrite_css' \
-	  | grep -c '_GFURIOUS='`; \
-	test $$matches -eq 0
-
-	matches=`$(WGET_NO_PROXY) --header='Cookie: _GFURIOUS=2' -q -O - --save-headers \
-        '$(EXAMPLE)' | grep -c '_GFURIOUS='`; \
-        test $$matches -eq 0
+	$(INSTALL_DATA_DIR)/apache_furious_test.sh $(APACHE_SERVER)
 
 furious_test_prepare:
 	$(eval OPT_FURIOUS_TEST="FURIOUS_TEST=1")

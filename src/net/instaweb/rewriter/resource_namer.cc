@@ -32,7 +32,7 @@ namespace {
 
 // The format of all resource names is:
 //
-//  ORIGINAL_NAME.ID.pagespeed.HASH.EXT
+//  ORIGINAL_NAME.pagespeed[.EXPT].ID.HASH.EXT
 //
 // "pagespeed" is what we'll call the system ID.  Rationale:
 //   1. Any abbreviation of this will not be well known, e.g.
@@ -46,6 +46,10 @@ namespace {
 //   3. "mod_pagespeed" is slightly longer if/when this technology
 //      is ported to other servers then the "mod_" is less relevant.
 //
+// EXPT is an optional character indicating the index of a Furious
+// ExperimentSpec.  The first ExperimentSpec is a, the next is b, ...  Users not
+// in any experiment won't have this section.
+//
 // If you change this, or the structure of the encoded string,
 // you will also need to change:
 //
@@ -55,7 +59,6 @@ namespace {
 // Plus a few constants in _test.cc files.
 
 static const char kSystemId[] = "pagespeed";
-static const int kNumSegments = 5;
 static const char kSeparatorString[] = ".";
 static const char kSeparatorChar = kSeparatorString[0];
 
@@ -75,14 +78,30 @@ const int ResourceNamer::kOverhead = 4 + STATIC_STRLEN(kSystemId);
 
 bool ResourceNamer::Decode(const StringPiece& encoded_string) {
   StringPiece src(encoded_string);
-  GoogleString system_id;
+  GoogleString experiment_or_system_id;
   if (TokenizeSegmentFromRight(&src, &ext_) &&
       TokenizeSegmentFromRight(&src, &hash_) &&
       TokenizeSegmentFromRight(&src, &id_) &&
-      TokenizeSegmentFromRight(&src, &system_id) &&
-      (system_id == kSystemId)) {
-    src.CopyToString(&name_);
-    return true;
+      TokenizeSegmentFromRight(&src, &experiment_or_system_id)) {
+    // We support an optional experiment token as the last token before the
+    // system id ('pagespeed').
+    if (experiment_or_system_id != kSystemId) {
+      experiment_ = experiment_or_system_id;
+      if (experiment_.length() != 1 || experiment_[0] < 'a' ||
+          experiment_[0] > 'z') {
+        return false;  // Must be one letter between 'a' and 'z'.
+      }
+      // If this tokenize fails then experiment_or_system_id is still not
+      // kSystemId and we'll reject our decoding below.
+      TokenizeSegmentFromRight(&src, &experiment_or_system_id);
+    } else {
+      experiment_ = "";
+    }
+
+    if (experiment_or_system_id == kSystemId) {
+      src.CopyToString(&name_);
+      return true;
+    }
   }
   return LegacyDecode(encoded_string);
 }
@@ -126,10 +145,15 @@ bool ResourceNamer::LegacyDecode(const StringPiece& encoded_string) {
 // This is used for legacy compatibility as we transition to the grand new
 // world.
 GoogleString ResourceNamer::InternalEncode() const {
-  return StrCat(name_, kSeparatorString,
-                kSystemId, kSeparatorString,
-                id_, kSeparatorString,
-                StrCat(hash_, kSeparatorString, ext_));
+  GoogleString prefix = StrCat(name_, kSeparatorString, kSystemId);
+  GoogleString suffix = StrCat(
+      id_, kSeparatorString, hash_, kSeparatorString, ext_);
+  if (has_experiment()) {
+    return StrCat(prefix, kSeparatorString,
+                  experiment_, kSeparatorString, suffix);
+  } else {
+    return StrCat(prefix, kSeparatorString, suffix);
+  }
 }
 
 // The current encoding assumes there are no dots in any of the components.
@@ -140,6 +164,8 @@ GoogleString ResourceNamer::Encode() const {
   CHECK(!hash_.empty());
   CHECK_EQ(StringPiece::npos, hash_.find(kSeparatorChar));
   CHECK_EQ(StringPiece::npos, ext_.find(kSeparatorChar));
+  CHECK_EQ(StringPiece::npos, experiment_.find(kSeparatorChar));
+  CHECK(!has_experiment() || experiment_.length());
   return InternalEncode();
 }
 
@@ -157,11 +183,16 @@ void ResourceNamer::CopyFrom(const ResourceNamer& other) {
   other.name().CopyToString(&name_);
   other.hash().CopyToString(&hash_);
   other.ext().CopyToString(&ext_);
+  other.experiment().CopyToString(&experiment_);
 }
 
 int ResourceNamer::EventualSize(const Hasher& hasher) const {
-  return name_.size() + id_.size() + ext_.size() + kOverhead +
-         hasher.HashSizeInChars();
+  int e = name_.size() + id_.size() + ext_.size() + kOverhead +
+      hasher.HashSizeInChars();
+  if (has_experiment()) {
+    e += 2;  // Experiment is one character, plus one for the separator.
+  }
+  return e;
 }
 
 }  // namespace net_instaweb

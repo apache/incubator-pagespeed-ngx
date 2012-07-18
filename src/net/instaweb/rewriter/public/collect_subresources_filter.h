@@ -59,6 +59,7 @@ class CollectSubresourcesFilter : public RewriteFilter {
   bool in_first_head_;
   bool seen_first_head_;
   int num_resources_;
+  bool is_enabled_;
   PropertyCache* property_cache_;
 
   DISALLOW_COPY_AND_ASSIGN(CollectSubresourcesFilter);

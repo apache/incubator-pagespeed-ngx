@@ -1986,6 +1986,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
   ResourceNamer full_name;
   full_name.set_id(filter_id);
   full_name.set_name(name);
+  full_name.set_experiment(options()->GetFuriousStateStr());
   OutputResourcePtr resource;
 
   int max_leaf_size = full_name.EventualSize(*resource_manager_->hasher())
@@ -2243,6 +2244,13 @@ void RewriteDriver::AddResourceToSubresourcesMap(const StringPiece& url,
                                                  int id) {
   if (url.size() != 0) {
     subresources_[id].assign(url.data(), url.size());
+  }
+}
+
+void RewriteDriver::SaveOriginalHeaders(ResponseHeaders* response_headers) {
+  if (options()->Enabled(RewriteOptions::kFlushSubresources)) {
+    response_headers->GetSanitizedProto(
+        flush_early_info()->mutable_response_headers());
   }
 }
 

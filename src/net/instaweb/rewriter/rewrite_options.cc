@@ -712,6 +712,40 @@ void RewriteOptions::SetFuriousState(int id) {
   SetupFuriousRewriters();
 }
 
+void RewriteOptions::SetFuriousStateStr(const StringPiece& experiment_index) {
+  if (experiment_index.length() == 1) {
+    int index = experiment_index[0] - 'a';
+    int n_furious_specs = furious_specs_.size();
+    if (0 <= index && index < n_furious_specs) {
+      SetFuriousState(furious_specs_[index]->id());
+    }
+  }
+  // Ignore any calls with an invalid index-string.  When experiments are ended
+  // a previously valid index string may become invalid.  For example, if a
+  // webmaster were running an a/b/c test and now is running an a/b test, a
+  // visitor refreshing an old image opened in a separate tab on the 'c' branch
+  // of the experiment needs to get some version of that image and not an error.
+  // Perhaps more commonly, a webmaster might manually copy a url from pagespeed
+  // output to somewhere else on their site at a time an experiment was active,
+  // and it would be bad to break that resource link when the experiment ended.
+}
+
+GoogleString RewriteOptions::GetFuriousStateStr() const {
+  // Don't look at more than 26 furious_specs because we use lowercase a-z.
+  // While this is an arbitrary limit, it's much higher than webmasters are
+  // likely to run into in practice.  Most of the time people will be running
+  // a/b or a/b/c tests, and an a/b/c/d/.../y/z test would be unwieldy and
+  // difficult to interpret.  If this does turn out to be needed we can switch
+  // to base64 to get 64-way tests, and more than one character experiment index
+  // strings would also be possible.
+  for (int i = 0, n = furious_specs_.size(); i < n && i < 26; ++i) {
+    if (furious_specs_[i]->id() == furious_id_) {
+      return GoogleString(1, static_cast<char>('a' + i));
+    }
+  }
+  return "";
+}
+
 void RewriteOptions::DisallowTroublesomeResources() {
   // http://code.google.com/p/modpagespeed/issues/detail?id=38
   Disallow("*js_tinyMCE*");  // js_tinyMCE.js
@@ -972,6 +1006,40 @@ bool RewriteOptions::AddByNameToFilterSet(
   }
   return ret;
 }
+
+bool RewriteOptions::AddCommaSeparatedListToOptionSet(
+    const StringPiece& options, OptionSet* set, MessageHandler* handler) {
+  StringPieceVector option_vector;
+  bool ret = true;
+  SplitStringPieceToVector(options, ",", &option_vector, true);
+  for (int i = 0, n = option_vector.size(); i < n; ++i) {
+    StringPieceVector single_option_and_value;
+    SplitStringPieceToVector(option_vector[i], "=", &single_option_and_value,
+                             true);
+    if (single_option_and_value.size() == 2) {
+      set->insert(OptionStringPair(single_option_and_value[0],
+                                   single_option_and_value[1]));
+    } else {
+      ret = false;
+    }
+  }
+  return ret;
+}
+
+bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set) {
+  bool ret = true;
+  for (RewriteOptions::OptionSet::const_iterator iter = option_set.begin();
+       iter != option_set.end(); ++iter) {
+    GoogleString msg;
+    OptionSettingResult result = SetOptionFromName(
+        iter->first, iter->second.as_string(), &msg);
+    if (result != kOptionOk) {
+      ret = false;
+    }
+  }
+  return ret;
+}
+
 
 RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
     const StringPiece& name, const GoogleString& value, GoogleString* msg) {
@@ -1440,8 +1508,10 @@ bool RewriteOptions::AddFuriousSpec(int furious_id) {
 }
 
 bool RewriteOptions::AddFuriousSpec(FuriousSpec* spec) {
+  // See RewriteOptions::GetFuriousStateStr for why we can't have more than 26.
   if (!AvailableFuriousId(spec->id()) || spec->percent() <= 0 ||
-      furious_percent_ + spec->percent() > 100) {
+      furious_percent_ + spec->percent() > 100 ||
+      furious_specs_.size() + 1 > 26) {
     delete spec;
     return false;
   }
@@ -1476,10 +1546,7 @@ void RewriteOptions::SetupFuriousRewriters() {
 
   if (spec->use_default()) {
     // We need these for the experiment to work properly.
-    ForceEnableFilter(RewriteOptions::kAddHead);
-    ForceEnableFilter(RewriteOptions::kAddInstrumentation);
-    ForceEnableFilter(RewriteOptions::kInsertGA);
-    ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
+    SetRequiredFuriousFilters();
     return;
   }
 
@@ -1488,13 +1555,18 @@ void RewriteOptions::SetupFuriousRewriters() {
   EnableFilters(spec->enabled_filters());
   DisableFilters(spec->disabled_filters());
   // We need these for the experiment to work properly.
+  SetRequiredFuriousFilters();
+  set_css_inline_max_bytes(spec->css_inline_max_bytes());
+  set_js_inline_max_bytes(spec->js_inline_max_bytes());
+  set_image_inline_max_bytes(spec->image_inline_max_bytes());
+  SetOptionsFromName(spec->filter_options());
+}
+
+void RewriteOptions::SetRequiredFuriousFilters() {
   ForceEnableFilter(RewriteOptions::kAddHead);
   ForceEnableFilter(RewriteOptions::kAddInstrumentation);
   ForceEnableFilter(RewriteOptions::kInsertGA);
   ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
-  set_css_inline_max_bytes(spec->css_inline_max_bytes());
-  set_js_inline_max_bytes(spec->js_inline_max_bytes());
-  set_image_inline_max_bytes(spec->image_inline_max_bytes());
 }
 
 RewriteOptions::FuriousSpec::FuriousSpec(const StringPiece& spec,
@@ -1610,6 +1682,11 @@ void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
       StringPiece disabled = PieceAfterEquals(piece);
       if (disabled.length() > 0) {
         AddCommaSeparatedListToFilterSet(disabled, &disabled_filters_, handler);
+      }
+    } else if (StringCaseStartsWith(piece, "options")) {
+      StringPiece options = PieceAfterEquals(piece);
+      if (options.length() > 0) {
+        AddCommaSeparatedListToOptionSet(options, &filter_options_, handler);
       }
     } else if (StringCaseStartsWith(piece, "inline_css")) {
       StringPiece max_bytes = PieceAfterEquals(piece);

@@ -18,6 +18,7 @@
 #include "net/instaweb/rewriter/public/collect_subresources_filter.h"
 
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -25,7 +26,6 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
-
 
 namespace net_instaweb {
 namespace {
@@ -57,6 +57,7 @@ class CollectSubresourcesFilterTest : public ResourceManagerTestBase {
     options()->ComputeSignature(hasher());
     ResourceManagerTestBase::SetUp();
     rewrite_driver()->AddFilters();
+    rewrite_driver()->set_user_agent(UserAgentStrings::kChromeUserAgent);
     SetupWriter();
   }
 

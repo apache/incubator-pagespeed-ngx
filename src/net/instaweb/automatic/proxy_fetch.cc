@@ -21,6 +21,7 @@
 #include <algorithm>
 
 #include "base/logging.h"
+#include "net/instaweb/automatic/public/flush_early_flow.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -357,13 +358,16 @@ ProxyFetch::ProxyFetch(
   // Make request headers available to the filters.
   driver_->set_request_headers(request_headers());
 
-  const char* user_agent = request_headers()->Lookup1(
-      HttpAttributes::kUserAgent);
-  if (user_agent != NULL) {
-    VLOG(1) << "Setting user-agent to " << user_agent;
-    driver_->set_user_agent(user_agent);
-  } else {
-    VLOG(1) << "User-agent empty";
+  // Set the user agent in the rewrite driver if it is not set already.
+  if (driver_->user_agent().empty()) {
+    const char* user_agent = request_headers()->Lookup1(
+        HttpAttributes::kUserAgent);
+    if (user_agent != NULL) {
+      VLOG(1) << "Setting user-agent to " << user_agent;
+      driver_->set_user_agent(user_agent);
+    } else {
+      VLOG(1) << "User-agent empty";
+    }
   }
 
   driver_->EnableBlockingRewrite(request_headers());
@@ -649,6 +653,9 @@ bool ProxyFetch::HandleWrite(const StringPiece& str,
         // ensures that we will not start executing HTML filters until
         // property cache lookups are complete.
         property_cache_callback_->ConnectProxyFetch(this);
+
+        // TODO(mmohabey): This should be called after ConvertMetaTagsFilter.
+        driver_->SaveOriginalHeaders(response_headers());
       }
 
       // If we buffered up any bytes in previous calls, make sure to

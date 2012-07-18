@@ -44,6 +44,8 @@ class ResourceFetch : public SharedAsyncFetch {
  public:
   // Start an async fetch for pagespeed resource. Response will be streamed
   // to async_fetch.
+  //
+  // If custom_options it not NULL, takes ownership of it and and can mutate it.
   static void Start(const GoogleUrl& url,
                     RewriteOptions* custom_options,
                     // This is intentionally not set in RewriteOptions because
@@ -59,6 +61,8 @@ class ResourceFetch : public SharedAsyncFetch {
   //
   // Returns true iff the fetch succeeded and thus response headers and
   // contents were sent to async_fetch.
+  //
+  // If custom_options it not NULL, takes ownership of it and and can mutate it.
   static bool BlockingFetch(const GoogleUrl& url,
                             RewriteOptions* custom_options,
                             bool using_spdy,
@@ -82,6 +86,12 @@ class ResourceFetch : public SharedAsyncFetch {
                                           bool using_spdy,
                                           ResourceManager* resource_manager,
                                           AsyncFetch* async_fetch);
+  // If we're running an experiment and the url specifies an experiment spec,
+  // set custom_options to use that experiment spec.  If custom_options is NULL
+  // one will be allocated and the caller takes ownership of it.
+  static void ApplyFuriousOptions(const ResourceManager* manager,
+                                  const GoogleUrl& url,
+                                  RewriteOptions** custom_options);
 
   GoogleUrl resource_url_;
   RewriteDriver* driver_;

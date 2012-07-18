@@ -22,6 +22,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/automatic/public/blink_flow.h"
 #include "net/instaweb/automatic/public/blink_flow_critical_line.h"
+#include "net/instaweb/automatic/public/flush_early_flow.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/automatic/public/resource_fetch.h"
 #include "net/instaweb/http/public/async_fetch.h"
@@ -166,6 +167,7 @@ void ProxyInterface::Initialize(Statistics* statistics) {
                                ResourceManager::kStatisticsGroup);
   BlinkFlow::Initialize(statistics);
   BlinkFlowCriticalLine::Initialize(statistics);
+  FlushEarlyFlow::Initialize(statistics);
 }
 
 bool ProxyInterface::IsWellFormedUrl(const GoogleUrl& url) {
@@ -453,6 +455,8 @@ void ProxyInterface::ProxyRequestCallback(
   RewriteOptions* options = GetCustomOptions(
       request_url, async_fetch->request_headers(), domain_options,
       query_options, handler);
+  GoogleString url_string;
+  request_url->Spec().CopyToString(&url_string);
   scoped_ptr<ProxyFetchPropertyCallbackCollector> property_callback;
 
   // Update request_headers.
@@ -510,20 +514,18 @@ void ProxyInterface::ProxyRequestCallback(
       // TODO(rahulbansal): Remove this LOG once we expect to have
       // a lot of such requests.
       LOG(INFO) << "Triggering Blink flow critical line for url "
-                << request_url->Spec().as_string();
+                << url_string;
       blink_critical_line_requests_->IncBy(1);
-      BlinkFlowCriticalLine::Start(request_url->Spec().as_string(),
-                                   async_fetch, options,
+      BlinkFlowCriticalLine::Start(url_string, async_fetch, options,
                                    proxy_fetch_factory_.get(),
                                    resource_manager_,
                                    property_callback.release());
     } else if (is_blink_request && layout != NULL) {
       // TODO(rahulbansal): Remove this LOG once we expect to have
       // Blink requests.
-      LOG(INFO) << "Triggering Blink flow for url "
-                << request_url->Spec().as_string();
+      LOG(INFO) << "Triggering Blink flow for url " << url_string;
       blink_requests_->IncBy(1);
-      BlinkFlow::Start(request_url->Spec().as_string(), async_fetch, layout,
+      BlinkFlow::Start(url_string, async_fetch, layout,
                        options, proxy_fetch_factory_.get(),
                        resource_manager_);
     } else {
@@ -543,9 +545,27 @@ void ProxyInterface::ProxyRequestCallback(
         driver = resource_manager_->NewCustomRewriteDriver(options);
       }
       driver->set_need_to_store_experiment_data(need_to_store_experiment_data);
-      proxy_fetch_factory_->StartNewProxyFetch(
-          request_url->Spec().as_string(), async_fetch, driver,
-          property_callback.release(), NULL);
+      // TODO(mmohabey): Remove duplicate setting of user agent for different
+      // flows.
+      if (user_agent != NULL) {
+        VLOG(1) << "Setting user-agent to " << user_agent;
+        driver->set_user_agent(user_agent);
+      } else {
+        VLOG(1) << "User-agent empty";
+      }
+      if (property_callback != NULL &&
+        FlushEarlyFlow::CanFlushEarly(url_string, driver->options(),
+                                      async_fetch, driver->user_agent(),
+                                      resource_manager_)) {
+        // TODO(mmohabey): Initialte flush_early_flow and proxy_fetch in
+        // parallel.
+        FlushEarlyFlow::Start(url_string, async_fetch, driver,
+                              proxy_fetch_factory_.get(),
+                              property_callback.release());
+      } else {
+        proxy_fetch_factory_->StartNewProxyFetch(
+            url_string, async_fetch, driver, property_callback.release(), NULL);
+      }
     }
   }
 

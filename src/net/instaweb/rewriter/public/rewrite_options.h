@@ -245,6 +245,11 @@ class RewriteOptions {
   // Convenience name for a set of rewrite filters.
   typedef std::set<Filter> FilterSet;
 
+  // Convenience name for (name,value) pairs of options (typically filter
+  // parameters), as well as sets of those pairs.
+  typedef std::pair<StringPiece, StringPiece> OptionStringPair;
+  typedef std::set<OptionStringPair> OptionSet;
+
   enum RewriteLevel {
     // Enable no filters. Parse HTML but do not perform any
     // transformations. This is the default value. Most users should
@@ -375,6 +380,7 @@ class RewriteOptions {
     RewriteLevel rewrite_level() const { return rewrite_level_; }
     FilterSet enabled_filters() const { return enabled_filters_; }
     FilterSet disabled_filters() const { return disabled_filters_; }
+    OptionSet filter_options() const { return filter_options_; }
     int64 css_inline_max_bytes() const { return css_inline_max_bytes_; }
     int64 js_inline_max_bytes() const { return js_inline_max_bytes_; }
     int64 image_inline_max_bytes() const { return image_inline_max_bytes_; }
@@ -382,7 +388,7 @@ class RewriteOptions {
 
    private:
     // Initialize parses spec and sets the FilterSets, rewrite level,
-    // and inlining thresholds accordingly.
+    // inlining thresholds, and OptionSets accordingly.
     void Initialize(const StringPiece& spec, MessageHandler* handler);
 
     // Helper method that returns the part of the piece after the first '='.
@@ -395,6 +401,7 @@ class RewriteOptions {
     RewriteLevel rewrite_level_;
     FilterSet enabled_filters_;
     FilterSet disabled_filters_;
+    OptionSet filter_options_;
     int64 css_inline_max_bytes_;
     int64 js_inline_max_bytes_;
     int64 image_inline_max_bytes_;
@@ -469,11 +476,21 @@ class RewriteOptions {
   // Then sets the rewriters to match the experiment indicated by id.
   void SetFuriousState(int id);
 
+  // We encode experiment information in urls as an experiment index: the first
+  // ExperimentSpec is a, the next is b, and so on.  Empty string or an invalid
+  // letter means kFuriousNoExperiment.
+  void SetFuriousStateStr(const StringPiece& experiment_index);
+
   int furious_id() const { return furious_id_; }
 
   int furious_spec_id(int i) const {
     return furious_specs_[i]->id();
   }
+
+  // Returns a string representation of furious_id() suitable for consumption by
+  // SetFuriousStateStr(), encoding the index of the current experiment (not its
+  // id).  If we're not running furious, returns the empty string.
+  GoogleString GetFuriousStateStr() const;
 
   FuriousSpec* furious_spec(int i) const {
     return furious_specs_[i];
@@ -568,10 +585,21 @@ class RewriteOptions {
   // enabled.
   bool IsAnyFilterRequiringScriptExecutionEnabled() const;
 
+  // Adds pairs of (option, value) to the option set. The option names and
+  // values are not checked for validity, just stored. If the string piece
+  // was parsed correctly, this returns true. If there were parsing errors this
+  // returns false. The set is still populated on error.
+  static bool AddCommaSeparatedListToOptionSet(
+      const StringPiece& options, OptionSet* set, MessageHandler* handler);
+
   // Set Option 'name' to 'value'. Returns whether it succeeded or the kind of
   // failure (wrong name or value), and writes the diagnostic into 'msg'.
   OptionSettingResult SetOptionFromName(
       const StringPiece& name, const GoogleString& value, GoogleString* msg);
+
+  // Set all of the options to their values specified in the option set.
+  // Returns true if all options in the set were successful, false if not.
+  bool SetOptionsFromName(const OptionSet& option_set);
 
   // Sets Option 'name' to 'value'. Returns whether it succeeded and logs
   // any warnings to 'handler'.
@@ -1429,6 +1457,9 @@ class RewriteOptions {
   void set_default_x_header_value(const StringPiece& x_header_value) {
     x_header_value_.set_default(x_header_value.as_string());
   }
+
+  // Enables filters needed by Furious regardless of experiment.
+  virtual void SetRequiredFuriousFilters();
 
  private:
   typedef std::vector<Filter> FilterVector;
