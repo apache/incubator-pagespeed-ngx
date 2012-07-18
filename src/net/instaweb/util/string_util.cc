@@ -257,6 +257,18 @@ bool StringEqualConcat(const StringPiece& str, const StringPiece& first,
       str.starts_with(first) && str.ends_with(second);
 }
 
+StringPiece PieceAfterEquals(const StringPiece& piece) {
+  size_t index = piece.find("=");
+  if (index != piece.npos) {
+    ++index;
+    StringPiece ret = piece;
+    ret.remove_prefix(index);
+    TrimWhitespace(&ret);
+    return ret;
+  }
+  return StringPiece(piece.data(), 0);
+}
+
 void ParseShellLikeString(const StringPiece& input,
                           std::vector<GoogleString>* output) {
   output->clear();

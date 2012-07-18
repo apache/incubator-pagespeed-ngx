@@ -259,6 +259,17 @@ TEST_F(SplitStringTest, TestSplitMultiSeparator) {
   ASSERT_EQ("d,", components[3]);
 }
 
+TEST_F(SplitStringTest, TestPieceAfterEquals) {
+  GoogleString piece("Test=1");
+  ASSERT_EQ(PieceAfterEquals(piece), "1");
+  GoogleString piece2("TestingWithNoEquals");
+  ASSERT_EQ(PieceAfterEquals(piece2), "");
+  GoogleString piece3("    TestingWithSpace =     45     ");
+  ASSERT_EQ(PieceAfterEquals(piece3), "45");
+  GoogleString piece4("Test1=1;Test2=2");
+  ASSERT_EQ(PieceAfterEquals(piece4), "1;Test2=2");
+}
+
 TEST(StringCaseTest, TestStringCaseEqual) {
   EXPECT_FALSE(StringCaseEqual("foobar", "fobar"));
   EXPECT_TRUE(StringCaseEqual("foobar", "foobar"));

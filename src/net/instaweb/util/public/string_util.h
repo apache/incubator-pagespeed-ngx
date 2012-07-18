@@ -92,6 +92,11 @@ inline bool StringToInt64(const GoogleString& in, int64* out) {
   return base::StringToInt64(in, out);
 }
 
+// Returns the part of the piece after the first '=', trimming any
+// white space found at the beginning or end of the resulting piece.
+// Returns an empty string if '=' was not found.
+StringPiece PieceAfterEquals(const StringPiece& piece);
+
 class EmptyString {
  public:
   static const StringPiece kEmptyString;

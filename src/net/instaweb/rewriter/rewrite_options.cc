@@ -707,9 +707,9 @@ const PublisherConfig* RewriteOptions::panel_config() const {
   return panel_config_.get();
 }
 
-void RewriteOptions::SetFuriousState(int id) {
+bool RewriteOptions::SetFuriousState(int id) {
   furious_id_ = id;
-  SetupFuriousRewriters();
+  return SetupFuriousRewriters();
 }
 
 void RewriteOptions::SetFuriousStateStr(const StringPiece& experiment_index) {
@@ -1523,19 +1523,19 @@ bool RewriteOptions::AddFuriousSpec(FuriousSpec* spec) {
 // Always enable add_head, insert_ga, add_instrumentation,
 // and HtmlWriter.  This is considered a "no-filter" base for
 // furious experiments.
-void RewriteOptions::SetupFuriousRewriters() {
+bool RewriteOptions::SetupFuriousRewriters() {
   // Don't change anything if we're not in an experiment or have some
   // unset id.
   if (furious_id_ == furious::kFuriousNotSet ||
       furious_id_ == furious::kFuriousNoExperiment) {
-    return;
+    return true;
   }
   // Control: just make sure that the necessary stuff is on.
   // Do NOT try to set up things to look like the FuriousSpec
   // for this id: it doesn't match the rewrite options.
   FuriousSpec* spec = GetFuriousSpec(furious_id_);
   if (spec == NULL) {
-    return;
+    return false;
   }
 
   if (!spec->ga_id().empty()) {
@@ -1547,7 +1547,7 @@ void RewriteOptions::SetupFuriousRewriters() {
   if (spec->use_default()) {
     // We need these for the experiment to work properly.
     SetRequiredFuriousFilters();
-    return;
+    return true;
   }
 
   ClearFilters();
@@ -1560,6 +1560,7 @@ void RewriteOptions::SetupFuriousRewriters() {
   set_js_inline_max_bytes(spec->js_inline_max_bytes());
   set_image_inline_max_bytes(spec->image_inline_max_bytes());
   SetOptionsFromName(spec->filter_options());
+  return true;
 }
 
 void RewriteOptions::SetRequiredFuriousFilters() {
@@ -1596,6 +1597,8 @@ RewriteOptions::FuriousSpec::FuriousSpec(int id)
       use_default_(false) {
 }
 
+RewriteOptions::FuriousSpec::~FuriousSpec() { }
+
 RewriteOptions::FuriousSpec* RewriteOptions::FuriousSpec::Clone() {
   FuriousSpec* ret = new FuriousSpec(id_);
   for (FilterSet::const_iterator iter = enabled_filters_.begin();
@@ -1615,19 +1618,6 @@ RewriteOptions::FuriousSpec* RewriteOptions::FuriousSpec::Clone() {
   ret->image_inline_max_bytes_ = image_inline_max_bytes_;
   ret->use_default_ = use_default_;
   return ret;
-}
-
-StringPiece RewriteOptions::FuriousSpec::PieceAfterEquals(
-    const StringPiece& piece) {
-  size_t index = piece.find("=");
-  if (index != piece.npos) {
-    ++index;
-    StringPiece ret = piece;
-    ret.remove_prefix(index);
-    TrimWhitespace(&ret);
-    return ret;
-  }
-  return StringPiece(piece.data(), 0);
 }
 
 // Options are written in the form:

@@ -365,7 +365,7 @@ class RewriteOptions {
     // This is primarily used for setting up the control and for cloning.
     explicit FuriousSpec(int id);
 
-    ~FuriousSpec() {}
+    ~FuriousSpec();
 
     // Return a FuriousSpec with all the same information as this one.
     FuriousSpec* Clone();
@@ -390,9 +390,6 @@ class RewriteOptions {
     // Initialize parses spec and sets the FilterSets, rewrite level,
     // inlining thresholds, and OptionSets accordingly.
     void Initialize(const StringPiece& spec, MessageHandler* handler);
-
-    // Helper method that returns the part of the piece after the first '='.
-    static StringPiece PieceAfterEquals(const StringPiece& piece);
 
     int id_;  // id for this experiment
     GoogleString ga_id_;  // Google Analytics ID for this experiment
@@ -474,7 +471,8 @@ class RewriteOptions {
   // furious::kFuriousNoExperiment indicates this request shouldn't be
   // in any experiment.
   // Then sets the rewriters to match the experiment indicated by id.
-  void SetFuriousState(int id);
+  // Returns true if succeeded in setting state.
+  bool SetFuriousState(int id);
 
   // We encode experiment information in urls as an experiment index: the first
   // ExperimentSpec is a, the next is b, and so on.  Empty string or an invalid
@@ -1602,8 +1600,9 @@ class RewriteOptions {
   }
 
   // Set the rewriter sets and thresholds to match what is in the
-  // FuriousSpec our furious_id_ matches.
-  void SetupFuriousRewriters();
+  // FuriousSpec our furious_id_ matches. Returns true if the state
+  // was set successfully.
+  bool SetupFuriousRewriters();
   bool modified_;
   bool frozen_;
   FilterSet enabled_filters_;
