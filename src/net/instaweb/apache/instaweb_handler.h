@@ -28,11 +28,9 @@
 
 namespace net_instaweb {
 
-// The content generator for instaweb rewritten resources, for example, a
-// combined CSS file.  Requests for not-instaweb rewritten resources will be
-// declined so that other Apache handlers may operate on them.
-//
-// TODO(sligocki): Use a Page Speed Automatic ResourceFetch here.
+// Handle mod_pagespeed-specific requests. Handles both .pagespeed. rewritten
+// resources and /mod_pagespeed_statistics, /mod_pagespeed_beacon, etc.
+// TODO(sligocki): Why not make each of these different handlers?
 apr_status_t instaweb_handler(request_rec* request);
 
 // Save the original URL as a request "note" before mod_rewrite has

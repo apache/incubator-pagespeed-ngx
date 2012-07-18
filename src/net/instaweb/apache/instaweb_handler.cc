@@ -94,7 +94,7 @@ bool IsCompressibleContentType(const char* content_type) {
 }
 
 // Default handler when the file is not found
-void instaweb_default_handler(const GoogleString& url, request_rec* request) {
+void instaweb_404_handler(const GoogleString& url, request_rec* request) {
   request->status = HTTP_NOT_FOUND;
   ap_set_content_type(request, "text/html; charset=utf-8");
   ap_rputs("<html><head><title>Not Found</title></head>", request);
@@ -104,11 +104,22 @@ void instaweb_default_handler(const GoogleString& url, request_rec* request) {
   ap_rputs("</body></html>", request);
 }
 
-// predeclare to minimize diffs for now.  TODO(jmarantz): reorder
-void send_out_headers_and_body(
-    request_rec* request,
-    const ResponseHeaders& response_headers,
-    const GoogleString& output);
+void send_out_headers_and_body(request_rec* request,
+                               const ResponseHeaders& response_headers,
+                               const GoogleString& output) {
+  ResponseHeadersToApacheRequest(response_headers, request);
+  if (response_headers.status_code() == HttpStatus::kOK &&
+      IsCompressibleContentType(request->content_type)) {
+    // Make sure compression is enabled for this response.
+    ap_add_output_filter("DEFLATE", NULL, request, request->connection);
+  }
+
+  // Recompute the content-length, because the content may have changed.
+  ap_set_content_length(request, output.size());
+  // Send the body
+  ap_rwrite(output.c_str(), output.size(), request);
+}
+
 
 // Determines whether the url can be handled as a mod_pagespeed resource,
 // and handles it, returning true.  A 'true' routine means that this
@@ -166,7 +177,7 @@ bool handle_as_resource(ApacheResourceManager* manager,
     } else {
       RewriteStats* stats = manager->rewrite_stats();
       stats->resource_404_count()->Add(1);
-      instaweb_default_handler(url, request);
+      instaweb_404_handler(url, request);
     }
 
     callback->Release();
@@ -175,24 +186,8 @@ bool handle_as_resource(ApacheResourceManager* manager,
   return is_ps_url;
 }
 
-void send_out_headers_and_body(
-    request_rec* request,
-    const ResponseHeaders& response_headers,
-    const GoogleString& output) {
-  ResponseHeadersToApacheRequest(response_headers, request);
-  if (response_headers.status_code() == HttpStatus::kOK &&
-      IsCompressibleContentType(request->content_type)) {
-    // Make sure compression is enabled for this response.
-    ap_add_output_filter("DEFLATE", NULL, request, request->connection);
-  }
-
-  // Recompute the content-length, because the content may have changed.
-  ap_set_content_length(request, output.size());
-  // Send the body
-  ap_rwrite(output.c_str(), output.size(), request);
-}
-
-// Write response headers and send out headers and output.
+// Write out boilerplate HTTP headers for our custom handlers
+// (like /mod_pagespeed_statistics).
 void write_handler_response(const StringPiece& output, request_rec* request) {
   ResponseHeaders response_headers;
   response_headers.SetStatusAndReason(HttpStatus::kOK);
@@ -208,6 +203,11 @@ void write_handler_response(const StringPiece& output, request_rec* request) {
   send_out_headers_and_body(request, response_headers, output.as_string());
 }
 
+// Returns request URL if it was a .pagespeed. rewritten resource URL.
+// Otherwise returns NULL. Since other Apache modules can change request->uri,
+// we run save_url_hook early to stow the original request URL in a note.
+// This method reads that note and thus should return the URL that the
+// browser actually requested (rather than a mod_rewrite altered URL).
 const char* get_instaweb_resource_url(request_rec* request) {
   const char* resource = apr_table_get(request->notes, kResourceUrlNote);
 
