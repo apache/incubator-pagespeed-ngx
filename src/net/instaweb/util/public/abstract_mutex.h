@@ -27,7 +27,11 @@ namespace net_instaweb {
 class AbstractMutex {
  public:
   virtual ~AbstractMutex();
+  // Attempt to take mutex, true on success, false if held by another thread.
+  virtual bool TryLock() = 0;
+  // Block until mutex is available, then take the mutex.
   virtual void Lock() = 0;
+  // Release the mutex, permitting a blocked lock operation (if any) to proceed.
   virtual void Unlock() = 0;
   // Optionally checks that lock is held (for invariant checking purposes).
   // Default implementation does no checking.

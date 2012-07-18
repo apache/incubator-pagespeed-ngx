@@ -16,8 +16,8 @@
 
 // Author: pulkitg@google.com (Pulkit Goyal)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_RW_MUTEX_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_RW_MUTEX_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_RW_LOCK_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_RW_LOCK_H_
 
 #include <pthread.h>
 #include "net/instaweb/util/public/basictypes.h"
@@ -30,8 +30,10 @@ class PthreadRWLock : public ThreadSystem::RWLock {
  public:
   PthreadRWLock();
   virtual ~PthreadRWLock();
+  virtual bool TryLock();
   virtual void Lock();
   virtual void Unlock();
+  virtual bool ReaderTryLock();
   virtual void ReaderLock();
   virtual void ReaderUnlock();
 
@@ -44,4 +46,4 @@ class PthreadRWLock : public ThreadSystem::RWLock {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_RW_MUTEX_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_PTHREAD_RW_LOCK_H_

@@ -29,6 +29,7 @@ class NullMutex : public AbstractMutex {
  public:
   NullMutex() {}
   virtual ~NullMutex();
+  virtual bool TryLock();
   virtual void Lock();
   virtual void Unlock();
 };

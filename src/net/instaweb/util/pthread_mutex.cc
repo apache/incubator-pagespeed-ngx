@@ -32,6 +32,10 @@ PthreadMutex::~PthreadMutex() {
   pthread_mutex_destroy(&mutex_);
 }
 
+bool PthreadMutex::TryLock() {
+  return (pthread_mutex_trylock(&mutex_) == 0);
+}
+
 void PthreadMutex::Lock() {
   pthread_mutex_lock(&mutex_);
 }

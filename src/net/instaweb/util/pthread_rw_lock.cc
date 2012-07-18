@@ -43,12 +43,20 @@ PthreadRWLock::~PthreadRWLock() {
   pthread_rwlock_destroy(&rwlock_);
 }
 
+bool PthreadRWLock::TryLock() {
+  return (pthread_rwlock_trywrlock(&rwlock_) == 0);
+}
+
 void PthreadRWLock::Lock() {
   pthread_rwlock_wrlock(&rwlock_);
 }
 
 void PthreadRWLock::Unlock() {
   pthread_rwlock_unlock(&rwlock_);
+}
+
+bool PthreadRWLock::ReaderTryLock() {
+  return (pthread_rwlock_tryrdlock(&rwlock_) == 0);
 }
 
 void PthreadRWLock::ReaderLock() {
