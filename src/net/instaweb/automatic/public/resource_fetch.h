@@ -59,15 +59,24 @@ class ResourceFetch : public SharedAsyncFetch {
   // streamed back to async_fetch, but this function will not return until
   // fetch has completed.
   //
+  // You'll probably want to use GetDriver to construct the driver passed in
+  // to this method, in order to properly apply experiment info encoded into
+  // the URL into settings.
+  //
   // Returns true iff the fetch succeeded and thus response headers and
   // contents were sent to async_fetch.
-  //
-  // If custom_options it not NULL, takes ownership of it and and can mutate it.
   static bool BlockingFetch(const GoogleUrl& url,
-                            RewriteOptions* custom_options,
-                            bool using_spdy,
                             ResourceManager* resource_manager,
+                            RewriteDriver* driver,
                             SyncFetcherAdapterCallback* async_fetch);
+
+  // Creates a rewrite_driver suitable for passing to BlockingFetch
+  // (or StartWithDriver) incorporating any experiment settings.
+  // If custom_options it not NULL, takes ownership of it and and can mutate it.
+  static RewriteDriver* GetDriver(const GoogleUrl& url,
+                                  RewriteOptions* custom_options,
+                                  bool using_spdy,
+                                  ResourceManager* resource_manager);
 
  protected:
   // Protected interface from AsyncFetch.
@@ -79,13 +88,12 @@ class ResourceFetch : public SharedAsyncFetch {
                 MessageHandler* handler, AsyncFetch* async_fetch);
   virtual ~ResourceFetch();
 
-  // Same as Start(), but returns the RewriteDriver created. Used by
-  // BlockingFetch() to wait for completion.
-  static RewriteDriver* StartAndGetDriver(const GoogleUrl& url,
-                                          RewriteOptions* custom_options,
-                                          bool using_spdy,
-                                          ResourceManager* resource_manager,
-                                          AsyncFetch* async_fetch);
+  // Same as Start(), but takes the RewriteDriver to use.
+  static void StartWithDriver(const GoogleUrl& url,
+                              ResourceManager* manager,
+                              RewriteDriver* driver,
+                              AsyncFetch* async_fetch);
+
   // If we're running an experiment and the url specifies an experiment spec,
   // set custom_options to use that experiment spec.  If custom_options is NULL
   // one will be allocated and the caller takes ownership of it.

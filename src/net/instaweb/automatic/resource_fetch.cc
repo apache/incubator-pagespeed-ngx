@@ -60,22 +60,26 @@ void ResourceFetch::ApplyFuriousOptions(const ResourceManager* manager,
   }
 }
 
-RewriteDriver* ResourceFetch::StartAndGetDriver(
+RewriteDriver* ResourceFetch::GetDriver(
     const GoogleUrl& url, RewriteOptions* custom_options, bool using_spdy,
-    ResourceManager* manager, AsyncFetch* async_fetch) {
+    ResourceManager* manager) {
   ApplyFuriousOptions(manager, url, &custom_options);
   RewriteDriver* driver = (custom_options == NULL)
       ? manager->NewRewriteDriver()
       : manager->NewCustomRewriteDriver(custom_options);
   // Note: this is reset in RewriteDriver::clear().
   driver->set_using_spdy(using_spdy);
+  return driver;
+}
+
+void ResourceFetch::StartWithDriver(
+    const GoogleUrl& url, ResourceManager* manager, RewriteDriver* driver,
+    AsyncFetch* async_fetch) {
 
   ResourceFetch* resource_fetch = new ResourceFetch(
       url, driver, manager->timer(), manager->message_handler(), async_fetch);
 
   driver->FetchResource(url.Spec(), resource_fetch);
-
-  return driver;
 }
 
 void ResourceFetch::Start(const GoogleUrl& url,
@@ -83,16 +87,15 @@ void ResourceFetch::Start(const GoogleUrl& url,
                           bool using_spdy,
                           ResourceManager* manager,
                           AsyncFetch* async_fetch) {
-  StartAndGetDriver(url, custom_options, using_spdy, manager, async_fetch);
+  RewriteDriver* driver = GetDriver(url, custom_options, using_spdy, manager);
+  StartWithDriver(url, manager, driver, async_fetch);
 }
 
 bool ResourceFetch::BlockingFetch(const GoogleUrl& url,
-                                  RewriteOptions* custom_options,
-                                  bool using_spdy,
                                   ResourceManager* manager,
+                                  RewriteDriver* driver,
                                   SyncFetcherAdapterCallback* callback) {
-  RewriteDriver* driver =
-      StartAndGetDriver(url, custom_options, using_spdy, manager, callback);
+  StartWithDriver(url, manager, driver, callback);
 
   // Wait for resource fetch to complete.
   if (!callback->done()) {

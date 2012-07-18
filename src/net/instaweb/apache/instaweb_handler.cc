@@ -159,8 +159,9 @@ bool handle_as_resource(ApacheResourceManager* manager,
     // on the directory?
     RewriteOptions* custom_options = NULL;
     bool using_spdy = (mod_spdy_get_spdy_version(request->connection) != 0);
-    if (ResourceFetch::BlockingFetch(gurl, custom_options, using_spdy,
-                                     manager, callback)) {
+    RewriteDriver* driver = ResourceFetch::GetDriver(
+        gurl, custom_options, using_spdy, manager);
+    if (ResourceFetch::BlockingFetch(gurl, manager, driver, callback)) {
       ResponseHeaders* response_headers = callback->response_headers();
       // TODO(sligocki): Check that this is already done in ResourceFetch
       // and remove redundant setting here.
