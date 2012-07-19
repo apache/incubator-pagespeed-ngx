@@ -289,6 +289,17 @@ bool AprFileSystem::MakeDir(const char* directory_path,
   return true;
 }
 
+bool AprFileSystem::RemoveDir(const char* directory_path,
+                              MessageHandler* message_handler) {
+  ScopedMutex hold_mutex(mutex_.get());
+  apr_status_t ret = apr_dir_remove(directory_path, pool_);
+  if (ret != APR_SUCCESS) {
+    AprReportError(message_handler, directory_path, 0, "removing dir", ret);
+    return false;
+  }
+  return true;
+}
+
 BoolOrError AprFileSystem::Exists(const char* path, MessageHandler* handler) {
   ScopedMutex hold_mutex(mutex_.get());
   BoolOrError exists;  // Error is the default state.

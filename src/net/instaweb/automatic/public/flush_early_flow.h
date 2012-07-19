@@ -57,10 +57,8 @@ class FlushEarlyFlow {
 
   // Checks whether the request can be flushed early.
   static bool CanFlushEarly(const GoogleString& url,
-                            const RewriteOptions* options,
                             const AsyncFetch* async_fetch,
-                            const StringPiece& user_agent,
-                            const ResourceManager* manager);
+                            const RewriteDriver* driver);
 
   static const char kNumRequestsFlushedEarly[];
   static const char kNumResourcesFlushedEarly[];

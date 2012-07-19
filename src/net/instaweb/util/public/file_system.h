@@ -185,6 +185,10 @@ class FileSystem {
   // Fails if directory_name already exists or parent directory doesn't exist.
   virtual bool MakeDir(const char* directory_path, MessageHandler* handler) = 0;
 
+  // Like POSIX 'rmdir', remove a directory only if it is empty.
+  virtual bool RemoveDir(const char* directory_path,
+                         MessageHandler* handler) = 0;
+
   // Like POSIX 'test -e', checks if path exists (is a file, directory, etc.).
   virtual BoolOrError Exists(const char* path, MessageHandler* handler) = 0;
 

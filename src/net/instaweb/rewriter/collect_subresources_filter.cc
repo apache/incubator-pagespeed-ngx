@@ -90,22 +90,19 @@ class CollectSubresourcesFilter::Context : public SingleRewriteContext {
 CollectSubresourcesFilter::CollectSubresourcesFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
       num_resources_(0),
-      is_enabled_(false),
       property_cache_(driver->resource_manager()->page_property_cache()) {}
 
 void CollectSubresourcesFilter::StartDocumentImpl() {
   in_first_head_ = false;
   seen_first_head_ = false;
   num_resources_ = 0;
-  is_enabled_ = (driver()->user_agent_matcher().GetPrefetchMechanism(
-      driver()->user_agent()) == UserAgentMatcher::kPrefetchLinkRelSubresource);
 }
 
 CollectSubresourcesFilter::~CollectSubresourcesFilter() {
 }
 
 void CollectSubresourcesFilter::StartElementImpl(HtmlElement* element) {
-  if (!is_enabled_) {
+  if (!driver()->UserAgentSupportsFlushEarly()) {
     return;
   }
   if (element->keyword() == HtmlName::kHead && !seen_first_head_) {
@@ -115,7 +112,7 @@ void CollectSubresourcesFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void CollectSubresourcesFilter::EndElementImpl(HtmlElement* element) {
-  if (!is_enabled_) {
+  if (!driver()->UserAgentSupportsFlushEarly()) {
     return;
   }
   if (element->keyword() == HtmlName::kHead && in_first_head_) {

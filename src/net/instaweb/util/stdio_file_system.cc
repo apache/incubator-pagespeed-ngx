@@ -271,6 +271,15 @@ bool StdioFileSystem::MakeDir(const char* path, MessageHandler* handler) {
   return ret;
 }
 
+bool StdioFileSystem::RemoveDir(const char* path, MessageHandler* handler) {
+  bool ret = (rmdir(path) == 0);
+  if (!ret) {
+    handler->Message(kError, "Failed to remove directory %s: %s",
+                     path, strerror(errno));
+  }
+  return ret;
+}
+
 BoolOrError StdioFileSystem::Exists(const char* path, MessageHandler* handler) {
   struct stat statbuf;
   BoolOrError ret(stat(path, &statbuf) == 0);

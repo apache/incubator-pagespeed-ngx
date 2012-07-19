@@ -186,6 +186,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       user_agent_supports_js_defer_(kNotSet),
       user_agent_supports_webp_(kNotSet),
       is_mobile_user_agent_(kNotSet),
+      user_agent_supports_flush_early_(kNotSet),
       using_spdy_(false),
       response_headers_(NULL),
       request_headers_(NULL),
@@ -294,6 +295,7 @@ void RewriteDriver::Clear() {
 
   client_state_.reset(NULL);
   is_mobile_user_agent_ = kNotSet;
+  user_agent_supports_flush_early_ = kNotSet;
   pending_async_events_ = 0;
   user_agent_is_bot_ = kNotSet;
   request_headers_ = NULL;
@@ -715,6 +717,15 @@ bool RewriteDriver::IsMobileUserAgent() const {
         user_agent_matcher().IsMobileUserAgent(user_agent_) ? kTrue : kFalse;
   }
   return (is_mobile_user_agent_ == kTrue);
+}
+
+bool RewriteDriver::UserAgentSupportsFlushEarly() const {
+  if (user_agent_supports_flush_early_ == kNotSet) {
+    user_agent_supports_flush_early_ =
+        (user_agent_matcher().GetPrefetchMechanism(user_agent())
+          == UserAgentMatcher::kPrefetchLinkRelSubresource) ? kTrue : kFalse;
+  }
+  return (user_agent_supports_flush_early_ == kTrue);
 }
 
 void RewriteDriver::AddFilters() {
@@ -1740,7 +1751,8 @@ void RewriteDriver::DeregisterForPartitionKey(const GoogleString& partition_key,
 
 void RewriteDriver::WriteDomCohortIntoPropertyCache() {
   bool flush_subresources_rewriter_enabled =
-      options()->Enabled(RewriteOptions::kFlushSubresources);
+      options()->Enabled(RewriteOptions::kFlushSubresources) &&
+      UserAgentSupportsFlushEarly();
   if (flush_subresources_rewriter_enabled) {
     CollectSubresourcesFilter::AddSubresourcesToFlushEarlyInfo(
         subresources_, flush_early_info());

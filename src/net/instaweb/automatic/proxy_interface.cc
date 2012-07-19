@@ -554,9 +554,7 @@ void ProxyInterface::ProxyRequestCallback(
         VLOG(1) << "User-agent empty";
       }
       if (property_callback != NULL &&
-        FlushEarlyFlow::CanFlushEarly(url_string, driver->options(),
-                                      async_fetch, driver->user_agent(),
-                                      resource_manager_)) {
+        FlushEarlyFlow::CanFlushEarly(url_string, async_fetch, driver)) {
         // TODO(mmohabey): Initialte flush_early_flow and proxy_fetch in
         // parallel.
         FlushEarlyFlow::Start(url_string, async_fetch, driver,

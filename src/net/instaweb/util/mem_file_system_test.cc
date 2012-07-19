@@ -94,6 +94,11 @@ TEST_F(MemFileSystemTest, TestMakeDir) {
   TestMakeDir();
 }
 
+// Create a directory and verify removing it.
+TEST_F(MemFileSystemTest, TestRemoveDir) {
+  TestRemoveDir();
+}
+
 // We intentionally do not test TestIsDir, TestRecursivelyMakeDir*
 
 TEST_F(MemFileSystemTest, TestListContents) {

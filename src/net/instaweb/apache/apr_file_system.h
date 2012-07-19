@@ -53,6 +53,8 @@ class AprFileSystem : public FileSystem {
   // Like POSIX 'mkdir', makes a directory only if parent directory exists.
   // Fails if directory_name already exists or parent directory doesn't exist.
   virtual bool MakeDir(const char* directory_path, MessageHandler* handler);
+  virtual bool RemoveDir(const char* directory_path,
+                         MessageHandler* message_handler);
   virtual bool RemoveFile(const char* filename,
                           MessageHandler* message_handler);
   virtual bool RenameFileHelper(const char* old_filename,

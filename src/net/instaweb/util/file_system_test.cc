@@ -125,7 +125,7 @@ void FileSystemTest::TestCreateFileInDir() {
 
   FileSystem::OutputFile* file =
       file_system()->OpenOutputFile(filename.c_str(), &handler_);
-  ASSERT_TRUE(file);
+  ASSERT_TRUE(file != NULL);
   file_system()->Close(file, &handler_);
 }
 
@@ -140,8 +140,34 @@ void FileSystemTest::TestMakeDir() {
   // ... but we can open a file after we've created the directory.
   FileSystem::OutputFile* file =
       file_system()->OpenOutputFile(filename.c_str(), &handler_);
-  ASSERT_TRUE(file);
+  ASSERT_TRUE(file != NULL);
   file_system()->Close(file, &handler_);
+}
+
+// Make a directory and then remove it.
+void FileSystemTest::TestRemoveDir() {
+  // mem_file_system depends on dir_names ending with a '/'
+  GoogleString dir_name = test_tmpdir() + "/make_dir/";
+  DeleteRecursively(dir_name);
+  GoogleString filename = dir_name + "file-in-dir.txt";
+
+  EXPECT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
+  EXPECT_TRUE(file_system()->Exists(dir_name.c_str(), &handler_).is_true());
+
+  // First test that non-empty directories don't get deleted
+  FileSystem::OutputFile* file =
+      file_system()->OpenOutputFile(filename.c_str(), &handler_);
+  EXPECT_TRUE(file != NULL);
+  file_system()->Close(file, &handler_);
+  EXPECT_FALSE(file_system()->RemoveDir(dir_name.c_str(), &handler_));
+  EXPECT_TRUE(file_system()->Exists(filename.c_str(), &handler_).is_true());
+  EXPECT_TRUE(file_system()->Exists(dir_name.c_str(), &handler_).is_true());
+
+  // Then test that empty directories do get deleted
+  EXPECT_TRUE(file_system()->RemoveFile(filename.c_str(), &handler_));
+  EXPECT_TRUE(file_system()->RemoveDir(dir_name.c_str(), &handler_));
+  EXPECT_TRUE(file_system()->Exists(filename.c_str(), &handler_).is_false());
+  EXPECT_TRUE(file_system()->Exists(dir_name.c_str(), &handler_).is_false());
 }
 
 // Make a directory and check that it is a directory.

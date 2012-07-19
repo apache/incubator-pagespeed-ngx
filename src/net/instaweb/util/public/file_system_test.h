@@ -70,6 +70,7 @@ class FileSystemTest : public testing::Test {
   void TestExists();
   void TestCreateFileInDir();
   void TestMakeDir();
+  void TestRemoveDir();
   void TestIsDir();
   void TestRecursivelyMakeDir();
   void TestRecursivelyMakeDir_NoPermission();

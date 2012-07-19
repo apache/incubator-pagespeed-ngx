@@ -166,6 +166,40 @@ bool MemFileSystem::MakeDir(const char* path, MessageHandler* handler) {
   return true;
 }
 
+bool MemFileSystem::RemoveDir(const char* path, MessageHandler* handler) {
+  ScopedMutex lock(all_else_mutex_.get());
+  GoogleString path_string = path;
+  EnsureEndsInSlash(&path_string);
+
+  StringStringMap::const_iterator iter = string_map_.find(path_string);
+
+  // Verify that this directory exists
+  if (iter == string_map_.end()) {
+    handler->Message(kError, "Failed to remove directory %s: directory does "
+                     "not exist", path);
+    return false;
+  }
+
+  // Verify that no files are stored in this directory. We can do this by
+  // checking to see if the next string in the map starts with this directory
+  // path. Note this depends on using a data structure that keeps its elements
+  // sorted by key (such as a map).
+  StringStringMap::const_iterator next_iter = iter;
+  ++next_iter;
+  if (next_iter != string_map_.end() &&
+      next_iter->first.find(iter->first) == 0) {
+    handler->Message(kError, "Failed to remove directory %s: directory is not "
+                     "empty", path);
+    return false;
+  }
+
+  // This directory exists and is empty, so remove it
+  atime_map_.erase(path_string);
+  mtime_map_.erase(path_string);
+  string_map_.erase(path_string);
+  return true;
+}
+
 FileSystem::InputFile* MemFileSystem::OpenInputFile(
     const char* filename, MessageHandler* message_handler) {
   ScopedMutex lock(all_else_mutex_.get());
@@ -217,6 +251,7 @@ bool MemFileSystem::RemoveFile(const char* filename,
                                MessageHandler* handler) {
   ScopedMutex lock(all_else_mutex_.get());
   atime_map_.erase(filename);
+  mtime_map_.erase(filename);
   return (string_map_.erase(filename) == 1);
 }
 

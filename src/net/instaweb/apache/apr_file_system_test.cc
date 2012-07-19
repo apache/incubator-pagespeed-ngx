@@ -81,7 +81,15 @@ class AprFileSystemTest : public FileSystemTest {
         if (APR_STATUS_IS_ENOTEMPTY(status)) {
           // Need a tempname to rename to.
           char* template_name;
-          std::string tempname = filename + "-apr-XXXXXX";
+
+          // Handle case where filename was passed in with a '/' otherwise
+          // apr_filepath_merge will generate the wrong path
+          std::string tempname = filename;
+          if (!tempname.empty() && tempname[tempname.size() - 1] == '/') {
+            tempname.resize(tempname.size() - 1);
+          }
+
+          tempname += "-apr-XXXXXX";
           status = apr_filepath_merge(&template_name, test_tmpdir_.c_str(),
                                       tempname.c_str(), APR_FILEPATH_NATIVE,
                                       pool_);
@@ -145,6 +153,11 @@ TEST_F(AprFileSystemTest, TestCreateFileInDir) {
 
 TEST_F(AprFileSystemTest, TestMakeDir) {
   TestMakeDir();
+}
+
+// Create a directory and verify removing it.
+TEST_F(AprFileSystemTest, TestRemoveDir) {
+  TestRemoveDir();
 }
 
 TEST_F(AprFileSystemTest, TestIsDir) {

@@ -70,15 +70,13 @@ const char FlushEarlyFlow::kNumResourcesFlushedEarly[] =
 // on the browser. So if subresources are collected in browser A and flushed
 // early in browser B then it causes performance degradation.
 bool FlushEarlyFlow::CanFlushEarly(const GoogleString& url,
-                                   const RewriteOptions* options,
                                    const AsyncFetch* async_fetch,
-                                   const StringPiece& user_agent,
-                                   const ResourceManager* manager) {
+                                   const RewriteDriver* driver) {
+  const RewriteOptions* options = driver->options();
   return (options != NULL && options->enabled() &&
           options->Enabled(RewriteOptions::kFlushSubresources) &&
           async_fetch->request_headers()->method() == RequestHeaders::kGet &&
-          manager->user_agent_matcher().GetPrefetchMechanism(
-              user_agent) == UserAgentMatcher::kPrefetchLinkRelSubresource &&
+          driver->UserAgentSupportsFlushEarly() &&
           options->IsAllowed(url));
 }
 
