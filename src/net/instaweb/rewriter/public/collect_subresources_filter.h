@@ -46,8 +46,9 @@ class CollectSubresourcesFilter : public RewriteFilter {
   virtual const char* Name() const { return "CollectSubresourcesFilter"; }
   virtual const char* id() const { return "fs"; }
 
-  static void AddSubresourcesToFlushEarlyInfo(const IntStringMap& subresources,
-                                              FlushEarlyInfo* info);
+  static void AddSubresourcesToFlushEarlyInfo(
+      const std::map<int, FlushEarlyResource>& subresources,
+      FlushEarlyInfo* info);
 
  private:
   // Creates a rewrite context for the subresource.

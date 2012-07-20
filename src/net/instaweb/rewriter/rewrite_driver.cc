@@ -2252,11 +2252,9 @@ FlushEarlyInfo* RewriteDriver::flush_early_info() {
   return flush_early_info_.get();
 }
 
-void RewriteDriver::AddResourceToSubresourcesMap(const StringPiece& url,
-                                                 int id) {
-  if (url.size() != 0) {
-    subresources_[id].assign(url.data(), url.size());
-  }
+void RewriteDriver::AddResourceToSubresourcesMap(
+    const FlushEarlyResource& resource, int id) {
+  subresources_[id].CopyFrom(resource);
 }
 
 void RewriteDriver::SaveOriginalHeaders(ResponseHeaders* response_headers) {

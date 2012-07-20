@@ -77,11 +77,14 @@ TEST_F(CollectSubresourcesFilterTest, CollectSubresourcesFilter) {
   Parse("not_flushed_early", html_ip);
   // CollectSubresourcesFilter should have populated the flush_early_info
   // proto with the appropriate subresources.
-  EXPECT_EQ(2, rewrite_driver()->flush_early_info()->resources_size());
+  const FlushEarlyInfo* flush_early_info = rewrite_driver()->flush_early_info();
+  EXPECT_EQ(2, flush_early_info->subresource_size());
   EXPECT_EQ("http://test.com/a.css.pagespeed.ce.0.css",
-            rewrite_driver()->flush_early_info()->resources(0));
+            flush_early_info->subresource(0).rewritten_url());
   EXPECT_EQ("http://test.com/b.js.pagespeed.ce.0.js",
-            rewrite_driver()->flush_early_info()->resources(1));
+            flush_early_info->subresource(1).rewritten_url());
+  EXPECT_EQ(CSS, flush_early_info->subresource(0).content_type());
+  EXPECT_EQ(JAVASCRIPT, flush_early_info->subresource(1).content_type());
 }
 
 }  // namespace net_instaweb

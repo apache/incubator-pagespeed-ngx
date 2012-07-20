@@ -23,6 +23,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
 
@@ -74,15 +75,23 @@ class FlushEarlyFlow {
                  ProxyFetchFactory* factory,
                  ProxyFetchPropertyCallbackCollector* property_cache_callback);
 
-  // Generates a dummy head with subresources and writes it to the base_fetch.
-  void GenerateDummyHeadAndFlush(const FlushEarlyInfo& flush_early_info);
+  // Generates a dummy head with subresources and counts the number of resources
+  // which can be flused early.
+  void GenerateDummyHeadAndCountResources(
+      const FlushEarlyInfo& flush_early_info);
 
   // Generates response headers from previous values stored in property cache.
   void GenerateResponseHeaders(const FlushEarlyInfo& flush_early_info);
 
+  GoogleString GetHeadString(const FlushEarlyInfo& flush_early_info,
+                             const char* format);
+
   void Write(const StringPiece& val);
 
   GoogleString url_;
+  GoogleString dummy_head_;
+  StringWriter dummy_head_writer_;
+  int num_resources_flushed_;
 
   AsyncFetch* base_fetch_;
   AsyncFetch* flush_early_fetch_;

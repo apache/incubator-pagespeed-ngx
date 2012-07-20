@@ -20,18 +20,29 @@ import "net/instaweb/http/http.proto";
 
 option optimize_for = LITE_RUNTIME;
 
-// NextId: 4
 package net_instaweb;
+
+enum FlushEarlyContentType {
+  OTHER = 1;
+  JAVASCRIPT = 2;
+  CSS = 3;
+}
+
+message FlushEarlyResource {
+  optional string rewritten_url = 1;
+  optional FlushEarlyContentType content_type = 2;
+}
 
 // FlushEarlyInfo stores various information for flushing a request early i.e.
 // before receiving a response form the origin server.
+// NextId: 5
 message FlushEarlyInfo {
   // ResponseHeaders proto from previous response which is used for subsequent
   // response for the same html url.
   optional HttpResponseHeaders response_headers = 1;
   // The html of the page before the <head> element.
   optional string pre_head = 2;
-  // The resource urls in the head section for the page. These are the urls post
-  // the rewriting.
-  repeated string resources = 3;
+  repeated string resources = 3;  // deprecated.
+  // The resources in the head section for the page.
+  repeated FlushEarlyResource subresource = 4;
 }

@@ -3,7 +3,8 @@
   <script src='abc.js'></script>
   <script>var criticalVar = 10;</script>
   <script>
-    if (window.pagespeed && window.pagespeed.deferJs.isExperimentalMode()) {
+    if (window.pagespeed && window.pagespeed.deferJs &&
+        window.pagespeed.deferJs.isExperimentalMode()) {
       var oldFunc = pagespeed.panelLoader.criticalScriptsDone;
       window.pagespeed.panelLoader.criticalScriptsDone = function() {
         if (criticalVar == 10) {

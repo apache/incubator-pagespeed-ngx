@@ -52,12 +52,12 @@ class CollectSubresourcesFilter::Context : public SingleRewriteContext {
  protected:
   virtual void RewriteSingle(const ResourcePtr& input,
                              const OutputResourcePtr& output) {
-    GetSubresourceUrl();
+    GetSubresource();
     RewriteDone(kRewriteFailed, 0);
   }
 
   virtual void Render() {
-    GetSubresourceUrl();
+    GetSubresource();
   }
 
   virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
@@ -68,7 +68,7 @@ class CollectSubresourcesFilter::Context : public SingleRewriteContext {
 
  private:
   // Gets the rewritten subresource URL.
-  void GetSubresourceUrl() {
+  void GetSubresource() {
     // Do not add resources which are inlined or combined.
     if (num_slots() == 0 || slot(0)->disable_rendering() ||
         slot(0)->should_delete_element()) {
@@ -77,13 +77,31 @@ class CollectSubresourcesFilter::Context : public SingleRewriteContext {
     ResourceSlot* resource_slot = slot(0).get();
     HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(resource_slot);
     if (html_slot->was_optimized()) {
-      url_ = html_slot->resource()->url();
+      FlushEarlyResource resource;
+      resource.set_rewritten_url(html_slot->resource()->url());
+      if (html_slot->resource()->type() == NULL) {
+        html_slot->resource()->DetermineContentType();
+      }
+      resource.set_content_type(GetFlushEarlyContentType(
+          html_slot->resource()->type()->type()));
+      if (resource.rewritten_url().size() != 0) {
+        driver_->AddResourceToSubresourcesMap(resource, resource_id_);
+      }
     }
-    driver_->AddResourceToSubresourcesMap(url_, resource_id_);
+  }
+
+  FlushEarlyContentType GetFlushEarlyContentType(ContentType::Type type) {
+    switch (type) {
+      case ContentType::kJavascript:
+        return JAVASCRIPT;
+      case ContentType::kCss:
+        return CSS;
+      default:
+        return OTHER;
+    }
   }
 
   int resource_id_;  // The seq_no of the resource in the head.
-  GoogleString url_;
   RewriteDriver* driver_;
 };
 
@@ -125,8 +143,7 @@ void CollectSubresourcesFilter::EndElementImpl(HtmlElement* element) {
     if (src == NULL) {
       return;
     }
-    if (category != ContentType::kImage &&
-        category != ContentType::kStylesheet &&
+    if (category != ContentType::kStylesheet &&
         category != ContentType::kScript) {
       return;
     }
@@ -155,8 +172,9 @@ void CollectSubresourcesFilter::CreateSubresourceContext(
 
 // TODO(mmohabey): Add the scripts added by other filters in this list.
 void CollectSubresourcesFilter::AddSubresourcesToFlushEarlyInfo(
-    const IntStringMap& subresources, FlushEarlyInfo* info) {
-  IntStringMap::const_iterator it;
+    const std::map<int, FlushEarlyResource>& subresources,
+    FlushEarlyInfo* info) {
+  std::map<int, FlushEarlyResource>::const_iterator it;
   StringSet subresources_set;
   std::pair<StringSet::iterator, bool> ret;
   // Add the subresources to the property cache in the order they are seen in
@@ -164,9 +182,9 @@ void CollectSubresourcesFilter::AddSubresourcesToFlushEarlyInfo(
   for (it = subresources.begin(); it != subresources.end(); ++it) {
     // Adding to the set to figure out if we have this subresource link added to
     // the property cache already. If so do not add it again.
-    ret = subresources_set.insert((*it).second);
+    ret = subresources_set.insert(it->second.rewritten_url());
     if (ret.second == true) {
-      info->add_resources((*it).second);
+      info->add_subresource()->CopyFrom(it->second);
     }
   }
 }

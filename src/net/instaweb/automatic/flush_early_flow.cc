@@ -52,6 +52,11 @@ const char kScriptBlock[] =
 
 const char kFlushSubresourcesFilter[] = "FlushSubresourcesFilter";
 
+const char kPrefetchLinkRelSubresourceHtml[] =
+    "<link rel=\"subresource\" href=\"%s\"/>";
+const char kPrefetchImageTagHtml[] = "new Image().src=\"%s\";";
+const char kPrefetchObjectTagHtml[] = "preload(%s);";
+
 }  // namespace
 
 namespace net_instaweb {
@@ -132,6 +137,8 @@ FlushEarlyFlow::FlushEarlyFlow(
     ProxyFetchFactory* factory,
     ProxyFetchPropertyCallbackCollector* property_cache_callback)
     : url_(url),
+      dummy_head_writer_(&dummy_head_),
+      num_resources_flushed_(0),
       base_fetch_(base_fetch),
       driver_(driver),
       factory_(factory),
@@ -162,14 +169,16 @@ void FlushEarlyFlow::FlushEarly() {
       ArrayInputStream value(property_value->value().data(),
                              property_value->value().size());
       flush_early_info.ParseFromZeroCopyStream(&value);
+      GenerateDummyHeadAndCountResources(flush_early_info);
       if (flush_early_info.response_headers().status_code() == HttpStatus::kOK
-          && flush_early_info.resources_size() > 0) {
+          && num_resources_flushed_ > 0) {
         handler_->Message(kInfo, "Flushed %d Subresources Early for %s.",
-                          flush_early_info.resources_size(), url_.c_str());
+                          num_resources_flushed_, url_.c_str());
         num_requests_flushed_early_->IncBy(1);
-        num_resources_flushed_early_->IncBy(flush_early_info.resources_size());
+        num_resources_flushed_early_->IncBy(num_resources_flushed_);
         GenerateResponseHeaders(flush_early_info);
-        GenerateDummyHeadAndFlush(flush_early_info);
+        base_fetch_->Write(dummy_head_, handler_);
+        base_fetch_->Flush(handler_);
         driver_->set_flushed_early(true);
       }
     }
@@ -193,7 +202,7 @@ void FlushEarlyFlow::GenerateResponseHeaders(
   base_fetch_->HeadersComplete();
 }
 
-void FlushEarlyFlow::GenerateDummyHeadAndFlush(
+void FlushEarlyFlow::GenerateDummyHeadAndCountResources(
     const FlushEarlyInfo& flush_early_info) {
   Write(flush_early_info.pre_head());
   Write("<head>");
@@ -205,24 +214,18 @@ void FlushEarlyFlow::GenerateDummyHeadAndFlush(
       LOG(DFATAL) << "Entered Flush Early Flow for a unsupported user agent";
       break;
     case UserAgentMatcher::kPrefetchLinkRelSubresource:
-      for (int i = 0; i < flush_early_info.resources_size(); ++i) {
-        StrAppend(&head_string, "<link rel=\"subresource\" href=\"",
-                  flush_early_info.resources(i), "\"/>");
-      }
+      head_string = GetHeadString(flush_early_info,
+                                  kPrefetchLinkRelSubresourceHtml);
       break;
     case UserAgentMatcher::kPrefetchImageTag:
       has_script = true;
-      for (int i = 0; i < flush_early_info.resources_size(); ++i) {
-        StrAppend(&script, "new Image().src=\"",
-                  flush_early_info.resources(i), "\";");
-      }
+      script = GetHeadString(flush_early_info,
+                             kPrefetchImageTagHtml);
       break;
     case UserAgentMatcher::kPrefetchObjectTag:
       has_script = true;
-      StrAppend(&script, kPreloadScript);
-      for (int i = 0; i < flush_early_info.resources_size(); ++i) {
-        StrAppend(&script, "preload(", flush_early_info.resources(i), ");");
-      }
+      StrAppend(&script, kPreloadScript, GetHeadString(flush_early_info,
+                kPrefetchImageTagHtml));
       break;
   }
   if (has_script) {
@@ -236,11 +239,26 @@ void FlushEarlyFlow::GenerateDummyHeadAndFlush(
     Write(head_string);
   }
   Write("</head>");
-  base_fetch_->Flush(handler_);
+}
+
+GoogleString FlushEarlyFlow::GetHeadString(
+    const FlushEarlyInfo& flush_early_info, const char* format) {
+  GoogleString head_string;
+  for (int i = 0; i < flush_early_info.subresource_size(); ++i) {
+    if (driver_->options()->Enabled(RewriteOptions::kDeferJavascript)) {
+      if (flush_early_info.subresource(i).content_type() == JAVASCRIPT) {
+        continue;
+      }
+    }
+    StrAppend(&head_string, StringPrintf(
+        format, flush_early_info.subresource(i).rewritten_url().c_str()));
+    ++num_resources_flushed_;
+  }
+  return head_string;
 }
 
 void FlushEarlyFlow::Write(const StringPiece& val) {
-  base_fetch_->Write(val, handler_);
+  dummy_head_writer_.Write(val, handler_);
 }
 
 }  // namespace net_instaweb
