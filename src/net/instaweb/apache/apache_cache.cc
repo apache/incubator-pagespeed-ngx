@@ -16,6 +16,7 @@
 
 #include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_config.h"
+#include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/util/public/file_cache.h"
@@ -27,6 +28,31 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/write_through_cache.h"
+
+// We have an experimental implementations of a memcached interface based
+// on apr_memcache.  So far it looks like apr_memcache is reasonably robust,
+// though its performance might not be optimal because:
+//    1. It requires we create/delete a pool on every fetch.
+//    2. It lacks an asynchronous interface.
+// An alternate implementation based on libmemcached appears
+// non-robust under load and needs investigation.  apr_memcache
+// appears robust, but load-tests at around 1500 qps, as opposed to
+// 3500 qps for tmpfs.  However we are not using multi-key gets yet in
+// our implementation, and it's plausible the memcached performance will
+// improve once we implement that.
+
+// TODO(jmarantz): remove the ifdefs and add pagespeed.conf configuration and
+// documentation.
+#define USE_MEM_CACHE 0
+#if USE_MEM_CACHE
+#include "ap_mpm.h"
+
+namespace {
+
+static const char kServers[] = "localhost:6765";
+
+}  // namespace
+#endif
 
 namespace net_instaweb {
 
@@ -41,7 +67,9 @@ ApacheCache::ApacheCache(const StringPiece& path,
     : path_(path.data(), path.size()),
       factory_(factory),
       lock_manager_(NULL),
-      file_cache_(NULL) {
+      file_cache_(NULL),
+      mem_cache_(NULL),
+      l2_cache_(NULL) {
   if (config.use_shared_mem_locking()) {
     shared_mem_lock_manager_.reset(new SharedMemLockManager(
         factory->shared_mem_runtime(), StrCat(path, "/named_locks"),
@@ -51,6 +79,25 @@ ApacheCache::ApacheCache(const StringPiece& path,
     FallBackToFileBasedLocking();
   }
 
+#if USE_MEM_CACHE
+  // Note that the thread_limit must be queried from this file, which is built
+  // with an include-path that includes the server.  We can't call ap_mpm_query
+  // from apr_mem_cache.cc without forcing a server dependency and making it
+  // harder to run it in unit tests.
+  //
+  // TODO(jmarantz): take into account the threads we create in PSA, in addition
+  // to the ones created in Apache.
+  int thread_limit;
+  ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
+  mem_cache_ = new AprMemCache(kServers, thread_limit, factory->hasher(),
+                               factory->message_handler());
+  if (!mem_cache_->valid_server_spec()) {
+    abort();  // TODO(jmarantz): is there a better way to exit?
+  }
+  l2_cache_ = mem_cache_;  // apr_memcache is threadsafe.  If it wasn't we'd do:
+  // l2_cache_ = new ThreadsafeCache(mem_cache_,
+  //                                 factory->thread_system()->NewMutex());
+#else
   FileCache::CachePolicy* policy = new FileCache::CachePolicy(
       factory->timer(),
       factory->hasher(),
@@ -59,6 +106,8 @@ ApacheCache::ApacheCache(const StringPiece& path,
   file_cache_ = new FileCache(
       config.file_cache_path(), factory->file_system(), NULL,
       factory->filename_encoder(), policy, factory->message_handler());
+  l2_cache_ = file_cache_;
+#endif
   if (config.lru_cache_kb_per_process() != 0) {
     LRUCache* lru_cache = new LRUCache(
         config.lru_cache_kb_per_process() * 1024);
@@ -70,7 +119,7 @@ ApacheCache::ApacheCache(const StringPiece& path,
     ThreadsafeCache* ts_cache =
         new ThreadsafeCache(lru_cache, factory->thread_system()->NewMutex());
     WriteThroughCache* write_through_cache =
-        new WriteThroughCache(ts_cache, file_cache_);
+        new WriteThroughCache(ts_cache, l2_cache_);
     // By default, WriteThroughCache does not limit the size of entries going
     // into its front cache.
     if (config.lru_cache_byte_limit() != 0) {
@@ -78,14 +127,14 @@ ApacheCache::ApacheCache(const StringPiece& path,
     }
     cache_.reset(write_through_cache);
   } else {
-    cache_.reset(file_cache_);
+    cache_.reset(l2_cache_);
   }
   http_cache_.reset(new HTTPCache(cache_.get(), factory->timer(),
                                   factory->hasher(), factory->statistics()));
   page_property_cache_.reset(factory->MakePropertyCache(
-      PropertyCache::kPagePropertyCacheKeyPrefix, file_cache_));
+      PropertyCache::kPagePropertyCacheKeyPrefix, l2_cache_));
   client_property_cache_.reset(factory->MakePropertyCache(
-      PropertyCache::kClientPropertyCacheKeyPrefix, file_cache_));
+      PropertyCache::kClientPropertyCacheKeyPrefix, l2_cache_));
 }
 
 ApacheCache::~ApacheCache() {
@@ -107,7 +156,15 @@ void ApacheCache::ChildInit() {
       !shared_mem_lock_manager_->Attach()) {
     FallBackToFileBasedLocking();
   }
-  file_cache_->set_worker(factory_->slow_worker());
+  if (file_cache_ != NULL) {
+    file_cache_->set_worker(factory_->slow_worker());
+  }
+  if (mem_cache_ != NULL) {
+    if (!mem_cache_->Connect()) {
+      factory_->message_handler()->Message(kError, "Memory cache failed");
+      abort();  // TODO(jmarantz): is there a better way to exit?
+    }
+  }
 }
 
 void ApacheCache::FallBackToFileBasedLocking() {

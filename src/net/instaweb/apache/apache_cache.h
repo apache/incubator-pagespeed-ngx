@@ -26,6 +26,7 @@ namespace net_instaweb {
 
 class ApacheConfig;
 class ApacheRewriteDriverFactory;
+class AprMemCache;
 class CacheInterface;
 class FileCache;
 class FileSystemLockManager;
@@ -71,7 +72,9 @@ class ApacheCache {
   scoped_ptr<SharedMemLockManager> shared_mem_lock_manager_;
   scoped_ptr<FileSystemLockManager> file_system_lock_manager_;
   NamedLockManager* lock_manager_;
-  FileCache* file_cache_;
+  FileCache* file_cache_;   // may be NULL if there we are using memcache.
+  AprMemCache* mem_cache_;  // may be NULL if there we are using filecache.
+  CacheInterface* l2_cache_;
   scoped_ptr<HTTPCache> http_cache_;
   scoped_ptr<PropertyCache> page_property_cache_;
   scoped_ptr<PropertyCache> client_property_cache_;
