@@ -43,12 +43,12 @@ namespace SharedMemLockData {
 //     acquire timestamp (64-bit)
 //  Slot 1
 //  ...
-//  Slot 15
+//  Slot kSlotsPerBucket - 1
 //  Mutex
 //  (pad to 64-byte alignment)
 // Bucket 1:
 //  ..
-// Bucket 63:
+// Bucket kBuckets - 1:
 //  ..
 //
 // Each key is statically assigned to a bucket based on its hash.
@@ -72,7 +72,7 @@ namespace SharedMemLockData {
 // getting filled suggests it's under heavy load as it is, in which case
 // blocking further operations is desirable.
 //
-const size_t kBuckets = 64;   // assumed to be <= 256
+const size_t kBuckets = 256;   // assumed to be <= 256
 const size_t kSlotsPerBucket = 32;
 
 struct Slot {
