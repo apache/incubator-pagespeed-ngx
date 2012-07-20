@@ -3,7 +3,8 @@
 # Copyright 2012 Google Inc. All Rights Reserved.
 # Author: jefftk@google.com (Jeff Kaufman)
 #
-# Runs all Apache-specific experiment framework (furious) tests.
+# Runs all Apache-specific experiment framework (furious) tests that don't
+# depend on Google Analytics.
 #
 # Exits with status 0 if all tests pass.
 # Exits with status 1 immediately if any test fails.
@@ -36,6 +37,16 @@ check_not fgrep '_GFURIOUS=' <(
 echo TEST: If the user is already assigned, no need to assign them again.
 check_not fgrep '_GFURIOUS=' <(
   $WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
+
+echo TEST: The beacon should include the experiment id.
+check grep 'mod_pagespeed_beacon.*exptid=2' <(
+  $WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
+check grep 'mod_pagespeed_beacon.*exptid=7' <(
+  $WGET_DUMP --header='Cookie: _GFURIOUS=7' $EXTEND_CACHE)
+
+echo TEST: The no-experiment group beacon should not include an experiment id.
+check_not grep 'mod_pagespeed_beacon.*exptid' <(
+  $WGET_DUMP --header='Cookie: _GFURIOUS=0' $EXTEND_CACHE)
 
 # We expect id=7 to be index=a and id=2 to be index=b because that's the
 # order they're defined in the config file.

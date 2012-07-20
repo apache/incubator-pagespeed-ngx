@@ -301,12 +301,22 @@ ModPagespeedAvoidRenamingIntrospectiveJavascript off
 #HTTPS SSLRandomSeed connect builtin
 #HTTPS ModPagespeedMapOriginDomain http://@@APACHE_DOMAIN@@ https://@@APACHE_HTTPS_DOMAIN@@
 
-#FURIOUS # This is used for testing the Furious experiment framework.
-#FURIOUS ModPagespeedRunExperiment on
-#FURIOUS ModPagespeedAnalyticsID "123-45-6734"
-#FURIOUS ModPagespeedExperimentVariable 2
-#FURIOUS ModPagespeedExperimentSpec "id=7;enable=recompress_images;percent=50"
-#FURIOUS ModPagespeedExperimentSpec "id=2;enable=recompress_images,convert_jpeg_to_progressive;percent=50"
+#FURIOUS_GA # This is used for testing the Furious experiment framework.
+#FURIOUS_GA ModPagespeedRunExperiment on
+#FURIOUS_GA ModPagespeedAnalyticsID "123-45-6734"
+#FURIOUS_GA ModPagespeedExperimentVariable 2
+#FURIOUS_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;percent=50"
+#FURIOUS_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images,convert_jpeg_to_progressive;percent=50"
+
+#FURIOUS_NO_GA # This is used for testing the Furious experiment framework still
+#FURIOUS_NO_GA # works when no analytics ID is specified.  It should assign
+#FURIOUS_NO_GA # users to experiments and use appropriate experimental options,
+#FURIOUS_NO_GA # but not report back to Google Analytics.  The instrumentation
+#FURIOUS_NO_GA # beacon, however, will still contain the experiment id.
+#FURIOUS_NO_GA ModPagespeedRunExperiment on
+#FURIOUS_NO_GA ModPagespeedExperimentVariable 2
+#FURIOUS_NO_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;percent=50"
+#FURIOUS_NO_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images,convert_jpeg_to_progressive;percent=50"
 
 #URL_ATTRIBUTE # This is used for testing dynamically defined url-valued
 #URL_ATTRIBUTE # attributes

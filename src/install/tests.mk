@@ -10,8 +10,9 @@
 #                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_HTTPS_TEST,
 #                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST,
 #                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST,
-#                       OPT_FURIOUS_TEST, OPT_URL_ATTRIBUTES_TEST,
-#                       OPT_XHEADER_TEST, OPT_DOMAIN_HYPERLINKS_TEST,
+#                       OPT_FURIOUS_GA_TEST, OPT_FURIOUS_NO_GA_TEST,
+#                       OPT_URL_ATTRIBUTES_TEST, OPT_XHEADER_TEST,
+#                       OPT_DOMAIN_HYPERLINKS_TEST,
 #                       OPT_DOMAIN_RESOURCE_TAGS_TEST, OPT_ALL_DIRECTIVES_TEST)
 #  apache_debug_restart
 #  apache_debug_stop
@@ -175,12 +176,24 @@ gzip_test_prepare:
 # Test to make sure Furious is sending its headers
 # TODO(nforman): Make this run multiple times and make sure we don't *always*
 # get the same result.
-apache_debug_furious_test : furious_test_prepare apache_install_conf \
-    apache_debug_restart
-	$(INSTALL_DATA_DIR)/apache_furious_test.sh $(APACHE_SERVER)
+apache_debug_furious_test :
+	$(MAKE) apache_debug_furious_ga_test
+	$(MAKE) apache_debug_furious_no_ga_test
 
-furious_test_prepare:
-	$(eval OPT_FURIOUS_TEST="FURIOUS_TEST=1")
+apache_debug_furious_ga_test : furious_ga_test_prepare apache_install_conf \
+    apache_debug_restart
+	$(INSTALL_DATA_DIR)/apache_furious_ga_test.sh $(APACHE_SERVER)
+
+apache_debug_furious_no_ga_test : furious_no_ga_test_prepare \
+ apache_install_conf apache_debug_restart
+	$(INSTALL_DATA_DIR)/apache_furious_no_ga_test.sh $(APACHE_SERVER)
+
+furious_ga_test_prepare:
+	$(eval OPT_FURIOUS_GA_TEST="FURIOUS_GA_TEST=1")
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
+
+furious_no_ga_test_prepare:
+	$(eval OPT_FURIOUS_NO_GA_TEST="FURIOUS_NO_GA_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 # This test checks that the ModPagespeedXHeaderValue directive works.
