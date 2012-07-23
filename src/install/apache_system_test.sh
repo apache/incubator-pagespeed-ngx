@@ -32,9 +32,9 @@ mkdir -p $OUTDIR
 
 # General system tests
 
-echo Checking for correct default X-Mod-Pagespeed header format.
-$WGET_DUMP $EXAMPLE_ROOT/combine_css.html | \
-  check egrep -q '^X-Mod-Pagespeed: [0-9]+[.][0-9]+[.][0-9]+[.][0-9]+-[0-9]+'
+echo TEST: Check for correct default X-Mod-Pagespeed header format.
+check egrep -q '^X-Mod-Pagespeed: [0-9]+[.][0-9]+[.][0-9]+[.][0-9]+-[0-9]+' <(
+  $WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
 
 echo TEST: mod_pagespeed is running in Apache and writes the expected header.
 echo $WGET_DUMP $EXAMPLE_ROOT/combine_css.html
@@ -296,6 +296,15 @@ wget -O - --header 'X-PSA-Blocking-Rewrite: psatest' $URL
 # flush_subresources rewriter is not applied. This is a negative test case
 # because this rewriter does not exist in mod_pagespeed yet.
 check [ `wget -O - $URL | grep -o 'link rel="subresource"' | wc -l` = 0 ]
+
+echo TEST: Respect custom options on resources.
+IMG_NON_CUSTOM="$EXAMPLE_ROOT/images/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
+IMG_CUSTOM="$TEST_ROOT/custom_options/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
+
+# Identical images, but in the .htaccess file in the custom_options directory we
+# addditionally enable convert_jpeg_to_progressive which gives a smaller file.
+fetch_until $IMG_NON_CUSTOM 'wc -c' 231192
+fetch_until $IMG_CUSTOM 'wc -c' 216942
 
 # TODO(sligocki): TEST: ModPagespeedMaxSegmentLength
 

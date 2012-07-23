@@ -20,6 +20,7 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
+#include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
@@ -30,10 +31,6 @@
 #include "apr_strings.h"
 #include "http_config.h"
 #include "http_core.h"
-
-extern "C" {
-extern module AP_MODULE_DECLARE_DATA pagespeed_module;
-}
 
 namespace net_instaweb {
 

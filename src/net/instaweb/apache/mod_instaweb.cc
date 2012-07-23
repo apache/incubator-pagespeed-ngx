@@ -31,6 +31,7 @@
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/instaweb_handler.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
+#include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -66,10 +67,6 @@
 #include "http_request.h"
 #include "net/instaweb/apache/apache_logging_includes.h"
 #include "unixd.h"
-
-extern "C" {
-  extern module AP_MODULE_DECLARE_DATA pagespeed_module;
-}
 
 // Apache 2.4 renames unixd_config -> ap_unixd_config
 #if (AP_SERVER_MAJORVERSION_NUMBER == 2) && (AP_SERVER_MINORVERSION_NUMBER >= 4)

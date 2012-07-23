@@ -24,6 +24,7 @@
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
+#include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/automatic/public/resource_fetch.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -49,6 +50,7 @@
 #include "http_config.h"
 #include "http_core.h"
 #include "http_protocol.h"
+#include "http_request.h"
 #include "net/instaweb/apache/apache_logging_includes.h"
 
 namespace net_instaweb {
@@ -155,9 +157,16 @@ bool handle_as_resource(ApacheResourceManager* manager,
       }
     }
 
-    // TODO(sligocki): Should we be sending in special custom options depending
-    // on the directory?
+    // Set custom options.
     RewriteOptions* custom_options = NULL;
+    ApacheConfig* directory_options = static_cast<ApacheConfig*>
+        ap_get_module_config(request->per_dir_config, &pagespeed_module);
+    if ((directory_options != NULL) && directory_options->modified()) {
+      custom_options = manager->apache_factory()->NewRewriteOptions();
+      custom_options->Merge(*manager->global_options());
+      custom_options->Merge(*directory_options);
+    }
+
     bool using_spdy = (mod_spdy_get_spdy_version(request->connection) != 0);
     RewriteDriver* driver = ResourceFetch::GetDriver(
         gurl, custom_options, using_spdy, manager);
@@ -421,10 +430,46 @@ apr_status_t save_url_hook(request_rec *request) {
   return DECLINED;
 }
 
-// overrides core_map_to_storage to avoid imposing filename limits.
+// Override core_map_to_storage for pagespeed resources.
 apr_status_t instaweb_map_to_storage(request_rec* request) {
   apr_status_t ret = DECLINED;
   if (get_instaweb_resource_url(request) != NULL) {
+    // core_map_to_storage does at least two things:
+    //  1) checks filename length limits
+    //  2) determines directory specific options
+    // We want (2) but not (1).  If we simply return OK we will keep
+    // core_map_to_storage from running and let through our long filenames but
+    // resource requests that require regeneration will not respect directory
+    // specific options.
+    //
+    // To fix this we need to be more dependent on apache internals than we
+    // would like.  core_map_to_storage always calls ap_directory_walk(request),
+    // which does both (1) and (2) and appears to work entirely off of
+    // request->filename.  But ap_directory_walk doesn't care whether the last
+    // request->segment of the path actually exists.  So if we change the
+    // request->filename from something like:
+    //    /var/www/path/to/LEAF_WHICH_MAY_BE_HUGE.pagespeed.FILTER.HASH.EXT
+    // to:
+    //    /var/www/path/to/A
+    // then we will bypass the filename length limit without harming the load of
+    // directory specific options.
+    //
+    // So: modify request->filename in place to cut it off after the last '/'
+    // character and replace the whole leaf with 'A', and then call
+    // ap_directory_walk to figure out custom options.
+    int fname_length = strlen(request->filename);
+    int last_slash = 0;
+    for (int i = 0 ; i < fname_length ; i++) {
+      if (request->filename[i] == '/') {
+        last_slash = i;
+      }
+    }
+    if (last_slash + 2 <= fname_length) {
+      request->filename[last_slash + 1] = 'A';
+      request->filename[last_slash + 2] = '\0';
+    }
+    ap_directory_walk(request);
+
     // mod_speling, if enabled, looks for the filename on the file system,
     // and tries to "correct" the spelling.  This is not desired for
     // mod_pagesped resources, but mod_speling will not do this damage
@@ -435,7 +480,12 @@ apr_status_t instaweb_map_to_storage(request_rec* request) {
     // Note that mod_speling runs 'hook_fixups' at APR_HOOK_LAST, and
     // we are currently running instaweb_map_to_storage in map_to_storage
     // HOOK_FIRST-2, which is a couple of phases before hook_fixups.
+    //
+    // If at some point we stop NULLing the filename here we need to modify the
+    // code above that mangles it to use a temporary buffer instead.
     request->filename = NULL;
+
+    // Keep core_map_to_storage from running and rejecting our long filenames.
     ret = OK;
   }
   return ret;
