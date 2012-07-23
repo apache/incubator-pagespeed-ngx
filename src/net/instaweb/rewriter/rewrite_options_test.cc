@@ -28,11 +28,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
-namespace {
-
-using net_instaweb::MessageHandler;
-using net_instaweb::NullMessageHandler;
-using net_instaweb::RewriteOptions;
+namespace net_instaweb {
 
 class RewriteOptionsTest : public ::testing::Test {
  protected:
@@ -96,7 +92,7 @@ class RewriteOptionsTest : public ::testing::Test {
   void TestSetOptionFromName(bool test_log_variant);
 
   RewriteOptions options_;
-  net_instaweb::MockHasher hasher_;
+  MockHasher hasher_;
 };
 
 TEST_F(RewriteOptionsTest, DefaultEnabledFilters) {
@@ -857,8 +853,8 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
 }
 
 TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {
-  net_instaweb::GoogleUrl gurl_one("http://www.test.org/one.html");
-  net_instaweb::GoogleUrl gurl_two("http://www.test.org/two.html");
+  GoogleUrl gurl_one("http://www.test.org/one.html");
+  GoogleUrl gurl_two("http://www.test.org/two.html");
 
   EXPECT_FALSE(options_.IsInBlinkCacheableFamily(gurl_one));
   options_.set_apply_blink_if_no_families(true);
@@ -893,8 +889,8 @@ TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {
 
 TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamilyFullUrl) {
   options_.set_use_full_url_in_blink_families(true);
-  net_instaweb::GoogleUrl gurl_one("http://www.test.org/one.html");
-  net_instaweb::GoogleUrl gurl_two("http://www.test.org/two.html");
+  GoogleUrl gurl_one("http://www.test.org/one.html");
+  GoogleUrl gurl_two("http://www.test.org/two.html");
 
   EXPECT_FALSE(options_.IsInBlinkCacheableFamily(gurl_one));
   options_.set_apply_blink_if_no_families(true);
@@ -965,9 +961,9 @@ TEST_F(RewriteOptionsTest, FuriousSpecTest) {
   EXPECT_EQ("b", options_.GetFuriousStateStr());
   options_.SetFuriousState(17);
   EXPECT_EQ("c", options_.GetFuriousStateStr());
-  options_.SetFuriousState(net_instaweb::furious::kFuriousNotSet);
+  options_.SetFuriousState(furious::kFuriousNotSet);
   EXPECT_EQ("", options_.GetFuriousStateStr());
-  options_.SetFuriousState(net_instaweb::furious::kFuriousNoExperiment);
+  options_.SetFuriousState(furious::kFuriousNoExperiment);
   EXPECT_EQ("", options_.GetFuriousStateStr());
 
   options_.SetFuriousStateStr("a");
@@ -992,8 +988,8 @@ TEST_F(RewriteOptionsTest, FuriousSpecTest) {
   for(int i = options_.num_furious_experiments(); i < 26 ; i++) {
     int tmp_id = i+100;  // Don't want conflict with experiments added above.
     EXPECT_TRUE(options_.AddFuriousSpec(
-        net_instaweb::StrCat("id=", net_instaweb::IntegerToString(tmp_id),
-                             ";percent=1;default"), &handler));
+        StrCat("id=", IntegerToString(tmp_id),
+               ";percent=1;default"), &handler));
   }
   EXPECT_EQ(26, options_.num_furious_experiments());
   // Object to adding a 27th.
@@ -1190,4 +1186,4 @@ TEST_F(RewriteOptionsTest, ImageOptimizableCheck) {
   EXPECT_FALSE(options_.ImageOptimizationEnabled());
 }
 
-}  // namespace
+}  // namespace net_instaweb
