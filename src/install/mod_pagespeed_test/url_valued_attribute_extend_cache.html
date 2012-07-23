@@ -1,0 +1,26 @@
+<!-- plain image: should be optimized -->
+<img src="../mod_pagespeed_example/images/Puzzle.jpg">
+
+<!-- input image: should be optimized -->
+<input type="image" src="../mod_pagespeed_example/images/Puzzle.jpg">
+
+<!-- favicon: should be optimized -->
+<link rel="icon" href="../mod_pagespeed_example/images/Puzzle.jpg">
+
+<!-- audio: should be cache extended without examination -->
+<audio src="../mod_pagespeed_example/images/Puzzle.jpg">
+
+<!-- hr.imgsrc: configured as image; should be optimized -->
+<hr imgsrc="../mod_pagespeed_example/images/Puzzle.jpg">
+
+<!-- a: configured as image; should be optimized -->
+<custom a="../mod_pagespeed_example/images/Puzzle.jpg"></custom>
+
+<!-- b: configured as otherResource; should be cache-extended -->
+<custom b="../mod_pagespeed_example/images/Puzzle.jpg"></custom>
+
+<!-- c: configured as hyperlink; should be left alone -->
+<custom c="../mod_pagespeed_example/images/Puzzle.jpg"></custom>
+
+<!-- d: not configured; should be left alone -->
+<custom d="../mod_pagespeed_example/images/Puzzle.jpg"></custom>

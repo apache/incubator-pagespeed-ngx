@@ -202,7 +202,9 @@ void ImageRewriteFilter::StartDocumentImpl() {
   CriticalImagesFinder* finder =
       driver_->resource_manager()->critical_images_finder();
   if (finder != NULL &&
-      driver_->options()->Enabled(RewriteOptions::kDelayImages)) {
+      (driver_->options()->Enabled(RewriteOptions::kDelayImages) ||
+       (driver_->options()->Enabled(RewriteOptions::kInlineImages) &&
+        driver_->options()->inline_only_critical_images()))) {
     finder->UpdateCriticalImagesSetInDriver(driver_);
     // Compute critical images if critical images information is not present.
     finder->ComputeCriticalImages(driver_->url(), driver_,
@@ -670,6 +672,8 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   // copies implicitly.
   GoogleString data_url;
   if (driver_->UserAgentSupportsImageInlining() &&
+      (!driver_->options()->inline_only_critical_images() ||
+       IsCriticalImage(src_value)) &&
       TryInline(driver_->options()->ImageInlineMaxBytes(),
                 cached, slot, &data_url)) {
     const RewriteOptions* options = driver_->options();
@@ -761,12 +765,13 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
 }
 
 bool ImageRewriteFilter::IsCriticalImage(const StringPiece& image_url) const {
-  GoogleUrl image_gurl(driver_->base_url(), image_url);
   CriticalImagesFinder* finder =
       driver_->resource_manager()->critical_images_finder();
-  bool is_image_critical = (finder == NULL) ||
-      (finder->IsCriticalImage(image_gurl.spec_c_str(), driver_));
-  return is_image_critical;
+  if (finder == NULL) {
+    return true;
+  }
+  GoogleUrl image_gurl(driver_->base_url(), image_url);
+  return finder->IsCriticalImage(image_gurl.spec_c_str(), driver_);
 }
 
 bool ImageRewriteFilter::StoreUrlInPropertyCache(const StringPiece& url) {

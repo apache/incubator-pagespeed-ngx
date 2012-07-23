@@ -147,6 +147,9 @@ DEFINE_bool(lazyload_images_after_onload, false, "Boolean indicating whether "
             "lazyload images should load images when onload is fired. If "
             "false, images are loaded onscroll.");
 
+DEFINE_bool(inline_only_critical_images, true, "Boolean indicating whether "
+            "inline_images should inline only critical images or not.");
+
 DEFINE_int64(implicit_cache_ttl_ms,
              net_instaweb::RewriteOptions::kDefaultImplicitCacheTtlMs,
              "The number of milliseconds of cache TTL we assign to resources "
@@ -330,6 +333,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("lazyload_images_after_onload")) {
     options->set_lazyload_images_after_onload(
         FLAGS_lazyload_images_after_onload);
+  }
+  if (WasExplicitlySet("inline_only_critical_images")) {
+    options->set_inline_only_critical_images(
+        FLAGS_inline_only_critical_images);
   }
   if (WasExplicitlySet("implicit_cache_ttl_ms")) {
     options->set_implicit_cache_ttl_ms(FLAGS_implicit_cache_ttl_ms);

@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -775,6 +776,26 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
   // size information, which is now embedded in the image itself anyway.
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypePng,
                     kResizedDims, "", true, true);
+}
+
+TEST_F(ImageRewriteTest, InlineCriticalOnly) {
+  StringSet* critical_images = new StringSet;
+  rewrite_driver()->set_critical_images(critical_images);
+  resource_manager()->set_critical_images_finder(
+      new CriticalImagesFinder());
+  options()->set_image_inline_max_bytes(30000);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  rewrite_driver()->AddFilters();
+  // Image not present in critical set should not be inlined.
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    "", "", false, false);
+
+  // Image present in critical set should be inlined.
+  critical_images->insert(StrCat(kTestDomain, kChefGifFile));
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    "", "", false, true);
+
+  delete resource_manager()->critical_images_finder();
 }
 
 TEST_F(ImageRewriteTest, InlineNoRewrite) {

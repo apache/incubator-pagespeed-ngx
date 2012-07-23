@@ -62,6 +62,7 @@ struct OptionName {
 "JsInlineMaxBytes",                     RewriteOptions::kJsInlineMaxBytes
 "JsOutlineMinBytes",                    RewriteOptions::kJsOutlineMinBytes
 "LazyloadImagesAfterOnload",            RewriteOptions::kLazyloadImagesAfterOnload
+"InlineOnlyCriticalImages",             RewriteOptions::kInlineOnlyCriticalImages
 "LogRewriteTiming",                     RewriteOptions::kLogRewriteTiming
 "LowercaseHtmlNames",                   RewriteOptions::kLowercaseHtmlNames
 "MaxHtmlCacheTimeMs",                   RewriteOptions::kMaxHtmlCacheTimeMs

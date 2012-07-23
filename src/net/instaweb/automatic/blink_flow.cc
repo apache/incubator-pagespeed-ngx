@@ -463,6 +463,7 @@ void BlinkFlow::SetFilterOptions(RewriteOptions* options) const {
   options->DisableFilter(RewriteOptions::kCombineJavascript);
   options->DisableFilter(RewriteOptions::kMoveCssToHead);
   options->DisableFilter(RewriteOptions::kLazyloadImages);
+  options->DisableFilter(RewriteOptions::kInlineImages);
   // TODO(rahulbansal): ConvertMetaTags is a special case incompatible filter
   // which actually causes a SIGSEGV.
   options->DisableFilter(RewriteOptions::kConvertMetaTags);

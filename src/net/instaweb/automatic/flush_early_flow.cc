@@ -53,7 +53,7 @@ const char kScriptBlock[] =
 const char kFlushSubresourcesFilter[] = "FlushSubresourcesFilter";
 
 const char kPrefetchLinkRelSubresourceHtml[] =
-    "<link rel=\"subresource\" href=\"%s\"/>";
+    "<link rel=\"subresource\" href=\"%s\"/>\n";
 const char kPrefetchImageTagHtml[] = "new Image().src=\"%s\";";
 const char kPrefetchObjectTagHtml[] = "preload(%s);";
 

@@ -238,13 +238,7 @@ apache_debug_rewrite_hyperlinks_test : rewrite_hyperlinks_test_prepare \
 # unmodified.  The rewritten ones should all be rewritten to dst.example.com.
 apache_debug_url_attribute_test : url_attribute_test_prepare \
     apache_install_conf apache_debug_restart
-	@echo Testing rewriting dynamically defined url-valued attributes
-	matches=`$(WGET_NO_PROXY) -q -O - $(TEST_ROOT)/rewrite_domains.html \
-	  | grep -c http://dst\.example\.com`; \
-	test $$matches -eq 5
-	matches=`$(WGET_NO_PROXY) -q -O - $(TEST_ROOT)/rewrite_domains.html \
-	  | grep -c '<hr src=http://src\.example\.com/hr-image>'`; \
-	test $$matches -eq 1
+	$(INSTALL_DATA_DIR)/apache_url_valued_attribute_test.sh $(APACHE_SERVER)
 
 url_attribute_test_prepare:
 	$(eval OPT_URL_ATTRIBUTE_TEST="URL_ATTRIBUTE_TEST=1")

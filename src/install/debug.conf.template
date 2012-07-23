@@ -325,6 +325,9 @@ ModPagespeedAvoidRenamingIntrospectiveJavascript off
 #URL_ATTRIBUTE ModPagespeedDomainRewriteHyperlinks on
 #URL_ATTRIBUTE ModPagespeedMapRewriteDomain http://dst.example.com http://src.example.com
 #URL_ATTRIBUTE ModPagespeedEnableFilters rewrite_domains
+#URL_ATTRIBUTE ModPagespeedUrlValuedAttribute custom a Image
+#URL_ATTRIBUTE ModPagespeedUrlValuedAttribute custom b otherResource
+#URL_ATTRIBUTE ModPagespeedUrlValuedAttribute custom c hyperlink
 
 #XHEADER # Set the value of the X-Mod-Pagespeed header
 #XHEADER ModPagespeedXHeaderValue "UNSPECIFIED VERSION"

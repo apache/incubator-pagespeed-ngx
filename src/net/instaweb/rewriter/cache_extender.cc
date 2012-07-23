@@ -137,21 +137,26 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
   ContentType::Category category;
   HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
       element, driver_, &category);
-  bool may_rewrite = false;
+  bool may_load = false;
   switch (category) {
     case ContentType::kStylesheet:
-      may_rewrite = driver_->MayCacheExtendCss();
+      may_load = driver_->MayCacheExtendCss();
       break;
     case ContentType::kImage:
-      may_rewrite = driver_->MayCacheExtendImages();
+      may_load = driver_->MayCacheExtendImages();
       break;
     case ContentType::kScript:
-      may_rewrite = driver_->MayCacheExtendScripts();
+      may_load = driver_->MayCacheExtendScripts();
       break;
+    case ContentType::kOtherResource:
+      // We will still check server-supplied content type of the loaded resource
+      // once we have it to ensure we don't cache-extend html or anything else
+      // that could contain scripts.
+      may_load = true;
     default:
       break;
   }
-  if (!may_rewrite) {
+  if (!may_load) {
     return;
   }
 

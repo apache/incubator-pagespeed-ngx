@@ -129,8 +129,8 @@ const char kFlushEarlyRewritenHtmlImageTag[] =
 const char kFlushEarlyRewritenHtmlLinkRelSubresource[] =
     "<html>"
     "<head>"
-    "<link rel=\"subresource\" href=\"%s\"/>"
-    "<link rel=\"subresource\" href=\"%s\"/>"
+    "<link rel=\"subresource\" href=\"%s\"/>\n"
+    "<link rel=\"subresource\" href=\"%s\"/>\n"
     "</head><head>"
     "<title>Flush Subresources Early example</title>"
     "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"

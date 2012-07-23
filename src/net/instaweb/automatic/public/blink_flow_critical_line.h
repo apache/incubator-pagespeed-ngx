@@ -74,6 +74,12 @@ class BlinkFlowCriticalLine {
                         ResourceManager* manager,
                         ProxyFetchPropertyCallbackCollector* property_callback);
 
+  // Sets request start time.
+  void SetStartRequestTimings();
+
+  // Sets the server side response start time.
+  void SetResponseStartTime();
+
   // Function called by the callback collector whenever property cache lookup
   // is done. Based on the result, it will call either
   // BlinkCriticalLineDataHit() or BlinkCriticalLineDataMiss().
@@ -94,6 +100,8 @@ class BlinkFlowCriticalLine {
   // yet served).
   void TriggerProxyFetch(bool critical_line_data_found,
                          bool serve_non_critical);
+
+  void WriteResponseStartAndLookUpTimings();
 
   // Serves all the panel contents including critical html, critical images json
   // and non critical json. This is the case when there are no cacheable panels
@@ -116,6 +124,11 @@ class BlinkFlowCriticalLine {
 
   void WriteString(const StringPiece& str);
 
+  int64 GetTimeElapsedFromStartRequest();
+
+  GoogleString GetAddTimingScriptString(const GoogleString& timing_str,
+                                        int64 time_ms);
+
   void Flush();
 
   // Modify the rewrite options to be used in the background and user-facing
@@ -136,6 +149,9 @@ class BlinkFlowCriticalLine {
   ProxyFetchPropertyCallbackCollector* property_callback_;
   scoped_ptr<BlinkCriticalLineData> blink_critical_line_data_;
   BlinkCriticalLineDataFinder* finder_;
+  int64 request_start_time_ms_;
+  int64 time_to_start_blink_flow_critical_line_ms_;
+  int64 time_to_critical_line_data_look_up_done_ms_;
 
   TimedVariable* num_blink_html_cache_hits_;
   TimedVariable* num_blink_shared_fetches_started_;

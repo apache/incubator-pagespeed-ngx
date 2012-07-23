@@ -598,9 +598,8 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
   if (document.querySelectorAll && !(this.getIEVersion() <= 8)) {
     document.getElementsByTagName = this.origGetElementsByTagName_;
   }
-  if (deferJsNs.DeferJs.isExperimentalMode) {
-      document.createElement = this.origCreateElement_;
-  }
+
+  document.createElement = this.origCreateElement_;
 
   document.open = this.origDocOpen_;
   document.close = this.origDocClose_;
@@ -736,7 +735,7 @@ deferJsNs.DeferJs.prototype.runNext = function() {
     this.next_++;
     this.queue_[this.next_ - 1].call(window);
   } else {
-    if (deferJsNs.DeferJs.isExperimentalMode && this.lastIncrementalRun_) {
+    if (this.lastIncrementalRun_) {
       this.state_ = deferJsNs.DeferJs.STATES.SYNC_SCRIPTS_DONE;
       if (this.canCallOnComplete()) {
         this.onComplete();
@@ -829,29 +828,27 @@ deferJsNs.DeferJs.prototype.setUp = function() {
     }
   }
 
-  if (deferJsNs.DeferJs.isExperimentalMode) {
-    // Overriding createElement().
-    // Attaching onload & onerror function if script node is created.
-    document.createElement = function(str) {
-      var elem = me.origCreateElement_.call(document, str);
-      if (str.toLowerCase() == 'script') {
-        me.dynamicInsertedScript_.push(elem);
-        me.dynamicInsertedScriptCount_++;
-        var onload = function() {
-          me.dynamicInsertedScriptCount_--;
-          var index = me.dynamicInsertedScript_.indexOf(this);
-          if (index != -1) {
-            me.dynamicInsertedScript_.splice(index, 1);
-            if (me.canCallOnComplete()) {
-              me.onComplete();
-            }
+  // Overriding createElement().
+  // Attaching onload & onerror function if script node is created.
+  document.createElement = function(str) {
+    var elem = me.origCreateElement_.call(document, str);
+    if (str.toLowerCase() == 'script') {
+      me.dynamicInsertedScript_.push(elem);
+      me.dynamicInsertedScriptCount_++;
+      var onload = function() {
+        me.dynamicInsertedScriptCount_--;
+        var index = me.dynamicInsertedScript_.indexOf(this);
+        if (index != -1) {
+          me.dynamicInsertedScript_.splice(index, 1);
+          if (me.canCallOnComplete()) {
+            me.onComplete();
           }
-        };
-        deferJsNs.addOnload(elem, onload);
-        deferJsNs.addHandler(elem, 'error', onload);
-      }
-      return elem;
+        }
+      };
+      deferJsNs.addOnload(elem, onload);
+      deferJsNs.addHandler(elem, 'error', onload);
     }
+    return elem;
   }
 };
 

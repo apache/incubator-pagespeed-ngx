@@ -239,6 +239,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kDeterministicJs,   // used for measurement
   RewriteOptions::kDisableJavascript,
   RewriteOptions::kDivStructure,
+  RewriteOptions::kExperimentSpdy,
   RewriteOptions::kExplicitCloseTags,
   RewriteOptions::kLazyloadImages,
   RewriteOptions::kServeNonCacheableNonCritical,  // internal,
@@ -299,6 +300,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
       return "Disables scripts by placing them inside noscript tags";
     case kDivStructure:                    return "Div Structure";
     case kElideAttributes:                 return "Elide Attributes";
+    case kExperimentSpdy:                  return "SPDY Resources Experiment";
     case kExplicitCloseTags:               return "Explicit Close Tags";
     case kExtendCacheCss:                  return "Cache Extend Css";
     case kExtendCacheImages:               return "Cache Extend Images";
@@ -372,6 +374,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kDisableJavascript:               return "jd";
     case kDivStructure:                    return "ds";
     case kElideAttributes:                 return "ea";
+    case kExperimentSpdy:                  return "xs";
     case kExplicitCloseTags:               return "xc";
     case kExtendCacheCss:                  return "ec";
     case kExtendCacheImages:               return "ei";
@@ -563,6 +566,8 @@ RewriteOptions::RewriteOptions()
   add_option(kDefaultBeaconUrls, &beacon_url_, "bu", kBeaconUrl);
   add_option(false, &lazyload_images_after_onload_, "llio",
              kLazyloadImagesAfterOnload);
+  add_option(true, &inline_only_critical_images_, "ioci",
+             kInlineOnlyCriticalImages);
   add_option(false, &domain_rewrite_hyperlinks_, "drh",
              kDomainRewriteHyperlinks);
   add_option(kDefaultImageJpegRecompressQuality,

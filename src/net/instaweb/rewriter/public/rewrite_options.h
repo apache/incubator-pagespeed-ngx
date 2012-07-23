@@ -69,6 +69,7 @@ class RewriteOptions {
     kDisableJavascript,
     kDivStructure,
     kElideAttributes,
+    kExperimentSpdy,  // Temporary and will be removed soon.
     kExplicitCloseTags,
     kExtendCacheCss,
     kExtendCacheImages,
@@ -163,6 +164,7 @@ class RewriteOptions {
     kJsInlineMaxBytes,
     kJsOutlineMinBytes,
     kLazyloadImagesAfterOnload,
+    kInlineOnlyCriticalImages,
     kLogRewriteTiming,
     kLowercaseHtmlNames,
     kMaxHtmlCacheTimeMs,
@@ -822,6 +824,13 @@ class RewriteOptions {
   }
   bool modify_caching_headers() const {
     return modify_caching_headers_.value();
+  }
+
+  void set_inline_only_critical_images(bool x) {
+    set_option(x, &inline_only_critical_images_);
+  }
+  bool inline_only_critical_images() const {
+    return inline_only_critical_images_.value();
   }
 
   void set_lazyload_images_after_onload(bool x) {
@@ -1685,6 +1694,10 @@ class RewriteOptions {
   // may want to load images when the onload event is fired instead. If set to
   // true, images are loaded when onload is fired.
   Option<bool> lazyload_images_after_onload_;
+  // By default, inline_images will inline only critical images. However, some
+  // people may want to inline all images (both critical and non-critical). If
+  // set to false, all images will be inlined within the html.
+  Option<bool> inline_only_critical_images_;
   // Indicates whether the DomainRewriteFilter should rewrite all tags,
   // including <a href> and <form action>.
   Option<bool> domain_rewrite_hyperlinks_;

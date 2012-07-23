@@ -77,6 +77,9 @@ const char BlinkFlowCriticalLine::kAboveTheFold[] = "Above the fold";
 
 namespace {
 
+const char kTimeToBlinkFlowStart[] = "BLINK_FLOW_START";
+const char kTimeToBlinkDataLookUpDone[] = "BLINK_DATA_LOOK_UP_DONE";
+
 // AsyncFetch that doesn't call HeadersComplete() on the base fetch. Note that
 // this class only links the request headers from the base fetch and does not
 // link the response headers.
@@ -197,6 +200,8 @@ class CriticalLineFetch : public AsyncFetch {
     if (non_ok_status_code_ || !success || !claims_html_ || !probable_html_ ||
         content_length_over_threshold_) {
       if (non_ok_status_code_ || !success) {
+        VLOG(1) << "Non html page, or not success or above maximum "
+                << "rewriteable size: " << url_;
         blink_info_->set_blink_request_flow(
             BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK);
       } else if (!claims_html_ || !probable_html_) {
@@ -338,10 +343,28 @@ void BlinkFlowCriticalLine::Start(
     ProxyFetchPropertyCallbackCollector* property_callback) {
   BlinkFlowCriticalLine* flow = new BlinkFlowCriticalLine(
       url, base_fetch, options, factory, manager, property_callback);
+  flow->SetStartRequestTimings();
+  flow->SetResponseStartTime();
   Function* func = MakeFunction(
       flow, &BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone,
       property_callback);
   property_callback->AddPostLookupTask(func);
+}
+
+void BlinkFlowCriticalLine::SetStartRequestTimings() {
+  // TODO(poojatandon): Refactor to use timing_info instead of headers for this.
+  const char* request_start_time_ms_str =
+      base_fetch_->request_headers()->Lookup1(kRequestStartTimeHeader);
+  if (request_start_time_ms_str != NULL) {
+    if (!StringToInt64(request_start_time_ms_str, &request_start_time_ms_)) {
+      request_start_time_ms_ = 0;
+    }
+  }
+}
+
+void BlinkFlowCriticalLine::SetResponseStartTime() {
+  time_to_start_blink_flow_critical_line_ms_ =
+      GetTimeElapsedFromStartRequest();
 }
 
 BlinkFlowCriticalLine::~BlinkFlowCriticalLine() {
@@ -375,7 +398,10 @@ BlinkFlowCriticalLine::BlinkFlowCriticalLine(
       factory_(factory),
       manager_(manager),
       property_callback_(property_callback),
-      finder_(manager->blink_critical_line_data_finder()) {
+      finder_(manager->blink_critical_line_data_finder()),
+      request_start_time_ms_(-1),
+      time_to_start_blink_flow_critical_line_ms_(-1),
+      time_to_critical_line_data_look_up_done_ms_(-1) {
   Statistics* stats = manager_->statistics();
   num_blink_html_cache_hits_ = stats->GetTimedVariable(
       kNumBlinkHtmlCacheHits);
@@ -387,6 +413,8 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
     ProxyFetchPropertyCallbackCollector* collector) {
   PropertyPage* page = collector->GetPropertyPageWithoutOwnership(
       ProxyFetchPropertyCallback::kPagePropertyCache);
+  time_to_critical_line_data_look_up_done_ms_ =
+      GetTimeElapsedFromStartRequest();
   // finder_ will be never NULL because it is checked before entering
   // BlinkFlowCriticalLine.
   blink_critical_line_data_.reset(finder_->ExtractBlinkCriticalLineData(
@@ -492,10 +520,20 @@ void BlinkFlowCriticalLine::ServeAllPanelContents() {
   SendNonCriticalJson(&non_critical_json_str);
 }
 
+void BlinkFlowCriticalLine::WriteResponseStartAndLookUpTimings() {
+  WriteString(
+      GetAddTimingScriptString(kTimeToBlinkFlowStart,
+                               time_to_start_blink_flow_critical_line_ms_));
+  WriteString(
+      GetAddTimingScriptString(kTimeToBlinkDataLookUpDone,
+                               time_to_critical_line_data_look_up_done_ms_));
+  Flush();
+}
 void BlinkFlowCriticalLine::ServeCriticalPanelContents() {
   const GoogleString& pushed_images_str =
       blink_critical_line_data_->critical_images_map();
   SendCriticalHtml(critical_html_);
+  WriteResponseStartAndLookUpTimings();
   SendInlineImagesJson(pushed_images_str);
 }
 
@@ -534,6 +572,16 @@ void BlinkFlowCriticalLine::WriteString(const StringPiece& str) {
   base_fetch_->Write(str, manager_->message_handler());
 }
 
+GoogleString BlinkFlowCriticalLine::GetAddTimingScriptString(
+    const GoogleString& timing_str, int64 time_ms) {
+  return StrCat("<script>pagespeed.panelLoader.addCsiTiming(\"", timing_str,
+                "\", ", Integer64ToString(time_ms), ")</script>");
+}
+
+int64 BlinkFlowCriticalLine::GetTimeElapsedFromStartRequest() {
+  return manager_->timer()->NowMs() - request_start_time_ms_;
+}
+
 void BlinkFlowCriticalLine::Flush() {
   base_fetch_->Flush(manager_->message_handler());
 }
@@ -549,6 +597,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
   // when we have non-200 code but we just blanket disable here.
   options_->DisableFilter(RewriteOptions::kLazyloadImages);
   options_->DisableFilter(RewriteOptions::kDelayImages);
+  options_->DisableFilter(RewriteOptions::kInlineImages);
   // TODO(sriharis):  We need to also set                               [google]
   // GoogleRewriteOptions::fix_reflow_enabled to false.  But this is    [google]
   // open-source.  This is ok for now since fix_reflow_enabled is false [google]

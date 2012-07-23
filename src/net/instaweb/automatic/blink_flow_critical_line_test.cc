@@ -117,6 +117,8 @@ const char kBlinkOutputCommon[] =
     "<script>pagespeed.panelLoaderInit();</script>"
     "<script>pagespeed.panelLoader.setRequestFromInternalIp();</script>"
     "<script>pagespeed.panelLoader.loadCriticalData({});</script>"
+    "<script>pagespeed.panelLoader.addCsiTiming(\"BLINK_FLOW_START\", 0)</script>"
+    "<script>pagespeed.panelLoader.addCsiTiming(\"BLINK_DATA_LOOK_UP_DONE\", 0)</script>"
     "<script>pagespeed.panelLoader.loadImagesData();</script>";
 
 const char kBlinkOutputSuffix[] =
