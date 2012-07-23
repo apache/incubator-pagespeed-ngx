@@ -43,16 +43,7 @@
 
 // TODO(jmarantz): remove the ifdefs and add pagespeed.conf configuration and
 // documentation.
-#define USE_MEM_CACHE 0
-#if USE_MEM_CACHE
 #include "ap_mpm.h"
-
-namespace {
-
-static const char kServers[] = "localhost:6765";
-
-}  // namespace
-#endif
 
 namespace net_instaweb {
 
@@ -79,35 +70,36 @@ ApacheCache::ApacheCache(const StringPiece& path,
     FallBackToFileBasedLocking();
   }
 
-#if USE_MEM_CACHE
-  // Note that the thread_limit must be queried from this file, which is built
-  // with an include-path that includes the server.  We can't call ap_mpm_query
-  // from apr_mem_cache.cc without forcing a server dependency and making it
-  // harder to run it in unit tests.
-  //
-  // TODO(jmarantz): take into account the threads we create in PSA, in addition
-  // to the ones created in Apache.
-  int thread_limit;
-  ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
-  mem_cache_ = new AprMemCache(kServers, thread_limit, factory->hasher(),
-                               factory->message_handler());
-  if (!mem_cache_->valid_server_spec()) {
-    abort();  // TODO(jmarantz): is there a better way to exit?
+  const GoogleString& memcached_servers = config.memcached_servers();
+  if (!memcached_servers.empty()) {
+    // Note that the thread_limit must be queried from this file,
+    // which is built with an include-path that includes the server.
+    // We can't call ap_mpm_query from apr_mem_cache.cc without
+    // forcing a server dependency and making it harder to run it in
+    // unit tests.
+    int thread_limit;
+    ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
+    thread_limit += factory->num_rewrite_threads() +
+        factory->num_expensive_rewrite_threads();
+    mem_cache_ = new AprMemCache(memcached_servers, thread_limit,
+                                 factory->hasher(), factory->message_handler());
+    if (!mem_cache_->valid_server_spec()) {
+      abort();  // TODO(jmarantz): is there a better way to exit?
+    }
+    l2_cache_ = mem_cache_;  // apr_memcache is threadsafe.  If not we'd do:
+    // l2_cache_ = new ThreadsafeCache(mem_cache_,
+    //                                 factory->thread_system()->NewMutex());
+  } else {
+    FileCache::CachePolicy* policy = new FileCache::CachePolicy(
+        factory->timer(),
+        factory->hasher(),
+        config.file_cache_clean_interval_ms(),
+        config.file_cache_clean_size_kb() * 1024);
+    file_cache_ = new FileCache(
+        config.file_cache_path(), factory->file_system(), NULL,
+        factory->filename_encoder(), policy, factory->message_handler());
+    l2_cache_ = file_cache_;
   }
-  l2_cache_ = mem_cache_;  // apr_memcache is threadsafe.  If it wasn't we'd do:
-  // l2_cache_ = new ThreadsafeCache(mem_cache_,
-  //                                 factory->thread_system()->NewMutex());
-#else
-  FileCache::CachePolicy* policy = new FileCache::CachePolicy(
-      factory->timer(),
-      factory->hasher(),
-      config.file_cache_clean_interval_ms(),
-      config.file_cache_clean_size_kb() * 1024);
-  file_cache_ = new FileCache(
-      config.file_cache_path(), factory->file_system(), NULL,
-      factory->filename_encoder(), policy, factory->message_handler());
-  l2_cache_ = file_cache_;
-#endif
   if (config.lru_cache_kb_per_process() != 0) {
     LRUCache* lru_cache = new LRUCache(
         config.lru_cache_kb_per_process() * 1024);

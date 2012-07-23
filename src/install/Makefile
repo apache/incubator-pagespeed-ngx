@@ -208,6 +208,14 @@ else
   SHARED_MEM_LOCK_TEST_SED_PATTERN=^\#SHARED_MEM_LOCKS.*\n
 endif
 
+ifeq ($(MEMCACHED_TEST),1)
+  # remove prefix
+  MEMCACHED_TEST_SED_PATTERN=^\#MEMCACHED
+else
+  # remove whole line
+  MEMCACHED_TEST_SED_PATTERN=^\#MEMCACHED.*\n
+endif
+
 ifeq ($(SPELING_TEST),1)
   # remove prefix
   SPELING_TEST_SED_PATTERN=^\#SPELING
@@ -316,6 +324,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(SLURP_TEST_SED_PATTERN)@@" \
 	    -e "s@$(SHARED_MEM_LOCK_TEST_SED_PATTERN)@@" \
 	    -e "s@$(SPELING_TEST_SED_PATTERN)@@" \
+	    -e "s@$(MEMCACHED_TEST_SED_PATTERN)@@" \
 	    -e "s@$(GZIP_TEST_SED_PATTERN)@@" \
 	    -e "s@$(HTTPS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(FURIOUS_GA_TEST_SED_PATTERN)@@" \
@@ -410,7 +419,7 @@ test :
 # Now hook in the full integration test suite. It needs to be run as root.
 apache_install_conf:
 	$(MAKE) staging_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
-	    $(OPT_SLURP_TEST) $(OPT_SPELING_TEST) \
+	    $(OPT_SLURP_TEST) $(OPT_MEMCACHED_TEST) $(OPT_SPELING_TEST) \
 	    $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
 	    $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST) \
 	    $(OPT_GZIP_TEST) $(OPT_FURIOUS_GA_TEST) $(OPT_FURIOUS_NO_GA_TEST) \
@@ -418,7 +427,7 @@ apache_install_conf:
 	    $(OPT_DOMAIN_RESOURCE_TAGS_TEST) $(OPT_ALL_DIRECTIVES_TEST) \
 	    $(OPT_URL_ATTRIBUTE_TEST)
 	$(MAKE) install_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
-	    $(OPT_SLURP_TEST) $(OPT_SPELING_TEST) \
+	    $(OPT_SLURP_TEST) $(OPT_MEMCACHED_TEST) $(OPT_SPELING_TEST) \
 	    $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
 	    $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST) \
 	    $(OPT_GZIP_TEST) $(OPT_FURIOUS_GA_TEST) $(OPT_FURIOUS_NO_GA_TEST) \

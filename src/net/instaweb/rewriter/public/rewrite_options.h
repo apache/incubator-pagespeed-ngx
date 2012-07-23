@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_H_
 
 #include <set>
+#include <utility>                      // for pair
 #include <vector>
 
 #include "base/logging.h"
@@ -200,6 +201,7 @@ class RewriteOptions {
     kHashRefererStatistics,
     kLruCacheByteLimit,
     kLruCacheKbPerProcess,
+    kMemcachedServers,
     kMessageBufferSize,
     kRefererStatisticsOutputLevel,
     kSlurpDirectory,

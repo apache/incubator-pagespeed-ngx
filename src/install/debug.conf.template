@@ -14,6 +14,9 @@
 # default then we can eliminate this line.
 AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 
+# Do testing using memcached in lieu of the file cache.
+#MEMCACHED ModPagespeedMemcachedServers localhost:6765
+
 # If X-PSA-Blocking-Rewrite request header is present and its value matches the
 # value of ModPagespeedBlockingRewriteKey below, the response will be fully
 # rewritten before being flushed to the client.

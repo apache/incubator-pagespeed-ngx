@@ -7,7 +7,8 @@
 #  apache_vm_system_tests  (includes tests that can be run on VMs)
 # Imports:
 #  apache_install_conf (should read OPT_REWRITE_TEST, OPT_PROXY_TEST,
-#                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_HTTPS_TEST,
+#                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_MEMCACHED_TEST,
+#                       OPT_HTTPS_TEST,
 #                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST,
 #                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST,
 #                       OPT_FURIOUS_GA_TEST, OPT_FURIOUS_NO_GA_TEST,
@@ -37,6 +38,7 @@ export MOD_PAGESPEED_CACHE
 
 apache_vm_system_tests :
 	$(MAKE) apache_debug_smoke_test
+	$(MAKE) apache_debug_memcached_test
 	$(MAKE) apache_debug_leak_test
 	$(MAKE) apache_debug_rewrite_test
 	$(MAKE) apache_debug_proxy_test
@@ -151,6 +153,25 @@ apache_debug_speling_test : speling_test_prepare apache_install_conf \
 
 speling_test_prepare:
 	$(eval OPT_SPELING_TEST="SPELING_TEST=1")
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
+
+apache_debug_memcached_test : memcached_test_prepare apache_install_conf \
+    apache_debug_restart
+	-killall -u $(USER) memcached
+	sleep 2
+	memcached -p 6765 -vv >& /tmp/memcached.log &
+	sleep 2
+	@echo '***' System-test with cold memcached
+	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
+	                                          $(APACHE_HTTPS_SERVER)
+	@echo '***' System-test with warm memcached
+	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
+	                                          $(APACHE_HTTPS_SERVER)
+	$(MAKE) apache_debug_stop
+	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
+
+memcached_test_prepare:
+	$(eval OPT_MEMCACHED_TEST="MEMCACHED_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 # This test checks that when ModPagespeedFetchWithGzip is enabled we

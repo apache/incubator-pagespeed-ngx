@@ -121,8 +121,12 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   void set_fetch_with_gzip(bool x) { fetch_with_gzip_ = x; }
 
   void set_num_rewrite_threads(int x) { num_rewrite_threads_ = x; }
+  int num_rewrite_threads() const { return num_rewrite_threads_; }
   void set_num_expensive_rewrite_threads(int x) {
     num_expensive_rewrite_threads_ = x;
+  }
+  int num_expensive_rewrite_threads() const {
+    return num_expensive_rewrite_threads_;
   }
 
   void set_message_buffer_size(int x) {

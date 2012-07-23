@@ -125,6 +125,12 @@ class ApacheConfig : public RewriteOptions {
   void set_file_cache_path(GoogleString x) {
     set_option(x, &file_cache_path_);
   }
+  const GoogleString& memcached_servers() const {
+    return memcached_servers_.value();
+  }
+  void set_memcached_servers(GoogleString x) {
+    set_option(x, &memcached_servers_);
+  }
   const GoogleString& slurp_directory() const {
     return slurp_directory_.value();
   }
@@ -220,6 +226,10 @@ class ApacheConfig : public RewriteOptions {
 
   Option<GoogleString> fetcher_proxy_;
   Option<GoogleString> file_cache_path_;
+
+  // comma-separated list of host[:port].  See AprMemCache::AprMemCache
+  // for code that parses it.
+  Option<GoogleString> memcached_servers_;
   Option<GoogleString> slurp_directory_;
 
   ApacheOption<RefererStatisticsOutputLevel> referer_statistics_output_level_;

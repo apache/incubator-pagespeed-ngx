@@ -72,6 +72,7 @@ struct OptionName {
 # mod_pagespeed config name, MaxUrlSegmentSize is the name used in code.
 "MaxSegmentLength",                     RewriteOptions::kMaxUrlSegmentSize
 "MaxUrlSize",                           RewriteOptions::kMaxUrlSize
+"MemcachedServers",                     RewriteOptions::kMemcachedServers
 "MinImageSizeLowResolutionBytes",       RewriteOptions::kMinImageSizeLowResolutionBytes
 "MinResourceCacheTimeToRewriteMs",      RewriteOptions::kMinResourceCacheTimeToRewriteMs
 "ModifyCachingHeaders",                 RewriteOptions::kModifyCachingHeaders

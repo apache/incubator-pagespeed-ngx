@@ -149,6 +149,7 @@ const char* kModPagespeedMaxImageSizeLowResolutionBytes =
 const char* kModPagespeedMaxInlinedPreviewImagesIndex =
     "ModPagespeedMaxInlinedPreviewImagesIndex";
 const char* kModPagespeedMaxSegmentLength = "ModPagespeedMaxSegmentLength";
+const char* kModPagespeedMemcachedServers = "ModPagespeedMemcachedServers";
 const char* kModPagespeedMessageBufferSize = "ModPagespeedMessageBufferSize";
 const char* kModPagespeedMinImageSizeLowResolutionBytes =
     "ModPagespeedMinImageSizeLowResolutionBytes";
@@ -1333,6 +1334,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedMaxInlinedPreviewImagesIndex,
         "Number of first N images for which low resolution image is generated. "
         "Negative values result in generation for all images."),
+  APACHE_CONFIG_OPTION(kModPagespeedMemcachedServers,
+        "Comma-separated list of servers e.g. host1:port1,host2:port2"),
   APACHE_CONFIG_OPTION(kModPagespeedMessageBufferSize,
         "Set the size of buffer used for /mod_pagespeed_message."),
   APACHE_CONFIG_OPTION(kModPagespeedMinImageSizeLowResolutionBytes,
