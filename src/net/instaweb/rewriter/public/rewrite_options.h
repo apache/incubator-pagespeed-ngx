@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest_prod.h"  // for FRIEND_TEST
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -369,10 +370,10 @@ class RewriteOptions {
     // This is primarily used for setting up the control and for cloning.
     explicit FuriousSpec(int id);
 
-    ~FuriousSpec();
+    virtual ~FuriousSpec();
 
     // Return a FuriousSpec with all the same information as this one.
-    FuriousSpec* Clone();
+    virtual FuriousSpec* Clone();
 
     bool is_valid() const { return id_ >= 0; }
 
@@ -390,7 +391,15 @@ class RewriteOptions {
     int64 image_inline_max_bytes() const { return image_inline_max_bytes_; }
     bool use_default() const { return use_default_; }
 
+   protected:
+    // Merges a spec into this. This follows the same semantics as
+    // RewriteOptions. Specifically, filter/options list get unioned, and
+    // vars get overwritten, except ID.
+    void Merge(const FuriousSpec& spec);
+
    private:
+    FRIEND_TEST(RewriteOptionsTest, FuriousMergeTest);
+
     // Initialize parses spec and sets the FilterSets, rewrite level,
     // inlining thresholds, and OptionSets accordingly.
     void Initialize(const StringPiece& spec, MessageHandler* handler);
@@ -458,16 +467,7 @@ class RewriteOptions {
 
   // Creates a FuriousSpec from spec and adds it to the configuration.
   // Returns true if it was added successfully.
-  bool AddFuriousSpec(const StringPiece& spec, MessageHandler* handler);
-
-  // Creates a FuriousSpec with furious_id and adds it to the configuration.
-  // Returns true if it was added successfully.
-  bool AddFuriousSpec(int furious_id);
-
-  // Add an experiment configuration.
-  // Returns true if the experiment was added successfully.
-  // Takes owndership of (and may delete) spec.
-  bool AddFuriousSpec(FuriousSpec* spec);
+  virtual bool AddFuriousSpec(const StringPiece& spec, MessageHandler* handler);
 
   // Sets which side of the experiment these RewriteOptions are on.
   // Cookie-setting must be done separately.
@@ -476,7 +476,7 @@ class RewriteOptions {
   // in any experiment.
   // Then sets the rewriters to match the experiment indicated by id.
   // Returns true if succeeded in setting state.
-  bool SetFuriousState(int id);
+  virtual bool SetFuriousState(int id);
 
   // We encode experiment information in urls as an experiment index: the first
   // ExperimentSpec is a, the next is b, and so on.  Empty string or an invalid
@@ -1467,10 +1467,20 @@ class RewriteOptions {
     x_header_value_.set_default(x_header_value.as_string());
   }
 
+  // Enable/disable filters and set options according to the current FuriousSpec
+  // that furious_id_ matches. Returns true if the state was set successfully.
+  bool SetupFuriousRewriters();
+
   // Enables filters needed by Furious regardless of experiment.
   virtual void SetRequiredFuriousFilters();
 
+  // Helper method to add pre-configured FuriousSpec objects to the internal
+  // vector of FuriousSpec's. Returns true if the experiment was added
+  // successfully. Takes ownership of (and may delete) spec.
+  bool InsertFuriousSpecInVector(FuriousSpec* spec);
+
  private:
+  FRIEND_TEST(RewriteOptionsTest, FuriousMergeTest);
   typedef std::vector<Filter> FilterVector;
 
   // A family of urls for which prioritize_visible_content filter can be
@@ -1610,10 +1620,6 @@ class RewriteOptions {
     return option->option_enum() < arg;
   }
 
-  // Set the rewriter sets and thresholds to match what is in the
-  // FuriousSpec our furious_id_ matches. Returns true if the state
-  // was set successfully.
-  bool SetupFuriousRewriters();
   bool modified_;
   bool frozen_;
   FilterSet enabled_filters_;

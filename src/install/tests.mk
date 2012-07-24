@@ -157,16 +157,11 @@ speling_test_prepare:
 
 apache_debug_memcached_test : memcached_test_prepare apache_install_conf \
     apache_debug_restart
-	-killall -u $(USER) memcached
-	sleep 2
-	memcached -p 6765 -vv >& /tmp/memcached.log &
-	sleep 2
-	@echo '***' System-test with cold memcached
-	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
-	                                          $(APACHE_HTTPS_SERVER)
-	@echo '***' System-test with warm memcached
-	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
-	                                          $(APACHE_HTTPS_SERVER)
+	$(INSTALL_DATA_DIR)/run_program_with_memcached.sh -multi \
+            $(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
+	                                        $(APACHE_HTTPS_SERVER) \; \
+        $(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
+	    $(APACHE_HTTPS_SERVER)
 	$(MAKE) apache_debug_stop
 	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
 

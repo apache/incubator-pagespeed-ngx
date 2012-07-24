@@ -1093,6 +1093,35 @@ TEST_F(RewriteOptionsTest, FuriousOptionsTest) {
   EXPECT_EQ(100L, options_.css_inline_max_bytes());
 }
 
+TEST_F(RewriteOptionsTest, FuriousMergeTest) {
+  NullMessageHandler handler;
+  RewriteOptions::FuriousSpec *spec = new
+      RewriteOptions::FuriousSpec("id=1;percentage=15;"
+                                  "enable=defer_javascript;"
+                                  "options=CssInlineMaxBytes=100",
+                                  &options_, &handler);
+
+  RewriteOptions::FuriousSpec *spec2 = new
+      RewriteOptions::FuriousSpec("id=2;percentage=25;enable=resize_images;"
+                                  "options=CssInlineMaxBytes=125", &options_,
+                                  &handler);
+  options_.InsertFuriousSpecInVector(spec);
+  options_.InsertFuriousSpecInVector(spec2);
+  options_.SetFuriousState(1);
+  EXPECT_EQ(15, spec->percent());
+  EXPECT_EQ(1, spec->id());
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kDeferJavascript));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kResizeImages));
+  EXPECT_EQ(100L, options_.css_inline_max_bytes());
+  spec->Merge(*spec2);
+  options_.SetFuriousState(1);
+  EXPECT_EQ(25, spec->percent());
+  EXPECT_EQ(1, spec->id());
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kDeferJavascript));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kResizeImages));
+  EXPECT_EQ(125L, options_.css_inline_max_bytes());
+}
+
 TEST_F(RewriteOptionsTest, SetOptionsFromName) {
   RewriteOptions::OptionSet option_set;
   option_set.insert(RewriteOptions::OptionStringPair(

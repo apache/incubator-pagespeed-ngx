@@ -1232,7 +1232,7 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
 
   for (int i = 0, n = src.furious_specs_.size(); i < n; ++i) {
     FuriousSpec* spec = src.furious_specs_[i]->Clone();
-    AddFuriousSpec(spec);
+    InsertFuriousSpecInVector(spec);
   }
 
   for (int i = 0, n = src.num_url_valued_attributes(); i < n; ++i) {
@@ -1504,15 +1504,10 @@ bool RewriteOptions::AvailableFuriousId(int id) {
 bool RewriteOptions::AddFuriousSpec(const StringPiece& spec,
                                     MessageHandler* handler) {
   FuriousSpec* f_spec = new FuriousSpec(spec, this, handler);
-  return AddFuriousSpec(f_spec);
+  return InsertFuriousSpecInVector(f_spec);
 }
 
-bool RewriteOptions::AddFuriousSpec(int furious_id) {
-  FuriousSpec* f_spec = new FuriousSpec(furious_id);
-  return AddFuriousSpec(f_spec);
-}
-
-bool RewriteOptions::AddFuriousSpec(FuriousSpec* spec) {
+bool RewriteOptions::InsertFuriousSpecInVector(FuriousSpec* spec) {
   // See RewriteOptions::GetFuriousStateStr for why we can't have more than 26.
   if (!AvailableFuriousId(spec->id()) || spec->percent() <= 0 ||
       furious_percent_ + spec->percent() > 100 ||
@@ -1604,24 +1599,32 @@ RewriteOptions::FuriousSpec::FuriousSpec(int id)
 
 RewriteOptions::FuriousSpec::~FuriousSpec() { }
 
+void RewriteOptions::FuriousSpec::Merge(const FuriousSpec& spec) {
+  for (FilterSet::const_iterator iter = spec.enabled_filters_.begin();
+       iter != spec.enabled_filters_.end(); ++iter) {
+    enabled_filters_.insert(*iter);
+  }
+  for (FilterSet::const_iterator iter = spec.disabled_filters_.begin();
+       iter != spec.disabled_filters_.end(); ++iter) {
+    disabled_filters_.insert(*iter);
+  }
+  for (OptionSet::const_iterator iter = spec.filter_options_.begin();
+       iter != spec.filter_options_.end(); ++iter) {
+    filter_options_.insert(*iter);
+  }
+  ga_id_ = spec.ga_id_;
+  ga_variable_slot_ = spec.ga_variable_slot_;
+  percent_ = spec.percent_;
+  rewrite_level_ = spec.rewrite_level_;
+  css_inline_max_bytes_ = spec.css_inline_max_bytes_;
+  js_inline_max_bytes_ = spec.js_inline_max_bytes_;
+  image_inline_max_bytes_ = spec.image_inline_max_bytes_;
+  use_default_ = spec.use_default_;
+}
+
 RewriteOptions::FuriousSpec* RewriteOptions::FuriousSpec::Clone() {
   FuriousSpec* ret = new FuriousSpec(id_);
-  for (FilterSet::const_iterator iter = enabled_filters_.begin();
-       iter != enabled_filters_.end(); ++iter) {
-    ret->enabled_filters_.insert(*iter);
-  }
-  for (FilterSet::const_iterator iter = disabled_filters_.begin();
-       iter != disabled_filters_.end(); ++iter) {
-    ret->disabled_filters_.insert(*iter);
-  }
-  ret->ga_id_ = ga_id_;
-  ret->ga_variable_slot_ = ga_variable_slot_;
-  ret->percent_ = percent_;
-  ret->rewrite_level_ = rewrite_level_;
-  ret->css_inline_max_bytes_ = css_inline_max_bytes_;
-  ret->js_inline_max_bytes_ = js_inline_max_bytes_;
-  ret->image_inline_max_bytes_ = image_inline_max_bytes_;
-  ret->use_default_ = use_default_;
+  ret->Merge(*this);
   return ret;
 }
 
