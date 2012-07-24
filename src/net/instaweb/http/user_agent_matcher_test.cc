@@ -68,6 +68,8 @@ TEST_F(UserAgentMatcherTest, SupportsImageInlining) {
       UserAgentStrings::kSafariUserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
       UserAgentStrings::kIPhoneUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kAndroidChrome21UserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, NotSupportsImageInlining) {
@@ -81,6 +83,8 @@ TEST_F(UserAgentMatcherTest, NotSupportsImageInlining) {
       UserAgentStrings::kOpera5UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(
       UserAgentStrings::kPSPUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kAndroidChrome18UserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, SupportsBlinkDesktop) {
@@ -213,6 +217,17 @@ TEST_F(UserAgentMatcherTest, DoesntSupportWebp) {
       UserAgentStrings::kPSPUserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsWebp(
       UserAgentStrings::kSafariUserAgent));
+}
+
+TEST_F(UserAgentMatcherTest, SupportsDnsPrefetchUsingRelPrefetch) {
+  EXPECT_FALSE(user_agent_matcher_.SupportsDnsPrefetchUsingRelPrefetch(
+      UserAgentStrings::kIe6UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsDnsPrefetchUsingRelPrefetch(
+      UserAgentStrings::kIe7UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsDnsPrefetchUsingRelPrefetch(
+      UserAgentStrings::kIe8UserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsDnsPrefetchUsingRelPrefetch(
+      UserAgentStrings::kIe9UserAgent));
 }
 
 }  // namespace net_instaweb

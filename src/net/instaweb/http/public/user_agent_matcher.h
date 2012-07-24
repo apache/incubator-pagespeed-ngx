@@ -54,6 +54,7 @@ class UserAgentMatcher {
   bool IsIe6or7(const StringPiece& user_agent) const {
     return IsIe6(user_agent) || IsIe7(user_agent);
   };
+  bool IsIe9(const StringPiece& user_agent) const;
 
   bool SupportsImageInlining(const StringPiece& user_agent) const;
 
@@ -69,6 +70,11 @@ class UserAgentMatcher {
   bool SupportsJsDefer(const StringPiece& user_agent) const;
   bool SupportsWebp(const StringPiece& user_agent) const;
 
+  // IE9 does not implement <link rel=dns-prefetch ...>. Instead it does DNS
+  // preresolution when it sees <link rel=prefetch ...>. This method returns
+  // true if the browser support DNS prefetch using rel=prefetch.
+  // Refer: http://blogs.msdn.com/b/ie/archive/2011/03/17/internet-explorer-9-network-performance-improvements.aspx NOLINT
+  bool SupportsDnsPrefetchUsingRelPrefetch(const StringPiece& user_agent) const;
 
   virtual bool IsMobileUserAgent(const StringPiece& user_agent) const;
   virtual bool IsMobileRequest(

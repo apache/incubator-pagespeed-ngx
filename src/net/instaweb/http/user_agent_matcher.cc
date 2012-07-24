@@ -100,6 +100,8 @@ const char* kWebpBlacklist[] = {
   "*Chrome/14.*",
   "*Chrome/15.*",
   "*Chrome/16.*",
+  "*Android *Chrome/1?.*",
+  "*Android *Chrome/20.*",
   "*Opera/9.80*Version/10.*",
   "*Opera?10.*",
   "*Opera/9.80*Version/11.0*",
@@ -127,7 +129,7 @@ const char* kSupportsPrefetchLinkRelSubresource[] = {
 const char* kSupportsPrefetchImageTag[] = {
   "*Firefox/*",
 };
-}
+}  // namespace
 
 UserAgentMatcher::UserAgentMatcher() {
   // Initialize WildcardGroup for image inlining whitelist & blacklist.
@@ -176,6 +178,10 @@ bool UserAgentMatcher::IsIe6(const StringPiece& user_agent) const {
 
 bool UserAgentMatcher::IsIe7(const StringPiece& user_agent) const {
   return user_agent.find(" MSIE 7.") != GoogleString::npos;
+}
+
+bool UserAgentMatcher::IsIe9(const StringPiece& user_agent) const {
+  return user_agent.find(" MSIE 9.") != GoogleString::npos;
 }
 
 bool UserAgentMatcher::SupportsImageInlining(
@@ -235,6 +241,11 @@ bool UserAgentMatcher::IsMobileRequest(
     const StringPiece& user_agent,
     const RequestHeaders* request_headers) const {
   return IsMobileUserAgent(user_agent);
+}
+
+bool UserAgentMatcher::SupportsDnsPrefetchUsingRelPrefetch(
+    const StringPiece& user_agent) const {
+  return IsIe9(user_agent);
 }
 
 }  // namespace net_instaweb

@@ -45,6 +45,14 @@ const char kChrome18UserAgent[] =  // webp capable
 const char kChrome12UserAgent[] =  // webp capable
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_4) "
     "AppleWebKit/534.30 (KHTML, like Gecko) Chrome/12.0.742.100 Safari/534.30";
+const char kAndroidChrome18UserAgent[] =  // webp broken
+    "Mozilla/5.0 (Linux; Android 4.0.4; Galaxy Nexus Build/IMM76B) "
+    "AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.133 Mobile "
+    "Safari/535.19";
+const char kAndroidChrome21UserAgent[] =  // webp fixed (string is a hack)
+    "Mozilla/5.0 (Linux; Android 4.1.4; Galaxy Nexus Build/IMM76B) "
+    "AppleWebKit/535.19 (KHTML, like Gecko) Chrome/21.0.1025.133 Mobile "
+    "Safari/535.19";
 const char kOpera1101UserAgent[] =  // Not webp capable
     "Opera/9.80 (Windows NT 5.2; U; ru) Presto/2.7.62 Version/11.01";
 const char kOpera1110UserAgent[] =  // webp capable
