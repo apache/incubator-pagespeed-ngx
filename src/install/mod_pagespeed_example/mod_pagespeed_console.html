@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<title>mod_pagespeed Console</title>
+<link rel="stylesheet" href="mod_pagespeed_console.css" />
+<script src="https://www.google.com/jsapi"></script>
+<script src="mod_pagespeed_console.js"></script>
+<script>
+  google.load('visualization', '1.0', {'packages': ['corechart']});
+  google.setOnLoadCallback(function() {
+    pagespeed.initConsole();
+  });
+</script>
