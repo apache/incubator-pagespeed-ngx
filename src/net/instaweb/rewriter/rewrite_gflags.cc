@@ -206,6 +206,9 @@ DEFINE_bool(support_noscript_enabled, true,
             "Support for clients with no script support, in filters that "
             "insert new javascript.");
 
+DEFINE_bool(enable_blink_debug_dashboard, true,
+            "Enable blink dashboard used for debugging.");
+
 namespace net_instaweb {
 
 namespace {
@@ -358,6 +361,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("pagespeed_version")) {
     options->set_x_header_value(FLAGS_pagespeed_version);
+  }
+  if (WasExplicitlySet("enable_blink_debug_dashboard")) {
+    options->set_enable_blink_debug_dashboard(
+        FLAGS_enable_blink_debug_dashboard);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

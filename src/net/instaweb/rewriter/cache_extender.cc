@@ -45,17 +45,13 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
 
-namespace {
-
-// names for Statistics variables.
-const char kCacheExtensions[] = "cache_extensions";
-const char kNotCacheable[] = "not_cacheable";
-
-}  // namespace
-
 namespace net_instaweb {
 class MessageHandler;
 class RewriteContext;
+
+// names for Statistics variables.
+const char CacheExtender::kCacheExtensions[] = "cache_extensions";
+const char CacheExtender::kNotCacheable[] = "not_cacheable";
 
 // We do not want to bother to extend the cache lifetime for any resource
 // that is already cached for a month.
@@ -192,7 +188,11 @@ void CacheExtender::Context::RewriteSingle(
 }
 
 void CacheExtender::Context::Render() {
-  extender_->extension_count_->Add(1);
+  // num_slots() should be 1 at this point because this is a single resource
+  // rewriter, but we just double-check this before incrementing the stats.
+  if (num_slots() == 1 && slot(0)->was_optimized()) {
+    extender_->extension_count_->Add(1);
+  }
 }
 
 RewriteResult CacheExtender::RewriteLoadedResource(

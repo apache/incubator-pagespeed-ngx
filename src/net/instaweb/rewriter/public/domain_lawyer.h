@@ -196,6 +196,12 @@ class DomainLawyer {
   bool DoDomainsServeSameContent(const StringPiece& domain1,
                                  const StringPiece& domain2) const;
 
+  // Finds domains rewritten to this domain. Includes only non-wildcarded
+  // domains. comma_separated_from_domains is empty if no mapping found.
+  void FindDomainsRewrittenTo(
+      const GoogleUrl& domain_name,
+      ConstStringStarVector* from_domains) const;
+
   // Computes a signature for the DomainLawyer object including containing
   // classes (Domain).
   GoogleString Signature() const;

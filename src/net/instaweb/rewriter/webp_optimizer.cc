@@ -118,7 +118,12 @@ class WebpOptimizer {
   DISALLOW_COPY_AND_ASSIGN(WebpOptimizer);
 };  // class WebpOptimizer
 
-WebpOptimizer::WebpOptimizer() : pixels_(NULL), rows_(NULL) { }
+WebpOptimizer::WebpOptimizer()
+    : pixels_(NULL),
+      rows_(NULL),
+      width_(0),
+      height_(0),
+      row_stride_(0) { }
 WebpOptimizer::~WebpOptimizer() {
   delete[] pixels_;
   DCHECK(rows_ == NULL);

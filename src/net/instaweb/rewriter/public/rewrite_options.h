@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest_prod.h"  // for FRIEND_TEST
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -83,6 +84,7 @@ class RewriteOptions {
     kInlineImages,
     kInlineImportToLink,
     kInlineJavascript,
+    kInsertDnsPrefetch,
     kInsertGA,
     kInsertImageDimensions,
     kJpegSubsampling,
@@ -131,6 +133,7 @@ class RewriteOptions {
     kBlinkDesktopUserAgent,
     kBlinkMaxHtmlSizeRewritable,
     kCacheInvalidationTimestamp,
+    kClientDomainRewrite,
     kCombineAcrossPaths,
     kCriticalImagesCacheExpirationTimeMs,
     kCssFlattenMaxBytes,
@@ -141,6 +144,7 @@ class RewriteOptions {
     kDomainRewriteHyperlinks,
     kDomainShardCount,
     kEnableBlinkCriticalLine,
+    kEnableBlinkDashboard,
     kEnableBlinkForMobileDevices,
     kEnabled,
     kEnableDeferJsExperimental,
@@ -369,10 +373,10 @@ class RewriteOptions {
     // This is primarily used for setting up the control and for cloning.
     explicit FuriousSpec(int id);
 
-    ~FuriousSpec();
+    virtual ~FuriousSpec();
 
     // Return a FuriousSpec with all the same information as this one.
-    FuriousSpec* Clone();
+    virtual FuriousSpec* Clone();
 
     bool is_valid() const { return id_ >= 0; }
 
@@ -390,7 +394,15 @@ class RewriteOptions {
     int64 image_inline_max_bytes() const { return image_inline_max_bytes_; }
     bool use_default() const { return use_default_; }
 
+   protected:
+    // Merges a spec into this. This follows the same semantics as
+    // RewriteOptions. Specifically, filter/options list get unioned, and
+    // vars get overwritten, except ID.
+    void Merge(const FuriousSpec& spec);
+
    private:
+    FRIEND_TEST(RewriteOptionsTest, FuriousMergeTest);
+
     // Initialize parses spec and sets the FilterSets, rewrite level,
     // inlining thresholds, and OptionSets accordingly.
     void Initialize(const StringPiece& spec, MessageHandler* handler);
@@ -458,16 +470,7 @@ class RewriteOptions {
 
   // Creates a FuriousSpec from spec and adds it to the configuration.
   // Returns true if it was added successfully.
-  bool AddFuriousSpec(const StringPiece& spec, MessageHandler* handler);
-
-  // Creates a FuriousSpec with furious_id and adds it to the configuration.
-  // Returns true if it was added successfully.
-  bool AddFuriousSpec(int furious_id);
-
-  // Add an experiment configuration.
-  // Returns true if the experiment was added successfully.
-  // Takes owndership of (and may delete) spec.
-  bool AddFuriousSpec(FuriousSpec* spec);
+  virtual bool AddFuriousSpec(const StringPiece& spec, MessageHandler* handler);
 
   // Sets which side of the experiment these RewriteOptions are on.
   // Cookie-setting must be done separately.
@@ -476,7 +479,7 @@ class RewriteOptions {
   // in any experiment.
   // Then sets the rewriters to match the experiment indicated by id.
   // Returns true if succeeded in setting state.
-  bool SetFuriousState(int id);
+  virtual bool SetFuriousState(int id);
 
   // We encode experiment information in urls as an experiment index: the first
   // ExperimentSpec is a, the next is b, and so on.  Empty string or an invalid
@@ -947,6 +950,13 @@ class RewriteOptions {
     set_option(x, &domain_rewrite_hyperlinks_);
   }
 
+  bool client_domain_rewrite() const {
+    return client_domain_rewrite_.value();
+  }
+  void set_client_domain_rewrite(bool x) {
+    set_option(x, &client_domain_rewrite_);
+  }
+
   void set_enable_defer_js_experimental(bool x) {
     set_option(x, &enable_defer_js_experimental_);
   }
@@ -959,6 +969,13 @@ class RewriteOptions {
   }
   bool enable_inline_preview_images_experimental() const {
     return enable_inline_preview_images_experimental_.value();
+  }
+
+  void set_enable_blink_debug_dashboard(bool x) {
+    set_option(x, &enable_blink_debug_dashboard_);
+  }
+  bool enable_blink_debug_dashboard() const {
+    return enable_blink_debug_dashboard_.value();
   }
 
   const GoogleString& blocking_rewrite_key() const {
@@ -1467,10 +1484,20 @@ class RewriteOptions {
     x_header_value_.set_default(x_header_value.as_string());
   }
 
+  // Enable/disable filters and set options according to the current FuriousSpec
+  // that furious_id_ matches. Returns true if the state was set successfully.
+  bool SetupFuriousRewriters();
+
   // Enables filters needed by Furious regardless of experiment.
   virtual void SetRequiredFuriousFilters();
 
+  // Helper method to add pre-configured FuriousSpec objects to the internal
+  // vector of FuriousSpec's. Returns true if the experiment was added
+  // successfully. Takes ownership of (and may delete) spec.
+  bool InsertFuriousSpecInVector(FuriousSpec* spec);
+
  private:
+  FRIEND_TEST(RewriteOptionsTest, FuriousMergeTest);
   typedef std::vector<Filter> FilterVector;
 
   // A family of urls for which prioritize_visible_content filter can be
@@ -1610,10 +1637,6 @@ class RewriteOptions {
     return option->option_enum() < arg;
   }
 
-  // Set the rewriter sets and thresholds to match what is in the
-  // FuriousSpec our furious_id_ matches. Returns true if the state
-  // was set successfully.
-  bool SetupFuriousRewriters();
   bool modified_;
   bool frozen_;
   FilterSet enabled_filters_;
@@ -1700,6 +1723,9 @@ class RewriteOptions {
   // people may want to inline all images (both critical and non-critical). If
   // set to false, all images will be inlined within the html.
   Option<bool> inline_only_critical_images_;
+  // Indicates whether the DomainRewriteFilter should also do client side
+  // rewriting.
+  Option<bool> client_domain_rewrite_;
   // Indicates whether the DomainRewriteFilter should rewrite all tags,
   // including <a href> and <form action>.
   Option<bool> domain_rewrite_hyperlinks_;
@@ -1794,6 +1820,8 @@ class RewriteOptions {
   // Consider the prioritize_visible_content_families_ url_patterns to be on
   // full URL and not URL path.
   Option<bool> use_full_url_in_blink_families_;
+  // Show the blink debug dashboard.
+  Option<bool> enable_blink_debug_dashboard_;
 
   // If this is true (it defaults to false) ProxyInterface frontend will
   // reject requests where PSA is not enabled or URL is blacklisted with

@@ -101,7 +101,10 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
             rewrite_driver_->MakeName("orig_src"), url,
             HtmlElement::DOUBLE_QUOTE);
         element->DeleteAttribute(HtmlName::kSrc);
-      } else if (defer_js_experimental_ && index_ == 0) {
+      } else if (index_ == 0 &&
+                 rewrite_driver_->options()->Enabled(
+                     RewriteOptions::kDeferJavascript) &&
+                 defer_js_experimental_) {
         return;
       }
       HtmlElement::Attribute* type = element->FindAttribute(HtmlName::kType);

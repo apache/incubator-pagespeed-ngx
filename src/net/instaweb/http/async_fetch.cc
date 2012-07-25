@@ -267,7 +267,8 @@ ConditionalSharedAsyncFetch::ConditionalSharedAsyncFetch(
     : SharedAsyncFetch(base_fetch),
       handler_(handler),
       serving_cached_value_(false),
-      added_conditional_headers_to_request_(false) {
+      added_conditional_headers_to_request_(false),
+      num_conditional_refreshes_(NULL) {
   if (cached_value != NULL && !cached_value->Empty()) {
     // Only do our own conditional fetch if the original request wasn't
     // conditional.

@@ -75,6 +75,7 @@
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/insert_dns_prefetch_filter.h"
 #include "net/instaweb/rewriter/public/insert_ga_filter.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/js_combine_filter.h"
@@ -111,6 +112,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -978,6 +980,12 @@ void RewriteDriver::AddPostRenderFilters() {
     AddOwnedPostRenderFilter(filter);
   }
 
+  if (rewrite_options->Enabled(RewriteOptions::kInsertDnsPrefetch)) {
+    InsertDnsPrefetchFilter *insert_dns_prefetch_filter =
+        new InsertDnsPrefetchFilter(this);
+    AddOwnedPostRenderFilter(insert_dns_prefetch_filter);
+  }
+
   // Remove quotes and collapse whitespace at the very end for maximum effect.
   if (rewrite_options->Enabled(RewriteOptions::kRemoveQuotes)) {
     // Remove extraneous quotes from html attributes.
@@ -1762,7 +1770,7 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
     PropertyCache* pcache = resource_manager_->page_property_cache();
     const PropertyCache::Cohort* dom_cohort = pcache->GetCohort(kDomCohort);
     if (dom_cohort != NULL) {
-      if (flush_subresources_rewriter_enabled) {
+      if (flush_early_info_.get() != NULL) {
         PropertyValue* subresources_property_value = page->GetProperty(
             dom_cohort, RewriteDriver::kSubresourcesPropertyName);
         GoogleString value;
@@ -2248,6 +2256,18 @@ RewriteDriver::XhtmlStatus RewriteDriver::MimeTypeXhtmlStatus() {
 FlushEarlyInfo* RewriteDriver::flush_early_info() {
   if (flush_early_info_.get() == NULL) {
     flush_early_info_.reset(new FlushEarlyInfo);
+    const PropertyCache::Cohort* cohort = resource_manager()
+        ->page_property_cache()->GetCohort(RewriteDriver::kDomCohort);
+    if (property_page() != NULL && cohort != NULL) {
+      PropertyValue* property_value = property_page()->GetProperty(
+          cohort, RewriteDriver::kSubresourcesPropertyName);
+
+      if (property_value->has_value()) {
+        ArrayInputStream value(property_value->value().data(),
+                               property_value->value().size());
+        flush_early_info_->ParseFromZeroCopyStream(&value);
+      }
+    }
   }
   return flush_early_info_.get();
 }

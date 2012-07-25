@@ -47,6 +47,9 @@ class Variable;
 // RenameUrlFilter or ProxyUrlFilter.
 class CacheExtender : public RewriteFilter {
  public:
+  static const char kCacheExtensions[];
+  static const char kNotCacheable[];
+
   explicit CacheExtender(RewriteDriver* driver);
   virtual ~CacheExtender();
 

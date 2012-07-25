@@ -59,7 +59,8 @@ HtmlParse::HtmlParse(MessageHandler* message_handler)
       log_rewrite_timing_(false),
       running_filters_(false),
       parse_start_time_us_(0),
-      timer_(NULL) {
+      timer_(NULL),
+      first_filter_(0) {
   lexer_ = new HtmlLexer(this);
   HtmlKeywords::Init();
 }

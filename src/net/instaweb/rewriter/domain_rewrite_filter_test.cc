@@ -22,6 +22,7 @@
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -180,6 +181,32 @@ TEST_F(DomainRewriteFilterTest, RewriteRedirectLocations) {
   ValidateNoChanges("headers", "");
   EXPECT_EQ(StrCat(kTo1Domain, "redirect"),
             headers.Lookup1(HttpAttributes::kLocation));
+}
+
+TEST_F(DomainRewriteFilterTest, NoClientDomainRewrite) {
+  options()->ClearSignatureForTesting();
+  options()->set_domain_rewrite_hyperlinks(true);
+  options()->set_client_domain_rewrite(true);
+  ValidateNoChanges("client domain rewrite", "<html><body></body></html>");
+}
+
+TEST_F(DomainRewriteFilterTest, ClientDomainRewrite) {
+  options()->ClearSignatureForTesting();
+  options()->domain_lawyer()->AddRewriteDomainMapping(
+      kHtmlDomain, "http://clientrewrite.com/", &message_handler_);
+  options()->set_domain_rewrite_hyperlinks(true);
+  options()->set_client_domain_rewrite(true);
+  StringPiece client_domain_rewriter_code =
+      resource_manager_->static_javascript_manager()->GetJsSnippet(
+          StaticJavascriptManager::kClientDomainRewriter, options());
+  ValidateExpected(
+      "client domain rewrite", "<html><body></body></html>",
+      StrCat("<html><body>",
+             "<script type=\"text/javascript\">",
+             client_domain_rewriter_code,
+             "pagespeed.clientDomainRewriterInit("
+             "[\"http://clientrewrite.com/\"]);</script>",
+             "</body></html>"));
 }
 
 }  // namespace net_instaweb

@@ -811,6 +811,7 @@ class RewriteDriver : public HtmlParse {
   void set_flushed_early(bool x) { flushed_early_ = x; }
   bool flushed_early() { return flushed_early_; }
 
+  // This method is not thread-safe. Call it only from the html parser thread.
   FlushEarlyInfo* flush_early_info();
 
   void set_serve_blink_non_critical(bool x) { serve_blink_non_critical_ = x; }

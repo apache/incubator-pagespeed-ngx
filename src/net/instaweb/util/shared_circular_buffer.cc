@@ -40,6 +40,7 @@ SharedCircularBuffer::SharedCircularBuffer(AbstractSharedMem* shm_runtime,
                                            const GoogleString& filename_suffix)
     : shm_runtime_(shm_runtime),
       buffer_capacity_(buffer_capacity),
+      buffer_(NULL),
       filename_prefix_(filename_prefix),
       filename_suffix_(filename_suffix) {
 }

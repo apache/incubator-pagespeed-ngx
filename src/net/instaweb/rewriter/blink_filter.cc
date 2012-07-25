@@ -52,6 +52,8 @@ BlinkFilter::BlinkFilter(RewriteDriver* rewrite_driver)
       rewrite_driver_(rewrite_driver),
       rewrite_options_(rewrite_driver->options()),
       string_writer_(&buffer_),
+      current_non_cacheable_element_(NULL),
+      cohort_(NULL),
       abort_filter_(false) {
 }
 

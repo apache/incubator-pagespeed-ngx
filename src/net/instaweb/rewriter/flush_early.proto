@@ -40,9 +40,24 @@ message FlushEarlyInfo {
   // ResponseHeaders proto from previous response which is used for subsequent
   // response for the same html url.
   optional HttpResponseHeaders response_headers = 1;
+
   // The html of the page before the <head> element.
   optional string pre_head = 2;
+
   repeated string resources = 3;  // deprecated.
+
   // The resources in the head section for the page.
   repeated FlushEarlyResource subresource = 4;
+
+  // Domains for which DNS prefetch tags will be inserted in <head>.
+  repeated string dns_prefetch_domains = 5;
+
+  // Total number of domains in the page for which DNS prefetch tags could be
+  // potentially inserted. This could be larger than the number of entries in
+  // dns_prefetch_domains.
+  optional int32 total_dns_prefetch_domains = 6;
+
+  // Total number of domains in the page, in the previous rewrite, for which DNS
+  // prefetch tags could be potentially inserted.
+  optional int32 total_dns_prefetch_domains_previous = 7;
 }

@@ -112,6 +112,7 @@ class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
       : is_resource_fetch_(is_resource_fetch),
         request_url_(request_url),
         async_fetch_(async_fetch),
+        property_callback_(NULL),
         handler_(handler),
         proxy_interface_(proxy_interface),
         query_options_(query_options) {
@@ -142,6 +143,8 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
                                ResourceManager* manager,
                                Statistics* stats)
     : resource_manager_(manager),
+      fetcher_(NULL),
+      timer_(NULL),
       handler_(manager->message_handler()),
       hostname_(hostname.as_string()),
       port_(port),

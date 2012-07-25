@@ -140,6 +140,7 @@ FlushEarlyFlow::FlushEarlyFlow(
       dummy_head_writer_(&dummy_head_),
       num_resources_flushed_(0),
       base_fetch_(base_fetch),
+      flush_early_fetch_(NULL),
       driver_(driver),
       factory_(factory),
       manager_(driver->resource_manager()),

@@ -329,6 +329,29 @@ DomainLawyer::Domain* DomainLawyer::FindDomain(const GoogleUrl& gurl) const {
   return domain;
 }
 
+void DomainLawyer::FindDomainsRewrittenTo(
+    const GoogleUrl& original_url,
+    ConstStringStarVector* from_domains) const {
+  // TODO(rahulbansal): Make this more efficient by maintaining the map of
+  // rewrite_domain -> from_domains.
+  if (!original_url.is_valid()) {
+    LOG(ERROR) << "Invalid url " << original_url.Spec();
+    return;
+  }
+
+  GoogleString domain_name;
+  original_url.Origin().CopyToString(&domain_name);
+  EnsureEndsInSlash(&domain_name);
+  for (DomainMap::const_iterator p = domain_map_.begin();
+      p != domain_map_.end(); ++p) {
+    Domain* src_domain = p->second;
+    if (!src_domain->IsWildcarded() && (src_domain->rewrite_domain() != NULL) &&
+        domain_name == src_domain->rewrite_domain()->name()) {
+      from_domains->push_back(&src_domain->name());
+    }
+  }
+}
+
 bool DomainLawyer::MapRequestToDomain(
     const GoogleUrl& original_request,
     const StringPiece& resource_url,  // relative to original_request

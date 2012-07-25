@@ -335,18 +335,10 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
         blink_output_with_cacheable_panels_cookies_(StrCat(StringPrintf(
             kBlinkOutputCommon, "cache.html", "cache.html"),
             kBlinkOutputWithCacheablePanelsCookiesSuffix)) {
-    StringPiece lazyload_js_code =
-        resource_manager_->static_javascript_manager()->GetJsSnippet(
-            StaticJavascriptManager::kLazyloadImagesJs, options());
-    noblink_output_ = StrCat("<html><head><script type=\"text/javascript\">",
-                              lazyload_js_code,
-                              "\npagespeed.lazyLoadInit(false, \"",
-                              LazyloadImagesFilter::kBlankImageSrc,
-                              "\");\n"
-                              "</script></head><body>",
-                              StringPrintf(kNoScriptRedirectFormatter,
-                                           kNoBlinkUrl, kNoBlinkUrl),
-                              "</body></html>");
+    noblink_output_ = StrCat("<html><head></head><body>",
+                             StringPrintf(kNoScriptRedirectFormatter,
+                                          kNoBlinkUrl, kNoBlinkUrl),
+                             "</body></html>");
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
   }
 

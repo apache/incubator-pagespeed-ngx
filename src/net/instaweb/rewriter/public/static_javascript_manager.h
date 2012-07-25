@@ -36,6 +36,7 @@ class StaticJavascriptManager {
   static const char kBlinkRelativePath[];
 
   enum JsModule {
+    kClientDomainRewriter,
     kDeferIframe,
     kDeferJs,
     kDelayImagesJs,

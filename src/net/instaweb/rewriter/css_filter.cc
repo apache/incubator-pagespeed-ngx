@@ -184,7 +184,7 @@ void CssFilter::Context::Render() {
     // these specific difference, but we don't currently.
     if (rewrite_inline_char_node_ != NULL) {
       HtmlCharactersNode* new_style_char_node =
-          driver_->NewCharactersNode(rewrite_inline_element_,
+          driver_->NewCharactersNode(rewrite_inline_char_node_->parent(),
                                      result.inlined_data());
       driver_->ReplaceNode(rewrite_inline_char_node_, new_style_char_node);
     } else if (rewrite_inline_attribute_ != NULL) {
@@ -682,7 +682,6 @@ void CssFilter::StartElementImpl(HtmlElement* element) {
   if (element->keyword() == HtmlName::kStyle) {
     in_style_element_ = true;
     style_element_ = element;
-    style_char_node_ = NULL;
   } else {
     bool do_rewrite = false;
     bool check_for_url = false;
@@ -711,12 +710,10 @@ void CssFilter::StartElementImpl(HtmlElement* element) {
 
 void CssFilter::Characters(HtmlCharactersNode* characters_node) {
   if (in_style_element_) {
-    if (style_char_node_ == NULL) {
-      style_char_node_ = characters_node;
-    } else {
-      driver_->ErrorHere("Multiple character nodes in style.");
-      in_style_element_ = false;
-    }
+    // Note: HtmlParse should guarantee that we only get one CharactersNode
+    // per <style> block even if it is split by a flush. However, this code
+    // will still mostly work if we somehow got multiple CharacterNodes.
+    StartInlineRewrite(characters_node);
   }
 }
 
@@ -724,13 +721,6 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
   // Rewrite an inline style.
   if (in_style_element_) {
     CHECK(style_element_ == element);  // HtmlParse should not pass unmatching.
-
-    if (driver_->IsRewritable(element) && style_char_node_ != NULL) {
-      CHECK(element == style_char_node_->parent());  // Sanity check.
-      GoogleString new_content;
-
-      StartInlineRewrite(element, style_char_node_);
-    }
     in_style_element_ = false;
 
   // Rewrite an external style.
@@ -757,8 +747,11 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
   }
 }
 
-void CssFilter::StartInlineRewrite(HtmlElement* element,
-                                   HtmlCharactersNode* text) {
+void CssFilter::StartInlineRewrite(HtmlCharactersNode* text) {
+  // TODO(sligocki): Clean this up to not need to pass parent around explicitly.
+  // The few places that actually need to know the parent can call
+  // text->parent() themselves.
+  HtmlElement* element = text->parent();
   ResourceSlotPtr slot(MakeSlotForInlineCss(text->contents()));
   CssFilter::Context* rewriter = StartRewriting(slot);
   rewriter->SetupInlineRewrite(element, text);

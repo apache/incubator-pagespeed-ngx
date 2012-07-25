@@ -1228,6 +1228,45 @@ TEST_F(CssFilterTest, EmptyLeafFull) {
                                 kInputStyle, kOutputStyle, kExpectSuccess);
 }
 
+TEST_F(CssFilterTest, FlushInInlineCss) {
+  SetupWriter();
+  rewrite_driver()->StartParse(kTestDomain);
+  rewrite_driver()->ParseText("<html><body><style>.a { co");
+  // Flush in middle of inline CSS.
+  rewrite_driver()->Flush();
+  rewrite_driver()->ParseText("lor: red; }</style></body></html>");
+  rewrite_driver()->FinishParse();
+
+  // Expect text to be rewritten because it is coalesced.
+  // HtmlParse will send events like this to filter:
+  //   StartElement style
+  //   Flush
+  //   Characters ...
+  //   EndElement style
+  EXPECT_EQ("<html><body><style>.a{color:red}</style></body></html>",
+            output_buffer_);
+}
+
+
+TEST_F(CssFilterTest, FlushInEndTag) {
+  SetupWriter();
+  rewrite_driver()->StartParse(kTestDomain);
+  rewrite_driver()->ParseText("<html><body><style>.a { color: red; }</st");
+  // Flush in middle of closing </style> tag.
+  rewrite_driver()->Flush();
+  rewrite_driver()->ParseText("yle></body></html>");
+  rewrite_driver()->FinishParse();
+
+  // Expect text to be rewritten because it is coalesced.
+  // HtmlParse will send events like this to filter:
+  //   StartElement style
+  //   Characters ...
+  //   Flush
+  //   EndElement style
+  EXPECT_EQ("<html><body><style>.a{color:red}</style></body></html>",
+            output_buffer_);
+}
+
 class CssFilterTestUrlNamer : public CssFilterTest {
  public:
   CssFilterTestUrlNamer() {

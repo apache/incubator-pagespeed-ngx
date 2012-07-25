@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -48,6 +49,7 @@ DomainRewriteFilter::DomainRewriteFilter(RewriteDriver* rewrite_driver,
       rewrite_count_(stats->GetVariable(kDomainRewrites)) {}
 
 void DomainRewriteFilter::StartDocumentImpl() {
+  client_domain_rewriter_script_written_ = false;
   bool rewrite_hyperlinks = driver_->options()->domain_rewrite_hyperlinks();
 
   if (rewrite_hyperlinks) {
@@ -175,6 +177,44 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
     return kDomainUnchanged;
   } else {
     return kRewroteDomain;
+  }
+}
+
+void DomainRewriteFilter::EndElementImpl(HtmlElement* element) {
+  if (driver_->options()->client_domain_rewrite() &&
+      (element->keyword() == HtmlName::kBody &&
+      driver_->IsRewritable(element) &&
+      !client_domain_rewriter_script_written_)) {
+    const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
+    ConstStringStarVector from_domains;
+    lawyer->FindDomainsRewrittenTo(driver_->base_url(), &from_domains);
+
+    if (from_domains.empty()) {
+      return;
+    }
+
+    GoogleString comma_separated_from_domains;
+    for (int i = 0, n = from_domains.size(); i < n; i++) {
+      StrAppend(&comma_separated_from_domains, "\"", *(from_domains[i]), "\"");
+      if (i != n - 1) {
+        StrAppend(&comma_separated_from_domains, ",");
+      }
+    }
+
+    HtmlElement* script_node =driver_->NewElement(element, HtmlName::kScript);
+    driver_->AddAttribute(script_node, HtmlName::kType, "text/javascript");
+    StaticJavascriptManager* js_manager =
+        driver_->resource_manager()->static_javascript_manager();
+    GoogleString js = StrCat(
+        js_manager->GetJsSnippet(
+            StaticJavascriptManager::kClientDomainRewriter, driver_->options()),
+            "pagespeed.clientDomainRewriterInit([",
+            comma_separated_from_domains, "]);");
+    HtmlCharactersNode* script_content = driver_->NewCharactersNode(
+        script_node, js);
+    driver_->AppendChild(element, script_node);
+    driver_->AppendChild(script_node, script_content);
+    client_domain_rewriter_script_written_ = true;
   }
 }
 

@@ -14,7 +14,7 @@
 this_dir=$(dirname $0)
 source "$this_dir/system_test_helpers.sh" || exit 1
 
-TEST="$1/mod_pagespeed_test"
+TEST="$HOSTNAME/mod_pagespeed_test"
 REWRITE_DOMAINS="$TEST/rewrite_domains.html"
 UVA_EXTEND_CACHE="$TEST/url_valued_attribute_extend_cache.html"
 

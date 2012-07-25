@@ -44,8 +44,10 @@ namespace net_instaweb {
 
 CssHierarchy::CssHierarchy()
     : parent_(NULL),
+      is_xhtml_(false),
       flattening_succeeded_(true),
       unparseable_detected_(false),
+      flattened_result_limit_(0),
       message_handler_(NULL) {
 }
 

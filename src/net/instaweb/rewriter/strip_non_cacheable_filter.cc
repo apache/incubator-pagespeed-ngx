@@ -36,6 +36,7 @@ StripNonCacheableFilter::StripNonCacheableFilter(
     RewriteDriver* rewrite_driver)
     : rewrite_driver_(rewrite_driver),
       rewrite_options_(rewrite_driver->options()),
+      script_tag_scanner_(rewrite_driver),
       script_written_(false) {
 }
 
@@ -51,6 +52,14 @@ void StripNonCacheableFilter::StartDocument() {
 void StripNonCacheableFilter::StartElement(HtmlElement* element) {
   if (element->keyword() == HtmlName::kBody && !script_written_) {
     InsertBlinkJavascript(element);
+  }
+
+  HtmlElement::Attribute* src;
+  if (script_tag_scanner_.ParseScriptElement(element, &src) ==
+      ScriptTagScanner::kJavaScript) {
+    if (!element->FindAttribute(HtmlName::kPagespeedNoDefer)) {
+      LOG(DFATAL) << "Script which is not deferred is found!!!";
+    }
   }
 
   int panel_number = BlinkUtil::GetPanelNumberForNonCacheableElement(

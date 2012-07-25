@@ -26,6 +26,8 @@
 
 namespace net_instaweb {
 
+extern const char* JS_client_domain_rewriter;
+extern const char* JS_client_domain_rewriter_opt;
 extern const char* JS_defer_iframe;
 extern const char* JS_defer_iframe_opt;
 extern const char* JS_delay_images;
@@ -84,6 +86,8 @@ void StaticJavascriptManager::InitBlink(const GoogleString& hash) {
 void StaticJavascriptManager::InitializeJsStrings() {
   // Initialize compiled javascript strings.
   opt_js_vector_.resize(static_cast<int>(kEndOfModules));
+  opt_js_vector_[static_cast<int>(kClientDomainRewriter)] =
+      JS_client_domain_rewriter_opt;
   opt_js_vector_[static_cast<int>(kDeferIframe)] = JS_defer_iframe_opt;
   opt_js_vector_[static_cast<int>(kDeferJs)] = JS_js_defer_opt;
   opt_js_vector_[static_cast<int>(kDelayImagesJs)] =
@@ -100,6 +104,8 @@ void StaticJavascriptManager::InitializeJsStrings() {
       JS_local_storage_cache_opt;
   // Initialize cleartext javascript strings.
   debug_js_vector_.resize(static_cast<int>(kEndOfModules));
+  debug_js_vector_[static_cast<int>(kClientDomainRewriter)] =
+      JS_client_domain_rewriter;
   debug_js_vector_[static_cast<int>(kDeferIframe)] = JS_defer_iframe;
   debug_js_vector_[static_cast<int>(kDeferJs)] = JS_js_defer;
   debug_js_vector_[static_cast<int>(kDelayImagesJs)] =

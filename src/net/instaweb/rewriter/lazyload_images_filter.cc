@@ -38,7 +38,7 @@ const char kTrue[] = "true";
 const char kFalse[] = "false";
 const char kData[] = "data:";
 const char kJquerySlider[] = "jquery.sexyslider";
-const char kMetabox[] = "dfcg-metabox";
+const char kDfcg[] = "dfcg";
 
 }  // namespace
 
@@ -54,6 +54,7 @@ const char* LazyloadImagesFilter::kLoadAllImages =
 
 LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
     : driver_(driver),
+      skip_rewrite_(NULL),
       main_script_inserted_(false),
       abort_rewrite_(false),
       abort_script_inserted_(false) {}
@@ -61,12 +62,25 @@ LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
 LazyloadImagesFilter::~LazyloadImagesFilter() {}
 
 void LazyloadImagesFilter::StartDocument() {
+  skip_rewrite_ = NULL;
   main_script_inserted_ = false;
   abort_rewrite_ = false;
   abort_script_inserted_ = false;
 }
 
 void LazyloadImagesFilter::StartElement(HtmlElement* element) {
+  if (skip_rewrite_ == NULL) {
+    // Check if the element has dfcg in the class name and skip rewriting all
+    // images till we reach the end of this element.
+    HtmlElement::Attribute* class_attribute = element->FindAttribute(
+        HtmlName::kClass);
+    if (class_attribute != NULL) {
+      StringPiece class_value(class_attribute->DecodedValueOrNull());
+      if (class_value.find(kDfcg) != StringPiece::npos) {
+        skip_rewrite_ = element;
+      }
+    }
+  }
   if (element->keyword() == HtmlName::kScript) {
     // This filter does not currently work with the jquery slider. We just don't
     // rewrite the page in this case.
@@ -81,6 +95,12 @@ void LazyloadImagesFilter::StartElement(HtmlElement* element) {
 }
 
 void LazyloadImagesFilter::EndElement(HtmlElement* element) {
+  if (skip_rewrite_ == element) {
+    skip_rewrite_ = NULL;
+    return;
+  } else if (skip_rewrite_ != NULL) {
+    return;
+  }
   if (abort_rewrite_) {
     if (!abort_script_inserted_ && main_script_inserted_) {
       // If we have already rewritten some elements on the page, insert a
@@ -95,37 +115,8 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
     }
     return;
   }
-  if (!main_script_inserted_ && element->keyword() == HtmlName::kHead) {
-    // Insert the inlined script at the end of the document head.
-    HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-    driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
-    const GoogleString& load_onload =
-        driver_->options()->lazyload_images_after_onload() ? kTrue : kFalse;
-    StaticJavascriptManager* static_js__manager =
-        driver_->resource_manager()->static_javascript_manager();
-    StringPiece lazyload_images_js =
-        static_js__manager->GetJsSnippet(
-            StaticJavascriptManager::kLazyloadImagesJs, driver_->options());
-    const GoogleString& lazyload_js =
-        StrCat(lazyload_images_js, "\npagespeed.lazyLoadInit(",
-               load_onload, ", \"", kBlankImageSrc, "\");\n");
-    HtmlNode* script_code = driver_->NewCharactersNode(
-        script, lazyload_js);
-    driver_->InsertElementBeforeCurrent(script);
-    driver_->AppendChild(script, script_code);
-    main_script_inserted_ = true;
-  } else if (main_script_inserted_ && driver_->IsRewritable(element) &&
-             element->keyword() == HtmlName::kImg) {
-    // Don't rewrite images with class="dfcg-metabox" since they are sliding
-    // animations.
-    HtmlElement::Attribute* class_attribute = element->FindAttribute(
-        HtmlName::kClass);
-    if (class_attribute != NULL) {
-      StringPiece class_value(class_attribute->DecodedValueOrNull());
-      if (class_value.find(kMetabox) != StringPiece::npos) {
-        return;
-      }
-    }
+  if (driver_->IsRewritable(element) &&
+      element->keyword() == HtmlName::kImg) {
     // Only rewrite <img> tags. Don't rewrite <input> tags since the onload
     // event is not fired for them in some browsers.
     HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
@@ -161,6 +152,9 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
             return;
           }
         }
+        if (!main_script_inserted_) {
+          InsertLazyloadJsCode(element);
+        }
         // Replace the src with pagespeed_lazy_src and set the onload
         // appropriately.
         driver_->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
@@ -169,6 +163,26 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
       }
     }
   }
+}
+
+void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
+  HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
+  driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
+  const GoogleString& load_onload =
+      driver_->options()->lazyload_images_after_onload() ? kTrue : kFalse;
+  StaticJavascriptManager* static_js__manager =
+      driver_->resource_manager()->static_javascript_manager();
+  StringPiece lazyload_images_js =
+      static_js__manager->GetJsSnippet(
+          StaticJavascriptManager::kLazyloadImagesJs, driver_->options());
+  const GoogleString& lazyload_js =
+      StrCat(lazyload_images_js, "\npagespeed.lazyLoadInit(",
+             load_onload, ", \"", kBlankImageSrc, "\");\n");
+  HtmlNode* script_code = driver_->NewCharactersNode(
+      script, lazyload_js);
+  driver_->InsertElementBeforeElement(element, script);
+  driver_->AppendChild(script, script_code);
+  main_script_inserted_ = true;
 }
 
 }  // namespace net_instaweb

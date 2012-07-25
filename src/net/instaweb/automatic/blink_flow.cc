@@ -388,7 +388,8 @@ void BlinkFlow::SendLayout(const StringPiece& layout) {
 void BlinkFlow::SendCriticalJson(GoogleString* critical_json_str) {
   const char* user_ip = base_fetch_->request_headers()->Lookup1(
       HttpAttributes::kXForwardedFor);
-  if (user_ip != NULL && manager_->factory()->IsDebugClient(user_ip)) {
+  if (user_ip != NULL && manager_->factory()->IsDebugClient(user_ip) &&
+      options_->enable_blink_debug_dashboard()) {
     WriteString("<script>pagespeed.panelLoader.setRequestFromInternalIp();"
                 "</script>");
   }

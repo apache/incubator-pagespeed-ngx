@@ -91,6 +91,8 @@ const char* kModPagespeedCacheFlushFilename =
     "ModPagespeedCacheFlushFilename";
 const char* kModPagespeedCacheFlushPollIntervalSec =
     "ModPagespeedCacheFlushPollIntervalSec";
+const char* kModPagespeedClientDomainRewrite =
+    "ModPagespeedClientDomainRewrite";
 const char* kModPagespeedCollectRefererStatistics =
     "ModPagespeedCollectRefererStatistics";
 const char* kModPagespeedCombineAcrossPaths = "ModPagespeedCombineAcrossPaths";
@@ -1211,6 +1213,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "URL for beacon callback injected by add_instrumentation."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCollectRefererStatistics,
         "Track page, resource, and div location referrals for prefetching."),
+APACHE_CONFIG_DIR_OPTION(kModPagespeedClientDomainRewrite,
+      "Allow rewrite_domains to rewrite urls on the client side."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCombineAcrossPaths,
         "Allow combining resources from different paths"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCssFlattenMaxBytes,

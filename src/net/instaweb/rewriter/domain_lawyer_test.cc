@@ -464,6 +464,26 @@ TEST_F(DomainLawyerTest, AddTwoProtocolRewriteDomainMapping) {
   EXPECT_EQ("http://www.nytimes.com/", mapped_domain);
 }
 
+TEST_F(DomainLawyerTest, FindDomainsRewrittenTo) {
+  // No mapping.
+  ConstStringStarVector from_domains;
+  domain_lawyer_.FindDomainsRewrittenTo(
+      GoogleUrl("http://www1.example.com/"), &from_domains);
+  EXPECT_EQ(0, from_domains.size());
+
+  // Add mapping.
+  ASSERT_TRUE(domain_lawyer_.AddTwoProtocolRewriteDomainMapping(
+      "www1.example.com", "www.example.com", &message_handler_));
+  ASSERT_TRUE(domain_lawyer_.AddTwoProtocolRewriteDomainMapping(
+      "www1.example.com", "xyz.example.com", &message_handler_));
+
+  domain_lawyer_.FindDomainsRewrittenTo(
+      GoogleUrl("http://www1.example.com/"), &from_domains);
+  ASSERT_EQ(2, from_domains.size());
+  EXPECT_EQ("http://www.example.com/", *(from_domains[0]));
+  EXPECT_EQ("http://xyz.example.com/", *(from_domains[1]));
+}
+
 TEST_F(DomainLawyerTest, AddDomainRedundantly) {
   ASSERT_TRUE(domain_lawyer_.AddDomain("www.nytimes.com", &message_handler_));
   ASSERT_FALSE(domain_lawyer_.AddDomain("www.nytimes.com", &message_handler_));

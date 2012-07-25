@@ -557,6 +557,7 @@ class SerfThreadedFetcher : public SerfUrlAsyncFetcher {
  public:
   SerfThreadedFetcher(SerfUrlAsyncFetcher* parent, const char* proxy) :
       SerfUrlAsyncFetcher(parent, proxy),
+      thread_id_(NULL),
       initiate_mutex_(parent->thread_system()->NewMutex()),
       initiate_fetches_(new SerfFetchPool()),
       initiate_fetches_nonempty_(initiate_mutex_->NewCondvar()),

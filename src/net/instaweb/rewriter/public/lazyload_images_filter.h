@@ -89,7 +89,13 @@ class LazyloadImagesFilter : public EmptyHtmlFilter {
   static void Terminate();
 
  private:
+  // Inserts the lazyload JS code before the given element.
+  void InsertLazyloadJsCode(HtmlElement* element);
+
   RewriteDriver* driver_;
+  // If non-NULL, we skip rewriting till we reach
+  // LazyloadImagesFilter::EndElement(skip_rewrite_).
+  HtmlElement* skip_rewrite_;
   // Indicates if the main javascript has been inserted into the page.
   bool main_script_inserted_;
   // Indicates whether we should abort rewriting the page.

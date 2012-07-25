@@ -44,6 +44,34 @@
       ],
     },
     {
+      'target_name': 'instaweb_client_domain_rewriter_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'var_name': 'client_domain_rewriter',
+      },
+      'sources': [
+        'rewriter/client_domain_rewriter.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_client_domain_rewriter_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'client_domain_rewriter_opt',
+      },
+      'sources': [
+        'genfiles/rewriter/client_domain_rewriter_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_defer_iframe_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -839,6 +867,8 @@
       'target_name': 'instaweb_rewriter',
       'type': '<(library)',
       'dependencies': [
+        'instaweb_client_domain_rewriter_data2c',
+        'instaweb_client_domain_rewriter_opt_data2c',
         'instaweb_core.gyp:instaweb_rewriter_html',
         'instaweb_blink_critical_line_data_pb',
         'instaweb_http',
@@ -900,6 +930,7 @@
         'rewriter/google_analytics_filter.cc',
         'rewriter/image_rewrite_filter.cc',
         'rewriter/inline_rewrite_context.cc',
+        'rewriter/insert_dns_prefetch_filter.cc',
         'rewriter/insert_ga_filter.cc',
         'rewriter/js_combine_filter.cc',
         'rewriter/js_defer_disabled_filter.cc',

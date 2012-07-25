@@ -21,6 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
+#include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -74,6 +75,8 @@ class CacheExtenderTest : public ResourceManagerTestBase {
   CacheExtenderTest()
       : kCssData(CssData("")),
         kCssPath(StrCat(kTestDomain, kCssSubdir)) {
+    num_cache_extended_ = statistics()->GetVariable(
+        CacheExtender::kCacheExtensions);
   }
 
   virtual void SetUp() {
@@ -88,6 +91,8 @@ class CacheExtenderTest : public ResourceManagerTestBase {
     SetResponseWithDefaultHeaders("c.js", kContentTypeJavascript, kJsData, ttl);
     SetResponseWithDefaultHeaders("introspective.js", kContentTypeJavascript,
                                   kJsDataIntrospective, ttl);
+    // Reset stats.
+    num_cache_extended_->Set(0);
   }
 
   // Generate HTML loading 3 resources with the specified URLs
@@ -126,6 +131,7 @@ class CacheExtenderTest : public ResourceManagerTestBase {
     return StringPrintf(kCssDataFormat, url.as_string().c_str());
   }
 
+  Variable* num_cache_extended_;
   const GoogleString kCssData;
   const GoogleString kCssPath;
 };
@@ -139,6 +145,8 @@ TEST_F(CacheExtenderTest, DoExtend) {
         GenerateHtml(Encode(kCssPath, "ce", "0", kCssTail, "css"),
                      Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
                      Encode(kTestDomain, "ce", "0", "c.js", "js")));
+    EXPECT_EQ((i + 1) * 3, num_cache_extended_->Get())
+        << "Number of cache extended resources is wrong";
   }
 }
 
@@ -151,6 +159,8 @@ TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascript) {
       "dont_extend_introspective_js",
       StringPrintf(kJsTemplate, "introspective.js"),
       StringPrintf(kJsTemplate, "introspective.js"));
+  EXPECT_EQ(0, num_cache_extended_->Get())
+      << "Number of cache extended resources is wrong";
 }
 
 TEST_F(CacheExtenderTest, DoExtendIntrospectiveJavascriptByDefault) {
@@ -190,6 +200,8 @@ TEST_F(CacheExtenderTest, DoExtendForImagesOnly) {
         GenerateHtml(kCssFile,
                      Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
                      "c.js"));
+    EXPECT_EQ((i + 1), num_cache_extended_->Get())
+        << "Number of cache extended resources is wrong";
   }
 }
 
@@ -221,6 +233,8 @@ TEST_F(CacheExtenderTest, UrlTooLong) {
 
   // If filename wasn't too long, this would be rewritten (like in DoExtend).
   ValidateNoChanges("url_too_long", GenerateHtml(css_name, jpg_name, js_name));
+  EXPECT_EQ(0, num_cache_extended_->Get())
+      << "Number of cache extended resources is wrong";
 }
 
 TEST_F(CacheExtenderTest, NoInputResource) {
@@ -236,6 +250,8 @@ TEST_F(CacheExtenderTest, NoExtendAlreadyCachedProperly) {
   InitTest(kLongTtlSec);  // cached for a long time to begin with
   ValidateNoChanges("no_extend_cached_properly",
                     GenerateHtml(kCssFile, "b.jpg", "c.js"));
+  EXPECT_EQ(0, num_cache_extended_->Get())
+      << "Number of cache extended resources is wrong";
 }
 
 TEST_F(CacheExtenderTest, ExtendIfSharded) {
@@ -280,6 +296,8 @@ TEST_F(CacheExtenderTest, ExtendIfRewritten) {
                               "css"),
                        Encode("http://cdn.com/", "ce", "0", "b.jpg", "jpg"),
                        Encode("http://cdn.com/", "ce", "0", "c.js", "js")));
+  EXPECT_EQ(3, num_cache_extended_->Get())
+      << "Number of cache extended resources is wrong";
 }
 
 TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritten) {
@@ -332,6 +350,8 @@ TEST_F(CacheExtenderTest, NoExtendOriginUncacheable) {
   InitTest(0);  // origin not cacheable
   ValidateNoChanges("no_extend_origin_not_cacheable",
                     GenerateHtml(kCssFile, "b.jpg", "c.js"));
+  EXPECT_EQ(0, num_cache_extended_->Get())
+      << "Number of cache extended resources is wrong";
 }
 
 TEST_F(CacheExtenderTest, ServeFiles) {

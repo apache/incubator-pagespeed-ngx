@@ -46,6 +46,8 @@ BASE_LIBS = \
   net/instaweb/libhttp_core.a \
   net/instaweb/libinstaweb_blink_critical_line_data_pb.a \
   net/instaweb/libinstaweb_clientstate_pb.a \
+  net/instaweb/libinstaweb_client_domain_rewriter_data2c.a \
+  net/instaweb/libinstaweb_client_domain_rewriter_opt_data2c.a \
   net/instaweb/libinstaweb_defer_iframe_data2c.a \
   net/instaweb/libinstaweb_defer_iframe_opt_data2c.a \
   net/instaweb/libinstaweb_delay_images_data2c.a \

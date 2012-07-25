@@ -172,6 +172,7 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithNullSrc) {
 
 TEST_F(JsDisableFilterTest, DisablesScriptOnlyFromFirstSrc) {
   options()->set_enable_defer_js_experimental(true);
+  options_->EnableFilter(RewriteOptions::kDeferJavascript);
   const GoogleString input_html = StrCat(
       kUnrelatedNoscriptTags,
       "<script random=\"true\">hi1</script>",

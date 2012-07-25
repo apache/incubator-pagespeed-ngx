@@ -126,9 +126,8 @@ class CssFilter : public RewriteFilter {
   Context* MakeContext(RewriteDriver* driver,
                        RewriteContext* parent);
 
-  // Starts the asynchronous rewrite process for inline CSS inside the given
-  // style_element, with the CSS in 'text'.
-  void StartInlineRewrite(HtmlElement* style_element, HtmlCharactersNode* text);
+  // Starts the asynchronous rewrite process for inline CSS 'text'.
+  void StartInlineRewrite(HtmlCharactersNode* text);
 
   // Starts the asynchronous rewrite process for inline CSS inside the given
   // element's given style attribute.
@@ -156,9 +155,8 @@ class CssFilter : public RewriteFilter {
                           StringVector* media) const;
 
   bool in_style_element_;  // Are we in a style element?
-  // These are meaningless if in_style_element_ is false:
+  // This is meaningless if in_style_element_ is false:
   HtmlElement* style_element_;  // The element we are in.
-  HtmlCharactersNode* style_char_node_;  // The single character node in style.
 
   // The charset extracted from a meta tag, if any.
   GoogleString meta_tag_charset_;

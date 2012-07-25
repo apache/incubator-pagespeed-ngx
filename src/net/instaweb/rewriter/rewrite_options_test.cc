@@ -623,7 +623,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(85, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(87, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAjaxRewritingEnabled));
@@ -645,6 +645,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("CombineAcrossPaths"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kCombineAcrossPaths));
+  EXPECT_EQ(StringPiece("ClientDomainRewrite"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kClientDomainRewrite));
   EXPECT_EQ(StringPiece("CriticalImagesCacheExpirationTimeMs"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kCriticalImagesCacheExpirationTimeMs));
@@ -1022,8 +1025,9 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   options_.SetFuriousState(7);
   // This should be all non-dangerous filters.
   EXPECT_EQ("Experiment: 7; ab,ah,ai,cw,cc,ch,jc,gp,jp,jw,mc,pj,db,di,ea,ec,ei,"
-            "es,fc,if,fs,hw,ci,ii,il,ji,ig,id,js,tu,ls,ga,cj,cm,co,jo,pv,rj,rp,"
-            "rw,rc,rq,ri,rm,cf,rd,jm,cs,cu,is,cp,md,css:2048,im:2048,js:2048;",
+            "es,fc,if,fs,hw,ci,ii,il,ji,idp,ig,id,js,tu,ls,ga,cj,cm,co,jo,pv,"
+            "rj,rp,rw,rc,rq,ri,rm,cf,rd,jm,cs,cu,is,cp,md,"
+            "css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 7", options_.ToExperimentString());
   options_.SetFuriousState(2);
@@ -1091,6 +1095,35 @@ TEST_F(RewriteOptionsTest, FuriousOptionsTest) {
       "CssInlineMaxBytes=100,JsInlineMaxBytes=123", &handler));
   options_.SetFuriousState(6);
   EXPECT_EQ(100L, options_.css_inline_max_bytes());
+}
+
+TEST_F(RewriteOptionsTest, FuriousMergeTest) {
+  NullMessageHandler handler;
+  RewriteOptions::FuriousSpec *spec = new
+      RewriteOptions::FuriousSpec("id=1;percentage=15;"
+                                  "enable=defer_javascript;"
+                                  "options=CssInlineMaxBytes=100",
+                                  &options_, &handler);
+
+  RewriteOptions::FuriousSpec *spec2 = new
+      RewriteOptions::FuriousSpec("id=2;percentage=25;enable=resize_images;"
+                                  "options=CssInlineMaxBytes=125", &options_,
+                                  &handler);
+  options_.InsertFuriousSpecInVector(spec);
+  options_.InsertFuriousSpecInVector(spec2);
+  options_.SetFuriousState(1);
+  EXPECT_EQ(15, spec->percent());
+  EXPECT_EQ(1, spec->id());
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kDeferJavascript));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kResizeImages));
+  EXPECT_EQ(100L, options_.css_inline_max_bytes());
+  spec->Merge(*spec2);
+  options_.SetFuriousState(1);
+  EXPECT_EQ(25, spec->percent());
+  EXPECT_EQ(1, spec->id());
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kDeferJavascript));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kResizeImages));
+  EXPECT_EQ(125L, options_.css_inline_max_bytes());
 }
 
 TEST_F(RewriteOptionsTest, SetOptionsFromName) {

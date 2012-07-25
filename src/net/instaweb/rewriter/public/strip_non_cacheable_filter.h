@@ -23,6 +23,7 @@
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
+#include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -48,6 +49,7 @@ class StripNonCacheableFilter : public EmptyHtmlFilter {
  private:
   RewriteDriver* rewrite_driver_;
   const RewriteOptions* rewrite_options_;
+  ScriptTagScanner script_tag_scanner_;
   AttributesToNonCacheableValuesMap attribute_non_cacheable_values_map_;
   std::vector<int> panel_number_num_instances_;
   bool script_written_;

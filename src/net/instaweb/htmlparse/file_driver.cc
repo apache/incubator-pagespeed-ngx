@@ -79,6 +79,7 @@ class Rewriter : public Writer {
 FileDriver::FileDriver(HtmlParse* html_parse, FileSystem* file_system)
     : html_parse_(html_parse),
       logging_filter_(),
+      stats_log_(NULL),
       html_write_filter_(html_parse_),
       filters_added_(false),
       file_system_(file_system),

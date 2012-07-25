@@ -80,14 +80,13 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
       "<img src=\"1.jpg\" onload=\"blah();\" />"
       "<img src=\"1.jpg\" class=\"123 dfcg-metabox\" />"
       "</body>",
-      StrCat("<head><script type=\"text/javascript\">",
+      StrCat("<head></head><body><img/>"
+             "<img src=\"\"/>"
+             "<script type=\"text/javascript\">",
              lazyload_js_code,
              "\npagespeed.lazyLoadInit(false, \"",
              LazyloadImagesFilter::kBlankImageSrc,
-             "\");\n"
-             "</script></head><body>"
-             "<img/>"
-             "<img src=\"\"/>",
+             "\");\n</script>",
              GenerateRewrittenImageTag("img", "1.jpg", ""),
              "<img src=\"1.jpg\"/>",
              StrCat("<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
@@ -127,13 +126,14 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
              "<img src=\"critical3\" />"
              "<img src=\"", rewritten_url, "\" />"
              "</body>"),
-      StrCat("<head><script type=\"text/javascript\">",
+      StrCat("<head></head><body>"
+             "<img src=\"http://www.1.com/critical\"/>"
+             "<script type=\"text/javascript\">",
              lazyload_js_code,
              "\npagespeed.lazyLoadInit(false, \"",
              LazyloadImagesFilter::kBlankImageSrc,
              "\");\n"
-             "</script></head><body>"
-             "<img src=\"http://www.1.com/critical\"/>",
+             "</script>",
              StrCat(
                  GenerateRewrittenImageTag(
                      "img", "http://www.1.com/critical2", ""),
@@ -155,42 +155,57 @@ TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {
   ValidateExpected("lazyload_images",
       "<head></head>"
       "<body>"
+      "<img src=\"1.jpg\" />"
       "</body>",
-      StrCat("<head><script type=\"text/javascript\">",
+      StrCat("<head></head>"
+             "<body>"
+             "<script type=\"text/javascript\">",
              lazyload_js_code,
              "\npagespeed.lazyLoadInit(true, \"",
              LazyloadImagesFilter::kBlankImageSrc,
-             "\");\n",
-             "</script></head>"
-             "<body></body>"));
+             "\");\n"
+             "</script>",
+             GenerateRewrittenImageTag(
+                     "img", "1.jpg", ""),
+             "</body>"));
 }
 
 TEST_F(LazyloadImagesFilterTest, NoHeadTag) {
-  InitLazyloadImagesFilter(false);
-  GoogleString input_html = "<body>"
-      "<img src=\"1.jpg\"/>"
-      "</body>";
-  // No change in the html if script is not inserted in the head.
-  ValidateNoChanges("lazyload_images", input_html);
-}
-
-TEST_F(LazyloadImagesFilterTest, MultipleHeadTags) {
   InitLazyloadImagesFilter(false);
   StringPiece lazyload_js_code =
       resource_manager()->static_javascript_manager()->GetJsSnippet(
           StaticJavascriptManager::kLazyloadImagesJs, options());
   ValidateExpected("lazyload_images",
-      "<head></head>"
-      "<head></head>"
       "<body>"
+      "<img src=\"1.jpg\" />"
       "</body>",
-      StrCat("<head><script type=\"text/javascript\">",
+      StrCat("<body>"
+             "<script type=\"text/javascript\">",
              lazyload_js_code,
              "\npagespeed.lazyLoadInit(false, \"",
              LazyloadImagesFilter::kBlankImageSrc,
-             "\");\n",
-             "</script></head>"
-             "<head></head><body></body>"));
+             "\");\n"
+             "</script>",
+             GenerateRewrittenImageTag(
+                     "img", "1.jpg", ""),
+             "</body>"));
+}
+
+TEST_F(LazyloadImagesFilterTest, DfcgClass) {
+  InitLazyloadImagesFilter(false);
+  GoogleString input_html = "<body class=\"dfcg-slideshow\">"
+      "<img src=\"1.jpg\"/>"
+      "<div class=\"dfcg\">"
+      "<img src=\"1.jpg\"/>"
+      "</div>"
+      "</body>";
+  ValidateNoChanges("lazyload_images", input_html);
+}
+
+TEST_F(LazyloadImagesFilterTest, NoImages) {
+  InitLazyloadImagesFilter(false);
+  GoogleString input_html = "<head></head><body></body>";
+  ValidateNoChanges("lazyload_images", input_html);
 }
 
 TEST_F(LazyloadImagesFilterTest, LazyloadScriptOptimized) {
@@ -224,31 +239,13 @@ TEST_F(LazyloadImagesFilterTest, LazyloadDisabledWithJquerySlider) {
 
 TEST_F(LazyloadImagesFilterTest, LazyloadDisabledWithJquerySliderAfterHead) {
   InitLazyloadImagesFilter(false);
-  StringPiece lazyload_js_code =
-      resource_manager()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kLazyloadImagesJs, options());
   GoogleString input_html = "<head>"
       "</head>"
       "<body>"
       "<script src=\"jquery.sexyslider.js\"/>"
       "<img src=\"1.jpg\"/>"
       "</body>";
-  ValidateExpected(
-      "abort_script_inserted",
-      input_html,
-      StrCat("<head><script type=\"text/javascript\">",
-             lazyload_js_code,
-             "\npagespeed.lazyLoadInit(false, \"",
-             LazyloadImagesFilter::kBlankImageSrc,
-             "\");\n",
-             "</script></head>"
-             "<body>"
-             "<script src=\"jquery.sexyslider.js\"/>"
-             "<script type=\"text/javascript\">"
-             "pagespeed.lazyLoadImages.loadAllImages();"
-             "</script>"
-             "<img src=\"1.jpg\"/>"
-             "</body>"));
+  ValidateNoChanges("abort_script_inserted", input_html);
 }
 
 }  // namespace net_instaweb

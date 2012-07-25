@@ -60,21 +60,17 @@ check fgrep ".pagespeed.a.ic." <(
 check fgrep ".pagespeed.b.ic." <(
   $WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
 
+echo TEST: Images are different when the url specifies different experiments.
+# While the images are the same, image B should be smaller because in the config
+# file we enable convert_jpeg_to_progressive only for id=2 (side B).  Ideally we
+# would check that it was actually progressive, by checking whether "identify
+# -verbose filename" produced "Interlace: JPEG" or "Interlace: None", but that
+# would introduce a dependency on imagemagick.  This is just as accurate, but
+# more brittle (because changes to our compression code would change the
+# computed file sizes).
 IMG_A="$EXAMPLE/images/xPuzzle.jpg.pagespeed.a.ic.fakehash.jpg"
 IMG_B="$EXAMPLE/images/xPuzzle.jpg.pagespeed.b.ic.fakehash.jpg"
-
-echo TEST: Images are different when the url specifies different experiments.
-# Pull the images first to get them into the cache.
-$WGET_DUMP $IMG_A > /dev/null
-$WGET_DUMP $IMG_B > /dev/null
-
-# The images should differ because in the config file we enable
-# convert_jpeg_to_progressive only for id=2.  Ideally we would check that one
-# was progressive and the other wasn't, by checking whether "identify -verbose
-# filename" produced "Interlace: JPEG" or "Interlace: None", but that would
-# introduce a dependency on imagemagick.
-check diff <($WGET_DUMP $IMG_A) <($WGET_DUMP $IMG_A) > /dev/null
-check diff <($WGET_DUMP $IMG_B) <($WGET_DUMP $IMG_B) > /dev/null
-check_not diff <($WGET_DUMP $IMG_A) <($WGET_DUMP $IMG_B) > /dev/null
+fetch_until $IMG_A 'wc -c' 231192
+fetch_until $IMG_B 'wc -c' 216942
 
 echo "PASS."

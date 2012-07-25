@@ -339,6 +339,10 @@ ModPagespeedAvoidRenamingIntrospectiveJavascript off
 #DOMAIN_HYPERLINKS ModPagespeedMapRewriteDomain http://dst.example.com http://src.example.com
 #DOMAIN_HYPERLINKS ModPagespeedEnableFilters rewrite_domains
 
+#CLIENT_DOMAIN_REWRITE ModPagespeedMapRewriteDomain http://localhost:8080 http://localhost:9090
+#CLIENT_DOMAIN_REWRITE ModPagespeedClientDomainRewrite true
+#CLIENT_DOMAIN_REWRITE ModPagespeedEnableFilters rewrite_domains
+
 #DOMAIN_RESOURCE_TAGS ModPagespeedDomainRewriteHyperlinks off
 #DOMAIN_RESOURCE_TAGS ModPagespeedMapRewriteDomain http://dst.example.com http://src.example.com
 #DOMAIN_RESOURCE_TAGS ModPagespeedEnableFilters rewrite_domains
@@ -380,6 +384,7 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedCacheFlushFilename /tmp/cache.flush
 #ALL_DIRECTIVES ModPagespeedCacheFlushPollIntervalSec 10
 #ALL_DIRECTIVES ModPagespeedBlockingRewriteKey test
+#ALL_DIRECTIVES ModPagespeedClientDomainRewrite false
 #ALL_DIRECTIVES ModPagespeedCollectRefererStatistics false
 #ALL_DIRECTIVES ModPagespeedCombineAcrossPaths true
 #ALL_DIRECTIVES ModPagespeedCssFlattenMaxBytes 2000
