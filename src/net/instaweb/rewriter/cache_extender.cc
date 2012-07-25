@@ -145,11 +145,6 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
     case semantic_type::kScript:
       may_load = driver_->MayCacheExtendScripts();
       break;
-    case semantic_type::kOtherResource:
-      // We will still check server-supplied content type of the loaded resource
-      // once we have it to ensure we don't cache-extend html or anything else
-      // that could contain scripts.
-      may_load = true;
     default:
       break;
   }
