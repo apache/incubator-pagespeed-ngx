@@ -165,6 +165,8 @@ bool FileCache::EncodeFilename(const GoogleString& key,
 }
 
 bool FileCache::Clean(int64 target_size) {
+  // TODO(jud): this function can delete .lock and .outputlock files, is this
+  // problematic?
   StringVector files;
   int64 file_size;
   int64 file_atime;
@@ -174,9 +176,7 @@ bool FileCache::Clean(int64 target_size) {
                             "Checking cache size against target %ld",
                             static_cast<long>(target_size));
 
-  if (!file_system_->RecursiveDirSize(path_, &total_size, message_handler_)) {
-    return false;
-  }
+  file_system_->RecursiveDirSize(path_, &total_size, message_handler_);
 
   // TODO(jmarantz): gcc 4.1 warns about double/int64 comparisons here,
   // but this really should be factored into a settable member var.
@@ -205,8 +205,10 @@ bool FileCache::Clean(int64 target_size) {
 
   GoogleString prefix = path_;
   EnsureEndsInSlash(&prefix);
-  for (size_t i = 0; i < files.size(); i++) {
-    GoogleString file_name = files[i];
+  while (!files.empty()) {  // Traverse directories depth first
+    GoogleString file_name = files.back();
+    files.pop_back();
+
     BoolOrError isDir = file_system_->IsDir(file_name.c_str(),
                                             message_handler_);
     if (isDir.is_error()) {
@@ -218,10 +220,15 @@ bool FileCache::Clean(int64 target_size) {
       // deleted.
       continue;
     } else if (isDir.is_true()) {
-      // add files in this directory to the end of the vector, to be
-      // examined later.
+      // Add files in this directory to the end of the vector, to be
+      // examined next.
+      size_t prev_size = files.size();
       everything_ok &= file_system_->ListContents(file_name, &files,
                                                   message_handler_);
+      // Check if directory is empty, and if so delete it.
+      if (files.size() == prev_size) {
+        file_system_->RemoveDir(file_name.c_str(), message_handler_);
+      }
     } else {
       everything_ok &= file_system_->Size(file_name, &file_size,
                                           message_handler_);
@@ -253,7 +260,7 @@ bool FileCache::Clean(int64 target_size) {
     heap.pop();
   }
   message_handler_->Message(kInfo,
-                            "File cache cleanup complete; freed %ld bytes\n",
+                            "File cache cleanup complete; freed %ld bytes",
                             static_cast<long>(total_heap_size));
   return everything_ok;
 }

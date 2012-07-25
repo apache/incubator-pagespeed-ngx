@@ -147,39 +147,40 @@ bool FileSystem::RecursivelyMakeDir(const StringPiece& full_path_const,
   return ret;
 }
 
-bool FileSystem::RecursiveDirSize(const StringPiece& path, int64* size,
+void FileSystem::RecursiveDirSize(const StringPiece& path, int64* size,
                                   MessageHandler* handler) {
+  // This function is not guaranteed to produce correct results if files or
+  // directories are modified while this function is executing.
+
   // TODO(abliss): replace this recursive algorithm with an iterator
   // that keeps its own state.  It can keep a tree of directory names
   // to save memory, and simplify the implementation of file_cache.Clean.
+
   const GoogleString path_string = path.as_string();
   const char* path_str = path_string.c_str();
   int64 file_size = 0;
   StringVector files;
   if (!ListContents(path_str, &files, handler)) {
-    return false;
+    return;
   }
-  const GoogleString prefix = path_string + "/";
   for (int i = files.size() - 1; i >= 0; i--) {
     const GoogleString file_name = files[i];
-    BoolOrError isDir = IsDir(file_name.c_str(), handler);
-    if (isDir.is_error()) {
-      return false;
-    } else if (isDir.is_false()) {
-      if (!Size(file_name, &file_size, handler)) {
-        return false;
+    // Errors from IsDir are ignored. This typically occurs when files or
+    // directories are deleted while this function is executing. In this case,
+    // the results are not guaranteed, but are close enough for use by
+    // file_cache.Clean().
+    BoolOrError is_dir = IsDir(file_name.c_str(), handler);
+    if (is_dir.is_false()) {
+      if (Size(file_name, &file_size, handler)) {
+        *size += file_size;
       }
-      *size += file_size;
-    } else {
+    } else if (is_dir.is_true()) {
       // Recurse on directory
       // TODO(abliss): Should guard against infinite loops here, in
       // the case of a filesystem with cyclic symlinks.
-      if (!RecursiveDirSize(file_name, size, handler)) {
-        return false;
-      }
+      RecursiveDirSize(file_name, size, handler);
     }
   }
-  return true;
 }
 
 // Try to make directories to store file.

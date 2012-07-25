@@ -221,14 +221,13 @@ class FileSystem {
   virtual bool Mtime(const StringPiece& path, int64* timestamp_sec,
                      MessageHandler* handler) = 0;
 
-  // Given a directory, recursively computes the total size of all its
-  // files and directories, and increments *size by the sum total.  We
-  // assume no circular links.  Returns true on success, false on
-  // failure.  If the files are modified while we traverse, we are not
-  // guaranteed to represent their final state.
-  // The path name should NOT end in a "/".
+  // Given a directory, recursively computes the total size of all its files and
+  // directories, and increments *size by the sum total. We assume no circular
+  // links. If the files or directories are modified while we traverse, we are
+  // not guaranteed to represent their final state. The path name should NOT end
+  // in a "/".
   // TODO(abliss): unify all slash-ending assumptions
-  virtual bool RecursiveDirSize(const StringPiece& path, int64* size,
+  virtual void RecursiveDirSize(const StringPiece& path, int64* size,
                                 MessageHandler* handler);
 
   // Given a file, computes its size in bytes and store it in *size.  Returns

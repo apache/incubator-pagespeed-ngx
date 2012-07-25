@@ -350,10 +350,10 @@ void FileSystemTest::TestSize() {
   EXPECT_TRUE(file_system()->Size(full_path2, &size, &handler_));
   EXPECT_EQ(content2.size(), size_t(size));
   size = 0;
-  EXPECT_TRUE(file_system()->RecursiveDirSize(dir_name2, &size, &handler_));
+  file_system()->RecursiveDirSize(dir_name2, &size, &handler_);
   EXPECT_EQ(content1.size() + content2.size(), size_t(size));
   size = 0;
-  EXPECT_TRUE(file_system()->RecursiveDirSize(dir_name, &size, &handler_));
+  file_system()->RecursiveDirSize(dir_name, &size, &handler_);
   EXPECT_EQ(content1.size() + content2.size(), size_t(size));
 }
 

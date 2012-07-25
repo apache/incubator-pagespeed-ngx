@@ -24,6 +24,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/cache_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -122,8 +123,13 @@ TEST_F(FileCacheTest, Clean) {
   // correctly.
   GoogleString dir1 = GTestTempDir() + "/a/";
   GoogleString dir2 = GTestTempDir() + "/b/";
+  GoogleString dir3 = GTestTempDir() + "/b/c/";
   EXPECT_TRUE(file_system_.MakeDir(dir1.c_str(), &message_handler_));
+  EXPECT_TRUE(file_system_.Exists(dir1.c_str(), &message_handler_).is_true());
   EXPECT_TRUE(file_system_.MakeDir(dir2.c_str(), &message_handler_));
+  EXPECT_TRUE(file_system_.Exists(dir2.c_str(), &message_handler_).is_true());
+  EXPECT_TRUE(file_system_.MakeDir(dir3.c_str(), &message_handler_));
+  EXPECT_TRUE(file_system_.Exists(dir3.c_str(), &message_handler_).is_true());
   // Commonly-used keys
   const char* names1[] = {"a1", "a2", "a/3"};
   const char* values1[] = {"a2", "a234", "a2345678"};
@@ -140,9 +146,7 @@ TEST_F(FileCacheTest, Clean) {
     CheckPut(names2[i], values2[i]);
   }
   int64 total_size = 0;
-  EXPECT_TRUE(
-      file_system_.RecursiveDirSize(GTestTempDir(), &total_size,
-                                    &message_handler_));
+  file_system_.RecursiveDirSize(GTestTempDir(), &total_size, &message_handler_);
   EXPECT_EQ((2 + 4 + 8) * 4, total_size);
 
   // Clean should not remove anything if target is bigger than total size.
@@ -165,6 +169,11 @@ TEST_F(FileCacheTest, Clean) {
   for (int i = 0; i < 3; i++) {
     CheckNotFound(names2[i]);
   }
+
+  // Test that empty directories get removed
+  EXPECT_TRUE(file_system_.Exists(dir1.c_str(), &message_handler_).is_true());
+  EXPECT_TRUE(file_system_.Exists(dir2.c_str(), &message_handler_).is_true());
+  EXPECT_TRUE(file_system_.Exists(dir3.c_str(), &message_handler_).is_false());
 }
 
 // Test the auto-cleaning behavior
