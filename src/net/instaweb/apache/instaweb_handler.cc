@@ -157,7 +157,15 @@ bool handle_as_resource(ApacheResourceManager* manager,
       }
     }
 
-    // Set custom options.
+    // Set directory specific options.  These will be the options for the
+    // directory the resource is in, which under some configurations will be
+    // different from the options for the directory that the referencing html is
+    // in.  This can lead to us using different options here when regenerating
+    // the resource than would be used if the resource were generated as part of
+    // a rewrite kicked off by a request for the referencing html file.  This is
+    // hard to fix, so instead we're documenting that you must make sure the
+    // configuration for your resources matches the configuration for your html
+    // files.
     RewriteOptions* custom_options = NULL;
     ApacheConfig* directory_options = static_cast<ApacheConfig*>
         ap_get_module_config(request->per_dir_config, &pagespeed_module);
@@ -457,16 +465,11 @@ apr_status_t instaweb_map_to_storage(request_rec* request) {
     // So: modify request->filename in place to cut it off after the last '/'
     // character and replace the whole leaf with 'A', and then call
     // ap_directory_walk to figure out custom options.
-    int fname_length = strlen(request->filename);
-    int last_slash = 0;
-    for (int i = 0 ; i < fname_length ; i++) {
-      if (request->filename[i] == '/') {
-        last_slash = i;
-      }
-    }
-    if (last_slash + 2 <= fname_length) {
-      request->filename[last_slash + 1] = 'A';
-      request->filename[last_slash + 2] = '\0';
+    char* filename_starting_at_last_slash = strrchr(request->filename, '/');
+    if (filename_starting_at_last_slash != NULL &&
+        filename_starting_at_last_slash[1] != '\0') {
+      filename_starting_at_last_slash[1] = 'A';
+      filename_starting_at_last_slash[2] = '\0';
     }
     ap_directory_walk(request);
 

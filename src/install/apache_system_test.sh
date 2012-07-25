@@ -302,7 +302,7 @@ IMG_NON_CUSTOM="$EXAMPLE_ROOT/images/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
 IMG_CUSTOM="$TEST_ROOT/custom_options/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
 
 # Identical images, but in the .htaccess file in the custom_options directory we
-# addditionally enable convert_jpeg_to_progressive which gives a smaller file.
+# additionally enable convert_jpeg_to_progressive which gives a smaller file.
 fetch_until $IMG_NON_CUSTOM 'wc -c' 231192
 fetch_until $IMG_CUSTOM 'wc -c' 216942
 
