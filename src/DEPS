@@ -50,8 +50,8 @@ vars = {
     "http://svn.apache.org/repos/asf/httpd/httpd/tags/2.4.1",
   "apache_httpd24_revision": "@head",
 
-  "opencv_src": "http://code.opencv.org/svn/opencv/tags/2.3.1",
-  "opencv_revision": "@head",
+  "opencv_src": "git://code.opencv.org/opencv.git",
+  "opencv_revision": "@2.3.1",
 
   "jsoncpp_src": "https://jsoncpp.svn.sourceforge.net/svnroot/jsoncpp/trunk/",
   "jsoncpp_revision": "@247",
@@ -181,17 +181,8 @@ deps = {
 
   "src/third_party/protobuf": From(Var("libpagespeed_deps_root")),
 
-  "src/third_party/opencv/src/opencv/include":
-    Var("opencv_src") + "/opencv/include" + Var("opencv_revision"),
-
-  "src/third_party/opencv/src/opencv/modules/core":
-    Var("opencv_src") + "/opencv/modules/core" + Var("opencv_revision"),
-
-  "src/third_party/opencv/src/opencv/modules/imgproc":
-    Var("opencv_src") + "/opencv/modules/imgproc" + Var("opencv_revision"),
-
-  "src/third_party/opencv/src/opencv/modules/highgui":
-    Var("opencv_src") + "/opencv/modules/highgui" + Var("opencv_revision"),
+  "src/third_party/opencv/src/opencv/":
+    Var("opencv_src") + Var("opencv_revision"),
 
   # Json cpp.
   "src/third_party/jsoncpp/src":
