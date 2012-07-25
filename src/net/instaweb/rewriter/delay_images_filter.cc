@@ -28,6 +28,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -81,12 +82,12 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
       !low_res_data_map_.empty()) {
     InsertDelayImagesInlineJS(element);
   } else if (driver_->IsRewritable(element)) {
-    ContentType::Category category;
+    semantic_type::Category category;
     HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
         element, driver_, &category);
 
     if (src != NULL && src->DecodedValueOrNull() != NULL &&
-        category == ContentType::kImage) {
+        category == semantic_type::kImage) {
       // Remove the inline_src which is low quality base64 encoded data url and
       // add them to a map so that all inline data urls will be available at the
       // end of body tag.

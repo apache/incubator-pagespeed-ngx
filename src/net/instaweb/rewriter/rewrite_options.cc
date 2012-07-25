@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/panel_config.pb.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -1242,7 +1243,7 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   for (int i = 0, n = src.num_url_valued_attributes(); i < n; ++i) {
     StringPiece element;
     StringPiece attribute;
-    ContentType::Category category;
+    semantic_type::Category category;
     src.UrlValuedAttribute(i, &element, &attribute, &category);
     AddUrlValuedAttribute(element, attribute, category);
   }
@@ -1711,7 +1712,7 @@ void RewriteOptions::FuriousSpec::Initialize(const StringPiece& spec,
 
 void RewriteOptions::AddUrlValuedAttribute(
     const StringPiece& element, const StringPiece& attribute,
-    ContentType::Category category) {
+    semantic_type::Category category) {
   if (url_valued_attributes_ == NULL) {
     url_valued_attributes_.reset(new std::vector<ElementAttributeCategory>());
   }
@@ -1724,7 +1725,7 @@ void RewriteOptions::AddUrlValuedAttribute(
 
 void RewriteOptions::UrlValuedAttribute(
     int index, StringPiece* element, StringPiece* attribute,
-    ContentType::Category* category) const {
+    semantic_type::Category* category) const {
   const ElementAttributeCategory& eac = (*url_valued_attributes_)[index];
   *element = StringPiece(eac.element);
   *attribute = StringPiece(eac.attribute);

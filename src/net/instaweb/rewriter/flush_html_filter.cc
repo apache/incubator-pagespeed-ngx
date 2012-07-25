@@ -21,6 +21,7 @@
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/flush_html_filter.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
@@ -59,7 +60,7 @@ void FlushHtmlFilter::Flush() {
 }
 
 void FlushHtmlFilter::StartElementImpl(HtmlElement* element) {
-  ContentType::Category category;
+  semantic_type::Category category;
   HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
       element, driver_, &category);
 
@@ -67,13 +68,13 @@ void FlushHtmlFilter::StartElementImpl(HtmlElement* element) {
     return;
   }
   switch (category) {
-    case ContentType::kStylesheet:
+    case semantic_type::kStylesheet:
       score_ += kFlushCssScore;
       break;
-    case ContentType::kScript:
+    case semantic_type::kScript:
       score_ += kFlushScriptScore;
       break;
-    case ContentType::kImage:
+    case semantic_type::kImage:
       score_ += kFlushImageScore;
       break;
     default:
@@ -82,7 +83,7 @@ void FlushHtmlFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void FlushHtmlFilter::EndElementImpl(HtmlElement* element) {
-  ContentType::Category category;
+  semantic_type::Category category;
   HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
       element, driver_, &category);
 

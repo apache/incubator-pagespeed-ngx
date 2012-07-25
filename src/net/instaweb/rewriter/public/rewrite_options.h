@@ -25,8 +25,8 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -428,7 +428,7 @@ class RewriteOptions {
   struct ElementAttributeCategory {
     GoogleString element;
     GoogleString attribute;
-    ContentType::Category category;
+    semantic_type::Category category;
   };
 
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
@@ -516,14 +516,14 @@ class RewriteOptions {
   // Makes copies of element and attribute.
   void AddUrlValuedAttribute(const StringPiece& element,
                              const StringPiece& attribute,
-                             ContentType::Category category);
+                             semantic_type::Category category);
 
   // Look up a url-valued attribute, return details via element, attribute,
   // and category.  index must be less than num_url_valued_attributes().
   void UrlValuedAttribute(int index,
                           StringPiece* element,
                           StringPiece* attribute,
-                          ContentType::Category* category) const;
+                          semantic_type::Category* category) const;
 
   int num_url_valued_attributes() const {
     if (url_valued_attributes_ == NULL) {

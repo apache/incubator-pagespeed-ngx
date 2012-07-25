@@ -3178,8 +3178,8 @@ TEST_F(ProxyInterfaceTest, UrlAttributeTest) {
   options->domain_lawyer()->AddRewriteDomainMapping(
       "http://dst.example.com", "http://src.example.com", &handler);
   options->AddUrlValuedAttribute(
-      "span", "src", ContentType::kHyperlink);
-  options->AddUrlValuedAttribute("hr", "imgsrc", ContentType::kImage);
+      "span", "src", semantic_type::kHyperlink);
+  options->AddUrlValuedAttribute("hr", "imgsrc", semantic_type::kImage);
   resource_manager()->ComputeSignature(options);
 
   SetResponseWithDefaultHeaders(

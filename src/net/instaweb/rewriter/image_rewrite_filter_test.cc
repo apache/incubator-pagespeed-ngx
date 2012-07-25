@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -200,10 +201,10 @@ class ImageRewriteTest : public ResourceManagerTestBase {
     }
 
     virtual void StartElement(HtmlElement* element) {
-      ContentType::Category category;
+      semantic_type::Category category;
       HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
           element, NULL /* driver */, &category);
-      if (src != NULL && category == ContentType::kImage) {
+      if (src != NULL && category == semantic_type::kImage) {
         img_srcs_->push_back(src->DecodedValueOrNull());
       }
     }

@@ -21,7 +21,7 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/semantic_type.h"
 
 namespace net_instaweb {
 class RewriteDriver;
@@ -105,7 +105,7 @@ namespace resource_tag_scanner {
 //
 //
 HtmlElement::Attribute* ScanElement(HtmlElement* element, RewriteDriver* driver,
-                                    ContentType::Category* category);
+                                    semantic_type::Category* category);
 }  // namespace resource_tag_scanner
 }  // namespace net_instaweb
 

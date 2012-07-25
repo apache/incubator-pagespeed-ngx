@@ -22,6 +22,7 @@
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -57,7 +58,7 @@ void UrlLeftTrimFilter::Initialize(Statistics* statistics) {
 void UrlLeftTrimFilter::StartElementImpl(HtmlElement* element) {
   if (element->keyword() != HtmlName::kBase &&
       BaseUrlIsValid()) {
-    ContentType::Category category;
+    semantic_type::Category category;
     HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
         element, driver_, &category);
     TrimAttribute(href);

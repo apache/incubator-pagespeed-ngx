@@ -45,20 +45,6 @@ struct ContentType {
     kOther,  // Used to specify a new local ContentType in one test file.
   };
 
-  // When we see a url, we know what kind of resource it points to from context.
-  // See resource_tag_scanner.h for the definitions of the categories.  They are
-  // broader categories than Type above because contextual information is
-  // limited.  <img src="URL"> can be for kPng, kGif, kJpeg, kWebp, or another
-  // image type.
-  enum Category {
-    kScript,
-    kImage,
-    kStylesheet,
-    kOtherResource,
-    kHyperlink,
-    kUndefined
-  };
-
   // Returns the maximum extension length of any resource types our filters
   // can create. Does not count the ".".
   // See RewriteDriver::CreateOutputResourceWithPath()
@@ -120,22 +106,6 @@ const ContentType* MimeTypeToContentType(const StringPiece& mime_type);
 bool ParseContentType(const StringPiece& content_type_str,
                       GoogleString* mime_type,
                       GoogleString* charset);
-
-// Determine the value of the category enum corresponding to the given string.
-// Case insensitive. Valid categories are:
-//   Script
-//   Image
-//   Stylesheet
-//   OtherResource
-//    - This is any other url that will be automatically loaded by the browser
-//      along with the main page.  For example, the 'manifest' attribute of the
-//      'html' element or the 'src' attribute of an 'iframe' element.
-//   Hyperlink
-//    - A link to another page or other resource that a browser wouldn't
-//      normally load in connection to this page. For example the 'href'
-//      attribute of an 'a' element.
-bool ParseCategory(const StringPiece& category_str,
-                   ContentType::Category* category);
 
 }  // namespace net_instaweb
 

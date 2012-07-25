@@ -25,13 +25,14 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-typedef std::vector<ContentType::Category> CategoryVector;
+typedef std::vector<semantic_type::Category> CategoryVector;
 class ResourceTagScannerTest : public HtmlParseTestBase {
  protected:
   ResourceTagScannerTest() {
@@ -49,7 +50,7 @@ class ResourceTagScannerTest : public HtmlParseTestBase {
     }
 
     virtual void StartElement(HtmlElement* element) {
-      ContentType::Category resource_category;
+      semantic_type::Category resource_category;
       HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
           element, NULL /* driver */, &resource_category);
       if (src != NULL) {
@@ -137,84 +138,84 @@ TEST_F(ResourceTagScannerTest, FindTags) {
 );
   ASSERT_EQ(static_cast<size_t>(40), resources.size());
   EXPECT_EQ(GoogleString("myscript.js"), resources[0]);
-  EXPECT_EQ(ContentType::kScript, resource_category[0]);
+  EXPECT_EQ(semantic_type::kScript, resource_category[0]);
   EXPECT_EQ(GoogleString("action.as"), resources[1]);
-  EXPECT_EQ(ContentType::kScript, resource_category[1]);
+  EXPECT_EQ(semantic_type::kScript, resource_category[1]);
   EXPECT_EQ(GoogleString("image.jpg"), resources[2]);
-  EXPECT_EQ(ContentType::kImage, resource_category[2]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[2]);
   EXPECT_EQ(GoogleString("do_find_prefetch"), resources[3]);
-  EXPECT_EQ(ContentType::kHyperlink, resource_category[3]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category[3]);
   EXPECT_EQ(GoogleString("nomedia.css"), resources[4]);
-  EXPECT_EQ(ContentType::kStylesheet, resource_category[4]);
+  EXPECT_EQ(semantic_type::kStylesheet, resource_category[4]);
   EXPECT_EQ(GoogleString("id.css"), resources[5]);
-  EXPECT_EQ(ContentType::kStylesheet, resource_category[5]);
+  EXPECT_EQ(semantic_type::kStylesheet, resource_category[5]);
   EXPECT_EQ(GoogleString("no_type.style"), resources[6]);
-  EXPECT_EQ(ContentType::kStylesheet, resource_category[6]);
+  EXPECT_EQ(semantic_type::kStylesheet, resource_category[6]);
   EXPECT_EQ(GoogleString("media.css"), resources[7]);
-  EXPECT_EQ(ContentType::kStylesheet, resource_category[7]);
+  EXPECT_EQ(semantic_type::kStylesheet, resource_category[7]);
   EXPECT_EQ(GoogleString("find_link"), resources[8]);
-  EXPECT_EQ(ContentType::kHyperlink, resource_category[8]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category[8]);
   EXPECT_EQ(GoogleString("find_form_action"), resources[9]);
-  EXPECT_EQ(ContentType::kHyperlink, resource_category[9]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category[9]);
   EXPECT_EQ(GoogleString("case.css"), resources[10]);
-  EXPECT_EQ(ContentType::kStylesheet, resource_category[10]);
+  EXPECT_EQ(semantic_type::kStylesheet, resource_category[10]);
   EXPECT_EQ(GoogleString("background_image.jpg"), resources[11]);
-  EXPECT_EQ(ContentType::kImage, resource_category[11]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[11]);
   EXPECT_EQ(GoogleString("favicon.ico"), resources[12]);
-  EXPECT_EQ(ContentType::kImage, resource_category[12]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[12]);
   EXPECT_EQ(GoogleString("apple-extension.jpg"), resources[13]);
-  EXPECT_EQ(ContentType::kImage, resource_category[13]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[13]);
   EXPECT_EQ(GoogleString("apple-extension2.jpg"), resources[14]);
-  EXPECT_EQ(ContentType::kImage, resource_category[14]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[14]);
   EXPECT_EQ(GoogleString("apple-extension3.jpg"), resources[15]);
-  EXPECT_EQ(ContentType::kImage, resource_category[15]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[15]);
   EXPECT_EQ(GoogleString("do-find-image.jpg"), resources[16]);
-  EXPECT_EQ(ContentType::kImage, resource_category[16]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[16]);
   EXPECT_EQ(GoogleString("find-image.jpg"), resources[17]);
-  EXPECT_EQ(ContentType::kImage, resource_category[17]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[17]);
   EXPECT_EQ(GoogleString("do-find-formaction"), resources[18]);
-  EXPECT_EQ(ContentType::kHyperlink, resource_category[18]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category[18]);
   EXPECT_EQ(GoogleString("some-icon.jpg"), resources[19]);
-  EXPECT_EQ(ContentType::kImage, resource_category[19]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[19]);
   EXPECT_EQ(GoogleString("html-manifest"), resources[20]);
-  EXPECT_EQ(ContentType::kOtherResource, resource_category[20]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category[20]);
   EXPECT_EQ(GoogleString("blockquote-citation"), resources[21]);
-  EXPECT_EQ(ContentType::kHyperlink, resource_category[21]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category[21]);
   EXPECT_EQ(GoogleString("q-citation"), resources[22]);
-  EXPECT_EQ(ContentType::kHyperlink, resource_category[22]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category[22]);
   EXPECT_EQ(GoogleString("ins-citiation"), resources[23]);
-  EXPECT_EQ(ContentType::kHyperlink, resource_category[23]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category[23]);
   EXPECT_EQ(GoogleString("del-citiation"), resources[24]);
-  EXPECT_EQ(ContentType::kHyperlink, resource_category[24]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category[24]);
   EXPECT_EQ(GoogleString("find-area-link"), resources[25]);
-  EXPECT_EQ(ContentType::kHyperlink, resource_category[25]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category[25]);
   EXPECT_EQ(GoogleString("find-image"), resources[26]);
-  EXPECT_EQ(ContentType::kImage, resource_category[26]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[26]);
   EXPECT_EQ(GoogleString("find-frame-src"), resources[27]);
-  EXPECT_EQ(ContentType::kOtherResource, resource_category[27]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category[27]);
   EXPECT_EQ(GoogleString("find-iframe-src"), resources[28]);
-  EXPECT_EQ(ContentType::kOtherResource, resource_category[28]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category[28]);
   EXPECT_EQ(GoogleString("track-src"), resources[29]);
-  EXPECT_EQ(ContentType::kOtherResource, resource_category[29]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category[29]);
   EXPECT_EQ(GoogleString("audio-src"), resources[30]);
-  EXPECT_EQ(ContentType::kOtherResource, resource_category[30]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category[30]);
   EXPECT_EQ(GoogleString("find-video-src"), resources[31]);
-  EXPECT_EQ(ContentType::kOtherResource, resource_category[31]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category[31]);
   EXPECT_EQ(GoogleString("embed-src"), resources[32]);
-  EXPECT_EQ(ContentType::kOtherResource, resource_category[32]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category[32]);
   EXPECT_EQ(GoogleString("source-src"), resources[33]);
-  EXPECT_EQ(ContentType::kOtherResource, resource_category[33]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category[33]);
   EXPECT_EQ(GoogleString("td_background_image.jpg"), resources[34]);
-  EXPECT_EQ(ContentType::kImage, resource_category[34]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[34]);
   EXPECT_EQ(GoogleString("th_background_image.jpg"), resources[35]);
-  EXPECT_EQ(ContentType::kImage, resource_category[35]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[35]);
   EXPECT_EQ(GoogleString("table_background_image.jpg"), resources[36]);
-  EXPECT_EQ(ContentType::kImage, resource_category[36]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[36]);
   EXPECT_EQ(GoogleString("tbody_background_image.jpg"), resources[37]);
-  EXPECT_EQ(ContentType::kImage, resource_category[37]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[37]);
   EXPECT_EQ(GoogleString("tfoot_background_image.jpg"), resources[38]);
-  EXPECT_EQ(ContentType::kImage, resource_category[38]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[38]);
   EXPECT_EQ(GoogleString("thead_background_image.jpg"), resources[39]);
-  EXPECT_EQ(ContentType::kImage, resource_category[39]);
+  EXPECT_EQ(semantic_type::kImage, resource_category[39]);
 }
 }  // namespace net_instaweb

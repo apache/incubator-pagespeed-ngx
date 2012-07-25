@@ -22,6 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
@@ -106,7 +107,7 @@ void ScanFilter::StartElement(HtmlElement* element) {
     }
     // TODO(jmarantz): handle base targets in addition to hrefs.
   } else {
-    ContentType::Category category;
+    semantic_type::Category category;
     HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
         element, driver_, &category);
 

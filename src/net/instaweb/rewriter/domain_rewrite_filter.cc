@@ -21,6 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
@@ -75,15 +76,15 @@ void DomainRewriteFilter::Initialize(Statistics* statistics) {
 }
 
 void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
-  ContentType::Category category;
+  semantic_type::Category category;
   HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
       element, driver_, &category);
 
   // Disable domain_rewrite for non-image, non-script, non-stylesheet urls
   // unless ModPagespeedDomainRewriteHyperlinks is on
-  if (category != ContentType::kImage &&
-      category != ContentType::kScript &&
-      category != ContentType::kStylesheet &&
+  if (category != semantic_type::kImage &&
+      category != semantic_type::kScript &&
+      category != semantic_type::kStylesheet &&
       !driver_->options()->domain_rewrite_hyperlinks()) {
     return;
   }
@@ -91,7 +92,7 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
     StringPiece val(href->DecodedValueOrNull());
     GoogleString rewritten_val;
     // Don't shard hyperlinks, embeds, frames, or iframes.
-    bool apply_sharding = (category != ContentType::kHyperlink &&
+    bool apply_sharding = (category != semantic_type::kHyperlink &&
                            element->keyword() != HtmlName::kEmbed &&
                            element->keyword() != HtmlName::kFrame &&
                            element->keyword() != HtmlName::kIframe);

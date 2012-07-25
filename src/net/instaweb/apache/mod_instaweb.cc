@@ -36,6 +36,7 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/process_context.h"
@@ -1141,8 +1142,8 @@ static const char* ParseDirective3(
     //     - <span src=...> indicates a hyperlink
     //   ModPagespeedUrlValuedAttribute hr imgsrc Image
     //     - <hr image=...> indicates an image resource
-    ContentType::Category category;
-    if (!ParseCategory(arg3, &category)) {
+    semantic_type::Category category;
+    if (!semantic_type::ParseCategory(arg3, &category)) {
       return apr_pstrcat(cmd->pool, "Invalid resource category: ", arg3, NULL);
     } else {
       options->AddUrlValuedAttribute(arg1, arg2, category);

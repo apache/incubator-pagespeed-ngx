@@ -26,6 +26,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/css_util.h"
@@ -1008,11 +1009,11 @@ void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
     return;
   }
   // Don't rewrite if we cannot find the src attribute or if it's not an image.
-  ContentType::Category category;
+  semantic_type::Category category;
   HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
       element, driver_, &category);
   if (src == NULL || src->DecodedValueOrNull() == NULL ||
-      category != ContentType::kImage) {
+      category != semantic_type::kImage) {
     return;
   }
   // Ask the LSC filter to work out how to handle this element. A return

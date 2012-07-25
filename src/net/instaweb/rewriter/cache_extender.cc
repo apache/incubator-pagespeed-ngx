@@ -24,6 +24,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -130,21 +131,21 @@ bool CacheExtender::ShouldRewriteResource(
 }
 
 void CacheExtender::StartElementImpl(HtmlElement* element) {
-  ContentType::Category category;
+  semantic_type::Category category;
   HtmlElement::Attribute* href = resource_tag_scanner::ScanElement(
       element, driver_, &category);
   bool may_load = false;
   switch (category) {
-    case ContentType::kStylesheet:
+    case semantic_type::kStylesheet:
       may_load = driver_->MayCacheExtendCss();
       break;
-    case ContentType::kImage:
+    case semantic_type::kImage:
       may_load = driver_->MayCacheExtendImages();
       break;
-    case ContentType::kScript:
+    case semantic_type::kScript:
       may_load = driver_->MayCacheExtendScripts();
       break;
-    case ContentType::kOtherResource:
+    case semantic_type::kOtherResource:
       // We will still check server-supplied content type of the loaded resource
       // once we have it to ensure we don't cache-extend html or anything else
       // that could contain scripts.

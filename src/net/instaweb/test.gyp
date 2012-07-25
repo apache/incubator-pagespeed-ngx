@@ -81,6 +81,7 @@
         'http/reflecting_test_fetcher_test.cc',
         'http/request_headers_test.cc',
         'http/response_headers_test.cc',
+        'http/semantic_type_test.cc',
         'http/sync_fetcher_adapter_test.cc',
         'http/url_async_fetcher_test.cc',
         'http/user_agent_matcher_test.cc',

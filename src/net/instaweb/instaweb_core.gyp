@@ -119,6 +119,7 @@
       ],
       'sources': [
         'http/content_type.cc',
+        'http/semantic_type.cc',
       ],
       'include_dirs': [
         '<(instaweb_root)',

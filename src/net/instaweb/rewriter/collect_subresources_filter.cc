@@ -24,6 +24,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -137,14 +138,14 @@ void CollectSubresourcesFilter::EndElementImpl(HtmlElement* element) {
     in_first_head_ = false;
   }
   if (in_first_head_) {
-    ContentType::Category category;
+    semantic_type::Category category;
     HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
         element, driver(), &category);
     if (src == NULL) {
       return;
     }
-    if (category != ContentType::kStylesheet &&
-        category != ContentType::kScript) {
+    if (category != semantic_type::kStylesheet &&
+        category != semantic_type::kScript) {
       return;
     }
     // Skip data URIs.

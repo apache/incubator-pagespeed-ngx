@@ -198,22 +198,4 @@ bool ParseContentType(const StringPiece& content_type_str,
   return !mime_type->empty() || !charset->empty();
 }
 
-bool ParseCategory(const StringPiece& category_str,
-                   ContentType::Category* category) {
-  if (StringCaseEqual("Script", category_str)) {
-    *category = ContentType::kScript;
-  } else if (StringCaseEqual("Image", category_str)) {
-    *category = ContentType::kImage;
-  } else if (StringCaseEqual("Stylesheet", category_str)) {
-    *category = ContentType::kStylesheet;
-  } else if (StringCaseEqual("OtherResource", category_str)) {
-    *category = ContentType::kOtherResource;
-  } else if (StringCaseEqual("Hyperlink", category_str)) {
-    *category = ContentType::kHyperlink;
-  } else {
-    *category = ContentType::kUndefined;
-  }
-  return *category != ContentType::kUndefined;
-}
-
 }  // namespace net_instaweb

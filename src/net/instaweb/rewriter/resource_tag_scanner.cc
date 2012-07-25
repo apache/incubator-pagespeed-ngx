@@ -17,9 +17,9 @@
 // Authors: jmarantz@google.com (Joshua Marantz)
 //          jefftk@google.com (Jeff Kaufman)
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -41,10 +41,10 @@ const char kAttrValImage[] = "image";  // <input type="image" src=...>
 HtmlElement::Attribute* ScanElement(
     HtmlElement* element,
     RewriteDriver* driver,  // Can be NULL.
-    ContentType::Category* category) {
+    semantic_type::Category* category) {
   HtmlName::Keyword keyword = element->keyword();
   HtmlElement::Attribute* attr = NULL;
-  *category = ContentType::kUndefined;
+  *category = semantic_type::kUndefined;
   if (element->attribute_size() == 0) {
     return NULL;  // No attributes.
   }
@@ -53,12 +53,12 @@ HtmlElement::Attribute* ScanElement(
       // See http://www.whatwg.org/specs/web-apps/current-work/multipage/
       // links.html#linkTypes
       attr = element->FindAttribute(HtmlName::kHref);
-      *category = ContentType::kHyperlink;
+      *category = semantic_type::kHyperlink;
       HtmlElement::Attribute* rel_attr = element->FindAttribute(HtmlName::kRel);
       if (rel_attr != NULL) {
         if (StringCaseEqual(rel_attr->DecodedValueOrNull(),
                             CssTagScanner::kStylesheet)) {
-          *category = ContentType::kStylesheet;
+          *category = semantic_type::kStylesheet;
         } else if (StringCaseEqual(rel_attr->DecodedValueOrNull(),
                                    kIcon) ||
                    StringCaseEqual(rel_attr->DecodedValueOrNull(),
@@ -67,18 +67,18 @@ HtmlElement::Attribute* ScanElement(
                                    kAppleTouchIconPrecomposed) ||
                    StringCaseEqual(rel_attr->DecodedValueOrNull(),
                                    kAppleTouchStartupImage)) {
-          *category = ContentType::kImage;
+          *category = semantic_type::kImage;
         }
       }
       break;
     }
     case HtmlName::kScript:
       attr = element->FindAttribute(HtmlName::kSrc);
-      *category = ContentType::kScript;
+      *category = semantic_type::kScript;
       break;
     case HtmlName::kImg:
       attr = element->FindAttribute(HtmlName::kSrc);
-      *category = ContentType::kImage;
+      *category = semantic_type::kImage;
       break;
     case HtmlName::kBody:
     case HtmlName::kTd:
@@ -88,27 +88,27 @@ HtmlElement::Attribute* ScanElement(
     case HtmlName::kTfoot:
     case HtmlName::kThead:
       attr = element->FindAttribute(HtmlName::kBackground);
-      *category = ContentType::kImage;
+      *category = semantic_type::kImage;
       break;
     case HtmlName::kInput:
       if (StringCaseEqual(element->AttributeValue(HtmlName::kType),
                           kAttrValImage)) {
         attr = element->FindAttribute(HtmlName::kSrc);
-        *category = ContentType::kImage;
+        *category = semantic_type::kImage;
       }
       break;
     case HtmlName::kCommand:
       attr = element->FindAttribute(HtmlName::kIcon);
-      *category = ContentType::kImage;
+      *category = semantic_type::kImage;
       break;
     case HtmlName::kA:
     case HtmlName::kArea:
       attr = element->FindAttribute(HtmlName::kHref);
-      *category = ContentType::kHyperlink;
+      *category = semantic_type::kHyperlink;
       break;
     case HtmlName::kForm:
       attr = element->FindAttribute(HtmlName::kAction);
-      *category = ContentType::kHyperlink;
+      *category = semantic_type::kHyperlink;
       break;
     case HtmlName::kAudio:
     case HtmlName::kVideo:
@@ -118,33 +118,33 @@ HtmlElement::Attribute* ScanElement(
     case HtmlName::kFrame:
     case HtmlName::kIframe:
       attr = element->FindAttribute(HtmlName::kSrc);
-      *category = ContentType::kOtherResource;
+      *category = semantic_type::kOtherResource;
       break;
     case HtmlName::kHtml:
       attr = element->FindAttribute(HtmlName::kManifest);
-      *category = ContentType::kOtherResource;
+      *category = semantic_type::kOtherResource;
       break;
     case HtmlName::kBlockquote:
     case HtmlName::kQ:
     case HtmlName::kIns:
     case HtmlName::kDel:
       attr = element->FindAttribute(HtmlName::kCite);
-      *category = ContentType::kHyperlink;
+      *category = semantic_type::kHyperlink;
       break;
     case HtmlName::kButton:
       attr = element->FindAttribute(HtmlName::kFormaction);
-      *category = ContentType::kHyperlink;
+      *category = semantic_type::kHyperlink;
       break;
     default:
       break;
   }
-  if (*category == ContentType::kUndefined && driver != NULL) {
+  if (*category == semantic_type::kUndefined && driver != NULL) {
     // Find matching elements.
     for (int i = 0, n = driver->options()->num_url_valued_attributes();
          i < n; ++i) {
       StringPiece element_i;
       StringPiece attribute_i;
-      ContentType::Category category_i;
+      semantic_type::Category category_i;
       driver->options()->UrlValuedAttribute(
           i, &element_i, &attribute_i, &category_i);
       if (StringCaseEqual(element->name_str(), element_i)) {
@@ -161,9 +161,9 @@ HtmlElement::Attribute* ScanElement(
     }
   }
   if (attr == NULL || attr->decoding_error() ||
-      *category == ContentType::kUndefined) {
+      *category == semantic_type::kUndefined) {
     attr = NULL;
-    *category = ContentType::kUndefined;
+    *category = semantic_type::kUndefined;
   }
   return attr;
 }

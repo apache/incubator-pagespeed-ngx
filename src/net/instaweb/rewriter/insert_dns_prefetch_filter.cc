@@ -27,7 +27,7 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
@@ -115,20 +115,20 @@ void InsertDnsPrefetchFilter::StartElementImpl(HtmlElement* element) {
   if (noscript_element() != NULL) {
     return;
   }
-  ContentType::Category category;
+  semantic_type::Category category;
   HtmlElement::Attribute* url_attribute = resource_tag_scanner::ScanElement(
       element, driver(), &category);
   switch (category) {
     // The categories below are downloaded by the browser to display the page.
     // So DNS prefetch hints are useful.
-    case ContentType::kImage:
-    case ContentType::kScript:
-    case ContentType::kStylesheet:
-    case ContentType::kOtherResource:
+    case semantic_type::kImage:
+    case semantic_type::kScript:
+    case semantic_type::kStylesheet:
+    case semantic_type::kOtherResource:
       MarkAlreadyInHead(url_attribute);
       break;
 
-    case ContentType::kHyperlink:
+    case semantic_type::kHyperlink:
       if (element->keyword() == HtmlName::kLink) {
         // For LINK tags, many of the link types are detected as image or
         // stylesheet by the ResourceTagScanner. "prefetch" and "dns-prefetch"
@@ -150,7 +150,7 @@ void InsertDnsPrefetchFilter::StartElementImpl(HtmlElement* element) {
       }
       break;
 
-    case ContentType::kUndefined:
+    case semantic_type::kUndefined:
       break;
   }
 }
