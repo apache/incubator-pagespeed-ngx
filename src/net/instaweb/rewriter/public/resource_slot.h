@@ -95,7 +95,10 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   void set_was_optimized(bool x) { was_optimized_ = x; }
 
   // Render is not thread-safe.  This must be called from the thread that
-  // owns the DOM or CSS file.
+  // owns the DOM or CSS file. The RewriteContext state machine will only
+  // call ResourceSlot::Render() on slots that were optimized successfully,
+  // and whose partitions are safely url_relocatable(). (Note that this is
+  // different from RewriteContext::Render).
   virtual void Render() = 0;
 
   // Called after all contexts have had a chance to Render.

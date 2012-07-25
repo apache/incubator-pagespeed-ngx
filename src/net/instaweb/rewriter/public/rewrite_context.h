@@ -348,7 +348,9 @@ class RewriteContext {
   //
   // Note that unlike Harvest(), this method runs in the HTML thread (for
   // top-level rewrites), and only runs if the rewrite completes prior to
-  // the rewrite-deadline.
+  // the rewrite-deadline.  If the rewrite does make it by the deadline,
+  // RewriteContext::Render() will be invoked regardless of whether any slots
+  // were actually optimized successfully.
   virtual void Render();
 
   // This final set of protected methods can be optionally overridden
