@@ -77,6 +77,10 @@ ApacheCache::ApacheCache(const StringPiece& path,
     // We can't call ap_mpm_query from apr_mem_cache.cc without
     // forcing a server dependency and making it harder to run it in
     // unit tests.
+    //
+    // Note: this must run after mod_pagespeed_register_hooks has completed.
+    // See http://httpd.apache.org/docs/2.4/developer/new_api_2_4.html and
+    // search for ap_mpm_query.
     int thread_limit;
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
     thread_limit += factory->num_rewrite_threads() +

@@ -36,18 +36,9 @@ export APACHE_DEBUG_PAGESPEED_CONF
 export APACHE_LOG
 export MOD_PAGESPEED_CACHE
 
-# We are seeing this failure when running checkin tsts when this test is run
-# as part of apache_vm_system_tests:
-#   [Tue Jul 24 20:06:21 2012] [error] [mod_pagespeed 0.10.0.0-1708 @2716] Memory cache failed
-#   [Tue Jul 24 20:06:21 2012] [error] [mod_pagespeed 0.10.0.0-1708 @2722] Memory cache failed
-#   [Tue Jul 24 20:06:21 2012] [error] [mod_pagespeed 0.10.0.0-1708 @2723] Failed to attach memcached server localhost:6765 Invalid argument
-#   [Tue Jul 24 20:06:21 2012] [error] [mod_pagespeed 0.10.0.0-1708 @2723] Memory cache failed
-# Commenting out until this is resolved.
-#
-#	$(MAKE) apache_debug_memcached_test
-
 apache_vm_system_tests :
 	$(MAKE) apache_debug_smoke_test
+	$(MAKE) apache_debug_memcached_test
 	$(MAKE) apache_debug_leak_test
 	$(MAKE) apache_debug_rewrite_test
 	$(MAKE) apache_debug_proxy_test
@@ -253,7 +244,7 @@ apache_debug_rewrite_hyperlinks_test : rewrite_hyperlinks_test_prepare \
 	matches=`$(WGET_NO_PROXY) -q -O - $(TEST_ROOT)/rewrite_domains.html \
 	  | grep -c http://dst\.example\.com`; \
 	test $$matches -eq 3
-
+	
 client_domain_rewrite_test_prepare:
 	$(eval OPT_CLIENT_DOMAIN_REWRITE_TEST="CLIENT_DOMAIN_REWRITE_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*

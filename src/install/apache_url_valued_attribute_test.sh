@@ -25,8 +25,8 @@ check [ 1 = $($WGET_DUMP $REWRITE_DOMAINS |
 
 echo TEST: Additional url-valued attributes are fully respected.
 
-# There are five resources that should be optimized
-fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.' 5
+# There are seven resources that should be optimized
+fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.' 7
 
 # Make sure <custom d=...> isn't modified at all, but that everything else is
 # recognized as a url and rewritten from ../foo to /foo.  This means that only

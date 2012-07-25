@@ -113,6 +113,11 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
   message_handler();
   html_parse_message_handler();
   InitializeDefaultOptions();
+
+  // Note: this must run after mod_pagespeed_register_hooks has completed.
+  // See http://httpd.apache.org/docs/2.4/developer/new_api_2_4.html and
+  // search for ap_mpm_query.
+  AutoDetectThreadCounts();
 }
 
 ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
@@ -199,7 +204,6 @@ UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
 
 QueuedWorkerPool* ApacheRewriteDriverFactory::CreateWorkerPool(
     WorkerPoolName name) {
-  AutoDetectThreadCounts();
   switch (name) {
     case kHtmlWorkers:
       // In practice this is 0, as we don't use HTML threads in Apache.
