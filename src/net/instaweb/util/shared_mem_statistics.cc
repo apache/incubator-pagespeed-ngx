@@ -23,10 +23,14 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/file_writer.h"
+#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace {
 
@@ -35,6 +39,25 @@ const int kMaxBuckets = 500;
 // Default upper bound of values in histogram. Can be reset by SetMaxValue().
 const double kMaxValue = 5000;
 const char kStatisticsObjName[] = "statistics";
+// Interval at which to update statistics dump, in milliseconds.
+// TODO(sarahdw,bvb): Pick a good update interval and make this configurable.
+const int64 kStatisticsDumpIntervalMs = 3000;
+// Variable name for the timestamp used to decide whether we should dump
+// statistics.
+const char kTimestampVariable[] = "timestamp_";
+// File in which to record statistics over time.
+// TODO(bvb,sarahdw) Un-hard-code this.
+const char kLogfileName[] = "/usr/local/apache2/logs/stats.log";
+// Variables to keep for the console. These are the same names used in
+// /mod_pagespeed_statistics: variable_names, Histogram Names.
+// IMPORTANT: Do not include kTimestampVariable here, or else DumpToWriter
+// will hang.
+const char* const kImportant[] = {
+  "cache_hits", "cache_misses", "image_rewrites",
+  "instrumentation_filter_script_added_count",
+  "num_fallback_responses_served", "num_flushes",  "slurp_404_count",
+  "Html Time us Histogram"
+};
 }  // namespace
 
 namespace net_instaweb {
@@ -42,7 +65,8 @@ namespace net_instaweb {
 // Our shared memory storage format is an array of (mutex, int64).
 SharedMemVariable::SharedMemVariable(const StringPiece& name)
     : name_(name.as_string()),
-      value_ptr_(NULL) {
+      value_ptr_(NULL),
+      logger_(NULL) {
 }
 
 int64 SharedMemVariable::Get64() const {
@@ -54,21 +78,46 @@ int64 SharedMemVariable::Get64() const {
   }
 }
 
+int64 SharedMemVariable::Get64LockHeld() const {
+  return *value_ptr_;
+}
+
 int SharedMemVariable::Get() const {
   return Get64();
 }
 
 void SharedMemVariable::Set(int new_value) {
   if (mutex_.get() != NULL) {
-    ScopedMutex hold_lock(mutex_.get());
-    *value_ptr_ = new_value;
+    {
+      ScopedMutex hold_lock(mutex_.get());
+      *value_ptr_ = new_value;
+    }
+    // The variable was changed, so dump statistics if past the update interval.
+    if (logger_ != NULL) {
+      logger_->UpdateAndDumpIfRequired();
+    }
   }
+}
+
+void SharedMemVariable::SetLockHeldNoUpdate(int64 new_value) {
+  *value_ptr_ = new_value;
+}
+
+void SharedMemVariable::SetConsoleStatisticsLogger(
+    ConsoleStatisticsLogger* logger) {
+  logger_ = logger;
 }
 
 void SharedMemVariable::Add(int delta) {
   if (mutex_.get() != NULL) {
-    ScopedMutex hold_lock(mutex_.get());
-    *value_ptr_ += delta;
+    {
+      ScopedMutex hold_lock(mutex_.get());
+      *value_ptr_ += delta;
+    }
+    // The variable was changed, so dump statistics if past the update interval.
+    if (logger_ != NULL) {
+      logger_->UpdateAndDumpIfRequired();
+    }
   }
 }
 
@@ -88,6 +137,63 @@ void SharedMemVariable::AttachTo(
 
 void SharedMemVariable::Reset() {
   mutex_.reset();
+}
+
+AbstractMutex* SharedMemVariable::mutex() {
+  return mutex_.get();
+}
+
+SharedMemConsoleStatisticsLogger::SharedMemConsoleStatisticsLogger(
+    SharedMemVariable* var, MessageHandler* message_handler, Statistics* stats,
+    FileSystem* file_system, Timer* timer)
+      : last_dump_timestamp_(var),
+        message_handler_(message_handler),
+        statistics_(stats),
+        file_system_(file_system),
+        timer_(timer),
+        statistics_writer_(NULL) {
+  // TODO(bvb, sarahdw): Only open/close file when needed.
+  statistics_log_file_ = file_system_->OpenOutputFile(kLogfileName,
+                                                      message_handler_);
+  if (statistics_log_file_ != NULL) {
+    statistics_writer_.reset(new FileWriter(statistics_log_file_));
+  } else {
+    LOG(ERROR) << "Error opening statistics log file " << kLogfileName << ". ";
+  }
+}
+
+SharedMemConsoleStatisticsLogger::~SharedMemConsoleStatisticsLogger() {
+  if (statistics_writer_.get() != NULL) {
+    statistics_writer_->Flush(message_handler_);
+  }
+  if (statistics_log_file_ != NULL) {
+    file_system_->Close(statistics_log_file_, message_handler_);
+  }
+}
+
+void SharedMemConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
+  if (statistics_writer_.get() == NULL) {
+    // We've already logged the failure to open the file in the constructor.
+    return;
+  }
+  int64 current_time_ms = timer_->NowMs();
+  AbstractMutex* mutex = last_dump_timestamp_->mutex();
+  if (mutex == NULL) {
+    return;
+  }
+  // TODO(bvb,sarahdw): Change to TryLock.
+  ScopedMutex hold_lock(mutex);
+  if (current_time_ms >=
+      (last_dump_timestamp_->Get64LockHeld() + kStatisticsDumpIntervalMs)) {
+    // It's possible we'll need to do some of the following here for
+    // cross-process consistency:
+    // - flush the logfile before unlock to force out buffered data
+    // - close and reopen the logfile to reset file pointers before dumping
+    statistics_->DumpConsoleVarsToWriter(
+        current_time_ms, statistics_writer_.get(), message_handler_);
+    statistics_writer_->Flush(message_handler_);
+    last_dump_timestamp_->SetLockHeldNoUpdate(current_time_ms);
+  }
 }
 
 SharedMemHistogram::SharedMemHistogram() : max_buckets_(kMaxBuckets),
@@ -264,7 +370,9 @@ double SharedMemHistogram::AverageInternal() {
   if (buffer_ == NULL) {
     return -1.0;
   }
-  if (buffer_->count_ == 0) return 0.0;
+  if (buffer_->count_ == 0) {
+    return 0.0;
+  }
   return buffer_->sum_ / buffer_->count_;
 }
 
@@ -275,7 +383,9 @@ double SharedMemHistogram::PercentileInternal(const double perc) {
   if (buffer_ == NULL) {
     return -1.0;
   }
-  if (buffer_->count_ == 0 || perc < 0) return 0.0;
+  if (buffer_->count_ == 0 || perc < 0) {
+    return 0.0;
+  }
   // Floor of count_below is the number of values below the percentile.
   // We are indeed looking for the next value in histogram.
   double count_below = floor(buffer_->count_ * perc / 100);
@@ -308,7 +418,9 @@ double SharedMemHistogram::StandardDeviationInternal() {
   if (buffer_ == NULL) {
     return -1.0;
   }
-  if (buffer_->count_ == 0) return 0.0;
+  if (buffer_->count_ == 0) {
+    return 0.0;
+  }
   const double v = (buffer_->sum_of_squares_ * buffer_->count_ -
                    buffer_->sum_ * buffer_->sum_) /
                    (buffer_->count_ * buffer_->count_);
@@ -388,9 +500,25 @@ double SharedMemHistogram::BucketWidth() {
 }
 
 SharedMemStatistics::SharedMemStatistics(AbstractSharedMem* shm_runtime,
-                                         const GoogleString& filename_prefix)
+    const GoogleString& filename_prefix, MessageHandler* message_handler,
+    FileSystem* file_system, Timer* timer)
     : shm_runtime_(shm_runtime), filename_prefix_(filename_prefix),
-      frozen_(false) {
+      frozen_(false), logger_(NULL) {
+  if (false) {
+    // TODO(bvb, sarahdw): Set up a config file option that determines whether
+    // or not to use the Logger. Note that Variables account for the possibility
+    // that the Logger is NULL, so this works fine.
+    // Only 1 Statistics object per process, so this shouldn't be too slow.
+    for (int i = 0, n = arraysize(kImportant); i < n; ++i) {
+      important_variables_.insert(kImportant[i]);
+    }
+    SharedMemVariable* timestampVar = AddVariable(kTimestampVariable);
+    logger_.reset(new SharedMemConsoleStatisticsLogger(
+        timestampVar, message_handler, this, file_system, timer));
+    // The Logger needs a Variable which needs a Logger, hence the setter.
+    timestampVar->SetConsoleStatisticsLogger(logger_.get());
+    logger_->UpdateAndDumpIfRequired();
+  }
 }
 
 SharedMemStatistics::~SharedMemStatistics() {
@@ -403,7 +531,9 @@ SharedMemVariable* SharedMemStatistics::NewVariable(const StringPiece& name,
                << " after SharedMemStatistics is frozen!";
     return NULL;
   } else {
-    return new SharedMemVariable(name);
+    SharedMemVariable* var = new SharedMemVariable(name);
+    var->SetConsoleStatisticsLogger(logger_.get());
+    return var;
   }
 }
 
@@ -504,7 +634,9 @@ void SharedMemStatistics::Init(bool parent,
     SharedMemHistogram* hist = histograms(i);
     if (ok) {
       hist->AttachTo(segment_.get(), pos, message_handler);
-      if (parent) hist->Init();
+      if (parent) {
+        hist->Init();
+      }
     } else {
       hist->Reset();
     }
@@ -521,6 +653,50 @@ void SharedMemStatistics::GlobalCleanup(MessageHandler* message_handler) {
 
 GoogleString SharedMemStatistics::SegmentName() const {
   return StrCat(filename_prefix_, kStatisticsObjName);
+}
+
+bool SharedMemStatistics::IsIgnoredVariable(const GoogleString& var_name) {
+  return (important_variables_.find(var_name) == important_variables_.end());
+}
+
+void SharedMemStatistics::DumpConsoleVarsToWriter(
+    int64 current_time_ms, Writer* writer, MessageHandler* message_handler) {
+  writer->Write(StringPrintf("timestamp: %s\n",
+      Integer64ToString(current_time_ms).c_str()), message_handler);
+
+  for (int i = 0, n = variables_size(); i < n; ++i) {
+    Variable* var = variables(i);
+    GoogleString var_name = var->GetName().as_string();
+    if (IsIgnoredVariable(var_name)) {
+      continue;
+    }
+    GoogleString var_as_str = Integer64ToString(var->Get64());
+    writer->Write(StringPrintf("%s: %s\n", var_name.c_str(),
+        var_as_str.c_str()), message_handler);
+  }
+
+  for (int i = 0, n = histograms_size(); i < n; ++i) {
+    Histogram* histogram = histograms(i);
+    GoogleString histogram_name = histogram_names(i);
+    if (IsIgnoredVariable(histogram_name)) {
+      continue;
+    }
+    writer->Write(StringPrintf("histogram: %s\n",
+        histogram_name.c_str()), message_handler);
+
+    for (int j = 0, n = histogram->MaxBuckets(); j < n; j++) {
+      double lower_bound = histogram->BucketStart(j);
+      double upper_bound = histogram->BucketLimit(j);
+      double value = histogram->BucketCount(j);
+      if (value == 0) {
+        continue;
+      }
+      GoogleString result = StringPrintf("[%f, %f): %f\n",
+          lower_bound, upper_bound, value);
+      writer->Write(result, message_handler);
+    }
+  }
+  writer->Flush(message_handler);
 }
 
 }  // namespace net_instaweb

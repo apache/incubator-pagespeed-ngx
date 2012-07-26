@@ -16,9 +16,12 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_SHARED_MEM_STATISTICS_H_
 
 #include <cstddef>
+#include <set>
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/string.h"
@@ -26,9 +29,12 @@
 
 namespace net_instaweb {
 
-class MessageHandler;
 class AbstractSharedMem;
 class AbstractSharedMemSegment;
+class FileWriter;
+class MessageHandler;
+class Timer;
+class Writer;
 
 // An implementation of Statistics using our shared memory infrastructure.
 // These statistics will be shared amongst all processes and threads
@@ -50,14 +56,18 @@ class AbstractSharedMemSegment;
 // up with value -1.
 class SharedMemVariable : public Variable {
  public:
+  virtual ~SharedMemVariable() {}
   int64 Get64() const;
   virtual int Get() const;
   virtual void Set(int newValue);
   virtual void Add(int delta);
+  virtual StringPiece GetName() const { return name_; }
+  AbstractMutex* mutex();
 
  private:
-  friend class SharedMemTimedVariable;
+  friend class SharedMemConsoleStatisticsLogger;
   friend class SharedMemStatistics;
+  friend class SharedMemTimedVariable;
 
   explicit SharedMemVariable(const StringPiece& name);
 
@@ -68,6 +78,17 @@ class SharedMemVariable : public Variable {
   // share some state with parent.
   void Reset();
 
+  void SetConsoleStatisticsLogger(ConsoleStatisticsLogger* logger);
+
+  // Set the variable assuming that the lock is already held. Also, doesn't call
+  // ConsoleStatisticsLogger::UpdateAndDumpIfRequired. (This method is intended
+  // for use from within ConsoleStatisticsLogger::UpdateAndDumpIfRequired, so
+  // the lock is already held and updating again would introduce a loop.)
+  void SetLockHeldNoUpdate(int64 newValue);
+
+  // Get the variable's value assuming that the lock is already held.
+  int64 Get64LockHeld() const;
+
   // The name of this variable.
   const GoogleString name_;
 
@@ -77,7 +98,39 @@ class SharedMemVariable : public Variable {
   // The data...
   volatile int64* value_ptr_;
 
+  // The object used to log updates to a file. Owned by Statistics object, with
+  // a copy shared with every Variable. Note that this may be NULL if
+  // SetConsoleStatisticsLogger has not yet been called.
+  ConsoleStatisticsLogger* logger_;
+
   DISALLOW_COPY_AND_ASSIGN(SharedMemVariable);
+};
+
+class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
+ public:
+  SharedMemConsoleStatisticsLogger(SharedMemVariable* var,
+                                   MessageHandler* message_handler,
+                                   Statistics* stats,
+                                   FileSystem *file_system,
+                                   Timer* timer);
+  virtual ~SharedMemConsoleStatisticsLogger();
+  virtual void UpdateAndDumpIfRequired();
+
+ private:
+  // The last_dump_timestamp not only contains the time of the last dump,
+  // it also controls locking so that multiple threads can't dump at once.
+  SharedMemVariable* last_dump_timestamp_;
+  MessageHandler* message_handler_;
+  Statistics* statistics_;  // Needed so we can dump the stats contained here.
+  // file_system_ and timer_ are owned by someone who called the constructor
+  // (usually Apache's ResourceManager).
+  FileSystem* file_system_;
+  Timer* timer_;    // Used to retrieve timestamps
+  scoped_ptr<FileWriter> statistics_writer_;
+  // This needs to be freed with file_system_->Close()
+  FileSystem::OutputFile* statistics_log_file_;
+
+  DISALLOW_COPY_AND_ASSIGN(SharedMemConsoleStatisticsLogger);
 };
 
 class SharedMemHistogram : public Histogram {
@@ -161,7 +214,9 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
     SharedMemHistogram, FakeTimedVariable> {
  public:
   SharedMemStatistics(AbstractSharedMem* shm_runtime,
-                      const GoogleString& filename_prefix);
+                      const GoogleString& filename_prefix,
+                      MessageHandler* message_handler,
+                      FileSystem* file_system, Timer* timer);
   virtual ~SharedMemStatistics();
 
   // This method initializes or attaches to shared memory. You should call this
@@ -175,6 +230,14 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
   // This should be called from the root process as it is about to exit, when
   // no further children are expected to start.
   void GlobalCleanup(MessageHandler* message_handler);
+
+  ConsoleStatisticsLogger* console_logger() const { return logger_.get(); }
+
+  virtual void DumpConsoleVarsToWriter(int64 current_time_ms, Writer* writer,
+                                       MessageHandler* message_handler);
+  // Return whether to ignore the variable with a given name as unneeded by the
+  // console.
+  bool IsIgnoredVariable(const GoogleString& var_name);
 
  protected:
   virtual SharedMemVariable* NewVariable(const StringPiece& name, int index);
@@ -193,6 +256,9 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
   GoogleString filename_prefix_;
   scoped_ptr<AbstractSharedMemSegment> segment_;
   bool frozen_;
+  scoped_ptr<SharedMemConsoleStatisticsLogger> logger_;
+  // The variables that we're interested in displaying on the console.
+  std::set<GoogleString> important_variables_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemStatistics);
 };

@@ -525,7 +525,8 @@ Statistics* ApacheRewriteDriverFactory::MakeSharedMemStatistics() {
     // established at the time of this construction, calling into question
     // whether we are naming our shared-memory segments correctly.
     shared_mem_statistics_.reset(new SharedMemStatistics(
-        shared_mem_runtime(), filename_prefix().as_string()));
+        shared_mem_runtime(), filename_prefix().as_string(),
+        message_handler(), file_system(), timer()));
     Initialize(shared_mem_statistics_.get());
     shared_mem_statistics_->AddHistogram(kHtmlRewriteTimeHistogram);
     shared_mem_statistics_->Init(true, message_handler());

@@ -42,6 +42,9 @@ class MessageHandler;
 Variable::~Variable() {
 }
 
+ConsoleStatisticsLogger::~ConsoleStatisticsLogger() {
+}
+
 Histogram::~Histogram() {
 }
 

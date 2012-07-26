@@ -31,9 +31,9 @@ namespace {
 
 const char kPrefix[] = "/prefix/";
 const char kVar1[] = "v1";
-const char kVar2[] = "v2";
+const char kVar2[] = "num_flushes";
 const char kHist1[] = "H1";
-const char kHist2[] = "H2";
+const char kHist2[] = "Html Time us Histogram";
 }  // namespace
 
 SharedMemStatisticsTestBase::SharedMemStatisticsTestBase(
@@ -43,7 +43,12 @@ SharedMemStatisticsTestBase::SharedMemStatisticsTestBase(
 }
 
 void SharedMemStatisticsTestBase::SetUp() {
-  stats_.reset(new SharedMemStatistics(shmem_runtime_.get(), kPrefix));
+  // This time is in the afternoon of 17 July 2012.
+  timer_.reset(new MockTimer(1342567288560));
+  thread_system_.reset(ThreadSystem::CreateThreadSystem());
+  file_system_.reset(new MemFileSystem(thread_system_.get(), timer_.get()));
+  stats_.reset(new SharedMemStatistics(shmem_runtime_.get(), kPrefix, &handler_,
+                                       file_system_.get(), timer_.get()));
 }
 
 void SharedMemStatisticsTestBase::TearDown() {
@@ -71,7 +76,8 @@ bool SharedMemStatisticsTestBase::AddHistograms(SharedMemStatistics* stats) {
 
 SharedMemStatistics* SharedMemStatisticsTestBase::ChildInit() {
   scoped_ptr<SharedMemStatistics> stats(
-      new SharedMemStatistics(shmem_runtime_.get(), kPrefix));
+      new SharedMemStatistics(shmem_runtime_.get(), kPrefix, &handler_,
+                              file_system_.get(), timer_.get()));
   if (!AddVars(stats.get()) || !AddHistograms(stats.get())) {
     test_env_->ChildFailed();
     return NULL;
@@ -236,7 +242,15 @@ void SharedMemStatisticsTestBase::TestAdd() {
   GoogleString dump;
   StringWriter writer(&dump);
   stats_->Dump(&writer, &handler_);
-  EXPECT_EQ("v1: 13\nv2: 37\n", dump);
+  /*
+   * TODO(bvb, sarahdw): Enable logging for tests.
+  GoogleString result = "timestamp_: 1342567288560\n"
+                        "v1:                    13\n"
+                        "num_flushes:           37\n";
+  */
+  GoogleString result = "v1:          13\n"
+                        "num_flushes: 37\n";
+  EXPECT_EQ(result, dump);
 }
 
 void SharedMemStatisticsTestBase::TestAddChild() {
@@ -330,7 +344,7 @@ void SharedMemStatisticsTestBase::TestHistogramRender() {
   //   <td>H1 (click to view)</td> ...
   //   Raw Histogram Data ...
   //   <script> ... </script>
-  // ParentInit() adds two histograms: H1 and H2.
+  // ParentInit() adds two histograms: H1 and Html Time us Histogram.
   ParentInit();
   GoogleString html;
   StringWriter writer(&html);
@@ -377,6 +391,50 @@ void SharedMemStatisticsTestBase::TestTimedVariableEmulation() {
   b->IncBy(42);
   EXPECT_EQ(0, a->Get());
   EXPECT_EQ(42, b->Get(TimedVariable::START));
+}
+
+void SharedMemStatisticsTestBase::TestConsoleStatisticsLogger() {
+  ParentInit();
+  // See IMPORTANT note in shared_mem_statistics.cc
+  EXPECT_TRUE(stats_->IsIgnoredVariable("timestamp_"));
+  Variable* v1 = stats_->GetVariable(kVar1);
+  Variable* v2 = stats_->GetVariable(kVar2);
+  v1->Set(2300);
+  v2->Set(300);
+  Histogram* h1 = stats_->GetHistogram(kHist1);
+  h1->SetMaxValue(2500);
+  h1->Add(1);
+  h1->Add(2);
+  h1->Add(10);
+  h1->Add(20);
+  h1->Add(100);
+  h1->Add(200);
+  h1->Add(1000);
+  h1->Add(2000);
+  Histogram* h2 = stats_->GetHistogram(kHist2);
+  h2->SetMaxValue(2500);
+  h2->Add(1);
+  h2->Add(2);
+  h2->Add(10);
+  h2->Add(20);
+  h2->Add(100);
+  h2->Add(200);
+  h2->Add(1000);
+  h2->Add(2000);
+  GoogleString logger_output;
+  StringWriter logger_writer(&logger_output);
+  stats_->DumpConsoleVarsToWriter(timer_->NowMs(), &logger_writer, &handler_);
+  GoogleString result = "timestamp: 1342567288560\n"
+                        "num_flushes: 300\n"
+                        "histogram: Html Time us Histogram\n"
+                        "[0.000000, 5.000000): 2.000000\n"
+                        "[10.000000, 15.000000): 1.000000\n"
+                        "[20.000000, 25.000000): 1.000000\n"
+                        "[100.000000, 105.000000): 1.000000\n"
+                        "[200.000000, 205.000000): 1.000000\n"
+                        "[1000.000000, 1005.000000): 1.000000\n"
+                        "[2000.000000, 2005.000000): 1.000000\n";
+  EXPECT_EQ(result, logger_output);
 }
 
 }  // namespace net_instaweb

@@ -39,9 +39,21 @@ class Variable {
   virtual int Get() const = 0;
   virtual void Set(int delta) = 0;
   virtual int64 Get64() const = 0;
+  // Return some name representing the variable, provided that the specific
+  // implementation has some sensible way of doing so.
+  virtual StringPiece GetName() const = 0;
 
   virtual void Add(int delta) { Set(delta + Get()); }
   void Clear() { Set(0); }
+};
+
+// Class that manages dumping statistics periodically to a file.
+class ConsoleStatisticsLogger {
+  public:
+    virtual ~ConsoleStatisticsLogger();
+    // If it's been longer than kStatisticsDumpIntervalMs, update the
+    // timestamp to now and dump the current state of the Statistics.
+    virtual void UpdateAndDumpIfRequired() = 0;
 };
 
 class Histogram {
@@ -121,16 +133,6 @@ class Histogram {
   // 'selected' for index==0.
   GoogleString HtmlTableRow(const GoogleString& title, int index);
 
- protected:
-  // Note that these *Internal interfaces require the mutex to be held.
-  virtual double AverageInternal() = 0;
-  virtual double PercentileInternal(const double perc) = 0;
-  virtual double StandardDeviationInternal() = 0;
-  virtual double CountInternal() = 0;
-  virtual double MaximumInternal() = 0;
-  virtual double MinimumInternal() = 0;
-
-  virtual AbstractMutex* lock() = 0;
   // Lower bound of a bucket. If index == MaxBuckets() + 1, returns the
   // upper bound of the histogram. DCHECK if index is in the range of
   // [0, MaxBuckets()+1].
@@ -141,6 +143,17 @@ class Histogram {
   }
   // Value of a bucket.
   virtual double BucketCount(int index) = 0;
+
+ protected:
+  // Note that these *Internal interfaces require the mutex to be held.
+  virtual double AverageInternal() = 0;
+  virtual double PercentileInternal(const double perc) = 0;
+  virtual double StandardDeviationInternal() = 0;
+  virtual double CountInternal() = 0;
+  virtual double MaximumInternal() = 0;
+  virtual double MinimumInternal() = 0;
+
+  virtual AbstractMutex* lock() = 0;
   // Helper function of Render(), write entries of histogram raw data table.
   // Each entry includes bucket range, bucket count, percentage,
   // cumulative percentage, bar. It looks like:
@@ -161,6 +174,7 @@ class NullHistogram : public Histogram {
   virtual void SetMinValue(double value) { }
   virtual void SetMaxValue(double value) { }
   virtual void SetMaxBuckets(int i) { }
+  virtual GoogleString GetName() const { return ""; }
 
  protected:
   virtual AbstractMutex* lock() { return &mutex_; }
@@ -282,13 +296,27 @@ class Statistics {
   // Dump the variable-values to a writer.
   virtual void Dump(Writer* writer, MessageHandler* handler) = 0;
   // Export statistics to a writer. Statistics in a group are exported in one
-  // table.
-  virtual void RenderTimedVariables(Writer* writer, MessageHandler* handler);
+  // table. This only exports console-related variables, as opposed to all
+  // variables, as the above does.
+  // Empty implementation because most Statistics don't need this. It's
+  // here because in the context in which it is needed we only have access to a
+  // Statistics*, rather than the specific subclass.
+  // current_time_ms: the time at which the dump was triggered
+  virtual void DumpConsoleVarsToWriter(
+      int64 current_time_ms, Writer* writer, MessageHandler* message_handler) {}
+  virtual void RenderTimedVariables(Writer* writer,
+                                    MessageHandler* handler);
   // Write all the histograms in this Statistic object to a writer.
   virtual void RenderHistograms(Writer* writer, MessageHandler* handler);
   // Set all variables to 0.
   // Throw away all data in histograms and stats.
   virtual void Clear() = 0;
+
+  // This is implemented as NULL here because most Statistics don't
+  // need it. In the context in which it is needed we only have access to a
+  // Statistics*, rather than the specific subclass, hence its being here.
+  // Return the ConsoleStatisticsLogger associated with this Statistics.
+  virtual ConsoleStatisticsLogger* console_logger() const { return NULL; }
 
  protected:
   // A helper for subclasses that do not fully implement timed variables.

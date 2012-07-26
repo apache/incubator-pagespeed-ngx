@@ -19,10 +19,10 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_STATISTICS_TEMPLATE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_STATISTICS_TEMPLATE_H_
 
+#include <algorithm>
 #include <cstddef>
 #include <map>
 #include <vector>
-#include <utility>                      // for pair
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -122,15 +122,16 @@ template<class Var, class Hist, class TimedVar> class StatisticsTemplate
   virtual void Dump(Writer* writer, MessageHandler* message_handler) {
     int longest_string = 0;
     for (int i = 0, n = variables_.size(); i < n; ++i) {
+      const GoogleString& var_name = variable_names_[i];
       int length_number = Integer64ToString(variables_[i]->Get64()).size();
-      int length_name = variable_names_[i].size();
+      int length_name = var_name.size();
       longest_string = std::max(longest_string, length_name + length_number);
     }
 
     GoogleString spaces_buffer = GoogleString(longest_string, ' ');
     StringPiece spaces(spaces_buffer);
     for (int i = 0, n = variables_.size(); i < n; ++i) {
-      GoogleString var_name = variable_names_[i];
+      const GoogleString& var_name = variable_names_[i];
       GoogleString var_as_str = Integer64ToString(variables_[i]->Get64());
       writer->Write(var_name, message_handler);
       writer->Write(": ", message_handler);

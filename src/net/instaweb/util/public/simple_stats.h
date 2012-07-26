@@ -23,6 +23,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -35,6 +36,7 @@ class SimpleStatsVariable : public Variable {
   virtual int64 Get64() const { return value_.value(); }
   virtual void Set(int value) { value_.set_value(value); }
   virtual void Add(int delta) { value_.increment(delta); }
+  virtual StringPiece GetName() const { return StringPiece(NULL); }
 
  private:
   AtomicInt32 value_;

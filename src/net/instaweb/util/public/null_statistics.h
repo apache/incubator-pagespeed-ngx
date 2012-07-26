@@ -22,6 +22,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -33,6 +34,7 @@ class NullStatisticsVariable : public Variable {
   virtual int Get() const { return 0; }
   virtual void Set(int value) { }
   virtual int64 Get64() const { return 0; }
+  virtual StringPiece GetName() const { return StringPiece(NULL); }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NullStatisticsVariable);
