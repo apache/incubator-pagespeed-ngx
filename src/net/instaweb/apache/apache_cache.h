@@ -44,6 +44,8 @@ class Timer;
 // a locking mechanism and an optional per-process LRUCache.
 class ApacheCache {
  public:
+  static const char kMemcached[];
+
   ApacheCache(const StringPiece& path,
               const ApacheConfig& config,
               ApacheRewriteDriverFactory* factory);

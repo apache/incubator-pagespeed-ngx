@@ -19,6 +19,7 @@
 #include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/util/public/cache_stats.h"
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -48,6 +49,8 @@
 namespace net_instaweb {
 
 class Timer;
+
+const char ApacheCache::kMemcached[] = "memcached";
 
 // The ApacheCache encapsulates a cache-sharing model where a user specifies
 // a file-cache path per virtual-host.  With each file-cache object we keep
@@ -90,9 +93,11 @@ ApacheCache::ApacheCache(const StringPiece& path,
     if (!mem_cache_->valid_server_spec()) {
       abort();  // TODO(jmarantz): is there a better way to exit?
     }
-    l2_cache_ = mem_cache_;  // apr_memcache is threadsafe.  If not we'd do:
-    // l2_cache_ = new ThreadsafeCache(mem_cache_,
-    //                                 factory->thread_system()->NewMutex());
+
+    // TODO(jmarantz): Handle multiple vhosts, each with unique memcached
+    // statistics.
+    l2_cache_ = new CacheStats(kMemcached, mem_cache_, factory->timer(),
+                               factory->statistics());
   } else {
     FileCache::CachePolicy* policy = new FileCache::CachePolicy(
         factory->timer(),

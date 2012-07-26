@@ -39,6 +39,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/cache_stats.h"
 #ifndef NDEBUG
 #include "net/instaweb/util/public/checking_thread_system.h"
 #endif
@@ -544,6 +545,7 @@ void ApacheRewriteDriverFactory::Initialize(Statistics* statistics) {
   RewriteDriverFactory::Initialize(statistics);
   SerfUrlAsyncFetcher::Initialize(statistics);
   ApacheResourceManager::Initialize(statistics);
+  CacheStats::Initialize(ApacheCache::kMemcached, statistics);
 }
 
 void ApacheRewriteDriverFactory::AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
