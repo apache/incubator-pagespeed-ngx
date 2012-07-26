@@ -327,20 +327,17 @@ void SharedMemStatisticsTestBase::TestHistogramRender() {
   // A basic sanity test showing that even there's no data in histograms,
   // the script, histogram title, histogram table header are written to html.
   // The message written to html should look like:
-  //   <script> ... </script>
-  //   <div><h3>H1</h3> ...
+  //   <td>H1 (click to view)</td> ...
   //   Raw Histogram Data ...
-  //   Count: 0 ...
+  //   <script> ... </script>
   // ParentInit() adds two histograms: H1 and H2.
   ParentInit();
   GoogleString html;
   StringWriter writer(&html);
   stats_->RenderHistograms(&writer, &handler_);
-  EXPECT_TRUE(Contains(html, "<script>"));
-  EXPECT_TRUE(Contains(html, "<h3>H1</h3>"));
-  EXPECT_TRUE(Contains(html, "<h3>H2</h3>"));
-  EXPECT_TRUE(Contains(html, "Raw Histogram Data"));
-  EXPECT_TRUE(Contains(html, "Count: 0"));
+  EXPECT_TRUE(Contains(html, "No histogram data yet.  Refresh once there is"))
+      << "zero state message";
+  EXPECT_FALSE(Contains(html, "setHistogram"));
 
   // Test basic graph.
   Histogram* h1 = stats_->GetHistogram(kHist1);
@@ -367,6 +364,7 @@ void SharedMemStatisticsTestBase::TestHistogramRender() {
   EXPECT_TRUE(Contains(html_graph, "15)</td>"));
   EXPECT_TRUE(Contains(html_graph, "12.5%"));
   EXPECT_TRUE(Contains(html_graph, "37.5%"));
+  EXPECT_TRUE(Contains(html_graph, "setHistogram"));
 }
 
 void SharedMemStatisticsTestBase::TestTimedVariableEmulation() {

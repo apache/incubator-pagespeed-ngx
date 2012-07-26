@@ -67,8 +67,7 @@ class Histogram {
   // |  [2,3] 1 25% 50%  |||||               |
   // |  [4,5] 2 50% 100% ||||||||||          |
   // |_______________________________________|
-  virtual void Render(const StringPiece& title, Writer* writer,
-                      MessageHandler* handler);
+  virtual void Render(int index, Writer* writer, MessageHandler* handler);
   // Maxmum number of buckets. This number can be used to allocate a buffer for
   // Histogram.
   virtual int MaxBuckets() = 0;
@@ -114,14 +113,15 @@ class Histogram {
     return Percentile(50);
   }
 
- protected:
-  virtual AbstractMutex* lock() = 0;
   virtual double AverageInternal() = 0;
   virtual double PercentileInternal(const double perc) = 0;
   virtual double StandardDeviationInternal() = 0;
   virtual double CountInternal() = 0;
   virtual double MaximumInternal() = 0;
   virtual double MinimumInternal() = 0;
+
+ protected:
+  virtual AbstractMutex* lock() = 0;
   // Lower bound of a bucket. If index == MaxBuckets() + 1, returns the
   // upper bound of the histogram. DCHECK if index is in the range of
   // [0, MaxBuckets()+1].
@@ -274,8 +274,7 @@ class Statistics {
   virtual void Dump(Writer* writer, MessageHandler* handler) = 0;
   // Export statistics to a writer. Statistics in a group are exported in one
   // table.
-  virtual void RenderTimedVariables(Writer* writer,
-                                    MessageHandler* handler);
+  virtual void RenderTimedVariables(Writer* writer, MessageHandler* handler);
   // Write all the histograms in this Statistic object to a writer.
   virtual void RenderHistograms(Writer* writer, MessageHandler* handler);
   // Set all variables to 0.
