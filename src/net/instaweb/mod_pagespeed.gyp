@@ -36,7 +36,7 @@
         'mod_pagespeed.gypi',
       ],
       'dependencies+': [
-        '<(DEPTH)/third_party/httpd24/httpd.gyp:include',
+        '<(DEPTH)/third_party/httpd24/httpd24.gyp:include',
       ],
     },
   ],
