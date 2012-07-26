@@ -112,4 +112,15 @@ TEST_F(AprMemCacheTest, SizeTest) {
   }
 }
 
+TEST_F(AprMemCacheTest, StatsTest) {
+  ASSERT_FALSE(fail_);
+  GoogleString buf;
+  ASSERT_TRUE(cache_->GetStatus(&buf));
+  EXPECT_TRUE(buf.find("memcached server localhost:") != GoogleString::npos);
+  EXPECT_TRUE(buf.find(" pid ") != GoogleString::npos);
+  EXPECT_TRUE(buf.find("\nbytes_read: ") != GoogleString::npos);
+  EXPECT_TRUE(buf.find("\ncurr_connections: ") != GoogleString::npos);
+  EXPECT_TRUE(buf.find("\ntotal_items: ") != GoogleString::npos);
+}
+
 }  // namespace net_instaweb

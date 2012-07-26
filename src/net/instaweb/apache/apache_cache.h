@@ -61,6 +61,7 @@ class ApacheCache {
   void RootInit();
   void ChildInit();
   void GlobalCleanup(MessageHandler* handler);  // only called in root process
+  AprMemCache* mem_cache() { return mem_cache_; }
 
  private:
   void FallBackToFileBasedLocking();

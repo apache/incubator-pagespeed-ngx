@@ -18,8 +18,10 @@
 #include "net/instaweb/apache/instaweb_handler.h"
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_slurp.h"
 #include "net/instaweb/apache/apache_message_handler.h"
+#include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/instaweb_context.h"
@@ -290,6 +292,21 @@ apr_status_t instaweb_handler(request_rec* request) {
       statistics->Dump(&writer, factory->message_handler());
       writer.Write("</pre>", factory->message_handler());
       statistics->RenderHistograms(&writer, factory->message_handler());
+
+      // TODO(jmarantz): rethink memcached connections in the face of multiple
+      // vhosts.  We will only show the memcached connections for the root
+      // config here, and it's also possible that we may wind up making multiple
+      // connections to the same memcached servers.
+      ApacheCache* apache_cache = factory->GetCache(config);
+      AprMemCache* mem_cache = apache_cache->mem_cache();
+      if (mem_cache != NULL) {
+        GoogleString memcached_stats;
+        if (mem_cache->GetStatus(&memcached_stats)) {
+          writer.Write("<pre>\n", factory->message_handler());
+          writer.Write(memcached_stats, factory->message_handler());
+          writer.Write("</pre>\n", factory->message_handler());
+        }
+      }
     } else {
       writer.Write("mod_pagespeed statistics is not enabled\n",
                    factory->message_handler());

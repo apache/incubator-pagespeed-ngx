@@ -192,12 +192,47 @@ bool AprMemCache::GetStatus(GoogleString* buffer) {
     apr_memcache_stats_t* stats;
     apr_status_t status = apr_memcache_stats(servers_[i], temp_pool, &stats);
     if (status == APR_SUCCESS) {
-      StrAppend(buffer, "Server ", hosts_[i], ":", IntegerToString(ports_[i]),
-                        "\n");
-      StrAppend(buffer, "bytes = ", IntegerToString(stats->bytes), "\n");
-      StrAppend(buffer, "bytes_read = ", IntegerToString(stats->bytes_read),
-                        "\n");
-      StrAppend(buffer, "uptime = ", IntegerToString(stats->uptime), "\n\n");
+      StrAppend(buffer, "memcached server ", hosts_[i], ":",
+                IntegerToString(ports_[i]), " version ", stats->version);
+      StrAppend(buffer, " pid ", IntegerToString(stats->pid), " up ",
+                IntegerToString(stats->uptime), " seconds \n");
+      StrAppend(buffer, "bytes:                 ",
+                Integer64ToString(stats->bytes), "\n");
+      StrAppend(buffer, "bytes_read:            ",
+                Integer64ToString(stats->bytes_read), "\n");
+      StrAppend(buffer, "bytes_written:         ",
+                Integer64ToString(stats->bytes_written), "\n");
+      StrAppend(buffer, "cmd_get:               ",
+                IntegerToString(stats->cmd_get), "\n");
+      StrAppend(buffer, "cmd_set:               ",
+                IntegerToString(stats->cmd_set), "\n");
+      StrAppend(buffer, "connection_structures: ",
+                IntegerToString(stats->connection_structures), "\n");
+      StrAppend(buffer, "curr_connections:      ",
+                IntegerToString(stats->curr_connections), "\n");
+      StrAppend(buffer, "curr_items:            ",
+                IntegerToString(stats->curr_items), "\n");
+      StrAppend(buffer, "evictions:             ",
+                Integer64ToString(stats->evictions), "\n");
+      StrAppend(buffer, "get_hits:              ",
+                IntegerToString(stats->get_hits), "\n");
+      StrAppend(buffer, "get_misses:            ",
+                IntegerToString(stats->get_misses), "\n");
+      StrAppend(buffer, "limit_maxbytes:        ",
+                IntegerToString(stats->limit_maxbytes), "\n");
+      StrAppend(buffer, "pointer_size:          ",
+                IntegerToString(stats->pointer_size), "\n");
+      StrAppend(buffer, "rusage_system:         ",
+                Integer64ToString(stats->rusage_system), "\n");
+      StrAppend(buffer, "rusage_user:           ",
+                Integer64ToString(stats->pointer_size), "\n");
+      StrAppend(buffer, "threads:               ",
+                IntegerToString(stats->threads), "\n");
+      StrAppend(buffer, "total_connections:     ",
+                IntegerToString(stats->total_connections), "\n");
+      StrAppend(buffer, "total_items:           ",
+                IntegerToString(stats->total_items), "\n");
+      StrAppend(buffer, "\n");
       // TODO(jmarantz): add the rest of the stats from http://apr.apache.org
       // /docs/apr-util/1.4/structapr__memcache__stats__t.html
     } else {

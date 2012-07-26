@@ -36,9 +36,6 @@ namespace net_instaweb {
 class Hasher;
 class MessageHandler;
 class SharedString;
-class SlowWorker;
-class ThreadSystem;
-class Timer;
 
 // Interface to memcached via libmemcached.  A memcached polling loop
 // is run via a thread.
@@ -81,8 +78,6 @@ class AprMemCache : public CacheInterface {
   apr_pool_t* pool_;
   apr_memcache_t* memcached_;
   std::vector<apr_memcache_server_t*> servers_;
-  ThreadSystem* thread_system_;
-  Timer* timer_;
   Hasher* hasher_;
   MessageHandler* message_handler_;
 
