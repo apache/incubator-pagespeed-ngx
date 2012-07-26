@@ -18,7 +18,6 @@
 
 #include <limits.h>
 #include <algorithm>
-#include <cstddef>
 #include <vector>
 #include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -43,15 +42,16 @@ StringPiece LongestLiteralStringInWildcard(const Wildcard* wildcard) {
   StringPiece spec = wildcard->spec();
   const char kWildcardChars[] = { Wildcard::kMatchAny, Wildcard::kMatchOne };
   StringPiece wildcardChars(kWildcardChars, arraysize(kWildcardChars));
-  size_t longest_pos = 0;
-  size_t longest_len = 0;
-  size_t next_wildcard = 0;
-  for (int pos = 0; pos < spec.size(); pos = next_wildcard + 1) {
+  int longest_pos = 0;
+  int longest_len = 0;
+  int next_wildcard = 0;
+  for (int pos = 0;
+       pos < static_cast<int>(spec.size()); pos = next_wildcard + 1) {
     next_wildcard = spec.find_first_of(wildcardChars, pos);
-    if (next_wildcard == StringPiece::npos) {
+    if (next_wildcard == static_cast<int>(StringPiece::npos)) {
       next_wildcard = spec.size();
     }
-    size_t len = next_wildcard - pos;
+    int len = next_wildcard - pos;
     if (len > longest_len) {
       longest_pos = pos;
       longest_len = len;
@@ -93,10 +93,10 @@ void FastWildcardGroup::CompileNonTrivial() const {
   std::vector<StringPiece> longest_literal_strings;
   int num_nontrivial_patterns = 0;
   rolling_hash_length_ = INT_MAX;
-  for (int i = 0; i < wildcards_.size(); ++i) {
+  for (int i = 0; i < static_cast<int>(wildcards_.size()); ++i) {
     longest_literal_strings.push_back(
         LongestLiteralStringInWildcard(wildcards_[i]));
-    CHECK_EQ(i + 1, longest_literal_strings.size());
+    CHECK_EQ(i + 1, static_cast<int>(longest_literal_strings.size()));
     int length = longest_literal_strings[i].size();
     if (length > 0) {
       ++num_nontrivial_patterns;
@@ -142,7 +142,7 @@ void FastWildcardGroup::CompileNonTrivial() const {
       wildcard_only_indices_.push_back(i);
       rolling_hashes_[i] = 0;
     } else {
-      CHECK_GE(literal.size(), rolling_hash_length_);
+      CHECK_GE(static_cast<int>(literal.size()), rolling_hash_length_);
       // If possible, find a non-colliding rolling hash taken from literal.  If
       // the first hash collides, using a different hash is OK; we'll still end
       // up checking both matches in the table for an input that matches both.
@@ -174,14 +174,14 @@ void FastWildcardGroup::Compile() const {
   // Basic invariant
   CHECK_EQ(wildcards_.size(), allow_.size());
   // Make sure we don't have cruft left around from a previous compile.
-  CHECK_EQ(0, rolling_hashes_.size());
-  CHECK_EQ(0, effective_indices_.size());
-  CHECK_EQ(0, wildcard_only_indices_.size());
-  CHECK_EQ(0, pattern_hash_index_.size());
+  CHECK_EQ(0, static_cast<int>(rolling_hashes_.size()));
+  CHECK_EQ(0, static_cast<int>(effective_indices_.size()));
+  CHECK_EQ(0, static_cast<int>(wildcard_only_indices_.size()));
+  CHECK_EQ(0, static_cast<int>(pattern_hash_index_.size()));
   CHECK_EQ(kUncompiled, rolling_hash_length_);
 
   // Fast path for small groups
-  if (wildcards_.size() < kMinPatterns) {
+  if (static_cast<int>(wildcards_.size()) < kMinPatterns) {
     rolling_hash_length_ = kDontHash;
   } else {
     CompileNonTrivial();
@@ -190,16 +190,16 @@ void FastWildcardGroup::Compile() const {
   // When we're done, things should be in a sensible state.
   CHECK_NE(kUncompiled, rolling_hash_length_);
   if (rolling_hash_length_ == kDontHash) {
-    CHECK_EQ(0, rolling_hashes_.size());
-    CHECK_EQ(0, effective_indices_.size());
-    CHECK_EQ(0, wildcard_only_indices_.size());
-    CHECK_EQ(0, pattern_hash_index_.size());
+    CHECK_EQ(0, static_cast<int>(rolling_hashes_.size()));
+    CHECK_EQ(0, static_cast<int>(effective_indices_.size()));
+    CHECK_EQ(0, static_cast<int>(wildcard_only_indices_.size()));
+    CHECK_EQ(0, static_cast<int>(pattern_hash_index_.size()));
   } else {
     CHECK_EQ(wildcards_.size(), rolling_hashes_.size());
     CHECK_EQ(wildcards_.size(), effective_indices_.size());
-    size_t hash_pats = wildcards_.size() - wildcard_only_indices_.size();
+    int hash_pats = wildcards_.size() - wildcard_only_indices_.size();
     CHECK_LE(kMinPatterns, hash_pats);
-    CHECK_LE(2 * hash_pats, pattern_hash_index_.size());
+    CHECK_LE(2 * hash_pats, static_cast<int>(pattern_hash_index_.size()));
     CHECK_LT(0, rolling_hash_length_);
   }
 }

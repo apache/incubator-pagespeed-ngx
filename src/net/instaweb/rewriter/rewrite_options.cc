@@ -36,7 +36,6 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/wildcard_group.h"
 
 namespace {
 

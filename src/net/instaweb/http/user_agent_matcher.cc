@@ -14,7 +14,7 @@
 
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/wildcard_group.h"
+#include "net/instaweb/util/public/fast_wildcard_group.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -23,7 +23,7 @@ namespace net_instaweb {
 // image-inlining. The data is from "Latest WURFL Repository"(mobile devices)
 // and "Web Patch"(browsers) on http://wurfl.sourceforge.net
 // The user-agent string for Opera could be in the form of "Opera 7" or
-// "Opera/7", we use regualr-expression "Opera?7" for this case.
+// "Opera/7", we use the wildcard pattern "Opera?7" for this case.
 namespace {
 const char* kImageInliningWhitelist[] = {
   "*Android*",
@@ -132,7 +132,7 @@ const char* kSupportsPrefetchImageTag[] = {
 }  // namespace
 
 UserAgentMatcher::UserAgentMatcher() {
-  // Initialize WildcardGroup for image inlining whitelist & blacklist.
+  // Initialize FastWildcardGroup for image inlining whitelist & blacklist.
   for (int i = 0, n = arraysize(kImageInliningWhitelist); i < n; ++i) {
     supports_image_inlining_.Allow(kImageInliningWhitelist[i]);
   }

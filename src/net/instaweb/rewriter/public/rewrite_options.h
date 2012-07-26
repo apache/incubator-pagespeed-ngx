@@ -30,12 +30,12 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest_prod.h"  // for FRIEND_TEST
+#include "net/instaweb/util/public/fast_wildcard_group.h"
+#include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/wildcard.h"
-#include "net/instaweb/util/public/wildcard_group.h"
 
 namespace net_instaweb {
 
@@ -1864,8 +1864,8 @@ class RewriteOptions {
   DomainLawyer domain_lawyer_;
   FileLoadPolicy file_load_policy_;
 
-  WildcardGroup allow_resources_;
-  WildcardGroup retain_comments_;
+  FastWildcardGroup allow_resources_;
+  FastWildcardGroup retain_comments_;
 
   GoogleString signature_;
 

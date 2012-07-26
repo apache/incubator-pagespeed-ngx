@@ -17,7 +17,7 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/wildcard_group.h"
+#include "net/instaweb/util/public/fast_wildcard_group.h"
 
 namespace net_instaweb {
 
@@ -82,12 +82,12 @@ class UserAgentMatcher {
       const RequestHeaders* request_headers) const;
 
  private:
-  WildcardGroup supports_image_inlining_;
-  WildcardGroup supports_blink_desktop_;
-  WildcardGroup supports_webp_;
-  WildcardGroup mobile_user_agents_;
-  WildcardGroup supports_prefetch_link_rel_subresource_;
-  WildcardGroup supports_prefetch_image_tag_;
+  FastWildcardGroup supports_image_inlining_;
+  FastWildcardGroup supports_blink_desktop_;
+  FastWildcardGroup supports_webp_;
+  FastWildcardGroup mobile_user_agents_;
+  FastWildcardGroup supports_prefetch_link_rel_subresource_;
+  FastWildcardGroup supports_prefetch_image_tag_;
 
   DISALLOW_COPY_AND_ASSIGN(UserAgentMatcher);
 };

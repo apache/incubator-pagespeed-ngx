@@ -23,8 +23,8 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/fast_wildcard_group.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/wildcard_group.h"
 
 namespace net_instaweb {
 class HtmlCommentNode;
@@ -67,7 +67,7 @@ class RemoveCommentsFilter : public EmptyHtmlFilter {
     }
 
    private:
-    WildcardGroup retain_comments_;
+    FastWildcardGroup retain_comments_;
 
     DISALLOW_COPY_AND_ASSIGN(OptionsImpl);
   };
