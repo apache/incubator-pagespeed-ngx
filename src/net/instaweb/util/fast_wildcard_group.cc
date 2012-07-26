@@ -120,7 +120,7 @@ void FastWildcardGroup::CompileNonTrivial() const {
   rolling_hashes_.resize(wildcards_.size());
   effective_indices_.resize(allow_.size());
   int current_effective_index = allow_.size() - 1;
-  int current_allow = allow_[current_effective_index];
+  bool current_allow = allow_[current_effective_index];
   // Fill in the hash table with a rolling hash.  We do this in
   // reverse order so that collisions will result in the later
   // pattern being matched first (if that succeeds, no further
