@@ -31,11 +31,10 @@ fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.' 5
 # Make sure <custom d=...> isn't modified at all, but that everything else is
 # recognized as a url and rewritten from ../foo to /foo.  This means that only
 # one reference to ../mod_pagespeed should remain, <custom d=...>.
-check [ 1 = $($WGET_DUMP $UVA_EXTEND_CACHE | fgrep -c ' d="../mod_pa') ]
-check [ 1 = $($WGET_DUMP $UVA_EXTEND_CACHE | fgrep -c '../mod_pa') ]
+fetch_until $UVA_EXTEND_CACHE 'grep -c d=.[.][.]/mod_pa' 1
+fetch_until $UVA_EXTEND_CACHE 'fgrep -c ../mod_pa' 1
 
 # There are five images that should be optimized.
-check [ 5 = $($WGET_DUMP $UVA_EXTEND_CACHE | fgrep -c '.pagespeed.ic') ]
-
+fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.ic' 5
 
 echo "PASS."
