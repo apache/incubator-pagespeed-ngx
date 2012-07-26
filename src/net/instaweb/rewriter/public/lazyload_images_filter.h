@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_LAZYLOAD_IMAGES_FILTER_H_
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 
 namespace net_instaweb {
 
@@ -69,7 +69,7 @@ class Statistics;
 //    src="kBlankImageSrc" />
 //  </body>
 //
-class LazyloadImagesFilter : public EmptyHtmlFilter {
+class LazyloadImagesFilter : public CommonFilter {
  public:
   static const char* kImageLazyloadCode;
   static const char* kBlankImageSrc;
@@ -79,20 +79,20 @@ class LazyloadImagesFilter : public EmptyHtmlFilter {
   explicit LazyloadImagesFilter(RewriteDriver* driver);
   virtual ~LazyloadImagesFilter();
 
-  virtual void StartDocument();
-  virtual void StartElement(HtmlElement* element);
-  virtual void EndElement(HtmlElement* element);
-
   virtual const char* Name() const { return "Lazyload Images"; }
 
   static void Initialize(Statistics* statistics);
   static void Terminate();
 
+ protected:
+  virtual void StartDocumentImpl();
+  virtual void StartElementImpl(HtmlElement* element);
+  virtual void EndElementImpl(HtmlElement* element);
+
  private:
   // Inserts the lazyload JS code before the given element.
   void InsertLazyloadJsCode(HtmlElement* element);
 
-  RewriteDriver* driver_;
   // If non-NULL, we skip rewriting till we reach
   // LazyloadImagesFilter::EndElement(skip_rewrite_).
   HtmlElement* skip_rewrite_;

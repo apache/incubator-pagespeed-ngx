@@ -71,6 +71,9 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
       "<body>"
       "<img />"
       "<img src=\"\" />"
+      "<noscript>"
+      "<img src=\"noscript.jpg\" />"
+      "</noscript>"
       "<img src=\"1.jpg\" />"
       "<img src=\"1.jpg\" pagespeed_no_defer/>"
       "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>"
@@ -82,6 +85,9 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
       "</body>",
       StrCat("<head></head><body><img/>"
              "<img src=\"\"/>"
+             "<noscript>"
+             "<img src=\"noscript.jpg\"/>"
+             "</noscript>"
              "<script type=\"text/javascript\">",
              lazyload_js_code,
              "\npagespeed.lazyLoadInit(false, \"",

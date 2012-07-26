@@ -113,6 +113,16 @@ class Histogram {
     return Percentile(50);
   }
 
+  // Formats the histogram statistics as an HTML table row.  This
+  // is intended for use in Statistics::RenderHistograms.
+  //
+  // The <tr> element id is given id=hist_row_%d where %d is from the index.
+  // Included in the row an input radio button which is initiated in state
+  // 'selected' for index==0.
+  GoogleString HtmlTableRow(const GoogleString& title, int index);
+
+ protected:
+  // Note that these *Internal interfaces require the mutex to be held.
   virtual double AverageInternal() = 0;
   virtual double PercentileInternal(const double perc) = 0;
   virtual double StandardDeviationInternal() = 0;
@@ -120,7 +130,6 @@ class Histogram {
   virtual double MaximumInternal() = 0;
   virtual double MinimumInternal() = 0;
 
- protected:
   virtual AbstractMutex* lock() = 0;
   // Lower bound of a bucket. If index == MaxBuckets() + 1, returns the
   // upper bound of the histogram. DCHECK if index is in the range of

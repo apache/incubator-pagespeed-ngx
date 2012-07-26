@@ -175,7 +175,7 @@ void Statistics::RenderHistograms(Writer* writer, MessageHandler* handler) {
     Histogram* hist = FindHistogram(hist_names[i]);
 
     // Exclude histograms with zero count.
-    if (hist->CountInternal() != 0) {
+    if (hist->Count() != 0) {
       populated_histograms.push_back(hist);
       populated_histogram_names.push_back(hist_names[i]);
     }
@@ -197,19 +197,8 @@ void Statistics::RenderHistograms(Writer* writer, MessageHandler* handler) {
     CHECK_EQ(populated_histogram_names.size(), populated_histograms.size());
     for (int i = 0, n = populated_histograms.size(); i < n; ++i) {
       Histogram* hist = populated_histograms[i];
-      const GoogleString stat = StringPrintf(
-          kHistogramRowFormat,
-          i,
-          (i == 0) ? " selected" : "",
-          i,
-          populated_histogram_names[i].c_str(),
-          hist->CountInternal(), hist->AverageInternal(),
-          hist->StandardDeviationInternal(),
-          hist->MinimumInternal(), hist->PercentileInternal(50),
-          hist->MaximumInternal(),
-          hist->PercentileInternal(90), hist->PercentileInternal(95),
-          hist->PercentileInternal(99));
-      writer->Write(stat, handler);
+      GoogleString row = hist->HtmlTableRow(populated_histogram_names[i], i);
+      writer->Write(row, handler);
     }
     writer->Write(StringPiece(kHistogramEpilog,
                               STATIC_STRLEN(kHistogramEpilog)),
@@ -227,6 +216,25 @@ void Statistics::RenderHistograms(Writer* writer, MessageHandler* handler) {
                   handler);
   }
   writer->Write("<hr/>\n", handler);
+}
+
+GoogleString Histogram::HtmlTableRow(const GoogleString& title, int index) {
+  ScopedMutex hold(lock());
+  return StringPrintf(
+      kHistogramRowFormat,
+      index,
+      (index == 0) ? " selected" : "",
+      index,
+      title.c_str(),
+      CountInternal(),
+      AverageInternal(),
+      StandardDeviationInternal(),
+      MinimumInternal(),
+      PercentileInternal(50),
+      MaximumInternal(),
+      PercentileInternal(90),
+      PercentileInternal(95),
+      PercentileInternal(99));
 }
 
 void Statistics::RenderTimedVariables(Writer* writer,

@@ -53,7 +53,7 @@ const char* LazyloadImagesFilter::kLoadAllImages =
     "pagespeed.lazyLoadImages.loadAllImages();";
 
 LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
-    : driver_(driver),
+    : CommonFilter(driver),
       skip_rewrite_(NULL),
       main_script_inserted_(false),
       abort_rewrite_(false),
@@ -61,14 +61,17 @@ LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
 
 LazyloadImagesFilter::~LazyloadImagesFilter() {}
 
-void LazyloadImagesFilter::StartDocument() {
+void LazyloadImagesFilter::StartDocumentImpl() {
   skip_rewrite_ = NULL;
   main_script_inserted_ = false;
   abort_rewrite_ = false;
   abort_script_inserted_ = false;
 }
 
-void LazyloadImagesFilter::StartElement(HtmlElement* element) {
+void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
+  if (noscript_element() != NULL) {
+    return;
+  }
   if (skip_rewrite_ == NULL) {
     // Check if the element has dfcg in the class name and skip rewriting all
     // images till we reach the end of this element.
@@ -94,7 +97,10 @@ void LazyloadImagesFilter::StartElement(HtmlElement* element) {
   }
 }
 
-void LazyloadImagesFilter::EndElement(HtmlElement* element) {
+void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
+  if (noscript_element() != NULL) {
+    return;
+  }
   if (skip_rewrite_ == element) {
     skip_rewrite_ = NULL;
     return;
@@ -105,17 +111,17 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
     if (!abort_script_inserted_ && main_script_inserted_) {
       // If we have already rewritten some elements on the page, insert a
       // script to load all previously rewritten images.
-      HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-      driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
-      HtmlNode* script_code = driver_->NewCharactersNode(
+      HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
+      driver()->AddAttribute(script, HtmlName::kType, "text/javascript");
+      HtmlNode* script_code = driver()->NewCharactersNode(
           script, kLoadAllImages);
-      driver_->InsertElementAfterElement(element, script);
-      driver_->AppendChild(script, script_code);
+      driver()->InsertElementAfterElement(element, script);
+      driver()->AppendChild(script, script_code);
       abort_script_inserted_ = true;
     }
     return;
   }
-  if (driver_->IsRewritable(element) &&
+  if (driver()->IsRewritable(element) &&
       element->keyword() == HtmlName::kImg) {
     // Only rewrite <img> tags. Don't rewrite <input> tags since the onload
     // event is not fired for them in some browsers.
@@ -131,23 +137,23 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
         // not inlined.
         // Note that we remove the pagespeed_no_defer if it was present.
         CriticalImagesFinder* finder =
-            driver_->resource_manager()->critical_images_finder();
+            driver()->resource_manager()->critical_images_finder();
         // Note that if the platform lacks a CriticalImageFinder
         // implementation, we consider all images to be non-critical and try
         // to lazily load them.
         if (finder != NULL) {
           // Decode the url since the critical images in the finder are not
           // rewritten.
-          GoogleUrl gurl(driver_->base_url(), url);
+          GoogleUrl gurl(base_url(), url);
           StringVector decoded_url_vector;
-          if (driver_->DecodeUrl(gurl, &decoded_url_vector) &&
+          if (driver()->DecodeUrl(gurl, &decoded_url_vector) &&
               decoded_url_vector.size() == 1) {
             // We only handle the case where the rewritten url corresponds to a
             // single original url which should be sufficient for all cases
             // other than image sprites.
             gurl.Reset(decoded_url_vector[0]);
           }
-          if (finder->IsCriticalImage(gurl.spec_c_str(), driver_)) {
+          if (finder->IsCriticalImage(gurl.spec_c_str(), driver())) {
             // Do not try to lazily load this image since it is critical.
             return;
           }
@@ -157,31 +163,31 @@ void LazyloadImagesFilter::EndElement(HtmlElement* element) {
         }
         // Replace the src with pagespeed_lazy_src and set the onload
         // appropriately.
-        driver_->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
-        driver_->AddAttribute(element, HtmlName::kSrc, kBlankImageSrc);
-        driver_->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
+        driver()->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
+        driver()->AddAttribute(element, HtmlName::kSrc, kBlankImageSrc);
+        driver()->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
       }
     }
   }
 }
 
 void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
-  HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-  driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
+  HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
+  driver()->AddAttribute(script, HtmlName::kType, "text/javascript");
   const GoogleString& load_onload =
-      driver_->options()->lazyload_images_after_onload() ? kTrue : kFalse;
+      driver()->options()->lazyload_images_after_onload() ? kTrue : kFalse;
   StaticJavascriptManager* static_js__manager =
-      driver_->resource_manager()->static_javascript_manager();
+      driver()->resource_manager()->static_javascript_manager();
   StringPiece lazyload_images_js =
       static_js__manager->GetJsSnippet(
-          StaticJavascriptManager::kLazyloadImagesJs, driver_->options());
+          StaticJavascriptManager::kLazyloadImagesJs, driver()->options());
   const GoogleString& lazyload_js =
       StrCat(lazyload_images_js, "\npagespeed.lazyLoadInit(",
              load_onload, ", \"", kBlankImageSrc, "\");\n");
-  HtmlNode* script_code = driver_->NewCharactersNode(
+  HtmlNode* script_code = driver()->NewCharactersNode(
       script, lazyload_js);
-  driver_->InsertElementBeforeElement(element, script);
-  driver_->AppendChild(script, script_code);
+  driver()->InsertElementBeforeElement(element, script);
+  driver()->AppendChild(script, script_code);
   main_script_inserted_ = true;
 }
 
