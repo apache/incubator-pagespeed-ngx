@@ -45,7 +45,7 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
   virtual ~AddInstrumentationFilter();
 
   static void Initialize(Statistics* statistics);
-  static void Terminate();
+  static void Terminate() {}
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
@@ -60,7 +60,7 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
   // Adds a script node to given element using the specified format and
   // tag name.
   void AddScriptNode(HtmlElement* element, const GoogleString& script_format,
-                     const GoogleString& tag_name, bool is_xhtml);
+                     const GoogleString& tag_name);
 
   RewriteDriver* driver_;
   bool found_head_;

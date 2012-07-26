@@ -208,7 +208,19 @@ TEST_F(AddInstrumentationFilterTest,
                             &handler);
   options()->SetFuriousState(2);
   RunInjection();
-  EXPECT_TRUE(output_buffer_.find("exptid=2") != GoogleString::npos);
+  EXPECT_TRUE(output_buffer_.find("&exptid=2") != GoogleString::npos);
+}
+
+// Test that we're escaping ampersands in Xhtml.
+TEST_F(AddInstrumentationFilterTest,
+       TestFuriousExperimentIdReportingXhtml) {
+  NullMessageHandler handler;
+  options()->set_running_furious_experiment(true);
+  options()->AddFuriousSpec("id=2;percent=100", &handler);
+  options()->SetFuriousState(2);
+  SetMimetypeToXhtml();
+  RunInjection();
+  EXPECT_TRUE(output_buffer_.find("&amp;exptid=2") != GoogleString::npos);
 }
 
 

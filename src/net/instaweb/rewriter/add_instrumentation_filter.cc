@@ -101,8 +101,6 @@ const char kCdataHackClose[] = "\n//]]>";
 // above via the second %s.
 const char AddInstrumentationFilter::kLoadTag[] = "load:";
 const char AddInstrumentationFilter::kUnloadTag[] = "unload:";
-GoogleString* AddInstrumentationFilter::kTailScriptFormatXhtml = NULL;
-GoogleString* AddInstrumentationFilter::kUnloadScriptFormatXhtml = NULL;
 
 // Counters.
 const char AddInstrumentationFilter::kInstrumentationScriptAddedCount[] =
@@ -123,19 +121,6 @@ AddInstrumentationFilter::~AddInstrumentationFilter() {}
 
 void AddInstrumentationFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kInstrumentationScriptAddedCount);
-  if (kTailScriptFormatXhtml == NULL) {
-    kTailScriptFormatXhtml = new GoogleString(kTailScriptFormat);
-    GlobalReplaceSubstring("&", "&amp;", kTailScriptFormatXhtml);
-    kUnloadScriptFormatXhtml = new GoogleString(kUnloadScriptFormat);
-    GlobalReplaceSubstring("&", "&amp;", kUnloadScriptFormatXhtml);
-  }
-}
-
-void AddInstrumentationFilter::Terminate() {
-  delete kTailScriptFormatXhtml;
-  kTailScriptFormatXhtml = NULL;
-  delete kUnloadScriptFormatXhtml;
-  kUnloadScriptFormatXhtml = NULL;
 }
 
 void AddInstrumentationFilter::StartDocument() {
@@ -164,40 +149,24 @@ void AddInstrumentationFilter::EndElement(HtmlElement* element) {
     // assured by add_head_filter.
     CHECK(found_head_) << "Reached end of document without finding <head>."
         "  Please turn on the add_head filter.";
-    bool is_xhtml = (driver_->MimeTypeXhtmlStatus() == RewriteDriver::kIsXhtml);
-    const char* script = is_xhtml
-        ? kTailScriptFormatXhtml->c_str() : kTailScriptFormat;
-    AddScriptNode(element, script, kLoadTag, is_xhtml);
+    AddScriptNode(element, kTailScriptFormat, kLoadTag);
     added_tail_script_ = true;
   } else if (found_head_ && element->keyword() == HtmlName::kHead &&
              driver_->options()->report_unload_time() &&
              !added_unload_script_) {
-    bool is_xhtml = (driver_->MimeTypeXhtmlStatus() == RewriteDriver::kIsXhtml);
-    const char* script = is_xhtml
-        ? kUnloadScriptFormatXhtml->c_str() : kUnloadScriptFormat;
-    AddScriptNode(element, script, kUnloadTag, is_xhtml);
+    AddScriptNode(element, kUnloadScriptFormat, kUnloadTag);
     added_unload_script_ = true;
   }
 }
 
 void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
                                              const GoogleString& script_format,
-                                             const GoogleString& tag_name,
-                                             bool is_xhtml) {
+                                             const GoogleString& tag_name) {
   GoogleString html_url;
   driver_->google_url().Spec().CopyToString(&html_url);
-  if (is_xhtml) {
-    GlobalReplaceSubstring("&", "&amp;", &html_url);
-  }
   const RewriteOptions::BeaconUrl& beacons = driver_->options()->beacon_url();
   const GoogleString* beacon_url =
       driver_->IsHttps() ? &beacons.https : &beacons.http;
-  GoogleString xhtml_conversion_buffer;
-  if (is_xhtml) {
-    xhtml_conversion_buffer = *beacon_url;
-    GlobalReplaceSubstring("&", "&amp;", &xhtml_conversion_buffer);
-    beacon_url = &xhtml_conversion_buffer;
-  }
   GoogleString expt_id_param;
   if (driver_->options()->running_furious()) {
     int furious_state = driver_->options()->furious_id();
@@ -214,6 +183,13 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
       expt_id_param.c_str(),
       html_url.c_str(),
       use_cdata_hack_ ? kCdataHackClose: "");
+  if (driver_->MimeTypeXhtmlStatus() == RewriteDriver::kIsXhtml) {
+    // We shouldn't escape ampersands if we're using CDATA, but we will only use
+    // CDATA if the response headers aren't finalized while we will only have
+    // have MimeTypeXhtmlStatus as Xhtml if they are.
+    CHECK(!use_cdata_hack_);
+    GlobalReplaceSubstring("&", "&amp;", &tail_script);
+  }
   HtmlCharactersNode* script =
       driver_->NewCharactersNode(element, tail_script);
   driver_->InsertElementBeforeCurrent(script);
