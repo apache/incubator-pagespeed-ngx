@@ -1241,7 +1241,7 @@ class RewriteOptions {
     return signature_;
   }
 
-  virtual GoogleString ToString() const;
+  virtual GoogleString OptionsToString() const;
 
   // Returns a string identifying the currently running Furious experiment to
   // be used in tagging Google Analytics data.

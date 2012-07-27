@@ -1436,7 +1436,7 @@ GoogleString RewriteOptions::ToString(const BeaconUrl& beacon_url) {
   return result;
 }
 
-GoogleString RewriteOptions::ToString() const {
+GoogleString RewriteOptions::OptionsToString() const {
   GoogleString output;
   StrAppend(&output, "Version: ", IntegerToString(kOptionsVersion), "\n\n");
   output += "Filters\n";

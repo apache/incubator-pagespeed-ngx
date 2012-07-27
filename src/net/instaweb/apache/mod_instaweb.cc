@@ -26,7 +26,6 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/header_util.h"
-#include "net/instaweb/apache/log_message_handler.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/instaweb_handler.h"
@@ -67,6 +66,8 @@
 #include "http_protocol.h"
 #include "http_request.h"
 #include "net/instaweb/apache/apache_logging_includes.h"
+
+#include "net/instaweb/apache/log_message_handler.h"
 #include "unixd.h"
 
 // Apache 2.4 renames unixd_config -> ap_unixd_config

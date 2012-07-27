@@ -48,7 +48,7 @@ void AprReportError(MessageHandler* message_handler, const char* filename,
                     int line, const char* message, int error_code) {
   char buf[kStackBufferSize];
   apr_strerror(error_code, buf, sizeof(buf));
-  std::string error_format(message);
+  GoogleString error_format(message);
   error_format.append(" (code=%d %s)");
   message_handler->Error(filename, line, error_format.c_str(), error_code, buf);
 }
@@ -70,11 +70,11 @@ class FileHelper {
 
   bool Close(MessageHandler* message_handler);
   apr_file_t* file() { return file_; }
-  const std::string& filename() const { return filename_; }
+  const GoogleString& filename() const { return filename_; }
 
  private:
   apr_file_t* const file_;
-  const std::string filename_;
+  const GoogleString filename_;
   AbstractMutex* mutex_;  // owned by the FS object
 
   DISALLOW_COPY_AND_ASSIGN(FileHelper);
@@ -333,7 +333,7 @@ BoolOrError AprFileSystem::IsDir(const char* path, MessageHandler* handler) {
 bool AprFileSystem::ListContents(const StringPiece& dir,
                                  StringVector* files,
                                  MessageHandler* handler) {
-  std::string dirString = dir.as_string();
+  GoogleString dirString = dir.as_string();
   EnsureEndsInSlash(&dirString);
   const char* dirname = dirString.c_str();
   apr_dir_t* mydir;
@@ -368,7 +368,7 @@ bool AprFileSystem::Stat(const StringPiece& path,
                          apr_finfo_t* file_info, apr_int32_t field_wanted,
                          MessageHandler* handler) {
   ScopedMutex hold_mutex(mutex_.get());
-  const std::string path_string = path.as_string();
+  const GoogleString path_string = path.as_string();
   const char* path_str = path_string.c_str();
   apr_status_t ret = apr_stat(file_info, path_str, field_wanted, pool_);
   if (ret != APR_SUCCESS) {
@@ -426,7 +426,7 @@ bool AprFileSystem::Size(const StringPiece& path, int64* size,
 BoolOrError AprFileSystem::TryLock(const StringPiece& lock_name,
                                    MessageHandler* handler) {
   ScopedMutex hold_mutex(mutex_.get());
-  const std::string lock_string = lock_name.as_string();
+  const GoogleString lock_string = lock_name.as_string();
   const char* lock_str = lock_string.c_str();
   // TODO(abliss): mkdir is not atomic on all platforms.  We should
   // perhaps use an apr_global_mutex_t here.
@@ -444,7 +444,7 @@ BoolOrError AprFileSystem::TryLock(const StringPiece& lock_name,
 BoolOrError AprFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
                                               int64 timeout_ms,
                                               MessageHandler* handler) {
-  const std::string lock_string = lock_name.as_string();
+  const GoogleString lock_string = lock_name.as_string();
   const char* lock_str = lock_string.c_str();
   BoolOrError result = TryLock(lock_name, handler);
   if (result.is_true() || result.is_error()) {
@@ -496,7 +496,7 @@ BoolOrError AprFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
 bool AprFileSystem::Unlock(const StringPiece& lock_name,
                            MessageHandler* handler) {
   ScopedMutex hold_mutex(mutex_.get());
-  const std::string lock_string = lock_name.as_string();
+  const GoogleString lock_string = lock_name.as_string();
   const char* lock_str = lock_string.c_str();
   apr_status_t ret = apr_dir_remove(lock_str, pool_);
   if (ret != APR_SUCCESS && !APR_STATUS_IS_ENOENT(ret)) {

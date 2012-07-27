@@ -39,7 +39,7 @@
     'apache/instaweb_handler.cc',
     'apache/interface_mod_spdy.cc',
     'apache/log_message_handler.cc',
-    'util/mem_debug.cc',
     'apache/mod_instaweb.cc',
+    'util/mem_debug.cc',
   ],
 }

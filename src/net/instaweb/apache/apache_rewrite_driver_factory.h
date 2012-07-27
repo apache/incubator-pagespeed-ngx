@@ -225,7 +225,7 @@ protected:
   // some other struct, which would keep them distinct from the rest of the
   // state.  Note also that some of the options are in the base class,
   // RewriteDriverFactory, so we'd have to sort out how that worked.
-  std::string version_;
+  GoogleString version_;
 
   bool statistics_frozen_;
   bool is_root_process_;

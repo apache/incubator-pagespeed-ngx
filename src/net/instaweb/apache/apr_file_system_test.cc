@@ -39,7 +39,7 @@ class AprFileSystemTest : public FileSystemTest {
   }
   virtual FileSystem* file_system() { return file_system_.get(); }
   virtual Timer* timer() { return &timer_; }
-  virtual std::string test_tmpdir() { return test_tmpdir_; }
+  virtual GoogleString test_tmpdir() { return test_tmpdir_; }
   virtual void SetUp() {
     apr_initialize();
     atexit(apr_terminate);
@@ -54,7 +54,7 @@ class AprFileSystemTest : public FileSystemTest {
     apr_pool_destroy(pool_);
   }
 
-  void GetAprFileSystemTestDir(std::string* str) {
+  void GetAprFileSystemTestDir(GoogleString* str) {
     const char* tmpdir;
     apr_status_t status = apr_temp_dir_get(&tmpdir, pool_);
     ASSERT_EQ(APR_SUCCESS, status);
@@ -69,7 +69,7 @@ class AprFileSystemTest : public FileSystemTest {
     *str = test_temp_dir;
   }
 
-  void MyDeleteFileRecursively(const std::string& filename,
+  void MyDeleteFileRecursively(const GoogleString& filename,
                                const char* /*a*/,
                                const char* /*b*/) {
     if (file_system_->IsDir(filename.c_str(), &handler_).is_true()) {
@@ -84,7 +84,7 @@ class AprFileSystemTest : public FileSystemTest {
 
           // Handle case where filename was passed in with a '/' otherwise
           // apr_filepath_merge will generate the wrong path
-          std::string tempname = filename;
+          GoogleString tempname = filename;
           if (!tempname.empty() && tempname[tempname.size() - 1] == '/') {
             tempname.resize(tempname.size() - 1);
           }
@@ -121,7 +121,7 @@ class AprFileSystemTest : public FileSystemTest {
   scoped_ptr<ThreadSystem> thread_system_;
   scoped_ptr<AprFileSystem> file_system_;
   apr_pool_t* pool_;
-  std::string test_tmpdir_;
+  GoogleString test_tmpdir_;
 
   DISALLOW_COPY_AND_ASSIGN(AprFileSystemTest);
 };
