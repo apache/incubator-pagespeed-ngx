@@ -1219,4 +1219,36 @@ TEST_F(RewriteOptionsTest, ImageOptimizableCheck) {
   EXPECT_FALSE(options_.ImageOptimizationEnabled());
 }
 
+TEST_F(RewriteOptionsTest, UrlCacheInvalidationTest) {
+  options_.AddUrlCacheInvalidationEntry("one*", 10L, true);
+  options_.AddUrlCacheInvalidationEntry("two*", 25L, false);
+  RewriteOptions options1;
+  options1.AddUrlCacheInvalidationEntry("one*", 20L, true);
+  options1.AddUrlCacheInvalidationEntry("three*", 23L, false);
+  options1.AddUrlCacheInvalidationEntry("three*", 30L, true);
+  options_.Merge(options1);
+  EXPECT_TRUE(options_.IsUrlCacheInvalidationEntriesSorted());
+  EXPECT_FALSE(options_.IsUrlCacheValid("one1", 9L));
+  EXPECT_FALSE(options_.IsUrlCacheValid("one1", 19L));
+  EXPECT_TRUE(options_.IsUrlCacheValid("one1", 21L));
+  EXPECT_FALSE(options_.IsUrlCacheValid("two2", 21L));
+  EXPECT_TRUE(options_.IsUrlCacheValid("two2", 26L));
+  EXPECT_TRUE(options_.IsUrlCacheValid("three3", 31L));
+}
+
+TEST_F(RewriteOptionsTest, UrlCacheInvalidationSignatureTest) {
+  options_.ComputeSignature(&hasher_);
+  GoogleString signature1 = options_.signature();
+  options_.ClearSignatureForTesting();
+  options_.AddUrlCacheInvalidationEntry("one*", 10L, true);
+  options_.ComputeSignature(&hasher_);
+  GoogleString signature2 = options_.signature();
+  EXPECT_EQ(signature1, signature2);
+  options_.ClearSignatureForTesting();
+  options_.AddUrlCacheInvalidationEntry("two*", 10L, false);
+  options_.ComputeSignature(&hasher_);
+  GoogleString signature3 = options_.signature();
+  EXPECT_NE(signature2, signature3);
+}
+
 }  // namespace net_instaweb

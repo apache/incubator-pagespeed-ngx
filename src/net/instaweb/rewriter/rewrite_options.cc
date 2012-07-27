@@ -693,6 +693,7 @@ RewriteOptions::RewriteOptions()
 RewriteOptions::~RewriteOptions() {
   STLDeleteElements(&furious_specs_);
   STLDeleteElements(&prioritize_visible_content_families_);
+  STLDeleteElements(&url_cache_invalidation_entries_);
 }
 
 RewriteOptions::OptionBase::~OptionBase() {
@@ -1266,6 +1267,23 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   allow_resources_.AppendFrom(src.allow_resources_);
   retain_comments_.AppendFrom(src.retain_comments_);
 
+  // Merge url_cache_invalidation_entries_ so that increasing order of timestamp
+  // is preserved (assuming this.url_cache_invalidation_entries_ and
+  // src.url_cache_invalidation_entries_ are both ordered).
+  int original_size = url_cache_invalidation_entries_.size();
+  // Append copies of src's url cache invalidation entries to this.
+  for (int i = 0, n = src.url_cache_invalidation_entries_.size(); i < n; ++i) {
+    url_cache_invalidation_entries_.push_back(
+        src.url_cache_invalidation_entries_[i]->Clone());
+  }
+  // Now url_cache_invalidation_entries_ consists of two ordered ranges: [begin,
+  // begin+original_size) and [begin+original_size, end).  Hence we can use
+  // inplace_merge.
+  std::inplace_merge(url_cache_invalidation_entries_.begin(),
+                     url_cache_invalidation_entries_.begin() + original_size,
+                     url_cache_invalidation_entries_.end(),
+                     RewriteOptions::CompareUrlCacheInvalidationEntry);
+
   // If src's prioritize_visible_content_families_ is non-empty we simply
   // replace this' prioritize_visible_content_families_ with src's.  Naturally,
   // this means that families in this are lost.
@@ -1380,6 +1398,14 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
   StrAppend(&signature_, domain_lawyer_.Signature(), "_");
   StrAppend(&signature_, "AR:", allow_resources_.Signature(), "_");
   StrAppend(&signature_, "RC:", retain_comments_.Signature(), "_");
+  StrAppend(&signature_, "UCI:");
+  for (int i = 0, n = url_cache_invalidation_entries_.size(); i < n; ++i) {
+    const UrlCacheInvalidationEntry& entry =
+        *url_cache_invalidation_entries_[i];
+    if (!entry.is_strict) {
+      StrAppend(&signature_, entry.ComputeSignature(), "|");
+    }
+  }
   StrAppend(&signature_, "PVC:");
   for (int i = 0, n = prioritize_visible_content_families_.size(); i < n; ++i) {
     StrAppend(&signature_,
@@ -1432,10 +1458,20 @@ GoogleString RewriteOptions::ToString() const {
   StrAppend(&output, domain_lawyer_.ToString("  "));
   // TODO(mmohabey): Incorporate ToString() from the file_load_policy,
   // allow_resources, and retain_comments.
-  StrAppend(&output, "\nPrioritize visible content cacheable families\n");
-  for (int i = 0, n = prioritize_visible_content_families_.size(); i < n; ++i) {
-    StrAppend(&output, "  ",
-              prioritize_visible_content_families_[i]->ToString(), "\n");
+  if (!url_cache_invalidation_entries_.empty()) {
+    StrAppend(&output, "\nURL cache invalidation entries\n");
+    for (int i = 0, n = url_cache_invalidation_entries_.size(); i < n; ++i) {
+      StrAppend(&output, "  ", url_cache_invalidation_entries_[i]->ToString(),
+                "\n");
+    }
+  }
+  if (!prioritize_visible_content_families_.empty()) {
+    StrAppend(&output, "\nPrioritize visible content cacheable families\n");
+    for (int i = 0, n = prioritize_visible_content_families_.size(); i < n;
+         ++i) {
+      StrAppend(&output, "  ",
+                prioritize_visible_content_families_[i]->ToString(), "\n");
+    }
   }
   return output;
 }
@@ -1738,6 +1774,45 @@ void RewriteOptions::CheckFiltersAgainst(
   CHECK(expected_disabled_filters == disabled_filters_);
 }
 
+bool RewriteOptions::IsUrlCacheValid(StringPiece url, int64 time_ms) const {
+  int i = 0;
+  int n = url_cache_invalidation_entries_.size();
+  while (i < n && time_ms > url_cache_invalidation_entries_[i]->timestamp_ms) {
+    ++i;
+  }
+  // Now all entries from 0 to i-1 have timestamp less than time_ms and hence
+  // cannot invalidate a url cached at time_ms.
+  // TODO(sriharis):  Should we use binary search instead of the above loop?
+  // Probably does not make sense as long as the following while loop is there.
+
+  // Once FastWildcardGroup is in, we should check if it makes sense to make a
+  // FastWildcardGroup of Wildcards from position i to n-1, and Match against
+  // it.
+  while (i < n) {
+    if (url_cache_invalidation_entries_[i]->url_pattern.Match(url)) {
+      return false;
+    }
+    ++i;
+  }
+  return true;
+}
+
+void RewriteOptions::AddUrlCacheInvalidationEntry(
+    StringPiece url_pattern, int64 timestamp_ms, bool is_strict) {
+  if (!url_cache_invalidation_entries_.empty()) {
+    // Check that this Add preserves the invariant that
+    // url_cache_invalidation_entries_ is sorted on timestamp_ms.
+    if (url_cache_invalidation_entries_.back()->timestamp_ms > timestamp_ms) {
+      LOG(DFATAL) << "Timestamp " << timestamp_ms << " is less than the last "
+                  << "timestamp already added: "
+                  << url_cache_invalidation_entries_.back()->timestamp_ms;
+      return;
+    }
+  }
+  url_cache_invalidation_entries_.push_back(
+      new UrlCacheInvalidationEntry(url_pattern, timestamp_ms, is_strict));
+}
+
 bool RewriteOptions::UpdateCacheInvalidationTimestampMs(int64 timestamp_ms,
                                                         const Hasher* hasher) {
   bool ret = false;
@@ -1754,6 +1829,16 @@ bool RewriteOptions::UpdateCacheInvalidationTimestampMs(int64 timestamp_ms,
     ret = true;
   }
   return ret;
+}
+
+bool RewriteOptions::IsUrlCacheInvalidationEntriesSorted() const {
+  for (int i = 0, n = url_cache_invalidation_entries_.size(); i < n - 1; ++i) {
+    if (url_cache_invalidation_entries_[i]->timestamp_ms >
+        url_cache_invalidation_entries_[i + 1]->timestamp_ms) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace net_instaweb

@@ -2131,14 +2131,16 @@ void RewriteDriver::AddLowPriorityRewriteTask(Function* task) {
 
 OptionsAwareHTTPCacheCallback::OptionsAwareHTTPCacheCallback(
     const RewriteOptions* rewrite_options)
-    : cache_invalidation_timestamp_ms_(
-          rewrite_options->cache_invalidation_timestamp()) {}
+    : rewrite_options_(rewrite_options) {}
 
 OptionsAwareHTTPCacheCallback::~OptionsAwareHTTPCacheCallback() {}
 
 bool OptionsAwareHTTPCacheCallback::IsCacheValid(
-    const ResponseHeaders& headers) {
-  return headers.IsDateLaterThan(cache_invalidation_timestamp_ms_);
+    const GoogleString& key, const ResponseHeaders& headers) {
+  return
+      headers.IsDateLaterThan(
+          rewrite_options_->cache_invalidation_timestamp()) &&
+      rewrite_options_->IsUrlCacheValid(key, headers.date_ms());
 }
 
 RewriteDriver::CssResolutionStatus RewriteDriver::ResolveCssUrls(

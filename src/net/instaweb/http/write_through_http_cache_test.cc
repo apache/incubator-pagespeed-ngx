@@ -64,7 +64,8 @@ class FakeHttpCacheCallback : public HTTPCache::Callback {
     called_ = true;
     result_ = result;
   }
-  virtual bool IsCacheValid(const ResponseHeaders& headers) {
+  virtual bool IsCacheValid(const GoogleString& key,
+                            const ResponseHeaders& headers) {
     bool result = first_call_cache_valid_ ?
         first_cache_valid_ : second_cache_valid_;
     first_call_cache_valid_ = false;

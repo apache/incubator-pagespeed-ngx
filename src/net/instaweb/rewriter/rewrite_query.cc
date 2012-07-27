@@ -45,6 +45,9 @@ static struct Int64QueryParam int64_query_params_[] = {
     &RewriteOptions::set_css_flatten_max_bytes },
   { "ModPagespeedCssInlineMaxBytes",
     &RewriteOptions::set_css_inline_max_bytes },
+  // Note: If ModPagespeedImageInlineMaxBytes is specified, and
+  // ModPagespeedCssImageInlineMaxBytes is not set explicitly, both the
+  // thresholds get set to ModPagespeedImageInlineMaxBytes.
   { "ModPagespeedImageInlineMaxBytes",
     &RewriteOptions::set_image_inline_max_bytes },
   { "ModPagespeedCssImageInlineMaxBytes",

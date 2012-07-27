@@ -63,7 +63,8 @@ class HTTPCacheTest : public testing::Test {
       called_ = true;
       result_ = result;
     }
-    virtual bool IsCacheValid(const ResponseHeaders& headers) {
+    virtual bool IsCacheValid(const GoogleString& key,
+                              const ResponseHeaders& headers) {
       // For unit testing, we are simply stubbing IsCacheValid.
       return cache_valid_;
     }

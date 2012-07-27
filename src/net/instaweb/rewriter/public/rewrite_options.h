@@ -697,6 +697,23 @@ class RewriteOptions {
     set_option(x, &blocking_fetch_timeout_ms_);
   }
 
+  // Returns false if there is an entry in url_cache_invalidation_entries_ with
+  // its timestamp_ms > time_ms and url matches the url_pattern.  Else, return
+  // true.
+  bool IsUrlCacheValid(StringPiece url, int64 time_ms) const;
+
+  // If timestamp_ms greater than or equal to the last timestamp in
+  // url_cache_invalidation_entries_, then appends an UrlCacheInvalidationEntry
+  // with 'timestamp_ms' and 'url_pattern' to url_cache_invalidation_entries_.
+  // Else does nothing.
+  void AddUrlCacheInvalidationEntry(StringPiece url_pattern,
+                                    int64 timestamp_ms,
+                                    bool is_strict);
+
+  // Checks if url_cache_invalidation_entries_ is in increasing order of
+  // timestamp.  For testing.
+  bool IsUrlCacheInvalidationEntriesSorted() const;
+
   // Supply optional mutex for setting a global cache invalidation
   // timestamp.  Ownership of 'lock' is transfered to this.
   void set_cache_invalidation_timestamp_mutex(ThreadSystem::RWLock* lock) {
@@ -1536,6 +1553,42 @@ class RewriteOptions {
     GoogleString non_cacheable_elements;
   };
 
+  // A URL pattern cache invalidation entry.  All values cached for an URL that
+  // matches url_pattern before timestamp_ms should be evicted.
+  struct UrlCacheInvalidationEntry {
+    UrlCacheInvalidationEntry(StringPiece url_pattern_in,
+                              int64 timestamp_ms_in,
+                              bool is_strict_in)
+        : url_pattern(url_pattern_in),
+          timestamp_ms(timestamp_ms_in),
+          is_strict(is_strict_in) {}
+
+    UrlCacheInvalidationEntry* Clone() const {
+      return new UrlCacheInvalidationEntry(
+          url_pattern.spec(), timestamp_ms, is_strict);
+    }
+
+    GoogleString ComputeSignature() const {
+      if (is_strict) {
+        return "";
+      }
+      return StrCat(url_pattern.spec(), "@", Integer64ToString(timestamp_ms));
+    }
+
+    GoogleString ToString() const {
+      return StrCat(
+          url_pattern.spec(), ", ", (is_strict ? "STRICT" : "REFERENCE"), " @ ",
+          Integer64ToString(timestamp_ms));
+    }
+
+    Wildcard url_pattern;
+    int64 timestamp_ms;
+    bool is_strict;
+  };
+
+  typedef std::vector<UrlCacheInvalidationEntry*>
+      UrlCacheInvalidationEntryVector;
+
   void SetUp();
   bool AddCommaSeparatedListToFilterSetState(
       const StringPiece& filters, FilterSet* set, MessageHandler* handler);
@@ -1637,6 +1690,12 @@ class RewriteOptions {
     return option->option_enum() < arg;
   }
 
+  // Returns true if e1's timestamp is less than e2's.
+  static bool CompareUrlCacheInvalidationEntry(UrlCacheInvalidationEntry* e1,
+                                               UrlCacheInvalidationEntry* e2) {
+    return e1->timestamp_ms < e2->timestamp_ms;
+  }
+
   bool modified_;
   bool frozen_;
   FilterSet enabled_filters_;
@@ -1648,6 +1707,10 @@ class RewriteOptions {
   // about that, then we would keep the bools in a bitmask.  But since
   // we don't really care we'll try to keep the code structured better.
   Option<RewriteLevel> level_;
+
+  // List of URL patterns and timestamp for which it should be invalidated.  In
+  // increasing order of timestamp.
+  UrlCacheInvalidationEntryVector url_cache_invalidation_entries_;
 
   MutexedOptionInt64MergeWithMax cache_invalidation_timestamp_;
   Option<int64> css_flatten_max_bytes_;

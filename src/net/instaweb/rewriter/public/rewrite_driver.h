@@ -1203,13 +1203,17 @@ class RewriteDriver : public HtmlParse {
 class OptionsAwareHTTPCacheCallback : public HTTPCache::Callback {
  public:
   virtual ~OptionsAwareHTTPCacheCallback();
-  virtual bool IsCacheValid(const ResponseHeaders& headers);
+  virtual bool IsCacheValid(const GoogleString& key,
+                            const ResponseHeaders& headers);
 
  protected:
+  // Sub-classes need to ensure that rewrite_options remains valid till
+  // Callback::Done finishes.
   explicit OptionsAwareHTTPCacheCallback(const RewriteOptions* rewrite_options);
 
  private:
-  int64 cache_invalidation_timestamp_ms_;
+  const RewriteOptions* rewrite_options_;
+
   DISALLOW_COPY_AND_ASSIGN(OptionsAwareHTTPCacheCallback);
 };
 

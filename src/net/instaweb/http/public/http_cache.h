@@ -93,7 +93,8 @@ class HTTPCache {
     //
     // See also OptionsAwareHTTPCacheCallback in rewrite_driver.h for an
     // implementation you probably want to use.
-    virtual bool IsCacheValid(const ResponseHeaders& headers) = 0;
+    virtual bool IsCacheValid(const GoogleString& key,
+                              const ResponseHeaders& headers) = 0;
 
     // A method that allows client Callbacks to check if the response in cache
     // is fresh enough, in addition to it being valid.  This is used while

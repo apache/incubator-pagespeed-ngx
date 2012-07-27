@@ -138,7 +138,7 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     ResponseHeaders* headers = callback_->response_headers();
     if ((state == CacheInterface::kAvailable) &&
         callback_->http_value()->Link(value(), headers, handler_) &&
-        callback_->IsCacheValid(*headers)) {
+        callback_->IsCacheValid(key_, *headers)) {
       // While stale responses can potentially be used in case of fetch
       // failures, responses invalidated via a cache flush should never be
       // returned under any scenario.
@@ -235,7 +235,8 @@ class SynchronizingCallback : public HTTPCache::Callback {
     called_ = true;
   }
 
-  virtual bool IsCacheValid(const ResponseHeaders& headers) {
+  virtual bool IsCacheValid(const GoogleString& key,
+                            const ResponseHeaders& headers) {
     // We don't support custom invalidation policy on the legacy sync path.
     return true;
   }

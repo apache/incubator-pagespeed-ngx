@@ -71,8 +71,9 @@ class FallbackCacheCallback: public HTTPCache::Callback {
     delete this;
   }
 
-  virtual bool IsCacheValid(const ResponseHeaders& headers) {
-    return client_callback_->IsCacheValid(headers);
+  virtual bool IsCacheValid(const GoogleString& key,
+                            const ResponseHeaders& headers) {
+    return client_callback_->IsCacheValid(key, headers);
   }
 
   virtual bool IsFresh(const ResponseHeaders& headers) {
@@ -129,8 +130,9 @@ class Cache1Callback: public HTTPCache::Callback {
     delete this;
   }
 
-  virtual bool IsCacheValid(const ResponseHeaders& headers) {
-    return client_callback_->IsCacheValid(headers);
+  virtual bool IsCacheValid(const GoogleString& key,
+                            const ResponseHeaders& headers) {
+    return client_callback_->IsCacheValid(key, headers);
   }
 
   virtual bool IsFresh(const ResponseHeaders& headers) {

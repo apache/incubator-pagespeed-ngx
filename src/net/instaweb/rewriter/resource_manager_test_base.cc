@@ -783,7 +783,10 @@ class HttpCallback : public HTTPCache::Callback {
  public:
   HttpCallback() : done_(false) {}
   virtual ~HttpCallback() {}
-  virtual bool IsCacheValid(const ResponseHeaders& headers) { return true; }
+  virtual bool IsCacheValid(const GoogleString& key,
+                            const ResponseHeaders& headers) {
+    return true;
+  }
   virtual void Done(HTTPCache::FindResult find_result) {
     done_ = true;
     result_ = find_result;

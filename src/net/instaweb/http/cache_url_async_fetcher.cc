@@ -251,7 +251,9 @@ class CacheFindCallback : public HTTPCache::Callback {
     delete this;
   }
 
-  virtual bool IsCacheValid(const ResponseHeaders& headers) {
+  virtual bool IsCacheValid(const GoogleString& key,
+                            const ResponseHeaders& headers) {
+    // base_fetch_ is assumed to have the key (URL).
     if (base_fetch_->IsCachedResultValid(headers)) {
       // The response may have been cached when respect_vary_ was disabled.
       // Hence we need to make sure that it is still usable for the current

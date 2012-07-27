@@ -21,7 +21,6 @@
 #include <algorithm>
 
 #include "base/logging.h"
-#include "net/instaweb/automatic/public/flush_early_flow.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -762,7 +761,8 @@ void ProxyFetch::HandleDone(bool success) {
 }
 
 bool ProxyFetch::IsCachedResultValid(const ResponseHeaders& headers) {
-  return headers.IsDateLaterThan(Options()->cache_invalidation_timestamp());
+  return headers.IsDateLaterThan(Options()->cache_invalidation_timestamp()) &&
+      Options()->IsUrlCacheValid(url_, headers.date_ms());
 }
 
 void ProxyFetch::FlushDone() {
