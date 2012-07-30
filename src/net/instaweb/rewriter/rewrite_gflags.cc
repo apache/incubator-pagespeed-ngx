@@ -147,6 +147,9 @@ DEFINE_bool(lazyload_images_after_onload, false, "Boolean indicating whether "
             "lazyload images should load images when onload is fired. If "
             "false, images are loaded onscroll.");
 
+DEFINE_string(lazyload_images_blank_url, "",
+              "The initial image url to load in the lazyload images filter.");
+
 DEFINE_bool(inline_only_critical_images, true, "Boolean indicating whether "
             "inline_images should inline only critical images or not.");
 
@@ -208,6 +211,9 @@ DEFINE_bool(support_noscript_enabled, true,
 
 DEFINE_bool(enable_blink_debug_dashboard, true,
             "Enable blink dashboard used for debugging.");
+
+DEFINE_bool(report_unload_time, false, "If enabled, sends beacons when page "
+            "unload happens before onload.");
 
 namespace net_instaweb {
 
@@ -337,6 +343,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_lazyload_images_after_onload(
         FLAGS_lazyload_images_after_onload);
   }
+  if (WasExplicitlySet("lazyload_images_blank_url")) {
+    options->set_lazyload_images_blank_url(
+        FLAGS_lazyload_images_blank_url);
+  }
   if (WasExplicitlySet("inline_only_critical_images")) {
     options->set_inline_only_critical_images(
         FLAGS_inline_only_critical_images);
@@ -365,6 +375,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_blink_debug_dashboard")) {
     options->set_enable_blink_debug_dashboard(
         FLAGS_enable_blink_debug_dashboard);
+  }
+  if (WasExplicitlySet("report_unload_time")) {
+    options->set_report_unload_time(FLAGS_report_unload_time);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

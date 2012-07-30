@@ -645,6 +645,7 @@ RewriteOptions::RewriteOptions()
   add_option(5 * Timer::kSecondMs, &blocking_fetch_timeout_ms_, "bfto",
              RewriteOptions::kFetcherTimeOutMs);
   add_option(true, &enable_blink_debug_dashboard_, "ebdd");
+  add_option("", &lazyload_images_blank_url_, "llbu");
 
   //
   // Recently sriharis@ excluded a variety of options from

@@ -16,6 +16,7 @@
 
 // Author: pulkitg@google.com (Pulkit Goyal)
 
+#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
@@ -167,6 +168,8 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
 };
 
 TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
+  LoggingInfo logging_info;
+  rewrite_driver()->set_logging_info_destination(&logging_info);
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
   options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
@@ -205,6 +208,8 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
              "\npagespeed.delayImages.replaceWithHighRes();\n</script>"
              "</body>"));
   EXPECT_TRUE(Wildcard(output_html).Match(output_buffer_));
+  EXPECT_TRUE(logging_info.applied_rewriters().find("di,") !=
+              GoogleString::npos);
 }
 
 TEST_F(DelayImagesFilterTest, DelayImageWithDeferJavascriptDisabled) {

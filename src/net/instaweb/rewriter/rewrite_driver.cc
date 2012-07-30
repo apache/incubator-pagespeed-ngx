@@ -31,6 +31,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -156,7 +157,6 @@ class RemoveCommentsFilterOptions
 }  // namespace
 
 class FileSystem;
-class LoggingInfo;
 
 RewriteDriver::RewriteDriver(MessageHandler* message_handler,
                              FileSystem* file_system,
@@ -214,7 +214,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       xhtml_status_(kXhtmlUnknown),
       num_inline_preview_images_(0),
       serve_blink_non_critical_(false),
-      is_blink_request_(false)
+      is_blink_request_(false),
+      logging_info_(NULL)
       // NOTE:  Be sure to clear per-request member vars in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // Set up default values for the amount of time an HTML rewrite will wait for
@@ -319,6 +320,8 @@ void RewriteDriver::Clear() {
   subresources_.clear();
   serve_blink_non_critical_ = false;
   is_blink_request_ = false;
+  applied_rewriters_.clear();
+  logging_info_ = NULL;
 
   // Reset to the default fetcher from any session fetcher
   // (as the request is over).
@@ -1904,8 +1907,23 @@ void RewriteDriver::UninhibitFlushDone(Function* user_callback) {
   }
 }
 
+void RewriteDriver::SetAppliedRewriterString() {
+  if (logging_info_ == NULL) {
+    return;
+  }
+  GoogleString applied_rewriters_str;
+  StringSet::iterator iter;
+  for (iter = applied_rewriters_.begin(); iter != applied_rewriters_.end();
+       ++iter) {
+    StrAppend(&applied_rewriters_str, *iter , ",");
+  }
+  logging_info_->set_applied_rewriters(applied_rewriters_str);
+  logging_info_ = NULL;
+}
+
 void RewriteDriver::FinishParse() {
   HtmlParse::FinishParse();
+  SetAppliedRewriterString();
   WriteDomCohortIntoPropertyCache();
   WriteClientStateIntoPropertyCache();
   Cleanup();
@@ -1936,6 +1954,7 @@ void RewriteDriver::QueueFinishParseAfterFlush(Function* user_callback) {
 void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
   DCHECK_EQ(0U, GetEventQueueSize());
   HtmlParse::EndFinishParse();
+  SetAppliedRewriterString();
   WriteDomCohortIntoPropertyCache();
   WriteClientStateIntoPropertyCache();
   Cleanup();

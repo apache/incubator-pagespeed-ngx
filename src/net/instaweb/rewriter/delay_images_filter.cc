@@ -111,6 +111,8 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
             // the html page.
             // High res src is added and original img src attribute is removed
             // from img tag.
+            driver_->applied_rewriters()->insert(
+                RewriteOptions::FilterId(RewriteOptions::kDelayImages));
             driver_->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
             if (insert_low_res_images_inplace_) {
               driver_->AddAttribute(element, HtmlName::kSrc,

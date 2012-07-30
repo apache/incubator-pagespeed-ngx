@@ -32,6 +32,9 @@ namespace net_instaweb {
 
 class LazyloadImagesFilterTest : public ResourceManagerTestBase {
  protected:
+  LazyloadImagesFilterTest()
+      : blank_image_src_(LazyloadImagesFilter::kBlankImageSrc) {}
+
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
   }
@@ -52,11 +55,12 @@ class LazyloadImagesFilterTest : public ResourceManagerTestBase {
     return StrCat("<", tag, " pagespeed_lazy_src=\"", url, "\" ",
                   additional_attributes,
                   StrCat("src=\"",
-                         LazyloadImagesFilter::kBlankImageSrc,
+                         blank_image_src_,
                          "\" onload=\"", LazyloadImagesFilter::kImageOnloadCode,
                          "\"/>"));
   }
 
+  GoogleString blank_image_src_;
   scoped_ptr<LazyloadImagesFilter> lazyload_images_filter_;
 };
 
@@ -151,13 +155,11 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
 }
 
 TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {
+  options()->set_lazyload_images_after_onload(true);
   InitLazyloadImagesFilter(false);
   StringPiece lazyload_js_code =
       resource_manager()->static_javascript_manager()->GetJsSnippet(
           StaticJavascriptManager::kLazyloadImagesJs, options());
-  options()->ClearSignatureForTesting();
-  options()->set_lazyload_images_after_onload(true);
-  resource_manager()->ComputeSignature(options());
   ValidateExpected("lazyload_images",
       "<head></head>"
       "<body>"
@@ -194,6 +196,29 @@ TEST_F(LazyloadImagesFilterTest, NoHeadTag) {
              "</script>",
              GenerateRewrittenImageTag(
                      "img", "1.jpg", ""),
+             "</body>"));
+}
+
+TEST_F(LazyloadImagesFilterTest, CustomImageUrl) {
+  GoogleString blank_image_url = "http://blank.com/1.gif";
+  options()->set_lazyload_images_blank_url(blank_image_url);
+  blank_image_src_ = blank_image_url;
+  InitLazyloadImagesFilter(false);
+  StringPiece lazyload_js_code =
+      resource_manager()->static_javascript_manager()->GetJsSnippet(
+          StaticJavascriptManager::kLazyloadImagesJs, options());
+  ValidateExpected("lazyload_images",
+      "<body>"
+      "<img src=\"1.jpg\" />"
+      "</body>",
+      StrCat("<body>"
+             "<script type=\"text/javascript\">",
+             lazyload_js_code,
+             "\npagespeed.lazyLoadInit(false, \"",
+             blank_image_url,
+             "\");\n"
+             "</script>",
+             GenerateRewrittenImageTag("img", "1.jpg", ""),
              "</body>"));
 }
 

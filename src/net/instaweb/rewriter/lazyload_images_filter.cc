@@ -43,8 +43,8 @@ const char kDfcg[] = "dfcg";
 }  // namespace
 
 // base64 encoding of a blank 1x1 gif with GIF comment "PSA".
-const char* LazyloadImagesFilter::kBlankImageSrc = "data:image/gif;base64,"
-    "R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7";
+const char* LazyloadImagesFilter::kBlankImageSrc = "data:image/gif;base64"
+    ",R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7";
 
 const char* LazyloadImagesFilter::kImageOnloadCode =
     "pagespeed.lazyLoadImages.loadIfVisible(this);";
@@ -53,15 +53,23 @@ const char* LazyloadImagesFilter::kLoadAllImages =
     "pagespeed.lazyLoadImages.loadAllImages();";
 
 LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
-    : CommonFilter(driver),
-      skip_rewrite_(NULL),
-      main_script_inserted_(false),
-      abort_rewrite_(false),
-      abort_script_inserted_(false) {}
-
+    : CommonFilter(driver) {
+  Clear();
+  const GoogleString& options_url =
+      driver->options()->lazyload_images_blank_url();
+  if (options_url.empty()) {
+    blank_image_url_ = kBlankImageSrc;
+  } else {
+    blank_image_url_ = options_url.c_str();
+  }
+}
 LazyloadImagesFilter::~LazyloadImagesFilter() {}
 
 void LazyloadImagesFilter::StartDocumentImpl() {
+  Clear();
+}
+
+void LazyloadImagesFilter::Clear() {
   skip_rewrite_ = NULL;
   main_script_inserted_ = false;
   abort_rewrite_ = false;
@@ -164,7 +172,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
         // Replace the src with pagespeed_lazy_src and set the onload
         // appropriately.
         driver()->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
-        driver()->AddAttribute(element, HtmlName::kSrc, kBlankImageSrc);
+        driver()->AddAttribute(element, HtmlName::kSrc, blank_image_url_);
         driver()->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
       }
     }
@@ -183,7 +191,7 @@ void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
           StaticJavascriptManager::kLazyloadImagesJs, driver()->options());
   const GoogleString& lazyload_js =
       StrCat(lazyload_images_js, "\npagespeed.lazyLoadInit(",
-             load_onload, ", \"", kBlankImageSrc, "\");\n");
+             load_onload, ", \"", blank_image_url_, "\");\n");
   HtmlNode* script_code = driver()->NewCharactersNode(
       script, lazyload_js);
   driver()->InsertElementBeforeElement(element, script);

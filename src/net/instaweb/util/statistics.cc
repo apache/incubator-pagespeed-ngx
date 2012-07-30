@@ -92,7 +92,7 @@ void Histogram::WriteRawHistogramData(Writer* writer, MessageHandler* handler) {
     writer->Write(output, handler);
   }
   // Write suffix of the table.
-  writer->Write("</table></div></div></div>", handler);
+  writer->Write("</table>", handler);
 }
 
 void Histogram::Render(int index, Writer* writer, MessageHandler* handler) {
@@ -131,8 +131,8 @@ const char kHistogramProlog[] =
 
 const char kHistogramRowFormat[] =
     "      <tr id='hist_row_%d'>\n"
-    "        <td><input type='radio' name='choose_histogram'%s\n"
-    "                   onchange='setHistogram(%d)'>%s</input></td>\n"
+    "        <td><label><input type='radio' name='choose_histogram'%s\n"
+    "                   onchange='setHistogram(%d)'>%s</label></td>\n"
     "        <td>%.0f</td><td>%.1f</td><td>%.1f</td>\n"  // count, avg, stddev
     "        <td>%.0f</td><td>%.0f</td><td>%.0f</td>\n"  // min, median, max
     "        <td>%.0f</td><td>%.0f</td><td>%.0f</td>\n"  // 90%, 95%, 99%

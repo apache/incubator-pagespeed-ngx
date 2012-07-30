@@ -850,6 +850,7 @@ void ProxyFetch::Finish(bool success) {
 
   if (driver_ != NULL) {
     if (started_parse_) {
+      driver_->set_logging_info_destination(logging_info());
       driver_->FinishParseAsync(
         MakeFunction(this, &ProxyFetch::CompleteFinishParse, success));
       return;

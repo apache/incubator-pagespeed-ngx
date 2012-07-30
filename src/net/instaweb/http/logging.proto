@@ -58,4 +58,6 @@ message LoggingInfo {
   optional TimingInfo timing_info = 1;
   // Stores all Blink related information.
   optional BlinkInfo blink_info = 2;
+  // Sorted list of applied rewriter ids separated by comma.
+  optional string applied_rewriters = 3;
 }

@@ -199,14 +199,21 @@ TEST_F(DomainRewriteFilterTest, ClientDomainRewrite) {
   StringPiece client_domain_rewriter_code =
       resource_manager_->static_javascript_manager()->GetJsSnippet(
           StaticJavascriptManager::kClientDomainRewriter, options());
-  ValidateExpected(
-      "client domain rewrite", "<html><body></body></html>",
-      StrCat("<html><body>",
-             "<script type=\"text/javascript\">",
-             client_domain_rewriter_code,
-             "pagespeed.clientDomainRewriterInit("
-             "[\"http://clientrewrite.com/\"]);</script>",
-             "</body></html>"));
+
+  SetupWriter();
+  html_parse()->StartParse("http://test.com/");
+  html_parse()->ParseText("<html><body>");
+  html_parse()->Flush();
+  html_parse()->ParseText("</body></html>");
+  html_parse()->FinishParse();
+
+  EXPECT_EQ(StrCat("<html><body>",
+                   "<script type=\"text/javascript\">",
+                   client_domain_rewriter_code,
+                   "pagespeed.clientDomainRewriterInit("
+                   "[\"http://clientrewrite.com/\"]);</script>",
+                   "</body></html>"),
+            output_buffer_);
 }
 
 }  // namespace net_instaweb

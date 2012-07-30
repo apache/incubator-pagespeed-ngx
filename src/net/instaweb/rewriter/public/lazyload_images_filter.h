@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_LAZYLOAD_IMAGES_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_LAZYLOAD_IMAGES_FILTER_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 
 namespace net_instaweb {
@@ -90,9 +89,14 @@ class LazyloadImagesFilter : public CommonFilter {
   virtual void EndElementImpl(HtmlElement* element);
 
  private:
+  // Clears all state associated with the filter.
+  void Clear();
+
   // Inserts the lazyload JS code before the given element.
   void InsertLazyloadJsCode(HtmlElement* element);
 
+  // The initial image url to be used.
+  GoogleString blank_image_url_;
   // If non-NULL, we skip rewriting till we reach
   // LazyloadImagesFilter::EndElement(skip_rewrite_).
   HtmlElement* skip_rewrite_;

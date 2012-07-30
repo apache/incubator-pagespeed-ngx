@@ -862,6 +862,13 @@ class RewriteOptions {
     return lazyload_images_after_onload_.value();
   }
 
+  void set_lazyload_images_blank_url(const StringPiece& p) {
+    set_option(GoogleString(p.data(), p.size()), &lazyload_images_blank_url_);
+  }
+  const GoogleString& lazyload_images_blank_url() const {
+    return lazyload_images_blank_url_.value();
+  }
+
   void set_max_inlined_preview_images_index(int x) {
     set_option(x, &max_inlined_preview_images_index_);
   }
@@ -1782,6 +1789,9 @@ class RewriteOptions {
   // may want to load images when the onload event is fired instead. If set to
   // true, images are loaded when onload is fired.
   Option<bool> lazyload_images_after_onload_;
+  // The initial image url to load in the lazyload images filter. If this is not
+  // specified, we use a 1x1 inlined image.
+  Option<GoogleString> lazyload_images_blank_url_;
   // By default, inline_images will inline only critical images. However, some
   // people may want to inline all images (both critical and non-critical). If
   // set to false, all images will be inlined within the html.

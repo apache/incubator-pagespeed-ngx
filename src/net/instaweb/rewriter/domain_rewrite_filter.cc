@@ -184,7 +184,6 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
 void DomainRewriteFilter::EndElementImpl(HtmlElement* element) {
   if (driver_->options()->client_domain_rewrite() &&
       (element->keyword() == HtmlName::kBody &&
-      driver_->IsRewritable(element) &&
       !client_domain_rewriter_script_written_)) {
     const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
     ConstStringStarVector from_domains;

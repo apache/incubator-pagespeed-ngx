@@ -62,6 +62,7 @@ class Function;
 class HtmlEvent;
 class HtmlFilter;
 class HtmlWriterFilter;
+class LoggingInfo;
 class MessageHandler;
 class PropertyPage;
 class RequestHeaders;
@@ -820,6 +821,16 @@ class RewriteDriver : public HtmlParse {
   void set_is_blink_request(bool x) { is_blink_request_ = x; }
   bool is_blink_request() const { return is_blink_request_; }
 
+  // This method is not thread-safe. Ensure that threads accessing it are
+  // synchronized against each other.
+  StringSet* applied_rewriters() {
+    return &applied_rewriters_;
+  }
+
+  void set_logging_info_destination(LoggingInfo* logging_info) {
+    logging_info_ = logging_info;
+  }
+
   // Adds the sub resource link to the sub_resources_ map. The id is used to
   // ensure the order.
   void AddResourceToSubresourcesMap(const FlushEarlyResource& resource, int id);
@@ -938,6 +949,9 @@ class RewriteDriver : public HtmlParse {
                                       RewriteFilter** filter_out,
                                       GoogleString* url_base,
                                       StringVector* urls) const;
+
+  // Set the applied rewriters to logging_info.
+  void SetAppliedRewriterString();
 
   // When HTML parsing is complete, we have learned all we can about
   // the DOM, so immediately write anything required into that Cohort
@@ -1194,6 +1208,12 @@ class RewriteDriver : public HtmlParse {
   bool serve_blink_non_critical_;
   // Is this a blink request?
   bool is_blink_request_;
+
+  // Set of applied rewriter prefixes.
+  StringSet applied_rewriters_;
+
+  // Logging info owned by async_fetch. This may be NULL.
+  LoggingInfo* logging_info_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };
