@@ -57,7 +57,7 @@ class PthreadSharedMemMutex : public AbstractMutex {
       : external_mutex_(external_mutex) {}
 
   virtual bool TryLock() {
-    return pthread_mutex_trylock(external_mutex_);
+    return (pthread_mutex_trylock(external_mutex_) == 0);
   }
 
   virtual void Lock() {

@@ -181,18 +181,20 @@ void SharedMemConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
   if (mutex == NULL) {
     return;
   }
-  // TODO(bvb,sarahdw): Change to TryLock.
-  ScopedMutex hold_lock(mutex);
-  if (current_time_ms >=
-      (last_dump_timestamp_->Get64LockHeld() + kStatisticsDumpIntervalMs)) {
-    // It's possible we'll need to do some of the following here for
-    // cross-process consistency:
-    // - flush the logfile before unlock to force out buffered data
-    // - close and reopen the logfile to reset file pointers before dumping
-    statistics_->DumpConsoleVarsToWriter(
-        current_time_ms, statistics_writer_.get(), message_handler_);
-    statistics_writer_->Flush(message_handler_);
-    last_dump_timestamp_->SetLockHeldNoUpdate(current_time_ms);
+  // Avoid blocking if the dump is already happening in another thread/process.
+  if (mutex->TryLock()) {
+    if (current_time_ms >=
+        (last_dump_timestamp_->Get64LockHeld() + kStatisticsDumpIntervalMs)) {
+      // It's possible we'll need to do some of the following here for
+      // cross-process consistency:
+      // - flush the logfile before unlock to force out buffered data
+      // - close and reopen the logfile to reset file pointers before dumping
+      statistics_->DumpConsoleVarsToWriter(
+          current_time_ms, statistics_writer_.get(), message_handler_);
+      statistics_writer_->Flush(message_handler_);
+      last_dump_timestamp_->SetLockHeldNoUpdate(current_time_ms);
+    }
+    mutex->Unlock();
   }
 }
 
