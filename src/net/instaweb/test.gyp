@@ -336,5 +336,27 @@
         'util/url_escaper_speed_test.cc',
       ],
     },
+    {
+      'target_name': 'css_minify_main',
+      'type': 'executable',
+      'sources': [
+        'rewriter/css_minify_main.cc',
+      ],
+      'dependencies': [
+        'instaweb.gyp:automatic_util',
+        'instaweb.gyp:instaweb_rewriter',
+        'instaweb.gyp:instaweb_rewriter_css',
+        'instaweb.gyp:instaweb_util',
+        'instaweb.gyp:instaweb_util_pthread',
+        '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
+        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
+        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+        '<(DEPTH)/third_party/css_parser/src',
+      ],
+    },
   ],
 }

@@ -249,7 +249,7 @@ bool AddDomainMap(const StringPiece& flag_value, DomainLawyer* lawyer,
 }  // namespace
 
 RewriteGflags::RewriteGflags(const char* progname, int* argc, char*** argv) {
-  ParseCommandLineFlags(argc, argv, true);
+  ParseGflags(progname, argc, argv);
 }
 
 bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,

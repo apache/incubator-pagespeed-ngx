@@ -1035,6 +1035,7 @@
        ],
       'sources': [
         'rewriter/rewrite_gflags.cc',
+        'util/gflags.cc',
         'util/google_timer.cc',
       ],
     },
