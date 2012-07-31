@@ -18,9 +18,8 @@
 
 #include "net/instaweb/util/public/file_cache.h"
 
-#include <cstddef>
+#include <algorithm>
 #include <vector>
-#include <queue>
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -40,22 +39,12 @@ namespace net_instaweb {
 
 namespace {  // For structs used only in Clean().
 
-class CacheFileInfo {
- public:
-  CacheFileInfo(int64 size, int64 atime, const GoogleString& name)
-      : size_(size), atime_(atime), name_(name) {}
-  int64 size_;
-  int64 atime_;
-  GoogleString name_;
- private:
-  DISALLOW_COPY_AND_ASSIGN(CacheFileInfo);
-};
-
 struct CompareByAtime {
  public:
-  bool operator()(const CacheFileInfo* one,
-                  const CacheFileInfo* two) const {
-    return one->atime_ < two->atime_;
+  // Sort by ascending atime.
+  bool operator()(const FileSystem::FileInfo& one,
+                  const FileSystem::FileInfo& two) const {
+    return one.atime_sec < two.atime_sec;
   }
 };
 
@@ -164,104 +153,94 @@ bool FileCache::EncodeFilename(const GoogleString& key,
   return true;
 }
 
-bool FileCache::Clean(int64 target_size) {
+bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
   // TODO(jud): this function can delete .lock and .outputlock files, is this
   // problematic?
-  StringVector files;
-  int64 file_size;
-  int64 file_atime;
-  int64 total_size = 0;
-
   message_handler_->Message(kInfo,
-                            "Checking cache size against target %ld",
-                            static_cast<long>(target_size));
+                            "Checking cache size against target %s and inode "
+                            "count against target %s",
+                            Integer64ToString(target_size).c_str(),
+                            Integer64ToString(target_inode_count).c_str());
 
-  file_system_->RecursiveDirSize(path_, &total_size, message_handler_);
+  bool everything_ok = true;
 
+  // Get the contents of the cache
+  FileSystem::DirInfo dir_info;
+  file_system_->GetDirInfo(path_, &dir_info, message_handler_);
+
+  // Check to see if cache size or inode count exceeds our limits.
+  // target_inode_count of 0 indicates no inode limit.
   // TODO(jmarantz): gcc 4.1 warns about double/int64 comparisons here,
   // but this really should be factored into a settable member var.
-  if (total_size < ((target_size * 5) / 4)) {
+  int64 size_clean_threshold = (target_size * 5) / 4;
+  int64 inode_count_clean_threshold = (target_inode_count * 5) / 4;
+  int64 cache_size = dir_info.size_bytes;
+  int64 cache_inode_count = dir_info.inode_count;
+  if (cache_size < size_clean_threshold &&
+      (target_inode_count == 0 ||
+       cache_inode_count < inode_count_clean_threshold)) {
     message_handler_->Message(kInfo,
-                              "File cache size is %ld; no cleanup needed.",
-                              static_cast<long>(total_size));
+                              "File cache size is %s and contains %s inodes; "
+                              "no cleanup needed.",
+                              Integer64ToString(cache_size).c_str(),
+                              Integer64ToString(cache_inode_count).c_str());
     return true;
   }
-  message_handler_->Message(kInfo,
-                            "File cache size is %ld; beginning cleanup.",
-                            static_cast<long>(total_size));
-  bool everything_ok = true;
-  everything_ok &= file_system_->ListContents(path_, &files, message_handler_);
 
-  // We will now iterate over the entire directory and its children,
-  // keeping a heap of files to be deleted.  Our goal is to delete the
-  // oldest set of files that sum to enough space to bring us below
-  // our target.
-  std::priority_queue<CacheFileInfo*, std::vector<CacheFileInfo*>,
-      CompareByAtime> heap;
-  int64 total_heap_size = 0;
+  message_handler_->Message(kInfo,
+                            "File cache size is %s and contains %s inodes; "
+                            "beginning cleanup.",
+                            Integer64ToString(cache_size).c_str(),
+                            Integer64ToString(cache_inode_count).c_str());
+
+  // Remove empty directories.
+  StringVector::iterator it;
+  for (it = dir_info.empty_dirs.begin(); it != dir_info.empty_dirs.end();
+       ++it) {
+    everything_ok &= file_system_->RemoveDir(it->c_str(), message_handler_);
+    // Decrement cache_inode_count even if RemoveDir failed. This is likely
+    // because the directory has already been removed.
+    --cache_inode_count;
+  }
+
+  // Save original cache size to track how many bytes we've cleaned up.
+  int64 orig_cache_size = cache_size;
+
+  // Sort files by atime in ascending order to remove oldest files first.
+  std::sort(dir_info.files.begin(), dir_info.files.end(), CompareByAtime());
+
+  // Set the target size to clean to.
   // TODO(jmarantz): gcc 4.1 warns about double/int64 comparisons here,
   // but this really should be factored into a settable member var.
-  int64 target_heap_size = total_size - ((target_size * 3 / 4));
+  target_size = (target_size * 3) / 4;
+  target_inode_count = (target_inode_count * 3) / 4;
 
-  GoogleString prefix = path_;
-  EnsureEndsInSlash(&prefix);
-  while (!files.empty()) {  // Traverse directories depth first
-    GoogleString file_name = files.back();
-    files.pop_back();
-
-    BoolOrError isDir = file_system_->IsDir(file_name.c_str(),
-                                            message_handler_);
-    if (isDir.is_error()) {
-      return false;
-    } else if (clean_time_path_.compare(file_name) == 0) {
-      // Don't clean the clean_time file!  It ought to be the newest file (and
-      // very small) so the following algorithm would normally not delete it
-      // anyway.  But on some systems (e.g. mounted noatime?) it was getting
-      // deleted.
+  // Delete files until we are under our targets.
+  std::vector<FileSystem::FileInfo>::iterator file_itr = dir_info.files.begin();
+  while (file_itr != dir_info.files.end() &&
+         (cache_size > target_size ||
+          (target_inode_count != 0 &&
+           cache_inode_count > target_inode_count))) {
+    FileSystem::FileInfo file = *file_itr;
+    ++file_itr;
+    // Don't clean the clean_time file! It ought to be the newest file (and very
+    // small) so it would normally not be deleted anyway. But on some systems
+    // (e.g. mounted noatime?) it was getting deleted.
+    if (clean_time_path_.compare(file.name) == 0) {
       continue;
-    } else if (isDir.is_true()) {
-      // Add files in this directory to the end of the vector, to be
-      // examined next.
-      size_t prev_size = files.size();
-      everything_ok &= file_system_->ListContents(file_name, &files,
-                                                  message_handler_);
-      // Check if directory is empty, and if so delete it.
-      if (files.size() == prev_size) {
-        file_system_->RemoveDir(file_name.c_str(), message_handler_);
-      }
-    } else {
-      everything_ok &= file_system_->Size(file_name, &file_size,
-                                          message_handler_);
-      everything_ok &= file_system_->Atime(file_name, &file_atime,
-                                           message_handler_);
-      // If our heap is still too small; add everything in.
-      // Otherwise, add the file in only if it's older than the newest
-      // thing in the heap.
-      if ((total_heap_size < target_heap_size) ||
-          (file_atime < heap.top()->atime_)) {
-        CacheFileInfo* info =
-            new CacheFileInfo(file_size, file_atime, file_name);
-        heap.push(info);
-        total_heap_size += file_size;
-        // Now remove new things from the heap which are not needed
-        // to keep the heap size over its target size.
-        while (total_heap_size - heap.top()->size_ > target_heap_size) {
-          total_heap_size -= heap.top()->size_;
-          delete heap.top();
-          heap.pop();
-        }
-      }
     }
-  }
-  for (size_t i = heap.size(); i > 0; i--) {
-    everything_ok &= file_system_->RemoveFile(heap.top()->name_.c_str(),
+    cache_size -= file.size_bytes;
+    // Decrement inode_count even if RemoveFile fails. This is likely because
+    // the file has already been removed.
+    --cache_inode_count;
+    everything_ok &= file_system_->RemoveFile(file.name.c_str(),
                                               message_handler_);
-    delete heap.top();
-    heap.pop();
   }
+
+  int64 bytes_freed = orig_cache_size - cache_size;
   message_handler_->Message(kInfo,
-                            "File cache cleanup complete; freed %ld bytes",
-                            static_cast<long>(total_heap_size));
+                            "File cache cleanup complete; freed %s bytes",
+                            Integer64ToString(bytes_freed).c_str());
   return everything_ok;
 }
 
@@ -280,7 +259,8 @@ bool FileCache::CleanWithLocking(int64 next_clean_time_ms) {
                             message_handler_);
 
     // Now actually clean.
-    to_return = Clean(cache_policy_->target_size);
+    to_return = Clean(cache_policy_->target_size,
+                      cache_policy_->target_inode_count);
     file_system_->Unlock(lock_name, message_handler_);
   }
   return to_return;
@@ -310,9 +290,9 @@ bool FileCache::ShouldClean(int64* suggested_next_clean_time_ms) {
   // If the "clean time" written in the file is older than now, we
   // clean.
   if (clean_time_ms < now_ms) {
-    message_handler_->Message(kInfo,
-                              "Need to check cache size against target %ld",
-                              static_cast<long>(cache_policy_->target_size));
+    message_handler_->Message(
+        kInfo, "Need to check cache size against target %s",
+        Integer64ToString(cache_policy_->target_size).c_str());
     to_return = true;
   }
   // If the "clean time" is later than now plus one interval, something

@@ -176,7 +176,7 @@ class SharedMemHistogram : public Histogram {
  private:
   friend class SharedMemStatistics;
   SharedMemHistogram();
-  void AttachTo(AbstractSharedMemSegment* segment_, size_t offset,
+  void AttachTo(AbstractSharedMemSegment* segment, size_t offset,
                 MessageHandler* message_handler);
   double BucketWidth();
   int FindBucket(double value);

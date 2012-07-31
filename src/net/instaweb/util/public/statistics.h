@@ -49,11 +49,12 @@ class Variable {
 
 // Class that manages dumping statistics periodically to a file.
 class ConsoleStatisticsLogger {
-  public:
-    virtual ~ConsoleStatisticsLogger();
-    // If it's been longer than kStatisticsDumpIntervalMs, update the
-    // timestamp to now and dump the current state of the Statistics.
-    virtual void UpdateAndDumpIfRequired() = 0;
+ public:
+  virtual ~ConsoleStatisticsLogger();
+
+  // If it's been longer than kStatisticsDumpIntervalMs, update the
+  // timestamp to now and dump the current state of the Statistics.
+  virtual void UpdateAndDumpIfRequired() = 0;
 };
 
 class Histogram {
@@ -64,7 +65,7 @@ class Histogram {
   // Throw away all data.
   virtual void Clear() = 0;
   // True if the histogram is empty.
-  virtual bool Empty() {
+  bool Empty() {
    ScopedMutex hold(lock());
    return CountInternal() == 0;
   }
@@ -93,35 +94,36 @@ class Histogram {
   virtual void SetMaxValue(double value) = 0;
   // Set the maximum number of buckets.
   virtual void SetMaxBuckets(int i) = 0;
-  // Record a value in its bucket.
-  virtual double Average() {
+
+  // Returns average of the values added.
+  double Average() {
     ScopedMutex hold(lock());
     return AverageInternal();
   }
   // Return estimated value that is greater than perc% of all data.
   // e.g. Percentile(20) returns the value which is greater than
   // 20% of data.
-  virtual double Percentile(const double perc) {
+  double Percentile(const double perc) {
     ScopedMutex hold(lock());
     return PercentileInternal(perc);
   }
-  virtual double StandardDeviation() {
+  double StandardDeviation() {
     ScopedMutex hold(lock());
     return StandardDeviationInternal();
   }
-  virtual double Count() {
+  double Count() {
     ScopedMutex hold(lock());
     return CountInternal();
   }
-  virtual double Maximum() {
+  double Maximum() {
     ScopedMutex hold(lock());
     return MaximumInternal();
   }
-  virtual double Minimum() {
+  double Minimum() {
     ScopedMutex hold(lock());
     return MinimumInternal();
   }
-  virtual double Median() {
+  double Median() {
     return Percentile(50);
   }
 
@@ -168,7 +170,6 @@ class NullHistogram : public Histogram {
   virtual ~NullHistogram();
   virtual void Add(const double value) { }
   virtual void Clear() { }
-  virtual bool Empty() { return true; }
   virtual int MaxBuckets() { return 0; }
   virtual void EnableNegativeBuckets() { }
   virtual void SetMinValue(double value) { }

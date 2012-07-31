@@ -94,6 +94,7 @@ struct OptionName {
 "FetchProxy",                           RewriteOptions::kFetcherProxy
 "FetcherTimeOutMs",                     RewriteOptions::kFetcherTimeOutMs
 "FileCacheCleanIntervalMs",             RewriteOptions::kFileCacheCleanIntervalMs
+"FileCacheInodeLimit",                  RewriteOptions::kFileCacheCleanInodeLimit
 "FileCachePath",                        RewriteOptions::kFileCachePath
 "FileCacheSizeKb",                      RewriteOptions::kFileCacheCleanSizeKb
 "HashRefererStatistics",                RewriteOptions::kHashRefererStatistics

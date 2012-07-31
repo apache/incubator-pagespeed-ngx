@@ -57,6 +57,10 @@ void ApacheConfig::Init() {
 
   add_option(100 * 1024, &file_cache_clean_size_kb_, "afc",
              RewriteOptions::kFileCacheCleanSizeKb);  // 100 megabytes
+  // Default to no inode limit so that existing installations are not affected.
+  // pagespeed.conf.template contains suggested limit for new installations.
+  add_option(0, &file_cache_clean_inode_limit_, "afcl",
+             RewriteOptions::kFileCacheCleanInodeLimit);
   add_option(0, &lru_cache_byte_limit_, "alcb",
              RewriteOptions::kLruCacheByteLimit);
   add_option(0, &lru_cache_kb_per_process_, "alcp",
@@ -85,6 +89,7 @@ void ApacheConfig::Init() {
   // use_shared_mem_locking_.DoNotUseForSignatureComputation();
   // file_cache_clean_interval_ms_.DoNotUseForSignatureComputation();
   // file_cache_clean_size_kb_.DoNotUseForSignatureComputation();
+  // file_cache_clean_inode_limit_.DoNotUseForSignatureComputation();
   // lru_cache_byte_limit_.DoNotUseForSignatureComputation();
   // lru_cache_kb_per_process_.DoNotUseForSignatureComputation();
   // slurp_flush_limit_.DoNotUseForSignatureComputation();

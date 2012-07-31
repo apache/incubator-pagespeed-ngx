@@ -43,7 +43,7 @@ class AprFileSystem : public FileSystem {
   virtual InputFile* OpenInputFile(
       const char* file, MessageHandler* message_handler);
   virtual OutputFile* OpenOutputFileHelper(
-      const char* file, MessageHandler* message_handler);
+      const char* file, bool append, MessageHandler* message_handler);
   // See FileSystem interface for specifics of OpenTempFile.
   virtual OutputFile* OpenTempFileHelper(const StringPiece& prefix_name,
                                          MessageHandler* message_handler);

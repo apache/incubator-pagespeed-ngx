@@ -51,7 +51,8 @@ class MemFileSystem : public FileSystem {
   virtual InputFile* OpenInputFile(const char* filename,
                                    MessageHandler* message_handler);
   virtual OutputFile* OpenOutputFileHelper(const char* filename,
-                                          MessageHandler* message_handler);
+                                           bool append,
+                                           MessageHandler* message_handler);
   virtual OutputFile* OpenTempFileHelper(const StringPiece& prefix_name,
                                         MessageHandler* message_handle);
 

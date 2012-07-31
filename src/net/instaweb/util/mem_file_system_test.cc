@@ -68,6 +68,11 @@ TEST_F(MemFileSystemTest, TestTemp) {
   TestTemp();
 }
 
+// Write a temp file, close it, append to it, then read it.
+TEST_F(MemFileSystemTest, TestAppend) {
+  TestAppend();
+}
+
 // Write a temp file, rename it, then read it.
 TEST_F(MemFileSystemTest, TestRename) {
   TestRename();
@@ -113,8 +118,8 @@ TEST_F(MemFileSystemTest, TestMtime) {
   TestMtime();
 }
 
-TEST_F(MemFileSystemTest, TestSize) {
-  TestSize();
+TEST_F(MemFileSystemTest, TestDirInfo) {
+  TestDirInfo();
 }
 
 TEST_F(MemFileSystemTest, TestSizeOld) {

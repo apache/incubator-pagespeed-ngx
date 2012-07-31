@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
@@ -190,12 +191,13 @@ FileSystem::InputFile* StdioFileSystem::OpenInputFile(
 
 
 FileSystem::OutputFile* StdioFileSystem::OpenOutputFileHelper(
-    const char* filename, MessageHandler* message_handler) {
+    const char* filename, bool append, MessageHandler* message_handler) {
   FileSystem::OutputFile* output_file = NULL;
   if (strcmp(filename, "-") == 0) {
     output_file = new StdioOutputFile(stdout, "<stdout>");
   } else {
-    FILE* f = fopen(filename, "w");
+    const char* mode = append ? "a" : "w";
+    FILE* f = fopen(filename, mode);
     if (f == NULL) {
       message_handler->Error(filename, 0,
                              "opening output file: %s", strerror(errno));

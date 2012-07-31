@@ -48,10 +48,12 @@ class FileCacheTest : public CacheTestBase {
         file_system_(thread_system_.get(), &mock_timer_),
         kCleanIntervalMs(Timer::kMinuteMs),
         kTargetSize(12),  // Small enough to overflow with a few strings.
+        kTargetInodeLimit(10),
         cache_(GTestTempDir(), &file_system_, &worker_,
                &filename_encoder_,
                new FileCache::CachePolicy(
-                   &mock_timer_, &hasher_, kCleanIntervalMs, kTargetSize),
+                   &mock_timer_, &hasher_, kCleanIntervalMs, kTargetSize,
+                   kTargetInodeLimit),
                &message_handler_) {
     // TODO(jmarantz): consider using mock_thread_system if we want
     // explicit control of time.  For now, just mutex-protect the
@@ -78,7 +80,10 @@ class FileCacheTest : public CacheTestBase {
   virtual CacheInterface* Cache() { return &cache_; }
   virtual void SanityCheck() { }
 
-  bool Clean(int64 size) { return cache_.Clean(size); }
+  bool Clean(int64 size, int64 inode_count) {
+    return cache_.Clean(size, inode_count);
+  }
+
   bool CheckClean() {
     cache_.CleanIfNeeded();
     while (worker_.IsBusy()) {
@@ -96,6 +101,7 @@ class FileCacheTest : public CacheTestBase {
   FilenameEncoder filename_encoder_;
   const int64 kCleanIntervalMs;
   const int64 kTargetSize;
+  const int64 kTargetInodeLimit;
   FileCache cache_;
   GoogleMessageHandler message_handler_;
 
@@ -137,43 +143,80 @@ TEST_F(FileCacheTest, Clean) {
   const char* names2[] =
       {"b/1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "b9"};
   const char* values2[] = {"b2", "b234", "b2345678",
-                            "b2", "b234", "b2345678",
-                            "b2", "b234", "b2345678"};
+                           "b2", "b234", "b2345678",
+                           "b2", "b234", "b2345678"};
   for (int i = 0; i < 3; i++) {
     CheckPut(names1[i], values1[i]);
   }
   for (int i = 0; i < 9; i++) {
     CheckPut(names2[i], values2[i]);
   }
-  int64 total_size = 0;
-  file_system_.RecursiveDirSize(GTestTempDir(), &total_size, &message_handler_);
-  EXPECT_EQ((2 + 4 + 8) * 4, total_size);
+
+  FileSystem::DirInfo dir_info;
+  file_system_.GetDirInfo(GTestTempDir(), &dir_info, &message_handler_);
+  EXPECT_EQ((2 + 4 + 8) * 4, dir_info.size_bytes);
+  EXPECT_EQ(15, dir_info.inode_count);
 
   // Clean should not remove anything if target is bigger than total size.
-  EXPECT_TRUE(Clean(total_size + 1));
+  EXPECT_TRUE(Clean(dir_info.size_bytes + 1, dir_info.inode_count + 1));
   for (int i = 0; i < 27; i++) {
     // This pattern represents more common usage of the names1 files.
     CheckGet(names1[i % 3], values1[i % 3]);
     CheckGet(names2[i % 9], values2[i % 9]);
   }
 
+  file_system_.GetDirInfo(GTestTempDir(), &dir_info, &message_handler_);
+  EXPECT_EQ((2 + 4 + 8) * 4, dir_info.size_bytes);
+  EXPECT_EQ(15, dir_info.inode_count);
+
+  // Verify that inode_count_target of 0 (meaning no inode limit) is respected.
+  EXPECT_TRUE(Clean(dir_info.size_bytes + 1, 0));
+  file_system_.GetDirInfo(GTestTempDir(), &dir_info, &message_handler_);
+  EXPECT_EQ((2 + 4 + 8) * 4, dir_info.size_bytes);
+  EXPECT_EQ(15, dir_info.inode_count);
+
+  // Test cleaning by target_size, not inode_count
   // TODO(jmarantz): gcc 4.1 warns about double/int64 comparisons here,
   // but this really should be factored into a settable member var.
-  int64 target_size = (4 * total_size) / 5 - 1;
-  EXPECT_TRUE(Clean(target_size));
-  // Common files should stay
+  int64 target_size = (4 * dir_info.size_bytes) / 5 - 1;
+  int64 target_inode_count = dir_info.inode_count * 2;
+  EXPECT_TRUE(Clean(target_size, target_inode_count));
+  // b/c/, b/1, b2, b3, b4, b5, b6 should be removed
   for (int i = 0; i < 3; i++) {
     CheckGet(names1[i], values1[i]);
+    CheckGet(names2[i+6], values2[i+6]);
   }
-  // Some of the less common files should be gone
-  for (int i = 0; i < 3; i++) {
+  for (int i = 0; i < 6; i++) {
     CheckNotFound(names2[i]);
   }
+  file_system_.GetDirInfo(GTestTempDir(), &dir_info, &message_handler_);
+  EXPECT_EQ((2 + 4 + 8) * 2, dir_info.size_bytes);
+  EXPECT_EQ(8, dir_info.inode_count);
 
-  // Test that empty directories get removed
+  // Test that empty directories get removed, non-empty directories stay
   EXPECT_TRUE(file_system_.Exists(dir1.c_str(), &message_handler_).is_true());
   EXPECT_TRUE(file_system_.Exists(dir2.c_str(), &message_handler_).is_true());
   EXPECT_TRUE(file_system_.Exists(dir3.c_str(), &message_handler_).is_false());
+
+  // Test cleaning by inode_count, not target_size
+  target_size = dir_info.size_bytes * 2;
+  target_inode_count = (4 * dir_info.inode_count) / 5 - 1;
+  EXPECT_TRUE(Clean(target_size, target_inode_count));
+  // b/, b8, a2, b7, a1 should be removed
+  for (int i = 0; i < 2; i++) {
+    CheckNotFound(names1[i]);
+  }
+  for (int i = 0; i < 8; i++) {
+    CheckNotFound(names2[i]);
+  }
+  CheckGet(names1[2], values1[2]);
+  CheckGet(names2[8], values2[8]);
+  EXPECT_TRUE(file_system_.Exists(dir1.c_str(), &message_handler_).is_true());
+  EXPECT_TRUE(file_system_.Exists(dir2.c_str(), &message_handler_).is_false());
+  EXPECT_TRUE(file_system_.Exists(dir3.c_str(), &message_handler_).is_false());
+  file_system_.GetDirInfo(GTestTempDir(), &dir_info, &message_handler_);
+  EXPECT_EQ(8 * 2, dir_info.size_bytes);
+  EXPECT_EQ(3, dir_info.inode_count);
 }
 
 // Test the auto-cleaning behavior

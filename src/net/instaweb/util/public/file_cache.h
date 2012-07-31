@@ -37,14 +37,15 @@ class Timer;
 class FileCache : public CacheInterface {
  public:
   struct CachePolicy {
-    CachePolicy(Timer* timer, Hasher* hasher,
-                int64 clean_interval_ms, int64 target_size)
+    CachePolicy(Timer* timer, Hasher* hasher, int64 clean_interval_ms,
+                int64 target_size, int64 target_inode_count)
         : timer(timer), hasher(hasher), clean_interval_ms(clean_interval_ms),
-          target_size(target_size) {}
+          target_size(target_size), target_inode_count(target_inode_count) {}
     const Timer* timer;
     const Hasher* hasher;
     const int64 clean_interval_ms;
     const int64 target_size;
+    const int64 target_inode_count;
    private:
     DISALLOW_COPY_AND_ASSIGN(CachePolicy);
   };
@@ -66,12 +67,12 @@ class FileCache : public CacheInterface {
   friend class FileCacheTest;
   friend class CacheCleanFunction;
 
-  // Attempts to clean the cache.  Returns false if we failed and the
-  // cache still needs to be cleaned.  Returns true if everything's
-  // fine.  This may take a while.  It's OK for others to write and
-  // read from the cache while this is going on, but try to avoid
-  // Cleaning from two threads at the same time.
-  bool Clean(int64 target_size);
+  // Attempts to clean the cache. Returns false if we failed and the cache still
+  // needs to be cleaned. Returns true if everything's fine. This may take a
+  // while. It's OK for others to write and read from the cache while this is
+  // going on, but try to avoid Cleaning from two threads at the same time. A
+  // target_inode_count of 0 means no inode limit is applied.
+  bool Clean(int64 target_size, int64 target_inode_count);
 
   // Clean the cache, taking care of interprocess locking, as well as
   // timestamp update. Returns true if the cache was actually cleaned.

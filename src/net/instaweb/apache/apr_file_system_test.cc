@@ -134,6 +134,10 @@ TEST_F(AprFileSystemTest, TestTemp) {
   TestTemp();
 }
 
+TEST_F(AprFileSystemTest, TestAppend) {
+  TestAppend();
+}
+
 TEST_F(AprFileSystemTest, TestRename) {
   TestRename();
 }
@@ -192,8 +196,8 @@ TEST_F(AprFileSystemTest, TestMtime) {
   TestMtime();
 }
 
-TEST_F(AprFileSystemTest, TestSize) {
-  TestSize();
+TEST_F(AprFileSystemTest, TestDirInfo) {
+  TestDirInfo();
 }
 
 TEST_F(AprFileSystemTest, TestLock) {

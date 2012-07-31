@@ -623,7 +623,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(87, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(88, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAjaxRewritingEnabled));
@@ -820,6 +820,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("FileCacheSizeKb"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kFileCacheCleanSizeKb));
+  EXPECT_EQ(StringPiece("FileCacheInodeLimit"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kFileCacheCleanInodeLimit));
   EXPECT_EQ(StringPiece("HashRefererStatistics"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kHashRefererStatistics));

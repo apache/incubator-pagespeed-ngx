@@ -65,6 +65,12 @@ class ApacheConfig : public RewriteOptions {
   void set_file_cache_clean_size_kb(int64 x) {
     set_option(x, &file_cache_clean_size_kb_);
   }
+  int64 file_cache_clean_inode_limit() const {
+    return file_cache_clean_inode_limit_.value();
+  }
+  void set_file_cache_clean_inode_limit(int64 x) {
+    set_option(x, &file_cache_clean_inode_limit_);
+  }
   int64 lru_cache_byte_limit() const {
     return lru_cache_byte_limit_.value();
   }
@@ -241,6 +247,7 @@ class ApacheConfig : public RewriteOptions {
   Option<bool> use_shared_mem_locking_;
   Option<bool> slurp_read_only_;
 
+  Option<int64> file_cache_clean_inode_limit_;
   Option<int64> file_cache_clean_interval_ms_;
   Option<int64> file_cache_clean_size_kb_;
   Option<int64> lru_cache_byte_limit_;

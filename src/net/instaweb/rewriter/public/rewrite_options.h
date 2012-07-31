@@ -199,6 +199,7 @@ class RewriteOptions {
     kCollectRefererStatistics,
     kFetcherProxy,
     kFetcherTimeOutMs,
+    kFileCacheCleanInodeLimit,
     kFileCacheCleanIntervalMs,
     kFileCacheCleanSizeKb,
     kFileCachePath,

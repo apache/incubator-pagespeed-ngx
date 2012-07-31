@@ -19,10 +19,14 @@
 #include "net/instaweb/util/public/file_system.h"
 
 #include <cstddef>
+#include <algorithm>
+
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system_test.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mem_file_system.h"
+#include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -31,6 +35,16 @@ namespace net_instaweb {
 
 FileSystemTest::FileSystemTest() { }
 FileSystemTest::~FileSystemTest() { }
+
+// Used by TestDirInfo to make sure vector of FileInfos can be compared
+// consistently
+struct CompareByName {
+ public:
+  bool operator()(const FileSystem::FileInfo& one,
+                  const FileSystem::FileInfo& two) const {
+    return one.name < two.name;
+  }
+};
 
 GoogleString FileSystemTest::WriteNewFile(const StringPiece& suffix,
                                           const GoogleString& content) {
@@ -88,6 +102,22 @@ void FileSystemTest::TestTemp() {
   EXPECT_TRUE(file_system()->Close(ofile, &handler_));
 
   CheckRead(filename, msg);
+}
+
+// Write a temp file, close it, append to it, then read it.
+void FileSystemTest::TestAppend() {
+  GoogleString prefix = test_tmpdir() + "/temp_prefix";
+  FileSystem::OutputFile* ofile = file_system()->OpenTempFile(
+      prefix, &handler_);
+  ASSERT_TRUE(ofile != NULL);
+  const GoogleString filename(ofile->filename());
+  EXPECT_TRUE(ofile->Write("Hello", &handler_));
+  EXPECT_TRUE(file_system()->Close(ofile, &handler_));
+  ofile = file_system()->OpenOutputFileForAppend(filename.c_str(), &handler_);
+  EXPECT_TRUE(ofile->Write(" world!", &handler_));
+  EXPECT_TRUE(file_system()->Close(ofile, &handler_));
+
+  CheckRead(filename, "Hello world!");
 }
 
 // Write a temp file, rename it, then read it.
@@ -327,34 +357,65 @@ void FileSystemTest::TestMtime() {
   EXPECT_GT(mtime1_recreate, mtime2_recreate);
 }
 
-void FileSystemTest::TestSize() {
+void FileSystemTest::TestDirInfo() {
   GoogleString dir_name = test_tmpdir() + "/make_dir";
   DeleteRecursively(dir_name);
   GoogleString dir_name2 = dir_name + "/make_dir2";
-  GoogleString filename1 = "file-in-dir.txt";
-  GoogleString filename2 = "another-file-in-dir.txt";
+  GoogleString dir_name3 = dir_name + "/make_dir3/";
+  GoogleString filename1 = "another-file-in-dir.txt";
+  GoogleString filename2 = "file-in-dir.txt";
   GoogleString full_path1 = dir_name2 + "/" + filename1;
   GoogleString full_path2 = dir_name2 + "/" + filename2;
   GoogleString content1 = "12345";
   GoogleString content2 = "1234567890";
   ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
   ASSERT_TRUE(file_system()->MakeDir(dir_name2.c_str(), &handler_));
+  ASSERT_TRUE(file_system()->MakeDir(dir_name3.c_str(), &handler_));
   ASSERT_TRUE(file_system()->WriteFile(full_path1.c_str(),
                                        content1, &handler_));
   ASSERT_TRUE(file_system()->WriteFile(full_path2.c_str(),
                                        content2, &handler_));
-  int64 size;
 
+  int64 size;
   EXPECT_TRUE(file_system()->Size(full_path1, &size, &handler_));
-  EXPECT_EQ(content1.size(), size_t(size));
+  EXPECT_EQ(content1.size(), static_cast<size_t>(size));
   EXPECT_TRUE(file_system()->Size(full_path2, &size, &handler_));
-  EXPECT_EQ(content2.size(), size_t(size));
-  size = 0;
-  file_system()->RecursiveDirSize(dir_name2, &size, &handler_);
-  EXPECT_EQ(content1.size() + content2.size(), size_t(size));
-  size = 0;
-  file_system()->RecursiveDirSize(dir_name, &size, &handler_);
-  EXPECT_EQ(content1.size() + content2.size(), size_t(size));
+  EXPECT_EQ(content2.size(), static_cast<size_t>(size));
+
+  FileSystem::DirInfo dir_info;
+  FileSystem::DirInfo dir_info2;
+  file_system()->GetDirInfo(dir_name2, &dir_info2, &handler_);
+  EXPECT_EQ(content1.size() + content2.size(),
+            static_cast<size_t>(dir_info2.size_bytes));
+  EXPECT_EQ(2, dir_info2.inode_count);
+  EXPECT_EQ(static_cast<size_t>(2), dir_info2.files.size());
+  // dir_info.files is not guaranteed to be in any particular order, and in fact
+  // come back in different order for mem and apr filesystems, so sort it so
+  // that the comparison is consistent.
+  std::sort(dir_info2.files.begin(), dir_info2.files.end(), CompareByName());
+  EXPECT_STREQ(full_path1, dir_info2.files[0].name);
+  EXPECT_STREQ(full_path2, dir_info2.files[1].name);
+  EXPECT_EQ(static_cast<size_t>(0), dir_info2.empty_dirs.size());
+
+  file_system()->GetDirInfo(dir_name, &dir_info, &handler_);
+  // Different filesystems have different directory sizes. dynamic_cast to
+  // determine which directory size to use.
+  size_t dir_size;
+  if (dynamic_cast<MemFileSystem*>(file_system()) != NULL) {
+    dir_size = 0;
+  } else if (dynamic_cast<StdioFileSystem*>(file_system()) != NULL) {
+    dir_size = 60;
+  } else {
+    // Apr file system.
+    dir_size = 4096;
+  }
+  EXPECT_EQ(dir_size * 2 + content1.size() + content2.size(),
+            static_cast<size_t>(dir_info.size_bytes));
+  EXPECT_EQ(4, dir_info.inode_count);
+  std::sort(dir_info.files.begin(), dir_info.files.end(), CompareByName());
+  EXPECT_STREQ(full_path1, dir_info.files[0].name);
+  EXPECT_STREQ(full_path2, dir_info.files[1].name);
+  EXPECT_EQ(static_cast<size_t>(1), dir_info.empty_dirs.size());
 }
 
 void FileSystemTest::TestLock() {

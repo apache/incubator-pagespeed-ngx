@@ -65,6 +65,7 @@ class FileSystemTest : public testing::Test {
   // AprFileSystemTest, StdioFileSystemTest, MemFileSystemTest.
   void TestWriteRead();
   void TestTemp();
+  void TestAppend();
   void TestRename();
   void TestRemove();
   void TestExists();
@@ -78,7 +79,7 @@ class FileSystemTest : public testing::Test {
   void TestListContents();
   void TestAtime();
   void TestMtime();
-  void TestSize();
+  void TestDirInfo();
   void TestLock();
   void TestLockTimeout();
 

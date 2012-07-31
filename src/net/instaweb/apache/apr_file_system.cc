@@ -216,11 +216,16 @@ FileSystem::InputFile* AprFileSystem::OpenInputFile(
 }
 
 FileSystem::OutputFile* AprFileSystem::OpenOutputFileHelper(
-    const char* filename, MessageHandler* message_handler) {
+    const char* filename, bool append, MessageHandler* message_handler) {
   ScopedMutex hold_mutex(mutex_.get());
   apr_file_t* file;
-  apr_status_t ret = apr_file_open(&file, filename,
-                                   APR_WRITE | APR_CREATE | APR_TRUNCATE,
+  apr_int32_t flags;
+  if (append) {
+    flags = APR_WRITE | APR_CREATE | APR_APPEND;
+  } else {
+    flags = APR_WRITE | APR_CREATE | APR_TRUNCATE;
+  }
+  apr_status_t ret = apr_file_open(&file, filename, flags,
                                    APR_OS_DEFAULT, pool_);
   if (ret != APR_SUCCESS) {
     AprReportError(message_handler, filename, 0, "open output file", ret);

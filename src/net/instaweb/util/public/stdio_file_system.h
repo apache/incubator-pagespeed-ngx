@@ -39,6 +39,7 @@ class StdioFileSystem : public FileSystem {
   virtual InputFile* OpenInputFile(const char* filename,
                                    MessageHandler* message_handler);
   virtual OutputFile* OpenOutputFileHelper(const char* filename,
+                                           bool append,
                                            MessageHandler* message_handler);
   virtual OutputFile* OpenTempFileHelper(const StringPiece& prefix_name,
                                          MessageHandler* message_handle);

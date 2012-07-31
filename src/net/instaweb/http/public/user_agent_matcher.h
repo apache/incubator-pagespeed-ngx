@@ -60,7 +60,7 @@ class UserAgentMatcher {
 
   // Returns the request type for the given request. The return type currently
   // supports desktop, mobile and not supported.
-  BlinkRequestType GetBlinkRequestType(
+  virtual BlinkRequestType GetBlinkRequestType(
       const char* user_agent, const RequestHeaders* request_headers,
       bool allow_mobile) const;
 

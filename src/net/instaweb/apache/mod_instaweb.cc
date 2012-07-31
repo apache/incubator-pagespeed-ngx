@@ -115,6 +115,8 @@ const char* kModPagespeedFetcherTimeoutMs = "ModPagespeedFetcherTimeOutMs";
 const char* kModPagespeedFetchWithGzip = "ModPagespeedFetchWithGzip";
 const char* kModPagespeedFileCacheCleanIntervalMs =
     "ModPagespeedFileCacheCleanIntervalMs";
+const char* kModPagespeedFileCacheInodeLimit =
+    "ModPagespeedFileCacheInodeLimit";
 const char* kModPagespeedFileCachePath = "ModPagespeedFileCachePath";
 const char* kModPagespeedFileCacheSizeKb = "ModPagespeedFileCacheSizeKb";
 const char* kModPagespeedFilterName = "MOD_PAGESPEED_OUTPUT_FILTER";
@@ -1305,6 +1307,8 @@ APACHE_CONFIG_DIR_OPTION(kModPagespeedClientDomainRewrite,
                        "Request http content from origin servers using gzip"),
   APACHE_CONFIG_OPTION(kModPagespeedFileCacheCleanIntervalMs,
         "Set the interval (in ms) for cleaning the file cache"),
+  APACHE_CONFIG_OPTION(kModPagespeedFileCacheInodeLimit,
+        "Set the target number of inodes for the file cache; 0 means no limit"),
   APACHE_CONFIG_OPTION(kModPagespeedFileCachePath,
         "Set the path for file cache"),
   APACHE_CONFIG_OPTION(kModPagespeedFileCacheSizeKb,

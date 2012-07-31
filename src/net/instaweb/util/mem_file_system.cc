@@ -69,9 +69,12 @@ class MemInputFile : public FileSystem::InputFile {
 
 class MemOutputFile : public FileSystem::OutputFile {
  public:
-  MemOutputFile(const StringPiece& filename, GoogleString* contents)
+  MemOutputFile(
+      const StringPiece& filename, GoogleString* contents, bool append)
       : contents_(contents), filename_(filename.data(), filename.size()) {
-    contents_->clear();
+    if (!append) {
+      contents_->clear();
+    }
   }
 
   virtual bool Close(MessageHandler* message_handler) {
@@ -221,12 +224,12 @@ FileSystem::InputFile* MemFileSystem::OpenInputFile(
 }
 
 FileSystem::OutputFile* MemFileSystem::OpenOutputFileHelper(
-    const char* filename, MessageHandler* message_handler) {
+    const char* filename, bool append, MessageHandler* message_handler) {
   ScopedMutex lock(all_else_mutex_.get());
   UpdateAtime(filename);
   UpdateMtime(filename);
   ++num_output_file_opens_;
-  return new MemOutputFile(filename, &(string_map_[filename]));
+  return new MemOutputFile(filename, &(string_map_[filename]), append);
 }
 
 FileSystem::OutputFile* MemFileSystem::OpenTempFileHelper(
@@ -236,7 +239,7 @@ FileSystem::OutputFile* MemFileSystem::OpenTempFileHelper(
   UpdateAtime(filename);
   UpdateMtime(filename);
   ++num_temp_file_opens_;
-  return new MemOutputFile(filename, &string_map_[filename]);
+  return new MemOutputFile(filename, &string_map_[filename], false);
 }
 
 bool MemFileSystem::RecursivelyMakeDir(const StringPiece& full_path_const,
