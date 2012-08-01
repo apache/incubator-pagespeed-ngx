@@ -185,6 +185,7 @@
         'util/gzip_inflater_test.cc',
         'util/hashed_referer_statistics_test_base.cc',
         'util/hasher_test.cc',
+        'util/inprocess_shared_mem_test.cc',
         'util/lru_cache_test.cc',
         'util/md5_hasher_test.cc',
         'util/mem_debug.cc',

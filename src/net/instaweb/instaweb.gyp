@@ -537,6 +537,7 @@
         'util/gzip_inflater.cc',
         'util/hashed_referer_statistics.cc',
         'util/hasher.cc',
+        'util/inprocess_shared_mem.cc',
         'util/lru_cache.cc',
         'util/md5_hasher.cc',
         'util/mock_hasher.cc',
