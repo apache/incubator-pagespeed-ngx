@@ -22,10 +22,10 @@ vars = {
   "chromium_deps_root": "src/third_party/chromium_deps",
 
   # We use libwebp from the chromium trunk (to get the .gyp file), but we need a
-  # later revision (v0.1.3) than is used in the above Chromium checkout.  If the
-  # chromium dependency is brought up to date, this should be dropped, and the
+  # later revision than is used in the above Chromium checkout.  If the chromium
+  # dependency is brought up to date, this should be dropped, and the
   # definition of order_profiling should be removed from src/build/common.gypi .
-  "chromium_webp_revision": "@138145",
+  "chromium_webp_revision": "@146440",
 
   "libpagespeed_svn_root": "http://page-speed.googlecode.com/svn",
   "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.12.8.0",
