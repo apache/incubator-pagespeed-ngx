@@ -150,32 +150,13 @@ SharedMemConsoleStatisticsLogger::SharedMemConsoleStatisticsLogger(
         message_handler_(message_handler),
         statistics_(stats),
         file_system_(file_system),
-        timer_(timer),
-        statistics_writer_(NULL) {
-  // TODO(bvb, sarahdw): Only open/close file when needed.
-  statistics_log_file_ = file_system_->OpenOutputFile(kLogfileName,
-                                                      message_handler_);
-  if (statistics_log_file_ != NULL) {
-    statistics_writer_.reset(new FileWriter(statistics_log_file_));
-  } else {
-    LOG(ERROR) << "Error opening statistics log file " << kLogfileName << ". ";
-  }
+        timer_(timer) {
 }
 
 SharedMemConsoleStatisticsLogger::~SharedMemConsoleStatisticsLogger() {
-  if (statistics_writer_.get() != NULL) {
-    statistics_writer_->Flush(message_handler_);
-  }
-  if (statistics_log_file_ != NULL) {
-    file_system_->Close(statistics_log_file_, message_handler_);
-  }
 }
 
 void SharedMemConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
-  if (statistics_writer_.get() == NULL) {
-    // We've already logged the failure to open the file in the constructor.
-    return;
-  }
   int64 current_time_ms = timer_->NowMs();
   AbstractMutex* mutex = last_dump_timestamp_->mutex();
   if (mutex == NULL) {
@@ -188,10 +169,20 @@ void SharedMemConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
       // It's possible we'll need to do some of the following here for
       // cross-process consistency:
       // - flush the logfile before unlock to force out buffered data
-      // - close and reopen the logfile to reset file pointers before dumping
-      statistics_->DumpConsoleVarsToWriter(
-          current_time_ms, statistics_writer_.get(), message_handler_);
-      statistics_writer_->Flush(message_handler_);
+      FileSystem::OutputFile* statistics_log_file =
+          file_system_->OpenOutputFileForAppend(kLogfileName, message_handler_);
+      if (statistics_log_file != NULL) {
+        FileWriter statistics_writer(statistics_log_file);
+        statistics_->DumpConsoleVarsToWriter(
+            current_time_ms, &statistics_writer, message_handler_);
+        statistics_writer.Flush(message_handler_);
+        file_system_->Close(statistics_log_file, message_handler_);
+      } else {
+        message_handler_->Message(
+            kError, "Error opening statistics log file %s.", kLogfileName);
+      }
+      // Update timestamp regardless of file write so we don't hit the same
+      // error many times in a row.
       last_dump_timestamp_->SetLockHeldNoUpdate(current_time_ms);
     }
     mutex->Unlock();

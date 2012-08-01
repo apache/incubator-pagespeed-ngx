@@ -21,7 +21,6 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/string.h"
@@ -31,7 +30,7 @@ namespace net_instaweb {
 
 class AbstractSharedMem;
 class AbstractSharedMemSegment;
-class FileWriter;
+class FileSystem;
 class MessageHandler;
 class Timer;
 class Writer;
@@ -126,9 +125,6 @@ class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
   // (usually Apache's ResourceManager).
   FileSystem* file_system_;
   Timer* timer_;    // Used to retrieve timestamps
-  scoped_ptr<FileWriter> statistics_writer_;
-  // This needs to be freed with file_system_->Close()
-  FileSystem::OutputFile* statistics_log_file_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemConsoleStatisticsLogger);
 };
