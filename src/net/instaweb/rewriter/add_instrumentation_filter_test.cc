@@ -21,6 +21,7 @@
 #include <cstddef>
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -221,7 +222,17 @@ TEST_F(AddInstrumentationFilterTest,
   SetMimetypeToXhtml();
   RunInjection();
   EXPECT_TRUE(output_buffer_.find("&amp;exptid=2") != GoogleString::npos);
+  EXPECT_TRUE(output_buffer_.find("hft") == GoogleString::npos);
 }
 
+// Test that headers fetch timing reporting is done correctly.
+TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
+  NullMessageHandler handler;
+  LoggingInfo logging_info;
+  logging_info.mutable_timing_info()->set_header_fetch_ms(200);
+  rewrite_driver()->set_logging_info_destination(&logging_info);
+  RunInjection();
+  EXPECT_TRUE(output_buffer_.find("&hft=200") != GoogleString::npos);
+}
 
 }  // namespace net_instaweb

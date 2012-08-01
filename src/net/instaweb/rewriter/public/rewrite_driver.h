@@ -827,6 +827,12 @@ class RewriteDriver : public HtmlParse {
     return &applied_rewriters_;
   }
 
+  // This method is not thread-safe. Ensure that threads accessing it are
+  // synchronized against each other.
+  LoggingInfo* logging_info() {
+    return logging_info_;
+  }
+
   void set_logging_info_destination(LoggingInfo* logging_info) {
     logging_info_ = logging_info;
   }
