@@ -198,6 +198,8 @@ class RewriteContext {
   // If called with true, forces a rewrite and re-generates the output.
   void set_force_rewrite(bool x) { force_rewrite_ = x; }
 
+  const ResourceContext* resource_context() { return resource_context_.get(); }
+
  protected:
   typedef std::vector<InputInfo*> InputInfoStarVector;
   typedef std::vector<GoogleUrl*> GoogleUrlStarVector;
@@ -210,7 +212,6 @@ class RewriteContext {
   ResourceManager* Manager() const;
   const RewriteOptions* Options();
   RewriteDriver* Driver() const;
-  const ResourceContext* resource_context() { return resource_context_.get(); }
 
   // Check that an CachedResult is valid, specifically, that all the
   // inputs are still valid/non-expired.

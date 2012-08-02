@@ -48,9 +48,9 @@ const char kInputStyle[] =
 const char kOutputStyle[] =
     ".background_blue{background-color:red}"
     ".foreground_yellow{color:#ff0}";
+const char kPuzzleJpgFile[] = "Puzzle.jpg";
 
 class CssFilterTest : public CssRewriteTestBase {
-
  protected:
   void TestUrlAbsolutification(const StringPiece id,
                                const StringPiece css_input,
@@ -1111,6 +1111,33 @@ TEST_F(CssFilterTest, DontAbsolutifyEmptyUrl) {
   const char kNoUrlImport[] = "@import url() ;";
   ValidateRewrite("empty_url_in_import", kEmptyUrlImport, kNoUrlImport,
                   kExpectSuccess);
+}
+
+TEST_F(CssFilterTest, WebpRewriting) {
+  const char css_input[] = "body{background:url(a.jpg)}";
+  const char css_output[] =
+      "body{background:url(http://test.com/wa.jpg.pagespeed.ic.0.webp)}";
+  AddFileToMockFetcher(StrCat(kTestDomain, "a.jpg"), kPuzzleJpgFile,
+                       kContentTypeJpeg, 100);
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->set_image_jpeg_recompress_quality(85);
+  resource_manager()->ComputeSignature(options());
+  rewrite_driver()->set_user_agent("webp");
+
+  SetResponseWithDefaultHeaders("foo.css", kContentTypeCss, css_input, 100);
+  Parse("webp", CssLinkHref("foo.css"));
+  // Check for CSS files in the rewritten page.
+  StringVector css_urls;
+  CollectCssLinks("collect", output_buffer_, &css_urls);
+  ASSERT_EQ(1, css_urls.size());
+  EXPECT_EQ("http://test.com/W.foo.css.pagespeed.cf.0.css", css_urls[0]);
+
+  // Check the content of the CSS file.
+  GoogleString actual_output;
+  EXPECT_TRUE(FetchResourceUrl(css_urls[0], &actual_output));
+  EXPECT_STREQ(css_output, actual_output);
 }
 
 TEST_F(CssFilterTest, DontAbsolutifyUrlsIfNoDomainMapping) {

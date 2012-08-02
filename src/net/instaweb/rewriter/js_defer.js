@@ -221,6 +221,15 @@ deferJsNs.DeferJs = function() {
 deferJsNs.DeferJs.isExperimentalMode = false;
 
 /**
+ * State Machine
+ * NOT_STARTED --> SCRIPTS_REGISTERED --> SCRIPTS_EXECUTING ----------
+ *                          ^                                         |
+ *                          |                                         |
+ *                    WAITING_FOR_NEXT_RUN <--                        |
+ *                                             \                      |
+ *                                              \                     |
+ * SCRIPTS_DONE <--- WAITING_FOR_ONLOAD <--- SYNC_SCRIPTS_DONE <------
+ *
  * Constants for different states of deferJs exeuction.
  * @enum {number}
  */
@@ -248,9 +257,13 @@ deferJsNs.DeferJs.STATES = {
    */
   SYNC_SCRIPTS_DONE: 4,
   /**
+   * Waiting for onload event to be triggered.
+   */
+  WAITING_FOR_ONLOAD: 5,
+  /**
    * Final state.
    */
-  SCRIPTS_DONE: 5
+  SCRIPTS_DONE: 6
 };
 
 /**
@@ -574,7 +587,7 @@ deferJsNs.DeferJs.prototype.removeCurrentDomLocation = function() {
  * Called when the script Queue execution is finished.
  */
 deferJsNs.DeferJs.prototype.onComplete = function() {
-  if (this.state_ == deferJsNs.DeferJs.STATES.SCRIPTS_DONE) {
+  if (this.state_ >= deferJsNs.DeferJs.STATES.WAITING_FOR_ONLOAD) {
     return;
   }
 
@@ -582,7 +595,6 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
     // ReadyState should be restored only during the last onComplete,
     // so that document.readyState returns 'loading' till the last deferred
     // script is executed.
-    this.removeNotProcessedAttributeTillNode();
     if (this.getIEVersion() && document.documentElement['originalDoScroll']) {
       document.documentElement.doScroll =
           document.documentElement['originalDoScroll'];
@@ -607,7 +619,7 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
   document.writeln = this.origDocWriteln_;
 
   if (this.lastIncrementalRun_) {
-    this.fireEvent(deferJsNs.DeferJs.EVENT.DOM_READY);
+    this.state_ = deferJsNs.DeferJs.STATES.WAITING_FOR_ONLOAD;
 
     this.restoreAddEventListeners();
 
@@ -737,6 +749,8 @@ deferJsNs.DeferJs.prototype.runNext = function() {
   } else {
     if (this.lastIncrementalRun_) {
       this.state_ = deferJsNs.DeferJs.STATES.SYNC_SCRIPTS_DONE;
+      this.removeNotProcessedAttributeTillNode();
+      this.fireEvent(deferJsNs.DeferJs.EVENT.DOM_READY);
       if (this.canCallOnComplete()) {
         this.onComplete();
       }
@@ -1283,14 +1297,14 @@ deferJsNs.addHandler = function(elem, eventName, func) {
 pagespeed['addHandler'] = deferJsNs.addHandler;
 
 /**
- * Returns true if browser is Firefox.
+ * @return {boolean} true if browser is Firefox.
  */
 deferJsNs.DeferJs.prototype.isFireFox = function() {
-  return (navigator.userAgent.indexOf("Firefox") != -1);
+  return (navigator.userAgent.indexOf('Firefox') != -1);
 };
 
 /**
- * Returns version number if browser is IE.
+ * @return {number} version number if browser is IE.
  */
 deferJsNs.DeferJs.prototype.getIEVersion = function() {
   var version = /(?:MSIE.(\d+\.\d+))/.exec(navigator.userAgent);

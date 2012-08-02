@@ -376,7 +376,7 @@ TEST_F(CssImageRewriterTest, RecompressImages) {
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   resource_manager()->ComputeSignature(options());
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
-                        kContentTypePng, 100);
+                       kContentTypePng, 100);
   static const char kCss[] =
       "body {\n"
       "  background-image: url(foo.png);\n"
@@ -843,6 +843,20 @@ TEST_F(CssRecompressImagesInStyleAttributes, RecompressAndStyleEnabled) {
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
   rewrite_driver()->AddFilters();
   ValidateExpected("options_enabled", div_before_, div_after_);
+}
+
+TEST_F(CssRecompressImagesInStyleAttributes, RecompressAndWebpAndStyleEnabled) {
+  AddFileToMockFetcher(StrCat(kTestDomain, "foo.jpg"), kPuzzleJpgFile,
+                       kContentTypeJpeg, 100);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
+  options()->set_image_jpeg_recompress_quality(85);
+  rewrite_driver()->set_user_agent("webp");
+  rewrite_driver()->AddFilters();
+  ValidateExpected("webp",
+      "<div style=\"background-image:url(foo.jpg)\"/>",
+      "<div style=\"background-image:url("
+      "http://test.com/wfoo.jpg.pagespeed.ic.0.webp)\"/>");
 }
 
 }  // namespace

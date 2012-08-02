@@ -167,6 +167,8 @@ const int64 RewriteOptions::kDefaultMinImageSizeLowResolutionBytes = 1 * 1024;
 const int64 RewriteOptions::kDefaultMaxImageSizeLowResolutionBytes =
     1 * 1024 * 1024;  // 1 MB.
 
+// Setting the limit on combined js resource to -1 will bypass the size check.
+const int64 RewriteOptions::kDefaultMaxCombinedJsBytes = -1;
 const int64 RewriteOptions::kDefaultCriticalImagesCacheExpirationMs =
     Timer::kHourMs;
 const int64 RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs = 0;
@@ -636,6 +638,8 @@ RewriteOptions::RewriteOptions()
              kXPsaBlockingRewrite);
   add_option(true, &support_noscript_enabled_, "snse",
              kSupportNoScriptEnabled);
+  add_option(kDefaultMaxCombinedJsBytes,
+             &max_combined_js_bytes_, "xcj", kMaxCombinedJsBytes);
   // Sort all_options_ on enum.
   SortOptions();
   // Do not call add_option with OptionEnum fourth argument after this.

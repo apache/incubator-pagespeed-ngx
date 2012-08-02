@@ -1045,9 +1045,17 @@ RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
 RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
     int64 css_image_inline_max_bytes,
     RewriteContext* parent, const ResourceSlotPtr& slot) {
+  // Copy over the ResourceContext from the parent RewriteContext so that we
+  // preserve request specific options, such as whether WebP rewriting is
+  // allowed.
+  ResourceContext* cloned_context = new ResourceContext;
+  const ResourceContext* parent_context = parent->resource_context();
+  if (parent_context != NULL) {
+    cloned_context->CopyFrom(*parent_context);
+  }
   Context* context = new Context(css_image_inline_max_bytes,
                                  this, NULL /* driver*/, parent,
-                                 new ResourceContext, true /*is css */,
+                                 cloned_context, true /*is css */,
                                  kNotCriticalIndex);
   context->AddSlot(slot);
   return context;

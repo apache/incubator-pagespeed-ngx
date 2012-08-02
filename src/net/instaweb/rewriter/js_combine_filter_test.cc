@@ -55,6 +55,7 @@ namespace {
 const char kJsUrl1[] = "a.js";
 const char kJsUrl2[] = "b.js";
 const char kJsUrl3[] = "c.js";
+const char kJsUrl4[] = "d.js";
 const char kStrictUrl1[] = "strict1.js";
 const char kStrictUrl2[] = "strict2.js";
 const char kIntrospectiveUrl1[] = "introspective1.js";
@@ -64,6 +65,7 @@ const char kMinifiedJs1[] = "var a=\"hello\\nsecond line\"";
 const char kJsText2[] = "// script2\r\nvar b=42;\n";
 const char kMinifiedJs2[] = "var b=42;";
 const char kJsText3[] = "var x = 42;\nvar y = 31459;\n";
+const char kJsText4[] = "var m = 'abcd';\n";
 const char kStrictText1[] = "'use strict'; var x = 32;";
 const char kStrictText2[] = "\"use strict\"; var x = 42;";
 const char kIntrospectiveText1[] = "var x = 7; $('script') ; var y = 42;";
@@ -146,6 +148,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
     SimulateJsResource(kJsUrl2, kJsText2);
     SimulateJsResourceOnDomain(kAlternateDomain, kJsUrl2, kJsText2);
     SimulateJsResource(kJsUrl3, kJsText3);
+    SimulateJsResource(kJsUrl4, kJsText4);
     SimulateJsResource(kStrictUrl1, kStrictText1);
     SimulateJsResource(kStrictUrl2, kStrictText2);
     SimulateJsResource(kIntrospectiveUrl1, kIntrospectiveText1);
@@ -937,6 +940,34 @@ TEST_F(JsCombineFilterTest, EmbeddedBomReconstruct) {
   GoogleString js_out;
   EXPECT_TRUE(FetchResourceUrl(js_url, &js_out));
   EXPECT_EQ(js_min, js_out);
+}
+
+TEST_F(JsCombineFilterTest, TestMaxCombinedJsSize) {
+  // Make sure we don't produce combined js resource bigger than the
+  // max_combined_js_bytes().
+
+  options()->ClearSignatureForTesting();
+  options()->set_max_combined_js_bytes(
+      STATIC_STRLEN(kJsText1) + STATIC_STRLEN(kJsText2));
+  resource_manager()->ComputeSignature(options());
+
+  ScriptInfoVector scripts;
+  PrepareToCollectScriptsInto(&scripts);
+  SetupWriter();
+  html_parse()->StartParse(kTestDomain);
+  html_parse()->ParseText(StrCat("<script src=", kJsUrl1, "></script>"));
+  html_parse()->ParseText(StrCat("<script src=", kJsUrl2, "></script>"));
+  html_parse()->ParseText(StrCat("<script src=", kJsUrl3, "></script>"));
+  html_parse()->ParseText(StrCat("<script src=", kJsUrl4, "></script>"));
+  html_parse()->FinishParse();
+
+  ASSERT_EQ(6, scripts.size());
+  VerifyCombined(scripts[0], MultiUrl(kJsUrl1, kJsUrl2));
+  VerifyUse(scripts[1], kJsUrl1);
+  VerifyUse(scripts[2], kJsUrl2);
+  VerifyCombined(scripts[3], MultiUrl(kJsUrl3, kJsUrl4));
+  VerifyUse(scripts[4], kJsUrl3);
+  VerifyUse(scripts[5], kJsUrl4);
 }
 
 }  // namespace net_instaweb

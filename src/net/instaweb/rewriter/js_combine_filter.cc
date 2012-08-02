@@ -66,7 +66,8 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
   JsCombiner(JsCombineFilter* filter, RewriteDriver* driver)
       : ResourceCombiner(driver, kContentTypeJavascript.file_extension() + 1,
                          filter),
-        filter_(filter) {
+        filter_(filter),
+        combined_js_size_(0) {
     Statistics* stats = resource_manager_->statistics();
     js_file_count_reduction_ = stats->GetVariable(kJsFileCountReduction);
   }
@@ -107,6 +108,26 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
     return true;
   }
 
+  virtual bool ContentSizeTooBig() const {
+    int64 combined_js_max_size =
+        rewrite_driver_->options()->max_combined_js_bytes();
+
+    if (combined_js_max_size >= 0 &&
+        combined_js_size_ > combined_js_max_size) {
+      return true;
+    }
+    return false;
+  }
+
+  virtual void AccumulateCombinedSize(const ResourcePtr& resource) {
+    combined_js_size_ += resource->contents().size();
+  }
+
+  virtual void Clear() {
+    ResourceCombiner::Clear();
+    combined_js_size_ = 0;
+  }
+
   // This eventually calls WritePiece().
   bool Write(const ResourceVector& in, const OutputResourcePtr& out) {
     return WriteCombination(in, out, rewrite_driver_->message_handler());
@@ -138,6 +159,7 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
                           MessageHandler* handler);
 
   JsCombineFilter* filter_;
+  int64 combined_js_size_;
   Variable* js_file_count_reduction_;
   // The charset from the resource's element, set by our owning Context's
   // Partition() method each time it checks if a resource can be added to the

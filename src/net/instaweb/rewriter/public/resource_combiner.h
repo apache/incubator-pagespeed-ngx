@@ -147,6 +147,14 @@ class ResourceCombiner {
   // account both per-segment and total-url limitations.
   bool UrlTooBig();
 
+  // Computes the total combined resources size.
+  // Override this if combined resource size to be restricted to some limit.
+  virtual void AccumulateCombinedSize(const ResourcePtr& resource) {}
+
+  // Determines whether our accumulated resources size is too big.
+  // Override this if combined resource size to be restricted to some limit.
+  virtual bool ContentSizeTooBig() const { return false; }
+
   // Override this if you need to forbid some combinations based on the
   // content of the resource (e.g. with resource->HttpStatusOk())
   // This is called before the URL is added to UrlPartnership's
