@@ -109,6 +109,11 @@ const char CssFilter::kRewritesDropped[] = "css_filter_rewrites_dropped";
 const char CssFilter::kTotalBytesSaved[] = "css_filter_total_bytes_saved";
 const char CssFilter::kTotalOriginalBytes[] = "css_filter_total_original_bytes";
 const char CssFilter::kUses[] = "css_filter_uses";
+const char CssFilter::kCharsetMismatch[] = "flatten_imports_charset_mismatch";
+const char CssFilter::kInvalidUrl[]      = "flatten_imports_invalid_url";
+const char CssFilter::kLimitExceeded[]   = "flatten_imports_limit_exceeded";
+const char CssFilter::kMinifyFailed[]    = "flatten_imports_minify_failed";
+const char CssFilter::kRecursion[]       = "flatten_imports_recursion";
 
 CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
                             RewriteContext* parent,
@@ -123,6 +128,7 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
           new CssImageRewriter(this, filter, filter->driver_,
                                cache_extender, image_rewriter,
                                image_combiner)),
+      hierarchy_(filter),
       css_rewritten_(false),
       has_utf8_bom_(false),
       fallback_mode_(false),
@@ -636,6 +642,11 @@ CssFilter::CssFilter(RewriteDriver* driver,
   total_bytes_saved_ = stats->GetVariable(CssFilter::kTotalBytesSaved);
   total_original_bytes_ = stats->GetVariable(CssFilter::kTotalOriginalBytes);
   num_uses_ = stats->GetVariable(CssFilter::kUses);
+  num_flatten_imports_charset_mismatch_ = stats->GetVariable(kCharsetMismatch);
+  num_flatten_imports_invalid_url_ = stats->GetVariable(kInvalidUrl);
+  num_flatten_imports_limit_exceeded_ = stats->GetVariable(kLimitExceeded);
+  num_flatten_imports_minify_failed_ = stats->GetVariable(kMinifyFailed);
+  num_flatten_imports_recursion_ = stats->GetVariable(kRecursion);
 }
 
 CssFilter::~CssFilter() {}
@@ -653,6 +664,11 @@ void CssFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(CssFilter::kTotalBytesSaved);
   statistics->AddVariable(CssFilter::kTotalOriginalBytes);
   statistics->AddVariable(CssFilter::kUses);
+  statistics->AddVariable(kCharsetMismatch);
+  statistics->AddVariable(kInvalidUrl);
+  statistics->AddVariable(kLimitExceeded);
+  statistics->AddVariable(kMinifyFailed);
+  statistics->AddVariable(kRecursion);
   InitializeAtExitManager();
 }
 
@@ -762,6 +778,9 @@ void CssFilter::StartInlineRewrite(HtmlCharactersNode* text) {
   GetApplicableMedia(element, hierarchy->mutable_media());
   hierarchy->set_flattening_succeeded(
       GetApplicableCharset(element, hierarchy->mutable_charset()));
+  if (!hierarchy->flattening_succeeded()) {
+    num_flatten_imports_charset_mismatch_->Add(1);
+  }
 }
 
 void CssFilter::StartAttributeRewrite(HtmlElement* element,
@@ -771,7 +790,8 @@ void CssFilter::StartAttributeRewrite(HtmlElement* element,
   rewriter->SetupAttributeRewrite(element, style);
 
   // @import is not allowed (nor handled) in attribute CSS, which must be
-  // declarations only, so disable flattening from the get-go.
+  // declarations only, so disable flattening from the get-go. Since this
+  // is not a failure to flatten as such, don't update the statistics.
   rewriter->mutable_hierarchy()->set_flattening_succeeded(false);
 }
 
@@ -796,6 +816,9 @@ void CssFilter::StartExternalRewrite(HtmlElement* link,
   GetApplicableMedia(link, hierarchy->mutable_media());
   hierarchy->set_flattening_succeeded(
       GetApplicableCharset(link, hierarchy->mutable_charset()));
+  if (!hierarchy->flattening_succeeded()) {
+    num_flatten_imports_charset_mismatch_->Add(1);
+  }
 }
 
 ResourceSlot* CssFilter::MakeSlotForInlineCss(const StringPiece& content) {
@@ -898,9 +921,8 @@ RewriteContext* CssFilter::MakeNestedFlatteningContextInNewSlot(
     CssFilter::Context* rewriter, RewriteContext* parent,
     CssHierarchy* hierarchy) {
   ResourceSlotPtr slot(new InlineCssSlot(resource, location));
-  RewriteContext* context = new CssFlattenImportsContext(NULL /* driver */,
-                                                         parent, rewriter,
-                                                         hierarchy);
+  RewriteContext* context = new CssFlattenImportsContext(parent, this,
+                                                         rewriter, hierarchy);
   context->AddSlot(slot);
   return context;
 }

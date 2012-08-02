@@ -19,11 +19,10 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_FLATTEN_IMPORTS_CONTEXT_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_FLATTEN_IMPORTS_CONTEXT_H_
 
-#include "net/instaweb/rewriter/public/css_filter.h"
-
 #include "base/logging.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_hierarchy.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -34,6 +33,7 @@
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -44,11 +44,12 @@ class RewriteContext;
 // Context used by CssFilter under async flow that flattens @imports.
 class CssFlattenImportsContext : public SingleRewriteContext {
  public:
-  CssFlattenImportsContext(RewriteDriver* driver,
-                           RewriteContext* parent,
+  CssFlattenImportsContext(RewriteContext* parent,
+                           CssFilter* filter,
                            CssFilter::Context* rewriter,
                            CssHierarchy* hierarchy)
-      : SingleRewriteContext(driver, parent, NULL /* no resource_context */),
+      : SingleRewriteContext(NULL, parent, NULL /* no resource_context */),
+        filter_(filter),
         rewriter_(rewriter),
         hierarchy_(hierarchy) {
   }
@@ -81,8 +82,10 @@ class CssFlattenImportsContext : public SingleRewriteContext {
     if (!hierarchy_->Parse()) {
       // If we cannot parse the CSS then we cannot flatten it.
       ok = false;
+      filter_->num_flatten_imports_minify_failed_->Add(1);
     } else if (!hierarchy_->CheckCharsetOk(input_resource)) {
       ok = false;
+      filter_->num_flatten_imports_charset_mismatch_->Add(1);
     } else {
       rewriter_->RewriteCssFromNested(this, hierarchy_);
     }
@@ -142,6 +145,10 @@ class CssFlattenImportsContext : public SingleRewriteContext {
         hierarchy_->set_input_contents(hierarchy_->minified_contents());
       }
     } else {
+      // Something has gone wrong earlier. It could be that the resource is
+      // not valid and cacheable (see SingleRewriteContext::Partition) or it
+      // could be that we're handling a cached failure, but it's hard to tell.
+      // So, mark flattening as failed but don't record a failure statistic.
       hierarchy_->set_flattening_succeeded(false);
     }
   }
@@ -152,6 +159,7 @@ class CssFlattenImportsContext : public SingleRewriteContext {
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
 
  private:
+  CssFilter* filter_;
   CssFilter::Context* rewriter_;
   CssHierarchy* hierarchy_;
   ResourcePtr input_resource_;

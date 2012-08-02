@@ -108,6 +108,11 @@ class CssFilter : public RewriteFilter {
   static const char kTotalBytesSaved[];
   static const char kTotalOriginalBytes[];
   static const char kUses[];
+  static const char kCharsetMismatch[];
+  static const char kInvalidUrl[];
+  static const char kLimitExceeded[];
+  static const char kMinifyFailed[];
+  static const char kRecursion[];
 
   RewriteContext* MakeNestedFlatteningContextInNewSlot(
       const ResourcePtr& resource, const GoogleString& location,
@@ -122,6 +127,8 @@ class CssFilter : public RewriteFilter {
 
  private:
   friend class Context;
+  friend class CssFlattenImportsContext;  // for statistics
+  friend class CssHierarchy;              // for statistics
 
   Context* MakeContext(RewriteDriver* driver,
                        RewriteContext* parent);
@@ -193,6 +200,16 @@ class CssFilter : public RewriteFilter {
   // # of uses of rewritten CSS (updating <link> href= attributes,
   // <style> contents or style= attributes).
   Variable* num_uses_;
+  // # of times CSS was not flattened because of a charset mismatch.
+  Variable* num_flatten_imports_charset_mismatch_;
+  // # of times CSS was not flattened because of an invalid @import URL.
+  Variable* num_flatten_imports_invalid_url_;
+  // # of times CSS was not flattened because the resulting CSS too big.
+  Variable* num_flatten_imports_limit_exceeded_;
+  // # of times CSS was not flattened because minification failed.
+  Variable* num_flatten_imports_minify_failed_;
+  // # of times CSS was not flattened because of recursive imports.
+  Variable* num_flatten_imports_recursion_;
 
   CssUrlEncoder encoder_;
 

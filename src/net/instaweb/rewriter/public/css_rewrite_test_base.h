@@ -49,6 +49,16 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
     total_original_bytes_ =
         statistics()->GetVariable(CssFilter::kTotalOriginalBytes);
     num_uses_ = statistics()->GetVariable(CssFilter::kUses);
+    num_flatten_imports_charset_mismatch_ =
+        statistics()->GetVariable(CssFilter::kCharsetMismatch);
+    num_flatten_imports_invalid_url_ =
+        statistics()->GetVariable(CssFilter::kInvalidUrl);
+    num_flatten_imports_limit_exceeded_ =
+        statistics()->GetVariable(CssFilter::kLimitExceeded);
+    num_flatten_imports_minify_failed_ =
+        statistics()->GetVariable(CssFilter::kMinifyFailed);
+    num_flatten_imports_recursion_ =
+        statistics()->GetVariable(CssFilter::kRecursion);
   }
   ~CssRewriteTestBase();
 
@@ -59,6 +69,8 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
   }
 
   enum ValidationFlags {
+    kNoFlags = 0,
+
     kExpectSuccess = 1,   // CSS parser succeeds and URL should be rewritten.
     kExpectNoChange = 2,  // CSS parser succeeds but URL not rewritten because
                           // we increased the size of contents.
@@ -80,6 +92,13 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
     kMetaCharsetISO88591 = 2048,
     kMetaHttpEquiv = 4096,
     kMetaHttpEquivUnquoted = 8192,
+
+    // Flags to the check various import flattening failure statistics.
+    kFlattenImportsCharsetMismatch = 1<<14,
+    kFlattenImportsInvalidUrl = 1<<15,
+    kFlattenImportsLimitExceeded = 1<<16,
+    kFlattenImportsMinifyFailed = 1<<17,
+    kFlattenImportsRecursion = 1<<18,
   };
 
   static bool ExactlyOneTrue(bool a, bool b) {
@@ -174,6 +193,11 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
   Variable* total_bytes_saved_;
   Variable* total_original_bytes_;
   Variable* num_uses_;
+  Variable* num_flatten_imports_charset_mismatch_;
+  Variable* num_flatten_imports_invalid_url_;
+  Variable* num_flatten_imports_limit_exceeded_;
+  Variable* num_flatten_imports_minify_failed_;
+  Variable* num_flatten_imports_recursion_;
 };
 
 }  // namespace net_instaweb

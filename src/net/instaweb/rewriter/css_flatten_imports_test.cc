@@ -196,7 +196,7 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
                                   bool should_succeed) {
     const char kStylesFilename[] = "styles.css";
     const GoogleString kStylesContents = StrCat(
-        "@charset \"uTf-8\";",
+        "@charset \"UTF-8\";",
         "@import url(print.css);",
         "@import url(screen.css);",
         kSimpleCss);
@@ -219,7 +219,7 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
       driver_headers.Add(HttpAttributes::kContentType,
                          StrCat("text/css; charset=", header_charset));
     }
-    ValidationFlags meta_tag_flag = static_cast<ValidationFlags>(0);
+    ValidationFlags meta_tag_flag = kNoFlags;
     if (!meta_tag_charset.empty()) {
       if (meta_tag_charset == "utf-8") {
         meta_tag_flag = kMetaCharsetUTF8;
@@ -280,7 +280,8 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
       ValidateRewriteExternalCss("flatten_nested_media",
                                  css_in, css_in,
                                  kExpectSuccess | kNoOtherContexts |
-                                 kNoClearFetcher | meta_tag_flag);
+                                 kNoClearFetcher | meta_tag_flag |
+                                 kFlattenImportsCharsetMismatch);
       ValidateRewriteExternalCss("flatten_nested_media_repeat",
                                  css_in, css_in,
                                  kExpectSuccess | kNoOtherContexts |
@@ -292,7 +293,8 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
   void TestLimit(const StringPiece test_id,
                  int flattening_limit,
                  const GoogleString& css_in,
-                 const GoogleString& css_out) {
+                 const GoogleString& css_out,
+                 bool limit_exceeded) {
     options()->ClearSignatureForTesting();
     options()->set_css_flatten_max_bytes(flattening_limit);
     resource_manager()->ComputeSignature(options());
@@ -300,13 +302,18 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
     SetResponseWithDefaultHeaders(kSimpleCssFile, kContentTypeCss,
                                   kSimpleCss, 100);
 
+    ValidationFlags extra_flag = kNoFlags;
+    if (limit_exceeded) {
+      extra_flag = kFlattenImportsLimitExceeded;
+    }
+
     ValidateRewriteExternalCss(test_id, css_in, css_out,
-                               kExpectSuccess | kNoClearFetcher);
+                               kExpectSuccess | kNoClearFetcher | extra_flag);
     // We do not specify kNoClearFetcher, so the fetcher is cleared. Thus,
     // content must be pulled from the cache. kNoOtherContexts because
     // other contexts won't have this value cached.
     ValidateRewriteExternalCss(StrCat(test_id, "_cached"), css_in, css_out,
-                               kExpectSuccess | kNoOtherContexts);
+                               kExpectSuccess | kNoOtherContexts | extra_flag);
   }
 
   GoogleString kOneLevelDownContents1;
@@ -419,7 +426,8 @@ TEST_F(CssFlattenImportsTest, FlattenUnderLargeLimit) {
       "@import url(http://test.com/simple.css);\n";
   const GoogleString css_out = StrCat(kSimpleCss, kSimpleCss);
 
-  TestLimit("flatten_under_limit", 1 + css_out.size(), css_in, css_out);
+  TestLimit("flatten_under_limit", 1 + css_out.size(), css_in, css_out,
+            false /* limit_exceeded */);
 }
 
 TEST_F(CssFlattenImportsTest, DontFlattenOverMediumLimit) {
@@ -434,10 +442,11 @@ TEST_F(CssFlattenImportsTest, DontFlattenOverMediumLimit) {
       "@import url(http://test.com/simple.css) ;";
 
   TestLimit("dont_flatten_over_limit",
-            1 + STATIC_STRLEN(css_out), css_in, css_out);
+            1 + STATIC_STRLEN(css_out), css_in, css_out,
+            true /* limit_exceeded */);
 }
 
-TEST_F(CssFlattenImportsTest, FlattenOverTinyLimit) {
+TEST_F(CssFlattenImportsTest, DontFlattenOverTinyLimit) {
   // This limit will result in even simple.css not being flattened.
   // Note that the top level CSS is not minified on input but is on output.
   const char css_in[] =
@@ -447,7 +456,8 @@ TEST_F(CssFlattenImportsTest, FlattenOverTinyLimit) {
       "@import url(http://test.com/simple.css) ;"
       "@import url(http://test.com/simple.css) ;";
 
-  TestLimit("flatten_under_limit", 10, css_in, css_out);
+  TestLimit("dont_flatten_over_tiny_limit", 10, css_in, css_out,
+            true /* limit_exceeded */);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenEmpty) {
@@ -681,8 +691,8 @@ TEST_F(CssFlattenImportsTest, FlattenRecursion) {
 
   ValidateRewriteExternalCss("flatten_recursive",
                              css_in, css_in,
-                             kExpectSuccess |
-                             kNoClearFetcher);
+                             kExpectSuccess | kNoClearFetcher |
+                             kFlattenImportsRecursion);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenSimpleMedia) {
@@ -901,7 +911,8 @@ TEST_F(CssFlattenImportsTest, FlattenFailsIfLinkHasWrongCharset) {
   // TODO(sligocki): Why does this need kNoOtherContexts?
   ValidateRewriteExternalCss("flatten_link_charset", css_in, css_in,
                              kExpectSuccess | kNoOtherContexts |
-                             kNoClearFetcher | kLinkCharsetIsUTF8);
+                             kNoClearFetcher | kLinkCharsetIsUTF8 |
+                             kFlattenImportsCharsetMismatch);
 }
 
 TEST_F(CssFlattenImportsTest, FlattenRespectsMetaTagCharset) {

@@ -149,6 +149,7 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
   if (!FlatteningEnabled()) {
     // If flattening is disabled completely, mark this hierarchy as having
     // failed flattening, so that later RollUps do the right thing (nothing).
+    // This is not something we need to log in the statistics.
     hierarchy->set_flattening_succeeded(false);
   } else if (hierarchy->flattening_succeeded()) {
     // Flattening of this hierarchy might have already failed because of a

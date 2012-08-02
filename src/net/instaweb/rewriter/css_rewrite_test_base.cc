@@ -64,6 +64,11 @@ void CssRewriteTestBase::ResetStats() {
   total_bytes_saved_->Set(0);
   total_original_bytes_->Set(0);
   num_uses_->Set(0);
+  num_flatten_imports_charset_mismatch_->Set(0);
+  num_flatten_imports_invalid_url_->Set(0);
+  num_flatten_imports_limit_exceeded_->Set(0);
+  num_flatten_imports_minify_failed_->Set(0);
+  num_flatten_imports_recursion_->Set(0);
 }
 
 void CssRewriteTestBase::ValidateWithStats(
@@ -117,6 +122,19 @@ void CssRewriteTestBase::ValidateWithStats(
       EXPECT_EQ(0, num_uses_->Get()) << id;
     }
   }
+
+  // Check each of the import flattening statistics. Since each of these
+  // is controlled individually they are not gated by kNoStatCheck above.
+  EXPECT_EQ(FlagSet(flags, kFlattenImportsCharsetMismatch) ? 1 : 0,
+            num_flatten_imports_charset_mismatch_->Get()) << id;
+  EXPECT_EQ(FlagSet(flags, kFlattenImportsInvalidUrl) ? 1 : 0,
+            num_flatten_imports_invalid_url_->Get()) << id;
+  EXPECT_EQ(FlagSet(flags, kFlattenImportsLimitExceeded) ? 1 : 0,
+            num_flatten_imports_limit_exceeded_->Get()) << id;
+  EXPECT_EQ(FlagSet(flags, kFlattenImportsMinifyFailed) ? 1 : 0,
+            num_flatten_imports_minify_failed_->Get()) << id;
+  EXPECT_EQ(FlagSet(flags, kFlattenImportsRecursion) ? 1 : 0,
+            num_flatten_imports_recursion_->Get()) << id;
 }
 
 GoogleString CssRewriteTestBase::ExpectedRewrittenUrl(

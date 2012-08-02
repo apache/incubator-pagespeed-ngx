@@ -36,6 +36,7 @@ class UnicodeText;
 
 namespace net_instaweb {
 
+class CssFilter;
 class MessageHandler;
 
 // Representation of a CSS with all the information required for import
@@ -65,7 +66,7 @@ class CssHierarchy {
  public:
   // Initialized in an empty state, which is considered successful since it
   // can be flattened into nothing.
-  CssHierarchy();
+  explicit CssHierarchy(CssFilter* filter);
   ~CssHierarchy();
 
   // Initialize the top-level hierarchy's state from the given values.
@@ -221,6 +222,9 @@ class CssHierarchy {
   // (it can be omitted), else true is returned.
   bool DetermineRulesetMedia(const std::vector<UnicodeText>& ruleset_media_in,
                              StringVector* ruleset_media_out);
+
+  // The filter that owns us, used for recording statistics.
+  CssFilter* filter_;
 
   // The URL of the stylesheet being represented; in the case of inline CSS
   // this will be a data URL.

@@ -24,6 +24,7 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -31,6 +32,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -42,8 +44,9 @@ namespace net_instaweb {
 // Representation of a CSS with all the information required for import
 // flattening, image rewriting, and minifying.
 
-CssHierarchy::CssHierarchy()
-    : parent_(NULL),
+CssHierarchy::CssHierarchy(CssFilter* filter)
+    : filter_(filter),
+      parent_(NULL),
       is_xhtml_(false),
       flattening_succeeded_(true),
       unparseable_detected_(false),
@@ -100,7 +103,7 @@ void CssHierarchy::ResizeChildren(int n) {
     // Increase the number of elements, default construct each new one.
     children_.resize(n);
     for (; i < n; ++i) {
-      children_[i] = new CssHierarchy();
+      children_[i] = new CssHierarchy(filter_);
     }
   } else if (i > n) {
     // Decrease the number of elements, deleting each discarded one.
@@ -238,13 +241,17 @@ bool CssHierarchy::ExpandChildren() {
     GoogleString url(import->link.utf8_data(), import->link.utf8_length());
     const GoogleUrl import_url(css_base_url_, url);
     if (!import_url.is_valid()) {
-      // TODO(matterbury): Add statistics to count these.
+      if (filter_ != NULL) {
+        filter_->num_flatten_imports_invalid_url_->Add(1);
+      }
       message_handler_->Message(kInfo, "Invalid import URL %s", url.c_str());
       child->set_flattening_succeeded(false);
     } else if (child->DetermineImportMedia(media_, import->media)) {
       child->InitializeNested(*this, import_url);
       if (child->IsRecursive()) {
-        // TODO(matterbury): Add statistics to count these.
+        if (filter_ != NULL) {
+          filter_->num_flatten_imports_recursion_->Add(1);
+        }
         child->set_flattening_succeeded(false);
       } else {
         result = true;
@@ -323,12 +330,16 @@ void CssHierarchy::RollUpContents() {
     bool minified_ok = CssMinify::Stylesheet(*stylesheet_.get(), &writer,
                                              message_handler_);
     if (!minified_ok) {
-      // TODO(matterbury): Add statistics to count these.
+      if (filter_ != NULL) {
+        filter_->num_flatten_imports_minify_failed_->Add(1);
+      }
       flattening_succeeded_ = false;
     } else if (flattened_result_limit_ > 0) {
       int64 flattened_result_size = minified_contents_.size();
       if (flattened_result_size >= flattened_result_limit_) {
-        // TODO(matterbury): Add statistics to count these.
+        if (filter_ != NULL) {
+          filter_->num_flatten_imports_limit_exceeded_->Add(1);
+        }
         flattening_succeeded_ = false;
       }
     }
@@ -364,9 +375,9 @@ bool CssHierarchy::RollUpStylesheets() {
       // If the contents were loaded from cache it's possible for them to be
       // unable to be flattened. If we can parse them and they have @charset
       // or @import rules then they must have failed to flatten when they
-      // were first cached because we expressly remove these below.
+      // were first cached because we expressly remove these below. The earlier
+      // failure has already been added to the statistics so don't do so here.
       if (!stylesheet_->charsets().empty() || !stylesheet_->imports().empty()) {
-        // TODO(matterbury): Add statistics to count these.
         flattening_succeeded_ = false;
       }
     }
