@@ -383,33 +383,21 @@ deferJsNs.DeferJs.prototype.createIdVars = function() {
   if (idVarsString) {
     this.globalEval(idVarsString);
   }
-}
+};
 
 /**
  * Defers execution of scriptNode, by adding it to the queue.
  * @param {Element} script script node.
  * @param {number} opt_pos Optional position for ordering.
+ * @param {boolean} opt_prefetch Script file is prefetched if true.
  */
-deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos) {
+deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos, opt_prefetch) {
   var src = script.getAttribute('orig_src') || script.getAttribute('src');
   if (src) {
-    if (deferJsNs.DeferJs.isExperimentalMode) {
-      var img;
-      img = new Image();
-      img.src = src;
-      img.loaded = false;
-      var me = this;
-      img.onerror = img.onload = function() {
-        img.loaded = true;
-        if (img.deferJsWaiting) {
-          img.deferJsWaiting = false;
-          me.runNext();
-        }
-      }
-      this.addUrl(src, script, opt_pos, img);
-    } else {
-      this.addUrl(src, script, opt_pos);
+    if (deferJsNs.DeferJs.isExperimentalMode && opt_prefetch) {
+      new Image().src = src;
     }
+    this.addUrl(src, script, opt_pos);
   } else {
     var str = script.innerHTML || script.textContent || script.data;
     if (str) {
@@ -458,20 +446,11 @@ deferJsNs.DeferJs.prototype['addStr'] = deferJsNs.DeferJs.prototype.addStr;
  * @param {!string} url returns javascript when fetched.
  * @param {Element} script_elem Psa inserted script used as context element.
  * @param {number} opt_pos Optional position for ordering.
- * @param {Element} opt_img img whose src is used to fetch the external script.
  */
-deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos,
-                                              opt_img) {
+deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
   this.logs.push('Add to queue url: ' + url);
   var me = this; // capture closure.
   this.submitTask(function() {
-    if (deferJsNs.DeferJs.isExperimentalMode) {
-      if (opt_img && !opt_img.loaded) {
-        me.next_--;
-        opt_img.deferJsWaiting = true;
-        return;
-      }
-    }
     me.removeNotProcessedAttributeTillNode(script_elem);
 
     var script = me.origCreateElement_.call(document, 'script');
@@ -997,7 +976,7 @@ deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
 deferJsNs.DeferJs.prototype.deferScripts = function(scripts, pos) {
   var len = scripts.length;
   for (var i = 0; i < len; ++i) {
-    this.addNode(scripts[i], pos + i);
+    this.addNode(scripts[i], pos + i, !!i);
   }
 };
 
@@ -1241,6 +1220,7 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function(opt_callback) {
   var scripts = document.getElementsByTagName('script');
   var len = scripts.length;
   for (var i = 0; i < len; ++i) {
+    var isFirstScript = (this.queue_.length == this.next_);
     var script = scripts[i];
     // TODO(ksimbili): Use orig_type
     // TODO(ksimbili): Remove these script nodes from DOM.
@@ -1248,14 +1228,14 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function(opt_callback) {
       if (opt_callback) {
         if (script.getAttribute('orig_index') == this.nextScriptIndexInHtml_) {
           this.nextScriptIndexInHtml_++;
-          this.addNode(script);
+          this.addNode(script, undefined, !isFirstScript);
         }
       } else {
         if (script.getAttribute('orig_index') < this.nextScriptIndexInHtml_) {
           this.log('Executing a script twice. Orig_Index: ' +
                    script.getAttribute('orig_index'), new Error(''));
         }
-        this.addNode(script);
+        this.addNode(script, undefined, !isFirstScript);
       }
     }
   }
