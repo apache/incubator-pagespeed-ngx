@@ -161,7 +161,8 @@ class Histogram {
   // cumulative percentage, bar. It looks like:
   // [0,1] 1 5%  5%  ||||
   // [2,3] 2 10% 15% ||||||||
-  virtual void WriteRawHistogramData(Writer* writer, MessageHandler* handler);
+  // Precondition: mutex held.
+  void WriteRawHistogramData(Writer* writer, MessageHandler* handler);
 };
 
 class NullHistogram : public Histogram {

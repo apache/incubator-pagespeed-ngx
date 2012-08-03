@@ -219,6 +219,7 @@
         'util/shared_mem_test_base.cc',
         'util/simple_stats_test.cc',
         'util/slow_worker_test.cc',
+        'util/split_statistics_test.cc',
         'util/statistics_work_bound_test.cc',
         'util/string_multi_map_test.cc',
         'util/string_util_test.cc',

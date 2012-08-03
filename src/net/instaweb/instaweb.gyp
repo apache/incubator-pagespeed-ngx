@@ -565,6 +565,7 @@
         'util/simple_stats.cc',
         'util/scheduler_thread.cc',
         'util/slow_worker.cc',
+        'util/split_statistics.cc',
         'util/split_writer.cc',
         'util/statistics.cc',
         'util/statistics_work_bound.cc',
