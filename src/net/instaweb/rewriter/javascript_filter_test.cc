@@ -24,7 +24,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -392,46 +391,5 @@ TEST_F(JavascriptFilterTest, NoReuseInline) {
   EXPECT_EQ(1, blocks_minified_->Get());
   EXPECT_EQ(1, num_uses_->Get());
 }
-
-TEST_F(JavascriptFilterTest, FlushInInlineJS) {
-  SetupWriter();
-  rewrite_driver()->StartParse(kTestDomain);
-  rewrite_driver()->ParseText("<html><body><script>  alert  (  'Hel");
-  // Flush in middle of inline JS.
-  rewrite_driver()->Flush();
-  rewrite_driver()->ParseText("lo, World!'  )  </script></body></html>");
-  rewrite_driver()->FinishParse();
-
-  // Expect text to be rewritten because it is coalesced.
-  // HtmlParse will send events like this to filter:
-  //   StartElement script
-  //   Flush
-  //   Characters ...
-  //   EndElement script
-  EXPECT_EQ("<html><body><script>alert('Hello, World!')</script></body></html>",
-            output_buffer_);
-}
-
-
-TEST_F(JavascriptFilterTest, FlushInEndTag) {
-  SetupWriter();
-  rewrite_driver()->StartParse(kTestDomain);
-  rewrite_driver()->ParseText(
-      "<html><body><script>  alert  (  'Hello, World!'  )  </scr");
-  // Flush in middle of closing </script> tag.
-  rewrite_driver()->Flush();
-  rewrite_driver()->ParseText("ipt></body></html>");
-  rewrite_driver()->FinishParse();
-
-  // Expect text to be rewritten because it is coalesced.
-  // HtmlParse will send events like this to filter:
-  //   StartElement script
-  //   Characters ...
-  //   Flush
-  //   EndElement script
-  EXPECT_EQ("<html><body><script>alert('Hello, World!')</script></body></html>",
-            output_buffer_);
-}
-
 
 }  // namespace net_instaweb

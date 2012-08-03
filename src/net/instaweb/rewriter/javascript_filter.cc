@@ -216,11 +216,8 @@ void JavascriptFilter::StartElementImpl(HtmlElement* element) {
 
 void JavascriptFilter::Characters(HtmlCharactersNode* characters) {
   if (script_in_progress_ != NULL) {
-    // Note: We must record body_node_ even if this is an external JS file.
+    // Save a reference to characters encountered in the script body.
     body_node_ = characters;
-    if (script_src_ == NULL) {
-      RewriteInlineScript();
-    }
   }
 }
 
@@ -282,7 +279,9 @@ void JavascriptFilter::EndElementImpl(HtmlElement* element) {
       if (element->close_style() == HtmlElement::BRIEF_CLOSE) {
         driver_->ErrorHere("Brief close of script tag (non-portable)");
       }
-      if (script_src_ != NULL) {
+      if (script_src_ == NULL) {
+        RewriteInlineScript();
+      } else {
         RewriteExternalScript();
       }
       CompleteScriptInProgress();
@@ -296,7 +295,9 @@ void JavascriptFilter::EndElementImpl(HtmlElement* element) {
 }
 
 void JavascriptFilter::Flush() {
-  if (script_in_progress_ != NULL && script_src_ != NULL) {
+  // TODO(jmaessen): We can be smarter here if it turns out to be necessary (eg
+  // by buffering an in-progress script across the flush boundary).
+  if (script_in_progress_ != NULL) {
     // Not actually an error!
     driver_->InfoHere("Flush in mid-script; leaving script untouched.");
     CompleteScriptInProgress();
