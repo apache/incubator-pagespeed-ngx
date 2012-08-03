@@ -53,11 +53,11 @@ class AbstractMutex;
 class AddInstrumentationFilter;
 class AsyncFetch;
 class CacheUrlAsyncFetcher;
+class CollectSubresourcesFilter;
 class CommonFilter;
 class DomainRewriteFilter;
 class FileSystem;
 class FlushEarlyInfo;
-class FlushEarlyResource;
 class Function;
 class HtmlEvent;
 class HtmlFilter;
@@ -837,10 +837,6 @@ class RewriteDriver : public HtmlParse {
     logging_info_ = logging_info;
   }
 
-  // Adds the sub resource link to the sub_resources_ map. The id is used to
-  // ensure the order.
-  void AddResourceToSubresourcesMap(const FlushEarlyResource& resource, int id);
-
   // Determines whether we are currently in Debug mode; meaning that the
   // site owner or user has enabled filter kDebug.
   bool DebugMode() const { return options()->Enabled(RewriteOptions::kDebug); }
@@ -1203,9 +1199,8 @@ class RewriteDriver : public HtmlParse {
   // InlinePreviewFilter.
   int num_inline_preview_images_;
 
-  // The subresources seen in the head of the page added by
-  // CollectSubresourcesFilter Filter.
-  std::map<int, FlushEarlyResource> subresources_;
+  CollectSubresourcesFilter* collect_subresources_filter_;
+
   scoped_ptr<FlushEarlyInfo> flush_early_info_;
 
   // When non-cacheable panels are absent, non-critical content is already

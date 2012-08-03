@@ -648,13 +648,14 @@ bool ProxyFetch::HandleWrite(const StringPiece& str,
       AddPagespeedHeader();
 
       if ((property_cache_callback_ != NULL) && started_parse_) {
+        // TODO(mmohabey): This should be called after ConvertMetaTagsFilter.
+        // Save the response headers before ConnectProxyFetch so that no other
+        // thread modifies it while its getting copied in SaveOriginalHeaders.
+        driver_->SaveOriginalHeaders(response_headers());
         // Connect the ProxyFetch in the PropertyCacheCallbackCollector.  This
         // ensures that we will not start executing HTML filters until
         // property cache lookups are complete.
         property_cache_callback_->ConnectProxyFetch(this);
-
-        // TODO(mmohabey): This should be called after ConvertMetaTagsFilter.
-        driver_->SaveOriginalHeaders(response_headers());
       }
 
       // If we buffered up any bytes in previous calls, make sure to

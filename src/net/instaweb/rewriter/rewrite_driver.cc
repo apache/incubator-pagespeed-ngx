@@ -213,6 +213,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
       num_inline_preview_images_(0),
+      collect_subresources_filter_(NULL),
       serve_blink_non_critical_(false),
       is_blink_request_(false),
       logging_info_(NULL)
@@ -249,8 +250,8 @@ RewriteDriver::~RewriteDriver() {
     resource_manager_->low_priority_rewrite_workers()->FreeSequence(
         low_priority_rewrite_worker_);
   }
-  STLDeleteElements(&filters_to_delete_);
   Clear();
+  STLDeleteElements(&filters_to_delete_);
 }
 
 RewriteDriver* RewriteDriver::Clone() {
@@ -267,6 +268,7 @@ RewriteDriver* RewriteDriver::Clone() {
 
 void RewriteDriver::Clear() {
   DCHECK(!flush_requested_);
+  WriteDomCohortIntoPropertyCache();
   cleanup_on_fetch_complete_ = false;
   release_driver_ = false;
   base_url_.Clear();
@@ -317,7 +319,7 @@ void RewriteDriver::Clear() {
   fully_rewrite_on_flush_ = false;
   num_inline_preview_images_ = 0;
   flush_early_info_.reset(NULL);
-  subresources_.clear();
+  collect_subresources_filter_ = NULL;
   serve_blink_non_critical_ = false;
   is_blink_request_ = false;
   applied_rewriters_.clear();
@@ -891,7 +893,8 @@ void RewriteDriver::AddPreRenderFilters() {
   // Enable Flush subresources early filter to extract the subresources from
   // head. This should be the last prerender filter.
   if (rewrite_options->Enabled(RewriteOptions::kFlushSubresources)) {
-    AppendOwnedPreRenderFilter(new CollectSubresourcesFilter(this));
+    collect_subresources_filter_ = new CollectSubresourcesFilter(this);
+    AppendOwnedPreRenderFilter(collect_subresources_filter_);
   }
 }
 
@@ -1764,9 +1767,10 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
   bool flush_subresources_rewriter_enabled =
       options()->Enabled(RewriteOptions::kFlushSubresources) &&
       UserAgentSupportsFlushEarly();
-  if (flush_subresources_rewriter_enabled) {
-    CollectSubresourcesFilter::AddSubresourcesToFlushEarlyInfo(
-        subresources_, flush_early_info());
+  if (flush_subresources_rewriter_enabled &&
+      collect_subresources_filter_ != NULL) {
+    collect_subresources_filter_->AddSubresourcesToFlushEarlyInfo(
+        flush_early_info());
   }
   PropertyPage* page = property_page();
   if (page != NULL) {
@@ -1924,7 +1928,6 @@ void RewriteDriver::SetAppliedRewriterString() {
 void RewriteDriver::FinishParse() {
   HtmlParse::FinishParse();
   SetAppliedRewriterString();
-  WriteDomCohortIntoPropertyCache();
   WriteClientStateIntoPropertyCache();
   Cleanup();
 }
@@ -1955,7 +1958,6 @@ void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
   DCHECK_EQ(0U, GetEventQueueSize());
   HtmlParse::EndFinishParse();
   SetAppliedRewriterString();
-  WriteDomCohortIntoPropertyCache();
   WriteClientStateIntoPropertyCache();
   Cleanup();
   if (user_callback != NULL) {
@@ -2291,11 +2293,6 @@ FlushEarlyInfo* RewriteDriver::flush_early_info() {
     }
   }
   return flush_early_info_.get();
-}
-
-void RewriteDriver::AddResourceToSubresourcesMap(
-    const FlushEarlyResource& resource, int id) {
-  subresources_[id].CopyFrom(resource);
 }
 
 void RewriteDriver::SaveOriginalHeaders(ResponseHeaders* response_headers) {

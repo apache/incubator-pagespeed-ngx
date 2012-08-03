@@ -24,8 +24,8 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -35,8 +35,11 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -45,10 +48,13 @@ namespace net_instaweb {
 // it ensures that we get the url at after all the rewriting is done.
 class CollectSubresourcesFilter::Context : public SingleRewriteContext {
  public:
-  Context(RewriteDriver* driver, int resource_id)
+  Context(RewriteDriver* driver, int resource_id, ResourceMap* subresources,
+          AbstractMutex* mutex)
       : SingleRewriteContext(driver, NULL, NULL),
         resource_id_(resource_id),
-        driver_(driver) {}
+        populated_resource_(false),
+        subresources_(subresources),
+        mutex_(mutex) {}
 
  protected:
   virtual void RewriteSingle(const ResourcePtr& input,
@@ -70,23 +76,38 @@ class CollectSubresourcesFilter::Context : public SingleRewriteContext {
  private:
   // Gets the rewritten subresource URL.
   void GetSubresource() {
+    if (populated_resource_) {
+      return;
+    }
+    populated_resource_ = true;
     // Do not add resources which are inlined or combined.
     if (num_slots() == 0 || slot(0)->disable_rendering() ||
         slot(0)->should_delete_element()) {
       return;
     }
     ResourceSlot* resource_slot = slot(0).get();
-    HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(resource_slot);
-    if (html_slot->was_optimized()) {
-      FlushEarlyResource resource;
-      resource.set_rewritten_url(html_slot->resource()->url());
-      if (html_slot->resource()->type() == NULL) {
-        html_slot->resource()->DetermineContentType();
-      }
-      resource.set_content_type(GetFlushEarlyContentType(
-          html_slot->resource()->type()->type()));
-      if (resource.rewritten_url().size() != 0) {
-        driver_->AddResourceToSubresourcesMap(resource, resource_id_);
+    if (resource_slot->was_optimized()) {
+      ResourcePtr resource = resource_slot->resource();
+      GoogleString url = resource->url();
+      if (!url.empty()) {
+        const ContentType* content_type = resource->type();
+        if (content_type == NULL) {
+          content_type = resource->response_headers()->DetermineContentType();
+          if (content_type == NULL) {
+            content_type = NameExtensionToContentType(url);
+          }
+        }
+        FlushEarlyContentType type = GetFlushEarlyContentType(
+            content_type->type());
+        if (type != OTHER) {
+          FlushEarlyResource* flush_early_resource = new FlushEarlyResource;
+          flush_early_resource->set_rewritten_url(url);
+          flush_early_resource->set_content_type(type);
+          {
+            ScopedMutex lock(mutex_);
+            (*subresources_)[resource_id_] = flush_early_resource;
+          }
+        }
       }
     }
   }
@@ -103,21 +124,27 @@ class CollectSubresourcesFilter::Context : public SingleRewriteContext {
   }
 
   int resource_id_;  // The seq_no of the resource in the head.
-  RewriteDriver* driver_;
+  bool populated_resource_;  // If the FlushEarlyResource is populated.
+  ResourceMap* subresources_;
+  AbstractMutex* mutex_;
 };
 
 CollectSubresourcesFilter::CollectSubresourcesFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
       num_resources_(0),
-      property_cache_(driver->resource_manager()->page_property_cache()) {}
+      mutex_(driver->resource_manager()->thread_system()->NewMutex()),
+      property_cache_(driver->resource_manager()->page_property_cache()) {
+}
 
 void CollectSubresourcesFilter::StartDocumentImpl() {
   in_first_head_ = false;
   seen_first_head_ = false;
   num_resources_ = 0;
+  STLDeleteValues(&subresources_);
 }
 
 CollectSubresourcesFilter::~CollectSubresourcesFilter() {
+  STLDeleteValues(&subresources_);
 }
 
 void CollectSubresourcesFilter::StartElementImpl(HtmlElement* element) {
@@ -127,15 +154,7 @@ void CollectSubresourcesFilter::StartElementImpl(HtmlElement* element) {
   if (element->keyword() == HtmlName::kHead && !seen_first_head_) {
     seen_first_head_ = true;
     in_first_head_ = true;
-  }
-}
-
-void CollectSubresourcesFilter::EndElementImpl(HtmlElement* element) {
-  if (!driver()->UserAgentSupportsFlushEarly()) {
     return;
-  }
-  if (element->keyword() == HtmlName::kHead && in_first_head_) {
-    in_first_head_ = false;
   }
   if (in_first_head_) {
     semantic_type::Category category;
@@ -157,6 +176,15 @@ void CollectSubresourcesFilter::EndElementImpl(HtmlElement* element) {
   }
 }
 
+void CollectSubresourcesFilter::EndElementImpl(HtmlElement* element) {
+  if (!driver()->UserAgentSupportsFlushEarly()) {
+    return;
+  }
+  if (element->keyword() == HtmlName::kHead && in_first_head_) {
+    in_first_head_ = false;
+  }
+}
+
 void CollectSubresourcesFilter::CreateSubresourceContext(
     StringPiece url,
     HtmlElement* element,
@@ -165,7 +193,8 @@ void CollectSubresourcesFilter::CreateSubresourceContext(
   ResourcePtr resource = CreateInputResource(url);
   if (resource.get() != NULL) {
     ResourceSlotPtr slot(driver()->GetSlot(resource, element, attr));
-    Context* context = new Context(driver(), num_resources_);
+    Context* context = new Context(driver(), num_resources_, &subresources_,
+                                   mutex_.get());
     context->AddSlot(slot);
     driver()->InitiateRewrite(context);
   }
@@ -173,19 +202,20 @@ void CollectSubresourcesFilter::CreateSubresourceContext(
 
 // TODO(mmohabey): Add the scripts added by other filters in this list.
 void CollectSubresourcesFilter::AddSubresourcesToFlushEarlyInfo(
-    const std::map<int, FlushEarlyResource>& subresources,
     FlushEarlyInfo* info) {
-  std::map<int, FlushEarlyResource>::const_iterator it;
+  ResourceMap::const_iterator it;
   StringSet subresources_set;
   std::pair<StringSet::iterator, bool> ret;
+
+  info->clear_subresource();
   // Add the subresources to the property cache in the order they are seen in
   // head.
-  for (it = subresources.begin(); it != subresources.end(); ++it) {
-    // Adding to the set to figure out if we have this subresource link added to
-    // the property cache already. If so do not add it again.
-    ret = subresources_set.insert(it->second.rewritten_url());
+  for (it = subresources_.begin(); it != subresources_.end(); ++it) {
+    // Adding to the set to figure out if we have this subresource link added
+    // to the property cache already. If so do not add it again.
+    ret = subresources_set.insert(it->second->rewritten_url());
     if (ret.second == true) {
-      info->add_subresource()->CopyFrom(it->second);
+      info->add_subresource()->CopyFrom(*(it->second));
     }
   }
 }

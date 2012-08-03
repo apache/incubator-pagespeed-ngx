@@ -19,14 +19,20 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_COLLECT_SUBRESOURCES_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_COLLECT_SUBRESOURCES_FILTER_H_
 
+#include <map>
+
+#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class FlushEarlyInfo;
+class FlushEarlyResource;
 class PropertyCache;
 class RewriteDriver;
 
@@ -46,13 +52,14 @@ class CollectSubresourcesFilter : public RewriteFilter {
   virtual const char* Name() const { return "CollectSubresourcesFilter"; }
   virtual const char* id() const { return "fs"; }
 
-  static void AddSubresourcesToFlushEarlyInfo(
-      const std::map<int, FlushEarlyResource>& subresources,
-      FlushEarlyInfo* info);
+  void AddSubresourcesToFlushEarlyInfo(FlushEarlyInfo* info);
 
  private:
+  typedef std::map<int, FlushEarlyResource*> ResourceMap;
+
   // Creates a rewrite context for the subresource.
-  void CreateSubresourceContext(StringPiece url, HtmlElement* elt,
+  void CreateSubresourceContext(StringPiece url,
+                                HtmlElement* elt,
                                 HtmlElement::Attribute* attr);
 
   class Context;
@@ -60,7 +67,14 @@ class CollectSubresourcesFilter : public RewriteFilter {
   bool in_first_head_;
   bool seen_first_head_;
   int num_resources_;
+  scoped_ptr<AbstractMutex> mutex_;
+  // The subresources seen in the head of the page added by
+  // CollectSubresourcesFilter Filter.
+  ResourceMap subresources_;
   PropertyCache* property_cache_;
+
+  FRIEND_TEST(CollectSubresourcesFilterTest, CollectSubresourcesFilter);
+  FRIEND_TEST(CollectSubresourcesFilterTest, HtmlHasRewrittenUrl);
 
   DISALLOW_COPY_AND_ASSIGN(CollectSubresourcesFilter);
 };
