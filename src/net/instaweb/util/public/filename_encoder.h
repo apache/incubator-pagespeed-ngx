@@ -21,11 +21,12 @@
 
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/tools/dump_cache/url_to_filename_encoder.h"
-using net::UrlToFilenameEncoder;
+
+#include "net/instaweb/util/public/url_to_filename_encoder.h"
 
 namespace net_instaweb {
 
+// TODO(morlovich): Remove this, and just use UrlToFilenameEncoder directly.
 class FilenameEncoder {
  public:
   FilenameEncoder() {}

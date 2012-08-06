@@ -140,10 +140,6 @@ deps = {
      Var("chromium_trunk") + "/src/net/base" +
      Var("chromium_revision"),
 
-  "src/third_party/chromium/src/net/tools/dump_cache":
-     Var("chromium_trunk") + "/src/net/tools/dump_cache" +
-     Var("chromium_revision"),
-
   "src/third_party/gflags/src": Var("gflags_root") + Var("gflags_revision"),
   "src/third_party/google-sparsehash/src":
     Var("google_sparsehash_root") + Var("google_sparsehash_revision"),

@@ -230,6 +230,7 @@
         'util/time_util_test.cc',
         'util/url_escaper_test.cc',
         'util/url_multipart_encoder_test.cc',
+        'util/url_to_filename_encoder_test.cc',
         'util/vector_deque_test.cc',
         'util/waveform_test.cc',
         'util/wildcard_group_test.cc',
