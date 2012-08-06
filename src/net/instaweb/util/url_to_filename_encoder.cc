@@ -173,8 +173,7 @@ bool UrlToFilenameEncoder::Decode(const GoogleString& encoded_filename,
   };
   State state = kStart;
   int char_code = 0;
-  char hex_buffer[3];
-  hex_buffer[2] = '\0';
+  char hex_buffer[3] = { '\0', '\0', '\0' };
   for (size_t i = 0; i < encoded_filename.size(); ++i) {
     char ch = encoded_filename[i];
     switch (state) {
