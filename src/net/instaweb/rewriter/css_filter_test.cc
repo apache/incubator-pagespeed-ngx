@@ -996,12 +996,17 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   resource_manager()->ComputeSignature(options());
   ValidateRewrite("contracting_example", "  ", "", kExpectSuccess);
 
-  // With it set false, we do not allow something to be minified to nothing.
-  // Note: We may allow this in the future if contents are all whitespace.
+  // We still contract it with set_always_rewrite_css(false).
+  // Note: In the past we did not allow rewrites that resulted in empty output.
   options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(false);
   resource_manager()->ComputeSignature(options());
-  ValidateRewrite("non_contracting_example", "  ", "  ", kExpectFailure);
+  ValidateRewrite("contracting_example2", "  ", "", kExpectSuccess);
+}
+
+TEST_F(CssFilterTest, RemoveComments) {
+  ValidateRewrite("remove_comments",
+                  " /* This comment will be removed. */ ", "", kExpectSuccess);
 }
 
 TEST_F(CssFilterTest, NoQuirksModeForXhtml) {

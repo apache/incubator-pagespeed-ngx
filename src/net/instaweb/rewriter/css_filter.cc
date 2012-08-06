@@ -561,15 +561,6 @@ bool CssFilter::Context::SerializeCss(int64 in_text_size,
                       Integer64ToString(-bytes_saved).c_str());
       filter_->num_rewrites_dropped_->Add(1);
     }
-    // Don't rewrite if we blanked the CSS file. This is likely to be a parse
-    // error unless the input was also blank.
-    // TODO(sligocki): Don't error if in_text is all whitespace.
-    if (out_text_size == 0 && in_text_size != 0) {
-      ret = false;
-      driver_->InfoAt(this, "CSS parsing error in %s",
-                      css_base_gurl.spec_c_str());
-      filter_->num_parse_failures_->Add(1);
-    }
   }
 
   // Statistics
