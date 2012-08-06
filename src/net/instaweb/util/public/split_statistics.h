@@ -25,10 +25,11 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_SPLIT_STATISTICS_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_SPLIT_STATISTICS_H_
 
-#include "base/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
+#include "net/instaweb/util/public/string_util.h"        // for StringPiece
 
 namespace net_instaweb {
 
@@ -155,6 +156,7 @@ class SplitStatistics
 
  protected:
   virtual SplitVariable* NewVariable(const StringPiece& name, int index);
+  virtual SplitVariable* NewGlobalVariable(const StringPiece& name, int index);
   virtual SplitHistogram* NewHistogram(const StringPiece& name);
   virtual SplitTimedVariable* NewTimedVariable(const StringPiece& name,
                                                int index);

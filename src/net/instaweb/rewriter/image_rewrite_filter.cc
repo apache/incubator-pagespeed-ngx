@@ -39,6 +39,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
+#include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
@@ -56,7 +57,6 @@
 
 namespace net_instaweb {
 
-class RewriteContext;
 class UrlSegmentEncoder;
 
 // names for Statistics variables.
@@ -195,8 +195,10 @@ void ImageRewriteFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kImageRewriteTotalOriginalBytes);
   statistics->AddVariable(kImageRewriteUses);
   statistics->AddVariable(kImageInline);
-  statistics->AddVariable(kImageOngoingRewrites);
   statistics->AddVariable(kImageWebpRewrites);
+  // We want image_ongoing_rewrites to be global even if we do per-vhost
+  // stats, as it's used for a StatisticsWorkBound.
+  statistics->AddGlobalVariable(kImageOngoingRewrites);
 }
 
 void ImageRewriteFilter::StartDocumentImpl() {

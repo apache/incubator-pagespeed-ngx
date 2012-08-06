@@ -60,6 +60,17 @@ template<class Var, class Hist, class TimedVar> class StatisticsTemplate
     return var;
   }
 
+  virtual Var* AddGlobalVariable(const StringPiece& name) {
+    Var* var = FindVariable(name);
+    if (var == NULL) {
+      var = NewGlobalVariable(name, variables_.size());
+      variables_.push_back(var);
+      variable_names_.push_back(name.as_string());
+      variable_map_[name.as_string()] = var;
+    }
+    return var;
+  }
+
   virtual Var* FindVariable(const StringPiece& name) const {
     typename VarMap::const_iterator p = variable_map_.find(name.as_string());
     Var* var = NULL;
@@ -160,6 +171,12 @@ template<class Var, class Hist, class TimedVar> class StatisticsTemplate
  protected:
   // Interface to subclass.
   virtual Var* NewVariable(const StringPiece& name, int index) = 0;
+
+  // Default implementation just calls NewVariable
+  virtual Var* NewGlobalVariable(const StringPiece& name, int index) {
+    return NewVariable(name, index);
+  }
+
   virtual Hist* NewHistogram(const StringPiece& name) = 0;
   virtual TimedVar* NewTimedVariable(const StringPiece& name, int index) = 0;
 

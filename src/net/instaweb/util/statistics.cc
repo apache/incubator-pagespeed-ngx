@@ -106,6 +106,10 @@ void Histogram::Render(int index, Writer* writer, MessageHandler* handler) {
 Statistics::~Statistics() {
 }
 
+Variable* Statistics::AddGlobalVariable(const StringPiece& name) {
+  return AddVariable(name);
+}
+
 FakeTimedVariable* Statistics::NewFakeTimedVariable(
     const StringPiece& name, int index) {
   return new FakeTimedVariable(AddVariable(name));

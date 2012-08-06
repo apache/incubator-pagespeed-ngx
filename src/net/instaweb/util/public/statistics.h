@@ -252,6 +252,11 @@ class Statistics {
   // not be deleted by the caller.
   virtual Variable* AddVariable(const StringPiece& name) = 0;
 
+  // Like AddVariable, but asks the implementation to scope the variable to the
+  // entire process, even if statistics are generally partitioned by domains or
+  // the like. Default implementation simply forwards to AddVariable.
+  virtual Variable* AddGlobalVariable(const StringPiece& name);
+
   // Find a variable from a name, returning NULL if not found.
   virtual Variable* FindVariable(const StringPiece& name) const = 0;
 

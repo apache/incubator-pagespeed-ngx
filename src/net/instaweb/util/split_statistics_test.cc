@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -34,6 +35,7 @@ namespace {
 
 const char kVarA[] = "a";
 const char kVarB[] = "b";
+const char kVarGlobal[] = "global";
 const char kHist[] = "histogram";
 const char kTimedVar[] = "tv";
 
@@ -78,6 +80,7 @@ class SplitStatisticsTest : public testing::Test {
   void Initialize(Statistics* s) {
     s->AddVariable(kVarA);
     s->AddVariable(kVarB);
+    s->AddGlobalVariable(kVarGlobal);
 
     Histogram* h = s->AddHistogram(kHist);
     h->SetMinValue(1);
@@ -146,6 +149,24 @@ TEST_F(SplitStatisticsTest, BasicOperation) {
   // Global has aggregates
   EXPECT_EQ(11, global_->GetVariable(kVarA)->Get());
   EXPECT_EQ(17, global_->GetVariable(kVarB)->Get());
+}
+
+TEST_F(SplitStatisticsTest, TestGlobal) {
+  // kVarGlobal was added via AddGlobalVariable not AddVariable,
+  // so split's return global counts on Get().
+  Variable* split_a_global = split_a_->GetVariable(kVarGlobal);
+  Variable* split_b_global = split_b_->GetVariable(kVarGlobal);
+  Variable* local_a_global = local_a_->GetVariable(kVarGlobal);
+  Variable* local_b_global = local_b_->GetVariable(kVarGlobal);
+  Variable* global_global = global_->GetVariable(kVarGlobal);
+
+  split_a_global->Add(5);
+  split_b_global->Add(3);
+  EXPECT_EQ(8, split_a_global->Get());
+  EXPECT_EQ(5, local_a_global->Get());
+  EXPECT_EQ(8, split_b_global->Get());
+  EXPECT_EQ(3, local_b_global->Get());
+  EXPECT_EQ(8, global_global->Get());
 }
 
 TEST_F(SplitStatisticsTest, GetName) {

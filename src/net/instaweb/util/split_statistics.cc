@@ -19,9 +19,9 @@
 
 #include "net/instaweb/util/public/split_statistics.h"
 
-#include "base/basictypes.h"
+#include "base/logging.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
@@ -201,7 +201,21 @@ SplitVariable* SplitStatistics::NewVariable(const StringPiece& name,
   CHECK(global_var != NULL);
 
   return new SplitVariable(local_var /* read/write */,
-                           global_var /* write only*/);
+                           global_var /* write only */);
+}
+
+SplitVariable* SplitStatistics::NewGlobalVariable(
+    const StringPiece& name, int index /* unused */) {
+  Variable* local_var = local_->FindVariable(name);
+  CHECK(local_var != NULL);
+
+  Variable* global_var = global_->FindVariable(name);
+  CHECK(global_var != NULL);
+
+  // For NewGlobalVariable we reverse global and local from their usual
+  // behavior in NewVariable, doing reads from the global/aggregate.
+  return new SplitVariable(global_var /* read/write */,
+                           local_var /* write only */);
 }
 
 SplitHistogram* SplitStatistics::NewHistogram(const StringPiece& name) {
