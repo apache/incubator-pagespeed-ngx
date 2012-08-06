@@ -63,6 +63,8 @@ class MessageHandler;
 
 const char BlinkFlowCriticalLine::kBackgroundComputationDone[] =
     "BackgroundComputation:Done";
+const char BlinkFlowCriticalLine::kHtmlDiffComputationMatched[] =
+    "HtmlDiffComputation:Matched";
 const char BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits[] =
     "num_blink_html_cache_hits";
 const char BlinkFlowCriticalLine::kNumBlinkHtmlCacheMisses[] =
@@ -73,6 +75,10 @@ const char BlinkFlowCriticalLine::kNumBlinkSharedFetchesCompleted[] =
     "num_blink_shared_fetches_completed";
 const char BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls[] =
     "num_compute_blink_critical_line_data_calls";
+const char BlinkFlowCriticalLine::kNumBlinkHtmlMatches[] =
+    "num_blink_html_matches";
+const char BlinkFlowCriticalLine::kNumBlinkHtmlMismatches[] =
+    "num_blink_html_mismatches";
 const char BlinkFlowCriticalLine::kAboveTheFold[] = "Above the fold";
 
 namespace {
@@ -109,9 +115,12 @@ class AsyncFetchWithHeadersInhibited : public AsyncFetchUsingWriter {
   DISALLOW_COPY_AND_ASSIGN(AsyncFetchWithHeadersInhibited);
 };
 
-// SharedAsyncFetch that fetches the page and passes events through to the base
-// fetch. It also determines if the page is html, and whether to trigger an
-// async computation of the critical line data.
+// AsyncFetch that gets the original fetched content, determines if the content
+// is html and then decides whether to trigger an async computation of the
+// critical line data.
+// If html change detection is enabled, it also diffs the
+// incoming html hash with the stored hash. If the hash has changed, then also
+// triggers critical line data computation.
 // TODO(rahulbansal): Buffer the html chunked rather than in one string.
 class CriticalLineFetch : public AsyncFetch {
  public:
@@ -119,12 +128,14 @@ class CriticalLineFetch : public AsyncFetch {
                     ResourceManager* resource_manager,
                     RewriteOptions* options,
                     RewriteDriver* rewrite_driver,
-                    BlinkInfo* blink_info)
+                    BlinkInfo* blink_info,
+                    BlinkCriticalLineData* blink_critical_line_data)
       : url_(url),
         resource_manager_(resource_manager),
         options_(options),
         rewrite_driver_(rewrite_driver),
         blink_info_(blink_info),
+        blink_critical_line_data_(blink_critical_line_data),
         claims_html_(false),
         probable_html_(false),
         content_length_over_threshold_(false),
@@ -140,6 +151,10 @@ class CriticalLineFetch : public AsyncFetch {
         BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls);
     num_blink_shared_fetches_completed_ = stats->GetTimedVariable(
         BlinkFlowCriticalLine::kNumBlinkSharedFetchesCompleted);
+    num_blink_html_matches_ = stats->GetTimedVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlMatches);
+    num_blink_html_mismatches_ = stats->GetTimedVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlMismatches);
   }
 
   virtual ~CriticalLineFetch() {
@@ -220,49 +235,128 @@ class CriticalLineFetch : public AsyncFetch {
           IntegerToString(response_headers()->status_code()));
     }
 
+    if (options_->enable_blink_html_change_detection()) {
+      // We'll reach here only in case of Cache Hit case.
+      CreateHtmlChangeDetectionDriverAndRewrite();
+    } else {
+      CreateCriticalLineComputationDriverAndRewrite("");
+    }
+  }
+
+  void CreateHtmlChangeDetectionDriverAndRewrite() {
+    RewriteOptions* options = options_->Clone();
+    options->ClearFilters();
+    options->ForceEnableFilter(RewriteOptions::kRemoveComments);
+    options->ForceEnableFilter(RewriteOptions::kStripNonCacheable);
+    resource_manager_->ComputeSignature(options);
+    html_change_detection_driver_ =
+        resource_manager_->NewCustomRewriteDriver(options);
+    value_.Clear();
+    html_change_detection_driver_->SetWriter(&value_);
+    html_change_detection_driver_->set_response_headers_ptr(response_headers());
+    complete_finish_parse_html_change_driver_fn_ = MakeFunction(
+        this, &CriticalLineFetch::CompleteFinishParseForHtmlChangeDriver);
+    html_change_detection_driver_->AddLowPriorityRewriteTask(
+        MakeFunction(
+            this, &CriticalLineFetch::Parse,
+            &CriticalLineFetch::CancelParseForHtmlChangeDriver,
+            html_change_detection_driver_,
+            complete_finish_parse_html_change_driver_fn_));
+  }
+
+  void CreateCriticalLineComputationDriverAndRewrite(
+      const GoogleString& computed_hash) {
     num_blink_html_cache_misses_->IncBy(1);
     critical_line_computation_driver_ =
-        resource_manager_->NewCustomRewriteDriver(
-            options_.release());
+        resource_manager_->NewCustomRewriteDriver(options_.release());
     // Wait for all rewrites to complete. This is important because fully
     // rewritten html is used to compute BlinkCriticalLineData.
     critical_line_computation_driver_->set_fully_rewrite_on_flush(true);
+    value_.Clear();
     critical_line_computation_driver_->SetWriter(&value_);
     critical_line_computation_driver_->set_response_headers_ptr(
         response_headers());
+    complete_finish_parse_critical_line_driver_fn_ = MakeFunction(
+        this, &CriticalLineFetch::CompleteFinishParseForCriticalLineDriver,
+        computed_hash);
     critical_line_computation_driver_->AddLowPriorityRewriteTask(
-        MakeFunction(this, &CriticalLineFetch::Parse,
-                     &CriticalLineFetch::CancelParse));
+        MakeFunction(
+            this, &CriticalLineFetch::Parse,
+            &CriticalLineFetch::CancelParseForCriticalLineComputationDriver,
+            critical_line_computation_driver_,
+            complete_finish_parse_critical_line_driver_fn_));
   }
 
-  void Parse() {
-    if (critical_line_computation_driver_->StartParse(url_)) {
-      critical_line_computation_driver_->ParseText(buffer_);
-      critical_line_computation_driver_->FinishParseAsync(MakeFunction(
-          this, &CriticalLineFetch::CompleteFinishParse));
+  void Parse(RewriteDriver* driver, Function* task) {
+    if (driver->StartParse(url_)) {
+      driver->ParseText(buffer_);
+      driver->FinishParseAsync(task);
     } else {
       LOG(ERROR) << "StartParse failed for url: " << url_;
-      critical_line_computation_driver_->Cleanup();
+      driver->Cleanup();
       delete this;
     }
   }
 
-  void CancelParse() {
+  void CancelParseForCriticalLineComputationDriver() {
     LOG(WARNING) << "Blink critical line computation dropped due to load"
                  << " for url: " << url_;
+    complete_finish_parse_critical_line_driver_fn_->CallCancel();
     critical_line_computation_driver_->Cleanup();
     delete this;
   }
 
-  void CompleteFinishParse() {
+  void CancelParseForHtmlChangeDriver() {
+    LOG(WARNING) << "Blink html change diff dropped due to load"
+                 << " for url: " << url_;
+    complete_finish_parse_html_change_driver_fn_->CallCancel();
+    html_change_detection_driver_->Cleanup();
+    delete this;
+  }
+
+  void CompleteFinishParseForCriticalLineDriver(GoogleString computed_hash) {
     StringPiece rewritten_content;
     value_.ExtractContents(&rewritten_content);
     num_compute_blink_critical_line_data_calls_->IncBy(1);
     resource_manager_->blink_critical_line_data_finder()
-        ->ComputeBlinkCriticalLineData(rewritten_content,
-                                       response_headers(),
-                                       rewrite_driver_);
+        ->ComputeBlinkCriticalLineData(computed_hash, rewritten_content,
+                                       response_headers(), rewrite_driver_);
     delete this;
+  }
+
+  void CompleteFinishParseForHtmlChangeDriver() {
+    StringPiece rewritten_content;
+    value_.ExtractContents(&rewritten_content);
+
+    GoogleString computed_hash =
+        resource_manager_->hasher()->Hash(rewritten_content);
+    // We invoke critical line computation in case of cache miss or html hash
+    // mismatch.
+    if (blink_critical_line_data_ == NULL ||
+        computed_hash != blink_critical_line_data_->hash()) {
+      num_blink_html_mismatches_->IncBy(1);
+      CreateCriticalLineComputationDriverAndRewrite(computed_hash);
+    } else {
+      num_blink_html_matches_->IncBy(1);
+      blink_critical_line_data_->set_last_diff_timestamp_ms(
+          resource_manager_->timer()->NowMs());
+
+      // TODO(rahulbansal): Move the code to write to pcache to blink_util.cc
+      PropertyCache* property_cache =
+          rewrite_driver_->resource_manager()->page_property_cache();
+      PropertyPage* page = rewrite_driver_->property_page();
+      const PropertyCache::Cohort* cohort = property_cache->GetCohort(
+          BlinkUtil::kBlinkCohort);
+      GoogleString buf;
+      blink_critical_line_data_->SerializeToString(&buf);
+      PropertyValue* property_value = page->GetProperty(
+          cohort, BlinkUtil::kBlinkCriticalLineDataPropertyName);
+      property_cache->UpdateValue(buf, property_value);
+      property_cache->WriteCohort(cohort, page);
+      ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
+      sync->Signal(BlinkFlowCriticalLine::kHtmlDiffComputationMatched);
+      delete this;
+    }
   }
 
  private:
@@ -277,7 +371,11 @@ class CriticalLineFetch : public AsyncFetch {
   RewriteDriver* rewrite_driver_;
   // RewriteDriver used to parse the buffered html content.
   RewriteDriver* critical_line_computation_driver_;
+  RewriteDriver* html_change_detection_driver_;
   BlinkInfo* blink_info_;
+  scoped_ptr<BlinkCriticalLineData> blink_critical_line_data_;
+  Function* complete_finish_parse_critical_line_driver_fn_;
+  Function* complete_finish_parse_html_change_driver_fn_;
   bool claims_html_;
   bool probable_html_;
   bool content_length_over_threshold_;
@@ -286,6 +384,8 @@ class CriticalLineFetch : public AsyncFetch {
   TimedVariable* num_blink_html_cache_misses_;
   TimedVariable* num_blink_shared_fetches_completed_;
   TimedVariable* num_compute_blink_critical_line_data_calls_;
+  TimedVariable* num_blink_html_matches_;
+  TimedVariable* num_blink_html_mismatches_;
 
   DISALLOW_COPY_AND_ASSIGN(CriticalLineFetch);
 };
@@ -381,6 +481,10 @@ void BlinkFlowCriticalLine::Initialize(Statistics* stats) {
                           ResourceManager::kStatisticsGroup);
   stats->AddTimedVariable(kNumComputeBlinkCriticalLineDataCalls,
                           ResourceManager::kStatisticsGroup);
+  stats->AddTimedVariable(kNumBlinkHtmlMatches,
+                          ResourceManager::kStatisticsGroup);
+  stats->AddTimedVariable(kNumBlinkHtmlMismatches,
+                          ResourceManager::kStatisticsGroup);
 }
 
 BlinkFlowCriticalLine::BlinkFlowCriticalLine(
@@ -418,7 +522,8 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
   // finder_ will be never NULL because it is checked before entering
   // BlinkFlowCriticalLine.
   blink_critical_line_data_.reset(finder_->ExtractBlinkCriticalLineData(
-          options_->GetBlinkCacheTimeFor(google_url_), page));
+      options_->GetBlinkCacheTimeFor(google_url_), page));
+
   if (blink_critical_line_data_ != NULL &&
       !(options_->passthrough_blink_for_last_invalid_response_code() &&
         IsLastResponseCodeInvalid(page))) {
@@ -619,6 +724,20 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     // base fetch. It also doesn't attach the response headers from the base
     // fetch since headers have already been flushed out.
     fetch = new AsyncFetchWithHeadersInhibited(base_fetch_);
+    bool revalidate_data = options_->enable_blink_html_change_detection() &&
+        (manager_->timer()->NowMs() -
+            blink_critical_line_data_->last_diff_timestamp_ms() >
+            options_->blink_html_change_detection_time_ms());
+    if (revalidate_data) {
+      options = options_->Clone();
+      BlinkCriticalLineData* blink_critical_line_data =
+          new BlinkCriticalLineData();
+      blink_critical_line_data->MergeFrom(*blink_critical_line_data_);
+      options->ForceEnableFilter(RewriteOptions::kStripNonCacheable);
+      options->DisableFilter(RewriteOptions::kServeNonCacheableNonCritical);
+      secondary_fetch = new CriticalLineFetch(url_, manager_, options, driver,
+          blink_info_, blink_critical_line_data);
+    }
   } else if (blink_critical_line_data_ == NULL) {
     options = options_->Clone();
     SetFilterOptions(options);
@@ -628,7 +747,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     driver = manager_->NewCustomRewriteDriver(options_);
     num_blink_shared_fetches_started_->IncBy(1);
     secondary_fetch = new CriticalLineFetch(url_, manager_, options, driver,
-        blink_info_);
+        blink_info_, NULL);
 
     // Setting a fixed user-agent for fetching content from origin server.
     if (options->use_fixed_user_agent_for_blink_cache_misses()) {

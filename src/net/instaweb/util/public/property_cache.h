@@ -307,8 +307,11 @@ class PropertyPage {
   explicit PropertyPage(AbstractMutex* mutex, const StringPiece& key)
       : mutex_(mutex),
         key_(key.as_string()),
-        was_read_(false) {
-  }
+        was_read_(false) {}
+
+  // Called immediatly after the underlying cache lookup is done, from
+  // PropertyCache::CacheInterfaceCallback::Done().
+  virtual bool IsCacheValid(int64 write_timestamp_ms) const { return true; }
 
   // Called as a result of PropertyCache::Read when the data is available.
   virtual void Done(bool success) = 0;

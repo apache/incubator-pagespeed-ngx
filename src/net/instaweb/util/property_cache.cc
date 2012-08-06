@@ -133,11 +133,29 @@ class PropertyCache::CacheInterfaceCallback : public CacheInterface::Callback {
       ArrayInputStream input(value_string.data(), value_string.size());
       PropertyCacheValues values;
       if (values.ParseFromZeroCopyStream(&input)) {
-        for (int i = 0; i < values.value_size(); ++i) {
-          const PropertyValueProtobuf& pcache_value = values.value(i);
-          page_->AddValueFromProtobuf(cohort_, pcache_value);
-        }
         valid = true;
+        int64 min_write_timestamp_ms = kint64max;
+        // The values in a cohort could have different write_timestamp_ms
+        // values, since it is populated in UpdateValue.  But since all values
+        // in a cohort are written (and read) together we need to treat either
+        // all as valid or none as valid.  Hence we look at the oldest write
+        // timestamp to make this decision.
+        for (int i = 0; i < values.value_size(); ++i) {
+          min_write_timestamp_ms = std::min(
+              min_write_timestamp_ms, values.value(i).write_timestamp_ms());
+        }
+        // Return valid for empty cohort, and if IsCacheValid returns true for
+        // Value with oldest timestamp.
+        if (values.value_size() == 0 ||
+            page_->IsCacheValid(min_write_timestamp_ms)) {
+          valid = true;
+          for (int i = 0; i < values.value_size(); ++i) {
+            const PropertyValueProtobuf& pcache_value = values.value(i);
+            page_->AddValueFromProtobuf(cohort_, pcache_value);
+          }
+        } else {
+          valid = false;
+        }
       }
     }
     collector_->Done(valid);

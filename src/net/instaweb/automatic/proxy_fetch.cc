@@ -168,19 +168,26 @@ ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(
       collector_(collector) {
 }
 
+bool ProxyFetchPropertyCallback::IsCacheValid(int64 write_timestamp_ms) const {
+  return collector_->IsCacheValid(write_timestamp_ms);
+}
+
 void ProxyFetchPropertyCallback::Done(bool success) {
   collector_->Done(this, success);
 }
 
 ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
-    ResourceManager* resource_manager)
+    ResourceManager* resource_manager, const StringPiece& url,
+    const RewriteOptions* options)
     : mutex_(resource_manager->thread_system()->NewMutex()),
       resource_manager_(resource_manager),
+      url_(url.data(), url.size()),
       detached_(false),
       done_(false),
       success_(true),
       proxy_fetch_(NULL),
-      post_lookup_task_vector_(new std::vector<Function*>) {
+      post_lookup_task_vector_(new std::vector<Function*>),
+      options_(options) {
 }
 
 ProxyFetchPropertyCallbackCollector::~ProxyFetchPropertyCallbackCollector() {
@@ -213,6 +220,21 @@ ProxyFetchPropertyCallbackCollector::GetPropertyPageWithoutOwnership(
   ScopedMutex lock(mutex_.get());
   PropertyPage* page = property_pages_[cache_type];
   return page;
+}
+
+bool ProxyFetchPropertyCallbackCollector::IsCacheValid(
+    int64 write_timestamp_ms) const {
+  ScopedMutex lock(mutex_.get());
+  // Since PropertyPage::CallDone is not yet called, we know that
+  // ProxyFetchPropertyCallbackCollector::Done is not called and hence done_ is
+  // false and hence this has not yet been deleted.
+  DCHECK(!done_);
+  // But Detach might have been called already and then options_ is not valid.
+  if (detached_) {
+    return false;
+  }
+  return (options_ == NULL ||
+          options_->IsUrlCacheValid(url_, write_timestamp_ms));
 }
 
 // Calls to Done(), ConnectProxyFetch(), and Detach() may occur on

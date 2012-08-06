@@ -57,6 +57,9 @@ const char kLayoutMarker[] = "<!--GooglePanel **** Layout end ****-->";
 const char kJsonCachePrefix[] = "json:";
 const char kBlinkResponseCodePropertyName[] = "blink_last_response_code";
 const char kXpath[] = "xpath";
+// TODO(rahulbansal): Use these constants everywhere in the code from here.
+const char kBlinkCohort[] = "blink";
+const char kBlinkCriticalLineDataPropertyName[] = "blink_critical_line_data";
 
 // Checks whether the request for 'url' is a valid blink request.
 bool IsBlinkRequest(const GoogleUrl& url,

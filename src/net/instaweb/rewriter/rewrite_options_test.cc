@@ -623,7 +623,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(89, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(90, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAjaxRewritingEnabled));
@@ -678,6 +678,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("EnableBlinkForMobileDevices"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kEnableBlinkForMobileDevices));
+  EXPECT_EQ(StringPiece("EnableBlinkHtmlChangeDetection"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kEnableBlinkHtmlChangeDetection));
   EXPECT_EQ(StringPiece("EnableDeferJsExperimental"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kEnableDeferJsExperimental));

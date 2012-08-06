@@ -47,6 +47,7 @@ class BlinkFlowCriticalLine {
   // These strings identify sync-points for reproducing races between foreground
   // serving request and background blink computation requests in tests.
   static const char kBackgroundComputationDone[];
+  static const char kHtmlDiffComputationMatched[];
 
   static void Start(const GoogleString& url,
                     AsyncFetch* base_fetch,
@@ -65,6 +66,8 @@ class BlinkFlowCriticalLine {
   static const char kNumBlinkSharedFetchesStarted[];
   static const char kNumBlinkSharedFetchesCompleted[];
   static const char kNumComputeBlinkCriticalLineDataCalls[];
+  static const char kNumBlinkHtmlMatches[];
+  static const char kNumBlinkHtmlMismatches[];
 
  private:
   BlinkFlowCriticalLine(const GoogleString& url,

@@ -147,6 +147,7 @@ class RewriteOptions {
     kEnableBlinkDashboard,
     kEnableBlinkForMobileDevices,
     kEnabled,
+    kEnableBlinkHtmlChangeDetection,
     kEnableDeferJsExperimental,
     kEnableInlinePreviewImagesExperimental,
     kFlushHtml,
@@ -314,6 +315,7 @@ class RewriteOptions {
   static const int kDefaultImageJpegNumProgressiveScans;
   static const int kDefaultImageWebpRecompressQuality;
   static const int kDefaultDomainShardCount;
+  static const int64 kDefaultBlinkHtmlChangeDetectionTimeMs;
 
   // IE limits URL size overall to about 2k characters.  See
   // http://support.microsoft.com/kb/208427/EN-US
@@ -1005,6 +1007,20 @@ class RewriteOptions {
   }
   bool enable_blink_debug_dashboard() const {
     return enable_blink_debug_dashboard_.value();
+  }
+
+  void set_enable_blink_html_change_detection(bool x) {
+    set_option(x, &enable_blink_html_change_detection_);
+  }
+  bool enable_blink_html_change_detection() const {
+    return enable_blink_html_change_detection_.value();
+  }
+
+  void set_blink_html_change_detection_time_ms(int64 x) {
+    set_option(x, &blink_html_change_detection_time_ms_);
+  }
+  int64 blink_html_change_detection_time_ms() const {
+    return blink_html_change_detection_time_ms_.value();
   }
 
   const GoogleString& blocking_rewrite_key() const {
@@ -1897,6 +1913,9 @@ class RewriteOptions {
   Option<bool> passthrough_blink_for_last_invalid_response_code_;
   // Sets limit for max html size that is rewritten in Blink.
   Option<int64> blink_max_html_size_rewritable_;
+  // Time after which we should try to detect if publisher html in blink
+  // has changed.
+  Option<int64> blink_html_change_detection_time_ms_;
   // If prioritize_visible_content_families_ is empty and the following is true,
   // then prioritize_visible_content applies on all URLs (with default cache
   // time and no non-cacheables).
@@ -1906,6 +1925,8 @@ class RewriteOptions {
   Option<bool> use_full_url_in_blink_families_;
   // Show the blink debug dashboard.
   Option<bool> enable_blink_debug_dashboard_;
+  // Enable automatic detection of publisher changes in html in blink.
+  Option<bool> enable_blink_html_change_detection_;
 
   // If this is true (it defaults to false) ProxyInterface frontend will
   // reject requests where PSA is not enabled or URL is blacklisted with

@@ -35,12 +35,10 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/blink_critical_line_data.pb.h"
-#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -52,6 +50,7 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -100,6 +99,27 @@ const char kHtmlInput[] =
       "</div>"
     "</body></html>";
 
+const char kHtmlInputWithExtraCommentAndNonCacheable[] =
+    "<html>"
+    "<head>"
+    "</head>"
+    "<body>\n"
+    "<!-- Hello -->"
+    "<div id=\"header\"> This is the header </div>"
+    "<div id=\"container\" class>"
+      "<h2 id=\"beforeItems\"> This is extra before Items </h2>"
+      "<div class=\"item\">"
+         "<img src=\"image1\">"
+         "<img src=\"image2\">"
+      "</div>"
+      "<div class=\"item\">"
+         "<img src=\"image3\">"
+          "<div class=\"item\">"
+             "<img src=\"image4\">"
+          "</div>"
+      "</div>"
+    "</body></html>";
+
 const char kSmallHtmlInput[] =
     "<html><head></head><body>A small test html.</body></html>";
 const char kHtmlInputForNoBlink[] =
@@ -124,6 +144,14 @@ const char kBlinkOutputCommon[] =
 const char kBlinkOutputSuffix[] =
     "<script>pagespeed.panelLoader.loadCookies([\"helo=world; path=/\"]);</script>"
     "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-1.0\":{\"instance_html\":\"<h2 id=\\\"beforeItems\\\"> This is before Items </h2>\",\"xpath\":\"//div[@id=\\\"container\\\"]/h2[1]\"}}\n);</script>"
+    "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.0\":{\"instance_html\":\"<div class=\\\"item\\\"><img src=\\\"image1\\\"><img src=\\\"image2\\\"></div>\",\"xpath\":\"//div[@id=\\\"container\\\"]/div[2]\"}}\n);</script>"
+    "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.1\":{\"instance_html\":\"<div class=\\\"item\\\"><img src=\\\"image3\\\"><div class=\\\"item\\\"><img src=\\\"image4\\\"></div></div>\",\"xpath\":\"//div[@id=\\\"container\\\"]/div[3]\"}}\n);</script>"
+    "<script>pagespeed.panelLoader.bufferNonCriticalData();</script>\n"
+    "</body></html>\n";
+
+const char kBlinkOutputWithExtraNonCacheableSuffix[] =
+    "<script>pagespeed.panelLoader.loadCookies([\"helo=world; path=/\"]);</script>"
+    "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-1.0\":{\"instance_html\":\"<h2 id=\\\"beforeItems\\\"> This is extra before Items </h2>\",\"xpath\":\"//div[@id=\\\"container\\\"]/h2[1]\"}}\n);</script>"
     "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.0\":{\"instance_html\":\"<div class=\\\"item\\\"><img src=\\\"image1\\\"><img src=\\\"image2\\\"></div>\",\"xpath\":\"//div[@id=\\\"container\\\"]/div[2]\"}}\n);</script>"
     "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.1\":{\"instance_html\":\"<div class=\\\"item\\\"><img src=\\\"image3\\\"><div class=\\\"item\\\"><img src=\\\"image4\\\"></div></div>\",\"xpath\":\"//div[@id=\\\"container\\\"]/div[3]\"}}\n);</script>"
     "<script>pagespeed.panelLoader.bufferNonCriticalData();</script>\n"
@@ -226,13 +254,35 @@ class FlakyFakeUrlNamer : public FakeUrlNamer {
 class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
  public:
   FakeBlinkCriticalLineDataFinder()
-      : num_compute_calls_(0),
-        code_(HttpStatus::kOK) {}
+      : num_compute_calls_(0), pcache_(NULL) {}
+
+  void set_property_cache(PropertyCache* pcache) { pcache_ = pcache; }
 
   // Gets BlinkCriticalLineData from the given PropertyPage.
   virtual BlinkCriticalLineData* ExtractBlinkCriticalLineData(
       int64 cache_time_ms, PropertyPage* page) {
-    return blink_critical_line_data_.release();
+    if (pcache_ == NULL) {
+      return blink_critical_line_data_.release();
+    }
+    const PropertyCache::Cohort* cohort = pcache_->GetCohort(
+        BlinkCriticalLineDataFinder::kBlinkCohort);
+    if (page == NULL || cohort == NULL) {
+      return NULL;
+    }
+    PropertyValue* pvalue = page->GetProperty(cohort,
+                                              "blink_critical_line_data");
+    if (!pvalue->has_value() || pcache_->IsExpired(pvalue, cache_time_ms)) {
+      return NULL;
+    }
+    ArrayInputStream input(pvalue->value().data(), pvalue->value().size());
+    BlinkCriticalLineData* response = new BlinkCriticalLineData;
+    if (!response->ParseFromZeroCopyStream(&input)) {
+      LOG(DFATAL) << "Parsing value from cache into BlinkCriticalLineData "
+                  << "failed.";
+      delete response;
+      return NULL;
+    }
+    return response;
   }
 
   void set_blink_critical_line_data(BlinkCriticalLineData* data) {
@@ -240,10 +290,27 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
   }
 
   virtual void ComputeBlinkCriticalLineData(
-      const StringPiece html_content, const ResponseHeaders* response_headers,
-      RewriteDriver* driver) {
+      const GoogleString& computed_hash, const StringPiece html_content,
+      const ResponseHeaders* response_headers, RewriteDriver* driver) {
     ++num_compute_calls_;
     html_content_ = html_content.as_string();
+    if (pcache_ == NULL || blink_critical_line_data_ == NULL) {
+      return;
+    }
+    PropertyPage* page = driver->property_page();
+    const PropertyCache::Cohort* cohort = pcache_->GetCohort(
+        BlinkCriticalLineDataFinder::kBlinkCohort);
+    if (page == NULL || cohort == NULL) {
+      LOG(ERROR) << "PropertyPage or Cohort goes missing for url: "
+                 << driver->url();
+      return;
+    }
+    GoogleString buf;
+    blink_critical_line_data_->SerializeToString(&buf);
+    PropertyValue* pvalue = page->GetProperty(cohort,
+                                              "blink_critical_line_data");
+    pcache_->UpdateValue(buf, pvalue);
+    pcache_->WriteCohort(cohort, page);
   }
 
   int num_compute_calls() { return num_compute_calls_; }
@@ -252,8 +319,8 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
 
  private:
   int num_compute_calls_;
+  PropertyCache* pcache_;
   GoogleString html_content_;
-  HttpStatus::Code code_;
   scoped_ptr<BlinkCriticalLineData> blink_critical_line_data_;
   DISALLOW_COPY_AND_ASSIGN(FakeBlinkCriticalLineDataFinder);
 };
@@ -329,6 +396,9 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
           new CustomRewriteDriverFactory(&mock_url_fetcher_)),
         blink_output_(StrCat(StringPrintf(
             kBlinkOutputCommon, "text.html", "text.html"), kBlinkOutputSuffix)),
+        blink_output_with_extra_non_cacheable_(StrCat(StringPrintf(
+            kBlinkOutputCommon, "text.html", "text.html"),
+            kBlinkOutputWithExtraNonCacheableSuffix)),
         blink_output_with_cacheable_panels_no_cookies_(StrCat(StringPrintf(
             kBlinkOutputCommon, "flaky.html", "flaky.html"),
             kBlinkOutputWithCacheablePanelsNoCookiesSuffix)),
@@ -343,10 +413,14 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
   }
 
   virtual void SetUp() {
+    UseMd5Hasher();
     ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
     sync->EnableForPrefix(BlinkFlowCriticalLine::kBackgroundComputationDone);
     sync->AllowSloppyTermination(
         BlinkFlowCriticalLine::kBackgroundComputationDone);
+    sync->EnableForPrefix(BlinkFlowCriticalLine::kHtmlDiffComputationMatched);
+    sync->AllowSloppyTermination(
+        BlinkFlowCriticalLine::kHtmlDiffComputationMatched);
     fake_blink_critical_line_data_finder_ =
         static_cast<FakeBlinkCriticalLineDataFinder*> (
             factory_->blink_critical_line_data_finder());
@@ -454,6 +528,15 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
     FetchFromProxy(url, expect_success, string_out, headers_out, true);
   }
 
+  void FetchFromProxyWaitForHtmlDiffComputationMatch(
+      const StringPiece& url, bool expect_success, GoogleString* string_out,
+      ResponseHeaders* headers_out) {
+    RequestHeaders request_headers;
+    GetDefaultRequestHeaders(&request_headers);
+    FetchFromProxy(url, expect_success, request_headers, string_out,
+                   headers_out, NULL, false, true);
+  }
+
   void FetchFromProxyNoWaitForBackground(const StringPiece& url,
                                          bool expect_success,
                                          GoogleString* string_out,
@@ -490,12 +573,29 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
                       ResponseHeaders* headers_out,
                       GoogleString* user_agent_out,
                       bool wait_for_background_computation) {
+    FetchFromProxy(url, expect_success, request_headers, string_out,
+                   headers_out, user_agent_out, wait_for_background_computation,
+                   false);
+  }
+
+  void FetchFromProxy(const StringPiece& url,
+                      bool expect_success,
+                      const RequestHeaders& request_headers,
+                      GoogleString* string_out,
+                      ResponseHeaders* headers_out,
+                      GoogleString* user_agent_out,
+                      bool wait_for_background_computation,
+                      bool wait_for_html_diff_computation_match) {
     FetchFromProxyNoQuiescence(url, expect_success, request_headers,
                                string_out, headers_out,
                                user_agent_out);
     if (wait_for_background_computation) {
       ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
       sync->Wait(BlinkFlowCriticalLine::kBackgroundComputationDone);
+    }
+    if (wait_for_html_diff_computation_match) {
+      ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+      sync->Wait(BlinkFlowCriticalLine::kHtmlDiffComputationMatched);
     }
     mock_scheduler()->AwaitQuiescence();
   }
@@ -598,15 +698,24 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
   }
 
   void SetBlinkCriticalLineData() {
-    SetBlinkCriticalLineData(true);
+    SetBlinkCriticalLineData(true, "", 0);
   }
 
   void SetBlinkCriticalLineData(bool value) {
+    SetBlinkCriticalLineData(value, "", 0);
+  }
+
+  void SetBlinkCriticalLineData(bool value, const GoogleString& hash,
+                                int64 last_diff_timestamp_ms) {
     BlinkCriticalLineData* data = new BlinkCriticalLineData();
     data->set_url("url");
     if (value) {
       data->set_critical_html(kCriticalHtml);
     }
+    if (hash != "") {
+      data->set_hash(hash);
+    }
+    data->set_last_diff_timestamp_ms(last_diff_timestamp_ms);
     fake_blink_critical_line_data_finder_->set_blink_critical_line_data(data);
   }
 
@@ -623,6 +732,7 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
   FakeBlinkCriticalLineDataFinder* fake_blink_critical_line_data_finder_;
   LoggingInfo logging_info_;
   const GoogleString blink_output_;
+  const GoogleString blink_output_with_extra_non_cacheable_;
   const GoogleString blink_output_with_cacheable_panels_no_cookies_;
   const GoogleString blink_output_with_cacheable_panels_cookies_;
 
@@ -878,15 +988,106 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   RequestHeaders request_headers;
   request_headers.Add(HttpAttributes::kUserAgent, kLinuxUserAgent);
   request_headers.Add(HttpAttributes::kXForwardedFor, "64.236.24.12");
-  BlinkCriticalLineData* data = new BlinkCriticalLineData();
-  data->set_url("url");
-  set_blink_critical_line_data(data);
+  SetBlinkCriticalLineData(false);
   FetchFromProxy("text.html", true, request_headers,
                  &text, &response_headers, false);
   EXPECT_EQ(GoogleString::npos,
             text.find("pagespeed.panelLoader.setRequestFromInternalIp()"));
   EXPECT_EQ(1, statistics()->GetVariable(
             BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkUrlCacheInvalidation) {
+  GoogleString text;
+  ResponseHeaders response_headers;
+  fake_blink_critical_line_data_finder_->set_property_cache(
+      resource_manager()->page_property_cache());
+
+  SetBlinkCriticalLineData();
+  FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
+
+  EXPECT_STREQ(kHtmlInput, text);
+  // Cache lookup for original plain text, BlinkCriticalLineData and Dom Cohort
+  // in property cache, all miss.
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // Both cohorts in pcache.
+  EXPECT_EQ(0, lru_cache()->num_deletes());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+  EXPECT_EQ(1, num_compute_calls());
+  response_headers.Clear();
+  ClearStats();
+
+  set_blink_critical_line_data(NULL);
+
+  // Property cache hit.
+  FetchFromProxyNoWaitForBackground(
+      "text.html", true, &text, &response_headers);
+  UnEscapeString(&text);
+  EXPECT_STREQ(blink_output_, text);
+  EXPECT_EQ(1, lru_cache()->num_misses());   // Original plain text.
+  EXPECT_EQ(2, lru_cache()->num_hits());     // pcache, two cohorts
+  // The status code value in Dom cohort is unchanged, and so the PropertyValue
+  // has num_writes bumped to 1.  Thus the value seen by the underlying lru
+  // cache changes.  Hence a delete and insert.
+  // blink cohort value is neither updated or written.
+  EXPECT_EQ(1, lru_cache()->num_inserts());
+  EXPECT_EQ(1, lru_cache()->num_deletes());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+  EXPECT_EQ(1, num_compute_calls());
+  ClearStats();
+
+  // Invalidate the cache for some URL other than 'text.html'.
+  options_->ClearSignatureForTesting();
+  options_->AddUrlCacheInvalidationEntry(
+      AbsolutifyUrl("foo.bar"), mock_timer()->NowMs(), true);
+  resource_manager()->ComputeSignature(options_.get());
+
+  // Property cache hit.
+  FetchFromProxyNoWaitForBackground(
+      "text.html", true, &text, &response_headers);
+  UnEscapeString(&text);
+  EXPECT_STREQ(blink_output_, text);
+  EXPECT_EQ(1, lru_cache()->num_misses());   // Original plain text.
+  EXPECT_EQ(2, lru_cache()->num_hits());     // pcache, two cohorts
+  // The status code value in Dom cohort is unchanged, and so the PropertyValue
+  // has num_writes bumped to 2.  Thus the value seen by the underlying lru
+  // cache changes.  Hence a delete and insert.
+  // blink cohort value is neither updated or written.
+  EXPECT_EQ(1, lru_cache()->num_inserts());
+  EXPECT_EQ(1, lru_cache()->num_deletes());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+  EXPECT_EQ(1, num_compute_calls());
+  ClearStats();
+
+  // Invalidate the cache.
+  options_->ClearSignatureForTesting();
+  options_->AddUrlCacheInvalidationEntry(
+      AbsolutifyUrl("text.html"), mock_timer()->NowMs(), true);
+  resource_manager()->ComputeSignature(options_.get());
+
+  SetBlinkCriticalLineData();
+  // Property cache hit, but invalidated.  Hence treated as a miss and
+  // passthrough by blink.
+  FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
+
+  EXPECT_STREQ(kHtmlInput, text);
+  EXPECT_EQ(1, lru_cache()->num_misses());   // Original plain text.
+  EXPECT_EQ(2, lru_cache()->num_hits());     // pcache, two cohorts
+  // The invalidation results in both the PropertyValues (status code in dom
+  // cohort and critical line data in blink cohort) not getting populated in
+  // PropertyPage.  Thus on update the status code value has its PropertyValue's
+  // num_writes being reset.  This means the underlying lru cache seems a
+  // different value, and hence a delete and write for the dom cohort write.
+  // For the update of critical line data the same reset of PropertyValue
+  // num_writes happens, but since there was only one write for this earlier
+  // (so, the num_writes was already 0) the actual value seen by lru cache is
+  // the same.  Hence for blink cohort, we see an identical_reinsert in lru
+  // cache.
+  EXPECT_EQ(1, lru_cache()->num_inserts());  // dom cohort
+  EXPECT_EQ(1, lru_cache()->num_deletes());  // dom cohort
+  EXPECT_EQ(1, lru_cache()->num_identical_reinserts());  // blink cohort
+  EXPECT_EQ(2, num_compute_calls());         // One more now.
 }
 
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithHeadRequest) {
@@ -1254,6 +1455,120 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileUserAgent) {
   // No blink flow should have happened.
   EXPECT_EQ(0, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateFalse) {
+  options_->ClearSignatureForTesting();
+  options_->set_enable_blink_html_change_detection(true);
+  resource_manager()->ComputeSignature(options_.get());
+
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
+
+  EXPECT_STREQ(kHtmlInput, text);
+  EXPECT_EQ(1, num_compute_calls());
+  EXPECT_EQ(kHtmlInput, text);
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlCacheMisses)->Get());
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
+  response_headers.Clear();
+  ClearStats();
+
+  // Hash not set. Should have resulted in mismatches but revalidate returns
+  // false.
+  SetBlinkCriticalLineData(true, "", resource_manager()->timer()->NowMs());
+  FetchFromProxyNoWaitForBackground(
+      "text.html", true, &text, &response_headers);
+
+  UnEscapeString(&text);
+  EXPECT_STREQ(blink_output_, text);
+  EXPECT_EQ(0, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
+  EXPECT_EQ(0, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
+  EXPECT_EQ(0, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
+  ClearStats();
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateTrue) {
+  options_->ClearSignatureForTesting();
+  options_->set_enable_blink_html_change_detection(true);
+  resource_manager()->ComputeSignature(options_.get());
+
+  GoogleString text;
+  ResponseHeaders response_headers;
+  FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
+
+  EXPECT_STREQ(kHtmlInput, text);
+  EXPECT_EQ(1, num_compute_calls());
+  EXPECT_EQ(kHtmlInput, text);
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlCacheMisses)->Get());
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
+  response_headers.Clear();
+  ClearStats();
+
+  // Set the last diff timestamp ms to be 2 minutes before now so revalidate
+  // will return true.
+  int64 last_diff_timestamp_ms = resource_manager()->timer()->NowMs() -
+                                 2 * Timer::kMinuteMs;
+
+  // Hash not set. Results in mismatches.
+  SetBlinkCriticalLineData(true, "", last_diff_timestamp_ms);
+  FetchFromProxyWaitForBackground(
+      "text.html", true, &text, &response_headers);
+
+  UnEscapeString(&text);
+  EXPECT_STREQ(blink_output_, text);
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
+  ClearStats();
+
+  // Hash set. No mismatches.
+  SetBlinkCriticalLineData(true, "ljcoagAIPL", last_diff_timestamp_ms);
+  FetchFromProxyWaitForHtmlDiffComputationMatch(
+      "text.html", true, &text, &response_headers);
+
+  UnEscapeString(&text);
+  EXPECT_STREQ(blink_output_, text);
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlMatches)->Get());
+  EXPECT_EQ(0, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
+  ClearStats();
+
+  // Input with an extra comment. We strip out comments before taking hash,
+  // so there should be no mismatches.
+  SetFetchResponse("http://test.com/text.html", response_headers_,
+                   kHtmlInputWithExtraCommentAndNonCacheable);
+  SetBlinkCriticalLineData(true, "ljcoagAIPL", last_diff_timestamp_ms);
+  FetchFromProxyWaitForHtmlDiffComputationMatch(
+      "text.html", true, &text, &response_headers);
+
+  UnEscapeString(&text);
+  EXPECT_STREQ(blink_output_with_extra_non_cacheable_, text);
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlMatches)->Get());
+  EXPECT_EQ(0, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
 }
 
 TEST_F(BlinkFlowCriticalLineTest, TestSetBlinkCriticalLineDataFalse) {

@@ -187,6 +187,9 @@ const char RewriteOptions::kDefaultBlockingRewriteKey[] = "";
 // Allow all the declared shards.
 const int RewriteOptions::kDefaultDomainShardCount = 0;
 
+const int64 RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs =
+    Timer::kMinuteMs;
+
 const char* RewriteOptions::option_enum_to_name_array_[
     RewriteOptions::kEndOfOptions];
 
@@ -640,6 +643,8 @@ RewriteOptions::RewriteOptions()
              kSupportNoScriptEnabled);
   add_option(kDefaultMaxCombinedJsBytes,
              &max_combined_js_bytes_, "xcj", kMaxCombinedJsBytes);
+  add_option(false, &enable_blink_html_change_detection_, "ebhcd",
+             kEnableBlinkHtmlChangeDetection);
   // Sort all_options_ on enum.
   SortOptions();
   // Do not call add_option with OptionEnum fourth argument after this.
@@ -650,6 +655,8 @@ RewriteOptions::RewriteOptions()
              RewriteOptions::kFetcherTimeOutMs);
   add_option(true, &enable_blink_debug_dashboard_, "ebdd");
   add_option("", &lazyload_images_blank_url_, "llbu");
+  add_option(kDefaultBlinkHtmlChangeDetectionTimeMs,
+             &blink_html_change_detection_time_ms_, "bhcdt");
 
   //
   // Recently sriharis@ excluded a variety of options from

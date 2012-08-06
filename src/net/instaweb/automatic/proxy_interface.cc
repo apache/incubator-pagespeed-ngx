@@ -387,7 +387,8 @@ ProxyFetchPropertyCallbackCollector*
     RewriteOptions* options,
     AsyncFetch* async_fetch) {
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
-      new ProxyFetchPropertyCallbackCollector(resource_manager_));
+      new ProxyFetchPropertyCallbackCollector(
+          resource_manager_, request_url.Spec(), options));
   bool added_callback = false;
   ProxyFetchPropertyCallback* property_callback = NULL;
   PropertyCache* page_property_cache = NULL;

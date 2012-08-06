@@ -219,6 +219,11 @@ DEFINE_int64(max_combined_js_bytes, -1,
             "Maximum size allowed for the combined js resource. "
             "Negative values will bypass size check.");
 
+DEFINE_int64(
+    blink_html_change_detection_time_ms,
+    net_instaweb::RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs,
+    "Time after which we should try to detect if publisher html has changed");
+
 namespace net_instaweb {
 
 namespace {
@@ -385,6 +390,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("report_unload_time")) {
     options->set_report_unload_time(FLAGS_report_unload_time);
+  }
+  if (WasExplicitlySet("blink_html_change_detection_time_ms")) {
+    options->set_blink_html_change_detection_time_ms(
+        FLAGS_blink_html_change_detection_time_ms);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

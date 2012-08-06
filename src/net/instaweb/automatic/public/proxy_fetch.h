@@ -104,26 +104,32 @@ class ProxyFetchPropertyCallback : public PropertyPage {
     kClientPropertyCache
   };
 
-  explicit ProxyFetchPropertyCallback(
-      CacheType cache_type,
-      const StringPiece& key,
-      ProxyFetchPropertyCallbackCollector* collector,
-      AbstractMutex* mutex);
+  ProxyFetchPropertyCallback(CacheType cache_type,
+                             const StringPiece& key,
+                             ProxyFetchPropertyCallbackCollector* collector,
+                             AbstractMutex* mutex);
 
   CacheType cache_type() const { return cache_type_; }
+
+  // Delegates to collector_'s IsCacheValid.
+  virtual bool IsCacheValid(int64 write_timestamp_ms) const;
 
   virtual void Done(bool success);
 
  private:
   CacheType cache_type_;
   ProxyFetchPropertyCallbackCollector* collector_;
+  GoogleString url_;
+  const RewriteOptions* options_;
   DISALLOW_COPY_AND_ASSIGN(ProxyFetchPropertyCallback);
 };
 
 // Tracks a collection of property-cache lookups occuring in parallel.
 class ProxyFetchPropertyCallbackCollector {
  public:
-  explicit ProxyFetchPropertyCallbackCollector(ResourceManager* manager);
+  ProxyFetchPropertyCallbackCollector(ResourceManager* manager,
+                                      const StringPiece& url,
+                                      const RewriteOptions* options);
   virtual ~ProxyFetchPropertyCallbackCollector();
 
   // Add a callback to be handled by this collector.
@@ -165,8 +171,13 @@ class ProxyFetchPropertyCallbackCollector {
   // initiate SetProxyFetch().
   void AddPostLookupTask(Function* func);
 
+  // If options_ is NULL returns true.  Else, returns true if (url_,
+  // write_timestamp_ms) is valid as per URL cache invalidation entries is
+  // options_.
+  bool IsCacheValid(int64 write_timestamp_ms) const;
+
   // Called by a ProxyFetchPropertyCallback when the former is complete.
-  virtual void Done(ProxyFetchPropertyCallback* callback, bool success);
+  void Done(ProxyFetchPropertyCallback* callback, bool success);
 
  private:
   std::set<ProxyFetchPropertyCallback*> pending_callbacks_;
@@ -174,12 +185,14 @@ class ProxyFetchPropertyCallbackCollector {
   property_pages_;
   scoped_ptr<AbstractMutex> mutex_;
   ResourceManager* resource_manager_;
+  GoogleString url_;
   bool detached_;             // protected by mutex_.
   bool done_;                 // protected by mutex_.
   bool success_;              // protected by mutex_; accessed after quiescence.
   ProxyFetch* proxy_fetch_;   // protected by mutex_.
   // protected by mutex_.
   scoped_ptr<std::vector<Function*> > post_lookup_task_vector_;
+  const RewriteOptions* options_;  // protected by mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(ProxyFetchPropertyCallbackCollector);
 };

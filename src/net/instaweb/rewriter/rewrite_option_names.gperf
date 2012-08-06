@@ -42,6 +42,7 @@ struct OptionName {
 "DomainShardCount",                     RewriteOptions::kDomainShardCount
 "EnableBlinkCriticalLine",              RewriteOptions::kEnableBlinkCriticalLine
 "EnableBlinkForMobileDevices",          RewriteOptions::kEnableBlinkForMobileDevices
+"EnableBlinkHtmlChangeDetection",       RewriteOptions::kEnableBlinkHtmlChangeDetection
 "EnableDeferJsExperimental",            RewriteOptions::kEnableDeferJsExperimental
 "ExperimentSlot",                       RewriteOptions::kFuriousSlot
 "FlushHtml",                            RewriteOptions::kFlushHtml
