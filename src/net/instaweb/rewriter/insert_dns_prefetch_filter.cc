@@ -82,6 +82,9 @@ void InsertDnsPrefetchFilter::StartDocumentImpl() {
 // the DOM cohort is written. We write a limited set of entries to avoid
 // thrashing the browser's DNS cache.
 void InsertDnsPrefetchFilter::EndDocument() {
+  if (!driver()->UserAgentSupportsFlushEarly()) {
+    return;
+  }
   FlushEarlyInfo* flush_early_info = driver()->flush_early_info();
   flush_early_info->set_total_dns_prefetch_domains_previous(
       flush_early_info->total_dns_prefetch_domains());
@@ -106,6 +109,9 @@ void InsertDnsPrefetchFilter::EndDocument() {
 // TODO(bharathbhushan): Make sure that this filter does not insert DNS prefetch
 // tags for resources inserted by the flush early filter.
 void InsertDnsPrefetchFilter::StartElementImpl(HtmlElement* element) {
+  if (!driver()->UserAgentSupportsFlushEarly()) {
+    return;
+  }
   if (element->keyword() == HtmlName::kHead) {
     in_head_ = true;
     return;
@@ -158,6 +164,9 @@ void InsertDnsPrefetchFilter::StartElementImpl(HtmlElement* element) {
 // At the end of the first HEAD, insert the DNS prefetch tags if the list of
 // domains is stable.
 void InsertDnsPrefetchFilter::EndElementImpl(HtmlElement* element) {
+  if (!driver()->UserAgentSupportsFlushEarly()) {
+    return;
+  }
   if (element->keyword() == HtmlName::kHead) {
     in_head_ = false;
     if (!dns_prefetch_inserted_) {

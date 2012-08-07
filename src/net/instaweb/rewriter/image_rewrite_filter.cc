@@ -204,7 +204,7 @@ void ImageRewriteFilter::Initialize(Statistics* statistics) {
 void ImageRewriteFilter::StartDocumentImpl() {
   CriticalImagesFinder* finder =
       driver_->resource_manager()->critical_images_finder();
-  if (finder != NULL &&
+  if (finder->IsMeaningful() &&
       (driver_->options()->Enabled(RewriteOptions::kDelayImages) ||
        (driver_->options()->Enabled(RewriteOptions::kInlineImages) &&
         driver_->options()->inline_only_critical_images()))) {
@@ -770,7 +770,9 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
 bool ImageRewriteFilter::IsCriticalImage(const StringPiece& image_url) const {
   CriticalImagesFinder* finder =
       driver_->resource_manager()->critical_images_finder();
-  if (finder == NULL) {
+  if (!finder->IsMeaningful()) {
+    // Default to all images being critical if we don't have meaningful critical
+    // image information.
     return true;
   }
   GoogleUrl image_gurl(driver_->base_url(), image_url);

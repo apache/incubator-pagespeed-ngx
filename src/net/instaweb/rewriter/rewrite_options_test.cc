@@ -623,7 +623,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(90, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(91, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAjaxRewritingEnabled));
@@ -889,6 +889,12 @@ TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {
   EXPECT_EQ(RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
             options_.GetBlinkCacheTimeFor(gurl_one));
   EXPECT_EQ(20, options_.GetBlinkCacheTimeFor(gurl_two));
+
+  EXPECT_EQ(RewriteOptions::kDefaultOverrideBlinkCacheTimeMs,
+            options1.override_blink_cache_time_ms());
+  options1.set_override_blink_cache_time_ms(120000);
+  EXPECT_EQ(120000, options1.GetBlinkCacheTimeFor(gurl_one));
+  EXPECT_EQ(120000, options1.GetBlinkCacheTimeFor(gurl_two));
 
   RewriteOptions options2;
   options2.AddBlinkCacheableFamily("/two*", 40, "else");

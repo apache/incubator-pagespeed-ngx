@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -95,6 +96,18 @@ class HTTPCacheStringCallback : public OptionsAwareHTTPCacheCallback {
   GoogleString* headers_out_;
   bool found_;
   DISALLOW_COPY_AND_ASSIGN(HTTPCacheStringCallback);
+};
+
+// By default, CriticalImagesFinder does not return meaningful results. However,
+// this test manually manages the critical image set, so CriticalImagesFinder
+// can return useful information for testing this filter.
+class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
+ public:
+  MeaningfulCriticalImagesFinder() {}
+  virtual ~MeaningfulCriticalImagesFinder() {}
+  virtual bool IsMeaningful() const {
+    return true;
+  }
 };
 
 class MockPage : public PropertyPage {
@@ -783,7 +796,7 @@ TEST_F(ImageRewriteTest, InlineCriticalOnly) {
   StringSet* critical_images = new StringSet;
   rewrite_driver()->set_critical_images(critical_images);
   resource_manager()->set_critical_images_finder(
-      new CriticalImagesFinder());
+      new MeaningfulCriticalImagesFinder());
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
   rewrite_driver()->AddFilters();

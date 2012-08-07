@@ -182,6 +182,7 @@ class RewriteOptions {
     kMinImageSizeLowResolutionBytes,
     kMinResourceCacheTimeToRewriteMs,
     kModifyCachingHeaders,
+    kOverrideBlinkCacheTimeMs,
     kPassthroughBlinkForInvalidResponseCode,
     kProgressiveJpegMinBytes,
     kRejectBlacklisted,
@@ -316,6 +317,7 @@ class RewriteOptions {
   static const int kDefaultImageWebpRecompressQuality;
   static const int kDefaultDomainShardCount;
   static const int64 kDefaultBlinkHtmlChangeDetectionTimeMs;
+  static const int64 kDefaultOverrideBlinkCacheTimeMs;
 
   // IE limits URL size overall to about 2k characters.  See
   // http://support.microsoft.com/kb/208427/EN-US
@@ -1021,6 +1023,13 @@ class RewriteOptions {
   }
   int64 blink_html_change_detection_time_ms() const {
     return blink_html_change_detection_time_ms_.value();
+  }
+
+  void set_override_blink_cache_time_ms(int64 x) {
+    set_option(x, &override_blink_cache_time_ms_);
+  }
+  int64 override_blink_cache_time_ms() const {
+    return override_blink_cache_time_ms_.value();
   }
 
   const GoogleString& blocking_rewrite_key() const {
@@ -1927,6 +1936,8 @@ class RewriteOptions {
   Option<bool> enable_blink_debug_dashboard_;
   // Enable automatic detection of publisher changes in html in blink.
   Option<bool> enable_blink_html_change_detection_;
+  // Override cache-time for cacheable resources in blink.
+  Option<int64> override_blink_cache_time_ms_;
 
   // If this is true (it defaults to false) ProxyInterface frontend will
   // reject requests where PSA is not enabled or URL is blacklisted with

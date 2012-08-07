@@ -335,7 +335,7 @@ StaticJavascriptManager*
 }
 
 CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
-  return NULL;
+  return new CriticalImagesFinder();
 }
 
 BlinkCriticalLineDataFinder*

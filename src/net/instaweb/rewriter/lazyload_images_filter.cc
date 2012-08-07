@@ -151,7 +151,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
         // Note that if the platform lacks a CriticalImageFinder
         // implementation, we consider all images to be non-critical and try
         // to lazily load them.
-        if (finder != NULL) {
+        if (finder->IsMeaningful()) {
           // Decode the url since the critical images in the finder are not
           // rewritten.
           GoogleUrl gurl(base_url(), url);

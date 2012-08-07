@@ -23,13 +23,16 @@
 # (http://www.robotstxt.org/db/) but were noticed in access logs.
 extra_names=(Googlebot-Image bingbot Yahoo! about.ask.com
 Baiduspider BackRub Gigabot OntoSpider Lycos YodaoBot YandexBot
-bitlybot vcbot)
+bitlybot vcbot Ruby Mediapartners-Google msnbot-UDiscovery WordPress
+facebookplatform facebookexternalhit Arachni PHP Python HttpClient expo9
+RPT-HTTPClient proximic GrapeshotCrawler)
 
 cd /tmp
 wget -O all.genbot.$$ http://www.robotstxt.org/db/all.txt
 awk '/robot-useragent:/ {print $2}' all.genbot.$$ >> s1.genbot.$$
-# Get all user-agents matching "bot" or "spider", case insensitive.
-awk '/[Bb][Oo][Tt]/ || /[Ss]pider/ {print $0}' s1.genbot.$$ >> s2.genbot.$$
+# Get all user-agents matching "bot", "crawl" or "spider", case insensitive.
+awk '/[Bb][Oo][Tt]/ || /[Ss]pider/ || /[Cc]rawl/ {print $0}' s1.genbot.$$ \
+  >> s2.genbot.$$
 # Remove the version part
 awk -F / '{print $1}' s2.genbot.$$ >> id.genbot.$$
 # Add some bots

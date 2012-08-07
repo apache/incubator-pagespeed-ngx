@@ -78,6 +78,10 @@ const char RewriteOptions::kPanelCommentPrefix[] = "GooglePanel";
 const int64 RewriteOptions::kDefaultBlinkMaxHtmlSizeRewritable =
     10 * 1024 * 1024;
 
+// If positive, the overridden default cache-time for cacheable resources in
+// blink.
+const int64 RewriteOptions::kDefaultOverrideBlinkCacheTimeMs = -1;
+
 // TODO(jmarantz): consider merging this threshold with the image-inlining
 // threshold, which is currently defaulting at 2000, so we have a single
 // byte-count threshold, above which inlined resources get outlined, and
@@ -654,6 +658,8 @@ RewriteOptions::RewriteOptions()
   add_option(5 * Timer::kSecondMs, &blocking_fetch_timeout_ms_, "bfto",
              RewriteOptions::kFetcherTimeOutMs);
   add_option(true, &enable_blink_debug_dashboard_, "ebdd");
+  add_option(kDefaultOverrideBlinkCacheTimeMs, &override_blink_cache_time_ms_,
+             "obctm");
   add_option("", &lazyload_images_blank_url_, "llbu");
   add_option(kDefaultBlinkHtmlChangeDetectionTimeMs,
              &blink_html_change_detection_time_ms_, "bhcdt");
@@ -1174,6 +1180,9 @@ bool RewriteOptions::IsInBlinkCacheableFamily(const GoogleUrl& gurl) const {
 }
 
 int64 RewriteOptions::GetBlinkCacheTimeFor(const GoogleUrl& gurl) const {
+  if (override_blink_cache_time_ms_.value() > 0) {
+    return override_blink_cache_time_ms_.value();
+  }
   StringPiece url_to_match = (use_full_url_in_blink_families() ?
                               gurl.Spec() : gurl.PathAndLeaf());
   const PrioritizeVisibleContentFamily* family =

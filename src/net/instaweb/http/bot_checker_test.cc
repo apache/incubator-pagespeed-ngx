@@ -33,6 +33,16 @@ TEST_F(BotCheckerTest, DetectUserAgentBaidu1) {
   EXPECT_TRUE(BotChecker::Lookup(user_agent));
 }
 
+TEST_F(BotCheckerTest, Msnbot) {
+  const char user_agent[] = "msnbot-UDiscovery/2.0b";
+  EXPECT_TRUE(BotChecker::Lookup(user_agent));
+}
+
+TEST_F(BotCheckerTest, Mediapartners) {
+  const char user_agent[] = "Mediapartners-Google";
+  EXPECT_TRUE(BotChecker::Lookup(user_agent));
+}
+
 TEST_F(BotCheckerTest, DetectUserAgentBaidu2) {
   const char user_agent[] = "Baiduspider+"
                "(+http://help.baidu.jp/system/05.html)";

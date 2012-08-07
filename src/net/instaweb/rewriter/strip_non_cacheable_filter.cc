@@ -54,13 +54,8 @@ void StripNonCacheableFilter::StartElement(HtmlElement* element) {
     InsertBlinkJavascript(element);
   }
 
-  HtmlElement::Attribute* src;
-  if (script_tag_scanner_.ParseScriptElement(element, &src) ==
-      ScriptTagScanner::kJavaScript) {
-    if (!element->FindAttribute(HtmlName::kPagespeedNoDefer)) {
-      LOG(DFATAL) << "Script which is not deferred is found!!!";
-    }
-  }
+  // TODO(guptaa): Add a LOG(DFATAL) message here if non deferred scripts are
+  // found.
 
   int panel_number = BlinkUtil::GetPanelNumberForNonCacheableElement(
       attribute_non_cacheable_values_map_, element);

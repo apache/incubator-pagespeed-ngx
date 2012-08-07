@@ -212,6 +212,11 @@ DEFINE_bool(support_noscript_enabled, true,
 DEFINE_bool(enable_blink_debug_dashboard, true,
             "Enable blink dashboard used for debugging.");
 
+DEFINE_int64(override_blink_cache_time_ms,
+             net_instaweb::RewriteOptions::kDefaultOverrideBlinkCacheTimeMs,
+             "If positive, overrides the cache-time for cacheable resources "
+             "in blink.");
+
 DEFINE_bool(report_unload_time, false, "If enabled, sends beacons when page "
             "unload happens before onload.");
 
@@ -387,6 +392,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_blink_debug_dashboard")) {
     options->set_enable_blink_debug_dashboard(
         FLAGS_enable_blink_debug_dashboard);
+  }
+  if (WasExplicitlySet("override_blink_cache_time_ms")) {
+    options->set_override_blink_cache_time_ms(
+        FLAGS_override_blink_cache_time_ms);
   }
   if (WasExplicitlySet("report_unload_time")) {
     options->set_report_unload_time(FLAGS_report_unload_time);

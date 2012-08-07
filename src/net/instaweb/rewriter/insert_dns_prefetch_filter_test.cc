@@ -20,6 +20,7 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -58,6 +59,7 @@ class InsertDnsPrefetchFilterTest : public ResourceManagerTestBase {
     ResourceManagerTestBase::SetUp();
     rewrite_driver()->AddFilters();
     rewrite_driver()->SetWriter(&writer_);
+    rewrite_driver()->set_user_agent(UserAgentStrings::kChromeUserAgent);
   }
 
   virtual void TearDown() {
@@ -149,6 +151,21 @@ TEST_F(InsertDnsPrefetchFilterTest, StoreDomainsInBody) {
   Parse("store_domains_in_body", html);
   EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
   CheckPrefetchInfo(3, 0, 3, "a.com,b.com,c.com");
+}
+
+TEST_F(InsertDnsPrefetchFilterTest,
+       DisableInsertDnsPrefetchForNonChromeRequest) {
+  rewrite_driver()->set_user_agent(UserAgentStrings::kFirefoxUserAgent);
+  GoogleString html =
+      "<head></head>"
+      "<body>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"http://a.com/\">"
+        "<script src=\"http://b.com/\"/>"
+        "<img src=\"http://c.com/\"/>"
+      "</body>";
+  Parse("store_domains_in_body", html);
+  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  CheckPrefetchInfo(0, 0, 0, "");
 }
 
 TEST_F(InsertDnsPrefetchFilterTest, StoreDomainsOnlyInBody) {

@@ -394,7 +394,7 @@ deferJsNs.DeferJs.prototype.createIdVars = function() {
 deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos, opt_prefetch) {
   var src = script.getAttribute('orig_src') || script.getAttribute('src');
   if (src) {
-    if (deferJsNs.DeferJs.isExperimentalMode && opt_prefetch) {
+    if (opt_prefetch) {
       new Image().src = src;
     }
     this.addUrl(src, script, opt_pos);

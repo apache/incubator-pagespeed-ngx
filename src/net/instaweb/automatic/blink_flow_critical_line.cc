@@ -653,6 +653,11 @@ void BlinkFlowCriticalLine::SendCriticalHtml(
     WriteString("<script>pagespeed.panelLoader.setRequestFromInternalIp();"
                 "</script>");
   }
+  if (!options_->enable_blink_debug_dashboard()) {
+    WriteString("<script>"
+                "pagespeed.panelLoader.setCsiTimingsReportingEnabled(false);"
+                "</script>");
+  }
   WriteString("<script>pagespeed.panelLoader.loadCriticalData({});</script>");
   Flush();
 }

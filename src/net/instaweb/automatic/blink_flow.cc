@@ -393,6 +393,11 @@ void BlinkFlow::SendCriticalJson(GoogleString* critical_json_str) {
     WriteString("<script>pagespeed.panelLoader.setRequestFromInternalIp();"
                 "</script>");
   }
+  if (!options_->enable_blink_debug_dashboard()) {
+    WriteString("<script>"
+                "pagespeed.panelLoader.setCsiTimingsReportingEnabled(false);"
+                "</script>");
+  }
   WriteString(GetAddTimingScriptString(kTimeToSplitCritical,
                                        time_to_split_critical_ms_));
   WriteString("<script>pagespeed.panelLoader.loadCriticalData(");

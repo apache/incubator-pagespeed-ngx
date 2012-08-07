@@ -91,7 +91,6 @@ BASE_LIBS = \
   net/instaweb/libprocess_context.a \
   third_party/base64/libbase64.a \
   third_party/chromium/src/base/third_party/dynamic_annotations/libdynamic_annotations.a \
-  third_party/chromium/src/net/tools/liburl_to_filename_encoder.a \
   third_party/css_parser/libcss_parser.a \
   third_party/css_parser/libutf.a \
   third_party/domain_registry_provider/src/domain_registry/libdomain_registry_lib.a \

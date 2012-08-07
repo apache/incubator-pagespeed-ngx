@@ -34,7 +34,18 @@ class CriticalImagesFinder {
   CriticalImagesFinder();
   virtual ~CriticalImagesFinder();
 
+  // Checks whether IsCriticalImage will return meaningful results about
+  // critical images. The default implementation does not, but classes
+  // inheriting likely do. Users of IsCriticalImage should check this function
+  // and supply a default behavior if IsMeaningful returns false.
+  virtual bool IsMeaningful() const {
+    return false;
+  }
+
   // Checks whether the requested image is present in the critical set or not.
+  // Users of this function should also check IsMeaningful() to see if the
+  // implementation of this function returns meaningful results and provide a
+  // default behavior if it does not.
   virtual bool IsCriticalImage(const GoogleString& image_url,
                                const RewriteDriver* driver) const;
 
