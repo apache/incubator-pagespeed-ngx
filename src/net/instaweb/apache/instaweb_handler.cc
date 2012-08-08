@@ -285,7 +285,7 @@ apr_status_t instaweb_handler(request_rec* request) {
   if (strcmp(request->handler, kStatisticsHandler) == 0) {
     GoogleString output;
     StringWriter writer(&output);
-    Statistics* statistics = factory->statistics();
+    Statistics* statistics = manager->statistics();
     if (statistics != NULL) {
       // Write <pre></pre> for Dump to keep good format.
       writer.Write("<pre>", factory->message_handler());

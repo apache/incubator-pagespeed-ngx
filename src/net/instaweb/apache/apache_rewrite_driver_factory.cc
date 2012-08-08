@@ -102,6 +102,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       apache_html_parse_message_handler_(new ApacheMessageHandler(
           server_rec_, version_, timer())),
       html_rewrite_time_us_histogram_(NULL),
+      use_per_vhost_statistics_(false),
       thread_counts_finalized_(false),
       num_rewrite_threads_(-1),
       num_expensive_rewrite_threads_(-1),
@@ -516,24 +517,12 @@ void ApacheRewriteDriverFactory::ShutDown() {
 // Initializes global statistics object if needed, using factory to
 // help with the settings if needed.
 // Note: does not call set_statistics() on the factory.
-Statistics* ApacheRewriteDriverFactory::MakeSharedMemStatistics() {
+Statistics* ApacheRewriteDriverFactory::MakeGlobalSharedMemStatistics() {
   if (shared_mem_statistics_.get() == NULL) {
-    // Note that we create the statistics object in the parent process, and
-    // it stays around in the kids but gets reinitialized for them
-    // with a call to InitVariables(false) inside pagespeed_child_init.
-    //
-    // TODO(jmarantz): it appears that filename_prefix() is not actually
-    // established at the time of this construction, calling into question
-    // whether we are naming our shared-memory segments correctly.
-    shared_mem_statistics_.reset(new SharedMemStatistics(
-        shared_mem_runtime(), filename_prefix().as_string(),
-        message_handler(), file_system(), timer()));
-    Initialize(shared_mem_statistics_.get());
-    shared_mem_statistics_->AddHistogram(kHtmlRewriteTimeHistogram);
-    shared_mem_statistics_->Init(true, message_handler());
+    shared_mem_statistics_.reset(
+        AllocateAndInitSharedMemStatistics("global"));
     html_rewrite_time_us_histogram_ = shared_mem_statistics_->GetHistogram(
         kHtmlRewriteTimeHistogram);
-    html_rewrite_time_us_histogram_->SetMaxValue(200 * Timer::kMsUs);
   }
   DCHECK(!statistics_frozen_);
   statistics_frozen_ = true;
@@ -541,7 +530,27 @@ Statistics* ApacheRewriteDriverFactory::MakeSharedMemStatistics() {
   return shared_mem_statistics_.get();
 }
 
+SharedMemStatistics* ApacheRewriteDriverFactory::
+    AllocateAndInitSharedMemStatistics(const StringPiece& name) {
+  // Note that we create the statistics object in the parent process, and
+  // it stays around in the kids but gets reinitialized for them
+  // inside ChildInit(), called from pagespeed_child_init.
+  //
+  // TODO(jmarantz): it appears that filename_prefix() is not actually
+  // established at the time of this construction, calling into question
+  // whether we are naming our shared-memory segments correctly.
+  SharedMemStatistics* stats = new SharedMemStatistics(
+      shared_mem_runtime(), StrCat(filename_prefix(), name),
+      message_handler(), file_system(), timer());
+  Initialize(stats);
+  stats->Init(true, message_handler());
+  return stats;
+}
+
 void ApacheRewriteDriverFactory::Initialize(Statistics* statistics) {
+  Histogram* html_rewrite_time_us_histogram =
+      statistics->AddHistogram(kHtmlRewriteTimeHistogram);
+  html_rewrite_time_us_histogram->SetMaxValue(200 * Timer::kMsUs);
   RewriteDriverFactory::Initialize(statistics);
   SerfUrlAsyncFetcher::Initialize(statistics);
   ApacheResourceManager::Initialize(statistics);

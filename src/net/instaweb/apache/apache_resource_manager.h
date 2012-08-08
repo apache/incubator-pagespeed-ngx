@@ -50,10 +50,14 @@ class ApacheResourceManager : public ResourceManager {
   virtual ~ApacheResourceManager();
 
   GoogleString hostname_identifier() { return hostname_identifier_; }
-  void SetStatistics(SharedMemStatistics* x);
   ApacheRewriteDriverFactory* apache_factory() { return apache_factory_; }
   ApacheConfig* config();
   bool InitFileCachePath();
+
+  // Initialize this ResourceManager to have its own statistics domain.
+  // Must be called after global_statistics has been created and had
+  // ::Initialize called on it.
+  void CreateLocalStatistics(Statistics* global_statistics);
 
   // Should be called after the child process is forked.
   void ChildInit();
@@ -101,6 +105,15 @@ class ApacheResourceManager : public ResourceManager {
   GoogleString hostname_identifier_;
 
   bool initialized_;
+
+  // Non-NULL if we have per-vhost stats.
+  scoped_ptr<Statistics> split_statistics_;
+
+  // May be NULL. Owned by *split_statistics_.
+  SharedMemStatistics* local_statistics_;
+
+  // Non-NULL if we have per-vhost stats.
+  scoped_ptr<RewriteStats> local_rewrite_stats_;
 
   // State used to implement periodic polling of $FILE_PREFIX/cache.flush.
   // last_cache_flush_check_sec_ is ctor-initialized to 0 so the first

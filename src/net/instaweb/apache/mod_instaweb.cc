@@ -84,6 +84,7 @@ namespace {
 // install/common/pagespeed.conf.template.
 // If you add a new option, please add it to the #ALL_DIRECTIVES section of
 // install/debug.conf.template to make sure it will parse.
+// TODO(morlovich): All of these should be const char kFoo[].
 const char* kModPagespeedAllow = "ModPagespeedAllow";
 const char* kModPagespeedAnalyticsID = "ModPagespeedAnalyticsID";
 const char* kModPagespeedAvoidRenamingIntrospectiveJavascript =
@@ -183,6 +184,8 @@ const char* kModPagespeedStatistics = "ModPagespeedStatistics";
 const char* kModPagespeedTestProxy = "ModPagespeedTestProxy";
 const char* kModPagespeedUrlPrefix = "ModPagespeedUrlPrefix";
 const char* kModPagespeedUrlValuedAttribute = "ModPagespeedUrlValuedAttribute";
+const char* kModPagespeedUsePerVHostStatistics =
+    "ModPagespeedUsePerVHostStatistics";
 const char* kModPagespeedSpeedTracking = "ModPagespeedIncreaseSpeedTracking";
 const char* kModPagespeedXHeaderValue = "ModPagespeedXHeaderValue";
 
@@ -744,7 +747,13 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       // allows statistics to work if mod_pagespeed gets turned on via
       // .htaccess or query param.
       if ((statistics == NULL) && config->statistics_enabled()) {
-        statistics = factory->MakeSharedMemStatistics();
+        statistics = factory->MakeGlobalSharedMemStatistics();
+      }
+
+      // If config has statistics on and we have per-vhost statistics on
+      // as well, then set it up.
+      if (config->statistics_enabled() && factory->use_per_vhost_statistics()) {
+        manager->CreateLocalStatistics(statistics);
       }
     }
   }
@@ -762,9 +771,6 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
   // NullStatistics.
   if (statistics == NULL) {
     statistics = factory->statistics();
-
-    // Next we do the instance-independent static initialization, once we have
-    // established whether *any* of the servers have stats enabled.
     ApacheRewriteDriverFactory::Initialize(statistics);
   }
 
@@ -1097,6 +1103,10 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (StringCaseEqual(directive, kModPagespeedBlockingRewriteKey)) {
     options->set_blocking_rewrite_key(arg);
+  } else if (StringCaseEqual(directive, kModPagespeedUsePerVHostStatistics)) {
+    ret = ParseBoolOption(
+        factory, cmd, &ApacheRewriteDriverFactory::set_use_per_vhost_statistics,
+        arg);
   } else {
     ret = apr_pstrcat(cmd->pool, "Unknown directive ",
                       directive.as_string().c_str(), NULL);
@@ -1294,6 +1304,10 @@ APACHE_CONFIG_DIR_OPTION(kModPagespeedClientDomainRewrite,
 
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)
+  APACHE_CONFIG_OPTION(kModPagespeedBlockingRewriteKey,
+        "If the X-PSA-Pagespeed-Blocking-Rewrite header is present, and its "
+        "value matches the configured value, ensure that all rewrites are "
+        "completed before sending the response to the client."),
   APACHE_CONFIG_OPTION(kModPagespeedCacheFlushFilename,
         "Name of file to check for timestamp updates used to flush cache. "
         "This file will be relative to the ModPagespeedFileCachePath if it "
@@ -1375,12 +1389,10 @@ APACHE_CONFIG_DIR_OPTION(kModPagespeedClientDomainRewrite,
   APACHE_CONFIG_OPTION(kModPagespeedTestProxy,
         "Act as a proxy without maintaining a slurp dump."),
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "Set the url prefix"),
+  APACHE_CONFIG_OPTION(kModPagespeedUsePerVHostStatistics,
+        "If true, keep track of statistics per VHost and not just globally"),
   APACHE_CONFIG_OPTION(kModPagespeedXHeaderValue,
         "Set the value for the X-Mod-Pagespeed HTTP header"),
-  APACHE_CONFIG_OPTION(kModPagespeedBlockingRewriteKey,
-        "If the X-PSA-Pagespeed-Blocking-Rewrite header is present, and its "
-        "value matches the configured value, ensure that all rewrites are "
-        "completed before sending the response to the client."),
 
   // All two parameter options that are allowed in <Directory> blocks.
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,

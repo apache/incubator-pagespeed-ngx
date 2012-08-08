@@ -22,9 +22,12 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/shared_mem_statistics.h"
+#include "net/instaweb/util/public/split_statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -55,6 +58,7 @@ ApacheResourceManager::ApacheResourceManager(
       hostname_identifier_(StrCat(server->server_hostname, ":",
                                   IntegerToString(server->port))),
       initialized_(false),
+      local_statistics_(NULL),
       cache_flush_mutex_(thread_system()->NewMutex()),
       last_cache_flush_check_sec_(0),
       cache_flush_poll_interval_sec_(kDefaultCacheFlushIntervalSec),
@@ -99,6 +103,18 @@ ApacheConfig* ApacheResourceManager::config() {
   return ApacheConfig::DynamicCast(global_options());
 }
 
+void ApacheResourceManager::CreateLocalStatistics(
+    Statistics* global_statistics) {
+  local_statistics_ =
+      apache_factory_->AllocateAndInitSharedMemStatistics(
+          hostname_identifier());
+  split_statistics_.reset(new SplitStatistics(
+      apache_factory_->thread_system(), local_statistics_, global_statistics));
+  // local_statistics_ was ::Initialize'd by AllocateAndInitSharedMemStatistics,
+  // but we need to take care of split_statistics_.
+  ApacheRewriteDriverFactory::Initialize(split_statistics_.get());
+}
+
 void ApacheResourceManager::ChildInit() {
   DCHECK(!initialized_);
   if (!initialized_) {
@@ -111,6 +127,21 @@ void ApacheResourceManager::ChildInit() {
     set_lock_manager(cache->lock_manager());
     UrlAsyncFetcher* fetcher = apache_factory_->GetFetcher(config());
     set_default_system_fetcher(fetcher);
+
+    if (split_statistics_.get() != NULL) {
+      // Readjust the SHM stuff for the new process
+      local_statistics_->Init(false, message_handler());
+
+      // Create local stats for the ResourceManager, and fill in its
+      // statistics() and rewrite_stats() using them; if we didn't do this here
+      // they would get set to the factory's by the InitResourceManager call
+      // below.
+      set_statistics(split_statistics_.get());
+      local_rewrite_stats_.reset(new RewriteStats(
+          split_statistics_.get(), apache_factory_->thread_system(),
+          apache_factory_->timer()));
+      set_rewrite_stats(local_rewrite_stats_.get());
+    }
 
     // To allow Flush to come in while multiple threads might be
     // referencing the signature, we must be able to mutate the

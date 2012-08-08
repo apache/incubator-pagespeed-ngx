@@ -464,8 +464,12 @@ void RewriteDriverFactory::InitResourceManager(
 
   resource_manager->ComputeSignature(resource_manager->global_options());
   resource_manager->set_scheduler(scheduler());
-  resource_manager->set_statistics(statistics());
-  resource_manager->set_rewrite_stats(rewrite_stats());
+  if (resource_manager->statistics() == NULL) {
+    resource_manager->set_statistics(statistics());
+  }
+  if (resource_manager->rewrite_stats() == NULL) {
+    resource_manager->set_rewrite_stats(rewrite_stats());
+  }
   // Initialize the metadata cache before initializing the http cache, since
   // it initializes the cache backend.
   if (resource_manager->metadata_cache() == NULL) {

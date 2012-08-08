@@ -108,10 +108,13 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   SlowWorker* slow_worker() { return slow_worker_.get(); }
 
-  // Build shared-memory statistics.  This is invoked only if at least
-  // one VirtualHost enables statistics, in which case the shared-mem
-  // statistics is used for VirtualHosts.
-  Statistics* MakeSharedMemStatistics();
+  // Build global shared-memory statistics.  This is invoked if at least
+  // one server context (global or VirtualHost) enables statistics.
+  Statistics* MakeGlobalSharedMemStatistics();
+
+  // Creates and ::Initializes a shared memory statistics object.
+  SharedMemStatistics* AllocateAndInitSharedMemStatistics(
+      const StringPiece& name);
 
   ApacheResourceManager* MakeApacheResourceManager(server_rec* server);
 
@@ -139,6 +142,14 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // which case this should be turned on.
   void list_outstanding_urls_on_error(bool x) {
     list_outstanding_urls_on_error_ = x;
+  }
+
+  bool use_per_vhost_statistics() const {
+    return use_per_vhost_statistics_;
+  }
+
+  void set_use_per_vhost_statistics(bool x) {
+    use_per_vhost_statistics_ = x;
   }
 
   // Finds a Cache for the file_cache_path in the config.  If none exists,
@@ -260,7 +271,13 @@ protected:
   typedef std::set<ApacheResourceManager*> ApacheResourceManagerSet;
   ApacheResourceManagerSet uninitialized_managers_;
 
+  // TODO(morlovich): This should be per resource manager.
   Histogram* html_rewrite_time_us_histogram_;
+
+  // If true, we'll have a separate statistics object for each vhost
+  // (along with a global aggregate), rather than just a single object
+  // aggregating all of them.
+  bool use_per_vhost_statistics_;
 
   // true iff we ran through AutoDetectThreadCounts()
   bool thread_counts_finalized_;
