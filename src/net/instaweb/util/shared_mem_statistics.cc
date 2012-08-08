@@ -326,8 +326,10 @@ void SharedMemHistogram::EnableNegativeBuckets() {
                                         "SetMinValue on the same histogram.";
 
   ScopedMutex hold_lock(mutex_.get());
-  buffer_->enable_negative_ = true;
-  ClearInternal();
+  if (!buffer_->enable_negative_) {
+    buffer_->enable_negative_ = true;
+    ClearInternal();
+  }
 }
 
 void SharedMemHistogram::SetMinValue(double value) {
@@ -340,8 +342,10 @@ void SharedMemHistogram::SetMinValue(double value) {
       "should be smaller than its upper-bound.";
 
   ScopedMutex hold_lock(mutex_.get());
-  buffer_->min_value_ = value;
-  ClearInternal();
+  if (buffer_->min_value_ != value) {
+    buffer_->min_value_ = value;
+    ClearInternal();
+  }
 }
 
 void SharedMemHistogram::SetMaxValue(double value) {
@@ -350,8 +354,10 @@ void SharedMemHistogram::SetMaxValue(double value) {
   }
   DCHECK_LT(0, value) << "Upper-bound of a histogram should be larger than 0.";
   ScopedMutex hold_lock(mutex_.get());
-  buffer_->max_value_ = value;
-  ClearInternal();
+  if (buffer_->max_value_ != value) {
+    buffer_->max_value_ = value;
+    ClearInternal();
+  }
 }
 
 void SharedMemHistogram::SetMaxBuckets(int i) {

@@ -47,6 +47,7 @@ class SharedMemStatisticsTestBase : public testing::Test {
   void TestAdd();
   void TestHistogram();
   void TestHistogramRender();
+  void TestHistogramNoExtraClear();
   void TestTimedVariableEmulation();
   void TestConsoleStatisticsLogger();
 
@@ -54,6 +55,7 @@ class SharedMemStatisticsTestBase : public testing::Test {
   void TestCreateChild();
   void TestSetChild();
   void TestClearChild();
+  void TestHistogramNoExtraClearChild();
 
   // Adds 10x +1 to variable 1, and 10x +2 to variable 2.
   void TestAddChild();
@@ -111,6 +113,10 @@ TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestHistogramRender) {
   SharedMemStatisticsTestBase::TestHistogramRender();
 }
 
+TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestHistogramNoExtraClear) {
+  SharedMemStatisticsTestBase::TestHistogramNoExtraClear();
+}
+
 TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestTimedVariableEmulation) {
   SharedMemStatisticsTestBase::TestTimedVariableEmulation();
 }
@@ -123,7 +129,8 @@ TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestConsoleStatisticsLogger) {
 
 REGISTER_TYPED_TEST_CASE_P(SharedMemStatisticsTestTemplate, TestCreate,
                            TestSet, TestClear, TestAdd, TestHistogram,
-                           TestHistogramRender, TestTimedVariableEmulation);
+                           TestHistogramRender, TestHistogramNoExtraClear,
+                           TestTimedVariableEmulation);
 
 }  // namespace net_instaweb
 

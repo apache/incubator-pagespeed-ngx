@@ -381,6 +381,29 @@ void SharedMemStatisticsTestBase::TestHistogramRender() {
   EXPECT_TRUE(Contains(html_graph, "setHistogram"));
 }
 
+void SharedMemStatisticsTestBase::TestHistogramNoExtraClear() {
+  // Make sure we don't lose histogram data when a child process
+  // redundantly applies the same settings.
+  ParentInit();
+  Histogram* h1 = stats_->GetHistogram(kHist1);
+  h1->EnableNegativeBuckets();
+  h1->SetMaxValue(100.0);
+  h1->Add(42);
+  EXPECT_EQ(1, h1->Count());
+  ASSERT_TRUE(CreateChild(
+      &SharedMemStatisticsTestBase::TestHistogramNoExtraClearChild));
+  test_env_->WaitForChildren();
+  EXPECT_EQ(1, h1->Count());
+}
+
+void SharedMemStatisticsTestBase::TestHistogramNoExtraClearChild() {
+  scoped_ptr<SharedMemStatistics> stats(ChildInit());
+  Histogram* h1 = stats->GetHistogram(kHist1);
+  // This would previously lose the data.
+  h1->EnableNegativeBuckets();
+  h1->SetMaxValue(100.0);
+}
+
 void SharedMemStatisticsTestBase::TestTimedVariableEmulation() {
   // Simple test of timed variable emulation. Not using ParentInit
   // here since we want to add some custom things.
