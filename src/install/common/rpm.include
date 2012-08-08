@@ -101,6 +101,9 @@ determine_rpm_package_manager() {
 
   if [ -f "/etc/fedora-release" ] || [ -f "/etc/redhat-release" ]; then
     PACKAGEMANAGER=yum
+  elif [ -f "/etc/system-release" ] && \
+       grep -q "Amazon Linux AMI" /etc/system-release ; then
+    PACKAGEMANAGER=yum
   elif [ -f "/etc/SuSE-release" ]; then
     PACKAGEMANAGER=yast
   elif [ -f "/etc/mandriva-release" ]; then
