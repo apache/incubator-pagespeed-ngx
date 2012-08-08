@@ -33,6 +33,7 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
+#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -269,16 +270,12 @@ void BlinkFlow::Initialize(Statistics* stats) {
 }
 
 void BlinkFlow::InitiateJsonLookup() {
-  // TODO(rahulbansal): Add this field to timing info proto and remove this
-  // header.
-  const char* request_start_time_ms_str =
-      base_fetch_->request_headers()->Lookup1(kRequestStartTimeHeader);
-  if (request_start_time_ms_str != NULL) {
-    if (!StringToInt64(request_start_time_ms_str, &request_start_time_ms_)) {
-      request_start_time_ms_ = 0;
-    }
+  TimingInfo timing_info = base_fetch_->logging_info()->timing_info();
+  if (timing_info.has_request_start_ms()) {
+    request_start_time_ms_ = timing_info.request_start_ms();
+  } else {
+    request_start_time_ms_ = manager_->timer()->NowMs();
   }
-
   time_to_start_blink_flow_ms_ = GetTimeElapsedFromStartRequest();
 
   GoogleUrl gurl(url_);

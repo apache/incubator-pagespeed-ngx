@@ -115,7 +115,10 @@ const char kRewrittenHtml[] =
     "</html>";
 const char kFlushEarlyRewritenHtmlImageTag[] =
     "<html>"
-    "<head><script type=\"text/javascript\">(function(){"
+    "<head><script type='text/javascript'>"
+    "window.mod_pagespeed_prefetch_start = Number(new Date());"
+    "window.mod_pagespeed_num_resources_prefetched = 2</script>"
+    "<script type=\"text/javascript\">(function(){"
     "new Image().src=\"%s\";"
     "new Image().src=\"%s\";})()</script>"
     "</head><head>"
@@ -130,6 +133,9 @@ const char kFlushEarlyRewritenHtmlImageTag[] =
 const char kFlushEarlyRewritenHtmlLinkRelSubresource[] =
     "<html>"
     "<head>"
+    "<script type='text/javascript'>"
+    "window.mod_pagespeed_prefetch_start = Number(new Date());"
+    "window.mod_pagespeed_num_resources_prefetched = 2</script>"
     "<link rel=\"subresource\" href=\"%s\"/>\n"
     "<link rel=\"subresource\" href=\"%s\"/>\n"
     "</head><head>"
@@ -777,6 +783,14 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTest) {
   RequestHeaders request_headers;
   ResponseHeaders headers;
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  // Check total number of cache inserts.
+  // 3 for 1.css, 2.css and 1.js.
+  // 3 for 1.css+2.css.pagespeed.cc.0.css, 1.js.pagespeed.jm.0.js and
+  //       I.1.css+2.css,Mcc.0.css.pagespeed.cf.0.css
+  // 5 metadata cache entry - one each for cc, cf and jm, two for ce.
+  // There is no property cache insert because flush subresource filter is
+  // disabled and no property is updated in DomCohort.
+  EXPECT_EQ(11, lru_cache()->num_inserts());
 
   // Fetch the url again. This time FlushEarlyFlow should not be triggered.
   // None
@@ -793,6 +807,13 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestUserAgent) {
                           UserAgentStrings::kChromeUserAgent);
   ResponseHeaders headers;
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  // Check total number of cache inserts.
+  // 3 for 1.css, 2.css and 1.js.
+  // 3 for 1.css+2.css.pagespeed.cc.0.css, 1.js.pagespeed.jm.0.js and
+  //       I.1.css+2.css,Mcc.0.css.pagespeed.cf.0.css
+  // 7 metadata cache entry one each for cc, cf and jm, two for ce and fs.
+  // 1 for DomCohort write in property cache.
+  EXPECT_EQ(14, lru_cache()->num_inserts());
 
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   // Chrome

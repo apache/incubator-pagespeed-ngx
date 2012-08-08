@@ -251,6 +251,8 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kExperimentSpdy,
   RewriteOptions::kExplicitCloseTags,
   RewriteOptions::kLazyloadImages,
+  RewriteOptions::kProcessBlinkInBackground,  // internal,
+                                              // enabled conditionally
   RewriteOptions::kServeNonCacheableNonCritical,  // internal,
                                                   // enabled conditionally
   RewriteOptions::kStripNonCacheable,  // internal, enabled conditionally
@@ -335,6 +337,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kOutlineCss:                      return "Outline Css";
     case kOutlineJavascript:               return "Outline Javascript";
     case kPrioritizeVisibleContent:        return "Prioritize Visible Content";
+    case kProcessBlinkInBackground:        return "Blink Background Processing";
     case kRecompressJpeg:                  return "Recompress Jpeg";
     case kRecompressPng:                   return "Recompress Png";
     case kRecompressWebp:                  return "Recompress Webp";
@@ -410,6 +413,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kOutlineCss:                      return "co";
     case kOutlineJavascript:               return "jo";
     case kPrioritizeVisibleContent:        return "pv";
+    case kProcessBlinkInBackground:        return "bb";
     case kRecompressJpeg:                  return "rj";
     case kRecompressPng:                   return "rp";
     case kRecompressWebp:                  return "rw";

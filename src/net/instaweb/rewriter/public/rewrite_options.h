@@ -97,6 +97,7 @@ class RewriteOptions {
     kOutlineCss,
     kOutlineJavascript,
     kPrioritizeVisibleContent,
+    kProcessBlinkInBackground,
     kRecompressJpeg,
     kRecompressPng,
     kRecompressWebp,

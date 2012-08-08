@@ -16,13 +16,15 @@
 
 // Author: rahulbansal@google.com (Rahul Bansal)
 
-#include "net/instaweb/rewriter/public/strip_non_cacheable_filter.h"
+#include "net/instaweb/rewriter/public/blink_background_filter.h"
 
+#include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"
 
@@ -35,7 +37,7 @@ const char kRequestUrl[] = "http://www.test.com";
 const char kHtmlInput[] =
     "<html>"
     "<body>"
-    "<noscript>This should not get removed</noscript>"
+    "<noscript>This should get removed</noscript>"
     "<div id=\"header\"> This is the header </div>"
     "<div id=\"container\" class>"
       "<h2 id=\"beforeItems\"> This is before Items </h2>"
@@ -43,21 +45,7 @@ const char kHtmlInput[] =
          "<img src=\"image1\">"
          "<img src=\"image2\">"
       "</div>"
-      "<div class=\"item lots of classes here for testing\">"
-         "<img src=\"image3\">"
-          "<div class=\"item\">"
-             "<img src=\"image4\">"
-          "</div>"
-      "</div>"
-      "<div class=\"itema itemb others are ok\">"
-        "<img src=\"image5\">"
-      "</div>"
-      "<div class=\"itemb before itema\">"
-        "<img src=\"image6\">"
-      "</div>"
-      "<div class=\"itemb only\">"
-        "<img src=\"image7\">"
-      "</div>"
+     "</div>"
     "</body></html>";
 
 const char kBlinkUrlHandler[] = "/psajs/blink.js";
@@ -72,16 +60,16 @@ const char kPsaHeadScriptNodesEnd[] =
 }  // namespace
 
 
-class StripNonCacheableFilterTest : public ResourceManagerTestBase {
+class BlinkBackgroundFilterTest : public ResourceManagerTestBase {
  public:
-  StripNonCacheableFilterTest() {}
+  BlinkBackgroundFilterTest() {}
 
-  virtual ~StripNonCacheableFilterTest() {}
+  virtual ~BlinkBackgroundFilterTest() {}
 
   virtual void SetUp() {
     delete options_;
     options_ = new RewriteOptions();
-    options_->EnableFilter(RewriteOptions::kStripNonCacheable);
+    options_->EnableFilter(RewriteOptions::kProcessBlinkInBackground);
 
     options_->AddBlinkCacheableFamily(
         "/", RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs,
@@ -98,32 +86,31 @@ class StripNonCacheableFilterTest : public ResourceManagerTestBase {
     GoogleString psa_head_script_nodes = StrCat(
         kPsaHeadScriptNodesStart, blink_js, kPsaHeadScriptNodesEnd);
     return StrCat(
-        "<html><body>",
-        "<noscript>This should not get removed</noscript>"
+        "<html><head>",
+        psa_head_script_nodes,
+        "</head><body>",
+        BlinkUtil::kStartBodyMarker,
         "<div id=\"header\"> This is the header </div>"
         "<div id=\"container\" class>"
-        "<!--GooglePanel begin panel-id-1.0--><!--GooglePanel end panel-id-1.0-->"
-        "<!--GooglePanel begin panel-id-0.0--><!--GooglePanel end panel-id-0.0-->"
-        "<!--GooglePanel begin panel-id-0.1-->"
-        "<!--GooglePanel end panel-id-0.1-->"
-        "<!--GooglePanel begin panel-id-2.0-->"
-        "<!--GooglePanel end panel-id-2.0-->"
-        "<!--GooglePanel begin panel-id-2.1-->"
-        "<!--GooglePanel end panel-id-2.1-->"
-        "<div class=\"itemb only\"><img src=\"image7\"></div>"
+          "<h2 id=\"beforeItems\"> This is before Items </h2>"
+          "<div class=\"Item\">"
+            "<img src=\"image1\">"
+            "<img src=\"image2\">"
+          "</div>"
+        "</div>"
         "</body></html>");
   }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(StripNonCacheableFilterTest);
+  DISALLOW_COPY_AND_ASSIGN(BlinkBackgroundFilterTest);
 };
 
-TEST_F(StripNonCacheableFilterTest, StripNonCacheable) {
+TEST_F(BlinkBackgroundFilterTest, StripNonCacheable) {
   ValidateExpectedUrl(kRequestUrl, kHtmlInput,
                       GetExpectedOutput(kBlinkUrlHandler));
 }
 
-TEST_F(StripNonCacheableFilterTest, TestGstatic) {
+TEST_F(BlinkBackgroundFilterTest, TestGstatic) {
   UrlNamer url_namer;
   StaticJavascriptManager js_manager(&url_namer, true, "1");
   resource_manager()->set_static_javascript_manager(&js_manager);

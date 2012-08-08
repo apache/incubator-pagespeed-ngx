@@ -51,6 +51,7 @@
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -214,9 +215,10 @@ class CriticalLineFetch : public AsyncFetch {
     num_blink_shared_fetches_completed_->IncBy(1);
     if (non_ok_status_code_ || !success || !claims_html_ || !probable_html_ ||
         content_length_over_threshold_) {
-      if (non_ok_status_code_ || !success) {
-        VLOG(1) << "Non html page, or not success or above maximum "
-                << "rewriteable size: " << url_;
+      if (content_length_over_threshold_) {
+        blink_info_->set_blink_request_flow(
+            BlinkInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD);
+      } else if (non_ok_status_code_ || !success) {
         blink_info_->set_blink_request_flow(
             BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK);
       } else if (!claims_html_ || !probable_html_) {
@@ -327,7 +329,6 @@ class CriticalLineFetch : public AsyncFetch {
   void CompleteFinishParseForHtmlChangeDriver() {
     StringPiece rewritten_content;
     value_.ExtractContents(&rewritten_content);
-
     GoogleString computed_hash =
         resource_manager_->hasher()->Hash(rewritten_content);
     // We invoke critical line computation in case of cache miss or html hash
@@ -452,13 +453,11 @@ void BlinkFlowCriticalLine::Start(
 }
 
 void BlinkFlowCriticalLine::SetStartRequestTimings() {
-  // TODO(poojatandon): Refactor to use timing_info instead of headers for this.
-  const char* request_start_time_ms_str =
-      base_fetch_->request_headers()->Lookup1(kRequestStartTimeHeader);
-  if (request_start_time_ms_str != NULL) {
-    if (!StringToInt64(request_start_time_ms_str, &request_start_time_ms_)) {
-      request_start_time_ms_ = 0;
-    }
+  TimingInfo timing_info = base_fetch_->logging_info()->timing_info();
+  if (timing_info.has_request_start_ms()) {
+    request_start_time_ms_ = timing_info.request_start_ms();
+  } else {
+    request_start_time_ms_ = manager_->timer()->NowMs();
   }
 }
 
@@ -739,6 +738,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
           new BlinkCriticalLineData();
       blink_critical_line_data->MergeFrom(*blink_critical_line_data_);
       options->ForceEnableFilter(RewriteOptions::kStripNonCacheable);
+      options->ForceEnableFilter(RewriteOptions::kProcessBlinkInBackground);
       options->DisableFilter(RewriteOptions::kServeNonCacheableNonCritical);
       secondary_fetch = new CriticalLineFetch(url_, manager_, options, driver,
           blink_info_, blink_critical_line_data);
@@ -747,6 +747,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     options = options_->Clone();
     SetFilterOptions(options);
     options->ForceEnableFilter(RewriteOptions::kStripNonCacheable);
+    options->ForceEnableFilter(RewriteOptions::kProcessBlinkInBackground);
     fetch = base_fetch_;
     manager_->ComputeSignature(options_);
     driver = manager_->NewCustomRewriteDriver(options_);

@@ -72,10 +72,15 @@ const char kUnloadScriptFormat[] =
 // Then our timing info, e.g. "load:123", will be appended.
 const char kTailScriptFormat[] =
     "<script type='text/javascript'>%s"
-    "(function(){function g(){var ifr=0;"
+    "(function(){function g(){var ifr=0;var rpi='';"
+    "if(window.mod_pagespeed_prefetch_start){"
+    "rpi+='&nrp='+window.mod_pagespeed_num_resources_prefetched;"
+    "rpi+='&htmlAt=';"
+    "rpi+=(window.mod_pagespeed_start-window.mod_pagespeed_prefetch_start);}"
     "if(window.parent != window){ifr=1}"
     "new Image().src='%s%s'+"
     "(Number(new Date())-window.mod_pagespeed_start)+'&ifr='+ifr+'"
+    "'+rpi+'"
     "%s%s&url='+encodeURIComponent('%s');"
     "window.mod_pagespeed_loaded=true;};"
     "var f=window.addEventListener;if(f){f('load',g,false);}else{"

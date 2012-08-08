@@ -909,6 +909,7 @@
         'rewriter/add_instrumentation_filter.cc',
         'rewriter/ajax_rewrite_context.cc',
         'rewriter/base_tag_filter.cc',
+        'rewriter/blink_background_filter.cc',
         'rewriter/blink_filter.cc',
         'rewriter/blink_util.cc',
         'rewriter/cache_extender.cc',

@@ -57,6 +57,12 @@ const char kPrefetchLinkRelSubresourceHtml[] =
 const char kPrefetchImageTagHtml[] = "new Image().src=\"%s\";";
 const char kPrefetchObjectTagHtml[] = "preload(%s);";
 
+const char kPrefetchStartTimeScript[] =
+    "<script type='text/javascript'>"
+    "window.mod_pagespeed_prefetch_start = Number(new Date());"
+    "window.mod_pagespeed_num_resources_prefetched = %d"
+    "</script>";
+
 }  // namespace
 
 namespace net_instaweb {
@@ -229,6 +235,7 @@ void FlushEarlyFlow::GenerateDummyHeadAndCountResources(
                 kPrefetchImageTagHtml));
       break;
   }
+  Write(StringPrintf(kPrefetchStartTimeScript, num_resources_flushed_));
   if (has_script) {
     if (!driver_->options()->Enabled(RewriteOptions::kDebug)) {
       pagespeed::js::MinifyJs(script, &minified_script);

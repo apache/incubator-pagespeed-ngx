@@ -33,6 +33,9 @@ message TimingInfo  {
   optional int64 fetch_ms = 4;
   // Time taken to send the first byte back to the client.
   optional int64 time_to_first_byte_ms = 5;
+  // Time when request starts. This proto is not in gws logs, since we don't
+  // need to log it in gws logs.
+  optional int64 request_start_ms = 6;
 }
 
 // This proto stores all Blink related information.
@@ -45,6 +48,7 @@ message BlinkInfo {
     BLINK_CACHE_MISS_TRIGGERED_REWRITE = 4;
     FOUND_MALFORMED_HTML = 5;
     FOUND_LAST_STATUS_CODE_NON_OK = 6;
+    FOUND_CONTENT_LENGTH_OVER_THRESHOLD = 7;
   };
   // Tracks the flow of a Blink request.
   optional BlinkRequestFlow blink_request_flow = 1;

@@ -235,4 +235,12 @@ TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
   EXPECT_TRUE(output_buffer_.find("&hft=200") != GoogleString::npos);
 }
 
+// Test that flush subresources count and time for origin html is reported.
+TEST_F(AddInstrumentationFilterTest, TestFlushEarlyInformation) {
+  NullMessageHandler handler;
+  RunInjection();
+  EXPECT_TRUE(output_buffer_.find("&nrp=") != GoogleString::npos);
+  EXPECT_TRUE(output_buffer_.find("&htmlAt=") != GoogleString::npos);
+}
+
 }  // namespace net_instaweb

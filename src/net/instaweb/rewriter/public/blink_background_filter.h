@@ -16,15 +16,12 @@
 
 // Author: rahulbansal@google.com (Rahul Bansal)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_STRIP_NON_CACHEABLE_FILTER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_STRIP_NON_CACHEABLE_FILTER_H_
-
-#include <vector>
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_BLINK_BACKGROUND_FILTER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_BLINK_BACKGROUND_FILTER_H_
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/rewriter/public/blink_util.h"
+#include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -32,29 +29,30 @@ class HtmlElement;
 class RewriteDriver;
 class RewriteOptions;
 
-// This class strips off the non cacheable content from the html. It is assumed
-// that the entire html would be in the same flush window so its safe to delete
-// elements.
-class StripNonCacheableFilter : public EmptyHtmlFilter {
+// This class does the preprocessing required to apply blink.
+class BlinkBackgroundFilter : public EmptyHtmlFilter {
  public:
-  explicit StripNonCacheableFilter(RewriteDriver* rewrite_driver);
-  virtual ~StripNonCacheableFilter();
+  explicit BlinkBackgroundFilter(RewriteDriver* rewrite_driver);
+  virtual ~BlinkBackgroundFilter();
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
-  virtual const char* Name() const { return "StripNonCacheableFilter"; }
+  virtual void EndElement(HtmlElement* element);
+  virtual const char* Name() const { return "ProcessBlinkInBackgroundFilter"; }
 
  private:
   RewriteDriver* rewrite_driver_;
   const RewriteOptions* rewrite_options_;
-  AttributesToNonCacheableValuesMap attribute_non_cacheable_values_map_;
-  std::vector<int> panel_number_num_instances_;
+  ScriptTagScanner script_tag_scanner_;
+  bool script_written_;
 
-  void InsertPanelStub(HtmlElement* element, const GoogleString& panel_id);
+  // Inserts blink js and defer js init code into the head element. If no head
+  // tag in the page, it inserts one before body tag.
+  void InsertBlinkJavascript(HtmlElement* element);
 
-  DISALLOW_COPY_AND_ASSIGN(StripNonCacheableFilter);
+  DISALLOW_COPY_AND_ASSIGN(BlinkBackgroundFilter);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_STRIP_NON_CACHEABLE_FILTER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_BLINK_BACKGROUND_FILTER_H_

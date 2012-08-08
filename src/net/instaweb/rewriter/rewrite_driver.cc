@@ -48,6 +48,7 @@
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 #include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
 #include "net/instaweb/rewriter/public/base_tag_filter.h"
+#include "net/instaweb/rewriter/public/blink_background_filter.h"
 #include "net/instaweb/rewriter/public/blink_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
@@ -986,6 +987,11 @@ void RewriteDriver::AddPostRenderFilters() {
     AddOwnedPostRenderFilter(filter);
   }
 
+  if (rewrite_options->Enabled(RewriteOptions::kProcessBlinkInBackground)) {
+    BlinkBackgroundFilter* filter = new BlinkBackgroundFilter(this);
+    AddOwnedPostRenderFilter(filter);
+  }
+
   if (rewrite_options->Enabled(RewriteOptions::kInsertDnsPrefetch)) {
     InsertDnsPrefetchFilter *insert_dns_prefetch_filter =
         new InsertDnsPrefetchFilter(this);
@@ -1777,7 +1783,8 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
     PropertyCache* pcache = resource_manager_->page_property_cache();
     const PropertyCache::Cohort* dom_cohort = pcache->GetCohort(kDomCohort);
     if (dom_cohort != NULL) {
-      if (flush_early_info_.get() != NULL) {
+      if (flush_early_info_.get() != NULL &&
+          UserAgentSupportsFlushEarly()) {
         PropertyValue* subresources_property_value = page->GetProperty(
             dom_cohort, RewriteDriver::kSubresourcesPropertyName);
         GoogleString value;
@@ -2296,7 +2303,8 @@ FlushEarlyInfo* RewriteDriver::flush_early_info() {
 }
 
 void RewriteDriver::SaveOriginalHeaders(ResponseHeaders* response_headers) {
-  if (options()->Enabled(RewriteOptions::kFlushSubresources)) {
+  if (options()->Enabled(RewriteOptions::kFlushSubresources) &&
+      UserAgentSupportsFlushEarly()) {
     response_headers->GetSanitizedProto(
         flush_early_info()->mutable_response_headers());
   }

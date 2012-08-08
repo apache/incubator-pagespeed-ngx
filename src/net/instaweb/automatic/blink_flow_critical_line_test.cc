@@ -517,8 +517,6 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
     // Request from an internal ip.
     request_headers->Add(HttpAttributes::kUserAgent, kLinuxUserAgent);
     request_headers->Add(HttpAttributes::kXForwardedFor, "127.0.0.1");
-    request_headers->Add(kRequestStartTimeHeader,
-                         Integer64ToString(mock_timer()->NowMs()));
   }
 
   void FetchFromProxyWaitForBackground(const StringPiece& url,
@@ -618,6 +616,8 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
                                   GoogleString* user_agent_out) {
     WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
     AsyncExpectStringAsyncFetch callback(expect_success, &sync);
+    TimingInfo timing_info = callback.logging_info()->timing_info();
+    timing_info.set_request_start_ms(resource_manager()->timer()->NowMs());
     callback.set_response_headers(headers_out);
     callback.request_headers()->CopyFrom(request_headers);
     bool already_done = proxy_interface_->Fetch(AbsolutifyUrl(url),
@@ -1222,6 +1222,9 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlOverThreshold) {
       "smalltest.html", true, &text, &response_headers);
 
   EXPECT_STREQ(kSmallHtmlInput, text);
+  BlinkInfo* blink_info_ = logging_info_.mutable_blink_info();
+  EXPECT_EQ(BlinkInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD,
+            blink_info_->blink_request_flow());
   // Cache lookup for original html, BlinkCriticalLineData and Dom Cohort
   // in property cache.
   EXPECT_EQ(3, lru_cache()->num_misses());
@@ -1270,6 +1273,9 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlHeaderOverThreshold) {
   FetchFromProxyNoWaitForBackground(
       "smalltest.html", true, &text, &response_headers);
 
+  BlinkInfo* blink_info_ = logging_info_.mutable_blink_info();
+  EXPECT_EQ(BlinkInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD,
+            blink_info_->blink_request_flow());
   // Cache lookup for original html, BlinkCriticalLineData and Dom Cohort
   // in property cache.
   EXPECT_EQ(3, lru_cache()->num_misses());
@@ -1539,7 +1545,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateTrue) {
   ClearStats();
 
   // Hash set. No mismatches.
-  SetBlinkCriticalLineData(true, "ljcoagAIPL", last_diff_timestamp_ms);
+  SetBlinkCriticalLineData(true, "5SmNjVuPwO", last_diff_timestamp_ms);
   FetchFromProxyWaitForHtmlDiffComputationMatch(
       "text.html", true, &text, &response_headers);
 
@@ -1557,7 +1563,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateTrue) {
   // so there should be no mismatches.
   SetFetchResponse("http://test.com/text.html", response_headers_,
                    kHtmlInputWithExtraCommentAndNonCacheable);
-  SetBlinkCriticalLineData(true, "ljcoagAIPL", last_diff_timestamp_ms);
+  SetBlinkCriticalLineData(true, "5SmNjVuPwO", last_diff_timestamp_ms);
   FetchFromProxyWaitForHtmlDiffComputationMatch(
       "text.html", true, &text, &response_headers);
 
