@@ -40,7 +40,6 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -804,7 +803,7 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestUserAgent) {
   GoogleString text;
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent,
-                          UserAgentStrings::kChromeUserAgent);
+                          "prefetch_link_rel_subresource");
   ResponseHeaders headers;
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   // Check total number of cache inserts.
@@ -816,7 +815,6 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestUserAgent) {
   EXPECT_EQ(14, lru_cache()->num_inserts());
 
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
-  // Chrome
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(flush_early_rewritten_html(
       UserAgentMatcher::kPrefetchLinkRelSubresource), text);

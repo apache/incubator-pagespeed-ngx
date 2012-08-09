@@ -128,13 +128,13 @@ TEST_F(UserAgentMatcherTest, NotSupportsBlink) {
 TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
   EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_.GetPrefetchMechanism(
-                UserAgentStrings::kFirefoxUserAgent));
+                "prefetch_image_tag"));
   EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
             user_agent_matcher_.GetPrefetchMechanism(
                 UserAgentStrings::kIe9UserAgent));
   EXPECT_EQ(UserAgentMatcher::kPrefetchLinkRelSubresource,
             user_agent_matcher_.GetPrefetchMechanism(
-                UserAgentStrings::kChromeUserAgent));
+                "prefetch_link_rel_subresource"));
   EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
             user_agent_matcher_.GetPrefetchMechanism(
                 UserAgentStrings::kSafariUserAgent));

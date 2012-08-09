@@ -156,17 +156,17 @@ void CollectSubresourcesFilter::StartElementImpl(HtmlElement* element) {
     in_first_head_ = true;
     return;
   }
-  if (in_first_head_) {
-    semantic_type::Category category;
-    HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
-        element, driver(), &category);
-    if (src == NULL) {
-      return;
-    }
-    if (category != semantic_type::kStylesheet &&
-        category != semantic_type::kScript) {
-      return;
-    }
+
+  semantic_type::Category category;
+  HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
+      element, driver(), &category);
+  if (src == NULL) {
+    return;
+  }
+  // Collect the scripts which are present in the head. But collect all the
+  // css present in the html.
+  if (category == semantic_type::kStylesheet ||
+      (category == semantic_type::kScript && in_first_head_)) {
     // Skip data URIs.
     StringPiece src_value(src->DecodedValueOrNull());
     if (src_value.empty() || src_value.starts_with("data:")) {

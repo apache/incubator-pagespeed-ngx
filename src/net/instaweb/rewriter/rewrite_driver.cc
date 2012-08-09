@@ -731,7 +731,7 @@ bool RewriteDriver::UserAgentSupportsFlushEarly() const {
   if (user_agent_supports_flush_early_ == kNotSet) {
     user_agent_supports_flush_early_ =
         (user_agent_matcher().GetPrefetchMechanism(user_agent())
-          == UserAgentMatcher::kPrefetchLinkRelSubresource) ? kTrue : kFalse;
+          != UserAgentMatcher::kPrefetchNotSupported) ? kTrue : kFalse;
   }
   return (user_agent_supports_flush_early_ == kTrue);
 }

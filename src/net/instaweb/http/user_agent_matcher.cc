@@ -40,6 +40,7 @@ const char* kImageInliningWhitelist[] = {
   // The following user agents are used only for internal testing
   "google command line rewriter",
   "webp",
+  "prefetch_link_rel_subresource",
 };
 const char* kImageInliningBlacklist[] = {
   "*Firefox/1.*",
@@ -122,12 +123,15 @@ const char* kMobileUserAgentWhitelist[] = {
 };
 
 const char* kSupportsPrefetchLinkRelSubresource[] = {
-  "*Chrome/*",
+  // User agent used only for internal testing
+  "prefetch_link_rel_subresource",
 };
 
 // TODO(mmohabey): Tune this to include more browsers.
 const char* kSupportsPrefetchImageTag[] = {
-  "*Firefox/*",
+  "*Chrome/*",
+  // User agent used only for internal testing
+  "prefetch_image_tag",
 };
 }  // namespace
 

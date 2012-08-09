@@ -19,7 +19,6 @@
 
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -123,11 +122,17 @@ class CollectSubresourcesFilterTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    rewrite_driver()->set_user_agent(UserAgentStrings::kChromeUserAgent);
+    rewrite_driver()->set_user_agent("prefetch_link_rel_subresource");
     SetResponseWithDefaultHeaders("http://test.com/a.css", kContentTypeCss,
                                   ".yellow {background-color: yellow;}",
                                   kOriginTtlMs);
     SetResponseWithDefaultHeaders("http://test.com/b.js",
+                                  kContentTypeJavascript, kJsData,
+                                  kOriginTtlMs);
+    SetResponseWithDefaultHeaders("http://test.com/c.css", kContentTypeCss,
+                                  ".yellow {background-color: yellow;}",
+                                  kOriginTtlMs);
+    SetResponseWithDefaultHeaders("http://test.com/d.js",
                                   kContentTypeJavascript, kJsData,
                                   kOriginTtlMs);
   }
@@ -149,7 +154,10 @@ TEST_F(CollectSubresourcesFilterTest, CollectSubresourcesFilter) {
         "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
         "<script src=\"b.js\"></script>"
       "</head>"
-      "<body></body>";
+      "<body>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"c.css\"/>"
+        "<script src=\"d.js\"></script>"
+      "</body>";
 
   Parse("not_flushed_early", html_ip);
   FlushEarlyInfo* flush_early_info = rewrite_driver()->flush_early_info();
@@ -157,13 +165,16 @@ TEST_F(CollectSubresourcesFilterTest, CollectSubresourcesFilter) {
       flush_early_info);
   // CollectSubresourcesFilter should have populated the flush_early_info
   // proto with the appropriate subresources.
-  EXPECT_EQ(2, flush_early_info->subresource_size());
+  EXPECT_EQ(3, flush_early_info->subresource_size());
   EXPECT_EQ("http://test.com/a.css.pagespeed.ce.0.css",
             flush_early_info->subresource(0).rewritten_url());
   EXPECT_EQ("http://test.com/b.js.pagespeed.ce.0.js",
             flush_early_info->subresource(1).rewritten_url());
+  EXPECT_EQ("http://test.com/c.css.pagespeed.ce.0.css",
+            flush_early_info->subresource(2).rewritten_url());
   EXPECT_EQ(CSS, flush_early_info->subresource(0).content_type());
   EXPECT_EQ(JAVASCRIPT, flush_early_info->subresource(1).content_type());
+  EXPECT_EQ(CSS, flush_early_info->subresource(2).content_type());
   // Calling Parse once more so that we hit only Render without hitting
   // RewriteSingle.
   rewrite_driver()->Clear();
@@ -171,7 +182,7 @@ TEST_F(CollectSubresourcesFilterTest, CollectSubresourcesFilter) {
   flush_early_info = rewrite_driver()->flush_early_info();
   collect_subresources_filter()->AddSubresourcesToFlushEarlyInfo(
       flush_early_info);
-  EXPECT_EQ(2, flush_early_info->subresource_size());
+  EXPECT_EQ(3, flush_early_info->subresource_size());
 }
 
 TEST_F(CollectSubresourcesFilterTest, HtmlHasRewrittenUrl) {
