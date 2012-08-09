@@ -138,7 +138,7 @@ apache_debug_rewrite_test : rewrite_test_prepare apache_install_conf \
 	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/shortcut.html \
 	  | grep "Filter Examples"
 
-rewrite_test_prepare:
+rewrite_test_prepare :
 	$(eval OPT_REWRITE_TEST="REWRITE_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
@@ -152,7 +152,7 @@ apache_debug_speling_test : speling_test_prepare apache_install_conf \
 	$(WGET_NO_PROXY) -O /dev/null --save-headers $(EXAMPLE_IMAGE) 2>&1 \
 	  | head | grep "HTTP request sent, awaiting response... 200 OK"
 
-speling_test_prepare:
+speling_test_prepare :
 	$(eval OPT_SPELING_TEST="SPELING_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
@@ -166,7 +166,7 @@ apache_debug_memcached_test : memcached_test_prepare apache_install_conf \
 	$(MAKE) apache_debug_stop
 	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
 
-memcached_test_prepare:
+memcached_test_prepare :
 	$(eval OPT_MEMCACHED_TEST="MEMCACHED_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
@@ -186,7 +186,7 @@ apache_debug_gzip_test : gzip_test_prepare apache_install_conf \
 	  echo Compressed big.css took $$bytes bytes; \
 	  test $$bytes -gt 200 -a $$bytes -lt 500
 
-gzip_test_prepare:
+gzip_test_prepare :
 	$(eval OPT_GZIP_TEST="GZIP_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
@@ -205,11 +205,11 @@ apache_debug_furious_no_ga_test : furious_no_ga_test_prepare \
  apache_install_conf apache_debug_restart
 	$(INSTALL_DATA_DIR)/apache_furious_no_ga_test.sh $(APACHE_SERVER)
 
-furious_ga_test_prepare:
+furious_ga_test_prepare :
 	$(eval OPT_FURIOUS_GA_TEST="FURIOUS_GA_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
-furious_no_ga_test_prepare:
+furious_no_ga_test_prepare :
 	$(eval OPT_FURIOUS_NO_GA_TEST="FURIOUS_NO_GA_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
@@ -226,11 +226,11 @@ apache_debug_xheader_test : xheader_test_prepare apache_install_conf \
 	  | tr -d '\r'`; \
 	test "$$value" = "UNSPECIFIED VERSION"
 
-xheader_test_prepare:
+xheader_test_prepare :
 	$(eval OPT_XHEADER_TEST="XHEADER_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
-rewrite_hyperlinks_test_prepare:
+rewrite_hyperlinks_test_prepare :
 	$(eval OPT_DOMAIN_HYPERLINKS_TEST="DOMAIN_HYPERLINKS_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
@@ -244,8 +244,8 @@ apache_debug_rewrite_hyperlinks_test : rewrite_hyperlinks_test_prepare \
 	matches=`$(WGET_NO_PROXY) -q -O - $(TEST_ROOT)/rewrite_domains.html \
 	  | grep -c http://dst\.example\.com`; \
 	test $$matches -eq 3
-	
-client_domain_rewrite_test_prepare:
+
+client_domain_rewrite_test_prepare :
 	$(eval OPT_CLIENT_DOMAIN_REWRITE_TEST="CLIENT_DOMAIN_REWRITE_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
@@ -270,11 +270,11 @@ apache_debug_url_attribute_test : url_attribute_test_prepare \
     apache_install_conf apache_debug_restart
 	$(INSTALL_DATA_DIR)/apache_url_valued_attribute_test.sh $(APACHE_SERVER)
 
-url_attribute_test_prepare:
+url_attribute_test_prepare :
 	$(eval OPT_URL_ATTRIBUTE_TEST="URL_ATTRIBUTE_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
-rewrite_resource_tags_test_prepare:
+rewrite_resource_tags_test_prepare :
 	$(eval OPT_DOMAIN_RESOURCE_TAGS_TEST="DOMAIN_RESOURCE_TAGS_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
@@ -292,7 +292,7 @@ apache_debug_rewrite_resource_tags_test : rewrite_resource_tags_test_prepare \
 # Test to make sure we don't crash if we're off for global but on for vhosts.
 # We use the stress test config as a base for that, as it has the vhosts all
 # setup nicely; we just need to turn off ourselves for the global scope.
-apache_debug_vhost_only_test:
+apache_debug_vhost_only_test :
 	$(MAKE) apache_install_conf \
 	  OPT_COVERAGE_TRACE_TEST=COVERAGE_TRACE_TEST=1 \
 	  OPT_STRESS_TEST=STRESS_TEST=1
@@ -304,7 +304,7 @@ apache_debug_vhost_only_test:
 # Regression test for serf fetching something with an empty header.
 # We use a slurp-serving server to produce that.
 EMPTY_HEADER_URL=http://www.modpagespeed.com/empty_header.html
-apache_debug_serf_empty_header_test:
+apache_debug_serf_empty_header_test :
 	$(MAKE) apache_install_conf \
 	  OPT_COVERAGE_TRACE_TEST=COVERAGE_TRACE_TEST=1 \
 	  OPT_STRESS_TEST=STRESS_TEST=1 \
@@ -316,7 +316,7 @@ apache_debug_serf_empty_header_test:
 
 # Test to make sure we don't crash due to uninitialized statistics if we
 # are off by default but turned on in some place.
-apache_debug_global_off_test:
+apache_debug_global_off_test :
 	$(MAKE) apache_install_conf
 	echo 'ModPagespeed off' >> $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_restart
@@ -334,12 +334,12 @@ apache_debug_shared_mem_lock_sanity_test : shared_mem_lock_test_prepare \
 	    $(EXAMPLE_COMBINE_CSS)?ModPagespeedFilters=combine_css \
 	 | grep "\.pagespeed\.cc\."
 
-shared_mem_lock_test_prepare:
+shared_mem_lock_test_prepare :
 	$(eval OPT_SLURP_TEST="SHARED_MEM_LOCK_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 # Test that all directives are accepted by the options parser.
-apache_debug_all_directives_test:
+apache_debug_all_directives_test :
 	$(MAKE) apache_install_conf \
 	  OPT_ALL_DIRECTIVES_TEST="ALL_DIRECTIVES_TEST=1"
 	$(MAKE) apache_debug_restart

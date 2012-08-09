@@ -82,9 +82,9 @@ APACHE_USER = www-data
 # Set this to 1 to enable mod_proxy and mod_rewrite
 ENABLE_PROXY = 0
 
-.PHONY: config_file echo_vars
+.PHONY : config_file echo_vars
 
-echo_vars:
+echo_vars :
 	@echo Run "restart" to add default instaweb config to apache
 	@echo Or run "stop", "staging", "install", and "start".
 	@echo These configuration variables can be reset on the make command line,
@@ -359,14 +359,14 @@ setup_staging_dir :
 
 # Generate a configuration file and copy it to the staging area.
 # Also copy the example tree, and the built Apache module
-staging_except_module: setup_staging_dir $(CONF_TEMPLATES)
+staging_except_module : setup_staging_dir $(CONF_TEMPLATES)
 	cat common/pagespeed.load.template | \
 	    sed s~@@APACHE_MODULEDIR@@~$(APACHE_MODULES)~ | \
 	    sed s/@@COMMENT_OUT_DEFLATE@@// > $(STAGING_DIR)/pagespeed.load
 	$(MODS_ENABLED_STAGING_COMMANDS)
 	cp -rp mod_pagespeed_example mod_pagespeed_test $(STAGING_DIR)
 
-staging: staging_except_module
+staging : staging_except_module
 	cp $(PAGESPEED_MODULE) $(STAGING_DIR)/mod_pagespeed.so
 	cp $(PAGESPEED_MODULE_24) $(STAGING_DIR)/mod_pagespeed_ap24.so
 
@@ -426,7 +426,7 @@ test :
 		./apache_system_test.sh localhost
 
 # Now hook in the full integration test suite. It needs to be run as root.
-apache_install_conf:
+apache_install_conf :
 	$(MAKE) staging_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
 	    $(OPT_SLURP_TEST) $(OPT_MEMCACHED_TEST) $(OPT_SPELING_TEST) \
 	    $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
@@ -444,10 +444,10 @@ apache_install_conf:
             $(OPT_DOMAIN_HYPERLINKS_TEST) $(OPT_DOMAIN_RESOURCE_TAGS_TEST) \
             $(OPT_ALL_DIRECTIVES_TEST) $(OPT_URL_ATTRIBUTE_TEST)
 
-apache_debug_restart:
+apache_debug_restart :
 	$(APACHE_CONTROL_PROGRAM) restart
 
-apache_debug_stop: stop
+apache_debug_stop : stop
 
 # Enables a few ports that are needed by system tests.  This is needed on
 # CentOS only to work around barriers erected by SELinux.  See
@@ -475,9 +475,9 @@ enable_ports_and_file_access :
 # Hooks for tests we can only run in development due to needing extensive
 # configuration changes in Apache (and potentially different build flags).
 # Stubbed out here.
-apache_debug_leak_test:
-apache_debug_proxy_test:
-apache_debug_slurp_test:
+apache_debug_leak_test :
+apache_debug_proxy_test :
+apache_debug_slurp_test :
 
 APACHE_DEBUG_PORT=80
 APACHE_HTTPS_PORT=

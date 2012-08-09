@@ -139,7 +139,7 @@ CXX = $(BINDIR)/gcc-4.2 -arch i386 -fvisibility=hidden
 SYSLIBS = -Wl,-search_paths_first -framework AppKit -lpthread -lstdc++
 TESTBENCH_LIB = $(MOD_PAGESPEED_ROOT)/out/$(BUILDTYPE)/obj.target/libre2_bench_util.a
 
-build_libraries:
+build_libraries :
 	cd $(MOD_PAGESPEED_ROOT)/build && xcodebuild -project all.xcodeproj \
 		-configuration $(BUILDTYPE) -target pagespeed_automatic
 
@@ -162,7 +162,7 @@ SYSLIBS = -lpthread -lrt
 CXX = /usr/bin/g++
 TESTBENCH_LIB = $(MOD_PAGESPEED_ROOT)/out/$(BUILDTYPE)/obj.target/third_party/re2/libre2_bench_util.a
 
-build_libraries:
+build_libraries :
 	cd $(MOD_PAGESPEED_ROOT) && make BUILDTYPE=$(BUILDTYPE)
 
 endif
@@ -217,9 +217,9 @@ $(OUTPUT_DIR)/collapse_whitespace.html : $(EXE) $(EXAMPLE_ROOT)/collapse_whitesp
 $(SPEED_TEST) : $(SPEED_TEST_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(SYSLIBS)
 
-examples: $(EXAMPLES)
+examples : $(EXAMPLES)
 
-clean:
+clean :
 	rm -f $(OUTPUT_DIR)/static_rewriter $(EXE) $(OBJS) $(EXAMPLES)
 
 echo_libs :
