@@ -708,12 +708,6 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
   options_->DisableFilter(RewriteOptions::kLazyloadImages);
   options_->DisableFilter(RewriteOptions::kDelayImages);
   options_->DisableFilter(RewriteOptions::kInlineImages);
-  // TODO(sriharis):  We need to also set                               [google]
-  // GoogleRewriteOptions::fix_reflow_enabled to false.  But this is    [google]
-  // open-source.  This is ok for now since fix_reflow_enabled is false [google]
-  // always.  But before we turn it on (or expose it in console) we     [google]
-  // need to move the fix_reflow_enabled option to RewriteOptions and   [google]
-  // add an explicit disable for it here.                               [google]
 
   if (critical_line_data_found) {
     SetFilterOptions(options_);

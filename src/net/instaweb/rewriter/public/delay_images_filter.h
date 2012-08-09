@@ -126,8 +126,6 @@ class DelayImagesFilter : public EmptyHtmlFilter {
 
   // is_experimental_enabled_ is set to true if
   // enable_inline_preview_images_experimental is true.
-  // It allows us to test the performance of experimental features on  [google]
-  // staging.                                                          [google]
   bool is_experimental_enabled_;
   DISALLOW_COPY_AND_ASSIGN(DelayImagesFilter);
 };

@@ -78,8 +78,6 @@ pagespeed.DetectReflow.prototype['getReflowElementHeight'] =
 
 /**
  * Returns jsDeferDone_ boolean.
- * [google]  The webkit_headless extension js checks this before extracting
- * [google]  the onloadcomplete heights of divs.
  * @return {!boolean}  Returns true if reflow detection is done.
  */
 pagespeed.DetectReflow.prototype.isJsDeferDone = function() {

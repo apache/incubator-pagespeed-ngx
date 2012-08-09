@@ -318,7 +318,6 @@ echo run_wget_with_args $BAD_IMG_URL
 run_wget_with_args $BAD_IMG_URL  # fails
 check grep "404 Not Found" $WGET_OUTPUT
 
-# [google] b/3328110
 echo "TEST: rewrite_images doesn't 500 on unoptomizable image."
 IMG_URL=$REWRITTEN_ROOT/images/xOptPuzzle.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
 run_wget_with_args $IMG_URL

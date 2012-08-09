@@ -346,8 +346,6 @@ bool ComputePanels(const PanelSet* panel_set_,
 void EscapeString(GoogleString* str) {
   // TODO(sriharis):  Check whether we need to do any other escaping.  Also
   // change the escaping of '<' and '>' to use standard '\u' mechanism.
-  // See //net/proto2/util/internal/json_format.cc, function  [google]
-  // JsonFormat::EscapeString                                 [google]
   int num_replacements = 0;
   GoogleString tmp;
   const int length = str->length();
@@ -364,9 +362,6 @@ void EscapeString(GoogleString* str) {
         tmp.append("__psa_gt;");
         break;
       }
-      // The following logic is based on                      [google]
-      // //net/proto2/util/internal/json_format.cc, function  [google]
-      // JsonFormat::EscapeString   (case '\xe2')             [google]
       case 0xe2: {
         if ((i + 2 < length) && ((*str)[i + 1] == '\x80')) {
           if ((*str)[i + 2] == '\xa8') {
