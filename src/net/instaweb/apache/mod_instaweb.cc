@@ -79,115 +79,115 @@ namespace net_instaweb {
 
 namespace {
 
+const char kModPagespeedFilterName[] = "MOD_PAGESPEED_OUTPUT_FILTER";
+const char kModPagespeedFixHeadersName[] = "MOD_PAGESPEED_FIX_HEADERS_FILTER";
+
 // TODO(sligocki): Separate options parsing from all the other stuff here.
 // Instaweb directive names -- these must match
 // install/common/pagespeed.conf.template.
 // If you add a new option, please add it to the #ALL_DIRECTIVES section of
 // install/debug.conf.template to make sure it will parse.
-// TODO(morlovich): All of these should be const char kFoo[].
-const char* kModPagespeedAllow = "ModPagespeedAllow";
-const char* kModPagespeedAnalyticsID = "ModPagespeedAnalyticsID";
-const char* kModPagespeedAvoidRenamingIntrospectiveJavascript =
+const char kModPagespeedAllow[] = "ModPagespeedAllow";
+const char kModPagespeedAnalyticsID[] = "ModPagespeedAnalyticsID";
+const char kModPagespeedAvoidRenamingIntrospectiveJavascript[] =
     "ModPagespeedAvoidRenamingIntrospectiveJavascript";
-const char* kModPagespeedBeaconUrl = "ModPagespeedBeaconUrl";
-const char* kModPagespeedCacheFlushFilename =
+const char kModPagespeedBeaconUrl[] = "ModPagespeedBeaconUrl";
+const char kModPagespeedCacheFlushFilename[] =
     "ModPagespeedCacheFlushFilename";
-const char* kModPagespeedCacheFlushPollIntervalSec =
+const char kModPagespeedCacheFlushPollIntervalSec[] =
     "ModPagespeedCacheFlushPollIntervalSec";
-const char* kModPagespeedClientDomainRewrite =
+const char kModPagespeedClientDomainRewrite[] =
     "ModPagespeedClientDomainRewrite";
-const char* kModPagespeedCollectRefererStatistics =
+const char kModPagespeedCollectRefererStatistics[] =
     "ModPagespeedCollectRefererStatistics";
-const char* kModPagespeedCombineAcrossPaths = "ModPagespeedCombineAcrossPaths";
-const char* kModPagespeedCssFlattenMaxBytes = "ModPagespeedCssFlattenMaxBytes";
-const char* kModPagespeedCssImageInlineMaxBytes =
+const char kModPagespeedCombineAcrossPaths[] = "ModPagespeedCombineAcrossPaths";
+const char kModPagespeedCssFlattenMaxBytes[] = "ModPagespeedCssFlattenMaxBytes";
+const char kModPagespeedCssImageInlineMaxBytes[] =
     "ModPagespeedCssImageInlineMaxBytes";
-const char* kModPagespeedCssInlineMaxBytes = "ModPagespeedCssInlineMaxBytes";
-const char* kModPagespeedCssOutlineMinBytes = "ModPagespeedCssOutlineMinBytes";
-const char* kModPagespeedDisableFilters = "ModPagespeedDisableFilters";
-const char* kModPagespeedDisableForBots = "ModPagespeedDisableForBots";
-const char* kModPagespeedDisallow = "ModPagespeedDisallow";
-const char* kModPagespeedDomain = "ModPagespeedDomain";
-const char* kModPagespeedDomainRewriteHyperlinks =
+const char kModPagespeedCssInlineMaxBytes[] = "ModPagespeedCssInlineMaxBytes";
+const char kModPagespeedCssOutlineMinBytes[] = "ModPagespeedCssOutlineMinBytes";
+const char kModPagespeedDisableFilters[] = "ModPagespeedDisableFilters";
+const char kModPagespeedDisableForBots[] = "ModPagespeedDisableForBots";
+const char kModPagespeedDisallow[] = "ModPagespeedDisallow";
+const char kModPagespeedDomain[] = "ModPagespeedDomain";
+const char kModPagespeedDomainRewriteHyperlinks[] =
     "ModPagespeedDomainRewriteHyperlinks";
-const char* kModPagespeedEnableFilters = "ModPagespeedEnableFilters";
-const char* kModPagespeedFetchProxy = "ModPagespeedFetchProxy";
-const char* kModPagespeedFetcherTimeoutMs = "ModPagespeedFetcherTimeOutMs";
-const char* kModPagespeedFetchWithGzip = "ModPagespeedFetchWithGzip";
-const char* kModPagespeedFileCacheCleanIntervalMs =
+const char kModPagespeedEnableFilters[] = "ModPagespeedEnableFilters";
+const char kModPagespeedFetchProxy[] = "ModPagespeedFetchProxy";
+const char kModPagespeedFetcherTimeoutMs[] = "ModPagespeedFetcherTimeOutMs";
+const char kModPagespeedFetchWithGzip[] = "ModPagespeedFetchWithGzip";
+const char kModPagespeedFileCacheCleanIntervalMs[] =
     "ModPagespeedFileCacheCleanIntervalMs";
-const char* kModPagespeedFileCacheInodeLimit =
+const char kModPagespeedFileCacheInodeLimit[] =
     "ModPagespeedFileCacheInodeLimit";
-const char* kModPagespeedFileCachePath = "ModPagespeedFileCachePath";
-const char* kModPagespeedFileCacheSizeKb = "ModPagespeedFileCacheSizeKb";
-const char* kModPagespeedFilterName = "MOD_PAGESPEED_OUTPUT_FILTER";
-const char* kModPagespeedFixHeadersName = "MOD_PAGESPEED_FIX_HEADERS_FILTER";
-const char* kModPagespeedForceCaching = "ModPagespeedForceCaching";
-const char* kModPagespeedFuriousSlot = "ModPagespeedExperimentVariable";
-const char* kModPagespeedFuriousSpec = "ModPagespeedExperimentSpec";
-const char* kModPagespeedGeneratedFilePrefix =
+const char kModPagespeedFileCachePath[] = "ModPagespeedFileCachePath";
+const char kModPagespeedFileCacheSizeKb[] = "ModPagespeedFileCacheSizeKb";
+const char kModPagespeedForceCaching[] = "ModPagespeedForceCaching";
+const char kModPagespeedFuriousSlot[] = "ModPagespeedExperimentVariable";
+const char kModPagespeedFuriousSpec[] = "ModPagespeedExperimentSpec";
+const char kModPagespeedGeneratedFilePrefix[] =
     "ModPagespeedGeneratedFilePrefix";
-const char* kModPagespeedHashRefererStatistics =
+const char kModPagespeedHashRefererStatistics[] =
     "ModPagespeedHashRefererStatistics";
-const char* kModPagespeedImageInlineMaxBytes =
+const char kModPagespeedImageInlineMaxBytes[] =
     "ModPagespeedImageInlineMaxBytes";
-const char* kModPagespeedImageLimitOptimizedPercent =
+const char kModPagespeedImageLimitOptimizedPercent[] =
     "ModPagespeedImageLimitOptimizedPercent";
-const char* kModPagespeedImageLimitResizeAreaPercent =
+const char kModPagespeedImageLimitResizeAreaPercent[] =
     "ModPagespeedImageLimitResizeAreaPercent";
-const char* kModPagespeedImageMaxRewritesAtOnce =
+const char kModPagespeedImageMaxRewritesAtOnce[] =
     "ModPagespeedImageMaxRewritesAtOnce";
-const char* kModPagespeedJpegRecompressQuality =
+const char kModPagespeedJpegRecompressQuality[] =
     "ModPagespeedJpegRecompressionQuality";
-const char* kModPagespeedJsInlineMaxBytes = "ModPagespeedJsInlineMaxBytes";
-const char* kModPagespeedJsOutlineMinBytes = "ModPagespeedJsOutlineMinBytes";
-const char* kModPagespeedLRUCacheByteLimit = "ModPagespeedLRUCacheByteLimit";
-const char* kModPagespeedLRUCacheKbPerProcess =
+const char kModPagespeedJsInlineMaxBytes[] = "ModPagespeedJsInlineMaxBytes";
+const char kModPagespeedJsOutlineMinBytes[] = "ModPagespeedJsOutlineMinBytes";
+const char kModPagespeedLRUCacheByteLimit[] = "ModPagespeedLRUCacheByteLimit";
+const char kModPagespeedLRUCacheKbPerProcess[] =
     "ModPagespeedLRUCacheKbPerProcess";
-const char* kModPagespeedListOutstandingUrlsOnError =
+const char kModPagespeedListOutstandingUrlsOnError[] =
     "ModPagespeedListOutstandingUrlsOnError";
-const char* kModPagespeedLoadFromFile = "ModPagespeedLoadFromFile";
-const char* kModPagespeedLogRewriteTiming = "ModPagespeedLogRewriteTiming";
-const char* kModPagespeedLowercaseHtmlNames = "ModPagespeedLowercaseHtmlNames";
-const char* kModPagespeedMapOriginDomain = "ModPagespeedMapOriginDomain";
-const char* kModPagespeedMapRewriteDomain = "ModPagespeedMapRewriteDomain";
-const char* kModPagespeedMaxImageSizeLowResolutionBytes =
+const char kModPagespeedLoadFromFile[] = "ModPagespeedLoadFromFile";
+const char kModPagespeedLogRewriteTiming[] = "ModPagespeedLogRewriteTiming";
+const char kModPagespeedLowercaseHtmlNames[] = "ModPagespeedLowercaseHtmlNames";
+const char kModPagespeedMapOriginDomain[] = "ModPagespeedMapOriginDomain";
+const char kModPagespeedMapRewriteDomain[] = "ModPagespeedMapRewriteDomain";
+const char kModPagespeedMaxImageSizeLowResolutionBytes[] =
     "ModPagespeedMaxImageSizeLowResolutionBytes";
-const char* kModPagespeedMaxInlinedPreviewImagesIndex =
+const char kModPagespeedMaxInlinedPreviewImagesIndex[] =
     "ModPagespeedMaxInlinedPreviewImagesIndex";
-const char* kModPagespeedMaxSegmentLength = "ModPagespeedMaxSegmentLength";
-const char* kModPagespeedMemcachedServers = "ModPagespeedMemcachedServers";
-const char* kModPagespeedMessageBufferSize = "ModPagespeedMessageBufferSize";
-const char* kModPagespeedMinImageSizeLowResolutionBytes =
+const char kModPagespeedMaxSegmentLength[] = "ModPagespeedMaxSegmentLength";
+const char kModPagespeedMemcachedServers[] = "ModPagespeedMemcachedServers";
+const char kModPagespeedMessageBufferSize[] = "ModPagespeedMessageBufferSize";
+const char kModPagespeedMinImageSizeLowResolutionBytes[] =
     "ModPagespeedMinImageSizeLowResolutionBytes";
-const char* kModPagespeedModifyCachingHeaders =
+const char kModPagespeedModifyCachingHeaders[] =
     "ModPagespeedModifyCachingHeaders";
 const char kModPagespeedNumExpensiveRewriteThreads[] =
     "ModPagespeedNumExpensiveRewriteThreads";
 const char kModPagespeedNumRewriteThreads[] = "ModPagespeedNumRewriteThreads";
-const char* kModPagespeedNumShards = "ModPagespeedNumShards";
-const char* kModPagespeedRefererStatisticsOutputLevel =
+const char kModPagespeedNumShards[] = "ModPagespeedNumShards";
+const char kModPagespeedRefererStatisticsOutputLevel[] =
     "ModPagespeedRefererStatisticsOutputLevel";
-const char* kModPagespeedReportUnloadTime = "ModPagespeedReportUnloadTime";
-const char* kModPagespeedRespectVary = "ModPagespeedRespectVary";
-const char* kModPagespeedRetainComment = "ModPagespeedRetainComment";
-const char* kModPagespeedRewriteLevel = "ModPagespeedRewriteLevel";
-const char* kModPagespeedRunFurious = "ModPagespeedRunExperiment";
-const char* kModPagespeedShardDomain = "ModPagespeedShardDomain";
-const char* kModPagespeedSharedMemoryLocks = "ModPagespeedSharedMemoryLocks";
-const char* kModPagespeedSlurpDirectory = "ModPagespeedSlurpDirectory";
-const char* kModPagespeedSlurpFlushLimit = "ModPagespeedSlurpFlushLimit";
-const char* kModPagespeedSlurpReadOnly = "ModPagespeedSlurpReadOnly";
-const char* kModPagespeedSupportNoScriptEnabled =
+const char kModPagespeedReportUnloadTime[] = "ModPagespeedReportUnloadTime";
+const char kModPagespeedRespectVary[] = "ModPagespeedRespectVary";
+const char kModPagespeedRetainComment[] = "ModPagespeedRetainComment";
+const char kModPagespeedRewriteLevel[] = "ModPagespeedRewriteLevel";
+const char kModPagespeedRunFurious[] = "ModPagespeedRunExperiment";
+const char kModPagespeedShardDomain[] = "ModPagespeedShardDomain";
+const char kModPagespeedSharedMemoryLocks[] = "ModPagespeedSharedMemoryLocks";
+const char kModPagespeedSlurpDirectory[] = "ModPagespeedSlurpDirectory";
+const char kModPagespeedSlurpFlushLimit[] = "ModPagespeedSlurpFlushLimit";
+const char kModPagespeedSlurpReadOnly[] = "ModPagespeedSlurpReadOnly";
+const char kModPagespeedSupportNoScriptEnabled[] =
     "ModPagespeedSupportNoScriptEnabled";
-const char* kModPagespeedStatistics = "ModPagespeedStatistics";
-const char* kModPagespeedTestProxy = "ModPagespeedTestProxy";
-const char* kModPagespeedUrlPrefix = "ModPagespeedUrlPrefix";
-const char* kModPagespeedUrlValuedAttribute = "ModPagespeedUrlValuedAttribute";
-const char* kModPagespeedUsePerVHostStatistics =
+const char kModPagespeedStatistics[] = "ModPagespeedStatistics";
+const char kModPagespeedTestProxy[] = "ModPagespeedTestProxy";
+const char kModPagespeedUrlPrefix[] = "ModPagespeedUrlPrefix";
+const char kModPagespeedUrlValuedAttribute[] = "ModPagespeedUrlValuedAttribute";
+const char kModPagespeedUsePerVHostStatistics[] =
     "ModPagespeedUsePerVHostStatistics";
-const char* kModPagespeedSpeedTracking = "ModPagespeedIncreaseSpeedTracking";
-const char* kModPagespeedXHeaderValue = "ModPagespeedXHeaderValue";
+const char kModPagespeedSpeedTracking[] = "ModPagespeedIncreaseSpeedTracking";
+const char kModPagespeedXHeaderValue[] = "ModPagespeedXHeaderValue";
 
 // The following two are deprecated due to spelling
 const char* kModPagespeedImgInlineMaxBytes = "ModPagespeedImgInlineMaxBytes";
