@@ -670,7 +670,6 @@ bool ProxyFetch::HandleWrite(const StringPiece& str,
       AddPagespeedHeader();
 
       if ((property_cache_callback_ != NULL) && started_parse_) {
-        // TODO(mmohabey): This should be called after ConvertMetaTagsFilter.
         // Save the response headers before ConnectProxyFetch so that no other
         // thread modifies it while its getting copied in SaveOriginalHeaders.
         driver_->SaveOriginalHeaders(response_headers());

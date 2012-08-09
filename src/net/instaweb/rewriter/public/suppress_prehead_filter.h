@@ -45,21 +45,27 @@ class SuppressPreheadFilter : public HtmlWriterFilter {
 
   virtual void StartElement(HtmlElement* element);
 
+  virtual void EndElement(HtmlElement* element);
+
+  virtual void EndDocument();
+
  protected:
   virtual void Clear();
 
-  // Update the flush early info with pre head information.
-  void UpdateFlushEarlyInfo();
-
  private:
   bool seen_first_head_;
+  bool in_no_script_;
   RewriteDriver* driver_;
   GoogleString pre_head_;  // The html text till the <head>
+  GoogleString content_type_meta_tag_;
   // Writer for writing to the response buffer.
   Writer* original_writer_;
+  Writer* current_writer_;
   StringWriter pre_head_writer_;  // Writer to write the pre_head_.
+  StringWriter content_type_meta_tag_writer_;
   // Writer to write both the pre_head string and to the response buffer.
   scoped_ptr<SplitWriter> pre_head_and_response_writer_;
+  scoped_ptr<SplitWriter> content_type_meta_tag_and_response_writer_;
 
   DISALLOW_COPY_AND_ASSIGN(SuppressPreheadFilter);
 };

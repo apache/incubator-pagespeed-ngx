@@ -213,6 +213,7 @@ void FlushEarlyFlow::GenerateDummyHeadAndCountResources(
     const FlushEarlyInfo& flush_early_info) {
   Write(flush_early_info.pre_head());
   Write("<head>");
+  Write(flush_early_info.content_type_meta_tag());
   GoogleString head_string, script, minified_script;
   bool has_script = false;
   switch (manager_->user_agent_matcher().GetPrefetchMechanism(

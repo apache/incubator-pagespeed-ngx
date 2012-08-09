@@ -102,4 +102,38 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
   EXPECT_EQ(output_, html_wo_prehead);
 }
 
+TEST_F(SuppressPreheadFilterTest, FlushEarlyMetaTags) {
+  InitResources();
+  GoogleString html_ip =
+      "<!DOCTYPE html>"
+      "<html>"
+      "<head>"
+      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
+      "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
+      "<meta charset=\"UTF-8\">"
+      "</head>"
+      "<body></body></html>";
+  GoogleString html_wo_prehead =
+      "<head>"
+      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
+      "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
+      "<meta charset=\"UTF-8\">"
+      "</head>"
+      "<body></body></html>";
+
+  Parse("not_flushed_early", html_ip);
+  EXPECT_EQ(output_buffer_, html_ip);
+
+  EXPECT_EQ(
+      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
+      "<meta charset=\"UTF-8\">",
+      rewrite_driver()->flush_early_info()->content_type_meta_tag());
+
+  // pre head is suppressed if the dummy head was flushed early.
+  output_.clear();
+  rewrite_driver()->set_flushed_early(true);
+  Parse("flushed_early", html_ip);
+  EXPECT_EQ(output_, html_wo_prehead);
+}
+
 }  // namespace net_instaweb

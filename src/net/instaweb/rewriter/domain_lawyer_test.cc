@@ -467,8 +467,8 @@ TEST_F(DomainLawyerTest, AddTwoProtocolRewriteDomainMapping) {
 TEST_F(DomainLawyerTest, FindDomainsRewrittenTo) {
   // No mapping.
   ConstStringStarVector from_domains;
-  domain_lawyer_.FindDomainsRewrittenTo(
-      GoogleUrl("http://www1.example.com/"), &from_domains);
+  GoogleUrl gurl("http://www1.example.com/");
+  domain_lawyer_.FindDomainsRewrittenTo(gurl, &from_domains);
   EXPECT_EQ(0, from_domains.size());
 
   // Add mapping.
@@ -477,8 +477,7 @@ TEST_F(DomainLawyerTest, FindDomainsRewrittenTo) {
   ASSERT_TRUE(domain_lawyer_.AddTwoProtocolRewriteDomainMapping(
       "www1.example.com", "xyz.example.com", &message_handler_));
 
-  domain_lawyer_.FindDomainsRewrittenTo(
-      GoogleUrl("http://www1.example.com/"), &from_domains);
+  domain_lawyer_.FindDomainsRewrittenTo(gurl, &from_domains);
   ASSERT_EQ(2, from_domains.size());
   EXPECT_EQ("http://www.example.com/", *(from_domains[0]));
   EXPECT_EQ("http://xyz.example.com/", *(from_domains[1]));

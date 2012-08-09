@@ -44,7 +44,7 @@ SharedMemStatisticsTestBase::SharedMemStatisticsTestBase(
 
 void SharedMemStatisticsTestBase::SetUp() {
   // This time is in the afternoon of 17 July 2012.
-  timer_.reset(new MockTimer(1342567288560));
+  timer_.reset(new MockTimer(1342567288560ULL));
   thread_system_.reset(ThreadSystem::CreateThreadSystem());
   file_system_.reset(new MemFileSystem(thread_system_.get(), timer_.get()));
   stats_.reset(new SharedMemStatistics(shmem_runtime_.get(), kPrefix, &handler_,

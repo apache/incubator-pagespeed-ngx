@@ -60,4 +60,7 @@ message FlushEarlyInfo {
   // Total number of domains in the page, in the previous rewrite, for which DNS
   // prefetch tags could be potentially inserted.
   optional int32 total_dns_prefetch_domains_previous = 7;
+
+  // Meta Tag which specifies the content type of the page.
+  optional string content_type_meta_tag = 8;
 }
