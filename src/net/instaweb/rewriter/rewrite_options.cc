@@ -1026,8 +1026,10 @@ bool RewriteOptions::AddByNameToFilterSet(
         set->insert(kCoreFilterSet[i]);
       }
     } else {
-      handler->Message(kWarning, "Invalid filter name: %s",
-                       option.as_string().c_str());
+      if (handler != NULL) {
+        handler->Message(kWarning, "Invalid filter name: %s",
+                         option.as_string().c_str());
+      }
       ret = false;
     }
   } else {
@@ -1799,13 +1801,6 @@ void RewriteOptions::UrlValuedAttribute(
   *element = StringPiece(eac.element);
   *attribute = StringPiece(eac.attribute);
   *category = eac.category;
-}
-
-void RewriteOptions::CheckFiltersAgainst(
-    const FilterSet& expected_enabled_filters,
-    const FilterSet& expected_disabled_filters) {
-  CHECK(expected_enabled_filters == enabled_filters_);
-  CHECK(expected_disabled_filters == disabled_filters_);
 }
 
 bool RewriteOptions::IsUrlCacheValid(StringPiece url, int64 time_ms) const {

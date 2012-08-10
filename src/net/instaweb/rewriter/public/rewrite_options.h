@@ -259,6 +259,14 @@ class RewriteOptions {
   // Convenience name for a set of rewrite filters.
   typedef std::set<Filter> FilterSet;
 
+  // Lookup the given name to see if it's a filter name or one of the special
+  // names like "core" or "rewrite_images", and if so add the corresponding
+  // filter(s) to the given set. If the given name doesn't match -and- if
+  // handler is not NULL, logs a warning message to handler. Returns true if
+  // the name matched and the set was updated, false otherwise.
+  static bool AddByNameToFilterSet(const StringPiece& option, FilterSet* set,
+                                   MessageHandler* handler);
+
   // Convenience name for (name,value) pairs of options (typically filter
   // parameters), as well as sets of those pairs.
   typedef std::pair<StringPiece, StringPiece> OptionStringPair;
@@ -586,11 +594,6 @@ class RewriteOptions {
   // Clear all explicitly enabled and disabled filters. Some filters may still
   // be enabled by the rewrite level and HtmlWriterFilter will be enabled.
   void ClearFilters();
-
-  // Check if the state of the filters is same as the arguments. Useful in
-  // tests.
-  void CheckFiltersAgainst(const FilterSet& enabled_filters,
-                           const FilterSet& disabled_filters);
 
   // Enables all three extend_cache filters.
   void EnableExtendCacheFilters();
@@ -1658,8 +1661,6 @@ class RewriteOptions {
       const StringPiece& filters, FilterSet* set, MessageHandler* handler);
   static bool AddCommaSeparatedListToFilterSet(
       const StringPiece& filters, FilterSet* set, MessageHandler* handler);
-  static bool AddByNameToFilterSet(
-      const StringPiece& option, FilterSet* set, MessageHandler* handler);
   static Filter LookupFilter(const StringPiece& filter_name);
   static OptionEnum LookupOption(const StringPiece& option_name);
   // Initialize the option-enum to option-name array for fast lookups by
