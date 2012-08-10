@@ -1226,7 +1226,7 @@ class OptionsAwareHTTPCacheCallback : public HTTPCache::Callback {
   virtual ~OptionsAwareHTTPCacheCallback();
   virtual bool IsCacheValid(const GoogleString& key,
                             const ResponseHeaders& headers);
-
+  virtual int64 OverrideCacheTtlMs(const GoogleString& key);
  protected:
   // Sub-classes need to ensure that rewrite_options remains valid till
   // Callback::Done finishes.

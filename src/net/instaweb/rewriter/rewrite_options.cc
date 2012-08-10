@@ -653,6 +653,7 @@ RewriteOptions::RewriteOptions()
              &max_combined_js_bytes_, "xcj", kMaxCombinedJsBytes);
   add_option(false, &enable_blink_html_change_detection_, "ebhcd",
              kEnableBlinkHtmlChangeDetection);
+  add_option(-1, &override_caching_ttl_ms_, "octm", kOverrideCachingTtlMs);
   // Sort all_options_ on enum.
   SortOptions();
   // Do not call add_option with OptionEnum fourth argument after this.
@@ -1291,6 +1292,7 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   file_load_policy_.Merge(src.file_load_policy_);
   allow_resources_.AppendFrom(src.allow_resources_);
   retain_comments_.AppendFrom(src.retain_comments_);
+  override_caching_wildcard_.AppendFrom(src.override_caching_wildcard_);
 
   // Merge url_cache_invalidation_entries_ so that increasing order of timestamp
   // is preserved (assuming this.url_cache_invalidation_entries_ and
@@ -1431,6 +1433,7 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
       StrAppend(&signature_, entry.ComputeSignature(), "|");
     }
   }
+  StrAppend(&signature_, "OC:", override_caching_wildcard_.Signature(), "_");
   StrAppend(&signature_, "PVC:");
   for (int i = 0, n = prioritize_visible_content_families_.size(); i < n; ++i) {
     StrAppend(&signature_,
@@ -1497,6 +1500,12 @@ GoogleString RewriteOptions::OptionsToString() const {
       StrAppend(&output, "  ",
                 prioritize_visible_content_families_[i]->ToString(), "\n");
     }
+  }
+  GoogleString override_caching_wildcard_string(
+      override_caching_wildcard_.Signature());
+  if (!override_caching_wildcard_string.empty()) {
+    StrAppend(&output, "\nOverride caching wildcards\n",
+              override_caching_wildcard_string);
   }
   return output;
 }

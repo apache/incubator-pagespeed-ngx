@@ -403,9 +403,9 @@ TEST_F(WriteThroughHTTPCacheTest, RememberFetchDropped) {
 // SetIgnoreFailurePuts() mode (but do before)
 TEST_F(WriteThroughHTTPCacheTest, SetIgnoreFailurePuts) {
   ClearStats();
-  http_cache_->RememberNotCacheable(key_, &message_handler_);
+  http_cache_->RememberNotCacheable(key_, false, &message_handler_);
   http_cache_->SetIgnoreFailurePuts();
-  http_cache_->RememberNotCacheable("mykey2", &message_handler_);
+  http_cache_->RememberNotCacheable("mykey2", false, &message_handler_);
   ResponseHeaders headers_out;
   HTTPValue value_out;
   EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable,

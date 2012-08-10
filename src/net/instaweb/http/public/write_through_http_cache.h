@@ -72,6 +72,7 @@ class WriteThroughHTTPCache : public HTTPCache {
 
   // Implements HTTPCache::RememberNotCacheable().
   virtual void RememberNotCacheable(const GoogleString& key,
+                                    bool is_200_status_code,
                                     MessageHandler * handler);
 
   // Implements HTTPCache::RememberFetchFailed().

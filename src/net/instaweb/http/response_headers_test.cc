@@ -1274,4 +1274,76 @@ TEST_F(ResponseHeadersTest, IsHtmlLike) {
   EXPECT_TRUE(IsHtmlLike("application/xhtml+xml"));
 }
 
+TEST_F(ResponseHeadersTest, ForceCachingForNoCache) {
+  response_headers_.SetStatusAndReason(HttpStatus::kOK);
+  response_headers_.SetDate(MockTimer::kApr_5_2010_ms);
+  response_headers_.Add(HttpAttributes::kCacheControl, "max-age=0, no-cache");
+  response_headers_.ForceCaching(360 * 1000);
+  response_headers_.ComputeCaching();
+
+  EXPECT_TRUE(response_headers_.IsProxyCacheable());
+  EXPECT_EQ(360 * 1000, response_headers_.cache_ttl_ms());
+  EXPECT_FALSE(response_headers_.Has(HttpAttributes::kExpires));
+  ConstStringStarVector values;
+  response_headers_.Lookup(HttpAttributes::kCacheControl, &values);
+  EXPECT_EQ(2, values.size());
+  EXPECT_STREQ("max-age=0", *(values[0]));
+  EXPECT_STREQ("no-cache", *(values[1]));
+
+  response_headers_.UpdateCacheHeadersIfForceCached();
+  EXPECT_STREQ("max-age=360",
+               response_headers_.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_6_minutes_string_,
+               response_headers_.Lookup1(HttpAttributes::kExpires));
+}
+
+TEST_F(ResponseHeadersTest, ForceCachingForPrivate) {
+  response_headers_.SetStatusAndReason(HttpStatus::kOK);
+  response_headers_.SetDate(MockTimer::kApr_5_2010_ms);
+  response_headers_.Add(HttpAttributes::kCacheControl,
+                        "private, max-age=30000000");
+  response_headers_.ForceCaching(360 * 1000);
+  response_headers_.ComputeCaching();
+
+  EXPECT_TRUE(response_headers_.IsProxyCacheable());
+  EXPECT_EQ(360 * 1000, response_headers_.cache_ttl_ms());
+  EXPECT_FALSE(response_headers_.Has(HttpAttributes::kExpires));
+  ConstStringStarVector values;
+  response_headers_.Lookup(HttpAttributes::kCacheControl, &values);
+  EXPECT_EQ(2, values.size());
+  EXPECT_STREQ("private", *(values[0]));
+  EXPECT_STREQ("max-age=30000000", *(values[1]));
+
+  response_headers_.UpdateCacheHeadersIfForceCached();
+  EXPECT_STREQ("max-age=360",
+               response_headers_.Lookup1(HttpAttributes::kCacheControl));
+  EXPECT_STREQ(start_time_plus_6_minutes_string_,
+               response_headers_.Lookup1(HttpAttributes::kExpires));
+}
+
+TEST_F(ResponseHeadersTest, ForceCachingForAlreadyPublic) {
+  response_headers_.SetStatusAndReason(HttpStatus::kOK);
+  response_headers_.SetDate(MockTimer::kApr_5_2010_ms);
+  response_headers_.Add(HttpAttributes::kCacheControl,
+                        "public, max-age=3456");
+  response_headers_.ForceCaching(360 * 1000);
+  response_headers_.ComputeCaching();
+
+  EXPECT_TRUE(response_headers_.IsProxyCacheable());
+  EXPECT_EQ(3456 * 1000, response_headers_.cache_ttl_ms());
+  EXPECT_FALSE(response_headers_.Has(HttpAttributes::kExpires));
+  ConstStringStarVector values;
+  response_headers_.Lookup(HttpAttributes::kCacheControl, &values);
+  EXPECT_EQ(2, values.size());
+  EXPECT_STREQ("public", *(values[0]));
+  EXPECT_STREQ("max-age=3456", *(values[1]));
+
+  response_headers_.UpdateCacheHeadersIfForceCached();
+  EXPECT_FALSE(response_headers_.Has(HttpAttributes::kExpires));
+  response_headers_.Lookup(HttpAttributes::kCacheControl, &values);
+  EXPECT_EQ(2, values.size());
+  EXPECT_STREQ("public", *(values[0]));
+  EXPECT_STREQ("max-age=3456", *(values[1]));
+}
+
 }  // namespace net_instaweb

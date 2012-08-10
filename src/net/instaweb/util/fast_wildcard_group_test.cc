@@ -87,4 +87,10 @@ TEST_F(FastWildcardGroupTest, HardCodedDefault) {
   TestDefaults(group, false, true);
 }
 
+TEST_F(FastWildcardGroupTest, EmptyGroup) {
+  FastWildcardGroup group;
+  EXPECT_TRUE(group.Match("cb.cc", true));
+  EXPECT_FALSE(group.Match("ca.cc", false));
+}
+
 }  // namespace net_instaweb

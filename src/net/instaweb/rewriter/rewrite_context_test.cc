@@ -1621,6 +1621,88 @@ TEST_F(RewriteContextTest, DoNotModifyReferencesToUncacheableResources) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 };
 
+// Verifies that when an HTML document references an uncacheable resource, that
+// reference does get modified if cache ttl overriding is enabled.
+TEST_F(RewriteContextTest, CacheTtlOverridingForPrivateResources) {
+  FetcherUpdateDateHeaders();
+  int64 ttl_ms = 600 * 1000;
+  // Start with overriding caching for a wildcard pattern that does not match
+  // the css url.
+  options()->AddOverrideCacheTtl("*b_private*");
+  options()->set_override_caching_ttl_ms(ttl_ms);
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  GoogleString input_html(CssLinkHref("a_private.css"));
+  ValidateNoChanges("trimmable_not_overridden", input_html);
+  ClearStats();
+
+  // Now override caching for a pattern that matches the css url.
+  options()->ClearSignatureForTesting();
+  options()->AddOverrideCacheTtl("*a_private*");
+  resource_manager()->ComputeSignature(options());
+
+  GoogleString output_html(CssLinkHref(
+      Encode(kTestDomain, "tw", "0", "a_private.css", "css")));
+
+  // The private resource gets rewritten.
+  ValidateExpected("trimmable_but_private", input_html, output_html);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  mock_timer()->AdvanceMs(5 * 1000);
+
+  // Advance the timer by 5 seconds. Gets rewritten again with no extra fetches.
+  ValidateExpected("trimmable_but_private", input_html, output_html);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  mock_timer()->AdvanceMs((ttl_ms * 4) / 5);
+  // Advance past the freshening threshold. The resource gets freshened and we
+  // update the metadata cache.
+  ValidateExpected("trimmable_but_private", input_html, output_html);
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  // Send another request after freshening. Succeeds without any extra fetches.
+  ValidateExpected("trimmable_but_private", input_html, output_html);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  mock_timer()->AdvanceMs(2 * ttl_ms);
+  // Advance past expiry. We fetch the resource and update the HTTPCache and
+  // metadata cache.
+  ValidateExpected("trimmable_but_private", input_html, output_html);
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  SetupWaitFetcher();
+  mock_timer()->AdvanceMs(2 * ttl_ms);
+  // Advance past expiry. We fetch the resource and update the HTTPCache and
+  // metadata cache.
+  ValidateExpected("trimmable_but_private", input_html, input_html);
+  CallFetcherCallbacks();
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+};
+
 // Verifies that we can rewrite uncacheable resources without caching them.
 TEST_F(RewriteContextTest, FetchUncacheableWithRewritesInLineOfServing) {
   InitTrimFiltersSync(kOnTheFlyResource);

@@ -2171,6 +2171,14 @@ bool OptionsAwareHTTPCacheCallback::IsCacheValid(
       rewrite_options_->IsUrlCacheValid(key, headers.date_ms());
 }
 
+int64 OptionsAwareHTTPCacheCallback::OverrideCacheTtlMs(
+    const GoogleString& key) {
+  if (rewrite_options_->IsCacheTtlOverridden(key)) {
+    return rewrite_options_->override_caching_ttl_ms();
+  }
+  return -1;
+}
+
 RewriteDriver::CssResolutionStatus RewriteDriver::ResolveCssUrls(
     const GoogleUrl& input_css_base,
     const StringPiece& output_css_base,

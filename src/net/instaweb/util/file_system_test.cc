@@ -65,6 +65,17 @@ void FileSystemTest::CheckRead(const GoogleString& filename,
   EXPECT_EQ(buffer, expected_contents);
 }
 
+// Check that a file has been read.
+void FileSystemTest::CheckInputFileRead(const GoogleString& filename,
+                                        const GoogleString& expected_contents) {
+  FileSystem::InputFile* file =
+      file_system()->OpenInputFile(filename.c_str(), &handler_);
+  ASSERT_TRUE(file != NULL);
+  GoogleString buffer;
+  ASSERT_TRUE(file_system()->ReadFile(file, &buffer, &handler_));
+  EXPECT_EQ(buffer, expected_contents);
+}
+
 // Make sure we can no longer read the file by the old name.  Note
 // that this will spew some error messages into the log file, and
 // we can add a null_message_handler implementation to
@@ -88,6 +99,7 @@ void FileSystemTest::TestWriteRead() {
   EXPECT_TRUE(ofile->Write(msg, &handler_));
   EXPECT_TRUE(file_system()->Close(ofile, &handler_));
   CheckRead(filename, msg);
+  CheckInputFileRead(filename, msg);
 }
 
 // Write a temp file, then read it.

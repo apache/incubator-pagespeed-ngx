@@ -43,6 +43,9 @@ class FileSystemTest : public testing::Test {
   void CheckRead(const GoogleString& filename,
                  const GoogleString& expected_contents);
 
+  void CheckInputFileRead(const GoogleString& filename,
+                          const GoogleString& expected_contents);
+
   // Delete (at least) the named file or directory and everything
   // underneath it.  The test is permitted to delete more things (up
   // to and including the entire file system).

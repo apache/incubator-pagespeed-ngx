@@ -152,16 +152,33 @@ class HTTPCacheCallback : public CacheInterface::Callback {
       // could have a fresher response. We don't need to pass request_headers
       // here, as we shouldn't have put things in here that required
       // Authorization in the first place.
+      int64 override_cache_ttl_ms = callback_->OverrideCacheTtlMs(key_);
+      if (override_cache_ttl_ms > 0) {
+        // Use the OverrideCacheTtlMs if specified.
+        headers->ForceCaching(override_cache_ttl_ms);
+      }
+      // Is the response still valid?
       bool is_valid = http_cache_->IsCurrentlyValid(NULL, *headers, now_ms) &&
           callback_->IsFresh(*headers);
       int http_status = headers->status_code();
+
       if (http_status == HttpStatus::kRememberNotCacheableStatusCode ||
+          http_status == HttpStatus::kRememberNotCacheableAnd200StatusCode ||
           http_status == HttpStatus::kRememberFetchFailedStatusCode) {
+        // If the response was stored as uncacheable and a 200, it may since
+        // have since been added to the override caching group. Hence, we
+        // consider it invalid if override_cache_ttl_ms > 0.
+        if (override_cache_ttl_ms > 0 &&
+            http_status == HttpStatus::kRememberNotCacheableAnd200StatusCode) {
+          is_valid = false;
+        }
         if (is_valid) {
           int64 remember_not_found_time_ms = headers->CacheExpirationTimeMs()
               - start_ms_;
           const char* status = NULL;
-          if (http_status == HttpStatus::kRememberNotCacheableStatusCode) {
+          if (http_status == HttpStatus::kRememberNotCacheableStatusCode ||
+              http_status ==
+                  HttpStatus::kRememberNotCacheableAnd200StatusCode) {
             status = "not-cacheable";
             result = HTTPCache::kRecentFetchNotCacheable;
           } else {
@@ -180,6 +197,16 @@ class HTTPCacheCallback : public CacheInterface::Callback {
       } else {
         if (is_valid) {
           result = HTTPCache::kFound;
+          if (headers->UpdateCacheHeadersIfForceCached()) {
+            // If the cache headers were updated as a result of it being force
+            // cached, we need to reconstruct the HTTPValue with the new
+            // headers.
+            StringPiece content;
+            callback_->http_value()->ExtractContents(&content);
+            callback_->http_value()->Clear();
+            callback_->http_value()->Write(content, handler_);
+            callback_->http_value()->SetHeaders(headers);
+          }
         } else {
           if (http_cache_->force_caching_ ||
               (headers->IsCacheable() && headers->IsProxyCacheable())) {
@@ -260,9 +287,12 @@ void HTTPCache::UpdateStats(FindResult result, int64 delta_us) {
 }
 
 void HTTPCache::RememberNotCacheable(const GoogleString& key,
+                                     bool is_200_status_code,
                                      MessageHandler* handler) {
-  RememberFetchFailedorNotCacheableHelper(key, handler,
-      HttpStatus::kRememberNotCacheableStatusCode,
+  RememberFetchFailedorNotCacheableHelper(
+      key, handler,
+      is_200_status_code ? HttpStatus::kRememberNotCacheableAnd200StatusCode :
+                           HttpStatus::kRememberNotCacheableStatusCode,
       remember_not_cacheable_ttl_seconds_);
 }
 

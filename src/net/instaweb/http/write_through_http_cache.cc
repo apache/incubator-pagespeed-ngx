@@ -253,9 +253,10 @@ void WriteThroughHTTPCache::set_max_cacheable_response_content_length(
 
 void WriteThroughHTTPCache::RememberNotCacheable(
     const GoogleString& key,
+    bool is_200_status_code,
     MessageHandler* handler) {
-  cache1_->RememberNotCacheable(key, handler);
-  cache2_->RememberNotCacheable(key, handler);
+  cache1_->RememberNotCacheable(key, is_200_status_code, handler);
+  cache2_->RememberNotCacheable(key, is_200_status_code, handler);
 }
 
 void WriteThroughHTTPCache::RememberFetchFailed(

@@ -105,6 +105,11 @@ class HTTPCache {
     // fallback_http_value() with the cached response.
     virtual bool IsFresh(const ResponseHeaders& headers) { return true; }
 
+    // Overrides the cache ttl of the cached response with the given value. Note
+    // that this has no effect if the returned value is negative or less than
+    // the cache ttl of the stored value.
+    virtual int64 OverrideCacheTtlMs(const GoogleString& key) { return -1; }
+
     // TODO(jmarantz): specify the dataflow between http_value and
     // response_headers.
     HTTPValue* http_value() { return &http_value_; }
@@ -179,10 +184,12 @@ class HTTPCache {
   // because the URL was marked with Cache-Control 'nocache' or Cache-Control
   // 'private'. We would like to avoid DOSing the origin server or spinning our
   // own wheels trying to re-fetch this resource.
-  //
   // The not-cacheable setting will be 'remembered' for
   // remember_not_cacheable_ttl_seconds_.
+  // Note that we remember whether the response was originally a "200 OK" so
+  // that we can check if the cache TTL can be overridden.
   virtual void RememberNotCacheable(const GoogleString& key,
+                                    bool is_200_status_code,
                                     MessageHandler* handler);
 
   // Tell the HTTP Cache to remember that a particular key is not cacheable

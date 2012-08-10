@@ -55,6 +55,17 @@ bool FileSystem::ReadFile(const char* filename, GoogleString* buffer,
 bool FileSystem::ReadFile(const char* filename, Writer* writer,
                           MessageHandler* message_handler) {
   InputFile* input_file = OpenInputFile(filename, message_handler);
+  return ReadFile(input_file, writer, message_handler);
+}
+
+bool FileSystem::ReadFile(InputFile* input_file, GoogleString* buffer,
+                          MessageHandler* message_handler) {
+  StringWriter writer(buffer);
+  return ReadFile(input_file, &writer, message_handler);
+}
+
+bool FileSystem::ReadFile(InputFile* input_file, Writer* writer,
+                          MessageHandler* message_handler) {
   bool ret = false;
   if (input_file != NULL) {
     char buf[kStackBufferSize];

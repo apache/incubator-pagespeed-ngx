@@ -249,6 +249,19 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // it in *content_length if successful.
   bool FindContentLength(int64* content_length);
 
+  // Force cache the response with the given TTL even if it is private. Note
+  // that this does not change any of the headers. The values of cache_ttl_ms,
+  // IsCacheable and IsProxyCacheable are updated once ComputeCaching() is
+  // called.
+  // Note that for responses which were originally cacheable, the effective
+  // cache TTL is the maximum of the original TTL and ttl_ms.
+  // For responses which were originally uncacheable, the new cache TTL is
+  // ttl_ms.
+  void ForceCaching(int64 ttl_ms);
+
+  // Update the caching headers if the response has force cached.
+  bool UpdateCacheHeadersIfForceCached();
+
  private:
   // Parse the original and fresh content types, and add a new header based
   // on the two of them, giving preference to the original.
@@ -263,6 +276,12 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // The number of milliseconds of cache TTL we assign to resources that are
   // likely cacheable and have no explicit cache ttl or expiration date.
   int64 implicit_cache_ttl_ms_;
+
+  // The number of milliseconds of cache TTL for which we should cache the
+  // response even if it was originally uncacheable.
+  int64 force_cache_ttl_ms_;
+  // Indicates if the response was force cached.
+  bool force_cached_;
 
   DISALLOW_COPY_AND_ASSIGN(ResponseHeaders);
 };

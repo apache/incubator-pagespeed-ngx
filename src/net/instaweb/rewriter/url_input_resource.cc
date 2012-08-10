@@ -202,6 +202,9 @@ class UrlResourceFetchCallback : public AsyncFetch {
     ResponseHeaders* headers = response_headers();
     headers->FixDateHeaders(http_cache()->timer()->NowMs());
     if (success && !headers->IsErrorStatus()) {
+      if (rewrite_options_->IsCacheTtlOverridden(url())) {
+        headers->ForceCaching(rewrite_options_->override_caching_ttl_ms());
+      }
       if (IsValidAndCacheableImpl(http_cache(), resource_cutoff_ms_,
                                   respect_vary_, *headers)) {
         HTTPValue* value = http_value();
@@ -209,7 +212,9 @@ class UrlResourceFetchCallback : public AsyncFetch {
         http_cache()->Put(url(), value, message_handler_);
         return true;
       } else {
-        http_cache()->RememberNotCacheable(url(), message_handler_);
+        http_cache()->RememberNotCacheable(
+            url(), headers->status_code() == HttpStatus::kOK,
+            message_handler_);
       }
     } else {
       if (headers->Has(HttpAttributes::kXPsaLoadShed)) {

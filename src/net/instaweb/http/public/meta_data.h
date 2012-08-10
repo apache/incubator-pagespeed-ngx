@@ -135,7 +135,11 @@ enum Code {
   // outside the normal HTTP range, but we consider these response codes
   // to be 'cacheable' in our own cache.
   kRememberFetchFailedStatusCode = 10001,
+  // Note that this includes all non-200 status code responses that are not
+  // cacheable.
   kRememberNotCacheableStatusCode = 10002,
+  // This includes all 200 status code responses that are not cacheable.
+  kRememberNotCacheableAnd200StatusCode = 10003,
 };
 
 // Transform a status code into the equivalent reason phrase.

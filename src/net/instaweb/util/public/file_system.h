@@ -142,11 +142,19 @@ class FileSystem {
   // Default implementation defensively returns 8192.
   virtual int MaxPathLength(const StringPiece& base) const;
 
-  // High level support to read/write entire files in one shot.
+  // High level support to read/write entire files in one shot.  The input_file
+  // versions accept a NULL input_file, in which case they report failure.  All
+  // routines close the file.
   virtual bool ReadFile(const char* filename,
                         GoogleString* buffer,
                         MessageHandler* handler);
   virtual bool ReadFile(const char* filename,
+                        Writer* writer,
+                        MessageHandler* handler);
+  virtual bool ReadFile(InputFile* input_file,
+                        GoogleString* buffer,
+                        MessageHandler* handler);
+  virtual bool ReadFile(InputFile* input_file,
                         Writer* writer,
                         MessageHandler* handler);
   virtual bool WriteFile(const char* filename,

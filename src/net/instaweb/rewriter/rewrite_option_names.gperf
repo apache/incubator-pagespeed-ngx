@@ -78,6 +78,7 @@ struct OptionName {
 "MinImageSizeLowResolutionBytes",       RewriteOptions::kMinImageSizeLowResolutionBytes
 "MinResourceCacheTimeToRewriteMs",      RewriteOptions::kMinResourceCacheTimeToRewriteMs
 "ModifyCachingHeaders",                 RewriteOptions::kModifyCachingHeaders
+"OverrideCachingTtlMs",                 RewriteOptions::kOverrideCachingTtlMs
 "ProgressiveJpegMinBytes",              RewriteOptions::kProgressiveJpegMinBytes
 "RejectBlacklisted",                    RewriteOptions::kRejectBlacklisted
 "RejectBlacklistedStatusCode",          RewriteOptions::kRejectBlacklistedStatusCode

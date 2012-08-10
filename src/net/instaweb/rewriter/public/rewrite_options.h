@@ -184,6 +184,7 @@ class RewriteOptions {
     kMinResourceCacheTimeToRewriteMs,
     kModifyCachingHeaders,
     kOverrideBlinkCacheTimeMs,
+    kOverrideCachingTtlMs,
     kPassthroughBlinkForInvalidResponseCode,
     kProgressiveJpegMinBytes,
     kRejectBlacklisted,
@@ -1242,6 +1243,25 @@ class RewriteOptions {
     return retain_comments_.Match(comment, false);
   }
 
+  void set_override_caching_ttl_ms(int64 x) {
+    set_option(x, &override_caching_ttl_ms_);
+  }
+  int64 override_caching_ttl_ms() const {
+    return override_caching_ttl_ms_.value();
+  }
+
+  // Overrides the cache ttl for all urls matching the wildcard with
+  // override_caching_ttl_ms().
+  void AddOverrideCacheTtl(const StringPiece& wildcard) {
+    Modify();
+    override_caching_wildcard_.Allow(wildcard);
+  }
+
+  // Is the cache TTL overridden for the given url?
+  bool IsCacheTtlOverridden(const StringPiece& url) const {
+    return override_caching_wildcard_.Match(url, false);
+  }
+
   // Make an identical copy of these options and return it.  This does
   // *not* copy the signature, and the returned options are not in
   // a frozen state.
@@ -1956,6 +1976,13 @@ class RewriteOptions {
   // Maximum size allowed for the combined js resource.
   // Negative value will bypass the size check.
   Option<int64> max_combined_js_bytes_;
+
+  // The cache TTL with which to override the urls matching the
+  // override_caching_ WildCardGroup. Note that we do not override the cache TTL
+  // for any urls if this value is negative. The same TTL value is used for all
+  // urls that match override_caching_wildcard_.
+  Option<int64> override_caching_ttl_ms_;
+  FastWildcardGroup override_caching_wildcard_;
 
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,

@@ -36,6 +36,7 @@
 #include "pagespeed/core/resource.h"
 #include "pagespeed/core/resource_cache_computer.h"
 #include "pagespeed/core/resource_util.h"
+#include "pagespeed/proto/resource.pb.h"
 
 namespace net_instaweb {
 
@@ -145,6 +146,8 @@ void ResponseHeaders::CopyFrom(const ResponseHeaders& other) {
   map_.reset(NULL);
   *(proto_.get()) = *(other.proto_.get());
   cache_fields_dirty_ = other.cache_fields_dirty_;
+  force_cache_ttl_ms_ = other.force_cache_ttl_ms_;
+  force_cached_ = other.force_cached_;
 }
 
 void ResponseHeaders::Clear() {
@@ -160,6 +163,8 @@ void ResponseHeaders::Clear() {
   proto_->clear_header();
   proto_->clear_is_implicitly_cacheable();
   cache_fields_dirty_ = false;
+  force_cache_ttl_ms_ = -1;
+  force_cached_ = false;
 }
 
 int ResponseHeaders::status_code() const {
@@ -428,6 +433,12 @@ void ResponseHeaders::GetSanitizedProto(HttpResponseHeaders* proto) const {
 
 bool ResponseHeaders::VaryCacheable(bool request_has_cookie) const {
   if (IsCacheable()) {
+    if (force_cache_ttl_ms_ > 0) {
+      // If we've been asked to force cache a request, then we always consider
+      // it as VaryCacheable.
+      return true;
+    }
+
     ConstStringStarVector values;
     Lookup(HttpAttributes::kVary, &values);
     bool vary_cacheable = true;
@@ -490,6 +501,7 @@ class InstawebCacheComputer : public pagespeed::ResourceCacheComputer {
       // These dummy status codes indicate something about our system that we
       // want to remember in the cache.
       case HttpStatus::kRememberNotCacheableStatusCode:
+      case HttpStatus::kRememberNotCacheableAnd200StatusCode:
       case HttpStatus::kRememberFetchFailedStatusCode:
         return true;
       default:
@@ -543,13 +555,21 @@ void ResponseHeaders::ComputeCaching() {
   scoped_ptr<InstawebCacheComputer> computer(
       InstawebCacheComputer::NewComputer(*this));
 
+  // Can we force cache this response?
+  bool force_caching_enabled = force_cache_ttl_ms_ > 0 &&
+      status_code() == HttpStatus::kOK &&
+      computer->GetResourceType() != pagespeed::HTML;
+
   // Note: Unlike pagespeed algorithm, we are very conservative about calling
   // a resource cacheable. Many status codes are technically cacheable but only
   // based upon precise input headers. Since we do not check those headers we
   // only allow a few hand-picked status codes to be cacheable at all.
+  // Note that if force caching is enabled, we consider a privately cacheable
+  // resource as cacheable.
+  bool is_cacheable = computer->IsCacheable();
   proto_->set_cacheable(has_date &&
                         computer->IsAllowedCacheableStatusCode() &&
-                        computer->IsCacheable());
+                        (force_caching_enabled || is_cacheable));
   if (proto_->cacheable()) {
     // TODO(jmarantz): check "Age" resource and use that to reduce
     // the expiration_time_ms_.  This is, says, bmcquade@google.com,
@@ -560,15 +580,26 @@ void ResponseHeaders::ComputeCaching() {
     //
     // Implicitly cached items stay alive in our system for the specified
     // implicit ttl ms.
+    bool is_proxy_cacheable = computer->IsProxyCacheable();
     int64 cache_ttl_ms = implicit_cache_ttl_ms();
     if (computer->IsExplicitlyCacheable()) {
       // TODO: Do we care about the return value.
       computer->GetFreshnessLifetimeMillis(&cache_ttl_ms);
     }
+    if (force_caching_enabled &&
+        (force_cache_ttl_ms_ > cache_ttl_ms ||
+         !is_cacheable || !is_proxy_cacheable)) {
+      // We consider the response to have been force cached only if force
+      // caching was enabled and the forced cache TTL is larger than the
+      // original TTL or the original response wasn't cacheable.
+      cache_ttl_ms = force_cache_ttl_ms_;
+      force_cached_ = true;
+    }
+
     proto_->set_cache_ttl_ms(cache_ttl_ms);
     proto_->set_expiration_time_ms(proto_->date_ms() + cache_ttl_ms);
 
-    proto_->set_proxy_cacheable(computer->IsProxyCacheable());
+    proto_->set_proxy_cacheable(force_cached_ || is_proxy_cacheable);
 
     // Do not cache HTML with Set-Cookie / Set-Cookie2 headers even though it
     // has explicit caching directives. This is to prevent the caching of user
@@ -579,9 +610,11 @@ void ResponseHeaders::ComputeCaching() {
       proto_->set_proxy_cacheable(false);
     }
 
-    if (proto_->proxy_cacheable() && !computer->IsExplicitlyCacheable()) {
+    if (proto_->proxy_cacheable() &&
+        !computer->IsExplicitlyCacheable() && !force_cached_) {
       // If the resource is proxy cacheable but it does not have explicit
-      // caching headers, explicitly set the caching headers.
+      // caching headers and is not force cached, explicitly set the caching
+      // headers.
       DCHECK(has_date);
       DCHECK(cache_ttl_ms == implicit_cache_ttl_ms());
       proto_->set_is_implicitly_cacheable(true);
@@ -773,6 +806,8 @@ void ResponseHeaders::DebugPrint() const {
             Integer64ToString(last_modified_time_ms()).c_str());
     fprintf(stderr, "date_ms_ = %s\n",
             Integer64ToString(proto_->date_ms()).c_str());
+    fprintf(stderr, "cache_ttl_ms_ = %s\n",
+            Integer64ToString(proto_->cache_ttl_ms()).c_str());
     fprintf(stderr, "cacheable_ = %s\n", BoolToString(proto_->cacheable()));
     fprintf(stderr, "proxy_cacheable_ = %s\n",
             BoolToString(proto_->proxy_cacheable()));
@@ -782,6 +817,37 @@ void ResponseHeaders::DebugPrint() const {
 bool ResponseHeaders::FindContentLength(int64* content_length) {
   const char* val = Lookup1(HttpAttributes::kContentLength);
   return (val != NULL) && StringToInt64(val, content_length);
+}
+
+void ResponseHeaders::ForceCaching(int64 ttl_ms) {
+  // If the cache fields were not dirty before this call, recompute caching
+  // before returning.
+  bool recompute_caching = !cache_fields_dirty_;
+  if (ttl_ms > 0) {
+    force_cache_ttl_ms_ = ttl_ms;
+    cache_fields_dirty_ = true;
+    if (recompute_caching) {
+      ComputeCaching();
+    }
+  }
+}
+
+bool ResponseHeaders::UpdateCacheHeadersIfForceCached() {
+  if (cache_fields_dirty_) {
+    LOG(DFATAL)  << "Call ComputeCaching() before "
+                 << "UpdateCacheHeadersIfForceCached";
+    return false;
+  }
+  if (force_cached_) {
+    int64 date = date_ms();
+    int64 ttl = cache_ttl_ms();
+    RemoveAll(HttpAttributes::kPragma);
+    RemoveAll(HttpAttributes::kCacheControl);
+    SetDateAndCaching(date, ttl);
+    ComputeCaching();
+    return true;
+  }
+  return false;
 }
 
 }  // namespace net_instaweb
