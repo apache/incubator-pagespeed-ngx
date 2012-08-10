@@ -50,6 +50,7 @@ class CacheStats : public CacheInterface {
   static void Initialize(StringPiece prefix, Statistics* statistics);
 
   virtual void Get(const GoogleString& key, Callback* callback);
+  virtual void MultiGet(MultiGetRequest* request);
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
   virtual const char* Name() const { return name_.c_str(); }
@@ -60,6 +61,7 @@ class CacheStats : public CacheInterface {
 
   scoped_ptr<CacheInterface> cache_;
   Timer* timer_;
+  Histogram* get_count_histogram_;
   Histogram* hit_latency_us_histogram_;
   Histogram* insert_latency_us_histogram_;
   Histogram* insert_size_bytes_histogram_;

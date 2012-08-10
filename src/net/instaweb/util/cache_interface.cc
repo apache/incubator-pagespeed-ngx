@@ -35,4 +35,12 @@ void CacheInterface::ValidateAndReportResult(const GoogleString& key,
   callback->Done(state);
 }
 
+void CacheInterface::MultiGet(MultiGetRequest* request) {
+  for (int i = 0, n = request->size(); i < n; ++i) {
+    KeyCallback* key_callback = &(*request)[i];
+    Get(key_callback->key, key_callback->callback);
+  }
+  delete request;
+}
+
 }  // namespace net_instaweb

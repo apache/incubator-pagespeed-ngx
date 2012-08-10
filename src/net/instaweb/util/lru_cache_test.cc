@@ -151,4 +151,9 @@ TEST_F(LRUCacheTest, BasicInvalid) {
   CheckGet("nameB", "valueB");
 }
 
+TEST_F(LRUCacheTest, MultiGet) {
+  // This covers CacheInterface's default implementation of MultiGet.
+  TestMultiGet();
+}
+
 }  // namespace net_instaweb

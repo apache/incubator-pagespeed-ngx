@@ -29,6 +29,7 @@
 
 namespace {
 
+const char kGetCountHistogram[] = "_get_count";
 const char kHitLatencyHistogram[] = "_hit_latency_us";
 const char kInsertLatencyHistogram[] = "_insert_latency_us";
 const char kInsertSizeHistogram[] = "_insert_size_bytes";
@@ -38,6 +39,10 @@ const char kDeletes[] = "_deletes";
 const char kHits[] = "_hits";
 const char kInserts[] = "_inserts";
 const char kMisses[] = "_misses";
+
+// TODO(jmarantz): tie this to CacheBatcher::kDefaultMaxQueueSize,
+// but for now I want to get discrete counts in each bucket.
+const int kGetCountHistogramMaxValue = 500;
 
 }  // namespace
 
@@ -49,6 +54,8 @@ CacheStats::CacheStats(StringPiece prefix,
                        Statistics* statistics)
     : cache_(cache),
       timer_(timer),
+      get_count_histogram_(statistics->GetHistogram(
+          StrCat(prefix, kGetCountHistogram))),
       hit_latency_us_histogram_(statistics->GetHistogram(
           StrCat(prefix, kHitLatencyHistogram))),
       insert_latency_us_histogram_(statistics->GetHistogram(
@@ -62,12 +69,16 @@ CacheStats::CacheStats(StringPiece prefix,
       inserts_(statistics->GetVariable(StrCat(prefix, kInserts))),
       misses_(statistics->GetVariable(StrCat(prefix, kMisses))),
       name_(StrCat(prefix, "_stats")) {
+  get_count_histogram_->SetMaxValue(kGetCountHistogramMaxValue);
 }
 
 CacheStats::~CacheStats() {
 }
 
 void CacheStats::Initialize(StringPiece prefix, Statistics* statistics) {
+  Histogram* get_count_histogram =
+      statistics->AddHistogram(StrCat(prefix, kGetCountHistogram));
+  get_count_histogram->SetMaxValue(kGetCountHistogramMaxValue);
   statistics->AddHistogram(StrCat(prefix, kHitLatencyHistogram));
   statistics->AddHistogram(StrCat(prefix, kInsertLatencyHistogram));
   statistics->AddHistogram(StrCat(prefix, kInsertSizeHistogram));
@@ -133,6 +144,17 @@ class CacheStats::StatsCallback : public CacheInterface::Callback {
 void CacheStats::Get(const GoogleString& key, Callback* callback) {
   StatsCallback* cb = new StatsCallback(this, timer_, callback);
   cache_->Get(key, cb);
+  get_count_histogram_->Add(1);
+}
+
+void CacheStats::MultiGet(MultiGetRequest* request) {
+  get_count_histogram_->Add(request->size());
+  for (int i = 0, n = request->size(); i < n; ++i) {
+    KeyCallback* key_callback = &(*request)[i];
+    key_callback->callback = new StatsCallback(this, timer_,
+                                               key_callback->callback);
+  }
+  cache_->MultiGet(request);
 }
 
 void CacheStats::Put(const GoogleString& key, SharedString* value) {

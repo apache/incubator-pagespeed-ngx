@@ -55,6 +55,7 @@ class DelayCache : public CacheInterface {
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
+  virtual void MultiGet(MultiGetRequest* request);
 
   // Instructs the cache to delay delivery of callbacks for specific cache-key.
   // It is a fatal error -- reported at class destruction, to request delay of

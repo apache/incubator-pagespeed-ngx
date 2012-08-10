@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_CACHE_INTERFACE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_CACHE_INTERFACE_H_
 
+#include <vector>
+
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -79,6 +81,14 @@ class CacheInterface {
     SharedString value_;
   };
 
+  // Vector of structures used to initiate a MultiGet.
+  struct KeyCallback {
+    KeyCallback(const GoogleString& k, Callback* c) : key(k), callback(c) {}
+    GoogleString key;
+    Callback* callback;
+  };
+  typedef std::vector<KeyCallback> MultiGetRequest;
+
   virtual ~CacheInterface();
 
   // Initiates a cache fetch, calling callback->ValidateCandidate()
@@ -88,6 +98,15 @@ class CacheInterface {
   // ValidateAndReportResult, which will combine ValidateCandidate() and
   // Done() together properly.
   virtual void Get(const GoogleString& key, Callback* callback) = 0;
+
+  // Gets multiple keys, calling multiple callbacks.  Default implementation
+  // simply loops over all the keys and calls Get.
+  //
+  // MultiGetRequest, declared above, is a vector of structs of keys
+  // and callbacks.
+  //
+  // Ownership of the request is transferred to this function.
+  virtual void MultiGet(MultiGetRequest* request);
 
   // Puts a value into the cache.  The value that is passed in is not modified,
   // but the SharedString is passed by non-const pointer because its reference

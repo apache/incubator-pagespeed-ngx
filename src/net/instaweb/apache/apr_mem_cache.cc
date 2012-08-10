@@ -143,41 +143,48 @@ bool AprMemCache::Connect() {
   return success;
 }
 
+void AprMemCache::DecodeValueMatchingKeyAndCallCallback(
+    const GoogleString& key, const char* data, size_t data_len,
+    Callback *callback) {
+  bool decoding_error = true;
+
+  if (data_len >= 3) {
+    size_t byte0 = static_cast<uint8>(data[0]);
+    size_t byte1 = static_cast<uint8>(data[1]);
+    size_t key_size = byte0 + (byte1 << CHAR_BIT);
+    size_t overhead = key_size + kKeyLengthEncodingBytes;
+    if (overhead <= data_len) {
+      decoding_error = false;
+      StringPiece encoded_key(data + kKeyLengthEncodingBytes, key_size);
+      if (encoded_key == key) {
+        GoogleString* value = callback->value()->get();
+        value->assign(data + overhead, data_len - overhead);
+        ValidateAndReportResult(key, CacheInterface::kAvailable, callback);
+      } else {
+        // TODO(jmarantz): bump hash-key collision stats?
+        ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
+      }
+    }
+  }
+  if (decoding_error) {
+    message_handler_->Message(
+        kError, "AprMemCache::Get decoding error on key %s",
+        key.c_str());
+    ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
+  }
+}
+
 void AprMemCache::Get(const GoogleString& key, Callback* callback) {
   GoogleString hashed_key = hasher_->Hash(key);
-  apr_pool_t* temp_pool;
+  apr_pool_t* temp_pool = NULL;
   apr_pool_create(&temp_pool, NULL);
+  CHECK(temp_pool != NULL) << "apr_pool_t allocation failure";
   char* data;
   apr_size_t data_len;
   apr_status_t status = apr_memcache_getp(
       memcached_, temp_pool, hashed_key.c_str(), &data, &data_len, NULL);
   if (status == APR_SUCCESS) {
-    bool decoding_error = true;
-
-    if (data_len >= 3) {
-      size_t byte0 = static_cast<uint8>(data[0]);
-      size_t byte1 = static_cast<uint8>(data[1]);
-      size_t key_size = byte0 + (byte1 << CHAR_BIT);
-      size_t overhead = key_size + kKeyLengthEncodingBytes;
-      if (overhead <= data_len) {
-        decoding_error = false;
-        StringPiece encoded_key(data + kKeyLengthEncodingBytes, key_size);
-        if (encoded_key == key) {
-          GoogleString* value = callback->value()->get();
-          value->assign(data + overhead, data_len - overhead);
-          ValidateAndReportResult(key, CacheInterface::kAvailable, callback);
-        } else {
-          // TODO(jmarantz): bump hash-key collision stats?
-          ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
-        }
-      }
-    }
-    if (decoding_error) {
-      message_handler_->Message(
-          kError, "AprMemCache::Get decoding error on key %s",
-          key.c_str());
-      ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
-    }
+    DecodeValueMatchingKeyAndCallCallback(key, data, data_len, callback);
   } else {
     if (status != APR_NOTFOUND) {
       char buf[kStackBufferSize];
@@ -189,6 +196,56 @@ void AprMemCache::Get(const GoogleString& key, Callback* callback) {
     ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
   }
   apr_pool_destroy(temp_pool);
+}
+
+void AprMemCache::MultiGet(MultiGetRequest* request) {
+  // apr_memcache_multgetp documentation indicates it may clear the
+  // temp_pool inside the function.  Thus it is risky to pass the same
+  // pool for both temp_pool and data_pool, as we need to read the
+  // data after the call.
+  apr_pool_t* temp_pool = NULL;
+  apr_pool_t* data_pool = NULL;
+  apr_pool_create(&temp_pool, NULL);
+  CHECK(temp_pool != NULL) << "apr_pool_t temp_pool allocation failure";
+  apr_pool_create(&data_pool, NULL);
+  CHECK(data_pool != NULL) << "apr_pool_t data_pool allocation failure";
+  apr_hash_t* hash_table = apr_hash_make(data_pool);
+  StringVector hashed_keys;
+
+  for (int i = 0, n = request->size(); i < n; ++i) {
+    GoogleString hashed_key = hasher_->Hash((*request)[i].key);
+    hashed_keys.push_back(hashed_key);
+    apr_memcache_add_multget_key(data_pool, hashed_key.c_str(), &hash_table);
+  }
+
+  apr_status_t status = apr_memcache_multgetp(memcached_, temp_pool, data_pool,
+                                              hash_table);
+  if (status == APR_SUCCESS) {
+    for (int i = 0, n = request->size(); i < n; ++i) {
+      KeyCallback* key_callback = &(*request)[i];
+      const GoogleString& key = key_callback->key;
+      Callback* callback = key_callback->callback;
+      const GoogleString& hashed_key = hashed_keys[i];
+      apr_memcache_value_t* value = static_cast<apr_memcache_value_t*>(
+          apr_hash_get(hash_table, hashed_key.data(), hashed_key.size()));
+      if ((value == NULL) || (value->status != APR_SUCCESS)) {
+        if ((value != NULL) && (value->status != APR_NOTFOUND)) {
+          char buf[kStackBufferSize];
+          apr_strerror(status, buf, sizeof(buf));
+          message_handler_->Message(
+              kError, "AprMemCache::Get error: %s (%d) on key %s",
+              buf, status, key.c_str());
+        }
+        ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
+      } else {
+        DecodeValueMatchingKeyAndCallCallback(key, value->data, value->len,
+                                              callback);
+      }
+    }
+  }
+  delete request;
+  apr_pool_destroy(temp_pool);
+  apr_pool_destroy(data_pool);
 }
 
 void AprMemCache::Put(const GoogleString& key, SharedString* value) {
@@ -232,8 +289,9 @@ void AprMemCache::Delete(const GoogleString& key) {
 }
 
 bool AprMemCache::GetStatus(GoogleString* buffer) {
-  apr_pool_t* temp_pool;
+  apr_pool_t* temp_pool = NULL;
   apr_pool_create(&temp_pool, NULL);
+  CHECK(temp_pool != NULL) << "apr_pool_t allocation failure";
   bool ret = true;
   for (int i = 0, n = servers_.size(); i < n; ++i) {
     apr_memcache_stats_t* stats;

@@ -57,6 +57,7 @@ class AprMemCache : public CacheInterface {
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
+  virtual void MultiGet(MultiGetRequest* request);
 
   virtual const char* Name() const { return "AprMemCache"; }
 
@@ -71,6 +72,10 @@ class AprMemCache : public CacheInterface {
   bool GetStatus(GoogleString* status_string);
 
  private:
+  void DecodeValueMatchingKeyAndCallCallback(
+      const GoogleString& key, const char* data, size_t data_len,
+      Callback* callback);
+
   StringVector hosts_;
   std::vector<int> ports_;
   bool valid_server_spec_;

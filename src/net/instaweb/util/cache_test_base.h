@@ -21,11 +21,13 @@
 #ifndef NET_INSTAWEB_UTIL_CACHE_TEST_BASE_H_
 #define NET_INSTAWEB_UTIL_CACHE_TEST_BASE_H_
 
-#include "net/instaweb/util/public/cache_interface.h"
+#include <vector>
 
+#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/shared_string.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -64,6 +66,9 @@ class CacheTestBase : public testing::Test {
     }
 
     void set_invalid_value(const char* v) { invalid_value_ = v; }
+    CacheInterface::KeyState state() const { return state_; }
+    bool called() const { return called_; }
+    const GoogleString& value_str() { return **value(); }
 
     bool called_;
     bool validate_called_;
@@ -76,6 +81,9 @@ class CacheTestBase : public testing::Test {
   };
 
   CacheTestBase() : invalid_value_(NULL) {
+  }
+  ~CacheTestBase() {
+    STLDeleteElements(&callbacks_);
   }
 
   void CheckGet(const char* key, const GoogleString& expected_value) {
@@ -96,6 +104,10 @@ class CacheTestBase : public testing::Test {
     CheckPut(Cache(), key, value);
   }
 
+  void CheckPut(const GoogleString& key, const GoogleString& value) {
+    CheckPut(Cache(), key.c_str(), value.c_str());
+  }
+
   void CheckPut(CacheInterface* cache, const char* key, const char* value) {
     SharedString put_buffer(value);
     cache->Put(key, &put_buffer);
@@ -112,6 +124,39 @@ class CacheTestBase : public testing::Test {
     EXPECT_NE(CacheInterface::kAvailable, callback_.state_)
         << "For key: " << key;
     SanityCheck();
+  }
+
+  Callback* NewCallback() {
+    Callback* callback = new Callback();
+    callbacks_.push_back(callback);
+    return callback;
+  }
+
+  void CheckMultiGetValue(int index, const GoogleString& value) {
+    Callback* callback = callbacks_[index];
+    ASSERT_TRUE(callback->called());
+    EXPECT_EQ(value, callback->value_str());
+    EXPECT_EQ(CacheInterface::kAvailable, callback->state());
+  }
+
+  void CheckMultiGetNotFound(int index) {
+    Callback* callback = callbacks_[index];
+    ASSERT_TRUE(callback->called());
+    EXPECT_EQ(CacheInterface::kNotFound, callback->state());
+  }
+
+  void TestMultiGet() {
+    CheckPut("n1", "v1");
+    CheckPut("n2", "v2");
+    CacheInterface::MultiGetRequest* request =
+        new CacheInterface::MultiGetRequest;
+    request->push_back(CacheInterface::KeyCallback("n1", NewCallback()));
+    request->push_back(CacheInterface::KeyCallback("not found", NewCallback()));
+    request->push_back(CacheInterface::KeyCallback("n2", NewCallback()));
+    Cache()->MultiGet(request);
+    CheckMultiGetValue(0, "v1");
+    CheckMultiGetNotFound(1);
+    CheckMultiGetValue(2, "v2");
   }
 
  protected:
@@ -136,6 +181,7 @@ class CacheTestBase : public testing::Test {
  private:
   const char* invalid_value_;  // may be NULL.
   Callback callback_;
+  std::vector<Callback*> callbacks_;
 };
 
 }  // namespace net_instaweb

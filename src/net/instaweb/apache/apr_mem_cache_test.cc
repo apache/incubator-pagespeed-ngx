@@ -90,6 +90,11 @@ TEST_F(AprMemCacheTest, PutGetDelete) {
   CheckNotFound("Name");
 }
 
+TEST_F(AprMemCacheTest, MultiGet) {
+  ASSERT_TRUE(ConnectToMemcached(true));
+  TestMultiGet();
+}
+
 TEST_F(AprMemCacheTest, BasicInvalid) {
   ASSERT_TRUE(ConnectToMemcached(true));
 
