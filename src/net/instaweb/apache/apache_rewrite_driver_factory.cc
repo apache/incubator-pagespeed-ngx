@@ -67,9 +67,6 @@ namespace {
 const size_t kRefererStatisticsNumberOfPages = 1024;
 const size_t kRefererStatisticsAverageUrlLength = 64;
 
-// Statistics histogram names.
-const char* kHtmlRewriteTimeHistogram = "Html Time us Histogram";
-
 }  // namespace
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
@@ -101,7 +98,6 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
           server_rec_, version_, timer())),
       apache_html_parse_message_handler_(new ApacheMessageHandler(
           server_rec_, version_, timer())),
-      html_rewrite_time_us_histogram_(NULL),
       use_per_vhost_statistics_(false),
       thread_counts_finalized_(false),
       num_rewrite_threads_(-1),
@@ -521,8 +517,6 @@ Statistics* ApacheRewriteDriverFactory::MakeGlobalSharedMemStatistics() {
   if (shared_mem_statistics_.get() == NULL) {
     shared_mem_statistics_.reset(
         AllocateAndInitSharedMemStatistics("global"));
-    html_rewrite_time_us_histogram_ = shared_mem_statistics_->GetHistogram(
-        kHtmlRewriteTimeHistogram);
   }
   DCHECK(!statistics_frozen_);
   statistics_frozen_ = true;
@@ -548,19 +542,10 @@ SharedMemStatistics* ApacheRewriteDriverFactory::
 }
 
 void ApacheRewriteDriverFactory::Initialize(Statistics* statistics) {
-  Histogram* html_rewrite_time_us_histogram =
-      statistics->AddHistogram(kHtmlRewriteTimeHistogram);
-  html_rewrite_time_us_histogram->SetMaxValue(200 * Timer::kMsUs);
   RewriteDriverFactory::Initialize(statistics);
   SerfUrlAsyncFetcher::Initialize(statistics);
   ApacheResourceManager::Initialize(statistics);
   CacheStats::Initialize(ApacheCache::kMemcached, statistics);
-}
-
-void ApacheRewriteDriverFactory::AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
-  if (html_rewrite_time_us_histogram_ != NULL) {
-    html_rewrite_time_us_histogram_->Add(rewrite_time_us);
-  }
 }
 
 ApacheResourceManager* ApacheRewriteDriverFactory::MakeApacheResourceManager(

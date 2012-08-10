@@ -28,6 +28,7 @@ namespace net_instaweb {
 class ApacheConfig;
 class ApacheMessageHandler;
 class ApacheRewriteDriverFactory;
+class Histogram;
 class HTTPCache;
 class RewriteStats;
 class SharedMemStatistics;
@@ -83,6 +84,9 @@ class ApacheResourceManager : public ResourceManager {
   // restart.
   void PollFilesystemForCacheFlush();
 
+  // Accumulate in a histogram the amount of time spent rewriting HTML.
+  void AddHtmlRewriteTimeUs(int64 rewrite_time_us);
+
   static void Initialize(Statistics* statistics);
 
   void set_cache_flush_poll_interval_sec(int num_seconds) {
@@ -114,6 +118,8 @@ class ApacheResourceManager : public ResourceManager {
 
   // Non-NULL if we have per-vhost stats.
   scoped_ptr<RewriteStats> local_rewrite_stats_;
+
+  Histogram* html_rewrite_time_us_histogram_;
 
   // State used to implement periodic polling of $FILE_PREFIX/cache.flush.
   // last_cache_flush_check_sec_ is ctor-initialized to 0 so the first

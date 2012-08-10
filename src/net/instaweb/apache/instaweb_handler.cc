@@ -60,6 +60,7 @@ namespace net_instaweb {
 namespace {
 
 const char kStatisticsHandler[] = "mod_pagespeed_statistics";
+const char kGlobalStatisticsHandler[] = "mod_pagespeed_global_statistics";
 const char kRefererStatisticsHandler[] = "mod_pagespeed_referer_statistics";
 const char kMessageHandler[] = "mod_pagespeed_message";
 const char kBeaconHandler[] = "mod_pagespeed_beacon";
@@ -282,11 +283,24 @@ apr_status_t instaweb_handler(request_rec* request) {
 
   log_resource_referral(request, factory);
 
-  if (strcmp(request->handler, kStatisticsHandler) == 0) {
+  bool general_stats_request =
+      (strcmp(request->handler, kStatisticsHandler) == 0);
+  bool global_stats_request =
+      (strcmp(request->handler, kGlobalStatisticsHandler) == 0);
+  if (general_stats_request || global_stats_request) {
     GoogleString output;
     StringWriter writer(&output);
-    Statistics* statistics = manager->statistics();
+
+    if (general_stats_request && !factory->use_per_vhost_statistics()) {
+      global_stats_request = true;
+    }
+
+    Statistics* statistics =
+        global_stats_request ? factory->statistics() : manager->statistics();
     if (statistics != NULL) {
+      writer.Write(global_stats_request ?
+                       "Global Statistics" : "VHost-Specific Statistics",
+                   factory->message_handler());
       // Write <pre></pre> for Dump to keep good format.
       writer.Write("<pre>", factory->message_handler());
       statistics->Dump(&writer, factory->message_handler());
@@ -423,6 +437,7 @@ apr_status_t save_url_hook(request_rec *request) {
   // Note: we must compare against the parsed URL because unparsed_url has
   // ?ets=load:xx at the end for kBeaconHandler.
   if (parsed_url.ends_with(kStatisticsHandler) ||
+      parsed_url.ends_with(kGlobalStatisticsHandler) ||
       parsed_url.ends_with(kBeaconHandler) ||
       parsed_url.ends_with(kMessageHandler) ||
       parsed_url.ends_with(kRefererStatisticsHandler)) {

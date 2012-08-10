@@ -167,9 +167,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // limiting one, etc.
   SerfUrlAsyncFetcher* GetSerfFetcher(ApacheConfig* config);
 
-  // Accumulate in a histogram the amount of time spent rewriting HTML.
-  void AddHtmlRewriteTimeUs(int64 rewrite_time_us);
-
   // Notification of apache tearing down a context (vhost or top-level)
   // corresponding to given ApacheResourceManager. Returns true if it was
   // the last context.
@@ -270,9 +267,6 @@ protected:
   // the managers in the Root process that were never ChildInit'd.
   typedef std::set<ApacheResourceManager*> ApacheResourceManagerSet;
   ApacheResourceManagerSet uninitialized_managers_;
-
-  // TODO(morlovich): This should be per resource manager.
-  Histogram* html_rewrite_time_us_histogram_;
 
   // If true, we'll have a separate statistics object for each vhost
   // (along with a global aggregate), rather than just a single object

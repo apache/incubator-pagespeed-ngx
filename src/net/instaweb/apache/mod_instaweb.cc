@@ -319,24 +319,24 @@ class ApacheProcessContext {
 };
 ApacheProcessContext apache_process_context;
 
-typedef void (ApacheRewriteDriverFactory::*AddTimeFn)(int64 delta);
+typedef void (ApacheResourceManager::*AddTimeFn)(int64 delta);
 
 class ScopedTimer {
  public:
-  explicit ScopedTimer(ApacheRewriteDriverFactory* factory,
+  explicit ScopedTimer(ApacheResourceManager* manager,
                        AddTimeFn add_time_fn)
-      : factory_(factory),
+      : manager_(manager),
         add_time_fn_(add_time_fn),
         start_time_us_(timer_.NowUs()) {
   }
 
   ~ScopedTimer() {
     int64 delta_us = timer_.NowUs() - start_time_us_;
-    (factory_->*add_time_fn_)(delta_us);
+    (manager_->*add_time_fn_)(delta_us);
   }
 
  private:
-  ApacheRewriteDriverFactory* factory_;
+  ApacheResourceManager* manager_;
   AddTimeFn add_time_fn_;
   AprTimer timer_;
   int64 start_time_us_;
@@ -607,8 +607,8 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     filter->ctx = context;
   }
 
-  ApacheRewriteDriverFactory* factory = context->manager()->apache_factory();
-  ScopedTimer timer(factory, &ApacheRewriteDriverFactory::AddHtmlRewriteTimeUs);
+  ApacheResourceManager* manager = context->manager();
+  ScopedTimer timer(manager, &ApacheResourceManager::AddHtmlRewriteTimeUs);
 
   apr_status_t return_code = APR_SUCCESS;
   while (!APR_BRIGADE_EMPTY(bb)) {

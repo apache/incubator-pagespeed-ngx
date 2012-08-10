@@ -39,6 +39,9 @@ const int64 kDefaultCacheFlushIntervalSec = 5;
 
 const char kCacheFlushCount[] = "cache_flush_count";
 
+// Statistics histogram names.
+const char* kHtmlRewriteTimeUsHistogram = "Html Time us Histogram";
+
 }  // namespace
 
 namespace net_instaweb {
@@ -59,6 +62,7 @@ ApacheResourceManager::ApacheResourceManager(
                                   IntegerToString(server->port))),
       initialized_(false),
       local_statistics_(NULL),
+      html_rewrite_time_us_histogram_(NULL),
       cache_flush_mutex_(thread_system()->NewMutex()),
       last_cache_flush_check_sec_(0),
       cache_flush_poll_interval_sec_(kDefaultCacheFlushIntervalSec),
@@ -83,6 +87,12 @@ ApacheResourceManager::~ApacheResourceManager() {
 
 void ApacheResourceManager::Initialize(Statistics* statistics) {
   statistics->AddVariable(kCacheFlushCount);
+  Histogram* html_rewrite_time_us_histogram =
+      statistics->AddHistogram(kHtmlRewriteTimeUsHistogram);
+  // We set the boundary at 2 seconds which is about 2 orders of magnitude
+  // worse than anything we have reasonably seen, to make sure we don't
+  // cut off actual samples.
+  html_rewrite_time_us_histogram->SetMaxValue(2000 * Timer::kMsUs);
 }
 
 bool ApacheResourceManager::InitFileCachePath() {
@@ -150,6 +160,9 @@ void ApacheResourceManager::ChildInit() {
     global_options()->set_cache_invalidation_timestamp_mutex(
         thread_system()->NewRWLock());
     apache_factory_->InitResourceManager(this);
+
+    html_rewrite_time_us_histogram_ = statistics()->GetHistogram(
+        kHtmlRewriteTimeUsHistogram);
   }
 }
 
@@ -202,6 +215,12 @@ void ApacheResourceManager::PollFilesystemForCacheFlush() {
         }
       }
     }
+  }
+}
+
+void ApacheResourceManager::AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
+  if (html_rewrite_time_us_histogram_ != NULL) {
+    html_rewrite_time_us_histogram_->Add(rewrite_time_us);
   }
 }
 

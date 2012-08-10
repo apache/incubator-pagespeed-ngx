@@ -38,6 +38,7 @@ export MOD_PAGESPEED_CACHE
 
 apache_vm_system_tests :
 	$(MAKE) apache_debug_smoke_test
+	$(MAKE) apache_debug_per_vhost_stats_test
 	$(MAKE) apache_debug_memcached_test
 	$(MAKE) apache_debug_leak_test
 	$(MAKE) apache_debug_rewrite_test
@@ -343,3 +344,51 @@ apache_debug_all_directives_test :
 	$(MAKE) apache_install_conf \
 	  OPT_ALL_DIRECTIVES_TEST="ALL_DIRECTIVES_TEST=1"
 	$(MAKE) apache_debug_restart
+
+# Test to make sure that per-vhost stats work.
+STATS = mod_pagespeed_statistics
+GLOBAL_STATS = mod_pagespeed_global_statistics
+TRIM_PATH = \
+    "mod_pagespeed_example/trim_urls.html?ModPagespeedFilters=trim_urls"
+
+apache_debug_per_vhost_stats_test :
+	$(MAKE) apache_install_conf \
+	    OPT_PER_VHOST_STATS_TEST="PER_VHOST_STATS_TEST=1"
+	$(MAKE) apache_debug_restart
+	# Fetch a trim URL example from VHost: 8080 -- that should bump
+	# the stat for that there + global but not on :8083
+	$(WGET_NO_PROXY) -q -O /dev/null $(APACHE_SERVER)/$(TRIM_PATH)
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SERVER)/$(STATS) \
+	     | grep url_trims | grep -w 1
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/$(STATS) \
+	     | grep url_trims | grep -w 0
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SERVER)/$(GLOBAL_STATS) \
+	     | grep url_trims | grep -w 1
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/$(GLOBAL_STATS) \
+	     | grep url_trims | grep -w 1
+	# Now on :8083 as well.
+	$(WGET_NO_PROXY) -q -O /dev/null $(APACHE_SECONDARY_SERVER)/$(TRIM_PATH)
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SERVER)/$(STATS) \
+	     | grep url_trims | grep -w 1
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/$(STATS) \
+	     | grep url_trims | grep -w 1
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SERVER)/$(GLOBAL_STATS) \
+	     | grep url_trims | grep -w 2
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/$(GLOBAL_STATS) \
+	     | grep url_trims | grep -w 2
+	# Now try without global stats -- both should update at once.
+	$(MAKE) apache_install_conf \
+	    OPT_PER_VHOST_STATS_TEST="PER_VHOST_STATS_TEST=0"
+	$(MAKE) apache_debug_restart
+	$(WGET_NO_PROXY) -q -O /dev/null $(APACHE_SERVER)/$(TRIM_PATH)
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SERVER)/$(STATS) \
+	     | grep url_trims | grep -w 1
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/$(STATS) \
+	     | grep url_trims | grep -w 1
+	$(WGET_NO_PROXY) -q -O /dev/null $(APACHE_SECONDARY_SERVER)/$(TRIM_PATH)
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SERVER)/$(STATS) \
+	     | grep url_trims | grep -w 2
+	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/$(STATS) \
+	     | grep url_trims | grep -w 2
+
+
