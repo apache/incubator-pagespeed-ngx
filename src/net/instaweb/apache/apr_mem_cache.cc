@@ -49,6 +49,19 @@ const int kDefaultServerTtl = 600;
 
 const size_t kValueSizeThreshold = 1 * 1000 * 1000;
 
+// We can't store arbitrary keys in memcached, so encode the actual
+// key in the value.  Thus in the unlikely event of a hash collision,
+// we can reject the mismatched full key when reading.
+//
+// We encode the length as the first two bytes, ignoring attempts to Put
+// any key larger than 64k.  Following that we have the actual key and
+// value data.  We could also do this with protobufs, and if the encoding
+// were any more complex we should change.  However I believe even with
+// zero copy streams, protobufs will force us to copy the final value
+// at least one extra time, and that value can be large.
+const int kKeyLengthEncodingBytes = 2;  // maximum 2^16 = 64k byte keys.
+const size_t kKeyMaxLength = 1 << (kKeyLengthEncodingBytes * CHAR_BIT);
+
 }  // namespace
 
 namespace net_instaweb {
@@ -139,9 +152,32 @@ void AprMemCache::Get(const GoogleString& key, Callback* callback) {
   apr_status_t status = apr_memcache_getp(
       memcached_, temp_pool, hashed_key.c_str(), &data, &data_len, NULL);
   if (status == APR_SUCCESS) {
-    GoogleString* value = callback->value()->get();
-    value->assign(data, data_len);
-    ValidateAndReportResult(key, CacheInterface::kAvailable, callback);
+    bool decoding_error = true;
+
+    if (data_len >= 3) {
+      size_t byte0 = static_cast<uint8>(data[0]);
+      size_t byte1 = static_cast<uint8>(data[1]);
+      size_t key_size = byte0 + (byte1 << CHAR_BIT);
+      size_t overhead = key_size + kKeyLengthEncodingBytes;
+      if (overhead <= data_len) {
+        decoding_error = false;
+        StringPiece encoded_key(data + kKeyLengthEncodingBytes, key_size);
+        if (encoded_key == key) {
+          GoogleString* value = callback->value()->get();
+          value->assign(data + overhead, data_len - overhead);
+          ValidateAndReportResult(key, CacheInterface::kAvailable, callback);
+        } else {
+          // TODO(jmarantz): bump hash-key collision stats?
+          ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
+        }
+      }
+    }
+    if (decoding_error) {
+      message_handler_->Message(
+          kError, "AprMemCache::Get decoding error on key %s",
+          key.c_str());
+      ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
+    }
   } else {
     if (status != APR_NOTFOUND) {
       char buf[kStackBufferSize];
@@ -157,11 +193,22 @@ void AprMemCache::Get(const GoogleString& key, Callback* callback) {
 
 void AprMemCache::Put(const GoogleString& key, SharedString* value) {
   GoogleString* str = value->get();
-  if (str->size() < kValueSizeThreshold) {
+  size_t encoded_size = str->size() + key.size() + kKeyLengthEncodingBytes;
+  if ((encoded_size < kValueSizeThreshold) && (key.size() < kKeyMaxLength)) {
+    GoogleString encoded_value;
+    encoded_value.reserve(encoded_size);
+    encoded_value.append(1, static_cast<char>(key.size() & 0xff));
+    encoded_value.append(1, static_cast<char>((key.size() >> CHAR_BIT) & 0xff));
+    encoded_value.append(key.data(), key.size());
+    encoded_value.append(str->data(), str->size());
     GoogleString hashed_key = hasher_->Hash(key);
+
+    // I believe apr_memcache_set erroneously takes a char* for the value.
+    // Hence we take the address of character [0] rather than using the data()
+    // pointer which is const.
     apr_status_t status = apr_memcache_set(
         memcached_, hashed_key.c_str(),
-        const_cast<char*>(str->data()), str->size(),
+        &(encoded_value[0]), encoded_value.size(),
         0, 0);
     if (status != APR_SUCCESS) {
       char buf[kStackBufferSize];
