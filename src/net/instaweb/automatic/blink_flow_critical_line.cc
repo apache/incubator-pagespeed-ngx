@@ -300,7 +300,8 @@ class CriticalLineFetch : public AsyncFetch {
     }
   }
 
-  void CancelParseForCriticalLineComputationDriver() {
+  void CancelParseForCriticalLineComputationDriver(RewriteDriver* driver,
+                                                   Function* task) {
     LOG(WARNING) << "Blink critical line computation dropped due to load"
                  << " for url: " << url_;
     complete_finish_parse_critical_line_driver_fn_->CallCancel();
@@ -308,7 +309,7 @@ class CriticalLineFetch : public AsyncFetch {
     delete this;
   }
 
-  void CancelParseForHtmlChangeDriver() {
+  void CancelParseForHtmlChangeDriver(RewriteDriver* driver, Function* task) {
     LOG(WARNING) << "Blink html change diff dropped due to load"
                  << " for url: " << url_;
     complete_finish_parse_html_change_driver_fn_->CallCancel();

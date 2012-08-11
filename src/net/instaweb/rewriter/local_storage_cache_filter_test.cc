@@ -274,7 +274,8 @@ TEST_F(LocalStorageCacheTest, CookieSet) {
                           kStylesCssFilename,
                           "'>"),
                    InsertScriptBefore(
-                       StrCat("<script pagespeed_no_defer>pagespeed.inlineCss("
+                       StrCat("<script pagespeed_no_defer>"
+                              "pagespeed.localStorageCache.inlineCss("
                               "\"", kTestDomain, kStylesCssFilename, "\""
                               ");</script>")),
                    StrCat("<img src='", kCuppaPngFilename, "'>"),
@@ -344,11 +345,11 @@ TEST_F(LocalStorageCacheTest, RepeatViews) {
   // Third view will not send the inlined data and will send scripts in place
   // of the link and img elements.
   GoogleString scripted_css = StrCat("<script pagespeed_no_defer>"
-                                     "pagespeed.inlineCss("
+                                     "pagespeed.localStorageCache.inlineCss("
                                      "\"", kTestDomain, kStylesCssFilename, "\""
                                      ");</script>");
   GoogleString scripted_img = StrCat("<script pagespeed_no_defer>"
-                                     "pagespeed.inlineImg("
+                                     "pagespeed.localStorageCache.inlineImg("
                                      "\"", kTestDomain, kCuppaPngFilename, "\""
                                      ");</script>");
   TestLocalStorage("third_view",
@@ -426,11 +427,11 @@ TEST_F(LocalStorageCacheTest, RepeatViewsWithOtherAttributes) {
   // Third view will not send the inlined data and will send scripts in place
   // of the link and img elements.
   GoogleString scripted_css = StrCat("<script pagespeed_no_defer>"
-                                     "pagespeed.inlineCss("
+                                     "pagespeed.localStorageCache.inlineCss("
                                      "\"", kTestDomain, kStylesCssFilename, "\""
                                      ");</script>");
   GoogleString scripted_img = StrCat("<script pagespeed_no_defer>"
-                                     "pagespeed.inlineImg("
+                                     "pagespeed.localStorageCache.inlineImg("
                                      "\"", kTestDomain, kCuppaPngFilename, "\""
                                      ", \"alt=A cup of joe\""
                                      ", \"alt=A cup of joe\""

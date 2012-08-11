@@ -592,12 +592,16 @@ check $WGET_PREREQ --save-headers --no-cookies --header "$COOKIE" $URL
 check_not fgrep "yellow {background-color: yellow" $FETCHED
 check_not grep "src=.data:image/png;base64," $FETCHED
 # Check that this run inserted the expected scripts.
-check grep -q "pagespeed.inlineCss(.http://.*/styles/yellow.css.);" $FETCHED
-check grep -q "pagespeed.inlineImg(.http://.*/images/Cuppa.png.," \
-              ".alt=A cup of joe.," \
-              ".alt=A cup of joe.," \
-              ".alt=A cup of joe.s ..joe...," \
-              ".alt=A cup of joe.s ..joe...);" $FETCHED
+check grep -q \
+  "pagespeed.localStorageCache.inlineCss(.http://.*/styles/yellow.css.);" \
+  $FETCHED
+check grep -q \
+  "pagespeed.localStorageCache.inlineImg(.http://.*/images/Cuppa.png.," \
+  ".alt=A cup of joe.," \
+  ".alt=A cup of joe.," \
+  ".alt=A cup of joe.s ..joe...," \
+  ".alt=A cup of joe.s ..joe...);" \
+  $FETCHED
 
 # Test flatten_css_imports.
 

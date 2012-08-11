@@ -910,7 +910,8 @@ class ImageCombineFilter::Context : public RewriteContext {
     CrossThreadPartitionDone(partitions->partition_size() != 0);
   }
 
-  void PartitionCancel() {
+  void PartitionCancel(OutputPartitions* partitions,
+                       OutputResourceVector* outputs) {
     CrossThreadPartitionDone(false);
   }
 

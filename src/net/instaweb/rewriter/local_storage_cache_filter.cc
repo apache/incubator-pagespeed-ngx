@@ -95,12 +95,12 @@ void LocalStorageCacheFilter::EndElementImpl(HtmlElement* element) {
         StringPiece given_url(url);
         GoogleUrl abs_url(base_url(), given_url);
         StringPiece lsc_url(abs_url.is_valid() ? abs_url.Spec() : given_url);
-        GoogleString snippet;
+        GoogleString snippet("pagespeed.localStorageCache.");
         if (is_img) {
-          snippet = StrCat("pagespeed.inlineImg(\"", lsc_url, "\"",
-                           ExtractOtherImgAttributes(element), ");");
+          StrAppend(&snippet, "inlineImg(\"", lsc_url, "\"",
+                    ExtractOtherImgAttributes(element), ");");
         } else /* is_link */ {
-          snippet = StrCat("pagespeed.inlineCss(\"", lsc_url, "\");");
+          StrAppend(&snippet, "inlineCss(\"", lsc_url, "\");");
         }
         HtmlElement* script_element =
             driver_->NewElement(element->parent(), HtmlName::kScript);

@@ -152,7 +152,7 @@ pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName,
         data = this.getData(window.localStorage.getItem(url));
       }
       window.localStorage.setItem('pagespeed_lsc_url:' + url,
-                                  expiry + ' ' + hash + ' ' + data);
+                                  millis + ' ' + hash + ' ' + data);
       this.regenerate_cookie_ = true;
     }
   }
@@ -242,7 +242,7 @@ pagespeed.addHandler = function(elem, ev, func) {
 pagespeed.localStorageCacheInit = function() {
   // Do nothing if any required API is missing.
   if (window.localStorage) {
-    var temp= new pagespeed.LocalStorageCache();
+    var temp = new pagespeed.LocalStorageCache();
     pagespeed['localStorageCache'] = temp;
     pagespeed.addHandler(window, 'load',
                          function() {
