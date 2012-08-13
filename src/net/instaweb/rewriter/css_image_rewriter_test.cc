@@ -606,6 +606,7 @@ TEST_F(CssImageRewriterTest, CacheExtendsImagesInStyleAttributes) {
 TEST_F(CssImageRewriterTest, CacheExtendsImagesSimpleFallback) {
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 100);
 
+  // Note: Extra }s cause parse failure.
   static const char css_template[] =
       "body {\n"
       "  background-image: url(%s);\n"
@@ -628,6 +629,7 @@ TEST_F(CssImageRewriterTest, CacheExtendsRepeatedTopLevelFallback) {
   const char kCss[] = "stylesheet.css";
   const GoogleString kRewrittenCss =
       Encode(kTestDomain, "cf", "0", "stylesheet.css", "css");
+  // Note: Extra }s cause parse failure.
   const char kCssTemplate[] = "body{background-image:url(%s)}}}}}";
 
   SetResponseWithDefaultHeaders(kImg, kContentTypePng, kDummyContent, 100);
@@ -668,6 +670,7 @@ TEST_F(CssImageRewriterTest, CacheExtendsImagesFallback) {
       "AUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4"
       "OHwAAAABJRU5ErkJggg==);"
       "  -proprietary-background-property: url(%s);\n"
+      // Note: Extra }s cause parse failure.
       "}}}}}}";
   const GoogleString css_before = StringPrintf(
       css_template, "foo.png", "bar.png", "baz.png", "foo.png", "foo.png");
@@ -690,6 +693,7 @@ TEST_F(CssImageRewriterTest, RecompressImagesFallback) {
   resource_manager()->ComputeSignature(options());
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
                        kContentTypePng, 100);
+  // Note: Extra }s cause parse failure.
   static const char css_template[] =
       "body {\n"
       "  background-image: url(%s);\n"
@@ -737,6 +741,7 @@ TEST_F(CssImageRewriterTest, FallbackImportsAndUnknownContentType) {
       // Unapproved Content-Types do not get cache extended.
       "  behavior: url(behavior.htc);\n"
       "  -moz-content-file: url(doc.html);\n"
+      // Note: Extra }s cause parse failure.
       "}}}}}\n";
   const GoogleString css_before = StringPrintf(
       css_template, "style.css", "image.png");
@@ -751,6 +756,7 @@ TEST_F(CssImageRewriterTest, FallbackImportsAndUnknownContentType) {
 
 // Test that the fallback fetcher fails smoothly.
 TEST_F(CssImageRewriterTest, FallbackFails) {
+  // Note: //// is not a valid URL leading to fallback rewrite failure.
   static const char bad_css[] = ".foo { url(////); }}}}}}";
   ValidateRewrite("fallback_fails", bad_css, bad_css, kExpectFailure);
 }
@@ -767,6 +773,7 @@ TEST_F(CssImageRewriterTest, FallbackAbsolutify) {
 
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 0);
 
+  // Note: Extra }s cause parse failure.
   const char css_template[] = ".foo { background: url(%s); }}}}";
   const GoogleString css_before = StringPrintf(css_template, "foo.png");
   const GoogleString css_after = StringPrintf(css_template,
@@ -776,6 +783,14 @@ TEST_F(CssImageRewriterTest, FallbackAbsolutify) {
   // with AddRewriteDomainMapping.
   ValidateRewriteInlineCss("change_domain", css_before, css_after,
                            kExpectFallback | kNoClearFetcher);
+
+  // Test loading from other domains.
+  SetResponseWithDefaultHeaders("other_domain.css", kContentTypeCss,
+                                css_before, 100);
+
+  const char rewritten_url[] =
+      "http://test.com/I.other_domain.css.pagespeed.cf.0.css";
+  ServeResourceFromManyContexts(rewritten_url, css_after);
 }
 
 // Check that we don't absolutify URLs when not moving them.
@@ -787,9 +802,49 @@ TEST_F(CssImageRewriterTest, FallbackNoAbsolutify) {
 
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 0);
 
+  // Note: Extra }s cause parse failure.
   const char css[] = ".foo { background: url(foo.png); }}}}";
 
   ValidateRewrite("change_domain", css, css, kExpectFallback | kNoClearFetcher);
+}
+
+// Check that we still absolutify URLs even if we fail to parse CSS while
+// rewriting on a fetch. This can come up if you have different rewrite
+// options on the HTML and resources-serving servers or if the resource
+// changes between the HTML and resource servers (race condition during push).
+TEST_F(CssImageRewriterTest, FetchRewriteFailure) {
+  options()->ClearSignatureForTesting();
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  lawyer->AddRewriteDomainMapping("http://new_domain.com", kTestDomain,
+                                  &message_handler_);
+  // Turn off trimming to make sure we can see full absolutifications.
+  options()->DisableFilter(RewriteOptions::kLeftTrimUrls);
+  options()->DisableFilter(RewriteOptions::kFallbackRewriteCssUrls);
+  resource_manager()->ComputeSignature(options());
+
+  SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 0);
+
+  // Note: Extra }s cause parse failure.
+  const char css_template[] = ".foo { background: url(%s); }}}}";
+  const GoogleString css_before = StringPrintf(css_template, "foo.png");
+  const GoogleString css_after = StringPrintf(css_template,
+                                              "http://new_domain.com/foo.png");
+
+  // Test loading from other domains.
+  SetResponseWithDefaultHeaders("other_domain.css", kContentTypeCss,
+                                css_before, 100);
+
+  GoogleString content;
+  FetchResource(kTestDomain, "cf", "other_domain.css", "css", &content);
+  EXPECT_STREQ(css_after, content);
+  EXPECT_EQ(0, num_fallback_rewrites_->Get());
+  EXPECT_EQ(1, num_parse_failures_->Get());
+
+  // Check that this still works correctly the second time (this loads the
+  // result from cache and so goes through a different code path).
+  content.clear();
+  FetchResource(kTestDomain, "cf", "other_domain.css", "css", &content);
+  EXPECT_STREQ(css_after, content);
 }
 
 class CssRecompressImagesInStyleAttributes : public ResourceManagerTestBase {

@@ -435,9 +435,7 @@ class RewriteContext::FetchContext {
     handler_->Message(
         kInfo, "Deadline exceeded for rewrite of resource %s with %s.",
         input->url().c_str(), rewrite_context_->id());
-    bool absolutify_contents = true;
-    FetchFallbackDoneImpl(input->contents(), input->response_headers(),
-                          absolutify_contents);
+    FetchFallbackDoneImpl(input->contents(), input->response_headers());
   }
 
   // Note that the callback is called from the RewriteThread.
@@ -525,29 +523,21 @@ class RewriteContext::FetchContext {
       return;
     }
 
-    bool absolutify_contents = false;
-    FetchFallbackDoneImpl(contents, headers, absolutify_contents);
+    FetchFallbackDoneImpl(contents, headers);
   }
 
   // Backend for FetchFallbackCacheDone, but can be also invoked
   // for main rewrite when background rewrite is detached.
   void FetchFallbackDoneImpl(const StringPiece& contents,
-                             const ResponseHeaders* headers,
-                             bool absolutify_contents) {
+                             const ResponseHeaders* headers) {
     async_fetch_->response_headers()->CopyFrom(*headers);
     rewrite_context_->FixFetchFallbackHeaders(async_fetch_->response_headers());
     // Use the most conservative Cache-Control considering all inputs.
     ApplyInputCacheControl(async_fetch_->response_headers());
     async_fetch_->HeadersComplete();
 
-    bool ok;
-    if (absolutify_contents) {
-      ok = rewrite_context_->AbsolutifyIfNeeded(contents, async_fetch_,
-                                                handler_);
-    } else {
-      ok = async_fetch_->Write(contents, handler_);
-    }
-
+    bool ok = rewrite_context_->AbsolutifyIfNeeded(contents, async_fetch_,
+                                                   handler_);
     rewrite_context_->FetchCallbackDone(ok);
   }
 
