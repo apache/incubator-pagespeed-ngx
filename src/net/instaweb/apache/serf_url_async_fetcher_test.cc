@@ -378,6 +378,12 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLWithGzip) {
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, FetchTwoURLs) {
+  // Note: these two accept-encoding commands are not currently effective
+  // for some reason.
+  request_headers_[kGoogleFavicon]->Add(HttpAttributes::kAcceptEncoding,
+                                        HttpAttributes::kGzip);
+  request_headers_[kGoogleLogo]->Add(HttpAttributes::kAcceptEncoding,
+                                     HttpAttributes::kGzip);
   EXPECT_TRUE(TestFetch(kGoogleFavicon, kGoogleLogo));
   int request_count =
       statistics_.GetVariable(SerfStats::kSerfFetchRequestCount)->Get();
@@ -386,7 +392,11 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchTwoURLs) {
       statistics_.GetVariable(SerfStats::kSerfFetchByteCount)->Get();
   // Maybe also need a rough number here. We will break if google's icon or logo
   // changes.
-  EXPECT_EQ(9708, bytes_count);
+  //
+  // TODO(jmarantz): switch to referencing some fixed-size resources on
+  // modpagespeed.com so we are not sensitive to favicon changes.
+  //
+  EXPECT_EQ(23644, bytes_count);
   int time_duration =
       statistics_.GetVariable(SerfStats::kSerfFetchTimeDurationMs)->Get();
   EXPECT_EQ(2 * kTimerAdvanceMs, time_duration);
