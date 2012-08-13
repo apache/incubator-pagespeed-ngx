@@ -77,7 +77,9 @@ void BlinkFilter::StartDocument() {
       &panel_number_num_instances_);
 
   ObtainBlinkCriticalLineData();
-  HandleLastModifiedChange();
+  if (!rewrite_options_->enable_blink_html_change_detection()) {
+    HandleLastModifiedChange();
+  }
 
   if (!abort_filter_) {
     SendCookies();

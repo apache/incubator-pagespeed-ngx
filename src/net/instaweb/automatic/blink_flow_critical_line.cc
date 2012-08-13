@@ -64,8 +64,6 @@ class MessageHandler;
 
 const char BlinkFlowCriticalLine::kBackgroundComputationDone[] =
     "BackgroundComputation:Done";
-const char BlinkFlowCriticalLine::kHtmlDiffComputationMatched[] =
-    "HtmlDiffComputation:Matched";
 const char BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits[] =
     "num_blink_html_cache_hits";
 const char BlinkFlowCriticalLine::kNumBlinkHtmlCacheMisses[] =
@@ -355,8 +353,6 @@ class CriticalLineFetch : public AsyncFetch {
           cohort, BlinkUtil::kBlinkCriticalLineDataPropertyName);
       property_cache->UpdateValue(buf, property_value);
       property_cache->WriteCohort(cohort, page);
-      ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
-      sync->Signal(BlinkFlowCriticalLine::kHtmlDiffComputationMatched);
       delete this;
     }
   }

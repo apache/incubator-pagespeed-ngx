@@ -150,6 +150,7 @@ class RewriteOptions {
     kEnabled,
     kEnableBlinkHtmlChangeDetection,
     kEnableDeferJsExperimental,
+    kEnableFlushSubresourcesExperimental,
     kEnableInlinePreviewImagesExperimental,
     kFlushHtml,
     kFuriousSlot,
@@ -1000,6 +1001,13 @@ class RewriteOptions {
   }
   bool enable_defer_js_experimental() const {
     return enable_defer_js_experimental_.value();
+  }
+
+  void set_enable_flush_subresources_experimental(bool x) {
+    set_option(x, &enable_flush_subresources_experimental_);
+  }
+  bool enable_flush_subresources_experimental() const {
+    return enable_flush_subresources_experimental_.value();
   }
 
   void set_enable_inline_preview_images_experimental(bool x) {
@@ -1879,6 +1887,9 @@ class RewriteOptions {
 
   // Enables experimental code in defer js.
   Option<bool> enable_defer_js_experimental_;
+
+  // Enables experimental code in flush subresources.
+  Option<bool> enable_flush_subresources_experimental_;
 
   // Enables experimental code in inline preview images.
   Option<bool> enable_inline_preview_images_experimental_;

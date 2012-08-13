@@ -35,7 +35,7 @@ message FlushEarlyResource {
 
 // FlushEarlyInfo stores various information for flushing a request early i.e.
 // before receiving a response form the origin server.
-// NextId: 5
+// NextId: 10
 message FlushEarlyInfo {
   // ResponseHeaders proto from previous response which is used for subsequent
   // response for the same html url.
@@ -63,4 +63,7 @@ message FlushEarlyInfo {
 
   // Meta Tag which specifies the content type of the page.
   optional string content_type_meta_tag = 8;
+
+  // The HTML for all resource elements that we want to try to flush early.
+  optional string resource_html = 9;
 }

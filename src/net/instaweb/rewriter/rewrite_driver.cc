@@ -71,7 +71,9 @@
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
+#include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/flush_html_filter.h"
+#include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
 #include "net/instaweb/rewriter/public/collect_subresources_filter.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
@@ -177,6 +179,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       flush_requested_(false),
       flush_occurred_(false),
       flushed_early_(false),
+      flushing_early_(false),
       release_driver_(false),
       inhibits_mutex_(NULL),
       finish_parse_on_hold_(NULL),
@@ -310,6 +313,7 @@ void RewriteDriver::Clear() {
   flush_requested_ = false;
   flush_occurred_ = false;
   flushed_early_ = false;
+  flushing_early_ = false;
   base_was_set_ = false;
   refs_before_base_ = false;
   containing_charset_.clear();
@@ -768,8 +772,16 @@ void RewriteDriver::AddPreRenderFilters() {
     add_event_listener(new FlushHtmlFilter(this));
   }
 
+  // We disable combine_css and combine_javascript when flush_subresources is
+  // enabled, since the way CSS and JS is combined is not deterministic.
+  // However, we do not disable combine_javascript when defer_javascript is
+  // enabled since in this case, flush_subresources does not flush JS resources.
+  bool flush_subresources_enabled = rewrite_options->Enabled(
+      RewriteOptions::kFlushSubresources);
+
   if (rewrite_options->Enabled(RewriteOptions::kAddBaseTag) ||
       rewrite_options->Enabled(RewriteOptions::kAddHead) ||
+      flush_subresources_enabled ||
       rewrite_options->Enabled(RewriteOptions::kCombineHeads) ||
       rewrite_options->Enabled(RewriteOptions::kMoveCssToHead) ||
       rewrite_options->Enabled(RewriteOptions::kMoveCssAboveScripts) ||
@@ -787,6 +799,13 @@ void RewriteDriver::AddPreRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kStripScripts)) {
     // Experimental filter that blindly strips all scripts from a page.
     AppendOwnedPreRenderFilter(new StripScriptsFilter(this));
+  }
+  // Enable Flush subresources early filter to extract the subresources from
+  // head. This should ideally (but not necessarily) be before any filters that
+  // trigger async rewrites.
+  if (flush_subresources_enabled &&
+      rewrite_options->enable_flush_subresources_experimental()) {
+    AppendOwnedPreRenderFilter(new CollectFlushEarlyContentFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink)) {
     // If we're converting simple embedded CSS @imports into a href link
@@ -814,7 +833,8 @@ void RewriteDriver::AddPreRenderFilters() {
     // which only combines CSS links that are already in the head.
     AppendOwnedPreRenderFilter(new CssMoveToHeadFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kCombineCss)) {
+  if (!flush_subresources_enabled &&
+      rewrite_options->Enabled(RewriteOptions::kCombineCss)) {
     // Combine external CSS resources after we've outlined them.
     // CSS files in html document.  This can only be called
     // once and requires a resource_manager to be set.
@@ -840,7 +860,12 @@ void RewriteDriver::AddPreRenderFilters() {
     // interaction.
     EnableRewriteFilter(RewriteOptions::kJavascriptMinId);
   }
-  if (rewrite_options->Enabled(RewriteOptions::kCombineJavascript)) {
+  // Disable combine javascript if flush subresources is enabled and
+  // defer_javascript is disabled.
+  bool disable_combine_js_due_to_flush_early = flush_subresources_enabled &&
+      !rewrite_options->Enabled(RewriteOptions::kDeferJavascript);
+  if (!disable_combine_js_due_to_flush_early &&
+      rewrite_options->Enabled(RewriteOptions::kCombineJavascript)) {
     // Combine external JS resources. Done after minification and analytics
     // detection, as it converts script sources into string literals, making
     // them opaque to analysis.
@@ -893,7 +918,8 @@ void RewriteDriver::AddPreRenderFilters() {
   }
   // Enable Flush subresources early filter to extract the subresources from
   // head. This should be the last prerender filter.
-  if (rewrite_options->Enabled(RewriteOptions::kFlushSubresources)) {
+  if (flush_subresources_enabled &&
+      !rewrite_options->enable_flush_subresources_experimental()) {
     collect_subresources_filter_ = new CollectSubresourcesFilter(this);
     AppendOwnedPreRenderFilter(collect_subresources_filter_);
   }
@@ -1068,11 +1094,17 @@ void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {
 void RewriteDriver::SetWriter(Writer* writer) {
   writer_ = writer;
   if (html_writer_filter_ == NULL) {
-    html_writer_filter_.reset(new HtmlWriterFilter(this));
     if (options()->Enabled(RewriteOptions::kServeNonCacheableNonCritical)) {
       html_writer_filter_.reset(new BlinkFilter(this));
     } else if (options()->Enabled(RewriteOptions::kFlushSubresources)) {
-      html_writer_filter_.reset(new SuppressPreheadFilter(this));
+      if (flushing_early_) {
+        DCHECK(options()->enable_flush_subresources_experimental());
+        // If we are flushing early using this RewriteDriver object, we use the
+        // FlushEarlyContentWriterFilter.
+        html_writer_filter_.reset(new FlushEarlyContentWriterFilter(this));
+      } else {
+        html_writer_filter_.reset(new SuppressPreheadFilter(this));
+      }
     } else {
       html_writer_filter_.reset(new HtmlWriterFilter(this));
     }

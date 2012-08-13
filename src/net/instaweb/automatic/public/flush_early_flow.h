@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_AUTOMATIC_PUBLIC_FLUSH_EARLY_FLOW_H_
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_FLUSH_EARLY_FLOW_H_
 
-#include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -29,12 +28,12 @@ namespace net_instaweb {
 
 class AsyncFetch;
 class FlushEarlyInfo;
+class Histogram;
 class MessageHandler;
 class ProxyFetchPropertyCallbackCollector;
 class ProxyFetchFactory;
 class ResourceManager;
 class RewriteDriver;
-class RewriteOptions;
 class Statistics;
 class TimedVariable;
 
@@ -45,6 +44,10 @@ class TimedVariable;
 // are used when a request is responded to early.
 class FlushEarlyFlow {
  public:
+  static const char kNumRequestsFlushedEarly[];
+  static const char kNumResourcesFlushedEarly[];
+  static const char kFlushEarlyRewriteLatencyMs[];
+
   static void Start(
       const GoogleString& url,
       AsyncFetch* base_fetch,
@@ -60,9 +63,6 @@ class FlushEarlyFlow {
   static bool CanFlushEarly(const GoogleString& url,
                             const AsyncFetch* async_fetch,
                             const RewriteDriver* driver);
-
-  static const char kNumRequestsFlushedEarly[];
-  static const char kNumResourcesFlushedEarly[];
 
  private:
   // Flush some response for this request before receiving the fetch response
@@ -86,6 +86,14 @@ class FlushEarlyFlow {
   GoogleString GetHeadString(const FlushEarlyInfo& flush_early_info,
                              const char* format);
 
+  // Callback that is invoked after we rewrite the early head.
+  // start_time_ms indicates the time we started rewriting the flush early
+  // head. This is set to -1 if is_experimental_hit is false.
+  void FlushEarlyRewriteDone(int64 start_time_ms);
+
+  // Triggers ProxyFetchFactory::StartNewProxyFetch.
+  void TriggerProxyFetch();
+
   void Write(const StringPiece& val);
 
   GoogleString url_;
@@ -103,6 +111,7 @@ class FlushEarlyFlow {
 
   TimedVariable* num_requests_flushed_early_;
   TimedVariable* num_resources_flushed_early_;
+  Histogram* flush_early_rewrite_latency_ms;
 
   DISALLOW_COPY_AND_ASSIGN(FlushEarlyFlow);
 };

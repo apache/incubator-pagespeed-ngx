@@ -280,7 +280,6 @@ TEST_F(BlinkFilterTest, RequestLastModifiedSameInCacheSendNonCritical) {
   EXPECT_TRUE(IsBlinkCriticalLineDataInPropertyCache());
 }
 
-
 TEST_F(BlinkFilterTest, RequestLastModifiedDifferentFromCache1) {
   WriteBlinkCriticalLineData("old");
   response_headers_.Add(kPsaLastModified, "changed");
@@ -292,6 +291,19 @@ TEST_F(BlinkFilterTest, RequestLastModifiedDifferentFromCache1) {
   ValidateExpectedUrl(kRequestUrl, kHtmlInput, json_expected_output);
   CheckResponseCodeInPropertyCache(HttpStatus::kOK);
   EXPECT_FALSE(IsBlinkCriticalLineDataInPropertyCache());
+}
+
+TEST_F(BlinkFilterTest,
+       RequestLastModifiedDifferentFromCacheWithDiffDetection) {
+  WriteBlinkCriticalLineData("old");
+  response_headers_.Add(kPsaLastModified, "changed");
+  options_->AddBlinkCacheableFamily(
+      "/", kCacheTimeMs, "class=item,id=beforeItems");
+  options_->set_enable_blink_html_change_detection(true);
+  rewrite_driver()->set_serve_blink_non_critical(true);
+  ValidateExpectedUrl(kRequestUrl, kHtmlInput, kJsonExpectedOutput);
+  CheckResponseCodeInPropertyCache(HttpStatus::kOK);
+  EXPECT_TRUE(IsBlinkCriticalLineDataInPropertyCache());
 }
 
 TEST_F(BlinkFilterTest, RequestLastModifiedDifferentFromCache2) {

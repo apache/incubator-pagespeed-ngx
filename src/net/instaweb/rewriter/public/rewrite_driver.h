@@ -812,6 +812,9 @@ class RewriteDriver : public HtmlParse {
   void set_flushed_early(bool x) { flushed_early_ = x; }
   bool flushed_early() { return flushed_early_; }
 
+  void set_flushing_early(bool x) { flushing_early_ = x; }
+  bool flushing_early() { return flushing_early_; }
+
   // This method is not thread-safe. Call it only from the html parser thread.
   FlushEarlyInfo* flush_early_info();
 
@@ -1034,6 +1037,10 @@ class RewriteDriver : public HtmlParse {
   // If it is true, then the bytes were flushed before receiving bytes from the
   // origin server.
   bool flushed_early_;
+  // If set to true, then we are using this RewriteDriver to flush HTML to the
+  // user early. This is only set to true when
+  // enable_flush_subresources_experimental is true.
+  bool flushing_early_;
 
   // Set to true if RewriteDriver can be released.
   bool release_driver_;

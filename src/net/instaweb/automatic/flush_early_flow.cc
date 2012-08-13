@@ -29,6 +29,7 @@
 #include "net/instaweb/js/public/js_minify.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -52,16 +53,8 @@ const char kScriptBlock[] =
 
 const char kFlushSubresourcesFilter[] = "FlushSubresourcesFilter";
 
-const char kPrefetchLinkRelSubresourceHtml[] =
-    "<link rel=\"subresource\" href=\"%s\"/>\n";
-const char kPrefetchImageTagHtml[] = "new Image().src=\"%s\";";
 const char kPrefetchObjectTagHtml[] = "preload(%s);";
 
-const char kPrefetchStartTimeScript[] =
-    "<script type='text/javascript'>"
-    "window.mod_pagespeed_prefetch_start = Number(new Date());"
-    "window.mod_pagespeed_num_resources_prefetched = %d"
-    "</script>";
 
 }  // namespace
 
@@ -71,6 +64,8 @@ const char FlushEarlyFlow::kNumRequestsFlushedEarly[] =
     "num_requests_flushed_early";
 const char FlushEarlyFlow::kNumResourcesFlushedEarly[] =
     "num_resources_flushed_early";
+const char FlushEarlyFlow::kFlushEarlyRewriteLatencyMs[] =
+    "flush_early_rewrite_latency_ms";
 
 // TODO(mmohabey): Do Cookie handling when flushed early. If the cookie is
 // HttpOnly then do not enter FlushEarlyFlow.
@@ -133,8 +128,10 @@ void FlushEarlyFlow::Start(
 void FlushEarlyFlow::Initialize(Statistics* stats) {
   stats->AddTimedVariable(kNumRequestsFlushedEarly,
                           ResourceManager::kStatisticsGroup);
-  stats->AddTimedVariable(kNumResourcesFlushedEarly,
-                          ResourceManager::kStatisticsGroup);
+  stats->AddTimedVariable(
+      FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly,
+      ResourceManager::kStatisticsGroup);
+  stats->AddHistogram(kFlushEarlyRewriteLatencyMs);
 }
 
 FlushEarlyFlow::FlushEarlyFlow(
@@ -157,7 +154,10 @@ FlushEarlyFlow::FlushEarlyFlow(
   num_requests_flushed_early_ = stats->GetTimedVariable(
       kNumRequestsFlushedEarly);
   num_resources_flushed_early_ = stats->GetTimedVariable(
-      kNumResourcesFlushedEarly);
+      FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly);
+  flush_early_rewrite_latency_ms = stats->AddHistogram(
+      kFlushEarlyRewriteLatencyMs);
+  flush_early_rewrite_latency_ms->EnableNegativeBuckets();
 }
 
 FlushEarlyFlow::~FlushEarlyFlow() {}
@@ -177,20 +177,73 @@ void FlushEarlyFlow::FlushEarly() {
       ArrayInputStream value(property_value->value().data(),
                              property_value->value().size());
       flush_early_info.ParseFromZeroCopyStream(&value);
-      GenerateDummyHeadAndCountResources(flush_early_info);
-      if (flush_early_info.response_headers().status_code() == HttpStatus::kOK
-          && num_resources_flushed_ > 0) {
-        handler_->Message(kInfo, "Flushed %d Subresources Early for %s.",
-                          num_resources_flushed_, url_.c_str());
-        num_requests_flushed_early_->IncBy(1);
-        num_resources_flushed_early_->IncBy(num_resources_flushed_);
+      if (flush_early_info.has_resource_html() &&
+          !flush_early_info.resource_html().empty()) {
+        // If the flush early info has non-empty resource html, we flush early.
+        DCHECK(driver_->options()->enable_flush_subresources_experimental());
+
+        int64 now_ms = manager_->timer()->NowMs();
+        // Clone the RewriteDriver which is used rewrite the HTML that we are
+        // trying to flush early.
+        RewriteDriver* new_driver = driver_->Clone();
+        new_driver->set_response_headers_ptr(base_fetch_->response_headers());
+        new_driver->set_flushing_early(true);
+        new_driver->SetWriter(base_fetch_);
+        new_driver->set_user_agent(driver_->user_agent());
+        new_driver->StartParse(url_);
+
+        // Copy over the response headers from flush_early_info.
         GenerateResponseHeaders(flush_early_info);
-        base_fetch_->Write(dummy_head_, handler_);
+
+        // Write the pre-head content out to the user. Note that we also pass
+        // the pre-head content to new_driver but it is not written out by it.
+        // This is so that we can flush other content such as the javascript
+        // needed by filters from here. Also, we may need the pre-head to detect
+        // the encoding of the page.
+        base_fetch_->Write(flush_early_info.pre_head(), handler_);
+        base_fetch_->Write("<head>", handler_);
+        base_fetch_->Write(flush_early_info.content_type_meta_tag(), handler_);
         base_fetch_->Flush(handler_);
+
+        // Parse and rewrite the flush early HTML.
+        new_driver->ParseText(flush_early_info.pre_head());
+        new_driver->ParseText("<head>");
+        new_driver->ParseText(flush_early_info.content_type_meta_tag());
+        new_driver->ParseText(flush_early_info.resource_html());
         driver_->set_flushed_early(true);
+        num_requests_flushed_early_->IncBy(1);
+        // This deletes the driver once done.
+        new_driver->FinishParseAsync(
+            MakeFunction(this, &FlushEarlyFlow::FlushEarlyRewriteDone, now_ms));
+        return;
+      } else {
+        GenerateDummyHeadAndCountResources(flush_early_info);
+        if (flush_early_info.response_headers().status_code() ==
+            HttpStatus::kOK && num_resources_flushed_ > 0) {
+          handler_->Message(kInfo, "Flushed %d Subresources Early for %s.",
+                            num_resources_flushed_, url_.c_str());
+          num_requests_flushed_early_->IncBy(1);
+          num_resources_flushed_early_->IncBy(num_resources_flushed_);
+          GenerateResponseHeaders(flush_early_info);
+          base_fetch_->Write(dummy_head_, handler_);
+          base_fetch_->Flush(handler_);
+          driver_->set_flushed_early(true);
+        }
       }
     }
   }
+  TriggerProxyFetch();
+}
+
+void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms) {
+  base_fetch_->Write("</head>", handler_);
+  base_fetch_->Flush(handler_);
+  flush_early_rewrite_latency_ms->Add(
+      manager_->timer()->NowMs() - start_time_ms);
+  TriggerProxyFetch();
+}
+
+void FlushEarlyFlow::TriggerProxyFetch() {
   AsyncFetch* fetch = driver_->flushed_early() ?
       new FlushEarlyAsyncFetch(base_fetch_) : base_fetch_;
   factory_->StartNewProxyFetch(
@@ -223,21 +276,22 @@ void FlushEarlyFlow::GenerateDummyHeadAndCountResources(
       LOG(DFATAL) << "Entered Flush Early Flow for a unsupported user agent";
       break;
     case UserAgentMatcher::kPrefetchLinkRelSubresource:
-      head_string = GetHeadString(flush_early_info,
-                                  kPrefetchLinkRelSubresourceHtml);
+      head_string = GetHeadString(
+          flush_early_info,
+          FlushEarlyContentWriterFilter::kPrefetchLinkRelSubresourceHtml);
       break;
     case UserAgentMatcher::kPrefetchImageTag:
       has_script = true;
-      script = GetHeadString(flush_early_info,
-                             kPrefetchImageTagHtml);
+      script = GetHeadString(
+          flush_early_info,
+          FlushEarlyContentWriterFilter::kPrefetchImageTagHtml);
       break;
     case UserAgentMatcher::kPrefetchObjectTag:
       has_script = true;
       StrAppend(&script, kPreloadScript, GetHeadString(flush_early_info,
-                kPrefetchImageTagHtml));
+                kPrefetchObjectTagHtml));
       break;
   }
-  Write(StringPrintf(kPrefetchStartTimeScript, num_resources_flushed_));
   if (has_script) {
     if (!driver_->options()->Enabled(RewriteOptions::kDebug)) {
       pagespeed::js::MinifyJs(script, &minified_script);
@@ -248,6 +302,8 @@ void FlushEarlyFlow::GenerateDummyHeadAndCountResources(
   } else {
     Write(head_string);
   }
+  Write(StringPrintf(FlushEarlyContentWriterFilter::kPrefetchStartTimeScript,
+                     num_resources_flushed_));
   Write("</head>");
 }
 

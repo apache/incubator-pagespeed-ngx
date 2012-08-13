@@ -44,6 +44,7 @@ struct OptionName {
 "EnableBlinkForMobileDevices",          RewriteOptions::kEnableBlinkForMobileDevices
 "EnableBlinkHtmlChangeDetection",       RewriteOptions::kEnableBlinkHtmlChangeDetection
 "EnableDeferJsExperimental",            RewriteOptions::kEnableDeferJsExperimental
+"EnableFlushSubresourcesExperimental",  RewriteOptions::kEnableFlushSubresourcesExperimental
 "ExperimentSlot",                       RewriteOptions::kFuriousSlot
 "FlushHtml",                            RewriteOptions::kFlushHtml
 "IdleFlushTimeMs",                      RewriteOptions::kIdleFlushTimeMs

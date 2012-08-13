@@ -160,10 +160,13 @@ DEFINE_int64(implicit_cache_ttl_ms,
              "have no explicit cache ttl or expiration date.");
 
 DEFINE_bool(enable_defer_js_experimental, false,
-            "Enables experimental defer js");
+            "Enables experimental defer js.");
+
+DEFINE_bool(enable_flush_subresources_experimental, false,
+            "Enables experimental flush subresources.");
 
 DEFINE_bool(enable_inline_preview_images_experimental, false,
-            "Enables experimental inline preview images");
+            "Enables experimental inline preview images.");
 
 DEFINE_bool(avoid_renaming_introspective_javascript, false,
             "Don't combine, inline, cache extend, or otherwise modify "
@@ -374,6 +377,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_defer_js_experimental")) {
     options->set_enable_defer_js_experimental(
         FLAGS_enable_defer_js_experimental);
+  }
+  if (WasExplicitlySet("enable_flush_subresources_experimental")) {
+    options->set_enable_flush_subresources_experimental(
+        FLAGS_enable_flush_subresources_experimental);
   }
   if (WasExplicitlySet("enable_inline_preview_images_experimental")) {
     options->set_enable_inline_preview_images_experimental(

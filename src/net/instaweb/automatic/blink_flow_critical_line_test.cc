@@ -418,9 +418,6 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
     sync->EnableForPrefix(BlinkFlowCriticalLine::kBackgroundComputationDone);
     sync->AllowSloppyTermination(
         BlinkFlowCriticalLine::kBackgroundComputationDone);
-    sync->EnableForPrefix(BlinkFlowCriticalLine::kHtmlDiffComputationMatched);
-    sync->AllowSloppyTermination(
-        BlinkFlowCriticalLine::kHtmlDiffComputationMatched);
     fake_blink_critical_line_data_finder_ =
         static_cast<FakeBlinkCriticalLineDataFinder*> (
             factory_->blink_critical_line_data_finder());
@@ -526,15 +523,6 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
     FetchFromProxy(url, expect_success, string_out, headers_out, true);
   }
 
-  void FetchFromProxyWaitForHtmlDiffComputationMatch(
-      const StringPiece& url, bool expect_success, GoogleString* string_out,
-      ResponseHeaders* headers_out) {
-    RequestHeaders request_headers;
-    GetDefaultRequestHeaders(&request_headers);
-    FetchFromProxy(url, expect_success, request_headers, string_out,
-                   headers_out, NULL, false, true);
-  }
-
   void FetchFromProxyNoWaitForBackground(const StringPiece& url,
                                          bool expect_success,
                                          GoogleString* string_out,
@@ -571,19 +559,6 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
                       ResponseHeaders* headers_out,
                       GoogleString* user_agent_out,
                       bool wait_for_background_computation) {
-    FetchFromProxy(url, expect_success, request_headers, string_out,
-                   headers_out, user_agent_out, wait_for_background_computation,
-                   false);
-  }
-
-  void FetchFromProxy(const StringPiece& url,
-                      bool expect_success,
-                      const RequestHeaders& request_headers,
-                      GoogleString* string_out,
-                      ResponseHeaders* headers_out,
-                      GoogleString* user_agent_out,
-                      bool wait_for_background_computation,
-                      bool wait_for_html_diff_computation_match) {
     FetchFromProxyNoQuiescence(url, expect_success, request_headers,
                                string_out, headers_out,
                                user_agent_out);
@@ -591,11 +566,6 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
       ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
       sync->Wait(BlinkFlowCriticalLine::kBackgroundComputationDone);
     }
-    if (wait_for_html_diff_computation_match) {
-      ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
-      sync->Wait(BlinkFlowCriticalLine::kHtmlDiffComputationMatched);
-    }
-    mock_scheduler()->AwaitQuiescence();
   }
 
   void FetchFromProxyNoQuiescence(const StringPiece& url,
@@ -1503,8 +1473,6 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateFalse) {
   ClearStats();
 }
 
-/*
-TODO(rahulbansal): repro the race in this test and fix it.
 
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateTrue) {
   options_->ClearSignatureForTesting();
@@ -1549,7 +1517,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateTrue) {
 
   // Hash set. No mismatches.
   SetBlinkCriticalLineData(true, "5SmNjVuPwO", last_diff_timestamp_ms);
-  FetchFromProxyWaitForHtmlDiffComputationMatch(
+  FetchFromProxyWaitForBackground(
       "text.html", true, &text, &response_headers);
 
   UnEscapeString(&text);
@@ -1567,7 +1535,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateTrue) {
   SetFetchResponse("http://test.com/text.html", response_headers_,
                    kHtmlInputWithExtraCommentAndNonCacheable);
   SetBlinkCriticalLineData(true, "5SmNjVuPwO", last_diff_timestamp_ms);
-  FetchFromProxyWaitForHtmlDiffComputationMatch(
+  FetchFromProxyWaitForBackground(
       "text.html", true, &text, &response_headers);
 
   UnEscapeString(&text);
@@ -1579,7 +1547,6 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateTrue) {
   EXPECT_EQ(1, statistics()->FindVariable(
       BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
 }
-*/
 
 TEST_F(BlinkFlowCriticalLineTest, TestSetBlinkCriticalLineDataFalse) {
   options_->ClearSignatureForTesting();

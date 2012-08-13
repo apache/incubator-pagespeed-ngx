@@ -41,6 +41,7 @@ const char* kImageInliningWhitelist[] = {
   "google command line rewriter",
   "webp",
   "prefetch_link_rel_subresource",
+  "prefetch_image_tag",
 };
 const char* kImageInliningBlacklist[] = {
   "*Firefox/1.*",
