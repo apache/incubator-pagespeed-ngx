@@ -69,6 +69,7 @@ struct OptionName {
 "LogRewriteTiming",                     RewriteOptions::kLogRewriteTiming
 "LowercaseHtmlNames",                   RewriteOptions::kLowercaseHtmlNames
 "MaxHtmlCacheTimeMs",                   RewriteOptions::kMaxHtmlCacheTimeMs
+"MaxImageBytesForWebpInCss",            RewriteOptions::kMaxImageBytesForWebpInCss
 "MaxImageSizeLowResolutionBytes",       RewriteOptions::kMaxImageSizeLowResolutionBytes
 "MaxInlinedPreviewImagesIndex",         RewriteOptions::kMaxInlinedPreviewImagesIndex
 # TODO(sligocki): Put names in agreement. MaxSegmentLength is the

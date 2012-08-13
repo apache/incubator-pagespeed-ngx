@@ -232,6 +232,10 @@ DEFINE_int64(
     net_instaweb::RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs,
     "Time after which we should try to detect if publisher html has changed");
 
+DEFINE_int64(max_image_bytes_for_webp_in_css,
+             net_instaweb::RewriteOptions::kDefaultMaxImageBytesForWebpInCss,
+             "The maximum size of an image in CSS, which we convert to webp.");
+
 namespace net_instaweb {
 
 namespace {
@@ -410,6 +414,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("blink_html_change_detection_time_ms")) {
     options->set_blink_html_change_detection_time_ms(
         FLAGS_blink_html_change_detection_time_ms);
+  }
+  if (WasExplicitlySet("max_image_bytes_for_webp_in_css")) {
+    options->set_max_image_bytes_for_webp_in_css(
+        FLAGS_max_image_bytes_for_webp_in_css);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

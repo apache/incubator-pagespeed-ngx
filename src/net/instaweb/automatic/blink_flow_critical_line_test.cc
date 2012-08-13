@@ -770,6 +770,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestFlakyNon200ResponseCodeValidHitAfter404) {
   EXPECT_EQ(1, num_compute_calls());
 }
 
+#if 0  // TODO(rahulbansal): Fix flakiness under valgrind.
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkInfoErrorScenarios) {
   GoogleString text;
   ResponseHeaders response_headers_out;
@@ -798,6 +799,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkInfoErrorScenarios) {
   EXPECT_EQ(BlinkInfo::FOUND_MALFORMED_HTML,
       blink_info_->blink_request_flow());
 }
+#endif
 
 TEST_F(BlinkFlowCriticalLineTest,
        TestFlakyNon200ResponseCodeDoNotWriteResponseCode) {
@@ -887,6 +889,7 @@ TEST_F(BlinkFlowCriticalLineTest,
   EXPECT_EQ(2, num_compute_calls());
 }
 
+#if 0  // TODO(rahulbansal): Fix flakiness under valgrind.
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   GoogleString text;
   ResponseHeaders response_headers;
@@ -966,6 +969,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   EXPECT_EQ(1, statistics()->GetVariable(
             BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
 }
+#endif
 
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkUrlCacheInvalidation) {
   GoogleString text;

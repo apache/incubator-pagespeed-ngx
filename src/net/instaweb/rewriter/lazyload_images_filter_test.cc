@@ -139,15 +139,18 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
   GoogleString rewritten_url = Encode(
       "http://test.com/", "ce", "HASH", "critical4.jpg", "jpg");
 
+  GoogleString input_html= StrCat(
+      "<head></head>"
+      "<body>"
+      "<img src=\"http://www.1.com/critical\"/>"
+      "<img src=\"http://www.1.com/critical2\"/>"
+      "<img src=\"critical3\"/>"
+      "<img src=\"", rewritten_url, "\"/>"
+      "</body>");
+
   ValidateExpected(
       "lazyload_images",
-      StrCat("<head></head>"
-             "<body>"
-             "<img src=\"http://www.1.com/critical\" />"
-             "<img src=\"http://www.1.com/critical2\" />"
-             "<img src=\"critical3\" />"
-             "<img src=\"", rewritten_url, "\" />"
-             "</body>"),
+      input_html,
       StrCat("<head></head><body>"
              "<img src=\"http://www.1.com/critical\"/>"
              "<script type=\"text/javascript\">",
@@ -162,6 +165,9 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
                  "<img src=\"critical3\"/>"
                  "<img src=\"", rewritten_url, "\"/>"
                  "</body>")));
+
+  rewrite_driver()->set_user_agent("Firefox/1.0");
+  ValidateNoChanges("inlining_not_supported", input_html);
 
   delete resource_manager()->critical_images_finder();
 }

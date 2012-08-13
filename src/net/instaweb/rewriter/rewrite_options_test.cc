@@ -623,7 +623,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(93, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(94, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAjaxRewritingEnabled));
@@ -753,6 +753,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("MaxHtmlCacheTimeMs"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kMaxHtmlCacheTimeMs));
+  EXPECT_EQ(StringPiece("MaxImageBytesForWebpInCss"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kMaxImageBytesForWebpInCss));
   EXPECT_EQ(StringPiece("MaxImageSizeLowResolutionBytes"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kMaxImageSizeLowResolutionBytes));

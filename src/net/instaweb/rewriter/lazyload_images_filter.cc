@@ -78,6 +78,9 @@ void LazyloadImagesFilter::Clear() {
 }
 
 void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
+  if (!driver()->UserAgentSupportsImageInlining()) {
+    return;
+  }
   if (noscript_element() != NULL) {
     return;
   }
@@ -108,6 +111,9 @@ void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
+  if (!driver()->UserAgentSupportsImageInlining()) {
+    return;
+  }
   if (noscript_element() != NULL) {
     return;
   }

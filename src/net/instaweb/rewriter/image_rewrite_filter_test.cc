@@ -103,11 +103,22 @@ class HTTPCacheStringCallback : public OptionsAwareHTTPCacheCallback {
 // can return useful information for testing this filter.
 class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
  public:
-  MeaningfulCriticalImagesFinder() {}
+  MeaningfulCriticalImagesFinder()
+      : compute_calls_(0) {}
   virtual ~MeaningfulCriticalImagesFinder() {}
   virtual bool IsMeaningful() const {
     return true;
   }
+  virtual void ComputeCriticalImages(StringPiece url,
+                                     RewriteDriver* driver,
+                                     bool must_compute) {
+    ++compute_calls_;
+  }
+  int num_compute_calls() { return compute_calls_; }
+
+ private:
+  int compute_calls_;
+  DISALLOW_COPY_AND_ASSIGN(MeaningfulCriticalImagesFinder);
 };
 
 class MockPage : public PropertyPage {
@@ -795,8 +806,8 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
 TEST_F(ImageRewriteTest, InlineCriticalOnly) {
   StringSet* critical_images = new StringSet;
   rewrite_driver()->set_critical_images(critical_images);
-  resource_manager()->set_critical_images_finder(
-      new MeaningfulCriticalImagesFinder());
+  MeaningfulCriticalImagesFinder finder;
+  resource_manager()->set_critical_images_finder(&finder);
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
   rewrite_driver()->AddFilters();
@@ -808,8 +819,32 @@ TEST_F(ImageRewriteTest, InlineCriticalOnly) {
   critical_images->insert(StrCat(kTestDomain, kChefGifFile));
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, true);
+}
 
-  delete resource_manager()->critical_images_finder();
+TEST_F(ImageRewriteTest, ComputeCriticalImages) {
+  MeaningfulCriticalImagesFinder finder;
+  resource_manager()->set_critical_images_finder(&finder);
+  options()->set_image_inline_max_bytes(30000);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  rewrite_driver()->AddFilters();
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    "", "", false, false);
+  // Empty user agent supports inlining, so we call ComputeCriticalImages.
+  EXPECT_EQ(1, finder.num_compute_calls());
+
+  // Change to a user agent that does not support inlining. We don't call
+  // ComputeCriticalImages.
+  rewrite_driver()->set_user_agent("Firefox/2.0");
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    "", "", false, false);
+  EXPECT_EQ(1, finder.num_compute_calls());
+
+  // Change back to a user agent that supports inlining. We call
+  // ComputeCriticalImages again.
+  rewrite_driver()->set_user_agent("Firefox/3.0");
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    "", "", false, false);
+  EXPECT_EQ(2, finder.num_compute_calls());
 }
 
 TEST_F(ImageRewriteTest, InlineNoRewrite) {

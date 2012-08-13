@@ -105,6 +105,8 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   virtual const UrlSegmentEncoder* encoder() const;
 
  private:
+  friend class ImageRewriteFilter;
+
   int64 css_image_inline_max_bytes_;
   ImageRewriteFilter* filter_;
   RewriteDriver* driver_;
@@ -205,6 +207,7 @@ void ImageRewriteFilter::StartDocumentImpl() {
   CriticalImagesFinder* finder =
       driver_->resource_manager()->critical_images_finder();
   if (finder->IsMeaningful() &&
+      driver_->UserAgentSupportsImageInlining() &&
       (driver_->options()->Enabled(RewriteOptions::kDelayImages) ||
        (driver_->options()->Enabled(RewriteOptions::kInlineImages) &&
         driver_->options()->inline_only_critical_images()))) {
@@ -223,14 +226,19 @@ namespace {
 // ResourceContext.
 Image::CompressionOptions* ImageOptionsForLoadedResource(
     const ResourceContext& context, const RewriteOptions* options,
-    const ResourcePtr& input_resource) {
+    const ResourcePtr& input_resource, bool is_css) {
   Image::CompressionOptions* image_options = new Image::CompressionOptions();
-  image_options->webp_preferred = context.attempt_webp();
+  int64 input_size = static_cast<int64>(input_resource->contents().size());
+  // Disable webp conversion for images in CSS if the original image size is
+  // greater than max_image_bytes_in_css_for_webp. This is because webp does not
+  // support progressive which causes a perceptible delay in the loading of
+  // large background images.
+  image_options->webp_preferred = context.attempt_webp() &&
+      (!is_css || input_size <= options->max_image_bytes_for_webp_in_css());
   image_options->jpeg_quality = options->image_jpeg_recompress_quality();
   image_options->progressive_jpeg =
       options->Enabled(RewriteOptions::kConvertJpegToProgressive) &&
-      static_cast<int64>(input_resource->contents().size()) >=
-          options->progressive_jpeg_min_bytes();
+      input_size >= options->progressive_jpeg_min_bytes();
   image_options->convert_png_to_jpeg =
       options->Enabled(RewriteOptions::kConvertPngToJpeg);
   image_options->convert_gif_to_png =
@@ -329,7 +337,7 @@ bool ResizeImageIfNecessary(
 }  // namespace
 
 RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
-      RewriteContext* rewrite_context, const ResourcePtr& input_resource,
+      Context* rewrite_context, const ResourcePtr& input_resource,
       const OutputResourcePtr& result) {
   MessageHandler* message_handler = driver_->message_handler();
   StringVector urls;
@@ -341,7 +349,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   const RewriteOptions* options = driver_->options();
 
   Image::CompressionOptions* image_options =
-      ImageOptionsForLoadedResource(context, options, input_resource);
+      ImageOptionsForLoadedResource(context, options, input_resource,
+                                    rewrite_context->is_css_);
 
   scoped_ptr<Image> image(
       NewImage(input_resource->contents(), input_resource->url(),

@@ -118,6 +118,8 @@ const int64 RewriteOptions::kDefaultJsOutlineMinBytes = 3000;
 const int64 RewriteOptions::kDefaultProgressiveJpegMinBytes = 10240;
 
 const int64 RewriteOptions::kDefaultMaxHtmlCacheTimeMs = 0;
+const int64 RewriteOptions::kDefaultMaxImageBytesForWebpInCss = kint64max;
+
 const int64 RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs = 0;
 
 const int64 RewriteOptions::kDefaultCacheInvalidationTimestamp = -1;
@@ -542,6 +544,9 @@ RewriteOptions::RewriteOptions()
              "jp", kProgressiveJpegMinBytes);
   add_option(kDefaultMaxHtmlCacheTimeMs, &max_html_cache_time_ms_, "hc",
              kMaxHtmlCacheTimeMs);
+  add_option(kDefaultMaxImageBytesForWebpInCss,
+             &max_image_bytes_for_webp_in_css_, "miwc",
+             kMaxImageBytesForWebpInCss);
   add_option(kDefaultMinResourceCacheTimeToRewriteMs,
              &min_resource_cache_time_to_rewrite_ms_, "rc",
              kMinResourceCacheTimeToRewriteMs);

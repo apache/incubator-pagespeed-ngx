@@ -130,7 +130,7 @@ class ImageRewriteFilter : public RewriteFilter {
                                         Image* image);
   void BeginRewriteImageUrl(HtmlElement* element, HtmlElement::Attribute* src);
 
-  RewriteResult RewriteLoadedResourceImpl(RewriteContext* context,
+  RewriteResult RewriteLoadedResourceImpl(Context* context,
                                           const ResourcePtr& input_resource,
                                           const OutputResourcePtr& result);
 
