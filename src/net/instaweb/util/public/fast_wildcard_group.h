@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_FAST_WILDCARD_GROUP_H_
 
 #include <vector>
+#include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -44,6 +45,9 @@ class Wildcard;
 //   Match("a.h")  --> false due to rule #3 which overrides rule #2
 //   Match("ab.h") --> true  due to rule #4 which overrides rule #3
 // So order matters.
+//
+// Note that concurrent calls to Match(...) are permitted, but modifications
+// must not occur concurrently (as you would expect).
 
 /* A note on the algorithm used here:
 
@@ -112,8 +116,8 @@ class FastWildcardGroup {
 
  private:
   // Special values for rolling hash size.
-  static const int kUncompiled = -1;
-  static const int kDontHash = 0;
+  static const int32 kUncompiled = -1;
+  static const int32 kDontHash = 0;
 
   void Uncompile();
   void Clear();
@@ -132,7 +136,7 @@ class FastWildcardGroup {
   mutable std::vector<int> effective_indices_;  // One per wildcard
   mutable std::vector<int> wildcard_only_indices_;
   mutable std::vector<int> pattern_hash_index_;  // hash table
-  mutable int rolling_hash_length_;
+  mutable AtomicInt32 rolling_hash_length_;
 
   DISALLOW_COPY_AND_ASSIGN(FastWildcardGroup);
 };

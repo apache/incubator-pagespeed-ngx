@@ -16,10 +16,10 @@
 
 // Author: jmaessen@google.com (Jan-Willem Maessen)
 
-#include <limits.h>
 #include <algorithm>
 #include <vector>
 #include "base/logging.h"
+#include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/fast_wildcard_group.h"
 #include "net/instaweb/util/public/rolling_hash.h"
@@ -33,7 +33,10 @@ namespace net_instaweb {
 namespace {
 // Don't generate a hash unless there are this many
 // non-wildcard-only patterns.
-const int kMinPatterns = 10;
+const int kMinPatterns = 11;
+
+// Maximum rolling hash window size
+const int32 kMaxRollingHashWindow = 256;
 
 // Special index value for unused hash table entry.
 const int kNoEntry = -1;
@@ -67,9 +70,10 @@ FastWildcardGroup::~FastWildcardGroup() {
 }
 
 void FastWildcardGroup::Uncompile() {
-  if (rolling_hash_length_ == kUncompiled) {
+  if (rolling_hash_length_.value() == kUncompiled) {
     return;
   }
+  rolling_hash_length_.set_value(kUncompiled);
   rolling_hashes_.clear();
   effective_indices_.clear();
   wildcard_only_indices_.clear();
@@ -92,24 +96,22 @@ void FastWildcardGroup::CompileNonTrivial() const {
   // First, assemble longest literal strings of each pattern
   std::vector<StringPiece> longest_literal_strings;
   int num_nontrivial_patterns = 0;
-  rolling_hash_length_ = INT_MAX;
+  int32 rolling_hash_length = kMaxRollingHashWindow;
   for (int i = 0; i < static_cast<int>(wildcards_.size()); ++i) {
     longest_literal_strings.push_back(
         LongestLiteralStringInWildcard(wildcards_[i]));
-    CHECK_EQ(i + 1, static_cast<int>(longest_literal_strings.size()));
+    DCHECK_EQ(i + 1, static_cast<int>(longest_literal_strings.size()));
     int length = longest_literal_strings[i].size();
     if (length > 0) {
       ++num_nontrivial_patterns;
-      rolling_hash_length_ = std::min(rolling_hash_length_, length);
+      rolling_hash_length = std::min(rolling_hash_length, length);
     }
   }
   if (num_nontrivial_patterns < kMinPatterns) {
-    // Not enough non-trivial patterns.  Don't compile.
-    rolling_hash_length_ = kDontHash;
+    // Not enough non-trivial patterns.
+    DCHECK_EQ(kDontHash, rolling_hash_length_.value());
     return;
   }
-  CHECK_LT(0, rolling_hash_length_);
-  CHECK_GT(INT_MAX, rolling_hash_length_);
   // Allocate a hash table that's power-of-2 sized and >=
   // 2*num_nontrivial_patterns.
   int hash_index_size;
@@ -134,15 +136,15 @@ void FastWildcardGroup::CompileNonTrivial() const {
       current_allow = allow_[i];
     }
     effective_indices_[i] = current_effective_index;
-    CHECK_LE(i, current_effective_index);
-    CHECK_EQ(allow_[i], current_allow);
-    CHECK_EQ(current_allow, allow_[effective_indices_[i]]);
+    DCHECK_LE(i, current_effective_index);
+    DCHECK_EQ(allow_[i], current_allow);
+    DCHECK_EQ(current_allow, allow_[effective_indices_[i]]);
     if (literal.size() == 0) {
       // All-wildcard pattern.
       wildcard_only_indices_.push_back(i);
       rolling_hashes_[i] = 0;
     } else {
-      CHECK_GE(static_cast<int>(literal.size()), rolling_hash_length_);
+      DCHECK_GE(static_cast<int>(literal.size()), rolling_hash_length);
       // If possible, find a non-colliding rolling hash taken from literal.  If
       // the first hash collides, using a different hash is OK; we'll still end
       // up checking both matches in the table for an input that matches both.
@@ -150,15 +152,15 @@ void FastWildcardGroup::CompileNonTrivial() const {
       // table.
       // TODO(jmaessen): Consider re-hashing the current entry as well on
       // collision to favor collision-free hash tables.
-      int max_start = literal.size() - rolling_hash_length_;
+      int max_start = literal.size() - rolling_hash_length;
       int start = 0;
       uint64 rolling_hash =
-          RollingHash(literal.data(), start, rolling_hash_length_);
+          RollingHash(literal.data(), start, rolling_hash_length);
       for (start = 1;
            start <= max_start && pattern_hash_index(rolling_hash) != kNoEntry;
            ++start) {
         rolling_hash = NextRollingHash(literal.data(), start,
-                                       rolling_hash_length_, rolling_hash);
+                                       rolling_hash_length, rolling_hash);
       }
       // Now insert the entry, dealing with any collisions.
       rolling_hashes_[i] = rolling_hash;
@@ -168,6 +170,11 @@ void FastWildcardGroup::CompileNonTrivial() const {
       pattern_hash_index(rolling_hash) = i;
     }
   }
+  // Finally, after all the metadata is initialized, make rolling_hash_length
+  // visible to the world.  This has release semantics, meaning that all
+  // previous writes will be visible to anyone who reads this value with acquire
+  // semantics.
+  rolling_hash_length_.set_value(rolling_hash_length);
 }
 
 void FastWildcardGroup::Compile() const {
@@ -178,29 +185,29 @@ void FastWildcardGroup::Compile() const {
   CHECK_EQ(0, static_cast<int>(effective_indices_.size()));
   CHECK_EQ(0, static_cast<int>(wildcard_only_indices_.size()));
   CHECK_EQ(0, static_cast<int>(pattern_hash_index_.size()));
-  CHECK_EQ(kUncompiled, rolling_hash_length_);
+  CHECK_EQ(kDontHash, rolling_hash_length_.value());
 
-  // Fast path for small groups
-  if (static_cast<int>(wildcards_.size()) < kMinPatterns) {
-    rolling_hash_length_ = kDontHash;
-  } else {
+  if (static_cast<int>(wildcards_.size()) >= kMinPatterns) {
+    // Slow path, compute metadata and set rolling_hash_length_ to
+    // its final value.
     CompileNonTrivial();
   }
 
   // When we're done, things should be in a sensible state.
-  CHECK_NE(kUncompiled, rolling_hash_length_);
-  if (rolling_hash_length_ == kDontHash) {
-    CHECK_EQ(0, static_cast<int>(rolling_hashes_.size()));
-    CHECK_EQ(0, static_cast<int>(effective_indices_.size()));
-    CHECK_EQ(0, static_cast<int>(wildcard_only_indices_.size()));
-    CHECK_EQ(0, static_cast<int>(pattern_hash_index_.size()));
+  int32 rolling_hash_length = rolling_hash_length_.value();
+  DCHECK_NE(kUncompiled, rolling_hash_length);
+  if (rolling_hash_length == kDontHash) {
+    DCHECK_EQ(0, static_cast<int>(rolling_hashes_.size()));
+    DCHECK_EQ(0, static_cast<int>(effective_indices_.size()));
+    DCHECK_EQ(0, static_cast<int>(wildcard_only_indices_.size()));
+    DCHECK_EQ(0, static_cast<int>(pattern_hash_index_.size()));
   } else {
-    CHECK_EQ(wildcards_.size(), rolling_hashes_.size());
-    CHECK_EQ(wildcards_.size(), effective_indices_.size());
+    DCHECK_LT(0, rolling_hash_length);
+    DCHECK_EQ(wildcards_.size(), rolling_hashes_.size());
+    DCHECK_EQ(wildcards_.size(), effective_indices_.size());
     int hash_pats = wildcards_.size() - wildcard_only_indices_.size();
-    CHECK_LE(kMinPatterns, hash_pats);
-    CHECK_LE(2 * hash_pats, static_cast<int>(pattern_hash_index_.size()));
-    CHECK_LT(0, rolling_hash_length_);
+    DCHECK_LE(kMinPatterns, hash_pats);
+    DCHECK_LE(2 * hash_pats, static_cast<int>(pattern_hash_index_.size()));
   }
 }
 
@@ -219,11 +226,33 @@ void FastWildcardGroup::Disallow(const StringPiece& expr) {
 }
 
 bool FastWildcardGroup::Match(const StringPiece& str, bool allow) const {
-  if (rolling_hash_length_ == kUncompiled) {
-    Compile();
+  int32 rolling_hash_length = rolling_hash_length_.value();
+  // The previous read has acquire semantics, and all writes to
+  // rolling_hash_length_ have release semantics.  This means we'll see the
+  // results of compilation if rolling_hash_length > 0.
+  //
+  // NOTE: it is unsafe (and expensive) to just CompareAndSwap (CAS) here.
+  //  AtomicInt32::CAS guarantees release semantics but not acquire semantics.
+  //  As a result we would potentially miss the results of compilation released
+  //  by a prior write to rolling_hash_length_.  This would cause us to read
+  //  inconsistent compilation metadata, possibly resulting in a crash.
+  if (rolling_hash_length == kUncompiled) {
+    if (rolling_hash_length_.CompareAndSwap(kUncompiled, kDontHash) ==
+        kUncompiled) {
+      // During compilation other Match attempts will see kDontHash
+      // and will perform matching naively.  Only the caller that
+      // does the kUncompiled -> kDontHash transition is permitted
+      // to compile.
+      Compile();
+    }
+    // rolling_hash_length is no longer kUncompiled, due to some call to
+    // Compile().  Re-acquire it so that we can safely view the results of
+    // compilation so far.
+    rolling_hash_length = rolling_hash_length_.value();
   }
-  if (rolling_hash_length_ == kDontHash) {
-    // Set of wildcards is small.
+  if (rolling_hash_length == kDontHash) {
+    // Set of wildcards is small, or compilation was ongoing when we last read
+    // rolling_hash_length_.
     // Just match against each pattern in reverse order (starting with most
     // recent, which overrides less recent), returning when a match succeeds.
     for (int i = wildcards_.size() - 1; i >= 0; --i) {
@@ -246,10 +275,10 @@ bool FastWildcardGroup::Match(const StringPiece& str, bool allow) const {
       break;
     }
   }
-  int rolling_end = str.size() - rolling_hash_length_;
+  int rolling_end = str.size() - rolling_hash_length;
   if (rolling_end >= 0) {
     // Do a Rabin-Karp rolling match through the string.
-    uint64 rolling_hash = RollingHash(str.data(), 0, rolling_hash_length_);
+    uint64 rolling_hash = RollingHash(str.data(), 0, rolling_hash_length);
     int exit_effective_index = wildcards_.size() - 1;
       // Uses signed arithmetic for correct comparison below.
     for (int ofs = 0;
@@ -280,7 +309,7 @@ bool FastWildcardGroup::Match(const StringPiece& str, bool allow) const {
         }
       }
       if (++ofs <= rolling_end) {
-        rolling_hash = NextRollingHash(str.data(), ofs, rolling_hash_length_,
+        rolling_hash = NextRollingHash(str.data(), ofs, rolling_hash_length,
                                        rolling_hash);
       }
     }
@@ -298,6 +327,7 @@ void FastWildcardGroup::CopyFrom(const FastWildcardGroup& src) {
 }
 
 void FastWildcardGroup::AppendFrom(const FastWildcardGroup& src) {
+  Uncompile();
   CHECK_EQ(src.wildcards_.size(), src.allow_.size());
   for (int i = 0, n = src.wildcards_.size(); i < n; ++i) {
     wildcards_.push_back(src.wildcards_[i]->Duplicate());

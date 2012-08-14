@@ -17,9 +17,13 @@
 // Author: jmaessen@google.com (Jan-Willem Maessen)
 
 #include "net/instaweb/util/public/fast_wildcard_group.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"
 
 namespace net_instaweb {
+namespace {
+
+const char kInitialSignature[] = "*.ccA,*.hA,a*.hD,ab*.hA,c*.ccD,";
 
 class FastWildcardGroupTest : public testing::Test {
  protected:
@@ -29,6 +33,18 @@ class FastWildcardGroupTest : public testing::Test {
     group_.Disallow("a*.h");
     group_.Allow("ab*.h");
     group_.Disallow("c*.cc");
+    signature_.assign(kInitialSignature);
+  }
+
+  void MakeLarge() {
+    // Insert trivial patterns to match 4-digit integers.  Ensures that the
+    // resulting group will trigger non-trivial compilation, to investigate
+    // various sources of re-compilation bugs.
+    for (int i = 1000; i < 1100; ++i) {
+      GoogleString i_string = IntegerToString(i);
+      group_.Disallow(i_string);
+      StrAppend(&signature_, i_string, "D,");
+    }
   }
 
   void TestMatches(const FastWildcardGroup& group) {
@@ -57,40 +73,125 @@ class FastWildcardGroupTest : public testing::Test {
     TestDefaults(group, false, false);
   }
 
+  void Sequence() {
+    TestGroup(group_);
+    EXPECT_EQ(signature_, group_.Signature());
+  }
+
+  void Copy() {
+    FastWildcardGroup copy;
+    copy.CopyFrom(group_);
+    TestGroup(copy);
+    EXPECT_EQ(signature_, copy.Signature());
+  }
+
+  void Append() {
+    FastWildcardGroup appended;
+    appended.Allow("cb*.cc");
+    group_.AppendFrom(appended);
+    EXPECT_TRUE(group_.Match("cb.cc", false));
+    EXPECT_FALSE(group_.Match("ca.cc", true));
+    signature_.append("cb*.ccA,");
+    EXPECT_EQ(signature_, group_.Signature());
+  }
+
+  void HardCodedDefault() {
+    FastWildcardGroup group;
+    group.Allow("*");
+    group.AppendFrom(group_);
+    TestMatches(group);
+    // Make sure we can compute signature in mid-match.
+    GoogleString signature = StrCat("*A,", signature_);
+    EXPECT_EQ(signature, group.Signature());
+    TestDefaults(group, true, true);
+    TestDefaults(group, false, true);
+  }
+
   FastWildcardGroup group_;
+  GoogleString signature_;
 };
 
 TEST_F(FastWildcardGroupTest, Sequence) {
-  TestGroup(group_);
+  Sequence();
+}
+
+TEST_F(FastWildcardGroupTest, SequenceLarge) {
+  MakeLarge();
+  Sequence();
 }
 
 TEST_F(FastWildcardGroupTest, CopySequence) {
-  FastWildcardGroup copy;
-  copy.CopyFrom(group_);
-  TestGroup(copy);
+  Copy();
+}
+
+TEST_F(FastWildcardGroupTest, CopySequenceLarge) {
+  MakeLarge();
+  Copy();
 }
 
 TEST_F(FastWildcardGroupTest, AppendSequence) {
-  FastWildcardGroup appended;
-  appended.Allow("cb*.cc");
-  group_.AppendFrom(appended);
-  EXPECT_TRUE(group_.Match("cb.cc", false));
-  EXPECT_FALSE(group_.Match("ca.cc", true));
+  Append();
+}
+
+TEST_F(FastWildcardGroupTest, AppendSequenceLarge) {
+  MakeLarge();
+  Append();
 }
 
 TEST_F(FastWildcardGroupTest, HardCodedDefault) {
-  FastWildcardGroup group;
-  group.Allow("*");
-  group.AppendFrom(group_);
-  TestMatches(group);
-  TestDefaults(group, true, true);
-  TestDefaults(group, false, true);
+  HardCodedDefault();
+}
+
+TEST_F(FastWildcardGroupTest, HardCodedDefaultLarge) {
+  MakeLarge();
+  HardCodedDefault();
 }
 
 TEST_F(FastWildcardGroupTest, EmptyGroup) {
   FastWildcardGroup group;
   EXPECT_TRUE(group.Match("cb.cc", true));
   EXPECT_FALSE(group.Match("ca.cc", false));
+  EXPECT_EQ("", group.Signature());
 }
 
+TEST_F(FastWildcardGroupTest, IncrementalUpdate) {
+  // Make sure various incremental operations re-compile safely.
+  FastWildcardGroup copy;
+  copy.CopyFrom(group_);
+  MakeLarge();
+  TestMatches(group_);
+  EXPECT_FALSE(group_.Match("1034", true));
+  EXPECT_FALSE(group_.Match("Complicated literal pattern", false));
+  EXPECT_TRUE(group_.Match("Just the wrong size..", true));
+  EXPECT_TRUE(group_.Match("Another complicated literal pattern", true));
+  group_.Allow("Complicated literal pattern");
+  TestMatches(group_);
+  EXPECT_FALSE(group_.Match("1034", true));
+  EXPECT_TRUE(group_.Match("Complicated literal pattern", false));
+  EXPECT_TRUE(group_.Match("Just the wrong size..", true));
+  EXPECT_TRUE(group_.Match("Another complicated literal pattern", true));
+  group_.Disallow("?????????????????????");
+  TestMatches(group_);
+  EXPECT_FALSE(group_.Match("1034", true));
+  EXPECT_TRUE(group_.Match("Complicated literal pattern", false));
+  EXPECT_FALSE(group_.Match("Just the wrong size..", true));
+  EXPECT_TRUE(group_.Match("Another complicated literal pattern", true));
+  FastWildcardGroup group;
+  group.Disallow("Another complicated literal pattern");
+  group_.AppendFrom(group);
+  TestMatches(group_);
+  EXPECT_FALSE(group_.Match("1034", true));
+  EXPECT_TRUE(group_.Match("Complicated literal pattern", false));
+  EXPECT_FALSE(group_.Match("Just the wrong size..", true));
+  EXPECT_FALSE(group_.Match("Another complicated literal pattern", true));
+  group_.CopyFrom(copy);
+  // Make sure we went back to the old state.
+  TestMatches(group_);
+  EXPECT_TRUE(group_.Match("1034", true));
+  EXPECT_FALSE(group_.Match("Complicated literal pattern", false));
+  EXPECT_TRUE(group_.Match("Just the wrong size..", true));
+  EXPECT_TRUE(group_.Match("Another complicated literal pattern", true));
+}
+
+}  // namespace
 }  // namespace net_instaweb
