@@ -279,14 +279,27 @@ string Declarations::ToString() const {
   return JoinElementStrings(*this, "; ");
 }
 
+string UnparsedRegion::ToString() const {
+  string result = "/* Unparsed region: */ ";
+  bytes_in_original_buffer().AppendToString(&result);
+  return result;
+}
+
 string Ruleset::ToString() const {
   string result;
-  if (!media().empty())
-    result += StringPrintf("@media %s { ",
-                           JoinMediaStrings(media(), ",").c_str());
-  result += selectors().ToString() + " {" + declarations().ToString() + "}";
-  if (!media().empty())
-    result += " }";
+  switch (type()) {
+    case RULESET:
+      if (!media().empty())
+        result += StringPrintf("@media %s { ",
+                               JoinMediaStrings(media(), ",").c_str());
+      result += selectors().ToString() + " {" + declarations().ToString() + "}";
+      if (!media().empty())
+        result += " }";
+      break;
+    case UNPARSED_REGION:
+      result = unparsed_region()->ToString();
+      break;
+  }
   return result;
 }
 

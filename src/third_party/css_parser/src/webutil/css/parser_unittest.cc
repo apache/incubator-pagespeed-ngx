@@ -1734,6 +1734,17 @@ TEST_F(ParserTest, UnexpectedAtRule) {
   EXPECT_TRUE(Parser::kAtRuleError & parser->errors_seen_mask());
   EXPECT_EQ("/* AUTHOR */\n\n\n.foo {width: 1px}\n", stylesheet->ToString());
 
+  // In preservation mode.
+  parser.reset(new Parser(
+      "@font-face{font-family:'Ubuntu';font-style:normal}"
+      ".foo { width: 1px; }"));
+  parser->set_preservation_mode(true);
+  stylesheet.reset(parser->ParseStylesheet());
+  EXPECT_EQ(Parser::kNoError, parser->errors_seen_mask());
+  EXPECT_EQ("/* AUTHOR */\n\n\n/* Unparsed region: */ "
+            "@font-face{font-family:'Ubuntu';font-style:normal}\n"
+            ".foo {width: 1px}\n", stylesheet->ToString());
+
   // ... and with extra selectors.
   parser.reset(new Parser(
       "@page :first { margin-top: 8cm; }\n"

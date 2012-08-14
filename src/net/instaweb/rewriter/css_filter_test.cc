@@ -360,6 +360,11 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{foo: +bar }",
     "a{color: rgb(foo,+,) }",
 
+    // Unexpected @-statements
+    "@keyframes wiggle { 0% { transform: rotate(6deg); } }",
+    "@font-face { font-family: 'Ubuntu'; font-style: normal }",
+    "@foobar {",
+
     // Things from Alexa-100 that we get parsing errors for. Most are illegal
     // syntax/typos. Some are CSS3 constructs.
 
@@ -408,7 +413,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
   }
 
   const char* fail_examples[] = {
-    // CSS3 media "and (max-width: 290px).
+    // CSS3 media queries.
     // http://code.google.com/p/modpagespeed/issues/detail?id=50
     "@media screen and (max-width: 290px) { a { color:red } }",
 
@@ -418,9 +423,8 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "@import url(styles.css), url(other.css); a { color: red; }",
     "@import \"styles.css\"...; a { color: red; }",
 
-    // Unexpected @-statements
-    "@keyframes wiggle { 0% { transform: rotate(6deg); } }",
-    "@font-face { font-family: 'Ubuntu'; font-style: normal }",
+    // Bad @-rule syntax.
+    "@foobar }",
 
     // Things from Alexa-100 that we get parsing errors for. Most are illegal
     // syntax/typos. Some are CSS3 constructs.
@@ -923,6 +927,56 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     // @media with no contents
     { "@media; a { color: red; }", "a{color:red}" },
     { "@media screen, print; a { color: red; }", "a{color:red}" },
+
+    // Unexpected @-statements
+    { "@-webkit-keyframes wiggle {\n"
+      "  0% {-webkit-transform:rotate(6deg);}\n"
+      "  50% {-webkit-transform:rotate(-6deg);}\n"
+      "  100% {-webkit-transform:rotate(6deg);}\n"
+      "}\n"
+      "@-moz-keyframes wiggle {\n"
+      "  0% {-moz-transform:rotate(6deg);}\n"
+      "  50% {-moz-transform:rotate(-6deg);}\n"
+      "  100% {-moz-transform:rotate(6deg);}\n"
+      "}\n"
+      "@keyframes wiggle {\n"
+      "  0% {transform:rotate(6deg);}\n"
+      "  50% {transform:rotate(-6deg);}\n"
+      "  100% {transform:rotate(6deg);}\n"
+      "}\n",
+
+      // Rewritten version only has newlines stripped between @-rules.
+      "@-webkit-keyframes wiggle {\n"
+      "  0% {-webkit-transform:rotate(6deg);}\n"
+      "  50% {-webkit-transform:rotate(-6deg);}\n"
+      "  100% {-webkit-transform:rotate(6deg);}\n"
+      "}"
+      "@-moz-keyframes wiggle {\n"
+      "  0% {-moz-transform:rotate(6deg);}\n"
+      "  50% {-moz-transform:rotate(-6deg);}\n"
+      "  100% {-moz-transform:rotate(6deg);}\n"
+      "}"
+      "@keyframes wiggle {\n"
+      "  0% {transform:rotate(6deg);}\n"
+      "  50% {transform:rotate(-6deg);}\n"
+      "  100% {transform:rotate(6deg);}\n"
+      "}" },
+
+    { "@font-face{font-family:'Ubuntu';font-style:normal;font-weight:normal;"
+      "src:local('Ubuntu'), url('http://themes.googleusercontent.com/static/"
+      "fonts/ubuntu/v2/2Q-AW1e_taO6pHwMXcXW5w.ttf') format('truetype')}"
+      "@font-face{font-family:'Ubuntu';font-style:normal;font-weight:bold;"
+      "src:local('Ubuntu Bold'), local('Ubuntu-Bold'), url('http://themes."
+      "googleusercontent.com/static/fonts/ubuntu/v2/0ihfXUL2emPh0ROJezvraKCWc"
+      "ynf_cDxXwCLxiixG1c.ttf') format('truetype')}",
+
+      "@font-face{font-family:'Ubuntu';font-style:normal;font-weight:normal;"
+      "src:local('Ubuntu'), url('http://themes.googleusercontent.com/static/"
+      "fonts/ubuntu/v2/2Q-AW1e_taO6pHwMXcXW5w.ttf') format('truetype')}"
+      "@font-face{font-family:'Ubuntu';font-style:normal;font-weight:bold;"
+      "src:local('Ubuntu Bold'), local('Ubuntu-Bold'), url('http://themes."
+      "googleusercontent.com/static/fonts/ubuntu/v2/0ihfXUL2emPh0ROJezvraKCWc"
+      "ynf_cDxXwCLxiixG1c.ttf') format('truetype')}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
@@ -931,33 +985,25 @@ TEST_F(CssFilterTest, ComplexCssTest) {
   }
 
   const char* parse_fail_examples[] = {
-    // Unexpected @-statements
-    "@-webkit-keyframes wiggle {\n"
-    "  0% {-webkit-transform:rotate(6deg);}\n"
-    "  50% {-webkit-transform:rotate(-6deg);}\n"
-    "  100% {-webkit-transform:rotate(6deg);}\n"
-    "}\n"
-    "@-moz-keyframes wiggle {\n"
-    "  0% {-moz-transform:rotate(6deg);}\n"
-    "  50% {-moz-transform:rotate(-6deg);}\n"
-    "  100% {-moz-transform:rotate(6deg);}\n"
-    "}\n"
-    "@keyframes wiggle {\n"
-    "  0% {transform:rotate(6deg);}\n"
-    "  50% {transform:rotate(-6deg);}\n"
-    "  100% {transform:rotate(6deg);}\n"
+    // CSS3 media queries.
+    // http://code.google.com/p/modpagespeed/issues/detail?id=50
+    "@media only screen and (min-device-width: 320px) and"
+    " (max-device-width: 480px) {\n"
+    "        body {"
+    "                padding: 0;\n"
+    "        }\n"
+    "        #page {\n"
+    "                margin-top: 0;\n"
+    "        }\n"
+    "        #branding {\n"
+    "                border-top: none;\n"
+    "        }\n"
+    "\n"
     "}\n",
-
-    "@font-face{font-family:'Ubuntu';font-style:normal;font-weight:normal;"
-    "src:local('Ubuntu'), url('http://themes.googleusercontent.com/static/"
-    "fonts/ubuntu/v2/2Q-AW1e_taO6pHwMXcXW5w.ttf') format('truetype')}"
-    "@font-face{font-family:'Ubuntu';font-style:normal;font-weight:bold;"
-    "src:local('Ubuntu Bold'), local('Ubuntu-Bold'), url('http://themes."
-    "googleusercontent.com/static/fonts/ubuntu/v2/0ihfXUL2emPh0ROJezvraKCWc"
-    "ynf_cDxXwCLxiixG1c.ttf') format('truetype')}",
 
     // Bad syntax
     "}}",
+    "@foobar this is totally wrong CSS syntax }",
   };
 
   for (int i = 0; i < arraysize(parse_fail_examples); ++i) {

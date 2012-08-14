@@ -126,7 +126,7 @@ void Parser::ReportParsingError(uint64 error_flag,
                                            static_cast<int64>(end_ - in_));
   string context(context_begin, context_end - context_begin);
   string full_message = StringPrintf(
-      "%s at %d \"...%s...\"",
+      "%s at byte %d \"...%s...\"",
       message.as_string().c_str(), CurrentOffset(), context.c_str());
   VLOG(1) << full_message;
   if (errors_seen_.size() < kMaxErrorsRemembered) {
@@ -1968,6 +1968,11 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
   SkipSpace();
   DCHECK_LT(in_, end_);
   DCHECK_EQ('@', *in_);
+
+  // The starting point is saved so that we may pass through verbatim text
+  // in case the @-rule cannot be parsed correctly.
+  const char* at_rule_start = in_;
+  const uint64 start_errors_seen_mask = errors_seen_mask_;
   in_++;
 
   UnicodeText ident = ParseIdent();
@@ -1994,16 +1999,19 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
              memcasecmp(ident.utf8_data(), "media", 5) == 0) {
     std::vector<UnicodeText> media;
     ParseMediumList(&media);
-    if (Done() || *in_ != '{') {
-      if (*in_ == ';') {
-        // @media tags ending in ';' are no-ops, we simply ignore them.
-        // Skip over ending ';'
-        in_++;
-      } else {
-        ReportParsingError(kMediaError, "Malformed @media statement.");
-      }
+    if (Done()) {
+      ReportParsingError(kMediaError, "Unexpected EOF in @media statement.");
+      return;
+    } else if (*in_ == ';') {
+      // @media tags ending in ';' are no-ops, we simply ignore them.
+      // Skip over ending ';'
+      in_++;
+      return;
+    } else if (*in_ != '{') {
+      ReportParsingError(kMediaError, "Malformed @media statement.");
       return;
     }
+    DCHECK_EQ('{', *in_);
     in_++;
     SkipSpace();
     while (in_ < end_ && *in_ != '}') {
@@ -2031,6 +2039,21 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
     ReportParsingError(kAtRuleError, StringPrintf(
         "Cannot parse unknown @-statement: %s", ident_string.c_str()));
     SkipToAtRuleEnd();
+
+    if (preservation_mode_) {
+      // Add a place-holder with verbatim text because we failed to parse
+      // this @-rule correctly. This is saved so that it can be
+      // serialized back out in case it was actually meaningful even though
+      // we could not understand it.
+      StringPiece bytes_in_original_buffer(at_rule_start, in_ - at_rule_start);
+      stylesheet->mutable_rulesets().push_back(
+          new Ruleset(new UnparsedRegion(bytes_in_original_buffer)));
+      // All errors that occurred sinse we started this declaration are
+      // demoted to unparseable sections now that we've saved the dummy
+      // element.
+      unparseable_sections_seen_mask_ |= errors_seen_mask_;
+      errors_seen_mask_ = start_errors_seen_mask;
+    }
   }
 }
 
@@ -2163,8 +2186,10 @@ Stylesheet* Parser::ParseStylesheet() {
 
   Rulesets& rulesets = stylesheet->mutable_rulesets();
   for (int i = 0; i < rulesets.size(); ++i) {
-    Declarations& orig_declarations = rulesets[i]->mutable_declarations();
-    rulesets[i]->set_declarations(ExpandDeclarations(&orig_declarations));
+    if (rulesets[i]->type() == Css::Ruleset::RULESET) {
+      Declarations& orig_declarations = rulesets[i]->mutable_declarations();
+      rulesets[i]->set_declarations(ExpandDeclarations(&orig_declarations));
+    }
   }
 
   return stylesheet;

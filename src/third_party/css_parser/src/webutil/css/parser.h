@@ -674,41 +674,134 @@ class Declarations : public std::vector<Declaration*> {
   DISALLOW_COPY_AND_ASSIGN(Declarations);
 };
 
+// Unparsed sections of CSS file. For example, unexpected @-rules cannnot be
+// parsed, so we simply collect the verbatim bytes from start to finish and
+// store them in an UnparsedRegion so that they can be re-emitted in
+// preservation mode.
+class UnparsedRegion {
+ public:
+  explicit UnparsedRegion(const StringPiece& bytes_in_original_buffer)
+      : bytes_in_original_buffer_(bytes_in_original_buffer.data(),
+                                  bytes_in_original_buffer.size()) {}
+
+  StringPiece bytes_in_original_buffer() const {
+    return bytes_in_original_buffer_;
+  }
+
+  void set_bytes_in_original_buffer(const StringPiece& bytes) {
+    bytes.CopyToString(&bytes_in_original_buffer_);
+  }
+
+  string ToString() const;
+
+ private:
+  string bytes_in_original_buffer_;
+
+  DISALLOW_COPY_AND_ASSIGN(UnparsedRegion);
+};
+
 // A ruleset consists of a list of selectors followed by a declaration block.
 // It can also optionally include a list of medium description.
+//
+// Unparsed regions between Rulesets can also be stored here in preservation
+// mode. For example, at-rules can be interspersed with Rulesets, for those
+// that we don't parse, they are stored in dummy Rulesets.
 class Ruleset {
  public:
-  Ruleset() : selectors_(new Selectors), declarations_(new Declarations) { }
+  // TODO(sligocki): Allow other parsed at-rules, like @font-family.
+  enum Type { RULESET, UNPARSED_REGION, };
+
+  Ruleset() : type_(RULESET), selectors_(new Selectors),
+              declarations_(new Declarations) { }
   // Takes ownership of selectors and declarations.
   Ruleset(Selectors* selectors, const std::vector<UnicodeText>& media,
           Declarations* declarations)
-      : selectors_(selectors), media_(media), declarations_(declarations) { }
+      : type_(RULESET), selectors_(selectors), media_(media),
+        declarations_(declarations) { }
+  // Dummy Ruleset. Used for unparsed statements, for example unknown at-rules.
+  explicit Ruleset(UnparsedRegion* unparsed_region)
+      : type_(UNPARSED_REGION), unparsed_region_(unparsed_region) { }
   ~Ruleset() { }
 
-  const Selectors& selectors() const { return *selectors_; }
-  const Selector& selector(int i) const { return *selectors_->at(i); }
-  const std::vector<UnicodeText>& media() const { return media_; }
-  const UnicodeText& medium(int i) const { return media_.at(i); }
-  const Declarations& declarations() const { return *declarations_; }
-  const Declaration& declaration(int i) const { return *declarations_->at(i); }
+  // Is this actually a Ruleset or some sort of at-rule? For historical reasons
+  // at-rules are also stored as Rulesets.
+  Type type() const { return type_; }
 
-  Selectors& mutable_selectors() { return *selectors_; }
-  std::vector<UnicodeText>& mutable_media() { return media_; }
-  Declarations& mutable_declarations() { return *declarations_; }
+  // NOTE: Only call these getters if you know that type() == RULESET.
+  // type() always == RULESET if Css::Parser::preservation_mode() is false,
+  // so getters should all be valid if preservation mode is off (default).
+  const Selectors& selectors() const {
+    CHECK_EQ(RULESET, type());
+    return *selectors_;
+  }
+  const Selector& selector(int i) const {
+    CHECK_EQ(RULESET, type());
+    return *selectors_->at(i);
+  }
+  const std::vector<UnicodeText>& media() const {
+    CHECK_EQ(RULESET, type());
+    return media_;
+  }
+  const UnicodeText& medium(int i) const {
+    CHECK_EQ(RULESET, type());
+    return media_.at(i);
+  }
+  const Declarations& declarations() const {
+    CHECK_EQ(RULESET, type());
+    return *declarations_;
+  }
+  const Declaration& declaration(int i) const {
+    CHECK_EQ(RULESET, type());
+    return *declarations_->at(i);
+  }
+
+  Selectors& mutable_selectors() {
+    CHECK_EQ(RULESET, type());
+    return *selectors_;
+  }
+  std::vector<UnicodeText>& mutable_media() {
+    CHECK_EQ(RULESET, type());
+    return media_;
+  }
+  Declarations& mutable_declarations() {
+    CHECK_EQ(RULESET, type());
+    return *declarations_;
+  }
 
   // set_media copies input media.
   void set_media(const std::vector<UnicodeText>& media) {
+    CHECK_EQ(RULESET, type());
     media_.assign(media.begin(), media.end());
   }
   // set_selectors and _declarations take ownership of parameters.
-  void set_selectors(Selectors* selectors) { selectors_.reset(selectors); }
-  void set_declarations(Declarations* decls) { declarations_.reset(decls); }
+  void set_selectors(Selectors* selectors) {
+    CHECK_EQ(RULESET, type());
+    selectors_.reset(selectors);
+  }
+  void set_declarations(Declarations* decls) {
+    CHECK_EQ(RULESET, type());
+    declarations_.reset(decls);
+  }
+
+  // If type() == UNPARSED_REGION, this is the link to that region.
+  const UnparsedRegion* unparsed_region() const {
+    CHECK_EQ(UNPARSED_REGION, type());
+    return unparsed_region_.get();
+  }
+  UnparsedRegion* mutable_unparsed_region() {
+    CHECK_EQ(UNPARSED_REGION, type());
+    return unparsed_region_.get();
+  }
 
   string ToString() const;
  private:
+  Type type_;
+
   scoped_ptr<Selectors> selectors_;
   std::vector<UnicodeText> media_;
   scoped_ptr<Declarations> declarations_;
+
+  scoped_ptr<UnparsedRegion> unparsed_region_;
 
   DISALLOW_COPY_AND_ASSIGN(Ruleset);
 };
@@ -766,6 +859,10 @@ class Stylesheet {
   StylesheetType type_;
   Charsets charsets_;
   Imports imports_;
+  // Note: CSS spec specifies that a stylesheet is a list of statements each
+  // of which is either a ruleset or at-rule. Since we want to support the
+  // legacy rulesets() interface and most at-rules are not parsed, at-rules
+  // are currently being stored as dummy rulesets.
   Rulesets rulesets_;
 
   DISALLOW_COPY_AND_ASSIGN(Stylesheet);

@@ -35,6 +35,7 @@ class Declaration;
 class Declarations;
 class Value;
 class FunctionParameters;
+class UnparsedRegion;
 }
 
 class UnicodeText;
@@ -107,6 +108,7 @@ class CssMinify {
   void Minify(const Css::Declaration& declaration);
   void Minify(const Css::Value& value);
   void Minify(const Css::FunctionParameters& parameters);
+  void Minify(const Css::UnparsedRegion& unparsed_region);
 
   // Specializations for Ruleset to handle common @media rules.
   // Start followed by Ignoring followed by End gives the same result as the

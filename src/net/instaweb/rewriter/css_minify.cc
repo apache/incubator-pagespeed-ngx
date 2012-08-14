@@ -92,21 +92,40 @@ bool CssMinify::AbsolutifyUrls(Css::Stylesheet* stylesheet,
   RewriteDomainTransformer transformer(&base, &base, driver);
   transformer.set_trim_urls(false);
   bool result = false;
+
+  // Absolutify URLs in unparseable selectors and declarations.
   Css::Rulesets& rulesets = stylesheet->mutable_rulesets();
   for (Css::Rulesets::iterator ruleset_iter = rulesets.begin();
        ruleset_iter != rulesets.end(); ++ruleset_iter) {
     Css::Ruleset* ruleset = *ruleset_iter;
-    // Check any unparseable selectors for any URLs and absolutify as required.
+    // Check any unparseable sections for any URLs and absolutify as required.
     if (handle_unparseable_sections) {
-      Css::Selectors& selectors(ruleset->mutable_selectors());
-      if (selectors.is_dummy()) {
-        StringPiece original_bytes = selectors.bytes_in_original_buffer();
-        GoogleString rewritten_bytes;
-        StringWriter writer(&rewritten_bytes);
-        if (CssTagScanner::TransformUrls(original_bytes, &writer,
-                                         &transformer, handler)) {
-          selectors.set_bytes_in_original_buffer(rewritten_bytes);
-          result = true;
+      switch (ruleset->type()) {
+        case Css::Ruleset::RULESET: {
+          Css::Selectors& selectors(ruleset->mutable_selectors());
+          if (selectors.is_dummy()) {
+            StringPiece original_bytes = selectors.bytes_in_original_buffer();
+            GoogleString rewritten_bytes;
+            StringWriter writer(&rewritten_bytes);
+            if (CssTagScanner::TransformUrls(original_bytes, &writer,
+                                             &transformer, handler)) {
+              selectors.set_bytes_in_original_buffer(rewritten_bytes);
+              result = true;
+            }
+          }
+          break;
+        }
+        case Css::Ruleset::UNPARSED_REGION: {
+          Css::UnparsedRegion* unparsed = ruleset->mutable_unparsed_region();
+          StringPiece original_bytes = unparsed->bytes_in_original_buffer();
+          GoogleString rewritten_bytes;
+          StringWriter writer(&rewritten_bytes);
+          if (CssTagScanner::TransformUrls(original_bytes, &writer,
+                                           &transformer, handler)) {
+            unparsed->set_bytes_in_original_buffer(rewritten_bytes);
+            result = true;
+          }
+          break;
         }
       }
     }
@@ -250,7 +269,9 @@ void CssMinify::JoinMinifyIter<Css::Rulesets::const_iterator>(
     Css::Rulesets::const_iterator first = iter;
     MinifyRulesetMediaStart(**first);
     MinifyRulesetIgnoringMedia(**first);
-    for (++iter; iter != end && (*first)->media() == (*iter)->media(); ++iter) {
+    for (++iter; iter != end && (*first)->type() == Css::Ruleset::RULESET
+             && (*iter)->type() == Css::Ruleset::RULESET
+             && (*first)->media() == (*iter)->media(); ++iter) {
       Write(sep);
       MinifyRulesetIgnoringMedia(**iter);
     }
@@ -303,18 +324,25 @@ void CssMinify::Minify(const Css::Import& import) {
 }
 
 void CssMinify::MinifyRulesetIgnoringMedia(const Css::Ruleset& ruleset) {
-  if (ruleset.selectors().is_dummy()) {
-    Write(ruleset.selectors().bytes_in_original_buffer());
-  } else {
-    JoinMinify(ruleset.selectors(), ",");
+  switch (ruleset.type()) {
+    case Css::Ruleset::RULESET:
+      if (ruleset.selectors().is_dummy()) {
+        Write(ruleset.selectors().bytes_in_original_buffer());
+      } else {
+        JoinMinify(ruleset.selectors(), ",");
+      }
+      Write("{");
+      JoinMinify(ruleset.declarations(), ";");
+      Write("}");
+      break;
+    case Css::Ruleset::UNPARSED_REGION:
+      Minify(*ruleset.unparsed_region());
+      break;
   }
-  Write("{");
-  JoinMinify(ruleset.declarations(), ";");
-  Write("}");
 }
 
 void CssMinify::MinifyRulesetMediaStart(const Css::Ruleset& ruleset) {
-  if (!ruleset.media().empty()) {
+  if (ruleset.type() == Css::Ruleset::RULESET && !ruleset.media().empty()) {
     Write("@media ");
     JoinMediaMinify(ruleset.media(), ",");
     Write("{");
@@ -322,7 +350,7 @@ void CssMinify::MinifyRulesetMediaStart(const Css::Ruleset& ruleset) {
 }
 
 void CssMinify::MinifyRulesetMediaEnd(const Css::Ruleset& ruleset) {
-  if (!ruleset.media().empty()) {
+  if (ruleset.type() == Css::Ruleset::RULESET && !ruleset.media().empty()) {
     Write("}");
   }
 }
@@ -488,6 +516,10 @@ void CssMinify::Minify(const Css::FunctionParameters& parameters) {
     }
     Minify(*parameters.value(i));
   }
+}
+
+void CssMinify::Minify(const Css::UnparsedRegion& unparsed_region) {
+  Write(unparsed_region.bytes_in_original_buffer());
 }
 
 }  // namespace net_instaweb

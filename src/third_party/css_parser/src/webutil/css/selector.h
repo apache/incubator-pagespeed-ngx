@@ -310,13 +310,12 @@ class Selectors: public std::vector<Selector*> {
   const Selector* get(int i) const { return (*this)[i]; }
 
   bool is_dummy() const { return is_dummy_; }
-  // Note: This is only valid as long as original buffer is.
   // Note: May be invalid UTF8.
   StringPiece bytes_in_original_buffer() const {
     return bytes_in_original_buffer_;
   }
   void set_bytes_in_original_buffer(const StringPiece& new_bytes) {
-    bytes_in_original_buffer_ = string(new_bytes.data(), new_bytes.length());
+    new_bytes.CopyToString(&bytes_in_original_buffer_);
   }
 
   string ToString() const;
