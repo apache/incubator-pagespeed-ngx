@@ -542,6 +542,7 @@ bool CssFilter::Context::SerializeCss(int64 in_text_size,
     writer.Write(kUtf8Bom, handler);
   }
   if (stylesheet_is_declarations) {
+    CHECK_EQ(Css::Ruleset::RULESET, stylesheet->ruleset(0).type());
     CssMinify::Declarations(stylesheet->ruleset(0).declarations(),
                             &writer, handler);
   } else {

@@ -179,6 +179,9 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
     for (Css::Rulesets::iterator ruleset_iter = rulesets.begin();
          ruleset_iter != rulesets.end(); ++ruleset_iter) {
       Css::Ruleset* ruleset = *ruleset_iter;
+      if (ruleset->type() != Css::Ruleset::RULESET) {
+        continue;
+      }
       Css::Declarations& decls = ruleset->mutable_declarations();
       bool background_position_found = false;
       bool background_image_found = false;
