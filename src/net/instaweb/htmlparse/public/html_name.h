@@ -161,6 +161,8 @@ class HtmlName {
     kPagespeedLscHash,
     kPagespeedLscUrl,
     kPagespeedNoDefer,
+    kPagespeedOrigSrc,
+    kPagespeedOrigType,
     kParam,
     kPre,
     kProfile,

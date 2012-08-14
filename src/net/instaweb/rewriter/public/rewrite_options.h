@@ -79,6 +79,7 @@ class RewriteOptions {
     kFallbackRewriteCssUrls,
     kFlattenCssImports,
     kFlushSubresources,
+    kHandleNoscriptRedirect,
     kHtmlWriterFilter,
     kInlineCss,
     kInlineImages,
@@ -606,6 +607,9 @@ class RewriteOptions {
   // Returns true if any filter that depends on executing custom javascript is
   // enabled.
   bool IsAnyFilterRequiringScriptExecutionEnabled() const;
+
+  // Disables all filters that depend on executing custom javascript.
+  void DisableFiltersRequiringScriptExecution();
 
   // Adds pairs of (option, value) to the option set. The option names and
   // values are not checked for validity, just stored. If the string piece

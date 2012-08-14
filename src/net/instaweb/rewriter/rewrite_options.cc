@@ -269,6 +269,9 @@ const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
   RewriteOptions::kDetectReflowWithDeferJavascript,
   RewriteOptions::kLazyloadImages,
   RewriteOptions::kLocalStorageCache,
+  // We do not include kPrioritizeVisibleContent since we do not want to attach
+  // SupportNoscriptFilter in the case of blink pcache miss pass-through, since
+  // this response will not have any custom script inserted.
 };
 
 #ifndef NDEBUG
@@ -321,6 +324,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kFallbackRewriteCssUrls:          return "Fallback Rewrite Css Urls";
     case kFlattenCssImports:               return "Flatten CSS Imports";
     case kFlushSubresources:               return "Flush Subresources";
+    case kHandleNoscriptRedirect:          return "Handles Noscript Redirects";
     case kHtmlWriterFilter:                return "Flushes html";
     case kInlineCss:                       return "Inline Css";
     case kInlineImages:                    return "Inline Images";
@@ -397,6 +401,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kFallbackRewriteCssUrls:          return "fc";
     case kFlattenCssImports:               return kCssImportFlattenerId;
     case kFlushSubresources:               return "fs";
+    case kHandleNoscriptRedirect:          return "hn";
     case kHtmlWriterFilter:                return "hw";
     case kInlineCss:                       return kCssInlineId;
     case kInlineImages:                    return "ii";
@@ -1242,6 +1247,9 @@ void RewriteOptions::AddBlinkCacheableFamily(
 }
 
 bool RewriteOptions::IsAnyFilterRequiringScriptExecutionEnabled() const {
+  // TODO(sriharis):  Instead of just checking whether the filters are enabled,
+  // tighten the check to also include the UserAgentSupports* conditions so that
+  // we can avoid some unnecessary noscript redirects.
   for (int i = 0, n = arraysize(kRequiresScriptExecutionFilterSet); i < n;
        ++i) {
     if (Enabled(kRequiresScriptExecutionFilterSet[i])) {
@@ -1249,6 +1257,13 @@ bool RewriteOptions::IsAnyFilterRequiringScriptExecutionEnabled() const {
     }
   }
   return false;
+}
+
+void RewriteOptions::DisableFiltersRequiringScriptExecution() {
+  for (int i = 0, n = arraysize(kRequiresScriptExecutionFilterSet); i < n;
+       ++i) {
+    DisableFilter(kRequiresScriptExecutionFilterSet[i]);
+  }
 }
 
 void RewriteOptions::Merge(const RewriteOptions& src) {

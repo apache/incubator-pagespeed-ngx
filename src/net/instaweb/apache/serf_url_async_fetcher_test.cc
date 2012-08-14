@@ -395,8 +395,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchTwoURLs) {
   //
   // TODO(jmarantz): switch to referencing some fixed-size resources on
   // modpagespeed.com so we are not sensitive to favicon changes.
-  //
-  EXPECT_EQ(23644, bytes_count);
+  EXPECT_EQ(13988, bytes_count);
   int time_duration =
       statistics_.GetVariable(SerfStats::kSerfFetchTimeDurationMs)->Get();
   EXPECT_EQ(2 * kTimerAdvanceMs, time_duration);

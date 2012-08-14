@@ -7,19 +7,10 @@
 
 <script>
 
-function setUpPage() {
-  setUpPageStatus = 'running';
-  setTimeout(function() {
-    setUpPageStatus = 'complete';
-  }, 50);
-}
-
-// Tests that the constructor works properly and initialises what it's supposed
-// to initialise.
+// Tests that the constructor works properly and initializes what it's supposed
+// to initialize.
 function testConstructor() {
   mpsconsole = new pagespeed.MpsConsole();
-  assertNull(mpsconsole.firstScrapeDate_);
-  assertNull(mpsconsole.currData_);
   for (var value in mpsconsole.graphs_) {
     assertFalse(mpsconsole.graphs_.hasOwnProperty(value));
   }
@@ -36,27 +27,17 @@ function testCreateGraphDiv() {
   mpsconsole = new pagespeed.MpsConsole();
   mpsconsole.createDivs();
 
-  // Test that arbitrary graphs can be added with their anchors and links
-  var numDivs = document.getElementsByTagName('div').length;
-  var numAs = document.getElementsByTagName('a').length;
-  var numBrs = document.getElementsByTagName('br').length;
-  mpsconsole.createGraphDiv('blah blah');
-  var numDivs2 = document.getElementsByTagName('div').length;
-  var numAs2 = document.getElementsByTagName('a').length;
-  var numBrs2 = document.getElementsByTagName('br').length;
-  assertEquals(numDivs + 1, numDivs2);
-  assertEquals(numAs + 2, numAs2);
-  assertEquals(numBrs + 1, numBrs2);
-
   // Test that line graphs and data tables can be generated
   assertNotNull(mpsconsole.getLineGraphDataTable('Arbitrary Title'));
   assertNotNull(mpsconsole.getLineGraph('Arbitrary Title'));
+
   assertNotNull(mpsconsole.graphs_['Arbitrary Title']);
   assertNotNull(mpsconsole.dataTables_['Arbitrary Title']);
 
   // Test that histograms and data tables can be generated
   assertNotNull(mpsconsole.getHistogramDataTable('Arbitrary Title B'));
   assertNotNull(mpsconsole.getBarGraph('Arbitrary Title B'));
+
   assertNotNull(mpsconsole.graphs_['Arbitrary Title B']);
   assertNotNull(mpsconsole.dataTables_['Arbitrary Title B']);
 
@@ -70,56 +51,16 @@ function testCreateGraphDiv() {
 function testConsole() {
   mpsconsole = new pagespeed.MpsConsole();
   mpsconsole.createDivs();
-  var vals = initResponseGenerator(false);
-  // These two initial scrapes initialize mpsconsole.currData.
-  mpsconsole.scrapeData(generateResponse(vals));
-  mpsconsole.scrapeData(generateResponse(vals));
-  // Then we scrape the same response twice to set
-  // all non-instananeous values to 0.
-  var response = generateResponse(vals);
-  mpsconsole.scrapeData(response);
-  mpsconsole.scrapeData(response);
-  for (var value in mpsconsole.dataTables_) {
-    if (mpsconsole.dataTables_.hasOwnProperty(value)) {
-      var dt = mpsconsole.dataTables_[value];
-      assertTrue(dt.getNumberOfRows() > 0);
-      var lastRow = dt.getNumberOfRows() - 1;
-      var errorMessage = "In Table " + value;
-      if (value == mpsconsole.LineGraphNames_.ONGOING_IMG_REWRITES){
-        // This value is instananeous and hardcoded below.
-        assertEquals(errorMessage, 8, dt.getValue(lastRow, 1));
-      } else {
-        // After scraping the same response twice, all non-instananeous values,
-        // which are calculated by diff'ing with the previous scrape,
-        // should be 0.
-        assertEquals(errorMessage, 0, dt.getValue(lastRow, 1));
-      }
-      assertTrue(errorMessage, dt.getValue(lastRow, 0) >= 0);
-    }
-  }
+  mpsconsole.initVarGraphData();
 
-  // Now test with some real world data (modeled after a load test)
-  vals = initResponseGenerator(true);
-  mpsconsole.scrapeData(generateResponse(vals));
-  mpsconsole.scrapeData(generateResponse(vals));
-  mpsconsole.scrapeData(generateResponse(vals));
-  mpsconsole.scrapeData(generateResponse(vals));
-  mpsconsole.scrapeData(generateResponse(vals));
+  // Test with some simple data.
+  mpsconsole.scrapeData(generateJSONResponse(false));
+  ensureSaneValues(mpsconsole);
+  checkHardcodedValues(mpsconsole);
 
-  // Test that all values are sane (>=0).
-  for (var value in mpsconsole.dataTables_) {
-    if (mpsconsole.dataTables_.hasOwnProperty(value)) {
-      var dt = mpsconsole.dataTables_[value];
-      assertTrue(dt.getNumberOfRows() > 0);
-      for (var j = 0; j < dt.getNumberOfRows(); j++) {
-        var errorMessage = "In Table \'" + value + "\' at row " + j +
-            " with value (" + dt.getValue(j, 0) +
-            ", " + dt.getValue(j, 1) + ")";
-        assertTrue(errorMessage, dt.getValue(j, 1) >= 0);
-        assertTrue(errorMessage, dt.getValue(j, 0) >= 0);
-      }
-    }
-  }
+  // Now test with some real world data (modeled after a load test).
+  mpsconsole.scrapeData(generateJSONResponse(true));
+  ensureSaneValues(mpsconsole);
 
   // Test that graphs and data tables are generated
   for (var title in mpsconsole.graphs_) {
@@ -130,79 +71,176 @@ function testConsole() {
   }
 }
 
-var statValues = [
-  'cache_time_us', 'cache_hits', 'cache_misses',
-  'cache_expirations', 'cache_inserts', 'cache_deletes',
-  'instrumentation_filter_script_added_count', 'cache_extensions',
-  'not_cacheable', 'css_file_count_reduction', 'css_filter_blocks_rewritten',
-  'css_filter_parse_failures', 'css_filter_fallback_rewrites',
-  'css_filter_fallback_failures', 'css_filter_rewrites_dropped',
-  'css_filter_total_bytes_saved', 'css_filter_total_original_bytes',
-  'css_filter_uses', 'css_imports_to_links', 'css_elements_moved',
-  'domain_rewrites', 'google_analytics_page_load_count',
-  'google_analytics_rewritten_count', 'image_file_count_reduction',
-  'image_rewrites', 'image_norewrites_high_resolution',
-  'image_rewrites_dropped_intentionally', 'image_rewrites_dropped_due_to_load',
-  'image_rewrite_total_bytes_saved', 'image_rewrite_total_original_bytes',
-  'image_rewrite_uses', 'image_inline', 'image_ongoing_rewrites',
-  'image_webp_rewrites', 'inserted_ga_snippets', 'javascript_blocks_minified',
-  'javascript_minification_failures', 'javascript_total_bytes_saved',
-  'javascript_total_original_bytes', 'javascript_minify_uses',
-  'js_file_count_reduction', 'converted_meta_tags', 'url_trims',
-  'url_trim_saved_bytes', 'resource_url_domain_rejections',
-  'rewrite_cached_output_missed_deadline', 'rewrite_cached_output_hits',
-  'rewrite_cached_output_misses', 'resource_404_count', 'slurp_404_count',
-  'total_page_load_ms', 'page_load_count', 'resource_fetches_cached',
-  'resource_fetch_construct_successes', 'resource_fetch_construct_failures',
-  'num_flushes', 'num_fallback_responses_served', 'num_conditional_refreshes',
-  'total_fetch_count', 'total_rewrite_count', 'num_rewrites_executed',
-  'num_rewrites_dropped', 'serf_fetch_request_count', 'serf_fetch_bytes_count',
-  'serf_fetch_time_duration_ms', 'serf_fetch_cancel_count',
-  'serf_fetch_active_count', 'serf_fetch_timeout_count',
-  'serf_fetch_failure_count', 'cache_flush_count'
-];
+var var_titles = ['num_flushes', 'cache_hits', 'cache_misses',
+      'num_fallback_responses_served', 'slurp_404_count', 'page_load_count',
+      'total_page_load_ms', 'num_rewrites_executed', 'num_rewrites_dropped',
+      'resource_404_count', 'serf_fetch_request_count',
+      'serf_fetch_bytes_count', 'image_ongoing_rewrites'];
+var hist_titles = ['Html Time us Histogram', 'Rewrite Latency Histogram',
+      'Pagespeed Resource Latency Histogram',
+      'Backend Fetch First Byte Latency Histogram'];
+
+function makeTimeStamps() {
+  var timestamps = [];
+  for (var i = 0; i < 20; i++) {
+    timestamps.push(1342724700000 + (i*3000));
+  }
+  return timestamps;
+}
 
 // Return a random integer between 0 and n.
 function randomInt(n) {
   return Math.floor(Math.random() * n);
 }
 
-// Return a string consisting of a random number of spaces.
-function spaces() {
-  var ret = ' ';
-  var numSpaces = randomInt(20);
-  for(var i = 0; i < numSpaces; ++i) {
-    ret += ' ';
-  }
-  return ret;
-}
-
-// Initialise an object containing initial values for simulated statistics. If
-// load is true, simulate a server under load.
-function initResponseGenerator(load) {
+// Initialize an object containing initial values for simulated statistics.
+function initResponseGenerator() {
   var vals = {}
-  vals.load = load;
-  for (var i = 0; i < statValues.length; ++i) {
-    var v = statValues[i];
-    vals[v] = randomInt(load ? 20000 : 10);
+  for (var i = 0; i < var_titles.length; ++i) {
+    var v = var_titles[i];
+    if (v == 'image_ongoing_rewrites') {
+      vals[v] = 8;
+    } else {
+      vals[v] = 0;
+    }
   }
   return vals;
 }
 
-// Generate a simulated response text. vals should be the value returned from
-// initResponseGenerator.
-function generateResponse(vals) {
-  var ret = '\n&lt;pre&gt;';
-  for (var i = 0; i < statValues.length; ++i) {
-    var v = statValues[i];
-    vals[v] += randomInt(vals.load ? 100 : 2);
-    if (v == 'image_ongoing_rewrites') {
-      vals[v] = 8;
-    }
-    ret += v + ':' + spaces() + vals[v] + '\n';
+// Generate a simulated JSON response object. load should be true if we want to
+// simulate a server under load. If load is false, we hardcode certain values.
+function generateJSONResponse(load) {
+  var timestamps = makeTimeStamps();
+  var vals = initResponseGenerator(load);
+  var ret = {};
+  ret.timestamps = [];
+  for (var i = 0; i < timestamps.length; ++i) {
+    ret.timestamps.push(timestamps[i]);
   }
-  ret += '&lt;/pre&gt;';
+  ret.variables = {};
+  for (var i = 0; i < var_titles.length; ++i) {
+    var v = var_titles[i];
+    ret.variables[v] = {};
+    for (var t = 0; t < timestamps.length; ++t) {
+      ret.variables[v][timestamps[t]] = vals[v];
+      if (v == 'image_ongoing_rewrites') {
+        vals[v] = 8;
+      } else if (load) {
+        vals[v] += randomInt(100);
+      } else if (!load) {
+        // Hardcode values to test math.
+        if (v == 'num_flushes') {
+          // FLUSHES_PER_SECOND = 10
+          vals[v] += 30;
+        } else if (v == 'cache_hits') {
+          vals[v] += 10;
+        } else if (v == 'cache_misses') {
+          // PERCENT_CACHE_HITS = .5
+          vals[v] += 10;
+        } else if (v == 'num_fallback_responses_served') {
+          // FALLBACK_RESPONSES = 20
+          vals[v] += 60;
+        } else if (v == 'slurp_404_count') {
+          // SLURP_404S_PER_SECOND = 10
+          vals[v] += 30;
+        } else if (v == 'page_load_count') {
+          vals[v] += 20;
+        } else if (v == 'total_page_load_ms') {
+          // AVE_LOAD_TIME_MS = 10
+          vals[v] += 200;
+        } else if (v == 'num_rewrites_executed') {
+          // REWRITES_EXEC_PER_SECOND = 30
+          vals[v] += 90;
+        } else if (v == 'num_rewrites_dropped') {
+          // REWRITES_DROPPED_PER_SECOND = 10
+          vals[v] += 30;
+        } else if (v == 'resource_404_count') {
+          // RESOURCE_404S_PER_SECOND = 30
+          vals[v] += 90;
+        } else if (v == 'serf_fetch_request_count') {
+          vals[v] += 10;
+        } else if (v == 'serf_fetch_bytes_count') {
+          // SERF_BYTES_PER_REQUEST = 200
+          vals[v] += 2000;
+        }
+      }
+    }
+  }
+  ret.histograms = {};
+  for (var i = 0; i < hist_titles.length; ++i) {
+    var h = ret.histograms[hist_titles[i]] = [];
+    for (var j = 0; j < 10000; j += 400) {
+      var bar = {};
+      bar.lowerBound = j;
+      bar.upperBound = j + 400;
+      bar.count = randomInt(load ? 100 : 10);
+      h.push(bar);
+    }
+  }
   return ret;
+}
+
+// Check that the unloaded values match what we hardcoded.
+function checkHardcodedValues(mpsconsole) {
+  for (var value in mpsconsole.LineGraphNames_) {
+    value = mpsconsole.LineGraphNames_[value];
+    if (mpsconsole.dataTables_.hasOwnProperty(value)) {
+      var dt = mpsconsole.dataTables_[value];
+      for (var j = 0; j < dt.getNumberOfRows(); j++) {
+        var errorMessage = "In Table \'" + value + "\' at row " + j +
+            " with value (" + dt.getValue(j, 0) +
+            ", " + dt.getValue(j, 1) + ")";
+        if (value == mpsconsole.LineGraphNames_.PERCENT_CACHE_HITS) {
+          assertEquals(errorMessage, 0.5, dt.getValue(j, 1));
+        }
+        if (value == mpsconsole.LineGraphNames_.FLUSHES_PER_SECOND) {
+          assertEquals(errorMessage, 10, dt.getValue(j, 1));
+        }
+        if (value == mpsconsole.LineGraphNames_.FALLBACK_RESPONSES) {
+          assertEquals(errorMessage, 20, dt.getValue(j, 1));
+        }
+        if (value == mpsconsole.LineGraphNames_.RESOURCE_404S_PER_SECOND) {
+          assertEquals(errorMessage, 30, dt.getValue(j, 1));
+        }
+        if (value == mpsconsole.LineGraphNames_.SLURP_404S_PER_SECOND) {
+          assertEquals(errorMessage, 10, dt.getValue(j, 1));
+        }
+        if (value == mpsconsole.LineGraphNames_.AVE_LOAD_TIME_MS) {
+          assertEquals(errorMessage, 10, dt.getValue(j, 1));
+        }
+        if (value == mpsconsole.LineGraphNames_.SERF_BYTES_PER_REQUEST) {
+          assertEquals(errorMessage, 200, dt.getValue(j, 1));
+        }
+        if (value == mpsconsole.LineGraphNames_.REWRITES_EXEC_PER_SECOND) {
+          assertEquals(errorMessage, 30, dt.getValue(j, 1));
+        }
+        if (value == mpsconsole.LineGraphNames_.REWRITES_DROPPED_PER_SECOND) {
+          assertEquals(errorMessage, 10, dt.getValue(j, 1));
+        }
+      }
+    }
+  }
+}
+
+// Test that all values in the mpsconsole are sane (>=0).
+function ensureSaneValues(mpsconsole) {
+  for (var value in mpsconsole.LineGraphNames_) {
+    if (mpsconsole.dataTables_.hasOwnProperty(value)) {
+      var dt = mpsconsole.dataTables_[value];
+      assertTrue(dt.getNumberOfRows() > 0);
+      for (var j = 0; j < dt.getNumberOfRows(); j++) {
+        var errorMessage = "In Table \'" + value + "\' at row " + j +
+            " with value (" + dt.getValue(j, 0) +
+            ", " + dt.getValue(j, 1) + ")";
+        assertTrue(errorMessage, dt.getValue(j, 1) >= 0);
+        assertTrue(errorMessage, dt.getValue(j, 0) >= 0);
+        if (value == mpsconsole.LineGraphNames_.ONGOING_IMG_REWRITES) {
+          // This value is static and is hardcoded below.
+          assertTrue(errorMessage, dt.getValue(j, 1) == 8);
+        }
+      }
+    }
+  }
 }
 
 </script>

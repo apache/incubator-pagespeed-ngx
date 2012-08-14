@@ -76,6 +76,7 @@
 #include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
 #include "net/instaweb/rewriter/public/collect_subresources_filter.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
+#include "net/instaweb/rewriter/public/handle_noscript_redirect_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
@@ -787,7 +788,8 @@ void RewriteDriver::AddPreRenderFilters() {
       rewrite_options->Enabled(RewriteOptions::kMoveCssAboveScripts) ||
       rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync) ||
       rewrite_options->Enabled(RewriteOptions::kAddInstrumentation) ||
-      rewrite_options->Enabled(RewriteOptions::kDeterministicJs)) {
+      rewrite_options->Enabled(RewriteOptions::kDeterministicJs) ||
+      rewrite_options->Enabled(RewriteOptions::kHandleNoscriptRedirect)) {
     // Adds a filter that adds a 'head' section to html documents if
     // none found prior to the body.
     AddOwnedEarlyPreRenderFilter(new AddHeadFilter(
@@ -1006,6 +1008,10 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->support_noscript_enabled() &&
       rewrite_options->IsAnyFilterRequiringScriptExecutionEnabled()) {
     AddOwnedPostRenderFilter(new SupportNoscriptFilter(this));
+  }
+
+  if (rewrite_options->Enabled(RewriteOptions::kHandleNoscriptRedirect)) {
+    AddOwnedPostRenderFilter(new HandleNoscriptRedirectFilter(this));
   }
 
   if (rewrite_options->Enabled(RewriteOptions::kStripNonCacheable)) {

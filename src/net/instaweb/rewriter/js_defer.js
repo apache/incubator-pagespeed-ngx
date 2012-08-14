@@ -392,7 +392,8 @@ deferJsNs.DeferJs.prototype.createIdVars = function() {
  * @param {boolean} opt_prefetch Script file is prefetched if true.
  */
 deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos, opt_prefetch) {
-  var src = script.getAttribute('orig_src') || script.getAttribute('src');
+  var src = script.getAttribute('pagespeed_orig_src') ||
+      script.getAttribute('src');
   if (src) {
     if (opt_prefetch) {
       new Image().src = src;
@@ -957,9 +958,9 @@ deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
     if (child.nodeName == 'SCRIPT') {
       if (this.isJSNode(child)) {
         scriptNodes.push(child);
-        child.setAttribute('orig_type', child.type);
+        child.setAttribute('pagespeed_orig_type', child.type);
         child.setAttribute('type', deferJsNs.DeferJs.PSA_SCRIPT_TYPE);
-        child.setAttribute('orig_src', child.src);
+        child.setAttribute('pagespeed_orig_src', child.src);
         child.setAttribute('src', '');
         child.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, '');
       }

@@ -46,7 +46,7 @@ void SupportNoscriptFilter::StartElement(HtmlElement* element) {
   if (!noscript_inserted_ && element->keyword() == HtmlName::kBody) {
     scoped_ptr<GoogleUrl> url_with_psa_off(
         rewrite_driver_->google_url().CopyAndAddQueryParam(
-            RewriteQuery::kModPagespeed, "off"));
+            RewriteQuery::kModPagespeed, RewriteQuery::kNoscriptValue));
     GoogleString url_str(url_with_psa_off->Spec().data(),
                          url_with_psa_off->Spec().size());
     HtmlCharactersNode* noscript_node = rewrite_driver_->NewCharactersNode(

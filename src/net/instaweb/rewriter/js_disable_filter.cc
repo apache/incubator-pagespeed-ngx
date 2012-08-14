@@ -95,24 +95,16 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
       if (element->FindAttribute(HtmlName::kPagespeedNoDefer)) {
         return;
       }
-      if ((src != NULL) && (src->DecodedValueOrNull() != NULL)) {
-        GoogleString url(src->DecodedValueOrNull());
-        element->AddAttribute(
-            rewrite_driver_->MakeName("orig_src"), url,
-            HtmlElement::DOUBLE_QUOTE);
-        element->DeleteAttribute(HtmlName::kSrc);
+      if (src != NULL) {
+        src->set_name(rewrite_driver_->MakeName(HtmlName::kPagespeedOrigSrc));
       } else if (index_ == 0 &&
                  rewrite_driver_->options()->Enabled(
                      RewriteOptions::kDeferJavascript)) {
         return;
       }
       HtmlElement::Attribute* type = element->FindAttribute(HtmlName::kType);
-      if ((type != NULL) && (type->DecodedValueOrNull() != NULL)) {
-        GoogleString jstype(type->DecodedValueOrNull());
-        element->DeleteAttribute(HtmlName::kType);
-        element->AddAttribute(
-            rewrite_driver_->MakeName("orig_type"), jstype,
-            HtmlElement::DOUBLE_QUOTE);
+      if (type != NULL) {
+        type->set_name(rewrite_driver_->MakeName(HtmlName::kPagespeedOrigType));
       }
       element->AddAttribute(
           rewrite_driver_->MakeName(HtmlName::kType), "text/psajs",

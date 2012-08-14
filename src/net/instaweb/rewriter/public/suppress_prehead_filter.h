@@ -60,7 +60,6 @@ class SuppressPreheadFilter : public HtmlWriterFilter {
   GoogleString content_type_meta_tag_;
   // Writer for writing to the response buffer.
   Writer* original_writer_;
-  Writer* current_writer_;
   StringWriter pre_head_writer_;  // Writer to write the pre_head_.
   StringWriter content_type_meta_tag_writer_;
   // Writer to write both the pre_head string and to the response buffer.

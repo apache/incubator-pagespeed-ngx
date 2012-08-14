@@ -870,7 +870,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
                           rewritten_js_url_2.data(),
                           rewritten_css_url_3.data());
     } else if (defer_js_enabled) {
-      GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=off");
+      GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
       return StringPrintf(
           value == UserAgentMatcher::kPrefetchLinkRelSubresource ?
           kFlushEarlyRewrittenHtmlLinkRelSubresourceWithDeferJs :

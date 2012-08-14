@@ -128,10 +128,10 @@ const char kHtmlInputForNoBlink[] =
 const char kBlinkOutputCommon[] =
     "<html><body>"
     "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
-    "url=http://test.com/%s?ModPagespeed=off\">"
+    "url=http://test.com/%s?ModPagespeed=noscript\">"
     "<style><!--table,div,span,font,p{display:none} --></style>"
     "<div style=\"display:block\">Please click "
-    "<a href=\"http://test.com/%s?ModPagespeed=off\">here</a> "
+    "<a href=\"http://test.com/%s?ModPagespeed=noscript\">here</a> "
     "if you are not redirected within a few seconds.</div></noscript>"
     "critical_html"
     "<script>pagespeed.panelLoaderInit();</script>"
@@ -174,7 +174,8 @@ const char kCriticalHtml[] =
 
 const char kFakePngInput[] = "FakePng";
 
-const char kNoBlinkUrl[] = "http://test.com/noblink_text.html?ModPagespeed=off";
+const char kNoBlinkUrl[] =
+    "http://test.com/noblink_text.html?ModPagespeed=noscript";
 
 // Like ExpectStringAsyncFetch but for asynchronous invocation -- it lets
 // one specify a WorkerTestBase::SyncPoint to help block until completion.
@@ -418,6 +419,9 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
     sync->EnableForPrefix(BlinkFlowCriticalLine::kBackgroundComputationDone);
     sync->AllowSloppyTermination(
         BlinkFlowCriticalLine::kBackgroundComputationDone);
+    sync->EnableForPrefix(BlinkFlowCriticalLine::kUpdateResponseCodeDone);
+    sync->AllowSloppyTermination(
+        BlinkFlowCriticalLine::kUpdateResponseCodeDone);
     fake_blink_critical_line_data_finder_ =
         static_cast<FakeBlinkCriticalLineDataFinder*> (
             factory_->blink_critical_line_data_finder());
@@ -523,6 +527,23 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
     FetchFromProxy(url, expect_success, string_out, headers_out, true);
   }
 
+  void FetchFromProxyWaitForUpdateResponseCode(
+      const StringPiece& url, bool expect_success, GoogleString* string_out,
+      ResponseHeaders* headers_out) {
+    RequestHeaders request_headers;
+    GetDefaultRequestHeaders(&request_headers);
+    FetchFromProxy(url, expect_success, request_headers, string_out,
+                   headers_out, NULL, false, true);
+  }
+
+  void FetchFromProxyWaitForUpdateResponseCode(
+      const StringPiece& url, bool expect_success,
+      const RequestHeaders& request_headers, GoogleString* string_out,
+      ResponseHeaders* headers_out) {
+    FetchFromProxy(url, expect_success, request_headers, string_out,
+                   headers_out, NULL, false, true);
+  }
+
   void FetchFromProxyNoWaitForBackground(const StringPiece& url,
                                          bool expect_success,
                                          GoogleString* string_out,
@@ -559,12 +580,29 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
                       ResponseHeaders* headers_out,
                       GoogleString* user_agent_out,
                       bool wait_for_background_computation) {
+    FetchFromProxy(url, expect_success, request_headers, string_out,
+                   headers_out, user_agent_out,
+                   wait_for_background_computation, false);
+  }
+
+  void FetchFromProxy(const StringPiece& url,
+                      bool expect_success,
+                      const RequestHeaders& request_headers,
+                      GoogleString* string_out,
+                      ResponseHeaders* headers_out,
+                      GoogleString* user_agent_out,
+                      bool wait_for_background_computation,
+                      bool wait_for_update_response_code) {
     FetchFromProxyNoQuiescence(url, expect_success, request_headers,
                                string_out, headers_out,
                                user_agent_out);
     if (wait_for_background_computation) {
       ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
       sync->Wait(BlinkFlowCriticalLine::kBackgroundComputationDone);
+    }
+    if (wait_for_update_response_code) {
+      ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+      sync->Wait(BlinkFlowCriticalLine::kUpdateResponseCodeDone);
     }
   }
 
@@ -748,7 +786,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestFlakyNon200ResponseCodeValidHitAfter404) {
 
   // Cache hit with previous response being 404 -- passthrough.  Current
   // response is 200.
-  FetchFromProxyNoWaitForBackground(
+  FetchFromProxyWaitForUpdateResponseCode(
       "flaky.html", true, &text, &response_headers_out);
   UnEscapeString(&text);
   EXPECT_STREQ(kHtmlInput, text);
@@ -770,14 +808,13 @@ TEST_F(BlinkFlowCriticalLineTest, TestFlakyNon200ResponseCodeValidHitAfter404) {
   EXPECT_EQ(1, num_compute_calls());
 }
 
-#if 0  // TODO(rahulbansal): Fix flakiness under valgrind.
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkInfoErrorScenarios) {
   GoogleString text;
   ResponseHeaders response_headers_out;
   resource_manager()->set_url_namer(flaky_fake_url_namer_.get());
   SetFetchHtmlResponseWithStatus("http://test.com/flaky.html",
       HttpStatus::kOK);
-  FetchFromProxyNoWaitForBackground(
+  FetchFromProxyWaitForBackground(
       "flaky.html", false, &text, &response_headers_out);
 
   // HandleDone(False) case.
@@ -792,14 +829,12 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkInfoErrorScenarios) {
   SetFetchHtmlResponseWithStatus("http://test.com/flaky.html",
                                  HttpStatus::kNotFound);
   SetBlinkCriticalLineData(false);
-  FetchFromProxyNoWaitForBackground(
+  FetchFromProxyWaitForUpdateResponseCode(
       "flaky.html", true, &text, &response_headers_out);
   UnEscapeString(&text);
   // Malformed HTML case.
-  EXPECT_EQ(BlinkInfo::FOUND_MALFORMED_HTML,
-      blink_info_->blink_request_flow());
+  EXPECT_EQ(BlinkInfo::FOUND_MALFORMED_HTML, blink_info_->blink_request_flow());
 }
-#endif
 
 TEST_F(BlinkFlowCriticalLineTest,
        TestFlakyNon200ResponseCodeDoNotWriteResponseCode) {
@@ -889,7 +924,6 @@ TEST_F(BlinkFlowCriticalLineTest,
   EXPECT_EQ(2, num_compute_calls());
 }
 
-#if 0  // TODO(rahulbansal): Fix flakiness under valgrind.
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   GoogleString text;
   ResponseHeaders response_headers;
@@ -962,14 +996,13 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   request_headers.Add(HttpAttributes::kUserAgent, kLinuxUserAgent);
   request_headers.Add(HttpAttributes::kXForwardedFor, "64.236.24.12");
   SetBlinkCriticalLineData(false);
-  FetchFromProxy("text.html", true, request_headers,
-                 &text, &response_headers, false);
+  FetchFromProxyWaitForUpdateResponseCode(
+      "text.html", true, request_headers, &text, &response_headers);
   EXPECT_EQ(GoogleString::npos,
             text.find("pagespeed.panelLoader.setRequestFromInternalIp()"));
   EXPECT_EQ(1, statistics()->GetVariable(
             BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
 }
-#endif
 
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkUrlCacheInvalidation) {
   GoogleString text;
@@ -1077,6 +1110,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithHeadRequest) {
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
 }
 
+// TODO(rahulbansal): Reproduce and uncomment this out.
+/*
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkCriticalLineLoadShed) {
   // Make sure things behave when the computation gets load-shed.
   resource_manager()->low_priority_rewrite_workers()->
@@ -1121,6 +1156,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkCriticalLineLoadShed) {
   // The second computation ought to have completed now.
   EXPECT_EQ(1, num_compute_calls());
 }
+*/
 
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlWithWhitespace) {
   GoogleString text;

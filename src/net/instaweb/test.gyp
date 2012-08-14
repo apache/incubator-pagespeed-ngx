@@ -124,6 +124,7 @@
         'rewriter/furious_matcher_test.cc',
         'rewriter/furious_util_test.cc',
         'rewriter/google_analytics_filter_test.cc',
+        'rewriter/handle_noscript_redirect_filter_test.cc',
         'rewriter/html_attribute_quote_removal_test.cc',
         'rewriter/image_combine_filter_test.cc',
         'rewriter/image_endian_test.cc',

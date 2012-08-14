@@ -73,13 +73,13 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "</script></head>"
       "<body>",
       kUnrelatedNoscriptTags,
-      "<script random=\"true\" orig_src=\"blah1\" type=\"text/psajs\""
+      "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
       kUnrelatedTags,
       "<img src=\"abc.jpg\" onload=\"pagespeed.deferJs.addOnloadListeners(this,"
       " function() {foo1();foo2();});\">"
-      "<script random=\"false\" orig_src=\"blah2\" type=\"text/psajs\""
-      " orig_index=\"1\">hi2</script>"
+      "<script pagespeed_orig_src=\"blah2\" random=\"false\""
+      " type=\"text/psajs\" orig_index=\"1\">hi2</script>"
       "</body>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
@@ -109,11 +109,11 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithExperimental) {
       "</script></head>"
       "<body>",
       kUnrelatedNoscriptTags,
-      "<script random=\"true\" orig_src=\"blah1\" type=\"text/psajs\""
+      "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
       kUnrelatedTags,
-      "<script random=\"false\" orig_src=\"blah2\" type=\"text/psajs\""
-      " orig_index=\"1\">hi2</script>"
+      "<script pagespeed_orig_src=\"blah2\" random=\"false\""
+      " type=\"text/psajs\" orig_index=\"1\">hi2</script>"
       "</body>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
@@ -127,11 +127,11 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithQueryParam) {
       "<script src=\"y?a=b&amp;c=d\" random=\"false\">hi2</script>");
   const GoogleString expected = StrCat(
       kUnrelatedNoscriptTags,
-      "<script random=\"true\" orig_src=\"x?a=b&amp;c=d\" type=\"text/psajs\""
-      " orig_index=\"0\">hi1</script>",
+      "<script pagespeed_orig_src=\"x?a=b&amp;c=d\" random=\"true\""
+      " type=\"text/psajs\" orig_index=\"0\">hi1</script>",
       kUnrelatedTags,
-      "<script random=\"false\" orig_src=\"y?a=b&amp;c=d\" type=\"text/psajs\""
-      " orig_index=\"1\">hi2</script>");
+      "<script pagespeed_orig_src=\"y?a=b&amp;c=d\" random=\"false\""
+      " type=\"text/psajs\" orig_index=\"1\">hi2</script>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
 }
@@ -144,11 +144,11 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithUnescapedQueryParam) {
       "<script src=\"y?a=b&c=d\" random=\"false\">hi2</script>");
   const GoogleString expected = StrCat(
       kUnrelatedNoscriptTags,
-      "<script random=\"true\" orig_src=\"x?a=b&amp;c=d\" type=\"text/psajs\""
-      " orig_index=\"0\">hi1</script>",
+      "<script pagespeed_orig_src=\"x?a=b&c=d\" random=\"true\""
+      " type=\"text/psajs\" orig_index=\"0\">hi1</script>",
       kUnrelatedTags,
-      "<script random=\"false\" orig_src=\"y?a=b&amp;c=d\" type=\"text/psajs\""
-      " orig_index=\"1\">hi2</script>");
+      "<script pagespeed_orig_src=\"y?a=b&c=d\" random=\"false\""
+      " type=\"text/psajs\" orig_index=\"1\">hi2</script>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
 }
@@ -161,11 +161,11 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithNullSrc) {
       "<script src random=\"false\">hi2</script>");
   const GoogleString expected = StrCat(
       kUnrelatedNoscriptTags,
-      "<script src random=\"true\" type=\"text/psajs\" orig_index=\"0\">hi1"
-      "</script>",
+      "<script pagespeed_orig_src random=\"true\" type=\"text/psajs\""
+      " orig_index=\"0\">hi1</script>",
       kUnrelatedTags,
-      "<script src random=\"false\" type=\"text/psajs\" orig_index=\"1\">hi2"
-      "</script>");
+      "<script pagespeed_orig_src random=\"false\" type=\"text/psajs\""
+      " orig_index=\"1\">hi2</script>");
 
   ValidateExpected("http://example.com/", input_html, expected);
 }
@@ -178,14 +178,14 @@ TEST_F(JsDisableFilterTest, DisablesScriptOnlyFromFirstSrc) {
       "<script random=\"true\">hi1</script>",
       kUnrelatedTags,
       "<script random=\"false\">hi2</script>"
-      "<script src=\"1.js\"></script>");
+      "<script src=\"1.js?a#12296;=en\"></script>");
   const GoogleString expected = StrCat(
       kUnrelatedNoscriptTags,
       "<script random=\"true\">hi1</script>",
       kUnrelatedTags,
       "<script random=\"false\">hi2</script>"
-      "<script orig_src=\"1.js\" type=\"text/psajs\" orig_index=\"0\">"
-      "</script>");
+      "<script pagespeed_orig_src=\"1.js?a#12296;=en\" type=\"text/psajs\""
+      " orig_index=\"0\"></script>");
 
   ValidateExpected("http://example.com/", input_html, expected);
 }

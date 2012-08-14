@@ -21,6 +21,10 @@
  * @author bvb@google.com (Ben VanBerkum)
  */
 
+body {
+  font-family: 'Arial', sans-serif;
+}
+
 #error {
   color: red;
   background-color: yellow;
@@ -32,13 +36,57 @@
   font-size: 25px;
 }
 
-#links {
-  position: fixed;
-  top: 0px;
-  left: 0px;
-  z-index: 80;
+#container {
+  position: relative;
+  top: 30px;
+  width: 84%;
+  display: inline;
+  float: right;
 }
 
-#container {
-  margin-left: 120px;
+#links {
+  padding-bottom: 10px;
+  border-bottom: solid black 1px;
+  display: inline;
+  width: 100%;
+  font-size: 12px;
 }
+
+#links a {
+  text-decoration: none;
+  padding: 10px;
+  background-color: #f5f5f5;
+  margin-right: 3px;
+  border: solid black 1px;
+  cursor: pointer;
+}
+
+#links a#selected {
+  background-color: #afeeee;
+  border-bottom: solid 1px #afeeee;
+  cursor: default;
+}
+
+#links a:hover {
+  color: blue;
+}
+
+#links a#selected:hover {
+  color: black;
+}
+
+#errorMessages {
+  height: 400px;
+  overflow: auto;
+}
+
+#sidebar {
+  width: 15%;
+  float: left;
+  top: 80px;
+  text-align: center;
+  position: relative;
+}
+
+
+

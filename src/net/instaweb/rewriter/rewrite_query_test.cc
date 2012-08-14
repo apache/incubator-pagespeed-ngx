@@ -364,4 +364,18 @@ TEST_F(RewriteQueryTest, NoChangesShouldNotModify) {
   // EXPECT_FALSE(options.modified());
 }
 
+TEST_F(RewriteQueryTest, NoscriptQueryParamEmptyValue) {
+  RewriteOptions* options = ParseAndScan("ModPagespeed=noscript", "");
+  EXPECT_FALSE(options->IsAnyFilterRequiringScriptExecutionEnabled());
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kPrioritizeVisibleContent));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
+}
+
+TEST_F(RewriteQueryTest, NoscriptHeader) {
+  RewriteOptions* options = ParseAndScan("", "ModPagespeed;noscript");
+  EXPECT_FALSE(options->IsAnyFilterRequiringScriptExecutionEnabled());
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kPrioritizeVisibleContent));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
+}
+
 }  // namespace net_instaweb

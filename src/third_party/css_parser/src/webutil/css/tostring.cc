@@ -87,9 +87,9 @@ static string JoinMediaStrings(const std::vector<UnicodeText>& media,
 
 static string StylesheetTypeString(Stylesheet::StylesheetType type) {
   switch (type) {
-    CONSIDER_IN_CLASS(Stylesheet, AUTHOR);
-    CONSIDER_IN_CLASS(Stylesheet, USER);
-    CONSIDER_IN_CLASS(Stylesheet, SYSTEM);
+    case Stylesheet::AUTHOR: return string("AUTHOR");
+    case Stylesheet::USER:   return string("USER");
+    case Stylesheet::SYSTEM: return string("SYSTEM");
     default:
       LOG(FATAL) << "Invalid type";
   }

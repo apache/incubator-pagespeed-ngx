@@ -148,6 +148,8 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "pagespeed_lsc_hash",     HtmlName::kPagespeedLscHash
 "pagespeed_lsc_url",      HtmlName::kPagespeedLscUrl
 "pagespeed_no_defer",     HtmlName::kPagespeedNoDefer
+"pagespeed_orig_src",     HtmlName::kPagespeedOrigSrc
+"pagespeed_orig_type",    HtmlName::kPagespeedOrigType
 "param",                  HtmlName::kParam
 "pre",                    HtmlName::kPre
 "profile",                HtmlName::kProfile

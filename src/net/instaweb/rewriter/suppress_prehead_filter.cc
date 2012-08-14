@@ -20,6 +20,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 namespace net_instaweb {
@@ -27,7 +28,6 @@ namespace net_instaweb {
 SuppressPreheadFilter::SuppressPreheadFilter(RewriteDriver* driver)
     : HtmlWriterFilter(driver),
       driver_(driver),
-      current_writer_(NULL),
       pre_head_writer_(&pre_head_),
       content_type_meta_tag_writer_(&content_type_meta_tag_) {
   Clear();
@@ -54,25 +54,18 @@ void SuppressPreheadFilter::StartDocument() {
 void SuppressPreheadFilter::StartElement(HtmlElement* element) {
   if (element->keyword() == HtmlName::kNoscript) {
     in_no_script_ = true;
-  }
-  // If first <head> is seen then do not suppress the bytes.
-  if (element->keyword() == HtmlName::kHead && !seen_first_head_) {
+  } else if (element->keyword() == HtmlName::kHead && !seen_first_head_) {
+    // If first <head> is seen then do not suppress the bytes.
     seen_first_head_ = true;
     set_writer(original_writer_);
-  }
-  if (!in_no_script_ && element->keyword() == HtmlName::kMeta) {
-    const HtmlElement::Attribute* equiv;
-    const char* attribute;
-    // HTTP-EQUIV case.
-    if (((equiv = element->FindAttribute(HtmlName::kHttpEquiv)) != NULL &&
-         element->FindAttribute(HtmlName::kContent) != NULL &&
-         (attribute = equiv->DecodedValueOrNull()) != NULL &&
-         StringCaseEqual(attribute, HttpAttributes::kContentType)) ||
-    // Charset case.
-        element->FindAttribute(HtmlName::kCharset) != NULL) {
-      current_writer_ = driver_->writer();
+    original_writer_ = NULL;
+  } else if (!in_no_script_ && element->keyword() == HtmlName::kMeta) {
+    GoogleString content, mime_type, charset;
+    if (CommonFilter::ExtractMetaTagDetails(*element, NULL, &content,
+                                            &mime_type, &charset)) {
+      original_writer_ = driver_->writer();
       content_type_meta_tag_and_response_writer_.reset(new SplitWriter(
-          current_writer_, &content_type_meta_tag_writer_));
+          original_writer_, &content_type_meta_tag_writer_));
       set_writer(content_type_meta_tag_and_response_writer_.get());
     }
   }
@@ -81,9 +74,9 @@ void SuppressPreheadFilter::StartElement(HtmlElement* element) {
 
 void SuppressPreheadFilter::EndElement(HtmlElement* element) {
   HtmlWriterFilter::EndElement(element);
-  if (current_writer_ != NULL) {
-    set_writer(current_writer_);
-    current_writer_ = NULL;
+  if (original_writer_ != NULL) {
+    set_writer(original_writer_);
+    original_writer_ = NULL;
   }
   if (element->keyword() == HtmlName::kNoscript) {
     in_no_script_ = false;
@@ -95,6 +88,8 @@ void SuppressPreheadFilter::Clear() {
   in_no_script_ = false;
   pre_head_.clear();
   content_type_meta_tag_.clear();
+  pre_head_and_response_writer_.reset(NULL);
+  content_type_meta_tag_and_response_writer_.reset(NULL);
   HtmlWriterFilter::Clear();
 }
 

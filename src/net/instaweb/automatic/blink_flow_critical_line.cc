@@ -64,6 +64,8 @@ class MessageHandler;
 
 const char BlinkFlowCriticalLine::kBackgroundComputationDone[] =
     "BackgroundComputation:Done";
+const char BlinkFlowCriticalLine::kUpdateResponseCodeDone[] =
+    "UpdateResponseCode:Done";
 const char BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits[] =
     "num_blink_html_cache_hits";
 const char BlinkFlowCriticalLine::kNumBlinkHtmlCacheMisses[] =
@@ -393,8 +395,10 @@ class CriticalLineFetch : public AsyncFetch {
 class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
  public:
   UpdateResponseCodeSharedAyncFetch(AsyncFetch* base_fetch,
+                                    ResourceManager* resource_manager,
                                     RewriteDriver* rewrite_driver)
       : SharedAsyncFetch(base_fetch),
+        resource_manager_(resource_manager),
         rewrite_driver_(rewrite_driver),
         updated_response_code_(false) {
     rewrite_driver_->increment_async_events_count();
@@ -402,6 +406,8 @@ class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
 
   virtual ~UpdateResponseCodeSharedAyncFetch() {
     rewrite_driver_->decrement_async_events_count();
+    ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
+    sync->Signal(BlinkFlowCriticalLine::kUpdateResponseCodeDone);
   }
 
  protected:
@@ -424,6 +430,7 @@ class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
   }
 
  private:
+  ResourceManager* resource_manager_;
   RewriteDriver* rewrite_driver_;  // We do not own this.
   bool updated_response_code_;
 
@@ -574,7 +581,7 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
   }
   blink_info_->set_blink_request_flow(BlinkInfo::BLINK_CACHE_HIT);
   GoogleUrl* url_with_psa_off = google_url_.CopyAndAddQueryParam(
-      RewriteQuery::kModPagespeed, "off");
+      RewriteQuery::kModPagespeed, RewriteQuery::kNoscriptValue);
   const int start_body_marker_length = strlen(BlinkUtil::kStartBodyMarker);
   GoogleString url_str(url_with_psa_off->Spec().data(),
                        url_with_psa_off->Spec().size());
@@ -761,7 +768,8 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     manager_->ComputeSignature(options_);
     driver = manager_->NewCustomRewriteDriver(options_);
     if (options_->passthrough_blink_for_last_invalid_response_code()) {
-      fetch = new UpdateResponseCodeSharedAyncFetch(base_fetch_, driver);
+      fetch = new UpdateResponseCodeSharedAyncFetch(base_fetch_, manager_,
+                                                    driver);
     } else {
       fetch = base_fetch_;
     }

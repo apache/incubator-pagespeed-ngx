@@ -28,7 +28,7 @@ class SupportNoscriptFilterTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
     ResourceManagerTestBase::SetUp();
-    rewrite_driver()->AppendOwnedPreRenderFilter(
+    rewrite_driver()->AddOwnedPostRenderFilter(
         new SupportNoscriptFilter(rewrite_driver()));
   }
 };
@@ -40,10 +40,10 @@ TEST_F(SupportNoscriptFilterTest, TestNoscript) {
   GoogleString output_html =
       "<head></head><body>"
       "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
-      "url=http://test.com/support_noscript.html?ModPagespeed=off\">"
+      "url=http://test.com/support_noscript.html?ModPagespeed=noscript\">"
       "<style><!--table,div,span,font,p{display:none} --></style>"
       "<div style=\"display:block\">Please click "
-      "<a href=\"http://test.com/support_noscript.html?ModPagespeed=off\">"
+      "<a href=\"http://test.com/support_noscript.html?ModPagespeed=noscript\">"
       "here</a> if you are not redirected within a few seconds.</div>"
       "</noscript><img src=\"http://test.com/1.jpeg\"/></body>";
   ValidateExpected("support_noscript", input_html, output_html);
@@ -57,10 +57,10 @@ TEST_F(SupportNoscriptFilterTest, TestNoscriptMultipleBodies) {
   GoogleString output_html =
       "<head></head><body>"
       "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
-      "url=http://test.com/support_noscript.html?ModPagespeed=off\">"
+      "url=http://test.com/support_noscript.html?ModPagespeed=noscript\">"
       "<style><!--table,div,span,font,p{display:none} --></style>"
       "<div style=\"display:block\">Please click "
-      "<a href=\"http://test.com/support_noscript.html?ModPagespeed=off\">"
+      "<a href=\"http://test.com/support_noscript.html?ModPagespeed=noscript\">"
       "here</a> if you are not redirected within a few seconds.</div>"
       "</noscript><img src=\"http://test.com/1.jpeg\"/></body>"
       "<body><img src=\"http://test.com/2.jpeg\"/></body>";

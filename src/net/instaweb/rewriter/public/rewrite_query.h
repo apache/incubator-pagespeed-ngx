@@ -33,6 +33,11 @@ class RewriteQuery {
   // The names of query-params.
   static const char kModPagespeed[];
   static const char kModPagespeedFilters[];
+  // ModPagespeed query-param value for redirect from clients that do not
+  // support javascript.
+  // * Disables all filters that insert new javascript.
+  // * Enables filter kHandleNoscriptRedirect.
+  static const char kNoscriptValue[];
 
   enum Status {
     kSuccess,

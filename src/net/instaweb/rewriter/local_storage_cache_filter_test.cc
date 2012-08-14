@@ -146,7 +146,7 @@ class LocalStorageCacheTest : public ResourceManagerTestBase,
         "</body>\n");
 
     GoogleString url = StrCat(
-        "http://test.com/", case_id, ".html?ModPagespeed=off");
+        "http://test.com/", case_id, ".html?ModPagespeed=noscript");
 
     GoogleString html_in(StringPrintf(
         kInWrapperFormat, head_html_in.c_str(), body_html_in.c_str()));

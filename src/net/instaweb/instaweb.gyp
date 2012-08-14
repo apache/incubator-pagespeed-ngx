@@ -934,6 +934,7 @@
         'rewriter/furious_matcher.cc',
         'rewriter/furious_util.cc',
         'rewriter/google_analytics_filter.cc',
+        'rewriter/handle_noscript_redirect_filter.cc',
         'rewriter/image_rewrite_filter.cc',
         'rewriter/inline_rewrite_context.cc',
         'rewriter/insert_dns_prefetch_filter.cc',

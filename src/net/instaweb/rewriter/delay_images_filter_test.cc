@@ -97,8 +97,8 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
   GoogleString GetNoscript() const {
     return StringPrintf(
         kNoScriptRedirectFormatter,
-        "http://test.com/inline_preview_images.html?ModPagespeed=off",
-        "http://test.com/inline_preview_images.html?ModPagespeed=off");
+        "http://test.com/inline_preview_images.html?ModPagespeed=noscript",
+        "http://test.com/inline_preview_images.html?ModPagespeed=noscript");
   }
 
   GoogleString GenerateAddLowResString(const GoogleString& url,
@@ -193,8 +193,8 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
   GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
       StrCat("<body>",
              StringPrintf(kNoScriptRedirectFormatter,
-                          "http://test.com/?ModPagespeed=off",
-                          "http://test.com/?ModPagespeed=off"),
+                          "http://test.com/?ModPagespeed=noscript",
+                          "http://test.com/?ModPagespeed=noscript"),
              "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>"),
       GetInlineScript(),
       GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
