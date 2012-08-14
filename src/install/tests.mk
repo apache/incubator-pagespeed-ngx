@@ -13,7 +13,7 @@
 #                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST,
 #                       OPT_FURIOUS_GA_TEST, OPT_FURIOUS_NO_GA_TEST,
 #                       OPT_URL_ATTRIBUTES_TEST, OPT_XHEADER_TEST,
-#                       OPT_DOMAIN_HYPERLINKS_TEST,
+#                       OPT_DOMAIN_HYPERLINKS_TEST, OPT_ABSOLUTE_URLS_TEST,
 #                       OPT_DOMAIN_RESOURCE_TAGS_TEST, OPT_ALL_DIRECTIVES_TEST)
 #  apache_debug_restart
 #  apache_debug_stop
@@ -273,6 +273,15 @@ apache_debug_url_attribute_test : url_attribute_test_prepare \
 
 url_attribute_test_prepare :
 	$(eval OPT_URL_ATTRIBUTE_TEST="URL_ATTRIBUTE_TEST=1")
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
+
+# Test to make sure we don't fetch encoded absolute urls.
+apache_debug_absolute_urls_test : absolute_urls_test_prepare \
+    apache_install_conf apache_debug_restart
+	$(INSTALL_DATA_DIR)/apache_absolute_urls_test.sh $(APACHE_SERVER)
+
+absolute_urls_test_prepare :
+	$(eval OPT_ABSOLUTE_URLS_TEST="ABSOLUTE_URLS_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
 
 rewrite_resource_tags_test_prepare :

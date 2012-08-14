@@ -264,6 +264,14 @@ else
   URL_ATTRIBUTE_TEST_SED_PATTERN=^\#URL_ATTRIBUTE.*\n
 endif
 
+ifeq ($(ABSOLUTE_URLS_TEST),1)
+  # remove prefix
+  ABSOLUTE_URLS_TEST_SED_PATTERN=^\#ABSOLUTE_URLS
+else
+  # remove whole line
+  ABSOLUTE_URLS_TEST_SED_PATTERN=^\#ABSOLUTE_URLS.*\n
+endif
+
 ifeq ($(HTTPS_TEST),1)
   # remove prefix
   HTTPS_TEST_SED_PATTERN=^\#HTTPS
@@ -346,6 +354,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(FURIOUS_GA_TEST_SED_PATTERN)@@" \
 	    -e "s@$(FURIOUS_NO_GA_TEST_SED_PATTERN)@@" \
 	    -e "s@$(URL_ATTRIBUTE_TEST_SED_PATTERN)@@" \
+	    -e "s@$(ABSOLUTE_URLS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(XHEADER_TEST_SED_PATTERN)@@" \
 	    -e "s@$(CLIENT_DOMAIN_REWRITE_TEST_SED_PATTERN)@@" \
 	    -e "s@$(DOMAIN_HYPERLINKS_TEST_SED_PATTERN)@@" \
@@ -435,25 +444,50 @@ test :
 		./apache_system_test.sh localhost
 
 # Now hook in the full integration test suite. It needs to be run as root.
+# Each test is on it's own line for better diff/merge support.
 apache_install_conf :
-	$(MAKE) staging_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
-	    $(OPT_SLURP_TEST) $(OPT_MEMCACHED_TEST) $(OPT_SPELING_TEST) \
-	    $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
-	    $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST) \
-	    $(OPT_GZIP_TEST) $(OPT_FURIOUS_GA_TEST) $(OPT_FURIOUS_NO_GA_TEST) \
-	    $(OPT_XHEADER_TEST) $(OPT_CLIENT_DOMAIN_REWRITE_TEST) \
-	    $(OPT_DOMAIN_HYPERLINKS_TEST) $(OPT_DOMAIN_RESOURCE_TAGS_TEST) \
-	    $(OPT_ALL_DIRECTIVES_TEST) $(OPT_PER_VHOST_STATS_TEST) \
-	    $(OPT_URL_ATTRIBUTE_TEST)
-	$(MAKE) install_except_module $(OPT_REWRITE_TEST) $(OPT_PROXY_TEST) \
-	    $(OPT_SLURP_TEST) $(OPT_MEMCACHED_TEST) $(OPT_SPELING_TEST) \
-	    $(OPT_COVERAGE_TRACE_TEST) $(OPT_STRESS_TEST) \
-	    $(OPT_HTTPS_TEST) $(OPT_SHARED_MEM_LOCK_TEST) \
-	    $(OPT_GZIP_TEST) $(OPT_FURIOUS_GA_TEST) $(OPT_FURIOUS_NO_GA_TEST) \
-	    $(OPT_XHEADER_TEST) $(OPT_CLIENT_DOMAIN_REWRITE_TEST) \
-	    $(OPT_DOMAIN_HYPERLINKS_TEST) $(OPT_DOMAIN_RESOURCE_TAGS_TEST) \
-	    $(OPT_ALL_DIRECTIVES_TEST) $(OPT_PER_VHOST_STATS_TEST) \
-	    $(OPT_URL_ATTRIBUTE_TEST)
+	$(MAKE) staging_except_module \
+	    $(OPT_REWRITE_TEST)
+	    $(OPT_PROXY_TEST) \
+	    $(OPT_SLURP_TEST) \
+	    $(OPT_MEMCACHED_TEST) \
+	    $(OPT_SPELING_TEST) \
+	    $(OPT_COVERAGE_TRACE_TEST) \
+	    $(OPT_STRESS_TEST) \
+	    $(OPT_HTTPS_TEST) \
+	    $(OPT_SHARED_MEM_LOCK_TEST) \
+	    $(OPT_GZIP_TEST) \
+	    $(OPT_FURIOUS_GA_TEST) \
+	    $(OPT_FURIOUS_NO_GA_TEST) \
+	    $(OPT_XHEADER_TEST) \
+	    $(OPT_CLIENT_DOMAIN_REWRITE_TEST) \
+	    $(OPT_DOMAIN_HYPERLINKS_TEST) \
+	    $(OPT_DOMAIN_RESOURCE_TAGS_TEST) \
+	    $(OPT_ALL_DIRECTIVES_TEST) \
+	    $(OPT_URL_ATTRIBUTE_TEST) \
+	    $(OPT_PER_VHOST_STATS_TEST) \
+	    $(OPT_ABSOLUTE_URLS_TEST)
+	$(MAKE) install_except_module \
+	    $(OPT_REWRITE_TEST) \
+	    $(OPT_PROXY_TEST) \
+	    $(OPT_SLURP_TEST) \
+	    $(OPT_MEMCACHED_TEST) \
+	    $(OPT_SPELING_TEST) \
+	    $(OPT_COVERAGE_TRACE_TEST) \
+	    $(OPT_STRESS_TEST) \
+	    $(OPT_HTTPS_TEST) \
+	    $(OPT_SHARED_MEM_LOCK_TEST) \
+	    $(OPT_GZIP_TEST) \
+	    $(OPT_FURIOUS_GA_TEST) \
+	    $(OPT_FURIOUS_NO_GA_TEST) \
+	    $(OPT_XHEADER_TEST) \
+	    $(OPT_CLIENT_DOMAIN_REWRITE_TEST) \
+	    $(OPT_DOMAIN_HYPERLINKS_TEST) \
+	    $(OPT_DOMAIN_RESOURCE_TAGS_TEST) \
+	    $(OPT_ALL_DIRECTIVES_TEST) \
+	    $(OPT_URL_ATTRIBUTE_TEST) \
+	    $(OPT_ABSOLUTE_URLS_TEST) \
+	    $(OPT_PER_VHOST_STATS_TEST)
 
 apache_debug_restart :
 	$(APACHE_CONTROL_PROGRAM) restart

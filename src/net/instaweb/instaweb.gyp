@@ -516,6 +516,7 @@
 
         'util/abstract_mutex.cc',
         'util/abstract_shared_mem.cc',
+        'util/async_cache.cc',
         'util/cache_interface.cc',
         'util/cache_stats.cc',
         'util/checking_thread_system.cc',

@@ -45,6 +45,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -1741,6 +1742,16 @@ bool RewriteContext::Fetch(
         is_valid = false;
         break;
       }
+
+      if (!Manager()->url_namer()->ProxyMode() &&
+          !driver->MatchesBaseUrl(*url)) {
+        // Reject absolute url references unless we're proxying.
+        is_valid = false;
+        message_handler->Message(kError, "Rejected absolute url reference %s",
+                                 url->spec_c_str());
+        break;
+      }
+
       ResourcePtr resource(driver->CreateInputResource(*url));
       if (resource.get() == NULL) {
         // TODO(jmarantz): bump invalid-input-resource count

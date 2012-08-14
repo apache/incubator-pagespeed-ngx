@@ -169,6 +169,7 @@
         'rewriter/url_partnership_test.cc',
         'spriter/libpng_image_library_test.cc',
         'spriter/image_spriter_test.cc',
+        'util/async_cache_test.cc',
         'util/arena_test.cc',
         'util/base64_test.cc',
         'util/cache_stats_test.cc',

@@ -41,7 +41,7 @@ class LRUCacheTest : public CacheTestBase {
   }
 
   virtual CacheInterface* Cache() { return &cache_; }
-  virtual void SanityCheck() { cache_.SanityCheck(); }
+  virtual void PostOpCleanup() { cache_.SanityCheck(); }
 
   LRUCache cache_;
 

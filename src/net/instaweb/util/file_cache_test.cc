@@ -78,7 +78,7 @@ class FileCacheTest : public CacheTestBase {
   }
 
   virtual CacheInterface* Cache() { return &cache_; }
-  virtual void SanityCheck() { }
+  virtual void PostOpCleanup() { }
 
   bool Clean(int64 size, int64 inode_count) {
     return cache_.Clean(size, inode_count);

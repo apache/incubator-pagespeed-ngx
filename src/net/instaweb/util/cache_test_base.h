@@ -23,12 +23,16 @@
 
 #include <vector>
 
+#include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -38,7 +42,8 @@ class CacheTestBase : public testing::Test {
   // that are blocking in nature (e.g. in-memory LRU or blocking file-system).
   class Callback : public CacheInterface::Callback {
    public:
-    Callback() { Reset(); }
+    explicit Callback(CacheTestBase* test) : test_(test) { Reset(); }
+    Callback() : test_(NULL) { Reset(); }
     virtual ~Callback() {}
     Callback* Reset() {
       called_ = false;
@@ -63,7 +68,15 @@ class CacheTestBase : public testing::Test {
       EXPECT_TRUE(validate_called_);
       called_ = true;
       state_ = state;
+      if (test_ != NULL) {
+        test_->GetDone();
+      }
     }
+
+    // The default implementation has an empty Wait implementation.
+    // If you override this, be sure also to call set_mutex() from the
+    // test subclass constructor or SetUp to protect outstanding_fetches_.
+    virtual void Wait() {}
 
     void set_invalid_value(const char* v) { invalid_value_ = v; }
     CacheInterface::KeyState state() const { return state_; }
@@ -75,113 +88,163 @@ class CacheTestBase : public testing::Test {
     CacheInterface::KeyState state_;
 
    private:
+    CacheTestBase* test_;
     const char* invalid_value_;
 
     DISALLOW_COPY_AND_ASSIGN(Callback);
   };
 
-  CacheTestBase() : invalid_value_(NULL) {
+ protected:
+  CacheTestBase()
+      : invalid_value_(NULL),
+        mutex_(new NullMutex),
+        outstanding_fetches_(0) {
   }
   ~CacheTestBase() {
     STLDeleteElements(&callbacks_);
   }
 
+  // Allocates a callback structure.  The default Callback structure
+  // has an empty implementation of Wait().
+  virtual Callback* NewCallback() { return new Callback(this); }
+  virtual CacheInterface* Cache() = 0;
+
+  // Optional method that can be specified by a test subclass to specify
+  // an operation that should be performed after Get or Put.
+  virtual void PostOpCleanup() {}
+
+  // Performs a cache Get, waits for callback completion, and checks the
+  // result is as expected.
   void CheckGet(const char* key, const GoogleString& expected_value) {
     CheckGet(Cache(), key, expected_value);
   }
 
+  // As above, but specifies which cache to use.
   void CheckGet(CacheInterface* cache, const char* key,
                 const GoogleString& expected_value) {
-    cache->Get(key, ResetCallback());
-    ASSERT_TRUE(callback_.called_);
-    ASSERT_EQ(CacheInterface::kAvailable, callback_.state_)
-        << "For key: " << key;
-    EXPECT_EQ(expected_value, **callback_.value()) << "For key: " << key;
-    SanityCheck();
+    Callback* callback = InitiateGet(cache, key);
+    WaitAndCheck(callback, expected_value);
   }
 
-  void CheckPut(const char* key, const char* value) {
+  // Writes a value into the cache.
+  void CheckPut(const GoogleString& key, const GoogleString& value) {
     CheckPut(Cache(), key, value);
   }
 
-  void CheckPut(const GoogleString& key, const GoogleString& value) {
-    CheckPut(Cache(), key.c_str(), value.c_str());
-  }
-
-  void CheckPut(CacheInterface* cache, const char* key, const char* value) {
+  void CheckPut(CacheInterface* cache, const GoogleString& key,
+                const GoogleString& value) {
     SharedString put_buffer(value);
     cache->Put(key, &put_buffer);
-    SanityCheck();
+    PostOpCleanup();
   }
 
+  // Performs a Get and verifies that the key is not found.
   void CheckNotFound(const char* key) {
     CheckNotFound(Cache(), key);
   }
 
   void CheckNotFound(CacheInterface* cache, const char* key) {
-    cache->Get(key, ResetCallback());
-    ASSERT_TRUE(callback_.called_);
-    EXPECT_NE(CacheInterface::kAvailable, callback_.state_)
-        << "For key: " << key;
-    SanityCheck();
+    Callback* callback = InitiateGet(cache, key);
+    WaitAndCheckNotFound(callback);
   }
 
-  Callback* NewCallback() {
-    Callback* callback = new Callback();
+  // Adds a new callback to the callback-array, returning a Callback*
+  // that can then be passed to WaitAndCheck and WaitAndCheckNotFound.
+  Callback* AddCallback() {
+    Callback* callback = NewCallback();
+    callback->set_invalid_value(invalid_value_);
     callbacks_.push_back(callback);
     return callback;
   }
 
-  void CheckMultiGetValue(int index, const GoogleString& value) {
-    Callback* callback = callbacks_[index];
+  void WaitAndCheck(Callback* callback, const GoogleString& expected_value) {
+    callback->Wait();
     ASSERT_TRUE(callback->called());
-    EXPECT_EQ(value, callback->value_str());
+    EXPECT_STREQ(expected_value, *(callback->value()->get()));
     EXPECT_EQ(CacheInterface::kAvailable, callback->state());
+    PostOpCleanup();
   }
 
-  void CheckMultiGetNotFound(int index) {
-    Callback* callback = callbacks_[index];
+  void WaitAndCheckNotFound(Callback* callback) {
+    callback->Wait();
     ASSERT_TRUE(callback->called());
     EXPECT_EQ(CacheInterface::kNotFound, callback->state());
+    PostOpCleanup();
+  }
+
+  void IssueMultiGet(Callback* c0, const GoogleString& key0,
+                     Callback* c1, const GoogleString& key1,
+                     Callback* c2, const GoogleString& key2) {
+    CacheInterface::MultiGetRequest* request =
+        new CacheInterface::MultiGetRequest;
+    request->push_back(CacheInterface::KeyCallback(key0, c0));
+    request->push_back(CacheInterface::KeyCallback(key1, c1));
+    request->push_back(CacheInterface::KeyCallback(key2, c2));
+    Cache()->MultiGet(request);
   }
 
   void TestMultiGet() {
-    CheckPut("n1", "v1");
-    CheckPut("n2", "v2");
-    CacheInterface::MultiGetRequest* request =
-        new CacheInterface::MultiGetRequest;
-    request->push_back(CacheInterface::KeyCallback("n1", NewCallback()));
-    request->push_back(CacheInterface::KeyCallback("not found", NewCallback()));
-    request->push_back(CacheInterface::KeyCallback("n2", NewCallback()));
-    Cache()->MultiGet(request);
-    CheckMultiGetValue(0, "v1");
-    CheckMultiGetNotFound(1);
-    CheckMultiGetValue(2, "v2");
+    PopulateCache(2);
+    Callback* n0 = AddCallback();
+    Callback* not_found = AddCallback();
+    Callback* n1 = AddCallback();
+    IssueMultiGet(n0, "n0", not_found, "not_found", n1, "n1");
+    WaitAndCheck(n0, "v0");
+    WaitAndCheckNotFound(not_found);
+    WaitAndCheck(n1, "v1");
   }
 
- protected:
-  virtual CacheInterface* Cache() = 0;
-  virtual void SanityCheck() {
-  }
-
-  // Returns a read-only view of the callback for helping determine whether
-  // it was called, and with what state.
-  const Callback& callback() const { return callback_; }
-
-  // Clears out the callback to its initial state so it can be
-  // passed into a CacheInterface method.
-  Callback* ResetCallback() {
-    callback_.Reset();
-    callback_.set_invalid_value(invalid_value_);
-    return &callback_;
+  // Populates the cache with keys in pattern n0 n1 n2 n3...
+  // and values in pattern v0 v1 v2 v3...
+  void PopulateCache(int num) {
+    for (int i = 0; i < num; ++i) {
+      CheckPut(StringPrintf("n%d", i), StringPrintf("v%d", i));
+    }
   }
 
   void set_invalid_value(const char* v) { invalid_value_ = v; }
 
+  // Initiate a cache Get, and return the Callback* which can be
+  // passed to WaitAndCheck or WaitAndCheckNotFound.
+  Callback* InitiateGet(const GoogleString& key) {
+    return InitiateGet(Cache(), key);
+  }
+
+  Callback* InitiateGet(CacheInterface* cache, const GoogleString& key) {
+    {
+      ScopedMutex lock(mutex_.get());
+      ++outstanding_fetches_;
+    }
+    Callback* callback = AddCallback();
+    cache->Get(key, callback);
+    return callback;
+  }
+
+  // Sets the mutex used to protect outstanding_fetches_.
+  void set_mutex(AbstractMutex* mutex) { mutex_.reset(mutex); }
+
+  // Returns the number of outstanding Get requests.  The return value
+  // makes sense only if the cache system is quiescent.
+  int outstanding_fetches() {
+    ScopedMutex lock(mutex_.get());
+    return outstanding_fetches_;
+  }
+
  private:
+  // Called from Callback::Done to track outstanding fetches -- for
+  // callbacks created with NewCallback().
+  //
+  // TODO(jmarantz): eliminate the default ctor for Callback and change
+  // all cache tests to use NewCallback() to remove that special case.
+  void GetDone() {
+    ScopedMutex lock(mutex_.get());
+    --outstanding_fetches_;
+  }
+
   const char* invalid_value_;  // may be NULL.
-  Callback callback_;
   std::vector<Callback*> callbacks_;
+  scoped_ptr<AbstractMutex> mutex_;
+  int outstanding_fetches_;  // protected by mutex_
 };
 
 }  // namespace net_instaweb

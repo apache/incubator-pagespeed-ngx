@@ -1571,6 +1571,12 @@ bool RewriteDriver::MayRewriteUrl(const GoogleUrl& domain_url,
   return ret;
 }
 
+bool RewriteDriver::MatchesBaseUrl(const GoogleUrl& input_url) const {
+  return (decoded_base_url_.is_valid() &&
+          options()->IsAllowed(input_url.Spec()) &&
+          decoded_base_url_.Origin() == input_url.Origin());
+}
+
 ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   ResourcePtr resource;
   bool may_rewrite = false;
@@ -2116,16 +2122,15 @@ void RewriteDriver::SetBaseUrlForFetch(const StringPiece& url) {
   // Set the base url for the resource fetch.  This corresponds to where the
   // fetched resource resides (which might or might not be where the original
   // resource lived).
-  if (!decoded_base_url_.is_valid()) {
-    // TODO(jmaessen): we're re-constructing a GoogleUrl after having already
-    // done so (repeatedly over several calls) in DecodeOutputResource!  Gah!
-    // We at least assume that base_url_ is valid since it was checked when
-    // output_resource was created.
-    base_url_.Reset(url);
-    DCHECK(base_url_.is_valid());
-    SetDecodedUrlFromBase();
-    base_was_set_ = false;
-  }
+
+  // TODO(jmaessen): we're re-constructing a GoogleUrl after having already
+  // done so (repeatedly over several calls) in DecodeOutputResource!  Gah!
+  // We at least assume that base_url_ is valid since it was checked when
+  // output_resource was created.
+  base_url_.Reset(url);
+  DCHECK(base_url_.is_valid());
+  SetDecodedUrlFromBase();
+  base_was_set_ = false;
 }
 
 void RewriteDriver::RememberResource(const StringPiece& url,

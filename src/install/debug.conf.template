@@ -340,6 +340,14 @@ ModPagespeedAvoidRenamingIntrospectiveJavascript off
 #URL_ATTRIBUTE ModPagespeedUrlValuedAttribute custom b otherResource
 #URL_ATTRIBUTE ModPagespeedUrlValuedAttribute custom c hyperlink
 
+#ABSOLUTE_URLS # This is used for testing that we don't load resources from
+#ABSOLUTE_URLS # absolute urls during resource reconstruction unless they're for
+#ABSOLUTE_URLS # our own hostname.  While ModPagespeedDomain should no longer
+#ABSOLUTE_URLS # have an effect on whether we load absolute urls, we need to
+#ABSOLUTE_URLS # include it to be sure we're failing because of the code under
+#ABSOLUTE_URLS # test and not because the domain lawyer is rejecting it.
+#ABSOLUTE_URLS ModPagespeedDomain http://example.com
+
 #XHEADER # Set the value of the X-Mod-Pagespeed header
 #XHEADER ModPagespeedXHeaderValue "UNSPECIFIED VERSION"
 
@@ -401,7 +409,7 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedCssOutlineMinBytes 2000
 #ALL_DIRECTIVES ModPagespeedDisableFilters strip_scripts
 #ALL_DIRECTIVES ModPagespeedDisallow bar
-#ALL_DIRECTIVES ModPagespeedDomain example.com
+#ALL_DIRECTIVES ModPagespeedDomain http://example.com
 #ALL_DIRECTIVES ModPagespeedDomainRewriteHyperlinks true
 #ALL_DIRECTIVES ModPagespeedEnableFilters extend_cache
 #ALL_DIRECTIVES ModPagespeedExperimentSpec "id=8;percent=10"

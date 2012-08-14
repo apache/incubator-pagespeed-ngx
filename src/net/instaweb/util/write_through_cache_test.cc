@@ -40,7 +40,7 @@ class WriteThroughCacheTest : public CacheTestBase {
   WriteThroughCache write_through_cache_;
 
   virtual CacheInterface* Cache() { return &write_through_cache_; }
-  virtual void SanityCheck() {
+  virtual void PostOpCleanup() {
     small_cache_.SanityCheck();
     big_cache_.SanityCheck();
   }
