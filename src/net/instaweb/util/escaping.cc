@@ -23,7 +23,10 @@
 namespace net_instaweb {
 
 // We escape backslash, double-quote, CR and LF while forming a string
-// from the code. This is /almost/ completely right: U+2028 and U+2029 are
+// from the code. Single quotes are escaped as well, if we don't know we're
+// explicitly double-quoting.
+//
+// This is /almost/ completely right: U+2028 and U+2029 are
 // line terminators as well (ECMA 262-5 --- 7.3, 7.8.4), so should really be
 // escaped, too, but we don't have the encoding here.
 void EscapeToJsStringLiteral(const StringPiece& original,
@@ -45,6 +48,13 @@ void EscapeToJsStringLiteral(const StringPiece& original,
         break;
       case '\n':
         (*escaped) += "\\n";
+        break;
+      case '\'':
+        if (!add_quotes) {
+          (*escaped) += "\\'";
+        } else {
+          (*escaped) += '\'';
+        }
         break;
       case '/':
         // Forward slashes are generally OK, but </script> is trouble

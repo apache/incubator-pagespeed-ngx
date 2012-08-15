@@ -63,6 +63,15 @@ TEST_F(EscapingTest, JsCloseScriptConservativeBehavior) {
                "Foo<\\/scripty>Bar", "Foo</scripty>Bar");
 }
 
+TEST_F(EscapingTest, JsSingleQuotes) {
+  GoogleString out_unquoted, out_quoted;
+  const char kIn[] = "foo'";
+  EscapeToJsStringLiteral(kIn, false, &out_unquoted);
+  EscapeToJsStringLiteral(kIn, true, &out_quoted);
+  EXPECT_STREQ("foo\\'", out_unquoted);
+  EXPECT_STREQ("\"foo'\"", out_quoted);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

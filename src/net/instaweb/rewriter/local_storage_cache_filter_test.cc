@@ -435,8 +435,8 @@ TEST_F(LocalStorageCacheTest, RepeatViewsWithOtherAttributes) {
                                      "\"", kTestDomain, kCuppaPngFilename, "\""
                                      ", \"alt=A cup of joe\""
                                      ", \"alt=A cup of joe\""
-                                     ", \"alt=A cup of joe's \\\"joe\\\"\""
-                                     ", \"alt=A cup of joe's \\\"joe\\\"\""
+                                     ", \"alt=A cup of joe\\'s \\\"joe\\\"\""
+                                     ", \"alt=A cup of joe\\'s \\\"joe\\\"\""
                                      ");</script>");
   TestLocalStorage("third_view",
                    css, InsertScriptBefore(scripted_css),
