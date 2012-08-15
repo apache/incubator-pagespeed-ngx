@@ -129,40 +129,42 @@ bool CssMinify::AbsolutifyUrls(Css::Stylesheet* stylesheet,
         }
       }
     }
-    Css::Declarations& decls = ruleset->mutable_declarations();
-    for (Css::Declarations::iterator decl_iter = decls.begin();
-         decl_iter != decls.end(); ++decl_iter) {
-      Css::Declaration* decl = *decl_iter;
-      if (decl->prop() == Css::Property::UNPARSEABLE) {
-        if (handle_unparseable_sections) {
-          StringPiece original_bytes = decl->bytes_in_original_buffer();
-          GoogleString rewritten_bytes;
-          StringWriter writer(&rewritten_bytes);
-          if (CssTagScanner::TransformUrls(original_bytes, &writer,
-                                           &transformer, handler)) {
-            result = true;
-            decl->set_bytes_in_original_buffer(rewritten_bytes);
+    if (ruleset->type() == Css::Ruleset::RULESET) {
+      Css::Declarations& decls = ruleset->mutable_declarations();
+      for (Css::Declarations::iterator decl_iter = decls.begin();
+           decl_iter != decls.end(); ++decl_iter) {
+        Css::Declaration* decl = *decl_iter;
+        if (decl->prop() == Css::Property::UNPARSEABLE) {
+          if (handle_unparseable_sections) {
+            StringPiece original_bytes = decl->bytes_in_original_buffer();
+            GoogleString rewritten_bytes;
+            StringWriter writer(&rewritten_bytes);
+            if (CssTagScanner::TransformUrls(original_bytes, &writer,
+                                             &transformer, handler)) {
+              result = true;
+              decl->set_bytes_in_original_buffer(rewritten_bytes);
+            }
           }
-        }
-      } else if (handle_parseable_sections) {
-        // [cribbed from css_image_rewriter.cc]
-        // Rewrite all URLs.
-        // Note: We must rewrite all URLs. Not just ones from declarations
-        // we expect to have URLs.
-        Css::Values* values = decl->mutable_values();
-        for (size_t value_index = 0; value_index < values->size();
-             ++value_index) {
-          Css::Value* value = values->at(value_index);
-          if (value->GetLexicalUnitType() == Css::Value::URI) {
-            result = true;
-            GoogleString in = UnicodeTextToUTF8(value->GetStringValue());
-            GoogleString out;
-            transformer.Transform(in, &out);
-            if (in != out) {
-              delete (*values)[value_index];
-              (*values)[value_index] =
-                  new Css::Value(Css::Value::URI,
-                                 UTF8ToUnicodeText(out.data(), out.size()));
+        } else if (handle_parseable_sections) {
+          // [cribbed from css_image_rewriter.cc]
+          // Rewrite all URLs.
+          // Note: We must rewrite all URLs. Not just ones from declarations
+          // we expect to have URLs.
+          Css::Values* values = decl->mutable_values();
+          for (size_t value_index = 0; value_index < values->size();
+               ++value_index) {
+            Css::Value* value = values->at(value_index);
+            if (value->GetLexicalUnitType() == Css::Value::URI) {
+              result = true;
+              GoogleString in = UnicodeTextToUTF8(value->GetStringValue());
+              GoogleString out;
+              transformer.Transform(in, &out);
+              if (in != out) {
+                delete (*values)[value_index];
+                (*values)[value_index] =
+                    new Css::Value(Css::Value::URI,
+                                   UTF8ToUnicodeText(out.data(), out.size()));
+              }
             }
           }
         }
