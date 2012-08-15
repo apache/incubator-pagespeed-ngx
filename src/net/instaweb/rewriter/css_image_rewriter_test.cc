@@ -847,6 +847,27 @@ TEST_F(CssImageRewriterTest, FetchRewriteFailure) {
   EXPECT_STREQ(css_after, content);
 }
 
+TEST_F(CssImageRewriterTest, DummyRuleset) {
+  // Simplified version of CacheExtendsImages, which doesn't have many copies of
+  // the same URL.
+  SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 100);
+
+  static const char css_before[] =
+      "@font-face { font-family: 'Robotnik'; font-style: normal }\n"
+      "body {\n"
+      "  background-image: url(foo.png);\n"
+      "}\n"
+      "@to-infinity and beyond;\n";
+  const GoogleString css_after =
+      StrCat("@font-face { font-family: 'Robotnik'; font-style: normal }"
+             "body{background-image:url(",
+             Encode(kTestDomain, "ce", "0", "foo.png", "png"),
+             ")}@to-infinity and beyond;");
+
+  ValidateRewrite("cache_extends_images", css_before, css_after,
+                  kExpectSuccess | kNoClearFetcher);
+}
+
 class CssRecompressImagesInStyleAttributes : public ResourceManagerTestBase {
  protected:
   CssRecompressImagesInStyleAttributes()

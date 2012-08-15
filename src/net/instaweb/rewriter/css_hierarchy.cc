@@ -215,8 +215,7 @@ bool CssHierarchy::Parse() {
            iter != rulesets.end(); ) {
         Css::Ruleset* ruleset = *iter;
         StringVector ruleset_media;
-        if (ruleset->type() == Css::Ruleset::RULESET &&
-            DetermineRulesetMedia(ruleset->media(), &ruleset_media)) {
+        if (DetermineRulesetMedia(ruleset->media(), &ruleset_media)) {
           ruleset->mutable_media().clear();
           css_util::ConvertStringVectorToUnicodeVector(
               ruleset_media, &ruleset->mutable_media());

@@ -716,7 +716,7 @@ class Ruleset {
   // Takes ownership of selectors and declarations.
   Ruleset(Selectors* selectors, const std::vector<UnicodeText>& media,
           Declarations* declarations)
-      : type_(RULESET), selectors_(selectors), media_(media),
+      : type_(RULESET), media_(media), selectors_(selectors),
         declarations_(declarations) { }
   // Dummy Ruleset. Used for unparsed statements, for example unknown at-rules.
   explicit Ruleset(UnparsedRegion* unparsed_region)
@@ -726,6 +726,15 @@ class Ruleset {
   // Is this actually a Ruleset or some sort of at-rule? For historical reasons
   // at-rules are also stored as Rulesets.
   Type type() const { return type_; }
+
+  // All type()s can have media.
+  const std::vector<UnicodeText>& media() const { return media_; }
+  const UnicodeText& medium(int i) const { return media_.at(i); }
+  std::vector<UnicodeText>& mutable_media() { return media_; }
+  // set_media copies input media.
+  void set_media(const std::vector<UnicodeText>& media) {
+    media_.assign(media.begin(), media.end());
+  }
 
   // NOTE: Only call these getters if you know that type() == RULESET.
   // type() always == RULESET if Css::Parser::preservation_mode() is false,
@@ -737,14 +746,6 @@ class Ruleset {
   const Selector& selector(int i) const {
     CHECK_EQ(RULESET, type());
     return *selectors_->at(i);
-  }
-  const std::vector<UnicodeText>& media() const {
-    CHECK_EQ(RULESET, type());
-    return media_;
-  }
-  const UnicodeText& medium(int i) const {
-    CHECK_EQ(RULESET, type());
-    return media_.at(i);
   }
   const Declarations& declarations() const {
     CHECK_EQ(RULESET, type());
@@ -759,20 +760,11 @@ class Ruleset {
     CHECK_EQ(RULESET, type());
     return *selectors_;
   }
-  std::vector<UnicodeText>& mutable_media() {
-    CHECK_EQ(RULESET, type());
-    return media_;
-  }
   Declarations& mutable_declarations() {
     CHECK_EQ(RULESET, type());
     return *declarations_;
   }
 
-  // set_media copies input media.
-  void set_media(const std::vector<UnicodeText>& media) {
-    CHECK_EQ(RULESET, type());
-    media_.assign(media.begin(), media.end());
-  }
   // set_selectors and _declarations take ownership of parameters.
   void set_selectors(Selectors* selectors) {
     CHECK_EQ(RULESET, type());
@@ -797,10 +789,14 @@ class Ruleset {
  private:
   Type type_;
 
-  scoped_ptr<Selectors> selectors_;
+  // All types have media_.
   std::vector<UnicodeText> media_;
+
+  // Only defined for type_ == RULESET.
+  scoped_ptr<Selectors> selectors_;
   scoped_ptr<Declarations> declarations_;
 
+  // Only defined for type_ == UNPARSED_REGION.
   scoped_ptr<UnparsedRegion> unparsed_region_;
 
   DISALLOW_COPY_AND_ASSIGN(Ruleset);

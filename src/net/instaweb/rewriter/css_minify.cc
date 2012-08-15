@@ -271,9 +271,7 @@ void CssMinify::JoinMinifyIter<Css::Rulesets::const_iterator>(
     Css::Rulesets::const_iterator first = iter;
     MinifyRulesetMediaStart(**first);
     MinifyRulesetIgnoringMedia(**first);
-    for (++iter; iter != end && (*first)->type() == Css::Ruleset::RULESET
-             && (*iter)->type() == Css::Ruleset::RULESET
-             && (*first)->media() == (*iter)->media(); ++iter) {
+    for (++iter; iter != end && (*first)->media() == (*iter)->media(); ++iter) {
       Write(sep);
       MinifyRulesetIgnoringMedia(**iter);
     }
@@ -344,7 +342,7 @@ void CssMinify::MinifyRulesetIgnoringMedia(const Css::Ruleset& ruleset) {
 }
 
 void CssMinify::MinifyRulesetMediaStart(const Css::Ruleset& ruleset) {
-  if (ruleset.type() == Css::Ruleset::RULESET && !ruleset.media().empty()) {
+  if (!ruleset.media().empty()) {
     Write("@media ");
     JoinMediaMinify(ruleset.media(), ",");
     Write("{");
@@ -352,7 +350,7 @@ void CssMinify::MinifyRulesetMediaStart(const Css::Ruleset& ruleset) {
 }
 
 void CssMinify::MinifyRulesetMediaEnd(const Css::Ruleset& ruleset) {
-  if (ruleset.type() == Css::Ruleset::RULESET && !ruleset.media().empty()) {
+  if (!ruleset.media().empty()) {
     Write("}");
   }
 }

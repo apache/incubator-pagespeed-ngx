@@ -287,19 +287,19 @@ string UnparsedRegion::ToString() const {
 
 string Ruleset::ToString() const {
   string result;
+  if (!media().empty())
+    result += StringPrintf("@media %s { ",
+                           JoinMediaStrings(media(), ",").c_str());
   switch (type()) {
     case RULESET:
-      if (!media().empty())
-        result += StringPrintf("@media %s { ",
-                               JoinMediaStrings(media(), ",").c_str());
       result += selectors().ToString() + " {" + declarations().ToString() + "}";
-      if (!media().empty())
-        result += " }";
       break;
     case UNPARSED_REGION:
       result = unparsed_region()->ToString();
       break;
   }
+  if (!media().empty())
+    result += " }";
   return result;
 }
 

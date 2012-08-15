@@ -2016,6 +2016,7 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
     SkipSpace();
     while (in_ < end_ && *in_ != '}') {
       const char* oldin = in_;
+      // TODO(sligocki): Do we need to be able to parse at-rules here.
       scoped_ptr<Ruleset> ruleset(ParseRuleset());
       if (!ruleset.get() && in_ == oldin) {
         ReportParsingError(kSelectorError, StringPrintf(
