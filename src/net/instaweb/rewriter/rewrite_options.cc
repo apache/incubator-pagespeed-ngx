@@ -666,14 +666,14 @@ RewriteOptions::RewriteOptions()
   add_option(false, &enable_blink_html_change_detection_, "ebhcd",
              kEnableBlinkHtmlChangeDetection);
   add_option(-1, &override_caching_ttl_ms_, "octm", kOverrideCachingTtlMs);
+  add_option(5 * Timer::kSecondMs, &blocking_fetch_timeout_ms_, "bfto",
+             RewriteOptions::kFetcherTimeOutMs);
   // Sort all_options_ on enum.
   SortOptions();
   // Do not call add_option with OptionEnum fourth argument after this.
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
              &metadata_cache_staleness_threshold_ms_, "mcst");
   add_option(false, &apply_blink_if_no_families_, "abnf");
-  add_option(5 * Timer::kSecondMs, &blocking_fetch_timeout_ms_, "bfto",
-             RewriteOptions::kFetcherTimeOutMs);
   add_option(true, &enable_blink_debug_dashboard_, "ebdd");
   add_option(kDefaultOverrideBlinkCacheTimeMs, &override_blink_cache_time_ms_,
              "obctm");

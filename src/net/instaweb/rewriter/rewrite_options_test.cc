@@ -540,6 +540,17 @@ TEST_F(RewriteOptionsTest, SetDefaultRewriteLevel) {
 void RewriteOptionsTest::TestSetOptionFromName(bool test_log_variant) {
   NullMessageHandler handler;
 
+  // TODO(sriharis):  Add tests for all Options here, like in
+  // LookupOptionEnumTest.
+
+  TestNameSet(RewriteOptions::kOptionOk,
+              test_log_variant,
+              "FetcherTimeOutMs",
+              "1024",
+              &handler);
+  // Default for this is 5 * Timer::kSecondMs.
+  EXPECT_EQ(1024, options_.blocking_fetch_timeout_ms());
+
   TestNameSet(RewriteOptions::kOptionOk,
               test_log_variant,
               "CssInlineMaxBytes",
