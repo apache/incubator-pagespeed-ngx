@@ -908,6 +908,7 @@ void RewriteDriver::AddPreRenderFilters() {
   }
   if (rewrite_options->Enabled(RewriteOptions::kExtendCacheCss) ||
       rewrite_options->Enabled(RewriteOptions::kExtendCacheImages) ||
+      rewrite_options->Enabled(RewriteOptions::kExtendCachePdfs) ||
       rewrite_options->Enabled(RewriteOptions::kExtendCacheScripts)) {
     // Extend the cache lifetime of resources.
     EnableRewriteFilter(RewriteOptions::kCacheExtenderId);
@@ -2186,6 +2187,10 @@ bool RewriteDriver::MayCacheExtendCss() const {
 
 bool RewriteDriver::MayCacheExtendImages() const {
   return options()->Enabled(RewriteOptions::kExtendCacheImages);
+}
+
+bool RewriteDriver::MayCacheExtendPdfs() const {
+  return options()->Enabled(RewriteOptions::kExtendCachePdfs);
 }
 
 bool RewriteDriver::MayCacheExtendScripts() const {

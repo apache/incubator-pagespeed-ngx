@@ -14,6 +14,7 @@
 #                       OPT_FURIOUS_GA_TEST, OPT_FURIOUS_NO_GA_TEST,
 #                       OPT_URL_ATTRIBUTES_TEST, OPT_XHEADER_TEST,
 #                       OPT_DOMAIN_HYPERLINKS_TEST, OPT_ABSOLUTE_URLS_TEST,
+#                       OPT_PER_VHOST_STATS_TEST,
 #                       OPT_DOMAIN_RESOURCE_TAGS_TEST, OPT_ALL_DIRECTIVES_TEST)
 #  apache_debug_restart
 #  apache_debug_stop
@@ -111,7 +112,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	@echo '***' System-test with warm cache
 	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
 	                                          $(APACHE_HTTPS_SERVER)
-	@echo '***' System-test With statistics off
+	@echo '***' System-test with statistics off
 	mv $(APACHE_DEBUG_PAGESPEED_CONF) $(APACHE_DEBUG_PAGESPEED_CONF).save
 	sed -e "s/# ModPagespeedStatistics off/ModPagespeedStatistics off/" \
 		< $(APACHE_DEBUG_PAGESPEED_CONF).save \

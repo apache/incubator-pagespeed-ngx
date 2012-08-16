@@ -285,11 +285,6 @@ $WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.xhtml\
 check [ $(grep -c "\&amp;" $WGET_OUTPUT) = 0 ]
 check [ $(grep -c '//<\!\[CDATA\[' $WGET_OUTPUT) = 1 ]
 
-echo TEST: ?ModPagespeed=noscript inserts canonical href link
-$WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.html\
-?ModPagespeed=noscript
-check [ $(grep -c 'link rel=\"canonical\" href' $WGET_OUTPUT) = 1 ]
-
 echo "TEST: flush_subresources rewriter is not applied"
 URL="$TEST_ROOT/flush_subresources.html?\
 ModPagespeedFilters=flush_subresources,extend_cache_css,\

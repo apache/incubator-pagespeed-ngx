@@ -1065,9 +1065,9 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   EXPECT_EQ("Experiment: 1", options_.ToExperimentString());
   options_.SetFuriousState(7);
   // This should be all non-dangerous filters.
-  EXPECT_EQ("Experiment: 7; ab,ah,ai,cw,cc,ch,jc,gp,jp,jw,mc,pj,db,di,ea,ec,ei,"
-            "es,fc,if,fs,hn,hw,ci,ii,il,ji,idp,ig,id,js,tu,ls,ga,cj,cm,co,jo,"
-            "pv,rj,rp,rw,rc,rq,ri,rm,cf,rd,jm,cs,cu,is,cp,md,"
+  EXPECT_EQ("Experiment: 7; ab,ah,ai,cw,cc,ch,jc,gp,jp,jw,mc,pj,db,di,"
+            "ea,ec,ei,ep,es,fc,if,fs,hn,hw,ci,ii,il,ji,idp,ig,id,js,tu,ls,"
+            "ga,cj,cm,co,jo,pv,rj,rp,rw,rc,rq,ri,rm,cf,rd,jm,cs,cu,is,cp,md,"
             "css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 7", options_.ToExperimentString());

@@ -120,6 +120,7 @@ TEST_F(RewriteQueryTest, OnWithDefaultFiltersQuery) {
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->enabled());
   CheckExtendCache(options, true);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kExtendCachePdfs));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteCss));
@@ -131,6 +132,7 @@ TEST_F(RewriteQueryTest, OnWithDefaultFiltersHeaders) {
   ASSERT_TRUE(options != NULL);
   EXPECT_TRUE(options->enabled());
   CheckExtendCache(options, true);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kExtendCachePdfs));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRewriteCss));
@@ -144,6 +146,7 @@ TEST_F(RewriteQueryTest, SetFiltersQuery) {
   EXPECT_TRUE(options->enabled());
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRemoveQuotes));
   CheckExtendCache(options, false);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kExtendCachePdfs));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteCss));
@@ -177,6 +180,7 @@ TEST_F(RewriteQueryTest, SetFiltersHeaders) {
   EXPECT_TRUE(options->enabled());
   EXPECT_TRUE(options->Enabled(RewriteOptions::kRemoveQuotes));
   CheckExtendCache(options, false);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kExtendCachePdfs));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kResizeImages));
   EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteCss));

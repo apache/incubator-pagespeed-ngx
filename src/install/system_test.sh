@@ -483,6 +483,11 @@ run_wget_with_args $URL
 check fgrep -q "'Hello'" $OUTDIR/hello.js.pagespeed.jm.0.js
 check fgrep -q "no-cache" $WGET_OUTPUT
 
+echo TEST: ?ModPagespeed=noscript inserts canonical href link
+check egrep -q \
+  "link rel=\"canonical\" href=\"$EXAMPLE_ROOT/defer_javascript.html\"" <(
+  $WGET_DUMP $EXAMPLE_ROOT/defer_javascript.html?ModPagespeed=noscript)
+
 # Checks that defer_javascript injects 'pagespeed.deferJs' from defer_js.js,
 # but strips the comments.
 test_filter defer_javascript optimize mode
@@ -491,6 +496,7 @@ check run_wget_with_args $URL
 check grep -q pagespeed.deferJs $FETCHED
 check grep -q text/psajs $FETCHED
 check_not grep '/\*' $FETCHED
+check grep -q "ModPagespeed=noscript" $FETCHED
 
 # Checks that defer_javascript,debug injects 'pagespeed.deferJs' from
 # defer_js.js, but retains the comments.
@@ -502,6 +508,7 @@ check run_wget_with_args "$URL"
 check grep -q pagespeed.deferJs $FETCHED
 check grep -q text/psajs $FETCHED
 check grep -q '/\*' $FETCHED
+check grep -q "ModPagespeed=noscript" $FETCHED
 
 # Checks that lazyload_images injects compiled javascript from
 # lazyload_images.js.
@@ -510,6 +517,7 @@ echo run_wget_with_args $URL
 check run_wget_with_args $URL
 check grep -q pagespeed.lazyLoad $FETCHED
 check_not grep '/\*' $FETCHED
+check grep -q "ModPagespeed=noscript" $FETCHED
 
 # Checks that lazyload_images,debug injects non compiled javascript from
 # lazyload_images.js
@@ -520,6 +528,7 @@ FETCHED=$OUTDIR/$FILE
 check run_wget_with_args "$URL"
 check grep -q pagespeed.lazyLoad $FETCHED
 check grep -q '/\*' $FETCHED
+check grep -q "ModPagespeed=noscript" $FETCHED
 
 # Checks that inline_preview_images injects compiled javascript
 test_filter inline_preview_images optimize mode
@@ -555,6 +564,7 @@ check grep -q "yellow {background-color: yellow" $FETCHED
 check grep -q "<img src=\"data:image/png;base64" $FETCHED
 check grep -q "<img .* alt=\"A cup of joe\"" $FETCHED
 check_not grep -q "/\*" $FETCHED
+check grep -q "ModPagespeed=noscript" $FETCHED
 
 # Checks that local_storage_cache,debug injects debug javascript from
 # local_storage_cache.js, adds the pagespeed_lsc_ attributes, inlines the data
@@ -571,6 +581,7 @@ check grep -q "yellow {background-color: yellow" $FETCHED
 check grep -q "<img src=\"data:image/png;base64" $FETCHED
 check grep -q "<img .* alt=\"A cup of joe\"" $FETCHED
 check grep -q "/\*" $FETCHED
+check grep -q "ModPagespeed=noscript" $FETCHED
 
 # Checks that local_storage_cache doesn't send the inlined data for a resource
 # whose hash is in the magic cookie. First get the cookies from prior runs.
@@ -634,10 +645,29 @@ check run_wget_with_args $URL
 check grep -q @import.url $FETCHED
 check_not grep "yellow.background-color:" $FETCHED
 
-# Ensure an EVEN number of tests because later tests depend on the value
-# of $filter_spec_method and it flips between 'query_params' and 'headers'.
-test_filter flatten_css_imports,rewrite_css medium limit
+# Cache extend PDFs.
+test_filter extend_cache_pdfs PDF cache extension
+WGET_EC="$WGET_DUMP $WGET_ARGS"
+
+echo TEST: Html is rewritten with cache-extended PDFs.
+fetch_until $URL 'fgrep -c .pagespeed.' 3
+
+check grep 'a href="http://.*pagespeed.*\.pdf' <($WGET_EC $URL)
+check grep 'embed src="http://.*pagespeed.*\.pdf' <($WGET_EC $URL)
+check fgrep '<a href="example.notpdf">' <($WGET_EC $URL)
+check grep 'a href="http://.*pagespeed.*\.pdf?a=b' <($WGET_EC $URL)
+
+echo TEST: Cache-extended PDFs load and have the right mime type.
+PDF_CE_URL="$($WGET_EC $URL | \
+              grep -o 'http://.*pagespeed.[^\"]*\.pdf' | head -n 1)"
+echo Extracted cache-extended url $PDF_CE_URL
+check grep -a 'Content-Type: application/pdf' <($WGET_EC $PDF_CE_URL)
 
 # Cleanup
 rm -rf $OUTDIR
+
+# TODO(jefftk): Find out what test breaks without the next two lines and fix it.
+filter_spec_method="query_params"
+test_filter '' Null Filter
+
 echo "PASS."

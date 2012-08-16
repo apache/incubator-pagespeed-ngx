@@ -204,10 +204,10 @@
     #
     # ModPagespeedStatisticsLogging on
     #
-    # The base filename for the files used to store logged statistics.
+    # The base filename to use to store logged statistics.
     # Required if logging is enabled.
     #
-    # ModPagespeedStatisticsLoggingFile ...
+    # ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
     #
     # The interval at which statistics will be logged, in milliseconds.
     # Optional; default is 3000.

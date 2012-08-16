@@ -28,6 +28,7 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
@@ -47,6 +48,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+
 
 namespace net_instaweb {
 
@@ -969,5 +971,6 @@ TEST_F(JsCombineFilterTest, TestMaxCombinedJsSize) {
   VerifyUse(scripts[4], kJsUrl3);
   VerifyUse(scripts[5], kJsUrl4);
 }
+
 
 }  // namespace net_instaweb

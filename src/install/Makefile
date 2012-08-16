@@ -72,8 +72,11 @@ MODS_ENABLED_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-enabled ]; then \
 MODS_AVAILABLE_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-available ]; then \
 	echo $(APACHE_ROOT)/mods-available; fi)
 
-# Determines should mod_pagespeed should write files
+# Determines where mod_pagespeed should write files.
 MOD_PAGESPEED_CACHE = /var/cache/mod_pagespeed
+
+# Determines where statistics should be logged.
+MOD_PAGESPEED_STATS_LOG = /var/log/mod_pagespeed_stats.log
 
 # The username used to run apache.  This is needed to create the directory
 # used to store mod_pagespeed files and cache data.
@@ -338,6 +341,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s!@@APACHE_MODULES@@!$(APACHE_MODULES)!g" \
 	    -e "s!@@APACHE_SECONDARY_PORT@@!$(APACHE_SECONDARY_PORT)!g" \
 	    -e "s!@@MOD_PAGESPEED_CACHE@@!$(MOD_PAGESPEED_CACHE)!g" \
+	    -e "s!@@MOD_PAGESPEED_STATS_LOG@@!$(MOD_PAGESPEED_STATS_LOG)!g" \
 	    -e "s@# ModPagespeedSlurpDirectory ...@$(APACHE_SLURP_DIR_COMMAND)@g" \
 	    -e "s@# ModPagespeedSlurpReadOnly on@$(APACHE_SLURP_READ_ONLY_COMMAND)@g" \
 	    -e "s|@@TMP_SLURP_DIR@@|$(TMP_SLURP_DIR)|g" \
@@ -465,8 +469,8 @@ apache_install_conf :
 	    $(OPT_DOMAIN_RESOURCE_TAGS_TEST) \
 	    $(OPT_ALL_DIRECTIVES_TEST) \
 	    $(OPT_URL_ATTRIBUTE_TEST) \
-	    $(OPT_PER_VHOST_STATS_TEST) \
-	    $(OPT_ABSOLUTE_URLS_TEST)
+	    $(OPT_ABSOLUTE_URLS_TEST) \
+	    $(OPT_PER_VHOST_STATS_TEST)
 	$(MAKE) install_except_module \
 	    $(OPT_REWRITE_TEST) \
 	    $(OPT_PROXY_TEST) \

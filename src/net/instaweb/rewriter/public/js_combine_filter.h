@@ -85,7 +85,9 @@ class JsCombineFilter : public RewriteFilter {
   virtual void IEDirective(HtmlIEDirectiveNode* directive);
   virtual const char* Name() const { return "JsCombine"; }
   virtual RewriteContext* MakeRewriteContext();
-  virtual const UrlSegmentEncoder* encoder() const { return &encoder_; }
+  virtual const UrlSegmentEncoder* encoder() const {
+    return &encoder_;
+  }
 
  private:
   class JsCombiner;

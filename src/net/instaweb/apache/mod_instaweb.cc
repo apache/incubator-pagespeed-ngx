@@ -440,13 +440,16 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   // Determine the absolute URL for this request.
   const char* absolute_url = InstawebContext::MakeRequestUrl(request);
+  // The final URL.  This is same as absolute_url but with ModPagespeed* query
+  // params, if any, stripped.
+  GoogleString final_url;
 
   scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
   {
     // TODO(sligocki): Move inside PSA.
     //
     // TODO(mmohabey): Add a hook which strips off the ModPagespeed* query
-    // params before content generation.
+    // (instead of stripping them here) params before content generation.
     GoogleUrl gurl(absolute_url);
     ApacheRequestToRequestHeaders(*request, request_headers.get());
     scoped_ptr<RewriteOptions> query_options;
@@ -466,8 +469,17 @@ InstawebContext* build_context_for_request(request_rec* request) {
         manager->ComputeSignature(merged_options);
         custom_options.reset(merged_options);
         options = merged_options;
+        if (gurl.is_valid()) {
+          // Set final url to gurl which has ModPagespeed* query params
+          // stripped.
+          final_url = gurl.Spec().as_string();
+        }
       }
     }
+  }
+
+  if (final_url.empty()) {
+    final_url = absolute_url;
   }
 
   // TODO(sligocki): Move inside PSA.
@@ -481,14 +493,14 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   // TODO(sligocki): Move inside PSA.
   // Do ModPagespeedDisallow statements restrict us from rewriting this URL?
-  if (!options->IsAllowed(absolute_url)) {
+  if (!options->IsAllowed(final_url)) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Request not rewritten because: ModPagespeedDisallow");
     return NULL;
   }
 
   InstawebContext* context = new InstawebContext(
-      request, request_headers.release(), *content_type, manager, absolute_url,
+      request, request_headers.release(), *content_type, manager, final_url,
       use_custom_options, *options);
 
   // TODO(sligocki): Move inside PSA.

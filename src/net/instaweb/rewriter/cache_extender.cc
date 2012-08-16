@@ -146,6 +146,14 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
       may_load = driver_->MayCacheExtendScripts();
       break;
     default:
+      // Does the url in the attribute end in .pdf, ignoring query params?
+      if (href != NULL && href->DecodedValueOrNull() != NULL) {
+        GoogleUrl url(driver_->base_url(), href->DecodedValueOrNull());
+        if (url.is_valid() && StringCaseEndsWith(
+                url.LeafSansQuery(), kContentTypePdf.file_extension())) {
+          may_load = driver_->MayCacheExtendPdfs();
+        }
+      }
       break;
   }
   if (!may_load) {
@@ -225,6 +233,8 @@ RewriteResult CacheExtender::RewriteLoadedResource(
     // if we want to cache extend them.
     const ContentType* input_type = input_resource->type();
     if (input_type->IsImage() ||  // images get sniffed only to other images
+        (input_type->type() == ContentType::kPdf &&
+         driver_->MayCacheExtendPdfs()) ||  // Don't accept PDFs by default.
         input_type->type() == ContentType::kCss ||  // CSS + JS left as-is.
         input_type->type() == ContentType::kJavascript) {
       output_type = input_type;

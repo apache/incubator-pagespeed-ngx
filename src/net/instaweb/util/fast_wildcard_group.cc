@@ -171,9 +171,10 @@ void FastWildcardGroup::CompileNonTrivial() const {
     }
   }
   // Finally, after all the metadata is initialized, make rolling_hash_length
-  // visible to the world.  This has release semantics, meaning that all
-  // previous writes will be visible to anyone who reads this value with acquire
-  // semantics.
+  // visible to the world.  This has release semantics, meaning that if another
+  // thread reads rolling_hash_length_ (with acquire semantics) and gets the
+  // value we set here, it is guaranteed to see all the preceding writes we did
+  // to the other compilation metadata.
   rolling_hash_length_.set_value(rolling_hash_length);
 }
 

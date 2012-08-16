@@ -53,6 +53,7 @@
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 #include "net/instaweb/util/public/writer.h"
 
+
 namespace net_instaweb {
 
 class MessageHandler;
@@ -172,6 +173,7 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
 
   DISALLOW_COPY_AND_ASSIGN(JsCombiner);
 };
+
 
 class JsCombineFilter::Context : public RewriteContext {
  public:
@@ -389,7 +391,6 @@ class JsCombineFilter::Context : public RewriteContext {
   JsCombineFilter::JsCombiner combiner_;
   JsCombineFilter* filter_;
   bool fresh_combination_;
-  UrlMultipartEncoder encoder_;
   // Each of the elements for the resources being combined are added to this
   // vector, but those elements will be free'd after the end of the document,
   // though this context might survive past that (as it's an asynchronous

@@ -2579,6 +2579,7 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
   ASSERT_FALSE(options()->Enabled(RewriteOptions::kExtendCacheCss));
   ASSERT_FALSE(options()->Enabled(RewriteOptions::kExtendCacheImages));
   ASSERT_FALSE(options()->Enabled(RewriteOptions::kExtendCacheScripts));
+  ASSERT_FALSE(options()->Enabled(RewriteOptions::kExtendCachePdfs));
   ASSERT_EQ(RewriteOptions::kPassThrough, options()->level());
 
   // Because cache-extension was turned off, the image in the CSS file
@@ -2593,6 +2594,7 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
   custom_options->EnableFilter(RewriteOptions::kExtendCacheCss);
   custom_options->EnableFilter(RewriteOptions::kExtendCacheImages);
   custom_options->EnableFilter(RewriteOptions::kExtendCacheScripts);
+  custom_options->EnableFilter(RewriteOptions::kExtendCachePdfs);
   custom_options->set_cache_invalidation_timestamp(mock_timer()->NowMs());
   mock_timer()->AdvanceUs(Timer::kMsUs);
 

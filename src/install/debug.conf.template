@@ -463,7 +463,7 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedSupportNoScriptEnabled true
 #ALL_DIRECTIVES ModPagespeedStatistics true
 #ALL_DIRECTIVES ModPagespeedStatisticsLogging true
-#ALL_DIRECTIVES ModPagespeedStatisticsLoggingFile "/usr/local/apache2/logs/mps-stats.log"
+#ALL_DIRECTIVES ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingIntervalMs 3000
 #ALL_DIRECTIVES ModPagespeedTestProxy off
 #ALL_DIRECTIVES ModPagespeedUrlPrefix "http://example.com/prefix/"

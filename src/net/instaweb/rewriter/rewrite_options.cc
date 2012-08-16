@@ -320,6 +320,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kExplicitCloseTags:               return "Explicit Close Tags";
     case kExtendCacheCss:                  return "Cache Extend Css";
     case kExtendCacheImages:               return "Cache Extend Images";
+    case kExtendCachePdfs:                 return "Cache Extend PDFs";
     case kExtendCacheScripts:              return "Cache Extend Scripts";
     case kFallbackRewriteCssUrls:          return "Fallback Rewrite Css Urls";
     case kFlattenCssImports:               return "Flatten CSS Imports";
@@ -397,6 +398,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kExplicitCloseTags:               return "xc";
     case kExtendCacheCss:                  return "ec";
     case kExtendCacheImages:               return "ei";
+    case kExtendCachePdfs:                 return "ep";
     case kExtendCacheScripts:              return "es";
     case kFallbackRewriteCssUrls:          return "fc";
     case kFlattenCssImports:               return kCssImportFlattenerId;
@@ -895,6 +897,7 @@ void RewriteOptions::EnableExtendCacheFilters() {
   EnableFilter(kExtendCacheCss);
   EnableFilter(kExtendCacheImages);
   EnableFilter(kExtendCacheScripts);
+  // Doesn't enable kExtendCachePdfs.
 }
 
 void RewriteOptions::DisableFilter(Filter filter) {

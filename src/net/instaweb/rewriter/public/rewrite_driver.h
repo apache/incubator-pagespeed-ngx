@@ -172,9 +172,11 @@ class RewriteDriver : public HtmlParse {
   // resources. This will replace any previous resource managers.
   void SetResourceManager(ResourceManager* resource_manager);
 
-  // Returns true if we may cache extend Css, Images or Scripts respectively.
+  // Returns true if we may cache extend Css, Images, PDFs, or Scripts
+  // respectively.
   bool MayCacheExtendCss() const;
   bool MayCacheExtendImages() const;
+  bool MayCacheExtendPdfs() const;
   bool MayCacheExtendScripts() const;
 
   void RememberResource(const StringPiece& url, const ResourcePtr& resource);

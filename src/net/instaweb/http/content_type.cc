@@ -40,6 +40,7 @@ const ContentType kTypes[] = {
   {"image/jpeg",                    ".jpg",  ContentType::kJpeg},
   {"application/x-shockwave-flash", ".swf",  ContentType::kSwf},
   {"image/webp",                    ".webp", ContentType::kWebp},
+  {"application/pdf",               ".pdf",  ContentType::kPdf},  // RFC 3778
 
   // Synonyms; Note that the canonical types are referenced by index
   // in the named references declared below.
@@ -70,6 +71,8 @@ const ContentType& kContentTypeGif = kTypes[8];
 const ContentType& kContentTypeJpeg = kTypes[9];
 const ContentType& kContentTypeSwf = kTypes[10];
 const ContentType& kContentTypeWebp = kTypes[11];
+
+const ContentType& kContentTypePdf = kTypes[12];
 
 int ContentType::MaxProducedExtensionLength() {
   return 4;  // .jpeg or .webp

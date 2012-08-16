@@ -42,6 +42,7 @@ struct ContentType {
     kJpeg,
     kSwf,
     kWebp,
+    kPdf,
     kOther,  // Used to specify a new local ContentType in one test file.
   };
 
@@ -92,6 +93,8 @@ extern const ContentType& kContentTypeGif;
 extern const ContentType& kContentTypeJpeg;
 extern const ContentType& kContentTypeSwf;
 extern const ContentType& kContentTypeWebp;
+// Pdf:
+extern const ContentType& kContentTypePdf;
 
 // Given a name (file or url), see if it has the canonical extension
 // corresponding to a particular content type.

@@ -1,0 +1,27 @@
+<html>
+  <head>
+    <title>extend_cache_pdfs example</title>
+  </head>
+  <body>
+    <p style="max-width:35em;">
+
+    mod_pagespeed will rewrite links to PDFs to include a content-hash.  PDFs
+    are identified by having extension ".pdf".  Note that this requires a
+    background asynchronous fetch of the PDF; therefore the page may not be
+    rewritten the first time.  If it isn't, wait a few seconds and reload.</p>
+
+    <ul>
+      <li>Standard link to a pdf, will be cache extended:
+         <a href="example.pdf">example.pdf</a></li>
+      <li>Embedded pdf, will also be cache extended:
+        <br>
+        <dd><embed src="example.pdf" width="150" height="100"></li>
+      <li>Link to a PDF with extension ".notpdf".  It won't be cache extended
+          because a ".pdf" extension is required:
+          <a href="example.notpdf">example.notpdf</a></li>
+      <li>Link to a PDF with a query parameter, will be cache extended:
+         <a href="example.pdf?a=b">example.pdf?a=b</a></li>
+
+    </dl>
+  </body>
+</html>

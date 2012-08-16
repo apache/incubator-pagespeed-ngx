@@ -51,6 +51,7 @@ struct FilterMap {
 "explicit_close_tags",               RewriteOptions::kExplicitCloseTags
 "extend_cache_css",                  RewriteOptions::kExtendCacheCss
 "extend_cache_images",               RewriteOptions::kExtendCacheImages
+"extend_cache_pdfs",                 RewriteOptions::kExtendCachePdfs
 "extend_cache_scripts",              RewriteOptions::kExtendCacheScripts
 "fallback_rewrite_css_urls",         RewriteOptions::kFallbackRewriteCssUrls
 "flatten_css_imports",               RewriteOptions::kFlattenCssImports

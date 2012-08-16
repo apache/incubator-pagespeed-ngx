@@ -75,6 +75,7 @@ class RewriteOptions {
     kExplicitCloseTags,
     kExtendCacheCss,
     kExtendCacheImages,
+    kExtendCachePdfs,
     kExtendCacheScripts,
     kFallbackRewriteCssUrls,
     kFlattenCssImports,
@@ -602,7 +603,8 @@ class RewriteOptions {
   // be enabled by the rewrite level and HtmlWriterFilter will be enabled.
   void ClearFilters();
 
-  // Enables all three extend_cache filters.
+  // Enables extend_cache_css, extend_cache_images, and extend_cache_scripts.
+  // Does not enable extend_cache_pdfs.
   void EnableExtendCacheFilters();
 
   bool Enabled(Filter filter) const;
