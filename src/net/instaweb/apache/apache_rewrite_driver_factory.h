@@ -110,11 +110,14 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   // Build global shared-memory statistics.  This is invoked if at least
   // one server context (global or VirtualHost) enables statistics.
-  Statistics* MakeGlobalSharedMemStatistics();
+  Statistics* MakeGlobalSharedMemStatistics(bool logging,
+                                            int64 logging_interval_ms,
+                                            const GoogleString& logging_file);
 
   // Creates and ::Initializes a shared memory statistics object.
   SharedMemStatistics* AllocateAndInitSharedMemStatistics(
-      const StringPiece& name);
+      const StringPiece& name, const bool logging,
+      const int64 logging_interval_ms, const GoogleString& logging_file);
 
   ApacheResourceManager* MakeApacheResourceManager(server_rec* server);
 

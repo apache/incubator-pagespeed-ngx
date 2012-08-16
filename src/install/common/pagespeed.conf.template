@@ -199,6 +199,21 @@
         SetHandler mod_pagespeed_statistics
     </Location>
 
+    # Uncomment the following line if you want to enable statistics logging.
+    # ModPagespeedStatistics is required to be enabled.
+    #
+    # ModPagespeedStatisticsLogging on
+    #
+    # The base filename for the files used to store logged statistics.
+    # Required if logging is enabled.
+    #
+    # ModPagespeedStatisticsLoggingFile ...
+    #
+    # The interval at which statistics will be logged, in milliseconds.
+    # Optional; default is 3000.
+    #
+    # ModPagespeedStatisticsLoggingIntervalMs 3000
+
     # Page /mod_pagespeed_message lets you view the latest messages from
     # mod_pagespeed, regardless of log-level in your httpd.conf
     # ModPagespeedMessageBufferSize is the maximum number of bytes you would

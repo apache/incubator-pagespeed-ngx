@@ -221,6 +221,9 @@ class RewriteOptions {
     kSlurpFlushLimit,
     kSlurpReadOnly,
     kStatisticsEnabled,
+    kStatisticsLoggingEnabled,
+    kStatisticsLoggingFile,
+    kStatisticsLoggingIntervalMs,
     kTestProxy,
     kUseSharedMemLocking,
 

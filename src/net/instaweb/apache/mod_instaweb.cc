@@ -181,6 +181,11 @@ const char kModPagespeedSlurpReadOnly[] = "ModPagespeedSlurpReadOnly";
 const char kModPagespeedSupportNoScriptEnabled[] =
     "ModPagespeedSupportNoScriptEnabled";
 const char kModPagespeedStatistics[] = "ModPagespeedStatistics";
+const char kModPagespeedStatisticsLogging[] = "ModPagespeedStatisticsLogging";
+const char kModPagespeedStatisticsLoggingFile[] =
+    "ModPagespeedStatisticsLoggingFile";
+const char kModPagespeedStatisticsLoggingIntervalMs[] =
+    "ModPagespeedStatisticsLoggingIntervalMs";
 const char kModPagespeedTestProxy[] = "ModPagespeedTestProxy";
 const char kModPagespeedUrlPrefix[] = "ModPagespeedUrlPrefix";
 const char kModPagespeedUrlValuedAttribute[] = "ModPagespeedUrlValuedAttribute";
@@ -190,10 +195,10 @@ const char kModPagespeedSpeedTracking[] = "ModPagespeedIncreaseSpeedTracking";
 const char kModPagespeedXHeaderValue[] = "ModPagespeedXHeaderValue";
 
 // The following two are deprecated due to spelling
-const char* kModPagespeedImgInlineMaxBytes = "ModPagespeedImgInlineMaxBytes";
-const char* kModPagespeedImgMaxRewritesAtOnce =
+const char kModPagespeedImgInlineMaxBytes[] = "ModPagespeedImgInlineMaxBytes";
+const char kModPagespeedImgMaxRewritesAtOnce[] =
     "ModPagespeedImgMaxRewritesAtOnce";
-const char* kModPagespeedBlockingRewriteKey =
+const char kModPagespeedBlockingRewriteKey[] =
     "ModPagespeedBlockingRewriteKey";
 
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
@@ -747,7 +752,10 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       // allows statistics to work if mod_pagespeed gets turned on via
       // .htaccess or query param.
       if ((statistics == NULL) && config->statistics_enabled()) {
-        statistics = factory->MakeGlobalSharedMemStatistics();
+        statistics = factory->MakeGlobalSharedMemStatistics(
+            config->statistics_logging_enabled(),
+            config->statistics_logging_interval_ms(),
+            config->statistics_logging_file());
       }
 
       // If config has statistics on and we have per-vhost statistics on
@@ -1301,6 +1309,12 @@ APACHE_CONFIG_DIR_OPTION(kModPagespeedClientDomainRewrite,
         "speed tracking"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedStatistics,
         "Whether to collect cross-process statistics."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedStatisticsLogging,
+        "Whether to log cross-process statistics if they're being collected."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedStatisticsLoggingFile,
+        "Where to log cross-process statistics if they're being collected."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedStatisticsLoggingIntervalMs,
+        "How often to log cross-process statistics, in milliseconds."),
 
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)

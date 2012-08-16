@@ -39,15 +39,9 @@ const int kMaxBuckets = 500;
 // Default upper bound of values in histogram. Can be reset by SetMaxValue().
 const double kMaxValue = 5000;
 const char kStatisticsObjName[] = "statistics";
-// Interval at which to update statistics dump, in milliseconds.
-// TODO(sarahdw,bvb): Pick a good update interval and make this configurable.
-const int64 kStatisticsDumpIntervalMs = 3000;
 // Variable name for the timestamp used to decide whether we should dump
 // statistics.
 const char kTimestampVariable[] = "timestamp_";
-// File in which to record statistics over time.
-// TODO(bvb,sarahdw) Un-hard-code this.
-const char kLogfileName[] = "/usr/local/apache2/logs/stats.log";
 // Variables to keep for the console. These are the same names used in
 // /mod_pagespeed_statistics: variable_names, Histogram Names.
 // IMPORTANT: Do not include kTimestampVariable here, or else DumpToWriter
@@ -144,13 +138,16 @@ AbstractMutex* SharedMemVariable::mutex() {
 }
 
 SharedMemConsoleStatisticsLogger::SharedMemConsoleStatisticsLogger(
-    SharedMemVariable* var, MessageHandler* message_handler, Statistics* stats,
-    FileSystem* file_system, Timer* timer)
+    const int64 update_interval_ms, const StringPiece& log_file,
+    SharedMemVariable* var, MessageHandler* message_handler,
+    Statistics* stats, FileSystem* file_system, Timer* timer)
       : last_dump_timestamp_(var),
         message_handler_(message_handler),
         statistics_(stats),
         file_system_(file_system),
-        timer_(timer) {
+        timer_(timer),
+        update_interval_ms_(update_interval_ms) {
+  log_file.CopyToString(&logfile_name_);
 }
 
 SharedMemConsoleStatisticsLogger::~SharedMemConsoleStatisticsLogger() {
@@ -165,12 +162,13 @@ void SharedMemConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
   // Avoid blocking if the dump is already happening in another thread/process.
   if (mutex->TryLock()) {
     if (current_time_ms >=
-        (last_dump_timestamp_->Get64LockHeld() + kStatisticsDumpIntervalMs)) {
+        (last_dump_timestamp_->Get64LockHeld() + update_interval_ms_)) {
       // It's possible we'll need to do some of the following here for
       // cross-process consistency:
       // - flush the logfile before unlock to force out buffered data
       FileSystem::OutputFile* statistics_log_file =
-          file_system_->OpenOutputFileForAppend(kLogfileName, message_handler_);
+          file_system_->OpenOutputFileForAppend(
+              logfile_name_.c_str(), message_handler_);
       if (statistics_log_file != NULL) {
         FileWriter statistics_writer(statistics_log_file);
         statistics_->DumpConsoleVarsToWriter(
@@ -178,8 +176,9 @@ void SharedMemConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
         statistics_writer.Flush(message_handler_);
         file_system_->Close(statistics_log_file, message_handler_);
       } else {
-        message_handler_->Message(
-            kError, "Error opening statistics log file %s.", kLogfileName);
+        message_handler_->Message(kError,
+                                  "Error opening statistics log file %s.",
+                                  logfile_name_.c_str());
       }
       // Update timestamp regardless of file write so we don't hit the same
       // error many times in a row.
@@ -498,25 +497,31 @@ double SharedMemHistogram::BucketWidth() {
   return bucket_width;
 }
 
-SharedMemStatistics::SharedMemStatistics(AbstractSharedMem* shm_runtime,
-    const GoogleString& filename_prefix, MessageHandler* message_handler,
-    FileSystem* file_system, Timer* timer)
+SharedMemStatistics::SharedMemStatistics(
+    int64 logging_interval_ms, const StringPiece& logging_file, bool logging,
+    const GoogleString& filename_prefix, AbstractSharedMem* shm_runtime,
+    MessageHandler* message_handler, FileSystem* file_system, Timer* timer)
     : shm_runtime_(shm_runtime), filename_prefix_(filename_prefix),
       frozen_(false), logger_(NULL) {
-  if (false) {
-    // TODO(bvb, sarahdw): Set up a config file option that determines whether
-    // or not to use the Logger. Note that Variables account for the possibility
-    // that the Logger is NULL, so this works fine.
-    // Only 1 Statistics object per process, so this shouldn't be too slow.
-    for (int i = 0, n = arraysize(kImportant); i < n; ++i) {
-      important_variables_.insert(kImportant[i]);
+  if (logging) {
+    if (logging_file.size() > 0) {
+      // Variables account for the possibility that the Logger is NULL.
+      // Only 1 Statistics object per process, so this shouldn't be too slow.
+      for (int i = 0, n = arraysize(kImportant); i < n; ++i) {
+        important_variables_.insert(kImportant[i]);
+      }
+      SharedMemVariable* timestampVar = AddVariable(kTimestampVariable);
+      logger_.reset(new SharedMemConsoleStatisticsLogger(
+          logging_interval_ms, logging_file, timestampVar,
+          message_handler, this, file_system, timer));
+      // The Logger needs a Variable which needs a Logger, hence the setter.
+      timestampVar->SetConsoleStatisticsLogger(logger_.get());
+      logger_->UpdateAndDumpIfRequired();
+    } else {
+      message_handler->Message(kError,
+          "Error: ModPagespeedStatisticsLoggingFile is required if "
+          "ModPagespeedStatisticsLogging is enabled.");
     }
-    SharedMemVariable* timestampVar = AddVariable(kTimestampVariable);
-    logger_.reset(new SharedMemConsoleStatisticsLogger(
-        timestampVar, message_handler, this, file_system, timer));
-    // The Logger needs a Variable which needs a Logger, hence the setter.
-    timestampVar->SetConsoleStatisticsLogger(logger_.get());
-    logger_->UpdateAndDumpIfRequired();
   }
 }
 

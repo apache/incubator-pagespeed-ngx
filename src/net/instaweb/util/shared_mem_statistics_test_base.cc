@@ -34,6 +34,7 @@ const char kVar1[] = "v1";
 const char kVar2[] = "num_flushes";
 const char kHist1[] = "H1";
 const char kHist2[] = "Html Time us Histogram";
+const char kStatsLogFile[] = "mod_pagespeed_stats.log";
 }  // namespace
 
 SharedMemStatisticsTestBase::SharedMemStatisticsTestBase(
@@ -47,8 +48,9 @@ void SharedMemStatisticsTestBase::SetUp() {
   timer_.reset(new MockTimer(1342567288560ULL));
   thread_system_.reset(ThreadSystem::CreateThreadSystem());
   file_system_.reset(new MemFileSystem(thread_system_.get(), timer_.get()));
-  stats_.reset(new SharedMemStatistics(shmem_runtime_.get(), kPrefix, &handler_,
-                                       file_system_.get(), timer_.get()));
+  stats_.reset(new SharedMemStatistics(
+      3000, kStatsLogFile, true, kPrefix, shmem_runtime_.get(),
+      &handler_, file_system_.get(), timer_.get()));
 }
 
 void SharedMemStatisticsTestBase::TearDown() {
@@ -76,7 +78,8 @@ bool SharedMemStatisticsTestBase::AddHistograms(SharedMemStatistics* stats) {
 
 SharedMemStatistics* SharedMemStatisticsTestBase::ChildInit() {
   scoped_ptr<SharedMemStatistics> stats(
-      new SharedMemStatistics(shmem_runtime_.get(), kPrefix, &handler_,
+      new SharedMemStatistics(3000, kStatsLogFile, true,
+                              kPrefix, shmem_runtime_.get(), &handler_,
                               file_system_.get(), timer_.get()));
   if (!AddVars(stats.get()) || !AddHistograms(stats.get())) {
     test_env_->ChildFailed();
@@ -242,14 +245,9 @@ void SharedMemStatisticsTestBase::TestAdd() {
   GoogleString dump;
   StringWriter writer(&dump);
   stats_->Dump(&writer, &handler_);
-  /*
-   * TODO(bvb, sarahdw): Enable logging for tests.
   GoogleString result = "timestamp_: 1342567288560\n"
                         "v1:                    13\n"
                         "num_flushes:           37\n";
-  */
-  GoogleString result = "v1:          13\n"
-                        "num_flushes: 37\n";
   EXPECT_EQ(result, dump);
 }
 

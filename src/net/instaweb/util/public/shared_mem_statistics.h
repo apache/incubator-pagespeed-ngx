@@ -107,11 +107,10 @@ class SharedMemVariable : public Variable {
 
 class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
  public:
-  SharedMemConsoleStatisticsLogger(SharedMemVariable* var,
-                                   MessageHandler* message_handler,
-                                   Statistics* stats,
-                                   FileSystem *file_system,
-                                   Timer* timer);
+  SharedMemConsoleStatisticsLogger(
+      const int64 update_interval_ms, const StringPiece& log_file,
+      SharedMemVariable* var, MessageHandler* message_handler,
+      Statistics* stats, FileSystem *file_system, Timer* timer);
   virtual ~SharedMemConsoleStatisticsLogger();
   virtual void UpdateAndDumpIfRequired();
 
@@ -125,6 +124,8 @@ class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
   // (usually Apache's ResourceManager).
   FileSystem* file_system_;
   Timer* timer_;    // Used to retrieve timestamps
+  const int64 update_interval_ms_;
+  GoogleString logfile_name_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemConsoleStatisticsLogger);
 };
@@ -209,10 +210,12 @@ class SharedMemHistogram : public Histogram {
 class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
     SharedMemHistogram, FakeTimedVariable> {
  public:
-  SharedMemStatistics(AbstractSharedMem* shm_runtime,
+  SharedMemStatistics(int64 logging_interval_ms,
+                      const StringPiece& logging_file, bool logging,
                       const GoogleString& filename_prefix,
-                      MessageHandler* message_handler,
-                      FileSystem* file_system, Timer* timer);
+                      AbstractSharedMem* shm_runtime,
+                      MessageHandler* message_handler, FileSystem* file_system,
+                      Timer* timer);
   virtual ~SharedMemStatistics();
 
   // This method initializes or attaches to shared memory. You should call this

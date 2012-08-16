@@ -110,6 +110,9 @@ struct OptionName {
 "SlurpFlushLimit",                      RewriteOptions::kSlurpFlushLimit
 "SlurpReadOnly",                        RewriteOptions::kSlurpReadOnly
 "Statistics",                           RewriteOptions::kStatisticsEnabled
+"StatisticsLogging",                    RewriteOptions::kStatisticsLoggingEnabled
+"StatisticsLoggingFile",                RewriteOptions::kStatisticsLoggingFile
+"StatisticsLoggingIntervalMs",          RewriteOptions::kStatisticsLoggingIntervalMs
 "TestProxy",                            RewriteOptions::kTestProxy
 "UseFixedUserAgentForBlinkCacheMisses", RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses
 %%

@@ -634,7 +634,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(94, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(97, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAjaxRewritingEnabled));
@@ -876,6 +876,15 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("Statistics"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kStatisticsEnabled));
+  EXPECT_EQ(StringPiece("StatisticsLogging"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kStatisticsLoggingEnabled));
+  EXPECT_EQ(StringPiece("StatisticsLoggingFile"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kStatisticsLoggingFile));
+  EXPECT_EQ(StringPiece("StatisticsLoggingIntervalMs"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kStatisticsLoggingIntervalMs));
   EXPECT_EQ(StringPiece("TestProxy"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kTestProxy));

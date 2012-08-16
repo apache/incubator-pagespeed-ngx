@@ -117,7 +117,10 @@ void ApacheResourceManager::CreateLocalStatistics(
     Statistics* global_statistics) {
   local_statistics_ =
       apache_factory_->AllocateAndInitSharedMemStatistics(
-          hostname_identifier());
+          hostname_identifier(),
+          config()->statistics_logging_enabled(),
+          config()->statistics_logging_interval_ms(),
+          config()->statistics_logging_file());
   split_statistics_.reset(new SplitStatistics(
       apache_factory_->thread_system(), local_statistics_, global_statistics));
   // local_statistics_ was ::Initialize'd by AllocateAndInitSharedMemStatistics,

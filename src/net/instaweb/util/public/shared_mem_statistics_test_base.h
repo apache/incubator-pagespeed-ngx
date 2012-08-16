@@ -120,17 +120,16 @@ TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestHistogramNoExtraClear) {
 TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestTimedVariableEmulation) {
   SharedMemStatisticsTestBase::TestTimedVariableEmulation();
 }
-/*
- * TODO(bvb, sarahdw): Enable logging for tests.
- * Also add this to REGISTER below.
+
 TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestConsoleStatisticsLogger) {
   SharedMemStatisticsTestBase::TestConsoleStatisticsLogger();
-}*/
+}
 
 REGISTER_TYPED_TEST_CASE_P(SharedMemStatisticsTestTemplate, TestCreate,
                            TestSet, TestClear, TestAdd, TestHistogram,
                            TestHistogramRender, TestHistogramNoExtraClear,
-                           TestTimedVariableEmulation);
+                           TestTimedVariableEmulation,
+                           TestConsoleStatisticsLogger);
 
 }  // namespace net_instaweb
 

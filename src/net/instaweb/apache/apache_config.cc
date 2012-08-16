@@ -36,6 +36,8 @@ void ApacheConfig::Init() {
   add_option("", &file_cache_path_, "afcp", RewriteOptions::kFileCachePath);
   add_option("", &memcached_servers_, "ams", RewriteOptions::kMemcachedServers);
   add_option("", &slurp_directory_, "asd", RewriteOptions::kSlurpDirectory);
+  add_option("", &statistics_logging_file_, "aslf",
+      RewriteOptions::kStatisticsLoggingFile);
 
   add_option(kOrganized, &referer_statistics_output_level_, "arso",
              RewriteOptions::kRefererStatisticsOutputLevel);
@@ -46,6 +48,8 @@ void ApacheConfig::Init() {
              RewriteOptions::kHashRefererStatistics);
   add_option(true, &statistics_enabled_, "ase",
              RewriteOptions::kStatisticsEnabled);
+  add_option(false, &statistics_logging_enabled_, "asle",
+             RewriteOptions::kStatisticsLoggingEnabled);
   add_option(false, &test_proxy_, "atp", RewriteOptions::kTestProxy);
   add_option(false, &use_shared_mem_locking_, "ausml",
              RewriteOptions::kUseSharedMemLocking);
@@ -67,6 +71,8 @@ void ApacheConfig::Init() {
              RewriteOptions::kLruCacheKbPerProcess);
   add_option(0, &slurp_flush_limit_, "asfl",
              RewriteOptions::kSlurpFlushLimit);
+  add_option(3000, &statistics_logging_interval_ms_, "asli",
+             RewriteOptions::kStatisticsLoggingIntervalMs);
 
   SortOptions();
 

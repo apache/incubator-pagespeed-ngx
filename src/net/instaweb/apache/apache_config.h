@@ -113,6 +113,24 @@ class ApacheConfig : public RewriteOptions {
   void set_statistics_enabled(bool x) {
     set_option(x, &statistics_enabled_);
   }
+  bool statistics_logging_enabled() const {
+    return statistics_logging_enabled_.value();
+  }
+  void set_statistics_logging_enabled(bool x) {
+    set_option(x, &statistics_logging_enabled_);
+  }
+  const GoogleString& statistics_logging_file() const {
+    return statistics_logging_file_.value();
+  }
+  void set_statistics_logging_file(GoogleString x) {
+    set_option(x, &statistics_logging_file_);
+  }
+  int64 statistics_logging_interval_ms() const {
+    return statistics_logging_interval_ms_.value();
+  }
+  void set_statistics_logging_interval_ms(int64 x) {
+    set_option(x, &statistics_logging_interval_ms_);
+  }
   bool slurp_read_only() const {
     return slurp_read_only_.value();
   }
@@ -237,12 +255,14 @@ class ApacheConfig : public RewriteOptions {
   // for code that parses it.
   Option<GoogleString> memcached_servers_;
   Option<GoogleString> slurp_directory_;
+  Option<GoogleString> statistics_logging_file_;
 
   ApacheOption<RefererStatisticsOutputLevel> referer_statistics_output_level_;
 
   Option<bool> collect_referer_statistics_;
   Option<bool> hash_referer_statistics_;
   Option<bool> statistics_enabled_;
+  Option<bool> statistics_logging_enabled_;
   Option<bool> test_proxy_;
   Option<bool> use_shared_mem_locking_;
   Option<bool> slurp_read_only_;
@@ -253,6 +273,7 @@ class ApacheConfig : public RewriteOptions {
   Option<int64> lru_cache_byte_limit_;
   Option<int64> lru_cache_kb_per_process_;
   Option<int64> slurp_flush_limit_;
+  Option<int64> statistics_logging_interval_ms_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheConfig);
 };
