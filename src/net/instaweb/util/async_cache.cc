@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/async_cache.h"
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
@@ -28,6 +29,8 @@
 namespace net_instaweb {
 
 AsyncCache::~AsyncCache() {
+  DCHECK_EQ(0, active_threads_)
+      << "Shutdown the pool before destructing AsyncCache";
 }
 
 bool AsyncCache::CanIssueGet() {
