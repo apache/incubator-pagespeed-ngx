@@ -285,7 +285,7 @@ class RewriteDriverFactory {
 
  protected:
   bool FetchersComputed() const;
-  void StopCacheWrites();
+  virtual void StopCacheActivity();
   StringPiece filename_prefix();
 
   // Used by subclasses to indicate that a ResourceManager has been

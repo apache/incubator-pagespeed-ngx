@@ -77,6 +77,7 @@ struct OptionName {
 "MaxSegmentLength",                     RewriteOptions::kMaxUrlSegmentSize
 "MaxUrlSize",                           RewriteOptions::kMaxUrlSize
 "MemcachedServers",                     RewriteOptions::kMemcachedServers
+"MemcachedThreads",                     RewriteOptions::kMemcachedThreads
 "MinImageSizeLowResolutionBytes",       RewriteOptions::kMinImageSizeLowResolutionBytes
 "MinResourceCacheTimeToRewriteMs",      RewriteOptions::kMinResourceCacheTimeToRewriteMs
 "ModifyCachingHeaders",                 RewriteOptions::kModifyCachingHeaders

@@ -472,8 +472,17 @@ void ApacheRewriteDriverFactory::DumpRefererStatistics(Writer* writer) {
 #endif
 }
 
+void ApacheRewriteDriverFactory::StopCacheActivity() {
+  RewriteDriverFactory::StopCacheActivity();
+  for (PathCacheMap::iterator p = path_cache_map_.begin(),
+           e = path_cache_map_.end(); p != e; ++p) {
+    ApacheCache* cache = p->second;
+    cache->StopAsyncGets();
+  }
+}
+
 void ApacheRewriteDriverFactory::ShutDown() {
-  StopCacheWrites();
+  StopCacheActivity();
 
   // Next, we shutdown the fetchers before killing the workers in
   // RewriteDriverFactory::ShutDown; this is so any rewrite jobs in progress

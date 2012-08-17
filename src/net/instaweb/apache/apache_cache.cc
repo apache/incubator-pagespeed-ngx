@@ -19,12 +19,15 @@
 #include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/util/public/async_cache.h"
+#include "net/instaweb/util/public/cache_batcher.h"
 #include "net/instaweb/util/public/cache_stats.h"
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
@@ -65,6 +68,7 @@ ApacheCache::ApacheCache(const StringPiece& path,
       lock_manager_(NULL),
       file_cache_(NULL),
       mem_cache_(NULL),
+      async_cache_(NULL),
       l2_cache_(NULL) {
   if (config.use_shared_mem_locking()) {
     shared_mem_lock_manager_.reset(new SharedMemLockManager(
@@ -109,10 +113,31 @@ ApacheCache::ApacheCache(const StringPiece& path,
       abort();  // TODO(jmarantz): is there a better way to exit?
     }
 
+    Statistics* stats = factory->statistics();
+    int num_threads = config.memcached_threads();
+    ThreadSystem* thread_system = factory->thread_system();
+    if (num_threads != 0) {
+      pool_.reset(new QueuedWorkerPool(num_threads, thread_system));
+      async_cache_ = new AsyncCache(
+          mem_cache_, thread_system->NewMutex(), pool_.get());
+      l2_cache_ = async_cache_;
+    } else {
+      l2_cache_ = mem_cache_;
+    }
+
+    // Put the batcher above the stats so that the stats sees the MultiGets
+    // and can show us the histogram of how they are sized.
+    CacheStats* cache_stats = new CacheStats(kMemcached, l2_cache_,
+                                             factory->timer(), stats);
+    CacheBatcher* batcher = new CacheBatcher(
+        cache_stats, thread_system->NewMutex(), stats);
+    if (num_threads != 0) {
+      batcher->set_max_parallel_lookups(num_threads);
+    }
+    l2_cache_ = batcher;
+
     // TODO(jmarantz): Handle multiple vhosts, each with unique memcached
     // statistics.
-    l2_cache_ = new CacheStats(kMemcached, mem_cache_, factory->timer(),
-                               factory->statistics());
   }
   if (config.lru_cache_kb_per_process() != 0) {
     LRUCache* lru_cache = new LRUCache(
@@ -146,6 +171,12 @@ ApacheCache::ApacheCache(const StringPiece& path,
 }
 
 ApacheCache::~ApacheCache() {
+}
+
+void ApacheCache::StopAsyncGets() {
+  if (async_cache_ != NULL) {
+    async_cache_->StopCacheGets();
+  }
 }
 
 void ApacheCache::RootInit() {

@@ -191,6 +191,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 protected:
   virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
+  virtual void StopCacheActivity();
 
   // Provide defaults.
   virtual MessageHandler* DefaultHtmlParseMessageHandler();

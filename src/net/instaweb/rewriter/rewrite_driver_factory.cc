@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/rewriter/public/usage_data_reporter.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/cache_batcher.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/client_state.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -590,7 +591,7 @@ StringPiece RewriteDriverFactory::LockFilePrefix() {
   return filename_prefix_;
 }
 
-void RewriteDriverFactory::StopCacheWrites() {
+void RewriteDriverFactory::StopCacheActivity() {
   ScopedMutex lock(resource_manager_mutex_.get());
 
   // Make sure we tell HTTP cache not to write out fetch failures, as
@@ -622,7 +623,7 @@ bool RewriteDriverFactory::TerminateResourceManager(ResourceManager* rm) {
 }
 
 void RewriteDriverFactory::ShutDown() {
-  StopCacheWrites();  // Maybe already stopped, but no harm stopping them twice.
+  StopCacheActivity();  // Maybe already stopped, but no harm stopping it twice.
 
   // We first shutdown the low-priority rewrite threads, as they're meant to
   // be robust against cancellation, and it will make the jobs wrap up
@@ -658,6 +659,7 @@ void RewriteDriverFactory::Initialize(Statistics* statistics) {
   HTTPCache::Initialize(statistics);
   RewriteDriver::Initialize(statistics);
   RewriteStats::Initialize(statistics);
+  CacheBatcher::Initialize(statistics);
 }
 
 void RewriteDriverFactory::Terminate() {

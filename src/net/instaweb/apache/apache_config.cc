@@ -35,6 +35,7 @@ void ApacheConfig::Init() {
   add_option("", &fetcher_proxy_, "afp", RewriteOptions::kFetcherProxy);
   add_option("", &file_cache_path_, "afcp", RewriteOptions::kFileCachePath);
   add_option("", &memcached_servers_, "ams", RewriteOptions::kMemcachedServers);
+  add_option(1, &memcached_threads_, "amt", RewriteOptions::kMemcachedThreads);
   add_option("", &slurp_directory_, "asd", RewriteOptions::kSlurpDirectory);
   add_option("", &statistics_logging_file_, "aslf",
       RewriteOptions::kStatisticsLoggingFile);

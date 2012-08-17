@@ -155,6 +155,12 @@ class ApacheConfig : public RewriteOptions {
   void set_memcached_servers(GoogleString x) {
     set_option(x, &memcached_servers_);
   }
+  int memcached_threads() const {
+    return memcached_threads_.value();
+  }
+  void set_memcached_threads(int x) {
+    set_option(x, &memcached_threads_);
+  }
   const GoogleString& slurp_directory() const {
     return slurp_directory_.value();
   }
@@ -266,6 +272,8 @@ class ApacheConfig : public RewriteOptions {
   Option<bool> test_proxy_;
   Option<bool> use_shared_mem_locking_;
   Option<bool> slurp_read_only_;
+
+  Option<int> memcached_threads_;
 
   Option<int64> file_cache_clean_inode_limit_;
   Option<int64> file_cache_clean_interval_ms_;

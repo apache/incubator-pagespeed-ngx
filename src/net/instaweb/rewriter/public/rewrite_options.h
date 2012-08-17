@@ -216,6 +216,7 @@ class RewriteOptions {
     kLruCacheByteLimit,
     kLruCacheKbPerProcess,
     kMemcachedServers,
+    kMemcachedThreads,
     kMessageBufferSize,
     kRefererStatisticsOutputLevel,
     kSlurpDirectory,
