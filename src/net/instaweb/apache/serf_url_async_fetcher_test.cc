@@ -143,14 +143,21 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
                                 &message_handler_));
     mutex_.reset(thread_system_->NewMutex());
     AddTestUrl("http://www.modpagespeed.com/", "<!doctype html>");
-    AddTestUrl("http://www.google.com/favicon.ico",
+    // Note: We store resources in www.modpagespeed.com/do_not_modify and
+    // with content hash so that we can make sure the files don't change
+    // from under us and cause our tests to fail.
+    AddTestUrl("http://www.modpagespeed.com/do_not_modify/"
+               "favicon.d034f46c06475a27478e98ef5dff965e.ico",
                GoogleString("\000\000\001\000", 4));
-    AddTestUrl("http://www.google.com/intl/en_ALL/images/logo.gif", "GIF");
+    AddTestUrl("http://www.modpagespeed.com/do_not_modify/"
+               "logo.e80d1c59a673f560785784fb1ac10959.gif", "GIF");
     AddTestUrl("http://stevesouders.com/bin/resource.cgi?type=js&sleep=10",
                "var");
-    AddTestUrl("http://modpagespeed.com/mod_pagespeed_beacon", "");
-    AddTestUrl("https://www.google.com/favicon.ico", GoogleString());
-    AddTestUrl("http://modpagespeed.com:1023/refused.jpg", GoogleString());
+    AddTestUrl("http://www.modpagespeed.com/mod_pagespeed_beacon", "");
+    AddTestUrl("https://www.modpagespeed.com/do_not_modify/"
+               "favicon.d034f46c06475a27478e98ef5dff965e.ico",
+               GoogleString());
+    AddTestUrl("http://www.modpagespeed.com:1023/refused.jpg", GoogleString());
     prev_done_count = 0;
   }
 
@@ -213,6 +220,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
         // We've started to see some flakiness in this test requesting
         // google.com/favicon, so try, at most 10 times, to re-issue
         // the request and sleep.
+        // TODO(sligocki): See if this flakiness goes away now that we
+        // changed to a static resource.
         usleep(50 * Timer::kMsUs);
         LOG(ERROR) << "Serf retrying flaky url " << urls_[idx];
         callbacks_[idx]->Reset();
@@ -378,12 +387,6 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLWithGzip) {
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, FetchTwoURLs) {
-  // Note: these two accept-encoding commands are not currently effective
-  // for some reason.
-  request_headers_[kGoogleFavicon]->Add(HttpAttributes::kAcceptEncoding,
-                                        HttpAttributes::kGzip);
-  request_headers_[kGoogleLogo]->Add(HttpAttributes::kAcceptEncoding,
-                                     HttpAttributes::kGzip);
   EXPECT_TRUE(TestFetch(kGoogleFavicon, kGoogleLogo));
   int request_count =
       statistics_.GetVariable(SerfStats::kSerfFetchRequestCount)->Get();

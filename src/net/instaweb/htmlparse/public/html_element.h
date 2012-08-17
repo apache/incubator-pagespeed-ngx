@@ -251,7 +251,7 @@ class HtmlElement : public HtmlNode {
     return const_cast<Attribute*>(result);
   }
 
-  // Look up attribute value by name.
+  // Look up decoded attribute value by name.
   // Returns NULL if:
   //    1. no attribute exists
   //    2. the attribute has no value.
@@ -264,6 +264,22 @@ class HtmlElement : public HtmlNode {
     const Attribute* attribute = FindAttribute(name);
     if (attribute != NULL) {
       return attribute->DecodedValueOrNull();
+    }
+    return NULL;
+  }
+
+  // Look up escaped attribute value by name.
+  // Returns NULL if:
+  //    1. no attribute exists
+  //    2. the attribute has no value.
+  // If you care about this distinction, call FindAttribute.
+  // Use this only if you don't intend to change the attribute value;
+  // if you might change the attribute value, use FindAttribute instead
+  // (this avoids a double lookup).
+  const char* EscapedAttributeValue(HtmlName::Keyword name) const {
+    const Attribute* attribute = FindAttribute(name);
+    if (attribute != NULL) {
+      return attribute->escaped_value();
     }
     return NULL;
   }
