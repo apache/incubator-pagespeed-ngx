@@ -502,6 +502,7 @@
         'http/http_value.cc',
         'http/http_value_writer.cc',
         'http/inflating_fetch.cc',
+        'http/log_record.cc',
         'http/meta_data.cc',
         'http/rate_controlling_url_async_fetcher.cc',
         'http/sync_fetcher_adapter.cc',

@@ -43,6 +43,7 @@ const char kMisses[] = "_misses";
 // TODO(jmarantz): tie this to CacheBatcher::kDefaultMaxQueueSize,
 // but for now I want to get discrete counts in each bucket.
 const int kGetCountHistogramMaxValue = 500;
+const int kSizeHistogramMaxValue = 5*1000*1000;
 
 }  // namespace
 
@@ -70,6 +71,8 @@ CacheStats::CacheStats(StringPiece prefix,
       misses_(statistics->GetVariable(StrCat(prefix, kMisses))),
       name_(StrCat(prefix, "_stats")) {
   get_count_histogram_->SetMaxValue(kGetCountHistogramMaxValue);
+  insert_size_bytes_histogram_->SetMaxValue(kSizeHistogramMaxValue);
+  lookup_size_bytes_histogram_->SetMaxValue(kSizeHistogramMaxValue);
 }
 
 CacheStats::~CacheStats() {
@@ -81,8 +84,12 @@ void CacheStats::Initialize(StringPiece prefix, Statistics* statistics) {
   get_count_histogram->SetMaxValue(kGetCountHistogramMaxValue);
   statistics->AddHistogram(StrCat(prefix, kHitLatencyHistogram));
   statistics->AddHistogram(StrCat(prefix, kInsertLatencyHistogram));
-  statistics->AddHistogram(StrCat(prefix, kInsertSizeHistogram));
-  statistics->AddHistogram(StrCat(prefix, kLookupSizeHistogram));
+  Histogram* insert_size_bytes_histogram =
+      statistics->AddHistogram(StrCat(prefix, kInsertSizeHistogram));
+  insert_size_bytes_histogram->SetMaxValue(kSizeHistogramMaxValue);
+  Histogram* lookup_size_bytes_histogram =
+      statistics->AddHistogram(StrCat(prefix, kLookupSizeHistogram));
+  lookup_size_bytes_histogram->SetMaxValue(kSizeHistogramMaxValue);
   statistics->AddVariable(StrCat(prefix, kDeletes));
   statistics->AddVariable(StrCat(prefix, kHits));
   statistics->AddVariable(StrCat(prefix, kInserts));

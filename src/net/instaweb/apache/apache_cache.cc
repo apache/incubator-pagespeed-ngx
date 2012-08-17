@@ -50,6 +50,8 @@ namespace net_instaweb {
 
 class Timer;
 
+const char ApacheCache::kFileCache[] = "file_cache";
+const char ApacheCache::kLruCache[] = "lru_cache";
 const char ApacheCache::kMemcached[] = "memcached";
 
 // The ApacheCache encapsulates a cache-sharing model where a user specifies
@@ -73,6 +75,18 @@ ApacheCache::ApacheCache(const StringPiece& path,
     FallBackToFileBasedLocking();
   }
 
+  FileCache::CachePolicy* policy = new FileCache::CachePolicy(
+      factory->timer(),
+      factory->hasher(),
+      config.file_cache_clean_interval_ms(),
+      config.file_cache_clean_size_kb() * 1024,
+      config.file_cache_clean_inode_limit());
+  file_cache_ = new FileCache(
+      config.file_cache_path(), factory->file_system(), NULL,
+      factory->filename_encoder(), policy, factory->message_handler());
+  l2_cache_ = new CacheStats(kFileCache, file_cache_, factory->timer(),
+                             factory->statistics());
+
   const GoogleString& memcached_servers = config.memcached_servers();
   if (!memcached_servers.empty()) {
     // Note that the thread_limit must be queried from this file,
@@ -89,7 +103,8 @@ ApacheCache::ApacheCache(const StringPiece& path,
     thread_limit += factory->num_rewrite_threads() +
         factory->num_expensive_rewrite_threads();
     mem_cache_ = new AprMemCache(memcached_servers, thread_limit,
-                                 factory->hasher(), factory->message_handler());
+                                 factory->hasher(), l2_cache_,
+                                 factory->message_handler());
     if (!mem_cache_->valid_server_spec()) {
       abort();  // TODO(jmarantz): is there a better way to exit?
     }
@@ -98,17 +113,6 @@ ApacheCache::ApacheCache(const StringPiece& path,
     // statistics.
     l2_cache_ = new CacheStats(kMemcached, mem_cache_, factory->timer(),
                                factory->statistics());
-  } else {
-    FileCache::CachePolicy* policy = new FileCache::CachePolicy(
-        factory->timer(),
-        factory->hasher(),
-        config.file_cache_clean_interval_ms(),
-        config.file_cache_clean_size_kb() * 1024,
-        config.file_cache_clean_inode_limit());
-    file_cache_ = new FileCache(
-        config.file_cache_path(), factory->file_system(), NULL,
-        factory->filename_encoder(), policy, factory->message_handler());
-    l2_cache_ = file_cache_;
   }
   if (config.lru_cache_kb_per_process() != 0) {
     LRUCache* lru_cache = new LRUCache(
@@ -120,8 +124,10 @@ ApacheCache::ApacheCache(const StringPiece& path,
     // cause contention.
     ThreadsafeCache* ts_cache =
         new ThreadsafeCache(lru_cache, factory->thread_system()->NewMutex());
+    CacheStats* stats = new CacheStats(kLruCache, ts_cache, factory->timer(),
+                                       factory->statistics());
     WriteThroughCache* write_through_cache =
-        new WriteThroughCache(ts_cache, l2_cache_);
+        new WriteThroughCache(stats, l2_cache_);
     // By default, WriteThroughCache does not limit the size of entries going
     // into its front cache.
     if (config.lru_cache_byte_limit() != 0) {

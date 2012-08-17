@@ -22,6 +22,7 @@ package net_instaweb;
 
 
 // This proto stores all information related to latency.
+// Next id for TimingInfo : 7
 message TimingInfo  {
   // Local cache lookup time in ms.
   optional int64 cache1_ms = 1;
@@ -33,8 +34,7 @@ message TimingInfo  {
   optional int64 fetch_ms = 4;
   // Time taken to send the first byte back to the client.
   optional int64 time_to_first_byte_ms = 5;
-  // Time when request starts. This proto is not in gws logs, since we don't
-  // need to log it in gws logs.
+  // Absolute time when the request started, in ms since 1970.
   optional int64 request_start_ms = 6;
 }
 

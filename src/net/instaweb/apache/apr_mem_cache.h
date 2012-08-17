@@ -37,10 +37,34 @@ class Hasher;
 class MessageHandler;
 class SharedString;
 
-// Interface to memcached via libmemcached.  A memcached polling loop
-// is run via a thread.
+// Interface to memcached via the apr_memcache*, as documentedin
+// http://apr.apache.org/docs/apr-util/1.4/group___a_p_r___util___m_c.html.
+//
+// This is an entirely blocking interface, hence this is a blocking cache
+// implementation.
+//
+// A fallback cache is used to store large values that won't fit in
+// memcached.  Note that this is not a write-through cache; if a value
+// is small enough to be written to memcache, it will not be written
+// to the fallback.  Large values will be written to the fallback, and
+// only a sentinel is written to the memcache.  When a lookup misses
+// in memcache, we do not check it in the fallback.  We only do a lookup
+// in the fallback if the memcache lookup gives us our sentinel.
 class AprMemCache : public CacheInterface {
  public:
+  // Experimentally it seems large values larger than 1M bytes result in
+  // a failure, e.g. from load-tests:
+  //     [Fri Jul 20 10:29:34 2012] [error] [mod_pagespeed 0.10.0.0-1699 @1522]
+  //     AprMemCache::Put error: Internal error on key
+  //     http://example.com/image.jpg, value-size 1393146
+  // We use a fallback cache (in Apache a FileCache) to handle too-large
+  // requests.  We store in memcached a sentinel indicating the value
+  // should be found in the fallback cache.
+  //
+  // We also bound the key-size to 65534 bytes.  Values with larger keys are
+  // passed to the fallback cache.
+  static const size_t kValueSizeThreshold = 1 * 1000 * 1000;
+
   // servers is a comma-separated list of host[:port] where port defaults
   // to 11211, the memcached default.
   //
@@ -51,7 +75,8 @@ class AprMemCache : public CacheInterface {
   // TODO(jmarantz): consider also accounting for the number of threads
   // that we can create in PSA.
   AprMemCache(const StringPiece& servers, int thread_limit,
-              Hasher* hasher, MessageHandler* handler);
+              Hasher* hasher, CacheInterface* fallback_cache,
+              MessageHandler* handler);
   virtual ~AprMemCache();
 
   virtual void Get(const GoogleString& key, Callback* callback);
@@ -84,6 +109,7 @@ class AprMemCache : public CacheInterface {
   apr_memcache_t* memcached_;
   std::vector<apr_memcache_server_t*> servers_;
   Hasher* hasher_;
+  CacheInterface* fallback_cache_;
   MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(AprMemCache);

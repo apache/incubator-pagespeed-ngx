@@ -551,6 +551,8 @@ void ApacheRewriteDriverFactory::Initialize(Statistics* statistics) {
   RewriteDriverFactory::Initialize(statistics);
   SerfUrlAsyncFetcher::Initialize(statistics);
   ApacheResourceManager::Initialize(statistics);
+  CacheStats::Initialize(ApacheCache::kFileCache, statistics);
+  CacheStats::Initialize(ApacheCache::kLruCache, statistics);
   CacheStats::Initialize(ApacheCache::kMemcached, statistics);
 }
 

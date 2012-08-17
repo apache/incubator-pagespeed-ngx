@@ -115,12 +115,12 @@ class CacheTestBase : public testing::Test {
 
   // Performs a cache Get, waits for callback completion, and checks the
   // result is as expected.
-  void CheckGet(const char* key, const GoogleString& expected_value) {
+  void CheckGet(const GoogleString& key, const GoogleString& expected_value) {
     CheckGet(Cache(), key, expected_value);
   }
 
   // As above, but specifies which cache to use.
-  void CheckGet(CacheInterface* cache, const char* key,
+  void CheckGet(CacheInterface* cache, const GoogleString& key,
                 const GoogleString& expected_value) {
     Callback* callback = InitiateGet(cache, key);
     WaitAndCheck(callback, expected_value);

@@ -16,10 +16,6 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-// This code is experimental -- it needs tuning & a lot more testing.  In
-// particular, we need to have some way to batch up the requests and do
-// a multiget.
-
 #include "net/instaweb/apache/apr_mem_cache.h"
 
 #include "apr_memcache.h"
@@ -39,28 +35,27 @@ const int kDefaultServerMin = 0;
 const int kDefaultServerSmax = 1;
 const int kDefaultServerTtl = 600;
 
-// Experimentally it seems large values larger than 1M bytes result in
-// a failure, e.g. from load-tests:
-//     [Fri Jul 20 10:29:34 2012] [error] [mod_pagespeed 0.10.0.0-1699 @1522]
-//     AprMemCache::Put error: Internal error on key
-//     http://example.com/image.jpg, value-size 1393146
-// So it's probably faster not to send such large requests to the server in
-// the first place.
-
-const size_t kValueSizeThreshold = 1 * 1000 * 1000;
-
 // We can't store arbitrary keys in memcached, so encode the actual
 // key in the value.  Thus in the unlikely event of a hash collision,
 // we can reject the mismatched full key when reading.
 //
-// We encode the length as the first two bytes, ignoring attempts to Put
-// any key larger than 64k.  Following that we have the actual key and
-// value data.  We could also do this with protobufs, and if the encoding
-// were any more complex we should change.  However I believe even with
-// zero copy streams, protobufs will force us to copy the final value
-// at least one extra time, and that value can be large.
+// We encode the length as the first two bytes.  Keys of length >=
+// 65535 bytes are passed to the fallback cache.  We write size 65535
+// (0xffff) for keys whose values are found in the fallback cache.  In
+// that case all that is stored in memcached is this 2-byte sentinel.
+//
+// After the encoded size, we have the actual key and value data.  We
+// could also do this with protobufs, and if the encoding were any
+// more complex we should change.  However I believe even with zero
+// copy streams, protobufs will force us to copy the final value at
+// least one extra time, and that value can be large.
+//
+// Our largest key-size limit is 65534.  We store data >1Mb in the
+// fallback cache, as memcached cannot handle large items.  In Apache
+// we'll use the file-cache as a fallback.
 const int kKeyLengthEncodingBytes = 2;  // maximum 2^16 = 64k byte keys.
-const size_t kKeyMaxLength = 1 << (kKeyLengthEncodingBytes * CHAR_BIT);
+const size_t kKeyMaxLength = (1 << (kKeyLengthEncodingBytes * CHAR_BIT)) - 2;
+const size_t kFallbackCacheSentinel = kKeyMaxLength + 1;  // 65535
 
 }  // namespace
 
@@ -70,12 +65,15 @@ class Timer;
 class ThreadSystem;
 
 AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
-                         Hasher* hasher, MessageHandler* handler)
+                         Hasher* hasher, CacheInterface* fallback_cache,
+                         MessageHandler* handler)
     : valid_server_spec_(false),
       thread_limit_(thread_limit),
       memcached_(NULL),
       hasher_(hasher),
+      fallback_cache_(fallback_cache),
       message_handler_(handler) {
+  CHECK(fallback_cache);
   apr_pool_create(&pool_, NULL);
 
   // Don't try to connect on construction; we don't want to bother creating
@@ -148,21 +146,34 @@ void AprMemCache::DecodeValueMatchingKeyAndCallCallback(
     Callback *callback) {
   bool decoding_error = true;
 
-  if (data_len >= 3) {
+  if (data_len >= 2) {
     size_t byte0 = static_cast<uint8>(data[0]);
     size_t byte1 = static_cast<uint8>(data[1]);
     size_t key_size = byte0 + (byte1 << CHAR_BIT);
-    size_t overhead = key_size + kKeyLengthEncodingBytes;
-    if (overhead <= data_len) {
-      decoding_error = false;
-      StringPiece encoded_key(data + kKeyLengthEncodingBytes, key_size);
-      if (encoded_key == key) {
-        GoogleString* value = callback->value()->get();
-        value->assign(data + overhead, data_len - overhead);
-        ValidateAndReportResult(key, CacheInterface::kAvailable, callback);
-      } else {
-        // TODO(jmarantz): bump hash-key collision stats?
-        ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
+    if (key_size == kFallbackCacheSentinel) {
+      if (data_len == 2) {
+        // Note that after a fallback miss, we will leave the
+        // forwarding pointer in memcached.  This way, multiple Apache
+        // servers can share memcached servers.  If we were to remove
+        // the key from memcached on a fallback miss, that would
+        // effectively evict the key from Apache servers that have the
+        // fallback item.
+        fallback_cache_->Get(key, callback);
+        decoding_error = false;
+      }
+    } else {
+      size_t overhead = key_size + kKeyLengthEncodingBytes;
+      if (overhead <= data_len) {
+        decoding_error = false;
+        StringPiece encoded_key(data + kKeyLengthEncodingBytes, key_size);
+        if (encoded_key == key) {
+          GoogleString* value = callback->value()->get();
+          value->assign(data + overhead, data_len - overhead);
+          ValidateAndReportResult(key, CacheInterface::kAvailable, callback);
+        } else {
+          // TODO(jmarantz): bump hash-key collision stats?
+          ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
+        }
       }
     }
   }
@@ -251,33 +262,63 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
 void AprMemCache::Put(const GoogleString& key, SharedString* value) {
   GoogleString* str = value->get();
   size_t encoded_size = str->size() + key.size() + kKeyLengthEncodingBytes;
-  if ((encoded_size < kValueSizeThreshold) && (key.size() < kKeyMaxLength)) {
-    GoogleString encoded_value;
+  size_t encoded_key_size = key.size();
+  GoogleString encoded_value;
+  if ((encoded_key_size > kKeyMaxLength) ||
+      (encoded_size >= kValueSizeThreshold)) {
+    encoded_key_size = kFallbackCacheSentinel;
+    encoded_value.reserve(2);
+    fallback_cache_->Put(key, value);
+  } else {
     encoded_value.reserve(encoded_size);
-    encoded_value.append(1, static_cast<char>(key.size() & 0xff));
-    encoded_value.append(1, static_cast<char>((key.size() >> CHAR_BIT) & 0xff));
+  }
+
+  // value format for values stored in
+  //    memcached:   [2 byte size of key < 65535][key][value]
+  //    fallback:    [2 bytes sentinel 65536]
+  // We always store the key in the value in memcached to detect hash
+  // collisions, so to do minimize the overhead we always use 2 bytes
+  // for that, thus limiting our key-sizes to less than 65535.
+  encoded_value.append(1, static_cast<char>(encoded_key_size & 0xff));
+  encoded_value.append(1, static_cast<char>((encoded_key_size >> CHAR_BIT)
+                                            & 0xff));
+  if (encoded_key_size != kFallbackCacheSentinel) {
     encoded_value.append(key.data(), key.size());
     encoded_value.append(str->data(), str->size());
-    GoogleString hashed_key = hasher_->Hash(key);
+  }
+  GoogleString hashed_key = hasher_->Hash(key);
 
-    // I believe apr_memcache_set erroneously takes a char* for the value.
-    // Hence we take the address of character [0] rather than using the data()
-    // pointer which is const.
-    apr_status_t status = apr_memcache_set(
-        memcached_, hashed_key.c_str(),
-        &(encoded_value[0]), encoded_value.size(),
-        0, 0);
-    if (status != APR_SUCCESS) {
-      char buf[kStackBufferSize];
-      apr_strerror(status, buf, sizeof(buf));
-      message_handler_->Message(
-          kError, "AprMemCache::Put error: %s on key %s, value-size %d",
-          buf, key.c_str(), static_cast<int>(str->size()));
-    }
+  // I believe apr_memcache_set erroneously takes a char* for the value.
+  // Hence we take the address of character [0] rather than using the data()
+  // pointer which is const.
+  apr_status_t status = apr_memcache_set(
+      memcached_, hashed_key.c_str(),
+      &(encoded_value[0]), encoded_value.size(),
+      0, 0);
+  if (status != APR_SUCCESS) {
+    char buf[kStackBufferSize];
+    apr_strerror(status, buf, sizeof(buf));
+    message_handler_->Message(
+        kError, "AprMemCache::Put error: %s on key %s, value-size %d",
+        buf, key.c_str(), static_cast<int>(str->size()));
   }
 }
 
 void AprMemCache::Delete(const GoogleString& key) {
+  // Note that deleting a key whose value exceeds our size threshold
+  // will not actually remove it from the fallback cache.  However, it
+  // will remove our sentinel indicating that it's in the fallback cache,
+  // and therefore it will be functionally deleted.
+  //
+  // TODO(jmarantz): determine whether it's better to defensively delete
+  // it from the fallback cache even though most data will not be, thus
+  // incurring file system overhead for small data deleted from memcached.
+  //
+  // Another option would be to issue a Get before the Delete to see
+  // if it's in the fallback cache, but that would send more load to
+  // memcached, possibly transferring significant amounts of data that
+  // will be tossed.
+
   GoogleString hashed_key = hasher_->Hash(key);
   apr_status_t status = apr_memcache_delete(memcached_, hashed_key.c_str(), 0);
   if (status != APR_SUCCESS) {
