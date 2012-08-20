@@ -148,7 +148,7 @@ class UnicodeText {
   ~UnicodeText();
 
   void clear();  // Clear text.
-  bool empty() { return repr_.size_ == 0; }  // Test if text is empty.
+  bool empty() const { return repr_.size_ == 0; }  // Test if text is empty.
 
   // Add a codepoint to the end of the text.
   // If the codepoint is not interchange-valid, add a space instead
