@@ -229,8 +229,8 @@ $WGET_DUMP $URL > $FETCHED
 # Link not moved to head.
 check_not grep "styles/all_styles.css\"></head>" $FETCHED
 
-test_filter inline_css converts a link tag to a style tag.
-fetch_until $URL 'grep -c style' 2
+test_filter inline_css converts 3 out of 5 link tags to style tags.
+fetch_until $URL 'grep -c <style' 3
 
 test_filter inline_javascript inlines a small JS file.
 fetch_until $URL 'grep -c document.write' 1

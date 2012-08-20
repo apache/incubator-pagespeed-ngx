@@ -96,12 +96,28 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
       return;
     }
 
-    // If the link tag has a media attribute whose value isn't "all", don't
-    // inline.  (Note that "all" is equivalent to having no media attribute;
-    // see http://www.w3.org/TR/html5/semantics.html#the-style-element)
-    const char* media = element->AttributeValue(HtmlName::kMedia);
-    if (media != NULL && strcmp(media, "all") != 0) {
-      return;
+    // Only inline if the media type includes "screen". We don't inline other
+    // types since they're much less common so inlining them would actually
+    // slow down the 99% case of "screen". "all" means all types, including
+    // "screen", and the type can be a comma-separated list, so we have to
+    // check every type in the list.
+    const char* media = element->EscapedAttributeValue(HtmlName::kMedia);
+    if (media != NULL) {
+      StringPiece media_sp(media);
+      StringPieceVector media_vector;
+      SplitStringPieceToVector(media_sp, ",", &media_vector, true);
+      bool is_for_screen = false;
+      for (int i = 0, n = media_vector.size(); i < n; ++i) {
+        TrimWhitespace(&media_vector[i]);
+        if (StringCaseEqual(media_vector[i], "all") ||
+            StringCaseEqual(media_vector[i], "screen")) {
+          is_for_screen = true;
+          break;
+        }
+      }
+      if (!is_for_screen) {
+        return;
+      }
     }
 
     // Get the URL where the external script is stored
@@ -193,6 +209,15 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
       driver_->AppendChild(style_element,
                            driver_->NewCharactersNode(element,
                                                       rewritten_contents));
+
+      // If the link tag has a media attribute, copy it over to the style.
+      HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kMedia);
+      if (attr != NULL) {
+        const char* media = attr->escaped_value();
+        if (media != NULL) {
+          driver_->AddEscapedAttribute(style_element, HtmlName::kMedia, media);
+        }
+      }
     }
 
     // Add the local storage cache attributes if it is enabled.

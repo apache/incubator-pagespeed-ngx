@@ -16,6 +16,8 @@
 
 // Author: mdsteele@google.com (Matthew D. Steele)
 
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
@@ -85,7 +87,10 @@ class CssInlineFilterTest : public ResourceManagerTestBase {
         (!expect_inline ? outline_html_output :
          StrCat("<head>\n",
                 head_extras,
-                "  <style>", css_rewritten_body, "</style>\n"
+                StrCat("  <style",
+                       (other_attrs.empty() ? "" : " " + other_attrs),
+                       ">"),
+                css_rewritten_body, "</style>\n"
                 "</head>\n"
                 "<body>Hello, world!</body>\n"));
     EXPECT_EQ(AddHtmlBody(expected_output), output_buffer_);
@@ -179,7 +184,7 @@ TEST_F(CssInlineFilterTest, ShardSubresources) {
                 "", css_in, true, css_out);
 }
 
-TEST_F(CssInlineFilterTest, DoNotInlineCssWithMediaAttr) {
+TEST_F(CssInlineFilterTest, DoNotInlineCssWithMediaNotScreen) {
   const GoogleString css = "BODY { color: red; }\n";
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
@@ -191,6 +196,41 @@ TEST_F(CssInlineFilterTest, DoInlineCssWithMediaAll) {
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 "media=\"all\"", css, true, css);
+}
+
+TEST_F(CssInlineFilterTest, DoInlineCssWithMediaScreen) {
+  const GoogleString css = "BODY { color: red; }\n";
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/styles.css",
+                "media=\"print, audio ,, ,sCrEeN \"", css, true, css);
+}
+
+TEST_F(CssInlineFilterTest, InlineCssWithUndecodableMedia) {
+  // Ensure that our test string really is not decodable, to cater for it
+  // becoming decodable in the future.
+  const char kNotDecodable[] = "not\240decodable";  // ' ' with high bit set.
+  RewriteDriver* driver = rewrite_driver();
+  HtmlElement* element = driver->NewElement(NULL, HtmlName::kStyle);
+  driver->AddEscapedAttribute(element, HtmlName::kMedia, kNotDecodable);
+  HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kMedia);
+  EXPECT_TRUE(NULL == attr->DecodedValueOrNull());
+
+  const GoogleString css = "BODY { color: red; }\n";
+  GoogleString media;
+
+  // Now do the actual test that we don't inline the CSS with an undecodable
+  // media type (and not screen or all as well).
+  media = StrCat("media=\"", kNotDecodable, "\"");
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/styles.css",
+                media, css, false, "");
+
+  // And now test that we DO inline the CSS with an undecodable media type
+  // if ther's also an instance of "screen" in the media attribute.
+  media = StrCat("media=\"", kNotDecodable, ",screen\"");
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/styles.css",
+                media, css, true, css);
 }
 
 TEST_F(CssInlineFilterTest, DoNotInlineCssTooBig) {
