@@ -256,23 +256,29 @@ void SharedMemHistogram::Add(double value) {
     return;
   }
   ScopedMutex hold_lock(mutex_.get());
+  // index will be set to >= 0 if we clip at edges of histogram.
+  int index = -1;
   if (buffer_->enable_negative_) {
-    // If negative buckets is enabled, the minimum value allowed in Histogram
-    // is -buffer_->max_value_;
-    // The default min_value_ is 0, it's fine to add 0 to histogram.
-    // But the |value| should be smaller than max_value_.
-    // When |value| == max_value_, the return
-    // value of FindBuckets() is max_buckets, which is out of boundary.
-    if (value <= -buffer_->max_value_ ||
-        value >= buffer_->max_value_ ) {
-      return;
+    // If negative buckets is enabled, the minimum value in-range in Histogram
+    // is -buffer_->max_value_.
+    if (value <= -buffer_->max_value_) {
+      index = 0;
+    } else if (value >= buffer_->max_value_) {
+      index = max_buckets_ - 1;
     }
   } else {
-    if (value < buffer_->min_value_ || value >= buffer_->max_value_) {
-      return;
+    if (value < buffer_->min_value_) {
+      index = 0;
+    } else if (value >= buffer_->max_value_) {
+      index = max_buckets_ - 1;
     }
   }
-  int index = FindBucket(value);
+
+  if (index == -1) {
+    // Not clearly edge buckets, so compute the value's position.
+    index = FindBucket(value);
+  }
+
   if (index < 0 || index >= max_buckets_) {
     LOG(ERROR) << "Invalid bucket index found for" << value;
     return;
@@ -458,9 +464,14 @@ double SharedMemHistogram::BucketStart(int index) {
   if (index == max_buckets_) {
     // BucketLimit(i) = BucketStart(i+1).
     // Bucket index goes from 0 to max_buckets -1.
-    // BuketLimit(max_buckets - 1) = BucketStart(max_buckets).
-    // In this case, we return the upper_bound of the Histogram.
-    return buffer_->max_value_;
+    // BucketLimit(max_buckets - 1) = BucketStart(max_buckets),
+    // and BucketLimit(max_buckets - 1) is +infinity as we make our
+    // outermost buckets catch everything that would otherwise fall out
+    // of range.
+    return std::numeric_limits<double>::infinity();
+  }
+  if (index == 0) {
+    return -std::numeric_limits<double>::infinity();
   }
   if (buffer_->enable_negative_) {
     // should not use (max - min) / buckets, in case max = + Inf.

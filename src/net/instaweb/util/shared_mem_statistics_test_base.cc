@@ -308,24 +308,34 @@ void SharedMemStatisticsTestBase::TestHistogram() {
   hist1->SetMaxValue(100);
   hist1->Add(1);
   hist1->Add(5);
+  EXPECT_EQ(0, hist1->BucketCount(hist1->MaxBuckets() - 1));
   hist1->Add(100);
-  // 10 is the max_value, it shouldn't have been added to histogram.
-  EXPECT_EQ(2, hist1->Count());
+  // 10 is the max_value, so 100 should be added to the histogram, but into the
+  // last bucket.
+  EXPECT_EQ(1, hist1->BucketCount(hist1->MaxBuckets() - 1));
+  EXPECT_EQ(3, hist1->Count());
   EXPECT_EQ(1, hist1->Minimum());
-  EXPECT_EQ(5, hist1->Maximum());
+  EXPECT_EQ(100, hist1->Maximum());
+
   // Test when negative buckets are enabled.
+  // -101 and 101 are just outside limits, so they should have been stuck into
+  // the extreme buckets.
   hist1->Clear();
   hist1->SetMaxValue(100);
   hist1->EnableNegativeBuckets();
-  hist1->Add(-100);
+  EXPECT_EQ(0, hist1->BucketCount(0));
+  hist1->Add(-101);
+  EXPECT_EQ(1, hist1->BucketCount(0));
   hist1->Add(-5);
   hist1->Add(0);
   hist1->Add(5);
-  hist1->Add(100);
-  // -10 and 10 shouldn't have been added to histogram.
-  EXPECT_EQ(3, hist1->Count());
-  EXPECT_EQ(-5, hist1->Minimum());
-  EXPECT_EQ(5, hist1->Maximum());
+  EXPECT_EQ(0, hist1->BucketCount(hist1->MaxBuckets() - 1));
+  hist1->Add(101);
+  EXPECT_EQ(1, hist1->BucketCount(hist1->MaxBuckets() - 1));
+
+  EXPECT_EQ(5, hist1->Count());
+  EXPECT_EQ(-101, hist1->Minimum());
+  EXPECT_EQ(101, hist1->Maximum());
 }
 
 bool SharedMemStatisticsTestBase::Contains(const StringPiece& html,
@@ -364,13 +374,14 @@ void SharedMemStatisticsTestBase::TestHistogramRender() {
   h1->Add(1000);
   h1->Add(2000);
   // The table of histogram graph should look like:
-  // [0,5) 2 25.0% 25.0% ||||||
+  // [-infinity,5) 2 25.0% 25.0% ||||||
   // [10,15) 1 12.5% 37.5% |||
   // ...
   // Check if the above number appears.
   GoogleString html_graph;
   StringWriter writer_graph(&html_graph);
   stats_->RenderHistograms(&writer_graph, &handler_);
+  EXPECT_TRUE(Contains(html_graph, "-&infin;,</td>"));
   EXPECT_TRUE(Contains(html_graph, "5)</td>"));
   EXPECT_TRUE(Contains(html_graph, "25.0%"));
   EXPECT_TRUE(Contains(html_graph, "15)</td>"));
@@ -448,7 +459,7 @@ void SharedMemStatisticsTestBase::TestConsoleStatisticsLogger() {
   GoogleString result = "timestamp: 1342567288560\n"
                         "num_flushes: 300\n"
                         "histogram: Html Time us Histogram\n"
-                        "[0.000000, 5.000000): 2.000000\n"
+                        "[-inf, 5.000000): 2.000000\n"
                         "[10.000000, 15.000000): 1.000000\n"
                         "[20.000000, 25.000000): 1.000000\n"
                         "[100.000000, 105.000000): 1.000000\n"

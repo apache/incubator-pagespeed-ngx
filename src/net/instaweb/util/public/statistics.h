@@ -81,7 +81,7 @@ class Histogram {
   // |  [4,5] 2 50% 100% ||||||||||          |
   // |_______________________________________|
   virtual void Render(int index, Writer* writer, MessageHandler* handler);
-  // Maxmum number of buckets. This number can be used to allocate a buffer for
+  // Maximum number of buckets. This number can be used to allocate a buffer for
   // Histogram.
   virtual int MaxBuckets() = 0;
   // Allow histogram have negative values.
@@ -147,6 +147,8 @@ class Histogram {
   virtual double BucketCount(int index) = 0;
 
  protected:
+  Histogram() {}
+
   // Note that these *Internal interfaces require the mutex to be held.
   virtual double AverageInternal() = 0;
   virtual double PercentileInternal(const double perc) = 0;
@@ -156,6 +158,7 @@ class Histogram {
   virtual double MinimumInternal() = 0;
 
   virtual AbstractMutex* lock() = 0;
+
   // Helper function of Render(), write entries of histogram raw data table.
   // Each entry includes bucket range, bucket count, percentage,
   // cumulative percentage, bar. It looks like:
@@ -163,6 +166,9 @@ class Histogram {
   // [2,3] 2 10% 15% ||||||||
   // Precondition: mutex held.
   void WriteRawHistogramData(Writer* writer, MessageHandler* handler);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Histogram);
 };
 
 class NullHistogram : public Histogram {

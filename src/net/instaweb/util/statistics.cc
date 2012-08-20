@@ -16,13 +16,15 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
+#include "net/instaweb/util/public/statistics.h"
+
+#include <limits>
 #include <map>
 #include <utility>
 #include <vector>
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
@@ -60,7 +62,7 @@ FakeTimedVariable::~FakeTimedVariable() {
 void Histogram::WriteRawHistogramData(Writer* writer, MessageHandler* handler) {
   const char bucket_style[] = "<tr><td style=\"padding: 0 0 0 0.25em\">"
       "[</td><td style=\"text-align:right;padding:0 0.25em 0 0\">"
-      "%.0f,</td><td style=text-align:right;padding: 0 0.25em\">%.f)</td>";
+      "%s,</td><td style=text-align:right;padding: 0 0.25em\">%s)</td>";
   const char value_style[] = "<td style=\"text-align:right;padding:0 0.25em\">"
                              "%.f</td>";
   const char perc_style[] = "<td style=\"text-align:right;padding:0 0.25em\">"
@@ -80,10 +82,21 @@ void Histogram::WriteRawHistogramData(Writer* writer, MessageHandler* handler) {
     }
     double lower_bound = BucketStart(i);
     double upper_bound = BucketLimit(i);
+
+    GoogleString lower_bound_string = StringPrintf("%.0f", lower_bound);
+    if (lower_bound == -std::numeric_limits<double>::infinity()) {
+      lower_bound_string = "-&infin;";
+    }
+    GoogleString upper_bound_string = StringPrintf("%.0f", upper_bound);
+    if (upper_bound == std::numeric_limits<double>::infinity()) {
+      upper_bound_string = "&infin;";
+    }
+
     perc = value * 100 / count;
     cumulative_perc += perc;
     GoogleString output = StrCat(
-        StringPrintf(bucket_style, lower_bound, upper_bound),
+        StringPrintf(bucket_style, lower_bound_string.c_str(),
+                     upper_bound_string.c_str()),
         StringPrintf(value_style, value),
         StringPrintf(perc_style, perc),
         StringPrintf(perc_style, cumulative_perc),
@@ -290,6 +303,5 @@ void Statistics::RenderTimedVariables(Writer* writer,
     writer->Write(end, message_handler);
   }
 }
-
 
 }  // namespace net_instaweb
