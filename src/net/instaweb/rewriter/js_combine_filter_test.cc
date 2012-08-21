@@ -31,7 +31,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/javascript_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
@@ -157,11 +156,11 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
     SimulateJsResource(kIntrospectiveUrl2, kIntrospectiveText2);
 
     if (use_js_filter) {
-      AddRewriteFilter(new JavascriptFilter(rewrite_driver()));
+      options()->EnableFilter(RewriteOptions::kRewriteJavascript);
     }
+    rewrite_driver()->AddFilters();
     filter_ = new JsCombineFilter(rewrite_driver());
     AddRewriteFilter(filter_);
-    rewrite_driver()->AddFilters();
     // Some tests need an another domain, with (different)source files on it as
     // well.
     GoogleString test_domain(kTestDomain);
