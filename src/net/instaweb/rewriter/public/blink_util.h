@@ -41,8 +41,8 @@ class RewriteOptions;
 class UserAgentMatcher;
 
 typedef std::map<GoogleString, const Panel*> PanelIdToSpecMap;
-typedef std::multimap<GoogleString, std::pair<GoogleString, const int> >
-    AttributesToNonCacheableValuesMap;
+typedef std::multimap<GoogleString, std::pair<GoogleString, const int>,
+        StringCompareInsensitive> AttributesToNonCacheableValuesMap;
 
 namespace BlinkUtil {
 

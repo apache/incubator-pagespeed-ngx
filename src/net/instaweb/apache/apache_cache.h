@@ -27,6 +27,7 @@ namespace net_instaweb {
 class ApacheConfig;
 class ApacheRewriteDriverFactory;
 class AprMemCache;
+class AprMemCacheServers;
 class AsyncCache;
 class CacheInterface;
 class FileCache;
@@ -57,9 +58,7 @@ class ApacheCache {
   CacheInterface* cache() { return cache_.get(); }
   NamedLockManager* lock_manager() { return lock_manager_; }
   HTTPCache* http_cache() { return http_cache_.get(); }
-  PropertyCache* page_property_cache() {
-    return page_property_cache_.get();
-  }
+  PropertyCache* page_property_cache() { return page_property_cache_.get(); }
   PropertyCache* client_property_cache() {
     return client_property_cache_.get();
   }
@@ -68,6 +67,7 @@ class ApacheCache {
   void ChildInit();
   void GlobalCleanup(MessageHandler* handler);  // only called in root process
   AprMemCache* mem_cache() { return mem_cache_; }
+  AprMemCacheServers* mem_cache_servers() { return mem_cache_servers_.get(); }
 
   // Stops any further Gets from occuring in the Async cache.  This is used to
   // help wind down activity during a shutdown.
@@ -85,6 +85,7 @@ class ApacheCache {
   NamedLockManager* lock_manager_;
   FileCache* file_cache_;   // may be NULL if there we are using memcache.
   AprMemCache* mem_cache_;  // may be NULL if there we are using filecache
+  scoped_ptr<AprMemCacheServers> mem_cache_servers_;
   AsyncCache* async_cache_;  // may be NULL if not threading memcache lookups.
   CacheInterface* l2_cache_;
   scoped_ptr<QueuedWorkerPool> pool_;

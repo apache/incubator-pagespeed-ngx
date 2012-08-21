@@ -19,6 +19,7 @@
 // Unit-test the memcache interface.
 
 #include "net/instaweb/apache/apr_mem_cache.h"
+#include "net/instaweb/apache/apr_mem_cache_servers.h"
 
 #include <cstddef>
 
@@ -60,18 +61,20 @@ class AprMemCacheTest : public CacheTestBase {
     if (use_md5_hasher) {
       hasher = &md5_hasher_;
     }
-    cache_.reset(new AprMemCache(servers, 5, hasher, fallback_cache_.get(),
-                                 &handler_));
+    servers_.reset(new AprMemCacheServers(servers, 5, hasher, &handler_));
 
     // apr_memcache actually lazy-connects to memcached, it seems, so
     // if we fail the Connect call then something is truly broken.  To
     // make sure memcached is actually up, we have to make an API
     // call, such as GetStatus.
     GoogleString buf;
-    if (!cache_->Connect() || !cache_->GetStatus(&buf)) {
+    if (!servers_->Connect() || !servers_->GetStatus(&buf)) {
       LOG(ERROR) << "please start 'memcached -p 6765";
       return false;
     }
+
+    cache_.reset(new AprMemCache(servers_.get(), fallback_cache_.get(),
+                                 &handler_));
     return true;
   }
   virtual CacheInterface* Cache() { return cache_.get(); }
@@ -80,6 +83,7 @@ class AprMemCacheTest : public CacheTestBase {
   MD5Hasher md5_hasher_;
   MockHasher mock_hasher_;
   scoped_ptr<LRUCache> fallback_cache_;
+  scoped_ptr<AprMemCacheServers> servers_;
   scoped_ptr<AprMemCache> cache_;
 };
 
@@ -224,12 +228,11 @@ TEST_F(AprMemCacheTest, LargeValueMultiGet) {
 
 TEST_F(AprMemCacheTest, MultiServerFallback) {
   ASSERT_TRUE(ConnectToMemcached(true));
-  scoped_ptr<AprMemCache> server2_memcache(cache_.release());
-  scoped_ptr<LRUCache> server2_fallback(fallback_cache_.release());
 
-  // Make another connection to the same memcached.
-  fallback_cache_.reset(new LRUCache(kFallbackCacheSize));
-  ASSERT_TRUE(ConnectToMemcached(true));
+  // Make another connection to the same memcached, but with a different
+  // fallback cache.
+  LRUCache fallback_cache2(kFallbackCacheSize);
+  AprMemCache mem_cache2(servers_.get(), &fallback_cache2, &handler_);
 
   // Now when we store a large object from server1, and fetch it from
   // server2, we will get a miss because they do not share fallback caches..
@@ -239,11 +242,11 @@ TEST_F(AprMemCacheTest, MultiServerFallback) {
   CheckPut(kKey1, kLargeValue);
   CheckGet(kKey1, kLargeValue);
 
-  // The fallback caches are not shared, so we get a miss from server2.
-  CheckNotFound(server2_memcache.get(), kKey1);
+  // The fallback caches are not shared, so we get a miss from mem_cache2.
+  CheckNotFound(&mem_cache2, kKey1);
 
-  CheckPut(server2_memcache.get(), kKey1, kLargeValue);
-  CheckGet(server2_memcache.get(), kKey1, kLargeValue);
+  CheckPut(&mem_cache2, kKey1, kLargeValue);
+  CheckGet(&mem_cache2, kKey1, kLargeValue);
   CheckGet(cache_.get(), kKey1, kLargeValue);
 }
 

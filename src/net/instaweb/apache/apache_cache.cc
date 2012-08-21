@@ -17,6 +17,7 @@
 #include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apr_mem_cache.h"
+#include "net/instaweb/apache/apr_mem_cache_servers.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/util/public/async_cache.h"
@@ -106,12 +107,14 @@ ApacheCache::ApacheCache(const StringPiece& path,
     ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
     thread_limit += factory->num_rewrite_threads() +
         factory->num_expensive_rewrite_threads();
-    mem_cache_ = new AprMemCache(memcached_servers, thread_limit,
-                                 factory->hasher(), l2_cache_,
-                                 factory->message_handler());
-    if (!mem_cache_->valid_server_spec()) {
+    mem_cache_servers_.reset(new AprMemCacheServers(
+        memcached_servers, thread_limit, factory->hasher(),
+        factory->message_handler()));
+    if (!mem_cache_servers_->valid_server_spec()) {
       abort();  // TODO(jmarantz): is there a better way to exit?
     }
+    mem_cache_ = new AprMemCache(mem_cache_servers_.get(), l2_cache_,
+                                 factory->message_handler());
 
     Statistics* stats = factory->statistics();
     int num_threads = config.memcached_threads();
@@ -199,7 +202,7 @@ void ApacheCache::ChildInit() {
     file_cache_->set_worker(factory_->slow_worker());
   }
   if (mem_cache_ != NULL) {
-    if (!mem_cache_->Connect()) {
+    if (!mem_cache_servers_->Connect()) {
       factory_->message_handler()->Message(kError, "Memory cache failed");
       abort();  // TODO(jmarantz): is there a better way to exit?
     }

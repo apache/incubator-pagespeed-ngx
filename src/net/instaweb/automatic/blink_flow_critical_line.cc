@@ -332,11 +332,14 @@ class CriticalLineFetch : public AsyncFetch {
     value_.ExtractContents(&rewritten_content);
     GoogleString computed_hash =
         resource_manager_->hasher()->Hash(rewritten_content);
+    if (blink_critical_line_data_ != NULL &&
+        computed_hash != blink_critical_line_data_->hash()) {
+      num_blink_html_mismatches_->IncBy(1);
+    }
     // We invoke critical line computation in case of cache miss or html hash
     // mismatch.
     if (blink_critical_line_data_ == NULL ||
         computed_hash != blink_critical_line_data_->hash()) {
-      num_blink_html_mismatches_->IncBy(1);
       CreateCriticalLineComputationDriverAndRewrite(computed_hash);
     } else {
       num_blink_html_matches_->IncBy(1);

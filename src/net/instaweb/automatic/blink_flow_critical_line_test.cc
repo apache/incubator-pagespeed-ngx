@@ -1489,7 +1489,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateFalse) {
       BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
   EXPECT_EQ(1, statistics()->FindVariable(
       BlinkFlowCriticalLine::kNumBlinkHtmlCacheMisses)->Get());
-  EXPECT_EQ(1, statistics()->FindVariable(
+  EXPECT_EQ(0, statistics()->FindVariable(
       BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
   response_headers.Clear();
   ClearStats();
@@ -1502,8 +1502,6 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateFalse) {
 
   UnEscapeString(&text);
   EXPECT_STREQ(blink_output_, text);
-  EXPECT_EQ(0, statistics()->FindVariable(
-      BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
   EXPECT_EQ(0, statistics()->FindVariable(
       BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
   EXPECT_EQ(0, statistics()->FindVariable(
@@ -1530,7 +1528,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateTrue) {
       BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
   EXPECT_EQ(1, statistics()->FindVariable(
       BlinkFlowCriticalLine::kNumBlinkHtmlCacheMisses)->Get());
-  EXPECT_EQ(1, statistics()->FindVariable(
+  EXPECT_EQ(0, statistics()->FindVariable(
       BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
   response_headers.Clear();
   ClearStats();

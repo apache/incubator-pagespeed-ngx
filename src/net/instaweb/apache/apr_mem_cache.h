@@ -29,19 +29,17 @@
 
 struct apr_memcache_t;
 struct apr_memcache_server_t;
-struct apr_pool_t;
 
 namespace net_instaweb {
 
+class AprMemCacheServers;
 class Hasher;
 class MessageHandler;
 class SharedString;
 
-// Interface to memcached via the apr_memcache*, as documentedin
-// http://apr.apache.org/docs/apr-util/1.4/group___a_p_r___util___m_c.html.
-//
-// This is an entirely blocking interface, hence this is a blocking cache
-// implementation.
+// Interface to memcached via connectivity layer in
+// AprMemCacheServers.  This is an entirely blocking interface, hence
+// this is a blocking cache implementation.
 //
 // A fallback cache is used to store large values that won't fit in
 // memcached.  Note that this is not a write-through cache; if a value
@@ -65,17 +63,8 @@ class AprMemCache : public CacheInterface {
   // passed to the fallback cache.
   static const size_t kValueSizeThreshold = 1 * 1000 * 1000;
 
-  // servers is a comma-separated list of host[:port] where port defaults
-  // to 11211, the memcached default.
-  //
-  // thread_limit is the maximum number of threads that might be needed,
-  // which is the result of calling:
-  //     int thread_limit;
-  //     ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
-  // TODO(jmarantz): consider also accounting for the number of threads
-  // that we can create in PSA.
-  AprMemCache(const StringPiece& servers, int thread_limit,
-              Hasher* hasher, CacheInterface* fallback_cache,
+  AprMemCache(AprMemCacheServers* servers,
+              CacheInterface* fallback_cache,
               MessageHandler* handler);
   virtual ~AprMemCache();
 
@@ -86,12 +75,6 @@ class AprMemCache : public CacheInterface {
 
   virtual const char* Name() const { return "AprMemCache"; }
 
-  // Connects to the server, returning whether the connnection was
-  // successful or not.
-  bool Connect();
-
-  bool valid_server_spec() const { return valid_server_spec_; }
-
   // Get detailed status in a string, returning false if the server
   // failed to return status.
   bool GetStatus(GoogleString* status_string);
@@ -101,14 +84,7 @@ class AprMemCache : public CacheInterface {
       const GoogleString& key, const char* data, size_t data_len,
       Callback* callback);
 
-  StringVector hosts_;
-  std::vector<int> ports_;
-  bool valid_server_spec_;
-  int thread_limit_;
-  apr_pool_t* pool_;
-  apr_memcache_t* memcached_;
-  std::vector<apr_memcache_server_t*> servers_;
-  Hasher* hasher_;
+  AprMemCacheServers* servers_;
   CacheInterface* fallback_cache_;
   MessageHandler* message_handler_;
 
