@@ -1911,7 +1911,7 @@ ResourceManager* RewriteContext::Manager() const {
   return Driver()->resource_manager();
 }
 
-const RewriteOptions* RewriteContext::Options() {
+const RewriteOptions* RewriteContext::Options() const {
   return Driver()->options();
 }
 

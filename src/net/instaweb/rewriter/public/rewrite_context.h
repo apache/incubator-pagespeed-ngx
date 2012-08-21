@@ -210,7 +210,7 @@ class RewriteContext {
   // this method might have to climb up the parent-tree, but it's typically
   // not a deep tree.  Same with Driver() and Options().
   ResourceManager* Manager() const;
-  const RewriteOptions* Options();
+  const RewriteOptions* Options() const;
   RewriteDriver* Driver() const;
 
   // Check that an CachedResult is valid, specifically, that all the
