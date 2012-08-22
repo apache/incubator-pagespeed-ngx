@@ -947,6 +947,11 @@ void RewriteDriver::AddPostRenderFilters() {
     // specified or not.
     AddUnownedPostRenderFilter(domain_rewriter_.get());
   }
+  if (rewrite_options->Enabled(RewriteOptions::kInsertDnsPrefetch)) {
+    InsertDnsPrefetchFilter* insert_dns_prefetch_filter =
+        new InsertDnsPrefetchFilter(this);
+    AddOwnedPostRenderFilter(insert_dns_prefetch_filter);
+  }
   if (rewrite_options->Enabled(RewriteOptions::kDivStructure)) {
     // Adds a query parameter to each link roughly designating its position on
     // the page to be used in target, referer counting, which is then to be
@@ -1023,12 +1028,6 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kProcessBlinkInBackground)) {
     BlinkBackgroundFilter* filter = new BlinkBackgroundFilter(this);
     AddOwnedPostRenderFilter(filter);
-  }
-
-  if (rewrite_options->Enabled(RewriteOptions::kInsertDnsPrefetch)) {
-    InsertDnsPrefetchFilter *insert_dns_prefetch_filter =
-        new InsertDnsPrefetchFilter(this);
-    AddOwnedPostRenderFilter(insert_dns_prefetch_filter);
   }
 
   // Remove quotes and collapse whitespace at the very end for maximum effect.
@@ -2358,10 +2357,10 @@ FlushEarlyInfo* RewriteDriver::flush_early_info() {
   return flush_early_info_.get();
 }
 
-void RewriteDriver::SaveOriginalHeaders(ResponseHeaders* response_headers) {
+void RewriteDriver::SaveOriginalHeaders() {
   if (options()->Enabled(RewriteOptions::kFlushSubresources) &&
       UserAgentSupportsFlushEarly()) {
-    response_headers->GetSanitizedProto(
+    response_headers_->GetSanitizedProto(
         flush_early_info()->mutable_response_headers());
   }
 }

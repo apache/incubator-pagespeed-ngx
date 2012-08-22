@@ -29,9 +29,9 @@ else
   echo WGET = $WGET
 fi
 
-$WGET --version | head -1 | grep 1.12 >/dev/null
+$WGET --version | head -1 | grep -q "1\.1[2-9]"
 if [ $? != 0 ]; then
-  echo You have the wrong version of wget.  1.12 is required.
+  echo "You have the wrong version of wget. >1.12 is required."
   exit 1
 fi
 

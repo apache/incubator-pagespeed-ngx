@@ -854,7 +854,7 @@ class RewriteDriver : public HtmlParse {
 
   // Saves the origin headers for a request in flush_early_info so that it can
   // be used in subsequent request.
-  void SaveOriginalHeaders(ResponseHeaders* response_headers);
+  void SaveOriginalHeaders();
 
  private:
   friend class ResourceManagerTestBase;

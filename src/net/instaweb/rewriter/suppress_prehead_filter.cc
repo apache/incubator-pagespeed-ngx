@@ -102,6 +102,7 @@ void SuppressPreheadFilter::EndDocument() {
   driver_->flush_early_info()->set_pre_head(pre_head_);
   driver_->flush_early_info()->set_content_type_meta_tag(
       content_type_meta_tag_);
+  driver_->SaveOriginalHeaders();
 }
 
 }  // namespace net_instaweb
