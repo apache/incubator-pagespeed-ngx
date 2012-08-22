@@ -508,6 +508,7 @@
         'http/sync_fetcher_adapter.cc',
         'http/sync_fetcher_adapter_callback.cc',
         'http/url_async_fetcher.cc',
+        'http/url_async_fetcher_stats.cc',
         'http/url_fetcher.cc',
         'http/url_pollable_async_fetcher.cc',
         'http/user_agent_matcher.cc',

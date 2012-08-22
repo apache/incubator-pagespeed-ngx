@@ -34,7 +34,7 @@ class RewriteStats;
 class SharedMemStatistics;
 class Statistics;
 class ThreadSystem;
-class UrlPollableAsyncFetcher;
+class UrlAsyncFetcherStats;
 class Variable;
 
 // Creates an Apache-specific ResourceManager.  This differs from base class
@@ -116,8 +116,9 @@ class ApacheResourceManager : public ResourceManager {
   // May be NULL. Owned by *split_statistics_.
   SharedMemStatistics* local_statistics_;
 
-  // Non-NULL if we have per-vhost stats.
+  // These are non-NULL if we have per-vhost stats.
   scoped_ptr<RewriteStats> local_rewrite_stats_;
+  scoped_ptr<UrlAsyncFetcherStats> stats_fetcher_;
 
   Histogram* html_rewrite_time_us_histogram_;
 

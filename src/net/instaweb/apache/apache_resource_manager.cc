@@ -21,6 +21,7 @@
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
+#include "net/instaweb/http/public/url_async_fetcher_stats.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -40,7 +41,9 @@ const int64 kDefaultCacheFlushIntervalSec = 5;
 const char kCacheFlushCount[] = "cache_flush_count";
 
 // Statistics histogram names.
-const char* kHtmlRewriteTimeUsHistogram = "Html Time us Histogram";
+const char kHtmlRewriteTimeUsHistogram[] = "Html Time us Histogram";
+
+const char kLocalFetcherStatsPrefix[] = "http";
 
 }  // namespace
 
@@ -93,6 +96,7 @@ void ApacheResourceManager::Initialize(Statistics* statistics) {
   // worse than anything we have reasonably seen, to make sure we don't
   // cut off actual samples.
   html_rewrite_time_us_histogram->SetMaxValue(2000 * Timer::kMsUs);
+  UrlAsyncFetcherStats::Initialize(kLocalFetcherStatsPrefix, statistics);
 }
 
 bool ApacheResourceManager::InitFileCachePath() {
@@ -154,6 +158,15 @@ void ApacheResourceManager::ChildInit() {
           split_statistics_.get(), apache_factory_->thread_system(),
           apache_factory_->timer()));
       set_rewrite_stats(local_rewrite_stats_.get());
+
+      stats_fetcher_.reset(new UrlAsyncFetcherStats(
+          kLocalFetcherStatsPrefix, fetcher,
+          apache_factory_->timer(), split_statistics_.get()));
+      if (apache_factory_->fetch_with_gzip()) {
+        fetcher->set_fetch_with_gzip(false);
+        stats_fetcher_->set_fetch_with_gzip(true);
+      }
+      set_default_system_fetcher(stats_fetcher_.get());
     }
 
     // To allow Flush to come in while multiple threads might be

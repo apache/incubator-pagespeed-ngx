@@ -125,6 +125,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // accept-encoding:gzip, even when used in a context when we want
   // cleartext.  We'll decompress as we read the content if needed.
   void set_fetch_with_gzip(bool x) { fetch_with_gzip_ = x; }
+  bool fetch_with_gzip() const { return fetch_with_gzip_; }
 
   void set_num_rewrite_threads(int x) { num_rewrite_threads_ = x; }
   int num_rewrite_threads() const { return num_rewrite_threads_; }
