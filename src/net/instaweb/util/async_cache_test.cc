@@ -25,6 +25,7 @@
 #include <utility>                      // for pair
 
 #include "base/logging.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -46,7 +47,69 @@ namespace net_instaweb {
 
 class AsyncCacheTest : public CacheTestBase {
  protected:
-  typedef std::map<GoogleString, WorkerTestBase::SyncPoint*> DelayMap;
+  class DelayMap {
+   public:
+    explicit DelayMap(ThreadSystem* thread_system)
+        : mutex_(thread_system->NewMutex()),
+          thread_system_(thread_system) {
+    }
+    ~DelayMap() { STLDeleteValues(&map_); }
+
+    // Note that Delay is called only in test mainlines, prior to
+    // any cache lookups being queued for that key.
+    void Delay(const GoogleString& key) {
+      WorkerTestBase::SyncPoint* sync_point =
+          new WorkerTestBase::SyncPoint(thread_system_);
+      {
+        ScopedMutex lock(mutex_.get());
+        map_[key] = sync_point;
+      }
+    }
+
+    // Note that Wait is only called once per key, so there is no wait/wait
+    // race.
+    void Wait(const GoogleString& key) {
+      // We can't use ScopedMutex easily here because we want to avoid
+      // holding our mutex while blocking or freeing memory.
+      mutex_->Lock();
+      Map::iterator p = map_.find(key);
+      if (p != map_.end()) {
+        WorkerTestBase::SyncPoint* sync_point = p->second;
+
+        // In order to avoid deadlock with Wait/Delay on other keys,
+        // and most importantly Notify() on this key, we must release
+        // the lock before waiting on the sync-point.
+        mutex_->Unlock();
+        sync_point->Wait();
+        mutex_->Lock();
+
+        map_.erase(p);
+        mutex_->Unlock();
+        delete sync_point;
+      } else {
+        mutex_->Unlock();
+      }
+    }
+
+    void Notify(const GoogleString& key) {
+      WorkerTestBase::SyncPoint* sync_point = NULL;
+      {
+        ScopedMutex lock(mutex_.get());
+        Map::iterator p = map_.find(key);
+        if (p != map_.end()) {
+          sync_point = p->second;
+        }
+      }
+      CHECK(sync_point != NULL);
+      sync_point->Notify();
+    }
+
+    typedef std::map<GoogleString, WorkerTestBase::SyncPoint*> Map;
+
+    scoped_ptr<AbstractMutex> mutex_;
+    ThreadSystem* thread_system_;
+    Map map_;
+  };
 
   // Tweak of LRU cache to block in Get on a sync-point.  Note that we don't
   // use DelayCache because that doeesn't block; it only defers the Done
@@ -62,13 +125,7 @@ class AsyncCacheTest : public CacheTestBase {
     virtual ~SyncedLRUCache() {}
 
     void Get(const GoogleString& key, Callback* callback) {
-      DelayMap::iterator p = delay_map_->find(key);
-      if (p != delay_map_->end()) {
-        WorkerTestBase::SyncPoint* sync_point = p->second;
-        sync_point->Wait();
-        delay_map_->erase(p);
-        delete sync_point;
-      }
+      delay_map_->Wait(key);
       ThreadsafeCache::Get(key, callback);
     }
 
@@ -98,9 +155,14 @@ class AsyncCacheTest : public CacheTestBase {
   AsyncCacheTest()
       : lru_cache_(new LRUCache(kMaxSize)),
         thread_system_(ThreadSystem::CreateThreadSystem()),
+        delay_map_(thread_system_.get()),
         timer_(thread_system_->NewTimer()),
         suppress_post_get_cleanup_(false) {
     set_mutex(thread_system_->NewMutex());
+  }
+
+  ~AsyncCacheTest() {
+    pool_->ShutDown();  // quiesce before destructing cache.
   }
 
   void InitCache(int num_workers, int num_threads) {
@@ -112,7 +174,6 @@ class AsyncCacheTest : public CacheTestBase {
     async_cache_->set_num_threads(num_threads);
   }
 
-  virtual ~AsyncCacheTest() { STLDeleteValues(&delay_map_); }
   virtual CacheInterface* Cache() { return async_cache_.get(); }
   virtual Callback* NewCallback() { return new AsyncCallback(this); }
 
@@ -134,19 +195,16 @@ class AsyncCacheTest : public CacheTestBase {
   }
 
   void DelayKey(const GoogleString& key) {
-    delay_map_[key] = new WorkerTestBase::SyncPoint(thread_system_.get());
+    delay_map_.Delay(key);
   }
 
   void ReleaseKey(const GoogleString& key) {
-    DelayMap::iterator p = delay_map_.find(key);
-    CHECK(p != delay_map_.end());
-    WorkerTestBase::SyncPoint* sync_point = p->second;
-    sync_point->Notify();
+    delay_map_.Notify(key);
   }
 
-  DelayMap delay_map_;
   LRUCache* lru_cache_;
   scoped_ptr<ThreadSystem> thread_system_;
+  DelayMap delay_map_;
   scoped_ptr<Timer> timer_;
   scoped_ptr<QueuedWorkerPool> pool_;
   scoped_ptr<AsyncCache> async_cache_;
