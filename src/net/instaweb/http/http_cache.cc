@@ -22,8 +22,8 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/util/public/basictypes.h"

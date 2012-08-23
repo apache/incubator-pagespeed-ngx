@@ -22,7 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/http/logging.pb.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -185,14 +185,16 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
     }
   }
   GoogleString headers_fetch_time;
-  LoggingInfo* logging_info = driver_->logging_info();
-  if (logging_info != NULL && logging_info->has_timing_info() &&
-      logging_info->timing_info().has_header_fetch_ms()) {
-    // If time taken to fetch the http header is not set then the response came
-    // from cache.
+  LogRecord* log_record = driver_->log_record();
+  if (log_record != NULL && log_record->logging_info()->has_timing_info() &&
+      log_record->logging_info()->timing_info().has_header_fetch_ms()) {
+    int64 header_fetch_ms =
+        log_record->logging_info()->timing_info().header_fetch_ms();
+    // If time taken to fetch the http header is not set then the response
+    // came from cache.
     headers_fetch_time = StrCat(
         "&hft=",
-        Integer64ToString(logging_info->timing_info().header_fetch_ms()));
+        Integer64ToString(header_fetch_ms));
   }
   GoogleString tail_script = StringPrintf(
       script_format.c_str(),

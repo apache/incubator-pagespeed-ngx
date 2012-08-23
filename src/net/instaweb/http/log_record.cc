@@ -25,8 +25,18 @@
 
 namespace net_instaweb {
 
-LogRecord::LogRecord(LoggingInfo* logging_info) {
-  set_logging_info(logging_info);
+LogRecord::LogRecord() : logging_info_(new LoggingInfo),
+    owns_logging_info_(true) {
+}
+
+LogRecord::LogRecord(LoggingInfo* logging_info)
+    : logging_info_(logging_info), owns_logging_info_(false) {
+}
+
+LogRecord::~LogRecord() {
+  if (owns_logging_info_) {
+    delete logging_info_;
+  }
 }
 
 void LogRecord::LogAppliedRewriter(const char* rewriter_id) {

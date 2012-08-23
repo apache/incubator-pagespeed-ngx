@@ -54,6 +54,7 @@ class CssResourceSlot : public ResourceSlot {
   void EnableTrim(const GoogleUrl& base_url);
 
   virtual void DirectSetUrl(const StringPiece& url);
+  virtual bool CanDirectSetUrl() { return true; }
 
  protected:
   CssResourceSlot(const ResourcePtr& resource, Css::Values* values,

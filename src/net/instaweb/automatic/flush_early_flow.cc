@@ -95,7 +95,7 @@ class FlushEarlyAsyncFetch : public AsyncFetchUsingWriter {
       : AsyncFetchUsingWriter(fetch),
         base_fetch_(fetch) {
     set_request_headers(fetch->request_headers());
-    set_logging_info(fetch->logging_info());
+    set_log_record(fetch->log_record());
   }
 
  private:

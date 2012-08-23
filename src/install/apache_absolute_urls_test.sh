@@ -14,8 +14,6 @@
 this_dir=$(dirname $0)
 source "$this_dir/system_test_helpers.sh" || exit 1
 
-TEST="$HOSTNAME/mod_pagespeed_test"
-
 echo TEST: Encoded absolute urls are not respected.
 
 # Monitor the Apache log; tail -F will catch log rotations.

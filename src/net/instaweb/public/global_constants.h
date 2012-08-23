@@ -40,7 +40,7 @@ const char kPsaLastModified[] = "X-PSA-Last-Modified";
 // Noscript element that redirects to ModPagespeed=noscript.  This is applied
 // when a filter that inserts custom javascript is enabled.
 const char kNoScriptRedirectFormatter[] =
-    "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;url=%s\">"
+    "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;url='%s'\">"
     "<style><!--table,div,span,font,p{display:none} --></style>"
     "<div style=\"display:block\">Please click <a href=\"%s\">here</a> "
     "if you are not redirected within a few seconds.</div></noscript>";

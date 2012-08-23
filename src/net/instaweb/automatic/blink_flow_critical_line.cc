@@ -34,9 +34,9 @@
 #include "base/logging.h"
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
-#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -588,6 +588,7 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
   const int start_body_marker_length = strlen(BlinkUtil::kStartBodyMarker);
   GoogleString url_str(url_with_psa_off->Spec().data(),
                        url_with_psa_off->Spec().size());
+  GlobalReplaceSubstring("\'", "%27", &url_str);
   critical_html_ = StrCat(
       critical_html.substr(0, start_body_pos),
       StringPrintf(

@@ -16,8 +16,8 @@
 
 // Author: pulkitg@google.com (Pulkit Goyal)
 
-#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
@@ -169,7 +169,8 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
 
 TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
   LoggingInfo logging_info;
-  rewrite_driver()->set_logging_info_destination(&logging_info);
+  LogRecord log_record(&logging_info);
+  rewrite_driver()->set_log_record(&log_record);
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
   options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
@@ -189,6 +190,7 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
   html_parse()->Flush();
   html_parse()->ParseText(flush2);
   html_parse()->FinishParse();
+  log_record.Finalize();
 
   GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
       StrCat("<body>",
@@ -208,7 +210,7 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
              "\npagespeed.delayImages.replaceWithHighRes();\n</script>"
              "</body>"));
   EXPECT_TRUE(Wildcard(output_html).Match(output_buffer_));
-  EXPECT_TRUE(logging_info.applied_rewriters().find("di,") !=
+  EXPECT_TRUE(logging_info.applied_rewriters().find("di") !=
               GoogleString::npos);
 }
 

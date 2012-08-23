@@ -19,9 +19,9 @@
 #include "net/instaweb/http/public/write_through_http_cache.h"
 #include <cstddef>
 #include "base/scoped_ptr.h"
-#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/statistics.h"

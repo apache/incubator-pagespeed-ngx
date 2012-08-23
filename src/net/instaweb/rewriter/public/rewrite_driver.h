@@ -62,7 +62,7 @@ class Function;
 class HtmlEvent;
 class HtmlFilter;
 class HtmlWriterFilter;
-class LoggingInfo;
+class LogRecord;
 class MessageHandler;
 class PropertyPage;
 class RequestHeaders;
@@ -832,22 +832,6 @@ class RewriteDriver : public HtmlParse {
   void set_is_blink_request(bool x) { is_blink_request_ = x; }
   bool is_blink_request() const { return is_blink_request_; }
 
-  // This method is not thread-safe. Ensure that threads accessing it are
-  // synchronized against each other.
-  StringSet* applied_rewriters() {
-    return &applied_rewriters_;
-  }
-
-  // This method is not thread-safe. Ensure that threads accessing it are
-  // synchronized against each other.
-  LoggingInfo* logging_info() {
-    return logging_info_;
-  }
-
-  void set_logging_info_destination(LoggingInfo* logging_info) {
-    logging_info_ = logging_info;
-  }
-
   // Determines whether we are currently in Debug mode; meaning that the
   // site owner or user has enabled filter kDebug.
   bool DebugMode() const { return options()->Enabled(RewriteOptions::kDebug); }
@@ -855,6 +839,10 @@ class RewriteDriver : public HtmlParse {
   // Saves the origin headers for a request in flush_early_info so that it can
   // be used in subsequent request.
   void SaveOriginalHeaders();
+
+  // log_record() can return NULL.
+  LogRecord* log_record() { return log_record_; }
+  void set_log_record(LogRecord* l) { log_record_ = l; }
 
  private:
   friend class ResourceManagerTestBase;
@@ -963,9 +951,6 @@ class RewriteDriver : public HtmlParse {
                                       GoogleString* url_base,
                                       StringVector* urls) const;
 
-  // Set the applied rewriters to logging_info.
-  void SetAppliedRewriterString();
-
   // When HTML parsing is complete, we have learned all we can about
   // the DOM, so immediately write anything required into that Cohort
   // into the page property cache.
@@ -974,6 +959,8 @@ class RewriteDriver : public HtmlParse {
   // When HTML parsing is complete, write back client state, if it exists,
   // to the property cache.
   void WriteClientStateIntoPropertyCache();
+
+  void FinalizeFilterLogging();
 
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
@@ -1225,11 +1212,10 @@ class RewriteDriver : public HtmlParse {
   // Is this a blink request?
   bool is_blink_request_;
 
-  // Set of applied rewriter prefixes.
-  StringSet applied_rewriters_;
-
-  // Logging info owned by async_fetch. This may be NULL.
-  LoggingInfo* logging_info_;
+  // Pointer to the base fetch's log record, passed in from ProxyInterface; this
+  // may be NULL and accessing it beyond the base fetch's lifespan is unsafe.
+  // Reset to NULL in Cleanup()
+  LogRecord* log_record_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

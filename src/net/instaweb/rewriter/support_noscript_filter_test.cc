@@ -40,13 +40,13 @@ TEST_F(SupportNoscriptFilterTest, TestNoscript) {
   GoogleString output_html =
       "<head></head><body>"
       "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
-      "url=http://test.com/support_noscript.html?ModPagespeed=noscript\">"
+      "url='http://test.com/support_noscript%27%22.html?ModPagespeed=noscript'\">"
       "<style><!--table,div,span,font,p{display:none} --></style>"
       "<div style=\"display:block\">Please click "
-      "<a href=\"http://test.com/support_noscript.html?ModPagespeed=noscript\">"
+      "<a href=\"http://test.com/support_noscript%27%22.html?ModPagespeed=noscript\">"
       "here</a> if you are not redirected within a few seconds.</div>"
       "</noscript><img src=\"http://test.com/1.jpeg\"/></body>";
-  ValidateExpected("support_noscript", input_html, output_html);
+  ValidateExpected("support_noscript'\"", input_html, output_html);
 }
 
 TEST_F(SupportNoscriptFilterTest, TestNoscriptMultipleBodies) {
@@ -57,7 +57,7 @@ TEST_F(SupportNoscriptFilterTest, TestNoscriptMultipleBodies) {
   GoogleString output_html =
       "<head></head><body>"
       "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
-      "url=http://test.com/support_noscript.html?ModPagespeed=noscript\">"
+      "url='http://test.com/support_noscript.html?ModPagespeed=noscript'\">"
       "<style><!--table,div,span,font,p{display:none} --></style>"
       "<div style=\"display:block\">Please click "
       "<a href=\"http://test.com/support_noscript.html?ModPagespeed=noscript\">"

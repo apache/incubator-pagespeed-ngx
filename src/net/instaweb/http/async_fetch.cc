@@ -20,11 +20,11 @@
 #include "net/instaweb/http/public/async_fetch.h"
 
 #include "base/logging.h"
-#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/util/public/statistics.h"
 
 namespace net_instaweb {
@@ -36,8 +36,8 @@ AsyncFetch::~AsyncFetch() {
   if (owns_request_headers_) {
     delete request_headers_;
   }
-  if (owns_logging_info_) {
-    delete logging_info_;
+  if (owns_log_record_) {
+    delete log_record_;
   }
 }
 
@@ -130,28 +130,40 @@ void AsyncFetch::set_response_headers(ResponseHeaders* headers) {
   owns_response_headers_ = false;
 }
 
-void AsyncFetch::set_logging_info(LoggingInfo* logging_info) {
-  DCHECK(!owns_logging_info_);
-  if (owns_logging_info_) {
-    delete logging_info_;
-  }
-  logging_info_ = logging_info;
-  owns_logging_info_ = false;
-}
-
 LoggingInfo* AsyncFetch::logging_info() {
-  if (logging_info_ == NULL) {
-    logging_info_ = new LoggingInfo;
-    owns_logging_info_ = true;
-  }
-  return logging_info_;
+  return log_record()->logging_info();
 }
 
-GoogleString AsyncFetch::LoggingString() const {
+LogRecord* AsyncFetch::log_record() {
+  if (log_record_ == NULL) {
+    log_record_ = new LogRecord();
+    owns_log_record_ = true;
+  }
+  return log_record_;
+}
+
+void AsyncFetch::set_log_record(LogRecord* log_record) {
+  DCHECK(!owns_log_record_);
+  if (owns_log_record_) {
+    delete log_record_;
+  }
+  log_record_ = log_record;
+  owns_log_record_ = false;
+}
+
+void AsyncFetch::set_owned_log_record(LogRecord* log_record) {
+  if (owns_log_record_) {
+    delete log_record_;
+  }
+  log_record_ = log_record;
+  owns_log_record_ = true;
+}
+
+GoogleString AsyncFetch::LoggingString() {
   GoogleString logging_info_str;
-  if (logging_info_ != NULL) {
-    if (logging_info_->has_timing_info()) {
-      const TimingInfo timing_info = logging_info_->timing_info();
+  if (logging_info() != NULL) {
+    if (logging_info()->has_timing_info()) {
+      const TimingInfo timing_info = logging_info()->timing_info();
       if (timing_info.has_cache1_ms()) {
         StrAppend(&logging_info_str, "c1:",
                   Integer64ToString(timing_info.cache1_ms()), ";");
@@ -192,7 +204,7 @@ SharedAsyncFetch::SharedAsyncFetch(AsyncFetch* base_fetch)
     : base_fetch_(base_fetch) {
   set_response_headers(base_fetch->response_headers());
   set_request_headers(base_fetch->request_headers());
-  set_logging_info(base_fetch->logging_info());
+  set_log_record(base_fetch->log_record());
 }
 
 SharedAsyncFetch::~SharedAsyncFetch() {

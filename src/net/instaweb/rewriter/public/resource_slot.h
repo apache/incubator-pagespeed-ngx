@@ -109,11 +109,15 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // Update the URL in the slot target without touching the resource. This is
   // intended for when we're inlining things as data: URLs. Note that if you
   // call this you should also call set_disable_rendering(true), or otherwise
-  // the result will be overwritten. Does not alter the URL in any way.
-  // Not supported on all slot types --- presently only slots representing
-  // things within CSS have this operation (others will DCHECK-fail).
-  // Must be called from within a context's Render() method.
+  // the result will be overwritten. Does not alter the URL in any way.  Not
+  // supported on all slot types --- presently only slots representing things
+  // within CSS and HTML have this operation (others will DCHECK-fail).  Must be
+  // called from within a context's Render() method.
   virtual void DirectSetUrl(const StringPiece& url);
+
+  // Returns true if DirectSetUrl is supported by this slot (html and css right
+  // now).
+  virtual bool CanDirectSetUrl() { return false; }
 
   // Return the last context to have been added to this slot.  Returns NULL
   // if no context has been added to the slot so far.
@@ -185,6 +189,8 @@ class HtmlResourceSlot : public ResourceSlot {
 
   virtual void Render();
   virtual GoogleString LocationString();
+  virtual void DirectSetUrl(const StringPiece& url);
+  virtual bool CanDirectSetUrl() { return true; }
 
  protected:
   REFCOUNT_FRIEND_DECLARATION(HtmlResourceSlot);

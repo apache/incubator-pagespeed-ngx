@@ -31,12 +31,12 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
-#include "net/instaweb/http/logging.pb.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -221,7 +221,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       collect_subresources_filter_(NULL),
       serve_blink_non_critical_(false),
       is_blink_request_(false),
-      logging_info_(NULL)
+      log_record_(NULL)
       // NOTE:  Be sure to clear per-request member vars in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // Set up default values for the amount of time an HTML rewrite will wait for
@@ -328,8 +328,7 @@ void RewriteDriver::Clear() {
   collect_subresources_filter_ = NULL;
   serve_blink_non_critical_ = false;
   is_blink_request_ = false;
-  applied_rewriters_.clear();
-  logging_info_ = NULL;
+  log_record_ = NULL;
 
   // Reset to the default fetcher from any session fetcher
   // (as the request is over).
@@ -1848,6 +1847,13 @@ void RewriteDriver::WriteClientStateIntoPropertyCache() {
   }
 }
 
+void RewriteDriver::FinalizeFilterLogging() {
+  if (log_record_ != NULL) {
+    log_record_->Finalize();
+  }
+  log_record_ = NULL;
+}
+
 void RewriteDriver::UpdatePropertyValueInDomCohort(StringPiece property_name,
                                                    StringPiece property_value) {
   PropertyCache* pcache = resource_manager_->page_property_cache();
@@ -1962,24 +1968,10 @@ void RewriteDriver::UninhibitFlushDone(Function* user_callback) {
   }
 }
 
-void RewriteDriver::SetAppliedRewriterString() {
-  if (logging_info_ == NULL) {
-    return;
-  }
-  GoogleString applied_rewriters_str;
-  StringSet::iterator iter;
-  for (iter = applied_rewriters_.begin(); iter != applied_rewriters_.end();
-       ++iter) {
-    StrAppend(&applied_rewriters_str, *iter , ",");
-  }
-  logging_info_->set_applied_rewriters(applied_rewriters_str);
-  logging_info_ = NULL;
-}
-
 void RewriteDriver::FinishParse() {
   HtmlParse::FinishParse();
-  SetAppliedRewriterString();
   WriteClientStateIntoPropertyCache();
+  FinalizeFilterLogging();
   Cleanup();
 }
 
@@ -2008,8 +2000,8 @@ void RewriteDriver::QueueFinishParseAfterFlush(Function* user_callback) {
 void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
   DCHECK_EQ(0U, GetEventQueueSize());
   HtmlParse::EndFinishParse();
-  SetAppliedRewriterString();
   WriteClientStateIntoPropertyCache();
+  FinalizeFilterLogging();
   Cleanup();
   if (user_callback != NULL) {
     user_callback->CallRun();

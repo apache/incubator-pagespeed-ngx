@@ -71,7 +71,7 @@ class SuppressPreheadFilterTest : public ResourceManagerTestBase {
 
 TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
   InitResources();
-  GoogleString html_ip =
+  const char html_input[] =
       "<!DOCTYPE html>"
       "<html>"
       "<head>"
@@ -79,15 +79,15 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
         "<script src=\"b.js\"></script>"
       "</head>"
       "<body></body></html>";
-  GoogleString html_wo_prehead =
+  const char html_without_prehead[] =
       "<head>"
         "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
         "<script src=\"b.js\"></script>"
       "</head>"
       "<body></body></html>";
 
-  Parse("not_flushed_early", html_ip);
-  EXPECT_EQ(output_buffer_, html_ip);
+  Parse("not_flushed_early", html_input);
+  EXPECT_EQ(output_buffer_, html_input);
 
 
   // SuppressPreheadFilter should have populated the flush_early_proto with the
@@ -98,13 +98,13 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
   // pre head is suppressed if the dummy head was flushed early.
   output_.clear();
   rewrite_driver()->set_flushed_early(true);
-  Parse("flushed_early", html_ip);
-  EXPECT_EQ(output_, html_wo_prehead);
+  Parse("flushed_early", html_input);
+  EXPECT_EQ(output_, html_without_prehead);
 }
 
 TEST_F(SuppressPreheadFilterTest, FlushEarlyMetaTags) {
   InitResources();
-  GoogleString html_ip =
+  const char html_input[] =
       "<!DOCTYPE html>"
       "<html>"
       "<head>"
@@ -113,7 +113,7 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyMetaTags) {
       "<meta charset=\"UTF-8\">"
       "</head>"
       "<body></body></html>";
-  GoogleString html_wo_prehead =
+  const char html_without_prehead[] =
       "<head>"
       "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
       "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
@@ -121,8 +121,8 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyMetaTags) {
       "</head>"
       "<body></body></html>";
 
-  Parse("not_flushed_early", html_ip);
-  EXPECT_EQ(output_buffer_, html_ip);
+  Parse("not_flushed_early", html_input);
+  EXPECT_EQ(output_buffer_, html_input);
 
   EXPECT_EQ(
       "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
@@ -132,8 +132,68 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyMetaTags) {
   // pre head is suppressed if the dummy head was flushed early.
   output_.clear();
   rewrite_driver()->set_flushed_early(true);
-  Parse("flushed_early", html_ip);
-  EXPECT_EQ(output_, html_wo_prehead);
+  Parse("flushed_early", html_input);
+  EXPECT_EQ(output_, html_without_prehead);
+}
+
+TEST_F(SuppressPreheadFilterTest, MetaTagsOutsideHead) {
+  InitResources();
+  const char html_input[] =
+      "<!DOCTYPE html>"
+      "<html>"
+      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
+      "<head></head>"
+      "<body></body></html>";
+  const char html_without_prehead[] =
+      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
+      "<head>"
+      "</head>"
+      "<body></body></html>";
+
+  Parse("not_flushed_early", html_input);
+  EXPECT_EQ(output_buffer_, html_input);
+
+  EXPECT_EQ(
+      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>",
+      rewrite_driver()->flush_early_info()->content_type_meta_tag());
+
+  // pre head is suppressed if the dummy head was flushed early.
+  output_.clear();
+  rewrite_driver()->set_flushed_early(true);
+  Parse("flushed_early", html_input);
+  EXPECT_EQ(output_, html_without_prehead);
+}
+
+TEST_F(SuppressPreheadFilterTest, NoHead) {
+  InitResources();
+  const char html_input[] =
+      "<!DOCTYPE html>"
+      "<html>"
+      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
+      "<body></body></html>";
+  const char html_input_with_head[] =
+      "<!DOCTYPE html>"
+      "<html>"
+      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
+      "<head/>"
+      "<body></body></html>";
+  const char html_without_prehead[] =
+      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
+      "<head/>"
+      "<body></body></html>";
+
+  Parse("not_flushed_early", html_input);
+  EXPECT_EQ(output_buffer_, html_input_with_head);
+
+  EXPECT_EQ(
+      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>",
+      rewrite_driver()->flush_early_info()->content_type_meta_tag());
+
+  // pre head is suppressed if the dummy head was flushed early.
+  output_.clear();
+  rewrite_driver()->set_flushed_early(true);
+  Parse("flushed_early", html_input);
+  EXPECT_EQ(output_, html_without_prehead);
 }
 
 }  // namespace net_instaweb

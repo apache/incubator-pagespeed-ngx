@@ -34,14 +34,18 @@ namespace net_instaweb {
 // information. It also provides a simple aggregation mechanism for
 // collecting the ids of applied rewriters.
 
-// This class doesn't own the protobuf it wraps.
-
 // Subclasses may wrap some other type of protobuf; they must still provide
 // access to a LogRecord instance, however.
 class LogRecord  {
  public:
+  // Construct a LogRecord with a new, owned LoggingInfo proto.
+  LogRecord();
+
+  // Construct a LogRecord with an existing LoggingInfo proto, which remains
+  // owned by the calling code.
   explicit LogRecord(LoggingInfo* logging_info);
-  virtual ~LogRecord() {}
+
+  virtual ~LogRecord();
 
   // Log a rewriter (identified by an id string) as having been applied to
   // the request being logged. These ids will be aggregated and written to the
@@ -62,15 +66,12 @@ class LogRecord  {
   // applied_rewriters_
   GoogleString ConcatenatedRewriterString();
 
-  // Subclasses which don't directly store a LoggingInfo proto may wish to
-  // override this.
-  virtual void set_logging_info(LoggingInfo* l) { logging_info_ = l; }
-
  private:
   StringSet applied_rewriters_;
 
   // This cannot be NULL. Implementation constructors must set this.
   LoggingInfo* logging_info_;
+  bool owns_logging_info_;
 
   DISALLOW_COPY_AND_ASSIGN(LogRecord);
 };

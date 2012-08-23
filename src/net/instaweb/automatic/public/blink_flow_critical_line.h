@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_BLINK_FLOW_CRITICAL_LINE_H_
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
@@ -30,7 +31,6 @@ namespace net_instaweb {
 class AsyncFetch;
 class BlinkCriticalLineData;
 class BlinkCriticalLineDataFinder;
-class BlinkInfo;
 class PropertyPage;
 class ProxyFetchPropertyCallbackCollector;
 class ProxyFetchFactory;

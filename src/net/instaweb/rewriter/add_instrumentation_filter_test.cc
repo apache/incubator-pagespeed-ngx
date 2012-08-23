@@ -21,7 +21,7 @@
 #include <cstddef>
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/http/logging.pb.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -229,8 +229,9 @@ TEST_F(AddInstrumentationFilterTest,
 TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
   NullMessageHandler handler;
   LoggingInfo logging_info;
-  logging_info.mutable_timing_info()->set_header_fetch_ms(200);
-  rewrite_driver()->set_logging_info_destination(&logging_info);
+  LogRecord log_record(&logging_info);
+  log_record.logging_info()->mutable_timing_info()->set_header_fetch_ms(200);
+  rewrite_driver()->set_log_record(&log_record);
   RunInjection();
   EXPECT_TRUE(output_buffer_.find("&hft=200") != GoogleString::npos);
 }

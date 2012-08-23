@@ -49,6 +49,9 @@ void SupportNoscriptFilter::StartElement(HtmlElement* element) {
             RewriteQuery::kModPagespeed, RewriteQuery::kNoscriptValue));
     GoogleString url_str(url_with_psa_off->Spec().data(),
                          url_with_psa_off->Spec().size());
+    GlobalReplaceSubstring("'", "%27", &url_str);
+    // TODO(sriharis): Replace the usage of HtmlCharactersNode with HtmlElement
+    // and Attribute.
     HtmlCharactersNode* noscript_node = rewrite_driver_->NewCharactersNode(
         element, StringPrintf(kNoScriptRedirectFormatter,
                               url_str.c_str(), url_str.c_str()));

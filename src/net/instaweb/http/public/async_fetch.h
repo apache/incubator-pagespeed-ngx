@@ -23,6 +23,7 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_ASYNC_FETCH_H_
 
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -31,8 +32,8 @@
 
 namespace net_instaweb {
 
+class LogRecord;
 class MessageHandler;
-class LoggingInfo;
 class RequestHeaders;
 class Variable;
 
@@ -53,11 +54,11 @@ class AsyncFetch : public Writer {
   AsyncFetch() :
       request_headers_(NULL),
       response_headers_(NULL),
-      logging_info_(NULL),
+      log_record_(NULL),
       owns_request_headers_(false),
       owns_response_headers_(false),
-      headers_complete_(false),
-      owns_logging_info_(false) {
+      owns_log_record_(false),
+      headers_complete_(false) {
   }
 
   virtual ~AsyncFetch();
@@ -121,20 +122,21 @@ class AsyncFetch : public Writer {
 
   bool headers_complete() const { return headers_complete_; }
 
-  // Sets the LoggingInfo to the specified pointer.  The caller must
-  // guarantee that the pointed-to LoggingInfo remains valid as long as the
-  // AsyncFetch is running.
-  void set_logging_info(LoggingInfo* logging_info);
-
-  // Returns a pointer to the logging info, lazily constructing
-  // them if needed.  If they are constructed here (as opposed to
-  // being set with set_logging_info) then they will be owned by
-  // the class instance.
+  // Returns a pointer to the logging info, extracting it from the log record.
   virtual LoggingInfo* logging_info();
 
-  // Returns a logging information in a string eg. c1:0;c2:2;hf:45;.
+  // Returns a pointer to a log record that wraps this fetch's logging
+  // info, lazily constructing it if needed.
+  virtual LogRecord* log_record();
+
+  // Sets the log record to the specifid pointer.  The caller must
+  // guarantee that the pointed-to log record remains valid as long as the
+  // AsyncFetch is running.
+  void set_log_record(LogRecord* log_record);
+
+  // Returns logging information in a string eg. c1:0;c2:2;hf:45;.
   // c1 is cache 1, c2 is cache 2, hf is headers fetch.
-  GoogleString LoggingString() const;
+  GoogleString LoggingString();
 
  protected:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler) = 0;
@@ -142,14 +144,20 @@ class AsyncFetch : public Writer {
   virtual void HandleDone(bool success) = 0;
   virtual void HandleHeadersComplete() = 0;
 
+  // Returns a pointer to the log record, with no lazy construction behavior.
+  LogRecord* log_record_or_null() { return log_record_; }
+
+  // Sets LogRecord and claims ownership.
+  void set_owned_log_record(LogRecord* log_record);
+
  private:
   RequestHeaders* request_headers_;
   ResponseHeaders* response_headers_;
-  LoggingInfo* logging_info_;
+  LogRecord* log_record_;
   bool owns_request_headers_;
   bool owns_response_headers_;
+  bool owns_log_record_;
   bool headers_complete_;
-  bool owns_logging_info_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncFetch);
 };

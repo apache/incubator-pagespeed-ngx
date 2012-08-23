@@ -80,12 +80,9 @@ void HtmlResourceSlot::Render() {
       element_ = NULL;
     }
   } else {
-    DCHECK(attribute_ != NULL);
-    if (attribute_ != NULL) {
-      attribute_->SetValue(resource()->url());
-      // Note, for inserting image-dimensions, we will likely have
-      // to subclass or augment HtmlResourceSlot.
-    }
+    DirectSetUrl(resource()->url());
+    // Note that to insert image dimensions, we explicitly save
+    // a reference to the element in the enclosing Context object.
   }
 }
 
@@ -96,6 +93,13 @@ GoogleString HtmlResourceSlot::LocationString() {
     return StrCat(html_parse_->id(), ":",
                   IntegerToString(begin_line_number_),
                   "-", IntegerToString(end_line_number_));
+  }
+}
+
+void HtmlResourceSlot::DirectSetUrl(const StringPiece& url) {
+  DCHECK(attribute_ != NULL);
+  if (attribute_ != NULL) {
+    attribute_->SetValue(url);
   }
 }
 

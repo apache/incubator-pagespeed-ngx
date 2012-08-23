@@ -493,6 +493,7 @@
         # TODO(sligocki): Move http/ files to instaweb_http.
         'http/async_fetch.cc',
         'http/cache_url_async_fetcher.cc',
+        'http/external_url_fetcher.cc',
         'http/fake_url_async_fetcher.cc',
         'http/http_cache.cc',
         'http/http_dump_url_async_writer.cc',

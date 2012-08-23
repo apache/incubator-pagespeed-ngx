@@ -549,8 +549,9 @@ void ProxyInterface::ProxyRequestCallback(
         // NewCustomRewriteDriver takes ownership of custom_options_.
         driver = resource_manager_->NewCustomRewriteDriver(options);
       }
-      driver->set_logging_info_destination(async_fetch->logging_info());
       driver->set_need_to_store_experiment_data(need_to_store_experiment_data);
+      driver->set_log_record(async_fetch->log_record());
+
       // TODO(mmohabey): Remove duplicate setting of user agent for different
       // flows.
       if (user_agent != NULL) {

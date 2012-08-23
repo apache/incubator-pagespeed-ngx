@@ -14,40 +14,31 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
+// Authors: jmarantz@google.com (Joshua Marantz)
+//          vchudnov@google.com (Victor Chudnovsky)
 
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_WGET_URL_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_WGET_URL_FETCHER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/http/public/external_url_fetcher.h"
 
 namespace net_instaweb {
 
-class MessageHandler;
-class RequestHeaders;
-class ResponseHeaders;
-class Writer;
-
-// Runs 'wget' via popen for blocking URL fetches.
-class WgetUrlFetcher : public UrlFetcher {
+class WgetUrlFetcher : public ExternalUrlFetcher {
  public:
-  WgetUrlFetcher() { }
-  virtual ~WgetUrlFetcher();
-
-  // TODO(sligocki): Allow protocol version number (e.g. HTTP/1.1)
-  // and request type (e.g. GET, POST, etc.) to be specified.
-  virtual bool StreamingFetchUrl(const GoogleString& url,
-                                 const RequestHeaders& request_headers,
-                                 ResponseHeaders* response_headers,
-                                 Writer* writer,
-                                 MessageHandler* message_handler);
-
-  // Default user agent to use.
-  static const char kDefaultUserAgent[];
+  WgetUrlFetcher();
+  virtual ~WgetUrlFetcher() {}
 
  private:
+  virtual GoogleString ConstructFetchCommand(
+      const GoogleString& escaped_url,
+      const char* user_agent,
+      const StringVector& escaped_headers);
+  virtual const char* GetFetchLabel();
+
   DISALLOW_COPY_AND_ASSIGN(WgetUrlFetcher);
 };
 
