@@ -260,6 +260,12 @@ apr_bucket* rewrite_html(InstawebContext* context, request_rec* request,
     return NULL;
   } else if (operation == FLUSH) {
     context->Flush();
+    // If the flush happens before any rewriting, don't fallthrough and
+    // replace the headers with those in the context, because they haven't
+    // been populated yet so we end up with NO headers. See issue 385.
+    if (context->output().empty()) {
+      return NULL;
+    }
   } else if (operation == FINISH) {
     context->Finish();
   }
