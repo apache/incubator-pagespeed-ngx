@@ -18,6 +18,7 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -34,8 +35,8 @@
 
 namespace {
 
-// Default max number of buckets for histogram, refers to stats/histogram.
-const int kMaxBuckets = 500;
+// Default number of buckets for histogram, refers to stats/histogram.
+const int kDefaultNumBuckets = 500;
 // Default upper bound of values in histogram. Can be reset by SetMaxValue().
 const double kMaxValue = 5000;
 const char kStatisticsObjName[] = "statistics";
@@ -188,8 +189,8 @@ void SharedMemConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
   }
 }
 
-SharedMemHistogram::SharedMemHistogram() : max_buckets_(kMaxBuckets),
-                                           buffer_(NULL) {
+SharedMemHistogram::SharedMemHistogram()
+    : num_buckets_(kDefaultNumBuckets), buffer_(NULL) {
 }
 
 SharedMemHistogram::~SharedMemHistogram() {
@@ -204,14 +205,7 @@ void SharedMemHistogram::Init() {
   buffer_->enable_negative_ = false;
   buffer_->min_value_ = 0;
   buffer_->max_value_ = kMaxValue;
-  buffer_->min_ = 0;
-  buffer_->max_ = 0;
-  buffer_->count_ = 0;
-  buffer_->sum_ = 0;
-  buffer_->sum_of_squares_ = 0;
-  for (int i = 0; i < max_buckets_; ++i) {
-    buffer_->values_[i] = 0;
-  }
+  ClearInternal();
 }
 
 void SharedMemHistogram::AttachTo(
@@ -261,16 +255,16 @@ void SharedMemHistogram::Add(double value) {
   if (buffer_->enable_negative_) {
     // If negative buckets is enabled, the minimum value in-range in Histogram
     // is -buffer_->max_value_.
-    if (value <= -buffer_->max_value_) {
+    if (value < -buffer_->max_value_) {
       index = 0;
     } else if (value >= buffer_->max_value_) {
-      index = max_buckets_ - 1;
+      index = num_buckets_ - 1;
     }
   } else {
     if (value < buffer_->min_value_) {
       index = 0;
     } else if (value >= buffer_->max_value_) {
-      index = max_buckets_ - 1;
+      index = num_buckets_ - 1;
     }
   }
 
@@ -279,7 +273,7 @@ void SharedMemHistogram::Add(double value) {
     index = FindBucket(value);
   }
 
-  if (index < 0 || index >= max_buckets_) {
+  if (index < 0 || index >= num_buckets_) {
     LOG(ERROR) << "Invalid bucket index found for" << value;
     return;
   }
@@ -314,13 +308,13 @@ void SharedMemHistogram::ClearInternal() {
   buffer_->count_ = 0;
   buffer_->sum_ = 0;
   buffer_->sum_of_squares_ = 0;
-  for (int i = 0; i < max_buckets_; ++i) {
+  for (int i = 0; i < num_buckets_; ++i) {
     buffer_->values_[i] = 0;
   }
 }
 
-int SharedMemHistogram::MaxBuckets() {
-  return max_buckets_;
+int SharedMemHistogram::NumBuckets() {
+  return num_buckets_;
 }
 
 void SharedMemHistogram::EnableNegativeBuckets() {
@@ -365,9 +359,9 @@ void SharedMemHistogram::SetMaxValue(double value) {
   }
 }
 
-void SharedMemHistogram::SetMaxBuckets(int i) {
-  DCHECK_GT(i, 0) << "Maximum number of buckets should be larger than 0";
-  max_buckets_ = i;
+void SharedMemHistogram::SetSuggestedNumBuckets(int i) {
+  DCHECK_GT(i, 0) << "Number of buckets should be larger than 0";
+  num_buckets_ = i;
 }
 
 double SharedMemHistogram::AverageInternal() {
@@ -397,7 +391,7 @@ double SharedMemHistogram::PercentileInternal(const double perc) {
   int i;
   // Find the bucket which is closest to the bucket that contains
   // the number we want.
-  for (i = 0; i < max_buckets_; ++i) {
+  for (i = 0; i < num_buckets_; ++i) {
     if (count + buffer_->values_[i] <= count_below) {
       count += buffer_->values_[i];
       if (count == count_below) {
@@ -459,13 +453,13 @@ double SharedMemHistogram::BucketStart(int index) {
   if (buffer_ == NULL) {
     return -1.0;
   }
-  DCHECK(index >= 0 && index <= max_buckets_) <<
+  DCHECK(index >= 0 && index <= num_buckets_) <<
       "Queried index is out of boundary.";
-  if (index == max_buckets_) {
+  if (index == num_buckets_) {
     // BucketLimit(i) = BucketStart(i+1).
-    // Bucket index goes from 0 to max_buckets -1.
-    // BucketLimit(max_buckets - 1) = BucketStart(max_buckets),
-    // and BucketLimit(max_buckets - 1) is +infinity as we make our
+    // Bucket index goes from 0 to num_buckets -1.
+    // BucketLimit(num_buckets - 1) = BucketStart(num_buckets),
+    // and BucketLimit(num_buckets - 1) is +infinity as we make our
     // outermost buckets catch everything that would otherwise fall out
     // of range.
     return std::numeric_limits<double>::infinity();
@@ -485,7 +479,7 @@ double SharedMemHistogram::BucketCount(int index) {
     return -1.0;
   }
 
-  if (index < 0 || index >= max_buckets_) {
+  if (index < 0 || index >= num_buckets_) {
     return -1.0;
   }
   return buffer_->values_[index];
@@ -500,9 +494,9 @@ double SharedMemHistogram::BucketWidth() {
   double bucket_width = 0;
 
   if (buffer_->enable_negative_) {
-    bucket_width = max * 2 / max_buckets_;
+    bucket_width = max * 2 / num_buckets_;
   } else {
-    bucket_width = (max - min) / max_buckets_;
+    bucket_width = (max - min) / num_buckets_;
   }
   DCHECK_NE(0, bucket_width);
   return bucket_width;
@@ -586,7 +580,7 @@ bool SharedMemStatistics::InitMutexes(size_t per_var,
       return false;
     }
     SharedMemHistogram* hist = histograms(i);
-    pos += shm_runtime_->SharedMutexSize() + hist->AllocationSize();
+    pos += hist->AllocationSize(shm_runtime_);
     i++;
   }
   return true;
@@ -602,7 +596,7 @@ void SharedMemStatistics::Init(bool parent,
   size_t total = variables_size() * per_var;
   for (size_t i = 0; i < histograms_size(); ++i) {
     SharedMemHistogram* hist = histograms(i);
-    total += shm_runtime_->SharedMutexSize() + hist->AllocationSize();
+    total += hist->AllocationSize(shm_runtime_);
   }
   bool ok = true;
   if (parent) {
@@ -655,7 +649,7 @@ void SharedMemStatistics::Init(bool parent,
     } else {
       hist->Reset();
     }
-    pos += shm_runtime_->SharedMutexSize() + hist->AllocationSize();
+    pos += hist->AllocationSize(shm_runtime_);
     i++;
   }
 }
@@ -699,7 +693,7 @@ void SharedMemStatistics::DumpConsoleVarsToWriter(
     writer->Write(StringPrintf("histogram: %s\n",
         histogram_name.c_str()), message_handler);
 
-    for (int j = 0, n = histogram->MaxBuckets(); j < n; j++) {
+    for (int j = 0, n = histogram->NumBuckets(); j < n; j++) {
       double lower_bound = histogram->BucketStart(j);
       double upper_bound = histogram->BucketLimit(j);
       double value = histogram->BucketCount(j);

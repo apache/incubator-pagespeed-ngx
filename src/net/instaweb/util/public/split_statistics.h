@@ -88,11 +88,11 @@ class SplitHistogram : public Histogram {
   virtual void Add(double value);
   virtual void Clear();
   virtual void Render(int index, Writer* writer, MessageHandler* handler);
-  virtual int MaxBuckets();
+  virtual int NumBuckets();
   virtual void EnableNegativeBuckets();
   virtual void SetMinValue(double value);
   virtual void SetMaxValue(double value);
-  virtual void SetMaxBuckets(int i);
+  virtual void SetSuggestedNumBuckets(int i);
   virtual double BucketStart(int index);
   virtual double BucketLimit(int index);
   virtual double BucketCount(int index);

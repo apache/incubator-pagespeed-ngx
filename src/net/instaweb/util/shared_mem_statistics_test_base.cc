@@ -308,11 +308,11 @@ void SharedMemStatisticsTestBase::TestHistogram() {
   hist1->SetMaxValue(100);
   hist1->Add(1);
   hist1->Add(5);
-  EXPECT_EQ(0, hist1->BucketCount(hist1->MaxBuckets() - 1));
+  EXPECT_EQ(0, hist1->BucketCount(hist1->NumBuckets() - 1));
   hist1->Add(100);
   // 10 is the max_value, so 100 should be added to the histogram, but into the
   // last bucket.
-  EXPECT_EQ(1, hist1->BucketCount(hist1->MaxBuckets() - 1));
+  EXPECT_EQ(1, hist1->BucketCount(hist1->NumBuckets() - 1));
   EXPECT_EQ(3, hist1->Count());
   EXPECT_EQ(1, hist1->Minimum());
   EXPECT_EQ(100, hist1->Maximum());
@@ -329,9 +329,9 @@ void SharedMemStatisticsTestBase::TestHistogram() {
   hist1->Add(-5);
   hist1->Add(0);
   hist1->Add(5);
-  EXPECT_EQ(0, hist1->BucketCount(hist1->MaxBuckets() - 1));
+  EXPECT_EQ(0, hist1->BucketCount(hist1->NumBuckets() - 1));
   hist1->Add(101);
-  EXPECT_EQ(1, hist1->BucketCount(hist1->MaxBuckets() - 1));
+  EXPECT_EQ(1, hist1->BucketCount(hist1->NumBuckets() - 1));
 
   EXPECT_EQ(5, hist1->Count());
   EXPECT_EQ(-101, hist1->Minimum());

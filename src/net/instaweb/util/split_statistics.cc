@@ -96,8 +96,8 @@ void SplitHistogram::Render(int index, Writer* writer,
   rw_->Render(index, writer, handler);
 }
 
-int SplitHistogram::MaxBuckets() {
-  return rw_->MaxBuckets();
+int SplitHistogram::NumBuckets() {
+  return rw_->NumBuckets();
 }
 
 void SplitHistogram::EnableNegativeBuckets() {
@@ -115,9 +115,9 @@ void SplitHistogram::SetMaxValue(double value) {
   rw_->SetMaxValue(value);
 }
 
-void SplitHistogram::SetMaxBuckets(int i) {
-  w_->SetMaxBuckets(i);
-  rw_->SetMaxBuckets(i);
+void SplitHistogram::SetSuggestedNumBuckets(int i) {
+  w_->SetSuggestedNumBuckets(i);
+  rw_->SetSuggestedNumBuckets(i);
 }
 
 double SplitHistogram::BucketStart(int index) {

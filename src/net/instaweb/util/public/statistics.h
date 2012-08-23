@@ -81,19 +81,21 @@ class Histogram {
   // |  [4,5] 2 50% 100% ||||||||||          |
   // |_______________________________________|
   virtual void Render(int index, Writer* writer, MessageHandler* handler);
-  // Maximum number of buckets. This number can be used to allocate a buffer for
-  // Histogram.
-  virtual int MaxBuckets() = 0;
+
+  // Returns number of buckets the histogram actually has.
+  virtual int NumBuckets() = 0;
   // Allow histogram have negative values.
   virtual void EnableNegativeBuckets() = 0;
   // Set the minimum value allowed in histogram.
   virtual void SetMinValue(double value) = 0;
   // Set the value upper-bound of a histogram,
   // the value range in histogram is [MinValue, MaxValue) or
-  // (-MaxValue, MaxValue) if enabled negative buckets.
+  // [-MaxValue, MaxValue) if enabled negative buckets.
   virtual void SetMaxValue(double value) = 0;
-  // Set the maximum number of buckets.
-  virtual void SetMaxBuckets(int i) = 0;
+
+  // Set the suggested number of buckets for the histogram. The implementation
+  // may chose to use a somewhat different number.
+  virtual void SetSuggestedNumBuckets(int i) = 0;
 
   // Returns average of the values added.
   double Average() {
@@ -135,9 +137,9 @@ class Histogram {
   // 'selected' for index==0.
   GoogleString HtmlTableRow(const GoogleString& title, int index);
 
-  // Lower bound of a bucket. If index == MaxBuckets() + 1, returns the
+  // Lower bound of a bucket. If index == NumBuckets() + 1, returns the
   // upper bound of the histogram. DCHECK if index is in the range of
-  // [0, MaxBuckets()+1].
+  // [0, NumBuckets()+1].
   virtual double BucketStart(int index) = 0;
   // Upper bound of a bucket.
   virtual double BucketLimit(int index) {
@@ -177,11 +179,11 @@ class NullHistogram : public Histogram {
   virtual ~NullHistogram();
   virtual void Add(const double value) { }
   virtual void Clear() { }
-  virtual int MaxBuckets() { return 0; }
+  virtual int NumBuckets() { return 0; }
   virtual void EnableNegativeBuckets() { }
   virtual void SetMinValue(double value) { }
   virtual void SetMaxValue(double value) { }
-  virtual void SetMaxBuckets(int i) { }
+  virtual void SetSuggestedNumBuckets(int i) { }
   virtual GoogleString GetName() const { return ""; }
 
  protected:

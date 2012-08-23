@@ -85,7 +85,7 @@ class SplitStatisticsTest : public testing::Test {
     Histogram* h = s->AddHistogram(kHist);
     h->SetMinValue(1);
     h->SetMaxValue(101);
-    h->SetMaxBuckets(100);
+    h->SetSuggestedNumBuckets(100);
 
     s->AddTimedVariable(kTimedVar, "some group");
   }
@@ -201,13 +201,13 @@ TEST_F(SplitStatisticsTest, HistoOps) {
   Histogram* split_b_h = split_b_->GetHistogram(kHist);
   ASSERT_TRUE(split_b_h != NULL);
 
-  // test that MaxBuckets() forwards properly.
-  ASSERT_EQ(local_a_h->MaxBuckets(), split_a_h->MaxBuckets());
-  ASSERT_EQ(local_b_h->MaxBuckets(), split_b_h->MaxBuckets());
+  // test that NumBuckets() forwards properly.
+  ASSERT_EQ(local_a_h->NumBuckets(), split_a_h->NumBuckets());
+  ASSERT_EQ(local_b_h->NumBuckets(), split_b_h->NumBuckets());
   // We also expect all of them to be configured the same,
   // due to our test setup.
-  ASSERT_EQ(global_h->MaxBuckets(), local_a_h->MaxBuckets());
-  ASSERT_EQ(global_h->MaxBuckets(), local_b_h->MaxBuckets());
+  ASSERT_EQ(global_h->NumBuckets(), local_a_h->NumBuckets());
+  ASSERT_EQ(global_h->NumBuckets(), local_b_h->NumBuckets());
 
   split_a_h->Add(1);
   split_a_h->Add(2);
@@ -247,7 +247,7 @@ TEST_F(SplitStatisticsTest, HistoOps) {
   EXPECT_EQ(4, global_h->Count());
   EXPECT_FALSE(global_h->Empty());
 
-  for (int bucket = 0; bucket < global_h->MaxBuckets(); ++bucket) {
+  for (int bucket = 0; bucket < global_h->NumBuckets(); ++bucket) {
     EXPECT_DOUBLE_EQ(local_a_h->BucketStart(bucket),
                      split_a_h->BucketStart(bucket));
     EXPECT_DOUBLE_EQ(local_b_h->BucketLimit(bucket),

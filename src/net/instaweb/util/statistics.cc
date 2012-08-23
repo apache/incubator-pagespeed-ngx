@@ -74,7 +74,7 @@ void Histogram::WriteRawHistogramData(Writer* writer, MessageHandler* handler) {
   double cumulative_perc = 0;
   // Write prefix of the table.
   writer->Write("<table>", handler);
-  for (int i = 0, n = MaxBuckets(); i < n; ++i) {
+  for (int i = 0, n = NumBuckets(); i < n; ++i) {
     double value = BucketCount(i);
     if (value == 0) {
       // We do not draw empty bucket.

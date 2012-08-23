@@ -20,6 +20,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
@@ -28,8 +29,6 @@
 
 namespace net_instaweb {
 
-class AbstractSharedMem;
-class AbstractSharedMemSegment;
 class FileSystem;
 class MessageHandler;
 class Timer;
@@ -135,7 +134,7 @@ class SharedMemHistogram : public Histogram {
   virtual ~SharedMemHistogram();
   virtual void Add(double value);
   virtual void Clear();
-  virtual int MaxBuckets();
+  virtual int NumBuckets();
   // Call the following functions after statistics->Init and before add values.
   // EnableNegativeBuckets, SetMinValue and SetMaxValue will
   // cause resetting Histogram.
@@ -146,15 +145,20 @@ class SharedMemHistogram : public Histogram {
   // The value range in histogram is [MinValue, MaxValue) or
   // (-MaxValue, MaxValue) if negative buckets are enabled.
   virtual void SetMaxValue(double value);
-  // We rely on MaxBuckets to allocate memory segment for histogram. If we want
-  // to call SetMaxBuckets(), we should call it right after AddHistogram().
-  virtual void SetMaxBuckets(int i);
-  // Return the allocation size for this Histogram object except Mutex size.
-  // Shared memory space should include a mutex, HistogramBody and
-  // sizeof(double) * MaxBuckets(). Here we do not know mutex size.
-  size_t AllocationSize() {
-    size_t total = sizeof(HistogramBody) + sizeof(double) * MaxBuckets();
-    return total;
+
+  // We rely on NumBuckets to allocate a memory segment for the histogram, so
+  // this should be called right after AddHistogram() in the ::Initialize
+  // process. Similarly, all the bounds must be initialized at that point, to
+  // avoid clearing the histogram as new child processes attach to it.
+  virtual void SetSuggestedNumBuckets(int i);
+
+  // Return the amount of shared memory this Histogram objects needs for its
+  // use.
+  size_t AllocationSize(AbstractSharedMem* shm_runtime) {
+    // Shared memory space should include a mutex, HistogramBody and the storage
+    // for the actual buckets.
+    return shm_runtime->SharedMutexSize() +  sizeof(HistogramBody)
+        + sizeof(double) * NumBuckets();
   }
 
  protected:
@@ -201,8 +205,8 @@ class SharedMemHistogram : public Histogram {
     // Histogram buckets data.
     double values_[1];
   };
-  // Maximum number of buckets in Histogram.
-  int max_buckets_;
+  // Number of buckets in this histogram.
+  int num_buckets_;
   HistogramBody* buffer_;  // may be NULL if init failed.
   DISALLOW_COPY_AND_ASSIGN(SharedMemHistogram);
 };
@@ -220,7 +224,9 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
 
   // This method initializes or attaches to shared memory. You should call this
   // exactly once in each process/thread, after all calls to AddVariables,
-  // AddHistograms and SetMaxBuckets have been done.
+  // AddHistograms and SetSuggestedNumBuckets (as well as any other histogram
+  // range configurations) have been done.
+  //
   // The root process (the one that starts all the other child
   // threads and processes) must be the first one to make the call, with
   // parent = true, with all other calling it with = false.
