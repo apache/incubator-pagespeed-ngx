@@ -19,8 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_FILTER_H_
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -31,6 +31,7 @@ namespace net_instaweb {
 
 class HtmlCharactersNode;
 class HtmlIEDirectiveNode;
+class JavascriptRewriteConfig;
 class RewriteContext;
 class RewriteDriver;
 class Statistics;
@@ -62,18 +63,12 @@ class JavascriptFilter : public RewriteFilter {
   virtual ~JavascriptFilter();
   static void Initialize(Statistics* statistics);
 
-  virtual void StartDocumentImpl() {}
+  virtual void StartDocumentImpl() { InitializeConfigIfNecessary(); }
   virtual void StartElementImpl(HtmlElement* element);
   virtual void Characters(HtmlCharactersNode* characters);
   virtual void EndElementImpl(HtmlElement* element);
   virtual void Flush();
   virtual void IEDirective(HtmlIEDirectiveNode* directive);
-
-  // Configuration settings for javascript filtering:
-  // Set whether to minify javascript code blocks encountered.
-  void set_minify(bool minify)  {
-    config_.set_minify(minify);
-  }
 
   virtual const char* Name() const { return "Javascript"; }
   virtual const char* id() const { return RewriteOptions::kJavascriptMinId; }
@@ -89,6 +84,14 @@ class JavascriptFilter : public RewriteFilter {
   inline void CompleteScriptInProgress();
   inline void RewriteInlineScript();
   inline void RewriteExternalScript();
+  // Lazily initialize config_ if it wasn't already.
+  void InitializeConfigIfNecessary() {
+    if (config_.get() != NULL) {
+      return;
+    }
+    InitializeConfig();
+  }
+  void InitializeConfig();
 
   HtmlCharactersNode* body_node_;
   HtmlElement* script_in_progress_;
@@ -96,7 +99,7 @@ class JavascriptFilter : public RewriteFilter {
   // some_missing_scripts indicates that we stopped processing a script and
   // therefore can't assume we know all of the Javascript on a page.
   bool some_missing_scripts_;
-  JavascriptRewriteConfig config_;
+  scoped_ptr<JavascriptRewriteConfig> config_;
   ScriptTagScanner script_tag_scanner_;
 
   DISALLOW_COPY_AND_ASSIGN(JavascriptFilter);

@@ -12,5 +12,4 @@ Info: javascript_test.html:49: Unrecognized script:'<script language="tcl"></scr
 Info: Rewrite script http://file.name/extScript.js to http://file.name/extScript.js.pagespeed.jm.0.js
 Info: javascript_test.html:35-38: Retaining contents of script tag; probably data for external script.
 Info: javascript_test.html:40-44: Retaining contents of script tag; probably data for external script.
-Info: Script http://file.name/third_party.js is prototype 1.6.1.0
 Info: Rewrite script http://file.name/third_party.js to http://file.name/third_party.js.pagespeed.jm.0.js

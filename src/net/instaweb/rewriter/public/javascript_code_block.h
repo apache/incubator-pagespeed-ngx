@@ -22,7 +22,6 @@
 #include <cstddef>
 
 #include "base/logging.h"
-#include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -32,6 +31,7 @@
 
 namespace net_instaweb {
 
+class JavascriptLibraryIdentification;
 class MessageHandler;
 class Statistics;
 class Variable;
@@ -41,20 +41,21 @@ class Variable;
 // to javascript rewriting.
 class JavascriptRewriteConfig {
  public:
-  explicit JavascriptRewriteConfig(Statistics* statistics);
+  JavascriptRewriteConfig(
+      Statistics* statistics, bool minify,
+      const JavascriptLibraryIdentification* identification);
 
   static void Initialize(Statistics* statistics);
 
   // Whether to minify javascript output (using jsminify).
   // true by default.
   bool minify() const { return minify_; }
-  void set_minify(bool minify) { minify_ = minify; }
-  // whether to redirect external javascript libraries to
-  // Google-as-a-CDN
-  bool redirect() const { return redirect_; }
-  void set_redirect(bool redirect) { redirect_ = redirect; }
+  const JavascriptLibraryIdentification* library_identification() const {
+    return library_identification_;
+  }
 
   Variable* blocks_minified() { return blocks_minified_; }
+  Variable* libraries_redirected() { return libraries_redirected_; }
   Variable* minification_failures() { return minification_failures_; }
   Variable* total_bytes_saved() { return total_bytes_saved_; }
   Variable* total_original_bytes() { return total_original_bytes_; }
@@ -62,6 +63,7 @@ class JavascriptRewriteConfig {
 
   // Statistics names.
   static const char kBlocksMinified[];
+  static const char kLibrariesRedirected[];
   static const char kMinificationFailures[];
   static const char kTotalBytesSaved[];
   static const char kTotalOriginalBytes[];
@@ -69,11 +71,14 @@ class JavascriptRewriteConfig {
 
  private:
   bool minify_;
-  bool redirect_;
+  // Library identifier.  NULL if library identification should be skipped.
+  const JavascriptLibraryIdentification* library_identification_;
 
   // Statistics
   // # of JS blocks (JS files and <script> blocks) successfully minified.
   Variable* blocks_minified_;
+  // # of JS blocks that were redirected to a known URL.
+  Variable* libraries_redirected_;
   // # of JS blocks we failed to minify.
   Variable* minification_failures_;
   // Sum of all bytes saved from minifying JS.
@@ -106,7 +111,7 @@ class JavascriptCodeBlock {
   virtual ~JavascriptCodeBlock();
 
   // Determines whether the javascript is brittle and will likely
-  // break if we alter its url.
+  // break if we alter its URL.
   static bool UnsafeToRename(const StringPiece& script);
 
   // Rewrites the javascript code and returns whether that
@@ -115,8 +120,6 @@ class JavascriptCodeBlock {
     RewriteIfNecessary();
     return (output_code_.size() < original_code_.size());
   }
-  // TODO(jmaessen): Other questions we might reasonably ask:
-  //   Can this code be floated downwards?
 
   // Returns the current (maximally-rewritten) contents of the
   // code block.
@@ -126,17 +129,19 @@ class JavascriptCodeBlock {
   }
 
   // Returns the rewritten contents as a mutable GoogleString* suitable for
-  // swap().  This should only be used if ProfitableToRewrite() holds.
+  // swap() (but owned by the code block).  This should only be used if
+  // ProfitableToRewrite() holds.
   GoogleString* RewrittenString() {
     RewriteIfNecessary();
     DCHECK(rewritten_code_.size() < original_code_.size());
     return &rewritten_code_;
   }
 
-  // Is the current block a JS library that can be redirected to Google?
-  // If so, return the info necessary to do so.  Otherwise returns a
-  // block for which .recognized() is false.
-  const JavascriptLibraryId ComputeJavascriptLibrary();
+  // Is the current block a JS library that can be redirected to a canonical
+  // URL?  If so, return that canonical URL (storage owned by the underlying
+  // config object passed in at construction), otherwise return an empty
+  // StringPiece.
+  StringPiece ComputeJavascriptLibrary();
 
   // Converts a regular string to what can be used in Javascript directly. Note
   // that output also contains starting and ending quotes, to facilitate
@@ -160,16 +165,6 @@ class JavascriptCodeBlock {
     return url_hash;
   }
 
- private:
-  void RewriteIfNecessary() {
-    if (!rewritten_) {
-      Rewrite();
-      rewritten_ = true;
-    }
-  }
-
-  DISALLOW_COPY_AND_ASSIGN(JavascriptCodeBlock);
-
  protected:
   void Rewrite();
 
@@ -183,6 +178,16 @@ class JavascriptCodeBlock {
   StringPiece output_code_;
   bool rewritten_;
   GoogleString rewritten_code_;
+
+ private:
+  void RewriteIfNecessary() {
+    if (!rewritten_) {
+      Rewrite();
+      rewritten_ = true;
+    }
+  }
+
+  DISALLOW_COPY_AND_ASSIGN(JavascriptCodeBlock);
 };
 
 }  // namespace net_instaweb

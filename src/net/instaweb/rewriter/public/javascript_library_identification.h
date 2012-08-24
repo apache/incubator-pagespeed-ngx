@@ -18,60 +18,50 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_LIBRARY_IDENTIFICATION_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_JAVASCRIPT_LIBRARY_IDENTIFICATION_H_
 
-#include <cstddef>
+#include <map>
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-// Size of regions that is hashed to do initial detection
-const size_t kJavascriptHashIdBlockSize = 512;
-
-// Internal data used by JavascriptLibraryId.
-// We expose it here to allow the metadata to be
-// constructed sensibly by generate_javascript_metadata.
-struct LibraryInfo {
-  const char* name;
-  const char* version;
-  uint64 first_block_hash;
-  uint64 full_hash;
-  size_t full_size;
-};
-
-// A JavascriptLibraryId contains information about a single third-party
-// Javascript library.  Given a block of minified Javascript with leading and
-// trailing whitespace removed, the Find(...) method returns a corresponding
-// JavascriptLibraryId.  Note that JavascriptLibraryId is intended to be passed
-// by value.
-class JavascriptLibraryId {
+// Holds the data necessary to identify the canonical urls of a set of known
+// javascript libraries.  We identify a library as "known" on the basis of its
+// minified size in bytes and the web64-encoded md5 hash of its minified code.
+// Minification allows us to tolerate changes in whitespace and the mix of
+// minified and unminified versions of library code one sees served in the wild.
+class JavascriptLibraryIdentification {
  public:
-  // Constructs an unrecognized library.
-  JavascriptLibraryId();
+  typedef uint64 SizeInBytes;
 
-  // Find the JavascriptLibraryId object associated with the given
-  // minified_code.  This might be an unrecognized library.
-  static JavascriptLibraryId Find(const StringPiece& minified_code);
+  JavascriptLibraryIdentification() { }
+  ~JavascriptLibraryIdentification();
 
-  // Is this a recognized library?  Otherwise we should ignore it.
-  bool recognized() const {
-    return info_->name != NULL;
-  }
-
-  // Canonical name of javascript library (NULL if unrecognized)
-  const char* name() const {
-    return info_->name;
-  }
-
-  // Version number of javascript library (NULL if unrecognized)
-  const char* version() const {
-    return info_->version;
-  }
+  // Register a library for recognition.  False indicates badly-formed hash or
+  // url.
+  bool RegisterLibrary(
+      SizeInBytes bytes, StringPiece md5_hash, StringPiece canonical_url);
+  // Find canonical url of library; empty string if none.  Storage for url is
+  // owned by the JavascriptLibraryIdentification object.
+  StringPiece Find(StringPiece minified_code) const;
+  // Merge libraries recognized by src into this one.
+  void Merge(const JavascriptLibraryIdentification& src);
+  // Append a signature for the libraries recognized to *signature.
+  void AppendSignature(GoogleString* signature) const;
 
  private:
-  explicit JavascriptLibraryId(const LibraryInfo* info) : info_(info) { }
+  class LibraryInfo;
+  // We map minified file size to LibraryInfo (we expect few libraries to have
+  // the same size in bytes, and this permits us to avoid computing the content
+  // hash if we don't actually require it).
+  typedef GoogleString MD5Signature;
+  typedef std::map<MD5Signature, GoogleString> MD5ToUrlMap;
+  typedef std::map<SizeInBytes, MD5ToUrlMap> LibraryMap;
 
-  const LibraryInfo* info_;
+  LibraryMap libraries_;
+
+  DISALLOW_COPY_AND_ASSIGN(JavascriptLibraryIdentification);
 };
 
 }  // namespace net_instaweb

@@ -28,7 +28,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
-#include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -39,6 +38,7 @@
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -73,15 +73,13 @@ void CleanupWhitespaceScriptBody(
 
 }  // namespace
 
-class RewriteContext;
-
 JavascriptFilter::JavascriptFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
       body_node_(NULL),
       script_in_progress_(NULL),
       script_src_(NULL),
       some_missing_scripts_(false),
-      config_(driver->resource_manager()->statistics()),
+      config_(NULL),
       script_tag_scanner_(driver_) { }
 
 JavascriptFilter::~JavascriptFilter() { }
@@ -106,11 +104,28 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     StringPiece script = input->contents();
     JavascriptCodeBlock code_block(script, config_, input->url(),
                                    message_handler);
-    JavascriptLibraryId library = code_block.ComputeJavascriptLibrary();
-    if (library.recognized()) {
-      message_handler->Message(kInfo, "Script %s is %s %s",
-                               input->url().c_str(),
-                               library.name(), library.version());
+    // Consider whether this is a known javascript library.
+    ResourceSlot* output_slot = slot(0).get();
+    if (output_slot->CanDirectSetUrl()) {
+      StringPiece library_url = code_block.ComputeJavascriptLibrary();
+      if (!library_url.empty()) {
+        // We expect canonical urls to be protocol relative, and so we use the
+        // base to provide a protocol when one is missing (while still
+        // permitting absolute canonical urls when they are required).
+        GoogleUrl library_gurl(Driver()->base_url(), library_url);
+        message_handler->Message(
+            kInfo, "Script %s is %s", input->url().c_str(),
+            library_gurl.UncheckedSpec().as_string().c_str());
+        if (library_gurl.is_valid()) {
+          output_slot->DirectSetUrl(library_gurl.Spec());
+          output_slot->set_disable_rendering(true);
+          CachedResult* cached = output->EnsureCachedResultCreated();
+          cached->set_optimizable(true);
+          cached->set_url(library_gurl.Spec().data(),
+                          library_gurl.Spec().size());
+          return kRewriteOk;
+        }
+      }
     }
     if (!code_block.ProfitableToRewrite()) {
       // Rewriting happened but wasn't useful; as we return false base class
@@ -122,7 +137,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     if (!WriteExternalScriptTo(input, code_block.Rewritten(), output)) {
       return kRewriteFailed;
     }
-    if (Driver()->options()->avoid_renaming_introspective_javascript() &&
+    if (Options()->avoid_renaming_introspective_javascript() &&
         JavascriptCodeBlock::UnsafeToRename(script)) {
       message_handler->Message(kInfo, "Script %s is unsafe to replace.",
                                input->url().c_str());
@@ -221,17 +236,30 @@ void JavascriptFilter::Characters(HtmlCharactersNode* characters) {
   }
 }
 
+// Set up config_ if it has not already been initialized.  We must do this
+// lazily because at filter creation time many of the options have not yet been
+// set up correctly.
+void JavascriptFilter::InitializeConfig() {
+  DCHECK(config_.get() == NULL);
+  config_.reset(
+      new JavascriptRewriteConfig(
+          driver_->resource_manager()->statistics(),
+          driver_->options()->Enabled(RewriteOptions::kRewriteJavascript),
+          NULL));
+}
+
 void JavascriptFilter::RewriteInlineScript() {
   if (body_node_ != NULL) {
     // First buffer up script data and minify it.
     GoogleString* script = body_node_->mutable_contents();
     MessageHandler* message_handler = driver_->message_handler();
-    JavascriptCodeBlock code_block(*script, &config_, driver_->UrlLine(),
+    JavascriptCodeBlock code_block(*script, config_.get(), driver_->UrlLine(),
                                    message_handler);
-    JavascriptLibraryId library = code_block.ComputeJavascriptLibrary();
-    if (library.recognized()) {
-      driver_->InfoHere("Script is %s %s",
-                        library.name(), library.version());
+    StringPiece library_url = code_block.ComputeJavascriptLibrary();
+    if (!library_url.empty()) {
+      // TODO(jmaessen): outline and use canonical url.
+      driver_->InfoHere("Script is inlined version of %s",
+                        library_url.as_string().c_str());
     }
     if (code_block.ProfitableToRewrite()) {
       // Replace the old script string with the new, minified one.
@@ -246,7 +274,7 @@ void JavascriptFilter::RewriteInlineScript() {
         // Swap in the minified code to replace the original code.
         script->swap(*rewritten_script);
       }
-      config_.num_uses()->Add(1);
+      config_->num_uses()->Add(1);
     }
   }
 }
@@ -258,7 +286,7 @@ void JavascriptFilter::RewriteExternalScript() {
   if (resource.get() != NULL) {
     ResourceSlotPtr slot(
         driver_->GetSlot(resource, script_in_progress_, script_src_));
-    Context* jrc = new Context(driver_, NULL, &config_, body_node_);
+    Context* jrc = new Context(driver_, NULL, config_.get(), body_node_);
     jrc->AddSlot(slot);
     driver_->InitiateRewrite(jrc);
   }
@@ -312,12 +340,14 @@ void JavascriptFilter::IEDirective(HtmlIEDirectiveNode* directive) {
 }
 
 RewriteContext* JavascriptFilter::MakeRewriteContext() {
-  return new Context(driver_, NULL, &config_, NULL /* no body node */);
+  InitializeConfigIfNecessary();
+  return new Context(driver_, NULL, config_.get(), NULL /* no body node */);
 }
 
 RewriteContext* JavascriptFilter::MakeNestedRewriteContext(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
-  Context* context = new Context(NULL /* driver */, parent, &config_,
+  InitializeConfigIfNecessary();
+  Context* context = new Context(NULL /* driver */, parent, config_.get(),
                                  NULL /* no body node */);
   context->AddSlot(slot);
   return context;
