@@ -41,6 +41,8 @@ class ApacheCache;
 class ApacheConfig;
 class ApacheMessageHandler;
 class ApacheResourceManager;
+class AprMemCacheServers;
+class AsyncCache;
 class SerfUrlAsyncFetcher;
 class SharedMemLockManager;
 class SharedMemRefererStatistics;
@@ -52,6 +54,8 @@ class UrlPollableAsyncFetcher;
 // Creates an Apache RewriteDriver.
 class ApacheRewriteDriverFactory : public RewriteDriverFactory {
  public:
+  static const char kMemcached[];
+
   ApacheRewriteDriverFactory(server_rec* server, const StringPiece& version);
   virtual ~ApacheRewriteDriverFactory();
 
@@ -162,6 +166,16 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // size, cleanup interval, etc.) are consistent.
   ApacheCache* GetCache(ApacheConfig* config);
 
+  // Makes a memcached-based cache if the configuration contains a
+  // memcached server specification.  The l2_cache passed in is used
+  // to handle puts/gets for huge (>1M) values.  NULL is returned if
+  // memcached is not specified for this server.
+  CacheInterface* GetMemcached(ApacheConfig* config, CacheInterface* l2_cache);
+
+  // Stops any further Gets from occuring in the Async cache.  This is used to
+  // help wind down activity during a shutdown.
+  void StopAsyncGets();
+
   // Finds a fetcher for the settings in this config, sharing with
   // existing fetchers if possible, otherwise making a new one (and
   // its required thread).
@@ -189,6 +203,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // platform-independent statistics.
   static void Initialize(Statistics* statistics);
 
+  // Print out details of all the connections to memcached servers.
+  void PrintMemCacheStats(GoogleString* out);
+
 protected:
   virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
@@ -199,7 +216,7 @@ protected:
   virtual MessageHandler* DefaultMessageHandler();
   virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
-  virtual CacheInterface* DefaultCacheInterface();
+  virtual void SetupCaches(ResourceManager* resource_manager);
   virtual NamedLockManager* DefaultLockManager();
   virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolName name);
 
@@ -289,10 +306,38 @@ protected:
   // /mod_pagespeed_messages.
   int message_buffer_size_;
 
-  // Caches are expensive.  Just allocate one per distinct file-cache path.
-  // At the moment there is no consistency checking for other parameters.
+  // File-Caches are expensive.  Just allocate one per distinct file-cache path.
+  // At the moment there is no consistency checking for other parameters.  Note
+  // that the LRUCache is instantiated inside the ApacheCache, so we get a new
+  // LRUCache for each distinct file-cache path.  Also note that only the
+  // file-cache path is used as the key in this map.  Other parameters changed,
+  // such as lru cache size or file cache clean interval, are taken from the
+  // first file-cache found configured to one address.
+  //
+  // TODO(jmarantz): Consider instantiating one LRUCache per process.
   typedef std::map<GoogleString, ApacheCache*> PathCacheMap;
   PathCacheMap path_cache_map_;
+
+  // memcache connections are expensive.  Just allocate one per
+  // distinct server-list.  At the moment there is no consistency
+  // checking for other parameters.  Note that each memcached
+  // interface share the thread allocation, based on the
+  // ModPagespeedMemcachedThreads settings first encountered for
+  // a particular server-set.
+  //
+  // The QueuedWorkerPool for async cache-gets is shared among all
+  // memcached connections.
+  //
+  // TODO(jmarantz): We should really have the CacheBatcher &
+  // AsyncCache associated with the AprMemCacheServers, shared among
+  // all vhosts accessing the same memcached-set. Currently we get a
+  // new CacheBatcher & AsyncCache for each vhost, and that's subotimal;
+  // we should be able to batch together requests for different vhosts
+  // to the same memcached.
+  typedef std::map<GoogleString, AprMemCacheServers*> MemcachedMap;
+  MemcachedMap memcached_map_;
+  scoped_ptr<QueuedWorkerPool> memcached_pool_;
+  std::vector<AsyncCache*> async_caches_;
 
   // Serf fetchers are expensive -- they each cost a thread. Allocate
   // one for each proxy/slurp-setting.  Currently there is no

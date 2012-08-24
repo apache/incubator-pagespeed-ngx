@@ -261,7 +261,8 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   HTTPValue value;
   ResponseHeaders response_headers;
   EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFind(
-      resource_url, new_factory.http_cache(), &value, &response_headers));
+      resource_url, new_resource_manager->http_cache(), &value,
+      &response_headers));
   // Initiate fetch.
   EXPECT_EQ(true, new_rewrite_driver->FetchResource(
       resource_url, &response_contents));
@@ -415,8 +416,9 @@ void ResourceManagerTestBase::TestServeFiles(
   // from the cache.
   ResponseHeaders headers;
   resource_manager_->SetDefaultLongCacheHeaders(content_type, &headers);
-  http_cache()->Put(expected_rewritten_path, &headers, rewritten_content,
-                    message_handler());
+  HTTPCache* http_cache = resource_manager_->http_cache();
+  http_cache->Put(expected_rewritten_path, &headers,
+                  rewritten_content, message_handler());
   EXPECT_EQ(0U, lru_cache()->num_hits());
   EXPECT_TRUE(FetchResource(kTestDomain, filter_id,
                             rewritten_name, rewritten_ext, &content));
@@ -437,7 +439,7 @@ void ResourceManagerTestBase::TestServeFiles(
     HTTPValue value;
     ResponseHeaders response_headers;
     EXPECT_EQ(HTTPCache::kFound, HttpBlockingFind(
-        expected_rewritten_path, http_cache(), &value, &response_headers));
+        expected_rewritten_path, http_cache, &value, &response_headers));
   }
 }
 

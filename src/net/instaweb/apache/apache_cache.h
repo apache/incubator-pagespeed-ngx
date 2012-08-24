@@ -37,7 +37,6 @@ class HTTPCache;
 class MessageHandler;
 class NamedLockManager;
 class PropertyCache;
-class QueuedWorkerPool;
 class SharedMemRuntime;
 class SharedMemLockManager;
 class Timer;
@@ -49,29 +48,18 @@ class ApacheCache {
  public:
   static const char kFileCache[];
   static const char kLruCache[];
-  static const char kMemcached[];
 
   ApacheCache(const StringPiece& path,
               const ApacheConfig& config,
               ApacheRewriteDriverFactory* factory);
   ~ApacheCache();
-  CacheInterface* cache() { return cache_.get(); }
+  CacheInterface* l1_cache() { return l1_cache_.get(); }
+  CacheInterface* l2_cache() { return l2_cache_.get(); }
   NamedLockManager* lock_manager() { return lock_manager_; }
-  HTTPCache* http_cache() { return http_cache_.get(); }
-  PropertyCache* page_property_cache() { return page_property_cache_.get(); }
-  PropertyCache* client_property_cache() {
-    return client_property_cache_.get();
-  }
 
   void RootInit();
   void ChildInit();
   void GlobalCleanup(MessageHandler* handler);  // only called in root process
-  AprMemCache* mem_cache() { return mem_cache_; }
-  AprMemCacheServers* mem_cache_servers() { return mem_cache_servers_.get(); }
-
-  // Stops any further Gets from occuring in the Async cache.  This is used to
-  // help wind down activity during a shutdown.
-  void StopAsyncGets();
 
  private:
   void FallBackToFileBasedLocking();
@@ -79,20 +67,18 @@ class ApacheCache {
   GoogleString path_;
 
   ApacheRewriteDriverFactory* factory_;
-  scoped_ptr<CacheInterface> cache_;
   scoped_ptr<SharedMemLockManager> shared_mem_lock_manager_;
   scoped_ptr<FileSystemLockManager> file_system_lock_manager_;
   NamedLockManager* lock_manager_;
-  FileCache* file_cache_;   // may be NULL if there we are using memcache.
-  AprMemCache* mem_cache_;  // may be NULL if there we are using filecache
-  scoped_ptr<AprMemCacheServers> mem_cache_servers_;
-  AsyncCache* async_cache_;  // may be NULL if not threading memcache lookups.
-  CacheInterface* l2_cache_;
-  scoped_ptr<QueuedWorkerPool> pool_;
-  scoped_ptr<HTTPCache> http_cache_;
-  scoped_ptr<PropertyCache> page_property_cache_;
-  scoped_ptr<PropertyCache> client_property_cache_;
+  FileCache* file_cache_;  // owned by l2 cache
+  scoped_ptr<CacheInterface> l1_cache_;
+  scoped_ptr<CacheInterface> l2_cache_;
 };
+
+// CACHE_STATISTICS is #ifdef'd to facilitate experiments with whether
+// tracking the detailed stats & histograms has a QPS impact.  Set it
+// to 0 to turn it off.
+#define CACHE_STATISTICS 1
 
 }  // namespace net_instaweb
 

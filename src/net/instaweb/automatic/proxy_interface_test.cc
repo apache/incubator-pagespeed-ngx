@@ -539,9 +539,10 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     RewriteOptions* options = resource_manager()->global_options();
-    factory()->set_enable_property_cache(true);
-    factory()->page_property_cache()->AddCohort(RewriteDriver::kDomCohort);
-    factory()->client_property_cache()->AddCohort(
+    resource_manager_->set_enable_property_cache(true);
+    resource_manager_->page_property_cache()->AddCohort(
+        RewriteDriver::kDomCohort);
+    resource_manager_->client_property_cache()->AddCohort(
         ClientState::kClientStateCohort);
     options->ClearSignatureForTesting();
     options->EnableFilter(RewriteOptions::kRewriteCss);
@@ -3377,7 +3378,7 @@ TEST_F(ProxyInterfaceTest, PropCacheFilter) {
 
   // Finally, disable the property-cache and note that the element-count
   // annotatation reverts to "unknown mode"
-  factory()->set_enable_property_cache(false);
+  resource_manager_->set_enable_property_cache(false);
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ("<!-- --><div><span><p></p></span></div>", text_out);
 }
@@ -3397,7 +3398,7 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNoProperties) {
   EXPECT_EQ(2, lru_cache()->num_misses());  // property-cache + http-cache
 
   ClearStats();
-  factory()->set_enable_property_cache(false);
+  resource_manager_->set_enable_property_cache(false);
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(1, lru_cache()->num_misses());  // http-cache only.
@@ -3423,7 +3424,7 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfHtmlEndsWithTxt) {
   EXPECT_EQ(1, lru_cache()->num_misses());  // http-cache only
 
   ClearStats();
-  factory()->set_enable_property_cache(false);
+  resource_manager_->set_enable_property_cache(false);
   FetchFromProxy("page.txt", true, &text_out, &headers_out);
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(1, lru_cache()->num_misses());  // http-cache only

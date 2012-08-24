@@ -24,14 +24,12 @@
 #include "base/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/mock_time_cache.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"        // for StringPiece
 
 namespace net_instaweb {
 
-class CacheInterface;
 class CountingUrlAsyncFetcher;
 class DelayCache;
 class FakeUrlAsyncFetcher;
@@ -45,7 +43,9 @@ class MockHasher;
 class MockMessageHandler;
 class MockScheduler;
 class MockTimer;
+class MockTimeCache;
 class MockUrlFetcher;
+class ResourceManager;
 class RewriteDriver;
 class RewriteFilter;
 class RewriteOptions;
@@ -174,7 +174,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
   virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
-  virtual CacheInterface* DefaultCacheInterface();
+  virtual void SetupCaches(ResourceManager* resource_manager);
   virtual UrlNamer* DefaultUrlNamer();
   virtual Scheduler* CreateScheduler();
   virtual void AddPlatformSpecificDecodingPasses(RewriteDriver* driver);

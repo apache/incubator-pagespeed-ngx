@@ -168,8 +168,6 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
 
   rewrite_driver()->set_user_agent("Firefox/1.0");
   ValidateNoChanges("inlining_not_supported", input_html);
-
-  delete resource_manager()->critical_images_finder();
 }
 
 TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {

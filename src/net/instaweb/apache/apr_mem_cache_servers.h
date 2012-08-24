@@ -56,6 +56,8 @@ class AprMemCacheServers {
                      Hasher* hasher, MessageHandler* handler);
   ~AprMemCacheServers();
 
+  const GoogleString& server_spec() const { return server_spec_; }
+
   // Typedefs to facilitate returning values from a MultiGet.  The string data
   // is owned by the apr_pool_t* passed into Get and MultiGet.
   typedef std::pair<CacheInterface::KeyState, StringPiece> Result;
@@ -93,6 +95,7 @@ class AprMemCacheServers {
  private:
   StringVector hosts_;
   std::vector<int> ports_;
+  GoogleString server_spec_;
   bool valid_server_spec_;
   int thread_limit_;
   apr_pool_t* pool_;

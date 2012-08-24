@@ -307,19 +307,12 @@ apr_status_t instaweb_handler(request_rec* request) {
       writer.Write("</pre>", factory->message_handler());
       statistics->RenderHistograms(&writer, factory->message_handler());
 
-      // TODO(jmarantz): rethink memcached connections in the face of multiple
-      // vhosts.  We will only show the memcached connections for the root
-      // config here, and it's also possible that we may wind up making multiple
-      // connections to the same memcached servers.
-      ApacheCache* apache_cache = factory->GetCache(config);
-      AprMemCache* mem_cache = apache_cache->mem_cache();
-      if (mem_cache != NULL) {
-        GoogleString memcached_stats;
-        if (mem_cache->GetStatus(&memcached_stats)) {
-          writer.Write("<pre>\n", factory->message_handler());
-          writer.Write(memcached_stats, factory->message_handler());
-          writer.Write("</pre>\n", factory->message_handler());
-        }
+      GoogleString memcached_stats;
+      factory->PrintMemCacheStats(&memcached_stats);
+      if (!memcached_stats.empty()) {
+        writer.Write("<pre>\n", factory->message_handler());
+        writer.Write(memcached_stats, factory->message_handler());
+        writer.Write("</pre>\n", factory->message_handler());
       }
     } else {
       writer.Write("mod_pagespeed statistics is not enabled\n",

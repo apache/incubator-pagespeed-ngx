@@ -25,9 +25,11 @@
 #include "base/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"  // for UrlFetcher
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
+#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -40,6 +42,7 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/mock_time_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"  // for StrCat, etc
 #include "net/instaweb/util/public/threadsafe_cache.h"
@@ -48,7 +51,6 @@
 
 namespace net_instaweb {
 
-class CacheInterface;
 class FileSystem;
 class Hasher;
 class HtmlFilter;
@@ -175,7 +177,7 @@ Timer* TestRewriteDriverFactory::DefaultTimer() {
   return mock_timer_;
 }
 
-CacheInterface* TestRewriteDriverFactory::DefaultCacheInterface() {
+void TestRewriteDriverFactory::SetupCaches(ResourceManager* resource_manager) {
   // TODO(jmarantz): Make the cache-ownership semantics consistent between
   // DelayCache and ThreadsafeCache.
   DCHECK(lru_cache_ == NULL);
@@ -184,7 +186,11 @@ CacheInterface* TestRewriteDriverFactory::DefaultCacheInterface() {
   threadsafe_cache_.reset(
       new ThreadsafeCache(lru_cache_, thread_system()->NewMutex()));
   delay_cache_ = new DelayCache(threadsafe_cache_.get(), thread_system());
-  return delay_cache_;
+  HTTPCache* http_cache = new HTTPCache(delay_cache_, timer(),
+                                        hasher(), statistics());
+  resource_manager->set_http_cache(http_cache);
+  resource_manager->set_metadata_cache(delay_cache_);
+  resource_manager->MakePropertyCaches(delay_cache_);
 }
 
 Hasher* TestRewriteDriverFactory::NewHasher() {

@@ -46,7 +46,6 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
@@ -3383,10 +3382,6 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   WriteThroughHTTPCache* two_level_cache = new WriteThroughHTTPCache(
       lru_cache(), &l2_cache, mock_timer(), hasher(), statistics());
   resource_manager()->set_http_cache(two_level_cache);
-  // Since the cache is referenced in TearDown(), make sure the cache is deleted
-  // only after everything is fully shutdown.
-  factory()->defer_delete(
-      new RewriteDriverFactory::Deleter<HTTPCache>(two_level_cache));
 
   // Start with non-zero time, and init our resource.
   mock_timer()->AdvanceMs(kTtlMs / 2);

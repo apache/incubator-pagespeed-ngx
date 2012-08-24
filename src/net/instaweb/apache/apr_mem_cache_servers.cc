@@ -51,6 +51,7 @@ AprMemCacheServers::AprMemCacheServers(const StringPiece& servers,
       memcached_(NULL),
       hasher_(hasher),
       message_handler_(handler) {
+  servers.CopyToString(&server_spec_);
   apr_pool_create(&pool_, NULL);
 
   // Don't try to connect on construction; we don't want to bother creating

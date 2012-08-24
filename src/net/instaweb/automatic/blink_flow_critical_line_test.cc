@@ -330,11 +330,20 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
   explicit CustomRewriteDriverFactory(MockUrlFetcher* url_fetcher)
       : TestRewriteDriverFactory(GTestTempDir(), url_fetcher) {
     InitializeDefaultOptions();
-    page_property_cache()->AddCohort(RewriteDriver::kDomCohort);
+  }
+
+  virtual void SetupCaches(ResourceManager* resource_manager) {
+    TestRewriteDriverFactory::SetupCaches(resource_manager);
+    resource_manager->page_property_cache()->AddCohort(
+        RewriteDriver::kDomCohort);
+    resource_manager->page_property_cache()->AddCohort(
+        BlinkCriticalLineDataFinder::kBlinkCohort);
+    resource_manager->set_enable_property_cache(true);
   }
 
  private:
-  BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder() {
+  BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder(
+      PropertyCache* pcache) {
     return new FakeBlinkCriticalLineDataFinder();
   }
 
@@ -423,10 +432,7 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
         BlinkFlowCriticalLine::kUpdateResponseCodeDone);
     fake_blink_critical_line_data_finder_ =
         static_cast<FakeBlinkCriticalLineDataFinder*> (
-            factory_->blink_critical_line_data_finder());
-    factory_->set_enable_property_cache(true);
-    factory_->page_property_cache()->AddCohort(
-        BlinkCriticalLineDataFinder::kBlinkCohort);
+            resource_manager_->blink_critical_line_data_finder());
     options_.reset(resource_manager()->NewOptions());
     options_->set_enable_blink_critical_line(true);
     options_->set_passthrough_blink_for_last_invalid_response_code(true);

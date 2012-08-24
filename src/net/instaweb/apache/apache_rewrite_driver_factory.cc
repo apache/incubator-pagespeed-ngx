@@ -29,6 +29,8 @@
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apache_thread_system.h"
 #include "net/instaweb/apache/apr_file_system.h"
+#include "net/instaweb/apache/apr_mem_cache.h"
+#include "net/instaweb/apache/apr_mem_cache_servers.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -36,9 +38,13 @@
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_writer.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter.h"
+#include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/async_cache.h"
+#include "net/instaweb/util/public/cache_batcher.h"
+#include "net/instaweb/util/public/cache_copy.h"
 #include "net/instaweb/util/public/cache_stats.h"
 #ifndef NDEBUG
 #include "net/instaweb/util/public/checking_thread_system.h"
@@ -68,6 +74,8 @@ const size_t kRefererStatisticsNumberOfPages = 1024;
 const size_t kRefererStatisticsAverageUrlLength = 64;
 
 }  // namespace
+
+const char ApacheRewriteDriverFactory::kMemcached[] = "memcached";
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     server_rec* server, const StringPiece& version)
@@ -156,6 +164,56 @@ ApacheCache* ApacheRewriteDriverFactory::GetCache(ApacheConfig* config) {
   return iter->second;
 }
 
+CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
+    ApacheConfig* config, CacheInterface* l2_cache) {
+  CacheInterface* memcached = NULL;
+
+  // Find a memcache that matches the current spec, or create a new one
+  // if needed.
+  if (!config->memcached_servers().empty()) {
+    const GoogleString& server_spec = config->memcached_servers();
+    std::pair<MemcachedMap::iterator, bool> result = memcached_map_.insert(
+        MemcachedMap::value_type(server_spec,
+                                static_cast<AprMemCacheServers*>(NULL)));
+    MemcachedMap::iterator iter = result.first;
+    if (result.second) {
+      int thread_limit;
+      ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
+      thread_limit += num_rewrite_threads() + num_expensive_rewrite_threads();
+      iter->second = new AprMemCacheServers(server_spec, thread_limit,
+                                            hasher(), message_handler());
+    }
+    AprMemCacheServers* servers = iter->second;
+    memcached = new AprMemCache(servers, l2_cache, message_handler());
+    int num_threads = config->memcached_threads();
+    if (num_threads != 0) {
+      if (memcached_pool_.get() == NULL) {
+        // Note -- we will use the first value of ModPagespeedMemCacheThreads
+        // that we see in a VirtualHost, ignoring later ones.
+        memcached_pool_.reset(new QueuedWorkerPool(num_threads,
+                                                   thread_system()));
+      }
+      AsyncCache* async_cache = new AsyncCache(
+          memcached, thread_system()->NewMutex(), memcached_pool_.get());
+      async_caches_.push_back(async_cache);
+      memcached = async_cache;
+    }
+
+    // Put the batcher above the stats so that the stats sees the MultiGets
+    // and can show us the histogram of how they are sized.
+#if CACHE_STATISTICS
+    memcached = new CacheStats(kMemcached, memcached, timer(), statistics());
+#endif
+    CacheBatcher* batcher = new CacheBatcher(
+        memcached, thread_system()->NewMutex(), statistics());
+    if (num_threads != 0) {
+      batcher->set_max_parallel_lookups(num_threads);
+    }
+    memcached = batcher;
+  }
+  return memcached;
+}
+
 FileSystem* ApacheRewriteDriverFactory::DefaultFileSystem() {
   // Pass in NULL for the pool.  We do not want the file-system to
   // be auto-destructed based on the factory's pool: we want to follow
@@ -179,10 +237,50 @@ MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
   return apache_message_handler_;
 }
 
-// Note: DefaultCacheInterface should return a thread-safe cache object.
-CacheInterface* ApacheRewriteDriverFactory::DefaultCacheInterface() {
-  LOG(DFATAL) << "In Apache the cache is owned by ApacheCache, not the factory";
-  return NULL;
+void ApacheRewriteDriverFactory::SetupCaches(
+    ResourceManager* resource_manager) {
+  ApacheConfig* config = ApacheConfig::DynamicCast(
+      resource_manager->global_options());
+  ApacheCache* apache_cache = GetCache(config);
+  CacheInterface* l1_cache = apache_cache->l1_cache();
+  CacheInterface* l2_cache = apache_cache->l2_cache();
+  CacheInterface* memcached = GetMemcached(config, l2_cache);
+  if (memcached != NULL) {
+    l2_cache = memcached;
+  }
+  Statistics* stats = resource_manager->statistics();
+
+  // TODO(jmarantz): consider moving ownership of the L1 cache into the
+  // factory, rather than having one per vhost.
+  //
+  // Note that a user can disable the L1 cache by setting its byte-count
+  // to 0, in which case we don't build the write-through mechanisms.
+  if (l1_cache == NULL) {
+    HTTPCache* http_cache = new HTTPCache(l2_cache, timer(), hasher(), stats);
+    resource_manager->set_http_cache(http_cache);
+    resource_manager->set_metadata_cache(new CacheCopy(l2_cache));
+    resource_manager->MakePropertyCaches(l1_cache);
+  } else {
+    WriteThroughHTTPCache* write_through_http_cache = new WriteThroughHTTPCache(
+        l1_cache, l2_cache, timer(), hasher(), stats);
+    write_through_http_cache->set_cache1_limit(config->lru_cache_byte_limit());
+    resource_manager->set_http_cache(write_through_http_cache);
+
+    WriteThroughCache* write_through_cache = new WriteThroughCache(
+        l1_cache, l2_cache);
+    write_through_cache->set_cache1_limit(config->lru_cache_byte_limit());
+    resource_manager->set_metadata_cache(write_through_cache);
+
+    resource_manager->MakePropertyCaches(l2_cache);
+  }
+
+  // TODO(jmarantz): establish appropriate Cohorts for mod_pagespeed as the
+  // property cache starts to get utilized, e.g.:
+  //
+  // PropertyCache* pcache = resource_manager_->page_property_cache();
+  // if (pcache->GetCohort(RewriteDriver::kDomCohort) == NULL) {
+  //   pcache->AddCohort(RewriteDriver::kDomCohort);
+  // }
 }
 
 NamedLockManager* ApacheRewriteDriverFactory::DefaultLockManager() {
@@ -447,6 +545,15 @@ void ApacheRewriteDriverFactory::ChildInit() {
     resource_manager->ChildInit();
   }
   uninitialized_managers_.clear();
+
+  for (MemcachedMap::iterator p = memcached_map_.begin(),
+           e = memcached_map_.end(); p != e; ++p) {
+    AprMemCacheServers* servers = p->second;
+    if (!servers->Connect()) {
+      message_handler()->Message(kError, "Memory cache failed");
+      abort();  // TODO(jmarantz): is there a better way to exit?
+    }
+  }
 }
 
 void ApacheRewriteDriverFactory::DumpRefererStatistics(Writer* writer) {
@@ -474,10 +581,9 @@ void ApacheRewriteDriverFactory::DumpRefererStatistics(Writer* writer) {
 
 void ApacheRewriteDriverFactory::StopCacheActivity() {
   RewriteDriverFactory::StopCacheActivity();
-  for (PathCacheMap::iterator p = path_cache_map_.begin(),
-           e = path_cache_map_.end(); p != e; ++p) {
-    ApacheCache* cache = p->second;
-    cache->StopAsyncGets();
+  for (int i = 0, n = async_caches_.size(); i < n; ++i) {
+    AsyncCache* async_cache = async_caches_[i];
+    async_cache->StopCacheGets();
   }
 }
 
@@ -562,7 +668,7 @@ void ApacheRewriteDriverFactory::Initialize(Statistics* statistics) {
   ApacheResourceManager::Initialize(statistics);
   CacheStats::Initialize(ApacheCache::kFileCache, statistics);
   CacheStats::Initialize(ApacheCache::kLruCache, statistics);
-  CacheStats::Initialize(ApacheCache::kMemcached, statistics);
+  CacheStats::Initialize(kMemcached, statistics);
 }
 
 ApacheResourceManager* ApacheRewriteDriverFactory::MakeApacheResourceManager(
@@ -593,6 +699,17 @@ RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptions() {
 
 RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptionsForQuery() {
   return new ApacheConfig("query");
+}
+
+void ApacheRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
+  for (MemcachedMap::iterator p = memcached_map_.begin(),
+           e = memcached_map_.end(); p != e; ++p) {
+    AprMemCacheServers* servers = p->second;
+    if (!servers->GetStatus(out)) {
+      StrAppend(out, "\nError getting memcached server status for ",
+                servers->server_spec());
+    }
+  }
 }
 
 }  // namespace net_instaweb

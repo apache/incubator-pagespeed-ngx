@@ -27,7 +27,6 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
@@ -39,8 +38,6 @@
 #include "net/instaweb/rewriter/public/usage_data_reporter.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/cache_batcher.h"
-#include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/client_state.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/filename_encoder.h"
@@ -48,7 +45,6 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -77,7 +73,6 @@ void RewriteDriverFactory::Init() {
   force_caching_ = false;
   slurp_read_only_ = false;
   slurp_print_urls_ = false;
-  enable_property_cache_ = false;
   SetStatistics(&null_statistics_);
   resource_manager_mutex_.reset(thread_system_->NewMutex());
   worker_pools_.assign(kNumWorkerPools, NULL);
@@ -211,21 +206,6 @@ void RewriteDriverFactory::set_critical_images_finder(
   critical_images_finder_.reset(finder);
 }
 
-void RewriteDriverFactory::set_blink_critical_line_data_finder(
-    BlinkCriticalLineDataFinder* finder) {
-  blink_critical_line_data_finder_.reset(finder);
-}
-
-void RewriteDriverFactory::set_enable_property_cache(bool enabled) {
-  enable_property_cache_ = enabled;
-  if (page_property_cache_.get() != NULL) {
-    page_property_cache_->set_enabled(enabled);
-  }
-  if (client_property_cache_.get() != NULL) {
-    client_property_cache_->set_enabled(enabled);
-  }
-}
-
 void RewriteDriverFactory::set_usage_data_reporter(
     UsageDataReporter* reporter) {
   usage_data_reporter_.reset(reporter);
@@ -280,22 +260,6 @@ StaticJavascriptManager* RewriteDriverFactory::static_javascript_manager() {
   return static_javascript_manager_.get();
 }
 
-CriticalImagesFinder* RewriteDriverFactory::critical_images_finder() {
-  if (critical_images_finder_ == NULL) {
-    critical_images_finder_.reset(DefaultCriticalImagesFinder());
-  }
-  return critical_images_finder_.get();
-}
-
-BlinkCriticalLineDataFinder*
-    RewriteDriverFactory::blink_critical_line_data_finder() {
-  if (blink_critical_line_data_finder_ == NULL) {
-    blink_critical_line_data_finder_.reset(
-        DefaultBlinkCriticalLineDataFinder());
-  }
-  return blink_critical_line_data_finder_.get();
-}
-
 Scheduler* RewriteDriverFactory::scheduler() {
   if (scheduler_ == NULL) {
     scheduler_.reset(CreateScheduler());
@@ -335,12 +299,14 @@ StaticJavascriptManager*
   return new StaticJavascriptManager(url_namer(), false, "");
 }
 
-CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
+CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder(
+    PropertyCache* cache) {
   return new CriticalImagesFinder();
 }
 
 BlinkCriticalLineDataFinder*
-RewriteDriverFactory::DefaultBlinkCriticalLineDataFinder() {
+RewriteDriverFactory::DefaultBlinkCriticalLineDataFinder(
+    PropertyCache* pcache) {
   return NULL;
 }
 
@@ -404,55 +370,6 @@ StringPiece RewriteDriverFactory::filename_prefix() {
 }
 
 
-CacheInterface* RewriteDriverFactory::cache_backend() {
-  if (cache_backend_.get() == NULL) {
-    cache_backend_.reset(DefaultCacheInterface());
-  }
-  return cache_backend_.get();
-}
-
-
-HTTPCache* RewriteDriverFactory::http_cache() {
-  if (http_cache_.get() == NULL) {
-    http_cache_.reset(ComputeHTTPCache());
-  }
-  return http_cache_.get();
-}
-
-HTTPCache* RewriteDriverFactory::ComputeHTTPCache() {
-  HTTPCache* http_cache = new HTTPCache(
-      cache_backend(), timer(), hasher(), statistics());
-  http_cache->set_force_caching(force_caching_);
-  return http_cache;
-}
-
-PropertyCache* RewriteDriverFactory::MakePropertyCache(
-    const GoogleString& cache_key_prefix, CacheInterface *cache) const {
-  PropertyCache* pcache = new PropertyCache(cache_key_prefix,
-                                            cache, timer_.get(),
-                                            thread_system_.get());
-  pcache->set_enabled(enable_property_cache_);
-  return pcache;
-}
-
-PropertyCache* RewriteDriverFactory::page_property_cache() {
-  if (page_property_cache_.get() == NULL) {
-    page_property_cache_.reset(MakePropertyCache(
-        PropertyCache::kPagePropertyCacheKeyPrefix, property_cache_backend()));
-  }
-  return page_property_cache_.get();
-}
-
-PropertyCache* RewriteDriverFactory::client_property_cache() {
-  if (client_property_cache_.get() == NULL) {
-    client_property_cache_.reset(MakePropertyCache(
-        PropertyCache::kClientPropertyCacheKeyPrefix,
-        property_cache_backend()));
-  }
-  client_property_cache_.get()->AddCohort(ClientState::kClientStateCohort);
-  return client_property_cache_.get();
-}
-
 ResourceManager* RewriteDriverFactory::CreateResourceManager() {
   ResourceManager* resource_manager = new ResourceManager(this);
   InitResourceManager(resource_manager);
@@ -471,22 +388,7 @@ void RewriteDriverFactory::InitResourceManager(
   if (resource_manager->rewrite_stats() == NULL) {
     resource_manager->set_rewrite_stats(rewrite_stats());
   }
-  // Initialize the metadata cache before initializing the http cache, since
-  // it initializes the cache backend.
-  if (resource_manager->metadata_cache() == NULL) {
-    resource_manager->set_metadata_cache(cache_backend());
-  }
-  if (resource_manager->http_cache() == NULL) {
-    // In Apache we can potentially have distinct caches per
-    // VirtualHost, which must be set prior to calling Init.
-    resource_manager->set_http_cache(http_cache());
-  }
-  if (resource_manager->page_property_cache() == NULL) {
-    resource_manager->set_page_property_cache(page_property_cache());
-  }
-  if (resource_manager->client_property_cache() == NULL) {
-    resource_manager->set_client_property_cache(client_property_cache());
-  }
+  SetupCaches(resource_manager);
   if (resource_manager->lock_manager() == NULL) {
     resource_manager->set_lock_manager(lock_manager());
   }
@@ -502,10 +404,11 @@ void RewriteDriverFactory::InitResourceManager(
   resource_manager->set_message_handler(message_handler());
   resource_manager->set_static_javascript_manager(
       static_javascript_manager());
-  SetupCohorts();
-  resource_manager->set_critical_images_finder(critical_images_finder());
+  PropertyCache* pcache = resource_manager->page_property_cache();
+  resource_manager->set_critical_images_finder(
+      DefaultCriticalImagesFinder(pcache));
   resource_manager->set_blink_critical_line_data_finder(
-      blink_critical_line_data_finder());
+      DefaultBlinkCriticalLineDataFinder(pcache));
   resource_manager->InitWorkersAndDecodingDriver();
   resource_managers_.insert(resource_manager);
 }
@@ -685,10 +588,6 @@ RewriteOptions* RewriteDriverFactory::NewRewriteOptions() {
 
 RewriteOptions* RewriteDriverFactory::NewRewriteOptionsForQuery() {
   return NewRewriteOptions();
-}
-
-AbstractClientState* RewriteDriverFactory::NewClientState() {
-  return new ClientState;
 }
 
 FuriousMatcher* RewriteDriverFactory::NewFuriousMatcher() {

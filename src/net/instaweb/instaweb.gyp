@@ -521,6 +521,7 @@
         'util/abstract_shared_mem.cc',
         'util/async_cache.cc',
         'util/cache_batcher.cc',
+        'util/cache_copy.cc',
         'util/cache_interface.cc',
         'util/cache_stats.cc',
         'util/checking_thread_system.cc',

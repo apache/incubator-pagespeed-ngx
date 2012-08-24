@@ -23,6 +23,7 @@
 
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/wget_url_fetcher.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -37,6 +38,7 @@
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 
 namespace net_instaweb {
@@ -93,9 +95,14 @@ Timer* FileRewriter::DefaultTimer() {
   return new GoogleTimer;
 }
 
-CacheInterface* FileRewriter::DefaultCacheInterface() {
+void FileRewriter::SetupCaches(ResourceManager* resource_manager) {
   LRUCache* lru_cache = new LRUCache(gflags_->lru_cache_size_bytes());
-  return new ThreadsafeCache(lru_cache, thread_system()->NewMutex());
+  CacheInterface* cache = new ThreadsafeCache(lru_cache,
+                                              thread_system()->NewMutex());
+  HTTPCache* http_cache = new HTTPCache(cache, timer(), hasher(), statistics());
+  resource_manager->set_http_cache(http_cache);
+  resource_manager->set_metadata_cache(cache);
+  resource_manager->MakePropertyCaches(cache);
 }
 
 Statistics* FileRewriter::statistics() {

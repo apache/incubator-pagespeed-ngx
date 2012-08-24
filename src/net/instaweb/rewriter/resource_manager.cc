@@ -26,9 +26,11 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -40,10 +42,13 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
+#include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/client_state.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -57,6 +62,7 @@
 
 namespace net_instaweb {
 
+class AbstractClientState;
 class RewriteFilter;
 
 namespace {
@@ -143,18 +149,14 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
       scheduler_(factory->scheduler()),
       default_system_fetcher_(NULL),
       hasher_(NULL),
-      critical_images_finder_(NULL),
       blink_critical_line_data_finder_(NULL),
       lock_hasher_(20),
       contents_hasher_(21),
       statistics_(NULL),
-      http_cache_(NULL),
-      page_property_cache_(NULL),
-      client_property_cache_(NULL),
-      metadata_cache_(NULL),
       relative_path_(false),
       store_outputs_in_file_system_(false),
       response_headers_finalized_(true),
+      enable_property_cache_(false),
       lock_manager_(NULL),
       message_handler_(NULL),
       trying_to_cleanup_rewrite_drivers_(false),
@@ -771,6 +773,48 @@ bool ResourceManager::IsExcludedAttribute(const char* attribute) {
   const char** end = kExcludedAttributes + arraysize(kExcludedAttributes);
   return std::binary_search(kExcludedAttributes, end, attribute,
                             CharStarCompareInsensitive());
+}
+
+void ResourceManager::set_enable_property_cache(bool enabled) {
+  enable_property_cache_ = enabled;
+  if (page_property_cache_.get() != NULL) {
+    page_property_cache_->set_enabled(enabled);
+  }
+  if (client_property_cache_.get() != NULL) {
+    client_property_cache_->set_enabled(enabled);
+  }
+}
+
+void ResourceManager::MakePropertyCaches(CacheInterface* backend_cache) {
+  // The property caches are L2-only.  We cannot use the L1 cache because
+  // this data can get stale quickly.
+  page_property_cache_.reset(MakePropertyCache(
+      PropertyCache::kPagePropertyCacheKeyPrefix, backend_cache));
+  client_property_cache_.reset(MakePropertyCache(
+      PropertyCache::kClientPropertyCacheKeyPrefix, backend_cache));
+  client_property_cache_->AddCohort(ClientState::kClientStateCohort);
+}
+
+PropertyCache* ResourceManager::MakePropertyCache(
+    const GoogleString& cache_key_prefix, CacheInterface *cache) const {
+  PropertyCache* pcache = new PropertyCache(
+      cache_key_prefix, cache, timer(), thread_system_);
+  pcache->set_enabled(enable_property_cache_);
+  return pcache;
+}
+
+AbstractClientState* RewriteDriverFactory::NewClientState() {
+  return new ClientState;
+}
+
+void ResourceManager::set_blink_critical_line_data_finder(
+    BlinkCriticalLineDataFinder* finder) {
+  blink_critical_line_data_finder_.reset(finder);
+}
+
+void ResourceManager::set_critical_images_finder(
+    CriticalImagesFinder* finder) {
+  critical_images_finder_.reset(finder);
 }
 
 }  // namespace net_instaweb

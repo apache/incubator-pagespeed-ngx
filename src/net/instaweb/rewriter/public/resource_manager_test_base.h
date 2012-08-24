@@ -25,10 +25,10 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/response_headers.h"
 // We need to include rewrite_driver.h due to covariant return of html_parse()
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -362,7 +362,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   LRUCache* lru_cache() { return factory_->lru_cache(); }
   Statistics* statistics() { return factory_->statistics(); }
   MemFileSystem* file_system() { return factory_->mem_file_system(); }
-  HTTPCache* http_cache() { return factory_->http_cache(); }
+  HTTPCache* http_cache() { return resource_manager_->http_cache(); }
   MockMessageHandler* message_handler() {
     return factory_->mock_message_handler();
   }

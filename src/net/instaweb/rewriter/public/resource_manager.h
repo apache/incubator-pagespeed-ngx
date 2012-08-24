@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -40,7 +41,6 @@ namespace net_instaweb {
 
 class AbstractMutex;
 class BlinkCriticalLineDataFinder;
-class CacheInterface;
 class ContentType;
 class CriticalImagesFinder;
 class FileSystem;
@@ -116,12 +116,7 @@ class ResourceManager {
   void set_rewrite_stats(RewriteStats* x) { rewrite_stats_ = x; }
   void set_relative_path(bool x) { relative_path_ = x; }
   void set_lock_manager(NamedLockManager* x) { lock_manager_ = x; }
-  void set_http_cache(HTTPCache* x) { http_cache_ = x; }
-  void set_page_property_cache(PropertyCache* x) { page_property_cache_ = x; }
-  void set_client_property_cache(PropertyCache* x) {
-    client_property_cache_ = x;
-  }
-  void set_metadata_cache(CacheInterface* x) { metadata_cache_ = x; }
+  void set_enable_property_cache(bool enabled);
   void set_message_handler(MessageHandler* x) { message_handler_ = x; }
 
   StringPiece filename_prefix() const { return file_prefix_; }
@@ -194,36 +189,40 @@ class ResourceManager {
   UrlAsyncFetcher* DefaultSystemFetcher() { return default_system_fetcher_; }
 
   Timer* timer() const { return http_cache_->timer(); }
-  HTTPCache* http_cache() const { return http_cache_; }
-  PropertyCache* page_property_cache() const { return page_property_cache_; }
+
+  void MakePropertyCaches(CacheInterface* backend_cache);
+
+  HTTPCache* http_cache() const { return http_cache_.get(); }
+  void set_http_cache(HTTPCache* x) { http_cache_.reset(x); }
+  PropertyCache* page_property_cache() const {
+    return page_property_cache_.get();
+  }
   PropertyCache* client_property_cache() const {
-    return client_property_cache_;
-  }
-  CriticalImagesFinder* critical_images_finder() const {
-    return critical_images_finder_;
-  }
-  void set_critical_images_finder(CriticalImagesFinder* finder) {
-    critical_images_finder_ = finder;
-  }
-  const UserAgentMatcher& user_agent_matcher() const {
-    return *user_agent_matcher_;
-  }
-  void set_user_agent_matcher(UserAgentMatcher* n) { user_agent_matcher_ = n; }
-
-  BlinkCriticalLineDataFinder* blink_critical_line_data_finder() const {
-    return blink_critical_line_data_finder_;
-  }
-
-  void set_blink_critical_line_data_finder(
-      BlinkCriticalLineDataFinder* finder) {
-    blink_critical_line_data_finder_ = finder;
+    return client_property_cache_.get();
   }
 
   // Cache for small non-HTTP objects.
   //
   // Note that this might share namespace with the HTTP cache, so make sure
   // your key names do not start with http://.
-  CacheInterface* metadata_cache() { return metadata_cache_; }
+  CacheInterface* metadata_cache() const { return metadata_cache_.get(); }
+  void set_metadata_cache(CacheInterface* x) { metadata_cache_.reset(x); }
+
+  CriticalImagesFinder* critical_images_finder() const {
+    return critical_images_finder_.get();
+  }
+  void set_critical_images_finder(CriticalImagesFinder* finder);
+  const UserAgentMatcher& user_agent_matcher() const {
+    return *user_agent_matcher_;
+  }
+  void set_user_agent_matcher(UserAgentMatcher* n) { user_agent_matcher_ = n; }
+
+  BlinkCriticalLineDataFinder* blink_critical_line_data_finder() const {
+    return blink_critical_line_data_finder_.get();
+  }
+
+  void set_blink_critical_line_data_finder(
+      BlinkCriticalLineDataFinder* finder);
 
   // Whether or not dumps of rewritten resources should be stored to
   // the filesystem. This is meant for testing purposes only.
@@ -437,6 +436,10 @@ class ResourceManager {
     response_headers_finalized_ = x;
   }
 
+  // Builds a PropertyCache given a key prefix and a CacheInterface.
+  PropertyCache* MakePropertyCache(const GoogleString& cache_key_prefix,
+                                   CacheInterface* cache) const;
+
  private:
   friend class ResourceManagerTest;
   typedef std::set<RewriteDriver*> RewriteDriverSet;
@@ -456,8 +459,8 @@ class ResourceManager {
   Scheduler* scheduler_;
   UrlAsyncFetcher* default_system_fetcher_;
   Hasher* hasher_;
-  CriticalImagesFinder* critical_images_finder_;
-  BlinkCriticalLineDataFinder* blink_critical_line_data_finder_;
+  scoped_ptr<CriticalImagesFinder> critical_images_finder_;
+  scoped_ptr<BlinkCriticalLineDataFinder> blink_critical_line_data_finder_;
 
   // hasher_ is often set to a mock within unit tests, but some parts of the
   // system will not work sensibly if the "hash algorithm" used always returns
@@ -470,14 +473,15 @@ class ResourceManager {
 
   Statistics* statistics_;
 
-  HTTPCache* http_cache_;
-  PropertyCache* page_property_cache_;
-  PropertyCache* client_property_cache_;
-  CacheInterface* metadata_cache_;
+  scoped_ptr<HTTPCache> http_cache_;
+  scoped_ptr<PropertyCache> page_property_cache_;
+  scoped_ptr<PropertyCache> client_property_cache_;
+  scoped_ptr<CacheInterface> metadata_cache_;
 
   bool relative_path_;
   bool store_outputs_in_file_system_;
   bool response_headers_finalized_;
+  bool enable_property_cache_;
 
   NamedLockManager* lock_manager_;
   MessageHandler* message_handler_;

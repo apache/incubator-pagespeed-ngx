@@ -134,8 +134,8 @@ class MockPage : public PropertyPage {
 class ImageRewriteTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
-    PropertyCache* pcache = factory()->page_property_cache();
-    factory()->set_enable_property_cache(true);
+    PropertyCache* pcache = resource_manager_->page_property_cache();
+    resource_manager_->set_enable_property_cache(true);
     pcache->AddCohort(RewriteDriver::kDomCohort);
     ResourceManagerTestBase::SetUp();
     MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),
@@ -397,7 +397,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
   // Returns the property cache value for kInlinableImageUrlsPropertyName,
   // or NULL if it is not present.
   const PropertyValue* FetchInlinablePropertyCacheValue() {
-    PropertyCache* pcache = factory()->page_property_cache();
+    PropertyCache* pcache = resource_manager_->page_property_cache();
     if (pcache == NULL) {
       return NULL;
     }
@@ -806,8 +806,8 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
 TEST_F(ImageRewriteTest, InlineCriticalOnly) {
   StringSet* critical_images = new StringSet;
   rewrite_driver()->set_critical_images(critical_images);
-  MeaningfulCriticalImagesFinder finder;
-  resource_manager()->set_critical_images_finder(&finder);
+  MeaningfulCriticalImagesFinder* finder = new MeaningfulCriticalImagesFinder;
+  resource_manager()->set_critical_images_finder(finder);
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
   rewrite_driver()->AddFilters();
@@ -822,29 +822,29 @@ TEST_F(ImageRewriteTest, InlineCriticalOnly) {
 }
 
 TEST_F(ImageRewriteTest, ComputeCriticalImages) {
-  MeaningfulCriticalImagesFinder finder;
-  resource_manager()->set_critical_images_finder(&finder);
+  MeaningfulCriticalImagesFinder* finder = new MeaningfulCriticalImagesFinder;
+  resource_manager()->set_critical_images_finder(finder);
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
   rewrite_driver()->AddFilters();
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, false);
   // Empty user agent supports inlining, so we call ComputeCriticalImages.
-  EXPECT_EQ(1, finder.num_compute_calls());
+  EXPECT_EQ(1, finder->num_compute_calls());
 
   // Change to a user agent that does not support inlining. We don't call
   // ComputeCriticalImages.
   rewrite_driver()->set_user_agent("Firefox/2.0");
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, false);
-  EXPECT_EQ(1, finder.num_compute_calls());
+  EXPECT_EQ(1, finder->num_compute_calls());
 
   // Change back to a user agent that supports inlining. We call
   // ComputeCriticalImages again.
   rewrite_driver()->set_user_agent("Firefox/3.0");
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, false);
-  EXPECT_EQ(2, finder.num_compute_calls());
+  EXPECT_EQ(2, finder->num_compute_calls());
 }
 
 TEST_F(ImageRewriteTest, InlineNoRewrite) {

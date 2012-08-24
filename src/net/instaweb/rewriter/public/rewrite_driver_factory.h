@@ -34,13 +34,11 @@ namespace net_instaweb {
 class AbstractClientState;
 class AbstractMutex;
 class BlinkCriticalLineDataFinder;
-class CacheInterface;
 class CriticalImagesFinder;
 class FileSystem;
 class FilenameEncoder;
 class FuriousMatcher;
 class Hasher;
-class HTTPCache;
 class MessageHandler;
 class NamedLockManager;
 class PropertyCache;
@@ -103,8 +101,6 @@ class RewriteDriverFactory {
   void set_url_namer(UrlNamer* url_namer);
   void set_timer(Timer* timer);
   void set_critical_images_finder(CriticalImagesFinder* finder);
-  void set_blink_critical_line_data_finder(BlinkCriticalLineDataFinder* finder);
-  void set_enable_property_cache(bool enabled);
   void set_usage_data_reporter(UsageDataReporter* reporter);
 
   // Set up a directory for slurped files for HTML and resources.  If
@@ -159,17 +155,10 @@ class RewriteDriverFactory {
   // These accessors are *not* thread-safe.  They must be called once prior
   // to forking threads, e.g. via ComputeUrlFetcher().
   Timer* timer();
-  HTTPCache* http_cache();
-  PropertyCache* page_property_cache();
-  PropertyCache* client_property_cache();
   NamedLockManager* lock_manager();
   QueuedWorkerPool* WorkerPool(WorkerPoolName pool);
   Scheduler* scheduler();
   UsageDataReporter* usage_data_reporter();
-
-  // Builds a PropertyCache given a key prefix and a CacheInterface.
-  PropertyCache* MakePropertyCache(const GoogleString& cache_key_prefix,
-                                   CacheInterface* cache) const;
 
   // Computes URL fetchers using the based fetcher, and optionally,
   // slurp_directory and slurp_read_only.  These are not thread-safe;
@@ -177,9 +166,6 @@ class RewriteDriverFactory {
   // CreateResourceManager.
   virtual UrlFetcher* ComputeUrlFetcher();
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
-
-  // Computes the HTTPCache using the CacheInterface.  This is not thread-safe.
-  virtual HTTPCache* ComputeHTTPCache();
 
   // Threadsafe mechanism to create a managed ResourceManager.  The
   // ResourceManager is owned by the factory, and should not be
@@ -191,6 +177,11 @@ class RewriteDriverFactory {
   // allows 2-phase initialization if required.  There is no need to
   // call this if you use CreateResourceManager.
   void InitResourceManager(ResourceManager* resource_manager);
+
+  // Called from InitResourceManagager, but virtualized separately
+  // as it is platform-specific.  This method must call on the resource
+  // manager: set_http_cache, set_metadata_cache, and MakePropertyCaches.
+  virtual void SetupCaches(ResourceManager* resource_manager) = 0;
 
   // Provides an optional hook for adding rewrite passes to the HTML filter
   // chain.  This should be used for filters that are specific to a particular
@@ -211,9 +202,6 @@ class RewriteDriverFactory {
   virtual void ApplyPlatformSpecificConfiguration(RewriteDriver* driver);
 
   ThreadSystem* thread_system() { return thread_system_.get(); }
-
-  CriticalImagesFinder* critical_images_finder();
-  BlinkCriticalLineDataFinder* blink_critical_line_data_finder();
 
   // Returns the set of directories that we (our our subclasses) have created
   // thus far.
@@ -306,13 +294,12 @@ class RewriteDriverFactory {
   virtual Hasher* NewHasher() = 0;
 
   // Default implementation returns NULL.
-  virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
+  virtual CriticalImagesFinder* DefaultCriticalImagesFinder(
+      PropertyCache* cache);
 
   // Default implementation returns NULL.
-  virtual BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder();
-
-  // Note: Returned CacheInterface should be thread-safe.
-  virtual CacheInterface* DefaultCacheInterface() = 0;
+  virtual BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder(
+      PropertyCache* cache);
 
   // They may also supply a custom lock manager. The default implementation
   // will use the file system.
@@ -350,20 +337,10 @@ class RewriteDriverFactory {
   // filename_prefix()
   virtual StringPiece LockFilePrefix();
 
-  // Return memo-ized backend cache interface.
-  CacheInterface* cache_backend();
-
-  // Return the CacheInterface to be used by the property cache.
-  virtual CacheInterface* property_cache_backend() { return cache_backend(); }
-
   // Creates a StaticJavascriptManager instance. Default implementation creates
   // an instance that disables serving of filter javascript via gstatic
   // (gstatic.com is the domain google uses for serving static content).
   virtual StaticJavascriptManager* DefaultStaticJavascriptManager();
-
-  // Sets up the property cache cohorts. Should be called only after the
-  // property cache is initialized.
-  virtual void SetupCohorts() {}
 
  private:
   void SetupSlurpDirectories();
@@ -390,7 +367,6 @@ class RewriteDriverFactory {
   bool force_caching_;
   bool slurp_read_only_;
   bool slurp_print_urls_;
-  bool enable_property_cache_;
 
   // protected by resource_manager_mutex_;
   typedef std::set<ResourceManager*> ResourceManagerSet;
@@ -401,18 +377,11 @@ class RewriteDriverFactory {
   // the core system, subclasses, and command-line.
   scoped_ptr<RewriteOptions> default_options_;
 
-  // Caching support
-  scoped_ptr<CacheInterface> cache_backend_;
-  scoped_ptr<HTTPCache> http_cache_;
-
   // Manage locks for output resources.
   scoped_ptr<NamedLockManager> lock_manager_;
 
   scoped_ptr<ThreadSystem> thread_system_;
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
-  scoped_ptr<BlinkCriticalLineDataFinder> blink_critical_line_data_finder_;
-  scoped_ptr<PropertyCache> page_property_cache_;
-  scoped_ptr<PropertyCache> client_property_cache_;
 
   // Default statistics implementation which can be overridden by children
   // by calling SetStatistics().
