@@ -374,20 +374,27 @@ void SharedMemStatisticsTestBase::TestHistogramRender() {
   h1->Add(1000);
   h1->Add(2000);
   // The table of histogram graph should look like:
-  // [-infinity,5) 2 25.0% 25.0% ||||||
+  // [0,5) 2 25.0% 25.0% ||||||
   // [10,15) 1 12.5% 37.5% |||
   // ...
   // Check if the above number appears.
   GoogleString html_graph;
   StringWriter writer_graph(&html_graph);
   stats_->RenderHistograms(&writer_graph, &handler_);
-  EXPECT_TRUE(Contains(html_graph, "-&infin;,</td>"));
+  EXPECT_FALSE(Contains(html_graph, "inf"));
   EXPECT_TRUE(Contains(html_graph, "5)</td>"));
   EXPECT_TRUE(Contains(html_graph, "25.0%"));
   EXPECT_TRUE(Contains(html_graph, "15)</td>"));
   EXPECT_TRUE(Contains(html_graph, "12.5%"));
   EXPECT_TRUE(Contains(html_graph, "37.5%"));
   EXPECT_TRUE(Contains(html_graph, "setHistogram"));
+
+  // Now add something out-of-range, that should also add a negative infinity
+  // bucket
+  h1->Add(-10);
+  html_graph.clear();
+  stats_->RenderHistograms(&writer_graph, &handler_);
+  EXPECT_TRUE(Contains(html_graph, "-&infin;,</td>"));
 }
 
 void SharedMemStatisticsTestBase::TestHistogramNoExtraClear() {
@@ -411,6 +418,17 @@ void SharedMemStatisticsTestBase::TestHistogramNoExtraClearChild() {
   // This would previously lose the data.
   h1->EnableNegativeBuckets();
   h1->SetMaxValue(100.0);
+}
+
+void SharedMemStatisticsTestBase::TestHistogramExtremeBuckets() {
+  ParentInit();
+  Histogram* h1 = stats_->GetHistogram(kHist1);
+  h1->SetMaxValue(100.0);
+  h1->Add(0);
+  // The median will be approximated, but it really ought to be
+  // in the [0, End of first bucket] range.
+  EXPECT_LE(0.0, h1->Median());
+  EXPECT_LE(h1->Median(), h1->BucketLimit(0));
 }
 
 void SharedMemStatisticsTestBase::TestTimedVariableEmulation() {
@@ -453,19 +471,21 @@ void SharedMemStatisticsTestBase::TestConsoleStatisticsLogger() {
   h2->Add(200);
   h2->Add(1000);
   h2->Add(2000);
+  h2->Add(5000);  // bigger than max
   GoogleString logger_output;
   StringWriter logger_writer(&logger_output);
   stats_->DumpConsoleVarsToWriter(timer_->NowMs(), &logger_writer, &handler_);
   GoogleString result = "timestamp: 1342567288560\n"
                         "num_flushes: 300\n"
                         "histogram: Html Time us Histogram\n"
-                        "[-inf, 5.000000): 2.000000\n"
+                        "[0.000000, 5.000000): 2.000000\n"
                         "[10.000000, 15.000000): 1.000000\n"
                         "[20.000000, 25.000000): 1.000000\n"
                         "[100.000000, 105.000000): 1.000000\n"
                         "[200.000000, 205.000000): 1.000000\n"
                         "[1000.000000, 1005.000000): 1.000000\n"
-                        "[2000.000000, 2005.000000): 1.000000\n";
+                        "[2000.000000, 2005.000000): 1.000000\n"
+                        "[2500.000000, inf): 1.000000\n";
   EXPECT_EQ(result, logger_output);
 }
 

@@ -37,6 +37,11 @@ namespace {
 
 // Default number of buckets for histogram, refers to stats/histogram.
 const int kDefaultNumBuckets = 500;
+
+// We always allocate 2 extra buckets, one for values below the specified
+// range, and one for values above.
+const int kOutOfBoundsCatcherBuckets = 2;
+
 // Default upper bound of values in histogram. Can be reset by SetMaxValue().
 const double kMaxValue = 5000;
 const char kStatisticsObjName[] = "statistics";
@@ -190,7 +195,8 @@ void SharedMemConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
 }
 
 SharedMemHistogram::SharedMemHistogram()
-    : num_buckets_(kDefaultNumBuckets), buffer_(NULL) {
+    : num_buckets_(kDefaultNumBuckets + kOutOfBoundsCatcherBuckets),
+      buffer_(NULL) {
 }
 
 SharedMemHistogram::~SharedMemHistogram() {
@@ -229,6 +235,9 @@ void SharedMemHistogram::Reset() {
 
 int SharedMemHistogram::FindBucket(double value) {
   DCHECK(buffer_ != NULL);
+  // We add +1 in most of these case here to skip the leftmost catcher bucket.
+  // (The one exception is when using index_zero, which already included the
+  //  offset).
   if (buffer_->enable_negative_) {
     if (value > 0) {
       // When value > 0 and bucket_->max_value_ = +Inf,
@@ -238,10 +247,10 @@ int SharedMemHistogram::FindBucket(double value) {
       double diff = value - lower_bound;
       return index_zero + diff / BucketWidth();
     } else {
-      return (value - (-buffer_->max_value_)) / BucketWidth();
+      return 1 + (value - (-buffer_->max_value_)) / BucketWidth();
     }
   } else {
-    return (value - buffer_->min_value_) / BucketWidth();
+    return 1 + (value - buffer_->min_value_) / BucketWidth();
   }
 }
 
@@ -250,7 +259,8 @@ void SharedMemHistogram::Add(double value) {
     return;
   }
   ScopedMutex hold_lock(mutex_.get());
-  // index will be set to >= 0 if we clip at edges of histogram.
+  // See if we should put the value in one of the out-of-bounds catcher buckets,
+  // in which case we will change index from -1.
   int index = -1;
   if (buffer_->enable_negative_) {
     // If negative buckets is enabled, the minimum value in-range in Histogram
@@ -361,7 +371,7 @@ void SharedMemHistogram::SetMaxValue(double value) {
 
 void SharedMemHistogram::SetSuggestedNumBuckets(int i) {
   DCHECK_GT(i, 0) << "Number of buckets should be larger than 0";
-  num_buckets_ = i;
+  num_buckets_ = i + kOutOfBoundsCatcherBuckets;
 }
 
 double SharedMemHistogram::AverageInternal() {
@@ -467,6 +477,9 @@ double SharedMemHistogram::BucketStart(int index) {
   if (index == 0) {
     return -std::numeric_limits<double>::infinity();
   }
+
+  index -= 1;  // Skip over the left out-of-bounds catcher bucket.
+
   if (buffer_->enable_negative_) {
     // should not use (max - min) / buckets, in case max = + Inf.
     return (index * BucketWidth() + -buffer_->max_value_);
@@ -494,9 +507,9 @@ double SharedMemHistogram::BucketWidth() {
   double bucket_width = 0;
 
   if (buffer_->enable_negative_) {
-    bucket_width = max * 2 / num_buckets_;
+    bucket_width = max * 2 / (num_buckets_ - kOutOfBoundsCatcherBuckets);
   } else {
-    bucket_width = (max - min) / num_buckets_;
+    bucket_width = (max - min) / (num_buckets_ - kOutOfBoundsCatcherBuckets);
   }
   DCHECK_NE(0, bucket_width);
   return bucket_width;

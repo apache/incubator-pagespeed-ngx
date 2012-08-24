@@ -48,6 +48,7 @@ class SharedMemStatisticsTestBase : public testing::Test {
   void TestHistogram();
   void TestHistogramRender();
   void TestHistogramNoExtraClear();
+  void TestHistogramExtremeBuckets();
   void TestTimedVariableEmulation();
   void TestConsoleStatisticsLogger();
 
@@ -113,6 +114,10 @@ TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestHistogramRender) {
   SharedMemStatisticsTestBase::TestHistogramRender();
 }
 
+TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestHistogramExtremeBuckets) {
+  SharedMemStatisticsTestBase::TestHistogramExtremeBuckets();
+}
+
 TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestHistogramNoExtraClear) {
   SharedMemStatisticsTestBase::TestHistogramNoExtraClear();
 }
@@ -128,6 +133,7 @@ TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestConsoleStatisticsLogger) {
 REGISTER_TYPED_TEST_CASE_P(SharedMemStatisticsTestTemplate, TestCreate,
                            TestSet, TestClear, TestAdd, TestHistogram,
                            TestHistogramRender, TestHistogramNoExtraClear,
+                           TestHistogramExtremeBuckets,
                            TestTimedVariableEmulation,
                            TestConsoleStatisticsLogger);
 

@@ -179,7 +179,13 @@ class SharedMemHistogram : public Histogram {
   SharedMemHistogram();
   void AttachTo(AbstractSharedMemSegment* segment, size_t offset,
                 MessageHandler* message_handler);
+
+  // Returns the width of normal buckets (as in not the two extreme outermost
+  // buckets which have infinite width).
   double BucketWidth();
+
+  // Finds a bucket that should contain the given value. Note that this does
+  // not consider the catcher buckets for out-of-range values.
   int FindBucket(double value);
   void Init();
   void Reset();
