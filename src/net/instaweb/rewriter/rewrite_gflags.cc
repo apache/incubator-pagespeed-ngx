@@ -162,7 +162,7 @@ DEFINE_int64(implicit_cache_ttl_ms,
 DEFINE_bool(enable_defer_js_experimental, false,
             "Enables experimental defer js.");
 
-DEFINE_bool(enable_flush_subresources_experimental, false,
+DEFINE_bool(enable_flush_subresources_experimental, true,
             "Enables experimental flush subresources.");
 
 DEFINE_bool(enable_inline_preview_images_experimental, false,

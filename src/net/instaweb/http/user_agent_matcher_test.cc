@@ -129,7 +129,7 @@ TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
   EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_.GetPrefetchMechanism(
                 "prefetch_image_tag"));
-  EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
+  EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_.GetPrefetchMechanism(
                 UserAgentStrings::kIe9UserAgent));
   EXPECT_EQ(UserAgentMatcher::kPrefetchLinkRelSubresource,
@@ -141,6 +141,8 @@ TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
   EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
             user_agent_matcher_.GetPrefetchMechanism(
                 NULL));
+  EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
+            user_agent_matcher_.GetPrefetchMechanism(""));
 }
 
 TEST_F(UserAgentMatcherTest, SupportsJsDefer) {
