@@ -39,6 +39,7 @@ class FileSystem;
 class FilenameEncoder;
 class FuriousMatcher;
 class Hasher;
+class LogRecord;
 class MessageHandler;
 class NamedLockManager;
 class PropertyCache;
@@ -100,7 +101,6 @@ class RewriteDriverFactory {
   void set_filename_encoder(FilenameEncoder* filename_encoder);
   void set_url_namer(UrlNamer* url_namer);
   void set_timer(Timer* timer);
-  void set_critical_images_finder(CriticalImagesFinder* finder);
   void set_usage_data_reporter(UsageDataReporter* reporter);
 
   // Set up a directory for slurped files for HTML and resources.  If
@@ -246,6 +246,10 @@ class RewriteDriverFactory {
   // forwards to NewRewriteOptions().
   virtual RewriteOptions* NewRewriteOptionsForQuery();
 
+  // Creates a new LogRecord object. The caller of this method has to take
+  // ownership of the returned LogRecord instance.
+  virtual LogRecord* NewLogRecord();
+
   // get/set the version placed into the X-[Mod-]Page(s|-S)peed header.
   const GoogleString& version_string() const { return version_string_; }
   void set_version_string(const StringPiece& version_string) {
@@ -381,7 +385,6 @@ class RewriteDriverFactory {
   scoped_ptr<NamedLockManager> lock_manager_;
 
   scoped_ptr<ThreadSystem> thread_system_;
-  scoped_ptr<CriticalImagesFinder> critical_images_finder_;
 
   // Default statistics implementation which can be overridden by children
   // by calling SetStatistics().

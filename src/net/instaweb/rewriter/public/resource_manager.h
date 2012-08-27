@@ -49,6 +49,7 @@ class Function;
 class FuriousMatcher;
 class GoogleUrl;
 class Hasher;
+class LogRecord;
 class MessageHandler;
 class NamedLock;
 class NamedLockManager;
@@ -290,6 +291,10 @@ class ResourceManager {
 
   // Makes a new, empty set of RewriteOptions.
   RewriteOptions* NewOptions();
+
+  // Makes a new LogRecord. The caller of this method has to take the ownership
+  // of the object.
+  LogRecord* NewLogRecord();
 
   // Generates a new managed RewriteDriver using the RewriteOptions
   // managed by this class.  Each RewriteDriver is not thread-safe,

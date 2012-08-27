@@ -23,7 +23,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/semantic_type.h"
-#include "net/instaweb/rewriter/panel_config.pb.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
@@ -745,15 +744,6 @@ void RewriteOptions::SortOptions() {
             RewriteOptions::OptionLessThanByEnum);
 }
 
-void RewriteOptions::set_panel_config(
-    PublisherConfig* panel_config) {
-  panel_config_.reset(panel_config);
-}
-
-const PublisherConfig* RewriteOptions::panel_config() const {
-  return panel_config_.get();
-}
-
 bool RewriteOptions::SetFuriousState(int id) {
   furious_id_ = id;
   return SetupFuriousRewriters();
@@ -1353,10 +1343,6 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
       prioritize_visible_content_families_.push_back(
           src.prioritize_visible_content_families_[i]->Clone());
     }
-  }
-
-  if (src.panel_config() != NULL) {
-    set_panel_config(new PublisherConfig(*(src.panel_config())));
   }
 }
 

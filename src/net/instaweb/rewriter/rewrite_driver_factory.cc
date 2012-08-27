@@ -24,6 +24,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_writer.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
@@ -199,11 +200,6 @@ void RewriteDriverFactory::set_filename_encoder(FilenameEncoder* e) {
 
 void RewriteDriverFactory::set_url_namer(UrlNamer* url_namer) {
   url_namer_.reset(url_namer);
-}
-
-void RewriteDriverFactory::set_critical_images_finder(
-    CriticalImagesFinder* finder) {
-  critical_images_finder_.reset(finder);
 }
 
 void RewriteDriverFactory::set_usage_data_reporter(
@@ -588,6 +584,10 @@ RewriteOptions* RewriteDriverFactory::NewRewriteOptions() {
 
 RewriteOptions* RewriteDriverFactory::NewRewriteOptionsForQuery() {
   return NewRewriteOptions();
+}
+
+LogRecord* RewriteDriverFactory::NewLogRecord() {
+  return new LogRecord();
 }
 
 FuriousMatcher* RewriteDriverFactory::NewFuriousMatcher() {

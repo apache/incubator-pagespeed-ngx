@@ -61,6 +61,8 @@ class LogRecord  {
   // Return the LoggingInfo proto wrapped by this class.
   virtual LoggingInfo* logging_info() { return logging_info_; }
 
+  virtual void WriteLogForBlink();
+
  protected:
   // Returns a comma-joined string concatenating the contents of
   // applied_rewriters_

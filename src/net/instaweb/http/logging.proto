@@ -39,7 +39,7 @@ message TimingInfo  {
 }
 
 // This proto stores all Blink related information.
-// Next id for BlinkInfo : 2
+// Next id for BlinkInfo : 4
 message BlinkInfo {
   enum BlinkRequestFlow {
     BLINK_CACHE_HIT = 1;
@@ -52,6 +52,12 @@ message BlinkInfo {
   };
   // Tracks the flow of a Blink request.
   optional BlinkRequestFlow blink_request_flow = 1;
+
+  // The event id of the user request for which blink flow was triggered.
+  optional string request_event_id_time_usec = 2;
+
+  // Tracks whether html change detection found a match or not.
+  optional bool html_match = 3;
 }
 
 // This proto stores all information which we would like to log.

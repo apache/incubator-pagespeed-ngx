@@ -765,6 +765,10 @@ RewriteOptions* ResourceManager::NewOptions() {
   return factory_->NewRewriteOptions();
 }
 
+LogRecord* ResourceManager::NewLogRecord() {
+  return factory_->NewLogRecord();
+}
+
 void ResourceManager::ComputeSignature(RewriteOptions* rewrite_options) const {
   rewrite_options->ComputeSignature(lock_hasher());
 }

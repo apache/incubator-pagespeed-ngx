@@ -47,6 +47,10 @@ void LogRecord::Finalize() {
   logging_info()->set_applied_rewriters(ConcatenatedRewriterString());
 }
 
+void LogRecord::WriteLogForBlink() {
+  // no-op.
+}
+
 GoogleString LogRecord::ConcatenatedRewriterString() {
   GoogleString rewriters_str;
   StringSet::iterator iter;

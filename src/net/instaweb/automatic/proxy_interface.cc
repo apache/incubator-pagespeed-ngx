@@ -20,7 +20,6 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/automatic/public/blink_flow.h"
 #include "net/instaweb/automatic/public/blink_flow_critical_line.h"
 #include "net/instaweb/automatic/public/flush_early_flow.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
@@ -169,7 +168,6 @@ void ProxyInterface::Initialize(Statistics* statistics) {
                                ResourceManager::kStatisticsGroup);
   statistics->AddTimedVariable(kBlinkCriticalLineRequestCount,
                                ResourceManager::kStatisticsGroup);
-  BlinkFlow::Initialize(statistics);
   BlinkFlowCriticalLine::Initialize(statistics);
   FlushEarlyFlow::Initialize(statistics);
 }
@@ -491,8 +489,6 @@ void ProxyInterface::ProxyRequestCallback(
     }
     const char* user_agent = async_fetch->request_headers()->Lookup1(
         HttpAttributes::kUserAgent);
-    const Layout* layout = BlinkUtil::ExtractBlinkLayout(*request_url,
-                                                         options, user_agent);
     bool is_blink_request = BlinkUtil::IsBlinkRequest(
         *request_url, async_fetch->request_headers(),
         options, user_agent, resource_manager_->user_agent_matcher());
@@ -525,14 +521,6 @@ void ProxyInterface::ProxyRequestCallback(
                                    proxy_fetch_factory_.get(),
                                    resource_manager_,
                                    property_callback.release());
-    } else if (is_blink_request && layout != NULL) {
-      // TODO(rahulbansal): Remove this LOG once we expect to have
-      // Blink requests.
-      LOG(INFO) << "Triggering Blink flow for url " << url_string;
-      blink_requests_->IncBy(1);
-      BlinkFlow::Start(url_string, async_fetch, layout,
-                       options, proxy_fetch_factory_.get(),
-                       resource_manager_);
     } else {
       RewriteDriver* driver = NULL;
       bool need_to_store_experiment_data = false;

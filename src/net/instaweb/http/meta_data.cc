@@ -57,6 +57,8 @@ const char HttpAttributes::kXAssociatedContent[] = "X-Associated-Content";
 const char HttpAttributes::kXForwardedFor[] = "X-Forwarded-For";
 const char HttpAttributes::kXGooglePagespeedClientId[] =
     "X-Google-Pagespeed-Client-Id";
+const char HttpAttributes::kXGoogleRequestEventId[] =
+    "X-Google-Request-Event-Id";
 const char HttpAttributes::kXPsaBlockingRewrite[] = "X-PSA-Blocking-Rewrite";
 const char HttpAttributes::kXPsaLoadShed[] = "X-Psa-Load-Shed";
 const char HttpAttributes::kXRequestedWith[] = "X-Requested-With";

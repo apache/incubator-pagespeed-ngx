@@ -42,7 +42,6 @@ namespace net_instaweb {
 class GoogleUrl;
 class Hasher;
 class MessageHandler;
-class PublisherConfig;
 
 class RewriteOptions {
  public:
@@ -1091,10 +1090,6 @@ class RewriteOptions {
                                int64 cache_time_ms,
                                const StringPiece non_cacheable_elements);
 
-  // Takes ownership of the config.
-  void set_panel_config(PublisherConfig* panel_config);
-  const PublisherConfig* panel_config() const;
-
   void set_running_furious_experiment(bool x) {
     set_option(x, &running_furious_);
   }
@@ -1953,8 +1948,6 @@ class RewriteOptions {
   //  ...
   std::vector<PrioritizeVisibleContentFamily*>
       prioritize_visible_content_families_;
-
-  scoped_ptr<PublisherConfig> panel_config_;
 
   Option<BeaconUrl> beacon_url_;
   Option<GoogleString> ga_id_;

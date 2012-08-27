@@ -1028,7 +1028,6 @@
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/js/js.gyp:pagespeed_jsminify',
       ],
       'sources': [
-        'automatic/blink_flow.cc',
         'automatic/blink_flow_critical_line.cc',
         'automatic/flush_early_flow.cc',
         'automatic/html_detector.cc',

@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_BLINK_FLOW_CRITICAL_LINE_H_
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
@@ -145,6 +145,7 @@ class BlinkFlowCriticalLine {
   GoogleUrl google_url_;
   GoogleString critical_html_;
   AsyncFetch* base_fetch_;
+  LogRecord* log_record_;
   BlinkInfo* blink_info_;
   RewriteOptions* options_;
   ProxyFetchFactory* factory_;

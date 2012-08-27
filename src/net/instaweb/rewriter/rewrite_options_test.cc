@@ -653,6 +653,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("BlinkMaxHtmlSizeRewritable"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kBlinkMaxHtmlSizeRewritable));
+  EXPECT_EQ(StringPiece("CacheSmallImagesUnrewritten"),
+            RewriteOptions::LookupOptionEnum(
+                  RewriteOptions::kCacheSmallImagesUnrewritten));
   EXPECT_EQ(StringPiece("CombineAcrossPaths"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kCombineAcrossPaths));
@@ -698,6 +701,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("EnableFlushSubresourcesExperimental"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kEnableFlushSubresourcesExperimental));
+  EXPECT_EQ(StringPiece("EnableRewriting"),
+            RewriteOptions::LookupOptionEnum(
+                  RewriteOptions::kEnabled));
   EXPECT_EQ(StringPiece("FlushHtml"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kFlushHtml));
@@ -731,9 +737,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("ImageRetainExifData"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kImageRetainExifData));
-  EXPECT_EQ(StringPiece("CacheSmallImagesUnrewritten"),
-            RewriteOptions::LookupOptionEnum(
-                  RewriteOptions::kCacheSmallImagesUnrewritten));
   EXPECT_EQ(StringPiece("ImageWebpRecompressQuality"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kImageWebpRecompressQuality));
