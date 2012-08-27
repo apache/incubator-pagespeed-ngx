@@ -24,7 +24,6 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/blink_critical_line_data.pb.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -125,7 +124,7 @@ class BlinkFilterTest : public ResourceManagerTestBase {
   }
 
   void PopulatePropertyCache() {
-    PropertyCache* property_cache = resource_manager_->page_property_cache();
+    PropertyCache* property_cache = page_property_cache();
     property_cache->set_enabled(true);
     property_cache->AddCohort(BlinkFilter::kBlinkCohort);
     property_cache->AddCohort(RewriteDriver::kDomCohort);
@@ -137,7 +136,7 @@ class BlinkFilterTest : public ResourceManagerTestBase {
   }
 
   void WriteBlinkCriticalLineData(const char* last_modified_value) {
-    PropertyCache* property_cache = resource_manager_->page_property_cache();
+    PropertyCache* property_cache = page_property_cache();
     PropertyPage* page = rewrite_driver()->property_page();
 
     BlinkCriticalLineData response;
@@ -164,7 +163,7 @@ class BlinkFilterTest : public ResourceManagerTestBase {
   }
 
   void CheckResponseCodeInPropertyCache(const int expected_code) {
-    PropertyCache* property_cache = resource_manager_->page_property_cache();
+    PropertyCache* property_cache = page_property_cache();
     const PropertyCache::Cohort* cohort = property_cache->GetCohort(
         RewriteDriver::kDomCohort);
     PropertyValue* value = rewrite_driver()->property_page()->GetProperty(
@@ -175,7 +174,7 @@ class BlinkFilterTest : public ResourceManagerTestBase {
   }
 
   void CheckNoResponseCodeInPropertyCache() {
-    PropertyCache* property_cache = resource_manager_->page_property_cache();
+    PropertyCache* property_cache = page_property_cache();
     const PropertyCache::Cohort* cohort = property_cache->GetCohort(
         RewriteDriver::kDomCohort);
     PropertyValue* value = rewrite_driver()->property_page()->GetProperty(
@@ -184,7 +183,7 @@ class BlinkFilterTest : public ResourceManagerTestBase {
   }
 
   bool IsBlinkCriticalLineDataInPropertyCache() {
-    PropertyCache* property_cache = resource_manager_->page_property_cache();
+    PropertyCache* property_cache = page_property_cache();
     const PropertyCache::Cohort* cohort = property_cache->GetCohort(
         BlinkFilter::kBlinkCohort);
     PropertyValue* value = rewrite_driver()->property_page()->GetProperty(

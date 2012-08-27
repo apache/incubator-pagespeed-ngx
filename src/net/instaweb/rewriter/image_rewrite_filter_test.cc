@@ -134,7 +134,7 @@ class MockPage : public PropertyPage {
 class ImageRewriteTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
-    PropertyCache* pcache = resource_manager_->page_property_cache();
+    PropertyCache* pcache = page_property_cache();
     resource_manager_->set_enable_property_cache(true);
     pcache->AddCohort(RewriteDriver::kDomCohort);
     ResourceManagerTestBase::SetUp();
@@ -397,7 +397,7 @@ class ImageRewriteTest : public ResourceManagerTestBase {
   // Returns the property cache value for kInlinableImageUrlsPropertyName,
   // or NULL if it is not present.
   const PropertyValue* FetchInlinablePropertyCacheValue() {
-    PropertyCache* pcache = resource_manager_->page_property_cache();
+    PropertyCache* pcache = page_property_cache();
     if (pcache == NULL) {
       return NULL;
     }

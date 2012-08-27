@@ -1028,7 +1028,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkUrlCacheInvalidation) {
   GoogleString text;
   ResponseHeaders response_headers;
   fake_blink_critical_line_data_finder_->set_property_cache(
-      resource_manager()->page_property_cache());
+      page_property_cache());
 
   SetBlinkCriticalLineData();
   FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);

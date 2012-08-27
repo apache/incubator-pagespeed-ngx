@@ -540,8 +540,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
   virtual void SetUp() {
     RewriteOptions* options = resource_manager()->global_options();
     resource_manager_->set_enable_property_cache(true);
-    resource_manager_->page_property_cache()->AddCohort(
-        RewriteDriver::kDomCohort);
+    page_property_cache()->AddCohort(RewriteDriver::kDomCohort);
     resource_manager_->client_property_cache()->AddCohort(
         ClientState::kClientStateCohort);
     options->ClearSignatureForTesting();
@@ -726,7 +725,7 @@ class ProxyInterfaceTest : public ResourceManagerTestBase {
     ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
     GoogleString delay_pcache_key, delay_http_cache_key;
     if (delay_pcache || thread_pcache) {
-      PropertyCache* pcache = resource_manager()->page_property_cache();
+      PropertyCache* pcache = page_property_cache();
       const PropertyCache::Cohort* cohort =
           pcache->GetCohort(RewriteDriver::kDomCohort);
       delay_http_cache_key = AbsolutifyUrl(url);

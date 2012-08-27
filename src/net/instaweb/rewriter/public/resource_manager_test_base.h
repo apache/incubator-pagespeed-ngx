@@ -54,6 +54,7 @@ class LRUCache;
 class MessageHandler;
 class MockScheduler;
 class MockTimer;
+class PropertyCache;
 class ResourceNamer;
 class RewriteFilter;
 class Statistics;
@@ -363,6 +364,9 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   Statistics* statistics() { return factory_->statistics(); }
   MemFileSystem* file_system() { return factory_->mem_file_system(); }
   HTTPCache* http_cache() { return resource_manager_->http_cache(); }
+  PropertyCache* page_property_cache() {
+    return resource_manager_->page_property_cache();
+  }
   MockMessageHandler* message_handler() {
     return factory_->mock_message_handler();
   }
