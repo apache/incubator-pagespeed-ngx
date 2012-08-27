@@ -182,9 +182,11 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
           driver_->AddAttribute(link_element, HtmlName::kRel, kStylesheet);
           driver_->AddAttribute(link_element, HtmlName::kHref,
                                 output_resource->url());
-          // Add all style atrributes to link.
-          for (int i = 0; i < style_element->attribute_size(); ++i) {
-            const HtmlElement::Attribute& attr = style_element->attribute(i);
+          // Add all style attributes to link.
+          const HtmlElement::AttributeList& attrs = style_element->attributes();
+          for (HtmlElement::AttributeConstIterator i(attrs.begin());
+               i != attrs.end(); ++i) {
+            const HtmlElement::Attribute& attr = *i;
             link_element->AddAttribute(attr);
           }
           // Add link to DOM.

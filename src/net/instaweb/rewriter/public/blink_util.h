@@ -31,10 +31,8 @@ namespace net_instaweb {
 
 class GoogleUrl;
 class HtmlElement;
-class Layout;
 class Panel;
 class PanelSet;
-class PublisherConfig;
 class RequestHeaders;
 class ResourceManager;
 class RewriteOptions;
@@ -100,8 +98,7 @@ void PopulateAttributeToNonCacheableValuesMap(
 
 // Returns panel number for non cacheable element. If cacheable returns -1.
 int GetPanelNumberForNonCacheableElement(
-    const AttributesToNonCacheableValuesMap&
-        attribute_non_cacheable_values_map,
+    const AttributesToNonCacheableValuesMap& attribute_non_cacheable_values_map,
     const HtmlElement* element);
 
 // Gets panel id for the given panel instance.

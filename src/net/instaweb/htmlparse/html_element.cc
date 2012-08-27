@@ -19,14 +19,13 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 
 #include <cstdio>
-#include <vector>
+
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parser_types.h"
-#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -54,11 +53,6 @@ HtmlElement::Data::Data(const HtmlName& name,
 }
 
 HtmlElement::Data::~Data() {
-  Clear();
-}
-
-void HtmlElement::Data::Clear() {
-  STLDeleteElements(&attributes_);
 }
 
 void HtmlElement::MarkAsDead(const HtmlEventListIterator& end) {
@@ -78,17 +72,11 @@ void HtmlElement::SynthesizeEvents(const HtmlEventListIterator& iter,
   set_end(queue->insert(iter, end_tag));
 }
 
-void HtmlElement::DeleteAttribute(int i) {
-  std::vector<Attribute*>::iterator iter = data_->attributes_.begin() + i;
-  delete *iter;
-  data_->attributes_.erase(iter);
-}
-
 bool HtmlElement::DeleteAttribute(HtmlName::Keyword keyword) {
-  for (int i = 0; i < attribute_size(); ++i) {
-    const Attribute* attribute = data_->attributes_[i];
-    if (attribute->keyword() == keyword) {
-      DeleteAttribute(i);
+  AttributeList* attrs = mutable_attributes();
+  for (AttributeIterator iter(attrs->begin()); iter != attrs->end(); ++iter) {
+    if (iter->keyword() == keyword) {
+      attrs->Erase(&iter);
       return true;
     }
   }
@@ -98,8 +86,10 @@ bool HtmlElement::DeleteAttribute(HtmlName::Keyword keyword) {
 const HtmlElement::Attribute* HtmlElement::FindAttribute(
     HtmlName::Keyword keyword) const {
   const Attribute* ret = NULL;
-  for (int i = 0; i < attribute_size(); ++i) {
-    const Attribute* attribute = data_->attributes_[i];
+
+  for (AttributeConstIterator iter = attributes().begin();
+       iter != attributes().end(); ++iter) {
+    const Attribute* attribute = iter.Get();
     if (attribute->keyword() == keyword) {
       ret = attribute;
       break;
@@ -111,8 +101,10 @@ const HtmlElement::Attribute* HtmlElement::FindAttribute(
 void HtmlElement::ToString(GoogleString* buf) const {
   *buf += "<";
   *buf += data_->name_.c_str();
-  for (int i = 0; i < attribute_size(); ++i) {
-    const Attribute& attribute = *data_->attributes_[i];
+
+  for (AttributeConstIterator iter = attributes().begin();
+       iter != attributes().end(); ++iter) {
+    const Attribute& attribute = *iter;
     *buf += ' ';
     *buf += attribute.name_str();
     const char* value = attribute.DecodedValueOrNull();
@@ -164,7 +156,7 @@ void HtmlElement::AddAttribute(const Attribute& src_attr) {
     attr->decoding_error_ = src_attr.decoding_error_;
     Attribute::CopyValue(src_attr.decoded_value_.get(), &attr->decoded_value_);
   }
-  data_->attributes_.push_back(attr);
+  data_->attributes_.Append(attr);
 }
 
 void HtmlElement::AddAttribute(const HtmlName& name,
@@ -177,14 +169,14 @@ void HtmlElement::AddAttribute(const HtmlName& name,
   attr->decoded_value_computed_ = true;
   attr->decoding_error_ = false;
   Attribute::CopyValue(decoded_value, &attr->decoded_value_);
-  data_->attributes_.push_back(attr);
+  data_->attributes_.Append(attr);
 }
 
 void HtmlElement::AddEscapedAttribute(const HtmlName& name,
                                       const StringPiece& escaped_value,
                                       QuoteStyle quote_style) {
   Attribute* attr = new Attribute(name, escaped_value, quote_style);
-  data_->attributes_.push_back(attr);
+  data_->attributes_.Append(attr);
 }
 
 void HtmlElement::Attribute::CopyValue(const StringPiece& src,

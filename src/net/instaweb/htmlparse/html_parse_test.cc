@@ -141,9 +141,11 @@ class AttrValuesSaverFilter : public EmptyHtmlFilter {
   AttrValuesSaverFilter() { }
 
   virtual void StartElement(HtmlElement* element) {
-    for (int i = 0; i < element->attribute_size(); ++i) {
-      const char* value = element->attribute(i).DecodedValueOrNull();
-      if (element->attribute(i).decoding_error()) {
+    const HtmlElement::AttributeList& attrs = element->attributes();
+    for (HtmlElement::AttributeConstIterator i(attrs.begin());
+         i != attrs.end(); ++i) {
+      const char* value = i->DecodedValueOrNull();
+      if (i->decoding_error()) {
         value_ += "<ERROR>";
       } else if (value == NULL) {
         value_ += "(null)";
@@ -387,15 +389,20 @@ class AnnotatingHtmlFilter : public EmptyHtmlFilter {
 
   virtual void StartElement(HtmlElement* element) {
     StrAppend(&buffer_, (buffer_.empty() ? "+" : " +"), element->name_str());
-    for (int i = 0; i < element->attribute_size(); ++i) {
-      const HtmlElement::Attribute& attr = element->attribute(i);
-      StrAppend(&buffer_, (i == 0 ? ":" : ","), attr.name_str());
+
+    bool first = true;
+    const HtmlElement::AttributeList& attrs = element->attributes();
+    for (HtmlElement::AttributeConstIterator i(attrs.begin());
+         i != attrs.end(); ++i) {
+      const HtmlElement::Attribute& attr = *i;
+      StrAppend(&buffer_, (first ? ":" : ","), attr.name_str());
       const char* value = attr.DecodedValueOrNull();
       if (attr.decoding_error()) {
         StrAppend(&buffer_, "=<ERROR>");
       } else if (value != NULL) {
         StrAppend(&buffer_, "=", attr.quote_str(), value, attr.quote_str());
       }
+      first = false;
     }
   }
   virtual void EndElement(HtmlElement* element) {
@@ -1433,6 +1440,30 @@ class AttributeManipulationTest : public HtmlParseTest {
     EXPECT_EQ(expected, output_buffer_);
   }
 
+  int NumAttributes(HtmlElement* element) {
+    int size = 0;
+    const HtmlElement::AttributeList& attrs = element->attributes();
+    for (HtmlElement::AttributeConstIterator i(attrs.begin());
+         i != attrs.end(); ++i) {
+      ++size;
+    }
+
+    return size;
+  }
+
+  HtmlElement::Attribute* AttributeAt(HtmlElement* element, int index) {
+    int pos = 0;
+    HtmlElement::AttributeList* attrs = element->mutable_attributes();
+    for (HtmlElement::AttributeIterator i(attrs->begin());
+         i != attrs->end(); ++i) {
+      if (pos == index) {
+        return i.Get();
+      }
+      ++pos;
+    }
+    return NULL;
+  }
+
   HtmlElement* node_;
 
  private:
@@ -1443,7 +1474,7 @@ TEST_F(AttributeManipulationTest, PropertiesAndDeserialize) {
   StringPiece google("http://www.google.com/");
   StringPiece number37("37");
   StringPiece search("search!");
-  EXPECT_EQ(4, node_->attribute_size());
+  EXPECT_EQ(4, NumAttributes(node_));
   EXPECT_EQ(google, node_->AttributeValue(HtmlName::kHref));
   EXPECT_EQ(number37, node_->AttributeValue(HtmlName::kId));
   EXPECT_EQ(search, node_->AttributeValue(HtmlName::kClass));
@@ -1474,10 +1505,10 @@ TEST_F(AttributeManipulationTest, AddAttribute) {
 }
 
 TEST_F(AttributeManipulationTest, DeleteAttribute) {
-  node_->DeleteAttribute(1);
+  node_->DeleteAttribute(HtmlName::kId);
   CheckExpected("<a href=\"http://www.google.com/\" class='search!'"
                 " selected />");
-  node_->DeleteAttribute(2);
+  node_->DeleteAttribute(HtmlName::kSelected);
   CheckExpected("<a href=\"http://www.google.com/\" class='search!'/>");
 }
 
@@ -1517,16 +1548,16 @@ TEST_F(AttributeManipulationTest, CloneElement) {
   EXPECT_NE(clone, node_);
   EXPECT_EQ(HtmlName::kA, clone->keyword());
   EXPECT_EQ(node_->close_style(), clone->close_style());
-  EXPECT_EQ(4, clone->attribute_size());
-  EXPECT_EQ(HtmlName::kHref, clone->attribute(0).keyword());
+  EXPECT_EQ(4, NumAttributes(clone));
+  EXPECT_EQ(HtmlName::kHref, AttributeAt(clone, 0)->keyword());
   EXPECT_STREQ("http://www.google.com/",
-               clone->attribute(0).DecodedValueOrNull());
-  EXPECT_EQ(HtmlName::kId, clone->attribute(1).keyword());
-  EXPECT_STREQ("37", clone->attribute(1).DecodedValueOrNull());
-  EXPECT_EQ(HtmlName::kClass, clone->attribute(2).keyword());
-  EXPECT_STREQ("search!", clone->attribute(2).DecodedValueOrNull());
-  EXPECT_EQ(HtmlName::kSelected, clone->attribute(3).keyword());
-  EXPECT_EQ(NULL, clone->attribute(3).DecodedValueOrNull());
+               AttributeAt(clone, 0)->DecodedValueOrNull());
+  EXPECT_EQ(HtmlName::kId, AttributeAt(clone, 1)->keyword());
+  EXPECT_STREQ("37", AttributeAt(clone, 1)->DecodedValueOrNull());
+  EXPECT_EQ(HtmlName::kClass, AttributeAt(clone, 2)->keyword());
+  EXPECT_STREQ("search!", AttributeAt(clone, 2)->DecodedValueOrNull());
+  EXPECT_EQ(HtmlName::kSelected, AttributeAt(clone, 3)->keyword());
+  EXPECT_EQ(NULL, AttributeAt(clone, 3)->DecodedValueOrNull());
 
   HtmlElement::Attribute* id = clone->FindAttribute(HtmlName::kId);
   ASSERT_TRUE(id != NULL);

@@ -17,11 +17,14 @@
 // Authors: jmarantz@google.com (Joshua Marantz)
 //          jefftk@google.com (Jeff Kaufman)
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
+
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -45,7 +48,7 @@ HtmlElement::Attribute* ScanElement(
   HtmlName::Keyword keyword = element->keyword();
   HtmlElement::Attribute* attr = NULL;
   *category = semantic_type::kUndefined;
-  if (element->attribute_size() == 0) {
+  if (element->attributes().IsEmpty()) {
     return NULL;  // No attributes.
   }
   switch (keyword) {
@@ -149,8 +152,10 @@ HtmlElement::Attribute* ScanElement(
           i, &element_i, &attribute_i, &category_i);
       if (StringCaseEqual(element->name_str(), element_i)) {
         // Find matching attributes.
-        for (int j = 0, k = element->attribute_size(); j < k; ++j) {
-          HtmlElement::Attribute* attribute_j = &element->attribute(j);
+        HtmlElement::AttributeList* attrs = element->mutable_attributes();
+        for (HtmlElement::AttributeIterator j = attrs->begin();
+             j != attrs->end(); ++j) {
+          HtmlElement::Attribute* attribute_j = j.Get();
           if (StringCaseEqual(attribute_j->name_str(), attribute_i) &&
               !attribute_j->decoding_error()) {
             *category = category_i;

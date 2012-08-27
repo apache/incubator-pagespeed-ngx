@@ -91,8 +91,10 @@ void HtmlAttributeQuoteRemoval::StartElement(HtmlElement* element) {
     return;  // XHTML doctypes require quotes, so don't remove any.
   }
   int rewritten = 0;
-  for (int i = 0; i < element->attribute_size(); ++i) {
-    HtmlElement::Attribute& attr = element->attribute(i);
+  HtmlElement::AttributeList* attrs = element->mutable_attributes();
+  for (HtmlElement::AttributeIterator i(attrs->begin());
+       i != attrs->end(); ++i) {
+    HtmlElement::Attribute& attr = *i;
     if (attr.quote_style() != HtmlElement::NO_QUOTE &&
         !NeedsQuotes(attr.escaped_value())) {
       attr.set_quote_style(HtmlElement::NO_QUOTE);

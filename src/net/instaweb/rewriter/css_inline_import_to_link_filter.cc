@@ -181,8 +181,10 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
                                 CssTagScanner::kStylesheet);
           driver_->AddAttribute(link_element, HtmlName::kHref, url);
           // Add all style atrributes to link.
-          for (int i = 0; i < style_element_->attribute_size(); ++i) {
-            const HtmlElement::Attribute& attr = style_element_->attribute(i);
+          const HtmlElement::AttributeList& attrs(style_element_->attributes());
+          for (HtmlElement::AttributeConstIterator i(attrs.begin());
+               i != attrs.end(); ++i) {
+            const HtmlElement::Attribute& attr = *i;
             link_element->AddAttribute(attr);
           }
           // Add link to DOM.

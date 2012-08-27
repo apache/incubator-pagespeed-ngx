@@ -267,8 +267,10 @@ GoogleString LocalStorageCacheFilter::ExtractOtherImgAttributes(
   // pagespeed_no_defer
   // src
   GoogleString result;
-  for (int i = 0, n = element->attribute_size(); i < n; ++i) {
-    const HtmlElement::Attribute& attr = element->attribute(i);
+  const HtmlElement::AttributeList& attrs = element->attributes();
+  for (HtmlElement::AttributeConstIterator i(attrs.begin());
+       i != attrs.end(); ++i) {
+    const HtmlElement::Attribute& attr = *i;
     HtmlName::Keyword keyword = attr.keyword();
     if (keyword != HtmlName::kPagespeedLscUrl &&
         keyword != HtmlName::kPagespeedLscHash &&

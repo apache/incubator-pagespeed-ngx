@@ -55,47 +55,38 @@ bool CssTagScanner::ParseCssElement(
   *media = "";
   *href = NULL;
   if (element->keyword() == HtmlName::kLink) {
-    // We must have all attributes rel='stylesheet' href='name.css', and
-    // type='text/css', although they can be in any order.  If there are,
-    // other attributes, we better learn about them so we don't lose them
-    // in css_combine_filter.cc.
-    int num_attrs = element->attribute_size();
-
-    // 'media=' is optional, but our filter requires href=*, and rel=stylesheet,
-    // and type=text/css.
-    //
-    // type should be "text/css", but if it's omitted, that's OK.
-    //
-    // TODO(jmarantz): Consider recognizing a wider variety of CSS references,
-    // including inline css so that the outline_filter can use it.
-    if ((num_attrs >= 2) || (num_attrs <= 4)) {
-      for (int i = 0; i < num_attrs; ++i) {
-        HtmlElement::Attribute& attr = element->attribute(i);
-        if (attr.decoding_error()) {
+    // We must have all attributes rel='stylesheet' href='name.css'; and if
+    // there is a type, it better be type='text/css'. These can be in any order.
+    // We also panic on invalid attributes, since otherwise
+    // css_combine_filter.cc can lose them.
+    HtmlElement::AttributeList* attrs = element->mutable_attributes();
+    for (HtmlElement::AttributeIterator i(attrs->begin());
+         i != attrs->end(); ++i) {
+      HtmlElement::Attribute& attr = *i;
+      if (attr.decoding_error()) {
+        num_required_attributes_found = 0;
+        break;
+      } else if (attr.keyword() == HtmlName::kHref) {
+        *href = &attr;
+        ++num_required_attributes_found;
+      } else if (attr.keyword() == HtmlName::kRel) {
+        if (StringCaseEqual(attr.DecodedValueOrNull(), kStylesheet)) {
+          ++num_required_attributes_found;
+        } else {
+          // rel=something_else.  abort.
           num_required_attributes_found = 0;
           break;
-        } else if (attr.keyword() == HtmlName::kHref) {
-          *href = &attr;
-          ++num_required_attributes_found;
-        } else if (attr.keyword() == HtmlName::kRel) {
-          if (StringCaseEqual(attr.DecodedValueOrNull(), kStylesheet)) {
-            ++num_required_attributes_found;
-          } else {
-            // rel=something_else.  abort.
-            num_required_attributes_found = 0;
-            break;
-          }
-        } else if (attr.keyword() == HtmlName::kMedia) {
-          *media = attr.DecodedValueOrNull();
-        } else {
-          // The only other attribute we should see is type=text/css.  This
-          // attribute is not required, but if the attribute we are
-          // finding here is anything else then abort.
-          if ((attr.keyword() != HtmlName::kType) ||
-              !StringCaseEqual(attr.DecodedValueOrNull(), kTextCss)) {
-            num_required_attributes_found = 0;
-            break;
-          }
+        }
+      } else if (attr.keyword() == HtmlName::kMedia) {
+        *media = attr.DecodedValueOrNull();
+      } else {
+        // The only other attribute we should see is type=text/css.  This
+        // attribute is not required, but if the attribute we are
+        // finding here is anything else then abort.
+        if ((attr.keyword() != HtmlName::kType) ||
+            !StringCaseEqual(attr.DecodedValueOrNull(), kTextCss)) {
+          num_required_attributes_found = 0;
+          break;
         }
       }
     }

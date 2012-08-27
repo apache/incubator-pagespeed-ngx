@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/blink_util.h"
 
-#include <algorithm>
 #include <cstddef>
 #include <utility>
 #include <vector>
@@ -31,9 +30,7 @@
 #include "net/instaweb/rewriter/public/resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/wildcard.h"
 
 namespace net_instaweb {
 namespace BlinkUtil {
@@ -210,11 +207,12 @@ void PopulateAttributeToNonCacheableValuesMap(
 }
 
 int GetPanelNumberForNonCacheableElement(
-    const AttributesToNonCacheableValuesMap&
-        attribute_non_cacheable_values_map,
+    const AttributesToNonCacheableValuesMap& attribute_non_cacheable_values_map,
     const HtmlElement* element) {
-  for (int i = 0; i < element->attribute_size(); ++i) {
-    const HtmlElement::Attribute& attribute = element->attribute(i);
+  const HtmlElement::AttributeList& attrs = element->attributes();
+  for (HtmlElement::AttributeConstIterator i(attrs.begin());
+       i != attrs.end(); ++i) {
+    const HtmlElement::Attribute& attribute = *i;
     StringPiece value = attribute.DecodedValueOrNull();
     if (value.empty()) {
       continue;

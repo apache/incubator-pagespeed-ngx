@@ -782,8 +782,11 @@ bool HtmlParse::ReplaceNode(HtmlNode* existing_node, HtmlNode* new_node) {
 HtmlElement* HtmlParse::CloneElement(HtmlElement* in_element) {
   HtmlElement* out_element = NewElement(NULL, in_element->name());
   out_element->set_close_style(in_element->close_style());
-  for (int i = 0; i < in_element->attribute_size(); ++i) {
-    out_element->AddAttribute(in_element->attribute(i));
+
+  const HtmlElement::AttributeList& attrs = in_element->attributes();
+  for (HtmlElement::AttributeConstIterator i(attrs.begin());
+       i != attrs.end(); ++i) {
+    out_element->AddAttribute(*i);
   }
   return out_element;
 }
