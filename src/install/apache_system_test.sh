@@ -193,6 +193,10 @@ echo TEST: ModPagespeedLoadFromFile
 URL=$TEST_ROOT/load_from_file/index.html?ModPagespeedFilters=inline_css
 fetch_until $URL 'grep -c blue' 1
 
+echo TEST: ModPagespeedLoadFromFileMatch
+URL=$TEST_ROOT/load_from_file_match/index.html?ModPagespeedFilters=inline_css
+fetch_until $URL 'grep -c blue' 1
+
 echo TEST: Custom headers remain on HTML, but cache should be disabled.
 URL=$TEST_ROOT/rewrite_compressed_js.html
 echo $WGET_DUMP $URL

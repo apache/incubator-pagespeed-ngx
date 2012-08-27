@@ -147,6 +147,7 @@ const char kModPagespeedLRUCacheKbPerProcess[] =
 const char kModPagespeedListOutstandingUrlsOnError[] =
     "ModPagespeedListOutstandingUrlsOnError";
 const char kModPagespeedLoadFromFile[] = "ModPagespeedLoadFromFile";
+const char kModPagespeedLoadFromFileMatch[] = "ModPagespeedLoadFromFileMatch";
 const char kModPagespeedLogRewriteTiming[] = "ModPagespeedLogRewriteTiming";
 const char kModPagespeedLowercaseHtmlNames[] = "ModPagespeedLowercaseHtmlNames";
 const char kModPagespeedMapOriginDomain[] = "ModPagespeedMapOriginDomain";
@@ -1152,9 +1153,14 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
   const char* directive = cmd->directive->directive;
   const char* ret = NULL;
   if (StringCaseEqual(directive, kModPagespeedLoadFromFile)) {
-    // TODO(sligocki): Only allow relative file paths below DocumentRoot.
-    // TODO(sligocki): Perhaps merge with ModPagespeedMapOriginDomain.
     options->file_load_policy()->Associate(arg1, arg2);
+  } else if (StringCaseEqual(directive, kModPagespeedLoadFromFileMatch)) {
+    GoogleString error;
+    bool ok = options->file_load_policy()->AssociateRegexp(arg1, arg2, &error);
+    if (!ok) {
+      return apr_pstrcat(cmd->pool, "Invalid LoadFromFile Regexp: ",
+                         error.c_str(), NULL);
+    }
   } else if (StringCaseEqual(directive, kModPagespeedMapRewriteDomain)) {
     options->domain_lawyer()->AddRewriteDomainMapping(
         arg1, arg2, manager->message_handler());
@@ -1441,6 +1447,8 @@ APACHE_CONFIG_DIR_OPTION(kModPagespeedClientDomainRewrite,
   // (Not in <Directory> blocks.)
   APACHE_CONFIG_OPTION2(kModPagespeedLoadFromFile,
         "url_prefix filename_prefix"),
+  APACHE_CONFIG_OPTION2(kModPagespeedLoadFromFileMatch,
+        "url_regexp filename_prefix"),
 
   // All three parameter options that are allowed in <Directory> blocks.
   APACHE_CONFIG_DIR_OPTION3(kModPagespeedUrlValuedAttribute,

@@ -145,7 +145,6 @@
       'sources': [
         'rewriter/collapse_whitespace_filter.cc',
         'rewriter/elide_attributes_filter.cc',
-        'rewriter/file_load_policy.cc',
         'rewriter/html_attribute_quote_removal.cc',
         'rewriter/remove_comments_filter.cc',
       ],

@@ -935,6 +935,8 @@
         'rewriter/div_structure_filter.cc',
         'rewriter/domain_rewrite_filter.cc',
         'rewriter/file_input_resource.cc',
+        'rewriter/file_load_mapping.cc',
+        'rewriter/file_load_policy.cc',
         'rewriter/flush_early_content_writer_filter.cc',
         'rewriter/flush_html_filter.cc',
         'rewriter/furious_matcher.cc',

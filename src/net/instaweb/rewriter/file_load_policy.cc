@@ -16,17 +16,22 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/rewriter/public/file_load_policy.h"
-
 #include <list>
 
+#include "base/logging.h"
+#include "net/instaweb/rewriter/public/file_load_mapping.h"
+#include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/re2.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-FileLoadPolicy::~FileLoadPolicy() {}
+FileLoadPolicy::~FileLoadPolicy() {
+  STLDeleteElements(&file_load_mappings_);
+}
 
 bool FileLoadPolicy::ShouldLoadFromFile(const GoogleUrl& url,
                                         GoogleString* filename) const {
@@ -38,12 +43,10 @@ bool FileLoadPolicy::ShouldLoadFromFile(const GoogleUrl& url,
   if (!url_string.empty()) {
     // TODO(sligocki): Consider layering a cache over this lookup.
     // Note: Later associations take precedence over earlier ones.
-    for (UrlFilenames::const_reverse_iterator iter = url_filenames_.rbegin();
-         iter != url_filenames_.rend(); ++iter) {
-      if (url_string.starts_with(iter->url_prefix)) {
-        // Replace url_prefix_ with filename_prefix_.
-        StringPiece suffix = url_string.substr(iter->url_prefix.size());
-        *filename = StrCat(iter->filename_prefix, suffix);
+    FileLoadMappings::const_reverse_iterator iter;
+    for (iter = file_load_mappings_.rbegin();
+         iter != file_load_mappings_.rend(); ++iter) {
+      if ((*iter)->Substitute(url_string, filename)) {
         // GoogleUrl will decode most %XX escapes, but it does not convert
         // "%20" -> " " which has come up often.
         GlobalReplaceSubstring("%20", " ", filename);
@@ -51,31 +54,61 @@ bool FileLoadPolicy::ShouldLoadFromFile(const GoogleUrl& url,
       }
     }
   }
-
   return false;
+}
+
+bool FileLoadPolicy::AssociateRegexp(const StringPiece& url_regexp,
+                                     const StringPiece& filename_prefix,
+                                     GoogleString* error) {
+  GoogleString url_regexp_str, filename_prefix_str;
+
+  url_regexp.CopyToString(&url_regexp_str);
+  filename_prefix.CopyToString(&filename_prefix_str);
+
+  if (!url_regexp.starts_with("^")) {
+    error->assign("File mapping regular expression must match beginning "
+                  "of string. (Must start with '^'.)");
+    return false;
+  }
+
+  RE2 re(url_regexp_str);
+  if (!re.ok()) {
+    error->assign(re.error());
+    return false;
+  } else if (!re.CheckRewriteString(filename_prefix_str, error)) {
+    return false;
+  }
+
+  file_load_mappings_.push_back(
+      new FileLoadMappingRegexp(url_regexp_str, filename_prefix_str));
+
+  return true;
 }
 
 void FileLoadPolicy::Associate(const StringPiece& url_prefix_in,
                                const StringPiece& filename_prefix_in) {
-  GoogleString url_prefix(url_prefix_in.data(), url_prefix_in.size());
-  GoogleString filename_prefix(filename_prefix_in.data(),
-                               filename_prefix_in.size());
+  GoogleString url_prefix, filename_prefix;
 
-  // Make sure these are directories.
+  url_prefix_in.CopyToString(&url_prefix);
+  filename_prefix_in.CopyToString(&filename_prefix);
+
+  // Make sure these are directories.  Add a terminal slashes if absent.
   EnsureEndsInSlash(&url_prefix);
   EnsureEndsInSlash(&filename_prefix);
 
   // TODO(sligocki): Should fail if filename_prefix doesn't start with '/'?
 
-  url_filenames_.push_back(UrlFilename(url_prefix, filename_prefix));
+  file_load_mappings_.push_back(
+      new FileLoadMappingLiteral(url_prefix, filename_prefix));
 }
 
 void FileLoadPolicy::Merge(const FileLoadPolicy& other) {
-  UrlFilenames::const_iterator iter;
-  for (iter = other.url_filenames_.begin();
-       iter != other.url_filenames_.end(); ++iter) {
+  FileLoadMappings::const_iterator iter;
+  for (iter = other.file_load_mappings_.begin();
+       iter != other.file_load_mappings_.end(); ++iter) {
     // Copy associations over.
-    url_filenames_.push_back(*iter);
+
+    file_load_mappings_.push_back((*iter)->Clone());
   }
 }
 

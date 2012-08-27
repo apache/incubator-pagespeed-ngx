@@ -1002,7 +1002,7 @@ bool ImageRewriteFilter::TryInline(
       // inlinable images within the same flush window. Note that this does not
       // induce a write to the underlying cache -- the value is written only
       // when the filter chain has finished execution.
-      StoreUrlInPropertyCache(absolute_url.Spec().as_string());
+      StoreUrlInPropertyCache(absolute_url.Spec());
     }
     // We disable rendering to prevent any rewriting of the URL that we'll
     // advertise in the property cache.

@@ -25,7 +25,7 @@
       'include_dirs': [
         '<(re2_root)/src/',
       ],
-      'direct_dependent_settings': {
+      'all_dependent_settings': {
         'include_dirs': [
           '<(DEPTH)/third_party/re2/src/',
         ],

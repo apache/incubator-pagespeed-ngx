@@ -20,8 +20,10 @@
 
 #include <list>
 
+#include "net/instaweb/rewriter/public/file_load_mapping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -40,9 +42,14 @@ class FileLoadPolicyTest : public ::testing::Test {
   // Generally use this for URLs you do expect to be loaded from files.
   // e.g. EXPECT_EQ("filename", LoadFromFile("url"));
   GoogleString LoadFromFile(const StringPiece& url_string) {
+    return LoadFromFile(url_string, &policy_);
+  }
+
+  GoogleString LoadFromFile(const StringPiece& url_string,
+                            FileLoadPolicy* policy) {
     GoogleUrl url(url_string);
     GoogleString filename;
-    bool load = policy_.ShouldLoadFromFile(url, &filename);
+    bool load = policy->ShouldLoadFromFile(url, &filename);
     if (!load) {
       EXPECT_TRUE(filename.empty());
     }
@@ -150,6 +157,40 @@ TEST_F(FileLoadPolicyTest, ManyPrefixes) {
   EXPECT_FALSE(TryLoadFromFile("http://www.example.com/static/%2e%2e/foo.png"));
 }
 
+TEST_F(FileLoadPolicyTest, RegexpBackreferences) {
+  GoogleString error;
+  policy_.AssociateRegexp("^https?://example.com/~([^/]*)/static/",
+                          "/var/static/\\1/", &error);
+  EXPECT_TRUE(error.empty());
+  EXPECT_EQ("/var/static/pat/cat.jpg",
+            LoadFromFile("http://example.com/~pat/static/cat.jpg"));
+  EXPECT_EQ("/var/static/sam/dog.jpg",
+            LoadFromFile("http://example.com/~sam/static/dog.jpg"));
+  EXPECT_EQ("/var/static/al/css/ie",
+            LoadFromFile("https://example.com/~al/static/css/ie"));
+}
+
+TEST_F(FileLoadPolicyTest, RegexpNotPrefix) {
+  GoogleString error;
+  EXPECT_FALSE(policy_.AssociateRegexp("http://example.com/[^/]*/static",
+                                       "/var/static/", &error));
+  EXPECT_FALSE(error.empty());
+}
+
+TEST_F(FileLoadPolicyTest, RegexpExcessBackreferences) {
+  GoogleString error;
+  EXPECT_FALSE(policy_.AssociateRegexp("^http://([^/]*).com/([^/]*)/static",
+                                       "/var/\\1/\\2/\\3/static/", &error));
+  EXPECT_FALSE(error.empty());
+}
+
+TEST_F(FileLoadPolicyTest, RegexpInvalid) {
+  GoogleString error;
+  EXPECT_FALSE(policy_.AssociateRegexp("^http://(.com/static",
+                                       "/var/www/static/", &error));
+  EXPECT_FALSE(error.empty());
+}
+
 // Note(sligocki): I'm not sure we should allow overlapping prefixes, but
 // here's what happens if you do that now. And I think it's the most reasonable
 // behavior if we do allow it.
@@ -172,36 +213,47 @@ TEST_F(FileLoadPolicyTest, OverlappingPrefixes) {
 TEST_F(FileLoadPolicyTest, Merge) {
   FileLoadPolicy policy1;
   FileLoadPolicy policy2;
+  GoogleString error;
 
   policy1.Associate("http://www.example.com/1/", "/1/");
-  policy1.Associate("http://www.example.com/2/", "/2/");
+  EXPECT_EQ("/1/foo.png",
+            LoadFromFile("http://www.example.com/1/foo.png", &policy1));
+  EXPECT_TRUE(
+      policy1.AssociateRegexp("^http://www\\.example\\.com/([^/]*)/",
+                              "/\\1/a/", &error));
+  EXPECT_TRUE(error.empty());
+  // The regexp match is added later so takes precendence over the literal one.
+  EXPECT_EQ("/1/a/foo.png",
+            LoadFromFile("http://www.example.com/1/foo.png", &policy1));
+  EXPECT_EQ("/2/a/foo.png",
+            LoadFromFile("http://www.example.com/2/foo.png", &policy1));
+  EXPECT_EQ("/3/a/foo.png",
+            LoadFromFile("http://www.example.com/3/foo.png", &policy1));
+
   policy2.Associate("http://www.example.com/3/", "/3/");
   policy2.Associate("http://www.example.com/4/", "/4/");
+  EXPECT_EQ("/3/foo.png",
+            LoadFromFile("http://www.example.com/3/foo.png", &policy2));
+  EXPECT_EQ("/4/foo.png",
+            LoadFromFile("http://www.example.com/4/foo.png", &policy2));
 
-  ASSERT_EQ(2, policy1.url_filenames_.size());
-  FileLoadPolicy::UrlFilenames::const_iterator iter;
-  iter = policy1.url_filenames_.begin();
-  EXPECT_EQ("http://www.example.com/1/", iter->url_prefix);
-  ++iter;
-  EXPECT_EQ("http://www.example.com/2/", iter->url_prefix);
+  policy1.Merge(policy2);
 
-  ASSERT_EQ(2, policy2.url_filenames_.size());
-  iter = policy2.url_filenames_.begin();
-  EXPECT_EQ("http://www.example.com/3/", iter->url_prefix);
-  ++iter;
-  EXPECT_EQ("http://www.example.com/4/", iter->url_prefix);
+  EXPECT_EQ("/1/a/foo.png",
+            LoadFromFile("http://www.example.com/1/foo.png", &policy1));
+  EXPECT_EQ("/2/a/foo.png",
+            LoadFromFile("http://www.example.com/2/foo.png", &policy1));
+  // Later policies take precendence, so policy2 wins for /3/.
+  EXPECT_EQ("/3/foo.png",
+            LoadFromFile("http://www.example.com/3/foo.png", &policy1));
+  EXPECT_EQ("/4/foo.png",
+            LoadFromFile("http://www.example.com/4/foo.png", &policy1));
 
-  policy2.Merge(policy1);
-
-  ASSERT_EQ(4, policy2.url_filenames_.size());
-  iter = policy2.url_filenames_.begin();
-  EXPECT_EQ("http://www.example.com/3/", iter->url_prefix);
-  ++iter;
-  EXPECT_EQ("http://www.example.com/4/", iter->url_prefix);
-  ++iter;
-  EXPECT_EQ("http://www.example.com/1/", iter->url_prefix);
-  ++iter;
-  EXPECT_EQ("http://www.example.com/2/", iter->url_prefix);
+  // No changes to policy2.
+  EXPECT_EQ("/3/foo.png",
+            LoadFromFile("http://www.example.com/3/foo.png", &policy2));
+  EXPECT_EQ("/4/foo.png",
+            LoadFromFile("http://www.example.com/4/foo.png", &policy2));
 }
 
 }  // namespace net_instaweb
