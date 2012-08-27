@@ -298,8 +298,7 @@ class RewriteDriverFactory {
   virtual Hasher* NewHasher() = 0;
 
   // Default implementation returns NULL.
-  virtual CriticalImagesFinder* DefaultCriticalImagesFinder(
-      PropertyCache* cache);
+  virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
 
   // Default implementation returns NULL.
   virtual BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder(

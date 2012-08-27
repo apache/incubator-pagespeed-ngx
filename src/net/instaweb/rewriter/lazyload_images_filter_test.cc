@@ -40,7 +40,19 @@ class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
   virtual bool IsMeaningful() const {
     return true;
   }
+  virtual void ComputeCriticalImages(StringPiece url,
+                                     RewriteDriver* driver,
+                                     bool must_compute) {
+  }
+  virtual const char* GetCriticalImagesCohort() const {
+    return kCriticalImagesCohort;
+  }
+ private:
+  static const char kCriticalImagesCohort[];
 };
+
+const char MeaningfulCriticalImagesFinder::kCriticalImagesCohort[] =
+    "critical_images";
 
 class LazyloadImagesFilterTest : public ResourceManagerTestBase {
  protected:

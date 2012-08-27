@@ -719,6 +719,7 @@
         '<(DEPTH)/base/base.gyp:base',
       ],
       'sources': [
+        'rewriter/beacon_critical_images_finder.cc',
         'rewriter/blink_critical_line_data_finder.cc',
         'rewriter/critical_images_finder.cc',
         'rewriter/domain_lawyer.cc',

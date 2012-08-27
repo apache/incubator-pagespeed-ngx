@@ -115,11 +115,18 @@ class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
     ++compute_calls_;
   }
   int num_compute_calls() { return compute_calls_; }
+  virtual const char* GetCriticalImagesCohort() const {
+    return kCriticalImagesCohort;
+  }
 
  private:
+  static const char kCriticalImagesCohort[];
   int compute_calls_;
   DISALLOW_COPY_AND_ASSIGN(MeaningfulCriticalImagesFinder);
 };
+
+const char MeaningfulCriticalImagesFinder::kCriticalImagesCohort[] =
+    "critical_images";
 
 class MockPage : public PropertyPage {
  public:

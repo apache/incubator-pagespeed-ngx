@@ -28,7 +28,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -295,9 +295,8 @@ StaticJavascriptManager*
   return new StaticJavascriptManager(url_namer(), false, "");
 }
 
-CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder(
-    PropertyCache* cache) {
-  return new CriticalImagesFinder();
+CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
+  return new BeaconCriticalImagesFinder();
 }
 
 BlinkCriticalLineDataFinder*
@@ -398,11 +397,9 @@ void RewriteDriverFactory::InitResourceManager(
   resource_manager->set_filename_prefix(filename_prefix_);
   resource_manager->set_hasher(hasher());
   resource_manager->set_message_handler(message_handler());
-  resource_manager->set_static_javascript_manager(
-      static_javascript_manager());
+  resource_manager->set_static_javascript_manager(static_javascript_manager());
   PropertyCache* pcache = resource_manager->page_property_cache();
-  resource_manager->set_critical_images_finder(
-      DefaultCriticalImagesFinder(pcache));
+  resource_manager->set_critical_images_finder(DefaultCriticalImagesFinder());
   resource_manager->set_blink_critical_line_data_finder(
       DefaultBlinkCriticalLineDataFinder(pcache));
   resource_manager->InitWorkersAndDecodingDriver();

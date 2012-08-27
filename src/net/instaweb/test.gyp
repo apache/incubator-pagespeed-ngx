@@ -101,6 +101,8 @@
         'rewriter/collect_flush_early_content_filter_test.cc',
         'rewriter/collect_subresources_filter_test.cc',
         'rewriter/common_filter_test.cc',
+        'rewriter/critical_images_finder_test.cc',
+        'rewriter/critical_images_finder_test_base.cc',
         'rewriter/css_combine_filter_test.cc',
         'rewriter/css_filter_test.cc',
         'rewriter/css_hierarchy_test.cc',
