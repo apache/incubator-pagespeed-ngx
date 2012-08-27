@@ -35,7 +35,7 @@ class HtmlElement;
 class HtmlIEDirectiveNode;
 class MessageHandler;
 class OutputResource;
-class ResourceManager;
+class ServerContext;
 class RewriteDriver;
 
 // Filter to take explicit <style> and <script> tags and outline them to files.
@@ -76,7 +76,7 @@ class JsOutlineFilter : public CommonFilter {
   HtmlElement* inline_element_;
   // Temporarily buffers the content between open and close of inline_element_.
   GoogleString buffer_;
-  ResourceManager* resource_manager_;
+  ServerContext* resource_manager_;
   size_t size_threshold_bytes_;
   ScriptTagScanner script_tag_scanner_;
 

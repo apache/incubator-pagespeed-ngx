@@ -25,7 +25,7 @@
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/string.h"
@@ -41,7 +41,7 @@ const int64 kNotCacheable = 0;
 
 }  // namespace
 
-Resource::Resource(ResourceManager* resource_manager, const ContentType* type)
+Resource::Resource(ServerContext* resource_manager, const ContentType* type)
     : resource_manager_(resource_manager),
       type_(type),
       is_background_fetch_(true) {

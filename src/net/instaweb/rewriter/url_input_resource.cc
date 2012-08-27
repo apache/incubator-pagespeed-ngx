@@ -30,7 +30,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
@@ -87,7 +87,7 @@ bool IsValidAndCacheableImpl(HTTPCache* http_cache,
 bool CheckAndUpdateInputInfo(const ResponseHeaders& headers,
                              const HTTPValue& value,
                              const RewriteOptions& options,
-                             const ResourceManager& manager,
+                             const ServerContext& manager,
                              Resource::FreshenCallback* callback) {
   InputInfo* input_info = callback->input_info();
   if (input_info != NULL && input_info->has_input_content_hash() &&
@@ -133,7 +133,7 @@ UrlInputResource::~UrlInputResource() {
 // Shared fetch callback, used by both Load and LoadAndCallback
 class UrlResourceFetchCallback : public AsyncFetch {
  public:
-  UrlResourceFetchCallback(ResourceManager* resource_manager,
+  UrlResourceFetchCallback(ServerContext* resource_manager,
                            const RewriteOptions* rewrite_options,
                            HTTPValue* fallback_value)
       : resource_manager_(resource_manager),
@@ -329,7 +329,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
   virtual void DoneInternal(bool success) {
   }
 
-  ResourceManager* resource_manager_;
+  ServerContext* resource_manager_;
   const RewriteOptions* rewrite_options_;
   MessageHandler* message_handler_;
 
@@ -363,7 +363,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
 class FreshenFetchCallback : public UrlResourceFetchCallback {
  public:
   FreshenFetchCallback(const GoogleString& url, HTTPCache* http_cache,
-                       ResourceManager* resource_manager,
+                       ServerContext* resource_manager,
                        RewriteDriver* rewrite_driver,
                        const RewriteOptions* rewrite_options,
                        HTTPValue* fallback_value,
@@ -414,7 +414,7 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
 class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
  public:
   FreshenHttpCacheCallback(const GoogleString& url,
-                           ResourceManager* manager,
+                           ServerContext* manager,
                            RewriteDriver* driver,
                            const RewriteOptions* options,
                            Resource::FreshenCallback* callback)
@@ -457,7 +457,7 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
 
  private:
   GoogleString url_;
-  ResourceManager* manager_;
+  ServerContext* manager_;
   RewriteDriver* driver_;
   const RewriteOptions* options_;
   Resource::FreshenCallback* callback_;

@@ -39,7 +39,7 @@ class CachedResult;
 class Function;
 class MessageHandler;
 class NamedLock;
-class ResourceManager;
+class ServerContext;
 class RewriteOptions;
 class Writer;
 struct ContentType;
@@ -54,7 +54,7 @@ class OutputResource : public Resource {
   // The 'options' argument can be NULL.  This is done in the Fetch path because
   // that field is only used for domain sharding, and during the fetch, further
   // domain makes no sense.
-  OutputResource(ResourceManager* resource_manager,
+  OutputResource(ServerContext* resource_manager,
                  const StringPiece& resolved_base,
                  const StringPiece& unmapped_base, /* aka source domain */
                  const StringPiece& original_base, /* aka cnamed domain */
@@ -213,7 +213,7 @@ class OutputResource : public Resource {
   REFCOUNT_FRIEND_DECLARATION(OutputResource);
 
  private:
-  friend class ResourceManager;
+  friend class ServerContext;
   friend class ResourceManagerTest;
   friend class ResourceManagerTestingPeer;
   friend class RewriteDriver;

@@ -43,7 +43,7 @@ class MessageHandler;
 class ProxyFetchPropertyCallbackCollector;
 class ProxyFetchFactory;
 class RequestHeaders;
-class ResourceManager;
+class ServerContext;
 class RewriteOptions;
 class Statistics;
 class TimedVariable;
@@ -55,7 +55,7 @@ class ProxyInterface : public UrlAsyncFetcher {
   typedef std::pair<RewriteOptions*, bool> OptionsBoolPair;
 
   ProxyInterface(const StringPiece& hostname, int port,
-                 ResourceManager* manager, Statistics* stats);
+                 ServerContext* manager, Statistics* stats);
   virtual ~ProxyInterface();
 
   // Initializes statistics variables associated with this class.
@@ -135,7 +135,7 @@ class ProxyInterface : public UrlAsyncFetcher {
   bool IsXmlHttpRequest(RequestHeaders* headers) const;
 
   // References to unowned objects.
-  ResourceManager* resource_manager_;     // thread-safe
+  ServerContext* resource_manager_;     // thread-safe
   UrlAsyncFetcher* fetcher_;              // thread-safe
   Timer* timer_;                          // thread-safe
   MessageHandler* handler_;               // thread-safe

@@ -30,7 +30,7 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/function.h"
@@ -127,10 +127,10 @@ void FlushEarlyFlow::Start(
 
 void FlushEarlyFlow::Initialize(Statistics* stats) {
   stats->AddTimedVariable(kNumRequestsFlushedEarly,
-                          ResourceManager::kStatisticsGroup);
+                          ServerContext::kStatisticsGroup);
   stats->AddTimedVariable(
       FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly,
-      ResourceManager::kStatisticsGroup);
+      ServerContext::kStatisticsGroup);
   stats->AddHistogram(kFlushEarlyRewriteLatencyMs);
 }
 

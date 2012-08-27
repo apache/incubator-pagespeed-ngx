@@ -42,7 +42,7 @@
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -504,7 +504,7 @@ void CssFilter::Context::Harvest() {
 
   if (ok) {
     if (rewrite_inline_element_ == NULL) {
-      ResourceManager* manager = Manager();
+      ServerContext* manager = Manager();
       manager->MergeNonCachingResponseHeaders(input_resource_,
                                               output_resource_);
       ok = manager->Write(ResourceVector(1, input_resource_),

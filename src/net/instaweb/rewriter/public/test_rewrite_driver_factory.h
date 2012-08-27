@@ -45,7 +45,7 @@ class MockScheduler;
 class MockTimer;
 class MockTimeCache;
 class MockUrlFetcher;
-class ResourceManager;
+class ServerContext;
 class RewriteDriver;
 class RewriteFilter;
 class RewriteOptions;
@@ -174,7 +174,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
   virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
-  virtual void SetupCaches(ResourceManager* resource_manager);
+  virtual void SetupCaches(ServerContext* resource_manager);
   virtual UrlNamer* DefaultUrlNamer();
   virtual Scheduler* CreateScheduler();
   virtual void AddPlatformSpecificDecodingPasses(RewriteDriver* driver);

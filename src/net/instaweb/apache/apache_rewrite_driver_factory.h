@@ -216,7 +216,7 @@ protected:
   virtual MessageHandler* DefaultMessageHandler();
   virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
-  virtual void SetupCaches(ResourceManager* resource_manager);
+  virtual void SetupCaches(ServerContext* resource_manager);
   virtual NamedLockManager* DefaultLockManager();
   virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolName name);
 

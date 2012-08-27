@@ -24,7 +24,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_COMBINER_H_
 
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/url_partnership.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest_prod.h"
@@ -124,7 +124,7 @@ class ResourceCombiner {
   // Your implementation must call the superclass.
   virtual void Clear();
 
-  ResourceManager* const resource_manager_;
+  ServerContext* const resource_manager_;
   RewriteDriver* const rewrite_driver_;
 
  private:

@@ -18,10 +18,11 @@
 
 // Unit-test the resource manager
 
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 
 #include <cstddef>                     // for size_t
 
+#include "base/scoped_ptr.h"
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/async_fetch.h"
@@ -953,7 +954,7 @@ TEST_F(ResourceManagerTest, ApplyInputCacheControl) {
 
     GoogleString expect_ttl = StrCat(
         "max-age=",
-        Integer64ToString(ResourceManager::kGeneratedMaxAgeMs /
+        Integer64ToString(ServerContext::kGeneratedMaxAgeMs /
                             Timer::kSecondMs));
     EXPECT_STREQ(expect_ttl, out.Lookup1(HttpAttributes::kCacheControl));
   }

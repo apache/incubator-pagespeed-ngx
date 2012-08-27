@@ -44,7 +44,7 @@ class MessageHandler;
 class NamedLockManager;
 class PropertyCache;
 class QueuedWorkerPool;
-class ResourceManager;
+class ServerContext;
 class RewriteDriver;
 class RewriteOptions;
 class RewriteStats;
@@ -171,17 +171,17 @@ class RewriteDriverFactory {
   // ResourceManager is owned by the factory, and should not be
   // deleted directly.  Currently it is not possible to delete a
   // resource manager except by deleting the entire factory.
-  ResourceManager* CreateResourceManager();
+  ServerContext* CreateResourceManager();
 
   // Initializes a ResourceManager that has been new'd directly.  This
   // allows 2-phase initialization if required.  There is no need to
   // call this if you use CreateResourceManager.
-  void InitResourceManager(ResourceManager* resource_manager);
+  void InitResourceManager(ServerContext* resource_manager);
 
   // Called from InitResourceManagager, but virtualized separately
   // as it is platform-specific.  This method must call on the resource
   // manager: set_http_cache, set_metadata_cache, and MakePropertyCaches.
-  virtual void SetupCaches(ResourceManager* resource_manager) = 0;
+  virtual void SetupCaches(ServerContext* resource_manager) = 0;
 
   // Provides an optional hook for adding rewrite passes to the HTML filter
   // chain.  This should be used for filters that are specific to a particular
@@ -283,7 +283,7 @@ class RewriteDriverFactory {
   // Used by subclasses to indicate that a ResourceManager has been
   // terminated.  Returns true if this was the last resource manager
   // known to this factory.
-  bool TerminateResourceManager(ResourceManager* rm);
+  bool TerminateResourceManager(ServerContext* rm);
 
   // Implementors of RewriteDriverFactory must supply default definitions
   // for each of these methods, although they may be overridden via set_
@@ -373,7 +373,7 @@ class RewriteDriverFactory {
   bool slurp_print_urls_;
 
   // protected by resource_manager_mutex_;
-  typedef std::set<ResourceManager*> ResourceManagerSet;
+  typedef std::set<ServerContext*> ResourceManagerSet;
   ResourceManagerSet resource_managers_;
   scoped_ptr<AbstractMutex> resource_manager_mutex_;
 

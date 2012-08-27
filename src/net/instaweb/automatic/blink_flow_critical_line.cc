@@ -43,7 +43,7 @@
 #include "net/instaweb/rewriter/blink_critical_line_data.pb.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -125,7 +125,7 @@ class AsyncFetchWithHeadersInhibited : public AsyncFetchUsingWriter {
 class CriticalLineFetch : public AsyncFetch {
  public:
   CriticalLineFetch(const GoogleString& url,
-                    ResourceManager* resource_manager,
+                    ServerContext* resource_manager,
                     RewriteOptions* options,
                     RewriteDriver* rewrite_driver,
                     LogRecord* log_record,
@@ -372,7 +372,7 @@ class CriticalLineFetch : public AsyncFetch {
 
  private:
   GoogleString url_;
-  ResourceManager* resource_manager_;
+  ServerContext* resource_manager_;
   scoped_ptr<RewriteOptions> options_;
   GoogleString buffer_;
   HTTPValue value_;
@@ -407,7 +407,7 @@ class CriticalLineFetch : public AsyncFetch {
 class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
  public:
   UpdateResponseCodeSharedAyncFetch(AsyncFetch* base_fetch,
-                                    ResourceManager* resource_manager,
+                                    ServerContext* resource_manager,
                                     RewriteDriver* rewrite_driver)
       : SharedAsyncFetch(base_fetch),
         resource_manager_(resource_manager),
@@ -442,7 +442,7 @@ class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
   }
 
  private:
-  ResourceManager* resource_manager_;
+  ServerContext* resource_manager_;
   RewriteDriver* rewrite_driver_;  // We do not own this.
   bool updated_response_code_;
 
@@ -456,7 +456,7 @@ void BlinkFlowCriticalLine::Start(
     AsyncFetch* base_fetch,
     RewriteOptions* options,
     ProxyFetchFactory* factory,
-    ResourceManager* manager,
+    ServerContext* manager,
     ProxyFetchPropertyCallbackCollector* property_callback) {
   BlinkFlowCriticalLine* flow = new BlinkFlowCriticalLine(
       url, base_fetch, options, factory, manager, property_callback);
@@ -487,19 +487,19 @@ BlinkFlowCriticalLine::~BlinkFlowCriticalLine() {
 
 void BlinkFlowCriticalLine::Initialize(Statistics* stats) {
   stats->AddTimedVariable(kNumBlinkHtmlCacheHits,
-                          ResourceManager::kStatisticsGroup);
+                          ServerContext::kStatisticsGroup);
   stats->AddTimedVariable(kNumBlinkHtmlCacheMisses,
-                          ResourceManager::kStatisticsGroup);
+                          ServerContext::kStatisticsGroup);
   stats->AddTimedVariable(kNumBlinkSharedFetchesStarted,
-                          ResourceManager::kStatisticsGroup);
+                          ServerContext::kStatisticsGroup);
   stats->AddTimedVariable(kNumBlinkSharedFetchesCompleted,
-                          ResourceManager::kStatisticsGroup);
+                          ServerContext::kStatisticsGroup);
   stats->AddTimedVariable(kNumComputeBlinkCriticalLineDataCalls,
-                          ResourceManager::kStatisticsGroup);
+                          ServerContext::kStatisticsGroup);
   stats->AddTimedVariable(kNumBlinkHtmlMatches,
-                          ResourceManager::kStatisticsGroup);
+                          ServerContext::kStatisticsGroup);
   stats->AddTimedVariable(kNumBlinkHtmlMismatches,
-                          ResourceManager::kStatisticsGroup);
+                          ServerContext::kStatisticsGroup);
 }
 
 BlinkFlowCriticalLine::BlinkFlowCriticalLine(
@@ -507,7 +507,7 @@ BlinkFlowCriticalLine::BlinkFlowCriticalLine(
     AsyncFetch* base_fetch,
     RewriteOptions* options,
     ProxyFetchFactory* factory,
-    ResourceManager* manager,
+    ServerContext* manager,
     ProxyFetchPropertyCallbackCollector* property_callback)
     : url_(url),
       google_url_(url),

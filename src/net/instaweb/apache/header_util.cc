@@ -17,7 +17,7 @@
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/instaweb_context.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"

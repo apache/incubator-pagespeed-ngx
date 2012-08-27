@@ -95,7 +95,7 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
@@ -657,7 +657,7 @@ void RewriteDriver::Terminate() {
   CssFilter::Terminate();
 }
 
-void RewriteDriver::SetResourceManager(ResourceManager* resource_manager) {
+void RewriteDriver::SetResourceManager(ServerContext* resource_manager) {
   DCHECK(resource_manager_ == NULL);
   resource_manager_ = resource_manager;
   scheduler_ = resource_manager_->scheduler();
@@ -1355,7 +1355,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
   virtual ~CacheCallback() {}
 
   void Find() {
-    ResourceManager* resource_manager = driver_->resource_manager();
+    ServerContext* resource_manager = driver_->resource_manager();
     HTTPCache* http_cache = resource_manager->http_cache();
     http_cache->Find(output_resource_->url(), handler_, this);
   }
@@ -1385,7 +1385,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
         // resource object (while the cache somehow decided not to store it).
         content = output_resource_->contents();
         response_headers->CopyFrom(*output_resource_->response_headers());
-        ResourceManager* resource_manager = driver_->resource_manager();
+        ServerContext* resource_manager = driver_->resource_manager();
         HTTPCache* http_cache = resource_manager->http_cache();
         http_cache->Put(output_resource_->url(), response_headers,
                         content, handler_);

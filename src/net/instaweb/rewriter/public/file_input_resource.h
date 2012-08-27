@@ -31,13 +31,13 @@ namespace net_instaweb {
 struct ContentType;
 class InputInfo;
 class MessageHandler;
-class ResourceManager;
+class ServerContext;
 class ResponseHeaders;
 class RewriteOptions;
 
 class FileInputResource : public Resource {
  public:
-  FileInputResource(ResourceManager* resource_manager,
+  FileInputResource(ServerContext* resource_manager,
                     const RewriteOptions* options,
                     const ContentType* type,
                     const StringPiece& url,

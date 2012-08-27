@@ -29,7 +29,7 @@
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"  // for UrlFetcher
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -177,7 +177,7 @@ Timer* TestRewriteDriverFactory::DefaultTimer() {
   return mock_timer_;
 }
 
-void TestRewriteDriverFactory::SetupCaches(ResourceManager* resource_manager) {
+void TestRewriteDriverFactory::SetupCaches(ServerContext* resource_manager) {
   // TODO(jmarantz): Make the cache-ownership semantics consistent between
   // DelayCache and ThreadsafeCache.
   DCHECK(lru_cache_ == NULL);

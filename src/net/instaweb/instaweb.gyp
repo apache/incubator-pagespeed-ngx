@@ -726,7 +726,7 @@
         'rewriter/rewrite_options.cc',
         'rewriter/output_resource.cc',
         'rewriter/resource_namer.cc',
-        'rewriter/resource_manager.cc',
+        'rewriter/server_context.cc',
         'rewriter/static_javascript_manager.cc',
         'rewriter/url_namer.cc',
       ],

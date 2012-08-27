@@ -18,7 +18,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/waveform.h"
@@ -93,13 +93,13 @@ void RewriteStats::Initialize(Statistics* statistics) {
   statistics->AddVariable(kFallbackResponsesServed);
   statistics->AddVariable(kNumConditionalRefreshes);
   statistics->AddTimedVariable(kTotalFetchCount,
-                               ResourceManager::kStatisticsGroup);
+                               ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kTotalRewriteCount,
-                               ResourceManager::kStatisticsGroup);
+                               ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kRewritesExecuted,
-                               ResourceManager::kStatisticsGroup);
+                               ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kRewritesDropped,
-                               ResourceManager::kStatisticsGroup);
+                               ServerContext::kStatisticsGroup);
 }
 
 // This is called when a RewriteDriverFactory is created, and adds

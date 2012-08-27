@@ -68,7 +68,7 @@ class FakeRewriter : public SimpleTextFilter::Rewriter {
 
   virtual bool RewriteText(const StringPiece& url, const StringPiece& in,
                            GoogleString* out,
-                           ResourceManager* resource_manager) {
+                           ServerContext* resource_manager) {
     if (enabled_) {
       ++num_rewrites_;
       StrAppend(out, in, ":", id_);

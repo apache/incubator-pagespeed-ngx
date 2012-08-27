@@ -31,7 +31,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
@@ -47,7 +47,6 @@
 namespace net_instaweb {
 
 class AbstractMutex;
-class Layout;
 class MessageHandler;
 
 const char ProxyInterface::kBlinkRequestCount[] = "blink-requests";
@@ -140,7 +139,7 @@ class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
 }  // namespace
 
 ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
-                               ResourceManager* manager,
+                               ServerContext* manager,
                                Statistics* stats)
     : resource_manager_(manager),
       fetcher_(NULL),
@@ -161,13 +160,13 @@ ProxyInterface::~ProxyInterface() {
 
 void ProxyInterface::Initialize(Statistics* statistics) {
   statistics->AddTimedVariable(kTotalRequestCount,
-                               ResourceManager::kStatisticsGroup);
+                               ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kPagespeedRequestCount,
-                               ResourceManager::kStatisticsGroup);
+                               ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kBlinkRequestCount,
-                               ResourceManager::kStatisticsGroup);
+                               ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kBlinkCriticalLineRequestCount,
-                               ResourceManager::kStatisticsGroup);
+                               ServerContext::kStatisticsGroup);
   BlinkFlowCriticalLine::Initialize(statistics);
   FlushEarlyFlow::Initialize(statistics);
 }

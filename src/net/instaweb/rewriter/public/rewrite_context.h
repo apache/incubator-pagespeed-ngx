@@ -26,7 +26,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
@@ -209,7 +209,7 @@ class RewriteContext {
   // Finds the ResourceManager associated with this context.  Note that
   // this method might have to climb up the parent-tree, but it's typically
   // not a deep tree.  Same with Driver() and Options().
-  ResourceManager* Manager() const;
+  ServerContext* Manager() const;
   const RewriteOptions* Options() const;
   RewriteDriver* Driver() const;
 

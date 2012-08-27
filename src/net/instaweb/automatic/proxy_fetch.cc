@@ -28,7 +28,7 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -59,7 +59,7 @@ const char ProxyFetch::kHeadersSetupRaceFlush[] = "HeadersSetupRace:Flush";
 const char ProxyFetch::kHeadersSetupRacePrefix[] = "HeadersSetupRace:";
 const char ProxyFetch::kHeadersSetupRaceWait[] = "HeadersSetupRace:Wait";
 
-ProxyFetchFactory::ProxyFetchFactory(ResourceManager* manager)
+ProxyFetchFactory::ProxyFetchFactory(ServerContext* manager)
     : manager_(manager),
       timer_(manager->timer()),
       handler_(manager->message_handler()),
@@ -177,7 +177,7 @@ void ProxyFetchPropertyCallback::Done(bool success) {
 }
 
 ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
-    ResourceManager* resource_manager, const StringPiece& url,
+    ServerContext* resource_manager, const StringPiece& url,
     const RewriteOptions* options)
     : mutex_(resource_manager->thread_system()->NewMutex()),
       resource_manager_(resource_manager),
@@ -247,7 +247,7 @@ bool ProxyFetchPropertyCallbackCollector::IsCacheValid(
 
 void ProxyFetchPropertyCallbackCollector::Done(
     ProxyFetchPropertyCallback* callback, bool success) {
-  ResourceManager* resource_manager = NULL;
+  ServerContext* resource_manager = NULL;
   ProxyFetch* fetch = NULL;
   scoped_ptr<std::vector<Function*> > post_lookup_task_vector;
   bool do_delete = false;
@@ -339,7 +339,7 @@ ProxyFetch::ProxyFetch(
     AsyncFetch* async_fetch,
     AsyncFetch* original_content_fetch,
     RewriteDriver* driver,
-    ResourceManager* manager,
+    ServerContext* manager,
     Timer* timer,
     ProxyFetchFactory* factory)
     : SharedAsyncFetch(async_fetch),

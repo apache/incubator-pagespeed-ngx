@@ -22,7 +22,7 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher_stats.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -57,7 +57,7 @@ ApacheResourceManager::ApacheResourceManager(
     ApacheRewriteDriverFactory* factory,
     server_rec* server,
     const StringPiece& version)
-    : ResourceManager(factory),
+    : ServerContext(factory),
       apache_factory_(factory),
       server_rec_(server),
       version_(version.data(), version.size()),

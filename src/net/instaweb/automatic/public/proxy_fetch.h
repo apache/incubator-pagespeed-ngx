@@ -46,7 +46,7 @@ class MessageHandler;
 class ProxyFetch;
 class ProxyFetchPropertyCallbackCollector;
 class QueuedAlarm;
-class ResourceManager;
+class ServerContext;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
@@ -56,7 +56,7 @@ class Timer;
 // ProxyFetches it creates.
 class ProxyFetchFactory {
  public:
-  explicit ProxyFetchFactory(ResourceManager* manager);
+  explicit ProxyFetchFactory(ServerContext* manager);
   ~ProxyFetchFactory();
 
   void StartNewProxyFetch(
@@ -78,7 +78,7 @@ class ProxyFetchFactory {
   void Start(ProxyFetch* proxy_fetch);
   void Finish(ProxyFetch* proxy_fetch);
 
-  ResourceManager* manager_;
+  ServerContext* manager_;
   Timer* timer_;
   MessageHandler* handler_;
 
@@ -127,7 +127,7 @@ class ProxyFetchPropertyCallback : public PropertyPage {
 // Tracks a collection of property-cache lookups occuring in parallel.
 class ProxyFetchPropertyCallbackCollector {
  public:
-  ProxyFetchPropertyCallbackCollector(ResourceManager* manager,
+  ProxyFetchPropertyCallbackCollector(ServerContext* manager,
                                       const StringPiece& url,
                                       const RewriteOptions* options);
   virtual ~ProxyFetchPropertyCallbackCollector();
@@ -184,7 +184,7 @@ class ProxyFetchPropertyCallbackCollector {
   std::map<ProxyFetchPropertyCallback::CacheType, PropertyPage*>
   property_pages_;
   scoped_ptr<AbstractMutex> mutex_;
-  ResourceManager* resource_manager_;
+  ServerContext* resource_manager_;
   GoogleString url_;
   bool detached_;             // protected by mutex_.
   bool done_;                 // protected by mutex_.
@@ -274,7 +274,7 @@ class ProxyFetch : public SharedAsyncFetch {
              AsyncFetch* async_fetch,
              AsyncFetch* original_content_fetch,
              RewriteDriver* driver,
-             ResourceManager* manager,
+             ServerContext* manager,
              Timer* timer,
              ProxyFetchFactory* factory);
   virtual ~ProxyFetch();
@@ -331,7 +331,7 @@ class ProxyFetch : public SharedAsyncFetch {
   void HandleIdleAlarm();
 
   GoogleString url_;
-  ResourceManager* resource_manager_;
+  ServerContext* resource_manager_;
   Timer* timer_;
 
   scoped_ptr<CacheUrlAsyncFetcher> cache_fetcher_;

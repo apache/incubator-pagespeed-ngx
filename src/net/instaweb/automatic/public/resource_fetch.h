@@ -30,7 +30,7 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class ResourceManager;
+class ServerContext;
 class RewriteDriver;
 class RewriteOptions;
 class SyncFetcherAdapterCallback;
@@ -52,7 +52,7 @@ class ResourceFetch : public SharedAsyncFetch {
                     // it is not so much an option as request-specific info
                     // similar to User-Agent (also not an option).
                     bool using_spdy,
-                    ResourceManager* resource_manager,
+                    ServerContext* resource_manager,
                     AsyncFetch* async_fetch);
 
   // Fetch a pagespeed resource in a blocking fashion. Response will be
@@ -66,7 +66,7 @@ class ResourceFetch : public SharedAsyncFetch {
   // Returns true iff the fetch succeeded and thus response headers and
   // contents were sent to async_fetch.
   static bool BlockingFetch(const GoogleUrl& url,
-                            ResourceManager* resource_manager,
+                            ServerContext* resource_manager,
                             RewriteDriver* driver,
                             SyncFetcherAdapterCallback* async_fetch);
 
@@ -76,7 +76,7 @@ class ResourceFetch : public SharedAsyncFetch {
   static RewriteDriver* GetDriver(const GoogleUrl& url,
                                   RewriteOptions* custom_options,
                                   bool using_spdy,
-                                  ResourceManager* resource_manager);
+                                  ServerContext* resource_manager);
 
  protected:
   // Protected interface from AsyncFetch.
@@ -90,14 +90,14 @@ class ResourceFetch : public SharedAsyncFetch {
 
   // Same as Start(), but takes the RewriteDriver to use.
   static void StartWithDriver(const GoogleUrl& url,
-                              ResourceManager* manager,
+                              ServerContext* manager,
                               RewriteDriver* driver,
                               AsyncFetch* async_fetch);
 
   // If we're running an experiment and the url specifies an experiment spec,
   // set custom_options to use that experiment spec.  If custom_options is NULL
   // one will be allocated and the caller takes ownership of it.
-  static void ApplyFuriousOptions(const ResourceManager* manager,
+  static void ApplyFuriousOptions(const ServerContext* manager,
                                   const GoogleUrl& url,
                                   RewriteOptions** custom_options);
 

@@ -17,8 +17,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //     and sligocki@google.com (Shawn Ligocki)
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_SERVER_CONTEXT_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_SERVER_CONTEXT_H_
 
 #include <cstddef>                     // for size_t
 #include <set>
@@ -73,10 +73,17 @@ class UserAgentMatcher;
 typedef RefCountedPtr<OutputResource> OutputResourcePtr;
 typedef std::vector<OutputResourcePtr> OutputResourceVector;
 
-// TODO(jmarantz): Rename this class to ServerContext, as it no longer
-// contains much logic about resources -- that's been moved to RewriteDriver,
-// which should be renamed RequestContext.
-class ResourceManager {
+// Server-specific context and platform adaption: threads, file system, locking,
+// and so on.
+// TODO(piatek): This file was renamed from resource_manager.h -- there are
+//               some associated fixes outstanding --
+// 1. Run iwyu on all files as many #include sc.h without referencing it.
+// 2. abc of includes and class declarations.
+// 3. Rename variables, data members, parameters, etc.
+// 4. Rename methods, such as:
+//     CreateResourceManager() in rewrite_driver_factory.*
+//     Manager() in rewrite_context.*
+class ServerContext {
  public:
   // The lifetime for cache-extended generated resources, in milliseconds.
   static const int64 kGeneratedMaxAgeMs;
@@ -90,8 +97,8 @@ class ResourceManager {
   // Default statistics group name.
   static const char kStatisticsGroup[];
 
-  explicit ResourceManager(RewriteDriverFactory* factory);
-  virtual ~ResourceManager();
+  explicit ServerContext(RewriteDriverFactory* factory);
+  virtual ~ServerContext();
 
   // Set time and cache headers with long TTL (including Date, Last-Modified,
   // Cache-Control, Etags, Expires).
@@ -554,9 +561,9 @@ class ResourceManager {
 
   UsageDataReporter* usage_data_reporter_;
 
-  DISALLOW_COPY_AND_ASSIGN(ResourceManager);
+  DISALLOW_COPY_AND_ASSIGN(ServerContext);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_SERVER_CONTEXT_H_

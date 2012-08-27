@@ -29,7 +29,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -67,7 +67,7 @@ class SyncCallback : public CacheInterface::Callback {
 
 }  // namespace
 
-OutputResource::OutputResource(ResourceManager* resource_manager,
+OutputResource::OutputResource(ServerContext* resource_manager,
                                const StringPiece& resolved_base,
                                const StringPiece& unmapped_base,
                                const StringPiece& original_base,

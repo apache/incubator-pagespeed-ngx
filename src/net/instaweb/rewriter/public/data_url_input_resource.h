@@ -23,7 +23,7 @@
 #include "base/scoped_ptr.h"
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/string.h"
@@ -44,7 +44,7 @@ class DataUrlInputResource : public Resource {
  public:
   // We expose a factory; parse failure returns NULL.
   static ResourcePtr Make(const StringPiece& url,
-                          ResourceManager* resource_manager) {
+                          ServerContext* resource_manager) {
     ResourcePtr resource;
     const ContentType* type;
     Encoding encoding;
@@ -85,7 +85,7 @@ class DataUrlInputResource : public Resource {
                        Encoding encoding,
                        const ContentType* type,
                        const StringPiece& encoded_contents,
-                       ResourceManager* resource_manager)
+                       ServerContext* resource_manager)
       : Resource(resource_manager, type),
         url_(url),
         encoding_(encoding),

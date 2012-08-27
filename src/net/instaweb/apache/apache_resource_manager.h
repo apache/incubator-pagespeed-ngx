@@ -18,7 +18,7 @@
 #define NET_INSTAWEB_APACHE_APACHE_RESOURCE_MANAGER_H_
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 
 struct apr_pool_t;
 struct server_rec;
@@ -43,7 +43,7 @@ class Variable;
 //    - default RewriteOptions.
 // Additionally, there are startup semantics for apache's prefork model
 // that require a phased initialization.
-class ApacheResourceManager : public ResourceManager {
+class ApacheResourceManager : public ServerContext {
  public:
   ApacheResourceManager(ApacheRewriteDriverFactory* factory,
                         server_rec* server,

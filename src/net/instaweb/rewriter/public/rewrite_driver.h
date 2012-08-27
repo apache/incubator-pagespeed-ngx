@@ -30,7 +30,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
@@ -170,7 +170,7 @@ class RewriteDriver : public HtmlParse {
 
   // Adds a resource manager enabling the rewriting of
   // resources. This will replace any previous resource managers.
-  void SetResourceManager(ResourceManager* resource_manager);
+  void SetResourceManager(ServerContext* resource_manager);
 
   // Returns true if we may cache extend Css, Images, PDFs, or Scripts
   // respectively.
@@ -354,7 +354,7 @@ class RewriteDriver : public HtmlParse {
   // Note: this means the driver's fetcher must survive as long as this does.
   CacheUrlAsyncFetcher* CreateCacheFetcher();
 
-  ResourceManager* resource_manager() const { return resource_manager_; }
+  ServerContext* resource_manager() const { return resource_manager_; }
   Statistics* statistics() const;
 
   AddInstrumentationFilter* add_instrumentation_filter() {
@@ -1125,7 +1125,7 @@ class RewriteDriver : public HtmlParse {
   // These objects are provided on construction or later, and are
   // owned by the caller.
   FileSystem* file_system_;
-  ResourceManager* resource_manager_;
+  ServerContext* resource_manager_;
   Scheduler* scheduler_;
   UrlAsyncFetcher* default_url_async_fetcher_;  // the fetcher we got at ctor
 

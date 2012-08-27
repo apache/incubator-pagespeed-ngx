@@ -39,7 +39,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -833,7 +833,7 @@ void RewriteContext::SetPartitionKey() {
     url = HashSplit(hasher, url);
   }
 
-  partition_key_ = StrCat(ResourceManager::kCacheKeyResourceNamePrefix,
+  partition_key_ = StrCat(ServerContext::kCacheKeyResourceNamePrefix,
                           id(), "_", signature, "/",
                           url, "@", suffix);
 }
@@ -1260,7 +1260,7 @@ void RewriteContext::PartitionDone(bool result) {
 }
 
 void RewriteContext::WritePartition() {
-  ResourceManager* manager = Manager();
+  ServerContext* manager = Manager();
   if (ok_to_write_output_partitions_ &&
       !manager->metadata_cache_readonly()) {
     CacheInterface* metadata_cache = manager->metadata_cache();
@@ -1907,7 +1907,7 @@ RewriteDriver* RewriteContext::Driver() const {
   return rc->driver_;
 }
 
-ResourceManager* RewriteContext::Manager() const {
+ServerContext* RewriteContext::Manager() const {
   return Driver()->resource_manager();
 }
 

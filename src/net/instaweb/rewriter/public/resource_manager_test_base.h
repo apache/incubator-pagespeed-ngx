@@ -27,7 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/response_headers.h"
 // We need to include rewrite_driver.h due to covariant return of html_parse()
@@ -393,8 +393,8 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
     return file_system()->WriteFile(filename, contents, message_handler());
   }
 
-  ResourceManager* resource_manager() { return resource_manager_; }
-  ResourceManager* other_resource_manager() { return other_resource_manager_; }
+  ServerContext* resource_manager() { return resource_manager_; }
+  ServerContext* other_resource_manager() { return other_resource_manager_; }
   CountingUrlAsyncFetcher* counting_url_async_fetcher() {
     return factory_->counting_url_async_fetcher();
   }
@@ -409,7 +409,7 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // does *not* finalize the driver.  This gives individual _test.cc
   // files the chance to add filters to the options prior to calling
   // driver->AddFilters().
-  RewriteDriver* MakeDriver(ResourceManager* resource_manager,
+  RewriteDriver* MakeDriver(ServerContext* resource_manager,
                             RewriteOptions* options);
 
   // Converts a potentially relative URL off kTestDomain to absolute if needed.
@@ -483,9 +483,9 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   // serves the rewritten resources.
   scoped_ptr<TestRewriteDriverFactory> factory_;
   scoped_ptr<TestRewriteDriverFactory> other_factory_;
-  ResourceManager* resource_manager_;
+  ServerContext* resource_manager_;
   RewriteDriver* rewrite_driver_;
-  ResourceManager* other_resource_manager_;
+  ServerContext* other_resource_manager_;
   RewriteDriver* other_rewrite_driver_;
   bool use_managed_rewrite_drivers_;
 

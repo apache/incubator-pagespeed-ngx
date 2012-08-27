@@ -34,7 +34,7 @@
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/blink_critical_line_data.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
@@ -330,7 +330,7 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
     InitializeDefaultOptions();
   }
 
-  virtual void SetupCaches(ResourceManager* resource_manager) {
+  virtual void SetupCaches(ServerContext* resource_manager) {
     TestRewriteDriverFactory::SetupCaches(resource_manager);
     resource_manager->page_property_cache()->AddCohort(
         RewriteDriver::kDomCohort);
@@ -362,7 +362,7 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
 class ProxyInterfaceWithDelayCache : public ProxyInterface {
  public:
   ProxyInterfaceWithDelayCache(const StringPiece& hostname, int port,
-                               ResourceManager* manager, Statistics* stats,
+                               ServerContext* manager, Statistics* stats,
                                DelayCache* delay_cache)
       : ProxyInterface(hostname, port, manager, stats),
         manager_(manager),
@@ -393,7 +393,7 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
   const GoogleString& key() const { return key_; }
 
  private:
-  ResourceManager* manager_;
+  ServerContext* manager_;
   DelayCache* delay_cache_;
   GoogleString key_;
 

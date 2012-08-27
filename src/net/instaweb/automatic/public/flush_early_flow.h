@@ -32,7 +32,7 @@ class Histogram;
 class MessageHandler;
 class ProxyFetchPropertyCallbackCollector;
 class ProxyFetchFactory;
-class ResourceManager;
+class ServerContext;
 class RewriteDriver;
 class Statistics;
 class TimedVariable;
@@ -105,7 +105,7 @@ class FlushEarlyFlow {
   AsyncFetch* flush_early_fetch_;
   RewriteDriver* driver_;
   ProxyFetchFactory* factory_;
-  ResourceManager* manager_;
+  ServerContext* manager_;
   ProxyFetchPropertyCallbackCollector* property_cache_callback_;
   MessageHandler* handler_;
 

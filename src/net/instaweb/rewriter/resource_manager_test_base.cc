@@ -20,6 +20,7 @@
 
 #include <vector>
 
+#include "base/scoped_ptr.h"
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -39,7 +40,7 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
@@ -243,7 +244,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   TestRewriteDriverFactory::Initialize(&stats);
   new_factory.SetUseTestUrlNamer(factory_->use_test_url_namer());
   new_factory.SetStatistics(&stats);
-  ResourceManager* new_resource_manager = new_factory.CreateResourceManager();
+  ServerContext* new_resource_manager = new_factory.CreateResourceManager();
   if (new_rms_url_namer != NULL) {
     new_resource_manager->set_url_namer(new_rms_url_namer);
   }
@@ -673,7 +674,7 @@ void ResourceManagerTestBase::SetUseManagedRewriteDrivers(
 }
 
 RewriteDriver* ResourceManagerTestBase::MakeDriver(
-    ResourceManager* resource_manager, RewriteOptions* options) {
+    ServerContext* resource_manager, RewriteOptions* options) {
   // We use unmanaged drivers rather than NewCustomDriver here so
   // that _test.cc files can add options after the driver was created
   // and before the filters are added.

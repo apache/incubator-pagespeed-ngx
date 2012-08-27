@@ -31,7 +31,7 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
@@ -180,7 +180,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
       const ResourcePtr script_resource,
       const StringPiece& script_out, const OutputResourcePtr& script_dest) {
     bool ok = false;
-    ResourceManager* resource_manager = Manager();
+    ServerContext* resource_manager = Manager();
     MessageHandler* message_handler = resource_manager->message_handler();
     resource_manager->MergeNonCachingResponseHeaders(
         script_resource, script_dest);

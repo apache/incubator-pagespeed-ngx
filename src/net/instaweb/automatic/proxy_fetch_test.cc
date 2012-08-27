@@ -25,7 +25,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/function.h"
@@ -39,7 +39,7 @@ class MockProxyFetch : public ProxyFetch {
  public:
   MockProxyFetch(AsyncFetch* async_fetch,
                  ProxyFetchFactory* factory,
-                 ResourceManager* resource_manager)
+                 ServerContext* resource_manager)
       : ProxyFetch("http://www.google.com", false,
                    NULL,  // callback
                    async_fetch,
@@ -85,7 +85,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public ResourceManagerTestBase {
     post_lookup_called_(false) {}
 
   scoped_ptr<ThreadSystem> thread_system_;
-  ResourceManager* resource_manager_;
+  ServerContext* resource_manager_;
 
   // Create a collector.
   ProxyFetchPropertyCallbackCollector* MakeCollector() {

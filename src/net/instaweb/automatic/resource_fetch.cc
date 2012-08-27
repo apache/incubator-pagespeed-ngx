@@ -24,7 +24,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -36,7 +36,7 @@
 
 namespace net_instaweb {
 
-void ResourceFetch::ApplyFuriousOptions(const ResourceManager* manager,
+void ResourceFetch::ApplyFuriousOptions(const ServerContext* manager,
                                         const GoogleUrl& url,
                                         RewriteOptions** custom_options) {
   const RewriteOptions* active_options;
@@ -62,7 +62,7 @@ void ResourceFetch::ApplyFuriousOptions(const ResourceManager* manager,
 
 RewriteDriver* ResourceFetch::GetDriver(
     const GoogleUrl& url, RewriteOptions* custom_options, bool using_spdy,
-    ResourceManager* manager) {
+    ServerContext* manager) {
   ApplyFuriousOptions(manager, url, &custom_options);
   RewriteDriver* driver = (custom_options == NULL)
       ? manager->NewRewriteDriver()
@@ -73,7 +73,7 @@ RewriteDriver* ResourceFetch::GetDriver(
 }
 
 void ResourceFetch::StartWithDriver(
-    const GoogleUrl& url, ResourceManager* manager, RewriteDriver* driver,
+    const GoogleUrl& url, ServerContext* manager, RewriteDriver* driver,
     AsyncFetch* async_fetch) {
 
   ResourceFetch* resource_fetch = new ResourceFetch(
@@ -85,14 +85,14 @@ void ResourceFetch::StartWithDriver(
 void ResourceFetch::Start(const GoogleUrl& url,
                           RewriteOptions* custom_options,
                           bool using_spdy,
-                          ResourceManager* manager,
+                          ServerContext* manager,
                           AsyncFetch* async_fetch) {
   RewriteDriver* driver = GetDriver(url, custom_options, using_spdy, manager);
   StartWithDriver(url, manager, driver, async_fetch);
 }
 
 bool ResourceFetch::BlockingFetch(const GoogleUrl& url,
-                                  ResourceManager* manager,
+                                  ServerContext* manager,
                                   RewriteDriver* driver,
                                   SyncFetcherAdapterCallback* callback) {
   StartWithDriver(url, manager, driver, callback);

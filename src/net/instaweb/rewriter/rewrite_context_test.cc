@@ -41,7 +41,7 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr, etc
 #include "net/instaweb/rewriter/public/resource_combiner.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
@@ -121,7 +121,7 @@ class TrimWhitespaceRewriter : public SimpleTextFilter::Rewriter {
 
   virtual bool RewriteText(const StringPiece& url, const StringPiece& in,
                            GoogleString* out,
-                           ResourceManager* resource_manager) {
+                           ServerContext* resource_manager) {
     LOG(INFO) << "Trimming whitespace.";
     ++num_rewrites_;
     TrimWhitespace(in, out);
@@ -194,7 +194,7 @@ class UpperCaseRewriter : public SimpleTextFilter::Rewriter {
 
   virtual bool RewriteText(const StringPiece& url, const StringPiece& in,
                            GoogleString* out,
-                           ResourceManager* resource_manager) {
+                           ServerContext* resource_manager) {
     ++num_rewrites_;
     in.CopyToString(out);
     UpperString(out);
@@ -324,7 +324,7 @@ class NestedFilter : public RewriteFilter {
         ResourcePtr resource(slot->resource());
         StrAppend(&new_content, resource->url(), "\n");
       }
-      ResourceManager* resource_manager = Manager();
+      ServerContext* resource_manager = Manager();
       MessageHandler* message_handler = resource_manager->message_handler();
       // Warning: this uses input's content-type for simplicity, but real
       // filters should not do that --- see comments in
@@ -2087,7 +2087,7 @@ TEST_F(RewriteContextTest, CacheExtendCacheableResource) {
                               &headers));
     EXPECT_EQ("a", content);
     EXPECT_STREQ(StringPrintf("max-age=%lld",
-                              ResourceManager::kGeneratedMaxAgeMs/1000),
+                              ServerContext::kGeneratedMaxAgeMs/1000),
                  headers.Lookup1(HttpAttributes::kCacheControl));
   }
 }

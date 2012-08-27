@@ -34,7 +34,7 @@ class HtmlElement;
 class Panel;
 class PanelSet;
 class RequestHeaders;
-class ResourceManager;
+class ServerContext;
 class RewriteOptions;
 class UserAgentMatcher;
 
@@ -68,7 +68,7 @@ bool IsBlinkRequest(const GoogleUrl& url,
 
 // Checks if blink critical line flow can be applied.
 bool ShouldApplyBlinkFlowCriticalLine(
-    const ResourceManager* manager,
+    const ServerContext* manager,
     const RewriteOptions* options);
 
 // Returns true if json has only miscellaneous(like 'contiguous')

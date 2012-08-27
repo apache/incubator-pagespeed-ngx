@@ -39,7 +39,7 @@
 #include "net/instaweb/http/public/http_dump_url_writer.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter.h"
 #include "net/instaweb/http/public/write_through_http_cache.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/async_cache.h"
@@ -238,7 +238,7 @@ MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
 }
 
 void ApacheRewriteDriverFactory::SetupCaches(
-    ResourceManager* resource_manager) {
+    ServerContext* resource_manager) {
   ApacheConfig* config = ApacheConfig::DynamicCast(
       resource_manager->global_options());
   ApacheCache* apache_cache = GetCache(config);

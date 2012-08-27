@@ -18,7 +18,7 @@
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -48,7 +48,7 @@ class FlushEarlyContentWriterFilterTest : public ResourceManagerTestBase {
   virtual void SetUp() {
     statistics()->AddTimedVariable(
       FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly,
-      ResourceManager::kStatisticsGroup);
+      ServerContext::kStatisticsGroup);
     options()->EnableFilter(RewriteOptions::kFlushSubresources);
     options()->set_enable_flush_subresources_experimental(true);
     ResourceManagerTestBase::SetUp();

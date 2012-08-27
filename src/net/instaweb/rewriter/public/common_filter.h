@@ -29,7 +29,7 @@
 namespace net_instaweb {
 class GoogleUrl;
 class HtmlElement;
-class ResourceManager;
+class ServerContext;
 class ResponseHeaders;
 class RewriteOptions;
 
@@ -112,7 +112,7 @@ class CommonFilter : public EmptyHtmlFilter {
 
   // Protected pointers for inheriter's to use
   RewriteDriver* driver_;
-  ResourceManager* resource_manager_;
+  ServerContext* resource_manager_;
   const RewriteOptions* rewrite_options_;
 
  private:

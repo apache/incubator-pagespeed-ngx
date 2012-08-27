@@ -30,7 +30,7 @@ namespace net_instaweb {
 class FileSystem;
 class Hasher;
 class MessageHandler;
-class ResourceManager;
+class ServerContext;
 class Statistics;
 class Timer;
 class UrlAsyncFetcher;
@@ -55,7 +55,7 @@ class FileRewriter : public RewriteDriverFactory {
   virtual MessageHandler* DefaultMessageHandler();
   virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
-  virtual void SetupCaches(ResourceManager* resource_manager);
+  virtual void SetupCaches(ServerContext* resource_manager);
   virtual Statistics* statistics();
 
  private:
@@ -86,7 +86,7 @@ class StaticRewriter {
  private:
   RewriteGflags gflags_;
   FileRewriter file_rewriter_;
-  ResourceManager* resource_manager_;
+  ServerContext* resource_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(StaticRewriter);
 };

@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 
 #include <algorithm>                   // for std::binary_search
 #include <cstddef>                     // for size_t
@@ -89,10 +89,10 @@ const char* kExcludedAttributes[] = {
 
 }  // namespace
 
-const int64 ResourceManager::kGeneratedMaxAgeMs = Timer::kYearMs;
+const int64 ServerContext::kGeneratedMaxAgeMs = Timer::kYearMs;
 
 // Statistics group names.
-const char ResourceManager::kStatisticsGroup[] = "Statistics";
+const char ServerContext::kStatisticsGroup[] = "Statistics";
 
 // Our HTTP cache mostly stores full URLs, including the http: prefix,
 // mapping them into the URL contents and HTTP headers.  However, we
@@ -110,7 +110,7 @@ const char ResourceManager::kStatisticsGroup[] = "Statistics";
 //
 // TODO(jmarantz): inject the SVN version number here to automatically bust
 // caches whenever pagespeed is upgraded.
-const char ResourceManager::kCacheKeyResourceNamePrefix[] = "rname/";
+const char ServerContext::kCacheKeyResourceNamePrefix[] = "rname/";
 
 // We set etags for our output resources to "W/0".  The "W" means
 // that this etag indicates a functional consistency, but is not
@@ -120,25 +120,25 @@ const char ResourceManager::kCacheKeyResourceNamePrefix[] = "rname/";
 // This value is a shared constant so that it can also be used in
 // the Apache-specific code that repairs headers after mod_headers
 // alters them.
-const char ResourceManager::kResourceEtagValue[] = "W/0";
+const char ServerContext::kResourceEtagValue[] = "W/0";
 
 class ResourceManagerHttpCallback : public OptionsAwareHTTPCacheCallback {
  public:
   ResourceManagerHttpCallback(
       Resource::NotCacheablePolicy not_cacheable_policy,
       Resource::AsyncCallback* resource_callback,
-      ResourceManager* resource_manager);
+      ServerContext* resource_manager);
   virtual ~ResourceManagerHttpCallback();
   virtual void Done(HTTPCache::FindResult find_result);
 
  private:
   Resource::AsyncCallback* resource_callback_;
-  ResourceManager* resource_manager_;
+  ServerContext* resource_manager_;
   Resource::NotCacheablePolicy not_cacheable_policy_;
   DISALLOW_COPY_AND_ASSIGN(ResourceManagerHttpCallback);
 };
 
-ResourceManager::ResourceManager(RewriteDriverFactory* factory)
+ServerContext::ServerContext(RewriteDriverFactory* factory)
     : thread_system_(factory->thread_system()),
       rewrite_stats_(NULL),
       resource_id_(0),
@@ -179,7 +179,7 @@ ResourceManager::ResourceManager(RewriteDriverFactory* factory)
 #endif
 }
 
-ResourceManager::~ResourceManager() {
+ServerContext::~ServerContext() {
   {
     ScopedMutex lock(rewrite_drivers_mutex_.get());
 
@@ -200,7 +200,7 @@ ResourceManager::~ResourceManager() {
   decoding_driver_.reset(NULL);
 }
 
-void ResourceManager::InitWorkersAndDecodingDriver() {
+void ServerContext::InitWorkersAndDecodingDriver() {
   html_workers_ = factory_->WorkerPool(
       RewriteDriverFactory::kHtmlWorkers);
   rewrite_workers_ = factory_->WorkerPool(
@@ -223,7 +223,7 @@ void ResourceManager::InitWorkersAndDecodingDriver() {
 }
 
 // TODO(jmarantz): consider moving this method to ResponseHeaders
-void ResourceManager::SetDefaultLongCacheHeadersWithCharset(
+void ServerContext::SetDefaultLongCacheHeadersWithCharset(
     const ContentType* content_type, StringPiece charset,
     ResponseHeaders* header) const {
   header->set_major_version(1);
@@ -272,7 +272,7 @@ void ResourceManager::SetDefaultLongCacheHeadersWithCharset(
   header->ComputeCaching();
 }
 
-void ResourceManager::MergeNonCachingResponseHeaders(
+void ServerContext::MergeNonCachingResponseHeaders(
     const ResponseHeaders& input_headers,
     ResponseHeaders* output_headers) {
   for (int i = 0, n = input_headers.NumAttributes(); i < n; ++i) {
@@ -284,18 +284,18 @@ void ResourceManager::MergeNonCachingResponseHeaders(
 }
 
 // TODO(jmarantz): consider moving this method to ResponseHeaders
-void ResourceManager::SetContentType(const ContentType* content_type,
+void ServerContext::SetContentType(const ContentType* content_type,
                                      ResponseHeaders* header) {
   CHECK(content_type != NULL);
   header->Replace(HttpAttributes::kContentType, content_type->mime_type());
   header->ComputeCaching();
 }
 
-void ResourceManager::set_filename_prefix(const StringPiece& file_prefix) {
+void ServerContext::set_filename_prefix(const StringPiece& file_prefix) {
   file_prefix.CopyToString(&file_prefix_);
 }
 
-bool ResourceManager::Write(const ResourceVector& inputs,
+bool ServerContext::Write(const ResourceVector& inputs,
                             const StringPiece& contents,
                             const ContentType* type,
                             StringPiece charset,
@@ -346,7 +346,7 @@ bool ResourceManager::Write(const ResourceVector& inputs,
   return ret;
 }
 
-void ResourceManager::ApplyInputCacheControl(const ResourceVector& inputs,
+void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
                                              ResponseHeaders* headers) {
   headers->ComputeCaching();
   bool proxy_cacheable = headers->IsProxyCacheable();
@@ -384,7 +384,7 @@ void ResourceManager::ApplyInputCacheControl(const ResourceVector& inputs,
   headers->ComputeCaching();
 }
 
-bool ResourceManager::IsPagespeedResource(const GoogleUrl& url) {
+bool ServerContext::IsPagespeedResource(const GoogleUrl& url) {
   // Various things URL decoding produces which we ignore here.
   ResourceNamer namer;
   OutputResourceKind kind;
@@ -393,7 +393,7 @@ bool ResourceManager::IsPagespeedResource(const GoogleUrl& url) {
                                                     &filter);
 }
 
-bool ResourceManager::IsImminentlyExpiring(int64 start_date_ms,
+bool ServerContext::IsImminentlyExpiring(int64 start_date_ms,
                                            int64 expire_ms) const {
   // Consider a resource with 5 minute expiration time (the default
   // assumed by mod_pagespeed when a potentialy cacheable resource
@@ -425,7 +425,7 @@ bool ResourceManager::IsImminentlyExpiring(int64 start_date_ms,
   return false;
 }
 
-void ResourceManager::RefreshIfImminentlyExpiring(
+void ServerContext::RefreshIfImminentlyExpiring(
     Resource* resource, MessageHandler* handler) const {
   if (!http_cache_->force_caching() && resource->IsCacheableTypeOfResource()) {
     const ResponseHeaders* headers = resource->response_headers();
@@ -440,7 +440,7 @@ void ResourceManager::RefreshIfImminentlyExpiring(
 ResourceManagerHttpCallback::ResourceManagerHttpCallback(
     Resource::NotCacheablePolicy not_cacheable_policy,
     Resource::AsyncCallback* resource_callback,
-    ResourceManager* resource_manager)
+    ServerContext* resource_manager)
     : OptionsAwareHTTPCacheCallback(
           resource_callback->resource()->rewrite_options()),
       resource_callback_(resource_callback),
@@ -506,7 +506,7 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
 // Specifically, we are now making a cache request for file-based resources
 // which will always fail, for FileInputResources, we should just Load them.
 // TODO(morlovich): Should this load non-cacheable + non-loaded resources?
-void ResourceManager::ReadAsync(
+void ServerContext::ReadAsync(
     Resource::NotCacheablePolicy not_cacheable_policy,
     Resource::AsyncCallback* callback) {
   // If the resource is not already loaded, and this type of resource (e.g.
@@ -523,7 +523,7 @@ void ResourceManager::ReadAsync(
   }
 }
 
-NamedLock* ResourceManager::MakeCreationLock(const GoogleString& name) {
+NamedLock* ServerContext::MakeCreationLock(const GoogleString& name) {
   const char kLockSuffix[] = ".outputlock";
 
   GoogleString lock_name = StrCat(lock_hasher_.Hash(name), kLockSuffix);
@@ -537,11 +537,11 @@ const int64 kBreakLockMs = 30 * Timer::kSecondMs;
 const int64 kBlockLockMs = 5 * Timer::kSecondMs;
 }  // namespace
 
-bool ResourceManager::TryLockForCreation(NamedLock* creation_lock) {
+bool ServerContext::TryLockForCreation(NamedLock* creation_lock) {
   return creation_lock->TryLockStealOld(kBreakLockMs);
 }
 
-void ResourceManager::LockForCreation(NamedLock* creation_lock,
+void ServerContext::LockForCreation(NamedLock* creation_lock,
                                       QueuedWorkerPool::Sequence* worker,
                                       Function* callback) {
   // TODO(jmaessen): It occurs to me that we probably ought to be
@@ -557,7 +557,7 @@ void ResourceManager::LockForCreation(NamedLock* creation_lock,
       new QueuedWorkerPool::Sequence::AddFunction(worker, callback));
 }
 
-bool ResourceManager::HandleBeacon(const StringPiece& unparsed_url) {
+bool ServerContext::HandleBeacon(const StringPiece& unparsed_url) {
   // The url HandleBeacon recieves is a relative url, so adding some dummy
   // host to make it complete url so that i can use GoogleUrl for parsing.
   GoogleUrl base("http://www.example.com");
@@ -608,7 +608,7 @@ bool ResourceManager::HandleBeacon(const StringPiece& unparsed_url) {
 // insert/remove behavior, and instead get constant time and less
 // memory overhead.
 
-RewriteDriver* ResourceManager::NewCustomRewriteDriver(
+RewriteDriver* ServerContext::NewCustomRewriteDriver(
     RewriteOptions* options) {
   RewriteDriver* rewrite_driver = NewUnmanagedRewriteDriver(
       true /* is_custom */,
@@ -627,7 +627,7 @@ RewriteDriver* ResourceManager::NewCustomRewriteDriver(
   return rewrite_driver;
 }
 
-RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver(
+RewriteDriver* ServerContext::NewUnmanagedRewriteDriver(
     bool is_custom, RewriteOptions* options) {
   RewriteDriver* rewrite_driver = new RewriteDriver(
       message_handler_, file_system_, default_system_fetcher_);
@@ -636,7 +636,7 @@ RewriteDriver* ResourceManager::NewUnmanagedRewriteDriver(
   return rewrite_driver;
 }
 
-RewriteDriver* ResourceManager::NewRewriteDriver() {
+RewriteDriver* ServerContext::NewRewriteDriver() {
   RewriteDriver* rewrite_driver = NULL;
 
   // Note that options->signature() takes a reader-lock so it's thread-safe
@@ -685,12 +685,12 @@ RewriteDriver* ResourceManager::NewRewriteDriver() {
   return rewrite_driver;
 }
 
-void ResourceManager::ReleaseRewriteDriver(RewriteDriver* rewrite_driver) {
+void ServerContext::ReleaseRewriteDriver(RewriteDriver* rewrite_driver) {
   ScopedMutex lock(rewrite_drivers_mutex_.get());
   ReleaseRewriteDriverImpl(rewrite_driver);
 }
 
-void ResourceManager::ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver) {
+void ServerContext::ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver) {
   if (trying_to_cleanup_rewrite_drivers_) {
     deferred_release_rewrite_drivers_.insert(rewrite_driver);
     return;
@@ -710,7 +710,7 @@ void ResourceManager::ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver) {
   }
 }
 
-void ResourceManager::ShutDownDrivers() {
+void ServerContext::ShutDownDrivers() {
   // Try to get any outstanding rewrites to complete, one-by-one.
   {
     ScopedMutex lock(rewrite_drivers_mutex_.get());
@@ -742,44 +742,44 @@ void ResourceManager::ShutDownDrivers() {
   }
 }
 
-size_t ResourceManager::num_active_rewrite_drivers() {
+size_t ServerContext::num_active_rewrite_drivers() {
   ScopedMutex lock(rewrite_drivers_mutex_.get());
   return active_rewrite_drivers_.size();
 }
 
-RewriteOptions* ResourceManager::global_options() {
+RewriteOptions* ServerContext::global_options() {
   if (base_class_options_.get() == NULL) {
     base_class_options_.reset(factory_->default_options()->Clone());
   }
   return base_class_options_.get();
 }
 
-const RewriteOptions* ResourceManager::global_options() const {
+const RewriteOptions* ServerContext::global_options() const {
   if (base_class_options_.get() == NULL) {
     return factory_->default_options();
   }
   return base_class_options_.get();
 }
 
-RewriteOptions* ResourceManager::NewOptions() {
+RewriteOptions* ServerContext::NewOptions() {
   return factory_->NewRewriteOptions();
 }
 
-LogRecord* ResourceManager::NewLogRecord() {
+LogRecord* ServerContext::NewLogRecord() {
   return factory_->NewLogRecord();
 }
 
-void ResourceManager::ComputeSignature(RewriteOptions* rewrite_options) const {
+void ServerContext::ComputeSignature(RewriteOptions* rewrite_options) const {
   rewrite_options->ComputeSignature(lock_hasher());
 }
 
-bool ResourceManager::IsExcludedAttribute(const char* attribute) {
+bool ServerContext::IsExcludedAttribute(const char* attribute) {
   const char** end = kExcludedAttributes + arraysize(kExcludedAttributes);
   return std::binary_search(kExcludedAttributes, end, attribute,
                             CharStarCompareInsensitive());
 }
 
-void ResourceManager::set_enable_property_cache(bool enabled) {
+void ServerContext::set_enable_property_cache(bool enabled) {
   enable_property_cache_ = enabled;
   if (page_property_cache_.get() != NULL) {
     page_property_cache_->set_enabled(enabled);
@@ -789,7 +789,7 @@ void ResourceManager::set_enable_property_cache(bool enabled) {
   }
 }
 
-void ResourceManager::MakePropertyCaches(CacheInterface* backend_cache) {
+void ServerContext::MakePropertyCaches(CacheInterface* backend_cache) {
   // The property caches are L2-only.  We cannot use the L1 cache because
   // this data can get stale quickly.
   page_property_cache_.reset(MakePropertyCache(
@@ -799,7 +799,7 @@ void ResourceManager::MakePropertyCaches(CacheInterface* backend_cache) {
   client_property_cache_->AddCohort(ClientState::kClientStateCohort);
 }
 
-PropertyCache* ResourceManager::MakePropertyCache(
+PropertyCache* ServerContext::MakePropertyCache(
     const GoogleString& cache_key_prefix, CacheInterface *cache) const {
   PropertyCache* pcache = new PropertyCache(
       cache_key_prefix, cache, timer(), thread_system_);
@@ -811,12 +811,12 @@ AbstractClientState* RewriteDriverFactory::NewClientState() {
   return new ClientState;
 }
 
-void ResourceManager::set_blink_critical_line_data_finder(
+void ServerContext::set_blink_critical_line_data_finder(
     BlinkCriticalLineDataFinder* finder) {
   blink_critical_line_data_finder_.reset(finder);
 }
 
-void ResourceManager::set_critical_images_finder(
+void ServerContext::set_critical_images_finder(
     CriticalImagesFinder* finder) {
   critical_images_finder_.reset(finder);
 }

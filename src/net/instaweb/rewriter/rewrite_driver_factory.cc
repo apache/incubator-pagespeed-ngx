@@ -30,7 +30,7 @@
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
@@ -366,14 +366,14 @@ StringPiece RewriteDriverFactory::filename_prefix() {
 }
 
 
-ResourceManager* RewriteDriverFactory::CreateResourceManager() {
-  ResourceManager* resource_manager = new ResourceManager(this);
+ServerContext* RewriteDriverFactory::CreateResourceManager() {
+  ServerContext* resource_manager = new ServerContext(this);
   InitResourceManager(resource_manager);
   return resource_manager;
 }
 
 void RewriteDriverFactory::InitResourceManager(
-    ResourceManager* resource_manager) {
+    ServerContext* resource_manager) {
   ScopedMutex lock(resource_manager_mutex_.get());
 
   resource_manager->ComputeSignature(resource_manager->global_options());
@@ -510,12 +510,12 @@ void RewriteDriverFactory::StopCacheActivity() {
   // Similarly stop metadata cache writes.
   for (ResourceManagerSet::iterator p = resource_managers_.begin();
        p != resource_managers_.end(); ++p) {
-    ResourceManager* resource_manager = *p;
+    ServerContext* resource_manager = *p;
     resource_manager->set_metadata_cache_readonly();
   }
 }
 
-bool RewriteDriverFactory::TerminateResourceManager(ResourceManager* rm) {
+bool RewriteDriverFactory::TerminateResourceManager(ServerContext* rm) {
   ScopedMutex lock(resource_manager_mutex_.get());
   resource_managers_.erase(rm);
   return resource_managers_.empty();
@@ -534,7 +534,7 @@ void RewriteDriverFactory::ShutDown() {
   // Now get active RewriteDrivers for each manager to wrap up.
   for (ResourceManagerSet::iterator p = resource_managers_.begin();
        p != resource_managers_.end(); ++p) {
-    ResourceManager* resource_manager = *p;
+    ServerContext* resource_manager = *p;
     resource_manager->ShutDownDrivers();
   }
 

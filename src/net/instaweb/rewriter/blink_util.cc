@@ -27,7 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/rewriter/public/resource_manager.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
@@ -89,7 +89,7 @@ bool IsBlinkRequest(const GoogleUrl& url,
 }
 
 bool ShouldApplyBlinkFlowCriticalLine(
-    const ResourceManager* manager,
+    const ServerContext* manager,
     const RewriteOptions* options) {
   return options != NULL &&
       // Blink flow critical line is enabled in rewrite options.
