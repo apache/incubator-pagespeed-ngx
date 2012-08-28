@@ -25,7 +25,7 @@ option optimize_for = LITE_RUNTIME;
 package net_instaweb;
 
 // Protobuf to encapsulate the information use by blink flow.
-// Next id = 8
+// Next id = 9
 message BlinkCriticalLineData {
   // Url of the request.
   required string url = 1;
@@ -51,4 +51,7 @@ message BlinkCriticalLineData {
 
   // Timestamp when the html diff was last done.
   optional int64 last_diff_timestamp_ms = 7;
+
+  // Timestamp when critical line computation was last done.
+  optional int64 last_critical_line_computation_timestamp_ms = 8;
 }

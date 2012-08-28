@@ -43,11 +43,12 @@
 #include "net/instaweb/rewriter/blink_critical_line_data.pb.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
-#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -241,7 +242,8 @@ class CriticalLineFetch : public AsyncFetch {
           IntegerToString(response_headers()->status_code()));
     }
 
-    if (options_->enable_blink_html_change_detection()) {
+    if (options_->enable_blink_html_change_detection() ||
+        options_->enable_blink_html_change_detection_logging()) {
       // We'll reach here only in case of Cache Hit case.
       CreateHtmlChangeDetectionDriverAndRewrite();
     } else {
@@ -338,22 +340,23 @@ class CriticalLineFetch : public AsyncFetch {
         resource_manager_->hasher()->Hash(rewritten_content);
     if (blink_critical_line_data_ != NULL) {
       if (computed_hash != blink_critical_line_data_->hash()) {
-        num_blink_html_mismatches_->IncBy(1);
         blink_info_->set_html_match(false);
+        num_blink_html_mismatches_->IncBy(1);
       } else {
         blink_info_->set_html_match(true);
+        num_blink_html_matches_->IncBy(1);
       }
     }
     // We invoke critical line computation in case of cache miss or html hash
     // mismatch.
     if (blink_critical_line_data_ == NULL ||
-        computed_hash != blink_critical_line_data_->hash()) {
+        (computed_hash != blink_critical_line_data_->hash() &&
+         options_->enable_blink_html_change_detection())) {
       CreateCriticalLineComputationDriverAndRewrite(computed_hash);
     } else {
-      num_blink_html_matches_->IncBy(1);
+      blink_critical_line_data_->set_hash(computed_hash);
       blink_critical_line_data_->set_last_diff_timestamp_ms(
           resource_manager_->timer()->NowMs());
-
       // TODO(rahulbansal): Move the code to write to pcache to blink_util.cc
       PropertyCache* property_cache =
           rewrite_driver_->resource_manager()->page_property_cache();
@@ -543,7 +546,9 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
   // finder_ will be never NULL because it is checked before entering
   // BlinkFlowCriticalLine.
   blink_critical_line_data_.reset(finder_->ExtractBlinkCriticalLineData(
-      options_->GetBlinkCacheTimeFor(google_url_), page));
+      options_->GetBlinkCacheTimeFor(google_url_), page,
+      manager_->timer()->NowMs(),
+      options_->enable_blink_html_change_detection()));
 
   if (blink_critical_line_data_ != NULL &&
       !(options_->passthrough_blink_for_last_invalid_response_code() &&
@@ -626,6 +631,15 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
   response_headers->ComputeCaching();
   response_headers->SetDateAndCaching(manager_->timer()->NowMs(), 0,
                                       ", private, no-cache");
+  // If relevant, add the Set-Cookie header for furious experiments.
+  if (options_->need_to_store_experiment_data() &&
+      options_->running_furious()) {
+    int furious_value = options_->furious_id();
+    manager_->furious_matcher()->StoreExperimentData(
+        furious_value, url_, manager_->timer()->NowMs(),
+        response_headers);
+  }
+
   base_fetch_->HeadersComplete();
 
   bool non_cacheable_present =
@@ -744,7 +758,9 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     // base fetch. It also doesn't attach the response headers from the base
     // fetch since headers have already been flushed out.
     fetch = new AsyncFetchWithHeadersInhibited(base_fetch_);
-    bool revalidate_data = options_->enable_blink_html_change_detection() &&
+    bool revalidate_data =
+        (options_->enable_blink_html_change_detection_logging() ||
+         options_->enable_blink_html_change_detection()) &&
         (manager_->timer()->NowMs() -
             blink_critical_line_data_->last_diff_timestamp_ms() >
             options_->blink_html_change_detection_time_ms());

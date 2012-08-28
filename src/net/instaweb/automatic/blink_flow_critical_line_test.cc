@@ -47,6 +47,7 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -258,7 +259,8 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
 
   // Gets BlinkCriticalLineData from the given PropertyPage.
   virtual BlinkCriticalLineData* ExtractBlinkCriticalLineData(
-      int64 cache_time_ms, PropertyPage* page) {
+      int64 cache_time_ms, PropertyPage* page, int64 now_ms,
+      bool diff_enabled) {
     if (pcache_ == NULL) {
       return blink_critical_line_data_.release();
     }
@@ -526,6 +528,12 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
     ResourceManagerTestBase::TearDown();
   }
 
+  void InitializeFuriousSpec() {
+    options_->set_running_furious_experiment(true);
+    NullMessageHandler handler;
+    ASSERT_TRUE(options_->AddFuriousSpec("id=3;percent=100;default", &handler));
+  }
+
   void GetDefaultRequestHeaders(RequestHeaders* request_headers) {
     // Request from an internal ip.
     request_headers->Add(HttpAttributes::kUserAgent, kLinuxUserAgent);
@@ -539,6 +547,24 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
                                        GoogleString* string_out,
                                        ResponseHeaders* headers_out) {
     FetchFromProxy(url, expect_success, string_out, headers_out, true);
+  }
+
+  void VerifyNonBlinkResponse(ResponseHeaders* response_headers) {
+    ConstStringStarVector values;
+    EXPECT_TRUE(response_headers->Lookup(HttpAttributes::kCacheControl,
+                                         &values));
+    EXPECT_STREQ("max-age=0", *(values[0]));
+    EXPECT_STREQ("no-cache", *(values[1]));
+  }
+
+  void VerifyBlinkResponse(ResponseHeaders* response_headers) {
+    ConstStringStarVector v;
+    EXPECT_STREQ("text/html; charset=utf-8",
+                 response_headers->Lookup1(HttpAttributes::kContentType));
+    EXPECT_TRUE(response_headers->Lookup(HttpAttributes::kCacheControl, &v));
+    EXPECT_EQ("max-age=0", *v[0]);
+    EXPECT_EQ("private", *v[1]);
+    EXPECT_EQ("no-cache", *v[2]);
   }
 
   void FetchFromProxyWaitForUpdateResponseCode(
@@ -762,6 +788,85 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
     SetFetchResponse(url, response_headers, kHtmlInput);
   }
 
+  void TestBlinkHtmlChangeDetection(bool just_logging) {
+    options_->ClearSignatureForTesting();
+    options_->set_enable_blink_html_change_detection(!just_logging);
+    options_->set_enable_blink_html_change_detection_logging(just_logging);
+    resource_manager()->ComputeSignature(options_.get());
+
+    GoogleString text;
+    ResponseHeaders response_headers;
+    FetchFromProxyWaitForBackground(
+        "text.html", true, &text, &response_headers);
+
+    EXPECT_STREQ(kHtmlInput, text);
+    EXPECT_EQ(1, num_compute_calls());
+    EXPECT_EQ(kHtmlInput, text);
+    EXPECT_EQ(1, statistics()->FindVariable(
+        BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
+    EXPECT_EQ(1, statistics()->FindVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlCacheMisses)->Get());
+    EXPECT_EQ(0, statistics()->FindVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
+    response_headers.Clear();
+    ClearStats();
+
+    // Set the last diff timestamp ms to be 2 minutes before now so revalidate
+    // will return true.
+    int64 last_diff_timestamp_ms = resource_manager()->timer()->NowMs() -
+                                   2 * Timer::kMinuteMs;
+
+    // Hash not set. Results in mismatches.
+    SetBlinkCriticalLineData(true, "", last_diff_timestamp_ms);
+    FetchFromProxyWaitForBackground(
+        "text.html", true, &text, &response_headers);
+
+    UnEscapeString(&text);
+    EXPECT_STREQ(blink_output_, text);
+    EXPECT_EQ(1, statistics()->FindVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
+    EXPECT_EQ(just_logging ? 0 : 1, statistics()->FindVariable(
+        BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
+    EXPECT_EQ(1, statistics()->FindVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
+    VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, false);
+    ClearStats();
+
+    // Hash set. No mismatches.
+    SetBlinkCriticalLineData(true, "5SmNjVuPwO", last_diff_timestamp_ms);
+    FetchFromProxyWaitForBackground(
+        "text.html", true, &text, &response_headers);
+
+    UnEscapeString(&text);
+    EXPECT_STREQ(blink_output_, text);
+    EXPECT_EQ(1, statistics()->FindVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlMatches)->Get());
+    EXPECT_EQ(0, statistics()->FindVariable(
+        BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
+    EXPECT_EQ(1, statistics()->FindVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
+    VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, true);
+    ClearStats();
+
+    // Input with an extra comment. We strip out comments before taking hash,
+    // so there should be no mismatches.
+    SetFetchResponse("http://test.com/text.html", response_headers_,
+                     kHtmlInputWithExtraCommentAndNonCacheable);
+    SetBlinkCriticalLineData(true, "5SmNjVuPwO", last_diff_timestamp_ms);
+    FetchFromProxyWaitForBackground(
+        "text.html", true, &text, &response_headers);
+
+    UnEscapeString(&text);
+    EXPECT_STREQ(blink_output_with_extra_non_cacheable_, text);
+    EXPECT_EQ(1, statistics()->FindVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlMatches)->Get());
+    EXPECT_EQ(0, statistics()->FindVariable(
+        BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
+    EXPECT_EQ(1, statistics()->FindVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
+    VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, true);
+  }
+
   ResponseHeaders response_headers_;
   GoogleString noblink_output_;
   FakeBlinkCriticalLineDataFinder* fake_blink_critical_line_data_finder_;
@@ -944,15 +1049,71 @@ TEST_F(BlinkFlowCriticalLineTest,
   EXPECT_EQ(2, num_compute_calls());
 }
 
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkCacheMissFuriousSetCookie) {
+  options_->ClearSignatureForTesting();
+  InitializeFuriousSpec();
+  resource_manager()->ComputeSignature(options_.get());
+  GoogleString text;
+  ResponseHeaders response_headers;
+
+  FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
+
+  ConstStringStarVector values;
+  EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
+  EXPECT_EQ(2, values.size());
+  EXPECT_STREQ("_GFURIOUS=3", (*(values[1])).substr(0, 11));
+  VerifyNonBlinkResponse(&response_headers);
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkCacheHitFuriousSetCookie) {
+  options_->ClearSignatureForTesting();
+  InitializeFuriousSpec();
+  resource_manager()->ComputeSignature(options_.get());
+  GoogleString text;
+  ResponseHeaders response_headers;
+
+  SetBlinkCriticalLineData();
+  FetchFromProxyNoWaitForBackground("text.html", true, &text,
+                                    &response_headers);
+
+  ConstStringStarVector values;
+  EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
+  EXPECT_EQ(1, values.size());
+  EXPECT_STREQ("_GFURIOUS=3", (*(values[0])).substr(0, 11));
+  VerifyBlinkResponse(&response_headers);
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkFuriousCookieHandling) {
+  options_->ClearSignatureForTesting();
+  InitializeFuriousSpec();
+  resource_manager()->ComputeSignature(options_.get());
+  GoogleString text;
+  ResponseHeaders response_headers;
+  RequestHeaders request_headers;
+  GetDefaultRequestHeaders(&request_headers);
+  request_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=3");
+
+  SetBlinkCriticalLineData();
+  FetchFromProxy("text.html", true, request_headers,
+                 &text, &response_headers, false);
+
+  EXPECT_FALSE(response_headers.Has(HttpAttributes::kSetCookie));
+  VerifyBlinkResponse(&response_headers);
+}
+
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   GoogleString text;
   ResponseHeaders response_headers;
   FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
 
   ConstStringStarVector values;
-  EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
-  EXPECT_STREQ("max-age=0", *(values[0]));
-  EXPECT_STREQ("no-cache", *(values[1]));
+  EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
+  EXPECT_EQ(1, values.size());
+  if ((*(values[0])).size() >= 11) {
+    // 11 is the minimum size of the GFURIOUS cookie.
+    EXPECT_NE("_GFURIOUS=3", (*(values[0])).substr(0, 11));
+  }
+  VerifyNonBlinkResponse(&response_headers);
 
   EXPECT_STREQ(kHtmlInput, text);
   EXPECT_STREQ("text/html; charset=utf-8",
@@ -989,13 +1150,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   EXPECT_STREQ("OK", response_headers.reason_phrase());
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
-  ConstStringStarVector v;
-  EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &v));
-  EXPECT_STREQ("text/html; charset=utf-8",
-               response_headers.Lookup1(HttpAttributes::kContentType));
-  EXPECT_EQ("max-age=0", *v[0]);
-  EXPECT_EQ("private", *v[1]);
-  EXPECT_EQ("no-cache", *v[2]);
+  VerifyBlinkResponse(&response_headers);
 
   UnEscapeString(&text);
   EXPECT_STREQ(blink_output_, text);
@@ -1526,82 +1681,12 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateFalse) {
   ClearStats();
 }
 
-
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionRevalidateTrue) {
-  options_->ClearSignatureForTesting();
-  options_->set_enable_blink_html_change_detection(true);
-  resource_manager()->ComputeSignature(options_.get());
+  TestBlinkHtmlChangeDetection(false);
+}
 
-  GoogleString text;
-  ResponseHeaders response_headers;
-  FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
-
-  EXPECT_STREQ(kHtmlInput, text);
-  EXPECT_EQ(1, num_compute_calls());
-  EXPECT_EQ(kHtmlInput, text);
-  EXPECT_EQ(1, statistics()->FindVariable(
-      BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
-  EXPECT_EQ(1, statistics()->FindVariable(
-      BlinkFlowCriticalLine::kNumBlinkHtmlCacheMisses)->Get());
-  EXPECT_EQ(0, statistics()->FindVariable(
-      BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
-  response_headers.Clear();
-  ClearStats();
-
-  // Set the last diff timestamp ms to be 2 minutes before now so revalidate
-  // will return true.
-  int64 last_diff_timestamp_ms = resource_manager()->timer()->NowMs() -
-                                 2 * Timer::kMinuteMs;
-
-  // Hash not set. Results in mismatches.
-  SetBlinkCriticalLineData(true, "", last_diff_timestamp_ms);
-  FetchFromProxyWaitForBackground(
-      "text.html", true, &text, &response_headers);
-
-  UnEscapeString(&text);
-  EXPECT_STREQ(blink_output_, text);
-  EXPECT_EQ(1, statistics()->FindVariable(
-      BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
-  EXPECT_EQ(1, statistics()->FindVariable(
-      BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
-  EXPECT_EQ(1, statistics()->FindVariable(
-      BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
-  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, false);
-  ClearStats();
-
-  // Hash set. No mismatches.
-  SetBlinkCriticalLineData(true, "5SmNjVuPwO", last_diff_timestamp_ms);
-  FetchFromProxyWaitForBackground(
-      "text.html", true, &text, &response_headers);
-
-  UnEscapeString(&text);
-  EXPECT_STREQ(blink_output_, text);
-  EXPECT_EQ(1, statistics()->FindVariable(
-      BlinkFlowCriticalLine::kNumBlinkHtmlMatches)->Get());
-  EXPECT_EQ(0, statistics()->FindVariable(
-      BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
-  EXPECT_EQ(1, statistics()->FindVariable(
-      BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
-  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, true);
-  ClearStats();
-
-  // Input with an extra comment. We strip out comments before taking hash,
-  // so there should be no mismatches.
-  SetFetchResponse("http://test.com/text.html", response_headers_,
-                   kHtmlInputWithExtraCommentAndNonCacheable);
-  SetBlinkCriticalLineData(true, "5SmNjVuPwO", last_diff_timestamp_ms);
-  FetchFromProxyWaitForBackground(
-      "text.html", true, &text, &response_headers);
-
-  UnEscapeString(&text);
-  EXPECT_STREQ(blink_output_with_extra_non_cacheable_, text);
-  EXPECT_EQ(1, statistics()->FindVariable(
-      BlinkFlowCriticalLine::kNumBlinkHtmlMatches)->Get());
-  EXPECT_EQ(0, statistics()->FindVariable(
-      BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
-  EXPECT_EQ(1, statistics()->FindVariable(
-      BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
-  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, true);
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionLogging) {
+  TestBlinkHtmlChangeDetection(true);
 }
 
 TEST_F(BlinkFlowCriticalLineTest, TestSetBlinkCriticalLineDataFalse) {

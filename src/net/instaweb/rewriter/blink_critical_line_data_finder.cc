@@ -30,7 +30,7 @@ BlinkCriticalLineDataFinder::~BlinkCriticalLineDataFinder() {
 
 BlinkCriticalLineData*
 BlinkCriticalLineDataFinder::ExtractBlinkCriticalLineData(
-    int64 cache_time_ms, PropertyPage* page) {
+    int64 cache_time_ms, PropertyPage* page, int64 now_ms, bool diff_enabled) {
   return NULL;
   // Default interface returns NULL and derived classes can override.
 }

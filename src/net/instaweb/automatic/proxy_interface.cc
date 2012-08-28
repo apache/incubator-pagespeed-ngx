@@ -487,6 +487,14 @@ void ProxyInterface::ProxyRequestCallback(
         options = global_options->Clone();
       }
     }
+    // TODO(anupama): Adapt the below furious experiment logic for
+    // FlushEarlyFlow as well.
+    bool need_to_store_experiment_data = false;
+    if (options != NULL && options->running_furious()) {
+      need_to_store_experiment_data = resource_manager_->furious_matcher()->
+          ClassifyIntoExperiment(*async_fetch->request_headers(), options);
+      options->set_need_to_store_experiment_data(need_to_store_experiment_data);
+    }
     const char* user_agent = async_fetch->request_headers()->Lookup1(
         HttpAttributes::kUserAgent);
     bool is_blink_request = BlinkUtil::IsBlinkRequest(
@@ -523,11 +531,6 @@ void ProxyInterface::ProxyRequestCallback(
                                    property_callback.release());
     } else {
       RewriteDriver* driver = NULL;
-      bool need_to_store_experiment_data = false;
-      if (options != NULL && options->running_furious()) {
-        need_to_store_experiment_data = resource_manager_->furious_matcher()->
-            ClassifyIntoExperiment(*async_fetch->request_headers(), options);
-      }
       // Starting property cache lookup after the furious state is set.
       property_callback.reset(InitiatePropertyCacheLookup(
           is_resource_fetch, *request_url, options, async_fetch));
@@ -537,7 +540,6 @@ void ProxyInterface::ProxyRequestCallback(
         // NewCustomRewriteDriver takes ownership of custom_options_.
         driver = resource_manager_->NewCustomRewriteDriver(options);
       }
-      driver->set_need_to_store_experiment_data(need_to_store_experiment_data);
       driver->set_log_record(async_fetch->log_record());
 
       // TODO(mmohabey): Remove duplicate setting of user agent for different

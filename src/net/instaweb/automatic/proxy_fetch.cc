@@ -419,7 +419,7 @@ bool ProxyFetch::StartParse() {
   // which rewrite options we need (in proxy_interface.cc) and here.
   // Therefore, we can not set the Set-Cookie header there, and must
   // do it here instead.
-  if (driver_->need_to_store_experiment_data() &&
+  if (Options()->need_to_store_experiment_data() &&
       Options()->running_furious()) {
     int furious_value = Options()->furious_id();
     resource_manager_->furious_matcher()->StoreExperimentData(

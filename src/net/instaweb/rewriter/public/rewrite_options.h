@@ -150,6 +150,7 @@ class RewriteOptions {
     kEnableBlinkForMobileDevices,
     kEnabled,
     kEnableBlinkHtmlChangeDetection,
+    kEnableBlinkHtmlChangeDetectionLogging,
     kEnableDeferJsExperimental,
     kEnableFlushSubresourcesExperimental,
     kEnableInlinePreviewImagesExperimental,
@@ -722,6 +723,13 @@ class RewriteOptions {
   void set_min_resource_cache_time_to_rewrite_ms(int64 x) {
     set_option(x, &min_resource_cache_time_to_rewrite_ms_);
   }
+  bool need_to_store_experiment_data() const {
+    return need_to_store_experiment_data_;
+  }
+  void set_need_to_store_experiment_data(bool x) {
+    need_to_store_experiment_data_ = x;
+  }
+
   int64 blocking_fetch_timeout_ms() const {
     return blocking_fetch_timeout_ms_.value();
   }
@@ -1046,6 +1054,13 @@ class RewriteOptions {
   }
   bool enable_blink_html_change_detection() const {
     return enable_blink_html_change_detection_.value();
+  }
+
+  void set_enable_blink_html_change_detection_logging(bool x) {
+    set_option(x, &enable_blink_html_change_detection_logging_);
+  }
+  bool enable_blink_html_change_detection_logging() const {
+    return enable_blink_html_change_detection_logging_.value();
   }
 
   void set_blink_html_change_detection_time_ms(int64 x) {
@@ -1982,6 +1997,8 @@ class RewriteOptions {
   Option<bool> enable_blink_debug_dashboard_;
   // Enable automatic detection of publisher changes in html in blink.
   Option<bool> enable_blink_html_change_detection_;
+  // Enable logging of publisher changes detected in html in blink flow.
+  Option<bool> enable_blink_html_change_detection_logging_;
   // Override cache-time for cacheable resources in blink.
   Option<int64> override_blink_cache_time_ms_;
 
@@ -2025,6 +2042,8 @@ class RewriteOptions {
   // mixed debug/opt object files in an executable.
   bool options_uniqueness_checked_;
 
+  // Do we need to store experiment data for Furious?
+  bool need_to_store_experiment_data_;
   // Which experiment configuration are we in?
   int furious_id_;
   int furious_percent_;  // Total traffic going through experiments.

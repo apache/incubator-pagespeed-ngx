@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_BLINK_CRITICAL_LINE_DATA_FINDER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -40,7 +41,7 @@ class BlinkCriticalLineDataFinder {
 
   // Gets BlinkCriticalLineData from the given PropertyPage.
   virtual BlinkCriticalLineData* ExtractBlinkCriticalLineData(
-      int64 cache_time_ms, PropertyPage* page);
+      int64 cache_time_ms, PropertyPage* page, int64 now_ms, bool diff_enabled);
 
   // Computes BlinkCriticalLineData for the given html content.
   virtual void ComputeBlinkCriticalLineData(

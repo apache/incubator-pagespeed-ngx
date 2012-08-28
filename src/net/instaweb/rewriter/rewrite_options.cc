@@ -503,6 +503,7 @@ RewriteOptions::RewriteOptions()
     : modified_(false),
       frozen_(false),
       options_uniqueness_checked_(false),
+      need_to_store_experiment_data_(false),
       furious_id_(furious::kFuriousNotSet),
       furious_percent_(0),
       url_valued_attributes_(NULL) {
@@ -666,6 +667,8 @@ RewriteOptions::RewriteOptions()
              &max_combined_js_bytes_, "xcj", kMaxCombinedJsBytes);
   add_option(false, &enable_blink_html_change_detection_, "ebhcd",
              kEnableBlinkHtmlChangeDetection);
+  add_option(false, &enable_blink_html_change_detection_logging_, "ebhcdl",
+             kEnableBlinkHtmlChangeDetectionLogging);
   add_option(-1, &override_caching_ttl_ms_, "octm", kOverrideCachingTtlMs);
   add_option(5 * Timer::kSecondMs, &blocking_fetch_timeout_ms_, "bfto",
              RewriteOptions::kFetcherTimeOutMs);
@@ -1283,6 +1286,7 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     InsertFuriousSpecInVector(spec);
   }
 
+  furious_id_ = src.furious_id_;
   for (int i = 0, n = src.num_url_valued_attributes(); i < n; ++i) {
     StringPiece element;
     StringPiece attribute;

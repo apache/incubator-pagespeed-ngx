@@ -214,7 +214,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       low_priority_rewrite_worker_(NULL),
       writer_(NULL),
       client_state_(NULL),
-      need_to_store_experiment_data_(false),
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
       num_inline_preview_images_(0),
@@ -299,7 +298,6 @@ void RewriteDriver::Clear() {
   user_agent_supports_image_inlining_ = kNotSet;
   user_agent_supports_js_defer_ = kNotSet;
   user_agent_supports_webp_ = kNotSet;
-  need_to_store_experiment_data_ = false;
   xhtml_mimetype_computed_ = false;
   xhtml_status_ = kXhtmlUnknown;
 

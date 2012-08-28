@@ -810,13 +810,6 @@ class RewriteDriver : public HtmlParse {
   // Decrements the value of pending_async_events_.
   void decrement_async_events_count();
 
-  bool need_to_store_experiment_data() const {
-    return need_to_store_experiment_data_;
-  }
-  void set_need_to_store_experiment_data(bool x) {
-    need_to_store_experiment_data_ = x;
-  }
-
   // Determines whether the document's Content-Type has a mimetype indicating
   // that browsers should parse it as XHTML.
   XhtmlStatus MimeTypeXhtmlStatus();
@@ -1193,9 +1186,6 @@ class RewriteDriver : public HtmlParse {
 
   // Stores all the critical images for the current URL.
   scoped_ptr<StringSet> critical_images_;
-
-  // Do we need to store experiment data for Furious?
-  bool need_to_store_experiment_data_;
 
   // Memoized computation of whether the current doc has an XHTML mimetype.
   bool xhtml_mimetype_computed_;
