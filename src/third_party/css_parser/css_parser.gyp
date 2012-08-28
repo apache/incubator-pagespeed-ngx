@@ -146,7 +146,7 @@
         '<(css_parser_root)/util/gtl/dense_hash_map.h',
         '<(css_parser_root)/util/gtl/map-util.h',
         '<(css_parser_root)/util/gtl/singleton.h',
-        '<(css_parser_root)/util/gtl/stl_util-inl.h',
+        '<(css_parser_root)/util/gtl/stl_util.h',
         '<(css_parser_root)/util/hash/hash.h',
       ],
     },

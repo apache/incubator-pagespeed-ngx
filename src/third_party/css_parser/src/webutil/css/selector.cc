@@ -17,7 +17,7 @@
 // Copyright 2006 Google Inc. All Rights Reserved.
 // Author: dpeng@google.com (Daniel Peng)
 
-#include "util/gtl/stl_util-inl.h"
+#include "util/gtl/stl_util.h"
 
 #include "webutil/css/selector.h"
 

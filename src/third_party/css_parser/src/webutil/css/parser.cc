@@ -30,7 +30,7 @@
 #include "strings/memutil.h"
 #include "strings/strutil.h"
 #include "third_party/utf/utf.h"
-#include "util/gtl/stl_util-inl.h"
+#include "util/gtl/stl_util.h"
 #include "util/utf8/public/unicodetext.h"
 #include "util/utf8/public/unilib.h"
 #include "webutil/css/string.h"
