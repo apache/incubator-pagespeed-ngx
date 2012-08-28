@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -49,12 +50,19 @@ class Variable {
 
 // Class that manages dumping statistics periodically to a file.
 class ConsoleStatisticsLogger {
- public:
-  virtual ~ConsoleStatisticsLogger();
-
-  // If it's been longer than kStatisticsDumpIntervalMs, update the
-  // timestamp to now and dump the current state of the Statistics.
-  virtual void UpdateAndDumpIfRequired() = 0;
+  public:
+    virtual ~ConsoleStatisticsLogger();
+    // If it's been longer than kStatisticsDumpIntervalMs, update the
+    // timestamp to now and dump the current state of the Statistics.
+    virtual void UpdateAndDumpIfRequired() = 0;
+    // Writes the data from the logfile in JSON format for the given variables,
+    // filtered with the given parameters.
+    virtual void DumpJSON(const std::set<GoogleString>& var_titles,
+                          const std::set<GoogleString>& hist_titles,
+                          int64 startTime, int64 endTime, int64 granularity_ms,
+                          Writer* writer,
+                          MessageHandler* message_handler) const = 0;
+    virtual Timer* timer() = 0;
 };
 
 class Histogram {

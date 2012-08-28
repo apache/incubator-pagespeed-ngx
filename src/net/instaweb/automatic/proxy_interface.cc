@@ -90,6 +90,7 @@ bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
     case ContentType::kWebp:
     case ContentType::kPdf:
     case ContentType::kOther:
+    case ContentType::kJson:
       return false;
   }
   LOG(DFATAL) << "URL " << url.Spec() << ": unexpected type:" << type->type()

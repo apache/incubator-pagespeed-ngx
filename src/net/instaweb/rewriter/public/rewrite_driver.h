@@ -140,6 +140,10 @@ class RewriteDriver : public HtmlParse {
   // on every HTML request.
   static const char kDomCohort[];
 
+  // The name of the property in the DomCohort that tracks the timestamp when
+  // we last received a request for this url.
+  static const char kLastRequestTimestamp[];
+
   // This proprty is used to store information regarding the subresources
   // associted with the HTML page.
   static const char kSubresourcesPropertyName[];

@@ -630,6 +630,7 @@ const char* RewriteDriver::kPassThroughRequestAttributes[3] = {
 
 const char RewriteDriver::kDomCohort[] = "dom";
 const char RewriteDriver::kSubresourcesPropertyName[] = "subresources";
+const char RewriteDriver::kLastRequestTimestamp[] = "last_request_timestamp";
 
 void RewriteDriver::Initialize(Statistics* statistics) {
   RewriteOptions::Initialize();
@@ -1826,8 +1827,11 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
     PropertyCache* pcache = resource_manager_->page_property_cache();
     const PropertyCache::Cohort* dom_cohort = pcache->GetCohort(kDomCohort);
     if (dom_cohort != NULL) {
-      if (flush_early_info_.get() != NULL &&
-          UserAgentSupportsFlushEarly()) {
+      // Update the timestamp of the last request.
+      UpdatePropertyValueInDomCohort(
+          kLastRequestTimestamp,
+          Integer64ToString(resource_manager()->timer()->NowMs()));
+      if (flush_early_info_.get() != NULL) {
         PropertyValue* subresources_property_value = page->GetProperty(
             dom_cohort, RewriteDriver::kSubresourcesPropertyName);
         GoogleString value;

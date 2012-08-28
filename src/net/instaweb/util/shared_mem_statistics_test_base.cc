@@ -19,6 +19,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/json.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -443,6 +444,47 @@ void SharedMemStatisticsTestBase::TestTimedVariableEmulation() {
   EXPECT_EQ(42, b->Get(TimedVariable::START));
 }
 
+GoogleString SharedMemStatisticsTestBase::CreateHistogramDataResponse(
+    const GoogleString & histogram_name, bool is_long_response) {
+  GoogleString histogram_data = "histogram#" + histogram_name;
+  if (is_long_response) {
+    histogram_data += "#0.000000#5.000000#2.000000"
+                      "#10.000000#15.000000#1.000000"
+                      "#20.000000#25.000000#1.000000"
+                      "#100.000000#105.000000#1.000000"
+                      "#200.000000#205.000000#1.000000"
+                      "#1000.000000#1005.000000#1.000000"
+                      "#2000.000000#2005.000000#1.000000\n";
+  } else {
+    histogram_data += "#0.000000#5.000000#2.000000"
+                      "#10.000000#15.000000#1.000000"
+                      "#20.000000#25.000000#1.000000"
+                      "#100.000000#105.000000#1.000000"
+                      "#200.000000#205.000000#1.000000\n";
+  }
+  return histogram_data;
+}
+
+GoogleString SharedMemStatisticsTestBase::CreateVariableDataResponse(
+  bool has_unused_variable, bool first) {
+  GoogleString var_data;
+  if (first) {
+    var_data = "num_flushes: 300\n"
+               "cache_hits: 400\n"
+               "cache_misses: 500\n"
+               "slurp_404_count: 600\n";
+  } else {
+    var_data = "num_flushes: 310\n"
+               "cache_hits: 410\n"
+               "cache_misses: 510\n"
+               "slurp_404_count: 610\n";
+  }
+  if (has_unused_variable) {
+    var_data += "random_unused_var: 700\n";
+  }
+  return var_data;
+}
+
 void SharedMemStatisticsTestBase::TestConsoleStatisticsLogger() {
   ParentInit();
   // See IMPORTANT note in shared_mem_statistics.cc
@@ -477,16 +519,311 @@ void SharedMemStatisticsTestBase::TestConsoleStatisticsLogger() {
   stats_->DumpConsoleVarsToWriter(timer_->NowMs(), &logger_writer, &handler_);
   GoogleString result = "timestamp: 1342567288560\n"
                         "num_flushes: 300\n"
-                        "histogram: Html Time us Histogram\n"
-                        "[0.000000, 5.000000): 2.000000\n"
-                        "[10.000000, 15.000000): 1.000000\n"
-                        "[20.000000, 25.000000): 1.000000\n"
-                        "[100.000000, 105.000000): 1.000000\n"
-                        "[200.000000, 205.000000): 1.000000\n"
-                        "[1000.000000, 1005.000000): 1.000000\n"
-                        "[2000.000000, 2005.000000): 1.000000\n"
-                        "[2500.000000, inf): 1.000000\n";
+                        "histogram#Html Time us Histogram"
+                        "#0.000000#5.000000#2.000000"
+                        "#10.000000#15.000000#1.000000"
+                        "#20.000000#25.000000#1.000000"
+                        "#100.000000#105.000000#1.000000"
+                        "#200.000000#205.000000#1.000000"
+                        "#1000.000000#1005.000000#1.000000"
+                        "#2000.000000#2005.000000#1.000000"
+                        "#2500.000000#inf#1.000000\n";
   EXPECT_EQ(result, logger_output);
 }
+
+// Output parameters: variable data and corresponding set of variable titles,
+// histogram data and corresponding set of histogram titles, and returns a
+// logfile-formatted data string using this data. Used for easy creation of
+// parsing material in testing functions.
+GoogleString SharedMemStatisticsTestBase::CreateFakeLogfile(
+    GoogleString* var_data, GoogleString* hist_data,
+    std::set<GoogleString>* var_titles, std::set<GoogleString>* hist_titles) {
+  GoogleString hist_names[4] = {"Html Time us Histogram",
+                               "Pagespeed Resource Latency Histogram",
+                               "Backend Fetch First Byte Latency Histogram",
+                               "Rewrite Latency Histogram"};
+  StrAppend(hist_data, CreateHistogramDataResponse(hist_names[0], false),
+            CreateHistogramDataResponse(hist_names[1], false),
+            CreateHistogramDataResponse(hist_names[2], false),
+            CreateHistogramDataResponse(hist_names[3], false));
+  for (size_t i = 0; i < 4; i++) {
+    hist_titles->insert(hist_names[i]);
+  }
+
+  // Populate variable data.
+  *var_data = CreateVariableDataResponse(false, true);
+  var_titles->insert("num_flushes");
+  var_titles->insert("slurp_404_count");
+  var_titles->insert("cache_hits");
+  var_titles->insert("cache_misses");
+
+  GoogleString last_timestamp_hist_data =
+      StrCat(CreateHistogramDataResponse(hist_names[0], true),
+             StrCat(CreateHistogramDataResponse(hist_names[1], true),
+                    StrCat(CreateHistogramDataResponse(hist_names[2], true),
+                           CreateHistogramDataResponse(hist_names[3], true))));
+  GoogleString data = StrCat(*var_data, *hist_data);
+  GoogleString logfile_input =
+      StrCat(StrCat(StrCat("timestamp: 1300000000005\n", data),
+             StrCat("timestamp: 1300000000010\n", data)),
+             StrCat(StrCat("timestamp: 1300000000015\n", data),
+                    StrCat("timestamp: 1300000000020\n",
+                           StrCat(*var_data, last_timestamp_hist_data))));
+  return logfile_input;
+}
+
+// Using TEST_F because several of the methods that need to be tested are
+// private methods.
+// Tests that, given a ConsoleStatisticsLogfileReader, data is accurately parsed
+// into a VarMap, HistMap, and list of timestamps.
+TEST_F(SharedMemStatisticsTestBase, TestParseDataFromReader) {
+  SharedMemConsoleStatisticsLogger* console =
+      reinterpret_cast<SharedMemConsoleStatisticsLogger*>
+      (stats_->console_logger());
+  GoogleString hist_data, var_data;
+  std::set<GoogleString> hist_titles, var_titles;
+  GoogleString logfile_input = CreateFakeLogfile(&var_data, &hist_data,
+                                                 &var_titles, &hist_titles);
+  StringPiece logfile_input_piece(logfile_input);
+  GoogleString file_name;
+  FileSystem* file_system = file_system_.get();
+  bool success = file_system->WriteTempFile(kPrefix, logfile_input_piece,
+                                            &file_name, &handler_);
+  EXPECT_TRUE(success);
+
+  FileSystem::InputFile* log_file =
+      file_system->OpenInputFile(file_name.c_str(), &handler_);
+  GoogleString output;
+  int64 start_time = 1300000000000;
+  int64 end_time = 1400000000000;
+  int64 granularity_ms = 2;
+  ConsoleStatisticsLogfileReader reader(log_file, start_time, end_time,
+                                        granularity_ms, &handler_);
+  std::vector<int64> list_of_timestamps;
+  SharedMemConsoleStatisticsLogger::VarMap parsed_var_data;
+  SharedMemConsoleStatisticsLogger::HistMap parsed_hist_data;
+  console->ParseDataFromReader(var_titles, hist_titles, &reader,
+                               &list_of_timestamps, &parsed_var_data,
+                               &parsed_hist_data);
+  // Test that the entire logfile was parsed correctly.
+  EXPECT_EQ(4, parsed_var_data.size());
+  EXPECT_EQ(4, parsed_hist_data.size());
+  EXPECT_EQ(4, list_of_timestamps.size());
+
+  // Test that the correct histograms was retrieved.
+  EXPECT_EQ(7, parsed_hist_data["Html Time us Histogram"].size());
+
+  file_system->Close(log_file, &handler_);
+}
+
+// Creates fake logfile data and tests that ReadNextDataBlock accurately
+// extracts data from logfile-formatted text.
+TEST_F(SharedMemStatisticsTestBase, TestNextDataBlock) {
+  GoogleString histogram_data =
+      CreateHistogramDataResponse("Html Time us Histogram", true);
+  int64 start_time = 1300000000000;  // Randomly chosen times.
+  int64 end_time = 1400000000000;
+  int64 granularity_ms = 5;
+  int64 initial_timestamp = 1342567288560;
+  // Add two working cases.
+  GoogleString input = "timestamp: " +
+                       Integer64ToString(initial_timestamp) + "\n";
+  const GoogleString first_var_data =  "num_flushes: 300\n" + histogram_data;
+  input += first_var_data;
+  input += "timestamp: " + Integer64ToString(initial_timestamp + 20) + "\n";
+  const GoogleString second_var_data = "num_flushes: 305\n" + histogram_data;
+  input += second_var_data;
+
+  // Add case that purposefully fails granularity requirements (The difference
+  // between this timestamp and the previous one is only 2ms, whereas the
+  // desired granularity is 5ms).
+  input += "timestamp: " + Integer64ToString(initial_timestamp + 22) + "\n";
+  const GoogleString third_var_data = "num_flushes: 310\n" + histogram_data;
+  input += third_var_data;
+
+  // Add case that purposefully fails start_time requirements.
+  input += "timestamp: 1200000000000\n";
+  input += third_var_data;
+  // Add case that purposefully fails end_time requirements.
+  input += "timestamp: 1500000000000\n";
+  input += third_var_data;
+  // Add working case to make sure data output continues despite previous
+  // requirements failing.
+  input += "timestamp: " + Integer64ToString(initial_timestamp + 50) + "\n";
+  input += third_var_data;
+  StringPiece input_piece(input);
+  GoogleString file_name;
+
+  FileSystem* file_system = file_system_.get();
+  bool success = file_system->WriteTempFile(kPrefix, input_piece, &file_name,
+                                            &handler_);
+  EXPECT_TRUE(success);
+
+  FileSystem::InputFile* log_file =
+      file_system->OpenInputFile(file_name.c_str(), &handler_);
+  GoogleString output;
+  ConsoleStatisticsLogfileReader reader(log_file, start_time, end_time,
+                                        granularity_ms, &handler_);
+  int64 timestamp = -1;
+  // Test that the first data block is read correctly.
+  success = reader.ReadNextDataBlock(&timestamp, &output);
+  EXPECT_TRUE(success);
+  EXPECT_EQ(first_var_data, output);
+  EXPECT_EQ(initial_timestamp, timestamp);
+
+  // Test that the second data block is read correctly.
+  success = reader.ReadNextDataBlock(&timestamp, &output);
+  EXPECT_TRUE(success);
+  EXPECT_EQ(second_var_data, output);
+  EXPECT_EQ(initial_timestamp + 20, timestamp);
+
+  // Test that granularity, start_time, and end_time filters are working.
+  success = reader.ReadNextDataBlock(&timestamp, &output);
+  EXPECT_TRUE(success);
+  EXPECT_EQ(third_var_data, output);
+  EXPECT_EQ(initial_timestamp + 50, timestamp);
+
+  file_system->Close(log_file, &handler_);
+}
+
+// Creates fake logfile data and tests that the data containing the variable
+// timeseries information is accurately parsed.
+TEST_F(SharedMemStatisticsTestBase, TestParseVarData) {
+  SharedMemConsoleStatisticsLogger* console =
+      reinterpret_cast<SharedMemConsoleStatisticsLogger*>
+      (stats_->console_logger());
+  SharedMemConsoleStatisticsLogger::VarMap parsed_var_data;
+  GoogleString var_data = CreateVariableDataResponse(true, true);
+  const StringPiece var_data_piece(var_data);
+  std::set<GoogleString> var_titles;
+  var_titles.insert("num_flushes");
+  var_titles.insert("slurp_404_count");
+  var_titles.insert("not_a_variable");
+  console->ParseVarDataIntoMap(var_data_piece, var_titles, &parsed_var_data);
+
+  EXPECT_NE(parsed_var_data.end(), parsed_var_data.find("num_flushes"));
+  EXPECT_NE(parsed_var_data.end(), parsed_var_data.find("slurp_404_count"));
+
+  // Test that map does not update variables that are not queried.
+  EXPECT_EQ(parsed_var_data.end(), parsed_var_data.find("cache_hits"));
+  EXPECT_EQ(parsed_var_data.end(), parsed_var_data.find("not_a_variable"));
+  EXPECT_EQ(parsed_var_data.end(), parsed_var_data.find("random_unused_var"));
+
+  // Test that map correctly adds data on initial run.
+  EXPECT_EQ(1, parsed_var_data["num_flushes"].size());
+  EXPECT_EQ("300", parsed_var_data["num_flushes"][0]);
+
+  // Test that map is updated correctly when new data is added.
+  GoogleString var_data_2 = CreateVariableDataResponse(true, false);
+  const StringPiece var_data_piece_2(var_data_2);
+  console->ParseVarDataIntoMap(var_data_piece_2, var_titles, &parsed_var_data);
+  EXPECT_EQ(2, parsed_var_data["num_flushes"].size());
+  EXPECT_EQ("300", parsed_var_data["num_flushes"][0]);
+  EXPECT_EQ("310", parsed_var_data["num_flushes"][1]);
+}
+
+// Creates fake logfile data and tests that the data containing the histogram
+// information is accurately parsed.
+TEST_F(SharedMemStatisticsTestBase, TestParseHistData) {
+  SharedMemConsoleStatisticsLogger* console =
+      reinterpret_cast<SharedMemConsoleStatisticsLogger*>
+      (stats_->console_logger());
+  GoogleString hist_data =
+      CreateHistogramDataResponse("Html Time us Histogram", true) +
+      CreateHistogramDataResponse("Unused Histogram", true) +
+      CreateHistogramDataResponse("Backend Fetch First Byte Latency Histogram",
+                                  false) +
+      CreateHistogramDataResponse("Rewrite Latency Histogram", true);
+
+  std::set<GoogleString> hist_titles;
+  hist_titles.insert("Html Time us Histogram");
+  hist_titles.insert("random histogram name");
+  hist_titles.insert("Pagespeed Resource Latency Histogram");
+  hist_titles.insert("Backend Fetch First Byte Latency Histogram");
+  StringPiece hist_data_piece(hist_data);
+  SharedMemConsoleStatisticsLogger::HistMap parsed_hist_data =
+      console->ParseHistDataIntoMap(hist_data_piece, hist_titles);
+
+  // Test that unqueried/ignored histograms are not generated.
+  EXPECT_NE(parsed_hist_data.end(),
+            parsed_hist_data.find("Html Time us Histogram"));
+  EXPECT_NE(
+      parsed_hist_data.end(),
+      parsed_hist_data.find("Backend Fetch First Byte Latency Histogram"));
+  EXPECT_EQ(parsed_hist_data.end(), parsed_hist_data.find("Unused Histogram"));
+  EXPECT_EQ(parsed_hist_data.end(),
+            parsed_hist_data.find("Rewrite Latency Histogram"));
+  EXPECT_EQ(parsed_hist_data.end(),
+            parsed_hist_data.find("Pagespeed Resource Latency Histogram"));
+  EXPECT_EQ(parsed_hist_data.end(),
+            parsed_hist_data.find("random histogram name"));
+
+  // Test that the first bar of the first histogram is generated correctly.
+  SharedMemConsoleStatisticsLogger::HistInfo first_histogram =
+      parsed_hist_data["Html Time us Histogram"];
+  EXPECT_EQ(7, first_histogram.size());
+  EXPECT_EQ("0.000000", first_histogram[0].first.first);
+  EXPECT_EQ("5.000000", first_histogram[0].first.second);
+  EXPECT_EQ("2.000000", first_histogram[0].second);
+
+  // Test that the last bar of the first histogram is generated correctly.
+  EXPECT_EQ("2000.000000", first_histogram[6].first.first);
+  EXPECT_EQ("2005.000000", first_histogram[6].first.second);
+  EXPECT_EQ("1.000000", first_histogram[6].second);
+
+  // Test that the first bar of the last histogram is generated correctly.
+  SharedMemConsoleStatisticsLogger::HistInfo last_histogram =
+      parsed_hist_data["Backend Fetch First Byte Latency Histogram"];
+  SharedMemConsoleStatisticsLogger::HistBarInfo first_bar_of_last_histogram =
+      last_histogram[0];
+  EXPECT_EQ(5, last_histogram.size());
+  EXPECT_EQ("0.000000", first_bar_of_last_histogram.first.first);
+  EXPECT_EQ("5.000000", first_bar_of_last_histogram.first.second);
+  EXPECT_EQ("2.000000", first_bar_of_last_histogram.second);
+
+  // Test that the last bar of the last histogram is generated correctly.
+  SharedMemConsoleStatisticsLogger::HistBarInfo last_bar_of_last_histogram =
+      parsed_hist_data["Backend Fetch First Byte Latency Histogram"][4];
+  EXPECT_EQ("200.000000", last_bar_of_last_histogram.first.first);
+  EXPECT_EQ("205.000000", last_bar_of_last_histogram.first.second);
+  EXPECT_EQ("1.000000", last_bar_of_last_histogram.second);
+}
+
+// Takes fake logfile data and parses it. It then checks that PrintJSONResponse
+// accurately outputs a valid JSON object given the parsed variable and
+// histogram data.
+TEST_F(SharedMemStatisticsTestBase, TestPrintJSONResponse) {
+  SharedMemConsoleStatisticsLogger* console =
+      reinterpret_cast<SharedMemConsoleStatisticsLogger*>
+      (stats_->console_logger());
+  GoogleString hist_data, var_data, var_data_2;
+  std::set<GoogleString> hist_titles, var_titles;
+  CreateFakeLogfile(&var_data, &hist_data, &var_titles, &hist_titles);
+
+  StringPiece hist_data_piece(hist_data);
+  SharedMemConsoleStatisticsLogger::HistMap parsed_hist_data =
+      console->ParseHistDataIntoMap(hist_data_piece, hist_titles);
+
+  SharedMemConsoleStatisticsLogger::VarMap parsed_var_data;
+  console->ParseVarDataIntoMap(var_data, var_titles, &parsed_var_data);
+
+  var_data_2 = CreateVariableDataResponse(false, false);
+  console->ParseVarDataIntoMap(var_data_2, var_titles, &parsed_var_data);
+
+  // Populate timestamp data.
+  std::vector<int64> list_of_timestamps;
+  int64 starting_timestamp = 1342567288580;
+  for (int i = 0; i < 5; ++i) {
+    list_of_timestamps.push_back(starting_timestamp + i*5);
+  }
+  GoogleString dump;
+  StringWriter writer(&dump);
+  console->PrintJSON(list_of_timestamps, parsed_var_data, parsed_hist_data,
+                     &writer, &handler_);
+  Json::Value complete_json;
+  Json::Reader json_reader;
+  EXPECT_TRUE(json_reader.parse(dump.c_str(), complete_json));
+}
+
 
 }  // namespace net_instaweb

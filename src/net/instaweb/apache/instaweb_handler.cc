@@ -45,6 +45,7 @@
 #include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
+#include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 
@@ -60,6 +61,7 @@ namespace net_instaweb {
 namespace {
 
 const char kStatisticsHandler[] = "mod_pagespeed_statistics";
+const char kStatisticsJsonHandler[] = "mod_pagespeed_statistics_json";
 const char kGlobalStatisticsHandler[] = "mod_pagespeed_global_statistics";
 const char kRefererStatisticsHandler[] = "mod_pagespeed_referer_statistics";
 const char kMessageHandler[] = "mod_pagespeed_message";
@@ -207,14 +209,17 @@ bool handle_as_resource(ApacheResourceManager* manager,
   return is_ps_url;
 }
 
-// Write out boilerplate HTTP headers for our custom handlers
-// (like /mod_pagespeed_statistics).
-void write_handler_response(const StringPiece& output, request_rec* request) {
+// Write response headers and send out headers and output, including the option
+//     for a custom Content-Type.
+void write_handler_response(const StringPiece& output,
+                            request_rec* request,
+                            ContentType content_type) {
   ResponseHeaders response_headers;
   response_headers.SetStatusAndReason(HttpStatus::kOK);
   response_headers.set_major_version(1);
   response_headers.set_minor_version(1);
-  response_headers.Add(HttpAttributes::kContentType, "text/html");
+
+  response_headers.Add(HttpAttributes::kContentType, content_type.mime_type());
   AprTimer timer;
   int64 now_ms = timer.NowMs();
   response_headers.SetDate(now_ms);
@@ -222,6 +227,10 @@ void write_handler_response(const StringPiece& output, request_rec* request) {
   response_headers.Add(HttpAttributes::kCacheControl,
                        HttpAttributes::kNoCache);
   send_out_headers_and_body(request, response_headers, output.as_string());
+}
+
+void write_handler_response(const StringPiece& output, request_rec* request) {
+  write_handler_response(output, request, kContentTypeHtml);
 }
 
 // Returns request URL if it was a .pagespeed. rewritten resource URL.
@@ -287,40 +296,98 @@ apr_status_t instaweb_handler(request_rec* request) {
       (strcmp(request->handler, kStatisticsHandler) == 0);
   bool global_stats_request =
       (strcmp(request->handler, kGlobalStatisticsHandler) == 0);
+  int64 start_time, end_time, granularity_ms;
+  std::set<GoogleString> var_titles;
+  std::set<GoogleString> hist_titles;
   if (general_stats_request || global_stats_request) {
-    GoogleString output;
-    StringWriter writer(&output);
-
     if (general_stats_request && !factory->use_per_vhost_statistics()) {
       global_stats_request = true;
     }
-
+    // Choose the correct statistics.
     Statistics* statistics =
         global_stats_request ? factory->statistics() : manager->statistics();
+    bool json = false;
+    // Gather the query params to handle the JSON case.
+    if (statistics->console_logger() != NULL) {
+      // Default values for start_time, end_time, and granularity_ms in case the
+      // query does not include these parameters.
+      start_time = 0;
+      end_time = statistics->console_logger()->timer()->NowMs();
+      // Granularity is the difference in ms between data points. If it is not
+      // specified by the query, the default value is 3000 ms, the same as the
+      // default logging granularity.
+      granularity_ms = 3000;
+      QueryParams params;
+      params.Parse(request->args);
+      for (int i = 0; i < params.size(); ++i) {
+        const GoogleString value =
+            (params.value(i) == NULL) ? "" : *params.value(i);
+        const char* name = params.name(i);
+        if (strcmp(name, "json") == 0) {
+          json = true;
+        } else if (strcmp(name, "start_time") == 0) {
+          StringToInt64(value, &start_time);
+        } else if (strcmp(name, "end_time") == 0) {
+          StringToInt64(value, &end_time);
+        } else if (strcmp(name, "var_titles") == 0) {
+          std::vector<StringPiece> variable_names;
+          SplitStringPieceToVector(value, ",", &variable_names, true);
+          for (size_t i = 0; i < variable_names.size(); ++i) {
+            var_titles.insert(variable_names[i].as_string());
+          }
+        } else if (strcmp(name, "hist_titles") == 0) {
+          std::vector<StringPiece> histogram_names;
+          SplitStringPieceToVector(value, ",", &histogram_names, true);
+          for (size_t i = 0; i < histogram_names.size(); ++i) {
+            // TODO(sarahdw, bvb): Until we can use the escaping function found
+            // in net/base/escape.h, we are stuck using this
+            // GlobalReplaceSubstring hack. Once this becomes available we will
+            // switch to using more reliable unescaping.
+            GoogleString name = histogram_names[i].as_string();
+            GlobalReplaceSubstring("%20", " ", &(name));
+            hist_titles.insert(name);
+          }
+        } else if (strcmp(name, "granularity") == 0) {
+          StringToInt64(value, &granularity_ms);
+        }
+      }
+    }
+    GoogleString output;
+    StringWriter writer(&output);
     if (statistics != NULL) {
-      writer.Write(global_stats_request ?
-                       "Global Statistics" : "VHost-Specific Statistics",
-                   factory->message_handler());
-      // Write <pre></pre> for Dump to keep good format.
-      writer.Write("<pre>", factory->message_handler());
-      statistics->Dump(&writer, factory->message_handler());
-      writer.Write("</pre>", factory->message_handler());
-      statistics->RenderHistograms(&writer, factory->message_handler());
+      if (json) {
+        statistics->console_logger()->DumpJSON(var_titles, hist_titles,
+                                               start_time, end_time,
+                                               granularity_ms, &writer,
+                                               factory->message_handler());
+      } else {
+        writer.Write(global_stats_request ?
+                         "Global Statistics" : "VHost-Specific Statistics",
+                     factory->message_handler());
+        // Write <pre></pre> for Dump to keep good format.
+        writer.Write("<pre>", factory->message_handler());
+        statistics->Dump(&writer, factory->message_handler());
+        writer.Write("</pre>", factory->message_handler());
+        statistics->RenderHistograms(&writer, factory->message_handler());
 
-      GoogleString memcached_stats;
-      factory->PrintMemCacheStats(&memcached_stats);
-      if (!memcached_stats.empty()) {
-        writer.Write("<pre>\n", factory->message_handler());
-        writer.Write(memcached_stats, factory->message_handler());
-        writer.Write("</pre>\n", factory->message_handler());
+        GoogleString memcached_stats;
+        factory->PrintMemCacheStats(&memcached_stats);
+        if (!memcached_stats.empty()) {
+          writer.Write("<pre>\n", factory->message_handler());
+          writer.Write(memcached_stats, factory->message_handler());
+          writer.Write("</pre>\n", factory->message_handler());
+        }
       }
     } else {
       writer.Write("mod_pagespeed statistics is not enabled\n",
                    factory->message_handler());
     }
-    write_handler_response(output, request);
+    if (json) {
+      write_handler_response(output, request, kContentTypeJson);
+    } else {
+      write_handler_response(output, request);
+    }
     ret = OK;
-
   } else if (strcmp(request->handler, kRefererStatisticsHandler) == 0) {
     GoogleString output;
     StringWriter writer(&output);
@@ -430,6 +497,7 @@ apr_status_t save_url_hook(request_rec *request) {
   // Note: we must compare against the parsed URL because unparsed_url has
   // ?ets=load:xx at the end for kBeaconHandler.
   if (parsed_url.ends_with(kStatisticsHandler) ||
+      parsed_url.ends_with(kStatisticsJsonHandler) ||
       parsed_url.ends_with(kGlobalStatisticsHandler) ||
       parsed_url.ends_with(kBeaconHandler) ||
       parsed_url.ends_with(kMessageHandler) ||

@@ -931,9 +931,8 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTest) {
   //       I.3.css.pagespeed.cf.0.css, 1.js.pagespeed.jm.0.js and
   //       2.js.pagespeed.jm.0.js and
   // 12 metadata cache entries - three for cf and jm, six for ce.
-  // There is no property cache insert because flush subresource filter is
-  // disabled and no property is updated in DomCohort.
-  EXPECT_EQ(23, lru_cache()->num_inserts());
+  // 1 for DomCohort write in property cache.
+  EXPECT_EQ(24, lru_cache()->num_inserts());
 
   // Fetch the url again. This time FlushEarlyFlow should not be triggered.
   // None
@@ -3382,9 +3381,9 @@ TEST_F(ProxyInterfaceTest, PropCacheFilter) {
   EXPECT_EQ("<!-- --><div><span><p></p></span></div>", text_out);
 }
 
-TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNoProperties) {
-  // There will be no properties added to the cache set in this test because
-  // we have not enabled the filter with
+TEST_F(ProxyInterfaceTest, DomCohortWritten) {
+  // Other than the write of DomCohort, there will be no properties added to
+  // the cache in this test because we have not enabled the filter with
   //     CreateFilterCallback create_filter_callback;
   //     factory()->AddCreateFilterCallback(&callback);
 
@@ -3393,7 +3392,7 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNoProperties) {
   ResponseHeaders headers_out;
 
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
-  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(1, lru_cache()->num_inserts());
   EXPECT_EQ(2, lru_cache()->num_misses());  // property-cache + http-cache
 
   ClearStats();

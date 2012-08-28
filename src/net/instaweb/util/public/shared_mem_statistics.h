@@ -17,6 +17,7 @@
 
 #include <cstddef>
 #include <set>
+#include <vector>
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -26,6 +27,9 @@
 #include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/google_timer.h"
+#include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/gtest_prod.h"  // for FRIEND_TEST
 
 namespace net_instaweb {
 
@@ -104,6 +108,32 @@ class SharedMemVariable : public Variable {
   DISALLOW_COPY_AND_ASSIGN(SharedMemVariable);
 };
 
+// Handles reading the logfile created by SharedMemConsoleStatisticsLogger.
+class ConsoleStatisticsLogfileReader {
+ public:
+  ConsoleStatisticsLogfileReader(FileSystem::InputFile* file, int64 start_time,
+                                 int64 end_time, int64 granularity_ms,
+                                 MessageHandler* message_handler);
+  ~ConsoleStatisticsLogfileReader();
+  // Reads the next timestamp in the file to timestamp and the corresponding
+  // chunk of data to data. Returns true if new data has been read.
+  bool ReadNextDataBlock(int64* timestamp, GoogleString* data);
+  int64 end_time() { return end_time_; }
+
+ private:
+  size_t BufferFind(const char* search_for, size_t start_at);
+  int FeedBuffer();
+
+  FileSystem::InputFile* file_;
+  int64 start_time_;
+  int64 end_time_;
+  int64 granularity_ms_;
+  MessageHandler* message_handler_;
+  GoogleString buffer_;
+
+  DISALLOW_COPY_AND_ASSIGN(ConsoleStatisticsLogfileReader);
+};
+
 class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
  public:
   SharedMemConsoleStatisticsLogger(
@@ -112,8 +142,53 @@ class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
       Statistics* stats, FileSystem *file_system, Timer* timer);
   virtual ~SharedMemConsoleStatisticsLogger();
   virtual void UpdateAndDumpIfRequired();
+  Timer* timer() { return timer_;}
+  // Writes filtered variable and histogram data in JSON format to the given
+  // writer. Variable data is a time series collected from with data points from
+  // start_time to end_time, whereas histograms are aggregated histogram data as
+  // of the given end_time. Granularity is the minimum time difference between
+  // each successive data point.
+  void DumpJSON(const std::set<GoogleString>& var_titles,
+                const std::set<GoogleString>& hist_titles, int64 start_time,
+                int64 end_time, int64 granularity_ms, Writer* writer,
+                MessageHandler* message_handler) const;
 
  private:
+  friend class SharedMemStatisticsTestBase;
+  FRIEND_TEST(SharedMemStatisticsTestBase, TestNextDataBlock);
+  FRIEND_TEST(SharedMemStatisticsTestBase, TestParseVarData);
+  FRIEND_TEST(SharedMemStatisticsTestBase, TestParseHistData);
+  FRIEND_TEST(SharedMemStatisticsTestBase, TestPrintJSONResponse);
+  FRIEND_TEST(SharedMemStatisticsTestBase, TestParseDataFromReader);
+
+  typedef std::vector<GoogleString> VariableInfo;
+  typedef std::map<GoogleString, VariableInfo> VarMap;
+  typedef std::pair<GoogleString, GoogleString> HistBounds;
+  typedef std::pair<HistBounds, GoogleString> HistBarInfo;
+  typedef std::vector<HistBarInfo> HistInfo;
+  typedef std::map<GoogleString, HistInfo> HistMap;
+  void ParseDataFromReader(const std::set<GoogleString>& var_titles,
+                           const std::set<GoogleString>& hist_titles,
+                           ConsoleStatisticsLogfileReader* reader,
+                           std::vector<int64>* list_of_timestamps,
+                           VarMap* parsed_var_data, HistMap* parsed_hist_data)
+                           const;
+  void ParseVarDataIntoMap(StringPiece logfile_var_data,
+                           const std::set<GoogleString>& var_titles,
+                           VarMap* parsed_var_data) const;
+  HistMap ParseHistDataIntoMap(StringPiece logfile_hist_data,
+                               const std::set<GoogleString>& hist_titles) const;
+  void PrintVarDataAsJSON(const VarMap& parsed_var_data, Writer* writer,
+                          MessageHandler* message_handler) const;
+  void PrintHistDataAsJSON(const HistMap* parsed_hist_data, Writer* writer,
+                           MessageHandler* message_handler) const;
+  void PrintTimestampListAsJSON(const std::vector<int64>& list_of_timestamps,
+                                Writer* writer,
+                                MessageHandler* message_handler) const;
+  void PrintJSON(const std::vector<int64> & list_of_timestamps,
+                 const VarMap& parsed_var_data, const HistMap& parsed_hist_data,
+                 Writer* writer, MessageHandler* message_handler) const;
+
   // The last_dump_timestamp not only contains the time of the last dump,
   // it also controls locking so that multiple threads can't dump at once.
   SharedMemVariable* last_dump_timestamp_;
@@ -125,7 +200,6 @@ class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
   Timer* timer_;    // Used to retrieve timestamps
   const int64 update_interval_ms_;
   GoogleString logfile_name_;
-
   DISALLOW_COPY_AND_ASSIGN(SharedMemConsoleStatisticsLogger);
 };
 

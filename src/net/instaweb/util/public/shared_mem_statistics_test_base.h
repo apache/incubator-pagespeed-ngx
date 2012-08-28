@@ -35,10 +35,18 @@ class SharedMemStatisticsTestBase : public testing::Test {
   typedef void (SharedMemStatisticsTestBase::*TestMethod)();
 
   explicit SharedMemStatisticsTestBase(SharedMemTestEnv* test_env);
+  SharedMemStatisticsTestBase() : testing::Test() {}
 
   virtual void SetUp();
   virtual void TearDown();
-
+  GoogleString CreateHistogramDataResponse(
+      const GoogleString & histogram_name, bool is_long_response);
+  GoogleString CreateVariableDataResponse(
+      bool has_unused_variable, bool first);
+  GoogleString CreateFakeLogfile(GoogleString* var_data,
+                                 GoogleString* hist_data,
+                                 std::set<GoogleString>* var_titles,
+                                 std::set<GoogleString>* hist_titles);
   bool CreateChild(TestMethod method);
 
   void TestCreate();
@@ -51,6 +59,10 @@ class SharedMemStatisticsTestBase : public testing::Test {
   void TestHistogramExtremeBuckets();
   void TestTimedVariableEmulation();
   void TestConsoleStatisticsLogger();
+
+  MockMessageHandler handler_;
+  scoped_ptr<MemFileSystem> file_system_;
+  scoped_ptr<SharedMemStatistics> stats_;  // (the parent process version)
 
  private:
   void TestCreateChild();
@@ -71,11 +83,8 @@ class SharedMemStatisticsTestBase : public testing::Test {
 
   scoped_ptr<SharedMemTestEnv> test_env_;
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
-  MockMessageHandler handler_;
   scoped_ptr<MockTimer> timer_;
-  scoped_ptr<MemFileSystem> file_system_;
   scoped_ptr<ThreadSystem> thread_system_;
-  scoped_ptr<SharedMemStatistics> stats_;  // (the parent process version)
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemStatisticsTestBase);
 };
@@ -129,7 +138,6 @@ TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestTimedVariableEmulation) {
 TYPED_TEST_P(SharedMemStatisticsTestTemplate, TestConsoleStatisticsLogger) {
   SharedMemStatisticsTestBase::TestConsoleStatisticsLogger();
 }
-
 REGISTER_TYPED_TEST_CASE_P(SharedMemStatisticsTestTemplate, TestCreate,
                            TestSet, TestClear, TestAdd, TestHistogram,
                            TestHistogramRender, TestHistogramNoExtraClear,
