@@ -109,7 +109,7 @@ static apr_status_t parse_status_line(response_context_t *ctx,
     res = apr_date_checkmask(ctx->linebuf.line, "HTTP/#.# ###*");
     if (!res) {
         /* Not an HTTP response?  Well, at least we won't understand it. */
-        return APR_EGENERAL;
+        return SERF_ERROR_BAD_HTTP_RESPONSE;
     }
 
     ctx->sl.version = SERF_HTTP_VERSION(ctx->linebuf.line[5] - '0',
@@ -150,7 +150,7 @@ static apr_status_t fetch_headers(serf_bucket_t *bkt, response_context_t *ctx)
         end_key = c = memchr(ctx->linebuf.line, ':', ctx->linebuf.used);
         if (!c) {
             /* Bad headers? */
-            return APR_EGENERAL;
+            return SERF_ERROR_BAD_HTTP_RESPONSE;
         }
 
         /* Skip over initial ':' */
@@ -240,6 +240,13 @@ static apr_status_t run_machine(serf_bucket_t *bkt, response_context_t *ctx)
 
             ctx->body =
                 serf_bucket_barrier_create(ctx->stream, bkt->allocator);
+
+            /*
+             * Instaweb/mod_pagespeed change: This section is
+             * re-ordered from the original code from serf to Follow
+             * HTTP spec by checking "Transfer-Encoding: chunked",
+             * before "Content-Length".
+             */
 
             /* Are we C-L, chunked, or conn close? */
             v = serf_bucket_headers_get(ctx->headers, "Transfer-Encoding");
@@ -432,7 +439,4 @@ const serf_bucket_type_t serf_bucket_type_response = {
     serf_default_read_bucket,
     serf_response_peek,
     serf_response_destroy_and_data,
-    serf_default_snapshot,
-    serf_default_restore_snapshot,
-    serf_default_is_snapshot_set,
 };

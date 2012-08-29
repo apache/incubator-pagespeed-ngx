@@ -20,6 +20,7 @@
 #include "serf.h"
 #include "serf_bucket_util.h"
 
+
 typedef struct header_list {
     const char *header;
     const char *value;
@@ -162,7 +163,7 @@ const char *serf_bucket_headers_get(
                    be comma-separated, that is clearly the correct behavior;
                    for others, the correct behavior is undefined anyway. */
 
-                /* The "+1" here is for the comma; the +1 in the alloc
+                /* The "+1" is for the comma; the +1 in the alloc
                    call is for the terminating '\0' */
                 apr_size_t new_size = found->value_size + value_size + 1;
                 char *new_val = serf_bucket_mem_alloc(headers_bucket->allocator,
@@ -425,7 +426,4 @@ const serf_bucket_type_t serf_bucket_type_headers = {
     serf_default_read_bucket,
     serf_headers_peek,
     serf_headers_destroy_and_data,
-    serf_default_snapshot,
-    serf_default_restore_snapshot,
-    serf_default_is_snapshot_set,
 };

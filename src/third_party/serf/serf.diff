@@ -1,53 +1,12 @@
---- src/third_party/serf/src/buckets/allocator.c	2011-05-06 16:22:56.220366814 -0400
-+++ instaweb_allocator.c	2011-05-06 11:08:31.684199000 -0400
-@@ -83,6 +83,7 @@
- struct serf_bucket_alloc_t {
-     apr_pool_t *pool;
-     apr_allocator_t *allocator;
-+    int own_allocator;
-
-     serf_unfreed_func_t unfreed;
-     void *unfreed_baton;
-@@ -106,6 +107,9 @@
-     if (allocator->blocks) {
-         apr_allocator_free(allocator->allocator, allocator->blocks);
-     }
-+    if (allocator->own_allocator == 1) {
-+        apr_allocator_destroy(allocator->allocator);
-+    }
-
-     return APR_SUCCESS;
- }
-@@ -119,10 +123,12 @@
-
-     allocator->pool = pool;
-     allocator->allocator = apr_pool_allocator_get(pool);
-+    allocator->own_allocator = 0;
-     if (allocator->allocator == NULL) {
-         /* This most likely means pools are running in debug mode, create our
-          * own allocator to deal with memory ourselves */
-         apr_allocator_create(&allocator->allocator);
-+        allocator->own_allocator = 1;
-     }
-     allocator->unfreed = unfreed;
-     allocator->unfreed_baton = unfreed_baton;
---- src/third_party/serf/src/buckets/headers_buckets.c	2011-05-06 16:22:56.220366814 -0400
-+++ instaweb_headers_buckets.c	2011-05-13 10:46:49.896368000 -0400
-@@ -20,6 +20,7 @@
- #include "serf.h"
- #include "serf_bucket_util.h"
-
-+#include <stdio.h>
-
- typedef struct header_list {
-     const char *header;
-@@ -163,11 +164,11 @@
+--- serf/src/buckets/headers_buckets.c	2012-08-27 12:37:05.154207000 -0400
++++ src/third_party/serf/instaweb_headers_buckets.c	2012-08-28 10:24:22.597451000 -0400
+@@ -163,11 +163,11 @@
                     be comma-separated, that is clearly the correct behavior;
                     for others, the correct behavior is undefined anyway. */
-
+ 
 -                /* The "+1" is for the comma; serf_bstrmemdup() will also add
 -                   one slot for the terminating '\0'. */
-+                /* The "+1" here is for the comma; the +1 in the alloc
++                /* The "+1" is for the comma; the +1 in the alloc
 +                   call is for the terminating '\0' */
                  apr_size_t new_size = found->value_size + value_size + 1;
                  char *new_val = serf_bucket_mem_alloc(headers_bucket->allocator,
@@ -56,11 +15,41 @@
                  memcpy(new_val, val, value_size);
                  new_val[value_size] = ',';
                  memcpy(new_val + value_size + 1, found->value,
---- src/third_party/serf/src/buckets/response_buckets.c	2011-05-06 16:22:56.220366814 -0400
-+++ instaweb_response_buckets.c	2011-05-06 11:27:29.823839000 -0400
-@@ -242,44 +242,50 @@
+@@ -322,7 +322,7 @@
+                                       const char **data, apr_size_t *len)
+ {
+     headers_context_t *ctx = bucket->data;
+-    apr_size_t avail;
++    apr_size_t avail = 0;
+ 
+     select_value(ctx, data, &avail);
+     if (ctx->state == READ_DONE)
+@@ -382,9 +382,9 @@
+     *vecs_used = 0;
+ 
+     for (i = 0; i < vecs_size; i++) {
+-        const char *data;
+-        apr_size_t len;
+-        apr_status_t status;
++        const char *data = NULL;
++        apr_size_t len = 0;
++        apr_status_t status = 0;
+ 
+         /* Calling read() would not be a safe opt in the general case, but it
+          * is here for the header bucket as it only frees all of the header
+--- serf/src/buckets/response_buckets.c	2012-08-27 12:37:05.167214000 -0400
++++ src/third_party/serf/instaweb_response_buckets.c	2012-08-28 11:08:35.275683000 -0400
+@@ -241,45 +241,58 @@
+             ctx->body =
                  serf_bucket_barrier_create(ctx->stream, bkt->allocator);
-
+ 
++            /*
++             * Instaweb/mod_pagespeed change: This section is
++             * re-ordered from the original code from serf to Follow
++             * HTTP spec by checking "Transfer-Encoding: chunked",
++             * before "Content-Length".
++             */
++
              /* Are we C-L, chunked, or conn close? */
 -            v = serf_bucket_headers_get(ctx->headers, "Content-Length");
 -            if (v) {
@@ -77,7 +66,7 @@
 +            if (v && strcasecmp("chunked", v) == 0) {
 +                ctx->chunked = 1;
 +                ctx->body = serf_bucket_dechunk_create(ctx->body,
-+                                                        bkt->allocator);
++                                                       bkt->allocator);
              }
              else {
 -                v = serf_bucket_headers_get(ctx->headers, "Transfer-Encoding");
@@ -141,82 +130,103 @@
              /* If we're a HEAD request, we don't receive a body. */
              if (ctx->head_req) {
                  ctx->state = STATE_DONE;
---- src/third_party/serf/src/outgoing.c	2011-05-06 16:22:56.390522788 -0400
-+++ instaweb_outgoing.c	2011-05-06 14:09:51.837823000 -0400
-@@ -691,9 +691,9 @@
-             /* If we hit the end of the request bucket and all of its data has
-              * been written, then clear it out to signify that we're done
-              * sending the request. On the next iteration through this loop:
--             * - if there are remaining bytes they will be written, and as the
-+             * - if there are remaining bytes they will be written, and as the
-              * request bucket will be completely read it will be destroyed then.
--             * - we'll see if there are other requests that need to be sent
-+             * - we'll see if there are other requests that need to be sent
-              * ("pipelining").
-              */
-             conn->hit_eof = 0;
-@@ -737,6 +737,7 @@
+--- serf/src/outgoing.c	2012-08-27 12:32:19.482962000 -0400
++++ src/third_party/serf/instaweb_outgoing.c	2012-08-28 10:53:12.613044000 -0400
+@@ -823,6 +823,8 @@
       * This permits older Serf apps to still handle authentication
       * themselves by not registering credential callbacks.
       */
++
 +#if 0 /* This disables authentication support for now */
      if (request->conn->ctx->cred_cb) {
        status = serf__handle_auth_response(&consumed_response,
                                            request,
-@@ -755,6 +756,7 @@
+@@ -841,6 +843,7 @@
            return status;
        }
      }
 +#endif
-
+ 
      if (!consumed_response) {
          return (*request->handler)(request,
-@@ -1071,9 +1073,17 @@
-         return APR_ENOTIMPL;
-
-     /* Parse the url, store the address of the server. */
+@@ -1158,12 +1161,21 @@
+     serf_connection_t *c;
+     apr_sockaddr_t *host_address;
+ 
+-    /* Parse the url, store the address of the server. */
 -    status = apr_sockaddr_info_get(&host_address,
 -                                   host_info.hostname,
 -                                   APR_UNSPEC, host_info.port, 0, pool);
+-    if (status)
+-        return status;
++    /*
++     * Instaweb/mod_pagespeed change: Do not lookup IP of destination host when
++     * using a proxy.
++     */
 +    if (ctx->proxy_address) {
 +        host_address = ctx->proxy_address;
 +        status = APR_SUCCESS;
 +    } else {
++        /* Parse the url, store the address of the server. */
 +        status = apr_sockaddr_info_get(&host_address,
 +                                       host_info.hostname,
 +                                       APR_UNSPEC, host_info.port, 0, pool);
 +        if (status)
 +            return status;
 +    }
+ 
+     c = serf_connection_create(ctx, host_address, setup, setup_baton,
+                                closed, closed_baton, pool);
+@@ -1213,6 +1225,19 @@
+                 conn->stream = NULL;
+             }
+ 
++            /*
++             * Added for mod_pagespeed (aka instaweb):
++             *
++             * Destroy the ostream_head to eliminate memory leak in HTTPS
++             * fetches, as found in mod_pagespeed's unit tests.  Note that
++             * there is an ->ostream_tail as well, but destroying that causes
++             * unit tests to abort in the allocator.
++             */
++            if (conn->ostream_head != NULL) {
++                serf_bucket_destroy(conn->ostream_head);
++                conn->ostream_head = NULL;
++            }
 +
-     if (status)
-         return status;
-
-@@ -1147,6 +1155,19 @@
+             /* Remove the connection from the context. We don't want to
+              * deal with it any more.
+              */
+@@ -1235,6 +1260,19 @@
      return APR_NOTFOUND;
  }
-
+ 
 +/*
-+ Returns true if this connection has had error events reported during the last
-+ call to serf_context_run. It should be called after serf_context_run
-+ invocation, and not within callbacks.
-+
-+ Return value is conceptually bool, but Serf implementation language is C.
-+
-+ google-added.
++ * Instaweb/mod_pagespeed added API: Returns true if this connection
++ * has had error events reported during the last call to
++ * serf_context_run. It should be called after serf_context_run
++ * invocation, and not within callbacks.
++ *
++ * Return value is conceptually bool, but Serf implementation language is C.
 +*/
 +int serf_connection_is_in_error_state(serf_connection_t* conn)
 +{
 +  return ((conn->seen_in_pollset & (APR_POLLERR | APR_POLLHUP)) != 0);
 +}
-
++
+ 
  void serf_connection_set_max_outstanding_requests(
      serf_connection_t *conn,
-@@ -1299,12 +1320,13 @@
+@@ -1395,12 +1433,18 @@
  }
-
-
+ 
+ 
 -serf_bucket_t *serf_request_bucket_request_create(
++/*
++ * Instaweb/mod_pagespeed customization: Add
++ * serf_request_bucket_request_create_for_host which lets Host: be set
++ * separately from the URL.
++ */
 +serf_bucket_t *serf_request_bucket_request_create_for_host(
      serf_request_t *request,
      const char *method,
@@ -228,10 +238,10 @@
  {
      serf_bucket_t *req_bkt, *hdrs_bkt;
      serf_connection_t *conn = request->conn;
-@@ -1317,9 +1339,10 @@
+@@ -1413,9 +1457,10 @@
      if (ctx->proxy_address && conn->host_url)
          serf_bucket_request_set_root(req_bkt, conn->host_url);
-
+ 
 -    if (conn->host_info.hostinfo)
 -        serf_bucket_headers_setn(hdrs_bkt, "Host",
 -                                 conn->host_info.hostinfo);
@@ -239,11 +249,11 @@
 +        host = request->conn->host_info.hostname;
 +    if (host)
 +        serf_bucket_headers_setn(hdrs_bkt, "Host", host);
-
+ 
      /* Setup server authorization headers */
      if (ctx->authn_info.scheme)
-@@ -1333,3 +1356,14 @@
-
+@@ -1429,3 +1474,14 @@
+ 
      return req_bkt;
  }
 +

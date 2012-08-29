@@ -32,7 +32,7 @@ vars = {
   "libpagespeed_revision": "@head",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
 
-  "serf_src": "http://serf.googlecode.com/svn/tags/0.7.2",
+  "serf_src": "http://serf.googlecode.com/svn/tags/1.1.0",
   "serf_revision": "@head",
 
   "apr_src": "http://svn.apache.org/repos/asf/apr/apr/tags/1.4.2",
@@ -64,6 +64,14 @@ vars = {
 
   "re2_src": "http://re2-svn.googlecode.com/svn/trunk/",
   "re2_revision": "@2",
+
+  # Uncomment to enable HTTPS fetching via serf.  See also commented out
+  # references in src/third_party/serf/serf.gyp.
+  #
+  # TODO(jmarantz): create an easy way to choose this option from the
+  # 'gclient' command, without having to edit the gyp & DEPS files.
+  #
+  # "openssl_src": "http://git.chromium.org/chromium/deps/openssl.git",
 
   "gyp_src": "http://gyp.googlecode.com/svn/trunk/",
   # This version of gyp is new enough that it knows to use make for Linux 3.x
@@ -209,6 +217,11 @@ deps = {
   # RE2.
   "src/third_party/re2/src":
     Var("re2_src") + "/src/re2" + Var("re2_revision"),
+
+  # Uncomment to enable HTTPS fetching via serf.  See also commented out
+  # references in src/third_party/serf/serf.gyp.
+  #
+  # "src/third_party/openssl": Var("openssl_src"),
 }
 
 

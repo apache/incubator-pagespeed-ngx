@@ -193,6 +193,16 @@ echo TEST: ModPagespeedLoadFromFile
 URL=$TEST_ROOT/load_from_file/index.html?ModPagespeedFilters=inline_css
 fetch_until $URL 'grep -c blue' 1
 
+# The "httponly" directory is disallowed.
+fetch_until $URL 'fgrep -c web.httponly.example.css' 1
+
+# Loading .php.css files from file is disallowed.
+fetch_until $URL 'fgrep -c web.example.php.css' 1
+
+# There's an exception "allow" rule for "exception.php.css" so it can be loaded
+# directly from the filesystem.
+fetch_until $URL 'fgrep -c file.exception.php.css' 1
+
 echo TEST: ModPagespeedLoadFromFileMatch
 URL=$TEST_ROOT/load_from_file_match/index.html?ModPagespeedFilters=inline_css
 fetch_until $URL 'grep -c blue' 1

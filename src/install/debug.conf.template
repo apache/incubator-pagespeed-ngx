@@ -139,6 +139,9 @@ ModPagespeedDomain modpagespeed.com:1023
 # Test LoadFromFile mapping by mapping one dir to another.
 ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"
 ModPagespeedLoadFromFileMatch "^http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_\1/"
+ModPagespeedLoadFromFileRule Disallow "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/"
+ModPagespeedLoadFromFileRuleMatch Disallow \.php.css$
+ModPagespeedLoadFromFileRuleMatch Allow exception\.php\.css$
 
 # Print out detail about connection-refused errors.  We don't negative-test
 # this here cause it's a hassle; we just depend on the unit-tests for that.

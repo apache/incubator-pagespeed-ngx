@@ -38,12 +38,30 @@ static apr_status_t clean_skt(void *data)
 
 static apr_status_t clean_resp(void *data)
 {
-    serf_request_t *req = data;
+    serf_request_t *request = data;
+
+    /* The request's RESPOOL is being cleared.  */
+
+    /* If the response has allocated some buckets, then destroy them (since
+       the bucket may hold resources other than memory in RESPOOL). Also
+       make sure to set their fields to NULL so connection closure does
+       not attempt to free them again.  */
+    if (request->resp_bkt) {
+        serf_bucket_destroy(request->resp_bkt);
+        request->resp_bkt = NULL;
+    }
+    if (request->req_bkt) {
+        serf_bucket_destroy(request->req_bkt);
+        request->req_bkt = NULL;
+    }
+
+    /* ### should we worry about debug stuff, like that performed in
+       ### destroy_request()? should we worry about calling req->handler
+       ### to notify this "cancellation" due to pool clearing?  */
 
     /* This pool just got cleared/destroyed. Don't try to destroy the pool
-     * (again) when the request is canceled.
-     */
-    req->respool = NULL;
+       (again) when the request is canceled.  */
+    request->respool = NULL;
 
     return APR_SUCCESS;
 }
@@ -232,6 +250,12 @@ apr_status_t serf__open_connections(serf_context_t *ctx)
         if (conn->ctx->authn_info.scheme)
             conn->ctx->authn_info.scheme->init_conn_func(401, conn,
                                                          conn->pool);
+
+        /* Does this connection require a SSL tunnel over the proxy? */
+        if (ctx->proxy_address && strcmp(conn->host_info.scheme, "https") == 0)
+            serf__ssltunnel_connect(conn);
+        else
+            conn->state = SERF_CONN_CONNECTED;
     }
 
     return APR_SUCCESS;
@@ -241,7 +265,7 @@ static apr_status_t no_more_writes(serf_connection_t *conn,
                                    serf_request_t *request)
 {
     /* Note that we should hold new requests until we open our new socket. */
-    conn->closing = 1;
+    conn->state = SERF_CONN_CLOSING;
 
     /* We can take the *next* request in our list and assume it hasn't
      * been written yet and 'save' it for the new socket.
@@ -304,14 +328,17 @@ static apr_status_t destroy_request(serf_request_t *request)
     if (request->resp_bkt) {
         serf_debug__closed_conn(request->resp_bkt->allocator);
         serf_bucket_destroy(request->resp_bkt);
+        request->resp_bkt = NULL;
     }
     if (request->req_bkt) {
         serf_debug__closed_conn(request->req_bkt->allocator);
         serf_bucket_destroy(request->req_bkt);
+        request->req_bkt = NULL;
     }
 
     serf_debug__bucket_alloc_check(request->allocator);
     if (request->respool) {
+        /* ### unregister the pool cleanup for self?  */
         apr_pool_destroy(request->respool);
     }
 
@@ -394,10 +421,9 @@ static apr_status_t reset_connection(serf_connection_t *conn,
     held_reqs = conn->hold_requests;
     held_reqs_tail = conn->hold_requests_tail;
 
-    if (conn->closing) {
+    if (conn->state == SERF_CONN_CLOSING) {
         conn->hold_requests = NULL;
         conn->hold_requests_tail = NULL;
-        conn->closing = 0;
     }
 
     conn->requests = NULL;
@@ -449,6 +475,7 @@ static apr_status_t reset_connection(serf_connection_t *conn,
 
     conn->dirty_conn = 1;
     conn->ctx->dirty_pollset = 1;
+    conn->state = SERF_CONN_INIT;
 
     conn->status = APR_SUCCESS;
 
@@ -538,6 +565,53 @@ static apr_status_t do_conn_setup(serf_connection_t *conn)
     return status;
 }
 
+/* Set up the input and output stream buckets.
+   When a tunnel over an http proxy is needed, create a socket bucket and
+   empty aggregate bucket for sending and receiving unencrypted requests
+   over the socket.
+
+   After the tunnel is there, or no tunnel was needed, ask the application
+   to create the input and output buckets, which should take care of the
+   [en/de]cryption.
+*/
+
+static apr_status_t prepare_conn_streams(serf_connection_t *conn,
+                                         serf_bucket_t **istream,
+                                         serf_bucket_t **ostreamt,
+                                         serf_bucket_t **ostreamh)
+{
+    apr_status_t status;
+
+    /* Do we need a SSL tunnel first? */
+    if (conn->state == SERF_CONN_CONNECTED) {
+        /* If the connection does not have an associated bucket, then
+         * call the setup callback to get one.
+         */
+        if (conn->stream == NULL) {
+            status = do_conn_setup(conn);
+            if (status) {
+                return status;
+            }
+        }
+        *ostreamt = conn->ostream_tail;
+        *ostreamh = conn->ostream_head;
+        *istream = conn->stream;
+    } else {
+        /* SSL tunnel needed and not set up yet, get a direct unencrypted
+           stream for this socket */
+        if (conn->stream == NULL) {
+            *istream = serf_bucket_socket_create(conn->skt,
+                                                 conn->allocator);
+        }
+        /* Don't create the ostream bucket chain including the ssl_encrypt
+           bucket yet. This ensure the CONNECT request is sent unencrypted
+           to the proxy. */
+        *ostreamt = *ostreamh = conn->ssltunnel_ostream;
+    }
+
+    return APR_SUCCESS;
+}
+
 /* write data out to the connection */
 static apr_status_t write_to_connection(serf_connection_t *conn)
 {
@@ -545,6 +619,10 @@ static apr_status_t write_to_connection(serf_connection_t *conn)
 
     if (conn->probable_keepalive_limit &&
         conn->completed_requests > conn->probable_keepalive_limit) {
+
+        conn->dirty_conn = 1;
+        conn->ctx->dirty_pollset = 1;
+
         /* backoff for now. */
         return APR_SUCCESS;
     }
@@ -563,10 +641,19 @@ static apr_status_t write_to_connection(serf_connection_t *conn)
         int stop_reading = 0;
         apr_status_t status;
         apr_status_t read_status;
+        serf_bucket_t *ostreamt, *ostreamh;
+        int max_outstanding_requests = conn->max_outstanding_requests;
 
-        if (conn->max_outstanding_requests &&
+        /* If we're setting up an ssl tunnel, we can't send real requests
+           at yet, as they need to be encrypted and our encrypt buckets
+           aren't created yet as we still need to read the unencrypted
+           response of the CONNECT request. */
+        if (conn->state != SERF_CONN_CONNECTED)
+            max_outstanding_requests = 1;
+
+        if (max_outstanding_requests &&
             conn->completed_requests -
-                conn->completed_responses >= conn->max_outstanding_requests) {
+                conn->completed_responses >= max_outstanding_requests) {
             /* backoff for now. */
             return APR_SUCCESS;
         }
@@ -606,14 +693,9 @@ static apr_status_t write_to_connection(serf_connection_t *conn)
             return APR_SUCCESS;
         }
 
-        /* If the connection does not have an associated bucket, then
-         * call the setup callback to get one.
-         */
-        if (conn->stream == NULL) {
-            status = do_conn_setup(conn);
-            if (status) {
-                return status;
-            }
+        status = prepare_conn_streams(conn, &conn->stream, &ostreamt, &ostreamh);
+        if (status) {
+            return status;
         }
 
         if (request->req_bkt == NULL) {
@@ -639,18 +721,19 @@ static apr_status_t write_to_connection(serf_connection_t *conn)
             }
 
             request->written = 1;
-            serf_bucket_aggregate_append(conn->ostream_tail, request->req_bkt);
+            serf_bucket_aggregate_append(ostreamt, request->req_bkt);
         }
 
         /* ### optimize at some point by using read_for_sendfile */
-        read_status = serf_bucket_read_iovec(conn->ostream_head,
+        read_status = serf_bucket_read_iovec(ostreamh,
                                              SERF_READ_ALL_AVAIL,
                                              IOV_MAX,
                                              conn->vec,
                                              &conn->vec_len);
 
         if (!conn->hit_eof) {
-            if (APR_STATUS_IS_EAGAIN(read_status)) {
+            if (APR_STATUS_IS_EAGAIN(read_status) ||
+                read_status == SERF_ERROR_WAIT_CONN) {
                 /* We read some stuff, but should not try to read again. */
                 stop_reading = 1;
 
@@ -686,17 +769,20 @@ static apr_status_t write_to_connection(serf_connection_t *conn)
                 return status;
         }
 
-        if (conn->hit_eof &&
-            conn->vec_len == 0) {
+        if (read_status == SERF_ERROR_WAIT_CONN) {
+            stop_reading = 1;
+        }
+        else if (read_status && conn->hit_eof && conn->vec_len == 0) {
             /* If we hit the end of the request bucket and all of its data has
              * been written, then clear it out to signify that we're done
              * sending the request. On the next iteration through this loop:
-             * - if there are remaining bytes they will be written, and as the
+             * - if there are remaining bytes they will be written, and as the 
              * request bucket will be completely read it will be destroyed then.
-             * - we'll see if there are other requests that need to be sent
+             * - we'll see if there are other requests that need to be sent 
              * ("pipelining").
              */
             conn->hit_eof = 0;
+            serf_bucket_destroy(request->req_bkt);
             request->req_bkt = NULL;
 
             /* If our connection has async responses enabled, we're not
@@ -728,7 +814,7 @@ static apr_status_t write_to_connection(serf_connection_t *conn)
 static apr_status_t handle_response(serf_request_t *request,
                                     apr_pool_t *pool)
 {
-    apr_status_t status = APR_EGENERAL;
+    apr_status_t status = APR_SUCCESS;
     int consumed_response = 0;
 
     /* Only enable the new authentication framework if the program has
@@ -737,6 +823,7 @@ static apr_status_t handle_response(serf_request_t *request,
      * This permits older Serf apps to still handle authentication
      * themselves by not registering credential callbacks.
      */
+
 #if 0 /* This disables authentication support for now */
     if (request->conn->ctx->cred_cb) {
       status = serf__handle_auth_response(&consumed_response,
@@ -811,16 +898,14 @@ static apr_status_t read_from_connection(serf_connection_t *conn)
 
     /* Invoke response handlers until we have no more work. */
     while (1) {
+        serf_bucket_t *dummy1, *dummy2;
+
         apr_pool_clear(tmppool);
 
-        /* If the connection does not have an associated bucket, then
-         * call the setup callback to get one.
-         */
-        if (conn->stream == NULL) {
-            status = do_conn_setup(conn);
-            if (status) {
-                goto error;
-            }
+        /* Only interested in the input stream here. */
+        status = prepare_conn_streams(conn, &conn->stream, &dummy1, &dummy2);
+        if (status) {
+            goto error;
         }
 
         /* We have a different codepath when we can have async responses. */
@@ -936,6 +1021,10 @@ static apr_status_t read_from_connection(serf_connection_t *conn)
 
         conn->completed_responses++;
 
+        /* We've to rebuild pollset since completed_responses is changed. */
+        conn->dirty_conn = 1;
+        conn->ctx->dirty_pollset = 1;
+
         /* This means that we're being advised that the connection is done. */
         if (close_connection == SERF_ERROR_CLOSING) {
             reset_connection(conn, 1);
@@ -993,7 +1082,10 @@ apr_status_t serf__process_connection(serf_connection_t *conn,
         }
     }
     if ((events & APR_POLLHUP) != 0) {
-        return APR_ECONNRESET;
+        /* The connection got reset by the server. On Windows this can happen
+           when all data is read, so just cleanup the connection and open
+           a new one. */
+        return reset_connection(conn, 1);
     }
     if ((events & APR_POLLERR) != 0) {
         /* We might be talking to a buggy HTTP server that doesn't
@@ -1003,7 +1095,7 @@ apr_status_t serf__process_connection(serf_connection_t *conn,
          *
          * http://issues.apache.org/bugzilla/show_bug.cgi?id=35292
          */
-        if (!conn->probable_keepalive_limit) {
+        if (conn->completed_requests && !conn->probable_keepalive_limit) {
             return reset_connection(conn, 1);
         }
         return APR_EGENERAL;
@@ -1041,6 +1133,7 @@ serf_connection_t *serf_connection_create(
     conn->baton.type = SERF_IO_CONN;
     conn->baton.u.conn = conn;
     conn->hit_eof = 0;
+    conn->state = SERF_CONN_INIT;
 
     /* Create a subpool for our connection. */
     apr_pool_create(&conn->skt_pool, conn->pool);
@@ -1068,24 +1161,21 @@ apr_status_t serf_connection_create2(
     serf_connection_t *c;
     apr_sockaddr_t *host_address;
 
-    /* Support for HTTPS proxies is not implemented yet. */
-    if (ctx->proxy_address && strcmp(host_info.scheme, "https") == 0)
-        return APR_ENOTIMPL;
-
-    /* Parse the url, store the address of the server. */
+    /*
+     * Instaweb/mod_pagespeed change: Do not lookup IP of destination host when
+     * using a proxy.
+     */
     if (ctx->proxy_address) {
         host_address = ctx->proxy_address;
         status = APR_SUCCESS;
     } else {
+        /* Parse the url, store the address of the server. */
         status = apr_sockaddr_info_get(&host_address,
                                        host_info.hostname,
                                        APR_UNSPEC, host_info.port, 0, pool);
         if (status)
             return status;
     }
-
-    if (status)
-        return status;
 
     c = serf_connection_create(ctx, host_address, setup, setup_baton,
                                closed, closed_baton, pool);
@@ -1135,6 +1225,19 @@ apr_status_t serf_connection_close(
                 conn->stream = NULL;
             }
 
+            /*
+             * Added for mod_pagespeed (aka instaweb):
+             *
+             * Destroy the ostream_head to eliminate memory leak in HTTPS
+             * fetches, as found in mod_pagespeed's unit tests.  Note that
+             * there is an ->ostream_tail as well, but destroying that causes
+             * unit tests to abort in the allocator.
+             */
+            if (conn->ostream_head != NULL) {
+                serf_bucket_destroy(conn->ostream_head);
+                conn->ostream_head = NULL;
+            }
+
             /* Remove the connection from the context. We don't want to
              * deal with it any more.
              */
@@ -1158,18 +1261,18 @@ apr_status_t serf_connection_close(
 }
 
 /*
- Returns true if this connection has had error events reported during the last
- call to serf_context_run. It should be called after serf_context_run
- invocation, and not within callbacks.
-
- Return value is conceptually bool, but Serf implementation language is C.
-
- google-added.
+ * Instaweb/mod_pagespeed added API: Returns true if this connection
+ * has had error events reported during the last call to
+ * serf_context_run. It should be called after serf_context_run
+ * invocation, and not within callbacks.
+ *
+ * Return value is conceptually bool, but Serf implementation language is C.
 */
 int serf_connection_is_in_error_state(serf_connection_t* conn)
 {
   return ((conn->seen_in_pollset & (APR_POLLERR | APR_POLLHUP)) != 0);
 }
+
 
 void serf_connection_set_max_outstanding_requests(
     serf_connection_t *conn,
@@ -1209,11 +1312,12 @@ serf_request_t *serf_connection_request_create(
     request->respool = NULL;
     request->req_bkt = NULL;
     request->resp_bkt = NULL;
+    request->priority = 0;
     request->written = 0;
     request->next = NULL;
 
     /* Link the request to the end of the request chain. */
-    if (conn->closing) {
+    if (conn->state == SERF_CONN_CLOSING) {
         link_requests(&conn->hold_requests, &conn->hold_requests_tail, request);
     }
     else {
@@ -1244,12 +1348,13 @@ serf_request_t *serf_connection_priority_request_create(
     request->respool = NULL;
     request->req_bkt = NULL;
     request->resp_bkt = NULL;
+    request->priority = 1;
     request->written = 0;
     request->next = NULL;
 
     /* Link the new request after the last written request, but before all
        upcoming requests. */
-    if (conn->closing) {
+    if (conn->state == SERF_CONN_CLOSING) {
         iter = conn->hold_requests;
     }
     else {
@@ -1263,12 +1368,18 @@ serf_request_t *serf_connection_priority_request_create(
         iter = iter->next;
     }
 
+    /* Advance to next non priority request */
+    while (iter != NULL && iter->priority) {
+        prev = iter;
+        iter = iter->next;
+    }
+
     if (prev) {
         request->next = iter;
         prev->next = request;
     } else {
         request->next = iter;
-        if (conn->closing) {
+        if (conn->state == SERF_CONN_CLOSING) {
             conn->hold_requests = request;
         }
         else {
@@ -1276,7 +1387,7 @@ serf_request_t *serf_connection_priority_request_create(
         }
     }
 
-    if (! conn->closing) {
+    if (conn->state != SERF_CONN_CLOSING) {
         /* Ensure our pollset becomes writable in context run */
         conn->ctx->dirty_pollset = 1;
         conn->dirty_conn = 1;
@@ -1322,13 +1433,18 @@ void serf_request_set_handler(
 }
 
 
+/*
+ * Instaweb/mod_pagespeed customization: Add
+ * serf_request_bucket_request_create_for_host which lets Host: be set
+ * separately from the URL.
+ */
 serf_bucket_t *serf_request_bucket_request_create_for_host(
     serf_request_t *request,
     const char *method,
     const char *uri,
     serf_bucket_t *body,
     serf_bucket_alloc_t *allocator,
-    const char* host)
+    const char *host)
 {
     serf_bucket_t *req_bkt, *hdrs_bkt;
     serf_connection_t *conn = request->conn;
