@@ -54,9 +54,11 @@ class AsyncFetch : public Writer {
   AsyncFetch() :
       request_headers_(NULL),
       response_headers_(NULL),
+      extra_response_headers_(NULL),
       log_record_(NULL),
       owns_request_headers_(false),
       owns_response_headers_(false),
+      owns_extra_response_headers_(false),
       owns_log_record_(false),
       headers_complete_(false) {
   }
@@ -110,6 +112,15 @@ class AsyncFetch : public Writer {
   ResponseHeaders* response_headers();
   void set_response_headers(ResponseHeaders* headers);
 
+  // Returns extra response headers which may be modified between
+  // calls to HeadersComplete() and Done(). This is used to allow
+  // a fetch to provide additional headers which cannot be determined
+  // when HeadersComplete() has been invoked, e.g., X-Original-Content-Length.
+  // This is needed because it is not safe for the producer to modify
+  // response_headers() once HeadersComplete() has been called.
+  ResponseHeaders* extra_response_headers();
+  void set_extra_response_headers(ResponseHeaders* headers);
+
   virtual bool EnableThreaded() const { return false; }
 
   // Indicates whether the request is a background fetch. These can be scheduled
@@ -153,9 +164,11 @@ class AsyncFetch : public Writer {
  private:
   RequestHeaders* request_headers_;
   ResponseHeaders* response_headers_;
+  ResponseHeaders* extra_response_headers_;
   LogRecord* log_record_;
   bool owns_request_headers_;
   bool owns_response_headers_;
+  bool owns_extra_response_headers_;
   bool owns_log_record_;
   bool headers_complete_;
 
@@ -196,6 +209,7 @@ class StringAsyncFetch : public AsyncFetch {
     success_ = false;
     buffer_pointer_->clear();
     response_headers()->Clear();
+    extra_response_headers()->Clear();
     AsyncFetch::Reset();
   }
 

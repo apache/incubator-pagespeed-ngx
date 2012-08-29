@@ -41,7 +41,7 @@ const char JsDeferDisabledFilter::kSuffix[] =
       "  if (pagespeed.deferJsStarted) return;\n"
       "  pagespeed.deferJsStarted = true;\n"
       "  pagespeed.deferJs.registerScriptTags();\n"
-      "  pagespeed.deferJs.run();\n"
+      "  pagespeed.deferJs.execute();\n"
       "}\n"
       "pagespeed.addHandler(document, 'DOMContentLoaded', startDeferJs);\n"
       "pagespeed.addOnload(window, startDeferJs);\n";

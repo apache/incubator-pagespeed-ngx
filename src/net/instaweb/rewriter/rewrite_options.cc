@@ -256,6 +256,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
                                               // enabled conditionally
   RewriteOptions::kServeNonCacheableNonCritical,  // internal,
                                                   // enabled conditionally
+  RewriteOptions::kSplitHtml,  // internal, enabled conditionally
   RewriteOptions::kStripNonCacheable,  // internal, enabled conditionally
   RewriteOptions::kStripScripts,
 };
@@ -360,6 +361,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kServeNonCacheableNonCritical:
         return "Serve Non Cacheable and Non Critical Content";
     case kSpriteImages:                    return "Sprite Images";
+    case kSplitHtml:                       return "Split Html";
     case kStripNonCacheable:               return "Strip Non Cacheable";
     case kStripImageColorProfile:          return "Strip Image Color Profiles";
     case kStripImageMetaData:              return "Strip Image Meta Data";
@@ -435,6 +437,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kRewriteStyleAttributes:          return "cs";
     case kRewriteStyleAttributesWithUrl:   return "cu";
     case kServeNonCacheableNonCritical:    return "sn";
+    case kSplitHtml:                       return "sh";
     case kStripNonCacheable:               return "nc";
     case kSpriteImages:                    return kImageCombineId;
     case kStripImageColorProfile:          return "cp";
@@ -579,7 +582,7 @@ RewriteOptions::RewriteOptions()
   add_option(true, &serve_stale_if_fetch_error_, "ss", kServeStaleIfFetchError);
   add_option(false, &enable_defer_js_experimental_, "edje",
              kEnableDeferJsExperimental);
-  add_option(false, &enable_flush_subresources_experimental_, "efse",
+  add_option(true, &enable_flush_subresources_experimental_, "efse",
              kEnableFlushSubresourcesExperimental);
   add_option(false, &enable_inline_preview_images_experimental_, "eipie",
              kEnableInlinePreviewImagesExperimental);

@@ -20,7 +20,7 @@
 
 #include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -31,7 +31,7 @@ namespace net_instaweb {
 class AbstractMutex;
 class RewriteDriver;
 
-class CriticalImagesFinderTestBase : public ResourceManagerTestBase {
+class CriticalImagesFinderTestBase : public RewriteTestBase {
  public:
   virtual CriticalImagesFinder* finder() = 0;
 

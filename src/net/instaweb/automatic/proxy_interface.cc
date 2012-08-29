@@ -237,9 +237,9 @@ bool ProxyInterface::Fetch(const GoogleString& requested_url_string,
     if (resource_manager_->IsPagespeedResource(requested_url) &&
         is_get_or_head) {
       pagespeed_requests_->IncBy(1);
-      ProxyRequest(true, requested_url, async_fetch, handler);
       LOG(INFO) << "Serving URL as pagespeed resource: "
                 << requested_url.Spec();
+      ProxyRequest(true, requested_url, async_fetch, handler);
     } else if (UrlAndPortMatchThisServer(requested_url)) {
       // Just respond with a 404 for now.
       async_fetch->response_headers()->SetStatusAndReason(

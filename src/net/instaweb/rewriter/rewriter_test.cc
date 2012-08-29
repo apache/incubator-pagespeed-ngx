@@ -20,7 +20,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -33,7 +33,7 @@ namespace net_instaweb {
 
 namespace {
 
-class RewriterTest : public ResourceManagerTestBase {};
+class RewriterTest : public RewriteTestBase {};
 
 TEST_F(RewriterTest, AddHead) {
   AddFilter(RewriteOptions::kAddHead);

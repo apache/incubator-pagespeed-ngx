@@ -103,6 +103,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
+#include "net/instaweb/rewriter/public/split_html_filter.h"
 #include "net/instaweb/rewriter/public/strip_non_cacheable_filter.h"
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 #include "net/instaweb/rewriter/public/support_noscript_filter.h"
@@ -1109,6 +1110,9 @@ void RewriteDriver::SetWriter(Writer* writer) {
       } else {
         html_writer_filter_.reset(new SuppressPreheadFilter(this));
       }
+    } else if (options()->Enabled(RewriteOptions::kSplitHtml)) {
+      // TODO(rahulbansal): Turn this on only when DeferJavascript is on.
+      html_writer_filter_.reset(new SplitHtmlFilter(this));
     } else {
       html_writer_filter_.reset(new HtmlWriterFilter(this));
     }

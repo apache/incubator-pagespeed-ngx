@@ -77,10 +77,9 @@ typedef std::vector<OutputResourcePtr> OutputResourceVector;
 // and so on.
 // TODO(piatek): This file was renamed from resource_manager.h -- there are
 //               some associated fixes outstanding --
-// 1. Run iwyu on all files as many #include sc.h without referencing it.
-// 2. abc of includes and class declarations.
-// 3. Rename variables, data members, parameters, etc.
-// 4. Rename methods, such as:
+// 1. abc of includes and class declarations.
+// 2. Rename variables, data members, parameters, etc.
+// 3. Rename methods, such as:
 //     CreateResourceManager() in rewrite_driver_factory.*
 //     Manager() in rewrite_context.*
 class ServerContext {
@@ -458,6 +457,11 @@ class ServerContext {
 
   // Must be called with rewrite_drivers_mutex_ held.
   void ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver);
+
+  // Adds an X-Original-Content-Length header to the response headers
+  // based on the size of the input resources.
+  void AddOriginalContentLengthHeader(const ResourceVector& inputs,
+                                      ResponseHeaders* headers);
 
   // These are normally owned by the RewriteDriverFactory that made 'this'.
   ThreadSystem* thread_system_;

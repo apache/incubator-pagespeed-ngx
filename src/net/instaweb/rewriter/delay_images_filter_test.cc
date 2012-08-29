@@ -24,7 +24,7 @@
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
@@ -71,7 +71,7 @@ const char kScriptTemplate[] =
 
 namespace net_instaweb {
 
-class DelayImagesFilterTest : public ResourceManagerTestBase {
+class DelayImagesFilterTest : public RewriteTestBase {
  public:
   DelayImagesFilterTest() {
     options()->set_min_image_size_low_resolution_bytes(1 * 1024);
@@ -79,8 +79,9 @@ class DelayImagesFilterTest : public ResourceManagerTestBase {
   }
 
  protected:
+  // TODO(matterbury): Delete this method as it should be redundant.
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
   }
 
   // Match rewritten html content and return its byte count.

@@ -20,7 +20,7 @@
 
 #include "net/instaweb/rewriter/public/insert_ga_filter.h"
 
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -35,12 +35,12 @@ namespace {
 const char kGaId[] = "UA-21111111-1";
 
 // Test fixture for InsertGAFilter unit tests.
-class InsertGAFilterTest : public ResourceManagerTestBase {
+class InsertGAFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     options()->set_ga_id(kGaId);
     options()->EnableFilter(RewriteOptions::kInsertGA);
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
   }
 };
 

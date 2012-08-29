@@ -19,7 +19,7 @@
 #include "net/instaweb/rewriter/public/strip_non_cacheable_filter.h"
 
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -72,7 +72,7 @@ const char kPsaHeadScriptNodesEnd[] =
 }  // namespace
 
 
-class StripNonCacheableFilterTest : public ResourceManagerTestBase {
+class StripNonCacheableFilterTest : public RewriteTestBase {
  public:
   StripNonCacheableFilterTest() {}
 
@@ -88,7 +88,7 @@ class StripNonCacheableFilterTest : public ResourceManagerTestBase {
         "class= \"item \" , id\t =beforeItems \t , class=\"itema itemb\"");
 
     SetUseManagedRewriteDrivers(true);
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
   }
 
   virtual bool AddHtmlTags() const { return false; }

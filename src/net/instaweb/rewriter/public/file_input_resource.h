@@ -31,9 +31,9 @@ namespace net_instaweb {
 struct ContentType;
 class InputInfo;
 class MessageHandler;
-class ServerContext;
 class ResponseHeaders;
 class RewriteOptions;
+class ServerContext;
 
 class FileInputResource : public Resource {
  public:

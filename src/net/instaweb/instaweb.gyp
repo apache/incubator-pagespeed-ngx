@@ -395,6 +395,21 @@
       ],
     },
     {
+      'target_name': 'instaweb_critical_line_info_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/critical_line_info.pb.cc',
+        'rewriter/critical_line_info.proto',
+      ],
+      'dependencies': [
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_rewriter_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -486,6 +501,7 @@
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
         '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
       ],
@@ -543,6 +559,7 @@
         'util/hashed_referer_statistics.cc',
         'util/hasher.cc',
         'util/inprocess_shared_mem.cc',
+        'util/json_writer.cc',
         'util/lru_cache.cc',
         'util/md5_hasher.cc',
         'util/mock_hasher.cc',
@@ -881,6 +898,7 @@
         'instaweb_client_domain_rewriter_opt_data2c',
         'instaweb_core.gyp:instaweb_rewriter_html',
         'instaweb_blink_critical_line_data_pb',
+        'instaweb_critical_line_info_pb',
         'instaweb_http',
         'instaweb_defer_iframe_data2c',
         'instaweb_defer_iframe_opt_data2c',
@@ -938,6 +956,7 @@
         'rewriter/file_input_resource.cc',
         'rewriter/file_load_mapping.cc',
         'rewriter/file_load_policy.cc',
+        'rewriter/file_load_rule.cc',
         'rewriter/flush_early_content_writer_filter.cc',
         'rewriter/flush_html_filter.cc',
         'rewriter/furious_matcher.cc',
@@ -969,6 +988,7 @@
         'rewriter/script_tag_scanner.cc',
         'rewriter/simple_text_filter.cc',
         'rewriter/single_rewrite_context.cc',
+        'rewriter/split_html_filter.cc',
         'rewriter/strip_non_cacheable_filter.cc',
         'rewriter/strip_scripts_filter.cc',
         'rewriter/support_noscript_filter.cc',

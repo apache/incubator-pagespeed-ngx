@@ -19,7 +19,7 @@
 // Unit-test the FlushHtmlFilter.
 
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
@@ -36,11 +36,11 @@ const char kCssFormat[] = "<link rel='stylesheet' href='%s' type='text/css'/>";
 const char kImgFormat[] = "<img src='%s'/>";
 const char kScriptFormat[] = "<script type=text/javascript src='%s'></script>";
 
-class FlushFilterTest : public ResourceManagerTestBase  {
+class FlushFilterTest : public RewriteTestBase  {
  protected:
   virtual void SetUp() {
     options()->set_flush_html(true);
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     rewrite_driver()->AddFilters();
     SetupWriter();
     html_parse()->StartParse("http://example.com");
@@ -48,7 +48,7 @@ class FlushFilterTest : public ResourceManagerTestBase  {
 
   virtual void TearDown() {
     html_parse()->FinishParse();
-    ResourceManagerTestBase::TearDown();
+    RewriteTestBase::TearDown();
   }
 };
 

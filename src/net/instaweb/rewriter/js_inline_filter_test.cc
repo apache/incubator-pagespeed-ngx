@@ -19,7 +19,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -31,13 +31,14 @@ namespace net_instaweb {
 
 namespace {
 
-class JsInlineFilterTest : public ResourceManagerTestBase {
+class JsInlineFilterTest : public RewriteTestBase {
  public:
   JsInlineFilterTest() : filters_added_(false) {}
 
  protected:
+  // TODO(matterbury): Delete this method as it should be redundant.
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
   }
 
   void TestInlineJavascript(const GoogleString& html_url,

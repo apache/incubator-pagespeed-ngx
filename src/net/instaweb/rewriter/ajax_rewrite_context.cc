@@ -71,7 +71,8 @@ RecordingFetch::~RecordingFetch() {}
 void RecordingFetch::HandleHeadersComplete() {
   can_ajax_rewrite_ = CanAjaxRewrite();
   if (can_ajax_rewrite_) {
-    cache_value_writer_.SetHeaders(response_headers());
+    // Save the headers, and wait to finalize them in HandleDone().
+    saved_headers_.CopyFrom(*response_headers());
   } else {
     FreeDriver();
   }
@@ -103,6 +104,20 @@ bool RecordingFetch::HandleFlush(MessageHandler* handler) {
 }
 
 void RecordingFetch::HandleDone(bool success) {
+  if (success && can_ajax_rewrite_) {
+    // Extract X-Original-Content-Length from the response headers, which may
+    // have been added by the fetcher, and set it in the Resource. This will
+    // be used to build the X-Original-Content-Length for rewrites.
+    const char* original_content_length_hdr = extra_response_headers()->Lookup1(
+        HttpAttributes::kXOriginalContentLength);
+    if (original_content_length_hdr != NULL) {
+      saved_headers_.Replace(HttpAttributes::kXOriginalContentLength,
+                             original_content_length_hdr);
+    }
+    // Now finalize the headers.
+    cache_value_writer_.SetHeaders(&saved_headers_);
+  }
+
   base_fetch()->Done(success);
 
   if (success && can_ajax_rewrite_) {

@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/http_value_writer.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -39,7 +40,6 @@ namespace net_instaweb {
 
 class InputInfo;
 class MessageHandler;
-class ResponseHeaders;
 class RewriteDriver;
 class RewriteFilter;
 class UrlAsyncFetcher;
@@ -153,6 +153,7 @@ class RecordingFetch : public SharedAsyncFetch {
 
   HTTPValue cache_value_;
   HTTPValueWriter cache_value_writer_;
+  ResponseHeaders saved_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(RecordingFetch);
 };

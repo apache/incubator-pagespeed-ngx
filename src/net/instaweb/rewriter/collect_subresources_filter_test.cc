@@ -24,7 +24,7 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -102,7 +102,7 @@ class DummyFilter : public CommonFilter {
 };
 
 
-class CollectSubresourcesFilterTest : public ResourceManagerTestBase {
+class CollectSubresourcesFilterTest : public RewriteTestBase {
  public:
   CollectSubresourcesFilterTest() : collect_subresources_filter_(NULL) {}
 
@@ -121,7 +121,7 @@ class CollectSubresourcesFilterTest : public ResourceManagerTestBase {
   }
 
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     rewrite_driver()->set_user_agent("prefetch_link_rel_subresource");
     SetResponseWithDefaultHeaders("http://test.com/a.css", kContentTypeCss,
                                   ".yellow {background-color: yellow;}",

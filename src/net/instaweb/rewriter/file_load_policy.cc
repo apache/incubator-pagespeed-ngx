@@ -18,9 +18,9 @@
 
 #include <list>
 
-#include "base/logging.h"
 #include "net/instaweb/rewriter/public/file_load_mapping.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
+#include "net/instaweb/rewriter/public/file_load_rule.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -31,6 +31,7 @@ namespace net_instaweb {
 
 FileLoadPolicy::~FileLoadPolicy() {
   STLDeleteElements(&file_load_mappings_);
+  STLDeleteElements(&file_load_rules_);
 }
 
 bool FileLoadPolicy::ShouldLoadFromFile(const GoogleUrl& url,
@@ -43,18 +44,52 @@ bool FileLoadPolicy::ShouldLoadFromFile(const GoogleUrl& url,
   if (!url_string.empty()) {
     // TODO(sligocki): Consider layering a cache over this lookup.
     // Note: Later associations take precedence over earlier ones.
-    FileLoadMappings::const_reverse_iterator iter;
-    for (iter = file_load_mappings_.rbegin();
-         iter != file_load_mappings_.rend(); ++iter) {
-      if ((*iter)->Substitute(url_string, filename)) {
+    FileLoadMappings::const_reverse_iterator mappings_iter;
+    for (mappings_iter = file_load_mappings_.rbegin();
+         mappings_iter != file_load_mappings_.rend(); ++mappings_iter) {
+      if ((*mappings_iter)->Substitute(url_string, filename)) {
         // GoogleUrl will decode most %XX escapes, but it does not convert
         // "%20" -> " " which has come up often.
         GlobalReplaceSubstring("%20", " ", filename);
-        return true;
+
+        // We know know what file this url should map to, and we want know
+        // whether this one is safe to load directly or whether we need to back
+        // off and load through HTTP.  By default a mapping set up with
+        // Associate() permits direct loading of anything it applies to, but
+        // AddRule() lets people add exceptions.  See if any exceptions apply.
+        FileLoadRules::const_reverse_iterator rules_iter;
+        for (rules_iter = file_load_rules_.rbegin();
+             rules_iter != file_load_rules_.rend(); ++rules_iter) {
+          FileLoadRule::Classification classification =
+              (*rules_iter)->Classify(*filename);
+          if (classification == FileLoadRule::kAllowed) {
+            return true;  // Whitelist entry: load directly.
+          } else if (classification == FileLoadRule::kDisallowed) {
+            return false;  // Blacklist entry: fall back to HTTP.
+          }
+        }
+        return true;  // No exception applied; default allow.
       }
     }
   }
-  return false;
+  return false;  // No mapping found, no file to load from.
+}
+
+bool FileLoadPolicy::AddRule(const GoogleString& rule_str, bool is_regexp,
+                             bool allow, GoogleString* error) {
+  FileLoadRule* rule = NULL;
+  if (is_regexp) {
+    RE2 re(rule_str);
+    if (!re.ok()) {
+      error->assign(re.error());
+      return false;
+    }
+    rule = new FileLoadRuleRegexp(rule_str, allow);
+  } else {
+    rule = new FileLoadRuleLiteral(rule_str, allow);
+  }
+  file_load_rules_.push_back(rule);
+  return true;
 }
 
 bool FileLoadPolicy::AssociateRegexp(const StringPiece& url_regexp,
@@ -103,12 +138,18 @@ void FileLoadPolicy::Associate(const StringPiece& url_prefix_in,
 }
 
 void FileLoadPolicy::Merge(const FileLoadPolicy& other) {
-  FileLoadMappings::const_iterator iter;
-  for (iter = other.file_load_mappings_.begin();
-       iter != other.file_load_mappings_.end(); ++iter) {
+  FileLoadMappings::const_iterator mappings_iter;
+  for (mappings_iter = other.file_load_mappings_.begin();
+       mappings_iter != other.file_load_mappings_.end(); ++mappings_iter) {
     // Copy associations over.
+    file_load_mappings_.push_back((*mappings_iter)->Clone());
+  }
 
-    file_load_mappings_.push_back((*iter)->Clone());
+  FileLoadRules::const_iterator rules_iter;
+  for (rules_iter = other.file_load_rules_.begin();
+       rules_iter != other.file_load_rules_.end(); ++rules_iter) {
+    // Copy rules over.
+    file_load_rules_.push_back((*rules_iter)->Clone());
   }
 }
 

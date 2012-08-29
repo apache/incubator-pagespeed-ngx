@@ -278,18 +278,26 @@ void FlushEarlyFlow::GenerateDummyHeadAndCountResources(
     case UserAgentMatcher::kPrefetchLinkRelSubresource:
       head_string = GetHeadString(
           flush_early_info,
+          FlushEarlyContentWriterFilter::kPrefetchLinkRelSubresourceHtml,
           FlushEarlyContentWriterFilter::kPrefetchLinkRelSubresourceHtml);
       break;
     case UserAgentMatcher::kPrefetchImageTag:
       has_script = true;
       script = GetHeadString(
           flush_early_info,
+          FlushEarlyContentWriterFilter::kPrefetchImageTagHtml,
           FlushEarlyContentWriterFilter::kPrefetchImageTagHtml);
+      break;
+    case UserAgentMatcher::kPrefetchLinkScriptTag:
+      head_string = GetHeadString(
+          flush_early_info,
+          FlushEarlyContentWriterFilter::kPrefetchLinkTagHtml,
+          FlushEarlyContentWriterFilter::kPrefetchScriptTagHtml);
       break;
     case UserAgentMatcher::kPrefetchObjectTag:
       has_script = true;
       StrAppend(&script, kPreloadScript, GetHeadString(flush_early_info,
-                kPrefetchObjectTagHtml));
+                kPrefetchObjectTagHtml, kPrefetchObjectTagHtml));
       break;
   }
   if (has_script) {
@@ -308,16 +316,20 @@ void FlushEarlyFlow::GenerateDummyHeadAndCountResources(
 }
 
 GoogleString FlushEarlyFlow::GetHeadString(
-    const FlushEarlyInfo& flush_early_info, const char* format) {
+    const FlushEarlyInfo& flush_early_info, const char* css_format,
+    const char* js_format) {
   GoogleString head_string;
   for (int i = 0; i < flush_early_info.subresource_size(); ++i) {
-    if (driver_->options()->Enabled(RewriteOptions::kDeferJavascript)) {
-      if (flush_early_info.subresource(i).content_type() == JAVASCRIPT) {
-        continue;
+    const char* chosen_format = css_format;
+    if (flush_early_info.subresource(i).content_type() == JAVASCRIPT) {
+      if (driver_->options()->Enabled(RewriteOptions::kDeferJavascript)) {
+          continue;
       }
+      chosen_format = js_format;
     }
     StrAppend(&head_string, StringPrintf(
-        format, flush_early_info.subresource(i).rewritten_url().c_str()));
+        chosen_format,
+        flush_early_info.subresource(i).rewritten_url().c_str()));
     ++num_resources_flushed_;
   }
   return head_string;

@@ -29,6 +29,7 @@ namespace net_instaweb {
 
 class GoogleUrl;
 class FileLoadMapping;
+class FileLoadRule;
 
 // Class for deciding which URLs get loaded from which files.
 //
@@ -39,7 +40,7 @@ class FileLoadPolicy {
   FileLoadPolicy() {}
   virtual ~FileLoadPolicy();
 
-  // Note: This is O(N) for N is number of calls to Associate.
+  // Note: This is O(N+M) for N calls to Associate and M calls to AddRule.
   // TODO(sligocki): Set up a more efficient mapper.
   virtual bool ShouldLoadFromFile(const GoogleUrl& url,
                                   GoogleString* filename) const;
@@ -72,12 +73,47 @@ class FileLoadPolicy {
                                const StringPiece& filename_prefix,
                                GoogleString* error);
 
+  // By default Associate permits directly loading anything under the specified
+  // filesystem path prefix.  So if we were given:
+  //
+  //   Associate("http://example.com/", "/var/www/")
+  //
+  // we would use load-from-file for everything on the site. If some of those
+  // files actually need to be loaded through HTTP, for example because they
+  // need to be interpreted, we might need:
+  //
+  //   AddRule("/var/www/cgi-bin/", false, false);  // literal blacklist.
+  //
+  // or:
+  //
+  //   // blacklist regexp
+  //   AddRule("\\.php$", true, false);  // regexp blacklist.
+  //
+  // In cases where it's easier to list what's allowed than what's prohibited,
+  // you can whitelist:
+  //
+  //   GoogleString e;  // For regexp errors.
+  //   Associate("http://example.com/", "/var/www/")
+  //   AddRule(".*", true, false, &e)  // regexp blacklist.
+  //   AddRule("\\.html$", true, true, &e)  // regexp whitelist.
+  //   AddRule("/var/www/static/", false, true, &e)  // literal whitelist.
+  //   // regexp blacklist.
+  //   AddRule("^/var/www/static/legacy/.*\\.php$", true, false, &e)
+  //
+  // AddRule will fail if RE2 can't compile the regular expression, and will
+  // write an error message to it's error string and return false if that
+  // happens.
+  virtual bool AddRule(const GoogleString& rule, bool is_regexp, bool allowed,
+                       GoogleString* error);
+
   // Merge in other policies (needed for rewrite_options).
   virtual void Merge(const FileLoadPolicy& other);
 
  private:
   typedef std::list<FileLoadMapping*> FileLoadMappings;
   FileLoadMappings file_load_mappings_;
+  typedef std::list<FileLoadRule*> FileLoadRules;
+  FileLoadRules file_load_rules_;
 
   DISALLOW_COPY_AND_ASSIGN(FileLoadPolicy);
 };

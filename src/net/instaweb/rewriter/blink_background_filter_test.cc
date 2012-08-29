@@ -20,7 +20,7 @@
 
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -60,7 +60,7 @@ const char kPsaHeadScriptNodesEnd[] =
 }  // namespace
 
 
-class BlinkBackgroundFilterTest : public ResourceManagerTestBase {
+class BlinkBackgroundFilterTest : public RewriteTestBase {
  public:
   BlinkBackgroundFilterTest() {}
 
@@ -76,7 +76,7 @@ class BlinkBackgroundFilterTest : public ResourceManagerTestBase {
         "class= \"item \" , id\t =beforeItems \t , class=\"itema itemb\"");
 
     SetUseManagedRewriteDrivers(true);
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
   }
 
   virtual bool AddHtmlTags() const { return false; }

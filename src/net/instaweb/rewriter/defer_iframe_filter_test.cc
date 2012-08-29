@@ -17,7 +17,7 @@
 // Author: pulkitg@google.com (Pulkit Goyal)
 
 #include "net/instaweb/rewriter/public/defer_iframe_filter.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
@@ -28,10 +28,10 @@
 
 namespace net_instaweb {
 
-class DeferIframeFilterTest : public ResourceManagerTestBase {
+class DeferIframeFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     rewrite_driver_->AddOwnedPostRenderFilter(
         new DeferIframeFilter(rewrite_driver_));
   }

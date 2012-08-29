@@ -43,6 +43,7 @@ class UserAgentMatcher {
     kPrefetchLinkRelSubresource,
     kPrefetchImageTag,
     kPrefetchObjectTag,
+    kPrefetchLinkScriptTag,
   };
 
   UserAgentMatcher();
@@ -88,6 +89,7 @@ class UserAgentMatcher {
   FastWildcardGroup mobile_user_agents_;
   FastWildcardGroup supports_prefetch_link_rel_subresource_;
   FastWildcardGroup supports_prefetch_image_tag_;
+  FastWildcardGroup supports_prefetch_link_script_tag_;
 
   DISALLOW_COPY_AND_ASSIGN(UserAgentMatcher);
 };

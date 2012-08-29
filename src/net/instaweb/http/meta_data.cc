@@ -59,6 +59,8 @@ const char HttpAttributes::kXGooglePagespeedClientId[] =
     "X-Google-Pagespeed-Client-Id";
 const char HttpAttributes::kXGoogleRequestEventId[] =
     "X-Google-Request-Event-Id";
+const char HttpAttributes::kXOriginalContentLength[] =
+    "X-Original-Content-Length";
 const char HttpAttributes::kXPsaBlockingRewrite[] = "X-PSA-Blocking-Rewrite";
 const char HttpAttributes::kXPsaLoadShed[] = "X-Psa-Load-Shed";
 const char HttpAttributes::kXRequestedWith[] = "X-Requested-With";

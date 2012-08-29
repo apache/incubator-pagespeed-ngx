@@ -22,7 +22,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -32,7 +32,7 @@
 namespace net_instaweb {
 
 // Test fixture for ScanFilter unit tests.
-class ScanFilterTest : public ResourceManagerTestBase {
+class ScanFilterTest : public RewriteTestBase {
 };
 
 TEST_F(ScanFilterTest, EmptyPage) {

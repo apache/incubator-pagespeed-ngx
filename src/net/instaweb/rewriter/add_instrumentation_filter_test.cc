@@ -23,7 +23,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -33,7 +33,7 @@
 
 namespace net_instaweb {
 
-class AddInstrumentationFilterTest : public ResourceManagerTestBase {
+class AddInstrumentationFilterTest : public RewriteTestBase {
  protected:
   AddInstrumentationFilterTest() {}
 
@@ -41,7 +41,7 @@ class AddInstrumentationFilterTest : public ResourceManagerTestBase {
     options()->set_beacon_url("http://example.com/beacon?org=xxx&ets=");
     AddInstrumentationFilter::Initialize(statistics());
     options()->EnableFilter(RewriteOptions::kAddInstrumentation);
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     report_unload_time_ = false;
     xhtml_mode_ = false;
     cdata_mode_ = false;

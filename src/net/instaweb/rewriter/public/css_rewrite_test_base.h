@@ -24,7 +24,7 @@
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -35,7 +35,7 @@ namespace net_instaweb {
 class ResourceNamer;
 struct ContentType;
 
-class CssRewriteTestBase : public ResourceManagerTestBase {
+class CssRewriteTestBase : public RewriteTestBase {
  protected:
   CssRewriteTestBase() {
     num_blocks_rewritten_ =
@@ -63,7 +63,7 @@ class CssRewriteTestBase : public ResourceManagerTestBase {
   ~CssRewriteTestBase();
 
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     options()->set_always_rewrite_css(true);
     AddFilter(RewriteOptions::kRewriteCss);
   }

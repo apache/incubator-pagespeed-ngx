@@ -22,7 +22,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -47,7 +47,7 @@ const char kJsData[] =
 
 namespace net_instaweb {
 
-class InsertDnsPrefetchFilterTest : public ResourceManagerTestBase {
+class InsertDnsPrefetchFilterTest : public RewriteTestBase {
  public:
   InsertDnsPrefetchFilterTest()
       : writer_(&output_), filter_(NULL) {
@@ -56,7 +56,7 @@ class InsertDnsPrefetchFilterTest : public ResourceManagerTestBase {
  protected:
   virtual void SetUp() {
     options()->EnableFilter(RewriteOptions::kInsertDnsPrefetch);
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     rewrite_driver()->AddFilters();
     rewrite_driver()->SetWriter(&writer_);
     rewrite_driver()->set_user_agent(UserAgentStrings::kChromeUserAgent);
@@ -64,7 +64,7 @@ class InsertDnsPrefetchFilterTest : public ResourceManagerTestBase {
 
   virtual void TearDown() {
     filter_.reset(NULL);
-    ResourceManagerTestBase::TearDown();
+    RewriteTestBase::TearDown();
   }
 
   void CheckPrefetchInfo(int num_domains_in_current_rewrite,

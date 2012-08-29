@@ -20,7 +20,7 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -29,10 +29,10 @@
 
 namespace net_instaweb {
 
-class UrlLeftTrimFilterTest : public ResourceManagerTestBase {
+class UrlLeftTrimFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     left_trim_filter_.reset(new UrlLeftTrimFilter(rewrite_driver(),
                                                   statistics()));
     rewrite_driver()->AddFilter(left_trim_filter_.get());

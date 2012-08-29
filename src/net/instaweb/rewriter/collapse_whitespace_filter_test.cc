@@ -21,7 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -31,12 +31,12 @@
 
 namespace net_instaweb {
 
-class CollapseWhitespaceFilterTest : public ResourceManagerTestBase {
+class CollapseWhitespaceFilterTest : public RewriteTestBase {
  protected:
   CollapseWhitespaceFilterTest() {}
   ~CollapseWhitespaceFilterTest() {}
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     AddFilter(RewriteOptions::kCollapseWhitespace);
     AddOtherFilter(RewriteOptions::kCollapseWhitespace);
   }
@@ -101,7 +101,7 @@ TEST_F(CollapseWhitespaceFilterTest, DoNotCollapseWithinTextarea) {
                     "    is good  to     see you   </textarea></body>");
 }
 
-class CollapseWhitespaceGeneralTest : public ResourceManagerTestBase {
+class CollapseWhitespaceGeneralTest : public RewriteTestBase {
   // Don't add any text to our tests.
   virtual bool AddHtmlTags() const { return false; }
 };

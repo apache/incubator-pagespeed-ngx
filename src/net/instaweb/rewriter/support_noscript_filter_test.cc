@@ -17,17 +17,17 @@
 
 #include "net/instaweb/rewriter/public/support_noscript_filter.h"
 
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
-class SupportNoscriptFilterTest : public ResourceManagerTestBase {
+class SupportNoscriptFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     rewrite_driver()->AddOwnedPostRenderFilter(
         new SupportNoscriptFilter(rewrite_driver()));
   }

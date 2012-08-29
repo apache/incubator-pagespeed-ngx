@@ -32,7 +32,7 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -224,11 +224,11 @@ class TestRewriter : public RewriteFilter {
 
 // Parameterized by whether or not we should create a custom encoder.
 class RewriteSingleResourceFilterTest
-    : public ResourceManagerTestBase,
+    : public RewriteTestBase,
       public ::testing::WithParamInterface<bool> {
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
 
     filter_ = new TestRewriter(rewrite_driver(), GetParam());
     AddRewriteFilter(filter_);

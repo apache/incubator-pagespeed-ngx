@@ -33,7 +33,7 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -81,7 +81,7 @@ const char kAlternateDomain[] = "http://alternate.com/";
 }  // namespace
 
 // Test fixture for JsCombineFilter unit tests.
-class JsCombineFilterTest : public ResourceManagerTestBase {
+class JsCombineFilterTest : public RewriteTestBase {
  public:
   struct ScriptInfo {
     HtmlElement* element;
@@ -142,7 +142,7 @@ class JsCombineFilterTest : public ResourceManagerTestBase {
   }
 
   void SetUpWithJsFilter(bool use_js_filter) {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     UseMd5Hasher();
     SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_js_header_);
     SimulateJsResource(kJsUrl1, kJsText1);

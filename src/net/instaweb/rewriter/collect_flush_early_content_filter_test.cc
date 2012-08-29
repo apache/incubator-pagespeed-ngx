@@ -18,7 +18,7 @@
 #include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
 
 #include "net/instaweb/rewriter/flush_early.pb.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
@@ -26,13 +26,13 @@
 
 namespace net_instaweb {
 
-class CollectFlushEarlyContentFilterTest : public ResourceManagerTestBase {
+class CollectFlushEarlyContentFilterTest : public RewriteTestBase {
  public:
   CollectFlushEarlyContentFilterTest() {}
 
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     rewrite_driver()->AppendOwnedPreRenderFilter(
         new CollectFlushEarlyContentFilter(rewrite_driver()));
   }

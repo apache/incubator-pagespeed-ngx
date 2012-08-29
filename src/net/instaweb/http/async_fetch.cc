@@ -33,6 +33,9 @@ AsyncFetch::~AsyncFetch() {
   if (owns_response_headers_) {
     delete response_headers_;
   }
+  if (owns_extra_response_headers_) {
+    delete extra_response_headers_;
+  }
   if (owns_request_headers_) {
     delete request_headers_;
   }
@@ -130,6 +133,23 @@ void AsyncFetch::set_response_headers(ResponseHeaders* headers) {
   owns_response_headers_ = false;
 }
 
+ResponseHeaders* AsyncFetch::extra_response_headers() {
+  if (extra_response_headers_ == NULL) {
+    extra_response_headers_ = new ResponseHeaders;
+    owns_extra_response_headers_ = true;
+  }
+  return extra_response_headers_;
+}
+
+void AsyncFetch::set_extra_response_headers(ResponseHeaders* headers) {
+  DCHECK(!owns_extra_response_headers_);
+  if (owns_extra_response_headers_) {
+    delete extra_response_headers_;
+  }
+  extra_response_headers_ = headers;
+  owns_extra_response_headers_ = false;
+}
+
 LoggingInfo* AsyncFetch::logging_info() {
   return log_record()->logging_info();
 }
@@ -203,6 +223,7 @@ AsyncFetchUsingWriter::~AsyncFetchUsingWriter() {
 SharedAsyncFetch::SharedAsyncFetch(AsyncFetch* base_fetch)
     : base_fetch_(base_fetch) {
   set_response_headers(base_fetch->response_headers());
+  set_extra_response_headers(base_fetch->extra_response_headers());
   set_request_headers(base_fetch->request_headers());
   set_log_record(base_fetch->log_record());
 }

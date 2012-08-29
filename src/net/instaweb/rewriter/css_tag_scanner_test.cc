@@ -23,7 +23,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -166,7 +166,7 @@ TEST_F(CssTagScannerTest, TestHasImport) {
       "@import url('http://foo.com');\n", &message_handler_));
 }
 
-class RewriteDomainTransformerTest : public ResourceManagerTestBase {
+class RewriteDomainTransformerTest : public RewriteTestBase {
  public:
   RewriteDomainTransformerTest()
       : old_base_url_("http://old-base.com/"),

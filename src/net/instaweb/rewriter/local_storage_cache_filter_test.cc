@@ -24,7 +24,7 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
@@ -84,11 +84,11 @@ const char kCuppaPngInlineData[] =
     "KA9+vXr9MbvQ50qrNnz57RYTmyevPO19bWRo/HmjTwXYs/Q2o2GaWaNxxGCTAGJq070BjgcB"
     "MiwMFN73nXNjAO3vWlG0+BcXDTe961DYyDd33pxtN/Wk9wIrGXNoUAAAAASUVORK5CYII=";
 
-class LocalStorageCacheTest : public ResourceManagerTestBase,
+class LocalStorageCacheTest : public RewriteTestBase,
                               public ::testing::WithParamInterface<bool> {
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     MySetUp();
   }
 
@@ -215,7 +215,7 @@ TEST_F(LocalStorageCacheTest, LinkUrlTransormationFails) {
 class LocalStorageCacheTinyTest : public LocalStorageCacheTest {
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     options()->set_css_inline_max_bytes(10);  // An arbitrary tiny value.
     MySetUp();
   }

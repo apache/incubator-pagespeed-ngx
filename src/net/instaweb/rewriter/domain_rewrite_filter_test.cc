@@ -19,9 +19,10 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
@@ -44,10 +45,10 @@ const char kTo2BDomain[] = "http://to2b.test.com/";
 
 namespace net_instaweb {
 
-class DomainRewriteFilterTest : public ResourceManagerTestBase {
+class DomainRewriteFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     options()->Disallow("*dont_shard*");
     DomainLawyer* lawyer = options()->domain_lawyer();
     lawyer->AddRewriteDomainMapping(kTo1Domain, kFrom1Domain,

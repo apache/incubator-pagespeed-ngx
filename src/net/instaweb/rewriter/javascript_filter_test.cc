@@ -23,7 +23,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -55,10 +55,10 @@ const char kRewrittenJsName[] = "hello.js";
 
 namespace net_instaweb {
 
-class JavascriptFilterTest : public ResourceManagerTestBase {
+class JavascriptFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     AddFilter(RewriteOptions::kRewriteJavascript);
     expected_rewritten_path_ = Encode(kTestDomain, kFilterId, "0",
                                       kRewrittenJsName, "js");

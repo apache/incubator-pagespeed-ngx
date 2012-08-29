@@ -22,7 +22,7 @@
 
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -33,11 +33,11 @@ namespace net_instaweb {
 
 namespace {
 // Test fixture for MetaTagFilter unit tests.
-class MetaTagFilterTest : public ResourceManagerTestBase {
+class MetaTagFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     options()->EnableFilter(RewriteOptions::kConvertMetaTags);
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     rewrite_driver()->AddFilters();
     headers_.Clear();
     rewrite_driver()->set_response_headers_ptr(&headers_);

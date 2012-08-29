@@ -212,6 +212,21 @@ deferJsNs.DeferJs = function() {
    * @private
    */
   this.incrementalScriptsDoneCallback_ = null;
+
+  /**
+   * This variable counts the total number of async scripts created by no defer
+   * scripts.
+   * @type {!number}
+   * @private
+   */
+  this.noDeferAsyncScriptsCount_ = 0;
+
+  /**
+   * Async scripts created by no defer scripts.
+   * @type {Array.<Element>}
+   * @private
+   */
+  this.noDeferAsyncScripts_ = [];
 };
 
 /**
@@ -312,7 +327,6 @@ deferJsNs.DeferJs.PSA_CURRENT_NODE = 'psa_current_node';
  */
 deferJsNs.DeferJs.PSA_SCRIPT_TYPE = 'text/psajs';
 
-
 /**
  * Add to defer_logs if logs are enabled.
  * @param {string} line line to be added to log.
@@ -346,7 +360,7 @@ deferJsNs.DeferJs.prototype.submitTask = function(task, opt_pos) {
  */
 deferJsNs.DeferJs.prototype.globalEval = function(str) {
   var script = this.origCreateElement_.call(document, 'script');
-  script.text=str;
+  script.text = str;
   script.setAttribute('type', 'text/javascript');
   var currentElem = this.getCurrentDomLocation();
   currentElem.parentNode.insertBefore(script, currentElem);
@@ -361,8 +375,8 @@ deferJsNs.DeferJs.prototype.globalEval = function(str) {
  * names.
  */
 deferJsNs.DeferJs.prototype.createIdVars = function() {
-  var elems = document.getElementsByTagName("*");
-  var idVarsString = "";
+  var elems = document.getElementsByTagName('*');
+  var idVarsString = '';
   for (var i = 0; i < elems.length; i++) {
     // Don't use elem.id since it leads to problem in forms.
     if (elems[i].hasAttribute('id')) {
@@ -665,6 +679,38 @@ deferJsNs.DeferJs.prototype.checkNodeInDom = function(node) {
 };
 
 /**
+ * Script onload is not triggered if src is empty because such scripts
+ * are not async scripts as these scripts will be executed while parsing
+ * the dom.
+ * @param {Array.<Element>} dynamicInsertedScriptList is the list of dynamic
+ *     inserted scripts.
+ * @return {number} returns the number of scripts whose onload will not get
+ *     triggered.
+ */
+deferJsNs.DeferJs.prototype.getNumScriptsWithNoOnload =
+    function(dynamicInsertedScriptList) {
+  var count = 0;
+  var len = dynamicInsertedScriptList.length;
+  for (var i = 0; i < len; ++i) {
+    var node = dynamicInsertedScriptList[i];
+    var parent = node.parentNode;
+    var src = node.src;
+    var text = node.textContent;
+    // IE behaves differently for async scripts compared to other browsers.
+    // IE triggeres script onload only if parent is not null and src or
+    // textContent is not empty. But other browsers trigger onload only if
+    // node is present in the dom and src is not empty.
+    if (((this.getIEVersion() > 8) &&
+            (!parent || (src == '' && text == ''))) ||
+        (!this.getIEVersion() &&
+                (!this.checkNodeInDom(node) || src == ''))) {
+      count++;
+    }
+  }
+  return count;
+};
+
+/**
  *  Checks if onComplete() function can be called or not.
  *  @return {boolean} returns true if onComplete() can be called.
  */
@@ -676,26 +722,7 @@ deferJsNs.DeferJs.prototype.canCallOnComplete = function() {
   }
   var count = 0;
   if (this.dynamicInsertedScriptCount_ != 0) {
-    // Script onload is not triggered if src is empty because such scripts
-    // are not async scripts as these scripts will be executed while parsing
-    // the dom.
-    var len = this.dynamicInsertedScript_.length;
-    for (var i = 0; i < len; ++i) {
-      var node = this.dynamicInsertedScript_[i];
-      var parent = node.parentNode;
-      var src = node.src;
-      var text = node.textContent;
-      // IE behaves differently for async scripts compared to other browsers.
-      // IE triggeres script onload only if parent is not null and src or
-      // textContent is not empty. But other browsers trigger onload only if
-      // node is present in the dom and src is not empty.
-      if (((this.getIEVersion() > 8) &&
-              (!parent || (src == '' && text == ''))) ||
-          (!this.getIEVersion() &&
-                  (!this.checkNodeInDom(node) || src == ''))) {
-        count++;
-      }
-    }
+    count = this.getNumScriptsWithNoOnload(this.dynamicInsertedScript_);
   }
   if (this.dynamicInsertedScriptCount_ == count) {
     return true;
@@ -845,6 +872,25 @@ deferJsNs.DeferJs.prototype.setUp = function() {
     return elem;
   }
 };
+
+/**
+ * Start the execution of the deferred script only if there is no async script
+ * pending that was created by non deferred.
+ */
+deferJsNs.DeferJs.prototype.execute = function() {
+  if (this.state_ != deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED) {
+    return;
+  }
+  var count = 0;
+  if (this.noDeferAsyncScriptsCount_ != 0) {
+    count = this.getNumScriptsWithNoOnload(this.noDeferAsyncScripts_);
+  }
+  if (this.noDeferAsyncScriptsCount_ == count) {
+    document.createElement = this.origCreateElement_;
+    this.run();
+  }
+};
+deferJsNs.DeferJs.prototype['execute'] = deferJsNs.DeferJs.prototype.execute;
 
 /**
  * Starts the execution of all the deferred scripts.
@@ -1295,6 +1341,34 @@ deferJsNs.DeferJs.prototype.getIEVersion = function() {
 };
 
 /**
+ * Overrides createElement for the non-deferred scripts. Any async script
+ * created by non-deferred script should be executed before deferred scripts
+ * gets executed.
+ */
+deferJsNs.DeferJs.prototype.noDeferCreateElementOverride = function() {
+  // Attaching onload & onerror function if script node is created.
+  var me = this;
+  document.createElement = function(str) {
+    var elem = me.origCreateElement_.call(document, str);
+    if (str.toLowerCase() == 'script') {
+      me.noDeferAsyncScripts_.push(elem);
+      me.noDeferAsyncScriptsCount_++;
+      var onload = function() {
+        var index = me.noDeferAsyncScripts_.indexOf(this);
+        if (index != -1) {
+          me.noDeferAsyncScripts_.splice(index, 1);
+          me.noDeferAsyncScriptsCount_--;
+          me.execute();
+        }
+      };
+      deferJsNs.addOnload(elem, onload);
+      deferJsNs.addHandler(elem, 'error', onload);
+    }
+    return elem;
+  }
+};
+
+/**
  * @return {boolean} true if deferJs is running with experimental flag.
  */
 deferJsNs.DeferJs.prototype.isExperimentalMode = function() {
@@ -1317,6 +1391,7 @@ deferJsNs.deferInit = function() {
   }
 
   var temp = new deferJsNs.DeferJs();
+  temp.noDeferCreateElementOverride();
   pagespeed['deferJs'] = temp;
 };
 pagespeed['deferInit'] = deferJsNs.deferInit;

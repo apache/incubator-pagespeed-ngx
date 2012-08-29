@@ -36,7 +36,7 @@
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr, etc
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
@@ -60,12 +60,13 @@ namespace net_instaweb {
 
 class RewriteFilter;
 
-class RewriteDriverTest : public ResourceManagerTestBase {
+class RewriteDriverTest : public RewriteTestBase {
  protected:
   RewriteDriverTest() {}
 
+  // TODO(matterbury): Delete this method as it should be redundant.
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
   }
 
   bool CanDecodeUrl(const StringPiece& url) {

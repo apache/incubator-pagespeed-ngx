@@ -18,6 +18,8 @@
 //
 // Implementations of FileLoadMappingLiteral and FileLoadMappingRegexp, two
 // subclasses of the abstract class FileLoadMapping.
+//
+// Tests are in file_load_policy_test.
 
 #include "net/instaweb/rewriter/public/file_load_mapping.h"
 #include "net/instaweb/util/public/re2.h"

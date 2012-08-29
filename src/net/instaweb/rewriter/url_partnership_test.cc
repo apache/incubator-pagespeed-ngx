@@ -20,7 +20,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -48,7 +48,7 @@ const char kAbsoluteResourceUrl3[] = "http://www.nytimes.com/r/main.css";
 
 namespace net_instaweb {
 
-class UrlPartnershipTest : public ResourceManagerTestBase {
+class UrlPartnershipTest : public RewriteTestBase {
  protected:
   UrlPartnershipTest()
       : styles_path_("http://www.nytimes.com/r/styles/"),
@@ -58,7 +58,7 @@ class UrlPartnershipTest : public ResourceManagerTestBase {
   }
 
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     GoogleUrl original_gurl(kOriginalRequest);
     partnership_.reset(new UrlPartnership(rewrite_driver()));
     partnership_->Reset(original_gurl);

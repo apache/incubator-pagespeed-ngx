@@ -41,7 +41,7 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
@@ -110,7 +110,7 @@ class VerifyContentsCallback : public Resource::AsyncCallback {
   bool called_;
 };
 
-class ResourceManagerTest : public ResourceManagerTestBase {
+class ResourceManagerTest : public RewriteTestBase {
  protected:
   ResourceManagerTest() { }
 

@@ -19,7 +19,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -28,12 +28,12 @@
 
 namespace net_instaweb {
 
-class DeterministicJsFilterTest : public ResourceManagerTestBase {
+class DeterministicJsFilterTest : public RewriteTestBase {
  public:
   DeterministicJsFilterTest() {}
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     deterministic_js_filter_.reset(new DeterministicJsFilter(rewrite_driver()));
     rewrite_driver()->AddFilter(deterministic_js_filter_.get());
   }

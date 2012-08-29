@@ -20,7 +20,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -36,10 +36,10 @@ const char kCssTail[] = "styles.css";
 const char kCssSubdir[] = "assets/";
 const char kCssData[] = ".blue {color: blue; src: url(dummy.png);}";
 
-class CssInlineImportToLinkFilterTest : public ResourceManagerTestBase {
+class CssInlineImportToLinkFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     SetHtmlMimetype();
   }
 

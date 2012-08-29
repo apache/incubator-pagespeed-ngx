@@ -24,7 +24,7 @@
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
@@ -70,7 +70,7 @@ const int kShortTtlSec      = 100;
 const int kMediumTtlSec     = 100000;
 const int kLongTtlSec       = 100000000;
 
-class CacheExtenderTest : public ResourceManagerTestBase {
+class CacheExtenderTest : public RewriteTestBase {
  protected:
   CacheExtenderTest()
       : kCssData(CssData("")),
@@ -79,8 +79,9 @@ class CacheExtenderTest : public ResourceManagerTestBase {
         CacheExtender::kCacheExtensions);
   }
 
+  // TODO(matterbury): Delete this method as it should be redundant.
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
   }
 
   void InitTest(int64 ttl) {

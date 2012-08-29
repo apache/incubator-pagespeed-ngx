@@ -27,7 +27,7 @@
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
@@ -131,7 +131,7 @@ class FakeFetch : public AsyncFetch {
   DISALLOW_COPY_AND_ASSIGN(FakeFetch);
 };
 
-class AjaxRewriteContextTest : public ResourceManagerTestBase {
+class AjaxRewriteContextTest : public RewriteTestBase {
  protected:
   AjaxRewriteContextTest()
       : cache_html_url_("http://www.example.com/cacheable.html"),
@@ -152,7 +152,7 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
 
   virtual void SetUp() {
     mock_timer()->SetTimeUs(start_time_ms() * Timer::kMsUs);
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     mock_url_fetcher()->set_fail_on_unexpected(false);
 
     // Set fetcher result and headers.
@@ -264,7 +264,7 @@ class AjaxRewriteContextTest : public ResourceManagerTestBase {
     img_filter_->ClearStats();
     js_filter_->ClearStats();
     css_filter_->ClearStats();
-    ResourceManagerTestBase::ClearStats();
+    RewriteTestBase::ClearStats();
   }
 
   void ExpectAjaxImageSuccessFlow(const GoogleString& url) {

@@ -34,6 +34,12 @@ const char FlushEarlyContentWriterFilter::kPrefetchLinkRelSubresourceHtml[] =
     "<link rel=\"subresource\" href=\"%s\"/>\n";
 const char FlushEarlyContentWriterFilter::kPrefetchImageTagHtml[] =
     "new Image().src=\"%s\";";
+const char FlushEarlyContentWriterFilter::kPrefetchScriptTagHtml[] =
+    "<script type=\"psa_prefetch\" src=\"%s\"></script>\n";
+const char FlushEarlyContentWriterFilter::kPrefetchLinkTagHtml[] =
+    "<link rel=\"stylesheet\" href=\"%s\" media=\"print\" "
+    "disabled=\"true\"/>\n";
+
 const char FlushEarlyContentWriterFilter::kPrefetchStartTimeScript[] =
     "<script type='text/javascript'>"
     "window.mod_pagespeed_prefetch_start = Number(new Date());"
@@ -109,6 +115,15 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
           WriteToOriginalWriter(
               StringPrintf(kPrefetchLinkRelSubresourceHtml,
                            url.as_string().c_str()));
+        } else if (prefetch_mechanism_ ==
+                   UserAgentMatcher::kPrefetchLinkScriptTag) {
+          if (category == semantic_type::kScript) {
+            WriteToOriginalWriter(
+                StringPrintf(kPrefetchScriptTagHtml, url.as_string().c_str()));
+          } else {
+            WriteToOriginalWriter(
+                StringPrintf(kPrefetchLinkTagHtml, url.as_string().c_str()));
+          }
         }
       }
     }

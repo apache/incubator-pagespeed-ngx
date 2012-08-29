@@ -23,7 +23,6 @@
 #include "net/instaweb/http/public/http_value_writer.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -33,6 +32,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
+
+namespace instaweb { class LoggingInfo; }
 
 namespace net_instaweb {
 
@@ -89,7 +90,9 @@ class CachePutFetch : public SharedAsyncFetch {
     }
 
     if (cacheable_) {
-      cache_value_writer_.SetHeaders(headers);
+      // Make a copy of the headers which we will send to the
+      // cache_value_writer_ later.
+      saved_headers_.CopyFrom(*headers);
     }
 
     base_fetch()->HeadersComplete();
@@ -111,6 +114,20 @@ class CachePutFetch : public SharedAsyncFetch {
   }
 
   virtual void HandleDone(bool success) {
+    if (success && cacheable_ && cache_value_writer_.has_buffered()) {
+      // The X-Original-Content-Length header will have been added after
+      // HandleHeadersComplete(), so extract its value and add it to the
+      // saved headers.
+      const char* orig_content_length = extra_response_headers()->Lookup1(
+          HttpAttributes::kXOriginalContentLength);
+      if (orig_content_length != NULL) {
+        saved_headers_.Replace(HttpAttributes::kXOriginalContentLength,
+                               orig_content_length);
+      }
+      // Finalize the headers.
+      cache_value_writer_.SetHeaders(&saved_headers_);
+    }
+
     // Finish fetch.
     base_fetch()->Done(success);
     // Add result to cache.
@@ -132,6 +149,7 @@ class CachePutFetch : public SharedAsyncFetch {
   HTTPValue cache_value_;
   HTTPValueWriter cache_value_writer_;
   int64 start_time_ms_;  // only used if backend_first_byte_latency_ != NULL
+  ResponseHeaders saved_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(CachePutFetch);
 };

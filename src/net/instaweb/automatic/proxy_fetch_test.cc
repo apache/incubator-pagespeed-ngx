@@ -26,7 +26,7 @@
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -72,7 +72,7 @@ class MockProxyFetch : public ProxyFetch {
 };
 
 
-class ProxyFetchPropertyCallbackCollectorTest : public ResourceManagerTestBase {
+class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
  public:
   void PostLookupTask() {
     post_lookup_called_ = true;
@@ -91,7 +91,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public ResourceManagerTestBase {
   ProxyFetchPropertyCallbackCollector* MakeCollector() {
     ProxyFetchPropertyCallbackCollector* collector =
         new ProxyFetchPropertyCallbackCollector(
-            resource_manager_, ResourceManagerTestBase::kTestDomain, options());
+            resource_manager_, RewriteTestBase::kTestDomain, options());
     // Collector should not contain any PropertyPages
     EXPECT_EQ(NULL, collector->GetPropertyPage(
         ProxyFetchPropertyCallback::kPagePropertyCache));
@@ -108,7 +108,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public ResourceManagerTestBase {
     AbstractMutex* mutex = thread_system_->NewMutex();
     ProxyFetchPropertyCallback* callback =
         new ProxyFetchPropertyCallback(
-            cache_type, ResourceManagerTestBase::kTestDomain, collector, mutex);
+            cache_type, RewriteTestBase::kTestDomain, collector, mutex);
     EXPECT_EQ(cache_type, callback->cache_type());
     collector->AddCallback(callback);
     return callback;

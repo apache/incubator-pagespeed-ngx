@@ -200,6 +200,9 @@ class UrlResourceFetchCallback : public AsyncFetch {
 
   bool AddToCache(bool success) {
     ResponseHeaders* headers = response_headers();
+    // Merge in any extra response headers.
+    headers->UpdateFrom(*extra_response_headers());
+    headers->ComputeCaching();
     headers->FixDateHeaders(http_cache()->timer()->NowMs());
     if (success && !headers->IsErrorStatus()) {
       if (rewrite_options_->IsCacheTtlOverridden(url())) {

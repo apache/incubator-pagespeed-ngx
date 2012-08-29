@@ -28,7 +28,7 @@ namespace net_instaweb {
 const char CriticalImagesFinderTestBase::kRequestUrl[] = "http://www.test.com";
 
 void CriticalImagesFinderTestBase::SetUp() {
-  ResourceManagerTestBase::SetUp();
+  RewriteTestBase::SetUp();
   PropertyCache* pcache = resource_manager_->page_property_cache();
   MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),
                                 kRequestUrl);

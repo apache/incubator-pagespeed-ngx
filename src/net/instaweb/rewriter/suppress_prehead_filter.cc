@@ -64,9 +64,15 @@ void SuppressPreheadFilter::StartElement(HtmlElement* element) {
     GoogleString content, mime_type, charset;
     if (CommonFilter::ExtractMetaTagDetails(*element, NULL, &content,
                                             &mime_type, &charset)) {
+      // Store the current element and writer into temporary variables.
       meta_tag_element_ = element;
+      pre_meta_tag_writer_= writer();
+      // If we flushed early, then we have already written the meta tag out.
+      // Hence, suppress the meta tag. Otherwise, write to the original writer.
+      Writer* secondary_writer = driver_->flushed_early() ?
+          &null_writer_ : original_writer_;
       content_type_meta_tag_and_response_writer_.reset(new SplitWriter(
-          original_writer_, &content_type_meta_tag_writer_));
+          secondary_writer, &content_type_meta_tag_writer_));
       set_writer(content_type_meta_tag_and_response_writer_.get());
     }
   }
@@ -76,7 +82,8 @@ void SuppressPreheadFilter::StartElement(HtmlElement* element) {
 void SuppressPreheadFilter::EndElement(HtmlElement* element) {
   HtmlWriterFilter::EndElement(element);
   if (element == meta_tag_element_) {
-    set_writer(original_writer_);
+    set_writer(pre_meta_tag_writer_);
+    pre_meta_tag_writer_ = NULL;
     meta_tag_element_ = NULL;
   }
   if (element == noscript_element_) {
@@ -88,6 +95,7 @@ void SuppressPreheadFilter::Clear() {
   seen_first_head_ = false;
   noscript_element_ = NULL;
   meta_tag_element_ = NULL;
+  pre_meta_tag_writer_ = NULL;
   pre_head_.clear();
   content_type_meta_tag_.clear();
   pre_head_and_response_writer_.reset(NULL);

@@ -79,6 +79,10 @@ namespace net_instaweb {
 
 namespace {
 
+// Used by ModPagespeedLoadFromFileRule
+const char kAllow[] = "allow";
+const char kDisallow[] = "disallow";
+
 const char kModPagespeedFilterName[] = "MOD_PAGESPEED_OUTPUT_FILTER";
 const char kModPagespeedFixHeadersName[] = "MOD_PAGESPEED_FIX_HEADERS_FILTER";
 
@@ -148,6 +152,9 @@ const char kModPagespeedListOutstandingUrlsOnError[] =
     "ModPagespeedListOutstandingUrlsOnError";
 const char kModPagespeedLoadFromFile[] = "ModPagespeedLoadFromFile";
 const char kModPagespeedLoadFromFileMatch[] = "ModPagespeedLoadFromFileMatch";
+const char kModPagespeedLoadFromFileRule[] = "ModPagespeedLoadFromFileRule";
+const char kModPagespeedLoadFromFileRuleMatch[] =
+    "ModPagespeedLoadFromFileRuleMatch";
 const char kModPagespeedLogRewriteTiming[] = "ModPagespeedLogRewriteTiming";
 const char kModPagespeedLowercaseHtmlNames[] = "ModPagespeedLowercaseHtmlNames";
 const char kModPagespeedMapOriginDomain[] = "ModPagespeedMapOriginDomain";
@@ -1161,6 +1168,27 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
       return apr_pstrcat(cmd->pool, "Invalid LoadFromFile Regexp: ",
                          error.c_str(), NULL);
     }
+  } else if (StringCaseEqual(directive, kModPagespeedLoadFromFileRule) ||
+             StringCaseEqual(directive, kModPagespeedLoadFromFileRuleMatch)) {
+    bool is_regexp = StringCaseEqual(
+        directive, kModPagespeedLoadFromFileRuleMatch);
+    bool allow;
+    if (StringCaseEqual(arg1, kAllow)) {
+      allow = true;
+    } else if (StringCaseEqual(arg1, kDisallow)) {
+      allow = false;
+    } else {
+      return apr_pstrcat(cmd->pool, "Argument 1 of ", directive,
+                         " must be either '", kAllow, "' or '", kDisallow,
+                         "'.  Got '", arg1, "'.", NULL);
+    }
+    GoogleString error;
+    bool ok = options->file_load_policy()->AddRule(
+        arg2, is_regexp, allow, &error);
+    if (!ok) {
+      return apr_pstrcat(cmd->pool, "Invalid argument '", arg2, "' to ",
+                         directive, ": ", error.c_str(), NULL);
+    }
   } else if (StringCaseEqual(directive, kModPagespeedMapRewriteDomain)) {
     options->domain_lawyer()->AddRewriteDomainMapping(
         arg1, arg2, manager->message_handler());
@@ -1449,6 +1477,10 @@ APACHE_CONFIG_DIR_OPTION(kModPagespeedClientDomainRewrite,
         "url_prefix filename_prefix"),
   APACHE_CONFIG_OPTION2(kModPagespeedLoadFromFileMatch,
         "url_regexp filename_prefix"),
+  APACHE_CONFIG_OPTION2(kModPagespeedLoadFromFileRule,
+        "<Allow|Disallow> filename_prefix"),
+  APACHE_CONFIG_OPTION2(kModPagespeedLoadFromFileRuleMatch,
+        "<Allow|Disallow> filename_regexp"),
 
   // All three parameter options that are allowed in <Directory> blocks.
   APACHE_CONFIG_DIR_OPTION3(kModPagespeedUrlValuedAttribute,

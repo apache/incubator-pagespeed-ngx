@@ -112,6 +112,7 @@ class RewriteOptions {
     kRewriteStyleAttributes,
     kRewriteStyleAttributesWithUrl,
     kServeNonCacheableNonCritical,
+    kSplitHtml,
     kSpriteImages,
     kStripImageColorProfile,
     kStripImageMetaData,

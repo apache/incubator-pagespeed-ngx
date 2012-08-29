@@ -16,11 +16,11 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 
 namespace net_instaweb {
 
-class SpeedTest : public ResourceManagerTestBase {
+class SpeedTest : public RewriteTestBase {
 };
 
 // This measures the speed of the HTML parsing & filter dispatch mechanism.

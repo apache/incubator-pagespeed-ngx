@@ -20,7 +20,7 @@
 
 #include "base/scoped_ptr.h"
 
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string.h"
@@ -42,11 +42,11 @@ const char kUnrelatedTags[] =
 }  // namespace
 
 
-class JsDisableFilterTest : public ResourceManagerTestBase {
+class JsDisableFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     options_->EnableFilter(RewriteOptions::kDisableJavascript);
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     filter_.reset(new JsDisableFilter(rewrite_driver()));
     rewrite_driver()->AddFilter(filter_.get());
   }

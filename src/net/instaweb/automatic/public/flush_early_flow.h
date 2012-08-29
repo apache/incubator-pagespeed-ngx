@@ -84,7 +84,8 @@ class FlushEarlyFlow {
   void GenerateResponseHeaders(const FlushEarlyInfo& flush_early_info);
 
   GoogleString GetHeadString(const FlushEarlyInfo& flush_early_info,
-                             const char* format);
+                             const char* css_format,
+                             const char* js_format);
 
   // Callback that is invoked after we rewrite the early head.
   // start_time_ms indicates the time we started rewriting the flush early

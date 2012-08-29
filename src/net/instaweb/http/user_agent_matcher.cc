@@ -42,6 +42,7 @@ const char* kImageInliningWhitelist[] = {
   "webp",
   "prefetch_link_rel_subresource",
   "prefetch_image_tag",
+  "prefetch_link_script_tag",
 };
 const char* kImageInliningBlacklist[] = {
   "*Firefox/1.*",
@@ -131,11 +132,17 @@ const char* kSupportsPrefetchLinkRelSubresource[] = {
 // TODO(mmohabey): Tune this to include more browsers.
 const char* kSupportsPrefetchImageTag[] = {
   "*Chrome/*",
-  "*Firefox/*",
-  "*MSIE *",
   // User agent used only for internal testing
   "prefetch_image_tag",
 };
+
+const char* kSupportsPrefetchLinkScriptTag[] = {
+  "*Firefox/*",
+  "*MSIE *",
+  // User agent used only for internal testing
+  "prefetch_link_script_tag",
+};
+
 }  // namespace
 
 UserAgentMatcher::UserAgentMatcher() {
@@ -169,6 +176,9 @@ UserAgentMatcher::UserAgentMatcher() {
   }
   for (int i = 0, n = arraysize(kSupportsPrefetchImageTag); i < n; ++i) {
     supports_prefetch_image_tag_.Allow(kSupportsPrefetchImageTag[i]);
+  }
+  for (int i = 0, n = arraysize(kSupportsPrefetchLinkScriptTag); i < n; ++i) {
+    supports_prefetch_link_script_tag_.Allow(kSupportsPrefetchLinkScriptTag[i]);
   }
 }
 
@@ -225,6 +235,8 @@ UserAgentMatcher::GetPrefetchMechanism(const StringPiece& user_agent) const {
     return kPrefetchLinkRelSubresource;
   } else if (supports_prefetch_image_tag_.Match(user_agent, false)) {
     return kPrefetchImageTag;
+  } else if (supports_prefetch_link_script_tag_.Match(user_agent, false)) {
+    return kPrefetchLinkScriptTag;
   }
   return kPrefetchNotSupported;
 }

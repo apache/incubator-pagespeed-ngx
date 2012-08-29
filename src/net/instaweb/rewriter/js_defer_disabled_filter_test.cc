@@ -19,7 +19,7 @@
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -30,10 +30,11 @@
 
 namespace net_instaweb {
 
-class JsDeferDisabledFilterTest : public ResourceManagerTestBase {
+class JsDeferDisabledFilterTest : public RewriteTestBase {
  protected:
+  // TODO(matterbury): Delete this method as it should be redundant.
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
   }
 
   virtual void InitJsDeferDisabledFilter(bool debug) {

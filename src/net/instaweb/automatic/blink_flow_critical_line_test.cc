@@ -35,7 +35,7 @@
 #include "net/instaweb/rewriter/blink_critical_line_data.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -404,12 +404,12 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
 
 // TODO(nikhilmadan): Test cookies, fetch failures, 304 responses etc.
 // TODO(nikhilmadan): Refactor to share common code with ProxyInterfaceTest.
-class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
+class BlinkFlowCriticalLineTest : public RewriteTestBase {
  protected:
   static const int kHtmlCacheTimeSec = 5000;
 
   BlinkFlowCriticalLineTest()
-      : ResourceManagerTestBase(
+      : RewriteTestBase(
           new CustomRewriteDriverFactory(&mock_url_fetcher_),
           new CustomRewriteDriverFactory(&mock_url_fetcher_)),
         blink_output_(StrCat(StringPrintf(
@@ -466,7 +466,7 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
 
     resource_manager()->ComputeSignature(options_.get());
 
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     ProxyInterface::Initialize(statistics());
     proxy_interface_.reset(
         new ProxyInterface("localhost", 80, resource_manager(), statistics()));
@@ -525,7 +525,7 @@ class BlinkFlowCriticalLineTest : public ResourceManagerTestBase {
 
   virtual void TearDown() {
     EXPECT_EQ(0, resource_manager()->num_active_rewrite_drivers());
-    ResourceManagerTestBase::TearDown();
+    RewriteTestBase::TearDown();
   }
 
   void InitializeFuriousSpec() {

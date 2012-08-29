@@ -24,7 +24,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -38,13 +38,14 @@ namespace net_instaweb {
 
 namespace {
 
-class CssInlineFilterTest : public ResourceManagerTestBase {
+class CssInlineFilterTest : public RewriteTestBase {
  public:
   CssInlineFilterTest() : filters_added_(false) {}
 
  protected:
+  // TODO(matterbury): Delete this method as it should be redundant.
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
   }
 
   void TestInlineCssWithOutputUrl(

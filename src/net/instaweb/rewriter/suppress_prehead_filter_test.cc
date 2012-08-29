@@ -19,11 +19,12 @@
 
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -37,7 +38,7 @@ const char kJsData[] =
 
 namespace net_instaweb {
 
-class SuppressPreheadFilterTest : public ResourceManagerTestBase {
+class SuppressPreheadFilterTest : public RewriteTestBase {
  public:
   SuppressPreheadFilterTest() : writer_(&output_) {}
 
@@ -53,12 +54,15 @@ class SuppressPreheadFilterTest : public ResourceManagerTestBase {
   }
 
   virtual void SetUp() {
-    options()->ClearSignatureForTesting();
-    options()->EnableFilter(RewriteOptions::kFlushSubresources);
-    options()->ComputeSignature(hasher());
-    ResourceManagerTestBase::SetUp();
-    rewrite_driver()->AddFilters();
+    // Delete and recreate the options to clear all changes.
+    delete options_;
+    options_ = new RewriteOptions();
+    options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
+    RewriteTestBase::SetUp();
     rewrite_driver()->SetWriter(&writer_);
+    SuppressPreheadFilter* filter = new SuppressPreheadFilter(rewrite_driver());
+    html_writer_filter_.reset(filter);
+    rewrite_driver()->AddFilter(html_writer_filter_.get());
   }
 
   GoogleString output_;
@@ -71,35 +75,28 @@ class SuppressPreheadFilterTest : public ResourceManagerTestBase {
 
 TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
   InitResources();
-  const char html_input[] =
-      "<!DOCTYPE html>"
-      "<html>"
+  const char pre_head_input[] = "<!DOCTYPE html><html>";
+  const char post_head_input[] =
       "<head>"
         "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
         "<script src=\"b.js\"></script>"
       "</head>"
       "<body></body></html>";
-  const char html_without_prehead[] =
-      "<head>"
-        "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
-        "<script src=\"b.js\"></script>"
-      "</head>"
-      "<body></body></html>";
+  GoogleString html_input = StrCat(pre_head_input, post_head_input);
 
   Parse("not_flushed_early", html_input);
-  EXPECT_EQ(output_buffer_, html_input);
-
+  EXPECT_EQ(html_input, output_);
 
   // SuppressPreheadFilter should have populated the flush_early_proto with the
   // appropriate pre head information.
-  EXPECT_EQ("<!DOCTYPE html><html>",
+  EXPECT_EQ(pre_head_input,
             rewrite_driver()->flush_early_info()->pre_head());
 
   // pre head is suppressed if the dummy head was flushed early.
   output_.clear();
   rewrite_driver()->set_flushed_early(true);
   Parse("flushed_early", html_input);
-  EXPECT_EQ(output_, html_without_prehead);
+  EXPECT_EQ(post_head_input, output_);
 }
 
 TEST_F(SuppressPreheadFilterTest, FlushEarlyMetaTags) {
@@ -113,16 +110,14 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyMetaTags) {
       "<meta charset=\"UTF-8\">"
       "</head>"
       "<body></body></html>";
-  const char html_without_prehead[] =
+  const char html_without_prehead_and_meta_tags[] =
       "<head>"
-      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
       "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
-      "<meta charset=\"UTF-8\">"
       "</head>"
       "<body></body></html>";
 
   Parse("not_flushed_early", html_input);
-  EXPECT_EQ(output_buffer_, html_input);
+  EXPECT_EQ(output_, html_input);
 
   EXPECT_EQ(
       "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
@@ -133,7 +128,7 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyMetaTags) {
   output_.clear();
   rewrite_driver()->set_flushed_early(true);
   Parse("flushed_early", html_input);
-  EXPECT_EQ(output_, html_without_prehead);
+  EXPECT_EQ(html_without_prehead_and_meta_tags, output_);
 }
 
 TEST_F(SuppressPreheadFilterTest, MetaTagsOutsideHead) {
@@ -144,14 +139,13 @@ TEST_F(SuppressPreheadFilterTest, MetaTagsOutsideHead) {
       "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
       "<head></head>"
       "<body></body></html>";
-  const char html_without_prehead[] =
-      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
+  const char html_without_prehead_and_meta_tags[] =
       "<head>"
       "</head>"
       "<body></body></html>";
 
   Parse("not_flushed_early", html_input);
-  EXPECT_EQ(output_buffer_, html_input);
+  EXPECT_EQ(html_input, output_);
 
   EXPECT_EQ(
       "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>",
@@ -161,7 +155,7 @@ TEST_F(SuppressPreheadFilterTest, MetaTagsOutsideHead) {
   output_.clear();
   rewrite_driver()->set_flushed_early(true);
   Parse("flushed_early", html_input);
-  EXPECT_EQ(output_, html_without_prehead);
+  EXPECT_EQ(html_without_prehead_and_meta_tags, output_);
 }
 
 TEST_F(SuppressPreheadFilterTest, NoHead) {
@@ -171,19 +165,9 @@ TEST_F(SuppressPreheadFilterTest, NoHead) {
       "<html>"
       "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
       "<body></body></html>";
-  const char html_input_with_head[] =
-      "<!DOCTYPE html>"
-      "<html>"
-      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
-      "<head/>"
-      "<body></body></html>";
-  const char html_without_prehead[] =
-      "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
-      "<head/>"
-      "<body></body></html>";
 
   Parse("not_flushed_early", html_input);
-  EXPECT_EQ(output_buffer_, html_input_with_head);
+  EXPECT_EQ(html_input, output_);
 
   EXPECT_EQ(
       "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>",
@@ -193,7 +177,11 @@ TEST_F(SuppressPreheadFilterTest, NoHead) {
   output_.clear();
   rewrite_driver()->set_flushed_early(true);
   Parse("flushed_early", html_input);
-  EXPECT_EQ(output_, html_without_prehead);
+  // If the page does not have a head, and we have flushed early, then we do not
+  // write anything to the output stream. Note that this will not happen in
+  // practice, since we enable the AddHeadFilter whenever flush subresources is
+  // enabled.
+  EXPECT_EQ("", output_);
 }
 
 }  // namespace net_instaweb

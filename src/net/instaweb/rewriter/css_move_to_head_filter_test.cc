@@ -7,7 +7,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -17,7 +17,7 @@ namespace net_instaweb {
 
 namespace {
 
-class CssMoveToHeadFilterTest : public ResourceManagerTestBase {
+class CssMoveToHeadFilterTest : public RewriteTestBase {
  protected:
 };
 

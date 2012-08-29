@@ -842,7 +842,7 @@ class RewriteDriver : public HtmlParse {
   void set_log_record(LogRecord* l) { log_record_ = l; }
 
  private:
-  friend class ResourceManagerTestBase;
+  friend class RewriteTestBase;
   friend class ResourceManagerTest;
 
   typedef std::map<GoogleString, RewriteFilter*> StringFilterMap;

@@ -17,7 +17,7 @@
 
 #include "net/instaweb/rewriter/public/handle_noscript_redirect_filter.h"
 
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -25,11 +25,11 @@
 
 namespace net_instaweb {
 
-class HandleNoscriptRedirectFilterTest : public ResourceManagerTestBase {
+class HandleNoscriptRedirectFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     options()->EnableFilter(RewriteOptions::kHandleNoscriptRedirect);
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     rewrite_driver()->AddFilters();
   }
 };

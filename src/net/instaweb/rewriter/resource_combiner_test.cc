@@ -31,7 +31,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
@@ -129,10 +129,10 @@ class TestCombineFilter : public RewriteFilter {
 }  // namespace
 
 // Test fixture.
-class ResourceCombinerTest : public ResourceManagerTestBase {
+class ResourceCombinerTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
 
     filter_ = new TestCombineFilter(rewrite_driver());
     AddRewriteFilter(filter_);

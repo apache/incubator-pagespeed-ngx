@@ -22,7 +22,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -32,7 +32,7 @@
 
 namespace net_instaweb {
 
-class RewriteQueryTest : public ResourceManagerTestBase {
+class RewriteQueryTest : public RewriteTestBase {
  protected:
   RewriteOptions* ParseAndScan(const StringPiece& in_query,
                                const StringPiece& in_header_string) {

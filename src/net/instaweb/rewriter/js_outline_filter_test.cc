@@ -21,7 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -33,7 +33,7 @@ namespace net_instaweb {
 
 namespace {
 
-class JsOutlineFilterTest : public ResourceManagerTestBase {
+class JsOutlineFilterTest : public RewriteTestBase {
  protected:
   // We need an explicitly called method here rather than using SetUp so
   // that NoOutlineScript can call another AddFilter function first.

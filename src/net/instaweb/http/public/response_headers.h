@@ -141,6 +141,10 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // appropriately. Note that all existing max-age values are removed.
   void SetCacheControlMaxAge(int64 ttl_ms);
 
+  // Sets the original content length header, used to relay information on
+  // the original size of optimized resources.
+  void SetOriginalContentLength(int64 content_length);
+
   // Removes cookie headers, and returns true if any changes were made.
   bool Sanitize();
 
@@ -247,7 +251,7 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
 
   // Finds Content-Length in the response headers, returning true and putting
   // it in *content_length if successful.
-  bool FindContentLength(int64* content_length);
+  bool FindContentLength(int64* content_length) const;
 
   // Force cache the response with the given TTL even if it is private. Note
   // that this does not change any of the headers. The values of cache_ttl_ms,

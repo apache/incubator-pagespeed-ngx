@@ -21,7 +21,7 @@
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
@@ -868,7 +868,7 @@ TEST_F(CssImageRewriterTest, DummyRuleset) {
                   kExpectSuccess | kNoClearFetcher);
 }
 
-class CssRecompressImagesInStyleAttributes : public ResourceManagerTestBase {
+class CssRecompressImagesInStyleAttributes : public RewriteTestBase {
  protected:
   CssRecompressImagesInStyleAttributes()
       : div_before_(
@@ -877,7 +877,7 @@ class CssRecompressImagesInStyleAttributes : public ResourceManagerTestBase {
           "\"/>") {}
 
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     options()->EnableFilter(RewriteOptions::kRewriteCss);
     options()->EnableFilter(RewriteOptions::kFallbackRewriteCssUrls);
     options()->set_always_rewrite_css(true);

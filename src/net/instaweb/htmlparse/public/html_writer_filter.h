@@ -57,6 +57,8 @@ class HtmlWriterFilter : public HtmlFilter {
   // Clear various variables for rewriting a new html file.
   virtual void Clear();
 
+  Writer* writer() { return writer_; }
+
  private:
   void EmitBytes(const StringPiece& str);
 

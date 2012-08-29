@@ -20,7 +20,7 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
+#include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders, etc
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
@@ -414,6 +414,15 @@ void ResponseHeaders::SetTimeHeader(const StringPiece& header, int64 time_ms) {
   if (ConvertTimeToString(time_ms, &time_string)) {
     Replace(header, time_string);
   }
+}
+
+void ResponseHeaders::SetOriginalContentLength(int64 content_length) {
+  // This does not impact caching headers, so avoid ComputeCaching()
+  // by restoring cache_fields_dirty_ after we set the header.
+  bool dirty = cache_fields_dirty_;
+  Replace(HttpAttributes::kXOriginalContentLength,
+          Integer64ToString(content_length));
+  cache_fields_dirty_ = dirty;
 }
 
 bool ResponseHeaders::Sanitize() {
@@ -814,7 +823,7 @@ void ResponseHeaders::DebugPrint() const {
   }
 }
 
-bool ResponseHeaders::FindContentLength(int64* content_length) {
+bool ResponseHeaders::FindContentLength(int64* content_length) const {
   const char* val = Lookup1(HttpAttributes::kContentLength);
   return (val != NULL) && StringToInt64(val, content_length);
 }

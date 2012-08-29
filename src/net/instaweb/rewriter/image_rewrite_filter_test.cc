@@ -34,7 +34,7 @@
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -138,13 +138,13 @@ class MockPage : public PropertyPage {
   DISALLOW_COPY_AND_ASSIGN(MockPage);
 };
 
-class ImageRewriteTest : public ResourceManagerTestBase {
+class ImageRewriteTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     PropertyCache* pcache = page_property_cache();
     resource_manager_->set_enable_property_cache(true);
     pcache->AddCohort(RewriteDriver::kDomCohort);
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),
                                   kTestDomain);
     pcache->set_enabled(true);

@@ -22,7 +22,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -36,10 +36,10 @@ namespace net_instaweb {
 
 namespace {
 
-class CssOutlineFilterTest : public ResourceManagerTestBase {
+class CssOutlineFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     options()->set_css_outline_min_bytes(0);
     options()->EnableFilter(RewriteOptions::kOutlineCss);
     rewrite_driver()->AddFilters();

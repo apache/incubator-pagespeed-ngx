@@ -24,7 +24,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/blink_critical_line_data.pb.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
@@ -98,7 +98,7 @@ class MockPage : public PropertyPage {
 
 }  // namespace
 
-class BlinkFilterTest : public ResourceManagerTestBase {
+class BlinkFilterTest : public RewriteTestBase {
  public:
   BlinkFilterTest() {}
 
@@ -108,7 +108,7 @@ class BlinkFilterTest : public ResourceManagerTestBase {
     options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
     options_->set_passthrough_blink_for_last_invalid_response_code(true);
 
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
 
     rewrite_driver()->SetWriter(&write_to_string_);
     blink_filter_ = new BlinkFilter(rewrite_driver());

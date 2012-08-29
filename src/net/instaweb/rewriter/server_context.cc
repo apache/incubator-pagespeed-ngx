@@ -307,6 +307,7 @@ bool ServerContext::Write(const ResourceVector& inputs,
   SetDefaultLongCacheHeadersWithCharset(type, charset, meta_data);
   meta_data->SetStatusAndReason(HttpStatus::kOK);
   ApplyInputCacheControl(inputs, meta_data);
+  AddOriginalContentLengthHeader(inputs, meta_data);
 
   // The URL for any resource we will write includes the hash of contents,
   // so it can can live, essentially, forever. So compute this hash,
@@ -354,7 +355,7 @@ void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
   bool no_store = headers->HasValue(HttpAttributes::kCacheControl,
                                     "no-store");
   int64 max_age = headers->cache_ttl_ms();
-  for (int i = 0, n = inputs.size(); i < n; i++) {
+  for (int i = 0, n = inputs.size(); i < n; ++i) {
     const ResourcePtr& input_resource(inputs[i]);
     if (input_resource.get() != NULL && input_resource->HttpStatusOk()) {
       ResponseHeaders* input_headers = input_resource->response_headers();
@@ -382,6 +383,31 @@ void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
     headers->SetDateAndCaching(headers->date_ms(), 0, directives);
   }
   headers->ComputeCaching();
+}
+
+void ServerContext::AddOriginalContentLengthHeader(
+    const ResourceVector& inputs, ResponseHeaders* headers) {
+  // Determine the total original content length for input resource, and
+  // use this to set the X-Original-Content-Length header in the output.
+  int64 input_size = 0;
+  for (int i = 0, n = inputs.size(); i < n; ++i) {
+    const ResourcePtr& input_resource(inputs[i]);
+    ResponseHeaders* input_headers = input_resource->response_headers();
+    const char* original_content_length_header = input_headers->Lookup1(
+        HttpAttributes::kXOriginalContentLength);
+    int64 original_content_length;
+    if (original_content_length_header != NULL &&
+        StringToInt64(original_content_length_header,
+                      &original_content_length)) {
+      input_size += original_content_length;
+    }
+  }
+  // Only add the header if there were actual input resources with
+  // known sizes involved (which is not always the case, e.g., in tests where
+  // synthetic input resources are used).
+  if (input_size > 0) {
+    headers->SetOriginalContentLength(input_size);
+  }
 }
 
 bool ServerContext::IsPagespeedResource(const GoogleUrl& url) {

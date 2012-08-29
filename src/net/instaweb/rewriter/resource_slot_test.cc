@@ -31,7 +31,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -48,14 +48,14 @@ static const char kUpdatedUrl[] = "http://html.parse.test/new_css.css";
 
 namespace net_instaweb {
 
-class ResourceSlotTest : public ResourceManagerTestBase {
+class ResourceSlotTest : public RewriteTestBase {
  protected:
   typedef std::set<HtmlResourceSlotPtr, HtmlResourceSlotComparator> SlotSet;
 
   virtual bool AddBody() const { return false; }
 
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
 
     // Set up 4 slots for testing.
     RewriteDriver* driver = rewrite_driver();
@@ -81,7 +81,7 @@ class ResourceSlotTest : public ResourceManagerTestBase {
 
   virtual void TearDown() {
     rewrite_driver()->FinishParse();
-    ResourceManagerTestBase::TearDown();
+    RewriteTestBase::TearDown();
   }
 
   HtmlResourceSlotPtr MakeSlot(int element_index, int attribute_index) {

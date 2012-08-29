@@ -73,6 +73,10 @@ struct HttpAttributes {
   // This header is set on optional fetches that got dropped due to load.
   static const char kXPsaLoadShed[];
   static const char kXRequestedWith[];
+
+  // This header is set on optimized responses to indicate the original
+  // content length.
+  static const char kXOriginalContentLength[];
 };
 
 namespace HttpStatus {

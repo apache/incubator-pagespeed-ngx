@@ -20,7 +20,7 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
@@ -54,13 +54,14 @@ class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
 const char MeaningfulCriticalImagesFinder::kCriticalImagesCohort[] =
     "critical_images";
 
-class LazyloadImagesFilterTest : public ResourceManagerTestBase {
+class LazyloadImagesFilterTest : public RewriteTestBase {
  protected:
   LazyloadImagesFilterTest()
       : blank_image_src_(LazyloadImagesFilter::kBlankImageSrc) {}
 
+  // TODO(matterbury): Delete this method as it should be redundant.
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
   }
 
   virtual void InitLazyloadImagesFilter(bool debug) {

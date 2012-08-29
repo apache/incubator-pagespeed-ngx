@@ -42,7 +42,7 @@
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr, etc
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -636,14 +636,14 @@ class CombiningFilter : public RewriteFilter {
   DISALLOW_COPY_AND_ASSIGN(CombiningFilter);
 };
 
-class RewriteContextTest : public ResourceManagerTestBase {
+class RewriteContextTest : public RewriteTestBase {
  protected:
   RewriteContextTest() : trim_filter_(NULL), other_trim_filter_(NULL),
                          combining_filter_(NULL), nested_filter_(NULL) {}
   virtual ~RewriteContextTest() {}
 
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
 
     // The default deadline set in RewriteDriver is dependent on whether
     // the system was compiled for debug, or is being run under valgrind.
@@ -655,7 +655,7 @@ class RewriteContextTest : public ResourceManagerTestBase {
 
   virtual void TearDown() {
     rewrite_driver()->WaitForShutDown();
-    ResourceManagerTestBase::TearDown();
+    RewriteTestBase::TearDown();
   }
 
   virtual bool AddBody() const { return false; }
@@ -800,7 +800,7 @@ class RewriteContextTest : public ResourceManagerTestBase {
   }
 
   virtual void ClearStats() {
-    ResourceManagerTestBase::ClearStats();
+    RewriteTestBase::ClearStats();
     if (trim_filter_ != NULL) {
       trim_filter_->ClearStats();
     }

@@ -22,7 +22,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -58,10 +58,10 @@ class CountingFilter : public CommonFilter {
   int end_element_calls_;
 };
 
-class CommonFilterTest : public ResourceManagerTestBase {
+class CommonFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
-    ResourceManagerTestBase::SetUp();
+    RewriteTestBase::SetUp();
     filter_.reset(new CountingFilter(rewrite_driver()));
     rewrite_driver()->AddFilter(filter_.get());
   }
