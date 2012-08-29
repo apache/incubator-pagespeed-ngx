@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_FILE_LOAD_MAPPING_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_FILE_LOAD_MAPPING_H_
 
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/manually_ref_counted.h"
 #include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -27,12 +29,9 @@ namespace net_instaweb {
 
 // Class for storing a mapping from a URL to a filesystem path, for use by
 // FileLoadPolicy.
-class FileLoadMapping {
+class FileLoadMapping : public ManuallyRefCounted {
  public:
   virtual ~FileLoadMapping();
-
-  // Creates a copy of the mapping.  Caller takes ownership.
-  virtual FileLoadMapping* Clone() const = 0;
 
   // If this mapping applies to this url, put the mapped path into filename and
   // return true.  Otherwise return false.
@@ -48,7 +47,6 @@ class FileLoadMappingRegexp : public FileLoadMapping {
         url_regexp_str_(url_regexp),
         filename_prefix_(filename_prefix) {}
 
-  virtual FileLoadMapping* Clone() const;
   virtual bool Substitute(const StringPiece& url, GoogleString* filename) const;
 
  private:
@@ -67,7 +65,6 @@ class FileLoadMappingLiteral : public FileLoadMapping {
       : url_prefix_(url_prefix),
         filename_prefix_(filename_prefix) {}
 
-  virtual FileLoadMapping* Clone() const;
   virtual bool Substitute(const StringPiece& url, GoogleString* filename) const;
 
  private:

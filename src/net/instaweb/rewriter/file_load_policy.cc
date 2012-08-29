@@ -23,15 +23,22 @@
 #include "net/instaweb/rewriter/public/file_load_rule.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/re2.h"
-#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 FileLoadPolicy::~FileLoadPolicy() {
-  STLDeleteElements(&file_load_mappings_);
-  STLDeleteElements(&file_load_rules_);
+  FileLoadMappings::const_iterator mappings_iter;
+  for (mappings_iter = file_load_mappings_.begin();
+       mappings_iter != file_load_mappings_.end(); ++mappings_iter) {
+    (*mappings_iter)->DecrementRefs();
+  }
+  FileLoadRules::const_iterator rules_iter;
+  for (rules_iter = file_load_rules_.begin();
+       rules_iter != file_load_rules_.end(); ++rules_iter) {
+    (*rules_iter)->DecrementRefs();
+  }
 }
 
 bool FileLoadPolicy::ShouldLoadFromFile(const GoogleUrl& url,
@@ -142,14 +149,16 @@ void FileLoadPolicy::Merge(const FileLoadPolicy& other) {
   for (mappings_iter = other.file_load_mappings_.begin();
        mappings_iter != other.file_load_mappings_.end(); ++mappings_iter) {
     // Copy associations over.
-    file_load_mappings_.push_back((*mappings_iter)->Clone());
+    (*mappings_iter)->IncrementRefs();
+    file_load_mappings_.push_back(*mappings_iter);
   }
 
   FileLoadRules::const_iterator rules_iter;
   for (rules_iter = other.file_load_rules_.begin();
        rules_iter != other.file_load_rules_.end(); ++rules_iter) {
     // Copy rules over.
-    file_load_rules_.push_back((*rules_iter)->Clone());
+    (*rules_iter)->IncrementRefs();
+    file_load_rules_.push_back(*rules_iter);
   }
 }
 

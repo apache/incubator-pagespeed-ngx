@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_FILE_LOAD_RULE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_FILE_LOAD_RULE_H_
 
+#include "net/instaweb/util/public/manually_ref_counted.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/string.h"
@@ -27,7 +28,7 @@ namespace net_instaweb {
 
 // Class for storing information about what filesystem paths are appropriate for
 // direct access and which need to be fetched through HTTP loopback.
-class FileLoadRule {
+class FileLoadRule : public ManuallyRefCounted {
  public:
   enum Classification {
     kAllowed,
@@ -37,9 +38,6 @@ class FileLoadRule {
 
   virtual ~FileLoadRule();
   explicit FileLoadRule(bool allowed) : allowed_(allowed) {}
-
-  // Returns a copy of this rule.  Caller takes ownership of the copy.
-  virtual FileLoadRule* Clone() const = 0;
 
   // What does this rule say about this filename?
   Classification Classify(const GoogleString& filename) const;
@@ -62,7 +60,6 @@ class FileLoadRuleRegexp : public FileLoadRule {
         filename_regexp_str_(filename_regexp)
   {}
 
-  virtual FileLoadRule* Clone() const;
   virtual bool Match(const GoogleString& filename) const;
 
  private:
@@ -83,7 +80,6 @@ class FileLoadRuleLiteral : public FileLoadRule {
       : FileLoadRule(allowed), filename_prefix_(filename_prefix)
   {}
 
-  virtual FileLoadRule* Clone() const;
   virtual bool Match(const GoogleString& filename) const;
 
  private:

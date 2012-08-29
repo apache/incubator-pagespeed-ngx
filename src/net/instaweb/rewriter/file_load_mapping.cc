@@ -30,17 +30,6 @@ namespace net_instaweb {
 
 FileLoadMapping::~FileLoadMapping() {}
 
-FileLoadMapping* FileLoadMappingRegexp::Clone() const {
-  // TODO(jefftk): This recompiles the RE2.  On 20120 hardware
-  // http://swtch.com/~rsc/regexp/regexp3.html has benchmarks indicating that
-  // RE2 compilation is 10-20 microseconds.  Clone() runs for every regexp for
-  // every RewriteOptions.Clone().  In cases where the RewriteOptions are cloned
-  // on every request, for example Apache with .htaccess files or when running
-  // an experiment, this means 10-20us per regexp per request.  This is enough
-  // that reference-counting to avoid this recompilation should be worth it.
-  return new FileLoadMappingRegexp(url_regexp_str_, filename_prefix_);
-}
-
 bool FileLoadMappingRegexp::Substitute(const StringPiece& url,
                                        GoogleString* filename) const {
   GoogleString potential_filename;
@@ -50,10 +39,6 @@ bool FileLoadMappingRegexp::Substitute(const StringPiece& url,
     filename->swap(potential_filename);  // Using swap() to avoid copying.
   }
   return ok;
-}
-
-FileLoadMapping* FileLoadMappingLiteral::Clone() const {
-  return new FileLoadMappingLiteral(url_prefix_, filename_prefix_);
 }
 
 bool FileLoadMappingLiteral::Substitute(const StringPiece& url,

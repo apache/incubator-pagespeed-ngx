@@ -32,11 +32,7 @@ namespace net_instaweb {
 FileLoadRule::Classification FileLoadRule::Classify(
     const GoogleString& filename) const {
   if (Match(filename)) {
-    if (allowed_) {
-      return kAllowed;
-    } else {
-      return kDisallowed;
-    }
+    return allowed_ ? kAllowed : kDisallowed;
   } else {
     return kUnmatched;
   }
@@ -46,18 +42,8 @@ FileLoadRule::~FileLoadRule() {}
 FileLoadRuleRegexp::~FileLoadRuleRegexp() {}
 FileLoadRuleLiteral::~FileLoadRuleLiteral() {}
 
-FileLoadRule* FileLoadRuleRegexp::Clone() const {
-  // TODO(jefftk): Convert to reference counting the RE2.  Se TODO in
-  // FileLoadMappingRegexp.
-  return new FileLoadRuleRegexp(filename_regexp_str_, allowed_);
-}
-
 bool FileLoadRuleRegexp::Match(const GoogleString& filename) const {
   return RE2::PartialMatch(filename, filename_regexp_str_);
-}
-
-FileLoadRule* FileLoadRuleLiteral::Clone() const {
-  return new FileLoadRuleLiteral(filename_prefix_, allowed_);
 }
 
 bool FileLoadRuleLiteral::Match(const GoogleString& filename) const {
