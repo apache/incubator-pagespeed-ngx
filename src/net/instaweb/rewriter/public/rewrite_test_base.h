@@ -16,23 +16,23 @@
 
 // Author: abliss@google.com (Adam Bliss)
 
-// Base class for tests which want a ResourceManager.
+// Base class for tests which want a ServerContext.
 
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_TEST_BASE_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_TEST_BASE_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_TEST_BASE_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_TEST_BASE_H_
 
 #include <vector>
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
-#include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/response_headers.h"
 // We need to include rewrite_driver.h due to covariant return of html_parse()
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/md5_hasher.h"
@@ -62,15 +62,15 @@ class UrlNamer;
 class WaitUrlAsyncFetcher;
 struct ContentType;
 
-class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
+class RewriteTestBase : public HtmlParseTestBaseNoAlloc {
  public:
   static const char kTestData[];    // Testdata directory.
 
-  ResourceManagerTestBase();
-  explicit ResourceManagerTestBase(Statistics* statistics);
-  ResourceManagerTestBase(TestRewriteDriverFactory* factory,
+  RewriteTestBase();
+  explicit RewriteTestBase(Statistics* statistics);
+  RewriteTestBase(TestRewriteDriverFactory* factory,
                           TestRewriteDriverFactory* other_factory);
-  virtual ~ResourceManagerTestBase();
+  virtual ~RewriteTestBase();
 
   virtual void SetUp();
   virtual void TearDown();
@@ -110,7 +110,14 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
   MockTimer* mock_timer() { return factory_->mock_timer(); }
 
+  // Append default headers to the given string.
   void AppendDefaultHeaders(const ContentType& content_type,
+                            GoogleString* text);
+
+  // Append default headers to the given string, including
+  // X-Original-Content-Length for tests that depend on this.
+  void AppendDefaultHeaders(const ContentType& content_type,
+                            int64 original_content_length,
                             GoogleString* text);
 
   void ServeResourceFromManyContexts(const GoogleString& resource_url,
@@ -472,6 +479,12 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
   void CallFetcherCallbacksForDriver(WaitUrlAsyncFetcher* fetcher,
                                      RewriteDriver* driver);
 
+  // Populate the given headers based on the content type and original
+  // content length information.
+  void PopulateDefaultHeaders(const ContentType& content_type,
+                              int64 original_content_length,
+                              ResponseHeaders* headers);
+
   // The mock fetcher & stats are global across all Factories used in the tests.
   MockUrlFetcher mock_url_fetcher_;
   scoped_ptr<Statistics> statistics_;
@@ -499,4 +512,4 @@ class ResourceManagerTestBase : public HtmlParseTestBaseNoAlloc {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_MANAGER_TEST_BASE_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_TEST_BASE_H_

@@ -16,7 +16,7 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/rewriter/public/resource_manager_test_base.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 
 #include <vector>
 
@@ -73,10 +73,10 @@ namespace net_instaweb {
 
 class MessageHandler;
 
-const char ResourceManagerTestBase::kTestData[] =
+const char RewriteTestBase::kTestData[] =
     "/net/instaweb/rewriter/testdata/";
 
-ResourceManagerTestBase::ResourceManagerTestBase()
+RewriteTestBase::RewriteTestBase()
     : statistics_(new SimpleStats()),
       factory_(new TestRewriteDriverFactory(GTestTempDir(),
                                             &mock_url_fetcher_)),
@@ -89,7 +89,7 @@ ResourceManagerTestBase::ResourceManagerTestBase()
 }
 
 // Takes ownership of the statistics.
-ResourceManagerTestBase::ResourceManagerTestBase(Statistics* statistics)
+RewriteTestBase::RewriteTestBase(Statistics* statistics)
     : statistics_(statistics),
       factory_(new TestRewriteDriverFactory(GTestTempDir(),
                                             &mock_url_fetcher_)),
@@ -101,7 +101,7 @@ ResourceManagerTestBase::ResourceManagerTestBase(Statistics* statistics)
   Init();
 }
 
-ResourceManagerTestBase::ResourceManagerTestBase(
+RewriteTestBase::RewriteTestBase(
     TestRewriteDriverFactory* factory,
     TestRewriteDriverFactory* other_factory)
     : statistics_(new SimpleStats()),
@@ -113,7 +113,7 @@ ResourceManagerTestBase::ResourceManagerTestBase(
   Init();
 }
 
-void ResourceManagerTestBase::Init() {
+void RewriteTestBase::Init() {
   DCHECK(statistics_ != NULL);
   RewriteDriverFactory::Initialize(statistics_.get());
   factory_->SetStatistics(statistics_.get());
@@ -123,17 +123,17 @@ void ResourceManagerTestBase::Init() {
   other_rewrite_driver_ = MakeDriver(other_resource_manager_, other_options_);
 }
 
-ResourceManagerTestBase::~ResourceManagerTestBase() {
+RewriteTestBase::~RewriteTestBase() {
 }
 
 // The Setup/Constructor split is designed so that test subclasses can
 // add options prior to calling ResourceManagerTestBase::SetUp().
-void ResourceManagerTestBase::SetUp() {
+void RewriteTestBase::SetUp() {
   HtmlParseTestBaseNoAlloc::SetUp();
   rewrite_driver_ = MakeDriver(resource_manager_, options_);
 }
 
-void ResourceManagerTestBase::TearDown() {
+void RewriteTestBase::TearDown() {
   if (use_managed_rewrite_drivers_) {
     factory_->ShutDown();
   } else {
@@ -154,7 +154,7 @@ void ResourceManagerTestBase::TearDown() {
 }
 
 // Adds rewrite filters related to recompress images.
-void ResourceManagerTestBase::AddRecompressImageFilters() {
+void RewriteTestBase::AddRecompressImageFilters() {
   options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   options()->EnableFilter(RewriteOptions::kRecompressWebp);
@@ -164,36 +164,36 @@ void ResourceManagerTestBase::AddRecompressImageFilters() {
 }
 
 // Add a single rewrite filter to rewrite_driver_.
-void ResourceManagerTestBase::AddFilter(RewriteOptions::Filter filter) {
+void RewriteTestBase::AddFilter(RewriteOptions::Filter filter) {
   options()->EnableFilter(filter);
   rewrite_driver_->AddFilters();
 }
 
 // Add a single rewrite filter to other_rewrite_driver_.
-void ResourceManagerTestBase::AddOtherFilter(RewriteOptions::Filter filter) {
+void RewriteTestBase::AddOtherFilter(RewriteOptions::Filter filter) {
   other_options()->EnableFilter(filter);
   other_rewrite_driver_->AddFilters();
 }
 
-void ResourceManagerTestBase::AddRewriteFilter(RewriteFilter* filter) {
+void RewriteTestBase::AddRewriteFilter(RewriteFilter* filter) {
   rewrite_driver_->RegisterRewriteFilter(filter);
   rewrite_driver_->EnableRewriteFilter(filter->id());
 }
 
-void ResourceManagerTestBase::AddFetchOnlyRewriteFilter(RewriteFilter* filter) {
+void RewriteTestBase::AddFetchOnlyRewriteFilter(RewriteFilter* filter) {
   rewrite_driver_->RegisterRewriteFilter(filter);
 }
 
-void ResourceManagerTestBase::AddOtherRewriteFilter(RewriteFilter* filter) {
+void RewriteTestBase::AddOtherRewriteFilter(RewriteFilter* filter) {
   other_rewrite_driver_->RegisterRewriteFilter(filter);
   other_rewrite_driver_->EnableRewriteFilter(filter->id());
 }
 
-void ResourceManagerTestBase::SetBaseUrlForFetch(const StringPiece& url) {
+void RewriteTestBase::SetBaseUrlForFetch(const StringPiece& url) {
   rewrite_driver_->SetBaseUrlForFetch(url);
 }
 
-ResourcePtr ResourceManagerTestBase::CreateResource(const StringPiece& base,
+ResourcePtr RewriteTestBase::CreateResource(const StringPiece& base,
                                                     const StringPiece& url) {
   rewrite_driver_->SetBaseUrlForFetch(base);
   GoogleUrl base_url(base);
@@ -201,22 +201,39 @@ ResourcePtr ResourceManagerTestBase::CreateResource(const StringPiece& base,
   return rewrite_driver_->CreateInputResource(resource_url);
 }
 
-void ResourceManagerTestBase::AppendDefaultHeaders(
-    const ContentType& content_type,
-    GoogleString* text) {
-  ResponseHeaders header;
+void RewriteTestBase::PopulateDefaultHeaders(
+    const ContentType& content_type, int64 original_content_length,
+    ResponseHeaders* headers) {
   int64 time = mock_timer()->NowUs();
   // Reset mock timer so synthetic headers match original.
   mock_timer()->SetTimeUs(start_time_ms() * Timer::kMsUs);
-  resource_manager_->SetDefaultLongCacheHeaders(&content_type, &header);
+  resource_manager_->SetDefaultLongCacheHeaders(&content_type, headers);
   // Then set it back.  Note that no alarms should fire at this point
   // because alarms work on absolute time.
   mock_timer()->SetTimeUs(time);
-  StringWriter writer(text);
-  header.WriteAsHttp(&writer, message_handler());
+  if (original_content_length > 0) {
+    headers->SetOriginalContentLength(original_content_length);
+  }
 }
 
-void ResourceManagerTestBase::ServeResourceFromManyContexts(
+void RewriteTestBase::AppendDefaultHeaders(
+    const ContentType& content_type, GoogleString* text) {
+  ResponseHeaders headers;
+  PopulateDefaultHeaders(content_type, 0, &headers);
+  StringWriter writer(text);
+  headers.WriteAsHttp(&writer, message_handler());
+}
+
+void RewriteTestBase::AppendDefaultHeaders(
+    const ContentType& content_type, int64 original_content_length,
+    GoogleString* text) {
+  ResponseHeaders headers;
+  PopulateDefaultHeaders(content_type, original_content_length, &headers);
+  StringWriter writer(text);
+  headers.WriteAsHttp(&writer, message_handler());
+}
+
+void RewriteTestBase::ServeResourceFromManyContexts(
     const GoogleString& resource_url,
     const StringPiece& expected_content,
     UrlNamer* new_rms_url_namer) {
@@ -233,7 +250,7 @@ void ResourceManagerTestBase::ServeResourceFromManyContexts(
 
 // Test that a resource can be served from a new server that has not yet
 // been constructed.
-void ResourceManagerTestBase::ServeResourceFromNewContext(
+void RewriteTestBase::ServeResourceFromNewContext(
     const GoogleString& resource_url,
     const StringPiece& expected_content,
     UrlNamer* new_rms_url_namer) {
@@ -292,7 +309,7 @@ void ResourceManagerTestBase::ServeResourceFromNewContext(
   delete new_rewrite_driver;
 }
 
-GoogleString ResourceManagerTestBase::AbsolutifyUrl(
+GoogleString RewriteTestBase::AbsolutifyUrl(
     const StringPiece& resource_name) {
   GoogleString name;
   if (resource_name.starts_with("http://") ||
@@ -304,7 +321,7 @@ GoogleString ResourceManagerTestBase::AbsolutifyUrl(
   return name;
 }
 
-void ResourceManagerTestBase::DefaultResponseHeaders(
+void RewriteTestBase::DefaultResponseHeaders(
     const ContentType& content_type, int64 ttl_sec,
     ResponseHeaders* response_headers) {
   SetDefaultLongCacheHeaders(&content_type, response_headers);
@@ -315,7 +332,7 @@ void ResourceManagerTestBase::DefaultResponseHeaders(
 }
 
 // Initializes a resource for mock fetching.
-void ResourceManagerTestBase::SetResponseWithDefaultHeaders(
+void RewriteTestBase::SetResponseWithDefaultHeaders(
     const StringPiece& resource_name,
     const ContentType& content_type,
     const StringPiece& content,
@@ -331,7 +348,7 @@ void ResourceManagerTestBase::SetResponseWithDefaultHeaders(
   SetFetchResponse(url, response_headers, content);
 }
 
-void ResourceManagerTestBase::SetFetchResponse404(
+void RewriteTestBase::SetFetchResponse404(
     const StringPiece& resource_name) {
   GoogleString name = AbsolutifyUrl(resource_name);
   ResponseHeaders response_headers;
@@ -340,7 +357,7 @@ void ResourceManagerTestBase::SetFetchResponse404(
   SetFetchResponse(name, response_headers, StringPiece());
 }
 
-void ResourceManagerTestBase::AddFileToMockFetcher(
+void RewriteTestBase::AddFileToMockFetcher(
     const StringPiece& url,
     const StringPiece& filename,
     const ContentType& content_type,
@@ -361,7 +378,7 @@ void ResourceManagerTestBase::AddFileToMockFetcher(
 // Helper function to test resource fetching, returning true if the fetch
 // succeeded, and modifying content.  It is up to the caller to EXPECT_TRUE
 // on the status and EXPECT_EQ on the content.
-bool ResourceManagerTestBase::FetchResource(
+bool RewriteTestBase::FetchResource(
     const StringPiece& path, const StringPiece& filter_id,
     const StringPiece& name, const StringPiece& ext,
     GoogleString* content, ResponseHeaders* response) {
@@ -369,7 +386,7 @@ bool ResourceManagerTestBase::FetchResource(
   return FetchResourceUrl(url, content, response);
 }
 
-bool ResourceManagerTestBase::FetchResource(
+bool RewriteTestBase::FetchResource(
     const StringPiece& path, const StringPiece& filter_id,
     const StringPiece& name, const StringPiece& ext,
     GoogleString* content) {
@@ -377,13 +394,13 @@ bool ResourceManagerTestBase::FetchResource(
   return FetchResource(path, filter_id, name, ext, content, &response);
 }
 
-bool ResourceManagerTestBase::FetchResourceUrl(
+bool RewriteTestBase::FetchResourceUrl(
     const StringPiece& url, GoogleString* content) {
   ResponseHeaders response;
   return FetchResourceUrl(url, content, &response);
 }
 
-bool ResourceManagerTestBase::FetchResourceUrl(
+bool RewriteTestBase::FetchResourceUrl(
     const StringPiece& url, GoogleString* content, ResponseHeaders* response) {
   content->clear();
   StringAsyncFetch async_fetch(content);
@@ -400,7 +417,7 @@ bool ResourceManagerTestBase::FetchResourceUrl(
   return fetched && async_fetch.success();
 }
 
-void ResourceManagerTestBase::TestServeFiles(
+void RewriteTestBase::TestServeFiles(
     const ContentType* content_type,
     const StringPiece& filter_id,
     const StringPiece& rewritten_ext,
@@ -445,14 +462,14 @@ void ResourceManagerTestBase::TestServeFiles(
 }
 
 // Just check if we can fetch a resource successfully, ignore response.
-bool ResourceManagerTestBase::TryFetchResource(const StringPiece& url) {
+bool RewriteTestBase::TryFetchResource(const StringPiece& url) {
   GoogleString contents;
   ResponseHeaders response;
   return FetchResourceUrl(url, &contents, &response);
 }
 
 
-ResourceManagerTestBase::CssLink::CssLink(
+RewriteTestBase::CssLink::CssLink(
     const StringPiece& url, const StringPiece& content,
     const StringPiece& media, bool supply_mock)
     : url_(url.data(), url.size()),
@@ -461,17 +478,17 @@ ResourceManagerTestBase::CssLink::CssLink(
       supply_mock_(supply_mock) {
 }
 
-ResourceManagerTestBase::CssLink::Vector::~Vector() {
+RewriteTestBase::CssLink::Vector::~Vector() {
   STLDeleteElements(this);
 }
 
-void ResourceManagerTestBase::CssLink::Vector::Add(
+void RewriteTestBase::CssLink::Vector::Add(
     const StringPiece& url, const StringPiece& content,
     const StringPiece& media, bool supply_mock) {
   push_back(new CssLink(url, content, media, supply_mock));
 }
 
-bool ResourceManagerTestBase::CssLink::DecomposeCombinedUrl(
+bool RewriteTestBase::CssLink::DecomposeCombinedUrl(
     GoogleString* base, StringVector* segments, MessageHandler* handler) {
   GoogleUrl gurl(url_);
   bool ret = false;
@@ -494,7 +511,7 @@ namespace {
 class CssCollector : public EmptyHtmlFilter {
  public:
   CssCollector(HtmlParse* html_parse,
-               ResourceManagerTestBase::CssLink::Vector* css_links)
+               RewriteTestBase::CssLink::Vector* css_links)
       : css_links_(css_links),
         css_tag_scanner_(html_parse) {
   }
@@ -513,7 +530,7 @@ class CssCollector : public EmptyHtmlFilter {
   virtual const char* Name() const { return "CssCollector"; }
 
  private:
-  ResourceManagerTestBase::CssLink::Vector* css_links_;
+  RewriteTestBase::CssLink::Vector* css_links_;
   CssTagScanner css_tag_scanner_;
 
   DISALLOW_COPY_AND_ASSIGN(CssCollector);
@@ -522,7 +539,7 @@ class CssCollector : public EmptyHtmlFilter {
 }  // namespace
 
 // Collects just the hrefs from CSS links into a string vector.
-void ResourceManagerTestBase::CollectCssLinks(
+void RewriteTestBase::CollectCssLinks(
     const StringPiece& id, const StringPiece& html, StringVector* css_links) {
   CssLink::Vector v;
   CollectCssLinks(id, html, &v);
@@ -532,7 +549,7 @@ void ResourceManagerTestBase::CollectCssLinks(
 }
 
 // Collects all information about CSS links into a CssLink::Vector.
-void ResourceManagerTestBase::CollectCssLinks(
+void RewriteTestBase::CollectCssLinks(
     const StringPiece& id, const StringPiece& html,
     CssLink::Vector* css_links) {
   HtmlParse html_parse(message_handler());
@@ -544,7 +561,7 @@ void ResourceManagerTestBase::CollectCssLinks(
   html_parse.FinishParse();
 }
 
-void ResourceManagerTestBase::EncodePathAndLeaf(const StringPiece& id,
+void RewriteTestBase::EncodePathAndLeaf(const StringPiece& id,
                                                 const StringPiece& hash,
                                                 const StringVector& name_vector,
                                                 const StringPiece& ext,
@@ -576,14 +593,14 @@ void ResourceManagerTestBase::EncodePathAndLeaf(const StringPiece& id,
   namer->set_ext(ext);
 }
 
-const UrlSegmentEncoder* ResourceManagerTestBase::FindEncoder(
+const UrlSegmentEncoder* RewriteTestBase::FindEncoder(
     const StringPiece& id) const {
   RewriteFilter* filter = rewrite_driver_->FindFilter(id);
   ResourceContext context;
   return (filter == NULL) ? &default_encoder_ : filter->encoder();
 }
 
-GoogleString ResourceManagerTestBase::Encode(const StringPiece& path,
+GoogleString RewriteTestBase::Encode(const StringPiece& path,
                                              const StringPiece& id,
                                              const StringPiece& hash,
                                              const StringVector& name_vector,
@@ -591,7 +608,7 @@ GoogleString ResourceManagerTestBase::Encode(const StringPiece& path,
   return EncodeWithBase(kTestDomain, path, id, hash, name_vector, ext);
 }
 
-GoogleString ResourceManagerTestBase::EncodeNormal(
+GoogleString RewriteTestBase::EncodeNormal(
     const StringPiece& path,
     const StringPiece& id,
     const StringPiece& hash,
@@ -602,7 +619,7 @@ GoogleString ResourceManagerTestBase::EncodeNormal(
   return StrCat(path, namer.Encode());
 }
 
-GoogleString ResourceManagerTestBase::EncodeWithBase(
+GoogleString RewriteTestBase::EncodeWithBase(
     const StringPiece& base,
     const StringPiece& path,
     const StringPiece& id,
@@ -629,7 +646,7 @@ GoogleString ResourceManagerTestBase::EncodeWithBase(
 
 // Helper function which instantiates an encoder, collects the
 // required arguments and calls the virtual Encode().
-GoogleString ResourceManagerTestBase::EncodeCssName(const StringPiece& name,
+GoogleString RewriteTestBase::EncodeCssName(const StringPiece& name,
                                                     bool supports_webp,
                                                     bool can_inline) {
   CssUrlEncoder encoder;
@@ -643,7 +660,7 @@ GoogleString ResourceManagerTestBase::EncodeCssName(const StringPiece& name,
   return encoded_url;
 }
 
-GoogleString ResourceManagerTestBase::ChangeSuffix(
+GoogleString RewriteTestBase::ChangeSuffix(
     GoogleString old_url, bool append_new_suffix,
     StringPiece old_suffix, StringPiece new_suffix) {
   if (!StringCaseEndsWith(old_url, old_suffix)) {
@@ -660,20 +677,20 @@ GoogleString ResourceManagerTestBase::ChangeSuffix(
   }
 }
 
-void ResourceManagerTestBase::SetupWaitFetcher() {
+void RewriteTestBase::SetupWaitFetcher() {
   factory_->SetupWaitFetcher();
 }
 
-void ResourceManagerTestBase::CallFetcherCallbacks() {
+void RewriteTestBase::CallFetcherCallbacks() {
   factory_->CallFetcherCallbacksForDriver(rewrite_driver_);
 }
 
-void ResourceManagerTestBase::SetUseManagedRewriteDrivers(
+void RewriteTestBase::SetUseManagedRewriteDrivers(
     bool use_managed_rewrite_drivers) {
   use_managed_rewrite_drivers_ = use_managed_rewrite_drivers;
 }
 
-RewriteDriver* ResourceManagerTestBase::MakeDriver(
+RewriteDriver* RewriteTestBase::MakeDriver(
     ServerContext* resource_manager, RewriteOptions* options) {
   // We use unmanaged drivers rather than NewCustomDriver here so
   // that _test.cc files can add options after the driver was created
@@ -695,7 +712,7 @@ RewriteDriver* ResourceManagerTestBase::MakeDriver(
   return rd;
 }
 
-void ResourceManagerTestBase::TestRetainExtraHeaders(
+void RewriteTestBase::TestRetainExtraHeaders(
     const StringPiece& name,
     const StringPiece& filter_id,
     const StringPiece& ext) {
@@ -730,18 +747,18 @@ void ResourceManagerTestBase::TestRetainExtraHeaders(
   EXPECT_STREQ("W/0", *v[0]);
 }
 
-void ResourceManagerTestBase::ClearStats() {
+void RewriteTestBase::ClearStats() {
   statistics()->Clear();
   lru_cache()->ClearStats();
   counting_url_async_fetcher()->Clear();
   file_system()->ClearStats();
 }
 
-void ResourceManagerTestBase::SetCacheDelayUs(int64 delay_us) {
+void RewriteTestBase::SetCacheDelayUs(int64 delay_us) {
   factory_->mock_time_cache()->set_delay_us(delay_us);
 }
 
-void ResourceManagerTestBase::SetUseTestUrlNamer(bool use_test_url_namer) {
+void RewriteTestBase::SetUseTestUrlNamer(bool use_test_url_namer) {
   factory_->SetUseTestUrlNamer(use_test_url_namer);
   resource_manager_->set_url_namer(factory_->url_namer());
   other_factory_->SetUseTestUrlNamer(use_test_url_namer);
@@ -804,7 +821,7 @@ class HttpCallback : public HTTPCache::Callback {
 
 }  // namespace
 
-bool ResourceManagerTestBase::ReadIfCached(const ResourcePtr& resource) {
+bool RewriteTestBase::ReadIfCached(const ResourcePtr& resource) {
   BlockingResourceCallback callback(resource);
   rewrite_driver()->ReadAsync(&callback, message_handler());
   CHECK(callback.done());
@@ -814,13 +831,13 @@ bool ResourceManagerTestBase::ReadIfCached(const ResourcePtr& resource) {
   return callback.success();
 }
 
-void ResourceManagerTestBase::InitiateResourceRead(
+void RewriteTestBase::InitiateResourceRead(
     const ResourcePtr& resource) {
   DeferredResourceCallback* callback = new DeferredResourceCallback(resource);
   rewrite_driver()->ReadAsync(callback, message_handler());
 }
 
-HTTPCache::FindResult ResourceManagerTestBase::HttpBlockingFind(
+HTTPCache::FindResult RewriteTestBase::HttpBlockingFind(
     const GoogleString& key, HTTPCache* http_cache, HTTPValue* value_out,
     ResponseHeaders* headers) {
   HttpCallback callback;
@@ -831,7 +848,7 @@ HTTPCache::FindResult ResourceManagerTestBase::HttpBlockingFind(
   return callback.result();
 }
 
-void ResourceManagerTestBase::SetMimetype(const StringPiece& mimetype) {
+void RewriteTestBase::SetMimetype(const StringPiece& mimetype) {
   rewrite_driver()->set_response_headers_ptr(&response_headers_);
   response_headers_.Add(HttpAttributes::kContentType, mimetype);
   response_headers_.ComputeCaching();
