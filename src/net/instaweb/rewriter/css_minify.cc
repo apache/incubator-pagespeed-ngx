@@ -72,11 +72,11 @@ bool CssMinify::AbsolutifyImports(Css::Stylesheet* stylesheet,
   Css::Imports::const_iterator iter;
   for (iter = imports.begin(); iter != imports.end(); ++iter) {
     Css::Import* import = *iter;
-    StringPiece url(import->link.utf8_data(), import->link.utf8_length());
+    StringPiece url(import->link().utf8_data(), import->link().utf8_length());
     GoogleUrl gurl(base, url);
     if (gurl.is_valid() && gurl.Spec() != url) {
       url = gurl.Spec();
-      import->link.CopyUTF8(url.data(), url.length());
+      import->set_link(UTF8ToUnicodeText(url.data(), url.length()));
       result = true;
     }
   }
@@ -317,9 +317,9 @@ void CssMinify::Minify(const Css::Charsets& charsets) {
 
 void CssMinify::Minify(const Css::Import& import) {
   Write("@import url(");
-  WriteURL(import.link);
+  WriteURL(import.link());
   Write(") ");
-  JoinMediaMinify(import.media, ",");
+  JoinMediaMinify(import.media(), ",");
   Write(";");
 }
 

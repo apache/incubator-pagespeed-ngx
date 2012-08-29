@@ -1913,6 +1913,7 @@ Ruleset* Parser::ParseRuleset() {
     return NULL;
 }
 
+// TODO: Return * media just like other Parse functions.
 void Parser::ParseMediumList(std::vector<UnicodeText>* media) {
   Tracer trace(__func__, &in_);
 
@@ -1955,9 +1956,12 @@ Import* Parser::ParseImport() {
     return NULL;
 
   Import* import = new Import();
-  import->link = v->GetStringValue();
+  import->set_link(v->GetStringValue());
 
-  ParseMediumList(&import->media);
+  std::vector<UnicodeText>* media = new std::vector<UnicodeText>;
+  ParseMediumList(media);
+  import->set_media(media);
+
   if (in_ < end_ && *in_ == ';') in_++;
   return import;
 }

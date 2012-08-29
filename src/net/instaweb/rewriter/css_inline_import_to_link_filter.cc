@@ -132,19 +132,19 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
     if (import.get() != NULL &&
         style_element_->FindAttribute(HtmlName::kHref) == NULL &&
         style_element_->FindAttribute(HtmlName::kRel) == NULL) {
-      StringPiece url(import->link.utf8_data(), import->link.utf8_length());
+      StringPiece url(import->link().utf8_data(), import->link().utf8_length());
       if (!url.empty()) {
         bool import_media_ok = false;
         const HtmlElement::Attribute* media_attribute =
             style_element_->FindAttribute(HtmlName::kMedia);
         // Cater for simple cases first for performance reasons.
-        if (import->media.empty()) {
+        if (import->media().empty()) {
           import_media_ok = true;
         } else if (media_attribute != NULL &&
-                   import->media.size() == 1 &&
+                   import->media().size() == 1 &&
                    media_attribute->DecodedValueOrNull() == StringPiece(
-                       import->media[0].utf8_data(),
-                       import->media[0].utf8_length())) {
+                       import->media()[0].utf8_data(),
+                       import->media()[0].utf8_length())) {
           // TODO(jmarantz): this code would feel a bit better if
           // attribute-decoding supported UTF8.
           import_media_ok = true;
@@ -152,7 +152,7 @@ void CssInlineImportToLinkFilter::InlineImportToLinkStyle() {
           // If the style has media then the @import may specify no media or the
           // same media; if the style has no media use the @import's, if any.
           StringVector import_media;
-          css_util::ConvertUnicodeVectorToStringVector(import->media,
+          css_util::ConvertUnicodeVectorToStringVector(import->media(),
                                                        &import_media);
           if (media_attribute != NULL) {
             StringVector style_media;

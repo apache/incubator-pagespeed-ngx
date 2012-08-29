@@ -1266,7 +1266,7 @@ TEST_F(ParserTest, atrules) {
   a->ParseAtRule(t.get());
 
   ASSERT_EQ(1, t->imports().size());
-  EXPECT_EQ("assets/style.css", UnicodeTextToUTF8(t->import(0).link));
+  EXPECT_EQ("assets/style.css", UnicodeTextToUTF8(t->import(0).link()));
   EXPECT_EQ(true, a->Done());
 
   a.reset(new Parser("@charset \"ISO-8859-1\" ;"));
@@ -1331,10 +1331,10 @@ TEST_F(ParserTest, stylesheets) {
   scoped_ptr<Stylesheet> t(a->ParseStylesheet());
   EXPECT_EQ(Parser::kNoError, a->errors_seen_mask());
   ASSERT_EQ(2, t->imports().size());
-  EXPECT_EQ("mystyle.css", UnicodeTextToUTF8(t->import(0).link));
-  ASSERT_EQ(1, t->import(0).media.size());
-  EXPECT_EQ("all", UnicodeTextToUTF8(t->import(0).media[0]));
-  EXPECT_EQ("mystyle.css", UnicodeTextToUTF8(t->import(1).link));
+  EXPECT_EQ("mystyle.css", UnicodeTextToUTF8(t->import(0).link()));
+  ASSERT_EQ(1, t->import(0).media().size());
+  EXPECT_EQ("all", UnicodeTextToUTF8(t->import(0).media()[0]));
+  EXPECT_EQ("mystyle.css", UnicodeTextToUTF8(t->import(1).link()));
   // html-style comment should NOT work
   EXPECT_EQ(4, t->rulesets().size());
   EXPECT_TRUE(a->Done());
@@ -1655,21 +1655,21 @@ TEST_F(ParserTest, ParseSingleImport) {
   scoped_ptr<Import> import(parser->ParseAsSingleImport());
   EXPECT_TRUE(import.get() != NULL);
   if (import.get() != NULL) {
-    EXPECT_EQ("assets/style.css", UnicodeTextToUTF8(import->link));
+    EXPECT_EQ("assets/style.css", UnicodeTextToUTF8(import->link()));
   }
 
   parser.reset(new Parser("\n\t@import \"mystyle.css\" all; \n"));
   import.reset(parser->ParseAsSingleImport());
   EXPECT_TRUE(import.get() != NULL);
   if (import.get() != NULL) {
-    EXPECT_EQ("mystyle.css", UnicodeTextToUTF8(import->link));
+    EXPECT_EQ("mystyle.css", UnicodeTextToUTF8(import->link()));
   }
 
   parser.reset(new Parser("\n\t@import url(\"mystyle.css\"); \n"));
   import.reset(parser->ParseAsSingleImport());
   EXPECT_TRUE(import.get() != NULL);
   if (import.get() != NULL) {
-    EXPECT_EQ("mystyle.css", UnicodeTextToUTF8(import->link));
+    EXPECT_EQ("mystyle.css", UnicodeTextToUTF8(import->link()));
   }
 
   parser.reset(new Parser("*border: 0px"));

@@ -238,7 +238,7 @@ bool CssHierarchy::ExpandChildren() {
   for (int i = 0, n = imports.size(); i < n; ++i) {
     const Css::Import* import = imports[i];
     CssHierarchy* child = children_[i];
-    GoogleString url(import->link.utf8_data(), import->link.utf8_length());
+    GoogleString url(import->link().utf8_data(), import->link().utf8_length());
     const GoogleUrl import_url(css_base_url_, url);
     if (!import_url.is_valid()) {
       if (filter_ != NULL) {
@@ -246,7 +246,7 @@ bool CssHierarchy::ExpandChildren() {
       }
       message_handler_->Message(kInfo, "Invalid import URL %s", url.c_str());
       child->set_flattening_succeeded(false);
-    } else if (child->DetermineImportMedia(media_, import->media)) {
+    } else if (child->DetermineImportMedia(media_, import->media())) {
       child->InitializeNested(*this, import_url);
       if (child->IsRecursive()) {
         if (filter_ != NULL) {

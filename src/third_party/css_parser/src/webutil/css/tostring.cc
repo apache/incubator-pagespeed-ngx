@@ -313,8 +313,8 @@ string Charsets::ToString() const {
 
 string Import::ToString() const {
   return StringPrintf("@import url(\"%s\") %s;",
-                      CSSEscapeString(link).c_str(),
-                      JoinMediaStrings(media, ",").c_str());
+                      CSSEscapeString(link()).c_str(),
+                      JoinMediaStrings(media(), ",").c_str());
 }
 
 string Stylesheet::ToString() const {

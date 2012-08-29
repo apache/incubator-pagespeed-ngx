@@ -35,9 +35,9 @@
 namespace Css {
 
 // These are defined below Parser.
-struct Import;
 class Declaration;
 class Declarations;
+class Import;
 class Stylesheet;
 class Ruleset;
 
@@ -815,11 +815,25 @@ class Charsets : public std::vector<UnicodeText> {
   string ToString() const;
 };
 
-struct Import {
-  std::vector<UnicodeText> media;
-  UnicodeText link;
+class Import {
+ public:
+  Import() {}
+  ~Import() {}
+
+  const std::vector<UnicodeText>& media() const { return *media_; }
+  const UnicodeText& link() const { return link_; }
+
+  // Takes ownership of media.
+  void set_media(std::vector<UnicodeText>* media) { media_.reset(media); }
+  void set_link(const UnicodeText& link) { link_ = link; }
 
   string ToString() const;
+
+ private:
+  scoped_ptr<std::vector<UnicodeText> > media_;
+  UnicodeText link_;
+
+  DISALLOW_COPY_AND_ASSIGN(Import);
 };
 
 class Imports : public std::vector<Css::Import*> {
