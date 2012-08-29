@@ -102,6 +102,12 @@ class CommonFilter : public EmptyHtmlFilter {
                                     GoogleString* mime_type,
                                     GoogleString* charset);
 
+  // Add this filter to the logged list of applied rewriters. The intended
+  // semantics of this are that it should only include filters that modified the
+  // content of the response to the request being processed.
+  // This class logs using Name(); subclasses may do otherwise.
+  virtual void LogFilterModifiedContent();
+
  protected:
   // Overload these implementer methods:
   // Intentionally left abstract so that implementers don't forget to change

@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -142,6 +143,12 @@ GoogleString RewriteFilter::GetCharsetForStylesheet(
 
   // Well, we really have no idea.
   return GoogleString();
+}
+
+void RewriteFilter::LogFilterModifiedContent() {
+  if (driver()->log_record() != NULL) {
+    driver()->log_record()->LogAppliedRewriter(id());
+  }
 }
 
 }  // namespace net_instaweb

@@ -21,6 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -182,6 +183,12 @@ bool CommonFilter::ExtractMetaTagDetails(const HtmlElement& element,
   }
 
   return result;
+}
+
+void CommonFilter::LogFilterModifiedContent() {
+  if (driver()->log_record() != NULL) {
+    driver()->log_record()->LogAppliedRewriter(Name());
+  }
 }
 
 }  // namespace net_instaweb

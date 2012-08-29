@@ -136,9 +136,26 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
 }
 
 void SplitHtmlFilter::ReadCriticalLineConfig() {
-  const PropertyCache::Cohort* cohort_ =
-      rewrite_driver_->resource_manager()->page_property_cache()->
-      GetCohort(kRenderCohort);
+  const GoogleString& critical_line_config_from_options =
+       options_->critical_line_config();
+  if (!critical_line_config_from_options.empty()) {
+    StringPieceVector xpaths;
+    SplitStringPieceToVector(critical_line_config_from_options, ",",
+                             &xpaths, true);
+    for (int i = 0, n = xpaths.size(); i < n; i++) {
+      StringPieceVector xpath_pair;
+      SplitStringPieceToVector(xpaths[i], ":", &xpath_pair, true);
+      Panel* panel = critical_line_info_.add_panels();
+      panel->set_start_xpath(xpath_pair[0].data(), xpath_pair[0].length());
+      if (xpath_pair.size() == 2) {
+        panel->set_end_marker_xpath(
+            xpath_pair[1].data(), xpath_pair[1].length());
+      }
+    }
+  } else {
+    const PropertyCache::Cohort* cohort_ =
+        rewrite_driver_->resource_manager()->page_property_cache()->
+        GetCohort(kRenderCohort);
     PropertyValue* property_value = rewrite_driver_->property_page()->
         GetProperty(cohort_, kCriticalLineInfoPropertyName);
     if (property_value != NULL) {
@@ -146,6 +163,7 @@ void SplitHtmlFilter::ReadCriticalLineConfig() {
                              property_value->value().size());
       critical_line_info_.ParseFromZeroCopyStream(&input);
     }
+  }
 
   ComputePanels(critical_line_info_, &panel_id_to_spec_);
   PopulateXpathMap();

@@ -672,6 +672,7 @@ RewriteOptions::RewriteOptions()
              kEnableBlinkHtmlChangeDetection);
   add_option(false, &enable_blink_html_change_detection_logging_, "ebhcdl",
              kEnableBlinkHtmlChangeDetectionLogging);
+  add_option("", &critical_line_config_, "clc", kCriticalLineConfig);
   add_option(-1, &override_caching_ttl_ms_, "octm", kOverrideCachingTtlMs);
   add_option(5 * Timer::kSecondMs, &blocking_fetch_timeout_ms_, "bfto",
              RewriteOptions::kFetcherTimeOutMs);

@@ -846,8 +846,6 @@ class RewriteDriver : public HtmlParse {
   friend class ResourceManagerTest;
 
   typedef std::map<GoogleString, RewriteFilter*> StringFilterMap;
-  typedef void (RewriteDriver::*SetStringMethod)(const StringPiece& value);
-  typedef void (RewriteDriver::*SetInt64Method)(int64 value);
 
   // Backend for both FetchComplete() and DetachedFetchComplete().
   // If 'signal' is true will wake up those waiting for completion on the

@@ -118,32 +118,6 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     response_headers_.set_status_code(HttpStatus::kOK);
     response_headers_.SetDateAndCaching(MockTimer::kApr_5_2010_ms, 0);
     rewrite_driver_->set_response_headers_ptr(&response_headers_);
-
-    PropertyCache* property_cache = resource_manager_->page_property_cache();
-    property_cache->set_enabled(true);
-    property_cache->AddCohort(SplitHtmlFilter::kRenderCohort);
-    property_cache->AddCohort(RewriteDriver::kDomCohort);
-
-    MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),
-                                  kRequestUrl);
-    rewrite_driver()->set_property_page(page);
-    property_cache->Read(page);
-
-    CriticalLineInfo config;
-    Panel* panel = config.add_panels();
-    panel->set_start_xpath("//div[@id = \"container\"]/div[4]");
-    panel = config.add_panels();
-    panel->set_start_xpath("//img[3]");
-    panel->set_end_marker_xpath("//h1[@id = \"footer\"]");
-
-    GoogleString buf;
-    config.SerializeToString(&buf);
-    const PropertyCache::Cohort* cohort =
-        property_cache->GetCohort(SplitHtmlFilter::kRenderCohort);
-    PropertyValue* property_value = page->GetProperty(
-        cohort, SplitHtmlFilter::kCriticalLineInfoPropertyName);
-    property_cache->UpdateValue(buf, property_value);
-    property_cache->WriteCohort(cohort, page);
   }
 
   virtual bool AddHtmlTags() const { return false; }
@@ -156,7 +130,39 @@ class SplitHtmlFilterTest : public RewriteTestBase {
   virtual bool AddBody() const { return true; }
 };
 
-TEST_F(SplitHtmlFilterTest, StripUnprintableCharacters) {
+TEST_F(SplitHtmlFilterTest, SplitHtmlWithPropertyCache) {
+  PropertyCache* property_cache = resource_manager_->page_property_cache();
+  property_cache->set_enabled(true);
+  property_cache->AddCohort(SplitHtmlFilter::kRenderCohort);
+  property_cache->AddCohort(RewriteDriver::kDomCohort);
+
+  MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),
+                                kRequestUrl);
+  rewrite_driver()->set_property_page(page);
+  property_cache->Read(page);
+
+  CriticalLineInfo config;
+  Panel* panel = config.add_panels();
+  panel->set_start_xpath("//div[@id = \"container\"]/div[4]");
+  panel = config.add_panels();
+  panel->set_start_xpath("//img[3]");
+  panel->set_end_marker_xpath("//h1[@id = \"footer\"]");
+
+  GoogleString buf;
+  config.SerializeToString(&buf);
+  const PropertyCache::Cohort* cohort =
+      property_cache->GetCohort(SplitHtmlFilter::kRenderCohort);
+  PropertyValue* property_value = page->GetProperty(
+      cohort, SplitHtmlFilter::kCriticalLineInfoPropertyName);
+  property_cache->UpdateValue(buf, property_value);
+  property_cache->WriteCohort(cohort, page);
+  ValidateExpectedUrl(kRequestUrl, kHtmlInput, kSplitHtml);
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlWithOptions) {
+  options_->set_critical_line_config(
+      "//div[@id = \"container\"]/div[4],"
+      "//img[3]://h1[@id = \"footer\"]");
   ValidateExpectedUrl(kRequestUrl, kHtmlInput, kSplitHtml);
 }
 

@@ -634,7 +634,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   RewriteOptions::Initialize();
-  EXPECT_EQ(99, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(100, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAjaxRewritingEnabled));
@@ -665,6 +665,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("CriticalImagesCacheExpirationTimeMs"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kCriticalImagesCacheExpirationTimeMs));
+  EXPECT_EQ(StringPiece("CriticalLineConfig"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kCriticalLineConfig));
   EXPECT_EQ(StringPiece("CssFlattenMaxBytes"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kCssFlattenMaxBytes));

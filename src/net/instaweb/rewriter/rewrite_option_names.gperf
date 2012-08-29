@@ -34,6 +34,7 @@ struct OptionName {
 "ClientDomainRewrite",                   RewriteOptions::kClientDomainRewrite
 "CombineAcrossPaths",                    RewriteOptions::kCombineAcrossPaths
 "CriticalImagesCacheExpirationTimeMs",   RewriteOptions::kCriticalImagesCacheExpirationTimeMs
+"CriticalLineConfig",                    RewriteOptions::kCriticalLineConfig
 "CssFlattenMaxBytes",                    RewriteOptions::kCssFlattenMaxBytes
 "CssImageInlineMaxBytes",                RewriteOptions::kCssImageInlineMaxBytes
 "CssInlineMaxBytes",                     RewriteOptions::kCssInlineMaxBytes

@@ -105,6 +105,10 @@ class RewriteFilter : public CommonFilter {
       const StringPiece attribute_charset,
       const StringPiece enclosing_charset);
 
+  // Add this filter to the logged list of applied rewriters.
+  // This class logs using id().
+  virtual void LogFilterModifiedContent();
+
  private:
   DISALLOW_COPY_AND_ASSIGN(RewriteFilter);
 };

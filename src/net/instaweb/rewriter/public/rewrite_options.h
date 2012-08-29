@@ -139,6 +139,7 @@ class RewriteOptions {
     kClientDomainRewrite,
     kCombineAcrossPaths,
     kCriticalImagesCacheExpirationTimeMs,
+    kCriticalLineConfig,
     kCssFlattenMaxBytes,
     kCssImageInlineMaxBytes,
     kCssInlineMaxBytes,
@@ -1197,6 +1198,13 @@ class RewriteOptions {
     return use_full_url_in_blink_families_.value();
   }
 
+  void set_critical_line_config(const StringPiece& p) {
+      set_option(GoogleString(p.data(), p.size()), &critical_line_config_);
+  }
+  const GoogleString& critical_line_config() const {
+    return critical_line_config_.value();
+  }
+
   bool reject_blacklisted() const { return reject_blacklisted_.value(); }
   void set_reject_blacklisted(bool x) {
     set_option(x, &reject_blacklisted_);
@@ -2002,6 +2010,8 @@ class RewriteOptions {
   Option<bool> enable_blink_html_change_detection_logging_;
   // Override cache-time for cacheable resources in blink.
   Option<int64> override_blink_cache_time_ms_;
+  // Specification for critical line.
+  Option<GoogleString> critical_line_config_;
 
   // If this is true (it defaults to false) ProxyInterface frontend will
   // reject requests where PSA is not enabled or URL is blacklisted with
