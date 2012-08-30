@@ -52,7 +52,7 @@ const char DelayImagesFilter::kOnloadFunction[] =
 DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
     : driver_(driver),
       static_js_manager_(
-          driver->resource_manager()->static_javascript_manager()),
+          driver->server_context()->static_javascript_manager()),
       low_res_map_inserted_(false),
       num_low_res_inlined_images_(0),
       is_experimental_enabled_(

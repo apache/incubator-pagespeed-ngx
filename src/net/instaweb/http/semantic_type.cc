@@ -35,6 +35,8 @@ bool ParseCategory(const StringPiece& category_str, Category* category) {
     *category = kOtherResource;
   } else if (StringCaseEqual("Hyperlink", category_str)) {
     *category = kHyperlink;
+  } else if (StringCaseEqual("Prefetch", category_str)) {
+    *category = kPrefetch;
   } else {
     *category = kUndefined;
   }

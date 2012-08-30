@@ -36,7 +36,7 @@ namespace net_instaweb {
 
 UrlPartnership::UrlPartnership(const RewriteDriver* driver)
     : rewrite_options_(driver->options()),
-      url_namer_(driver->resource_manager()->url_namer()) {
+      url_namer_(driver->server_context()->url_namer()) {
 }
 
 UrlPartnership::~UrlPartnership() {

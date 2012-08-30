@@ -44,6 +44,7 @@ enum Category {
   kStylesheet,
   kOtherResource,
   kHyperlink,
+  kPrefetch,
   kUndefined
 };
 
@@ -56,6 +57,8 @@ enum Category {
 //    - This is any other url that will be automatically loaded by the browser
 //      along with the main page.  For example, the 'manifest' attribute of the
 //      'html' element or the 'src' attribute of an 'iframe' element.
+//   Prefetch
+//    - This is to prefetch the given url or dns-prefetch for the given domain.
 //   Hyperlink
 //    - A link to another page or other resource that a browser wouldn't
 //      normally load in connection to this page. For example the 'href'

@@ -109,7 +109,7 @@ bool CacheExtender::ShouldRewriteResource(
     // This also includes the case where a previous filter rewrote this.
     return true;
   }
-  UrlNamer* url_namer = driver_->resource_manager()->url_namer();
+  UrlNamer* url_namer = driver_->server_context()->url_namer();
   GoogleUrl origin_gurl(url);
 
   // We won't initiate a CacheExtender::Context with a pagespeed

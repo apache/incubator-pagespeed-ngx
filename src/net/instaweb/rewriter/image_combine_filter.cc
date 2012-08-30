@@ -756,7 +756,7 @@ class ImageCombineFilter::Context : public RewriteContext {
           const GoogleUrl& css_url, const StringPiece& css_text)
       : RewriteContext(NULL, parent, NULL),
         library_(NULL,
-                 filter->driver()->resource_manager()->filename_prefix(),
+                 filter->driver()->server_context()->filename_prefix(),
                  filter->driver()->message_handler()),
         filter_(filter) {
     MD5Hasher hasher;
@@ -767,7 +767,7 @@ class ImageCombineFilter::Context : public RewriteContext {
   Context(RewriteDriver* driver, ImageCombineFilter* filter)
       : RewriteContext(driver, NULL, NULL),
         library_(NULL,
-                 filter->driver()->resource_manager()->filename_prefix(),
+                 filter->driver()->server_context()->filename_prefix(),
                  filter->driver()->message_handler()),
         filter_(filter) {
   }
@@ -1120,7 +1120,7 @@ class ImageCombineFilter::Context : public RewriteContext {
 ImageCombineFilter::ImageCombineFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
       context_(NULL) {
-  Statistics* stats = driver->resource_manager()->statistics();
+  Statistics* stats = driver->server_context()->statistics();
   image_file_count_reduction_ = stats->GetVariable(kImageFileCountReduction);
 }
 

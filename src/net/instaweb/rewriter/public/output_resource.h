@@ -213,10 +213,10 @@ class OutputResource : public Resource {
   REFCOUNT_FRIEND_DECLARATION(OutputResource);
 
  private:
-  friend class ServerContext;
-  friend class ResourceManagerTest;
   friend class ResourceManagerTestingPeer;
   friend class RewriteDriver;
+  friend class ServerContext;
+  friend class ServerContextTest;
 
   void SetHash(const StringPiece& hash);
   StringPiece extension() const { return full_name_.ext(); }

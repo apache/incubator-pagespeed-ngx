@@ -233,8 +233,8 @@ class RewriteDriver : public HtmlParse {
   }
 
   const UserAgentMatcher& user_agent_matcher() const {
-    DCHECK(resource_manager() != NULL);
-    return resource_manager()->user_agent_matcher();
+    DCHECK(server_context() != NULL);
+    return server_context()->user_agent_matcher();
   }
   bool UserAgentSupportsImageInlining() const;
   bool UserAgentSupportsJsDefer() const;
@@ -358,7 +358,7 @@ class RewriteDriver : public HtmlParse {
   // Note: this means the driver's fetcher must survive as long as this does.
   CacheUrlAsyncFetcher* CreateCacheFetcher();
 
-  ServerContext* resource_manager() const { return resource_manager_; }
+  ServerContext* server_context() const { return server_context_; }
   Statistics* statistics() const;
 
   AddInstrumentationFilter* add_instrumentation_filter() {
@@ -780,8 +780,10 @@ class RewriteDriver : public HtmlParse {
   void set_client_id(const StringPiece& id) { client_id_ = id.as_string(); }
   const GoogleString& client_id() const { return client_id_; }
 
-  PropertyPage* property_page() const { return property_page_.get(); }
+  PropertyPage* property_page() const { return property_page_; }
   void set_property_page(PropertyPage* page);  // Takes ownership of page.
+  // Does not take the ownership of the page.
+  void set_unowned_property_page(PropertyPage* page);
 
   // Used by ImageRewriteFilter for identifying critical images.
   const StringSet* critical_images() const {
@@ -843,7 +845,7 @@ class RewriteDriver : public HtmlParse {
 
  private:
   friend class RewriteTestBase;
-  friend class ResourceManagerTest;
+  friend class ServerContextTest;
 
   typedef std::map<GoogleString, RewriteFilter*> StringFilterMap;
 
@@ -1120,7 +1122,7 @@ class RewriteDriver : public HtmlParse {
   // These objects are provided on construction or later, and are
   // owned by the caller.
   FileSystem* file_system_;
-  ServerContext* resource_manager_;
+  ServerContext* server_context_;
   Scheduler* scheduler_;
   UrlAsyncFetcher* default_url_async_fetcher_;  // the fetcher we got at ctor
 
@@ -1180,7 +1182,10 @@ class RewriteDriver : public HtmlParse {
   scoped_ptr<AbstractClientState> client_state_;
 
   // Stores any cached properties associated with the current URL.
-  scoped_ptr<PropertyPage> property_page_;
+  PropertyPage* property_page_;
+
+  // Boolean value which tells whether property page is owned by driver or not.
+  bool owns_property_page_;
 
   // Stores all the critical images for the current URL.
   scoped_ptr<StringSet> critical_images_;

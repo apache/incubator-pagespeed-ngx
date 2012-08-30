@@ -202,7 +202,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       possibly_quick_rewrites_(0),
       pending_async_events_(0),
       file_system_(file_system),
-      resource_manager_(NULL),
+      server_context_(NULL),
       scheduler_(NULL),
       default_url_async_fetcher_(url_async_fetcher),
       url_async_fetcher_(default_url_async_fetcher_),
@@ -215,6 +215,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       low_priority_rewrite_worker_(NULL),
       writer_(NULL),
       client_state_(NULL),
+      property_page_(NULL),
+      owns_property_page_(false),
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
       num_inline_preview_images_(0),
@@ -244,15 +246,15 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
 RewriteDriver::~RewriteDriver() {
   if (rewrite_worker_ != NULL) {
     scheduler_->UnregisterWorker(rewrite_worker_);
-    resource_manager_->rewrite_workers()->FreeSequence(rewrite_worker_);
+    server_context_->rewrite_workers()->FreeSequence(rewrite_worker_);
   }
   if (html_worker_ != NULL) {
     scheduler_->UnregisterWorker(html_worker_);
-    resource_manager_->html_workers()->FreeSequence(html_worker_);
+    server_context_->html_workers()->FreeSequence(html_worker_);
   }
   if (low_priority_rewrite_worker_ != NULL) {
     scheduler_->UnregisterWorker(low_priority_rewrite_worker_);
-    resource_manager_->low_priority_rewrite_workers()->FreeSequence(
+    server_context_->low_priority_rewrite_workers()->FreeSequence(
         low_priority_rewrite_worker_);
   }
   Clear();
@@ -263,10 +265,10 @@ RewriteDriver* RewriteDriver::Clone() {
   RewriteDriver* result;
   if (has_custom_options()) {
     RewriteOptions* options_copy = options()->Clone();
-    resource_manager_->ComputeSignature(options_copy);
-    result = resource_manager_->NewCustomRewriteDriver(options_copy);
+    server_context_->ComputeSignature(options_copy);
+    result = server_context_->NewCustomRewriteDriver(options_copy);
   } else {
-    result = resource_manager_->NewRewriteDriver();
+    result = server_context_->NewRewriteDriver();
   }
   return result;
 }
@@ -320,7 +322,6 @@ void RewriteDriver::Clear() {
   detached_fetch_detached_path_complete_ = false;
   detached_fetch_main_path_complete_ = false;
   client_id_.clear();
-  property_page_.reset(NULL);
   fully_rewrite_on_flush_ = false;
   num_inline_preview_images_ = 0;
   flush_early_info_.reset(NULL);
@@ -328,6 +329,12 @@ void RewriteDriver::Clear() {
   serve_blink_non_critical_ = false;
   is_blink_request_ = false;
   log_record_ = NULL;
+
+  if (owns_property_page_) {
+    delete property_page_;
+  }
+  property_page_ = NULL;
+  owns_property_page_ = false;
 
   // Reset to the default fetcher from any session fetcher
   // (as the request is over).
@@ -377,7 +384,7 @@ void RewriteDriver::CheckForCompletionAsync(WaitMode wait_mode,
   if (timeout_ms <= 0) {
     end_time_ms = -1;  // Encodes unlimited
   } else {
-    end_time_ms = resource_manager()->timer()->NowMs() + timeout_ms;
+    end_time_ms = server_context()->timer()->NowMs() + timeout_ms;
   }
 
   TryCheckForCompletion(wait_mode, end_time_ms, done);
@@ -387,7 +394,7 @@ void RewriteDriver::TryCheckForCompletion(
     WaitMode wait_mode, int64 end_time_ms, Function* done) {
   scheduler_->DCheckLocked();
   bool deadline_reached;
-  int64 now_ms = resource_manager_->timer()->NowMs();
+  int64 now_ms = server_context_->timer()->NowMs();
   int64 sleep_ms;
   if (end_time_ms < 0) {
     deadline_reached = false;  // Unlimited wait..
@@ -571,7 +578,7 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
   // the cache system will respond to HIT by making the next HIT faster
   // so it meets our deadline.  In either case we will track with stats.
   //
-  RewriteStats* stats = resource_manager_->rewrite_stats();
+  RewriteStats* stats = server_context_->rewrite_stats();
   stats->cached_output_hits()->Add(completed_rewrites);
   stats->cached_output_missed_deadline()->Add(pending_rewrites_);
 
@@ -658,15 +665,15 @@ void RewriteDriver::Terminate() {
 }
 
 void RewriteDriver::SetResourceManager(ServerContext* resource_manager) {
-  DCHECK(resource_manager_ == NULL);
-  resource_manager_ = resource_manager;
-  scheduler_ = resource_manager_->scheduler();
+  DCHECK(server_context_ == NULL);
+  server_context_ = resource_manager;
+  scheduler_ = server_context_->scheduler();
   set_timer(resource_manager->timer());
-  inhibits_mutex_.reset(resource_manager_->thread_system()->NewMutex());
-  rewrite_worker_ = resource_manager_->rewrite_workers()->NewSequence();
-  html_worker_ = resource_manager_->html_workers()->NewSequence();
+  inhibits_mutex_.reset(server_context_->thread_system()->NewMutex());
+  rewrite_worker_ = server_context_->rewrite_workers()->NewSequence();
+  html_worker_ = server_context_->html_workers()->NewSequence();
   low_priority_rewrite_worker_ =
-      resource_manager_->low_priority_rewrite_workers()->NewSequence();
+      server_context_->low_priority_rewrite_workers()->NewSequence();
   scheduler_->RegisterWorker(rewrite_worker_);
   scheduler_->RegisterWorker(html_worker_);
   scheduler_->RegisterWorker(low_priority_rewrite_worker_);
@@ -743,7 +750,7 @@ bool RewriteDriver::UserAgentSupportsFlushEarly() const {
 void RewriteDriver::AddFilters() {
   CHECK(html_writer_filter_ == NULL);
   CHECK(!filters_added_);
-  resource_manager_->ComputeSignature(options_.get());
+  server_context_->ComputeSignature(options_.get());
   filters_added_ = true;
 
   AddPreRenderFilters();
@@ -817,14 +824,14 @@ void RewriteDriver::AddPreRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kOutlineCss)) {
     // Cut out inlined styles and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
-    CHECK(resource_manager_ != NULL);
+    CHECK(server_context_ != NULL);
     CssOutlineFilter* css_outline_filter = new CssOutlineFilter(this);
     AppendOwnedPreRenderFilter(css_outline_filter);
   }
   if (rewrite_options->Enabled(RewriteOptions::kOutlineJavascript)) {
     // Cut out inlined scripts and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
-    CHECK(resource_manager_ != NULL);
+    CHECK(server_context_ != NULL);
     JsOutlineFilter* js_outline_filter = new JsOutlineFilter(this);
     AppendOwnedPreRenderFilter(js_outline_filter);
   }
@@ -875,13 +882,13 @@ void RewriteDriver::AddPreRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kInlineCss)) {
     // Inline small CSS files.  Give CssCombineFilter and CSS minification a
     // chance to run before we decide what counts as "small".
-    CHECK(resource_manager_ != NULL);
+    CHECK(server_context_ != NULL);
     AppendOwnedPreRenderFilter(new CssInlineFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineJavascript)) {
     // Inline small Javascript files.  Give JS minification a chance to run
     // before we decide what counts as "small".
-    CHECK(resource_manager_ != NULL);
+    CHECK(server_context_ != NULL);
     AppendOwnedPreRenderFilter(new JsInlineFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kConvertJpegToProgressive) ||
@@ -946,11 +953,6 @@ void RewriteDriver::AddPostRenderFilters() {
     // specified or not.
     AddUnownedPostRenderFilter(domain_rewriter_.get());
   }
-  if (rewrite_options->Enabled(RewriteOptions::kInsertDnsPrefetch)) {
-    InsertDnsPrefetchFilter* insert_dns_prefetch_filter =
-        new InsertDnsPrefetchFilter(this);
-    AddOwnedPostRenderFilter(insert_dns_prefetch_filter);
-  }
   if (rewrite_options->Enabled(RewriteOptions::kDivStructure)) {
     // Adds a query parameter to each link roughly designating its position on
     // the page to be used in target, referer counting, which is then to be
@@ -964,7 +966,11 @@ void RewriteDriver::AddPostRenderFilters() {
     // we Must left trim urls BEFORE quote removal.
     AddUnownedPostRenderFilter(url_trim_filter_.get());
   }
-
+  if (rewrite_options->Enabled(RewriteOptions::kInsertDnsPrefetch)) {
+    InsertDnsPrefetchFilter* insert_dns_prefetch_filter =
+        new InsertDnsPrefetchFilter(this);
+    AddOwnedPostRenderFilter(insert_dns_prefetch_filter);
+  }
   if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
     // Defers javascript download and execution to post onload. This filter
     // should be applied before JsDisableFilter and JsDeferFilter.
@@ -1126,7 +1132,7 @@ void RewriteDriver::SetWriter(Writer* writer) {
 }
 
 Statistics* RewriteDriver::statistics() const {
-  return (resource_manager_ == NULL) ? NULL : resource_manager_->statistics();
+  return (server_context_ == NULL) ? NULL : server_context_->statistics();
 }
 
 void RewriteDriver::SetSessionFetcher(UrlAsyncFetcher* f) {
@@ -1136,16 +1142,16 @@ void RewriteDriver::SetSessionFetcher(UrlAsyncFetcher* f) {
 
 CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {
   CacheUrlAsyncFetcher* cache_fetcher = new CacheUrlAsyncFetcher(
-      resource_manager_->http_cache(), url_async_fetcher_);
+      server_context_->http_cache(), url_async_fetcher_);
   cache_fetcher->set_respect_vary(options()->respect_vary());
   cache_fetcher->set_ignore_recent_fetch_failed(true);
   cache_fetcher->set_default_cache_html(options()->default_cache_html());
   cache_fetcher->set_backend_first_byte_latency_histogram(
-      resource_manager_->rewrite_stats()->backend_latency_histogram());
+      server_context_->rewrite_stats()->backend_latency_histogram());
   cache_fetcher->set_fallback_responses_served(
-      resource_manager_->rewrite_stats()->fallback_responses_served());
+      server_context_->rewrite_stats()->fallback_responses_served());
   cache_fetcher->set_num_conditional_refreshes(
-      resource_manager_->rewrite_stats()->num_conditional_refreshes());
+      server_context_->rewrite_stats()->num_conditional_refreshes());
   cache_fetcher->set_serve_stale_if_fetch_error(
       options()->serve_stale_if_fetch_error());
   return cache_fetcher;
@@ -1176,7 +1182,7 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
     return false;
   }
 
-  UrlNamer* url_namer = resource_manager()->url_namer();
+  UrlNamer* url_namer = server_context()->url_namer();
   GoogleString decoded_url;
   // If we are running in proxy mode we need to ignore URLs where the leaf is
   // encoded but the URL as a whole isn't proxy encoded, since that can happen
@@ -1283,7 +1289,7 @@ OutputResourcePtr RewriteDriver::DecodeOutputResource(
 
   StringPiece base = gurl.AllExceptLeaf();
   OutputResourcePtr output_resource(new OutputResource(
-      resource_manager_, base, base, base, namer,
+      server_context_, base, base, base, namer,
       options(), kind));
 
   return output_resource;
@@ -1313,7 +1319,7 @@ class FilterFetch : public SharedAsyncFetch {
       queued = context->Fetch(output_resource, filter_fetch, handler);
     }
     if (!queued) {
-      RewriteStats* stats = driver->resource_manager()->rewrite_stats();
+      RewriteStats* stats = driver->server_context()->rewrite_stats();
       stats->failed_filter_resource_fetches()->Add(1);
       async_fetch->Done(false);
       driver->FetchComplete();
@@ -1324,7 +1330,7 @@ class FilterFetch : public SharedAsyncFetch {
 
  protected:
   virtual void HandleDone(bool success) {
-    RewriteStats* stats = driver_->resource_manager()->rewrite_stats();
+    RewriteStats* stats = driver_->server_context()->rewrite_stats();
     if (success) {
       stats->succeeded_filter_resource_fetches()->Add(1);
     } else {
@@ -1358,7 +1364,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
   virtual ~CacheCallback() {}
 
   void Find() {
-    ServerContext* resource_manager = driver_->resource_manager();
+    ServerContext* resource_manager = driver_->server_context();
     HTTPCache* http_cache = resource_manager->http_cache();
     http_cache->Find(output_resource_->url(), handler_, this);
   }
@@ -1367,7 +1373,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
     StringPiece content;
     ResponseHeaders* response_headers = async_fetch_->response_headers();
     if (find_result == HTTPCache::kFound) {
-      RewriteStats* stats = driver_->resource_manager()->rewrite_stats();
+      RewriteStats* stats = driver_->server_context()->rewrite_stats();
       stats->cached_resource_fetches()->Add(1);
 
       HTTPValue* value = http_value();
@@ -1388,7 +1394,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
         // resource object (while the cache somehow decided not to store it).
         content = output_resource_->contents();
         response_headers->CopyFrom(*output_resource_->response_headers());
-        ServerContext* resource_manager = driver_->resource_manager();
+        ServerContext* resource_manager = driver_->server_context();
         HTTPCache* http_cache = resource_manager->http_cache();
         http_cache->Put(output_resource_->url(), response_headers,
                         content, handler_);
@@ -1458,7 +1464,7 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
     handled = true;
     StringPiece base = gurl.AllExceptLeaf();
     ResourceNamer namer;
-    output_resource.reset(new OutputResource(resource_manager_, base, base,
+    output_resource.reset(new OutputResource(server_context_, base, base,
         base, namer, options(), kRewrittenResource));
     SetBaseUrlForFetch(url);
     fetch_queued_ = true;
@@ -1594,7 +1600,7 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
     // rewritten multiple times, input_url will still have the encoded domain,
     // and we can rewrite that, so test again but against the encoded base url.
     if (!may_rewrite) {
-      UrlNamer* namer = resource_manager()->url_namer();
+      UrlNamer* namer = server_context()->url_namer();
       GoogleString decoded_input;
       if (namer->Decode(input_url, NULL, &decoded_input)) {
         GoogleUrl decoded_url(decoded_input);
@@ -1612,7 +1618,7 @@ ResourcePtr RewriteDriver::CreateInputResource(const GoogleUrl& input_url) {
   } else {
     message_handler()->Message(kInfo, "No permission to rewrite '%s'",
                                input_url.spec_c_str());
-    RewriteStats* stats = resource_manager_->rewrite_stats();
+    RewriteStats* stats = server_context_->rewrite_stats();
     stats->resource_url_domain_rejections()->Add(1);
   }
   return resource;
@@ -1637,7 +1643,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
   ResourcePtr resource;
 
   if (url.SchemeIs("data")) {
-    resource = DataUrlInputResource::Make(url_string, resource_manager_);
+    resource = DataUrlInputResource::Make(url_string, server_context_);
     if (resource.get() == NULL) {
       // Note: Bad user-content can leave us here.
       message_handler()->Message(kWarning, "Badly formatted data url '%s'",
@@ -1648,7 +1654,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
     const ContentType* type = NameExtensionToContentType(url.LeafSansQuery());
     GoogleString filename;
     if (options()->file_load_policy()->ShouldLoadFromFile(url, &filename)) {
-      resource.reset(new FileInputResource(resource_manager_, options(), type,
+      resource.reset(new FileInputResource(server_context_, options(), type,
                                            url_string, filename));
     } else {
       // If the scheme is https and the fetcher doesn't support https, map
@@ -1683,7 +1689,7 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
 void RewriteDriver::ReadAsync(Resource::AsyncCallback* callback,
                               MessageHandler* handler) {
   // TODO(jmarantz): fix call-sites and eliminate this wrapper.
-  resource_manager_->ReadAsync(Resource::kReportFailureIfNotCacheable,
+  server_context_->ReadAsync(Resource::kReportFailureIfNotCacheable,
                                callback);
 }
 
@@ -1707,7 +1713,7 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
 }
 
 void RewriteDriver::SetDecodedUrlFromBase() {
-  UrlNamer* namer = resource_manager()->url_namer();
+  UrlNamer* namer = server_context()->url_namer();
   GoogleString decoded_base;
   if (namer->Decode(base_url_, NULL, &decoded_base)) {
     decoded_base_url_.Reset(decoded_base);
@@ -1785,7 +1791,7 @@ void RewriteDriver::DeleteRewriteContext(RewriteContext* rewrite_context) {
     }
   }
   if (should_release) {
-    resource_manager_->ReleaseRewriteDriver(this);
+    server_context_->ReleaseRewriteDriver(this);
   }
 }
 
@@ -1825,14 +1831,15 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
         flush_early_info());
   }
   PropertyPage* page = property_page();
-  if (page != NULL) {
-    PropertyCache* pcache = resource_manager_->page_property_cache();
+  // Dont update property cache value if we are flushing early.
+  if (page != NULL && owns_property_page_) {
+    PropertyCache* pcache = server_context_->page_property_cache();
     const PropertyCache::Cohort* dom_cohort = pcache->GetCohort(kDomCohort);
     if (dom_cohort != NULL) {
       // Update the timestamp of the last request.
       UpdatePropertyValueInDomCohort(
           kLastRequestTimestamp,
-          Integer64ToString(resource_manager()->timer()->NowMs()));
+          Integer64ToString(server_context()->timer()->NowMs()));
       if (flush_early_info_.get() != NULL) {
         PropertyValue* subresources_property_value = page->GetProperty(
             dom_cohort, RewriteDriver::kSubresourcesPropertyName);
@@ -1862,7 +1869,10 @@ void RewriteDriver::FinalizeFilterLogging() {
 
 void RewriteDriver::UpdatePropertyValueInDomCohort(StringPiece property_name,
                                                    StringPiece property_value) {
-  PropertyCache* pcache = resource_manager_->page_property_cache();
+  if (!owns_property_page_) {
+    return;
+  }
+  PropertyCache* pcache = server_context_->page_property_cache();
   if (pcache == NULL || property_page() == NULL) {
     LOG(DFATAL) << "Property cache or property page not available.";
     return;
@@ -1901,7 +1911,7 @@ void RewriteDriver::Cleanup() {
       }
     }
     if (should_release) {
-      resource_manager_->ReleaseRewriteDriver(this);
+      server_context_->ReleaseRewriteDriver(this);
     }
   }
 }
@@ -2053,7 +2063,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
     if (options()->IsAllowed(gurl.Spec()) &&
         options()->domain_lawyer()->MapRequestToDomain(
             gurl, gurl.Spec(), &mapped_domain, &mapped_gurl,
-            resource_manager_->message_handler())) {
+            server_context_->message_handler())) {
       GoogleString name;
       StringVector v;
       v.push_back(mapped_gurl.LeafWithQuery().as_string());
@@ -2079,13 +2089,13 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
   full_name.set_experiment(options()->GetFuriousStateStr());
   OutputResourcePtr resource;
 
-  int max_leaf_size = full_name.EventualSize(*resource_manager_->hasher())
+  int max_leaf_size = full_name.EventualSize(*server_context_->hasher())
                       + ContentType::MaxProducedExtensionLength();
   int url_size = mapped_path.size() + max_leaf_size;
   if ((max_leaf_size <= options()->max_url_segment_size()) &&
       (url_size <= options()->max_url_size())) {
     OutputResource* output_resource = new OutputResource(
-        resource_manager_, mapped_path, unmapped_path, base_url,
+        server_context_, mapped_path, unmapped_path, base_url,
         full_name, options(), kind);
     resource.reset(output_resource);
   }
@@ -2257,7 +2267,7 @@ bool RewriteDriver::ShouldAbsolutifyUrl(const GoogleUrl& input_base,
                                         const GoogleUrl& output_base,
                                         bool* proxy_mode) const {
   bool result = false;
-  const UrlNamer* url_namer = resource_manager_->url_namer();
+  const UrlNamer* url_namer = server_context_->url_namer();
   bool proxying = url_namer->ProxyMode();
 
   if (proxying) {
@@ -2279,8 +2289,21 @@ bool RewriteDriver::ShouldAbsolutifyUrl(const GoogleUrl& input_base,
 // This is in the .cc rather than the header to avoid the need to
 // include property_cache.h in the header.
 void RewriteDriver::set_property_page(PropertyPage* page) {
-  property_page_.reset(page);
+  if (owns_property_page_) {
+    delete property_page_;
+  }
+  property_page_ = page;
+  owns_property_page_ = true;
 }
+
+void RewriteDriver::set_unowned_property_page(PropertyPage* page) {
+  if (owns_property_page_) {
+    delete property_page_;
+  }
+  property_page_ = page;
+  owns_property_page_ = false;
+}
+
 
 void RewriteDriver::increment_num_inline_preview_images() {
   ++num_inline_preview_images_;
@@ -2299,7 +2322,7 @@ void RewriteDriver::decrement_async_events_count() {
     should_release = release_driver_ && (pending_async_events_ == 0);
   }
   if (should_release) {
-    resource_manager_->ReleaseRewriteDriver(this);
+    server_context_->ReleaseRewriteDriver(this);
   }
 }
 
@@ -2321,7 +2344,7 @@ void RewriteDriver::EnableBlockingRewrite(RequestHeaders* request_headers) {
 
 RewriteDriver::XhtmlStatus RewriteDriver::MimeTypeXhtmlStatus() {
   if (!xhtml_mimetype_computed_ &&
-      resource_manager_->response_headers_finalized() &&
+      server_context_->response_headers_finalized() &&
       (response_headers_ != NULL)) {
     xhtml_mimetype_computed_ = true;
     const ContentType* content_type = response_headers_->DetermineContentType();
@@ -2339,7 +2362,7 @@ RewriteDriver::XhtmlStatus RewriteDriver::MimeTypeXhtmlStatus() {
 FlushEarlyInfo* RewriteDriver::flush_early_info() {
   if (flush_early_info_.get() == NULL) {
     flush_early_info_.reset(new FlushEarlyInfo);
-    const PropertyCache::Cohort* cohort = resource_manager()
+    const PropertyCache::Cohort* cohort = server_context()
         ->page_property_cache()->GetCohort(RewriteDriver::kDomCohort);
     if (property_page() != NULL && cohort != NULL) {
       PropertyValue* property_value = property_page()->GetProperty(

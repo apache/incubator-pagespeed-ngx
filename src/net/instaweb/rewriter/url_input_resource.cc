@@ -118,7 +118,7 @@ UrlInputResource::UrlInputResource(RewriteDriver* rewrite_driver,
                                    const ContentType* type,
                                    const StringPiece& url)
     : Resource((rewrite_driver == NULL ? NULL :
-                rewrite_driver->resource_manager()), type),
+                rewrite_driver->server_context()), type),
       url_(url.data(), url.size()),
       rewrite_driver_(rewrite_driver),
       rewrite_options_(options),
@@ -386,7 +386,7 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
     if (callback_ != NULL) {
       success &= CheckAndUpdateInputInfo(
           *response_headers(), http_value_, *rewrite_options_,
-          *rewrite_driver_->resource_manager(), callback_);
+          *rewrite_driver_->server_context(), callback_);
       callback_->Done(success);
     }
     rewrite_driver_->decrement_async_events_count();

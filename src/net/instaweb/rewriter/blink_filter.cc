@@ -87,7 +87,7 @@ void BlinkFilter::StartDocument() {
 }
 
 void BlinkFilter::ObtainBlinkCriticalLineData() {
-  cohort_ = rewrite_driver_->resource_manager()->page_property_cache()
+  cohort_ = rewrite_driver_->server_context()->page_property_cache()
       ->GetCohort(kBlinkCohort);
   PropertyValue* property_value = rewrite_driver_->property_page()->GetProperty(
       cohort_, kBlinkCriticalLineDataPropertyName);
@@ -114,7 +114,7 @@ void BlinkFilter::HandleLastModifiedChange() {
     // TODO(sriharis):  Change the above check to a '>' comparison of dates.
     PropertyPage* page = rewrite_driver_->property_page();
     page->DeleteProperty(cohort_, kBlinkCriticalLineDataPropertyName);
-    rewrite_driver_->resource_manager()->page_property_cache()->WriteCohort(
+    rewrite_driver_->server_context()->page_property_cache()->WriteCohort(
         cohort_, page);
     if (has_last_modified_date_in_cache) {
       abort_filter_ = true;

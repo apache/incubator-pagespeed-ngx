@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -263,6 +264,62 @@ TEST_F(InsertDnsPrefetchFilterTest, FullFlowTest) {
   EXPECT_EQ(StrCat("<html>\n", html_input, "\n</html>"), output_);
   CheckPrefetchInfo(6, 6, 6, CreateDomainsVector(6));
   output_.clear();
+}
+
+TEST_F(InsertDnsPrefetchFilterTest, InsertDnsPrefetchFilterWithOtherFilters) {
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kDeferJavascript);
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  options()->EnableFilter(RewriteOptions::kDelayImages);
+  resource_manager()->ComputeSignature(options());
+  GoogleString html =
+      "<head>"
+        "<script src=\"http://b.com/\"/>"
+      "</head>"
+      "<body>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"http://a.com/\">"
+        "<script src=\"http://b.com/\"/>"
+        "<img src=\"http://c.com/\"/>"
+      "</body>";
+  Parse("store_domains_in_body", html);
+  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  // b.com is not stored since it is already in HEAD.
+  CheckPrefetchInfo(2, 0, 2, "a.com,c.com");
+}
+
+TEST_F(InsertDnsPrefetchFilterTest, InsertDomainsinHeadForFlushEarlyFlow) {
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kFlushSubresources);
+  resource_manager()->ComputeSignature(options());
+  GoogleString html =
+      "<head>"
+        "<script src=\"http://b.com/\"/>"
+      "<script src=\"http://d.com/\"/>"
+      "</head>"
+      "<body>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"http://a.com/\">"
+        "<script src=\"http://b.com/\"/>"
+        "<img src=\"http://c.com/\"/>"
+      "</body>";
+  Parse("store_domains_in_body", html);
+  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  CheckPrefetchInfo(4, 0, 4, "b.com,d.com,a.com,c.com");
+}
+
+TEST_F(InsertDnsPrefetchFilterTest, NoDomainsWhileFlushingEarly) {
+  rewrite_driver()->set_flushing_early(true);
+  GoogleString html =
+      "<head>"
+        "<script src=\"http://b.com/\"/>"
+      "</head>"
+      "<body>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"http://a.com/\">"
+        "<script src=\"http://b.com/\"/>"
+        "<img src=\"http://c.com/\"/>"
+      "</body>";
+  Parse("store_domains_in_body", html);
+  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  CheckPrefetchInfo(0, 0, 0, "");
 }
 
 }  // namespace net_instaweb

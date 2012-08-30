@@ -50,6 +50,7 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   virtual void EndDocument();
 
   virtual void StartElement(HtmlElement* element);
+  virtual void EndElement(HtmlElement* element);
 
  protected:
   virtual void Clear();
@@ -65,6 +66,7 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   int num_resources_flushed_;
   NullWriter null_writer_;
   Writer* original_writer_;
+  HtmlElement* current_element_;
   UserAgentMatcher::PrefetchMechanism prefetch_mechanism_;
 
   DISALLOW_COPY_AND_ASSIGN(FlushEarlyContentWriterFilter);

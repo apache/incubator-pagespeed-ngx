@@ -33,74 +33,116 @@
 //    delay_images.js
 window['pagespeed'] = window['pagespeed'] || {};
 var pagespeed = window['pagespeed'];
+window['goog'] = window['goog'] || {};
+var goog = window['goog'];
 
 /**
  * @constructor
  */
 pagespeed.MpsConsole = function() {
   /**
-   * The data tables behind the charts (from the Charts API).
-   * @type {Object.<string, Object.<string, (number|Date)>>}
-   * @private
-   */
-  this.dataTables_ = {};
-  /**
-   * The data calculated to be displayed in the line graphs.
-   * This is saved so that the each datapoint does not have to be
-   * recalculated every time new data is received.
-   * @type {Object.<string, Array.<number>>}
-   * @private
-   */
-  this.varGraphData_ = {};
-  /**
-   * A list of timestamps of the data that is currently being displayed.
-   * This is saved so that datapoints do not have to be recalculated.
-   * @type {Array.<number>}
-   * @private
-   */
-  this.timestamps_ = [];
-  /**
-   * The Charts API objects representing each of the graphs.
-   * @type {Object.<string, Object>}
-   * @private
-   */
-  this.graphs_ = {};
-  /**
-   * The titles of the line graphs.
+   * The different types of Line Graph Types.
    * @enum {string}
    * @private
    */
-  this.LineGraphNames_ = {
-    PERCENT_CACHE_HITS: 'Percent Cache Hits',
-    QUERIES_PER_SECOND: 'Queries per Second',
-    FLUSHES_PER_SECOND: 'Flushes per Second',
-    FALLBACK_RESPONSES: 'Number of Fallback Responses Served per Second',
-    SERF_BYTES_PER_REQUEST: 'Serf Bytes Fetched per Request',
-    AVE_LOAD_TIME_MS: 'Average Load Time (ms)',
-    REWRITES_EXEC_PER_SECOND: 'Rewrites Executed per Second',
-    REWRITES_DROPPED_PER_SECOND: 'Rewrites Dropped per Second',
-    RESOURCE_404S_PER_SECOND: 'Resource 404s per Second',
-    SLURP_404S_PER_SECOND: 'Slurp 404s per Second',
-    ONGOING_IMG_REWRITES: 'Ongoing Image Rewrites'
+  this.LineGraphTypes_ = {
+    // Represents a variable over the sum of itself and another variable.
+    RATIO_OVER_SUM: 'ratio_over_sum',
+    // Represents the ratio of a variable over another variable.
+    RATIO: 'ratio',
+    // Represents the ratio of a variable over the elapsed time.
+    RATE: 'rate',
+    // Represents the value of a variable at that point in time.
+    RAW_VALUE: 'raw_value'
   };
+
   /**
-   * Whether we're currently processing data. If so, calls to scrapeData should
-   * simply return.
-   * @type {boolean}
+   * A list of the different line graph titles, the variables that
+   * the line graph data consists of, and the type of graph, which determines
+   * how the data points should be calculated from the given variables.
+   * @type {Array.<Object.<string, string, Array.<string> > >}
    * @private
    */
-  this.loadingData_ = false;
-  /** The size of the time window we want to show, in seconds
-   * @type {number}
-   * @const
-   */
-  this.TIME_WINDOW_SEC = 30;
+  this.LineGraphs_ = [
+    {title: 'Percent Cache Hits', type: this.LineGraphTypes_.RATIO_OVER_SUM,
+     variables: ['cache_hits', 'cache_misses']},
+    {title: 'Serf Bytes Fetched per Request', type: this.LineGraphTypes_.RATIO,
+     variables: ['serf_fetch_request_count', 'serf_fetch_bytes_count']},
+    {title: 'Average Load Time (ms)', type: this.LineGraphTypes_.RATIO,
+     variables: ['total_page_load_ms', 'page_load_count']},
+    {title: 'Queries per Second', type: this.LineGraphTypes_.RATE,
+     variables: ['page_load_count']},
+    {title: 'Flushes per Second', type: this.LineGraphTypes_.RATE,
+     variables: ['num_flushes']},
+    {title: 'Fallback Responses Served per Second',
+     type: this.LineGraphTypes_.RATE,
+     variables: ['num_fallback_responses_served']},
+    {title: 'Rewrites Executed per Second', type: this.LineGraphTypes_.RATE,
+     variables: ['num_rewrites_executed']},
+    {title: 'Rewrites Dropped per Second', type: this.LineGraphTypes_.RATE,
+     variables: ['num_rewrites_dropped']},
+    {title: 'Resource 404s per Second', type: this.LineGraphTypes_.RATE,
+     variables: ['resource_404_count']},
+    {title: 'Slurp 404s per Second', type: this.LineGraphTypes_.RATE,
+     variables: ['slurp_404_count']},
+    {title: 'Ongoing Image Rewrites', type: this.LineGraphTypes_.RAW_VALUE,
+     variables: ['image_ongoing_rewrites']}
+  ];
+
   /**
-   * The time between graph redraws, in milliseconds.
-   * @type {number}
-   * @const
+   * A list of the different histogram titles and the variable the data is
+   * mapped to.
+   * @type {Array.<Object.<string, string> >}
+   * @private
    */
-  this.UPDATE_INTERVAL_MS = 3000;
+  this.Histograms_ = [
+    {title: 'Html Time (microseconds)', variable: 'Html Time us Histogram'},
+    {title: 'Rewrite Latency', variable: 'Rewrite Latency Histogram'},
+    {title: 'Pagespeed Resource Latency',
+     variable: 'Pagespeed Resource Latency Histogram'},
+    {title: 'Backend Fetch First Byte Latency',
+     variable: 'Backend Fetch First Byte Latency Histogram'},
+    {title: 'Memcached Get Count', variable: 'memcached_get_count'},
+    {title: 'Memcached Hit Latency', variable: 'memcached_hit_latency_us'},
+    {title: 'Memcached Insert Latency',
+     variable: 'memcached_insert_latency_us'},
+    {title: 'Memcached Insert Size', variable: 'memcached_insert_size_bytes'},
+    {title: 'Memcached Lookup Size', variable: 'memcached_lookup_size_bytes'}
+  ];
+
+  /**
+   * An enum specifying the indexes of the line graphs.
+   * @enum {number}
+   */
+  this.LineGraphIndexes = {
+    PERCENT_CACHE_HITS: 0,
+    SERF_BYTES_FETCHED: 1,
+    AVG_LOAD_TIME: 2,
+    QUERIES_PER_SEC: 3,
+    NUM_FLUSHES: 4,
+    FALLBACK_RESPONSES: 5,
+    REWRITES_EXECUTED: 6,
+    REWRITES_DROPPED: 7,
+    RESOURCE_404S: 8,
+    SLURP_404S: 9,
+    ONGOING_IMG_REWRITES: 10
+  };
+
+  /**
+   * An enum specifying the indexes of the histograms.
+   * @enum {number}
+   */
+  this.HistogramIndexes = {
+    HTML_TIME: 0,
+    REWRITE_LATENCY: 1,
+    PAGESPEED_RESOURCE_LATENCY: 2,
+    BACKEND_FETCH_FIRST_BYTE_LATENCY: 3,
+    MEMCACHED_GET_COUNT: 4,
+    MEMCACHED_HIT_LATENCY: 5,
+    MEMCACHED_INSERT_LATENCY: 6,
+    MEMCACHED_INSERT_SIZE: 7,
+    MEMCACHED_LOOKUP_SIZE: 8
+  };
 };
 
 /**
@@ -108,105 +150,217 @@ pagespeed.MpsConsole = function() {
  * @return {pagespeed.MpsConsole} The console object.
  */
 pagespeed.initConsole = function() {
-  var console = new pagespeed.MpsConsole();
-  console.createDivs();
-  // TODO(sarahdw, bvb): Get rid of hardcoding
-  var var_titles = ['num_flushes', 'cache_hits', 'cache_misses',
-      'num_fallback_responses_served', 'slurp_404_count', 'page_load_count',
-      'total_page_load_ms', 'num_rewrites_executed', 'num_rewrites_dropped',
-      'resource_404_count', 'serf_fetch_request_count',
-      'serf_fetch_bytes_count', 'image_ongoing_rewrites'];
-  var hist_titles = ['Html Time us Histogram', 'Rewrite Latency Histogram',
-      'Pagespeed Resource Latency Histogram',
-      'Backend Fetch First Byte Latency Histogram'];
-  // The start and end times are currently arbitrary values that will be valid
-  // from July 2012 to a long time in the future.
-  // TODO(sarahdw, bvb): unhardcode these arbitrary values
-  var startTime = 1342724704685;
-  var endTime = 1842824799999;
-  var granularity_s = 5;
-  console.initVarGraphData();
-  console.getGraphs(var_titles, hist_titles, startTime, endTime, granularity_s);
-  setInterval(function() {
-    console.getGraphs(var_titles, hist_titles, startTime,
-                      endTime, granularity_s);
-  }, console.UPDATE_INTERVAL_MS);
-  return console;
+  var mpsconsole = new pagespeed.MpsConsole();
+  mpsconsole.createDivs();
+  // Hardcoded in to show certain graphs on page load.
+  var isHistogram = true;
+  mpsconsole.getGraph(mpsconsole.LineGraphIndexes.NUM_FLUSHES, !isHistogram,
+                      0, new Date().getTime(), 5000);
+  mpsconsole.getGraph(mpsconsole.HistogramIndexes.HTML_TIME, isHistogram,
+                      0, new Date().getTime(), 5000);
+  return mpsconsole;
 };
 
 // Export this so the compiler doesn't rename it.
 pagespeed['initConsole'] = pagespeed.initConsole;
 
-/** @typedef {Object.<string,
-      (Array.<pagespeed.MpsConsole.varData|
-       pagespeed.MpsConsole.histogramData|
-       pagespeed.MpsConsole.timestampData>)>} */
-pagespeed.MpsConsole.JSONData;
-
-/** @typedef {Object.<string, (number|Date)>} */
+/**
+ * Object that holds the information about the queried variables.
+ * @typedef {Object.<string, (number|Date)>}
+ */
 pagespeed.MpsConsole.varData;
 
-/** @typedef {Array.<number>} */
+/**
+ * Array that holds the list of the timestamps queried.
+ * @typedef {Array.<number>}
+ */
 pagespeed.MpsConsole.timestampData;
 
-/** @typedef {Object.<string, (Array.<Object.<string, number>>)>} */
+/**
+ * Object that holds the information about the queried histograms.
+ * @typedef {Object.<string, (Array.<Object.<string, number>>)>}
+ */
 pagespeed.MpsConsole.histogramData;
+
+/**
+ * Object that holds the response received from the server, containing the
+ * variable data and timestamp data or the histogram data.
+ * @typedef {Object.<string, (Array.<pagespeed.MpsConsole.varData|
+                                      pagespeed.MpsConsole.histogramData|
+                                      pagespeed.MpsConsole.timestampData>)>} */
+pagespeed.MpsConsole.JSONData;
 
 /**
  * createDivs creates the layout of the console page.
  */
 pagespeed.MpsConsole.prototype.createDivs = function() {
-  var links = document.createElement('div');
-  links.setAttribute('id', 'links');
-  var error = document.createElement('div');
-  error.setAttribute('id', 'error');
-  error.innerHTML = 'There was an error updating the data.';
-  var container = document.createElement('div');
-  container.setAttribute('id', 'container');
-  var sidebar = document.createElement('div');
-  sidebar.setAttribute('id', 'sidebar');
-  document.body.appendChild(sidebar);
-
-  var toggleErrorMessages = document.createElement('button');
-  toggleErrorMessages.innerHTML = 'Show Recent Errors';
-  toggleErrorMessages.id = 'toggleErrorMessages';
-  toggleErrorMessages.onclick = this.loadMessagesData;
-
-  this.createAddGraphButton();
-  sidebar.appendChild(document.createElement('br'));
-  sidebar.appendChild(toggleErrorMessages);
-  container.appendChild(links);
-  container.appendChild(document.createElement('br'));
-  container.appendChild(document.createElement('br'));
-  document.body.appendChild(error);
-  document.body.appendChild(container);
+  var toggleMessages = document.getElementById('toggle-messages');
+  toggleMessages.onclick = this.loadMessagesData;
+  this.createAddWidgetDialog();
 };
 
 /**
- * Initializes each line graph's data object to be an empty array.
+ * createAddWidgetDialog adds functionality to the add Widget modal dialog
+ * by calling various helper functions. Uses the closure library for modal
+ * dialog implementation.
  */
-pagespeed.MpsConsole.prototype.initVarGraphData = function() {
-  var names = this.LineGraphNames_;
-  for (var n in names) {
-    if (names.hasOwnProperty(n)) {
-      this.varGraphData_[names[n]] = [];
+pagespeed.MpsConsole.prototype.createAddWidgetDialog = function() {
+  var dialog1 = new goog.ui.Dialog();
+  var addWidgetDialog = document.getElementById('add-widget');
+  this.createGraphList();
+  dialog1.setContent(addWidgetDialog.innerHTML);
+  dialog1.setTitle('Add Widget');
+  addWidgetDialog.parentNode.removeChild(addWidgetDialog);
+  var mpsconsole = this;
+  goog.events.listen(dialog1, goog.ui.Dialog.EventType.SELECT, function(e) {
+  // e.key is the name of the button pressed - in this case, ok or cancel.
+    if (e.key == 'ok') {
+      mpsconsole.addGraph();
     }
+  });
+  // Causes modal popup to display when 'Add Widget' button is clicked.
+  document.getElementById('modal-launcher').onclick = function() {
+    dialog1.setVisible(true);
+    mpsconsole.createFiltersInAddWidget();
+  };
+};
+
+/**
+ * createGraphList adds functionality to the dropdown list of possible graphs
+ * to show and the associated default title.
+ */
+pagespeed.MpsConsole.prototype.createGraphList = function() {
+  var mpsconsole = this;
+  var graphList = document.getElementById('graph-list');
+  var DEFAULT_OPTION = 'Add a Metric';
+  this.addOption(DEFAULT_OPTION, -1);
+  graphList.onchange = function() {
+    var currentSelection = graphList.options[graphList.selectedIndex].value;
+    if (currentSelection == DEFAULT_OPTION) {
+      document.getElementById('widget-title').value = '';
+    } else {
+      document.getElementById('widget-title').value = currentSelection;
+      // If a histogram is queried, the user chooses a single date, which is
+      // stored in end date. If a line graph is queried, the user chooses a
+      // start and end date.
+      if (mpsconsole.isHistogram(currentSelection)) {
+        document.getElementById('start-date-filter').style.display = 'none';
+        document.getElementById('end-date-label').innerHTML = 'Date';
+      } else {
+        document.getElementById('start-date-filter').style.display = 'block';
+        document.getElementById('end-date-label').innerHTML = 'End Date';
+      }
+    }
+  };
+  this.populateGraphList();
+};
+
+/**
+ * populateGraphList adds all the names of all graphs to the dropdown menu.
+ */
+pagespeed.MpsConsole.prototype.populateGraphList = function() {
+  for (var i = 0; i < this.LineGraphs_.length; i++) {
+    this.addOption(this.LineGraphs_[i].title, i);
+  }
+  for (var i = 0; i < this.Histograms_.length; i++) {
+    this.addOption(this.Histograms_[i].title, i);
   }
 };
 
 /**
- * getGraphs issues an XHR to request data from the server for
+ * addOption adds the given graph to the list of graphs
+ * in the dropdown menu.
+ * @param {string} title The name of the newly added graph.
+ * @param {number} index The index corresponding to the graph.
+ */
+pagespeed.MpsConsole.prototype.addOption = function(title, index) {
+  var option = document.createElement('option');
+  option.value = index;
+  option.text = title;
+  document.getElementById('graph-list').add(option, null);
+};
+
+/**
+ * createFiltersInAddWidget adds the functionality to hide and display
+ * the filtering options in the add Widget modal dialog.
+ */
+pagespeed.MpsConsole.prototype.createFiltersInAddWidget = function() {
+  var hideFilter = document.getElementById('hide-filter');
+  var addFilter = document.getElementById('add-filter');
+  addFilter.onclick = function() {
+    document.getElementById('date-filter').style.display = 'block';
+    addFilter.style.display = 'none';
+    hideFilter.style.display = 'inline';
+  };
+  hideFilter.onclick = this.hideFilters;
+};
+
+/**
+ * hideFilters hides the filter options in the Add Widget modal dialog.
+ * It also sets the filter values to the default.
+ */
+pagespeed.MpsConsole.prototype.hideFilters = function() {
+  document.getElementById('add-filter').style.display = 'block';
+  document.getElementById('date-filter').style.display = 'none';
+  document.getElementById('hide-filter').style.display = 'none';
+  document.getElementById('start-date').value = '';
+  document.getElementById('end-date').value = '';
+  document.getElementById('granularity').value = '';
+};
+
+/**
+ * createAddGraphButton gives the user the ability to display another
+ * graph on the page. A dropdown menu is created so that the user can
+ * select which other graphs to display.
+ */
+pagespeed.MpsConsole.prototype.addGraph = function() {
+  var mpsconsole = this;
+  var graphList = document.getElementById('graph-list');
+  var selected = graphList.options[graphList.selectedIndex];
+  var isHistogram = this.isHistogram(selected.innerHTML);
+  // TODO(sarahdw, bvb): Better way of getting date ranges.
+  var startTime = document.getElementById('start-date').value;
+  var endTime = document.getElementById('end-date').value;
+  // If startTime and endTime have not been specified by the user, use
+  // the default values.
+  if (startTime != 0) { // 0 is the default value for startTime.
+    startTime = new Date(startTime).getTime();
+  }
+  // If no endtime is specified, make the current time the end time.
+  if (endTime == 0) {
+    endTime = new Date().getTime();
+  } else {
+    // Assume that the user wanted to include the specified end date.
+    var num_ms_in_day = 86400000;
+    endTime = new Date(endTime).getTime() + num_ms_in_day;
+  }
+  // TODO(bvb, sarahdw): Make sure that granularity is of type number.
+  var granularityMs = document.getElementById('granularity').value * 1000;
+  // Default value: 3 seconds (same as default logging interval).
+  if (granularityMs == '' || granularityMs == 0) {
+    granularityMs = 3000;
+  }
+  mpsconsole.getGraph(selected.value, isHistogram, startTime, endTime,
+                      granularityMs);
+  mpsconsole.hideFilters();
+};
+
+/**
+ * getGraph issues an XHR to request data from the server for
  * the graphs with the given parameters.
- * @param {Array.<string>} var_titles The names of the variables queried.
- * @param {Array.<string>} hist_titles The titles of the histograms queried.
+ * @param {number} graphIndex The index of the graph queried.
+ * @param {boolean} isHistogram Whether the graph is a histogram.
  * @param {number} startTime The starting time of the data requested.
  * @param {number} endTime The ending time of the data requested.
- * @param {number} granularity The frequency of the datapoints requested.
+ * @param {number} granularityMs The frequency of the datapoints requested.
  */
-pagespeed.MpsConsole.prototype.getGraphs =
-    function(var_titles, hist_titles, startTime, endTime, granularity) {
+pagespeed.MpsConsole.prototype.getGraph =
+    function(graphIndex, isHistogram, startTime, endTime, granularityMs) {
   var xhr = new XMLHttpRequest();
-  var console = this;
+  var mpsConsole = this;
+  var queryString = this.createQueryURI(isHistogram, graphIndex, startTime,
+                                        endTime, granularityMs);
+  // TODO(bvb,sarahdw): detect when server returns 'statistics not enabled'
   xhr.onreadystatechange = function() {
     if (this.readyState != 4) {
       return;
@@ -216,43 +370,110 @@ pagespeed.MpsConsole.prototype.getGraphs =
       return;
     }
     document.getElementById('error').style.display = 'none';
-    console.scrapeData(JSON.parse(this.responseText));
+    mpsConsole.scrapeData(JSON.parse(this.responseText), graphIndex,
+                          isHistogram, endTime);
   };
 
-  // TODO(bvb,sarahdw): Figure out nicer way of doing this.
-  // TODO(bvb,sarahdw): Detect when server returns 'statistics not enabled'.
-  var queryString = '?start_time=' + startTime;
-  queryString += '&end_time=' + endTime;
-  queryString += '&hist_titles=';
-  for (var i = 0; i < hist_titles.length; i++) {
-    queryString = queryString + hist_titles[i] + ',';
-  }
-  queryString += '&var_titles=';
-  for (var i = 0; i < var_titles.length; i++) {
-    queryString = queryString + var_titles[i] + ',';
-  }
-
-  queryString += '&granularity=' + granularity;
-  xhr.open('GET', '/mod_pagespeed_statistics_json' + queryString);
+  xhr.open('GET', queryString);
   xhr.send();
+};
+
+/**
+ * createQueryURI determines whether the graph is a histogram or a line graph
+ * and then creates a query URI string to send to mod_pagespeed_statistics_json
+ * using the given parameters.
+ * @param {boolean} isHistogram Whether the graph is a histogram.
+ * @param {number} graphIndex The index of the graph queried.
+ * @param {number} startTime The starting time of the data requested.
+ * @param {number} endTime The ending time of the data requested.
+ * @param {number} granularityMs The frequency of the datapoints requested.
+ * @return {string} The URI to append to the query.
+ */
+pagespeed.MpsConsole.prototype.createQueryURI =
+    function(isHistogram, graphIndex, startTime, endTime, granularityMs) {
+  // TODO(bvb,sarahdw): Figure out nicer way of doing this.
+  var queryString = '/mod_pagespeed_statistics?json';
+  queryString += '&start_time=' + startTime;
+  queryString += '&end_time=' + endTime;
+  queryString += '&granularity=' + granularityMs;
+
+  if (!isHistogram) {
+    var var_data_needed = this.LineGraphs_[graphIndex].variables;
+    queryString += '&var_titles=';
+    for (var i = 0; i < var_data_needed.length; i++) {
+      queryString += var_data_needed[i] + ',';
+    }
+  } else {
+    queryString += '&hist_titles=';
+    queryString += this.Histograms_[graphIndex].variable + ',';
+  }
+  return queryString;
+};
+
+/**
+ * loadMessagesData sends an AJAX request to scrape the
+ * error messages at /mod_pagespeed_message. It then displays the error messages
+ * in the appropriate div, creating it if necessary.
+ */
+pagespeed.MpsConsole.prototype.loadMessagesData = function() {
+  var messages = document.getElementById('messages-div');
+  var toggleMessages = document.getElementById('toggle-messages');
+  if (messages.style.display == 'none') {
+    var xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function() {
+      if (this.readyState != 4) {
+        return;
+      }
+      if (this.status != 200) {
+        document.getElementById('error').style.display = 'block';
+        return;
+      }
+      document.getElementById('error').style.display = 'none';
+      document.getElementById('messages').innerHTML = this.responseText;
+      messages.style.display = 'block';
+      toggleMessages.innerHTML = 'Hide recent messages';
+    };
+    xhr.open('GET', '/mod_pagespeed_message');
+    xhr.send();
+  } else {
+    messages.style.display = 'none';
+    toggleMessages.innerHTML = 'Show recent messages';
+  }
+};
+
+/**
+ * Given a graph title, this function returns whether it is a histogram.
+ * @param {string} graphTitle The name of the graph.
+ * @return {boolean} Whether the graph is a histogram.
+ */
+pagespeed.MpsConsole.prototype.isHistogram = function(graphTitle) {
+  for (var i = 0; i < this.Histograms_.length; i++) {
+    if (this.Histograms_[i].title == graphTitle) return true;
+  }
+  return false;
 };
 
 /**
  * scrapeData scrapes data out of the text passed to it, which is presumed to be
  * from an AJAX call to /mod_pagespeed_statistics_json. It then processes
  * the data and calls helper functions to redraw the graphs.
- * @param {pagespeed.MpsConsole.JSONData} data The data from the JSON response.
+ * @param {pagespeed.MpsConsole.JSONData} data The data, parsed from the JSON
+ *     response.
+ * @param {number} graphIndex The graph queried.
+ * @param {boolean} isHistogram Whether the graph is a histogram.
+ * @param {number} endTime The ending time of the data requested, displayed if
+ *   the user has queried a histogram.
  */
-pagespeed.MpsConsole.prototype.scrapeData = function(data) {
-  if (this.loadingData_) {
-    return;
+pagespeed.MpsConsole.prototype.scrapeData =
+    function(data, graphIndex, isHistogram, endTime) {
+  if (isHistogram) {
+    this.updateHistogram(data['histograms'], graphIndex, endTime);
+  } else {
+    var timeSeriesData = this.computeTimeSeries(data['variables'],
+                                                data['timestamps'],
+                                                graphIndex);
+   this.updateLineGraph(timeSeriesData, data['timestamps'], graphIndex);
   }
-  this.loadingData_ = true;
-  var timeSeriesData =
-      this.computeTimeSeries(data['variables'], data['timestamps']);
-  this.updateAllLineGraphs(timeSeriesData, data['timestamps']);
-  this.updateAllHistograms(data['histograms']);
-  this.loadingData_ = false;
 };
 
 /**
@@ -260,66 +481,43 @@ pagespeed.MpsConsole.prototype.scrapeData = function(data) {
  * by scrapeData and calculates useful values.
  * Some values are calculated by diffing two consecutive data entries.
  * @param {pagespeed.MpsConsole.varData} data The scraped variables.
- * @param {pagespeed.MpsConsole.timestampData} timestamps A list of timestamps.
- * @return {pagespeed.MpsConsole.varData} The calculated values.
+ * @param {pagespeed.MpsConsole.timestampData} timestamps A list of the
+ *     timestamps scraped.
+ * @param {number} graphIndex The line graph queried.
+ * @return {Array.<number>} The calculated values.
  */
-pagespeed.MpsConsole.prototype.computeTimeSeries = function(data, timestamps) {
-  var names = this.LineGraphNames_;
-  for (var i = this.timestamps_.length; i < timestamps.length; i++) {
-    if (i == 0) {
-      continue;
+pagespeed.MpsConsole.prototype.computeTimeSeries =
+    function(data, timestamps, graphIndex) {
+  var timeSeriesData = [];
+  var variablesNeeded = this.LineGraphs_[graphIndex].variables;
+  var graphTitle = this.LineGraphs_[graphIndex].title;
+  var type = this.LineGraphs_[graphIndex].type;
+  for (var i = 1; i < timestamps.length; i++) {
+    var previous_timestamp_ms = i - 1;
+    var current_timestamp_ms = i;
+    if (type == this.LineGraphTypes_.RATIO_OVER_SUM) {
+      var total = data[variablesNeeded[0]][current_timestamp_ms] +
+                  data[variablesNeeded[1]][current_timestamp_ms] -
+                  data[variablesNeeded[0]][previous_timestamp_ms] -
+                  data[variablesNeeded[1]][previous_timestamp_ms];
+      timeSeriesData[i - 1] =
+            this.ratioStat(data, current_timestamp_ms, previous_timestamp_ms,
+                           variablesNeeded[0], total);
+    } else if (type == this.LineGraphTypes_.RATIO) {
+      timeSeriesData[i - 1] = this.ratioStatWithTimeSeriesVar(
+            data, current_timestamp_ms, previous_timestamp_ms,
+            variablesNeeded[0], variablesNeeded[1]);
+    } else if (type == this.LineGraphTypes_.RATE) {
+      timeSeriesData[i - 1] =
+            this.ratioStatElapsedTime(data, current_timestamp_ms,
+                                      previous_timestamp_ms, variablesNeeded[0],
+                                      timestamps);
+    } else if (type == this.LineGraphTypes_.RAW_VALUE) {
+      timeSeriesData[i - 1] =
+           data[variablesNeeded[0]][current_timestamp_ms];
     }
-    var previous_timestamp_ms = timestamps[i - 1];
-    var current_timestamp_ms = timestamps[i];
-
-    var totalCacheContacts = data['cache_hits'][current_timestamp_ms] +
-        data['cache_misses'][current_timestamp_ms] -
-        data['cache_hits'][previous_timestamp_ms] -
-        data['cache_misses'][previous_timestamp_ms];
-    this.varGraphData_[names.PERCENT_CACHE_HITS][i - 1] =
-        this.ratioStat(data, current_timestamp_ms, previous_timestamp_ms,
-                       'cache_hits', totalCacheContacts);
-    var pageLoads = data['page_load_count'][current_timestamp_ms] -
-        data['page_load_count'][previous_timestamp_ms];
-    this.varGraphData_[names.AVE_LOAD_TIME_MS][i - 1] =
-        this.ratioStat(data, current_timestamp_ms, previous_timestamp_ms,
-                       'total_page_load_ms', pageLoads);
-    var serfRequests = data['serf_fetch_request_count'][current_timestamp_ms] -
-        data['serf_fetch_request_count'][previous_timestamp_ms];
-    this.varGraphData_[names.SERF_BYTES_PER_REQUEST][i - 1] =
-        this.ratioStat(data, current_timestamp_ms, previous_timestamp_ms,
-                       'serf_fetch_bytes_count', serfRequests);
-
-    this.varGraphData_[names.QUERIES_PER_SECOND][i - 1] =
-        this.ratioStatElapsedTime(data, current_timestamp_ms,
-                                  previous_timestamp_ms, 'page_load_count');
-    this.varGraphData_[names.REWRITES_EXEC_PER_SECOND][i - 1] =
-        this.ratioStatElapsedTime(data, current_timestamp_ms,
-                                  previous_timestamp_ms,
-                                  'num_rewrites_executed');
-    this.varGraphData_[names.REWRITES_DROPPED_PER_SECOND][i - 1] =
-        this.ratioStatElapsedTime(data, current_timestamp_ms,
-                                  previous_timestamp_ms,
-                                  'num_rewrites_dropped');
-    this.varGraphData_[names.RESOURCE_404S_PER_SECOND][i - 1] =
-        this.ratioStatElapsedTime(data, current_timestamp_ms,
-                                  previous_timestamp_ms, 'resource_404_count');
-    this.varGraphData_[names.SLURP_404S_PER_SECOND][i - 1] =
-        this.ratioStatElapsedTime(data, current_timestamp_ms,
-                                  previous_timestamp_ms, 'slurp_404_count');
-    this.varGraphData_[names.FLUSHES_PER_SECOND][i - 1] =
-        this.ratioStatElapsedTime(data, current_timestamp_ms,
-                                  previous_timestamp_ms, 'num_flushes');
-    this.varGraphData_[names.FALLBACK_RESPONSES][i - 1] =
-        this.ratioStatElapsedTime(data, current_timestamp_ms,
-                                  previous_timestamp_ms,
-                                  'num_fallback_responses_served');
-
-    this.varGraphData_[names.ONGOING_IMG_REWRITES][i - 1] =
-        data['image_ongoing_rewrites'][current_timestamp_ms];
   }
-  this.timestamps_ = timestamps;
-  return this.varGraphData_;
+  return timeSeriesData;
 };
 
 /**
@@ -332,7 +530,6 @@ pagespeed.MpsConsole.prototype.computeTimeSeries = function(data, timestamps) {
  * @param {number} denominator The value by which to divide the difference.
  * @return {number} The computed value.
  */
-
 pagespeed.MpsConsole.prototype.ratioStat =
     function(data, current_timestamp_ms, previous_timestamp_ms,
              property, denominator) {
@@ -351,289 +548,304 @@ pagespeed.MpsConsole.prototype.ratioStat =
  * @param {number} current_timestamp_ms The time of the current scrape.
  * @param {number} previous_timestamp_ms The time of the previous scrape.
  * @param {string} property The parameter to compare across the two datasets.
+ * @param {pagespeed.MpsConsole.timestampData} timestamps The list of timestamps
+ *     queried.
  * @return {number} The computed value.
  */
 pagespeed.MpsConsole.prototype.ratioStatElapsedTime =
-    function(data, current_timestamp_ms, previous_timestamp_ms, property) {
+    function(data, current_timestamp_ms, previous_timestamp_ms, property,
+             timestamps) {
+  var timeDifference = (timestamps[current_timestamp_ms] -
+      timestamps[previous_timestamp_ms]) / 1000;
   return this.ratioStat(data, current_timestamp_ms, previous_timestamp_ms,
-      property, (current_timestamp_ms - previous_timestamp_ms) / 1000);
+                        property, timeDifference);
 };
 
 /**
- * updateAllHistograms adds new data to the appropriate
- * DataTable. It then redraws each histogram to
+ * ratioStat with the denominator being a different variable's time series data.
+ * @param {pagespeed.MpsConsole.varData} data The scraped variables.
+ * @param {number} current_timestamp_ms The time of the current scrape.
+ * @param {number} previous_timestamp_ms The time of the previous scrape.
+ * @param {string} numeratorVar The variable to compare across the two datasets.
+ * @param {string} denominatorVar The variable to divide by.
+ * @return {number} The computed value.
+ */
+pagespeed.MpsConsole.prototype.ratioStatWithTimeSeriesVar =
+  function(data, current_timestamp_ms, previous_timestamp_ms, numeratorVar,
+           denominatorVar) {
+  var denominator = data[denominatorVar][current_timestamp_ms] -
+      data[denominatorVar][previous_timestamp_ms];
+  return this.ratioStat(data, current_timestamp_ms, previous_timestamp_ms,
+                        numeratorVar, denominator);
+};
+
+/**
+ * updateHistogram adds new data to the appropriate
+ * DataTable. It then draws/redraws the histogram to
  * include the new data.
  * @param {pagespeed.MpsConsole.histogramData}
  *     histData The parsed histogram data.
+ * @param {number} graphIndex The index of the graph queried.
+ * @param {number} endTime The ending time of the data requested.
  */
-pagespeed.MpsConsole.prototype.updateAllHistograms = function(histData) {
-  for (var value in histData) {
-    if (histData.hasOwnProperty(value)) {
-      // Skip the prototype properties.
-      var dt = this.getHistogramDataTable(value);
-      // TODO(sarahdw, bvb): Do we really need to delete all the rows and redraw
-      // them? It seems inefficient.
-      dt.removeRows(0, dt.getNumberOfRows());
-      var arrayOfBarsInfo = histData[value];
-      var options = {
-        title: value,
-        width: 1000,
-        height: 30 * arrayOfBarsInfo.length,
-        legend: {position: 'none'}
-      };
-      for (var h = 0; h < arrayOfBarsInfo.length; h++) {
-        dt.addRow([
-          '[' + arrayOfBarsInfo[h.toString()].lowerBound + ', ' +
-              arrayOfBarsInfo[h.toString()].upperBound + ')',
-          arrayOfBarsInfo[h.toString()].count
-        ]);
-      }
-      if (dt.getNumberOfRows()) {
-        this.getBarGraph(value).draw(dt, options);
-      }
+pagespeed.MpsConsole.prototype.updateHistogram =
+    function(histData, graphIndex, endTime) {
+  var variableName = this.Histograms_[graphIndex].variable;
+  var graphTitle = this.Histograms_[graphIndex].title;
+  var time = new Date(endTime);
+  time = time.toDateString() + ', ' + time.toLocaleTimeString();
+  var dt = this.createHistogramDataTable(variableName);
+  var arrayOfBarsInfo = histData[variableName];
+  if (!arrayOfBarsInfo) {
+    this.displayNoDataFound(graphTitle);
+    return;
+  }
+  var options = {
+    width: 900,
+      height: (arrayOfBarsInfo.length + 1) * 25,
+    legend: {position: 'none'},
+    chartArea: {
+      height: (arrayOfBarsInfo.length + 1) * 15,
+      left: 200,
+      top: 20
     }
+  };
+  for (var h = 0; h < arrayOfBarsInfo.length; h++) {
+    dt.addRow([
+      '[' + arrayOfBarsInfo[h.toString()].lowerBound + ', ' +
+          arrayOfBarsInfo[h.toString()].upperBound + ')',
+      arrayOfBarsInfo[h.toString()].count
+    ]);
+  }
+  if (dt.getNumberOfRows()) {
+    this.getBarGraph(graphTitle, time).draw(dt, options);
   }
 };
 
 /**
- * updateAllLineGraphs takes new data and adds it to the
- * appropriate DataTable. It then redraws each line graph to
+ * updateLineGraph takes new data and adds it to the
+ * appropriate DataTable. It then draws/redraws the line graph to
  * include the new data.
- * @param {Object.<string, (Array.<number>)>} varData The data to update the
+ * @param {Array.<number>} varData The data to update the
  *     line graphs with.
- * @param {pagespeed.MpsConsole.timestampData} timestamps A
- *     list of timestamps representing when the data was logged.
+ * @param {pagespeed.MpsConsole.timestampData} timestamps A list of timestamps
+ * representing when the data was logged.
+ * @param {number} graphIndex The index of the line graph queried.
  */
-pagespeed.MpsConsole.prototype.updateAllLineGraphs =
-    function(varData, timestamps) {
-  for (var value in varData) {
-    // Skip the prototype properties.
-    if (varData.hasOwnProperty(value)) {
-      var options = {
-        title: unescape(value),
-        width: 1000,
-        height: 275,
-        legend: {position: 'none'},
-        hAxis: {
-          title: 'time',
-          format: 'MMM d, y hh:mm:ss a'
-        },
-        vAxis: {
-          minValue: 0,
-          viewWindowMode: 'explicit',
-          viewWindow: {
-            min: 0
-          }
-        }
-      };
-      var dt = this.getLineGraphDataTable(value);
-      // TODO(sarahdw, bvb): Remove unnecessary row removal and redraw.
-      dt.removeRows(0, dt.getNumberOfRows());
-      // Because some values require a difference calculation, we actually
-      // calculate one fewer row than there are timestamps.
-      for (var i = 0; i < timestamps.length - 1; i++) {
-        dt.addRow([new Date(parseInt(timestamps[i], 10)), varData[value][i]]);
+pagespeed.MpsConsole.prototype.updateLineGraph =
+    function(varData, timestamps, graphIndex) {
+  // TODO(sarahdw, bvb): Better way of doing options that is shared between
+  // histograms and line graphs.
+  var graphTitle = this.LineGraphs_[graphIndex].title;
+  var options = {
+    width: 900,
+    colors: ['#FF8000'],
+    legend: {position: 'none'},
+    hAxis: {
+      format: 'MMM d, y hh:mm a'
+    },
+    vAxis: {
+      minValue: 0,
+      viewWindowMode: 'explicit',
+      viewWindow: {
+        min: 0
       }
-      this.getLineGraph(value).draw(dt, options);
-    }
+    },
+    chartArea: {
+      left: 50,
+      top: 20,
+      width: 800
+    },
+    pointSize: 7
+  };
+  var dt = this.createLineGraphDataTable(graphTitle);
+  for (var i = 0; i < timestamps.length; i++) {
+    dt.addRow([new Date(parseInt(timestamps[i], 10)), varData[i]]);
   }
+  if (dt.getNumberOfRows()) {
+    this.getLineGraph(graphTitle).draw(dt, options);
+  } else {
+    this.displayNoDataFound(graphTitle);
+  }
+};
+
+/**
+ * displayNoDataFound displays a message on the console stating that no data
+ * matched the user's query.
+ * @param {string} graphTitle The title of the graph queried.
+ */
+pagespeed.MpsConsole.prototype.displayNoDataFound = function(graphTitle) {
+  var noMatch = document.createElement('div');
+  noMatch.setAttribute('class', 'no-match');
+  noMatch.innerHTML = 'No data matches your query for ' + graphTitle;
+  document.getElementById('container').appendChild(noMatch);
+  setTimeout(function() {noMatch.parentNode.removeChild(noMatch);}, 4000);
 };
 
 /**
  * createGraphDiv creates the necessary DOM elements for a graph, and returns
  * the div in which the graph will be drawn.
  * @param {string} title The title of the graph.
+ * @param {(string|null)} time The timestamp, if the graph is a histogram.
  * @return {Element} the div in which to draw the graph.
  */
-pagespeed.MpsConsole.prototype.createGraphDiv = function(title) {
+pagespeed.MpsConsole.prototype.createGraphDiv = function(title, time) {
+  var wholeDiv = document.createElement('div');
+  wholeDiv.setAttribute('class', 'mod-widgets');
+  this.createGraphTitleBar(wholeDiv, title, time);
   var graph = document.createElement('div');
-  graph.id = title;
   graph.setAttribute('class', 'graph');
-  graph.style.display = 'none';
-  document.getElementById('container').appendChild(graph);
-  var topLink = document.createElement('a');
-  if (document.getElementById('links').childNodes.length) {
-    topLink.setAttribute('class', 'unselected');
-    var links = document.getElementById('links');
-    if (links.childNodes.length % 8 == 0) {
-    // TODO(sarahdw): Better navigation.
-      links.appendChild(document.createElement('br'));
-      links.appendChild(document.createElement('br'));
-    }
-  } else {
-    topLink.id = 'selected';
-    document.getElementById(title).style.display = 'block';
-  }
-  topLink.onclick = function() {
-     if (document.getElementById('selected')) {
-       document.getElementById('selected').setAttribute('class', 'unselected');
-       document.getElementById('selected').id = '';
-     }
-     topLink.id = 'selected';
-     var graphs = document.getElementsByClassName('graph');
-     for (var i = 0; i < graphs.length; i++) {
-       graphs[i].style.display = 'none';
-     }
-     var buttons = document.getElementsByClassName('removeButton');
-     for (var i = 0; i < buttons.length; i++) {
-       buttons[i].parentNode.removeChild(buttons[i]);
-     }
-     document.getElementById(title).style.display = 'block';
-  }
-  topLink.innerHTML = unescape(title);
-  document.getElementById('links').appendChild(topLink);
+  wholeDiv.appendChild(graph);
+  var container = document.getElementById('container');
+  container.appendChild(wholeDiv);
   return graph;
 };
 
 /**
- * createAddGraphButton gives the user the ability to display another
- * graph on the page. A dropdown menu is created so that the user can
- * select which other graphs to display.
+ * Creates the title and dropdown menu of each graph.
+ * @param {Element} wholeDiv The div in which the graph and title is drawn.
+ * @param {string} title The title of the type graph.
+ * @param {(string|null)} time The timestamp, if the graph is a histogram.
  */
-pagespeed.MpsConsole.prototype.createAddGraphButton = function() {
-  document.getElementById('sidebar').appendChild(document.createElement('br'));
-  var graphList = document.createElement('select');
-  graphList.id = 'graphList';
-  var addGraph = document.createElement('button');
-  addGraph.innerHTML = 'add to page';
-  addGraph.onclick = function() {
-    var selected = graphList.options[graphList.selectedIndex];
-    var graph = document.getElementById(selected.value);
-    if (graph.style.display == 'block') return;
-    graph.style.display = 'block';
-    var remove = document.createElement('button');
-    remove.setAttribute('class', 'removeButton');
-    remove.innerHTML = 'Remove ' + unescape(selected.value) + ' Graph';
-    remove.onclick = function() {
-      graph.style.display = 'none';
-      remove.parentNode.removeChild(remove);
-    };
-    graph.parentNode.insertBefore(remove, graph.nextSibling);
+pagespeed.MpsConsole.prototype.createGraphTitleBar =
+    function(wholeDiv, title, time) {
+  var topBar = document.createElement('div');
+  topBar.setAttribute('class', 'mod-widgets-topbar');
+  // There are two concepts of title here: the display title, chosen by the
+  // user, and the graph title, which is the name of the type of graph (as
+  // in LineGraphs_ or Histograms_). If the user does not specify a display
+  // title, the default graph title will be used.
+  var graphTitle = document.createElement('span');
+  graphTitle.setAttribute('class', 'title');
+  // TODO(sarahdw, bvb): Better way of getting the display title.
+  var displayTitle = '';
+  var displayTitleInput = document.getElementById('widget-title');
+  if (displayTitleInput) {
+    displayTitle = goog.string.htmlEscape(displayTitleInput.value);
+  }
+  if (displayTitle == '') {
+    displayTitle += title;
+  }
+  if (time) {
+    displayTitle += ' on ' + time;
+  }
+  graphTitle.innerHTML = displayTitle;
+  var selectorButton = document.createElement('span');
+  selectorButton.setAttribute('class', 'graphselector menuButton');
+  this.createGraphDropdownOptions(wholeDiv, title, topBar, selectorButton);
+  topBar.appendChild(graphTitle);
+  topBar.appendChild(selectorButton);
+  wholeDiv.appendChild(topBar);
+};
+
+/**
+ * Creates the edit and remove options for a graph.
+ * @param {Element} wholeDiv The div that the graph and title are drawn in.
+ * @param {string} title The title of the graph.
+ * @param {Element} topBar The div in which the selector and title are drawn.
+ * @param {Element} selectorButton The button that displays the dropdown menu.
+ */
+pagespeed.MpsConsole.prototype.createGraphDropdownOptions =
+    function(wholeDiv, title, topBar, selectorButton) {
+  var menuDiv = document.createElement('div');
+  menuDiv.setAttribute('class', 'goog-menu');
+  menuDiv.style.display = 'none';
+  if (!this.isHistogram(title)) {
+    var edit = this.createEditGraphButton(title);
+    menuDiv.appendChild(edit);
+  }
+  var removeButton = this.createRemoveGraphButton(wholeDiv, title);
+  menuDiv.appendChild(removeButton);
+  topBar.appendChild(menuDiv);
+  var pm = new goog.ui.PopupMenu();
+  pm.setToggleMode(true);
+  pm.decorate(menuDiv);
+  pm.attach(selectorButton,
+            goog.positioning.Corner.BOTTOM_LEFT,
+            goog.positioning.Corner.TOP_LEFT);
+};
+
+/**
+ * createRemoveGraphButton creates the link that deletes a graph.
+ * @param {Element} div The div in which the graph is drawn.
+ * @param {string} title The name of the type of graph.
+ * @return {Element} The element containing the remove button option.
+ */
+pagespeed.MpsConsole.prototype.createRemoveGraphButton =
+    function(div, title) {
+  var removeButton = document.createElement('div');
+  removeButton.setAttribute('class', 'removeButton goog-menuitem');
+  removeButton.innerHTML = 'Remove ' + title + ' Graph';
+  removeButton.onclick = function() {
+    div.parentNode.removeChild(div);
+    removeButton.parentNode.removeChild(removeButton);
   };
-  document.getElementById('sidebar').appendChild(graphList);
-  document.getElementById('sidebar').appendChild(addGraph);
+  return removeButton;
 };
 
 /**
- * loadMessagesData sends an AJAX request to scrape the
- * error messages at /mod_pagespeed_message. It then displays the error messages
- * in the appropriate div, creating it if necessary.
+ * createEditGraphButton creates the link that edits a graph.
+ * @param {string} title The name of the type of graph.
+ * @return {Element} The element containing the edit button option.
  */
-pagespeed.MpsConsole.prototype.loadMessagesData = function() {
-  var errorMessages = document.getElementById('errorMessages');
-  var toggleErrorMessages = document.getElementById('toggleErrorMessages');
-  if (!errorMessages) {
-    errorMessages = document.createElement('div');
-    errorMessages.id = 'errorMessages';
-    errorMessages.style.display = 'none';
-    document.getElementById('container').appendChild(errorMessages);
-  }
-  if (errorMessages.style.display == 'none') {
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function() {
-      if (this.readyState != 4) {
-        return;
-      }
-      if (this.status != 200) {
-        document.getElementById('error').style.display = 'block';
-        return;
-      }
-      document.getElementById('error').style.display = 'none';
-      errorMessages.innerHTML = this.responseText;
-      errorMessages.style.display = 'block';
-      toggleErrorMessages.innerHTML = 'Hide Recent Errors';
-    };
-
-    xhr.open('GET', '/mod_pagespeed_message');
-    xhr.send();
-  } else {
-    errorMessages.style.display = 'none';
-    toggleErrorMessages.innerHTML = 'Show Recent Errors';
-  }
+pagespeed.MpsConsole.prototype.createEditGraphButton =
+    function(title) {
+  var mpsconsole = this;
+  var editButton = document.createElement('div');
+  editButton.setAttribute('class', 'editButton goog-menuitem unimplemented');
+  editButton.innerHTML = 'Edit ' + title + ' Graph';
+  editButton.onclick = function() {
+    // TODO(sarahdw, bvb): Functionality for edit graph button.
+  };
+  return editButton;
 };
 
 /**
- * getLineGraph creates a new line graph and the div in which it is
- * displayed. If the graph already exists, it returns that graph.
+ * getLineGraph creates a new line graph and the div in which it is displayed.
  * @param {string} title The title of the graph.
  * @return {Object} The graph.
  */
 pagespeed.MpsConsole.prototype.getLineGraph = function(title) {
-  var g = this.graphs_[title];
-  if (!g) {
-    g = new google.visualization.LineChart(this.createGraphDiv(title));
-    this.graphs_[title] = g;
-    this.addOption(title);
-  }
+  var g = new google.visualization.LineChart(this.createGraphDiv(title, null));
   return g;
 };
 
 /**
- * addOption adds the given graph to the list of graphs
- * in the dropdown menu.
- * @param {string} title The name of the newly added graph.
- */
-pagespeed.MpsConsole.prototype.addOption = function(title) {
-  var option = document.createElement('option');
-  option.value = title;
-  option.innerHTML = unescape(title);
-  document.getElementById('graphList').add(option, null);
-};
-
-/**
- * getBarGraph creates a new bar graph and the div in which it is
- * displayed. If the graph already exists, it returns that graph.
+ * getBarGraph creates a new bar graph and the div in which it is displayed.
  * @param {string} title The title of the graph.
+ * @param {string} time The time if the graph is a histogram, null otherwise.
  * @return {Object} The graph.
  */
-pagespeed.MpsConsole.prototype.getBarGraph = function(title) {
-  var g = this.graphs_[title];
-  if (!g) {
-    g = new google.visualization.BarChart(this.createGraphDiv(title));
-    this.graphs_[title] = g;
-    this.addOption(title);
-  }
-  return g;
+pagespeed.MpsConsole.prototype.getBarGraph = function(title, time) {
+  return new google.visualization.BarChart(this.createGraphDiv(title, time));
 };
 
 /**
- * getLineGraphDataTable adds a new google.
- * visualization.DataTable to the array of DataTables and returns it.
- * Each DataTable has two columns: a timestamp (represented as a number, time
- * elapsed in s) and the value at that time, also a number.
- * This DataTable is meant for a line graph DataView.
- * If the table already exists, it returns that table.
+ * createLineGraphDataTable creates a new google.visualization.DataTable
+ * and returns it. Each DataTable has two columns: a timestamp
+ * (represented as a number, time elapsed in s) and the value at that time,
+ * also a number. This DataTable is meant for a line graph DataView.
  * @param {string} title The name of the variable being measured.
  * @return {Object} The data table.
  */
-pagespeed.MpsConsole.prototype.getLineGraphDataTable = function(title) {
-  var dt = this.dataTables_[title];
-  if (!dt) {
-    dt = new google.visualization.DataTable();
-    dt.addColumn('datetime', 'Time');
-    dt.addColumn('number', title);
-    this.dataTables_[title] = dt;
-  }
+pagespeed.MpsConsole.prototype.createLineGraphDataTable = function(title) {
+  var dt = new google.visualization.DataTable();
+  dt.addColumn('datetime', 'Time');
+  dt.addColumn('number', title);
   return dt;
 };
 
 /**
- * getHistogramDataTable adds a new
- * google.visualization.DataTable to the array of DataTables and
- * returns it.
+ * createHistogramDataTable creates a new
+ * google.visualization.DataTable and returns it.
  * Each DataTable has two columns: a string and a number.
  * This DataTable is meant for a bar graph DataView.
- * If the table already exists, it returns that table.
  * @param {string} title The name of the variable being measured.
  * @return {Object} The data table.
  */
-pagespeed.MpsConsole.prototype.getHistogramDataTable = function(title) {
-  var dt = this.dataTables_[title];
-  if (!dt) {
-    dt = new google.visualization.DataTable();
-    dt.addColumn('string', 'Bounds');
-    dt.addColumn('number', title);
-    this.dataTables_[title] = dt;
-  }
+pagespeed.MpsConsole.prototype.createHistogramDataTable = function(title) {
+  var dt = new google.visualization.DataTable();
+  dt.addColumn('string', 'Bounds');
+  dt.addColumn('number', title);
   return dt;
 };

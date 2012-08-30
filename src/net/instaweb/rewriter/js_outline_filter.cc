@@ -43,7 +43,7 @@ const char JsOutlineFilter::kFilterId[] = "jo";
 JsOutlineFilter::JsOutlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
       inline_element_(NULL),
-      resource_manager_(driver->resource_manager()),
+      resource_manager_(driver->server_context()),
       size_threshold_bytes_(driver->options()->js_outline_min_bytes()),
       script_tag_scanner_(driver_) { }
 

@@ -174,7 +174,7 @@ void ResourceFetch::HandleDone(bool success) {
       response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
     }
   }
-  RewriteStats* stats = driver_->resource_manager()->rewrite_stats();
+  RewriteStats* stats = driver_->server_context()->rewrite_stats();
   stats->fetch_latency_histogram()->Add(
       (timer_->NowUs() - start_time_us_) / 1000.0);
   stats->total_fetch_count()->IncBy(1);

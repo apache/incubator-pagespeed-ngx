@@ -93,7 +93,7 @@ void BlinkBackgroundFilter::InsertBlinkJavascript(HtmlElement* element) {
                                 "text/javascript");
   rewrite_driver_->AddAttribute(script_node, HtmlName::kPagespeedNoDefer, "");
   StaticJavascriptManager* js_manager =
-      rewrite_driver_->resource_manager()->static_javascript_manager();
+      rewrite_driver_->server_context()->static_javascript_manager();
   rewrite_driver_->AddAttribute(script_node, HtmlName::kSrc,
                                 js_manager->GetBlinkJsUrl(rewrite_options_));
   rewrite_driver_->AppendChild(head_node, script_node);

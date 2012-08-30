@@ -153,7 +153,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
         // not inlined.
         // Note that we remove the pagespeed_no_defer if it was present.
         CriticalImagesFinder* finder =
-            driver()->resource_manager()->critical_images_finder();
+            driver()->server_context()->critical_images_finder();
         // Note that if the platform lacks a CriticalImageFinder
         // implementation, we consider all images to be non-critical and try
         // to lazily load them.
@@ -193,7 +193,7 @@ void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
   const GoogleString& load_onload =
       driver()->options()->lazyload_images_after_onload() ? kTrue : kFalse;
   StaticJavascriptManager* static_js__manager =
-      driver()->resource_manager()->static_javascript_manager();
+      driver()->server_context()->static_javascript_manager();
   StringPiece lazyload_images_js =
       static_js__manager->GetJsSnippet(
           StaticJavascriptManager::kLazyloadImagesJs, driver()->options());

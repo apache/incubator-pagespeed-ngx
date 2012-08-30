@@ -320,7 +320,7 @@ bool CssFilter::Context::RewriteCssText(const GoogleUrl& css_base_gurl,
     // from by passing through unparsed sections of text).
     for (int i = 0, n = parser.errors_seen().size(); i < n; ++i) {
       Css::Parser::ErrorInfo error = parser.errors_seen()[i];
-      driver_->resource_manager()->usage_data_reporter()->ReportWarning(
+      driver_->server_context()->usage_data_reporter()->ReportWarning(
           css_base_gurl, error.error_num, error.message);
     }
   } else {

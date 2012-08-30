@@ -110,9 +110,9 @@ class VerifyContentsCallback : public Resource::AsyncCallback {
   bool called_;
 };
 
-class ResourceManagerTest : public RewriteTestBase {
+class ServerContextTest : public RewriteTestBase {
  protected:
-  ResourceManagerTest() { }
+  ServerContextTest() { }
 
   // Fetches data (which is expected to exist) for given resource,
   // but making sure to go through the path that checks for its
@@ -303,11 +303,11 @@ class ResourceManagerTest : public RewriteTestBase {
   }
 };
 
-TEST_F(ResourceManagerTest, TestNamed) {
+TEST_F(ServerContextTest, TestNamed) {
   TestNamed();
 }
 
-TEST_F(ResourceManagerTest, TestOutputInputUrl) {
+TEST_F(ServerContextTest, TestOutputInputUrl) {
   GoogleString url = Encode("http://example.com/dir/123/",
                             RewriteOptions::kJavascriptMinId,
                             "0", "orig", "js");
@@ -321,7 +321,7 @@ TEST_F(ResourceManagerTest, TestOutputInputUrl) {
   EXPECT_EQ("http://example.com/dir/123/orig", input_resource->url());
 }
 
-TEST_F(ResourceManagerTest, TestOutputInputUrlEvil) {
+TEST_F(ServerContextTest, TestOutputInputUrlEvil) {
   GoogleString url = MakeEvilUrl("example.com", "http://www.evil.com");
   OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
   ASSERT_TRUE(output_resource.get());
@@ -333,7 +333,7 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlEvil) {
   EXPECT_EQ(NULL, input_resource.get());
 }
 
-TEST_F(ResourceManagerTest, TestOutputInputUrlBusy) {
+TEST_F(ServerContextTest, TestOutputInputUrlBusy) {
   EXPECT_TRUE(options()->domain_lawyer()->AddOriginDomainMapping(
       "www.busy.com", "example.com", message_handler()));
 
@@ -356,7 +356,7 @@ TEST_F(ResourceManagerTest, TestOutputInputUrlBusy) {
 // earlier because ResourceManager::CreateInputResource was mapping to the
 // rewrite domain, preventing us from finding the origin-mapping when
 // fetching the URL.
-TEST_F(ResourceManagerTest, TestMapRewriteAndOrigin) {
+TEST_F(ServerContextTest, TestMapRewriteAndOrigin) {
   ASSERT_TRUE(options()->domain_lawyer()->AddOriginDomainMapping(
       "localhost", kTestDomain, message_handler()));
   EXPECT_TRUE(options()->domain_lawyer()->AddRewriteDomainMapping(
@@ -437,7 +437,7 @@ class MockPlatformConfigCallback
 
 // Tests that platform-specific configuration hook runs for various
 // factory methods.
-TEST_F(ResourceManagerTest, TestPlatformSpecificConfiguration) {
+TEST_F(ServerContextTest, TestPlatformSpecificConfiguration) {
   RewriteDriver* rec_normal_driver = NULL;
   RewriteDriver* rec_custom_driver = NULL;
 
@@ -458,7 +458,7 @@ TEST_F(ResourceManagerTest, TestPlatformSpecificConfiguration) {
 }
 
 // Tests that platform-specific rewriters are used for decoding fetches.
-TEST_F(ResourceManagerTest, TestPlatformSpecificRewritersDecoding) {
+TEST_F(ServerContextTest, TestPlatformSpecificRewritersDecoding) {
   GoogleString url = Encode("http://example.com/dir/123/",
                             "mk", "0", "orig", "js");
   GoogleUrl gurl(url);
@@ -483,7 +483,7 @@ TEST_F(ResourceManagerTest, TestPlatformSpecificRewritersDecoding) {
 // Tests that platform-specific rewriters are used for decoding fetches even
 // if they are only added in AddPlatformSpecificRewritePasses, not
 // AddPlatformSpecificDecodingPasses.  Required for backwards compatibility.
-TEST_F(ResourceManagerTest, TestPlatformSpecificRewritersImplicitDecoding) {
+TEST_F(ServerContextTest, TestPlatformSpecificRewritersImplicitDecoding) {
   GoogleString url = Encode("http://example.com/dir/123/",
                             "mk", "0", "orig", "js");
   GoogleUrl gurl(url);
@@ -502,7 +502,7 @@ TEST_F(ResourceManagerTest, TestPlatformSpecificRewritersImplicitDecoding) {
 }
 
 // DecodeOutputResource should drop query
-TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
+TEST_F(ServerContextTest, TestOutputResourceFetchQuery) {
   GoogleString url = Encode("http://example.com/dir/123/",
                             "jm", "0", "orig", "js");
   RewriteFilter* dummy;
@@ -514,7 +514,7 @@ TEST_F(ResourceManagerTest, TestOutputResourceFetchQuery) {
 }
 
 // Input resources and corresponding output resources should keep queries
-TEST_F(ResourceManagerTest, TestInputResourceQuery) {
+TEST_F(ServerContextTest, TestInputResourceQuery) {
   const char kUrl[] = "test?param";
   ResourcePtr resource(CreateResource(kResourceUrlBase, kUrl));
   ASSERT_TRUE(resource.get() != NULL);
@@ -529,7 +529,7 @@ TEST_F(ResourceManagerTest, TestInputResourceQuery) {
   EXPECT_EQ(GoogleString(kUrl), included_name);
 }
 
-TEST_F(ResourceManagerTest, TestRemember404) {
+TEST_F(ServerContextTest, TestRemember404) {
   // Make sure our resources remember that a page 404'd, but not too long.
   http_cache()->set_remember_not_cacheable_ttl_seconds(10000);
   http_cache()->set_remember_fetch_failed_ttl_seconds(100);
@@ -553,7 +553,7 @@ TEST_F(ResourceManagerTest, TestRemember404) {
       "http://example.com/404", http_cache(), &value_out, &headers_out));
 }
 
-TEST_F(ResourceManagerTest, TestRememberDropped) {
+TEST_F(ServerContextTest, TestRememberDropped) {
   // Fake resource being dropped by adding the appropriate header to the
   // resource proper.
   ResponseHeaders not_found;
@@ -576,7 +576,7 @@ TEST_F(ResourceManagerTest, TestRememberDropped) {
       "http://example.com/404", http_cache(), &value_out, &headers_out));
 }
 
-TEST_F(ResourceManagerTest, TestNonCacheable) {
+TEST_F(ServerContextTest, TestNonCacheable) {
   const GoogleString kContents = "ok";
 
   // Make sure that when we get non-cacheable resources
@@ -600,7 +600,7 @@ TEST_F(ResourceManagerTest, TestNonCacheable) {
       "http://example.com/", http_cache(), &value_out, &headers_out));
 }
 
-TEST_F(ResourceManagerTest, TestNonCacheableReadResultPolicy) {
+TEST_F(ServerContextTest, TestNonCacheableReadResultPolicy) {
   // Make sure we report the success/failure for non-cacheable resources
   // depending on the policy. (TestNonCacheable also covers the value).
 
@@ -626,7 +626,7 @@ TEST_F(ResourceManagerTest, TestNonCacheableReadResultPolicy) {
   EXPECT_TRUE(callback2.success());
 }
 
-TEST_F(ResourceManagerTest, TestVaryOption) {
+TEST_F(ServerContextTest, TestVaryOption) {
   // Make sure that when we get non-cacheable resources
   // we mark the fetch as not-cacheable in the cache.
   options()->set_respect_vary(true);
@@ -652,7 +652,7 @@ TEST_F(ResourceManagerTest, TestVaryOption) {
       "http://example.com/", http_cache(), &valueOut, &headersOut));
 }
 
-TEST_F(ResourceManagerTest, TestOutlined) {
+TEST_F(ServerContextTest, TestOutlined) {
   // Outliner resources should not produce extra cache traffic
   // due to rname/ entries we can't use anyway.
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -690,7 +690,7 @@ TEST_F(ResourceManagerTest, TestOutlined) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 }
 
-TEST_F(ResourceManagerTest, TestOnTheFly) {
+TEST_F(ServerContextTest, TestOnTheFly) {
   // Test to make sure that an on-fly insert does not insert the data,
   // just the rname/
 
@@ -720,19 +720,19 @@ TEST_F(ResourceManagerTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 }
 
-TEST_F(ResourceManagerTest, TestHandleBeaconNoLoadParam) {
+TEST_F(ServerContextTest, TestHandleBeaconNoLoadParam) {
   ASSERT_FALSE(resource_manager()->HandleBeacon("/index.html"));
 }
 
-TEST_F(ResourceManagerTest, TestHandleBeaconInvalidLoadParam) {
+TEST_F(ServerContextTest, TestHandleBeaconInvalidLoadParam) {
   ASSERT_FALSE(resource_manager()->HandleBeacon("/beacon?ets=asd"));
 }
 
-TEST_F(ResourceManagerTest, TestHandleBeacon) {
+TEST_F(ServerContextTest, TestHandleBeacon) {
   ASSERT_TRUE(resource_manager()->HandleBeacon("/beacon?ets=load:34"));
 }
 
-TEST_F(ResourceManagerTest, TestNotGenerated) {
+TEST_F(ServerContextTest, TestNotGenerated) {
   // For derived resources we can and should use the rewrite
   // summary/metadata cache
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -759,12 +759,12 @@ TEST_F(ResourceManagerTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 }
 
-class ResourceFreshenTest : public ResourceManagerTest {
+class ResourceFreshenTest : public ServerContextTest {
  protected:
   static const char kContents[];
 
   virtual void SetUp() {
-    ResourceManagerTest::SetUp();
+    ServerContextTest::SetUp();
     HTTPCache::Initialize(statistics());
     expirations_ = statistics()->GetVariable(HTTPCache::kCacheExpirations);
     CHECK(expirations_ != NULL);
@@ -882,10 +882,10 @@ TEST_F(ResourceFreshenTest, NoFreshenOfShortLivedResources) {
   EXPECT_EQ(1, expirations_->Get());
 }
 
-class ResourceManagerShardedTest : public ResourceManagerTest {
+class ResourceManagerShardedTest : public ServerContextTest {
  protected:
   virtual void SetUp() {
-    ResourceManagerTest::SetUp();
+    ServerContextTest::SetUp();
     EXPECT_TRUE(options()->domain_lawyer()->AddShard(
         "example.com", "shard0.com,shard1.com", message_handler()));
   }
@@ -916,7 +916,7 @@ TEST_F(ResourceManagerShardedTest, TestNamed) {
             output_resource->url());
 }
 
-TEST_F(ResourceManagerTest, TestMergeNonCachingResponseHeaders) {
+TEST_F(ServerContextTest, TestMergeNonCachingResponseHeaders) {
   ResponseHeaders input, output;
   input.Add("X-Extra-Header", "Extra Value");  // should be copied to output
   input.Add(HttpAttributes::kCacheControl, "max-age=300");  // should not be
@@ -928,7 +928,7 @@ TEST_F(ResourceManagerTest, TestMergeNonCachingResponseHeaders) {
   EXPECT_EQ("Extra Value", *v[0]);
 }
 
-TEST_F(ResourceManagerTest, ApplyInputCacheControl) {
+TEST_F(ServerContextTest, ApplyInputCacheControl) {
   ResourcePtr public_100(
       CreateCustomCachingResource("pub_100", 100, ""));
   ResourcePtr public_200(
@@ -1008,7 +1008,7 @@ TEST_F(ResourceManagerTest, ApplyInputCacheControl) {
   }
 }
 
-TEST_F(ResourceManagerTest, WriteChecksInputVector) {
+TEST_F(ServerContextTest, WriteChecksInputVector) {
   // Make sure ->Write incorporates the cache control info from inputs,
   // and doesn't cache a private resource improperly. Also make sure
   // we get the charset right (including quoting).
@@ -1039,7 +1039,7 @@ TEST_F(ResourceManagerTest, WriteChecksInputVector) {
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
 }
 
-TEST_F(ResourceManagerTest, ShutDownAssumptions) {
+TEST_F(ServerContextTest, ShutDownAssumptions) {
   // The code in ResourceManager::ShutDownWorkers assumes that some potential
   // interleaving of operations are safe. Since they are pretty unlikely
   // in practice, this test exercises them.
@@ -1056,7 +1056,7 @@ TEST_F(ResourceManagerTest, ShutDownAssumptions) {
   driver->Cleanup();
 }
 
-TEST_F(ResourceManagerTest, IsPagespeedResource) {
+TEST_F(ServerContextTest, IsPagespeedResource) {
   GoogleUrl rewritten(Encode("http://shard0.com/dir/", "jm", "0",
                              "orig.js", "js"));
   EXPECT_TRUE(resource_manager()->IsPagespeedResource(rewritten));
@@ -1065,7 +1065,7 @@ TEST_F(ResourceManagerTest, IsPagespeedResource) {
   EXPECT_FALSE(resource_manager()->IsPagespeedResource(normal));
 }
 
-TEST_F(ResourceManagerTest, PartlyFailedFetch) {
+TEST_F(ServerContextTest, PartlyFailedFetch) {
   // Regression test for invalid Resource state when the fetch physically
   // succeeds but does not get added to cache due to invalid cacheability.
   // In that case, we would end up with headers claiming successful fetch,
@@ -1102,7 +1102,7 @@ TEST_F(ResourceManagerTest, PartlyFailedFetch) {
     << " Unexpectedly got access to resource contents:" << resource->contents();
 }
 
-TEST_F(ResourceManagerTest, LoadFromFileReadAsync) {
+TEST_F(ServerContextTest, LoadFromFileReadAsync) {
   // This reads a resource twice, to make sure that there is no misbehavior
   // (read: check failures or crashes) when cache invalidation logic tries to
   // deal with FileInputResource.
@@ -1146,7 +1146,7 @@ void CheckMatchesHeaders(const ResponseHeaders& headers,
 
 }  // namespace
 
-TEST_F(ResourceManagerTest, FillInPartitionInputInfo) {
+TEST_F(ServerContextTest, FillInPartitionInputInfo) {
   // Test for Resource::FillInPartitionInputInfo.
   const char kUrl[] = "http://example.com/page.html";
   const char kContents[] = "bits";
@@ -1231,7 +1231,7 @@ class ThreadAlternatingCache : public CacheInterface {
 
 // Hooks up an instances of a ThreadAlternatingCache as the http cache
 // on resource_manager()
-class ResourceManagerTestThreadedCache : public ResourceManagerTest {
+class ResourceManagerTestThreadedCache : public ServerContextTest {
  public:
   ResourceManagerTestThreadedCache()
       : threads_(ThreadSystem::CreateThreadSystem()),
@@ -1245,7 +1245,7 @@ class ResourceManagerTestThreadedCache : public ResourceManagerTest {
   }
 
   virtual void SetUp() {
-    ResourceManagerTest::SetUp();
+    ServerContextTest::SetUp();
     HTTPCache* cache = http_cache_.release();
     resource_manager()->set_http_cache(cache);
   }

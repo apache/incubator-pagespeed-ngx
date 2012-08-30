@@ -39,6 +39,11 @@ const char kAppleTouchIcon[] = "apple-touch-icon";
 const char kAppleTouchIconPrecomposed[] = "apple-touch-icon-precomposed";
 const char kAppleTouchStartupImage[] = "apple-touch-startup-image";
 
+// Below are the values of the "rel" attribute of LINK tag which are relevant to
+// DNS prefetch.
+const char kRelPrefetch[] = "prefetch";
+const char kRelDnsPrefetch[] = "dns-prefetch";
+
 const char kAttrValImage[] = "image";  // <input type="image" src=...>
 
 HtmlElement::Attribute* ScanElement(
@@ -71,6 +76,11 @@ HtmlElement::Attribute* ScanElement(
                    StringCaseEqual(rel_attr->DecodedValueOrNull(),
                                    kAppleTouchStartupImage)) {
           *category = semantic_type::kImage;
+        } else if (StringCaseEqual(rel_attr->DecodedValueOrNull(),
+                                   kRelPrefetch) ||
+                   StringCaseEqual(rel_attr->DecodedValueOrNull(),
+                                   kRelDnsPrefetch)) {
+          *category = semantic_type::kPrefetch;
         }
       }
       break;

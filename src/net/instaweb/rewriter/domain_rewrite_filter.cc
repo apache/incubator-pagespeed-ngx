@@ -92,8 +92,9 @@ void DomainRewriteFilter::StartElementImpl(HtmlElement* element) {
   if (href != NULL) {
     StringPiece val(href->DecodedValueOrNull());
     GoogleString rewritten_val;
-    // Don't shard hyperlinks, embeds, frames, or iframes.
+    // Don't shard hyperlinks, prefetch, embeds, frames, or iframes.
     bool apply_sharding = (category != semantic_type::kHyperlink &&
+                           category != semantic_type::kPrefetch &&
                            element->keyword() != HtmlName::kEmbed &&
                            element->keyword() != HtmlName::kFrame &&
                            element->keyword() != HtmlName::kIframe);
@@ -205,7 +206,7 @@ void DomainRewriteFilter::EndElementImpl(HtmlElement* element) {
     HtmlElement* script_node =driver_->NewElement(element, HtmlName::kScript);
     driver_->AddAttribute(script_node, HtmlName::kType, "text/javascript");
     StaticJavascriptManager* js_manager =
-        driver_->resource_manager()->static_javascript_manager();
+        driver_->server_context()->static_javascript_manager();
     GoogleString js = StrCat(
         js_manager->GetJsSnippet(
             StaticJavascriptManager::kClientDomainRewriter, driver_->options()),

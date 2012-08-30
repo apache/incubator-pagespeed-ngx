@@ -83,7 +83,7 @@ void JsDeferDisabledFilter::InsertJsDeferCode(HtmlElement* element) {
   rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
                                 "text/javascript");
   StaticJavascriptManager* static_js_manager =
-      rewrite_driver_->resource_manager()->static_javascript_manager();
+      rewrite_driver_->server_context()->static_javascript_manager();
   StringPiece defer_js_script =
       static_js_manager->GetJsSnippet(
           StaticJavascriptManager::kDeferJs, rewrite_driver_->options());

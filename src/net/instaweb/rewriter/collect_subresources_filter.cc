@@ -132,8 +132,8 @@ class CollectSubresourcesFilter::Context : public SingleRewriteContext {
 CollectSubresourcesFilter::CollectSubresourcesFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
       num_resources_(0),
-      mutex_(driver->resource_manager()->thread_system()->NewMutex()),
-      property_cache_(driver->resource_manager()->page_property_cache()) {
+      mutex_(driver->server_context()->thread_system()->NewMutex()),
+      property_cache_(driver->server_context()->page_property_cache()) {
 }
 
 void CollectSubresourcesFilter::StartDocumentImpl() {

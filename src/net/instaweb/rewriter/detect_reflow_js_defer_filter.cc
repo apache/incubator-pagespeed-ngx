@@ -67,7 +67,7 @@ void DetectReflowJsDeferFilter::EndElement(HtmlElement* element) {
 
 void DetectReflowJsDeferFilter::InsertDetectReflowCode(HtmlElement* element) {
   StaticJavascriptManager* static_js_manager =
-      rewrite_driver_->resource_manager()->static_javascript_manager();
+      rewrite_driver_->server_context()->static_javascript_manager();
   // Detect reflow functions script node.
   HtmlElement* script_node = rewrite_driver_->NewElement(element,
                                                          HtmlName::kScript);

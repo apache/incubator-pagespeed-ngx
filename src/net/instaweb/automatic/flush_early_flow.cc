@@ -147,9 +147,9 @@ FlushEarlyFlow::FlushEarlyFlow(
       flush_early_fetch_(NULL),
       driver_(driver),
       factory_(factory),
-      manager_(driver->resource_manager()),
+      manager_(driver->server_context()),
       property_cache_callback_(property_cache_callback),
-      handler_(driver_->resource_manager()->message_handler()) {
+      handler_(driver_->server_context()->message_handler()) {
   Statistics* stats = manager_->statistics();
   num_requests_flushed_early_ = stats->GetTimedVariable(
       kNumRequestsFlushedEarly);
@@ -188,6 +188,7 @@ void FlushEarlyFlow::FlushEarly() {
         RewriteDriver* new_driver = driver_->Clone();
         new_driver->set_response_headers_ptr(base_fetch_->response_headers());
         new_driver->set_flushing_early(true);
+        new_driver->set_unowned_property_page(page);
         new_driver->SetWriter(base_fetch_);
         new_driver->set_user_agent(driver_->user_agent());
         new_driver->StartParse(url_);

@@ -32,6 +32,7 @@
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -77,11 +78,15 @@ void InsertDnsPrefetchFilter::StartDocumentImpl() {
   Clear();
 }
 
-// Write the information about domains gatherered in this rewrite into the
+// Write the information about domains gathered in this rewrite into the
 // driver's flush_early_info. This will be written to the property cache when
 // the DOM cohort is written. We write a limited set of entries to avoid
 // thrashing the browser's DNS cache.
 void InsertDnsPrefetchFilter::EndDocument() {
+  if (driver()->flushing_early()) {
+    // Don't update to property cache if we are flushing early.
+    return;
+  }
   if (!driver()->UserAgentSupportsFlushEarly()) {
     return;
   }
@@ -109,6 +114,10 @@ void InsertDnsPrefetchFilter::EndDocument() {
 // TODO(bharathbhushan): Make sure that this filter does not insert DNS prefetch
 // tags for resources inserted by the flush early filter.
 void InsertDnsPrefetchFilter::StartElementImpl(HtmlElement* element) {
+  if (driver()->flushing_early()) {
+    // Don't collect domains if we are flushing early.
+    return;
+  }
   if (!driver()->UserAgentSupportsFlushEarly()) {
     return;
   }
@@ -134,7 +143,7 @@ void InsertDnsPrefetchFilter::StartElementImpl(HtmlElement* element) {
       MarkAlreadyInHead(url_attribute);
       break;
 
-    case semantic_type::kHyperlink:
+    case semantic_type::kPrefetch:
       if (element->keyword() == HtmlName::kLink) {
         // For LINK tags, many of the link types are detected as image or
         // stylesheet by the ResourceTagScanner. "prefetch" and "dns-prefetch"
@@ -156,6 +165,7 @@ void InsertDnsPrefetchFilter::StartElementImpl(HtmlElement* element) {
       }
       break;
 
+    case semantic_type::kHyperlink:
     case semantic_type::kUndefined:
       break;
   }
@@ -169,7 +179,9 @@ void InsertDnsPrefetchFilter::EndElementImpl(HtmlElement* element) {
   }
   if (element->keyword() == HtmlName::kHead) {
     in_head_ = false;
-    if (!dns_prefetch_inserted_) {
+    if (!dns_prefetch_inserted_ && !driver()->flushed_early()) {
+      // Don't add <link rel='dns-prefetch' ...> tags if we flushed them in
+      // the flush early flow.
       dns_prefetch_inserted_ = true;
       const FlushEarlyInfo& flush_early_info = *(driver()->flush_early_info());
       if (IsDomainListStable(flush_early_info)) {
@@ -198,7 +210,14 @@ void InsertDnsPrefetchFilter::MarkAlreadyInHead(
     if (url.is_valid() && !url.Host().empty()) {
       GoogleString domain(url.Host().data(), url.Host().size());
       if (in_head_) {
-        domains_in_head_.insert(domain);
+        std::pair<StringSet::iterator, bool> result =
+            domains_in_head_.insert(domain);
+        if (driver()->options()->Enabled(RewriteOptions::kFlushSubresources)
+            && result.second) {
+          // Prefetch dns for the domains present in the head if flush
+          // sub-resources filter is enabled.
+          dns_prefetch_domains_.push_back(domain);
+        }
       } else {
         if (domains_in_head_.find(domain) == domains_in_head_.end()) {
           std::pair<StringSet::iterator, bool> result =

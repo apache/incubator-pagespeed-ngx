@@ -75,6 +75,8 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
         "<script src=\"http://www.test.com/c.js.pagespeed.jm.0.js\"></script>"
         "<link type=\"text/css\" rel=\"stylesheet\" href="
         "\"d.css.pagespeed.cf.0.css\"/>"
+        "<link rel=\"dns-prefetch\" href=\"//test.com\">"
+        "<link rel=\"prefetch\" href=\"//test1.com\">"
       "</head>"
       "<body></body></html>";
   GoogleString html_output;
@@ -90,6 +92,8 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
       "<link rel=\"subresource\" href="
       "\"http://www.test.com/c.js.pagespeed.jm.0.js\"/>\n"
       "<link rel=\"subresource\" href=\"d.css.pagespeed.cf.0.css\"/>\n"
+      "<link rel=\"dns-prefetch\" href=\"//test.com\">"
+      "<link rel=\"prefetch\" href=\"//test1.com\">"
       "<script type='text/javascript'>"
       "window.mod_pagespeed_prefetch_start = Number(new Date());"
       "window.mod_pagespeed_num_resources_prefetched = 2</script>";
@@ -105,6 +109,8 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
       "\"http://www.test.com/c.js.pagespeed.jm.0.js\"></script>\n"
       "<link rel=\"stylesheet\" href=\"d.css.pagespeed.cf.0.css\" "
       "media=\"print\" disabled=\"true\"/>\n"
+      "<link rel=\"dns-prefetch\" href=\"//test.com\">"
+      "<link rel=\"prefetch\" href=\"//test1.com\">"
       "<script type='text/javascript'>"
       "window.mod_pagespeed_prefetch_start = Number(new Date());"
       "window.mod_pagespeed_num_resources_prefetched = 2</script>";
@@ -120,6 +126,8 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
       "new Image().src=\"http://www.test.com/c.js.pagespeed.jm.0.js\";"
       "new Image().src=\"d.css.pagespeed.cf.0.css\";})()"
       "</script>"
+      "<link rel=\"dns-prefetch\" href=\"//test.com\">"
+      "<link rel=\"prefetch\" href=\"//test1.com\">"
       "<script type='text/javascript'>"
       "window.mod_pagespeed_prefetch_start = Number(new Date());"
       "window.mod_pagespeed_num_resources_prefetched = 2</script>";
@@ -137,6 +145,8 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
       "<script type=\"text/javascript\">(function(){"
       "new Image().src=\"d.css.pagespeed.cf.0.css\";})()"
       "</script>"
+      "<link rel=\"dns-prefetch\" href=\"//test.com\">"
+      "<link rel=\"prefetch\" href=\"//test1.com\">"
       "<script type='text/javascript'>"
       "window.mod_pagespeed_prefetch_start = Number(new Date());"
       "window.mod_pagespeed_num_resources_prefetched = 1</script>";

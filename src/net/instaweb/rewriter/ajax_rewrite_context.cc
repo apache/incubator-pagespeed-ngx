@@ -142,7 +142,7 @@ bool RecordingFetch::CanAjaxRewrite() {
   if (type->type() == ContentType::kCss ||
       type->type() == ContentType::kJavascript ||
       type->IsImage()) {
-    if (!context_->driver_->resource_manager()->http_cache()->IsAlreadyExpired(
+    if (!context_->driver_->server_context()->http_cache()->IsAlreadyExpired(
         request_headers(), *response_headers())) {
       return true;
     }

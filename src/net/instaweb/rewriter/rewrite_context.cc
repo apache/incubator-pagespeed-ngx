@@ -1908,7 +1908,7 @@ RewriteDriver* RewriteContext::Driver() const {
 }
 
 ServerContext* RewriteContext::Manager() const {
-  return Driver()->resource_manager();
+  return Driver()->server_context();
 }
 
 const RewriteOptions* RewriteContext::Options() const {

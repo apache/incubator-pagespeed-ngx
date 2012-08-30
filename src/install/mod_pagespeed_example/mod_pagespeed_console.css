@@ -16,13 +16,495 @@
 
 /**
  * @fileoverview Styles for the mod_pagespeed console.
- *
+ * @author joseantonio@google.com (Jose Antonio Martinez)
  * @author sarahdw@google.com (Sarah Dapul-Weberman)
  * @author bvb@google.com (Ben VanBerkum)
  */
 
+@charset "UTF-8";
+/* CSS Document */
+
+/*------------------------------------------------------------------
+  eric meyer's reset
+  ------------------------------------------------------------------*/
+html,body,div,span,applet,object,iframe,
+h1,h2,h3,h4,h5,h6,p,blockquote,pre,
+a,abbr,acronym,address,big,cite,code,
+del,dfn,em,font,img,ins,kbd,q,s,samp,
+small,strike,strong,sub,sup,tt,var,
+dl,dt,dd,ol,ul,li,
+fieldset,form,label,legend,
+table,caption,tbody,tfoot,thead,tr,th,td {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  font-weight: inherit;
+  font-style: inherit;
+  font-size: 100%;
+  font-family: inherit;
+  vertical-align: baseline;
+}
 body {
-  font-family: 'Arial', sans-serif;
+  line-height: 1;
+  color: black;
+  background: white;
+}
+ol,ul {
+  list-style: none;
+}
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+caption,th,td {
+  text-align: left;
+  font-weight: normal;
+}
+blockquote:before,blockquote:after,
+q:before,q:after {
+  content: "";
+}
+blockquote,q {
+  quotes: "" "";
+}
+input::-moz-focus-inner {
+  border: 0;
+}
+input[type="text"] {
+  -moz-border-bottom-colors: none;
+  -moz-border-image: none;
+  -moz-border-left-colors: none;
+  -moz-border-right-colors: none;
+  -moz-border-top-colors: none;
+  background-color: #FFFFFF;
+  border-color: #C0C0C0 #D9D9D9 #D9D9D9;
+  border-right: 1px solid #D9D9D9;
+  border-style: solid;
+  border-width: 1px;
+  color: #333333;
+  display: inline-block;
+  height: 29px;
+  line-height: 27px;
+  padding-left: 8px;
+  vertical-align: top;
+}
+
+input.small[type="text"] {
+  height: 20px;
+  line-height: 27px;
+}
+/*------------------------------------------------------------------
+@global Type
+------------------------------------------------------------------*/
+body,body input,body button,body td {
+  font-family: "Arial", "Helvetica", sans-serif;
+  color: #222;
+  font-size:13px;
+  -webkit-tap-highlight-color: rgba(0,0,0,0);
+}
+h1,h2,h3,h4,h5 {
+  font-size: 16px;
+  line-height:24px;
+  font-weight: normal;
+  color: #222;
+}
+li {
+  line-height: 17px;
+}
+a {
+  text-decoration: none;
+  color: #15c;
+  cursor: pointer;
+}
+a:visited {
+  color: #61c;
+}
+a:hover {
+  text-decoration: underline;
+}
+a:active {
+  text-decoration: underline;
+  color: #d14836;
+}
+a.secondary {
+  text-decoration: none;
+  color: #2D9AE3;
+}
+iframe {
+  border: 0px;
+}
+strong, b {
+  font-weight:bold;
+}
+em {
+  font-style: italic;
+}
+.clearfix:before, .clearfix:after { content: "\0020"; display: block; height: 0; overflow: hidden; } /*i'm leaving these in case we end up needing them*/
+.clearfix:after { clear: both; }
+.clearfix { zoom: 1; }
+/*------------------------------------------------------------------
+mod rules
+------------------------------------------------------------------*/
+#mod,.mod-container {
+  background: #fff;
+}
+.mod-container .row {
+  cursor:pointer;
+}
+#mod-wrap {
+  height: 100%;
+  overflow: auto;
+  padding-bottom: 1px;
+}
+#mod-header {
+  background: none repeat scroll 0 0 #F1F1F1;
+  border-bottom: 1px solid #444444;
+}
+.mod-appname {
+  height:70px;
+  margin:0 0 0 44px;
+}
+.mod-appname .logo {
+  cursor:pointer;
+}
+.mod-appname .logo img {
+  margin-top:1px;
+  width:117px;
+  height:71px;
+  image-rendering:optimizeQuality;
+}
+.mod-appname .logo .mod-apptitle {
+  position:relative;
+  top:-30px;
+  font-size: 18px;
+  line-height:6px;
+  font-weight: normal;
+  color: #636363;
+  margin-left:12px;
+}
+#mod-toolbar {
+  background: none repeat scroll 0 0 #444444;
+  height: 29px;
+  padding: 4px 20px 0;
+}
+#mod-toolbar .title {
+  color: #FFFFFF;
+  display: inline-block;
+  font-size: 14px;
+  padding-top: 4px;
+}
+#mod-footer {
+  background: none repeat scroll 0 0 #CCCCCC;
+  height: 1%;
+  margin-top: 20px;
+  padding: 20px;
+  text-align: left;
+}
+#mod-controlbar {
+  height: 60px;
+  padding: 0 0 0 20px;
+}
+#mod-search-box {
+  background-color: #FAFAFA;
+  border-left: 1px solid #E2E2E2;
+  float: right;
+  padding: 10px 20px 5px;
+}
+.mod-textsearch {
+  cursor: default;
+  display: block;
+  line-height: 22px;
+}
+.mod-expandindicator {
+  -moz-transition: all 0.218s ease 0s;
+  background: url("images/disclosure_open_plus.png") no-repeat scroll center center transparent;
+  display: inline-block;
+  height: 11px;
+  width: 11px;
+}
+.mod-widgetbar {
+  background: none repeat scroll 0 0 #F2F2F2;
+  border-bottom: 1px solid #E5E5E5;
+  border-top: 1px solid #E5E5E5;
+  height: 29px;
+  padding: 4px 0;
+}
+.mod-widgetbar ul {
+  margin: 0 auto;
+  padding: 0;
+}
+.mod-widgetbar li {
+  border-right: 1px solid #CCCCCC;
+  float: left;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+.mod-widgetbar li a {
+  cursor: pointer;
+  line-height: 29px;
+}
+.mod-widgetbar li.last {
+  border-right: medium none;
+}
+.mod-widgets {
+  background-color: #FFFFFF;
+  border: 1px solid #CCCCCC;
+  box-shadow: 0 15px 10px -10px rgba(0, 0, 0, 0.5), 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 40px rgba(0, 0, 0, 0.1) inset;
+  float: left;
+  margin: 20px 0 0 20px;
+  min-width: 500px;
+}
+.mod-widgets.errors {
+  margin: 20px 0 10px 20px;
+  min-width: 1022px;
+  width: 90%;
+}
+.mod-widgets-topbar {
+  background-color: #F2F2F2;
+  border-bottom:1PX SOLID #E5E5E5;
+  float: left;
+  height: 35px;
+  position: relative;
+  width: 100%;
+  z-index: 2;
+}
+.mod-widgets-topbar .title {
+  display: block;
+  font-weight: bold;
+  margin: 10px 0 4px 20px;
+  width: 85%;
+}
+.mod-widgets-topbar .graphselector {
+  -moz-transition: all 0.218s ease 0s;
+  background: url("images/disclosure_arrow_dk_grey_down.png") no-repeat scroll center center transparent;
+  border-left: 1px solid #CCCCCC;
+  cursor: pointer;
+  display: inline-block;
+  float: right;
+  height: 36px;
+  margin-right: 2px;
+  margin-top: -27px;
+  padding: 0 0 0 30px;
+  width: 10px;
+}
+
+/* Error table classes*/
+#mod-table {
+  font-size:12px;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+#mod-table th {
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-align: left;
+  padding: 6px 6px 6px 12px;
+}
+#mod-table th.page {
+  color:#666;
+  font-weight: normal;
+}
+#mod-table th.Code, td.Code {
+  width:80px;
+}
+#mod-table th.date, td.date {
+  width:140px;
+}
+#mod-table th.message, td.message {
+  width:auto;
+}
+#mod-table th.id, td.id {
+  display: block;
+  float: right;
+  margin-top: -26px;
+  position: relative;
+  top: 0;
+  width: 100px;
+}
+#mod-table td {
+  padding: 6px 6px 6px 12px;
+}
+#mod-table tr {
+  -moz-border-bottom-colors: none;
+  -moz-border-image: none;
+  -moz-border-left-colors: none;
+  -moz-border-right-colors: none;
+  -moz-border-top-colors: none;
+  background-color: #FFFFFF;
+  border-color: #EBEBEA transparent;
+  border-style: solid;
+  border-width: 1px;
+  display: block;
+  height: 35px;
+  margin-top: -1px;
+  padding-top: 8px;
+  position: relative;
+  z-index: 1;
+}
+/* button classes*/
+.mod-button {
+  display: inline-block;
+  min-width: 54px;*min-width:70px;/*hello,IE7!*/
+  border:1px solid #DCDCDC;
+  border: 1px solid rgba(0,0,0,0.1);
+  text-align: center;
+  color: #444;
+  font-size: 11px;
+  font-weight: bold;
+  height: 27px;
+  padding: 0 8px;
+  line-height: 27px;
+  -webkit-border-radius:2px;
+  -moz-border-radius: 2px;
+  border-radius: 2px;
+  -webkit-transition: all 0.218s;
+  -moz-transition: all 0.218s;
+  -o-transition: all 0.218s;
+  transition: all 0.218s;
+  background-color: #f5f5f5;
+  background-image: -webkit-gradient(linear,left top,left bottom,from(#f5f5f5),to(#f1f1f1));
+  background-image: -webkit-linear-gradient(top,#f5f5f5,#f1f1f1);
+  background-image: -moz-linear-gradient(top,#f5f5f5,#f1f1f1);
+  background-image: -ms-linear-gradient(top,#f5f5f5,#f1f1f1);
+  background-image: -o-linear-gradient(top,#f5f5f5,#f1f1f1);
+  background-image: linear-gradient(top,#f5f5f5,#f1f1f1);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorStr='#f5f5f5',EndColorStr='#f1f1f1');
+  -webkit-user-select:none;
+  -moz-user-select:none;
+  cursor:default;
+}
+.mod-button:hover, .mod-button.hover {
+  border: 1px solid #C6C6C6;
+  color: #222;
+  -webkit-transition: all 0.0s;
+  -moz-transition: all 0.0s;
+  -o-transition: all 0.0s;
+  transition: all 0.0s;
+  background-color: #f8f8f8;
+  background-image: -webkit-gradient(linear,left top,left bottom,from(#f8f8f8),to(#f1f1f1));
+  background-image: -webkit-linear-gradient(top,#f8f8f8,#f1f1f1);
+  background-image: -moz-linear-gradient(top,#f8f8f8,#f1f1f1);
+  background-image: -ms-linear-gradient(top,#f8f8f8,#f1f1f1);
+  background-image: -o-linear-gradient(top,#f8f8f8,#f1f1f1);
+  background-image: linear-gradient(top,#f8f8f8,#f1f1f1);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorStr='#f8f8f8',EndColorStr='#f1f1f1');
+  -webkit-box-shadow: 0px 1px 1px rgba(0,0,0,0.1);
+  -moz-box-shadow: 0px 1px 1px rgba(0,0,0,0.1);
+  box-shadow: 0px 1px 1px rgba(0,0,0,0.1);
+  text-decoration:none;
+}
+.mod-button:active, .mod-button.active {
+  background-color: #f6f6f6;
+  background-image: -webkit-gradient(linear,left top,left bottom,from(#f6f6f6),to(#f1f1f1));
+  background-image: -webkit-linear-gradient(top,#f6f6f6,#f1f1f1);
+  background-image: -moz-linear-gradient(top,#f6f6f6,#f1f1f1);
+  background-image: -ms-linear-gradient(top,#f6f6f6,#f1f1f1);
+  background-image: -o-linear-gradient(top,#f6f6f6,#f1f1f1);
+  background-image: linear-gradient(top,#f6f6f6,#f1f1f1);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorStr='#f6f6f6',EndColorStr='#f1f1f1');
+  -webkit-box-shadow: inset 0px 1px 2px rgba(0,0,0,0.1);
+  -moz-box-shadow: inset 0px 1px 2px rgba(0,0,0,0.1);
+  box-shadow: inset 0px 1px 2px rgba(0,0,0,0.1);
+}
+.mod-button.active{
+  border: 1px solid #C6C6C6;
+  color: #333;	
+}
+.mod-button:visited {
+  color: #666;
+}
+.mod-button.focus, .mod-button.right.focus, .mod-button.mid.focus, .mod-button.left.focus{
+  outline: none;
+  border: 1px solid #4d90fe;
+  z-index:4 !important;
+}
+.mod-button.selected {
+  background-color: #EEEEEE;
+  background-image: -webkit-gradient(linear,left top,left bottom,from(#EEEEEE),to(#E0E0E0));
+  background-image: -webkit-linear-gradient(top,#EEEEEE,#E0E0E0);
+  background-image: -moz-linear-gradient(top,#EEEEEE,#E0E0E0);
+  background-image: -ms-linear-gradient(top,#EEEEEE,#E0E0E0);
+  background-image: -o-linear-gradient(top,#EEEEEE,#E0E0E0);
+  background-image: linear-gradient(top,#EEEEEE,#E0E0E0);
+  filter: progid:DXImageTransform.Microsoft.gradient(startColorStr='#EEEEEE',EndColorStr='#E0E0E0');
+  -webkit-box-shadow: inset 0px 1px 2px rgba(0,0,0,0.1);
+  -moz-box-shadow: inset 0px 1px 2px rgba(0,0,0,0.1);
+  box-shadow: inset 0px 1px 2px rgba(0,0,0,0.1);
+  border: 1px solid #CCC;
+  color: #333;
+}
+.mod-button input[type=checkbox] {
+  position: relative;
+  top: 3px;
+}
+.mod-button img {
+  display: inline-block;
+  margin: -3px 0 0;
+  opacity: 0.55;
+  *margin:4px 0 0; /*IE7*/
+  /*	-ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=80)"; //IE CANNOT HANDLE OPACITY ON PNGS, SO WE ARE JUST GONNA REMOVE THESE FILTERS
+filter: alpha(opacity=80);*/	
+  margin-left: 0px;
+  margin-right: 0px;
+  vertical-align: middle;
+}
+.mod-button.selected img {
+  opacity: 0.9;
+/*	-ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=90)";
+filter: alpha(opacity=90);*/
+}
+.mod-button:hover img {
+  opacity: 0.72;
+/*	-ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=90)";
+filter: alpha(opacity=90);*/
+}
+.mod-button:active img {
+  opacity: 1.0;
+/*	-ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=100)";
+filter: alpha(opacity=100);*/
+}
+/* Disabled buttons */
+.mod-button.disabled, .mod-button.disabled:hover, .mod-button.disabled:active {
+  background: none;
+  color: #b8b8b8;
+  border: 1px solid #f3f3f3;
+  border: 1px solid rgba(0,0,0,0.05);
+  cursor: default;
+  pointer-events: none;
+}
+.mod-button.disabled.active{
+  -webkit-box-shadow: inset 0px 1px 2px rgba(0,0,0,0.1);
+  -moz-box-shadow: inset 0px 1px 2px rgba(0,0,0,0.1);
+  box-shadow: inset 0px 1px 2px rgba(0,0,0,0.1);
+}
+.mod-button-submit.disabled, .mod-button-submit.disabled:hover, .mod-button-submit.disabled:active,
+.mod-button-share.disabled, .mod-button-share.disabled:hover, .mod-button-share.disabled:active,
+.mod-button-action.disabled, .mod-button-action.disabled:hover, .mod-button-action.disabled:active {
+  border: 1px solid #505050;
+  background-color: #666;
+  color: #FFF;
+  opacity: 0.5;
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";
+  filter: alpha(opacity=50);
+}
+.mod-button.disabled img {
+  opacity: 0.5;
+  -ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=50)";
+  filter: alpha(opacity=50);
+}
+.mod-button.small {
+  min-width: 34px;
+  width: 34px;
+  padding: 0;
+}
+#mod-datepicker {
+  background-color:#fff;
+}
+.mod-datepicker {
+  float:left;
+  padding:10px;
 }
 
 #error {
@@ -37,6 +519,10 @@ body {
 }
 
 #container {
+  padding: 10px;
+}
+
+#messages {
   position: relative;
   top: 30px;
   width: 84%;
@@ -44,48 +530,180 @@ body {
   float: right;
 }
 
-#links {
-  padding-bottom: 10px;
-  border-bottom: solid black 1px;
-  display: inline;
-  width: 100%;
-  font-size: 12px;
-}
-
-#links a {
-  text-decoration: none;
+.no-match {
+  display: inline-block;
+  margin: 10px;
+  border: solid 1px #e5e5e5;
   padding: 10px;
-  background-color: #f5f5f5;
-  margin-right: 3px;
-  border: solid black 1px;
-  cursor: pointer;
-}
-
-#links a#selected {
-  background-color: #afeeee;
-  border-bottom: solid 1px #afeeee;
-  cursor: default;
-}
-
-#links a:hover {
-  color: blue;
-}
-
-#links a#selected:hover {
-  color: black;
-}
-
-#errorMessages {
-  height: 400px;
-  overflow: auto;
-}
-
-#sidebar {
-  width: 15%;
-  float: left;
-  top: 80px;
-  text-align: center;
+  color: red;
   position: relative;
+}
+
+.graph {
+  width: auto;
+}
+
+iframe {
+  border: solid 1px #ebebeb;
+}
+
+.unimplemented {
+  border: dashed red 1px;
+}
+
+.modal-dialog {
+  z-index: 5;
+}
+
+/* via view-source:http://closure-library.googlecode.com/svn/trunk/closure/goog/demos/popupmenu.html */
+
+.goog-menu {
+  background: #fff;
+  border-color: #ccc #666 #666 #ccc;
+  border-style: solid;
+  border-width: 1px;
+  cursor: default;
+  font: normal 13px Arial, sans-serif;
+  margin: 0;
+  outline: none;
+  padding: 4px 0;
+  position: absolute;
+  z-index: 20000; /* Arbitrary, but some apps depend on it... */
+}
+
+/**
+ * State: resting.
+ *
+ * NOTE(mleibman,chrishenry):
+ * The RTL support in Closure is provided via two mechanisms -- "rtl" CSS
+ * classes and BiDi flipping done by the CSS compiler.  Closure supports RTL
+ * with or without the use of the CSS compiler.  In order for them not
+ * to conflict with each other, the "rtl" CSS classes need to have the @noflip
+ * annotation.  The non-rtl counterparts should ideally have them as well, but,
+ * since .goog-menuitem existed without .goog-menuitem-rtl for so long before
+ * being added, there is a risk of people having templates where they are not
+ * rendering the .goog-menuitem-rtl class when in RTL and instead rely solely
+ * on the BiDi flipping by the CSS compiler.  That's why we're not adding the
+ * @noflip to .goog-menuitem.
+ */
+.goog-menuitem {
+  color: #000;
+  font: normal 13px Arial, sans-serif;
+  list-style: none;
+  margin: 0;
+  /* 28px on the left for icon or checkbox; 7em on the right for shortcut. */
+  padding: 4px 7em 4px 28px;
+  white-space: nowrap;
+}
+
+/* BiDi override for the resting state. */
+/* @noflip */
+.goog-menuitem.goog-menuitem-rtl {
+  /* Flip left/right padding for BiDi. */
+  padding-left: 7em;
+  padding-right: 28px;
+}
+
+/* If a menu doesn't have checkable items or items with icons, remove padding. */
+.goog-menu-nocheckbox .goog-menuitem,
+.goog-menu-noicon .goog-menuitem {
+  padding-left: 12px;
+}
+
+/*
+ * If a menu doesn't have items with shortcuts, leave just enough room for
+ * submenu arrows, if they are rendered.
+ */
+.goog-menu-noaccel .goog-menuitem {
+  padding-right: 20px;
+}
+
+.goog-menuitem-content {
+  color: #000;
+  font: normal 13px Arial, sans-serif;
+}
+
+/* State: disabled. */
+.goog-menuitem-disabled .goog-menuitem-accel,
+.goog-menuitem-disabled .goog-menuitem-content {
+  color: #ccc !important;
+}
+.goog-menuitem-disabled .goog-menuitem-icon {
+  opacity: 0.3;
+  -moz-opacity: 0.3;
+  filter: alpha(opacity=30);
+}
+
+/* State: hover. */
+.goog-menuitem-highlight,
+.goog-menuitem-hover {
+  background-color: #d6e9f8;
+  /* Use an explicit top and bottom border so that the selection is visible
+   * in high contrast mode. */
+  border-color: #d6e9f8;
+  border-style: dotted;
+  border-width: 1px 0;
+  padding-bottom: 3px;
+  padding-top: 3px;
+}
+
+/* State: selected/checked. */
+.goog-menuitem-checkbox,
+.goog-menuitem-icon {
+  background-repeat: no-repeat;
+  height: 16px;
+  left: 6px;
+  position: absolute;
+  right: auto;
+  vertical-align: middle;
+  width: 16px;
+}
+
+/* BiDi override for the selected/checked state. */
+/* @noflip */
+.goog-menuitem-rtl .goog-menuitem-checkbox,
+.goog-menuitem-rtl .goog-menuitem-icon {
+  /* Flip left/right positioning. */
+  left: auto;
+  right: 6px;
+}
+
+.goog-option-selected .goog-menuitem-checkbox,
+.goog-option-selected .goog-menuitem-icon {
+  /* Client apps may override the URL at which they serve the sprite. */
+  background: url(//ssl.gstatic.com/editor/editortoolbar.png) no-repeat -512px 0;
+}
+
+/* Keyboard shortcut ("accelerator") style. */
+.goog-menuitem-accel {
+  color: #999;
+  /* Keyboard shortcuts are untranslated; always left-to-right. */
+  /* @noflip */ direction: ltr;
+  left: auto;
+  padding: 0 6px;
+  position: absolute;
+  right: 0;
+  text-align: right;
+}
+
+/* BiDi override for shortcut style. */
+/* @noflip */
+.goog-menuitem-rtl .goog-menuitem-accel {
+  /* Flip left/right positioning and text alignment. */
+  left: 0;
+  right: auto;
+  text-align: left;
+}
+
+/* Mnemonic styles. */
+.goog-menuitem-mnemonic-hint {
+  text-decoration: underline;
+}
+
+.goog-menuitem-mnemonic-separator {
+  color: #999;
+  font-size: 12px;
+  padding-left: 4px;
 }
 
 

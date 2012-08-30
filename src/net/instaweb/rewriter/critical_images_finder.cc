@@ -81,7 +81,7 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
     return;
   }
   PropertyCache* page_property_cache =
-      driver->resource_manager()->page_property_cache();
+      driver->server_context()->page_property_cache();
   const PropertyCache::Cohort* cohort =
       page_property_cache->GetCohort(GetCriticalImagesCohort());
   PropertyPage* page = driver->property_page();
@@ -118,7 +118,7 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
   // determined.
   PropertyPage* page = driver->property_page();
   PropertyCache* page_property_cache =
-      driver->resource_manager()->page_property_cache();
+      driver->server_context()->page_property_cache();
   scoped_ptr<StringSet> critical_images(critical_images_set);
   if (page_property_cache != NULL &&
       page != NULL &&

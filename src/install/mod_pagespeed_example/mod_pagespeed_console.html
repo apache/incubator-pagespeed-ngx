@@ -1,7 +1,118 @@
+<!--
+   Copyright 2012 Google Inc.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+
+   @fileoverview Layout for the mod_pagespeed console.
+
+   @author joseantonio@google.com (Jose Antonio Martinez)
+   @author sarahdw@google.com (Sarah Dapul-Weberman)
+   @author bvb@google.com (Ben VanBerkum)
+  -->
+
 <!DOCTYPE html>
-<title>mod_pagespeed Console</title>
-<link rel="stylesheet" href="mod_pagespeed_console.css" />
-<script src="https://www.google.com/jsapi"></script>
+<title>mod_pagespeed console</title>
+<link rel="stylesheet" href="mod_pagespeed_console.css">
+<link rel="stylesheet" href="http://closure-library.googlecode.com/svn/trunk/closure/goog/css/dialog.css">
+
+<div id="mod" class="mod-container">
+  <div id="mod-header" style="z-index:60;">
+    <div class="mod-appname">
+      <span class="logo">
+        <img src="images/google.png" alt="Google">
+        <span class="mod-apptitle">mod_pagespeed</span>
+      </span>
+    </div>
+  </div>
+  <div id="mod-toolbar">
+    <span class="title unimplemented"><b>JetBlue</b> - 'http://www.jetblue.com'</span>
+  </div>
+  <div id="mod-controlbar">
+    <div id="mod-search-box" class="unimplemented">
+        <span class="mod-textsearch">
+          <input type="text" maxlength="55" size="20" value="Search help" name="Help Center Search" class="small">
+          <img width="45" height="25" alt="Go" src="images/search_go_button.png">
+        </span>
+        <span class="row">
+          <span class="mod-expandindicator"></span>
+          <a>Help</a>
+        </span>
+    </div>
+  </div><!-- End controlbar -->
+  <div class="mod-widgetbar">
+    <ul>
+      <li>
+        <span class="row">
+          <a id="modal-launcher" class="mod-button" style="-webkit-user-select: none;">+ Add Widget</a>
+        </span>
+      </li>
+      <li>
+        <span class="row unimplemented">
+          <a id="auto-update">Auto-Update Off</a>
+        </span>
+      </li>
+      <li class="last">
+        <span class="row">
+          <a id="toggle-messages">Show recent messages</a>
+        </span>
+      </li>
+    </ul>
+  </div><!-- End widgetbar -->
+  <div id="mod-wrap">
+    <div id="error">There was an error updating the data.</div>
+    <div id="container"></div>
+    <div class="mod-widgets errors unimplemented" id="messages-div" style="display: none;">
+      <div class="mod-widgets-topbar">
+        <span class="title" id="error-messages-title">Recent Messages</span>
+      </div>
+      <div id="messages"></div>
+    </div>
+  </div>
+  <!-- End mod-wrap -->
+  <div id="mod-footer">
+    Copyright Google Inc, 2012
+  </div>
+  <div id="add-widget" style="display: none;">
+    <h1>Add a new widget</h1>
+    <p>Show the following metric:<br/>
+      <select id="graph-list"></select>
+    </p>
+    <br/>
+    <p>Filter this data: &nbsp;&nbsp;&nbsp;<a id="hide-filter" style="display: none;">Hide</a><br/>
+      <a id="add-filter">Add a Filter</a>
+      <span id="date-filter" style="display: none;">
+        <span id="start-date-filter">
+          Start Date: <input type="date" id="start-date"/><br/>
+        </span>
+        <span id="end-date-label">End Date: </span><input type="date" id="end-date"/> <br/>
+        Granularity (s): <input type="number" id="granularity" min="1"/>
+      </span>
+    </p>
+    <p>Widget Title<br/>
+      <input type="text" id="widget-title"/>
+    </p>
+  </div>
+</div><!-- End container -->
+
+<script src="http://closure-library.googlecode.com/svn/trunk/closure/goog/base.js"></script>
+<script>
+  goog.require('goog.ui.Dialog');
+  goog.require('goog.positioning.Corner');
+  goog.require('goog.object');
+  goog.require('goog.ui.MenuItem');
+  goog.require('goog.ui.PopupMenu');
+</script>
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
 <script src="mod_pagespeed_console.js"></script>
 <script>
   google.load('visualization', '1.0', {'packages': ['corechart']});

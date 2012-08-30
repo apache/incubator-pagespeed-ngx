@@ -52,7 +52,7 @@ namespace net_instaweb {
 ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
                                    const StringPiece& extension,
                                    RewriteFilter* filter)
-    : resource_manager_(driver->resource_manager()),
+    : resource_manager_(driver->server_context()),
       rewrite_driver_(driver),
       partnership_(driver),
       prev_num_components_(0),

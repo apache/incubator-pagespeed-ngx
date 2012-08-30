@@ -390,7 +390,7 @@ void SharedMemConsoleStatisticsLogger::PrintHistDataAsJSON(
       HistBounds bounds = bar.first;
       GoogleString& count = bar.second;
       writer->Write(StringPrintf(
-          "{\"lowerBound\": %s,\"upperBound\": %s,\"count\": %s}",
+          "{\"lowerBound\": \"%s\",\"upperBound\": \"%s\",\"count\": %s}",
           bounds.first.c_str(), bounds.second.c_str(),
           count.c_str()), message_handler);
       if (i != info.size() - 1) {

@@ -66,6 +66,7 @@ void FlushEarlyContentWriterFilter::StartDocument() {
   set_writer(&null_writer_);
   prefetch_mechanism_ = driver_->user_agent_matcher().GetPrefetchMechanism(
       driver_->user_agent());
+  current_element_ = NULL;
 }
 
 void FlushEarlyContentWriterFilter::EndDocument() {
@@ -80,53 +81,69 @@ void FlushEarlyContentWriterFilter::EndDocument() {
 }
 
 void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
-  HtmlWriterFilter::StartElement(element);
-  if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchNotSupported) {
-    return;
-  }
-  semantic_type::Category category;
-  // Extract the resource urls from the page.
-  HtmlElement::Attribute* attr = resource_tag_scanner::ScanElement(
-      element, driver_, &category);
-  if (category == semantic_type::kScript &&
-      driver_->options()->Enabled(RewriteOptions::kDeferJavascript)) {
-    // Don't flush javascript resources if defer_javascript is enabled.
-    // TOOD(nikhilmadan): Check if the User-Agent supports defer_javascript.
-    return;
-  }
-  if (attr != NULL) {
-    StringPiece url(attr->DecodedValueOrNull());
-    if (!url.empty()) {
-      GoogleUrl gurl(driver_->base_url(), url);
-      // Check if they are rewritten. If so, insert the appropriate code to make
-      // the browser load these resource early.
-      if (driver_->resource_manager()->IsPagespeedResource(gurl)) {
-        ++num_resources_flushed_;
-        if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
-          if (!insert_close_script_) {
-            WriteToOriginalWriter("<script type=\"text/javascript\">"
-                                  "(function(){");
-            insert_close_script_ = true;
-          }
-          WriteToOriginalWriter(
-              StringPrintf(kPrefetchImageTagHtml, url.as_string().c_str()));
-        } else if (prefetch_mechanism_ ==
-                   UserAgentMatcher::kPrefetchLinkRelSubresource) {
-          WriteToOriginalWriter(
-              StringPrintf(kPrefetchLinkRelSubresourceHtml,
-                           url.as_string().c_str()));
-        } else if (prefetch_mechanism_ ==
-                   UserAgentMatcher::kPrefetchLinkScriptTag) {
-          if (category == semantic_type::kScript) {
+  if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchNotSupported ||
+      current_element_ != NULL) {
+    // Do nothing.
+  } else {
+    semantic_type::Category category;
+    // Extract the resource urls from the page.
+    HtmlElement::Attribute* attr = resource_tag_scanner::ScanElement(
+        element, driver_, &category);
+    if (category == semantic_type::kScript &&
+        driver_->options()->Enabled(RewriteOptions::kDeferJavascript)) {
+      // Don't flush javascript resources if defer_javascript is enabled.
+      // TOOD(nikhilmadan): Check if the User-Agent supports defer_javascript.
+    } else if (category == semantic_type::kPrefetch) {
+      // Flush the element as such if category is kPrefetch.
+      current_element_ = element;
+      set_writer(original_writer_);
+      if (insert_close_script_) {
+        WriteToOriginalWriter("})()</script>");
+        insert_close_script_ = false;
+      }
+    } else if (attr != NULL) {
+      StringPiece url(attr->DecodedValueOrNull());
+      if (!url.empty()) {
+        GoogleUrl gurl(driver_->base_url(), url);
+        // Check if they are rewritten. If so, insert the appropriate code to
+        // make the browser load these resource early.
+        if (driver_->server_context()->IsPagespeedResource(gurl)) {
+          ++num_resources_flushed_;
+          if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
+            if (!insert_close_script_) {
+              WriteToOriginalWriter("<script type=\"text/javascript\">"
+                                    "(function(){");
+              insert_close_script_ = true;
+            }
             WriteToOriginalWriter(
-                StringPrintf(kPrefetchScriptTagHtml, url.as_string().c_str()));
-          } else {
+                StringPrintf(kPrefetchImageTagHtml, url.as_string().c_str()));
+          } else if (prefetch_mechanism_ ==
+                     UserAgentMatcher::kPrefetchLinkRelSubresource) {
             WriteToOriginalWriter(
-                StringPrintf(kPrefetchLinkTagHtml, url.as_string().c_str()));
+                StringPrintf(kPrefetchLinkRelSubresourceHtml,
+                             url.as_string().c_str()));
+          } else if (prefetch_mechanism_ ==
+                     UserAgentMatcher::kPrefetchLinkScriptTag) {
+            if (category == semantic_type::kScript) {
+              WriteToOriginalWriter(
+                  StringPrintf(kPrefetchScriptTagHtml, url.as_string().c_str()));
+            } else {
+              WriteToOriginalWriter(
+                  StringPrintf(kPrefetchLinkTagHtml, url.as_string().c_str()));
+            }
           }
         }
       }
     }
+  }
+  HtmlWriterFilter::StartElement(element);
+}
+
+void FlushEarlyContentWriterFilter::EndElement(HtmlElement* element) {
+  HtmlWriterFilter::EndElement(element);
+  if (current_element_ == element) {
+    current_element_ = NULL;
+    set_writer(&null_writer_);
   }
 }
 

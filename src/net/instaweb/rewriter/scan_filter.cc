@@ -150,7 +150,7 @@ void ScanFilter::StartElement(HtmlElement* element) {
 }
 
 void ScanFilter::Flush() {
-  driver_->resource_manager()->rewrite_stats()->num_flushes()->Add(1);
+  driver_->server_context()->rewrite_stats()->num_flushes()->Add(1);
 }
 
 }  // namespace net_instaweb

@@ -22,8 +22,9 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -36,7 +37,7 @@ const char DeferIframeFilter::kDeferIframeIframeJs[] =
 DeferIframeFilter::DeferIframeFilter(RewriteDriver* driver)
     : driver_(driver),
       static_js_manager_(
-          driver->resource_manager()->static_javascript_manager()),
+          driver->server_context()->static_javascript_manager()),
       script_inserted_(false),
       defer_js_enabled_(false) {}
 

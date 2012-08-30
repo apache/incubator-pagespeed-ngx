@@ -243,7 +243,7 @@ void JavascriptFilter::InitializeConfig() {
   DCHECK(config_.get() == NULL);
   config_.reset(
       new JavascriptRewriteConfig(
-          driver_->resource_manager()->statistics(),
+          driver_->server_context()->statistics(),
           driver_->options()->Enabled(RewriteOptions::kRewriteJavascript),
           NULL));
 }

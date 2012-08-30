@@ -27,19 +27,16 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/json_writer.h"
-#include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -154,7 +151,7 @@ void SplitHtmlFilter::ReadCriticalLineConfig() {
     }
   } else {
     const PropertyCache::Cohort* cohort_ =
-        rewrite_driver_->resource_manager()->page_property_cache()->
+        rewrite_driver_->server_context()->page_property_cache()->
         GetCohort(kRenderCohort);
     PropertyValue* property_value = rewrite_driver_->property_page()->
         GetProperty(cohort_, kCriticalLineInfoPropertyName);
@@ -255,7 +252,7 @@ void SplitHtmlFilter::InsertBlinkJavascript(HtmlElement* element) {
   }
 
   StaticJavascriptManager* js_manager =
-      rewrite_driver_->resource_manager()->static_javascript_manager();
+      rewrite_driver_->server_context()->static_javascript_manager();
   StrAppend(&defer_js_with_blink, "<script src=\"",
             js_manager->GetBlinkJsUrl(options_), "\"></script>");
 

@@ -359,7 +359,7 @@ class CriticalLineFetch : public AsyncFetch {
           resource_manager_->timer()->NowMs());
       // TODO(rahulbansal): Move the code to write to pcache to blink_util.cc
       PropertyCache* property_cache =
-          rewrite_driver_->resource_manager()->page_property_cache();
+          rewrite_driver_->server_context()->page_property_cache();
       PropertyPage* page = rewrite_driver_->property_page();
       const PropertyCache::Cohort* cohort = property_cache->GetCohort(
           BlinkUtil::kBlinkCohort);

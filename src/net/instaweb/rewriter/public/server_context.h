@@ -452,7 +452,7 @@ class ServerContext {
                                    CacheInterface* cache) const;
 
  private:
-  friend class ResourceManagerTest;
+  friend class ServerContextTest;
   typedef std::set<RewriteDriver*> RewriteDriverSet;
 
   // Must be called with rewrite_drivers_mutex_ held.

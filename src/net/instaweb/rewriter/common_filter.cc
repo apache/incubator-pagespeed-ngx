@@ -33,7 +33,7 @@ namespace net_instaweb {
 
 CommonFilter::CommonFilter(RewriteDriver* driver)
     : driver_(driver),
-      resource_manager_(driver->resource_manager()),
+      resource_manager_(driver->server_context()),
       rewrite_options_(driver->options()),
       seen_base_(false) {
 }

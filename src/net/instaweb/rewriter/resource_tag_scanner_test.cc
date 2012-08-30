@@ -144,7 +144,7 @@ TEST_F(ResourceTagScannerTest, FindTags) {
   EXPECT_EQ(GoogleString("image.jpg"), resources[2]);
   EXPECT_EQ(semantic_type::kImage, resource_category[2]);
   EXPECT_EQ(GoogleString("do_find_prefetch"), resources[3]);
-  EXPECT_EQ(semantic_type::kHyperlink, resource_category[3]);
+  EXPECT_EQ(semantic_type::kPrefetch, resource_category[3]);
   EXPECT_EQ(GoogleString("nomedia.css"), resources[4]);
   EXPECT_EQ(semantic_type::kStylesheet, resource_category[4]);
   EXPECT_EQ(GoogleString("id.css"), resources[5]);
