@@ -30,6 +30,11 @@ ModPagespeedBlockingRewriteKey psatest
 #PER_VHOST_STATS    SetHandler mod_pagespeed_global_statistics
 #PER_VHOST_STATS </Location>
 
+#STATS_LOGGING ModPagespeedStatistics on
+#STATS_LOGGING ModPagespeedStatisticsLogging on
+#STATS_LOGGING ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
+#STATS_LOGGING ModPagespeedStatisticsLoggingIntervalMs 10
+
 # These caching headers are set up for the document root, and
 # also serve as a demonstration of good values to set for the entire
 # site, if it is to be optimized by mod_pagespeed.

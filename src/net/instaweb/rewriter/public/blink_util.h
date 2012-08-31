@@ -29,11 +29,11 @@
 
 namespace net_instaweb {
 
+class AsyncFetch;
 class GoogleUrl;
 class HtmlElement;
 class Panel;
 class PanelSet;
-class RequestHeaders;
 class ServerContext;
 class RewriteOptions;
 class UserAgentMatcher;
@@ -59,9 +59,15 @@ const char kXpath[] = "xpath";
 const char kBlinkCohort[] = "blink";
 const char kBlinkCriticalLineDataPropertyName[] = "blink_critical_line_data";
 
+// Checks whether the user agent is allowed to go into the blink flow.
+bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
+                                const RewriteOptions* options,
+                                const char* user_agent,
+                                const UserAgentMatcher& user_agent_matcher);
+
 // Checks whether the request for 'url' is a valid blink request.
 bool IsBlinkRequest(const GoogleUrl& url,
-                    const RequestHeaders* request_headers,
+                    AsyncFetch* async_fetch,
                     const RewriteOptions* options,
                     const char* user_agent,
                     const UserAgentMatcher& user_agent_matcher_);

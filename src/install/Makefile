@@ -331,6 +331,14 @@ else
   PER_VHOST_STATS_TEST_SED_PATTERN=^\#PER_VHOST_STATS.*\n
 endif
 
+ifeq ($(STATS_LOGGING_TEST),1)
+  # remove prefix
+  STATS_LOGGING_TEST_SED_PATTERN=^\#STATS_LOGGING
+else
+  # remove whole line
+  STATS_LOGGING_TEST_SED_PATTERN=^\#STATS_LOGGING.*\n
+endif
+
 # Note that the quoted sed replacement for APACHE_SLURP_DIR_COMMAND is because
 # that might have embedded spaces, and 'sed' is interpreted first by bash.
 
@@ -365,6 +373,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(DOMAIN_RESOURCE_TAGS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(ALL_DIRECTIVES_TEST_SED_PATTERN)@@" \
 	    -e "s@$(PER_VHOST_STATS_TEST_SED_PATTERN)@@" \
+	    -e "s@$(STATS_LOGGING_TEST_SED_PATTERN)@@" \
 		$^ > $@
 	! grep '@@' $@  # Make sure we don't have any remaining @@variables@@
 
@@ -470,7 +479,8 @@ apache_install_conf :
 	    $(OPT_ALL_DIRECTIVES_TEST) \
 	    $(OPT_URL_ATTRIBUTE_TEST) \
 	    $(OPT_ABSOLUTE_URLS_TEST) \
-	    $(OPT_PER_VHOST_STATS_TEST)
+	    $(OPT_PER_VHOST_STATS_TEST) \
+	    $(OPT_STATS_LOGGING_TEST)
 	$(MAKE) install_except_module \
 	    $(OPT_REWRITE_TEST) \
 	    $(OPT_PROXY_TEST) \
@@ -491,7 +501,8 @@ apache_install_conf :
 	    $(OPT_ALL_DIRECTIVES_TEST) \
 	    $(OPT_URL_ATTRIBUTE_TEST) \
 	    $(OPT_ABSOLUTE_URLS_TEST) \
-	    $(OPT_PER_VHOST_STATS_TEST)
+	    $(OPT_PER_VHOST_STATS_TEST) \
+	    $(OPT_STATS_LOGGING_TEST)
 
 apache_debug_restart :
 	$(APACHE_CONTROL_PROGRAM) restart

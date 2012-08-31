@@ -30,6 +30,20 @@ source "$this_dir/system_test.sh" || exit 1
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
 
+# Grab a timestamp now so that we can check that logging works.
+# Also determine where the log file is.
+if egrep -q "^    # ModPagespeedStatistics off$" $APACHE_DEBUG_PAGESPEED_CONF &&
+   egrep -q "^ ModPagespeedStatisticsLogging on$" $APACHE_DEBUG_PAGESPEED_CONF;
+   then
+  MOD_PAGESPEED_STATS_LOG=$(sed -n 's/^ ModPagespeedStatisticsLoggingFile //p' \
+      $APACHE_DEBUG_PAGESPEED_CONF)
+  MOD_PAGESPEED_STATS_LOG=$(echo $MOD_PAGESPEED_STATS_LOG | sed -n 's/\"//gp')
+  # Wipe the logs so we get a clean start.
+  rm $MOD_PAGESPEED_STATS_LOG*
+  START_TIME=$(date +%s)000 # We need this in milliseconds.
+  sleep 2; # Make sure we're around long enough to log stats.
+fi
+
 # General system tests
 
 echo TEST: Check for correct default X-Mod-Pagespeed header format.
@@ -482,6 +496,56 @@ blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
   check [ $(grep -c "[.]pagespeed[.]" $OUTFILE) -lt 1 ]
 
   fetch_until $BLOCKING_REWRITE_URL 'grep -c [.]pagespeed[.]' 1
+fi
+
+# Check that statistics logging was functional during these tests
+# if it was enabled.
+if egrep -q "^    # ModPagespeedStatistics off$" $APACHE_DEBUG_PAGESPEED_CONF &&
+   egrep -q "^ ModPagespeedStatisticsLogging on$" $APACHE_DEBUG_PAGESPEED_CONF;
+   then
+  echo "TEST: Statistics logging works."
+  check [ $(grep "timestamp: " $MOD_PAGESPEED_STATS_LOG* | wc -l) -ge 1 ]
+  # An array of all the timestamps that were logged.
+  TIMESTAMPS=($(sed -n '/timestamp: /s/[^0-9]*//gp' $MOD_PAGESPEED_STATS_LOG*))
+  check [ ${#TIMESTAMPS[@]} -ge 1 ]
+  for T in ${TIMESTAMPS[@]}; do
+    check [ $T -ge $START_TIME ]
+  done
+  # Check a few arbitrary statistics to make sure logging is taking place.
+  check [ $(grep "num_flushes: " $MOD_PAGESPEED_STATS_LOG* | wc -l) -ge 1 ]
+  check [ $(grep "histogram#" $MOD_PAGESPEED_STATS_LOG* | wc -l) -ge 1 ]
+  check [ $(grep "image_ongoing_rewrites: " $MOD_PAGESPEED_STATS_LOG* | wc -l) \
+      -ge 1 ]
+
+  echo "TEST: Statistics logging JSON handler works."
+  JSON=$OUTDIR/console_json.json
+  STATS_JSON_URL="$(echo $STATISTICS_URL)?json&granularity=0&var_titles=num_\
+flushes,image_ongoing_rewrites&hist_titles=Html%20Time%20us%20Histogram"
+  $WGET_DUMP $STATS_JSON_URL > $JSON
+  # Each variable we ask for should show up once.
+  check [ $(grep "\"num_flushes\": " $JSON | wc -l) -eq 1 ]
+  check [ $(grep "\"image_ongoing_rewrites\": " $JSON | wc -l) -eq 1 ]
+  check [ $(grep "\"Html Time us Histogram\": " $JSON | wc -l) -eq 1 ]
+  check [ $(grep "\"timestamps\": " $JSON | wc -l) -eq 1 ]
+  # An array of all the timestamps that the JSON handler returned.
+  JSON_TIMESTAMPS=($(sed -rn 's/^\{"timestamps": \[(([0-9]+, )*[0-9]*)\].*}$/\1/;/^[0-9]+/s/,//gp' $JSON))
+  # Check that we see the same timestamps that are in TIMESTAMPS.
+  # We might have generated extra timestamps in the time between TIMESTAMPS
+  # and JSON_TIMESTAMPS, so only loop through TIMESTAMPS.
+  check [ ${#JSON_TIMESTAMPS[@]} -ge ${#TIMESTAMPS[@]} ]
+  t=0
+  while [ $t -lt ${#TIMESTAMPS[@]} ]; do
+    check [ ${TIMESTAMPS[$t]} -eq ${JSON_TIMESTAMPS[$t]} ]
+    t=$(($t+1))
+  done
+
+  echo "TEST: Statistics console is available."
+  CONSOLE_URL=$EXAMPLE_ROOT/mod_pagespeed_console.html
+  CONSOLE_HTML=$OUTDIR/console.html
+  $WGET_DUMP $CONSOLE_URL > $CONSOLE_HTML
+  check grep -q "initConsole();" $CONSOLE_HTML
+  check grep -q "mod_pagespeed_console.js" $CONSOLE_HTML
+  check grep -q "mod_pagespeed_console.css" $CONSOLE_HTML
 fi
 
 # Cleanup

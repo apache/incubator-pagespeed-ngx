@@ -208,20 +208,21 @@ pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
         // Only replace the src if the old value is the one we set. It is
         // possible that a script has already changed it, in which case, we
         // should not try to modify it.
-        // Create a new image element and replace the old image with the new
-        // one since setting the src doesn't seem to always work in chrome.
-        var newElement = new Image();
-        newElement.setAttribute('src', data_src);
-        // Replace the old element with the new one.
-        element.parentNode.replaceChild(newElement, element);
+        // Remove the element from the DOM and and add it back in, since simply
+        // setting the src doesn't seem to always work in chrome.
+        var parent_node = element.parentNode;
+        var next_sibling = element.nextSibling;
+        parent_node.removeChild(element);
 
         element.removeAttribute('pagespeed_lazy_src');
         element.removeAttribute('onload');
-        element.removeAttribute('src');
-
-        // Copy attributes.
-        for (var i = 0, a = element.attributes, n = a.length; i < n; ++i) {
-          newElement.setAttribute(a[i].name, a[i].value);
+        element.src = data_src;
+        // If there was a next sibling, insert element before it. Otherwise, use
+        // appendChild which inserts element as the last child of parent_node.
+        if (next_sibling) {
+          parent_node.insertBefore(element, next_sibling);
+        } else {
+          parent_node.appendChild(element);
         }
       } else {
         context.deferred_.push(element);

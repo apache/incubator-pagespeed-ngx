@@ -154,10 +154,10 @@ UserAgentMatcher::UserAgentMatcher() {
     supports_image_inlining_.Disallow(kImageInliningBlacklist[i]);
   }
   for (int i = 0, n = arraysize(kPanelSupportDesktopWhitelist); i < n; ++i) {
-    supports_blink_desktop_.Allow(kPanelSupportDesktopWhitelist[i]);
+    blink_desktop_whitelist_.Allow(kPanelSupportDesktopWhitelist[i]);
   }
   for (int i = 0, n = arraysize(kPanelSupportDesktopBlacklist); i < n; ++i) {
-    supports_blink_desktop_.Disallow(kPanelSupportDesktopBlacklist[i]);
+    blink_desktop_blacklist_.Allow(kPanelSupportDesktopBlacklist[i]);
   }
   // Do the same for webp support.
   for (int i = 0, n = arraysize(kWebpWhitelist); i < n; ++i) {
@@ -210,21 +210,21 @@ bool UserAgentMatcher::SupportsImageInlining(
 }
 
 UserAgentMatcher::BlinkRequestType UserAgentMatcher::GetBlinkRequestType(
-    const char* user_agent, const RequestHeaders* request_headers,
-    bool allow_mobile) const {
-  if (user_agent == NULL) {
-    return kDoesNotSupportBlink;
+    const char* user_agent, const RequestHeaders* request_headers) const {
+  if (user_agent == NULL || user_agent[0] == '\0') {
+    return kNullOrEmpty;
   }
   if (IsMobileRequest(user_agent, request_headers)) {
     // TODO(srihari):  When blink supports mobile, we need to add a mobile
     // whitelist check here.
     // Please note that we don't have a mobile whitelist check here yet.
-    // Hence, if allow_mobile is true, blink will get applied to all mobile
-    // devices.
-    return allow_mobile ? kSupportsBlinkMobile : kDoesNotSupportBlink;
+    return kBlinkMobile;
   }
-  if (supports_blink_desktop_.Match(user_agent, false)) {
-    return kSupportsBlinkDesktop;
+  if (blink_desktop_blacklist_.Match(user_agent, false)) {
+    return kBlinkBlackListForDesktop;
+  }
+  if (blink_desktop_whitelist_.Match(user_agent, false)) {
+    return kBlinkWhiteListForDesktop;
   }
   return kDoesNotSupportBlink;
 }
@@ -243,7 +243,9 @@ UserAgentMatcher::GetPrefetchMechanism(const StringPiece& user_agent) const {
 
 bool UserAgentMatcher::SupportsJsDefer(const StringPiece& user_agent) const {
   // TODO(ksimbili): Have js_defer it's own wildcard group.
-  return user_agent.empty() || supports_blink_desktop_.Match(user_agent, false);
+  return user_agent.empty() ||
+      (blink_desktop_whitelist_.Match(user_agent, false) &&
+       !blink_desktop_blacklist_.Match(user_agent, false));
 }
 
 bool UserAgentMatcher::SupportsWebp(const StringPiece& user_agent) const {

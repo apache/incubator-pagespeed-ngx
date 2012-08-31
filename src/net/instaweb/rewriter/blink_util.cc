@@ -25,6 +25,8 @@
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -59,17 +61,47 @@ bool IsAllIncludedIn(const StringPieceVector& spec_vector,
 
 }  // namespace
 
+bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
+                                const RewriteOptions* options,
+                                const char* user_agent,
+                                const UserAgentMatcher& user_agent_matcher) {
+  UserAgentMatcher::BlinkRequestType request_type =
+      user_agent_matcher.GetBlinkRequestType(
+          user_agent, async_fetch->request_headers());
+  BlinkInfo* blink_info =
+      async_fetch->log_record()->logging_info()->mutable_blink_info();
+  switch (request_type) {
+    case UserAgentMatcher::kBlinkWhiteListForDesktop:
+      blink_info->set_blink_user_agent(BlinkInfo::BLINK_DESKTOP_WHITELIST);
+      return true;
+    case UserAgentMatcher::kDoesNotSupportBlink:
+      blink_info->set_blink_user_agent(BlinkInfo::NOT_SUPPORT_BLINK);
+      return false;
+    case UserAgentMatcher::kBlinkBlackListForDesktop:
+      blink_info->set_blink_user_agent(BlinkInfo::BLINK_DESKTOP_BLACKLIST);
+      return false;
+    case UserAgentMatcher::kBlinkMobile:
+      blink_info->set_blink_user_agent(BlinkInfo::BLINK_MOBILE);
+      // Is mobile request allowed?
+      return (options->enable_blink_for_mobile_devices()) ? true : false;
+    case UserAgentMatcher::kNullOrEmpty:
+      blink_info->set_blink_user_agent(BlinkInfo::NULL_OR_EMPTY);
+      return false;
+  }
+  return false;
+}
+
 // TODO(rahulbansal): Add tests for this.
 bool IsBlinkRequest(const GoogleUrl& url,
-                    const RequestHeaders* request_headers,
+                    AsyncFetch* async_fetch,
                     const RewriteOptions* options,
                     const char* user_agent,
-                    const UserAgentMatcher& user_agent_matcher_) {
+                    const UserAgentMatcher& user_agent_matcher) {
   if (options != NULL &&
       // Is rewriting enabled?
       options->enabled() &&
       // Is Get Request?
-      request_headers->method() == RequestHeaders::kGet &&
+      async_fetch->request_headers()->method() == RequestHeaders::kGet &&
       // Is prioritize visible content filter enabled?
       options->Enabled(RewriteOptions::kPrioritizeVisibleContent) &&
       // Is url allowed? (i.e., it is not in black-list.)
@@ -78,11 +110,9 @@ bool IsBlinkRequest(const GoogleUrl& url,
       options->IsAllowed(url.Spec()) &&
       // Does url match a cacheable family pattern specified in config?
       options->IsInBlinkCacheableFamily(url) &&
-      // user agent supports Blink.
-      user_agent_matcher_.GetBlinkRequestType(
-          user_agent, request_headers,
-          options->enable_blink_for_mobile_devices()) !=
-          UserAgentMatcher::kDoesNotSupportBlink) {
+      // Is the user agent allowed to enter the blink flow?
+      IsUserAgentAllowedForBlink(async_fetch, options,
+                                 user_agent, user_agent_matcher)) {
     return true;
   }
   return false;

@@ -39,7 +39,7 @@ message TimingInfo  {
 }
 
 // This proto stores all Blink related information.
-// Next id for BlinkInfo : 4
+// Next id for BlinkInfo : 5
 message BlinkInfo {
   enum BlinkRequestFlow {
     BLINK_CACHE_HIT = 1;
@@ -58,6 +58,17 @@ message BlinkInfo {
 
   // Tracks whether html change detection found a match or not.
   optional bool html_match = 3;
+
+  enum UserAgent {
+    NOT_SET = 0;
+    BLINK_DESKTOP_WHITELIST = 1;
+    BLINK_DESKTOP_BLACKLIST = 2;
+    BLINK_MOBILE = 3;
+    NULL_OR_EMPTY = 4;
+    NOT_SUPPORT_BLINK = 5;
+  };
+
+  optional UserAgent blink_user_agent = 4;
 }
 
 // This proto stores all information which we would like to log.

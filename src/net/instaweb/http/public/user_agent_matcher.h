@@ -33,8 +33,10 @@ class RequestHeaders;
 class UserAgentMatcher {
  public:
   enum BlinkRequestType {
-    kSupportsBlinkDesktop,
-    kSupportsBlinkMobile,
+    kBlinkWhiteListForDesktop,
+    kBlinkBlackListForDesktop,
+    kBlinkMobile,
+    kNullOrEmpty,
     kDoesNotSupportBlink,
   };
 
@@ -62,8 +64,7 @@ class UserAgentMatcher {
   // Returns the request type for the given request. The return type currently
   // supports desktop, mobile and not supported.
   virtual BlinkRequestType GetBlinkRequestType(
-      const char* user_agent, const RequestHeaders* request_headers,
-      bool allow_mobile) const;
+      const char* user_agent, const RequestHeaders* request_headers) const;
 
   // Returns the supported prefetch mechanism depending upon the user agent.
   PrefetchMechanism GetPrefetchMechanism(const StringPiece& user_agent) const;
@@ -84,7 +85,8 @@ class UserAgentMatcher {
 
  private:
   FastWildcardGroup supports_image_inlining_;
-  FastWildcardGroup supports_blink_desktop_;
+  FastWildcardGroup blink_desktop_whitelist_;
+  FastWildcardGroup blink_desktop_blacklist_;
   FastWildcardGroup supports_webp_;
   FastWildcardGroup mobile_user_agents_;
   FastWildcardGroup supports_prefetch_link_rel_subresource_;

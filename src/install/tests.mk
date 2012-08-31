@@ -56,6 +56,7 @@ apache_vm_system_tests :
 	$(MAKE) apache_debug_vhost_only_test
 	$(MAKE) apache_debug_global_off_test
 	$(MAKE) apache_debug_shared_mem_lock_sanity_test
+	$(MAKE) apache_debug_stats_logging_test
 	$(MAKE) apache_debug_all_directives_test
 	$(MAKE) apache_install_conf
 # 'apache_install_conf' should always be last, to leave your debug
@@ -401,4 +402,10 @@ apache_debug_per_vhost_stats_test :
 	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/$(STATS) \
 	     | grep url_trims | grep -w 2
 
-
+# Test that statistics logging works.
+apache_debug_stats_logging_test :
+	$(MAKE) apache_install_conf \
+	    OPT_STATS_LOGGING_TEST="STATS_LOGGING_TEST=1"
+	$(MAKE) apache_debug_restart
+	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
+	                                          $(APACHE_HTTPS_SERVER)

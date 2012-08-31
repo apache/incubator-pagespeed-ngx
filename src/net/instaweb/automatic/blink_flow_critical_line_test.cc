@@ -73,6 +73,8 @@ const char kWindowsUserAgent[] =
     "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:15.0) Gecko/20120427 "
     "Firefox/15.0a1";
 
+const char kBlackListUserAgent[] =
+    "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:15.0) Gecko/20120427 Firefox/2.0a1";
 const char kNumPrepareRequestCalls[] = "num_prepare_request_calls";
 
 const char kWhitespace[] = "                  ";
@@ -548,6 +550,17 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
                                        ResponseHeaders* headers_out) {
     FetchFromProxy(url, expect_success, string_out, headers_out, true);
   }
+  void FetchFromProxyWaitForBackground(const StringPiece& url,
+                                       bool expect_success,
+                                       const RequestHeaders& request_headers,
+                                       GoogleString* string_out,
+                                       ResponseHeaders* headers_out,
+                                       GoogleString* user_agent_out,
+                                       bool wait_for_background_computation) {
+  FetchFromProxy(url, expect_success, request_headers, string_out,
+                 headers_out, user_agent_out,
+                 wait_for_background_computation);
+  }
 
   void VerifyNonBlinkResponse(ResponseHeaders* response_headers) {
     ConstStringStarVector values;
@@ -634,8 +647,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
                       bool wait_for_background_computation,
                       bool wait_for_update_response_code) {
     FetchFromProxyNoQuiescence(url, expect_success, request_headers,
-                               string_out, headers_out,
-                               user_agent_out);
+                               string_out, headers_out, user_agent_out);
     if (wait_for_background_computation) {
       ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
       sync->Wait(BlinkFlowCriticalLine::kBackgroundComputationDone);
@@ -652,8 +664,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
                                   GoogleString* string_out,
                                   ResponseHeaders* headers_out) {
     FetchFromProxyNoQuiescence(url, expect_success, request_headers,
-                               string_out, headers_out,
-                               NULL);
+                               string_out, headers_out, NULL);
   }
 
   void FetchFromProxyNoQuiescence(const StringPiece& url,
@@ -682,6 +693,9 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
         != NULL) {
       user_agent_out->assign(
           callback.request_headers()->Lookup1(HttpAttributes::kUserAgent));
+    }
+    if (callback.logging_info() != NULL) {
+      logging_info_.CopyFrom(*(callback.logging_info()));
     }
   }
 
@@ -870,6 +884,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
   ResponseHeaders response_headers_;
   GoogleString noblink_output_;
   FakeBlinkCriticalLineDataFinder* fake_blink_critical_line_data_finder_;
+  LoggingInfo logging_info_;
   const GoogleString blink_output_;
   const GoogleString blink_output_with_extra_non_cacheable_;
   const GoogleString blink_output_with_cacheable_panels_no_cookies_;
@@ -1105,7 +1120,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   GoogleString text;
   ResponseHeaders response_headers;
   FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
-
+  EXPECT_EQ(BlinkInfo::BLINK_DESKTOP_WHITELIST,
+            logging_info_.blink_info().blink_user_agent());
   ConstStringStarVector values;
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
   EXPECT_EQ(1, values.size());
@@ -1375,16 +1391,35 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithBlacklistUrls) {
   GoogleString text;
   ResponseHeaders response_headers;
   RequestHeaders request_headers;
-  request_headers.Add(HttpAttributes::kUserAgent, kLinuxUserAgent);
+  request_headers.Add(HttpAttributes::kUserAgent, kBlackListUserAgent);
   FetchFromProxy("blacklist.html", true, request_headers, &text,
                  &response_headers, false);
-
+  // unassigned user agent
+  EXPECT_EQ(BlinkInfo::NOT_SET, logging_info_.blink_info().blink_user_agent());
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_STREQ(kHtmlInput, text);
   // Three cache lookup - for the original html and two for property cache.
   EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
+  // No fetch for background computation is triggered here.
+  // Only original html is fetched from fetcher.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  // No blink flow should have happened.
+  EXPECT_EQ(0, statistics()->FindVariable(
+      ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithBlacklistUserAgents) {
+  GoogleString text;
+  ResponseHeaders response_headers;
+  RequestHeaders request_headers;
+  request_headers.Add(HttpAttributes::kUserAgent, kBlackListUserAgent);
+  FetchFromProxy("plain.html", true, request_headers, &text,
+                 &response_headers, false);
+  EXPECT_EQ(BlinkInfo::BLINK_DESKTOP_BLACKLIST,
+            logging_info_.blink_info().blink_user_agent());
+  EXPECT_STREQ(kHtmlInput, text);
   // No fetch for background computation is triggered here.
   // Only original html is fetched from fetcher.
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
@@ -1408,7 +1443,6 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlOverThreshold) {
 
   EXPECT_STREQ(kSmallHtmlInput, text);
   VerifyBlinkInfo(BlinkInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD);
-
   // Cache lookup for original html, BlinkCriticalLineData and Dom Cohort
   // in property cache.
   EXPECT_EQ(3, lru_cache()->num_misses());
@@ -1571,7 +1605,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkBlacklistUserAgent) {
   request_headers.Add(HttpAttributes::kUserAgent, "BlacklistUserAgent");
   FetchFromProxy("noblink_text.html", true, request_headers, &text,
                  &response_headers, false);
-
+  EXPECT_EQ(BlinkInfo::NOT_SUPPORT_BLINK,
+            logging_info_.blink_info().blink_user_agent());
   ConstStringStarVector values;
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
   EXPECT_STREQ("max-age=0", *(values[0]));
@@ -1623,13 +1658,18 @@ TEST_F(BlinkFlowCriticalLineTest, TestNoFixedUserAgentForDesktop) {
 
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileUserAgent) {
   GoogleString text;
+  GoogleString user_agent;
   ResponseHeaders response_headers;
   RequestHeaders request_headers;
+  options_->ClearSignatureForTesting();
+  options_->set_enable_blink_for_mobile_devices(true);
+  resource_manager()->ComputeSignature(options_.get());
   request_headers.Add(HttpAttributes::kUserAgent,
-                      UserAgentStrings::kIPhone4Safari);  // Not blink supported
-  FetchFromProxy("noblink_text.html", true, request_headers, &text,
-                 &response_headers, false);
-
+                      UserAgentStrings::kIPhone4Safari);  // Mobile Request.
+  FetchFromProxyWaitForBackground("text.html", true, request_headers, &text,
+                                  &response_headers, &user_agent, true);
+  EXPECT_EQ(BlinkInfo::BLINK_MOBILE,
+            logging_info_.blink_info().blink_user_agent());
   ConstStringStarVector values;
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
   EXPECT_STREQ("max-age=0", *(values[0]));
@@ -1637,8 +1677,30 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileUserAgent) {
 
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_STREQ(kHtmlInput, text);
+  EXPECT_EQ(1, statistics()->FindVariable(
+      ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestNullUserAgentAndEmptyUserAgent) {
+  GoogleString text;
+  ResponseHeaders response_headers;
+  RequestHeaders request_headers;
+  request_headers.Add(HttpAttributes::kUserAgent, NULL);
+  FetchFromProxy("noblink_text.html", true, request_headers, &text,
+                 &response_headers, false);
+  EXPECT_EQ(BlinkInfo::NULL_OR_EMPTY,
+            logging_info_.blink_info().blink_user_agent());
   EXPECT_STREQ(noblink_output_, text);
-  // No blink flow should have happened.
+  EXPECT_EQ(0, statistics()->FindVariable(
+      ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
+
+  request_headers.Replace(HttpAttributes::kUserAgent, "");
+  FetchFromProxy("noblink_text.html", true, request_headers, &text,
+                 &response_headers, false);
+  EXPECT_EQ(BlinkInfo::NULL_OR_EMPTY,
+            logging_info_.blink_info().blink_user_agent());
+  EXPECT_STREQ(noblink_output_, text);
   EXPECT_EQ(0, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
 }

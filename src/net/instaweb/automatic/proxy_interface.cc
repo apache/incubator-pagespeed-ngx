@@ -498,8 +498,8 @@ void ProxyInterface::ProxyRequestCallback(
     const char* user_agent = async_fetch->request_headers()->Lookup1(
         HttpAttributes::kUserAgent);
     bool is_blink_request = BlinkUtil::IsBlinkRequest(
-        *request_url, async_fetch->request_headers(),
-        options, user_agent, resource_manager_->user_agent_matcher());
+        *request_url, async_fetch, options, user_agent,
+        resource_manager_->user_agent_matcher());
     bool apply_blink_critical_line =
         BlinkUtil::ShouldApplyBlinkFlowCriticalLine(resource_manager_,
                                                     options);

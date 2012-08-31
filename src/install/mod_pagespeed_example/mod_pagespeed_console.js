@@ -370,7 +370,8 @@ pagespeed.MpsConsole.prototype.getGraph =
       return;
     }
     document.getElementById('error').style.display = 'none';
-    mpsConsole.scrapeData(JSON.parse(this.responseText), graphIndex,
+    mpsConsole.scrapeData(/** @type {?} */ (JSON.parse(this.responseText)),
+                          graphIndex,
                           isHistogram, endTime);
   };
 
