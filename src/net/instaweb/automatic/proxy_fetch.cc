@@ -19,6 +19,7 @@
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 
 #include <algorithm>
+#include <cstddef>
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
@@ -694,14 +695,24 @@ bool ProxyFetch::HandleWrite(const StringPiece& str,
   bool ret = true;
   if (started_parse_) {
     // Buffer up all text & flushes until our worker-thread gets a chance
-    // to run.  This will re-order pending flushes after already-received
-    // html, so that if the html is coming in faster than we can process it,
-    // then we'll perform fewer flushes.
+    // to run. Also split up HTML into manageable chunks if we get a burst,
+    // as it will make it easier to insert flushes in between them in
+    // ExecuteQueued(), which we want to do in order to limit memory use and
+    // latency.
+    size_t chunk_size = Options()->flush_buffer_limit_bytes();
+    StringStarVector chunks;
+    for (size_t pos = 0; pos < str.size(); pos += chunk_size) {
+      GoogleString* buffer =
+          new GoogleString(str.data() + pos,
+                           std::min(chunk_size, str.size() - pos));
+      chunks.push_back(buffer);
+    }
 
-    GoogleString* buffer = new GoogleString(str.data(), str.size());
     {
       ScopedMutex lock(mutex_.get());
-      text_queue_.push_back(buffer);
+      for (int c = 0, n = chunks.size(); c < n; ++c) {
+        text_queue_.push_back(chunks[c]);
+      }
       ScheduleQueueExecutionIfNeeded();
     }
   } else {
@@ -798,16 +809,52 @@ void ProxyFetch::ExecuteQueued() {
   bool do_flush = false;
   bool do_finish = false;
   bool done_result = false;
+  bool force_flush = false;
+
+  size_t buffer_limit = Options()->flush_buffer_limit_bytes();
   StringStarVector v;
   {
     ScopedMutex lock(mutex_.get());
     DCHECK(!waiting_for_flush_to_finish_);
-    v.swap(text_queue_);
-    do_flush = network_flush_outstanding_;
+
+    // See if we should force a flush based on how much stuff has
+    // accumulated.
+    size_t total = 0;
+    size_t force_flush_chunk_count = 0;  // set only if force_flush is true.
+    for (size_t c = 0, n = text_queue_.size(); c < n; ++c) {
+      total += text_queue_[c]->length();
+      if (total >= buffer_limit) {
+        force_flush = true;
+        force_flush_chunk_count = c + 1;
+        break;
+      }
+    }
+
+    // Are we forcing a flush of some, but not all, of the queued
+    // content?
+    bool partial_forced_flush =
+        force_flush && (force_flush_chunk_count != text_queue_.size());
+    if (partial_forced_flush) {
+      for (size_t c = 0; c < force_flush_chunk_count; ++c) {
+        v.push_back(text_queue_[c]);
+      }
+      size_t old_len = text_queue_.size();
+      text_queue_.erase(text_queue_.begin(),
+                        text_queue_.begin() + force_flush_chunk_count);
+      DCHECK_EQ(old_len, v.size() + text_queue_.size());
+
+      // Note that in this case, since text_queue_ isn't empty,
+      // the call to ScheduleQueueExecutionIfNeeded from FlushDone
+      // will make us run again.
+    } else {
+      v.swap(text_queue_);
+    }
+    do_flush = network_flush_outstanding_ || force_flush;
     do_finish = done_outstanding_;
     done_result = done_result_;
 
     network_flush_outstanding_ = false;
+
     // Note that we don't clear done_outstanding_ here yet, as we
     // can only handle it if we are not also handling a flush.
     queue_run_job_created_ = false;
@@ -825,6 +872,9 @@ void ProxyFetch::ExecuteQueued() {
     delete str;
   }
   if (do_flush) {
+    if (force_flush) {
+      driver_->RequestFlush();
+    }
     if (driver_->flush_requested()) {
       // A flush is about to happen, so we don't want to redundantly
       // flush due to idleness.

@@ -111,6 +111,10 @@ DEFINE_bool(force_caching, false,
 DEFINE_bool(flush_html, false, "Pass fetcher-generated flushes through HTML");
 DEFINE_bool(serve_stale_if_fetch_error, true, "Serve stale content if the "
             "fetch results in an error.");
+DEFINE_int32(psa_flush_buffer_limit_bytes,
+             net_instaweb::RewriteOptions::kDefaultFlushBufferLimitBytes,
+             "Whenever more than this much HTML gets buffered, a flush"
+             "will be injected.");
 DEFINE_int32(psa_idle_flush_time_ms,
              net_instaweb::RewriteOptions::kDefaultIdleFlushTimeMs,
              "If the input HTML stops coming in for this many ms, a flush"
@@ -329,6 +333,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("psa_idle_flush_time_ms")) {
     options->set_idle_flush_time_ms(FLAGS_psa_idle_flush_time_ms);
+  }
+  if (WasExplicitlySet("psa_flush_buffer_limit_bytes")) {
+    options->set_flush_buffer_limit_bytes(FLAGS_psa_flush_buffer_limit_bytes);
   }
   if (WasExplicitlySet("image_jpeg_recompress_quality")) {
     options->set_image_jpeg_recompress_quality(

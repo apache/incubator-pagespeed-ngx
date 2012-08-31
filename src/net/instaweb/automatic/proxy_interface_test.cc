@@ -339,11 +339,13 @@ const char kFlushEarlyRewrittenHtmlLinkRelSubresourceWithDeferJs[] =
 class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
  public:
   AsyncExpectStringAsyncFetch(bool expect_success,
+                              bool log_flush,
                               WorkerTestBase::SyncPoint* notify,
                               ThreadSynchronizer* sync)
       : ExpectStringAsyncFetch(expect_success),
         notify_(notify),
-        sync_(sync) {
+        sync_(sync),
+        log_flush_(log_flush) {
   }
 
   virtual ~AsyncExpectStringAsyncFetch() {}
@@ -359,9 +361,17 @@ class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
     notify_->Notify();
   }
 
+  virtual bool HandleFlush(MessageHandler* handler) {
+    if (log_flush_) {
+      HandleWrite("|Flush|", handler);
+    }
+    return true;
+  }
+
  private:
   WorkerTestBase::SyncPoint* notify_;
   ThreadSynchronizer* sync_;
+  bool log_flush_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncExpectStringAsyncFetch);
 };
@@ -666,7 +676,8 @@ class ProxyInterfaceTest : public RewriteTestBase {
                       bool expect_success,
                       GoogleString* string_out,
                       ResponseHeaders* headers_out) {
-    FetchFromProxyNoWait(url, request_headers, expect_success, headers_out);
+    FetchFromProxyNoWait(url, request_headers, expect_success,
+                         false /* log_flush*/, headers_out);
     WaitForFetch();
     *string_out = callback_->buffer();
     logging_info_.CopyFrom(*callback_->logging_info());
@@ -683,17 +694,30 @@ class ProxyInterfaceTest : public RewriteTestBase {
                    headers_out);
   }
 
+  void FetchFromProxyLoggingFlushes(const StringPiece& url,
+                                    bool expect_success,
+                                    GoogleString* string_out) {
+    RequestHeaders request_headers;
+    ResponseHeaders response_headers;
+    FetchFromProxyNoWait(url, request_headers, expect_success,
+                         true /* log_flush*/, &response_headers);
+    WaitForFetch();
+    *string_out = callback_->buffer();
+    logging_info_.CopyFrom(*callback_->logging_info());
+  }
+
   // Initiates a fetch using the proxy interface, without waiting for it to
   // complete.  The usage model here is to delay callbacks and/or fetches
   // to control their order of delivery, then call WaitForFetch.
   void FetchFromProxyNoWait(const StringPiece& url,
                             const RequestHeaders& request_headers,
                             bool expect_success,
+                            bool log_flush,
                             ResponseHeaders* headers_out) {
     sync_.reset(new WorkerTestBase::SyncPoint(
         resource_manager()->thread_system()));
     callback_.reset(new AsyncExpectStringAsyncFetch(
-        expect_success, sync_.get(),
+        expect_success, log_flush, sync_.get(),
         resource_manager()->thread_synchronizer()));
     callback_->set_response_headers(headers_out);
     callback_->request_headers()->CopyFrom(request_headers);
@@ -832,7 +856,8 @@ class ProxyInterfaceTest : public RewriteTestBase {
 
     if (thread_pcache) {
       RequestHeaders request_headers;
-      FetchFromProxyNoWait(url, request_headers, expect_success, &headers_out);
+      FetchFromProxyNoWait(url, request_headers, expect_success,
+                           false /* don't log flushes*/, &headers_out);
       delay_cache()->ReleaseKeyInSequence(delay_pcache_key, sequence);
 
       // Wait until the property-cache-thread is in
@@ -2645,6 +2670,55 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
   headers.ComputeCaching();
   EXPECT_LE(start_time_ms_ + Timer::kYearMs, headers.CacheExpirationTimeMs());
   EXPECT_EQ(kMinimizedCssContent, text);
+}
+
+TEST_F(ProxyInterfaceTest, FlushHugeHtml) {
+  // Test the forced flushing of HTML controlled by flush_buffer_limit_bytes().
+  RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_flush_buffer_limit_bytes(8);  // 2 self-closing tags ("<p/>")
+  options->set_flush_html(true);
+  resource_manager()->ComputeSignature(options);
+
+  SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
+                                "<a/><b/><c/><d/><e/><f/><g/><h/>",
+                                kHtmlCacheTimeSec * 2);
+
+  GoogleString out;
+  FetchFromProxyLoggingFlushes("page.html", true /*success*/, &out);
+  EXPECT_EQ(
+      "<a/><b/>|Flush|<c/><d/>|Flush|<e/><f/>|Flush|<g/><h/>|Flush||Flush|",
+      out);
+
+  // Now tell to flush after 3 self-closing tags.
+  options->ClearSignatureForTesting();
+  options->set_flush_buffer_limit_bytes(12);  // 3 self-closing tags
+  resource_manager()->ComputeSignature(options);
+
+  FetchFromProxyLoggingFlushes("page.html", true /*success*/, &out);
+  EXPECT_EQ(
+      "<a/><b/><c/>|Flush|<d/><e/><f/>|Flush|<g/><h/>|Flush|", out);
+
+  // And now with 2.5. This means we will flush 2 (as that many are complete),
+  // then 5, and 7.
+  options->ClearSignatureForTesting();
+  options->set_flush_buffer_limit_bytes(10);
+  resource_manager()->ComputeSignature(options);
+
+  FetchFromProxyLoggingFlushes("page.html", true /*success*/, &out);
+  EXPECT_EQ(
+      "<a/><b/>|Flush|<c/><d/><e/>|Flush|<f/><g/>|Flush|<h/>|Flush|", out);
+
+  // Now 9 bytes, e.g. 2 1/4 of a self-closing tag. Looks almost the same as
+  // every 2 self-closing tags (8 bytes), but we don't get an extra flush
+  // at the end.
+  options->ClearSignatureForTesting();
+  options->set_flush_buffer_limit_bytes(9);
+  resource_manager()->ComputeSignature(options);
+  FetchFromProxyLoggingFlushes("page.html", true /*success*/, &out);
+  EXPECT_EQ(
+      "<a/><b/>|Flush|<c/><d/>|Flush|<e/><f/>|Flush|<g/><h/>|Flush|",
+      out);
 }
 
 TEST_F(ProxyInterfaceTest, DontRewriteDisallowedHtml) {

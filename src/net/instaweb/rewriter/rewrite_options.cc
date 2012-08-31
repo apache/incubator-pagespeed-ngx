@@ -122,6 +122,7 @@ const int64 RewriteOptions::kDefaultMaxImageBytesForWebpInCss = kint64max;
 const int64 RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs = 0;
 
 const int64 RewriteOptions::kDefaultCacheInvalidationTimestamp = -1;
+const int64 RewriteOptions::kDefaultFlushBufferLimitBytes = 100 * 1024;
 const int64 RewriteOptions::kDefaultIdleFlushTimeMs = 10;
 const int64 RewriteOptions::kDefaultImplicitCacheTtlMs = 5 * Timer::kMinuteMs;
 
@@ -564,6 +565,8 @@ RewriteOptions::RewriteOptions()
              &cache_invalidation_timestamp_, "it", kCacheInvalidationTimestamp);
   add_option(kDefaultIdleFlushTimeMs, &idle_flush_time_ms_, "if",
              kIdleFlushTimeMs);
+  add_option(kDefaultFlushBufferLimitBytes, &flush_buffer_limit_bytes_, "fbl",
+             kFlushBufferLimitBytes);
   add_option(kDefaultImplicitCacheTtlMs, &implicit_cache_ttl_ms_, "ict",
              kImplicitCacheTtlMs);
   add_option(kDefaultImageMaxRewritesAtOnce, &image_max_rewrites_at_once_,

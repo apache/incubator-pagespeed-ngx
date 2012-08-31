@@ -156,6 +156,7 @@ class RewriteOptions {
     kEnableDeferJsExperimental,
     kEnableFlushSubresourcesExperimental,
     kEnableInlinePreviewImagesExperimental,
+    kFlushBufferLimitBytes,
     kFlushHtml,
     kFuriousSlot,
     kIdleFlushTimeMs,
@@ -327,6 +328,7 @@ class RewriteOptions {
   static const int64 kDefaultMinResourceCacheTimeToRewriteMs;
   static const int64 kDefaultCacheInvalidationTimestamp;
   static const int64 kDefaultIdleFlushTimeMs;
+  static const int64 kDefaultFlushBufferLimitBytes;
   static const int64 kDefaultImplicitCacheTtlMs;
   static const int64 kDefaultPrioritizeVisibleContentCacheTimeMs;
   static const char kDefaultBeaconUrl[];
@@ -795,6 +797,15 @@ class RewriteOptions {
   }
   void set_idle_flush_time_ms(int64 x) {
     set_option(x, &idle_flush_time_ms_);
+  }
+
+  // How much accumulated HTML will result in PSA introducing a flush.
+  int64 flush_buffer_limit_bytes() const {
+    return flush_buffer_limit_bytes_.value();
+  }
+
+  void set_flush_buffer_limit_bytes(int64 x) {
+    set_option(x, &flush_buffer_limit_bytes_);
   }
 
   // The maximum length of a URL segment.
@@ -1841,6 +1852,8 @@ class RewriteOptions {
   // Resources with Cache-Control TTL less than this will not be rewritten.
   Option<int64> min_resource_cache_time_to_rewrite_ms_;
   Option<int64> idle_flush_time_ms_;
+  Option<int64> flush_buffer_limit_bytes_;
+
   // How long to wait in blocking fetches before timing out.
   // Applies to ResourceFetch::BlockingFetch() and class SyncFetcherAdapter.
   // Does not apply to async fetches.
