@@ -259,7 +259,7 @@ void ApacheRewriteDriverFactory::SetupCaches(
     HTTPCache* http_cache = new HTTPCache(l2_cache, timer(), hasher(), stats);
     resource_manager->set_http_cache(http_cache);
     resource_manager->set_metadata_cache(new CacheCopy(l2_cache));
-    resource_manager->MakePropertyCaches(l1_cache);
+    resource_manager->MakePropertyCaches(l2_cache);
   } else {
     WriteThroughHTTPCache* write_through_http_cache = new WriteThroughHTTPCache(
         l1_cache, l2_cache, timer(), hasher(), stats);
