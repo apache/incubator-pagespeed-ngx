@@ -45,7 +45,6 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
   virtual ~AddInstrumentationFilter();
 
   static void Initialize(Statistics* statistics);
-  static void Terminate() {}
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);

@@ -26,6 +26,7 @@
 #include "ap_mpm.h"
 
 #include "net/instaweb/apache/apache_cache.h"
+#include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apache_thread_system.h"
 #include "net/instaweb/apache/apr_file_system.h"
@@ -662,6 +663,11 @@ SharedMemStatistics* ApacheRewriteDriverFactory::
   return stats;
 }
 
+void ApacheRewriteDriverFactory::Initialize() {
+  ApacheConfig::Initialize();
+  RewriteDriverFactory::Initialize();
+}
+
 void ApacheRewriteDriverFactory::Initialize(Statistics* statistics) {
   RewriteDriverFactory::Initialize(statistics);
   SerfUrlAsyncFetcher::Initialize(statistics);
@@ -669,6 +675,11 @@ void ApacheRewriteDriverFactory::Initialize(Statistics* statistics) {
   CacheStats::Initialize(ApacheCache::kFileCache, statistics);
   CacheStats::Initialize(ApacheCache::kLruCache, statistics);
   CacheStats::Initialize(kMemcached, statistics);
+}
+
+void ApacheRewriteDriverFactory::Terminate() {
+  RewriteDriverFactory::Terminate();
+  ApacheConfig::Terminate();
 }
 
 ApacheResourceManager* ApacheRewriteDriverFactory::MakeApacheResourceManager(

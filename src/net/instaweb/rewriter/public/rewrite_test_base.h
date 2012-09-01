@@ -62,14 +62,30 @@ class UrlNamer;
 class WaitUrlAsyncFetcher;
 struct ContentType;
 
-class RewriteTestBase : public HtmlParseTestBaseNoAlloc {
+class RewriteOptionsTestBase : public HtmlParseTestBaseNoAlloc {
+ protected:
+  RewriteOptionsTestBase() {
+    RewriteOptions::Initialize();
+  }
+  ~RewriteOptionsTestBase() {
+    RewriteOptions::Terminate();
+  }
+};
+
+class RewriteTestBase : public RewriteOptionsTestBase {
  public:
   static const char kTestData[];    // Testdata directory.
 
   RewriteTestBase();
   explicit RewriteTestBase(Statistics* statistics);
+
+  // Specifies alternate factories to be initialized on construction.
+  // By default, TestRewriteDriverFactory is used, but you can employ
+  // your own subclass of TestRewriteDriverFactory using this
+  // constructor.  If you do, you probably also want to override
+  // MakeTestFactory.
   RewriteTestBase(TestRewriteDriverFactory* factory,
-                          TestRewriteDriverFactory* other_factory);
+                  TestRewriteDriverFactory* other_factory);
   virtual ~RewriteTestBase();
 
   virtual void SetUp();
@@ -79,6 +95,17 @@ class RewriteTestBase : public HtmlParseTestBaseNoAlloc {
   // the test harness should not add them in for our convenience.
   // It can go ahead and add the <html> and </html>, however.
   virtual bool AddBody() const { return false; }
+
+  // Makes a TestRewriteDriverFactory.  This can be overridden in
+  // subclasses if you need a factory with special properties.
+  //
+  // TODO(jmarantz): This is currently only used in
+  // ServeResourceFromNewContext, but should be used for factory_ and
+  // other_factory_.  This would requuire a refactor, because those
+  // are created at construction; too early for subclass overrides to
+  // take effect.  To deal with that, an alternate constructor is
+  // provided above so that the proper sort of factories can be passed in.
+  virtual TestRewriteDriverFactory* MakeTestFactory();
 
   // Adds kRecompressJpeg, kRecompressPng, kRecompressWebp, kConvertPngToJpeg,
   // kConvertJpegToWebp and kConvertGifToPng.

@@ -202,6 +202,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // ApacheRewriteDriverFactory, including apache-specific and
   // platform-independent statistics.
   static void Initialize(Statistics* statistics);
+  static void Initialize();
+  static void Terminate();
 
   // Print out details of all the connections to memcached servers.
   void PrintMemCacheStats(GoogleString* out);

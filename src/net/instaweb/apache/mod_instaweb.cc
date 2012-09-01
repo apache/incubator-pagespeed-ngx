@@ -317,8 +317,11 @@ apr_bucket* rewrite_html(InstawebContext* context, request_rec* request,
 // as directives-parsing time.
 class ApacheProcessContext {
  public:
-  ApacheProcessContext() {}
+  ApacheProcessContext() {
+    ApacheRewriteDriverFactory::Initialize();
+  }
   ~ApacheProcessContext() {
+    ApacheRewriteDriverFactory::Terminate();
     log_message_handler::ShutDown();
   }
 

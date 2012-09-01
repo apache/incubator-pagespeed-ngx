@@ -661,6 +661,9 @@ void CssFilter::Initialize(Statistics* statistics) {
   statistics->AddVariable(kLimitExceeded);
   statistics->AddVariable(kMinifyFailed);
   statistics->AddVariable(kRecursion);
+}
+
+void CssFilter::Initialize() {
   InitializeAtExitManager();
 }
 

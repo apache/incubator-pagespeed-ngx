@@ -558,6 +558,10 @@ void RewriteDriverFactory::Initialize(Statistics* statistics) {
   CacheBatcher::Initialize(statistics);
 }
 
+void RewriteDriverFactory::Initialize() {
+  RewriteDriver::Initialize();
+}
+
 void RewriteDriverFactory::Terminate() {
   RewriteDriver::Terminate();
 }

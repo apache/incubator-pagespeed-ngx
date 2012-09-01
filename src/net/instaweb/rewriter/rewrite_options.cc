@@ -199,6 +199,8 @@ const int64 RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs =
 const char* RewriteOptions::option_enum_to_name_array_[
     RewriteOptions::kEndOfOptions];
 
+RewriteOptions::Properties* RewriteOptions::properties_ = NULL;
+
 namespace {
 
 const RewriteOptions::Filter kCoreFilterSet[] = {
@@ -513,6 +515,9 @@ RewriteOptions::RewriteOptions()
       url_valued_attributes_(NULL) {
   // Sanity-checks -- will be active only when compiled for debug.
 #ifndef NDEBUG
+  DCHECK(properties_ != NULL)
+      << "Call RewriteOptions::Initialize before constructing one";
+
   CheckFilterSetOrdering(kCoreFilterSet, arraysize(kCoreFilterSet));
   CheckFilterSetOrdering(kTestFilterSet, arraysize(kTestFilterSet));
   CheckFilterSetOrdering(kDangerousFilterSet, arraysize(kDangerousFilterSet));
@@ -745,8 +750,40 @@ RewriteOptions::~RewriteOptions() {
 RewriteOptions::OptionBase::~OptionBase() {
 }
 
-void RewriteOptions::Initialize() {
-  InitOptionEnumToNameArray();
+RewriteOptions::Properties::Properties() : initialization_count_(1) {
+}
+
+bool RewriteOptions::Properties::Initialize(Properties** properties_handle) {
+  Properties* properties = *properties_handle;
+  if (properties == NULL) {
+    *properties_handle = new Properties;
+    return true;
+  }
+  ++(properties->initialization_count_);
+  return false;
+}
+
+bool RewriteOptions::Properties::Terminate(Properties** properties_handle) {
+  Properties* properties = *properties_handle;
+  DCHECK_GT(properties->initialization_count_, 0);
+  if (--(properties->initialization_count_) == 0) {
+    delete properties;
+    *properties_handle = NULL;
+    return true;
+  }
+  return false;
+}
+
+bool RewriteOptions::Initialize() {
+  if (Properties::Initialize(&properties_)) {
+    InitOptionEnumToNameArray();
+    return true;
+  }
+  return false;
+}
+
+bool RewriteOptions::Terminate() {
+  return Properties::Terminate(&properties_);
 }
 
 void RewriteOptions::SortOptions() {

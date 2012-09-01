@@ -83,7 +83,15 @@ class CssFilter : public RewriteFilter {
             ImageCombineFilter* image_combiner);
   virtual ~CssFilter();
 
+  // TODO(jmarantz): rename Initialize(Statistics* statistics) to
+  // InitStats(Statistics* statistics) in a follow-up.
+
+  // May be called multiple times, in case there are multiple statistics
+  // objects.
   static void Initialize(Statistics* statistics);
+
+  // Initialize & Terminate must be paired.
+  static void Initialize();
   static void Terminate();
 
   // Note: AtExitManager needs to be initialized or you get a nasty error:

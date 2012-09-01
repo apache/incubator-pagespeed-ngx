@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/string.h"
@@ -33,7 +34,7 @@
 
 namespace net_instaweb {
 
-class FuriousMatcherTest : public ::testing::Test {
+class FuriousMatcherTest : public RewriteOptionsTestBase<RewriteOptions> {
  protected:
   FuriousMatcher furious_matcher_;
 };

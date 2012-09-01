@@ -165,6 +165,7 @@
         'rewriter/server_context_test.cc',
         'rewriter/split_html_filter_test.cc',
         'rewriter/static_asserts_test.cc',
+        'rewriter/static_javascript_manager_test.cc',
         'rewriter/strip_non_cacheable_filter_test.cc',
         'rewriter/strip_scripts_filter_test.cc',
         'rewriter/support_noscript_filter_test.cc',

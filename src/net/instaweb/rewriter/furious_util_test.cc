@@ -24,6 +24,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/time_util.h"
@@ -33,12 +34,7 @@ namespace net_instaweb {
 
 namespace furious {
 
-class FuriousUtilTest : public testing::Test {
- protected:
-  FuriousUtilTest() { }
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(FuriousUtilTest);
+class FuriousUtilTest : public RewriteOptionsTestBase<RewriteOptions> {
 };
 
 TEST_F(FuriousUtilTest, GetCookieState) {

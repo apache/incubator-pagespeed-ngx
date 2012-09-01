@@ -248,6 +248,10 @@ void RewriteTestBase::ServeResourceFromManyContexts(
   //   5) With nothing available (failure).
 }
 
+TestRewriteDriverFactory* RewriteTestBase::MakeTestFactory() {
+  return new TestRewriteDriverFactory(GTestTempDir(), &mock_url_fetcher_);
+}
+
 // Test that a resource can be served from a new server that has not yet
 // been constructed.
 void RewriteTestBase::ServeResourceFromNewContext(
@@ -257,11 +261,11 @@ void RewriteTestBase::ServeResourceFromNewContext(
 
   // New objects for the new server.
   SimpleStats stats;
-  TestRewriteDriverFactory new_factory(GTestTempDir(), &mock_url_fetcher_);
+  scoped_ptr<TestRewriteDriverFactory> new_factory(MakeTestFactory());
   TestRewriteDriverFactory::Initialize(&stats);
-  new_factory.SetUseTestUrlNamer(factory_->use_test_url_namer());
-  new_factory.SetStatistics(&stats);
-  ServerContext* new_resource_manager = new_factory.CreateResourceManager();
+  new_factory->SetUseTestUrlNamer(factory_->use_test_url_namer());
+  new_factory->SetStatistics(&stats);
+  ServerContext* new_resource_manager = new_factory->CreateResourceManager();
   if (new_rms_url_namer != NULL) {
     new_resource_manager->set_url_namer(new_rms_url_namer);
   }
@@ -270,7 +274,7 @@ void RewriteTestBase::ServeResourceFromNewContext(
   resource_manager_->ComputeSignature(new_options);
   RewriteDriver* new_rewrite_driver = MakeDriver(new_resource_manager,
                                                  new_options);
-  new_factory.SetupWaitFetcher();
+  new_factory->SetupWaitFetcher();
 
   // TODO(sligocki): We should set default request headers.
   ExpectStringAsyncFetch response_contents(true);
@@ -290,12 +294,12 @@ void RewriteTestBase::ServeResourceFromNewContext(
   EXPECT_EQ("", response_contents.buffer());
 
   // After we call the callback, it should be correct.
-  new_factory.CallFetcherCallbacksForDriver(new_rewrite_driver);
+  new_factory->CallFetcherCallbacksForDriver(new_rewrite_driver);
   EXPECT_EQ(true, response_contents.done());
   EXPECT_STREQ(expected_content, response_contents.buffer());
 
   // Check that stats say we took the construct resource path.
-  RewriteStats* new_stats = new_factory.rewrite_stats();
+  RewriteStats* new_stats = new_factory->rewrite_stats();
   EXPECT_EQ(0, new_stats->cached_resource_fetches()->Get());
   // We should construct at least one resource, and maybe more if the
   // output resource was produced by multiple filters (e.g. JS minimize
@@ -305,7 +309,7 @@ void RewriteTestBase::ServeResourceFromNewContext(
 
   // Make sure to shut the new worker down before we hit ~RewriteDriver for
   // new_rewrite_driver.
-  new_factory.ShutDown();
+  new_factory->ShutDown();
   delete new_rewrite_driver;
 }
 

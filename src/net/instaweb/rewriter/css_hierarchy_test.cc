@@ -26,6 +26,7 @@
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
@@ -68,7 +69,7 @@ static const char kTopChild2Child1Css[] =
 
 }  // namespace
 
-class CssHierarchyTest : public ::testing::Test {
+class CssHierarchyTest : public RewriteOptionsTestBase<RewriteOptions> {
  protected:
   CssHierarchyTest()
       : top_url_(kTestDomain),

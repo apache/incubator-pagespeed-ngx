@@ -432,6 +432,16 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
   }
 
+  // These must be run prior to the calls to 'new CustomRewriteDriverFactory'
+  // in the constructor initializer above.  Thus the calls to Initialize() in
+  // the base class are too late.
+  static void SetUpTestCase() {
+    RewriteOptions::Initialize();
+  }
+  static void TearDownTestCase() {
+    RewriteOptions::Terminate();
+  }
+
   virtual void SetUp() {
     UseMd5Hasher();
     ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();

@@ -43,6 +43,9 @@ class ApacheConfig : public RewriteOptions {
   static bool ParseRefererStatisticsOutputLevel(
       const StringPiece& in, RefererStatisticsOutputLevel* out);
 
+  static void Initialize();
+  static void Terminate();
+
   explicit ApacheConfig(const StringPiece& dir);
   ApacheConfig();
   ~ApacheConfig() {}
@@ -231,6 +234,8 @@ class ApacheConfig : public RewriteOptions {
   };
 
  private:
+  static Properties* apache_properties_;
+
   void Init();
 
   static bool ParseFromString(const GoogleString& value_string,

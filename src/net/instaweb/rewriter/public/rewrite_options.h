@@ -463,6 +463,42 @@ class RewriteOptions {
     semantic_type::Category category;
   };
 
+  // Identifies static properties of RewriteOptions that must be
+  // initialized before the properties can be used.  Primarily for the
+  // benefit of unit tests and valgrind sanity, Initialize/Terminate
+  // is balance-checked.
+  //
+  // TODO(jmarantz): Add static properties -- currently there are none.
+  class Properties {
+   public:
+    // Initializes a static Properties* object.  Pass the address of a static
+    // member variable.  A count is kept of how many times Initialize is called.
+    //
+    // True will be returned if this was the first call to initialize
+    // the properties object, and this can be used by implementations
+    // to decide whether to initialize other static variables.
+    //
+    // Initialization is not thread-safe.
+    static bool Initialize(Properties** properties);
+
+    // Terminates a static Properties* object.  Pass the address of a static
+    // member variable.
+    //
+    // True will be returned if Terminate has been called the same number
+    // of times as Initialize is called, and this can be used to decide
+    // whether to clean up other static variables.
+    //
+    // Termination is not thread-safe.
+    static bool Terminate(Properties** properties_handle);
+
+   private:
+    // This object should not be constructed directly; it should be created
+    // by calling Properties::Initialize.
+    Properties();
+
+    int initialization_count_;
+  };
+
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
 
   // Parse a beacon url, or a pair of beacon urls (http https) separated by a
@@ -478,8 +514,11 @@ class RewriteOptions {
   RewriteOptions();
   virtual ~RewriteOptions();
 
-  // Does one time initialization of static members.
-  static void Initialize();
+  // Static initialization of members.  Calls to Initialize and
+  // Terminate must be matched.  Returns 'true' for the first
+  // Initialize call and the last Terminate call.
+  static bool Initialize();
+  static bool Terminate();
 
   bool modified() const { return modified_; }
 
@@ -1637,6 +1676,8 @@ class RewriteOptions {
   bool InsertFuriousSpecInVector(FuriousSpec* spec);
 
  private:
+  static Properties* properties_;
+
   FRIEND_TEST(RewriteOptionsTest, FuriousMergeTest);
   typedef std::vector<Filter> FilterVector;
 

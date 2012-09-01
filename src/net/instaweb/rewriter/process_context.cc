@@ -17,7 +17,6 @@
 #include "googleurl/src/url_util.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/rewriter/public/process_context.h"
-#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gflags.h"
 
 #include "third_party/protobuf/src/google/protobuf/stubs/common.h"
@@ -54,7 +53,6 @@ ProcessContext::~ProcessContext() {
   google::protobuf::ShutdownProtobufLibrary();
 
   url_util::Shutdown();
-  RewriteDriverFactory::Terminate();
   HtmlKeywords::ShutDown();
 }
 

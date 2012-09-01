@@ -638,9 +638,13 @@ const char RewriteDriver::kDomCohort[] = "dom";
 const char RewriteDriver::kSubresourcesPropertyName[] = "subresources";
 const char RewriteDriver::kLastRequestTimestamp[] = "last_request_timestamp";
 
-void RewriteDriver::Initialize(Statistics* statistics) {
-  RewriteOptions::Initialize();
+void RewriteDriver::Initialize() {
+  if (RewriteOptions::Initialize()) {
+    CssFilter::Initialize();
+  }
+}
 
+void RewriteDriver::Initialize(Statistics* statistics) {
   AddInstrumentationFilter::Initialize(statistics);
   CacheExtender::Initialize(statistics);
   CssCombineFilter::Initialize(statistics);
@@ -660,8 +664,9 @@ void RewriteDriver::Initialize(Statistics* statistics) {
 
 void RewriteDriver::Terminate() {
   // Clean up statics.
-  AddInstrumentationFilter::Terminate();
-  CssFilter::Terminate();
+  if (RewriteOptions::Terminate()) {
+    CssFilter::Terminate();
+  }
 }
 
 void RewriteDriver::SetResourceManager(ServerContext* resource_manager) {

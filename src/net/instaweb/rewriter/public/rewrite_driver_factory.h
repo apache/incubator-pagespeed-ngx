@@ -221,7 +221,15 @@ class RewriteDriverFactory {
   // SetStatistics, either from subclasses or externally.
   Statistics* statistics() { return statistics_; }
 
+  // Initializes statistics variables.  This must be done at process
+  // startup to enable shared memory segments in Apache to be set up.
+  //
+  // TODO(jmarantz): rename this overload to InitializeStatistics.  This
+  // requires a refactor touching code we don't own.
   static void Initialize(Statistics* statistics);
+
+  // Initializes static variables.  Initialize/Terminate calls must be paired.
+  static void Initialize();
   static void Terminate();
 
   // Does *not* take ownership of Statistics.

@@ -21,6 +21,7 @@
 #include <set>
 
 #include "net/instaweb/rewriter/public/furious_util.h"
+#include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_hasher.h"
@@ -30,9 +31,10 @@
 
 namespace net_instaweb {
 
-class RewriteOptionsTest : public ::testing::Test {
+class RewriteOptionsTest : public RewriteOptionsTestBase<RewriteOptions> {
  protected:
   typedef std::set<RewriteOptions::Filter> FilterSet;
+
   bool NoneEnabled() {
     FilterSet s;
     return OnlyEnabled(s);
@@ -633,7 +635,6 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  RewriteOptions::Initialize();
   EXPECT_EQ(101, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(

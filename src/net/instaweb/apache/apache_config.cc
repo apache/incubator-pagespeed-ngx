@@ -22,6 +22,20 @@ namespace net_instaweb {
 
 const char ApacheConfig::kClassName[] = "ApacheConfig";
 
+RewriteOptions::Properties* ApacheConfig::apache_properties_ = NULL;
+
+void ApacheConfig::Initialize() {
+  if (Properties::Initialize(&apache_properties_)) {
+    RewriteOptions::Initialize();
+  }
+}
+
+void ApacheConfig::Terminate() {
+  if (Properties::Terminate(&apache_properties_)) {
+    RewriteOptions::Terminate();
+  }
+}
+
 ApacheConfig::ApacheConfig(const StringPiece& description)
     : description_(description.data(), description.size()) {
   Init();

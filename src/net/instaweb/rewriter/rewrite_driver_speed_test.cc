@@ -32,6 +32,7 @@ namespace net_instaweb { class RewriteDriver; }
 
 static void BM_RewriteDriverConstruction(int iters) {
   net_instaweb::MockUrlFetcher fetcher;
+  net_instaweb::RewriteDriverFactory::Initialize();
   net_instaweb::TestRewriteDriverFactory factory("/tmp", &fetcher);
   net_instaweb::RewriteDriverFactory::Initialize(factory.statistics());
   net_instaweb::ServerContext* resource_manager =
@@ -43,5 +44,6 @@ static void BM_RewriteDriverConstruction(int iters) {
         resource_manager->NewCustomRewriteDriver(options);
     resource_manager->ReleaseRewriteDriver(driver);
   }
+  net_instaweb::RewriteDriverFactory::Terminate();
 }
 BENCHMARK(BM_RewriteDriverConstruction);
