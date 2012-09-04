@@ -192,6 +192,7 @@ class RewriteOptions {
     kModifyCachingHeaders,
     kOverrideBlinkCacheTimeMs,
     kOverrideCachingTtlMs,
+    kOverrideIeDocumentMode,
     kPassthroughBlinkForInvalidResponseCode,
     kProgressiveJpegMinBytes,
     kRejectBlacklisted,
@@ -779,6 +780,12 @@ class RewriteOptions {
   void set_blocking_fetch_timeout_ms(int64 x) {
     set_option(x, &blocking_fetch_timeout_ms_);
   }
+  bool override_ie_document_mode() const {
+    return override_ie_document_mode_.value();
+  }
+  void set_override_ie_document_mode(bool x) {
+    set_option(x, &override_ie_document_mode_);
+  }
 
   // Returns false if there is an entry in url_cache_invalidation_entries_ with
   // its timestamp_ms > time_ms and url matches the url_pattern.  Else, return
@@ -1113,6 +1120,13 @@ class RewriteOptions {
   }
   bool enable_blink_html_change_detection_logging() const {
     return enable_blink_html_change_detection_logging_.value();
+  }
+
+  void set_enable_lazyload_in_blink(bool x) {
+    set_option(x, &enable_lazyload_in_blink_);
+  }
+  bool enable_lazyload_in_blink() const {
+    return enable_lazyload_in_blink_.value();
   }
 
   void set_blink_html_change_detection_time_ms(int64 x) {
@@ -1991,6 +2005,9 @@ class RewriteOptions {
   // make any changes.  Enables code to detect such cases and avoid renaming.
   Option<bool> avoid_renaming_introspective_javascript_;
 
+  // Overrides the IE document mode to use the highest mode available.
+  Option<bool> override_ie_document_mode_;
+
   // Enables blocking rewrite of html. RewriteDriver provides a flag
   // fully_rewrite_on_flush which makes sure that all rewrites are done before
   // the response is flushed to the client. If the value of the
@@ -2062,6 +2079,8 @@ class RewriteOptions {
   Option<bool> enable_blink_html_change_detection_;
   // Enable logging of publisher changes detected in html in blink flow.
   Option<bool> enable_blink_html_change_detection_logging_;
+  // Don't force disable lazyload in blink;
+  Option<bool> enable_lazyload_in_blink_;
   // Override cache-time for cacheable resources in blink.
   Option<int64> override_blink_cache_time_ms_;
   // Specification for critical line.

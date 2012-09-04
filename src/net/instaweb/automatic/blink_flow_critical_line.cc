@@ -44,11 +44,14 @@
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
+#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -259,6 +262,7 @@ class CriticalLineFetch : public AsyncFetch {
     resource_manager_->ComputeSignature(options);
     html_change_detection_driver_ =
         resource_manager_->NewCustomRewriteDriver(options);
+    html_change_detection_driver_->set_is_blink_request(true);
     value_.Clear();
     html_change_detection_driver_->SetWriter(&value_);
     html_change_detection_driver_->set_response_headers_ptr(response_headers());
@@ -277,6 +281,7 @@ class CriticalLineFetch : public AsyncFetch {
     num_blink_html_cache_misses_->IncBy(1);
     critical_line_computation_driver_ =
         resource_manager_->NewCustomRewriteDriver(options_.release());
+    critical_line_computation_driver_->set_is_blink_request(true);
     // Wait for all rewrites to complete. This is important because fully
     // rewritten html is used to compute BlinkCriticalLineData.
     critical_line_computation_driver_->set_fully_rewrite_on_flush(true);
@@ -461,6 +466,11 @@ void BlinkFlowCriticalLine::Start(
     ProxyFetchFactory* factory,
     ServerContext* manager,
     ProxyFetchPropertyCallbackCollector* property_callback) {
+  if (!options->enable_lazyload_in_blink()) {
+    // Disable Lazyload Images so that lazyload js is not flushed by
+    // SendLazyloadImagesJs() function.
+    options->DisableFilter(RewriteOptions::kLazyloadImages);
+  }
   BlinkFlowCriticalLine* flow = new BlinkFlowCriticalLine(
       url, base_fetch, options, factory, manager, property_callback);
   flow->SetStartRequestTimings();
@@ -676,10 +686,33 @@ void BlinkFlowCriticalLine::ServeCriticalPanelContents() {
   SendCriticalHtml(critical_html_);
   WriteResponseStartAndLookUpTimings();
   SendInlineImagesJson(pushed_images_str);
+  // TODO(pulkitg): Merge lazyload script code into blink.js.
+  SendLazyloadImagesJs();
+}
+
+void BlinkFlowCriticalLine::SendLazyloadImagesJs() {
+  // TODO(pulkitg): Insert lazyload js only if images are present in the non
+  // critical html.
+  if (!options_->Enabled(RewriteOptions::kLazyloadImages)) {
+    return;
+  }
+  StaticJavascriptManager* static_js__manager =
+      manager_->static_javascript_manager();
+  options_->set_lazyload_images_after_onload(false);
+  GoogleString lazyload_js = LazyloadImagesFilter::GetLazyloadJsSnippet(
+      options_, static_js__manager);
+  WriteString("<script type=\"text/javascript\">");
+  WriteString(lazyload_js);
+  WriteString("</script>");
 }
 
 void BlinkFlowCriticalLine::SendCriticalHtml(
     const GoogleString& critical_html) {
+  // Send an explicit UTF-8 BOM to make IE9 recognize the content as UTF-8.
+  // TODO(rmathew): Remove this once we start serving content in its original
+  // charset.
+  // TODO(rmathew): Add system-tests for non-UTF-8 content.
+  WriteString(kUtf8Bom);
   WriteString(critical_html);
   WriteString("<script>pagespeed.panelLoaderInit();</script>");
   const char* user_ip = base_fetch_->request_headers()->Lookup1(
@@ -742,12 +775,22 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
 
   // Disable filters which trigger render requests. This is not needed for
   // when we have non-200 code but we just blanket disable here.
-  options_->DisableFilter(RewriteOptions::kLazyloadImages);
   options_->DisableFilter(RewriteOptions::kDelayImages);
   options_->DisableFilter(RewriteOptions::kInlineImages);
   if (critical_line_data_found) {
     SetFilterOptions(options_);
     options_->ForceEnableFilter(RewriteOptions::kServeNonCacheableNonCritical);
+    bool revalidate_data =
+        (options_->enable_blink_html_change_detection_logging() ||
+         options_->enable_blink_html_change_detection()) &&
+        (manager_->timer()->NowMs() -
+            blink_critical_line_data_->last_diff_timestamp_ms() >
+            options_->blink_html_change_detection_time_ms());
+    if (revalidate_data) {
+      options = options_->Clone();
+    }
+    // Don't lazyload images which are present in non-cacheable html.
+    options_->DisableFilter(RewriteOptions::kLazyloadImages);
     manager_->ComputeSignature(options_);
     driver = manager_->NewCustomRewriteDriver(options_);
 
@@ -758,14 +801,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     // base fetch. It also doesn't attach the response headers from the base
     // fetch since headers have already been flushed out.
     fetch = new AsyncFetchWithHeadersInhibited(base_fetch_);
-    bool revalidate_data =
-        (options_->enable_blink_html_change_detection_logging() ||
-         options_->enable_blink_html_change_detection()) &&
-        (manager_->timer()->NowMs() -
-            blink_critical_line_data_->last_diff_timestamp_ms() >
-            options_->blink_html_change_detection_time_ms());
     if (revalidate_data) {
-      options = options_->Clone();
       BlinkCriticalLineData* blink_critical_line_data =
           new BlinkCriticalLineData();
       blink_critical_line_data->MergeFrom(*blink_critical_line_data_);

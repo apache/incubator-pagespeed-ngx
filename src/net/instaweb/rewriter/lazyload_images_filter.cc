@@ -56,13 +56,7 @@ const char* LazyloadImagesFilter::kLoadAllImages =
 LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
     : CommonFilter(driver) {
   Clear();
-  const GoogleString& options_url =
-      driver->options()->lazyload_images_blank_url();
-  if (options_url.empty()) {
-    blank_image_url_ = kBlankImageSrc;
-  } else {
-    blank_image_url_ = options_url.c_str();
-  }
+  blank_image_url_ = GetBlankImageSrc(driver->options());
 }
 LazyloadImagesFilter::~LazyloadImagesFilter() {}
 
@@ -152,35 +146,46 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
         // pagespeed_lazy_src attribute / pagespeed_no_defer attribute and is
         // not inlined.
         // Note that we remove the pagespeed_no_defer if it was present.
-        CriticalImagesFinder* finder =
-            driver()->server_context()->critical_images_finder();
-        // Note that if the platform lacks a CriticalImageFinder
-        // implementation, we consider all images to be non-critical and try
-        // to lazily load them.
-        if (finder->IsMeaningful()) {
-          // Decode the url since the critical images in the finder are not
-          // rewritten.
-          GoogleUrl gurl(base_url(), url);
-          StringVector decoded_url_vector;
-          if (driver()->DecodeUrl(gurl, &decoded_url_vector) &&
-              decoded_url_vector.size() == 1) {
-            // We only handle the case where the rewritten url corresponds to a
-            // single original url which should be sufficient for all cases
-            // other than image sprites.
-            gurl.Reset(decoded_url_vector[0]);
+        // Critical Images are required only if it is not a blink request as
+        // blink automatically decides critical images.
+        // Lazyload script will only be inserted if it is not a blink request.
+        // Blink sends the lazyload script after critical images are sent.
+        if (!driver_->options()->Enabled(
+            RewriteOptions::kProcessBlinkInBackground)) {
+          CriticalImagesFinder* finder =
+              driver()->server_context()->critical_images_finder();
+          // Note that if the platform lacks a CriticalImageFinder
+          // implementation, we consider all images to be non-critical and try
+          // to lazily load them.
+          if (finder->IsMeaningful()) {
+            // Decode the url since the critical images in the finder are not
+            // rewritten.
+            GoogleUrl gurl(base_url(), url);
+            StringVector decoded_url_vector;
+            if (driver()->DecodeUrl(gurl, &decoded_url_vector) &&
+                decoded_url_vector.size() == 1) {
+              // We only handle the case where the rewritten url corresponds to
+              // a single original url which should be sufficient for all cases
+              // other than image sprites.
+              gurl.Reset(decoded_url_vector[0]);
+            }
+            if (finder->IsCriticalImage(gurl.spec_c_str(), driver())) {
+              // Do not try to lazily load this image since it is critical.
+              return;
+            }
           }
-          if (finder->IsCriticalImage(gurl.spec_c_str(), driver())) {
-            // Do not try to lazily load this image since it is critical.
-            return;
+          if (!main_script_inserted_) {
+            InsertLazyloadJsCode(element);
           }
+          // Replace the src with pagespeed_lazy_src.
+          driver()->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
+          driver()->AddAttribute(element, HtmlName::kSrc, blank_image_url_);
+        } else {
+          // Add pagespeed_blank_src as the blank image.
+          driver()->AddAttribute(
+              element, HtmlName::kPagespeedBlankSrc, blank_image_url_);
         }
-        if (!main_script_inserted_) {
-          InsertLazyloadJsCode(element);
-        }
-        // Replace the src with pagespeed_lazy_src and set the onload
-        // appropriately.
-        driver()->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
-        driver()->AddAttribute(element, HtmlName::kSrc, blank_image_url_);
+        // Set the onload appropriately.
         driver()->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
       }
     }
@@ -190,21 +195,40 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
 void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
   HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
   driver()->AddAttribute(script, HtmlName::kType, "text/javascript");
-  const GoogleString& load_onload =
-      driver()->options()->lazyload_images_after_onload() ? kTrue : kFalse;
   StaticJavascriptManager* static_js__manager =
       driver()->server_context()->static_javascript_manager();
-  StringPiece lazyload_images_js =
-      static_js__manager->GetJsSnippet(
-          StaticJavascriptManager::kLazyloadImagesJs, driver()->options());
-  const GoogleString& lazyload_js =
-      StrCat(lazyload_images_js, "\npagespeed.lazyLoadInit(",
-             load_onload, ", \"", blank_image_url_, "\");\n");
+  GoogleString lazyload_js = GetLazyloadJsSnippet(
+      driver()->options(), static_js__manager);
   HtmlNode* script_code = driver()->NewCharactersNode(
       script, lazyload_js);
   driver()->InsertElementBeforeElement(element, script);
   driver()->AppendChild(script, script_code);
   main_script_inserted_ = true;
+}
+
+GoogleString LazyloadImagesFilter::GetBlankImageSrc(
+    const RewriteOptions* options) {
+  const GoogleString& options_url = options->lazyload_images_blank_url();
+  if (options_url.empty()) {
+    return kBlankImageSrc;
+  } else {
+    return options_url.c_str();
+  }
+}
+
+GoogleString LazyloadImagesFilter::GetLazyloadJsSnippet(
+    const RewriteOptions* options,
+    StaticJavascriptManager* static_js__manager) {
+  const GoogleString& load_onload =
+      options->lazyload_images_after_onload() ? kTrue : kFalse;
+  StringPiece lazyload_images_js =
+      static_js__manager->GetJsSnippet(
+          StaticJavascriptManager::kLazyloadImagesJs, options);
+  const GoogleString& blank_image_url = GetBlankImageSrc(options);
+  GoogleString lazyload_js =
+      StrCat(lazyload_images_js, "\npagespeed.lazyLoadInit(",
+             load_onload, ", \"", blank_image_url, "\");\n");
+  return lazyload_js;
 }
 
 }  // namespace net_instaweb

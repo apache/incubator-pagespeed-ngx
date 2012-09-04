@@ -45,6 +45,7 @@ class ContentType;
 class CriticalImagesFinder;
 class FileSystem;
 class FilenameEncoder;
+class FlushEarlyInfoFinder;
 class Function;
 class FuriousMatcher;
 class GoogleUrl;
@@ -219,6 +220,12 @@ class ServerContext {
     return critical_images_finder_.get();
   }
   void set_critical_images_finder(CriticalImagesFinder* finder);
+
+  FlushEarlyInfoFinder* flush_early_info_finder() const {
+    return flush_early_info_finder_.get();
+  }
+  void set_flush_early_info_finder(FlushEarlyInfoFinder* finder);
+
   const UserAgentMatcher& user_agent_matcher() const {
     return *user_agent_matcher_;
   }
@@ -477,6 +484,7 @@ class ServerContext {
   Hasher* hasher_;
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
   scoped_ptr<BlinkCriticalLineDataFinder> blink_critical_line_data_finder_;
+  scoped_ptr<FlushEarlyInfoFinder> flush_early_info_finder_;
 
   // hasher_ is often set to a mock within unit tests, but some parts of the
   // system will not work sensibly if the "hash algorithm" used always returns

@@ -740,6 +740,7 @@
         'rewriter/blink_critical_line_data_finder.cc',
         'rewriter/critical_images_finder.cc',
         'rewriter/domain_lawyer.cc',
+        'rewriter/flush_early_info_finder.cc',
         'rewriter/resource.cc',
         'rewriter/rewrite_options.cc',
         'rewriter/output_resource.cc',

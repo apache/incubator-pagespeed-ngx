@@ -153,6 +153,7 @@ class HtmlName {
     kOption,
     kOther,
     kP,
+    kPagespeedBlankSrc,
     kPagespeedHighResSrc,
     kPagespeedIframe,
     kPagespeedLazySrc,

@@ -86,6 +86,7 @@ struct OptionName {
 "MinResourceCacheTimeToRewriteMs",       RewriteOptions::kMinResourceCacheTimeToRewriteMs
 "ModifyCachingHeaders",                  RewriteOptions::kModifyCachingHeaders
 "OverrideCachingTtlMs",                  RewriteOptions::kOverrideCachingTtlMs
+"OverrideIeDocumentMode",                RewriteOptions::kOverrideIeDocumentMode
 "ProgressiveJpegMinBytes",               RewriteOptions::kProgressiveJpegMinBytes
 "RejectBlacklisted",                     RewriteOptions::kRejectBlacklisted
 "RejectBlacklistedStatusCode",           RewriteOptions::kRejectBlacklistedStatusCode

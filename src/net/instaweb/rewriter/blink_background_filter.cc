@@ -22,6 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/blink_background_filter.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
+#include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
@@ -68,6 +69,20 @@ void BlinkBackgroundFilter::StartElement(HtmlElement* element) {
   // the user to the page with blink disabled.
   if (element->keyword() == HtmlName::kNoscript) {
     rewrite_driver_->DeleteElement(element);
+  }
+  // We currently serve rewritten HTML using UTF-8 and indicate it in a
+  // response header - if there is a "content-type" META tag that specifies a
+  // charset, delete it.
+  // TODO(rmathew): Remove this when we start returning content in the
+  // original charset.
+  if (element->keyword() == HtmlName::kMeta) {
+    GoogleString content, mime_type, charset;
+    if (CommonFilter::ExtractMetaTagDetails(*element, NULL, &content,
+                                            &mime_type, &charset)) {
+      if (!charset.empty()) {
+        rewrite_driver_->DeleteElement(element);
+      }
+    }
   }
 }
 

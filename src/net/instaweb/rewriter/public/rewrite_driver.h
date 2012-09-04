@@ -58,6 +58,7 @@ class CommonFilter;
 class DomainRewriteFilter;
 class FileSystem;
 class FlushEarlyInfo;
+class FlushEarlyRenderInfo;
 class Function;
 class HtmlEvent;
 class HtmlFilter;
@@ -829,6 +830,11 @@ class RewriteDriver : public HtmlParse {
   // This method is not thread-safe. Call it only from the html parser thread.
   FlushEarlyInfo* flush_early_info();
 
+  FlushEarlyRenderInfo* flush_early_render_info() const;
+
+  void set_flush_early_render_info(
+      FlushEarlyRenderInfo* flush_early_render_info);
+
   void set_serve_blink_non_critical(bool x) { serve_blink_non_critical_ = x; }
   bool serve_blink_non_critical() const { return serve_blink_non_critical_; }
 
@@ -1205,6 +1211,8 @@ class RewriteDriver : public HtmlParse {
   CollectSubresourcesFilter* collect_subresources_filter_;
 
   scoped_ptr<FlushEarlyInfo> flush_early_info_;
+
+  scoped_ptr<FlushEarlyRenderInfo> flush_early_render_info_;
 
   // When non-cacheable panels are absent, non-critical content is already
   // served in blink flow. This flag indicates whether to serve non-critical

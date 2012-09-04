@@ -81,6 +81,9 @@ class LazyloadImagesFilter : public CommonFilter {
   virtual const char* Name() const { return "Lazyload Images"; }
 
   static void Initialize(Statistics* statistics);
+  static GoogleString GetLazyloadJsSnippet(
+      const RewriteOptions* options,
+      StaticJavascriptManager* static_js__manager);
   static void Terminate();
 
  protected:
@@ -91,6 +94,8 @@ class LazyloadImagesFilter : public CommonFilter {
  private:
   // Clears all state associated with the filter.
   void Clear();
+
+  static GoogleString GetBlankImageSrc(const RewriteOptions* options);
 
   // Inserts the lazyload JS code before the given element.
   void InsertLazyloadJsCode(HtmlElement* element);

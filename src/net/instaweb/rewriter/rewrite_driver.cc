@@ -325,6 +325,7 @@ void RewriteDriver::Clear() {
   fully_rewrite_on_flush_ = false;
   num_inline_preview_images_ = 0;
   flush_early_info_.reset(NULL);
+  flush_early_render_info_.reset(NULL);
   collect_subresources_filter_ = NULL;
   serve_blink_non_critical_ = false;
   is_blink_request_ = false;
@@ -2389,6 +2390,15 @@ void RewriteDriver::SaveOriginalHeaders() {
     response_headers_->GetSanitizedProto(
         flush_early_info()->mutable_response_headers());
   }
+}
+
+FlushEarlyRenderInfo* RewriteDriver::flush_early_render_info() const {
+  return flush_early_render_info_.get();
+}
+
+void RewriteDriver::set_flush_early_render_info(
+    FlushEarlyRenderInfo* flush_early_render_info) {
+  flush_early_render_info_.reset(flush_early_render_info);
 }
 
 }  // namespace net_instaweb

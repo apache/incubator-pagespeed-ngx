@@ -21,6 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string.h"
@@ -43,7 +44,8 @@ JsDisableFilter::JsDisableFilter(RewriteDriver* driver)
       script_tag_scanner_(driver),
       index_(0),
       defer_js_experimental_script_written_(false),
-      defer_js_enabled_(false) {
+      defer_js_enabled_(false),
+      body_element_(NULL) {
 }
 
 JsDisableFilter::~JsDisableFilter() {
@@ -55,6 +57,8 @@ void JsDisableFilter::StartDocument() {
   defer_js_enabled_ = rewrite_driver_->UserAgentSupportsJsDefer();
   defer_js_experimental_ =
       rewrite_driver_->options()->enable_defer_js_experimental();
+  prefetch_scripts_.clear();
+  body_element_ = NULL;
 }
 
 void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {
@@ -77,17 +81,55 @@ void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {
   defer_js_experimental_script_written_ = true;
 }
 
+void JsDisableFilter::InsertPrefetchScriptsContainer(HtmlElement* element) {
+  // The following code works in webkit based browsers only when look ahead
+  // parser finds these scripts.
+  // Client side code will try to prefetch them again for webkit based browsers.
+  HtmlElement* prefetch_scripts_container = rewrite_driver_->NewElement(
+      element, HtmlName::kDiv);
+  rewrite_driver_->AddAttribute(prefetch_scripts_container,
+                                HtmlName::kClass,
+                                "psa_prefetch_container");
+  rewrite_driver_->AppendChild(element, prefetch_scripts_container);
+  for (int i = 0, n = prefetch_scripts_.size(); i < n; ++i) {
+    rewrite_driver_->AppendChild(prefetch_scripts_container,
+                                 prefetch_scripts_[i]);
+  }
+}
+
+void JsDisableFilter::InsertMetaTagForIE(HtmlElement* element) {
+  if (!rewrite_driver_->options()->override_ie_document_mode() ||
+      !rewrite_driver_->user_agent_matcher().IsIe(
+          rewrite_driver_->user_agent())) {
+    return;
+  }
+  // TODO(ksimbili): Don't add the following if there is already a meta tag
+  // and if it's content is greater than IE8 (deferJs supported version).
+  HtmlElement* meta_tag =
+      rewrite_driver_->NewElement(element, HtmlName::kMeta);
+
+  rewrite_driver_->AddAttribute(meta_tag, HtmlName::kHttpEquiv,
+                                "X-UA-Compatible");
+  rewrite_driver_->AddAttribute(meta_tag, HtmlName::kContent, "IE=edge");
+  rewrite_driver_->AppendChild(element, meta_tag);
+}
+
 void JsDisableFilter::StartElement(HtmlElement* element) {
   if (!defer_js_enabled_) {
     return;
   }
 
-  if (element->keyword() == HtmlName::kBody &&
-      !defer_js_experimental_script_written_) {
-    HtmlElement* head_node =
-        rewrite_driver_->NewElement(element->parent(), HtmlName::kHead);
-    rewrite_driver_->InsertElementBeforeCurrent(head_node);
-    InsertJsDeferExperimentalScript(head_node);
+  if (element->keyword() == HtmlName::kBody) {
+    if (body_element_ == NULL) {
+      body_element_ = element;
+    }
+    if (!defer_js_experimental_script_written_) {
+      HtmlElement* head_node =
+          rewrite_driver_->NewElement(element->parent(), HtmlName::kHead);
+      rewrite_driver_->InsertElementBeforeCurrent(head_node);
+      InsertJsDeferExperimentalScript(head_node);
+      InsertMetaTagForIE(head_node);
+    }
   } else {
     HtmlElement::Attribute* src;
     if (script_tag_scanner_.ParseScriptElement(element, &src) ==
@@ -96,6 +138,17 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
         return;
       }
       if (src != NULL) {
+        if (src->escaped_value() != NULL) {
+          // Clone node for prefetching the resource.
+          HtmlElement* clone = rewrite_driver_->NewElement(NULL,
+                                                           HtmlName::kScript);
+          clone->AddAttribute(*src);
+          clone->AddAttribute(
+              rewrite_driver_->MakeName(HtmlName::kType), "psa_prefetch",
+              HtmlElement::DOUBLE_QUOTE);
+          prefetch_scripts_.push_back(clone);
+        }
+        // Disable Execution of script in the original element.
         src->set_name(rewrite_driver_->MakeName(HtmlName::kPagespeedOrigSrc));
       } else if (index_ == 0 &&
                  rewrite_driver_->options()->Enabled(
@@ -133,6 +186,19 @@ void JsDisableFilter::EndElement(HtmlElement* element) {
   if (defer_js_enabled_ && element->keyword() == HtmlName::kHead &&
       !defer_js_experimental_script_written_) {
     InsertJsDeferExperimentalScript(element);
+    InsertMetaTagForIE(element);
+  }
+
+  // Add the prefetch container if either of following conditions is met.
+  // If we found the end body tag we were tracking.
+  // if we reached end of html with scripts after body tag/or no body tag.
+  if (body_element_ == element ||
+      (body_element_ == NULL && element->parent() == NULL)) {
+    if (prefetch_scripts_.size() > 0) {
+      InsertPrefetchScriptsContainer(element);
+      prefetch_scripts_.clear();
+    }
+    body_element_ = NULL;
   }
 }
 

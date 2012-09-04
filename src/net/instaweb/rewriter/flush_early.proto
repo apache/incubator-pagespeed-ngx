@@ -62,8 +62,22 @@ message FlushEarlyInfo {
   optional int32 total_dns_prefetch_domains_previous = 7;
 
   // Meta Tag which specifies the content type of the page.
-  optional string content_type_meta_tag = 8;
+  optional string content_type_meta_tag = 8;  // deprecated.
 
   // The HTML for all resource elements that we want to try to flush early.
   optional string resource_html = 9;
+}
+
+// FlushEarlyRenderInfo stores information for flushing a request early i.e.
+// before receiving a response form the origin server.
+// NextId: 4
+message FlushEarlyRenderInfo {
+  // Url of privately cacheable resources.
+  repeated string private_cacheable_url = 1;
+
+  // Charset of the html document.
+  optional string charset = 2;
+
+  // This is a marker in property cache stating if the entry was ever updated.
+  optional bool updated = 3;
 }

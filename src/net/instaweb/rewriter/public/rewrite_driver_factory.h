@@ -37,6 +37,7 @@ class BlinkCriticalLineDataFinder;
 class CriticalImagesFinder;
 class FileSystem;
 class FilenameEncoder;
+class FlushEarlyInfoFinder;
 class FuriousMatcher;
 class Hasher;
 class LogRecord;
@@ -305,12 +306,14 @@ class RewriteDriverFactory {
 
   virtual Hasher* NewHasher() = 0;
 
-  // Default implementation returns NULL.
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
 
   // Default implementation returns NULL.
   virtual BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder(
       PropertyCache* cache);
+
+  // Default implementation returns NULL.
+  virtual FlushEarlyInfoFinder* DefaultFlushEarlyInfoFinder();
 
   // They may also supply a custom lock manager. The default implementation
   // will use the file system.

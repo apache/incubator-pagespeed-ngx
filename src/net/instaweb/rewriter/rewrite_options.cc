@@ -687,6 +687,7 @@ RewriteOptions::RewriteOptions()
   // Sort all_options_ on enum.
   SortOptions();
   // Do not call add_option with OptionEnum fourth argument after this.
+  add_option(false, &enable_lazyload_in_blink_, "elib");
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
              &metadata_cache_staleness_threshold_ms_, "mcst");
   add_option(false, &apply_blink_if_no_families_, "abnf");
@@ -696,6 +697,7 @@ RewriteOptions::RewriteOptions()
   add_option("", &lazyload_images_blank_url_, "llbu");
   add_option(kDefaultBlinkHtmlChangeDetectionTimeMs,
              &blink_html_change_detection_time_ms_, "bhcdt");
+  add_option("false", &override_ie_document_mode_, "oidm");
 
   //
   // Recently sriharis@ excluded a variety of options from

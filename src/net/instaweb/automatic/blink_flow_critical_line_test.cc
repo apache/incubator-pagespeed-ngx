@@ -33,13 +33,16 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/blink_critical_line_data.pb.h"
+#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/delay_cache.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -95,6 +98,26 @@ const char kHtmlInput[] =
          "<img src=\"image3\">"
           "<div class=\"item\">"
              "<img src=\"image4\">"
+          "</div>"
+      "</div>"
+    "</body></html>";
+
+const char kLazyLoadHtml[] =
+    "<html>"
+    "<head>"
+    "</head>"
+    "<body>%s\n"
+    "<div id=\"header\"> This is the header </div>"
+    "<div id=\"container\" class>"
+      "<h2 id=\"beforeItems\"> This is before Items </h2>"
+      "<div class=\"item\">%s"
+         "<img pagespeed_lazy_src=\"image1\" src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\" onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
+         "<img pagespeed_lazy_src=\"image2\" src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\" onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
+         "</div>"
+         "<div class=\"item\">"
+           "<img pagespeed_lazy_src=\"image3\" src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\" onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
+           "<div class=\"item\">"
+             "<img pagespeed_lazy_src=\"image4\" src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\" onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
           "</div>"
       "</div>"
     "</body></html>";
@@ -176,6 +199,9 @@ const char kFakePngInput[] = "FakePng";
 
 const char kNoBlinkUrl[] =
     "http://test.com/noblink_text.html?ModPagespeed=noscript";
+
+const char kNoScriptTextUrl[] =
+    "http://test.com/text.html?ModPagespeed=noscript";
 
 // Like ExpectStringAsyncFetch but for asynchronous invocation -- it lets
 // one specify a WorkerTestBase::SyncPoint to help block until completion.
@@ -414,21 +440,39 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
       : RewriteTestBase(
           new CustomRewriteDriverFactory(&mock_url_fetcher_),
           new CustomRewriteDriverFactory(&mock_url_fetcher_)),
-        blink_output_(StrCat(StringPrintf(
+        blink_output_(StrCat(kUtf8Bom, StringPrintf(
             kBlinkOutputCommon, "text.html", "text.html"), kBlinkOutputSuffix)),
-        blink_output_with_extra_non_cacheable_(StrCat(StringPrintf(
+        blink_output_with_extra_non_cacheable_(StrCat(kUtf8Bom, StringPrintf(
             kBlinkOutputCommon, "text.html", "text.html"),
             kBlinkOutputWithExtraNonCacheableSuffix)),
-        blink_output_with_cacheable_panels_no_cookies_(StrCat(StringPrintf(
-            kBlinkOutputCommon, "flaky.html", "flaky.html"),
-            kBlinkOutputWithCacheablePanelsNoCookiesSuffix)),
-        blink_output_with_cacheable_panels_cookies_(StrCat(StringPrintf(
-            kBlinkOutputCommon, "cache.html", "cache.html"),
-            kBlinkOutputWithCacheablePanelsCookiesSuffix)) {
+        blink_output_with_cacheable_panels_no_cookies_(
+            StrCat(kUtf8Bom, StringPrintf(kBlinkOutputCommon, "flaky.html",
+                                          "flaky.html"),
+                   kBlinkOutputWithCacheablePanelsNoCookiesSuffix)),
+        blink_output_with_cacheable_panels_cookies_(
+            StrCat(kUtf8Bom, StringPrintf(kBlinkOutputCommon, "cache.html",
+                                          "cache.html"),
+                   kBlinkOutputWithCacheablePanelsCookiesSuffix)) {
     noblink_output_ = StrCat("<html><head></head><body>",
                              StringPrintf(kNoScriptRedirectFormatter,
                                           kNoBlinkUrl, kNoBlinkUrl),
                              "</body></html>");
+    StringPiece lazyload_js_code =
+        resource_manager()->static_javascript_manager()->GetJsSnippet(
+            StaticJavascriptManager::kLazyloadImagesJs, options());
+    noblink_output_with_lazy_load_ = StringPrintf(kLazyLoadHtml,
+        StringPrintf(kNoScriptRedirectFormatter,
+                     kNoScriptTextUrl, kNoScriptTextUrl).c_str(),
+        StrCat("<script type=\"text/javascript\">",
+               lazyload_js_code, "\npagespeed.lazyLoadInit(false, \"",
+               LazyloadImagesFilter::kBlankImageSrc,
+               "\");\n</script>").c_str());
+    blink_output_with_lazy_load_ = StrCat(kUtf8Bom, StringPrintf(
+        kBlinkOutputCommon, "text.html", "text.html"),
+        "<script type=\"text/javascript\">",
+        lazyload_js_code, "\npagespeed.lazyLoadInit(false, \"",
+        LazyloadImagesFilter::kBlankImageSrc, "\");\n</script>",
+        kBlinkOutputSuffix);
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
   }
 
@@ -472,7 +516,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     options_->ForceEnableFilter(RewriteOptions::kConvertMetaTags);
     options_->ForceEnableFilter(RewriteOptions::kCombineCss);
     options_->ForceEnableFilter(RewriteOptions::kCombineJavascript);
-    options_->ForceEnableFilter(RewriteOptions::kLazyloadImages);
+    options_->ForceEnableFilter(RewriteOptions::kDelayImages);
 
     options_->Disallow("*blacklist*");
 
@@ -893,6 +937,8 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
 
   ResponseHeaders response_headers_;
   GoogleString noblink_output_;
+  GoogleString noblink_output_with_lazy_load_;
+  GoogleString blink_output_with_lazy_load_;
   FakeBlinkCriticalLineDataFinder* fake_blink_critical_line_data_finder_;
   LoggingInfo logging_info_;
   const GoogleString blink_output_;
@@ -1786,6 +1832,37 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkNoNonCacheableWithCookies) {
   FetchFromProxyNoWaitForBackground(
       "cache.html", true, &text, &response_headers);
   EXPECT_STREQ(blink_output_with_cacheable_panels_cookies_, text);
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithLazyLoad) {
+  options_->ClearSignatureForTesting();
+  options_->EnableFilter(RewriteOptions::kLazyloadImages);
+  options_->set_enable_lazyload_in_blink(true);
+  resource_manager()->ComputeSignature(options_.get());
+  GoogleString text;
+  ResponseHeaders response_headers;
+
+  // Blink Cache Miss case.
+  FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
+  EXPECT_STREQ(noblink_output_with_lazy_load_, text);
+  EXPECT_STREQ("text/html; charset=utf-8",
+               response_headers.Lookup1(HttpAttributes::kContentType));
+
+  ClearStats();
+  // Blink Cache Hit case.
+  SetBlinkCriticalLineData();
+  FetchFromProxyNoWaitForBackground(
+      "text.html", true, &text, &response_headers);
+
+  UnEscapeString(&text);
+  EXPECT_STREQ(blink_output_with_lazy_load_, text);
+  ConstStringStarVector psa_rewriter_header_values;
+  EXPECT_TRUE(response_headers.Lookup(kPsaRewriterHeader,
+                                      &psa_rewriter_header_values));
+  EXPECT_EQ(0, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
 }
 
 }  // namespace net_instaweb

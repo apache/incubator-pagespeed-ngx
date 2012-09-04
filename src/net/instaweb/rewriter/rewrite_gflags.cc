@@ -241,9 +241,16 @@ DEFINE_bool(enable_blink_html_change_detection_logging, false,
             " and the results are logged. Critical line recomputation is not"
             " triggered in case of mismatch.");
 
+DEFINE_bool(enable_lazyload_in_blink, false,
+    "If it is set to true, don't force disable lazyload in blink");
+
 DEFINE_int64(max_image_bytes_for_webp_in_css,
              net_instaweb::RewriteOptions::kDefaultMaxImageBytesForWebpInCss,
              "The maximum size of an image in CSS, which we convert to webp.");
+
+DEFINE_bool(override_ie_document_mode, false,
+            "If enabled, IE will be made to use the highest mode available"
+            " to that version of IE.");
 
 namespace net_instaweb {
 
@@ -434,6 +441,13 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("max_image_bytes_for_webp_in_css")) {
     options->set_max_image_bytes_for_webp_in_css(
         FLAGS_max_image_bytes_for_webp_in_css);
+  }
+  if (WasExplicitlySet("enable_lazyload_in_blink")) {
+    options->set_enable_lazyload_in_blink(
+        FLAGS_enable_lazyload_in_blink);
+  }
+  if (WasExplicitlySet("override_ie_document_mode")) {
+    options->set_override_ie_document_mode(FLAGS_override_ie_document_mode);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

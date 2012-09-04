@@ -125,6 +125,9 @@ class BlinkFlowCriticalLine {
   // Sends non critical json to the client.
   void SendNonCriticalJson(GoogleString* non_critical_json_str);
 
+  // Sends the lazyload filter javascript code.
+  void SendLazyloadImagesJs();
+
   void WriteString(const StringPiece& str);
 
   int64 GetTimeElapsedFromStartRequest();

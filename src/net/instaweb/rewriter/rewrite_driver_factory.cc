@@ -299,6 +299,10 @@ CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
   return new BeaconCriticalImagesFinder();
 }
 
+FlushEarlyInfoFinder* RewriteDriverFactory::DefaultFlushEarlyInfoFinder() {
+  return NULL;
+}
+
 BlinkCriticalLineDataFinder*
 RewriteDriverFactory::DefaultBlinkCriticalLineDataFinder(
     PropertyCache* pcache) {
@@ -400,6 +404,7 @@ void RewriteDriverFactory::InitResourceManager(
   resource_manager->set_static_javascript_manager(static_javascript_manager());
   PropertyCache* pcache = resource_manager->page_property_cache();
   resource_manager->set_critical_images_finder(DefaultCriticalImagesFinder());
+  resource_manager->set_flush_early_info_finder(DefaultFlushEarlyInfoFinder());
   resource_manager->set_blink_critical_line_data_finder(
       DefaultBlinkCriticalLineDataFinder(pcache));
   resource_manager->InitWorkersAndDecodingDriver();
