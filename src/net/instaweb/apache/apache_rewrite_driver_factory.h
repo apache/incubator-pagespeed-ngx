@@ -211,6 +211,11 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // Print out details of all the connections to memcached servers.
   void PrintMemCacheStats(GoogleString* out);
 
+  // Routes fetches through a psuedo-fetcher that adds headers to fetches before
+  // passing them on to the real backend fetcher.  A fetcher is interposed only
+  // if there are custom fetch headers defined in the driver's options.
+  void ApplyAddHeaders(RewriteDriver* driver);
+
 protected:
   virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();

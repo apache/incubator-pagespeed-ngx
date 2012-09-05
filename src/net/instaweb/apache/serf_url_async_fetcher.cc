@@ -486,14 +486,12 @@ class SerfFetch : public PoolElement<SerfFetch> {
         serf_request_get_alloc(request), host);
     serf_bucket_t* hdrs_bkt = serf_bucket_request_get_headers(*req_bkt);
 
-    // Selectively add other useful headers from the caller's request.
+    // Add other headers from the caller's request.  Skip the "Host:" header
+    // because it's set above.
     for (int i = 0; i < request_headers->NumAttributes(); ++i) {
       const GoogleString& name = request_headers->Name(i);
       const GoogleString& value = request_headers->Value(i);
-      if ((StringCaseEqual(name, HttpAttributes::kUserAgent)) ||
-          (StringCaseEqual(name, HttpAttributes::kAcceptEncoding)) ||
-          (StringCaseEqual(name, HttpAttributes::kReferer)) ||
-          (StringCaseEqual(name, HttpAttributes::kCookie))) {
+      if (!(StringCaseEqual(name, HttpAttributes::kHost))) {
         // Note: *_setn() stores a pointer to name and value instead of a
         // copy of those values. So name and value must have long lifetimes.
         // In this case, we depend on request_headers being unchanged for

@@ -290,6 +290,7 @@
         '<(DEPTH)',
       ],
       'sources': [
+        'apache/add_headers_fetcher_test.cc',
         'apache/apr_file_system_test.cc',
         'apache/apr_mem_cache_test.cc',
         'apache/speed_test.cc',

@@ -242,6 +242,15 @@ class RewriteOptions {
     GoogleString https;
   };
 
+  struct NameValue {
+    NameValue(const StringPiece& name_in, const StringPiece& value_in) {
+      name_in.CopyToString(&name);
+      value_in.CopyToString(&value);
+    }
+    GoogleString name;
+    GoogleString value;
+  };
+
   static const char kAjaxRewriteId[];
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
@@ -529,6 +538,17 @@ class RewriteOptions {
   }
   void SetRewriteLevel(RewriteLevel level) {
     set_option(level, &level_);
+  }
+
+  // Specify a header to insert when fetching subresources.
+  void AddCustomFetchHeader(const StringPiece& name, const StringPiece& value);
+
+  const NameValue* custom_fetch_header(int i) const {
+    return custom_fetch_headers_[i];
+  }
+
+  int num_custom_fetch_headers() const {
+    return custom_fetch_headers_.size();
   }
 
   // Returns the spec with the id_ that matches id.  Returns NULL if no
@@ -2132,6 +2152,9 @@ class RewriteOptions {
   int furious_id_;
   int furious_percent_;  // Total traffic going through experiments.
   std::vector<FuriousSpec*> furious_specs_;
+
+  // Headers to add to subresource requests.
+  std::vector<NameValue*> custom_fetch_headers_;
 
   // If this is non-NULL it tells us additional attributes that should be
   // interpreted as containing urls.

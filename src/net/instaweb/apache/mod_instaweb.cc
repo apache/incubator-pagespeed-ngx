@@ -110,6 +110,7 @@ const char kModPagespeedCssImageInlineMaxBytes[] =
     "ModPagespeedCssImageInlineMaxBytes";
 const char kModPagespeedCssInlineMaxBytes[] = "ModPagespeedCssInlineMaxBytes";
 const char kModPagespeedCssOutlineMinBytes[] = "ModPagespeedCssOutlineMinBytes";
+const char kModPagespeedCustomFetchHeader[] = "ModPagespeedCustomFetchHeader";
 const char kModPagespeedDisableFilters[] = "ModPagespeedDisableFilters";
 const char kModPagespeedDisableForBots[] = "ModPagespeedDisableForBots";
 const char kModPagespeedDisallow[] = "ModPagespeedDisallow";
@@ -1200,6 +1201,8 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
         arg1, arg2, manager->message_handler());
   } else if (StringCaseEqual(directive, kModPagespeedShardDomain)) {
     options->domain_lawyer()->AddShard(arg1, arg2, manager->message_handler());
+  } else if (StringCaseEqual(directive, kModPagespeedCustomFetchHeader)) {
+    options->AddCustomFetchHeader(arg1, arg2);
   } else {
     return "Unknown directive.";
   }
@@ -1467,6 +1470,8 @@ APACHE_CONFIG_DIR_OPTION(kModPagespeedClientDomainRewrite,
         "Set the value for the X-Mod-Pagespeed HTTP header"),
 
   // All two parameter options that are allowed in <Directory> blocks.
+  APACHE_CONFIG_DIR_OPTION2(kModPagespeedCustomFetchHeader,
+        "custom_header_name custom_header_value"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,
         "to_domain from_domain[,from_domain]*"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapRewriteDomain,

@@ -25,6 +25,7 @@
 #include "httpd.h"
 #include "ap_mpm.h"
 
+#include "net/instaweb/apache/add_headers_fetcher.h"
 #include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_message_handler.h"
@@ -728,6 +729,13 @@ void ApacheRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
       StrAppend(out, "\nError getting memcached server status for ",
                 servers->server_spec());
     }
+  }
+}
+
+void ApacheRewriteDriverFactory::ApplyAddHeaders(RewriteDriver* driver) {
+  if (driver->options()->num_custom_fetch_headers() > 0) {
+    driver->SetSessionFetcher(new AddHeadersFetcher(driver->options(),
+                                                    driver->async_fetcher()));
   }
 }
 

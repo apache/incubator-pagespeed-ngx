@@ -744,6 +744,7 @@ RewriteOptions::RewriteOptions()
 }
 
 RewriteOptions::~RewriteOptions() {
+  STLDeleteElements(&custom_fetch_headers_);
   STLDeleteElements(&furious_specs_);
   STLDeleteElements(&prioritize_visible_content_families_);
   STLDeleteElements(&url_cache_invalidation_entries_);
@@ -1332,6 +1333,11 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     InsertFuriousSpecInVector(spec);
   }
 
+  for (int i = 0, n = src.custom_fetch_headers_.size(); i < n; ++i) {
+    NameValue* nv = src.custom_fetch_headers_[i];
+    AddCustomFetchHeader(nv->name, nv->value);
+  }
+
   furious_id_ = src.furious_id_;
   for (int i = 0, n = src.num_url_valued_attributes(); i < n; ++i) {
     StringPiece element;
@@ -1617,6 +1623,11 @@ void RewriteOptions::Modify() {
 
 const char* RewriteOptions::class_name() const {
   return RewriteOptions::kClassName;
+}
+
+void RewriteOptions::AddCustomFetchHeader(const StringPiece& name,
+                                          const StringPiece& value) {
+  custom_fetch_headers_.push_back(new NameValue(name, value));
 }
 
 // We expect furious_specs_.size() to be small (not more than 2 or 3)

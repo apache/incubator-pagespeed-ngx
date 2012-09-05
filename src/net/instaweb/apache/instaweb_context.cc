@@ -81,6 +81,10 @@ InstawebContext::InstawebContext(request_rec* request,
     rewrite_driver_ = resource_manager_->NewRewriteDriver();
   }
 
+  // Insert proxy fetcher to add custom fetch headers if there are any such
+  // headers to add.
+  resource_manager_->apache_factory()->ApplyAddHeaders(rewrite_driver_);
+
   rewrite_driver_->EnableBlockingRewrite(request_headers);
 
   ComputeContentEncoding(request);

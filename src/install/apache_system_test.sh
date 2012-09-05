@@ -9,7 +9,7 @@
 # Exits with status 2 if command line args are wrong.
 #
 # Expects APACHE_DEBUG_PAGESPEED_CONF to point to our config file,
-# APACHE_LOG to the log file
+# APACHE_LOG to the log file.
 
 if [ -z $APACHE_DEBUG_PAGESPEED_CONF ]; then
   APACHE_DEBUG_PAGESPEED_CONF=/usr/local/apache2/conf/pagespeed.conf
@@ -497,6 +497,21 @@ blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
 
   fetch_until $BLOCKING_REWRITE_URL 'grep -c [.]pagespeed[.]' 1
 fi
+
+
+echo "TEST: Send custom fetch headers on resource re-fetches."
+PLAIN_HEADER="header=value"
+X_OTHER_HEADER="x-other=False"
+
+URL="http://$HOSTNAME/mod_pagespeed_log_request_headers.js.pagespeed.jm.0.js"
+check grep "$PLAIN_HEADER" <($WGET_DUMP $URL)
+check grep "$X_OTHER_HEADER" <($WGET_DUMP $URL)
+
+echo "TEST: Send custom fetch headers on resource subfetches."
+URL=$TEST_ROOT/custom_fetch_headers.html?ModPagespeedFilters=inline_javascript
+fetch_until $URL 'grep -c header=value' 1
+check grep "$PLAIN_HEADER" <($WGET_DUMP $URL)
+check grep "$X_OTHER_HEADER" <($WGET_DUMP $URL)
 
 # Check that statistics logging was functional during these tests
 # if it was enabled.

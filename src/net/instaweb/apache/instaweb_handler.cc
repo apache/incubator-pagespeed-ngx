@@ -39,6 +39,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -66,6 +67,7 @@ const char kGlobalStatisticsHandler[] = "mod_pagespeed_global_statistics";
 const char kRefererStatisticsHandler[] = "mod_pagespeed_referer_statistics";
 const char kMessageHandler[] = "mod_pagespeed_message";
 const char kBeaconHandler[] = "mod_pagespeed_beacon";
+const char kLogRequestHeadersHandler[] = "mod_pagespeed_log_request_headers";
 const char kResourceUrlNote[] = "mod_pagespeed_resource";
 const char kResourceUrlNo[] = "<NO>";
 const char kResourceUrlYes[] = "<YES>";
@@ -183,6 +185,10 @@ bool handle_as_resource(ApacheResourceManager* manager,
     bool using_spdy = (mod_spdy_get_spdy_version(request->connection) != 0);
     RewriteDriver* driver = ResourceFetch::GetDriver(
         gurl, custom_options, using_spdy, manager);
+
+    // Insert proxy fetcher to add custom fetch headers.
+    manager->apache_factory()->ApplyAddHeaders(driver);
+
     if (ResourceFetch::BlockingFetch(gurl, manager, driver, callback)) {
       ResponseHeaders* response_headers = callback->response_headers();
       // TODO(sligocki): Check that this is already done in ResourceFetch
@@ -213,7 +219,8 @@ bool handle_as_resource(ApacheResourceManager* manager,
 //     for a custom Content-Type.
 void write_handler_response(const StringPiece& output,
                             request_rec* request,
-                            ContentType content_type) {
+                            ContentType content_type,
+                            const char* cache_control) {
   ResponseHeaders response_headers;
   response_headers.SetStatusAndReason(HttpStatus::kOK);
   response_headers.set_major_version(1);
@@ -224,9 +231,15 @@ void write_handler_response(const StringPiece& output,
   int64 now_ms = timer.NowMs();
   response_headers.SetDate(now_ms);
   response_headers.SetLastModified(now_ms);
-  response_headers.Add(HttpAttributes::kCacheControl,
-                       HttpAttributes::kNoCache);
+  response_headers.Add(HttpAttributes::kCacheControl, cache_control);
   send_out_headers_and_body(request, response_headers, output.as_string());
+}
+
+void write_handler_response(const StringPiece& output,
+                            request_rec* request,
+                            ContentType content_type) {
+  write_handler_response(output, request, kContentTypeHtml,
+                         HttpAttributes::kNoCache);
 }
 
 void write_handler_response(const StringPiece& output, request_rec* request) {
@@ -281,6 +294,38 @@ void log_resource_referral(request_rec* request,
 }
 
 }  // namespace
+
+// Used by log_request_headers for testing only.
+struct HeaderLoggingData {
+  HeaderLoggingData(StringWriter* writer_in, MessageHandler* handler_in)
+      : writer(writer_in), handler(handler_in) {}
+  StringWriter* writer;
+  MessageHandler* handler;
+};
+
+// Helper function to support the LogRequestHeadersHandler.  Called once for
+// each header to write header data in a form suitable for javascript inling.
+// Used only for tests.
+int log_request_headers(void* logging_data,
+                        const char* key, const char* value) {
+  HeaderLoggingData* hld = static_cast<HeaderLoggingData*>(logging_data);
+  StringWriter* writer = hld->writer;
+  MessageHandler* handler = hld->handler;
+
+  GoogleString escaped_key;
+  GoogleString escaped_value;
+
+  EscapeToJsStringLiteral(key, false, &escaped_key);
+  EscapeToJsStringLiteral(value, false, &escaped_value);
+
+  writer->Write("alert(\"", handler);
+  writer->Write(escaped_key, handler);
+  writer->Write("=", handler);
+  writer->Write(escaped_value, handler);
+  writer->Write("\");\n", handler);
+
+  return 1;  // Continue iteration.
+}
 
 apr_status_t instaweb_handler(request_rec* request) {
   apr_status_t ret = DECLINED;
@@ -414,6 +459,18 @@ apr_status_t instaweb_handler(request_rec* request) {
   } else if (strcmp(request->handler, kBeaconHandler) == 0) {
     manager->HandleBeacon(request->unparsed_uri);
     ret = HTTP_NO_CONTENT;
+
+  } else if (strcmp(request->handler, kLogRequestHeadersHandler) == 0) {
+    // For testing ModPagespeedCustomFetchHeader.
+    GoogleString output;
+    StringWriter writer(&output);
+    ApacheMessageHandler* handler = factory->apache_message_handler();
+    HeaderLoggingData header_logging_data(&writer, handler);
+    apr_table_do(&log_request_headers, &header_logging_data,
+                 request->headers_in, NULL);
+
+    write_handler_response(output, request, kContentTypeJavascript, "public");
+    ret = OK;
 
   } else if (url != NULL) {
     // Only handle GET request

@@ -154,6 +154,13 @@ ModPagespeedListOutstandingUrlsOnError on
 
 ModPagespeedAvoidRenamingIntrospectiveJavascript off
 
+# These will be sent to the origin domain when fetching subresources.
+ModPagespeedCustomFetchHeader header value
+ModPagespeedCustomFetchHeader x-other False
+<Location /mod_pagespeed_log_request_headers.js>
+  SetHandler mod_pagespeed_log_request_headers
+</Location>
+
 #SPELING # Enable mod_speling to ensure that we don't regress Issue 194
 #SPELING <IfModule !speling_module>
 #SPELING   LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so
