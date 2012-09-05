@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_H_
 
+#include <cstddef>                      // for size_t
 #include <set>
 #include <utility>                      // for pair
 #include <vector>
@@ -43,6 +44,26 @@ class GoogleUrl;
 class Hasher;
 class MessageHandler;
 
+// Defines a set of customizations that can be applied to any Rewrite.  There
+// are multiple categories of customizations:
+//   - filter sets (controllable individually or by level)
+//   - options (arbitrarily typed variables)
+//   - domain customization (see DomainLawyer class).
+//   - FileLoadPolicy (enables reading resources as files from the file system)
+// RewriteOptions can be specified in several ways, forming a hierarchy:
+//   - Globally for a process
+//   - Customized per server (e.g. Apache VirtualHost)
+//   - Customized at Directory level (e.g. Apache <Directory> or .htaccess)
+//   - Tuned at the request-level (e.g. via request-headers or query-params).
+// The hierarchy is implemented via Merging.
+//
+// The options are themselves a complex system.  Many Option objects are
+// instantiated for each RewriteOptions instance.  RewriteOptions can be
+// constructed and destroyed multiple times per request so to reduce
+// this cost, the static aspects of Options are factored out into
+// Properties, which are intialized once per process via
+// RewriteOptions::Initialize.  Subclasses may also add new Properties
+// and so property-list-merging takes place at Initialization time.
 class RewriteOptions {
  public:
   // If you add or remove anything from this list, you need to update the
@@ -293,6 +314,67 @@ class RewriteOptions {
   typedef std::pair<StringPiece, StringPiece> OptionStringPair;
   typedef std::set<OptionStringPair> OptionSet;
 
+  // The base class for a Property.  This class contains fields of
+  // Properties that are independent of type.
+  class PropertyBase {
+   public:
+    PropertyBase(const char* id, OptionEnum option_enum)
+        : id_(id),
+          option_enum_(option_enum),
+          do_not_use_for_signature_computation_(false),
+          index_(-1) {
+    }
+    virtual ~PropertyBase();
+
+    // Connect the specified RewriteOption to this property.
+    // set_index() must previously have been called on this.
+    virtual void InitializeOption(RewriteOptions* options) const = 0;
+
+    void set_do_not_use_for_signature_computation(bool x) {
+      do_not_use_for_signature_computation_ = x;
+    }
+    bool is_used_for_signature_computation() const {
+      return !do_not_use_for_signature_computation_;
+    }
+
+    void set_index(int index) { index_ = index; }
+    const char* id() const { return id_; }
+    OptionEnum option_enum() const { return option_enum_; }
+    int index() const { return index_; }
+
+   private:
+    const char* id_;
+    OptionEnum option_enum_;  // To know where this is in all_options_.
+    bool do_not_use_for_signature_computation_;  // Default is false.
+    int index_;
+
+    DISALLOW_COPY_AND_ASSIGN(PropertyBase);
+  };
+
+  typedef std::vector<PropertyBase*> PropertyVector;
+
+  // Base class for Option -- the instantiation of a Property that
+  // occurs in each RewriteOptions instance.
+  class OptionBase {
+   public:
+    OptionBase() {}
+    virtual ~OptionBase();
+    virtual bool SetFromString(const GoogleString& value_string) = 0;
+    virtual void Merge(const OptionBase* src) = 0;
+    virtual bool was_set() const = 0;
+    virtual GoogleString Signature(const Hasher* hasher) const = 0;
+    virtual GoogleString ToString() const = 0;
+    const char* id() { return property()->id(); }
+    OptionEnum option_enum() const { return property()->option_enum(); }
+    bool is_used_for_signature_computation() const {
+      return property()->is_used_for_signature_computation();
+    }
+    virtual const PropertyBase* property() const = 0;
+  };
+
+  // Convenience name for a set of rewrite options.
+  typedef std::vector<OptionBase*> OptionBaseVector;
+
   enum RewriteLevel {
     // Enable no filters. Parse HTML but do not perform any
     // transformations. This is the default value. Most users should
@@ -501,12 +583,40 @@ class RewriteOptions {
     // Termination is not thread-safe.
     static bool Terminate(Properties** properties_handle);
 
-   private:
-    // This object should not be constructed directly; it should be created
-    // by calling Properties::Initialize.
-    Properties();
+    // Returns the number of properties
+    int size() const { return property_vector_.size(); }
 
+    const PropertyBase* property(int index) const {
+      return property_vector_[index];
+    }
+    PropertyBase* property(int index) { return property_vector_[index]; }
+
+    // Merges the passed-in property-vector into this one, sorting the
+    // merged properties.  Each property's needs its index into the
+    // merged vector for initializing subclass-specific Options in
+    // each constructor.  So this method mutates its input by setting
+    // an index field in each property.
+    void Merge(Properties* properties);
+
+    void push_back(PropertyBase* p) { property_vector_.push_back(p); }
+
+   private:
+    // This object should not be constructed/destructed directly; it should be
+    // created by calling Properties::Initialize and Properties::Terminate.
+    Properties();
+    ~Properties();
+
+    // initialization_count_ acts as a reference count: it is incremented on
+    // Initialize(), and decremented on Terminate().  At 0 the object is
+    // deleted.
     int initialization_count_;
+
+    // owns_properties_ is set to true if the PropertyBase* in the vector should
+    // be deleted when Terminate is called bringing initialization_count_ to 0.
+    //   RewriteOptions::properties_.owns_properties_ is true.
+    //   RewriteOptions::all_properties_.owns_properties_ is false.
+    bool owns_properties_;
+    PropertyVector property_vector_;
   };
 
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
@@ -530,8 +640,19 @@ class RewriteOptions {
   static bool Initialize();
   static bool Terminate();
 
+  // Initializes the Options objects in a RewriteOptions instance
+  // based on the supplied Properties vector.  Note that subclasses
+  // can statically define additional properties, in which case they
+  // should call this method from their constructor.
+  void InitializeOptions(const Properties* properties);
+
   bool modified() const { return modified_; }
 
+  // Sets the default rewrite level for this RewriteOptions object only.
+  // Note that the defaults for other RewriteOptions objects are unaffected.
+  //
+  // TODO(jmarantz): Get rid of this method.  The semantics it requires are
+  // costly to implement and don't add much value.
   void SetDefaultRewriteLevel(RewriteLevel level) {
     // Do not set the modified bit -- we are only changing the default.
     level_.set_default(level);
@@ -1299,7 +1420,7 @@ class RewriteOptions {
         reject_blacklisted_status_code_.value());
   }
   void set_reject_blacklisted_status_code(HttpStatus::Code x) {
-    set_option(x, &reject_blacklisted_status_code_);
+    set_option(static_cast<int>(x), &reject_blacklisted_status_code_);
   }
 
   bool support_noscript_enabled() const {
@@ -1457,41 +1578,88 @@ class RewriteOptions {
   }
 
   // Returns the option name corresponding to the option enum.
-  static const char* LookupOptionEnum(RewriteOptions::OptionEnum option_enum) {
+  static const char* LookupOptionEnum(OptionEnum option_enum) {
     return (option_enum < kEndOfOptions) ?
         option_enum_to_name_array_[option_enum] : NULL;
   }
 
+  // Return the list of all options.  Used to initialize the configuration
+  // vector to the Apache configuration system.
+  const OptionBaseVector& all_options() const {
+    return all_options_;
+  }
+
  protected:
-  class OptionBase {
+  // Type-specific class of Property.  This subclass of PropertyBase
+  // knows what sort of value the Option will hold, and so we can put
+  // the default value here.
+  template<class ValueType>
+  class Property : public PropertyBase {
    public:
-    OptionBase()
-        : id_(NULL), option_enum_(RewriteOptions::kEndOfOptions),
-          do_not_use_for_signature_computation_(false) {}
-    virtual ~OptionBase();
-    virtual bool SetFromString(const GoogleString& value_string) = 0;
-    virtual void Merge(const OptionBase* src) = 0;
-    virtual bool was_set() const = 0;
-    virtual GoogleString Signature(const Hasher* hasher) const = 0;
-    virtual GoogleString ToString() const = 0;
-    void set_id(const char* id) { id_ = id; }
-    const char* id() {
-      DCHECK(id_);
-      return id_;
+    // When adding a new Property, we take the default_value by value,
+    // not const-reference.  This is because when calling add_option
+    // we may want to use a compile-time constant
+    // (e.g. Timer::kHourMs) which does not have a linkable address.
+    Property(ValueType default_value,
+             const char* id,
+             OptionEnum option_enum)
+        : PropertyBase(id, option_enum),
+          default_value_(default_value) {
     }
-    void set_option_enum(OptionEnum option_enum) { option_enum_ = option_enum; }
-    OptionEnum option_enum() const { return option_enum_; }
-    void DoNotUseForSignatureComputation() {
-      do_not_use_for_signature_computation_ = true;
+
+    void set_default(ValueType value) { default_value_ = value; }
+    const ValueType& default_value() const { return default_value_; }
+
+   private:
+    ValueType default_value_;
+
+    DISALLOW_COPY_AND_ASSIGN(Property);
+  };
+
+  // Leaf subclass of Property<ValueType>, which is templated on the class of
+  // the corresponding Option.  The template parameters here are
+  //   RewriteOptionsSubclass -- the subclass of RewriteOptions in which
+  //     this option is instantiated, e.g. ApacheConfig.
+  //   OptionClass -- the subclass of OptionBase that is being instantiated
+  //     in each RewriteOptionsSubclass.
+  // These template parameters are generally automatically discovered by
+  // the compiler when AddProperty is called.
+  //
+  // TODO(jmarantz): It looks tempting to fold Property<T> and
+  // PropertyLeaf<T> together, but this is difficult because of the
+  // way that the Option class hiearchy is structured and the
+  // precision of C++ pointers-to-members.  Attempting that is
+  // probably a worthwhile follow-up task.
+  template<class RewriteOptionsSubclass, class OptionClass>
+  class PropertyLeaf : public Property<typename OptionClass::ValueType> {
+   public:
+    // Fancy C++ pointers to members; a typesafe version of offsetof.  See
+    // http://publib.boulder.ibm.com/infocenter/comphelp/v8v101/index.jsp?
+    // topic=%2Fcom.ibm.xlcpp8a.doc%2Flanguage%2Fref%2Fcplr034.htm
+    typedef OptionClass RewriteOptionsSubclass::*OptionOffset;
+    typedef typename OptionClass::ValueType ValueType;
+
+    PropertyLeaf(ValueType default_value,
+                 OptionOffset offset,
+                 const char* id,
+                 OptionEnum option_enum)
+        : Property<ValueType>(default_value, id, option_enum),
+          offset_(offset) {
     }
-    bool is_used_for_signature_computation() const {
-      return !do_not_use_for_signature_computation_;
+
+    virtual void InitializeOption(RewriteOptions* options) const {
+      RewriteOptionsSubclass* options_subclass =
+          static_cast<RewriteOptionsSubclass*>(options);
+      OptionClass& option = options_subclass->*offset_;
+      option.set_property(this);
+      DCHECK_NE(-1, this->index()) << "Call Property::set_index first.";
+      options->set_option_at(this->index(), &option);
     }
 
    private:
-    const char* id_;
-    OptionEnum option_enum_;  // To know where this is in all_options_.
-    bool do_not_use_for_signature_computation_;  // Default is false.
+    OptionOffset offset_;
+
+    DISALLOW_COPY_AND_ASSIGN(PropertyLeaf);
   };
 
   // Helper class to represent an Option, whose value is held in some class T.
@@ -1505,7 +1673,9 @@ class RewriteOptions {
   // to override default values from 'new'.
   template<class T> class OptionTemplateBase : public OptionBase {
    public:
-    OptionTemplateBase() : was_set_(false) {}
+    typedef T ValueType;
+
+    OptionTemplateBase() : was_set_(false), property_(NULL) {}
 
     virtual bool was_set() const { return was_set_; }
 
@@ -1541,9 +1711,48 @@ class RewriteOptions {
       }
     }
 
+    // The static properties of an Option are held in a Property<T>*.
+    void set_property(const Property<T>* property) {
+      property_ = property;
+
+      // Note that the copying of default values here is only required
+      // to support SetDefaultRewriteLevel, which it should be
+      // possible to remove.  Otherwise we could just pull the
+      // default value out of properties_ when !was_set_;
+      value_ = property->default_value();
+    }
+    virtual const Property<T>* property() const { return property_; }
+
+    // Sets a the option default value globally.  This is thread-unsafe,
+    // and reaches into the option property_ field via a const-cast to
+    // mutate it.  Note that this method does not affect the current value
+    // of the instantiated option.
+    //
+    // TODO(jmarantz): consider an alternate structure where the
+    // Property<T>* can be easily located programmatically
+    // rather than going through a dummy Option object.
+    void set_global_default(const T& val) {
+      Property<T>* property = const_cast<Property<T>*>(property_);
+      property->set_default(val);
+    }
+
+    // Sets a the option's participation in Signatures globally.  This
+    // is thread-unsafe, and reaches into the option property_ field
+    // via a const-cast to mutate it.  Note that this method does not
+    // affect the current value of the instantiated option.
+    //
+    // TODO(jmarantz): consider an alternate structure where the
+    // Property<T>* can be easily located programmatically
+    // rather than going through a dummy Option object.
+    void DoNotUseForSignatureComputation() {
+      Property<T>* property = const_cast<Property<T>*>(property_);
+      property->set_do_not_use_for_signature_computation(true);
+    }
+
    private:
     bool was_set_;
     T value_;
+    const Property<T>* property_;
 
     DISALLOW_COPY_AND_ASSIGN(OptionTemplateBase);
   };
@@ -1642,59 +1851,65 @@ class RewriteOptions {
     scoped_ptr<ThreadSystem::RWLock> mutex_;
   };
 
-  // When adding an option, we take the default_value by value, not
-  // const-reference.  This is because when calling add_option we may
-  // want to use a compile-time constant (e.g. Timer::kHourMs) which
-  // does not have a linkable address.
-  // The option_enum_ field of Option is set from the option_enum argument here.
-  // It has to be ensured that correct enum is passed in.  If two Option<>
-  // objects have same enum, then SetOptionFromName will not work for those.  If
-  // option_enum is not passed in, then kEndOfOptions will be used (default
-  // value in OptionBase constructor) and this means this option cannot be set
-  // using SetOptionFromName.
-  template<class T, class U>  // U must be assignable to T.
-  void add_option(U default_value, OptionTemplateBase<T>* option,
-                  const char* id, OptionEnum option_enum) {
-    add_option(default_value, option, id);
-    option->set_option_enum(option_enum);
+ protected:
+  // Adds a new Property to 'properties' (the last argument).
+  template<class RewriteOptionsSubclass, class OptionClass>
+  static void AddProperty(typename OptionClass::ValueType default_value,
+                          OptionClass RewriteOptionsSubclass::*offset,
+                          const char* id,
+                          OptionEnum option_enum,
+                          Properties* properties) {
+    properties->push_back(new PropertyLeaf<RewriteOptionsSubclass, OptionClass>(
+        default_value, offset, id, option_enum));
   }
-  template<class T, class U>  // U must be assignable to T.
-  void add_option(U default_value, OptionTemplateBase<T>* option,
-                  const char* id) {
-    option->set_default(default_value);
-    option->set_id(id);
-    all_options_.push_back(option);
+
+
+  // Merges properties into all_properties so that
+  // RewriteOptions::Merge and SetOptionFromName can work across
+  // options from RewriteOptions and all relevant subclasses.
+  //
+  // Each RewriteOptions subclass keeps its own property lists using
+  // its own private Properties* member variables.  The private lists
+  // are used for initialization of default-values during
+  // construction.  We cannot initialize subclass default option
+  // values during RewriteOptions construction because options with
+  // non-POD ValueType (e.g. GoogleString) have not yet been
+  // initialized, so we have to keep separate per-class property-lists
+  // for use during construction.  However, we use a global sorted
+  // list for fast merging and setting-by-option-name.
+  static void MergeSubclassProperties(Properties* properties);
+
+  // Populates all_options_, based on the passed-in index, which
+  // should correspond to the property index calculated after
+  // sorting all_properties_.  This enables us to sort the all_properties_
+  // vector once, and use that to give us all_options_ that is sorted
+  // the same way.
+  void set_option_at(int index, OptionBase* option) {
+    all_options_[index] = option;
   }
 
   // When setting an option, however, we generally are doing so
   // with a variable rather than a constant so it makes sense to pass
   // it by reference.
-  template<class T, class U>  // U must be assignable to T.
-  void set_option(const U& new_value, OptionTemplateBase<T>* option) {
+  template<class T>
+  void set_option(const T& new_value, OptionTemplateBase<T>* option) {
     option->set(new_value);
     Modify();
   }
 
-  // To be called after construction and before this object is used.
-  // Currently this is called from constructor.  If a sub-class calls
-  // add_option() with OptionEnum, then it has to call this again to ensure
-  // sorted order.
-  void SortOptions();
-
   // Marks the config as modified.
   void Modify();
 
-  // Convenience name for a set of rewrite options.
-  typedef std::vector<OptionBase*> OptionBaseVector;
-
-  // Return the list of all options.
-  const OptionBaseVector& all_options() const {
-    return all_options_;
-  }
-
  protected:
+  // Sets the global default value for 'x_header_value'.  Note that setting
+  // this Option reaches through to the underlying property and sets the
+  // default value there, and in fact does *not affect the value of the
+  // instantiated RewriteOptions object.
+  //
+  // TODO(jmarantz): Remove this method and make another one that operate
+  // directly on the Property.
   void set_default_x_header_value(const StringPiece& x_header_value) {
-    x_header_value_.set_default(x_header_value.as_string());
+    x_header_value_.set_global_default(x_header_value.as_string());
   }
 
   // Enable/disable filters and set options according to the current FuriousSpec
@@ -1710,7 +1925,8 @@ class RewriteOptions {
   bool InsertFuriousSpecInVector(FuriousSpec* spec);
 
  private:
-  static Properties* properties_;
+  static Properties* properties_;          // from RewriteOptions only
+  static Properties* all_properties_;      // includes subclass properties
 
   FRIEND_TEST(RewriteOptionsTest, FuriousMergeTest);
   typedef std::vector<Filter> FilterVector;
@@ -1787,7 +2003,39 @@ class RewriteOptions {
   typedef std::vector<UrlCacheInvalidationEntry*>
       UrlCacheInvalidationEntryVector;
 
-  void SetUp();
+  // Private methods to help add properties to
+  // RewriteOptions::properties_.  Subclasses define their own
+  // versions of these to add to their own private property-lists, and
+  // subsequently merge them into RewriteOptions::all_properties_ via
+  // MergeSubclassProperties.
+  //
+  // This version a property without a unique option_enum_ field.
+  // kEndOfOptions will be used for the enum, and thus
+  // SetOptionFromName cannot be used for options associated with such
+  // properties.
+  //
+  // TODO(jmarantz): This particular method is named this way to make
+  // incremental reviews easier.  We are really adding a property here
+  // and not an option, and removing these wrapper methods should be
+  // done as a follow-up.
+  template<class OptionClass, class RewriteOptionsSubclass>
+  static void add_option(typename OptionClass::ValueType default_value,
+                         OptionClass RewriteOptionsSubclass::*offset,
+                         const char* id) {
+    AddProperty(default_value, offset, id, kEndOfOptions, properties_);
+  }
+
+  // Adds a property with a unique option_enum_ field, allowing use of
+  // SetOptionFromName.
+  template<class RewriteOptionsSubclass, class OptionClass>
+  static void add_option(typename OptionClass::ValueType default_value,
+                         OptionClass RewriteOptionsSubclass::*offset,
+                         const char* id,
+                         OptionEnum option_enum) {
+    AddProperty(default_value, offset, id, option_enum, properties_);
+  }
+
+  static void AddProperties();
   bool AddCommaSeparatedListToFilterSetState(
       const StringPiece& filters, FilterSet* set, MessageHandler* handler);
   static bool AddCommaSeparatedListToFilterSet(
@@ -1875,10 +2123,10 @@ class RewriteOptions {
   static GoogleString ToString(RewriteLevel x);
   static GoogleString ToString(const BeaconUrl& beacon_url);
 
-  // Returns true if option1's enum is less than option2's. Used to order
-  // all_options_.
-  static bool OptionLessThanByEnum(OptionBase* option1, OptionBase* option2) {
-    return option1->option_enum() < option2->option_enum();
+  // Returns true if p1's's enum is less than p2's. Used to order
+  // all_properties_.
+  static bool PropertyLessThanByEnum(PropertyBase* p1, PropertyBase* p2) {
+    return p1->option_enum() < p2->option_enum();
   }
 
   // Returns if option's enum is less than arg.
@@ -2134,6 +2382,7 @@ class RewriteOptions {
   // are added to all_options_, which is used for Merge, and eventually,
   // Compare.
   OptionBaseVector all_options_;
+  size_t initialized_options_;  // Counts number of options initialized so far.
 
   // Array of option names indexed by corresponding OptionEnum.
   static const char* option_enum_to_name_array_[kEndOfOptions];
@@ -2150,7 +2399,7 @@ class RewriteOptions {
   bool need_to_store_experiment_data_;
   // Which experiment configuration are we in?
   int furious_id_;
-  int furious_percent_;  // Total traffic going through experiments.
+  int furious_percent_;         // Total traffic going through experiments.
   std::vector<FuriousSpec*> furious_specs_;
 
   // Headers to add to subresource requests.

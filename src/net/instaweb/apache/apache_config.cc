@@ -27,6 +27,7 @@ RewriteOptions::Properties* ApacheConfig::apache_properties_ = NULL;
 void ApacheConfig::Initialize() {
   if (Properties::Initialize(&apache_properties_)) {
     RewriteOptions::Initialize();
+    AddProperties();
   }
 }
 
@@ -46,50 +47,67 @@ ApacheConfig::ApacheConfig() {
 }
 
 void ApacheConfig::Init() {
-  add_option("", &fetcher_proxy_, "afp", RewriteOptions::kFetcherProxy);
-  add_option("", &file_cache_path_, "afcp", RewriteOptions::kFileCachePath);
-  add_option("", &memcached_servers_, "ams", RewriteOptions::kMemcachedServers);
-  add_option(1, &memcached_threads_, "amt", RewriteOptions::kMemcachedThreads);
-  add_option("", &slurp_directory_, "asd", RewriteOptions::kSlurpDirectory);
-  add_option("", &statistics_logging_file_, "aslf",
-      RewriteOptions::kStatisticsLoggingFile);
+  DCHECK(apache_properties_ != NULL)
+      << "Call ApacheConfig::Initialize() before construction";
+  InitializeOptions(apache_properties_);
+}
 
-  add_option(kOrganized, &referer_statistics_output_level_, "arso",
-             RewriteOptions::kRefererStatisticsOutputLevel);
-
-  add_option(false, &collect_referer_statistics_, "acrs",
+void ApacheConfig::AddProperties() {
+  add_option("", &ApacheConfig::fetcher_proxy_, "afp",
+             RewriteOptions::kFetcherProxy);
+  add_option("", &ApacheConfig::file_cache_path_, "afcp",
+             RewriteOptions::kFileCachePath);
+  add_option("", &ApacheConfig::memcached_servers_, "ams",
+             RewriteOptions::kMemcachedServers);
+  add_option(1, &ApacheConfig::memcached_threads_, "amt",
+             RewriteOptions::kMemcachedThreads);
+  add_option("", &ApacheConfig::slurp_directory_, "asd",
+             RewriteOptions::kSlurpDirectory);
+  add_option("", &ApacheConfig::statistics_logging_file_, "aslf",
+             RewriteOptions::kStatisticsLoggingFile);
+  add_option(kOrganized, &ApacheConfig::referer_statistics_output_level_,
+             "arso", RewriteOptions::kRefererStatisticsOutputLevel);
+  add_option(false, &ApacheConfig::collect_referer_statistics_, "acrs",
              RewriteOptions::kCollectRefererStatistics);
-  add_option(false, &hash_referer_statistics_, "ahrs",
+  add_option(false, &ApacheConfig::hash_referer_statistics_, "ahrs",
              RewriteOptions::kHashRefererStatistics);
-  add_option(true, &statistics_enabled_, "ase",
+  add_option(true, &ApacheConfig::statistics_enabled_, "ase",
              RewriteOptions::kStatisticsEnabled);
-  add_option(false, &statistics_logging_enabled_, "asle",
+  add_option(false, &ApacheConfig::statistics_logging_enabled_, "asle",
              RewriteOptions::kStatisticsLoggingEnabled);
-  add_option(false, &test_proxy_, "atp", RewriteOptions::kTestProxy);
-  add_option(false, &use_shared_mem_locking_, "ausml",
+  add_option(false, &ApacheConfig::test_proxy_, "atp",
+             RewriteOptions::kTestProxy);
+  add_option(false, &ApacheConfig::use_shared_mem_locking_, "ausml",
              RewriteOptions::kUseSharedMemLocking);
-  add_option(false, &slurp_read_only_, "asro",
+  add_option(false, &ApacheConfig::slurp_read_only_, "asro",
              RewriteOptions::kSlurpReadOnly);
 
-  add_option(Timer::kHourMs, &file_cache_clean_interval_ms_, "afcci",
-             RewriteOptions::kFileCacheCleanIntervalMs);
+  add_option(Timer::kHourMs, &ApacheConfig::file_cache_clean_interval_ms_,
+             "afcci", RewriteOptions::kFileCacheCleanIntervalMs);
 
-  add_option(100 * 1024, &file_cache_clean_size_kb_, "afc",
+  add_option(100 * 1024, &ApacheConfig::file_cache_clean_size_kb_, "afc",
              RewriteOptions::kFileCacheCleanSizeKb);  // 100 megabytes
   // Default to no inode limit so that existing installations are not affected.
   // pagespeed.conf.template contains suggested limit for new installations.
-  add_option(0, &file_cache_clean_inode_limit_, "afcl",
+  add_option(0, &ApacheConfig::file_cache_clean_inode_limit_, "afcl",
              RewriteOptions::kFileCacheCleanInodeLimit);
-  add_option(0, &lru_cache_byte_limit_, "alcb",
+  add_option(0, &ApacheConfig::lru_cache_byte_limit_, "alcb",
              RewriteOptions::kLruCacheByteLimit);
-  add_option(0, &lru_cache_kb_per_process_, "alcp",
+  add_option(0, &ApacheConfig::lru_cache_kb_per_process_, "alcp",
              RewriteOptions::kLruCacheKbPerProcess);
-  add_option(0, &slurp_flush_limit_, "asfl",
+  add_option(0, &ApacheConfig::slurp_flush_limit_, "asfl",
              RewriteOptions::kSlurpFlushLimit);
-  add_option(3000, &statistics_logging_interval_ms_, "asli",
+  add_option(3000, &ApacheConfig::statistics_logging_interval_ms_, "asli",
              RewriteOptions::kStatisticsLoggingIntervalMs);
 
-  SortOptions();
+  MergeSubclassProperties(apache_properties_);
+  ApacheConfig config;
+  config.InitializeSignaturesAndDefaults();
+}
+
+void ApacheConfig::InitializeSignaturesAndDefaults() {
+  // TODO(jmarantz): Perform these operations on the Properties directly, rather
+  // than going through a dummy ApacheConfig object to get to the properties.
 
   // Leave this out of the signature as (a) we don't actually change this
   // spontaneously, and (b) it's useful to keep the metadata cache between

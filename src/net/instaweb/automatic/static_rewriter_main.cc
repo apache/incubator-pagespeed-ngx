@@ -19,6 +19,8 @@
 #include <cstdio>
 
 #include "net/instaweb/automatic/public/static_rewriter.h"
+#include "net/instaweb/rewriter/public/process_context.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -34,6 +36,8 @@ class MessageHandler;
 // contains all that's needed to successfully link a rewriter using standard
 // g++, without using the gyp flow.
 int main(int argc, char** argv) {
+  net_instaweb::ProcessContext process_context;
+  net_instaweb::RewriteDriverFactory::Initialize();
   net_instaweb::StaticRewriter static_rewriter(&argc, &argv);
 
   // Having stripped all the flags, there should be exactly 3
@@ -60,30 +64,25 @@ int main(int argc, char** argv) {
   net_instaweb::FileSystem* file_system = static_rewriter.file_system();
   net_instaweb::MessageHandler* message_handler =
       static_rewriter.message_handler();
+  net_instaweb::StringWriter writer(&html_output_buffer);
+
+  int exit_status = 1;
   if (!file_system->ReadFile(input_file_path.c_str(), &html_input_buffer,
                              message_handler)) {
     fprintf(stderr, "failed to read file %s\n", input_file_path.c_str());
-    return 1;
-  }
-
-  // Set up a Writer callback to serialize rewritten output to a string buffer.
-  // A network Writer can be defined that will stream directly to a network
-  // port without extra copying of bytes.
-  net_instaweb::StringWriter writer(&html_output_buffer);
-  if (!static_rewriter.ParseText(url, input_file_path, html_input_buffer,
-                                 output_dir, &writer)) {
+  } else if (!static_rewriter.ParseText(url, input_file_path, html_input_buffer,
+                                        output_dir, &writer)) {
     fprintf(stderr, "StartParseId failed on url %s\n", url.c_str());
-    return 1;
-  }
-
-  if (!file_system->WriteFile(
-          output_file_path.c_str(), html_output_buffer, message_handler)) {
+  } else if (!file_system->WriteFile(
+      output_file_path.c_str(), html_output_buffer, message_handler)) {
     fprintf(stderr, "failed to write file %s\n", output_file_path.c_str());
-    return 1;
+  } else {
+    exit_status = 0;
   }
 
   // TODO(jmarantz): set up a file-based fetcher that will allow us to
   // rewrite resources in HTML files in this demonstration.
 
+  net_instaweb::RewriteDriverFactory::Terminate();
   return 0;
 }

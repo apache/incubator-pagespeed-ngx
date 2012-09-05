@@ -234,8 +234,26 @@ class ApacheConfig : public RewriteOptions {
   };
 
  private:
+  // Keeps the properties added by this subclass.  These are merged into
+  // RewriteOptions::all_properties_ during Initialize().
   static Properties* apache_properties_;
 
+  // Adds an option to apache_properties_.
+  //
+  // TODO(jmarantz): rename this to avoid coinciding with private
+  // method RewriteOptions::add_option.  This is done for now so
+  // review-diffs are readable, at the cost of a small non-functional
+  // follow-up refactor.
+  template<class RewriteOptionsSubclass, class OptionClass>
+  static void add_option(typename OptionClass::ValueType default_value,
+                         OptionClass RewriteOptionsSubclass::*offset,
+                         const char* id,
+                         OptionEnum option_enum) {
+    AddProperty(default_value, offset, id, option_enum, apache_properties_);
+  }
+
+  void InitializeSignaturesAndDefaults();
+  static void AddProperties();
   void Init();
 
   static bool ParseFromString(const GoogleString& value_string,

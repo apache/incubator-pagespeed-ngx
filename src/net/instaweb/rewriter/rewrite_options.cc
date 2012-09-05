@@ -200,6 +200,7 @@ const char* RewriteOptions::option_enum_to_name_array_[
     RewriteOptions::kEndOfOptions];
 
 RewriteOptions::Properties* RewriteOptions::properties_ = NULL;
+RewriteOptions::Properties* RewriteOptions::all_properties_ = NULL;
 
 namespace {
 
@@ -508,16 +509,17 @@ bool RewriteOptions::ImageOptimizationEnabled() const {
 RewriteOptions::RewriteOptions()
     : modified_(false),
       frozen_(false),
+      initialized_options_(0),
       options_uniqueness_checked_(false),
       need_to_store_experiment_data_(false),
       furious_id_(furious::kFuriousNotSet),
       furious_percent_(0),
       url_valued_attributes_(NULL) {
+  DCHECK(properties_ != NULL)
+      << "Call RewriteOptions::Initialize() before construction";
+
   // Sanity-checks -- will be active only when compiled for debug.
 #ifndef NDEBUG
-  DCHECK(properties_ != NULL)
-      << "Call RewriteOptions::Initialize before constructing one";
-
   CheckFilterSetOrdering(kCoreFilterSet, arraysize(kCoreFilterSet));
   CheckFilterSetOrdering(kTestFilterSet, arraysize(kTestFilterSet));
   CheckFilterSetOrdering(kDangerousFilterSet, arraysize(kDangerousFilterSet));
@@ -536,168 +538,211 @@ RewriteOptions::RewriteOptions()
   // destructor I suppose, but we defer it till ComputeSignature.
 #endif
 
-  // TODO(jmarantz): consider adding these on demand so that the cost of
-  // initializing an empty RewriteOptions object is closer to zero.
-  add_option(kPassThrough, &level_, "l", kRewriteLevel);
+  InitializeOptions(properties_);
+
+  // Enable HtmlWriterFilter by default.
+  EnableFilter(kHtmlWriterFilter);
+}
+
+// static
+void RewriteOptions::AddProperties() {
+  add_option(kPassThrough, &RewriteOptions::level_, "l", kRewriteLevel);
   add_option(kDefaultBlinkMaxHtmlSizeRewritable,
-             &blink_max_html_size_rewritable_,
+             &RewriteOptions::blink_max_html_size_rewritable_,
              "bmhsr", kBlinkMaxHtmlSizeRewritable);
-  add_option(kDefaultCssFlattenMaxBytes, &css_flatten_max_bytes_, "cf",
+  add_option(kDefaultCssFlattenMaxBytes,
+             &RewriteOptions::css_flatten_max_bytes_, "cf",
              kCssFlattenMaxBytes);
-  add_option(kDefaultCssImageInlineMaxBytes, &css_image_inline_max_bytes_,
+  add_option(kDefaultCssImageInlineMaxBytes,
+             &RewriteOptions::css_image_inline_max_bytes_,
              "cii", kCssImageInlineMaxBytes);
-  add_option(kDefaultCssInlineMaxBytes, &css_inline_max_bytes_, "ci",
+  add_option(kDefaultCssInlineMaxBytes,
+             &RewriteOptions::css_inline_max_bytes_, "ci",
              kCssInlineMaxBytes);
-  add_option(kDefaultCssOutlineMinBytes, &css_outline_min_bytes_, "co",
+  add_option(kDefaultCssOutlineMinBytes,
+             &RewriteOptions::css_outline_min_bytes_, "co",
              kCssOutlineMinBytes);
-  add_option(kDefaultImageInlineMaxBytes, &image_inline_max_bytes_, "ii",
+  add_option(kDefaultImageInlineMaxBytes,
+             &RewriteOptions::image_inline_max_bytes_, "ii",
              kImageInlineMaxBytes);
-  add_option(kDefaultJsInlineMaxBytes, &js_inline_max_bytes_, "ji",
+  add_option(kDefaultJsInlineMaxBytes,
+             &RewriteOptions::js_inline_max_bytes_, "ji",
              kJsInlineMaxBytes);
-  add_option(kDefaultJsOutlineMinBytes, &js_outline_min_bytes_, "jo",
+  add_option(kDefaultJsOutlineMinBytes,
+             &RewriteOptions::js_outline_min_bytes_, "jo",
              kJsOutlineMinBytes);
-  add_option(kDefaultProgressiveJpegMinBytes, &progressive_jpeg_min_bytes_,
+  add_option(kDefaultProgressiveJpegMinBytes,
+             &RewriteOptions::progressive_jpeg_min_bytes_,
              "jp", kProgressiveJpegMinBytes);
-  add_option(kDefaultMaxHtmlCacheTimeMs, &max_html_cache_time_ms_, "hc",
+  add_option(kDefaultMaxHtmlCacheTimeMs,
+             &RewriteOptions::max_html_cache_time_ms_, "hc",
              kMaxHtmlCacheTimeMs);
   add_option(kDefaultMaxImageBytesForWebpInCss,
-             &max_image_bytes_for_webp_in_css_, "miwc",
+             &RewriteOptions::max_image_bytes_for_webp_in_css_, "miwc",
              kMaxImageBytesForWebpInCss);
   add_option(kDefaultMinResourceCacheTimeToRewriteMs,
-             &min_resource_cache_time_to_rewrite_ms_, "rc",
+             &RewriteOptions::min_resource_cache_time_to_rewrite_ms_, "rc",
              kMinResourceCacheTimeToRewriteMs);
   add_option(kDefaultCacheInvalidationTimestamp,
-             &cache_invalidation_timestamp_, "it", kCacheInvalidationTimestamp);
-  add_option(kDefaultIdleFlushTimeMs, &idle_flush_time_ms_, "if",
+             &RewriteOptions::cache_invalidation_timestamp_, "it",
+             kCacheInvalidationTimestamp);
+  add_option(kDefaultIdleFlushTimeMs,
+             &RewriteOptions::idle_flush_time_ms_, "if",
              kIdleFlushTimeMs);
-  add_option(kDefaultFlushBufferLimitBytes, &flush_buffer_limit_bytes_, "fbl",
+  add_option(kDefaultFlushBufferLimitBytes,
+             &RewriteOptions::flush_buffer_limit_bytes_, "fbl",
              kFlushBufferLimitBytes);
-  add_option(kDefaultImplicitCacheTtlMs, &implicit_cache_ttl_ms_, "ict",
+  add_option(kDefaultImplicitCacheTtlMs,
+             &RewriteOptions::implicit_cache_ttl_ms_, "ict",
              kImplicitCacheTtlMs);
-  add_option(kDefaultImageMaxRewritesAtOnce, &image_max_rewrites_at_once_,
+  add_option(kDefaultImageMaxRewritesAtOnce,
+             &RewriteOptions::image_max_rewrites_at_once_,
              "im", kImageMaxRewritesAtOnce);
-  add_option(kDefaultMaxUrlSegmentSize, &max_url_segment_size_, "uss",
-             kMaxUrlSegmentSize);
-  add_option(kDefaultMaxUrlSize, &max_url_size_, "us", kMaxUrlSize);
-  add_option(true, &enabled_, "e", kEnabled);
-  add_option(false, &ajax_rewriting_enabled_, "ar", kAjaxRewritingEnabled);
-  add_option(true, &combine_across_paths_, "cp", kCombineAcrossPaths);
-  add_option(false, &log_rewrite_timing_, "lr", kLogRewriteTiming);
-  add_option(false, &lowercase_html_names_, "lh", kLowercaseHtmlNames);
-  add_option(false, &always_rewrite_css_, "arc", kAlwaysRewriteCss);
-  add_option(false, &respect_vary_, "rv", kRespectVary);
-  add_option(false, &flush_html_, "fh", kFlushHtml);
-  add_option(true, &serve_stale_if_fetch_error_, "ss", kServeStaleIfFetchError);
-  add_option(false, &enable_defer_js_experimental_, "edje",
+  add_option(kDefaultMaxUrlSegmentSize, &RewriteOptions::max_url_segment_size_,
+             "uss", kMaxUrlSegmentSize);
+  add_option(kDefaultMaxUrlSize, &RewriteOptions::max_url_size_, "us",
+             kMaxUrlSize);
+  add_option(true, &RewriteOptions::enabled_, "e", kEnabled);
+  add_option(false, &RewriteOptions::ajax_rewriting_enabled_, "ar",
+             kAjaxRewritingEnabled);
+  add_option(true, &RewriteOptions::combine_across_paths_, "cp",
+             kCombineAcrossPaths);
+  add_option(false, &RewriteOptions::log_rewrite_timing_, "lr",
+             kLogRewriteTiming);
+  add_option(false, &RewriteOptions::lowercase_html_names_, "lh",
+             kLowercaseHtmlNames);
+  add_option(false, &RewriteOptions::always_rewrite_css_, "arc",
+             kAlwaysRewriteCss);
+  add_option(false, &RewriteOptions::respect_vary_, "rv", kRespectVary);
+  add_option(false, &RewriteOptions::flush_html_, "fh", kFlushHtml);
+  add_option(true, &RewriteOptions::serve_stale_if_fetch_error_, "ss",
+             kServeStaleIfFetchError);
+  add_option(false, &RewriteOptions::enable_defer_js_experimental_, "edje",
              kEnableDeferJsExperimental);
-  add_option(true, &enable_flush_subresources_experimental_, "efse",
-             kEnableFlushSubresourcesExperimental);
-  add_option(false, &enable_inline_preview_images_experimental_, "eipie",
-             kEnableInlinePreviewImagesExperimental);
-  add_option(false, &enable_blink_critical_line_, "ebcl",
+  add_option(true, &RewriteOptions::enable_flush_subresources_experimental_,
+             "efse", kEnableFlushSubresourcesExperimental);
+  add_option(false, &RewriteOptions::enable_inline_preview_images_experimental_,
+             "eipie", kEnableInlinePreviewImagesExperimental);
+  add_option(false, &RewriteOptions::enable_blink_critical_line_, "ebcl",
              kEnableBlinkCriticalLine);
-  add_option(false, &default_cache_html_, "dch", kDefaultCacheHtml);
-  add_option(kDefaultDomainShardCount, &domain_shard_count_, "dsc",
-             kDomainShardCount);
-  add_option(true, &modify_caching_headers_, "mch", kModifyCachingHeaders);
+  add_option(false, &RewriteOptions::default_cache_html_, "dch",
+             kDefaultCacheHtml);
+  add_option(kDefaultDomainShardCount, &RewriteOptions::domain_shard_count_,
+             "dsc", kDomainShardCount);
+  add_option(true, &RewriteOptions::modify_caching_headers_, "mch",
+             kModifyCachingHeaders);
   // This is not Plain Old Data, so we initialize it here.
   const RewriteOptions::BeaconUrl kDefaultBeaconUrls =
       { kDefaultBeaconUrl, kDefaultBeaconUrl };
-  add_option(kDefaultBeaconUrls, &beacon_url_, "bu", kBeaconUrl);
-  add_option(false, &lazyload_images_after_onload_, "llio",
+  add_option(kDefaultBeaconUrls, &RewriteOptions::beacon_url_, "bu",
+             kBeaconUrl);
+  add_option(false, &RewriteOptions::lazyload_images_after_onload_, "llio",
              kLazyloadImagesAfterOnload);
-  add_option(true, &inline_only_critical_images_, "ioci",
+  add_option(true, &RewriteOptions::inline_only_critical_images_, "ioci",
              kInlineOnlyCriticalImages);
-  add_option(false, &domain_rewrite_hyperlinks_, "drh",
+  add_option(false, &RewriteOptions::domain_rewrite_hyperlinks_, "drh",
              kDomainRewriteHyperlinks);
-  add_option(false, &client_domain_rewrite_, "cdr",
+  add_option(false, &RewriteOptions::client_domain_rewrite_, "cdr",
              kClientDomainRewrite);
   add_option(kDefaultImageJpegRecompressQuality,
-             &image_jpeg_recompress_quality_, "iq",
+             &RewriteOptions::image_jpeg_recompress_quality_, "iq",
              kImageJpegRecompressionQuality);
   add_option(kDefaultImageLimitOptimizedPercent,
-             &image_limit_optimized_percent_, "ip",
+             &RewriteOptions::image_limit_optimized_percent_, "ip",
              kImageLimitOptimizedPercent);
   add_option(kDefaultImageLimitResizeAreaPercent,
-             &image_limit_resize_area_percent_, "ia",
+             &RewriteOptions::image_limit_resize_area_percent_, "ia",
              kImageLimitResizeAreaPercent);
   add_option(kDefaultImageWebpRecompressQuality,
-             &image_webp_recompress_quality_, "iw",
+             &RewriteOptions::image_webp_recompress_quality_, "iw",
              kImageWebpRecompressQuality);
   add_option(kDefaultMaxInlinedPreviewImagesIndex,
-             &max_inlined_preview_images_index_, "mdii",
+             &RewriteOptions::max_inlined_preview_images_index_, "mdii",
              kMaxInlinedPreviewImagesIndex);
   add_option(kDefaultMinImageSizeLowResolutionBytes,
-             &min_image_size_low_resolution_bytes_, "nislr",
+             &RewriteOptions::min_image_size_low_resolution_bytes_, "nislr",
              kMinImageSizeLowResolutionBytes);
   add_option(kDefaultMaxImageSizeLowResolutionBytes,
-             &max_image_size_low_resolution_bytes_, "xislr",
+             &RewriteOptions::max_image_size_low_resolution_bytes_, "xislr",
              kMaxImageSizeLowResolutionBytes);
   add_option(kDefaultCriticalImagesCacheExpirationMs,
-             &critical_images_cache_expiration_time_ms_, "cice",
+             &RewriteOptions::critical_images_cache_expiration_time_ms_, "cice",
              kCriticalImagesCacheExpirationTimeMs);
   add_option(kDefaultImageJpegNumProgressiveScans,
-             &image_jpeg_num_progressive_scans_, "ijps",
+             &RewriteOptions::image_jpeg_num_progressive_scans_, "ijps",
              kImageJpegNumProgressiveScans);
-  add_option(false, &cache_small_images_unrewritten_, "csiu",
+  add_option(false, &RewriteOptions::cache_small_images_unrewritten_, "csiu",
              kCacheSmallImagesUnrewritten);
-  add_option(kDefaultImageResolutionLimitBytes, &image_resolution_limit_bytes_,
+  add_option(kDefaultImageResolutionLimitBytes,
+             &RewriteOptions::image_resolution_limit_bytes_,
              "irlb", kImageResolutionLimitBytes);
-  add_option(false, &image_retain_color_profile_, "ircp",
+  add_option(false, &RewriteOptions::image_retain_color_profile_, "ircp",
              kImageRetainColorProfile);
-  add_option(false, &image_retain_color_sampling_, "ircs",
+  add_option(false, &RewriteOptions::image_retain_color_sampling_, "ircs",
              kImageRetainColorSampling);
-  add_option(false, &image_retain_exif_data_, "ired", kImageRetainExifData);
-  add_option("", &ga_id_, "ig", kAnalyticsID);
-  add_option(true, &increase_speed_tracking_, "st", kIncreaseSpeedTracking);
-  add_option(false, &running_furious_, "fur", kRunningFurious);
-  add_option(kDefaultFuriousSlot, &furious_ga_slot_, "fga", kFuriousSlot);
-  add_option(false, &report_unload_time_, "rut", kReportUnloadTime);
-  add_option("", &x_header_value_, "xhv", kXModPagespeedHeaderValue);
-  add_option(false, &avoid_renaming_introspective_javascript_, "aris",
-             kAvoidRenamingIntrospectiveJavascript);
-  add_option(false, &enable_blink_for_mobile_devices_, "ebmd",
+  add_option(false, &RewriteOptions::image_retain_exif_data_, "ired",
+             kImageRetainExifData);
+  add_option("", &RewriteOptions::ga_id_, "ig", kAnalyticsID);
+  add_option(true, &RewriteOptions::increase_speed_tracking_, "st",
+             kIncreaseSpeedTracking);
+  add_option(false, &RewriteOptions::running_furious_, "fur", kRunningFurious);
+  add_option(kDefaultFuriousSlot, &RewriteOptions::furious_ga_slot_, "fga",
+             kFuriousSlot);
+  add_option(false, &RewriteOptions::report_unload_time_, "rut",
+             kReportUnloadTime);
+  add_option("", &RewriteOptions::x_header_value_, "xhv",
+             kXModPagespeedHeaderValue);
+  add_option(false, &RewriteOptions::avoid_renaming_introspective_javascript_,
+             "aris", kAvoidRenamingIntrospectiveJavascript);
+  add_option(false, &RewriteOptions::enable_blink_for_mobile_devices_, "ebmd",
              kEnableBlinkForMobileDevices);
-  add_option(false, &use_fixed_user_agent_for_blink_cache_misses_, "ufua",
-             kUseFixedUserAgentForBlinkCacheMisses);
+  add_option(false,
+             &RewriteOptions::use_fixed_user_agent_for_blink_cache_misses_,
+             "ufua", kUseFixedUserAgentForBlinkCacheMisses);
   add_option(kDefaultBlinkDesktopUserAgentValue,
-             &blink_desktop_user_agent_, "bdua",
+             &RewriteOptions::blink_desktop_user_agent_, "bdua",
              kBlinkDesktopUserAgent);
-  add_option(false, &passthrough_blink_for_last_invalid_response_code_, "ptbi",
-             kPassthroughBlinkForInvalidResponseCode);
-  add_option(false, &use_full_url_in_blink_families_, "bffu",
+  add_option(false,
+             &RewriteOptions::passthrough_blink_for_last_invalid_response_code_,
+             "ptbi", kPassthroughBlinkForInvalidResponseCode);
+  add_option(false, &RewriteOptions::use_full_url_in_blink_families_, "bffu",
              kUseFullUrlInBlinkFamilies);
-  add_option(false, &reject_blacklisted_, "rbl", kRejectBlacklisted);
-  add_option(HttpStatus::kForbidden, &reject_blacklisted_status_code_,
-             "rbls", kRejectBlacklistedStatusCode);
-  add_option(kDefaultBlockingRewriteKey, &blocking_rewrite_key_, "blrw",
-             kXPsaBlockingRewrite);
-  add_option(true, &support_noscript_enabled_, "snse",
+  add_option(false, &RewriteOptions::reject_blacklisted_, "rbl",
+             kRejectBlacklisted);
+  add_option(HttpStatus::kForbidden,
+             &RewriteOptions::reject_blacklisted_status_code_, "rbls",
+             kRejectBlacklistedStatusCode);
+  add_option(kDefaultBlockingRewriteKey, &RewriteOptions::blocking_rewrite_key_,
+             "blrw", kXPsaBlockingRewrite);
+  add_option(true, &RewriteOptions::support_noscript_enabled_, "snse",
              kSupportNoScriptEnabled);
   add_option(kDefaultMaxCombinedJsBytes,
-             &max_combined_js_bytes_, "xcj", kMaxCombinedJsBytes);
-  add_option(false, &enable_blink_html_change_detection_, "ebhcd",
-             kEnableBlinkHtmlChangeDetection);
-  add_option(false, &enable_blink_html_change_detection_logging_, "ebhcdl",
-             kEnableBlinkHtmlChangeDetectionLogging);
-  add_option("", &critical_line_config_, "clc", kCriticalLineConfig);
-  add_option(-1, &override_caching_ttl_ms_, "octm", kOverrideCachingTtlMs);
-  add_option(5 * Timer::kSecondMs, &blocking_fetch_timeout_ms_, "bfto",
-             RewriteOptions::kFetcherTimeOutMs);
-  // Sort all_options_ on enum.
-  SortOptions();
-  // Do not call add_option with OptionEnum fourth argument after this.
-  add_option(false, &enable_lazyload_in_blink_, "elib");
+             &RewriteOptions::max_combined_js_bytes_, "xcj",
+             kMaxCombinedJsBytes);
+  add_option(false, &RewriteOptions::enable_blink_html_change_detection_,
+             "ebhcd", kEnableBlinkHtmlChangeDetection);
+  add_option(false,
+             &RewriteOptions::enable_blink_html_change_detection_logging_,
+             "ebhcdl", kEnableBlinkHtmlChangeDetectionLogging);
+  add_option("", &RewriteOptions::critical_line_config_, "clc",
+             kCriticalLineConfig);
+  add_option(-1, &RewriteOptions::override_caching_ttl_ms_, "octm",
+             kOverrideCachingTtlMs);
+  add_option(5 * Timer::kSecondMs, &RewriteOptions::blocking_fetch_timeout_ms_,
+             "bfto", RewriteOptions::kFetcherTimeOutMs);
+  add_option(false, &RewriteOptions::enable_lazyload_in_blink_, "elib");
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
-             &metadata_cache_staleness_threshold_ms_, "mcst");
-  add_option(false, &apply_blink_if_no_families_, "abnf");
-  add_option(true, &enable_blink_debug_dashboard_, "ebdd");
-  add_option(kDefaultOverrideBlinkCacheTimeMs, &override_blink_cache_time_ms_,
-             "obctm");
-  add_option("", &lazyload_images_blank_url_, "llbu");
+             &RewriteOptions::metadata_cache_staleness_threshold_ms_, "mcst");
+  add_option(false,
+             &RewriteOptions::RewriteOptions::apply_blink_if_no_families_,
+             "abnf");
+  add_option(true, &RewriteOptions::enable_blink_debug_dashboard_, "ebdd");
+  add_option(kDefaultOverrideBlinkCacheTimeMs,
+             &RewriteOptions::override_blink_cache_time_ms_, "obctm");
+  add_option("", &RewriteOptions::lazyload_images_blank_url_, "llbu");
   add_option(kDefaultBlinkHtmlChangeDetectionTimeMs,
-             &blink_html_change_detection_time_ms_, "bhcdt");
-  add_option(false, &override_ie_document_mode_, "oidm");
+             &RewriteOptions::blink_html_change_detection_time_ms_, "bhcdt");
+  add_option(false, &RewriteOptions::override_ie_document_mode_, "oidm");
 
   //
   // Recently sriharis@ excluded a variety of options from
@@ -738,9 +783,6 @@ RewriteOptions::RewriteOptions()
   // running_furious_.DoNotUseForSignatureComputation();
   // x_header_value_.DoNotUseForSignatureComputation();
   // blocking_fetch_timeout_ms_.DoNotUseForSignatureComputation();
-
-  // Enable HtmlWriterFilter by default.
-  EnableFilter(kHtmlWriterFilter);
 }
 
 RewriteOptions::~RewriteOptions() {
@@ -750,10 +792,41 @@ RewriteOptions::~RewriteOptions() {
   STLDeleteElements(&url_cache_invalidation_entries_);
 }
 
+void RewriteOptions::InitializeOptions(const Properties* properties) {
+  all_options_.resize(all_properties_->size());
+
+  // Note that we reserve space in all_options_ for all RewriteOptions
+  // and subclass properties, but we initialize only the options
+  // corresponding to the ones passed into this method, whether from
+  // RewriteOptions or a subclass.
+  //
+  // This is because the member variables for the subclass properties
+  // have not been constructed yet, so copying default values into
+  // them would crash (at least the strings).  So we rely on subclass
+  // constructors to initialize their own options by calling
+  // InitializeOptions on their own property sets as well.
+  for (int i = 0, n = properties->size(); i < n; ++i) {
+    const PropertyBase* property = properties->property(i);
+    property->InitializeOption(this);
+  }
+  initialized_options_ += properties->size();
+}
+
 RewriteOptions::OptionBase::~OptionBase() {
 }
 
-RewriteOptions::Properties::Properties() : initialization_count_(1) {
+RewriteOptions::Properties::Properties()
+    : initialization_count_(1),
+      owns_properties_(true) {
+}
+
+RewriteOptions::Properties::~Properties() {
+  if (owns_properties_) {
+    STLDeleteElements(&property_vector_);
+  }
+}
+
+RewriteOptions::PropertyBase::~PropertyBase() {
 }
 
 bool RewriteOptions::Properties::Initialize(Properties** properties_handle) {
@@ -764,6 +837,23 @@ bool RewriteOptions::Properties::Initialize(Properties** properties_handle) {
   }
   ++(properties->initialization_count_);
   return false;
+}
+
+void RewriteOptions::Properties::Merge(Properties* properties) {
+  // We merge all subclass properties up into RewriteOptions::all_properties_.
+  //   RewriteOptions::properties_.owns_properties_ is true.
+  //   RewriteOptions::all_properties_.owns_properties_ is false.
+  DCHECK(properties->owns_properties_);
+  owns_properties_ = false;
+  property_vector_.reserve(size() + properties->size());
+  property_vector_.insert(property_vector_.end(),
+                          properties->property_vector_.begin(),
+                          properties->property_vector_.end());
+  std::sort(property_vector_.begin(), property_vector_.end(),
+            RewriteOptions::PropertyLessThanByEnum);
+  for (int i = 0, n = property_vector_.size(); i < n; ++i) {
+    property_vector_[i]->set_index(i);
+  }
 }
 
 bool RewriteOptions::Properties::Terminate(Properties** properties_handle) {
@@ -779,19 +869,25 @@ bool RewriteOptions::Properties::Terminate(Properties** properties_handle) {
 
 bool RewriteOptions::Initialize() {
   if (Properties::Initialize(&properties_)) {
+    Properties::Initialize(&all_properties_);
+    AddProperties();
     InitOptionEnumToNameArray();
+    all_properties_->Merge(properties_);
     return true;
   }
   return false;
 }
 
 bool RewriteOptions::Terminate() {
-  return Properties::Terminate(&properties_);
+  if (Properties::Terminate(&properties_)) {
+    Properties::Terminate(&all_properties_);
+    return true;
+  }
+  return false;
 }
 
-void RewriteOptions::SortOptions() {
-  std::sort(all_options_.begin(), all_options_.end(),
-            RewriteOptions::OptionLessThanByEnum);
+void RewriteOptions::MergeSubclassProperties(Properties* properties) {
+  all_properties_->Merge(properties);
 }
 
 bool RewriteOptions::SetFuriousState(int id) {
@@ -1311,6 +1407,9 @@ void RewriteOptions::DisableFiltersRequiringScriptExecution() {
 
 void RewriteOptions::Merge(const RewriteOptions& src) {
   DCHECK(!frozen_);
+  DCHECK_EQ(all_options_.size(), src.all_options_.size());
+  DCHECK_EQ(initialized_options_, src.initialized_options_);
+  DCHECK_EQ(initialized_options_, all_options_.size());
   modified_ |= src.modified_;
   for (FilterSet::const_iterator p = src.enabled_filters_.begin(),
            e = src.enabled_filters_.end(); p != e; ++p) {
