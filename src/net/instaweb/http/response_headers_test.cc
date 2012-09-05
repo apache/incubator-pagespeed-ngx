@@ -230,6 +230,17 @@ TEST_F(ResponseHeadersTest, TestParseAndWrite) {
   CheckGoogleHeaders(response_headers3);
 }
 
+TEST_F(ResponseHeadersTest, TestSizeEstimate) {
+  GoogleString headers = StrCat(
+      "HTTP/1.0 200 OK\r\n"
+      "Cache-control: max-age=300\r\n"
+      "Date: ", start_time_string_, "\r\n",
+      "X-Pagespeed: Fast\r\n"
+      "\r\n");
+  ParseHeaders(headers);
+  EXPECT_EQ(headers.length(), response_headers_.SizeEstimate());
+}
+
 // Test caching header interpretation.  Note that the detailed testing
 // of permutations is done in pagespeed/core/resource_util_test.cc.  We
 // are just trying to ensure that we have populated the Resource object

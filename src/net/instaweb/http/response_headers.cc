@@ -859,4 +859,15 @@ bool ResponseHeaders::UpdateCacheHeadersIfForceCached() {
   return false;
 }
 
+int64 ResponseHeaders::SizeEstimate() const {
+  int64 len = STATIC_STRLEN("HTTP/1.x 123 ") +  // All statuses are 3 digits.
+              strlen(reason_phrase()) + STATIC_STRLEN("\r\n");
+  for (int i = 0, n = NumAttributes(); i < n; ++i) {
+    len += Name(i).length() + STATIC_STRLEN(": ") +
+           Value(i).length() + STATIC_STRLEN("\r\n");
+  }
+  len += STATIC_STRLEN("\r\n");
+  return len;
+}
+
 }  // namespace net_instaweb

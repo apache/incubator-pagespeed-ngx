@@ -266,6 +266,12 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // Update the caching headers if the response has force cached.
   bool UpdateCacheHeadersIfForceCached();
 
+  // Returns estimated size in bytes of these headers (if transferred over
+  // HTTP, not SPDY or other protocols). This is an estimate because it may not
+  // properly account for things like spacing around : or whether multiple
+  // headers were on a single or multiple lines.
+  int64 SizeEstimate() const;
+
  private:
   // Parse the original and fresh content types, and add a new header based
   // on the two of them, giving preference to the original.
