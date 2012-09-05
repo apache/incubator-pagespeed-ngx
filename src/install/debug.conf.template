@@ -380,6 +380,11 @@ Listen @@APACHE_SECONDARY_PORT@@
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeed on
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/_secondary/"
+
+  # This is the same memcached instance as the root configuration,
+  # but with a different file-cache path.
+#MEMCACHED  ModPagespeedMemcachedServers localhost:6765
+
   ModPagespeedCacheFlushFilename cache.flush
   # If you uncomment this, the test will fail, proving we can disable
   # cache-flush polling.

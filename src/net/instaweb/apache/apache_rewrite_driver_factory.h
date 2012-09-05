@@ -170,6 +170,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // memcached server specification.  The l2_cache passed in is used
   // to handle puts/gets for huge (>1M) values.  NULL is returned if
   // memcached is not specified for this server.
+  //
+  // If a non-null CacheInterface* is returned, its ownership is transferred
+  // to the caller and must be freed on destruction.
   CacheInterface* GetMemcached(ApacheConfig* config, CacheInterface* l2_cache);
 
   // Stops any further Gets from occuring in the Async cache.  This is used to

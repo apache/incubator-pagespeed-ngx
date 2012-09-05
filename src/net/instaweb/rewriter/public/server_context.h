@@ -216,6 +216,14 @@ class ServerContext {
   CacheInterface* metadata_cache() const { return metadata_cache_.get(); }
   void set_metadata_cache(CacheInterface* x) { metadata_cache_.reset(x); }
 
+  // If a CacheInterface* was created on behalf of this server context,
+  // then we can ensure its timely destruction by setting it here.  Note
+  // that the ownership of the metadata_cache is also transferred to this
+  // class.
+  void set_owned_cache(CacheInterface* owned_cache) {
+    owned_cache_.reset(owned_cache);
+  }
+
   CriticalImagesFinder* critical_images_finder() const {
     return critical_images_finder_.get();
   }
@@ -572,6 +580,8 @@ class ServerContext {
   scoped_ptr<FuriousMatcher> furious_matcher_;
 
   UsageDataReporter* usage_data_reporter_;
+
+  scoped_ptr<CacheInterface> owned_cache_;
 
   DISALLOW_COPY_AND_ASSIGN(ServerContext);
 };

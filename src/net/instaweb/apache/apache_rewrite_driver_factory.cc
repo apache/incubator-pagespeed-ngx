@@ -151,6 +151,13 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
     ApacheCache* cache = p->second;
     defer_delete(new Deleter<ApacheCache>(cache));
   }
+
+  for (MemcachedMap::iterator p = memcached_map_.begin(),
+           e = memcached_map_.end(); p != e; ++p) {
+    AprMemCacheServers* servers = p->second;
+    defer_delete(new Deleter<AprMemCacheServers>(servers));
+  }
+
   shared_mem_statistics_.reset(NULL);
 }
 
@@ -248,6 +255,7 @@ void ApacheRewriteDriverFactory::SetupCaches(
   CacheInterface* memcached = GetMemcached(config, l2_cache);
   if (memcached != NULL) {
     l2_cache = memcached;
+    resource_manager->set_owned_cache(memcached);
   }
   Statistics* stats = resource_manager->statistics();
 
