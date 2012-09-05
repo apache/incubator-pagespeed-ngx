@@ -275,6 +275,7 @@ TEST_F(JsDisableFilterTest, DisablesScriptInMultipleBodies) {
 
 TEST_F(JsDisableFilterTest, AddsMetaTagForIE) {
   rewrite_driver()->set_user_agent("Mozilla/5.0 ( MSIE 9.0; Trident/5.0)");
+  options()->set_override_ie_document_mode(true);
   const GoogleString input_html = StrCat(
       "<body>",
       kUnrelatedNoscriptTags,
@@ -286,6 +287,32 @@ TEST_F(JsDisableFilterTest, AddsMetaTagForIE) {
       JsDisableFilter::kDisableJsExperimental,
       "</script>",
       kXUACompatibleMetaTag,
+      "</head>"
+      "<body>"),
+      StrCat(kUnrelatedNoscriptTags,
+      "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
+      " orig_index=\"0\">hi1</script>",
+      kUnrelatedTags,
+      kPrefetchContainerStartTag,
+      GetPrefetchScriptTag("blah1"),
+      kPrefetchContainerEndTag),
+      "</body>");
+
+  ValidateExpectedUrl("http://example.com/", input_html, expected);
+}
+
+TEST_F(JsDisableFilterTest, NoMetaTagForIE) {
+  rewrite_driver()->set_user_agent("Mozilla/5.0 ( MSIE 9.0; Trident/5.0)");
+  const GoogleString input_html = StrCat(
+      "<body>",
+      kUnrelatedNoscriptTags,
+      "<script src=\"blah1\" random=\"true\">hi1</script>",
+      kUnrelatedTags,
+      "</body>");
+  const GoogleString expected = StrCat(
+      StrCat("<head><script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      JsDisableFilter::kDisableJsExperimental,
+      "</script>"
       "</head>"
       "<body>"),
       StrCat(kUnrelatedNoscriptTags,

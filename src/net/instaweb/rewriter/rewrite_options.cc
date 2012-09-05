@@ -697,7 +697,7 @@ RewriteOptions::RewriteOptions()
   add_option("", &lazyload_images_blank_url_, "llbu");
   add_option(kDefaultBlinkHtmlChangeDetectionTimeMs,
              &blink_html_change_detection_time_ms_, "bhcdt");
-  add_option("false", &override_ie_document_mode_, "oidm");
+  add_option(false, &override_ie_document_mode_, "oidm");
 
   //
   // Recently sriharis@ excluded a variety of options from
