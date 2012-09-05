@@ -97,6 +97,9 @@ class FlushEarlyFlow {
 
   void Write(const StringPiece& val);
 
+  // Write the script content to base_fetch.
+  void WriteScript(const GoogleString& script_content);
+
   GoogleString url_;
   GoogleString dummy_head_;
   StringWriter dummy_head_writer_;
@@ -108,6 +111,8 @@ class FlushEarlyFlow {
   ProxyFetchFactory* factory_;
   ServerContext* manager_;
   ProxyFetchPropertyCallbackCollector* property_cache_callback_;
+  bool should_flush_early_lazyload_script_;
+  bool should_flush_early_js_defer_script_;
   MessageHandler* handler_;
 
   TimedVariable* num_requests_flushed_early_;

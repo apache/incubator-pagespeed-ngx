@@ -53,6 +53,9 @@ const char* LazyloadImagesFilter::kImageOnloadCode =
 const char* LazyloadImagesFilter::kLoadAllImages =
     "pagespeed.lazyLoadImages.loadAllImages();";
 
+const char* LazyloadImagesFilter::kIsLazyloadScriptInsertedPropertyName =
+    "is_lazyload_script_inserted";
+
 LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
     : CommonFilter(driver) {
   Clear();
@@ -64,6 +67,15 @@ void LazyloadImagesFilter::StartDocumentImpl() {
   Clear();
 }
 
+void LazyloadImagesFilter::EndDocument() {
+  if (!ShouldApply(driver())) {
+    return;
+  }
+  driver()->UpdatePropertyValueInDomCohort(
+      kIsLazyloadScriptInsertedPropertyName,
+      main_script_inserted_ ? "1" : "0");
+}
+
 void LazyloadImagesFilter::Clear() {
   skip_rewrite_ = NULL;
   main_script_inserted_ = false;
@@ -71,8 +83,12 @@ void LazyloadImagesFilter::Clear() {
   abort_script_inserted_ = false;
 }
 
+bool LazyloadImagesFilter::ShouldApply(RewriteDriver* driver) {
+  return driver->UserAgentSupportsImageInlining();
+}
+
 void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
-  if (!driver()->UserAgentSupportsImageInlining()) {
+  if (!ShouldApply(driver())) {
     return;
   }
   if (noscript_element() != NULL) {
@@ -105,7 +121,7 @@ void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
-  if (!driver()->UserAgentSupportsImageInlining()) {
+  if (!ShouldApply(driver())) {
     return;
   }
   if (noscript_element() != NULL) {
@@ -193,16 +209,18 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
 }
 
 void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
-  HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
-  driver()->AddAttribute(script, HtmlName::kType, "text/javascript");
-  StaticJavascriptManager* static_js__manager =
-      driver()->server_context()->static_javascript_manager();
-  GoogleString lazyload_js = GetLazyloadJsSnippet(
-      driver()->options(), static_js__manager);
-  HtmlNode* script_code = driver()->NewCharactersNode(
-      script, lazyload_js);
-  driver()->InsertElementBeforeElement(element, script);
-  driver()->AppendChild(script, script_code);
+  if (!driver()->is_lazyload_script_flushed()) {
+    HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
+    driver()->AddAttribute(script, HtmlName::kType, "text/javascript");
+    StaticJavascriptManager* static_js_manager =
+        driver()->server_context()->static_javascript_manager();
+    GoogleString lazyload_js = GetLazyloadJsSnippet(
+        driver()->options(), static_js_manager);
+    HtmlNode* script_code = driver()->NewCharactersNode(
+        script, lazyload_js);
+    driver()->InsertElementBeforeElement(element, script);
+    driver()->AppendChild(script, script_code);
+  }
   main_script_inserted_ = true;
 }
 
@@ -218,11 +236,11 @@ GoogleString LazyloadImagesFilter::GetBlankImageSrc(
 
 GoogleString LazyloadImagesFilter::GetLazyloadJsSnippet(
     const RewriteOptions* options,
-    StaticJavascriptManager* static_js__manager) {
+    StaticJavascriptManager* static_js_manager) {
   const GoogleString& load_onload =
       options->lazyload_images_after_onload() ? kTrue : kFalse;
   StringPiece lazyload_images_js =
-      static_js__manager->GetJsSnippet(
+      static_js_manager->GetJsSnippet(
           StaticJavascriptManager::kLazyloadImagesJs, options);
   const GoogleString& blank_image_url = GetBlankImageSrc(options);
   GoogleString lazyload_js =

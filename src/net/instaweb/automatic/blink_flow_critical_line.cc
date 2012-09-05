@@ -163,7 +163,7 @@ class CriticalLineFetch : public AsyncFetch {
   }
 
   virtual ~CriticalLineFetch() {
-    log_record_->WriteLogForBlink();
+    log_record_->WriteLogForBlink("");
     delete log_record_;
     rewrite_driver_->decrement_async_events_count();
     ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
@@ -542,6 +542,7 @@ BlinkFlowCriticalLine::BlinkFlowCriticalLine(
       kNumBlinkSharedFetchesStarted);
   const char* request_event_id = base_fetch_->request_headers()->Lookup1(
       HttpAttributes::kXGoogleRequestEventId);
+  blink_info_->set_url(url_);
   if (request_event_id != NULL) {
     blink_info_->set_request_event_id_time_usec(request_event_id);
   }
@@ -847,7 +848,8 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
   driver->set_is_blink_request(true);  // Mark this as a blink request.
   driver->set_serve_blink_non_critical(serve_non_critical);
   if (secondary_fetch == NULL) {
-    log_record_->WriteLogForBlink();
+    log_record_->WriteLogForBlink(
+        fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent));
     delete log_record_;
   }  // else, logging will be done by secondary_fetch.
   factory_->StartNewProxyFetch(

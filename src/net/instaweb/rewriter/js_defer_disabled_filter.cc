@@ -46,6 +46,9 @@ const char JsDeferDisabledFilter::kSuffix[] =
       "pagespeed.addHandler(document, 'DOMContentLoaded', startDeferJs);\n"
       "pagespeed.addOnload(window, startDeferJs);\n";
 
+const char JsDeferDisabledFilter::kIsJsDeferScriptInsertedPropertyName[] =
+    "is_js_defer_script_inserted";
+
 JsDeferDisabledFilter::JsDeferDisabledFilter(RewriteDriver* driver)
     : rewrite_driver_(driver),
       script_written_(false),
@@ -55,9 +58,13 @@ JsDeferDisabledFilter::JsDeferDisabledFilter(RewriteDriver* driver)
 
 JsDeferDisabledFilter::~JsDeferDisabledFilter() { }
 
+bool JsDeferDisabledFilter::ShouldApply(RewriteDriver* driver) {
+  return driver->UserAgentSupportsJsDefer();
+}
+
 void JsDeferDisabledFilter::StartDocument() {
   script_written_ = false;
-  defer_js_enabled_ = rewrite_driver_->UserAgentSupportsJsDefer();
+  defer_js_enabled_ = ShouldApply(rewrite_driver_);
 }
 
 void JsDeferDisabledFilter::StartElement(HtmlElement* element) {
@@ -78,30 +85,44 @@ void JsDeferDisabledFilter::EndElement(HtmlElement* element) {
 }
 
 void JsDeferDisabledFilter::InsertJsDeferCode(HtmlElement* element) {
-  HtmlElement* script_node =
-      rewrite_driver_->NewElement(element, HtmlName::kScript);
-  rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
-                                "text/javascript");
-  StaticJavascriptManager* static_js_manager =
-      rewrite_driver_->server_context()->static_javascript_manager();
-  StringPiece defer_js_script =
-      static_js_manager->GetJsSnippet(
-          StaticJavascriptManager::kDeferJs, rewrite_driver_->options());
-  const GoogleString& defer_js =
-      StrCat(defer_js_script, JsDeferDisabledFilter::kSuffix);
-  HtmlNode* script_code =
-      rewrite_driver_->NewCharactersNode(script_node, defer_js);
-  rewrite_driver_->AppendChild(element, script_node);
-  rewrite_driver_->AppendChild(script_node, script_code);
+  if (!rewrite_driver_->is_defer_javascript_script_flushed()) {
+    HtmlElement* script_node =
+        rewrite_driver_->NewElement(element, HtmlName::kScript);
+    rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
+                                  "text/javascript");
+    StaticJavascriptManager* static_js_manager =
+        rewrite_driver_->server_context()->static_javascript_manager();
+    GoogleString defer_js = GetDeferJsSnippet(
+        rewrite_driver_->options(), static_js_manager);
+    HtmlNode* script_code =
+        rewrite_driver_->NewCharactersNode(script_node, defer_js);
+    rewrite_driver_->AppendChild(element, script_node);
+    rewrite_driver_->AppendChild(script_node, script_code);
+  }
   script_written_ = true;
 }
 
 void JsDeferDisabledFilter::EndDocument() {
-  if (defer_js_enabled_ && !script_written_) {
+  if (!defer_js_enabled_) {
+    return;
+  }
+  if (!script_written_) {
     // Scripts never get executed if this happen.
     rewrite_driver_->InfoHere("HEAD tag didn't close or no BODY tag found");
     // TODO(atulvasu): Try to write here.
   }
+  rewrite_driver_->UpdatePropertyValueInDomCohort(
+      kIsJsDeferScriptInsertedPropertyName,
+      script_written_ ? "1" : "0");
+}
+
+GoogleString JsDeferDisabledFilter::GetDeferJsSnippet(
+      const RewriteOptions* options,
+      StaticJavascriptManager* static_js_manager) {
+  StringPiece defer_js_script =
+      static_js_manager->GetJsSnippet(
+          StaticJavascriptManager::kDeferJs, options);
+  return StrCat(defer_js_script, JsDeferDisabledFilter::kSuffix);
 }
 
 }  // namespace net_instaweb

@@ -20,11 +20,14 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_LAZYLOAD_IMAGES_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+ #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
 class HtmlElement;
 class RewriteDriver;
+class RewriteOptions;
+class StaticJavascriptManager;
 class Statistics;
 
 // Filter to lazyload images by replacing the src with a pagespeed_lazy_src
@@ -74,6 +77,7 @@ class LazyloadImagesFilter : public CommonFilter {
   static const char* kBlankImageSrc;
   static const char* kImageOnloadCode;
   static const char* kLoadAllImages;
+  static const char* kIsLazyloadScriptInsertedPropertyName;
 
   explicit LazyloadImagesFilter(RewriteDriver* driver);
   virtual ~LazyloadImagesFilter();
@@ -81,13 +85,17 @@ class LazyloadImagesFilter : public CommonFilter {
   virtual const char* Name() const { return "Lazyload Images"; }
 
   static void Initialize(Statistics* statistics);
+  static void Terminate();
+
+  // Lazyload filter will be no op for the request if ShouldApply returns false.
+  static bool ShouldApply(RewriteDriver* driver);
   static GoogleString GetLazyloadJsSnippet(
       const RewriteOptions* options,
-      StaticJavascriptManager* static_js__manager);
-  static void Terminate();
+      StaticJavascriptManager* static_js_manager);
 
  protected:
   virtual void StartDocumentImpl();
+  virtual void EndDocument();
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element);
 

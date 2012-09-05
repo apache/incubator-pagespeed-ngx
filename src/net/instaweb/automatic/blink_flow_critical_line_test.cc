@@ -787,17 +787,19 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
   }
 
   // Verifies the fields of BlinkInfo proto being logged.
-  BlinkInfo* VerifyBlinkInfo(int blink_request_flow) {
+  BlinkInfo* VerifyBlinkInfo(int blink_request_flow, const char* url) {
     CustomRewriteDriverFactory* factory =
         static_cast<CustomRewriteDriverFactory*>(resource_manager()->factory());
     BlinkInfo* blink_info = factory->logging_info()->mutable_blink_info();
     EXPECT_EQ(blink_request_flow, blink_info->blink_request_flow());
     EXPECT_EQ("1345815119391831", blink_info->request_event_id_time_usec());
+    EXPECT_STREQ(url, blink_info->url());
     return blink_info;
   }
 
-  BlinkInfo* VerifyBlinkInfo(int blink_request_flow, bool html_match) {
-    BlinkInfo* blink_info = VerifyBlinkInfo(blink_request_flow);
+  BlinkInfo* VerifyBlinkInfo(int blink_request_flow, bool html_match,
+                             const char* url) {
+    BlinkInfo* blink_info = VerifyBlinkInfo(blink_request_flow, url);
     EXPECT_EQ(html_match, blink_info->html_match());
     return blink_info;
   }
@@ -897,7 +899,8 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
         BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
     EXPECT_EQ(1, statistics()->FindVariable(
         BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
-    VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, false);
+    VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, false,
+                    "http://test.com/text.html");
     ClearStats();
 
     // Hash set. No mismatches.
@@ -913,7 +916,9 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
         BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
     EXPECT_EQ(1, statistics()->FindVariable(
         BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
-    VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, true);
+    VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, true,
+                    "http://test.com/text.html");
+    ClearStats();
     ClearStats();
 
     // Input with an extra comment. We strip out comments before taking hash,
@@ -932,7 +937,9 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
         BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
     EXPECT_EQ(1, statistics()->FindVariable(
         BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
-    VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, true);
+    VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, true,
+                    "http://test.com/text.html");
+    ClearStats();
   }
 
   ResponseHeaders response_headers_;
@@ -962,7 +969,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestFlakyNon200ResponseCodeValidHitAfter404) {
   EXPECT_STREQ(kHtmlInput, text);
   // Cache lookup for original plain text, BlinkCriticalLineData and Dom Cohort
   // in property cache.
-  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_MISS_TRIGGERED_REWRITE);
+  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_MISS_TRIGGERED_REWRITE,
+                  "http://test.com/flaky.html");
   EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, num_compute_calls());
 
@@ -990,7 +998,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestFlakyNon200ResponseCodeValidHitAfter404) {
       "flaky.html", true, &text, &response_headers_out);
   UnEscapeString(&text);
   EXPECT_STREQ(kHtmlInput, text);
-  VerifyBlinkInfo(BlinkInfo::FOUND_LAST_STATUS_CODE_NON_OK);
+  VerifyBlinkInfo(BlinkInfo::FOUND_LAST_STATUS_CODE_NON_OK,
+                  "http://test.com/flaky.html");
   EXPECT_EQ(1, num_compute_calls());
 
   ClearStats();
@@ -1003,7 +1012,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestFlakyNon200ResponseCodeValidHitAfter404) {
   UnEscapeString(&text);
   EXPECT_STREQ(blink_output_with_cacheable_panels_no_cookies_, text);
   // Normal Hit case.
-  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT);
+  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT,
+                  "http://test.com/flaky.html");
   EXPECT_EQ(1, num_compute_calls());
 }
 
@@ -1017,7 +1027,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkInfoErrorScenarios) {
       "flaky.html", false, &text, &response_headers_out);
 
   // HandleDone(False) case.
-  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK);
+  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK,
+                  "http://test.com/flaky.html");
 
   ClearStats();
   response_headers_out.Clear();
@@ -1029,7 +1040,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkInfoErrorScenarios) {
       "flaky.html", true, &text, &response_headers_out);
   UnEscapeString(&text);
   // Malformed HTML case.
-  VerifyBlinkInfo(BlinkInfo::FOUND_MALFORMED_HTML);
+  VerifyBlinkInfo(BlinkInfo::FOUND_MALFORMED_HTML,
+                  "http://test.com/flaky.html");
 }
 
 TEST_F(BlinkFlowCriticalLineTest,
@@ -1498,7 +1510,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlOverThreshold) {
       "smalltest.html", true, &text, &response_headers);
 
   EXPECT_STREQ(kSmallHtmlInput, text);
-  VerifyBlinkInfo(BlinkInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD);
+  VerifyBlinkInfo(BlinkInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD,
+                  "http://test.com/smalltest.html");
   // Cache lookup for original html, BlinkCriticalLineData and Dom Cohort
   // in property cache.
   EXPECT_EQ(3, lru_cache()->num_misses());
@@ -1547,7 +1560,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlHeaderOverThreshold) {
   FetchFromProxyNoWaitForBackground(
       "smalltest.html", true, &text, &response_headers);
 
-  VerifyBlinkInfo(BlinkInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD);
+  VerifyBlinkInfo(BlinkInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD,
+                  "http://test.com/smalltest.html");
   // Cache lookup for original html, BlinkCriticalLineData and Dom Cohort
   // in property cache.
   EXPECT_EQ(3, lru_cache()->num_misses());
@@ -1567,7 +1581,8 @@ TEST_F(BlinkFlowCriticalLineTest, NonHtmlContent) {
   EXPECT_STREQ(kHtmlInput, text);
   EXPECT_STREQ("text/plain",
                response_headers.Lookup1(HttpAttributes::kContentType));
-  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_MISS_FOUND_RESOURCE);
+  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_MISS_FOUND_RESOURCE,
+                  "http://test.com/plain.html");
   // Cache lookup for original plain text, BlinkCriticalLineData and Dom Cohort
   // in property cache.
   EXPECT_EQ(3, lru_cache()->num_misses());
@@ -1628,7 +1643,8 @@ TEST_F(BlinkFlowCriticalLineTest, Non200StatusCode) {
   EXPECT_STREQ(kHtmlInput, text);
   EXPECT_STREQ("text/plain",
                response_headers.Lookup1(HttpAttributes::kContentType));
-  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK);
+  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK,
+                  "http://test.com/404.html");
   // Cache lookup for original plain text, BlinkCriticalLineData and Dom Cohort
   // in property cache.
   EXPECT_EQ(3, lru_cache()->num_misses());

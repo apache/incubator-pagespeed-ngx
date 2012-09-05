@@ -61,7 +61,7 @@ class LogRecord  {
   // Return the LoggingInfo proto wrapped by this class.
   virtual LoggingInfo* logging_info() { return logging_info_; }
 
-  virtual void WriteLogForBlink();
+  virtual void WriteLogForBlink(const GoogleString& user_agent);
 
  protected:
   // Returns a comma-joined string concatenating the contents of

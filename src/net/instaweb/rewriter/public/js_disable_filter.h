@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_JS_DISABLE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_JS_DISABLE_FILTER_H_
 
+#include <vector>
+
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -26,8 +28,9 @@
 
 namespace net_instaweb {
 
-class RewriteDriver;
 class HtmlElement;
+class RewriteDriver;
+class RewriteOptions;
 
 // Disables javscript by converting input html:
 //   <script src="1.js">var a = 1...</script>
@@ -56,6 +59,8 @@ class JsDisableFilter : public EmptyHtmlFilter {
     return "JsDisableFilter";
   }
 
+  static GoogleString GetJsDisableScriptSnippet(const RewriteOptions* options);
+
  private:
   // Inserts the experimental js enable/disable code.
   void InsertJsDeferExperimentalScript(HtmlElement* element);
@@ -72,7 +77,6 @@ class JsDisableFilter : public EmptyHtmlFilter {
   ScriptTagScanner script_tag_scanner_;
   int index_;
   bool defer_js_experimental_script_written_;
-  bool defer_js_experimental_;
   bool defer_js_enabled_;
   std::vector<HtmlElement*> prefetch_scripts_;
   HtmlElement* body_element_;

@@ -30,9 +30,12 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
-#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
+#include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
+#include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -149,6 +152,8 @@ FlushEarlyFlow::FlushEarlyFlow(
       factory_(factory),
       manager_(driver->server_context()),
       property_cache_callback_(property_cache_callback),
+      should_flush_early_lazyload_script_(false),
+      should_flush_early_js_defer_script_(false),
       handler_(driver_->server_context()->message_handler()) {
   Statistics* stats = manager_->statistics();
   num_requests_flushed_early_ = stats->GetTimedVariable(
@@ -169,9 +174,30 @@ void FlushEarlyFlow::FlushEarly() {
       property_cache_callback_->GetPropertyPageWithoutOwnership(
           ProxyFetchPropertyCallback::kPagePropertyCache);
   if (page != NULL && cohort != NULL) {
+    // Check whether to flush lazyload and js_defer script snippets to be
+    // flushed early.
+    PropertyValue* lazyload_property_value = page->GetProperty(
+        cohort, LazyloadImagesFilter::kIsLazyloadScriptInsertedPropertyName);
+    if (lazyload_property_value->has_value() &&
+        StringCaseEqual(lazyload_property_value->value(), "1") &&
+        driver_->options()->Enabled(RewriteOptions::kLazyloadImages) &&
+        LazyloadImagesFilter::ShouldApply(driver_)) {
+      driver_->set_is_lazyload_script_flushed(true);
+      should_flush_early_lazyload_script_ = true;
+    }
+
+    PropertyValue* defer_js_property_value = page->GetProperty(
+        cohort, JsDeferDisabledFilter::kIsJsDeferScriptInsertedPropertyName);
+    if (defer_js_property_value->has_value() &&
+        StringCaseEqual(defer_js_property_value->value(), "1") &&
+        driver_->options()->Enabled(RewriteOptions::kDeferJavascript) &&
+        JsDeferDisabledFilter::ShouldApply(driver_)) {
+      driver_->set_is_defer_javascript_script_flushed(true);
+      should_flush_early_js_defer_script_ = true;
+    }
+
     PropertyValue* property_value = page->GetProperty(
         cohort, RewriteDriver::kSubresourcesPropertyName);
-
     if (property_value != NULL && property_value->has_value()) {
       FlushEarlyInfo flush_early_info;
       ArrayInputStream value(property_value->value().data(),
@@ -237,6 +263,19 @@ void FlushEarlyFlow::FlushEarly() {
 }
 
 void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms) {
+  StaticJavascriptManager* static_js__manager =
+        manager_->static_javascript_manager();
+  if (should_flush_early_lazyload_script_) {
+    // Flush Lazyload filter script content.
+    WriteScript(LazyloadImagesFilter::GetLazyloadJsSnippet(
+        driver_->options(), static_js__manager));
+  }
+  if (should_flush_early_js_defer_script_) {
+    // Flush defer_javascript script content.
+    WriteScript(JsDisableFilter::GetJsDisableScriptSnippet(driver_->options()));
+    WriteScript(JsDeferDisabledFilter::GetDeferJsSnippet(
+        driver_->options(), static_js__manager));
+  }
   base_fetch_->Write("</head>", handler_);
   base_fetch_->Flush(handler_);
   flush_early_rewrite_latency_ms->Add(
@@ -250,6 +289,12 @@ void FlushEarlyFlow::TriggerProxyFetch() {
   factory_->StartNewProxyFetch(
       url_, fetch, driver_, property_cache_callback_, NULL);
   delete this;
+}
+
+void FlushEarlyFlow::WriteScript(const GoogleString& script_content) {
+  base_fetch_->Write("<script type=\"text/javascript\">", handler_);
+  base_fetch_->Write(script_content, handler_);
+  base_fetch_->Write("</script>", handler_);
 }
 
 void FlushEarlyFlow::GenerateResponseHeaders(

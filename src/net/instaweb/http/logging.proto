@@ -39,7 +39,7 @@ message TimingInfo  {
 }
 
 // This proto stores all Blink related information.
-// Next id for BlinkInfo : 5
+// Next id for BlinkInfo : 6
 message BlinkInfo {
   enum BlinkRequestFlow {
     BLINK_CACHE_HIT = 1;
@@ -69,6 +69,9 @@ message BlinkInfo {
   };
 
   optional UserAgent blink_user_agent = 4;
+
+  // Url of the request.
+  optional string url = 5;
 }
 
 // This proto stores all information which we would like to log.

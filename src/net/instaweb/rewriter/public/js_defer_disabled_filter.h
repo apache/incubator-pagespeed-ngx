@@ -21,11 +21,14 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
 class RewriteDriver;
+class RewriteOptions;
 class HtmlElement;
+class StaticJavascriptManager;
 class Statistics;
 
 // Implements deferring of javascripts into post onload.
@@ -35,6 +38,7 @@ class Statistics;
 class JsDeferDisabledFilter : public EmptyHtmlFilter {
  public:
   static const char kSuffix[];
+  static const char kIsJsDeferScriptInsertedPropertyName[];
 
   explicit JsDeferDisabledFilter(RewriteDriver* driver);
   virtual ~JsDeferDisabledFilter();
@@ -47,6 +51,13 @@ class JsDeferDisabledFilter : public EmptyHtmlFilter {
 
   static void Initialize(Statistics* statistics);
   static void Terminate();
+
+  // JsDeferDisableFilter will be no op for the request if ShouldApply returns
+  // false.
+  static bool ShouldApply(RewriteDriver* driver);
+  static GoogleString GetDeferJsSnippet(
+      const RewriteOptions* options,
+      StaticJavascriptManager* static_js_manager);
 
  private:
   void InsertJsDeferCode(HtmlElement* element);

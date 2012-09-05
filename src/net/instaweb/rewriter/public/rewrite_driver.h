@@ -827,6 +827,18 @@ class RewriteDriver : public HtmlParse {
   void set_flushing_early(bool x) { flushing_early_ = x; }
   bool flushing_early() { return flushing_early_; }
 
+  void set_is_lazyload_script_flushed(bool x) {
+    is_lazyload_script_flushed_ = x;
+  }
+  bool is_lazyload_script_flushed() { return is_lazyload_script_flushed_; }
+
+  void set_is_defer_javascript_script_flushed(bool x) {
+    is_defer_javascript_script_flushed_ = x;
+  }
+  bool is_defer_javascript_script_flushed() {
+    return is_defer_javascript_script_flushed_;
+  }
+
   // This method is not thread-safe. Call it only from the html parser thread.
   FlushEarlyInfo* flush_early_info();
 
@@ -1043,6 +1055,13 @@ class RewriteDriver : public HtmlParse {
   // user early. This is only set to true when
   // enable_flush_subresources_experimental is true.
   bool flushing_early_;
+
+  // If it is set to true, then lazyload script is flushed with flush early
+  // flow.
+  bool is_lazyload_script_flushed_;
+  // If it is set to true, then defer_javascript script is flushed with flush
+  // early flow.
+  bool is_defer_javascript_script_flushed_;
 
   // Set to true if RewriteDriver can be released.
   bool release_driver_;

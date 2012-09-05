@@ -305,6 +305,9 @@ pagespeed.lazyLoadInit = function(loadAfterOnload, blankImageSrc) {
       temp.loadVisible_();
     }, 200);
   }
+  if (blankImageSrc.indexOf('data') != 0) {
+    new Image().src = blankImageSrc;
+  }
   pagespeed.addHandler(window, 'load', lazy_onload);
   if (!loadAfterOnload) {
     var lazy_onscroll = function() {

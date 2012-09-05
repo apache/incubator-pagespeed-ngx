@@ -182,6 +182,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       flush_occurred_(false),
       flushed_early_(false),
       flushing_early_(false),
+      is_lazyload_script_flushed_(false),
+      is_defer_javascript_script_flushed_(false),
       release_driver_(false),
       inhibits_mutex_(NULL),
       finish_parse_on_hold_(NULL),
@@ -316,6 +318,8 @@ void RewriteDriver::Clear() {
   flush_occurred_ = false;
   flushed_early_ = false;
   flushing_early_ = false;
+  is_lazyload_script_flushed_ = false;
+  is_defer_javascript_script_flushed_ = false;
   base_was_set_ = false;
   refs_before_base_ = false;
   containing_charset_.clear();
@@ -1880,7 +1884,6 @@ void RewriteDriver::UpdatePropertyValueInDomCohort(StringPiece property_name,
   }
   PropertyCache* pcache = server_context_->page_property_cache();
   if (pcache == NULL || property_page() == NULL) {
-    LOG(DFATAL) << "Property cache or property page not available.";
     return;
   }
   const PropertyCache::Cohort* dom = pcache->GetCohort(kDomCohort);

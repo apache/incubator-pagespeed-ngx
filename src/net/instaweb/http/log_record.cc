@@ -47,7 +47,7 @@ void LogRecord::Finalize() {
   logging_info()->set_applied_rewriters(ConcatenatedRewriterString());
 }
 
-void LogRecord::WriteLogForBlink() {
+void LogRecord::WriteLogForBlink(const GoogleString& user_agent) {
   // no-op.
 }
 
