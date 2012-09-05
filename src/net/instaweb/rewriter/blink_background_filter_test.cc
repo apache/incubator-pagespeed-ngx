@@ -36,7 +36,6 @@ const char kRequestUrl[] = "http://www.test.com";
 
 const char kHtmlInput[] =
     "<html>"
-    "%s"
     "<body>"
     "<noscript>This should get removed</noscript>"
     "<div id=\"header\"> This is the header </div>"
@@ -51,15 +50,6 @@ const char kHtmlInput[] =
 
 const char kBlinkUrlHandler[] = "/psajs/blink.js";
 const char kBlinkUrlGstatic[] = "http://www.gstatic.com/psa/static/1-blink.js";
-const char kUtf8Content[] =
-    "<head>"
-      "<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\">"
-    "</head>";
-const char kNonUtf8Content[] =
-    "<head>"
-      "<meta http-equiv=\"content-type\" content=\"text/html; "
-        "charset=iso-8859-1\">"
-    "</head>";
 const char kPsaHeadScriptNodesStart[] =
     "<script type=\"text/javascript\" pagespeed_no_defer=\"\" src=\"";
 
@@ -116,7 +106,7 @@ class BlinkBackgroundFilterTest : public RewriteTestBase {
 };
 
 TEST_F(BlinkBackgroundFilterTest, StripNonCacheable) {
-  ValidateExpectedUrl(kRequestUrl, StringPrintf(kHtmlInput, ""),
+  ValidateExpectedUrl(kRequestUrl, kHtmlInput,
                       GetExpectedOutput(kBlinkUrlHandler));
 }
 
@@ -124,18 +114,8 @@ TEST_F(BlinkBackgroundFilterTest, TestGstatic) {
   UrlNamer url_namer;
   StaticJavascriptManager js_manager(&url_namer, true, "1");
   resource_manager()->set_static_javascript_manager(&js_manager);
-  ValidateExpectedUrl(kRequestUrl, StringPrintf(kHtmlInput, ""),
+  ValidateExpectedUrl(kRequestUrl, kHtmlInput,
                       GetExpectedOutput(kBlinkUrlGstatic));
-}
-
-TEST_F(BlinkBackgroundFilterTest, Utf8Content) {
-  ValidateExpectedUrl(kRequestUrl, StringPrintf(kHtmlInput, kUtf8Content),
-                      GetExpectedOutput(kBlinkUrlHandler));
-}
-
-TEST_F(BlinkBackgroundFilterTest, NonUtf8Content) {
-  ValidateExpectedUrl(kRequestUrl, StringPrintf(kHtmlInput, kNonUtf8Content),
-                      GetExpectedOutput(kBlinkUrlHandler));
 }
 
 }  // namespace net_instaweb

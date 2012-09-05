@@ -112,7 +112,7 @@ Statistics* FileRewriter::statistics() {
 StaticRewriter::StaticRewriter(int* argc, char*** argv)
     : gflags_((*argv)[0], argc, argv),
       file_rewriter_(&gflags_, true),
-      resource_manager_(file_rewriter_.CreateResourceManager()) {
+      resource_manager_(file_rewriter_.CreateServerContext()) {
   if (!gflags_.SetOptions(&file_rewriter_,
                           resource_manager_->global_options())) {
     exit(1);
@@ -121,7 +121,7 @@ StaticRewriter::StaticRewriter(int* argc, char*** argv)
 
 StaticRewriter::StaticRewriter()
     : file_rewriter_(&gflags_, false),
-      resource_manager_(file_rewriter_.CreateResourceManager()) {
+      resource_manager_(file_rewriter_.CreateServerContext()) {
   if (!gflags_.SetOptions(&file_rewriter_,
                           resource_manager_->global_options())) {
     exit(1);

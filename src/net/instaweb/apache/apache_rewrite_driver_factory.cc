@@ -700,7 +700,7 @@ bool ApacheRewriteDriverFactory::PoolDestroyed(ApacheResourceManager* rm) {
   // are partially constructed.  RewriteDriverFactory keeps track of
   // ResourceManagers that are already serving requests.  We need to clean
   // all of them out before we can terminate the driver.
-  bool no_active_resource_managers = TerminateResourceManager(rm);
+  bool no_active_resource_managers = TerminateServerContext(rm);
   return (no_active_resource_managers && uninitialized_managers_.empty());
 }
 

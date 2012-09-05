@@ -51,7 +51,6 @@
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
-#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -709,11 +708,6 @@ void BlinkFlowCriticalLine::SendLazyloadImagesJs() {
 
 void BlinkFlowCriticalLine::SendCriticalHtml(
     const GoogleString& critical_html) {
-  // Send an explicit UTF-8 BOM to make IE9 recognize the content as UTF-8.
-  // TODO(rmathew): Remove this once we start serving content in its original
-  // charset.
-  // TODO(rmathew): Add system-tests for non-UTF-8 content.
-  WriteString(kUtf8Bom);
   WriteString(critical_html);
   WriteString("<script>pagespeed.panelLoaderInit();</script>");
   const char* user_ip = base_fetch_->request_headers()->Lookup1(

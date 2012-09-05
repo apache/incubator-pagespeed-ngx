@@ -118,8 +118,8 @@ void RewriteTestBase::Init() {
   RewriteDriverFactory::Initialize(statistics_.get());
   factory_->SetStatistics(statistics_.get());
   other_factory_->SetStatistics(statistics_.get());
-  resource_manager_ = factory_->CreateResourceManager();
-  other_resource_manager_ = other_factory_->CreateResourceManager();
+  resource_manager_ = factory_->CreateServerContext();
+  other_resource_manager_ = other_factory_->CreateServerContext();
   other_rewrite_driver_ = MakeDriver(other_resource_manager_, other_options_);
 }
 
@@ -265,7 +265,7 @@ void RewriteTestBase::ServeResourceFromNewContext(
   TestRewriteDriverFactory::Initialize(&stats);
   new_factory->SetUseTestUrlNamer(factory_->use_test_url_namer());
   new_factory->SetStatistics(&stats);
-  ServerContext* new_resource_manager = new_factory->CreateResourceManager();
+  ServerContext* new_resource_manager = new_factory->CreateServerContext();
   if (new_rms_url_namer != NULL) {
     new_resource_manager->set_url_namer(new_rms_url_namer);
   }

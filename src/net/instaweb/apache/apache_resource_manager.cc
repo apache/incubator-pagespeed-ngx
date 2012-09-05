@@ -172,7 +172,7 @@ void ApacheResourceManager::ChildInit() {
     // an optional read/writer lock for this purpose.
     global_options()->set_cache_invalidation_timestamp_mutex(
         thread_system()->NewRWLock());
-    apache_factory_->InitResourceManager(this);
+    apache_factory_->InitServerContext(this);
 
     html_rewrite_time_us_histogram_ = statistics()->GetHistogram(
         kHtmlRewriteTimeUsHistogram);

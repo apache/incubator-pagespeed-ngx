@@ -168,21 +168,21 @@ class RewriteDriverFactory {
   virtual UrlFetcher* ComputeUrlFetcher();
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
 
-  // Threadsafe mechanism to create a managed ResourceManager.  The
-  // ResourceManager is owned by the factory, and should not be
+  // Threadsafe mechanism to create a managed ServerContext.  The
+  // ServerContext is owned by the factory, and should not be
   // deleted directly.  Currently it is not possible to delete a
-  // resource manager except by deleting the entire factory.
-  ServerContext* CreateResourceManager();
+  // server context except by deleting the entire factory.
+  ServerContext* CreateServerContext();
 
-  // Initializes a ResourceManager that has been new'd directly.  This
+  // Initializes a ServerContext that has been new'd directly.  This
   // allows 2-phase initialization if required.  There is no need to
-  // call this if you use CreateResourceManager.
-  void InitResourceManager(ServerContext* resource_manager);
+  // call this if you use CreateServerContext.
+  void InitServerContext(ServerContext* server_context);
 
-  // Called from InitResourceManagager, but virtualized separately
+  // Called from InitServerContext, but virtualized separately
   // as it is platform-specific.  This method must call on the resource
   // manager: set_http_cache, set_metadata_cache, and MakePropertyCaches.
-  virtual void SetupCaches(ServerContext* resource_manager) = 0;
+  virtual void SetupCaches(ServerContext* server_context) = 0;
 
   // Provides an optional hook for adding rewrite passes to the HTML filter
   // chain.  This should be used for filters that are specific to a particular
@@ -215,7 +215,7 @@ class RewriteDriverFactory {
   // Collection of global statistics objects.  This is thread-unsafe:
   // it must be called prior to spawning threads, and after any calls
   // to SetStatistics.  Failing that, it will be initialized in the
-  // first call to ComputeResourceManager, which is thread-safe.
+  // first call to InitServerContext(), which is thread-safe.
   RewriteStats* rewrite_stats();
 
   // statistics (default is NullStatistics).  This can be overridden by calling
@@ -292,7 +292,7 @@ class RewriteDriverFactory {
   // Used by subclasses to indicate that a ResourceManager has been
   // terminated.  Returns true if this was the last resource manager
   // known to this factory.
-  bool TerminateResourceManager(ServerContext* rm);
+  bool TerminateServerContext(ServerContext* rm);
 
   // Implementors of RewriteDriverFactory must supply default definitions
   // for each of these methods, although they may be overridden via set_
@@ -382,10 +382,10 @@ class RewriteDriverFactory {
   bool slurp_read_only_;
   bool slurp_print_urls_;
 
-  // protected by resource_manager_mutex_;
-  typedef std::set<ServerContext*> ResourceManagerSet;
-  ResourceManagerSet resource_managers_;
-  scoped_ptr<AbstractMutex> resource_manager_mutex_;
+  // protected by server_context_mutex_;
+  typedef std::set<ServerContext*> ServerContextSet;
+  ServerContextSet server_contexts_;
+  scoped_ptr<AbstractMutex> server_context_mutex_;
 
   // Stores options with hard-coded defaults and adjustments from
   // the core system, subclasses, and command-line.

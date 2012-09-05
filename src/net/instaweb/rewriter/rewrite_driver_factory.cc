@@ -75,7 +75,7 @@ void RewriteDriverFactory::Init() {
   slurp_read_only_ = false;
   slurp_print_urls_ = false;
   SetStatistics(&null_statistics_);
-  resource_manager_mutex_.reset(thread_system_->NewMutex());
+  server_context_mutex_.reset(thread_system_->NewMutex());
   worker_pools_.assign(kNumWorkerPools, NULL);
 
   // Pre-initializes the default options.  IMPORTANT: subclasses overridding
@@ -100,8 +100,8 @@ RewriteDriverFactory::~RewriteDriverFactory() {
   ShutDown();
 
   {
-    ScopedMutex lock(resource_manager_mutex_.get());
-    STLDeleteElements(&resource_managers_);
+    ScopedMutex lock(server_context_mutex_.get());
+    STLDeleteElements(&server_contexts_);
   }
 
   for (int c = 0; c < kNumWorkerPools; ++c) {
@@ -187,7 +187,7 @@ void RewriteDriverFactory::set_base_url_async_fetcher(
 
 void RewriteDriverFactory::set_hasher(Hasher* hasher) {
   hasher_.reset(hasher);
-  DCHECK(resource_managers_.empty());
+  DCHECK(server_contexts_.empty());
 }
 
 void RewriteDriverFactory::set_timer(Timer* timer) {
@@ -369,15 +369,15 @@ StringPiece RewriteDriverFactory::filename_prefix() {
 }
 
 
-ServerContext* RewriteDriverFactory::CreateResourceManager() {
+ServerContext* RewriteDriverFactory::CreateServerContext() {
   ServerContext* resource_manager = new ServerContext(this);
-  InitResourceManager(resource_manager);
+  InitServerContext(resource_manager);
   return resource_manager;
 }
 
-void RewriteDriverFactory::InitResourceManager(
+void RewriteDriverFactory::InitServerContext(
     ServerContext* resource_manager) {
-  ScopedMutex lock(resource_manager_mutex_.get());
+  ScopedMutex lock(server_context_mutex_.get());
 
   resource_manager->ComputeSignature(resource_manager->global_options());
   resource_manager->set_scheduler(scheduler());
@@ -408,7 +408,7 @@ void RewriteDriverFactory::InitResourceManager(
   resource_manager->set_blink_critical_line_data_finder(
       DefaultBlinkCriticalLineDataFinder(pcache));
   resource_manager->InitWorkersAndDecodingDriver();
-  resource_managers_.insert(resource_manager);
+  server_contexts_.insert(resource_manager);
 }
 
 void RewriteDriverFactory::AddPlatformSpecificDecodingPasses(
@@ -493,16 +493,16 @@ StringPiece RewriteDriverFactory::LockFilePrefix() {
 }
 
 void RewriteDriverFactory::StopCacheActivity() {
-  ScopedMutex lock(resource_manager_mutex_.get());
+  ScopedMutex lock(server_context_mutex_.get());
 
   // Make sure we tell HTTP cache not to write out fetch failures, as
   // fetcher shutdown may create artificial ones, and we don't want to
   // remember those.
   //
   // Note that we also cannot access our own http_cache_ since it may be
-  // NULL in case like Apache where resource managers get their own.
-  for (ResourceManagerSet::iterator p = resource_managers_.begin();
-       p != resource_managers_.end(); ++p) {
+  // NULL in case like Apache where server contexts get their own.
+  for (ServerContextSet::iterator p = server_contexts_.begin();
+       p != server_contexts_.end(); ++p) {
     HTTPCache* cache = (*p)->http_cache();
     if (cache != NULL) {
       cache->SetIgnoreFailurePuts();
@@ -510,17 +510,17 @@ void RewriteDriverFactory::StopCacheActivity() {
   }
 
   // Similarly stop metadata cache writes.
-  for (ResourceManagerSet::iterator p = resource_managers_.begin();
-       p != resource_managers_.end(); ++p) {
+  for (ServerContextSet::iterator p = server_contexts_.begin();
+       p != server_contexts_.end(); ++p) {
     ServerContext* resource_manager = *p;
     resource_manager->set_metadata_cache_readonly();
   }
 }
 
-bool RewriteDriverFactory::TerminateResourceManager(ServerContext* rm) {
-  ScopedMutex lock(resource_manager_mutex_.get());
-  resource_managers_.erase(rm);
-  return resource_managers_.empty();
+bool RewriteDriverFactory::TerminateServerContext(ServerContext* rm) {
+  ScopedMutex lock(server_context_mutex_.get());
+  server_contexts_.erase(rm);
+  return server_contexts_.empty();
 }
 
 void RewriteDriverFactory::ShutDown() {
@@ -534,8 +534,8 @@ void RewriteDriverFactory::ShutDown() {
   }
 
   // Now get active RewriteDrivers for each manager to wrap up.
-  for (ResourceManagerSet::iterator p = resource_managers_.begin();
-       p != resource_managers_.end(); ++p) {
+  for (ServerContextSet::iterator p = server_contexts_.begin();
+       p != server_contexts_.end(); ++p) {
     ServerContext* resource_manager = *p;
     resource_manager->ShutDownDrivers();
   }

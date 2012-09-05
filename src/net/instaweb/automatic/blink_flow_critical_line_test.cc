@@ -42,7 +42,6 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/delay_cache.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -440,19 +439,17 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
       : RewriteTestBase(
           new CustomRewriteDriverFactory(&mock_url_fetcher_),
           new CustomRewriteDriverFactory(&mock_url_fetcher_)),
-        blink_output_(StrCat(kUtf8Bom, StringPrintf(
+        blink_output_(StrCat(StringPrintf(
             kBlinkOutputCommon, "text.html", "text.html"), kBlinkOutputSuffix)),
-        blink_output_with_extra_non_cacheable_(StrCat(kUtf8Bom, StringPrintf(
+        blink_output_with_extra_non_cacheable_(StrCat(StringPrintf(
             kBlinkOutputCommon, "text.html", "text.html"),
             kBlinkOutputWithExtraNonCacheableSuffix)),
-        blink_output_with_cacheable_panels_no_cookies_(
-            StrCat(kUtf8Bom, StringPrintf(kBlinkOutputCommon, "flaky.html",
-                                          "flaky.html"),
-                   kBlinkOutputWithCacheablePanelsNoCookiesSuffix)),
-        blink_output_with_cacheable_panels_cookies_(
-            StrCat(kUtf8Bom, StringPrintf(kBlinkOutputCommon, "cache.html",
-                                          "cache.html"),
-                   kBlinkOutputWithCacheablePanelsCookiesSuffix)) {
+        blink_output_with_cacheable_panels_no_cookies_(StrCat(StringPrintf(
+            kBlinkOutputCommon, "flaky.html", "flaky.html"),
+            kBlinkOutputWithCacheablePanelsNoCookiesSuffix)),
+        blink_output_with_cacheable_panels_cookies_(StrCat(StringPrintf(
+            kBlinkOutputCommon, "cache.html", "cache.html"),
+            kBlinkOutputWithCacheablePanelsCookiesSuffix)) {
     noblink_output_ = StrCat("<html><head></head><body>",
                              StringPrintf(kNoScriptRedirectFormatter,
                                           kNoBlinkUrl, kNoBlinkUrl),
@@ -467,7 +464,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
                lazyload_js_code, "\npagespeed.lazyLoadInit(false, \"",
                LazyloadImagesFilter::kBlankImageSrc,
                "\");\n</script>").c_str());
-    blink_output_with_lazy_load_ = StrCat(kUtf8Bom, StringPrintf(
+    blink_output_with_lazy_load_ = StrCat(StringPrintf(
         kBlinkOutputCommon, "text.html", "text.html"),
         "<script type=\"text/javascript\">",
         lazyload_js_code, "\npagespeed.lazyLoadInit(false, \"",
