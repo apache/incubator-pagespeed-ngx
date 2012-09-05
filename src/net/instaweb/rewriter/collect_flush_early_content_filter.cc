@@ -21,8 +21,10 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -39,6 +41,12 @@ CollectFlushEarlyContentFilter::CollectFlushEarlyContentFilter(
 void CollectFlushEarlyContentFilter::StartDocument() {
   Clear();
   set_writer(&null_writer_);
+  FlushEarlyInfoFinder* finder =
+      driver_->server_context()->flush_early_info_finder();
+  if (finder != NULL && finder->IsMeaningful()) {
+    finder->UpdateFlushEarlyInfoInDriver(driver_);
+    finder->ComputeFlushEarlyInfo(driver_);
+  }
 }
 
 void CollectFlushEarlyContentFilter::EndDocument() {

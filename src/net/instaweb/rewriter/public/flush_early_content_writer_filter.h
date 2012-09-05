@@ -18,11 +18,13 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_FLUSH_EARLY_CONTENT_WRITER_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_FLUSH_EARLY_CONTENT_WRITER_FILTER_H_
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -68,6 +70,7 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   Writer* original_writer_;
   HtmlElement* current_element_;
   UserAgentMatcher::PrefetchMechanism prefetch_mechanism_;
+  scoped_ptr<StringSet> private_cacheable_resources_;
 
   DISALLOW_COPY_AND_ASSIGN(FlushEarlyContentWriterFilter);
 };

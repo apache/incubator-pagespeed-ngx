@@ -18,6 +18,8 @@
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -28,15 +30,29 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/timer.h"
 
-namespace {
-const int64 kOriginTtlS = 12 * net_instaweb::Timer::kMinuteMs * 1000;
-const char kJsData[] =
-    "alert     (    'hello, world!'    ) "
-    " /* removed */ <!-- removed --> "
-    " // single-line-comment";
-}
-
 namespace net_instaweb {
+
+namespace {
+
+// By default, FlushEarlyInfoFinder does not return meaningful results. However,
+// this test manually manages the critical image set, so FlushEarlyInfoFinder
+// can return useful information for testing this filter.
+class MeaningfulFlushEarlyInfoFinder : public FlushEarlyInfoFinder {
+ public:
+  MeaningfulFlushEarlyInfoFinder() {}
+  virtual ~MeaningfulFlushEarlyInfoFinder() {}
+  virtual bool IsMeaningful() const {
+    return true;
+  }
+  virtual const char* GetCohort() const {
+    return "NullCohort";
+  }
+  virtual int64 cache_expiration_time_ms() const {
+    return Timer::kHourMs;
+  }
+};
+
+}  // namespace
 
 class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
  public:
@@ -54,6 +70,8 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     rewrite_driver()->set_flushing_early(true);
     rewrite_driver()->SetWriter(&writer_);
+    resource_manager()->set_flush_early_info_finder(
+        new MeaningfulFlushEarlyInfoFinder);
   }
 
   GoogleString output_;
@@ -180,6 +198,80 @@ TEST_F(FlushEarlyContentWriterFilterTest, NoResourcesToFlush) {
   // Set the User-Agent to prefetch_image_tag.
   output_.clear();
   rewrite_driver()->set_user_agent("prefetch_image_tag");
+
+  Parse("prefetch_image_tag", html_input);
+  EXPECT_EQ(html_output, output_);
+}
+
+TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources) {
+  FlushEarlyRenderInfo* info =  new FlushEarlyRenderInfo;
+  info->add_private_cacheable_url("http://test.com/a.css");
+  info->add_private_cacheable_url("http://test.com/c.js");
+  info->add_private_cacheable_url("http://test.com/d.css");
+  rewrite_driver()->set_flush_early_render_info(info);
+
+  GoogleString html_input =
+      "<!DOCTYPE html>"
+      "<html>"
+      "<head>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
+        "<script src=\"b.js\"></script>"
+        "<script src=\"http://www.test.com/c.js.pagespeed.jm.0.js\"></script>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href="
+        "\"d.css.pagespeed.cf.0.css\"/>"
+      "</head>"
+      "<body></body></html>";
+  GoogleString html_output;
+
+  // First test with no User-Agent.
+  Parse("no_user_agent", html_input);
+  EXPECT_EQ(html_output, output_);
+
+  // Set the User-Agent to prefetch_link_rel_subresource.
+  output_.clear();
+  rewrite_driver()->set_user_agent("prefetch_link_rel_subresource");
+  html_output =
+      "<link rel=\"subresource\" href=\"a.css\"/>\n"
+      "<link rel=\"subresource\" href="
+      "\"http://www.test.com/c.js.pagespeed.jm.0.js\"/>\n"
+      "<link rel=\"subresource\" href=\"d.css.pagespeed.cf.0.css\"/>\n"
+      "<script type='text/javascript'>"
+      "window.mod_pagespeed_prefetch_start = Number(new Date());"
+      "window.mod_pagespeed_num_resources_prefetched = 3</script>";
+
+  Parse("prefetch_link_rel_subresource", html_input);
+  EXPECT_EQ(html_output, output_);
+
+  // Set the User-Agent to prefetch_image_tag.
+  output_.clear();
+  rewrite_driver()->set_user_agent("prefetch_image_tag");
+  html_output =
+      "<script type=\"text/javascript\">(function(){"
+      "new Image().src=\"a.css\";"
+      "new Image().src=\"http://www.test.com/c.js.pagespeed.jm.0.js\";"
+      "new Image().src=\"d.css.pagespeed.cf.0.css\";})()"
+      "</script>"
+      "<script type='text/javascript'>"
+      "window.mod_pagespeed_prefetch_start = Number(new Date());"
+      "window.mod_pagespeed_num_resources_prefetched = 3</script>";
+
+  Parse("prefetch_image_tag", html_input);
+  EXPECT_EQ(html_output, output_);
+
+  // Enable defer_javasript. We don't flush JS resources now.
+  output_.clear();
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kDeferJavascript);
+  resource_manager()->ComputeSignature(options());
+
+  html_output =
+      "<script type=\"text/javascript\">(function(){"
+      "new Image().src=\"a.css\";"
+      "new Image().src=\"d.css.pagespeed.cf.0.css\";})()"
+      "</script>"
+      "<script type='text/javascript'>"
+      "window.mod_pagespeed_prefetch_start = Number(new Date());"
+      "window.mod_pagespeed_num_resources_prefetched = 2</script>";
 
   Parse("prefetch_image_tag", html_input);
   EXPECT_EQ(html_output, output_);

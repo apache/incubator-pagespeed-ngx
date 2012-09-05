@@ -17,8 +17,12 @@
 
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 
+#include <set>
+
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/http/public/semantic_type.h"
+#include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -67,6 +71,19 @@ void FlushEarlyContentWriterFilter::StartDocument() {
   prefetch_mechanism_ = driver_->user_agent_matcher().GetPrefetchMechanism(
       driver_->user_agent());
   current_element_ = NULL;
+  FlushEarlyInfoFinder* finder =
+      driver_->server_context()->flush_early_info_finder();
+  if (finder != NULL && finder->IsMeaningful()) {
+    finder->UpdateFlushEarlyInfoInDriver(driver_);
+    FlushEarlyRenderInfo* flush_early_render_info =
+        driver_->flush_early_render_info();
+    if (flush_early_render_info != NULL &&
+        flush_early_render_info->private_cacheable_url_size() > 0) {
+      private_cacheable_resources_.reset(new StringSet(
+          flush_early_render_info->private_cacheable_url().begin(),
+          flush_early_render_info->private_cacheable_url().end()));
+    }
+  }
 }
 
 void FlushEarlyContentWriterFilter::EndDocument() {
@@ -107,7 +124,10 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
         GoogleUrl gurl(driver_->base_url(), url);
         // Check if they are rewritten. If so, insert the appropriate code to
         // make the browser load these resource early.
-        if (driver_->server_context()->IsPagespeedResource(gurl)) {
+        if (driver_->server_context()->IsPagespeedResource(gurl) ||
+            (private_cacheable_resources_ != NULL && gurl.is_valid() &&
+             private_cacheable_resources_->find(gurl.spec_c_str()) !=
+             private_cacheable_resources_->end())) {
           ++num_resources_flushed_;
           if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
             if (!insert_close_script_) {
@@ -152,6 +172,7 @@ void FlushEarlyContentWriterFilter::Clear() {
   num_resources_flushed_ = 0;
   prefetch_mechanism_ = UserAgentMatcher::kPrefetchNotSupported;
   original_writer_ = NULL;
+  private_cacheable_resources_.reset(NULL);
   HtmlWriterFilter::Clear();
 }
 
