@@ -118,6 +118,7 @@ class CssFilter : public RewriteFilter {
   static const char kLimitExceeded[];
   static const char kMinifyFailed[];
   static const char kRecursion[];
+  static const char kComplexQueries[];
 
   RewriteContext* MakeNestedFlatteningContextInNewSlot(
       const ResourcePtr& resource, const GoogleString& location,
@@ -215,6 +216,8 @@ class CssFilter : public RewriteFilter {
   Variable* num_flatten_imports_minify_failed_;
   // # of times CSS was not flattened because of recursive imports.
   Variable* num_flatten_imports_recursion_;
+  // # of times CSS was not flattened because it had complex media queries.
+  Variable* num_flatten_imports_complex_queries_;
 
   CssUrlEncoder encoder_;
 

@@ -85,6 +85,8 @@
         '<(css_parser_root)/string_using.h',
         '<(css_parser_root)/webutil/css/identifier.cc',
         '<(css_parser_root)/webutil/css/identifier.h',
+        '<(css_parser_root)/webutil/css/media.cc',
+        '<(css_parser_root)/webutil/css/media.h',
         '<(css_parser_root)/webutil/css/parser.cc',
         '<(css_parser_root)/webutil/css/parser.h',
         '<(css_parser_root)/webutil/css/property.cc',

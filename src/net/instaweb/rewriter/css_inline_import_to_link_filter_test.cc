@@ -138,6 +138,30 @@ TEST_F(CssInlineImportToLinkFilterTest, ConvertStyleWithDifferentMedia) {
                          "@import url(assets/styles.css) screen;</style>");
 }
 
+TEST_F(CssInlineImportToLinkFilterTest, MediaQueries) {
+  AddFilter(RewriteOptions::kInlineImportToLink);
+  // If @import has no media, we'll keep the complex media query in the
+  // media attribute.
+  ValidateStyleToLink("<style type=\"text/css\" media=\"not screen\">"
+                      "@import url(assets/styles.css);</style>",
+                      "<link rel=\"stylesheet\" href=\"assets/styles.css\""
+                      " type=\"text/css\" media=\"not screen\">");
+
+  // Generally we just give up on complex media queries. Note, these could
+  // be rewritten in the future, just change the tests to produce sane results.
+  ValidateStyleUnchanged("<style type=\"text/css\">"
+                         "@import url(assets/styles.css) not screen;</style>");
+  ValidateStyleUnchanged("<style type=\"text/css\" media=\"not screen\">"
+                         "@import url(assets/styles.css) not screen;</style>");
+  ValidateStyleUnchanged("<style media=\"not screen and (color), only print\">"
+                         "@import url(assets/styles.css)"
+                         " not screen and (color), only print;</style>");
+  ValidateStyleUnchanged("<style type=\"text/css\" media=\"not screen\">"
+                         "@import url(assets/styles.css) screen;</style>");
+  ValidateStyleUnchanged("<style type=\"text/css\" media=\"screen and (x)\">"
+                         "@import url(assets/styles.css) screen;</style>");
+}
+
 TEST_F(CssInlineImportToLinkFilterTest, DoNotConvertBadStyle) {
   AddFilter(RewriteOptions::kInlineImportToLink);
   // These all are problematic in some way so are not changed at all.

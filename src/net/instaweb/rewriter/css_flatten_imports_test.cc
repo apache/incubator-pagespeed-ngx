@@ -940,6 +940,91 @@ TEST_F(CssFlattenImportsTest, HeaderTakesPrecendenceOverMetaTag2) {
   TestFlattenWithHtmlCharset("iso-8859-1", "utf-8", "", false);
 }
 
+// Make sure we deal correctly with invalid URL in child.
+TEST_F(CssFlattenImportsTest, InvalidGrandchildUrl) {
+  // Invalid URL.
+  SetResponseWithDefaultHeaders("child.css", kContentTypeCss,
+                                "@import url(////);", 100);
+
+  // TODO(sligocki): Why did this fail when run as ValidateRewrite()?
+  ValidateRewriteExternalCss("invalid_url",
+                             "@import url(child.css);",
+                             "@import url(child.css) ;",
+                             kExpectSuccess | kNoClearFetcher |
+                             kFlattenImportsInvalidUrl);
+}
+
+// Test that we do not flatten @imports that have complex media queries.
+TEST_F(CssFlattenImportsTest, NoFlattenMediaQueries) {
+  ValidateRewrite("media_queries",
+                  // We do not flatten @imports with complex media queries.
+                  "@import url(child.css) not screen;",
+                  "@import url(child.css) not screen;",
+                  kExpectSuccess | kFlattenImportsComplexQueries);
+}
+
+// Still don't flatten because child @import has complex media query.
+TEST_F(CssFlattenImportsTest, NoFlattenMediaQueriesChild) {
+  SetResponseWithDefaultHeaders("child.css", kContentTypeCss,
+                                "@import url(g.css) screen and (color);", 100);
+
+  // TODO(sligocki): Why did this fail when run as ValidateRewrite()?
+  ValidateRewriteExternalCss("invalid_url",
+                             "@import url(child.css);",
+                             "@import url(child.css) ;",
+                             kExpectSuccess | kNoClearFetcher |
+                             kFlattenImportsComplexQueries);
+}
+
+// Test that we correctly deal with @import media types with possibly complex
+// @media media queries in flattened CSS.
+//
+// Currently we just fail to flatten any CSS file with complex media queries.
+// TODO(matterbury): Merge complex media queries for @media statements with
+// simple media types allowed in @import statements.
+// Note: This will require some thought and will almost certainly not be
+// possible for some media queries (like those with "not"). We should only
+// do this if there we think it is impacting our performance.
+TEST_F(CssFlattenImportsTest, MergeMediaQueries) {
+  const char child_contents[] =
+      "@media screen and (color) { .a { color: red; } }\n"
+      "@media print and (max-width: 400px), only screen { .b { color: blue } }";
+  SetResponseWithDefaultHeaders("child.css", kContentTypeCss,
+                                child_contents, 100);
+
+  // TODO(sligocki): Why did this fail when run as ValidateRewrite()?
+  ValidateRewriteExternalCss("invalid_url",
+                             "@import url(child.css) screen;",
+                             "@import url(child.css) screen;",
+                             /* TODO(sligocki): This could be:
+                             "@media screen and (color){.a{color: red}}"
+                             "@media only screen{.b{color:#00f}}",
+                             */
+                             kExpectSuccess | kNoClearFetcher |
+                             kFlattenImportsMinifyFailed |
+                             kFlattenImportsComplexQueries);
+}
+
+// Intersections of media queries with "only" & "and" can be resolved relatively
+// eaily, however it is almost impossible with "not". Ex: What is the
+// intersection of "screen" and "not print and (max-width: 400px)"?
+// "screen and (not-max-width: 400px)"?? We just give up with "not".
+TEST_F(CssFlattenImportsTest, NoFlattenMediaQueriesAtMedia) {
+  const char child_contents[] =
+      "@media screen and (color) { .a { color: red; } }\n"
+      "@media not print and (max-width: 400px) { .b { color: blue; } }\n";
+  SetResponseWithDefaultHeaders("child.css", kContentTypeCss,
+                                child_contents, 100);
+
+  // TODO(sligocki): Why did this fail when run as ValidateRewrite()?
+  ValidateRewriteExternalCss("invalid_url",
+                             "@import url(child.css) screen;",
+                             "@import url(child.css) screen;",
+                             kExpectSuccess | kNoClearFetcher |
+                             kFlattenImportsMinifyFailed |
+                             kFlattenImportsComplexQueries);
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

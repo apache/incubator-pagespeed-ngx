@@ -73,18 +73,6 @@ static string JoinElementStrings(const Container& c, const char* delim) {
   return result;
 }
 
-static string JoinMediaStrings(const std::vector<UnicodeText>& media,
-                               const char* delim) {
-  std::vector<string> vals;
-  vals.reserve(media.size());
-  for (std::vector<UnicodeText>::const_iterator
-       it = media.begin(); it != media.end(); ++it)
-    vals.push_back(CSSEscapeString(*it));
-  string result;
-  JoinStrings(vals, delim, &result);
-  return result;
-}
-
 static string StylesheetTypeString(Stylesheet::StylesheetType type) {
   switch (type) {
     case Stylesheet::AUTHOR: return string("AUTHOR");
@@ -285,11 +273,46 @@ string UnparsedRegion::ToString() const {
   return result;
 }
 
+string MediaExpression::ToString() const {
+  string result = "(";
+  result += CSSEscapeString(name());
+  if (has_value()) {
+    result += ": ";
+    result += CSSEscapeString(value());
+  }
+  result += ")";
+  return result;
+}
+
+string MediaQuery::ToString() const {
+  string result;
+  switch (qualifier()) {
+    case Css::MediaQuery::ONLY:
+      result += "only ";
+      break;
+    case Css::MediaQuery::NOT:
+      result += "not ";
+      break;
+    case Css::MediaQuery::NO_QUALIFIER:
+      break;
+  }
+
+  result += CSSEscapeString(media_type());
+  if (!media_type().empty() && !expressions().empty()) {
+    result += " and ";
+  }
+  result += JoinElementStrings(expressions(), " and ");
+  return result;
+}
+
+string MediaQueries::ToString() const {
+  return JoinElementStrings(*this, ", ");
+}
+
 string Ruleset::ToString() const {
   string result;
-  if (!media().empty())
-    result += StringPrintf("@media %s { ",
-                           JoinMediaStrings(media(), ",").c_str());
+  if (!media_queries().empty())
+    result += StringPrintf("@media %s { ", media_queries().ToString().c_str());
   switch (type()) {
     case RULESET:
       result += selectors().ToString() + " {" + declarations().ToString() + "}";
@@ -298,7 +321,7 @@ string Ruleset::ToString() const {
       result = unparsed_region()->ToString();
       break;
   }
-  if (!media().empty())
+  if (!media_queries().empty())
     result += " }";
   return result;
 }
@@ -314,7 +337,7 @@ string Charsets::ToString() const {
 string Import::ToString() const {
   return StringPrintf("@import url(\"%s\") %s;",
                       CSSEscapeString(link()).c_str(),
-                      JoinMediaStrings(media(), ",").c_str());
+                      media_queries().ToString().c_str());
 }
 
 string Stylesheet::ToString() const {

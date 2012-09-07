@@ -81,7 +81,7 @@ TEST_F(ToStringTest, misc) {
   TESTSTYLESHEET("/* AUTHOR */\n\n"
                  "@import url(\"a.html\") ;\n"
                  "@import url(\"b.html\") print;\n"
-                 "@media print,screen { a {top: 1} }\n"
+                 "@media print, screen { a {top: 1} }\n"
                  "b {color: #ff0000}\n");
 
   Css::Parser parser("a {top: 1}");
@@ -96,6 +96,13 @@ TEST_F(ToStringTest, SpecialChars) {
   Css::Parser parser("content: \"Special chars: \\n\\r\\t\\A \\D \\9\"");
   scoped_ptr<Css::Declarations> decls(parser.ParseDeclarations());
   EXPECT_EQ("content: \"Special chars: nrt\\A \\D \\9 \"", decls->ToString());
+}
+
+TEST_F(ToStringTest, MediaQueries) {
+  TESTSTYLESHEET("/* AUTHOR */\n\n"
+                 "@import url(\"a.css\") not screen;\n"
+                 "@import url(\"b.css\") (color) and (max-width: 38px);\n"
+                 "@media only print and (color) { .a {right: 1} }\n");
 }
 
 }  // namespace

@@ -30,6 +30,7 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/writer.h"
 #include "util/utf8/public/unicodetext.h"
+#include "webutil/css/media.h"
 #include "webutil/css/parser.h"
 #include "webutil/css/property.h"
 #include "webutil/css/selector.h"
@@ -271,23 +272,12 @@ void CssMinify::JoinMinifyIter<Css::Rulesets::const_iterator>(
     Css::Rulesets::const_iterator first = iter;
     MinifyRulesetMediaStart(**first);
     MinifyRulesetIgnoringMedia(**first);
-    for (++iter; iter != end && (*first)->media() == (*iter)->media(); ++iter) {
+    for (++iter; iter != end && Equals((*first)->media_queries(),
+                                       (*iter)->media_queries()); ++iter) {
       Write(sep);
       MinifyRulesetIgnoringMedia(**iter);
     }
     MinifyRulesetMediaEnd(**first);
-  }
-}
-
-template<typename Container>
-void CssMinify::JoinMediaMinify(const Container& container,
-                                const StringPiece& sep) {
-  for (typename Container::const_iterator iter = container.begin();
-       iter != container.end(); ++iter) {
-    if (iter != container.begin()) {
-      Write(sep);
-    }
-    Write(CSSEscapeString(*iter));
   }
 }
 
@@ -319,8 +309,37 @@ void CssMinify::Minify(const Css::Import& import) {
   Write("@import url(");
   WriteURL(import.link());
   Write(") ");
-  JoinMediaMinify(import.media(), ",");
+  JoinMinify(import.media_queries(), ",");
   Write(";");
+}
+
+void CssMinify::Minify(const Css::MediaQuery& media_query) {
+  switch (media_query.qualifier()) {
+    case Css::MediaQuery::ONLY:
+      Write("only ");
+      break;
+    case Css::MediaQuery::NOT:
+      Write("not ");
+      break;
+    case Css::MediaQuery::NO_QUALIFIER:
+      break;
+  }
+
+  Write(CSSEscapeString(media_query.media_type()));
+  if (!media_query.media_type().empty() && !media_query.expressions().empty()) {
+    Write(" and ");
+  }
+  JoinMinify(media_query.expressions(), " and ");
+}
+
+void CssMinify::Minify(const Css::MediaExpression& expression) {
+  Write("(");
+  Write(CSSEscapeString(expression.name()));
+  if (expression.has_value()) {
+    Write(":");
+    Write(CSSEscapeString(expression.value()));
+  }
+  Write(")");
 }
 
 void CssMinify::MinifyRulesetIgnoringMedia(const Css::Ruleset& ruleset) {
@@ -342,15 +361,15 @@ void CssMinify::MinifyRulesetIgnoringMedia(const Css::Ruleset& ruleset) {
 }
 
 void CssMinify::MinifyRulesetMediaStart(const Css::Ruleset& ruleset) {
-  if (!ruleset.media().empty()) {
+  if (!ruleset.media_queries().empty()) {
     Write("@media ");
-    JoinMediaMinify(ruleset.media(), ",");
+    JoinMinify(ruleset.media_queries(), ",");
     Write("{");
   }
 }
 
 void CssMinify::MinifyRulesetMediaEnd(const Css::Ruleset& ruleset) {
-  if (!ruleset.media().empty()) {
+  if (!ruleset.media_queries().empty()) {
     Write("}");
   }
 }
@@ -520,6 +539,47 @@ void CssMinify::Minify(const Css::FunctionParameters& parameters) {
 
 void CssMinify::Minify(const Css::UnparsedRegion& unparsed_region) {
   Write(unparsed_region.bytes_in_original_buffer());
+}
+
+
+bool CssMinify::Equals(const Css::MediaQueries& a,
+                       const Css::MediaQueries& b) const {
+  if (a.size() != b.size()) {
+    return false;
+  }
+  for (int i = 0, n = a.size(); i < n; ++i) {
+    if (!Equals(*a.at(i), *b.at(i))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool CssMinify::Equals(const Css::MediaQuery& a,
+                       const Css::MediaQuery& b) const {
+  if (a.qualifier() != b.qualifier() ||
+      a.media_type() != b.media_type() ||
+      a.expressions().size() != b.expressions().size()) {
+    return false;
+  }
+  for (int i = 0, n = a.expressions().size(); i < n; ++i) {
+    if (!Equals(a.expression(i), b.expression(i))) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool CssMinify::Equals(const Css::MediaExpression& a,
+                       const Css::MediaExpression& b) const {
+  if (a.name() != b.name() ||
+      a.has_value() != b.has_value()) {
+    return false;
+  }
+  if (a.has_value() && a.value() != b.value()) {
+    return false;
+  }
+  return true;
 }
 
 }  // namespace net_instaweb

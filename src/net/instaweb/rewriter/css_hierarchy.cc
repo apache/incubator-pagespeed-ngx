@@ -125,18 +125,17 @@ bool CssHierarchy::IsRecursive() const {
   return false;
 }
 
-bool CssHierarchy::DetermineImportMedia(
-    const StringVector& containing_media,
-    const std::vector<UnicodeText>& import_media_in) {
+bool CssHierarchy::DetermineImportMedia(const StringVector& containing_media,
+                                        const StringVector& import_media) {
   bool result = true;
-  if (import_media_in.empty()) {
+  if (import_media.empty()) {
     // Common case: no media specified on the @import so the caller can just
     // use the containing media.
     media_ = containing_media;
   } else {
     // Media were specified for the @import so we need to determine the
     // minimum subset required relative to the containing media.
-    css_util::ConvertUnicodeVectorToStringVector(import_media_in, &media_);
+    media_ = import_media;
     css_util::ClearVectorIfContainsMediaAll(&media_);
     std::sort(media_.begin(), media_.end());
     css_util::EliminateElementsNotIn(&media_, containing_media);
@@ -147,19 +146,15 @@ bool CssHierarchy::DetermineImportMedia(
   return result;
 }
 
-bool CssHierarchy::DetermineRulesetMedia(
-    const std::vector<UnicodeText>& ruleset_media_in,
-    StringVector* ruleset_media_out) {
+bool CssHierarchy::DetermineRulesetMedia(StringVector* ruleset_media) {
   // Return true if the ruleset has to be written, false if not. It doesn't
   // have to be written if its applicable media are reduced to nothing.
   bool result = true;
-  css_util::ConvertUnicodeVectorToStringVector(ruleset_media_in,
-                                               ruleset_media_out);
-  css_util::ClearVectorIfContainsMediaAll(ruleset_media_out);
-  std::sort(ruleset_media_out->begin(), ruleset_media_out->end());
+  css_util::ClearVectorIfContainsMediaAll(ruleset_media);
+  std::sort(ruleset_media->begin(), ruleset_media->end());
   if (!media_.empty()) {
-    css_util::EliminateElementsNotIn(ruleset_media_out, media_);
-    if (ruleset_media_out->empty()) {
+    css_util::EliminateElementsNotIn(ruleset_media, media_);
+    if (ruleset_media->empty()) {
       result = false;
     }
   }
@@ -215,14 +210,26 @@ bool CssHierarchy::Parse() {
            iter != rulesets.end(); ) {
         Css::Ruleset* ruleset = *iter;
         StringVector ruleset_media;
-        if (DetermineRulesetMedia(ruleset->media(), &ruleset_media)) {
-          ruleset->mutable_media().clear();
-          css_util::ConvertStringVectorToUnicodeVector(
-              ruleset_media, &ruleset->mutable_media());
-          ++iter;
+        // We currently do not allow flattening of any CSS files with @media
+        // that have complex CSS3-version media queries. Only plain media
+        // types (like "screen", "print" and "all") are allowed.
+        if (css_util::ConvertMediaQueriesToStringVector(
+                ruleset->media_queries(), &ruleset_media)) {
+          if (DetermineRulesetMedia(&ruleset_media)) {
+            css_util::ConvertStringVectorToMediaQueries(
+                ruleset_media, &ruleset->mutable_media_queries());
+            ++iter;
+          } else {
+            iter = rulesets.erase(iter);
+            delete ruleset;
+          }
         } else {
-          iter = rulesets.erase(iter);
-          delete ruleset;
+          // ruleset->media_queries() contained complex media queries.
+          filter_->num_flatten_imports_complex_queries_->Add(1);
+          // Claim parse failed if we get complex media queries.
+          // TODO(sligocki): set_flattening_succeeded(false) instead.
+          result = false;
+          break;
         }
       }
       stylesheet_.reset(stylesheet);
@@ -246,15 +253,30 @@ bool CssHierarchy::ExpandChildren() {
       }
       message_handler_->Message(kInfo, "Invalid import URL %s", url.c_str());
       child->set_flattening_succeeded(false);
-    } else if (child->DetermineImportMedia(media_, import->media())) {
-      child->InitializeNested(*this, import_url);
-      if (child->IsRecursive()) {
+    } else {
+      // We currently do not allow flattening of any @import statements with
+      // complex CSS3-version media queries. Only plain media types (like
+      // "screen", "print" and "all") are allowed.
+      StringVector media_types;
+      if (css_util::ConvertMediaQueriesToStringVector(import->media_queries(),
+                                                      &media_types)) {
+        if (child->DetermineImportMedia(media_, media_types)) {
+          child->InitializeNested(*this, import_url);
+          if (child->IsRecursive()) {
+            if (filter_ != NULL) {
+              filter_->num_flatten_imports_recursion_->Add(1);
+            }
+            child->set_flattening_succeeded(false);
+          } else {
+            result = true;
+          }
+        }
+      } else {
+        // import->media_queries() contained complex media queries.
         if (filter_ != NULL) {
-          filter_->num_flatten_imports_recursion_->Add(1);
+          filter_->num_flatten_imports_complex_queries_->Add(1);
         }
         child->set_flattening_succeeded(false);
-      } else {
-        result = true;
       }
     }
   }

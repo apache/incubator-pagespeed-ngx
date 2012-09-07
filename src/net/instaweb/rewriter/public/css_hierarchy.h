@@ -32,8 +32,6 @@ namespace Css {
 class Stylesheet;
 }  // namespace Css
 
-class UnicodeText;
-
 namespace net_instaweb {
 
 class CssFilter;
@@ -212,16 +210,15 @@ class CssHierarchy {
   // CSS's media attribute. If the resulting media is empty then this CSS
   // doesn't have to be processed at all so return false, otherwise true.
   bool DetermineImportMedia(const StringVector& containing_media,
-                            const std::vector<UnicodeText>& import_media_in);
+                            const StringVector& import_media);
 
   // Determine the media applicable to a ruleset as the intersection of the
   // set of media that apply just to the ruleset and the set of media that
   // apply to this CSS (as determined by DetermineImportMedia above), and
-  // return this result in ruleset_media_out. If the intersection is empty,
-  // false is returned and the ruleset doesn't have to be processed at all
-  // (it can be omitted), else true is returned.
-  bool DetermineRulesetMedia(const std::vector<UnicodeText>& ruleset_media_in,
-                             StringVector* ruleset_media_out);
+  // edits ruleset_media in place. If the intersection is empty, false is
+  // returned and the ruleset doesn't have to be processed at all (it can
+  // be omitted), else true is returned.
+  bool DetermineRulesetMedia(StringVector* ruleset_media);
 
   // The filter that owns us, used for recording statistics.
   CssFilter* filter_;

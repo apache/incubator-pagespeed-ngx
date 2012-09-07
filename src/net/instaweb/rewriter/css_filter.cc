@@ -114,6 +114,7 @@ const char CssFilter::kInvalidUrl[]      = "flatten_imports_invalid_url";
 const char CssFilter::kLimitExceeded[]   = "flatten_imports_limit_exceeded";
 const char CssFilter::kMinifyFailed[]    = "flatten_imports_minify_failed";
 const char CssFilter::kRecursion[]       = "flatten_imports_recursion";
+const char CssFilter::kComplexQueries[]  = "flatten_imports_complex_queries";
 
 CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
                             RewriteContext* parent,
@@ -641,6 +642,7 @@ CssFilter::CssFilter(RewriteDriver* driver,
   num_flatten_imports_limit_exceeded_ = stats->GetVariable(kLimitExceeded);
   num_flatten_imports_minify_failed_ = stats->GetVariable(kMinifyFailed);
   num_flatten_imports_recursion_ = stats->GetVariable(kRecursion);
+  num_flatten_imports_complex_queries_ = stats->GetVariable(kComplexQueries);
 }
 
 CssFilter::~CssFilter() {}
@@ -658,11 +660,12 @@ void CssFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(CssFilter::kTotalBytesSaved);
   statistics->AddVariable(CssFilter::kTotalOriginalBytes);
   statistics->AddVariable(CssFilter::kUses);
-  statistics->AddVariable(kCharsetMismatch);
-  statistics->AddVariable(kInvalidUrl);
-  statistics->AddVariable(kLimitExceeded);
-  statistics->AddVariable(kMinifyFailed);
-  statistics->AddVariable(kRecursion);
+  statistics->AddVariable(CssFilter::kCharsetMismatch);
+  statistics->AddVariable(CssFilter::kInvalidUrl);
+  statistics->AddVariable(CssFilter::kLimitExceeded);
+  statistics->AddVariable(CssFilter::kMinifyFailed);
+  statistics->AddVariable(CssFilter::kRecursion);
+  statistics->AddVariable(CssFilter::kComplexQueries);
 }
 
 void CssFilter::Initialize() {

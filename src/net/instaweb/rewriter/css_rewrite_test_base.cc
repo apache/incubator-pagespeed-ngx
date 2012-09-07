@@ -69,6 +69,7 @@ void CssRewriteTestBase::ResetStats() {
   num_flatten_imports_limit_exceeded_->Set(0);
   num_flatten_imports_minify_failed_->Set(0);
   num_flatten_imports_recursion_->Set(0);
+  num_flatten_imports_complex_queries_->Set(0);
 }
 
 void CssRewriteTestBase::ValidateWithStats(
@@ -135,6 +136,8 @@ void CssRewriteTestBase::ValidateWithStats(
             num_flatten_imports_minify_failed_->Get()) << id;
   EXPECT_EQ(FlagSet(flags, kFlattenImportsRecursion) ? 1 : 0,
             num_flatten_imports_recursion_->Get()) << id;
+  EXPECT_EQ(FlagSet(flags, kFlattenImportsComplexQueries) ? 1 : 0,
+            num_flatten_imports_complex_queries_->Get()) << id;
 }
 
 GoogleString CssRewriteTestBase::ExpectedRewrittenUrl(

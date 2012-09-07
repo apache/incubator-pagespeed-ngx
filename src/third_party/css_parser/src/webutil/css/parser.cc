@@ -27,7 +27,6 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "strings/memutil.h"
 #include "strings/strutil.h"
 #include "third_party/utf/utf.h"
 #include "util/gtl/stl_util.h"
@@ -210,12 +209,52 @@ bool Parser::SkipPastDelimiter(char delim) {
   SkipSpace();
   while (in_ < end_ && *in_ != delim) {
     ++in_;
-    SkipSpace();
+    SkipSpace();  // Skips comments too.
   }
 
   if (Done()) return false;
   ++in_;
   return true;
+}
+
+bool Parser::SkipPastDelimiterWithMatching(char delim) {
+  SkipSpace();
+  while (in_ < end_ && *in_ != delim) {
+    switch (*in_) {
+      case '(':
+        ++in_;
+        SkipPastDelimiterWithMatching(')');
+        break;
+      case '[':
+        ++in_;
+        SkipPastDelimiterWithMatching(']');
+        break;
+      case '{':
+        ++in_;
+        SkipPastDelimiterWithMatching('}');
+        break;
+      case '\'':
+        // Ignore results.
+        ParseString<'\''>();
+        break;
+      case '"':
+        // Ignore results.
+        ParseString<'"'>();
+        break;
+      default:
+        ++in_;
+        break;
+    }
+    SkipSpace();  // Skips comments too.
+  }
+
+  if (Done()) {
+    return false;
+  } else {
+    DCHECK_EQ(delim, *in_);
+    ++in_;
+    return true;
+  }
 }
 
 // returns true if there might be a token to read
@@ -780,14 +819,11 @@ Value* Parser::ParseAny(const StringPiece& allowed_chars) {
         toret = NULL;
       } else if (*in_ == '(') {
         in_++;
-        if (id.utf8_length() == 3
-            && memcasecmp("url", id.utf8_data(), 3) == 0) {
+        if (StringCaseEquals(id, "url")) {
           toret = ParseUrl();
-        } else if (id.utf8_length() == 3
-                   && memcasecmp("rgb", id.utf8_data(), 3) == 0) {
+        } else if (StringCaseEquals(id, "rgb")) {
           toret = ParseRgbColor();
-        } else if (id.utf8_length() == 4
-                   && memcasecmp("rect", id.utf8_data(), 4) == 0) {
+        } else if (StringCaseEquals(id, "rect")) {
           scoped_ptr<FunctionParameters> params(ParseFunction());
           if (params.get() != NULL && params->size() == 4) {
             toret = new Value(Value::RECT, params.release());
@@ -1462,8 +1498,7 @@ Declarations* Parser::ParseRawDeclarations() {
           in_++;
           SkipSpace();
           UnicodeText ident = ParseIdent();
-          if (ident.utf8_length() == 9 &&
-              !memcasecmp(ident.utf8_data(), "important", 9))
+          if (StringCaseEquals(ident, "important"))
             important = true;
         }
         declarations->push_back(
@@ -1788,8 +1823,7 @@ Import* Parser::ParseAsSingleImport() {
   UnicodeText ident = ParseIdent();
 
   // @import string|uri medium-list ? ;
-  if (ident.utf8_length() != 6 ||
-      memcasecmp(ident.utf8_data(), "import", 6) != 0) {
+  if (!StringCaseEquals(ident, "import")) {
     return NULL;
   }
 
@@ -1810,8 +1844,7 @@ UnicodeText Parser::ExtractCharset() {
   if (*in_ == '@') {
     ++in_;
     UnicodeText ident = ParseIdent();
-    if (ident.utf8_length() == 7 &&
-        memcasecmp(ident.utf8_data(), "charset", 7) == 0) {
+    if (StringCaseEquals(ident, "charset")) {
       result = ParseCharset();
     }
   }
@@ -1913,33 +1946,134 @@ Ruleset* Parser::ParseRuleset() {
     return NULL;
 }
 
-// TODO: Return * media just like other Parse functions.
-void Parser::ParseMediumList(std::vector<UnicodeText>* media) {
+MediaQueries* Parser::ParseMediaQueries() {
   Tracer trace(__func__, &in_);
 
+  scoped_ptr<MediaQueries> media_queries(new MediaQueries);
+
   SkipSpace();
-  if (Done()) return;
+  if (Done()) return media_queries.release();
   DCHECK_LT(in_, end_);
 
   while (in_ < end_) {
+    scoped_ptr<MediaQuery> query(ParseMediaQuery());
+    if (query.get() != NULL) {
+      media_queries->push_back(query.release());
+    }
+    SkipSpace();
+    if (Done()) {
+      ReportParsingError(kMediaError,
+                         "Unexpected EOF while parsing media query.");
+      return media_queries.release();
+    }
     switch (*in_) {
       case ';':
       case '{':
-        return;
+        return media_queries.release();
       case ',':
         in_++;
         break;
       default:
-        scoped_ptr<Value> v(ParseAny());
-        if (v.get() && v->GetLexicalUnitType() == Value::IDENT) {
-          media->push_back(v->GetIdentifierText());
-        } else {
-          ReportParsingError(kMediaError, "Failed to parse media");
+        ReportParsingError(kMediaError,
+                           "Unexpected char while parsing media query.");
+        break;
+    }
+  }
+
+  return media_queries.release();
+}
+
+MediaQuery* Parser::ParseMediaQuery() {
+  Tracer trace(__func__, &in_);
+  SkipSpace();
+
+  scoped_ptr<MediaQuery> query(new MediaQuery);
+  UnicodeText id = ParseIdent();
+  SkipSpace();
+
+  // Check for optional qualifiers "not" or "only".
+  if (StringCaseEquals(id, "not")) {
+    query->set_qualifier(MediaQuery::NOT);
+    id = ParseIdent();
+  } else if (StringCaseEquals(id, "only")) {
+    query->set_qualifier(MediaQuery::ONLY);
+    id = ParseIdent();
+  }
+
+  // Set media type (optional).
+  if (!id.empty()) {
+    query->set_media_type(id);
+  }
+
+  bool done = false;
+  SkipSpace();
+  while (!Done() && !done) {
+    switch (*in_) {
+      case ';':
+      case '{':
+      case ',':
+        done = true;
+        break;
+      case '(': {  // CSS3 media expression. Ex: (max-width:290px)
+        in_++;
+        UnicodeText name = ParseIdent();
+        SkipSpace();
+        switch (*in_) {
+          case ')':
+            in_++;
+            // Expression with no value. Ex: (color)
+            query->add_expression(new MediaExpression(name));
+            break;
+          case ':': {
+            in_++;
+            SkipSpace();
+            const char* begin = in_;
+            // TODO(sligocki): Actually parse value?
+            if (SkipPastDelimiterWithMatching(')')) {
+              const char* end = in_ - 1;
+              UnicodeText value;
+              value.CopyUTF8(begin, end - begin);
+              query->add_expression(new MediaExpression(name, value));
+            } else {
+              ReportParsingError(kMediaError, "Unclosed media query.");
+            }
+            break;
+          }
+          default:
+            ReportParsingError(kMediaError,
+                               "Failed to parse media expression.");
+            break;
         }
         break;
+      }
+      default: {
+        // Ignore "and" between media expressions. All other things are errors.
+        UnicodeText ident = ParseIdent();
+        if (!StringCaseEquals(ident, "and")) {
+          if (ident.empty()) {
+            ReportParsingError(kMediaError, StringPrintf(
+                "Unexpected char in media query: %c", *in_));
+            in_++;  // Make progress.
+          } else {
+            ReportParsingError(kMediaError, StringPrintf(
+                "Unexpected identifier separating media queries: %s",
+                UnicodeTextToUTF8(ident).c_str()));
+          }
+        }
+        break;
+      }
     }
     SkipSpace();
   }
+
+  // If there is no media type or expressions. For example, we want to treat
+  // "@import url(foo.css);" as having no media queries, rather than one empty
+  // media query.
+  if (query->media_type().empty() && query->expressions().empty()) {
+    query.reset(NULL);
+  }
+
+  return query.release();
 }
 
 // Start after @import is parsed.
@@ -1957,10 +2091,7 @@ Import* Parser::ParseImport() {
 
   Import* import = new Import();
   import->set_link(v->GetStringValue());
-
-  std::vector<UnicodeText>* media = new std::vector<UnicodeText>;
-  ParseMediumList(media);
-  import->set_media(media);
+  import->set_media_queries(ParseMediaQueries());
 
   if (in_ < end_ && *in_ == ';') in_++;
   return import;
@@ -1982,8 +2113,7 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
   UnicodeText ident = ParseIdent();
 
   // @import string|uri medium-list ? ;
-  if (ident.utf8_length() == 6 &&
-      memcasecmp(ident.utf8_data(), "import", 6) == 0) {
+  if (StringCaseEquals(ident, "import")) {
     scoped_ptr<Import> import(ParseImport());
     if (import.get() && stylesheet) {
       stylesheet->mutable_imports().push_back(import.release());
@@ -1993,16 +2123,13 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
     }
 
   // @charset string ;
-  } else if (ident.utf8_length() == 7 &&
-             memcasecmp(ident.utf8_data(), "charset", 7) == 0) {
+  } else if (StringCaseEquals(ident, "charset")) {
     UnicodeText s = ParseCharset();
     stylesheet->mutable_charsets().push_back(s);
 
   // @media medium-list { ruleset-list }
-  } else if (ident.utf8_length() == 5 &&
-             memcasecmp(ident.utf8_data(), "media", 5) == 0) {
-    std::vector<UnicodeText> media;
-    ParseMediumList(&media);
+  } else if (StringCaseEquals(ident, "media")) {
+    scoped_ptr<MediaQueries> media_queries(ParseMediaQueries());
     if (Done()) {
       ReportParsingError(kMediaError, "Unexpected EOF in @media statement.");
       return;
@@ -2028,7 +2155,9 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
         in_++;
       }
       if (ruleset.get()) {
-        ruleset->set_media(media);
+        // TODO(sligocki): Do we want to restructure this so we don't have
+        // to make so many copies?
+        ruleset->set_media_queries(media_queries->DeepCopy());
         stylesheet->mutable_rulesets().push_back(ruleset.release());
       }
       SkipSpace();

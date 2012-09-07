@@ -25,7 +25,9 @@
 #include "strings/stringpiece_utils.h"
 #include "strings/strutil.h"
 #include "util/utf8/public/unicodetext.h"
+#include "webutil/css/media.h"
 #include "webutil/css/parser.h"
+#include "webutil/css/string_util.h"
 
 DEFINE_double(font_size_adjustment,
               0.58,
@@ -283,27 +285,52 @@ bool GetSystemColor(const string& colorstr, HtmlColor* color) {
   }
 }
 
+namespace {
+
+bool MediumAppliesToScreen(const StringPiece& medium) {
+  return (StringCaseEquals(medium, "all") ||
+          StringCaseEquals(medium, "screen"));
+}
+bool MediumAppliesToScreen(const UnicodeText& medium) {
+  return (StringCaseEquals(medium, "all") ||
+          StringCaseEquals(medium, "screen"));
+}
+
+}  // namespace
+
 bool MediaAppliesToScreen(const StringPiece& media) {
   std::vector<StringPiece> values;
   StringPieceUtils::Split(media, ",", &values);
   for (std::vector<StringPiece>::iterator iter = values.begin();
        iter < values.end(); ++iter) {
     StringPieceUtils::RemoveWhitespaceContext(&(*iter));
-    if (memcaseis(iter->data(), iter->size(), "all") ||
-        memcaseis(iter->data(), iter->size(), "screen"))
+    if (MediumAppliesToScreen(*iter))
       return true;
   }
   return false;
 }
 
 bool MediaAppliesToScreen(const std::vector<UnicodeText>& media) {
-  if (media.size() == 0) return true;
+  if (media.empty()) return true;
 
   for (std::vector<UnicodeText>::const_iterator iter = media.begin();
        iter < media.end(); ++iter) {
-    if (memcaseis(iter->utf8_data(), iter->utf8_length(), "all") ||
-        memcaseis(iter->utf8_data(), iter->utf8_length(), "screen"))
+    if (MediumAppliesToScreen(*iter))
       return true;
+  }
+  return false;
+}
+
+bool MediaAppliesToScreen(const Css::MediaQueries& media_queries) {
+  if (media_queries.empty()) return true;
+
+  for (MediaQueries::const_iterator iter = media_queries.begin();
+       iter < media_queries.end(); ++iter) {
+    const Css::MediaQuery* query = *iter;
+    if (query->qualifier() == Css::MediaQuery::NO_QUALIFIER &&
+        MediumAppliesToScreen(query->media_type())) {
+      return true;
+    }
   }
   return false;
 }

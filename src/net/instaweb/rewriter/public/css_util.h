@@ -30,12 +30,14 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
-class UnicodeText;
-
 namespace Css {
 class Declarations;
+class MediaQueries;
+class MediaQuery;
 }
+
 namespace net_instaweb {
+
 class HtmlElement;
 
 // TODO(nforman): remove this namespace and put everything into the
@@ -107,18 +109,24 @@ void VectorizeMediaAttribute(const StringPiece& input_media,
 // the answer is a comma-separated list of media types.
 GoogleString StringifyMediaVector(const StringVector& import_media);
 
-// Convert a vector of UnicodeText's (from Css::Import.media) to a vector of
-// UTF-8 GoogleString's for use of the above functions. Elements are trimmed
-// and any empty elements are ignored.
-void ConvertUnicodeVectorToStringVector(
-    const std::vector<UnicodeText>& in_vector,
-    StringVector* out_vector);
+// Checks if query is not simply a media type. In other words, whether it has
+// a qualifier ("not" or "only") or media expressions (like "and (color)").
+bool IsComplexMediaQuery(const Css::MediaQuery& query);
 
-// Convert a vector of UTF-8 GoogleString's to UnicodeText's. Elements are
-// trimmed and any empty elements are ignored.
-void ConvertStringVectorToUnicodeVector(
-    const StringVector& in_vector,
-    std::vector<UnicodeText>* out_vector);
+// Convert a set of MediaQueries to a vector of UTF-8 GoogleString's for use
+// of the above functions. Elements are trimmed and any empty elements are
+// ignored.
+//
+// Only simple media queries are accepted, returns false for complex queries.
+bool ConvertMediaQueriesToStringVector(const Css::MediaQueries& in_vector,
+                                       StringVector* out_vector);
+
+// Convert a vector of UTF-8 GoogleString's to MediaQueries. Elements are
+// trimmed and any empty elements are ignored. The strings are interpreted
+// as simple media types (no complex media query syntax like "not screen" or
+// "(max-width: 200px)").
+void ConvertStringVectorToMediaQueries(const StringVector& in_vector,
+                                       Css::MediaQueries* out_vector);
 
 // Clear the given vector if it contains the media 'all'. This is required
 // because Css::Parser doesn't treat 'all' specially but we do for efficiency.

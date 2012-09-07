@@ -59,6 +59,8 @@ class CssRewriteTestBase : public RewriteTestBase {
         statistics()->GetVariable(CssFilter::kMinifyFailed);
     num_flatten_imports_recursion_ =
         statistics()->GetVariable(CssFilter::kRecursion);
+    num_flatten_imports_complex_queries_ =
+        statistics()->GetVariable(CssFilter::kComplexQueries);
   }
   ~CssRewriteTestBase();
 
@@ -99,6 +101,7 @@ class CssRewriteTestBase : public RewriteTestBase {
     kFlattenImportsLimitExceeded = 1<<16,
     kFlattenImportsMinifyFailed = 1<<17,
     kFlattenImportsRecursion = 1<<18,
+    kFlattenImportsComplexQueries = 1<<19,
   };
 
   static bool ExactlyOneTrue(bool a, bool b) {
@@ -198,6 +201,7 @@ class CssRewriteTestBase : public RewriteTestBase {
   Variable* num_flatten_imports_limit_exceeded_;
   Variable* num_flatten_imports_minify_failed_;
   Variable* num_flatten_imports_recursion_;
+  Variable* num_flatten_imports_complex_queries_;
 };
 
 }  // namespace net_instaweb

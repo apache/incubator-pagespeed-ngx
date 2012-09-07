@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "util/utf8/public/unicodetext.h"
+#include "webutil/css/media.h"
 #include "webutil/css/parser.h"
 #include "webutil/css/property.h"
 #include "webutil/css/value.h"
@@ -144,30 +145,43 @@ GoogleString StringifyMediaVector(const StringVector& input_media) {
   return result;
 }
 
-void ConvertUnicodeVectorToStringVector(
-    const std::vector<UnicodeText>& in_vector,
-    StringVector* out_vector) {
-  std::vector<UnicodeText>::const_iterator iter;
-  for (iter = in_vector.begin(); iter != in_vector.end(); ++iter) {
-    StringPiece element(iter->utf8_data(), iter->utf8_length());
-    TrimWhitespace(&element);
-    if (!element.empty()) {
-      element.CopyToString(StringVectorAdd(out_vector));
-    }
-  }
+bool IsComplexMediaQuery(const Css::MediaQuery& query) {
+  return (query.qualifier() != Css::MediaQuery::NO_QUALIFIER ||
+          !query.expressions().empty());
 }
 
-void ConvertStringVectorToUnicodeVector(
-    const StringVector& in_vector,
-    std::vector<UnicodeText>* out_vector) {
+bool ConvertMediaQueriesToStringVector(const Css::MediaQueries& in_vector,
+                                       StringVector* out_vector) {
+  out_vector->clear();
+  Css::MediaQueries::const_iterator iter;
+  for (iter = in_vector.begin(); iter != in_vector.end(); ++iter) {
+    // Reject complex media queries immediately.
+    if (IsComplexMediaQuery(**iter)) {
+      out_vector->clear();
+      return false;
+    } else {
+      const UnicodeText& media_type = (*iter)->media_type();
+      StringPiece element(media_type.utf8_data(), media_type.utf8_length());
+      TrimWhitespace(&element);
+      if (!element.empty()) {
+        element.CopyToString(StringVectorAdd(out_vector));
+      }
+    }
+  }
+  return true;
+}
+
+void ConvertStringVectorToMediaQueries(const StringVector& in_vector,
+                                       Css::MediaQueries* out_vector) {
+  out_vector->Clear();
   std::vector<GoogleString>::const_iterator iter;
   for (iter = in_vector.begin(); iter != in_vector.end(); ++iter) {
     StringPiece element(*iter);
     TrimWhitespace(&element);
     if (!element.empty()) {
-      UnicodeText unicode_element;
-      unicode_element.CopyUTF8(element.data(), element.length());
-      out_vector->push_back(unicode_element);
+      Css::MediaQuery* query = new Css::MediaQuery;
+      query->set_media_type(UTF8ToUnicodeText(element.data(), element.size()));
+      out_vector->push_back(query);
     }
   }
 }

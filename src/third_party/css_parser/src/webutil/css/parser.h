@@ -26,6 +26,7 @@
 #include "strings/stringpiece.h"
 #include "testing/production_stub/public/gunit_prod.h"
 #include "util/utf8/public/unicodetext.h"
+#include "webutil/css/media.h"
 #include "webutil/css/property.h"  // while these CSS includes can be
 #include "webutil/css/selector.h"  // forward-declared, who is really
 #include "webutil/css/string.h"
@@ -202,8 +203,6 @@ class Parser {
   //       ErrorNumber(kDeclarationError) == 1, etc.
   static int ErrorNumber(uint64 error_flag);
 
-  friend class ParserTest;  // we need to unit test private Parse functions.
-
  private:
   //
   // Syntactic methods
@@ -222,6 +221,14 @@ class Parser {
   // consumed if found. Be smart enough not to stop at character delim in
   // comments.  Returns whether delim is actually seen.
   bool SkipPastDelimiter(char delim);
+
+  // Like SkipPastDelimiter, except it does not return after having skipped over
+  // unmatched parentheses ()[]{} and quoted strings.
+  // For example, if in_ = "foo(a, b), 1, bar"
+  //   SkipPastDelimeter(',') will result in in_ = " b), 1, bar".
+  //   SkipPastDelimiterWithMatching(',') will result in in_ = " 1, bar".
+  // Returns true if it found delim before end of file.
+  bool SkipPastDelimiterWithMatching(char delim);
 
   // Skip until next "any" token (value which can be parsed by ParseAny).
   //
@@ -498,10 +505,14 @@ class Parser {
   // Miscellaneous
   //
 
-  // Starting at whitespace or the first medium, ParseMediumList
-  // parses a medium list separated by commas and whitespace, stopping
-  // at (without consuming) ; or {.  It adds each medium to the back of media.
-  void ParseMediumList(std::vector<UnicodeText>* media);
+  // Starting at whitespace or the first media query, ParseMediaQueries
+  // parses a media query list and returns it. Never returns NULL. Returns
+  // all MediaQueries it can successfully parse.
+  MediaQueries* ParseMediaQueries();
+
+  // Starting at whitespace or the start of a media query, parses and returns
+  // the entire query. Returns NULL if the media query is empty.
+  MediaQuery* ParseMediaQuery();
 
   // ParseImport starts just after @import and consumes the import
   // declaration, including the closing ;.  It returns a Import*
@@ -566,12 +577,12 @@ class Parser {
   // Vector of all errors { error_type_number, location, message }.
   std::vector<ErrorInfo> errors_seen_;
 
+  friend class ParserTest;  // we need to unit test private Parse functions.
   FRIEND_TEST(ParserTest, color);
   FRIEND_TEST(ParserTest, url);
   FRIEND_TEST(ParserTest, rect);
   FRIEND_TEST(ParserTest, background);
   FRIEND_TEST(ParserTest, font_family);
-  friend void ParseFontFamily(Parser* parser);
   FRIEND_TEST(ParserTest, ParseBlock);
   FRIEND_TEST(ParserTest, font);
   FRIEND_TEST(ParserTest, values);
@@ -588,6 +599,9 @@ class Parser {
   FRIEND_TEST(ParserTest, percentage_colors);
   FRIEND_TEST(ParserTest, ValueError);
   FRIEND_TEST(ParserTest, SkippedTokenError);
+  friend void ParseFontFamily(Parser* parser);
+  friend class MediaAppliesToScreenTest;
+
   DISALLOW_COPY_AND_ASSIGN(Parser);
 };
 
@@ -711,29 +725,31 @@ class Ruleset {
   // TODO(sligocki): Allow other parsed at-rules, like @font-family.
   enum Type { RULESET, UNPARSED_REGION, };
 
-  Ruleset() : type_(RULESET), selectors_(new Selectors),
+  Ruleset() : type_(RULESET), media_queries_(new MediaQueries),
+              selectors_(new Selectors),
               declarations_(new Declarations) { }
-  // Takes ownership of selectors and declarations.
-  Ruleset(Selectors* selectors, const std::vector<UnicodeText>& media,
+  // Takes ownership of selectors, media_queries and declarations.
+  Ruleset(Selectors* selectors, MediaQueries* media_queries,
           Declarations* declarations)
-      : type_(RULESET), media_(media), selectors_(selectors),
+      : type_(RULESET), media_queries_(media_queries), selectors_(selectors),
         declarations_(declarations) { }
   // Dummy Ruleset. Used for unparsed statements, for example unknown at-rules.
   explicit Ruleset(UnparsedRegion* unparsed_region)
-      : type_(UNPARSED_REGION), unparsed_region_(unparsed_region) { }
+      : type_(UNPARSED_REGION), media_queries_(new MediaQueries),
+        unparsed_region_(unparsed_region) { }
   ~Ruleset() { }
 
   // Is this actually a Ruleset or some sort of at-rule? For historical reasons
   // at-rules are also stored as Rulesets.
   Type type() const { return type_; }
 
-  // All type()s can have media.
-  const std::vector<UnicodeText>& media() const { return media_; }
-  const UnicodeText& medium(int i) const { return media_.at(i); }
-  std::vector<UnicodeText>& mutable_media() { return media_; }
-  // set_media copies input media.
-  void set_media(const std::vector<UnicodeText>& media) {
-    media_.assign(media.begin(), media.end());
+  // All type()s can have media_queries.
+  const MediaQueries& media_queries() const { return *media_queries_; }
+  const MediaQuery& media_query(int i) const { return *media_queries_->at(i); }
+  MediaQueries& mutable_media_queries() { return *media_queries_; }
+  // Takes ownership of parameter.
+  void set_media_queries(MediaQueries* media_queries) {
+    media_queries_.reset(media_queries);
   }
 
   // NOTE: Only call these getters if you know that type() == RULESET.
@@ -789,8 +805,8 @@ class Ruleset {
  private:
   Type type_;
 
-  // All types have media_.
-  std::vector<UnicodeText> media_;
+  // All types have media_queries_.
+  scoped_ptr<MediaQueries> media_queries_;
 
   // Only defined for type_ == RULESET.
   scoped_ptr<Selectors> selectors_;
@@ -820,17 +836,19 @@ class Import {
   Import() {}
   ~Import() {}
 
-  const std::vector<UnicodeText>& media() const { return *media_; }
+  const MediaQueries& media_queries() const { return *media_queries_; }
   const UnicodeText& link() const { return link_; }
 
-  // Takes ownership of media.
-  void set_media(std::vector<UnicodeText>* media) { media_.reset(media); }
+  // Takes ownership of media_queries.
+  void set_media_queries(MediaQueries* media_queries) {
+    media_queries_.reset(media_queries);
+  }
   void set_link(const UnicodeText& link) { link_ = link; }
 
   string ToString() const;
 
  private:
-  scoped_ptr<std::vector<UnicodeText> > media_;
+  scoped_ptr<MediaQueries> media_queries_;
   UnicodeText link_;
 
   DISALLOW_COPY_AND_ASSIGN(Import);

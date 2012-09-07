@@ -370,6 +370,14 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{foo: +bar }",
     "a{color: rgb(foo,+,) }",
 
+    // CSS3 media queries.
+    // http://code.google.com/p/modpagespeed/issues/detail?id=50
+    "@media screen and (max-width:290px){a{color:red}}",
+    "@media only print and (color){a{color:red}}",
+    // Nonsensical, but syntactic, media query.
+    "@media not (-moz-dimension-constraints:20 < width < 300 and 45 < height "
+    "< 1000){a{color:red}}",
+
     // Unexpected @-statements
     "@keyframes wiggle { 0% { transform: rotate(6deg); } }",
     "@font-face { font-family: 'Ubuntu'; font-style: normal }",
@@ -423,10 +431,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
   }
 
   const char* fail_examples[] = {
-    // CSS3 media queries.
-    // http://code.google.com/p/modpagespeed/issues/detail?id=50
-    "@media screen and (max-width: 290px) { a { color:red } }",
-
     // Malformed @import statements.
     "@import styles.css; a { color: red; }",
     "@import \"styles.css\", \"other.css\"; a { color: red; }",
@@ -987,6 +991,36 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "src:local('Ubuntu Bold'), local('Ubuntu-Bold'), url('http://themes."
       "googleusercontent.com/static/fonts/ubuntu/v2/0ihfXUL2emPh0ROJezvraKCWc"
       "ynf_cDxXwCLxiixG1c.ttf') format('truetype')}" },
+
+    // CSS3 media queries.
+    // http://code.google.com/p/modpagespeed/issues/detail?id=50
+    { "@media only screen and (min-device-width: 320px) and"
+      " (max-device-width: 480px) {\n"
+      "        body {"
+      "                padding: 0;\n"
+      "        }\n"
+      "        #page {\n"
+      "                margin-top: 0;\n"
+      "        }\n"
+      "        #branding {\n"
+      "                border-top: none;\n"
+      "        }\n"
+      "\n"
+      "}\n",
+
+      "@media only screen and (min-device-width:320px) and (max-device-width:"
+      "480px){body{padding:0}#page{margin-top:0}#branding{border-top:none}}" },
+
+    // Make sure we distinguish similar media queries.
+    { "@media screen { .a { color: red; } }\n"
+      "@media screen and (color) { .b { color: green; } }\n"
+      "@media not screen { .c { color: blue; } }\n"
+      "@media only screen { .d { color: cyan; } }\n",
+
+      "@media screen{.a{color:red}}"
+      "@media screen and (color){.b{color:green}}"
+      "@media not screen{.c{color:#00f}}"
+      "@media only screen{.d{color:#0ff}}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
@@ -995,25 +1029,10 @@ TEST_F(CssFilterTest, ComplexCssTest) {
   }
 
   const char* parse_fail_examples[] = {
-    // CSS3 media queries.
-    // http://code.google.com/p/modpagespeed/issues/detail?id=50
-    "@media only screen and (min-device-width: 320px) and"
-    " (max-device-width: 480px) {\n"
-    "        body {"
-    "                padding: 0;\n"
-    "        }\n"
-    "        #page {\n"
-    "                margin-top: 0;\n"
-    "        }\n"
-    "        #branding {\n"
-    "                border-top: none;\n"
-    "        }\n"
-    "\n"
-    "}\n",
-
     // Bad syntax
     "}}",
     "@foobar this is totally wrong CSS syntax }",
+    "@media (color) and screen { .a { color: red; } }",
   };
 
   for (int i = 0; i < arraysize(parse_fail_examples); ++i) {

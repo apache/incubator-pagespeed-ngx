@@ -27,6 +27,9 @@ namespace Css {
 class Stylesheet;
 class Charsets;
 class Import;
+class MediaQuery;
+class MediaQueries;
+class MediaExpression;
 class Ruleset;
 class Selector;
 class SimpleSelector;
@@ -86,7 +89,6 @@ class CssMinify {
   ~CssMinify();
 
   void Write(const StringPiece& str);
-
   void WriteURL(const UnicodeText& url);
 
   template<typename Container>
@@ -94,14 +96,14 @@ class CssMinify {
   template<typename Iterator>
   void JoinMinifyIter(const Iterator& begin, const Iterator& end,
                       const StringPiece& sep);
-  template<typename Container>
-  void JoinMediaMinify(const Container& container, const StringPiece& sep);
 
   // We name all of these methods identically to simplify the writing of the
   // templated Join* methods.
   void Minify(const Css::Stylesheet& stylesheet);
   void Minify(const Css::Charsets& charsets);
   void Minify(const Css::Import& import);
+  void Minify(const Css::MediaQuery& media_query);
+  void Minify(const Css::MediaExpression& expression);
   void Minify(const Css::Selector& selector);
   void Minify(const Css::SimpleSelectors& sselectors, bool isfirst = false);
   void Minify(const Css::SimpleSelector& sselector);
@@ -121,6 +123,11 @@ class CssMinify {
   void MinifyRulesetMediaStart(const Css::Ruleset& ruleset);
   // Emits the end of the @media rule iff required (non-empty media set).
   void MinifyRulesetMediaEnd(const Css::Ruleset& ruleset);
+
+  bool Equals(const Css::MediaQueries& a, const Css::MediaQueries& b) const;
+  bool Equals(const Css::MediaQuery& a, const Css::MediaQuery& b) const;
+  bool Equals(const Css::MediaExpression& a,
+              const Css::MediaExpression& b) const;
 
   Writer* writer_;
   MessageHandler* handler_;
