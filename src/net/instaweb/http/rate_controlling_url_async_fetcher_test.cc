@@ -89,7 +89,7 @@ class RateControllingUrlAsyncFetcherTest : public ::testing::Test {
         body1_("b1"),
         body2_("b2"),
         ttl_ms_(Timer::kHourMs) {
-    RateControllingUrlAsyncFetcher::Initialize(&stats_);
+    RateControllingUrlAsyncFetcher::InitStats(&stats_);
     thread_system_.reset(ThreadSystem::CreateThreadSystem());
     wait_fetcher_.reset(new WaitUrlAsyncFetcher(
         &mock_fetcher_, thread_system_->NewMutex()));

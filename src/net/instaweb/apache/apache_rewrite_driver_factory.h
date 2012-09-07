@@ -204,7 +204,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // Initializes all the statistics objects created transitively by
   // ApacheRewriteDriverFactory, including apache-specific and
   // platform-independent statistics.
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
   static void Initialize();
   static void Terminate();
 

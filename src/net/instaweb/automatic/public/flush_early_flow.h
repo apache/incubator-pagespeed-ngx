@@ -55,7 +55,7 @@ class FlushEarlyFlow {
       ProxyFetchFactory* factory,
       ProxyFetchPropertyCallbackCollector* property_callback);
 
-  static void Initialize(Statistics* stats);
+  static void InitStats(Statistics* stats);
 
   virtual ~FlushEarlyFlow();
 

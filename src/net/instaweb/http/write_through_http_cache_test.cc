@@ -102,7 +102,7 @@ class WriteThroughHTTPCacheTest : public testing::Test {
         cache1_(kMaxSize), cache2_(kMaxSize),
         key_("mykey"), content_("content"), header_name_("name"),
         header_value_("value") {
-    HTTPCache::Initialize(&simple_stats_);
+    HTTPCache::InitStats(&simple_stats_);
     http_cache_.reset(new WriteThroughHTTPCache(
         &cache1_, &cache2_, &mock_timer_, &mock_hasher_, &simple_stats_));
   }

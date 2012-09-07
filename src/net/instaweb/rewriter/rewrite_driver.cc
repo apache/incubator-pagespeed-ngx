@@ -650,22 +650,22 @@ void RewriteDriver::Initialize() {
   }
 }
 
-void RewriteDriver::Initialize(Statistics* statistics) {
-  AddInstrumentationFilter::Initialize(statistics);
-  CacheExtender::Initialize(statistics);
-  CssCombineFilter::Initialize(statistics);
-  CssFilter::Initialize(statistics);
-  CssInlineImportToLinkFilter::Initialize(statistics);
-  CssMoveToHeadFilter::Initialize(statistics);
-  DomainRewriteFilter::Initialize(statistics);
-  GoogleAnalyticsFilter::Initialize(statistics);
-  ImageCombineFilter::Initialize(statistics);
-  ImageRewriteFilter::Initialize(statistics);
-  InsertGAFilter::Initialize(statistics);
-  JavascriptFilter::Initialize(statistics);
-  JsCombineFilter::Initialize(statistics);
-  MetaTagFilter::Initialize(statistics);
-  UrlLeftTrimFilter::Initialize(statistics);
+void RewriteDriver::InitStats(Statistics* statistics) {
+  AddInstrumentationFilter::InitStats(statistics);
+  CacheExtender::InitStats(statistics);
+  CssCombineFilter::InitStats(statistics);
+  CssFilter::InitStats(statistics);
+  CssInlineImportToLinkFilter::InitStats(statistics);
+  CssMoveToHeadFilter::InitStats(statistics);
+  DomainRewriteFilter::InitStats(statistics);
+  GoogleAnalyticsFilter::InitStats(statistics);
+  ImageCombineFilter::InitStats(statistics);
+  ImageRewriteFilter::InitStats(statistics);
+  InsertGAFilter::InitStats(statistics);
+  JavascriptFilter::InitStats(statistics);
+  JsCombineFilter::InitStats(statistics);
+  MetaTagFilter::InitStats(statistics);
+  UrlLeftTrimFilter::InitStats(statistics);
 }
 
 void RewriteDriver::Terminate() {
@@ -1063,7 +1063,7 @@ void RewriteDriver::AddPostRenderFilters() {
 
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
   // doesn't, it probably should.  If it does, be sure to add it to the
-  // Initialize() function above or it will break under Apache!
+  // InitStats() function above or it will break under Apache!
 }
 
 void RewriteDriver::AddOwnedEarlyPreRenderFilter(HtmlFilter* filter) {

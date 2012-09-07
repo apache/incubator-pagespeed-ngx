@@ -114,7 +114,7 @@ class HTTPCacheTest : public testing::Test {
   static void SetUpTestCase() {
     testing::Test::SetUpTestCase();
     simple_stats_ = new SimpleStats;
-    HTTPCache::Initialize(simple_stats_);
+    HTTPCache::InitStats(simple_stats_);
   }
 
   static void TearDownTestCase() {

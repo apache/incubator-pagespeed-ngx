@@ -78,7 +78,7 @@ CacheStats::CacheStats(StringPiece prefix,
 CacheStats::~CacheStats() {
 }
 
-void CacheStats::Initialize(StringPiece prefix, Statistics* statistics) {
+void CacheStats::InitStats(StringPiece prefix, Statistics* statistics) {
   Histogram* get_count_histogram =
       statistics->AddHistogram(StrCat(prefix, kGetCountHistogram));
   get_count_histogram->SetMaxValue(kGetCountHistogramMaxValue);

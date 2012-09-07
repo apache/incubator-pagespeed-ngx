@@ -71,7 +71,7 @@ class RateControllingUrlAsyncFetcher : public UrlAsyncFetcher {
                      AsyncFetch* fetch);
 
   // Initializes statistics variables associated with this class.
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
  private:
   class HostFetchInfo;

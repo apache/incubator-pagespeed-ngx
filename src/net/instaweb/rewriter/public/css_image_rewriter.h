@@ -53,7 +53,7 @@ class CssImageRewriter {
                    ImageCombineFilter* image_combiner);
   ~CssImageRewriter();
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   // Attempts to rewrite the given CSS, starting nested rewrites for each
   // import and image to be rewritten. If successful, it mutates the CSS

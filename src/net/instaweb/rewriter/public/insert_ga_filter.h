@@ -46,7 +46,7 @@ class InsertGAFilter : public CommonFilter {
   virtual ~InsertGAFilter();
 
   // Set up statistics for this filter.
-  static void Initialize(Statistics* stats);
+  static void InitStats(Statistics* stats);
 
   virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element);

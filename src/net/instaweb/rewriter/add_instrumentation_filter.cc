@@ -127,7 +127,7 @@ AddInstrumentationFilter::AddInstrumentationFilter(RewriteDriver* driver)
 
 AddInstrumentationFilter::~AddInstrumentationFilter() {}
 
-void AddInstrumentationFilter::Initialize(Statistics* statistics) {
+void AddInstrumentationFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kInstrumentationScriptAddedCount);
 }
 

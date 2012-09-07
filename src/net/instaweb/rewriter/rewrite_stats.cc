@@ -74,7 +74,7 @@ namespace net_instaweb {
 //
 // Note that there are other statistics owned by filters and subsystems,
 // that must get the some treatment.
-void RewriteStats::Initialize(Statistics* statistics) {
+void RewriteStats::InitStats(Statistics* statistics) {
   statistics->AddVariable(kResourceUrlDomainRejections);
   statistics->AddVariable(kCachedOutputMissedDeadline);
   statistics->AddVariable(kCachedOutputHits);

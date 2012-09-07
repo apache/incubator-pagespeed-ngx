@@ -218,7 +218,7 @@ class HTTPCache {
   bool IsCacheableBodySize(int64 body_size) const;
 
   // Initialize statistics variables for the cache
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   // Returns true if the resource is already at the point of expiration
   // (or not cacheable by us), and would never be used if inserted into the

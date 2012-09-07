@@ -123,7 +123,6 @@ serf_bucket_alloc_t *serf_bucket_allocator_create(
 
     allocator->pool = pool;
     allocator->allocator = apr_pool_allocator_get(pool);
-    allocator->own_allocator = 0;
     if (allocator->allocator == NULL) {
         /* This most likely means pools are running in debug mode, create our
          * own allocator to deal with memory ourselves */
@@ -430,4 +429,3 @@ void serf_debug__bucket_alloc_check(
     }
 #endif
 }
-

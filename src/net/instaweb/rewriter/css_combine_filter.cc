@@ -324,7 +324,7 @@ CssCombineFilter::CssCombineFilter(RewriteDriver* driver)
 CssCombineFilter::~CssCombineFilter() {
 }
 
-void CssCombineFilter::Initialize(Statistics* statistics) {
+void CssCombineFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCssFileCountReduction);
 }
 

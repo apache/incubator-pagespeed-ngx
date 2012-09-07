@@ -59,7 +59,7 @@ class GoogleAnalyticsFilterTest : public RewriteTestBase {
     // Setup the statistics.
     RewriteTestBase::SetUp();
 
-    GoogleAnalyticsFilter::Initialize(statistics());
+    GoogleAnalyticsFilter::InitStats(statistics());
     GoogleAnalyticsFilter::MethodVector* glue_methods =
         new GoogleAnalyticsFilter::MethodVector;
     GoogleAnalyticsFilter::MethodVector* unhandled_methods =

@@ -57,7 +57,7 @@ FileRewriter::FileRewriter(const net_instaweb::RewriteGflags* gflags,
                            bool echo_errors_to_stdout)
     : gflags_(gflags),
       echo_errors_to_stdout_(echo_errors_to_stdout) {
-  net_instaweb::RewriteDriverFactory::Initialize(&simple_stats_);
+  net_instaweb::RewriteDriverFactory::InitStats(&simple_stats_);
   SetStatistics(&simple_stats_);
 }
 

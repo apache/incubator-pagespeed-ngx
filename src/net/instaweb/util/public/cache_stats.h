@@ -47,7 +47,7 @@ class CacheStats : public CacheInterface {
   virtual ~CacheStats();
 
   // This must be called once for every unique cache prefix.
-  static void Initialize(StringPiece prefix, Statistics* statistics);
+  static void InitStats(StringPiece prefix, Statistics* statistics);
 
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void MultiGet(MultiGetRequest* request);

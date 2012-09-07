@@ -34,7 +34,7 @@ static void BM_RewriteDriverConstruction(int iters) {
   net_instaweb::MockUrlFetcher fetcher;
   net_instaweb::RewriteDriverFactory::Initialize();
   net_instaweb::TestRewriteDriverFactory factory("/tmp", &fetcher);
-  net_instaweb::RewriteDriverFactory::Initialize(factory.statistics());
+  net_instaweb::RewriteDriverFactory::InitStats(factory.statistics());
   net_instaweb::ServerContext* resource_manager =
       factory.CreateServerContext();
   for (int i = 0; i < iters; ++i) {

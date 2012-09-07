@@ -44,7 +44,7 @@ class CssCombineFilter : public RewriteFilter {
   explicit CssCombineFilter(RewriteDriver* rewrite_driver);
   virtual ~CssCombineFilter();
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element);

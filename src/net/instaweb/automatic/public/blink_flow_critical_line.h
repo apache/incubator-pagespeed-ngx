@@ -58,7 +58,7 @@ class BlinkFlowCriticalLine {
 
   virtual ~BlinkFlowCriticalLine();
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   static const char kAboveTheFold[];
   static const char kNumBlinkHtmlCacheHits[];

@@ -85,8 +85,8 @@ JavascriptFilter::JavascriptFilter(RewriteDriver* driver)
 
 JavascriptFilter::~JavascriptFilter() { }
 
-void JavascriptFilter::Initialize(Statistics* statistics) {
-  JavascriptRewriteConfig::Initialize(statistics);
+void JavascriptFilter::InitStats(Statistics* statistics) {
+  JavascriptRewriteConfig::InitStats(statistics);
 }
 
 class JavascriptFilter::Context : public SingleRewriteContext {

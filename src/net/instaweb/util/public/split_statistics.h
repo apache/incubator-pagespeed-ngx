@@ -145,7 +145,7 @@ class SplitStatistics
   // Takes ownership of 'local', but not thread_system or global.
   //
   // Note that before AddVariable or similar methods are invoked on this object
-  // (which is usually done by static ::Initialize(Statistics* methods) they
+  // (which is usually done by static ::InitStats(Statistics* methods) they
   // must have been invoked on both local and global statistics objects for
   // the same object names.
   SplitStatistics(ThreadSystem* thread_system,

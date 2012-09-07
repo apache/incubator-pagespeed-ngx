@@ -286,7 +286,7 @@ bool RateControllingUrlAsyncFetcher::Fetch(const GoogleString& url,
   return true;
 }
 
-void RateControllingUrlAsyncFetcher::Initialize(Statistics* statistics) {
+void RateControllingUrlAsyncFetcher::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCurrentGlobalFetchQueueSize);
   statistics->AddTimedVariable(kQueuedFetchCount,
                                UrlAsyncFetcher::kStatisticsGroup);

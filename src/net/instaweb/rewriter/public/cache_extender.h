@@ -53,7 +53,7 @@ class CacheExtender : public RewriteFilter {
   explicit CacheExtender(RewriteDriver* driver);
   virtual ~CacheExtender();
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   virtual void StartDocumentImpl() {}
   virtual void StartElementImpl(HtmlElement* element);

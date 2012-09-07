@@ -810,7 +810,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
   // NullStatistics.
   if (statistics == NULL) {
     statistics = factory->statistics();
-    ApacheRewriteDriverFactory::Initialize(statistics);
+    ApacheRewriteDriverFactory::InitStats(statistics);
   }
 
   factory->RootInit();

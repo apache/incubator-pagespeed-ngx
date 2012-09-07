@@ -60,7 +60,7 @@ CssInlineImportToLinkFilter::CssInlineImportToLinkFilter(RewriteDriver* driver,
 
 CssInlineImportToLinkFilter::~CssInlineImportToLinkFilter() {}
 
-void CssInlineImportToLinkFilter::Initialize(Statistics* statistics) {
+void CssInlineImportToLinkFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCssImportsToLinks);
 }
 

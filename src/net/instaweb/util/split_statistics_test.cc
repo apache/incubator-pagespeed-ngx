@@ -52,14 +52,14 @@ class SplitStatisticsTest : public testing::Test {
         split_b_(new SplitStatistics(threads_.get(), local_b_, global_.get())) {
     // Initialize in the documented order -- global & locals before their
     // splits. Also call Init() on the shared mem ones after that.
-    Initialize(global_.get());
+    InitStats(global_.get());
     global_->Init(true, &message_handler_);
-    Initialize(local_a_);
+    InitStats(local_a_);
     local_a_->Init(true, &message_handler_);
-    Initialize(split_a_.get());
-    Initialize(local_b_);
+    InitStats(split_a_.get());
+    InitStats(local_b_);
     local_b_->Init(true, &message_handler_);
-    Initialize(split_b_.get());
+    InitStats(split_b_.get());
   }
 
   ~SplitStatisticsTest() {
@@ -77,7 +77,7 @@ class SplitStatisticsTest : public testing::Test {
   }
 
  protected:
-  void Initialize(Statistics* s) {
+  void InitStats(Statistics* s) {
     s->AddVariable(kVarA);
     s->AddVariable(kVarB);
     s->AddGlobalVariable(kVarGlobal);

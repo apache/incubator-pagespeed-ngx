@@ -72,7 +72,7 @@ void DomainRewriteFilter::StartDocumentImpl() {
 
 DomainRewriteFilter::~DomainRewriteFilter() {}
 
-void DomainRewriteFilter::Initialize(Statistics* statistics) {
+void DomainRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kDomainRewrites);
 }
 

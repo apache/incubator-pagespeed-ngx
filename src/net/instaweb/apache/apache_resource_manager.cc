@@ -88,7 +88,7 @@ ApacheResourceManager::ApacheResourceManager(
 ApacheResourceManager::~ApacheResourceManager() {
 }
 
-void ApacheResourceManager::Initialize(Statistics* statistics) {
+void ApacheResourceManager::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCacheFlushCount);
   Histogram* html_rewrite_time_us_histogram =
       statistics->AddHistogram(kHtmlRewriteTimeUsHistogram);
@@ -96,7 +96,7 @@ void ApacheResourceManager::Initialize(Statistics* statistics) {
   // worse than anything we have reasonably seen, to make sure we don't
   // cut off actual samples.
   html_rewrite_time_us_histogram->SetMaxValue(2000 * Timer::kMsUs);
-  UrlAsyncFetcherStats::Initialize(kLocalFetcherStatsPrefix, statistics);
+  UrlAsyncFetcherStats::InitStats(kLocalFetcherStatsPrefix, statistics);
 }
 
 bool ApacheResourceManager::InitFileCachePath() {
@@ -127,9 +127,9 @@ void ApacheResourceManager::CreateLocalStatistics(
           config()->statistics_logging_file());
   split_statistics_.reset(new SplitStatistics(
       apache_factory_->thread_system(), local_statistics_, global_statistics));
-  // local_statistics_ was ::Initialize'd by AllocateAndInitSharedMemStatistics,
+  // local_statistics_ was ::InitStat'd by AllocateAndInitSharedMemStatistics,
   // but we need to take care of split_statistics_.
-  ApacheRewriteDriverFactory::Initialize(split_statistics_.get());
+  ApacheRewriteDriverFactory::InitStats(split_statistics_.get());
 }
 
 void ApacheResourceManager::ChildInit() {

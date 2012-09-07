@@ -60,7 +60,7 @@ class ImageCombineFilter : public RewriteFilter {
   explicit ImageCombineFilter(RewriteDriver* rewrite_driver);
   virtual ~ImageCombineFilter();
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   // Attempt to add the CSS background image with (resolved) url original_url to
   // this partnership.  We do not take ownership of declarations; it must live

@@ -135,7 +135,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   virtual void SetUp() {
     apr_pool_create(&pool_, NULL);
     timer_.reset(new MockTimer(MockTimer::kApr_5_2010_ms));
-    SerfUrlAsyncFetcher::Initialize(&statistics_);
+    SerfUrlAsyncFetcher::InitStats(&statistics_);
     thread_system_.reset(ThreadSystem::CreateThreadSystem());
     serf_url_async_fetcher_.reset(
         new SerfUrlAsyncFetcher(kProxy, pool_, thread_system_.get(),

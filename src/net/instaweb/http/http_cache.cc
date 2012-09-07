@@ -449,7 +449,7 @@ void HTTPCache::Delete(const GoogleString& key) {
   return cache_->Delete(key);
 }
 
-void HTTPCache::Initialize(Statistics* statistics) {
+void HTTPCache::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCacheTimeUs);
   statistics->AddVariable(kCacheHits);
   statistics->AddVariable(kCacheMisses);

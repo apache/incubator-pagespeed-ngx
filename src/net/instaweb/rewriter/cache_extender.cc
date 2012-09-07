@@ -89,7 +89,7 @@ CacheExtender::CacheExtender(RewriteDriver* driver)
 
 CacheExtender::~CacheExtender() {}
 
-void CacheExtender::Initialize(Statistics* statistics) {
+void CacheExtender::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCacheExtensions);
   statistics->AddVariable(kNotCacheable);
 }

@@ -765,7 +765,7 @@ class ResourceFreshenTest : public ServerContextTest {
 
   virtual void SetUp() {
     ServerContextTest::SetUp();
-    HTTPCache::Initialize(statistics());
+    HTTPCache::InitStats(statistics());
     expirations_ = statistics()->GetVariable(HTTPCache::kCacheExpirations);
     CHECK(expirations_ != NULL);
     SetDefaultLongCacheHeaders(&kContentTypePng, &response_headers_);

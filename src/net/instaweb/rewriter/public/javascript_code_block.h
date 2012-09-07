@@ -45,7 +45,7 @@ class JavascriptRewriteConfig {
       Statistics* statistics, bool minify,
       const JavascriptLibraryIdentification* identification);
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   // Whether to minify javascript output (using jsminify).
   // true by default.

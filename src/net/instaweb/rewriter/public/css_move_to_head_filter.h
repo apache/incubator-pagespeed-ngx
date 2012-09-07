@@ -37,7 +37,7 @@ class CssMoveToHeadFilter : public CommonFilter {
   explicit CssMoveToHeadFilter(RewriteDriver* driver);
   virtual ~CssMoveToHeadFilter();
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element) {}

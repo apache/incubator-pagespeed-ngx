@@ -20,6 +20,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -105,8 +106,8 @@ UrlAsyncFetcherStats::UrlAsyncFetcherStats(StringPiece prefix,
 UrlAsyncFetcherStats::~UrlAsyncFetcherStats() {
 }
 
-void UrlAsyncFetcherStats::Initialize(StringPiece prefix,
-                                      Statistics* statistics) {
+void UrlAsyncFetcherStats::InitStats(StringPiece prefix,
+                                     Statistics* statistics) {
   Histogram* fetch_latency_us_histogram =
       statistics->AddHistogram(StrCat(prefix, kFetchLatencyUsHistogram));
   fetch_latency_us_histogram->SetMaxValue(kFetchLatencyUsHistogramMaxValue);

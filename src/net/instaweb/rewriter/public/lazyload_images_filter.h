@@ -20,7 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_LAZYLOAD_IMAGES_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
- #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -84,7 +84,7 @@ class LazyloadImagesFilter : public CommonFilter {
 
   virtual const char* Name() const { return "Lazyload Images"; }
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
   static void Terminate();
 
   // Lazyload filter will be no op for the request if ShouldApply returns false.

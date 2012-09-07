@@ -432,7 +432,7 @@ JsCombineFilter::JsCombineFilter(RewriteDriver* driver)
 JsCombineFilter::~JsCombineFilter() {
 }
 
-void JsCombineFilter::Initialize(Statistics* statistics) {
+void JsCombineFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kJsFileCountReduction);
 }
 

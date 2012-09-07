@@ -59,7 +59,7 @@ class ProxyInterface : public UrlAsyncFetcher {
   virtual ~ProxyInterface();
 
   // Initializes statistics variables associated with this class.
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   // All requests use this interface. We decide internally whether the
   // request is a pagespeed resource, HTML page to be rewritten or another

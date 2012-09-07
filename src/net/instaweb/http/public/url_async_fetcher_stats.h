@@ -38,7 +38,7 @@ class UrlAsyncFetcherStats : public UrlAsyncFetcher {
  public:
   // Creates a fetcher that delegates to base_fetcher, while collecting
   // statistics. The variables will be prefixed with 'prefix'; which must
-  // have been passed to ::Initialize during statistics initialization process.
+  // have been passed to ::InitStats during statistics initialization process.
   //
   // Note that base_fetcher should not have fetch_with_gzip() as it would break
   // usage metering; if you want that functionality you should turn it off on
@@ -54,7 +54,7 @@ class UrlAsyncFetcherStats : public UrlAsyncFetcher {
 
   // This must be called once for every unique prefix used with
   // UrlAsyncFetcherStats.
-  static void Initialize(StringPiece prefix, Statistics* statistics);
+  static void InitStats(StringPiece prefix, Statistics* statistics);
 
   // Reimplementation of UrlAsyncFetcher methods. See base class
   // for API specifications.

@@ -41,7 +41,7 @@ class MetaTagFilter : public CommonFilter {
   explicit MetaTagFilter(RewriteDriver* rewrite_driver);
   virtual ~MetaTagFilter();
 
-  static void Initialize(Statistics* stats);
+  static void InitStats(Statistics* stats);
 
   virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element) {}

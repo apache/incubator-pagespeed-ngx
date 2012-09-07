@@ -95,7 +95,7 @@ CacheBatcher::CacheBatcher(CacheInterface* cache, AbstractMutex* mutex,
 CacheBatcher::~CacheBatcher() {
 }
 
-void CacheBatcher::Initialize(Statistics* statistics) {
+void CacheBatcher::InitStats(Statistics* statistics) {
   statistics->AddVariable(kDroppedGets);
 }
 

@@ -68,7 +68,7 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent, const char* proxy);
   virtual ~SerfUrlAsyncFetcher();
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   // Stops all active fetches and prevents further fetches from starting
   // (they will instead quickly call back to ->Done(false).

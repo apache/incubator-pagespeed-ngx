@@ -49,7 +49,7 @@ class UrlLeftTrimFilter : public CommonFilter {
   UrlLeftTrimFilter(RewriteDriver* rewrite_driver, Statistics* stats);
   virtual ~UrlLeftTrimFilter();
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
   virtual void StartDocumentImpl() {}
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element) {}

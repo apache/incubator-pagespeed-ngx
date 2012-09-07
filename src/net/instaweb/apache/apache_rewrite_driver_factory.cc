@@ -667,7 +667,7 @@ SharedMemStatistics* ApacheRewriteDriverFactory::
       logging_interval_ms, StrCat(logging_file_base, name), logging,
       StrCat(filename_prefix(), name), shared_mem_runtime(), message_handler(),
       file_system(), timer());
-  Initialize(stats);
+  InitStats(stats);
   stats->Init(true, message_handler());
   return stats;
 }
@@ -677,13 +677,13 @@ void ApacheRewriteDriverFactory::Initialize() {
   RewriteDriverFactory::Initialize();
 }
 
-void ApacheRewriteDriverFactory::Initialize(Statistics* statistics) {
-  RewriteDriverFactory::Initialize(statistics);
-  SerfUrlAsyncFetcher::Initialize(statistics);
-  ApacheResourceManager::Initialize(statistics);
-  CacheStats::Initialize(ApacheCache::kFileCache, statistics);
-  CacheStats::Initialize(ApacheCache::kLruCache, statistics);
-  CacheStats::Initialize(kMemcached, statistics);
+void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
+  RewriteDriverFactory::InitStats(statistics);
+  SerfUrlAsyncFetcher::InitStats(statistics);
+  ApacheResourceManager::InitStats(statistics);
+  CacheStats::InitStats(ApacheCache::kFileCache, statistics);
+  CacheStats::InitStats(ApacheCache::kLruCache, statistics);
+  CacheStats::InitStats(kMemcached, statistics);
 }
 
 void ApacheRewriteDriverFactory::Terminate() {

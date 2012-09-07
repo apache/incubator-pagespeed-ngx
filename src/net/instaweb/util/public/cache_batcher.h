@@ -75,7 +75,7 @@ class CacheBatcher : public CacheInterface {
   // Startup-time (pre-construction) initialization of statistics
   // variables so the correct-sized shared memory can be constructed
   // in the root Apache process.
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void Put(const GoogleString& key, SharedString* value);

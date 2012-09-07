@@ -49,7 +49,7 @@ class JsDeferDisabledFilter : public EmptyHtmlFilter {
   virtual void EndDocument();
   virtual const char* Name() const { return "JsDeferDisabledFilter"; }
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
   static void Terminate();
 
   // JsDeferDisableFilter will be no op for the request if ShouldApply returns

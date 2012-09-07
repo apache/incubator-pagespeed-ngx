@@ -44,7 +44,7 @@ namespace net_instaweb {
 class CacheBatcherTest : public CacheTestBase {
  protected:
   CacheBatcherTest() : expected_pending_(0) {
-    CacheBatcher::Initialize(&statistics_);
+    CacheBatcher::InitStats(&statistics_);
     lru_cache_ = new LRUCache(kMaxSize);
     thread_system_.reset(ThreadSystem::CreateThreadSystem());
     timer_.reset(thread_system_->NewTimer());

@@ -50,7 +50,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -65,6 +64,7 @@
 namespace net_instaweb {
 
 class MessageHandler;
+class StaticJavascriptManager;
 
 const char BlinkFlowCriticalLine::kBackgroundComputationDone[] =
     "BackgroundComputation:Done";
@@ -618,7 +618,7 @@ void BlinkFlowCriticalLine::SetResponseStartTime() {
 BlinkFlowCriticalLine::~BlinkFlowCriticalLine() {
 }
 
-void BlinkFlowCriticalLine::Initialize(Statistics* stats) {
+void BlinkFlowCriticalLine::InitStats(Statistics* stats) {
   stats->AddTimedVariable(kNumBlinkHtmlCacheHits,
                           ServerContext::kStatisticsGroup);
   stats->AddTimedVariable(kNumBlinkHtmlCacheMisses,

@@ -115,7 +115,7 @@ RewriteTestBase::RewriteTestBase(
 
 void RewriteTestBase::Init() {
   DCHECK(statistics_ != NULL);
-  RewriteDriverFactory::Initialize(statistics_.get());
+  RewriteDriverFactory::InitStats(statistics_.get());
   factory_->SetStatistics(statistics_.get());
   other_factory_->SetStatistics(statistics_.get());
   resource_manager_ = factory_->CreateServerContext();
@@ -262,7 +262,7 @@ void RewriteTestBase::ServeResourceFromNewContext(
   // New objects for the new server.
   SimpleStats stats;
   scoped_ptr<TestRewriteDriverFactory> new_factory(MakeTestFactory());
-  TestRewriteDriverFactory::Initialize(&stats);
+  TestRewriteDriverFactory::InitStats(&stats);
   new_factory->SetUseTestUrlNamer(factory_->use_test_url_namer());
   new_factory->SetStatistics(&stats);
   ServerContext* new_resource_manager = new_factory->CreateServerContext();

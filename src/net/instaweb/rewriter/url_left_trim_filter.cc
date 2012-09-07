@@ -49,7 +49,7 @@ UrlLeftTrimFilter::UrlLeftTrimFilter(RewriteDriver* rewrite_driver,
 
 UrlLeftTrimFilter::~UrlLeftTrimFilter() {}
 
-void UrlLeftTrimFilter::Initialize(Statistics* statistics) {
+void UrlLeftTrimFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kUrlTrims);
   statistics->AddVariable(kUrlTrimSavedBytes);
 }

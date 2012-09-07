@@ -39,7 +39,7 @@ class AddInstrumentationFilterTest : public RewriteTestBase {
 
   virtual void SetUp() {
     options()->set_beacon_url("http://example.com/beacon?org=xxx&ets=");
-    AddInstrumentationFilter::Initialize(statistics());
+    AddInstrumentationFilter::InitStats(statistics());
     options()->EnableFilter(RewriteOptions::kAddInstrumentation);
     RewriteTestBase::SetUp();
     report_unload_time_ = false;

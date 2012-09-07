@@ -126,7 +126,7 @@ const char kBogusLibraryUrl[] =
 class JsCodeBlockTest : public testing::Test {
  protected:
   JsCodeBlockTest() {
-    JavascriptRewriteConfig::Initialize(&stats_);
+    JavascriptRewriteConfig::InitStats(&stats_);
     config_.reset(new JavascriptRewriteConfig(&stats_, true, &libraries_));
     // Register a bogus library with a made-up md5 and plausible canonical url
     // that doesn't occur in our tests, but has the same size as our canonical

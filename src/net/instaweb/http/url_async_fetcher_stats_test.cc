@@ -53,7 +53,7 @@ class StatsMaker {
                                        "/stats.log", false /* no log */,
                                        "in_mem", mem_runtime_.get(),
                                        &message_handler_, &fs_, &timer_)) {
-    UrlAsyncFetcherStats::Initialize("test", stats_.get());
+    UrlAsyncFetcherStats::InitStats("test", stats_.get());
     stats_->Init(true, &message_handler_);
   }
 

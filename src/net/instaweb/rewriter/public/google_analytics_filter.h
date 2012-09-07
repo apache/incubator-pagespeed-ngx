@@ -119,7 +119,7 @@ class GoogleAnalyticsFilter : public EmptyHtmlFilter {
                                  MethodVector* glue_methods,
                                  MethodVector* unhandled_methods);
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   virtual void StartDocument();
   virtual void EndDocument();

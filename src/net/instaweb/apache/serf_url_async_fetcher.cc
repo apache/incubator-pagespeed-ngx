@@ -1208,7 +1208,7 @@ void SerfUrlAsyncFetcher::CleanupFetchesWithErrors() {
   }
 }
 
-void SerfUrlAsyncFetcher::Initialize(Statistics* statistics) {
+void SerfUrlAsyncFetcher::InitStats(Statistics* statistics) {
   statistics->AddVariable(SerfStats::kSerfFetchRequestCount);
   statistics->AddVariable(SerfStats::kSerfFetchByteCount);
   statistics->AddVariable(SerfStats::kSerfFetchTimeDurationMs);

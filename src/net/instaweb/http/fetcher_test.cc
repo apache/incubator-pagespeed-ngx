@@ -185,7 +185,7 @@ void FetcherTest::MockAsyncFetcher::CallCallbacks() {
 
 void FetcherTest::SetUpTestCase() {
   statistics_ = new SimpleStats;
-  HTTPCache::Initialize(statistics_);
+  HTTPCache::InitStats(statistics_);
 }
 
 void FetcherTest::TearDownTestCase() {

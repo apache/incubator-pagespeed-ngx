@@ -44,7 +44,7 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
   explicit AddInstrumentationFilter(RewriteDriver* driver);
   virtual ~AddInstrumentationFilter();
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);

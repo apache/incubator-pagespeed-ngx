@@ -44,7 +44,7 @@ class DetectReflowJsDeferFilter : public EmptyHtmlFilter {
 
   void InsertDetectReflowCode(HtmlElement* element);
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
   static void Terminate();
 
  private:

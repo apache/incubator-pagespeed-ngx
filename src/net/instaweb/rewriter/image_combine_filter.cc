@@ -1127,7 +1127,7 @@ ImageCombineFilter::ImageCombineFilter(RewriteDriver* driver)
 ImageCombineFilter::~ImageCombineFilter() {
 }
 
-void ImageCombineFilter::Initialize(Statistics* statistics) {
+void ImageCombineFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kImageFileCountReduction);
 }
 

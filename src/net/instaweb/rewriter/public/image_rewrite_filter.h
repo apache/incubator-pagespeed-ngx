@@ -54,7 +54,7 @@ class ImageRewriteFilter : public RewriteFilter {
  public:
   explicit ImageRewriteFilter(RewriteDriver* driver);
   virtual ~ImageRewriteFilter();
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
   virtual void StartDocumentImpl();
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual void EndElementImpl(HtmlElement* element);

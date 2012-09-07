@@ -159,7 +159,7 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
 ProxyInterface::~ProxyInterface() {
 }
 
-void ProxyInterface::Initialize(Statistics* statistics) {
+void ProxyInterface::InitStats(Statistics* statistics) {
   statistics->AddTimedVariable(kTotalRequestCount,
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kPagespeedRequestCount,
@@ -168,8 +168,8 @@ void ProxyInterface::Initialize(Statistics* statistics) {
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kBlinkCriticalLineRequestCount,
                                ServerContext::kStatisticsGroup);
-  BlinkFlowCriticalLine::Initialize(statistics);
-  FlushEarlyFlow::Initialize(statistics);
+  BlinkFlowCriticalLine::InitStats(statistics);
+  FlushEarlyFlow::InitStats(statistics);
 }
 
 bool ProxyInterface::IsWellFormedUrl(const GoogleUrl& url) {

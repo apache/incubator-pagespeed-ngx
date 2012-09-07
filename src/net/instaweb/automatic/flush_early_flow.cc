@@ -63,6 +63,8 @@ const char kPrefetchObjectTagHtml[] = "preload(%s);";
 
 namespace net_instaweb {
 
+class StaticJavascriptManager;
+
 const char FlushEarlyFlow::kNumRequestsFlushedEarly[] =
     "num_requests_flushed_early";
 const char FlushEarlyFlow::kNumResourcesFlushedEarly[] =
@@ -128,7 +130,7 @@ void FlushEarlyFlow::Start(
   property_cache_callback->AddPostLookupTask(func);
 }
 
-void FlushEarlyFlow::Initialize(Statistics* stats) {
+void FlushEarlyFlow::InitStats(Statistics* stats) {
   stats->AddTimedVariable(kNumRequestsFlushedEarly,
                           ServerContext::kStatisticsGroup);
   stats->AddTimedVariable(

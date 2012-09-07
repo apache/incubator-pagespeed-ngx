@@ -187,7 +187,7 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
 
 ImageRewriteFilter::~ImageRewriteFilter() {}
 
-void ImageRewriteFilter::Initialize(Statistics* statistics) {
+void ImageRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kImageRewrites);
   statistics->AddVariable(kImageNoRewritesHighResolution);
   statistics->AddVariable(kImageRewritesDroppedIntentionally);

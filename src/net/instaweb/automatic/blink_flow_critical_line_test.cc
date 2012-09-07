@@ -546,7 +546,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     resource_manager()->ComputeSignature(options_.get());
 
     RewriteTestBase::SetUp();
-    ProxyInterface::Initialize(statistics());
+    ProxyInterface::InitStats(statistics());
     proxy_interface_.reset(
         new ProxyInterface("localhost", 80, resource_manager(), statistics()));
 

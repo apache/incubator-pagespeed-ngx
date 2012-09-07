@@ -167,11 +167,8 @@ class RewriteDriver : public HtmlParse {
   // WaitForCompletion must be called prior to Clear().
   void Clear();
 
-  // TODO(jmarantz): rename Initialize(Statistics* statistics) to
-  // InitStats(Statistics* statistics) in a follow-up.
-
   // Initialize statistics for all filters that need it.
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   // Initialize statics.  Initialize/Terminate calls must be paired.
   static void Initialize();

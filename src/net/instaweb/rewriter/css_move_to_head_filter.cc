@@ -47,7 +47,7 @@ CssMoveToHeadFilter::CssMoveToHeadFilter(RewriteDriver* driver)
 
 CssMoveToHeadFilter::~CssMoveToHeadFilter() {}
 
-void CssMoveToHeadFilter::Initialize(Statistics* statistics) {
+void CssMoveToHeadFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCssElementsMoved);
 }
 

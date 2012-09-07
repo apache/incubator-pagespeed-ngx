@@ -61,7 +61,7 @@ class JavascriptFilter : public RewriteFilter {
  public:
   explicit JavascriptFilter(RewriteDriver* rewrite_driver);
   virtual ~JavascriptFilter();
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   virtual void StartDocumentImpl() { InitializeConfigIfNecessary(); }
   virtual void StartElementImpl(HtmlElement* element);

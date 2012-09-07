@@ -56,7 +56,7 @@ JavascriptRewriteConfig::JavascriptRewriteConfig(
   num_uses_ = stats->GetVariable(kMinifyUses);
 }
 
-void JavascriptRewriteConfig::Initialize(Statistics* statistics) {
+void JavascriptRewriteConfig::InitStats(Statistics* statistics) {
   statistics->AddVariable(kBlocksMinified);
   statistics->AddVariable(kLibrariesRedirected);
   statistics->AddVariable(kMinificationFailures);

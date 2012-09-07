@@ -707,7 +707,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
     options->Disallow("*blacklist*");
     resource_manager()->ComputeSignature(options);
     RewriteTestBase::SetUp();
-    ProxyInterface::Initialize(statistics());
+    ProxyInterface::InitStats(statistics());
     // The original url_async_fetcher() is still owned by RewriteDriverFactory.
     background_fetch_fetcher_.reset(new BackgroundFetchCheckingUrlAsyncFetcher(
         factory()->ComputeUrlAsyncFetcher()));

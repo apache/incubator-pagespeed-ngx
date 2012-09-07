@@ -46,7 +46,7 @@ MetaTagFilter::MetaTagFilter(RewriteDriver* rewrite_driver)
   converted_meta_tag_count_ = stats->GetVariable(kConvertedMetaTags);
 }
 
-void MetaTagFilter::Initialize(Statistics* stats) {
+void MetaTagFilter::InitStats(Statistics* stats) {
   stats->AddVariable(kConvertedMetaTags);
 }
 

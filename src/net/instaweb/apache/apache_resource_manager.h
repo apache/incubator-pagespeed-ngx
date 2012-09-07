@@ -87,7 +87,7 @@ class ApacheResourceManager : public ServerContext {
   // Accumulate in a histogram the amount of time spent rewriting HTML.
   void AddHtmlRewriteTimeUs(int64 rewrite_time_us);
 
-  static void Initialize(Statistics* statistics);
+  static void InitStats(Statistics* statistics);
 
   void set_cache_flush_poll_interval_sec(int num_seconds) {
     cache_flush_poll_interval_sec_ = num_seconds;

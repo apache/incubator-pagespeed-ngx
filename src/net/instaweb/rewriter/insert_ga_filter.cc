@@ -89,7 +89,7 @@ InsertGAFilter::InsertGAFilter(RewriteDriver* rewrite_driver)
   DCHECK(!ga_id_.empty()) << "Enabled ga insertion, but did not provide ga id.";
 }
 
-void InsertGAFilter::Initialize(Statistics* stats) {
+void InsertGAFilter::InitStats(Statistics* stats) {
   stats->AddVariable(kInsertedGaSnippets);
 }
 

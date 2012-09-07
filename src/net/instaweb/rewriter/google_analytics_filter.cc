@@ -202,7 +202,7 @@ GoogleAnalyticsFilter::GoogleAnalyticsFilter(
 
 GoogleAnalyticsFilter::~GoogleAnalyticsFilter() {}
 
-void GoogleAnalyticsFilter::Initialize(Statistics* statistics) {
+void GoogleAnalyticsFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kPageLoadCount);
   statistics->AddVariable(kRewrittenCount);
 }
