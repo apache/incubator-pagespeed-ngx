@@ -433,6 +433,7 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedDomain http://example.com
 #ALL_DIRECTIVES ModPagespeedDomainRewriteHyperlinks true
 #ALL_DIRECTIVES ModPagespeedEnableFilters extend_cache
+#ALL_DIRECTIVES ModPagespeedEnablePropertyCache on
 #ALL_DIRECTIVES ModPagespeedExperimentSpec "id=8;percent=10"
 #ALL_DIRECTIVES ModPagespeedExperimentVariable 3
 #ALL_DIRECTIVES ModPagespeedFetchProxy localhost:4321

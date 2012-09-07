@@ -201,6 +201,8 @@ const char kModPagespeedUrlPrefix[] = "ModPagespeedUrlPrefix";
 const char kModPagespeedUrlValuedAttribute[] = "ModPagespeedUrlValuedAttribute";
 const char kModPagespeedUsePerVHostStatistics[] =
     "ModPagespeedUsePerVHostStatistics";
+const char kModPagespeedEnablePropertyCache[] =
+    "ModPagespeedEnablePropertyCache";
 const char kModPagespeedSpeedTracking[] = "ModPagespeedIncreaseSpeedTracking";
 const char kModPagespeedXHeaderValue[] = "ModPagespeedXHeaderValue";
 
@@ -1146,6 +1148,10 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseBoolOption(
         factory, cmd, &ApacheRewriteDriverFactory::set_use_per_vhost_statistics,
         arg);
+  } else if (StringCaseEqual(directive, kModPagespeedEnablePropertyCache)) {
+    ret = ParseBoolOption(
+        factory, cmd, &ApacheRewriteDriverFactory::set_enable_property_cache,
+        arg);
   } else {
     ret = apr_pstrcat(cmd->pool, "Unknown directive ",
                       directive.as_string().c_str(), NULL);
@@ -1466,6 +1472,8 @@ APACHE_CONFIG_DIR_OPTION(kModPagespeedClientDomainRewrite,
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "Set the url prefix"),
   APACHE_CONFIG_OPTION(kModPagespeedUsePerVHostStatistics,
         "If true, keep track of statistics per VHost and not just globally"),
+  APACHE_CONFIG_OPTION(kModPagespeedEnablePropertyCache,
+        "If true, enable the property cache"),
   APACHE_CONFIG_OPTION(kModPagespeedXHeaderValue,
         "Set the value for the X-Mod-Pagespeed HTTP header"),
 

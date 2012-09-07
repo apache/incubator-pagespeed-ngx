@@ -160,6 +160,14 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
     use_per_vhost_statistics_ = x;
   }
 
+  bool enable_property_cache() const {
+    return enable_property_cache_;
+  }
+
+  void set_enable_property_cache(bool x) {
+    enable_property_cache_ = x;
+  }
+
   // Finds a Cache for the file_cache_path in the config.  If none exists,
   // creates one, using all the other parameters in the ApacheConfig.
   // Currently, no checking is done that the other parameters (e.g. cache
@@ -304,6 +312,9 @@ protected:
   // (along with a global aggregate), rather than just a single object
   // aggregating all of them.
   bool use_per_vhost_statistics_;
+
+  // Enable the property cache.
+  bool enable_property_cache_;
 
   // true iff we ran through AutoDetectThreadCounts()
   bool thread_counts_finalized_;

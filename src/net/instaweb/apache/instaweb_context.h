@@ -41,6 +41,26 @@ class RewriteOptions;
 
 const char kPagespeedOriginalUrl[] = "mod_pagespeed_original_url";
 
+// Tracks a single property-cache lookup.
+class PropertyCallback : public PropertyPage {
+ public:
+  PropertyCallback(RewriteDriver* driver,
+                   ThreadSystem* thread_system,
+                   const StringPiece& key);
+
+  virtual void Done(bool success);
+
+  void BlockUntilDone();
+
+ private:
+  RewriteDriver* driver_;
+  GoogleString url_;
+  bool done_;
+  scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
+  scoped_ptr<ThreadSystem::Condvar> condvar_;
+  DISALLOW_COPY_AND_ASSIGN(PropertyCallback);
+};
+
 // Context for an HTML rewrite.
 //
 // One is created for responses that appear to be HTML (although there is
@@ -97,6 +117,10 @@ class InstawebContext {
 
  private:
   void ComputeContentEncoding(request_rec* request);
+
+  // Start a new property cache lookup. The caller is responsible for cleaning
+  // up the returned PropertyCallback*.
+  PropertyCallback* InitiatePropertyCacheLookup();
   void ProcessBytes(const char* input, int size);
 
   // Checks to see if there was a Furious cookie sent with the request.

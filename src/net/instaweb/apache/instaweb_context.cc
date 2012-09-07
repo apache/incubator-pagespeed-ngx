@@ -24,8 +24,10 @@
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
+#include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/stack_buffer.h"
 #include "apr_strings.h"
@@ -39,6 +41,36 @@ class ApacheResourceManager;
 // Number of times to go down the request->prev chain looking for an
 // absolute url.
 const int kRequestChainLimit = 5;
+
+PropertyCallback::PropertyCallback(RewriteDriver* driver,
+                                   ThreadSystem* thread_system,
+                                   const StringPiece& key) :
+  PropertyPage(thread_system->NewMutex(), key),
+  driver_(driver),
+  done_(false),
+  mutex_(thread_system->NewMutex()),
+  condvar_(mutex_->NewCondvar()) {
+}
+
+void PropertyCallback::Done(bool success) {
+  ScopedMutex lock(mutex_.get());
+  driver_->set_property_page(this);
+  done_ = true;
+  condvar_->Signal();
+}
+
+void PropertyCallback::BlockUntilDone() {
+  int iters = 0;
+  ScopedMutex lock(mutex_.get());
+  while (!done_) {
+    condvar_->TimedWait(Timer::kSecondMs);
+    if (!done_) {
+      driver_->message_handler()->Message(
+          kError, "Waiting for property cache fetch to complete. "
+          "Elapsed time: %ds", ++iters);
+    }
+  }
+}
 
 InstawebContext::InstawebContext(request_rec* request,
                                  RequestHeaders* request_headers,
@@ -80,6 +112,14 @@ InstawebContext::InstawebContext(request_rec* request,
   } else {
     rewrite_driver_ = resource_manager_->NewRewriteDriver();
   }
+
+
+  // Begin the property cache lookup. This should be as early as possible since
+  // it may be asynchronous (in the case of memcached).
+  // TODO(jud): It would be ideal to move this even earlier. As early as, say,
+  // save_url_hook. However, there is no request specific context to save the
+  // result in at that point.
+  PropertyCallback* property_callback(InitiatePropertyCacheLookup());
 
   // Insert proxy fetcher to add custom fetch headers if there are any such
   // headers to add.
@@ -134,6 +174,11 @@ InstawebContext::InstawebContext(request_rec* request,
   // TODO(lsong): Bypass the string buffer, write data directly to the next
   // apache bucket.
   rewrite_driver_->SetWriter(&string_writer_);
+
+  // Wait until property cache lookup is complete
+  if (property_callback != NULL) {
+    property_callback->BlockUntilDone();
+  }
 }
 
 InstawebContext::~InstawebContext() {
@@ -250,6 +295,17 @@ void InstawebContext::ComputeContentEncoding(request_rec* request) {
       content_encoding_ = kOther;
     }
   }
+}
+
+PropertyCallback* InstawebContext::InitiatePropertyCacheLookup() {
+  PropertyCallback* property_callback = NULL;
+  if (resource_manager_->page_property_cache()->enabled()) {
+    property_callback = new PropertyCallback(rewrite_driver_,
+                                             resource_manager_->thread_system(),
+                                             absolute_url_);
+    resource_manager_->page_property_cache()->Read(property_callback);
+  }
+  return property_callback;
 }
 
 ApacheResourceManager* InstawebContext::ManagerFromServerRec(

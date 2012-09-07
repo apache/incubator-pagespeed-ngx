@@ -41,6 +41,7 @@
 #include "net/instaweb/http/public/http_dump_url_writer.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter.h"
 #include "net/instaweb/http/public/write_through_http_cache.h"
+#include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -109,6 +110,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       apache_html_parse_message_handler_(new ApacheMessageHandler(
           server_rec_, version_, timer())),
       use_per_vhost_statistics_(false),
+      enable_property_cache_(false),
       thread_counts_finalized_(false),
       num_rewrite_threads_(-1),
       num_expensive_rewrite_threads_(-1),
@@ -284,13 +286,11 @@ void ApacheRewriteDriverFactory::SetupCaches(
     resource_manager->MakePropertyCaches(l2_cache);
   }
 
-  // TODO(jmarantz): establish appropriate Cohorts for mod_pagespeed as the
-  // property cache starts to get utilized, e.g.:
-  //
-  // PropertyCache* pcache = resource_manager_->page_property_cache();
-  // if (pcache->GetCohort(RewriteDriver::kDomCohort) == NULL) {
-  //   pcache->AddCohort(RewriteDriver::kDomCohort);
-  // }
+  resource_manager->set_enable_property_cache(enable_property_cache());
+  PropertyCache* pcache = resource_manager->page_property_cache();
+  if (pcache->GetCohort(BeaconCriticalImagesFinder::kBeaconCohort) == NULL) {
+    pcache->AddCohort(BeaconCriticalImagesFinder::kBeaconCohort);
+  }
 }
 
 NamedLockManager* ApacheRewriteDriverFactory::DefaultLockManager() {
