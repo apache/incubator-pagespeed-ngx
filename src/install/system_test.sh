@@ -597,8 +597,7 @@ check grep -q "src=.data:image/png;base64," $FETCHED
 check grep -q "alt=.A cup of joe." $FETCHED
 # Fetch with the cookie set.
 test_filter local_storage_cache,inline_css,inline_images cookies set
-echo "$WGET_PREREQ --save-headers --no-cookies --header \"$COOKIE\" $URL"
-check $WGET_PREREQ --save-headers --no-cookies --header "$COOKIE" $URL
+check run_wget_with_args --save-headers --no-cookies --header "$COOKIE" $URL
 # Check that this run did NOT inline the data.
 check_not fgrep "yellow {background-color: yellow" $FETCHED
 check_not grep "src=.data:image/png;base64," $FETCHED
