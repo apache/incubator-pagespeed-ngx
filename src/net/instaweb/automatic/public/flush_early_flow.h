@@ -117,7 +117,7 @@ class FlushEarlyFlow {
 
   TimedVariable* num_requests_flushed_early_;
   TimedVariable* num_resources_flushed_early_;
-  Histogram* flush_early_rewrite_latency_ms;
+  Histogram* flush_early_rewrite_latency_ms_;
 
   DISALLOW_COPY_AND_ASSIGN(FlushEarlyFlow);
 };

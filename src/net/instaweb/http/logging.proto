@@ -39,7 +39,7 @@ message TimingInfo  {
 }
 
 // This proto stores all Blink related information.
-// Next id for BlinkInfo : 6
+// Next id for BlinkInfo : 7
 message BlinkInfo {
   enum BlinkRequestFlow {
     BLINK_CACHE_HIT = 1;
@@ -56,7 +56,7 @@ message BlinkInfo {
   // The event id of the user request for which blink flow was triggered.
   optional string request_event_id_time_usec = 2;
 
-  // Tracks whether html change detection found a match or not.
+  // Tracks whether html change detection full-diff found a match or not.
   optional bool html_match = 3;
 
   enum UserAgent {
@@ -72,6 +72,9 @@ message BlinkInfo {
 
   // Url of the request.
   optional string url = 5;
+
+  // Tracks whether html change detection smart_diff found a match or not.
+  optional bool html_smart_diff_match = 6;
 }
 
 // This proto stores all information which we would like to log.

@@ -20,6 +20,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
+#include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -28,31 +29,8 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
-
-namespace {
-
-// By default, FlushEarlyInfoFinder does not return meaningful results. However,
-// this test manually manages the critical image set, so FlushEarlyInfoFinder
-// can return useful information for testing this filter.
-class MeaningfulFlushEarlyInfoFinder : public FlushEarlyInfoFinder {
- public:
-  MeaningfulFlushEarlyInfoFinder() {}
-  virtual ~MeaningfulFlushEarlyInfoFinder() {}
-  virtual bool IsMeaningful() const {
-    return true;
-  }
-  virtual const char* GetCohort() const {
-    return "NullCohort";
-  }
-  virtual int64 cache_expiration_time_ms() const {
-    return Timer::kHourMs;
-  }
-};
-
-}  // namespace
 
 class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
  public:

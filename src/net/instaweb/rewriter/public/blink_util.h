@@ -58,6 +58,8 @@ const char kXpath[] = "xpath";
 // TODO(rahulbansal): Use these constants everywhere in the code from here.
 const char kBlinkCohort[] = "blink";
 const char kBlinkCriticalLineDataPropertyName[] = "blink_critical_line_data";
+const char kComputeVisibleTextFilterOutputEndMarker[] =
+    "<!--GooglePanel **** Output end ****-->";
 
 // Checks whether the user agent is allowed to go into the blink flow.
 bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,

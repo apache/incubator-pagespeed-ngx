@@ -20,6 +20,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/string.h"
@@ -56,20 +57,18 @@ class SuppressPreheadFilter : public HtmlWriterFilter {
  private:
   bool seen_first_head_;
   HtmlElement* noscript_element_;
-  HtmlElement* meta_tag_element_;
   RewriteDriver* driver_;
   GoogleString pre_head_;  // The html text till the <head>
-  GoogleString content_type_meta_tag_;
+  GoogleString charset_;
   // Writer for writing to the response buffer.
   Writer* original_writer_;
   // The writer before we saw the meta tag.
   Writer* pre_meta_tag_writer_;
   StringWriter pre_head_writer_;  // Writer to write the pre_head_.
-  StringWriter content_type_meta_tag_writer_;
   NullWriter null_writer_;
   // Writer to write both the pre_head string and to the response buffer.
   scoped_ptr<SplitWriter> pre_head_and_response_writer_;
-  scoped_ptr<SplitWriter> content_type_meta_tag_and_response_writer_;
+  ResponseHeaders response_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(SuppressPreheadFilter);
 };

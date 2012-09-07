@@ -676,7 +676,7 @@ deferJsNs.DeferJs.prototype.fireOnload = function() {
   var prefetchContainers =
       document.body.getElementsByClassName('psa_prefetch_container');
   for (var i = (prefetchContainers.length - 1); i >= 0; i--) {
-    document.body.removeChild(prefetchContainers[i]);
+    prefetchContainers[i].parentNode.removeChild(prefetchContainers[i]);
   }
 
   this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_DONE;

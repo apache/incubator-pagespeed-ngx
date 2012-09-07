@@ -20,6 +20,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -173,10 +174,14 @@ TEST_F(CssFilterTest, UrlTooLong) {
 
 // Make sure we can deal with 0 character nodes between open and close of style.
 TEST_F(CssFilterTest, RewriteEmptyCssTest) {
+  LoggingInfo logging_info;
+  LogRecord log_record(&logging_info);
+  rewrite_driver()->set_log_record(&log_record);
   // Note: We must check stats ourselves because, for technical reasons,
   // empty inline styles are not treated as being rewritten at all.
   ValidateRewriteInlineCss("rewrite_empty_css-inline", "", "",
                            kExpectSuccess | kNoStatCheck);
+  EXPECT_STREQ("", logging_info.applied_rewriters());
   EXPECT_EQ(0, num_blocks_rewritten_->Get());
   EXPECT_EQ(0, total_bytes_saved_->Get());
   EXPECT_EQ(0, num_parse_failures_->Get());
@@ -190,10 +195,14 @@ TEST_F(CssFilterTest, RewriteEmptyCssTest) {
 // Make sure we do not recompute external CSS when re-processing an already
 // handled page.
 TEST_F(CssFilterTest, RewriteRepeated) {
+  LoggingInfo logging_info;
+  LogRecord log_record(&logging_info);
+  rewrite_driver()->set_log_record(&log_record);
   ValidateRewriteExternalCss("rep", " div { } ", "div{}", kExpectSuccess);
   int inserts_before = lru_cache()->num_inserts();
   EXPECT_EQ(1, num_blocks_rewritten_->Get());  // for factory_
   EXPECT_EQ(1, num_uses_->Get());
+  EXPECT_STREQ("cf", logging_info.applied_rewriters());
 
   ResetStats();
   ValidateRewriteExternalCss("rep", " div { } ", "div{}",
@@ -203,6 +212,7 @@ TEST_F(CssFilterTest, RewriteRepeated) {
   EXPECT_EQ(inserts_before, inserts_after);
   EXPECT_EQ(0, num_blocks_rewritten_->Get());
   EXPECT_EQ(1, num_uses_->Get());
+  EXPECT_STREQ("cf", logging_info.applied_rewriters());
 }
 
 // Make sure we do not reparse external CSS when we know it already has

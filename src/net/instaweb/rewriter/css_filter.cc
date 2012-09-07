@@ -29,6 +29,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/association_transformer.h"
@@ -197,6 +198,7 @@ void CssFilter::Context::Render() {
       rewrite_inline_attribute_->SetValue(result.inlined_data());
     }
     filter_->num_uses_->Add(1);
+    filter_->LogFilterModifiedContent();
   }
 }
 
@@ -570,6 +572,7 @@ bool CssFilter::Context::SerializeCss(int64 in_text_size,
                     css_base_gurl.spec_c_str(),
                     Integer64ToString(bytes_saved).c_str());
     filter_->num_blocks_rewritten_->Add(1);
+    filter_->LogFilterModifiedContent();
     filter_->total_bytes_saved_->Add(bytes_saved);
     // TODO(sligocki): Will this be misleading if we flatten @imports?
     filter_->total_original_bytes_->Add(in_text_size);

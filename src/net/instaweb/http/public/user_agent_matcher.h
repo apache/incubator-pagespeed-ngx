@@ -59,7 +59,7 @@ class UserAgentMatcher {
   };
   bool IsIe9(const StringPiece& user_agent) const;
 
-  bool SupportsImageInlining(const StringPiece& user_agent) const;
+  virtual bool SupportsImageInlining(const StringPiece& user_agent) const;
 
   // Returns the request type for the given request. The return type currently
   // supports desktop, mobile and not supported.

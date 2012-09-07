@@ -20,16 +20,18 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
-#include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/flush_early_info_finder.h"
+#include "net/instaweb/rewriter/public/meta_tag_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 SuppressPreheadFilter::SuppressPreheadFilter(RewriteDriver* driver)
     : HtmlWriterFilter(driver),
       driver_(driver),
-      pre_head_writer_(&pre_head_),
-      content_type_meta_tag_writer_(&content_type_meta_tag_) {
+      pre_head_writer_(&pre_head_) {
   Clear();
 }
 
@@ -49,6 +51,14 @@ void SuppressPreheadFilter::StartDocument() {
         original_writer_, &pre_head_writer_));
     set_writer(pre_head_and_response_writer_.get());
   }
+  // Setting the charset in response headers related initialization.
+  response_headers_.CopyFrom(*(driver_->response_headers()));
+  FlushEarlyInfoFinder* finder =
+      driver_->server_context()->flush_early_info_finder();
+  if (finder != NULL && finder->IsMeaningful()) {
+    finder->UpdateFlushEarlyInfoInDriver(driver_);
+    charset_ = finder->GetCharset(driver_);
+  }
 }
 
 void SuppressPreheadFilter::StartElement(HtmlElement* element) {
@@ -58,33 +68,15 @@ void SuppressPreheadFilter::StartElement(HtmlElement* element) {
     // If first <head> is seen then do not suppress the bytes.
     seen_first_head_ = true;
     set_writer(original_writer_);
-  } else if (noscript_element_ == NULL &&
-             element->keyword() == HtmlName::kMeta &&
-             meta_tag_element_ == NULL) {
-    GoogleString content, mime_type, charset;
-    if (CommonFilter::ExtractMetaTagDetails(*element, NULL, &content,
-                                            &mime_type, &charset)) {
-      // Store the current element and writer into temporary variables.
-      meta_tag_element_ = element;
-      pre_meta_tag_writer_= writer();
-      // If we flushed early, then we have already written the meta tag out.
-      // Hence, suppress the meta tag. Otherwise, write to the original writer.
-      Writer* secondary_writer = driver_->flushed_early() ?
-          &null_writer_ : original_writer_;
-      content_type_meta_tag_and_response_writer_.reset(new SplitWriter(
-          secondary_writer, &content_type_meta_tag_writer_));
-      set_writer(content_type_meta_tag_and_response_writer_.get());
-    }
   }
   HtmlWriterFilter::StartElement(element);
 }
 
 void SuppressPreheadFilter::EndElement(HtmlElement* element) {
   HtmlWriterFilter::EndElement(element);
-  if (element == meta_tag_element_) {
-    set_writer(pre_meta_tag_writer_);
-    pre_meta_tag_writer_ = NULL;
-    meta_tag_element_ = NULL;
+  if (noscript_element_ == NULL &&
+      element->keyword() == HtmlName::kMeta) {
+    MetaTagFilter::ExtractAndUpdateMetaTagDetails(element, &response_headers_);
   }
   if (element == noscript_element_) {
     noscript_element_ = NULL;  // We are exitting the top-level <noscript>
@@ -94,20 +86,21 @@ void SuppressPreheadFilter::EndElement(HtmlElement* element) {
 void SuppressPreheadFilter::Clear() {
   seen_first_head_ = false;
   noscript_element_ = NULL;
-  meta_tag_element_ = NULL;
-  pre_meta_tag_writer_ = NULL;
   pre_head_.clear();
-  content_type_meta_tag_.clear();
+  charset_.clear();
   pre_head_and_response_writer_.reset(NULL);
-  content_type_meta_tag_and_response_writer_.reset(NULL);
+  response_headers_.Clear();
   HtmlWriterFilter::Clear();
 }
 
 void SuppressPreheadFilter::EndDocument() {
   driver_->flush_early_info()->set_pre_head(pre_head_);
-  driver_->flush_early_info()->set_content_type_meta_tag(
-      content_type_meta_tag_);
-  driver_->SaveOriginalHeaders();
+  if (!charset_.empty()) {
+    GoogleString type = StrCat(";charset=", charset_);
+    // Set the charset if it is not already set.
+    response_headers_.MergeContentType(type);
+  }
+  driver_->SaveOriginalHeaders(response_headers_);
 }
 
 }  // namespace net_instaweb

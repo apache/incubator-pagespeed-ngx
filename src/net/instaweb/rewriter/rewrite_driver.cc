@@ -52,6 +52,7 @@
 #include "net/instaweb/rewriter/public/blink_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
+#include "net/instaweb/rewriter/public/compute_visible_text_filter.h"
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_inline_filter.h"
@@ -1045,6 +1046,11 @@ void RewriteDriver::AddPostRenderFilters() {
     AddOwnedPostRenderFilter(filter);
   }
 
+  if (rewrite_options->Enabled(RewriteOptions::kComputeVisibleText)) {
+    ComputeVisibleTextFilter* filter = new ComputeVisibleTextFilter(this);
+    AddOwnedPostRenderFilter(filter);
+  }
+
   // Remove quotes and collapse whitespace at the very end for maximum effect.
   if (rewrite_options->Enabled(RewriteOptions::kRemoveQuotes)) {
     // Remove extraneous quotes from html attributes.
@@ -1896,6 +1902,7 @@ void RewriteDriver::UpdatePropertyValueInDomCohort(StringPiece property_name,
 }
 
 void RewriteDriver::Cleanup() {
+  FinalizeFilterLogging();
   if (!externally_managed_) {
     bool should_release = false;
     {
@@ -1996,7 +2003,6 @@ void RewriteDriver::UninhibitFlushDone(Function* user_callback) {
 void RewriteDriver::FinishParse() {
   HtmlParse::FinishParse();
   WriteClientStateIntoPropertyCache();
-  FinalizeFilterLogging();
   Cleanup();
 }
 
@@ -2026,7 +2032,6 @@ void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
   DCHECK_EQ(0U, GetEventQueueSize());
   HtmlParse::EndFinishParse();
   WriteClientStateIntoPropertyCache();
-  FinalizeFilterLogging();
   Cleanup();
   if (user_callback != NULL) {
     user_callback->CallRun();
@@ -2387,11 +2392,10 @@ FlushEarlyInfo* RewriteDriver::flush_early_info() {
   return flush_early_info_.get();
 }
 
-void RewriteDriver::SaveOriginalHeaders() {
+void RewriteDriver::SaveOriginalHeaders(const ResponseHeaders& headers) {
   if (options()->Enabled(RewriteOptions::kFlushSubresources) &&
       UserAgentSupportsFlushEarly()) {
-    response_headers_->GetSanitizedProto(
-        flush_early_info()->mutable_response_headers());
+    headers.GetSanitizedProto(flush_early_info()->mutable_response_headers());
   }
 }
 

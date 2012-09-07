@@ -230,7 +230,7 @@ GoogleString LazyloadImagesFilter::GetBlankImageSrc(
   if (options_url.empty()) {
     return kBlankImageSrc;
   } else {
-    return options_url.c_str();
+    return options_url;
   }
 }
 

@@ -26,6 +26,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -165,6 +166,9 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     DCHECK_EQ(1, num_slots());
     if (slot(0)->was_optimized()) {
       config_->num_uses()->Add(1);
+      if (Driver()->log_record() != NULL) {
+        Driver()->log_record()->LogAppliedRewriter(id());
+      }
     }
   }
 
@@ -275,6 +279,7 @@ void JavascriptFilter::RewriteInlineScript() {
         script->swap(*rewritten_script);
       }
       config_->num_uses()->Add(1);
+      LogFilterModifiedContent();
     }
   }
 }

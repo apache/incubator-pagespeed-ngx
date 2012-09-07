@@ -33,6 +33,7 @@ const char kFetchLatencyUsHistogram[] = "_fetch_latency_us";
 
 const char kFetches[] = "_fetches";
 const char kBytesFetched[] = "_bytes_fetched";
+const char kApproxHeaderBytesFetched[] = "_approx_header_bytes_fetched";
 
 }  // namespace
 
@@ -49,6 +50,12 @@ class UrlAsyncFetcherStats::StatsAsyncFetch : public SharedAsyncFetch {
   }
 
   virtual ~StatsAsyncFetch() {
+  }
+
+  virtual void HandleHeadersComplete() {
+    stats_fetcher_->approx_header_bytes_fetched_->Add(
+        response_headers()->SizeEstimate());
+    SharedAsyncFetch::HandleHeadersComplete();
   }
 
   virtual void HandleDone(bool success) {
@@ -85,7 +92,9 @@ UrlAsyncFetcherStats::UrlAsyncFetcherStats(StringPiece prefix,
       fetch_latency_us_histogram_(statistics->GetHistogram(
           StrCat(prefix, kFetchLatencyUsHistogram))),
       fetches_(statistics->GetVariable(StrCat(prefix, kFetches))),
-      bytes_fetched_(statistics->GetVariable(StrCat(prefix, kBytesFetched))) {
+      bytes_fetched_(statistics->GetVariable(StrCat(prefix, kBytesFetched))),
+      approx_header_bytes_fetched_(
+          statistics->GetVariable(StrCat(prefix, kApproxHeaderBytesFetched))) {
   fetch_latency_us_histogram_->SetMaxValue(kFetchLatencyUsHistogramMaxValue);
 
   DCHECK(!base_fetcher->fetch_with_gzip())
@@ -103,6 +112,7 @@ void UrlAsyncFetcherStats::Initialize(StringPiece prefix,
   fetch_latency_us_histogram->SetMaxValue(kFetchLatencyUsHistogramMaxValue);
   statistics->AddVariable(StrCat(prefix, kFetches));
   statistics->AddVariable(StrCat(prefix, kBytesFetched));
+  statistics->AddVariable(StrCat(prefix, kApproxHeaderBytesFetched));
 }
 
 bool UrlAsyncFetcherStats::SupportsHttps() const {

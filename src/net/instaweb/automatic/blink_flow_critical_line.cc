@@ -51,6 +51,7 @@
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -58,6 +59,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -82,41 +84,18 @@ const char BlinkFlowCriticalLine::kNumBlinkHtmlMatches[] =
     "num_blink_html_matches";
 const char BlinkFlowCriticalLine::kNumBlinkHtmlMismatches[] =
     "num_blink_html_mismatches";
+const char BlinkFlowCriticalLine::kNumBlinkHtmlMismatchesCacheDeletes[] =
+    "num_blink_html_mismatch_cache_deletes";
+const char BlinkFlowCriticalLine::kNumBlinkHtmlSmartdiffMatches[] =
+    "num_blink_html_smart_diff_matches";
+const char BlinkFlowCriticalLine::kNumBlinkHtmlSmartdiffMismatches[] =
+    "num_blink_html_smart_diff_mismatches";
 const char BlinkFlowCriticalLine::kAboveTheFold[] = "Above the fold";
 
 namespace {
 
 const char kTimeToBlinkFlowStart[] = "BLINK_FLOW_START";
 const char kTimeToBlinkDataLookUpDone[] = "BLINK_DATA_LOOK_UP_DONE";
-
-// AsyncFetch that doesn't call HeadersComplete() on the base fetch. Note that
-// this class only links the request headers from the base fetch and does not
-// link the response headers.
-// This is used as a wrapper around the base fetch when BlinkCriticalLineData is
-// found in cache. This is done because the response headers and the
-// BlinkCriticalLineData have been already been flushed out in the base fetch
-// and we don't want to call HeadersComplete() twice on the base fetch.
-// This class deletes itself when HandleDone() is called.
-class AsyncFetchWithHeadersInhibited : public AsyncFetchUsingWriter {
- public:
-  explicit AsyncFetchWithHeadersInhibited(AsyncFetch* fetch)
-      : AsyncFetchUsingWriter(fetch),
-        base_fetch_(fetch) {
-    set_request_headers(fetch->request_headers());
-  }
-
- private:
-  virtual ~AsyncFetchWithHeadersInhibited() {}
-  virtual void HandleHeadersComplete() {}
-  virtual void HandleDone(bool success) {
-    base_fetch_->Done(success);
-    delete this;
-  }
-
-  AsyncFetch* base_fetch_;
-
-  DISALLOW_COPY_AND_ASSIGN(AsyncFetchWithHeadersInhibited);
-};
 
 // AsyncFetch that gets the original fetched content, determines if the content
 // is html and then decides whether to trigger an async computation of the
@@ -143,7 +122,10 @@ class CriticalLineFetch : public AsyncFetch {
         claims_html_(false),
         probable_html_(false),
         content_length_over_threshold_(false),
-        non_ok_status_code_(false) {
+        non_ok_status_code_(false),
+        blink_html_change_mutex_(
+            resource_manager->thread_system()->NewMutex()),
+        finish_(false) {
     // Makes rewrite_driver live longer as ProxyFetch may called Cleanup()
     // on the rewrite_driver even if ComputeBlinkCriticalLineData() has not yet
     // been triggered.
@@ -159,11 +141,16 @@ class CriticalLineFetch : public AsyncFetch {
         BlinkFlowCriticalLine::kNumBlinkHtmlMatches);
     num_blink_html_mismatches_ = stats->GetTimedVariable(
         BlinkFlowCriticalLine::kNumBlinkHtmlMismatches);
+    num_blink_html_mismatches_cache_deletes_ = stats->GetTimedVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlMismatchesCacheDeletes);
+    num_blink_html_smart_diff_matches_ = stats->GetTimedVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlSmartdiffMatches);
+    num_blink_html_smart_diff_mismatches_ = stats->GetTimedVariable(
+        BlinkFlowCriticalLine::kNumBlinkHtmlSmartdiffMismatches);
   }
 
   virtual ~CriticalLineFetch() {
     log_record_->WriteLogForBlink("");
-    delete log_record_;
     rewrite_driver_->decrement_async_events_count();
     ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
     sync->Signal(BlinkFlowCriticalLine::kBackgroundComputationDone);
@@ -230,7 +217,15 @@ class CriticalLineFetch : public AsyncFetch {
         blink_info_->set_blink_request_flow(
             BlinkInfo::BLINK_CACHE_MISS_FOUND_RESOURCE);
       }
-      delete this;
+      if (options_->enable_blink_html_change_detection() &&
+          blink_critical_line_data_ != NULL) {
+        // Calling Finish since the deletion of this object needs to be
+        // synchronized with HandleDone call in AsyncFetchWithHeadersInhibited,
+        // since that class refers to this object.
+        Finish();
+      } else {
+        delete this;
+      }
       return;
     }
     if (blink_critical_line_data_ == NULL) {
@@ -249,7 +244,7 @@ class CriticalLineFetch : public AsyncFetch {
       // We'll reach here only in case of Cache Hit case.
       CreateHtmlChangeDetectionDriverAndRewrite();
     } else {
-      CreateCriticalLineComputationDriverAndRewrite("");
+      CreateCriticalLineComputationDriverAndRewrite();
     }
   }
 
@@ -258,6 +253,7 @@ class CriticalLineFetch : public AsyncFetch {
     options->ClearFilters();
     options->ForceEnableFilter(RewriteOptions::kRemoveComments);
     options->ForceEnableFilter(RewriteOptions::kStripNonCacheable);
+    options->ForceEnableFilter(RewriteOptions::kComputeVisibleText);
     resource_manager_->ComputeSignature(options);
     html_change_detection_driver_ =
         resource_manager_->NewCustomRewriteDriver(options);
@@ -275,8 +271,7 @@ class CriticalLineFetch : public AsyncFetch {
             complete_finish_parse_html_change_driver_fn_));
   }
 
-  void CreateCriticalLineComputationDriverAndRewrite(
-      const GoogleString& computed_hash) {
+  void CreateCriticalLineComputationDriverAndRewrite() {
     num_blink_html_cache_misses_->IncBy(1);
     critical_line_computation_driver_ =
         resource_manager_->NewCustomRewriteDriver(options_.release());
@@ -289,8 +284,7 @@ class CriticalLineFetch : public AsyncFetch {
     critical_line_computation_driver_->set_response_headers_ptr(
         response_headers());
     complete_finish_parse_critical_line_driver_fn_ = MakeFunction(
-        this, &CriticalLineFetch::CompleteFinishParseForCriticalLineDriver,
-        computed_hash);
+        this, &CriticalLineFetch::CompleteFinishParseForCriticalLineDriver);
     critical_line_computation_driver_->AddLowPriorityRewriteTask(
         MakeFunction(
             this, &CriticalLineFetch::Parse,
@@ -300,14 +294,9 @@ class CriticalLineFetch : public AsyncFetch {
   }
 
   void Parse(RewriteDriver* driver, Function* task) {
-    if (driver->StartParse(url_)) {
-      driver->ParseText(buffer_);
-      driver->FinishParseAsync(task);
-    } else {
-      LOG(ERROR) << "StartParse failed for url: " << url_;
-      driver->Cleanup();
-      delete this;
-    }
+    driver->StartParse(url_);
+    driver->ParseText(buffer_);
+    driver->FinishParseAsync(task);
   }
 
   void CancelParseForCriticalLineComputationDriver(RewriteDriver* driver,
@@ -324,41 +313,119 @@ class CriticalLineFetch : public AsyncFetch {
                  << " for url: " << url_;
     complete_finish_parse_html_change_driver_fn_->CallCancel();
     html_change_detection_driver_->Cleanup();
-    delete this;
+    if (options_->enable_blink_html_change_detection()) {
+      Finish();
+    } else {
+      // Only logging the diff, OK to delete.
+      delete this;
+    }
   }
 
-  void CompleteFinishParseForCriticalLineDriver(GoogleString computed_hash) {
+  void CompleteFinishParseForCriticalLineDriver() {
     StringPiece rewritten_content;
     value_.ExtractContents(&rewritten_content);
     num_compute_blink_critical_line_data_calls_->IncBy(1);
     resource_manager_->blink_critical_line_data_finder()
-        ->ComputeBlinkCriticalLineData(computed_hash, rewritten_content,
-                                       response_headers(), rewrite_driver_);
+        ->ComputeBlinkCriticalLineData(computed_hash_,
+                                       computed_hash_smart_diff_,
+                                       rewritten_content,
+                                       response_headers(),
+                                       rewrite_driver_);
     delete this;
   }
 
   void CompleteFinishParseForHtmlChangeDriver() {
-    StringPiece rewritten_content;
-    value_.ExtractContents(&rewritten_content);
-    GoogleString computed_hash =
-        resource_manager_->hasher()->Hash(rewritten_content);
-    if (blink_critical_line_data_ != NULL) {
-      if (computed_hash != blink_critical_line_data_->hash()) {
-        blink_info_->set_html_match(false);
-        num_blink_html_mismatches_->IncBy(1);
-      } else {
-        blink_info_->set_html_match(true);
-        num_blink_html_matches_->IncBy(1);
+    StringPiece output;
+    value_.ExtractContents(&output);
+    StringVector result;
+    GoogleString output_string = output.as_string();
+    SplitStringUsingSubstr(output_string,
+                           BlinkUtil::kComputeVisibleTextFilterOutputEndMarker,
+                           &result);
+    if (result.size() == 2) {
+      computed_hash_smart_diff_ = resource_manager_->hasher()->Hash(result[0]);
+      computed_hash_ = resource_manager_->hasher()->Hash(result[1]);
+    }
+    if (blink_critical_line_data_ == NULL) {
+      CreateCriticalLineComputationDriverAndRewrite();
+      return;
+    }
+    if (computed_hash_ != blink_critical_line_data_->hash()) {
+      LOG(ERROR) << "\n\nFull diff mismatch";
+      blink_info_->set_html_match(false);
+      num_blink_html_mismatches_->IncBy(1);
+    } else {
+      LOG(ERROR) << "\n\nFull diff match";
+      blink_info_->set_html_match(true);
+      num_blink_html_matches_->IncBy(1);
+    }
+    if (computed_hash_smart_diff_ !=
+        blink_critical_line_data_->hash_smart_diff()) {
+      LOG(ERROR) << "\n\nSmart diff mismatch";
+      blink_info_->set_html_smart_diff_match(false);
+      num_blink_html_smart_diff_mismatches_->IncBy(1);
+    } else {
+      LOG(ERROR) << "\n\nSmart diff match";
+      blink_info_->set_html_smart_diff_match(true);
+      num_blink_html_smart_diff_matches_->IncBy(1);
+    }
+    if (options_->enable_blink_html_change_detection()) {
+      Finish();
+    } else {
+      // Only logging the diff, OK to delete.
+      delete this;
+    }
+  }
+
+  // This function should only be called if change detection is enabled and
+  // this is a cache hit case. In such cases, the content may need to be deleted
+  // from the property cache if a change was detected. This deletion should wait
+  // for AsyncFetchWithHeadersInhibited to complete (HandleDone called) to
+  // ensure that we do not delete entry from cache while it is still being used
+  // to process the request.
+  //
+  // This method achieves this goal using a mutex protected
+  // variable finish_. Both CriticalLineFetch and
+  // AsyncFetchWithHeadersInhibited call this method once their processing is
+  // done. The first call sets the value of finish_ to true and returns.
+  // The second call to this method actually calls ProcessDiffResult.
+  void Finish() {
+    {
+      ScopedMutex lock(blink_html_change_mutex_.get());
+      if (!finish_) {
+        finish_ = true;
+        return;
       }
     }
-    // We invoke critical line computation in case of cache miss or html hash
-    // mismatch.
-    if (blink_critical_line_data_ == NULL ||
-        (computed_hash != blink_critical_line_data_->hash() &&
-         options_->enable_blink_html_change_detection())) {
-      CreateCriticalLineComputationDriverAndRewrite(computed_hash);
+    ProcessDiffResult();
+  }
+
+  // This method processes the result of html change detection. If a mismatch
+  // is found, we delete the entry from the cache and trigger a critical line
+  // fetch. If a match is found, we simply update the last_diff_time in the
+  // cache.
+  void ProcessDiffResult() {
+    if (computed_hash_.empty()) {
+      LOG(WARNING) << "Computed hash is empty for url " << url_;
+      delete this;
+      return;
+    }
+    if (computed_hash_ != blink_critical_line_data_->hash()) {
+      LOG(ERROR) << "\n\nDeleting from cache";
+      num_blink_html_mismatches_cache_deletes_->IncBy(1);
+      const PropertyCache::Cohort* cohort =
+          rewrite_driver_->server_context()->page_property_cache()->
+              GetCohort(BlinkUtil::kBlinkCohort);
+      PropertyPage* page = rewrite_driver_->property_page();
+      page->DeleteProperty(
+          cohort, BlinkUtil::kBlinkCriticalLineDataPropertyName);
+      rewrite_driver_->server_context()->
+          page_property_cache()->WriteCohort(cohort, page);
+      CreateCriticalLineComputationDriverAndRewrite();
     } else {
-      blink_critical_line_data_->set_hash(computed_hash);
+      LOG(ERROR) << "\n\nJust updating cache";
+      blink_critical_line_data_->set_hash(computed_hash_);
+      blink_critical_line_data_->set_hash_smart_diff(computed_hash_smart_diff_);
       blink_critical_line_data_->set_last_diff_timestamp_ms(
           resource_manager_->timer()->NowMs());
       // TODO(rahulbansal): Move the code to write to pcache to blink_util.cc
@@ -384,13 +451,15 @@ class CriticalLineFetch : public AsyncFetch {
   GoogleString buffer_;
   HTTPValue value_;
   HtmlDetector html_detector_;
+  GoogleString computed_hash_;
+  GoogleString computed_hash_smart_diff_;
 
   // RewriteDriver passed to ProxyFetch to serve user-facing request.
   RewriteDriver* rewrite_driver_;
   // RewriteDriver used to parse the buffered html content.
   RewriteDriver* critical_line_computation_driver_;
   RewriteDriver* html_change_detection_driver_;
-  LogRecord* log_record_;
+  scoped_ptr<LogRecord> log_record_;
   BlinkInfo* blink_info_;
   scoped_ptr<BlinkCriticalLineData> blink_critical_line_data_;
   Function* complete_finish_parse_critical_line_driver_fn_;
@@ -400,13 +469,65 @@ class CriticalLineFetch : public AsyncFetch {
   bool content_length_over_threshold_;
   bool non_ok_status_code_;
 
+  // Variables to manage change detection processing.
+  // Mutex
+  scoped_ptr<AbstractMutex> blink_html_change_mutex_;
+  bool finish_;  // protected by blink_html_change_mutex_
+
   TimedVariable* num_blink_html_cache_misses_;
   TimedVariable* num_blink_shared_fetches_completed_;
   TimedVariable* num_compute_blink_critical_line_data_calls_;
   TimedVariable* num_blink_html_matches_;
   TimedVariable* num_blink_html_mismatches_;
+  TimedVariable* num_blink_html_mismatches_cache_deletes_;
+  TimedVariable* num_blink_html_smart_diff_matches_;
+  TimedVariable* num_blink_html_smart_diff_mismatches_;
 
   DISALLOW_COPY_AND_ASSIGN(CriticalLineFetch);
+};
+
+// AsyncFetch that doesn't call HeadersComplete() on the base fetch. Note that
+// this class only links the request headers from the base fetch and does not
+// link the response headers.
+// This is used as a wrapper around the base fetch when BlinkCriticalLineData is
+// found in cache. This is done because the response headers and the
+// BlinkCriticalLineData have been already been flushed out in the base fetch
+// and we don't want to call HeadersComplete() twice on the base fetch.
+// This class deletes itself when HandleDone() is called.
+class AsyncFetchWithHeadersInhibited : public AsyncFetchUsingWriter {
+ public:
+  AsyncFetchWithHeadersInhibited(
+      AsyncFetch* fetch,
+      CriticalLineFetch* critical_line_fetch,
+      RewriteOptions* options)
+      : AsyncFetchUsingWriter(fetch),
+        base_fetch_(fetch),
+        critical_line_fetch_(critical_line_fetch),
+        enable_blink_html_change_detection_(
+            options->enable_blink_html_change_detection()) {
+    set_request_headers(fetch->request_headers());
+  }
+
+ private:
+  virtual ~AsyncFetchWithHeadersInhibited() {
+  }
+
+  virtual void HandleHeadersComplete() {}
+
+  virtual void HandleDone(bool success) {
+    base_fetch_->Done(success);
+    if (enable_blink_html_change_detection_) {
+      critical_line_fetch_->Finish();
+    }
+    delete this;
+  }
+
+  AsyncFetch* base_fetch_;
+  CriticalLineFetch* critical_line_fetch_;
+  // Storing a local copy to avoid blocking rewrite driver deletion.
+  bool enable_blink_html_change_detection_;
+
+  DISALLOW_COPY_AND_ASSIGN(AsyncFetchWithHeadersInhibited);
 };
 
 // SharedAsyncFetch that only updates property cache with response code.  Used
@@ -511,6 +632,12 @@ void BlinkFlowCriticalLine::Initialize(Statistics* stats) {
   stats->AddTimedVariable(kNumBlinkHtmlMatches,
                           ServerContext::kStatisticsGroup);
   stats->AddTimedVariable(kNumBlinkHtmlMismatches,
+                          ServerContext::kStatisticsGroup);
+  stats->AddTimedVariable(kNumBlinkHtmlMismatchesCacheDeletes,
+                          ServerContext::kStatisticsGroup);
+  stats->AddTimedVariable(kNumBlinkHtmlSmartdiffMatches,
+                          ServerContext::kStatisticsGroup);
+  stats->AddTimedVariable(kNumBlinkHtmlSmartdiffMismatches,
                           ServerContext::kStatisticsGroup);
 }
 
@@ -764,7 +891,7 @@ void BlinkFlowCriticalLine::Flush() {
 void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
                                               bool serve_non_critical) {
   AsyncFetch* fetch = NULL;
-  AsyncFetch* secondary_fetch = NULL;
+  CriticalLineFetch* secondary_fetch = NULL;
   RewriteOptions* options = NULL;
   RewriteDriver* driver = NULL;
 
@@ -777,10 +904,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     options_->ForceEnableFilter(RewriteOptions::kServeNonCacheableNonCritical);
     bool revalidate_data =
         (options_->enable_blink_html_change_detection_logging() ||
-         options_->enable_blink_html_change_detection()) &&
-        (manager_->timer()->NowMs() -
-            blink_critical_line_data_->last_diff_timestamp_ms() >
-            options_->blink_html_change_detection_time_ms());
+         options_->enable_blink_html_change_detection());
     if (revalidate_data) {
       options = options_->Clone();
     }
@@ -795,7 +919,6 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     // Pass a new fetch into proxy fetch that inhibits HeadersComplete() on the
     // base fetch. It also doesn't attach the response headers from the base
     // fetch since headers have already been flushed out.
-    fetch = new AsyncFetchWithHeadersInhibited(base_fetch_);
     if (revalidate_data) {
       BlinkCriticalLineData* blink_critical_line_data =
           new BlinkCriticalLineData();
@@ -806,6 +929,8 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
       secondary_fetch = new CriticalLineFetch(url_, manager_, options, driver,
           log_record_, blink_critical_line_data);
     }
+    fetch = new AsyncFetchWithHeadersInhibited(
+        base_fetch_, secondary_fetch, options_);
   } else if (blink_critical_line_data_ == NULL) {
     options = options_->Clone();
     SetFilterOptions(options);

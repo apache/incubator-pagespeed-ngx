@@ -33,6 +33,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -142,6 +143,10 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
   // Stats.
   void AddFileCountReduction(int files) {
     js_file_count_reduction_->Add(files);
+    if (files >= 1 && rewrite_driver_->log_record() != NULL) {
+      rewrite_driver_->log_record()->LogAppliedRewriter(
+          RewriteOptions::FilterId(RewriteOptions::kCombineJavascript));
+    }
   }
 
   // Set the attribute charset of the resource being combined. This is the

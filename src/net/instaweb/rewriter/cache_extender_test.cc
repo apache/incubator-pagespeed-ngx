@@ -20,6 +20,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -138,6 +139,9 @@ class CacheExtenderTest : public RewriteTestBase {
 };
 
 TEST_F(CacheExtenderTest, DoExtend) {
+  LoggingInfo logging_info;
+  LogRecord log_record(&logging_info);
+  rewrite_driver()->set_log_record(&log_record);
   InitTest(kShortTtlSec);
   for (int i = 0; i < 3; i++) {
     ValidateExpected(
@@ -148,10 +152,14 @@ TEST_F(CacheExtenderTest, DoExtend) {
                      Encode(kTestDomain, "ce", "0", "c.js", "js")));
     EXPECT_EQ((i + 1) * 3, num_cache_extended_->Get())
         << "Number of cache extended resources is wrong";
+    EXPECT_STREQ("ec,ei,es", logging_info.applied_rewriters());
   }
 }
 
 TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascript) {
+  LoggingInfo logging_info;
+  LogRecord log_record(&logging_info);
+  rewrite_driver()->set_log_record(&log_record);
   options()->ClearSignatureForTesting();
   options()->set_avoid_renaming_introspective_javascript(true);
   InitTest(kShortTtlSec);
@@ -162,6 +170,7 @@ TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascript) {
       StringPrintf(kJsTemplate, "introspective.js"));
   EXPECT_EQ(0, num_cache_extended_->Get())
       << "Number of cache extended resources is wrong";
+  EXPECT_STREQ("", logging_info.applied_rewriters());
 }
 
 TEST_F(CacheExtenderTest, DoExtendIntrospectiveJavascriptByDefault) {
@@ -186,6 +195,9 @@ TEST_F(CacheExtenderTest, DoExtendLinkRelCaseInsensitive) {
 }
 
 TEST_F(CacheExtenderTest, DoExtendForImagesOnly) {
+  LoggingInfo logging_info;
+  LogRecord log_record(&logging_info);
+  rewrite_driver()->set_log_record(&log_record);
   AddFilter(RewriteOptions::kExtendCacheImages);
   SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss,
                                 kCssData, kShortTtlSec);
@@ -203,6 +215,7 @@ TEST_F(CacheExtenderTest, DoExtendForImagesOnly) {
                      "c.js"));
     EXPECT_EQ((i + 1), num_cache_extended_->Get())
         << "Number of cache extended resources is wrong";
+    EXPECT_STREQ("ei", logging_info.applied_rewriters());
   }
 }
 
@@ -286,6 +299,9 @@ TEST_F(CacheExtenderTest, ExtendIfOriginMappedHttps) {
 }
 
 TEST_F(CacheExtenderTest, ExtendIfRewritten) {
+  LoggingInfo logging_info;
+  LogRecord log_record(&logging_info);
+  rewrite_driver()->set_log_record(&log_record);
   InitTest(kLongTtlSec);  // cached for a long time to begin with
 
   EXPECT_TRUE(options()->domain_lawyer()->AddRewriteDomainMapping(
@@ -299,6 +315,7 @@ TEST_F(CacheExtenderTest, ExtendIfRewritten) {
                        Encode("http://cdn.com/", "ce", "0", "c.js", "js")));
   EXPECT_EQ(3, num_cache_extended_->Get())
       << "Number of cache extended resources is wrong";
+  EXPECT_STREQ("ec,ei,es", logging_info.applied_rewriters());
 }
 
 TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritten) {

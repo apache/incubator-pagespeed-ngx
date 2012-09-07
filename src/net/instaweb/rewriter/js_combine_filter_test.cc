@@ -28,6 +28,7 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -682,6 +683,9 @@ TEST_F(JsCombineFilterTest, TestCrossDomainRecover) {
 }
 
 TEST_F(JsCombineFilterTest, TestCombineStats) {
+  LoggingInfo logging_info;
+  LogRecord log_record(&logging_info);
+  rewrite_driver()->set_log_record(&log_record);
   Variable* num_reduced =
       statistics()->GetVariable(JsCombineFilter::kJsFileCountReduction);
   EXPECT_EQ(0, num_reduced->Get());
@@ -692,6 +696,7 @@ TEST_F(JsCombineFilterTest, TestCombineStats) {
                   StrCat("<script src=", kJsUrl2, "></script>"),
                   StrCat("<script src=", kJsUrl3, "></script>")));
 
+  EXPECT_STREQ("jc", logging_info.applied_rewriters());
   EXPECT_EQ(2, num_reduced->Get());
 }
 

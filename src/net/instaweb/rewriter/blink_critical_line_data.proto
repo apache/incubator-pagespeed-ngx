@@ -25,7 +25,7 @@ option optimize_for = LITE_RUNTIME;
 package net_instaweb;
 
 // Protobuf to encapsulate the information use by blink flow.
-// Next id = 9
+// Next id = 10
 message BlinkCriticalLineData {
   // Url of the request.
   required string url = 1;
@@ -46,7 +46,7 @@ message BlinkCriticalLineData {
   // The value of the X-PSA-Last-Modified header.
   optional string last_modified_date = 5;
 
-  // Hash of the content used for html change detection.
+  // Hash of the content used for html change detection full-diff.
   optional string hash = 6;
 
   // Timestamp when the html diff was last done.
@@ -54,4 +54,7 @@ message BlinkCriticalLineData {
 
   // Timestamp when critical line computation was last done.
   optional int64 last_critical_line_computation_timestamp_ms = 8;
+
+  // Hash of the content used for html change detection smart-diff.
+  optional string hash_smart_diff = 9;
 }

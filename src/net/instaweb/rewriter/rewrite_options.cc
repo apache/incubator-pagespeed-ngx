@@ -247,6 +247,7 @@ const RewriteOptions::Filter kTestFilterSet[] = {
 // Note: These filters should not be included even if the level is "All".
 const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kComputePanelJson,  // internal, enabled conditionally
+  RewriteOptions::kComputeVisibleText,
   RewriteOptions::kDeferIframe,
   RewriteOptions::kDeferJavascript,
   RewriteOptions::kDetectReflowWithDeferJavascript,
@@ -304,6 +305,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kCombineHeads:                    return "Combine Heads";
     case kCombineJavascript:               return "Combine Javascript";
     case kComputePanelJson:                return "Computes panel json";
+    case kComputeVisibleText:              return "Computes visible text";
     case kConvertGifToPng:                 return "Convert Gif to Png";
     case kConvertJpegToProgressive:        return "Convert Jpeg to Progressive";
     case kConvertJpegToWebp:               return "Convert Jpeg To Webp";
@@ -384,7 +386,8 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kCombineCss:                      return kCssCombinerId;
     case kCombineHeads:                    return "ch";
     case kCombineJavascript:               return kJavascriptCombinerId;
-    case kComputePanelJson:                return "bp";
+    case kComputePanelJson:                return "cv";
+    case kComputeVisibleText:              return "bp";
     case kConvertGifToPng:                 return "gp";
     case kConvertJpegToProgressive:        return "jp";
     case kConvertJpegToWebp:               return "jw";

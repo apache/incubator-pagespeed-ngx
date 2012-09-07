@@ -21,6 +21,7 @@
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -49,11 +50,11 @@ void FlushEarlyInfoFinder::UpdateFlushEarlyInfoInDriver(RewriteDriver* driver) {
     if (property_value->has_value() && !property_cache->IsExpired(
           property_value, cache_expiration_time_ms())) {
       FlushEarlyRenderInfo* flush_early_render_info = new FlushEarlyRenderInfo;
-      ArrayInputStream value(property_value->value().data(),
-                             property_value->value().size());
-      if (!flush_early_render_info->ParseFromZeroCopyStream(&value)) {
-        LOG(DFATAL) << "Parsing value from cache into FlushEarlyRenderInfo "
-                    << "failed.";
+      StringPiece value = property_value->value();
+      ArrayInputStream property_value(value.data(), value.size());
+      if (!flush_early_render_info->ParseFromZeroCopyStream(&property_value)) {
+        driver->message_handler()->Message(kError, "Parsing value from cache "
+                                           "into FlushEarlyRenderInfo failed.");
         delete flush_early_render_info;
       } else {
         driver->set_flush_early_render_info(flush_early_render_info);
@@ -94,7 +95,8 @@ void FlushEarlyInfoFinder::UpdateFlushEarlyInfoCacheEntry(
       flush_early_render_info->SerializeToZeroCopyStream(&sstream);
       property_cache->UpdateValue(value, property_value);
     } else {
-      LOG(WARNING) << "Cohort is NULL.";
+      driver->message_handler()->Message(kWarning, "FlushEarly FinderCohort is"
+                                         "NULL.");
     }
   }
 }

@@ -18,12 +18,11 @@
 
 #include "net/instaweb/util/public/cache_batcher.h"
 
-#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/shared_string.h"
+#include "net/instaweb/util/public/delegating_cache_callback.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -60,40 +59,25 @@ class CacheBatcher::Group {
   DISALLOW_COPY_AND_ASSIGN(Group);
 };
 
-// TODO(jmarantz): factor out a delegating Callback helper base class.
-// The only purpose of this class is to call Group::Done on Done.
-class CacheBatcher::BatcherCallback : public CacheInterface::Callback {
+class CacheBatcher::BatcherCallback : public DelegatingCacheCallback {
  public:
   BatcherCallback(CacheInterface::Callback* callback, Group* group)
-      : callback_(callback),
-        group_(group),
-        validate_candidate_called_(false) {
+      : DelegatingCacheCallback(callback),
+        group_(group) {
   }
 
   virtual ~BatcherCallback() {}
 
-  // Note that we have to forward validity faithfully here, since if we're
-  // wrapping a 2-level cache it will need to know accurately if the value
-  // is valid or not.
-  virtual bool ValidateCandidate(const GoogleString& key,
-                                 CacheInterface::KeyState state) {
-    validate_candidate_called_ = true;
-    *callback_->value() = *value();
-    return callback_->DelegatedValidateCandidate(key, state);
-  }
-
   virtual void Done(CacheInterface::KeyState state) {
-    DCHECK(validate_candidate_called_);
-    // We don't have to do validation or value forwarding ourselves since
-    // whatever we are wrapping must have already called ValidateCandidate().
-    callback_->DelegatedDone(state);
-    group_->Done();
-    delete this;
+    Group* group = group_;
+    DelegatingCacheCallback::Done(state);  // deletes this.
+    group->Done();
   }
 
-  CacheInterface::Callback* callback_;
+ private:
   Group* group_;
-  bool validate_candidate_called_;
+
+  DISALLOW_COPY_AND_ASSIGN(BatcherCallback);
 };
 
 CacheBatcher::CacheBatcher(CacheInterface* cache, AbstractMutex* mutex,

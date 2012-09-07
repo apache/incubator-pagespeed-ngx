@@ -68,6 +68,9 @@ class BlinkFlowCriticalLine {
   static const char kNumComputeBlinkCriticalLineDataCalls[];
   static const char kNumBlinkHtmlMatches[];
   static const char kNumBlinkHtmlMismatches[];
+  static const char kNumBlinkHtmlMismatchesCacheDeletes[];
+  static const char kNumBlinkHtmlSmartdiffMatches[];
+  static const char kNumBlinkHtmlSmartdiffMismatches[];
 
  private:
   BlinkFlowCriticalLine(const GoogleString& url,

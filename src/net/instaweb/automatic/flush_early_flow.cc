@@ -134,7 +134,7 @@ void FlushEarlyFlow::Initialize(Statistics* stats) {
   stats->AddTimedVariable(
       FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly,
       ServerContext::kStatisticsGroup);
-  stats->AddHistogram(kFlushEarlyRewriteLatencyMs);
+  stats->AddHistogram(kFlushEarlyRewriteLatencyMs)->EnableNegativeBuckets();
 }
 
 FlushEarlyFlow::FlushEarlyFlow(
@@ -160,9 +160,8 @@ FlushEarlyFlow::FlushEarlyFlow(
       kNumRequestsFlushedEarly);
   num_resources_flushed_early_ = stats->GetTimedVariable(
       FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly);
-  flush_early_rewrite_latency_ms = stats->AddHistogram(
+  flush_early_rewrite_latency_ms_ = stats->GetHistogram(
       kFlushEarlyRewriteLatencyMs);
-  flush_early_rewrite_latency_ms->EnableNegativeBuckets();
 }
 
 FlushEarlyFlow::~FlushEarlyFlow() {}
@@ -174,28 +173,6 @@ void FlushEarlyFlow::FlushEarly() {
       property_cache_callback_->GetPropertyPageWithoutOwnership(
           ProxyFetchPropertyCallback::kPagePropertyCache);
   if (page != NULL && cohort != NULL) {
-    // Check whether to flush lazyload and js_defer script snippets to be
-    // flushed early.
-    PropertyValue* lazyload_property_value = page->GetProperty(
-        cohort, LazyloadImagesFilter::kIsLazyloadScriptInsertedPropertyName);
-    if (lazyload_property_value->has_value() &&
-        StringCaseEqual(lazyload_property_value->value(), "1") &&
-        driver_->options()->Enabled(RewriteOptions::kLazyloadImages) &&
-        LazyloadImagesFilter::ShouldApply(driver_)) {
-      driver_->set_is_lazyload_script_flushed(true);
-      should_flush_early_lazyload_script_ = true;
-    }
-
-    PropertyValue* defer_js_property_value = page->GetProperty(
-        cohort, JsDeferDisabledFilter::kIsJsDeferScriptInsertedPropertyName);
-    if (defer_js_property_value->has_value() &&
-        StringCaseEqual(defer_js_property_value->value(), "1") &&
-        driver_->options()->Enabled(RewriteOptions::kDeferJavascript) &&
-        JsDeferDisabledFilter::ShouldApply(driver_)) {
-      driver_->set_is_defer_javascript_script_flushed(true);
-      should_flush_early_js_defer_script_ = true;
-    }
-
     PropertyValue* property_value = page->GetProperty(
         cohort, RewriteDriver::kSubresourcesPropertyName);
     if (property_value != NULL && property_value->has_value()) {
@@ -208,11 +185,35 @@ void FlushEarlyFlow::FlushEarly() {
         // If the flush early info has non-empty resource html, we flush early.
         DCHECK(driver_->options()->enable_flush_subresources_experimental());
 
+        // Check whether to flush lazyload and js_defer script snippets early.
+        PropertyValue* lazyload_property_value = page->GetProperty(
+            cohort,
+            LazyloadImagesFilter::kIsLazyloadScriptInsertedPropertyName);
+        if (lazyload_property_value->has_value() &&
+            StringCaseEqual(lazyload_property_value->value(), "1") &&
+            driver_->options()->Enabled(RewriteOptions::kLazyloadImages) &&
+            LazyloadImagesFilter::ShouldApply(driver_)) {
+          driver_->set_is_lazyload_script_flushed(true);
+          should_flush_early_lazyload_script_ = true;
+        }
+
+        PropertyValue* defer_js_property_value = page->GetProperty(
+            cohort,
+            JsDeferDisabledFilter::kIsJsDeferScriptInsertedPropertyName);
+        if (defer_js_property_value->has_value() &&
+            StringCaseEqual(defer_js_property_value->value(), "1") &&
+            driver_->options()->Enabled(RewriteOptions::kDeferJavascript) &&
+            JsDeferDisabledFilter::ShouldApply(driver_)) {
+          driver_->set_is_defer_javascript_script_flushed(true);
+          should_flush_early_js_defer_script_ = true;
+        }
+
         int64 now_ms = manager_->timer()->NowMs();
         // Clone the RewriteDriver which is used rewrite the HTML that we are
         // trying to flush early.
         RewriteDriver* new_driver = driver_->Clone();
         new_driver->set_response_headers_ptr(base_fetch_->response_headers());
+        new_driver->set_request_headers(base_fetch_->request_headers());
         new_driver->set_flushing_early(true);
         new_driver->set_unowned_property_page(page);
         new_driver->SetWriter(base_fetch_);
@@ -229,13 +230,11 @@ void FlushEarlyFlow::FlushEarly() {
         // the encoding of the page.
         base_fetch_->Write(flush_early_info.pre_head(), handler_);
         base_fetch_->Write("<head>", handler_);
-        base_fetch_->Write(flush_early_info.content_type_meta_tag(), handler_);
         base_fetch_->Flush(handler_);
 
         // Parse and rewrite the flush early HTML.
         new_driver->ParseText(flush_early_info.pre_head());
         new_driver->ParseText("<head>");
-        new_driver->ParseText(flush_early_info.content_type_meta_tag());
         new_driver->ParseText(flush_early_info.resource_html());
         driver_->set_flushed_early(true);
         num_requests_flushed_early_->IncBy(1);
@@ -278,7 +277,7 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms) {
   }
   base_fetch_->Write("</head>", handler_);
   base_fetch_->Flush(handler_);
-  flush_early_rewrite_latency_ms->Add(
+  flush_early_rewrite_latency_ms_->Add(
       manager_->timer()->NowMs() - start_time_ms);
   TriggerProxyFetch();
 }
@@ -313,7 +312,6 @@ void FlushEarlyFlow::GenerateDummyHeadAndCountResources(
     const FlushEarlyInfo& flush_early_info) {
   Write(flush_early_info.pre_head());
   Write("<head>");
-  Write(flush_early_info.content_type_meta_tag());
   GoogleString head_string, script, minified_script;
   bool has_script = false;
   switch (manager_->user_agent_matcher().GetPrefetchMechanism(

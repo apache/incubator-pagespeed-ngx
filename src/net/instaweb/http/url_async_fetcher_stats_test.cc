@@ -131,6 +131,8 @@ TEST_F(UrlAsyncFetcherStatsTest, BasicOperation) {
   EXPECT_EQ(1, stats_->GetVariable("test_fetches")->Get());
   EXPECT_EQ(STATIC_STRLEN(kBody),
             stats_->GetVariable("test_bytes_fetched")->Get());
+  EXPECT_EQ(target.response_headers()->SizeEstimate(),
+            stats_->GetVariable("test_approx_header_bytes_fetched")->Get());
 
   ExpectStringAsyncFetch target2(false);
   mock_fetcher_.set_fail_on_unexpected(false);
@@ -140,6 +142,9 @@ TEST_F(UrlAsyncFetcherStatsTest, BasicOperation) {
   EXPECT_EQ(2, stats_->GetVariable("test_fetches")->Get());
   EXPECT_EQ(STATIC_STRLEN(kBody),
             stats_->GetVariable("test_bytes_fetched")->Get());
+  EXPECT_EQ(target.response_headers()->SizeEstimate() +
+                target2.response_headers()->SizeEstimate(),
+            stats_->GetVariable("test_approx_header_bytes_fetched")->Get());
 }
 
 TEST_F(UrlAsyncFetcherStatsTest, GzipHandling) {

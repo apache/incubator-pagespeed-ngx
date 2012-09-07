@@ -74,6 +74,7 @@ class UrlAsyncFetcherStats : public UrlAsyncFetcher {
   Histogram* fetch_latency_us_histogram_;
   Variable* fetches_;
   Variable* bytes_fetched_;
+  Variable* approx_header_bytes_fetched_;
 
   DISALLOW_COPY_AND_ASSIGN(UrlAsyncFetcherStats);
 };

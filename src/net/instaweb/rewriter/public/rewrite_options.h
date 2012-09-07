@@ -77,6 +77,7 @@ class RewriteOptions {
     kCombineHeads,
     kCombineJavascript,
     kComputePanelJson,
+    kComputeVisibleText,
     kConvertGifToPng,
     kConvertJpegToProgressive,
     kConvertJpegToWebp,

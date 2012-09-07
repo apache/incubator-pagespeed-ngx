@@ -18,9 +18,9 @@
 
 #include "net/instaweb/util/public/cache_stats.h"
 
-#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/delegating_cache_callback.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -96,29 +96,18 @@ void CacheStats::Initialize(StringPiece prefix, Statistics* statistics) {
   statistics->AddVariable(StrCat(prefix, kMisses));
 }
 
-class CacheStats::StatsCallback : public CacheInterface::Callback {
+class CacheStats::StatsCallback : public DelegatingCacheCallback {
  public:
   StatsCallback(CacheStats* stats,
                 Timer* timer,
                 CacheInterface::Callback* callback)
-      : stats_(stats),
-        timer_(timer),
-        callback_(callback),
-        validate_candidate_called_(false) {
+      : DelegatingCacheCallback(callback),
+        stats_(stats),
+        timer_(timer) {
     start_time_us_ = timer->NowUs();
   }
 
   virtual ~StatsCallback() {
-  }
-
-  // Note that we have to forward validity faithfully here, as if we're
-  // wrapping a 2-level cache it will need to know accurately if the value
-  // is valid or not.
-  virtual bool ValidateCandidate(const GoogleString& key,
-                                 CacheInterface::KeyState state) {
-    validate_candidate_called_ = true;
-    *callback_->value() = *value();
-    return callback_->DelegatedValidateCandidate(key, state);
   }
 
   virtual void Done(CacheInterface::KeyState state) {
@@ -130,19 +119,12 @@ class CacheStats::StatsCallback : public CacheInterface::Callback {
     } else {
       stats_->misses_->Add(1);
     }
-
-    DCHECK(validate_candidate_called_);
-    // We don't have to do validation or value forwarding ourselves since
-    // whatever we are wrapping must have already called ValidateCandidate().
-    callback_->DelegatedDone(state);
-    delete this;
+    DelegatingCacheCallback::Done(state);
   }
 
  private:
   CacheStats* stats_;
   Timer* timer_;
-  CacheInterface::Callback* callback_;
-  bool validate_candidate_called_;
   int64 start_time_us_;
 
   DISALLOW_COPY_AND_ASSIGN(StatsCallback);

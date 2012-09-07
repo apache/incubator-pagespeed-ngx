@@ -844,6 +844,8 @@ class RewriteDriver : public HtmlParse {
 
   FlushEarlyRenderInfo* flush_early_render_info() const;
 
+  // Takes the ownership of flush_early_render_info. This method is not
+  // thread-safe. Call it only from the html parser thread.
   void set_flush_early_render_info(
       FlushEarlyRenderInfo* flush_early_render_info);
 
@@ -859,7 +861,7 @@ class RewriteDriver : public HtmlParse {
 
   // Saves the origin headers for a request in flush_early_info so that it can
   // be used in subsequent request.
-  void SaveOriginalHeaders();
+  void SaveOriginalHeaders(const ResponseHeaders& response_headers);
 
   // log_record() can return NULL.
   LogRecord* log_record() { return log_record_; }

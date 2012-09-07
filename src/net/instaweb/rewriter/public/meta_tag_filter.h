@@ -58,6 +58,12 @@ class MetaTagFilter : public CommonFilter {
 
   virtual const char* Name() const { return "ConvertMetaTags"; }
 
+  // Utility function to extract the mime type and/or charset from a meta tag
+  // and update the response_headers if they are not set already.
+  static bool ExtractAndUpdateMetaTagDetails(
+      HtmlElement* element,
+      ResponseHeaders* response_headers);
+
  private:
   ResponseHeaders* response_headers_;
 

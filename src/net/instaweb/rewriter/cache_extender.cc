@@ -22,6 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -195,6 +196,28 @@ void CacheExtender::Context::Render() {
   // rewriter, but we just double-check this before incrementing the stats.
   if (num_slots() == 1 && slot(0)->was_optimized()) {
     extender_->extension_count_->Add(1);
+    // Log applied rewriter id. Here, we care only about non-nested
+    // cache extensions, and that too, those ocurring in synchronous
+    // flows only.
+    if (driver_ != NULL && driver_->log_record() != NULL) {
+      if (slot(0)->resource().get() != NULL &&
+          slot(0)->resource()->type() != NULL) {
+        const char* filter_id = id();
+        const ContentType* type = slot(0)->resource()->type();
+        if (type->type() == ContentType::kCss) {
+          filter_id = RewriteOptions::FilterId(
+              RewriteOptions::kExtendCacheCss);
+        } else if (type->type() == ContentType::kJavascript) {
+          filter_id = RewriteOptions::FilterId(
+              RewriteOptions::kExtendCacheScripts);
+        } else if (type->IsImage()) {
+          filter_id = RewriteOptions::FilterId(
+              RewriteOptions::kExtendCacheImages);
+        }
+        // TODO(anupama): Log cache extension for pdfs etc.
+        driver_->log_record()->LogAppliedRewriter(filter_id);
+      }
+    }
   }
 }
 
