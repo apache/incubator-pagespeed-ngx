@@ -418,9 +418,9 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedAnalyticsID 1234
 #ALL_DIRECTIVES ModPagespeedAvoidRenamingIntrospectiveJavascript true
 #ALL_DIRECTIVES ModPagespeedBeaconUrl "http://example.com/beacon?ets="
+#ALL_DIRECTIVES ModPagespeedBlockingRewriteKey test
 #ALL_DIRECTIVES ModPagespeedCacheFlushFilename /tmp/cache.flush
 #ALL_DIRECTIVES ModPagespeedCacheFlushPollIntervalSec 10
-#ALL_DIRECTIVES ModPagespeedBlockingRewriteKey test
 #ALL_DIRECTIVES ModPagespeedClientDomainRewrite false
 #ALL_DIRECTIVES ModPagespeedCollectRefererStatistics false
 #ALL_DIRECTIVES ModPagespeedCombineAcrossPaths true
@@ -440,6 +440,7 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedFetchWithGzip on
 #ALL_DIRECTIVES ModPagespeedFetcherTimeOutMs 1000
 #ALL_DIRECTIVES ModPagespeedFileCacheCleanIntervalMs 3600000
+#ALL_DIRECTIVES ModPagespeedFileCacheInodeLimit 10000
 #ALL_DIRECTIVES ModPagespeedFileCachePath /tmp/cache/
 #ALL_DIRECTIVES ModPagespeedFileCacheSizeKb 1000
 #ALL_DIRECTIVES ModPagespeedForceCaching off
@@ -458,6 +459,9 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedLRUCacheKbPerProcess 1
 #ALL_DIRECTIVES ModPagespeedListOutstandingUrlsOnError on
 #ALL_DIRECTIVES ModPagespeedLoadFromFile http://example.com/ /var/html/example/
+#ALL_DIRECTIVES ModPagespeedLoadFromFileMatch "^http://example.com/" /var/html/example/
+#ALL_DIRECTIVES ModPagespeedLoadFromFileRule allow /var/html/example/
+#ALL_DIRECTIVES ModPagespeedLoadFromFileRuleMatch Disallow \.php.css$
 #ALL_DIRECTIVES ModPagespeedLogRewriteTiming false
 #ALL_DIRECTIVES ModPagespeedLowercaseHtmlNames true
 #ALL_DIRECTIVES ModPagespeedMapOriginDomain example.com localhost
@@ -465,12 +469,13 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedMaxImageSizeLowResolutionBytes 1000
 #ALL_DIRECTIVES ModPagespeedMaxInlinedPreviewImagesIndex 80
 #ALL_DIRECTIVES ModPagespeedMaxSegmentLength 100
+#ALL_DIRECTIVES ModPagespeedMemcachedServers localhost:6765
+#ALL_DIRECTIVES ModPagespeedMemcachedThreads 1
 #ALL_DIRECTIVES ModPagespeedMessageBufferSize 100
 #ALL_DIRECTIVES ModPagespeedMinImageSizeLowResolutionBytes 2000
 #ALL_DIRECTIVES ModPagespeedModifyCachingHeaders true
 #ALL_DIRECTIVES ModPagespeedNumExpensiveRewriteThreads 2
 #ALL_DIRECTIVES ModPagespeedNumRewriteThreads 4
-#ALL_DIRECTIVES ModPagespeedNumShards 5
 #ALL_DIRECTIVES ModPagespeedRefererStatisticsOutputLevel simple
 #ALL_DIRECTIVES ModPagespeedReportUnloadTime true
 #ALL_DIRECTIVES ModPagespeedRespectVary true
@@ -482,12 +487,12 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedSlurpDirectory /tmp/slurp/
 #ALL_DIRECTIVES ModPagespeedSlurpFlushLimit 5
 #ALL_DIRECTIVES ModPagespeedSlurpReadOnly true
-#ALL_DIRECTIVES ModPagespeedSupportNoScriptEnabled true
 #ALL_DIRECTIVES ModPagespeedStatistics true
 #ALL_DIRECTIVES ModPagespeedStatisticsLogging true
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingIntervalMs 3000
+#ALL_DIRECTIVES ModPagespeedSupportNoScriptEnabled true
 #ALL_DIRECTIVES ModPagespeedTestProxy off
-#ALL_DIRECTIVES ModPagespeedUrlPrefix "http://example.com/prefix/"
+#ALL_DIRECTIVES ModPagespeedUrlValuedAttribute span src Hyperlink
 #ALL_DIRECTIVES ModPagespeedUsePerVHostStatistics on
 #ALL_DIRECTIVES ModPagespeedXHeaderValue "test"

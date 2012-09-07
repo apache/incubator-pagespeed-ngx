@@ -102,17 +102,17 @@ check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 
 # This is dependent upon having a /mod_pagespeed_beacon handler.
 test_filter add_instrumentation beacons load.
-check $WGET_PREREQ http://$HOSTNAME/mod_pagespeed_beacon?ets=load:13
+check run_wget_with_args http://$HOSTNAME/mod_pagespeed_beacon?ets=load:13
 check fgrep -q "204 No Content" $WGET_OUTPUT
 
 test_filter combine_css combines 4 CSS files into 1.
 fetch_until $URL 'grep -c text/css' 1
-check $WGET_PREREQ $URL
+check run_wget_with_args $URL
 test_resource_ext_corruption $URL $combine_css_filename
 
 test_filter extend_cache rewrites an image tag.
 fetch_until $URL 'grep -c src.*91_WewrLtP' 1
-check $WGET_PREREQ $WGET_ARGS $URL
+check run_wget_with_args $URL
 echo about to test resource ext corruption...
 test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 
@@ -134,7 +134,7 @@ check fgrep -qi 'Last-Modified:' <(echo $JS_HEADERS)
 
 # Test RetainComment directive.
 test_filter remove_comments retains appropriate comments.
-check $WGET_PREREQ $URL
+check run_wget_with_args $URL
 check grep -q retained $FETCHED        # RetainComment directive
 
 # TODO(sligocki): This test needs to be run before below tests.
