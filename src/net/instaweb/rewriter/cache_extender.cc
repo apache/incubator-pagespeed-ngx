@@ -82,7 +82,7 @@ class CacheExtender::Context : public SingleRewriteContext {
 
 CacheExtender::CacheExtender(RewriteDriver* driver)
     : RewriteFilter(driver) {
-  Statistics* stats = resource_manager_->statistics();
+  Statistics* stats = server_context_->statistics();
   extension_count_ = stats->GetVariable(kCacheExtensions);
   not_cacheable_count_ = stats->GetVariable(kNotCacheable);
 }
@@ -118,7 +118,7 @@ bool CacheExtender::ShouldRewriteResource(
   // the resource after we queued the request, but before our
   // context is asked to rewrite it.  So we have to check again now
   // that the resource URL is finalized.
-  if (resource_manager_->IsPagespeedResource(origin_gurl)) {
+  if (server_context_->IsPagespeedResource(origin_gurl)) {
     return false;
   }
 
@@ -169,7 +169,7 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
     }
 
     GoogleUrl input_gurl(input_resource->url());
-    if (resource_manager_->IsPagespeedResource(input_gurl)) {
+    if (server_context_->IsPagespeedResource(input_gurl)) {
       return;
     }
 
@@ -229,13 +229,13 @@ RewriteResult CacheExtender::RewriteLoadedResource(
   MessageHandler* message_handler = driver_->message_handler();
   const ResponseHeaders* headers = input_resource->response_headers();
   GoogleString url = input_resource->url();
-  int64 now_ms = resource_manager_->timer()->NowMs();
+  int64 now_ms = server_context_->timer()->NowMs();
 
   // See if the resource is cacheable; and if so whether there is any need
   // to cache extend it.
   bool ok = false;
   const ContentType* output_type = NULL;
-  if (!resource_manager_->http_cache()->force_caching() &&
+  if (!server_context_->http_cache()->force_caching() &&
       !(headers->IsCacheable() && headers->IsProxyCacheable())) {
     // Note: RewriteContextTest.PreserveNoCacheWithFailedRewrites
     // relies on CacheExtender failing rewrites in this case.
@@ -298,9 +298,9 @@ RewriteResult CacheExtender::RewriteLoadedResource(
     }
   }
 
-  resource_manager_->MergeNonCachingResponseHeaders(
+  server_context_->MergeNonCachingResponseHeaders(
       input_resource, output_resource);
-  if (resource_manager_->Write(ResourceVector(1, input_resource),
+  if (server_context_->Write(ResourceVector(1, input_resource),
                                contents,
                                output_type,
                                input_resource->charset(),

@@ -131,6 +131,15 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   void set_fetch_with_gzip(bool x) { fetch_with_gzip_ = x; }
   bool fetch_with_gzip() const { return fetch_with_gzip_; }
 
+  // Tracks the size of resources fetched from origin and populates the
+  // X-Original-Content-Length header for resources derived from them.
+  void set_track_original_content_length(bool x) {
+    track_original_content_length_ = x;
+  }
+  bool track_original_content_length() const {
+    return track_original_content_length_;
+  }
+
   void set_num_rewrite_threads(int x) { num_rewrite_threads_ = x; }
   int num_rewrite_threads() const { return num_rewrite_threads_; }
   void set_num_expensive_rewrite_threads(int x) {
@@ -278,6 +287,7 @@ protected:
   bool statistics_frozen_;
   bool is_root_process_;
   bool fetch_with_gzip_;
+  bool track_original_content_length_;
   bool list_outstanding_urls_on_error_;
 
   scoped_ptr<SharedMemRefererStatistics> shared_mem_referer_statistics_;

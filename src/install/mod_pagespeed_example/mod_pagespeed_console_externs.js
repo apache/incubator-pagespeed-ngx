@@ -1,0 +1,14 @@
+var google = {};
+google.setOnLoadCallback = function(f) {};
+google.visualization = {};
+google.visualization.LineChart = {};
+google.visualization.BarChart = {};
+google.visualization.DataTable = {};
+google.visualization.DataTable.addColumn = function(a, b) {};
+google.visualization.DataTable.addRow = function(a) {};
+google.visualization.DataTable.setCell = function(a, b, c) {};
+google.visualization.DataTable.getNumberOfRows = function() {};
+google.visualization.DataTable.getNumberOfColumns = function() {};
+google.visualization.BarChart.draw = function() {};
+google.visualization.LineChart.draw = function() {};
+var chartsOfflineCSS, chartsOfflineJS;

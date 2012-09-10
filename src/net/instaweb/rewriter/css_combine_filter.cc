@@ -71,7 +71,7 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
               CssCombineFilter* filter)
       : ResourceCombiner(driver, kContentTypeCss.file_extension() + 1, filter),
         css_tag_scanner_(css_tag_scanner) {
-    Statistics* stats = resource_manager_->statistics();
+    Statistics* stats = server_context_->statistics();
     css_file_count_reduction_ = stats->GetVariable(kCssFileCountReduction);
   }
 

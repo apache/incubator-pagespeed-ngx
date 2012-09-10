@@ -1,3 +1,426 @@
+/* javascript/closure/css/dialog.css */
+/*
+ * Copyright 2009 The Closure Library Authors. All Rights Reserved.
+ *
+ * Use of this source code is governed by the Apache License, Version 2.0.
+ * See the COPYING file for details.
+ */
+
+/*
+ * Standard styling for goog.ui.Dialog.
+ *
+ * @author ssaviano@google.com (Steven Saviano)
+ * @author attila@google.com (Attila Bodis)
+ */
+
+
+.modal-dialog {
+  background: #c1d9ff;
+  border: 1px solid #3a5774;
+  color: #000;
+  padding: 4px;
+  position: absolute;
+}
+
+.modal-dialog a,
+.modal-dialog a:link,
+.modal-dialog a:visited  {
+  color: #06c;
+  cursor: pointer;
+}
+
+.modal-dialog-bg {
+  background: #666;
+  left: 0;
+  position: absolute;
+  top: 0;
+}
+
+.modal-dialog-title {
+  background: #e0edfe;
+  color: #000;
+  cursor: pointer;
+  font-size: 120%;
+  font-weight: bold;
+
+  /* Add padding on the right to ensure the close button has room. */
+  padding: 8px 31px 8px 8px;
+
+  position: relative;
+  _zoom: 1; /* Ensures proper width in IE6 RTL. */
+}
+
+.modal-dialog-title-close {
+  /* Client apps may override the URL at which they serve the sprite. */
+  background: #e0edfe url(//ssl.gstatic.com/editor/editortoolbar.png) no-repeat -528px 0;
+  cursor: default;
+  height: 15px;
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  width: 15px;
+  vertical-align: middle;
+}
+
+.modal-dialog-buttons,
+.modal-dialog-content {
+  background-color: #fff;
+  padding: 8px;
+}
+
+.goog-buttonset-default {
+  font-weight: bold;
+}
+
+/* javascript/closure/css/datepicker.css */
+/*
+ * Copyright 2009 The Closure Library Authors. All Rights Reserved.
+ *
+ * Use of this source code is governed by the Apache License, Version 2.0.
+ * See the COPYING file for details.
+ */
+
+/*
+ * Standard styling for a goog.ui.DatePicker.
+ *
+ * @author arv@google.com (Erik Arvidsson)
+ */
+
+.goog-date-picker,
+.goog-date-picker th,
+.goog-date-picker td {
+  font: 13px Arial, sans-serif;
+}
+
+.goog-date-picker {
+  -moz-user-focus: normal;
+  -moz-user-select: none;
+  position: relative;
+  border: 1px solid #000;
+  float: left;
+  padding: 2px;
+  color: #000;
+  background: #c3d9ff;
+  cursor: default;
+}
+
+.goog-date-picker th {
+  text-align: center;
+}
+
+.goog-date-picker td {
+  text-align: center;
+  vertical-align: middle;
+  padding: 1px 3px;
+}
+
+
+.goog-date-picker-menu {
+  position: absolute;
+  background: threedface;
+  border: 1px solid gray;
+  -moz-user-focus: normal;
+  z-index: 1;
+  outline: none;
+}
+
+.goog-date-picker-menu ul {
+  list-style: none;
+  margin: 0px;
+  padding: 0px;
+}
+
+.goog-date-picker-menu ul li {
+  cursor: default;
+}
+
+.goog-date-picker-menu-selected {
+  background: #ccf;
+}
+
+.goog-date-picker th {
+  font-size: .9em;
+}
+
+.goog-date-picker td div {
+  float: left;
+}
+
+.goog-date-picker button {
+  padding: 0px;
+  margin: 1px 0;
+  border: 0;
+  color: #20c;
+  font-weight: bold;
+  background: transparent;
+}
+
+.goog-date-picker-date {
+  background: #fff;
+}
+
+.goog-date-picker-week,
+.goog-date-picker-wday {
+  padding: 1px 3px;
+  border: 0;
+  border-color: #a2bbdd;
+  border-style: solid;
+}
+
+.goog-date-picker-week {
+  border-right-width: 1px;
+}
+
+.goog-date-picker-wday {
+  border-bottom-width: 1px;
+}
+
+.goog-date-picker-head td {
+  text-align: center;
+}
+
+/** Use td.className instead of !important */
+td.goog-date-picker-today-cont {
+  text-align: center;
+}
+
+/** Use td.className instead of !important */
+td.goog-date-picker-none-cont {
+  text-align: center;
+}
+
+.goog-date-picker-month {
+  width: 12ex;
+}
+
+.goog-date-picker-year {
+  width: 6ex;
+}
+
+.goog-date-picker table {
+  border-collapse: collapse;
+}
+
+.goog-date-picker-other-month {
+  color: #888;
+}
+
+.goog-date-picker-wkend-start,
+.goog-date-picker-wkend-end {
+  background: #eee;
+}
+
+/** Use td.className instead of !important */
+td.goog-date-picker-selected {
+  background: #c3d9ff;
+}
+
+.goog-date-picker-today {
+  background: #9ab;
+  font-weight: bold !important;
+  border-color: #246 #9bd #9bd #246;
+  color: #fff;
+}
+
+/* javascript/closure/css/menu.css */
+/*
+ * Copyright 2009 The Closure Library Authors. All Rights Reserved.
+ *
+ * Use of this source code is governed by the Apache License, Version 2.0.
+ * See the COPYING file for details.
+ */
+
+/*
+ * Standard styling for menus created by goog.ui.MenuRenderer.
+ *
+ * @author attila@google.com (Attila Bodis)
+ */
+
+
+.goog-menu {
+  background: #fff;
+  border-color: #ccc #666 #666 #ccc;
+  border-style: solid;
+  border-width: 1px;
+  cursor: default;
+  font: normal 13px Arial, sans-serif;
+  margin: 0;
+  outline: none;
+  padding: 4px 0;
+  position: absolute;
+  z-index: 20000; /* Arbitrary, but some apps depend on it... */
+}
+
+/* javascript/closure/css/menuitem.css */
+/*
+ * Copyright 2009 The Closure Library Authors. All Rights Reserved.
+ *
+ * Use of this source code is governed by the Apache License, Version 2.0.
+ * See the COPYING file for details.
+ */
+
+/*
+ * Standard styling for menus created by goog.ui.MenuItemRenderer.
+ *
+ * @author attila@google.com (Attila Bodis)
+ */
+
+
+/**
+ * State: resting.
+ *
+ * NOTE(mleibman,chrishenry):
+ * The RTL support in Closure is provided via two mechanisms -- "rtl" CSS
+ * classes and BiDi flipping done by the CSS compiler.  Closure supports RTL
+ * with or without the use of the CSS compiler.  In order for them not
+ * to conflict with each other, the "rtl" CSS classes need to have the @noflip
+ * annotation.  The non-rtl counterparts should ideally have them as well, but,
+ * since .goog-menuitem existed without .goog-menuitem-rtl for so long before
+ * being added, there is a risk of people having templates where they are not
+ * rendering the .goog-menuitem-rtl class when in RTL and instead rely solely
+ * on the BiDi flipping by the CSS compiler.  That's why we're not adding the
+ * @noflip to .goog-menuitem.
+ */
+.goog-menuitem {
+  color: #000;
+  font: normal 13px Arial, sans-serif;
+  list-style: none;
+  margin: 0;
+  /* 28px on the left for icon or checkbox; 7em on the right for shortcut. */
+  padding: 4px 7em 4px 28px;
+  white-space: nowrap;
+}
+
+/* BiDi override for the resting state. */
+/* @noflip */
+.goog-menuitem.goog-menuitem-rtl {
+  /* Flip left/right padding for BiDi. */
+  padding-left: 7em;
+  padding-right: 28px;
+}
+
+/* If a menu doesn't have checkable items or items with icons, remove padding. */
+.goog-menu-nocheckbox .goog-menuitem,
+.goog-menu-noicon .goog-menuitem {
+  padding-left: 12px;
+}
+
+/*
+ * If a menu doesn't have items with shortcuts, leave just enough room for
+ * submenu arrows, if they are rendered.
+ */
+.goog-menu-noaccel .goog-menuitem {
+  padding-right: 20px;
+}
+
+.goog-menuitem-content {
+  color: #000;
+  font: normal 13px Arial, sans-serif;
+}
+
+/* State: disabled. */
+.goog-menuitem-disabled .goog-menuitem-accel,
+.goog-menuitem-disabled .goog-menuitem-content {
+  color: #ccc !important;
+}
+.goog-menuitem-disabled .goog-menuitem-icon {
+  opacity: 0.3;
+  -moz-opacity: 0.3;
+  filter: alpha(opacity=30);
+}
+
+/* State: hover. */
+.goog-menuitem-highlight,
+.goog-menuitem-hover {
+  background-color: #d6e9f8;
+  /* Use an explicit top and bottom border so that the selection is visible
+   * in high contrast mode. */
+  border-color: #d6e9f8;
+  border-style: dotted;
+  border-width: 1px 0;
+  padding-bottom: 3px;
+  padding-top: 3px;
+}
+
+/* State: selected/checked. */
+.goog-menuitem-checkbox,
+.goog-menuitem-icon {
+  background-repeat: no-repeat;
+  height: 16px;
+  left: 6px;
+  position: absolute;
+  right: auto;
+  vertical-align: middle;
+  width: 16px;
+}
+
+/* BiDi override for the selected/checked state. */
+/* @noflip */
+.goog-menuitem-rtl .goog-menuitem-checkbox,
+.goog-menuitem-rtl .goog-menuitem-icon {
+  /* Flip left/right positioning. */
+  left: auto;
+  right: 6px;
+}
+
+.goog-option-selected .goog-menuitem-checkbox,
+.goog-option-selected .goog-menuitem-icon {
+  /* Client apps may override the URL at which they serve the sprite. */
+  background: url(//ssl.gstatic.com/editor/editortoolbar.png) no-repeat -512px 0;
+}
+
+/* Keyboard shortcut ("accelerator") style. */
+.goog-menuitem-accel {
+  color: #999;
+  /* Keyboard shortcuts are untranslated; always left-to-right. */
+  /* @noflip */ direction: ltr;
+  left: auto;
+  padding: 0 6px;
+  position: absolute;
+  right: 0;
+  text-align: right;
+}
+
+/* BiDi override for shortcut style. */
+/* @noflip */
+.goog-menuitem-rtl .goog-menuitem-accel {
+  /* Flip left/right positioning and text alignment. */
+  left: 0;
+  right: auto;
+  text-align: left;
+}
+
+/* Mnemonic styles. */
+.goog-menuitem-mnemonic-hint {
+  text-decoration: underline;
+}
+
+.goog-menuitem-mnemonic-separator {
+  color: #999;
+  font-size: 12px;
+  padding-left: 4px;
+}
+
+/* javascript/closure/css/popupdatepicker.css */
+/*
+ * Copyright 2009 The Closure Library Authors. All Rights Reserved.
+ *
+ * Use of this source code is governed by the Apache License, Version 2.0.
+ * See the COPYING file for details.
+ */
+
+/*
+ * Standard styling for a goog.ui.PopupDatePicker.
+ *
+ * @author arv@google.com (Erik Arvidsson)
+ */
+
+.goog-date-picker {
+  position: absolute;
+}
+
+
+/* net/instaweb/apache/install/mod_pagespeed_example/mod_pagespeed_console.css */
 /*
  * Copyright 2012 Google Inc.
  *
@@ -501,3 +924,4 @@ filter: alpha(opacity=100);*/
   float:left;
   padding:10px;
 }
+

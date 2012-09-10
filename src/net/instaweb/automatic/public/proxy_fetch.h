@@ -184,7 +184,7 @@ class ProxyFetchPropertyCallbackCollector {
   std::map<ProxyFetchPropertyCallback::CacheType, PropertyPage*>
   property_pages_;
   scoped_ptr<AbstractMutex> mutex_;
-  ServerContext* resource_manager_;
+  ServerContext* server_context_;
   GoogleString url_;
   bool detached_;             // protected by mutex_.
   bool done_;                 // protected by mutex_.
@@ -331,7 +331,7 @@ class ProxyFetch : public SharedAsyncFetch {
   void HandleIdleAlarm();
 
   GoogleString url_;
-  ServerContext* resource_manager_;
+  ServerContext* server_context_;
   Timer* timer_;
 
   scoped_ptr<CacheUrlAsyncFetcher> cache_fetcher_;

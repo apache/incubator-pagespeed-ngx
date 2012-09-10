@@ -113,7 +113,7 @@ class CriticalLineFetch : public AsyncFetch {
                     LogRecord* log_record,
                     BlinkCriticalLineData* blink_critical_line_data)
       : url_(url),
-        resource_manager_(resource_manager),
+        server_context_(resource_manager),
         options_(options),
         rewrite_driver_(rewrite_driver),
         log_record_(log_record),
@@ -152,7 +152,7 @@ class CriticalLineFetch : public AsyncFetch {
   virtual ~CriticalLineFetch() {
     log_record_->WriteLogForBlink("");
     rewrite_driver_->decrement_async_events_count();
-    ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
+    ThreadSynchronizer* sync = server_context_->thread_synchronizer();
     sync->Signal(BlinkFlowCriticalLine::kBackgroundComputationDone);
   }
 
@@ -254,9 +254,9 @@ class CriticalLineFetch : public AsyncFetch {
     options->ForceEnableFilter(RewriteOptions::kRemoveComments);
     options->ForceEnableFilter(RewriteOptions::kStripNonCacheable);
     options->ForceEnableFilter(RewriteOptions::kComputeVisibleText);
-    resource_manager_->ComputeSignature(options);
+    server_context_->ComputeSignature(options);
     html_change_detection_driver_ =
-        resource_manager_->NewCustomRewriteDriver(options);
+        server_context_->NewCustomRewriteDriver(options);
     html_change_detection_driver_->set_is_blink_request(true);
     value_.Clear();
     html_change_detection_driver_->SetWriter(&value_);
@@ -274,7 +274,7 @@ class CriticalLineFetch : public AsyncFetch {
   void CreateCriticalLineComputationDriverAndRewrite() {
     num_blink_html_cache_misses_->IncBy(1);
     critical_line_computation_driver_ =
-        resource_manager_->NewCustomRewriteDriver(options_.release());
+        server_context_->NewCustomRewriteDriver(options_.release());
     critical_line_computation_driver_->set_is_blink_request(true);
     // Wait for all rewrites to complete. This is important because fully
     // rewritten html is used to compute BlinkCriticalLineData.
@@ -325,7 +325,7 @@ class CriticalLineFetch : public AsyncFetch {
     StringPiece rewritten_content;
     value_.ExtractContents(&rewritten_content);
     num_compute_blink_critical_line_data_calls_->IncBy(1);
-    resource_manager_->blink_critical_line_data_finder()
+    server_context_->blink_critical_line_data_finder()
         ->ComputeBlinkCriticalLineData(computed_hash_,
                                        computed_hash_smart_diff_,
                                        rewritten_content,
@@ -343,8 +343,8 @@ class CriticalLineFetch : public AsyncFetch {
                            BlinkUtil::kComputeVisibleTextFilterOutputEndMarker,
                            &result);
     if (result.size() == 2) {
-      computed_hash_smart_diff_ = resource_manager_->hasher()->Hash(result[0]);
-      computed_hash_ = resource_manager_->hasher()->Hash(result[1]);
+      computed_hash_smart_diff_ = server_context_->hasher()->Hash(result[0]);
+      computed_hash_ = server_context_->hasher()->Hash(result[1]);
     }
     if (blink_critical_line_data_ == NULL) {
       CreateCriticalLineComputationDriverAndRewrite();
@@ -427,7 +427,7 @@ class CriticalLineFetch : public AsyncFetch {
       blink_critical_line_data_->set_hash(computed_hash_);
       blink_critical_line_data_->set_hash_smart_diff(computed_hash_smart_diff_);
       blink_critical_line_data_->set_last_diff_timestamp_ms(
-          resource_manager_->timer()->NowMs());
+          server_context_->timer()->NowMs());
       // TODO(rahulbansal): Move the code to write to pcache to blink_util.cc
       PropertyCache* property_cache =
           rewrite_driver_->server_context()->page_property_cache();
@@ -446,7 +446,7 @@ class CriticalLineFetch : public AsyncFetch {
 
  private:
   GoogleString url_;
-  ServerContext* resource_manager_;
+  ServerContext* server_context_;
   scoped_ptr<RewriteOptions> options_;
   GoogleString buffer_;
   HTTPValue value_;
@@ -538,7 +538,7 @@ class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
                                     ServerContext* resource_manager,
                                     RewriteDriver* rewrite_driver)
       : SharedAsyncFetch(base_fetch),
-        resource_manager_(resource_manager),
+        server_context_(resource_manager),
         rewrite_driver_(rewrite_driver),
         updated_response_code_(false) {
     rewrite_driver_->increment_async_events_count();
@@ -546,7 +546,7 @@ class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
 
   virtual ~UpdateResponseCodeSharedAyncFetch() {
     rewrite_driver_->decrement_async_events_count();
-    ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
+    ThreadSynchronizer* sync = server_context_->thread_synchronizer();
     sync->Signal(BlinkFlowCriticalLine::kUpdateResponseCodeDone);
   }
 
@@ -570,7 +570,7 @@ class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
   }
 
  private:
-  ServerContext* resource_manager_;
+  ServerContext* server_context_;
   RewriteDriver* rewrite_driver_;  // We do not own this.
   bool updated_response_code_;
 

@@ -164,7 +164,7 @@ const UrlSegmentEncoder* ImageRewriteFilter::Context::encoder() const {
 ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
       image_counter_(0) {
-  Statistics* stats = resource_manager_->statistics();
+  Statistics* stats = server_context_->statistics();
   image_rewrites_ = stats->GetVariable(kImageRewrites);
   image_norewrites_high_resolution_ = stats->GetVariable(
       kImageNoRewritesHighResolution);
@@ -354,7 +354,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
 
   scoped_ptr<Image> image(
       NewImage(input_resource->contents(), input_resource->url(),
-               resource_manager_->filename_prefix(), image_options,
+               server_context_->filename_prefix(), image_options,
                message_handler));
 
   Image::Type original_image_type = image->image_type();
@@ -396,8 +396,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       // This needs to happen before Write to persist.
       SaveIfInlinable(image->Contents(), image->image_type(), cached);
 
-      resource_manager_->MergeNonCachingResponseHeaders(input_resource, result);
-      if (resource_manager_->Write(
+      server_context_->MergeNonCachingResponseHeaders(input_resource, result);
+      if (server_context_->Write(
               ResourceVector(1, input_resource), image->Contents(), output_type,
               StringPiece() /* no charset for images */, result.get(),
               message_handler)) {
@@ -465,7 +465,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
           options->image_jpeg_num_progressive_scans();
       scoped_ptr<Image> low_image(
           NewImage(image->Contents(), input_resource->url(),
-                   resource_manager_->filename_prefix(), image_options,
+                   server_context_->filename_prefix(), image_options,
                    message_handler));
       low_image->SetTransformToLowRes();
       if (image->Contents().size() > low_image->Contents().size()) {
@@ -524,7 +524,7 @@ void ImageRewriteFilter::ResizeLowQualityImage(
         options->Enabled(RewriteOptions::kRecompressWebp);
     scoped_ptr<Image> image(
         NewImage(low_image->Contents(), input_resource->url(),
-                 resource_manager_->filename_prefix(), image_options,
+                 server_context_->filename_prefix(), image_options,
                  driver_->message_handler()));
     image->SetTransformToLowRes();
     ImageDim resized_dim;
@@ -792,7 +792,7 @@ bool ImageRewriteFilter::StoreUrlInPropertyCache(const StringPiece& url) {
   if (url.length() == 0) {
     return true;
   }
-  PropertyCache* pcache = resource_manager_->page_property_cache();
+  PropertyCache* pcache = server_context_->page_property_cache();
   if (pcache == NULL) {
     LOG(WARNING) << "image_inlining_identify_and_cache_without_rewriting "
                  << "without property cache enabled.";

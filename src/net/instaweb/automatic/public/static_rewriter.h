@@ -86,7 +86,7 @@ class StaticRewriter {
  private:
   RewriteGflags gflags_;
   FileRewriter file_rewriter_;
-  ServerContext* resource_manager_;
+  ServerContext* server_context_;
 
   DISALLOW_COPY_AND_ASSIGN(StaticRewriter);
 };

@@ -29,7 +29,7 @@ const char CriticalImagesFinderTestBase::kRequestUrl[] = "http://www.test.com";
 
 void CriticalImagesFinderTestBase::SetUp() {
   RewriteTestBase::SetUp();
-  PropertyCache* pcache = resource_manager_->page_property_cache();
+  PropertyCache* pcache = server_context_->page_property_cache();
   MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),
                                 kRequestUrl);
   rewrite_driver()->set_property_page(page);
@@ -42,7 +42,7 @@ const PropertyValue* CriticalImagesFinderTestBase::GetUpdatedValue() {
   if (page == NULL) {
     return NULL;
   }
-  PropertyCache* pcache = resource_manager_->page_property_cache();
+  PropertyCache* pcache = server_context_->page_property_cache();
   const PropertyCache::Cohort* cohort = pcache->GetCohort(
       finder()->GetCriticalImagesCohort());
   if (cohort == NULL) {

@@ -135,7 +135,7 @@ class ProxyInterface : public UrlAsyncFetcher {
   bool IsXmlHttpRequest(RequestHeaders* headers) const;
 
   // References to unowned objects.
-  ServerContext* resource_manager_;     // thread-safe
+  ServerContext* server_context_;     // thread-safe
   UrlAsyncFetcher* fetcher_;              // thread-safe
   Timer* timer_;                          // thread-safe
   MessageHandler* handler_;               // thread-safe

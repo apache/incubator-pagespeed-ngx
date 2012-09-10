@@ -100,6 +100,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       statistics_frozen_(false),
       is_root_process_(true),
       fetch_with_gzip_(false),
+      track_original_content_length_(false),
       list_outstanding_urls_on_error_(false),
       shared_mem_referer_statistics_(NULL),
       hostname_identifier_(StrCat(server->server_hostname,
@@ -436,6 +437,7 @@ SerfUrlAsyncFetcher* ApacheRewriteDriverFactory::GetSerfFetcher(
         message_handler());
     serf->set_list_outstanding_urls_on_error(list_outstanding_urls_on_error_);
     serf->set_fetch_with_gzip(fetch_with_gzip_);
+    serf->set_track_original_content_length(track_original_content_length_);
     iter->second = serf;
   }
   return iter->second;

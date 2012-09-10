@@ -320,14 +320,6 @@ const char kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly[] =
     " type=\"text/psajs\" orig_index=\"5\"></script>"
     "<link rel=\"stylesheet\" type=\"text/css\""
     " href=\"http://www.domain3.com/3.css\">"
-    "<div class=\"psa_prefetch_container\">"
-    "<script src=\"1.js,Mjm.0.js+2.js,Mjm.0.js.pagespeed.jc.0.js\""
-    " type=\"psa_prefetch\"></script>"
-    "<script src=\"private.js\" type=\"psa_prefetch\"></script>"
-    "<script src=\"http://www.domain1.com/private.js\""
-    " type=\"psa_prefetch\"></script>"
-    "<script src=\"http://www.domain2.com/private.js\" type=\"psa_prefetch\">"
-    "</script></div>"
     "</body>"
     "</html>";
 const char kFlushEarlyRewrittenHtmlImageTagWithDeferJs[] =
@@ -696,9 +688,9 @@ class ProxyInterfaceTest : public RewriteTestBase {
 
   virtual void SetUp() {
     RewriteOptions* options = resource_manager()->global_options();
-    resource_manager_->set_enable_property_cache(true);
+    server_context_->set_enable_property_cache(true);
     page_property_cache()->AddCohort(RewriteDriver::kDomCohort);
-    resource_manager_->client_property_cache()->AddCohort(
+    server_context_->client_property_cache()->AddCohort(
         ClientState::kClientStateCohort);
     options->ClearSignatureForTesting();
     options->EnableFilter(RewriteOptions::kRewriteCss);
@@ -3892,7 +3884,7 @@ TEST_F(ProxyInterfaceTest, PropCacheFilter) {
 
   // Finally, disable the property-cache and note that the element-count
   // annotatation reverts to "unknown mode"
-  resource_manager_->set_enable_property_cache(false);
+  server_context_->set_enable_property_cache(false);
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ("<!-- --><div><span><p></p></span></div>", text_out);
 }
@@ -3912,7 +3904,7 @@ TEST_F(ProxyInterfaceTest, DomCohortWritten) {
   EXPECT_EQ(2, lru_cache()->num_misses());  // property-cache + http-cache
 
   ClearStats();
-  resource_manager_->set_enable_property_cache(false);
+  server_context_->set_enable_property_cache(false);
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(1, lru_cache()->num_misses());  // http-cache only.
@@ -3938,7 +3930,7 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfHtmlEndsWithTxt) {
   EXPECT_EQ(1, lru_cache()->num_misses());  // http-cache only
 
   ClearStats();
-  resource_manager_->set_enable_property_cache(false);
+  server_context_->set_enable_property_cache(false);
   FetchFromProxy("page.txt", true, &text_out, &headers_out);
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(1, lru_cache()->num_misses());  // http-cache only

@@ -134,7 +134,7 @@ class ResourceManagerHttpCallback : public OptionsAwareHTTPCacheCallback {
 
  private:
   Resource::AsyncCallback* resource_callback_;
-  ServerContext* resource_manager_;
+  ServerContext* server_context_;
   Resource::NotCacheablePolicy not_cacheable_policy_;
   DISALLOW_COPY_AND_ASSIGN(ResourceManagerHttpCallback);
 };
@@ -471,7 +471,7 @@ ResourceManagerHttpCallback::ResourceManagerHttpCallback(
     : OptionsAwareHTTPCacheCallback(
           resource_callback->resource()->rewrite_options()),
       resource_callback_(resource_callback),
-      resource_manager_(resource_manager),
+      server_context_(resource_manager),
       not_cacheable_policy_(not_cacheable_policy) {
 }
 
@@ -480,13 +480,13 @@ ResourceManagerHttpCallback::~ResourceManagerHttpCallback() {
 
 void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
   ResourcePtr resource(resource_callback_->resource());
-  MessageHandler* handler = resource_manager_->message_handler();
+  MessageHandler* handler = server_context_->message_handler();
   switch (find_result) {
     case HTTPCache::kFound:
       resource->Link(http_value(), handler);
       resource->response_headers()->CopyFrom(*response_headers());
       resource->DetermineContentType();
-      resource_manager_->RefreshIfImminentlyExpiring(resource.get(), handler);
+      server_context_->RefreshIfImminentlyExpiring(resource.get(), handler);
       resource_callback_->Done(true);
       break;
     case HTTPCache::kRecentFetchFailed:

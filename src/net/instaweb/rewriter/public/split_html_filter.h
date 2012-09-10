@@ -23,8 +23,8 @@
 #include <vector>
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
+#include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/json.h"
 #include "net/instaweb/util/public/json_writer.h"
@@ -40,9 +40,9 @@ struct XpathUnit {
 };
 
 class HtmlElement;
-class ResourceManager;
 class RewriteDriver;
 class RewriteOptions;
+class Writer;
 
 typedef std::map<GoogleString, const Panel*> PanelIdToSpecMap;
 typedef std::vector<XpathUnit> XpathUnits;
@@ -54,7 +54,7 @@ typedef std::map<GoogleString, XpathUnits*> XpathMap;
 
 // This filter will stream above the fold html and send below the fold json at
 // EndDocument. It directly writes to the http request.
-class SplitHtmlFilter : public HtmlWriterFilter {
+class SplitHtmlFilter : public SuppressPreheadFilter {
  public:
   static const char kRenderCohort[];
   static const char kCriticalLineInfoPropertyName[];
@@ -69,8 +69,6 @@ class SplitHtmlFilter : public HtmlWriterFilter {
   virtual void EndElement(HtmlElement* element);
 
   virtual const char* Name() const { return "SplitHtmlFilter"; }
-
-  virtual void Flush();
 
  private:
   void ServeNonCriticalPanelContents(const Json::Value& json);
@@ -143,13 +141,14 @@ class SplitHtmlFilter : public HtmlWriterFilter {
   std::vector<ElementJsonPair> element_json_stack_;
   scoped_ptr<JsonWriter> json_writer_;
 
-  ResourceManager* resource_manager_;
   StringPiece url_;
   bool script_written_;
   std::vector<std::vector<XpathUnit> > xpath_units_;
   std::vector<int> num_children_stack_;
   CriticalLineInfo critical_line_info_;
   Json::FastWriter fast_writer_;
+  Writer* original_writer_;
+  bool flush_head_enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(SplitHtmlFilter);
 };

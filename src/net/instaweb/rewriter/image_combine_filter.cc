@@ -677,12 +677,12 @@ class ImageCombineFilter::Combiner : public ResourceCombiner {
 
     combination->EnsureCachedResultCreated()->mutable_spriter_result()->
         CopyFrom(*result);
-    if (!resource_manager_->Write(combine_resources,
-                                  result_image->image()->Contents(),
-                                  &kContentTypePng,
-                                  StringPiece(),  // no charset on images.
-                                  combination.get(),
-                                  handler)) {
+    if (!server_context_->Write(combine_resources,
+                                result_image->image()->Contents(),
+                                &kContentTypePng,
+                                StringPiece(),  // no charset on images.
+                                combination.get(),
+                                handler)) {
       handler->Error(UrlSafeId().c_str(), 0,
                      "Could not write sprited resource.");
       return false;

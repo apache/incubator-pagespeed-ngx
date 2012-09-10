@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdlib>
 #include <limits>
 
 #include "base/logging.h"
@@ -58,11 +59,19 @@ const char* const kImportant[] = {
   "total_page_load_ms", "num_rewrites_executed", "num_rewrites_dropped",
   "resource_404_count", "serf_fetch_request_count",
   "serf_fetch_bytes_count", "image_ongoing_rewrites",
+  "javascript_total_bytes_saved", "css_filter_total_bytes_saved",
+  "image_rewrite_total_bytes_saved", "image_norewrites_high_resolution",
+  "image_rewrites_dropped_due_to_load", "image_rewrites_dropped_intentionally",
   "Html Time us Histogram", "Rewrite Latency Histogram",
   "Pagespeed Resource Latency Histogram",
   "Backend Fetch First Byte Latency Histogram", "memcached_get_count",
   "memcached_hit_latency_us", "memcached_insert_latency_us",
-  "memcached_insert_size_bytes", "memcached_lookup_size_bytes"
+  "memcached_insert_size_bytes", "memcached_lookup_size_bytes",
+  "memcached_hits", "memcached_misses", "flatten_imports_charset_mismatch",
+  "flatten_imports_invalid_url", "flatten_imports_limit_exceeded",
+  "flatten_imports_minify_failed", "flatten_imports_recursion",
+  "css_filter_parse_failures", "converted_meta_tags",
+  "javascript_minification_failures"
 };
 }  // namespace
 
@@ -414,6 +423,7 @@ ConsoleStatisticsLogfileReader::ConsoleStatisticsLogfileReader(
 
 ConsoleStatisticsLogfileReader::~ConsoleStatisticsLogfileReader() {
 }
+
 bool ConsoleStatisticsLogfileReader::ReadNextDataBlock(int64* timestamp,
                                                        GoogleString* data) {
   if (buffer_.size() < 1) {

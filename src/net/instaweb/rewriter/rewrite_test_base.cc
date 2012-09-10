@@ -118,9 +118,9 @@ void RewriteTestBase::Init() {
   RewriteDriverFactory::InitStats(statistics_.get());
   factory_->SetStatistics(statistics_.get());
   other_factory_->SetStatistics(statistics_.get());
-  resource_manager_ = factory_->CreateServerContext();
-  other_resource_manager_ = other_factory_->CreateServerContext();
-  other_rewrite_driver_ = MakeDriver(other_resource_manager_, other_options_);
+  server_context_ = factory_->CreateServerContext();
+  other_server_context_ = other_factory_->CreateServerContext();
+  other_rewrite_driver_ = MakeDriver(other_server_context_, other_options_);
 }
 
 RewriteTestBase::~RewriteTestBase() {
@@ -130,7 +130,7 @@ RewriteTestBase::~RewriteTestBase() {
 // add options prior to calling ResourceManagerTestBase::SetUp().
 void RewriteTestBase::SetUp() {
   HtmlParseTestBaseNoAlloc::SetUp();
-  rewrite_driver_ = MakeDriver(resource_manager_, options_);
+  rewrite_driver_ = MakeDriver(server_context_, options_);
 }
 
 void RewriteTestBase::TearDown() {
@@ -207,7 +207,7 @@ void RewriteTestBase::PopulateDefaultHeaders(
   int64 time = mock_timer()->NowUs();
   // Reset mock timer so synthetic headers match original.
   mock_timer()->SetTimeUs(start_time_ms() * Timer::kMsUs);
-  resource_manager_->SetDefaultLongCacheHeaders(&content_type, headers);
+  server_context_->SetDefaultLongCacheHeaders(&content_type, headers);
   // Then set it back.  Note that no alarms should fire at this point
   // because alarms work on absolute time.
   mock_timer()->SetTimeUs(time);
@@ -269,9 +269,9 @@ void RewriteTestBase::ServeResourceFromNewContext(
   if (new_rms_url_namer != NULL) {
     new_resource_manager->set_url_namer(new_rms_url_namer);
   }
-  new_resource_manager->set_hasher(resource_manager_->hasher());
+  new_resource_manager->set_hasher(server_context_->hasher());
   RewriteOptions* new_options = options_->Clone();
-  resource_manager_->ComputeSignature(new_options);
+  server_context_->ComputeSignature(new_options);
   RewriteDriver* new_rewrite_driver = MakeDriver(new_resource_manager,
                                                  new_options);
   new_factory->SetupWaitFetcher();
@@ -437,8 +437,8 @@ void RewriteTestBase::TestServeFiles(
   // When we start, there are no mock fetchers, so we'll need to get it
   // from the cache.
   ResponseHeaders headers;
-  resource_manager_->SetDefaultLongCacheHeaders(content_type, &headers);
-  HTTPCache* http_cache = resource_manager_->http_cache();
+  server_context_->SetDefaultLongCacheHeaders(content_type, &headers);
+  HTTPCache* http_cache = server_context_->http_cache();
   http_cache->Put(expected_rewritten_path, &headers,
                   rewritten_content, message_handler());
   EXPECT_EQ(0U, lru_cache()->num_hits());
@@ -764,9 +764,9 @@ void RewriteTestBase::SetCacheDelayUs(int64 delay_us) {
 
 void RewriteTestBase::SetUseTestUrlNamer(bool use_test_url_namer) {
   factory_->SetUseTestUrlNamer(use_test_url_namer);
-  resource_manager_->set_url_namer(factory_->url_namer());
+  server_context_->set_url_namer(factory_->url_namer());
   other_factory_->SetUseTestUrlNamer(use_test_url_namer);
-  other_resource_manager_->set_url_namer(other_factory_->url_namer());
+  other_server_context_->set_url_namer(other_factory_->url_namer());
 }
 
 namespace {
@@ -869,6 +869,5 @@ class ResourceManagerProcessContext {
  private:
   ProcessContext process_context_;
 };
-ResourceManagerProcessContext resource_manager_process_context;
 
 }  // namespace net_instaweb

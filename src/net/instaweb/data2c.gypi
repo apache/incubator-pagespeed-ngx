@@ -35,6 +35,42 @@
       ],
       'process_outputs_as_sources': 1,
     },
+    {
+      'rule_name': 'cssdata2c',
+      'extension': 'css',
+      'inputs': [
+        '<(data2c_exe)',
+      ],
+      'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
+      'outputs': [
+        '<(data2c_out_dir)/<(instaweb_data2c_subdir)/<(RULE_INPUT_ROOT)_css_out.cc',
+      ],
+      'action': [
+        '<(data2c_exe)',
+        '--data_file=<(instaweb_root)/<(instaweb_js_subdir)/<(RULE_INPUT_NAME)',
+        '--c_file=<(data2c_out_dir)/<(instaweb_data2c_subdir)/<(RULE_INPUT_ROOT)_css_out.cc',
+        '--varname=CSS_<(var_name)',
+      ],
+      'process_outputs_as_sources': 1,
+    },
+    {
+      'rule_name': 'htmldata2c',
+      'extension': 'html',
+      'inputs': [
+        '<(data2c_exe)',
+      ],
+      'message': 'Generating C++ code from <(RULE_INPUT_PATH)',
+      'outputs': [
+        '<(data2c_out_dir)/<(instaweb_data2c_subdir)/<(RULE_INPUT_ROOT)_html_out.cc',
+      ],
+      'action': [
+        '<(data2c_exe)',
+        '--data_file=<(instaweb_root)/<(instaweb_js_subdir)/<(RULE_INPUT_NAME)',
+        '--c_file=<(data2c_out_dir)/<(instaweb_data2c_subdir)/<(RULE_INPUT_ROOT)_html_out.cc',
+        '--varname=HTML_<(var_name)',
+      ],
+      'process_outputs_as_sources': 1,
+    },
   ],
   'dependencies': [
     'instaweb_data2c',

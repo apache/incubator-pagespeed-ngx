@@ -520,7 +520,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
         BlinkFlowCriticalLine::kUpdateResponseCodeDone);
     fake_blink_critical_line_data_finder_ =
         static_cast<FakeBlinkCriticalLineDataFinder*> (
-            resource_manager_->blink_critical_line_data_finder());
+            server_context_->blink_critical_line_data_finder());
     options_.reset(resource_manager()->NewOptions());
     options_->set_enable_blink_critical_line(true);
     options_->set_passthrough_blink_for_last_invalid_response_code(true);

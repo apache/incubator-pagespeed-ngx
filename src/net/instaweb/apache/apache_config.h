@@ -125,6 +125,12 @@ class ApacheConfig : public RewriteOptions {
   const GoogleString& statistics_logging_file() const {
     return statistics_logging_file_.value();
   }
+  const GoogleString& statistics_logging_charts_css() const {
+    return statistics_logging_charts_css_.value();
+  }
+  const GoogleString& statistics_logging_charts_js() const {
+    return statistics_logging_charts_js_.value();
+  }
   void set_statistics_logging_file(GoogleString x) {
     set_option(x, &statistics_logging_file_);
   }
@@ -285,6 +291,8 @@ class ApacheConfig : public RewriteOptions {
   Option<GoogleString> memcached_servers_;
   Option<GoogleString> slurp_directory_;
   Option<GoogleString> statistics_logging_file_;
+  Option<GoogleString> statistics_logging_charts_css_;
+  Option<GoogleString> statistics_logging_charts_js_;
 
   ApacheOption<RefererStatisticsOutputLevel> referer_statistics_output_level_;
 

@@ -52,7 +52,7 @@ namespace net_instaweb {
 ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
                                    const StringPiece& extension,
                                    RewriteFilter* filter)
-    : resource_manager_(driver->server_context()),
+    : server_context_(driver->server_context()),
       rewrite_driver_(driver),
       partnership_(driver),
       prev_num_components_(0),
@@ -68,9 +68,9 @@ ResourceCombiner::ResourceCombiner(RewriteDriver* driver,
                     extension.size()),
       filter_(filter) {
   // This CHECK is here because RewriteDriver is constructed with its
-  // resource_manager_ == NULL.
+  // server_context_ == NULL.
   // TODO(sligocki): Construct RewriteDriver with a ResourceManager.
-  CHECK(resource_manager_ != NULL);
+  CHECK(server_context_ != NULL);
 }
 
 ResourceCombiner::~ResourceCombiner() {
@@ -153,7 +153,7 @@ GoogleString ResourceCombiner::UrlSafeId() const {
 void ResourceCombiner::ComputeLeafSize() {
   GoogleString segment = UrlSafeId();
   accumulated_leaf_size_ = segment.size() + url_overhead_
-      + resource_manager_->hasher()->HashSizeInChars();
+      + server_context_->hasher()->HashSizeInChars();
 }
 
 void ResourceCombiner::AccumulateLeafSize(const StringPiece& url) {
@@ -249,7 +249,7 @@ bool ResourceCombiner::WriteCombination(
   if (written) {
     // TODO(morlovich): Fix combiners to deal with charsets.
     written =
-        resource_manager_->Write(
+        server_context_->Write(
             combine_resources, combined_contents, CombinationContentType(),
             StringPiece() /* not computing charset for now */,
             combination.get(), handler);

@@ -42,7 +42,7 @@ const int64 kNotCacheable = 0;
 }  // namespace
 
 Resource::Resource(ServerContext* resource_manager, const ContentType* type)
-    : resource_manager_(resource_manager),
+    : server_context_(resource_manager),
       type_(type),
       is_background_fetch_(true) {
 }
@@ -55,13 +55,13 @@ bool Resource::IsValidAndCacheable() const {
   // if we have some we should be using UrlInputResource's implementation
   // of this method.
   return ((response_headers_.status_code() == HttpStatus::kOK) &&
-          !resource_manager_->http_cache()->IsAlreadyExpired(
+          !server_context_->http_cache()->IsAlreadyExpired(
               NULL, response_headers_));
 }
 
 GoogleString Resource::ContentsHash() const {
   DCHECK(IsValidAndCacheable());
-  return resource_manager_->contents_hasher()->Hash(contents());
+  return server_context_->contents_hasher()->Hash(contents());
 }
 
 void Resource::AddInputInfoToPartition(HashHint suggest_include_content_hash,

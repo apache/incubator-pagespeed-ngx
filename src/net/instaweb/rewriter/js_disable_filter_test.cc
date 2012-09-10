@@ -38,12 +38,6 @@ const char kUnrelatedTags[] =
     "<h1>Hello 1</h1>"
     "<div id=\"middleFooter\"><h3>Hello 3</h3></div>"
     "</div>";
-const char kPrefetchContainerStartTag[] =
-    "<div class=\"psa_prefetch_container\">";
-const char kPrefetchContainerEndTag[] =
-    "</div>";
-const char kPrefetchScriptTag[] =
-    "<script src=\"%s\" type=\"psa_prefetch\"></script>";
 const char kXUACompatibleMetaTag[] =
     "<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">";
 
@@ -61,21 +55,6 @@ class JsDisableFilterTest : public RewriteTestBase {
 
   virtual bool AddBody() const {
     return false;
-  }
-
-  virtual GoogleString AddHtmlBody(const StringPiece& html) {
-    GoogleString ret;
-    if (AddHtmlTags()) {
-      ret = AddBody() ? "<html><body>" : "<html>";
-      StrAppend(&ret, html, (AddBody() ? "</body></html>" : "</html>"));
-    } else {
-      html.CopyToString(&ret);
-    }
-    return ret;
-  }
-
-  GoogleString GetPrefetchScriptTag(const char* src) {
-    return StringPrintf(kPrefetchScriptTag, src);
   }
 
   scoped_ptr<JsDisableFilter> filter_;
@@ -98,15 +77,11 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       kUnrelatedNoscriptTags,
       "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
-      StrCat(kUnrelatedTags,
+      kUnrelatedTags,
       "<img src=\"abc.jpg\" onload=\"pagespeed.deferJs.addOnloadListeners(this,"
       " function() {foo1();foo2();});\">"
       "<script pagespeed_orig_src=\"blah2\" random=\"false\""
-      " type=\"text/psajs\" orig_index=\"1\">hi2</script>",
-      kPrefetchContainerStartTag,
-      GetPrefetchScriptTag("blah1"),
-      GetPrefetchScriptTag("blah2"),
-      kPrefetchContainerEndTag),
+      " type=\"text/psajs\" orig_index=\"1\">hi2</script>"
       "</body>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
@@ -138,13 +113,9 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithExperimental) {
       kUnrelatedNoscriptTags,
       "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
-      StrCat(kUnrelatedTags,
+      kUnrelatedTags,
       "<script pagespeed_orig_src=\"blah2\" random=\"false\""
-      " type=\"text/psajs\" orig_index=\"1\">hi2</script>",
-      kPrefetchContainerStartTag,
-      GetPrefetchScriptTag("blah1"),
-      GetPrefetchScriptTag("blah2"),
-      kPrefetchContainerEndTag),
+      " type=\"text/psajs\" orig_index=\"1\">hi2</script>"
       "</body>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
@@ -160,13 +131,9 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithQueryParam) {
       kUnrelatedNoscriptTags,
       "<script pagespeed_orig_src=\"x?a=b&amp;c=d\" random=\"true\""
       " type=\"text/psajs\" orig_index=\"0\">hi1</script>",
-      StrCat(kUnrelatedTags,
+      kUnrelatedTags,
       "<script pagespeed_orig_src=\"y?a=b&amp;c=d\" random=\"false\""
-      " type=\"text/psajs\" orig_index=\"1\">hi2</script>",
-      kPrefetchContainerStartTag,
-      GetPrefetchScriptTag("x?a=b&amp;c=d"),
-      GetPrefetchScriptTag("y?a=b&amp;c=d"),
-      kPrefetchContainerEndTag));
+      " type=\"text/psajs\" orig_index=\"1\">hi2</script>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
 }
@@ -181,13 +148,9 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithUnescapedQueryParam) {
       kUnrelatedNoscriptTags,
       "<script pagespeed_orig_src=\"x?a=b&c=d\" random=\"true\""
       " type=\"text/psajs\" orig_index=\"0\">hi1</script>",
-      StrCat(kUnrelatedTags,
+      kUnrelatedTags,
       "<script pagespeed_orig_src=\"y?a=b&c=d\" random=\"false\""
-      " type=\"text/psajs\" orig_index=\"1\">hi2</script>",
-      kPrefetchContainerStartTag,
-      GetPrefetchScriptTag("x?a=b&c=d"),
-      GetPrefetchScriptTag("y?a=b&c=d"),
-      kPrefetchContainerEndTag));
+      " type=\"text/psajs\" orig_index=\"1\">hi2</script>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
 }
@@ -224,54 +187,11 @@ TEST_F(JsDisableFilterTest, DisablesScriptOnlyFromFirstSrc) {
       kUnrelatedTags,
       "<script random=\"false\">hi2</script>"
       "<script pagespeed_orig_src=\"1.js?a#12296;=en\" type=\"text/psajs\""
-      " orig_index=\"0\"></script>",
-      StrCat(kPrefetchContainerStartTag,
-      GetPrefetchScriptTag("1.js?a#12296;=en"),
-      kPrefetchContainerEndTag));
+      " orig_index=\"0\"></script>");
 
   ValidateExpected("http://example.com/", input_html, expected);
 }
 
-TEST_F(JsDisableFilterTest, DisablesScriptInMultipleBodies) {
-  options()->set_enable_defer_js_experimental(true);
-  options_->EnableFilter(RewriteOptions::kDeferJavascript);
-  const GoogleString input_html = StrCat(
-      "<body>",
-      kUnrelatedNoscriptTags,
-      "<script random=\"true\">hi1</script>"
-      "</body>"
-      "<body>"
-      "<script src=\"1.js\"></script>"
-      "</body>",
-      kUnrelatedTags,
-      "<script random=\"false\">hi2</script>"
-      "<script src=\"2.js\"></script>");
-  const GoogleString expected = StrCat(
-      "<head><script type=\"text/javascript\" pagespeed_no_defer=\"\">",
-      JsDisableFilter::kEnableJsExperimental,
-      "</script></head>"
-      "<body>",
-      StrCat(kUnrelatedNoscriptTags,
-      "<script random=\"true\">hi1</script>"
-      "</body>"
-      "<body>"
-      "<script pagespeed_orig_src=\"1.js\" type=\"text/psajs\""
-      " orig_index=\"0\"></script>",
-      kPrefetchContainerStartTag,
-      GetPrefetchScriptTag("1.js"),
-      kPrefetchContainerEndTag),
-      "</body>",
-      StrCat(kUnrelatedTags,
-      "<script random=\"false\" type=\"text/psajs\" orig_index=\"1\">"
-      "hi2</script>"
-      "<script pagespeed_orig_src=\"2.js\" type=\"text/psajs\""
-      " orig_index=\"2\"></script>",
-      kPrefetchContainerStartTag,
-      GetPrefetchScriptTag("2.js"),
-      kPrefetchContainerEndTag));
-
-  ValidateExpected("http://example.com/", input_html, expected);
-}
 
 TEST_F(JsDisableFilterTest, AddsMetaTagForIE) {
   rewrite_driver()->set_user_agent("Mozilla/5.0 ( MSIE 9.0; Trident/5.0)");
@@ -292,10 +212,7 @@ TEST_F(JsDisableFilterTest, AddsMetaTagForIE) {
       StrCat(kUnrelatedNoscriptTags,
       "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
-      kUnrelatedTags,
-      kPrefetchContainerStartTag,
-      GetPrefetchScriptTag("blah1"),
-      kPrefetchContainerEndTag),
+      kUnrelatedTags),
       "</body>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
@@ -318,10 +235,7 @@ TEST_F(JsDisableFilterTest, NoMetaTagForIE) {
       StrCat(kUnrelatedNoscriptTags,
       "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
-      kUnrelatedTags,
-      kPrefetchContainerStartTag,
-      GetPrefetchScriptTag("blah1"),
-      kPrefetchContainerEndTag),
+      kUnrelatedTags),
       "</body>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);

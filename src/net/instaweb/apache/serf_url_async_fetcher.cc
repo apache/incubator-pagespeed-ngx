@@ -51,9 +51,8 @@
 #include "third_party/serf/src/serf.h"
 #include "third_party/serf/src/serf_bucket_util.h"
 
-// Until this fetcher has some mileage on it, it is useful to keep around
-// an easy way to turn on lots of debug messages.  But they do get a bit chatty
-// when things are working well.
+// This is an easy way to turn on lots of debug messages. Note that this
+// is somewhat verbose.
 #define SERF_DEBUG(x)
 
 namespace {
@@ -175,6 +174,10 @@ class SerfFetch : public PoolElement<SerfFetch> {
     // fetcher_==NULL if Start is called during shutdown.
     if (!success && (fetcher_ != NULL)) {
       fetcher_->failure_count_->Add(1);
+    }
+    if (fetcher_->track_original_content_length()) {
+      async_fetch_->extra_response_headers()->SetOriginalContentLength(
+          bytes_received_);
     }
     async_fetch_->Done(success);
     // We should always NULL the async_fetch_ out after calling otherwise we
@@ -872,6 +875,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       force_threaded_(false),
       shutdown_(false),
       list_outstanding_urls_on_error_(false),
+      track_original_content_length_(false),
       message_handler_(message_handler) {
   CHECK(statistics != NULL);
   request_count_  =
@@ -906,6 +910,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
       force_threaded_(parent->force_threaded_),
       shutdown_(false),
       list_outstanding_urls_on_error_(parent->list_outstanding_urls_on_error_),
+      track_original_content_length_(parent->track_original_content_length_),
       message_handler_(parent->message_handler_) {
   Init(parent->pool(), proxy);
 }

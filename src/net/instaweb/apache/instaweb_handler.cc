@@ -59,10 +59,14 @@
 
 namespace net_instaweb {
 
+extern const char* JS_mod_pagespeed_console_js;
+extern const char* CSS_mod_pagespeed_console_css;
+extern const char* HTML_mod_pagespeed_console_body;
+
 namespace {
 
 const char kStatisticsHandler[] = "mod_pagespeed_statistics";
-const char kStatisticsJsonHandler[] = "mod_pagespeed_statistics_json";
+const char kConsoleHandler[] = "mod_pagespeed_console";
 const char kGlobalStatisticsHandler[] = "mod_pagespeed_global_statistics";
 const char kRefererStatisticsHandler[] = "mod_pagespeed_referer_statistics";
 const char kMessageHandler[] = "mod_pagespeed_message";
@@ -304,7 +308,7 @@ struct HeaderLoggingData {
 };
 
 // Helper function to support the LogRequestHeadersHandler.  Called once for
-// each header to write header data in a form suitable for javascript inling.
+// each header to write header data in a form suitable for javascript inlining.
 // Used only for tests.
 int log_request_headers(void* logging_data,
                         const char* key, const char* value) {
@@ -433,10 +437,46 @@ apr_status_t instaweb_handler(request_rec* request) {
       write_handler_response(output, request);
     }
     ret = OK;
+
   } else if (strcmp(request->handler, kRefererStatisticsHandler) == 0) {
     GoogleString output;
     StringWriter writer(&output);
     factory->DumpRefererStatistics(&writer);
+    write_handler_response(output, request);
+    ret = OK;
+
+  } else if (strcmp(request->handler, kConsoleHandler) == 0) {
+    GoogleString output;
+    StringWriter writer(&output);
+    writer.Write("<!DOCTYPE html>"
+                 "<title>mod_pagespeed console</title>",
+                 factory->message_handler());
+    writer.Write("<style>", factory->message_handler());
+    writer.Write(CSS_mod_pagespeed_console_css, factory->message_handler());
+    writer.Write("</style>", factory->message_handler());
+    writer.Write(HTML_mod_pagespeed_console_body, factory->message_handler());
+    writer.Write("<script>", factory->message_handler());
+    if (config->statistics_logging_charts_js().size() > 0 &&
+        config->statistics_logging_charts_css().size() > 0) {
+      writer.Write("var chartsOfflineJS = '", factory->message_handler());
+      writer.Write(config->statistics_logging_charts_js(),
+          factory->message_handler());
+      writer.Write("';", factory->message_handler());
+      writer.Write("var chartsOfflineCSS = '", factory->message_handler());
+      writer.Write(config->statistics_logging_charts_css(),
+          factory->message_handler());
+      writer.Write("';", factory->message_handler());
+    } else {
+      if (config->statistics_logging_charts_js().size() > 0 ||
+          config->statistics_logging_charts_css().size() > 0) {
+        factory->message_handler()->Message(kWarning,
+            "Using online Charts API.");
+      }
+      writer.Write("var chartsOfflineJS, chartsOfflineCSS;",
+          factory->message_handler());
+    }
+    writer.Write(JS_mod_pagespeed_console_js, factory->message_handler());
+    writer.Write("</script>", factory->message_handler());
     write_handler_response(output, request);
     ret = OK;
 
@@ -554,7 +594,7 @@ apr_status_t save_url_hook(request_rec *request) {
   // Note: we must compare against the parsed URL because unparsed_url has
   // ?ets=load:xx at the end for kBeaconHandler.
   if (parsed_url.ends_with(kStatisticsHandler) ||
-      parsed_url.ends_with(kStatisticsJsonHandler) ||
+      parsed_url.ends_with(kConsoleHandler) ||
       parsed_url.ends_with(kGlobalStatisticsHandler) ||
       parsed_url.ends_with(kBeaconHandler) ||
       parsed_url.ends_with(kMessageHandler) ||

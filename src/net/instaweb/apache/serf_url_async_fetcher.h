@@ -114,6 +114,15 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   // Serf library reports an error.
   void set_list_outstanding_urls_on_error(bool x);
 
+  // Indicates that Serf should track the original content length for
+  // fetched resources.
+  bool track_original_content_length() const {
+    return track_original_content_length_;
+  }
+  void set_track_original_content_length(bool x) {
+    track_original_content_length_ = x;
+  }
+
  protected:
   typedef Pool<SerfFetch> SerfFetchPool;
 
@@ -179,6 +188,7 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   bool force_threaded_;
   bool shutdown_;
   bool list_outstanding_urls_on_error_;
+  bool track_original_content_length_;
   MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcher);

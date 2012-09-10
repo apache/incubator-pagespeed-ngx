@@ -27,6 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -54,7 +55,7 @@ const char SplitHtmlFilter::kCriticalLineInfoPropertyName[] =
 // All the emitBytes are captured into the top json until a new panel
 // instance is found or the current panel instance ends.
 SplitHtmlFilter::SplitHtmlFilter(RewriteDriver* rewrite_driver)
-    : HtmlWriterFilter(rewrite_driver),
+    : SuppressPreheadFilter(rewrite_driver),
       rewrite_driver_(rewrite_driver),
       options_(rewrite_driver->options()),
       script_written_(false) {
@@ -65,20 +66,27 @@ SplitHtmlFilter::~SplitHtmlFilter() {
 }
 
 void SplitHtmlFilter::StartDocument() {
+  flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
+  original_writer_ = rewrite_driver_->writer();
   num_children_stack_.clear();
   url_ = rewrite_driver_->google_url().Spec();
   json_writer_.reset(new JsonWriter(rewrite_driver_->writer(),
                                     &element_json_stack_));
-  set_writer(json_writer_.get());
-
-  HtmlWriterFilter::StartDocument();
-
-  // Push json object to capture critical html.
+  // Push the base panel.
   StartPanelInstance(static_cast<HtmlElement*>(NULL));
-
+  // StartPanelInstance sets the json writer. For the base panel, we don't want
+  // the writer to be set.
+  set_writer(original_writer_);
   ReadCriticalLineConfig();
 
   script_written_ = false;
+
+  // TODO(rahulbansal): Refactor this pattern.
+  if (flush_head_enabled_) {
+    SuppressPreheadFilter::StartDocument();
+  } else {
+    HtmlWriterFilter::StartDocument();
+  }
 }
 
 void SplitHtmlFilter::Cleanup() {
@@ -88,8 +96,13 @@ void SplitHtmlFilter::Cleanup() {
 }
 
 void SplitHtmlFilter::EndDocument() {
-  json_writer_->UpdateDictionary();
-  Flush();
+  HtmlWriterFilter::Flush();
+
+  if (flush_head_enabled_) {
+    SuppressPreheadFilter::EndDocument();
+  } else {
+    HtmlWriterFilter::EndDocument();
+  }
 
   // Remove critical html since it should already have been sent out by now.
   element_json_stack_[0].second->removeMember(BlinkUtil::kInstanceHtml);
@@ -98,28 +111,14 @@ void SplitHtmlFilter::EndDocument() {
   json.append(*(element_json_stack_[0].second));
 
   ServeNonCriticalPanelContents(json);
+  // TODO(rahulbansal): We are sending an extra close body and close html tag.
+  // Fix that.
   WriteString("\n</body></html>\n");
   Cleanup();
 }
 
 void SplitHtmlFilter::WriteString(const StringPiece& str) {
   rewrite_driver_->writer()->Write(str, rewrite_driver_->message_handler());
-}
-
-void SplitHtmlFilter::Flush() {
-  if (element_json_stack_.size() == 0) {
-    return;
-  }
-
-  GoogleString instance_html =
-      (*(element_json_stack_[0].second))[BlinkUtil::kInstanceHtml].asCString();
-  if (instance_html.empty()) {
-    return;
-  }
-
-  WriteString(instance_html);
-  HtmlWriterFilter::Flush();
-  (*(element_json_stack_[0].second))[BlinkUtil::kInstanceHtml] = "";
 }
 
 void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
@@ -217,6 +216,7 @@ void SplitHtmlFilter::EndPanelInstance() {
   Json::Value* parent_dictionary = element_json_stack_.back().second;
   GoogleString panel_id = GetPanelIdForInstance(element_json_pair.first);
   AppendJsonData(&((*parent_dictionary)[panel_id]), *dictionary);
+  set_writer(original_writer_);
 }
 
 void SplitHtmlFilter::StartPanelInstance(HtmlElement* element) {
@@ -227,6 +227,8 @@ void SplitHtmlFilter::StartPanelInstance(HtmlElement* element) {
   Json::Value* new_json = new Json::Value(Json::objectValue);
   // Push new Json
   element_json_stack_.push_back(std::make_pair(element, new_json));
+  original_writer_ = rewrite_driver_->writer();
+  set_writer(json_writer_.get());
 }
 
 void SplitHtmlFilter::InsertPanelStub(HtmlElement* element,
@@ -296,7 +298,16 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
     panel_id = GetPanelIdForInstance(element_json_stack_.back().first);
     MarkElementWithPanelId(element, panel_id);
   }
-  HtmlWriterFilter::StartElement(element);
+  if (element_json_stack_.size() > 1) {
+    // Suppress these bytes since they belong to a panel.
+    HtmlWriterFilter::StartElement(element);
+  } else {
+    if (flush_head_enabled_) {
+      SuppressPreheadFilter::StartElement(element);
+    } else {
+      HtmlWriterFilter::StartElement(element);
+    }
+  }
 }
 
 void SplitHtmlFilter::EndElement(HtmlElement* element) {
@@ -313,7 +324,16 @@ void SplitHtmlFilter::EndElement(HtmlElement* element) {
     InsertBlinkJavascript(element);
   }
 
-  HtmlWriterFilter::EndElement(element);
+  if (element_json_stack_.size() > 1) {
+    // Suppress these bytes since they belong to a panel.
+    HtmlWriterFilter::EndElement(element);
+  } else {
+    if (flush_head_enabled_) {
+      SuppressPreheadFilter::EndElement(element);
+    } else {
+      HtmlWriterFilter::EndElement(element);
+    }
+  }
 }
 
 void SplitHtmlFilter::AppendJsonData(Json::Value* dictionary,

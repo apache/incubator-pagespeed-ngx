@@ -19,7 +19,8 @@
 # library (.a) from an already-built mod_pagespeed distribution.  This
 
 # MOD_PAGESPEED_ROOT should be set to the 'src' directory where mod_pagespeed
-# was built.  See http://code.google.com/p/modpagespeed/wiki/HowToBuild
+# was built.  See:
+# https://developers.google.com/speed/docs/mod_pagespeed/build_from_source
 #
 # When running this Makefile from the 'automatic' directory then it will
 # be set automatically.

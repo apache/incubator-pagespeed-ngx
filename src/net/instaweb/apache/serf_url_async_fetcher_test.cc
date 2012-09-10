@@ -29,6 +29,7 @@
 #include "base/stl_util-inl.h"
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_timer.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
@@ -567,6 +568,29 @@ TEST_F(SerfUrlAsyncFetcherTest, ThreadedConnectionRefusedWithDetail) {
   serf_url_async_fetcher_->set_list_outstanding_urls_on_error(true);
   ConnectionRefusedTest(true);
   EXPECT_EQ(2, message_handler_.SeriousMessages());
+}
+
+// Test that the X-Original-Content-Length header is properly set
+// when requested. Since this appears in the extra_response_headers()
+// field in AsyncFetch, we need to use the Fetch() variant, rather
+// than StreamingFetch(), to get direct access to this.
+TEST_F(SerfUrlAsyncFetcherTest, TestTrackOriginalContentLength) {
+  serf_url_async_fetcher_->set_track_original_content_length(true);
+  StringAsyncFetch async_fetch;
+  serf_url_async_fetcher_->Fetch(urls_[kModpagespeedSite], &message_handler_,
+                                 &async_fetch);
+  while (!async_fetch.done()) {
+    YieldToThread();
+    serf_url_async_fetcher_->Poll(kThreadedPollMs);
+  }
+  const char* ocl_header = async_fetch.extra_response_headers()->Lookup1(
+      HttpAttributes::kXOriginalContentLength);
+  EXPECT_TRUE(ocl_header != NULL);
+  int bytes_count =
+      statistics_.GetVariable(SerfStats::kSerfFetchByteCount)->Get();
+  int64 ocl_value;
+  EXPECT_TRUE(StringToInt64(ocl_header, &ocl_value));
+  EXPECT_EQ(bytes_count, ocl_value);
 }
 
 }  // namespace net_instaweb

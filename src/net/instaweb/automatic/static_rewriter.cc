@@ -112,18 +112,18 @@ Statistics* FileRewriter::statistics() {
 StaticRewriter::StaticRewriter(int* argc, char*** argv)
     : gflags_((*argv)[0], argc, argv),
       file_rewriter_(&gflags_, true),
-      resource_manager_(file_rewriter_.CreateServerContext()) {
+      server_context_(file_rewriter_.CreateServerContext()) {
   if (!gflags_.SetOptions(&file_rewriter_,
-                          resource_manager_->global_options())) {
+                          server_context_->global_options())) {
     exit(1);
   }
 }
 
 StaticRewriter::StaticRewriter()
     : file_rewriter_(&gflags_, false),
-      resource_manager_(file_rewriter_.CreateServerContext()) {
+      server_context_(file_rewriter_.CreateServerContext()) {
   if (!gflags_.SetOptions(&file_rewriter_,
-                          resource_manager_->global_options())) {
+                          server_context_->global_options())) {
     exit(1);
   }
 }
@@ -136,7 +136,7 @@ bool StaticRewriter::ParseText(const StringPiece& url,
                                const StringPiece& text,
                                const StringPiece& output_dir,
                                Writer* writer) {
-  RewriteDriver* driver = resource_manager_->NewRewriteDriver();
+  RewriteDriver* driver = server_context_->NewRewriteDriver();
 
   // For this simple file transformation utility we always want to perform
   // any optimizations we can, so we wait until everything is done rather
@@ -147,7 +147,7 @@ bool StaticRewriter::ParseText(const StringPiece& url,
   driver->SetWriter(writer);
   if (!driver->StartParseId(url, id, kContentTypeHtml)) {
     fprintf(stderr, "StartParseId failed on url %s\n", url.as_string().c_str());
-    resource_manager_->ReleaseRewriteDriver(driver);
+    server_context_->ReleaseRewriteDriver(driver);
     return false;
   }
 

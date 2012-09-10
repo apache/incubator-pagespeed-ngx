@@ -18,12 +18,15 @@
 
 #include "net/instaweb/rewriter/public/split_html_filter.h"
 
+#include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
+#include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
@@ -32,6 +35,8 @@
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
+
+class AbstractMutex;
 
 namespace {
 
@@ -102,15 +107,18 @@ class MockPage : public PropertyPage {
 
 class SplitHtmlFilterTest : public RewriteTestBase {
  public:
-  SplitHtmlFilterTest() {}
+  SplitHtmlFilterTest(): writer_(&output_) {}
 
+  virtual bool AddHtmlTags() const { return false; }
+
+ protected:
   virtual void SetUp() {
     delete options_;
     options_ = new RewriteOptions();
     options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
     RewriteTestBase::SetUp();
 
-    rewrite_driver()->SetWriter(&write_to_string_);
+    rewrite_driver()->SetWriter(&writer_);
     SplitHtmlFilter* filter = new SplitHtmlFilter(rewrite_driver());
     html_writer_filter_.reset(filter);
     rewrite_driver()->AddFilter(html_writer_filter_.get());
@@ -118,20 +126,19 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     response_headers_.set_status_code(HttpStatus::kOK);
     response_headers_.SetDateAndCaching(MockTimer::kApr_5_2010_ms, 0);
     rewrite_driver_->set_response_headers_ptr(&response_headers_);
+    output_.clear();
   }
 
-  virtual bool AddHtmlTags() const { return false; }
+  GoogleString output_;
 
-  const GoogleString& output_buffer() { return output_buffer_; }
-
- protected:
+ private:
+  StringWriter writer_;
   ResponseHeaders response_headers_;
   SplitHtmlFilter* split_html_filter_;
-  virtual bool AddBody() const { return true; }
 };
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithPropertyCache) {
-  PropertyCache* property_cache = resource_manager_->page_property_cache();
+  PropertyCache* property_cache = server_context_->page_property_cache();
   property_cache->set_enabled(true);
   property_cache->AddCohort(SplitHtmlFilter::kRenderCohort);
   property_cache->AddCohort(RewriteDriver::kDomCohort);
@@ -156,14 +163,76 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithPropertyCache) {
       cohort, SplitHtmlFilter::kCriticalLineInfoPropertyName);
   property_cache->UpdateValue(buf, property_value);
   property_cache->WriteCohort(cohort, page);
-  ValidateExpectedUrl(kRequestUrl, kHtmlInput, kSplitHtml);
+  Parse("split_with_pcache", kHtmlInput);
+  EXPECT_EQ(kSplitHtml, output_);
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithOptions) {
   options_->set_critical_line_config(
       "//div[@id = \"container\"]/div[4],"
       "//img[3]://h1[@id = \"footer\"]");
-  ValidateExpectedUrl(kRequestUrl, kHtmlInput, kSplitHtml);
+  Parse("split_with_options", kHtmlInput);
+  EXPECT_EQ(kSplitHtml, output_);
+}
+
+TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
+  options_->ForceEnableFilter(
+      RewriteOptions::RewriteOptions::kFlushSubresources);
+  options_->set_critical_line_config(
+      "//div[@id = \"container\"]/div[4],"
+      "//img[3]://h1[@id = \"footer\"]");
+
+  const char pre_head_input[] = "<!DOCTYPE html><html>";
+  const char post_head_input[] =
+      "<head>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
+        "<script src=\"b.js\"></script>"
+      "</head>"
+      "<body></body></html>";
+  const char post_head_output[] =
+      "<head>"
+      "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
+      "<script src=\"b.js\"></script>"
+      "<script src=\"/psajs/blink.js\"></script>"
+      "<script>pagespeed.deferInit();</script>"
+      "</head><body></body></html>"
+      "<script>pagespeed.panelLoader.bufferNonCriticalData([{}]);"
+      "</script>\n</body></html>\n";
+  GoogleString html_input = StrCat(pre_head_input, post_head_input);
+
+  Parse("not_flushed_early", html_input);
+  EXPECT_EQ(StrCat(pre_head_input, post_head_output), output_);
+
+  // SuppressPreheadFilter should have populated the flush_early_proto with the
+  // appropriate pre head information.
+  EXPECT_EQ(pre_head_input,
+            rewrite_driver()->flush_early_info()->pre_head());
+
+  // pre head is suppressed if the dummy head was flushed early.
+  output_.clear();
+  rewrite_driver()->set_flushed_early(true);
+  Parse("flushed_early", html_input);
+  EXPECT_EQ(post_head_output, output_);
+}
+
+TEST_F(SplitHtmlFilterTest, FlushEarlyDisabled) {
+  options_->set_critical_line_config(
+      "//div[@id = \"container\"]/div[4],"
+      "//img[3]://h1[@id = \"footer\"]");
+
+  const char pre_head_input[] = "<!DOCTYPE html><html>";
+  const char post_head_input[] =
+      "<head>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
+        "<script src=\"b.js\"></script>"
+      "</head>"
+      "<body></body></html>";
+  GoogleString html_input = StrCat(pre_head_input, post_head_input);
+
+  Parse("not_flushed_early", html_input);
+
+  // SuppressPreheadFilter should not have populated the flush_early_proto.
+  EXPECT_EQ("", rewrite_driver()->flush_early_info()->pre_head());
 }
 
 }  // namespace

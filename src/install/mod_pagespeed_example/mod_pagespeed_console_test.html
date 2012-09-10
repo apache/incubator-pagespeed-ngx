@@ -1,8 +1,13 @@
 <!DOCTYPE html>
-<title>Mod Pagespeed Console JSUnit Test</title>
+<!--
+Note: this test will not run in the JSUnit browser view; it requires
+Closure and thus must be built with blaze.
+-->
 
-<!-- Some of the functions in mod_pagespeed_console.js require certain layout
-     divs to already be in place on the html page.-->
+<!--
+Some of the functions in mod_pagespeed_console.js require certain layout
+divs to already be in place on the html page.
+-->
 <div id = "toggle-messages"></div>
 <select id="graph-list"></select>
 <div id="add-filter"></div>
@@ -11,96 +16,108 @@
 <div id="widget-title"></div>
 <div id="container"></div>
 
-<link rel="stylesheet" href="file:///home/build/nonconf/google3/third_party/java/jsunit/jsunit2.2/css/jsUnitStyle.css">
-<script src="file:///home/build/nonconf/google3/third_party/java/jsunit/jsunit2.2/app/jsUnitCore.js"></script>
-<script src="mod_pagespeed_console.js"></script>
 <script src="https://www.google.com/jsapi?autoload=%7B%22modules%22%3A%5B%7B%22name%22%3A%22visualization%22%2C%22version%22%3A%221.0%22%2C%22packages%22%3A%5B%22corechart%22%5D%7D%5D%7D"></script>
+
 <script>
+function setUp() {
+  window.PERCENT_CACHE_HITS = 0;
+  window.SERF_BYTES_FETCHED = 1;
+  window.AVG_LOAD_TIME = 2;
+  window.QUERIES_PER_SEC = 3;
+  window.FLUSHES_PER_PAGE = 4;
+  window.FALLBACK_RESPONSES = 5;
+  window.REWRITES_EXECUTED = 6;
+  window.REWRITES_DROPPED = 7;
+  window.RESOURCE_404S = 9;
+  window.SLURP_404S = 10;
+  window.ONGOING_IMG_REWRITES = 11;
+}
+
 // Tests that the constructor works properly and initializes what it's supposed
 // to initialize.
 function testConstructor() {
-  mpsconsole = new pagespeed.MpsConsole();
+  window.mpsconsole = new pagespeed.MpsConsole();
   assertNotUndefined('mpsconsole.LineGraphs_', mpsconsole.LineGraphs_);
   assertNotUndefined('mpsconsole.Histograms_', mpsconsole.Histograms_);
+}
+
+// Tests that queries are generated correctly.
+function testQueryURICreation() {
+  window.mpsconsole = new pagespeed.MpsConsole();
+  var filters = "/mod_pagespeed_statistics?json&start_time=0&end_time=10&granularity=5";
+  var queryStringSingleVar = mpsconsole.createQueryURI(false,
+      [QUERIES_PER_SEC], 0, 10, 5);
+  assertEquals(filters + "&var_titles=page_load_count,",
+               queryStringSingleVar);
+  var queryStringMultipleVar = mpsconsole.createQueryURI(false,
+      [FLUSHES_PER_PAGE, FALLBACK_RESPONSES], 0, 10, 5);
+  assertEquals(filters +
+      "&var_titles=num_flushes,page_load_count,num_fallback_responses_served,",
+      queryStringMultipleVar);
+  var queryStringHistogram = mpsconsole.createQueryURI(true,
+      [PERCENT_CACHE_HITS], 0, 10, 5);
+  assertEquals(filters + "&hist_titles=Html Time us Histogram,",
+               queryStringHistogram);
 }
 
 // Tests that data parsing and graph generation works correctly in simulated
 // normal use.
 function testConsole() {
-  mpsconsole = new pagespeed.MpsConsole();
+  window.mpsconsole = new pagespeed.MpsConsole();
   // Test with some simple data.
   var simpleJSON = generateJSONResponse(false);
   var variableNoTimeSeries = mpsconsole.computeTimeSeries(
-      simpleJSON['variables'], simpleJSON['timestamps'],
-      mpsconsole.LineGraphIndexes.ONGOING_IMG_REWRITES);
+      simpleJSON['variables'], simpleJSON['timestamps'], ONGOING_IMG_REWRITES);
   var singleVariableTimeSeries = mpsconsole.computeTimeSeries(
-      simpleJSON['variables'], simpleJSON['timestamps'],
-      mpsconsole.LineGraphIndexes.NUM_FLUSHES);
+      simpleJSON['variables'], simpleJSON['timestamps'], FLUSHES_PER_PAGE);
   var multipleVariableTimeSeries = mpsconsole.computeTimeSeries(
-      simpleJSON['variables'], simpleJSON['timestamps'],
-      mpsconsole.LineGraphIndexes.PERCENT_CACHE_HITS);
-  // TODO(sarahdw, bvb): Test Histogram.
-  ensureSaneValues(variableNoTimeSeries,
-                   mpsconsole.LineGraphIndexes.ONGOING_IMG_REWRITES);
-  ensureSaneValues(singleVariableTimeSeries,
-                   mpsconsole.LineGraphIndexes.NUM_FLUSHES);
-  ensureSaneValues(multipleVariableTimeSeries,
-                   mpsconsole.LineGraphIndexes.PERCENT_CACHE_HITS); 
-  checkHardcodedValues(variableNoTimeSeries,
-                       mpsconsole.LineGraphIndexes.ONGOING_IMG_REWRITES);
-  checkHardcodedValues(singleVariableTimeSeries,
-                       mpsconsole.LineGraphIndexes.NUM_FLUSHES);
-  checkHardcodedValues(multipleVariableTimeSeries,
-                       mpsconsole.LineGraphIndexes.PERCENT_CACHE_HITS);
+      simpleJSON['variables'], simpleJSON['timestamps'], PERCENT_CACHE_HITS);
+  ensureSaneValues(variableNoTimeSeries, ONGOING_IMG_REWRITES);
+  ensureSaneValues(singleVariableTimeSeries, FLUSHES_PER_PAGE);
+  ensureSaneValues(multipleVariableTimeSeries, PERCENT_CACHE_HITS);
+  checkHardcodedValues(variableNoTimeSeries, ONGOING_IMG_REWRITES);
+  checkHardcodedValues(singleVariableTimeSeries, FLUSHES_PER_PAGE);
+  checkHardcodedValues(multipleVariableTimeSeries, PERCENT_CACHE_HITS);
   // Now test with some real world data (modeled after a load test).
   var loadTestJSON = generateJSONResponse(true);
   var variableNoTimeSeriesLoad = mpsconsole.computeTimeSeries(
-      simpleJSON['variables'], simpleJSON['timestamps'],
-      mpsconsole.LineGraphIndexes.ONGOING_IMG_REWRITES);
+      simpleJSON['variables'], simpleJSON['timestamps'], ONGOING_IMG_REWRITES);
   var singleVariableTimeSeriesLoad = mpsconsole.computeTimeSeries(
-      simpleJSON['variables'], simpleJSON['timestamps'],
-      mpsconsole.LineGraphIndexes.NUM_FLUSHES);
+      simpleJSON['variables'], simpleJSON['timestamps'], FLUSHES_PER_PAGE);
   var multipleVariableTimeSeriesLoad = mpsconsole.computeTimeSeries(
-      simpleJSON['variables'], simpleJSON['timestamps'],
-      mpsconsole.LineGraphIndexes.PERCENT_CACHE_HITS);
-  ensureSaneValues(variableNoTimeSeriesLoad,
-                   mpsconsole.LineGraphIndexes.ONGOING_IMG_REWRITES);
-  ensureSaneValues(singleVariableTimeSeriesLoad,
-                   mpsconsole.LineGraphIndexes.NUM_FLUSHES);
-  ensureSaneValues(multipleVariableTimeSeriesLoad,
-                   mpsconsole.LineGraphIndexes.PERCENT_CACHE_HITS);
+      simpleJSON['variables'], simpleJSON['timestamps'], PERCENT_CACHE_HITS);
+  ensureSaneValues(variableNoTimeSeriesLoad, ONGOING_IMG_REWRITES);
+  ensureSaneValues(singleVariableTimeSeriesLoad, FLUSHES_PER_PAGE);
+  ensureSaneValues(multipleVariableTimeSeriesLoad, PERCENT_CACHE_HITS);
 }
 
-function testQueryURICreation() {
-  mpsconsole = new pagespeed.MpsConsole();
-  var filters = "/mod_pagespeed_statistics?json&start_time=0&end_time=10&granularity=5";
-  var queryStringMultipleVar = mpsconsole.createQueryURI(false,
-      mpsconsole.LineGraphIndexes.PERCENT_CACHE_HITS, 0, 10, 5);
-  assertEquals(filters + "&var_titles=cache_hits,cache_misses,",
-               queryStringMultipleVar);
-  var queryStringSingleVar = mpsconsole.createQueryURI(false,
-      mpsconsole.LineGraphIndexes.NUM_FLUSHES, 0, 10, 5);
-  assertEquals(filters + "&var_titles=num_flushes,", queryStringSingleVar);
-  var queryStringHistogram = mpsconsole.createQueryURI(true,
-      mpsconsole.HistogramIndexes.HTML_TIME, 0, 10, 5);
-  assertEquals(filters + "&hist_titles=Html Time us Histogram,",
-               queryStringHistogram);
-}
-
-var var_titles = ['num_flushes', 'cache_hits', 'cache_misses',
-      'num_fallback_responses_served', 'slurp_404_count', 'page_load_count',
-      'total_page_load_ms', 'num_rewrites_executed', 'num_rewrites_dropped',
-      'resource_404_count', 'serf_fetch_request_count',
-      'serf_fetch_bytes_count', 'image_ongoing_rewrites'];
-var hist_titles = ['Html Time us Histogram', 'Rewrite Latency Histogram',
-      'Pagespeed Resource Latency Histogram',
-      'Backend Fetch First Byte Latency Histogram'];
+var var_titles = [
+  'memcached_hits', 'memcached_misses', 'flatten_imports_charset_mismatch',
+  'flatten_imports_invalid_url', 'flatten_imports_limit_exceeded',
+  'flatten_imports_minify_failed', 'flatten_imports_recursion',
+  'css_filter_parse_failures', 'converted_meta_tags',
+  'javascript_minification_failures', 'num_flushes', 'cache_hits',
+  'cache_misses', 'num_fallback_responses_served', 'slurp_404_count',
+  'page_load_count', 'total_page_load_ms', 'num_rewrites_executed',
+  'num_rewrites_dropped', 'resource_404_count', 'serf_fetch_request_count',
+  'serf_fetch_bytes_count', 'image_ongoing_rewrites',
+  'javascript_total_bytes_saved', 'css_filter_total_bytes_saved',
+  'image_rewrite_total_bytes_saved', 'image_norewrites_high_resolution',
+  'image_rewrites_dropped_due_to_load', 'image_rewrites_dropped_intentionally'
+];
+var hist_titles = [
+  'Html Time us Histogram', 'Rewrite Latency Histogram',
+  'Pagespeed Resource Latency Histogram',
+  'Backend Fetch First Byte Latency Histogram', 'memcached_get_count',
+  'memcached_hit_latency_us', 'memcached_insert_latency_us',
+  'memcached_insert_size_bytes', 'memcached_lookup_size_bytes'
+];
 
 function makeTimeStamps() {
   var timestamps = [];
   var startingTimeMs = 1342724700000; // Arbitrary time in July 2012.
   for (var i = 0; i < 20; i++) {
-    timestamps.push(startingTimeMs + (i*3000));
+    timestamps.push(startingTimeMs + (i * 3000));
   }
   return timestamps;
 }
@@ -147,8 +164,8 @@ function generateJSONResponse(load) {
       } else if (!load) {
         // Hardcode values to test math.
         if (v == 'num_flushes') {
-          // FLUSHES_PER_SECOND = 10
-          vals[v] += 30;
+          // FLUSHES_PER_PAGE = 10
+          vals[v] += 200;
         } else if (v == 'cache_hits') {
           vals[v] += 10;
         } else if (v == 'cache_misses') {
@@ -198,50 +215,47 @@ function generateJSONResponse(load) {
 }
 
 // Check that the unloaded values match what we hardcoded.
-function checkHardcodedValues(data, value) {
+function checkHardcodedValues(data, graphIndex) {
+  assertTrue("No data given", data.length > 0);
   for (var i = 0; i < data.length; i++) {
-    var errorMessage = "In Table \'" + value + "\' at row " + i +
-        " with value (" + data[i] + ")";
-    if (value == mpsconsole.LineGraphs_[mpsconsole.LineGraphIndexes.PERCENT_CACHE_HITS].title) {
+    var errorMessage = "In Table \'" + mpsconsole.LineGraphs_[graphIndex].title
+        + "\' at row " + i + " with value (" + data[i] + ")";
+    if (graphIndex == PERCENT_CACHE_HITS) {
       assertEquals(errorMessage, 0.5, data[i]);
-    }
-    if (value == mpsconsole.LineGraphs_[mpsconsole.LineGraphIndexes.NUM_FLUSHES].title) {
+    } else if (graphIndex == FLUSHES_PER_PAGE) {
       assertEquals(errorMessage, 10, data[i]);
-    }
-    if (value == mpsconsole.LineGraphs_[mpsconsole.LineGraphIndexes.FALLBACK_RESPONSES].title) {
+    } else if (graphIndex == FALLBACK_RESPONSES) {
       assertEquals(errorMessage, 20, data[i]);
-    }
-    if (value == mpsconsole.LineGraphs_[mpsconsole.LineGraphIndexes.RESOURCE_404S].title) {
+    } else if (graphIndex == RESOURCE_404S) {
       assertEquals(errorMessage, 30, data[i]);
-    }
-    if (value == mpsconsole.LineGraphs_[mpsconsole.LineGraphIndexes.SLURP_404S].title) {
+    } else if (graphIndex == SLURP_404S) {
       assertEquals(errorMessage, 10, data[i]);
-    }
-    if (value == mpsconsole.LineGraphs_[mpsconsole.LineGraphIndexes.AVG_LOAD_TIME].title) {
+    } else if (graphIndex == AVG_LOAD_TIME) {
       assertEquals(errorMessage, 10, data[i]);
-    }
-    if (value == mpsconsole.LineGraphs_[mpsconsole.LineGraphIndexes.SERF_BYTES_FETCHED].title) {
+    } else if (graphIndex == SERF_BYTES_FETCHED) {
       assertEquals(errorMessage, 200, data[i]);
-    }
-    if (value == mpsconsole.LineGraphs_[mpsconsole.LineGraphIndexes.REWRITES_EXECUTED].title) {
+    } else if (graphIndex == REWRITES_EXECUTED) {
       assertEquals(errorMessage, 30, data[i]);
-    }
-    if (value == mpsconsole.LineGraphs_[mpsconsole.LineGraphIndexes.REWRITES_DROPPED].title) {
+    } else if (graphIndex == REWRITES_DROPPED) {
       assertEquals(errorMessage, 10, data[i]);
+    } else if (graphIndex == ONGOING_IMG_REWRITES) {
+      assertEquals(errorMessage, 8, data[i]);
+    } else {
+      assertTrue("Invalid check: " + errorMessage, false);
     }
   }
 }
 
 // Test that all values in the mpsconsole are sane (>=0).
 function ensureSaneValues(data, graphIndex) {
-  assertTrue(data.length > 0);
+  assertTrue("No data given", data.length > 0);
   var graphTitle = mpsconsole.LineGraphs_[graphIndex].title;
   for (var i = 0; i < data.length; i++) {
     var value = data[i];
     var errorMessage = "Value \'" + value + "\' at row " + i +
         " in graph " + graphTitle;
-    if (graphTitle == mpsconsole.LineGraphs_[mpsconsole.LineGraphIndexes.ONGOING_IMG_REWRITES].title) {
-      // This value is static and is hardcoded below.
+    if (graphIndex == ONGOING_IMG_REWRITES) {
+      // This value is static and is hardcoded.
       assertTrue(errorMessage, value == 8);
     } else {
       assertTrue(errorMessage, value >= 0);

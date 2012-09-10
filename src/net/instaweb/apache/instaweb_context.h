@@ -92,7 +92,7 @@ class InstawebContext {
 
   apr_bucket_brigade* bucket_brigade() const { return bucket_brigade_; }
   ContentEncoding content_encoding() const { return  content_encoding_; }
-  ApacheResourceManager* manager() { return resource_manager_; }
+  ApacheResourceManager* manager() { return server_context_; }
   const GoogleString& output() { return output_; }
   bool empty() const { return output_.empty(); }
   void clear() { output_.clear(); }  // TODO(jmarantz): needed?
@@ -136,7 +136,7 @@ class InstawebContext {
   ContentEncoding content_encoding_;
   const ContentType content_type_;
 
-  ApacheResourceManager* resource_manager_;
+  ApacheResourceManager* server_context_;
   RewriteDriver* rewrite_driver_;
   StringWriter string_writer_;
   scoped_ptr<GzipInflater> inflater_;

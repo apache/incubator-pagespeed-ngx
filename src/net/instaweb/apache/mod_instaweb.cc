@@ -196,7 +196,13 @@ const char kModPagespeedStatisticsLoggingFile[] =
     "ModPagespeedStatisticsLoggingFile";
 const char kModPagespeedStatisticsLoggingIntervalMs[] =
     "ModPagespeedStatisticsLoggingIntervalMs";
+const char kModPagespeedStatisticsLoggingChartsCSS[] =
+    "ModPagespeedStatisticsLoggingChartsCSS";
+const char kModPagespeedStatisticsLoggingChartsJS[] =
+    "ModPagespeedStatisticsLoggingChartsJS";
 const char kModPagespeedTestProxy[] = "ModPagespeedTestProxy";
+const char kModPagespeedTrackOriginalContentLength[] =
+    "ModPagespeedTrackOriginalContentLength";
 const char kModPagespeedUrlPrefix[] = "ModPagespeedUrlPrefix";
 const char kModPagespeedUrlValuedAttribute[] = "ModPagespeedUrlValuedAttribute";
 const char kModPagespeedUsePerVHostStatistics[] =
@@ -1137,6 +1143,11 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     }
   } else if (StringCaseEqual(directive, kModPagespeedRetainComment)) {
     options->RetainComment(arg);
+  } else if (StringCaseEqual(directive,
+                             kModPagespeedTrackOriginalContentLength)) {
+    ret = ParseBoolOption(
+        factory, cmd,
+        &ApacheRewriteDriverFactory::set_track_original_content_length, arg);
   } else if (StringCaseEqual(directive, kModPagespeedNumShards) ||
              StringCaseEqual(directive, kModPagespeedUrlPrefix) ||
              StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix) ||
@@ -1465,8 +1476,15 @@ APACHE_CONFIG_DIR_OPTION(kModPagespeedClientDomainRewrite,
   APACHE_CONFIG_OPTION(kModPagespeedSupportNoScriptEnabled,
         "Support for clients with no script support, in filters that "
         "insert new javascript."),
+  APACHE_CONFIG_OPTION(kModPagespeedStatisticsLoggingChartsCSS,
+        "Where to find an offline copy of the Google Charts Tools API CSS."),
+  APACHE_CONFIG_OPTION(kModPagespeedStatisticsLoggingChartsJS,
+        "Where to find an offline copy of the Google Charts Tools API JS."),
   APACHE_CONFIG_OPTION(kModPagespeedTestProxy,
         "Act as a proxy without maintaining a slurp dump."),
+  APACHE_CONFIG_OPTION(kModPagespeedTrackOriginalContentLength,
+                       "Add X-Original-Content-Length headers to rewritten "
+                       "resources"),
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "No longer used."),
   APACHE_CONFIG_OPTION(kModPagespeedUsePerVHostStatistics,
         "If true, keep track of statistics per VHost and not just globally"),

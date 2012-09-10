@@ -354,14 +354,14 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   TestRewriteDriverFactory* other_factory() { return other_factory_.get(); }
 
   void UseMd5Hasher() {
-    resource_manager_->set_hasher(&md5_hasher_);
-    other_resource_manager_->set_hasher(&md5_hasher_);
+    server_context_->set_hasher(&md5_hasher_);
+    other_server_context_->set_hasher(&md5_hasher_);
   }
 
 
   void SetDefaultLongCacheHeaders(const ContentType* content_type,
                                   ResponseHeaders* header) {
-    resource_manager_->SetDefaultLongCacheHeaders(content_type, header);
+    server_context_->SetDefaultLongCacheHeaders(content_type, header);
   }
 
   void SetFetchResponse(const StringPiece& url,
@@ -392,14 +392,14 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   MockUrlFetcher* mock_url_fetcher() {
     return &mock_url_fetcher_;
   }
-  Hasher* hasher() { return resource_manager_->hasher(); }
+  Hasher* hasher() { return server_context_->hasher(); }
   DelayCache* delay_cache() { return factory_->delay_cache(); }
   LRUCache* lru_cache() { return factory_->lru_cache(); }
   Statistics* statistics() { return factory_->statistics(); }
   MemFileSystem* file_system() { return factory_->mem_file_system(); }
-  HTTPCache* http_cache() { return resource_manager_->http_cache(); }
+  HTTPCache* http_cache() { return server_context_->http_cache(); }
   PropertyCache* page_property_cache() {
-    return resource_manager_->page_property_cache();
+    return server_context_->page_property_cache();
   }
   MockMessageHandler* message_handler() {
     return factory_->mock_message_handler();
@@ -427,8 +427,8 @@ class RewriteTestBase : public RewriteOptionsTestBase {
     return file_system()->WriteFile(filename, contents, message_handler());
   }
 
-  ServerContext* resource_manager() { return resource_manager_; }
-  ServerContext* other_resource_manager() { return other_resource_manager_; }
+  ServerContext* resource_manager() { return server_context_; }
+  ServerContext* other_resource_manager() { return other_server_context_; }
   CountingUrlAsyncFetcher* counting_url_async_fetcher() {
     return factory_->counting_url_async_fetcher();
   }
@@ -523,9 +523,9 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // serves the rewritten resources.
   scoped_ptr<TestRewriteDriverFactory> factory_;
   scoped_ptr<TestRewriteDriverFactory> other_factory_;
-  ServerContext* resource_manager_;
+  ServerContext* server_context_;
   RewriteDriver* rewrite_driver_;
-  ServerContext* other_resource_manager_;
+  ServerContext* other_server_context_;
   RewriteDriver* other_rewrite_driver_;
   bool use_managed_rewrite_drivers_;
 

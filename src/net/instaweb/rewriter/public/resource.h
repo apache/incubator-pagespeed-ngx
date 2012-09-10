@@ -67,7 +67,7 @@ class Resource : public RefCounted<Resource> {
   Resource(ServerContext* resource_manager, const ContentType* type);
 
   // Common methods across all deriviations
-  ServerContext* resource_manager() const { return resource_manager_; }
+  ServerContext* resource_manager() const { return server_context_; }
 
   // Answers question: Are we allowed to rewrite the contents now?
   //
@@ -227,7 +227,7 @@ class Resource : public RefCounted<Resource> {
                                AsyncCallback* callback,
                                MessageHandler* message_handler);
 
-  ServerContext* resource_manager_;
+  ServerContext* server_context_;
 
   const ContentType* type_;
   GoogleString charset_;

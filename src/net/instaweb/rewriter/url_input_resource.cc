@@ -136,7 +136,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
   UrlResourceFetchCallback(ServerContext* resource_manager,
                            const RewriteOptions* rewrite_options,
                            HTTPValue* fallback_value)
-      : resource_manager_(resource_manager),
+      : server_context_(resource_manager),
         rewrite_options_(rewrite_options),
         message_handler_(NULL),
         success_(false),
@@ -155,8 +155,8 @@ class UrlResourceFetchCallback : public AsyncFetch {
   bool Fetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
     message_handler_ = handler;
     GoogleString lock_name =
-        StrCat(resource_manager_->lock_hasher()->Hash(url()), ".lock");
-    lock_.reset(resource_manager_->lock_manager()->CreateNamedLock(lock_name));
+        StrCat(server_context_->lock_hasher()->Hash(url()), ".lock");
+    lock_.reset(server_context_->lock_manager()->CreateNamedLock(lock_name));
     int64 lock_timeout = fetcher->timeout_ms();
     if (lock_timeout == UrlAsyncFetcher::kUnspecifiedTimeout) {
       // Even if the fetcher never explicitly times out requests, they probably
@@ -187,7 +187,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
 
     fetch_url_ = url();
 
-    UrlNamer* url_namer = resource_manager_->url_namer();
+    UrlNamer* url_namer = server_context_->url_namer();
 
     fetcher_ = fetcher;
 
@@ -240,7 +240,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
       fallback_fetch_ = new FallbackSharedAsyncFetch(
           this, &fallback_value_, message_handler_);
       fallback_fetch_->set_fallback_responses_served(
-          resource_manager_->rewrite_stats()->fallback_responses_served());
+          server_context_->rewrite_stats()->fallback_responses_served());
       fetch = fallback_fetch_;
     }
     if (!fallback_value_.Empty()) {
@@ -250,7 +250,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
           new ConditionalSharedAsyncFetch(
               fetch, &fallback_value_, message_handler_);
       conditional_fetch->set_num_conditional_refreshes(
-          resource_manager_->rewrite_stats()->num_conditional_refreshes());
+          server_context_->rewrite_stats()->num_conditional_refreshes());
       fetch = conditional_fetch;
     }
     fetcher_->Fetch(fetch_url_, message_handler_, fetch);
@@ -332,7 +332,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
   virtual void DoneInternal(bool success) {
   }
 
-  ServerContext* resource_manager_;
+  ServerContext* server_context_;
   const RewriteOptions* rewrite_options_;
   MessageHandler* message_handler_;
 

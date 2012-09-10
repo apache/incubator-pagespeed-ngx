@@ -119,6 +119,8 @@ struct OptionName {
 "StatisticsLogging",                     RewriteOptions::kStatisticsLoggingEnabled
 "StatisticsLoggingFile",                 RewriteOptions::kStatisticsLoggingFile
 "StatisticsLoggingIntervalMs",           RewriteOptions::kStatisticsLoggingIntervalMs
+"StatisticsLoggingChartsCSS",            RewriteOptions::kStatisticsLoggingChartsCSS
+"StatisticsLoggingChartsJS",             RewriteOptions::kStatisticsLoggingChartsJS
 "TestProxy",                             RewriteOptions::kTestProxy
 "UseFixedUserAgentForBlinkCacheMisses",  RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses
 %%

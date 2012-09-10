@@ -252,6 +252,8 @@ class RewriteOptions {
     kStatisticsLoggingEnabled,
     kStatisticsLoggingFile,
     kStatisticsLoggingIntervalMs,
+    kStatisticsLoggingChartsCSS,
+    kStatisticsLoggingChartsJS,
     kTestProxy,
     kUseSharedMemLocking,
 

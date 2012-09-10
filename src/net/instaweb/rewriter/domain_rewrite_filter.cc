@@ -137,7 +137,7 @@ DomainRewriteFilter::RewriteResult DomainRewriteFilter::Rewrite(
 
   if (!options->IsAllowed(orig_spec) ||
       // Don't rewrite a domain from an already-rewritten resource.
-      resource_manager_->IsPagespeedResource(orig_url)) {
+      server_context_->IsPagespeedResource(orig_url)) {
     // Even though domain is unchanged, we need to store absolute URL in
     // rewritten_url.
     orig_url.Spec().CopyToString(rewritten_url);

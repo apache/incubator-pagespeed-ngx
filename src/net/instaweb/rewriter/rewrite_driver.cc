@@ -1123,18 +1123,17 @@ void RewriteDriver::SetWriter(Writer* writer) {
   if (html_writer_filter_ == NULL) {
     if (options()->Enabled(RewriteOptions::kServeNonCacheableNonCritical)) {
       html_writer_filter_.reset(new BlinkFilter(this));
-    } else if (options()->Enabled(RewriteOptions::kFlushSubresources)) {
-      if (flushing_early_) {
-        DCHECK(options()->enable_flush_subresources_experimental());
-        // If we are flushing early using this RewriteDriver object, we use the
-        // FlushEarlyContentWriterFilter.
-        html_writer_filter_.reset(new FlushEarlyContentWriterFilter(this));
-      } else {
-        html_writer_filter_.reset(new SuppressPreheadFilter(this));
-      }
+    } else if (options()->Enabled(RewriteOptions::kFlushSubresources) &&
+        flushing_early_) {
+      DCHECK(options()->enable_flush_subresources_experimental());
+      // If we are flushing early using this RewriteDriver object, we use the
+      // FlushEarlyContentWriterFilter.
+      html_writer_filter_.reset(new FlushEarlyContentWriterFilter(this));
     } else if (options()->Enabled(RewriteOptions::kSplitHtml)) {
       // TODO(rahulbansal): Turn this on only when DeferJavascript is on.
       html_writer_filter_.reset(new SplitHtmlFilter(this));
+    } else if (options()->Enabled(RewriteOptions::kFlushSubresources)) {
+      html_writer_filter_.reset(new SuppressPreheadFilter(this));
     } else {
       html_writer_filter_.reset(new HtmlWriterFilter(this));
     }

@@ -43,7 +43,7 @@ const char JsOutlineFilter::kFilterId[] = "jo";
 JsOutlineFilter::JsOutlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
       inline_element_(NULL),
-      resource_manager_(driver->server_context()),
+      server_context_(driver->server_context()),
       size_threshold_bytes_(driver->options()->js_outline_min_bytes()),
       script_tag_scanner_(driver_) { }
 
@@ -137,7 +137,7 @@ bool JsOutlineFilter::WriteResource(const GoogleString& content,
   // We don't provide charset here since in generally we can just inherit
   // from the page.
   // TODO(morlovich) check for proper behavior in case of embedded BOM.
-  return resource_manager_->Write(
+  return server_context_->Write(
       ResourceVector(), content, &kContentTypeJavascript, StringPiece(),
       resource, handler);
 }

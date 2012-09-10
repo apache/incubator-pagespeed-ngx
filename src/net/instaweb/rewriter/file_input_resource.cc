@@ -74,7 +74,7 @@ void FileInputResource::SetDefaultHeaders(const ContentType* content_type,
   // Note(sligocki): We are setting these to get FileInputResources
   // automatically cached for 5 minutes on the sync pathway. We could
   // probably remove it once we kill the sync pathway.
-  header->SetDateAndCaching(resource_manager_->timer()->NowMs(),
+  header->SetDateAndCaching(server_context_->timer()->NowMs(),
                             header->implicit_cache_ttl_ms());
   header->SetLastModified(last_modified_time_sec_ * Timer::kSecondMs);
   header->ComputeCaching();
@@ -83,7 +83,7 @@ void FileInputResource::SetDefaultHeaders(const ContentType* content_type,
 // Note: We do not save this resource to the HttpCache, so it will be
 // reloaded for every request.
 bool FileInputResource::Load(MessageHandler* handler) {
-  FileSystem* file_system = resource_manager_->file_system();
+  FileSystem* file_system = server_context_->file_system();
   if (file_system->ReadFile(filename_.c_str(), &value_, handler) &&
       file_system->Mtime(filename_, &last_modified_time_sec_, handler)) {
     SetDefaultHeaders(type_, &response_headers_, handler);

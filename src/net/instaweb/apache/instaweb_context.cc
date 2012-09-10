@@ -81,7 +81,7 @@ InstawebContext::InstawebContext(request_rec* request,
                                  const RewriteOptions& options)
     : content_encoding_(kNone),
       content_type_(content_type),
-      resource_manager_(manager),
+      server_context_(manager),
       string_writer_(&output_),
       inflater_(NULL),
       absolute_url_(absolute_url),
@@ -107,10 +107,10 @@ InstawebContext::InstawebContext(request_rec* request,
     if (custom_options->running_furious()) {
       SetFuriousStateAndCookie(request, custom_options);
     }
-    resource_manager_->ComputeSignature(custom_options);
-    rewrite_driver_ = resource_manager_->NewCustomRewriteDriver(custom_options);
+    server_context_->ComputeSignature(custom_options);
+    rewrite_driver_ = server_context_->NewCustomRewriteDriver(custom_options);
   } else {
-    rewrite_driver_ = resource_manager_->NewRewriteDriver();
+    rewrite_driver_ = server_context_->NewRewriteDriver();
   }
 
 
@@ -123,7 +123,7 @@ InstawebContext::InstawebContext(request_rec* request,
 
   // Insert proxy fetcher to add custom fetch headers if there are any such
   // headers to add.
-  resource_manager_->apache_factory()->ApplyAddHeaders(rewrite_driver_);
+  server_context_->apache_factory()->ApplyAddHeaders(rewrite_driver_);
 
   rewrite_driver_->EnableBlockingRewrite(request_headers);
 
@@ -146,7 +146,7 @@ InstawebContext::InstawebContext(request_rec* request,
   }
 
   SharedMemRefererStatistics* referer_stats =
-      resource_manager_->apache_factory()->shared_mem_referer_statistics();
+      server_context_->apache_factory()->shared_mem_referer_statistics();
   if (referer_stats != NULL && !absolute_url_.empty()) {
     GoogleUrl target_url(absolute_url_);
     const char* referer = apr_table_get(request->headers_in,
@@ -299,11 +299,11 @@ void InstawebContext::ComputeContentEncoding(request_rec* request) {
 
 PropertyCallback* InstawebContext::InitiatePropertyCacheLookup() {
   PropertyCallback* property_callback = NULL;
-  if (resource_manager_->page_property_cache()->enabled()) {
+  if (server_context_->page_property_cache()->enabled()) {
     property_callback = new PropertyCallback(rewrite_driver_,
-                                             resource_manager_->thread_system(),
+                                             server_context_->thread_system(),
                                              absolute_url_);
-    resource_manager_->page_property_cache()->Read(property_callback);
+    server_context_->page_property_cache()->Read(property_callback);
   }
   return property_callback;
 }
@@ -379,14 +379,14 @@ void InstawebContext::SetFuriousStateAndCookie(request_rec* request,
   // If we didn't get a valid (i.e. currently-running experiment) value from
   // the cookie, determine which experiment this request should end up in
   // and set the cookie accordingly.
-  bool need_cookie = resource_manager_->furious_matcher()->
+  bool need_cookie = server_context_->furious_matcher()->
       ClassifyIntoExperiment(*request_headers_, options);
   if (need_cookie) {
     ResponseHeaders resp_headers;
     AprTimer timer;
     const char* url = apr_table_get(request->notes, kPagespeedOriginalUrl);
     int furious_value = options->furious_id();
-    resource_manager_->furious_matcher()->StoreExperimentData(
+    server_context_->furious_matcher()->StoreExperimentData(
         furious_value, url, timer.NowMs(), &resp_headers);
     AddResponseHeadersToRequest(resp_headers, request);
   }

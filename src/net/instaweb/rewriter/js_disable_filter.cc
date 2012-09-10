@@ -44,8 +44,7 @@ JsDisableFilter::JsDisableFilter(RewriteDriver* driver)
       script_tag_scanner_(driver),
       index_(0),
       defer_js_experimental_script_written_(false),
-      defer_js_enabled_(false),
-      body_element_(NULL) {
+      defer_js_enabled_(false) {
 }
 
 JsDisableFilter::~JsDisableFilter() {
@@ -55,8 +54,6 @@ void JsDisableFilter::StartDocument() {
   index_ = 0;
   defer_js_experimental_script_written_ = false;
   defer_js_enabled_ = rewrite_driver_->UserAgentSupportsJsDefer();
-  prefetch_scripts_.clear();
-  body_element_ = NULL;
 }
 
 void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {
@@ -76,22 +73,6 @@ void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {
     rewrite_driver_->AppendChild(script_node, script_code);
   }
   defer_js_experimental_script_written_ = true;
-}
-
-void JsDisableFilter::InsertPrefetchScriptsContainer(HtmlElement* element) {
-  // The following code works in webkit based browsers only when look ahead
-  // parser finds these scripts.
-  // Client side code will try to prefetch them again for webkit based browsers.
-  HtmlElement* prefetch_scripts_container = rewrite_driver_->NewElement(
-      element, HtmlName::kDiv);
-  rewrite_driver_->AddAttribute(prefetch_scripts_container,
-                                HtmlName::kClass,
-                                "psa_prefetch_container");
-  rewrite_driver_->AppendChild(element, prefetch_scripts_container);
-  for (int i = 0, n = prefetch_scripts_.size(); i < n; ++i) {
-    rewrite_driver_->AppendChild(prefetch_scripts_container,
-                                 prefetch_scripts_[i]);
-  }
 }
 
 void JsDisableFilter::InsertMetaTagForIE(HtmlElement* element) {
@@ -116,17 +97,13 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
     return;
   }
 
-  if (element->keyword() == HtmlName::kBody) {
-    if (body_element_ == NULL) {
-      body_element_ = element;
-    }
-    if (!defer_js_experimental_script_written_) {
-      HtmlElement* head_node =
-          rewrite_driver_->NewElement(element->parent(), HtmlName::kHead);
-      rewrite_driver_->InsertElementBeforeCurrent(head_node);
-      InsertJsDeferExperimentalScript(head_node);
-      InsertMetaTagForIE(head_node);
-    }
+  if (element->keyword() == HtmlName::kBody &&
+      !defer_js_experimental_script_written_) {
+    HtmlElement* head_node =
+        rewrite_driver_->NewElement(element->parent(), HtmlName::kHead);
+    rewrite_driver_->InsertElementBeforeCurrent(head_node);
+    InsertJsDeferExperimentalScript(head_node);
+    InsertMetaTagForIE(head_node);
   } else {
     HtmlElement::Attribute* src;
     if (script_tag_scanner_.ParseScriptElement(element, &src) ==
@@ -135,17 +112,6 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
         return;
       }
       if (src != NULL) {
-        if (src->escaped_value() != NULL) {
-          // Clone node for prefetching the resource.
-          HtmlElement* clone = rewrite_driver_->NewElement(NULL,
-                                                           HtmlName::kScript);
-          clone->AddAttribute(*src);
-          clone->AddAttribute(
-              rewrite_driver_->MakeName(HtmlName::kType), "psa_prefetch",
-              HtmlElement::DOUBLE_QUOTE);
-          prefetch_scripts_.push_back(clone);
-        }
-        // Disable Execution of script in the original element.
         src->set_name(rewrite_driver_->MakeName(HtmlName::kPagespeedOrigSrc));
       } else if (index_ == 0 &&
                  rewrite_driver_->options()->Enabled(
@@ -184,18 +150,6 @@ void JsDisableFilter::EndElement(HtmlElement* element) {
       !defer_js_experimental_script_written_) {
     InsertJsDeferExperimentalScript(element);
     InsertMetaTagForIE(element);
-  }
-
-  // Add the prefetch container if either of following conditions is met.
-  // If we found the end body tag we were tracking.
-  // if we reached end of html with scripts after body tag/or no body tag.
-  if (body_element_ == element ||
-      (body_element_ == NULL && element->parent() == NULL)) {
-    if (prefetch_scripts_.size() > 0) {
-      InsertPrefetchScriptsContainer(element);
-      prefetch_scripts_.clear();
-    }
-    body_element_ = NULL;
   }
 }
 

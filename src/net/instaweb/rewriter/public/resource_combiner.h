@@ -124,7 +124,7 @@ class ResourceCombiner {
   // Your implementation must call the superclass.
   virtual void Clear();
 
-  ServerContext* const resource_manager_;
+  ServerContext* const server_context_;
   RewriteDriver* const rewrite_driver_;
 
  private:

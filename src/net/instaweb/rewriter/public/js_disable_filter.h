@@ -19,8 +19,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_JS_DISABLE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_JS_DISABLE_FILTER_H_
 
-#include <vector>
-
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -65,9 +63,6 @@ class JsDisableFilter : public EmptyHtmlFilter {
   // Inserts the experimental js enable/disable code.
   void InsertJsDeferExperimentalScript(HtmlElement* element);
 
-  // Inserts 'div' to prefetch deferred js resources.
-  void InsertPrefetchScriptsContainer(HtmlElement* element);
-
   // Insert meta tag with 'X-UA-Compatible'. This will avoid IE going to quirks
   // mode. More information about this can be found in
   // http://webdesign.about.com/od/metataglibraries/p/x-ua-compatible-meta-tag.htm
@@ -78,8 +73,6 @@ class JsDisableFilter : public EmptyHtmlFilter {
   int index_;
   bool defer_js_experimental_script_written_;
   bool defer_js_enabled_;
-  std::vector<HtmlElement*> prefetch_scripts_;
-  HtmlElement* body_element_;
 
   DISALLOW_COPY_AND_ASSIGN(JsDisableFilter);
 };

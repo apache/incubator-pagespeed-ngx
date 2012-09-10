@@ -76,7 +76,7 @@ class JsOutlineFilter : public CommonFilter {
   HtmlElement* inline_element_;
   // Temporarily buffers the content between open and close of inline_element_.
   GoogleString buffer_;
-  ServerContext* resource_manager_;
+  ServerContext* server_context_;
   size_t size_threshold_bytes_;
   ScriptTagScanner script_tag_scanner_;
 

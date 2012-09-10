@@ -70,7 +70,7 @@ class JsCombineFilter::JsCombiner : public ResourceCombiner {
                          filter),
         filter_(filter),
         combined_js_size_(0) {
-    Statistics* stats = resource_manager_->statistics();
+    Statistics* stats = server_context_->statistics();
     js_file_count_reduction_ = stats->GetVariable(kJsFileCountReduction);
   }
 
@@ -555,7 +555,7 @@ GoogleString JsCombineFilter::VarName(const GoogleString& url) const {
   // This is safe since we never include URLs from different hosts in a single
   // combination.
   GoogleString url_hash = JavascriptCodeBlock::JsUrlHash(url,
-    resource_manager_->hasher());
+    server_context_->hasher());
 
   return StrCat("mod_pagespeed_", url_hash);
 }

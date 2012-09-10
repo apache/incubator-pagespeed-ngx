@@ -65,6 +65,10 @@ void ApacheConfig::AddProperties() {
              RewriteOptions::kSlurpDirectory);
   add_option("", &ApacheConfig::statistics_logging_file_, "aslf",
              RewriteOptions::kStatisticsLoggingFile);
+  add_option("", &ApacheConfig::statistics_logging_charts_css_, "aslcc",
+      RewriteOptions::kStatisticsLoggingChartsCSS);
+  add_option("", &ApacheConfig::statistics_logging_charts_js_, "aslcj",
+      RewriteOptions::kStatisticsLoggingChartsJS);
   add_option(kOrganized, &ApacheConfig::referer_statistics_output_level_,
              "arso", RewriteOptions::kRefererStatisticsOutputLevel);
   add_option(false, &ApacheConfig::collect_referer_statistics_, "acrs",

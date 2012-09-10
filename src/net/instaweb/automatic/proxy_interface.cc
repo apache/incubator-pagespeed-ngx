@@ -142,7 +142,7 @@ class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
 ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
                                ServerContext* manager,
                                Statistics* stats)
-    : resource_manager_(manager),
+    : server_context_(manager),
       fetcher_(NULL),
       timer_(NULL),
       handler_(manager->message_handler()),
@@ -234,7 +234,7 @@ bool ProxyInterface::Fetch(const GoogleString& requested_url_string,
     done = true;
   } else {
     // Try to handle this as a .pagespeed. resource.
-    if (resource_manager_->IsPagespeedResource(requested_url) &&
+    if (server_context_->IsPagespeedResource(requested_url) &&
         is_get_or_head) {
       pagespeed_requests_->IncBy(1);
       LOG(INFO) << "Serving URL as pagespeed resource: "
@@ -261,11 +261,11 @@ RewriteOptions* ProxyInterface::GetCustomOptions(
     GoogleUrl* request_url, RequestHeaders* request_headers,
     RewriteOptions* domain_options, RewriteOptions* query_options,
     MessageHandler* handler) {
-  RewriteOptions* options = resource_manager_->global_options();
+  RewriteOptions* options = server_context_->global_options();
   scoped_ptr<RewriteOptions> custom_options;
   scoped_ptr<RewriteOptions> scoped_domain_options(domain_options);
   if (scoped_domain_options.get() != NULL) {
-    custom_options.reset(resource_manager_->NewOptions());
+    custom_options.reset(server_context_->NewOptions());
     custom_options->Merge(*options);
     custom_options->Merge(*scoped_domain_options.get());
     options = custom_options.get();
@@ -278,7 +278,7 @@ RewriteOptions* ProxyInterface::GetCustomOptions(
     // after the merge, and transferring ownership to the caller for
     // the new merged options.
     scoped_ptr<RewriteOptions> options_buffer(custom_options.release());
-    custom_options.reset(resource_manager_->NewOptions());
+    custom_options.reset(server_context_->NewOptions());
     custom_options->Merge(*options);
     custom_options->Merge(*query_options);
     // Don't run any experiments if this is a special query-params request.
@@ -327,7 +327,7 @@ ProxyInterface::OptionsBoolPair ProxyInterface::GetQueryOptions(
   scoped_ptr<RewriteOptions> query_options;
   bool success = false;
   switch (RewriteQuery::Scan(
-              resource_manager_->factory(), request_url, request_headers,
+              server_context_->factory(), request_url, request_headers,
               &query_options, handler)) {
     case RewriteQuery::kInvalid:
       query_options.reset(NULL);
@@ -374,7 +374,7 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
                                          async_fetch, this,
                                          query_options_success.first, handler);
 
-  resource_manager_->url_namer()->DecodeOptions(
+  server_context_->url_namer()->DecodeOptions(
       *released_gurl, *async_fetch->request_headers(),
       proxy_interface_url_namer_callback, handler);
 }
@@ -387,17 +387,17 @@ ProxyFetchPropertyCallbackCollector*
     AsyncFetch* async_fetch) {
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
       new ProxyFetchPropertyCallbackCollector(
-          resource_manager_, request_url.Spec(), options));
+          server_context_, request_url.Spec(), options));
   bool added_callback = false;
   ProxyFetchPropertyCallback* property_callback = NULL;
   PropertyCache* page_property_cache = NULL;
   if (!is_resource_fetch &&
-      resource_manager_->page_property_cache()->enabled() &&
+      server_context_->page_property_cache()->enabled() &&
       UrlMightHavePropertyCacheEntry(request_url)) {
-    page_property_cache = resource_manager_->page_property_cache();
-    AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
+    page_property_cache = server_context_->page_property_cache();
+    AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
     if (options != NULL) {
-      resource_manager_->ComputeSignature(options);
+      server_context_->ComputeSignature(options);
       property_callback = new ProxyFetchPropertyCallback(
           ProxyFetchPropertyCallback::kPagePropertyCache,
           StrCat(request_url.Spec(), "_", options->signature()),
@@ -425,9 +425,9 @@ ProxyFetchPropertyCallbackCollector*
         HttpAttributes::kXGooglePagespeedClientId);
     if (client_id != NULL) {
       PropertyCache* client_property_cache =
-          resource_manager_->client_property_cache();
+          server_context_->client_property_cache();
       if (client_property_cache->enabled()) {
-        AbstractMutex* mutex = resource_manager_->thread_system()->NewMutex();
+        AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
         ProxyFetchPropertyCallback* callback =
             new ProxyFetchPropertyCallback(
                 ProxyFetchPropertyCallback::kClientPropertyCache,
@@ -474,7 +474,7 @@ void ProxyInterface::ProxyRequestCallback(
     // TODO(sligocki): Set using_spdy appropriately.
     bool using_spdy = false;
     ResourceFetch::Start(*request_url, options, using_spdy,
-                         resource_manager_, async_fetch);
+                         server_context_, async_fetch);
   } else {
     // TODO(nforman): If we are not running an experiment, remove the
     // furious cookie.
@@ -482,7 +482,7 @@ void ProxyInterface::ProxyRequestCallback(
     // say we're running furious, then clone them into custom_options so we
     // can manipulate custom options without affecting the global options.
     if (options == NULL) {
-      RewriteOptions* global_options = resource_manager_->global_options();
+      RewriteOptions* global_options = server_context_->global_options();
       if (global_options->running_furious()) {
         options = global_options->Clone();
       }
@@ -491,7 +491,7 @@ void ProxyInterface::ProxyRequestCallback(
     // FlushEarlyFlow as well.
     bool need_to_store_experiment_data = false;
     if (options != NULL && options->running_furious()) {
-      need_to_store_experiment_data = resource_manager_->furious_matcher()->
+      need_to_store_experiment_data = server_context_->furious_matcher()->
           ClassifyIntoExperiment(*async_fetch->request_headers(), options);
       options->set_need_to_store_experiment_data(need_to_store_experiment_data);
     }
@@ -499,9 +499,9 @@ void ProxyInterface::ProxyRequestCallback(
         HttpAttributes::kUserAgent);
     bool is_blink_request = BlinkUtil::IsBlinkRequest(
         *request_url, async_fetch, options, user_agent,
-        resource_manager_->user_agent_matcher());
+        server_context_->user_agent_matcher());
     bool apply_blink_critical_line =
-        BlinkUtil::ShouldApplyBlinkFlowCriticalLine(resource_manager_,
+        BlinkUtil::ShouldApplyBlinkFlowCriticalLine(server_context_,
                                                     options);
     if (is_blink_request && apply_blink_critical_line) {
       property_callback.reset(InitiatePropertyCacheLookup(
@@ -527,7 +527,7 @@ void ProxyInterface::ProxyRequestCallback(
       blink_critical_line_requests_->IncBy(1);
       BlinkFlowCriticalLine::Start(url_string, async_fetch, options,
                                    proxy_fetch_factory_.get(),
-                                   resource_manager_,
+                                   server_context_,
                                    property_callback.release());
     } else {
       RewriteDriver* driver = NULL;
@@ -535,10 +535,10 @@ void ProxyInterface::ProxyRequestCallback(
       property_callback.reset(InitiatePropertyCacheLookup(
           is_resource_fetch, *request_url, options, async_fetch));
       if (options == NULL) {
-        driver = resource_manager_->NewRewriteDriver();
+        driver = server_context_->NewRewriteDriver();
       } else {
         // NewCustomRewriteDriver takes ownership of custom_options_.
-        driver = resource_manager_->NewCustomRewriteDriver(options);
+        driver = server_context_->NewCustomRewriteDriver(options);
       }
       driver->set_log_record(async_fetch->log_record());
 

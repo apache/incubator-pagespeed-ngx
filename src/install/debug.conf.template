@@ -491,6 +491,8 @@ Listen @@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedStatisticsLogging true
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingIntervalMs 3000
+#ALL_DIRECTIVES ModPagespeedStatisticsLoggingChartsCSS "example.com/css.css"
+#ALL_DIRECTIVES ModPagespeedStatisticsLoggingChartsJS "example.com/js.js"
 #ALL_DIRECTIVES ModPagespeedSupportNoScriptEnabled true
 #ALL_DIRECTIVES ModPagespeedTestProxy off
 #ALL_DIRECTIVES ModPagespeedUrlValuedAttribute span src Hyperlink

@@ -198,7 +198,7 @@ TEST_F(DomainRewriteFilterTest, ClientDomainRewrite) {
   options()->set_domain_rewrite_hyperlinks(true);
   options()->set_client_domain_rewrite(true);
   StringPiece client_domain_rewriter_code =
-      resource_manager_->static_javascript_manager()->GetJsSnippet(
+      server_context_->static_javascript_manager()->GetJsSnippet(
           StaticJavascriptManager::kClientDomainRewriter, options());
 
   SetupWriter();

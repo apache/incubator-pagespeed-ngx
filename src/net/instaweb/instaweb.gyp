@@ -296,6 +296,57 @@
       ]
     },
     {
+      'target_name': 'instaweb_console_js_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/apache/install/mod_pagespeed_example',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/mod_pagespeed_console',
+        'var_name': 'mod_pagespeed_console_js',
+      },
+      'sources': [
+        'genfiles/mod_pagespeed_console/mod_pagespeed_console.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_console_css_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/apache/install/mod_pagespeed_example',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/mod_pagespeed_console',
+        'var_name': 'mod_pagespeed_console_css',
+      },
+      'sources': [
+        'genfiles/mod_pagespeed_console/mod_pagespeed_console.css',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_console_body_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/apache/install/mod_pagespeed_example',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/mod_pagespeed_console',
+        'var_name': 'mod_pagespeed_console_body',
+      },
+      'sources': [
+        'genfiles/mod_pagespeed_console/mod_pagespeed_console.html',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_console',
+      'type': '<(library)',
+      'dependencies': [
+        ':instaweb_console_css_data2c',
+        ':instaweb_console_js_data2c',
+        ':instaweb_console_body_data2c',
+      ],
+    },
+    {
       'target_name': 'instaweb_spriter_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/spriter/public',

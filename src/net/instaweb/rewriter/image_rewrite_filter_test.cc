@@ -142,7 +142,7 @@ class ImageRewriteTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     PropertyCache* pcache = page_property_cache();
-    resource_manager_->set_enable_property_cache(true);
+    server_context_->set_enable_property_cache(true);
     pcache->AddCohort(RewriteDriver::kDomCohort);
     RewriteTestBase::SetUp();
     MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),

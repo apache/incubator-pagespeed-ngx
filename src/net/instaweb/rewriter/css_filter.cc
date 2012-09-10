@@ -628,7 +628,7 @@ CssFilter::CssFilter(RewriteDriver* driver,
       cache_extender_(cache_extender),
       image_rewrite_filter_(image_rewriter),
       image_combiner_(image_combiner) {
-  Statistics* stats = resource_manager_->statistics();
+  Statistics* stats = server_context_->statistics();
   num_blocks_rewritten_ = stats->GetVariable(CssFilter::kBlocksRewritten);
   num_parse_failures_ = stats->GetVariable(CssFilter::kParseFailures);
   num_fallback_rewrites_ = stats->GetVariable(CssFilter::kFallbackRewrites);
@@ -828,7 +828,7 @@ ResourceSlot* CssFilter::MakeSlotForInlineCss(const StringPiece& content) {
   // copying. Get rid of them.
   DataUrl(kContentTypeCss, PLAIN, content, &data_url);
   ResourcePtr input_resource(DataUrlInputResource::Make(data_url,
-                                                        resource_manager_));
+                                                        server_context_));
   return new InlineCssSlot(input_resource, driver_->UrlLine());
 }
 

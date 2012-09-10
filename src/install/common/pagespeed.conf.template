@@ -214,6 +214,35 @@
     #
     # ModPagespeedStatisticsLoggingIntervalMs 3000
 
+    # If both of the below are set, the console will use offline copies of the
+    # files needed for the Google Chart Tools API rather than connecting to the
+    # Internet to obtain them. This is experimental, as the only supported
+    # loading mechanism for the Chart Tools API requires an Internet connexion.
+    #
+    # Where to find an offline copy of the CSS file required for the Google
+    # Chart Tools API. At the time of writing, the Google Chart Tools API CSS
+    # file can be found at:
+    # https://ajax.googleapis.com/ajax/static/modules/gviz/1.0/core/tooltip.css
+    #
+    # ModPagespeedStatisticsLoggingChartsCSS http://example.com/charts.css
+    #
+    # Where to find an offline copy of the JS file required for the Google
+    # Chart Tools API. At the time of writing, the Google Chart Tools API JS
+    # file can be found at:
+    # https://www.google.com/uds/api/visualization/1.0/d7d36793f7a886b687850d2813583db9/format+en,default,corechart.I.js
+    #
+    # ModPagespeedStatisticsLoggingChartsJS http://example.com/charts.js
+
+    # This page lets you view a graphical console displaying statistics about
+    # the mod_pagespeed module.
+    <Location /mod_pagespeed_console>
+        Order allow,deny
+        # This can be configured similarly to mod_pagespeed_statistics above.
+        Allow from localhost
+        Allow from 127.0.0.1
+        SetHandler mod_pagespeed_console
+    </Location>
+
     # Page /mod_pagespeed_message lets you view the latest messages from
     # mod_pagespeed, regardless of log-level in your httpd.conf
     # ModPagespeedMessageBufferSize is the maximum number of bytes you would

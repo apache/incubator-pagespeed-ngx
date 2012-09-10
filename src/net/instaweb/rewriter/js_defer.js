@@ -400,14 +400,6 @@ deferJsNs.DeferJs.prototype.createIdVars = function() {
 };
 
 /**
- * Downloads the Js file without executing it.
- * @param {!string} url Url to be downloaded.
- */
-deferJsNs.DeferJs.prototype.downloadFile = function(url) {
-  new Image().src = url;
-};
-
-/**
  * Defers execution of scriptNode, by adding it to the queue.
  * @param {Element} script script node.
  * @param {number} opt_pos Optional position for ordering.
@@ -418,7 +410,7 @@ deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos, opt_prefetch) {
       script.getAttribute('src');
   if (src) {
     if (opt_prefetch) {
-      this.downloadFile(src);
+      new Image().src = src;
     }
     this.addUrl(src, script, opt_pos);
   } else {
@@ -671,12 +663,6 @@ deferJsNs.DeferJs.prototype.fireOnload = function() {
   var psanodes = document.body.getElementsByTagName('psanode');
   for (var i = (psanodes.length - 1); i >= 0; i--) {
     document.body.removeChild(psanodes[i]);
-  }
-
-  var prefetchContainers =
-      document.body.getElementsByClassName('psa_prefetch_container');
-  for (var i = (prefetchContainers.length - 1); i >= 0; i--) {
-    prefetchContainers[i].parentNode.removeChild(prefetchContainers[i]);
   }
 
   this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_DONE;
@@ -1053,7 +1039,7 @@ deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
 deferJsNs.DeferJs.prototype.deferScripts = function(scripts, pos) {
   var len = scripts.length;
   for (var i = 0; i < len; ++i) {
-    this.addNode(scripts[i], pos + i, false);
+    this.addNode(scripts[i], pos + i, !!i);
   }
 };
 
@@ -1296,7 +1282,6 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function(opt_callback) {
   this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED;
   var scripts = document.getElementsByTagName('script');
   var len = scripts.length;
-  var prefetch_needed = this.isWebKit();
   for (var i = 0; i < len; ++i) {
     var isFirstScript = (this.queue_.length == this.next_);
     var script = scripts[i];
@@ -1306,14 +1291,14 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function(opt_callback) {
       if (opt_callback) {
         if (script.getAttribute('orig_index') == this.nextScriptIndexInHtml_) {
           this.nextScriptIndexInHtml_++;
-          this.addNode(script, undefined, !isFirstScript && prefetch_needed);
+          this.addNode(script, undefined, !isFirstScript);
         }
       } else {
         if (script.getAttribute('orig_index') < this.nextScriptIndexInHtml_) {
           this.log('Executing a script twice. Orig_Index: ' +
                    script.getAttribute('orig_index'), new Error(''));
         }
-        this.addNode(script, undefined, !isFirstScript && prefetch_needed);
+        this.addNode(script, undefined, !isFirstScript);
       }
     }
   }
@@ -1359,13 +1344,6 @@ pagespeed['addHandler'] = deferJsNs.addHandler;
  */
 deferJsNs.DeferJs.prototype.isFireFox = function() {
   return (navigator.userAgent.indexOf('Firefox') != -1);
-};
-
-/**
- * @return {boolean} true if browser is WebKit based.
- */
-deferJsNs.DeferJs.prototype.isWebKit = function() {
-  return (navigator.userAgent.indexOf('AppleWebKit') != -1);
 };
 
 /**

@@ -181,7 +181,7 @@ ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
     ServerContext* resource_manager, const StringPiece& url,
     const RewriteOptions* options)
     : mutex_(resource_manager->thread_system()->NewMutex()),
-      resource_manager_(resource_manager),
+      server_context_(resource_manager),
       url_(url.data(), url.size()),
       detached_(false),
       done_(false),
@@ -265,7 +265,7 @@ void ProxyFetchPropertyCallbackCollector::Done(
       // release the lock below, and it (Detach) deletes 'this' (because we
       // just set done_ to true), which means we cannot rely on any data
       // members being valid after releasing the lock, so we copy them all.
-      resource_manager = resource_manager_;
+      resource_manager = server_context_;
       fetch = proxy_fetch_;
       do_delete = detached_;
       post_lookup_task_vector.reset(post_lookup_task_vector_.release());
@@ -345,7 +345,7 @@ ProxyFetch::ProxyFetch(
     ProxyFetchFactory* factory)
     : SharedAsyncFetch(async_fetch),
       url_(url),
-      resource_manager_(manager),
+      server_context_(manager),
       timer_(timer),
       cross_domain_(cross_domain),
       claims_html_(false),
@@ -423,8 +423,8 @@ bool ProxyFetch::StartParse() {
   if (Options()->need_to_store_experiment_data() &&
       Options()->running_furious()) {
     int furious_value = Options()->furious_id();
-    resource_manager_->furious_matcher()->StoreExperimentData(
-        furious_value, url_, resource_manager_->timer()->NowMs(),
+    server_context_->furious_matcher()->StoreExperimentData(
+        furious_value, url_, server_context_->timer()->NowMs(),
         response_headers());
   }
   driver_->set_response_headers_ptr(response_headers());
@@ -524,7 +524,7 @@ void ProxyFetch::SetupForHtml() {
       // limited delay.  Note that this is a no-op except in test
       // ProxyInterfaceTest.FiltersRaceSetup which enables thread-sync
       // prefix "HeadersSetupRace:".
-      ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
+      ThreadSynchronizer* sync = server_context_->thread_synchronizer();
       sync->Signal(kHeadersSetupRaceWait);
       sync->TimedWait(kHeadersSetupRaceFlush, kTestSignalTimeoutMs);
 
@@ -533,7 +533,7 @@ void ProxyFetch::SetupForHtml() {
       // TODO(sligocki): Support Etags and/or Last-Modified.
       response_headers()->RemoveAll(HttpAttributes::kEtag);
       response_headers()->RemoveAll(HttpAttributes::kLastModified);
-      start_time_us_ = resource_manager_->timer()->NowUs();
+      start_time_us_ = server_context_->timer()->NowUs();
 
       // HTML sizes are likely to be altered by HTML rewriting.
       response_headers()->RemoveAll(HttpAttributes::kContentLength);
@@ -642,11 +642,11 @@ AbstractClientState* ProxyFetch::GetClientState(
   if (driver_->client_id().empty()) {
     return NULL;
   }
-  PropertyCache* cache = resource_manager_->client_property_cache();
+  PropertyCache* cache = server_context_->client_property_cache();
   PropertyPage* client_property_page = collector->GetPropertyPage(
       ProxyFetchPropertyCallback::kClientPropertyCache);
   AbstractClientState* client_state =
-      resource_manager_->factory()->NewClientState();
+      server_context_->factory()->NewClientState();
   client_state->InitFromPropertyCache(
       driver_->client_id(), cache, client_property_page, timer_);
   return client_state;
@@ -767,7 +767,7 @@ void ProxyFetch::HandleDone(bool success) {
       html_detector_.ReleaseBuffered(&buffered);
       AddPagespeedHeader();
       base_fetch()->HeadersComplete();
-      Write(buffered, resource_manager_->message_handler());
+      Write(buffered, server_context_->message_handler());
     }
   } else if (!response_headers()->headers_complete()) {
     // This is a fetcher failure, like connection refused, not just an error
@@ -932,7 +932,7 @@ void ProxyFetch::Finish(bool success) {
   }
 
   if (started_parse_ && success) {
-    RewriteStats* stats = resource_manager_->rewrite_stats();
+    RewriteStats* stats = server_context_->rewrite_stats();
     stats->rewrite_latency_histogram()->Add(
         (timer_->NowUs() - start_time_us_) / 1000.0);
     stats->total_rewrite_count()->IncBy(1);
@@ -945,7 +945,7 @@ void ProxyFetch::Finish(bool success) {
   // In ProxyInterfaceTest.HeadersSetupRace, raise a signal that
   // indicates the test functionality is complete.  In other contexts
   // this is a no-op.
-  ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
+  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
   delete this;
   sync->Signal(kHeadersSetupRaceDone);
 }
@@ -978,7 +978,7 @@ void ProxyFetch::QueueIdleAlarm() {
   // In ProxyInterfaceTest.HeadersSetupRace, raise a signal that
   // indicates the idle-callback has initiated.  In other contexts
   // this is a no-op.
-  ThreadSynchronizer* sync = resource_manager_->thread_synchronizer();
+  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
   sync->Signal(kHeadersSetupRaceAlarmQueued);
 }
 

@@ -137,7 +137,7 @@ class TestRewriter : public RewriteFilter {
       return kTooBusy;
     }
 
-    bool ok = resource_manager_->Write(
+    bool ok = server_context_->Write(
         ResourceVector(1, input_resource),
         StrCat(contents, contents),
         &kContentTypeText,
@@ -280,7 +280,7 @@ class RewriteSingleResourceFilterTest
   void ResetSignature(int outline_min_bytes) {
     options()->ClearSignatureForTesting();
     options()->set_css_outline_min_bytes(outline_min_bytes);
-    resource_manager_->ComputeSignature(options());
+    server_context_->ComputeSignature(options());
   }
 
   GoogleString in_tag_;

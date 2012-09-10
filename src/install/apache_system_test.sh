@@ -555,12 +555,10 @@ flushes,image_ongoing_rewrites&hist_titles=Html%20Time%20us%20Histogram"
   done
 
   echo "TEST: Statistics console is available."
-  CONSOLE_URL=$EXAMPLE_ROOT/mod_pagespeed_console.html
+  CONSOLE_URL=http://$HOSTNAME/mod_pagespeed_console
   CONSOLE_HTML=$OUTDIR/console.html
   $WGET_DUMP $CONSOLE_URL > $CONSOLE_HTML
-  check grep -q "initConsole();" $CONSOLE_HTML
-  check grep -q "mod_pagespeed_console.js" $CONSOLE_HTML
-  check grep -q "mod_pagespeed_console.css" $CONSOLE_HTML
+  check grep -q "console" $CONSOLE_HTML
 fi
 
 # Cleanup
