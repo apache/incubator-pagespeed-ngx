@@ -128,6 +128,9 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
             (private_cacheable_resources_ != NULL && gurl.is_valid() &&
              private_cacheable_resources_->find(gurl.spec_c_str()) !=
              private_cacheable_resources_->end())) {
+          if (driver_->server_context()->IsPagespeedResource(gurl)) {
+            driver_->increment_num_flushed_early_pagespeed_resources();
+          }
           ++num_resources_flushed_;
           if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
             if (!insert_close_script_) {
@@ -146,7 +149,8 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
                      UserAgentMatcher::kPrefetchLinkScriptTag) {
             if (category == semantic_type::kScript) {
               WriteToOriginalWriter(
-                  StringPrintf(kPrefetchScriptTagHtml, url.as_string().c_str()));
+                  StringPrintf(kPrefetchScriptTagHtml,
+                               url.as_string().c_str()));
             } else {
               WriteToOriginalWriter(
                   StringPrintf(kPrefetchLinkTagHtml, url.as_string().c_str()));

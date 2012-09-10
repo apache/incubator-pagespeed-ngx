@@ -52,7 +52,6 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"

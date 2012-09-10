@@ -17,9 +17,15 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 
 namespace net_instaweb {
+
+class HtmlCharactersNode;
+class HtmlCdataNode;
+class HtmlCommentNode;
+class HtmlDirectiveNode;
+class HtmlElement;
+class HtmlIEDirectiveNode;
 
 EmptyHtmlFilter::EmptyHtmlFilter() {
 }

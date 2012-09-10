@@ -20,11 +20,11 @@
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_NODE_H_
 
 #include <cstddef>
+#include <list>
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/arena.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -32,6 +32,10 @@
 namespace net_instaweb {
 
 class HtmlElement;
+class HtmlEvent;
+
+typedef std::list<HtmlEvent*> HtmlEventList;
+typedef HtmlEventList::iterator HtmlEventListIterator;
 
 // Base class for HtmlElement and HtmlLeafNode
 class HtmlNode {

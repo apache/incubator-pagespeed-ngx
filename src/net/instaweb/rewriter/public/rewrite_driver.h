@@ -25,8 +25,8 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -806,6 +806,18 @@ class RewriteDriver : public HtmlParse {
   // We expect to this method to be called on the HTML parser thread.
   void increment_num_inline_preview_images();
 
+  // We expect to this method to be called on the HTML parser thread.
+  // Returns the number of pagespeed resources flushed by flush early flow.
+  int num_flushed_early_pagespeed_resources() const {
+    return num_flushed_early_pagespeed_resources_;
+  }
+
+  // We expect to this method to be called on the HTML parser thread or after
+  // parsing is completed.
+  void increment_num_flushed_early_pagespeed_resources() {
+    ++num_flushed_early_pagespeed_resources_;
+  }
+
   // Increments the value of pending_async_events_. pending_async_events_ will
   // be incremented whenever an async event wants rewrite driver to be alive
   // upon its completion.
@@ -1225,6 +1237,9 @@ class RewriteDriver : public HtmlParse {
   // Number of images whose low quality images are inlined in the html page by
   // InlinePreviewFilter.
   int num_inline_preview_images_;
+
+  // Number of flushed early pagespeed rewritten resource.
+  int num_flushed_early_pagespeed_resources_;
 
   CollectSubresourcesFilter* collect_subresources_filter_;
 

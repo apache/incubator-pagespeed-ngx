@@ -19,9 +19,14 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_FILTER_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_FILTER_H_
 
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
-
 namespace net_instaweb {
+
+class HtmlCdataNode;
+class HtmlCharactersNode;
+class HtmlCommentNode;
+class HtmlDirectiveNode;
+class HtmlElement;
+class HtmlIEDirectiveNode;
 
 class HtmlFilter {
  public:

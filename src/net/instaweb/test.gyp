@@ -161,6 +161,7 @@
         'rewriter/rewrite_single_resource_filter_test.cc',
         'rewriter/rewrite_test_base.cc',
         'rewriter/rewriter_test.cc',
+        'rewriter/rewritten_content_scanning_filter_test.cc',
         'rewriter/scan_filter_test.cc',
         'rewriter/script_tag_scanner_test.cc',
         'rewriter/server_context_test.cc',

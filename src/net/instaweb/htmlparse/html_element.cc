@@ -25,7 +25,6 @@
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

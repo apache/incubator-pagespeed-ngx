@@ -20,10 +20,11 @@
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_EXPLICIT_CLOSE_TAG_H_
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
+
+class HtmlElement;
 
 // Makes every tag explicitly or briefly closed so that when we re-serialize
 // we can see the structure as interpreted by the parser.

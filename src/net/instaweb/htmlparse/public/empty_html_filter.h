@@ -19,16 +19,26 @@
 #ifndef NET_INSTAWEB_HTMLPARSE_PUBLIC_EMPTY_HTML_FILTER_H_
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_EMPTY_HTML_FILTER_H_
 
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
 
 // This 'string' is not needed for this include.  But removing it breaks
-// Page Speed.  See
+// PageSpeed Insights.  See
 // third_party/pagespeed/src/pagespeed/html/external_resource_filter.h
 // Remove this once that one is fixed.
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
+
+class HtmlCdataNode;
+class HtmlCharactersNode;
+class HtmlCommentNode;
+class HtmlDirectiveNode;
+class HtmlElement;
+class HtmlIEDirectiveNode;
+
+// TODO(jmarantz): remove this -- it's IWYU-superfluous but is needed until
+// PageSpeed Insights puts this declaration in.
+class HtmlParse;
 
 // Base class for rewriting filters that don't need to be sure to
 // override every filter method.  Other filters that need to be sure

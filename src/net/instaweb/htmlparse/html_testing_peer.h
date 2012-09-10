@@ -23,9 +23,11 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 
 namespace net_instaweb {
+
+class HtmlElement;
+class HtmlEvent;
 
 class HtmlTestingPeer {
  public:

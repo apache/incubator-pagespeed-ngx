@@ -29,7 +29,6 @@
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/arena.h"
 #include "net/instaweb/util/public/atom.h"
 #include "net/instaweb/util/public/google_url.h"

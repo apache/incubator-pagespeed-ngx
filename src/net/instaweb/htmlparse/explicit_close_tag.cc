@@ -18,7 +18,6 @@
 
 #include "net/instaweb/htmlparse/public/explicit_close_tag.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 
 namespace net_instaweb {
 

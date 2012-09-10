@@ -18,6 +18,8 @@
 
 #include "net/instaweb/automatic/public/flush_early_flow.h"
 
+#include <algorithm>
+
 #include "base/logging.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
@@ -35,6 +37,7 @@
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -58,6 +61,7 @@ const char kFlushSubresourcesFilter[] = "FlushSubresourcesFilter";
 
 const char kPrefetchObjectTagHtml[] = "preload(%s);";
 
+const int kMaxParallelConnections = 6;
 
 }  // namespace
 
@@ -148,6 +152,7 @@ FlushEarlyFlow::FlushEarlyFlow(
     : url_(url),
       dummy_head_writer_(&dummy_head_),
       num_resources_flushed_(0),
+      max_preconnect_attempts_(0),
       base_fetch_(base_fetch),
       flush_early_fetch_(NULL),
       driver_(driver),
@@ -175,6 +180,18 @@ void FlushEarlyFlow::FlushEarly() {
       property_cache_callback_->GetPropertyPageWithoutOwnership(
           ProxyFetchPropertyCallback::kPagePropertyCache);
   if (page != NULL && cohort != NULL) {
+    PropertyValue* num_rewritten_resources_property_value = page->GetProperty(
+        cohort,
+        RewrittenContentScanningFilter::kNumProxiedRewrittenResourcesProperty);
+
+    if (num_rewritten_resources_property_value->has_value()) {
+      int num_rewritten_resource;
+      if (StringToInt(num_rewritten_resources_property_value->value().data(),
+                     &num_rewritten_resource)) {
+        max_preconnect_attempts_ = std::min(kMaxParallelConnections,
+                                            num_rewritten_resource);
+      }
+    }
     PropertyValue* property_value = page->GetProperty(
         cohort, RewriteDriver::kSubresourcesPropertyName);
     if (property_value != NULL && property_value->has_value()) {
@@ -214,6 +231,7 @@ void FlushEarlyFlow::FlushEarly() {
         // Clone the RewriteDriver which is used rewrite the HTML that we are
         // trying to flush early.
         RewriteDriver* new_driver = driver_->Clone();
+        new_driver->increment_async_events_count();
         new_driver->set_response_headers_ptr(base_fetch_->response_headers());
         new_driver->set_request_headers(base_fetch_->request_headers());
         new_driver->set_flushing_early(true);
@@ -242,7 +260,8 @@ void FlushEarlyFlow::FlushEarly() {
         num_requests_flushed_early_->IncBy(1);
         // This deletes the driver once done.
         new_driver->FinishParseAsync(
-            MakeFunction(this, &FlushEarlyFlow::FlushEarlyRewriteDone, now_ms));
+            MakeFunction(this, &FlushEarlyFlow::FlushEarlyRewriteDone, now_ms,
+                         new_driver));
         return;
       } else {
         GenerateDummyHeadAndCountResources(flush_early_info);
@@ -263,13 +282,17 @@ void FlushEarlyFlow::FlushEarly() {
   TriggerProxyFetch();
 }
 
-void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms) {
+void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
+                                           RewriteDriver* flush_early_driver) {
   StaticJavascriptManager* static_js__manager =
         manager_->static_javascript_manager();
   if (should_flush_early_lazyload_script_) {
     // Flush Lazyload filter script content.
     WriteScript(LazyloadImagesFilter::GetLazyloadJsSnippet(
         driver_->options(), static_js__manager));
+    if (!driver_->options()->lazyload_images_blank_url().empty()) {
+      --max_preconnect_attempts_;
+    }
   }
   if (should_flush_early_js_defer_script_) {
     // Flush defer_javascript script content.
@@ -277,6 +300,22 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms) {
     WriteScript(JsDeferDisabledFilter::GetDeferJsSnippet(
         driver_->options(), static_js__manager));
   }
+
+  max_preconnect_attempts_ -=
+      flush_early_driver->num_flushed_early_pagespeed_resources();
+  if (max_preconnect_attempts_ > 0 &&
+      !flush_early_driver->options()->pre_connect_url().empty()) {
+    base_fetch_->Write("<script type=\"text/javascript\" >", handler_);
+    for (int index = 0; index < max_preconnect_attempts_; ++index) {
+      base_fetch_->Write(StrCat(
+          "new Image().src='",
+          flush_early_driver->options()->pre_connect_url(), "?id=",
+          IntegerToString(index), "';"), handler_);
+      base_fetch_->Write("</script>", handler_);
+    }
+  }
+  flush_early_driver->decrement_async_events_count();
+
   base_fetch_->Write("</head>", handler_);
   base_fetch_->Flush(handler_);
   flush_early_rewrite_latency_ms_->Add(

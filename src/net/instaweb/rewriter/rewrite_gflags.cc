@@ -154,6 +154,9 @@ DEFINE_bool(lazyload_images_after_onload, false, "Boolean indicating whether "
 DEFINE_string(lazyload_images_blank_url, "",
               "The initial image url to load in the lazyload images filter.");
 
+DEFINE_string(pre_connect_url, "",
+              "Url to which pre connect requests will be sent.");
+
 DEFINE_bool(inline_only_critical_images, true, "Boolean indicating whether "
             "inline_images should inline only critical images or not.");
 
@@ -389,6 +392,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("lazyload_images_blank_url")) {
     options->set_lazyload_images_blank_url(
         FLAGS_lazyload_images_blank_url);
+  }
+  if (WasExplicitlySet("pre_connect_url")) {
+    options->set_pre_connect_url(FLAGS_pre_connect_url);
   }
   if (WasExplicitlySet("inline_only_critical_images")) {
     options->set_inline_only_critical_images(

@@ -28,7 +28,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/util/public/arena.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -40,15 +40,9 @@
 namespace net_instaweb {
 
 class DocType;
-class HtmlCdataNode;
-class HtmlCharactersNode;
-class HtmlCommentNode;
-class HtmlDirectiveNode;
 class HtmlEvent;
 class HtmlFilter;
-class HtmlIEDirectiveNode;
 class HtmlLexer;
-class HtmlNode;
 class MessageHandler;
 class Timer;
 

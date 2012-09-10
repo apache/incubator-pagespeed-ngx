@@ -30,11 +30,13 @@
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
+class HtmlCommentNode;
+class HtmlIEDirectiveNode;
 
 namespace {
 

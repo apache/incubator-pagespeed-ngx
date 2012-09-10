@@ -21,7 +21,6 @@
 
 #include <vector>
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/http/public/content_type.h"

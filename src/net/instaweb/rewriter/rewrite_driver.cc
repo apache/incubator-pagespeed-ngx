@@ -103,6 +103,7 @@
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/rewriter/public/split_html_filter.h"
 #include "net/instaweb/rewriter/public/strip_non_cacheable_filter.h"
@@ -223,6 +224,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
       num_inline_preview_images_(0),
+      num_flushed_early_pagespeed_resources_(0),
       collect_subresources_filter_(NULL),
       serve_blink_non_critical_(false),
       is_blink_request_(false),
@@ -329,6 +331,7 @@ void RewriteDriver::Clear() {
   client_id_.clear();
   fully_rewrite_on_flush_ = false;
   num_inline_preview_images_ = 0;
+  num_flushed_early_pagespeed_resources_ = 0;
   flush_early_info_.reset(NULL);
   flush_early_render_info_.reset(NULL);
   collect_subresources_filter_ = NULL;
@@ -976,6 +979,10 @@ void RewriteDriver::AddPostRenderFilters() {
     // Happens before RemoveQuotes but after everything else.  Note:
     // we Must left trim urls BEFORE quote removal.
     AddUnownedPostRenderFilter(url_trim_filter_.get());
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kFlushSubresources) &&
+      !options_->pre_connect_url().empty()) {
+    AddOwnedPostRenderFilter(new RewrittenContentScanningFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kInsertDnsPrefetch)) {
     InsertDnsPrefetchFilter* insert_dns_prefetch_filter =

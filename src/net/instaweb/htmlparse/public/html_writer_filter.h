@@ -22,12 +22,18 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_filter.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-class HtmlName;
+
+class HtmlCdataNode;
+class HtmlCharactersNode;
+class HtmlCommentNode;
+class HtmlDirectiveNode;
+class HtmlIEDirectiveNode;
+class HtmlParse;
 class Writer;
 
 class HtmlWriterFilter : public HtmlFilter {

@@ -1439,6 +1439,14 @@ class RewriteOptions {
   int64 max_combined_js_bytes() const {
     return max_combined_js_bytes_.value();
   }
+
+  void set_pre_connect_url(const StringPiece& p) {
+    set_option(GoogleString(p.data(), p.size()), &pre_connect_url_);
+  }
+  const GoogleString& pre_connect_url() const {
+    return pre_connect_url_.value();
+  }
+
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this', although
   // option Merge implementations can be redefined by specific Option
@@ -2373,6 +2381,9 @@ class RewriteOptions {
   // Maximum size allowed for the combined js resource.
   // Negative value will bypass the size check.
   Option<int64> max_combined_js_bytes_;
+
+  // Url to which pre connect requests will be sent.
+  Option<GoogleString> pre_connect_url_;
 
   // The cache TTL with which to override the urls matching the
   // override_caching_ WildCardGroup. Note that we do not override the cache TTL

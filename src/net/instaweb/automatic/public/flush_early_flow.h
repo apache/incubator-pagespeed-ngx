@@ -90,7 +90,8 @@ class FlushEarlyFlow {
   // Callback that is invoked after we rewrite the early head.
   // start_time_ms indicates the time we started rewriting the flush early
   // head. This is set to -1 if is_experimental_hit is false.
-  void FlushEarlyRewriteDone(int64 start_time_ms);
+  void FlushEarlyRewriteDone(int64 start_time_ms,
+                             RewriteDriver* flush_early_driver);
 
   // Triggers ProxyFetchFactory::StartNewProxyFetch.
   void TriggerProxyFetch();
@@ -104,6 +105,7 @@ class FlushEarlyFlow {
   GoogleString dummy_head_;
   StringWriter dummy_head_writer_;
   int num_resources_flushed_;
+  int max_preconnect_attempts_;
 
   AsyncFetch* base_fetch_;
   AsyncFetch* flush_early_fetch_;

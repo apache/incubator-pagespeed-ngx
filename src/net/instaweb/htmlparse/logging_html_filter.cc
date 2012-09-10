@@ -18,7 +18,6 @@
 
 #include "net/instaweb/htmlparse/public/logging_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/htmlparse/public/statistics_log.h"
 
 // TODO(jmarantz): convert to Statistics interface

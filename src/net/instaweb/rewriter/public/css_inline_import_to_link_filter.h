@@ -20,11 +20,12 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_INLINE_IMPORT_TO_LINK_FILTER_H_
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/htmlparse/public/html_parser_types.h"
 #include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
 
+class HtmlCharactersNode;
+class HtmlElement;
 class RewriteDriver;
 class Statistics;
 class Variable;
