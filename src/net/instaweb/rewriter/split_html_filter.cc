@@ -110,7 +110,7 @@ void SplitHtmlFilter::EndDocument() {
   Json::Value json = Json::arrayValue;
   json.append(*(element_json_stack_[0].second));
 
-  ServeNonCriticalPanelContents(json);
+  ServeNonCriticalPanelContents(json[0]);
   // TODO(rahulbansal): We are sending an extra close body and close html tag.
   // Fix that.
   WriteString("\n</body></html>\n");
@@ -122,6 +122,9 @@ void SplitHtmlFilter::WriteString(const StringPiece& str) {
 }
 
 void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
+  WriteString("<script>pagespeed.panelLoaderInit();</script>");
+  WriteString("<script>pagespeed.panelLoader.invokedFromSplit();</script>");
+  WriteString("<script>pagespeed.panelLoader.loadCriticalData({});</script>");
   GoogleString non_critical_json = fast_writer_.write(json);
   BlinkUtil::StripTrailingNewline(&non_critical_json);
   WriteString("<script>pagespeed.panelLoader.bufferNonCriticalData(");

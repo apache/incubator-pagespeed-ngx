@@ -87,11 +87,14 @@ const char kSplitHtml[] =
       "This is the footer"
     "</h1>"
     "</body></html>"
-     "<script>pagespeed.panelLoader.bufferNonCriticalData([{"
+    "<script>pagespeed.panelLoaderInit();</script>"
+    "<script>pagespeed.panelLoader.invokedFromSplit();</script>"
+    "<script>pagespeed.panelLoader.loadCriticalData({});</script>"
+    "<script>pagespeed.panelLoader.bufferNonCriticalData({"
        "\"panel-id.0\":[{\"instance_html\":\"__psa_lt;div id=\\\"inspiration\\\" panel-id=\\\"panel-id.0\\\"__psa_gt;__psa_lt;img src=\\\"image11\\\"__psa_gt;__psa_lt;/div__psa_gt;__psa_lt;h3 id=\\\"afterInspirations\\\" panel-id=\\\"panel-id.0\\\"__psa_gt; This is after Inspirations __psa_lt;/h3__psa_gt;\"}],"
-       "\"panel-id.1\":[{\"instance_html\":\"__psa_lt;img id=\\\"image\\\" src=\\\"image_panel.1\\\" panel-id=\\\"panel-id.1\\\"__psa_gt;\"}]}]);"
-     "</script>\n"
-     "</body></html>\n";
+       "\"panel-id.1\":[{\"instance_html\":\"__psa_lt;img id=\\\"image\\\" src=\\\"image_panel.1\\\" panel-id=\\\"panel-id.1\\\"__psa_gt;\"}]});"
+    "</script>\n"
+    "</body></html>\n";
 
 class MockPage : public PropertyPage {
  public:
@@ -196,7 +199,10 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
       "<script src=\"/psajs/blink.js\"></script>"
       "<script>pagespeed.deferInit();</script>"
       "</head><body></body></html>"
-      "<script>pagespeed.panelLoader.bufferNonCriticalData([{}]);"
+      "<script>pagespeed.panelLoaderInit();</script>"
+      "<script>pagespeed.panelLoader.invokedFromSplit();</script>"
+      "<script>pagespeed.panelLoader.loadCriticalData({});</script>"
+      "<script>pagespeed.panelLoader.bufferNonCriticalData({});"
       "</script>\n</body></html>\n";
   GoogleString html_input = StrCat(pre_head_input, post_head_input);
 

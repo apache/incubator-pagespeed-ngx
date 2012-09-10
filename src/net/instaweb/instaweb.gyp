@@ -416,21 +416,6 @@
       ],
     },
     {
-      'target_name': 'instaweb_panel_config_pb',
-      'variables': {
-        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
-      },
-      'sources': [
-        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/panel_config.pb.cc',
-        'rewriter/panel_config.proto',
-      ],
-      'dependencies': [
-      ],
-      'includes': [
-        'protoc.gypi',
-      ],
-    },
-    {
       'target_name': 'instaweb_blink_critical_line_data_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -781,7 +766,6 @@
         'instaweb_util',
         'instaweb_core.gyp:instaweb_htmlparse_core',
         'instaweb_flush_early_pb',
-        'instaweb_panel_config_pb',
         'instaweb_rewriter_html_gperf',
         'instaweb_rewriter_html_option_gperf',
         'instaweb_rewriter_pb',
@@ -970,7 +954,6 @@
         'instaweb_lazyload_images_opt_data2c',
         'instaweb_local_storage_cache_data2c',
         'instaweb_local_storage_cache_opt_data2c',
-        'instaweb_panel_config_pb',
         'instaweb_rewriter_base',
         'instaweb_rewriter_css',
         'instaweb_rewriter_image',
@@ -1098,7 +1081,6 @@
         'instaweb_blink_critical_line_data_pb',
         'instaweb_http',
         'instaweb_flush_early_pb',
-        'instaweb_panel_config_pb',
         'instaweb_rewriter',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
