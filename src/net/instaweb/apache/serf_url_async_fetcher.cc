@@ -172,12 +172,14 @@ class SerfFetch : public PoolElement<SerfFetch> {
 
   void CallbackDone(bool success) {
     // fetcher_==NULL if Start is called during shutdown.
-    if (!success && (fetcher_ != NULL)) {
-      fetcher_->failure_count_->Add(1);
-    }
-    if (fetcher_->track_original_content_length()) {
-      async_fetch_->extra_response_headers()->SetOriginalContentLength(
-          bytes_received_);
+    if (fetcher_ != NULL) {
+      if (!success) {
+        fetcher_->failure_count_->Add(1);
+      }
+      if (fetcher_->track_original_content_length()) {
+        async_fetch_->extra_response_headers()->SetOriginalContentLength(
+            bytes_received_);
+      }
     }
     async_fetch_->Done(success);
     // We should always NULL the async_fetch_ out after calling otherwise we
