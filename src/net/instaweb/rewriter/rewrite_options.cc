@@ -213,6 +213,7 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kExtendCacheCss,
   RewriteOptions::kExtendCacheImages,
   RewriteOptions::kExtendCacheScripts,
+  RewriteOptions::kFlattenCssImports,
   RewriteOptions::kInlineCss,
   RewriteOptions::kInlineImages,
   RewriteOptions::kInlineImportToLink,

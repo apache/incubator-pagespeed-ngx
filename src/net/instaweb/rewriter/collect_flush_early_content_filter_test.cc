@@ -18,8 +18,9 @@
 #include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
 
 #include "net/instaweb/rewriter/flush_early.pb.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -32,9 +33,10 @@ class CollectFlushEarlyContentFilterTest : public RewriteTestBase {
 
  protected:
   virtual void SetUp() {
+    options()->EnableFilter(RewriteOptions::kFlushSubresources);
+    options()->EnableFilter(RewriteOptions::kInlineImportToLink);
     RewriteTestBase::SetUp();
-    rewrite_driver()->AppendOwnedPreRenderFilter(
-        new CollectFlushEarlyContentFilter(rewrite_driver()));
+    rewrite_driver()->AddFilters();
   }
 
   virtual bool AddHtmlTags() const { return false; }
@@ -76,6 +78,24 @@ TEST_F(CollectFlushEarlyContentFilterTest, CollectFlushEarlyContentFilter) {
                "</script>"
                "<link type=\"text/css\" rel=\"stylesheet\" "
                "href=\"http://test.com/c.css\"/>",
+               flush_early_info->resource_html());
+}
+
+TEST_F(CollectFlushEarlyContentFilterTest, WithInlineInportToLinkFilter) {
+  GoogleString html_input =
+      "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+      "<html>"
+      "<head>"
+        "<style>@import url(assets/styles.css);</style>"
+      "</head>"
+      "<body>"
+      "</body>"
+      "</html>";
+
+  Parse("not_flushed_early", html_input);
+  FlushEarlyInfo* flush_early_info = rewrite_driver()->flush_early_info();
+  EXPECT_STREQ("<link rel=\"stylesheet\" "
+               "href=\"http://test.com/assets/styles.css\"/>",
                flush_early_info->resource_html());
 }
 

@@ -822,18 +822,18 @@ void RewriteDriver::AddPreRenderFilters() {
     // Experimental filter that blindly strips all scripts from a page.
     AppendOwnedPreRenderFilter(new StripScriptsFilter(this));
   }
+  if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink)) {
+    // If we're converting simple embedded CSS @imports into a href link
+    // then we need to do that before any other CSS processing.
+    AppendOwnedPreRenderFilter(new CssInlineImportToLinkFilter(this,
+                                                               statistics()));
+  }
   // Enable Flush subresources early filter to extract the subresources from
   // head. This should ideally (but not necessarily) be before any filters that
   // trigger async rewrites.
   if (flush_subresources_enabled &&
       rewrite_options->enable_flush_subresources_experimental()) {
     AppendOwnedPreRenderFilter(new CollectFlushEarlyContentFilter(this));
-  }
-  if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink)) {
-    // If we're converting simple embedded CSS @imports into a href link
-    // then we need to do that before any other CSS processing.
-    AppendOwnedPreRenderFilter(new CssInlineImportToLinkFilter(this,
-                                                            statistics()));
   }
   if (rewrite_options->Enabled(RewriteOptions::kOutlineCss)) {
     // Cut out inlined styles and make them into external resources.
