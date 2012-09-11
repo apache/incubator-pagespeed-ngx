@@ -156,11 +156,16 @@ void ApacheResourceManager::ChildInit() {
           apache_factory_->timer()));
       set_rewrite_stats(local_rewrite_stats_.get());
 
+      // In case of gzip fetching, we will have the UrlAsyncFetcherStats take
+      // care of it rather than the original fetcher, so we get correct
+      // numbers for bytes fetched.
+      if (apache_factory_->fetch_with_gzip()) {
+        fetcher->set_fetch_with_gzip(false);
+      }
       stats_fetcher_.reset(new UrlAsyncFetcherStats(
           kLocalFetcherStatsPrefix, fetcher,
           apache_factory_->timer(), split_statistics_.get()));
       if (apache_factory_->fetch_with_gzip()) {
-        fetcher->set_fetch_with_gzip(false);
         stats_fetcher_->set_fetch_with_gzip(true);
       }
       set_default_system_fetcher(stats_fetcher_.get());

@@ -29,6 +29,8 @@ ModPagespeedBlockingRewriteKey psatest
 #PER_VHOST_STATS    Allow from 127.0.0.1
 #PER_VHOST_STATS    SetHandler mod_pagespeed_global_statistics
 #PER_VHOST_STATS </Location>
+#PER_VHOST_STATS # Make sure we behave OK with this on, too.
+#PER_VHOST_STATS ModPagespeedFetchWithGzip on
 
 #STATS_LOGGING ModPagespeedStatistics on
 #STATS_LOGGING ModPagespeedStatisticsLogging on
