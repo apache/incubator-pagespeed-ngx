@@ -260,14 +260,11 @@ void ProxyFetchPropertyCallbackCollector::Done(
     success_ &= success;
 
     if (pending_callbacks_.empty()) {
-      done_ = true;
       // There is a race where Detach() can be called immediately after we
       // release the lock below, and it (Detach) deletes 'this' (because we
       // just set done_ to true), which means we cannot rely on any data
       // members being valid after releasing the lock, so we copy them all.
       resource_manager = server_context_;
-      fetch = proxy_fetch_;
-      do_delete = detached_;
       post_lookup_task_vector.reset(post_lookup_task_vector_.release());
       call_post = true;
     }
@@ -280,6 +277,12 @@ void ProxyFetchPropertyCallbackCollector::Done(
       for (int i = 0, n = post_lookup_task_vector->size(); i < n; ++i) {
         (*post_lookup_task_vector.get())[i]->CallRun();
       }
+    }
+    {
+      ScopedMutex lock(mutex_.get());
+      done_ = true;
+      fetch = proxy_fetch_;
+      do_delete = detached_;
     }
     if (fetch != NULL) {
       fetch->PropertyCacheComplete(this, success);  // deletes this.
@@ -323,8 +326,8 @@ void ProxyFetchPropertyCallbackCollector::AddPostLookupTask(Function* func) {
   {
     ScopedMutex lock(mutex_.get());
     DCHECK(!detached_);
-    do_run = done_;
-    if (!done_) {
+    do_run = post_lookup_task_vector_.get() == NULL;
+    if (!do_run) {
       post_lookup_task_vector_->push_back(func);
     }
   }

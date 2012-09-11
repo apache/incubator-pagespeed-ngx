@@ -50,7 +50,7 @@ class FlushEarlyFlow {
 
   static void Start(
       const GoogleString& url,
-      AsyncFetch* base_fetch,
+      AsyncFetch** base_fetch,
       RewriteDriver* driver,
       ProxyFetchFactory* factory,
       ProxyFetchPropertyCallbackCollector* property_callback);
@@ -65,12 +65,14 @@ class FlushEarlyFlow {
                             const RewriteDriver* driver);
 
  private:
+  class FlushEarlyAsyncFetch;
   // Flush some response for this request before receiving the fetch response
   // from the origin server.
   void FlushEarly();
 
   FlushEarlyFlow(const GoogleString& url,
                  AsyncFetch* base_fetch,
+                 FlushEarlyAsyncFetch* flush_early_fetch,
                  RewriteDriver* driver,
                  ProxyFetchFactory* factory,
                  ProxyFetchPropertyCallbackCollector* property_cache_callback);
@@ -93,9 +95,6 @@ class FlushEarlyFlow {
   void FlushEarlyRewriteDone(int64 start_time_ms,
                              RewriteDriver* flush_early_driver);
 
-  // Triggers ProxyFetchFactory::StartNewProxyFetch.
-  void TriggerProxyFetch();
-
   void Write(const StringPiece& val);
 
   // Write the script content to base_fetch.
@@ -108,7 +107,7 @@ class FlushEarlyFlow {
   int max_preconnect_attempts_;
 
   AsyncFetch* base_fetch_;
-  AsyncFetch* flush_early_fetch_;
+  FlushEarlyAsyncFetch* flush_early_fetch_;
   RewriteDriver* driver_;
   ProxyFetchFactory* factory_;
   ServerContext* manager_;

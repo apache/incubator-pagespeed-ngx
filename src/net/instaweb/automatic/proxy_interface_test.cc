@@ -882,6 +882,19 @@ class ProxyInterfaceTest : public RewriteTestBase {
   void TestPropertyCache(const StringPiece& url,
                          bool delay_pcache, bool thread_pcache,
                          bool expect_success) {
+    RequestHeaders request_headers;
+    ResponseHeaders response_headers;
+    GoogleString output;
+    TestPropertyCacheWithHeadersAndOutput(
+        url, delay_pcache, thread_pcache, expect_success, true, true,
+        request_headers, &response_headers, &output);
+  }
+
+  void TestPropertyCacheWithHeadersAndOutput(
+      const StringPiece& url, bool delay_pcache, bool thread_pcache,
+      bool expect_success, bool check_stats, bool add_create_filter_callback,
+      const RequestHeaders& request_headers,
+      ResponseHeaders* response_headers, GoogleString* output) {
     scoped_ptr<QueuedWorkerPool> pool;
     QueuedWorkerPool::Sequence* sequence = NULL;
 
@@ -903,15 +916,13 @@ class ProxyInterfaceTest : public RewriteTestBase {
     }
 
     CreateFilterCallback create_filter_callback;
-    factory()->AddCreateFilterCallback(&create_filter_callback);
-
-    GoogleString image_out;
-    ResponseHeaders headers_out;
+    if (add_create_filter_callback) {
+      factory()->AddCreateFilterCallback(&create_filter_callback);
+    }
 
     if (thread_pcache) {
-      RequestHeaders request_headers;
       FetchFromProxyNoWait(url, request_headers, expect_success,
-                           false /* don't log flushes*/, &headers_out);
+                           false /* don't log flushes*/, response_headers);
       delay_cache()->ReleaseKeyInSequence(delay_pcache_key, sequence);
 
       // Wait until the property-cache-thread is in
@@ -930,16 +941,20 @@ class ProxyInterfaceTest : public RewriteTestBase {
       // Now we can release the property-cache thread.
       sync->Signal(ProxyFetch::kCollectorDone);
       WaitForFetch();
+      *output = callback_->buffer();
       pool->ShutDown();
     } else {
-      FetchFromProxy(url, expect_success, &image_out, &headers_out);
+      FetchFromProxy(url, request_headers, expect_success, output,
+                     response_headers);
       if (delay_pcache) {
         delay_cache()->ReleaseKey(delay_pcache_key);
       }
     }
 
-    EXPECT_EQ(1, lru_cache()->num_inserts());  // http-cache
-    EXPECT_EQ(2, lru_cache()->num_misses());   // http-cache & prop-cache
+    if (check_stats) {
+      EXPECT_EQ(1, lru_cache()->num_inserts());  // http-cache
+      EXPECT_EQ(2, lru_cache()->num_misses());   // http-cache & prop-cache
+    }
   }
 
   void TestOptionsUsedInCacheKey() {
@@ -1099,6 +1114,42 @@ class ProxyInterfaceTest : public RewriteTestBase {
           rewritten_img_url_1.data(),
           rewritten_css_url_3.data());
     }
+  }
+
+  void ExperimentalFlushEarlyFlowTestHelper(
+      const GoogleString& user_agent,
+      UserAgentMatcher::PrefetchMechanism mechanism) {
+    ExperimentalFlushEarlyFlowTestHelperWithPropertyCache(
+        user_agent, mechanism, false, false);
+    ExperimentalFlushEarlyFlowTestHelperWithPropertyCache(
+        user_agent, mechanism, false, true);
+    ExperimentalFlushEarlyFlowTestHelperWithPropertyCache(
+        user_agent, mechanism, true, true);
+  }
+
+  void ExperimentalFlushEarlyFlowTestHelperWithPropertyCache(
+      const GoogleString& user_agent,
+      UserAgentMatcher::PrefetchMechanism mechanism,
+      bool delay_pcache,
+      bool thread_pcache) {
+    SetupForFlushEarlyFlow(true);
+    GoogleString text;
+    RequestHeaders request_headers;
+    request_headers.Replace(HttpAttributes::kUserAgent, user_agent);
+    ResponseHeaders headers;
+    TestPropertyCacheWithHeadersAndOutput(
+        kTestDomain, delay_pcache, thread_pcache, true, false, false,
+        request_headers, &headers, &text);
+
+    // Fetch the url again. This time FlushEarlyFlow should not be triggered.
+    // None
+    TestPropertyCacheWithHeadersAndOutput(
+        kTestDomain, delay_pcache, thread_pcache, true, false, false,
+        request_headers, &headers, &text);
+    GoogleString expected_output = FlushEarlyRewrittenHtml(
+        mechanism, true, false, false);
+    EXPECT_EQ(expected_output, text);
+    VerifyCharset(&headers);
   }
 
   scoped_ptr<ProxyInterface> proxy_interface_;
@@ -1266,65 +1317,26 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestWithDeferJsPreferch) {
 }
 
 TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTest) {
-  SetupForFlushEarlyFlow(true);
-  GoogleString text;
-  RequestHeaders request_headers;
-  ResponseHeaders headers;
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-
-  // Fetch the url again. This time FlushEarlyFlow should not be triggered.
-  // None
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchNotSupported, true, false, false), text);
+  ExperimentalFlushEarlyFlowTestHelper(
+      "", UserAgentMatcher::kPrefetchNotSupported);
 }
 
 TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestPrefetch) {
-  SetupForFlushEarlyFlow(true);
-  GoogleString text;
-  RequestHeaders request_headers;
-  request_headers.Replace(HttpAttributes::kUserAgent,
-                          "prefetch_link_rel_subresource");
-  ResponseHeaders headers;
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-
-  // Fetch the url again. This time FlushEarlyFlow should be triggered.
-  // Chrome
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkRelSubresource, true, false, false), text);
-  VerifyCharset(&headers);
+  ExperimentalFlushEarlyFlowTestHelper(
+      "prefetch_link_rel_subresource",
+      UserAgentMatcher::kPrefetchLinkRelSubresource);
 }
 
 TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestImageTag) {
-  SetupForFlushEarlyFlow(true);
-  GoogleString text;
-  RequestHeaders request_headers;
-  request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_image_tag");
-  ResponseHeaders headers;
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-
-  // Fetch the url again. This time FlushEarlyFlow should be triggered.
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchImageTag, true, false, false), text);
-  VerifyCharset(&headers);
+  ExperimentalFlushEarlyFlowTestHelper(
+      "prefetch_image_tag",
+      UserAgentMatcher::kPrefetchImageTag);
 }
 
 TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestLinkScript) {
-  SetupForFlushEarlyFlow(true);
-  GoogleString text;
-  RequestHeaders request_headers;
-  request_headers.Replace(HttpAttributes::kUserAgent,
-                          "prefetch_link_script_tag");
-  ResponseHeaders headers;
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-
-  // Fetch the url again. This time FlushEarlyFlow should be triggered.
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkScriptTag, true, false, false), text);
-  VerifyCharset(&headers);
+  ExperimentalFlushEarlyFlowTestHelper(
+      "prefetch_link_script_tag",
+      UserAgentMatcher::kPrefetchLinkScriptTag);
 }
 
 TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestWithDeferJsImageTag) {

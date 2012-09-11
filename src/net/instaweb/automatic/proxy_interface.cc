@@ -552,15 +552,12 @@ void ProxyInterface::ProxyRequestCallback(
       }
       if (property_callback != NULL &&
         FlushEarlyFlow::CanFlushEarly(url_string, async_fetch, driver)) {
-        // TODO(mmohabey): Initialte flush_early_flow and proxy_fetch in
-        // parallel.
-        FlushEarlyFlow::Start(url_string, async_fetch, driver,
+        FlushEarlyFlow::Start(url_string, &async_fetch, driver,
                               proxy_fetch_factory_.get(),
-                              property_callback.release());
-      } else {
-        proxy_fetch_factory_->StartNewProxyFetch(
-            url_string, async_fetch, driver, property_callback.release(), NULL);
+                              property_callback.get());
       }
+      proxy_fetch_factory_->StartNewProxyFetch(
+          url_string, async_fetch, driver, property_callback.release(), NULL);
     }
   }
 
