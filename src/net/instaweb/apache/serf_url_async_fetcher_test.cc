@@ -18,6 +18,7 @@
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 
 #include <algorithm>
+#include <cstdlib>
 #include <string>
 #include <vector>
 #include "apr_atomic.h"
@@ -39,6 +40,14 @@
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "testing/gtest/include/gtest/gtest.h"
+
+// Default domain to test URL fetches from.  If the default site is
+// down, the tests can be directed to a backup host by setting the
+// environment variable FETCH_TEST_DOMAIN.  Note that this relies on
+// 'mod_pagespeed_examples/' and 'do_not_modify/' being available
+// relative to the domain, by copying them into /var/www from
+// MOD_PAGESPEED_SVN_PATH/src/install.
+const char kFetchTestDomain[] = "//modpagespeed.com";
 
 namespace net_instaweb {
 
@@ -134,6 +143,10 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
   SerfUrlAsyncFetcherTest() { }
 
   virtual void SetUp() {
+    StringPiece fetch_test_domain(getenv("FETCH_TEST_DOMAIN"));
+    if (fetch_test_domain.empty()) {
+      fetch_test_domain = kFetchTestDomain;
+    }
     apr_pool_create(&pool_, NULL);
     timer_.reset(new MockTimer(MockTimer::kApr_5_2010_ms));
     SerfUrlAsyncFetcher::InitStats(&statistics_);
@@ -143,22 +156,25 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
                                 &statistics_, timer_.get(), kFetcherTimeoutMs,
                                 &message_handler_));
     mutex_.reset(thread_system_->NewMutex());
-    AddTestUrl("http://www.modpagespeed.com/", "<!doctype html>");
+    AddTestUrl(StrCat("http:", fetch_test_domain,
+                      "/mod_pagespeed_example/index.html"),
+               "<!doctype html>");
     // Note: We store resources in www.modpagespeed.com/do_not_modify and
     // with content hash so that we can make sure the files don't change
     // from under us and cause our tests to fail.
-    AddTestUrl("http://www.modpagespeed.com/do_not_modify/"
-               "favicon.d034f46c06475a27478e98ef5dff965e.ico",
+    AddTestUrl(StrCat("http:", fetch_test_domain, "/do_not_modify/"
+                      "favicon.d034f46c06475a27478e98ef5dff965e.ico"),
                GoogleString("\000\000\001\000", 4));
-    AddTestUrl("http://www.modpagespeed.com/do_not_modify/"
-               "logo.e80d1c59a673f560785784fb1ac10959.gif", "GIF");
+    AddTestUrl(StrCat("http:", fetch_test_domain, "/do_not_modify/"
+                      "logo.e80d1c59a673f560785784fb1ac10959.gif"), "GIF");
     AddTestUrl("http://stevesouders.com/bin/resource.cgi?type=js&sleep=10",
                "var");
-    AddTestUrl("http://www.modpagespeed.com/mod_pagespeed_beacon", "");
-    AddTestUrl("https://www.modpagespeed.com/do_not_modify/"
-               "favicon.d034f46c06475a27478e98ef5dff965e.ico",
+    AddTestUrl(StrCat("http:", fetch_test_domain, "/mod_pagespeed_beacon"), "");
+    AddTestUrl(StrCat("https:", fetch_test_domain, "/do_not_modify/"
+                      "favicon.d034f46c06475a27478e98ef5dff965e.ico"),
                GoogleString());
-    AddTestUrl("http://www.modpagespeed.com:1023/refused.jpg", GoogleString());
+    AddTestUrl(StrCat("http:", fetch_test_domain, ":1023/refused.jpg"),
+               GoogleString());
     prev_done_count = 0;
   }
 
