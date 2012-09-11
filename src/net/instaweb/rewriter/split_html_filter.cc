@@ -135,6 +135,8 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
 }
 
 void SplitHtmlFilter::ReadCriticalLineConfig() {
+  PropertyCache* page_property_cache =
+      rewrite_driver_->server_context()->page_property_cache();
   const GoogleString& critical_line_config_from_options =
        options_->critical_line_config();
   if (!critical_line_config_from_options.empty()) {
@@ -151,10 +153,10 @@ void SplitHtmlFilter::ReadCriticalLineConfig() {
             xpath_pair[1].data(), xpath_pair[1].length());
       }
     }
-  } else {
+  } else if (page_property_cache != NULL && page_property_cache->enabled() &&
+             rewrite_driver_->property_page() != NULL) {
     const PropertyCache::Cohort* cohort_ =
-        rewrite_driver_->server_context()->page_property_cache()->
-        GetCohort(kRenderCohort);
+        page_property_cache->GetCohort(kRenderCohort);
     PropertyValue* property_value = rewrite_driver_->property_page()->
         GetProperty(cohort_, kCriticalLineInfoPropertyName);
     if (property_value != NULL) {
