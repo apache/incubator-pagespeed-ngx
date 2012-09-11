@@ -1529,15 +1529,15 @@ TEST_F(ProxyInterfaceTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
       "</html>";
 
   GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
-  GoogleString kOutputHtml =
-      StrCat("<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+  GoogleString kOutputHtml = StrCat(
+      "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
       "<html>"
       "<head>"
       "<title>Flush Subresources Early example</title>"
       "</head>"
       "<body>",
       StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
-                   redirect_url.c_str()).c_str(),
+                   redirect_url.c_str()),
       "<script type=\"text/javascript\">",
       LazyloadImagesFilter::GetLazyloadJsSnippet(
           options_, resource_manager()->static_javascript_manager()),
