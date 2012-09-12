@@ -40,6 +40,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/split_html_filter.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -266,6 +267,7 @@ FlushEarlyFlow::FlushEarlyFlow(
       property_cache_callback_(property_cache_callback),
       should_flush_early_lazyload_script_(false),
       should_flush_early_js_defer_script_(false),
+      should_flush_early_blink_script_(false),
       handler_(driver_->server_context()->message_handler()) {
   Statistics* stats = manager_->statistics();
   num_requests_flushed_early_ = stats->GetTimedVariable(
@@ -317,15 +319,24 @@ void FlushEarlyFlow::FlushEarly() {
           should_flush_early_lazyload_script_ = true;
         }
 
-        PropertyValue* defer_js_property_value = page->GetProperty(
-            cohort,
-            JsDeferDisabledFilter::kIsJsDeferScriptInsertedPropertyName);
-        if (defer_js_property_value->has_value() &&
-            StringCaseEqual(defer_js_property_value->value(), "1") &&
-            driver_->options()->Enabled(RewriteOptions::kDeferJavascript) &&
-            JsDeferDisabledFilter::ShouldApply(driver_)) {
-          driver_->set_is_defer_javascript_script_flushed(true);
-          should_flush_early_js_defer_script_ = true;
+        if (driver_->options()->Enabled(RewriteOptions::kSplitHtml) &&
+            SplitHtmlFilter::ShouldApply(driver_)) {
+          // TODO(rahulbansal): Add checks using value stored in property
+          // cache.
+          driver_->set_is_blink_script_flushed(true);
+          should_flush_early_blink_script_= true;
+        } else {
+          // We don't flush defer js here since blink js contains defer js.
+          PropertyValue* defer_js_property_value = page->GetProperty(
+              cohort,
+              JsDeferDisabledFilter::kIsJsDeferScriptInsertedPropertyName);
+          if (defer_js_property_value->has_value() &&
+              StringCaseEqual(defer_js_property_value->value(), "1") &&
+              driver_->options()->Enabled(RewriteOptions::kDeferJavascript) &&
+              JsDeferDisabledFilter::ShouldApply(driver_)) {
+            driver_->set_is_defer_javascript_script_flushed(true);
+            should_flush_early_js_defer_script_ = true;
+          }
         }
 
         int64 now_ms = manager_->timer()->NowMs();
@@ -397,21 +408,28 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
       flush_early_driver->num_flushed_early_pagespeed_resources()) -
       flush_early_driver->num_flushed_early_pagespeed_resources();
 
-  StaticJavascriptManager* static_js__manager =
+  StaticJavascriptManager* static_js_manager =
         manager_->static_javascript_manager();
   if (should_flush_early_lazyload_script_) {
     // Flush Lazyload filter script content.
     WriteScript(LazyloadImagesFilter::GetLazyloadJsSnippet(
-        driver_->options(), static_js__manager));
+        driver_->options(), static_js_manager));
     if (!driver_->options()->lazyload_images_blank_url().empty()) {
       --max_preconnect_attempts;
     }
+  }
+  if (should_flush_early_blink_script_) {
+    // Flush blink script.
+    WriteScript(JsDisableFilter::GetJsDisableScriptSnippet(driver_->options()));
+    WriteExternalScript(SplitHtmlFilter::GetBlinkJsUrl(
+        driver_->options(), static_js_manager));
+    WriteScript(SplitHtmlFilter::kDeferJsSnippet);
   }
   if (should_flush_early_js_defer_script_) {
     // Flush defer_javascript script content.
     WriteScript(JsDisableFilter::GetJsDisableScriptSnippet(driver_->options()));
     WriteScript(JsDeferDisabledFilter::GetDeferJsSnippet(
-        driver_->options(), static_js__manager));
+        driver_->options(), static_js_manager));
   }
 
   if (max_preconnect_attempts > 0 &&
@@ -439,6 +457,12 @@ void FlushEarlyFlow::WriteScript(const GoogleString& script_content) {
   base_fetch_->Write("<script type=\"text/javascript\">", handler_);
   base_fetch_->Write(script_content, handler_);
   base_fetch_->Write("</script>", handler_);
+}
+
+void FlushEarlyFlow::WriteExternalScript(const GoogleString& script_url) {
+  base_fetch_->Write("<script src=\"", handler_);
+  base_fetch_->Write(script_url, handler_);
+  base_fetch_->Write("\" type=\"text/javascript\"></script>", handler_);
 }
 
 void FlushEarlyFlow::GenerateResponseHeaders(

@@ -190,9 +190,12 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
               return;
             }
           }
-          if (!main_script_inserted_) {
+          if (!main_script_inserted_ &&
+              // Split HTML filter sends the lazyload script after critical
+              // images are sent.
+              !driver_->options()->Enabled(RewriteOptions::kSplitHtml)) {
             InsertLazyloadJsCode(element);
-          }
+           }
           // Replace the src with pagespeed_lazy_src.
           driver()->SetAttributeName(src, HtmlName::kPagespeedLazySrc);
           driver()->AddAttribute(element, HtmlName::kSrc, blank_image_url_);

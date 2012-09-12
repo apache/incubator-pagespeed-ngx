@@ -1811,7 +1811,7 @@ Selectors* Parser::ParseSelectors() {
     return NULL;
 }
 
-Import* Parser::ParseAsSingleImport() {
+Import* Parser::ParseNextImport() {
   Tracer trace(__func__, &in_);
 
   SkipSpace();
@@ -1830,7 +1830,15 @@ Import* Parser::ParseAsSingleImport() {
   Import* import = ParseImport();
 
   SkipSpace();
-  if (Done()) return import;
+
+  return import;
+}
+
+Import* Parser::ParseAsSingleImport() {
+  Tracer trace(__func__, &in_);
+
+  Import* import = ParseNextImport();
+  if (import == NULL || Done()) return import;
 
   // There's something after the @import, which is expressly disallowed.
   delete import;

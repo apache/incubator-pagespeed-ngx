@@ -30,6 +30,8 @@
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
+#include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
+#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -49,6 +51,8 @@ namespace net_instaweb {
 const char SplitHtmlFilter::kRenderCohort[] = "render";
 const char SplitHtmlFilter::kCriticalLineInfoPropertyName[] =
     "critical_line_info";
+const char SplitHtmlFilter::kDeferJsSnippet[] =
+    "pagespeed.deferInit();";
 
 // At StartElement, if element is panel instance push a new json to capture
 // contents of instance to the json stack.
@@ -252,6 +256,15 @@ void SplitHtmlFilter::InsertPanelStub(HtmlElement* element,
 }
 
 void SplitHtmlFilter::InsertBlinkJavascript(HtmlElement* element) {
+  bool send_blink_script = !rewrite_driver_->is_blink_script_flushed();
+  bool send_lazyload_script =
+      LazyloadImagesFilter::ShouldApply(rewrite_driver_) &&
+      options_->Enabled(RewriteOptions::kLazyloadImages) &&
+      !rewrite_driver_->is_lazyload_script_flushed();
+  if (!send_blink_script && !send_lazyload_script) {
+    return;
+  }
+
   bool include_head = (element->keyword() != HtmlName::kHead);
   GoogleString defer_js_with_blink = "";
   if (include_head) {
@@ -260,10 +273,23 @@ void SplitHtmlFilter::InsertBlinkJavascript(HtmlElement* element) {
 
   StaticJavascriptManager* js_manager =
       rewrite_driver_->server_context()->static_javascript_manager();
-  StrAppend(&defer_js_with_blink, "<script src=\"",
-            js_manager->GetBlinkJsUrl(options_), "\"></script>");
 
-  StrAppend(&defer_js_with_blink, "<script>pagespeed.deferInit();</script>");
+  if (send_blink_script) {
+    StrAppend(&defer_js_with_blink, "<script src=\"",
+              GetBlinkJsUrl(options_, js_manager),
+              "\" type=\"text/javascript\"></script>");
+
+    StrAppend(&defer_js_with_blink, "<script>", kDeferJsSnippet,
+              "</script>");
+  }
+  // TODO(rahulbansal): It is sub-optimal to send lazyload script in the head.
+  // Figure out a better way to do it.
+  if (send_lazyload_script) {
+    GoogleString lazyload_js = LazyloadImagesFilter::GetLazyloadJsSnippet(
+        options_, js_manager);
+    StrAppend(&defer_js_with_blink, "<script type=\"text/javascript\">",
+              lazyload_js, "</script>");
+  }
 
   if (include_head) {
     StrAppend(&defer_js_with_blink, "</head>");
@@ -440,6 +466,18 @@ bool SplitHtmlFilter::ElementMatchesXpath(
       return true;
   }
   return false;
+}
+
+// TODO(rahulbansal): Disable this filter if user agent doesn't support
+// DeferJavascript.
+bool SplitHtmlFilter::ShouldApply(RewriteDriver* driver) {
+  return JsDeferDisabledFilter::ShouldApply(driver);
+}
+
+const GoogleString& SplitHtmlFilter::GetBlinkJsUrl(
+      const RewriteOptions* options,
+      StaticJavascriptManager* static_js_manager) {
+  return static_js_manager->GetBlinkJsUrl(options);
 }
 
 }  // namespace net_instaweb

@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -69,7 +70,8 @@ const char kHtmlInput[] =
 
 const char kSplitHtml[] =
     "<html><head>"
-    "\n<script>blah</script><script src=\"/psajs/blink.js\"></script>"
+    "\n<script>blah</script>"
+    "<script src=\"/psajs/blink.js\" type=\"text/javascript\"></script>"
     "<script>pagespeed.deferInit();</script></head>\n"
     "<body>\n"
     "<div id=\"header\"> This is the header </div>"
@@ -95,6 +97,8 @@ const char kSplitHtml[] =
        "\"panel-id.1\":[{\"instance_html\":\"__psa_lt;img id=\\\"image\\\" src=\\\"image_panel.1\\\" panel-id=\\\"panel-id.1\\\"__psa_gt;\"}]});"
     "</script>\n"
     "</body></html>\n";
+
+const char kHtmlInputForLazyload[] = "<html><head></head><body></body></html>";
 
 class MockPage : public PropertyPage {
  public:
@@ -196,7 +200,7 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
       "<head>"
       "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
       "<script src=\"b.js\"></script>"
-      "<script src=\"/psajs/blink.js\"></script>"
+      "<script src=\"/psajs/blink.js\" type=\"text/javascript\"></script>"
       "<script>pagespeed.deferInit();</script>"
       "</head><body></body></html>"
       "<script>pagespeed.panelLoaderInit();</script>"
@@ -239,6 +243,48 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyDisabled) {
 
   // SuppressPreheadFilter should not have populated the flush_early_proto.
   EXPECT_EQ("", rewrite_driver()->flush_early_info()->pre_head());
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlWithLazyLoad) {
+  options_->ForceEnableFilter(RewriteOptions::kLazyloadImages);
+  GoogleString lazyload_js = LazyloadImagesFilter::GetLazyloadJsSnippet(
+      options_, rewrite_driver_->server_context()->static_javascript_manager());
+  options_->set_critical_line_config(
+      "//div[@id = \"container\"]/div[4],"
+      "//img[3]://h1[@id = \"footer\"]");
+  Parse("split_with_lazyload", kHtmlInputForLazyload);
+  EXPECT_EQ(
+      StrCat("<html><head><script src=\"/psajs/blink.js\""
+          " type=\"text/javascript\">"
+          "</script><script>pagespeed.deferInit();</script>"
+          "<script type=\"text/javascript\">", lazyload_js, "</script>",
+          "</head><body></body></html>",
+          "<script>pagespeed.panelLoaderInit();</script>"
+          "<script>pagespeed.panelLoader.invokedFromSplit();</script>"
+          "<script>pagespeed.panelLoader.loadCriticalData({});</script>"
+          "<script>pagespeed.panelLoader.bufferNonCriticalData({});"
+          "</script>\n"
+          "</body></html>\n"), output_);
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlWithScriptsFlushedEarly) {
+  options_->ForceEnableFilter(RewriteOptions::kLazyloadImages);
+  rewrite_driver_->set_is_lazyload_script_flushed(true);
+  rewrite_driver_->set_is_blink_script_flushed(true);
+
+  options_->set_critical_line_config(
+      "//div[@id = \"container\"]/div[4],"
+      "//img[3]://h1[@id = \"footer\"]");
+  Parse("split_with_scripts_flushed_early", kHtmlInputForLazyload);
+  EXPECT_EQ(
+      StrCat("<html><head>"
+          "</head><body></body></html>",
+          "<script>pagespeed.panelLoaderInit();</script>"
+          "<script>pagespeed.panelLoader.invokedFromSplit();</script>"
+          "<script>pagespeed.panelLoader.loadCriticalData({});</script>"
+          "<script>pagespeed.panelLoader.bufferNonCriticalData({});"
+          "</script>\n"
+          "</body></html>\n"), output_);
 }
 
 }  // namespace

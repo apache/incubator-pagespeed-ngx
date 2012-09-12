@@ -42,6 +42,7 @@ struct XpathUnit {
 class HtmlElement;
 class RewriteDriver;
 class RewriteOptions;
+class StaticJavascriptManager;
 class Writer;
 
 typedef std::map<GoogleString, const Panel*> PanelIdToSpecMap;
@@ -58,6 +59,7 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
  public:
   static const char kRenderCohort[];
   static const char kCriticalLineInfoPropertyName[];
+  static const char kDeferJsSnippet[];
 
   explicit SplitHtmlFilter(RewriteDriver* rewrite_driver);
   virtual ~SplitHtmlFilter();
@@ -67,6 +69,12 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
 
   virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
+
+  static bool ShouldApply(RewriteDriver* driver);
+
+  static const GoogleString& GetBlinkJsUrl(
+      const RewriteOptions* options,
+      StaticJavascriptManager* static_js_manager);
 
   virtual const char* Name() const { return "SplitHtmlFilter"; }
 

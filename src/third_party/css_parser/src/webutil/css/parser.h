@@ -136,6 +136,11 @@ class Parser {
   // consume anything up to the declaration starting '{' or the end of document.
   Selectors* ParseSelectors();
 
+  // Parse the next @import statement from the document. If it's not an @import
+  // or if there's a syntax error, NULL is returned. Added for mod_pagespeed's
+  // conversion to a link of @imports inside a style element.
+  Import* ParseNextImport();
+
   // Parse the document as a single @import statement. If it's not exactly
   // one of these, or there's a syntax error, NULL is returned. Added for
   // mod_pagespeed's conversion to a link of this inside a style element.

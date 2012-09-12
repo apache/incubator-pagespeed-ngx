@@ -186,6 +186,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       flushing_early_(false),
       is_lazyload_script_flushed_(false),
       is_defer_javascript_script_flushed_(false),
+      is_blink_script_flushed_(false),
       release_driver_(false),
       inhibits_mutex_(NULL),
       finish_parse_on_hold_(NULL),
@@ -323,6 +324,7 @@ void RewriteDriver::Clear() {
   flushing_early_ = false;
   is_lazyload_script_flushed_ = false;
   is_defer_javascript_script_flushed_ = false;
+  is_blink_script_flushed_ = false;
   base_was_set_ = false;
   refs_before_base_ = false;
   containing_charset_.clear();

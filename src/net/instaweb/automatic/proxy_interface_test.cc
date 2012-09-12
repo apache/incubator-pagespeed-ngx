@@ -47,6 +47,7 @@
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/split_html_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -290,7 +291,7 @@ const char kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly[] =
     "window.mod_pagespeed_prefetch_start = Number(new Date());"
     "window.mod_pagespeed_num_resources_prefetched = 3</script>"
     "<script type=\"text/javascript\">%s</script>"
-    "<script type=\"text/javascript\">%s</script>"
+    "%s"
     "<script type=\"text/javascript\">%s</script>"
     "</head><head>"
     "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
@@ -1043,6 +1044,14 @@ class ProxyInterfaceTest : public RewriteTestBase {
   GoogleString FlushEarlyRewrittenHtml(
       UserAgentMatcher::PrefetchMechanism value, bool enable_experimental,
       bool defer_js_enabled, bool insert_dns_prefetch) {
+    return FlushEarlyRewrittenHtml(value, enable_experimental, defer_js_enabled,
+                                   insert_dns_prefetch, false);
+  }
+
+  GoogleString FlushEarlyRewrittenHtml(
+      UserAgentMatcher::PrefetchMechanism value, bool enable_experimental,
+      bool defer_js_enabled, bool insert_dns_prefetch,
+      bool split_html_enabled) {
     GoogleString domain_prefix = enable_experimental ? "" : kTestDomain;
     GoogleString rewritten_css_url_1 = Encode("", "cf", "0", "1.css", "css");
     GoogleString rewritten_css_url_2 = Encode("", "cf", "0", "2.css", "css");
@@ -1062,10 +1071,34 @@ class ProxyInterfaceTest : public RewriteTestBase {
           LazyloadImagesFilter::GetLazyloadJsSnippet(
               options_,
               resource_manager()->static_javascript_manager()).c_str(),
-          JsDisableFilter::GetJsDisableScriptSnippet(options_).c_str(),
+          StrCat("<script type=\"text/javascript\">",
+                 JsDisableFilter::GetJsDisableScriptSnippet(options_),
+                 "</script>").c_str(),
           JsDeferDisabledFilter::GetDeferJsSnippet(
               options_,
               resource_manager()->static_javascript_manager()).c_str(),
+          rewritten_css_url_1.data(), rewritten_css_url_2.data(),
+          combined_js_url.data(), rewritten_img_url_1.data(),
+          StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
+                                 redirect_url.c_str()).c_str(),
+          rewritten_css_url_3.data());
+    } else if (value == UserAgentMatcher::kPrefetchLinkScriptTag &&
+        split_html_enabled) {
+      return StringPrintf(
+          kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly,
+          StrCat(domain_prefix, rewritten_css_url_1).data(),
+          StrCat(domain_prefix, rewritten_css_url_2).data(),
+          StrCat(domain_prefix, rewritten_css_url_3).data(),
+          LazyloadImagesFilter::GetLazyloadJsSnippet(
+              options_,
+              resource_manager()->static_javascript_manager()).c_str(),
+          StrCat("<script type=\"text/javascript\">",
+                 JsDisableFilter::GetJsDisableScriptSnippet(options_),
+                 "</script>",
+                 "<script src=\"", SplitHtmlFilter::GetBlinkJsUrl(options_,
+                 resource_manager()->static_javascript_manager()),
+                 "\" type=\"text/javascript\"></script>").c_str(),
+          SplitHtmlFilter::kDeferJsSnippet,
           rewritten_css_url_1.data(), rewritten_css_url_2.data(),
           combined_js_url.data(), rewritten_img_url_1.data(),
           StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
@@ -1432,6 +1465,30 @@ TEST_F(ProxyInterfaceTest, LazyloadAndDeferJsScriptFlushedEarly) {
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkScriptTag, true, true, false), text);
+}
+
+TEST_F(ProxyInterfaceTest, LazyloadAndBlinkScriptFlushedEarly) {
+  SetupForFlushEarlyFlow(true);
+  scoped_ptr<RewriteOptions> custom_options(
+      resource_manager()->global_options()->Clone());
+  custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
+  custom_options->EnableFilter(RewriteOptions::kLazyloadImages);
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  resource_manager()->set_url_namer(&url_namer);
+  GoogleString text;
+  RequestHeaders request_headers;
+  // Useragent is set to Firefox/ 9.0 because all flush early flow, defer
+  // javascript and lazyload filter are enabled for this user agent.
+  request_headers.Replace(HttpAttributes::kUserAgent,
+                          "Firefox/ 9.0");
+  ResponseHeaders headers;
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+  // Fetch the url again. This time FlushEarlyFlow should be triggered.
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_EQ(FlushEarlyRewrittenHtml(
+      UserAgentMatcher::kPrefetchLinkScriptTag, true, true, false, true), text);
 }
 
 TEST_F(ProxyInterfaceTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
