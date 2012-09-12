@@ -31,7 +31,8 @@ const ContentType kTypes[] = {
   {"application/xhtml+xml",         ".xhtml", ContentType::kXhtml},  // RFC 3236
   {"application/ce-html+xml",       ".xhtml", ContentType::kCeHtml},
 
-  {"text/javascript",               ".js",   ContentType::kJavascript},
+  {"application/javascript",        ".js",   ContentType::kJavascript},
+     // RFC 4329 makes this canonical; text/... can break firewall gzipping
   {"text/css",                      ".css",  ContentType::kCss},
   {"text/plain",                    ".txt",  ContentType::kText},
   {"text/xml",                      ".xml",  ContentType::kXml},  // RFC 3023
@@ -46,7 +47,7 @@ const ContentType kTypes[] = {
   // Synonyms; Note that the canonical types are referenced by index
   // in the named references declared below.
   {"application/x-javascript", ".js",   ContentType::kJavascript},
-  {"application/javascript",   ".js",   ContentType::kJavascript},
+  {"text/javascript",          ".js",   ContentType::kJavascript},
   {"text/ecmascript",          ".js",   ContentType::kJavascript},
   {"text/x-js",                ".js",   ContentType::kJavascript},
   {"application/ecmascript",   ".js",   ContentType::kJavascript},
