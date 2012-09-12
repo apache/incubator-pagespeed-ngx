@@ -190,8 +190,9 @@ bool handle_as_resource(ApacheResourceManager* manager,
     RewriteDriver* driver = ResourceFetch::GetDriver(
         gurl, custom_options, using_spdy, manager);
 
-    // Insert proxy fetcher to add custom fetch headers.
-    manager->apache_factory()->ApplyAddHeaders(driver);
+    // Insert proxy fetchers to add custom fetch headers or apply
+    // routing policy.
+    manager->apache_factory()->ApplySessionFetchers(manager, driver, request);
 
     if (ResourceFetch::BlockingFetch(gurl, manager, driver, callback)) {
       ResponseHeaders* response_headers = callback->response_headers();

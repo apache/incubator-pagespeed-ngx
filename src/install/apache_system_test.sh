@@ -69,6 +69,15 @@ if fgrep -q "# ModPagespeedStatistics off" $APACHE_DEBUG_PAGESPEED_CONF; then
   check fgrep -q "404 Not Found" <($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
   $WGET_DUMP $STATISTICS_URL > $FETCHED
   check egrep -q "^resource_404_count: *$NUM_404$" $FETCHED
+
+  # Non-local access to statistics fails.
+  MACHINE_NAME=$(hostname)
+  ALT_STAT_URL=$(echo $STATISTICS_URL | sed s#localhost#$MACHINE_NAME#)
+
+  wget $ALT_STAT_URL
+  check [ $? = 8 ]
+
+
 else
   echo TEST: 404s are served.  Statistics are disabled so not checking them.
   check fgrep -q "404 Not Found" <($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
@@ -77,6 +86,7 @@ else
   check fgrep -q "404 Not Found" <(
     $WGET -O /dev/null $BAD_RND_RESOURCE_URL 2>&1)
 fi
+
 
 # Test /mod_pagespeed_message exists.
 echo TEST: Check if /mod_pagespeed_message page exists.

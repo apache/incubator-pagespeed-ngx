@@ -26,6 +26,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/header_util.h"
+#include "net/instaweb/apache/loopback_route_fetcher.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/instaweb_handler.h"
@@ -70,8 +71,12 @@
 #include "net/instaweb/apache/log_message_handler.h"
 #include "unixd.h"
 
-// Apache 2.4 renames unixd_config -> ap_unixd_config
 #if (AP_SERVER_MAJORVERSION_NUMBER == 2) && (AP_SERVER_MINORVERSION_NUMBER >= 4)
+#define MPS_APACHE_24
+#endif
+
+// Apache 2.4 renames unixd_config -> ap_unixd_config
+#ifdef MPS_APACHE_24
 #define unixd_config ap_unixd_config
 #endif
 
@@ -838,6 +843,48 @@ void pagespeed_fetch_optional_fns() {
   attach_mod_spdy();
 }
 
+int pagespeed_modify_request(request_rec* r) {
+  // This method is based in part on mod_remoteip.
+  conn_rec* c = r->connection;
+
+  // Detect local requests from us.
+  const char* ua = apr_table_get(r->headers_in, HttpAttributes::kUserAgent);
+  if (ua != NULL &&
+      std::strstr(ua, " mod_pagespeed/" MOD_PAGESPEED_VERSION_STRING) != NULL) {
+#ifdef MPS_APACHE_24
+    apr_sockaddr_t* client_addr = c->client_addr;
+#else
+    apr_sockaddr_t* client_addr = c->remote_addr;
+#endif
+
+    if (LoopbackRouteFetcher::IsLoopbackAddr(client_addr)) {
+      // Rewrite the client IP in Apache's records to 224.0.0.0, which is a
+      // multicast address that should hence not be used by anyone, and at the
+      // very least is clearly not 127.0.0.1.
+      apr_sockaddr_t* untrusted_sockaddr = NULL;
+
+      // This builds a sockaddr object corresponding to 224.0.0.0
+      CHECK_EQ(APR_SUCCESS,
+               apr_sockaddr_info_get(&untrusted_sockaddr, "224.0.0.0", APR_INET,
+                                     80, 0, client_addr->pool));
+
+      char* untrusted_ip_str = apr_pstrdup(client_addr->pool, "224.0.0.0");
+#ifdef MPS_APACHE_24
+      r->useragent_ip = untrusted_ip_str;
+      r->useragent_addr = untrusted_sockaddr;
+#else
+      c->remote_ip = untrusted_ip_str;
+      c->remote_addr = untrusted_sockaddr;
+#endif
+
+      // We set the remote host header to be an empty string --- Apache uses
+      // that if there is an error, so it shouldn't pass through any ACLs.
+      c->remote_host = apr_pstrdup(client_addr->pool, "");
+    }
+  }
+  return OK;
+}
+
 // This function is a callback and it declares what
 // other functions should be called for request
 // processing and configuration requests. This
@@ -849,6 +896,10 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
 
   // Use instaweb to handle generated resources.
   ap_hook_handler(instaweb_handler, NULL, NULL, APR_HOOK_FIRST - 1);
+
+  // Try to provide more accurate IP information for requests we create.
+  ap_hook_post_read_request(pagespeed_modify_request, NULL, NULL,
+                            APR_HOOK_FIRST);
 
   // We register our output filter at (AP_FTYPE_RESOURCE + 1) so that
   // mod_pagespeed runs after mod_include.  See Issue

@@ -1068,4 +1068,53 @@ TEST_F(DomainLawyerTest, ToStringTest) {
       second_lawyer.ToString());
 }
 
+TEST_F(DomainLawyerTest, IsOriginKnownTest) {
+  DomainLawyer lawyer;
+  lawyer.AddDomain("a.com", &message_handler_);
+  lawyer.AddDomain("a.com:42", &message_handler_);
+  lawyer.AddDomain("https://a.com:43", &message_handler_);
+  lawyer.AddRewriteDomainMapping("b.com", "c.com", &message_handler_);
+  lawyer.AddOriginDomainMapping("e.com", "d.com", &message_handler_);
+  lawyer.AddShard("f.com", "s1.f.com,s2.f.com", &message_handler_);
+
+  GoogleUrl z_com("http://z.com");
+  EXPECT_FALSE(lawyer.IsOriginKnown(z_com));
+
+  GoogleUrl a_com("http://a.com");
+  EXPECT_TRUE(lawyer.IsOriginKnown(a_com));
+
+  GoogleUrl a_com_42("http://a.com:42/sardine");
+  EXPECT_TRUE(lawyer.IsOriginKnown(a_com_42));
+
+  GoogleUrl a_com_43("http://a.com:43/bass");
+  EXPECT_FALSE(lawyer.IsOriginKnown(a_com_43));
+
+  GoogleUrl s_a_com_43("https://a.com:43/bass");
+  EXPECT_TRUE(lawyer.IsOriginKnown(s_a_com_43));
+
+  GoogleUrl s_a_com_44("https://a.com:44/bass");
+  EXPECT_FALSE(lawyer.IsOriginKnown(s_a_com_44));
+
+  GoogleUrl b_com("http://b.com");
+  EXPECT_TRUE(lawyer.IsOriginKnown(b_com));
+
+  GoogleUrl c_com("http://c.com");
+  EXPECT_TRUE(lawyer.IsOriginKnown(c_com));
+
+  GoogleUrl d_com("http://d.com");
+  EXPECT_TRUE(lawyer.IsOriginKnown(d_com));
+
+  GoogleUrl e_com("http://e.com");
+  EXPECT_TRUE(lawyer.IsOriginKnown(e_com));
+
+  GoogleUrl f_com("http://f.com");
+  EXPECT_TRUE(lawyer.IsOriginKnown(f_com));
+
+  GoogleUrl s1_f_com("http://s1.f.com");
+  EXPECT_TRUE(lawyer.IsOriginKnown(s1_f_com));
+
+  GoogleUrl s2_f_com("http://s2.f.com");
+  EXPECT_TRUE(lawyer.IsOriginKnown(s2_f_com));
+}
+
 }  // namespace net_instaweb

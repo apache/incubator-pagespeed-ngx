@@ -32,6 +32,7 @@
 #include "net/instaweb/util/public/shared_circular_buffer.h"
 
 struct apr_pool_t;
+struct request_rec;
 struct server_rec;
 
 namespace net_instaweb {
@@ -228,12 +229,15 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // Print out details of all the connections to memcached servers.
   void PrintMemCacheStats(GoogleString* out);
 
-  // Routes fetches through a psuedo-fetcher that adds headers to fetches before
-  // passing them on to the real backend fetcher.  A fetcher is interposed only
-  // if there are custom fetch headers defined in the driver's options.
-  void ApplyAddHeaders(RewriteDriver* driver);
+  // If needed, sets session fetchers on the driver to do the following:
+  // a) Adds custom headers when configured in RewriteOptions.
+  // b) Route requests directly to this very server when they are not
+  //    configured to be external.
+  void ApplySessionFetchers(ApacheResourceManager* manager,
+                                 RewriteDriver* driver,
+                                 request_rec* req);
 
-protected:
+ protected:
   virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
   virtual void StopCacheActivity();

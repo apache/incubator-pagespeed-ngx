@@ -113,7 +113,6 @@ InstawebContext::InstawebContext(request_rec* request,
     rewrite_driver_ = server_context_->NewRewriteDriver();
   }
 
-
   // Begin the property cache lookup. This should be as early as possible since
   // it may be asynchronous (in the case of memcached).
   // TODO(jud): It would be ideal to move this even earlier. As early as, say,
@@ -121,9 +120,10 @@ InstawebContext::InstawebContext(request_rec* request,
   // result in at that point.
   PropertyCallback* property_callback(InitiatePropertyCacheLookup());
 
-  // Insert proxy fetcher to add custom fetch headers if there are any such
-  // headers to add.
-  server_context_->apache_factory()->ApplyAddHeaders(rewrite_driver_);
+  // Setup fetchers to direct most fetches to localhost or to add
+  // any custom fetch headers, if necessary.
+  server_context_->apache_factory()->ApplySessionFetchers(
+      manager, rewrite_driver_, request);
 
   rewrite_driver_->EnableBlockingRewrite(request_headers);
 

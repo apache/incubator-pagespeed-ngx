@@ -446,6 +446,8 @@ class SerfFetch : public PoolElement<SerfFetch> {
     if (user_agent.empty()) {
       user_agent += "Serf/" SERF_VERSION_STRING;
     }
+    // WARNING: mod_instaweb.cc depends on this specific format.
+    // If you edit, edit mod_pagespeed.cc as well.
     StringPiece version(" mod_pagespeed/" MOD_PAGESPEED_VERSION_STRING "-"
                         LASTCHANGE_STRING);
     if (!StringPiece(user_agent).ends_with(version)) {

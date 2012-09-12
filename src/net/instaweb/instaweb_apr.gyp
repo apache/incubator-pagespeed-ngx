@@ -50,6 +50,7 @@
         'apache/apr_mem_cache.cc',
         'apache/apr_mem_cache_servers.cc',
         'apache/apr_timer.cc',
+        'apache/loopback_route_fetcher.cc',
         'apache/serf_url_async_fetcher.cc',
       ],
       'export_dependent_settings': [

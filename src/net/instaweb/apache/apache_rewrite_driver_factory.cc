@@ -34,6 +34,7 @@
 #include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_mem_cache_servers.h"
 #include "net/instaweb/apache/apr_timer.h"
+#include "net/instaweb/apache/loopback_route_fetcher.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
@@ -734,10 +735,20 @@ void ApacheRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
   }
 }
 
-void ApacheRewriteDriverFactory::ApplyAddHeaders(RewriteDriver* driver) {
+void ApacheRewriteDriverFactory::ApplySessionFetchers(
+    ApacheResourceManager* manager, RewriteDriver* driver, request_rec* req) {
   if (driver->options()->num_custom_fetch_headers() > 0) {
     driver->SetSessionFetcher(new AddHeadersFetcher(driver->options(),
                                                     driver->async_fetcher()));
+  }
+
+  if (!manager->config()->slurping_enabled() &&
+      !manager->config()->test_proxy()) {
+    // Note the port here is our port, not from the request, since
+    // LoopbackRouteFetcher may decide we should be talking to ourselves.
+    driver->SetSessionFetcher(new LoopbackRouteFetcher(
+        driver->options(), req->connection->local_addr->port,
+        driver->async_fetcher()));
   }
 }
 

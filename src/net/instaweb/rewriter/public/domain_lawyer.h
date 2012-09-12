@@ -93,6 +93,15 @@ class DomainLawyer {
   bool IsDomainAuthorized(const GoogleUrl& original_request,
                           const GoogleUrl& domain_to_check) const;
 
+
+  // Returns true if the given origin (domain:port) is one that we were
+  // explicitly told about in any form --- e.g. as a rewrite domain, origin
+  // domain, simple domain, or a shard.
+  //
+  // Note that this method returning true does not mean that resources from the
+  // given domain should be rewritten.
+  bool IsOriginKnown(const GoogleUrl& domain_to_check) const;
+
   // Maps an origin resource; just prior to fetching it.  This fails
   // if the input URL is not valid.  It succeeds even if there is no
   // mapping done.  You must compare 'in' to 'out' to determine if

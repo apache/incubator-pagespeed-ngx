@@ -432,6 +432,14 @@ bool DomainLawyer::IsDomainAuthorized(const GoogleUrl& original_request,
   return ret;
 }
 
+bool DomainLawyer::IsOriginKnown(const GoogleUrl& domain_to_check) const {
+  if (domain_to_check.is_valid()) {
+    Domain* path_domain = FindDomain(domain_to_check);
+    return (path_domain != NULL);
+  }
+  return false;
+}
+
 bool DomainLawyer::MapOrigin(const StringPiece& in, GoogleString* out) const {
   GoogleUrl gurl(in);
   return MapOriginUrl(gurl, out);

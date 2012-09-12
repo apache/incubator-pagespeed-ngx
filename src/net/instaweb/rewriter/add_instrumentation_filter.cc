@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -171,7 +172,9 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
                                              const GoogleString& script_format,
                                              const GoogleString& tag_name) {
   GoogleString html_url;
-  driver_->google_url().Spec().CopyToString(&html_url);
+  EscapeToJsStringLiteral(driver_->google_url().Spec(),
+                          false, /* no quotes */
+                          &html_url);
   const RewriteOptions::BeaconUrl& beacons = driver_->options()->beacon_url();
   const GoogleString* beacon_url =
       driver_->IsHttps() ? &beacons.https : &beacons.http;
