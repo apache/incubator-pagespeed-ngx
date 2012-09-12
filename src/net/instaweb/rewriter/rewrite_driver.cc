@@ -992,11 +992,9 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
     // Defers javascript download and execution to post onload. This filter
     // should be applied before JsDisableFilter and JsDeferFilter.
-    if (rewrite_options->Enabled(RewriteOptions::kDeferIframe)) {
-      // kDeferIframe filter should never be turned on when either defer_js
-      // or disable_js is enabled.
-      AddOwnedPostRenderFilter(new DeferIframeFilter(this));
-    }
+    // kDeferIframe filter should never be turned on when either defer_js
+    // or disable_js is enabled.
+    AddOwnedPostRenderFilter(new DeferIframeFilter(this));
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
     AddOwnedPostRenderFilter(new JsDeferDisabledFilter(this));
     if (rewrite_options->Enabled(
@@ -1018,11 +1016,9 @@ void RewriteDriver::AddPostRenderFilters() {
     AddOwnedPostRenderFilter(new MetaTagFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kDisableJavascript)) {
-    if (rewrite_options->Enabled(RewriteOptions::kDeferIframe)) {
-      // kDeferIframe filter should never be turned on when either defer_js
-      // or disable_js is enabled.
-      AddOwnedPostRenderFilter(new DeferIframeFilter(this));
-    }
+    // kDeferIframe filter should never be turned on when either defer_js
+    // or disable_js is enabled.
+    AddOwnedPostRenderFilter(new DeferIframeFilter(this));
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kDelayImages)) {

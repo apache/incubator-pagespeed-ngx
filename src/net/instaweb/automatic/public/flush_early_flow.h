@@ -104,7 +104,7 @@ class FlushEarlyFlow {
   GoogleString dummy_head_;
   StringWriter dummy_head_writer_;
   int num_resources_flushed_;
-  int max_preconnect_attempts_;
+  int num_rewritten_resources_;
 
   AsyncFetch* base_fetch_;
   FlushEarlyAsyncFetch* flush_early_fetch_;

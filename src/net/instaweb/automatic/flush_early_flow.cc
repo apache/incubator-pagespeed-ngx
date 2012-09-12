@@ -257,7 +257,7 @@ FlushEarlyFlow::FlushEarlyFlow(
     : url_(url),
       dummy_head_writer_(&dummy_head_),
       num_resources_flushed_(0),
-      max_preconnect_attempts_(0),
+      num_rewritten_resources_(0),
       base_fetch_(base_fetch),
       flush_early_fetch_(flush_early_fetch),
       driver_(driver),
@@ -290,12 +290,8 @@ void FlushEarlyFlow::FlushEarly() {
         RewrittenContentScanningFilter::kNumProxiedRewrittenResourcesProperty);
 
     if (num_rewritten_resources_property_value->has_value()) {
-      int num_rewritten_resource;
-      if (StringToInt(num_rewritten_resources_property_value->value().data(),
-                     &num_rewritten_resource)) {
-        max_preconnect_attempts_ = std::min(kMaxParallelConnections,
-                                            num_rewritten_resource);
-      }
+      StringToInt(num_rewritten_resources_property_value->value().data(),
+                  &num_rewritten_resources_);
     }
     PropertyValue* property_value = page->GetProperty(
         cohort, RewriteDriver::kSubresourcesPropertyName);
@@ -396,6 +392,11 @@ void FlushEarlyFlow::FlushEarly() {
 
 void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
                                            RewriteDriver* flush_early_driver) {
+  int max_preconnect_attempts = std::min(
+      kMaxParallelConnections, num_rewritten_resources_ -
+      flush_early_driver->num_flushed_early_pagespeed_resources()) -
+      flush_early_driver->num_flushed_early_pagespeed_resources();
+
   StaticJavascriptManager* static_js__manager =
         manager_->static_javascript_manager();
   if (should_flush_early_lazyload_script_) {
@@ -403,7 +404,7 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
     WriteScript(LazyloadImagesFilter::GetLazyloadJsSnippet(
         driver_->options(), static_js__manager));
     if (!driver_->options()->lazyload_images_blank_url().empty()) {
-      --max_preconnect_attempts_;
+      --max_preconnect_attempts;
     }
   }
   if (should_flush_early_js_defer_script_) {
@@ -413,18 +414,16 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
         driver_->options(), static_js__manager));
   }
 
-  max_preconnect_attempts_ -=
-      flush_early_driver->num_flushed_early_pagespeed_resources();
-  if (max_preconnect_attempts_ > 0 &&
+  if (max_preconnect_attempts > 0 &&
       !flush_early_driver->options()->pre_connect_url().empty()) {
     base_fetch_->Write("<script type=\"text/javascript\" >", handler_);
-    for (int index = 0; index < max_preconnect_attempts_; ++index) {
+    for (int index = 0; index < max_preconnect_attempts; ++index) {
       base_fetch_->Write(StrCat(
           "new Image().src='",
           flush_early_driver->options()->pre_connect_url(), "?id=",
           IntegerToString(index), "';"), handler_);
-      base_fetch_->Write("</script>", handler_);
     }
+    base_fetch_->Write("</script>", handler_);
   }
   flush_early_driver->decrement_async_events_count();
   driver_->decrement_async_events_count();
