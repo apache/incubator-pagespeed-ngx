@@ -53,6 +53,9 @@ const char* LazyloadImagesFilter::kImageOnloadCode =
 const char* LazyloadImagesFilter::kLoadAllImages =
     "pagespeed.lazyLoadImages.loadAllImages();";
 
+const char* LazyloadImagesFilter::kOverrideAttributeFunctions =
+    "pagespeed.lazyLoadImages.overrideAttributeFunctions();";
+
 const char* LazyloadImagesFilter::kIsLazyloadScriptInsertedPropertyName =
     "is_lazyload_script_inserted";
 
@@ -81,6 +84,7 @@ void LazyloadImagesFilter::Clear() {
   main_script_inserted_ = false;
   abort_rewrite_ = false;
   abort_script_inserted_ = false;
+  num_images_lazily_loaded_ = 0;
 }
 
 bool LazyloadImagesFilter::ShouldApply(RewriteDriver* driver) {
@@ -88,10 +92,7 @@ bool LazyloadImagesFilter::ShouldApply(RewriteDriver* driver) {
 }
 
 void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
-  if (!ShouldApply(driver())) {
-    return;
-  }
-  if (noscript_element() != NULL) {
+  if (!ShouldApply(driver()) || noscript_element() != NULL) {
     return;
   }
   if (skip_rewrite_ == NULL) {
@@ -115,16 +116,15 @@ void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
       StringPiece url(src->DecodedValueOrNull());
       if (url.find(kJquerySlider) != StringPiece::npos) {
         abort_rewrite_ = true;
+        return;
       }
     }
+    InsertOverrideAttributesScript(element, true);
   }
 }
 
 void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
-  if (!ShouldApply(driver())) {
-    return;
-  }
-  if (noscript_element() != NULL) {
+  if (!ShouldApply(driver()) || noscript_element() != NULL) {
     return;
   }
   if (skip_rewrite_ == element) {
@@ -206,8 +206,11 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
         }
         // Set the onload appropriately.
         driver()->AddAttribute(element, HtmlName::kOnload, kImageOnloadCode);
+        ++num_images_lazily_loaded_;
       }
     }
+  } else if (element->keyword() == HtmlName::kBody) {
+    InsertOverrideAttributesScript(element, false);
   }
 }
 
@@ -225,6 +228,24 @@ void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
     driver()->AppendChild(script, script_code);
   }
   main_script_inserted_ = true;
+}
+
+void LazyloadImagesFilter::InsertOverrideAttributesScript(
+    HtmlElement* element, bool is_before_script) {
+  if (num_images_lazily_loaded_ > 0) {
+    HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
+    driver()->AddAttribute(script, HtmlName::kType, "text/javascript");
+    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+    HtmlNode* script_code = driver()->NewCharactersNode(
+        script, kOverrideAttributeFunctions);
+    if (is_before_script) {
+      driver()->InsertElementBeforeElement(element, script);
+    } else {
+      driver()->AppendChild(element, script);
+    }
+    driver()->AppendChild(script, script_code);
+    num_images_lazily_loaded_ = 0;
+  }
 }
 
 GoogleString LazyloadImagesFilter::GetBlankImageSrc(

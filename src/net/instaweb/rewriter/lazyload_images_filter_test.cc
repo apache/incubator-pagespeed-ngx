@@ -73,6 +73,24 @@ class LazyloadImagesFilterTest : public RewriteTestBase {
     rewrite_driver()->AddFilter(lazyload_images_filter_.get());
   }
 
+  GoogleString GetScriptHtml(const StringPiece& script, bool add_no_defer) {
+    return StrCat("<script type=\"text/javascript\"",
+                  add_no_defer ? " pagespeed_no_defer=\"\"" : "",
+                  ">", script, "</script>");
+  }
+
+  GoogleString GetLazyloadScriptHtml() {
+    return GetScriptHtml(
+        LazyloadImagesFilter::GetLazyloadJsSnippet(
+            options(), resource_manager()->static_javascript_manager()),
+        false);
+  }
+
+  GoogleString GetOverrideAttributesScriptHtml() {
+    return GetScriptHtml(
+        LazyloadImagesFilter::kOverrideAttributeFunctions, true);
+  }
+
   GoogleString GenerateRewrittenImageTag(
       const StringPiece& tag,
       const StringPiece& url,
@@ -91,9 +109,6 @@ class LazyloadImagesFilterTest : public RewriteTestBase {
 
 TEST_F(LazyloadImagesFilterTest, SingleHead) {
   InitLazyloadImagesFilter(false);
-  StringPiece lazyload_js_code =
-      resource_manager()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kLazyloadImagesJs, options());
 
   ValidateExpected("lazyload_images",
       "<head></head>"
@@ -116,12 +131,8 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
              "<img src=\"\"/>"
              "<noscript>"
              "<img src=\"noscript.jpg\"/>"
-             "</noscript>"
-             "<script type=\"text/javascript\">",
-             lazyload_js_code,
-             "\npagespeed.lazyLoadInit(false, \"",
-             LazyloadImagesFilter::kBlankImageSrc,
-             "\");\n</script>",
+             "</noscript>",
+             GetLazyloadScriptHtml(),
              GenerateRewrittenImageTag("img", "1.jpg", ""),
              "<img src=\"1.jpg\"/>",
              StrCat("<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
@@ -130,15 +141,13 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
                     "<input src=\"12.jpg\" type=\"image\"/>"
                     "<input src=\"12.jpg\"/>"
                     "<img src=\"1.jpg\" onload=\"blah();\"/>"
-                    "<img src=\"1.jpg\" class=\"123 dfcg-metabox\"/>"
+                    "<img src=\"1.jpg\" class=\"123 dfcg-metabox\"/>",
+                    GetOverrideAttributesScriptHtml(),
                     "</body>")));
 }
 
 TEST_F(LazyloadImagesFilterTest, CriticalImages) {
   InitLazyloadImagesFilter(false);
-  StringPiece lazyload_js_code =
-      resource_manager()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kLazyloadImagesJs, options());
   StringSet* critical_images = new StringSet;
   critical_images->insert("http://www.1.com/critical");
   critical_images->insert("www.1.com/critical2");
@@ -165,18 +174,14 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
       "lazyload_images",
       input_html,
       StrCat("<head></head><body>"
-             "<img src=\"http://www.1.com/critical\"/>"
-             "<script type=\"text/javascript\">",
-             lazyload_js_code,
-             "\npagespeed.lazyLoadInit(false, \"",
-             LazyloadImagesFilter::kBlankImageSrc,
-             "\");\n"
-             "</script>",
+             "<img src=\"http://www.1.com/critical\"/>",
+             GetLazyloadScriptHtml(),
              StrCat(
                  GenerateRewrittenImageTag(
                      "img", "http://www.1.com/critical2", ""),
                  "<img src=\"critical3\"/>"
-                 "<img src=\"", rewritten_url, "\"/>"
+                 "<img src=\"", rewritten_url, "\"/>",
+                 GetOverrideAttributesScriptHtml(),
                  "</body>")));
 
   rewrite_driver()->set_user_agent("Firefox/1.0");
@@ -186,45 +191,59 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
 TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {
   options()->set_lazyload_images_after_onload(true);
   InitLazyloadImagesFilter(false);
-  StringPiece lazyload_js_code =
-      resource_manager()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kLazyloadImagesJs, options());
   ValidateExpected("lazyload_images",
       "<head></head>"
       "<body>"
       "<img src=\"1.jpg\" />"
       "</body>",
       StrCat("<head></head>"
-             "<body>"
-             "<script type=\"text/javascript\">",
-             lazyload_js_code,
-             "\npagespeed.lazyLoadInit(true, \"",
-             LazyloadImagesFilter::kBlankImageSrc,
-             "\");\n"
-             "</script>",
-             GenerateRewrittenImageTag(
-                     "img", "1.jpg", ""),
+             "<body>",
+             GetLazyloadScriptHtml(),
+             GenerateRewrittenImageTag("img", "1.jpg", ""),
+             GetOverrideAttributesScriptHtml(),
              "</body>"));
+}
+
+TEST_F(LazyloadImagesFilterTest, MultipleBodies) {
+  InitLazyloadImagesFilter(false);
+  ValidateExpected("lazyload_images",
+      "<body><img src=\"1.jpg\" /></body>"
+      "<body></body>"
+      "<body>"
+      "<script></script>"
+      "<img src=\"2.jpg\" />"
+      "<script></script>"
+      "<img src=\"3.jpg\" />"
+      "<script></script>"
+      "</body>",
+      StrCat(
+          "<body>",
+          GetLazyloadScriptHtml(),
+          GenerateRewrittenImageTag("img", "1.jpg", ""),
+          GetOverrideAttributesScriptHtml(),
+          StrCat(
+              "</body><body></body><body>"
+              "<script></script>",
+              GenerateRewrittenImageTag("img", "2.jpg", ""),
+              GetOverrideAttributesScriptHtml()),
+          StrCat(
+              "<script></script>",
+              GenerateRewrittenImageTag("img", "3.jpg", ""),
+              GetOverrideAttributesScriptHtml(),
+              "<script></script>",
+              "</body>")));
 }
 
 TEST_F(LazyloadImagesFilterTest, NoHeadTag) {
   InitLazyloadImagesFilter(false);
-  StringPiece lazyload_js_code =
-      resource_manager()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kLazyloadImagesJs, options());
   ValidateExpected("lazyload_images",
       "<body>"
       "<img src=\"1.jpg\" />"
       "</body>",
-      StrCat("<body>"
-             "<script type=\"text/javascript\">",
-             lazyload_js_code,
-             "\npagespeed.lazyLoadInit(false, \"",
-             LazyloadImagesFilter::kBlankImageSrc,
-             "\");\n"
-             "</script>",
-             GenerateRewrittenImageTag(
-                     "img", "1.jpg", ""),
+      StrCat("<body>",
+             GetLazyloadScriptHtml(),
+             GenerateRewrittenImageTag("img", "1.jpg", ""),
+             GetOverrideAttributesScriptHtml(),
              "</body>"));
 }
 
@@ -233,21 +252,14 @@ TEST_F(LazyloadImagesFilterTest, CustomImageUrl) {
   options()->set_lazyload_images_blank_url(blank_image_url);
   blank_image_src_ = blank_image_url;
   InitLazyloadImagesFilter(false);
-  StringPiece lazyload_js_code =
-      resource_manager()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kLazyloadImagesJs, options());
   ValidateExpected("lazyload_images",
       "<body>"
       "<img src=\"1.jpg\" />"
       "</body>",
-      StrCat("<body>"
-             "<script type=\"text/javascript\">",
-             lazyload_js_code,
-             "\npagespeed.lazyLoadInit(false, \"",
-             blank_image_url,
-             "\");\n"
-             "</script>",
+      StrCat("<body>",
+             GetLazyloadScriptHtml(),
              GenerateRewrittenImageTag("img", "1.jpg", ""),
+             GetOverrideAttributesScriptHtml(),
              "</body>"));
 }
 

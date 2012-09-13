@@ -157,10 +157,10 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithPropertyCache) {
 
   CriticalLineInfo config;
   Panel* panel = config.add_panels();
-  panel->set_start_xpath("//div[@id = \"container\"]/div[4]");
+  panel->set_start_xpath("div[@id = \"container\"]/div[4]");
   panel = config.add_panels();
-  panel->set_start_xpath("//img[3]");
-  panel->set_end_marker_xpath("//h1[@id = \"footer\"]");
+  panel->set_start_xpath("img[3]");
+  panel->set_end_marker_xpath("h1[@id = \"footer\"]");
 
   GoogleString buf;
   config.SerializeToString(&buf);
@@ -176,8 +176,8 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithPropertyCache) {
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithOptions) {
   options_->set_critical_line_config(
-      "//div[@id = \"container\"]/div[4],"
-      "//img[3]://h1[@id = \"footer\"]");
+      "div[@id = \"container\"]/div[4],"
+      "img[3]:h1[@id = \"footer\"]");
   Parse("split_with_options", kHtmlInput);
   EXPECT_EQ(kSplitHtml, output_);
 }
@@ -186,8 +186,8 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
   options_->ForceEnableFilter(
       RewriteOptions::RewriteOptions::kFlushSubresources);
   options_->set_critical_line_config(
-      "//div[@id = \"container\"]/div[4],"
-      "//img[3]://h1[@id = \"footer\"]");
+      "div[@id = \"container\"]/div[4],"
+      "img[3]:h1[@id = \"footer\"]");
 
   const char pre_head_input[] = "<!DOCTYPE html><html>";
   const char post_head_input[] =
@@ -227,8 +227,8 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
 
 TEST_F(SplitHtmlFilterTest, FlushEarlyDisabled) {
   options_->set_critical_line_config(
-      "//div[@id = \"container\"]/div[4],"
-      "//img[3]://h1[@id = \"footer\"]");
+      "div[@id = \"container\"]/div[4],"
+      "img[3]:h1[@id = \"footer\"]");
 
   const char pre_head_input[] = "<!DOCTYPE html><html>";
   const char post_head_input[] =

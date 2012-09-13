@@ -61,29 +61,32 @@ const char SplitHtmlFilter::kDeferJsSnippet[] =
 SplitHtmlFilter::SplitHtmlFilter(RewriteDriver* rewrite_driver)
     : SuppressPreheadFilter(rewrite_driver),
       rewrite_driver_(rewrite_driver),
-      options_(rewrite_driver->options()),
-      script_written_(false) {
+      options_(rewrite_driver->options()) {
 }
 
 SplitHtmlFilter::~SplitHtmlFilter() {
-  STLDeleteContainerPairSecondPointers(xpath_map_.begin(), xpath_map_.end());
 }
 
 void SplitHtmlFilter::StartDocument() {
-  flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
-  original_writer_ = rewrite_driver_->writer();
+  panel_id_to_spec_.clear();
+  xpath_map_.clear();
+  element_json_stack_.clear();
+  xpath_units_.clear();
   num_children_stack_.clear();
-  url_ = rewrite_driver_->google_url().Spec();
   json_writer_.reset(new JsonWriter(rewrite_driver_->writer(),
                                     &element_json_stack_));
+  original_writer_ = rewrite_driver_->writer();
+  critical_line_info_.Clear();
+  url_ = rewrite_driver_->google_url().Spec();
+  script_written_ = false;
+  flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
+
   // Push the base panel.
   StartPanelInstance(static_cast<HtmlElement*>(NULL));
   // StartPanelInstance sets the json writer. For the base panel, we don't want
   // the writer to be set.
   set_writer(original_writer_);
   ReadCriticalLineConfig();
-
-  script_written_ = false;
 
   // TODO(rahulbansal): Refactor this pattern.
   if (flush_head_enabled_) {
@@ -97,6 +100,7 @@ void SplitHtmlFilter::Cleanup() {
   // Delete the root object pushed in StartDocument;
   delete element_json_stack_[0].second;
   element_json_stack_.pop_back();
+  STLDeleteContainerPairSecondPointers(xpath_map_.begin(), xpath_map_.end());
 }
 
 void SplitHtmlFilter::EndDocument() {
@@ -427,9 +431,8 @@ bool SplitHtmlFilter::ParseXpath(const GoogleString& xpath,
                                  std::vector<XpathUnit>* xpath_units) {
   static const char* kXpathWithChildNumber = "(\\w+)(\\[(\\d+)\\])";
   static const char* kXpathWithId = "(\\w+)(\\[@(\\w+)\\s*=\\s*\"(.*)\"\\])";
-  GoogleString modified_xpath = xpath.substr(2);
   std::vector<GoogleString> list;
-  SplitStringUsingSubstr(modified_xpath, "/", &list);
+  SplitStringUsingSubstr(xpath, "/", &list);
   for (int j = 0, n = list.size(); j < n; j++) {
     XpathUnit unit;
     GoogleString str;

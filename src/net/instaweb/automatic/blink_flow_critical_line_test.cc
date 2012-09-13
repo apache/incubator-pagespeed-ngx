@@ -119,6 +119,7 @@ const char kLazyLoadHtml[] =
              "<img pagespeed_lazy_src=\"image4\" src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\" onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
           "</div>"
       "</div>"
+      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
     "</body></html>";
 
 const char kHtmlInputWithExtraCommentAndNonCacheable[] =
@@ -590,6 +591,8 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     response_headers_.Add(HttpAttributes::kSetCookie, "helo=world; path=/");
     SetFetchResponse("http://test.com/text.html", response_headers_,
                      kHtmlInput);
+    SetFetchResponse("https://test.com/text.html", response_headers_,
+                     kHtmlInputForNoBlink);
     SetFetchResponse("http://test.com/smalltest.html", response_headers_,
                      kSmallHtmlInput);
     SetFetchResponse("http://test.com/noblink_text.html", response_headers_,
@@ -1543,6 +1546,31 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithBlacklistUrls) {
   // Three cache lookup - for the original html and two for property cache.
   EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
+  // No fetch for background computation is triggered here.
+  // Only original html is fetched from fetcher.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  // No blink flow should have happened.
+  EXPECT_EQ(0, statistics()->FindVariable(
+      ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithHttpsUrl) {
+  options_->ClearSignatureForTesting();
+  // Disable support no script, so that we don't insert the noscript node and
+  // the output is simple.
+  options_->set_support_noscript_enabled(false);
+  resource_manager()->ComputeSignature(options_.get());
+
+  GoogleString text;
+  ResponseHeaders response_headers;
+  RequestHeaders request_headers;
+  GetDefaultRequestHeaders(&request_headers);
+
+  FetchFromProxy("https://test.com/text.html", true, request_headers, &text,
+                 &response_headers, false);
+  EXPECT_STREQ(start_time_string_,
+               response_headers.Lookup1(HttpAttributes::kDate));
+  EXPECT_STREQ(kHtmlInputForNoBlink, text);
   // No fetch for background computation is triggered here.
   // Only original html is fetched from fetcher.
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());

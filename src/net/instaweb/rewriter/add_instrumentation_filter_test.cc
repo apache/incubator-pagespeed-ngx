@@ -223,6 +223,8 @@ TEST_F(AddInstrumentationFilterTest,
   RunInjection();
   EXPECT_TRUE(output_buffer_.find("&amp;exptid=2") != GoogleString::npos);
   EXPECT_TRUE(output_buffer_.find("hft") == GoogleString::npos);
+  EXPECT_TRUE(output_buffer_.find("&amp;ft") == GoogleString::npos);
+  EXPECT_TRUE(output_buffer_.find("&ft") == GoogleString::npos);
 }
 
 // Test that headers fetch timing reporting is done correctly.
@@ -231,9 +233,11 @@ TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
   LoggingInfo logging_info;
   LogRecord log_record(&logging_info);
   log_record.logging_info()->mutable_timing_info()->set_header_fetch_ms(200);
+  log_record.logging_info()->mutable_timing_info()->set_fetch_ms(500);
   rewrite_driver()->set_log_record(&log_record);
   RunInjection();
   EXPECT_TRUE(output_buffer_.find("&hft=200") != GoogleString::npos);
+  EXPECT_TRUE(output_buffer_.find("&ft") != GoogleString::npos);
 }
 
 // Test that flush subresources count and time for origin html is reported.

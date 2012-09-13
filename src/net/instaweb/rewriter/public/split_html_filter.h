@@ -147,15 +147,14 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   PanelIdToSpecMap panel_id_to_spec_;
   XpathMap xpath_map_;
   std::vector<ElementJsonPair> element_json_stack_;
-  scoped_ptr<JsonWriter> json_writer_;
-
-  StringPiece url_;
-  bool script_written_;
   std::vector<std::vector<XpathUnit> > xpath_units_;
   std::vector<int> num_children_stack_;
-  CriticalLineInfo critical_line_info_;
   Json::FastWriter fast_writer_;
+  scoped_ptr<JsonWriter> json_writer_;
   Writer* original_writer_;
+  CriticalLineInfo critical_line_info_;
+  StringPiece url_;
+  bool script_written_;
   bool flush_head_enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(SplitHtmlFilter);

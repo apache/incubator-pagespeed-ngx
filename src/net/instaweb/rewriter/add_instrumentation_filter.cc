@@ -49,9 +49,10 @@ const char kHeadScript[] =
 //     2. %s : the custom beacon url, by default "./mod_pagespeed_beacon?ets=".
 //     3. %s : kUnloadTag.
 //     4. %s : time taken to fetch the headers of the html document.
-//     5. %s : experiment id.
-//     6. %s : URL of HTML.
-//     7. %s : CDATA hack closer or "".
+//     5. %s : time taken to fetch the complete resource from origin.
+//     6. %s : experiment id.
+//     7. %s : URL of HTML.
+//     8. %s : CDATA hack closer or "".
 //
 //  Then our timing info, e.g. "unload:123", will be appended.
 const char kUnloadScriptFormat[] =
@@ -62,7 +63,7 @@ const char kUnloadScriptFormat[] =
     "if(window.parent != window){ifr=1}"
     "new Image().src='%s%s'+"
     "(Number(new Date())-window.mod_pagespeed_start)+'&ifr='+ifr+'"
-    "%s%s&url='+encodeURIComponent('%s');};"
+    "%s%s%s&url='+encodeURIComponent('%s');};"
     "var f=window.addEventListener;if(f){f('beforeunload',g,false);}else{"
     "f=window.attachEvent;if(f){f('onbeforeunload',g);}}"
     "})();%s</script>";
@@ -82,7 +83,7 @@ const char kTailScriptFormat[] =
     "new Image().src='%s%s'+"
     "(Number(new Date())-window.mod_pagespeed_start)+'&ifr='+ifr+'"
     "'+rpi+'"
-    "%s%s&url='+encodeURIComponent('%s');"
+    "%s%s%s&url='+encodeURIComponent('%s');"
     "window.mod_pagespeed_loaded=true;};"
     "var f=window.addEventListener;if(f){f('load',g,false);}else{"
     "f=window.attachEvent;if(f){f('onload',g);}}"
@@ -188,21 +189,30 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
     }
   }
   GoogleString headers_fetch_time;
+  GoogleString fetch_time;
   LogRecord* log_record = driver_->log_record();
-  if (log_record != NULL && log_record->logging_info()->has_timing_info() &&
-      log_record->logging_info()->timing_info().has_header_fetch_ms()) {
-    int64 header_fetch_ms =
-        log_record->logging_info()->timing_info().header_fetch_ms();
-    // If time taken to fetch the http header is not set then the response
-    // came from cache.
-    headers_fetch_time = StrCat(
-        "&hft=",
-        Integer64ToString(header_fetch_ms));
+  if (log_record != NULL && log_record->logging_info()->has_timing_info()) {
+    if (log_record->logging_info()->timing_info().has_header_fetch_ms()) {
+      int64 header_fetch_ms =
+          log_record->logging_info()->timing_info().header_fetch_ms();
+      // If time taken to fetch the http header is not set, then the response
+      // came from cache.
+      headers_fetch_time = StrCat(
+          "&hft=",
+          Integer64ToString(header_fetch_ms));
+    }
+    if (log_record->logging_info()->timing_info().has_fetch_ms()) {
+      int64 fetch_ms = log_record->logging_info()->timing_info().fetch_ms();
+      // If time taken to fetch the resource is not set, then the response
+      // came from cache.
+      fetch_time = StrCat("&ft=", Integer64ToString(fetch_ms));
+    }
   }
   GoogleString tail_script = StringPrintf(
       script_format.c_str(),
       use_cdata_hack_ ? kCdataHackOpen : "",
-      beacon_url->c_str(), tag_name.c_str(), headers_fetch_time.c_str(),
+      beacon_url->c_str(), tag_name.c_str(),
+      headers_fetch_time.c_str(), fetch_time.c_str(),
       expt_id_param.c_str(),
       html_url.c_str(),
       use_cdata_hack_ ? kCdataHackClose: "");

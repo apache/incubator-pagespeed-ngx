@@ -353,11 +353,14 @@ TEST_F(DelayImagesFilterTest, TestMinImageSizeLowResolutionBytesFlag) {
       GetNoscript(),
       GetHtmlWithLazyload(),
       GenerateRewrittenImageTag("http://test.com/1.webp"),
-      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
+      "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>"
+      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+      "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>",
       StrCat(GetInlineScript(),
              GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
              "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(), "</body>"));
+             GetDelayImages(),
+             "</body>"));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -387,7 +390,10 @@ TEST_F(DelayImagesFilterTest, TestMaxImageSizeLowResolutionBytesFlag) {
              "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
              GetDelayImages(),
              GetHtmlWithLazyload(),
-             GenerateRewrittenImageTag("http://test.com/1.jpeg"), "</body>"));
+             GenerateRewrittenImageTag("http://test.com/1.jpeg"),
+              "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+              "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
+             "</body>"));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -415,6 +421,8 @@ TEST_F(DelayImagesFilterTest, TestMaxInlinedPreviewImagesIndexFlag) {
              GetDelayImages(),
              GetHtmlWithLazyload(),
              GenerateRewrittenImageTag("http://test.com/1.webp"),
+              "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+              "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
              "</body>"));
   MatchOutputAndCountBytes(input_html, output_html);
 }

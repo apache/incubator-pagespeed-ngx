@@ -113,7 +113,14 @@ bool IsBlinkRequest(const GoogleUrl& url,
       // Is the user agent allowed to enter the blink flow?
       IsUserAgentAllowedForBlink(async_fetch, options,
                                  user_agent, user_agent_matcher)) {
-    return true;
+    // Is the request a HTTP request?
+    if (url.SchemeIs("http")) {
+      return true;
+    }
+    if (!options->apply_blink_if_no_families()) {
+      LOG(ERROR) << "Non http url : " << url.spec_c_str() << " allowed in "
+                 << "blink cacheable families.";
+    }
   }
   return false;
 }

@@ -309,6 +309,8 @@ const char kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly[] =
     "<img pagespeed_lazy_src=\"%s\""
     " src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\""
     " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
+    "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+    "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
     "<script pagespeed_orig_src=\"private.js\" type=\"text/psajs\""
     " orig_index=\"3\"></script>"
     "<script pagespeed_orig_src=\"http://www.domain1.com/private.js\""
@@ -1602,7 +1604,10 @@ TEST_F(ProxyInterfaceTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
       "<img pagespeed_lazy_src=1.jpg.pagespeed.ce.0.jpg"
       " src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\""
       " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
-      "Hello, mod_pagespeed!</body></html>");
+      "Hello, mod_pagespeed!"
+      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+      "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
+      "</body></html>");
 
   ResponseHeaders headers;
   headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());

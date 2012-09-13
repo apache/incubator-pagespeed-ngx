@@ -77,6 +77,7 @@ class LazyloadImagesFilter : public CommonFilter {
   static const char* kBlankImageSrc;
   static const char* kImageOnloadCode;
   static const char* kLoadAllImages;
+  static const char* kOverrideAttributeFunctions;
   static const char* kIsLazyloadScriptInsertedPropertyName;
 
   explicit LazyloadImagesFilter(RewriteDriver* driver);
@@ -93,13 +94,12 @@ class LazyloadImagesFilter : public CommonFilter {
       const RewriteOptions* options,
       StaticJavascriptManager* static_js_manager);
 
- protected:
+ private:
   virtual void StartDocumentImpl();
   virtual void EndDocument();
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element);
 
- private:
   // Clears all state associated with the filter.
   void Clear();
 
@@ -107,6 +107,11 @@ class LazyloadImagesFilter : public CommonFilter {
 
   // Inserts the lazyload JS code before the given element.
   void InsertLazyloadJsCode(HtmlElement* element);
+
+  // Inserts a script to override attributes of all the images that have been
+  // lazily loaded so far.
+  void InsertOverrideAttributesScript(HtmlElement* element,
+                                      bool is_before_script);
 
   // The initial image url to be used.
   GoogleString blank_image_url_;
@@ -120,6 +125,9 @@ class LazyloadImagesFilter : public CommonFilter {
   // Indicates if the javascript to abort the rewrite has been inserted into the
   // page.
   bool abort_script_inserted_;
+  // The number of lazily loaded images early since the last time
+  // InsertOverrideAttributesScript was called.
+  int num_images_lazily_loaded_;
 };
 
 }  // namespace net_instaweb
