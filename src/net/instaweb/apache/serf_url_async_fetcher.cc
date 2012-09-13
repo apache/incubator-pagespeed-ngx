@@ -1234,4 +1234,11 @@ void SerfUrlAsyncFetcher::set_list_outstanding_urls_on_error(bool x) {
   }
 }
 
+void SerfUrlAsyncFetcher::set_track_original_content_length(bool x) {
+  track_original_content_length_ = x;
+  if (threaded_fetcher_ != NULL) {
+    threaded_fetcher_->set_track_original_content_length(x);
+  }
+}
+
 }  // namespace net_instaweb

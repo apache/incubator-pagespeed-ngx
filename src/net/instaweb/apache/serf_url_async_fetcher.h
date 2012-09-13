@@ -119,9 +119,7 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   bool track_original_content_length() const {
     return track_original_content_length_;
   }
-  void set_track_original_content_length(bool x) {
-    track_original_content_length_ = x;
-  }
+  void set_track_original_content_length(bool x);
 
  protected:
   typedef Pool<SerfFetch> SerfFetchPool;

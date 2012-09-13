@@ -991,7 +991,10 @@ void RewriteDriver::AddPostRenderFilters() {
         new InsertDnsPrefetchFilter(this);
     AddOwnedPostRenderFilter(insert_dns_prefetch_filter);
   }
-  if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
+  if (rewrite_options->Enabled(RewriteOptions::kSplitHtml)) {
+    AddOwnedPostRenderFilter(new DeferIframeFilter(this));
+    AddOwnedPostRenderFilter(new JsDisableFilter(this));
+  } else if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
     // Defers javascript download and execution to post onload. This filter
     // should be applied before JsDisableFilter and JsDeferFilter.
     // kDeferIframe filter should never be turned on when either defer_js
@@ -1135,7 +1138,6 @@ void RewriteDriver::SetWriter(Writer* writer) {
       // FlushEarlyContentWriterFilter.
       html_writer_filter_.reset(new FlushEarlyContentWriterFilter(this));
     } else if (options()->Enabled(RewriteOptions::kSplitHtml)) {
-      // TODO(rahulbansal): Turn this on only when DeferJavascript is on.
       html_writer_filter_.reset(new SplitHtmlFilter(this));
     } else if (options()->Enabled(RewriteOptions::kFlushSubresources)) {
       html_writer_filter_.reset(new SuppressPreheadFilter(this));
