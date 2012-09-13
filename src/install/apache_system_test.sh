@@ -27,6 +27,17 @@ fi
 this_dir=$(dirname $0)
 source "$this_dir/system_test.sh" || exit 1
 
+# Extract secondary hostname when set. Currently it's only set
+# when doing the cache flush test, but it can be used in other
+# tests we run in that run.
+if [ "$CACHE_FLUSH_TEST" == "on" ]; then
+  SECONDARY_HOSTNAME=$(echo $HOSTNAME | sed -e s/8080/$APACHE_SECONDARY_PORT/g)
+  if [ "$SECONDARY_HOSTNAME" == "$HOSTNAME" ]; then
+    SECONDARY_HOSTNAME=${HOSTNAME}:$APACHE_SECONDARY_PORT
+  fi
+  SECONDARY_TEST_ROOT=http://$SECONDARY_HOSTNAME/mod_pagespeed_test
+fi
+
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
 
@@ -237,7 +248,7 @@ echo $WGET_DUMP $URL
 HTML_HEADERS=$($WGET_DUMP $URL)
 check egrep -q "X-Extra-Header: 1" <(echo $HTML_HEADERS)
 # The extra header should only be added once, not twice.
-check egrep -q -v "X-Extra-Header: 1, 1" <(echo $HTML_HEADERS)
+check_not egrep -q "X-Extra-Header: 1, 1" <(echo $HTML_HEADERS)
 check egrep -q 'Cache-Control: max-age=0, no-cache' <(echo $HTML_HEADERS)
 
 echo TEST: Custom headers remain on resources, but cache should be 1 year.
@@ -246,7 +257,7 @@ echo $WGET_DUMP $URL
 RESOURCE_HEADERS=$($WGET_DUMP $URL)
 check egrep -q 'X-Extra-Header: 1' <(echo $RESOURCE_HEADERS)
 # The extra header should only be added once, not twice.
-check egrep -q -v 'X-Extra-Header: 1, 1' <(echo $RESOURCE_HEADERS)
+check_not egrep -q 'X-Extra-Header: 1, 1' <(echo $RESOURCE_HEADERS)
 check egrep -q 'Cache-Control: max-age=31536000' <(echo $RESOURCE_HEADERS)
 
 echo TEST: ModPagespeedModifyCachingHeaders
@@ -348,12 +359,6 @@ fetch_until $IMG_CUSTOM 'wc -c' 216942
 
 if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   WGET_ARGS=""
-
-  SECONDARY_HOSTNAME=$(echo $HOSTNAME | sed -e s/8080/$APACHE_SECONDARY_PORT/g)
-  if [ "$SECONDARY_HOSTNAME" == "$HOSTNAME" ]; then
-    SECONDARY_HOSTNAME=${HOSTNAME}:$APACHE_SECONDARY_PORT
-  fi
-  SECONDARY_TEST_ROOT=http://$SECONDARY_HOSTNAME/mod_pagespeed_test
 
   echo TEST: add_instrumentation has added unload handler with \
       ModPagespeedReportUnloadTime enabled in APACHE_SECONDARY_PORT.
@@ -569,6 +574,53 @@ flushes,image_ongoing_rewrites&hist_titles=Html%20Time%20us%20Histogram"
   CONSOLE_HTML=$OUTDIR/console.html
   $WGET_DUMP $CONSOLE_URL > $CONSOLE_HTML
   check grep -q "console" $CONSOLE_HTML
+fi
+
+echo "TEST: <ModPagespeedIf> parsing"
+readonly CONFIG_URL=$STATISTICS_URL?config
+readonly SPDY_CONFIG_URL=$STATISTICS_URL?spdy_config
+
+echo $WGET_DUMP $CONFIG_URL
+CONFIG=$($WGET_DUMP $CONFIG_URL)
+check egrep -q "Configuration:" <(echo $CONFIG)
+check_not egrep -q "SPDY-specific configuration:" <(echo $CONFIG)
+# Regular config should have a shard line:
+check egrep -q "http://nonspdy.example.com/ Auth Shards:{http:" <(echo $CONFIG)
+check egrep -q "//s1.example.com/, http://s2.example.com/}" <(echo $CONFIG)
+# And "combine CSS" on.
+check egrep -q "Combine Css" <(echo $CONFIG)
+
+echo $WGET_DUMP $SPDY_CONFIG_URL
+SPDY_CONFIG=$($WGET_DUMP $SPDY_CONFIG_URL)
+check_not egrep -q "Configuration:" <(echo $SPDY_CONFIG)
+check egrep -q "SPDY-specific configuration:" <(echo $SPDY_CONFIG)
+
+# Non-SPDY config should have neither shards, nor combine CSS.
+check_not egrep -q "http://nonspdy.example.com" <(echo $SPDY_CONFIG)
+check_not egrep -q "s1.example.com" <(echo $SPDY_CONFIG)
+check_not egrep -q "s2.example.com" <(echo $SPDY_CONFIG)
+check_not egrep -q "Combine Css" <(echo $SPDY_CONFIG)
+
+# Now check stuff on secondary host, which doesn't have those blocks
+# (since we don't inherit into vhosts). We run this only for some tests,
+# since we don't always have the secondary port number available here.
+if [ x$SECONDARY_HOSTNAME != x ]; then
+  SECONDARY_STATS_URL=http://$SECONDARY_HOSTNAME/mod_pagespeed_statistics
+  SECONDARY_CONFIG_URL=$SECONDARY_STATS_URL?config
+  SECONDARY_SPDY_CONFIG_URL=$SECONDARY_STATS_URL?spdy_config
+
+  echo $WGET_DUMP $SECONDARY_CONFIG_URL
+  SECONDARY_CONFIG=$($WGET_DUMP $SECONDARY_CONFIG_URL)
+  check egrep -q "Configuration:" <(echo $SECONDARY_CONFIG)
+  check_not egrep -q "SPDY-specific configuration:" <(echo $SECONDARY_CONFIG)
+  # Sharding isn't applied in this host..
+  check_not egrep -q "http://nonspdy.example.com/" <(echo $SECONDARY_CONFIG)
+
+  echo $WGET_DUMP $SECONDARY_SPDY_CONFIG_URL
+  SECONDARY_SPDY_CONFIG=$($WGET_DUMP $SECONDARY_SPDY_CONFIG_URL)
+  check_not egrep -q "Configuration:" <(echo $SECONDARY_SPDY_CONFIG)
+  check egrep -q "SPDY-specific configuration missing" \
+      <(echo $SECONDARY_SPDY_CONFIG)
 fi
 
 # Cleanup

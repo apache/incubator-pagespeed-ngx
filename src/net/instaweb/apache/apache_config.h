@@ -202,7 +202,7 @@ class ApacheConfig : public RewriteOptions {
   }
 
   // Make an identical copy of these options and return it.
-  virtual RewriteOptions* Clone() const;
+  virtual ApacheConfig* Clone() const;
 
   // Returns a suitably down cast version of 'instance' if it is an instance
   // of this class, NULL if not.

@@ -117,6 +117,48 @@ ApacheConfig* ApacheResourceManager::config() {
   return ApacheConfig::DynamicCast(global_options());
 }
 
+ApacheConfig* ApacheResourceManager::SpdyConfigOverlay() {
+  if (spdy_config_overlay_.get() == NULL) {
+    spdy_config_overlay_.reset(new ApacheConfig());
+    // We want to copy any implicit rewrite level from the parent,
+    // so we don't end up overriding it with passthrough. It's also OK
+    // to forward explicit one to an implicit one here, since an implicit
+    // will never override an explicit one (even if its different).
+    spdy_config_overlay_->SetDefaultRewriteLevel(config()->level());
+  }
+  return spdy_config_overlay_.get();
+}
+
+ApacheConfig* ApacheResourceManager::NonSpdyConfigOverlay() {
+  if (non_spdy_config_overlay_.get() == NULL) {
+    non_spdy_config_overlay_.reset(new ApacheConfig());
+    // See ::SpdyConfigOverlay for explanation.
+    non_spdy_config_overlay_->SetDefaultRewriteLevel(config()->level());
+  }
+  return non_spdy_config_overlay_.get();
+}
+
+void ApacheResourceManager::CollapseConfigOverlaysAndComputeSignatures() {
+  if (spdy_config_overlay_.get() != NULL ||
+      non_spdy_config_overlay_.get() != NULL) {
+    // We need separate SPDY/non-SPDY configs if we have any
+    // <IfModpagespeed spdy> or <IfModpagespeed !spdy> blocks.
+    // We compute the SPDY one first since we need config() to be
+    // the common config and not common + !spdy.
+    spdy_specific_config_.reset(config()->Clone());
+    if (spdy_config_overlay_.get() != NULL) {
+      spdy_specific_config_->Merge(*spdy_config_overlay_);
+    }
+    ComputeSignature(spdy_specific_config_.get());
+  }
+
+  if (non_spdy_config_overlay_.get() != NULL) {
+    config()->Merge(*non_spdy_config_overlay_);
+  }
+
+  ComputeSignature(config());
+}
+
 void ApacheResourceManager::CreateLocalStatistics(
     Statistics* global_statistics) {
   local_statistics_ =

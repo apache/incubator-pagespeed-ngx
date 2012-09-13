@@ -298,8 +298,6 @@ void log_resource_referral(request_rec* request,
   }
 }
 
-}  // namespace
-
 // Used by log_request_headers for testing only.
 struct HeaderLoggingData {
   HeaderLoggingData(StringWriter* writer_in, MessageHandler* handler_in)
@@ -332,6 +330,15 @@ int log_request_headers(void* logging_data,
   return 1;  // Continue iteration.
 }
 
+// Writes text wrapped in a <pre> block
+void WritePre(StringPiece str, Writer* writer, MessageHandler* handler) {
+  writer->Write("<pre>\n", handler);
+  writer->Write(str, handler);
+  writer->Write("</pre>\n", handler);
+}
+
+}  // namespace
+
 apr_status_t instaweb_handler(request_rec* request) {
   apr_status_t ret = DECLINED;
   const char* url = get_instaweb_resource_url(request);
@@ -339,6 +346,7 @@ apr_status_t instaweb_handler(request_rec* request) {
       InstawebContext::ManagerFromServerRec(request->server);
   ApacheConfig* config = manager->config();
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
+  ApacheMessageHandler* message_handler = factory->apache_message_handler();
 
   log_resource_referral(request, factory);
 
@@ -349,6 +357,7 @@ apr_status_t instaweb_handler(request_rec* request) {
   int64 start_time, end_time, granularity_ms;
   std::set<GoogleString> var_titles;
   std::set<GoogleString> hist_titles;
+  // mod_pagespeed_statistics or mod_pagespeed_global_statistics.
   if (general_stats_request || global_stats_request) {
     if (general_stats_request && !factory->use_per_vhost_statistics()) {
       global_stats_request = true;
@@ -356,8 +365,16 @@ apr_status_t instaweb_handler(request_rec* request) {
     // Choose the correct statistics.
     Statistics* statistics =
         global_stats_request ? factory->statistics() : manager->statistics();
+
+    QueryParams params;
+    params.Parse(request->args);
+
+    // Parse various mode query params.
+    bool print_normal_config = params.Has("config");
+    bool print_spdy_config = params.Has("spdy_config");
+
+    // JSON statistics handling is done only if we have a console logger.
     bool json = false;
-    // Gather the query params to handle the JSON case.
     if (statistics->console_logger() != NULL) {
       // Default values for start_time, end_time, and granularity_ms in case the
       // query does not include these parameters.
@@ -367,8 +384,6 @@ apr_status_t instaweb_handler(request_rec* request) {
       // specified by the query, the default value is 3000 ms, the same as the
       // default logging granularity.
       granularity_ms = 3000;
-      QueryParams params;
-      params.Parse(request->args);
       for (int i = 0; i < params.size(); ++i) {
         const GoogleString value =
             (params.value(i) == NULL) ? "" : *params.value(i);
@@ -404,34 +419,44 @@ apr_status_t instaweb_handler(request_rec* request) {
     }
     GoogleString output;
     StringWriter writer(&output);
-    if (statistics != NULL) {
-      if (json) {
-        statistics->console_logger()->DumpJSON(var_titles, hist_titles,
-                                               start_time, end_time,
-                                               granularity_ms, &writer,
-                                               factory->message_handler());
-      } else {
-        writer.Write(global_stats_request ?
-                         "Global Statistics" : "VHost-Specific Statistics",
-                     factory->message_handler());
-        // Write <pre></pre> for Dump to keep good format.
-        writer.Write("<pre>", factory->message_handler());
-        statistics->Dump(&writer, factory->message_handler());
-        writer.Write("</pre>", factory->message_handler());
-        statistics->RenderHistograms(&writer, factory->message_handler());
+    if (json) {
+      statistics->console_logger()->DumpJSON(var_titles, hist_titles,
+                                             start_time, end_time,
+                                             granularity_ms, &writer,
+                                             message_handler);
+    } else {
+      writer.Write(global_stats_request ?
+                       "Global Statistics" : "VHost-Specific Statistics",
+                   message_handler);
+      // Write <pre></pre> for Dump to keep good format.
+      writer.Write("<pre>", message_handler);
+      statistics->Dump(&writer, message_handler);
+      writer.Write("</pre>", message_handler);
+      statistics->RenderHistograms(&writer, message_handler);
 
-        GoogleString memcached_stats;
-        factory->PrintMemCacheStats(&memcached_stats);
-        if (!memcached_stats.empty()) {
-          writer.Write("<pre>\n", factory->message_handler());
-          writer.Write(memcached_stats, factory->message_handler());
-          writer.Write("</pre>\n", factory->message_handler());
+      GoogleString memcached_stats;
+      factory->PrintMemCacheStats(&memcached_stats);
+      if (!memcached_stats.empty()) {
+        WritePre(memcached_stats, &writer, message_handler);
+      }
+
+      if (print_normal_config) {
+        writer.Write("Configuration:<br>", message_handler);
+        WritePre(config->OptionsToString(), &writer, message_handler);
+      }
+
+      if (print_spdy_config) {
+        ApacheConfig* spdy_config = manager->SpdyConfig();
+        if (spdy_config == NULL) {
+          writer.Write("SPDY-specific configuration missing, using default.",
+                       message_handler);
+        } else {
+          writer.Write("SPDY-specific configuration:<br>", message_handler);
+          WritePre(spdy_config->OptionsToString(), &writer, message_handler);
         }
       }
-    } else {
-      writer.Write("mod_pagespeed statistics is not enabled\n",
-                   factory->message_handler());
     }
+
     if (json) {
       write_handler_response(output, request, kContentTypeJson);
     } else {
@@ -485,15 +510,14 @@ apr_status_t instaweb_handler(request_rec* request) {
     // Request for page /mod_pagespeed_message.
     GoogleString output;
     StringWriter writer(&output);
-    ApacheMessageHandler* handler = factory->apache_message_handler();
     // Write <pre></pre> for Dump to keep good format.
-    writer.Write("<pre>", factory->message_handler());
-    if (!handler->Dump(&writer)) {
+    writer.Write("<pre>", message_handler);
+    if (!message_handler->Dump(&writer)) {
       writer.Write("Writing to mod_pagespeed_message failed. \n"
                    "Please check if it's enabled in pagespeed.conf.\n",
-                   factory->message_handler());
+                   message_handler);
     }
-    writer.Write("</pre>", factory->message_handler());
+    writer.Write("</pre>", message_handler);
     write_handler_response(output, request);
     ret = OK;
 
@@ -505,8 +529,7 @@ apr_status_t instaweb_handler(request_rec* request) {
     // For testing ModPagespeedCustomFetchHeader.
     GoogleString output;
     StringWriter writer(&output);
-    ApacheMessageHandler* handler = factory->apache_message_handler();
-    HeaderLoggingData header_logging_data(&writer, handler);
+    HeaderLoggingData header_logging_data(&writer, message_handler);
     apr_table_do(&log_request_headers, &header_logging_data,
                  request->headers_in, NULL);
 

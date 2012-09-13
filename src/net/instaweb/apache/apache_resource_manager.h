@@ -55,6 +55,25 @@ class ApacheResourceManager : public ServerContext {
   ApacheConfig* config();
   bool InitFileCachePath();
 
+  // These return configuration objects that hold settings from
+  // <ModPagespeedIf spdy> and <ModPagespeedIf !spdy> sections of configuration.
+  // They initialize lazily, so are not thread-safe; however they are only
+  // meant to be used during configuration parsing. These methods should be
+  // called only if there is actually a need to put something in them, since
+  // otherwise we may end up constructing separate SPDY vs. non-SPDY
+  // configurations needlessly.
+  ApacheConfig* SpdyConfigOverlay();
+  ApacheConfig* NonSpdyConfigOverlay();
+
+  // Returns special configuration that should be used for SPDY sessions
+  // instead of config(). Returns NULL if config() should be used instead.
+  ApacheConfig* SpdyConfig() { return spdy_specific_config_.get(); }
+
+  // This should be called after all configuration parsing is done to collapse
+  // configuration inside the config overlays into actual ApacheConfig objects.
+  // It will also compute signatures when done.
+  void CollapseConfigOverlaysAndComputeSignatures();
+
   // Initialize this ResourceManager to have its own statistics domain.
   // Must be called after global_statistics has been created and had
   // ::Initialize called on it.
@@ -119,6 +138,14 @@ class ApacheResourceManager : public ServerContext {
   // These are non-NULL if we have per-vhost stats.
   scoped_ptr<RewriteStats> local_rewrite_stats_;
   scoped_ptr<UrlAsyncFetcherStats> stats_fetcher_;
+
+  // May be NULL. Constructed once we see things in config files that should
+  // be stored in these.
+  scoped_ptr<ApacheConfig> spdy_config_overlay_;
+  scoped_ptr<ApacheConfig> non_spdy_config_overlay_;
+
+  // May be NULL if we don't have any special settings for when using SPDY.
+  scoped_ptr<ApacheConfig> spdy_specific_config_;
 
   Histogram* html_rewrite_time_us_histogram_;
 

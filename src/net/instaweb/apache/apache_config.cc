@@ -159,7 +159,7 @@ bool ApacheConfig::ParseRefererStatisticsOutputLevel(
   return ret;
 }
 
-RewriteOptions* ApacheConfig::Clone() const {
+ApacheConfig* ApacheConfig::Clone() const {
   ApacheConfig* options = new ApacheConfig(description_);
   options->Merge(*this);
   return options;

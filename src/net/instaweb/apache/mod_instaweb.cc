@@ -84,6 +84,12 @@ namespace net_instaweb {
 
 namespace {
 
+// Passed to CheckGlobalOption
+enum VHostHandling {
+  kTolerateInVHost,
+  kErrorInVHost
+};
+
 // Used by ModPagespeedLoadFromFileRule
 const char kAllow[] = "allow";
 const char kDisallow[] = "disallow";
@@ -96,6 +102,9 @@ const char kModPagespeedFixHeadersName[] = "MOD_PAGESPEED_FIX_HEADERS_FILTER";
 // install/common/pagespeed.conf.template.
 // If you add a new option, please add it to the #ALL_DIRECTIVES section of
 // install/debug.conf.template to make sure it will parse.
+
+const char kModPagespeedIf[] = "<ModPagespeedIf";
+
 const char kModPagespeedAllow[] = "ModPagespeedAllow";
 const char kModPagespeedAnalyticsID[] = "ModPagespeedAnalyticsID";
 const char kModPagespeedAvoidRenamingIntrospectiveJavascript[] =
@@ -778,8 +787,8 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
         InstawebContext::ManagerFromServerRec(server);
     if (managers_covered_.insert(manager).second) {
       CHECK(manager);
+      manager->CollapseConfigOverlaysAndComputeSignatures();
       ApacheConfig* config = manager->config();
-      manager->ComputeSignature(config);
 
       if (config->enabled()) {
         GoogleString file_cache_path = config->file_cache_path();
@@ -1051,18 +1060,72 @@ void warn_deprecated(cmd_parms* cmd, const char* remedy) {
 
 // Determines the Option structure into which to write a parsed directive.
 // If the directive was parsed from the default pagespeed.conf file then
-// we will write the information into the factory's RewriteOptions.  However,
-// if this was parsed from a Directory scope or .htaccess file then we will
-// be using the RewriteOptions structure from a tree of ApacheConfig objects
-// that is built up per-request.
-static ApacheConfig* CmdOptions(cmd_parms* cmd, void* data) {
+// we will write the information into the factory's RewriteOptions. In that
+// case, it's also possible that an overlay config for SPDY should be used,
+// in which case we will store it inside the directive object.
+// ### Consider storing an enum instead of pointer, to reduce the risks of
+// trouble if some other module stomps over this?
+//
+// However, if this was parsed from a Directory scope or .htaccess file then we
+// will be using the RewriteOptions structure from a tree of ApacheConfig
+// objects that is built up per-request.
+//
+// Returns NULL if successful, error string otherwise.
+// Writes out the ApacheConfig* into *config_out.
+static const char* CmdOptions(const cmd_parms* cmd, void* data,
+                              ApacheConfig** config_out) {
   ApacheConfig* config = static_cast<ApacheConfig*>(data);
   if (config == NULL) {
-    ApacheResourceManager* manager =
-        InstawebContext::ManagerFromServerRec(cmd->server);
-    config = manager->config();
+    // See if there is an overlay config.
+    if (cmd->directive->data != NULL) {
+      config = static_cast<ApacheConfig*>(cmd->directive->data);
+    } else {
+      ApacheResourceManager* manager =
+          InstawebContext::ManagerFromServerRec(cmd->server);
+      config = manager->config();
+    }
+  } else {
+    // If we're here, we are inside path-specific configuration, so we should
+    // not see SPDY vs. non-SPDY distinction.
+    if (cmd->directive->data != NULL) {
+      *config_out = NULL;
+      return "Can't use <ModPagespeedIf except at top-level or VirtualHost "
+             "context";
+    }
   }
-  return config;
+  *config_out = config;
+  return NULL;
+}
+
+// This should be called for global options to see if they were used properly.
+// In particular, it returns an error string if a global option is inside a
+// <ModPagespeedIf. It also either warns or errors out if we're using a global
+// option inside a virtual host, depending on "mode".
+//
+// Returns NULL if successful, error string otherwise.
+static char* CheckGlobalOption(const cmd_parms* cmd,
+                               VHostHandling mode,
+                               MessageHandler* handler) {
+  if (cmd->server->is_virtual) {
+    char* vhost_error = apr_pstrcat(
+        cmd->pool, "Directive ", cmd->directive->directive,
+        " used inside a <VirtualHost> but applies globally.",
+        (mode == kTolerateInVHost ?
+            " Accepting for backwards compatibility. " :
+            NULL),
+        NULL);
+    if (mode == kErrorInVHost) {
+      return vhost_error;
+    } else {
+      handler->Message(kWarning, "%s", vhost_error);
+    }
+  }
+  if (cmd->directive->data != NULL) {
+    return apr_pstrcat(
+        cmd->pool, "Global directive ", cmd->directive->directive,
+        " invalid inside conditional.", NULL);
+  }
+  return NULL;
 }
 
 // Callback function that parses a single-argument directive.  This is called
@@ -1075,7 +1138,11 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   StringPiece directive(cmd->directive->directive);
   StringPiece prefix(RewriteQuery::kModPagespeed);
   const char* ret = NULL;
-  ApacheConfig* config = CmdOptions(cmd, data);
+  ApacheConfig* config;
+  ret = CmdOptions(cmd, data, &config);
+  if (ret != NULL) {
+    return ret;
+  }
 
   // Keep an upcast version of 'config' around so that the template methods
   // resolve properly for options in RewriteOptions for ApacheConfig.
@@ -1152,11 +1219,18 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
       ret = "Failed to enable some filters.";
     }
   } else if (StringCaseEqual(directive, kModPagespeedFetchWithGzip)) {
-    ret = ParseBoolOption(
-        factory, cmd, &ApacheRewriteDriverFactory::set_fetch_with_gzip, arg);
+    ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
+    if (ret == NULL) {
+      ret = ParseBoolOption(
+          factory, cmd, &ApacheRewriteDriverFactory::set_fetch_with_gzip, arg);
+    }
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
-    ret = ParseBoolOption(static_cast<RewriteDriverFactory*>(factory),
-                          cmd, &RewriteDriverFactory::set_force_caching, arg);
+    ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
+    if (ret == NULL) {
+        ret = ParseBoolOption(static_cast<RewriteDriverFactory*>(factory),
+                              cmd, &RewriteDriverFactory::set_force_caching,
+                              arg);
+    }
   } else if (StringCaseEqual(directive, kModPagespeedFuriousSlot)) {
     ParseIntBoundedOption(options, cmd,
                           &RewriteOptions::set_furious_ga_slot,
@@ -1168,26 +1242,30 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     }
   } else if (StringCaseEqual(directive,
                              kModPagespeedListOutstandingUrlsOnError)) {
-    ParseBoolOption(
-        factory, cmd,
-        &ApacheRewriteDriverFactory::list_outstanding_urls_on_error, arg);
+    ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
+    if (ret == NULL) {
+      ParseBoolOption(
+          factory, cmd,
+          &ApacheRewriteDriverFactory::list_outstanding_urls_on_error, arg);
+    }
   } else if (StringCaseEqual(directive, kModPagespeedMessageBufferSize)) {
-    ret = ParseIntOption(factory, cmd,
-                         &ApacheRewriteDriverFactory::set_message_buffer_size,
-                         arg);
+    ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
+    if (ret == NULL) {
+      ret = ParseIntOption(factory, cmd,
+                           &ApacheRewriteDriverFactory::set_message_buffer_size,
+                           arg);
+    }
   } else if (StringCaseEqual(directive, kModPagespeedNumRewriteThreads)) {
-    if (manager->server()->is_virtual) {
-      ret = "Thread counts can only be configured globally, not per vhost. ";
-    } else {
+    ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
+    if (ret == NULL) {
       ret = ParseIntOption(
           factory, cmd,
           &ApacheRewriteDriverFactory::set_num_rewrite_threads, arg);
     }
   } else if (StringCaseEqual(directive,
                              kModPagespeedNumExpensiveRewriteThreads)) {
-    if (manager->server()->is_virtual) {
-      ret = "Thread counts can only be configured globally, not per vhost. ";
-    } else {
+    ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
+    if (ret == NULL) {
       ret = ParseIntOption(
           factory, cmd,
           &ApacheRewriteDriverFactory::set_num_expensive_rewrite_threads, arg);
@@ -1207,9 +1285,12 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedBlockingRewriteKey)) {
     options->set_blocking_rewrite_key(arg);
   } else if (StringCaseEqual(directive, kModPagespeedUsePerVHostStatistics)) {
-    ret = ParseBoolOption(
-        factory, cmd, &ApacheRewriteDriverFactory::set_use_per_vhost_statistics,
-        arg);
+    ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
+    if (ret == NULL) {
+      ret = ParseBoolOption(
+          factory, cmd,
+          &ApacheRewriteDriverFactory::set_use_per_vhost_statistics, arg);
+    }
   } else if (StringCaseEqual(directive, kModPagespeedEnablePropertyCache)) {
     ret = ParseBoolOption(
         factory, cmd, &ApacheRewriteDriverFactory::set_enable_property_cache,
@@ -1222,15 +1303,106 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   return ret;
 }
 
+// Recursively walks the configuration we've parsed inside a
+// <ModPagespeedIf> block, checking to make sure it's sane, and stashing
+// pointers to the overlay ApacheConfig's we will use once Apache actually
+// bothers calling our ParseDirective* methods. Returns NULL if OK, error string
+// on error.
+static const char* ProcessParsedScope(ApacheResourceManager* server_context,
+                                      ap_directive_t* root, bool for_spdy) {
+  for (ap_directive_t* cur = root; cur != NULL; cur = cur->next) {
+    StringPiece directive(cur->directive);
+    if (!StringCaseStartsWith(directive, RewriteQuery::kModPagespeed)) {
+      return "Only mod_pagespeed directives should be inside <ModPagespeedIf "
+             "blocks";
+    }
+    if (StringCaseStartsWith(directive, kModPagespeedIf)) {
+      return "Can't nest <ModPagespeedIf> blocks";
+    }
+
+    if (cur->first_child != NULL) {
+      const char* kid_result = ProcessParsedScope(
+          server_context, cur->first_child, for_spdy);
+      if (kid_result != NULL) {
+        return kid_result;
+      }
+    }
+
+    // Store the appropriate config to use in the ap_directive_t's
+    // module data pointer, so we can retrieve it in CmdOptions when executing
+    // parsing callback for it.
+    cur->data = for_spdy ?
+        server_context->SpdyConfigOverlay() :
+        server_context->NonSpdyConfigOverlay();
+  }
+  return NULL;  // All OK.
+}
+
+// Callback that parses <ModPagespeedIf>. Unlike with ParseDirective*, we're
+// supposed to make a new directive tree, and return it out via *mconfig. It
+// will have its directives parsed by Apache at some point later.
+static const char* ParseScope(cmd_parms* cmd, ap_directive_t** mconfig,
+                              const char* arg) {
+  StringPiece mode(arg);
+  ApacheResourceManager* server_context =
+      InstawebContext::ManagerFromServerRec(cmd->server);
+
+  bool for_spdy = false;
+  if (StringCaseEqual(mode, "spdy>")) {
+    for_spdy = true;
+  } else if (StringCaseEqual(mode, "!spdy>")) {
+    for_spdy = false;
+  } else {
+    return "Conditional must be spdy or !spdy.";
+  }
+
+  // We need to manually check nesting since Apache's code doesn't seem to catch
+  // violations for sections that parse blocks like <ModPagespeedIf>
+  // (technically, commands with EXEC_ON_READ set).
+  //
+  // Unfortunately, ap_check_cmd_context doesn't work entirely
+  // right, either, so we do our own handling inside CmdOptions as well; this is
+  // kept mostly to produce a nice complaint in case someone puts
+  // a <ModPagespeedIf> inside a <Limit>.
+  const char* ret =
+      ap_check_cmd_context(cmd, NOT_IN_DIR_LOC_FILE | NOT_IN_LIMIT);
+  if (ret != NULL) {
+    return ret;
+  }
+
+  // Recursively parse this section. This is basically copy-pasted from
+  // mod_version.c in Apache sources.
+  ap_directive_t* parent = NULL;
+  ap_directive_t* current = NULL;
+
+  ret = ap_build_cont_config(cmd->pool, cmd->temp_pool, cmd,
+                             &current, &parent,
+                             apr_pstrdup(cmd->pool, kModPagespeedIf));
+  *mconfig = current;
+
+  // Do our syntax checking and stash some ApacheConfig pointers.
+  if (ret == NULL) {
+    ret = ProcessParsedScope(server_context, current, for_spdy);
+  }
+
+  return ret;
+}
+
 // Callback function that parses a two-argument directive.  This is called
 // by the Apache config parser.
 static const char* ParseDirective2(cmd_parms* cmd, void* data,
                                    const char* arg1, const char* arg2) {
   ApacheResourceManager* manager =
       InstawebContext::ManagerFromServerRec(cmd->server);
-  RewriteOptions* options = CmdOptions(cmd, data);
+
+  ApacheConfig* config;
+  const char* ret = CmdOptions(cmd, data, &config);
+  if (ret != NULL) {
+    return ret;
+  }
+  RewriteOptions* options = config;
+
   const char* directive = cmd->directive->directive;
-  const char* ret = NULL;
   if (StringCaseEqual(directive, kModPagespeedLoadFromFile)) {
     options->file_load_policy()->Associate(arg1, arg2);
   } else if (StringCaseEqual(directive, kModPagespeedLoadFromFileMatch)) {
@@ -1282,7 +1454,12 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
 static const char* ParseDirective3(
     cmd_parms* cmd, void* data,
     const char* arg1, const char* arg2, const char* arg3) {
-  RewriteOptions* options = CmdOptions(cmd, data);
+  ApacheConfig* config;
+  const char* ret = CmdOptions(cmd, data, &config);
+  if (ret != NULL) {
+    return ret;
+  }
+  RewriteOptions* options = config;
   const char* directive = cmd->directive->directive;
   if (StringCaseEqual(directive, kModPagespeedUrlValuedAttribute)) {
     // Examples:
@@ -1334,6 +1511,13 @@ static const char* ParseDirective3(
   AP_INIT_TAKE1(name, reinterpret_cast<const char*(*)()>(ParseDirective), \
                 NULL, OR_ALL, help)
 
+// For stuff similar to <IfVersion>, and the like.
+// Note that Apache does not seem to apply RSRC_CONF (only global/vhost)
+// enforcement for these, so they require manual checking.
+#define APACHE_SCOPE_OPTION(name, help) \
+  AP_INIT_TAKE1(name, reinterpret_cast<const char*(*)()>(ParseScope), \
+                NULL, RSRC_CONF | EXEC_ON_READ, help)
+
 // Like APACHE_CONFIG_OPTION, but gets 2 arguments.
 #define APACHE_CONFIG_OPTION2(name, help) \
   AP_INIT_TAKE2(name, reinterpret_cast<const char*(*)()>(ParseDirective2), \
@@ -1348,6 +1532,11 @@ static const char* ParseDirective3(
                 NULL, OR_ALL, help)
 
 static const command_rec mod_pagespeed_filter_cmds[] = {
+  // Special conditional op.
+  APACHE_SCOPE_OPTION(
+      kModPagespeedIf, "Conditionally apply some mod_pagespeed options. "
+      "Possible arguments: spdy, !spdy"),
+
   // All one parameter options that are allowed in <Directory> blocks.
   APACHE_CONFIG_DIR_OPTION(RewriteQuery::kModPagespeed, "Enable instaweb"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedAllow,
@@ -1362,7 +1551,7 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "URL for beacon callback injected by add_instrumentation."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCollectRefererStatistics,
         "Track page, resource, and div location referrals for prefetching."),
-APACHE_CONFIG_DIR_OPTION(kModPagespeedClientDomainRewrite,
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedClientDomainRewrite,
       "Allow rewrite_domains to rewrite urls on the client side."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCombineAcrossPaths,
         "Allow combining resources from different paths"),

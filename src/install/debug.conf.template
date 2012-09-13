@@ -156,6 +156,15 @@ ModPagespeedListOutstandingUrlsOnError on
 
 ModPagespeedAvoidRenamingIntrospectiveJavascript off
 
+# Test converage for <ModPagespeedIf>
+<ModPagespeedIf spdy>
+  ModPagespeedDisableFilters combine_css
+</ModPagespeedIf>
+
+<ModPagespeedIf !spdy>
+  ModPagespeedShardDomain nonspdy.example.com s1.example.com,s2.example.com
+</ModPagespeedIf>
+
 # These will be sent to the origin domain when fetching subresources.
 ModPagespeedCustomFetchHeader header value
 ModPagespeedCustomFetchHeader x-other False
