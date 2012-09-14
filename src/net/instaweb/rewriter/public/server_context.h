@@ -122,7 +122,6 @@ class ServerContext {
   void set_filename_prefix(const StringPiece& file_prefix);
   void set_statistics(Statistics* x) { statistics_ = x; }
   void set_rewrite_stats(RewriteStats* x) { rewrite_stats_ = x; }
-  void set_relative_path(bool x) { relative_path_ = x; }
   void set_lock_manager(NamedLockManager* x) { lock_manager_ = x; }
   void set_enable_property_cache(bool enabled);
   void set_message_handler(MessageHandler* x) { message_handler_ = x; }
@@ -510,7 +509,6 @@ class ServerContext {
   scoped_ptr<PropertyCache> client_property_cache_;
   scoped_ptr<CacheInterface> metadata_cache_;
 
-  bool relative_path_;
   bool store_outputs_in_file_system_;
   bool response_headers_finalized_;
   bool enable_property_cache_;
