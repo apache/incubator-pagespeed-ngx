@@ -821,8 +821,10 @@ pagespeed.MpsConsole.prototype.getGraph =
       return;
     }
     document.getElementById('mod-error').style.display = 'none';
-    mpsConsole.scrapeData(JSON.parse(this.responseText), graphIndex,
-                          isHistogram, endTime, graphTitle);
+    mpsConsole.scrapeData(
+        /** @type {pagespeed.MpsConsole.JSONData} */ (
+            JSON.parse(this.responseText)),
+        graphIndex, isHistogram, endTime, graphTitle);
   };
 
   xhr.open('GET', queryString);
