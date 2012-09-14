@@ -226,9 +226,10 @@ bool CssHierarchy::Parse() {
         } else {
           // ruleset->media_queries() contained complex media queries.
           filter_->num_flatten_imports_complex_queries_->Add(1);
-          // Claim parse failed if we get complex media queries.
-          // TODO(sligocki): set_flattening_succeeded(false) instead.
-          result = false;
+          // Note: This will leave the file partially stripped of rulesets
+          // and partially unstripped. This shouldn't matter since we've
+          // decided not to flatten this CSS file, but worth a note.
+          set_flattening_succeeded(false);
           break;
         }
       }

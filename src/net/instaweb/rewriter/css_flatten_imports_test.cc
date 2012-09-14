@@ -1001,7 +1001,6 @@ TEST_F(CssFlattenImportsTest, MergeMediaQueries) {
                              "@media only screen{.b{color:#00f}}",
                              */
                              kExpectSuccess | kNoClearFetcher |
-                             kFlattenImportsMinifyFailed |
                              kFlattenImportsComplexQueries);
 }
 
@@ -1021,7 +1020,6 @@ TEST_F(CssFlattenImportsTest, NoFlattenMediaQueriesAtMedia) {
                              "@import url(child.css) screen;",
                              "@import url(child.css) screen;",
                              kExpectSuccess | kNoClearFetcher |
-                             kFlattenImportsMinifyFailed |
                              kFlattenImportsComplexQueries);
 }
 
