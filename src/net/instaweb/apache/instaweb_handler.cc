@@ -337,6 +337,157 @@ void WritePre(StringPiece str, Writer* writer, MessageHandler* handler) {
   writer->Write("</pre>\n", handler);
 }
 
+apr_status_t instaweb_console_handler(
+    request_rec* request, ApacheConfig* config,
+    ApacheMessageHandler* message_handler) {
+  GoogleString output;
+  StringWriter writer(&output);
+  writer.Write("<!DOCTYPE html>"
+                "<title>mod_pagespeed console</title>",
+               message_handler);
+  writer.Write("<style>", message_handler);
+  writer.Write(CSS_mod_pagespeed_console_css, message_handler);
+  writer.Write("</style>", message_handler);
+  writer.Write(HTML_mod_pagespeed_console_body, message_handler);
+  writer.Write("<script>", message_handler);
+  if (config->statistics_logging_charts_js().size() > 0 &&
+      config->statistics_logging_charts_css().size() > 0) {
+    writer.Write("var chartsOfflineJS = '", message_handler);
+    writer.Write(config->statistics_logging_charts_js(), message_handler);
+    writer.Write("';", message_handler);
+    writer.Write("var chartsOfflineCSS = '", message_handler);
+    writer.Write(config->statistics_logging_charts_css(), message_handler);
+    writer.Write("';", message_handler);
+  } else {
+    if (config->statistics_logging_charts_js().size() > 0 ||
+        config->statistics_logging_charts_css().size() > 0) {
+      message_handler->Message(kWarning, "Using online Charts API.");
+    }
+    writer.Write("var chartsOfflineJS, chartsOfflineCSS;", message_handler);
+  }
+  writer.Write(JS_mod_pagespeed_console_js, message_handler);
+  writer.Write("</script>", message_handler);
+  write_handler_response(output, request);
+  return OK;
+}
+
+apr_status_t instaweb_statistics_handler(
+    request_rec* request, ApacheResourceManager* server_context,
+    ApacheRewriteDriverFactory* factory, MessageHandler* message_handler) {
+  bool general_stats_request =
+      (strcmp(request->handler, kStatisticsHandler) == 0);
+  bool global_stats_request =
+      (strcmp(request->handler, kGlobalStatisticsHandler) == 0);
+
+  int64 start_time, end_time, granularity_ms;
+  std::set<GoogleString> var_titles;
+  std::set<GoogleString> hist_titles;
+  if (general_stats_request && !factory->use_per_vhost_statistics()) {
+    global_stats_request = true;
+  }
+
+  // Choose the correct statistics.
+  Statistics* statistics = global_stats_request ?
+      factory->statistics() : server_context->statistics();
+
+  QueryParams params;
+  params.Parse(request->args);
+
+  // Parse various mode query params.
+  bool print_normal_config = params.Has("config");
+  bool print_spdy_config = params.Has("spdy_config");
+
+  // JSON statistics handling is done only if we have a console logger.
+  bool json = false;
+  if (statistics->console_logger() != NULL) {
+    // Default values for start_time, end_time, and granularity_ms in case the
+    // query does not include these parameters.
+    start_time = 0;
+    end_time = statistics->console_logger()->timer()->NowMs();
+    // Granularity is the difference in ms between data points. If it is not
+    // specified by the query, the default value is 3000 ms, the same as the
+    // default logging granularity.
+    granularity_ms = 3000;
+    for (int i = 0; i < params.size(); ++i) {
+      const GoogleString value =
+          (params.value(i) == NULL) ? "" : *params.value(i);
+      const char* name = params.name(i);
+      if (strcmp(name, "json") == 0) {
+        json = true;
+      } else if (strcmp(name, "start_time") == 0) {
+        StringToInt64(value, &start_time);
+      } else if (strcmp(name, "end_time") == 0) {
+        StringToInt64(value, &end_time);
+      } else if (strcmp(name, "var_titles") == 0) {
+        std::vector<StringPiece> variable_names;
+        SplitStringPieceToVector(value, ",", &variable_names, true);
+        for (size_t i = 0; i < variable_names.size(); ++i) {
+          var_titles.insert(variable_names[i].as_string());
+        }
+      } else if (strcmp(name, "hist_titles") == 0) {
+        std::vector<StringPiece> histogram_names;
+        SplitStringPieceToVector(value, ",", &histogram_names, true);
+        for (size_t i = 0; i < histogram_names.size(); ++i) {
+          // TODO(morlovich): Cleanup & publicize UrlToFileNameEncoder::Unescape
+          // and use it here, instead of this GlobalReplaceSubstring hack.
+          GoogleString name = histogram_names[i].as_string();
+          GlobalReplaceSubstring("%20", " ", &(name));
+          hist_titles.insert(name);
+        }
+      } else if (strcmp(name, "granularity") == 0) {
+        StringToInt64(value, &granularity_ms);
+      }
+    }
+  }
+  GoogleString output;
+  StringWriter writer(&output);
+  if (json) {
+    statistics->console_logger()->DumpJSON(var_titles, hist_titles,
+                                            start_time, end_time,
+                                            granularity_ms, &writer,
+                                            message_handler);
+  } else {
+    writer.Write(global_stats_request ?
+                     "Global Statistics" : "VHost-Specific Statistics",
+                 message_handler);
+    // Write <pre></pre> for Dump to keep good format.
+    writer.Write("<pre>", message_handler);
+    statistics->Dump(&writer, message_handler);
+    writer.Write("</pre>", message_handler);
+    statistics->RenderHistograms(&writer, message_handler);
+
+    GoogleString memcached_stats;
+    factory->PrintMemCacheStats(&memcached_stats);
+    if (!memcached_stats.empty()) {
+      WritePre(memcached_stats, &writer, message_handler);
+    }
+
+    if (print_normal_config) {
+      writer.Write("Configuration:<br>", message_handler);
+      WritePre(server_context->config()->OptionsToString(),
+               &writer, message_handler);
+    }
+
+    if (print_spdy_config) {
+      ApacheConfig* spdy_config = server_context->SpdyConfig();
+      if (spdy_config == NULL) {
+        writer.Write("SPDY-specific configuration missing, using default.",
+                      message_handler);
+      } else {
+        writer.Write("SPDY-specific configuration:<br>", message_handler);
+        WritePre(spdy_config->OptionsToString(), &writer, message_handler);
+      }
+    }
+  }
+
+  if (json) {
+    write_handler_response(output, request, kContentTypeJson);
+  } else {
+    write_handler_response(output, request);
+  }
+  return OK;
+}
+
 }  // namespace
 
 apr_status_t instaweb_handler(request_rec* request) {
@@ -350,119 +501,11 @@ apr_status_t instaweb_handler(request_rec* request) {
 
   log_resource_referral(request, factory);
 
-  bool general_stats_request =
-      (strcmp(request->handler, kStatisticsHandler) == 0);
-  bool global_stats_request =
-      (strcmp(request->handler, kGlobalStatisticsHandler) == 0);
-  int64 start_time, end_time, granularity_ms;
-  std::set<GoogleString> var_titles;
-  std::set<GoogleString> hist_titles;
   // mod_pagespeed_statistics or mod_pagespeed_global_statistics.
-  if (general_stats_request || global_stats_request) {
-    if (general_stats_request && !factory->use_per_vhost_statistics()) {
-      global_stats_request = true;
-    }
-    // Choose the correct statistics.
-    Statistics* statistics =
-        global_stats_request ? factory->statistics() : manager->statistics();
-
-    QueryParams params;
-    params.Parse(request->args);
-
-    // Parse various mode query params.
-    bool print_normal_config = params.Has("config");
-    bool print_spdy_config = params.Has("spdy_config");
-
-    // JSON statistics handling is done only if we have a console logger.
-    bool json = false;
-    if (statistics->console_logger() != NULL) {
-      // Default values for start_time, end_time, and granularity_ms in case the
-      // query does not include these parameters.
-      start_time = 0;
-      end_time = statistics->console_logger()->timer()->NowMs();
-      // Granularity is the difference in ms between data points. If it is not
-      // specified by the query, the default value is 3000 ms, the same as the
-      // default logging granularity.
-      granularity_ms = 3000;
-      for (int i = 0; i < params.size(); ++i) {
-        const GoogleString value =
-            (params.value(i) == NULL) ? "" : *params.value(i);
-        const char* name = params.name(i);
-        if (strcmp(name, "json") == 0) {
-          json = true;
-        } else if (strcmp(name, "start_time") == 0) {
-          StringToInt64(value, &start_time);
-        } else if (strcmp(name, "end_time") == 0) {
-          StringToInt64(value, &end_time);
-        } else if (strcmp(name, "var_titles") == 0) {
-          std::vector<StringPiece> variable_names;
-          SplitStringPieceToVector(value, ",", &variable_names, true);
-          for (size_t i = 0; i < variable_names.size(); ++i) {
-            var_titles.insert(variable_names[i].as_string());
-          }
-        } else if (strcmp(name, "hist_titles") == 0) {
-          std::vector<StringPiece> histogram_names;
-          SplitStringPieceToVector(value, ",", &histogram_names, true);
-          for (size_t i = 0; i < histogram_names.size(); ++i) {
-            // TODO(sarahdw, bvb): Until we can use the escaping function found
-            // in net/base/escape.h, we are stuck using this
-            // GlobalReplaceSubstring hack. Once this becomes available we will
-            // switch to using more reliable unescaping.
-            GoogleString name = histogram_names[i].as_string();
-            GlobalReplaceSubstring("%20", " ", &(name));
-            hist_titles.insert(name);
-          }
-        } else if (strcmp(name, "granularity") == 0) {
-          StringToInt64(value, &granularity_ms);
-        }
-      }
-    }
-    GoogleString output;
-    StringWriter writer(&output);
-    if (json) {
-      statistics->console_logger()->DumpJSON(var_titles, hist_titles,
-                                             start_time, end_time,
-                                             granularity_ms, &writer,
-                                             message_handler);
-    } else {
-      writer.Write(global_stats_request ?
-                       "Global Statistics" : "VHost-Specific Statistics",
-                   message_handler);
-      // Write <pre></pre> for Dump to keep good format.
-      writer.Write("<pre>", message_handler);
-      statistics->Dump(&writer, message_handler);
-      writer.Write("</pre>", message_handler);
-      statistics->RenderHistograms(&writer, message_handler);
-
-      GoogleString memcached_stats;
-      factory->PrintMemCacheStats(&memcached_stats);
-      if (!memcached_stats.empty()) {
-        WritePre(memcached_stats, &writer, message_handler);
-      }
-
-      if (print_normal_config) {
-        writer.Write("Configuration:<br>", message_handler);
-        WritePre(config->OptionsToString(), &writer, message_handler);
-      }
-
-      if (print_spdy_config) {
-        ApacheConfig* spdy_config = manager->SpdyConfig();
-        if (spdy_config == NULL) {
-          writer.Write("SPDY-specific configuration missing, using default.",
-                       message_handler);
-        } else {
-          writer.Write("SPDY-specific configuration:<br>", message_handler);
-          WritePre(spdy_config->OptionsToString(), &writer, message_handler);
-        }
-      }
-    }
-
-    if (json) {
-      write_handler_response(output, request, kContentTypeJson);
-    } else {
-      write_handler_response(output, request);
-    }
-    ret = OK;
+  if (strcmp(request->handler, kStatisticsHandler) == 0 ||
+      strcmp(request->handler, kGlobalStatisticsHandler) == 0) {
+    ret = instaweb_statistics_handler(request, manager, factory,
+                                      message_handler);
 
   } else if (strcmp(request->handler, kRefererStatisticsHandler) == 0) {
     GoogleString output;
@@ -472,39 +515,7 @@ apr_status_t instaweb_handler(request_rec* request) {
     ret = OK;
 
   } else if (strcmp(request->handler, kConsoleHandler) == 0) {
-    GoogleString output;
-    StringWriter writer(&output);
-    writer.Write("<!DOCTYPE html>"
-                 "<title>mod_pagespeed console</title>",
-                 factory->message_handler());
-    writer.Write("<style>", factory->message_handler());
-    writer.Write(CSS_mod_pagespeed_console_css, factory->message_handler());
-    writer.Write("</style>", factory->message_handler());
-    writer.Write(HTML_mod_pagespeed_console_body, factory->message_handler());
-    writer.Write("<script>", factory->message_handler());
-    if (config->statistics_logging_charts_js().size() > 0 &&
-        config->statistics_logging_charts_css().size() > 0) {
-      writer.Write("var chartsOfflineJS = '", factory->message_handler());
-      writer.Write(config->statistics_logging_charts_js(),
-          factory->message_handler());
-      writer.Write("';", factory->message_handler());
-      writer.Write("var chartsOfflineCSS = '", factory->message_handler());
-      writer.Write(config->statistics_logging_charts_css(),
-          factory->message_handler());
-      writer.Write("';", factory->message_handler());
-    } else {
-      if (config->statistics_logging_charts_js().size() > 0 ||
-          config->statistics_logging_charts_css().size() > 0) {
-        factory->message_handler()->Message(kWarning,
-            "Using online Charts API.");
-      }
-      writer.Write("var chartsOfflineJS, chartsOfflineCSS;",
-          factory->message_handler());
-    }
-    writer.Write(JS_mod_pagespeed_console_js, factory->message_handler());
-    writer.Write("</script>", factory->message_handler());
-    write_handler_response(output, request);
-    ret = OK;
+    ret = instaweb_console_handler(request, config, message_handler);
 
   } else if (strcmp(request->handler, kMessageHandler) == 0) {
     // Request for page /mod_pagespeed_message.

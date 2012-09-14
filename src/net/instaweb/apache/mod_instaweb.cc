@@ -1063,8 +1063,6 @@ void warn_deprecated(cmd_parms* cmd, const char* remedy) {
 // we will write the information into the factory's RewriteOptions. In that
 // case, it's also possible that an overlay config for SPDY should be used,
 // in which case we will store it inside the directive object.
-// ### Consider storing an enum instead of pointer, to reduce the risks of
-// trouble if some other module stomps over this?
 //
 // However, if this was parsed from a Directory scope or .htaccess file then we
 // will be using the RewriteOptions structure from a tree of ApacheConfig
