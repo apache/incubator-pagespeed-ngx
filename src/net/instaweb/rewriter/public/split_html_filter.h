@@ -153,9 +153,11 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   scoped_ptr<JsonWriter> json_writer_;
   Writer* original_writer_;
   CriticalLineInfo critical_line_info_;
+  GoogleString current_panel_id_;
   StringPiece url_;
   bool script_written_;
   bool flush_head_enabled_;
+  HtmlElement* current_panel_parent_element_;
 
   DISALLOW_COPY_AND_ASSIGN(SplitHtmlFilter);
 };

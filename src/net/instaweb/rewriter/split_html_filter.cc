@@ -61,7 +61,8 @@ const char SplitHtmlFilter::kDeferJsSnippet[] =
 SplitHtmlFilter::SplitHtmlFilter(RewriteDriver* rewrite_driver)
     : SuppressPreheadFilter(rewrite_driver),
       rewrite_driver_(rewrite_driver),
-      options_(rewrite_driver->options()) {
+      options_(rewrite_driver->options()),
+      current_panel_parent_element_(NULL) {
 }
 
 SplitHtmlFilter::~SplitHtmlFilter() {
@@ -77,9 +78,11 @@ void SplitHtmlFilter::StartDocument() {
                                     &element_json_stack_));
   original_writer_ = rewrite_driver_->writer();
   critical_line_info_.Clear();
+  current_panel_id_.clear();
   url_ = rewrite_driver_->google_url().Spec();
   script_written_ = false;
   flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
+  current_panel_parent_element_ = NULL;
 
   // Push the base panel.
   StartPanelInstance(static_cast<HtmlElement*>(NULL));
@@ -208,16 +211,13 @@ void SplitHtmlFilter::PopulateXpathMap(const GoogleString& xpath) {
 }
 
 bool SplitHtmlFilter::IsElementSiblingOfCurrentPanel(HtmlElement* element) {
-  HtmlElement* current_panel_element = element_json_stack_.back().first;
-  DCHECK_NE(current_panel_element, element);
-  return current_panel_element != NULL &&
-      current_panel_element->parent() == element->parent();
+  return current_panel_parent_element_ != NULL &&
+      current_panel_parent_element_ == element->parent();
 }
 
 bool SplitHtmlFilter::IsElementParentOfCurrentPanel(HtmlElement* element) {
-  HtmlElement* current_panel_element = element_json_stack_.back().first;
-  return current_panel_element != NULL &&
-      current_panel_element->parent() == element;
+  return current_panel_parent_element_ != NULL &&
+      current_panel_parent_element_ == element;
 }
 
 void SplitHtmlFilter::EndPanelInstance() {
@@ -227,8 +227,9 @@ void SplitHtmlFilter::EndPanelInstance() {
   scoped_ptr<Json::Value> dictionary(element_json_pair.second);
   element_json_stack_.pop_back();
   Json::Value* parent_dictionary = element_json_stack_.back().second;
-  GoogleString panel_id = GetPanelIdForInstance(element_json_pair.first);
-  AppendJsonData(&((*parent_dictionary)[panel_id]), *dictionary);
+  AppendJsonData(&((*parent_dictionary)[current_panel_id_]), *dictionary);
+  current_panel_parent_element_ = NULL;
+  current_panel_id_ = "";
   set_writer(original_writer_);
 }
 
@@ -240,6 +241,10 @@ void SplitHtmlFilter::StartPanelInstance(HtmlElement* element) {
   Json::Value* new_json = new Json::Value(Json::objectValue);
   // Push new Json
   element_json_stack_.push_back(std::make_pair(element, new_json));
+  if (element != NULL) {
+    current_panel_parent_element_ = element->parent();
+    current_panel_id_ = GetPanelIdForInstance(element);
+  }
   original_writer_ = rewrite_driver_->writer();
   set_writer(json_writer_.get());
 }
@@ -327,11 +332,10 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
   // panel specs
   if (!panel_id.empty()) {
     InsertPanelStub(element, panel_id);
+    MarkElementWithPanelId(element, panel_id);
     StartPanelInstance(element);
-    MarkElementWithPanelId(element, panel_id);
   } else if (IsElementSiblingOfCurrentPanel(element)) {
-    panel_id = GetPanelIdForInstance(element_json_stack_.back().first);
-    MarkElementWithPanelId(element, panel_id);
+    MarkElementWithPanelId(element, current_panel_id_);
   }
   if (element_json_stack_.size() > 1) {
     // Suppress these bytes since they belong to a panel.
@@ -390,16 +394,16 @@ GoogleString SplitHtmlFilter::MatchPanelIdForElement(HtmlElement* element) {
 }
 
 bool SplitHtmlFilter::IsEndMarkerForCurrentPanel(HtmlElement* element) {
-  HtmlElement* current_panel_element = element_json_stack_.back().first;
-  if (current_panel_element == NULL)
-    return false;
-  const GoogleString& panel_id = GetPanelIdForInstance(current_panel_element);
-
-  if (panel_id_to_spec_.find(panel_id) == panel_id_to_spec_.end()) {
-    LOG(DFATAL) << "Invalid Panelid: " << panel_id << " for url " << url_;
+  if (current_panel_parent_element_ == NULL) {
     return false;
   }
-  const Panel& panel = *(panel_id_to_spec_[panel_id]);
+
+  if (panel_id_to_spec_.find(current_panel_id_) == panel_id_to_spec_.end()) {
+    LOG(DFATAL) << "Invalid Panelid: "
+                << current_panel_id_ << " for url " << url_;
+    return false;
+  }
+  const Panel& panel = *(panel_id_to_spec_[current_panel_id_]);
   return panel.has_end_marker_xpath() ?
       ElementMatchesXpath(element, *(xpath_map_[panel.end_marker_xpath()])) :
       false;

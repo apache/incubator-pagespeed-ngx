@@ -43,7 +43,7 @@ namespace {
 
 const char kRequestUrl[] = "http://www.test.com";
 
-const char kHtmlInput[] =
+const char kHtmlInputPart1[] =
     "<html>"
     "<head>\n"
     "<script>blah</script>"
@@ -59,7 +59,9 @@ const char kHtmlInput[] =
       "<span id=\"between\"> This is in between </span>"
       "<div id=\"inspiration\">"
          "<img src=\"image11\">"
-      "</div>"
+      "</div>";
+
+const char kHtmlInputPart2[] =
       "<h3 id=\"afterInspirations\"> This is after Inspirations </h3>"
     "</div>"
     "<img id=\"image\" src=\"image_panel.1\">"
@@ -170,7 +172,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithPropertyCache) {
       cohort, SplitHtmlFilter::kCriticalLineInfoPropertyName);
   property_cache->UpdateValue(buf, property_value);
   property_cache->WriteCohort(cohort, page);
-  Parse("split_with_pcache", kHtmlInput);
+  Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   EXPECT_EQ(kSplitHtml, output_);
 }
 
@@ -178,7 +180,19 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithOptions) {
   options_->set_critical_line_config(
       "div[@id = \"container\"]/div[4],"
       "img[3]:h1[@id = \"footer\"]");
-  Parse("split_with_options", kHtmlInput);
+  Parse("split_with_options", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  EXPECT_EQ(kSplitHtml, output_);
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushes) {
+  options_->set_critical_line_config(
+      "div[@id = \"container\"]/div[4],"
+      "img[3]:h1[@id = \"footer\"]");
+  html_parse()->StartParse("http://test.com/");
+  html_parse()->ParseText(kHtmlInputPart1);
+  html_parse()->Flush();
+  html_parse()->ParseText(kHtmlInputPart2);
+  html_parse()->FinishParse();
   EXPECT_EQ(kSplitHtml, output_);
 }
 
