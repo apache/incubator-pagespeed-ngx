@@ -87,24 +87,44 @@ class MediaAppliesToScreenTest : public testing::Test {
     scoped_ptr<Css::MediaQueries> queries(p.ParseMediaQueries());
     return Css::Util::MediaAppliesToScreen(*queries);
   }
+
+  void ExpectMediaAppliesToScreen(const StringPiece& media_string,
+                                  bool expected) {
+    // Test StringPiece implementation.
+    EXPECT_EQ(expected, Css::Util::MediaAppliesToScreen(media_string))
+        << "Media string: " << media_string;
+
+    // Test MediaQueries implementation.
+    EXPECT_EQ(expected, ParseMediaAppliesToScreen(media_string))
+        << "Media string: " << media_string;
+  }
 };
 
 TEST_F(MediaAppliesToScreenTest, ComplexMediaQueries) {
-  EXPECT_TRUE(ParseMediaAppliesToScreen("screen"));
-  EXPECT_TRUE(ParseMediaAppliesToScreen("all"));
-  EXPECT_TRUE(ParseMediaAppliesToScreen(""));
-  EXPECT_TRUE(ParseMediaAppliesToScreen("print, braille, screen"));
-  EXPECT_TRUE(ParseMediaAppliesToScreen("not screen, screen"));
-  // Note: We accept this even though it may not apply to all "screen" devices.
-  EXPECT_TRUE(ParseMediaAppliesToScreen("screen and (color)"));
+  ExpectMediaAppliesToScreen("screen", true);
+  ExpectMediaAppliesToScreen("all", true);
+  ExpectMediaAppliesToScreen("", true);
+  ExpectMediaAppliesToScreen("print, braille, screen", true);
+  ExpectMediaAppliesToScreen("not screen, screen", true);
 
-  EXPECT_FALSE(ParseMediaAppliesToScreen("screening"));
-  EXPECT_FALSE(ParseMediaAppliesToScreen("print"));
-  EXPECT_FALSE(ParseMediaAppliesToScreen("not screen"));
+  // Note: When parsed, we accept it even though it does not apply to all
+  // devices of type screen because we are acting like a CSS2 parser and
+  // thus reading "screen" but ignoring the rest.
+  EXPECT_TRUE(ParseMediaAppliesToScreen("screen and (color)"));
+  // Css::Util::MediaAppliesToScreen(const StringPiece&) does not parse the
+  // string, and so it's simple string comparison fails here.
+  EXPECT_FALSE(Css::Util::MediaAppliesToScreen("screen and (color)"));
+
+  ExpectMediaAppliesToScreen("screening", false);
+  ExpectMediaAppliesToScreen("print", false);
+  ExpectMediaAppliesToScreen("not screen", false);
   // Note: We reject these CSS3 queries even though they do apply to all
-  // "screen" devices.
-  EXPECT_FALSE(ParseMediaAppliesToScreen("only screen"));
-  EXPECT_FALSE(ParseMediaAppliesToScreen("not print"));
+  // "screen" devices. This is intentional because we are acting like a CSS2
+  // parser that does not understand the "not" and "only" qualifiers and
+  // it is explicitly stated in the CSS spec that these will be ignored by
+  // older CSS parsers.
+  ExpectMediaAppliesToScreen("only screen", false);
+  ExpectMediaAppliesToScreen("not print", false);
 }
 
 }  // namespace Css

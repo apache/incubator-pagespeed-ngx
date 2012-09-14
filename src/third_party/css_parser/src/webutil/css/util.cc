@@ -301,6 +301,9 @@ bool MediumAppliesToScreen(const UnicodeText& medium) {
 bool MediaAppliesToScreen(const StringPiece& media) {
   std::vector<StringPiece> values;
   StringPieceUtils::Split(media, ",", &values);
+
+  if (values.empty()) return true;
+
   for (std::vector<StringPiece>::iterator iter = values.begin();
        iter < values.end(); ++iter) {
     StringPieceUtils::RemoveWhitespaceContext(&(*iter));
