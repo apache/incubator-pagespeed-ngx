@@ -220,7 +220,6 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kInlineImportToLink,
   RewriteOptions::kInlineJavascript,
   RewriteOptions::kJpegSubsampling,
-  RewriteOptions::kLeftTrimUrls,
   RewriteOptions::kRecompressJpeg,
   RewriteOptions::kRecompressPng,
   RewriteOptions::kRecompressWebp,

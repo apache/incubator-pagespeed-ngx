@@ -109,7 +109,7 @@ const char kFlushEarlyHtml[] =
     "<script src=\"1.js\"></script>"
     "<script src=\"2.js\"></script>"
     "<img src=\"1.jpg\"/>"
-    "<script src=\"private.js\"></script>"
+    "<script src=\"http://test.com/private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
     "<body>"
@@ -133,7 +133,7 @@ const char kRewrittenHtml[] =
     "<script src=\"%s\"></script>"
     "<script src=\"%s\"></script>"
     "<img src=\"%s\"/>"
-    "<script src=\"private.js\"></script>"
+    "<script src=\"http://test.com/private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
     "<body>%s"
@@ -167,7 +167,7 @@ const char kFlushEarlyRewrittenHtmlImageTag[] =
     "<script src=\"%s\"></script>"
     "<script src=\"%s\"></script>"
     "<img src=\"%s\"/>"
-    "<script src=\"private.js\"></script>"
+    "<script src=\"http://test.com/private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
     "<body>%s"
@@ -205,7 +205,7 @@ const char kFlushEarlyRewrittenHtmlImageTagInsertDnsPrefetch[] =
     "<script src=\"%s\"></script>"
     "<script src=\"%s\"></script>"
     "<img src=\"%s\"/>"
-    "<script src=\"private.js\"></script>"
+    "<script src=\"http://test.com/private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
     "<body>%s"
@@ -238,7 +238,7 @@ const char kFlushEarlyRewrittenHtmlLinkRelSubresource[] =
     "<script src=\"%s\"></script>"
     "<script src=\"%s\"></script>"
     "<img src=\"%s\"/>"
-    "<script src=\"private.js\"></script>"
+    "<script src=\"http://test.com/private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
     "<body>%s"
@@ -271,7 +271,7 @@ const char kFlushEarlyRewrittenHtmlLinkScript[] =
     "<script src=\"%s\"></script>"
     "<script src=\"%s\"></script>"
     "<img src=\"%s\"/>"
-    "<script src=\"private.js\"></script>"
+    "<script src=\"http://test.com/private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
     "<body>%s"
@@ -313,7 +313,8 @@ const char kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly[] =
     " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
     "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
     "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
-    "<script pagespeed_orig_src=\"private.js\" type=\"text/psajs\""
+    "<script pagespeed_orig_src=\"http://test.com/private.js\""
+    " type=\"text/psajs\""
     " orig_index=\"3\"></script>"
     "<script pagespeed_orig_src=\"http://www.domain1.com/private.js\""
     " type=\"text/psajs\" orig_index=\"4\"></script>"
@@ -349,7 +350,7 @@ const char kFlushEarlyRewrittenHtmlImageTagWithDeferJs[] =
     "<script>eval(mod_pagespeed_0);</script>"
     "<script>eval(mod_pagespeed_0);</script>"
     "<img src=\"%s\"/>"
-    "<script src=\"private.js\"></script>"
+    "<script src=\"http://test.com/private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
     "<body>%s"
@@ -381,7 +382,7 @@ const char kFlushEarlyRewrittenHtmlLinkRelSubresourceWithDeferJs[] =
     "<script>eval(mod_pagespeed_0);</script>"
     "<script>eval(mod_pagespeed_0);</script>"
     "<img src=\"%s\"/>"
-    "<script src=\"private.js\"></script>"
+    "<script src=\"http://test.com/private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
     "<body>%s"
@@ -1050,25 +1051,31 @@ class ProxyInterfaceTest : public RewriteTestBase {
   }
 
   GoogleString FlushEarlyRewrittenHtml(
-      UserAgentMatcher::PrefetchMechanism value, bool enable_experimental,
+      UserAgentMatcher::PrefetchMechanism value,
       bool defer_js_enabled, bool insert_dns_prefetch) {
-    return FlushEarlyRewrittenHtml(value, enable_experimental, defer_js_enabled,
+    return FlushEarlyRewrittenHtml(value, defer_js_enabled,
                                    insert_dns_prefetch, false);
   }
 
   GoogleString FlushEarlyRewrittenHtml(
-      UserAgentMatcher::PrefetchMechanism value, bool enable_experimental,
+      UserAgentMatcher::PrefetchMechanism value,
       bool defer_js_enabled, bool insert_dns_prefetch,
       bool split_html_enabled) {
-    GoogleString domain_prefix = enable_experimental ? "" : kTestDomain;
-    GoogleString rewritten_css_url_1 = Encode("", "cf", "0", "1.css", "css");
-    GoogleString rewritten_css_url_2 = Encode("", "cf", "0", "2.css", "css");
-    GoogleString rewritten_css_url_3 = Encode("", "cf", "0", "3.css", "css");
-    GoogleString rewritten_js_url_1 = Encode("", "jm", "0", "1.js", "js");
-    GoogleString rewritten_js_url_2 = Encode("", "jm", "0", "2.js", "js");
-    GoogleString combined_js_url =
-        "1.js,Mjm.0.js+2.js,Mjm.0.js.pagespeed.jc.0.js";
-    GoogleString rewritten_img_url_1 = Encode("", "ce", "0", "1.jpg", "jpg");
+    GoogleString rewritten_css_url_1 = Encode(kTestDomain,
+                                              "cf", "0", "1.css", "css");
+    GoogleString rewritten_css_url_2 = Encode(kTestDomain,
+                                              "cf", "0", "2.css", "css");
+    GoogleString rewritten_css_url_3 = Encode(kTestDomain,
+                                              "cf", "0", "3.css", "css");
+    GoogleString rewritten_js_url_1 = Encode(kTestDomain,
+                                             "jm", "0", "1.js", "js");
+    GoogleString rewritten_js_url_2 = Encode(kTestDomain,
+                                             "jm", "0", "2.js", "js");
+    GoogleString combined_js_url = Encode(
+        kTestDomain, "jc", "0",
+        "1.js.pagespeed.jm.0.jsX2.js.pagespeed.jm.0.js", "js");;
+    GoogleString rewritten_img_url_1 = Encode(kTestDomain,
+                                              "ce", "0", "1.jpg", "jpg");
     GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
     GoogleString cookie_script =
         "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
@@ -1078,12 +1085,12 @@ class ProxyInterfaceTest : public RewriteTestBase {
           "document.cookie = data[i];"
          "}})()"
         "</script>";
+    combined_js_url[combined_js_url.find('X')] = '+';
     if (value == UserAgentMatcher::kPrefetchLinkScriptTag && defer_js_enabled) {
       return StringPrintf(
           kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly,
-          StrCat(domain_prefix, rewritten_css_url_1).data(),
-          StrCat(domain_prefix, rewritten_css_url_2).data(),
-          StrCat(domain_prefix, rewritten_css_url_3).data(),
+          rewritten_css_url_1.data(), rewritten_css_url_2.data(),
+          rewritten_css_url_3.data(),
           LazyloadImagesFilter::GetLazyloadJsSnippet(
               options_,
               server_context()->static_javascript_manager()).c_str(),
@@ -1103,9 +1110,8 @@ class ProxyInterfaceTest : public RewriteTestBase {
         split_html_enabled) {
       return StringPrintf(
           kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly,
-          StrCat(domain_prefix, rewritten_css_url_1).data(),
-          StrCat(domain_prefix, rewritten_css_url_2).data(),
-          StrCat(domain_prefix, rewritten_css_url_3).data(),
+          rewritten_css_url_1.data(), rewritten_css_url_2.data(),
+          rewritten_css_url_3.data(),
           LazyloadImagesFilter::GetLazyloadJsSnippet(
               options_,
               server_context()->static_javascript_manager()).c_str(),
@@ -1134,13 +1140,10 @@ class ProxyInterfaceTest : public RewriteTestBase {
           value == UserAgentMatcher::kPrefetchLinkRelSubresource ?
           kFlushEarlyRewrittenHtmlLinkRelSubresourceWithDeferJs :
           kFlushEarlyRewrittenHtmlImageTagWithDeferJs,
-          StrCat(domain_prefix, rewritten_css_url_1).data(),
-          StrCat(domain_prefix, rewritten_css_url_2).data(),
-          StrCat(domain_prefix, rewritten_css_url_3).data(),
-          cookie_script.data(),
           rewritten_css_url_1.data(), rewritten_css_url_2.data(),
-          combined_js_url.data(),
-          rewritten_img_url_1.data(),
+          rewritten_css_url_3.data(), cookie_script.data(),
+          rewritten_css_url_1.data(), rewritten_css_url_2.data(),
+          combined_js_url.data(), rewritten_img_url_1.data(),
           StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
                        redirect_url.c_str()).c_str(),
           rewritten_css_url_3.data());
@@ -1157,12 +1160,9 @@ class ProxyInterfaceTest : public RewriteTestBase {
       }
       return StringPrintf(
           output_format.c_str(),
-          StrCat(domain_prefix, rewritten_css_url_1).data(),
-          StrCat(domain_prefix, rewritten_css_url_2).data(),
-          StrCat(domain_prefix, rewritten_js_url_1).data(),
-          StrCat(domain_prefix, rewritten_js_url_2).data(),
-          StrCat(domain_prefix, rewritten_css_url_3).data(),
-          cookie_script.data(),
+          rewritten_css_url_1.data(), rewritten_css_url_2.data(),
+          rewritten_js_url_1.data(), rewritten_js_url_2.data(),
+          rewritten_css_url_3.data(), cookie_script.data(),
           rewritten_css_url_1.data(), rewritten_css_url_2.data(),
           rewritten_js_url_1.data(), rewritten_js_url_2.data(),
           rewritten_img_url_1.data(),
@@ -1202,8 +1202,8 @@ class ProxyInterfaceTest : public RewriteTestBase {
     TestPropertyCacheWithHeadersAndOutput(
         kTestDomain, delay_pcache, thread_pcache, true, false, false,
         request_headers, &headers, &text);
-    GoogleString expected_output = FlushEarlyRewrittenHtml(
-        mechanism, true, false, false);
+    GoogleString expected_output = FlushEarlyRewrittenHtml(mechanism,
+                                                           false, false);
     EXPECT_EQ(expected_output, text);
     VerifyCharset(&headers);
   }
@@ -1247,7 +1247,7 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTest) {
   // None
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchNotSupported, false, false, false), text);
+      UserAgentMatcher::kPrefetchNotSupported, false, false), text);
   VerifyCharset(&headers);
 }
 
@@ -1272,7 +1272,7 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestPrefetch) {
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkRelSubresource, false, false, false),
+      UserAgentMatcher::kPrefetchLinkRelSubresource, false, false),
       text);
   EXPECT_STREQ("cf,ei,jm", logging_info_.applied_rewriters());
   VerifyCharset(&headers);
@@ -1298,7 +1298,7 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestImageTag) {
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchImageTag, false, false, false), text);
+      UserAgentMatcher::kPrefetchImageTag, false, false), text);
   VerifyCharset(&headers);
 }
 
@@ -1323,7 +1323,7 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestLinkScript) {
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkScriptTag, false, false, false), text);
+      UserAgentMatcher::kPrefetchLinkScriptTag, false, false), text);
   VerifyCharset(&headers);
 }
 
@@ -1345,7 +1345,7 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestWithDeferJsImageTag) {
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchImageTag, false, true, false), text);
+      UserAgentMatcher::kPrefetchImageTag, true, false), text);
   VerifyCharset(&headers);
 }
 
@@ -1368,7 +1368,7 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestWithDeferJsPreferch) {
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkRelSubresource, false, true, false), text);
+      UserAgentMatcher::kPrefetchLinkRelSubresource, true, false), text);
   VerifyCharset(&headers);
 }
 
@@ -1413,7 +1413,7 @@ TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestWithDeferJsImageTag) {
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchImageTag, true, true, false), text);
+      UserAgentMatcher::kPrefetchImageTag, true, false), text);
   VerifyCharset(&headers);
 }
 
@@ -1436,7 +1436,7 @@ TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestWithDeferJsPreferch) {
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkRelSubresource, true, true, false), text);
+      UserAgentMatcher::kPrefetchLinkRelSubresource, true, false), text);
   VerifyCharset(&headers);
 }
 
@@ -1463,7 +1463,7 @@ TEST_F(ProxyInterfaceTest,
   // Fetch the url again. This time InsertDnsPrefetch filter should applied.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchImageTag, true, false, true), text);
+      UserAgentMatcher::kPrefetchImageTag, false, true), text);
 }
 
 TEST_F(ProxyInterfaceTest, LazyloadAndDeferJsScriptFlushedEarly) {
@@ -1487,7 +1487,7 @@ TEST_F(ProxyInterfaceTest, LazyloadAndDeferJsScriptFlushedEarly) {
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkScriptTag, true, true, false), text);
+      UserAgentMatcher::kPrefetchLinkScriptTag, true, false), text);
 }
 
 TEST_F(ProxyInterfaceTest, LazyloadAndBlinkScriptFlushedEarly) {
@@ -1511,7 +1511,7 @@ TEST_F(ProxyInterfaceTest, LazyloadAndBlinkScriptFlushedEarly) {
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkScriptTag, true, true, false, true), text);
+      UserAgentMatcher::kPrefetchLinkScriptTag, true, false, true), text);
 }
 
 TEST_F(ProxyInterfaceTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
@@ -1535,7 +1535,8 @@ TEST_F(ProxyInterfaceTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
       "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
       "<html>"
       "<head>"
-      "<link rel=\"stylesheet\" href=\"I.1.css.pagespeed.cf.0.css\""
+      "<link rel=\"stylesheet\""
+      " href=\"http://test.com/I.1.css.pagespeed.cf.0.css\""
       " media=\"print\" disabled=\"true\"/>\n"
       "<script type='text/javascript'>"
       "window.mod_pagespeed_prefetch_start = Number(new Date());"
@@ -1548,7 +1549,7 @@ TEST_F(ProxyInterfaceTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
       "<meta charset=\"UTF-8\"/>"
       "<title>Flush Subresources Early example</title>"
       "<link rel=\"stylesheet\" type=\"text/css\""
-      " href=\"I.1.css.pagespeed.cf.0.css\"></head>"
+      " href=\"http://test.com/I.1.css.pagespeed.cf.0.css\"></head>"
       "<body>",
       StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
                    redirect_url.c_str()),
@@ -1622,7 +1623,7 @@ TEST_F(ProxyInterfaceTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
       LazyloadImagesFilter::GetLazyloadJsSnippet(
           options_, server_context()->static_javascript_manager()),
       "</script>"
-      "<img pagespeed_lazy_src=1.jpg.pagespeed.ce.0.jpg"
+      "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.0.jpg"
       " src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\""
       " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
       "Hello, mod_pagespeed!"
