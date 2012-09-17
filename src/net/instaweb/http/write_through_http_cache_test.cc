@@ -40,6 +40,7 @@ namespace {
 // Set the cache size large enough so nothing gets evicted during this test.
 const int kMaxSize = 10000;
 const char kStartDate[] = "Sun, 16 Dec 1979 02:27:45 GMT";
+const char kHttpsUrl[] = "https://www.test.com/";
 }
 
 namespace net_instaweb {
@@ -100,7 +101,9 @@ class WriteThroughHTTPCacheTest : public testing::Test {
   WriteThroughHTTPCacheTest()
       : mock_timer_(ParseDate(kStartDate)),
         cache1_(kMaxSize), cache2_(kMaxSize),
-        key_("mykey"), content_("content"), header_name_("name"),
+        key_("http://www.test.com/1"),
+        key2_("http://www.test.com/2"),
+        content_("content"), header_name_("name"),
         header_value_("value") {
     HTTPCache::InitStats(&simple_stats_);
     http_cache_.reset(new WriteThroughHTTPCache(
@@ -171,6 +174,7 @@ class WriteThroughHTTPCacheTest : public testing::Test {
   SimpleStats simple_stats_;
 
   const GoogleString key_;
+  const GoogleString key2_;
   const GoogleString content_;
   const GoogleString header_name_;
   const GoogleString header_value_;
@@ -333,11 +337,11 @@ TEST_F(WriteThroughHTTPCacheTest, PutGet) {
 // Check size-limits for the small cache
 TEST_F(WriteThroughHTTPCacheTest, SizeLimit) {
   ClearStats();
-  http_cache_->set_cache1_limit(150);  // Empirically based.
+  http_cache_->set_cache1_limit(170);  // Empirically based.
   ResponseHeaders headers_in;
   InitHeaders(&headers_in, "max-age=300");
 
-  // This one will fit. (The key is 5 bytes and the HTTPValue is 139 bytes).
+  // This one will fit. (The key is 21 bytes and the HTTPValue is 139 bytes).
   http_cache_->Put(key_, &headers_in, "Name", &message_handler_);
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheMisses));
@@ -351,8 +355,8 @@ TEST_F(WriteThroughHTTPCacheTest, SizeLimit) {
   EXPECT_EQ(0, cache2_.num_misses());
   EXPECT_EQ(1, cache2_.num_inserts());
   EXPECT_EQ(0, cache2_.num_deletes());
-  // This one will not. (The key is 3 bytes and the HTTPValue is 148 bytes).
-  http_cache_->Put("new", &headers_in, "TooBigForCache1", &message_handler_);
+  // This one will not. (The key is 21 bytes and the HTTPValue is 150 bytes).
+  http_cache_->Put(key2_, &headers_in, "TooBigForCache1", &message_handler_);
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheMisses));
   EXPECT_EQ(0, GetStat(HTTPCache::kCacheExpirations));
@@ -365,6 +369,44 @@ TEST_F(WriteThroughHTTPCacheTest, SizeLimit) {
   EXPECT_EQ(0, cache2_.num_misses());
   EXPECT_EQ(2, cache2_.num_inserts());
   EXPECT_EQ(0, cache2_.num_deletes());
+}
+
+TEST_F(WriteThroughHTTPCacheTest, PutGetForHttps) {
+  ClearStats();
+  ResponseHeaders meta_data_in, meta_data_out;
+  InitHeaders(&meta_data_in, "max-age=300");
+  meta_data_in.Replace(HttpAttributes::kContentType,
+                       kContentTypeHtml.mime_type());
+  meta_data_in.ComputeCaching();
+  // Disable caching of html on https.
+  http_cache_->set_disable_html_caching_on_https(true);
+  // The html response does not get cached.
+  http_cache_->Put(kHttpsUrl, &meta_data_in, "content", &message_handler_);
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
+  HTTPValue value;
+  HTTPCache::FindResult found = Find(
+      kHttpsUrl, &value, &meta_data_out, &message_handler_);
+  ASSERT_EQ(HTTPCache::kNotFound, found);
+
+  // However a css file is cached.
+  meta_data_in.Replace(HttpAttributes::kContentType,
+                       kContentTypeCss.mime_type());
+  meta_data_in.ComputeCaching();
+  http_cache_->Put(kHttpsUrl, &meta_data_in, "content", &message_handler_);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheInserts));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheHits));
+  found = Find(kHttpsUrl, &value, &meta_data_out, &message_handler_);
+  ASSERT_EQ(HTTPCache::kFound, found);
+  ASSERT_TRUE(meta_data_out.headers_complete());
+  StringPiece contents;
+  ASSERT_TRUE(value.ExtractContents(&contents));
+  ConstStringStarVector values;
+  ASSERT_TRUE(meta_data_out.Lookup("name", &values));
+  ASSERT_EQ(static_cast<size_t>(1), values.size());
+  EXPECT_EQ(GoogleString("value"), *(values[0]));
+  EXPECT_EQ("content", contents);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));
 }
 
 // Verifies that the cache will 'remember' that a fetch should not be
@@ -405,13 +447,13 @@ TEST_F(WriteThroughHTTPCacheTest, SetIgnoreFailurePuts) {
   ClearStats();
   http_cache_->RememberNotCacheable(key_, false, &message_handler_);
   http_cache_->SetIgnoreFailurePuts();
-  http_cache_->RememberNotCacheable("mykey2", false, &message_handler_);
+  http_cache_->RememberNotCacheable(key2_, false, &message_handler_);
   ResponseHeaders headers_out;
   HTTPValue value_out;
   EXPECT_EQ(HTTPCache::kRecentFetchNotCacheable,
             Find(key_, &value_out, &headers_out, &message_handler_));
   EXPECT_EQ(HTTPCache::kNotFound,
-            Find("mykey2", &value_out, &headers_out, &message_handler_));
+            Find(key2_, &value_out, &headers_out, &message_handler_));
 }
 
 TEST_F(WriteThroughHTTPCacheTest, Uncacheable) {

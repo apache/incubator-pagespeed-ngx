@@ -90,6 +90,8 @@ namespace {
 // for the cache lookup to come back.
 const char kImageFilenameLackingExt[] = "jpg_file_lacks_ext";
 const char kPageUrl[] = "page.html";
+const char kHttpsPageUrl[] = "https://www.test.com/page.html";
+const char kHttpsCssUrl[] = "https://www.test.com/style.css";
 
 const char kCssContent[] = "* { display: none; }";
 const char kMinimizedCssContent[] = "*{display:none}";
@@ -3609,6 +3611,47 @@ TEST_F(ProxyInterfaceTest, NoCacheVaryHtml) {
   text.clear();
   FetchFromProxy("style.css", true, &text, &actual_headers);
   EXPECT_EQ("a", text);
+}
+
+// Test https HTML responses are never cached, while https resources are cached.
+TEST_F(ProxyInterfaceTest, NoCacheHttpsHtml) {
+  RewriteOptions* options = resource_manager()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_respect_vary(false);
+  resource_manager()->ComputeSignature(options);
+  http_cache()->set_disable_html_caching_on_https(true);
+
+  ResponseHeaders html_headers;
+  DefaultResponseHeaders(kContentTypeHtml, kHtmlCacheTimeSec, &html_headers);
+  html_headers.ComputeCaching();
+  SetFetchResponse(kHttpsPageUrl, html_headers, "1");
+  ResponseHeaders resource_headers;
+  DefaultResponseHeaders(kContentTypeCss, kHtmlCacheTimeSec, &resource_headers);
+  resource_headers.ComputeCaching();
+  SetFetchResponse(kHttpsCssUrl, resource_headers, "a");
+
+  GoogleString text;
+  ResponseHeaders actual_headers;
+  FetchFromProxy(kHttpsPageUrl, true, &text, &actual_headers);
+  EXPECT_EQ("1", text);
+  text.clear();
+  FetchFromProxy(kHttpsCssUrl, true, &text, &actual_headers);
+  EXPECT_EQ("a", text);
+
+  SetFetchResponse(kHttpsPageUrl, html_headers, "2");
+  SetFetchResponse(kHttpsCssUrl, resource_headers, "b");
+
+  ClearStats();
+  // HTML was not cached because it was via https. So we do fetch the new value.
+  text.clear();
+  FetchFromProxy(kHttpsPageUrl, true, &text, &actual_headers);
+  EXPECT_EQ("2", text);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  // Resource was cached, so we serve the old value.
+  text.clear();
+  FetchFromProxy(kHttpsCssUrl, true, &text, &actual_headers);
+  EXPECT_EQ("a", text);
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
 }
 
 // Respect Vary for resources if options tell us to.

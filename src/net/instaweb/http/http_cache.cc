@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -71,6 +72,7 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
       timer_(timer),
       hasher_(hasher),
       force_caching_(false),
+      disable_html_caching_on_https_(false),
       cache_time_us_(stats->GetVariable(kCacheTimeUs)),
       cache_hits_(stats->GetVariable(kCacheHits)),
       cache_misses_(stats->GetVariable(kCacheMisses)),
@@ -391,6 +393,9 @@ void HTTPCache::Put(const GoogleString& key, HTTPValue* value,
   ResponseHeaders headers;
   bool success = value->ExtractHeaders(&headers, handler);
   DCHECK(success);
+  if (!MayCacheUrl(key, headers)) {
+    return;
+  }
   if (!force_caching_ &&
       !(headers.IsCacheable() && headers.IsProxyCacheable() &&
         IsCacheableBodySize(value->contents_size()))) {
@@ -412,6 +417,9 @@ void HTTPCache::Put(const GoogleString& key, HTTPValue* value,
 
 void HTTPCache::Put(const GoogleString& key, ResponseHeaders* headers,
                     const StringPiece& content, MessageHandler* handler) {
+  if (!MayCacheUrl(key, *headers)) {
+    return;
+  }
   int64 start_us = timer_->NowUs();
   int64 now_ms = start_us / 1000;
   // Note: this check is only valid if the caller didn't send an Authorization:
@@ -442,6 +450,18 @@ bool HTTPCache::IsCacheableContentLength(ResponseHeaders* headers) const {
 bool HTTPCache::IsCacheableBodySize(int64 body_size) const {
   return (max_cacheable_response_content_length_ == -1 ||
           body_size <= max_cacheable_response_content_length_);
+}
+
+bool HTTPCache::MayCacheUrl(const GoogleString& url,
+                            const ResponseHeaders& headers) {
+  GoogleUrl gurl(url);
+  if (!gurl.is_valid()) {
+    return false;
+  }
+  if (disable_html_caching_on_https_ && gurl.SchemeIs("https")) {
+    return !headers.IsHtmlLike();
+  }
+  return true;
 }
 
 void HTTPCache::Delete(const GoogleString& key) {

@@ -223,6 +223,12 @@ void WriteThroughHTTPCache::set_force_caching(bool force) {
   cache2_->set_force_caching(force);
 }
 
+void WriteThroughHTTPCache::set_disable_html_caching_on_https(bool x) {
+  HTTPCache::set_disable_html_caching_on_https(x);
+  cache1_->set_disable_html_caching_on_https(x);
+  cache2_->set_disable_html_caching_on_https(x);
+}
+
 void WriteThroughHTTPCache::set_remember_not_cacheable_ttl_seconds(
     int64 value) {
   HTTPCache::set_remember_not_cacheable_ttl_seconds(value);

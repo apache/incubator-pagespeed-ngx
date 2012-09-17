@@ -179,6 +179,9 @@ class HTTPCache {
 
   virtual void set_force_caching(bool force) { force_caching_ = force; }
   bool force_caching() const { return force_caching_; }
+  virtual void set_disable_html_caching_on_https(bool x) {
+    disable_html_caching_on_https_ = x;
+  }
   Timer* timer() const { return timer_; }
 
   // Tell the HTTP Cache to remember that a particular key is not cacheable
@@ -291,6 +294,8 @@ class HTTPCache {
 
   bool IsCurrentlyValid(const RequestHeaders* request_headers,
                         const ResponseHeaders& headers, int64 now_ms);
+
+  bool MayCacheUrl(const GoogleString& url, const ResponseHeaders& headers);
   // Requires either content or value to be non-NULL.
   // Applies changes to headers. If the headers are actually changed or if value
   // is NULL then it builds and returns a new HTTPValue. If content is NULL
@@ -307,6 +312,8 @@ class HTTPCache {
   Timer* timer_;
   Hasher* hasher_;
   bool force_caching_;
+  // Whether to disable caching of HTML content fetched via https.
+  bool disable_html_caching_on_https_;
   Variable* cache_time_us_;
   Variable* cache_hits_;
   Variable* cache_misses_;
