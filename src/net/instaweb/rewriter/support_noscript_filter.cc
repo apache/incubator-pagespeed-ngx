@@ -19,10 +19,12 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
@@ -53,14 +55,13 @@ void SupportNoscriptFilter::StartElement(HtmlElement* element) {
     scoped_ptr<GoogleUrl> url_with_psa_off(
         rewrite_driver_->google_url().CopyAndAddQueryParam(
             RewriteQuery::kModPagespeed, RewriteQuery::kNoscriptValue));
-    GoogleString url_str(url_with_psa_off->Spec().data(),
-                         url_with_psa_off->Spec().size());
-    GlobalReplaceSubstring("'", "%27", &url_str);
+    GoogleString escaped_url;
+    HtmlKeywords::Escape(url_with_psa_off->Spec(), &escaped_url);
     // TODO(sriharis): Replace the usage of HtmlCharactersNode with HtmlElement
     // and Attribute.
     HtmlCharactersNode* noscript_node = rewrite_driver_->NewCharactersNode(
         element, StringPrintf(kNoScriptRedirectFormatter,
-                              url_str.c_str(), url_str.c_str()));
+                              escaped_url.c_str(), escaped_url.c_str()));
     rewrite_driver_->PrependChild(element, noscript_node);
     noscript_inserted_ = true;
   }

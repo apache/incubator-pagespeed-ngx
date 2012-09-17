@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/delay_cache.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -1354,6 +1355,37 @@ TEST_F(CssFilterTest, FlushInInlineCss) {
             output_buffer_);
 }
 
+TEST_F(CssFilterTest, InlineCssWithExternalUrlAndDelayCache) {
+  LoggingInfo logging_info;
+  LogRecord log_record(&logging_info);
+  rewrite_driver()->set_log_record(&log_record);
+
+  GoogleString img_url = StrCat(kTestDomain, "a.jpg");
+  AddFileToMockFetcher(img_url, kPuzzleJpgFile, kContentTypeJpeg, 100);
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  resource_manager()->ComputeSignature(options());
+
+  // Delay the http cache lookup for the image so that it is not rewritten.
+  delay_cache()->DelayKey(img_url);
+
+  SetupWriter();
+  rewrite_driver()->StartParse(kTestDomain);
+  rewrite_driver()->ParseText(
+      "<html><body>"
+      "<style>body{background:url(a.jpg)}</style>");
+  rewrite_driver()->Flush();
+  rewrite_driver()->ParseText("</body></html>");
+  delay_cache()->ReleaseKey(img_url);
+  rewrite_driver()->FinishParse();
+
+  EXPECT_EQ("<html><body><style>body{background:url(a.jpg)}</style>"
+            "</body></html>", output_buffer_);
+  // There was previously a bug where we were logging this as a successful
+  // application of the css filter. Make sure that this case isn't logged.
+  EXPECT_STREQ("", logging_info.applied_rewriters());
+}
 
 TEST_F(CssFilterTest, FlushInEndTag) {
   SetupWriter();

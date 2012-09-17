@@ -572,7 +572,6 @@ bool CssFilter::Context::SerializeCss(int64 in_text_size,
                     css_base_gurl.spec_c_str(),
                     Integer64ToString(bytes_saved).c_str());
     filter_->num_blocks_rewritten_->Add(1);
-    filter_->LogFilterModifiedContent();
     filter_->total_bytes_saved_->Add(bytes_saved);
     // TODO(sligocki): Will this be misleading if we flatten @imports?
     filter_->total_original_bytes_->Add(in_text_size);
