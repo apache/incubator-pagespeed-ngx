@@ -798,6 +798,16 @@ class RewriteDriver : public HtmlParse {
     critical_images_.reset(critical_images);
   }
 
+  const StringSet* css_critical_images() const {
+    return css_critical_images_.get();
+  }
+
+  // Inserts the critical images present in the css. It takes the ownership of
+  // css_critical_images.
+  void set_css_critical_images(StringSet* css_critical_images) {
+    css_critical_images_.reset(css_critical_images);
+  }
+
   // We expect to this method to be called on the HTML parser thread.
   // Returns the number of images whose low quality images are inlined in the
   // html page.
@@ -1239,6 +1249,9 @@ class RewriteDriver : public HtmlParse {
 
   // Stores all the critical images for the current URL.
   scoped_ptr<StringSet> critical_images_;
+
+  // Stores all the critical images for the current URL present in css.
+  scoped_ptr<StringSet> css_critical_images_;
 
   // Memoized computation of whether the current doc has an XHTML mimetype.
   bool xhtml_mimetype_computed_;

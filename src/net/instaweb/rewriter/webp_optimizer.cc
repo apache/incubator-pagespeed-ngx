@@ -38,9 +38,12 @@ extern "C" {
 #else
 #include "third_party/libwebp/webp/encode.h"
 #include "third_party/libwebp/webp/decode.h"
+#include "pagespeed/image_compression/jpeg_utils.h"
 #endif
 // TODO(jmaessen): open source imports & build of libwebp.
 }
+
+using pagespeed::image_compression::JpegUtils;
 
 namespace net_instaweb {
 
@@ -87,6 +90,7 @@ class WebpOptimizer {
   // Take the given input file and transcode it to webp.
   // Return true on success.
   bool CreateOptimizedWebp(const GoogleString& original_jpeg,
+                           int configured_quality,
                            GoogleString* compressed_webp);
 
  private:
@@ -302,14 +306,36 @@ bool WebpOptimizer::WebPImportYUV(WebPPicture* const picture) {
 
 // Main body of transcode.
 bool WebpOptimizer::CreateOptimizedWebp(
-    const GoogleString& original_jpeg, GoogleString* compressed_webp) {
+    const GoogleString& original_jpeg,
+    int configured_quality, GoogleString* compressed_webp) {
   // Begin by making sure we can create a webp image at all:
   WebPPicture picture;
   WebPConfig config;
+  int input_quality = JpegUtils::GetImageQualityFromImage(original_jpeg);
+
   if (!WebPPictureInit(&picture) || !WebPConfigInit(&config)) {
     // Version mismatch.
     return false;
-  } else if (!WebPConfigPreset(&config, WEBP_PRESET_DEFAULT, config.quality)) {
+  }
+
+  if (configured_quality == kNoQualityGiven) {
+    // If configured quality is not available use the webp config
+    // quality as the configured quality.
+    configured_quality = config.quality;
+  }
+
+  int output_quality = configured_quality;
+
+  if (input_quality != kNoQualityGiven && input_quality < configured_quality) {
+      output_quality =  input_quality;
+    } else {
+    // If JpegUtils::GetImageQualityFromImage couldn't figure
+    // out the quality or if the input quality is more than the configured
+    // quality, use configured quality to rewrite.
+      output_quality = configured_quality;
+  }
+
+  if (!WebPConfigPreset(&config, WEBP_PRESET_DEFAULT, output_quality)) {
     // Couldn't use the default preset.
     return false;
   } else if (!WebPValidateConfig(&config)) {
@@ -357,10 +383,11 @@ bool WebpOptimizer::CreateOptimizedWebp(
 
 }  // namespace
 
-bool OptimizeWebp(const GoogleString& original_jpeg,
+bool OptimizeWebp(const GoogleString& original_jpeg, int configured_quality,
                   GoogleString* compressed_webp) {
   WebpOptimizer optimizer;
-  return optimizer.CreateOptimizedWebp(original_jpeg, compressed_webp);
+  return optimizer.CreateOptimizedWebp(original_jpeg, configured_quality,
+                                       compressed_webp);
 }
 
 bool ReduceWebpImageQuality(const GoogleString& original_webp,

@@ -755,7 +755,8 @@ bool ImageImpl::ComputeOutputContents() {
             // recompression *as well* and picking the smaller file is very
             // expensive for what's likely to be minimal gain.  We fall back
             // to jpg reoptimization if webp fails.
-            ok = OptimizeWebp(string_for_image, &output_contents_);
+            ok = OptimizeWebp(string_for_image, options_->webp_quality,
+                              &output_contents_);
             if (!ok) {
               handler_->Error(url_.c_str(), 0,
                               "Failed to create webp!");

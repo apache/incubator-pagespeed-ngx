@@ -43,11 +43,11 @@ const char DelayImagesFilter::kDelayImagesSuffix[] =
     "\npagespeed.delayImagesInit()";
 
 const char DelayImagesFilter::kDelayImagesInlineSuffix[] =
-      "\npagespeed.delayImagesInlineInit();";
+    "\npagespeed.delayImagesInlineInit();";
 
 const char DelayImagesFilter::kOnloadFunction[] =
-      "this.src=this.getAttribute('pagespeed_high_res_src');"
-      "this.removeAttribute('onload')";
+    "this.removeAttribute('onload');"
+    "this.src=this.getAttribute('pagespeed_high_res_src');";
 
 DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
     : driver_(driver),

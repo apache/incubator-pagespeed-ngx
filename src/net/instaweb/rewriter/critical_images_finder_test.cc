@@ -17,6 +17,8 @@
 
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 
+#include <map>
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -67,9 +69,12 @@ TEST_F(CriticalImagesFinderTest, UpdateCriticalImagesCacheEntrySuccess) {
   // Include an actual value in the RPC result to induce a cache write.
   StringSet* critical_images_set = new StringSet;
   critical_images_set->insert("imageA.jpeg");
-  EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(rewrite_driver(),
-                                                 critical_images_set));
-  EXPECT_TRUE(GetUpdatedValue()->has_value());
+  StringSet* css_critical_images_set = new StringSet;
+  css_critical_images_set->insert("imageB.jpeg");
+  EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(
+      rewrite_driver(), critical_images_set, css_critical_images_set));
+  EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
+  EXPECT_TRUE(GetCssCriticalImagesUpdatedValue()->has_value());
 }
 
 TEST_F(CriticalImagesFinderTest,
@@ -77,15 +82,19 @@ TEST_F(CriticalImagesFinderTest,
   page_property_cache()->AddCohort(finder()->GetCriticalImagesCohort());
   // Include an actual value in the RPC result to induce a cache write.
   StringSet* critical_images_set = new StringSet;
-  EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(rewrite_driver(),
-                                                 critical_images_set));
-  EXPECT_TRUE(GetUpdatedValue()->has_value());
+  StringSet* css_critical_images_set = new StringSet;
+  EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(
+      rewrite_driver(), critical_images_set, css_critical_images_set));
+  EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
+  EXPECT_TRUE(GetCssCriticalImagesUpdatedValue()->has_value());
 }
 
 TEST_F(CriticalImagesFinderTest, UpdateCriticalImagesCacheEntrySetNULL) {
   page_property_cache()->AddCohort(finder()->GetCriticalImagesCohort());
-  EXPECT_FALSE(CallUpdateCriticalImagesCacheEntry(rewrite_driver(), NULL));
-  EXPECT_FALSE(GetUpdatedValue()->has_value());
+  EXPECT_FALSE(CallUpdateCriticalImagesCacheEntry(
+      rewrite_driver(), NULL, NULL));
+  EXPECT_FALSE(GetCriticalImagesUpdatedValue()->has_value());
+  EXPECT_FALSE(GetCssCriticalImagesUpdatedValue()->has_value());
 }
 
 TEST_F(CriticalImagesFinderTest,
@@ -94,9 +103,11 @@ TEST_F(CriticalImagesFinderTest,
   // Include an actual value in the RPC result to induce a cache write. We
   // expect no writes, but not from a lack of results!
   StringSet* critical_images_set = new StringSet;
-  EXPECT_FALSE(CallUpdateCriticalImagesCacheEntry(rewrite_driver(),
-                                                  critical_images_set));
-  EXPECT_EQ(NULL, GetUpdatedValue());
+  StringSet* css_critical_images_set = new StringSet;
+  EXPECT_FALSE(CallUpdateCriticalImagesCacheEntry(
+      rewrite_driver(), critical_images_set, css_critical_images_set));
+  EXPECT_EQ(NULL, GetCriticalImagesUpdatedValue());
+  EXPECT_EQ(NULL, GetCssCriticalImagesUpdatedValue());
 }
 
 TEST_F(CriticalImagesFinderTest,
@@ -107,9 +118,11 @@ TEST_F(CriticalImagesFinderTest,
   // Include an actual value in the RPC result to induce a cache write. We
   // expect no writes, but not from a lack of results!
   StringSet* critical_images_set = new StringSet;
-  EXPECT_FALSE(CallUpdateCriticalImagesCacheEntry(rewrite_driver(),
-                                                  critical_images_set));
-  EXPECT_EQ(NULL, GetUpdatedValue());
+  StringSet* css_critical_images_set = new StringSet;
+  EXPECT_FALSE(CallUpdateCriticalImagesCacheEntry(
+      rewrite_driver(), critical_images_set, css_critical_images_set));
+  EXPECT_EQ(NULL, GetCriticalImagesUpdatedValue());
+  EXPECT_EQ(NULL, GetCssCriticalImagesUpdatedValue());
 }
 
 TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
@@ -119,9 +132,12 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   StringSet* critical_images_set = new StringSet;
   critical_images_set->insert("imageA.jpeg");
   critical_images_set->insert("imageB.jpeg");
-  EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(rewrite_driver(),
-                                                 critical_images_set));
-  EXPECT_TRUE(GetUpdatedValue()->has_value());
+  StringSet* css_critical_images_set = new StringSet;
+  css_critical_images_set->insert("imageD.jpeg");
+  EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(
+      rewrite_driver(), critical_images_set, css_critical_images_set));
+  EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
+  EXPECT_TRUE(GetCssCriticalImagesUpdatedValue()->has_value());
 
   // critical_images() is NULL because there is no previous call to
   // GetCriticalImages()
@@ -134,6 +150,15 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   EXPECT_TRUE(finder()->IsCriticalImage("imageA.jpeg", rewrite_driver()));
   EXPECT_TRUE(finder()->IsCriticalImage("imageB.jpeg", rewrite_driver()));
   EXPECT_FALSE(finder()->IsCriticalImage("imageC.jpeg", rewrite_driver()));
+
+  const StringSet* css_critical_images =
+      rewrite_driver()->css_critical_images();
+  EXPECT_TRUE(css_critical_images != NULL);
+  EXPECT_EQ(1, css_critical_images->size());
+  EXPECT_TRUE(
+      css_critical_images->find("imageD.jpeg") != css_critical_images->end());
+  EXPECT_TRUE(
+      css_critical_images->find("imageA.jpeg") == css_critical_images->end());
 }
 
 }  // namespace net_instaweb

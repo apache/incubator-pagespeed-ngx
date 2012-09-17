@@ -66,10 +66,12 @@ class CriticalImagesFinder {
   // should be called in the subclass if the cohort is not written elsewhere.
   virtual bool UpdateCriticalImagesCacheEntry(
       RewriteDriver* driver,
-      StringSet* critical_images_set);
+      StringSet* critical_images_set,
+      StringSet* css_critical_images_set);
 
  private:
   static const char kCriticalImagesPropertyName[];
+  static const char kCssCriticalImagesPropertyName[];
 
   friend class CriticalImagesFinderTestBase;
   DISALLOW_COPY_AND_ASSIGN(CriticalImagesFinder);

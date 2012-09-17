@@ -35,10 +35,12 @@ class CriticalImagesFinderTestBase : public RewriteTestBase {
  public:
   virtual CriticalImagesFinder* finder() = 0;
 
-  bool CallUpdateCriticalImagesCacheEntry(RewriteDriver* driver,
-                                          StringSet* critical_images_set) {
-    return finder()->UpdateCriticalImagesCacheEntry(driver,
-                                                    critical_images_set);
+  bool CallUpdateCriticalImagesCacheEntry(
+      RewriteDriver* driver,
+      StringSet* critical_images_set,
+      StringSet* css_critical_images_set) {
+    return finder()->UpdateCriticalImagesCacheEntry(
+        driver, critical_images_set, css_critical_images_set);
   }
 
  protected:
@@ -46,7 +48,8 @@ class CriticalImagesFinderTestBase : public RewriteTestBase {
 
   virtual void SetUp();
 
-  const PropertyValue* GetUpdatedValue();
+  const PropertyValue* GetCriticalImagesUpdatedValue();
+  const PropertyValue* GetCssCriticalImagesUpdatedValue();
 
  private:
   static const char kRequestUrl[];

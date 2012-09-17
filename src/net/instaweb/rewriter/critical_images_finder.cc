@@ -38,6 +38,9 @@ namespace net_instaweb {
 const char CriticalImagesFinder::kCriticalImagesPropertyName[] =
     "critical_images";
 
+const char CriticalImagesFinder::kCssCriticalImagesPropertyName[] =
+    "css_critical_images";
+
 namespace {
 // Append the image url separator to each critical image to enable storing the
 // set in the property cache.
@@ -55,6 +58,33 @@ void FormatSetForPropertyCache(const StringSet& critical_images,
     // used to denote the empty critical images set.
     *buf = kImageUrlSeparator;
   }
+}
+
+// Extract the critical images stored for the given property_value in the
+// property page. Returned StringSet will owned by the caller.
+StringSet* ExtractCriticalImagesSet(const PropertyValue* property_value,
+                                    const PropertyCache* page_property_cache,
+                                    int64 cache_expiration_ms) {
+  // Check if the cache value exists and is not expired.
+  if (property_value->has_value() &&
+      !page_property_cache->IsExpired(property_value, cache_expiration_ms)) {
+    StringPieceVector critical_images_vector;
+    // Get the critical images from the property value. The fourth parameter
+    // (true) causes empty strings to be omitted from the resulting
+    // vector. kImageUrlSeparator is expected when the critical image set is
+    // empty, because the property cache does not store empty values.
+    SplitStringPieceToVector(property_value->value(), kImageUrlSeparator,
+                             &critical_images_vector, true);
+    StringSet* critical_images(new StringSet);  // Owned by RewriteDriver.
+    StringPieceVector::iterator it;
+    for (it = critical_images_vector.begin();
+         it != critical_images_vector.end();
+         ++it) {
+      critical_images->insert(it->as_string());
+    }
+    return critical_images;
+  }
+  return NULL;
 }
 }  // namespace
 
@@ -77,7 +107,8 @@ bool CriticalImagesFinder::IsCriticalImage(
 // between requests.
 void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
     RewriteDriver* driver) {
-  if (driver->critical_images() != NULL) {
+  if (driver->critical_images() != NULL &&
+      driver->css_critical_images() != NULL) {
     return;
   }
   PropertyCache* page_property_cache =
@@ -86,52 +117,61 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
       page_property_cache->GetCohort(GetCriticalImagesCohort());
   PropertyPage* page = driver->property_page();
   if (page != NULL && cohort != NULL) {
-    PropertyValue* property_value = page->GetProperty(
-        cohort, kCriticalImagesPropertyName);
-    // Check if the cache value exists and is not expired.
-    if (property_value != NULL && property_value->has_value() &&
-        !page_property_cache->IsExpired(
+    if (driver->critical_images() == NULL) {
+      PropertyValue* property_value = page->GetProperty(
+          cohort, kCriticalImagesPropertyName);
+      driver->set_critical_images(ExtractCriticalImagesSet(
           property_value,
-          driver->options()->critical_images_cache_expiration_time_ms())) {
-      StringPieceVector critical_images_vector;
-      // Get the critical images from the property value. The fourth parameter
-      // (true) causes empty strings to be omitted from the resulting
-      // vector. kImageUrlSeparator is expected when the critical image set is
-      // empty, because the property cache does not store empty values.
-      SplitStringPieceToVector(property_value->value(), kImageUrlSeparator,
-                               &critical_images_vector, true);
-      StringSet* critical_images(new StringSet);  // Owned by RewriteDriver.
-      StringPieceVector::iterator it;
-      for (it = critical_images_vector.begin();
-           it != critical_images_vector.end();
-           ++it) {
-        critical_images->insert(it->as_string());
-      }
-      driver->set_critical_images(critical_images);
+          page_property_cache,
+          driver->options()->critical_images_cache_expiration_time_ms()));
+    }
+    if (driver->css_critical_images() == NULL) {
+      PropertyValue* property_value = page->GetProperty(
+          cohort, kCssCriticalImagesPropertyName);
+      driver->set_css_critical_images(ExtractCriticalImagesSet(
+          property_value,
+          page_property_cache,
+          driver->options()->critical_images_cache_expiration_time_ms()));
     }
   }
 }
 
+// TODO(pulkitg): Change all instances of critical_images_set to
+// html_critical_images_set.
 bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
-    RewriteDriver* driver, StringSet* critical_images_set) {
+    RewriteDriver* driver, StringSet* critical_images_set,
+    StringSet* css_critical_images_set) {
   // Update property cache if above the fold critical images are successfully
   // determined.
   PropertyPage* page = driver->property_page();
   PropertyCache* page_property_cache =
       driver->server_context()->page_property_cache();
   scoped_ptr<StringSet> critical_images(critical_images_set);
-  if (page_property_cache != NULL &&
-      page != NULL &&
-      critical_images.get() != NULL) {
+  scoped_ptr<StringSet> css_critical_images(css_critical_images_set);
+  if (page_property_cache != NULL && page != NULL) {
     const PropertyCache::Cohort* cohort =
         page_property_cache->GetCohort(GetCriticalImagesCohort());
     if (cohort != NULL) {
-      GoogleString buf;
-      FormatSetForPropertyCache(*critical_images, &buf);
-      PropertyValue* property_value = page->GetProperty(
-          cohort, kCriticalImagesPropertyName);
-      page_property_cache->UpdateValue(buf, property_value);
-      return true;
+      bool updated = false;
+      if (critical_images.get() != NULL) {
+        // Update critical images from html.
+        GoogleString buf;
+        FormatSetForPropertyCache(*critical_images, &buf);
+        PropertyValue* property_value = page->GetProperty(
+            cohort, kCriticalImagesPropertyName);
+        page_property_cache->UpdateValue(buf, property_value);
+        updated = true;
+      }
+      if (css_critical_images.get() != NULL) {
+        // Update critical images from css.
+        GoogleString buf;
+        FormatSetForPropertyCache(*css_critical_images, &buf);
+        PropertyValue* property_value = page->GetProperty(
+            cohort, kCssCriticalImagesPropertyName);
+        page_property_cache->UpdateValue(buf, property_value);
+        updated = true;
+      }
+      return updated;
     } else {
       LOG(WARNING) << "Critical Images Cohort is NULL.";
     }

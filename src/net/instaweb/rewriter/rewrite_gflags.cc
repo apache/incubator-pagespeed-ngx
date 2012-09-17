@@ -58,6 +58,10 @@ DEFINE_int32(image_jpeg_recompress_quality,
              net_instaweb::RewriteOptions::kDefaultImageJpegRecompressQuality,
              "Quality parameter to use while recompressing the jpeg images."
              "This should be in range [0,100], 100 refers to best quality.");
+DEFINE_int32(image_webp_recompress_quality,
+             net_instaweb::RewriteOptions::kDefaultImageWebpRecompressQuality,
+             "Quality parameter to use while recompressing the webp images."
+             "This should be in range [0,100], 100 refers to best quality.");
 DEFINE_int32(
     image_limit_optimized_percent,
     net_instaweb::RewriteOptions::kDefaultImageLimitOptimizedPercent,
@@ -350,6 +354,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("image_jpeg_recompress_quality")) {
     options->set_image_jpeg_recompress_quality(
         FLAGS_image_jpeg_recompress_quality);
+  }
+  if (WasExplicitlySet("image_webp_recompress_quality")) {
+    options->set_image_webp_recompress_quality(
+        FLAGS_image_webp_recompress_quality);
   }
   if (WasExplicitlySet("image_limit_optimized_percent")) {
     options->set_image_limit_optimized_percent(
