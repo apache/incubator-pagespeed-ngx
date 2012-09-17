@@ -635,7 +635,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(104, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(106, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAjaxRewritingEnabled));
@@ -841,6 +841,13 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kXModPagespeedHeaderValue));
 
+  // Apache-specific options.
+  EXPECT_EQ(StringPiece("CacheFlushFilename"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kCacheFlushFilename));
+  EXPECT_EQ(StringPiece("CacheFlushPollIntervalSec"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kCacheFlushPollIntervalSec));
   EXPECT_EQ(StringPiece("CollectRefererStatistics"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kCollectRefererStatistics));

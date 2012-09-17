@@ -108,13 +108,6 @@ class ApacheResourceManager : public ServerContext {
 
   static void InitStats(Statistics* statistics);
 
-  void set_cache_flush_poll_interval_sec(int num_seconds) {
-    cache_flush_poll_interval_sec_ = num_seconds;
-  }
-  void set_cache_flush_filename(const StringPiece& sp) {
-    sp.CopyToString(&cache_flush_filename_);
-  }
-
   const server_rec* server() const { return server_rec_; }
 
  private:
@@ -151,12 +144,9 @@ class ApacheResourceManager : public ServerContext {
 
   // State used to implement periodic polling of $FILE_PREFIX/cache.flush.
   // last_cache_flush_check_sec_ is ctor-initialized to 0 so the first
-  // time we Poll we will read the file.  If cache_flush_poll_interval_sec_<=0
-  // then we turn off polling for cache-flushes.
+  // time we Poll we will read the file.
   scoped_ptr<AbstractMutex> cache_flush_mutex_;
   int64 last_cache_flush_check_sec_;  // seconds since 1970
-  int64 cache_flush_poll_interval_sec_;
-  GoogleString cache_flush_filename_;
 
   Variable* cache_flush_count_;
 

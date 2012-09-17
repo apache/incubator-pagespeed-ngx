@@ -99,6 +99,8 @@ struct OptionName {
 "UseFullUrlInBlinkFamilies",             RewriteOptions::kUseFullUrlInBlinkFamilies
 "XHeaderValue",                          RewriteOptions::kXModPagespeedHeaderValue
 # The following are Apache specific options.
+"CacheFlushFilename",                    RewriteOptions::kCacheFlushFilename
+"CacheFlushPollIntervalSec",             RewriteOptions::kCacheFlushPollIntervalSec
 "CollectRefererStatistics",              RewriteOptions::kCollectRefererStatistics
 "DomainRewriteHyperlinks",               RewriteOptions::kDomainRewriteHyperlinks
 "FetchProxy",                            RewriteOptions::kFetcherProxy

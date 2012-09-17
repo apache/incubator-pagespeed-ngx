@@ -142,7 +142,6 @@ class ResourceManagerHttpCallback : public OptionsAwareHTTPCacheCallback {
 ServerContext::ServerContext(RewriteDriverFactory* factory)
     : thread_system_(factory->thread_system()),
       rewrite_stats_(NULL),
-      resource_id_(0),
       file_system_(factory->file_system()),
       filename_encoder_(NULL),
       url_namer_(NULL),

@@ -1197,13 +1197,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseBoolOption(options, cmd, &RewriteOptions::set_enabled, arg);
   } else if (StringCaseEqual(directive, kModPagespeedAllow)) {
     options->Allow(arg);
-  } else if (StringCaseEqual(directive, kModPagespeedCacheFlushFilename)) {
-    manager->set_cache_flush_filename(arg);
-  } else if (StringCaseEqual(directive,
-                             kModPagespeedCacheFlushPollIntervalSec)) {
-    ret = ParseIntOption(
-        manager, cmd,
-        &ApacheResourceManager::set_cache_flush_poll_interval_sec, arg);
   } else if (StringCaseEqual(directive, kModPagespeedDisableFilters)) {
     if (!options->DisableFiltersByCommaSeparatedList(arg, handler)) {
       ret = "Failed to disable some filters.";

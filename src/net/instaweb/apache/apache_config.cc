@@ -20,6 +20,12 @@
 
 namespace net_instaweb {
 
+namespace {
+
+const int64 kDefaultCacheFlushIntervalSec = 5;
+
+}  // namespace
+
 const char ApacheConfig::kClassName[] = "ApacheConfig";
 
 RewriteOptions::Properties* ApacheConfig::apache_properties_ = NULL;
@@ -103,6 +109,11 @@ void ApacheConfig::AddProperties() {
              RewriteOptions::kSlurpFlushLimit);
   add_option(3000, &ApacheConfig::statistics_logging_interval_ms_, "asli",
              RewriteOptions::kStatisticsLoggingIntervalMs);
+  add_option("", &ApacheConfig::cache_flush_filename_, "acff",
+             RewriteOptions::kCacheFlushFilename);
+  add_option(kDefaultCacheFlushIntervalSec,
+             &ApacheConfig::cache_flush_poll_interval_sec_, "acfpi",
+             RewriteOptions::kCacheFlushPollIntervalSec);
 
   MergeSubclassProperties(apache_properties_);
   ApacheConfig config;

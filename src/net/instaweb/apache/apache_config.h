@@ -183,6 +183,20 @@ class ApacheConfig : public RewriteOptions {
     set_option(x, &fetcher_proxy_);
   }
 
+  // Cache flushing configuration.
+  void set_cache_flush_poll_interval_sec(int64 num_seconds) {
+    set_option(num_seconds, &cache_flush_poll_interval_sec_);
+  }
+  int64 cache_flush_poll_interval_sec() const {
+    return cache_flush_poll_interval_sec_.value();
+  }
+  void set_cache_flush_filename(const StringPiece& sp) {
+    set_option(sp.as_string(), &cache_flush_filename_);
+  }
+  const GoogleString& cache_flush_filename() const {
+    return cache_flush_filename_.value();
+  }
+
   // Controls whether we act as a rewriting proxy, fetching
   // URLs from origin without managing a slurp dump.
   bool test_proxy() const {
@@ -293,6 +307,7 @@ class ApacheConfig : public RewriteOptions {
   Option<GoogleString> statistics_logging_file_;
   Option<GoogleString> statistics_logging_charts_css_;
   Option<GoogleString> statistics_logging_charts_js_;
+  Option<GoogleString> cache_flush_filename_;
 
   ApacheOption<RefererStatisticsOutputLevel> referer_statistics_output_level_;
 
@@ -313,6 +328,9 @@ class ApacheConfig : public RewriteOptions {
   Option<int64> lru_cache_kb_per_process_;
   Option<int64> slurp_flush_limit_;
   Option<int64> statistics_logging_interval_ms_;
+  // If cache_flush_poll_interval_sec_<=0 then we turn off polling for
+  // cache-flushes.
+  Option<int64> cache_flush_poll_interval_sec_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheConfig);
 };

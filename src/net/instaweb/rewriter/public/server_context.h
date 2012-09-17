@@ -481,7 +481,6 @@ class ServerContext {
   ThreadSystem* thread_system_;
   RewriteStats* rewrite_stats_;
   GoogleString file_prefix_;
-  int resource_id_;  // Sequential ids for temporary Resource filenames.
   FileSystem* file_system_;
   FilenameEncoder* filename_encoder_;
   UrlNamer* url_namer_;

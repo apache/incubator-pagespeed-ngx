@@ -34,9 +34,6 @@
 
 namespace {
 
-// TODO(jmarantz): add a configuration that allows turning off cache.flush
-// checking or possibly customizes the filename.
-const int64 kDefaultCacheFlushIntervalSec = 5;
 
 const char kCacheFlushCount[] = "cache_flush_count";
 
@@ -68,7 +65,6 @@ ApacheResourceManager::ApacheResourceManager(
       html_rewrite_time_us_histogram_(NULL),
       cache_flush_mutex_(thread_system()->NewMutex()),
       last_cache_flush_check_sec_(0),
-      cache_flush_poll_interval_sec_(kDefaultCacheFlushIntervalSec),
       cache_flush_count_(NULL) {  // Lazy-initialized under mutex.
   config()->set_description(hostname_identifier_);
   // We may need the message handler for error messages very early, before
@@ -237,13 +233,15 @@ bool ApacheResourceManager::PoolDestroyed() {
 // so that all child processes see the flush, and so the flush persists
 // across server restart.
 void ApacheResourceManager::PollFilesystemForCacheFlush() {
-  if (cache_flush_poll_interval_sec_ > 0) {
+  int64 cache_flush_poll_interval_sec =
+      config()->cache_flush_poll_interval_sec();
+  if (cache_flush_poll_interval_sec > 0) {
     int64 now_sec = timer()->NowMs() / Timer::kSecondMs;
     bool check_cache_file = false;
     {
       ScopedMutex lock(cache_flush_mutex_.get());
       if (now_sec >= (last_cache_flush_check_sec_ +
-                      cache_flush_poll_interval_sec_)) {
+                      cache_flush_poll_interval_sec)) {
         last_cache_flush_check_sec_ = now_sec;
         check_cache_file = true;
       }
@@ -253,19 +251,20 @@ void ApacheResourceManager::PollFilesystemForCacheFlush() {
     }
 
     if (check_cache_file) {
-      if (cache_flush_filename_.empty()) {
-        cache_flush_filename_ = "cache.flush";
+      GoogleString cache_flush_filename = config()->cache_flush_filename();
+      if (cache_flush_filename.empty()) {
+        cache_flush_filename = "cache.flush";
       }
-      if (cache_flush_filename_[0] != '/') {
+      if (cache_flush_filename[0] != '/') {
         // Note that we catch this in mod_instaweb.cc in the parsing of
         // option kModPagespeedFileCachePath.
         DCHECK_EQ('/', config()->file_cache_path()[0]);
-        cache_flush_filename_ = StrCat(config()->file_cache_path(), "/",
-                                       cache_flush_filename_);
+        cache_flush_filename = StrCat(config()->file_cache_path(), "/",
+                                      cache_flush_filename);
       }
       int64 cache_flush_timestamp_sec;
       NullMessageHandler null_handler;
-      if (file_system()->Mtime(cache_flush_filename_,
+      if (file_system()->Mtime(cache_flush_filename,
                                &cache_flush_timestamp_sec,
                                &null_handler)) {
         int64 timestamp_ms = cache_flush_timestamp_sec * Timer::kSecondMs;

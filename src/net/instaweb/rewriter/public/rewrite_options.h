@@ -231,6 +231,8 @@ class RewriteOptions {
     kXModPagespeedHeaderValue,
 
     // Apache specific:
+    kCacheFlushFilename,
+    kCacheFlushPollIntervalSec,
     kCollectRefererStatistics,
     kFetcherProxy,
     kFetcherTimeOutMs,
