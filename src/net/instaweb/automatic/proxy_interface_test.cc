@@ -134,7 +134,7 @@ const char kRewrittenHtml[] =
     "<script src=\"private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
-    "<body>"
+    "<body>%s"
     "Hello, mod_pagespeed!"
     "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
     "<script src=\"http://www.domain2.com/private.js\"></script>"
@@ -155,7 +155,7 @@ const char kFlushEarlyRewrittenHtmlImageTag[] =
     "<script type='text/javascript'>"
     "window.mod_pagespeed_prefetch_start = Number(new Date());"
     "window.mod_pagespeed_num_resources_prefetched = 5</script>"
-    "</head><head>"
+    "</head><head>%s"
     "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
     "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
     "<meta charset=\"UTF-8\"/>"
@@ -168,7 +168,7 @@ const char kFlushEarlyRewrittenHtmlImageTag[] =
     "<script src=\"private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
-    "<body>"
+    "<body>%s"
     "Hello, mod_pagespeed!"
     "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
     "<script src=\"http://www.domain2.com/private.js\"></script>"
@@ -193,7 +193,7 @@ const char kFlushEarlyRewrittenHtmlImageTagInsertDnsPrefetch[] =
     "<script type='text/javascript'>"
     "window.mod_pagespeed_prefetch_start = Number(new Date());"
     "window.mod_pagespeed_num_resources_prefetched = 5</script>"
-    "</head><head>"
+    "</head><head>%s"
     "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
     "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
     "<meta charset=\"UTF-8\"/>"
@@ -206,7 +206,7 @@ const char kFlushEarlyRewrittenHtmlImageTagInsertDnsPrefetch[] =
     "<script src=\"private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
-    "<body>"
+    "<body>%s"
     "Hello, mod_pagespeed!"
     "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
     "<script src=\"http://www.domain2.com/private.js\"></script>"
@@ -226,7 +226,7 @@ const char kFlushEarlyRewrittenHtmlLinkRelSubresource[] =
     "<script type='text/javascript'>"
     "window.mod_pagespeed_prefetch_start = Number(new Date());"
     "window.mod_pagespeed_num_resources_prefetched = 5</script>"
-    "</head><head>"
+    "</head><head>%s"
     "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
     "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
     "<meta charset=\"UTF-8\"/>"
@@ -239,7 +239,7 @@ const char kFlushEarlyRewrittenHtmlLinkRelSubresource[] =
     "<script src=\"private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
-    "<body>"
+    "<body>%s"
     "Hello, mod_pagespeed!"
     "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
     "<script src=\"http://www.domain2.com/private.js\"></script>"
@@ -259,7 +259,7 @@ const char kFlushEarlyRewrittenHtmlLinkScript[] =
     "<script type='text/javascript'>"
     "window.mod_pagespeed_prefetch_start = Number(new Date());"
     "window.mod_pagespeed_num_resources_prefetched = 5</script>"
-    "</head><head>"
+    "</head><head>%s"
     "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
     "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
     "<meta charset=\"UTF-8\"/>"
@@ -272,7 +272,7 @@ const char kFlushEarlyRewrittenHtmlLinkScript[] =
     "<script src=\"private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
-    "<body>"
+    "<body>%s"
     "Hello, mod_pagespeed!"
     "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
     "<script src=\"http://www.domain2.com/private.js\"></script>"
@@ -293,7 +293,7 @@ const char kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly[] =
     "<script type=\"text/javascript\">%s</script>"
     "%s"
     "<script type=\"text/javascript\">%s</script>"
-    "</head><head>"
+    "</head><head>%s"
     "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
     "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
     "<meta charset=\"UTF-8\"/>"
@@ -336,7 +336,7 @@ const char kFlushEarlyRewrittenHtmlImageTagWithDeferJs[] =
     "<script type='text/javascript'>"
     "window.mod_pagespeed_prefetch_start = Number(new Date());"
     "window.mod_pagespeed_num_resources_prefetched = 3</script>"
-    "</head><head>"
+    "</head><head>%s"
     "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
     "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
     "<meta charset=\"UTF-8\"/>"
@@ -368,7 +368,7 @@ const char kFlushEarlyRewrittenHtmlLinkRelSubresourceWithDeferJs[] =
     "<script type='text/javascript'>"
     "window.mod_pagespeed_prefetch_start = Number(new Date());"
     "window.mod_pagespeed_num_resources_prefetched = 3</script>"
-    "</head><head>"
+    "</head><head>%s"
     "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
     "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
     "<meta charset=\"UTF-8\"/>"
@@ -995,6 +995,10 @@ class ProxyInterfaceTest : public RewriteTestBase {
     // Setup
     ResponseHeaders headers;
     headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+    headers.Add(HttpAttributes::kSetCookie, "CG=US:CA:Mountain+View");
+    headers.Add(HttpAttributes::kSetCookie, "UA=chrome");
+    headers.Add(HttpAttributes::kSetCookie, "path=/");
+
     headers.SetStatusAndReason(HttpStatus::kOK);
     mock_url_fetcher_.SetResponse(kTestDomain, headers, kFlushEarlyHtml);
 
@@ -1064,6 +1068,14 @@ class ProxyInterfaceTest : public RewriteTestBase {
         "1.js,Mjm.0.js+2.js,Mjm.0.js.pagespeed.jc.0.js";
     GoogleString rewritten_img_url_1 = Encode("", "ce", "0", "1.jpg", "jpg");
     GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
+    GoogleString cookie_script =
+        "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+        "(function(){"
+          "var data = [\"CG=US:CA:Mountain+View\",\"UA=chrome\",\"path=/\"];"
+          "for (var i = 0; i < data.length; i++) {"
+          "document.cookie = data[i];"
+         "}})()"
+        "</script>";
     if (value == UserAgentMatcher::kPrefetchLinkScriptTag && defer_js_enabled) {
       return StringPrintf(
           kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly,
@@ -1079,6 +1091,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
           JsDeferDisabledFilter::GetDeferJsSnippet(
               options_,
               resource_manager()->static_javascript_manager()).c_str(),
+          cookie_script.data(),
           rewritten_css_url_1.data(), rewritten_css_url_2.data(),
           combined_js_url.data(), rewritten_img_url_1.data(),
           StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
@@ -1101,6 +1114,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
                  resource_manager()->static_javascript_manager()),
                  "\" type=\"text/javascript\"></script>").c_str(),
           SplitHtmlFilter::kDeferJsSnippet,
+          cookie_script.data(),
           rewritten_css_url_1.data(), rewritten_css_url_2.data(),
           combined_js_url.data(), rewritten_img_url_1.data(),
           StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
@@ -1108,10 +1122,11 @@ class ProxyInterfaceTest : public RewriteTestBase {
           rewritten_css_url_3.data());
     } else if (value == UserAgentMatcher::kPrefetchNotSupported) {
       return StringPrintf(kRewrittenHtml, rewritten_css_url_1.data(),
-                          rewritten_css_url_2.data(), rewritten_js_url_1.data(),
-                          rewritten_js_url_2.data(),
-                          rewritten_img_url_1.data(),
-                          rewritten_css_url_3.data());
+          rewritten_css_url_2.data(), rewritten_js_url_1.data(),
+          rewritten_js_url_2.data(), rewritten_img_url_1.data(),
+          StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
+                       redirect_url.c_str()).c_str(),
+          rewritten_css_url_3.data());
     } else if (defer_js_enabled) {
       return StringPrintf(
           value == UserAgentMatcher::kPrefetchLinkRelSubresource ?
@@ -1120,6 +1135,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
           StrCat(domain_prefix, rewritten_css_url_1).data(),
           StrCat(domain_prefix, rewritten_css_url_2).data(),
           StrCat(domain_prefix, rewritten_css_url_3).data(),
+          cookie_script.data(),
           rewritten_css_url_1.data(), rewritten_css_url_2.data(),
           combined_js_url.data(),
           rewritten_img_url_1.data(),
@@ -1144,9 +1160,12 @@ class ProxyInterfaceTest : public RewriteTestBase {
           StrCat(domain_prefix, rewritten_js_url_1).data(),
           StrCat(domain_prefix, rewritten_js_url_2).data(),
           StrCat(domain_prefix, rewritten_css_url_3).data(),
+          cookie_script.data(),
           rewritten_css_url_1.data(), rewritten_css_url_2.data(),
           rewritten_js_url_1.data(), rewritten_js_url_2.data(),
           rewritten_img_url_1.data(),
+          StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
+                                 redirect_url.c_str()).c_str(),
           rewritten_css_url_3.data());
     }
   }

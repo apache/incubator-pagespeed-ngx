@@ -211,24 +211,13 @@ void BlinkFilter::EndDocument() {
 }
 
 void BlinkFilter::SendCookies() {
-  ConstStringStarVector cookies;
+  GoogleString cookie_str;
   const ResponseHeaders* response_headers = rewrite_driver_->response_headers();
-  if (!response_headers->Lookup(HttpAttributes::kSetCookie, &cookies)) {
-    return;
+  if (response_headers->GetCookieString(&cookie_str)) {
+    WriteString("<script>pagespeed.panelLoader.loadCookies(");
+    WriteString(cookie_str);
+    WriteString(");</script>");
   }
-
-  Json::Value cookie_array = Json::arrayValue;
-  for (int i = 0, n = cookies.size(); i < n; ++i) {
-    cookie_array.append(cookies[i]->c_str());
-  }
-
-  Json::FastWriter fast_writer;
-  GoogleString cookie_str = fast_writer.write(cookie_array);
-  BlinkUtil::StripTrailingNewline(&cookie_str);
-
-  WriteString("<script>pagespeed.panelLoader.loadCookies(");
-  WriteString(cookie_str);
-  WriteString(");</script>");
 }
 
 void BlinkFilter::ServeNonCriticalPanelContents() {

@@ -19,6 +19,7 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
@@ -26,6 +27,16 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/string_util.h"
 
+namespace {
+
+const char kCookieJs[] =
+    "(function(){"
+    "var data = %s;"
+    "for (var i = 0; i < data.length; i++) {"
+    "document.cookie = data[i];"
+    "}})()";
+
+}  // namespace
 namespace net_instaweb {
 
 SuppressPreheadFilter::SuppressPreheadFilter(RewriteDriver* driver)
@@ -61,13 +72,20 @@ void SuppressPreheadFilter::StartDocument() {
   }
 }
 
+// TODO(mmohabey): AddHead filter will not add a head in the following case:
+// <html><noscript><head></head></noscript></html>. This will break the page if
+// FlushSubresources filter is applied.
 void SuppressPreheadFilter::StartElement(HtmlElement* element) {
   if (noscript_element_ == NULL && element->keyword() == HtmlName::kNoscript) {
     noscript_element_ = element;  // Record top-level <noscript>
-  } else if (element->keyword() == HtmlName::kHead && !seen_first_head_) {
+  } else if (element->keyword() == HtmlName::kHead && !seen_first_head_ &&
+             noscript_element_ == NULL) {
     // If first <head> is seen then do not suppress the bytes.
     seen_first_head_ = true;
     set_writer(original_writer_);
+    if (driver_->flushed_early()) {
+      SendCookies(element);
+    }
   }
   HtmlWriterFilter::StartElement(element);
 }
@@ -101,6 +119,20 @@ void SuppressPreheadFilter::EndDocument() {
     response_headers_.MergeContentType(type);
   }
   driver_->SaveOriginalHeaders(response_headers_);
+}
+
+void SuppressPreheadFilter::SendCookies(HtmlElement* element) {
+  GoogleString cookie_str;
+  const ResponseHeaders* response_headers = driver_->response_headers();
+  if (response_headers->GetCookieString(&cookie_str)) {
+    HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
+    driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
+    driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+    HtmlCharactersNode* script_code = driver_->NewCharactersNode(script,
+        StringPrintf(kCookieJs, cookie_str.c_str()));
+    driver_->PrependChild(element, script);
+    driver_->AppendChild(script, script_code);
+  }
 }
 
 }  // namespace net_instaweb

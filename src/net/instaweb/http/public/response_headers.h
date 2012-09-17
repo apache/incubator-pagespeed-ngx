@@ -272,6 +272,11 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // headers were on a single or multiple lines.
   int64 SizeEstimate() const;
 
+  // Returns true if the response headers have cookies and false otherwise.
+  // If cookies are found then it sets them in cookie_str in javascript array
+  // format.
+  bool GetCookieString(GoogleString* cookie_str) const;
+
  private:
   // Parse the original and fresh content types, and add a new header based
   // on the two of them, giving preference to the original.

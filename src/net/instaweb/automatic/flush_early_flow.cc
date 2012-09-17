@@ -80,14 +80,9 @@ const char FlushEarlyFlow::kNumResourcesFlushedEarly[] =
 const char FlushEarlyFlow::kFlushEarlyRewriteLatencyMs[] =
     "flush_early_rewrite_latency_ms";
 
-// TODO(mmohabey): Do Cookie handling when flushed early. If the cookie is
-// HttpOnly then do not enter FlushEarlyFlow.
+// TODO(mmohabey): If the cookie is HttpOnly then do not enter FlushEarlyFlow.
 // TODO(mmohabey): Do not flush early if the html is cacheable.
 // If this is called then the content type must be html.
-// TODO(mmohabey): Enable it for browsers other than Chrome. Temporarily enabled
-// for just one browser since same resource might have different url depending
-// on the browser. So if subresources are collected in browser A and flushed
-// early in browser B then it causes performance degradation.
 bool FlushEarlyFlow::CanFlushEarly(const GoogleString& url,
                                    const AsyncFetch* async_fetch,
                                    const RewriteDriver* driver) {

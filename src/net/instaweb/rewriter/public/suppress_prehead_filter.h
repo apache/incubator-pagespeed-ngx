@@ -55,6 +55,8 @@ class SuppressPreheadFilter : public HtmlWriterFilter {
   virtual void Clear();
 
  private:
+  void SendCookies(HtmlElement* element);
+
   bool seen_first_head_;
   HtmlElement* noscript_element_;
   RewriteDriver* driver_;

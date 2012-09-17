@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_multi_map.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -868,6 +869,26 @@ int64 ResponseHeaders::SizeEstimate() const {
   }
   len += STATIC_STRLEN("\r\n");
   return len;
+}
+
+bool ResponseHeaders::GetCookieString(GoogleString* cookie_str) const {
+  cookie_str->clear();
+  ConstStringStarVector cookies;
+  if (!Lookup(HttpAttributes::kSetCookie, &cookies)) {
+    return false;
+  }
+
+  StrAppend(cookie_str, "[");
+  for (int i = 0, n = cookies.size(); i < n; ++i) {
+    GoogleString escaped;
+    EscapeToJsStringLiteral(cookies[i]->c_str(), true, &escaped);
+    StrAppend(cookie_str, escaped);
+    if (i != (n-1)) {
+      StrAppend(cookie_str, ",");
+    }
+  }
+  StrAppend(cookie_str, "]");
+  return true;
 }
 
 }  // namespace net_instaweb

@@ -31,7 +31,6 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -61,6 +60,9 @@ class SuppressPreheadFilterTest : public RewriteTestBase {
   virtual void SetUp() {
     options()->ClearSignatureForTesting();
     options()->EnableFilter(RewriteOptions::kFlushSubresources);
+    // Disable support no script, so that we don't insert the noscript node and
+    // the output is simple.
+    options()->set_support_noscript_enabled(false);
     options()->ComputeSignature(hasher());
     RewriteTestBase::SetUp();
     rewrite_driver()->AddFilters();
@@ -276,4 +278,72 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyPreExistingCharset) {
   EXPECT_EQ(html_without_prehead, output_);
 }
 
+TEST_F(SuppressPreheadFilterTest, FlushEarlyCookies) {
+  InitResources();
+  headers()->Add(HttpAttributes::kSetCookie, "CG=US:CA:Mountain+View");
+  headers()->Add(HttpAttributes::kSetCookie, "UA=chrome");
+  headers()->Add(HttpAttributes::kSetCookie, "path=/");
+
+  const char html_input[] =
+      "<!DOCTYPE html>"
+      "<html>"
+      "<head>"
+      "</head>"
+      "<body></body></html>";
+  const char html_with_cookie[] =
+      "<head>"
+      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+      "(function(){"
+        "var data = [\"CG=US:CA:Mountain+View\",\"UA=chrome\",\"path=/\"];"
+        "for (var i = 0; i < data.length; i++) {"
+        "document.cookie = data[i];"
+       "}})()"
+      "</script>"
+      "</head>"
+      "<body></body></html>";
+
+  Parse("not_flushed_early", html_input);
+  EXPECT_EQ(html_input, output_);
+
+  // Javascript for setting the cookie is also flushed.
+  output_.clear();
+  rewrite_driver()->set_flushed_early(true);
+  Parse("flushed_early_with_cookie", html_input);
+  EXPECT_EQ(html_with_cookie, output_);
+}
+
+TEST_F(SuppressPreheadFilterTest, FlushEarlyCookies2) {
+  InitResources();
+  headers()->Add(HttpAttributes::kSetCookie, "RMID=266b56483f6e50519316c48a; "
+                 "expires=Friday, 13-Sep-2013 08:02:30 GMT; path=/; "
+                 "domain=.example.com");
+
+  const char html_input[] =
+      "<!DOCTYPE html>"
+      "<html>"
+      "<head>"
+      "</head>"
+      "<body></body></html>";
+  const char html_with_cookie[] =
+      "<head>"
+      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+      "(function(){"
+        "var data = [\"RMID=266b56483f6e50519316c48a; expires=Friday, "
+        "13-Sep-2013 08:02:30 GMT; path=/; domain=.example.com\"];"
+        "for (var i = 0; i < data.length; i++) {"
+        "document.cookie = data[i];"
+       "}})()"
+      "</script>"
+      "</head>"
+      "<body></body></html>";
+
+  Parse("not_flushed_early", html_input);
+  EXPECT_EQ(html_input, output_);
+
+  // Javascript for setting the cookie is also flushed.
+  output_.clear();
+  rewrite_driver()->set_flushed_early(true);
+  Parse("flushed_early_with_cookie", html_input);
+  EXPECT_EQ(html_with_cookie, output_);
+}
 }  // namespace net_instaweb

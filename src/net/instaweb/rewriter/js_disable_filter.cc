@@ -122,6 +122,10 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
       if (type != NULL) {
         type->set_name(rewrite_driver_->MakeName(HtmlName::kPagespeedOrigType));
       }
+      // Delete all type attributes if any. Some sites have more than one type
+      // attribute(duplicate). Chrome and firefox picks up the first type
+      // attribute for the node.
+      while (element->DeleteAttribute(HtmlName::kType)) {}
       element->AddAttribute(
           rewrite_driver_->MakeName(HtmlName::kType), "text/psajs",
           HtmlElement::DOUBLE_QUOTE);

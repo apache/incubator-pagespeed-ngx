@@ -241,4 +241,20 @@ TEST_F(JsDisableFilterTest, NoMetaTagForIE) {
   ValidateExpectedUrl("http://example.com/", input_html, expected);
 }
 
+TEST_F(JsDisableFilterTest, DisablesScriptWithMultipleTypeAttributes) {
+  const GoogleString input_html = StrCat(
+      kUnrelatedNoscriptTags,
+      "<script src=\"x?a=b&amp;c=d\" type='text/javascript' type='a' type='b'>"
+      "hi1</script>",
+      kUnrelatedTags);
+  const GoogleString expected = StrCat(
+      kUnrelatedNoscriptTags,
+      "<script pagespeed_orig_src=\"x?a=b&amp;c=d\""
+      " pagespeed_orig_type='text/javascript' type=\"text/psajs\""
+      " orig_index=\"0\">hi1</script>",
+      kUnrelatedTags);
+
+  ValidateExpectedUrl("http://example.com/", input_html, expected);
+}
+
 }  // namespace net_instaweb

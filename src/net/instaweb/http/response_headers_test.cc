@@ -1357,4 +1357,18 @@ TEST_F(ResponseHeadersTest, ForceCachingForAlreadyPublic) {
   EXPECT_STREQ("max-age=3456", *(values[1]));
 }
 
+TEST_F(ResponseHeadersTest, GetCookieString) {
+  response_headers_.SetStatusAndReason(HttpStatus::kOK);
+  response_headers_.SetDate(MockTimer::kApr_5_2010_ms);
+  response_headers_.Add(HttpAttributes::kSetCookie, "CG=US:CA:Mountain+View");
+  response_headers_.Add(HttpAttributes::kSetCookie, "UA=chrome");
+  response_headers_.Add(HttpAttributes::kSetCookie, "path=/");
+
+  GoogleString cookie_str;
+  response_headers_.GetCookieString(&cookie_str);
+
+  EXPECT_STREQ("[\"CG=US:CA:Mountain+View\",\"UA=chrome\",\"path=/\"]",
+               cookie_str);
+}
+
 }  // namespace net_instaweb

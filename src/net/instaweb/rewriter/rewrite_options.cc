@@ -273,6 +273,7 @@ const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
   RewriteOptions::kDeferJavascript,
   RewriteOptions::kDelayImages,
   RewriteOptions::kDetectReflowWithDeferJavascript,
+  RewriteOptions::kFlushSubresources,
   RewriteOptions::kLazyloadImages,
   RewriteOptions::kLocalStorageCache,
   // We do not include kPrioritizeVisibleContent since we do not want to attach
